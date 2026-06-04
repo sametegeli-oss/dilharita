@@ -2510,3 +2510,153 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
 })();
+
+/* ============================================================
+   MOBIL İLERİ/GERİ HIZLANDIRMA VE EKRAN FLICKER FIX — V5
+   Sorun: İleri düğmesinde legacy onclick + global listener + MutationObserver
+   aynı anda çalışıp mobilde birden fazla ekranı açıp kapatıyordu.
+   Çözüm: nav tıklamasını capture aşamasında tek merkezden yakala,
+   varsayılan/inline handler'ları durdur, sadece sc-word render et.
+   ============================================================ */
+(function(){
+  'use strict';
+  if (window.__WM_MOBILE_NAV_FAST_V5__) return;
+  window.__WM_MOBILE_NAV_FAST_V5__ = true;
+
+  var NAV_LOCK = false;
+  var lastNavAt = 0;
+
+  function qa(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function getData(){
+    if (Array.isArray(window.words) && window.words.length) return window.words;
+    if (Array.isArray(window.allWords) && window.allWords.length) return window.allWords;
+    return [];
+  }
+  function getIndex(){
+    try { if (typeof idx === 'number') return idx; } catch(e){}
+    return Number(window.idx || window.currentIndex || window.wordIndex || 0) || 0;
+  }
+  function setIndexSafe(n){
+    var arr = getData();
+    var max = Math.max(0, arr.length - 1);
+    var i = Math.max(0, Math.min(max, Number(n) || 0));
+    try { idx = i; } catch(e){}
+    try { window.idx = i; window.currentIndex = i; window.wordIndex = i; } catch(e){}
+    try { if (typeof window.WM_syncIdx === 'function') window.WM_syncIdx(i); } catch(e){}
+    return i;
+  }
+  function ensureCSS(){
+    if (document.getElementById('wm-mobile-nav-fast-v5-css')) return;
+    var st = document.createElement('style');
+    st.id = 'wm-mobile-nav-fast-v5-css';
+    st.textContent = [
+      'body.wm-nav-fast *{scroll-behavior:auto!important}',
+      'body.wm-nav-fast .screen,body.wm-nav-fast .card,body.wm-nav-fast .wm-card,body.wm-nav-fast #wordCard{transition:none!important;animation:none!important}',
+      'body.wm-nav-fast .screen:not(#sc-word){display:none!important}',
+      'body.wm-nav-fast #sc-word{display:block!important}',
+      '#wordCard.wm-nav-rendering{visibility:hidden!important}',
+      '#wordCard.wm-nav-ready{visibility:visible!important;opacity:1!important}'
+    ].join('\n');
+    document.head.appendChild(st);
+  }
+  function keepOnlyWordScreen(){
+    var sc = document.getElementById('sc-word');
+    if (!sc) return;
+    qa('.screen.active').forEach(function(s){ if (s !== sc) s.classList.remove('active'); });
+    sc.classList.add('active');
+    sc.style.display = '';
+  }
+  function prefetchNext(i){
+    try{
+      var arr = getData();
+      if (!window.WM_prefetchImage) return;
+      for (var k=1; k<=2; k++){
+        var nx = arr[i+k];
+        if (nx) window.WM_prefetchImage(nx.sentence || nx.cumle || '', nx.word || nx.Kelime || '');
+      }
+    }catch(e){}
+  }
+  function renderFast(){
+    ensureCSS();
+    document.body.classList.add('wm-nav-fast');
+    keepOnlyWordScreen();
+    var card = document.getElementById('wordCard');
+    if (card) { card.classList.add('wm-nav-rendering'); card.classList.remove('wm-nav-ready'); }
+
+    try { phase = 'learn'; } catch(e){}
+    // showScreen sadece sc-word aktif değilse çağrılır. Her ileri basışta tekrar çağırmak mobilde ekran zincirini tetikliyordu.
+    try {
+      var sc = document.getElementById('sc-word');
+      if (typeof showScreen === 'function' && (!sc || !sc.classList.contains('active'))) showScreen('sc-word');
+    } catch(e){}
+    keepOnlyWordScreen();
+
+    try { if (typeof renderLearn === 'function') renderLearn(); } catch(e){ console.warn('[WM nav v5] renderLearn hata:', e); }
+    try { if (typeof updateWordCounter === 'function') updateWordCounter(); } catch(e){}
+    try { if (typeof window.WM_colorizePOSSilent === 'function') setTimeout(window.WM_colorizePOSSilent, 80); } catch(e){}
+
+    requestAnimationFrame(function(){
+      keepOnlyWordScreen();
+      requestAnimationFrame(function(){
+        keepOnlyWordScreen();
+        var c = document.getElementById('wordCard');
+        if (c) { c.classList.remove('wm-nav-rendering'); c.classList.add('wm-nav-ready'); }
+        document.body.classList.remove('wm-nav-fast');
+        NAV_LOCK = false;
+      });
+    });
+  }
+  function go(delta){
+    var now = Date.now();
+    if (NAV_LOCK && now - lastNavAt < 180) return false;
+    NAV_LOCK = true;
+    lastNavAt = now;
+    var i = setIndexSafe(getIndex() + delta);
+    prefetchNext(i);
+    renderFast();
+    return false;
+  }
+
+  window.WM_fastNextWordV5 = function(){ return go(+1); };
+  window.WM_fastPrevWordV5 = function(){ return go(-1); };
+
+  // Global nav fonksiyonlarını tek merkezli hızlı sürüme bağla.
+  window.nextWord = window.navNextWord = window.WM_forceNextWord = window.WM_fastNextWordV5;
+  window.prevWord = window.navPrevWord = window.WM_forcePrevWord = window.WM_fastPrevWordV5;
+
+  function isWordNavButton(btn){
+    if (!btn) return 0;
+    var oc = String(btn.getAttribute('onclick') || '');
+    var id = btn.id || '';
+    var label = (btn.textContent || '').trim();
+    if (/navNextWord|nextWord|WM_forceNextWord|WM_fastNextWordV5/.test(oc) || /next/i.test(id) || label === '▶' || label === '➡') return +1;
+    if (/navPrevWord|prevWord|WM_forcePrevWord|WM_fastPrevWordV5/.test(oc) || /prev/i.test(id) || label === '◀' || label === '⬅') return -1;
+    return 0;
+  }
+
+  // Capture aşamasında yakala: inline onclick ve eski listener'lar çalışmadan kesilir.
+  document.addEventListener('click', function(ev){
+    var btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+    if (!btn) return;
+    var d = isWordNavButton(btn);
+    if (!d) return;
+    // Sadece ana öğrenme ekranındaki ileri/geri için uygula; diğer overlay/sade ekran butonlarına karışma.
+    if (!btn.closest('#sc-word') && !btn.closest('#wordCard')) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+    go(d);
+  }, true);
+
+  // Klavye yön tuşlarında da aynı hızlı yolu kullan.
+  document.addEventListener('keydown', function(ev){
+    var sc = document.getElementById('sc-word');
+    if (!sc || !sc.classList.contains('active')) return;
+    if (ev.key === 'ArrowRight') { ev.preventDefault(); go(+1); }
+    if (ev.key === 'ArrowLeft') { ev.preventDefault(); go(-1); }
+  }, true);
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureCSS);
+  else ensureCSS();
+  console.log('✅ Mobil ileri/geri hızlandırma v5 aktif');
+})();

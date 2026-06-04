@@ -1,0 +1,21 @@
+DÜZELTME V5 — Mobil ileri/geri yavaşlığı ve ekran açılıp-kapanma sorunu
+
+1) js/fixes.js sonuna Mobil Nav Fast V5 eklendi.
+- İleri/geri tıklaması capture aşamasında tek merkezden yakalanıyor.
+- Eski inline onclick ve tekrar eden legacy listener zinciri durduruluyor.
+- Her ileri basışında showScreen tekrar tekrar çağrılmıyor.
+- Sadece sc-word ekranı aktif bırakılıyor.
+- Render sırasında kart gizlenip tek frame sonra gösteriliyor; parça parça ekran açılıp kapanması azaltıldı.
+- Hızlı peş peşe tıklamada 180 ms kilit eklendi.
+- Sağ/sol klavye yön tuşları da aynı hızlı akışa bağlandı.
+
+2) index.html
+- JS/CSS sürümü v=20260604v5 yapıldı.
+- Tarayıcının eski fixes.js dosyasını göstermesi engellendi.
+
+3) sw.js
+- Cache adı wordmode-free-v5-20260604 olarak değiştirildi.
+- GitHub Pages eski dosya karışması azaltıldı.
+
+Not:
+Bu paket mevcut proje yapısını korur. legacy-app.js silinmedi; sadece mobil ileri/geri akışı tek merkezden yönetildi.
