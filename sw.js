@@ -6,12 +6,11 @@
    - DİKKAT: Kullanıcı verisi (ilerleme, resimler, ayarlar) IndexedDB'dedir;
      bu SW ona DOKUNMAZ. Cache temizliği sadece kod dosyalarını etkiler.
    ════════════════════════════════════════════════════════════════════ */
-const CACHE = 'wordmode-free-v4-existing-fixed';   // sürüm artınca eski kod cache'i otomatik silinir
+const CACHE = 'wordmode-free-v4-20260604';   // sürüm artınca eski kod cache'i otomatik silinir
 const ASSETS = [
   './', './index.html', './css/style.css',
-  './js/app.js', './js/free_features.js', './js/fixes.js',
-  './data/sozluk.json', './data/firatkaya_simple.json', './data/cumleler.xlsx',
-  './manifest.webmanifest', './assets/icon-192.png', './assets/icon-512.png'
+  './js/vocab-data.js', './js/legacy-app.js', './js/sentence-mode-core.js', './js/app.js', './js/free_features.js', './js/fixes.js',
+  './data/sozluk.json', './manifest.webmanifest'
 ];
 
 // Kod dosyası mı? (network-first uygulanacaklar)

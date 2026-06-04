@@ -2355,62 +2355,158 @@
   }
 })();
 
-
 /* ============================================================
-   FINAL STABILIZER v3 — mevcut dosyalar korunarak eklendi
-   - Eski/bozuk service worker cache etkisini azaltır.
-   - Eksik ikon/manifest hatalarını sessizce tolere eder.
-   - Aynı anda birden fazla ekran aktif kalırsa yalnız son aktif ekranı bırakır.
-   - Araçlar paneli dışına tıklayınca kapanır.
+   MEVCUT PROJE STABILIZER v4 — 2026-06-04
+   Bu bölüm mevcut dosya yapısını bozmadan son kullanıcıda görülen
+   ekran çakışması, aktif liste adı, öğrenme durumu ve cache sorunlarını
+   kökten azaltmak için eklendi.
    ============================================================ */
 (function(){
   'use strict';
-  if (window.__WM_EXISTING_FILES_FINAL_STABILIZER_V3__) return;
-  window.__WM_EXISTING_FILES_FINAL_STABILIZER_V3__ = true;
+  if (window.__WM_EXISTING_PROJECT_STABILIZER_V4__) return;
+  window.__WM_EXISTING_PROJECT_STABILIZER_V4__ = true;
 
-  window.WM_FORCE_UPDATE = async function(){
-    try{
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(r => r.update().catch(()=>{})));
+  var LS_ACTIVE_LIST = 'wm_active_list_name_v4';
+  var LS_STARTED = 'wm_sentence_started_v4';
+
+  function q(s, root){ return (root || document).querySelector(s); }
+  function qa(s, root){ return Array.prototype.slice.call((root || document).querySelectorAll(s)); }
+  function text(el){ return String(el && (el.textContent || el.innerText) || '').trim(); }
+  function cleanName(v){
+    v = String(v || '').replace(/\s+/g,' ').trim();
+    if (!v) return '';
+    // Liste adı yerine yanlışlıkla cümle basılmasını engelle.
+    if (/[.!?]$/.test(v) && v.split(/\s+/).length > 3) return '';
+    if (v.length > 42) return '';
+    return v;
+  }
+  function toast(a,b){
+    try { if (typeof window.showToast === 'function') return window.showToast(a,b||''); } catch(e){}
+    console.log('[WM]', a, b||'');
+  }
+  function currentSentence(){
+    var candidates = [
+      '[data-sentence]', '.sentence-text', '#sentenceText', '#currentSentence', '.wm-sentence', '.sentence-card h2', '.word-main h2'
+    ];
+    for (var i=0;i<candidates.length;i++){
+      var el = q(candidates[i]);
+      var v = el ? (el.getAttribute('data-sentence') || text(el)) : '';
+      if (v && v.length > 5 && /[a-zA-Z]/.test(v)) return v.replace(/\s+/g,' ').trim();
+    }
+    // görünür karttan İngilizce cümle yakala
+    var visible = qa('.screen.active h1,.screen.active h2,.screen.active .card,.screen.active .wm-card').map(text).join('\n');
+    var m = visible.match(/([A-Z][^\n]{10,180}[.!?])/);
+    return m ? m[1].replace(/\s+/g,' ').trim() : '';
+  }
+  function getStartedMap(){ try { return JSON.parse(localStorage.getItem(LS_STARTED)||'{}') || {}; } catch(e){ return {}; } }
+  function setStarted(sentence){
+    if (!sentence) return;
+    var m = getStartedMap();
+    m[sentence] = m[sentence] || { startedAt: new Date().toISOString(), status: 'started' };
+    try { localStorage.setItem(LS_STARTED, JSON.stringify(m)); } catch(e){}
+  }
+  function protectActiveListName(){
+    var el = q('#currentListName');
+    if (!el) return;
+    var raw = text(el);
+    var saved = cleanName(localStorage.getItem(LS_ACTIVE_LIST));
+    var good = cleanName(raw);
+    if (good && !/^ana liste$/i.test(good)) {
+      try { localStorage.setItem(LS_ACTIVE_LIST, good); } catch(e){}
+    } else if (saved && raw !== saved) {
+      el.textContent = saved;
+    }
+  }
+  function patchListButtons(){
+    // Liste seçimi yapılan butonlarda aktif liste adını kalıcı tut.
+    document.addEventListener('click', function(ev){
+      var btn = ev.target && ev.target.closest ? ev.target.closest('button,[data-list-name],[data-list]') : null;
+      if (!btn) return;
+      var nm = btn.getAttribute('data-list-name') || btn.getAttribute('data-list') || '';
+      nm = cleanName(nm || text(btn));
+      if (nm && !/öğren|oku|geri|ileri|kapat|sil|ara|kaydet/i.test(nm)) {
+        try { localStorage.setItem(LS_ACTIVE_LIST, nm); } catch(e){}
+        setTimeout(protectActiveListName, 0);
+        setTimeout(protectActiveListName, 150);
       }
-      if (window.caches) {
-        const keys = await caches.keys();
-        await Promise.all(keys.filter(k => /^wordmode-|^dil-haritasi/i.test(k)).map(k => caches.delete(k)));
+    }, true);
+  }
+  function patchLearnButton(){
+    document.addEventListener('click', function(ev){
+      var btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+      if (!btn) return;
+      var t = text(btn);
+      if (!/Öğrenmeye\s*Başladım|Öğrendim|Henüz\s*çalışılmadı/i.test(t)) return;
+      var s = currentSentence();
+      if (!s) return;
+      setStarted(s);
+      btn.classList.add('wm-started-done');
+      if (/Öğrenmeye\s*Başladım|Henüz\s*çalışılmadı/i.test(t)) btn.textContent = '✅ Başlandı';
+      toast('✅ Kaydedildi','Bu cümle öğrenmeye başlandı olarak işaretlendi.');
+      setTimeout(protectActiveListName, 0);
+      setTimeout(markStartedOnScreen, 60);
+    }, true);
+  }
+  function markStartedOnScreen(){
+    var s = currentSentence();
+    if (!s) return;
+    var m = getStartedMap();
+    if (!m[s]) return;
+    qa('button').forEach(function(b){
+      if (/Öğrenmeye\s*Başladım|Henüz\s*çalışılmadı/i.test(text(b))) {
+        b.classList.add('wm-started-done');
+        b.textContent = '✅ Başlandı';
       }
-      location.reload();
-    }catch(e){ console.warn('[WM_FORCE_UPDATE]', e); location.reload(); }
-  };
-
-  function closeToolsOnOutsideClick(ev){
-    try{
-      var drawer=document.getElementById('wmToolsDrawer');
-      var btn=document.getElementById('wmToolsBtn');
-      if(!drawer || drawer.style.right !== '0px') return;
-      if(drawer.contains(ev.target) || (btn && btn.contains(ev.target))) return;
-      drawer.style.right='-360px';
-    }catch(e){}
+    });
   }
-  document.addEventListener('pointerdown', closeToolsOnOutsideClick, true);
-
-  function singleActiveScreen(){
-    try{
-      var screens=[].slice.call(document.querySelectorAll('.screen.active'));
-      if(screens.length<=1) return;
-      var last=screens[screens.length-1];
-      screens.forEach(function(s){ if(s!==last) s.classList.remove('active'); });
-    }catch(e){}
+  function screenExclusivity(){
+    var active = qa('.screen.active');
+    if (active.length <= 1) return;
+    var keep = active[active.length-1];
+    active.forEach(function(s){ if (s !== keep) s.classList.remove('active'); });
   }
-  setInterval(singleActiveScreen, 700);
-
-  function keepBodyUsable(){
-    try{
-      document.documentElement.style.overflowX='hidden';
-      document.body.style.overflowX='hidden';
-      var app=document.getElementById('app');
-      if(app){ app.style.maxWidth = app.style.maxWidth || '520px'; }
-    }catch(e){}
+  function stopLeakedRecordings(){
+    document.addEventListener('visibilitychange', function(){
+      if (!document.hidden) return;
+      try { if (typeof window.spStopRecording === 'function') window.spStopRecording(true); } catch(e){}
+      try { if (window.SP_recState && window.SP_recState.stream) window.SP_recState.stream.getTracks().forEach(function(t){t.stop();}); } catch(e){}
+    });
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', keepBodyUsable);
-  else keepBodyUsable();
+  function installObserver(){
+    var obs = new MutationObserver(function(){
+      protectActiveListName();
+      screenExclusivity();
+      markStartedOnScreen();
+    });
+    obs.observe(document.documentElement, {childList:true, subtree:true, attributes:true, attributeFilter:['class']});
+  }
+  function hardenMissingGlobals(){
+    if (typeof window.loadTTSRateSettings !== 'function') window.loadTTSRateSettings = function(){ return {}; };
+    if (typeof window.saveTimingData !== 'function') window.saveTimingData = function(){ return true; };
+    if (typeof window.safeJSONParse !== 'function') window.safeJSONParse = function(v, fb){ try { return JSON.parse(v); } catch(e){ return fb; } };
+  }
+  function nukeOldCachesOnce(){
+    // GitHub Pages'te eski JS/CSS cache karışmasını önler.
+    if (!('caches' in window)) return;
+    if (sessionStorage.getItem('wm_cache_checked_v4')) return;
+    sessionStorage.setItem('wm_cache_checked_v4','1');
+    caches.keys().then(function(keys){
+      keys.filter(function(k){ return /^wordmode-free-v[123]$/.test(k); })
+          .forEach(function(k){ caches.delete(k); });
+    }).catch(function(){});
+  }
+  function start(){
+    hardenMissingGlobals();
+    patchListButtons();
+    patchLearnButton();
+    stopLeakedRecordings();
+    installObserver();
+    nukeOldCachesOnce();
+    protectActiveListName();
+    screenExclusivity();
+    markStartedOnScreen();
+    console.log('✅ Mevcut proje stabilizer v4 aktif');
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
 })();
