@@ -211,6 +211,55 @@ body{
   .tr-text{font-size:22px}
   .actions{flex-wrap:wrap}
 }
+
+/* ---- resume badge (modül tile) ---- */
+.resume-badge{display:inline-block;align-self:flex-start;background:#f59e0b22;color:#fbbf24;
+  border:1px solid #f59e0b44;border-radius:7px;padding:2px 8px;font-size:10px;font-weight:800;margin-top:2px}
+.mod-tile.has-resume{border-color:#f59e0b55}
+
+/* ---- backup link ---- */
+.backup-link{display:block;width:100%;margin:6px 0 18px;background:transparent;border:1px solid var(--border);
+  color:var(--muted);border-radius:12px;padding:12px;font:700 13px Nunito,sans-serif;cursor:pointer;
+  transition:background .12s,color .12s}
+.backup-link:hover{background:var(--surface);color:var(--text)}
+
+/* ---- bottom sheet (resume / backup) ---- */
+.sheet-overlay{position:fixed;inset:0;z-index:1000;background:#000000a6;
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+  display:flex;align-items:flex-end;justify-content:center;animation:shFade .15s}
+@keyframes shFade{from{opacity:0}to{opacity:1}}
+.sheet{background:var(--surface);border:1px solid var(--border);border-radius:20px 20px 0 0;
+  width:100%;max-width:520px;padding:22px 20px calc(22px + env(safe-area-inset-bottom));
+  animation:shUp .2s}
+@keyframes shUp{from{transform:translateY(30px)}to{transform:translateY(0)}}
+@media (min-width:560px){.sheet-overlay{align-items:center}.sheet{border-radius:20px}}
+.sheet-title{font-family:Fraunces,serif;font-weight:600;font-size:21px;margin:0 0 6px}
+.sheet-desc{color:var(--muted);font-size:14px;line-height:1.6;margin:0 0 16px}
+.sheet-desc b{color:var(--text)}
+.sheet-btn{width:100%;margin-bottom:9px}
+.sheet-note{font-size:13px;margin:4px 0 10px;min-height:18px}
+.sheet-note.ok{color:var(--ok)}
+.sheet-note.bad{color:var(--bad)}
+
+/* ---- yedekleme paneli ---- */
+.bk-status{display:block;font-size:12px;font-weight:700;margin:0 0 14px;padding:8px 11px;
+  border-radius:9px;border:1px solid var(--border)}
+.bk-status.ok{color:var(--ok);background:var(--ok-soft);border-color:#34d39944}
+.bk-status.warn{color:var(--warn);background:#fbbf2414;border-color:#fbbf2444}
+.bk-block{border-top:1px solid var(--border);padding-top:14px;margin-top:6px}
+.bk-block-title{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--accent);margin-bottom:9px}
+.bk-file-label{display:block;text-align:center;cursor:pointer}
+.bk-hint{font-size:12px;color:var(--muted);line-height:1.5;margin-top:2px}
+.bk-hint b{color:var(--text)}
+.bk-preview{background:var(--bg-soft);border:1px solid var(--accent);border-radius:12px;
+  padding:14px;margin:6px 0 10px;animation:rise .2s ease}
+.bk-preview-head{font-size:14px;font-weight:800;margin-bottom:10px}
+.bk-preview-row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);
+  padding:3px 0}
+.bk-preview-row b{color:var(--text)}
+.bk-preview-actions{display:flex;gap:8px;margin-top:12px}
+.bk-preview-actions .btn{flex:1}
 </style>
 </head>
 <body>
@@ -305,6 +354,21 @@ async function srsAll(){
 
 /* default SRS kaydı — ana uygulamayla aynı şekil */
 function srsDefault(){ return { rep:0, ef:2.5, interval:0, due:0, last:0 }; }
+
+/* ---------- modül pozisyon kaydı (sadece bu sayfaya ait, localStorage) ---------- */
+const POS_PREFIX = "pmode:pos:";   // SRS verisine karışmaz, ayrı isim alanı
+function savePos(mod, idx, total){
+  try{
+    if (idx <= 0 || idx >= total) localStorage.removeItem(POS_PREFIX + mod);
+    else localStorage.setItem(POS_PREFIX + mod, JSON.stringify({ idx, total, at: Date.now() }));
+  }catch{}
+}
+function loadPos(mod){
+  try{ return JSON.parse(localStorage.getItem(POS_PREFIX + mod) || "null"); }catch{ return null; }
+}
+function clearPos(mod){
+  try{ localStorage.removeItem(POS_PREFIX + mod); }catch{}
+}
 
 /* SM-2 grade — ana app.js'teki E() fonksiyonunun BİREBİR kopyası */
 function srsGrade(prev, grade){
@@ -553,9 +617,12 @@ function renderPicker(){
       const { learned, total } = moduleProgress(mod);
       const pct = total ? Math.round(learned/total*100) : 0;
       const name = mod.replace(/^[A-C]\d-M\d+\s*/, "");
-      html += `<button class="mod-tile" data-mod="${esc(mod)}">
+      const pos = loadPos(mod);
+      const resumeBadge = pos ? `<span class="resume-badge">↻ ${pos.idx}. cümlede kaldın</span>` : "";
+      html += `<button class="mod-tile${pos ? " has-resume" : ""}" data-mod="${esc(mod)}">
         <span class="mod-name">${esc(name)}</span>
         <span class="mod-count">${total} cümle</span>
+        ${resumeBadge}
         <span class="mod-prog">
           <span class="mod-prog-bar"><span style="width:${pct}%"></span></span>
           <span class="mod-prog-txt">${pct}%</span>
@@ -570,20 +637,192 @@ function renderPicker(){
       <span class="legend-item"><span class="legend-dot" style="background:#60a5fa"></span>Boşluk doldur (pekiştirme)</span>
       <span class="legend-item"><span class="legend-dot" style="background:#34d399"></span>Sıfırdan kur (ustalık)</span>
     </div>
+    <button class="backup-link" id="backupBtn">⬇⬆ İlerlemeyi taşı / yedekle</button>
   </div>`;
   root.innerHTML = html;
 
   const dueBtn = document.getElementById("dueBtn");
   if (due) dueBtn.onclick = () => startDueSession();
   root.querySelectorAll(".mod-tile").forEach(t => {
-    t.onclick = () => startModuleSession(t.dataset.mod);
+    t.onclick = () => {
+      const mod = t.dataset.mod;
+      const pos = loadPos(mod);
+      if (pos) openResumeSheet(mod, pos);
+      else startModuleSession(mod);
+    };
   });
+  const backupBtn = document.getElementById("backupBtn");
+  if (backupBtn) backupBtn.onclick = openBackupSheet;
+}
+
+/* ---------- "kaldığın yerden devam" seçim sheet'i ---------- */
+function openResumeSheet(mod, pos){
+  const name = mod.replace(/^[A-C]\d-M\d+\s*/, "");
+  const sheet = document.createElement("div");
+  sheet.className = "sheet-overlay";
+  sheet.innerHTML = `
+    <div class="sheet">
+      <h3 class="sheet-title">${esc(name)}</h3>
+      <p class="sheet-desc">Bu modülde <b>${pos.idx}. cümlede</b> kalmıştın. Nereden devam edelim?</p>
+      <button class="btn btn-primary sheet-btn" id="resumeYes">↻ Kaldığım yerden devam et</button>
+      <button class="btn sheet-btn" id="resumeNo">Baştan başla</button>
+      <button class="btn btn-ghost sheet-btn" id="resumeCancel">Vazgeç</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  const close = () => sheet.remove();
+  sheet.onclick = e => { if (e.target === sheet) close(); };
+  sheet.querySelector("#resumeYes").onclick = () => { close(); startModuleSession(mod, pos.idx); };
+  sheet.querySelector("#resumeNo").onclick = () => { close(); clearPos(mod); startModuleSession(mod, 0); };
+  sheet.querySelector("#resumeCancel").onclick = close;
+}
+
+/* ---------- yedek al / geri yükle sheet'i ---------- */
+const LAST_BACKUP_KEY = "pmode:lastBackup";
+function getLastBackup(){
+  try{ return JSON.parse(localStorage.getItem(LAST_BACKUP_KEY) || "null"); }catch{ return null; }
+}
+function setLastBackup(info){
+  try{ localStorage.setItem(LAST_BACKUP_KEY, JSON.stringify(info)); }catch{}
+}
+function fmtDate(iso){
+  try{
+    const d = new Date(iso);
+    return d.toLocaleDateString("tr-TR", { day:"numeric", month:"long", year:"numeric" }) +
+      " " + d.toLocaleTimeString("tr-TR", { hour:"2-digit", minute:"2-digit" });
+  }catch{ return iso; }
+}
+function daysSince(iso){
+  if (!iso) return Infinity;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+
+async function openBackupSheet(){
+  const all = await srsAll();
+  const count = Object.keys(all).length;
+  const last = getLastBackup();
+  const stale = last && daysSince(last.at) >= 7;
+
+  // son yedek durumu metni
+  let lastLine;
+  if (!last) lastLine = `<span class="bk-status warn">Henüz hiç yedek almadın.</span>`;
+  else if (stale) lastLine = `<span class="bk-status warn">Son yedek: ${fmtDate(last.at)} — ${daysSince(last.at)} gün önce. Güncellemek iyi olur.</span>`;
+  else lastLine = `<span class="bk-status ok">Son yedek: ${fmtDate(last.at)}</span>`;
+
+  const sheet = document.createElement("div");
+  sheet.className = "sheet-overlay";
+  sheet.innerHTML = `
+    <div class="sheet">
+      <h3 class="sheet-title">İlerlemeni taşı / yedekle</h3>
+      <p class="sheet-desc">İlerlemen bu tarayıcıda saklanır. Başka cihaza taşımak ya da kaybetmemek için tek bir dosyaya yedekle. Şu an <b>${count} cümlede</b> ilerlemen var.</p>
+      ${lastLine}
+
+      <div class="bk-block">
+        <div class="bk-block-title">1 · Bu cihazdan al</div>
+        <button class="btn btn-primary sheet-btn" id="bkDownload">⬇ Yedeği indir (.json)</button>
+        <div class="bk-hint">Dosyayı Google Drive’a (ya da istediğin buluta) yükle. Böylece her cihazdan ulaşırsın.</div>
+      </div>
+
+      <div class="bk-block">
+        <div class="bk-block-title">2 · Başka cihaza koy</div>
+        <label class="btn sheet-btn bk-file-label">
+          ⬆ Yedek dosyasını seç ve geri yükle
+          <input type="file" id="bkFile" accept="application/json,.json" hidden />
+        </label>
+        <div class="bk-hint">Drive’dan indirdiğin <b>.json</b> dosyasını seç. İlerlemen birleştirilir; daha yeni olan kayıt korunur.</div>
+      </div>
+
+      <div id="bkPreview" class="bk-preview" hidden></div>
+      <p class="sheet-note" id="bkMsg"></p>
+      <button class="btn btn-ghost sheet-btn" id="bkCancel">Kapat</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  const close = () => sheet.remove();
+  const msg = sheet.querySelector("#bkMsg");
+  const preview = sheet.querySelector("#bkPreview");
+  sheet.onclick = e => { if (e.target === sheet) close(); };
+  sheet.querySelector("#bkCancel").onclick = close;
+
+  // --- indir ---
+  sheet.querySelector("#bkDownload").onclick = () => {
+    const at = new Date().toISOString();
+    const payload = {
+      app: "sentence-mode-practice",
+      version: 1,
+      exportedAt: at,
+      count,
+      srs: all,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sentence-mode-ilerleme-${at.slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setLastBackup({ at, count });
+    msg.textContent = "✓ Yedek indirildi. Şimdi Drive’a yükleyebilirsin.";
+    msg.className = "sheet-note ok";
+    const st = sheet.querySelector(".bk-status");
+    if (st){ st.textContent = `Son yedek: ${fmtDate(at)}`; st.className = "bk-status ok"; }
+  };
+
+  // --- dosya seç → önce ÖNİZLE, sonra onayla ---
+  sheet.querySelector("#bkFile").onchange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data;
+      try{
+        data = JSON.parse(reader.result);
+        if (!data || typeof data.srs !== "object" || !data.srs) throw new Error("biçim");
+      }catch{
+        preview.hidden = true;
+        msg.textContent = "Bu dosya okunamadı. Uygulamadan indirdiğin .json yedeğini seçtiğinden emin ol.";
+        msg.className = "sheet-note bad";
+        return;
+      }
+      const incomingCount = Object.keys(data.srs).length;
+      const when = data.exportedAt ? fmtDate(data.exportedAt) : "tarih bilinmiyor";
+      msg.textContent = "";
+      preview.hidden = false;
+      preview.innerHTML = `
+        <div class="bk-preview-head">Bu yedek yüklensin mi?</div>
+        <div class="bk-preview-row"><span>İçindeki cümle</span><b>${incomingCount}</b></div>
+        <div class="bk-preview-row"><span>Alınma zamanı</span><b>${when}</b></div>
+        <div class="bk-preview-actions">
+          <button class="btn btn-ghost" id="bkCancelRestore">Vazgeç</button>
+          <button class="btn btn-primary" id="bkConfirmRestore">Evet, yükle</button>
+        </div>`;
+      preview.querySelector("#bkCancelRestore").onclick = () => {
+        preview.hidden = true; e.target.value = "";
+      };
+      preview.querySelector("#bkConfirmRestore").onclick = async () => {
+        let written = 0, skipped = 0;
+        for (const id of Object.keys(data.srs)){
+          const incoming = data.srs[id];
+          if (!incoming || typeof incoming.rep !== "number") { skipped++; continue; }
+          const existing = State.srs[id];
+          if (!existing || (incoming.last||0) >= (existing.last||0)){
+            await srsSet(id, incoming);
+            State.srs[id] = incoming;
+            written++;
+          } else skipped++;
+        }
+        preview.hidden = true;
+        msg.textContent = `✓ Geri yüklendi: ${written} kayıt güncellendi${skipped ? `, ${skipped} kayıt zaten güncel/atlandı` : ""}.`;
+        msg.className = "sheet-note ok";
+        setTimeout(() => { close(); renderPicker(); }, 1100);
+      };
+    };
+    reader.readAsText(file);
+  };
 }
 
 /* ============================================================
    OTURUM BAŞLATMA
    ============================================================ */
-function startModuleSession(mod){
+function startModuleSession(mod, resumeIdx){
   const arr = (State.byModule.get(mod) || []).slice();
   const now = Date.now();
   // Öncelik: (1) vadesi gelmiş tekrarlar [en geciken önce], (2) hiç çalışılmamış yeni
@@ -602,7 +841,9 @@ function startModuleSession(mod){
     return (State.srs[a.id].due||0) - (State.srs[b.id].due||0);                // en yakın vade
   });
   State.queue = arr;
-  State.idx = 0;
+  // kaldığın yerden devam: kuyruk yeniden kurulduğu için idx'i sınırla
+  State.idx = resumeIdx ? Math.min(Math.max(0, resumeIdx), arr.length - 1) : 0;
+  State.activeModule = mod;            // pozisyon kaydı için
   State.sessionTitle = mod.replace(/^[A-C]\d-M\d+\s*/, "");
   renderCard();
 }
@@ -614,6 +855,7 @@ function startDueSession(){
   // interleaving: farklı modüllerden karışsın
   State.queue = due;
   State.idx = 0;
+  State.activeModule = null;           // due oturumu pozisyon kaydı tutmaz
   State.sessionTitle = "Tekrar oturumu";
   renderCard();
 }
@@ -897,7 +1139,12 @@ function renderFeedback(s, d, grade, layer){
     fb.querySelector(".grade-q").innerHTML = `Güncellendi: <b>${gradeTR(g)}</b>`;
   });
 
-  document.getElementById("nextBtn").onclick = () => { State.idx++; renderCard(); };
+  document.getElementById("nextBtn").onclick = () => {
+    State.idx++;
+    // modül oturumundaysa pozisyonu kaydet (due oturumu kaydetmez)
+    if (State.activeModule) savePos(State.activeModule, State.idx, State.queue.length);
+    renderCard();
+  };
 }
 function gradeTR(g){ return g==="hard"?"Zor":g==="easy"?"Kolay":"Normal"; }
 
@@ -905,6 +1152,8 @@ function gradeTR(g){ return g==="hard"?"Zor":g==="easy"?"Kolay":"Normal"; }
    EKRAN: oturum bitti
    ============================================================ */
 function renderSessionDone(){
+  // oturum tamamlandı: bu modülün "devam et" pozisyonunu sil
+  if (State.activeModule) clearPos(State.activeModule);
   root.innerHTML = `
   <div class="state">
     <div style="font-size:48px">✅</div>
