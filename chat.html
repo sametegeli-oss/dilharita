@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#0b1120" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+<title>Sohbet · Sentence Mode</title>
+<style>
+:root{
+  --bg:#0b1120; --bg-soft:#0f172a; --surface:#131c30; --surface-2:#1a2540;
+  --border:#ffffff14; --text:#e8eef7; --muted:#93a4bd;
+  --accent:#60a5fa; --accent-strong:#3b82f6; --partner:#a78bfa;
+  --ok:#34d399; --warn:#fbbf24; --bad:#f87171; --radius:16px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:radial-gradient(1200px 600px at 50% -10%, #1a2540 0%, transparent 60%), var(--bg);
+  color:var(--text);-webkit-font-smoothing:antialiased;
+  font-family:Nunito,system-ui,-apple-system,sans-serif;
+}
+.wrap{max-width:680px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+
+/* header */
+.chat-top{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-soft);z-index:10}
+.back{background:var(--surface);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:17px;flex-shrink:0}
+.back:hover{background:var(--surface-2)}
+.partner-ava{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#6366f1);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;transition:box-shadow .2s}
+.partner-ava.speaking{box-shadow:0 0 0 4px #a78bfa44;animation:avapulse 1s infinite}
+@keyframes avapulse{0%,100%{box-shadow:0 0 0 3px #a78bfa33}50%{box-shadow:0 0 0 7px #a78bfa22}}
+.partner-info{flex:1;min-width:0}
+.partner-info h1{margin:0;font-family:Fraunces,serif;font-weight:600;font-size:17px}
+.partner-info p{margin:1px 0 0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lvl-pill{background:var(--accent-strong);color:#fff;border:none;border-radius:8px;padding:5px 10px;font:800 12px Nunito,sans-serif;cursor:pointer;flex-shrink:0}
+
+/* messages */
+.msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:80%;padding:11px 14px;border-radius:16px;font-size:15px;line-height:1.5;animation:rise .2s ease}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg-partner{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:5px}
+.msg-user{align-self:flex-end;background:var(--accent-strong);color:#fff;border-bottom-right-radius:5px}
+.msg-actions{display:flex;gap:8px;margin-top:7px}
+.msg-act{background:#ffffff14;border:none;color:inherit;border-radius:7px;padding:4px 9px;font:700 11px Nunito,sans-serif;cursor:pointer;opacity:.85}
+.msg-act:hover{opacity:1}
+.msg-explain{margin-top:8px;padding:9px 11px;background:var(--bg-soft);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--muted);line-height:1.55}
+.typing{align-self:flex-start;display:flex;gap:4px;padding:13px 16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;border-bottom-left-radius:5px}
+.typing span{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:typing 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes typing{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+
+/* input bar */
+.input-bar{position:sticky;bottom:0;background:var(--bg-soft);border-top:1px solid var(--border);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:flex-end}
+.text-in{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:14px;padding:12px 14px;font:600 15px Nunito,sans-serif;resize:none;max-height:120px;line-height:1.4}
+.text-in:focus{outline:none;border-color:var(--accent)}
+.mic-fab{width:52px;height:52px;border-radius:50%;border:none;background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;font-size:22px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:transform .1s}
+.mic-fab:active{transform:scale(.92)}
+.mic-fab.listening{background:linear-gradient(135deg,#f59e0b,#d97706);animation:micpulse 1s infinite}
+@keyframes micpulse{0%,100%{box-shadow:0 0 0 0 #f59e0b66}50%{box-shadow:0 0 0 10px #f59e0b00}}
+.send-fab{width:52px;height:52px;border-radius:50%;border:none;background:var(--accent-strong);color:#fff;font-size:20px;cursor:pointer;flex-shrink:0}
+.send-fab:active{transform:scale(.92)}
+.send-fab:disabled{opacity:.4}
+
+/* scenario picker (start screen) */
+.start{flex:1;display:flex;flex-direction:column;padding:18px 16px;gap:18px;overflow-y:auto}
+.start-head{text-align:center;padding:8px 0}
+.start-head h1{font-family:Fraunces,serif;font-weight:600;font-size:27px;margin:0;background:linear-gradient(120deg,#a78bfa,#60a5fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.start-head p{color:var(--muted);font-size:14px;margin:8px auto 0;max-width:420px;line-height:1.6}
+.sec-title{font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.scn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.scn{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:6px;text-align:left;color:var(--text);transition:transform .12s,border-color .12s,background .12s}
+.scn:hover{background:var(--surface-2);border-color:#a78bfa80;transform:translateY(-2px)}
+.scn-emoji{font-size:24px}
+.scn-name{font-size:14px;font-weight:700}
+.scn-desc{font-size:12px;color:var(--muted);line-height:1.4}
+.scn-free{border-color:#a78bfa55;background:#a78bfa12}
+.lvl-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.lvl-row span{flex:1;font-size:14px;color:var(--muted)}
+.lvl-row b{color:var(--text)}
+.lvl-select{display:flex;gap:6px}
+.lvl-opt{background:var(--surface-2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 11px;font:800 13px Nunito,sans-serif;cursor:pointer}
+.lvl-opt.sel{background:var(--accent-strong);color:#fff;border-color:transparent}
+
+/* states / sheets */
+.home-link{color:var(--muted);text-decoration:none;font:700 13px Nunito,sans-serif}
+.state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:0 24px;text-align:center;color:var(--muted)}
+.state h2{font-family:Fraunces,serif;color:var(--text);font-weight:600;margin:0;font-size:22px}
+.state p{margin:0;font-size:14px;line-height:1.6;max-width:380px}
+.btn{border:1px solid var(--border);background:var(--surface-2);color:var(--text);border-radius:12px;padding:13px 22px;font:800 15px Nunito,sans-serif;cursor:pointer}
+.btn-primary{background:var(--accent-strong);color:#fff;border-color:transparent}
+.spinner{width:30px;height:30px;border:3px solid var(--surface-2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.sheet-overlay{position:fixed;inset:0;z-index:1000;background:#000000a6;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);border:1px solid var(--border);border-radius:20px 20px 0 0;width:100%;max-width:520px;padding:22px 20px calc(22px + env(safe-area-inset-bottom))}
+@media(min-width:560px){.sheet-overlay{align-items:center}.sheet{border-radius:20px}}
+.sheet h3{font-family:Fraunces,serif;font-weight:600;font-size:20px;margin:0 0 6px}
+.sheet p{color:var(--muted);font-size:14px;line-height:1.6;margin:0 0 14px}
+.sheet input{width:100%;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px;font:600 14px monospace;margin-bottom:12px}
+.sheet input:focus{outline:none;border-color:var(--accent)}
+.sheet .btn{width:100%;margin-bottom:9px}
+.sheet a{color:#93c5fd}
+.note{font-size:13px;min-height:16px;margin-bottom:8px}
+.note.bad{color:var(--bad)}.note.ok{color:var(--ok)}
+</style>
+</head>
+<body>
+<div class="wrap" id="root"></div>
+<script>/* ============================================================
+   Sesli Sohbet — Sentence Mode
+   Bağımsız sayfa. Ana app.js'e dokunmaz; aynı veriyi ve aynı
+   Groq API anahtarını (localStorage "groqApiKeys") paylaşır.
+   Kullanıcı kendi anahtarını girer; maliyet kullanıcıya aittir.
+   ============================================================ */
+(function(){
+"use strict";
+
+const DATA_PATHS = { sentences: ["data/sentences.json","sentences.json","./data/sentences.json"] };
+
+/* ---------- Groq (ana uygulamayla aynı) ---------- */
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+const KEYS_LS = "groqApiKeys";   // ana uygulama bu anahtarı kullanıyor
+function getKeys(){
+  try{ return (JSON.parse(localStorage.getItem(KEYS_LS) || "[]") || []).filter(Boolean); }
+  catch{ return []; }
+}
+function saveKey(k){
+  const keys = getKeys();
+  if (!keys.includes(k)) keys.push(k);
+  try{ localStorage.setItem(KEYS_LS, JSON.stringify(keys)); }catch{}
+}
+let _keyIdx = 0;
+async function groqChat(messages){
+  const keys = getKeys();
+  if (!keys.length) throw { code:"no-key" };
+  // anahtarları sırayla dene (biri limit dolduysa diğerine geç)
+  let lastErr = null;
+  for (let n=0;n<keys.length;n++){
+    const key = keys[(_keyIdx + n) % keys.length];
+    try{
+      const res = await fetch(GROQ_URL, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+key },
+        body: JSON.stringify({ model:GROQ_MODEL, messages, temperature:0.7, max_tokens:400 }),
+      });
+      if (res.status === 401){ lastErr = {code:"bad-key"}; continue; }
+      if (res.status === 429){ lastErr = {code:"rate"}; continue; }
+      if (!res.ok){ lastErr = {code:"http", status:res.status}; continue; }
+      const data = await res.json();
+      _keyIdx = (_keyIdx + n) % keys.length;
+      return data.choices?.[0]?.message?.content?.trim() || "";
+    }catch(e){ lastErr = {code:"network"}; }
+  }
+  throw lastErr || {code:"unknown"};
+}
+
+/* ---------- TTS / STT ---------- */
+function speak(text, onend){
+  try{
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US"; u.rate = 0.96;
+    if (onend) u.onend = onend;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  }catch{ onend && onend(); }
+}
+const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+/* ---------- yardımcılar ---------- */
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+const root = document.getElementById("root");
+
+/* ---------- senaryolar (veri topic'lerinden) ---------- */
+const SCENARIOS = [
+  { id:"Restaurant", emoji:"🍽️", name:"Restoran", role:"a friendly waiter at a restaurant", desc:"Sipariş ver, hesap iste" },
+  { id:"Hotel", emoji:"🏨", name:"Otel", role:"a hotel receptionist", desc:"Check-in, oda, sorunlar" },
+  { id:"Airport", emoji:"✈️", name:"Havaalanı", role:"an airport check-in agent", desc:"Uçuş, bagaj, kapı" },
+  { id:"Doctor", emoji:"🩺", name:"Doktor", role:"a doctor at a clinic", desc:"Şikayet anlat, tavsiye al" },
+  { id:"Shopping", emoji:"🛍️", name:"Alışveriş", role:"a shop assistant in a clothing store", desc:"Beden, fiyat, deneme" },
+  { id:"Telephone", emoji:"📞", name:"Telefon", role:"someone on a phone call (business or personal)", desc:"Arama yap, mesaj bırak" },
+  { id:"Work", emoji:"💼", name:"İş / Ofis", role:"a friendly colleague at work", desc:"Toplantı, proje, mola" },
+  { id:"Hobbies", emoji:"🎨", name:"Hobiler", role:"a new friend chatting about free time and hobbies", desc:"Boş zaman, ilgi alanları" },
+];
+
+/* ---------- durum ---------- */
+const State = {
+  sentences: null,
+  byTopic: null,        // topic -> sentence[]
+  level: "A1",
+  scenario: null,       // {id, role, name, ...} | "free" | {module}
+  history: [],          // {role:'user'|'partner', text, explain?}
+  busy: false,
+};
+
+/* ============================================================
+   VERİ
+   ============================================================ */
+async function fetchFirst(paths){
+  for (const p of paths){ try{ const r = await fetch(p); if (r.ok) return await r.json(); }catch{} }
+  throw new Error("Veri bulunamadı");
+}
+async function loadData(){
+  const sentences = await fetchFirst(DATA_PATHS.sentences);
+  State.sentences = sentences;
+  const byTopic = new Map();
+  for (const s of sentences){
+    const t = s.topic || "General";
+    if (!byTopic.has(t)) byTopic.set(t, []);
+    byTopic.get(t).push(s);
+  }
+  State.byTopic = byTopic;
+  State.level = guessLevel();
+}
+
+// seviye tahmini: SRS'te en çok ilerleme olan cümlelerin seviyesi
+function guessLevel(){
+  try{
+    const counts = {};
+    for (let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if (k && k.startsWith("srs:")){
+        // hangi cümle? id'den seviyeyi bulmak için sentences taraması pahalı;
+        // bunun yerine modül pozisyonlarından / basit varsayım
+      }
+    }
+  }catch{}
+  // IndexedDB taraması ağır; basit ve güvenli yol: kullanıcı seçsin, varsayılan A2
+  return localStorage.getItem("chat:level") || "A2";
+}
+function setLevel(lv){ State.level = lv; try{ localStorage.setItem("chat:level", lv); }catch{} }
+
+/* ============================================================
+   AI talimatı (system prompt)
+   ============================================================ */
+function systemPrompt(){
+  const lv = State.level;
+  const levelGuide = {
+    A1:"The user is a beginner (A1). Use very simple words and short sentences. Speak slowly and clearly. Be very encouraging.",
+    A2:"The user is elementary (A2). Use simple, common vocabulary and short sentences. Gently rephrase if they struggle.",
+    B1:"The user is intermediate (B1). Use natural but clear language. Introduce some new vocabulary in context.",
+    B2:"The user is upper-intermediate (B2). Speak naturally at normal pace. Use varied vocabulary and expressions.",
+    C1:"The user is advanced (C1). Speak naturally with idioms and nuance. Only correct significant errors.",
+  }[lv] || "";
+
+  let roleLine;
+  if (State.scenario === "free"){
+    roleLine = "You are a warm, patient English conversation partner. Chat freely about everyday topics. If the user seems unsure what to talk about, suggest a topic.";
+  } else if (State.scenario && State.scenario.module){
+    roleLine = `You are a warm English conversation partner. Focus the conversation around this theme/grammar the learner is studying: "${State.scenario.module}". Naturally use related vocabulary and structures.`;
+  } else if (State.scenario){
+    roleLine = `You are role-playing as ${State.scenario.role}. Stay in character. Start by setting the scene briefly, then have a natural back-and-forth conversation in this situation.`;
+  } else {
+    roleLine = "You are a warm, patient English conversation partner.";
+  }
+
+  return [
+    roleLine,
+    levelGuide,
+    "IMPORTANT RULES:",
+    "- Always reply in ENGLISH only (never Turkish), unless the user explicitly asks for a Turkish explanation.",
+    "- Keep replies short and conversational: 1-3 sentences. This is a spoken conversation, not an essay.",
+    "- Ask a follow-up question to keep the conversation going.",
+    "- If the user makes a clear mistake, gently model the correct version in your reply (don't lecture).",
+    "- Never use emojis or special formatting. Plain spoken English only.",
+  ].join("\n");
+}
+
+/* ============================================================
+   EKRAN: başlangıç (senaryo + seviye seçimi)
+   ============================================================ */
+function renderStart(){
+  const modules = []; // modül bazlı: ana uygulamadan modül listesini almak ağır; basit tutuyoruz
+  let html = `
+  <div class="chat-top">
+    <a href="./index.html" class="back" title="Ana uygulama" style="display:flex;align-items:center;justify-content:center;text-decoration:none">←</a>
+    <div class="partner-ava">💬</div>
+    <div class="partner-info"><h1>Sohbet Partneri</h1><p>İngilizce konuşma pratiği</p></div>
+  </div>
+  <div class="start">
+    <div class="start-head">
+      <h1>Konuşarak öğren</h1>
+      <p>Bir durum seç, yapay zeka o rolü oynasın. Mikrofona İngilizce konuş ya da yaz; partner seviyene göre seninle sohbet etsin.</p>
+    </div>
+
+    <div class="lvl-row">
+      <span>Seviyem: <b id="lvlNow">${State.level}</b></span>
+      <div class="lvl-select">
+        ${["A1","A2","B1","B2","C1"].map(l=>`<button class="lvl-opt ${l===State.level?"sel":""}" data-lvl="${l}">${l}</button>`).join("")}
+      </div>
+    </div>
+
+    <div>
+      <p class="sec-title">Durum seç</p>
+      <div class="scn-grid">
+        <button class="scn scn-free" data-scn="free">
+          <span class="scn-emoji">💭</span>
+          <span class="scn-name">Serbest sohbet</span>
+          <span class="scn-desc">Ne istersen konuş</span>
+        </button>
+        ${SCENARIOS.map(s=>`
+          <button class="scn" data-scn="${s.id}">
+            <span class="scn-emoji">${s.emoji}</span>
+            <span class="scn-name">${esc(s.name)}</span>
+            <span class="scn-desc">${esc(s.desc)}</span>
+          </button>`).join("")}
+      </div>
+    </div>
+  </div>`;
+  root.innerHTML = html;
+
+  root.querySelectorAll(".lvl-opt").forEach(b => b.onclick = () => {
+    setLevel(b.dataset.lvl);
+    root.querySelectorAll(".lvl-opt").forEach(x=>x.classList.remove("sel"));
+    b.classList.add("sel");
+    document.getElementById("lvlNow").textContent = b.dataset.lvl;
+  });
+  root.querySelectorAll(".scn").forEach(b => b.onclick = () => {
+    const id = b.dataset.scn;
+    if (id === "free") State.scenario = "free";
+    else State.scenario = SCENARIOS.find(s=>s.id===id);
+    startConversation();
+  });
+}
+
+/* ============================================================
+   EKRAN: sohbet
+   ============================================================ */
+function renderChat(){
+  const title = State.scenario === "free" ? "Serbest sohbet"
+    : (State.scenario.name || "Sohbet");
+  const emoji = State.scenario === "free" ? "💭" : (State.scenario.emoji || "💬");
+  root.innerHTML = `
+  <div class="chat-top">
+    <button class="back" id="backBtn">←</button>
+    <div class="partner-ava" id="ava">${emoji}</div>
+    <div class="partner-info"><h1>${esc(title)}</h1><p id="status">İngilizce konuşma · ${State.level}</p></div>
+    <button class="lvl-pill" id="lvlPill">${State.level}</button>
+  </div>
+  <div class="msgs" id="msgs"></div>
+  <div class="input-bar">
+    <textarea class="text-in" id="textIn" rows="1" placeholder="Yaz ya da 🎙️ ile konuş…"></textarea>
+    ${STT ? `<button class="mic-fab" id="micFab" title="Konuş">🎙️</button>` : ""}
+    <button class="send-fab" id="sendFab" title="Gönder">➤</button>
+  </div>`;
+
+  document.getElementById("backBtn").onclick = () => { speechSynthesis.cancel(); renderStart(); };
+  document.getElementById("lvlPill").onclick = openLevelSheet;
+
+  const textIn = document.getElementById("textIn");
+  textIn.oninput = () => { textIn.style.height="auto"; textIn.style.height=Math.min(120,textIn.scrollHeight)+"px"; };
+  textIn.onkeydown = e => { if (e.key==="Enter" && !e.shiftKey){ e.preventDefault(); sendUser(textIn.value); } };
+  document.getElementById("sendFab").onclick = () => sendUser(textIn.value);
+
+  if (STT) setupMic();
+
+  // geçmişi çiz
+  for (const m of State.history) addBubble(m, false);
+  scrollDown();
+}
+
+function setupMic(){
+  const micFab = document.getElementById("micFab");
+  const textIn = document.getElementById("textIn");
+  let rec=null, listening=false;
+  micFab.onclick = () => {
+    if (listening){ rec && rec.stop(); return; }
+    rec = new STT();
+    rec.lang="en-US"; rec.interimResults=false; rec.maxAlternatives=1;
+    rec.onstart=()=>{ listening=true; micFab.classList.add("listening"); };
+    rec.onresult=e=>{ textIn.value = e.results[0][0].transcript; textIn.dispatchEvent(new Event("input")); };
+    rec.onerror=()=>{};
+    rec.onend=()=>{ listening=false; micFab.classList.remove("listening");
+      // otomatik gönder (konuşma akışı için)
+      if (textIn.value.trim()) sendUser(textIn.value);
+    };
+    try{ rec.start(); }catch{}
+  };
+}
+
+function addBubble(m, animate){
+  const msgs = document.getElementById("msgs");
+  const el = document.createElement("div");
+  el.className = "msg " + (m.role==="user" ? "msg-user" : "msg-partner");
+  if (!animate) el.style.animation = "none";
+  el.innerHTML = esc(m.text);
+  if (m.role === "partner"){
+    const acts = document.createElement("div");
+    acts.className = "msg-actions";
+    acts.innerHTML = `<button class="msg-act" data-act="play">🔊 Dinle</button>
+      <button class="msg-act" data-act="explain">🇹🇷 Açıkla</button>`;
+    el.appendChild(acts);
+    acts.querySelector('[data-act="play"]').onclick = () => speakPartner(m.text);
+    acts.querySelector('[data-act="explain"]').onclick = (ev) => explainMsg(m, el, ev.target);
+    if (m.explain){
+      const ex = document.createElement("div");
+      ex.className = "msg-explain"; ex.textContent = m.explain;
+      el.appendChild(ex);
+    }
+  }
+  msgs.appendChild(el);
+  return el;
+}
+function scrollDown(){ const m=document.getElementById("msgs"); if(m) m.scrollTop=m.scrollHeight; }
+
+function speakPartner(text){
+  const ava = document.getElementById("ava");
+  if (ava) ava.classList.add("speaking");
+  speak(text, () => { if (ava) ava.classList.remove("speaking"); });
+}
+
+function showTyping(){
+  const msgs = document.getElementById("msgs");
+  const t = document.createElement("div");
+  t.className = "typing"; t.id = "typing";
+  t.innerHTML = "<span></span><span></span><span></span>";
+  msgs.appendChild(t); scrollDown();
+}
+function hideTyping(){ const t=document.getElementById("typing"); if(t) t.remove(); }
+
+/* ---------- mesaj gönderme ---------- */
+async function sendUser(text){
+  text = (text||"").trim();
+  if (!text || State.busy) return;
+  if (!getKeys().length){ openKeySheet(); return; }
+  const textIn = document.getElementById("textIn");
+  if (textIn){ textIn.value=""; textIn.style.height="auto"; }
+
+  const um = { role:"user", text };
+  State.history.push(um);
+  addBubble(um, true); scrollDown();
+
+  State.busy = true;
+  showTyping();
+  try{
+    const reply = await groqChat(buildMessages());
+    hideTyping();
+    const pm = { role:"partner", text: reply || "..." };
+    State.history.push(pm);
+    addBubble(pm, true); scrollDown();
+    speakPartner(pm.text);
+  }catch(e){
+    hideTyping();
+    handleError(e);
+  }finally{
+    State.busy = false;
+  }
+}
+
+function buildMessages(){
+  const msgs = [{ role:"system", content: systemPrompt() }];
+  for (const m of State.history){
+    msgs.push({ role: m.role==="user" ? "user" : "assistant", content: m.text });
+  }
+  return msgs;
+}
+
+/* ---------- Türkçe açıklama ---------- */
+async function explainMsg(m, el, btn){
+  if (m.explain){ return; } // zaten var
+  if (!getKeys().length){ openKeySheet(); return; }
+  btn.textContent = "…";
+  try{
+    const reply = await groqChat([
+      { role:"system", content:"You are a Turkish-speaking English teacher. Explain the given English sentence to a Turkish learner: give the Turkish translation and briefly note any key grammar or vocabulary. Reply in Turkish, max 3 short sentences. No emojis." },
+      { role:"user", content: m.text },
+    ]);
+    m.explain = reply;
+    const ex = document.createElement("div");
+    ex.className = "msg-explain"; ex.textContent = reply;
+    el.appendChild(ex); scrollDown();
+    btn.textContent = "🇹🇷 Açıkla";
+  }catch(e){
+    btn.textContent = "🇹🇷 Açıkla";
+    handleError(e);
+  }
+}
+
+/* ---------- konuşma başlat (partner ilk mesajı) ---------- */
+async function startConversation(){
+  State.history = [];
+  renderChat();
+  if (!getKeys().length){ openKeySheet(); return; }
+  State.busy = true; showTyping();
+  try{
+    // partneri başlatması için içsel bir komut
+    const opener = State.scenario === "free"
+      ? "Start the conversation. Greet me warmly and ask an easy opening question."
+      : "Start the role-play. Briefly set the scene in one sentence, then greet me and ask your first question.";
+    const reply = await groqChat([
+      { role:"system", content: systemPrompt() },
+      { role:"user", content: opener },
+    ]);
+    hideTyping();
+    const pm = { role:"partner", text: reply || "Hello! How are you today?" };
+    State.history.push(pm);
+    addBubble(pm, true); scrollDown();
+    speakPartner(pm.text);
+  }catch(e){
+    hideTyping(); handleError(e);
+  }finally{ State.busy=false; }
+}
+
+/* ---------- hata yönetimi ---------- */
+function handleError(e){
+  const code = e && e.code;
+  if (code === "no-key" || code === "bad-key"){ openKeySheet(code==="bad-key"); return; }
+  let msg = "Bir sorun oluştu, tekrar dene.";
+  if (code === "rate") msg = "API limiti doldu. Biraz bekle ya da başka bir anahtar ekle.";
+  else if (code === "network") msg = "İnternet bağlantısı yok gibi görünüyor.";
+  const pm = { role:"partner", text: "⚠️ " + msg };
+  addBubble(pm, true); scrollDown();
+}
+
+/* ============================================================
+   SHEET: API anahtarı
+   ============================================================ */
+function openKeySheet(invalid){
+  const sheet = document.createElement("div");
+  sheet.className = "sheet-overlay";
+  sheet.innerHTML = `
+    <div class="sheet">
+      <h3>Konuşma için API anahtarı</h3>
+      <p>Sohbet partneri, ücretsiz <b>Groq</b> yapay zekasını kullanır. Kendi anahtarını bir kez gir; cihazında saklanır. Anahtarı <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a> adresinden ücretsiz alabilirsin.</p>
+      <input id="keyInput" type="text" placeholder="gsk_..." autocomplete="off" spellcheck="false" />
+      <p class="note ${invalid?"bad":""}" id="keyNote">${invalid?"Önceki anahtar geçersizdi. Doğru anahtarı gir.":""}</p>
+      <button class="btn btn-primary" id="keySave">Kaydet ve başla</button>
+      <button class="btn" id="keyCancel">Vazgeç</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  const close = () => sheet.remove();
+  sheet.onclick = e => { if (e.target===sheet) close(); };
+  sheet.querySelector("#keyCancel").onclick = close;
+  sheet.querySelector("#keyInput").focus();
+  sheet.querySelector("#keySave").onclick = () => {
+    const k = sheet.querySelector("#keyInput").value.trim();
+    if (!k || !k.startsWith("gsk_")){ sheet.querySelector("#keyNote").textContent="Anahtar 'gsk_' ile başlamalı."; sheet.querySelector("#keyNote").className="note bad"; return; }
+    saveKey(k); close();
+    // anahtar geldi: eğer henüz hiç mesaj yoksa konuşmayı başlat
+    if (State.scenario && !State.history.length) startConversation();
+  };
+}
+
+/* ============================================================
+   SHEET: seviye değiştir
+   ============================================================ */
+function openLevelSheet(){
+  const sheet = document.createElement("div");
+  sheet.className = "sheet-overlay";
+  sheet.innerHTML = `
+    <div class="sheet">
+      <h3>Seviyeni seç</h3>
+      <p>Partner buna göre konuşma zorluğunu ayarlar.</p>
+      <div class="lvl-select" style="flex-wrap:wrap;margin-bottom:14px">
+        ${["A1","A2","B1","B2","C1"].map(l=>`<button class="lvl-opt ${l===State.level?"sel":""}" data-lvl="${l}">${l}</button>`).join("")}
+      </div>
+      <button class="btn" id="lvlClose">Tamam</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  const close = () => sheet.remove();
+  sheet.onclick = e => { if (e.target===sheet) close(); };
+  sheet.querySelector("#lvlClose").onclick = close;
+  sheet.querySelectorAll(".lvl-opt").forEach(b => b.onclick = () => {
+    setLevel(b.dataset.lvl);
+    sheet.querySelectorAll(".lvl-opt").forEach(x=>x.classList.remove("sel"));
+    b.classList.add("sel");
+    const pill = document.getElementById("lvlPill"); if (pill) pill.textContent = b.dataset.lvl;
+    const st = document.getElementById("status"); if (st) st.textContent = `İngilizce konuşma · ${b.dataset.lvl}`;
+  });
+}
+
+/* ============================================================
+   BAŞLAT
+   ============================================================ */
+async function boot(){
+  root.innerHTML = `<div class="state"><div class="spinner"></div><p>Hazırlanıyor…</p></div>`;
+  try{
+    await loadData();
+    renderStart();
+  }catch(e){
+    root.innerHTML = `<div class="state"><h2>Yüklenemedi</h2><p>Veri dosyası bulunamadı. data/sentences.json gerekli.</p><button class="btn btn-primary" onclick="location.reload()">Yeniden dene</button></div>`;
+  }
+}
+boot();
+
+})();
+</script>
+</body>
+</html>
