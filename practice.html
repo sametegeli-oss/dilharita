@@ -222,6 +222,8 @@ body{
   color:var(--muted);border-radius:12px;padding:12px;font:700 13px Nunito,sans-serif;cursor:pointer;
   transition:background .12s,color .12s}
 .backup-link:hover{background:var(--surface);color:var(--text)}
+.home-link{align-self:flex-start;color:var(--muted);text-decoration:none;font:700 13px Nunito,sans-serif;padding:6px 0}
+.home-link:hover{color:var(--text)}
 
 /* ---- bottom sheet (resume / backup) ---- */
 .sheet-overlay{position:fixed;inset:0;z-index:1000;background:#000000a6;
@@ -601,6 +603,7 @@ function renderPicker(){
   const levels = LEVEL_ORDER.filter(l => State.byLevel.has(l));
   let html = `
   <div class="picker">
+    <a href="./index.html" class="home-link">← Ana uygulama</a>
     <div class="pick-intro">
       <h1>Üretim Çalışması</h1>
       <p>Cümleyi okuyup geçmek yerine <b>sen kuruyorsun</b>. Önce dizersin, sonra boşluk doldurursun, ustalaşınca sıfırdan yazıp söylersin. En kalıcı yol budur.</p>
