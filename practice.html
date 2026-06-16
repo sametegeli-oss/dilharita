@@ -457,7 +457,7 @@ function mergeSrs(a, b){
   return out;
 }
 
-// cihazdaki tüm SRS'i buluta yaz (debounce'lu)
+// cihazdaki tüm ilerlemeyi (SRS + modül pozisyonları) buluta yaz (debounce'lu)
 let _saveTimer = null;
 function cloudSaveSoon(){
   if (!Cloud.user || !fb()) return;
@@ -466,7 +466,7 @@ function cloudSaveSoon(){
     try{
       Cloud.syncing = true; updateCloudBadge();
       const all = await srsAll();
-      await fb().saveProgress(Cloud.user.uid, all);
+      await fb().saveProgress(Cloud.user.uid, { srs: all, positions: allPositions() });
     }catch(e){ /* sessizce geç; bir sonraki değişiklikte tekrar dener */ }
     finally{ Cloud.syncing = false; updateCloudBadge(); }
   }, 1200);
@@ -478,17 +478,20 @@ async function cloudInitialSync(){
   Cloud.syncing = true; updateCloudBadge();
   try{
     const remote = await fb().loadProgress(Cloud.user.uid);
-    const remoteSrs = (remote && remote.data) || {};
+    const rd = (remote && remote.data) || {};
+    // geriye uyumluluk: eski format düz srs haritasıydı; yeni format { srs, positions }
+    const remoteSrs = rd.srs || (rd.rep === undefined && typeof rd === "object" ? rd : {});
+    const remotePos = rd.positions || null;
     const localSrs = await srsAll();
     const merged = mergeSrs(localSrs, remoteSrs);
-    // yereldeki eksikleri/yenileri yaz
     for (const id in merged){
       const cur = localSrs[id];
       if (!cur || (merged[id].last||0) !== (cur.last||0)) await srsSet(id, merged[id]);
     }
     State.srs = merged;
+    applyPositions(remotePos);   // modül pozisyonlarını da birleştir
     // birleşmiş hali buluta geri yaz
-    await fb().saveProgress(Cloud.user.uid, merged);
+    await fb().saveProgress(Cloud.user.uid, { srs: merged, positions: allPositions() });
   }catch(e){ /* çevrimdışı olabilir; yerel veriyle devam */ }
   finally{ Cloud.syncing = false; updateCloudBadge(); }
 }
@@ -506,6 +509,33 @@ function loadPos(mod){
 }
 function clearPos(mod){
   try{ localStorage.removeItem(POS_PREFIX + mod); }catch{}
+}
+// tüm modül pozisyonlarını topla (bulut için)
+function allPositions(){
+  const out = {};
+  try{
+    for (let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if (k && k.startsWith(POS_PREFIX)){
+        try{ out[k.slice(POS_PREFIX.length)] = JSON.parse(localStorage.getItem(k)); }catch{}
+      }
+    }
+  }catch{}
+  return out;
+}
+// bulut/yerel pozisyonları birleştir (at=zaman damgası büyük olan kazanır) ve yerele yaz
+function applyPositions(remotePos){
+  if (!remotePos) return;
+  const local = allPositions();
+  for (const mod in remotePos){
+    const r = remotePos[mod], l = local[mod];
+    if (r && (!l || (r.at||0) >= (l.at||0))){
+      try{
+        if (r.idx <= 0 || r.idx >= r.total) localStorage.removeItem(POS_PREFIX + mod);
+        else localStorage.setItem(POS_PREFIX + mod, JSON.stringify(r));
+      }catch{}
+    }
+  }
 }
 
 /* SM-2 grade — ana app.js'teki E() fonksiyonunun BİREBİR kopyası */
@@ -1450,7 +1480,7 @@ function renderFeedback(s, d, grade, layer){
   document.getElementById("nextBtn").onclick = () => {
     State.idx++;
     // modül oturumundaysa pozisyonu kaydet (due oturumu kaydetmez)
-    if (State.activeModule) savePos(State.activeModule, State.idx, State.queue.length);
+    if (State.activeModule){ savePos(State.activeModule, State.idx, State.queue.length); cloudSaveSoon(); }
     renderCard();
   };
 }
@@ -1461,7 +1491,7 @@ function gradeTR(g){ return g==="hard"?"Zor":g==="easy"?"Kolay":"Normal"; }
    ============================================================ */
 function renderSessionDone(){
   // oturum tamamlandı: bu modülün "devam et" pozisyonunu sil
-  if (State.activeModule) clearPos(State.activeModule);
+  if (State.activeModule){ clearPos(State.activeModule); cloudSaveSoon(); }
   root.innerHTML = `
   <div class="state">
     <div style="font-size:48px">✅</div>
