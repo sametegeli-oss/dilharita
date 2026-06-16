@@ -137,6 +137,14 @@ body{
 .answer-reveal b{color:var(--text);font-weight:800}
 .answer-ipa{font-family:'Courier New',monospace;color:var(--muted);font-size:13px;margin-top:2px}
 .answer-trpron{color:var(--warn);font-style:italic;font-size:14px;margin-top:6px}
+.answer-tr{color:var(--text);opacity:.9;font-size:15px;margin-top:6px}
+.mode-tabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:5px;margin-bottom:4px}
+.mode-tab{flex:1;background:transparent;border:none;color:var(--muted);border-radius:9px;padding:11px;font:800 14px Nunito,sans-serif;cursor:pointer;transition:background .12s,color .12s}
+.mode-tab.active{background:var(--accent-strong);color:#fff}
+.listen-hero{width:100%;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;border-radius:14px;padding:20px;font:800 18px Nunito,sans-serif;cursor:pointer;margin-bottom:8px}
+.listen-hero:active{transform:scale(.98)}
+.listen-slow{width:100%;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:11px;font:700 14px Nunito,sans-serif;cursor:pointer;margin-bottom:6px}
+.listen-slow:hover{background:#22304f}
 .answer-en .wp-tok{cursor:pointer;border-radius:5px;padding:0 2px;transition:background .12s}
 .answer-en .wp-tok:hover{background:#60a5fa33}
 .wp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
@@ -377,8 +385,8 @@ function openDB(){
     r.onerror = () => rej(r.error);
   });
 }
-async function srsGet(id){
-  const key = PREFIX + id;
+async function srsGet(id, pfx){
+  const key = (pfx || PREFIX) + id;
   try{
     const db = await openDB();
     return await new Promise((res, rej) => {
@@ -390,8 +398,8 @@ async function srsGet(id){
     try{ return JSON.parse(localStorage.getItem(key) || "null"); }catch{ return null; }
   }
 }
-async function srsSet(id, val){
-  const key = PREFIX + id;
+async function srsSet(id, val, pfx){
+  const key = (pfx || PREFIX) + id;
   try{
     const db = await openDB();
     await new Promise((res, rej) => {
@@ -403,7 +411,8 @@ async function srsSet(id, val){
     try{ localStorage.setItem(key, JSON.stringify(val)); }catch{}
   }
 }
-async function srsAll(){
+async function srsAll(pfx){
+  const P = pfx || PREFIX;
   try{
     const db = await openDB();
     return await new Promise((res, rej) => {
@@ -413,8 +422,8 @@ async function srsAll(){
       rq.onsuccess = () => {
         const c = rq.result;
         if (c){
-          if (typeof c.key === "string" && c.key.startsWith(PREFIX))
-            out[c.key.slice(PREFIX.length)] = c.value;
+          if (typeof c.key === "string" && c.key.startsWith(P))
+            out[c.key.slice(P.length)] = c.value;
           c.continue();
         } else res(out);
       };
@@ -424,13 +433,20 @@ async function srsAll(){
     const out = {};
     for (let i=0;i<localStorage.length;i++){
       const k = localStorage.key(i);
-      if (k && k.startsWith(PREFIX)){
-        try{ out[k.slice(PREFIX.length)] = JSON.parse(localStorage.getItem(k)); }catch{}
+      if (k && k.startsWith(P)){
+        try{ out[k.slice(P.length)] = JSON.parse(localStorage.getItem(k)); }catch{}
       }
     }
     return out;
   }
 }
+const LISTEN_PREFIX = "lsrs:";   // dinleme modu SRS'i — üretimden ayrı
+
+// aktif moda göre prefix
+function modePrefix(){ return State.mode === "listen" ? LISTEN_PREFIX : PREFIX; }
+function mGet(id){ return srsGet(id, modePrefix()); }
+function mSet(id, v){ return srsSet(id, v, modePrefix()); }
+function mAll(){ return srsAll(modePrefix()); }
 
 /* default SRS kaydı — ana uygulamayla aynı şekil */
 function srsDefault(){ return { rep:0, ef:2.5, interval:0, due:0, last:0 }; }
@@ -457,7 +473,7 @@ function mergeSrs(a, b){
   return out;
 }
 
-// cihazdaki tüm ilerlemeyi (SRS + modül pozisyonları) buluta yaz (debounce'lu)
+// cihazdaki tüm ilerlemeyi (üretim + dinleme SRS + pozisyonlar) buluta yaz (debounce'lu)
 let _saveTimer = null;
 function cloudSaveSoon(){
   if (!Cloud.user || !fb()) return;
@@ -465,8 +481,9 @@ function cloudSaveSoon(){
   _saveTimer = setTimeout(async () => {
     try{
       Cloud.syncing = true; updateCloudBadge();
-      const all = await srsAll();
-      await fb().saveProgress(Cloud.user.uid, { srs: all, positions: allPositions() });
+      const srs = await srsAll();                  // üretim
+      const lsrs = await srsAll(LISTEN_PREFIX);    // dinleme
+      await fb().saveProgress(Cloud.user.uid, { srs, lsrs, positions: allPositions() });
     }catch(e){ /* sessizce geç; bir sonraki değişiklikte tekrar dener */ }
     finally{ Cloud.syncing = false; updateCloudBadge(); }
   }, 1200);
@@ -479,36 +496,48 @@ async function cloudInitialSync(){
   try{
     const remote = await fb().loadProgress(Cloud.user.uid);
     const rd = (remote && remote.data) || {};
-    // geriye uyumluluk: eski format düz srs haritasıydı; yeni format { srs, positions }
-    const remoteSrs = rd.srs || (rd.rep === undefined && typeof rd === "object" ? rd : {});
+    // geriye uyumluluk: eski format düz srs haritasıydı; yeni format { srs, lsrs, positions }
+    const remoteSrs = rd.srs || (rd.rep === undefined && typeof rd === "object" && !rd.lsrs ? rd : {});
+    const remoteLsrs = rd.lsrs || {};
     const remotePos = rd.positions || null;
+
+    // üretim SRS birleştir
     const localSrs = await srsAll();
-    const merged = mergeSrs(localSrs, remoteSrs);
-    for (const id in merged){
+    const mergedSrs = mergeSrs(localSrs, remoteSrs);
+    for (const id in mergedSrs){
       const cur = localSrs[id];
-      if (!cur || (merged[id].last||0) !== (cur.last||0)) await srsSet(id, merged[id]);
+      if (!cur || (mergedSrs[id].last||0) !== (cur.last||0)) await srsSet(id, mergedSrs[id]);
     }
-    State.srs = merged;
-    applyPositions(remotePos);   // modül pozisyonlarını da birleştir
-    // birleşmiş hali buluta geri yaz
-    await fb().saveProgress(Cloud.user.uid, { srs: merged, positions: allPositions() });
+    // dinleme SRS birleştir
+    const localLsrs = await srsAll(LISTEN_PREFIX);
+    const mergedLsrs = mergeSrs(localLsrs, remoteLsrs);
+    for (const id in mergedLsrs){
+      const cur = localLsrs[id];
+      if (!cur || (mergedLsrs[id].last||0) !== (cur.last||0)) await srsSet(id, mergedLsrs[id], LISTEN_PREFIX);
+    }
+    // aktif moda göre State.srs'i ayarla
+    State.srs = State.mode === "listen" ? mergedLsrs : mergedSrs;
+    applyPositions(remotePos);
+    await fb().saveProgress(Cloud.user.uid, { srs: mergedSrs, lsrs: mergedLsrs, positions: allPositions() });
   }catch(e){ /* çevrimdışı olabilir; yerel veriyle devam */ }
   finally{ Cloud.syncing = false; updateCloudBadge(); }
 }
 
 /* ---------- modül pozisyon kaydı (sadece bu sayfaya ait, localStorage) ---------- */
 const POS_PREFIX = "pmode:pos:";   // SRS verisine karışmaz, ayrı isim alanı
+function posKey(mod){ return (State.mode === "listen" ? "L:" : "") + mod; }  // mod-bazlı pozisyon
 function savePos(mod, idx, total){
+  const k = posKey(mod);
   try{
-    if (idx <= 0 || idx >= total) localStorage.removeItem(POS_PREFIX + mod);
-    else localStorage.setItem(POS_PREFIX + mod, JSON.stringify({ idx, total, at: Date.now() }));
+    if (idx <= 0 || idx >= total) localStorage.removeItem(POS_PREFIX + k);
+    else localStorage.setItem(POS_PREFIX + k, JSON.stringify({ idx, total, at: Date.now() }));
   }catch{}
 }
 function loadPos(mod){
-  try{ return JSON.parse(localStorage.getItem(POS_PREFIX + mod) || "null"); }catch{ return null; }
+  try{ return JSON.parse(localStorage.getItem(POS_PREFIX + posKey(mod)) || "null"); }catch{ return null; }
 }
 function clearPos(mod){
-  try{ localStorage.removeItem(POS_PREFIX + mod); }catch{}
+  try{ localStorage.removeItem(POS_PREFIX + posKey(mod)); }catch{}
 }
 // tüm modül pozisyonlarını topla (bulut için)
 function allPositions(){
@@ -682,6 +711,13 @@ function speak(text){
     speechSynthesis.cancel(); speechSynthesis.speak(u);
   }catch{}
 }
+function speakSlow(text){
+  try{
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US"; u.rate = 0.6;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  }catch{}
+}
 const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 /* ---------- shuffle ---------- */
@@ -699,7 +735,8 @@ const State = {
   sentences: null,
   byModule: null,      // Map<moduleName, sentence[]>
   byLevel: null,       // Map<level, moduleName[]>
-  srs: {},             // id -> srs kaydı
+  srs: {},             // id -> srs kaydı (aktif moda ait)
+  mode: "produce",     // "produce" | "listen"
   queue: [],           // çalışma kuyruğu (sentence[])
   idx: 0,
   sessionTitle: "",
@@ -818,7 +855,9 @@ function moduleProgress(mod){
   for (const s of arr){ const r = State.srs[s.id]; if (r && r.rep > 0) learned++; }
   return { learned, total: arr.length };
 }
-function renderPicker(){
+async function renderPicker(){
+  State.srs = await mAll();   // aktif modun ilerlemesini yükle (sayımlar doğru olsun)
+  const listen = State.mode === "listen";
   const due = dueCount();
   const levels = LEVEL_ORDER.filter(l => State.byLevel.has(l));
   let html = `
@@ -827,9 +866,15 @@ function renderPicker(){
       <a href="./index.html" class="home-link">← Ana uygulama</a>
       <div id="cloudBar" class="cloud-bar"></div>
     </div>
+    <div class="mode-tabs">
+      <button class="mode-tab${listen ? "" : " active"}" data-mode="produce">✍️ Üretim</button>
+      <button class="mode-tab${listen ? " active" : ""}" data-mode="listen">🎧 Dinleme</button>
+    </div>
     <div class="pick-intro">
-      <h1>Üretim Çalışması</h1>
-      <p>Cümleyi okuyup geçmek yerine <b>sen kuruyorsun</b>. Önce dizersin, sonra boşluk doldurursun, ustalaşınca sıfırdan yazıp söylersin. En kalıcı yol budur.</p>
+      <h1>${listen ? "Dinleme Çalışması" : "Üretim Çalışması"}</h1>
+      <p>${listen
+        ? "Cümle İngilizce <b>seslendirilir</b>, sen <b>duyduğunu yazarsın</b> ya da mikrofonla tekrarlarsın. Kulağını ve anlama becerini güçlendirir."
+        : "Cümleyi okuyup geçmek yerine <b>sen kuruyorsun</b>. Önce dizersin, sonra boşluk doldurursun, ustalaşınca sıfırdan yazıp söylersin. En kalıcı yol budur."}</p>
     </div>
     <button class="due-cta" id="dueBtn" ${due ? "" : "disabled"}>
       ${due ? `🔥 Tekrar zamanı gelen ${due} cümleyi çalış` : "Şu an tekrar bekleyen cümle yok"}
@@ -879,6 +924,12 @@ function renderPicker(){
   });
   const backupBtn = document.getElementById("backupBtn");
   if (backupBtn) backupBtn.onclick = openBackupSheet;
+  root.querySelectorAll(".mode-tab").forEach(t => t.onclick = () => {
+    const m = t.dataset.mode;
+    if (m === State.mode) return;
+    State.mode = m;
+    renderPicker();
+  });
   updateCloudBadge();
 }
 
@@ -1127,7 +1178,8 @@ async function openBackupSheet(){
 /* ============================================================
    OTURUM BAŞLATMA
    ============================================================ */
-function startModuleSession(mod, resumeIdx){
+async function startModuleSession(mod, resumeIdx){
+  State.srs = await mAll();   // aktif moda ait SRS'i yükle (üretim ya da dinleme)
   const arr = (State.byModule.get(mod) || []).slice();
   const now = Date.now();
   // Öncelik: (1) vadesi gelmiş tekrarlar [en geciken önce], (2) hiç çalışılmamış yeni
@@ -1152,7 +1204,8 @@ function startModuleSession(mod, resumeIdx){
   State.sessionTitle = mod.replace(/^[A-C]\d-M\d+\s*/, "");
   renderCard();
 }
-function startDueSession(){
+async function startDueSession(){
+  State.srs = await mAll();
   const now = Date.now();
   const due = State.sentences
     .filter(s => { const r = State.srs[s.id]; return r && (r.due||0) <= now && r.rep > 0; })
@@ -1178,8 +1231,10 @@ function renderCard(){
   State.answered = false;
   State.layer = layer;
 
+  const listen = State.mode === "listen";
   const pct = Math.round(State.idx / State.queue.length * 100);
   const name = (s.module || "").replace(/^[A-C]\d-M\d+\s*/, "");
+  const modeChip = listen ? "Duyduğunu yaz/söyle" : LAYER_LABEL[layer];
 
   root.innerHTML = `
   <div class="top">
@@ -1195,13 +1250,18 @@ function renderCard(){
     <div class="card">
       <div class="meta">
         <span class="chip chip-lv">${esc(s.level)}</span>
-        <span class="chip chip-mode">${LAYER_LABEL[layer]}</span>
+        <span class="chip chip-mode">${modeChip}</span>
         ${s.tense ? `<span class="chip">${esc(s.tense)}</span>` : ""}
       </div>
-      <div class="tr-prompt">Türkçesi</div>
-      <div class="tr-text">${esc(s.tr)}</div>
-      <button class="audio-btn" id="hintAudio" style="display:none">🔊 Dinle</button>
-      <div class="pron-hint" id="pronHint">${esc(s.trPron || "")}</div>
+      ${listen ? `
+        <div class="tr-prompt">Dinle ve yaz</div>
+        <button class="listen-hero" id="listenHero">🔊 Cümleyi dinle</button>
+        <button class="listen-slow" id="listenSlow">🐢 Yavaş dinle</button>
+      ` : `
+        <div class="tr-prompt">Türkçesi</div>
+        <div class="tr-text">${esc(s.tr)}</div>
+        <div class="pron-hint" id="pronHint">${esc(s.trPron || "")}</div>
+      `}
       <div id="answerArea"></div>
       <div id="feedbackArea"></div>
     </div>
@@ -1209,7 +1269,14 @@ function renderCard(){
 
   document.getElementById("backBtn").onclick = () => renderPicker();
 
-  if (layer === "order") renderOrderLayer(s);
+  if (listen){
+    // dinleme modu: ekrana metin gelmez, ses çalınır
+    const hero = document.getElementById("listenHero");
+    hero.onclick = () => speak(s.en);
+    document.getElementById("listenSlow").onclick = () => speakSlow(s.en);
+    setTimeout(() => speak(s.en), 300);   // otomatik bir kez çal
+    renderListenLayer(s);
+  } else if (layer === "order") renderOrderLayer(s);
   else if (layer === "cloze") renderClozeLayer(s);
   else renderFullLayer(s);
 }
@@ -1384,6 +1451,44 @@ function renderFullLayer(s){
   }
 }
 
+/* ---- DİNLEME modu katmanı: duyduğunu yaz VEYA mikrofonla tekrarla ---- */
+function renderListenLayer(s){
+  const sttOK = !!STT;
+  const area = document.getElementById("answerArea");
+  area.innerHTML = `
+    <div class="layer-label"><span class="dot"></span>Duyduğun cümleyi yaz ya da mikrofonla tekrarla</div>
+    <textarea class="full-input" id="listenInput" placeholder="Duyduğunu buraya yaz…" autocomplete="off" autocapitalize="sentences" spellcheck="false"></textarea>
+    ${sttOK ? `<div class="mic-row"><button class="mic-btn" id="listenMic">🎙️ Tekrarla (söyle)</button></div>
+    <div class="mic-note">Cümleyi yazabilir ya da mikrofona tekrar edebilirsin</div>` : ""}
+    <div class="actions">
+      <button class="btn btn-primary" id="checkBtn">Kontrol et</button>
+    </div>`;
+
+  const input = document.getElementById("listenInput");
+  input.focus();
+  input.onkeydown = e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) document.getElementById("checkBtn").click(); };
+  document.getElementById("checkBtn").onclick = () => {
+    const answer = input.value.trim();
+    if (!answer) { input.focus(); return; }
+    evaluate(s, answer, "listen");
+  };
+
+  if (sttOK){
+    const micBtn = document.getElementById("listenMic");
+    let rec = null, listening = false;
+    micBtn.onclick = () => {
+      if (listening){ rec && rec.stop(); return; }
+      rec = new STT();
+      rec.lang = "en-US"; rec.interimResults = false; rec.maxAlternatives = 1;
+      rec.onstart = () => { listening = true; micBtn.classList.add("listening"); micBtn.innerHTML = `<span class="mic-pulse"></span> Dinleniyor…`; };
+      rec.onresult = e => { input.value = e.results[0][0].transcript; };
+      rec.onerror = () => {};
+      rec.onend = () => { listening = false; micBtn.classList.remove("listening"); micBtn.innerHTML = "🎙️ Tekrarla (söyle)"; };
+      try{ rec.start(); }catch{}
+    };
+  }
+}
+
 /* ============================================================
    DEĞERLENDİRME + GERİ BİLDİRİM
    ============================================================ */
@@ -1392,12 +1497,12 @@ async function evaluate(s, answer, layer){
   State.answered = true;
   // grade-override doğru hesaplansın diye notlamadan ÖNCEKİ durumu sakla
   State._gradeBase = State._gradeBase || {};
-  State._gradeBase[s.id] = await srsGet(s.id);   // null olabilir (ilk kez)
+  State._gradeBase[s.id] = await mGet(s.id);   // null olabilir (ilk kez)
   const d = diffWords(answer, s.en);
   const hadExtra = d.parts.some(p => p.type === "extra");
   const grade = autoGrade(d.ratio, hadExtra);
   const next = srsGrade(State._gradeBase[s.id], grade);
-  await srsSet(s.id, next);
+  await mSet(s.id, next);
   State.srs[s.id] = next;   // yereli güncelle
   cloudSaveSoon();
   renderFeedback(s, d, grade, layer);
@@ -1441,6 +1546,7 @@ function renderFeedback(s, d, grade, layer){
       <div class="diff">${diffHtml}</div>
       <div class="answer-reveal">
         Doğrusu: <b class="answer-en">${tokenize(s.en).map(w=>`<span class="wp-tok">${esc(w)}</span>`).join(" ")}</b>
+        ${State.mode === "listen" && s.tr ? `<div class="answer-tr">${esc(s.tr)}</div>` : ""}
         ${s.trPron ? `<div class="answer-trpron">🗣️ ${esc(s.trPron)}</div>` : ""}
         ${s.ipa ? `<div class="answer-ipa">${esc(s.ipa)}</div>` : ""}
       </div>
@@ -1469,7 +1575,7 @@ function renderFeedback(s, d, grade, layer){
     const prevBase = State._gradeBase && State._gradeBase[s.id];
     const base = prevBase !== undefined ? prevBase : null;
     const next = srsGrade(base, g);
-    await srsSet(s.id, next);
+    await mSet(s.id, next);
     State.srs[s.id] = next;
     cloudSaveSoon();
     fb.querySelectorAll(".gbtn").forEach(x => x.classList.remove("sel"));
