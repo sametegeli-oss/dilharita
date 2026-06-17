@@ -238,13 +238,14 @@ async function uiNextCard(ev){
   _nextTapLock=true;
   try{
     try{speechSynthesis.cancel()}catch{}
+    try{State.manualStop=true;if(State.voiceRec){State.voiceRec.abort ? State.voiceRec.abort() : State.voiceRec.stop();}}catch{}
     State.listening=false;
     await nextCard();
   }finally{
     setTimeout(()=>{_nextTapLock=false},450);
   }
 }
-function renderVideoCard(){if(State.idx>=State.queue.length)return renderDone();const s=currentSentence();State.showTR=false;State.currentVideoPayload=null;const pct=Math.round(State.idx/State.queue.length*100);const name=(s.module||"").replace(/^[A-C]\d-M\d+\s*/,"");root.innerHTML=`<div class="video-page"><div class="video-bg"><video id="mainVideo" muted playsinline loop></video></div><div class="video-loading" id="videoLoading"><div class="spinner"></div><div>Video aranıyor…</div></div><button class="api-float" id="apiFloat">🔑 API</button><button class="next-float" id="nextBtn">Sıradaki →</button><div class="vp-top"><button class="back" id="backBtn">←</button><div class="vp-title"><h1>${esc(State.sessionTitle)}</h1><p>${esc(name)} · ${esc(s.topic||"")} · ${esc(s.level||"")}</p></div><div class="queue-pill"><b>${State.idx+1}</b>/${State.queue.length}</div></div><div class="subtitle-wrap"><div class="en-subtitle" id="enSubtitle">${esc(s.en)}</div></div><div class="tr-panel hidden" id="trPanel"><div class="tr-label">Türkçesi / SentenceTR</div><div class="tr-text">${esc(s.tr)}</div></div><div class="feedback hidden" id="feedback"></div><div class="video-status hidden" id="videoStatus"></div><div class="fallback-input hidden" id="fallbackInput"><input id="typedTR" placeholder="Mikrofon yoksa İngilizce cümleyi buraya yaz"/><button id="typedCheck">Kontrol</button></div><div class="controls"><button class="ctrl" id="replayBtn"><span class="ctrl-ico">↻</span><span>Tekrar oynat</span></button><div><button class="mic-main" id="micBtn">🎙️</button><div class="mic-caption" id="micCaption">Tıkla ve İngilizceyi oku</div></div><button class="ctrl" id="translateBtn"><span class="ctrl-ico">🌐</span><span>Tercüme Et</span></button></div><div class="small-note" id="smallNote">Arama: speaking video : ${esc(s.en)}</div></div>`;document.getElementById("backBtn").onclick=()=>renderPicker();document.getElementById("apiFloat").onclick=()=>openApiSheet(false);bindTap(document.getElementById("nextBtn"),uiNextCard);document.getElementById("replayBtn").onclick=()=>replayCurrent(true);document.getElementById("translateBtn").onclick=toggleTranslation;document.getElementById("micBtn").onclick=startEnglishCheck;document.getElementById("typedCheck").onclick=()=>checkEnglish(document.getElementById("typedTR").value,"typed");if(!STT)document.getElementById("fallbackInput").classList.remove("hidden");autoLoadVideo(s);setTimeout(()=>speakEnglish(s.en),800)}
+function renderVideoCard(){if(State.idx>=State.queue.length)return renderDone();const s=currentSentence();State.showTR=false;State.currentVideoPayload=null;const pct=Math.round(State.idx/State.queue.length*100);const name=(s.module||"").replace(/^[A-C]\d-M\d+\s*/,"");root.innerHTML=`<div class="video-page"><div class="video-bg"><video id="mainVideo" muted playsinline loop></video></div><div class="video-loading" id="videoLoading"><div class="spinner"></div><div>Video aranıyor…</div></div><button class="api-float" id="apiFloat">🔑 API</button><button class="next-float" id="nextBtn">Sıradaki →</button><div class="vp-top"><button class="back" id="backBtn">←</button><div class="vp-title"><h1>${esc(State.sessionTitle)}</h1><p>${esc(name)} · ${esc(s.topic||"")} · ${esc(s.level||"")}</p></div><div class="queue-pill"><b>${State.idx+1}</b>/${State.queue.length}</div></div><div class="subtitle-wrap"><div class="en-subtitle" id="enSubtitle">${esc(s.en)}</div></div><div class="tr-panel hidden" id="trPanel"><div class="tr-label">Türkçesi / SentenceTR</div><div class="tr-text">${esc(s.tr)}</div></div><div class="feedback hidden" id="feedback"></div><div class="video-status hidden" id="videoStatus"></div><div class="fallback-input hidden" id="fallbackInput"><input id="typedTR" placeholder="Mikrofon yoksa İngilizce cümleyi buraya yaz"/><button id="typedCheck">Kontrol</button></div><div class="controls"><button class="ctrl" id="replayBtn"><span class="ctrl-ico">↻</span><span>Tekrar oynat</span></button><div><button class="mic-main" id="micBtn">🎙️</button><div class="mic-caption" id="micCaption">Tıkla ve İngilizceyi oku</div></div><button class="ctrl" id="translateBtn"><span class="ctrl-ico">🌐</span><span>Tercüme Et</span></button></div><div class="small-note" id="smallNote">Arama: speaking video : ${esc(s.en)}</div></div>`;document.getElementById("backBtn").onclick=()=>renderPicker();document.getElementById("apiFloat").onclick=()=>openApiSheet(false);bindTap(document.getElementById("nextBtn"),uiNextCard);document.getElementById("replayBtn").onclick=()=>replayCurrent(true);document.getElementById("translateBtn").onclick=toggleTranslation;bindTap(document.getElementById("micBtn"),startEnglishCheck);document.getElementById("typedCheck").onclick=()=>checkEnglish(document.getElementById("typedTR").value,"typed");if(!STT)document.getElementById("fallbackInput").classList.remove("hidden");autoLoadVideo(s);setTimeout(()=>speakEnglish(s.en),800)}
 async function nextCard(){await savePos();State.idx++;if(State.idx>=State.queue.length){if(State.activeModule)await clearPos(State.activeModule);renderDone()}else{await savePos();renderVideoCard()}}
 function renderDone(){root.innerHTML=`<div class="state"><div style="font-size:56px">✅</div><h2>Video oturumu tamam</h2><p>${State.queue.length} cümleyi video ile çalıştın.</p><button class="btn primary" id="homeBtn">Ana sayfa</button></div>`;document.getElementById("homeBtn").onclick=renderPicker}
 function showStatus(msg){const el=document.getElementById("videoStatus");if(!el)return;el.textContent=msg||"";el.classList.toggle("hidden",!msg)}
@@ -260,44 +261,145 @@ function toggleTranslation(){State.showTR=!State.showTR;const p=document.getElem
 function speakEnglish(text){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=.92;u.pitch=1;u.volume=1;const voice=pickVoice("en");if(voice)u.voice=voice;speechSynthesis.speak(u)}catch{}}
 function speakTurkish(text){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="tr-TR";u.rate=.95;u.volume=1;const voice=pickVoice("tr");if(voice)u.voice=voice;speechSynthesis.speak(u)}catch{}}
 function pickVoice(lang){const voices=speechSynthesis.getVoices()||[];if(lang==="tr")return voices.find(v=>/^tr/i.test(v.lang))||null;return voices.find(v=>/^en-US/i.test(v.lang)&&/Google|Jenny|Aria|Zira|Samantha|Natural/i.test(v.name))||voices.find(v=>/^en/i.test(v.lang))||null}
-function startEnglishCheck(){const s=currentSentence();
-  // Mikrofon kontrolünün hedefi SentenceEN'dir. SentenceTR yalnızca tercüme/yardım bilgisidir.
+function startEnglishCheck(){
+  const s=currentSentence();
+  // Uzun cümlelerde erken değerlendirme yok: ilk tık dinlemeyi başlatır, ikinci tık bitirip değerlendirir.
+  // Hedef SentenceEN'dir; SentenceTR yalnızca tercüme/yardım bilgisidir.
   try{ speechSynthesis.cancel(); }catch{}
   if(!STT){
     showFeedback("Mikrofon desteklenmiyor",`Tarayıcı ses tanımayı desteklemiyor. Alttaki kutuya İngilizce cümleyi yazıp kontrol edebilirsin.`,0,false);
     document.getElementById("fallbackInput").classList.remove("hidden");
     return;
   }
-  if(State.listening) return;
+
+  if(State.listening){
+    State.manualStop=true;
+    showStatus("Okuma tamamlandı. Değerlendiriliyor…");
+    const mic=document.getElementById("micBtn"),cap=document.getElementById("micCaption");
+    if(mic) mic.textContent="⌛";
+    if(cap) cap.textContent="Değerlendiriliyor…";
+    try{ if(State.voiceRec) State.voiceRec.stop(); }catch{}
+    return;
+  }
+
+  State.voiceFinalText="";
+  State.voiceInterimText="";
+  State.voiceBest={transcript:"",score:0,confidence:0};
+  State.voiceTargetId=s.id;
+  State.manualStop=false;
+  startRecognitionLoop(s);
+}
+
+function startRecognitionLoop(s){
   let rec;
   try{ rec=new STT(); }catch{return}
+  State.voiceRec=rec;
   rec.lang="en-US";
-  rec.interimResults=false;
+  rec.interimResults=true;
+  rec.continuous=true;
   rec.maxAlternatives=10;
+
   const mic=document.getElementById("micBtn"),cap=document.getElementById("micCaption");
+
   rec.onstart=()=>{
     State.listening=true;
-    mic.classList.add("listening");
-    mic.textContent="●";
-    cap.textContent="Dinleniyor… İngilizceyi oku";
-    showStatus("Seni dinliyorum… ekrandaki İngilizce cümleyi oku.");
+    if(mic){ mic.classList.add("listening"); mic.textContent="■"; }
+    if(cap) cap.textContent="Bitirmek için tekrar tıkla";
+    showStatus("Seni dinliyorum… Cümle bitince mikrofon düğmesine tekrar tıkla.");
   };
+
   rec.onresult=e=>{
-    const best=bestVoiceTranscriptEN(e.results,s.en);
-    checkEnglish(best.transcript,"voice",best.score,best.confidence);
+    let interim="";
+    try{
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const res=e.results[i];
+        let bestAlt="", bestScore=-1, bestConf=0;
+        for(let j=0;j<res.length;j++){
+          const transcript=cleanText(res[j].transcript||"");
+          const score=similarityEN(transcript,s.en);
+          const conf=res[j].confidence||0;
+          if(score>bestScore || (score===bestScore && conf>bestConf)){
+            bestAlt=transcript; bestScore=score; bestConf=conf;
+          }
+        }
+        if(bestAlt){
+          if(bestScore>(State.voiceBest?.score||0) || (bestScore===(State.voiceBest?.score||0) && bestConf>(State.voiceBest?.confidence||0))){
+            State.voiceBest={transcript:bestAlt,score:bestScore,confidence:bestConf};
+          }
+          if(res.isFinal) State.voiceFinalText=(State.voiceFinalText+" "+bestAlt).replace(/\s+/g," ").trim();
+          else interim=(interim+" "+bestAlt).replace(/\s+/g," ").trim();
+        }
+      }
+    }catch{}
+    State.voiceInterimText=interim;
+    const heard=cleanText((State.voiceFinalText||"")+" "+(State.voiceInterimText||""));
+    if(heard){
+      showStatus("Dinleniyor… Şu ana kadar: " + heard + "  ·  Bitirmek için mikrofon düğmesine tekrar tıkla.");
+    }
   };
-  rec.onerror=()=>{
-    showStatus("Mikrofon hatası. İzinleri kontrol et veya yazı kutusunu kullan.");
-    document.getElementById("fallbackInput").classList.remove("hidden");
+
+  rec.onerror=e=>{
+    const code=(e&&e.error)||"";
+    if(code==="not-allowed" || code==="service-not-allowed"){
+      State.listening=false;
+      State.manualStop=true;
+      resetMicUI();
+      showStatus("Mikrofon izni verilmedi. İzinleri kontrol et veya yazı kutusunu kullan.");
+      document.getElementById("fallbackInput")?.classList.remove("hidden");
+      return;
+    }
+    // no-speech gibi geçici hatalarda, kullanıcı bitirmediyse dinlemeyi tekrar başlat.
+    if(State.listening && !State.manualStop){
+      showStatus("Dinleme devam ediyor… Cümle bitince mikrofon düğmesine tekrar tıkla.");
+    }
   };
+
   rec.onend=()=>{
-    State.listening=false;
-    mic.classList.remove("listening");
-    mic.textContent="🎙️";
-    cap.textContent="Tıkla ve İngilizceyi oku";
+    if(State.manualStop){
+      State.listening=false;
+      resetMicUI();
+      finishVoiceCheck(s);
+      return;
+    }
+    // Chrome uzun cümlede sessizlikte recognition'ı kendiliğinden kapatabiliyor.
+    // Kullanıcı tekrar tıklayana kadar otomatik yeniden başlatıyoruz; sonuç ekranı gelmiyor.
+    if(State.listening && currentSentence() && currentSentence().id===State.voiceTargetId){
+      setTimeout(()=>{
+        if(State.listening && !State.manualStop){
+          try{ rec.start(); }catch{ startRecognitionLoop(s); }
+        }
+      },260);
+      return;
+    }
+    resetMicUI();
   };
-  setTimeout(()=>{ try{ rec.start(); }catch{} },180);
+
+  setTimeout(()=>{ try{ rec.start(); }catch{} },160);
 }
+
+function resetMicUI(){
+  const mic=document.getElementById("micBtn"),cap=document.getElementById("micCaption");
+  if(mic){ mic.classList.remove("listening"); mic.textContent="🎙️"; }
+  if(cap) cap.textContent="Tıkla ve İngilizceyi oku";
+}
+
+function finishVoiceCheck(s){
+  const heard=cleanText((State.voiceFinalText||"")+" "+(State.voiceInterimText||""));
+  const best=State.voiceBest||{transcript:"",score:0,confidence:0};
+  let finalText=heard;
+  let finalScore=similarityEN(finalText,s.en);
+  if(best.transcript && best.score>finalScore){
+    finalText=best.transcript;
+    finalScore=best.score;
+  }
+  if(!finalText){
+    showFeedback("Cümle alınamadı","Ses algılanamadı. Mikrofonu tekrar açıp cümleyi bitirince düğmeye tekrar bas.",0,false);
+    document.getElementById("fallbackInput")?.classList.remove("hidden");
+    return;
+  }
+  checkEnglish(finalText,"voice",finalScore,best.confidence||0);
+}
+
 async function checkEnglish(heard,mode,preScore,confidence){
   const s=currentSentence();
   heard=cleanText(heard);
