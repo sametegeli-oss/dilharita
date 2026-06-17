@@ -158,7 +158,13 @@ Kurallar:
 - İngilizce kelime ve cümleleri çift tırnak içinde ver (örn. "I am happy"). Türkçe açıklamaları tırnaksız yaz.
 - Başlıkları koru ama gereksiz uzatma; öğrenci sıkılmasın.
 - Örnekleri bol ve günlük hayattan ver.
-- Cesaretlendirici ve net bir dil kullan.`;
+- Cesaretlendirici ve net bir dil kullan.
+
+Sohbet sırasında:
+- Öğrenci sana Türkçe soru sorabilir; içinde İngilizce kelimeler geçebilir ("get to ile go to farkı ne?" gibi). Soruyu Türkçe olarak anla ve Türkçe cevapla.
+- Konu cümleden uzaklaşabilir; öğrenci başka bir İngilizce konu sorabilir. Buna izin ver, sohbeti sürdür.
+- Sohbet cevapların kısa ve net olsun (ilk analiz gibi uzun olmasın). Yine İngilizce kelime/cümleleri çift tırnak içinde ver.
+- Konuşma tanıma (mikrofon) bazen kelimeleri yanlış yazabilir; öğrencinin ne demek istediğini bağlamdan anlamaya çalış.`;
 
 const PROMPT_LS = "teacherPrompt";
 function getPrompt(){ try{ return localStorage.getItem(PROMPT_LS) || DEFAULT_PROMPT; }catch{ return DEFAULT_PROMPT; } }
@@ -276,7 +282,7 @@ function setupChatBar(){
     micFab.onclick = () => {
       if (listening){ rec && rec.stop(); return; }
       rec = new STT();
-      rec.lang="en-US"; rec.interimResults=false; rec.maxAlternatives=1;
+      rec.lang="tr-TR"; rec.interimResults=false; rec.maxAlternatives=1;
       rec.onstart=()=>{ listening=true; micFab.classList.add("listening"); };
       // konuşma yazıya dökülür ama OTOMATİK GÖNDERİLMEZ — kullanıcı kontrol eder
       rec.onresult=e=>{ inp.value = e.results[0][0].transcript; try{ inp.dispatchEvent(new Event("input")); }catch{ inp.style.height="auto"; inp.style.height=Math.min(120,inp.scrollHeight)+"px"; } inp.focus(); };
