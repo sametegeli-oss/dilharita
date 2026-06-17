@@ -37,6 +37,11 @@ button,input{font-family:inherit}
 .wd-extra{color:#fbbf24;background:rgba(251,191,36,.14);border-color:rgba(251,191,36,.34);font-style:italic}
 .wd-legend{margin-top:8px;color:#cbd5e1;font-size:12px;line-height:1.45}
 .wd-legend b.ok{color:#34d399}.wd-legend b.bad{color:#f87171}.wd-legend b.extra{color:#fbbf24}
+
+.feedback.pronunciation-only{width:min(620px,calc(100vw - 28px));text-align:center;padding:18px 18px 20px}
+.fb-score-only{font-size:46px;font-weight:950;line-height:1;margin-bottom:14px;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.45)}
+.heard-colored{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;font-size:20px;font-weight:950;line-height:1.45}
+.heard-colored .wd-ok,.heard-colored .wd-bad{padding:7px 10px;border-radius:11px}
 @media(max-width:640px){.wd-line{font-size:16px}.word-diff{padding:10px}}
 
 </style>
@@ -182,15 +187,22 @@ function diffEN(answer,target){
   return{parts,correct,total:n,ratio,score:Math.max(0,Math.round(ratio*100-penalty)),hadExtra:extra>0};
 }
 
-function renderWordDiff(diff){
+function renderHeardColored(diff, heard){
   if(!diff || !Array.isArray(diff.parts)) return "";
-  const html = diff.parts.map(p=>{
-    if(p.type==="ok") return `<span class="wd-ok" title="Eşleşti">${esc(p.word)}</span>`;
-    if(p.type==="missing") return `<span class="wd-bad" title="Eksik / yanlış okundu">${esc(p.word)}</span>`;
-    if(p.type==="extra") return `<span class="wd-extra" title="Fazladan algılandı">${esc(p.word)}</span>`;
-    return `<span>${esc(p.word||"")}</span>`;
-  }).join(" ");
-  return `<div class="word-diff"><div class="wd-title">Kelime eşleşmesi</div><div class="wd-line">${html}</div><div class="wd-legend"><b class="ok">Yeşil</b>: eşleşen kelime · <b class="bad">Kırmızı</b>: eksik/yanlış kelime · <b class="extra">Sarı</b>: mikrofonda fazladan algılanan kelime</div></div>`;
+  const pieces=[];
+  for(const p of diff.parts){
+    if(p.type==="ok") pieces.push(`<span class="wd-ok">${esc(p.heard||p.word||"")}</span>`);
+    else if(p.type==="extra") pieces.push(`<span class="wd-bad">${esc(p.word||"")}</span>`);
+    // missing hedef kelime kullanıcı tarafından söylenmediği için bu sade ekranda gösterilmez
+  }
+  let html=pieces.join(" ");
+  if(!html){
+    html=tokenizeEN(heard).map(w=>`<span class="wd-bad">${esc(w)}</span>`).join(" ");
+  }
+  return `<div class="heard-colored">${html}</div>`;
+}
+function renderWordDiff(diff){
+  return renderHeardColored(diff, "");
 }
 function similarityEN(a,b){return diffEN(a,b).score}
 function bestVoiceTranscriptEN(results,target){
@@ -407,10 +419,10 @@ async function checkEnglish(heard,mode,preScore,confidence){
   const diff=diffEN(heard,s.en);
   const score=typeof preScore==="number"?preScore:diff.score;
 
-  // İngilizce tanıma bazen tamamen alakasız metin döndürebilir. Düşük güven + düşük skor ise SRS'e hard yazma.
+  // İngilizce tanıma tamamen alakasızsa ilerlemeye hard yazma; sadece sade telaffuz sonucunu göster.
   if(mode==="voice" && score<45 && (confidence||0)<0.70){
     document.getElementById("fallbackInput")?.classList.remove("hidden");
-    showFeedback("Mikrofon net algılamadı",`<div class="fb-line"><b>Mikrofonun yakaladığı:</b> ${esc(heard)}</div><div class="fb-line"><b>SentenceEN:</b> ${esc(s.en)}</div>${renderWordDiff(diff)}<div class="fb-line"><b>SentenceTR:</b> ${esc(s.tr)}</div><div class="fb-line">Bu sonuç ilerlemene yazılmadı. Tekrar oku veya alttaki kutuya İngilizce yazıp kontrol et.</div>`,score,false);
+    showPronunciationResult(score,diff,heard,false);
     return;
   }
 
@@ -420,9 +432,24 @@ async function checkEnglish(heard,mode,preScore,confidence){
   const next=srsGrade(await srsGet(s.id),grade);
   await srsSet(s.id,next);
   State.srs[s.id]=next;
-  showFeedback(score>=72?"Güzel telaffuz":"Tekrar deneyelim",`<div class="fb-line"><b>Senin okuduğun:</b> ${esc(heard)}</div><div class="fb-line"><b>SentenceEN:</b> ${esc(s.en)}</div>${renderWordDiff(diff)}<div class="fb-line"><b>SentenceTR:</b> ${esc(s.tr)}</div><div class="fb-line"><b>Eşleşme:</b> ${diff.correct}/${diff.total} kelime</div>`,score,score>=72);
+  showPronunciationResult(score,diff,heard,score>=72);
 }
-function showFeedback(title,html,score,ok){const fb=document.getElementById("feedback");if(!fb)return;fb.className="feedback "+(ok?"ok":"bad");fb.innerHTML=`<div class="fb-title">${ok?"✅":"🎯"} ${esc(title)} <span class="score">${score||0}%</span></div>${html}<div class="fb-line" style="margin-top:8px">İstersen tekrar mikrofonla oku veya <b>Sıradaki</b> cümleye geç.</div>`;fb.classList.remove("hidden");setTimeout(()=>fb.classList.add("hidden"),ok?7000:9000)}
+function showPronunciationResult(score,diff,heard,ok){
+  const fb=document.getElementById("feedback");
+  if(!fb)return;
+  fb.className="feedback pronunciation-only "+(ok?"ok":"bad");
+  fb.innerHTML=`<div class="fb-score-only">${Math.round(score||0)}%</div>${renderHeardColored(diff,heard)}`;
+  fb.classList.remove("hidden");
+  setTimeout(()=>fb.classList.add("hidden"),ok?7000:9000);
+}
+function showFeedback(title,html,score,ok){
+  const fb=document.getElementById("feedback");
+  if(!fb)return;
+  fb.className="feedback "+(ok?"ok":"bad");
+  fb.innerHTML=`<div class="fb-title">${ok?"✅":"🎯"} ${esc(title)} <span class="score">${score||0}%</span></div>${html}`;
+  fb.classList.remove("hidden");
+  setTimeout(()=>fb.classList.add("hidden"),ok?7000:9000);
+}
 function openApiSheet(force){const old=document.getElementById("apiSheet");if(old)old.remove();const sheet=document.createElement("div");sheet.className="api-sheet";sheet.id="apiSheet";sheet.innerHTML=`<div class="api-card"><h2>Pexels API Key</h2><p>Video otomatik gelsin diye Pexels API anahtarını bir defa kaydet. Anahtar IndexedDB'de tutulur; HTML içine yazılmaz.</p><input id="apiInput" type="password" placeholder="Pexels API anahtarını yaz"/><div class="api-actions"><button class="btn primary" id="apiSave">Kaydet ve videoyu getir</button><button class="btn" id="apiClose">Kapat</button><button class="btn red" id="apiDelete">Sil</button></div><p id="apiMsg" style="min-height:20px;font-weight:800;color:#2563eb"></p></div>`;document.body.appendChild(sheet);kvGet(API_KEY).then(k=>{if(k)document.getElementById("apiInput").value=k});document.getElementById("apiClose").onclick=()=>{if(!force)sheet.remove();else sheet.remove()};document.getElementById("apiDelete").onclick=async()=>{await kvDel(API_KEY);document.getElementById("apiInput").value="";document.getElementById("apiMsg").textContent="API key silindi."};document.getElementById("apiSave").onclick=async()=>{const key=document.getElementById("apiInput").value.trim();if(!key){document.getElementById("apiMsg").textContent="API key boş.";return}await kvSet(API_KEY,key);document.getElementById("apiMsg").textContent="Kaydedildi.";sheet.remove();if(currentSentence())autoLoadVideo(currentSentence())};sheet.onclick=e=>{if(e.target===sheet&&!force)sheet.remove()}}
 function hash(str){let h=0;str=String(str||"");for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h|=0}return Math.abs(h).toString(36)}
 async function boot(){renderLoading();try{await loadData();renderPicker()}catch(e){renderError(e.message||String(e))}}
