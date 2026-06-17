@@ -42,7 +42,11 @@ button,input{font-family:inherit}
 .fb-score-only{font-size:46px;font-weight:950;line-height:1;margin-bottom:14px;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.45)}
 .heard-colored{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;font-size:20px;font-weight:950;line-height:1.45}
 .heard-colored .wd-ok,.heard-colored .wd-bad{padding:7px 10px;border-radius:11px}
-@media(max-width:640px){.wd-line{font-size:16px}.word-diff{padding:10px}}
+.own-voice-row{margin-top:14px;display:flex;justify-content:center}
+.own-voice-btn{border:0;border-radius:999px;background:#2563eb;color:#fff;font-weight:950;padding:10px 16px;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.24)}
+.own-voice-btn:active{transform:scale(.97)}
+.own-voice-btn[disabled]{opacity:.45;cursor:default}
+@media(max-width:640px){.wd-line{font-size:16px}.word-diff{padding:10px}.own-voice-btn{width:100%;max-width:260px}}
 
 </style>
 </head>
@@ -58,7 +62,7 @@ const LEVEL_ORDER=["A1","A2","B1","B2","C1","C2"];
 const STT=window.SpeechRecognition||window.webkitSpeechRecognition;
 const root=document.getElementById("root");
 let _db=null;
-const State={sentences:[],byModule:new Map(),byLevel:new Map(),srs:{},queue:[],idx:0,activeModule:null,sessionTitle:"",currentVideoPayload:null,showTR:false,listening:false};
+const State={sentences:[],byModule:new Map(),byLevel:new Map(),srs:{},queue:[],idx:0,activeModule:null,sessionTitle:"",currentVideoPayload:null,showTR:false,listening:false,mediaStream:null,mediaRecorder:null,recordedChunks:[],lastVoiceUrl:"",lastVoiceBlob:null};
 function openDB(){if(_db)return Promise.resolve(_db);return new Promise((res,rej)=>{if(!indexedDB)return rej(new Error("IndexedDB yok"));const r=indexedDB.open(DB_NAME,1);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE)};r.onsuccess=()=>{_db=r.result;res(_db)};r.onerror=()=>rej(r.error)});}
 async function kvGet(k){try{const db=await openDB();return await new Promise((res,rej)=>{const rq=db.transaction(STORE,"readonly").objectStore(STORE).get(k);rq.onsuccess=()=>res(rq.result||"");rq.onerror=()=>rej(rq.error)})}catch(e){try{return localStorage.getItem(k)||""}catch{return ""}}}
 async function kvSet(k,v){try{const db=await openDB();await new Promise((res,rej)=>{const rq=db.transaction(STORE,"readwrite").objectStore(STORE).put(String(v||""),k);rq.onsuccess=res;rq.onerror=()=>rej(rq.error)});return true}catch(e){try{localStorage.setItem(k,String(v||""));return true}catch{return false}}}
@@ -251,6 +255,7 @@ async function uiNextCard(ev){
   try{
     try{speechSynthesis.cancel()}catch{}
     try{State.manualStop=true;if(State.voiceRec){State.voiceRec.abort ? State.voiceRec.abort() : State.voiceRec.stop();}}catch{}
+    try{stopOwnVoiceRecording(true)}catch{}
     State.listening=false;
     await nextCard();
   }finally{
@@ -273,6 +278,79 @@ function toggleTranslation(){State.showTR=!State.showTR;const p=document.getElem
 function speakEnglish(text){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=.92;u.pitch=1;u.volume=1;const voice=pickVoice("en");if(voice)u.voice=voice;speechSynthesis.speak(u)}catch{}}
 function speakTurkish(text){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="tr-TR";u.rate=.95;u.volume=1;const voice=pickVoice("tr");if(voice)u.voice=voice;speechSynthesis.speak(u)}catch{}}
 function pickVoice(lang){const voices=speechSynthesis.getVoices()||[];if(lang==="tr")return voices.find(v=>/^tr/i.test(v.lang))||null;return voices.find(v=>/^en-US/i.test(v.lang)&&/Google|Jenny|Aria|Zira|Samantha|Natural/i.test(v.name))||voices.find(v=>/^en/i.test(v.lang))||null}
+
+function clearLastVoiceRecording(){
+  try{ if(State.lastVoiceUrl) URL.revokeObjectURL(State.lastVoiceUrl); }catch{}
+  State.lastVoiceUrl="";
+  State.lastVoiceBlob=null;
+  State.recordedChunks=[];
+}
+async function startOwnVoiceRecording(){
+  clearLastVoiceRecording();
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    State.mediaStream=stream;
+    State.recordedChunks=[];
+    const mimeOptions=[
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+      "audio/ogg;codecs=opus"
+    ];
+    let opts={};
+    for(const m of mimeOptions){
+      try{ if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)){opts={mimeType:m};break;} }catch{}
+    }
+    const rec=new MediaRecorder(stream,opts);
+    State.mediaRecorder=rec;
+    rec.ondataavailable=e=>{ if(e.data && e.data.size>0) State.recordedChunks.push(e.data); };
+    rec.start(250);
+    return true;
+  }catch(e){
+    console.warn("Ses kaydı başlatılamadı:",e);
+    return false;
+  }
+}
+function stopOwnVoiceRecording(discard){
+  return new Promise(resolve=>{
+    const rec=State.mediaRecorder;
+    const stream=State.mediaStream;
+    const finish=()=>{
+      try{ if(stream) stream.getTracks().forEach(t=>t.stop()); }catch{}
+      State.mediaStream=null;
+      State.mediaRecorder=null;
+      if(!discard && State.recordedChunks && State.recordedChunks.length){
+        try{
+          const type=(State.recordedChunks[0] && State.recordedChunks[0].type) || "audio/webm";
+          const blob=new Blob(State.recordedChunks,{type});
+          State.lastVoiceBlob=blob;
+          State.lastVoiceUrl=URL.createObjectURL(blob);
+        }catch(e){console.warn("Ses kaydı oluşturulamadı:",e)}
+      }
+      resolve(State.lastVoiceUrl||"");
+    };
+    if(!rec){finish();return;}
+    try{
+      rec.onstop=finish;
+      if(rec.state!=="inactive") rec.stop();
+      else finish();
+    }catch(e){finish();}
+  });
+}
+function playOwnVoice(){
+  if(!State.lastVoiceUrl){
+    showStatus("Henüz dinlenecek kayıt yok. Önce mikrofonla cümleyi oku.");
+    return;
+  }
+  try{
+    speechSynthesis.cancel();
+    const v=document.getElementById("mainVideo");
+    if(v&&v.src){try{v.pause()}catch{}}
+    const a=new Audio(State.lastVoiceUrl);
+    a.play().catch(()=>showStatus("Ses kaydı oynatılamadı. Tarayıcı izinlerini kontrol et."));
+  }catch(e){showStatus("Ses kaydı oynatılamadı.")}
+}
 function startEnglishCheck(){
   const s=currentSentence();
   // Uzun cümlelerde erken değerlendirme yok: ilk tık dinlemeyi başlatır, ikinci tık bitirip değerlendirir.
@@ -299,7 +377,7 @@ function startEnglishCheck(){
   State.voiceBest={transcript:"",score:0,confidence:0};
   State.voiceTargetId=s.id;
   State.manualStop=false;
-  startRecognitionLoop(s);
+  startOwnVoiceRecording().finally(()=>startRecognitionLoop(s));
 }
 
 function startRecognitionLoop(s){
@@ -356,6 +434,7 @@ function startRecognitionLoop(s){
       State.listening=false;
       State.manualStop=true;
       resetMicUI();
+      stopOwnVoiceRecording(true);
       showStatus("Mikrofon izni verilmedi. İzinleri kontrol et veya yazı kutusunu kullan.");
       document.getElementById("fallbackInput")?.classList.remove("hidden");
       return;
@@ -370,7 +449,7 @@ function startRecognitionLoop(s){
     if(State.manualStop){
       State.listening=false;
       resetMicUI();
-      finishVoiceCheck(s);
+      stopOwnVoiceRecording(false).then(()=>finishVoiceCheck(s));
       return;
     }
     // Chrome uzun cümlede sessizlikte recognition'ı kendiliğinden kapatabiliyor.
@@ -438,9 +517,12 @@ function showPronunciationResult(score,diff,heard,ok){
   const fb=document.getElementById("feedback");
   if(!fb)return;
   fb.className="feedback pronunciation-only "+(ok?"ok":"bad");
-  fb.innerHTML=`<div class="fb-score-only">${Math.round(score||0)}%</div>${renderHeardColored(diff,heard)}`;
+  const voiceBtn=State.lastVoiceUrl?`<div class="own-voice-row"><button type="button" class="own-voice-btn" id="ownVoiceReplayBtn">▶ Kendi sesimi dinle</button></div>`:"";
+  fb.innerHTML=`<div class="fb-score-only">${Math.round(score||0)}%</div>${renderHeardColored(diff,heard)}${voiceBtn}`;
+  const b=document.getElementById("ownVoiceReplayBtn");
+  if(b) b.onclick=playOwnVoice;
   fb.classList.remove("hidden");
-  setTimeout(()=>fb.classList.add("hidden"),ok?7000:9000);
+  setTimeout(()=>fb.classList.add("hidden"),ok?11000:13000);
 }
 function showFeedback(title,html,score,ok){
   const fb=document.getElementById("feedback");
