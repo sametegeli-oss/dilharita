@@ -173,7 +173,7 @@ function setPrompt(p){ try{ localStorage.setItem(PROMPT_LS, p); }catch{} }
 /* ---------- TTS: çift dilli okuma ---------- */
 function splitForSpeech(text){
   const parts = [];
-  const re = /["“]([^"”]+?)["”]/g;
+  const re = /\[\[([^\]]+?)\]\]/g;   // [[İngilizce]]
   let last = 0, m;
   while ((m = re.exec(text)) !== null){
     if (m.index > last){ const tr=text.slice(last,m.index).trim(); if(tr) parts.push({lang:"tr",text:tr}); }
@@ -212,9 +212,8 @@ function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 // açıklamadaki tırnak-içi İngilizce -> koyu yeşil; **kalın** -> strong
 function renderRich(text){
   let html = esc(text);
-  // "....." -> yeşil (çift tırnak ya da düz/eğik tırnak)
-  html = html.replace(/&quot;([^&]*?)&quot;/g, '<span class="en">$1</span>');
-  html = html.replace(/[“”]([^“”]*?)[“”]/g, '<span class="en">$1</span>');
+  // [[İngilizce]] -> yeşil (esc sonrası [[ ]] aynen kalır)
+  html = html.replace(/\[\[([^\]]+?)\]\]/g, '<span class="en">$1</span>');
   // **kalın**
   html = html.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
   return html;
@@ -245,7 +244,7 @@ function render(){
   </div>
   <div class="body" id="body">
     <div class="subject">
-      <div class="subject-en" id="subEn">${renderRich('"'+esc(State.en)+'"')}</div>
+      <div class="subject-en" id="subEn">${renderRich('[['+State.en+']]')}</div>
       ${State.tr ? `<div class="subject-tr">${esc(State.tr)}</div>` : ""}
       <button class="subject-play" id="playBtn">🔊 Cümleyi dinle</button>
     </div>
