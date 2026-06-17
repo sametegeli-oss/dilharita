@@ -52,19 +52,146 @@ function srsDefault(){return{rep:0,ef:2.5,interval:0,due:0,last:0}}
 function srsGrade(prev,grade){const n=Object.assign(srsDefault(),prev||{});const r=Date.now();if(grade==="hard"){n.rep=0;n.interval=0;n.ef=Math.max(1.3,n.ef-.2)}else{const q=grade==="easy"?5:4;n.ef=Math.max(1.3,n.ef+(0.1-(5-q)*(0.08+(5-q)*0.02)));n.rep++;if(n.rep===1)n.interval=grade==="easy"?3:1;else if(n.rep===2)n.interval=grade==="easy"?7:4;else n.interval=Math.round(n.interval*n.ef*(grade==="easy"?1.3:1))}n.last=r;n.due=r+n.interval*DAY;return n}
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function cleanText(t){return String(t||"").replace(/\s+/g," ").trim()}
-function normalizeTR(t){return cleanText(t).toLocaleLowerCase("tr-TR").replace(/[’']/g," ").replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ0-9\s]/g," ").replace(/\s+/g," ").trim()}
+/* Practice.html mantığı: token tabanlı karşılaştırma.
+   VideoPractice'te hedef SentenceTR olduğu için aynı LCS mantığını Türkçe'ye uyarlıyoruz.
+   Ek olarak Türkçe STT küçük ek/harf farklarını kaçırmasın diye fuzzy eşleşme ekliyoruz.
+*/
+function trFold(t){
+  return String(t||"")
+    .replace(/[İIı]/g,"i").replace(/[Çç]/g,"c").replace(/[Ğğ]/g,"g")
+    .replace(/[Öö]/g,"o").replace(/[Şş]/g,"s").replace(/[Üü]/g,"u");
+}
+function normalizeTR(t){
+  return trFold(cleanText(t))
+    .toLowerCase()
+    .replace(/[’']/g," ")
+    .replace(/[^a-z0-9\s]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
 function wordsTR(t){return normalizeTR(t).split(/\s+/).filter(Boolean)}
-function similarity(a,b){const A=wordsTR(a),B=wordsTR(b);if(!A.length||!B.length)return 0;const m=A.length,n=B.length;const dp=Array.from({length:m+1},()=>new Int16Array(n+1));for(let i=m-1;i>=0;i--)for(let j=n-1;j>=0;j--)dp[i][j]=A[i]===B[j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);const lcs=dp[0][0];return Math.round((lcs/Math.max(n,1))*100)}
+function wordSimilarity(a,b){
+  a=normalizeTR(a); b=normalizeTR(b);
+  if(!a||!b)return 0;
+  if(a===b)return 1;
+  if(a.length>=4&&b.length>=4&&(a.startsWith(b)||b.startsWith(a)))return .88;
+  const m=a.length,n=b.length;
+  const dp=Array.from({length:m+1},()=>new Int16Array(n+1));
+  for(let i=0;i<=m;i++)dp[i][0]=i;
+  for(let j=0;j<=n;j++)dp[0][j]=j;
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++){
+    const cost=a[i-1]===b[j-1]?0:1;
+    dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+cost);
+  }
+  return 1-(dp[m][n]/Math.max(m,n));
+}
+function wordsMatch(a,b){return wordSimilarity(a,b)>=0.70}
+function diffTR(answer,target){
+  const A=wordsTR(answer),B=wordsTR(target);
+  if(!A.length||!B.length)return{parts:B.map(w=>({type:"missing",word:w})),correct:0,total:B.length,ratio:0,score:0};
+  const m=A.length,n=B.length;
+  const dp=Array.from({length:m+1},()=>new Int16Array(n+1));
+  for(let i=m-1;i>=0;i--)for(let j=n-1;j>=0;j--)
+    dp[i][j]=wordsMatch(A[i],B[j])?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
+  const parts=[];let i=0,j=0,correct=0;
+  while(i<m&&j<n){
+    if(wordsMatch(A[i],B[j])){parts.push({type:"ok",word:B[j],heard:A[i]});correct++;i++;j++;}
+    else if(dp[i+1][j]>=dp[i][j+1]){parts.push({type:"extra",word:A[i]});i++;}
+    else{parts.push({type:"missing",word:B[j]});j++;}
+  }
+  while(i<m)parts.push({type:"extra",word:A[i++]});
+  while(j<n)parts.push({type:"missing",word:B[j++]});
+  const ratio=correct/Math.max(n,1);
+  return{parts,correct,total:n,ratio,score:Math.round(ratio*100)};
+}
+function similarity(a,b){return diffTR(a,b).score}
+function bestVoiceTranscript(results,target){
+  const list=[];
+  try{
+    for(let i=0;i<results[0].length;i++)list.push(results[0][i]);
+  }catch{}
+  if(!list.length)return{transcript:"",score:0,confidence:0};
+  let best={transcript:list[0].transcript||"",score:0,confidence:list[0].confidence||0};
+  for(const alt of list){
+    const transcript=cleanText(alt.transcript||"");
+    const score=similarity(transcript,target);
+    const confidence=alt.confidence||0;
+    if(score>best.score || (score===best.score && confidence>best.confidence)) best={transcript,score,confidence};
+  }
+
+  return best;
+}
+
+/* Practice.html mantığına yakın İngilizce karşılaştırma.
+   Mikrofon artık SentenceTR ile değil, ekrandaki SentenceEN / s.en ile kıyaslanır.
+   Kasıllaşmalar eşit sayılır: I'm = I am, don't = do not vb. */
+const EN_CONTRACTIONS={
+  "i'm":["i","am"],"you're":["you","are"],"we're":["we","are"],"they're":["they","are"],
+  "he's":["he","is"],"she's":["she","is"],"it's":["it","is"],"that's":["that","is"],
+  "there's":["there","is"],"here's":["here","is"],"what's":["what","is"],"who's":["who","is"],
+  "i've":["i","have"],"you've":["you","have"],"we've":["we","have"],"they've":["they","have"],
+  "i'll":["i","will"],"you'll":["you","will"],"we'll":["we","will"],"they'll":["they","will"],
+  "he'll":["he","will"],"she'll":["she","will"],"it'll":["it","will"],
+  "i'd":["i","would"],"you'd":["you","would"],"we'd":["we","would"],"they'd":["they","would"],
+  "isn't":["is","not"],"aren't":["are","not"],"wasn't":["was","not"],"weren't":["were","not"],
+  "don't":["do","not"],"doesn't":["does","not"],"didn't":["did","not"],
+  "haven't":["have","not"],"hasn't":["has","not"],"hadn't":["had","not"],
+  "won't":["will","not"],"wouldn't":["would","not"],"can't":["can","not"],"cannot":["can","not"],
+  "couldn't":["could","not"],"shouldn't":["should","not"],"mustn't":["must","not"],"let's":["let","us"]
+};
+function tokenizeEN(s){return String(s||"").match(/[A-Za-z']+(?:-[A-Za-z']+)*|\d+/g)||[]}
+function normEN(w){return String(w||"").toLowerCase().replace(/[\u2019\u2018]/g,"'").replace(/[.,!?;:\"()]/g,"").trim()}
+function normSeqEN(text){
+  const out=[];
+  for(const raw of tokenizeEN(text)){
+    const n=normEN(raw);
+    if(EN_CONTRACTIONS[n]) out.push(...EN_CONTRACTIONS[n].map(x=>({n:x,raw})));
+    else if(n) out.push({n,raw});
+  }
+  return out;
+}
+function diffEN(answer,target){
+  const A=normSeqEN(answer), B=normSeqEN(target);
+  if(!A.length||!B.length)return{parts:B.map(x=>({type:"missing",word:x.raw})),correct:0,total:B.length,ratio:0,score:0,hadExtra:false};
+  const m=A.length,n=B.length;
+  const dp=Array.from({length:m+1},()=>new Int16Array(n+1));
+  for(let i=m-1;i>=0;i--)for(let j=n-1;j>=0;j--)dp[i][j]=A[i].n===B[j].n?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
+  const parts=[];let i=0,j=0,correct=0,extra=0;
+  while(i<m&&j<n){
+    if(A[i].n===B[j].n){parts.push({type:"ok",word:B[j].raw,heard:A[i].raw});correct++;i++;j++;}
+    else if(dp[i+1][j]>=dp[i][j+1]){parts.push({type:"extra",word:A[i].raw});extra++;i++;}
+    else{parts.push({type:"missing",word:B[j].raw});j++;}
+  }
+  while(i<m){parts.push({type:"extra",word:A[i++].raw});extra++;}
+  while(j<n)parts.push({type:"missing",word:B[j++].raw});
+  const ratio=correct/Math.max(n,1);
+  const penalty=Math.min(extra*4,12);
+  return{parts,correct,total:n,ratio,score:Math.max(0,Math.round(ratio*100-penalty)),hadExtra:extra>0};
+}
+function similarityEN(a,b){return diffEN(a,b).score}
+function bestVoiceTranscriptEN(results,target){
+  const list=[];
+  try{for(let i=0;i<results[0].length;i++)list.push(results[0][i]);}catch{}
+  if(!list.length)return{transcript:"",score:0,confidence:0};
+  let best={transcript:cleanText(list[0].transcript||""),score:0,confidence:list[0].confidence||0};
+  for(const alt of list){
+    const transcript=cleanText(alt.transcript||"");
+    const score=similarityEN(transcript,target);
+    const confidence=alt.confidence||0;
+    if(score>best.score || (score===best.score && confidence>best.confidence)) best={transcript,score,confidence};
+  }
+  return best;
+}
 async function fetchFirst(paths){for(const p of paths){try{const r=await fetch(p);if(r.ok)return await r.json()}catch{}}throw new Error("data/sentences.json bulunamadı")}
 async function loadData(){const sentences=await fetchFirst(DATA_PATHS);State.sentences=sentences;State.byModule=new Map();State.byLevel=new Map();for(const s of sentences){if(!State.byModule.has(s.module))State.byModule.set(s.module,[]);State.byModule.get(s.module).push(s)}for(const [mod,arr] of State.byModule){arr.sort((a,b)=>(a.order||0)-(b.order||0));const lv=arr[0]?.level||"A1";if(!State.byLevel.has(lv))State.byLevel.set(lv,[]);State.byLevel.get(lv).push(mod)}State.srs=await srsAll()}
 function posKey(mod){return POS_PREFIX+mod}async function savePos(){if(!State.activeModule)return;await kvSet(posKey(State.activeModule),JSON.stringify({idx:State.idx,total:State.queue.length,at:Date.now()}))}async function loadPos(mod){try{return JSON.parse(await kvGet(posKey(mod))||"null")}catch{return null}}async function clearPos(mod){await kvDel(posKey(mod))}
 function moduleProgress(mod){const arr=State.byModule.get(mod)||[];let learned=0;for(const s of arr){const r=State.srs[s.id];if(r&&r.rep>0)learned++}return{learned,total:arr.length,pct:arr.length?Math.round(learned/arr.length*100):0}}
 function renderLoading(){root.innerHTML=`<div class="state"><div class="spinner"></div><p>Video practice hazırlanıyor…</p></div>`}
 function renderError(msg){root.innerHTML=`<div class="state"><h2>Veri yüklenemedi</h2><p>${esc(msg)}</p><button class="btn primary" onclick="location.reload()">Yeniden dene</button></div>`}
-async function renderPicker(){State.srs=await srsAll();const levels=LEVEL_ORDER.filter(l=>State.byLevel.has(l));let html=`<div class="picker"><div class="picker-top"><a href="./index.html" class="home-link">← Ana uygulama</a><button class="btn api-mini" id="apiBtn">🔑 Pexels API</button></div><div class="pick-intro"><h1>Video Practice</h1><p>Bu ekranda kelime sıralama yok. Video otomatik gelir; ortada İngilizce cümle görünür. Sen <b>Türkçe çeviriyi</b> mikrofona okuyorsun, sistem <b>SentenceTR</b> ile karşılaştırıyor.</p></div>`;for(const lv of levels){const mods=State.byLevel.get(lv);html+=`<div class="lv-group"><div class="lv-head"><span class="lv-badge">${esc(lv)}</span><span>${mods.length} modül</span></div><div class="mod-grid">`;for(const mod of mods){const p=moduleProgress(mod);const name=mod.replace(/^[A-C]\d-M\d+\s*/,"");const pos=await loadPos(mod);html+=`<button class="mod-tile" data-mod="${esc(mod)}"><span class="mod-name">${esc(name)}</span><span class="mod-count">${p.total} cümle${pos?` · ${pos.idx+1}. cümlede kaldın`:""}</span><span class="mod-prog"><span style="width:${p.pct}%"></span></span></button>`}html+=`</div></div>`}html+=`</div>`;root.innerHTML=html;document.getElementById("apiBtn").onclick=()=>openApiSheet(false);root.querySelectorAll(".mod-tile").forEach(b=>b.onclick=async()=>{const mod=b.dataset.mod;const pos=await loadPos(mod);startModule(mod,pos?.idx||0)})}
+async function renderPicker(){State.srs=await srsAll();const levels=LEVEL_ORDER.filter(l=>State.byLevel.has(l));let html=`<div class="picker"><div class="picker-top"><a href="./index.html" class="home-link">← Ana uygulama</a><button class="btn api-mini" id="apiBtn">🔑 Pexels API</button></div><div class="pick-intro"><h1>Video Practice</h1><p>Bu ekranda kelime sıralama yok. Video otomatik gelir; ortada İngilizce cümle görünür. Sen ekrandaki <b>İngilizce cümleyi</b> mikrofona okuyorsun; sistem bunu <b>SentenceEN</b> ile practice.html mantığında karşılaştırıyor. Türkçe sadece anlam/yardım olarak görünür.</p></div>`;for(const lv of levels){const mods=State.byLevel.get(lv);html+=`<div class="lv-group"><div class="lv-head"><span class="lv-badge">${esc(lv)}</span><span>${mods.length} modül</span></div><div class="mod-grid">`;for(const mod of mods){const p=moduleProgress(mod);const name=mod.replace(/^[A-C]\d-M\d+\s*/,"");const pos=await loadPos(mod);html+=`<button class="mod-tile" data-mod="${esc(mod)}"><span class="mod-name">${esc(name)}</span><span class="mod-count">${p.total} cümle${pos?` · ${pos.idx+1}. cümlede kaldın`:""}</span><span class="mod-prog"><span style="width:${p.pct}%"></span></span></button>`}html+=`</div></div>`}html+=`</div>`;root.innerHTML=html;document.getElementById("apiBtn").onclick=()=>openApiSheet(false);root.querySelectorAll(".mod-tile").forEach(b=>b.onclick=async()=>{const mod=b.dataset.mod;const pos=await loadPos(mod);startModule(mod,pos?.idx||0)})}
 async function startModule(mod,idx){State.srs=await srsAll();const arr=(State.byModule.get(mod)||[]).slice();const now=Date.now();function bucket(s){const r=State.srs[s.id];if(!r||!r.rep)return 1;if((r.due||0)<=now)return 0;return 2}arr.sort((a,b)=>{const ba=bucket(a),bb=bucket(b);if(ba!==bb)return ba-bb;if(ba===0)return(State.srs[a.id].due||0)-(State.srs[b.id].due||0);if(ba===1)return(a.order||0)-(b.order||0);return(State.srs[a.id].due||0)-(State.srs[b.id].due||0)});State.queue=arr;State.idx=Math.min(Math.max(0,idx||0),Math.max(0,arr.length-1));State.activeModule=mod;State.sessionTitle=mod.replace(/^[A-C]\d-M\d+\s*/,"");renderVideoCard()}
 function currentSentence(){return State.queue[State.idx]}
-function renderVideoCard(){if(State.idx>=State.queue.length)return renderDone();const s=currentSentence();State.showTR=false;State.currentVideoPayload=null;const pct=Math.round(State.idx/State.queue.length*100);const name=(s.module||"").replace(/^[A-C]\d-M\d+\s*/,"");root.innerHTML=`<div class="video-page"><div class="video-bg"><video id="mainVideo" muted playsinline loop></video></div><div class="video-loading" id="videoLoading"><div class="spinner"></div><div>Video aranıyor…</div></div><button class="api-float" id="apiFloat">🔑 API</button><button class="next-float" id="nextBtn">Sıradaki →</button><div class="vp-top"><button class="back" id="backBtn">←</button><div class="vp-title"><h1>${esc(State.sessionTitle)}</h1><p>${esc(name)} · ${esc(s.topic||"")} · ${esc(s.level||"")}</p></div><div class="queue-pill"><b>${State.idx+1}</b>/${State.queue.length}</div></div><div class="subtitle-wrap"><div class="en-subtitle" id="enSubtitle">${esc(s.en)}</div></div><div class="tr-panel hidden" id="trPanel"><div class="tr-label">Türkçesi / SentenceTR</div><div class="tr-text">${esc(s.tr)}</div></div><div class="feedback hidden" id="feedback"></div><div class="video-status hidden" id="videoStatus"></div><div class="fallback-input hidden" id="fallbackInput"><input id="typedTR" placeholder="Mikrofon yoksa Türkçe cümleyi buraya yaz"/><button id="typedCheck">Kontrol</button></div><div class="controls"><button class="ctrl" id="replayBtn"><span class="ctrl-ico">↻</span><span>Tekrar oynat</span></button><div><button class="mic-main" id="micBtn">🎙️</button><div class="mic-caption" id="micCaption">Tıkla ve Türkçeyi oku</div></div><button class="ctrl" id="translateBtn"><span class="ctrl-ico">🌐</span><span>Tercüme Et</span></button></div><div class="small-note" id="smallNote">Arama: speaking video : ${esc(s.en)}</div></div>`;document.getElementById("backBtn").onclick=()=>renderPicker();document.getElementById("apiFloat").onclick=()=>openApiSheet(false);document.getElementById("nextBtn").onclick=nextCard;document.getElementById("replayBtn").onclick=()=>replayCurrent(true);document.getElementById("translateBtn").onclick=toggleTranslation;document.getElementById("micBtn").onclick=startTurkishCheck;document.getElementById("typedCheck").onclick=()=>checkTurkish(document.getElementById("typedTR").value,"typed");if(!STT)document.getElementById("fallbackInput").classList.remove("hidden");autoLoadVideo(s);setTimeout(()=>speakEnglish(s.en),800)}
+function renderVideoCard(){if(State.idx>=State.queue.length)return renderDone();const s=currentSentence();State.showTR=false;State.currentVideoPayload=null;const pct=Math.round(State.idx/State.queue.length*100);const name=(s.module||"").replace(/^[A-C]\d-M\d+\s*/,"");root.innerHTML=`<div class="video-page"><div class="video-bg"><video id="mainVideo" muted playsinline loop></video></div><div class="video-loading" id="videoLoading"><div class="spinner"></div><div>Video aranıyor…</div></div><button class="api-float" id="apiFloat">🔑 API</button><button class="next-float" id="nextBtn">Sıradaki →</button><div class="vp-top"><button class="back" id="backBtn">←</button><div class="vp-title"><h1>${esc(State.sessionTitle)}</h1><p>${esc(name)} · ${esc(s.topic||"")} · ${esc(s.level||"")}</p></div><div class="queue-pill"><b>${State.idx+1}</b>/${State.queue.length}</div></div><div class="subtitle-wrap"><div class="en-subtitle" id="enSubtitle">${esc(s.en)}</div></div><div class="tr-panel hidden" id="trPanel"><div class="tr-label">Türkçesi / SentenceTR</div><div class="tr-text">${esc(s.tr)}</div></div><div class="feedback hidden" id="feedback"></div><div class="video-status hidden" id="videoStatus"></div><div class="fallback-input hidden" id="fallbackInput"><input id="typedTR" placeholder="Mikrofon yoksa İngilizce cümleyi buraya yaz"/><button id="typedCheck">Kontrol</button></div><div class="controls"><button class="ctrl" id="replayBtn"><span class="ctrl-ico">↻</span><span>Tekrar oynat</span></button><div><button class="mic-main" id="micBtn">🎙️</button><div class="mic-caption" id="micCaption">Tıkla ve İngilizceyi oku</div></div><button class="ctrl" id="translateBtn"><span class="ctrl-ico">🌐</span><span>Tercüme Et</span></button></div><div class="small-note" id="smallNote">Arama: speaking video : ${esc(s.en)}</div></div>`;document.getElementById("backBtn").onclick=()=>renderPicker();document.getElementById("apiFloat").onclick=()=>openApiSheet(false);document.getElementById("nextBtn").onclick=nextCard;document.getElementById("replayBtn").onclick=()=>replayCurrent(true);document.getElementById("translateBtn").onclick=toggleTranslation;document.getElementById("micBtn").onclick=startEnglishCheck;document.getElementById("typedCheck").onclick=()=>checkEnglish(document.getElementById("typedTR").value,"typed");if(!STT)document.getElementById("fallbackInput").classList.remove("hidden");autoLoadVideo(s);setTimeout(()=>speakEnglish(s.en),800)}
 async function nextCard(){await savePos();State.idx++;if(State.idx>=State.queue.length){if(State.activeModule)await clearPos(State.activeModule);renderDone()}else{await savePos();renderVideoCard()}}
 function renderDone(){root.innerHTML=`<div class="state"><div style="font-size:56px">✅</div><h2>Video oturumu tamam</h2><p>${State.queue.length} cümleyi video ile çalıştın.</p><button class="btn primary" id="homeBtn">Ana sayfa</button></div>`;document.getElementById("homeBtn").onclick=renderPicker}
 function showStatus(msg){const el=document.getElementById("videoStatus");if(!el)return;el.textContent=msg||"";el.classList.toggle("hidden",!msg)}
@@ -80,33 +207,31 @@ function toggleTranslation(){State.showTR=!State.showTR;const p=document.getElem
 function speakEnglish(text){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=.92;u.pitch=1;u.volume=1;const voice=pickVoice("en");if(voice)u.voice=voice;speechSynthesis.speak(u)}catch{}}
 function speakTurkish(text){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="tr-TR";u.rate=.95;u.volume=1;const voice=pickVoice("tr");if(voice)u.voice=voice;speechSynthesis.speak(u)}catch{}}
 function pickVoice(lang){const voices=speechSynthesis.getVoices()||[];if(lang==="tr")return voices.find(v=>/^tr/i.test(v.lang))||null;return voices.find(v=>/^en-US/i.test(v.lang)&&/Google|Jenny|Aria|Zira|Samantha|Natural/i.test(v.name))||voices.find(v=>/^en/i.test(v.lang))||null}
-function startTurkishCheck(){const s=currentSentence();
-  // ÖNEMLİ: Mikrofon kontrolünde SentenceTR artık program tarafından okunmaz.
-  // Kullanıcının kendi sesi alınır ve SentenceTR ile karşılaştırılır.
+function startEnglishCheck(){const s=currentSentence();
+  // Mikrofon kontrolünün hedefi SentenceEN'dir. SentenceTR yalnızca tercüme/yardım bilgisidir.
   try{ speechSynthesis.cancel(); }catch{}
-  if(!State.showTR) toggleTranslation();
   if(!STT){
-    showFeedback("Mikrofon desteklenmiyor",`Tarayıcı ses tanımayı desteklemiyor. Alttaki kutuya Türkçe cümleyi yazıp kontrol edebilirsin.`,0,false);
+    showFeedback("Mikrofon desteklenmiyor",`Tarayıcı ses tanımayı desteklemiyor. Alttaki kutuya İngilizce cümleyi yazıp kontrol edebilirsin.`,0,false);
     document.getElementById("fallbackInput").classList.remove("hidden");
     return;
   }
   if(State.listening) return;
   let rec;
   try{ rec=new STT(); }catch{return}
-  rec.lang="tr-TR";
+  rec.lang="en-US";
   rec.interimResults=false;
-  rec.maxAlternatives=1;
+  rec.maxAlternatives=10;
   const mic=document.getElementById("micBtn"),cap=document.getElementById("micCaption");
   rec.onstart=()=>{
     State.listening=true;
     mic.classList.add("listening");
     mic.textContent="●";
-    cap.textContent="Dinleniyor… Türkçeyi sen oku";
-    showStatus("Seni dinliyorum… ekrandaki SentenceTR cümlesini kendin oku.");
+    cap.textContent="Dinleniyor… İngilizceyi oku";
+    showStatus("Seni dinliyorum… ekrandaki İngilizce cümleyi oku.");
   };
   rec.onresult=e=>{
-    const heard=e.results[0][0].transcript||"";
-    checkTurkish(heard,"voice");
+    const best=bestVoiceTranscriptEN(e.results,s.en);
+    checkEnglish(best.transcript,"voice",best.score,best.confidence);
   };
   rec.onerror=()=>{
     showStatus("Mikrofon hatası. İzinleri kontrol et veya yazı kutusunu kullan.");
@@ -116,12 +241,32 @@ function startTurkishCheck(){const s=currentSentence();
     State.listening=false;
     mic.classList.remove("listening");
     mic.textContent="🎙️";
-    cap.textContent="Tıkla ve Türkçeyi oku";
+    cap.textContent="Tıkla ve İngilizceyi oku";
   };
-  // speechSynthesis.cancel() sonrası tarayıcının sesi mikrofona karışmasın diye çok kısa bekletiyoruz.
   setTimeout(()=>{ try{ rec.start(); }catch{} },180);
 }
-async function checkTurkish(heard,mode){const s=currentSentence();heard=cleanText(heard);if(!heard){showFeedback("Cümle alınamadı","Ses veya yazı algılanamadı.",0,false);return}const score=similarity(heard,s.tr);let grade="hard";if(score>=92)grade="easy";else if(score>=72)grade="good";const next=srsGrade(await srsGet(s.id),grade);await srsSet(s.id,next);State.srs[s.id]=next;showFeedback(score>=72?"Güzel okudun":"Tekrar deneyelim",`<div class="fb-line"><b>Senin okuduğun:</b> ${esc(heard)}</div><div class="fb-line"><b>SentenceTR:</b> ${esc(s.tr)}</div>`,score,score>=72)}
+async function checkEnglish(heard,mode,preScore,confidence){
+  const s=currentSentence();
+  heard=cleanText(heard);
+  if(!heard){showFeedback("Cümle alınamadı","Ses veya yazı algılanamadı.",0,false);return}
+  const diff=diffEN(heard,s.en);
+  const score=typeof preScore==="number"?preScore:diff.score;
+
+  // İngilizce tanıma bazen tamamen alakasız metin döndürebilir. Düşük güven + düşük skor ise SRS'e hard yazma.
+  if(mode==="voice" && score<45 && (confidence||0)<0.70){
+    document.getElementById("fallbackInput")?.classList.remove("hidden");
+    showFeedback("Mikrofon net algılamadı",`<div class="fb-line"><b>Mikrofonun yakaladığı:</b> ${esc(heard)}</div><div class="fb-line"><b>SentenceEN:</b> ${esc(s.en)}</div><div class="fb-line"><b>SentenceTR:</b> ${esc(s.tr)}</div><div class="fb-line">Bu sonuç ilerlemene yazılmadı. Tekrar oku veya alttaki kutuya İngilizce yazıp kontrol et.</div>`,score,false);
+    return;
+  }
+
+  let grade="hard";
+  if(score>=92 && !diff.hadExtra)grade="easy";
+  else if(score>=72)grade="good";
+  const next=srsGrade(await srsGet(s.id),grade);
+  await srsSet(s.id,next);
+  State.srs[s.id]=next;
+  showFeedback(score>=72?"Güzel telaffuz":"Tekrar deneyelim",`<div class="fb-line"><b>Senin okuduğun:</b> ${esc(heard)}</div><div class="fb-line"><b>SentenceEN:</b> ${esc(s.en)}</div><div class="fb-line"><b>SentenceTR:</b> ${esc(s.tr)}</div><div class="fb-line"><b>Eşleşme:</b> ${diff.correct}/${diff.total} kelime</div>`,score,score>=72);
+}
 function showFeedback(title,html,score,ok){const fb=document.getElementById("feedback");if(!fb)return;fb.className="feedback "+(ok?"ok":"bad");fb.innerHTML=`<div class="fb-title">${ok?"✅":"🎯"} ${esc(title)} <span class="score">${score||0}%</span></div>${html}<div class="fb-line" style="margin-top:8px">İstersen tekrar mikrofonla oku veya <b>Sıradaki</b> cümleye geç.</div>`;fb.classList.remove("hidden");setTimeout(()=>fb.classList.add("hidden"),ok?7000:9000)}
 function openApiSheet(force){const old=document.getElementById("apiSheet");if(old)old.remove();const sheet=document.createElement("div");sheet.className="api-sheet";sheet.id="apiSheet";sheet.innerHTML=`<div class="api-card"><h2>Pexels API Key</h2><p>Video otomatik gelsin diye Pexels API anahtarını bir defa kaydet. Anahtar IndexedDB'de tutulur; HTML içine yazılmaz.</p><input id="apiInput" type="password" placeholder="Pexels API anahtarını yaz"/><div class="api-actions"><button class="btn primary" id="apiSave">Kaydet ve videoyu getir</button><button class="btn" id="apiClose">Kapat</button><button class="btn red" id="apiDelete">Sil</button></div><p id="apiMsg" style="min-height:20px;font-weight:800;color:#2563eb"></p></div>`;document.body.appendChild(sheet);kvGet(API_KEY).then(k=>{if(k)document.getElementById("apiInput").value=k});document.getElementById("apiClose").onclick=()=>{if(!force)sheet.remove();else sheet.remove()};document.getElementById("apiDelete").onclick=async()=>{await kvDel(API_KEY);document.getElementById("apiInput").value="";document.getElementById("apiMsg").textContent="API key silindi."};document.getElementById("apiSave").onclick=async()=>{const key=document.getElementById("apiInput").value.trim();if(!key){document.getElementById("apiMsg").textContent="API key boş.";return}await kvSet(API_KEY,key);document.getElementById("apiMsg").textContent="Kaydedildi.";sheet.remove();if(currentSentence())autoLoadVideo(currentSentence())};sheet.onclick=e=>{if(e.target===sheet&&!force)sheet.remove()}}
 function hash(str){let h=0;str=String(str||"");for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h|=0}return Math.abs(h).toString(36)}
