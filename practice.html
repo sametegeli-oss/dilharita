@@ -1647,8 +1647,8 @@ boot();
 })();
 </script>
 
-  
-  <!-- SAHNE VIDEO BULUCU - HATASIZ BAŞLATMA SÜRÜMÜ -->
+
+  <!-- SAHNE VIDEO + CÜMLE SESİ ENTEGRASYONU -->
 <script>
 (function () {
   "use strict";
@@ -1661,838 +1661,289 @@ boot();
     }
   }
 
-  ready(function () {
-    initSceneVideoFinder();
-  });
+  ready(initSceneSentenceVoice);
 
-  function initSceneVideoFinder() {
-    const DB_NAME = "scene_video_finder_db_v3";
-    const STORE = "kv";
-    const API_KEY_KEY = "scene_video_finder_pexels_key_v3";
-    const VIDEO_PREFIX = "scene_video_selected_v3_";
-
-    document.querySelectorAll(
-      "#sceneVideoFab,#sceneVideoPanel,#sceneVideoFinderStyle,#autoSceneVideoWrap"
-    ).forEach(el => el.remove());
-
-    function openDB() {
-      return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, 1);
-
-        req.onupgradeneeded = function () {
-          const db = req.result;
-          if (!db.objectStoreNames.contains(STORE)) {
-            db.createObjectStore(STORE);
-          }
-        };
-
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    async function dbSet(key, value) {
-      try {
-        const db = await openDB();
-        await new Promise((resolve, reject) => {
-          const tx = db.transaction(STORE, "readwrite");
-          tx.objectStore(STORE).put(String(value || ""), key);
-          tx.oncomplete = resolve;
-          tx.onerror = () => reject(tx.error);
-        });
-        db.close();
-        return true;
-      } catch (e) {
-        console.warn("IndexedDB kayıt hatası:", e);
-        return false;
-      }
-    }
-
-    async function dbGet(key) {
-      try {
-        const db = await openDB();
-        const result = await new Promise((resolve, reject) => {
-          const tx = db.transaction(STORE, "readonly");
-          const req = tx.objectStore(STORE).get(key);
-          req.onsuccess = () => resolve(req.result || "");
-          req.onerror = () => reject(req.error);
-        });
-        db.close();
-        return result || "";
-      } catch (e) {
-        console.warn("IndexedDB okuma hatası:", e);
-        return "";
-      }
-    }
-
-    async function dbDelete(key) {
-      try {
-        const db = await openDB();
-        await new Promise((resolve, reject) => {
-          const tx = db.transaction(STORE, "readwrite");
-          tx.objectStore(STORE).delete(key);
-          tx.oncomplete = resolve;
-          tx.onerror = () => reject(tx.error);
-        });
-        db.close();
-      } catch (e) {
-        console.warn("IndexedDB silme hatası:", e);
-      }
-    }
+  function initSceneSentenceVoice() {
+    if (document.getElementById("sceneSentenceVoiceStyle")) return;
 
     const style = document.createElement("style");
-    style.id = "sceneVideoFinderStyle";
+    style.id = "sceneSentenceVoiceStyle";
     style.textContent = `
-      #sceneVideoFab{
-        position:fixed;
-        right:22px;
-        bottom:28px;
-        z-index:999999;
-        border:none;
-        border-radius:999px;
-        padding:15px 22px;
-        font-weight:900;
-        font-size:15px;
-        background:#020617;
-        color:white;
-        box-shadow:0 14px 34px rgba(0,0,0,.30);
-        cursor:pointer;
+      #sceneVoiceBar {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translateX(-50%);
+        z-index: 999998;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        background: rgba(2, 6, 23, .92);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: 999px;
+        padding: 10px 14px;
+        box-shadow: 0 14px 38px rgba(0,0,0,.35);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
-      #sceneVideoPanel{
-        position:fixed;
-        right:22px;
-        bottom:92px;
-        width:min(470px,calc(100vw - 32px));
-        max-height:82vh;
-        overflow:auto;
-        background:white;
-        border-radius:22px;
-        box-shadow:0 24px 65px rgba(0,0,0,.28);
-        z-index:999999;
-        display:none;
-        font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-        color:#111827;
+      #sceneVoiceText {
+        max-width: min(520px, 58vw);
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        font-weight: 800;
+        font-size: 14px;
       }
 
-      #sceneVideoPanel.open{
-        display:block;
+      .sceneVoiceBtn {
+        border: none;
+        border-radius: 999px;
+        padding: 9px 13px;
+        font-weight: 900;
+        cursor: pointer;
+        background: #2563eb;
+        color: white;
       }
 
-      .sv-head{
-        position:sticky;
-        top:0;
-        z-index:2;
-        background:white;
-        padding:16px 18px;
-        border-bottom:1px solid #e5e7eb;
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:12px;
+      .sceneVoiceBtn.secondary {
+        background: #334155;
       }
 
-      .sv-title{
-        font-size:18px;
-        font-weight:950;
+      #sceneVideoSubtitle {
+        position: absolute;
+        left: 50%;
+        bottom: 10%;
+        transform: translateX(-50%);
+        z-index: 5;
+        max-width: 88%;
+        background: rgba(17,24,39,.78);
+        color: #fff;
+        padding: 12px 18px;
+        border-radius: 14px;
+        font-size: clamp(20px, 3vw, 34px);
+        line-height: 1.2;
+        font-weight: 950;
+        text-align: center;
+        text-shadow: 0 2px 8px rgba(0,0,0,.45);
+        pointer-events: none;
       }
 
-      .sv-close{
-        border:none;
-        border-radius:12px;
-        background:#f3f4f6;
-        padding:9px 13px;
-        font-weight:900;
-        cursor:pointer;
+      #autoSceneVideoWrap,
+      .scene-video,
+      .scene-media,
+      .media-area,
+      #sceneMedia,
+      #mediaArea,
+      #videoArea {
+        position: relative;
       }
 
-      .sv-body{
-        padding:16px 18px 18px;
-      }
-
-      .sv-warning{
-        background:#fff7ed;
-        color:#9a3412;
-        border:1px solid #fed7aa;
-        border-radius:14px;
-        padding:12px;
-        font-size:13px;
-        line-height:1.45;
-        margin-bottom:14px;
-      }
-
-      .sv-field{
-        margin-bottom:12px;
-      }
-
-      .sv-label{
-        display:block;
-        font-size:13px;
-        font-weight:900;
-        color:#374151;
-        margin-bottom:6px;
-      }
-
-      .sv-input{
-        width:100%;
-        box-sizing:border-box;
-        border:1px solid #d1d5db;
-        border-radius:14px;
-        padding:12px 13px;
-        font-size:15px;
-        outline:none;
-        background:white;
-      }
-
-      .sv-row{
-        display:flex;
-        gap:10px;
-        margin-top:10px;
-        flex-wrap:wrap;
-      }
-
-      .sv-btn{
-        border:none;
-        border-radius:14px;
-        padding:12px 14px;
-        font-weight:950;
-        font-size:14px;
-        cursor:pointer;
-      }
-
-      .sv-btn.primary{
-        background:#2563eb;
-        color:white;
-        flex:1;
-        min-width:150px;
-      }
-
-      .sv-btn.secondary{
-        background:#eef2ff;
-        color:#1e3a8a;
-      }
-
-      .sv-btn.danger{
-        background:#fee2e2;
-        color:#991b1b;
-      }
-
-      .sv-status{
-        min-height:20px;
-        margin:13px 0;
-        color:#4b5563;
-        font-size:13px;
-        line-height:1.45;
-        font-weight:650;
-      }
-
-      .sv-grid{
-        display:grid;
-        grid-template-columns:1fr;
-        gap:14px;
-      }
-
-      .sv-card{
-        border:1px solid #e5e7eb;
-        border-radius:18px;
-        overflow:hidden;
-        background:#f9fafb;
-      }
-
-      .sv-card video{
-        width:100%;
-        height:205px;
-        object-fit:cover;
-        display:block;
-        background:#111;
-      }
-
-      .sv-card-inner{
-        padding:11px;
-      }
-
-      .sv-meta{
-        font-size:12px;
-        color:#6b7280;
-        margin-bottom:9px;
-      }
-
-      .sv-actions{
-        display:flex;
-        gap:8px;
-      }
-
-      .sv-actions button{
-        flex:1;
-        border:none;
-        border-radius:12px;
-        padding:10px;
-        font-weight:900;
-        cursor:pointer;
-      }
-
-      .sv-use{
-        background:#16a34a;
-        color:white;
-      }
-
-      .sv-open{
-        background:#e5e7eb;
-        color:#111827;
-      }
-
-      #autoSceneVideoWrap{
-        width:min(980px,calc(100vw - 24px));
-        margin:18px auto;
-        border-radius:24px;
-        overflow:hidden;
-        background:#111;
-        box-shadow:0 14px 42px rgba(0,0,0,.22);
-      }
-
-      #sceneMainVideo{
-        display:block;
-        width:100%;
-        max-height:60vh;
-        object-fit:cover;
-        background:#111;
-      }
-
-      @media(max-width:640px){
-        #sceneVideoFab{
-          right:12px;
-          bottom:18px;
-          padding:13px 16px;
-          font-size:13px;
+      @media(max-width: 640px) {
+        #sceneVoiceBar {
+          left: 10px;
+          right: 10px;
+          bottom: 12px;
+          transform: none;
+          border-radius: 18px;
+          flex-wrap: wrap;
+          justify-content: center;
         }
 
-        #sceneVideoPanel{
-          left:10px;
-          right:10px;
-          bottom:78px;
-          width:auto;
-          max-height:78vh;
+        #sceneVoiceText {
+          max-width: 100%;
+          width: 100%;
+          text-align: center;
         }
 
-        .sv-row{
-          flex-direction:column;
-        }
-
-        .sv-btn{
-          width:100%;
+        .sceneVoiceBtn {
+          flex: 1;
         }
       }
     `;
-
     document.head.appendChild(style);
 
-    const panel = document.createElement("div");
-    panel.id = "sceneVideoPanel";
-    panel.innerHTML = `
-      <div class="sv-head">
-        <div class="sv-title">Sahne Videosu Bul</div>
-        <button class="sv-close" id="sceneVideoClose" type="button">Kapat</button>
-      </div>
-
-      <div class="sv-body">
-        <div class="sv-warning">
-          Pexels API anahtarını bir defa gir. Anahtar IndexedDB'ye kaydedilir.
-        </div>
-
-        <div class="sv-field">
-          <label class="sv-label">Pexels API Key</label>
-          <input id="svApiKey" class="sv-input" type="password" placeholder="Pexels API anahtarını yaz">
-        </div>
-
-        <div class="sv-row">
-          <button id="svSaveKey" class="sv-btn secondary" type="button">API Key Kaydet</button>
-          <button id="svDeleteKey" class="sv-btn danger" type="button">API Key Sil</button>
-        </div>
-
-        <div class="sv-field" style="margin-top:14px;">
-          <label class="sv-label">Arama kelimesi</label>
-          <input id="svQuery" class="sv-input" type="text" placeholder="Örn: hospital conversation">
-        </div>
-
-        <div class="sv-row">
-          <button id="svAutoQuery" class="sv-btn secondary" type="button">Cümleden Üret</button>
-          <button id="svSearch" class="sv-btn primary" type="button">Video Ara</button>
-        </div>
-
-        <div id="svStatus" class="sv-status"></div>
-        <div id="svResults" class="sv-grid"></div>
-      </div>
+    const bar = document.createElement("div");
+    bar.id = "sceneVoiceBar";
+    bar.innerHTML = `
+      <div id="sceneVoiceText">Cümle sesi hazır</div>
+      <button id="sceneSpeakBtn" class="sceneVoiceBtn" type="button">🔊 Cümleyi Seslendir</button>
+      <button id="sceneSlowSpeakBtn" class="sceneVoiceBtn secondary" type="button">🐢 Yavaş</button>
     `;
+    document.body.appendChild(bar);
 
-    const fab = document.createElement("button");
-    fab.id = "sceneVideoFab";
-    fab.type = "button";
-    fab.textContent = "🎬 Sahne Videosu Bul";
-
-    document.body.appendChild(panel);
-    document.body.appendChild(fab);
-
-    const apiInput = document.getElementById("svApiKey");
-    const queryInput = document.getElementById("svQuery");
-    const statusEl = document.getElementById("svStatus");
-    const resultsEl = document.getElementById("svResults");
-
-    function setStatus(text) {
-      statusEl.textContent = text || "";
-    }
-
-    dbGet(API_KEY_KEY).then(key => {
-      if (key) {
-        apiInput.value = key;
-        setStatus("Kayıtlı API key yüklendi.");
-      }
-    });
-
-    fab.onclick = async function () {
-      panel.classList.toggle("open");
-
-      if (panel.classList.contains("open")) {
-        const savedKey = await dbGet(API_KEY_KEY);
-        if (savedKey) apiInput.value = savedKey;
-
-        if (!queryInput.value.trim()) {
-          queryInput.value = buildQueryFromCurrentSentence();
-        }
-      }
+    document.getElementById("sceneSpeakBtn").onclick = function () {
+      speakCurrentSentence(1);
     };
 
-    document.getElementById("sceneVideoClose").onclick = function () {
-      panel.classList.remove("open");
+    document.getElementById("sceneSlowSpeakBtn").onclick = function () {
+      speakCurrentSentence(0.72);
     };
 
-    document.getElementById("svSaveKey").onclick = async function () {
-      const key = apiInput.value.trim();
+    setInterval(updateSceneVoiceText, 1200);
+    setTimeout(updateSceneVoiceText, 500);
 
-      if (!key) {
-        setStatus("API key boş.");
-        return;
-      }
-
-      await dbSet(API_KEY_KEY, key);
-      setStatus("API key kaydedildi.");
+    window.SceneSentenceVoice = {
+      speak: speakCurrentSentence,
+      update: updateSceneVoiceText,
+      getSentence: getCurrentEnglishSentence
     };
+  }
 
-    document.getElementById("svDeleteKey").onclick = async function () {
-      await dbDelete(API_KEY_KEY);
-      apiInput.value = "";
-      setStatus("API key silindi.");
-    };
+  function getCurrentSentenceObject() {
+    const arr = [
+      window.currentSentence,
+      window.activeSentence,
+      window.currentRow,
+      window.activeRow,
+      window.selectedSentence,
+      window.currentItem,
+      window.activeItem
+    ];
 
-    document.getElementById("svAutoQuery").onclick = function () {
-      queryInput.value = buildQueryFromCurrentSentence();
-      setStatus("Arama kelimesi üretildi.");
-    };
+    return arr.find(x => x && typeof x === "object") || null;
+  }
 
-    document.getElementById("svSearch").onclick = async function () {
-      let apiKey = apiInput.value.trim();
+  function getText(selectors) {
+    for (const s of selectors) {
+      const el = document.querySelector(s);
+      if (!el) continue;
 
-      if (!apiKey) {
-        apiKey = await dbGet(API_KEY_KEY);
-        if (apiKey) apiInput.value = apiKey;
-      }
-
-      const query = queryInput.value.trim() || buildQueryFromCurrentSentence();
-
-      if (!apiKey) {
-        setStatus("API key eksik.");
-        return;
-      }
-
-      if (!query) {
-        setStatus("Arama kelimesi boş.");
-        return;
-      }
-
-      await dbSet(API_KEY_KEY, apiKey);
-      await searchPexels(apiKey, query);
-    };
-
-    function getCurrentSentenceObject() {
-      const arr = [
-        window.currentSentence,
-        window.activeSentence,
-        window.currentRow,
-        window.activeRow,
-        window.selectedSentence,
-        window.currentItem,
-        window.activeItem
-      ];
-
-      return arr.find(x => x && typeof x === "object") || null;
+      if (el.value && el.value.trim()) return el.value.trim();
+      if (el.textContent && el.textContent.trim()) return el.textContent.trim();
     }
 
-    function getText(selectors) {
-      for (const s of selectors) {
-        const el = document.querySelector(s);
-        if (!el) continue;
+    return "";
+  }
 
-        if (el.value && el.value.trim()) return el.value.trim();
-        if (el.textContent && el.textContent.trim()) return el.textContent.trim();
-      }
+  function getCurrentEnglishSentence() {
+    const row = getCurrentSentenceObject();
 
-      return "";
+    if (row) {
+      return (
+        row.SentenceEN ||
+        row.sentence_en ||
+        row.EnglishSentence ||
+        row.english_sentence ||
+        row.English ||
+        row.english ||
+        row.Sentence ||
+        row.sentence ||
+        row.correctSentence ||
+        row.correct ||
+        ""
+      );
     }
 
-    function getCurrentEnglishSentence() {
-      const row = getCurrentSentenceObject();
+    return getText([
+      "#sentenceEn",
+      "#currentSentenceEn",
+      "#englishSentence",
+      "#mainSentence",
+      "#sentenceText",
+      "#correctSentence",
+      ".sentence-en",
+      ".english-sentence",
+      ".main-sentence",
+      ".correct-sentence",
+      "[data-sentence-en]"
+    ]);
+  }
 
-      if (row) {
-        return (
-          row.VideoQuery ||
-          row.video_query ||
-          row.SentenceEN ||
-          row.sentence_en ||
-          row.English ||
-          row.english ||
-          row.Sentence ||
-          row.sentence ||
-          ""
-        );
-      }
+  function updateSceneVoiceText() {
+    const sentence = getCurrentEnglishSentence();
+    const textEl = document.getElementById("sceneVoiceText");
 
-      return getText([
-        "#sentenceEn",
-        "#currentSentenceEn",
-        "#englishSentence",
-        "#mainSentence",
-        "#sentenceText",
-        ".sentence-en",
-        ".english-sentence",
-        ".main-sentence",
-        "[data-sentence-en]"
-      ]);
+    if (textEl) {
+      textEl.textContent = sentence || "Aktif İngilizce cümle bulunamadı";
     }
 
-    function getCurrentTurkishSentence() {
-      const row = getCurrentSentenceObject();
+    injectSubtitle(sentence);
+  }
 
-      if (row) {
-        return (
-          row.SentenceTR ||
-          row.sentence_tr ||
-          row.Turkish ||
-          row.turkish ||
-          ""
-        );
-      }
+  function injectSubtitle(sentence) {
+    if (!sentence) return;
 
-      return getText([
-        "#sentenceTr",
-        "#currentSentenceTr",
-        "#turkishSentence",
-        ".sentence-tr",
-        ".turkish-sentence",
-        "[data-sentence-tr]"
-      ]);
+    const video =
+      document.querySelector("#sceneMainVideo") ||
+      document.querySelector("#mainSceneVideo") ||
+      document.querySelector(".scene-video video") ||
+      document.querySelector("[data-main-video]");
+
+    if (!video) return;
+
+    let wrap = video.parentElement;
+    if (!wrap) return;
+
+    if (getComputedStyle(wrap).position === "static") {
+      wrap.style.position = "relative";
     }
 
-    function getCurrentScene() {
-      const row = getCurrentSentenceObject();
+    let sub = wrap.querySelector("#sceneVideoSubtitle");
 
-      if (row) {
-        return (
-          row.Scene ||
-          row.scene ||
-          row.Category ||
-          row.category ||
-          row.Topic ||
-          row.topic ||
-          row.Kategori ||
-          row.Konu ||
-          ""
-        );
-      }
-
-      return getText([
-        "#sceneName",
-        "#categoryName",
-        "#topicName",
-        ".scene-name",
-        ".category-name",
-        ".topic-name",
-        "[data-scene]",
-        "[data-category]"
-      ]);
+    if (!sub) {
+      sub = document.createElement("div");
+      sub.id = "sceneVideoSubtitle";
+      wrap.appendChild(sub);
     }
 
-    function buildQueryFromCurrentSentence() {
-      const en = getCurrentEnglishSentence();
-      const tr = getCurrentTurkishSentence();
-      const scene = getCurrentScene();
+    sub.textContent = sentence;
+  }
 
-      const text = `${scene} ${en} ${tr}`.toLowerCase();
+  function pickEnglishVoice() {
+    const voices = window.speechSynthesis.getVoices() || [];
 
-      if (/hospital|doctor|patient|hastane|doktor|hasta|ilaç|ağrı/.test(text)) {
-        return "doctor patient hospital conversation";
-      }
+    return (
+      voices.find(v => /en-US/i.test(v.lang) && /female|zira|jenny|aria|samantha|google/i.test(v.name)) ||
+      voices.find(v => /en-GB/i.test(v.lang)) ||
+      voices.find(v => /^en/i.test(v.lang)) ||
+      null
+    );
+  }
 
-      if (/loss|condolence|funeral|sorry for your loss|başsağlığı|vefat|kayıp|ölüm/.test(text)) {
-        return "sad woman condolence sympathy grief";
-      }
+  function speakCurrentSentence(rate) {
+    const sentence = getCurrentEnglishSentence();
 
-      if (/restaurant|waiter|menu|order|restoran|garson|sipariş|menü/.test(text)) {
-        return "restaurant customer waiter ordering food";
-      }
-
-      if (/airport|flight|passport|luggage|havaalanı|uçak|pasaport|valiz/.test(text)) {
-        return "airport traveler passport luggage";
-      }
-
-      if (/office|meeting|business|manager|toplantı|ofis|müdür|iş/.test(text)) {
-        return "office meeting business conversation";
-      }
-
-      if (/shopping|store|price|alışveriş|mağaza|fiyat/.test(text)) {
-        return "shopping customer store conversation";
-      }
-
-      const cleaned = String(en || "")
-        .replace(/[^\w\s']/g, " ")
-        .replace(/\b(i|am|is|are|was|were|do|does|did|the|a|an|to|for|of|in|on|at|you|your|my|we|they|he|she|it|this|that|with|and|or|but|so)\b/gi, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      if (scene && cleaned) return `${scene} ${cleaned} conversation`;
-      if (cleaned) return `${cleaned} conversation`;
-      if (scene) return `${scene} conversation`;
-
-      return "english conversation real life";
+    if (!sentence) {
+      alert("Aktif İngilizce cümle bulunamadı.");
+      return;
     }
 
-    async function searchPexels(apiKey, query) {
-      setStatus("Videolar aranıyor...");
-      resultsEl.innerHTML = "";
+    window.speechSynthesis.cancel();
 
-      const url = new URL("https://api.pexels.com/videos/search");
-      url.searchParams.set("query", query);
-      url.searchParams.set("per_page", "8");
-      url.searchParams.set("orientation", "landscape");
+    const utterance = new SpeechSynthesisUtterance(sentence);
+    utterance.lang = "en-US";
+    utterance.rate = rate || 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
 
+    const voice = pickEnglishVoice();
+    if (voice) utterance.voice = voice;
+
+    const video =
+      document.querySelector("#sceneMainVideo") ||
+      document.querySelector("#mainSceneVideo") ||
+      document.querySelector(".scene-video video") ||
+      document.querySelector("[data-main-video]");
+
+    if (video) {
       try {
-        const res = await fetch(url.toString(), {
-          headers: {
-            Authorization: apiKey
-          }
-        });
-
-        if (!res.ok) {
-          if (res.status === 401) throw new Error("API key hatalı.");
-          if (res.status === 429) throw new Error("Pexels limit doldu.");
-          throw new Error("Pexels API hatası: " + res.status);
-        }
-
-        const data = await res.json();
-        const videos = Array.isArray(data.videos) ? data.videos : [];
-
-        if (!videos.length) {
-          setStatus("Video bulunamadı.");
-          return;
-        }
-
-        setStatus(videos.length + " video bulundu.");
-        renderVideos(videos);
-      } catch (e) {
-        console.error(e);
-        setStatus("Video arama hatası: " + e.message);
-      }
-    }
-
-    function pickVideoFile(video) {
-      const files = Array.isArray(video.video_files) ? video.video_files : [];
-
-      const mp4s = files
-        .filter(f => f.file_type === "video/mp4" && f.link)
-        .sort((a, b) => Math.abs(1280 - (a.width || 0)) - Math.abs(1280 - (b.width || 0)));
-
-      return mp4s[0] || files.find(f => f.link) || null;
-    }
-
-    function renderVideos(videos) {
-      resultsEl.innerHTML = "";
-
-      videos.forEach(video => {
-        const file = pickVideoFile(video);
-        if (!file) return;
-
-        const card = document.createElement("div");
-        card.className = "sv-card";
-
-        const v = document.createElement("video");
-        v.src = file.link;
-        v.controls = true;
-        v.muted = true;
-        v.playsInline = true;
-        v.preload = "metadata";
-        if (video.image) v.poster = video.image;
-
-        const inner = document.createElement("div");
-        inner.className = "sv-card-inner";
-
-        const meta = document.createElement("div");
-        meta.className = "sv-meta";
-        meta.textContent = "Pexels video #" + video.id;
-
-        const actions = document.createElement("div");
-        actions.className = "sv-actions";
-
-        const useBtn = document.createElement("button");
-        useBtn.className = "sv-use";
-        useBtn.type = "button";
-        useBtn.textContent = "Bu Videoyu Kullan";
-        useBtn.onclick = async function () {
-          await useVideo({
-            source: "pexels",
-            id: video.id,
-            pageUrl: video.url || "",
-            videoUrl: file.link,
-            posterUrl: video.image || "",
-            query: queryInput.value.trim(),
-            savedAt: new Date().toISOString()
-          });
-        };
-
-        const openBtn = document.createElement("button");
-        openBtn.className = "sv-open";
-        openBtn.type = "button";
-        openBtn.textContent = "Kaynağı Aç";
-        openBtn.onclick = function () {
-          if (video.url) window.open(video.url, "_blank", "noopener,noreferrer");
-        };
-
-        actions.appendChild(useBtn);
-        actions.appendChild(openBtn);
-
-        inner.appendChild(meta);
-        inner.appendChild(actions);
-
-        card.appendChild(v);
-        card.appendChild(inner);
-
-        resultsEl.appendChild(card);
-      });
-    }
-
-    function getCurrentSentenceId() {
-      const row = getCurrentSentenceObject();
-
-      if (row) {
-        const id = row.ID || row.id || row.SentenceID || row.sentence_id || row.No || row.no;
-        if (id) return String(id);
-      }
-
-      const en = getCurrentEnglishSentence();
-      return en ? "sentence_" + hash(en) : "unknown_sentence";
-    }
-
-    function hash(str) {
-      let h = 0;
-      str = String(str || "");
-
-      for (let i = 0; i < str.length; i++) {
-        h = ((h << 5) - h) + str.charCodeAt(i);
-        h |= 0;
-      }
-
-      return Math.abs(h).toString(36);
-    }
-
-    async function useVideo(payload) {
-      const id = getCurrentSentenceId();
-      await dbSet(VIDEO_PREFIX + id, JSON.stringify(payload));
-
-      applyVideo(payload.videoUrl, payload.posterUrl);
-
-      const row = getCurrentSentenceObject();
-
-      if (row) {
-        row.VideoURL = payload.videoUrl;
-        row.video_url = payload.videoUrl;
-        row.videoUrl = payload.videoUrl;
-        row.VideoPoster = payload.posterUrl;
-        row.video_poster = payload.posterUrl;
-        row.VideoQuery = payload.query;
-        row.video_query = payload.query;
-      }
-
-      if (typeof window.saveCurrentSentence === "function") {
-        try { window.saveCurrentSentence(row); } catch (e) {}
-      }
-
-      if (typeof window.persistCurrentData === "function") {
-        try { window.persistCurrentData(); } catch (e) {}
-      }
-
-      if (typeof window.saveToIndexedDB === "function") {
-        try { window.saveToIndexedDB(); } catch (e) {}
-      }
-
-      setStatus("Video bu cümleye bağlandı.");
-    }
-
-    function applyVideo(videoUrl, posterUrl) {
-      let video = document.querySelector("#sceneMainVideo");
-
-      if (!video) {
-        const wrap = document.createElement("div");
-        wrap.id = "autoSceneVideoWrap";
-
-        video = document.createElement("video");
-        video.id = "sceneMainVideo";
-        video.controls = true;
-        video.playsInline = true;
-
-        wrap.appendChild(video);
-
-        const host =
-          document.querySelector("#sceneMedia") ||
-          document.querySelector("#mediaArea") ||
-          document.querySelector("#videoArea") ||
-          document.querySelector(".scene-media") ||
-          document.querySelector(".media-area") ||
-          document.querySelector("main") ||
-          document.body;
-
-        host.insertBefore(wrap, host.firstChild);
-      }
-
-      video.src = videoUrl;
-      if (posterUrl) video.poster = posterUrl;
-      video.load();
-    }
-
-    async function loadSelectedVideo() {
-      const id = getCurrentSentenceId();
-      const raw = await dbGet(VIDEO_PREFIX + id);
-
-      if (!raw) return;
-
-      try {
-        const payload = JSON.parse(raw);
-        if (payload.videoUrl) {
-          applyVideo(payload.videoUrl, payload.posterUrl || "");
-        }
+        video.muted = true;
+        video.currentTime = 0;
+        video.play().catch(() => {});
       } catch (e) {}
     }
 
-    window.SceneVideoFinder = {
-      open: function () {
-        panel.classList.add("open");
-      },
-      close: function () {
-        panel.classList.remove("open");
-      },
-      buildQuery: buildQueryFromCurrentSentence,
-      loadSelected: loadSelectedVideo
-    };
-
-    setTimeout(loadSelectedVideo, 800);
+    window.speechSynthesis.speak(utterance);
+    injectSubtitle(sentence);
   }
+
+  if (window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = function () {};
+  }
+
 })();
+</script>
 </script>
 </body>
 </html>
