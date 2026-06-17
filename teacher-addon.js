@@ -22,7 +22,7 @@ function injectButton(card){
     const en = (card.querySelector(".card-en")?.textContent || "").trim();
     const tr = (card.querySelector(".card-tr")?.textContent || "").trim();
     if (!en) return;
-    const url = "./teacher.html?s=" + encodeURIComponent(en) + (tr ? "&t=" + encodeURIComponent(tr) : "");
+    const url = "./teacher-chat.html?s=" + encodeURIComponent(en) + (tr ? "&t=" + encodeURIComponent(tr) : "");
     location.href = url;
   };
   actions.appendChild(btn);
