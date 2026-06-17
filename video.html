@@ -1,0 +1,773 @@
+<!-- SAHNE VIDEO BULUCU - PEXELS API ENTEGRASYONU -->
+<style>
+  #sceneVideoFab {
+    position: fixed;
+    right: 18px;
+    bottom: 92px;
+    z-index: 99999;
+    border: none;
+    border-radius: 999px;
+    padding: 13px 18px;
+    font-weight: 800;
+    background: #111827;
+    color: #fff;
+    box-shadow: 0 10px 28px rgba(0,0,0,.28);
+    cursor: pointer;
+  }
+
+  #sceneVideoPanel {
+    position: fixed;
+    right: 16px;
+    bottom: 150px;
+    width: min(430px, calc(100vw - 32px));
+    max-height: 78vh;
+    overflow: auto;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 55px rgba(0,0,0,.30);
+    z-index: 99999;
+    display: none;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  #sceneVideoPanel.open {
+    display: block;
+  }
+
+  .sv-head {
+    padding: 16px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .sv-title {
+    font-size: 17px;
+    font-weight: 900;
+    color: #111827;
+  }
+
+  .sv-close {
+    border: none;
+    background: #f3f4f6;
+    border-radius: 10px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-weight: 800;
+  }
+
+  .sv-body {
+    padding: 14px;
+  }
+
+  .sv-field {
+    margin-bottom: 10px;
+  }
+
+  .sv-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 800;
+    color: #4b5563;
+    margin-bottom: 5px;
+  }
+
+  .sv-input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    padding: 11px 12px;
+    font-size: 14px;
+    outline: none;
+  }
+
+  .sv-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .sv-btn {
+    border: none;
+    border-radius: 12px;
+    padding: 11px 13px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .sv-btn.primary {
+    background: #2563eb;
+    color: #fff;
+    flex: 1;
+  }
+
+  .sv-btn.secondary {
+    background: #eef2ff;
+    color: #1e3a8a;
+  }
+
+  .sv-status {
+    margin: 10px 0;
+    color: #6b7280;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .sv-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .sv-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #f9fafb;
+  }
+
+  .sv-card video {
+    width: 100%;
+    height: 190px;
+    object-fit: cover;
+    display: block;
+    background: #111;
+  }
+
+  .sv-card-inner {
+    padding: 10px;
+  }
+
+  .sv-meta {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+  }
+
+  .sv-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .sv-actions button {
+    flex: 1;
+    border: none;
+    border-radius: 10px;
+    padding: 9px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .sv-use {
+    background: #16a34a;
+    color: white;
+  }
+
+  .sv-open {
+    background: #e5e7eb;
+    color: #111827;
+  }
+
+  .sv-api-warning {
+    background: #fff7ed;
+    color: #9a3412;
+    border: 1px solid #fed7aa;
+    padding: 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 10px;
+  }
+
+  @media (max-width: 640px) {
+    #sceneVideoFab {
+      right: 12px;
+      bottom: 78px;
+      padding: 12px 14px;
+      font-size: 13px;
+    }
+
+    #sceneVideoPanel {
+      left: 10px;
+      right: 10px;
+      bottom: 132px;
+      width: auto;
+      max-height: 76vh;
+      border-radius: 18px;
+    }
+
+    .sv-card video {
+      height: 170px;
+    }
+  }
+</style>
+
+<button id="sceneVideoFab" type="button">🎬 Sahne Videosu Bul</button>
+
+<div id="sceneVideoPanel" aria-hidden="true">
+  <div class="sv-head">
+    <div class="sv-title">Sahne Videosu Bul</div>
+    <button class="sv-close" id="sceneVideoClose" type="button">Kapat</button>
+  </div>
+
+  <div class="sv-body">
+    <div class="sv-api-warning">
+      Pexels API anahtarını bir defa gir. Sonra cümleye göre video arayabilir ve seçtiğin videoyu mevcut cümleye bağlayabilirsin.
+    </div>
+
+    <div class="sv-field">
+      <label class="sv-label">Pexels API Key</label>
+      <input id="svApiKey" class="sv-input" type="password" placeholder="Pexels API anahtarını yaz">
+    </div>
+
+    <div class="sv-field">
+      <label class="sv-label">Arama kelimesi</label>
+      <input id="svQuery" class="sv-input" type="text" placeholder="Örn: sad woman apology, condolence, office meeting">
+    </div>
+
+    <div class="sv-row">
+      <button id="svAutoQuery" class="sv-btn secondary" type="button">Cümleden Üret</button>
+      <button id="svSearch" class="sv-btn primary" type="button">Video Ara</button>
+    </div>
+
+    <div id="svStatus" class="sv-status"></div>
+    <div id="svResults" class="sv-grid"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const LS_KEY = "scene_video_finder_pexels_key_v1";
+  const LS_SELECTED_PREFIX = "scene_video_selected_";
+
+  const fab = document.getElementById("sceneVideoFab");
+  const panel = document.getElementById("sceneVideoPanel");
+  const closeBtn = document.getElementById("sceneVideoClose");
+  const apiInput = document.getElementById("svApiKey");
+  const queryInput = document.getElementById("svQuery");
+  const autoQueryBtn = document.getElementById("svAutoQuery");
+  const searchBtn = document.getElementById("svSearch");
+  const statusEl = document.getElementById("svStatus");
+  const resultsEl = document.getElementById("svResults");
+
+  if (!fab || !panel) return;
+
+  apiInput.value = localStorage.getItem(LS_KEY) || "";
+
+  fab.addEventListener("click", () => {
+    panel.classList.toggle("open");
+    panel.setAttribute("aria-hidden", panel.classList.contains("open") ? "false" : "true");
+
+    if (panel.classList.contains("open")) {
+      const q = buildQueryFromCurrentSentence();
+      if (q && !queryInput.value.trim()) queryInput.value = q;
+    }
+  });
+
+  closeBtn.addEventListener("click", () => {
+    panel.classList.remove("open");
+    panel.setAttribute("aria-hidden", "true");
+  });
+
+  apiInput.addEventListener("change", () => {
+    localStorage.setItem(LS_KEY, apiInput.value.trim());
+  });
+
+  autoQueryBtn.addEventListener("click", () => {
+    queryInput.value = buildQueryFromCurrentSentence() || "";
+  });
+
+  searchBtn.addEventListener("click", async () => {
+    const apiKey = apiInput.value.trim();
+    const query = queryInput.value.trim();
+
+    if (!apiKey) {
+      setStatus("Pexels API key eksik.");
+      return;
+    }
+
+    if (!query) {
+      setStatus("Arama kelimesi boş.");
+      return;
+    }
+
+    localStorage.setItem(LS_KEY, apiKey);
+    await searchPexelsVideos(apiKey, query);
+  });
+
+  function setStatus(msg) {
+    statusEl.textContent = msg || "";
+  }
+
+  function getCurrentSentenceObject() {
+    /*
+      Bu fonksiyon farklı projelerdeki olası aktif cümle değişkenlerini yakalamaya çalışır.
+      Senin projende aktif satır farklı isimdeyse buraya eklenebilir.
+    */
+
+    const candidates = [
+      window.currentSentence,
+      window.activeSentence,
+      window.currentRow,
+      window.activeRow,
+      window.selectedSentence,
+      window.currentItem,
+      window.activeItem
+    ];
+
+    for (const item of candidates) {
+      if (item && typeof item === "object") return item;
+    }
+
+    return null;
+  }
+
+  function readTextFromDom(selectors) {
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el && el.textContent && el.textContent.trim()) {
+        return el.textContent.trim();
+      }
+      if (el && el.value && el.value.trim()) {
+        return el.value.trim();
+      }
+    }
+    return "";
+  }
+
+  function getCurrentEnglishSentence() {
+    const row = getCurrentSentenceObject();
+
+    if (row) {
+      return (
+        row.sentence_en ||
+        row.SentenceEN ||
+        row.SENTENCEEN ||
+        row.EnglishSentence ||
+        row.english ||
+        row.English ||
+        row.sentence ||
+        row.Sentence ||
+        ""
+      );
+    }
+
+    return readTextFromDom([
+      "#sentenceEn",
+      "#currentSentenceEn",
+      "#englishSentence",
+      ".sentence-en",
+      ".english-sentence",
+      "[data-sentence-en]"
+    ]);
+  }
+
+  function getCurrentTurkishSentence() {
+    const row = getCurrentSentenceObject();
+
+    if (row) {
+      return (
+        row.sentence_tr ||
+        row.SentenceTR ||
+        row.SENTENCETR ||
+        row.TurkishSentence ||
+        row.turkish ||
+        row.Turkish ||
+        ""
+      );
+    }
+
+    return readTextFromDom([
+      "#sentenceTr",
+      "#currentSentenceTr",
+      "#turkishSentence",
+      ".sentence-tr",
+      ".turkish-sentence",
+      "[data-sentence-tr]"
+    ]);
+  }
+
+  function getCurrentScene() {
+    const row = getCurrentSentenceObject();
+
+    if (row) {
+      return (
+        row.scene ||
+        row.Scene ||
+        row.Sahne ||
+        row.category ||
+        row.Category ||
+        row.Kategori ||
+        row.topic ||
+        row.Topic ||
+        ""
+      );
+    }
+
+    return readTextFromDom([
+      "#sceneName",
+      "#categoryName",
+      ".scene-name",
+      ".category-name",
+      "[data-scene]",
+      "[data-category]"
+    ]);
+  }
+
+  function buildQueryFromCurrentSentence() {
+    const en = getCurrentEnglishSentence();
+    const tr = getCurrentTurkishSentence();
+    const scene = getCurrentScene();
+
+    const text = `${scene} ${en} ${tr}`.toLowerCase();
+
+    /*
+      Buradaki amaç cümleyi birebir aramak değil,
+      sahneyi anlatan İngilizce video arama kelimeleri üretmek.
+    */
+
+    const rules = [
+      {
+        test: /loss|condolence|sorry for your loss|başsağlığı|vefat|kayıp|ölüm/,
+        query: "sad woman condolence sympathy sorry loss"
+      },
+      {
+        test: /restaurant|menu|waiter|waitress|order|restoran|garson|sipariş|menü/,
+        query: "restaurant customer waiter ordering food"
+      },
+      {
+        test: /airport|flight|passport|luggage|uçak|havaalanı|pasaport|valiz/,
+        query: "airport traveler passport luggage conversation"
+      },
+      {
+        test: /hotel|reservation|check in|check-in|otel|rezervasyon/,
+        query: "hotel reception check in guest"
+      },
+      {
+        test: /meeting|office|manager|presentation|toplantı|ofis|müdür|sunum/,
+        query: "office meeting business conversation"
+      },
+      {
+        test: /doctor|hospital|pain|medicine|doktor|hastane|ağrı|ilaç/,
+        query: "doctor patient hospital conversation"
+      },
+      {
+        test: /shopping|price|buy|expensive|alışveriş|fiyat|satın|pahalı/,
+        query: "shopping customer store conversation"
+      },
+      {
+        test: /phone|call|message|telefon|arama|mesaj/,
+        query: "person talking on phone conversation"
+      },
+      {
+        test: /apologize|apology|sorry|özür/,
+        query: "person apologizing emotional conversation"
+      },
+      {
+        test: /thank|thanks|appreciate|teşekkür/,
+        query: "person saying thank you conversation"
+      }
+    ];
+
+    for (const rule of rules) {
+      if (rule.test.test(text)) return rule.query;
+    }
+
+    const cleaned = en
+      .replace(/[^\w\s']/g, " ")
+      .replace(/\b(i|am|is|are|was|were|do|does|did|the|a|an|to|for|of|in|on|at|you|your|my|we|they|he|she|it)\b/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (scene && cleaned) return `${scene} ${cleaned} conversation`;
+    if (cleaned) return `${cleaned} conversation`;
+    if (scene) return `${scene} conversation`;
+
+    return "english conversation real life";
+  }
+
+  async function searchPexelsVideos(apiKey, query) {
+    setStatus("Videolar aranıyor...");
+    resultsEl.innerHTML = "";
+
+    const url = new URL("https://api.pexels.com/videos/search");
+    url.searchParams.set("query", query);
+    url.searchParams.set("per_page", "8");
+    url.searchParams.set("orientation", "landscape");
+
+    try {
+      const res = await fetch(url.toString(), {
+        headers: {
+          Authorization: apiKey
+        }
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error("Pexels API hatası: " + res.status + " " + txt);
+      }
+
+      const data = await res.json();
+      const videos = Array.isArray(data.videos) ? data.videos : [];
+
+      if (!videos.length) {
+        setStatus("Uygun video bulunamadı. Daha genel bir arama dene.");
+        return;
+      }
+
+      setStatus(videos.length + " video bulundu. Beğendiğini seçebilirsin.");
+      renderVideos(videos);
+
+    } catch (err) {
+      console.error(err);
+      setStatus("Video arama sırasında hata oluştu: " + err.message);
+    }
+  }
+
+  function pickBestVideoFile(video) {
+    const files = Array.isArray(video.video_files) ? video.video_files : [];
+
+    const mp4s = files
+      .filter(f => f.file_type === "video/mp4" && f.link)
+      .sort((a, b) => {
+        const aw = a.width || 0;
+        const bw = b.width || 0;
+        return Math.abs(1280 - aw) - Math.abs(1280 - bw);
+      });
+
+    return mp4s[0] || files[0] || null;
+  }
+
+  function renderVideos(videos) {
+    resultsEl.innerHTML = "";
+
+    videos.forEach(video => {
+      const file = pickBestVideoFile(video);
+      if (!file) return;
+
+      const card = document.createElement("div");
+      card.className = "sv-card";
+
+      const vid = document.createElement("video");
+      vid.src = file.link;
+      vid.controls = true;
+      vid.muted = true;
+      vid.playsInline = true;
+      vid.preload = "metadata";
+      if (video.image) vid.poster = video.image;
+
+      const inner = document.createElement("div");
+      inner.className = "sv-card-inner";
+
+      const meta = document.createElement("div");
+      meta.className = "sv-meta";
+      meta.textContent = `Pexels video #${video.id} — ${video.width || ""}x${video.height || ""}`;
+
+      const actions = document.createElement("div");
+      actions.className = "sv-actions";
+
+      const useBtn = document.createElement("button");
+      useBtn.className = "sv-use";
+      useBtn.type = "button";
+      useBtn.textContent = "Bu Videoyu Kullan";
+      useBtn.addEventListener("click", () => {
+        useVideoForCurrentSentence({
+          source: "pexels",
+          id: video.id,
+          pageUrl: video.url,
+          videoUrl: file.link,
+          posterUrl: video.image || "",
+          width: file.width || video.width || "",
+          height: file.height || video.height || "",
+          query: queryInput.value.trim()
+        });
+      });
+
+      const openBtn = document.createElement("button");
+      openBtn.className = "sv-open";
+      openBtn.type = "button";
+      openBtn.textContent = "Kaynağı Aç";
+      openBtn.addEventListener("click", () => {
+        window.open(video.url, "_blank", "noopener,noreferrer");
+      });
+
+      actions.appendChild(useBtn);
+      actions.appendChild(openBtn);
+
+      inner.appendChild(meta);
+      inner.appendChild(actions);
+
+      card.appendChild(vid);
+      card.appendChild(inner);
+
+      resultsEl.appendChild(card);
+    });
+  }
+
+  function getCurrentSentenceId() {
+    const row = getCurrentSentenceObject();
+
+    if (row) {
+      return (
+        row.id ||
+        row.ID ||
+        row.sentence_id ||
+        row.SentenceID ||
+        row.No ||
+        row.no ||
+        ""
+      );
+    }
+
+    const el = document.querySelector("[data-sentence-id]");
+    if (el) return el.getAttribute("data-sentence-id");
+
+    const en = getCurrentEnglishSentence();
+    return en ? "sentence_" + simpleHash(en) : "unknown_" + Date.now();
+  }
+
+  function simpleHash(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+      h = ((h << 5) - h) + str.charCodeAt(i);
+      h |= 0;
+    }
+    return Math.abs(h).toString(36);
+  }
+
+  function useVideoForCurrentSentence(payload) {
+    const sentenceId = getCurrentSentenceId();
+    const key = LS_SELECTED_PREFIX + sentenceId;
+
+    localStorage.setItem(key, JSON.stringify(payload));
+
+    const row = getCurrentSentenceObject();
+    if (row) {
+      row.video_url = payload.videoUrl;
+      row.videoUrl = payload.videoUrl;
+      row.video_source = payload.source;
+      row.video_poster = payload.posterUrl;
+      row.video_page_url = payload.pageUrl;
+    }
+
+    applyVideoToScreen(payload.videoUrl, payload.posterUrl);
+
+    /*
+      Projende özel kayıt fonksiyonları varsa otomatik çağırmaya çalışır.
+      Yoksa localStorage içinde saklar.
+    */
+    if (typeof window.saveCurrentSentence === "function") {
+      try { window.saveCurrentSentence(row); } catch (e) { console.warn(e); }
+    }
+
+    if (typeof window.persistCurrentData === "function") {
+      try { window.persistCurrentData(); } catch (e) { console.warn(e); }
+    }
+
+    if (typeof window.saveToIndexedDB === "function") {
+      try { window.saveToIndexedDB(); } catch (e) { console.warn(e); }
+    }
+
+    setStatus("Video bu cümleye bağlandı.");
+  }
+
+  function applyVideoToScreen(videoUrl, posterUrl) {
+    /*
+      Mevcut ekranda video alanı varsa onu kullanır.
+      Yoksa sayfanın üstüne otomatik sahne video alanı ekler.
+    */
+
+    let video =
+      document.querySelector("#sceneMainVideo") ||
+      document.querySelector("#mainSceneVideo") ||
+      document.querySelector(".scene-video video") ||
+      document.querySelector("[data-main-video]");
+
+    if (!video) {
+      const host =
+        document.querySelector("#sceneMedia") ||
+        document.querySelector("#mediaArea") ||
+        document.querySelector(".scene-media") ||
+        document.querySelector(".main-card") ||
+        document.body;
+
+      const wrap = document.createElement("div");
+      wrap.id = "autoSceneVideoWrap";
+      wrap.style.cssText = `
+        width: min(960px, calc(100vw - 24px));
+        margin: 12px auto;
+        border-radius: 22px;
+        overflow: hidden;
+        background: #111;
+        box-shadow: 0 14px 42px rgba(0,0,0,.22);
+      `;
+
+      video = document.createElement("video");
+      video.id = "sceneMainVideo";
+      video.controls = true;
+      video.playsInline = true;
+      video.style.cssText = `
+        display: block;
+        width: 100%;
+        max-height: 58vh;
+        object-fit: cover;
+        background: #111;
+      `;
+
+      wrap.appendChild(video);
+
+      if (host === document.body) {
+        document.body.insertBefore(wrap, document.body.firstChild);
+      } else {
+        host.prepend(wrap);
+      }
+    }
+
+    video.src = videoUrl;
+    if (posterUrl) video.poster = posterUrl;
+    video.load();
+  }
+
+  function loadSelectedVideoForCurrentSentence() {
+    const sentenceId = getCurrentSentenceId();
+    const key = LS_SELECTED_PREFIX + sentenceId;
+    const raw = localStorage.getItem(key);
+
+    if (!raw) return;
+
+    try {
+      const payload = JSON.parse(raw);
+      if (payload && payload.videoUrl) {
+        applyVideoToScreen(payload.videoUrl, payload.posterUrl || "");
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+
+  /*
+    Dışarıdan da kullanılabilsin.
+  */
+  window.SceneVideoFinder = {
+    open: function () {
+      panel.classList.add("open");
+      panel.setAttribute("aria-hidden", "false");
+      queryInput.value = buildQueryFromCurrentSentence();
+    },
+    buildQuery: buildQueryFromCurrentSentence,
+    loadSelected: loadSelectedVideoForCurrentSentence,
+    applyVideo: applyVideoToScreen
+  };
+
+  /*
+    Sayfa açılınca daha önce seçilmiş video varsa göster.
+  */
+  setTimeout(loadSelectedVideoForCurrentSentence, 600);
+
+})();
+</script>
