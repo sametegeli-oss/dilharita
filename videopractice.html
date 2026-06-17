@@ -513,7 +513,19 @@ async function checkEnglish(heard,mode,preScore,confidence){
   State.srs[s.id]=next;
   showPronunciationResult(score,diff,heard,score>=72);
 }
+function clearVideoStatus(){
+  const el=document.getElementById("videoStatus");
+  if(!el)return;
+  el.textContent="";
+  el.classList.add("hidden");
+}
+function hideFeedback(){
+  const fb=document.getElementById("feedback");
+  if(fb) fb.classList.add("hidden");
+  clearVideoStatus();
+}
 function showPronunciationResult(score,diff,heard,ok){
+  clearVideoStatus();
   const fb=document.getElementById("feedback");
   if(!fb)return;
   fb.className="feedback pronunciation-only "+(ok?"ok":"bad");
@@ -522,15 +534,16 @@ function showPronunciationResult(score,diff,heard,ok){
   const b=document.getElementById("ownVoiceReplayBtn");
   if(b) b.onclick=playOwnVoice;
   fb.classList.remove("hidden");
-  setTimeout(()=>fb.classList.add("hidden"),ok?11000:13000);
+  setTimeout(hideFeedback,ok?11000:13000);
 }
 function showFeedback(title,html,score,ok){
+  clearVideoStatus();
   const fb=document.getElementById("feedback");
   if(!fb)return;
   fb.className="feedback "+(ok?"ok":"bad");
   fb.innerHTML=`<div class="fb-title">${ok?"✅":"🎯"} ${esc(title)} <span class="score">${score||0}%</span></div>${html}`;
   fb.classList.remove("hidden");
-  setTimeout(()=>fb.classList.add("hidden"),ok?7000:9000);
+  setTimeout(hideFeedback,ok?7000:9000);
 }
 function openApiSheet(force){const old=document.getElementById("apiSheet");if(old)old.remove();const sheet=document.createElement("div");sheet.className="api-sheet";sheet.id="apiSheet";sheet.innerHTML=`<div class="api-card"><h2>Pexels API Key</h2><p>Video otomatik gelsin diye Pexels API anahtarını bir defa kaydet. Anahtar IndexedDB'de tutulur; HTML içine yazılmaz.</p><input id="apiInput" type="password" placeholder="Pexels API anahtarını yaz"/><div class="api-actions"><button class="btn primary" id="apiSave">Kaydet ve videoyu getir</button><button class="btn" id="apiClose">Kapat</button><button class="btn red" id="apiDelete">Sil</button></div><p id="apiMsg" style="min-height:20px;font-weight:800;color:#2563eb"></p></div>`;document.body.appendChild(sheet);kvGet(API_KEY).then(k=>{if(k)document.getElementById("apiInput").value=k});document.getElementById("apiClose").onclick=()=>{if(!force)sheet.remove();else sheet.remove()};document.getElementById("apiDelete").onclick=async()=>{await kvDel(API_KEY);document.getElementById("apiInput").value="";document.getElementById("apiMsg").textContent="API key silindi."};document.getElementById("apiSave").onclick=async()=>{const key=document.getElementById("apiInput").value.trim();if(!key){document.getElementById("apiMsg").textContent="API key boş.";return}await kvSet(API_KEY,key);document.getElementById("apiMsg").textContent="Kaydedildi.";sheet.remove();if(currentSentence())autoLoadVideo(currentSentence())};sheet.onclick=e=>{if(e.target===sheet&&!force)sheet.remove()}}
 function hash(str){let h=0;str=String(str||"");for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h|=0}return Math.abs(h).toString(36)}
