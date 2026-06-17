@@ -80,7 +80,47 @@ function toggleTranslation(){State.showTR=!State.showTR;const p=document.getElem
 function speakEnglish(text){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="en-US";u.rate=.92;u.pitch=1;u.volume=1;const voice=pickVoice("en");if(voice)u.voice=voice;speechSynthesis.speak(u)}catch{}}
 function speakTurkish(text){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="tr-TR";u.rate=.95;u.volume=1;const voice=pickVoice("tr");if(voice)u.voice=voice;speechSynthesis.speak(u)}catch{}}
 function pickVoice(lang){const voices=speechSynthesis.getVoices()||[];if(lang==="tr")return voices.find(v=>/^tr/i.test(v.lang))||null;return voices.find(v=>/^en-US/i.test(v.lang)&&/Google|Jenny|Aria|Zira|Samantha|Natural/i.test(v.name))||voices.find(v=>/^en/i.test(v.lang))||null}
-function startTurkishCheck(){const s=currentSentence();if(!State.showTR)toggleTranslation();speakTurkish(s.tr);if(!STT){showFeedback("Mikrofon desteklenmiyor",`Tarayıcı ses tanımayı desteklemiyor. Alttaki kutuya Türkçe cümleyi yazıp kontrol edebilirsin.`,0,false);document.getElementById("fallbackInput").classList.remove("hidden");return}if(State.listening)return;let rec;try{rec=new STT()}catch{return}rec.lang="tr-TR";rec.interimResults=false;rec.maxAlternatives=1;const mic=document.getElementById("micBtn"),cap=document.getElementById("micCaption");rec.onstart=()=>{State.listening=true;mic.classList.add("listening");mic.textContent="●";cap.textContent="Dinleniyor… Türkçeyi oku";showStatus("SentenceTR okunuyor, seni dinliyorum…")};rec.onresult=e=>{const heard=e.results[0][0].transcript||"";checkTurkish(heard,"voice")};rec.onerror=()=>{showStatus("Mikrofon hatası. İzinleri kontrol et veya yazı kutusunu kullan.");document.getElementById("fallbackInput").classList.remove("hidden")};rec.onend=()=>{State.listening=false;mic.classList.remove("listening");mic.textContent="🎙️";cap.textContent="Tıkla ve Türkçeyi oku"};try{rec.start()}catch{}}
+function startTurkishCheck(){const s=currentSentence();
+  // ÖNEMLİ: Mikrofon kontrolünde SentenceTR artık program tarafından okunmaz.
+  // Kullanıcının kendi sesi alınır ve SentenceTR ile karşılaştırılır.
+  try{ speechSynthesis.cancel(); }catch{}
+  if(!State.showTR) toggleTranslation();
+  if(!STT){
+    showFeedback("Mikrofon desteklenmiyor",`Tarayıcı ses tanımayı desteklemiyor. Alttaki kutuya Türkçe cümleyi yazıp kontrol edebilirsin.`,0,false);
+    document.getElementById("fallbackInput").classList.remove("hidden");
+    return;
+  }
+  if(State.listening) return;
+  let rec;
+  try{ rec=new STT(); }catch{return}
+  rec.lang="tr-TR";
+  rec.interimResults=false;
+  rec.maxAlternatives=1;
+  const mic=document.getElementById("micBtn"),cap=document.getElementById("micCaption");
+  rec.onstart=()=>{
+    State.listening=true;
+    mic.classList.add("listening");
+    mic.textContent="●";
+    cap.textContent="Dinleniyor… Türkçeyi sen oku";
+    showStatus("Seni dinliyorum… ekrandaki SentenceTR cümlesini kendin oku.");
+  };
+  rec.onresult=e=>{
+    const heard=e.results[0][0].transcript||"";
+    checkTurkish(heard,"voice");
+  };
+  rec.onerror=()=>{
+    showStatus("Mikrofon hatası. İzinleri kontrol et veya yazı kutusunu kullan.");
+    document.getElementById("fallbackInput").classList.remove("hidden");
+  };
+  rec.onend=()=>{
+    State.listening=false;
+    mic.classList.remove("listening");
+    mic.textContent="🎙️";
+    cap.textContent="Tıkla ve Türkçeyi oku";
+  };
+  // speechSynthesis.cancel() sonrası tarayıcının sesi mikrofona karışmasın diye çok kısa bekletiyoruz.
+  setTimeout(()=>{ try{ rec.start(); }catch{} },180);
+}
 async function checkTurkish(heard,mode){const s=currentSentence();heard=cleanText(heard);if(!heard){showFeedback("Cümle alınamadı","Ses veya yazı algılanamadı.",0,false);return}const score=similarity(heard,s.tr);let grade="hard";if(score>=92)grade="easy";else if(score>=72)grade="good";const next=srsGrade(await srsGet(s.id),grade);await srsSet(s.id,next);State.srs[s.id]=next;showFeedback(score>=72?"Güzel okudun":"Tekrar deneyelim",`<div class="fb-line"><b>Senin okuduğun:</b> ${esc(heard)}</div><div class="fb-line"><b>SentenceTR:</b> ${esc(s.tr)}</div>`,score,score>=72)}
 function showFeedback(title,html,score,ok){const fb=document.getElementById("feedback");if(!fb)return;fb.className="feedback "+(ok?"ok":"bad");fb.innerHTML=`<div class="fb-title">${ok?"✅":"🎯"} ${esc(title)} <span class="score">${score||0}%</span></div>${html}<div class="fb-line" style="margin-top:8px">İstersen tekrar mikrofonla oku veya <b>Sıradaki</b> cümleye geç.</div>`;fb.classList.remove("hidden");setTimeout(()=>fb.classList.add("hidden"),ok?7000:9000)}
 function openApiSheet(force){const old=document.getElementById("apiSheet");if(old)old.remove();const sheet=document.createElement("div");sheet.className="api-sheet";sheet.id="apiSheet";sheet.innerHTML=`<div class="api-card"><h2>Pexels API Key</h2><p>Video otomatik gelsin diye Pexels API anahtarını bir defa kaydet. Anahtar IndexedDB'de tutulur; HTML içine yazılmaz.</p><input id="apiInput" type="password" placeholder="Pexels API anahtarını yaz"/><div class="api-actions"><button class="btn primary" id="apiSave">Kaydet ve videoyu getir</button><button class="btn" id="apiClose">Kapat</button><button class="btn red" id="apiDelete">Sil</button></div><p id="apiMsg" style="min-height:20px;font-weight:800;color:#2563eb"></p></div>`;document.body.appendChild(sheet);kvGet(API_KEY).then(k=>{if(k)document.getElementById("apiInput").value=k});document.getElementById("apiClose").onclick=()=>{if(!force)sheet.remove();else sheet.remove()};document.getElementById("apiDelete").onclick=async()=>{await kvDel(API_KEY);document.getElementById("apiInput").value="";document.getElementById("apiMsg").textContent="API key silindi."};document.getElementById("apiSave").onclick=async()=>{const key=document.getElementById("apiInput").value.trim();if(!key){document.getElementById("apiMsg").textContent="API key boş.";return}await kvSet(API_KEY,key);document.getElementById("apiMsg").textContent="Kaydedildi.";sheet.remove();if(currentSentence())autoLoadVideo(currentSentence())};sheet.onclick=e=>{if(e.target===sheet&&!force)sheet.remove()}}
