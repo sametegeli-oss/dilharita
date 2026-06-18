@@ -1229,12 +1229,82 @@ async function startDueSession(){
    ============================================================ */
 function currentSentence(){ return State.queue[State.idx]; }
 
+/* ---- Öğretmen dönüş köprüsü: practice ekranındaki yeri kaydet / geri yükle ---- */
+const TEACHER_RETURN_LS = "practiceTeacherReturnState";
+
+function saveTeacherReturnState(){
+  try{
+    const data = {
+      ts: Date.now(),
+      mode: State.mode || "produce",
+      idx: State.idx || 0,
+      activeModule: State.activeModule || "",
+      sessionTitle: State.sessionTitle || "",
+      queueIds: (State.queue || []).map(s => s && s.id).filter(id => id !== undefined && id !== null && id !== "")
+    };
+    localStorage.setItem(TEACHER_RETURN_LS, JSON.stringify(data));
+  }catch{}
+
+  // Sayfa tamamen yeniden yüklenirse de modül içi kaldığı yer kaybolmasın.
+  if (State.activeModule){
+    try{ savePos(State.activeModule, State.idx, State.queue.length); }catch{}
+  }
+}
+
+function loadTeacherReturnState(){
+  try{
+    const data = JSON.parse(localStorage.getItem(TEACHER_RETURN_LS) || "null");
+    if (!data || !data.ts) return null;
+    if (Date.now() - data.ts > 24 * 60 * 60 * 1000) return null;
+    return data;
+  }catch{ return null; }
+}
+
+function shouldRestoreTeacherReturn(){
+  try{ return new URLSearchParams(location.search).get("fromTeacher") === "1"; }
+  catch{ return false; }
+}
+
+async function restoreTeacherReturnIfNeeded(){
+  if (!shouldRestoreTeacherReturn()) return false;
+  const saved = loadTeacherReturnState();
+  if (!saved) return false;
+
+  State.mode = saved.mode === "listen" ? "listen" : "produce";
+  State.srs = await mAll();
+  State.idx = Math.max(0, Number(saved.idx) || 0);
+  State.activeModule = saved.activeModule || null;
+  State.sessionTitle = saved.sessionTitle || (State.activeModule ? State.activeModule.replace(/^[A-C]\d-M\d+\s*/, "") : "Tekrar oturumu");
+
+  const byId = new Map((State.sentences || []).map(s => [String(s.id), s]));
+  const ids = Array.isArray(saved.queueIds) ? saved.queueIds : [];
+  const restoredQueue = ids.map(id => byId.get(String(id))).filter(Boolean);
+
+  if (restoredQueue.length){
+    State.queue = restoredQueue;
+    State.idx = Math.min(State.idx, State.queue.length - 1);
+    renderCard();
+    try{ history.replaceState(null, "", "./practice.html"); }catch{}
+    return true;
+  }
+
+  if (State.activeModule && State.byModule && State.byModule.has(State.activeModule)){
+    await startModuleSession(State.activeModule, State.idx);
+    try{ history.replaceState(null, "", "./practice.html"); }catch{}
+    return true;
+  }
+  return false;
+}
+
 function openTeacherForSentence(s){
   const en = ((s && s.en) || "").trim();
   if (!en) return;
   const tr = ((s && s.tr) || "").trim();
+  saveTeacherReturnState();
+  const back = "./practice.html?fromTeacher=1";
   const url = "./teacher-chat.html?s=" + encodeURIComponent(en) +
-    (tr ? "&t=" + encodeURIComponent(tr) : "");
+    (tr ? "&t=" + encodeURIComponent(tr) : "") +
+    "&return=" + encodeURIComponent(back);
   location.href = url;
 }
 
@@ -1667,7 +1737,8 @@ async function boot(){
   renderLoading();
   try{
     await loadData();
-    renderPicker();
+    const restored = await restoreTeacherReturnIfNeeded();
+    if (!restored) renderPicker();
     setupCloud();
   }catch(e){
     renderError(e.message || String(e));

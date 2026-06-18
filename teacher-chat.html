@@ -220,14 +220,29 @@ function renderRich(text){
 }
 
 const root = document.getElementById("root");
-const State = { en:"", tr:"", history:[], muted:false };
+const State = { en:"", tr:"", returnUrl:"", history:[], muted:false };
 const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 /* ---------- URL parametreleri ---------- */
+function safeReturnUrl(raw){
+  raw = String(raw || "").trim();
+  if (!raw) return "";
+  try{
+    const u = new URL(raw, location.href);
+    if (u.origin !== location.origin) return "";
+    const currentDir = location.pathname.replace(/[^\/]*$/, "");
+    if (!u.pathname.startsWith(currentDir)) return "";
+    return "./" + u.pathname.slice(currentDir.length) + u.search + u.hash;
+  }catch{
+    return "";
+  }
+}
+
 function parseParams(){
   const p = new URLSearchParams(location.search);
   State.en = (p.get("s")||"").trim();
   State.tr = (p.get("t")||"").trim();
+  State.returnUrl = safeReturnUrl(p.get("return") || p.get("back") || "");
 }
 
 /* ============================================================
@@ -236,7 +251,7 @@ function parseParams(){
 function render(){
   root.innerHTML = `
   <div class="top">
-    <a href="./index.html" class="back" title="Geri">←</a>
+    <a href="${esc(State.returnUrl || './index.html')}" class="back" id="backLink" title="Geri">←</a>
     <div class="ava" id="ava">🎓</div>
     <div class="tinfo"><h1>İngilizce Öğretmeni</h1><p>Cümle analizi · sohbet</p></div>
     <button class="prompt-btn" id="muteBtn" title="Sesi aç/kapa">🔊</button>
@@ -255,6 +270,14 @@ function render(){
     ${STT ? `<button class="mic-fab" id="micFab" title="Konuş">🎙️</button>` : ""}
     <button class="send-fab" id="sendFab" title="Gönder">➤</button>
   </div>`;
+  const backLink = document.getElementById("backLink");
+  if (backLink){
+    backLink.onclick = e => {
+      stopSpeak();
+      if (State.returnUrl) return;
+      if (history.length > 1){ e.preventDefault(); history.back(); }
+    };
+  }
   document.getElementById("promptBtn").onclick = openPromptSheet;
   document.getElementById("playBtn").onclick = () => speakEN(State.en);
   const muteBtn = document.getElementById("muteBtn");
