@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#0b1120" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+<title>Kütüphane · Sentence Mode</title>
+<style>
+:root{
+  --bg:#0b1120; --bg-soft:#0f172a; --surface:#131c30; --surface-2:#1a2540;
+  --border:#ffffff16; --text:#e8eef7; --muted:#93a4bd;
+  --accent:#60a5fa; --accent-strong:#2563eb; --teacher:#34d399;
+  --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; --shadow:0 22px 70px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{min-height:100%;margin:0;background:radial-gradient(1100px 600px at 50% -10%,#1a2540 0%,transparent 60%),var(--bg);color:var(--text);font-family:Nunito,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font-family:inherit}.hidden{display:none!important}
+.wrap{max-width:880px;margin:0 auto;min-height:100vh;padding:16px;display:flex;flex-direction:column;gap:16px}
+.top{display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20;background:linear-gradient(180deg,var(--bg) 65%,transparent);padding:4px 0 10px}.back{width:42px;height:42px;border-radius:13px;background:var(--surface);border:1px solid var(--border);color:var(--text);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:20px;flex-shrink:0}.title{flex:1;min-width:0}.title h1{font-family:Fraunces,serif;margin:0;font-size:25px;font-weight:600;letter-spacing:-.4px;background:linear-gradient(120deg,#60a5fa,#a78bfa,#34d399);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}.title p{margin:2px 0 0;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pill{background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--muted);font-weight:900;padding:7px 12px;font-size:12px;white-space:nowrap}
+.hero{background:linear-gradient(135deg,#172554,#13223b);border:1px solid var(--border);border-radius:22px;padding:20px;box-shadow:var(--shadow)}.hero h2{font-family:Fraunces,serif;margin:0 0 7px;font-size:30px;font-weight:600}.hero p{margin:0;color:#cbd5e1;line-height:1.55;max-width:680px}.hero b{color:#fff}
+.controls{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.search{display:flex;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:8px}.search input{flex:1;background:transparent;border:0;color:var(--text);font-size:15px;font-weight:800;outline:0;min-width:0}.btn{border:1px solid var(--border);background:var(--surface-2);color:var(--text);border-radius:13px;padding:11px 14px;font-size:14px;font-weight:900;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:7px}.btn:active{transform:scale(.97)}.btn.primary{background:var(--accent-strong);border-color:transparent;color:#fff}.btn.green{background:#16a34a;border-color:transparent;color:#fff}.btn.teacher{background:linear-gradient(135deg,#34d399,#16a34a);border-color:transparent;color:#fff}.btn.warn{background:#d97706;border-color:transparent;color:#fff}.btn.ghost{background:#00000030}.btn:disabled{opacity:.45;cursor:default}.level-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}.lvl{border:1px solid var(--border);background:var(--surface);color:var(--muted);border-radius:13px;padding:10px 14px;font-weight:950;cursor:pointer;min-width:56px}.lvl.active{background:var(--accent-strong);color:#fff;border-color:transparent}.lvl small{display:block;font-weight:800;font-size:10px;opacity:.8;margin-top:2px}
+.state{min-height:280px;background:var(--surface);border:1px solid var(--border);border-radius:20px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;color:var(--muted);padding:24px}.state h2{font-family:Fraunces,serif;color:var(--text);font-size:24px;margin:0}.state p{margin:0;max-width:520px;line-height:1.6}.spinner{width:34px;height:34px;border-radius:50%;border:3px solid #ffffff20;border-top-color:var(--accent);animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.books{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.book{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:15px;display:flex;flex-direction:column;gap:10px;min-height:210px}.book:hover{border-color:#60a5fa88;background:#17223a}.book-title{font-family:Fraunces,serif;font-size:22px;line-height:1.2;font-weight:600}.book-author{color:var(--muted);font-size:13px}.book-meta{display:flex;flex-wrap:wrap;gap:6px}.chip{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:11px;font-weight:900;padding:4px 8px}.chip.lv{background:#2563eb;color:#fff;border-color:transparent}.chip.ok{background:#16a34a28;color:#86efac}.summary{font-size:13px;line-height:1.45;color:#cbd5e1;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}.book .btn{margin-top:auto;width:100%}
+.reader{display:flex;flex-direction:column;gap:14px}.reader-head{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:14px}.reader-line{display:flex;align-items:flex-start;gap:10px}.reader-title{flex:1;min-width:0}.reader-title h2{font-family:Fraunces,serif;margin:0;font-size:25px;font-weight:600;line-height:1.2}.reader-title p{margin:4px 0 0;color:var(--muted);font-size:13px}.prog{height:7px;background:#ffffff12;border-radius:999px;overflow:hidden;margin-top:12px}.prog span{display:block;height:100%;background:linear-gradient(90deg,#60a5fa,#34d399);transition:width .25s}.read-card{background:#f8fafc;color:#111827;border-radius:22px;padding:clamp(20px,4vw,38px);box-shadow:var(--shadow);min-height:330px}.para{font-family:Georgia,'Times New Roman',serif;font-size:clamp(22px,4vw,32px);line-height:1.65}.sent{border-radius:7px;padding:1px 3px;cursor:pointer}.sent:hover{background:#dbeafe}.sent.sel{background:#bfdbfe;box-shadow:0 0 0 2px #60a5fa44}.read-hint{margin-top:18px;border-top:1px solid #e5e7eb;padding-top:12px;color:#64748b;font-size:13px;font-family:Nunito,system-ui,sans-serif}.read-stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.read-stats .chip{background:#e2e8f0;color:#334155;border-color:#cbd5e1}.toolbar{position:sticky;bottom:0;background:linear-gradient(180deg,transparent,var(--bg) 18%);display:grid;grid-template-columns:1fr 1fr 1.2fr 1fr;gap:8px;padding:16px 0 calc(6px + env(safe-area-inset-bottom));z-index:30}.mini-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.source-link{color:#93c5fd;text-decoration:none;font-weight:900;font-size:12px}.empty-note{font-size:13px;color:var(--muted);line-height:1.5;background:#00000024;border:1px dashed var(--border);border-radius:14px;padding:12px;margin-top:4px}
+@media(max-width:680px){.wrap{padding:12px}.controls{grid-template-columns:1fr}.search{flex-direction:column}.search .btn{width:100%}.toolbar{grid-template-columns:1fr 1fr}.reader-line{flex-direction:column}.reader-line .btn{width:100%}.pill{display:none}.hero h2{font-size:26px}.book-title{font-size:20px}}
+</style>
+</head>
+<body>
+<div id="app" class="wrap"></div>
+<script>
+(function(){
+"use strict";
+
+const API = "https://gutendex.com/books";
+const PROXY = "https://api.allorigins.win/raw?url=";
+const STATE_KEY = "sentenceLibraryStateV1";
+const PROGRESS_KEY = "sentenceLibraryProgressV1";
+const LEVELS = ["A1","A2","B1","B2","C1"];
+const PRESETS = {
+  A1:{label:"Kolay", ids:[11339,14838,11,55,2591], search:"children animal fables", topic:"children", max:520},
+  A2:{label:"Hikâye", ids:[11,55,113,45,120], search:"children adventure garden", topic:"children", max:650},
+  B1:{label:"Roman", ids:[113,45,120,1661,74], search:"adventure mystery children", topic:"adventure", max:780},
+  B2:{label:"Klasik", ids:[1342,1260,84,35,98], search:"classic novel", topic:"fiction", max:920},
+  C1:{label:"İleri", ids:[2701,4300,345,76,174], search:"literary classic", topic:"fiction", max:1100}
+};
+const FALLBACK = {
+  A1:[
+    {id:11339,title:"Aesop's Fables",authors:[{name:"Aesop"}],languages:["en"],subjects:["Fables","Animals"],bookshelves:["Children's Literature"],formats:{"text/plain":"https://www.gutenberg.org/cache/epub/11339/pg11339.txt"},download_count:0,summaries:["Short fables and moral stories. Good for sentence-level reading."]},
+    {id:14838,title:"The Tale of Peter Rabbit",authors:[{name:"Beatrix Potter"}],languages:["en"],subjects:["Rabbits -- Juvenile fiction"],bookshelves:["Children's Literature"],formats:{"text/plain":"https://www.gutenberg.org/cache/epub/14838/pg14838.txt"},download_count:0,summaries:["A short children's story with simple events and clear scenes."]}
+  ],
+  A2:[
+    {id:11,title:"Alice's Adventures in Wonderland",authors:[{name:"Lewis Carroll"}],languages:["en"],subjects:["Fantasy","Children's stories"],bookshelves:["Children's Literature"],formats:{"text/plain":"https://www.gutenberg.org/cache/epub/11/pg11.txt"},download_count:0,summaries:["A famous fantasy story. Best read paragraph by paragraph." ]},
+    {id:55,title:"The Wonderful Wizard of Oz",authors:[{name:"L. Frank Baum"}],languages:["en"],subjects:["Fantasy","Children"],bookshelves:["Children's Literature"],formats:{"text/plain":"https://www.gutenberg.org/cache/epub/55/pg55.txt"},download_count:0,summaries:["A classic adventure story with clear scenes and dialogue."]}
+  ],
+  B1:[
+    {id:113,title:"The Secret Garden",authors:[{name:"Frances Hodgson Burnett"}],languages:["en"],subjects:["Gardens","Children"],bookshelves:["Children's Literature"],formats:{"text/plain":"https://www.gutenberg.org/cache/epub/113/pg113.txt"},download_count:0,summaries:["A readable novel for intermediate learners." ]},
+    {id:120,title:"Treasure Island",authors:[{name:"Robert Louis Stevenson"}],languages:["en"],subjects:["Adventure","Pirates"],bookshelves:["Adventure"],formats:{"text/plain":"https://www.gutenberg.org/cache/epub/120/pg120.txt"},download_count:0,summaries:["Adventure novel with narrative paragraphs and dialogue."]}
+  ],
+  B2:[
+    {id:1342,title:"Pride and Prejudice",authors:[{name:"Jane Austen"}],languages:["en"],subjects:["Courtship","England"],bookshelves:["Best Books Ever Listings"],formats:{"text/plain":"https://www.gutenberg.org/cache/epub/1342/pg1342.txt"},download_count:0,summaries:["Classic literary English; suitable for advanced intermediate learners." ]},
+    {id:84,title:"Frankenstein",authors:[{name:"Mary Wollstonecraft Shelley"}],languages:["en"],subjects:["Science fiction","Horror"],bookshelves:["Gothic Fiction"],formats:{"text/plain":"https://www.gutenberg.org/cache/epub/84/pg84.txt"},download_count:0,summaries:["A classic novel with more demanding vocabulary and long sentences."]}
+  ],
+  C1:[
+    {id:2701,title:"Moby-Dick; or, The Whale",authors:[{name:"Herman Melville"}],languages:["en"],subjects:["Whaling","Sea stories"],bookshelves:["Best Books Ever Listings"],formats:{"text/plain":"https://www.gutenberg.org/cache/epub/2701/pg2701.txt"},download_count:0,summaries:["Dense literary language for advanced reading practice." ]},
+    {id:4300,title:"Ulysses",authors:[{name:"James Joyce"}],languages:["en"],subjects:["Modernist fiction"],bookshelves:["Best Books Ever Listings"],formats:{"text/plain":"https://www.gutenberg.org/cache/epub/4300/pg4300.txt"},download_count:0,summaries:["Very advanced literary English." ]}
+  ]
+};
+
+const app = document.getElementById("app");
+const State = { level:"A1", books:[], book:null, paragraphs:[], idx:0, selectedText:"", loading:false, source:"" };
+
+function esc(s){ return String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function authorOf(b){ return (b.authors||[]).map(a=>a.name).filter(Boolean).join(", ") || "Bilinmeyen yazar"; }
+function sourceUrl(b){ return "https://www.gutenberg.org/ebooks/" + encodeURIComponent(b.id||""); }
+function getProgress(){ try{ return JSON.parse(localStorage.getItem(PROGRESS_KEY)||"{}"); }catch{ return {}; } }
+function setProgress(bookId, idx){ const p=getProgress(); p[String(bookId)]={idx,at:Date.now()}; try{ localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); }catch{} }
+function progressFor(bookId){ return getProgress()[String(bookId)] || null; }
+function saveState(){
+  const data = { level:State.level, book:State.book, idx:State.idx, selectedText:State.selectedText, at:Date.now() };
+  try{ localStorage.setItem(STATE_KEY, JSON.stringify(data)); }catch{}
+  if (State.book) setProgress(State.book.id, State.idx);
+}
+function loadSaved(){ try{ return JSON.parse(localStorage.getItem(STATE_KEY)||"{}"); }catch{ return {}; } }
+function qParam(name){ return new URLSearchParams(location.search).get(name)||""; }
+
+async function fetchViaProxy(url, asText){
+  try{
+    const r = await fetch(url, {headers:{"Accept": asText ? "text/plain,*/*" : "application/json,*/*"}});
+    if(!r.ok) throw new Error("http " + r.status);
+    return asText ? await r.text() : await r.json();
+  }catch(firstErr){
+    const r = await fetch(PROXY + encodeURIComponent(url));
+    if(!r.ok) throw firstErr;
+    return asText ? await r.text() : await r.json();
+  }
+}
+
+function topHtml(subtitle){
+  return `<div class="top">
+    <a href="./index.html" class="back" title="Ana sayfa">←</a>
+    <div class="title"><h1>📚 Kütüphane</h1><p>${esc(subtitle||"Seviyene uygun açık kaynak İngilizce kitaplar")}</p></div>
+    <div class="pill">${esc(State.level)} · ${esc(PRESETS[State.level].label)}</div>
+  </div>`;
+}
+function renderShell(inner, subtitle){ app.innerHTML = topHtml(subtitle) + inner; }
+
+function renderHome(){
+  renderShell(`
+    <section class="hero">
+      <h2>Açık kaynak kitap oku</h2>
+      <p>Seviyeni seç, internetten İngilizce açık kaynak kitapları getir, paragraf paragraf oku. Takıldığın cümleyi seçip <b>🎓 Öğretmene Sor</b> ile açıklat.</p>
+    </section>
+    <div class="level-row">${LEVELS.map(l=>`<button class="lvl ${l===State.level?'active':''}" data-level="${l}">${l}<small>${PRESETS[l].label}</small></button>`).join("")}</div>
+    <div class="controls">
+      <div class="search">
+        <input id="searchInput" placeholder="Kitap / yazar ara: Alice, Sherlock, Dickens..." />
+        <button class="btn primary" id="searchBtn">🔎 Ara</button>
+      </div>
+      <button class="btn green" id="levelBtn">✨ Seviyeme göre getir</button>
+    </div>
+    ${continueHtml()}
+    <div id="content">${State.books.length ? booksHtml(State.books) : emptyStateHtml()}</div>
+  `, "Seviyene göre Project Gutenberg kitapları");
+  bindHome();
+}
+function continueHtml(){
+  const saved = loadSaved();
+  if (!saved || !saved.book) return "";
+  return `<div class="empty-note"><b>Kaldığın yer:</b> ${esc(saved.book.title)} · ${Number(saved.idx||0)+1}. bölüm <button class="btn warn" id="continueBtn" style="margin-left:8px;padding:8px 11px">Devam et</button></div>`;
+}
+function emptyStateHtml(){
+  return `<div class="state"><h2>Hazır</h2><p>Önce seviyeni seçip “Seviyeme göre getir” düğmesine bas. Arama kutusundan doğrudan kitap/yazar da arayabilirsin.</p></div>`;
+}
+function bindHome(){
+  document.querySelectorAll(".lvl").forEach(btn=>btn.onclick=()=>{ State.level=btn.dataset.level; saveState(); renderHome(); });
+  const levelBtn = document.getElementById("levelBtn"); if(levelBtn) levelBtn.onclick=()=>loadLevelBooks(State.level);
+  const searchBtn = document.getElementById("searchBtn"); if(searchBtn) searchBtn.onclick=()=>searchBooks();
+  const inp = document.getElementById("searchInput"); if(inp) inp.onkeydown=e=>{ if(e.key==="Enter") searchBooks(); };
+  const cont = document.getElementById("continueBtn"); if(cont) cont.onclick=()=>{ const s=loadSaved(); if(s.book){ State.level=s.level||State.level; loadBook(s.book, Number(s.idx||0)); } };
+  document.querySelectorAll("[data-open-book]").forEach(btn=>btn.onclick=()=>{
+    const id = String(btn.dataset.openBook);
+    const book = State.books.find(b=>String(b.id)===id) || Object.values(FALLBACK).flat().find(b=>String(b.id)===id);
+    if(book){ const p=progressFor(book.id); loadBook(book, p ? p.idx : 0); }
+  });
+}
+
+function levelOfBook(book, fallback){
+  const t = (book.title + " " + (book.subjects||[]).join(" ") + " " + (book.bookshelves||[]).join(" ")).toLowerCase();
+  if (/fable|rabbit|children|fairy|juvenile|nursery|aesop|tale/.test(t)) return fallback || "A2";
+  if (/adventure|garden|island|sherlock|anne|little women/.test(t)) return fallback || "B1";
+  if (/jane austen|pride|frankenstein|time machine|classic|gothic/.test(t)) return fallback || "B2";
+  if (/moby|ulysses|shakespeare|philosophy|poetry/.test(t)) return fallback || "C1";
+  return fallback || State.level;
+}
+function summaryOf(b){ return (b.summaries&&b.summaries[0]) || (b.subjects||[]).slice(0,3).join(" · ") || "Açık kaynak İngilizce okuma metni."; }
+function booksHtml(books){
+  if(!books.length) return `<div class="state"><h2>Sonuç yok</h2><p>Başka bir arama yap veya seviyene göre liste getir.</p></div>`;
+  return `<div class="books">${books.map(b=>{
+    const lv=levelOfBook(b, State.level), p=progressFor(b.id);
+    return `<article class="book">
+      <div class="book-title">${esc(b.title)}</div>
+      <div class="book-author">${esc(authorOf(b))}</div>
+      <div class="book-meta"><span class="chip lv">${esc(lv)}</span><span class="chip ok">Açık kaynak</span>${p?`<span class="chip">${Number(p.idx||0)+1}. bölümden devam</span>`:""}</div>
+      <div class="summary">${esc(summaryOf(b))}</div>
+      <a class="source-link" href="${esc(sourceUrl(b))}" target="_blank" rel="noopener">Project Gutenberg kaynağı ↗</a>
+      <button class="btn primary" data-open-book="${esc(b.id)}">Oku</button>
+    </article>`;
+  }).join("")}</div>`;
+}
+
+async function loadLevelBooks(level){
+  const content = document.getElementById("content");
+  if(content) content.innerHTML = `<div class="state"><div class="spinner"></div><h2>Kitaplar getiriliyor</h2><p>Gutendex üzerinden Project Gutenberg kataloğu taranıyor…</p></div>`;
+  State.loading=true;
+  try{
+    const ids = PRESETS[level].ids.join(",");
+    const data = await fetchViaProxy(`${API}?ids=${encodeURIComponent(ids)}&languages=en&mime_type=text%2F`, false);
+    State.books = normalizeBooks(data.results||[]);
+    if(!State.books.length) State.books = FALLBACK[level] || [];
+  }catch(e){
+    State.books = FALLBACK[level] || [];
+  }finally{
+    State.loading=false; saveState(); renderHome();
+  }
+}
+async function searchBooks(){
+  const inp=document.getElementById("searchInput");
+  const q=(inp&&inp.value||"").trim();
+  if(!q) return loadLevelBooks(State.level);
+  const content = document.getElementById("content");
+  if(content) content.innerHTML = `<div class="state"><div class="spinner"></div><h2>Aranıyor</h2><p>${esc(q)} için açık kaynak kitaplar aranıyor…</p></div>`;
+  try{
+    const data = await fetchViaProxy(`${API}?languages=en&mime_type=text%2F&search=${encodeURIComponent(q)}`, false);
+    State.books = normalizeBooks(data.results||[]).slice(0,24);
+    if(!State.books.length) throw new Error("empty");
+  }catch(e){
+    State.books = Object.values(FALLBACK).flat().filter(b=>(b.title+" "+authorOf(b)).toLowerCase().includes(q.toLowerCase()));
+  }finally{ saveState(); renderHome(); }
+}
+function normalizeBooks(arr){
+  const seen = new Set();
+  return (arr||[]).filter(b=>{
+    if(!b || !b.id || seen.has(b.id)) return false;
+    seen.add(b.id);
+    const hasText = Object.keys(b.formats||{}).some(k=>k.toLowerCase().startsWith("text/plain"));
+    return hasText || b.id;
+  });
+}
+
+function textCandidates(book){
+  const formats = book.formats || {};
+  const direct = Object.entries(formats)
+    .filter(([k,v])=>/^text\/plain/i.test(k) && !/\.zip($|\?)/i.test(v||""))
+    .map(([,v])=>v);
+  const id = book.id;
+  return [...direct,
+    `https://www.gutenberg.org/cache/epub/${id}/pg${id}.txt`,
+    `https://www.gutenberg.org/files/${id}/${id}-0.txt`,
+    `https://www.gutenberg.org/files/${id}/${id}.txt`
+  ].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
+}
+async function fetchBookText(book){
+  let last=null;
+  for(const url of textCandidates(book)){
+    try{
+      const text = await fetchViaProxy(url, true);
+      if(text && text.length>1000) return text;
+    }catch(e){ last=e; }
+  }
+  throw last || new Error("text not found");
+}
+function cleanBookText(text){
+  let t = String(text||"").replace(/\r/g,"");
+  const startPatterns = [/\*\*\*\s*START OF (?:THE|THIS) PROJECT GUTENBERG EBOOK[^\n]*\*\*\*/i,/START OF (?:THE|THIS) PROJECT GUTENBERG EBOOK/i];
+  for(const re of startPatterns){ const m=t.search(re); if(m>=0){ t=t.slice(m); t=t.replace(re,""); break; } }
+  const endPatterns = [/\*\*\*\s*END OF (?:THE|THIS) PROJECT GUTENBERG EBOOK[\s\S]*$/i,/END OF (?:THE|THIS) PROJECT GUTENBERG EBOOK[\s\S]*$/i];
+  for(const re of endPatterns){ if(re.test(t)){ t=t.replace(re,""); break; } }
+  t = t.replace(/\n[ \t]+/g,"\n").replace(/[ \t]{2,}/g," ").replace(/\n{3,}/g,"\n\n").trim();
+  return t;
+}
+function splitText(text){
+  const max = PRESETS[State.level].max || 760;
+  const raw = cleanBookText(text).split(/\n\s*\n+/).map(p=>p.replace(/\s*\n\s*/g," ").trim()).filter(Boolean);
+  const out=[];
+  for(const p of raw){
+    if(/^chapter\s+[ivxlcdm\d]+\.?$/i.test(p)) continue;
+    if(/^(contents|index|preface|bibliography)$/i.test(p.trim())) continue;
+    if(p.length < 45) continue;
+    if(p.length <= max){ out.push(p); continue; }
+    const sentences = splitSentencesPlain(p);
+    let buf="";
+    for(const s of sentences){
+      if((buf + " " + s).trim().length > max && buf.length>60){ out.push(buf.trim()); buf=s; }
+      else buf=(buf + " " + s).trim();
+    }
+    if(buf.length>45) out.push(buf.trim());
+  }
+  return out.filter((p,i)=>i<900);
+}
+function splitSentencesPlain(t){ return String(t||"").match(/[^.!?]+[.!?]+[”’'"]*|[^.!?]+$/g)?.map(s=>s.trim()).filter(Boolean) || [String(t||"")]; }
+async function loadBook(book, startIdx){
+  State.book = book; State.idx = Math.max(0, Number(startIdx||0)); State.selectedText=""; State.paragraphs=[]; saveState();
+  renderShell(`<div class="state"><div class="spinner"></div><h2>Kitap açılıyor</h2><p>${esc(book.title)} metni indiriliyor…</p></div>`, "Kitap yükleniyor");
+  try{
+    const text = await fetchBookText(book);
+    State.paragraphs = splitText(text);
+    if(!State.paragraphs.length) throw new Error("empty book text");
+    State.idx = Math.min(State.idx, State.paragraphs.length-1);
+    saveState(); renderReader();
+  }catch(e){
+    renderShell(`<div class="state"><h2>Kitap metni açılamadı</h2><p>Bu kaydın düz metin bağlantısı tarayıcıdan okunamadı. Başka bir kitap dene ya da internet bağlantısını kontrol et.</p><button class="btn primary" id="backBooks">Kitap listesine dön</button></div>`, "Bağlantı hatası");
+    document.getElementById("backBooks").onclick=()=>renderHome();
+  }
+}
+function stats(text){
+  const words = String(text||"").match(/[A-Za-z']+/g)||[];
+  const sents = splitSentencesPlain(text);
+  const avg = words.length / Math.max(1,sents.length);
+  const long = words.filter(w=>w.length>7).length / Math.max(1,words.length);
+  const score = Math.round(avg*2.3 + long*65);
+  const lv = score<32?"A1":score<42?"A2":score<54?"B1":score<66?"B2":"C1";
+  return {words:words.length,sents:sents.length,avg:Math.round(avg),score,lv};
+}
+function renderSentenceSpans(text){
+  return splitSentencesPlain(text).map(s=>`<span class="sent" data-sent="${esc(s)}">${esc(s)}</span>`).join(" ");
+}
+function renderReader(){
+  const book=State.book, para=State.paragraphs[State.idx]||"", st=stats(para), total=State.paragraphs.length;
+  const pct = total ? Math.round(((State.idx+1)/total)*100) : 0;
+  renderShell(`
+    <main class="reader">
+      <section class="reader-head">
+        <div class="reader-line">
+          <div class="reader-title"><h2>${esc(book.title)}</h2><p>${esc(authorOf(book))} · ${State.idx+1}/${total} · tahmini bölüm seviyesi ${st.lv}</p></div>
+          <button class="btn" id="booksBack">📚 Kitaplar</button>
+        </div>
+        <div class="prog"><span style="width:${pct}%"></span></div>
+        <div class="mini-actions">
+          <a class="source-link" href="${esc(sourceUrl(book))}" target="_blank" rel="noopener">Kaynağı aç ↗</a>
+          <button class="btn ghost" id="listenBtn">🔊 Oku</button>
+          <button class="btn teacher" id="askMiniBtn">🎓 Öğretmene Sor</button>
+        </div>
+      </section>
+      <article class="read-card">
+        <div class="para" id="paraText">${renderSentenceSpans(para)}</div>
+        <div class="read-hint">Bir cümleye tıkla veya metin seç. Sonra “🎓 Öğretmene Sor” düğmesine bas.</div>
+        <div class="read-stats"><span class="chip">${st.words} kelime</span><span class="chip">${st.sents} cümle</span><span class="chip">Ort. ${st.avg} kelime/cümle</span><span class="chip lv">${st.lv}</span></div>
+      </article>
+      <div class="toolbar">
+        <button class="btn" id="prevBtn">← Önceki</button>
+        <button class="btn primary" id="nextBtn">Sonraki →</button>
+        <button class="btn teacher" id="askBtn">🎓 Öğretmene Sor</button>
+        <button class="btn green" id="doneBtn">✓ Okudum</button>
+      </div>
+    </main>`, `${esc(book.title)} okunuyor`);
+  bindReader();
+}
+function bindReader(){
+  const prev=document.getElementById("prevBtn"), next=document.getElementById("nextBtn");
+  prev.disabled = State.idx <= 0;
+  next.disabled = State.idx >= State.paragraphs.length-1;
+  prev.onclick=()=>{ if(State.idx>0){ State.idx--; State.selectedText=""; saveState(); renderReader(); } };
+  next.onclick=()=>{ if(State.idx<State.paragraphs.length-1){ State.idx++; State.selectedText=""; saveState(); renderReader(); } };
+  document.getElementById("doneBtn").onclick=()=>{ if(State.idx<State.paragraphs.length-1){ State.idx++; } saveState(); renderReader(); };
+  document.getElementById("booksBack").onclick=()=>{ setProgress(State.book.id, State.idx); State.book=null; State.paragraphs=[]; saveState(); renderHome(); };
+  document.getElementById("askBtn").onclick=()=>askTeacher();
+  document.getElementById("askMiniBtn").onclick=()=>askTeacher();
+  document.getElementById("listenBtn").onclick=()=>speakText(State.paragraphs[State.idx]||"");
+  document.querySelectorAll(".sent").forEach(span=>span.onclick=()=>{
+    document.querySelectorAll(".sent.sel").forEach(x=>x.classList.remove("sel"));
+    span.classList.add("sel"); State.selectedText=span.dataset.sent||span.textContent||""; saveState();
+  });
+}
+function selectionText(){ try{ return String(window.getSelection&&window.getSelection().toString()||"").trim(); }catch{ return ""; } }
+function askTeacher(){
+  const selected = selectionText() || State.selectedText || State.paragraphs[State.idx] || "";
+  const text = selected.replace(/\s+/g," ").trim().slice(0,1400);
+  if(!text) return;
+  saveState();
+  const tr = `Kütüphane okuması. Kitap: ${State.book ? State.book.title : ""}. Bu İngilizce bölümü Türk öğrenciye açıkla.`;
+  const ret = "./library.html?fromTeacher=1";
+  location.href = "./teacher-chat.html?s=" + encodeURIComponent(text) + "&t=" + encodeURIComponent(tr) + "&return=" + encodeURIComponent(ret);
+}
+function speakText(text){
+  try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang="en-US"; u.rate=0.86; speechSynthesis.speak(u); }catch{}
+}
+
+function init(){
+  const saved = loadSaved();
+  if(saved && saved.level) State.level=saved.level;
+  if(qParam("fromTeacher") && saved && saved.book){
+    State.level=saved.level||State.level;
+    loadBook(saved.book, Number(saved.idx||0));
+    try{ history.replaceState(null,"","./library.html"); }catch{}
+    return;
+  }
+  renderHome();
+}
+init();
+})();
+</script>
+</body>
+</html>
