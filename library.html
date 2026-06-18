@@ -496,7 +496,6 @@ function renderReader(){
         <div class="mini-actions">
           <a class="source-link" href="${esc(sourceUrl(book))}" target="_blank" rel="noopener">Kaynağı aç ↗</a>
           <button class="btn ghost" id="listenBtn">🔊 Metni sesli oku</button>
-          <button class="btn stop" id="stopListenBtn" disabled>🔇 Sus</button>
           <button class="btn teacher" id="askMiniBtn">🎓 Öğretmene Sor</button>
           <span class="chip ok">${State.source === "cache" ? "Yerel kopya" : "İnternetten alındı ve kaydedildi"}</span>
         </div>
@@ -526,9 +525,8 @@ function bindReader(){
   document.getElementById("booksBack").onclick=()=>{ stopSpeech(); setProgress(State.book.id, State.idx); State.book=null; State.paragraphs=[]; saveState(); renderHome(); };
   document.getElementById("askBtn").onclick=()=>askTeacher();
   document.getElementById("askMiniBtn").onclick=()=>askTeacher();
-  document.getElementById("listenBtn").onclick=()=>speakText(State.paragraphs[State.idx]||"");
-  document.getElementById("listenBottomBtn").onclick=()=>speakText(State.paragraphs[State.idx]||"");
-  document.getElementById("stopListenBtn").onclick=()=>stopSpeech();
+  document.getElementById("listenBtn").onclick=()=>toggleSpeech(State.paragraphs[State.idx]||"");
+  document.getElementById("listenBottomBtn").onclick=()=>toggleSpeech(State.paragraphs[State.idx]||"");
   document.querySelectorAll(".sent").forEach(span=>span.onclick=()=>selectSentence(span));
   document.querySelectorAll(".word").forEach(wordEl=>wordEl.onclick=(e)=>{
     e.preventDefault();
@@ -630,10 +628,10 @@ function splitSpeechChunks(text){
 function updateSpeechButtons(isSpeaking){
   try{
     document.querySelectorAll("#listenBtn,#listenBottomBtn").forEach(btn=>{
-      if(btn) btn.textContent = isSpeaking ? "🔊 Okunuyor…" : (btn.id === "listenBtn" ? "🔊 Metni sesli oku" : "🔊 Oku");
+      if(!btn) return;
+      btn.textContent = isSpeaking ? "🔇 Sus" : (btn.id === "listenBtn" ? "🔊 Metni sesli oku" : "🔊 Oku");
+      btn.classList.toggle("stop", !!isSpeaking);
     });
-    const stopBtn = document.getElementById("stopListenBtn");
-    if(stopBtn) stopBtn.disabled = !isSpeaking;
   }catch{}
 }
 function speakNextChunk(token){
@@ -656,6 +654,10 @@ function speakNextChunk(token){
     SpeechState.speaking = false;
     updateSpeechButtons(false);
   }
+}
+function toggleSpeech(text){
+  if(SpeechState.speaking){ stopSpeech(); return; }
+  speakText(text);
 }
 function speakText(text){
   if(!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return;
