@@ -58,9 +58,23 @@ button,input{font-family:inherit}
 .avatar.speaking{box-shadow:0 12px 34px rgba(37,99,235,.55)}
 /* karaoke */
 .karaoke{width:100%;text-align:center;font-weight:950;font-size:clamp(18px,2.2vw,24px);line-height:1.35;letter-spacing:.2px;display:flex;flex-wrap:wrap;gap:5px 8px;justify-content:center}
-.kw{color:#64748b;transition:color .12s ease,transform .12s ease;will-change:transform}
+.kw{color:#64748b;transition:color .12s ease,transform .12s ease;will-change:transform;cursor:pointer}
+.kw:hover{color:#bfdbfe}
 .kw.active{color:#fff;transform:translateY(-1px) scale(1.05);text-shadow:0 0 16px rgba(96,165,250,.55)}
 .kw.done{color:#cbd5e1}
+.kw.lookup{text-decoration:underline dotted rgba(191,219,254,.5);text-underline-offset:3px}
+/* sözlük popover */
+.dict-pop{position:fixed;z-index:90;width:min(300px,calc(100vw - 28px));background:#0b1120f2;border:1px solid #ffffff2e;border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.6);padding:14px 15px;color:#e8eef7;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.dict-pop .dp-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:7px}
+.dict-pop .dp-word{font-family:Fraunces,serif;font-weight:600;font-size:20px;color:#fff}
+.dict-pop .dp-pron{font-size:13px;color:#93c5fd;font-weight:800}
+.dict-pop .dp-level{margin-left:auto;font-size:11px;font-weight:900;color:#a7f3d0;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.35);border-radius:999px;padding:2px 9px}
+.dict-pop .dp-mean{font-size:14px;line-height:1.5;color:#dbeafe}
+.dict-pop .dp-mean ul{margin:4px 0 0;padding-left:18px}
+.dict-pop .dp-mean li{margin:2px 0}
+.dict-pop .dp-empty{font-size:13px;color:#93a4bd;line-height:1.5}
+.dict-pop .dp-close{position:absolute;top:8px;right:10px;background:transparent;border:0;color:#93a4bd;font-size:18px;cursor:pointer;line-height:1}
+.dict-pop .dp-spin{display:flex;align-items:center;gap:9px;color:#93a4bd;font-size:13px}
 .teach-tr{width:100%;text-align:center;color:var(--muted);font-family:Fraunces,serif;font-size:14px;line-height:1.4}
 .teach-listen{border:0;border-radius:999px;background:var(--accent-strong);color:#fff;font-weight:950;font-size:14px;padding:10px 20px;cursor:pointer;box-shadow:0 8px 22px rgba(37,99,235,.35);display:inline-flex;align-items:center;gap:8px}
 .teach-listen:active{transform:scale(.97)}
@@ -85,6 +99,7 @@ button,input{font-family:inherit}
 (function(){
 "use strict";
 const DATA_PATHS=["data/sentences.json","sentences.json","./data/sentences.json"];
+const DICT_PATHS=["data/dictionary.json","dictionary.json","./data/dictionary.json","data/sozluk.json"];
 const DB_NAME="sentence-mode", STORE="kv", SRS_PREFIX="video-srs:", POS_PREFIX="video-pos:", API_KEY="pexels-api-key", VIDEO_PREFIX="video-practice-video:";
 const DAY=1440*60*1000;
 const LEVEL_ORDER=["A1","A2","B1","B2","C1","C2"];
@@ -301,6 +316,7 @@ async function uiNextCard(ev){
     clearVideoStatus();
     try{speechSynthesis.cancel()}catch{}
     try{clearTeachTimers();clearVisemeTimers();setAvatarSpeaking(false);}catch{}
+    try{closeDictPop();}catch{}
     try{State.manualStop=true;if(State.voiceRec){State.voiceRec.abort ? State.voiceRec.abort() : State.voiceRec.stop();}}catch{}
     try{stopOwnVoiceRecording(true)}catch{}
     State.listening=false;
@@ -368,6 +384,124 @@ function animateWordViseme(pron,durationMs){
 }
 /* s.en kelimelerine karşılık gelen trPron parçalarını hizala.
    Kelime sayıları eşitse birebir; değilse orantılı eşleme; trPron yoksa s.en'e düş. */
+/* ===== Sözlük katmanı (dictionary.json) — library.html mantığından uyarlandı ===== */
+let _dict=null, _dictPromise=null;
+function cleanLookupWord(raw){
+  return String(raw||"").toLowerCase().replace(/[’]/g,"'").replace(/^[^a-z]+|[^a-z']+$/g,"").replace(/'s$/i,"").trim();
+}
+function dictKeysFor(raw){
+  const w=cleanLookupWord(raw);const out=[w];
+  if(/ies$/.test(w)&&w.length>4)out.push(w.slice(0,-3)+"y");
+  if(/ves$/.test(w)&&w.length>4)out.push(w.slice(0,-3)+"f");
+  if(/ing$/.test(w)&&w.length>5){out.push(w.slice(0,-3));out.push(w.slice(0,-3)+"e");}
+  if(/ed$/.test(w)&&w.length>4){out.push(w.slice(0,-2));out.push(w.slice(0,-1));}
+  if(/es$/.test(w)&&w.length>4)out.push(w.slice(0,-2));
+  if(/s$/.test(w)&&w.length>3)out.push(w.slice(0,-1));
+  return [...new Set(out.filter(Boolean))];
+}
+function dictSplitMeanings(v){
+  if(Array.isArray(v))return v.map(x=>String(x||"").trim()).filter(Boolean);
+  if(v==null)return [];
+  const t=String(v).trim();if(!t)return [];
+  return t.split(/\s*[;|]\s*|\n+/).map(x=>x.trim()).filter(Boolean).slice(0,8);
+}
+function dictPick(o,keys){for(const k of keys){if(o&&o[k]!=null&&String(o[k]).trim()!=="")return o[k];}return "";}
+function normalizeDictEntry(value,key){
+  if(typeof value==="string")return {word:key,meanings:dictSplitMeanings(value),level:"",pron:"",ipa:""};
+  const o=value||{};
+  const word=dictPick(o,["word","Word","english","English","EN","en","kelime","Kelime"])||key;
+  const meanings=dictSplitMeanings(dictPick(o,["anlamlar","meanings","meaning","Meaning","turkish","Turkish","tr","TR","turkishMeaning","Türkçe","turkce","anlam","Anlam"]));
+  return {
+    word:String(word||key||""),
+    meanings,
+    level:String(dictPick(o,["seviye","level","Level","CEFR","cefr"])||""),
+    pron:String(dictPick(o,["oku","pronunciation","Pronunciation","trPron","okunus","okunuş"])||""),
+    ipa:String(dictPick(o,["ipa","IPA"])||"")
+  };
+}
+function normalizeDictionary(raw){
+  const out={};
+  if(Array.isArray(raw)){
+    raw.forEach(item=>{const e=normalizeDictEntry(item,"");const k=cleanLookupWord(e.word);if(k)out[k]=e;});
+    return out;
+  }
+  Object.entries(raw||{}).forEach(([key,val])=>{
+    const e=normalizeDictEntry(val,key);
+    [cleanLookupWord(key),cleanLookupWord(e.word)].filter(Boolean).forEach(k=>{if(k)out[k]=e;});
+  });
+  return out;
+}
+async function ensureDictionaryLoaded(){
+  if(_dict)return _dict;
+  if(_dictPromise)return _dictPromise;
+  _dictPromise=fetchFirst(DICT_PATHS).then(raw=>{_dict=normalizeDictionary(raw);return _dict;})
+    .catch(e=>{console.warn("Sözlük yüklenemedi:",e);_dict={};return _dict;});
+  return _dictPromise;
+}
+function getDictEntry(rawWord){
+  const d=_dict||{};
+  for(const k of dictKeysFor(rawWord)){if(d[k])return d[k];}
+  return null;
+}
+function closeDictPop(){const p=document.getElementById("dictPop");if(p)p.remove();}
+function showDictLoading(anchorEl){
+  closeDictPop();
+  const pop=document.createElement("div");
+  pop.className="dict-pop";pop.id="dictPop";
+  pop.innerHTML=`<button class="dp-close" aria-label="Kapat">×</button><div class="dp-spin"><span class="spinner" style="width:18px;height:18px;border-width:2px"></span>Sözlükte aranıyor…</div>`;
+  document.body.appendChild(pop);
+  positionDictPop(pop,anchorEl);
+  pop.querySelector(".dp-close").onclick=closeDictPop;
+}
+function showDictEntry(word,entry,anchorEl){
+  closeDictPop();
+  const pop=document.createElement("div");
+  pop.className="dict-pop";pop.id="dictPop";
+  let body;
+  if(entry&&(entry.meanings&&entry.meanings.length)){
+    const lvl=entry.level?`<span class="dp-level">${esc(entry.level)}</span>`:"";
+    const pron=entry.pron?`<span class="dp-pron">${esc(entry.pron)}</span>`:(entry.ipa?`<span class="dp-pron">${esc(entry.ipa)}</span>`:"");
+    const items=entry.meanings.map(m=>`<li>${esc(m)}</li>`).join("");
+    body=`<div class="dp-head"><span class="dp-word">${esc(entry.word||word)}</span>${pron}${lvl}</div><div class="dp-mean"><ul>${items}</ul></div>`;
+  }else{
+    body=`<div class="dp-head"><span class="dp-word">${esc(word)}</span></div><div class="dp-empty">Bu kelime sözlükte bulunamadı.</div>`;
+  }
+  pop.innerHTML=`<button class="dp-close" aria-label="Kapat">×</button>${body}`;
+  document.body.appendChild(pop);
+  positionDictPop(pop,anchorEl);
+  pop.querySelector(".dp-close").onclick=closeDictPop;
+}
+function positionDictPop(pop,anchorEl){
+  try{
+    const r=anchorEl.getBoundingClientRect();
+    const pw=pop.offsetWidth,ph=pop.offsetHeight;
+    let left=r.left+r.width/2-pw/2;
+    left=Math.max(10,Math.min(left,window.innerWidth-pw-10));
+    let top=r.top-ph-10;                       // önce kelimenin üstünü dene
+    if(top<10)top=r.bottom+10;                 // sığmazsa altına koy
+    top=Math.max(10,Math.min(top,window.innerHeight-ph-10));
+    pop.style.left=left+"px";pop.style.top=top+"px";
+  }catch{pop.style.left="50%";pop.style.top="20%";pop.style.transform="translateX(-50%)";}
+}
+async function lookupWord(rawWord,anchorEl){
+  const word=cleanLookupWord(rawWord);
+  if(!word){closeDictPop();return;}
+  showDictLoading(anchorEl);
+  await ensureDictionaryLoaded();
+  // popover hâlâ açık mı (kullanıcı kapatmadıysa) göster
+  if(!document.getElementById("dictPop"))return;
+  const entry=getDictEntry(rawWord);
+  showDictEntry(word,entry,anchorEl);
+}
+// dışarı tıkla/scroll/ESC ile kapat
+document.addEventListener("click",e=>{
+  const pop=document.getElementById("dictPop");if(!pop)return;
+  if(pop.contains(e.target))return;
+  if(e.target.classList&&e.target.classList.contains("kw"))return; // kw click kendi handler'ında
+  closeDictPop();
+},true);
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDictPop();});
+
 function teachPron(s){
   let p=String((s&&(s.trPron??s.tr_pron??s.trpron??s.TrPron??s.pronTR))||"").trim();
   if(/^(none|n\/a|na|-|—|yok|null)$/i.test(p))p="";
@@ -394,7 +528,15 @@ function buildKaraokeTokens(text){
 function renderKaraoke(text){
   const box=document.getElementById("karaoke");if(!box)return [];
   const tokens=buildKaraokeTokens(text);
-  box.innerHTML=tokens.map((t,i)=>`<span class="kw" data-i="${i}">${esc(t.word)}</span>`).join("");
+  box.innerHTML=tokens.map((t,i)=>`<span class="kw lookup" data-i="${i}">${esc(t.word)}</span>`).join("");
+  box.onclick=(e)=>{
+    const sp=e.target.closest(".kw");
+    if(!sp)return;
+    e.stopPropagation();
+    const idx=+sp.dataset.i;
+    const w=(tokens[idx]&&tokens[idx].word)||sp.textContent||"";
+    lookupWord(w,sp);
+  };
   return tokens;
 }
 let _lastVisemeWord=-1;
