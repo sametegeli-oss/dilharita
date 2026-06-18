@@ -228,10 +228,24 @@ function posKey(mod){return POS_PREFIX+mod}async function savePos(){if(!State.ac
 function moduleProgress(mod){const arr=State.byModule.get(mod)||[];let learned=0;for(const s of arr){const r=State.srs[s.id];if(r&&r.rep>0)learned++}return{learned,total:arr.length,pct:arr.length?Math.round(learned/arr.length*100):0}}
 function renderLoading(){root.innerHTML=`<div class="state"><div class="spinner"></div><p>Video practice hazırlanıyor…</p></div>`}
 function renderError(msg){root.innerHTML=`<div class="state"><h2>Veri yüklenemedi</h2><p>${esc(msg)}</p><button class="btn primary" onclick="location.reload()">Yeniden dene</button></div>`}
-async function renderPicker(){State.srs=await srsAll();const levels=LEVEL_ORDER.filter(l=>State.byLevel.has(l));let html=`<div class="picker"><div class="picker-top"><a href="./index.html" class="home-link">← Ana uygulama</a><button class="btn api-mini" id="apiBtn">🔑 Pexels API</button></div><div class="pick-intro"><h1>Video Practice</h1><p>Bu ekranda kelime sıralama yok. Video otomatik gelir; ortada İngilizce cümle görünür. Sen ekrandaki <b>İngilizce cümleyi</b> mikrofona okuyorsun; sistem bunu <b>SentenceEN</b> ile practice.html mantığında karşılaştırıyor. Türkçe sadece anlam/yardım olarak görünür.</p></div>`;for(const lv of levels){const mods=State.byLevel.get(lv);html+=`<div class="lv-group"><div class="lv-head"><span class="lv-badge">${esc(lv)}</span><span>${mods.length} modül</span></div><div class="mod-grid">`;for(const mod of mods){const p=moduleProgress(mod);const name=mod.replace(/^[A-C]\d-M\d+\s*/,"");const pos=await loadPos(mod);html+=`<button class="mod-tile" data-mod="${esc(mod)}"><span class="mod-name">${esc(name)}</span><span class="mod-count">${p.total} cümle${pos?` · ${pos.idx+1}. cümlede kaldın`:""}</span><span class="mod-prog"><span style="width:${p.pct}%"></span></span></button>`}html+=`</div></div>`}html+=`</div>`;root.innerHTML=html;document.getElementById("apiBtn").onclick=()=>openApiSheet(false);root.querySelectorAll(".mod-tile").forEach(b=>b.onclick=async()=>{const mod=b.dataset.mod;const pos=await loadPos(mod);startModule(mod,pos?.idx||0)})}
+async function renderPicker(){clearUiTimers();State.srs=await srsAll();const levels=LEVEL_ORDER.filter(l=>State.byLevel.has(l));let html=`<div class="picker"><div class="picker-top"><a href="./index.html" class="home-link">← Ana uygulama</a><button class="btn api-mini" id="apiBtn">🔑 Pexels API</button></div><div class="pick-intro"><h1>Video Practice</h1><p>Bu ekranda kelime sıralama yok. Video otomatik gelir; ortada İngilizce cümle görünür. Sen ekrandaki <b>İngilizce cümleyi</b> mikrofona okuyorsun; sistem bunu <b>SentenceEN</b> ile practice.html mantığında karşılaştırıyor. Türkçe sadece anlam/yardım olarak görünür.</p></div>`;for(const lv of levels){const mods=State.byLevel.get(lv);html+=`<div class="lv-group"><div class="lv-head"><span class="lv-badge">${esc(lv)}</span><span>${mods.length} modül</span></div><div class="mod-grid">`;for(const mod of mods){const p=moduleProgress(mod);const name=mod.replace(/^[A-C]\d-M\d+\s*/,"");const pos=await loadPos(mod);html+=`<button class="mod-tile" data-mod="${esc(mod)}"><span class="mod-name">${esc(name)}</span><span class="mod-count">${p.total} cümle${pos?` · ${pos.idx+1}. cümlede kaldın`:""}</span><span class="mod-prog"><span style="width:${p.pct}%"></span></span></button>`}html+=`</div></div>`}html+=`</div>`;root.innerHTML=html;document.getElementById("apiBtn").onclick=()=>openApiSheet(false);root.querySelectorAll(".mod-tile").forEach(b=>b.onclick=async()=>{const mod=b.dataset.mod;const pos=await loadPos(mod);startModule(mod,pos?.idx||0)})}
 async function startModule(mod,idx){State.srs=await srsAll();const arr=(State.byModule.get(mod)||[]).slice();const now=Date.now();function bucket(s){const r=State.srs[s.id];if(!r||!r.rep)return 1;if((r.due||0)<=now)return 0;return 2}arr.sort((a,b)=>{const ba=bucket(a),bb=bucket(b);if(ba!==bb)return ba-bb;if(ba===0)return(State.srs[a.id].due||0)-(State.srs[b.id].due||0);if(ba===1)return(a.order||0)-(b.order||0);return(State.srs[a.id].due||0)-(State.srs[b.id].due||0)});State.queue=arr;State.idx=Math.min(Math.max(0,idx||0),Math.max(0,arr.length-1));State.activeModule=mod;State.sessionTitle=mod.replace(/^[A-C]\d-M\d+\s*/,"");renderVideoCard()}
 function currentSentence(){return State.queue[State.idx]}
 let _nextTapLock=false;
+let _feedbackTimer=null;
+let _statusTimer=null;
+function clearUiTimers(){
+  if(_feedbackTimer){clearTimeout(_feedbackTimer);_feedbackTimer=null;}
+  if(_statusTimer){clearTimeout(_statusTimer);_statusTimer=null;}
+}
+function scheduleStatusClear(ms){
+  if(_statusTimer){clearTimeout(_statusTimer);_statusTimer=null;}
+  _statusTimer=setTimeout(()=>{_statusTimer=null;clearVideoStatus();},ms||1200);
+}
+function scheduleFeedbackHide(ms){
+  if(_feedbackTimer){clearTimeout(_feedbackTimer);_feedbackTimer=null;}
+  _feedbackTimer=setTimeout(()=>{_feedbackTimer=null;hideFeedback();},ms);
+}
 function bindTap(el,handler){
   if(!el) return;
   let last=0;
@@ -253,6 +267,9 @@ async function uiNextCard(ev){
   if(_nextTapLock) return;
   _nextTapLock=true;
   try{
+    clearUiTimers();
+    hideFeedback();
+    clearVideoStatus();
     try{speechSynthesis.cancel()}catch{}
     try{State.manualStop=true;if(State.voiceRec){State.voiceRec.abort ? State.voiceRec.abort() : State.voiceRec.stop();}}catch{}
     try{stopOwnVoiceRecording(true)}catch{}
@@ -262,10 +279,10 @@ async function uiNextCard(ev){
     setTimeout(()=>{_nextTapLock=false},450);
   }
 }
-function renderVideoCard(){if(State.idx>=State.queue.length)return renderDone();const s=currentSentence();State.showTR=false;State.currentVideoPayload=null;const pct=Math.round(State.idx/State.queue.length*100);const name=(s.module||"").replace(/^[A-C]\d-M\d+\s*/,"");root.innerHTML=`<div class="video-page"><div class="video-bg"><video id="mainVideo" muted playsinline loop></video></div><div class="video-loading" id="videoLoading"><div class="spinner"></div><div>Video aranıyor…</div></div><button class="api-float" id="apiFloat">🔑 API</button><button class="next-float" id="nextBtn">Sıradaki →</button><div class="vp-top"><button class="back" id="backBtn">←</button><div class="vp-title"><h1>${esc(State.sessionTitle)}</h1><p>${esc(name)} · ${esc(s.topic||"")} · ${esc(s.level||"")}</p></div><div class="queue-pill"><b>${State.idx+1}</b>/${State.queue.length}</div></div><div class="subtitle-wrap"><div class="en-subtitle" id="enSubtitle">${esc(s.en)}</div></div><div class="tr-panel hidden" id="trPanel"><div class="tr-label">Türkçesi / SentenceTR</div><div class="tr-text">${esc(s.tr)}</div></div><div class="feedback hidden" id="feedback"></div><div class="video-status hidden" id="videoStatus"></div><div class="fallback-input hidden" id="fallbackInput"><input id="typedTR" placeholder="Mikrofon yoksa İngilizce cümleyi buraya yaz"/><button id="typedCheck">Kontrol</button></div><div class="controls"><button class="ctrl" id="replayBtn"><span class="ctrl-ico">↻</span><span>Tekrar oynat</span></button><div><button class="mic-main" id="micBtn">🎙️</button><div class="mic-caption" id="micCaption">Tıkla ve İngilizceyi oku</div></div><button class="ctrl" id="translateBtn"><span class="ctrl-ico">🌐</span><span>Tercüme Et</span></button></div><div class="small-note" id="smallNote">Arama: speaking video : ${esc(s.en)}</div></div>`;document.getElementById("backBtn").onclick=()=>renderPicker();document.getElementById("apiFloat").onclick=()=>openApiSheet(false);bindTap(document.getElementById("nextBtn"),uiNextCard);document.getElementById("replayBtn").onclick=()=>replayCurrent(true);document.getElementById("translateBtn").onclick=toggleTranslation;bindTap(document.getElementById("micBtn"),startEnglishCheck);document.getElementById("typedCheck").onclick=()=>checkEnglish(document.getElementById("typedTR").value,"typed");if(!STT)document.getElementById("fallbackInput").classList.remove("hidden");autoLoadVideo(s);setTimeout(()=>speakEnglish(s.en),800)}
+function renderVideoCard(){clearUiTimers();if(State.idx>=State.queue.length)return renderDone();const s=currentSentence();State.showTR=false;State.currentVideoPayload=null;const pct=Math.round(State.idx/State.queue.length*100);const name=(s.module||"").replace(/^[A-C]\d-M\d+\s*/,"");root.innerHTML=`<div class="video-page"><div class="video-bg"><video id="mainVideo" muted playsinline loop></video></div><div class="video-loading" id="videoLoading"><div class="spinner"></div><div>Video aranıyor…</div></div><button class="api-float" id="apiFloat">🔑 API</button><button class="next-float" id="nextBtn">Sıradaki →</button><div class="vp-top"><button class="back" id="backBtn">←</button><div class="vp-title"><h1>${esc(State.sessionTitle)}</h1><p>${esc(name)} · ${esc(s.topic||"")} · ${esc(s.level||"")}</p></div><div class="queue-pill"><b>${State.idx+1}</b>/${State.queue.length}</div></div><div class="subtitle-wrap"><div class="en-subtitle" id="enSubtitle">${esc(s.en)}</div></div><div class="tr-panel hidden" id="trPanel"><div class="tr-label">Türkçesi / SentenceTR</div><div class="tr-text">${esc(s.tr)}</div></div><div class="feedback hidden" id="feedback"></div><div class="video-status hidden" id="videoStatus"></div><div class="fallback-input hidden" id="fallbackInput"><input id="typedTR" placeholder="Mikrofon yoksa İngilizce cümleyi buraya yaz"/><button id="typedCheck">Kontrol</button></div><div class="controls"><button class="ctrl" id="replayBtn"><span class="ctrl-ico">↻</span><span>Tekrar oynat</span></button><div><button class="mic-main" id="micBtn">🎙️</button><div class="mic-caption" id="micCaption">Tıkla ve İngilizceyi oku</div></div><button class="ctrl" id="translateBtn"><span class="ctrl-ico">🌐</span><span>Tercüme Et</span></button></div><div class="small-note" id="smallNote">Arama: speaking video : ${esc(s.en)}</div></div>`;document.getElementById("backBtn").onclick=()=>renderPicker();document.getElementById("apiFloat").onclick=()=>openApiSheet(false);bindTap(document.getElementById("nextBtn"),uiNextCard);document.getElementById("replayBtn").onclick=()=>replayCurrent(true);document.getElementById("translateBtn").onclick=toggleTranslation;bindTap(document.getElementById("micBtn"),startEnglishCheck);document.getElementById("typedCheck").onclick=()=>checkEnglish(document.getElementById("typedTR").value,"typed");if(!STT)document.getElementById("fallbackInput").classList.remove("hidden");autoLoadVideo(s);setTimeout(()=>speakEnglish(s.en),800)}
 async function nextCard(){await savePos();State.idx++;if(State.idx>=State.queue.length){if(State.activeModule)await clearPos(State.activeModule);renderDone()}else{await savePos();renderVideoCard()}}
-function renderDone(){root.innerHTML=`<div class="state"><div style="font-size:56px">✅</div><h2>Video oturumu tamam</h2><p>${State.queue.length} cümleyi video ile çalıştın.</p><button class="btn primary" id="homeBtn">Ana sayfa</button></div>`;document.getElementById("homeBtn").onclick=renderPicker}
-function showStatus(msg){const el=document.getElementById("videoStatus");if(!el)return;el.textContent=msg||"";el.classList.toggle("hidden",!msg)}
+function renderDone(){clearUiTimers();root.innerHTML=`<div class="state"><div style="font-size:56px">✅</div><h2>Video oturumu tamam</h2><p>${State.queue.length} cümleyi video ile çalıştın.</p><button class="btn primary" id="homeBtn">Ana sayfa</button></div>`;document.getElementById("homeBtn").onclick=renderPicker}
+function showStatus(msg){if(_statusTimer){clearTimeout(_statusTimer);_statusTimer=null;}const el=document.getElementById("videoStatus");if(!el)return;el.textContent=msg||"";el.classList.toggle("hidden",!msg)}
 function setLoading(on,msg){const el=document.getElementById("videoLoading");if(!el)return;el.classList.toggle("hidden",!on);if(msg)el.querySelector("div:last-child").textContent=msg}
 function videoKey(s){return VIDEO_PREFIX+(s.id||hash(s.en||s.tr))}
 function buildQuery(s){return "speaking video : "+cleanText(s.en)}
@@ -365,6 +382,8 @@ function startEnglishCheck(){
   if(State.listening){
     State.manualStop=true;
     showStatus("Okuma tamamlandı. Değerlendiriliyor…");
+    // Güvenlik: değerlendirme/puan ekranı bir nedenle gecikirse bu ara durum ekranda kalmasın.
+    scheduleStatusClear(15000);
     const mic=document.getElementById("micBtn"),cap=document.getElementById("micCaption");
     if(mic) mic.textContent="⌛";
     if(cap) cap.textContent="Değerlendiriliyor…";
@@ -423,12 +442,13 @@ function startRecognitionLoop(s){
     }catch{}
     State.voiceInterimText=interim;
     const heard=cleanText((State.voiceFinalText||"")+" "+(State.voiceInterimText||""));
-    if(heard){
+    if(heard && !State.manualStop){
       showStatus("Dinleniyor… Şu ana kadar: " + heard + "  ·  Bitirmek için mikrofon düğmesine tekrar tıkla.");
     }
   };
 
   rec.onerror=e=>{
+    if(State.manualStop) return;
     const code=(e&&e.error)||"";
     if(code==="not-allowed" || code==="service-not-allowed"){
       State.listening=false;
@@ -514,12 +534,14 @@ async function checkEnglish(heard,mode,preScore,confidence){
   showPronunciationResult(score,diff,heard,score>=72);
 }
 function clearVideoStatus(){
+  if(_statusTimer){clearTimeout(_statusTimer);_statusTimer=null;}
   const el=document.getElementById("videoStatus");
   if(!el)return;
   el.textContent="";
   el.classList.add("hidden");
 }
 function hideFeedback(){
+  if(_feedbackTimer){clearTimeout(_feedbackTimer);_feedbackTimer=null;}
   const fb=document.getElementById("feedback");
   if(fb) fb.classList.add("hidden");
   clearVideoStatus();
@@ -534,7 +556,8 @@ function showPronunciationResult(score,diff,heard,ok){
   const b=document.getElementById("ownVoiceReplayBtn");
   if(b) b.onclick=playOwnVoice;
   fb.classList.remove("hidden");
-  setTimeout(hideFeedback,ok?11000:13000);
+  requestAnimationFrame(()=>clearVideoStatus());
+  scheduleFeedbackHide(ok?11000:13000);
 }
 function showFeedback(title,html,score,ok){
   clearVideoStatus();
@@ -543,7 +566,8 @@ function showFeedback(title,html,score,ok){
   fb.className="feedback "+(ok?"ok":"bad");
   fb.innerHTML=`<div class="fb-title">${ok?"✅":"🎯"} ${esc(title)} <span class="score">${score||0}%</span></div>${html}`;
   fb.classList.remove("hidden");
-  setTimeout(hideFeedback,ok?7000:9000);
+  requestAnimationFrame(()=>clearVideoStatus());
+  scheduleFeedbackHide(ok?7000:9000);
 }
 function openApiSheet(force){const old=document.getElementById("apiSheet");if(old)old.remove();const sheet=document.createElement("div");sheet.className="api-sheet";sheet.id="apiSheet";sheet.innerHTML=`<div class="api-card"><h2>Pexels API Key</h2><p>Video otomatik gelsin diye Pexels API anahtarını bir defa kaydet. Anahtar IndexedDB'de tutulur; HTML içine yazılmaz.</p><input id="apiInput" type="password" placeholder="Pexels API anahtarını yaz"/><div class="api-actions"><button class="btn primary" id="apiSave">Kaydet ve videoyu getir</button><button class="btn" id="apiClose">Kapat</button><button class="btn red" id="apiDelete">Sil</button></div><p id="apiMsg" style="min-height:20px;font-weight:800;color:#2563eb"></p></div>`;document.body.appendChild(sheet);kvGet(API_KEY).then(k=>{if(k)document.getElementById("apiInput").value=k});document.getElementById("apiClose").onclick=()=>{if(!force)sheet.remove();else sheet.remove()};document.getElementById("apiDelete").onclick=async()=>{await kvDel(API_KEY);document.getElementById("apiInput").value="";document.getElementById("apiMsg").textContent="API key silindi."};document.getElementById("apiSave").onclick=async()=>{const key=document.getElementById("apiInput").value.trim();if(!key){document.getElementById("apiMsg").textContent="API key boş.";return}await kvSet(API_KEY,key);document.getElementById("apiMsg").textContent="Kaydedildi.";sheet.remove();if(currentSentence())autoLoadVideo(currentSentence())};sheet.onclick=e=>{if(e.target===sheet&&!force)sheet.remove()}}
 function hash(str){let h=0;str=String(str||"");for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h|=0}return Math.abs(h).toString(36)}
