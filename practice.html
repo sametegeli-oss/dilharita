@@ -105,6 +105,12 @@ body{
 
 /* ---- action buttons ---- */
 .actions{display:flex;gap:8px;margin-top:8px}
+.teacher-ask-row{display:flex;margin:14px 0 2px}
+.teacher-ask-btn{width:100%;border:1px solid #34d39955;background:linear-gradient(135deg,#34d399,#16a34a);
+  color:#fff;border-radius:12px;padding:12px 14px;font:900 15px Nunito,sans-serif;cursor:pointer;
+  box-shadow:0 10px 24px #00000022;transition:transform .1s,filter .12s}
+.teacher-ask-btn:hover{filter:brightness(1.05)}
+.teacher-ask-btn:active{transform:scale(.97)}
 .btn{flex:1;border:1px solid var(--border);background:var(--surface-2);color:var(--text);
   border-radius:12px;padding:13px;font:800 15px Nunito,sans-serif;cursor:pointer;
   transition:transform .1s,background .12s,opacity .15s}
@@ -1223,6 +1229,15 @@ async function startDueSession(){
    ============================================================ */
 function currentSentence(){ return State.queue[State.idx]; }
 
+function openTeacherForSentence(s){
+  const en = ((s && s.en) || "").trim();
+  if (!en) return;
+  const tr = ((s && s.tr) || "").trim();
+  const url = "./teacher-chat.html?s=" + encodeURIComponent(en) +
+    (tr ? "&t=" + encodeURIComponent(tr) : "");
+  location.href = url;
+}
+
 /* ---- Sahne videosu köprüsü: aktif doğru İngilizce cevabı scene-video.js'e bildirir ---- */
 function exposeSceneVideoAnswer(s){
   if (!s) return;
@@ -1295,6 +1310,9 @@ function renderCard(){
         <div class="tr-text">${esc(s.tr)}</div>
         <div class="pron-hint" id="pronHint">${esc(s.trPron || "")}</div>
       `}
+      <div class="teacher-ask-row">
+        <button class="teacher-ask-btn" id="teacherAskBtn" type="button">🎓 Öğretmene Sor</button>
+      </div>
       <div id="answerArea"></div>
       <div id="feedbackArea"></div>
     </div>
@@ -1302,6 +1320,7 @@ function renderCard(){
 
   exposeSceneVideoAnswer(s);
   document.getElementById("backBtn").onclick = () => renderPicker();
+  document.getElementById("teacherAskBtn").onclick = () => openTeacherForSentence(s);
 
   if (listen){
     // dinleme modu: ekrana metin gelmez, ses çalınır
@@ -1332,7 +1351,6 @@ function renderOrderLayer(s){
     <div class="actions">
       <button class="btn btn-ghost" id="clearBtn">Temizle</button>
       <button class="btn btn-primary" id="checkBtn" disabled>Kontrol et</button>
-      <button class="btn btn-primary" id="TeacherBtn" disabled>Öğretmen</button>      
     </div>`;
 
   const bankEl = document.getElementById("bank");
@@ -1469,8 +1487,6 @@ function renderFullLayer(s){
     if (!answer) { input.focus(); return; }
     evaluate(s, answer, "full");
   };
-document.getElementById("TeacherBtn").onclick = () => teacher_addon();
-  
   if (sttOK){
     const micBtn = document.getElementById("micBtn");
     let rec = null, listening = false;
