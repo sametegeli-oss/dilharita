@@ -105,6 +105,7 @@ body{
 .send-fab{width:50px;height:50px;border-radius:50%;border:none;background:var(--green-strong);color:#fff;font-size:19px;cursor:pointer;flex-shrink:0}
 .send-fab:active{transform:scale(.92)}
 </style>
+<script src="./avatar.js"></script>
 </head>
 <body>
 <div class="wrap" id="root"></div>
@@ -184,27 +185,29 @@ function splitForSpeech(text){
   return parts.length ? parts : [{lang:"tr",text}];
 }
 let _speaking = false;
-function stopSpeak(){ _speaking=false; try{ speechSynthesis.cancel(); }catch{} }
+function stopSpeak(){ _speaking=false; try{ speechSynthesis.cancel(); }catch{} try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){} }
 function speakMixed(text, onstate){
   stopSpeak();
   if (State.muted) return;
   const parts = splitForSpeech(stripMarks(text));
   _speaking = true; if(onstate) onstate(true);
+  try{ if(window.DilAvatar) DilAvatar.speakText(stripMarks(text)); }catch(e){}
   let i = 0;
   function next(){
-    if (!_speaking || i >= parts.length){ _speaking=false; if(onstate) onstate(false); return; }
+    if (!_speaking || i >= parts.length){ _speaking=false; if(onstate) onstate(false); try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){} return; }
     const p = parts[i++];
     try{
       const u = new SpeechSynthesisUtterance(p.text);
       u.lang = p.lang==="en" ? "en-US" : "tr-TR";
       u.rate = p.lang==="en" ? 0.92 : 1.0;
+      u.onstart = ()=>{ try{ if(window.DilAvatar) DilAvatar.speakText(p.text); }catch(e){} };
       u.onend = next; u.onerror = next;
       speechSynthesis.speak(u);
     }catch{ next(); }
   }
   next();
 }
-function speakEN(text){ stopSpeak(); if(State.muted) return; try{ const u=new SpeechSynthesisUtterance(text); u.lang="en-US"; u.rate=0.92; speechSynthesis.speak(u); }catch{} }
+function speakEN(text){ stopSpeak(); if(State.muted) return; try{ const u=new SpeechSynthesisUtterance(text); u.lang="en-US"; u.rate=0.92; u.onstart=()=>{try{if(window.DilAvatar)DilAvatar.speakText(text);}catch(e){}}; u.onend=()=>{try{if(window.DilAvatar)DilAvatar.stop();}catch(e){}}; speechSynthesis.speak(u); }catch{} }
 function stripMarks(t){ return String(t).replace(/\*\*/g,"").replace(/^\s*\d+\.\s*/gm,""); }
 
 /* ---------- yardımcılar ---------- */
@@ -258,6 +261,7 @@ function render(){
     <button class="prompt-btn" id="promptBtn">⚙ Prompt</button>
   </div>
   <div class="body" id="body">
+    <div class="teacher-avatar" id="teacherAvatar" style="display:flex;justify-content:center;padding:12px 10px 4px"></div>
     <div class="subject">
       <div class="subject-en" id="subEn">${renderRich('[['+State.en+']]')}</div>
       ${State.tr ? `<div class="subject-tr">${esc(State.tr)}</div>` : ""}
@@ -289,6 +293,7 @@ function render(){
     try{ localStorage.setItem("teacherMuted", State.muted ? "1":"0"); }catch{}
   };
   setupChatBar();
+  try{ if(window.DilAvatar){ DilAvatar.mount("teacherAvatar"); const f=document.querySelector("#teacherAvatar .dilav-face"); if(f) f.style.maxWidth="160px"; } }catch(e){}
   explain();
 }
 
@@ -379,14 +384,17 @@ async function ask(q){
   typing.className = "tbubble tbubble-teacher";
   typing.innerHTML = `<div class="loading"><div class="spinner"></div> Öğretmen düşünüyor…</div>`;
   box.appendChild(typing); scrollBody();
+  try{ if(window.DilAvatar) DilAvatar.thinking(true); }catch(e){}
 
   try{
     const reply = await groqChat(State.history);
     State.history.push({ role:"assistant", content:reply });
     typing.remove();
+    try{ if(window.DilAvatar) DilAvatar.thinking(false); }catch(e){}
     addBubble("teacher", reply, true);
   }catch(e){
     typing.remove();
+    try{ if(window.DilAvatar) DilAvatar.thinking(false); }catch(_){}
     handleError(e, true);
     addBubble("teacher", "⚠️ Yanıt alınamadı, tekrar dener misin?", false);
   }finally{

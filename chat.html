@@ -105,6 +105,7 @@ body{
 .note{font-size:13px;min-height:16px;margin-bottom:8px}
 .note.bad{color:var(--bad)}.note.ok{color:var(--ok)}
 </style>
+<script src="./avatar.js"></script>
 </head>
 <body>
 <div class="wrap" id="root"></div>
@@ -162,9 +163,13 @@ function speak(text, onend){
   try{
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "en-US"; u.rate = 0.96;
-    if (onend) u.onend = onend;
+    // Avatar ağzı: ses süresince Türkçe harf mantığıyla oynasın (ses diline dokunulmaz)
+    u.onstart = ()=>{ try{ if(window.DilAvatar) DilAvatar.speakText(text); }catch(e){} };
+    u.onend = ()=>{ try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){} if(onend) onend(); };
     speechSynthesis.cancel(); speechSynthesis.speak(u);
-  }catch{ onend && onend(); }
+    // onstart bazı tarayıcılarda gecikebilir; yine de hemen başlat
+    try{ if(window.DilAvatar) DilAvatar.speakText(text); }catch(e){}
+  }catch{ try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){} onend && onend(); }
 }
 const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -338,6 +343,7 @@ function renderChat(){
     <div class="partner-info"><h1>${esc(title)}</h1><p id="status">İngilizce konuşma · ${State.level}</p></div>
     <button class="lvl-pill" id="lvlPill">${State.level}</button>
   </div>
+  <div class="chat-avatar" id="chatAvatar" style="display:flex;justify-content:center;padding:14px 10px 6px"></div>
   <div class="msgs" id="msgs"></div>
   <div class="input-bar">
     <textarea class="text-in" id="textIn" rows="1" placeholder="Yaz ya da 🎙️ ile konuş…"></textarea>
@@ -354,6 +360,8 @@ function renderChat(){
   document.getElementById("sendFab").onclick = () => sendUser(textIn.value);
 
   if (STT) setupMic();
+
+  try{ if(window.DilAvatar){ DilAvatar.mount("chatAvatar"); const f=document.querySelector("#chatAvatar .dilav-face"); if(f) f.style.maxWidth="170px"; } }catch(e){}
 
   // geçmişi çiz
   for (const m of State.history) addBubble(m, false);
@@ -416,8 +424,9 @@ function showTyping(){
   t.className = "typing"; t.id = "typing";
   t.innerHTML = "<span></span><span></span><span></span>";
   msgs.appendChild(t); scrollDown();
+  try{ if(window.DilAvatar) DilAvatar.thinking(true); }catch(e){}
 }
-function hideTyping(){ const t=document.getElementById("typing"); if(t) t.remove(); }
+function hideTyping(){ const t=document.getElementById("typing"); if(t) t.remove(); try{ if(window.DilAvatar) DilAvatar.thinking(false); }catch(e){} }
 
 /* ---------- mesaj gönderme ---------- */
 async function sendUser(text){
