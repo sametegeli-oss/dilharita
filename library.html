@@ -36,6 +36,16 @@ button,input,select{font-family:inherit}.hidden{display:none!important}
 
 const API = "https://gutendex.com/books";
 const PROXY = "https://api.allorigins.win/raw?url=";
+const TEXT_PROXIES = [
+  url => "https://r.jina.ai/http://r.jina.ai/http://" + url,
+  url => "https://r.jina.ai/http://" + url.replace(/^https?:\/\//i, ""),
+  url => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
+  url => "https://corsproxy.io/?" + encodeURIComponent(url),
+  url => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url),
+  url => "https://cors.isomorphic-git.org/" + url
+];
+const CACHE_DB = "sentenceLibraryCacheV2";
+const CACHE_STORE = "kv";
 const STATE_KEY = "sentenceLibraryStateV1";
 const PROGRESS_KEY = "sentenceLibraryProgressV1";
 const LEVELS = ["A1","A2","B1","B2","C1"];
@@ -86,16 +96,95 @@ function saveState(){
 function loadSaved(){ try{ return JSON.parse(localStorage.getItem(STATE_KEY)||"{}"); }catch{ return {}; } }
 function qParam(name){ return new URLSearchParams(location.search).get(name)||""; }
 
+function fetchWithTimeout(url, opts, ms){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), ms || 9000);
+  return fetch(url, Object.assign({}, opts || {}, {signal:ctrl.signal})).finally(()=>clearTimeout(t));
+}
 async function fetchViaProxy(url, asText){
+  // JSON katalog isteklerinde önce doğrudan Gutendex denenir.
+  // Kitap metninde doğrudan Gutenberg denemiyoruz; Gutenberg CORS engeli konsolda hata üretiyor.
+  if(asText) return fetchTextSafely(url);
   try{
-    const r = await fetch(url, {headers:{"Accept": asText ? "text/plain,*/*" : "application/json,*/*"}});
+    const r = await fetchWithTimeout(url, {headers:{"Accept":"application/json,*/*"}}, 9000);
     if(!r.ok) throw new Error("http " + r.status);
-    return asText ? await r.text() : await r.json();
+    return await r.json();
   }catch(firstErr){
-    const r = await fetch(PROXY + encodeURIComponent(url));
+    const r = await fetchWithTimeout(PROXY + encodeURIComponent(url), {headers:{"Accept":"application/json,*/*"}}, 10000);
     if(!r.ok) throw firstErr;
-    return asText ? await r.text() : await r.json();
+    return await r.json();
   }
+}
+async function fetchTextSafely(url){
+  let lastErr = null;
+  for(const make of TEXT_PROXIES){
+    const proxied = make(url);
+    try{
+      const r = await fetchWithTimeout(proxied, {headers:{"Accept":"text/plain,*/*"}}, 12000);
+      if(!r.ok) throw new Error("http " + r.status);
+      const text = await r.text();
+      if(text && text.length > 1000 && !/^\s*\{\s*"error"/i.test(text)) return text;
+      lastErr = new Error("short text");
+    }catch(e){
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("text fetch failed");
+}
+
+let _cacheDBPromise = null;
+function openCacheDB(){
+  if(_cacheDBPromise) return _cacheDBPromise;
+  _cacheDBPromise = new Promise((resolve, reject)=>{
+    if(!window.indexedDB) return reject(new Error("IndexedDB yok"));
+    const req = indexedDB.open(CACHE_DB, 1);
+    req.onupgradeneeded = ()=>{
+      const db = req.result;
+      if(!db.objectStoreNames.contains(CACHE_STORE)) db.createObjectStore(CACHE_STORE);
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error || new Error("IndexedDB açılamadı"));
+  });
+  return _cacheDBPromise;
+}
+async function cacheGet(key){
+  try{
+    const db = await openCacheDB();
+    return await new Promise((resolve, reject)=>{
+      const tx = db.transaction(CACHE_STORE, "readonly");
+      const rq = tx.objectStore(CACHE_STORE).get(key);
+      rq.onsuccess = ()=>resolve(rq.result || null);
+      rq.onerror = ()=>reject(rq.error || new Error("cache okunamadı"));
+    });
+  }catch(e){ return null; }
+}
+async function cacheSet(key, value){
+  try{
+    const db = await openCacheDB();
+    await new Promise((resolve, reject)=>{
+      const tx = db.transaction(CACHE_STORE, "readwrite");
+      tx.objectStore(CACHE_STORE).put(value, key);
+      tx.oncomplete = resolve;
+      tx.onerror = ()=>reject(tx.error || new Error("cache yazılamadı"));
+    });
+    return true;
+  }catch(e){
+    console.warn("Kütüphane cache yazılamadı:", e);
+    return false;
+  }
+}
+function bookCacheKey(book){ return "bookText:" + String(book && book.id || ""); }
+async function getCachedBookText(book){
+  const rec = await cacheGet(bookCacheKey(book));
+  if(rec && rec.text && rec.text.length > 1000) return rec;
+  return null;
+}
+async function saveCachedBookText(book, text, source){
+  if(!book || !book.id || !text || text.length < 1000) return false;
+  return cacheSet(bookCacheKey(book), {
+    id:book.id, title:book.title || "", author:authorOf(book),
+    source:source || "", text:String(text), at:Date.now()
+  });
 }
 
 function topHtml(subtitle){
@@ -223,11 +312,20 @@ function textCandidates(book){
   ].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
 }
 async function fetchBookText(book){
+  const cached = await getCachedBookText(book);
+  if(cached){
+    State.source = "cache";
+    return cached.text;
+  }
   let last=null;
   for(const url of textCandidates(book)){
     try{
       const text = await fetchViaProxy(url, true);
-      if(text && text.length>1000) return text;
+      if(text && text.length>1000){
+        State.source = "internet";
+        await saveCachedBookText(book, text, url);
+        return text;
+      }
     }catch(e){ last=e; }
   }
   throw last || new Error("text not found");
@@ -262,8 +360,8 @@ function splitText(text){
 }
 function splitSentencesPlain(t){ return String(t||"").match(/[^.!?]+[.!?]+[”’'"]*|[^.!?]+$/g)?.map(s=>s.trim()).filter(Boolean) || [String(t||"")]; }
 async function loadBook(book, startIdx){
-  State.book = book; State.idx = Math.max(0, Number(startIdx||0)); State.selectedText=""; State.paragraphs=[]; saveState();
-  renderShell(`<div class="state"><div class="spinner"></div><h2>Kitap açılıyor</h2><p>${esc(book.title)} metni indiriliyor…</p></div>`, "Kitap yükleniyor");
+  State.book = book; State.idx = Math.max(0, Number(startIdx||0)); State.selectedText=""; State.paragraphs=[]; State.source=""; saveState();
+  renderShell(`<div class="state"><div class="spinner"></div><h2>Kitap açılıyor</h2><p>Önce yerel kütüphane kontrol ediliyor. Kayıt yoksa metin internetten alınıp IndexedDB’ye kaydedilecek…</p></div>`, "Kitap yükleniyor");
   try{
     const text = await fetchBookText(book);
     State.paragraphs = splitText(text);
@@ -271,7 +369,7 @@ async function loadBook(book, startIdx){
     State.idx = Math.min(State.idx, State.paragraphs.length-1);
     saveState(); renderReader();
   }catch(e){
-    renderShell(`<div class="state"><h2>Kitap metni açılamadı</h2><p>Bu kaydın düz metin bağlantısı tarayıcıdan okunamadı. Başka bir kitap dene ya da internet bağlantısını kontrol et.</p><button class="btn primary" id="backBooks">Kitap listesine dön</button></div>`, "Bağlantı hatası");
+    renderShell(`<div class="state"><h2>Kitap metni açılamadı</h2><p>Bu kaydın düz metni tarayıcıdan okunamadı. Gutenberg doğrudan CORS engeli verdiğinde sistem güvenli proxyleri dener; hepsi başarısızsa başka kitap dene veya internet bağlantısını kontrol et.</p><button class="btn primary" id="backBooks">Kitap listesine dön</button></div>`, "Bağlantı hatası");
     document.getElementById("backBooks").onclick=()=>renderHome();
   }
 }
@@ -302,6 +400,7 @@ function renderReader(){
           <a class="source-link" href="${esc(sourceUrl(book))}" target="_blank" rel="noopener">Kaynağı aç ↗</a>
           <button class="btn ghost" id="listenBtn">🔊 Oku</button>
           <button class="btn teacher" id="askMiniBtn">🎓 Öğretmene Sor</button>
+          <span class="chip ok">${State.source === "cache" ? "Yerel kopya" : "İnternetten alındı ve kaydedildi"}</span>
         </div>
       </section>
       <article class="read-card">
