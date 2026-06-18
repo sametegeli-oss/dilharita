@@ -25,11 +25,11 @@ body{
 .wrap{max-width:680px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
 
 .top{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-soft);z-index:10}
-.back{background:var(--surface);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:17px;flex-shrink:0;text-decoration:none;display:flex;align-items:center;justify-content:center}
+.back{background:var(--surface);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:22px;flex-shrink:0;text-decoration:none;display:flex;align-items:center;justify-content:center}
 .back:hover{background:var(--surface-2)}
 .ava{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#34d399,#16a34a);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 .tinfo{flex:1;min-width:0}
-.tinfo h1{margin:0;font-family:Fraunces,serif;font-weight:600;font-size:17px}
+.tinfo h1{margin:0;font-family:Fraunces,serif;font-weight:600;font-size:22px}
 .tinfo p{margin:1px 0 0;font-size:12px;color:var(--muted)}
 .prompt-btn{background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:7px 11px;font:800 12px Nunito,sans-serif;cursor:pointer;flex-shrink:0}
 .prompt-btn:hover{background:var(--surface-2);color:var(--text)}
@@ -38,13 +38,13 @@ body{
 
 /* incelenen cümle kutusu */
 .subject{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px}
-.subject-en{font-size:20px;font-weight:700;line-height:1.4;margin-bottom:6px}
-.subject-tr{font-size:14px;color:var(--muted)}
+.subject-en{font-size:24px;font-weight:700;line-height:1.4;margin-bottom:6px}
+.subject-tr{font-size:22px;color:var(--muted)}
 .subject-play{margin-top:10px;background:var(--surface-2);border:1px solid var(--border);color:var(--accent);border-radius:9px;padding:7px 13px;font:700 12px Nunito,sans-serif;cursor:pointer}
 .subject-play:hover{background:var(--accent-strong);color:#fff}
 
 /* açıklama */
-.explain{background:var(--bg-soft);border:1px solid var(--border);border-radius:14px;padding:16px;font-size:15px;line-height:1.7;white-space:pre-wrap;word-wrap:break-word}
+.explain{background:var(--bg-soft);border:1px solid var(--border);border-radius:14px;padding:16px;font-size:22px;line-height:1.7;white-space:pre-wrap;word-wrap:break-word}
 .explain .en{color:var(--green-strong);font-weight:800}
 .explain strong{color:var(--text);font-weight:900}
 
@@ -55,7 +55,7 @@ body{
 .followup button{background:var(--green-strong);color:#fff;border:none;border-radius:11px;padding:0 16px;font:800 14px Nunito,sans-serif;cursor:pointer}
 .qa-q{margin-top:14px;font-weight:800;color:var(--accent);font-size:14px}
 
-.loading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px;padding:10px 0}
+.loading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:22px;padding:10px 0}
 .spinner{width:22px;height:22px;border:3px solid var(--surface-2);border-top-color:var(--teacher);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -81,10 +81,10 @@ body{
 .sheet .btn{width:100%;margin-bottom:9px;display:block;text-align:center}
 .sheet a{color:#93c5fd}
 .row2{display:flex;gap:8px}.row2 .btn{flex:1}
-.note{font-size:13px;min-height:16px;margin:4px 0 8px}.note.bad{color:var(--bad)}.note.ok{color:var(--ok)}
+.note{font-size:22px;min-height:16px;margin:4px 0 8px}.note.bad{color:var(--bad)}.note.ok{color:var(--ok)}
 /* sohbet balonları */
 .bubbles{display:flex;flex-direction:column;gap:12px;margin-bottom:12px}
-.tbubble{max-width:92%;padding:13px 15px;border-radius:16px;font-size:15px;line-height:1.7;animation:rise .2s ease;word-wrap:break-word}
+.tbubble{max-width:92%;padding:13px 15px;border-radius:16px;font-size:22px;line-height:1.7;animation:rise .2s ease;word-wrap:break-word}
 @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .tbubble-teacher{align-self:flex-start;background:var(--bg-soft);border:1px solid var(--border);border-bottom-left-radius:5px;white-space:pre-wrap;position:relative}
 .tbubble-teacher.speaking{border-color:var(--teacher);box-shadow:0 0 0 2px #34d39933}
@@ -442,3 +442,4 @@ render();
 </script>
 </body>
 </html>
+[]
