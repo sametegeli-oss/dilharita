@@ -49,7 +49,7 @@ button,input{font-family:inherit}
 @media(max-width:640px){.wd-line{font-size:16px}.word-diff{padding:10px}.own-voice-btn{width:100%;max-width:260px}}
 
 /* ===== İkinci ekran: sağ üst köşe overlay kart ===== */
-.teach-overlay{position:fixed;top:72px;left:50%;transform:translateX(-50%);z-index:55;width:min(380px,calc(100vw - 24px));background:rgba(7,12,24,.62);border:1px solid #ffffff2e;border-radius:20px;box-shadow:0 20px 56px rgba(0,0,0,.5);padding:14px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:9px;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.teach-overlay{position:fixed;bottom:168px;left:50%;transform:translateX(-50%);z-index:55;width:min(380px,calc(100vw - 24px));background:rgba(7,12,24,.62);border:1px solid #ffffff2e;border-radius:20px;box-shadow:0 20px 56px rgba(0,0,0,.5);padding:14px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:9px;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
 .teach-head{font-family:Fraunces,serif;font-weight:600;font-size:12px;color:#93c5fd;letter-spacing:.4px;text-transform:uppercase}
 /* avatar */
 .avatar{width:104px;height:104px;border-radius:50%;background:radial-gradient(circle at 50% 38%,#1e3a8a,#0b1120 72%);border:2px solid #ffffff1f;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 34px rgba(0,0,0,.45);flex:0 0 auto}
@@ -68,12 +68,12 @@ button,input{font-family:inherit}
 .teach-hint{color:#64748b;font-size:11px;text-align:center;line-height:1.45}
 
 @media(max-width:640px){
-  .teach-overlay{top:64px;left:50%;transform:translateX(-50%);bottom:auto;width:min(360px,calc(100vw - 20px));flex-direction:column;padding:11px 13px;gap:7px}
+  .teach-overlay{top:auto;bottom:160px;left:50%;transform:translateX(-50%);width:min(360px,calc(100vw - 20px));flex-direction:column;padding:11px 13px;gap:7px}
   .teach-overlay .teach-head{font-size:11px}
-  .avatar{width:72px;height:72px}.avatar svg{width:54px;height:54px}
-  .karaoke{font-size:clamp(17px,5vw,22px);gap:4px 7px}
+  .avatar{width:64px;height:64px}.avatar svg{width:48px;height:48px}
+  .karaoke{font-size:clamp(16px,4.8vw,21px);gap:4px 7px}
   .teach-tr{font-size:13px}
-  .teach-listen{padding:9px 18px;font-size:13px}
+  .teach-listen{padding:8px 17px;font-size:13px}
   .teach-hint{display:none}
 }
 
