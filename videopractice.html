@@ -66,9 +66,8 @@ button,input{font-family:inherit}
 /* avatar */
 .avatar{width:160px;height:160px;border-radius:50%;background:radial-gradient(circle at 50% 38%,#1e3a8a,#0b1120 72%);border:2px solid #ffffff1f;display:flex;align-items:center;justify-content:center;box-shadow:0 18px 50px rgba(0,0,0,.45);flex:0 0 auto}
 .avatar svg{width:118px;height:118px}
-.av-mouth{transform-origin:center;transition:transform .08s linear}
-.avatar.speaking .av-mouth{animation:mouthTalk .26s ease-in-out infinite alternate}
-@keyframes mouthTalk{from{transform:scaleY(.35)}to{transform:scaleY(1.15)}}
+.av-mouth{transition:d .07s linear,transform .07s linear;transform-origin:center}
+.avatar.speaking{box-shadow:0 18px 50px rgba(37,99,235,.55)}
 /* karaoke */
 .karaoke{max-width:520px;width:100%;text-align:center;font-weight:950;font-size:clamp(24px,3.4vw,40px);line-height:1.4;letter-spacing:.2px;display:flex;flex-wrap:wrap;gap:8px 12px;justify-content:center}
 .kw{color:#64748b;transition:color .12s ease,transform .12s ease;will-change:transform}
@@ -316,7 +315,7 @@ async function uiNextCard(ev){
     hideFeedback();
     clearVideoStatus();
     try{speechSynthesis.cancel()}catch{}
-    try{clearTeachTimers();setAvatarSpeaking(false);}catch{}
+    try{clearTeachTimers();clearVisemeTimers();setAvatarSpeaking(false);}catch{}
     try{State.manualStop=true;if(State.voiceRec){State.voiceRec.abort ? State.voiceRec.abort() : State.voiceRec.stop();}}catch{}
     try{stopOwnVoiceRecording(true)}catch{}
     State.listening=false;
@@ -325,7 +324,7 @@ async function uiNextCard(ev){
     setTimeout(()=>{_nextTapLock=false},450);
   }
 }
-function renderVideoCard(){clearUiTimers();if(State.idx>=State.queue.length)return renderDone();const s=currentSentence();State.showTR=false;State.currentVideoPayload=null;const pct=Math.round(State.idx/State.queue.length*100);const name=(s.module||"").replace(/^[A-C]\d-M\d+\s*/,"");root.innerHTML=`<div class="split"><div class="video-page split-video"><div class="video-bg"><video id="mainVideo" muted playsinline loop></video></div><div class="video-loading" id="videoLoading"><div class="spinner"></div><div>Video aranıyor…</div></div><button class="api-float" id="apiFloat">🔑 API</button><button class="next-float" id="nextBtn">Sıradaki →</button><div class="vp-top"><button class="back" id="backBtn">←</button><div class="vp-title"><h1>${esc(State.sessionTitle)}</h1><p>${esc(name)} · ${esc(s.topic||"")} · ${esc(s.level||"")}</p></div><div class="queue-pill"><b>${State.idx+1}</b>/${State.queue.length}</div></div><div class="subtitle-wrap"><div class="en-subtitle" id="enSubtitle">${esc(s.en)}</div></div><div class="tr-panel hidden" id="trPanel"><div class="tr-label">Türkçesi / SentenceTR</div><div class="tr-text">${esc(s.tr)}</div></div><div class="feedback hidden" id="feedback"></div><div class="video-status hidden" id="videoStatus"></div><div class="fallback-input hidden" id="fallbackInput"><input id="typedTR" placeholder="Mikrofon yoksa İngilizce cümleyi buraya yaz"/><button id="typedCheck">Kontrol</button></div><div class="controls"><button class="ctrl" id="replayBtn"><span class="ctrl-ico">↻</span><span>Tekrar oynat</span></button><div><button class="mic-main" id="micBtn">🎙️</button><div class="mic-caption" id="micCaption">Tıkla ve İngilizceyi oku</div></div><button class="ctrl" id="translateBtn"><span class="ctrl-ico">🌐</span><span>Tercüme Et</span></button></div><div class="small-note" id="smallNote">Arama: speaking video : ${esc(s.en)}</div></div><div class="split-teach"><div class="teach-head">🎧 Cümleyi Dinle &amp; Öğren</div><div class="avatar" id="teachAvatar"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="35" cy="40" r="5.5" fill="#bfdbfe"/><circle cx="65" cy="40" r="5.5" fill="#bfdbfe"/><ellipse class="av-mouth" id="avMouth" cx="50" cy="66" rx="15" ry="7" fill="#60a5fa"/></svg></div><div class="karaoke" id="karaoke"></div><div class="teach-tr" id="teachTr">${esc(s.tr)}</div><button class="teach-listen" id="teachListenBtn">🔊 Dinle</button><div class="teach-hint">Önce burada cümleyi dinle, kelimeler okundukça vurgulanır. Sonra soldaki mikrofonla sen oku.</div></div></div>`;document.getElementById("backBtn").onclick=()=>renderPicker();document.getElementById("apiFloat").onclick=()=>openApiSheet(false);bindTap(document.getElementById("nextBtn"),uiNextCard);document.getElementById("replayBtn").onclick=()=>replayCurrent(true);document.getElementById("translateBtn").onclick=toggleTranslation;bindTap(document.getElementById("micBtn"),startEnglishCheck);document.getElementById("typedCheck").onclick=()=>checkEnglish(document.getElementById("typedTR").value,"typed");if(!STT)document.getElementById("fallbackInput").classList.remove("hidden");document.getElementById("teachListenBtn").onclick=()=>playTeaching(s);renderKaraoke(s.en);autoLoadVideo(s);setTimeout(()=>playTeaching(s),800)}
+function renderVideoCard(){clearUiTimers();if(State.idx>=State.queue.length)return renderDone();const s=currentSentence();State.showTR=false;State.currentVideoPayload=null;const pct=Math.round(State.idx/State.queue.length*100);const name=(s.module||"").replace(/^[A-C]\d-M\d+\s*/,"");root.innerHTML=`<div class="split"><div class="video-page split-video"><div class="video-bg"><video id="mainVideo" muted playsinline loop></video></div><div class="video-loading" id="videoLoading"><div class="spinner"></div><div>Video aranıyor…</div></div><button class="api-float" id="apiFloat">🔑 API</button><button class="next-float" id="nextBtn">Sıradaki →</button><div class="vp-top"><button class="back" id="backBtn">←</button><div class="vp-title"><h1>${esc(State.sessionTitle)}</h1><p>${esc(name)} · ${esc(s.topic||"")} · ${esc(s.level||"")}</p></div><div class="queue-pill"><b>${State.idx+1}</b>/${State.queue.length}</div></div><div class="subtitle-wrap"><div class="en-subtitle" id="enSubtitle">${esc(s.en)}</div></div><div class="tr-panel hidden" id="trPanel"><div class="tr-label">Türkçesi / SentenceTR</div><div class="tr-text">${esc(s.tr)}</div></div><div class="feedback hidden" id="feedback"></div><div class="video-status hidden" id="videoStatus"></div><div class="fallback-input hidden" id="fallbackInput"><input id="typedTR" placeholder="Mikrofon yoksa İngilizce cümleyi buraya yaz"/><button id="typedCheck">Kontrol</button></div><div class="controls"><button class="ctrl" id="replayBtn"><span class="ctrl-ico">↻</span><span>Tekrar oynat</span></button><div><button class="mic-main" id="micBtn">🎙️</button><div class="mic-caption" id="micCaption">Tıkla ve İngilizceyi oku</div></div><button class="ctrl" id="translateBtn"><span class="ctrl-ico">🌐</span><span>Tercüme Et</span></button></div><div class="small-note" id="smallNote">Arama: speaking video : ${esc(s.en)}</div></div><div class="split-teach"><div class="teach-head">🎧 Cümleyi Dinle &amp; Öğren</div><div class="avatar" id="teachAvatar"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="35" cy="40" r="5.5" fill="#bfdbfe"/><circle cx="65" cy="40" r="5.5" fill="#bfdbfe"/><path class="av-mouth" id="avMouth" d="M37 66 Q50 70 63 66 Q50 72 37 66 Z" fill="#60a5fa"/></svg></div><div class="karaoke" id="karaoke"></div><div class="teach-tr" id="teachTr">${esc(s.tr)}</div><button class="teach-listen" id="teachListenBtn">🔊 Dinle</button><div class="teach-hint">Önce burada cümleyi dinle, kelimeler okundukça vurgulanır. Sonra soldaki mikrofonla sen oku.</div></div></div>`;document.getElementById("backBtn").onclick=()=>renderPicker();document.getElementById("apiFloat").onclick=()=>openApiSheet(false);bindTap(document.getElementById("nextBtn"),uiNextCard);document.getElementById("replayBtn").onclick=()=>replayCurrent(true);document.getElementById("translateBtn").onclick=toggleTranslation;bindTap(document.getElementById("micBtn"),startEnglishCheck);document.getElementById("typedCheck").onclick=()=>checkEnglish(document.getElementById("typedTR").value,"typed");if(!STT)document.getElementById("fallbackInput").classList.remove("hidden");document.getElementById("teachListenBtn").onclick=()=>playTeaching(s);renderKaraoke(s.en);autoLoadVideo(s);setTimeout(()=>playTeaching(s),800)}
 async function nextCard(){await savePos();State.idx++;if(State.idx>=State.queue.length){if(State.activeModule)await clearPos(State.activeModule);renderDone()}else{await savePos();renderVideoCard()}}
 function renderDone(){clearUiTimers();root.innerHTML=`<div class="state"><div style="font-size:56px">✅</div><h2>Video oturumu tamam</h2><p>${State.queue.length} cümleyi video ile çalıştın.</p><button class="btn primary" id="homeBtn">Ana sayfa</button></div>`;document.getElementById("homeBtn").onclick=renderPicker}
 function showStatus(msg){if(_statusTimer){clearTimeout(_statusTimer);_statusTimer=null;}const el=document.getElementById("videoStatus");if(!el)return;el.textContent=msg||"";el.classList.toggle("hidden",!msg)}
@@ -342,7 +341,60 @@ function speakEnglish(text){try{speechSynthesis.cancel();const u=new SpeechSynth
 
 /* ===== İkinci ekran: karaoke + avatar ===== */
 let _teachTimers=[];
+let _visemeTimers=[];
 function clearTeachTimers(){for(const t of _teachTimers){clearTimeout(t)}_teachTimers=[];}
+function clearVisemeTimers(){for(const t of _visemeTimers){clearTimeout(t)}_visemeTimers=[];}
+
+/* Ağız şekilleri (viseme). Avatar SVG içindeki #avMouth path'inin "d" değeri değişir.
+   Gerçek fonetik değil; Türkçe okunuş (trPron) harflerine dayalı kaba eşleme. */
+const VISEME={
+  rest:  "M37 66 Q50 70 63 66 Q50 72 37 66 Z",        // kapalı/nötr ince
+  open:  "M36 64 Q50 60 64 64 Q50 78 36 64 Z",        // a,e geniş açık
+  round: "M44 64 Q50 60 56 64 Q56 74 50 76 Q44 74 44 64 Z", // o,u yuvarlak
+  wide:  "M34 66 Q50 64 66 66 Q50 71 34 66 Z",        // ı,i dar/sırıtma
+  closed:"M38 66 Q50 65 62 66 Q50 67 38 66 Z",        // m,b,p kapalı
+  teeth: "M40 64 Q50 62 60 64 Q50 72 40 64 Z"         // f,v yarı açık
+};
+function visemeForChar(ch){
+  ch=String(ch||"").toLowerCase();
+  if("aeâ".includes(ch))return "open";
+  if("ou".includes(ch))return "round";
+  if("ıiüöy".includes(ch))return "wide";
+  if("mbp".includes(ch))return "closed";
+  if("fv".includes(ch))return "teeth";
+  if("a-z0-9çğş ".includes(ch))return "rest"; // diğer ünsüz/boşluk → nötr
+  return "rest";
+}
+function setMouth(shape){
+  const m=document.getElementById("avMouth");
+  if(m)m.setAttribute("d",VISEME[shape]||VISEME.rest);
+}
+/* Bir kelimenin (trPron parçası) harflerini süre boyunca ağza sırayla bas. */
+function animateWordViseme(pron,durationMs){
+  clearVisemeTimers();
+  const letters=String(pron||"").replace(/[^a-zçğışöüâ]/gi,"").split("");
+  if(!letters.length){setMouth("open");_visemeTimers.push(setTimeout(()=>setMouth("rest"),Math.max(120,durationMs||300)));return;}
+  const step=Math.max(70,Math.min(150,Math.round((durationMs||letters.length*120)/letters.length)));
+  letters.forEach((ch,i)=>{
+    _visemeTimers.push(setTimeout(()=>setMouth(visemeForChar(ch)),i*step));
+  });
+  // kelime bitince ağzı kapat
+  _visemeTimers.push(setTimeout(()=>setMouth("rest"),letters.length*step+60));
+}
+/* s.en kelimelerine karşılık gelen trPron parçalarını hizala.
+   Kelime sayıları eşitse birebir; değilse orantılı eşleme; trPron yoksa s.en'e düş. */
+function buildPronMap(s){
+  const enWords=String(s&&s.en||"").trim().split(/\s+/).filter(Boolean);
+  let pron=String((s&&(s.trPron??s.tr_pron??s.trpron??s.TrPron??s.pronTR))||"").trim();
+  // "none", "-", "yok" gibi yer tutucuları geçersiz say
+  if(/^(none|n\/a|na|-|—|yok|null)$/i.test(pron))pron="";
+  const prWords=pron?pron.split(/\s+/).filter(Boolean):[];
+  if(!enWords.length)return [];
+  if(prWords.length===enWords.length)return prWords;
+  if(!prWords.length)return enWords.slice(); // yedek: İngilizce yazımdan
+  // orantılı eşleme
+  return enWords.map((_,i)=>prWords[Math.min(prWords.length-1,Math.round(i*(prWords.length-1)/Math.max(1,enWords.length-1)))]||"");
+}
 function buildKaraokeTokens(text){
   // Görünür kelimeleri ve her birinin metin içindeki başlangıç karakter indeksini tut.
   const tokens=[];const re=/\S+/g;let m;
@@ -355,6 +407,7 @@ function renderKaraoke(text){
   box.innerHTML=tokens.map((t,i)=>`<span class="kw" data-i="${i}">${esc(t.word)}</span>`).join("");
   return tokens;
 }
+let _lastVisemeWord=-1;
 function setKaraokeActive(i){
   const box=document.getElementById("karaoke");if(!box)return;
   const spans=box.querySelectorAll(".kw");
@@ -362,6 +415,12 @@ function setKaraokeActive(i){
     sp.classList.toggle("active",idx===i);
     sp.classList.toggle("done",idx<i);
   });
+  // aktif kelime değiştiyse ağzı o kelimenin okunuşuna göre oynat
+  if(i!==_lastVisemeWord && i>=0 && i<spans.length){
+    _lastVisemeWord=i;
+    const pron=(_pronMap&&_pronMap[i])||"";
+    animateWordViseme(pron,_perWordEstimate);
+  }
 }
 function clearKaraokeHighlight(){
   const box=document.getElementById("karaoke");if(!box)return;
@@ -370,6 +429,7 @@ function clearKaraokeHighlight(){
 function setAvatarSpeaking(on){
   const a=document.getElementById("teachAvatar");
   if(a)a.classList.toggle("speaking",!!on);
+  if(!on){clearVisemeTimers();setMouth("rest");}
 }
 function setTeachBtnPlaying(on){
   const b=document.getElementById("teachListenBtn");
@@ -382,12 +442,17 @@ function tokenIndexForChar(tokens,charIndex){
   for(let i=tokens.length-1;i>=0;i--){if(charIndex>=tokens[i].start)return i;}
   return 0;
 }
+let _pronMap=[];
+let _perWordEstimate=420;
 function playTeaching(s){
   const text=s&&s.en?s.en:"";
   if(!text)return;
-  clearTeachTimers();
+  clearTeachTimers();clearVisemeTimers();
+  _lastVisemeWord=-1;
+  _pronMap=buildPronMap(s);
   const tokens=renderKaraoke(text);
   clearKaraokeHighlight();
+  setMouth("rest");
   let boundaryFired=false;
   try{speechSynthesis.cancel();}catch{}
   let u;
@@ -405,10 +470,12 @@ function playTeaching(s){
   };
   u.onend=()=>{setAvatarSpeaking(false);setTeachBtnPlaying(false);setKaraokeActive(tokens.length);clearTeachTimers();};
   u.onerror=()=>{setAvatarSpeaking(false);setTeachBtnPlaying(false);clearTeachTimers();};
+  // kelime başına süre tahmini (viseme hızı için de kullanılır)
+  _perWordEstimate=Math.max(280,Math.round(360/0.92));
   try{speechSynthesis.speak(u);}catch{visualOnlyKaraoke(tokens);return;}
   // Fallback: onboundary desteklenmeyen tarayıcılarda (Safari) kelimeleri zamana böl.
   // ~ rate'e göre kelime başına süre tahmini; boundary geldiyse bu timerlar etkisiz kalır.
-  const perWord=Math.max(240,Math.round(360/0.92));
+  const perWord=_perWordEstimate;
   tokens.forEach((t,i)=>{
     _teachTimers.push(setTimeout(()=>{ if(!boundaryFired) setKaraokeActive(i); },i*perWord+120));
   });
@@ -416,7 +483,8 @@ function playTeaching(s){
 function visualOnlyKaraoke(tokens){
   // TTS hiç yoksa: sadece görsel olarak kelimeleri sırayla vurgula.
   setAvatarSpeaking(true);setTeachBtnPlaying(true);
-  const perWord=420;
+  _lastVisemeWord=-1;
+  const perWord=420;_perWordEstimate=perWord;
   tokens.forEach((t,i)=>{_teachTimers.push(setTimeout(()=>setKaraokeActive(i),i*perWord));});
   _teachTimers.push(setTimeout(()=>{setAvatarSpeaking(false);setTeachBtnPlaying(false);setKaraokeActive(tokens.length);},tokens.length*perWord+200));
 }
@@ -500,7 +568,7 @@ function startEnglishCheck(){
   // Uzun cümlelerde erken değerlendirme yok: ilk tık dinlemeyi başlatır, ikinci tık bitirip değerlendirir.
   // Hedef SentenceEN'dir; SentenceTR yalnızca tercüme/yardım bilgisidir.
   try{ speechSynthesis.cancel(); }catch{}
-  if(!State.listening){try{clearTeachTimers();setAvatarSpeaking(false);setTeachBtnPlaying(false);}catch{}}
+  if(!State.listening){try{clearTeachTimers();clearVisemeTimers();setAvatarSpeaking(false);setTeachBtnPlaying(false);}catch{}}
   if(!STT){
     showFeedback("Mikrofon desteklenmiyor",`Tarayıcı ses tanımayı desteklemiyor. Alttaki kutuya İngilizce cümleyi yazıp kontrol edebilirsin.`,0,false);
     document.getElementById("fallbackInput").classList.remove("hidden");
