@@ -1,1 +1,34 @@
-<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DilAvatar Demo</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b1120;color:white;font-family:system-ui}.card{width:min(92vw,360px);text-align:center}.btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}button{border:0;background:#2563eb;color:#fff;border-radius:14px;padding:10px 14px;font-weight:900;cursor:pointer}</style></head><body><div class="card"><div id="avatarHost"></div><div class="btns"><button onclick="DilAvatar.speakText('merhaba bugün İngilizce çalışıyoruz',3200)">Konuş</button><button onclick="DilAvatar.thinking(true)">Düşün</button><button onclick="DilAvatar.stop()">Dur</button></div></div><script src="./avatar.js"></script><script>DilAvatar.mount('avatarHost');</script></body></html>
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DilAvatar Demo</title>
+  <style>
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#020617;color:#e5e7eb;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+    .box{width:min(92vw,360px);background:#0b1120;border:1px solid rgba(148,163,184,.25);border-radius:24px;padding:22px;text-align:center;}
+    #avatarHost{width:280px;max-width:100%;margin:0 auto;}
+    button{border:0;border-radius:16px;background:#2563eb;color:white;font-weight:900;padding:12px 16px;margin:6px;cursor:pointer;}
+    .err{display:none;margin-top:12px;padding:10px;border-radius:12px;background:#7f1d1d;color:#fff;font-weight:700;}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div id="avatarHost"></div>
+    <div id="err" class="err">avatar.js yüklenemedi. HTML ile avatar.js aynı klasörde olmalı.</div>
+    <button onclick="DilAvatar.speakText('merhaba bugün İngilizce çalışıyoruz', 3200)">Konuştur</button>
+    <button onclick="DilAvatar.thinking(true)">Düşün</button>
+    <button onclick="DilAvatar.stop(); DilAvatar.thinking(false)">Dur</button>
+    <p>Detaylı ayarlama için <b>avatar_ayar.html</b> dosyasını aç.</p>
+  </div>
+  <script src="./avatar.js"></script>
+  <script>
+    if (!window.DilAvatar) {
+      document.getElementById('err').style.display = 'block';
+    } else {
+      DilAvatar.mount('avatarHost');
+      DilAvatar.setGender('erkek');
+    }
+  </script>
+</body>
+</html>
