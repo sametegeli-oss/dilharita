@@ -1332,6 +1332,7 @@ function renderOrderLayer(s){
     <div class="actions">
       <button class="btn btn-ghost" id="clearBtn">Temizle</button>
       <button class="btn btn-primary" id="checkBtn" disabled>Kontrol et</button>
+      <button class="btn btn-primary" id="TeacherBtn" disabled>Öğretmen</button>      
     </div>`;
 
   const bankEl = document.getElementById("bank");
@@ -1468,7 +1469,8 @@ function renderFullLayer(s){
     if (!answer) { input.focus(); return; }
     evaluate(s, answer, "full");
   };
-
+document.getElementById("TeacherBtn").onclick = () => teacher_addon();
+  
   if (sttOK){
     const micBtn = document.getElementById("micBtn");
     let rec = null, listening = false;
