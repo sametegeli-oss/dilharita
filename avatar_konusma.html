@@ -3,66 +3,355 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DilAvatar Konuşma v19</title>
+  <title>DilAvatar Konuşma v20</title>
   <style>
-    :root{--bg:#020617;--panel:#0b1120;--line:rgba(148,163,184,.22);--text:#e5e7eb;--muted:#93a4bb;--blue:#2563eb}
+    :root{
+      --bg:#020617;
+      --panel:#0b1120;
+      --panel2:#111827;
+      --line:rgba(148,163,184,.22);
+      --text:#e5e7eb;
+      --muted:#93a4bb;
+      --blue:#2563eb;
+      --cyan:#2dd4bf;
+    }
     *{box-sizing:border-box}
-    body{margin:0;height:100vh;overflow:hidden;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    .app{height:100vh;display:grid;grid-template-rows:40px 1fr 54px}
-    header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line);background:rgba(11,17,32,.96)}
-    header h1{margin:0;font-size:14px;letter-spacing:.2px}
-    .tinybar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-    button{border:0;cursor:pointer;border-radius:9px;padding:6px 8px;background:#1e293b;color:#dbeafe;font-weight:800;font-size:11px;line-height:1}
-    button.primary{background:var(--blue);color:#fff}
-    button.danger{background:#7f1d1d;color:#fee2e2}
-    main{min-height:0;display:grid;grid-template-columns:1fr 210px}
-    .chat{min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:9px}
-    .msg{max-width:min(780px,92%);padding:9px 11px;border-radius:15px;border:1px solid var(--line);line-height:1.45;font-size:14px}
-    .user{margin-left:auto;background:#1d4ed8;color:#fff;border-color:rgba(255,255,255,.12);border-bottom-right-radius:6px}
-    .bot{margin-right:auto;background:rgba(15,23,42,.92);color:#e5e7eb;border-bottom-left-radius:6px}
-    .side{border-left:1px solid var(--line);background:rgba(11,17,32,.92);padding:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
-    .avatarTitle{font-size:11px;color:var(--muted);text-align:center}
-    footer{border-top:1px solid var(--line);background:rgba(11,17,32,.98);padding:7px 9px;display:grid;grid-template-columns:1fr auto;gap:7px}
-    textarea{resize:none;height:38px;border:1px solid var(--line);border-radius:13px;background:#020617;color:#e5e7eb;padding:9px 11px;outline:none;font:13px system-ui}
-    .sendbar{display:flex;gap:5px;align-items:center}
+    html,body{height:100%}
+    body{
+      margin:0;
+      height:100vh;
+      overflow:hidden;
+      background:var(--bg);
+      color:var(--text);
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+
+    /*
+      v20 düzen:
+      1) Üst başlık + avatar alanı sabit
+      2) Orta sohbet alanı tek başına scroll olur
+      3) En yeni mesaj en üstte görünür
+      4) Alt giriş alanı sabit
+    */
+    .app{
+      height:100vh;
+      display:grid;
+      grid-template-rows:auto 1fr auto;
+      overflow:hidden;
+    }
+
+    .topFixed{
+      background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(15,23,42,.94));
+      border-bottom:1px solid var(--line);
+      z-index:5;
+    }
+
+    header{
+      height:58px;
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+      padding:8px 12px;
+      max-width:960px;
+      margin:0 auto;
+      width:100%;
+    }
+
+    .back{
+      width:34px;height:34px;
+      border-radius:10px;
+      border:1px solid var(--line);
+      background:#111827;
+      color:#e5e7eb;
+      font-size:18px;
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+    }
+
+    .titleWrap{
+      min-width:0;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .sceneIcon{
+      width:42px;height:42px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      background:#7c3aed;
+      border:2px solid rgba(255,255,255,.18);
+      font-size:22px;
+      flex:0 0 auto;
+    }
+    .titleTexts{min-width:0}
+    .titleTexts h1{
+      margin:0;
+      font-size:20px;
+      line-height:1.05;
+      font-weight:900;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      font-family:Georgia,"Times New Roman",serif;
+    }
+    .titleTexts p{
+      margin:3px 0 0;
+      color:#93c5fd;
+      font-size:13px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .level{
+      background:#3b82f6;
+      color:white;
+      font-weight:900;
+      padding:8px 10px;
+      border-radius:10px;
+      font-size:13px;
+    }
+
+    .avatarFixed{
+      max-width:960px;
+      margin:0 auto;
+      width:100%;
+      padding:10px 12px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .avatarShell{
+      width:min(42vw,260px);
+      max-width:260px;
+      min-width:150px;
+    }
+
+    .chatScroll{
+      min-height:0;
+      overflow-y:auto;
+      overflow-x:hidden;
+      padding:14px 12px 18px;
+      scroll-behavior:smooth;
+    }
+
+    .chatInner{
+      max-width:760px;
+      margin:0 auto;
+      min-height:100%;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      /*
+        Yeni mesaj en üste eklenecek.
+        Eski mesajlar aşağı doğru birikir.
+      */
+      justify-content:flex-start;
+    }
+
+    .msg{
+      width:fit-content;
+      max-width:min(620px,92%);
+      padding:11px 13px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      line-height:1.45;
+      font-size:14px;
+      box-shadow:0 8px 22px rgba(0,0,0,.13);
+      word-wrap:break-word;
+      white-space:pre-wrap;
+    }
+
+    .bot{
+      align-self:flex-start;
+      background:rgba(15,23,42,.96);
+      color:#e5e7eb;
+      border-bottom-left-radius:5px;
+    }
+
+    .user{
+      align-self:flex-end;
+      background:#3b82f6;
+      color:white;
+      border-color:rgba(255,255,255,.12);
+      border-bottom-right-radius:5px;
+    }
+
+    .msgMeta{
+      display:flex;
+      gap:6px;
+      margin-top:8px;
+      flex-wrap:wrap;
+    }
+
+    .miniBtn{
+      border:0;
+      border-radius:6px;
+      background:rgba(255,255,255,.10);
+      color:#cbd5e1;
+      font-size:10px;
+      font-weight:800;
+      padding:4px 7px;
+      cursor:pointer;
+    }
+
+    .composer{
+      border-top:1px solid var(--line);
+      background:rgba(11,17,32,.98);
+      padding:9px 10px;
+      z-index:6;
+    }
+
+    .composerInner{
+      max-width:760px;
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:1fr auto auto;
+      gap:8px;
+      align-items:center;
+    }
+
+    textarea{
+      resize:none;
+      height:42px;
+      max-height:120px;
+      border:1px solid #3b82f6;
+      border-radius:14px;
+      background:#020617;
+      color:#e5e7eb;
+      padding:11px 13px;
+      outline:none;
+      font:14px system-ui;
+      line-height:1.25;
+    }
+
+    .roundBtn{
+      width:42px;height:42px;
+      border:0;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      font-size:18px;
+      font-weight:900;
+      color:white;
+    }
+    .mic{background:#dc2626}
+    .send{background:#3b82f6}
+
+    .topActions{
+      display:flex;
+      gap:5px;
+      align-items:center;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+    }
+    .tiny{
+      border:0;
+      cursor:pointer;
+      border-radius:9px;
+      padding:6px 8px;
+      background:#1e293b;
+      color:#dbeafe;
+      font-weight:800;
+      font-size:11px;
+      line-height:1;
+    }
+    .tiny.danger{background:#7f1d1d;color:#fee2e2}
+
     @media(max-width:760px){
-      .app{grid-template-rows:40px 1fr 54px}
-      main{grid-template-columns:1fr}
-      .side{position:absolute;right:8px;top:48px;width:112px;height:144px;border:1px solid var(--line);border-radius:18px;padding:6px;background:rgba(11,17,32,.84);backdrop-filter:blur(8px)}
-      .avatarTitle{display:none}
-      header h1{font-size:12px}
-      .chat{padding-top:164px}
+      header{
+        height:54px;
+        padding:7px 9px;
+        gap:8px;
+      }
+      .titleTexts h1{font-size:18px}
+      .titleTexts p{font-size:12px}
+      .sceneIcon{width:38px;height:38px;font-size:20px}
+      .level{padding:7px 9px;font-size:12px}
+      .avatarFixed{
+        padding:8px 8px 12px;
+      }
+      .avatarShell{
+        width:42vw;
+        min-width:132px;
+        max-width:210px;
+      }
+      .topActions .tiny:nth-child(1){
+        display:none;
+      }
+      .msg{
+        font-size:13px;
+        max-width:94%;
+      }
+      .composerInner{
+        grid-template-columns:1fr auto auto;
+        gap:7px;
+      }
+      textarea{
+        height:40px;
+        font-size:13px;
+      }
+      .roundBtn{
+        width:40px;height:40px;
+      }
+    }
+
+    @media(max-height:690px){
+      .avatarShell{
+        width:min(30vh,210px);
+        min-width:120px;
+      }
+      .avatarFixed{
+        padding-top:6px;
+        padding-bottom:8px;
+      }
+      header{height:50px}
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <header>
-      <h1>DilAvatar v19</h1>
-      <div class="tinybar">
-        <button id="btnHairAuto" type="button">Oto saç kapalı</button>
-        <button id="btnHair" type="button">Saç</button>
-        <button id="btnBlink" type="button">Göz</button>
-        <button id="btnStop" type="button" class="danger">Dur</button>
+    <section class="topFixed">
+      <header>
+        <button class="back" type="button" onclick="history.back()">←</button>
+
+        <div class="titleWrap">
+          <div class="sceneIcon" id="sceneIcon">🏨</div>
+          <div class="titleTexts">
+            <h1 id="sceneTitle">Otel</h1>
+            <p id="sceneSub">İngilizce konuşma · A2</p>
+          </div>
+        </div>
+
+        <div class="topActions">
+          <button id="btnHairAuto" class="tiny" type="button">Oto saç kapalı</button>
+          <button id="btnHair" class="tiny" type="button">Saç</button>
+          <button id="btnBlink" class="tiny" type="button">Göz</button>
+          <button id="btnStop" class="tiny danger" type="button">Dur</button>
+          <span class="level">A2</span>
+        </div>
+      </header>
+
+      <div class="avatarFixed">
+        <div class="avatarShell">
+          <div id="avatarHost"></div>
+        </div>
       </div>
-    </header>
+    </section>
 
-    <main>
-      <section id="chat" class="chat">
-        <div class="msg bot">v19: Patch yok. Bütün ifadeler tam fotoğraf karesi olarak kullanılır. Beden transform yok.</div>
-      </section>
-
-      <aside class="side">
-        <div id="avatarHost"></div>
-        <div class="avatarTitle">Tam kare fotoğraf avatar</div>
-      </aside>
+    <main id="chatScroll" class="chatScroll">
+      <div id="chat" class="chatInner"></div>
     </main>
 
-    <footer>
-      <textarea id="txt" placeholder="Mesaj yaz...">Merhaba, bugün İngilizce çalışıyoruz. Bu sürüm bütün fotoğrafları tam kare olarak kullanıyor.</textarea>
-      <div class="sendbar">
-        <button id="btnThink" type="button">Düşün</button>
-        <button id="btnSend" type="button" class="primary">Konuş</button>
+    <footer class="composer">
+      <div class="composerInner">
+        <textarea id="txt" placeholder="Yaz ya da 🎙 ile konuş..."></textarea>
+        <button id="btnMic" class="roundBtn mic" type="button">🎙</button>
+        <button id="btnSend" class="roundBtn send" type="button">➤</button>
       </div>
     </footer>
   </div>
@@ -70,31 +359,57 @@
   <script src="./avatar.js"></script>
   <script>
     const chat = document.getElementById("chat");
+    const chatScroll = document.getElementById("chatScroll");
     const txt = document.getElementById("txt");
 
-    DilAvatar.mount("avatarHost", { size: window.innerWidth < 760 ? 96 : 188 });
+    DilAvatar.mount("avatarHost", { size: 260 });
     DilAvatar.setAutoHair(false);
 
+    /*
+      En yeni mesaj en üste gelsin:
+      prepend kullanıyoruz.
+      Böylece eski mesajlar aşağı doğru kalır.
+    */
     function addMsg(text, cls){
       const div = document.createElement("div");
       div.className = "msg " + cls;
-      div.textContent = text;
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
+
+      const body = document.createElement("div");
+      body.textContent = text;
+      div.appendChild(body);
+
+      if(cls === "bot"){
+        const meta = document.createElement("div");
+        meta.className = "msgMeta";
+        meta.innerHTML = '<button class="miniBtn" type="button">🔊 Dinle</button><button class="miniBtn" type="button">TR Açıkla</button>';
+        div.appendChild(meta);
+      }
+
+      chat.prepend(div);
+      chatScroll.scrollTop = 0;
+      return div;
     }
 
-    document.getElementById("btnSend").onclick = function(){
+    function botSpeak(text){
+      addMsg(text, "bot");
+      DilAvatar.speakText(text, Math.max(1800, text.length * 92));
+    }
+
+    function sendMessage(){
       const val = txt.value.trim();
       if(!val) return;
-      addMsg(val, "user");
-      const answer = "Tamam. " + val;
-      setTimeout(() => addMsg(answer, "bot"), 200);
-      DilAvatar.speakText(answer, Math.max(1800, answer.length * 92));
-    };
 
-    document.getElementById("btnThink").onclick = function(){
-      DilAvatar.thinking(true);
-      addMsg("Düşünüyorum...", "bot");
+      addMsg(val, "user");
+      txt.value = "";
+
+      const answer = "My mission is to help you practice English in this place. You asked: " + val;
+      setTimeout(() => botSpeak(answer), 220);
+    }
+
+    document.getElementById("btnSend").onclick = sendMessage;
+
+    document.getElementById("btnMic").onclick = function(){
+      botSpeak("I am listening. You can write your sentence or speak when microphone support is connected.");
     };
 
     document.getElementById("btnStop").onclick = function(){
@@ -120,9 +435,12 @@
     txt.addEventListener("keydown", function(e){
       if(e.key === "Enter" && !e.shiftKey){
         e.preventDefault();
-        document.getElementById("btnSend").click();
+        sendMessage();
       }
     });
+
+    // İlk mesajlar: en yeni üstte olacak şekilde tersten ekliyoruz.
+    addMsg("I am standing behind the front desk of a small hotel in the city center, and I greet you with a smile, saying: Hello, welcome to our hotel, can you please tell me if you have a reservation with us?", "bot");
   </script>
 </body>
 </html>
