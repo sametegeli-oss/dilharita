@@ -1,90 +1,995 @@
-/* DilAvatar — foto tabanlı konuşan asistan avatarı (tek karakter: erkek).
-   Foto sabit; konuşurken ağız bölgesinde dalga/parlama oynar.
-   API:
-     DilAvatar.mount("elId");
-     DilAvatar.setMouth("rest|open|round|wide|closed");  // videopractice viseme
-     DilAvatar.speakText(text, durationMs?);             // ağız bölgesi parlamasını sürdürür
-     DilAvatar.thinking(true|false);
-     DilAvatar.stop();
-     DilAvatar.getGender()/setGender() — uyumluluk için (etkisiz)
+/*
+  DilAvatar v7 — Ayarlanabilir Konuşan Asistan Avatarı
+  ------------------------------------------------
+  Tek dosyalık, çevrimdışı çalışan, dış bağımlılıksız avatar sistemi.
+  HTML + CSS + SVG + Vanilla JavaScript.
+
+  Kullanım:
+    DilAvatar.mount("avatarHost");
+    DilAvatar.speakText("merhaba bugün İngilizce çalışıyoruz", 3200);
+
+  Ayar paneli:
+    DilAvatar.mountControlPanel("panelHost");
+
+  Not:
+    Gerçek ses dalgasına bağlı lip-sync yapılmaz.
+    Tarayıcı TTS çıktısını güvenilir şekilde Web Audio'ya bağlamak pratik değildir.
+    Bu yüzden metin harf harf süreye yayılır ve ağız şekilleri harf tabanlı değiştirilir.
 */
-(function(global){
-"use strict";
-var PHOTO = "data:image/jpeg;base64,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";
-var state = { faceEl:null, glowEl:null, timers:[], speaking:false, thinking:false, level:0 };
+(function (global) {
+  "use strict";
 
-function clearTimers(){ state.timers.forEach(clearTimeout); state.timers=[]; }
+  var STORAGE_KEY = "DilAvatar.svg.v7.settings";
+  var GENDER_KEY = "DilAvatar.svg.v7.gender";
+  var LEGACY_SETTINGS_KEYS = ["DilAvatar.v5.settings", "DilAvatar.v6.settings", "DilAvatar.settings"];
+  var LEGACY_GENDER_KEYS = ["DilAvatar.v5.gender", "DilAvatar.v6.gender", "DilAvatar.gender"];
+  var SCHEMA = "svg-v7";
+  var broadcast = null;
 
-function setGlow(level){
-  state.level = level;
-  if(state.glowEl){
-    state.glowEl.style.opacity = level>0 ? String(0.22 + level*0.55) : "0";
-    var sc = 1 + level*0.55;
-    state.glowEl.style.transform = "translateX(-50%) scaleY("+sc+")";
-  }
-}
+  var state = {
+    host: null,
+    root: null,
+    svgWrap: null,
+    svg: null,
+    gender: "kadin",
+    mouth: "rest",
+    speakingTimer: null,
+    thinkingTimer: null,
+    blinkTimer: null,
+    blinkOffTimer: null,
+    isBlinking: false,
+    isThinking: false,
+    controls: [],
+    settings: null
+  };
 
-var SHAPE_LEVEL = { rest:0, closed:0.12, wide:0.45, round:0.6, open:1 };
-
-var API = {
-  mount: function(elId){
-    var host = (typeof elId==="string") ? document.getElementById(elId) : elId;
-    if(!host) return;
-    host.innerHTML =
-      '<div class="dilav-wrap" style="display:flex;flex-direction:column;align-items:center;gap:8px">'+
-        '<div class="dilav-face" style="position:relative;width:100%;max-width:200px;aspect-ratio:1;border-radius:50%;overflow:hidden;border:3px solid #2dd4bf;box-shadow:0 12px 34px rgba(0,0,0,.4);background:#0b1120">'+
-          '<img src="'+PHOTO+'" alt="asistan" style="width:100%;height:100%;object-fit:cover;display:block"/>'+
-          '<div class="dilav-glow" style="position:absolute;left:50%;top:57%;transform:translateX(-50%);width:24%;height:6%;border-radius:50%;background:radial-gradient(ellipse at center,rgba(255,170,150,.95),rgba(255,140,120,.25) 60%,transparent 75%);opacity:0;transition:opacity .09s linear,transform .09s linear;pointer-events:none;mix-blend-mode:screen"></div>'+
-        '</div>'+
-      '</div>';
-    state.faceEl = host.querySelector(".dilav-face");
-    state.glowEl = host.querySelector(".dilav-glow");
-    setGlow(0);
-  },
-  setMouth: function(shape){
-    var lv = SHAPE_LEVEL[shape]; if(lv===undefined) lv=0;
-    setGlow(lv);
-  },
-  speakText: function(text, durationMs){
-    if(!state.glowEl) return;
-    clearTimers();
-    state.speaking = true;
-    var letters = String(text||"").replace(/[^a-z\u00e7\u011f\u0131\u00f6\u015f\u00fc\u00e2]/gi,"").split("");
-    if(!letters.length){ setGlow(0); state.speaking=false; return; }
-    var total = durationMs || letters.length*110;
-    var step = Math.max(60, Math.min(150, Math.round(total/letters.length)));
-    function lvForChar(ch){
-      ch=String(ch||"").toLowerCase();
-      if("aeâ".indexOf(ch)>=0) return 1;
-      if("ou".indexOf(ch)>=0) return 0.6;
-      if("\u0131i\u00fc\u00f6y".indexOf(ch)>=0) return 0.45;
-      if("mbp".indexOf(ch)>=0) return 0.1;
-      return 0.25;
+  var DEFAULTS = {
+    kadin: {
+      title: "Kadın Avatar",
+      theme: "#3b82f6",
+      imageType: "svgVector",
+      bg: "#f8fafc",
+      face: "#ffd7ae",
+      hair: "#5b2a1c",
+      hair2: "#7a3b27",
+      eye: "#5b341c",
+      cloth: "#0e7490",
+      cloth2: "#075985",
+      mouthColor: "#9f1d35",
+      lipColor: "#d94b62",
+      hasGlasses: false,
+      hasBeard: false,
+      // 1000x1000 koordinat sistemi
+      mouthX: 500,
+      mouthY: 545,
+      mouthScale: 1,
+      mouthWidth: 108,
+      mouthHeight: 36,
+      mouthRotate: 0,
+      mouthOpacity: 1,
+      leftEyeX: 410,
+      leftEyeY: 405,
+      rightEyeX: 590,
+      rightEyeY: 405,
+      eyeW: 76,
+      eyeH: 30,
+      eyeStroke: 8,
+      eyeCurve: 16,
+      browVisible: true,
+      browOpacity: 1,
+      browWidth: 86,
+      browHeight: 26,
+      browPeak: 18,
+      browStroke: 13,
+      leftBrowX: 410,
+      leftBrowY: 345,
+      rightBrowX: 590,
+      rightBrowY: 345,
+      leftBrowRotate: -8,
+      rightBrowRotate: 8
+    },
+    erkek: {
+      title: "Erkek Avatar",
+      theme: "#2dd4bf",
+      imageType: "svgSimpleBeard",
+      bg: "#f8fafc",
+      face: "#ffd0a8",
+      hair: "#4b2116",
+      hair2: "#6b301e",
+      eye: "#4a2b18",
+      cloth: "#1e1b7a",
+      cloth2: "#172554",
+      mouthColor: "#111827",
+      lipColor: "#f2a484",
+      hasGlasses: false,
+      hasBeard: true,
+      // Sakallı avatar için ağız bilinçli olarak sakalın üzerine çizilir.
+      mouthX: 500,
+      mouthY: 575,
+      mouthScale: 1,
+      mouthWidth: 118,
+      mouthHeight: 32,
+      mouthRotate: 0,
+      mouthOpacity: 1,
+      leftEyeX: 415,
+      leftEyeY: 390,
+      rightEyeX: 585,
+      rightEyeY: 390,
+      eyeW: 66,
+      eyeH: 24,
+      eyeStroke: 8,
+      eyeCurve: 13,
+      browVisible: true,
+      browOpacity: 1,
+      browWidth: 78,
+      browHeight: 23,
+      browPeak: 16,
+      browStroke: 13,
+      leftBrowX: 415,
+      leftBrowY: 338,
+      rightBrowX: 585,
+      rightBrowY: 338,
+      leftBrowRotate: -5,
+      rightBrowRotate: 5
     }
-    letters.forEach(function(ch,i){
-      state.timers.push(setTimeout(function(){ setGlow(lvForChar(ch)); }, i*step));
-    });
-    state.timers.push(setTimeout(function(){ setGlow(0); state.speaking=false; }, letters.length*step+80));
-  },
-  thinking: function(on){
-    state.thinking = !!on;
-    if(!state.glowEl) return;
-    clearTimers();
-    if(on){
-      var up=true;
-      function pulse(){
-        if(!state.thinking) return;
-        setGlow(up?0.28:0.05); up=!up;
-        state.timers.push(setTimeout(pulse, 480));
+  };
+
+  function clone(obj) {
+    return JSON.parse(JSON.stringify(obj));
+  }
+
+  function safeGet(key, fallback) {
+    try {
+      var v = global.localStorage && global.localStorage.getItem(key);
+      return v == null ? fallback : v;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function safeSet(key, value) {
+    try {
+      if (global.localStorage) global.localStorage.setItem(key, value);
+    } catch (e) {}
+  }
+
+  function safeRemove(key) {
+    try {
+      if (global.localStorage) global.localStorage.removeItem(key);
+    } catch (e) {}
+  }
+
+  function mergeSettingsInto(base, parsed) {
+    if (!parsed) return base;
+    if (parsed.settings) parsed = parsed.settings;
+    ["kadin", "erkek"].forEach(function (g) {
+      if (parsed && parsed[g]) {
+        Object.keys(parsed[g]).forEach(function (k) {
+          base[g][k] = parsed[g][k];
+        });
       }
-      pulse();
-    }else{ setGlow(0); }
-  },
-  stop: function(){
-    clearTimers(); state.speaking=false; state.thinking=false; setGlow(0);
-  },
-  setGender: function(){},
-  getGender: function(){ return "erkek"; }
-};
-global.DilAvatar = API;
+    });
+    return base;
+  }
+
+  function readFirstJson(keys) {
+    for (var i = 0; i < keys.length; i++) {
+      var raw = safeGet(keys[i], null);
+      if (!raw) continue;
+      try {
+        var parsed = JSON.parse(raw);
+        // Eski fotoğraf-bindirme ayarlarıyla çakışmayı önlemek için sadece SVG yapısına benzeyenleri kabul et.
+        if (parsed && (parsed.schema === SCHEMA || parsed.erkek || parsed.kadin || parsed.settings)) return parsed;
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  function loadSettings() {
+    var data = clone(DEFAULTS);
+
+    // 1) HTML içinde gömülü ayar varsa önce onu uygula.
+    if (global.DIL_AVATAR_SETTINGS) {
+      mergeSettingsInto(data, global.DIL_AVATAR_SETTINGS);
+    }
+    if (global.DilAvatarPreset) {
+      mergeSettingsInto(data, global.DilAvatarPreset);
+    }
+
+    // 2) En son kaydedilen kalibrasyonu oku.
+    var saved = readFirstJson([STORAGE_KEY].concat(LEGACY_SETTINGS_KEYS));
+    if (saved) mergeSettingsInto(data, saved);
+
+    state.settings = data;
+
+    var g = safeGet(GENDER_KEY, null);
+    if (!g) {
+      for (var i = 0; i < LEGACY_GENDER_KEYS.length; i++) {
+        g = safeGet(LEGACY_GENDER_KEYS[i], null);
+        if (g) break;
+      }
+    }
+    state.gender = (g === "erkek" || g === "kadin") ? g : "kadin";
+  }
+
+  function makePayload() {
+    return {
+      schema: SCHEMA,
+      updatedAt: new Date().toISOString(),
+      settings: state.settings
+    };
+  }
+
+  function saveSettings() {
+    var payload = makePayload();
+    var json = JSON.stringify(payload);
+    safeSet(STORAGE_KEY, json);
+    safeSet("DilAvatar.settings", json); // ana uygulama ile paylaşım için sabit ortak anahtar
+    safeSet(GENDER_KEY, state.gender);
+    safeSet("DilAvatar.gender", state.gender);
+    try {
+      if (broadcast) broadcast.postMessage({ type: "settings", payload: payload, gender: state.gender });
+    } catch (e) {}
+  }
+
+  function reloadSettingsAndRender() {
+    loadSettings();
+    render();
+  }
+
+  function clamp(n, min, max) {
+    n = Number(n);
+    if (!isFinite(n)) n = min;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function el(tag, attrs, html) {
+    var node = document.createElement(tag);
+    attrs = attrs || {};
+    Object.keys(attrs).forEach(function (k) {
+      if (k === "class") node.className = attrs[k];
+      else if (k === "style") node.setAttribute("style", attrs[k]);
+      else node.setAttribute(k, attrs[k]);
+    });
+    if (html != null) node.innerHTML = html;
+    return node;
+  }
+
+  function injectCss() {
+    if (document.getElementById("dil-avatar-style-v5")) return;
+    var css = `
+      .dil-avatar-box{
+        --da-theme:#3b82f6;
+        width:100%;
+        max-width:280px;
+        min-width:120px;
+        margin:0 auto;
+        font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+        color:#e5e7eb;
+        user-select:none;
+      }
+      .dil-avatar-frame{
+        position:relative;
+        width:100%;
+        aspect-ratio:1/1;
+        border-radius:50%;
+        overflow:hidden;
+        background:#0b1120;
+        border:4px solid var(--da-theme);
+        box-shadow:0 20px 40px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.08);
+      }
+      .dil-avatar-svg{
+        position:absolute;
+        inset:0;
+        width:100%;
+        height:100%;
+        display:block;
+      }
+      .dil-avatar-switch{
+        margin:12px auto 0;
+        padding:6px;
+        display:flex;
+        gap:6px;
+        justify-content:center;
+        background:rgba(15,23,42,.85);
+        border:1px solid rgba(148,163,184,.35);
+        border-radius:999px;
+        width:max-content;
+        max-width:100%;
+      }
+      .dil-avatar-switch button,
+      .dil-avatar-actions button,
+      .dil-avatar-panel button{
+        border:0;
+        border-radius:999px;
+        padding:10px 14px;
+        font-weight:800;
+        cursor:pointer;
+        background:transparent;
+        color:#cbd5e1;
+      }
+      .dil-avatar-switch button.active{
+        background:linear-gradient(135deg,#2563eb,#3b82f6);
+        color:white;
+      }
+      .dil-avatar-actions{
+        margin:12px auto 0;
+        display:flex;
+        gap:8px;
+        justify-content:center;
+        flex-wrap:wrap;
+      }
+      .dil-avatar-actions button{
+        background:linear-gradient(135deg,#2563eb,#3b82f6);
+        color:#fff;
+        border-radius:18px;
+        padding:12px 16px;
+      }
+      .dil-avatar-panel{
+        font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+        background:#0b1120;
+        color:#e5e7eb;
+        border:1px solid rgba(148,163,184,.25);
+        border-radius:18px;
+        padding:14px;
+        max-width:900px;
+      }
+      .dil-avatar-panel h3{
+        margin:0 0 10px;
+        font-size:18px;
+      }
+      .dil-avatar-grid{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+        gap:12px;
+      }
+      .dil-avatar-card{
+        background:rgba(15,23,42,.85);
+        border:1px solid rgba(148,163,184,.25);
+        border-radius:14px;
+        padding:12px;
+      }
+      .dil-avatar-card h4{
+        margin:0 0 8px;
+        color:#93c5fd;
+      }
+      .dil-avatar-row{
+        display:grid;
+        grid-template-columns:92px 1fr 54px;
+        gap:8px;
+        align-items:center;
+        margin:7px 0;
+        font-size:12px;
+      }
+      .dil-avatar-row input[type=range]{
+        width:100%;
+      }
+      .dil-avatar-row output{
+        text-align:right;
+        color:#cbd5e1;
+        font-variant-numeric:tabular-nums;
+      }
+      .dil-avatar-small-actions{
+        display:flex;
+        flex-wrap:wrap;
+        gap:8px;
+        margin-top:12px;
+      }
+      .dil-avatar-small-actions button{
+        background:#1e293b;
+        color:#e5e7eb;
+        border-radius:12px;
+        padding:9px 12px;
+      }
+      .dil-avatar-small-actions button.primary{
+        background:#2563eb;
+        color:white;
+      }
+      .dil-avatar-json{
+        width:100%;
+        min-height:120px;
+        background:#020617;
+        color:#dbeafe;
+        border:1px solid rgba(148,163,184,.3);
+        border-radius:12px;
+        padding:10px;
+        box-sizing:border-box;
+        margin-top:10px;
+        font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+        font-size:12px;
+      }
+    `;
+    var style = el("style", { id: "dil-avatar-style-v5" }, css);
+    document.head.appendChild(style);
+  }
+
+  function setupLiveSync() {
+    try {
+      if (!broadcast && "BroadcastChannel" in global) {
+        broadcast = new BroadcastChannel("DilAvatar.settings");
+        broadcast.onmessage = function (ev) {
+          if (!ev || !ev.data || ev.data.type !== "settings") return;
+          if (ev.data.payload) mergeSettingsInto(state.settings || clone(DEFAULTS), ev.data.payload);
+          if (ev.data.gender === "erkek" || ev.data.gender === "kadin") state.gender = ev.data.gender;
+          render();
+        };
+      }
+    } catch (e) {}
+    try {
+      global.addEventListener("storage", function (ev) {
+        if (!ev || (ev.key !== STORAGE_KEY && ev.key !== "DilAvatar.settings" && ev.key !== GENDER_KEY && ev.key !== "DilAvatar.gender")) return;
+        reloadSettingsAndRender();
+      });
+    } catch (e) {}
+  }
+
+  function current() {
+    return state.settings[state.gender];
+  }
+
+  function svgBase(cfg) {
+    if (state.gender === "erkek") return maleSvg(cfg);
+    return femaleSvg(cfg);
+  }
+
+  function femaleSvg(c) {
+    return `
+      <svg class="dil-avatar-svg" viewBox="0 0 1000 1000" aria-label="${c.title}">
+        <defs>
+          <radialGradient id="daBgF" cx="50%" cy="35%" r="70%">
+            <stop offset="0" stop-color="#ffffff"/>
+            <stop offset="1" stop-color="#dbeafe"/>
+          </radialGradient>
+          <linearGradient id="daSkinF" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stop-color="#ffe2bf"/>
+            <stop offset="1" stop-color="${c.face}"/>
+          </linearGradient>
+          <linearGradient id="daHairF" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0" stop-color="${c.hair2}"/>
+            <stop offset="1" stop-color="${c.hair}"/>
+          </linearGradient>
+        </defs>
+        <rect width="1000" height="1000" fill="url(#daBgF)"/>
+        <g id="hair-back">
+          <path d="M248 708 C180 575 194 300 355 210 C470 145 642 168 733 286 C821 402 826 616 744 760 C684 866 552 886 500 812 C434 894 304 826 248 708Z" fill="url(#daHairF)"/>
+          <path d="M202 805 C284 770 291 653 272 530 C344 625 365 772 300 900Z" fill="#3f1f17" opacity=".55"/>
+          <path d="M798 805 C716 770 709 653 728 530 C656 625 635 772 700 900Z" fill="#3f1f17" opacity=".55"/>
+        </g>
+        <path d="M356 762 C378 860 622 860 644 762 L644 642 L356 642Z" fill="url(#daSkinF)"/>
+        <path d="M266 1000 C288 848 386 790 500 790 C614 790 712 848 734 1000Z" fill="${c.cloth}"/>
+        <path d="M360 820 L500 1000 L640 820 C590 850 410 850 360 820Z" fill="#fff"/>
+        <path d="M342 840 L456 1000 L276 1000 C286 925 306 875 342 840Z" fill="${c.cloth2}" opacity=".85"/>
+        <path d="M658 840 L544 1000 L724 1000 C714 925 694 875 658 840Z" fill="${c.cloth2}" opacity=".85"/>
+        <ellipse cx="296" cy="470" rx="42" ry="66" fill="url(#daSkinF)"/>
+        <ellipse cx="704" cy="470" rx="42" ry="66" fill="url(#daSkinF)"/>
+        <path d="M322 400 C330 250 670 250 678 400 L662 610 C650 750 570 805 500 805 C430 805 350 750 338 610Z" fill="url(#daSkinF)"/>
+        <path d="M322 384 C388 258 556 255 675 382 C672 302 600 210 498 210 C392 210 324 300 322 384Z" fill="url(#daHairF)"/>
+        <path d="M322 386 C420 360 548 300 622 238 C585 215 485 197 398 236 C342 261 312 322 322 386Z" fill="#6b2d1f" opacity=".8"/>
+        <path d="M500 448 C490 505 470 542 465 575 C482 590 519 590 535 575 C529 540 510 504 500 448Z" fill="#d8956e" opacity=".48"/>
+        <path d="M472 607 C486 618 514 618 528 607" fill="none" stroke="#be7654" stroke-width="6" stroke-linecap="round" opacity=".45"/>
+        <g id="eyes-base">
+          <path d="M360 408 C386 380 438 382 462 410 C432 432 388 432 360 408Z" fill="white"/>
+          <path d="M538 410 C562 382 614 380 640 408 C612 432 568 432 538 410Z" fill="white"/>
+          <circle cx="413" cy="409" r="20" fill="${c.eye}"/>
+          <circle cx="587" cy="409" r="20" fill="${c.eye}"/>
+          <circle cx="420" cy="401" r="6" fill="white" opacity=".9"/>
+          <circle cx="594" cy="401" r="6" fill="white" opacity=".9"/>
+        </g>
+        <circle cx="300" cy="612" r="16" fill="#fff"/>
+        <circle cx="700" cy="612" r="16" fill="#fff"/>
+      </svg>
+    `;
+  }
+
+  function maleSvg(c) {
+    return `
+      <svg class="dil-avatar-svg" viewBox="0 0 1000 1000" aria-label="${c.title}">
+        <defs>
+          <radialGradient id="daBgM" cx="50%" cy="35%" r="72%">
+            <stop offset="0" stop-color="#ffffff"/>
+            <stop offset="1" stop-color="#e0f2fe"/>
+          </radialGradient>
+          <linearGradient id="daSkinM" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stop-color="#ffddbd"/>
+            <stop offset="1" stop-color="${c.face}"/>
+          </linearGradient>
+          <linearGradient id="daHairM" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0" stop-color="${c.hair2}"/>
+            <stop offset="1" stop-color="${c.hair}"/>
+          </linearGradient>
+        </defs>
+        <rect width="1000" height="1000" fill="url(#daBgM)"/>
+        <path d="M290 1000 C315 835 392 770 500 770 C608 770 685 835 710 1000Z" fill="${c.cloth}"/>
+        <path d="M392 802 L500 1000 L608 802 C570 836 430 836 392 802Z" fill="#e0f2fe"/>
+        <path d="M325 842 L450 1000 L270 1000 C282 920 300 875 325 842Z" fill="${c.cloth2}" opacity=".85"/>
+        <path d="M675 842 L550 1000 L730 1000 C718 920 700 875 675 842Z" fill="${c.cloth2}" opacity=".85"/>
+        <ellipse cx="304" cy="475" rx="40" ry="68" fill="url(#daSkinM)"/>
+        <ellipse cx="696" cy="475" rx="40" ry="68" fill="url(#daSkinM)"/>
+        <path d="M322 382 C330 245 670 245 678 382 L660 600 C650 720 575 790 500 790 C425 790 350 720 340 600Z" fill="url(#daSkinM)"/>
+        <path d="M315 395 C300 290 360 180 498 174 C645 168 710 284 684 402 C642 324 360 330 315 395Z" fill="url(#daHairM)"/>
+        <path d="M326 398 C406 337 538 319 674 392 C662 290 572 220 470 235 C370 250 320 330 326 398Z" fill="#35170f" opacity=".34"/>
+        <path d="M350 548 C350 683 410 800 500 800 C590 800 650 683 650 548 C628 628 572 650 520 610 C508 600 492 600 480 610 C428 650 372 628 350 548Z" fill="${c.hair}" opacity=".98"/>
+        <ellipse cx="500" cy="584" rx="48" ry="34" fill="url(#daSkinM)"/>
+        <path d="M500 448 C490 510 468 548 462 578 C482 598 518 598 538 578 C532 548 510 510 500 448Z" fill="#c77750" opacity=".42"/>
+        <path d="M472 606 C486 616 514 616 528 606" fill="none" stroke="#aa6042" stroke-width="6" stroke-linecap="round" opacity=".45"/>
+        <g id="eyes-base">
+          <path d="M362 402 C386 380 435 382 458 406 C430 426 390 426 362 402Z" fill="white"/>
+          <path d="M542 406 C565 382 614 380 638 402 C610 426 570 426 542 406Z" fill="white"/>
+          <circle cx="412" cy="404" r="18" fill="${c.eye}"/>
+          <circle cx="588" cy="404" r="18" fill="${c.eye}"/>
+          <circle cx="419" cy="397" r="5" fill="white" opacity=".9"/>
+          <circle cx="595" cy="397" r="5" fill="white" opacity=".9"/>
+        </g>
+      </svg>
+    `;
+  }
+
+  function overlaySvg(c) {
+    var m = mouthShapePath(c, state.mouth);
+    var brows = "";
+    if (c.browVisible) {
+      brows = browSvg(c, "left") + browSvg(c, "right");
+    }
+    return `
+      <svg class="dil-avatar-svg" viewBox="0 0 1000 1000" aria-hidden="true">
+        <g id="da-brows" opacity="${c.browOpacity}">
+          ${brows}
+        </g>
+        <g id="da-blink" style="display:${state.isBlinking ? "block" : "none"}">
+          ${eyeLidSvg(c, "left")}
+          ${eyeLidSvg(c, "right")}
+        </g>
+        <g id="da-mouth"
+           transform="translate(${c.mouthX} ${c.mouthY}) rotate(${c.mouthRotate}) scale(${c.mouthScale})"
+           opacity="${c.mouthOpacity}">
+          ${m}
+        </g>
+      </svg>
+    `;
+  }
+
+  function browSvg(c, side) {
+    var x = side === "left" ? c.leftBrowX : c.rightBrowX;
+    var y = side === "left" ? c.leftBrowY : c.rightBrowY;
+    var rot = side === "left" ? c.leftBrowRotate : c.rightBrowRotate;
+    var w = c.browWidth, h = c.browHeight, p = c.browPeak;
+    var flip = side === "left" ? 1 : -1;
+    return `
+      <path d="M ${-w/2} ${h/2} C ${-w/4} ${-p}, ${w/4} ${-p}, ${w/2} ${h/2}"
+        transform="translate(${x} ${y}) rotate(${rot}) scale(${flip} 1)"
+        fill="none" stroke="${c.hair}" stroke-width="${c.browStroke}" stroke-linecap="round"/>
+    `;
+  }
+
+  function eyeLidSvg(c, side) {
+    var x = side === "left" ? c.leftEyeX : c.rightEyeX;
+    var y = side === "left" ? c.leftEyeY : c.rightEyeY;
+    var w = c.eyeW, h = c.eyeH;
+    return `
+      <path d="M ${x - w/2} ${y} C ${x - w/4} ${y + c.eyeCurve}, ${x + w/4} ${y + c.eyeCurve}, ${x + w/2} ${y}"
+        fill="none" stroke="#2b1a12" stroke-width="${c.eyeStroke}" stroke-linecap="round"/>
+      <ellipse cx="${x}" cy="${y - 1}" rx="${w/2 + 6}" ry="${Math.max(8, h/2)}" fill="${c.face}" opacity=".92"/>
+      <path d="M ${x - w/2} ${y} C ${x - w/4} ${y + c.eyeCurve}, ${x + w/4} ${y + c.eyeCurve}, ${x + w/2} ${y}"
+        fill="none" stroke="#2b1a12" stroke-width="${c.eyeStroke}" stroke-linecap="round"/>
+    `;
+  }
+
+  function mouthShapePath(c, shape) {
+    var w = c.mouthWidth;
+    var h = c.mouthHeight;
+    var lip = c.lipColor;
+    var dark = c.mouthColor;
+
+    if (shape === "open") {
+      return `
+        <ellipse cx="0" cy="0" rx="${w * .45}" ry="${h * .70}" fill="${lip}"/>
+        <ellipse cx="0" cy="${h * .05}" rx="${w * .34}" ry="${h * .48}" fill="${dark}"/>
+        <path d="M ${-w*.25} ${-h*.28} C ${-w*.05} ${-h*.42}, ${w*.05} ${-h*.42}, ${w*.25} ${-h*.28}" fill="#fff" opacity=".95"/>
+      `;
+    }
+    if (shape === "round") {
+      return `
+        <ellipse cx="0" cy="0" rx="${w * .34}" ry="${h * .62}" fill="${lip}"/>
+        <ellipse cx="0" cy="0" rx="${w * .20}" ry="${h * .38}" fill="${dark}"/>
+      `;
+    }
+    if (shape === "wide") {
+      return `
+        <path d="M ${-w*.55} 0 C ${-w*.25} ${h*.34}, ${w*.25} ${h*.34}, ${w*.55} 0 C ${w*.25} ${h*.55}, ${-w*.25} ${h*.55}, ${-w*.55} 0Z" fill="${lip}"/>
+        <path d="M ${-w*.42} ${h*.08} C ${-w*.16} ${h*.28}, ${w*.16} ${h*.28}, ${w*.42} ${h*.08}" fill="none" stroke="${dark}" stroke-width="7" stroke-linecap="round"/>
+      `;
+    }
+    if (shape === "closed") {
+      return `
+        <path d="M ${-w*.48} 0 C ${-w*.20} ${-h*.16}, ${w*.20} ${-h*.16}, ${w*.48} 0 C ${w*.20} ${h*.20}, ${-w*.20} ${h*.20}, ${-w*.48} 0Z" fill="${lip}"/>
+        <path d="M ${-w*.42} 0 C ${-w*.15} ${h*.08}, ${w*.15} ${h*.08}, ${w*.42} 0" fill="none" stroke="${dark}" stroke-width="6" stroke-linecap="round" opacity=".65"/>
+      `;
+    }
+    if (shape === "teeth") {
+      return `
+        <path d="M ${-w*.48} 0 C ${-w*.20} ${-h*.28}, ${w*.20} ${-h*.28}, ${w*.48} 0 C ${w*.25} ${h*.32}, ${-w*.25} ${h*.32}, ${-w*.48} 0Z" fill="${lip}"/>
+        <rect x="${-w*.26}" y="${-h*.12}" width="${w*.52}" height="${h*.22}" rx="6" fill="#fff"/>
+        <path d="M ${-w*.36} ${h*.08} C ${-w*.12} ${h*.22}, ${w*.12} ${h*.22}, ${w*.36} ${h*.08}" fill="none" stroke="${dark}" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+      `;
+    }
+    // rest
+    return `
+      <path d="M ${-w*.45} 0 C ${-w*.18} ${h*.18}, ${w*.18} ${h*.18}, ${w*.45} 0"
+        fill="none" stroke="${dark}" stroke-width="8" stroke-linecap="round"/>
+      <path d="M ${-w*.28} ${h*.10} C ${-w*.08} ${h*.24}, ${w*.08} ${h*.24}, ${w*.28} ${h*.10}"
+        fill="none" stroke="${lip}" stroke-width="6" stroke-linecap="round" opacity=".65"/>
+    `;
+  }
+
+  function render() {
+    if (!state.svgWrap) return;
+    var c = current();
+    var theme = c.theme || "#3b82f6";
+    if (state.root) state.root.style.setProperty("--da-theme", theme);
+    state.svgWrap.innerHTML = svgBase(c) + overlaySvg(c);
+    updateSwitchButtons();
+    updateControlOutputs();
+  }
+
+  function mount(target) {
+    loadSettings();
+    injectCss();
+    setupLiveSync();
+
+    var host = typeof target === "string" ? document.getElementById(target) : target;
+    if (!host) throw new Error("DilAvatar.mount: hedef eleman bulunamadı.");
+
+    state.host = host;
+    host.innerHTML = "";
+
+    var root = el("div", { class: "dil-avatar-box" });
+    var frame = el("div", { class: "dil-avatar-frame" });
+    var svgWrap = el("div");
+    frame.appendChild(svgWrap);
+
+    var sw = el("div", { class: "dil-avatar-switch" });
+    var b1 = el("button", { type: "button", "data-da-gender": "kadin" }, "Kadın Avatar");
+    var b2 = el("button", { type: "button", "data-da-gender": "erkek" }, "Erkek Avatar");
+    b1.onclick = function () { setGender("kadin"); };
+    b2.onclick = function () { setGender("erkek"); };
+    sw.appendChild(b1);
+    sw.appendChild(b2);
+
+    root.appendChild(frame);
+    root.appendChild(sw);
+    host.appendChild(root);
+
+    state.root = root;
+    state.svgWrap = svgWrap;
+
+    render();
+    scheduleBlink();
+    return root;
+  }
+
+  function updateSwitchButtons() {
+    if (!state.root) return;
+    var btns = state.root.querySelectorAll("[data-da-gender]");
+    Array.prototype.forEach.call(btns, function (b) {
+      b.classList.toggle("active", b.getAttribute("data-da-gender") === state.gender);
+    });
+  }
+
+  function setGender(g) {
+    if (g !== "kadin" && g !== "erkek") return;
+    state.gender = g;
+    state.mouth = "rest";
+    saveSettings();
+    render();
+  }
+
+  function getGender() {
+    return state.gender;
+  }
+
+  function setMouth(shape) {
+    if (["rest", "open", "round", "wide", "closed", "teeth"].indexOf(shape) < 0) shape = "rest";
+    state.mouth = shape;
+    render();
+  }
+
+  function visemeForChar(ch) {
+    ch = String(ch || "").toLocaleLowerCase("tr-TR");
+    if ("aeâ".indexOf(ch) >= 0) return "open";
+    if ("ou".indexOf(ch) >= 0) return "round";
+    if ("ıiüöy".indexOf(ch) >= 0) return "wide";
+    if ("mbp".indexOf(ch) >= 0) return "closed";
+    if ("fv".indexOf(ch) >= 0) return "teeth";
+    if (/\s/.test(ch)) return "rest";
+    return "rest";
+  }
+
+  function clearSpeaking() {
+    if (state.speakingTimer) {
+      clearTimeout(state.speakingTimer);
+      state.speakingTimer = null;
+    }
+  }
+
+  function speakText(text, durationMs) {
+    stop(false);
+    text = String(text || "");
+    var chars = Array.prototype.slice.call(text);
+    if (!chars.length) {
+      setMouth("rest");
+      return;
+    }
+
+    var total = Number(durationMs);
+    var per = total && isFinite(total) ? total / chars.length : 110;
+    per = clamp(per, 60, 150);
+
+    var i = 0;
+    function step() {
+      if (i >= chars.length) {
+        setMouth("rest");
+        state.speakingTimer = null;
+        return;
+      }
+      setMouth(visemeForChar(chars[i]));
+      i += 1;
+      state.speakingTimer = setTimeout(step, per);
+    }
+    step();
+  }
+
+  function blinkOnce() {
+    state.isBlinking = true;
+    render();
+    if (state.blinkOffTimer) clearTimeout(state.blinkOffTimer);
+    state.blinkOffTimer = setTimeout(function () {
+      state.isBlinking = false;
+      render();
+    }, 150);
+  }
+
+  function scheduleBlink() {
+    if (state.blinkTimer) clearTimeout(state.blinkTimer);
+    var next = 2500 + Math.random() * 2500;
+    state.blinkTimer = setTimeout(function () {
+      blinkOnce();
+      scheduleBlink();
+    }, next);
+  }
+
+  function thinking(on) {
+    state.isThinking = !!on;
+    if (state.thinkingTimer) {
+      clearInterval(state.thinkingTimer);
+      state.thinkingTimer = null;
+    }
+    if (!on) {
+      setMouth("rest");
+      return;
+    }
+    var flip = false;
+    state.thinkingTimer = setInterval(function () {
+      flip = !flip;
+      setMouth(flip ? "closed" : "rest");
+    }, 520);
+  }
+
+  function stop(renderNow) {
+    clearSpeaking();
+    if (state.thinkingTimer) {
+      clearInterval(state.thinkingTimer);
+      state.thinkingTimer = null;
+    }
+    state.isThinking = false;
+    state.mouth = "rest";
+    if (renderNow !== false) render();
+  }
+
+  function mountControlPanel(target) {
+    if (!state.settings) loadSettings();
+    injectCss();
+    setupLiveSync();
+    var host = typeof target === "string" ? document.getElementById(target) : target;
+    if (!host) throw new Error("DilAvatar.mountControlPanel: hedef eleman bulunamadı.");
+    state.controls = [];
+
+    var panel = el("div", { class: "dil-avatar-panel" });
+    panel.innerHTML = `
+      <h3>Avatar Ayarlama Paneli</h3>
+      <div class="dil-avatar-grid">
+        <div class="dil-avatar-card" data-section="mouth"><h4>Ağız</h4></div>
+        <div class="dil-avatar-card" data-section="eyes"><h4>Göz / Göz Kırpma</h4></div>
+        <div class="dil-avatar-card" data-section="brow"><h4>Kaş</h4></div>
+      </div>
+      <div class="dil-avatar-small-actions">
+        <button class="primary" data-act="testSpeak">Konuşma test</button>
+        <button data-act="blink">Göz test</button>
+        <button data-mouth="rest">rest</button>
+        <button data-mouth="open">open</button>
+        <button data-mouth="round">round</button>
+        <button data-mouth="wide">wide</button>
+        <button data-mouth="closed">closed</button>
+        <button data-mouth="teeth">teeth</button>
+        <button data-act="resetCurrent">Bu avatarı sıfırla</button>
+        <button data-act="resetAll">Tümünü sıfırla</button>
+        <button data-act="export">JSON getir</button>
+        <button data-act="code">Uygulama kodu üret</button>
+        <button data-act="import">JSON yükle</button>
+      </div>
+      <textarea class="dil-avatar-json" placeholder="JSON ayarları burada görünür / buraya yapıştırılır"></textarea>
+    `;
+    host.innerHTML = "";
+    host.appendChild(panel);
+
+    var mouth = panel.querySelector('[data-section="mouth"]');
+    var eyes = panel.querySelector('[data-section="eyes"]');
+    var brow = panel.querySelector('[data-section="brow"]');
+
+    addRange(mouth, "mouthX", "Ağız X", 250, 750, 1);
+    addRange(mouth, "mouthY", "Ağız Y", 350, 760, 1);
+    addRange(mouth, "mouthScale", "Ağız ölçek", .35, 2.2, .01);
+    addRange(mouth, "mouthWidth", "Ağız genişlik", 20, 220, 1);
+    addRange(mouth, "mouthHeight", "Ağız yükseklik", 8, 140, 1);
+    addRange(mouth, "mouthRotate", "Ağız açı", -45, 45, 1);
+    addRange(mouth, "mouthOpacity", "Ağız opaklık", 0, 1, .01);
+
+    addRange(eyes, "leftEyeX", "Sol göz X", 250, 520, 1);
+    addRange(eyes, "leftEyeY", "Sol göz Y", 250, 560, 1);
+    addRange(eyes, "rightEyeX", "Sağ göz X", 480, 750, 1);
+    addRange(eyes, "rightEyeY", "Sağ göz Y", 250, 560, 1);
+    addRange(eyes, "eyeW", "Kapak genişlik", 20, 150, 1);
+    addRange(eyes, "eyeH", "Kapak yükseklik", 6, 80, 1);
+    addRange(eyes, "eyeStroke", "Kapak kalınlık", 1, 24, 1);
+    addRange(eyes, "eyeCurve", "Kapak eğrisi", -40, 60, 1);
+
+    addCheckbox(brow, "browVisible", "Kaş göster");
+    addRange(brow, "browOpacity", "Kaş opaklık", 0, 1, .01);
+    addRange(brow, "browWidth", "Kaş genişlik", 20, 160, 1);
+    addRange(brow, "browHeight", "Kaş yükseklik", 0, 70, 1);
+    addRange(brow, "browPeak", "Kaş tepe", -20, 70, 1);
+    addRange(brow, "browStroke", "Kaş kalınlık", 1, 30, 1);
+    addRange(brow, "leftBrowX", "Sol kaş X", 250, 520, 1);
+    addRange(brow, "leftBrowY", "Sol kaş Y", 200, 500, 1);
+    addRange(brow, "rightBrowX", "Sağ kaş X", 480, 750, 1);
+    addRange(brow, "rightBrowY", "Sağ kaş Y", 200, 500, 1);
+    addRange(brow, "leftBrowRotate", "Sol kaş açı", -60, 60, 1);
+    addRange(brow, "rightBrowRotate", "Sağ kaş açı", -60, 60, 1);
+
+    panel.addEventListener("click", function (ev) {
+      var b = ev.target.closest("button");
+      if (!b) return;
+      var m = b.getAttribute("data-mouth");
+      if (m) setMouth(m);
+      var act = b.getAttribute("data-act");
+      if (act === "blink") blinkOnce();
+      if (act === "testSpeak") speakText("merhaba bugün ingilizce çalışıyoruz", 3200);
+      if (act === "resetCurrent") {
+        state.settings[state.gender] = clone(DEFAULTS[state.gender]);
+        saveSettings();
+        render();
+      }
+      if (act === "resetAll") {
+        state.settings = clone(DEFAULTS);
+        safeRemove(STORAGE_KEY);
+        safeRemove("DilAvatar.settings");
+        LEGACY_SETTINGS_KEYS.forEach(safeRemove);
+        saveSettings();
+        render();
+      }
+      if (act === "export") {
+        panel.querySelector(".dil-avatar-json").value = JSON.stringify(makePayload(), null, 2);
+      }
+      if (act === "code") {
+        panel.querySelector(".dil-avatar-json").value = "<script>\nwindow.DIL_AVATAR_SETTINGS = " + JSON.stringify(state.settings, null, 2) + ";\n<\/script>\n<script src=\"./avatar.js\"><\/script>";
+      }
+      if (act === "import") {
+        try {
+          var data = JSON.parse(panel.querySelector(".dil-avatar-json").value);
+          mergeSettingsInto(state.settings, data);
+          saveSettings();
+          render();
+        } catch (e) {
+          alert("JSON okunamadı.");
+        }
+      }
+    });
+
+    updateControlOutputs();
+    return panel;
+  }
+
+  function addRange(parent, key, label, min, max, step) {
+    var row = el("label", { class: "dil-avatar-row" });
+    row.innerHTML = `
+      <span>${label}</span>
+      <input type="range" min="${min}" max="${max}" step="${step}" data-key="${key}">
+      <output data-out="${key}"></output>
+    `;
+    parent.appendChild(row);
+    var input = row.querySelector("input");
+    input.addEventListener("input", function () {
+      current()[key] = Number(input.value);
+      saveSettings();
+      render();
+    });
+    state.controls.push({ key: key, input: input, out: row.querySelector("output") });
+  }
+
+  function addCheckbox(parent, key, label) {
+    var row = el("label", { class: "dil-avatar-row" });
+    row.innerHTML = `
+      <span>${label}</span>
+      <input type="checkbox" data-key="${key}">
+      <output data-out="${key}"></output>
+    `;
+    parent.appendChild(row);
+    var input = row.querySelector("input");
+    input.addEventListener("change", function () {
+      current()[key] = !!input.checked;
+      saveSettings();
+      render();
+    });
+    state.controls.push({ key: key, input: input, out: row.querySelector("output"), checkbox: true });
+  }
+
+  function updateControlOutputs() {
+    if (!state.controls || !state.controls.length || !state.settings) return;
+    var c = current();
+    state.controls.forEach(function (ctl) {
+      if (!ctl.input) return;
+      if (ctl.checkbox) {
+        ctl.input.checked = !!c[ctl.key];
+        ctl.out.textContent = c[ctl.key] ? "açık" : "kapalı";
+      } else {
+        ctl.input.value = c[ctl.key];
+        ctl.out.textContent = String(Math.round(Number(c[ctl.key]) * 100) / 100);
+      }
+    });
+  }
+
+  function getSettings() {
+    if (!state.settings) loadSettings();
+    return clone(state.settings);
+  }
+
+  function exportSettings() {
+    if (!state.settings) loadSettings();
+    return JSON.stringify(makePayload(), null, 2);
+  }
+
+  function setSettings(obj) {
+    if (!state.settings) loadSettings();
+    if (typeof obj === "string") obj = JSON.parse(obj);
+    mergeSettingsInto(state.settings, obj);
+    saveSettings();
+    render();
+  }
+
+  function getCurrentCalibration() {
+    if (!state.settings) loadSettings();
+    return clone(current());
+  }
+
+  function forceReloadSettings() {
+    reloadSettingsAndRender();
+  }
+
+  global.DilAvatar = {
+    mount: mount,
+    mountControlPanel: mountControlPanel,
+    setMouth: setMouth,
+    speakText: speakText,
+    thinking: thinking,
+    stop: function () { stop(true); },
+    setGender: setGender,
+    getGender: getGender,
+    visemeForChar: visemeForChar,
+    blink: blinkOnce,
+    getSettings: getSettings,
+    exportSettings: exportSettings,
+    setSettings: setSettings,
+    getCurrentCalibration: getCurrentCalibration,
+    forceReloadSettings: forceReloadSettings
+  };
+
 })(window);
