@@ -165,9 +165,17 @@ const TEACHER_FRAMES = {
   o:"mouth-o.webp", u:"mouth-u.webp", mbp:"mouth-mbp.webp",
   fv:"mouth-fv.webp", l:"mouth-l.webp", th:"mouth-th.webp"
 };
+function getSelectedTeacher(){
+  const p = new URLSearchParams(location.search);
+  const fromUrl = (p.get("teacher") || p.get("avatar") || "").trim();
+  if (fromUrl === "teacher1" || fromUrl === "teacher2") {
+    try { localStorage.setItem("selectedTeacherAvatar", fromUrl); } catch {}
+    return fromUrl;
+  }
+  return localStorage.getItem("selectedTeacherAvatar") || "teacher1";
+}
 function teacherDir(){
-  const selected = localStorage.getItem("selectedTeacherAvatar") || "teacher1";
-  return "./assets/avatars_v3/" + selected + "/";
+  return "./assets/avatars_v3/" + getSelectedTeacher() + "/";
 }
 let TeacherAvatar = null;
 class PhotoTeacherAvatar{

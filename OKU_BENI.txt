@@ -1,0 +1,22 @@
+YAPILACAKLAR
+
+1) index.html içinde en alta şunu ekle:
+<script src="./teacher-link-fix.js"></script>
+
+Senin index.html dosyanda en doğru yer:
+<script src="./teacher-addon.js"></script>
+satırının hemen altıdır.
+
+Yani son kısım şöyle olmalı:
+<script src="./image-addon.js"></script>
+<script src="./teacher-addon.js"></script>
+<script src="./teacher-link-fix.js"></script>
+
+2) Bu paketteki teacher.html dosyasını mevcut teacher.html üzerine yaz.
+3) Bu paketteki teacher-chat.html dosyasını da yükle. Eski teacher-chat çağrıları otomatik teacher.html dosyasına yönlenecek.
+4) chatteacher1.html, chatteacher2.html ve chatteacher.html dosyalarını da yüklersen teacher1/teacher2 seçimi düzgün kaydedilir.
+5) assets/avatars_v3 klasörün v15 paketinden yüklü olmalı.
+
+NOT
+teacher.html artık ?teacher=teacher2 parametresini de okur:
+teacher.html?teacher=teacher2&s=I%20am%20not%20hungry&t=Aç%20değilim
