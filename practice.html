@@ -312,370 +312,8 @@ body{
 .bk-preview-row b{color:var(--text)}
 .bk-preview-actions{display:flex;gap:8px;margin-top:12px}
 .bk-preview-actions .btn{flex:1}
-
-/* ============================================================
-   DESIGN 5 - yatay/kompakt çalışma ekranı
-   ============================================================ */
-body.d5-mode .wrap{
-  max-width:1280px;
-  padding:14px;
-}
-body.d5-mode .top{
-  max-width:1180px;
-  margin:0 auto;
-}
-body.d5-mode .prog{
-  max-width:1180px;
-  margin:0 auto 14px;
-}
-body.d5-mode .stage{
-  flex:0;
-}
-.design5-card{
-  width:min(1180px, calc(100vw - 28px));
-  max-width:1180px;
-  margin:0 auto;
-  padding:18px;
-  display:grid;
-  grid-template-columns:minmax(260px,1.05fr) minmax(360px,1.25fr) minmax(210px,260px);
-  grid-template-areas:
-    "q mid side"
-    "fb mid side";
-  gap:18px;
-  background:linear-gradient(180deg,#0a1b34,#061225);
-  border:1px solid #24508a88;
-  box-shadow:0 20px 60px #0007;
-}
-.d5-question{
-  grid-area:q;
-  min-height:176px;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  gap:14px;
-  background:linear-gradient(180deg,#10264a,#081b33);
-  border:1px solid #2b5ca088;
-  border-radius:20px;
-  padding:22px;
-}
-.d5-question .tr-text{
-  margin:0;
-  font-family:Fraunces,serif;
-  font-size:clamp(24px,2.4vw,34px);
-  line-height:1.22;
-  color:#fff;
-}
-.d5-question .pron-hint{margin:0}
-.d5-question .teacher-ask-row{margin:0}
-.d5-question .teacher-ask-btn{
-  height:48px;
-  border-radius:13px;
-}
-.d5-mid{
-  grid-area:mid;
-  min-height:440px;
-  background:linear-gradient(180deg,#0f2444,#07182e);
-  border:1px solid #2b5ca088;
-  border-radius:20px;
-  padding:22px;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-}
-.d5-mid #answerArea{
-  width:100%;
-}
-.d5-side{
-  grid-area:side;
-  min-height:440px;
-  background:linear-gradient(180deg,#0f2444,#07182e);
-  border:1px solid #2b5ca088;
-  border-radius:20px;
-  padding:18px;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-}
-.d5-side-title{
-  font:900 23px Nunito,sans-serif;
-  margin:0 0 14px;
-  color:#fff;
-}
-.d5-grade-placeholder{
-  color:var(--muted);
-  font-size:13px;
-  line-height:1.5;
-}
-.d5-feedback{
-  grid-area:fb;
-  min-height:150px;
-  background:linear-gradient(180deg,#062d27,#07182e);
-  border:1px solid #16a34a99;
-  border-radius:20px;
-  padding:18px;
-  overflow:auto;
-}
-.d5-feedback:empty::before{
-  content:"Cevabını kontrol edince sonuç burada görünecek.";
-  color:var(--muted);
-  font-size:13px;
-}
-.design5-card .meta,
-.design5-card .tr-prompt{
-  display:none!important;
-}
-.design5-card .layer-label{
-  margin:0 0 12px;
-  font-size:20px;
-  color:#fff;
-  font-weight:900;
-}
-.design5-card .layer-label .dot{display:none}
-.design5-card .layer-label::before{
-  content:"Kelime kutuları";
-}
-.design5-card .layer-label{font-size:0}
-.design5-card .layer-label::before{font-size:20px}
-.design5-card .bank{
-  order:1;
-  margin:0 0 18px;
-  gap:12px;
-}
-.design5-card .build-line{
-  order:3;
-  min-height:86px;
-  margin:8px 0 16px;
-  border:2px dashed #3b5f94;
-  background:#07182e;
-}
-.design5-card .build-line::before{
-  content:"Cevabın";
-  display:block;
-  width:100%;
-  color:#fff;
-  opacity:.9;
-  font-weight:900;
-  margin-bottom:8px;
-}
-.design5-card .bank .tok-btn,
-.design5-card .tok-chip{
-  min-width:86px;
-  height:50px;
-  border-radius:12px;
-  padding:0 16px;
-  font-size:17px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-}
-.design5-card .bank .tok-btn{
-  background:#f8fafc;
-  color:#0f172a;
-  border-color:#ffffffcc;
-}
-.design5-card .actions,
-.design5-card .mic-row{
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:12px;
-  margin-top:10px;
-}
-.design5-card .mic-row + .actions{
-  margin-top:8px;
-}
-.design5-card .mic-row .mic-btn{
-  grid-column:1/2;
-  height:56px;
-  margin:0;
-}
-.design5-card .actions .btn,
-.design5-card .actions .mic-btn{
-  height:56px;
-  border-radius:14px;
-  font-size:17px;
-  margin:0;
-}
-.design5-card .actions .btn-primary{flex:1}
-.design5-card .feedback{
-  margin:0;
-  padding:0;
-  border-top:0;
-}
-.design5-card .verdict{margin-bottom:8px}
-.design5-card .verdict-emoji{font-size:28px}
-.design5-card .verdict-text{font-size:22px}
-.design5-card .diff{
-  font-size:18px;
-  padding:10px;
-  margin-bottom:8px;
-}
-.design5-card .answer-reveal{margin-bottom:8px}
-.design5-card .audio-btn{margin-top:0}
-#gradeDock .grade-row{
-  margin-top:0;
-}
-#gradeDock .grade-q{
-  display:none;
-}
-#gradeDock .grade-btns{
-  display:flex;
-  flex-direction:column;
-  gap:14px;
-}
-#gradeDock .gbtn,
-#gradeDock .next-btn{
-  width:100%;
-  min-height:64px;
-  border-radius:16px;
-  font-size:22px;
-  margin:0;
-}
-#gradeDock .g-hard{background:linear-gradient(135deg,#ef4444,#b91c1c)}
-#gradeDock .g-good{background:linear-gradient(135deg,#2684ff,#005eea)}
-#gradeDock .g-easy{background:linear-gradient(135deg,#22c55e,#15803d)}
-#gradeDock .next-btn{
-  background:linear-gradient(135deg,#f59e0b,#d97706);
-  margin-top:14px;
-}
-.design5-card .cloze-sentence,
-.design5-card .full-input{
-  margin-bottom:12px;
-}
-.design5-card .listen-hero,
-.design5-card .listen-slow{
-  margin-bottom:12px;
-}
-
-/* mobil dikey: tek ekran kompakt */
-@media(max-width:760px){
-  body.d5-mode .wrap{padding:8px;max-width:100%}
-  body.d5-mode .top{gap:8px;padding:2px 0 8px}
-  body.d5-mode .top-title h1{font-size:15px}
-  body.d5-mode .top-title p{font-size:10px}
-  body.d5-mode .back{width:34px;height:34px;border-radius:9px}
-  body.d5-mode .queue-pill{padding:5px 9px;font-size:11px}
-  body.d5-mode .prog{margin-bottom:7px;height:4px}
-  .design5-card{
-    width:calc(100vw - 14px);
-    padding:8px;
-    border-radius:15px;
-    grid-template-columns:1fr;
-    grid-template-areas:
-      "q"
-      "mid"
-      "fb"
-      "side";
-    gap:7px;
-  }
-  .d5-question,.d5-mid,.d5-feedback,.d5-side{
-    padding:9px;
-    border-radius:12px;
-    min-height:0;
-  }
-  .d5-question{
-    gap:7px;
-  }
-  .d5-question .tr-text{
-    font-size:20px;
-    line-height:1.18;
-  }
-  .d5-question .teacher-ask-btn{
-    height:36px;
-    font-size:12px;
-    border-radius:9px;
-    padding:0 8px;
-  }
-  .d5-mid{
-    display:block;
-  }
-  .design5-card .layer-label{margin-bottom:5px}
-  .design5-card .layer-label::before{font-size:12px}
-  .design5-card .bank{
-    gap:5px;
-    margin-bottom:6px;
-  }
-  .design5-card .bank .tok-btn,
-  .design5-card .tok-chip{
-    min-width:0;
-    height:31px;
-    padding:0 9px;
-    font-size:12px;
-    border-radius:8px;
-  }
-  .design5-card .build-line{
-    min-height:38px;
-    margin:4px 0 7px;
-    padding:5px;
-    border-radius:9px;
-  }
-  .design5-card .build-line::before{
-    font-size:11px;
-    margin-bottom:3px;
-  }
-  .design5-card .actions,
-  .design5-card .mic-row{
-    grid-template-columns:repeat(3,minmax(0,1fr));
-    gap:5px;
-    margin-top:5px;
-  }
-  .design5-card .mic-row .mic-btn,
-  .design5-card .actions .btn,
-  .design5-card .actions .mic-btn{
-    height:34px!important;
-    min-height:34px!important;
-    border-radius:9px!important;
-    font-size:10.5px!important;
-    padding:0 4px!important;
-  }
-  .d5-feedback{
-    max-height:115px;
-    overflow:auto;
-    font-size:12px;
-  }
-  .design5-card .verdict{margin-bottom:4px}
-  .design5-card .verdict-emoji{font-size:20px}
-  .design5-card .verdict-text{font-size:16px}
-  .design5-card .diff{
-    font-size:13px;
-    padding:6px;
-    margin-bottom:4px;
-  }
-  .design5-card .answer-reveal{font-size:11px;margin-bottom:4px}
-  .design5-card .audio-btn{font-size:10px;padding:4px 8px}
-  .d5-side{
-    background:transparent;
-    border:0;
-    padding:0;
-  }
-  .d5-side-title,.d5-grade-placeholder{display:none}
-  #gradeDock .grade-btns{
-    display:grid;
-    grid-template-columns:repeat(3,minmax(0,1fr));
-    gap:5px;
-  }
-  #gradeDock .gbtn,
-  #gradeDock .next-btn{
-    min-height:34px;
-    height:34px;
-    border-radius:9px;
-    font-size:10.5px;
-    padding:0 4px;
-  }
-  #gradeDock .next-btn{
-    margin-top:5px;
-  }
-  #gradeDock.has-grade{
-    display:grid;
-    grid-template-columns:3fr 1fr;
-    gap:5px;
-  }
-  #gradeDock.has-grade .grade-row{min-width:0}
-  #gradeDock.has-grade .next-btn{margin-top:0}
-}
-
 </style>
-  <link rel="stylesheet" href="./practice-design5-v2.css">
-</head>
+  </head>
 <body>
 <div class="wrap" id="root"></div>
 <script type="module">
@@ -1224,7 +862,6 @@ function moduleProgress(mod){
   return { learned, total: arr.length };
 }
 async function renderPicker(){
-  document.body.classList.remove("d5-mode");
   State.srs = await mAll();   // aktif modun ilerlemesini yükle (sayımlar doğru olsun)
   const listen = State.mode === "listen";
   const due = dueCount();
@@ -1665,7 +1302,7 @@ function openTeacherForSentence(s){
   const tr = ((s && s.tr) || "").trim();
   saveTeacherReturnState();
   const back = "./practice.html?fromTeacher=1";
-  const url = "./teacher.html?s=" + encodeURIComponent(en) +
+  const url = "./teacher-chat.html?s=" + encodeURIComponent(en) +
     (tr ? "&t=" + encodeURIComponent(tr) : "") +
     "&return=" + encodeURIComponent(back);
   location.href = url;
@@ -1705,7 +1342,6 @@ function exposeSceneVideoAnswer(s){
 }
 
 function renderCard(){
-  document.body.classList.add("d5-mode");
   if (State.idx >= State.queue.length) return renderSessionDone();
   const s = currentSentence();
   const srs = State.srs[s.id] || srsDefault();
@@ -1729,40 +1365,39 @@ function renderCard(){
   </div>
   <div class="prog"><span style="width:${pct}%"></span></div>
   <div class="stage">
-    <div class="card design5-card">
-      <div class="d5-question">
-        ${listen ? `
-          <div class="tr-text">Dinle ve yaz</div>
-          <button class="listen-hero" id="listenHero">🔊 Cümleyi dinle</button>
-          <button class="listen-slow" id="listenSlow">🐢 Yavaş dinle</button>
-        ` : `
-          <div class="tr-text">${esc(s.tr)}</div>
-          <div class="pron-hint" id="pronHint">${esc(s.trPron || "")}</div>
-        `}
-        <div class="teacher-ask-row">
-          <button class="teacher-ask-btn" id="teacherAskBtn" type="button">🎓 Öğretmene Sor</button>
-        </div>
+    <div class="card">
+      <div class="meta">
+        <span class="chip chip-lv">${esc(s.level)}</span>
+        <span class="chip chip-mode">${modeChip}</span>
+        ${s.tense ? `<span class="chip">${esc(s.tense)}</span>` : ""}
       </div>
-      <div class="d5-mid">
-        <div id="answerArea"></div>
+      ${listen ? `
+        <div class="tr-prompt">Dinle ve yaz</div>
+        <button class="listen-hero" id="listenHero">🔊 Cümleyi dinle</button>
+        <button class="listen-slow" id="listenSlow">🐢 Yavaş dinle</button>
+      ` : `
+        <div class="tr-prompt">Türkçesi</div>
+        <div class="tr-text">${esc(s.tr)}</div>
+        <div class="pron-hint" id="pronHint">${esc(s.trPron || "")}</div>
+      `}
+      <div class="teacher-ask-row">
+        <button class="teacher-ask-btn" id="teacherAskBtn" type="button">🎓 Öğretmene Sor</button>
       </div>
-      <div class="d5-feedback" id="feedbackArea"></div>
-      <div class="d5-side">
-        <div class="d5-side-title">Seviye Seç</div>
-        <div id="gradeDock"><div class="d5-grade-placeholder">Cevabı kontrol edince Zor / Normal / Kolay / İleri düğmeleri burada görünecek.</div></div>
-      </div>
+      <div id="answerArea"></div>
+      <div id="feedbackArea"></div>
     </div>
   </div>`;
 
   exposeSceneVideoAnswer(s);
-  document.getElementById("backBtn").onclick = () => { document.body.classList.remove("d5-mode"); renderPicker(); };
+  document.getElementById("backBtn").onclick = () => renderPicker();
   document.getElementById("teacherAskBtn").onclick = () => openTeacherForSentence(s);
 
   if (listen){
+    // dinleme modu: ekrana metin gelmez, ses çalınır
     const hero = document.getElementById("listenHero");
     hero.onclick = () => speak(s.en);
     document.getElementById("listenSlow").onclick = () => speakSlow(s.en);
-    setTimeout(() => speak(s.en), 300);
+    setTimeout(() => speak(s.en), 300);   // otomatik bir kez çal
     renderListenLayer(s);
   } else if (layer === "order") renderOrderLayer(s);
   else if (layer === "cloze") renderClozeLayer(s);
@@ -1780,10 +1415,10 @@ function renderOrderLayer(s){
   const sttOK = !!STT;
   area.innerHTML = `
     <div class="layer-label"><span class="dot"></span>Kelimeleri doğru sıraya diz${sttOK ? " — ya da mikrofonla oku" : ""}</div>
-    <div class="bank" id="bank"></div>
     <div class="build-line" id="buildLine"></div>
+    <div class="bank" id="bank"></div>
+    ${sttOK ? `<div class="mic-row"><button class="mic-btn" id="micOrder">🎙️ Cümleyi oku</button></div>` : ""}
     <div class="actions">
-      ${sttOK ? `<button class="mic-btn" id="micOrder">🎙️ Oku</button>` : `<button class="btn btn-ghost" id="hearBtn">🔊 Oku</button>`}
       <button class="btn btn-ghost" id="clearBtn">Temizle</button>
       <button class="btn btn-primary" id="checkBtn" disabled>Kontrol et</button>
     </div>`;
@@ -1811,8 +1446,6 @@ function renderOrderLayer(s){
     });
   }
   draw();
-  const hearBtn = document.getElementById("hearBtn");
-  if (hearBtn) hearBtn.onclick = () => speak(s.en);
 
   // mikrofonla otomatik dizme: söylenen kelimeleri bankadaki kelimelerle eşleştir
   if (sttOK){
@@ -2041,12 +1674,6 @@ function renderFeedback(s, d, grade, layer){
       </div>
       <button class="audio-btn" id="fbAudio">🔊 Doğru telaffuzu dinle</button>
       ${learnHtml}
-    </div>`;
-
-  const dock = document.getElementById("gradeDock");
-  if (dock){
-    dock.classList.add("has-grade");
-    dock.innerHTML = `
       <div class="grade-row">
         <div class="grade-q">Sistem bunu <b>${gradeTR(grade)}</b> olarak kaydetti — istersen değiştir:</div>
         <div class="grade-btns">
@@ -2055,36 +1682,35 @@ function renderFeedback(s, d, grade, layer){
           <button class="gbtn g-easy ${grade==="easy"?"sel":""}" data-g="easy">Kolay</button>
         </div>
       </div>
-      <button class="next-btn" id="nextBtn">İleri ›</button>`;
-  }
+      <button class="next-btn" id="nextBtn">Sıradaki →</button>
+    </div>`;
 
   document.getElementById("fbAudio").onclick = () => speak(s.en);
   fb.querySelectorAll(".wp-tok").forEach(t => t.onclick = () => openWordPopup(t.textContent));
+  // otomatik telaffuz (özellikle tam üretim katmanında pekiştirir)
   if (layer !== "order") setTimeout(() => speak(s.en), 250);
 
-  const gradeRoot = dock || fb;
-  gradeRoot.querySelectorAll(".gbtn").forEach(b => b.onclick = async () => {
+  fb.querySelectorAll(".gbtn").forEach(b => b.onclick = async () => {
     const g = b.dataset.g;
+    // önceki kaydı geri al: en güvenlisi, bir önceki srs durumundan yeniden hesapla
+    // (basit yaklaşım: mevcut kaydı baz almadan, kullanıcı seçimini uygula)
     const prevBase = State._gradeBase && State._gradeBase[s.id];
     const base = prevBase !== undefined ? prevBase : null;
     const next = srsGrade(base, g);
     await mSet(s.id, next);
     State.srs[s.id] = next;
     cloudSaveSoon();
-    gradeRoot.querySelectorAll(".gbtn").forEach(x => x.classList.remove("sel"));
+    fb.querySelectorAll(".gbtn").forEach(x => x.classList.remove("sel"));
     b.classList.add("sel");
-    const q = gradeRoot.querySelector(".grade-q");
-    if (q) q.innerHTML = `Güncellendi: <b>${gradeTR(g)}</b>`;
+    fb.querySelector(".grade-q").innerHTML = `Güncellendi: <b>${gradeTR(g)}</b>`;
   });
 
-  const nextBtn = document.getElementById("nextBtn");
-  if (nextBtn){
-    nextBtn.onclick = () => {
-      State.idx++;
-      if (State.activeModule){ savePos(State.activeModule, State.idx, State.queue.length); cloudSaveSoon(); }
-      renderCard();
-    };
-  }
+  document.getElementById("nextBtn").onclick = () => {
+    State.idx++;
+    // modül oturumundaysa pozisyonu kaydet (due oturumu kaydetmez)
+    if (State.activeModule){ savePos(State.activeModule, State.idx, State.queue.length); cloudSaveSoon(); }
+    renderCard();
+  };
 }
 function gradeTR(g){ return g==="hard"?"Zor":g==="easy"?"Kolay":"Normal"; }
 
@@ -2092,7 +1718,6 @@ function gradeTR(g){ return g==="hard"?"Zor":g==="easy"?"Kolay":"Normal"; }
    EKRAN: oturum bitti
    ============================================================ */
 function renderSessionDone(){
-  document.body.classList.remove("d5-mode");
   // oturum tamamlandı: bu modülün "devam et" pozisyonunu sil
   if (State.activeModule){ clearPos(State.activeModule); cloudSaveSoon(); }
   root.innerHTML = `
@@ -2148,6 +1773,5 @@ boot();
     <script src="./image-addon.js"></script>
     <script src="./teacher-addon.js"></script>
 
-  <script src="./practice-design5-v2.js"></script>
-</body>
+  </body>
 </html>
