@@ -61,7 +61,7 @@ button,input,textarea{font:inherit}
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:10px;
+  padding:0;
 }
 .avatar-stage img{
   width:100%;
@@ -186,7 +186,7 @@ button,input,textarea{font:inherit}
 .menu p{color:#a9bbd8;line-height:1.55;margin:0 0 18px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
 .card{display:block;text-decoration:none;color:#edf4ff;border:1px solid rgba(255,255,255,.10);background:linear-gradient(180deg,#112647,#0d1c34);border-radius:22px;overflow:hidden;box-shadow:0 14px 36px rgba(0,0,0,.22)}
-.card img{width:100%;aspect-ratio:1/1;object-fit:contain;display:block;background:#050b16;padding:8px}
+.card img{width:100%;aspect-ratio:4/5;object-fit:cover;object-position:center top;display:block;background:#050b16;padding:0}
 .card b{display:block;font-size:20px;padding:14px 14px 4px}
 .card span{display:block;color:#a9bbd8;padding:0 14px 16px}
 .note-block{margin-top:18px;background:#0d1c34;border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:14px;color:#a9bbd8;line-height:1.6}
