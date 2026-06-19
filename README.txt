@@ -1,15 +1,22 @@
-PRACTICE TASARIM 5 V2 FORCE PAKET
+SOHBET EKRANLARI DÜZELTME
 
-Önceki kod sayfaya uygulanmamış. Bu V2 sürüm app.js sonradan ekranı çizse bile bekler ve çalışma kartını zorla Tasarım 5 düzenine alır.
+Yapılanlar:
+1) Tüm sohbet ekranlarında en alttaki Sohbet / AI / Çalış / Ayar menüsü kaldırıldı.
+2) Avatar alanında görsel kırpılmasın diye avatar kareleri object-fit: contain yapıldı.
+3) Avatar sahnesi yükseltildi; adamın kafası tam görünür.
+4) HTML linkleri v=16 yapıldı, tarayıcı eski CSS/JS cache'ini kullanmasın.
 
-Kurulum:
-practice.html içinde </head> öncesine:
-<link rel="stylesheet" href="./practice-design5-v2.css">
+Yüklenecek dosyalar:
+- chat-style.css
+- chat-core.js
+- chat.html
+- chathotel.html
+- chatrestaurant.html
+- chatdoctor.html
+- chatairport.html
+- chatteacher.html
+- chatteacher1.html
+- chatteacher2.html
+- teacher-chat.html
 
-practice.html içinde </body> öncesine:
-<script src="./practice-design5-v2.js"></script>
-
-ÖNEMLİ:
-Eski practice-design5.css ve practice-design5.js satırlarını kaldır.
-Yeni dosyaları /dilharita/ klasörüne yükle.
-Ctrl+F5 yap.
+Assets klasörünü tekrar yüklemene gerek yok.
