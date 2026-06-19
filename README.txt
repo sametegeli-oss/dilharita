@@ -1,22 +1,24 @@
-SOHBET EKRANLARI DÜZELTME
+SOHBET AVATAR TAM GÖRÜNÜM V17
 
-Yapılanlar:
-1) Tüm sohbet ekranlarında en alttaki Sohbet / AI / Çalış / Ayar menüsü kaldırıldı.
-2) Avatar alanında görsel kırpılmasın diye avatar kareleri object-fit: contain yapıldı.
-3) Avatar sahnesi yükseltildi; adamın kafası tam görünür.
-4) HTML linkleri v=16 yapıldı, tarayıcı eski CSS/JS cache'ini kullanmasın.
+Bu sürüm önceki hatayı düzeltir:
+- chat-core.js içinde avatar doğrudan <img id="avatarImg"> olarak geldiği için eski CSS onu yakalamıyordu.
+- Artık #avatarImg doğrudan hedefleniyor.
+- Avatar object-fit: contain, width:auto, height:100%.
+- Avatar sahnesi kısaltıldı; böylece kullanıcının yazı baloncuğu/input alanı daha yukarıda görünür.
+- Alt menü kaldırılmış halde kalır.
+- HTML dosyaları v=17 ile cache kırar.
 
-Yüklenecek dosyalar:
-- chat-style.css
-- chat-core.js
-- chat.html
-- chathotel.html
-- chatrestaurant.html
-- chatdoctor.html
-- chatairport.html
-- chatteacher.html
-- chatteacher1.html
-- chatteacher2.html
-- teacher-chat.html
+Yüklenecekler:
+chat-style.css
+chat-core.js
+chat.html
+chathotel.html
+chatrestaurant.html
+chatdoctor.html
+chatairport.html
+chatteacher.html
+chatteacher1.html
+chatteacher2.html
+teacher-chat.html
 
-Assets klasörünü tekrar yüklemene gerek yok.
+Assets yüklemene gerek yok.
