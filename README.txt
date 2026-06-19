@@ -1,31 +1,18 @@
-AKILLI TEKRAR SİSTEMİ
+PRACTICE BOZULMA GERİ ALMA
 
-Bu paket 6. maddenin ikinci aşamasıdır.
+Bu paket practice ekranındaki bozuk tasarımı geri alır.
+Kaynak olarak sonradan bozulmuş dosya değil, kullanıcının yüklediği sağlam practice(3).html baz alındı.
 
-Yüklenecek dosyalar:
+Yapılanlar:
+1) Bozuk Tasarım 5 / grid düzeni kaldırıldı.
+2) Hata Defteri ve Akıllı Tekrar yüzen düğmeleri practice ekranından kaldırıldı.
+3) Hata kaydı sistemi korunur: yanlış cevaplar learning-error-system.js ile hata defterine yazılır.
+4) Hata Defteri ve Akıllı Tekrar sadece ana ekrana konulmalı.
+
+Yüklenecek:
+- practice.html
 - learning-error-system.js
 - hata-defteri.html
 - akilli-tekrar.html
-- practice.html
-- videopractice.html
 
-Yeni ekran:
-- akilli-tekrar.html
-
-Ne yapar:
-1) Hata defterindeki kayıtları okur.
-2) Yüksek öncelikli ve düşük skorlu hataları öne alır.
-3) Aynı cümlede birden fazla hata varsa tek kayıt olarak tekrar listesine alır.
-4) Bugünkü planı hata tipine göre gösterir.
-5) Kullanıcıya cümleyi tekrar yazdırır.
-6) Doğruysa "çalışıldı" sayar.
-7) Yanlışsa doğru cevabı gösterip tekrar ettirir.
-8) Dinle butonu ile doğru İngilizce cümleyi seslendirir.
-
-Kurulum:
-Zip içindeki dosyaları /dilharita/ dizinindeki dosyaların üzerine yaz.
-Assets yüklemene gerek yok.
 Sonra Ctrl+F5 yap.
-
-Not:
-Bu sürüm hata defterinden akıllı tekrar üretir. Sonraki aşamada bu ekranı SRS tarihiyle birleştirip "bugün yapılacak resmi tekrar listesi" haline getirebiliriz.
