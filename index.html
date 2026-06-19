@@ -1,23 +1,51 @@
 <!doctype html>
 <html lang="tr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#0b1120" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-    <title>Sentence Mode</title>
-    <script type="module" crossorigin src="./assets/app.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/app.css">
-  </head>
-  <body>
-    <div id="root"></div>
-    <a href="./practice.html" style="position:fixed;right:16px;bottom:16px;z-index:9999;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;text-decoration:none;padding:13px 18px;border-radius:14px;font:800 15px Nunito,sans-serif;box-shadow:0 6px 20px #0006">✍️ Çalışma</a>
-    <a href="./chat.html" style="position:fixed;right:16px;bottom:74px;z-index:9999;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#a78bfa,#6366f1);color:#fff;text-decoration:none;padding:13px 18px;border-radius:14px;font:800 15px Nunito,sans-serif;box-shadow:0 6px 20px #0006">💬 Sohbet</a>
-    <a href="./library.html" style="position:fixed;right:16px;bottom:132px;z-index:9999;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;text-decoration:none;padding:13px 18px;border-radius:14px;font:800 15px Nunito,sans-serif;box-shadow:0 6px 20px #0006">📚 Kütüphane</a>
-    <a href="./videopractice.html" style="position:fixed;right:16px;bottom:190px;z-index:9999;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#06b6d4,#0e7490);color:#fff;text-decoration:none;padding:13px 18px;border-radius:14px;font:800 15px Nunito,sans-serif;box-shadow:0 6px 20px #0006">🎬 Video</a>
-    <script src="./image-addon.js"></script>
-    <script src="./teacher-addon.js"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b1120">
+<title>Dil Harita · Acil Menü</title>
+<style>
+:root{--bg:#0b1120;--card:#111827;--card2:#172033;--text:#e8eef7;--muted:#9fb0c8;--line:#ffffff18}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(900px 420px at 50% -10%,#14302a 0%,transparent 60%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:760px;margin:0 auto;min-height:100vh;padding:22px}
+h1{font-size:30px;margin:10px 0 6px}
+p{color:var(--muted);line-height:1.55}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:20px}
+.card{display:block;text-decoration:none;color:var(--text);background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:0 14px 40px #0005}
+.card b{display:block;font-size:22px;margin-bottom:7px}
+.card span{display:block;color:var(--muted);font-size:14px;line-height:1.45}
+.note{margin-top:22px;background:#101a2d;border:1px solid var(--line);border-radius:16px;padding:15px;color:var(--muted)}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.btn{display:inline-block;text-decoration:none;color:#fff;background:#2563eb;border-radius:12px;padding:11px 14px;font-weight:800}
+.btn.green{background:#16a34a}
+code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Dil Harita</h1>
+  <p>Bu acil statik menüdür. <b>app.js yüklenmediği için sayfa dönüp durmaz.</b> Buradan doğrudan bölümlere geçebilirsin.</p>
+
+  <div class="grid">
+    <a class="card" href="./practice.html"><b>✍️ Çalışma</b><span>Cümle çalışma ekranı</span></a>
+    <a class="card" href="./teacher.html"><b>🎓 Öğretmen</b><span>Türkçe anlatımlı İngilizce öğretmeni</span></a>
+    <a class="card" href="./chat.html"><b>💬 Sohbet</b><span>Fotoğraflı konuşan avatar senaryoları</span></a>
+    <a class="card" href="./library.html"><b>📚 Kütüphane</b><span>Kitap / metin okuma ekranı</span></a>
+    <a class="card" href="./videopractice.html"><b>🎬 Video</b><span>Video ve telaffuz çalışması</span></a>
+    <a class="card" href="./pwa-hard-reset.html"><b>🧹 Önbellek Temizle</b><span>Service worker ve cache temizliği</span></a>
+  </div>
+
+  <div class="note">
+    <b>Teşhis:</b> Bu sayfa açılıyorsa sorun PWA değil, eski ana uygulamayı yükleyen <code>assets/app.js</code> tarafındadır.
+    Ana uygulamayı ayrıca incelemek gerekir. Önce siteyi bu statik menüyle ayağa kaldırıyoruz.
+  </div>
+
+  <div class="row">
+    <a class="btn green" href="./pwa-hard-reset.html">Önbelleği temizle</a>
+    <a class="btn" href="./index-app.html">Eski uygulamayı dene</a>
+  </div>
+</div>
+</body>
 </html>
