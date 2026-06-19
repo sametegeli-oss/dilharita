@@ -1,18 +1,15 @@
-TASARIM 5 KOD PAKETİ
+PRACTICE TASARIM 5 V2 FORCE PAKET
 
-Dosyalar:
-- practice-design5.css
-- practice-design5.js
-- practice-design5-demo.html
+Önceki kod sayfaya uygulanmamış. Bu V2 sürüm app.js sonradan ekranı çizse bile bekler ve çalışma kartını zorla Tasarım 5 düzenine alır.
 
 Kurulum:
-practice.html içine </head> kapanmadan önce:
-<link rel="stylesheet" href="./practice-design5.css">
+practice.html içinde </head> öncesine:
+<link rel="stylesheet" href="./practice-design5-v2.css">
 
-practice.html içinde </body> kapanmadan önce:
-<script src="./practice-design5.js"></script>
+practice.html içinde </body> öncesine:
+<script src="./practice-design5-v2.js"></script>
 
-Eğer çalışma ekranı index/app.js içinde açılıyorsa aynı iki satırı index.html içine de ekle.
-
-Not:
-JS mevcut butonları taşır; butonların kendi click olayları korunur.
+ÖNEMLİ:
+Eski practice-design5.css ve practice-design5.js satırlarını kaldır.
+Yeni dosyaları /dilharita/ klasörüne yükle.
+Ctrl+F5 yap.

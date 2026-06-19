@@ -1,0 +1,198 @@
+/* practice-design5-v2.css — mevcut practice.html DOM'unu zorla Tasarım 5'e yaklaştırır */
+:root{
+  --pd5-bg:#061225; --pd5-panel:#101b31; --pd5-panel2:#0b1b33; --pd5-line:#ffffff1f;
+  --pd5-text:#eef6ff; --pd5-muted:#9fb0c8; --pd5-blue:#1479ff; --pd5-green:#17b85a;
+  --pd5-red:#ef4444; --pd5-orange:#f59e0b; --pd5-purple:#6d45d9;
+}
+.pd5-hide{display:none!important}
+.pd5-card{
+  width:min(1180px, calc(100vw - 32px))!important;
+  max-width:1180px!important;
+  margin:18px auto!important;
+  padding:20px!important;
+  display:grid!important;
+  grid-template-columns:1.05fr 1.25fr 260px!important;
+  grid-template-areas:
+    "question words levels"
+    "result   words levels"
+    "actions  words levels"!important;
+  gap:18px!important;
+  border-radius:24px!important;
+  background:linear-gradient(180deg,#0a1b34,#061225)!important;
+  border:1px solid #24508a88!important;
+  box-shadow:0 20px 60px #0007!important;
+}
+.pd5-question{
+  grid-area:question!important;
+  min-height:190px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  background:linear-gradient(180deg,#10264a,#081b33)!important;
+  border:1px solid #2b5ca088!important;
+  border-radius:20px!important;
+  padding:24px!important;
+}
+.pd5-question h1,.pd5-question h2,.pd5-question h3,.pd5-question .pd5-qtext{
+  font:900 clamp(24px,2.6vw,36px)/1.18 Nunito,system-ui,sans-serif!important;
+  color:#fff!important;
+  margin:0!important;
+}
+.pd5-teacher{
+  margin-top:18px!important;
+  height:54px!important;
+  border-radius:14px!important;
+  width:100%!important;
+  max-width:none!important;
+  background:linear-gradient(135deg,#16a34a,#15803d)!important;
+  color:#fff!important;
+  font:900 18px Nunito,system-ui,sans-serif!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+}
+.pd5-words{
+  grid-area:words!important;
+  min-height:430px!important;
+  background:linear-gradient(180deg,#0f2444,#07182e)!important;
+  border:1px solid #2b5ca088!important;
+  border-radius:20px!important;
+  padding:24px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  gap:18px!important;
+}
+.pd5-words:before{
+  content:"Kelime kutuları";
+  font:900 22px Nunito,system-ui,sans-serif;
+  color:#fff;
+}
+.pd5-result{
+  grid-area:result!important;
+  min-height:145px!important;
+  background:linear-gradient(180deg,#062d27,#07182e)!important;
+  border:1px solid #16a34a99!important;
+  border-radius:20px!important;
+  padding:22px!important;
+}
+.pd5-actions{
+  grid-area:actions!important;
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:14px!important;
+}
+.pd5-actions button,.pd5-actions [role=button]{
+  width:100%!important;height:64px!important;margin:0!important;border-radius:16px!important;
+  font:900 18px Nunito,system-ui,sans-serif!important;
+}
+.pd5-levels{
+  grid-area:levels!important;
+  background:linear-gradient(180deg,#0f2444,#07182e)!important;
+  border:1px solid #2b5ca088!important;
+  border-radius:20px!important;
+  padding:22px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  gap:14px!important;
+}
+.pd5-levels:before{
+  content:"Seviye Seç";
+  font:900 24px Nunito,system-ui,sans-serif;
+  color:#fff;
+  margin-bottom:8px;
+}
+.pd5-levels button,.pd5-levels [role=button]{
+  width:100%!important;height:68px!important;margin:0!important;border-radius:16px!important;
+  font:900 24px Nunito,system-ui,sans-serif!important;
+}
+.pd5-hard{background:linear-gradient(135deg,#ef4444,#b91c1c)!important}
+.pd5-normal{background:linear-gradient(135deg,#2684ff,#005eea)!important}
+.pd5-easy{background:linear-gradient(135deg,#22c55e,#15803d)!important}
+.pd5-next{background:linear-gradient(135deg,#f59e0b,#d97706)!important}
+
+/* kelime chiplerini büyüt */
+.pd5-words button:not(.pd5-teacher), .pd5-words [role=button], .pd5-words span{
+  min-width:82px!important;
+  min-height:44px!important;
+  border-radius:12px!important;
+  font:900 16px Nunito,system-ui,sans-serif!important;
+}
+
+/* Mobil tek ekran sıkıştırma */
+@media(max-width:760px){
+  .pd5-card{
+    width:calc(100vw - 16px)!important;
+    margin:8px auto!important;
+    padding:10px!important;
+    border-radius:16px!important;
+    grid-template-columns:1fr!important;
+    grid-template-areas:
+      "question"
+      "words"
+      "actions"
+      "result"
+      "levels"!important;
+    gap:7px!important;
+  }
+  .pd5-question,.pd5-words,.pd5-result,.pd5-levels{
+    padding:9px!important;
+    border-radius:13px!important;
+    min-height:0!important;
+  }
+  .pd5-question h1,.pd5-question h2,.pd5-question h3,.pd5-question .pd5-qtext{
+    font-size:21px!important;
+  }
+  .pd5-teacher{
+    height:38px!important;
+    margin-top:8px!important;
+    font-size:13px!important;
+    border-radius:10px!important;
+  }
+  .pd5-words{
+    gap:6px!important;
+    display:block!important;
+  }
+  .pd5-words:before{
+    display:block;
+    font-size:12px;
+    margin-bottom:4px;
+  }
+  .pd5-words button:not(.pd5-teacher), .pd5-words [role=button], .pd5-words span{
+    min-width:0!important;
+    min-height:32px!important;
+    height:32px!important;
+    padding:0 9px!important;
+    border-radius:8px!important;
+    font-size:12px!important;
+    margin:2px!important;
+  }
+  .pd5-actions{
+    gap:5px!important;
+  }
+  .pd5-actions button,.pd5-actions [role=button]{
+    height:36px!important;
+    border-radius:9px!important;
+    font-size:11px!important;
+    padding:0 4px!important;
+  }
+  .pd5-result{
+    font-size:12px!important;
+    max-height:110px!important;
+    overflow:auto!important;
+  }
+  .pd5-levels{
+    background:transparent!important;
+    border:0!important;
+    padding:0!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:5px!important;
+  }
+  .pd5-levels:before{display:none}
+  .pd5-levels button,.pd5-levels [role=button]{
+    height:36px!important;
+    border-radius:9px!important;
+    font-size:10.5px!important;
+    padding:0 3px!important;
+  }
+}
