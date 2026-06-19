@@ -1,3 +1,4 @@
+
 (function(){
 "use strict";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -5,13 +6,16 @@ const GROQ_MODEL = "llama-3.3-70b-versatile";
 const KEYS_LS = "groqApiKeys";
 const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
 const DEFAULT_SCENARIO = {
-  title:"Otel", subtitle:"İngilizce konuşma", level:"A2", role:"a friendly hotel receptionist",
+  title:"Otel",
+  subtitle:"İngilizce konuşma",
+  level:"A2",
+  role:"a friendly hotel receptionist",
   voiceGender:"female",
   opener:"Hello, welcome to our hotel. Do you have a reservation?",
   systemExtra:"You are role-playing as a friendly hotel receptionist at the front desk.",
   avatarDir:"assets/avatars_v3/hotel/",
-  frames:{idle:"idle.webp", blink:"blink.webp", mouthSmall:"mouth-small.webp", mouthMedium:"mouth-medium.webp", mouthOpen:"mouth-open.webp", listen:"listen.webp"},
-  patches:null, backHref:"chat.html",
+  frames:{idle:"idle.webp", blink:"blink.webp", mouthSmall:"mouth-small.webp", mouthMedium:"mouth-medium.webp", mouthOpen:"mouth-open.webp", mouthO:"mouth-o.webp", listen:"listen.webp"},
+  backHref:"chat.html",
   noKeyReply:"I can continue when you add a Groq API key. Would you like to check in or ask about a room?"
 };
 const Scenario = Object.assign({}, DEFAULT_SCENARIO, window.CHAT_SCENARIO || {});
@@ -19,7 +23,9 @@ Scenario.frames = Object.assign({}, DEFAULT_SCENARIO.frames, (window.CHAT_SCENAR
 const State = {
   level: localStorage.getItem("chat:level:" + safeId(Scenario.title + ":" + (Scenario.avatarDir||""))) || Scenario.level || "A2",
   currentPartner: Scenario.opener,
-  busy:false, speaking:false, history:[]
+  busy:false,
+  speaking:false,
+  history:[]
 };
 function safeId(s){ return String(s||"scenario").toLowerCase().replace(/[^a-z0-9]+/g,"-"); }
 function $(id){ return document.getElementById(id); }
@@ -44,190 +50,235 @@ async function groqChat(messages){
   throw lastErr || {code:"unknown"};
 }
 
-function setBox(el, box){
-  el.style.left = box.x + "%";
-  el.style.top = box.y + "%";
-  el.style.width = box.w + "%";
-  el.style.height = box.h + "%";
-}
-
 class PhotoAvatar{
-  constructor(baseImg, eyePatch, mouthPatch){
-    this.baseImg=baseImg; this.eyePatch=eyePatch; this.mouthPatch=mouthPatch;
+  constructor(img){
+    this.img=img;
     this.frames={
       idle:asset(Scenario.frames.idle),
       blink:asset(Scenario.frames.blink),
       mouthSmall:asset(Scenario.frames.mouthSmall),
       mouthMedium:asset(Scenario.frames.mouthMedium),
       mouthOpen:asset(Scenario.frames.mouthOpen),
+      mouthO:asset(Scenario.frames.mouthO),
       listen:asset(Scenario.frames.listen)
     };
-    this.patchFrames={
-      blink:asset("patch-blink.webp"),
-      mouthSmall:asset("patch-mouth-small.webp"),
-      mouthMedium:asset("patch-mouth-medium.webp"),
-      mouthOpen:asset("patch-mouth-open.webp")
-    };
-    this.blinkTimer=null; this.talkTimer=null; this.endTimer=null; this.isBlinking=false; this.talkIndex=0;
+    this.blinkTimer=null;
+    this.talkTimer=null;
+    this.endTimer=null;
+    this.isBlinking=false;
+    this.talkSeq=[];
+    this.talkIndex=0;
   }
   init(){
-    this.baseImg.onerror=()=>{ this.baseImg.onerror=null; this.baseImg.src=this.frames.idle; };
-    this.baseImg.src=this.frames.idle;
-    if(Scenario.patches){
-      setBox(this.eyePatch, Scenario.patches.eye);
-      setBox(this.mouthPatch, Scenario.patches.mouth);
-      this.eyePatch.src=this.patchFrames.blink;
-      this.mouthPatch.src=this.patchFrames.mouthSmall;
-    }
+    this.img.onerror=()=>{ this.img.onerror=null; this.img.src=this.frames.idle; };
+    this.show(this.frames.idle);
     this.preload();
     this.scheduleBlink(850);
   }
-  preload(){
-    [this.frames.idle,this.frames.blink,this.frames.mouthSmall,this.frames.mouthMedium,this.frames.mouthOpen,this.frames.listen,this.patchFrames.blink,this.patchFrames.mouthSmall,this.patchFrames.mouthMedium,this.patchFrames.mouthOpen].forEach(src=>{ const im=new Image(); im.src=src; });
-  }
-  showEye(on){ if(this.eyePatch) this.eyePatch.classList.toggle("on", !!on); }
-  showMouth(src){
-    if(!this.mouthPatch) return;
-    this.mouthPatch.src = src;
-    this.mouthPatch.classList.add("on");
-  }
-  hideMouth(){ if(this.mouthPatch) this.mouthPatch.classList.remove("on"); }
+  preload(){ Object.values(this.frames).forEach(src=>{ const im = new Image(); im.src=src; }); }
+  show(url){ this.img.src=url; }
   scheduleBlink(delay){
     clearTimeout(this.blinkTimer);
     this.blinkTimer=setTimeout(()=>this.blink(), delay || (1800 + Math.random()*1700));
   }
   blink(){
     this.isBlinking=true;
-    this.showEye(true);
+    this.show(this.frames.blink);
     setTimeout(()=>{
-      this.showEye(false);
       this.isBlinking=false;
+      if(State.speaking){
+        this.show(this.talkSeq[this.talkIndex % Math.max(1,this.talkSeq.length)] || this.frames.mouthSmall);
+      }else{
+        this.show(this.frames.idle);
+      }
       this.scheduleBlink();
-    }, 420);
+    }, 360);
   }
-  speak(duration){
-    clearInterval(this.talkTimer); clearTimeout(this.endTimer);
-    State.speaking=true; this.talkIndex=0;
-    const seq=[this.patchFrames.mouthSmall,this.patchFrames.mouthMedium,this.patchFrames.mouthOpen,this.patchFrames.mouthMedium,this.patchFrames.mouthSmall];
+  buildSequenceFromText(text){
+    const s = String(text || '').toLowerCase();
+    const seq = [];
+    for(const ch of s){
+      if(/[o0ö]/.test(ch)) seq.push(this.frames.mouthO);
+      else if(/[uüwq]/.test(ch)) seq.push(this.frames.mouthO);
+      else if(/[a]/.test(ch)) seq.push(this.frames.mouthOpen);
+      else if(/[e]/.test(ch)) seq.push(this.frames.mouthMedium);
+      else if(/[iıy]/.test(ch)) seq.push(this.frames.mouthSmall);
+      else if(/[mnbp]/.test(ch)) seq.push(this.frames.idle);
+      else if(/[fv]/.test(ch)) seq.push(this.frames.mouthSmall);
+      else if(/[.,!?\s]/.test(ch)) seq.push(this.frames.idle);
+      else seq.push(this.frames.mouthSmall);
+    }
+    return seq.filter(Boolean);
+  }
+  speakText(text, duration){
+    clearInterval(this.talkTimer);
+    clearTimeout(this.endTimer);
+    State.speaking=true;
+    this.talkSeq = this.buildSequenceFromText(text);
+    if(!this.talkSeq.length){
+      this.talkSeq = [this.frames.mouthSmall, this.frames.mouthMedium, this.frames.mouthOpen, this.frames.mouthO, this.frames.mouthMedium, this.frames.idle];
+    }
+    this.talkIndex=0;
     this.talkTimer=setInterval(()=>{
-      this.showMouth(seq[this.talkIndex % seq.length]);
+      if(this.isBlinking) return;
+      this.show(this.talkSeq[this.talkIndex % this.talkSeq.length]);
       this.talkIndex++;
-    }, 115);
-    this.endTimer=setTimeout(()=>this.stop(), Math.max(900,duration||1800));
+    }, 105);
+    this.endTimer=setTimeout(()=>this.stop(), Math.max(1000,duration||1800));
   }
   stop(){
-    clearInterval(this.talkTimer); clearTimeout(this.endTimer);
+    clearInterval(this.talkTimer);
+    clearTimeout(this.endTimer);
     State.speaking=false;
-    this.hideMouth();
+    if(!this.isBlinking) this.show(this.frames.listen);
+    setTimeout(()=>{ if(!State.speaking && !this.isBlinking) this.show(this.frames.idle); }, 260);
     this.scheduleBlink(1100);
   }
 }
 
 function buildUI(){
   const root=document.getElementById("chatApp") || document.body.appendChild(document.createElement("div"));
-  root.innerHTML=`<div class="chat-shell"><div class="chat-top"><a class="back-btn" href="${Scenario.backHref||'chat.html'}">←</a><div class="chat-title-wrap"><div class="chat-title">${esc(Scenario.title)}</div><div class="chat-sub" id="subtitle">${esc(Scenario.subtitle)} · ${State.level}</div></div><button class="level-pill" id="levelBtn" type="button">${State.level}</button></div><div class="avatar-stage"><div class="avatar-box"><img class="avatar-base" id="avatarImg" alt="Fotoğraflı konuşan avatar"><img class="avatar-patch" id="eyePatch" alt=""><img class="avatar-patch" id="mouthPatch" alt=""></div></div><div class="panel"><div class="chat-history" id="chatHistory"></div><div class="input-row"><div class="input-wrap"><textarea class="text-in" id="textIn" rows="1" placeholder="Yaz ya da 🎙️ ile konuş..."></textarea></div><button class="icon-fab mic-btn" id="micBtn" type="button" title="Konuş">🎙️</button><button class="icon-fab send-btn" id="sendBtn" type="button" title="Gönder">➤</button></div></div><div class="bottom-nav"><div class="nav-item active"><span class="ico">💬</span>Pratik</div><div class="nav-item"><span class="ico">📚</span>Kelime</div><div class="nav-item"><span class="ico">📈</span>İlerleme</div><div class="nav-item"><span class="ico">👤</span>Profil</div></div></div><div class="sheet" id="explainSheet"><div class="sheet-card"><h3>Türkçe açıklama</h3><p id="explainText">Yükleniyor...</p><div class="sheet-btns"><button class="sheet-btn" id="closeExplain" type="button">Kapat</button></div></div></div><div class="sheet" id="levelSheet"><div class="sheet-card"><h3>Seviyeni seç</h3><p>Partner konuşma zorluğunu bu seviyeye göre ayarlar.</p><div class="sheet-btns">${["A1","A2","B1","B2","C1"].map(l=>`<button class="sheet-btn primary levelOpt" type="button" data-level="${l}">${l}</button>`).join("")}</div><div class="sheet-btns"><button class="sheet-btn" id="closeLevel" type="button">Kapat</button></div></div></div><div class="sheet" id="keySheet"><div class="sheet-card"><h3>Groq API anahtarı</h3><p>AI cevap üretmesi için Groq anahtarı gerekir. Anahtar cihazında saklanır.</p><input id="keyInput" type="text" placeholder="gsk_..." autocomplete="off" spellcheck="false"><div class="note" id="keyNote">Anahtar yoksa avatar ve Dinle düğmesi çalışır; AI cevap üretmez.</div><div class="sheet-btns"><button class="sheet-btn primary" id="saveKey" type="button">Kaydet</button><button class="sheet-btn" id="closeKey" type="button">Kapat</button></div></div></div>`;
+  root.innerHTML=`<div class="chat-shell"><div class="chat-top"><a class="back-btn" href="${Scenario.backHref||'chat.html'}">←</a><div class="chat-title-wrap"><div class="chat-title">${esc(Scenario.title)}</div><div class="chat-sub" id="subtitle">${esc(Scenario.subtitle)} · ${State.level}</div></div><button class="level-pill" id="levelBtn" type="button">${State.level}</button></div><div class="avatar-stage"><img id="avatarImg" alt="Fotoğraflı konuşan avatar"></div><div class="panel"><div class="chat-history" id="chatHistory"></div><div class="input-row"><div class="input-wrap"><textarea id="textIn" class="text-in" rows="1" placeholder="Yaz ya da 🎙 ile konuş..."></textarea></div><button class="icon-fab mic-btn" id="micBtn" type="button">🎙</button><button class="icon-fab send-btn" id="sendBtn" type="button">➤</button></div></div><div class="bottom-nav"><div class="nav-item active"><span class="ico">💬</span>Sohbet</div><div class="nav-item"><span class="ico">🧠</span>AI</div><div class="nav-item"><span class="ico">📚</span>Çalış</div><div class="nav-item"><span class="ico">⚙️</span>Ayar</div></div></div><div class="sheet" id="explainSheet"><div class="sheet-card"><h3>TR Açıkla</h3><p id="explainText">Yükleniyor...</p><div class="sheet-btns"><button class="sheet-btn primary" id="closeExplain">Kapat</button></div></div></div><div class="sheet" id="levelSheet"><div class="sheet-card"><h3>Seviye seç</h3><div class="sheet-btns"><button class="sheet-btn levelOpt" data-level="A1">A1</button><button class="sheet-btn levelOpt" data-level="A2">A2</button><button class="sheet-btn levelOpt" data-level="B1">B1</button><button class="sheet-btn levelOpt" data-level="B2">B2</button><button class="sheet-btn levelOpt" data-level="C1">C1</button></div><div class="sheet-btns"><button class="sheet-btn primary" id="closeLevel">Kapat</button></div></div></div><div class="sheet" id="keySheet"><div class="sheet-card"><h3>Groq API anahtarı</h3><p>Konuşma için Groq API anahtarını ekle. Birden fazla anahtar saklanabilir.</p><input id="keyInput" type="text" placeholder="gsk_..." autocomplete="off"><div class="sheet-btns"><button class="sheet-btn primary" id="saveKey">Kaydet</button><button class="sheet-btn" id="closeKey">Kapat</button></div><div class="note" id="keyNote">Anahtar bu tarayıcıda saklanır.</div></div></div>`;
 }
 function addBubble(role, text, options){
-  const hist=$("chatHistory");
-  const el=document.createElement("div");
-  el.className="bubble " + (role==="user" ? "user" : "assistant");
+  const hist = $("chatHistory");
+  const el = document.createElement("div");
+  el.className = "bubble " + (role === "user" ? "user" : "assistant");
   if(options && options.typing){
-    el.className="bubble assistant typing"; el.id="typingBubble"; el.textContent="Düşünüyor...";
+    el.className = "bubble assistant typing";
+    el.id = "typingBubble";
+    el.textContent = "Düşünüyor...";
   }else{
-    const t=document.createElement("div"); t.className="bubble-text"; t.textContent=text; el.appendChild(t);
-    if(role!=="user"){
-      const actions=document.createElement("div"); actions.className="bubble-actions";
-      const listen=document.createElement("button"); listen.className="bubble-btn"; listen.type="button"; listen.textContent="🔊 Dinle"; listen.onclick=()=>speakText(text);
-      const tr=document.createElement("button"); tr.className="bubble-btn"; tr.type="button"; tr.textContent="TR Açıkla"; tr.onclick=()=>explainText(text);
-      actions.appendChild(listen); actions.appendChild(tr); el.appendChild(actions);
+    const t = document.createElement("div");
+    t.className = "bubble-text";
+    t.textContent = text;
+    el.appendChild(t);
+    if(role !== "user"){
+      const actions = document.createElement("div");
+      actions.className = "bubble-actions";
+      const listen = document.createElement("button");
+      listen.className = "bubble-btn";
+      listen.type = "button";
+      listen.textContent = "🔊 Dinle";
+      listen.onclick = () => speakText(text);
+      const tr = document.createElement("button");
+      tr.className = "bubble-btn";
+      tr.type = "button";
+      tr.textContent = "TR Açıkla";
+      tr.onclick = () => explainText(text);
+      actions.appendChild(listen);
+      actions.appendChild(tr);
+      el.appendChild(actions);
     }
   }
-  hist.appendChild(el); scrollHistory(); return el;
+  hist.appendChild(el);
+  scrollHistory();
+  return el;
 }
-function scrollHistory(){ const hist=$("chatHistory"); if(hist) hist.scrollTop=hist.scrollHeight; }
-function removeTyping(){ const t=$("typingBubble"); if(t) t.remove(); }
-function levelGuide(){ return ({A1:"The user is beginner A1. Use very short and easy sentences.",A2:"The user is elementary A2. Use simple and common words.",B1:"The user is intermediate B1. Use natural but clear English.",B2:"The user is upper intermediate B2. Speak naturally but keep it concise.",C1:"The user is advanced C1. Use fluent natural English, still keep replies concise."})[State.level] || "Use clear natural English."; }
-function systemPrompt(){ return [Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."), levelGuide(), "Always reply in English unless the user explicitly asks for Turkish.", "Keep replies short: 1 to 3 sentences.", "Ask a follow-up question to keep the conversation going.", "If the user makes a clear mistake, gently model the correct version without lecturing.", "No emojis."].join("\n"); }
+function scrollHistory(){ const hist = $("chatHistory"); if(hist) hist.scrollTop = hist.scrollHeight; }
+function removeTyping(){ const t = $("typingBubble"); if(t) t.remove(); }
+function levelGuide(){
+  return ({A1:"The user is beginner A1. Use very short and easy sentences.",A2:"The user is elementary A2. Use simple and common words.",B1:"The user is intermediate B1. Use natural but clear English.",B2:"The user is upper intermediate B2. Speak naturally but keep it concise.",C1:"The user is advanced C1. Use fluent natural English, still keep replies concise."})[State.level] || "Use clear natural English.";
+}
+function systemPrompt(){
+  return [Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."), levelGuide(), "Always reply in English unless the user explicitly asks for Turkish.", "Keep replies short: 1 to 3 sentences.", "Ask a follow-up question to keep the conversation going.", "If the user makes a clear mistake, gently model the correct version without lecturing.", "No emojis."].join("\n");
+}
 function estimateDuration(text){ const n=Array.from(String(text||"")).length; return Math.max(1100, Math.min(12000, n * 82)); }
 
-let cachedVoices=[];
+let cachedVoices = [];
 function refreshVoices(){ cachedVoices = speechSynthesis.getVoices ? speechSynthesis.getVoices() : []; }
-function voiceReady(){
-  return new Promise(resolve=>{
-    refreshVoices();
-    if(cachedVoices.length) return resolve();
-    let done=false;
-    const finish=()=>{ if(!done){ done=true; refreshVoices(); resolve(); } };
-    speechSynthesis.onvoiceschanged=finish;
-    setTimeout(finish, 900);
-  });
+if(typeof speechSynthesis !== "undefined"){
+  refreshVoices();
+  speechSynthesis.onvoiceschanged = refreshVoices;
 }
 function pickVoice(){
   refreshVoices();
-  const voices=cachedVoices.filter(v=>/^en/i.test(v.lang||""));
+  const voices = cachedVoices.filter(v => /^en/i.test(v.lang || ""));
   if(!voices.length) return null;
-  const gender=String(Scenario.voiceGender||"female").toLowerCase();
-  const maleRe=/(male|david|mark|george|daniel|james|john|alex|fred|thomas|guy|brian|ryan|matthew|arthur|oliver)/i;
-  const femaleRe=/(female|zira|jenny|aria|samantha|susan|hazel|victoria|karen|moira|tessa|joanna|salli|amy|emma|olivia|ava|allison)/i;
-  let preferred=voices.filter(v=>/en-US|en_GB|en-GB|en_US/i.test(v.lang||""));
-  if(!preferred.length) preferred=voices;
-  const re=gender==="male" ? maleRe : femaleRe;
-  return preferred.find(v=>re.test(v.name||"")) || preferred[0] || voices[0];
+  const gender = String(Scenario.voiceGender || "female").toLowerCase();
+  const maleRe = /(male|david|mark|george|daniel|james|john|alex|fred|thomas|guy|brian|ryan|matthew|arthur|oliver)/i;
+  const femaleRe = /(female|zira|jenny|aria|samantha|susan|hazel|victoria|karen|moira|tessa|joanna|salli|amy|emma|olivia|ava|allison)/i;
+  let preferred = voices.filter(v => /en-US|en_GB|en-GB|en_US/i.test(v.lang || ""));
+  if(!preferred.length) preferred = voices;
+  const re = gender === "male" ? maleRe : femaleRe;
+  return preferred.find(v => re.test(v.name || "")) || preferred[0] || voices[0];
 }
+
 let avatar; let speechRun=0;
-async function speakText(text){
-  text=String(text||"").trim(); if(!text) return;
-  await voiceReady();
+function speakText(text){
+  text=String(text||"").trim();
+  if(!text) return;
   const run=++speechRun;
   try{speechSynthesis.cancel();}catch(e){}
   const duration=estimateDuration(text);
-  avatar.speak(duration+300);
+  avatar.speakText(text, duration+300);
   try{
     const u=new SpeechSynthesisUtterance(text);
-    const voice=pickVoice();
-    if(voice) u.voice=voice;
-    u.lang=voice ? voice.lang : "en-US";
-    u.rate=.96;
-    if(String(Scenario.voiceGender||"").toLowerCase()==="male"){ u.pitch=.72; }
-    else{ u.pitch=1.35; }
+    const voice = pickVoice();
+    if(voice) u.voice = voice;
+    u.lang = voice ? voice.lang : "en-US";
+    u.rate = .96;
+    if(String(Scenario.voiceGender || "").toLowerCase() === "male") u.pitch = .78;
+    else u.pitch = 1.24;
     u.onend=()=>{if(run===speechRun) avatar.stop();};
     u.onerror=()=>{if(run===speechRun) avatar.stop();};
     speechSynthesis.speak(u);
   }catch(e){ setTimeout(()=>{ if(run===speechRun) avatar.stop(); }, duration); }
 }
 async function explainText(text){
-  $("explainSheet").classList.add("open"); $("explainText").textContent="Yükleniyor...";
-  if(!getKeys().length){ $("explainText").textContent="API anahtarı eklenmemiş. Bu bölümde normalde İngilizce cümlenin Türkçe anlamı ve kısa dil bilgisi açıklaması gösterilir."; return; }
+  $("explainSheet").classList.add("open");
+  $("explainText").textContent="Yükleniyor...";
+  if(!getKeys().length){
+    $("explainText").textContent="API anahtarı eklenmemiş. Bu bölümde normalde İngilizce cümlenin Türkçe anlamı ve kısa dil bilgisi açıklaması gösterilir.";
+    return;
+  }
   try{
     const reply=await groqChat([{role:"system", content:"You are a Turkish-speaking English teacher. Translate the sentence into Turkish and briefly explain key vocabulary or grammar. Maximum 3 short Turkish sentences."},{role:"user", content:text}]);
     $("explainText").textContent=reply || "Açıklama alınamadı.";
   }catch(e){ $("explainText").textContent="Açıklama alınamadı. API anahtarını kontrol et veya tekrar dene."; }
 }
 async function sendUser(){
-  const input=$("textIn"); const text=input.value.trim();
+  const input=$("textIn");
+  const text=input.value.trim();
   if(!text || State.busy) return;
-  State.busy=true; $("sendBtn").disabled=true;
-  addBubble("user", text); input.value=""; input.style.height="auto"; addBubble("assistant","",{typing:true});
+  State.busy=true;
+  $("sendBtn").disabled=true;
+  addBubble("user", text);
+  input.value="";
+  input.style.height="auto";
+  addBubble("assistant", "", {typing:true});
+
   if(!getKeys().length){
-    removeTyping(); $("keySheet").classList.add("open");
-    State.currentPartner=Scenario.noKeyReply; addBubble("assistant",State.currentPartner); speakText(State.currentPartner);
-    State.busy=false; $("sendBtn").disabled=false; return;
+    removeTyping();
+    $("keySheet").classList.add("open");
+    State.currentPartner=Scenario.noKeyReply;
+    addBubble("assistant", State.currentPartner);
+    speakText(State.currentPartner);
+    State.busy=false;
+    $("sendBtn").disabled=false;
+    return;
   }
   try{
     State.history.push({role:"user",content:text});
     const messages=[{role:"system",content:systemPrompt()},{role:"assistant",content:Scenario.opener},...State.history.slice(-10)];
     const reply=await groqChat(messages);
-    removeTyping(); State.currentPartner=reply || "Could you please say that again?";
+    removeTyping();
+    State.currentPartner=reply || "Could you please say that again?";
     State.history.push({role:"assistant",content:State.currentPartner});
-    addBubble("assistant",State.currentPartner); speakText(State.currentPartner);
+    addBubble("assistant", State.currentPartner);
+    speakText(State.currentPartner);
   }catch(e){
     removeTyping();
     let msg="Bir sorun oldu. Tekrar deneyelim.";
     if(e.code==="rate") msg="API limiti doldu. Biraz sonra tekrar dene.";
     else if(e.code==="bad-key") msg="API anahtarı geçersiz görünüyor.";
     else if(e.code==="network") msg="İnternet bağlantısı kontrol edilmeli.";
-    State.currentPartner=msg; addBubble("assistant",msg);
-  }finally{ State.busy=false; $("sendBtn").disabled=false; }
+    State.currentPartner=msg;
+    addBubble("assistant", msg);
+  }finally{
+    State.busy=false;
+    $("sendBtn").disabled=false;
+  }
 }
 function setupEvents(){
   $("closeExplain").onclick=()=>$("explainSheet").classList.remove("open");
@@ -247,7 +298,10 @@ function setupEvents(){
     let rec=null,listening=false;
     $("micBtn").onclick=()=>{
       if(listening && rec){ rec.stop(); return; }
-      rec=new STT(); rec.lang="en-US"; rec.interimResults=false; rec.maxAlternatives=1;
+      rec=new STT();
+      rec.lang="en-US";
+      rec.interimResults=false;
+      rec.maxAlternatives=1;
       rec.onstart=()=>{listening=true; $("micBtn").classList.add("listening");};
       rec.onerror=()=>{};
       rec.onresult=ev=>{ $("textIn").value=ev.results[0][0].transcript; $("textIn").dispatchEvent(new Event("input")); };
@@ -258,17 +312,24 @@ function setupEvents(){
   $("closeKey").onclick=()=>$("keySheet").classList.remove("open");
   $("saveKey").onclick=()=>{
     const k=$("keyInput").value.trim();
-    if(!k || !k.startsWith("gsk_")){ $("keyNote").textContent="Anahtar gsk_ ile başlamalı."; $("keyNote").className="note bad"; return; }
-    saveKey(k); $("keyNote").textContent="Anahtar kaydedildi."; $("keyNote").className="note"; $("keySheet").classList.remove("open");
+    if(!k || !k.startsWith("gsk_")){
+      $("keyNote").textContent="Anahtar gsk_ ile başlamalı.";
+      $("keyNote").className="note bad";
+      return;
+    }
+    saveKey(k);
+    $("keyNote").textContent="Anahtar kaydedildi.";
+    $("keyNote").className="note";
+    $("keySheet").classList.remove("open");
   };
 }
 function boot(){
   buildUI();
-  avatar=new PhotoAvatar($("avatarImg"), $("eyePatch"), $("mouthPatch"));
+  avatar=new PhotoAvatar($("avatarImg"));
   avatar.init();
   setupEvents();
   addBubble("assistant", State.currentPartner);
-  setTimeout(()=>speakText(State.currentPartner), 550);
+  setTimeout(()=>speakText(State.currentPartner), 450);
 }
 document.addEventListener("DOMContentLoaded", boot);
 })();

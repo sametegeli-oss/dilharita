@@ -30,3 +30,10 @@ DÜZELTMELER
 YÜKLEME
 Zip içindeki tüm dosyaları klasör yapısını bozmadan GitHub repo'na yükle.
 Yükledikten sonra Ctrl+F5 yap.
+
+
+V11 GÜNCELLEME
+- Tüm senaryolara mouth-o.webp eklendi.
+- Ağız animasyonu tam foto karelerle yapılır; O sesi için mouth-o.webp kullanılır.
+- Konuşma sırasında metindeki o/u/ö harfleri ve benzer yuvarlak sesler mouth-o.webp karesine yönlendirilir.
+- Tarayıcı cache karışmasın diye JS/CSS çağrıları v=11 oldu.
