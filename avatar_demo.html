@@ -32,20 +32,54 @@
       margin:6px;
       cursor:pointer;
     }
+    .error{
+      display:none;
+      margin:10px 0;
+      padding:10px;
+      border-radius:12px;
+      background:#7f1d1d;
+      color:#fee2e2;
+      text-align:left;
+      font-size:14px;
+    }
   </style>
 </head>
 <body>
   <div class="box">
+    <div id="loadError" class="error"></div>
     <div id="avatarHost"></div>
-    <button onclick="DilAvatar.speakText('merhaba bugün İngilizce çalışıyoruz', 3200)">Konuştur</button>
-    <button onclick="DilAvatar.thinking(true)">Düşün</button>
-    <button onclick="DilAvatar.stop(); DilAvatar.thinking(false)">Dur</button>
+    <button id="btnSpeak" type="button">Konuştur</button>
+    <button id="btnThink" type="button">Düşün</button>
+    <button id="btnStop" type="button">Dur</button>
     <p>Detaylı ayarlama için <b>avatar_ayar.html</b> dosyasını aç.</p>
   </div>
 
-  <script src="./avatar_v7_ayar_yansima_fix.js"></script>
+  <script src="./avatar.js"></script>
   <script>
-    DilAvatar.mount("avatarHost");
+    (function(){
+      if (!window.DilAvatar) {
+        var box = document.getElementById("loadError");
+        box.style.display = "block";
+        box.innerHTML = "avatar.js yüklenemedi. avatar_demo.html ile avatar.js aynı klasörde olmalı.";
+        return;
+      }
+
+      DilAvatar.mount("avatarHost");
+      DilAvatar.setGender("erkek");
+
+      document.getElementById("btnSpeak").addEventListener("click", function(){
+        DilAvatar.speakText("merhaba bugün İngilizce çalışıyoruz", 3200);
+      });
+
+      document.getElementById("btnThink").addEventListener("click", function(){
+        DilAvatar.thinking(true);
+      });
+
+      document.getElementById("btnStop").addEventListener("click", function(){
+        DilAvatar.stop();
+        DilAvatar.thinking(false);
+      });
+    })();
   </script>
 </body>
 </html>

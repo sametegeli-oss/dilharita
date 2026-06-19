@@ -33,6 +33,12 @@
       font-size:20px;
       margin:0 0 14px;
     }
+    .note{
+      color:#93c5fd;
+      line-height:1.45;
+      font-size:14px;
+      margin:0 0 14px;
+    }
     .actions{
       display:flex;
       gap:8px;
@@ -49,6 +55,17 @@
       padding:11px 14px;
       cursor:pointer;
     }
+    .error{
+      display:none;
+      margin:14px 0;
+      padding:12px;
+      border-radius:14px;
+      background:#7f1d1d;
+      color:#fee2e2;
+      text-align:left;
+      font-size:14px;
+      line-height:1.45;
+    }
     @media(max-width:820px){
       .page{grid-template-columns:1fr}
       .preview{position:relative;top:auto}
@@ -58,23 +75,62 @@
 <body>
   <main class="page">
     <section class="preview">
-      <h1>DilAvatar Önizleme</h1><p style="margin:0 0 12px;color:#94a3b8;font-size:13px">Ayarlar canlı kaydedilir. Ana uygulamada da aynı <b>avatar.js</b> dosyası kullanılmalı.</p>
+      <h1>DilAvatar Önizleme</h1>
+      <p class="note">
+        Bu sayfa <b>./avatar.js</b> dosyasını yükler. Aynı klasörde
+        <b>avatar.js</b> mutlaka bulunmalı.
+      </p>
+
+      <div id="loadError" class="error"></div>
+
       <div id="avatarHost"></div>
+
       <div class="actions">
-        <button onclick="DilAvatar.speakText('merhaba bugün ingilizce çalışıyoruz', 3200)">Konuş</button>
-        <button onclick="DilAvatar.blink()">Göz kırp</button>
-        <button onclick="DilAvatar.stop()">Dur</button>
+        <button id="btnSpeak" type="button">Konuş</button>
+        <button id="btnBlink" type="button">Göz kırp</button>
+        <button id="btnStop" type="button">Dur</button>
       </div>
     </section>
+
     <section>
       <div id="avatarControls"></div>
     </section>
   </main>
 
-  <script src="./avatar_v7_ayar_yansima_fix.js"></script>
+  <script src="./avatar.js"></script>
   <script>
-    DilAvatar.mount("avatarHost");
-    DilAvatar.mountControlPanel("avatarControls");
+    (function(){
+      function showError(msg){
+        var box = document.getElementById("loadError");
+        box.style.display = "block";
+        box.innerHTML = msg;
+      }
+
+      if (!window.DilAvatar) {
+        showError(
+          "<b>avatar.js yüklenemedi.</b><br>" +
+          "Çözüm: <code>avatar_ayar.html</code> ile <code>avatar.js</code> aynı klasörde olmalı.<br>" +
+          "GitHub'da şu yolu kontrol et: <code>/dilharita/avatar.js</code>"
+        );
+        return;
+      }
+
+      DilAvatar.mount("avatarHost");
+      DilAvatar.setGender("erkek");
+      DilAvatar.mountControlPanel("avatarControls");
+
+      document.getElementById("btnSpeak").addEventListener("click", function(){
+        DilAvatar.speakText("merhaba bugün ingilizce çalışıyoruz", 3200);
+      });
+
+      document.getElementById("btnBlink").addEventListener("click", function(){
+        DilAvatar.blink();
+      });
+
+      document.getElementById("btnStop").addEventListener("click", function(){
+        DilAvatar.stop();
+      });
+    })();
   </script>
 </body>
 </html>
