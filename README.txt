@@ -37,3 +37,11 @@ V11 GÜNCELLEME
 - Ağız animasyonu tam foto karelerle yapılır; O sesi için mouth-o.webp kullanılır.
 - Konuşma sırasında metindeki o/u/ö harfleri ve benzer yuvarlak sesler mouth-o.webp karesine yönlendirilir.
 - Tarayıcı cache karışmasın diye JS/CSS çağrıları v=11 oldu.
+
+
+V12 GÜNCELLEME
+- Tüm karakterlerde mouth-o.webp artık mouth-small.webp tabanlı ayrı bir tam foto kare olarak ayarlandı; mouth-open ile aynı değil.
+- Teacher1 ve Teacher2 tam kareleri idle karesine göre hizalandı; sağa-sola kayma azaltıldı.
+- assets/avatars_v3/teacher/ klasörü yeni teacher1 ile güncellendi.
+- Video/kütüphane/çalışma/teacher-chat gibi sayfalarda yeni teacher avatarını zorla kullanmak için teacher-global-avatar.js eklendi.
+- teacher-video-avatar.js de sadece yeni teacher avatarlarını kullanacak şekilde güncellendi.

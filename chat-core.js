@@ -29,7 +29,8 @@ const State = {
 };
 function safeId(s){ return String(s||"scenario").toLowerCase().replace(/[^a-z0-9]+/g,"-"); }
 function $(id){ return document.getElementById(id); }
-function asset(file){ return (Scenario.avatarDir || "") + file; }
+function activeAvatarDir(){ const isTeacher = /teacher|öğretmen|ogretmen/i.test((Scenario.title||"") + " " + (Scenario.role||"")); const selected = localStorage.getItem("selectedTeacherAvatar") || "teacher1"; if(isTeacher && /^assets\/avatars_v3\/teacher/i.test(Scenario.avatarDir||"assets/avatars_v3/teacher1/")){ return "assets/avatars_v3/" + selected + "/"; } return (Scenario.avatarDir || ""); }
+function asset(file){ return activeAvatarDir() + file; }
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function getKeys(){ try{ return (JSON.parse(localStorage.getItem(KEYS_LS)||"[]")||[]).filter(Boolean); }catch{return [];} }
 function saveKey(k){ const keys=getKeys(); if(!keys.includes(k)) keys.push(k); localStorage.setItem(KEYS_LS, JSON.stringify(keys)); }
@@ -100,6 +101,7 @@ class PhotoAvatar{
     for(const ch of s){
       if(/[o0ö]/.test(ch)) seq.push(this.frames.mouthO);
       else if(/[uüwq]/.test(ch)) seq.push(this.frames.mouthO);
+      else if(/[c]/.test(ch)) seq.push(this.frames.mouthO);
       else if(/[a]/.test(ch)) seq.push(this.frames.mouthOpen);
       else if(/[e]/.test(ch)) seq.push(this.frames.mouthMedium);
       else if(/[iıy]/.test(ch)) seq.push(this.frames.mouthSmall);
