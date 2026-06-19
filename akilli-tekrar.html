@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Akıllı Tekrar · Dil Haritası</title>
+<script src="./learning-error-system.js"></script>
+<style>
+:root{
+  --bg:#071226;--panel:#0d1c34;--panel2:#132647;--line:#ffffff16;
+  --text:#edf4ff;--muted:#9fb1d0;--blue:#3b82f6;--green:#22c55e;
+  --red:#ef4444;--orange:#f59e0b;--purple:#7c3aed
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:linear-gradient(180deg,#071226,#08152a);color:var(--text);font-family:Nunito,system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:18px}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.back{width:44px;height:44px;border-radius:14px;background:#12213b;border:1px solid var(--line);color:#fff;text-decoration:none;font-size:26px;display:flex;align-items:center;justify-content:center}
+.title{flex:1}.title h1{margin:0;font-size:28px}.title p{margin:4px 0 0;color:var(--muted);line-height:1.45}
+.btn{border:1px solid var(--line);border-radius:13px;background:#132647;color:#fff;padding:11px 15px;font-weight:950;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.btn.primary{background:var(--blue);border-color:transparent}.btn.green{background:#166534}.btn.red{background:#7f1d1d}.btn.orange{background:#92400e}.btn.purple{background:#4c1d95}
+.dashboard{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px}.num{font-size:32px;font-weight:950}.lab{color:var(--muted);font-size:13px}
+.main{display:grid;grid-template-columns:310px 1fr;gap:14px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px}
+.box h2{font-size:18px;margin:0 0 12px}
+.plan-item{background:#0a172c;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:9px}
+.plan-title{font-weight:950}.plan-sub{color:var(--muted);font-size:13px;margin-top:4px}.plan-count{float:right;background:#1d4ed8;border-radius:999px;padding:2px 8px;font-size:12px}
+.review-card{background:linear-gradient(180deg,#10264a,#0a172c);border:1px solid #3b82f666;border-radius:22px;padding:20px;min-height:420px;display:flex;flex-direction:column;gap:14px}
+.meta{display:flex;gap:8px;flex-wrap:wrap;color:#a9bbd8;font-size:12px}
+.pill{border-radius:999px;background:#132647;padding:5px 9px}.pill.high{background:#7f1d1d;color:#fecaca}.pill.medium{background:#78350f;color:#fde68a}
+.question{font-size:28px;font-weight:950;line-height:1.25;margin:8px 0}.tr{color:#cbd5e1;font-size:18px;line-height:1.5}
+.wrong{background:#3b0a0a;border:1px solid #ef444466;border-radius:14px;padding:12px;color:#fecaca}.correct{background:#052e1b;border:1px solid #22c55e66;border-radius:14px;padding:12px;color:#bbf7d0}
+.label{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#93c5fd;font-weight:950;margin-bottom:4px}
+.types{display:flex;gap:6px;flex-wrap:wrap}.type{font-size:12px;border:1px solid #3b82f666;color:#bfdbfe;border-radius:999px;padding:3px 8px}
+.actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:auto}
+.actions .btn{width:100%;min-height:46px}
+.empty{text-align:center;color:var(--muted);padding:60px 18px}.empty .big{font-size:54px;margin-bottom:10px}
+.progress{height:8px;background:#ffffff12;border-radius:999px;overflow:hidden;margin:6px 0 14px}.progress span{display:block;height:100%;background:linear-gradient(90deg,#3b82f6,#22c55e);width:0%}
+.answer-box{display:flex;gap:8px;align-items:center}.answer-box input{flex:1;background:#071226;border:1px solid var(--line);color:#fff;border-radius:13px;padding:12px;font-weight:800}.answer-box .btn{white-space:nowrap}
+.feedback{border-radius:14px;padding:12px;border:1px solid var(--line);background:#071226;color:#dbeafe}.feedback.ok{border-color:#22c55e66;color:#bbf7d0}.feedback.bad{border-color:#ef444466;color:#fecaca}
+@media(max-width:760px){
+  .top{align-items:flex-start}.title h1{font-size:23px}.dashboard{grid-template-columns:repeat(2,1fr)}.main{grid-template-columns:1fr}.actions{grid-template-columns:repeat(2,1fr)}.question{font-size:23px}.wrap{padding:12px}.review-card{min-height:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="./hata-defteri.html">←</a>
+    <div class="title">
+      <h1>Akıllı Tekrar</h1>
+      <p>Hata defterindeki kayıtlara göre bugünkü çalışma sırasını otomatik hazırlar. En çok tekrar eden ve yüksek öncelikli hatalar önce gelir.</p>
+    </div>
+    <a class="btn purple" href="./hata-defteri.html">📌 Hata Defteri</a>
+  </div>
+
+  <div class="dashboard">
+    <div class="stat"><div class="num" id="todayCount">0</div><div class="lab">Bugünkü tekrar</div></div>
+    <div class="stat"><div class="num" id="highCount">0</div><div class="lab">Yüksek öncelik</div></div>
+    <div class="stat"><div class="num" id="doneCount">0</div><div class="lab">Tamamlanan</div></div>
+    <div class="stat"><div class="num" id="leftCount">0</div><div class="lab">Kalan</div></div>
+  </div>
+
+  <div class="main">
+    <aside class="box">
+      <h2>Bugünkü plan</h2>
+      <div id="plan"></div>
+    </aside>
+    <section class="box">
+      <div class="progress"><span id="bar"></span></div>
+      <div id="review"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+let ALL=[], QUEUE=[], IDX=0, DONE=0;
+const $=id=>document.getElementById(id);
+const norm=s=>String(s||"").toLowerCase().replace(/[^a-z0-9ğüşöçıİĞÜŞÖÇ\s]/gi," ").replace(/\s+/g," ").trim();
+function scoreRecord(r){
+  let s=0;
+  if(r.reviewPriority==="high")s+=100;
+  if(r.reviewPriority==="medium")s+=50;
+  s+=Math.max(0,100-Number(r.score||0));
+  if((r.types||[]).includes("auxiliary-missing"))s+=35;
+  if((r.types||[]).includes("question-order"))s+=25;
+  if((r.types||[]).includes("pronunciation"))s+=20;
+  try{
+    const age=(Date.now()-new Date(r.createdAt).getTime())/86400000;
+    if(age<2)s+=15;
+  }catch{}
+  return s;
+}
+function uniqueBySentence(records){
+  const map=new Map();
+  for(const r of records){
+    const key=r.sentenceId||norm(r.target)||r.id;
+    const old=map.get(key);
+    if(!old || scoreRecord(r)>scoreRecord(old))map.set(key,r);
+  }
+  return [...map.values()];
+}
+function buildQueue(records){
+  return uniqueBySentence(records)
+    .filter(r=>r.target && r.answer && (r.reviewPriority==="high" || Number(r.score||0)<85))
+    .sort((a,b)=>scoreRecord(b)-scoreRecord(a))
+    .slice(0,30);
+}
+function summarizePlan(q){
+  const by={};
+  q.forEach(r=>(r.types||[r.primaryType||"general"]).forEach(t=>by[t]=(by[t]||0)+1));
+  return Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,8);
+}
+function renderPlan(){
+  const plan=summarizePlan(QUEUE);
+  $("plan").innerHTML=plan.length?plan.map(([k,v])=>`<div class="plan-item"><span class="plan-count">${v}</span><div class="plan-title">${LearningErrorDB.esc(k)}</div><div class="plan-sub">Bu hata tipinden tekrar yapılacak</div></div>`).join(""):`<div class="empty">Bugün için tekrar yok.</div>`;
+}
+function renderStats(){
+  $("todayCount").textContent=QUEUE.length;
+  $("highCount").textContent=QUEUE.filter(r=>r.reviewPriority==="high").length;
+  $("doneCount").textContent=DONE;
+  $("leftCount").textContent=Math.max(0,QUEUE.length-IDX);
+  $("bar").style.width=QUEUE.length?Math.round(DONE/QUEUE.length*100)+"%":"0%";
+}
+function renderEmpty(){
+  $("review").innerHTML=`<div class="empty"><div class="big">✅</div><h2>Bugünkü akıllı tekrar tamam</h2><p>Yeni hatalar oluştuğunda bu ekran otomatik dolacak.</p><p><a class="btn primary" href="./practice.html">Çalışmaya git</a> <a class="btn" href="./videopractice.html">Video Practice</a></p></div>`;
+}
+function current(){return QUEUE[IDX]}
+function renderCard(){
+  renderStats();
+  if(!QUEUE.length || IDX>=QUEUE.length){renderEmpty();return;}
+  const r=current();
+  const pri=r.reviewPriority==="high"?"Yüksek":r.reviewPriority==="medium"?"Orta":"Düşük";
+  $("review").innerHTML=`
+    <div class="review-card">
+      <div class="meta">
+        <span class="pill ${r.reviewPriority||""}">${pri}</span>
+        <span class="pill">${LearningErrorDB.esc(r.source||"")}</span>
+        <span class="pill">${LearningErrorDB.esc(r.level||"")}</span>
+        <span class="pill">${LearningErrorDB.esc(r.module||"")}</span>
+      </div>
+      <div class="question">${LearningErrorDB.esc(r.target||"")}</div>
+      ${r.sentenceTR?`<div class="tr">${LearningErrorDB.esc(r.sentenceTR)}</div>`:""}
+      <div class="wrong"><div class="label">Senin önceki cevabın</div>${LearningErrorDB.esc(r.answer||"")}</div>
+      <div class="answer-box">
+        <input id="answerInput" placeholder="Bu cümleyi tekrar yaz">
+        <button class="btn primary" id="checkBtn">Kontrol</button>
+      </div>
+      <div id="fb"></div>
+      <div class="types">${(r.types||[]).map(t=>`<span class="type">${LearningErrorDB.esc(t)}</span>`).join("")}</div>
+      <div class="correct hidden" id="correctBox"><div class="label">Doğru cevap</div>${LearningErrorDB.esc(r.target||"")}</div>
+      <div class="actions">
+        <button class="btn" id="listenBtn">🔊 Dinle</button>
+        <button class="btn orange" id="showBtn">👁 Göster</button>
+        <button class="btn green" id="doneBtn">✅ Bildim</button>
+        <button class="btn red" id="againBtn">↻ Tekrar</button>
+      </div>
+    </div>`;
+  $("listenBtn").onclick=()=>speak(r.target);
+  $("showBtn").onclick=()=>$("correctBox").classList.remove("hidden");
+  $("doneBtn").onclick=()=>markDone();
+  $("againBtn").onclick=()=>{QUEUE.push(r); IDX++; renderCard();};
+  $("checkBtn").onclick=()=>checkAnswer();
+  $("answerInput").onkeydown=e=>{if(e.key==="Enter")checkAnswer();};
+  setTimeout(()=>$("answerInput")?.focus(),60);
+}
+function checkAnswer(){
+  const r=current(); const val=$("answerInput").value;
+  const ok=norm(val)===norm(r.target);
+  const fb=$("fb");
+  if(ok){
+    fb.innerHTML=`<div class="feedback ok">✅ Doğru. Bu hata çalışıldı.</div>`;
+    setTimeout(markDone,500);
+  }else{
+    fb.innerHTML=`<div class="feedback bad">📌 Henüz tam değil. Doğru cevabı gösterip tekrar yaz.</div>`;
+    $("correctBox").classList.remove("hidden");
+  }
+}
+function markDone(){
+  DONE++; IDX++; renderCard();
+}
+function speak(text){
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang="en-US";u.rate=.9;u.volume=1;
+    const v=(speechSynthesis.getVoices()||[]).find(x=>/^en/i.test(x.lang));
+    if(v)u.voice=v;
+    speechSynthesis.speak(u);
+  }catch{}
+}
+async function boot(){
+  ALL=await LearningErrorDB.all();
+  QUEUE=buildQueue(ALL);
+  IDX=0;DONE=0;
+  renderPlan();renderCard();
+}
+boot();
+</script>
+</body>
+</html>

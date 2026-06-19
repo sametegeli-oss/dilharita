@@ -1,29 +1,31 @@
-HATA DEFTERİ + KULLANICI HATALARINDAN ÖĞRENEN SİSTEM
+AKILLI TEKRAR SİSTEMİ
 
-Yükle:
+Bu paket 6. maddenin ikinci aşamasıdır.
+
+Yüklenecek dosyalar:
 - learning-error-system.js
 - hata-defteri.html
+- akilli-tekrar.html
 - practice.html
 - videopractice.html
 
-Yaptığı iş:
-1) Practice ekranında kullanıcı yanlış/eksik cevap verdiğinde hata defterine kayıt açar.
-2) Video Practice ekranında telaffuz/okuma skoru düşükse hata defterine kayıt açar.
-3) Hataları IndexedDB içinde saklar; localStorage yedeği vardır.
-4) Hata tiplerini otomatik etiketler:
-   - missing-word
-   - extra-word
-   - auxiliary-missing
-   - article
-   - pronoun
-   - past-simple
-   - present-continuous
-   - question-order
-   - pronunciation
-5) hata-defteri.html ekranında toplam hata, yüksek öncelik, modül ve hata tipi analizini gösterir.
-6) JSON dışa aktarma ve defteri temizleme var.
+Yeni ekran:
+- akilli-tekrar.html
 
+Ne yapar:
+1) Hata defterindeki kayıtları okur.
+2) Yüksek öncelikli ve düşük skorlu hataları öne alır.
+3) Aynı cümlede birden fazla hata varsa tek kayıt olarak tekrar listesine alır.
+4) Bugünkü planı hata tipine göre gösterir.
+5) Kullanıcıya cümleyi tekrar yazdırır.
+6) Doğruysa "çalışıldı" sayar.
+7) Yanlışsa doğru cevabı gösterip tekrar ettirir.
+8) Dinle butonu ile doğru İngilizce cümleyi seslendirir.
+
+Kurulum:
+Zip içindeki dosyaları /dilharita/ dizinindeki dosyaların üzerine yaz.
 Assets yüklemene gerek yok.
+Sonra Ctrl+F5 yap.
 
 Not:
-Bu paket çekirdek birinci aşamadır. Sonraki aşamada “Akıllı Tekrar” ekranı bu hata kayıtlarını kullanıp kullanıcıya otomatik tekrar listesi hazırlayacak.
+Bu sürüm hata defterinden akıllı tekrar üretir. Sonraki aşamada bu ekranı SRS tarihiyle birleştirip "bugün yapılacak resmi tekrar listesi" haline getirebiliriz.
