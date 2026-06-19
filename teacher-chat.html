@@ -5,12 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#071226">
 <title>İngilizce Öğretmeni</title>
-<link rel="stylesheet" href="./chat-style.css?v=13">
-<style>
-.teacher-card{background:linear-gradient(180deg,rgba(13,28,52,.97),rgba(8,20,41,.99));border:1px solid rgba(85,128,220,.30);border-radius:18px;padding:14px;line-height:1.5}
-.teacher-tr{color:#a9bbd8;margin-top:6px}
-.teacher-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-</style>
+<link rel="stylesheet" href="./chat-style.css?v=15">
 </head>
 <body>
 <div id="chatApp"></div>
@@ -18,23 +13,12 @@
 (function(){
   const q = new URLSearchParams(location.search);
   const sentence = q.get('s') || q.get('sentence') || 'Can I get a glass of red wine?';
-  const tr = q.get('tr') || '';
-  window.CHAT_SCENARIO = {
-    title:"İngilizce Öğretmeni",
-    subtitle:"Cümle analizi · sohbet",
-    level:"A2",
-    role:"a friendly English teacher",
-    voiceGender:"male",
-    opener: sentence,
-    systemExtra:"You are a patient English teacher. Explain and practice the sentence the user is studying. Keep replies short and helpful.",
-    avatarDir:"assets/avatars_v3/" + (localStorage.getItem("selectedTeacherAvatar") || "teacher1") + "/",
-    frames:{idle:"idle.webp", blink:"blink.webp", mouthSmall:"mouth-small.webp", mouthMedium:"mouth-medium.webp", mouthOpen:"mouth-open.webp", mouthO:"mouth-o.webp", listen:"listen.webp"},
-    backHref:"chat.html",
-    noKeyReply:"I can continue when you add a Groq API key. Let us practice this sentence."
-  };
+  window.CHAT_SCENARIO = {"title": "İngilizce Öğretmeni", "subtitle": "Cümle analizi · sohbet", "level": "A2", "role": "a friendly male English teacher", "voiceGender": "male", "opener": "Hello, I am your English teacher. What would you like to practice today?", "systemExtra": "You are role-playing as a patient male English teacher. Help the learner practice English speaking. Ask short questions, correct gently, and keep the conversation encouraging.", "avatarDir": "assets/avatars_v3/teacher1/", "frames": {"idle": "idle.webp", "blink": "blink.webp", "listen": "listen.webp", "mouthA": "mouth-a.webp", "mouthE": "mouth-e.webp", "mouthI": "mouth-i.webp", "mouthO": "mouth-o.webp", "mouthU": "mouth-u.webp", "mouthMBP": "mouth-mbp.webp", "mouthFV": "mouth-fv.webp", "mouthL": "mouth-l.webp", "mouthTH": "mouth-th.webp", "mouthSmall": "mouth-i.webp", "mouthMedium": "mouth-e.webp", "mouthOpen": "mouth-a.webp"}, "backHref": "chatteacher.html", "noKeyReply": "I can continue when you add a Groq API key. What English topic would you like to practice today?"};
+  window.CHAT_SCENARIO.opener = sentence;
+  window.CHAT_SCENARIO.avatarDir = "assets/avatars_v3/" + (localStorage.getItem("selectedTeacherAvatar") || "teacher1") + "/";
 })();
 </script>
-<script src="./chat-core.js?v=13"></script>
-<script src="./teacher-global-avatar.js"></script>
+<script src="./chat-core.js?v=15"></script>
+<script src="./teacher-global-avatar.js?v=15"></script>
 </body>
 </html>

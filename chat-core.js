@@ -1,4 +1,3 @@
-
 (function(){
 "use strict";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -10,15 +9,22 @@ const DEFAULT_SCENARIO = {
   subtitle:"İngilizce konuşma",
   level:"A2",
   role:"a friendly hotel receptionist",
-  voiceGender:"female",
+  voiceGender:"male",
   opener:"Hello, welcome to our hotel. Do you have a reservation?",
   systemExtra:"You are role-playing as a friendly hotel receptionist at the front desk.",
   avatarDir:"assets/avatars_v3/hotel/",
-  frames:{idle:"idle.webp", blink:"blink.webp", mouthSmall:"mouth-small.webp", mouthMedium:"mouth-medium.webp", mouthOpen:"mouth-open.webp", mouthO:"mouth-o.webp", listen:"listen.webp"},
+  frames:{
+    idle:"idle.webp", blink:"blink.webp", listen:"listen.webp",
+    mouthA:"mouth-a.webp", mouthE:"mouth-e.webp", mouthI:"mouth-i.webp",
+    mouthO:"mouth-o.webp", mouthU:"mouth-u.webp", mouthMBP:"mouth-mbp.webp",
+    mouthFV:"mouth-fv.webp", mouthL:"mouth-l.webp", mouthTH:"mouth-th.webp",
+    mouthSmall:"mouth-i.webp", mouthMedium:"mouth-e.webp", mouthOpen:"mouth-a.webp"
+  },
   backHref:"chat.html",
-  noKeyReply:"I can continue when you add a Groq API key. Would you like to check in or ask about a room?"
+  noKeyReply:"I can continue when you add a Groq API key. What would you like to practice?"
 };
 const Scenario = Object.assign({}, DEFAULT_SCENARIO, window.CHAT_SCENARIO || {});
+Scenario.voiceGender = "male";
 Scenario.frames = Object.assign({}, DEFAULT_SCENARIO.frames, (window.CHAT_SCENARIO && window.CHAT_SCENARIO.frames) || {});
 const State = {
   level: localStorage.getItem("chat:level:" + safeId(Scenario.title + ":" + (Scenario.avatarDir||""))) || Scenario.level || "A2",
@@ -29,7 +35,14 @@ const State = {
 };
 function safeId(s){ return String(s||"scenario").toLowerCase().replace(/[^a-z0-9]+/g,"-"); }
 function $(id){ return document.getElementById(id); }
-function activeAvatarDir(){ const isTeacher = /teacher|öğretmen|ogretmen/i.test((Scenario.title||"") + " " + (Scenario.role||"")); const selected = localStorage.getItem("selectedTeacherAvatar") || "teacher1"; if(isTeacher && /^assets\/avatars_v3\/teacher/i.test(Scenario.avatarDir||"assets/avatars_v3/teacher1/")){ return "assets/avatars_v3/" + selected + "/"; } return (Scenario.avatarDir || ""); }
+function activeAvatarDir(){
+  const isTeacher = /teacher|öğretmen|ogretmen/i.test((Scenario.title||"") + " " + (Scenario.role||""));
+  const selected = localStorage.getItem("selectedTeacherAvatar") || "teacher1";
+  if(isTeacher && /^assets\/avatars_v3\/teacher/i.test(Scenario.avatarDir || "assets/avatars_v3/teacher1/")){
+    return "assets/avatars_v3/" + selected + "/";
+  }
+  return (Scenario.avatarDir || "");
+}
 function asset(file){ return activeAvatarDir() + file; }
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function getKeys(){ try{ return (JSON.parse(localStorage.getItem(KEYS_LS)||"[]")||[]).filter(Boolean); }catch{return [];} }
@@ -57,11 +70,16 @@ class PhotoAvatar{
     this.frames={
       idle:asset(Scenario.frames.idle),
       blink:asset(Scenario.frames.blink),
-      mouthSmall:asset(Scenario.frames.mouthSmall),
-      mouthMedium:asset(Scenario.frames.mouthMedium),
-      mouthOpen:asset(Scenario.frames.mouthOpen),
-      mouthO:asset(Scenario.frames.mouthO),
-      listen:asset(Scenario.frames.listen)
+      listen:asset(Scenario.frames.listen),
+      a:asset(Scenario.frames.mouthA),
+      e:asset(Scenario.frames.mouthE),
+      i:asset(Scenario.frames.mouthI),
+      o:asset(Scenario.frames.mouthO),
+      u:asset(Scenario.frames.mouthU),
+      mbp:asset(Scenario.frames.mouthMBP),
+      fv:asset(Scenario.frames.mouthFV),
+      l:asset(Scenario.frames.mouthL),
+      th:asset(Scenario.frames.mouthTH)
     };
     this.blinkTimer=null;
     this.talkTimer=null;
@@ -74,40 +92,52 @@ class PhotoAvatar{
     this.img.onerror=()=>{ this.img.onerror=null; this.img.src=this.frames.idle; };
     this.show(this.frames.idle);
     this.preload();
-    this.scheduleBlink(850);
+    this.scheduleBlink(1000);
   }
   preload(){ Object.values(this.frames).forEach(src=>{ const im = new Image(); im.src=src; }); }
   show(url){ this.img.src=url; }
   scheduleBlink(delay){
     clearTimeout(this.blinkTimer);
-    this.blinkTimer=setTimeout(()=>this.blink(), delay || (1800 + Math.random()*1700));
+    this.blinkTimer=setTimeout(()=>this.blink(), delay || (2100 + Math.random()*1900));
   }
   blink(){
+    if(State.speaking){
+      this.scheduleBlink(1200 + Math.random()*1200);
+      return;
+    }
     this.isBlinking=true;
     this.show(this.frames.blink);
     setTimeout(()=>{
       this.isBlinking=false;
-      if(State.speaking){
-        this.show(this.talkSeq[this.talkIndex % Math.max(1,this.talkSeq.length)] || this.frames.mouthSmall);
-      }else{
-        this.show(this.frames.idle);
-      }
+      if(!State.speaking) this.show(this.frames.idle);
       this.scheduleBlink();
-    }, 360);
+    }, 330);
+  }
+  frameForChar(ch, next){
+    ch = (ch || "").toLowerCase();
+    next = (next || "").toLowerCase();
+
+    if(ch === "t" && next === "h") return this.frames.th;
+    if(/[oö0]/.test(ch)) return this.frames.o;
+    if(/[uüwq]/.test(ch)) return this.frames.u;
+    if(/[a]/.test(ch)) return this.frames.a;
+    if(/[e]/.test(ch)) return this.frames.e;
+    if(/[iııy]/.test(ch)) return this.frames.i;
+    if(/[mnbp]/.test(ch)) return this.frames.mbp;
+    if(/[fv]/.test(ch)) return this.frames.fv;
+    if(/[l]/.test(ch)) return this.frames.l;
+    if(/[.,!?;:\s]/.test(ch)) return this.frames.idle;
+    return this.frames.i;
   }
   buildSequenceFromText(text){
-    const s = String(text || '').toLowerCase();
+    const s = String(text || "");
     const seq = [];
-    for(const ch of s){
-      if(/[o0ö]/.test(ch)) seq.push(this.frames.mouthO);
-      else if(/[uüwq]/.test(ch)) seq.push(this.frames.mouthO);
-      else if(/[a]/.test(ch)) seq.push(this.frames.mouthOpen);
-      else if(/[e]/.test(ch)) seq.push(this.frames.mouthMedium);
-      else if(/[iıy]/.test(ch)) seq.push(this.frames.mouthSmall);
-      else if(/[mnbp]/.test(ch)) seq.push(this.frames.idle);
-      else if(/[fv]/.test(ch)) seq.push(this.frames.mouthSmall);
-      else if(/[.,!?\s]/.test(ch)) seq.push(this.frames.idle);
-      else seq.push(this.frames.mouthSmall);
+    for(let idx=0; idx<s.length; idx++){
+      const ch = s[idx];
+      const next = s[idx+1] || "";
+      const frame = this.frameForChar(ch, next);
+      if(frame) seq.push(frame);
+      if(ch.toLowerCase()==="t" && next.toLowerCase()==="h") idx++;
     }
     return seq.filter(Boolean);
   }
@@ -117,7 +147,7 @@ class PhotoAvatar{
     State.speaking=true;
     this.talkSeq = this.buildSequenceFromText(text);
     if(!this.talkSeq.length){
-      this.talkSeq = [this.frames.mouthSmall, this.frames.mouthMedium, this.frames.mouthOpen, this.frames.mouthO, this.frames.mouthMedium, this.frames.idle];
+      this.talkSeq = [this.frames.i, this.frames.e, this.frames.a, this.frames.o, this.frames.u, this.frames.mbp, this.frames.idle];
     }
     this.talkIndex=0;
     this.talkTimer=setInterval(()=>{
@@ -196,13 +226,10 @@ function pickVoice(){
   refreshVoices();
   const voices = cachedVoices.filter(v => /^en/i.test(v.lang || ""));
   if(!voices.length) return null;
-  const gender = String(Scenario.voiceGender || "female").toLowerCase();
   const maleRe = /(male|david|mark|george|daniel|james|john|alex|fred|thomas|guy|brian|ryan|matthew|arthur|oliver)/i;
-  const femaleRe = /(female|zira|jenny|aria|samantha|susan|hazel|victoria|karen|moira|tessa|joanna|salli|amy|emma|olivia|ava|allison)/i;
   let preferred = voices.filter(v => /en-US|en_GB|en-GB|en_US/i.test(v.lang || ""));
   if(!preferred.length) preferred = voices;
-  const re = gender === "male" ? maleRe : femaleRe;
-  return preferred.find(v => re.test(v.name || "")) || preferred[0] || voices[0];
+  return preferred.find(v => maleRe.test(v.name || "")) || preferred[0] || voices[0];
 }
 
 let avatar; let speechRun=0;
@@ -219,8 +246,7 @@ function speakText(text){
     if(voice) u.voice = voice;
     u.lang = voice ? voice.lang : "en-US";
     u.rate = .96;
-    if(String(Scenario.voiceGender || "").toLowerCase() === "male") u.pitch = .78;
-    else u.pitch = 1.24;
+    u.pitch = .78;
     u.onend=()=>{if(run===speechRun) avatar.stop();};
     u.onerror=()=>{if(run===speechRun) avatar.stop();};
     speechSynthesis.speak(u);

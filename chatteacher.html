@@ -5,18 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#071226">
 <title>AI Öğretmen Seç</title>
-<link rel="stylesheet" href="./chat-style.css?v=13">
+<link rel="stylesheet" href="./chat-style.css?v=15">
 </head>
 <body>
 <div class="menu">
 <div class="menu-actions"><a class="menu-btn" href="chat.html">← Senaryo menüsü</a><a class="menu-btn" href="index.html">🏠 Ana menü</a></div>
 <h1>AI öğretmen seç</h1>
-<p>İki farklı gözlüklü öğretmen opsiyonu vardır. Seçtiğin öğretmen video/teacher sayfalarında kullanılmak üzere tarayıcıya kaydedilir.</p>
+<p>İki erkek öğretmen opsiyonu vardır. Seçtiğin öğretmen video/teacher sayfalarında kullanılmak üzere kaydedilir.</p>
 <div class="grid">
-<a class="card teacherPick" data-teacher="teacher1" href="chatteacher1.html"><img src="assets/avatars_v3/teacher1/idle.webp"><b>Öğretmen · Opsiyon 1</b><span>Olgun, sakin, gözlüklü öğretmen</span></a>
-<a class="card teacherPick" data-teacher="teacher2" href="chatteacher2.html"><img src="assets/avatars_v3/teacher2/idle.webp"><b>Öğretmen · Opsiyon 2</b><span>Daha modern, gözlüklü öğretmen</span></a>
+<a class="card teacherPick" data-teacher="teacher1" href="chatteacher1.html"><img src="assets/avatars_v3/teacher1/idle.webp"><b>Öğretmen · Opsiyon 1</b><span>Olgun, gözlüklü erkek öğretmen</span></a>
+<a class="card teacherPick" data-teacher="teacher2" href="chatteacher2.html"><img src="assets/avatars_v3/teacher2/idle.webp"><b>Öğretmen · Opsiyon 2</b><span>Modern, gözlüklü erkek öğretmen</span></a>
 </div>
-<div class="note-block">Her öğretmen için ayrı kareler vardır: <code>idle.webp</code>, <code>patch-blink.webp</code>, <code>patch-mouth-small.webp</code>, <code>patch-mouth-medium.webp</code>, <code>patch-mouth-open.webp</code>.</div>
+<div class="note-block">Her öğretmen için ayrı tam kareler vardır: idle, blink, listen, mouth-a/e/i/o/u/mbp/fv/l/th.</div>
 </div>
 <script>
 document.querySelectorAll('.teacherPick').forEach(a=>{

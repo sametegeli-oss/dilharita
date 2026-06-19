@@ -1,56 +1,40 @@
-V9 PAKETİ
+V15 ERKEK TAM SET
 
-DÜZELTMELER
-1) Otel ve öğretmen avatarlarında gövde/arka plan kayması için tam frame değiştirme yöntemi bırakıldı.
-   Artık ana resim sabit kalır; göz kırpma ve ağız hareketi ayrı foto karelerinden kesilen gerçek parçalarla yapılır.
-   Bu sahte çizim overlay değildir; parçalar üretilen gerçek foto karelerinden alınır.
+Bu sürümde:
+- Tüm karakterler erkektir: otel, restoran, doktor, havaalanı, öğretmen1, öğretmen2.
+- Her karakter baştan 4x3 grid olarak üretildi.
+- Tüm ağız/ses kareleri aynı grid içinden geldiği için uyumsuz O fotoğrafı/kayma sorunu azaltıldı.
+- Yüz parçası kesme/patch kullanılmaz. Her ses için tam fotoğraf gösterilir.
 
-2) Kadın/erkek ses ayrımı:
-   hotel, doctor, airport = female
-   restaurant, teacher1, teacher2 = male
-   Tarayıcı destekliyorsa uygun İngilizce erkek/kadın sesi seçilir; destek yoksa pitch ile ayrıştırılır.
+Kare isimleri:
+- idle.webp
+- blink.webp
+- listen.webp
+- mouth-a.webp
+- mouth-e.webp
+- mouth-i.webp
+- mouth-o.webp
+- mouth-u.webp
+- mouth-mbp.webp
+- mouth-fv.webp
+- mouth-l.webp
+- mouth-th.webp
 
-3) Teacher seçenekleri artık farklıdır:
-   chatteacher1.html = öğretmen opsiyon 1
-   chatteacher2.html = öğretmen opsiyon 2
-   Seçim localStorage selectedTeacherAvatar alanına kaydedilir.
+Geri uyumluluk aliasları:
+- mouth-small.webp = mouth-i.webp
+- mouth-medium.webp = mouth-e.webp
+- mouth-open.webp = mouth-a.webp
 
-4) Video sayfaları için teacher avatar helper:
-   teacher-video-avatar.js
-   Video sayfasında kullanmak için:
-   <script src="./teacher-video-avatar.js"></script>
-   Sonra avatar görünecek yere:
-   <div data-teacher-avatar></div>
-   veya
-   <img data-teacher-avatar>
+Ses eşleme:
+- a -> mouth-a
+- e -> mouth-e
+- i/y -> mouth-i
+- o/ö -> mouth-o
+- u/ü/w/q -> mouth-u
+- m/b/p/n -> mouth-mbp
+- f/v -> mouth-fv
+- l -> mouth-l
+- th -> mouth-th
 
-5) chat.html üstünde ana menüye dönüş butonu var:
-   index.html
-
-YÜKLEME
-Zip içindeki tüm dosyaları klasör yapısını bozmadan GitHub repo'na yükle.
-Yükledikten sonra Ctrl+F5 yap.
-
-
-V11 GÜNCELLEME
-- Tüm senaryolara mouth-o.webp eklendi.
-- Ağız animasyonu tam foto karelerle yapılır; O sesi için mouth-o.webp kullanılır.
-- Konuşma sırasında metindeki o/u/ö harfleri ve benzer yuvarlak sesler mouth-o.webp karesine yönlendirilir.
-- Tarayıcı cache karışmasın diye JS/CSS çağrıları v=11 oldu.
-
-
-V12 GÜNCELLEME
-- Tüm karakterlerde mouth-o.webp artık mouth-small.webp tabanlı ayrı bir tam foto kare olarak ayarlandı; mouth-open ile aynı değil.
-- Teacher1 ve Teacher2 tam kareleri idle karesine göre hizalandı; sağa-sola kayma azaltıldı.
-- assets/avatars_v3/teacher/ klasörü yeni teacher1 ile güncellendi.
-- Video/kütüphane/çalışma/teacher-chat gibi sayfalarda yeni teacher avatarını zorla kullanmak için teacher-global-avatar.js eklendi.
-- teacher-video-avatar.js de sadece yeni teacher avatarlarını kullanacak şekilde güncellendi.
-
-
-V13 GÜNCELLEME
-- Tüm ana karakterler için O sesi yeniden üretildi ve mouth-o.webp olarak yerleştirildi:
-  hotel, restaurant, doctor, airport, teacher1, teacher2.
-- mouth-o.webp artık gerçekten dudakları yuvarlatılmış tam fotoğraf karesidir.
-- assets/avatars_v3/teacher/ klasörü teacher1 ile senkronlandı.
-- teacher-chat.html eklendi; eski teacher-chat URL'si yeni öğretmen avatarını kullanabilir.
-- Cache için CSS/JS sürümü v13 yapıldı.
+Tüm sesler erkek sese ayarlandı.
+Cache için CSS/JS v=15.
