@@ -159,17 +159,59 @@ async function groqChat(messages){
 }
 
 /* ---------- TTS / STT ---------- */
+// TTS ve avatar senkronu
+// Aynı cümle tekrar dinlenince önce eski ses/avatar tamamen durur,
+// sonra avatar ağzı metnin başından yeniden başlar.
+let _speechRunId = 0;
+function estimateAvatarDuration(text){
+  const n = Array.from(String(text || "")).length;
+  return Math.max(900, Math.min(22000, n * 92));
+}
 function speak(text, onend){
+  const runId = ++_speechRunId;
+  text = String(text || "");
+
+  try{ speechSynthesis.cancel(); }catch(e){}
+  try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){}
+
+  let avatarStarted = false;
+  const startAvatar = () => {
+    if (runId !== _speechRunId || avatarStarted) return;
+    avatarStarted = true;
+    try{
+      if(window.DilAvatar){
+        DilAvatar.stop();
+        DilAvatar.speakText(text, estimateAvatarDuration(text));
+      }
+    }catch(e){}
+  };
+
+  const finish = () => {
+    if (runId !== _speechRunId) return;
+    try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){}
+    if(onend) onend();
+  };
+
   try{
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = "en-US"; u.rate = 0.96;
-    // Avatar ağzı: ses süresince Türkçe harf mantığıyla oynasın (ses diline dokunulmaz)
-    u.onstart = ()=>{ try{ if(window.DilAvatar) DilAvatar.speakText(text); }catch(e){} };
-    u.onend = ()=>{ try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){} if(onend) onend(); };
-    speechSynthesis.cancel(); speechSynthesis.speak(u);
-    // onstart bazı tarayıcılarda gecikebilir; yine de hemen başlat
-    try{ if(window.DilAvatar) DilAvatar.speakText(text); }catch(e){}
-  }catch{ try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){} onend && onend(); }
+    u.lang = "en-US";
+    u.rate = 0.96;
+    u.onstart = startAvatar;
+    u.onend = finish;
+    u.onerror = finish;
+
+    // cancel() sonrası bazı tarayıcılarda yeni utterance hemen başlamaz.
+    // Kısa gecikme replay sırasında avatar/ses karışmasını engeller.
+    setTimeout(() => {
+      if (runId !== _speechRunId) return;
+      try{ speechSynthesis.speak(u); }catch(e){ finish(); return; }
+      // onstart gecikirse avatar yine baştan başlasın; onstart gelirse ikinci kez başlamaz.
+      startAvatar();
+    }, 35);
+  }catch(e){
+    startAvatar();
+    setTimeout(finish, estimateAvatarDuration(text));
+  }
 }
 const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -351,7 +393,12 @@ function renderChat(){
     <button class="send-fab" id="sendFab" title="Gönder">➤</button>
   </div>`;
 
-  document.getElementById("backBtn").onclick = () => { speechSynthesis.cancel(); renderStart(); };
+  document.getElementById("backBtn").onclick = () => {
+    _speechRunId++;
+    try{ speechSynthesis.cancel(); }catch(e){}
+    try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){}
+    renderStart();
+  };
   document.getElementById("lvlPill").onclick = openLevelSheet;
 
   const textIn = document.getElementById("textIn");
