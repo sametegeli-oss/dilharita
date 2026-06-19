@@ -22,10 +22,10 @@ body{
   color:var(--text);-webkit-font-smoothing:antialiased;
   font-family:Nunito,system-ui,-apple-system,sans-serif;
 }
-.wrap{max-width:680px;margin:0 auto;height:100vh;min-height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.wrap{max-width:680px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
 
 /* header */
-.chat-top{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);position:relative;top:auto;background:var(--bg-soft);z-index:10;flex:0 0 auto}
+.chat-top{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-soft);z-index:10}
 .back{background:var(--surface);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:17px;flex-shrink:0}
 .back:hover{background:var(--surface-2)}
 .partner-ava{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#6366f1);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;transition:box-shadow .2s}
@@ -37,8 +37,7 @@ body{
 .lvl-pill{background:var(--accent-strong);color:#fff;border:none;border-radius:8px;padding:5px 10px;font:800 12px Nunito,sans-serif;cursor:pointer;flex-shrink:0}
 
 /* messages */
-.chat-avatar{flex:0 0 auto;display:flex;justify-content:center;align-items:center;padding:14px 10px 8px;background:linear-gradient(180deg,var(--bg-soft),#0b1120);border-bottom:1px solid var(--border);z-index:8}
-.msgs{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:16px;display:flex;flex-direction:column-reverse;gap:12px;justify-content:flex-start;overscroll-behavior:contain}
+.msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
 .msg{max-width:80%;padding:11px 14px;border-radius:16px;font-size:15px;line-height:1.5;animation:rise .2s ease}
 @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .msg-partner{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:5px}
@@ -53,7 +52,7 @@ body{
 @keyframes typing{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
 
 /* input bar */
-.input-bar{position:relative;bottom:auto;background:var(--bg-soft);border-top:1px solid var(--border);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:flex-end;flex:0 0 auto;z-index:9}
+.input-bar{position:sticky;bottom:0;background:var(--bg-soft);border-top:1px solid var(--border);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:flex-end}
 .text-in{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:14px;padding:12px 14px;font:600 15px Nunito,sans-serif;resize:none;max-height:120px;line-height:1.4}
 .text-in:focus{outline:none;border-color:var(--accent)}
 .mic-fab{width:52px;height:52px;border-radius:50%;border:none;background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;font-size:22px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:transform .1s}
@@ -63,6 +62,95 @@ body{
 .send-fab{width:52px;height:52px;border-radius:50%;border:none;background:var(--accent-strong);color:#fff;font-size:20px;cursor:pointer;flex-shrink:0}
 .send-fab:active{transform:scale(.92)}
 .send-fab:disabled{opacity:.4}
+
+
+/* full screen avatar chat layout */
+.wrap.chat-mode{
+  max-width:none;
+  width:100vw;
+  height:100dvh;
+  min-height:100dvh;
+  overflow:hidden;
+}
+.wrap.chat-mode .chat-top{
+  flex-shrink:0;
+}
+.chat-main{
+  flex:1;
+  min-height:0;
+  position:relative;
+  overflow:hidden;
+  background:radial-gradient(900px 520px at 50% 28%, #203052 0%, #10192d 48%, #0b1120 100%);
+  border-bottom:1px solid var(--border);
+}
+.chat-main .chat-avatar{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:flex !important;
+  align-items:flex-end;
+  justify-content:center !important;
+  padding:0 !important;
+  overflow:hidden;
+}
+.chat-main .chat-avatar .dilav-face,
+.chat-main .chat-avatar .dilav-stage,
+.chat-main .chat-avatar .dilav-avatar,
+.chat-main .chat-avatar svg,
+.chat-main .chat-avatar canvas,
+.chat-main .chat-avatar img{
+  max-width:none !important;
+  max-height:none !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  background:transparent !important;
+}
+.chat-main .chat-avatar .dilav-face,
+.chat-main .chat-avatar .dilav-stage,
+.chat-main .chat-avatar .dilav-avatar{
+  width:min(100vw, 980px) !important;
+  height:100% !important;
+  display:flex !important;
+  align-items:flex-end !important;
+  justify-content:center !important;
+}
+.chat-main .chat-avatar svg,
+.chat-main .chat-avatar canvas,
+.chat-main .chat-avatar img{
+  width:100% !important;
+  height:100% !important;
+  object-fit:contain !important;
+  object-position:center bottom !important;
+}
+.chat-main .msgs{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  z-index:3;
+  flex:none;
+  max-height:35%;
+  overflow-y:auto;
+  padding:14px 16px 18px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  pointer-events:auto;
+  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 28px, #000 100%);
+  mask-image:linear-gradient(to bottom, transparent 0, #000 28px, #000 100%);
+}
+.chat-main .msg{
+  max-width:min(80%, 560px);
+  backdrop-filter:blur(10px);
+}
+@media(max-width:560px){
+  .chat-main .chat-avatar .dilav-face,
+  .chat-main .chat-avatar .dilav-stage,
+  .chat-main .chat-avatar .dilav-avatar{width:115vw !important}
+  .chat-main .msgs{max-height:42%;padding-left:12px;padding-right:12px}
+  .chat-main .msg{max-width:92%}
+}
 
 /* scenario picker (start screen) */
 .start{flex:1;display:flex;flex-direction:column;padding:18px 16px;gap:18px;overflow-y:auto}
@@ -160,36 +248,58 @@ async function groqChat(messages){
 }
 
 /* ---------- TTS / STT ---------- */
+// TTS ve avatar senkronu
+// Aynı cümle tekrar dinlenince önce eski ses/avatar tamamen durur,
+// sonra avatar ağzı metnin başından yeniden başlar.
 let _speechRunId = 0;
+function estimateAvatarDuration(text){
+  const n = Array.from(String(text || "")).length;
+  return Math.max(900, Math.min(22000, n * 92));
+}
 function speak(text, onend){
   const runId = ++_speechRunId;
+  text = String(text || "");
+
+  try{ speechSynthesis.cancel(); }catch(e){}
+  try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){}
+
+  let avatarStarted = false;
+  const startAvatar = () => {
+    if (runId !== _speechRunId || avatarStarted) return;
+    avatarStarted = true;
+    try{
+      if(window.DilAvatar){
+        DilAvatar.stop();
+        DilAvatar.speakText(text, estimateAvatarDuration(text));
+      }
+    }catch(e){}
+  };
+
+  const finish = () => {
+    if (runId !== _speechRunId) return;
+    try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){}
+    if(onend) onend();
+  };
+
   try{
-    try{ speechSynthesis.cancel(); }catch(e){}
-    try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){}
-
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = "en-US"; u.rate = 0.96;
-
-    const startAvatar = ()=>{
-      if(runId !== _speechRunId) return;
-      try{ if(window.DilAvatar){ DilAvatar.stop(); DilAvatar.speakText(text); } }catch(e){}
-    };
-    const stopAvatar = ()=>{
-      if(runId !== _speechRunId) return;
-      try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){}
-      if(onend) onend();
-    };
-
+    u.lang = "en-US";
+    u.rate = 0.96;
     u.onstart = startAvatar;
-    u.onend = stopAvatar;
-    u.onerror = stopAvatar;
+    u.onend = finish;
+    u.onerror = finish;
 
-    // Bazı mobil tarayıcılarda onstart geç geldiği için avatar hemen başlatılır.
+    // cancel() sonrası bazı tarayıcılarda yeni utterance hemen başlamaz.
+    // Kısa gecikme replay sırasında avatar/ses karışmasını engeller.
+    setTimeout(() => {
+      if (runId !== _speechRunId) return;
+      try{ speechSynthesis.speak(u); }catch(e){ finish(); return; }
+      // onstart gecikirse avatar yine baştan başlasın; onstart gelirse ikinci kez başlamaz.
+      startAvatar();
+    }, 35);
+  }catch(e){
     startAvatar();
-    speechSynthesis.speak(u);
-  }catch{
-    try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){}
-    onend && onend();
+    setTimeout(finish, estimateAvatarDuration(text));
   }
 }
 const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -297,6 +407,7 @@ function systemPrompt(){
    EKRAN: başlangıç (senaryo + seviye seçimi)
    ============================================================ */
 function renderStart(){
+  root.classList.remove("chat-mode");
   const modules = []; // modül bazlı: ana uygulamadan modül listesini almak ağır; basit tutuyoruz
   let html = `
   <div class="chat-top">
@@ -350,10 +461,37 @@ function renderStart(){
   });
 }
 
+
+function fitAvatarFullScreen(){
+  const box = document.getElementById("chatAvatar");
+  if (!box) return;
+  const nodes = box.querySelectorAll(".dilav-face, .dilav-stage, .dilav-avatar, svg, canvas, img");
+  nodes.forEach(el => {
+    el.style.maxWidth = "none";
+    el.style.maxHeight = "none";
+    el.style.borderRadius = "0";
+    el.style.boxShadow = "none";
+    el.style.background = "transparent";
+    if (el.matches("svg, canvas, img")){
+      el.style.width = "100%";
+      el.style.height = "100%";
+      el.style.objectFit = "contain";
+      el.style.objectPosition = "center bottom";
+    } else {
+      el.style.width = "min(100vw, 980px)";
+      el.style.height = "100%";
+      el.style.display = "flex";
+      el.style.alignItems = "flex-end";
+      el.style.justifyContent = "center";
+    }
+  });
+}
+
 /* ============================================================
    EKRAN: sohbet
    ============================================================ */
 function renderChat(){
+  root.classList.add("chat-mode");
   const title = State.scenario === "free" ? "Serbest sohbet"
     : (State.scenario.name || "Sohbet");
   const emoji = State.scenario === "free" ? "💭" : (State.scenario.emoji || "💬");
@@ -364,15 +502,22 @@ function renderChat(){
     <div class="partner-info"><h1>${esc(title)}</h1><p id="status">İngilizce konuşma · ${State.level}</p></div>
     <button class="lvl-pill" id="lvlPill">${State.level}</button>
   </div>
-  <div class="chat-avatar" id="chatAvatar"></div>
-  <div class="msgs" id="msgs"></div>
+  <div class="chat-main">
+    <div class="chat-avatar" id="chatAvatar"></div>
+    <div class="msgs" id="msgs"></div>
+  </div>
   <div class="input-bar">
     <textarea class="text-in" id="textIn" rows="1" placeholder="Yaz ya da 🎙️ ile konuş…"></textarea>
     ${STT ? `<button class="mic-fab" id="micFab" title="Konuş">🎙️</button>` : ""}
     <button class="send-fab" id="sendFab" title="Gönder">➤</button>
   </div>`;
 
-  document.getElementById("backBtn").onclick = () => { _speechRunId++; try{speechSynthesis.cancel();}catch(e){} try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){} renderStart(); };
+  document.getElementById("backBtn").onclick = () => {
+    _speechRunId++;
+    try{ speechSynthesis.cancel(); }catch(e){}
+    try{ if(window.DilAvatar) DilAvatar.stop(); }catch(e){}
+    renderStart();
+  };
   document.getElementById("lvlPill").onclick = openLevelSheet;
 
   const textIn = document.getElementById("textIn");
@@ -382,7 +527,13 @@ function renderChat(){
 
   if (STT) setupMic();
 
-  try{ if(window.DilAvatar){ DilAvatar.mount("chatAvatar"); const f=document.querySelector("#chatAvatar .dilav-face"); if(f) f.style.maxWidth="170px"; } }catch(e){}
+  try{
+    if(window.DilAvatar){
+      DilAvatar.mount("chatAvatar");
+      fitAvatarFullScreen();
+      setTimeout(fitAvatarFullScreen, 80);
+    }
+  }catch(e){}
 
   // geçmişi çiz
   for (const m of State.history) addBubble(m, false);
@@ -431,7 +582,7 @@ function addBubble(m, animate){
   msgs.appendChild(el);
   return el;
 }
-function scrollDown(){ const m=document.getElementById("msgs"); if(m) m.scrollTop=0; }
+function scrollDown(){ const m=document.getElementById("msgs"); if(m) m.scrollTop=m.scrollHeight; }
 
 function speakPartner(text){
   const ava = document.getElementById("ava");
