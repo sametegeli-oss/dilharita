@@ -674,7 +674,8 @@ body.d5-mode .stage{
 }
 
 </style>
-
+  <link rel="stylesheet" href="./practice-design5-v2.css">
+<script src="./learning-error-system.js"></script>
 </head>
 <body>
 <div class="wrap" id="root"></div>
@@ -1994,6 +1995,19 @@ async function evaluate(s, answer, layer){
   await mSet(s.id, next);
   State.srs[s.id] = next;   // yereli güncelle
   cloudSaveSoon();
+
+  // Hata Defteri: kullanıcı yanlışlarından öğrenen sistem
+  if (window.LearningErrorDB && grade !== "easy"){
+    LearningErrorDB.logFromPractice({
+      sentence:s,
+      answer,
+      grade,
+      score:Math.round((d.ratio||0)*100),
+      layer,
+      diff:d
+    });
+  }
+
   renderFeedback(s, d, grade, layer);
 }
 
@@ -2147,6 +2161,16 @@ boot();
 <!-- Sahne video modülü -->
     <script src="./image-addon.js"></script>
     <script src="./teacher-addon.js"></script>
+
+  <script src="./practice-design5-v2.js"></script>
+
+<style>
+.error-notebook-link{position:fixed;right:14px;bottom:14px;z-index:90;text-decoration:none;background:#7c3aed;color:#fff;border:1px solid #ffffff22;border-radius:999px;padding:10px 14px;font:900 13px Nunito,system-ui,sans-serif;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+@media(max-width:640px){.error-notebook-link{right:10px;bottom:10px;padding:9px 12px;font-size:12px}}
+</style>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{if(!document.querySelector(".error-notebook-link")){const a=document.createElement("a");a.className="error-notebook-link";a.href="./hata-defteri.html";a.textContent="📌 Hata Defteri";document.body.appendChild(a);}});
+</script>
 
 </body>
 </html>

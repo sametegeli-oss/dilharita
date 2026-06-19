@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hata Defteri · Dil Haritası</title>
+<script src="./learning-error-system.js"></script>
+<style>
+:root{--bg:#071226;--panel:#0d1c34;--panel2:#132647;--line:#ffffff16;--text:#edf4ff;--muted:#9fb1d0;--blue:#3b82f6;--green:#22c55e;--red:#ef4444;--orange:#f59e0b}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--text);font-family:Nunito,system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:18px}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.back{width:44px;height:44px;border-radius:14px;background:#12213b;border:1px solid var(--line);color:#fff;text-decoration:none;font-size:26px;display:flex;align-items:center;justify-content:center}
+.title{flex:1}.title h1{margin:0;font-size:28px}.title p{margin:4px 0 0;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);border-radius:12px;background:#132647;color:#fff;padding:10px 14px;font-weight:900;cursor:pointer}.btn.red{background:#7f1d1d}.btn.green{background:#166534}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px}.num{font-size:32px;font-weight:950}.lab{color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:330px 1fr;gap:14px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px}
+.box h2{font-size:18px;margin:0 0 12px}
+.tag{display:flex;justify-content:space-between;gap:10px;background:#0a172c;border:1px solid var(--line);border-radius:12px;margin:7px 0;padding:9px 11px;color:#dbeafe}
+.filter{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.filter input,.filter select{background:#0a172c;border:1px solid var(--line);border-radius:12px;color:#fff;padding:10px;min-width:160px}
+.record{background:#0a172c;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
+.record.high{border-color:#ef444466}.record.medium{border-color:#f59e0b66}
+.meta{display:flex;gap:8px;flex-wrap:wrap;color:#a9bbd8;font-size:12px;margin-bottom:8px}
+.pill{border-radius:999px;background:#132647;padding:4px 8px}.pill.high{background:#7f1d1d;color:#fecaca}.pill.medium{background:#78350f;color:#fde68a}
+.en{font-size:18px;font-weight:900;margin-bottom:4px}.tr{color:#cbd5e1;margin-bottom:8px}.ans{color:#fca5a5}.target{color:#86efac}
+.types{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.type{font-size:12px;border:1px solid #3b82f666;color:#bfdbfe;border-radius:999px;padding:3px 8px}
+.empty{text-align:center;color:var(--muted);padding:40px}
+@media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.actions{width:100%}.btn{flex:1}.top{align-items:flex-start}.title h1{font-size:23px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="./index.html">←</a>
+    <div class="title"><h1>Hata Defteri</h1><p>Kullanıcının yanlışlarından öğrenen sistem: hangi konuda, hangi kelimede, hangi cümlede hata yapıldığını toplar.</p></div>
+    <div class="actions">
+      <button class="btn green" id="exportBtn">JSON dışa aktar</button>
+      <button class="btn red" id="clearBtn">Temizle</button>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="num" id="total">0</div><div class="lab">Toplam hata</div></div>
+    <div class="stat"><div class="num" id="high">0</div><div class="lab">Yüksek öncelik</div></div>
+    <div class="stat"><div class="num" id="typeCount">0</div><div class="lab">Hata tipi</div></div>
+    <div class="stat"><div class="num" id="repeatCount">0</div><div class="lab">Tekrarlayan cümle</div></div>
+  </div>
+  <div class="grid">
+    <aside class="box">
+      <h2>En çok hata tipi</h2><div id="types"></div>
+      <h2 style="margin-top:18px">En çok hata yapılan modül</h2><div id="modules"></div>
+    </aside>
+    <main class="box">
+      <div class="filter">
+        <input id="search" placeholder="Cümle, cevap, modül ara">
+        <select id="source"><option value="">Tümü</option><option value="practice">Practice</option><option value="video">Video</option></select>
+        <select id="priority"><option value="">Öncelik</option><option value="high">Yüksek</option><option value="medium">Orta</option><option value="low">Düşük</option></select>
+      </div>
+      <div id="records"></div>
+    </main>
+  </div>
+</div>
+<script>
+let RECORDS=[];
+const $=id=>document.getElementById(id);
+function fmt(d){try{return new Date(d).toLocaleString("tr-TR")}catch{return d||""}}
+function renderTags(el,arr){el.innerHTML=arr.length?arr.map(([k,v])=>`<div class="tag"><span>${LearningErrorDB.esc(k)}</span><b>${v}</b></div>`).join(""):`<div class="empty">Kayıt yok</div>`}
+async function load(){
+  RECORDS=await LearningErrorDB.all();
+  const s=LearningErrorDB.summarize(RECORDS);
+  $("total").textContent=s.total;$("high").textContent=s.high;$("typeCount").textContent=s.byType.length;$("repeatCount").textContent=s.repeated.length;
+  renderTags($("types"),s.byType);renderTags($("modules"),s.byModule);
+  renderRecords();
+}
+function renderRecords(){
+  const q=$("search").value.toLowerCase().trim(), source=$("source").value, pri=$("priority").value;
+  let arr=RECORDS.filter(r=>(!source||r.source===source)&&(!pri||r.reviewPriority===pri));
+  if(q)arr=arr.filter(r=>[r.target,r.answer,r.sentenceTR,r.module,r.grammar,(r.types||[]).join(" ")].join(" ").toLowerCase().includes(q));
+  $("records").innerHTML=arr.length?arr.map(r=>`
+    <div class="record ${r.reviewPriority||""}">
+      <div class="meta">
+        <span class="pill ${r.reviewPriority||""}">${r.reviewPriority==="high"?"Yüksek":r.reviewPriority==="medium"?"Orta":"Düşük"}</span>
+        <span class="pill">${LearningErrorDB.esc(r.source||"")}</span>
+        <span class="pill">${LearningErrorDB.esc(r.level||"")}</span>
+        <span class="pill">${LearningErrorDB.esc(r.module||"")}</span>
+        <span>${fmt(r.createdAt)}</span>
+      </div>
+      <div class="en">${LearningErrorDB.esc(r.target||"")}</div>
+      ${r.sentenceTR?`<div class="tr">${LearningErrorDB.esc(r.sentenceTR)}</div>`:""}
+      <div>Senin cevap: <span class="ans">${LearningErrorDB.esc(r.answer||"")}</span></div>
+      <div>Doğrusu: <span class="target">${LearningErrorDB.esc(r.target||"")}</span></div>
+      <div class="meta" style="margin-top:8px"><span>Skor: <b>${Math.round(r.score||0)}%</b></span><span>Not: <b>${LearningErrorDB.esc(r.grade||"")}</b></span><span>Gramer: ${LearningErrorDB.esc(r.grammar||"")}</span></div>
+      <div class="types">${(r.types||[]).map(t=>`<span class="type">${LearningErrorDB.esc(t)}</span>`).join("")}</div>
+    </div>`).join(""):`<div class="empty">Bu filtrede kayıt yok.</div>`;
+}
+$("search").oninput=renderRecords;$("source").onchange=renderRecords;$("priority").onchange=renderRecords;
+$("clearBtn").onclick=async()=>{if(confirm("Tüm hata defteri silinsin mi?")){await LearningErrorDB.clearAll();load();}};
+$("exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(RECORDS,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hata-defteri.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+load();
+</script>
+</body>
+</html>

@@ -231,6 +231,7 @@ window.DilAvatar = {
 };
 })();
 </script>
+<script src="./learning-error-system.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -1002,6 +1003,19 @@ async function checkEnglish(heard,mode,preScore,confidence){
   const next=srsGrade(await srsGet(s.id),grade);
   await srsSet(s.id,next);
   State.srs[s.id]=next;
+
+  // Hata Defteri: video/telaffuz hatalarını da öğrenme profiline yaz
+  if (window.LearningErrorDB && grade !== "easy"){
+    LearningErrorDB.logFromVideo({
+      sentence:s,
+      heard,
+      grade,
+      score,
+      diff,
+      mode
+    });
+  }
+
   showPronunciationResult(score,diff,heard,score>=72);
 }
 function clearVideoStatus(){
@@ -1049,5 +1063,14 @@ boot();
 </script>
 <script src="./videopractice_ui_patch.js"></script>
   
+
+<style>
+.error-notebook-video-link{position:fixed;left:16px;top:122px;z-index:7;border:1px solid #ffffff22;border-radius:999px;background:#4c1d95cc;color:#fff;font-weight:950;padding:10px 14px;text-decoration:none;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+@media(max-width:640px){.error-notebook-video-link{left:12px;top:auto;bottom:calc(178px + env(safe-area-inset-bottom));font-size:12px;padding:8px 12px}}
+</style>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{if(!document.querySelector(".error-notebook-video-link")){const a=document.createElement("a");a.className="error-notebook-video-link";a.href="./hata-defteri.html";a.textContent="📌 Hata Defteri";document.body.appendChild(a);}});
+</script>
+
 </body>
 </html>

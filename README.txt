@@ -1,24 +1,29 @@
-SOHBET AVATAR TAM GÖRÜNÜM V17
+HATA DEFTERİ + KULLANICI HATALARINDAN ÖĞRENEN SİSTEM
 
-Bu sürüm önceki hatayı düzeltir:
-- chat-core.js içinde avatar doğrudan <img id="avatarImg"> olarak geldiği için eski CSS onu yakalamıyordu.
-- Artık #avatarImg doğrudan hedefleniyor.
-- Avatar object-fit: contain, width:auto, height:100%.
-- Avatar sahnesi kısaltıldı; böylece kullanıcının yazı baloncuğu/input alanı daha yukarıda görünür.
-- Alt menü kaldırılmış halde kalır.
-- HTML dosyaları v=17 ile cache kırar.
+Yükle:
+- learning-error-system.js
+- hata-defteri.html
+- practice.html
+- videopractice.html
 
-Yüklenecekler:
-chat-style.css
-chat-core.js
-chat.html
-chathotel.html
-chatrestaurant.html
-chatdoctor.html
-chatairport.html
-chatteacher.html
-chatteacher1.html
-chatteacher2.html
-teacher-chat.html
+Yaptığı iş:
+1) Practice ekranında kullanıcı yanlış/eksik cevap verdiğinde hata defterine kayıt açar.
+2) Video Practice ekranında telaffuz/okuma skoru düşükse hata defterine kayıt açar.
+3) Hataları IndexedDB içinde saklar; localStorage yedeği vardır.
+4) Hata tiplerini otomatik etiketler:
+   - missing-word
+   - extra-word
+   - auxiliary-missing
+   - article
+   - pronoun
+   - past-simple
+   - present-continuous
+   - question-order
+   - pronunciation
+5) hata-defteri.html ekranında toplam hata, yüksek öncelik, modül ve hata tipi analizini gösterir.
+6) JSON dışa aktarma ve defteri temizleme var.
 
 Assets yüklemene gerek yok.
+
+Not:
+Bu paket çekirdek birinci aşamadır. Sonraki aşamada “Akıllı Tekrar” ekranı bu hata kayıtlarını kullanıp kullanıcıya otomatik tekrar listesi hazırlayacak.
