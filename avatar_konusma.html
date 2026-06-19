@@ -1,1 +1,128 @@
-<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DilAvatar Konuşma v18</title><style>:root{--bg:#020617;--panel:#0b1120;--line:rgba(148,163,184,.22);--text:#e5e7eb;--muted:#93a4bb;--blue:#2563eb}*{box-sizing:border-box}body{margin:0;height:100vh;overflow:hidden;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.app{height:100vh;display:grid;grid-template-rows:40px 1fr 54px}header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line);background:rgba(11,17,32,.96)}header h1{margin:0;font-size:14px;letter-spacing:.2px}.tinybar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end}button{border:0;cursor:pointer;border-radius:9px;padding:6px 8px;background:#1e293b;color:#dbeafe;font-weight:800;font-size:11px;line-height:1}button.primary{background:var(--blue);color:#fff}button.danger{background:#7f1d1d;color:#fee2e2}main{min-height:0;display:grid;grid-template-columns:1fr 210px}.chat{min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:9px}.msg{max-width:min(780px,92%);padding:9px 11px;border-radius:15px;border:1px solid var(--line);line-height:1.45;font-size:14px}.user{margin-left:auto;background:#1d4ed8;color:#fff;border-color:rgba(255,255,255,.12);border-bottom-right-radius:6px}.bot{margin-right:auto;background:rgba(15,23,42,.92);color:#e5e7eb;border-bottom-left-radius:6px}.side{border-left:1px solid var(--line);background:rgba(11,17,32,.92);padding:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}.avatarTitle{font-size:11px;color:var(--muted);text-align:center}footer{border-top:1px solid var(--line);background:rgba(11,17,32,.98);padding:7px 9px;display:grid;grid-template-columns:1fr auto;gap:7px}textarea{resize:none;height:38px;border:1px solid var(--line);border-radius:13px;background:#020617;color:#e5e7eb;padding:9px 11px;outline:none;font:13px system-ui}.sendbar{display:flex;gap:5px;align-items:center}@media(max-width:760px){.app{grid-template-rows:40px 1fr 54px}main{grid-template-columns:1fr}.side{position:absolute;right:8px;top:48px;width:112px;height:144px;border:1px solid var(--line);border-radius:18px;padding:6px;background:rgba(11,17,32,.84);backdrop-filter:blur(8px)}.avatarTitle{display:none}header h1{font-size:12px}.chat{padding-top:164px}}</style></head><body><div class="app"><header><h1>DilAvatar v18</h1><div class="tinybar"><button id="btnHairAuto" type="button">Oto saç kapalı</button><button id="btnHair" type="button">Saç</button><button id="btnBlink" type="button">Göz</button><button id="btnStop" type="button" class="danger">Dur</button></div></header><main><section id="chat" class="chat"><div class="msg bot">v18: Gri halkalar kaldırıldı. Ağız artık küçük kırpılmış patch olarak çalışır.</div></section><aside class="side"><div id="avatarHost"></div><div class="avatarTitle">Sabit beden / kırpılmış patch animasyon</div></aside></main><footer><textarea id="txt" placeholder="Mesaj yaz...">Merhaba, bu sürümde gri daireler kaldırıldı ve ağız daha sabit çalışıyor.</textarea><div class="sendbar"><button id="btnThink" type="button">Düşün</button><button id="btnSend" type="button" class="primary">Konuş</button></div></footer></div><script src="./avatar.js"></script><script>const chat=document.getElementById('chat');const txt=document.getElementById('txt');DilAvatar.mount('avatarHost',{size:window.innerWidth<760?96:188});DilAvatar.setAutoHair(false);function addMsg(text,cls){const div=document.createElement('div');div.className='msg '+cls;div.textContent=text;chat.appendChild(div);chat.scrollTop=chat.scrollHeight;}document.getElementById('btnSend').onclick=function(){const val=txt.value.trim();if(!val)return;addMsg(val,'user');const answer='Tamam. '+val;setTimeout(()=>addMsg(answer,'bot'),200);DilAvatar.speakText(answer,Math.max(1800,answer.length*92));};document.getElementById('btnThink').onclick=function(){DilAvatar.thinking(true);addMsg('Düşünüyorum...','bot');};document.getElementById('btnStop').onclick=function(){DilAvatar.stop();DilAvatar.thinking(false);};document.getElementById('btnBlink').onclick=function(){DilAvatar.blink();};document.getElementById('btnHair').onclick=function(){DilAvatar.fixHair(true);};let autoHair=false;document.getElementById('btnHairAuto').onclick=function(){autoHair=!autoHair;DilAvatar.setAutoHair(autoHair);this.textContent=autoHair?'Oto saç açık':'Oto saç kapalı';};txt.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();document.getElementById('btnSend').click();}});</script></body></html>
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DilAvatar Konuşma v19</title>
+  <style>
+    :root{--bg:#020617;--panel:#0b1120;--line:rgba(148,163,184,.22);--text:#e5e7eb;--muted:#93a4bb;--blue:#2563eb}
+    *{box-sizing:border-box}
+    body{margin:0;height:100vh;overflow:hidden;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .app{height:100vh;display:grid;grid-template-rows:40px 1fr 54px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line);background:rgba(11,17,32,.96)}
+    header h1{margin:0;font-size:14px;letter-spacing:.2px}
+    .tinybar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+    button{border:0;cursor:pointer;border-radius:9px;padding:6px 8px;background:#1e293b;color:#dbeafe;font-weight:800;font-size:11px;line-height:1}
+    button.primary{background:var(--blue);color:#fff}
+    button.danger{background:#7f1d1d;color:#fee2e2}
+    main{min-height:0;display:grid;grid-template-columns:1fr 210px}
+    .chat{min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:9px}
+    .msg{max-width:min(780px,92%);padding:9px 11px;border-radius:15px;border:1px solid var(--line);line-height:1.45;font-size:14px}
+    .user{margin-left:auto;background:#1d4ed8;color:#fff;border-color:rgba(255,255,255,.12);border-bottom-right-radius:6px}
+    .bot{margin-right:auto;background:rgba(15,23,42,.92);color:#e5e7eb;border-bottom-left-radius:6px}
+    .side{border-left:1px solid var(--line);background:rgba(11,17,32,.92);padding:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+    .avatarTitle{font-size:11px;color:var(--muted);text-align:center}
+    footer{border-top:1px solid var(--line);background:rgba(11,17,32,.98);padding:7px 9px;display:grid;grid-template-columns:1fr auto;gap:7px}
+    textarea{resize:none;height:38px;border:1px solid var(--line);border-radius:13px;background:#020617;color:#e5e7eb;padding:9px 11px;outline:none;font:13px system-ui}
+    .sendbar{display:flex;gap:5px;align-items:center}
+    @media(max-width:760px){
+      .app{grid-template-rows:40px 1fr 54px}
+      main{grid-template-columns:1fr}
+      .side{position:absolute;right:8px;top:48px;width:112px;height:144px;border:1px solid var(--line);border-radius:18px;padding:6px;background:rgba(11,17,32,.84);backdrop-filter:blur(8px)}
+      .avatarTitle{display:none}
+      header h1{font-size:12px}
+      .chat{padding-top:164px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>DilAvatar v19</h1>
+      <div class="tinybar">
+        <button id="btnHairAuto" type="button">Oto saç kapalı</button>
+        <button id="btnHair" type="button">Saç</button>
+        <button id="btnBlink" type="button">Göz</button>
+        <button id="btnStop" type="button" class="danger">Dur</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="chat" class="chat">
+        <div class="msg bot">v19: Patch yok. Bütün ifadeler tam fotoğraf karesi olarak kullanılır. Beden transform yok.</div>
+      </section>
+
+      <aside class="side">
+        <div id="avatarHost"></div>
+        <div class="avatarTitle">Tam kare fotoğraf avatar</div>
+      </aside>
+    </main>
+
+    <footer>
+      <textarea id="txt" placeholder="Mesaj yaz...">Merhaba, bugün İngilizce çalışıyoruz. Bu sürüm bütün fotoğrafları tam kare olarak kullanıyor.</textarea>
+      <div class="sendbar">
+        <button id="btnThink" type="button">Düşün</button>
+        <button id="btnSend" type="button" class="primary">Konuş</button>
+      </div>
+    </footer>
+  </div>
+
+  <script src="./avatar.js"></script>
+  <script>
+    const chat = document.getElementById("chat");
+    const txt = document.getElementById("txt");
+
+    DilAvatar.mount("avatarHost", { size: window.innerWidth < 760 ? 96 : 188 });
+    DilAvatar.setAutoHair(false);
+
+    function addMsg(text, cls){
+      const div = document.createElement("div");
+      div.className = "msg " + cls;
+      div.textContent = text;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    document.getElementById("btnSend").onclick = function(){
+      const val = txt.value.trim();
+      if(!val) return;
+      addMsg(val, "user");
+      const answer = "Tamam. " + val;
+      setTimeout(() => addMsg(answer, "bot"), 200);
+      DilAvatar.speakText(answer, Math.max(1800, answer.length * 92));
+    };
+
+    document.getElementById("btnThink").onclick = function(){
+      DilAvatar.thinking(true);
+      addMsg("Düşünüyorum...", "bot");
+    };
+
+    document.getElementById("btnStop").onclick = function(){
+      DilAvatar.stop();
+      DilAvatar.thinking(false);
+    };
+
+    document.getElementById("btnBlink").onclick = function(){
+      DilAvatar.blink();
+    };
+
+    document.getElementById("btnHair").onclick = function(){
+      DilAvatar.fixHair(true);
+    };
+
+    let autoHair = false;
+    document.getElementById("btnHairAuto").onclick = function(){
+      autoHair = !autoHair;
+      DilAvatar.setAutoHair(autoHair);
+      this.textContent = autoHair ? "Oto saç açık" : "Oto saç kapalı";
+    };
+
+    txt.addEventListener("keydown", function(e){
+      if(e.key === "Enter" && !e.shiftKey){
+        e.preventDefault();
+        document.getElementById("btnSend").click();
+      }
+    });
+  </script>
+</body>
+</html>
