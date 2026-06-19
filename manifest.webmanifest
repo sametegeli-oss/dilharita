@@ -1,49 +1,25 @@
-<!doctype html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0b1120">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Dil Harita">
-<link rel="manifest" href="./manifest.webmanifest">
-<link rel="apple-touch-icon" href="./icons/icon-192.png">
-<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
-<title>Dil Harita</title>
-<style>
-:root{--bg:#0b1120;--card:#111827;--card2:#172033;--text:#e8eef7;--muted:#9fb0c8;--line:#ffffff18}
-*{box-sizing:border-box}
-body{margin:0;background:radial-gradient(900px 420px at 50% -10%,#14302a 0%,transparent 60%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-.wrap{max-width:760px;margin:0 auto;min-height:100vh;padding:22px}
-h1{font-size:30px;margin:10px 0 6px}
-p{color:var(--muted);line-height:1.55}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:20px}
-.card{display:block;text-decoration:none;color:var(--text);background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:0 14px 40px #0005}
-.card b{display:block;font-size:22px;margin-bottom:7px}
-.card span{display:block;color:var(--muted);font-size:14px;line-height:1.45}
-.note{margin-top:22px;background:#101a2d;border:1px solid var(--line);border-radius:16px;padding:15px;color:var(--muted)}
-code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <h1>Dil Harita</h1>
-  <p>Güvenli PWA aşama 1: Bu menü statik çalışır, siteyi döngüye sokmaz. PWA için manifest ve kurulum yardımcısı eklidir.</p>
-
-  <div class="grid">
-    <a class="card" href="./practice.html"><b>✍️ Çalışma</b><span>Cümle çalışma ekranı</span></a>
-    <a class="card" href="./teacher.html"><b>🎓 Öğretmen</b><span>Türkçe anlatımlı İngilizce öğretmeni</span></a>
-    <a class="card" href="./chat.html"><b>💬 Sohbet</b><span>Fotoğraflı konuşan avatar senaryoları</span></a>
-    <a class="card" href="./library.html"><b>📚 Kütüphane</b><span>Kitap / metin okuma ekranı</span></a>
-    <a class="card" href="./videopractice.html"><b>🎬 Video</b><span>Video ve telaffuz çalışması</span></a>
-    <a class="card" href="./pwa-hard-reset.html"><b>🧹 Önbellek Temizle</b><span>Gerekirse Service Worker ve cache temizliği</span></a>
-  </div>
-
-  <div class="note">
-    <b>Not:</b> Bu aşamada <code>service worker</code> bilerek eklenmedi. Önce kurulum ve açılış stabil olacak. Sonra offline cache’i kontrollü ekleriz.
-  </div>
-</div>
-<script src="./pwa-install.js"></script>
-</body>
-</html>
+{
+  "name": "Dil Harita",
+  "short_name": "DilHarita",
+  "description": "İngilizce öğrenme, öğretmen, çalışma, kütüphane ve video uygulaması",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1120",
+  "theme_color": "#0b1120",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

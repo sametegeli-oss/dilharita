@@ -1,56 +1,77 @@
-<!doctype html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dil Harita Temizleme</title>
-<style>
-body{margin:0;background:#0b1120;color:#e8eef7;font-family:system-ui,sans-serif;min-height:100vh;display:grid;place-items:center}
-.box{max-width:620px;margin:20px;padding:22px;background:#111827;border:1px solid #ffffff22;border-radius:18px;line-height:1.6}
-button,a{display:inline-block;margin:8px 8px 0 0;background:#2563eb;color:#fff;border:0;border-radius:10px;padding:11px 14px;text-decoration:none;font-weight:800}
-button.red{background:#dc2626}
-pre{background:#0005;padding:10px;border-radius:10px;white-space:pre-wrap;max-height:260px;overflow:auto}
-</style>
-</head>
-<body>
-<div class="box">
-<h2>Dil Harita önbellek temizleme</h2>
-<button onclick="clearCaches()">SW + Cache temizle</button>
-<button class="red" onclick="backupAndClearLocal()">LocalStorage yedekle ve temizle</button>
-<a href="./index.html">Ana menüye dön</a>
-<pre id="log">Hazır.</pre>
-</div>
-<script>
-const log = m => document.getElementById('log').textContent += "\n" + m;
-async function clearCaches(){
-  try{
-    if('serviceWorker' in navigator){
-      const regs = await navigator.serviceWorker.getRegistrations();
-      for(const r of regs){ await r.unregister(); log('SW silindi: ' + (r.scope||'')); }
-    }
-    if(window.caches){
-      const keys = await caches.keys();
-      for(const k of keys){ await caches.delete(k); log('Cache silindi: ' + k); }
-    }
-    log('Bitti. index.html aç ve Ctrl+F5 yap.');
-  }catch(e){ log('Hata: ' + e); }
+(function(){
+"use strict";
+
+/*
+  Güvenli PWA Aşama 1:
+  - Service Worker yok.
+  - Cache yok.
+  - Sayfayı döngüye sokacak hiçbir fetch/cache müdahalesi yok.
+  - Sadece manifest + kurulum yardımcısı var.
+*/
+
+let deferredPrompt = null;
+
+window.addEventListener("beforeinstallprompt", function(e){
+  e.preventDefault();
+  deferredPrompt = e;
+  showInstallButton("📲 Uygulama olarak kur");
+});
+
+window.addEventListener("appinstalled", function(){
+  const btn = document.getElementById("pwaInstallBtn");
+  if(btn) btn.remove();
+});
+
+function isStandalone(){
+  return window.matchMedia("(display-mode: standalone)").matches ||
+         window.navigator.standalone === true;
 }
-function backupAndClearLocal(){
-  try{
-    const data={};
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      data[k]=localStorage.getItem(k);
+
+function showInstallButton(text){
+  if(isStandalone()) return;
+  if(document.getElementById("pwaInstallBtn")) return;
+
+  const btn = document.createElement("button");
+  btn.id = "pwaInstallBtn";
+  btn.type = "button";
+  btn.textContent = text || "📲 Kur";
+  btn.style.cssText = [
+    "position:fixed",
+    "left:14px",
+    "bottom:14px",
+    "z-index:10000",
+    "border:none",
+    "border-radius:14px",
+    "padding:12px 14px",
+    "background:linear-gradient(135deg,#16a34a,#15803d)",
+    "color:#fff",
+    "font:800 14px system-ui,sans-serif",
+    "box-shadow:0 8px 24px #0007"
+  ].join(";");
+
+  btn.onclick = async function(){
+    if(deferredPrompt){
+      deferredPrompt.prompt();
+      try{ await deferredPrompt.userChoice; }catch{}
+      deferredPrompt = null;
+      btn.remove();
+      return;
     }
-    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='dilharita-localstorage-yedek.json';
-    a.click();
-    localStorage.clear();
-    log('LocalStorage yedeklendi ve temizlendi.');
-  }catch(e){ log('Hata: '+e); }
+
+    alert(
+      "Uygulama olarak kurmak için:\n\n" +
+      "Android Chrome: sağ üst menü ⋮ > Ana ekrana ekle / Uygulamayı yükle\n\n" +
+      "iPhone Safari: Paylaş > Ana Ekrana Ekle"
+    );
+  };
+
+  document.body.appendChild(btn);
 }
-</script>
-</body>
-</html>
+
+document.addEventListener("DOMContentLoaded", function(){
+  // beforeinstallprompt gelmezse de kullanıcıya yol gösterecek küçük buton göster.
+  setTimeout(function(){
+    if(!isStandalone()) showInstallButton("📲 Ana ekrana ekle");
+  }, 1200);
+});
+})();

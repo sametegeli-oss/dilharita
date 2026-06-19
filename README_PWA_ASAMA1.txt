@@ -1,77 +1,23 @@
-(function(){
-"use strict";
+GÜVENLİ PWA AŞAMA 1
 
-/*
-  Güvenli PWA Aşama 1:
-  - Service Worker yok.
-  - Cache yok.
-  - Sayfayı döngüye sokacak hiçbir fetch/cache müdahalesi yok.
-  - Sadece manifest + kurulum yardımcısı var.
-*/
+Bu paket, siteyi tekrar bozmadan PWA hissi verir:
+- manifest.webmanifest
+- icon-192 / icon-512
+- pwa-install.js
+- statik index.html
 
-let deferredPrompt = null;
+Önemli:
+- Service Worker YOK.
+- Cache YOK.
+- Fetch yakalama YOK.
+Bu yüzden sayfa tekrar dönüp durmaz.
 
-window.addEventListener("beforeinstallprompt", function(e){
-  e.preventDefault();
-  deferredPrompt = e;
-  showInstallButton("📲 Uygulama olarak kur");
-});
+Kurulum:
+1) Zip içeriğini /dilharita/ klasörüne yükle.
+2) index.html dosyasını mevcut statik index.html üzerine yaz.
+3) manifest.webmanifest, pwa-install.js ve icons klasörünü yükle.
+4) Ctrl+F5 yap.
+5) Mobil Chrome menüsünden "Ana ekrana ekle / Uygulamayı yükle" de.
 
-window.addEventListener("appinstalled", function(){
-  const btn = document.getElementById("pwaInstallBtn");
-  if(btn) btn.remove();
-});
-
-function isStandalone(){
-  return window.matchMedia("(display-mode: standalone)").matches ||
-         window.navigator.standalone === true;
-}
-
-function showInstallButton(text){
-  if(isStandalone()) return;
-  if(document.getElementById("pwaInstallBtn")) return;
-
-  const btn = document.createElement("button");
-  btn.id = "pwaInstallBtn";
-  btn.type = "button";
-  btn.textContent = text || "📲 Kur";
-  btn.style.cssText = [
-    "position:fixed",
-    "left:14px",
-    "bottom:14px",
-    "z-index:10000",
-    "border:none",
-    "border-radius:14px",
-    "padding:12px 14px",
-    "background:linear-gradient(135deg,#16a34a,#15803d)",
-    "color:#fff",
-    "font:800 14px system-ui,sans-serif",
-    "box-shadow:0 8px 24px #0007"
-  ].join(";");
-
-  btn.onclick = async function(){
-    if(deferredPrompt){
-      deferredPrompt.prompt();
-      try{ await deferredPrompt.userChoice; }catch{}
-      deferredPrompt = null;
-      btn.remove();
-      return;
-    }
-
-    alert(
-      "Uygulama olarak kurmak için:\n\n" +
-      "Android Chrome: sağ üst menü ⋮ > Ana ekrana ekle / Uygulamayı yükle\n\n" +
-      "iPhone Safari: Paylaş > Ana Ekrana Ekle"
-    );
-  };
-
-  document.body.appendChild(btn);
-}
-
-document.addEventListener("DOMContentLoaded", function(){
-  // beforeinstallprompt gelmezse de kullanıcıya yol gösterecek küçük buton göster.
-  setTimeout(function(){
-    if(!isStandalone()) showInstallButton("📲 Ana ekrana ekle");
-  }, 1200);
-});
-})();
+Sonraki aşama:
+Site 1-2 gün stabil kalırsa, sadece statik dosyalar için kontrollü Service Worker ekleriz.
