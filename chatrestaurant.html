@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#071226">
+<title>Restoran · Fotoğraflı Sohbet</title>
+<link rel="stylesheet" href="./chat-style.css">
+</head>
+<body>
+<div id="chatApp"></div>
+<script>
+window.CHAT_SCENARIO = {
+  "title": "Restoran",
+  "subtitle": "İngilizce konuşma",
+  "level": "A2",
+  "role": "a friendly waiter in a restaurant",
+  "systemExtra": "You are role-playing as a friendly waiter in a restaurant.",
+  "opener": "Good evening. What would you like to order?",
+  "avatarDir": "assets/avatars/restaurant/",
+  "useMouthOverlay": true,
+  "frames": {
+    "idle": "idle.webp",
+    "blink": "blink.webp",
+    "listen": "listen.webp",
+    "talk": [
+      "talk-small.webp",
+      "talk-medium.webp",
+      "talk-open.webp",
+      "talk-medium.webp"
+    ]
+  },
+  "face": {
+    "eyeTop": "26.4%",
+    "eyeLeft": "45.8%",
+    "eyeRight": "54.8%",
+    "eyeW": "6.7%",
+    "eyeH": "2.0%",
+    "mouthTop": "34.5%",
+    "mouthLeft": "50.5%",
+    "mouthW": "8.5%",
+    "mouthH": "2.5%"
+  },
+  "backHref": "chat.html",
+  "noKeyReply": "I can continue when you add a Groq API key. Would you like a menu?"
+};
+</script>
+<script src="./chat-core.js"></script>
+</body>
+</html>

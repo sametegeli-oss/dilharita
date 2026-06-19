@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#071226">
+<title>Otel · Fotoğraflı Sohbet</title>
+<link rel="stylesheet" href="./chat-style.css">
+</head>
+<body>
+<div id="chatApp"></div>
+<script>
+window.CHAT_SCENARIO = {
+  "title": "Otel",
+  "subtitle": "İngilizce konuşma",
+  "level": "A2",
+  "role": "a friendly hotel receptionist",
+  "systemExtra": "You are role-playing as a friendly hotel receptionist at the front desk.",
+  "opener": "Hello, welcome to our hotel. Do you have a reservation?",
+  "avatarDir": "assets/avatars/hotel/",
+  "useMouthOverlay": false,
+  "frames": {
+    "idle": "idle.webp",
+    "blink": "blink.webp",
+    "listen": "listen.webp",
+    "talk": [
+      "talk-small.webp",
+      "talk-medium.webp",
+      "talk-open.webp",
+      "talk-medium.webp"
+    ]
+  },
+  "face": {
+    "eyeTop": "27.5%",
+    "eyeLeft": "45.7%",
+    "eyeRight": "54.6%",
+    "eyeW": "6.2%",
+    "eyeH": "1.8%",
+    "mouthTop": "35.6%",
+    "mouthLeft": "50.3%",
+    "mouthW": "7.2%",
+    "mouthH": "2.1%"
+  },
+  "backHref": "chat.html",
+  "noKeyReply": "I can continue when you add a Groq API key. Would you like to check in or ask about a room?"
+};
+</script>
+<script src="./chat-core.js"></script>
+</body>
+</html>
