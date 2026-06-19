@@ -1,13 +1,18 @@
-DİLHARİTA PWA + MOBİL DÜZELTME PAKETİ
+TASARIM 5 KOD PAKETİ
 
-Yapılanlar:
-1) PWA: manifest.webmanifest, sw.js, pwa-register.js, icons.
-2) Videoda Türkçe açıklama avatarın altında kalmasın: video-fixes.js.
-3) Sağdaki kayan düğmeler sadece ana ekranda gözüksün: pwa-ui-fixes.js.
-4) Çalışma sayfasında cümle renk kodları görünmesin: practice-clean.js.
-5) Mobilde video/telaffuz mikrofon kilitlenmesi azaltılsın: mic-unlock-fix.js.
+Dosyalar:
+- practice-design5.css
+- practice-design5.js
+- practice-design5-demo.html
 
 Kurulum:
-- Zip içindeki dosyaları /dilharita/ klasörüne yükle.
-- index.html dosyanı paketteki index.html ile değiştirebilirsin.
-- Yükledikten sonra Ctrl+F5 yap.
+practice.html içine </head> kapanmadan önce:
+<link rel="stylesheet" href="./practice-design5.css">
+
+practice.html içinde </body> kapanmadan önce:
+<script src="./practice-design5.js"></script>
+
+Eğer çalışma ekranı index/app.js içinde açılıyorsa aynı iki satırı index.html içine de ekle.
+
+Not:
+JS mevcut butonları taşır; butonların kendi click olayları korunur.
