@@ -1,5 +1,5 @@
 /*
-  DilAvatar v7 — Ayarlanabilir Konuşan Asistan Avatarı
+  DilAvatar v10 — Ayarlanabilir Konuşan Asistan Avatarı
   ------------------------------------------------
   Tek dosyalık, çevrimdışı çalışan, dış bağımlılıksız avatar sistemi.
   HTML + CSS + SVG + Vanilla JavaScript.
@@ -19,11 +19,11 @@
 (function (global) {
   "use strict";
 
-  var STORAGE_KEY = "DilAvatar.svg.v7.settings";
-  var GENDER_KEY = "DilAvatar.svg.v7.gender";
-  var LEGACY_SETTINGS_KEYS = ["DilAvatar.v5.settings", "DilAvatar.v6.settings", "DilAvatar.settings"];
-  var LEGACY_GENDER_KEYS = ["DilAvatar.v5.gender", "DilAvatar.v6.gender", "DilAvatar.gender"];
-  var SCHEMA = "svg-v7";
+  var STORAGE_KEY = "DilAvatar.svg.v10.settings";
+  var GENDER_KEY = "DilAvatar.svg.v10.gender";
+  var LEGACY_SETTINGS_KEYS = ["DilAvatar.svg.v9.settings", "DilAvatar.svg.v8.settings", "DilAvatar.svg.v7.settings", "DilAvatar.v5.settings", "DilAvatar.v6.settings", "DilAvatar.settings"];
+  var LEGACY_GENDER_KEYS = ["DilAvatar.svg.v9.gender", "DilAvatar.svg.v8.gender", "DilAvatar.svg.v7.gender", "DilAvatar.v5.gender", "DilAvatar.v6.gender", "DilAvatar.gender"];
+  var SCHEMA = "svg-v10";
   var broadcast = null;
 
   var state = {
@@ -40,7 +40,9 @@
     isBlinking: false,
     isThinking: false,
     controls: [],
-    settings: null
+    settings: null,
+    dirty: false,
+    saveStatusEl: null
   };
 
   var DEFAULTS = {
@@ -90,47 +92,50 @@
     },
     erkek: {
       title: "Erkek Avatar",
-      theme: "#b59867",
-      imageType: "svgSimpleBeard",
+      theme: "#2dd4bf",
+      imageType: "svgPhotoLikeBeard",
       bg: "#f8fafc",
-      face: "#f0c9a8",
-      hair: "#b8b2ac",
-      hair2: "#d6d2cd",
-      eye: "#6b6f72",
-      cloth: "#b5895a",
-      cloth2: "#946f44",
-      mouthColor: "#8a4a44",
-      lipColor: "#cf9b86",
+      face: "#f4c49b",
+      hair: "#9d8d80",
+      hair2: "#d2c7bc",
+      eye: "#6e726c",
+      cloth: "#c5a06b",
+      cloth2: "#a98252",
+      shirtColor: "#f5efe5",
+      beardColor: "#e9e5df",
+      beardStroke: "#c3b7aa",
+      mouthColor: "#7f5f4b",
+      lipColor: "#c99379",
       hasGlasses: false,
       hasBeard: true,
-      // Sakallı avatar için ağız bilinçli olarak sakalın üzerine çizilir.
+      // Fotoğraftan dönüştürülen erkek avatar için dudak sakal üstünde, daha aşağıda konumlanır.
       mouthX: 500,
-      mouthY: 575,
-      mouthScale: 1,
-      mouthWidth: 118,
-      mouthHeight: 32,
+      mouthY: 618,
+      mouthScale: 0.96,
+      mouthWidth: 108,
+      mouthHeight: 28,
       mouthRotate: 0,
       mouthOpacity: 1,
-      leftEyeX: 415,
-      leftEyeY: 390,
-      rightEyeX: 585,
-      rightEyeY: 390,
-      eyeW: 66,
-      eyeH: 24,
-      eyeStroke: 8,
-      eyeCurve: 13,
+      leftEyeX: 414,
+      leftEyeY: 417,
+      rightEyeX: 586,
+      rightEyeY: 417,
+      eyeW: 76,
+      eyeH: 28,
+      eyeStroke: 7,
+      eyeCurve: 10,
       browVisible: true,
       browOpacity: 1,
-      browWidth: 78,
-      browHeight: 23,
-      browPeak: 16,
-      browStroke: 13,
-      leftBrowX: 415,
-      leftBrowY: 338,
-      rightBrowX: 585,
-      rightBrowY: 338,
-      leftBrowRotate: -5,
-      rightBrowRotate: 5
+      browWidth: 92,
+      browHeight: 20,
+      browPeak: 11,
+      browStroke: 12,
+      leftBrowX: 414,
+      leftBrowY: 360,
+      rightBrowX: 586,
+      rightBrowY: 360,
+      leftBrowRotate: -3,
+      rightBrowRotate: 3
     }
   };
 
@@ -230,6 +235,23 @@
     try {
       if (broadcast) broadcast.postMessage({ type: "settings", payload: payload, gender: state.gender });
     } catch (e) {}
+  }
+
+  function markDirty() {
+    state.dirty = true;
+    updateSaveStatus("Kaydedilmedi");
+  }
+
+  function saveFromPanel() {
+    saveSettings();
+    state.dirty = false;
+    updateSaveStatus("Kaydedildi: " + new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+  }
+
+  function updateSaveStatus(text) {
+    if (!state.saveStatusEl) return;
+    state.saveStatusEl.textContent = text || (state.dirty ? "Kaydedilmedi" : "Kaydedildi");
+    state.saveStatusEl.setAttribute("data-dirty", state.dirty ? "1" : "0");
   }
 
   function reloadSettingsAndRender() {
@@ -352,6 +374,26 @@
       .dil-avatar-card h4{
         margin:0 0 8px;
         color:#93c5fd;
+      }
+      .dil-avatar-savebar{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        flex-wrap:wrap;
+        margin:0 0 12px;
+        padding:10px;
+        border-radius:14px;
+        background:rgba(15,23,42,.85);
+        border:1px solid rgba(148,163,184,.25);
+      }
+      .dil-avatar-save-status{
+        font-size:13px;
+        color:#86efac;
+        font-weight:800;
+      }
+      .dil-avatar-save-status[data-dirty="1"]{
+        color:#fbbf24;
       }
       .dil-avatar-row{
         display:grid;
@@ -482,43 +524,70 @@
   }
 
   function maleSvg(c) {
+    var beardFill = c.beardColor || "#ece8e1";
+    var beardStroke = c.beardStroke || "#c8beb4";
+    var shirtColor = c.shirtColor || "#f5efe5";
     return `
       <svg class="dil-avatar-svg" viewBox="0 0 1000 1000" aria-label="${c.title}">
         <defs>
-          <radialGradient id="daBgM" cx="50%" cy="35%" r="72%">
+          <radialGradient id="daBgM" cx="50%" cy="34%" r="72%">
             <stop offset="0" stop-color="#ffffff"/>
-            <stop offset="1" stop-color="#e0f2fe"/>
+            <stop offset="1" stop-color="#eef2f7"/>
           </radialGradient>
           <linearGradient id="daSkinM" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" stop-color="#ffddbd"/>
+            <stop offset="0" stop-color="#ffdabc"/>
             <stop offset="1" stop-color="${c.face}"/>
           </linearGradient>
           <linearGradient id="daHairM" x1="0" x2="1" y1="0" y2="1">
             <stop offset="0" stop-color="${c.hair2}"/>
             <stop offset="1" stop-color="${c.hair}"/>
           </linearGradient>
+          <linearGradient id="daBeardM" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stop-color="#f4f0ea"/>
+            <stop offset="1" stop-color="${beardFill}"/>
+          </linearGradient>
+          <linearGradient id="daJacketM" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0" stop-color="#ceb086"/>
+            <stop offset="1" stop-color="${c.cloth}"/>
+          </linearGradient>
         </defs>
         <rect width="1000" height="1000" fill="url(#daBgM)"/>
-        <path d="M290 1000 C315 835 392 770 500 770 C608 770 685 835 710 1000Z" fill="${c.cloth}"/>
-        <path d="M392 802 L500 1000 L608 802 C570 836 430 836 392 802Z" fill="#e0f2fe"/>
-        <path d="M325 842 L450 1000 L270 1000 C282 920 300 875 325 842Z" fill="${c.cloth2}" opacity=".85"/>
-        <path d="M675 842 L550 1000 L730 1000 C718 920 700 875 675 842Z" fill="${c.cloth2}" opacity=".85"/>
-        <ellipse cx="304" cy="475" rx="40" ry="68" fill="url(#daSkinM)"/>
-        <ellipse cx="696" cy="475" rx="40" ry="68" fill="url(#daSkinM)"/>
-        <path d="M322 382 C330 245 670 245 678 382 L660 600 C650 720 575 790 500 790 C425 790 350 720 340 600Z" fill="url(#daSkinM)"/>
-        <path d="M315 395 C300 290 360 180 498 174 C645 168 710 284 684 402 C642 324 360 330 315 395Z" fill="url(#daHairM)"/>
-        <path d="M326 398 C406 337 538 319 674 392 C662 290 572 220 470 235 C370 250 320 330 326 398Z" fill="#35170f" opacity=".34"/>
-        <path d="M350 548 C350 683 410 800 500 800 C590 800 650 683 650 548 C628 628 572 650 520 610 C508 600 492 600 480 610 C428 650 372 628 350 548Z" fill="${c.hair}" opacity=".98"/>
-        <ellipse cx="500" cy="584" rx="48" ry="34" fill="url(#daSkinM)"/>
-        <path d="M500 448 C490 510 468 548 462 578 C482 598 518 598 538 578 C532 548 510 510 500 448Z" fill="#c77750" opacity=".42"/>
-        <path d="M472 606 C486 616 514 616 528 606" fill="none" stroke="#aa6042" stroke-width="6" stroke-linecap="round" opacity=".45"/>
+
+        <path d="M286 1000 C312 848 392 790 500 790 C608 790 688 848 714 1000Z" fill="url(#daJacketM)"/>
+        <path d="M394 815 L500 1000 L606 815 C570 836 430 836 394 815Z" fill="${shirtColor}"/>
+        <path d="M318 853 L444 1000 L258 1000 C270 918 287 880 318 853Z" fill="${c.cloth2}" opacity=".86"/>
+        <path d="M682 853 L556 1000 L742 1000 C730 918 713 880 682 853Z" fill="${c.cloth2}" opacity=".86"/>
+        <path d="M354 815 C382 840 618 840 646 815" fill="none" stroke="#9d7c52" stroke-width="4" opacity=".6"/>
+
+        <ellipse cx="302" cy="484" rx="38" ry="62" fill="url(#daSkinM)"/>
+        <ellipse cx="698" cy="484" rx="38" ry="62" fill="url(#daSkinM)"/>
+        <path d="M330 404 C336 262 664 262 670 404 L656 588 C648 704 579 780 500 780 C421 780 352 704 344 588Z" fill="url(#daSkinM)"/>
+
+        <path d="M334 404 C334 300 398 196 502 194 C614 192 676 298 670 406 C628 342 560 322 500 322 C438 322 372 344 334 404Z" fill="url(#daHairM)"/>
+        <path d="M358 350 C428 308 570 304 646 350" fill="none" stroke="#bfb3a8" stroke-width="14" stroke-linecap="round" opacity=".55"/>
+        <path d="M342 417 C398 388 430 270 383 247 C334 281 316 344 342 417Z" fill="#948678" opacity=".22"/>
+        <path d="M658 417 C602 388 570 270 617 247 C666 281 684 344 658 417Z" fill="#948678" opacity=".18"/>
+
+        <path d="M500 474 C489 528 470 566 468 595 C485 607 515 607 532 595 C529 566 511 528 500 474Z" fill="#d79c74" opacity=".55"/>
+        <path d="M476 612 C489 620 511 620 524 612" fill="none" stroke="#b77455" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+
         <g id="eyes-base">
-          <path d="M362 402 C386 380 435 382 458 406 C430 426 390 426 362 402Z" fill="white"/>
-          <path d="M542 406 C565 382 614 380 638 402 C610 426 570 426 542 406Z" fill="white"/>
-          <circle cx="412" cy="404" r="18" fill="${c.eye}"/>
-          <circle cx="588" cy="404" r="18" fill="${c.eye}"/>
-          <circle cx="419" cy="397" r="5" fill="white" opacity=".9"/>
-          <circle cx="595" cy="397" r="5" fill="white" opacity=".9"/>
+          <path d="M360 420 C382 395 445 394 468 420 C438 436 390 436 360 420Z" fill="white"/>
+          <path d="M532 420 C555 394 618 395 640 420 C610 436 562 436 532 420Z" fill="white"/>
+          <ellipse cx="414" cy="419" rx="21" ry="20" fill="#a7aca6"/>
+          <ellipse cx="586" cy="419" rx="21" ry="20" fill="#a7aca6"/>
+          <ellipse cx="414" cy="420" rx="12" ry="12" fill="${c.eye}"/>
+          <ellipse cx="586" cy="420" rx="12" ry="12" fill="${c.eye}"/>
+          <circle cx="420" cy="413" r="4" fill="white" opacity=".95"/>
+          <circle cx="592" cy="413" r="4" fill="white" opacity=".95"/>
+          <path d="M362 422 C392 408 438 408 466 422" fill="none" stroke="#6f5342" stroke-width="3" opacity=".35"/>
+          <path d="M534 422 C562 408 608 408 638 422" fill="none" stroke="#6f5342" stroke-width="3" opacity=".35"/>
+        </g>
+
+        <g id="beard-base">
+          <path d="M356 560 C354 712 432 810 500 810 C568 810 646 712 644 560 C618 631 568 655 521 635 C507 629 493 629 479 635 C432 655 382 631 356 560Z" fill="url(#daBeardM)" stroke="${beardStroke}" stroke-width="2"/>
+          <path d="M404 575 C430 618 569 618 596 575" fill="none" stroke="${beardStroke}" stroke-width="2" opacity=".4"/>
+          <path d="M442 640 C460 676 540 676 558 640" fill="none" stroke="${beardStroke}" stroke-width="2" opacity=".4"/>
         </g>
       </svg>
     `;
@@ -555,9 +624,12 @@
     var w = c.browWidth, h = c.browHeight, p = c.browPeak;
     var flip = side === "left" ? 1 : -1;
     return `
-      <path d="M ${-w/2} ${h/2} C ${-w/4} ${-p}, ${w/4} ${-p}, ${w/2} ${h/2}"
-        transform="translate(${x} ${y}) rotate(${rot}) scale(${flip} 1)"
-        fill="none" stroke="${c.hair}" stroke-width="${c.browStroke}" stroke-linecap="round"/>
+      <g transform="translate(${x} ${y}) rotate(${rot}) scale(${flip} 1)">
+        <path d="M ${-w/2} ${h/2} C ${-w/4} ${-p}, ${w/4} ${-p}, ${w/2} ${h/2} L ${w/2-8} ${h/2+5} C ${w/5} ${-p+10}, ${-w/5} ${-p+10}, ${-w/2+8} ${h/2+5} Z"
+          fill="${c.hair}" opacity=".92"/>
+        <path d="M ${-w/2+10} ${h/2+2} C ${-w/4} ${-p+8}, ${w/4} ${-p+8}, ${w/2-10} ${h/2+2}"
+          fill="none" stroke="rgba(255,255,255,.18)" stroke-width="3" stroke-linecap="round"/>
+      </g>
     `;
   }
 
@@ -565,12 +637,15 @@
     var x = side === "left" ? c.leftEyeX : c.rightEyeX;
     var y = side === "left" ? c.leftEyeY : c.rightEyeY;
     var w = c.eyeW, h = c.eyeH;
+    var lid = c.face;
     return `
-      <path d="M ${x - w/2} ${y} C ${x - w/4} ${y + c.eyeCurve}, ${x + w/4} ${y + c.eyeCurve}, ${x + w/2} ${y}"
-        fill="none" stroke="#2b1a12" stroke-width="${c.eyeStroke}" stroke-linecap="round"/>
-      <ellipse cx="${x}" cy="${y - 1}" rx="${w/2 + 6}" ry="${Math.max(8, h/2)}" fill="${c.face}" opacity=".92"/>
-      <path d="M ${x - w/2} ${y} C ${x - w/4} ${y + c.eyeCurve}, ${x + w/4} ${y + c.eyeCurve}, ${x + w/2} ${y}"
-        fill="none" stroke="#2b1a12" stroke-width="${c.eyeStroke}" stroke-linecap="round"/>
+      <g>
+        <ellipse cx="${x}" cy="${y + 1}" rx="${w/2 + 8}" ry="${Math.max(8, h/2 + 2)}" fill="${lid}" opacity=".96"/>
+        <path d="M ${x - w/2} ${y} C ${x - w/4} ${y + c.eyeCurve}, ${x + w/4} ${y + c.eyeCurve}, ${x + w/2} ${y}"
+          fill="none" stroke="#3d2a22" stroke-width="${c.eyeStroke}" stroke-linecap="round"/>
+        <path d="M ${x - w/2 + 6} ${y - 7} C ${x - w/5} ${y - 15}, ${x + w/5} ${y - 15}, ${x + w/2 - 6} ${y - 7}"
+          fill="none" stroke="rgba(90,60,44,.35)" stroke-width="3" stroke-linecap="round"/>
+      </g>
     `;
   }
 
@@ -579,45 +654,47 @@
     var h = c.mouthHeight;
     var lip = c.lipColor;
     var dark = c.mouthColor;
+    var lower = c.hasBeard ? "#d9b19a" : lip;
+    var line = c.hasBeard ? "#7e5e4b" : dark;
 
     if (shape === "open") {
       return `
-        <ellipse cx="0" cy="0" rx="${w * .45}" ry="${h * .70}" fill="${lip}"/>
-        <ellipse cx="0" cy="${h * .05}" rx="${w * .34}" ry="${h * .48}" fill="${dark}"/>
-        <path d="M ${-w*.25} ${-h*.28} C ${-w*.05} ${-h*.42}, ${w*.05} ${-h*.42}, ${w*.25} ${-h*.28}" fill="#fff" opacity=".95"/>
+        <path d="M ${-w*.48} 0 C ${-w*.24} ${-h*.28}, ${w*.24} ${-h*.28}, ${w*.48} 0 C ${w*.28} ${h*.62}, ${-w*.28} ${h*.62}, ${-w*.48} 0Z" fill="${lip}"/>
+        <path d="M ${-w*.36} ${h*.02} C ${-w*.18} ${-h*.05}, ${w*.18} ${-h*.05}, ${w*.36} ${h*.02} C ${w*.20} ${h*.40}, ${-w*.20} ${h*.40}, ${-w*.36} ${h*.02}Z" fill="${dark}"/>
+        <path d="M ${-w*.22} ${-h*.12} C ${-w*.08} ${-h*.18}, ${w*.08} ${-h*.18}, ${w*.22} ${-h*.12}" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+        <path d="M ${-w*.36} ${-h*.02} C ${-w*.12} ${-h*.22}, ${w*.12} ${-h*.22}, ${w*.36} ${-h*.02}" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="3" stroke-linecap="round"/>
       `;
     }
     if (shape === "round") {
       return `
-        <ellipse cx="0" cy="0" rx="${w * .34}" ry="${h * .62}" fill="${lip}"/>
-        <ellipse cx="0" cy="0" rx="${w * .20}" ry="${h * .38}" fill="${dark}"/>
+        <path d="M 0 ${-h*.58} C ${w*.26} ${-h*.58}, ${w*.34} ${-h*.18}, ${w*.34} 0 C ${w*.34} ${h*.42}, ${w*.18} ${h*.62}, 0 ${h*.62} C ${-w*.18} ${h*.62}, ${-w*.34} ${h*.42}, ${-w*.34} 0 C ${-w*.34} ${-h*.18}, ${-w*.26} ${-h*.58}, 0 ${-h*.58} Z" fill="${lip}"/>
+        <ellipse cx="0" cy="${h*.05}" rx="${w*.18}" ry="${h*.26}" fill="${dark}"/>
       `;
     }
     if (shape === "wide") {
       return `
-        <path d="M ${-w*.55} 0 C ${-w*.25} ${h*.34}, ${w*.25} ${h*.34}, ${w*.55} 0 C ${w*.25} ${h*.55}, ${-w*.25} ${h*.55}, ${-w*.55} 0Z" fill="${lip}"/>
-        <path d="M ${-w*.42} ${h*.08} C ${-w*.16} ${h*.28}, ${w*.16} ${h*.28}, ${w*.42} ${h*.08}" fill="none" stroke="${dark}" stroke-width="7" stroke-linecap="round"/>
+        <path d="M ${-w*.58} 0 C ${-w*.28} ${-h*.12}, ${w*.28} ${-h*.12}, ${w*.58} 0 C ${w*.30} ${h*.34}, ${-w*.30} ${h*.34}, ${-w*.58} 0Z" fill="${lip}"/>
+        <path d="M ${-w*.46} ${h*.06} C ${-w*.18} ${h*.20}, ${w*.18} ${h*.20}, ${w*.46} ${h*.06}" fill="none" stroke="${line}" stroke-width="5" stroke-linecap="round"/>
+        <path d="M ${-w*.28} ${-h*.02} C ${-w*.10} ${-h*.10}, ${w*.10} ${-h*.10}, ${w*.28} ${-h*.02}" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="3" stroke-linecap="round"/>
       `;
     }
     if (shape === "closed") {
       return `
-        <path d="M ${-w*.48} 0 C ${-w*.20} ${-h*.16}, ${w*.20} ${-h*.16}, ${w*.48} 0 C ${w*.20} ${h*.20}, ${-w*.20} ${h*.20}, ${-w*.48} 0Z" fill="${lip}"/>
-        <path d="M ${-w*.42} 0 C ${-w*.15} ${h*.08}, ${w*.15} ${h*.08}, ${w*.42} 0" fill="none" stroke="${dark}" stroke-width="6" stroke-linecap="round" opacity=".65"/>
+        <path d="M ${-w*.50} 0 C ${-w*.22} ${-h*.18}, ${w*.22} ${-h*.18}, ${w*.50} 0 C ${w*.22} ${h*.18}, ${-w*.22} ${h*.18}, ${-w*.50} 0Z" fill="${lower}" opacity=".95"/>
+        <path d="M ${-w*.44} 0 C ${-w*.15} ${h*.06}, ${w*.15} ${h*.06}, ${w*.44} 0" fill="none" stroke="${line}" stroke-width="5" stroke-linecap="round" opacity=".72"/>
       `;
     }
     if (shape === "teeth") {
       return `
-        <path d="M ${-w*.48} 0 C ${-w*.20} ${-h*.28}, ${w*.20} ${-h*.28}, ${w*.48} 0 C ${w*.25} ${h*.32}, ${-w*.25} ${h*.32}, ${-w*.48} 0Z" fill="${lip}"/>
-        <rect x="${-w*.26}" y="${-h*.12}" width="${w*.52}" height="${h*.22}" rx="6" fill="#fff"/>
-        <path d="M ${-w*.36} ${h*.08} C ${-w*.12} ${h*.22}, ${w*.12} ${h*.22}, ${w*.36} ${h*.08}" fill="none" stroke="${dark}" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+        <path d="M ${-w*.50} 0 C ${-w*.22} ${-h*.24}, ${w*.22} ${-h*.24}, ${w*.50} 0 C ${w*.26} ${h*.34}, ${-w*.26} ${h*.34}, ${-w*.50} 0Z" fill="${lip}"/>
+        <rect x="${-w*.24}" y="${-h*.10}" width="${w*.48}" height="${h*.18}" rx="5" fill="#fff"/>
+        <path d="M ${-w*.40} ${h*.05} C ${-w*.12} ${h*.18}, ${w*.12} ${h*.18}, ${w*.40} ${h*.05}" fill="none" stroke="${line}" stroke-width="4" stroke-linecap="round" opacity=".6"/>
       `;
     }
-    // rest
     return `
-      <path d="M ${-w*.45} 0 C ${-w*.18} ${h*.18}, ${w*.18} ${h*.18}, ${w*.45} 0"
-        fill="none" stroke="${dark}" stroke-width="8" stroke-linecap="round"/>
-      <path d="M ${-w*.28} ${h*.10} C ${-w*.08} ${h*.24}, ${w*.08} ${h*.24}, ${w*.28} ${h*.10}"
-        fill="none" stroke="${lip}" stroke-width="6" stroke-linecap="round" opacity=".65"/>
+      <path d="M ${-w*.48} ${h*.02} C ${-w*.18} ${-h*.14}, ${w*.18} ${-h*.14}, ${w*.48} ${h*.02}" fill="none" stroke="${line}" stroke-width="6" stroke-linecap="round"/>
+      <path d="M ${-w*.28} ${h*.10} C ${-w*.08} ${h*.22}, ${w*.08} ${h*.22}, ${w*.28} ${h*.10}" fill="none" stroke="${lower}" stroke-width="4" stroke-linecap="round" opacity=".78"/>
+      <path d="M ${-w*.22} ${-h*.06} C ${-w*.06} ${-h*.14}, ${w*.06} ${-h*.14}, ${w*.22} ${-h*.06}" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="2" stroke-linecap="round"/>
     `;
   }
 
@@ -796,12 +873,17 @@
     var panel = el("div", { class: "dil-avatar-panel" });
     panel.innerHTML = `
       <h3>Avatar Ayarlama Paneli</h3>
+      <div class="dil-avatar-savebar">
+        <button class="primary" data-act="save">Ayarları kaydet</button>
+        <span class="dil-avatar-save-status" data-da-save-status data-dirty="0">Kaydedildi</span>
+      </div>
       <div class="dil-avatar-grid">
         <div class="dil-avatar-card" data-section="mouth"><h4>Ağız</h4></div>
         <div class="dil-avatar-card" data-section="eyes"><h4>Göz / Göz Kırpma</h4></div>
         <div class="dil-avatar-card" data-section="brow"><h4>Kaş</h4></div>
       </div>
       <div class="dil-avatar-small-actions">
+        <button class="primary" data-act="save">Ayarları kaydet</button>
         <button class="primary" data-act="testSpeak">Konuşma test</button>
         <button data-act="blink">Göz test</button>
         <button data-mouth="rest">rest</button>
@@ -820,6 +902,9 @@
     `;
     host.innerHTML = "";
     host.appendChild(panel);
+    state.saveStatusEl = panel.querySelector("[data-da-save-status]");
+    state.dirty = false;
+    updateSaveStatus("Kaydedildi");
 
     var mouth = panel.querySelector('[data-section="mouth"]');
     var eyes = panel.querySelector('[data-section="eyes"]');
@@ -861,19 +946,17 @@
       var m = b.getAttribute("data-mouth");
       if (m) setMouth(m);
       var act = b.getAttribute("data-act");
+      if (act === "save") saveFromPanel();
       if (act === "blink") blinkOnce();
       if (act === "testSpeak") speakText("merhaba bugün ingilizce çalışıyoruz", 3200);
       if (act === "resetCurrent") {
         state.settings[state.gender] = clone(DEFAULTS[state.gender]);
-        saveSettings();
+        markDirty();
         render();
       }
       if (act === "resetAll") {
         state.settings = clone(DEFAULTS);
-        safeRemove(STORAGE_KEY);
-        safeRemove("DilAvatar.settings");
-        LEGACY_SETTINGS_KEYS.forEach(safeRemove);
-        saveSettings();
+        markDirty();
         render();
       }
       if (act === "export") {
@@ -886,7 +969,7 @@
         try {
           var data = JSON.parse(panel.querySelector(".dil-avatar-json").value);
           mergeSettingsInto(state.settings, data);
-          saveSettings();
+          markDirty();
           render();
         } catch (e) {
           alert("JSON okunamadı.");
@@ -909,7 +992,7 @@
     var input = row.querySelector("input");
     input.addEventListener("input", function () {
       current()[key] = Number(input.value);
-      saveSettings();
+      markDirty();
       render();
     });
     state.controls.push({ key: key, input: input, out: row.querySelector("output") });
@@ -926,7 +1009,7 @@
     var input = row.querySelector("input");
     input.addEventListener("change", function () {
       current()[key] = !!input.checked;
-      saveSettings();
+      markDirty();
       render();
     });
     state.controls.push({ key: key, input: input, out: row.querySelector("output"), checkbox: true });
@@ -945,6 +1028,7 @@
         ctl.out.textContent = String(Math.round(Number(c[ctl.key]) * 100) / 100);
       }
     });
+    updateSaveStatus(state.dirty ? "Kaydedilmedi" : undefined);
   }
 
   function getSettings() {
@@ -989,7 +1073,8 @@
     exportSettings: exportSettings,
     setSettings: setSettings,
     getCurrentCalibration: getCurrentCalibration,
-    forceReloadSettings: forceReloadSettings
+    forceReloadSettings: forceReloadSettings,
+    saveSettingsNow: saveFromPanel
   };
 
 })(window);
