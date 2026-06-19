@@ -1,5 +1,5 @@
 /*
-  DilAvatar v8 — Ayarlanabilir Konuşan Asistan Avatarı
+  DilAvatar v7 — Ayarlanabilir Konuşan Asistan Avatarı
   ------------------------------------------------
   Tek dosyalık, çevrimdışı çalışan, dış bağımlılıksız avatar sistemi.
   HTML + CSS + SVG + Vanilla JavaScript.
@@ -19,11 +19,11 @@
 (function (global) {
   "use strict";
 
-  var STORAGE_KEY = "DilAvatar.svg.v8.settings";
-  var GENDER_KEY = "DilAvatar.svg.v8.gender";
-  var LEGACY_SETTINGS_KEYS = ["DilAvatar.svg.v7.settings", "DilAvatar.v5.settings", "DilAvatar.v6.settings", "DilAvatar.settings"];
-  var LEGACY_GENDER_KEYS = ["DilAvatar.svg.v7.gender", "DilAvatar.v5.gender", "DilAvatar.v6.gender", "DilAvatar.gender"];
-  var SCHEMA = "svg-v8";
+  var STORAGE_KEY = "DilAvatar.svg.v7.settings";
+  var GENDER_KEY = "DilAvatar.svg.v7.gender";
+  var LEGACY_SETTINGS_KEYS = ["DilAvatar.v5.settings", "DilAvatar.v6.settings", "DilAvatar.settings"];
+  var LEGACY_GENDER_KEYS = ["DilAvatar.v5.gender", "DilAvatar.v6.gender", "DilAvatar.gender"];
+  var SCHEMA = "svg-v7";
   var broadcast = null;
 
   var state = {
@@ -40,9 +40,7 @@
     isBlinking: false,
     isThinking: false,
     controls: [],
-    settings: null,
-    dirty: false,
-    saveStatusEl: null
+    settings: null
   };
 
   var DEFAULTS = {
@@ -92,17 +90,17 @@
     },
     erkek: {
       title: "Erkek Avatar",
-      theme: "#2dd4bf",
+      theme: "#b59867",
       imageType: "svgSimpleBeard",
       bg: "#f8fafc",
-      face: "#ffd0a8",
-      hair: "#4b2116",
-      hair2: "#6b301e",
-      eye: "#4a2b18",
-      cloth: "#1e1b7a",
-      cloth2: "#172554",
-      mouthColor: "#111827",
-      lipColor: "#f2a484",
+      face: "#f0c9a8",
+      hair: "#b8b2ac",
+      hair2: "#d6d2cd",
+      eye: "#6b6f72",
+      cloth: "#b5895a",
+      cloth2: "#946f44",
+      mouthColor: "#8a4a44",
+      lipColor: "#cf9b86",
       hasGlasses: false,
       hasBeard: true,
       // Sakallı avatar için ağız bilinçli olarak sakalın üzerine çizilir.
@@ -234,23 +232,6 @@
     } catch (e) {}
   }
 
-  function markDirty() {
-    state.dirty = true;
-    updateSaveStatus("Kaydedilmedi");
-  }
-
-  function saveFromPanel() {
-    saveSettings();
-    state.dirty = false;
-    updateSaveStatus("Kaydedildi: " + new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
-  }
-
-  function updateSaveStatus(text) {
-    if (!state.saveStatusEl) return;
-    state.saveStatusEl.textContent = text || (state.dirty ? "Kaydedilmedi" : "Kaydedildi");
-    state.saveStatusEl.setAttribute("data-dirty", state.dirty ? "1" : "0");
-  }
-
   function reloadSettingsAndRender() {
     loadSettings();
     render();
@@ -371,26 +352,6 @@
       .dil-avatar-card h4{
         margin:0 0 8px;
         color:#93c5fd;
-      }
-      .dil-avatar-savebar{
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:10px;
-        flex-wrap:wrap;
-        margin:0 0 12px;
-        padding:10px;
-        border-radius:14px;
-        background:rgba(15,23,42,.85);
-        border:1px solid rgba(148,163,184,.25);
-      }
-      .dil-avatar-save-status{
-        font-size:13px;
-        color:#86efac;
-        font-weight:800;
-      }
-      .dil-avatar-save-status[data-dirty="1"]{
-        color:#fbbf24;
       }
       .dil-avatar-row{
         display:grid;
@@ -835,17 +796,12 @@
     var panel = el("div", { class: "dil-avatar-panel" });
     panel.innerHTML = `
       <h3>Avatar Ayarlama Paneli</h3>
-      <div class="dil-avatar-savebar">
-        <button class="primary" data-act="save">Ayarları kaydet</button>
-        <span class="dil-avatar-save-status" data-da-save-status data-dirty="0">Kaydedildi</span>
-      </div>
       <div class="dil-avatar-grid">
         <div class="dil-avatar-card" data-section="mouth"><h4>Ağız</h4></div>
         <div class="dil-avatar-card" data-section="eyes"><h4>Göz / Göz Kırpma</h4></div>
         <div class="dil-avatar-card" data-section="brow"><h4>Kaş</h4></div>
       </div>
       <div class="dil-avatar-small-actions">
-        <button class="primary" data-act="save">Ayarları kaydet</button>
         <button class="primary" data-act="testSpeak">Konuşma test</button>
         <button data-act="blink">Göz test</button>
         <button data-mouth="rest">rest</button>
@@ -864,9 +820,6 @@
     `;
     host.innerHTML = "";
     host.appendChild(panel);
-    state.saveStatusEl = panel.querySelector("[data-da-save-status]");
-    state.dirty = false;
-    updateSaveStatus("Kaydedildi");
 
     var mouth = panel.querySelector('[data-section="mouth"]');
     var eyes = panel.querySelector('[data-section="eyes"]');
@@ -908,17 +861,19 @@
       var m = b.getAttribute("data-mouth");
       if (m) setMouth(m);
       var act = b.getAttribute("data-act");
-      if (act === "save") saveFromPanel();
       if (act === "blink") blinkOnce();
       if (act === "testSpeak") speakText("merhaba bugün ingilizce çalışıyoruz", 3200);
       if (act === "resetCurrent") {
         state.settings[state.gender] = clone(DEFAULTS[state.gender]);
-        markDirty();
+        saveSettings();
         render();
       }
       if (act === "resetAll") {
         state.settings = clone(DEFAULTS);
-        markDirty();
+        safeRemove(STORAGE_KEY);
+        safeRemove("DilAvatar.settings");
+        LEGACY_SETTINGS_KEYS.forEach(safeRemove);
+        saveSettings();
         render();
       }
       if (act === "export") {
@@ -931,7 +886,7 @@
         try {
           var data = JSON.parse(panel.querySelector(".dil-avatar-json").value);
           mergeSettingsInto(state.settings, data);
-          markDirty();
+          saveSettings();
           render();
         } catch (e) {
           alert("JSON okunamadı.");
@@ -954,7 +909,7 @@
     var input = row.querySelector("input");
     input.addEventListener("input", function () {
       current()[key] = Number(input.value);
-      markDirty();
+      saveSettings();
       render();
     });
     state.controls.push({ key: key, input: input, out: row.querySelector("output") });
@@ -971,7 +926,7 @@
     var input = row.querySelector("input");
     input.addEventListener("change", function () {
       current()[key] = !!input.checked;
-      markDirty();
+      saveSettings();
       render();
     });
     state.controls.push({ key: key, input: input, out: row.querySelector("output"), checkbox: true });
@@ -990,7 +945,6 @@
         ctl.out.textContent = String(Math.round(Number(c[ctl.key]) * 100) / 100);
       }
     });
-    updateSaveStatus(state.dirty ? "Kaydedilmedi" : undefined);
   }
 
   function getSettings() {
@@ -1035,8 +989,7 @@
     exportSettings: exportSettings,
     setSettings: setSettings,
     getCurrentCalibration: getCurrentCalibration,
-    forceReloadSettings: forceReloadSettings,
-    saveSettingsNow: saveFromPanel
+    forceReloadSettings: forceReloadSettings
   };
 
 })(window);
