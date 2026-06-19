@@ -3,104 +3,52 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DilAvatar v13 Demo</title>
+  <title>DilAvatar v15 Demo</title>
   <style>
-    body{
-      margin:0;
-      min-height:100vh;
-      display:grid;
-      place-items:center;
-      background:#020617;
-      color:#e5e7eb;
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    }
-    .box{
-      width:min(94vw,440px);
-      background:#0b1120;
-      border:1px solid rgba(148,163,184,.25);
-      border-radius:24px;
-      padding:22px;
-      text-align:center;
-      box-shadow:0 25px 70px rgba(0,0,0,.30);
-    }
-    h1{font-size:22px;margin:0 0 14px}
-    .buttons{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
-    button{
-      border:0;
-      border-radius:16px;
-      background:#2563eb;
-      color:white;
-      font-weight:900;
-      padding:12px 16px;
-      cursor:pointer;
-    }
+    body{margin:0;min-height:100vh;background:#020617;color:#e5e7eb;font-family:system-ui;display:grid;place-items:center}
+    .box{width:min(94vw,430px);background:#0b1120;border:1px solid rgba(148,163,184,.25);border-radius:22px;padding:18px;text-align:center}
+    h1{font-size:20px;margin:0 0 10px}
+    textarea{width:100%;min-height:70px;border-radius:14px;border:1px solid rgba(148,163,184,.3);background:#020617;color:#e5e7eb;padding:10px;box-sizing:border-box;margin-top:12px}
+    .buttons{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+    button{border:0;border-radius:12px;padding:8px 10px;background:#2563eb;color:white;font-weight:800;font-size:12px;cursor:pointer}
     button.secondary{background:#1e293b;color:#dbeafe}
-    textarea{
-      width:100%;
-      min-height:74px;
-      margin-top:14px;
-      border-radius:14px;
-      border:1px solid rgba(148,163,184,.35);
-      background:#020617;
-      color:#e5e7eb;
-      padding:12px;
-      box-sizing:border-box;
-      font:14px system-ui;
-    }
-    .frames{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px}
-    .frames button{padding:8px 10px;border-radius:12px;font-size:12px}
   </style>
 </head>
 <body>
   <div class="box">
-    <h1>DilAvatar v13</h1>
+    <h1>DilAvatar v15</h1>
     <div id="avatarHost"></div>
-
-    <textarea id="txt">Merhaba, bugün İngilizce çalışıyoruz. Hazırsan başlayalım.</textarea>
-
+    <textarea id="txt">Merhaba, bugün İngilizce çalışıyoruz. Gövdem kesinlikle sabit.</textarea>
     <div class="buttons">
-      <button id="speak">Konuştur</button>
-      <button id="think" class="secondary">Düşün</button>
-      <button id="blink" class="secondary">Göz kırp</button>
+      <button id="speak">Konuş</button>
       <button id="hair" class="secondary">Saç düzelt</button>
+      <button id="blink" class="secondary">Göz kırp</button>
+      <button id="think" class="secondary">Düşün</button>
+      <button id="motion" class="secondary">Baş hareketi aç/kapat</button>
       <button id="stop" class="secondary">Dur</button>
     </div>
-
-    <div class="buttons">
-      <button id="motionOn" class="secondary">Baş hareketi açık</button>
-      <button id="motionOff" class="secondary">Baş hareketi kapalı</button>
-      <button id="autoHairOn" class="secondary">Oto saç açık</button>
-      <button id="autoHairOff" class="secondary">Oto saç kapalı</button>
-    </div>
-
-    <div class="frames" id="frames"></div>
   </div>
 
   <script src="./avatar.js"></script>
   <script>
-    DilAvatar.mount("avatarHost", { size: 330, showMiniControls: false });
+    let motion = false;
+    DilAvatar.mount("avatarHost", { size: 320 });
+    DilAvatar.setHeadMotion(false);
+    DilAvatar.setAutoHair(false);
 
     document.getElementById("speak").onclick = function(){
-      var txt = document.getElementById("txt").value;
-      DilAvatar.speakText(txt, Math.max(1800, txt.length * 95));
+      const t = document.getElementById("txt").value;
+      DilAvatar.speakText(t, Math.max(1800, t.length * 92));
     };
-    document.getElementById("think").onclick = function(){ DilAvatar.thinking(true); };
-    document.getElementById("blink").onclick = function(){ DilAvatar.blink(); };
     document.getElementById("hair").onclick = function(){ DilAvatar.fixHair(true); };
+    document.getElementById("blink").onclick = function(){ DilAvatar.blink(); };
+    document.getElementById("think").onclick = function(){ DilAvatar.thinking(true); };
+    document.getElementById("motion").onclick = function(){
+      motion = !motion;
+      DilAvatar.setHeadMotion(motion);
+      this.textContent = motion ? "Baş hareketi açık" : "Baş hareketi kapalı";
+    };
     document.getElementById("stop").onclick = function(){ DilAvatar.stop(); DilAvatar.thinking(false); };
-    document.getElementById("motionOn").onclick = function(){ DilAvatar.setHeadMotion(true); };
-    document.getElementById("motionOff").onclick = function(){ DilAvatar.setHeadMotion(false); };
-    document.getElementById("autoHairOn").onclick = function(){ DilAvatar.setAutoHair(true); };
-    document.getElementById("autoHairOff").onclick = function(){ DilAvatar.setAutoHair(false); };
-
-    var f = document.getElementById("frames");
-    DilAvatar.getFrameNames().forEach(function(name){
-      var b = document.createElement("button");
-      b.className = "secondary";
-      b.textContent = name;
-      b.onclick = function(){ DilAvatar.showFrame(name); };
-      f.appendChild(b);
-    });
   </script>
 </body>
 </html>
