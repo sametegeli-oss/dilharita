@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#071226">
 <title>Fotoğraflı Sohbet Senaryoları</title>
-<link rel="stylesheet" href="./chat-style.css?v=8">
+<link rel="stylesheet" href="./chat-style.css?v=9">
 </head>
 <body>
 <div class="menu">
+<div class="menu-actions"><a class="menu-btn" href="index.html">🏠 Ana menüye dön</a></div>
 <h1>Fotoğraflı konuşan avatarlar</h1>
 <p>Her senaryo ayrı HTML dosyasıdır. Ortak kod <b>chat-core.js</b>, ortak tasarım <b>chat-style.css</b> dosyasındadır.</p>
 <div class="grid">
@@ -16,13 +17,9 @@
 <a class="card" href="chatrestaurant.html"><img src="assets/avatars_v3/restaurant/idle.webp"><b>Restoran</b><span>Sipariş konuşması · A2</span></a>
 <a class="card" href="chatdoctor.html"><img src="assets/avatars_v3/doctor/idle.webp"><b>Doktor</b><span>Klinik konuşması · B1</span></a>
 <a class="card" href="chatairport.html"><img src="assets/avatars_v3/airport/idle.webp"><b>Havaalanı</b><span>Check-in konuşması · A2</span></a>
-<a class="card" href="chatteacher.html"><img src="assets/avatars_v3/teacher/idle.webp"><b>AI Öğretmen</b><span>teacher olan her yerde ortak gözlüklü öğretmen avatarı</span></a>
+<a class="card" href="chatteacher.html"><img src="assets/avatars_v3/teacher1/idle.webp"><b>AI Öğretmen</b><span>2 farklı gözlüklü öğretmen</span></a>
 </div>
-<div class="note-block"><b>Düzeltildi:</b><br>
-1) Resimler artık kırpılmaz, <code>object-fit: contain</code> ile tam görünür.<br>
-2) Senaryo klasörleri doğru eşlendi: otel, restoran, doktor, havaalanı ayrı.<br>
-3) Öğretmen kareleri tam kare olarak çıkarıldı; yuvarlak görüntü konuşurken yer değiştirmez.<br>
-4) Ağız ve göz hareketleri sadece ayrı foto dosyalarıyla yapılır; uydurma overlay yok.</div>
+<div class="note-block"><b>V9:</b> Gövde ve arka plan artık sabit kalır. Konuşma sırasında sadece ayrı foto karelerinden kesilen göz/ağız parçaları değişir; sahte çizim overlay yoktur.</div>
 </div>
 </body>
 </html>
