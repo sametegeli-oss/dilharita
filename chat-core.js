@@ -101,7 +101,6 @@ class PhotoAvatar{
     for(const ch of s){
       if(/[o0ö]/.test(ch)) seq.push(this.frames.mouthO);
       else if(/[uüwq]/.test(ch)) seq.push(this.frames.mouthO);
-      else if(/[c]/.test(ch)) seq.push(this.frames.mouthO);
       else if(/[a]/.test(ch)) seq.push(this.frames.mouthOpen);
       else if(/[e]/.test(ch)) seq.push(this.frames.mouthMedium);
       else if(/[iıy]/.test(ch)) seq.push(this.frames.mouthSmall);

@@ -45,3 +45,12 @@ V12 GÜNCELLEME
 - assets/avatars_v3/teacher/ klasörü yeni teacher1 ile güncellendi.
 - Video/kütüphane/çalışma/teacher-chat gibi sayfalarda yeni teacher avatarını zorla kullanmak için teacher-global-avatar.js eklendi.
 - teacher-video-avatar.js de sadece yeni teacher avatarlarını kullanacak şekilde güncellendi.
+
+
+V13 GÜNCELLEME
+- Tüm ana karakterler için O sesi yeniden üretildi ve mouth-o.webp olarak yerleştirildi:
+  hotel, restaurant, doctor, airport, teacher1, teacher2.
+- mouth-o.webp artık gerçekten dudakları yuvarlatılmış tam fotoğraf karesidir.
+- assets/avatars_v3/teacher/ klasörü teacher1 ile senkronlandı.
+- teacher-chat.html eklendi; eski teacher-chat URL'si yeni öğretmen avatarını kullanabilir.
+- Cache için CSS/JS sürümü v13 yapıldı.
