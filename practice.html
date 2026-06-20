@@ -1840,11 +1840,23 @@ boot();
 </style>
 <script>
 (function(){
+  let scheduled = false;
+
+  function scheduleEnhance(){
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(function(){
+      scheduled = false;
+      enhance();
+    });
+  }
+
   function buildDesktopCard(card){
     if (!card || window.innerWidth < 1100 || card.dataset.pdDesktop === '1') return;
     const answerArea = card.querySelector('#answerArea');
     const feedbackArea = card.querySelector('#feedbackArea');
     if (!answerArea || !feedbackArea) return;
+
     const direct = Array.from(card.children);
     const leftCol = document.createElement('div'); leftCol.className = 'pd-col pd-left';
     const centerCol = document.createElement('div'); centerCol.className = 'pd-col pd-center';
@@ -1860,6 +1872,7 @@ boot();
       if (node === answerArea || node === feedbackArea) return;
       promptPanel.appendChild(node);
     });
+
     feedbackPanel.appendChild(feedbackArea);
     answerPanel.appendChild(answerArea);
 
@@ -1878,15 +1891,27 @@ boot();
   }
 
   function syncGradeDock(card){
-    if (!card) return;
+    if (!card || window.innerWidth < 1100) return;
     const dock = card.querySelector('.pd-grade-dock');
     const feedback = card.querySelector('#feedbackArea');
     if (!dock || !feedback) return;
+
     const gradeRow = feedback.querySelector('.grade-row');
     const nextBtn = feedback.querySelector('#nextBtn');
-    if (gradeRow){ dock.innerHTML = ''; dock.appendChild(gradeRow); }
-    if (nextBtn) dock.appendChild(nextBtn);
-    if (!gradeRow && !nextBtn){
+
+    if (gradeRow || nextBtn){
+      if (gradeRow && gradeRow.parentElement !== dock){
+        dock.innerHTML = '';
+        dock.appendChild(gradeRow);
+      }
+      if (nextBtn && nextBtn.parentElement !== dock){
+        dock.appendChild(nextBtn);
+      }
+      return;
+    }
+
+    // Sonsuz MutationObserver döngüsü olmasın diye placeholder sadece yoksa yazılır.
+    if (!dock.querySelector('.pd-grade-placeholder')){
       dock.innerHTML = '<div class="pd-grade-placeholder">Cevabını kontrol ettikten sonra Zor / Normal / Kolay ve İleri düğmeleri burada görünecek.</div>';
     }
   }
@@ -1898,11 +1923,15 @@ boot();
     });
   }
 
-  const mo = new MutationObserver(function(){ enhance(); });
-  mo.observe(document.body, {childList:true, subtree:true});
-  window.addEventListener('load', enhance);
-  window.addEventListener('resize', enhance);
-  setTimeout(enhance, 400);
+  document.addEventListener('DOMContentLoaded', function(){
+    enhance();
+    const root = document.getElementById('root') || document.body;
+    const mo = new MutationObserver(scheduleEnhance);
+    mo.observe(root, {childList:true, subtree:true});
+  });
+
+  window.addEventListener('load', scheduleEnhance);
+  window.addEventListener('resize', scheduleEnhance);
 })();
 </script>
 <!-- PRACTICE_DESKTOP_REDESIGN_END -->

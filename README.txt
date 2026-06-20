@@ -1,15 +1,11 @@
-PRACTICE ARŞİV SAĞLAM TEMİZ
+PRACTICE HEDEF TASARIM AÇILIŞ FIX
 
-Bu dosya, bozulmadan önceki sağlam practice(3).html arşivinden hazırlandı.
+Önceki dosyada iki sorun vardı:
+1) Eski practice-design5-v2.css / practice-design5-v2.js kalmıştı.
+2) Yeni tasarım scriptinde MutationObserver sürekli placeholder yazdığı için sayfa donabiliyordu.
 
-Amaç:
-- Bozuk Tasarım 5/grid görünümünü tamamen kaldırmak.
-- Practice ekranını eski sağlam haline döndürmek.
-- Hata Defteri / Akıllı Tekrar yüzen düğmeleri practice ekranından kaldırmak.
+Bu paket ikisini de kaldırır/düzeltir.
 
 Yükle:
-- Sadece practice.html dosyasını mevcut practice.html üzerine yaz.
-- Sonra Ctrl+F5 yap.
-
-Not:
-Bu restore dosyasında yeni tasarım yaması yoktur. Sadece sağlam arşiv dosyasıdır.
+- practice.html dosyasını mevcut practice.html üzerine yaz.
+- Ctrl+F5 yap.
