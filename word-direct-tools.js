@@ -10,6 +10,121 @@
 const STYLE_ID = "word-direct-tools-style-v1";
 let activeConv = [];
 
+/* AI PROMPT + TÜRKÇE/İNGİLİZCE OKUMA YARDIMCILARI */
+const WD_PROMPT_DEFAULTS = {
+  teacher: `Sen profesyonel bir İngilizce öğretmenisin.
+Konuyu MUTLAKA Türkçe anlat.
+İngilizce örnekleri ayrı satırlarda ver.
+Cevap düzeni:
+TÜRKÇE AÇIKLAMA:
+- Konuyu kısa ve net Türkçe açıkla.
+ENGLISH PRACTICE:
+- English example 1
+- English example 2
+TÜRKÇE ÖZET:
+- Kullanıcının neyi öğrenmesi gerektiğini Türkçe söyle.`,
+  conversation: `Sen sabırlı bir İngilizce konuşma partnerisin.
+Kullanıcı İngilizce pratik yapacak.
+Cevap kısa olsun.
+Gerekirse Türkçe açıklamayı ayrı "TÜRKÇE NOT:" bölümünde ver.`,
+  partner: `Sen doğal bir İngilizce mesajlaşma partnerisin.
+Kullanıcıya İngilizce cevap ver.
+Yanlış varsa kısa Türkçe düzeltme ekle.`,
+  writing: `Sen Türkçe anlatan profesyonel bir İngilizce yazma öğretmenisin.
+Önce Türkçe açıklama yap.
+Sonra doğru İngilizce cümleyi ayrı satırda ver.`,
+  quiz: `Sen Türkçe anlatan İngilizce test öğretmenisin.
+Her yanlışta Türkçe açıklama ver.
+İngilizce örnekleri ayrı satırda yaz.`,
+  story: `Sen İngilizce öğretmek için kısa hikaye yazan bir öğretmensin.
+Hikaye İngilizce olsun.
+Önce Türkçe kısa açıklama ver, sonra İngilizce hikaye ver.`,
+  podcast: `Sen İngilizce öğrenenler için podcast hazırlayan bir öğretmensin.
+Önce konuyu Türkçe açıkla.
+Sonra İngilizce podcast metnini ver.`,
+  similar: `Sen Türkçe açıklama yapan İngilizce gramer öğretmenisin.
+Aynı yapıda benzer İngilizce cümleler üret.
+Her cümlenin altına Türkçe olarak yapıyı açıkla.`
+};
+function wdPromptKey(kind){ return "dh_ai_prompt_" + (kind || "teacher"); }
+function wdGetPrompt(kind){
+  try { return localStorage.getItem(wdPromptKey(kind)) || WD_PROMPT_DEFAULTS[kind] || WD_PROMPT_DEFAULTS.teacher; }
+  catch(e){ return WD_PROMPT_DEFAULTS[kind] || WD_PROMPT_DEFAULTS.teacher; }
+}
+function wdSavePrompt(kind, val){
+  try { localStorage.setItem(wdPromptKey(kind), val || ""); } catch(e){}
+}
+function wdResetPrompt(kind){
+  wdSavePrompt(kind, WD_PROMPT_DEFAULTS[kind] || WD_PROMPT_DEFAULTS.teacher);
+}
+function wdPromptEditor(kind, title){
+  const val = wdGetPrompt(kind);
+  return `<details class="wd-promptbox">
+    <summary>⚙️ Promptu Düzenle — ${esc(title || kind)}</summary>
+    <textarea class="wd-textarea wdPromptInput" data-kind="${esc(kind)}">${esc(val)}</textarea>
+    <div class="wd-actions">
+      <button class="wd-btn green wdPromptSave" data-kind="${esc(kind)}">💾 Promptu Kaydet</button>
+      <button class="wd-btn gray wdPromptReset" data-kind="${esc(kind)}">↩ Varsayılana Dön</button>
+    </div>
+    <div class="wd-note">Kaydedilen prompt bundan sonraki cevaplarda kullanılır; sohbet aynı prompta göre devam eder.</div>
+  </details>`;
+}
+function wdBindPromptEditor(root){
+  root.querySelectorAll(".wdPromptSave").forEach(btn=>{
+    btn.onclick=()=>{
+      const kind=btn.dataset.kind;
+      const ta=root.querySelector(`.wdPromptInput[data-kind="${kind}"]`);
+      wdSavePrompt(kind, ta ? ta.value : "");
+      try{ alert("Prompt kaydedildi. Bundan sonraki cevaplar buna göre devam edecek."); }catch(e){}
+    };
+  });
+  root.querySelectorAll(".wdPromptReset").forEach(btn=>{
+    btn.onclick=()=>{
+      const kind=btn.dataset.kind;
+      wdResetPrompt(kind);
+      const ta=root.querySelector(`.wdPromptInput[data-kind="${kind}"]`);
+      if(ta) ta.value=wdGetPrompt(kind);
+    };
+  });
+}
+function isTurkishChunk(text){
+  const s=String(text||"");
+  if(/[ğüşöçıİĞÜŞÖÇ]/.test(s)) return true;
+  if(/^\s*(TÜRKÇE|AÇIKLAMA|ÖZET|NOT|KURAL|YANLIŞ|DOĞRU)\b/i.test(s)) return true;
+  if(/\b(konu|cümle|örnek|anlam|yapı|kural|kullanıcı|cevap|doğru|yanlış|şöyle|çünkü|fiil|özne|yüklem|Türkçe)\b/i.test(s)) return true;
+  return false;
+}
+function wdSplitForSpeech(text){
+  const raw=String(text||"").replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g," ");
+  const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  const chunks=[];
+  lines.forEach(line=>{
+    const lang = isTurkishChunk(line) ? "tr-TR" : "en-US";
+    // Çok uzun satırı noktalardan böl.
+    const pieces=line.split(/(?<=[.!?])\s+/).filter(Boolean);
+    pieces.forEach(p=>chunks.push({text:p, lang}));
+  });
+  return chunks.length?chunks:[{text:raw, lang:isTurkishChunk(raw)?"tr-TR":"en-US"}];
+}
+function speakMixed(text){
+  try{
+    speechSynthesis.cancel();
+    const chunks=wdSplitForSpeech(text);
+    let i=0;
+    function next(){
+      if(i>=chunks.length) return;
+      const c=chunks[i++];
+      const u=new SpeechSynthesisUtterance(c.text);
+      u.lang=c.lang;
+      u.rate=c.lang==="tr-TR" ? .96 : .88;
+      u.onend=next;
+      speechSynthesis.speak(u);
+    }
+    next();
+  }catch(e){ speak(text, "tr-TR", .9); }
+}
+
+
 function esc(s){return String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));}
 function clean(s){return String(s||"").replace(/\s+/g," ").trim();}
 function lower(s){return clean(s).toLowerCase();}
@@ -43,6 +158,7 @@ function addStyle(){
   .wd-choices{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}.wd-choice{text-align:left;border:1px solid rgba(255,255,255,.14);background:#17233a;color:#fff;border-radius:14px;padding:12px;font-weight:850;cursor:pointer}.wd-choice.ok{border-color:#22c55e;background:#064e3b}.wd-choice.bad{border-color:#ef4444;background:#4c1111}
   .wd-chat{display:flex;flex-direction:column;gap:10px;max-height:360px;overflow:auto;padding-right:4px}.wd-msg{max-width:84%;border-radius:16px;padding:11px 13px;line-height:1.5}.wd-user{align-self:flex-end;background:#2563eb}.wd-ai{align-self:flex-start;background:#17233a;border:1px solid rgba(255,255,255,.10)}
   .wd-note{font-size:12px;color:#93a4bd;margin-top:8px;line-height:1.45}.wd-small{font-size:12px;color:#93a4bd}.wd-imgprompt{white-space:pre-wrap;background:#081226;border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:12px;color:#dbeafe}
+  .wd-promptbox{margin:12px 0;background:#081226;border:1px solid rgba(96,165,250,.35);border-radius:16px;padding:10px}.wd-promptbox summary{cursor:pointer;font-weight:950;color:#93c5fd}.wdPromptInput{margin-top:10px;min-height:150px;font-size:12px}
   @media(max-width:760px){.wd-tools-row{grid-template-columns:repeat(3,1fr);gap:8px;padding:10px}.wd-tools-row button{min-height:56px;font-size:12px}.wd-grid,.wd-grid3,.wd-choices{grid-template-columns:1fr}.wd-panel{max-height:94vh;border-radius:18px}.wd-body{padding:12px}.wd-en{font-size:19px}}
   `;
   document.head.appendChild(st);
@@ -88,6 +204,19 @@ function listen(cb){
 
 /* API: varsa Groq anahtarıyla orijinaldeki gibi AI üretmeye çalışır, yoksa offline üretim yapar */
 async function callAI(system,user,kind){
+  const userEditablePrompt = wdGetPrompt(kind || "teacher");
+  const mustRules = `
+
+DEĞİŞMEZ KURAL:
+- Kullanıcının kaydettiği prompta göre cevap ver.
+- Konu anlatımı gerekiyorsa MUTLAKA Türkçe anlat.
+- İngilizce örnekler ayrı satırlarda İngilizce kalmalı.
+- Cevapta Türkçe ve İngilizce bölümleri mümkünse şu başlıklarla ayır:
+TÜRKÇE AÇIKLAMA:
+ENGLISH PRACTICE:
+TÜRKÇE ÖZET:
+`;
+  system = userEditablePrompt + mustRules + "\n\nEK SİSTEM BAĞLAMI:\n" + (system || "");
   const keys=[];
   try{
     const apiKeys=JSON.parse(localStorage.getItem("apiKeys")||"{}");
@@ -217,6 +346,7 @@ function openAITest(){
   const qs=makeStructureQuestions(d,st);
   let current=0, correct=0, answers=[], selected=null;
   const body=sentenceBox(d)+`
+    ${wdPromptEditor("quiz","AI Test")}
     <div class="wd-card">
       <div class="wd-title">📝 Yapı Odaklı AI Test</div>
       <div class="wd-sub">Amaç tek cümleyi ezberletmek değil; aynı cümle yapısını 5 farklı alıştırmayla öğretmek.</div>
@@ -236,7 +366,7 @@ function openAITest(){
       </div>
     </div>
     <div class="wd-card" id="wdQuizSummary" style="display:none"></div>`;
-  const ov=panel("📝 AI Test — 5 Soru",body);
+  const ov=panel("📝 AI Test — 5 Soru",body); wdBindPromptEditor(ov);
   const step=ov.querySelector("#wdQuizStep"), fb=ov.querySelector("#wdQuizFeedback"), summary=ov.querySelector("#wdQuizSummary");
   function render(){
     selected=null; fb.innerHTML="";
@@ -314,6 +444,7 @@ async function openSimilarSentences(){
   const d=currentData();
   const st=inferStructure(d);
   const body=sentenceBox(d)+`
+    ${wdPromptEditor("similar","Benzer Cümleler")}
     <div class="wd-card">
       <div class="wd-title">✨ Benzer Cümleler Üret</div>
       <div class="wd-sub">Aynı yapıyı farklı kelimelerle öğreterek kalıbı derinleştirir.</div>
@@ -328,7 +459,7 @@ async function openSimilarSentences(){
       </div>
     </div>
     <div class="wd-card"><div class="wd-title">Benzer Cümleler</div><div id="wdSimilarOut" class="wd-list">Henüz üretilmedi.</div></div>`;
-  const ov=panel("✨ Benzer Cümleler",body);
+  const ov=panel("✨ Benzer Cümleler",body); wdBindPromptEditor(ov);
   const out=ov.querySelector("#wdSimilarOut");
 
   function offlineSimilar(){
@@ -384,6 +515,7 @@ async function openSimilarSentences(){
 function openStory(){
   const d=currentData();
   const body=sentenceBox(d)+`
+    ${wdPromptEditor("story","Hikaye")}
     <div class="wd-card">
       <div class="wd-title">📖 AI Hikaye Üretici</div>
       <div class="wd-sub">Orijinal ekrandaki gibi seviye seçip aktif cümleden hikaye üretir. API anahtarı varsa AI dener, yoksa offline hikaye verir.</div>
@@ -394,7 +526,7 @@ function openStory(){
       </div>
     </div>
     <div class="wd-card"><div class="wd-title">Hikaye</div><div id="wdStoryOut" class="wd-item">Seviye seç ve hikaye oluştur.</div><div class="wd-actions"><button class="wd-btn" id="wdStoryListen">🔊 Seslendir</button></div></div>`;
-  const ov=panel("📖 Hikaye",body);
+  const ov=panel("📖 Hikaye",body); wdBindPromptEditor(ov);
   const out=ov.querySelector("#wdStoryOut");
   ov.querySelectorAll("[data-level]").forEach(b=>{
     b.onclick=async()=>{
@@ -406,13 +538,14 @@ function openStory(){
       out.innerHTML=esc(ai||offlineStory(d)).replace(/\n/g,"<br>");
     };
   });
-  ov.querySelector("#wdStoryListen").onclick=()=>speak(ov.querySelector("#wdStoryOut").innerText,"en-US",.88);
+  ov.querySelector("#wdStoryListen").onclick=()=>speakMixed(ov.querySelector("#wdStoryOut").innerText);
 }
 
 /* 4 — PODCAST */
 function openPodcast(){
   const d=currentData();
   const body=sentenceBox(d)+`
+    ${wdPromptEditor("podcast","Podcast")}
     <div class="wd-card">
       <div class="wd-title">🎧 AI Podcast Oluşturucu</div>
       <div class="wd-sub">Orijinal podcast ekranı mantığında konu + seviye ile aktif cümleden dinleme metni oluşturur.</div>
@@ -423,7 +556,7 @@ function openPodcast(){
       <div class="wd-actions"><button class="wd-btn green" id="wdGenPodcast">✨ Podcast Oluştur</button></div>
     </div>
     <div class="wd-card"><div class="wd-title">Podcast Metni</div><div id="wdPodcastOut" class="wd-item">Henüz oluşturulmadı.</div><div class="wd-actions"><button class="wd-btn" id="wdPodPlay">▶ Dinle</button><button class="wd-btn gray" id="wdPodStop">⏹ Durdur</button></div></div>`;
-  const ov=panel("🎧 Podcast",body);
+  const ov=panel("🎧 Podcast",body); wdBindPromptEditor(ov);
   const out=ov.querySelector("#wdPodcastOut");
   ov.querySelector("#wdGenPodcast").onclick=async()=>{
     out.innerHTML="⏳ Podcast hazırlanıyor...";
@@ -434,7 +567,7 @@ function openPodcast(){
     const ai=await callAI(sys,user,"podcast");
     out.innerHTML=esc(ai||offlinePodcast(d)).replace(/\n/g,"<br>");
   };
-  ov.querySelector("#wdPodPlay").onclick=()=>speak(out.innerText,"en-US",.86);
+  ov.querySelector("#wdPodPlay").onclick=()=>speakMixed(out.innerText);
   ov.querySelector("#wdPodStop").onclick=()=>speechSynthesis.cancel();
 }
 
@@ -443,6 +576,7 @@ function openConversation(){
   const d=currentData();
   activeConv=[];
   const body=sentenceBox(d)+`
+    ${wdPromptEditor("conversation","Konuşma")}
     <div class="wd-card">
       <div class="wd-title">🗣️ Konuşma Simülasyonu</div>
       <div class="wd-sub">Aktif cümleyi gerçek konuşma içinde kullan. Rol seç, yaz veya mikrofona söyle.</div>
@@ -458,7 +592,7 @@ function openConversation(){
       <textarea id="wdChatInput" class="wd-textarea" placeholder="İngilizce cevap yaz veya mikrofona söyle...">${esc(d.sentence)}</textarea>
       <div class="wd-actions"><button class="wd-btn orange" id="wdMic">🎤 Mikrofon</button><button class="wd-btn green" id="wdSend">Gönder</button><button class="wd-btn" id="wdStart">Bu ayarlarla başlat</button></div>
     </div>`;
-  const ov=panel("🗣️ Konuşma",body);
+  const ov=panel("🗣️ Konuşma",body); wdBindPromptEditor(ov);
   const chat=ov.querySelector("#wdChat");
   function add(role,text){
     const div=document.createElement("div");
@@ -473,8 +607,9 @@ function openConversation(){
     const user=first?`Start a short roleplay. The learner's target sentence is: ${d.sentence}`:`Learner: ${userText}\nTarget sentence: ${d.sentence}\nReply naturally and ask one follow-up question.`;
     const ai=await callAI(sys,user,"conversation");
     const fallback=first?`Hello! Let's practice. Try to use this sentence naturally: "${d.sentence}"`:`Good. I understood you. Can you make one more sentence with the same pattern?`;
-    add("ai",ai||fallback);
-    speak(ai||fallback,"en-US",.9);
+    const reply=ai||fallback;
+    add("ai",reply);
+    speakMixed(reply);
   }
   ov.querySelector("#wdStart").onclick=()=>aiReply("",true);
   ov.querySelector("#wdSend").onclick=()=>{
@@ -492,15 +627,17 @@ function openConversation(){
 function openWriting(){
   const d=currentData();
   const body=sentenceBox(d)+`
+    ${wdPromptEditor("writing","Cümle Yaz")}
     <div class="wd-card">
       <div class="wd-title">✍️ Cümle Yaz</div>
       <div class="wd-sub">Aktif cümle kalıbıyla kendi İngilizce cümleni yaz. Sistem basit kontrol yapar, API varsa açıklama ister.</div>
       <textarea id="wdWriteInput" class="wd-textarea" placeholder="Kendi cümleni İngilizce yaz..."></textarea>
       <div class="wd-actions"><button class="wd-btn green" id="wdCheckWriting">Kontrol Et</button><button class="wd-btn orange" id="wdWriteMic">🎤 Sesle Gir</button></div>
-      <div id="wdWriteOut" class="wd-item" style="margin-top:12px">Cümleni yaz.</div>
+      <div id="wdWriteOut" class="wd-item" style="margin-top:12px">Cümleni yaz.</div><div class="wd-actions"><button class="wd-btn gray" id="wdWriteRead">🔊 Cevabı Oku</button></div>
     </div>`;
-  const ov=panel("✍️ Cümle Yaz",body);
+  const ov=panel("✍️ Cümle Yaz",body); wdBindPromptEditor(ov);
   ov.querySelector("#wdWriteMic").onclick=()=>listen(t=>{ov.querySelector("#wdWriteInput").value=t;});
+  ov.querySelector("#wdWriteRead").onclick=()=>speakMixed(ov.querySelector("#wdWriteOut").innerText);
   ov.querySelector("#wdCheckWriting").onclick=async()=>{
     const val=clean(ov.querySelector("#wdWriteInput").value);
     const out=ov.querySelector("#wdWriteOut");
@@ -518,6 +655,7 @@ function openWriting(){
 function openPartner(){
   const d=currentData();
   const body=sentenceBox(d)+`
+    ${wdPromptEditor("partner","Partner")}
     <div class="wd-card">
       <div class="wd-title">🗨️ Partner</div>
       <div class="wd-sub">Kısa mesajlaşma pratiği. Partner aktif cümleye göre cevap verir.</div>
@@ -525,7 +663,7 @@ function openPartner(){
       <textarea id="wdPartnerInput" class="wd-textarea" placeholder="Mesajını İngilizce yaz...">Can we practice this sentence?</textarea>
       <div class="wd-actions"><button class="wd-btn green" id="wdPartnerSend">Gönder</button></div>
     </div>`;
-  const ov=panel("🗨️ Partner",body);
+  const ov=panel("🗨️ Partner",body); wdBindPromptEditor(ov);
   const chat=ov.querySelector("#wdPartnerChat");
   function add(who,text){const div=document.createElement("div");div.className="wd-msg "+(who==="user"?"wd-user":"wd-ai");div.innerHTML=esc(text);chat.appendChild(div);}
   add("ai",`Sure. Try to use this sentence: "${d.sentence}"`);
@@ -533,7 +671,7 @@ function openPartner(){
     const val=clean(ov.querySelector("#wdPartnerInput").value); if(!val)return;
     add("user",val); ov.querySelector("#wdPartnerInput").value="";
     const ai=await callAI("You are a friendly English chat partner. Keep it short.",`Target sentence: ${d.sentence}\nLearner message: ${val}\nReply naturally and ask a short question.`,"partner");
-    add("ai",ai||"Nice. Can you say it one more time in a different way?");
+    const reply=ai||"Nice. Can you say it one more time in a different way?"; add("ai",reply); speakMixed(reply);
   };
 }
 
