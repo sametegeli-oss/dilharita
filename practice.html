@@ -1690,7 +1690,20 @@ function renderFeedback(s, d, grade, layer){
   // otomatik telaffuz (özellikle tam üretim katmanında pekiştirir)
   if (layer !== "order") setTimeout(() => speak(s.en), 250);
 
-  fb.querySelectorAll(".gbtn").forEach(b => b.onclick = async () => {
+  // Masaüstü 3 kolon tasarımında Zor / Normal / Kolay / İleri sağ sütuna kalıcı taşınır.
+  // Önceki sürümde MutationObserver taşıyıp tekrar placeholder yazdığı için düğmeler görünüp kayboluyordu.
+  const activeCard = fb.closest(".card");
+  const dock = activeCard ? activeCard.querySelector(".pd-grade-dock") : null;
+  const gradeRow = fb.querySelector(".grade-row");
+  const nextBtnEl = fb.querySelector("#nextBtn");
+  const gradeRoot = dock || fb;
+  if (dock){
+    dock.innerHTML = "";
+    if (gradeRow) dock.appendChild(gradeRow);
+    if (nextBtnEl) dock.appendChild(nextBtnEl);
+  }
+
+  gradeRoot.querySelectorAll(".gbtn").forEach(b => b.onclick = async () => {
     const g = b.dataset.g;
     // önceki kaydı geri al: en güvenlisi, bir önceki srs durumundan yeniden hesapla
     // (basit yaklaşım: mevcut kaydı baz almadan, kullanıcı seçimini uygula)
@@ -1700,17 +1713,21 @@ function renderFeedback(s, d, grade, layer){
     await mSet(s.id, next);
     State.srs[s.id] = next;
     cloudSaveSoon();
-    fb.querySelectorAll(".gbtn").forEach(x => x.classList.remove("sel"));
+    gradeRoot.querySelectorAll(".gbtn").forEach(x => x.classList.remove("sel"));
     b.classList.add("sel");
-    fb.querySelector(".grade-q").innerHTML = `Güncellendi: <b>${gradeTR(g)}</b>`;
+    const q = gradeRoot.querySelector(".grade-q");
+    if (q) q.innerHTML = `Güncellendi: <b>${gradeTR(g)}</b>`;
   });
 
-  document.getElementById("nextBtn").onclick = () => {
-    State.idx++;
-    // modül oturumundaysa pozisyonu kaydet (due oturumu kaydetmez)
-    if (State.activeModule){ savePos(State.activeModule, State.idx, State.queue.length); cloudSaveSoon(); }
-    renderCard();
-  };
+  const nextBtn = document.getElementById("nextBtn");
+  if (nextBtn){
+    nextBtn.onclick = () => {
+      State.idx++;
+      // modül oturumundaysa pozisyonu kaydet (due oturumu kaydetmez)
+      if (State.activeModule){ savePos(State.activeModule, State.idx, State.queue.length); cloudSaveSoon(); }
+      renderCard();
+    };
+  }
 }
 function gradeTR(g){ return g==="hard"?"Zor":g==="easy"?"Kolay":"Normal"; }
 

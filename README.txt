@@ -1,11 +1,15 @@
-PRACTICE HEDEF TASARIM AÇILIŞ FIX
+PRACTICE SAĞ DÜĞMELER KAYBOLMA FIX
 
-Önceki dosyada iki sorun vardı:
-1) Eski practice-design5-v2.css / practice-design5-v2.js kalmıştı.
-2) Yeni tasarım scriptinde MutationObserver sürekli placeholder yazdığı için sayfa donabiliyordu.
+Sorun:
+Kontrol et'e basınca Zor / Normal / Kolay / İleri düğmeleri sağ sütunda görünüp kayboluyordu.
 
-Bu paket ikisini de kaldırır/düzeltir.
+Sebep:
+MutationObserver ve placeholder yazma mantığı düğmeleri taşıdıktan sonra sağ sütunu yeniden boş gösteriyordu.
+
+Düzeltme:
+renderFeedback içinde düğmeler doğrudan .pd-grade-dock içine taşınıyor ve eventler orada bağlanıyor.
+Placeholder artık düğmeler varsa tekrar yazılmıyor.
 
 Yükle:
-- practice.html dosyasını mevcut practice.html üzerine yaz.
-- Ctrl+F5 yap.
+practice.html dosyasını mevcut practice.html üzerine yaz.
+Ctrl+F5 yap.
