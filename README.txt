@@ -1,12 +1,18 @@
-INDEX-APP ÖĞRETMEN + ZAYIF ANALİZ DÜĞMELERİ
+INDEX-APP MENÜ + ANALİZ V2
 
-Bu paket index-app.html içindeki fotoğraflı/cümle öğrenme ekranına eksik düğmeleri ekler.
+Düzeltmeler:
+1) index-app.html ekranına her zaman görünen üst kısayollar eklendi:
+   - Ana Menü
+   - Hata Defteri
+   - Akıllı Tekrar
 
-Eklenenler:
-- 🎓 Öğretmene Sor
-- 📉 Zayıf Analiz
-- 📌 Hata Defteri
-- 🧠 Akıllı Tekrar
+2) Cümle çalışma kartına şu düğmeler eklendi:
+   - Öğretmene Sor
+   - Zayıf Analiz
+
+Not:
+Hata Defteri ve Akıllı Tekrar genel kısayol olarak üstte görünür.
+Öğretmene Sor ve Zayıf Analiz ise ancak bir modüle girip cümle kartı açıldığında görünür.
 
 Yüklenecek:
 - index-app.html
@@ -15,5 +21,4 @@ Yüklenecek:
 - akilli-tekrar.html
 - learning-error-system.js
 
-Not:
-Bu işlem assets/app.js dosyasına dokunmaz. Mevcut React uygulamanın üstüne güvenli ekleme yapar.
+Ctrl+F5 yap.

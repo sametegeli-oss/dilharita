@@ -1,17 +1,48 @@
-/* index-app-ogretmen-analiz-buttons.js
-   Fotoğraflı/cümle öğrenme ekranına Öğretmene Sor + Zayıf Analiz + Hata Defteri + Akıllı Tekrar düğmeleri ekler.
-   React app.js'e dokunmaz; mevcut DOM üzerinde güvenli çalışır.
+/* index-app-ogretmen-analiz-buttons.js v2
+   index-app.html için:
+   1) her ekranda üstte Ana Menü / Hata Defteri / Akıllı Tekrar kısayolları
+   2) cümle kartında Öğretmene Sor + Zayıf Analiz düğmeleri
 */
 (function(){
 "use strict";
 
-const STYLE_ID = "index-app-ogretmen-analiz-buttons-style";
+const STYLE_ID = "index-app-extra-actions-style-v2";
 
 function addStyle(){
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement("style");
   s.id = STYLE_ID;
   s.textContent = `
+  .index-app-top-actions{
+    position:fixed;
+    top:10px;
+    left:10px;
+    z-index:99998;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    pointer-events:auto;
+  }
+  .index-app-top-actions a{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    min-height:38px;
+    padding:8px 12px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.16);
+    color:#fff;
+    text-decoration:none;
+    font:900 13px Nunito,system-ui,sans-serif;
+    background:rgba(15,30,58,.86);
+    box-shadow:0 10px 26px rgba(0,0,0,.32);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+  }
+  .index-app-top-actions .home{background:linear-gradient(135deg,#16a34a,#15803d)}
+  .index-app-top-actions .error{background:linear-gradient(135deg,#dc2626,#991b1b)}
+  .index-app-top-actions .review{background:linear-gradient(135deg,#2563eb,#1d4ed8)}
   .extra-learning-actions{
     display:flex;
     flex-wrap:wrap;
@@ -36,31 +67,14 @@ function addStyle(){
   }
   .extra-learning-actions .extra-teacher{background:linear-gradient(135deg,#16a34a,#15803d);border-color:#22c55e88}
   .extra-learning-actions .extra-weak{background:linear-gradient(135deg,#7c3aed,#4338ca);border-color:#a78bfa88}
-  .extra-learning-actions .extra-error{background:linear-gradient(135deg,#dc2626,#991b1b);border-color:#f8717188}
-  .extra-learning-actions .extra-review{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#60a5fa88}
   .weak-modal{
-    position:fixed;
-    inset:0;
-    z-index:99999;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:18px;
-    background:rgba(0,0,0,.62);
-    backdrop-filter:blur(5px);
-    -webkit-backdrop-filter:blur(5px);
+    position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
+    padding:18px;background:rgba(0,0,0,.62);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
   }
   .weak-card{
-    width:min(620px,100%);
-    max-height:82vh;
-    overflow:auto;
-    background:#0f1f3a;
-    color:#edf4ff;
-    border:1px solid rgba(255,255,255,.14);
-    border-radius:24px;
-    padding:20px;
-    box-shadow:0 24px 70px rgba(0,0,0,.55);
-    font-family:Nunito,system-ui,sans-serif;
+    width:min(620px,100%);max-height:82vh;overflow:auto;background:#0f1f3a;color:#edf4ff;
+    border:1px solid rgba(255,255,255,.14);border-radius:24px;padding:20px;
+    box-shadow:0 24px 70px rgba(0,0,0,.55);font-family:Nunito,system-ui,sans-serif;
   }
   .weak-card h2{margin:0 0 10px;font-size:24px}
   .weak-card .weak-line{background:#0a172c;border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:12px;margin:10px 0;line-height:1.55}
@@ -68,7 +82,9 @@ function addStyle(){
   .weak-card .weak-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
   .weak-card button,.weak-card a{border:0;border-radius:12px;background:#2563eb;color:#fff;padding:10px 14px;font-weight:900;text-decoration:none;cursor:pointer}
   .weak-card button.close{background:#334155}
-  @media(max-width:640px){
+  @media(max-width:760px){
+    .index-app-top-actions{position:static;margin:10px;display:grid;grid-template-columns:1fr 1fr 1fr}
+    .index-app-top-actions a{border-radius:12px;font-size:12px;padding:8px 6px}
     .extra-learning-actions{display:grid;grid-template-columns:1fr 1fr}
     .extra-learning-actions .extra-btn{justify-content:center;font-size:12px;padding:9px 8px}
   }`;
@@ -76,22 +92,29 @@ function addStyle(){
 }
 
 function clean(s){ return String(s||"").replace(/\s+/g," ").trim(); }
+function escapeHtml(s){ return String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+function ensureTopActions(){
+  if (document.querySelector(".index-app-top-actions")) return;
+  const row = document.createElement("div");
+  row.className = "index-app-top-actions";
+  row.innerHTML = `
+    <a class="home" href="./index.html">🏠 Ana Menü</a>
+    <a class="error" href="./hata-defteri.html">📌 Hata Defteri</a>
+    <a class="review" href="./akilli-tekrar.html">🧠 Akıllı Tekrar</a>
+  `;
+  document.body.appendChild(row);
+}
 
 function currentCard(){
   const cards = [...document.querySelectorAll(".card")];
   return cards.find(c => c.querySelector(".card-en") && c.querySelector(".card-actions"));
 }
-
 function sentenceEN(card){
-  const el = card && card.querySelector(".card-en");
-  return clean(el ? el.innerText : "");
+  return clean(card?.querySelector(".card-en")?.innerText || "");
 }
 function sentenceTR(card){
-  const el = card && card.querySelector(".card-tr");
-  return clean(el ? el.innerText : "");
-}
-function moduleTitle(){
-  return clean(document.querySelector(".study-title")?.innerText || document.querySelector(".brand")?.innerText || "");
+  return clean(card?.querySelector(".card-tr")?.innerText || "");
 }
 
 function openTeacher(card){
@@ -99,19 +122,17 @@ function openTeacher(card){
   const tr = sentenceTR(card);
   if (!en) return;
   const back = "./index-app.html";
-  const url = "./teacher.html?s=" + encodeURIComponent(en) +
+  location.href = "./teacher.html?s=" + encodeURIComponent(en) +
     (tr ? "&t=" + encodeURIComponent(tr) : "") +
     "&return=" + encodeURIComponent(back);
-  location.href = url;
 }
 
 function collectDetails(card){
-  const rows = [...card.querySelectorAll(".detail-row")].map(r => {
+  return [...card.querySelectorAll(".detail-row")].map(r => {
     const k = clean(r.querySelector(".detail-label")?.innerText || "");
     const v = clean(r.querySelector(".detail-value")?.innerText || "");
     return k && v ? [k, v] : null;
   }).filter(Boolean);
-  return rows;
 }
 
 function inferWeakPoints(card){
@@ -123,10 +144,8 @@ function inferWeakPoints(card){
 
   const common = details.find(([k]) => /sık yapılan hata/i.test(k));
   if (common) out.push(["Sık yapılan hata", common[1]]);
-
   const grammar = details.find(([k]) => /gramer|yapı/i.test(k));
   if (grammar) out.push(["Gramer yapısı", grammar[1]]);
-
   const pattern = details.find(([k]) => /kalıp/i.test(k));
   if (pattern) out.push(["Kalıp", pattern[1]]);
 
@@ -135,10 +154,7 @@ function inferWeakPoints(card){
   if (/did|didn|past simple/.test(text)) out.push(["Zayıf nokta", "Past Simple: yardımcı fiil `did` varsa ana fiil yalın hale döner."]);
   if (/\bam\b|\bis\b|\bare\b|\bwas\b|\bwere\b/.test(text)) out.push(["Zayıf nokta", "Be fiili: özneye göre `am / is / are / was / were` seçimi kontrol edilmeli."]);
   if (/\?/.test(en)) out.push(["Zayıf nokta", "Soru sırası: yardımcı fiil veya be fiili özneden önce gelir."]);
-
-  if (!out.length){
-    out.push(["Zayıf Analiz", "Bu cümlede özel hata notu yok. Detay düğmesine basınca gramer, kalıp ve sık hata bilgileri görünüyorsa buraya da alınır."]);
-  }
+  if (!out.length) out.push(["Zayıf Analiz", "Bu cümlede özel hata notu yok. Detay düğmesine basınca gramer, kalıp ve sık hata bilgileri görünüyorsa buraya alınır."]);
   return {en,tr,out};
 }
 
@@ -163,15 +179,9 @@ function showWeakAnalysis(card){
   document.body.appendChild(modal);
 }
 
-function escapeHtml(s){
-  return String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
-}
-
-function enhance(){
-  addStyle();
+function enhanceCard(){
   const card = currentCard();
   if (!card || card.dataset.extraLearningButtons === "1") return;
-
   const actions = card.querySelector(".card-actions");
   if (!actions) return;
 
@@ -180,13 +190,17 @@ function enhance(){
   row.innerHTML = `
     <button type="button" class="extra-btn extra-teacher">🎓 Öğretmene Sor</button>
     <button type="button" class="extra-btn extra-weak">📉 Zayıf Analiz</button>
-    <a class="extra-btn extra-error" href="./hata-defteri.html">📌 Hata Defteri</a>
-    <a class="extra-btn extra-review" href="./akilli-tekrar.html">🧠 Akıllı Tekrar</a>
   `;
   row.querySelector(".extra-teacher").onclick = () => openTeacher(card);
   row.querySelector(".extra-weak").onclick = () => showWeakAnalysis(card);
   actions.insertAdjacentElement("afterend", row);
   card.dataset.extraLearningButtons = "1";
+}
+
+function enhance(){
+  addStyle();
+  ensureTopActions();
+  enhanceCard();
 }
 
 let timer = null;
