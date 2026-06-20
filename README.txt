@@ -1,21 +1,24 @@
-ESKİ GÖRSEL YAPISI GERİ BAĞLAMA
+WORD MENÜ AKTİVİTELERİNİ TAŞIMA
 
-Haklısın: Son eklenen index-app-photo-addon.js geçici ve yanlış bir fotoğraf seçme sistemi kuruyordu.
-Bu paket onu kaldırır.
+Kırmızı ile işaretlediğin /word menüsündeki düğmeler index-app.html cümle kartına taşındı:
 
-Yapılan:
-1) index-app-photo-addon.js bağlantısı kaldırıldı.
-2) Eski yapının kullandığı image-addon.js tekrar index-app.html içine bağlandı.
-3) teacher-addon.js tekrar bağlandı.
-4) Öğretmene Sor / Zayıf Analiz düğmeleri korunur.
+- Shadow
+- Hikaye
+- Podcast
+- Konuş
+- Benzer
+- AI Test
+
+ÖNEMLİ:
+Bu paket eski görsel yapısını bozmaz.
+index-app-photo-addon.js kullanılmaz.
+image-addon.js ve teacher-addon.js eski sistem olarak bağlı kalır.
 
 Yüklenecek:
 - index-app.html
+- word-activity-buttons.js
 - index-app-ogretmen-analiz-buttons.js
 
-ÖNEMLİ:
-- index-app-photo-addon.js dosyasını GitHub'dan sil veya artık kullanma.
-- image-addon.js ve teacher-addon.js zaten projede varsa tekrar yüklemene gerek yok.
-- Eski görsel arama cümlesi mantığı image-addon.js tarafından çalıştırılacak.
+image-addon.js ve teacher-addon.js zaten projede varsa tekrar yükleme.
 
 Sonra Ctrl+F5 yap.
