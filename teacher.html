@@ -269,9 +269,7 @@ function pickVoiceForLang(lang){
   const voices = _voiceCache || [];
   const wantTr = /^tr/i.test(lang || "");
   if(wantTr){
-    return voices.find(v=>/^tr/i.test(v.lang||"")) ||
-           voices.find(v=>/turkish|türk|turk/i.test(v.name||"")) ||
-           null;
+    return voices.find(v=>/^tr/i.test(v.lang||"")) || voices.find(v=>/turkish|türk|turk/i.test(v.name||"")) || null;
   }
   const en = voices.filter(v=>/^en/i.test(v.lang||""));
   if(!en.length) return null;
@@ -279,147 +277,28 @@ function pickVoiceForLang(lang){
   const pref = en.filter(v=>/en-US|en_GB|en-GB|en_US/i.test(v.lang||""));
   return pref.find(v=>male.test(v.name||"")) || pref[0] || en[0];
 }
-function cleanForSpeech(s){
-  return String(s||"")
-    .replace(/\*\*/g,"")
-    .replace(/<[^>]*>/g,"")
-    .replace(/\s+/g," ")
-    .trim();
-}
-function splitLongTurkish(text){
-  text = cleanForSpeech(text);
-  if(!text) return [];
-  const raw = text
-    .split(/(?<=[.!?])\s+|\n+/)
-    .map(x=>x.trim())
-    .filter(Boolean);
-  const out = [];
-  raw.forEach(part=>{
-    if(part.length <= 220){ out.push(part); return; }
-    let buf = "";
-    part.split(/,\s+|;\s+/).forEach(piece=>{
-      if((buf + " " + piece).trim().length > 220){
-        if(buf) out.push(buf.trim());
-        buf = piece;
-      }else{
-        buf = (buf + " " + piece).trim();
-      }
-    });
-    if(buf) out.push(buf.trim());
-  });
-  return out;
-}
-function buildMixedSpeechSegments(text){
-  text = String(text||"")
-    .replace(/[“”]/g,'"')
-    .replace(/[‘’]/g,"'")
-    .replace(/\r/g,"\n");
-
-  const segments = [];
-  const re = /"([^"]+)"|\[\[([^\]]+)\]\]/g;
-  let last = 0, m;
-
-  while((m = re.exec(text))){
-    const before = text.slice(last, m.index);
-    splitLongTurkish(before).forEach(t=>segments.push({text:t, lang:"tr-TR"}));
-
-    const en = cleanForSpeech(m[1] || m[2] || "");
-    if(en) segments.push({text:en, lang:"en-US"});
-
-    last = re.lastIndex;
-  }
-
-  splitLongTurkish(text.slice(last)).forEach(t=>segments.push({text:t, lang:"tr-TR"}));
-
-  // Bazı Groq cevaplarında İngilizce örnekler tırnaksız gelebiliyor.
-  // Tamamen İngilizce gibi görünen kısa satırları İngilizceye çevir.
-  return segments.map(seg=>{
-    const s = seg.text;
-    const latin = (s.match(/[A-Za-z]/g)||[]).length;
-    const turkish = (s.match(/[çğıöşüÇĞİÖŞÜ]/g)||[]).length;
-    const englishHints = /\b(i|you|he|she|we|they|am|is|are|was|were|do|does|did|can|could|would|should|not|hungry|breakfast|hello|welcome|reservation|please|mr|mrs|the|a|an|to|from|with|for)\b/i.test(s);
-    if(seg.lang==="tr-TR" && latin > 0 && turkish === 0 && englishHints && s.length < 120){
-      return {text:s, lang:"en-US"};
-    }
-    return seg;
-  }).filter(seg=>seg.text);
-}
-
-let _ttsRun = 0;
-function stopSpeech(){
-  _ttsRun++;
-  try{ speechSynthesis.cancel(); }catch{}
-  if(TeacherAvatar) TeacherAvatar.stop();
-}
-function speakOne(text, lang, runId){
-  return new Promise(resolve=>{
-    text = cleanForSpeech(text);
-    if(!text || runId !== _ttsRun){ resolve(); return; }
-
-    let done = false;
-    const finish = ()=>{
-      if(done) return;
-      done = true;
-    };
-  });
-}
-
-function speakUtterance(text, lang, runId){
-  return new Promise(resolve=>{
-    text = cleanForSpeech(text);
-    if(!text || runId !== _ttsRun){ resolve(); return; }
-
-    let settled = false;
-    const finish = ()=>{
-      if(settled) return;
-      settled = true;
-      if(runId === _ttsRun && TeacherAvatar) TeacherAvatar.stop();
-      setTimeout(resolve, 90);
-    };
-
-    try{
-      const u = new SpeechSynthesisUtterance(text);
-      const voice = pickVoiceForLang(lang);
-      if(voice) u.voice = voice;
-      u.lang = voice ? voice.lang : lang;
-      u.rate = /^tr/i.test(lang) ? 0.92 : 0.95;
-      u.pitch = /^tr/i.test(lang) ? 0.92 : 0.78;
-
-      u.onstart = ()=>{
-        if(runId === _ttsRun && TeacherAvatar){
-          // Her parça için avatarı yeniden başlatıyoruz.
-          // Böylece uzun açıklamada ses devam ederken avatar erken susmaz.
-          TeacherAvatar.speakText(text, estimateSpeechDuration(text) + 9000);
-        }
-      };
-      u.onend = finish;
-      u.onerror = finish;
-
-      speechSynthesis.speak(u);
-
-      // Bazı mobil tarayıcılarda onend gelmeyebiliyor.
-      // Uzun bir güvenlik süresi bırakıyoruz ama normalde onend bitirir.
-      setTimeout(finish, estimateSpeechDuration(text) + 12000);
-    }catch{
-      finish();
-    }
-  });
-}
-async function speakSegments(segments){
-  stopSpeech();
-  const runId = _ttsRun;
-  for(const seg of segments){
-    if(runId !== _ttsRun) break;
-    await speakUtterance(seg.text, seg.lang, runId);
-  }
-  if(runId === _ttsRun && TeacherAvatar) TeacherAvatar.stop();
-}
 function speak(text, lang){
-  speakSegments([{text:String(text||""), lang:lang || "tr-TR"}]);
+  try{
+    text=String(text||"").trim();
+    if(!text) return;
+    lang = lang || "tr-TR";
+    const u=new SpeechSynthesisUtterance(text);
+    const voice=pickVoiceForLang(lang);
+    if(voice) u.voice=voice;
+    u.lang = voice ? voice.lang : lang;
+    u.rate = /^tr/i.test(lang) ? 0.92 : 0.95;
+    u.pitch = 0.86;
+    speechSynthesis.cancel();
+    if(TeacherAvatar) TeacherAvatar.speakText(text, estimateSpeechDuration(text));
+    u.onend=()=>{ if(TeacherAvatar) TeacherAvatar.stop(); };
+    u.onerror=()=>{ if(TeacherAvatar) TeacherAvatar.stop(); };
+    speechSynthesis.speak(u);
+  }catch{
+    if(TeacherAvatar) TeacherAvatar.stop();
+  }
 }
-function speakEnglish(text){ speakSegments([{text:String(text||""), lang:"en-US"}]); }
-function speakTurkish(text){ speakSegments([{text:String(text||""), lang:"tr-TR"}]); }
-function speakMixed(text){ speakSegments(buildMixedSpeechSegments(text)); }
+function speakEnglish(text){ speak(text, "en-US"); }
+function speakTurkish(text){ speak(text, "tr-TR"); }
 
 /* ---------- yardımcılar ---------- */
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
@@ -492,7 +371,6 @@ function renderExplanation(reply){
     <div class="explain-actions">
       <button class="explain-play" id="explainListenBtn">🔊 Detaylı açıklamayı dinle</button>
       <button class="explain-play" id="sentenceListenBtn">🔊 Cümleyi dinle</button>
-      <button class="explain-play" id="stopListenBtn">⏹ Durdur</button>
     </div>
     <div class="followup">
       <input id="fuInput" type="text" placeholder="Bir sorun mu var? Öğretmene sor…" />
@@ -503,9 +381,8 @@ function renderExplanation(reply){
   fu.onkeydown = e => { if (e.key==="Enter") askFollowup(fu.value); };
   document.getElementById("fuSend").onclick = () => askFollowup(fu.value);
   document.getElementById("regenBtn").onclick = () => explain();
-  document.getElementById("explainListenBtn").onclick = () => speakMixed(State.explanation);
+  document.getElementById("explainListenBtn").onclick = () => speakTurkish(State.explanation);
   document.getElementById("sentenceListenBtn").onclick = () => speakEnglish(State.en);
-  document.getElementById("stopListenBtn").onclick = () => stopSpeech();
 }
 
 async function askFollowup(q){
@@ -522,7 +399,7 @@ async function askFollowup(q){
     State.history.push({ role:"assistant", content:reply });
     qa.innerHTML = `<div class="qa-q">❓ ${esc(q)}</div><div class="explain">${renderRich(reply)}</div><div class="explain-actions"><button class="explain-play qaListen">🔊 Yanıtı dinle</button></div>`;
     const btn = qa.querySelector(".qaListen");
-    if(btn) btn.onclick = () => speakMixed(reply);
+    if(btn) btn.onclick = () => speakTurkish(reply);
   }catch(e){
     qa.querySelector(".loading").outerHTML = `<div class="note bad">Yanıt alınamadı.</div>`;
     handleError(e, true);
@@ -597,6 +474,8 @@ render();
 
 })();
 </script>
-  <script src="./avatar-blink-sync.js?v=1"></script>
+<script src="./ai-teacher-prompt-tts.js?v=1"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=1"></script>
+<script src="./avatar-blink-sync.js?v=1"></script>
 </body>
 </html>

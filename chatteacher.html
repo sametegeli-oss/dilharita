@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#071226">
 <title>AI Öğretmen Seç</title>
-<link rel="stylesheet" href="./chat-style.css?v=17">
+<link rel="stylesheet" href="./chat-style.css?v=16">
 </head>
 <body>
 <div class="menu">
@@ -23,7 +23,8 @@ document.querySelectorAll('.teacherPick').forEach(a=>{
   a.addEventListener('click',()=>localStorage.setItem('selectedTeacherAvatar', a.dataset.teacher));
 });
 </script>
-  <script src="./avatar-blink-sync.js?v=1"></script>
-  <script src="./ai-teacher-prompt-tts.js?v=1"></script>
+<script src="./ai-teacher-prompt-tts.js?v=1"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=1"></script>
+<script src="./avatar-blink-sync.js?v=1"></script>
 </body>
 </html>

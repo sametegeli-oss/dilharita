@@ -5,13 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#071226">
 <title>AI Öğretmen · Fotoğraflı Sohbet</title>
-<link rel="stylesheet" href="./chat-style.css?v=17">
+<link rel="stylesheet" href="./chat-style.css?v=16">
 </head>
 <body>
 <div id="chatApp"></div>
+<script>localStorage.setItem("selectedTeacherAvatar","teacher1");</script>
 <script>window.CHAT_SCENARIO = {"title": "AI Öğretmen", "subtitle": "İngilizce öğretmeni · Opsiyon 1", "level": "A2", "role": "a friendly male English teacher", "voiceGender": "male", "opener": "Hello, I am your English teacher. What would you like to practice today?", "systemExtra": "You are role-playing as a patient male English teacher. Help the learner practice English speaking. Ask short questions, correct gently, and keep the conversation encouraging.", "avatarDir": "assets/avatars_v3/teacher1/", "frames": {"idle": "idle.webp", "blink": "blink.webp", "listen": "listen.webp", "mouthA": "mouth-a.webp", "mouthE": "mouth-e.webp", "mouthI": "mouth-i.webp", "mouthO": "mouth-o.webp", "mouthU": "mouth-u.webp", "mouthMBP": "mouth-mbp.webp", "mouthFV": "mouth-fv.webp", "mouthL": "mouth-l.webp", "mouthTH": "mouth-th.webp", "mouthSmall": "mouth-i.webp", "mouthMedium": "mouth-e.webp", "mouthOpen": "mouth-a.webp"}, "backHref": "chatteacher.html", "noKeyReply": "I can continue when you add a Groq API key. What English topic would you like to practice today?"};</script>
-<script src="./chat-core.js?v=17"></script>
-  <script src="./avatar-blink-sync.js?v=1"></script>
-  <script src="./ai-teacher-prompt-tts.js?v=1"></script>
+<script src="./chat-core.js?v=16"></script>
+<script src="./ai-teacher-prompt-tts.js?v=1"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=1"></script>
+<script src="./avatar-blink-sync.js?v=1"></script>
 </body>
 </html>
