@@ -1,16 +1,19 @@
-FOTOĞRAFLI CÜMLE ÖĞREN EKRANI BAĞLANTISI
+INDEX-APP ÖĞRETMEN + ZAYIF ANALİZ DÜĞMELERİ
 
-Bu paket, ana menüye eksik olan eski/fotoğraflı öğrenme ekranını geri bağlar.
+Bu paket index-app.html içindeki fotoğraflı/cümle öğrenme ekranına eksik düğmeleri ekler.
 
-Eklenen kart:
-📸 Fotoğraflı Cümle Öğren
-
-Bağlantı:
-./index-app.html
+Eklenenler:
+- 🎓 Öğretmene Sor
+- 📉 Zayıf Analiz
+- 📌 Hata Defteri
+- 🧠 Akıllı Tekrar
 
 Yüklenecek:
-- index.html
-- index-app.html varsa onu da yükle
+- index-app.html
+- index-app-ogretmen-analiz-buttons.js
+- hata-defteri.html
+- akilli-tekrar.html
+- learning-error-system.js
 
 Not:
-Bahsettiğin ekran index-app.html içindedir. Statik index.html sadece güvenli menü olduğu için bu bağlantı kopmuştu.
+Bu işlem assets/app.js dosyasına dokunmaz. Mevcut React uygulamanın üstüne güvenli ekleme yapar.
