@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Öğrenme Yolu · Dil Harita</title>
+<script src="./study-tracker.js"></script>
+<style>
+:root{--bg:#fff;--text:#030712;--muted:#475569;--line:#d7e2ee;--green:#12b76a;--blue:#1673f9;--soft:#ecfdf5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Nunito,system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:30px}
+.top{display:flex;align-items:center;gap:14px}.back{width:50px;height:50px;border-radius:15px;border:1px solid var(--line);background:#fff;text-decoration:none;color:#111827;font-size:28px;display:flex;align-items:center;justify-content:center}
+h1{font-size:44px;margin:0 0 18px;font-weight:950;letter-spacing:-1px}
+.select{border:2px solid var(--line);border-radius:20px;padding:16px 20px;font-size:18px;font-weight:900;margin:20px 0 34px;color:#1f2937}
+.section{border:2px solid var(--green);background:linear-gradient(180deg,#f4fffa,#fff);border-radius:28px;padding:26px 32px;margin-bottom:34px}
+.section-head{display:flex;align-items:center;gap:12px;margin-bottom:24px}.section h2{font-size:32px;margin:0}.check{width:28px;height:28px;border-radius:50%;background:var(--green);color:white;display:inline-flex;align-items:center;justify-content:center;font-weight:950}
+.bar{height:14px;background:#dff5ea;border-radius:999px;position:relative;margin-bottom:32px}.bar span{display:block;height:100%;background:var(--green);border-radius:999px}.bar b{position:absolute;right:0;top:-8px;background:var(--green);color:#fff;border-radius:999px;padding:5px 9px;font-size:12px}
+.path{position:relative;margin-left:52px}.path:before{content:"";position:absolute;left:42px;top:70px;bottom:70px;width:8px;background:var(--green);border-radius:99px}
+.node{position:relative;display:grid;grid-template-columns:110px 1fr auto;gap:24px;align-items:center;margin:0 0 38px}
+.img{width:92px;height:92px;border-radius:50%;border:7px solid var(--green);background:#e2e8f0;overflow:hidden;position:relative;z-index:2}.img img{width:100%;height:100%;object-fit:cover}.done-badge{position:absolute;left:60px;bottom:-6px;width:38px;height:38px;background:var(--green);border:4px solid #fff;border-radius:50%;color:white;display:flex;align-items:center;justify-content:center;font-weight:950;z-index:3}
+.node h3{font-size:22px;margin:0 0 6px}.node p{font-size:17px;color:#1f2937;margin:0;line-height:1.45}.actions{display:flex;gap:8px}.btn{border:1px solid var(--line);border-radius:999px;padding:10px 14px;background:#fff;color:#111827;text-decoration:none;font-weight:900;cursor:pointer}.btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}.btn.done{background:var(--green);color:#fff;border-color:var(--green)}
+@media(max-width:760px){.wrap{padding:18px}h1{font-size:32px}.section{padding:18px}.path{margin-left:0}.path:before{left:43px}.node{grid-template-columns:96px 1fr;gap:16px}.actions{grid-column:2}.section h2{font-size:25px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a class="back" href="./index.html">←</a><div><h1>Tam İngilizce Kursu</h1></div></div>
+  <div class="select">☰ Orta Seviye B1 · <span id="totalPct">0%</span></div>
+  <div id="content"></div>
+</div>
+<script>
+const sections=[
+ {id:"b1-22",title:"Bölüm 22: İlişkiler",items:[
+  {id:"childhood",title:"Çocukluğu hatırlama",desc:"Geçmişteki alışkanlıklar hakkında konuşmanın yollarını öğren",img:"https://images.unsplash.com/photo-1519682337058-a94d519337bc?w=300&auto=format&fit=crop"},
+  {id:"family",title:"Aile hakkında konuşma",desc:"Aile üyeleri hakkında konuşmak için ihtiyacın olan kelimeleri öğren",img:"https://images.unsplash.com/photo-1511895426328-dc8714191300?w=300&auto=format&fit=crop"},
+  {id:"relationships",title:"İlişkiler",desc:"İlişkiler ve sosyal hayat hakkında daha doğal cümleler kur",img:"https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=300&auto=format&fit=crop"}
+ ]},
+ {id:"b1-23",title:"Bölüm 23: Günlük Yaşam",items:[
+  {id:"apartment",title:"Ev ve apartman",desc:"Yaşadığın yer hakkında Present Perfect ile konuş",img:"https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=300&auto=format&fit=crop"},
+  {id:"work",title:"İş ve sorumluluk",desc:"İş hayatı ve sorumluluklar hakkında cümleler kur",img:"https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=300&auto=format&fit=crop"}
+ ]}
+];
+function render(){
+ const content=document.getElementById("content");
+ let all=0, done=0;
+ content.innerHTML=sections.map(sec=>{
+   const itemHtml=sec.items.map(it=>{
+     all++; const ok=StudyTracker.isDone(it.id); if(ok)done++;
+     return `<div class="node">
+      <div class="img"><img src="${it.img}"><span class="done-badge">${ok?'✓':'○'}</span></div>
+      <div><h3>${it.title}</h3><p>${it.desc}</p></div>
+      <div class="actions"><a class="btn primary" href="./index-app.html">Çalış</a><button class="btn ${ok?'done':''}" data-id="${it.id}">${ok?'Tamamlandı':'Tamamla'}</button></div>
+     </div>`;
+   }).join("");
+   return `<section class="section"><div class="section-head"><h2>${sec.title}</h2><span class="check">✓</span></div><div class="bar"><span style="width:0%"></span><b>0%</b></div><div class="path">${itemHtml}</div></section>`;
+ }).join("");
+ document.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>{StudyTracker.markLessonDone(b.dataset.id);render();});
+ updateBars();
+}
+function updateBars(){
+ let all=0,done=0;
+ document.querySelectorAll(".section").forEach((sec,idx)=>{
+  const ids=sections[idx].items.map(x=>x.id);
+  const d=ids.filter(id=>StudyTracker.isDone(id)).length;
+  done+=d; all+=ids.length;
+  const pct=Math.round(d/ids.length*100);
+  sec.querySelector(".bar span").style.width=pct+"%";
+  sec.querySelector(".bar b").textContent=pct+"%";
+ });
+ document.getElementById("totalPct").textContent=(all?Math.round(done/all*100):0)+"%";
+}
+render();
+</script>
+</body>
+</html>
