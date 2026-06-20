@@ -107,6 +107,7 @@ function wdSplitForSpeech(text){
   return chunks.length?chunks:[{text:raw, lang:isTurkishChunk(raw)?"tr-TR":"en-US"}];
 }
 function speakMixed(text){
+  if(window.DH_speakMixed && window.DH_speakMixed!==speakMixed){ return window.DH_speakMixed(text); }
   try{
     speechSynthesis.cancel();
     const chunks=wdSplitForSpeech(text);

@@ -52,6 +52,7 @@ function splitForSpeech(text){
   return chunks.length?chunks:[{text:raw,lang:isTurkishChunk(raw)?"tr-TR":"en-US"}];
 }
 function speakMixed(text){
+  if(window.DH_LongTTSAvatarSync && window.DH_LongTTSAvatarSync.speak){ return window.DH_LongTTSAvatarSync.speak(text); }
   try{
     speechSynthesis.cancel();
     const chunks=splitForSpeech(text);
