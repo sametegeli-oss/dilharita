@@ -1,31 +1,25 @@
-GÜNLÜK TAKİP + ÖĞRENME YOLU
+INDEX-APP FOTOĞRAF GELME FIX
 
-Yeni dosyalar:
-- study-tracker.js
-- gunluk-takip.html
-- ogrenme-yolu.html
+Sorun:
+Fotoğraflı Öğren ekranında cümle kartında fotoğraf görünmüyordu.
 
-Ana menüye eklenenler:
-- 🔥 Günlük Takip
-- 🛤️ Öğrenme Yolu
-
-Günlük Takip:
-Busuu tarzı günlük seri / çizgi takibi yapar.
-Bugünü tamamla ve demo takip oluştur düğmeleri var.
-
-Öğrenme Yolu:
-Busuu tarzı bölüm kartı, dikey ilerleme yolu, fotoğraflı adımlar ve tamamlama işaretleri içerir.
+Düzeltme:
+- index-app.html içine index-app-photo-addon.js eklendi.
+- Aktif cümle / Türkçe anlam / modül başlığı okunur.
+- Konuya göre otomatik fotoğraf kartı cümle kartının üstüne eklenir.
+- assets/app.js dosyasına dokunulmaz.
 
 Yüklenecek:
+- index-app.html
+- index-app-photo-addon.js
+- index-app-ogretmen-analiz-buttons.js
+
+Varsa birlikte yüklenebilir:
 - index.html
-- daily-dashboard.js
+- hata-defteri.html
+- akilli-tekrar.html
 - study-tracker.js
 - gunluk-takip.html
 - ogrenme-yolu.html
-- index-app.html
-- hata-defteri.html
-- akilli-tekrar.html
-- learning-error-system.js
 
-Not:
-Bu ilk sürüm örnek B1 yolu içerir. Sonraki adımda mevcut modül listesini otomatik okuyup A1/A2/B1 yolunu gerçek veriye bağlarız.
+Sonra Ctrl+F5 yap.
