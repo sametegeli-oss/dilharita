@@ -145,41 +145,239 @@ That's all for today. Keep practicing every day.`;
 }
 
 /* 2 — AI TEST */
+function inferStructure(d){
+  const s=lower(d.sentence);
+  const explicit=clean(d.grammar||"");
+  let name=explicit || "Aktif cümle kalıbı";
+  let formula="Cümledeki ana kelime sırası";
+  let focus="Aynı yapıyı farklı kelimelerle kurabilme";
+  let rule="Cümlenin iskeletini koru, kelimeleri değiştirerek aynı yapıda yeni cümle kur.";
+  if(/\b(have|has)\b\s+\w+/.test(s)){
+    name="Present Perfect"; formula="have/has + V3"; focus="Geçmişte başlayıp şimdiyle bağlantılı durum"; rule="I/you/we/they için have, he/she/it için has kullanılır; fiil V3 olur.";
+  } else if(/\b(am|is|are)\b\s+\w+ing\b/.test(s)){
+    name="Present Continuous"; formula="am/is/are + V-ing"; focus="Şu anda devam eden eylem"; rule="Özneye göre am/is/are seçilir; fiile -ing eklenir.";
+  } else if(/\b(was|were)\b\s+\w+ing\b/.test(s)){
+    name="Past Continuous"; formula="was/were + V-ing"; focus="Geçmişte devam eden eylem"; rule="I/he/she/it için was, you/we/they için were kullanılır.";
+  } else if(/\bwill\b/.test(s)){
+    name="Future Simple"; formula="will + V1"; focus="Gelecek karar/tahmin"; rule="Will'den sonra fiilin yalın hâli gelir.";
+  } else if(/\b(can|could|should|must|may|might)\b/.test(s)){
+    name="Modal Verb"; formula="modal + V1"; focus="Yetenek, tavsiye, zorunluluk veya ihtimal"; rule="Modal fiilden sonra fiilin yalın hâli gelir.";
+  } else if(/\b(did|didn't|was|were|went|came|saw|took|made|had|\w+ed)\b/.test(s)){
+    name="Past Simple"; formula="V2 / did + V1"; focus="Geçmişte bitmiş eylem"; rule="Olumlu cümlede V2; soru/olumsuzda did + V1 kullanılır.";
+  } else if(/\b(do|does|don't|doesn't|always|usually|often|every)\b/.test(s)){
+    name="Present Simple"; formula="V1 / he-she-it + V-s"; focus="Rutinler ve genel doğrular"; rule="He/she/it ile olumlu cümlede fiile çoğu zaman -s gelir.";
+  }
+  return {name,formula,focus,rule};
+}
+function makeStructureQuestions(d, st){
+  const words=tokens(d.sentence);
+  const key=words.find(w=>/^(have|has|am|is|are|was|were|will|can|could|should|must|do|does|did)$/i.test(w)) || words[Math.max(0,Math.floor(words.length/2))] || d.word;
+  const safeKey=key.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  const blank=d.sentence.replace(new RegExp("\\b"+safeKey+"\\b","i"),"_____");
+  const auxList=["have","has","am","is","are","was","were","will","can","did","does","should","must"];
+  const distractors=pick(auxList.filter(x=>lower(x)!==lower(key)),3);
+  const shuffled=pick(words,words.length).join(" / ");
+  let broken=d.sentence;
+  if(st.name==="Present Perfect") broken=d.sentence.replace(/\b(have|has)\s+(\w+)/i,(m,a,b)=>a+" "+b.replace(/ed$/,""));
+  else if(st.name==="Present Continuous") broken=d.sentence.replace(/\b(am|is|are)\s+(\w+)ing\b/i,"$1 $2");
+  else if(st.name==="Future Simple") broken=d.sentence.replace(/\bwill\s+(\w+)\b/i,"will to $1");
+  else if(st.name==="Modal Verb") broken=d.sentence.replace(/\b(can|could|should|must|may|might)\s+(\w+)\b/i,"$1 to $2");
+  else if(st.name==="Present Simple") broken=d.sentence.replace(/\b(she|he|it)\s+(\w+)s\b/i,"$1 $2");
+  if(broken===d.sentence) broken=d.sentence.replace(/\b(\w+)\b/,"$1 ___");
+  return [
+    {type:"choice", title:"1) Boşluk doldur", prompt:blank, answer:key, choices:pick([key,...distractors],4), explain:`Anahtar kelime: ${key}. Kalıp: ${st.formula}`},
+    {type:"order", title:"2) Kelime sıralama", prompt:shuffled, answer:d.sentence, explain:`Aynı yapıda kelime sırası korunur: ${st.formula}`},
+    {type:"translate", title:"3) Türkçeden İngilizceye", prompt:d.sentenceTr || "Bu cümlenin Türkçesinden aynı İngilizce yapıyı kur.", answer:d.sentence, explain:"Amaç birebir ezber değil, aynı gramer iskeletini kurmaktır."},
+    {type:"correct", title:"4) Hatalı cümleyi düzelt", prompt:broken, answer:d.sentence, explain:`Düzeltirken yapıyı koru: ${st.formula}`},
+    {type:"produce", title:"5) Yeni cümle üret", prompt:"Aynı yapıda yeni bir İngilizce cümle yaz.", answer:"Aynı yapı kullanılmışsa doğru kabul edilir.", explain:`Kendi cümlende şu kalıbı kullan: ${st.formula}`}
+  ];
+}
+function similarityScore(a,b){
+  const A=lower(a).replace(/[^a-z0-9'\s]/g," ").split(/\s+/).filter(Boolean);
+  const B=lower(b).replace(/[^a-z0-9'\s]/g," ").split(/\s+/).filter(Boolean);
+  if(!A.length||!B.length)return 0;
+  let hit=0; const used=new Set();
+  A.forEach(w=>{const i=B.findIndex((x,idx)=>!used.has(idx)&&x===w); if(i>=0){used.add(i);hit++;}});
+  return Math.round((hit/Math.max(A.length,B.length))*100);
+}
+function structureHintScore(text, st){
+  const s=lower(text);
+  if(!s) return 0;
+  if(st.name==="Present Perfect") return /\b(have|has)\b\s+\w+/.test(s)?75:25;
+  if(st.name==="Present Continuous") return /\b(am|is|are)\b\s+\w+ing\b/.test(s)?80:25;
+  if(st.name==="Past Continuous") return /\b(was|were)\b\s+\w+ing\b/.test(s)?80:25;
+  if(st.name==="Future Simple") return /\bwill\b\s+\w+/.test(s)?80:25;
+  if(st.name==="Modal Verb") return /\b(can|could|should|must|may|might)\b\s+\w+/.test(s)?80:25;
+  if(st.name==="Past Simple") return /\b(did|was|were|went|came|saw|took|made|had|\w+ed)\b/.test(s)?65:30;
+  return text.split(/\s+/).length>=3?60:20;
+}
 function openAITest(){
   const d=currentData();
-  const words=tokens(d.sentence);
-  const main=words[Math.max(0,Math.floor(words.length/2))] || d.word;
-  const wrong=pick(["because","although","since","during","while","before","after","never","always","usually","quickly","carefully","important","different","possible"].filter(x=>x!==main.toLowerCase()),3);
-  const choices=pick([main,...wrong],4);
-  const blank=d.sentence.replace(new RegExp("\\b"+main.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i"),"_____");
+  const st=inferStructure(d);
+  const qs=makeStructureQuestions(d,st);
+  let current=0, correct=0, answers=[], selected=null;
   const body=sentenceBox(d)+`
     <div class="wd-card">
-      <div class="wd-title">🎯 Test Oluştur</div>
-      <div class="wd-sub">Orijinal AI Test mantığındaki gibi aktif cümleden soru üretildi.</div>
-      <div class="wd-item" style="margin-top:12px"><b>SORU:</b><br>${esc(blank)}</div>
-      <div class="wd-choices">${choices.map(c=>`<button class="wd-choice" data-a="${esc(c)}">${esc(c)}</button>`).join("")}</div>
-      <div id="wdQuizResult" class="wd-note">Doğru seçeneği işaretle.</div>
+      <div class="wd-title">📝 Yapı Odaklı AI Test</div>
+      <div class="wd-sub">Amaç tek cümleyi ezberletmek değil; aynı cümle yapısını 5 farklı alıştırmayla öğretmek.</div>
+      <div class="wd-item" style="margin-top:12px">
+        <b>Yapı:</b> ${esc(st.name)}<br>
+        <b>Formül:</b> ${esc(st.formula)}<br>
+        <b>Odak:</b> ${esc(st.focus)}<br>
+        <b>Kural:</b> ${esc(st.rule)}
+      </div>
     </div>
     <div class="wd-card">
-      <div class="wd-title">🔀 Kelime Sıralama</div>
-      <div class="wd-item">${esc(pick(words,words.length).join(" / "))}</div>
-      <textarea id="wdOrderAnswer" class="wd-textarea" placeholder="Cümleyi doğru sırayla yaz..."></textarea>
-      <div class="wd-actions"><button class="wd-btn" id="wdOrderCheck">Kontrol</button><button class="wd-btn green" id="wdShowAnswer">Cevabı göster</button></div>
-      <div id="wdOrderResult" class="wd-note"></div>
-    </div>`;
-  const ov=panel("📝 AI Test",body);
-  ov.querySelectorAll(".wd-choice").forEach(btn=>{
-    btn.onclick=()=>{
-      const ok=lower(btn.dataset.a)===lower(main);
-      btn.classList.add(ok?"ok":"bad");
-      ov.querySelector("#wdQuizResult").innerHTML=ok?"✅ Doğru.":`❌ Doğru cevap: <b>${esc(main)}</b>`;
-    };
-  });
-  ov.querySelector("#wdOrderCheck").onclick=()=>{
-    const v=lower(ov.querySelector("#wdOrderAnswer").value);
-    ov.querySelector("#wdOrderResult").innerHTML = v===lower(d.sentence) ? "✅ Tam doğru." : `Kontrol et. Doğru cümle: <b>${esc(d.sentence)}</b>`;
+      <div id="wdQuizStep"></div>
+      <div id="wdQuizFeedback" class="wd-note"></div>
+      <div class="wd-actions">
+        <button class="wd-btn green" id="wdQuizCheck">Kontrol</button>
+        <button class="wd-btn" id="wdQuizNext" style="display:none">Sonraki →</button>
+      </div>
+    </div>
+    <div class="wd-card" id="wdQuizSummary" style="display:none"></div>`;
+  const ov=panel("📝 AI Test — 5 Soru",body);
+  const step=ov.querySelector("#wdQuizStep"), fb=ov.querySelector("#wdQuizFeedback"), summary=ov.querySelector("#wdQuizSummary");
+  function render(){
+    selected=null; fb.innerHTML="";
+    const q=qs[current];
+    ov.querySelector("#wdQuizNext").style.display="none";
+    ov.querySelector("#wdQuizCheck").style.display="";
+    let html=`<div class="wd-title">${esc(q.title)}</div><div class="wd-item">${esc(q.prompt)}</div>`;
+    if(q.type==="choice"){
+      html+=`<div class="wd-choices">${q.choices.map(c=>`<button class="wd-choice" data-choice="${esc(c)}">${esc(c)}</button>`).join("")}</div>`;
+    } else {
+      html+=`<textarea id="wdQuizTextAnswer" class="wd-textarea" placeholder="Cevabını buraya yaz..."></textarea>`;
+      if(q.type!=="produce") html+=`<button class="wd-btn gray" id="wdQuizShowAnswer" style="margin-top:8px">Cevabı Göster</button>`;
+    }
+    step.innerHTML=html;
+    step.querySelectorAll("[data-choice]").forEach(b=>b.onclick=()=>{
+      step.querySelectorAll(".wd-choice").forEach(x=>x.classList.remove("ok","bad"));
+      selected=b.dataset.choice; b.classList.add("ok");
+    });
+    const show=step.querySelector("#wdQuizShowAnswer");
+    if(show) show.onclick=()=>{ const ta=step.querySelector("#wdQuizTextAnswer"); if(ta) ta.value=q.answer; };
+  }
+  async function check(){
+    const q=qs[current];
+    const val=q.type==="choice" ? selected : clean(step.querySelector("#wdQuizTextAnswer")?.value||"");
+    if(!val){ fb.innerHTML="Önce cevap ver."; return; }
+    let ok=false, pct=0;
+    if(q.type==="choice"){
+      ok=lower(val)===lower(q.answer); pct=ok?100:0;
+      step.querySelectorAll(".wd-choice").forEach(b=>{
+        if(lower(b.dataset.choice)===lower(q.answer)) b.classList.add("ok");
+        else if(lower(b.dataset.choice)===lower(val)) b.classList.add("bad");
+      });
+    } else if(q.type==="produce"){
+      pct=structureHintScore(val, st); ok=pct>=60;
+    } else {
+      pct=similarityScore(q.answer,val); ok=pct>=70;
+    }
+    let aiText=null;
+    if((q.type==="produce" || q.type==="correct" || q.type==="translate") && typeof callAI==="function"){
+      aiText=await callAI("Sen Türkçe açıklama yapan kısa bir İngilizce öğretmenisin.",
+        `Hedef yapı: ${st.name} / ${st.formula}\nHedef cümle: ${d.sentence}\nSoru: ${q.title}\nBeklenen cevap: ${q.answer}\nÖğrenci cevabı: ${val}\nCevabı kısa değerlendir. Doğruysa DOĞRU, yanlışsa YANLIŞ kelimesiyle başla.`,
+        "quiz");
+      if(aiText && /DOĞRU/i.test(aiText)) ok=true;
+    }
+    fb.innerHTML = (ok?"✅":"❌")+" "+(aiText?esc(aiText).replace(/\n/g,"<br>"):(esc(q.explain)+(q.type==="produce"?`<br><b>Yapı puanı:</b> ${pct}%`:`<br><b>Beklenen:</b> ${esc(q.answer)}`)));
+    if(ok) correct++;
+    answers.push({q:q.title, answer:val, ok, pct});
+    ov.querySelector("#wdQuizCheck").style.display="none";
+    ov.querySelector("#wdQuizNext").style.display="";
+  }
+  function next(){
+    current++;
+    if(current>=qs.length){
+      step.parentElement.style.display="none";
+      summary.style.display="";
+      summary.innerHTML=`
+        <div class="wd-title">Sonuç: ${correct}/5</div>
+        <div class="wd-item"><b>Öğrenilen yapı:</b> ${esc(st.name)}<br><b>Formül:</b> ${esc(st.formula)}<br><b>Özet:</b> ${esc(st.rule)}</div>
+        <div class="wd-list" style="margin-top:12px">
+          ${answers.map(a=>`<div class="wd-item">${a.ok?"✅":"❌"} <b>${esc(a.q)}</b><br><span class="wd-small">${esc(a.answer)}</span></div>`).join("")}
+        </div>
+        <div class="wd-actions"><button class="wd-btn green" id="wdOpenSimilarAfterQuiz">Benzer Cümlelerle Pekiştir</button></div>`;
+      summary.querySelector("#wdOpenSimilarAfterQuiz").onclick=()=>openSimilarSentences();
+      return;
+    }
+    render();
+  }
+  ov.querySelector("#wdQuizCheck").onclick=check;
+  ov.querySelector("#wdQuizNext").onclick=next;
+  render();
+}
+
+/* 2B — BENZER CÜMLELER */
+async function openSimilarSentences(){
+  const d=currentData();
+  const st=inferStructure(d);
+  const body=sentenceBox(d)+`
+    <div class="wd-card">
+      <div class="wd-title">✨ Benzer Cümleler Üret</div>
+      <div class="wd-sub">Aynı yapıyı farklı kelimelerle öğreterek kalıbı derinleştirir.</div>
+      <div class="wd-item" style="margin-top:12px">
+        <b>Yapı:</b> ${esc(st.name)}<br>
+        <b>Formül:</b> ${esc(st.formula)}<br>
+        <b>Kural:</b> ${esc(st.rule)}
+      </div>
+      <div class="wd-actions">
+        <button class="wd-btn green" id="wdGenerateSimilar">5 Benzer Cümle Üret</button>
+        <button class="wd-btn" id="wdSimilarListenAll">🔊 Hepsini Dinle</button>
+      </div>
+    </div>
+    <div class="wd-card"><div class="wd-title">Benzer Cümleler</div><div id="wdSimilarOut" class="wd-list">Henüz üretilmedi.</div></div>`;
+  const ov=panel("✨ Benzer Cümleler",body);
+  const out=ov.querySelector("#wdSimilarOut");
+
+  function offlineSimilar(){
+    const rows=[];
+    for(let i=0;i<5;i++){
+      let en="";
+      if(st.name==="Present Perfect") en=[`I have worked here for two years.`,`She has studied English since Monday.`,`They have finished the project already.`,`He has visited that city twice.`,`We have practiced this structure many times.`][i];
+      else if(st.name==="Present Continuous") en=[`I am learning English now.`,`She is reading a useful sentence.`,`They are waiting outside.`,`He is working in the office.`,`We are practicing together.`][i];
+      else if(st.name==="Future Simple") en=[`I will call you tomorrow.`,`She will finish the work soon.`,`They will visit us next week.`,`We will start the lesson today.`,`He will help his friend later.`][i];
+      else if(st.name==="Modal Verb") en=[`You should practice every day.`,`I can speak more clearly.`,`They must finish this task.`,`She could help her friend.`,`We might need more time.`][i];
+      else if(st.name==="Past Continuous") en=[`I was studying at eight.`,`They were watching a movie.`,`She was cooking dinner.`,`We were working all morning.`,`He was waiting outside.`][i];
+      else if(st.name==="Past Simple") en=[`I visited my friend yesterday.`,`She finished the lesson last night.`,`They worked hard last week.`,`We started early.`,`He called his teacher.`][i];
+      else if(st.name==="Present Simple") en=[`I practice English every day.`,`She practices English at home.`,`They study new words.`,`We use this sentence often.`,`He needs more time.`][i];
+      else en=[`I use this sentence every day.`,`She learns the same structure.`,`They practice with new words.`,`We make similar sentences.`,`He understands the pattern.`][i];
+      rows.push({en,tr:"Bu cümle aynı yapıyı farklı kelimelerle gösterir.",note:`Kalıp: ${st.formula}`});
+    }
+    return rows;
+  }
+  function renderRows(rows){
+    out.innerHTML=rows.map((r,i)=>`
+      <div class="wd-item">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <div style="font-weight:950;color:#60a5fa">${i+1}</div>
+          <div style="flex:1">
+            <div style="font-size:18px;font-weight:950;color:#fff">${esc(r.en)}</div>
+            <div class="wd-small" style="margin-top:4px">${esc(r.tr||"")}</div>
+            <div class="wd-note">${esc(r.note||("Aynı yapı: "+st.formula))}</div>
+          </div>
+          <button class="wd-btn gray" data-say="${esc(r.en)}">🔊</button>
+        </div>
+      </div>`).join("");
+    out.querySelectorAll("[data-say]").forEach(b=>b.onclick=()=>speak(b.dataset.say,"en-US",.88));
+  }
+  ov.querySelector("#wdGenerateSimilar").onclick=async()=>{
+    out.innerHTML="⏳ Benzer cümleler hazırlanıyor...";
+    const sys="Sen Türkçe açıklama yapan profesyonel bir İngilizce öğretmenisin. JSON dışında cevap verme.";
+    const user=`Aktif cümle: ${d.sentence}\nTürkçe: ${d.sentenceTr}\nYapı: ${st.name}\nFormül: ${st.formula}\nAynı gramer yapısını öğreten 5 benzer İngilizce cümle üret. JSON formatı: [{"en":"...","tr":"...","note":"..."}]`;
+    let rows=null;
+    const ai=await callAI(sys,user,"similar");
+    if(ai){
+      try{ const m=ai.match(/\[[\s\S]*\]/); rows=JSON.parse(m?m[0]:ai); }catch(e){}
+    }
+    renderRows(Array.isArray(rows)&&rows.length?rows.slice(0,5):offlineSimilar());
   };
-  ov.querySelector("#wdShowAnswer").onclick=()=>{ ov.querySelector("#wdOrderAnswer").value=d.sentence; };
+  ov.querySelector("#wdSimilarListenAll").onclick=()=>{
+    const text=[...out.querySelectorAll("[data-say]")].map(b=>b.dataset.say).join(". ");
+    if(text) speak(text,"en-US",.84);
+  };
+  ov.querySelector("#wdGenerateSimilar").click();
 }
 
 /* 3 — HİKAYE */
@@ -360,6 +558,109 @@ No text on image. Natural lighting.`;
   ov.querySelector("#wdSearchUnsplash").onclick=()=>{window.open("https://unsplash.com/s/photos/"+encodeURIComponent(tokens(d.sentence).slice(0,5).join(" ")),"_blank");};
 }
 
+
+/* 1 — SHADOW */
+function openShadow(){
+  const d=currentData();
+  const body=sentenceBox(d)+`
+    <div class="wd-card">
+      <div class="wd-title">👥 Shadow</div>
+      <div class="wd-sub">Dinle → yavaş dinle → aynı anda tekrar et → mikrofona oku. Sonuçta sadece puan ve söylediğin cümle gösterilir.</div>
+      <div class="wd-actions">
+        <button class="wd-btn green" id="wdShadowListen">🔊 Dinle</button>
+        <button class="wd-btn orange" id="wdShadowSlow">🐌 Yavaş Dinle</button>
+        <button class="wd-btn purple" id="wdShadowMic">🎤 Oku</button>
+      </div>
+    </div>
+    <div class="wd-card">
+      <div class="wd-title">Sonuç</div>
+      <div id="wdShadowStatus" class="wd-item">Hazır. Önce dinle, sonra oku.</div>
+      <div class="wd-actions">
+        <button class="wd-btn" id="wdShadowReplay" style="display:none">▶ Kendi Kaydını Dinle</button>
+        <button class="wd-btn gray" id="wdShadowReset">🔄 Tekrar</button>
+      </div>
+    </div>`;
+  const ov=panel("👥 Shadow",body);
+  let recBlob=null, recUrl=null, mediaRecorder=null, chunks=[];
+  const status=ov.querySelector("#wdShadowStatus");
+  const replay=ov.querySelector("#wdShadowReplay");
+
+  function normalizeText(s){
+    return String(s||"").toLowerCase().replace(/[’']/g,"'").replace(/[^a-z0-9'\s]/g," ").replace(/\s+/g," ").trim();
+  }
+  function scoreSpoken(target, spoken){
+    const t=normalizeText(target).split(/\s+/).filter(Boolean);
+    const s=normalizeText(spoken).split(/\s+/).filter(Boolean);
+    if(!t.length || !s.length) return 0;
+    const used=new Set(); let hit=0;
+    t.forEach(w=>{
+      const i=s.findIndex((x,idx)=>!used.has(idx) && x===w);
+      if(i>=0){used.add(i);hit++;}
+    });
+    return Math.round((hit/Math.max(t.length,s.length))*100);
+  }
+  function colorWords(target, spoken){
+    const t=normalizeText(target).split(/\s+/).filter(Boolean);
+    const s=normalizeText(spoken).split(/\s+/).filter(Boolean);
+    return s.map(w=>{
+      const ok=t.includes(w);
+      return `<span style="color:${ok?'#4ade80':'#f87171'};font-weight:950">${esc(w)}</span>`;
+    }).join(" ");
+  }
+  async function startRecordingBlob(){
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      chunks=[];
+      mediaRecorder=new MediaRecorder(stream);
+      mediaRecorder.ondataavailable=e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+      mediaRecorder.onstop=()=>{
+        try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+        recBlob=new Blob(chunks,{type:mediaRecorder.mimeType||"audio/webm"});
+        if(recUrl) URL.revokeObjectURL(recUrl);
+        recUrl=URL.createObjectURL(recBlob);
+        replay.style.display="";
+      };
+      mediaRecorder.start();
+    }catch(e){}
+  }
+  function stopRecordingBlob(){
+    try{ if(mediaRecorder && mediaRecorder.state!=="inactive") mediaRecorder.stop(); }catch(e){}
+  }
+  ov.querySelector("#wdShadowListen").onclick=()=>speak(d.sentence,"en-US",.9);
+  ov.querySelector("#wdShadowSlow").onclick=()=>speak(d.sentence,"en-US",.62);
+  ov.querySelector("#wdShadowMic").onclick=()=>{
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){ alert("Bu tarayıcıda konuşma tanıma yok. Chrome/Edge kullan."); return; }
+    status.innerHTML="🎤 Dinliyorum...";
+    startRecordingBlob();
+    const r=new SR();
+    r.lang="en-US"; r.interimResults=false; r.maxAlternatives=1; r.continuous=false;
+    r.onresult=e=>{
+      const spoken=e.results[0][0].transcript;
+      const pct=scoreSpoken(d.sentence, spoken);
+      const clr=pct>=85?"#4ade80":pct>=65?"#60a5fa":pct>=45?"#f59e0b":"#f87171";
+      status.innerHTML=`
+        <div style="font-size:42px;font-weight:950;color:${clr};text-align:center;margin-bottom:10px">${pct}%</div>
+        <div style="font-size:20px;line-height:1.8;text-align:center">${colorWords(d.sentence, spoken)}</div>
+      `;
+      stopRecordingBlob();
+    };
+    r.onerror=e=>{
+      status.innerHTML="❌ Ses algılanamadı. Tekrar dene.";
+      stopRecordingBlob();
+    };
+    r.onend=()=>stopRecordingBlob();
+    try{r.start();}catch(e){status.innerHTML="❌ Mikrofon başlatılamadı.";stopRecordingBlob();}
+  };
+  replay.onclick=()=>{ if(recUrl){ const a=new Audio(recUrl); a.play(); } };
+  ov.querySelector("#wdShadowReset").onclick=()=>{
+    status.innerHTML="Hazır. Önce dinle, sonra oku.";
+    replay.style.display="none";
+    if(recUrl) URL.revokeObjectURL(recUrl);
+    recUrl=null; recBlob=null;
+  };
+}
+
 /* BUTTONS */
 function enhance(){
   addStyle();
@@ -370,7 +671,9 @@ function enhance(){
   const row=document.createElement("div");
   row.className="wd-tools-row";
   row.innerHTML=`
+    <button data-wd="shadow"><b>👥</b>Shadow</button>
     <button class="wd-gold" data-wd="test"><b>📝</b>AI Test</button>
+    <button class="wd-blue" data-wd="similar"><b>✨</b>Benzer</button>
     <button class="wd-blue" data-wd="story"><b>📖</b>Hikaye</button>
     <button class="wd-blue" data-wd="podcast"><b>🎧</b>Podcast</button>
     <button data-wd="conversation"><b>🗣️</b>Konuşma</button>
@@ -378,7 +681,7 @@ function enhance(){
     <button data-wd="partner"><b>🗨️</b>Partner</button>
     <button data-wd="visual"><b>🖼️</b>Görsel</button>
   `;
-  const map={test:openAITest,story:openStory,podcast:openPodcast,conversation:openConversation,writing:openWriting,partner:openPartner,visual:openVisual};
+  const map={shadow:openShadow,test:openAITest,similar:openSimilarSentences,story:openStory,podcast:openPodcast,conversation:openConversation,writing:openWriting,partner:openPartner,visual:openVisual};
   row.querySelectorAll("[data-wd]").forEach(b=>b.onclick=()=>map[b.dataset.wd]());
   anchor.insertAdjacentElement("afterend", row);
   card.dataset.wordDirectTools="1";
