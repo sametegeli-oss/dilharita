@@ -1,25 +1,21 @@
-INDEX-APP FOTOĞRAF GELME FIX
+ESKİ GÖRSEL YAPISI GERİ BAĞLAMA
 
-Sorun:
-Fotoğraflı Öğren ekranında cümle kartında fotoğraf görünmüyordu.
+Haklısın: Son eklenen index-app-photo-addon.js geçici ve yanlış bir fotoğraf seçme sistemi kuruyordu.
+Bu paket onu kaldırır.
 
-Düzeltme:
-- index-app.html içine index-app-photo-addon.js eklendi.
-- Aktif cümle / Türkçe anlam / modül başlığı okunur.
-- Konuya göre otomatik fotoğraf kartı cümle kartının üstüne eklenir.
-- assets/app.js dosyasına dokunulmaz.
+Yapılan:
+1) index-app-photo-addon.js bağlantısı kaldırıldı.
+2) Eski yapının kullandığı image-addon.js tekrar index-app.html içine bağlandı.
+3) teacher-addon.js tekrar bağlandı.
+4) Öğretmene Sor / Zayıf Analiz düğmeleri korunur.
 
 Yüklenecek:
 - index-app.html
-- index-app-photo-addon.js
 - index-app-ogretmen-analiz-buttons.js
 
-Varsa birlikte yüklenebilir:
-- index.html
-- hata-defteri.html
-- akilli-tekrar.html
-- study-tracker.js
-- gunluk-takip.html
-- ogrenme-yolu.html
+ÖNEMLİ:
+- index-app-photo-addon.js dosyasını GitHub'dan sil veya artık kullanma.
+- image-addon.js ve teacher-addon.js zaten projede varsa tekrar yüklemene gerek yok.
+- Eski görsel arama cümlesi mantığı image-addon.js tarafından çalıştırılacak.
 
 Sonra Ctrl+F5 yap.
