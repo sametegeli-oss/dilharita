@@ -1,24 +1,31 @@
-WORD MENÜ AKTİVİTELERİNİ TAŞIMA
+DİLHARİTA İÇİNE ORİJİNAL WORD ARAÇLARI
 
-Kırmızı ile işaretlediğin /word menüsündeki düğmeler index-app.html cümle kartına taşındı:
+Bu paket /word klasörünü kullanmaz ve /word tarafına dosya yükletmez.
 
-- Shadow
-- Hikaye
-- Podcast
-- Konuş
-- Benzer
-- AI Test
+Mantık:
+- /word içindeki orijinal index.html ve js dosyaları /dilharita/wordtools/ klasörüne kopyalandı.
+- /dilharita/index-app.html içindeki cümle kartına kırmızı menüdeki orijinal araç düğmeleri eklendi.
+- Düğmeye basınca /dilharita/wordtools/index.html açılır.
+- Orada /word'den alınan orijinal fonksiyonlar çalışır:
+  Konuşma, Cümle Modu, Shadow, AI Test, Hikaye, Podcast, Görsel.
 
-ÖNEMLİ:
-Bu paket eski görsel yapısını bozmaz.
-index-app-photo-addon.js kullanılmaz.
-image-addon.js ve teacher-addon.js eski sistem olarak bağlı kalır.
+Yüklenecek yer:
+/dilharita/ içine paket içeriğinin tamamını yükle.
 
-Yüklenecek:
+Yani şu dosyalar /dilharita köküne:
 - index-app.html
-- word-activity-buttons.js
+- word-local-tools-launcher.js
 - index-app-ogretmen-analiz-buttons.js
 
-image-addon.js ve teacher-addon.js zaten projede varsa tekrar yükleme.
+Şu klasör komple /dilharita altına:
+- wordtools/
+
+GitHub'dan varsa sil:
+- word-activity-buttons.js
+- word-original-activity-launcher.js
+- index-app-photo-addon.js
+
+Kesinlikle /word klasörüne dosya yükleme.
+Bu paket /word yapısını bozmaz.
 
 Sonra Ctrl+F5 yap.
