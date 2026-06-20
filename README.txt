@@ -1,15 +1,16 @@
-PRACTICE HEDEF TASARIM DOĞRUDAN
+FOTOĞRAFLI CÜMLE ÖĞREN EKRANI BAĞLANTISI
 
-Bu sürüm observer/sonradan DOM taşıma kullanmaz.
-Tasarım doğrudan renderCard ve renderFeedback içine işlendi.
+Bu paket, ana menüye eksik olan eski/fotoğraflı öğrenme ekranını geri bağlar.
 
-Düzeltmeler:
-- Sol: Türkçe + Öğretmene Sor + sonuç
-- Orta: kelime kutuları / cevap alanı / Oku-Temizle-Kontrol
-- Sağ: Zor / Normal / Kolay / İleri
-- Kontrol et sonrası sağ düğmeler kaybolmaz
-- Eski practice-design5-v2 link/script kaldırıldı
+Eklenen kart:
+📸 Fotoğraflı Cümle Öğren
 
-Yükle:
-practice.html dosyasını mevcut practice.html üzerine yaz.
-Ctrl+F5 yap.
+Bağlantı:
+./index-app.html
+
+Yüklenecek:
+- index.html
+- index-app.html varsa onu da yükle
+
+Not:
+Bahsettiğin ekran index-app.html içindedir. Statik index.html sadece güvenli menü olduğu için bu bağlantı kopmuştu.
