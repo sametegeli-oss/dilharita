@@ -46,6 +46,14 @@ function activeAvatarDir(){
 function asset(file){ return activeAvatarDir() + file; }
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function getKeys(){ try{ return (JSON.parse(localStorage.getItem(KEYS_LS)||"[]")||[]).filter(Boolean); }catch{return [];} }
+function ensureStorageReady(){
+  return new Promise(function(resolve){
+    if(typeof window.__dhStorageReady==="undefined" || window.__dhStorageReady || getKeys().length){ resolve(); return; }
+    var done=false; function go(){ if(done)return; done=true; resolve(); }
+    window.addEventListener("dh-storage-ready", go, {once:true});
+    setTimeout(go, 1500);
+  });
+}
 function saveKey(k){ const keys=getKeys(); if(!keys.includes(k)) keys.push(k); localStorage.setItem(KEYS_LS, JSON.stringify(keys)); }
 async function groqChat(messages){
   const keys=getKeys();
@@ -275,6 +283,7 @@ async function sendUser(){
   input.style.height="auto";
   addBubble("assistant", "", {typing:true});
 
+  await ensureStorageReady();
   if(!getKeys().length){
     removeTyping();
     $("keySheet").classList.add("open");

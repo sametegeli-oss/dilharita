@@ -352,6 +352,17 @@ function setOut(html){ document.getElementById("out").innerHTML = html; }
 
 async function explain(){
   if (!State.en){ setOut(`<div class="state"><h2>Cümle yok</h2><p>Bu panel bir cümleyle açılır. Çalışma ekranındaki 🎓 Öğretmen düğmesini kullan.</p></div>`); return; }
+  // storage-bridge (IndexedDB) henüz belleğe yüklenmediyse, hazır olmasını bekle.
+  // Böylece anahtarlar IndexedDB'deyken yanlışlıkla "anahtar yok" kutusu açılmaz.
+  if (typeof window.__dhStorageReady !== "undefined" && !window.__dhStorageReady && !getKeys().length){
+    setOut(`<div class="loading"><div class="spinner"></div> Hazırlanıyor…</div>`);
+    await new Promise(function(resolve){
+      var done=false;
+      function go(){ if(done) return; done=true; resolve(); }
+      window.addEventListener("dh-storage-ready", go, {once:true});
+      setTimeout(go, 1500); // güvenlik: en fazla 1.5 sn bekle
+    });
+  }
   if (!getKeys().length){ openKeySheet(); setOut(""); return; }
   setOut(`<div class="loading"><div class="spinner"></div> Öğretmen cümleyi inceliyor…</div>`);
   const userMsg = `İngilizce cümle: "${State.en}"` + (State.tr ? `\nTürkçe çevirisi: ${State.tr}` : "");
