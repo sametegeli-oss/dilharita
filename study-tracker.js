@@ -112,4 +112,51 @@ function resetDemo(){
   save(data);
 }
 window.StudyTracker={todayKey,load,save,ensure,recordActivity,markLessonDone,isDone,day,lastNDays,streak,summary,setGoals,resetDemo};
+
+/* ---- Otomatik aktivite izleyici ----
+   Çalışma sayfaları açıldığında o günü "aktif" sayar ve geçirilen
+   süreyi dakika olarak ekler. Böylece kullanıcı ekstra bir şey
+   yapmadan günlük seri ve istatistikler dolar.
+   Sayfa türü data-study-type ile veya dosya adından belirlenir.
+*/
+(function(){
+  try{
+    var path=(location.pathname||"").toLowerCase();
+    var map=[
+      ["index-app","sentence"],
+      ["practice","sentence"],
+      ["teacher","lesson"],
+      ["chat","lesson"],
+      ["videopractice","video"],
+      ["akilli-tekrar","review"],
+      ["library","lesson"]
+    ];
+    var type=null;
+    for(var i=0;i<map.length;i++){ if(path.indexOf(map[i][0])>=0){ type=map[i][1]; break; } }
+    // Takip ve yol sayfaları sadece görüntüleme; aktivite saymaz
+    if(path.indexOf("gunluk-takip")>=0 || path.indexOf("ogrenme-yolu")>=0) type=null;
+    if(!type) return;
+
+    var SK="dh-auto-visit-"+todayKey()+"-"+type;
+    // Aynı gün + aynı tür için günde 1 kez "ders/cümle" say (çift saymayı önle)
+    if(!sessionStorage.getItem(SK+"-counted")){
+      try{ sessionStorage.setItem(SK+"-counted","1"); }catch(e){}
+      if(type==="sentence") recordActivity("sentence",1,{auto:true});
+      else if(type==="video") recordActivity("video",1,{auto:true});
+      else if(type==="review") recordActivity("review",1,{auto:true});
+      else recordActivity("lesson",1,{auto:true});
+    }
+    // Geçirilen süreyi dakika olarak ekle (sayfadan çıkarken)
+    var start=Date.now();
+    function flushMinutes(){
+      try{
+        var mins=Math.round((Date.now()-start)/60000);
+        if(mins>=1){ recordActivity("minute",Math.min(mins,120),{auto:true}); start=Date.now(); }
+      }catch(e){}
+    }
+    document.addEventListener("visibilitychange",function(){ if(document.hidden) flushMinutes(); });
+    window.addEventListener("pagehide",flushMinutes);
+    window.addEventListener("beforeunload",flushMinutes);
+  }catch(e){}
+})();
 })();

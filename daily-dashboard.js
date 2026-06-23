@@ -161,11 +161,16 @@ function renderPanel(summary, srs){
 }
 
 async function boot(){
-  style();
-  const errors = await getErrors();
-  const summary = summarizeErrors(errors);
-  const srs = countLocalSrs();
-  renderPanel(summary, srs);
+  try{
+    style();
+    const errors = await getErrors();
+    const summary = summarizeErrors(errors);
+    const srs = countLocalSrs();
+    renderPanel(summary, srs);
+  }catch(e){
+    try{ style(); renderPanel({total:0,high:0,byType:[],byModule:[]},{due:0,learned:0,worked:0}); }catch(_){}
+    console.warn("daily-dashboard boot hata:",e);
+  }
 }
 
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

@@ -332,7 +332,6 @@ function render(){
     <a href="./index.html" class="back" title="Geri">←</a>
     <div class="ava" title="Fotoğraflı öğretmen"><img id="teacherAvaImg" alt="Öğretmen avatarı"></div>
     <div class="tinfo"><h1>İngilizce Öğretmeni</h1><p>Türkçe anlatımlı İngilizce öğretmeni</p></div>
-    <button class="prompt-btn" id="promptBtn">⚙ Prompt</button>
   </div>
   <div class="body">
     <div class="teacher-hero"><img class="teacher-photo" id="teacherHeroImg" alt="Fotoğraflı öğretmen avatarı"></div>
@@ -344,7 +343,6 @@ function render(){
     <div id="out"></div>
   </div>`;
   mountTeacherAvatar();
-  document.getElementById("promptBtn").onclick = openPromptSheet;
   document.getElementById("playBtn").onclick = () => speakEnglish(State.en);
   explain();
 }
@@ -356,7 +354,7 @@ async function explain(){
   if (!getKeys().length){ openKeySheet(); setOut(""); return; }
   setOut(`<div class="loading"><div class="spinner"></div> Öğretmen cümleyi inceliyor…</div>`);
   const userMsg = `İngilizce cümle: "${State.en}"` + (State.tr ? `\nTürkçe çevirisi: ${State.tr}` : "");
-  State.history = [{ role:"system", content:getPrompt() }, { role:"user", content:userMsg }];
+  State.history = [{ role:"system", content:"" }, { role:"user", content:userMsg }];
   try{
     const reply = await groqChat(State.history);
     State.history.push({ role:"assistant", content:reply });
@@ -477,5 +475,6 @@ render();
 <script src="./ai-teacher-prompt-tts.js?v=1"></script>
 <script src="./tts-avatar-long-sync-fix.js?v=1"></script>
 <script src="./avatar-blink-sync.js?v=1"></script>
+<script src="./study-tracker.js?v=1"></script>
 </body>
 </html>
