@@ -248,11 +248,12 @@ function speakSegments(segments){
     var lang = seg.lang==="en-US" ? "en-US" : "tr-TR";
     var text = clean(seg.text||"");
     if(!text) return;
+    var el = seg.el || null;   // vurgulanacak ekran elemanı (varsa)
     // cümlelere böl, uzunsa küçült
     var pieces = text.split(/(?<=[.!?])\s+/).filter(Boolean);
     (pieces.length?pieces:[text]).forEach(function(p){
       splitLongLine(p, lang==="tr-TR"?110:90).forEach(function(piece){
-        if(piece) out.push({text:piece, lang:lang});
+        if(piece) out.push({text:piece, lang:lang, el:el});
       });
     });
   });
@@ -280,6 +281,7 @@ function speakChunkList(chunks){
     if(i>=chunks.length){
       stopKeepAlive();
       setTimeout(()=>setSpeakingState(false), 180);
+      try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
       return;
     }
     const c=chunks[i++];
@@ -302,7 +304,7 @@ function speakChunkList(chunks){
     // Tahmini süre: kelime sayısı * konuşma hızına göre + güvenlik payı.
     var estMs = Math.max(4000, c.text.length * 75) + 1500;
     const watchdog=setTimeout(advance, estMs);
-    u.onstart=()=>{ setSpeakingState(true); startMouthForText(c.text, c.lang); };
+    u.onstart=()=>{ setSpeakingState(true); startMouthForText(c.text, c.lang); try{ if(window.__dhHighlight) window.__dhHighlight(c.el||null); }catch(e){} };
     u.onboundary=(ev)=>{ setSpeakingState(true); if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex); };
     u.onend=advance;
     u.onerror=advance;

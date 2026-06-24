@@ -66,6 +66,7 @@ body{
 
 .explain-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .explain-play{background:var(--surface-2);border:1px solid var(--border);color:var(--accent);border-radius:9px;padding:8px 13px;font:800 12px Nunito,sans-serif;cursor:pointer}
+.dh-reading{background:rgba(250,204,21,.28);border-radius:5px;box-shadow:0 0 0 2px rgba(250,204,21,.28);transition:background .15s}
 .explain-play:hover{background:var(--accent-strong);color:#fff}
 
 
@@ -309,11 +310,11 @@ function speakFromScreen(boxEl){
     node.childNodes.forEach(function(ch){
       if(ch.nodeType===3){
         var t=ch.textContent;
-        if(t && t.trim()) segs.push({text:t, lang:"tr-TR"});
+        if(t && t.trim()) segs.push({text:t, lang:"tr-TR", el:ch.parentNode||boxEl});
       } else if(ch.nodeType===1){
         if(ch.classList && ch.classList.contains("en")){
           var et=ch.textContent;
-          if(et && et.trim()) segs.push({text:et, lang:"en-US"});
+          if(et && et.trim()) segs.push({text:et, lang:"en-US", el:ch});
         } else {
           walk(ch);
         }
@@ -326,6 +327,13 @@ function speakFromScreen(boxEl){
   speakTurkish(boxEl.textContent||"");
   return true;
 }
+// Okunan parçayı vurgular (öncekini temizler).
+window.__dhHighlight = function(el){
+  try{
+    document.querySelectorAll(".dh-reading").forEach(function(n){ n.classList.remove("dh-reading"); });
+    if(el && el.classList){ el.classList.add("dh-reading"); }
+  }catch(e){}
+};
 
 /* ---------- yardımcılar ---------- */
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
