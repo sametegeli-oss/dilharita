@@ -28,6 +28,8 @@ function isStandalone(){
 }
 
 function showInstallButton(text){
+  // Kullanıcı isteğiyle "Ana ekrana ekle / Kur" düğmesi devre dışı bırakıldı.
+  return;
   if(isStandalone()) return;
   if(document.getElementById("pwaInstallBtn")) return;
 

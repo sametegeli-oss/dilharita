@@ -150,12 +150,6 @@ function renderPanel(summary, srs){
         </ul>
       </div>
     </div>
-    <div class="daily-actions">
-      <a class="daily-action green" href="./index-app.html">📸 Fotoğraflı Öğren</a>
-      <a class="daily-action purple" href="./akilli-tekrar.html">🧠 Akıllı Tekrar</a>
-      <a class="daily-action red" href="./hata-defteri.html">📌 Hata Defteri</a>
-      <a class="daily-action" href="./videopractice.html">🎬 Video Practice</a>
-    </div>
   `;
   document.getElementById("dailyRefresh").onclick = boot;
 }
