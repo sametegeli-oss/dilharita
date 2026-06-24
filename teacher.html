@@ -67,6 +67,9 @@ body{
 .explain-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .explain-play{background:var(--surface-2);border:1px solid var(--border);color:var(--accent);border-radius:9px;padding:8px 13px;font:800 12px Nunito,sans-serif;cursor:pointer}
 .dh-reading{background:rgba(250,204,21,.28);border-radius:5px;box-shadow:0 0 0 2px rgba(250,204,21,.28);transition:background .15s}
+.manual-entry{display:flex;gap:8px;margin-top:14px;max-width:520px;margin-left:auto;margin-right:auto}
+.manual-entry input{flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 14px;font:600 15px Nunito,sans-serif}
+.manual-entry button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:12px 18px;font:800 14px Nunito,sans-serif;cursor:pointer;white-space:nowrap}
 .explain-play:hover{background:var(--accent-strong);color:#fff}
 
 
@@ -426,7 +429,28 @@ function render(){
 function setOut(html){ document.getElementById("out").innerHTML = html; }
 
 async function explain(){
-  if (!State.en){ setOut(`<div class="state"><h2>Cümle yok</h2><p>Bu panel bir cümleyle açılır. Çalışma ekranındaki 🎓 Öğretmen düğmesini kullan.</p></div>`); return; }
+  if (!State.en){
+    setOut(`<div class="state">
+      <h2>Bir cümle yaz</h2>
+      <p>İncelemesini istediğin İngilizce (veya Türkçe) cümleyi yaz, öğretmen açıklasın.</p>
+      <div class="manual-entry">
+        <input id="manualSentence" type="text" placeholder="Örn: She has been working all day." autocomplete="off" />
+        <button id="manualGo">Açıkla</button>
+      </div>
+    </div>`);
+    var inp = document.getElementById("manualSentence");
+    var go = function(){
+      var v = (inp.value||"").trim();
+      if(!v) return;
+      State.en = v;
+      State.tr = "";
+      explain();
+    };
+    if(inp){ inp.focus(); inp.onkeydown = function(e){ if(e.key==="Enter") go(); }; }
+    var gb = document.getElementById("manualGo");
+    if(gb) gb.onclick = go;
+    return;
+  }
   // storage-bridge (IndexedDB) henüz belleğe yüklenmediyse, hazır olmasını bekle.
   // Böylece anahtarlar IndexedDB'deyken yanlışlıkla "anahtar yok" kutusu açılmaz.
   if (typeof window.__dhStorageReady !== "undefined" && !window.__dhStorageReady && !getKeys().length){
