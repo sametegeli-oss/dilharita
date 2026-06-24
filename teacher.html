@@ -307,10 +307,19 @@ function speakFromScreen(boxEl){
   if(!boxEl) return false;
   var segs=[];
   (function walk(node){
-    node.childNodes.forEach(function(ch){
+    // childNodes canlı liste; sarmalama yapacağımız için kopya üzerinde gez
+    var kids=Array.prototype.slice.call(node.childNodes);
+    kids.forEach(function(ch){
       if(ch.nodeType===3){
         var t=ch.textContent;
-        if(t && t.trim()) segs.push({text:t, lang:"tr-TR", el:ch.parentNode||boxEl});
+        if(t && t.trim()){
+          // Türkçe metin düğümünü span'e sar ki tek başına vurgulanabilsin
+          var sp=document.createElement("span");
+          sp.className="dh-seg";
+          sp.textContent=t;
+          if(ch.parentNode){ ch.parentNode.replaceChild(sp, ch); }
+          segs.push({text:t, lang:"tr-TR", el:sp});
+        }
       } else if(ch.nodeType===1){
         if(ch.classList && ch.classList.contains("en")){
           var et=ch.textContent;
