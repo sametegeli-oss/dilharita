@@ -265,15 +265,21 @@ function speakChunkList(chunks){
   if(!chunks.length) return false;
   try{ speechSynthesis.cancel(); }catch(e){}
   setSpeakingState(true);
-  // Chrome, uzun konuşmalarda ~15 sn sonra TTS'i sessizce durdurur.
-  // Periyodik pause/resume bu kesilmeyi engeller (konuşma boyunca aktif).
-  let keepAlive=setInterval(()=>{
-    try{
-      if(speechSynthesis.speaking && !speechSynthesis.paused){
-        speechSynthesis.pause(); speechSynthesis.resume();
-      }
-    }catch(e){}
-  }, 9000);
+  // Mobil tarayıcılarda pause()/resume() TTS'i kilitleyip dondurabilir.
+  // Bu yüzden keep-alive (pause/resume) SADECE masaüstünde çalışır.
+  // Mobilde donmayı zaten watchdog (zorlama ilerletme) önler.
+  var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  let keepAlive=null;
+  if(!isMobile){
+    // Chrome (masaüstü), uzun konuşmalarda ~15 sn sonra TTS'i durdurur.
+    keepAlive=setInterval(()=>{
+      try{
+        if(speechSynthesis.speaking && !speechSynthesis.paused){
+          speechSynthesis.pause(); speechSynthesis.resume();
+        }
+      }catch(e){}
+    }, 9000);
+  }
   function stopKeepAlive(){ if(keepAlive){ clearInterval(keepAlive); keepAlive=null; } }
   let i=0, stopped=false;
   function next(){
@@ -301,8 +307,10 @@ function speakChunkList(chunks){
     }
     // Zorlama zamanlayıcısı: Chrome bazen onend'i hiç çağırmaz; tahmini süre
     // dolunca zinciri zorla ilerlet ki sonraki parça okunsun (kesilme önlenir).
-    // Tahmini süre: kelime sayısı * konuşma hızına göre + güvenlik payı.
-    var estMs = Math.max(4000, c.text.length * 75) + 1500;
+    // Mobilde daha cömert süre: erken tetiklenip sesi kesmesin.
+    var perChar = isMobile ? 110 : 75;
+    var pad = isMobile ? 3500 : 1500;
+    var estMs = Math.max(isMobile?6000:4000, c.text.length * perChar) + pad;
     const watchdog=setTimeout(advance, estMs);
     u.onstart=()=>{ setSpeakingState(true); startMouthForText(c.text, c.lang); try{ if(window.__dhHighlight) window.__dhHighlight(c.el||null); }catch(e){} };
     u.onboundary=(ev)=>{ setSpeakingState(true); if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex); };
