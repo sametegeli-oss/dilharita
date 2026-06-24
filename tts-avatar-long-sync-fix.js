@@ -48,7 +48,11 @@ function splitLongLine(line, maxLen=140){
   return parts;
 }
 function splitForSpeech(text){
-  const raw=String(text||"").replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g," ");
+  const raw=String(text||"")
+    .replace(/<br\s*\/?>/gi,"\n")
+    .replace(/<[^>]+>/g," ")
+    .replace(/\[\[|\]\]/g," ")   // [[ ]] işaretleri okunmasın, içerik kalsın
+    .replace(/\*\*/g," ");        // ** kalın işaretleri okunmasın
   const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
   const chunks=[];
   lines.forEach(line=>{
@@ -204,10 +208,21 @@ function speakChunks(text){
   if(!chunks.length) return false;
   try{ speechSynthesis.cancel(); }catch(e){}
   setSpeakingState(true);
+  // Chrome, uzun konuşmalarda ~15 sn sonra TTS'i sessizce durdurur.
+  // Periyodik pause/resume bu kesilmeyi engeller (konuşma boyunca aktif).
+  let keepAlive=setInterval(()=>{
+    try{
+      if(speechSynthesis.speaking && !speechSynthesis.paused){
+        speechSynthesis.pause(); speechSynthesis.resume();
+      }
+    }catch(e){}
+  }, 9000);
+  function stopKeepAlive(){ if(keepAlive){ clearInterval(keepAlive); keepAlive=null; } }
   let i=0, stopped=false;
   function next(){
     if(stopped) return;
     if(i>=chunks.length){
+      stopKeepAlive();
       setTimeout(()=>setSpeakingState(false), 180);
       return;
     }
