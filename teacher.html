@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="tr">
 <head>
-<script src="./storage-bridge.js?v=1"></script>
+<script src="./storage-bridge.js?v=2"></script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0b1120" />
@@ -423,7 +423,12 @@ function renderExplanation(reply){
   fu.onkeydown = e => { if (e.key==="Enter") askFollowup(fu.value); };
   document.getElementById("fuSend").onclick = () => askFollowup(fu.value);
   document.getElementById("regenBtn").onclick = () => explain();
-  document.getElementById("explainListenBtn").onclick = () => speakTurkish(State.explanation);
+  document.getElementById("explainListenBtn").onclick = () => {
+    // Açıklamada [[...]] içi İngilizce, gerisi Türkçe okunsun (dil ayrımlı).
+    if (window.DH_speakMixed) window.DH_speakMixed(State.explanation);
+    else if (window.DH_LongTTSAvatarSync && window.DH_LongTTSAvatarSync.speak) window.DH_LongTTSAvatarSync.speak(State.explanation);
+    else speakTurkish(State.explanation);
+  };
   document.getElementById("sentenceListenBtn").onclick = () => speakEnglish(State.en);
 }
 
@@ -516,10 +521,10 @@ render();
 
 })();
 </script>
-<script src="./ai-teacher-prompt-tts.js?v=1"></script>
-<script src="./tts-avatar-long-sync-fix.js?v=1"></script>
-<script src="./avatar-blink-sync.js?v=1"></script>
-<script src="./study-tracker.js?v=1"></script>
-<script src="./cloud-sync.js?v=1"></script>
+<script src="./ai-teacher-prompt-tts.js?v=2"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=2"></script>
+<script src="./avatar-blink-sync.js?v=2"></script>
+<script src="./study-tracker.js?v=2"></script>
+<script src="./cloud-sync.js?v=2"></script>
 </body>
 </html>
