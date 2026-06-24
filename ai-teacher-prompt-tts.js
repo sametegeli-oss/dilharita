@@ -181,18 +181,9 @@ function openPanel(){
 
 /* Yeni AI mesajlarına iki dilli oku butonu ekle */
 function addReadButtons(){
-  const candidates=document.querySelectorAll(".wd-ai,.assistant,.bot,.ai-message,.teacher-message,[class*='assistant'],[class*='bot'],[class*='ai']");
-  candidates.forEach(el=>{
-    if(el.dataset.dhReadBtn==="1") return;
-    const txt=(el.innerText||"").trim();
-    if(txt.length<40) return;
-    el.dataset.dhReadBtn="1";
-    const btn=document.createElement("button");
-    btn.className="dhReadMixedBtn";
-    btn.textContent="🔊 TR/EN Oku";
-    btn.onclick=(e)=>{e.stopPropagation(); speakMixed(el.innerText||"");};
-    el.appendChild(btn);
-  });
+  // Otomatik "TR/EN Oku" düğmesi artık eklenmiyor.
+  // Okuma, sayfanın kendi "🔊 Oku" düğmesiyle (ekrandan dil-ayrımlı) yapılır.
+  return;
 }
 document.addEventListener("DOMContentLoaded",()=>{
   createUI();
