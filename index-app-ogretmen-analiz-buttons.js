@@ -16,13 +16,15 @@ function addStyle(){
   .index-app-top-actions{
     position:fixed;
     top:10px;
-    left:10px;
+    right:10px;
     z-index:99998;
     display:flex;
     gap:8px;
     flex-wrap:wrap;
     pointer-events:auto;
   }
+  /* Bu sayfada (sentence mode) AI Prompt düğmesi görünmesin */
+  #dhAiPromptBtn{ display:none !important; }
   .index-app-top-actions a{
     display:inline-flex;
     align-items:center;
@@ -100,8 +102,6 @@ function ensureTopActions(){
   row.className = "index-app-top-actions";
   row.innerHTML = `
     <a class="home" href="./index.html">🏠 Ana Menü</a>
-    <a class="error" href="./hata-defteri.html">📌 Hata Defteri</a>
-    <a class="review" href="./akilli-tekrar.html">🧠 Akıllı Tekrar</a>
   `;
   document.body.appendChild(row);
 }
