@@ -424,9 +424,31 @@ function renderExplanation(reply){
   document.getElementById("fuSend").onclick = () => askFollowup(fu.value);
   document.getElementById("regenBtn").onclick = () => explain();
   document.getElementById("explainListenBtn").onclick = () => {
-    // Açıklamada [[...]] içi İngilizce, gerisi Türkçe okunsun (dil ayrımlı).
+    // EKRANDAN OKU: .explain kutusunu gez, .en (yeşil) = İngilizce, gerisi = Türkçe.
+    // Böylece ekranda görünen renk ayrımıyla okuma BİREBİR aynı olur.
+    var box = document.querySelector(".explain");
+    if (box && window.DH_speakSegments){
+      var segs = [];
+      (function walk(node){
+        node.childNodes.forEach(function(ch){
+          if (ch.nodeType === 3){ // metin düğümü
+            var t = ch.textContent;
+            if (t && t.trim()) segs.push({ text: t, lang: "tr-TR" });
+          } else if (ch.nodeType === 1){ // element
+            var isEn = ch.classList && ch.classList.contains("en");
+            if (isEn){
+              var et = ch.textContent;
+              if (et && et.trim()) segs.push({ text: et, lang: "en-US" });
+            } else {
+              walk(ch); // içeride başka .en olabilir
+            }
+          }
+        });
+      })(box);
+      if (segs.length){ window.DH_speakSegments(segs); return; }
+    }
+    // Yedek: segment çıkmazsa metin tabanlı dil ayrımı
     if (window.DH_speakMixed) window.DH_speakMixed(State.explanation);
-    else if (window.DH_LongTTSAvatarSync && window.DH_LongTTSAvatarSync.speak) window.DH_LongTTSAvatarSync.speak(State.explanation);
     else speakTurkish(State.explanation);
   };
   document.getElementById("sentenceListenBtn").onclick = () => speakEnglish(State.en);
