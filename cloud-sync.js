@@ -24,6 +24,26 @@
   // Senkronlanacak localStorage anahtarları
   var LS_KEYS = ["dh_ai_prompt_teacher", "dh-study-tracker-v1", "groqApiKeys"];
 
+  // Buluttan gelen belgeyi normalize et: {ls:{...}, errors:[...]}
+  // Hem yeni kök-seviye yapı hem eski data.ls yapısını destekler.
+  function parseRemote(remote){
+    var out = { ls: {}, errors: [] };
+    if (!remote) return out;
+    // Eski yapı: remote.data.ls / remote.data.errors
+    var d = remote.data && typeof remote.data === "object" ? remote.data : null;
+    if (d && d.ls){ for (var k in d.ls){ if (d.ls.hasOwnProperty(k)) out.ls[k] = d.ls[k]; } }
+    if (d && Array.isArray(d.errors)){ out.errors = out.errors.concat(d.errors); }
+    // Yeni kök yapı: doğrudan belgenin alanları (LS_KEYS) + __errors
+    for (var i=0;i<LS_KEYS.length;i++){
+      var key = LS_KEYS[i];
+      if (Object.prototype.hasOwnProperty.call(remote, key) && remote[key] != null){
+        out.ls[key] = remote[key];
+      }
+    }
+    if (Array.isArray(remote.__errors)) out.errors = out.errors.concat(remote.__errors);
+    return out;
+  }
+
   var firebaseConfig = {
     apiKey: "AIzaSyBZTHvP8xX94UMtKRt7hIYN7qpbO2gz0Zg",
     authDomain: "sentencemode.firebaseapp.com",
@@ -64,8 +84,13 @@
           });
         },
         saveSettings: function(uid, data){
-          return fsMod.setDoc(fsMod.doc(db, "settings", uid),
-            { data: data, updated_at: Date.now() }, { merge: true });
+          // Veriyi KÖK seviyeye yaz (data.ls sarmalı yok). merge:true ile
+          // diğer alanlar korunur. Yapı: { <lsKey>: value, __errors:[...], updated_at }
+          var doc2 = {};
+          if (data && data.ls){ for (var k in data.ls){ if (data.ls.hasOwnProperty(k)) doc2[k] = data.ls[k]; } }
+          if (data && data.errors){ doc2.__errors = data.errors; }
+          doc2.updated_at = Date.now();
+          return fsMod.setDoc(fsMod.doc(db, "settings", uid), doc2, { merge: true });
         }
       };
       ready = true;
@@ -124,7 +149,7 @@
   function initialSync(){
     if (!ready || !user || !fb) return;
     fb.loadSettings(user.uid).then(function(remote){
-      var rd = (remote && remote.data) || {};
+      var rd = parseRemote(remote);
       // 1) localStorage anahtarlarını uygula (yerelde boşsa buluttan al)
       applyLocal(rd);
       // 2) hata defterini birleştir (buluttan gelenleri ekle)
@@ -186,7 +211,7 @@
     if (!ready) return Promise.resolve({ ok:false, message:"Bulut bağlantısı henüz hazır değil. Birkaç saniye sonra tekrar dene." });
     if (!user) return Promise.resolve({ ok:false, message:"Senkron için önce giriş yapmalısın." });
     return fb.loadSettings(user.uid).then(function(remote){
-      var rd = (remote && remote.data) || {};
+      var rd = parseRemote(remote);
       // localStorage: buluttaki değerleri uygula (boş olmayanları yaz)
       var applied = 0;
       if (rd.ls){
@@ -222,7 +247,7 @@
   function pull(key){
     if (!ready || !user || !fb) return Promise.reject(new Error("Bulut hazır değil veya giriş yok"));
     return fb.loadSettings(user.uid).then(function(remote){
-      var rd = (remote && remote.data) || {};
+      var rd = parseRemote(remote);
       if (rd.ls && Object.prototype.hasOwnProperty.call(rd.ls, key)) return rd.ls[key];
       return null;
     });
