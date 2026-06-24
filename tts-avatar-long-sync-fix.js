@@ -236,6 +236,31 @@ function stopMouthLoop(){
 function speakChunks(text){
   if(!nativeSpeak) return false;
   const chunks=splitForSpeech(text).filter(c=>clean(c.text));
+  return speakChunkList(chunks);
+}
+// Hazır segment listesini ({text,lang}) doğrudan okur. Uzun segmentleri
+// önce küçük parçalara böler, sonra ortak motorla seslendirir.
+function speakSegments(segments){
+  if(!nativeSpeak || !Array.isArray(segments)) return false;
+  const out=[];
+  segments.forEach(function(seg){
+    if(!seg) return;
+    var lang = seg.lang==="en-US" ? "en-US" : "tr-TR";
+    var text = clean(seg.text||"");
+    if(!text) return;
+    // cümlelere böl, uzunsa küçült
+    var pieces = text.split(/(?<=[.!?])\s+/).filter(Boolean);
+    (pieces.length?pieces:[text]).forEach(function(p){
+      splitLongLine(p, lang==="tr-TR"?110:90).forEach(function(piece){
+        if(piece) out.push({text:piece, lang:lang});
+      });
+    });
+  });
+  return speakChunkList(out);
+}
+function speakChunkList(chunks){
+  if(!nativeSpeak) return false;
+  chunks=(chunks||[]).filter(c=>c&&clean(c.text));
   if(!chunks.length) return false;
   try{ speechSynthesis.cancel(); }catch(e){}
   setSpeakingState(true);
@@ -287,7 +312,8 @@ function speakChunks(text){
   return true;
 }
 window.DH_speakMixed = speakChunks;
-window.DH_LongTTSAvatarSync = { speak:speakChunks, split:splitForSpeech, start:()=>setSpeakingState(true), stop:()=>setSpeakingState(false) };
+window.DH_speakSegments = speakSegments;
+window.DH_LongTTSAvatarSync = { speak:speakChunks, speakSegments:speakSegments, split:splitForSpeech, start:()=>setSpeakingState(true), stop:()=>setSpeakingState(false) };
 
 try{
   const nativeCancel=speechSynthesis.cancel.bind(speechSynthesis);
