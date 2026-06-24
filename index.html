@@ -54,11 +54,43 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     <a class="card" href="./pwa-hard-reset.html"><b>🧹 Önbellek Temizle</b><span>Gerekirse Service Worker ve cache temizliği</span></a>
   </div>
 
+  <div style="display:flex;justify-content:center;margin:18px 0 6px">
+    <button id="dhCloudSyncBtn" type="button" style="display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;border-radius:14px;padding:14px 22px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font:800 15px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3)">🔄 Bulutla Senkronize Et</button>
+  </div>
+  <div id="dhCloudSyncMsg" style="text-align:center;font-size:13px;color:#9fb3d9;min-height:18px;margin-bottom:8px"></div>
+
   <div class="note">
     <b>Not:</b> Bu aşamada <code>service worker</code> bilerek eklenmedi. Önce kurulum ve açılış stabil olacak. Sonra offline cache’i kontrollü ekleriz.
   </div>
 </div>
 <script src="./pwa-install.js"></script>
 <script src="./daily-dashboard.js?v=1"></script>
+<script src="./cloud-sync.js?v=1"></script>
+<script>
+(function(){
+  var btn=document.getElementById("dhCloudSyncBtn");
+  var msg=document.getElementById("dhCloudSyncMsg");
+  if(!btn) return;
+  btn.onclick=async function(){
+    if(!(window.DHCloudSync && window.DHCloudSync.fullSync)){
+      msg.textContent="Bulut bağlantısı hazır değil, birkaç saniye sonra tekrar dene.";
+      return;
+    }
+    var old=btn.textContent;
+    btn.disabled=true; btn.textContent="⏳ Senkronize ediliyor...";
+    msg.textContent="";
+    try{
+      var res=await window.DHCloudSync.fullSync();
+      msg.textContent=res.message||"";
+      msg.style.color=res.ok ? "#34d399" : "#f87171";
+    }catch(e){
+      msg.textContent="Senkron sırasında hata oluştu.";
+      msg.style.color="#f87171";
+    }finally{
+      btn.disabled=false; btn.textContent=old;
+    }
+  };
+})();
+</script>
 </body>
 </html>

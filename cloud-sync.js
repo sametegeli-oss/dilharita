@@ -180,6 +180,52 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
 
+  // Genel "Bulutla Senkronize Et" — buluttan çek, birleştir, geri yaz.
+  // Kullanıcıya gösterilecek sonuç döndürür: {ok, message}
+  function fullSync(){
+    if (!ready) return Promise.resolve({ ok:false, message:"Bulut bağlantısı henüz hazır değil. Birkaç saniye sonra tekrar dene." });
+    if (!user) return Promise.resolve({ ok:false, message:"Senkron için önce giriş yapmalısın." });
+    return fb.loadSettings(user.uid).then(function(remote){
+      var rd = (remote && remote.data) || {};
+      // localStorage: buluttaki değerleri uygula (boş olmayanları yaz)
+      var applied = 0;
+      if (rd.ls){
+        for (var k in rd.ls){
+          if (!rd.ls.hasOwnProperty(k)) continue;
+          var v = rd.ls[k];
+          if (v == null || v === "") continue;
+          try{ localStorage.setItem(k, v); applied++; }catch(e){}
+        }
+      }
+      // hata defteri: buluttan gelenleri birleştir
+      return mergeRemoteErrors(rd.errors || []).then(function(addedErr){
+        // güncel yerel durumu buluta geri yaz
+        return pushNow().then(function(){
+          return { ok:true, applied:applied, addedErrors:addedErr||0 };
+        });
+      });
+    }).then(function(res){
+      var parts = [];
+      parts.push("Ayarlar güncellendi");
+      if (res.addedErrors) parts.push(res.addedErrors + " hata kaydı eklendi");
+      return { ok:true, message:"✓ Senkron tamam. " + parts.join(", ") + "." };
+    }).catch(function(e){
+      var msg = (e && e.message) ? e.message : "bağlantı hatası";
+      if (/permission/i.test(msg)) msg = "İzin hatası (Firebase kuralı). Lütfen tekrar dene.";
+      return { ok:false, message:"Senkron başarısız: " + msg };
+    });
+  }
+
   // Dışarıya küçük API (manuel tetikleme için)
-  window.DHCloudSync = { push: pushNow, sync: initialSync, get user(){ return user; } };
+  // pull(key): buluttaki settings belgesinden tek bir localStorage anahtarının
+  // güncel değerini döndürür (örn. "dh_ai_prompt_teacher").
+  function pull(key){
+    if (!ready || !user || !fb) return Promise.reject(new Error("Bulut hazır değil veya giriş yok"));
+    return fb.loadSettings(user.uid).then(function(remote){
+      var rd = (remote && remote.data) || {};
+      if (rd.ls && Object.prototype.hasOwnProperty.call(rd.ls, key)) return rd.ls[key];
+      return null;
+    });
+  }
+  window.DHCloudSync = { push: pushNow, sync: initialSync, pull: pull, fullSync: fullSync, get ready(){ return ready; }, get user(){ return user; } };
 })();
