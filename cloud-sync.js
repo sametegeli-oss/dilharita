@@ -27,18 +27,22 @@
   // Buluttan gelen belgeyi normalize et: {ls:{...}, errors:[...]}
   // Hem yeni kök-seviye yapı hem eski data.ls yapısını destekler.
   function parseRemote(remote){
-    var out = { ls: {}, errors: [] };
+    var out = { ls: {}, ts: {}, errors: [] };
     if (!remote) return out;
     // Eski yapı: remote.data.ls / remote.data.errors
     var d = remote.data && typeof remote.data === "object" ? remote.data : null;
     if (d && d.ls){ for (var k in d.ls){ if (d.ls.hasOwnProperty(k)) out.ls[k] = d.ls[k]; } }
+    if (d && d.ts){ for (var tk in d.ts){ if (d.ts.hasOwnProperty(tk)) out.ts[tk] = d.ts[tk]; } }
     if (d && Array.isArray(d.errors)){ out.errors = out.errors.concat(d.errors); }
-    // Yeni kök yapı: doğrudan belgenin alanları (LS_KEYS) + __errors
+    // Yeni kök yapı: doğrudan belgenin alanları (LS_KEYS) + __ts + __errors
     for (var i=0;i<LS_KEYS.length;i++){
       var key = LS_KEYS[i];
       if (Object.prototype.hasOwnProperty.call(remote, key) && remote[key] != null){
         out.ls[key] = remote[key];
       }
+    }
+    if (remote.__ts && typeof remote.__ts === "object"){
+      for (var tk2 in remote.__ts){ if (remote.__ts.hasOwnProperty(tk2)) out.ts[tk2] = remote.__ts[tk2]; }
     }
     if (Array.isArray(remote.__errors)) out.errors = out.errors.concat(remote.__errors);
     return out;
@@ -85,9 +89,10 @@
         },
         saveSettings: function(uid, data){
           // Veriyi KÖK seviyeye yaz (data.ls sarmalı yok). merge:true ile
-          // diğer alanlar korunur. Yapı: { <lsKey>: value, __errors:[...], updated_at }
+          // diğer alanlar korunur. Yapı: { <lsKey>: value, __ts:{...}, __errors:[...] }
           var doc2 = {};
           if (data && data.ls){ for (var k in data.ls){ if (data.ls.hasOwnProperty(k)) doc2[k] = data.ls[k]; } }
+          if (data && data.ts){ doc2.__ts = data.ts; }
           if (data && data.errors){ doc2.__errors = data.errors; }
           doc2.updated_at = Date.now();
           return fsMod.setDoc(fsMod.doc(db, "settings", uid), doc2, { merge: true });
@@ -147,26 +152,22 @@
 
   // --- Giriş sonrası ilk senkron: buluttan çek + birleştir + geri yaz ---
   function initialSync(){
-    if (!ready || !user || !fb) return;
-    fb.loadSettings(user.uid).then(function(remote){
-      var rd = parseRemote(remote);
-      // 1) localStorage anahtarlarını uygula (yerelde boşsa buluttan al)
-      applyLocal(rd);
-      // 2) hata defterini birleştir (buluttan gelenleri ekle)
-      return mergeRemoteErrors(rd.errors || []);
-    }).then(function(){
-      // 3) birleşmiş yerel durumu buluta geri yaz
-      return pushNow();
-    }).catch(function(e){ console.warn("cloud-sync ilk senkron hata:", e); });
+    // Giriş sonrası OTOMATİK senkron yapılmaz (yanlışlıkla bulutu ezmesin).
+    // Bulut yalnızca: (1) prompt vb. kaydedilince yazılır,
+    // (2) kullanıcı "Senkronize Et" deyince okunur.
+    return;
   }
 
   // --- Yerel durumu buluta yaz ---
   function pushNow(){
     if (!ready || !user || !fb) return Promise.resolve();
     var local = collectLocal();
+    var ts = {};
+    for (var i=0;i<LS_KEYS.length;i++){ ts[LS_KEYS[i]] = localTs(LS_KEYS[i]); }
     return getLocalErrors().then(function(errors){
       var payload = {
         ls: local.ls,
+        ts: ts,
         errors: Array.isArray(errors) ? errors.slice(0, 3000) : []
       };
       return fb.saveSettings(user.uid, payload);
@@ -189,9 +190,17 @@
       var origSet = proto.setItem.bind(proto);
       proto.setItem = function(k, v){
         origSet(k, v);
-        if (LS_KEYS.indexOf(String(k)) >= 0) pushSoon();
+        if (LS_KEYS.indexOf(String(k)) >= 0){
+          // Bu anahtarın yerel değişiklik zamanını kaydet (en-son-kazanır için)
+          try{ origSet("__ts_" + k, String(Date.now())); }catch(e){}
+          pushSoon();
+        }
       };
     }catch(e){}
+  }
+  // Bir anahtarın yerel zaman damgasını oku
+  function localTs(k){
+    try{ return parseInt(localStorage.getItem("__ts_" + k) || "0", 10) || 0; }catch(e){ return 0; }
   }
   // Hata defterine kayıt eklenince de buluta gönder
   window.addEventListener("learning-error-added", pushSoon);
@@ -212,28 +221,24 @@
     if (!user) return Promise.resolve({ ok:false, message:"Senkron için önce giriş yapmalısın." });
     return fb.loadSettings(user.uid).then(function(remote){
       var rd = parseRemote(remote);
-      // localStorage: buluttaki değerleri uygula (boş olmayanları yaz)
-      var applied = 0;
-      if (rd.ls){
-        for (var k in rd.ls){
-          if (!rd.ls.hasOwnProperty(k)) continue;
-          var v = rd.ls[k];
-          if (v == null || v === "") continue;
-          try{ localStorage.setItem(k, v); applied++; }catch(e){}
-        }
+      // BASİT MANTIK: Senkron = buluttakini getir, yerele yaz. Geri yazma yok.
+      var pulled = 0;
+      for (var ki=0; ki<LS_KEYS.length; ki++){
+        var k = LS_KEYS[ki];
+        var remoteVal = (rd.ls && rd.ls.hasOwnProperty(k)) ? rd.ls[k] : null;
+        if (remoteVal == null || remoteVal === "") continue; // bulutta yoksa atla
+        try{ localStorage.setItem(k, remoteVal); pulled++; }catch(e){}
       }
-      // hata defteri: buluttan gelenleri birleştir
+      // hata defteri: buluttan gelenleri yerele ekle (birleştir)
       return mergeRemoteErrors(rd.errors || []).then(function(addedErr){
-        // güncel yerel durumu buluta geri yaz
-        return pushNow().then(function(){
-          return { ok:true, applied:applied, addedErrors:addedErr||0 };
-        });
+        return { ok:true, pulled:pulled, addedErrors:addedErr||0 };
       });
     }).then(function(res){
       var parts = [];
-      parts.push("Ayarlar güncellendi");
+      if (res.pulled) parts.push(res.pulled + " ayar buluttan alındı");
       if (res.addedErrors) parts.push(res.addedErrors + " hata kaydı eklendi");
-      return { ok:true, message:"✓ Senkron tamam. " + parts.join(", ") + "." };
+      if (!parts.length) parts.push("bulutta veri yok veya zaten güncel");
+      return { ok:true, message:"✓ Buluttan alındı. " + parts.join(", ") + "." };
     }).catch(function(e){
       var msg = (e && e.message) ? e.message : "bağlantı hatası";
       if (/permission/i.test(msg)) msg = "İzin hatası (Firebase kuralı). Lütfen tekrar dene.";
