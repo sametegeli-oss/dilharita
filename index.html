@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="tr">
 <head>
-<script src="./storage-bridge.js?v=1"></script>
+<script src="./storage-bridge.js?v=2"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0b1120">
@@ -64,8 +64,8 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   </div>
 </div>
 <script src="./pwa-install.js"></script>
-<script src="./daily-dashboard.js?v=1"></script>
-<script src="./cloud-sync.js?v=1"></script>
+<script src="./daily-dashboard.js?v=2"></script>
+<script src="./cloud-sync.js?v=2"></script>
 <script>
 (function(){
   var btn=document.getElementById("dhCloudSyncBtn");
@@ -79,12 +79,19 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     var old=btn.textContent;
     btn.disabled=true; btn.textContent="⏳ Senkronize ediliyor...";
     msg.textContent="";
+    // Teşhis: giriş ve bulut durumu
+    var u = window.DHCloudSync.user;
+    var rdy = window.DHCloudSync.ready;
     try{
       var res=await window.DHCloudSync.fullSync();
-      msg.textContent=res.message||"";
+      var yerel = (localStorage.getItem("dh_ai_prompt_teacher")||"").slice(0,30);
+      msg.innerHTML = (res.message||"") +
+        "<br><small style='color:#9fb3d9'>giriş:" + (u?("var ("+u.uid.slice(0,6)+")"):"YOK") +
+        " · hazır:" + (rdy?"evet":"hayır") +
+        " · yerel prompt:" + (yerel?("'"+yerel+"...'"):"BOŞ") + "</small>";
       msg.style.color=res.ok ? "#34d399" : "#f87171";
     }catch(e){
-      msg.textContent="Senkron sırasında hata oluştu.";
+      msg.textContent="Senkron sırasında hata: "+(e&&e.message?e.message:"bilinmeyen");
       msg.style.color="#f87171";
     }finally{
       btn.disabled=false; btn.textContent=old;
