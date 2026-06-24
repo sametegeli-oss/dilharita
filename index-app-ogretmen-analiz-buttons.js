@@ -121,11 +121,60 @@ function openTeacher(card){
   const en = sentenceEN(card);
   const tr = sentenceTR(card);
   if (!en) return;
-  const back = "./index-app.html";
-  location.href = "./teacher.html?s=" + encodeURIComponent(en) +
-    (tr ? "&t=" + encodeURIComponent(tr) : "") +
-    "&return=" + encodeURIComponent(back);
+  const url = "./teacher.html?s=" + encodeURIComponent(en) +
+    (tr ? "&t=" + encodeURIComponent(tr) : "") + "&embed=1";
+  openTeacherOverlay(url);
 }
+
+// Öğretmeni çalışma sayfasının ÜSTÜNDE tam ekran iframe katmanı olarak açar.
+// Çalışma sayfası arkada açık/aktif kalır; katman kapanınca aynı cümleden devam edilir.
+function openTeacherOverlay(url){
+  let ov = document.getElementById("teacherOverlay");
+  if (ov) ov.remove(); // varsa eskisini temizle
+  ov = document.createElement("div");
+  ov.id = "teacherOverlay";
+  ov.style.cssText = [
+    "position:fixed","inset:0","z-index:2147483000",
+    "background:#0b1120","display:flex","flex-direction:column"
+  ].join(";");
+
+  const bar = document.createElement("div");
+  bar.style.cssText = [
+    "flex:0 0 auto","display:flex","align-items:center","gap:10px",
+    "padding:10px 14px","background:#0b1120","border-bottom:1px solid #ffffff14"
+  ].join(";");
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.textContent = "← Çalışmaya dön";
+  closeBtn.style.cssText = [
+    "border:none","cursor:pointer","border-radius:12px","padding:10px 14px",
+    "background:linear-gradient(135deg,#34d399,#16a34a)","color:#fff",
+    "font:800 14px system-ui,sans-serif"
+  ].join(";");
+  closeBtn.onclick = closeTeacherOverlay;
+  bar.appendChild(closeBtn);
+
+  const frame = document.createElement("iframe");
+  frame.src = url;
+  frame.style.cssText = "flex:1 1 auto;width:100%;border:0;background:#0b1120";
+  frame.setAttribute("allow", "microphone; autoplay");
+
+  ov.appendChild(bar);
+  ov.appendChild(frame);
+  document.body.appendChild(ov);
+  document.body.style.overflow = "hidden"; // arka plan kaymasın
+}
+
+function closeTeacherOverlay(){
+  const ov = document.getElementById("teacherOverlay");
+  if (ov) ov.remove();
+  document.body.style.overflow = ""; // arka planı geri aç
+}
+
+// teacher.html (iframe içinden) kapatma isteği gönderebilsin diye dinleyici
+window.addEventListener("message", function(ev){
+  if (ev && ev.data === "dh-teacher-close") closeTeacherOverlay();
+});
 
 function collectDetails(card){
   return [...card.querySelectorAll(".detail-row")].map(r => {

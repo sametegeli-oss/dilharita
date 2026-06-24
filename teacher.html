@@ -330,7 +330,7 @@ function parseParams(){
 function render(){
   root.innerHTML = `
   <div class="top">
-    <a href="./index.html" class="back" title="Geri">←</a>
+    <a href="./index.html" class="back" id="teacherBack" title="Geri">←</a>
     <div class="ava" title="Fotoğraflı öğretmen"><img id="teacherAvaImg" alt="Öğretmen avatarı"></div>
     <div class="tinfo"><h1>İngilizce Öğretmeni</h1><p>Türkçe anlatımlı İngilizce öğretmeni</p></div>
   </div>
@@ -344,6 +344,36 @@ function render(){
     <div id="out"></div>
   </div>`;
   mountTeacherAvatar();
+  // Geri düğmesi davranışı
+  var backEl = document.getElementById("teacherBack");
+  if (backEl){
+    var p2 = new URLSearchParams(location.search);
+    var isEmbed = p2.get("embed") === "1";
+    if (isEmbed){
+      // iframe katmanı içinde: üst pencereye "kapat" sinyali gönder.
+      // Çalışma sayfası arkada açık kaldığı için aynı cümleden devam edilir.
+      backEl.setAttribute("href", "#");
+      backEl.textContent = "←";
+      backEl.title = "Çalışmaya dön";
+      backEl.onclick = function(ev){
+        ev.preventDefault();
+        try{ parent.postMessage("dh-teacher-close", "*"); }catch(e){}
+      };
+    } else {
+      // Ayrı sayfa olarak açıldıysa: kayıtlı dönüş sayfasına git (yoksa ana menü)
+      var ret = "";
+      try{ ret = localStorage.getItem("teacherReturnURL") || ""; }catch(e){}
+      if (!ret){ ret = p2.get("return") || ""; }
+      if (ret){
+        backEl.setAttribute("href", ret);
+        backEl.onclick = function(ev){
+          ev.preventDefault();
+          try{ localStorage.removeItem("teacherReturnURL"); }catch(e){}
+          location.href = ret;
+        };
+      }
+    }
+  }
   document.getElementById("playBtn").onclick = () => speakEnglish(State.en);
   explain();
 }
