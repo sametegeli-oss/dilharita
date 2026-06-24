@@ -51,20 +51,49 @@ function splitForSpeech(text){
   const raw=String(text||"")
     .replace(/<br\s*\/?>/gi,"\n")
     .replace(/<[^>]+>/g," ")
-    .replace(/\[\[|\]\]/g," ")   // [[ ]] işaretleri okunmasın, içerik kalsın
     .replace(/\*\*/g," ");        // ** kalın işaretleri okunmasın
   const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
   const chunks=[];
+
+  // Bir satırı [[...]] sınırlarına göre dil-segmentlerine ayırır.
+  // [[ ]] içi = İngilizce (kesin), dışı = isTurkish ile tespit.
+  function segmentsByBrackets(line){
+    const segs=[];
+    const re=/\[\[([\s\S]*?)\]\]/g;
+    let last=0, m;
+    while((m=re.exec(line))!==null){
+      if(m.index>last){
+        const before=line.slice(last, m.index).trim();
+        if(before) segs.push({text:before, lang:isTurkish(before)?"tr-TR":"en-US"});
+      }
+      const inner=(m[1]||"").trim();
+      if(inner) segs.push({text:inner, lang:"en-US"});   // köşeli parantez içi her zaman İngilizce
+      last=re.lastIndex;
+    }
+    if(last<line.length){
+      const after=line.slice(last).trim();
+      if(after) segs.push({text:after, lang:isTurkish(after)?"tr-TR":"en-US"});
+    }
+    // Hiç [[...]] yoksa tüm satır tek segment
+    if(!segs.length){
+      const t=line.trim();
+      if(t) segs.push({text:t, lang:isTurkish(t)?"tr-TR":"en-US"});
+    }
+    return segs;
+  }
+
   lines.forEach(line=>{
-    const lang=isTurkish(line) ? "tr-TR" : "en-US";
-    const pieces=line.split(/(?<=[.!?])\s+/).filter(Boolean);
-    (pieces.length?pieces:[line]).forEach(p=>{
-      splitLongLine(p, lang==="tr-TR"?110:90).forEach(piece=>{
-        if(piece) chunks.push({text:piece, lang});
+    segmentsByBrackets(line).forEach(seg=>{
+      // Her segmenti cümlelere, sonra uzun ise küçük parçalara böl
+      const pieces=seg.text.split(/(?<=[.!?])\s+/).filter(Boolean);
+      (pieces.length?pieces:[seg.text]).forEach(p=>{
+        splitLongLine(p, seg.lang==="tr-TR"?110:90).forEach(piece=>{
+          if(piece) chunks.push({text:piece, lang:seg.lang});
+        });
       });
     });
   });
-  return chunks.length ? chunks : [{text:clean(raw), lang:isTurkish(raw)?"tr-TR":"en-US"}];
+  return chunks.length ? chunks : [{text:clean(raw.replace(/\[\[|\]\]/g," ")), lang:isTurkish(raw)?"tr-TR":"en-US"}];
 }
 function avatarImgs(){
   const set=new Set();
