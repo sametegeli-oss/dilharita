@@ -391,9 +391,84 @@ body{
   #gradeDock .next-btn{width:100%!important;min-height:110px!important;border-radius:24px!important;font-size:36px!important;font-weight:950!important;background:linear-gradient(180deg,#ffac20,#ee8d00)!important;color:#fff!important;border:0!important}
 }
 
-/* Mobil ve dar ekranda eski sağlam görünüm korunsun */
-@media (max-width:1099px){
+/* Dik (portrait) mobil ve dar ekranda eski sağlam görünüm korunsun */
+@media (max-width:1099px) and (orientation:portrait){
   .practice-v5{display:block!important}
+}
+
+/* Yatay (landscape) mobilde masaüstü gibi 3 sütun — küçültülmüş düğmelerle */
+@media (max-width:1099px) and (orientation:landscape){
+  .wrap{max-width:none!important;width:100%!important;padding:8px!important}
+  .top,.prog{width:calc(100vw - 16px)!important;margin-left:auto!important;margin-right:auto!important}
+  .stage{max-width:none!important;width:calc(100vw - 16px)!important;margin:8px auto 0!important;padding:0!important}
+  .practice-v5{
+    display:grid!important;
+    grid-template-columns:1fr 1.25fr .85fr!important;
+    gap:10px!important;
+    align-items:stretch!important;
+    padding:10px!important;
+    border-radius:16px!important;
+    background:linear-gradient(180deg,rgba(12,32,68,.82),rgba(7,21,48,.92))!important;
+    border:1px solid rgba(80,140,255,.28)!important;
+  }
+  .practice-v5 *{box-sizing:border-box}
+  .pv5-left,.pv5-center,.pv5-right{min-width:0;display:flex;flex-direction:column;gap:10px}
+  .pv5-panel{
+    background:linear-gradient(180deg,rgba(15,35,76,.90),rgba(7,22,50,.96))!important;
+    border:1px solid rgba(105,158,255,.26)!important;
+    border-radius:14px!important;
+    padding:12px!important;
+  }
+  .pv5-prompt{min-height:0;display:flex;flex-direction:column;justify-content:center}
+  .pv5-prompt .meta{margin:0 0 8px!important}
+  .pv5-prompt .tr-prompt{font-size:12px!important;color:#dbeafe!important;margin-bottom:6px!important;text-transform:none!important}
+  .pv5-prompt .tr-text{font-size:clamp(20px,4.5vw,30px)!important;font-weight:950!important;line-height:1.1!important;color:#fff!important;margin:0 0 10px!important}
+  .pv5-prompt .pron-hint{font-size:12px!important;color:#cbd5e1!important;background:rgba(255,255,255,.04)!important;border:1px solid rgba(255,255,255,.10)!important;border-radius:12px!important;padding:8px!important}
+  .pv5-prompt .teacher-ask-row{margin-top:6px!important}
+  .pv5-prompt .teacher-ask-btn{width:100%!important;min-height:42px!important;border-radius:12px!important;font-size:14px!important;font-weight:900!important;background:linear-gradient(180deg,#27ce6d,#14aa55)!important;border:1px solid rgba(115,255,171,.45)!important;color:#fff!important}
+  .pv5-feedback{min-height:0}
+  .pv5-feedback:empty{display:none}
+  .pv5-feedback .feedback{display:flex!important;flex-direction:column!important;gap:8px!important}
+  .pv5-feedback .verdict{display:flex!important;align-items:center!important;gap:8px!important}
+  .pv5-feedback .verdict-emoji{font-size:20px!important}
+  .pv5-feedback .verdict-text{font-size:15px!important;font-weight:900!important;color:#22c55e!important}
+  .pv5-feedback .diff{font-size:14px!important;line-height:1.4!important;padding:10px!important;border-radius:12px!important;background:rgba(0,95,56,.28)!important;border:1px solid rgba(52,211,153,.35)!important}
+  .pv5-feedback .answer-reveal{font-size:12px!important;line-height:1.5!important;padding:10px!important;border-radius:12px!important;background:rgba(255,255,255,.035)!important;border:1px solid rgba(255,255,255,.10)!important}
+  .pv5-feedback .answer-en{display:block!important;font-size:16px!important;margin:4px 0!important;color:#fff!important}
+  .pv5-feedback .audio-btn{align-self:flex-start!important;min-height:34px!important;border-radius:10px!important;padding:0 12px!important;font-size:12px!important;font-weight:800!important}
+  .pv5-feedback .grade-row,.pv5-feedback .next-btn{display:none!important}
+
+  .pv5-answer{min-height:0;display:flex;flex-direction:column;justify-content:center}
+  .pv5-answer #answerArea{display:flex!important;flex-wrap:wrap!important;gap:8px!important;align-content:center!important}
+  .pv5-answer .layer-label{width:100%!important;font-size:12px!important;font-weight:900!important;color:#fff!important;margin-bottom:2px!important}
+  .pv5-answer .bank{order:1;width:100%!important;min-height:0!important;border-radius:14px!important;background:rgba(255,255,255,.05)!important;border:1px solid rgba(160,190,255,.24)!important;padding:8px!important;display:flex!important;gap:8px!important;flex-wrap:wrap!important;align-content:flex-start!important}
+  .pv5-answer .tok-btn{min-width:0!important;min-height:44px!important;border-radius:12px!important;font-size:15px!important;font-weight:900!important;padding:0 12px!important;background:linear-gradient(180deg,#ffffff,#e8eefb)!important;color:#101a33!important;border:1px solid rgba(255,255,255,.7)!important}
+  .pv5-answer .tok-btn.placed{opacity:.35!important}
+  .pv5-answer .build-line{order:2;width:100%!important;min-height:60px!important;border-radius:14px!important;border:2px dashed rgba(123,160,235,.38)!important;background:rgba(3,14,33,.35)!important;padding:8px!important;display:flex!important;gap:8px!important;flex-wrap:wrap!important;align-content:flex-start!important}
+  .pv5-answer .tok-chip{min-width:0!important;min-height:44px!important;border-radius:12px!important;font-size:15px!important;font-weight:900!important;padding:0 12px!important;background:linear-gradient(180deg,#0f2b66,#12367e)!important;color:#fff!important;border:1px solid rgba(135,176,255,.28)!important}
+  .pv5-answer .full-input,.pv5-answer .cloze-input{width:100%!important;min-height:60px!important;border-radius:12px!important;font-size:15px!important;padding:12px!important;background:rgba(3,14,33,.35)!important;border:2px dashed rgba(123,160,235,.38)!important;color:#fff!important}
+  .pv5-answer .mic-row{order:3;width:calc(33.333% - 6px)!important;margin:0!important}
+  .pv5-answer .mic-btn{width:100%!important;min-height:44px!important;border-radius:12px!important;font-size:14px!important;font-weight:900!important;background:linear-gradient(180deg,#884dff,#5d31f4)!important;color:#fff!important;border:1px solid rgba(192,170,255,.45)!important}
+  .pv5-answer .actions{order:4;width:calc(66.666% - 2px)!important;display:grid!important;grid-template-columns:1fr 1.28fr!important;gap:8px!important;margin:0!important}
+  .pv5-answer .actions .btn{min-height:44px!important;border-radius:12px!important;font-size:15px!important;font-weight:900!important}
+  .pv5-answer .actions .btn-ghost{background:linear-gradient(180deg,#405982,#2c4267)!important;color:#fff!important}
+  .pv5-answer .actions .btn-primary{background:linear-gradient(180deg,#268bff,#1d68ff)!important;color:#fff!important}
+  .pv5-answer .mic-note{display:none!important}
+
+  .pv5-right{justify-content:stretch}
+  .pv5-level{height:100%;display:flex!important;flex-direction:column!important;gap:10px!important;justify-content:flex-start!important}
+  .pv5-level-title{font-size:15px!important;font-weight:900!important;color:#fff!important;margin:2px 0 8px!important}
+  #gradeDock{display:flex!important;flex-direction:column!important;gap:8px!important}
+  #gradeDock .grade-placeholder{padding:12px!important;border:2px dashed rgba(123,160,235,.35)!important;border-radius:12px!important;color:#a8bce2!important;line-height:1.4!important;text-align:center!important;font-size:12px!important}
+  #gradeDock .grade-row{display:block!important}
+  #gradeDock .grade-q{display:none!important}
+  #gradeDock .grade-btns{display:flex!important;flex-direction:column!important;gap:8px!important}
+  #gradeDock .gbtn{width:100%!important;min-height:46px!important;border-radius:12px!important;font-size:16px!important;font-weight:900!important;color:#fff!important}
+  #gradeDock .g-hard{background:linear-gradient(180deg,#ff5959,#ea3434)!important}
+  #gradeDock .g-good{background:linear-gradient(180deg,#2b8dff,#176eff)!important}
+  #gradeDock .g-easy{background:linear-gradient(180deg,#31c75e,#20ad48)!important}
+  #gradeDock .gbtn.sel{outline:3px solid rgba(255,255,255,.28)!important}
+  #gradeDock .next-btn{width:100%!important;min-height:46px!important;border-radius:12px!important;font-size:16px!important;font-weight:900!important;background:linear-gradient(180deg,#ffac20,#ee8d00)!important;color:#fff!important;border:0!important}
 }
 
 </style>
