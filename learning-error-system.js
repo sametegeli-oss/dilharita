@@ -201,5 +201,23 @@ function summarize(records){
   return {total:arr.length, high:arr.filter(r=>r.reviewPriority==="high").length, byType:top(byType), byModule:top(byModule), repeated:top(bySentence).filter(x=>x[1]>1)};
 }
 
-window.LearningErrorDB={add,all,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc};
+// Senkron için: gelen kayıtları mevcutlarla birleştir (aynı id varsa atla).
+// Buluttan gelen hata kayıtlarını yerel IndexedDB'ye ekler, kopya oluşturmaz.
+async function bulkMerge(records){
+  if(!Array.isArray(records) || !records.length) return 0;
+  let existing=[];
+  try{ existing=await idbAll(); }catch(e){ existing=fbAll(); }
+  const haveIds=new Set(existing.map(r=>r&&r.id).filter(Boolean));
+  let added=0;
+  for(const rec of records){
+    if(!rec || !rec.id) continue;
+    if(haveIds.has(rec.id)) continue;
+    try{ await idbAdd(rec); }
+    catch(e){ const arr=fbAll(); arr.unshift(rec); fbSave(arr.slice(0,2000)); }
+    haveIds.add(rec.id); added++;
+  }
+  if(added) window.dispatchEvent(new CustomEvent("learning-errors-merged",{detail:{added}}));
+  return added;
+}
+window.LearningErrorDB={add,all,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge};
 })();
