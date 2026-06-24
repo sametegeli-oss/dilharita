@@ -59,7 +59,7 @@ function splitForSpeech(text){
     const lang=isTurkish(line) ? "tr-TR" : "en-US";
     const pieces=line.split(/(?<=[.!?])\s+/).filter(Boolean);
     (pieces.length?pieces:[line]).forEach(p=>{
-      splitLongLine(p, lang==="tr-TR"?150:125).forEach(piece=>{
+      splitLongLine(p, lang==="tr-TR"?110:90).forEach(piece=>{
         if(piece) chunks.push({text:piece, lang});
       });
     });
@@ -233,16 +233,24 @@ function speakChunks(text){
     u.pitch=1;
     u.__longTTSAvatarSync = true;
     let ended=false;
-    const watchdog=setTimeout(()=>{
-      if(!ended && active) {
-        try{ speechSynthesis.pause(); speechSynthesis.resume(); }catch(e){}
-      }
-    }, Math.max(3500, c.text.length*90));
+    function advance(){
+      if(ended) return;
+      ended=true;
+      clearTimeout(watchdog);
+      clearInterval(mouthTimer); mouthTimer=null;
+      setSpeakingState(true);
+      setTimeout(next, 60);
+    }
+    // Zorlama zamanlayıcısı: Chrome bazen onend'i hiç çağırmaz; tahmini süre
+    // dolunca zinciri zorla ilerlet ki sonraki parça okunsun (kesilme önlenir).
+    // Tahmini süre: kelime sayısı * konuşma hızına göre + güvenlik payı.
+    var estMs = Math.max(4000, c.text.length * 75) + 1500;
+    const watchdog=setTimeout(advance, estMs);
     u.onstart=()=>{ setSpeakingState(true); startMouthForText(c.text, c.lang); };
     u.onboundary=(ev)=>{ setSpeakingState(true); if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex); };
-    u.onend=()=>{ ended=true; clearTimeout(watchdog); clearInterval(mouthTimer); mouthTimer=null; setSpeakingState(true); setTimeout(next, 80); };
-    u.onerror=()=>{ ended=true; clearTimeout(watchdog); setTimeout(next, 80); };
-    try{ nativeSpeak(u); }catch(e){ clearTimeout(watchdog); next(); }
+    u.onend=advance;
+    u.onerror=advance;
+    try{ nativeSpeak(u); }catch(e){ advance(); }
   }
   next();
   return true;

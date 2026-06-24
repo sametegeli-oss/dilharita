@@ -64,7 +64,11 @@ function speakMixed(text){
       u.lang=c.lang;
       u.rate=c.lang==="tr-TR"?.96:.88;
       u.__dhMixed=true;
-      u.onend=next;
+      let done=false;
+      function go(){ if(done)return; done=true; clearTimeout(wd); setTimeout(next,60); }
+      var wd=setTimeout(go, Math.max(4000, c.text.length*75)+1500);
+      u.onend=go;
+      u.onerror=go;
       nativeSpeak.call(speechSynthesis,u);
     }
     next();
