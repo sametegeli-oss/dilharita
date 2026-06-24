@@ -117,15 +117,22 @@
       k = String(k); v = String(v);
       mem[k] = v;
       queueWrite(function(){ return idbSet(k, v); });
+      // Küçük değerleri (anahtar/ayar/prompt) localStorage'a da yansıt ki
+      // sonraki açılışta SENKRON okunabilsinler. Büyükleri yazmaya çalışma (kota).
+      try{
+        if (nativeLS && v.length <= 20000){ nativeLS.setItem(k, v); }
+      }catch(e){ /* kota dolarsa sorun değil, IDB'de zaten var */ }
     },
     removeItem: function(k){
       k = String(k);
       delete mem[k];
       queueWrite(function(){ return idbDel(k); });
+      try{ if (nativeLS) nativeLS.removeItem(k); }catch(e){}
     },
     clear: function(){
       mem = {};
       queueWrite(function(){ return idbClear(); });
+      try{ if (nativeLS) nativeLS.clear(); }catch(e){}
     },
     key: function(i){
       var keys = Object.keys(mem);
@@ -188,12 +195,19 @@
         return idbSet("__dh_idb_migrated__","1");
       }).then(function(){
         mem["__dh_idb_migrated__"] = "1";
-        // Veri artık IDB'de güvende → eski localStorage'ı boşalt (kotayı serbest bırak)
+        // Veri artık IDB'de güvende. localStorage'ı TÜMÜYLE boşaltmıyoruz:
+        // küçük değerler (API anahtarı, ayarlar, prompt) localStorage'da kalsın ki
+        // sayfa açılışında SENKRON okunabilsinler (IDB asenkron yüklenir).
+        // Sadece kotayı şişiren BÜYÜK değerleri (>20KB) localStorage'dan kaldırırız.
         try{
           if (nativeLS){
-            var keys = [];
-            for (var j = 0; j < nativeLS.length; j++){ var kk = nativeLS.key(j); if (kk) keys.push(kk); }
-            keys.forEach(function(kk){ try{ nativeLS.removeItem(kk); }catch(e){} });
+            var big = [];
+            for (var j = 0; j < nativeLS.length; j++){
+              var kk = nativeLS.key(j); if (!kk) continue;
+              var val = nativeLS.getItem(kk) || "";
+              if (val.length > 20000) big.push(kk); // ~20KB üstü = büyük
+            }
+            big.forEach(function(kk){ try{ nativeLS.removeItem(kk); }catch(e){} });
           }
         }catch(e){}
       }).catch(function(e){
@@ -204,7 +218,17 @@
       // Sonraki açılışlar: IDB ana kaynak. Belleği IDB ile birleştir
       // (IDB'deki değerler önceliklidir, çünkü en güncel olan o)
       for (var sk in stored){
-        if (stored.hasOwnProperty(sk)) mem[sk] = stored[sk];
+        if (stored.hasOwnProperty(sk)){
+          mem[sk] = stored[sk];
+          // Küçük değerleri localStorage'a geri yaz ki SONRAKİ açılışta
+          // senkron okunabilsinler (örn. API anahtarları kutusu çıkmasın).
+          try{
+            if (nativeLS && sk !== "__dh_idb_migrated__" &&
+                typeof stored[sk] === "string" && stored[sk].length <= 20000){
+              nativeLS.setItem(sk, stored[sk]);
+            }
+          }catch(e){}
+        }
       }
     }
 
