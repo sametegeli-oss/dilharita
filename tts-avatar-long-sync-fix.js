@@ -56,7 +56,7 @@ function splitForSpeech(text){
   const chunks=[];
 
   // Bir satırı [[...]] sınırlarına göre dil-segmentlerine ayırır.
-  // [[ ]] içi = İngilizce (kesin), dışı = isTurkish ile tespit.
+  // KURAL: [[ ]] içi = İngilizce. Geri kalan HER ŞEY = Türkçe.
   function segmentsByBrackets(line){
     const segs=[];
     const re=/\[\[([\s\S]*?)\]\]/g;
@@ -64,20 +64,20 @@ function splitForSpeech(text){
     while((m=re.exec(line))!==null){
       if(m.index>last){
         const before=line.slice(last, m.index).trim();
-        if(before) segs.push({text:before, lang:isTurkish(before)?"tr-TR":"en-US"});
+        if(before) segs.push({text:before, lang:"tr-TR"});   // dış = Türkçe
       }
       const inner=(m[1]||"").trim();
-      if(inner) segs.push({text:inner, lang:"en-US"});   // köşeli parantez içi her zaman İngilizce
+      if(inner) segs.push({text:inner, lang:"en-US"});        // [[...]] içi = İngilizce
       last=re.lastIndex;
     }
     if(last<line.length){
       const after=line.slice(last).trim();
-      if(after) segs.push({text:after, lang:isTurkish(after)?"tr-TR":"en-US"});
+      if(after) segs.push({text:after, lang:"tr-TR"});        // dış = Türkçe
     }
-    // Hiç [[...]] yoksa tüm satır tek segment
+    // Hiç [[...]] yoksa tüm satır Türkçe
     if(!segs.length){
       const t=line.trim();
-      if(t) segs.push({text:t, lang:isTurkish(t)?"tr-TR":"en-US"});
+      if(t) segs.push({text:t, lang:"tr-TR"});
     }
     return segs;
   }
@@ -93,7 +93,7 @@ function splitForSpeech(text){
       });
     });
   });
-  return chunks.length ? chunks : [{text:clean(raw.replace(/\[\[|\]\]/g," ")), lang:isTurkish(raw)?"tr-TR":"en-US"}];
+  return chunks.length ? chunks : [{text:clean(raw.replace(/\[\[|\]\]/g," ")), lang:"tr-TR"}];
 }
 function avatarImgs(){
   const set=new Set();
