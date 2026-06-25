@@ -309,15 +309,24 @@ function speakTurkish(text){ speak(text, "tr-TR"); }
 // Ekranda görünen renk ayrımıyla okuma BİREBİR aynı olur.
 function speakFromScreen(boxEl){
   if(!boxEl) return false;
-  // Toggle: okuma sürüyorsa durdur ve çık.
+  // Toggle: konuşuyorsa duraklat, duraklatılmışsa kaldığı yerden devam ettir.
   try{
-    if(window.speechSynthesis && (speechSynthesis.speaking || speechSynthesis.pending)){
-      speechSynthesis.cancel();
-      try{ if(window.DH_LongTTSAvatarSync && window.DH_LongTTSAvatarSync.stop) window.DH_LongTTSAvatarSync.stop(); }catch(e){}
-      try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
-      return false;
+    if(window.speechSynthesis){
+      if(speechSynthesis.paused && speechSynthesis.speaking){
+        // Duraklatılmış: devam ettir
+        window.__dhUserPaused = false;
+        speechSynthesis.resume();
+        return false;
+      }
+      if(speechSynthesis.speaking){
+        // Konuşuyor: duraklat (keep-alive'ın tekrar başlatmaması için işaret bırak)
+        window.__dhUserPaused = true;
+        speechSynthesis.pause();
+        return false;
+      }
     }
   }catch(e){}
+  window.__dhUserPaused = false;
   var segs=[];
   (function walk(node){
     // childNodes canlı liste; sarmalama yapacağımız için kopya üzerinde gez

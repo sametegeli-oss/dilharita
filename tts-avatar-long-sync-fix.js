@@ -274,6 +274,7 @@ function speakChunkList(chunks){
     // Chrome (masaüstü), uzun konuşmalarda ~15 sn sonra TTS'i durdurur.
     keepAlive=setInterval(()=>{
       try{
+        if(window.__dhUserPaused) return; // kullanıcı bilerek duraklattı, dokunma
         if(speechSynthesis.speaking && !speechSynthesis.paused){
           speechSynthesis.pause(); speechSynthesis.resume();
         }
@@ -299,12 +300,18 @@ function speakChunkList(chunks){
     let ended=false;
     function advance(){
       if(ended) return;
+      // Kullanıcı bilerek duraklattıysa: ilerleme, biraz sonra tekrar kontrol et.
+      if(window.__dhUserPaused){
+        watchdog2 = setTimeout(advance, 1000);
+        return;
+      }
       ended=true;
       clearTimeout(watchdog);
       clearInterval(mouthTimer); mouthTimer=null;
       setSpeakingState(true);
       setTimeout(next, 60);
     }
+    var watchdog2=null;
     // Zorlama zamanlayıcısı: Chrome bazen onend'i hiç çağırmaz; tahmini süre
     // dolunca zinciri zorla ilerlet ki sonraki parça okunsun (kesilme önlenir).
     // Mobilde daha cömert süre: erken tetiklenip sesi kesmesin.
