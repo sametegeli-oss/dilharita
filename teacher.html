@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="tr">
 <head>
+<script src="./auth-guard.js?v=1"></script>
 <script src="./storage-bridge.js?v=2"></script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -308,6 +309,15 @@ function speakTurkish(text){ speak(text, "tr-TR"); }
 // Ekranda görünen renk ayrımıyla okuma BİREBİR aynı olur.
 function speakFromScreen(boxEl){
   if(!boxEl) return false;
+  // Toggle: okuma sürüyorsa durdur ve çık.
+  try{
+    if(window.speechSynthesis && (speechSynthesis.speaking || speechSynthesis.pending)){
+      speechSynthesis.cancel();
+      try{ if(window.DH_LongTTSAvatarSync && window.DH_LongTTSAvatarSync.stop) window.DH_LongTTSAvatarSync.stop(); }catch(e){}
+      try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
+      return false;
+    }
+  }catch(e){}
   var segs=[];
   (function walk(node){
     // childNodes canlı liste; sarmalama yapacağımız için kopya üzerinde gez

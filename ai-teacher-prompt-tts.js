@@ -131,7 +131,7 @@ function addStyle(){
   const st=document.createElement("style");
   st.id="dhAiPromptStyle";
   st.textContent=`
-  #dhAiPromptBtn{position:fixed;right:14px;bottom:88px;z-index:999998;border:1px solid rgba(255,255,255,.18);background:#1d4ed8;color:white;border-radius:999px;padding:11px 14px;font:900 13px Nunito,system-ui,sans-serif;box-shadow:0 12px 34px rgba(0,0,0,.38)}
+  #dhAiPromptBtn{position:fixed;left:14px;bottom:14px;z-index:999998;border:1px solid rgba(255,255,255,.18);background:#1d4ed8;color:white;border-radius:999px;padding:11px 14px;font:900 13px Nunito,system-ui,sans-serif;box-shadow:0 12px 34px rgba(0,0,0,.38)}
   #dhAiPromptPanel{position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.68);display:none;align-items:center;justify-content:center;padding:16px}
   #dhAiPromptPanel.active{display:flex}
   .dhp-box{width:min(760px,100%);max-height:88vh;overflow:auto;background:#0f172a;color:#e5eefb;border:1px solid rgba(255,255,255,.16);border-radius:22px;padding:16px;font-family:Nunito,system-ui,sans-serif}
