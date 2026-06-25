@@ -73,27 +73,51 @@ function summarizeErrors(records){
   return {total:arr.length, high:high.length, byType:top(byType), byModule:top(byModule)};
 }
 
-function countLocalSrs(){
+// SRS verisi practice.html ile AYNI yerde: IndexedDB "sentence-mode"/"kv",
+// "srs:" öneki (üretim). Her kayıt: {rep, ef, interval, due, last}.
+function openSrsDB(){
+  return new Promise((res, rej) => {
+    if(!("indexedDB" in window)) return rej("no-idb");
+    const r = indexedDB.open("sentence-mode", 1);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      if(!db.objectStoreNames.contains("kv")) db.createObjectStore("kv");
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function readSrsAll(prefix){
+  return openSrsDB().then(db => new Promise((res, rej) => {
+    const out = {};
+    const store = db.transaction("kv","readonly").objectStore("kv");
+    const rq = store.openCursor();
+    rq.onsuccess = () => {
+      const c = rq.result;
+      if(c){
+        if(typeof c.key === "string" && c.key.startsWith(prefix))
+          out[c.key.slice(prefix.length)] = c.value;
+        c.continue();
+      } else res(out);
+    };
+    rq.onerror = () => rej(rq.error);
+  })).catch(()=>({}));
+}
+async function countSrs(){
   let due = 0, learned = 0, worked = 0;
   const now = Date.now();
   try{
-    for(let i=0;i<localStorage.length;i++){
-      const k = localStorage.key(i) || "";
-      if(!/srs|learn|progress|sentence/i.test(k)) continue;
-      const raw = localStorage.getItem(k);
-      if(!raw) continue;
-      worked++;
-      try{
-        const v = JSON.parse(raw);
-        const flat = Array.isArray(v) ? v : (v && typeof v === "object" ? Object.values(v) : []);
-        flat.forEach(r=>{
-          if(!r || typeof r !== "object") return;
-          if((r.rep||r.reps||0)>0 || r.learned) learned++;
-          if((r.due||0) && (r.due||0)<=now) due++;
-        });
-      }catch{}
-    }
-  }catch{}
+    // Üretim SRS'i (asıl ilerleme). Dinleme modu (lsrs:) ayrı tutulur, sayıma katmıyoruz.
+    const srs = await readSrsAll("srs:");
+    const ids = Object.keys(srs);
+    worked = ids.length;                       // çalışılmış (kaydı olan) cümle sayısı
+    ids.forEach(id => {
+      const r = srs[id];
+      if(!r || typeof r !== "object") return;
+      if((r.rep||0) > 0) learned++;            // en az 1 kez doğru tekrarlanmış = öğrenilmekte
+      if((r.due||0) > 0 && (r.due||0) <= now) due++;  // tekrar zamanı gelmiş
+    });
+  }catch(e){}
   return {due, learned, worked};
 }
 
@@ -159,7 +183,7 @@ async function boot(){
     style();
     const errors = await getErrors();
     const summary = summarizeErrors(errors);
-    const srs = countLocalSrs();
+    const srs = await countSrs();
     renderPanel(summary, srs);
   }catch(e){
     try{ style(); renderPanel({total:0,high:0,byType:[],byModule:[]},{due:0,learned:0,worked:0}); }catch(_){}
