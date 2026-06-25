@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="tr">
 <head>
+<script src="./storage-bridge.js?v=2"></script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0b1120" />
@@ -959,7 +960,9 @@ function stopOwnVoiceRecording(discard){
   return new Promise(resolve=>{
     const rec=State.mediaRecorder;
     const stream=State.mediaStream;
+    let done=false;
     const finish=()=>{
+      if(done) return; done=true;
       try{ if(stream) stream.getTracks().forEach(t=>t.stop()); }catch{}
       State.mediaStream=null;
       State.mediaRecorder=null;
@@ -974,6 +977,9 @@ function stopOwnVoiceRecording(discard){
       resolve(State.lastVoiceUrl||"");
     };
     if(!rec){finish();return;}
+    // Güvenlik: mobilde rec.onstop bazen hiç tetiklenmez. 1.5 sn içinde
+    // gelmezse zorla tamamla ki değerlendirme zinciri takılmasın.
+    setTimeout(finish, 1500);
     try{
       rec.onstop=finish;
       if(rec.state!=="inactive") rec.stop();
@@ -1015,6 +1021,16 @@ function startEnglishCheck(){
     if(mic) mic.textContent="⌛";
     if(cap) cap.textContent="Değerlendiriliyor…";
     try{ if(State.voiceRec) State.voiceRec.stop(); }catch{}
+    // Güvenlik zamanlayıcısı: Mobilde SpeechRecognition.onend bazen hiç
+    // tetiklenmez; o zaman değerlendirme hiç başlamaz ve mic "⌛"da kalır.
+    // 2.5 sn içinde onend gelmezse değerlendirmeyi zorla başlat.
+    if(State.voiceFinishTimer) clearTimeout(State.voiceFinishTimer);
+    State.voiceFinishTimer=setTimeout(()=>{
+      if(State.voiceCheckDone) return;
+      State.listening=false;
+      try{ resetMicUI(); }catch{}
+      stopOwnVoiceRecording(false).then(()=>finishVoiceCheck(s)).catch(()=>finishVoiceCheck(s));
+    }, 2500);
     return;
   }
 
@@ -1023,6 +1039,7 @@ function startEnglishCheck(){
   State.voiceBest={transcript:"",score:0,confidence:0};
   State.voiceTargetId=s.id;
   State.manualStop=false;
+  State.voiceCheckDone=false;
   startOwnVoiceRecording().finally(()=>startRecognitionLoop(s));
 }
 
@@ -1122,6 +1139,10 @@ function resetMicUI(){
 }
 
 function finishVoiceCheck(s){
+  // Tek seferlik: onend ve güvenlik zamanlayıcısı ikisi birden tetiklenebilir.
+  if(State.voiceCheckDone) return;
+  State.voiceCheckDone=true;
+  if(State.voiceFinishTimer){ clearTimeout(State.voiceFinishTimer); State.voiceFinishTimer=null; }
   const heard=cleanText((State.voiceFinalText||"")+" "+(State.voiceInterimText||""));
   const best=State.voiceBest||{transcript:"",score:0,confidence:0};
   let finalText=heard;
@@ -1219,6 +1240,7 @@ boot();
 <script src="./videopractice_ui_patch.js"></script>
   
 
-<script src="./study-tracker.js?v=1"></script>
+<script src="./study-tracker.js?v=2"></script>
+<script src="./cloud-sync.js?v=2"></script>
 </body>
 </html>
