@@ -16,7 +16,7 @@ function addStyle(){
   .index-app-top-actions{
     position:fixed;
     top:10px;
-    right:10px;
+    left:10px;
     z-index:99998;
     display:flex;
     gap:8px;
@@ -25,6 +25,12 @@ function addStyle(){
   }
   /* Bu sayfada (sentence mode) AI Prompt düğmesi görünmesin */
   #dhAiPromptBtn{ display:none !important; }
+  /* Ana menüye dönüş: çalışma ekranındaki gibi geri ok */
+  .index-app-top-actions a.dh-back-arrow{
+    width:42px;height:42px;min-height:42px;padding:0;
+    font-size:20px;font-weight:900;line-height:1;
+    border-radius:12px;
+  }
   .index-app-top-actions a{
     display:inline-flex;
     align-items:center;
@@ -101,7 +107,7 @@ function ensureTopActions(){
   const row = document.createElement("div");
   row.className = "index-app-top-actions";
   row.innerHTML = `
-    <a class="home" href="./index.html">🏠 Ana Menü</a>
+    <a class="home dh-back-arrow" href="./index.html" title="Ana menü">←</a>
   `;
   document.body.appendChild(row);
 }
