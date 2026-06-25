@@ -106,6 +106,14 @@
 
   function $(id){ return document.getElementById(id); }
   function getKeys(){ try{ return (JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){ return []; } }
+  function waitForStorage(){
+    return new Promise(function(resolve){
+      if(typeof window.__dhStorageReady==="undefined" || window.__dhStorageReady){ resolve(); return; }
+      var done=false; function go(){ if(done)return; done=true; resolve(); }
+      window.addEventListener("dh-storage-ready", go, {once:true});
+      setTimeout(go, 2000);
+    });
+  }
 
   // ---- 1. OCR ----
   var cameraInput=$("cameraInput"), galleryInput=$("galleryInput");
@@ -294,6 +302,8 @@
   $("saveBtn").onclick=async function(){
     var rows=collectRows();
     if(!rows.length){ saveStatus.className="status bad"; saveStatus.textContent="Kaydedilecek cümle yok."; return; }
+    // storage belleği hazır olsun ki mevcut OCR cümleleri doğru okunsun (ezilmesin)
+    await waitForStorage();
     // mevcut OCR cümlelerini oku, yenileri ekle
     var existing=loadOcr();
     var base=Date.now();

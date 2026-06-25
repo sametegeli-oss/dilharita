@@ -2013,6 +2013,9 @@ function renderSessionDone(){
    ============================================================ */
 async function boot(){
   renderLoading();
+  // storage-bridge belleği IndexedDB'den yüklenene kadar bekle; yoksa
+  // localStorage.getItem (OCR cümleleri, prompt vb.) boş dönebilir.
+  await waitForStorage();
   try{
     await loadData();
     const restored = await restoreTeacherReturnIfNeeded();
@@ -2021,6 +2024,16 @@ async function boot(){
   }catch(e){
     renderError(e.message || String(e));
   }
+}
+
+function waitForStorage(){
+  return new Promise(function(resolve){
+    if (typeof window.__dhStorageReady === "undefined" || window.__dhStorageReady){ resolve(); return; }
+    var done=false;
+    function go(){ if(done) return; done=true; resolve(); }
+    window.addEventListener("dh-storage-ready", go, { once:true });
+    setTimeout(go, 2000);  // güvenlik: en fazla 2 sn bekle
+  });
 }
 
 // Firebase hazır olunca auth dinleyicisini kur
