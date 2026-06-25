@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1120">
+<title>Giriş — Dil Haritası</title>
+<style>
+  :root{
+    --bg:#0b1120; --surface:#0f1f3a; --surface-2:#13294d;
+    --border:#1e3a5f; --text:#e8eef7; --muted:#9fb3d9;
+    --accent:#2563eb; --accent-2:#1d4ed8; --ok:#34d399; --bad:#f87171;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(circle at 50% 0%, #13294d55, transparent 45%), var(--bg);
+    color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px;
+  }
+  .card{
+    width:min(420px,100%); background:var(--surface);
+    border:1px solid var(--border); border-radius:22px;
+    padding:28px 24px; box-shadow:0 24px 70px rgba(0,0,0,.45);
+  }
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .brand .logo{font-size:30px}
+  .brand h1{margin:0;font-size:22px;font-weight:900}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 20px;line-height:1.5}
+  label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin:14px 0 6px}
+  input{
+    width:100%; background:var(--surface-2); border:1px solid var(--border);
+    color:var(--text); border-radius:12px; padding:13px 14px; font-size:15px; font-weight:600;
+  }
+  input:focus{outline:none;border-color:var(--accent)}
+  .msg{min-height:18px;font-size:13px;margin:12px 0 4px;text-align:center}
+  .msg.bad{color:var(--bad)} .msg.ok{color:var(--ok)}
+  button{
+    width:100%; border:0; border-radius:12px; padding:14px; font-size:15px; font-weight:900;
+    cursor:pointer; margin-top:10px; font-family:inherit;
+  }
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff}
+  .btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+  .link{background:none;color:var(--muted);font-weight:700;font-size:13px;padding:8px;margin-top:4px}
+  .link:hover{color:var(--text)}
+  button:disabled{opacity:.55;cursor:default}
+  .boot{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:var(--bg);z-index:10;color:var(--muted);font-weight:700;gap:12px;flex-direction:column;
+  }
+  .spin{width:34px;height:34px;border:3px solid #ffffff22;border-top-color:var(--accent);
+    border-radius:50%;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+  <!-- Oturum kontrol edilirken gösterilen yükleme -->
+  <div class="boot" id="boot">
+    <div class="spin"></div>
+    <div>Oturum kontrol ediliyor…</div>
+  </div>
+
+  <div class="card hidden" id="card">
+    <div class="brand"><span class="logo">🗺️</span><h1>Dil Haritası</h1></div>
+    <p class="sub">Devam etmek için giriş yap. İlerlemen tüm cihazlarında eşitlenir. Hesabın yoksa aşağıdan oluşturabilirsin.</p>
+
+    <label for="email">E-posta</label>
+    <input id="email" type="email" placeholder="ornek@eposta.com" autocomplete="email" />
+
+    <label for="pass">Şifre</label>
+    <input id="pass" type="password" placeholder="En az 6 karakter" autocomplete="current-password" />
+
+    <div class="msg" id="msg"></div>
+
+    <button class="btn-primary" id="loginBtn">Giriş yap</button>
+    <button class="btn-ghost" id="signupBtn">Yeni hesap oluştur</button>
+    <button class="link" id="resetBtn">Şifremi unuttum</button>
+  </div>
+
+<script type="module">
+  import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+  import { getAuth, setPersistence, browserLocalPersistence,
+           signInWithEmailAndPassword, createUserWithEmailAndPassword,
+           sendPasswordResetEmail, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBZTHvP8xX94UMtKRt7hIYN7qpbO2gz0Zg",
+    authDomain: "sentencemode.firebaseapp.com",
+    projectId: "sentencemode",
+    storageBucket: "sentencemode.firebasestorage.app",
+    messagingSenderId: "1048475533632",
+    appId: "1:1048475533632:web:3f719b6da4397ed7c53aa5"
+  };
+
+  const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  // Oturumu kalıcı tut: bir kez giriş yapınca tarayıcı kapansa bile hatırlansın.
+  try{ await setPersistence(auth, browserLocalPersistence); }catch(e){}
+
+  const boot = document.getElementById("boot");
+  const card = document.getElementById("card");
+  const msg  = document.getElementById("msg");
+  const email = () => document.getElementById("email").value.trim();
+  const pass  = () => document.getElementById("pass").value;
+
+  // Nereye döneceğiz? ?next= varsa oraya, yoksa ana menü.
+  function destination(){
+    try{
+      const p = new URLSearchParams(location.search);
+      const n = p.get("next");
+      if (n && /^[a-zA-Z0-9._\-]+\.html/.test(n)) return n;
+    }catch(e){}
+    return "./index.html";
+  }
+
+  // Oturum durumu: girişliyse hedefe yönlendir, değilse formu göster.
+  let redirected = false;
+  onAuthStateChanged(auth, (user) => {
+    if (user && !redirected){
+      redirected = true;
+      // Yerel işaret bırak: internet olmasa bile auth-guard bu kişiyi içeri alsın.
+      try{
+        localStorage.setItem("dh_logged_in", "1");
+        localStorage.setItem("dh_logged_uid", user.uid || "");
+        if(user.email) localStorage.setItem("dh_logged_email", user.email);
+      }catch(e){}
+      location.replace(destination());
+    } else if (!user){
+      // Oturum yok: yerel işareti de temizle (çıkış yapılmış olabilir).
+      try{
+        localStorage.removeItem("dh_logged_in");
+        localStorage.removeItem("dh_logged_uid");
+        localStorage.removeItem("dh_logged_email");
+      }catch(e){}
+      boot.classList.add("hidden");
+      card.classList.remove("hidden");
+    }
+  });
+
+  function errText(e){
+    const code = (e && e.code) || "";
+    if (code.includes("invalid-email")) return "E-posta adresi geçersiz.";
+    if (code.includes("missing-password") || code.includes("weak-password")) return "Şifre en az 6 karakter olmalı.";
+    if (code.includes("email-already-in-use")) return "Bu e-posta zaten kayıtlı. Giriş yapmayı dene.";
+    if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found")) return "E-posta veya şifre hatalı.";
+    if (code.includes("too-many-requests")) return "Çok fazla deneme. Biraz bekleyip tekrar dene.";
+    if (code.includes("network")) return "İnternet bağlantısı yok gibi görünüyor.";
+    return "Bir sorun oluştu. Tekrar dene.";
+  }
+  function busy(on){ document.querySelectorAll("button").forEach(b=>b.disabled=on); }
+  function setMsg(t, cls){ msg.textContent=t||""; msg.className="msg"+(cls?(" "+cls):""); }
+
+  document.getElementById("loginBtn").onclick = async () => {
+    if(!email()||!pass()){ setMsg("E-posta ve şifre gir.","bad"); return; }
+    busy(true); setMsg("Giriş yapılıyor…");
+    try{ await signInWithEmailAndPassword(auth, email(), pass()); /* yönlendirme onAuth ile */ }
+    catch(e){ busy(false); setMsg(errText(e),"bad"); }
+  };
+  document.getElementById("signupBtn").onclick = async () => {
+    if(!email()||!pass()){ setMsg("E-posta ve şifre gir.","bad"); return; }
+    busy(true); setMsg("Hesap oluşturuluyor…");
+    try{ await createUserWithEmailAndPassword(auth, email(), pass()); }
+    catch(e){ busy(false); setMsg(errText(e),"bad"); }
+  };
+  document.getElementById("resetBtn").onclick = async () => {
+    if(!email()){ setMsg("Önce e-posta adresini yaz.","bad"); return; }
+    try{ await sendPasswordResetEmail(auth, email()); setMsg("Sıfırlama bağlantısı e-postana gönderildi.","ok"); }
+    catch(e){ setMsg(errText(e),"bad"); }
+  };
+  // Enter ile giriş
+  document.getElementById("pass").addEventListener("keydown", e=>{ if(e.key==="Enter") document.getElementById("loginBtn").click(); });
+
+  // Güvenlik: 6 sn içinde oturum durumu hiç gelmezse formu yine de göster.
+  setTimeout(()=>{ if(boot && !boot.classList.contains("hidden") && !redirected){ boot.classList.add("hidden"); card.classList.remove("hidden"); } }, 6000);
+</script>
+</body>
+</html>

@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="tr">
 <head>
-<script src="./storage-bridge.js?v=1"></script>
+<script src="./auth-guard.js?v=1"></script>
+<script src="./storage-bridge.js?v=2"></script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0b1120" />
@@ -472,7 +473,7 @@ body{
 }
 
 </style>
-<script src="./learning-error-system.js?v=1"></script>
+<script src="./learning-error-system.js?v=2"></script>
 </head>
 <body>
 <div class="wrap" id="root"></div>
@@ -1109,6 +1110,13 @@ function updateCloudBadge(){
     bar.innerHTML = `<span class="cloud-mail" title="${esc(Cloud.user.email)}">☁ ${esc(Cloud.user.email)}</span> ${status} <button class="cloud-btn" id="cloudOut">çıkış</button>`;
     bar.querySelector("#cloudOut").onclick = async () => {
       try{ await fb().signOut(); }catch{}
+      // Yerel giriş işaretini temizle ki auth-guard tekrar login istesin.
+      try{
+        localStorage.removeItem("dh_logged_in");
+        localStorage.removeItem("dh_logged_uid");
+        localStorage.removeItem("dh_logged_email");
+      }catch(e){}
+      location.replace("./login.html");
     };
   } else {
     bar.innerHTML = `<button class="cloud-btn cloud-connect" id="cloudIn">☁ Buluta bağlan</button>`;
@@ -1996,7 +2004,7 @@ boot();
 <!-- Sahne video modülü -->
     <script src="./image-addon.js"></script>
     <script src="./teacher-addon.js"></script>
-<script src="./study-tracker.js?v=1"></script>
-<script src="./cloud-sync.js?v=1"></script>
+<script src="./study-tracker.js?v=2"></script>
+<script src="./cloud-sync.js?v=2"></script>
 </body>
 </html>
