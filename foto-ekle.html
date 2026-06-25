@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<script src="./auth-guard.js?v=1"></script>
+<script src="./storage-bridge.js?v=2"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1120">
+<title>📷 Fotoğraftan Ekle — Dil Haritası</title>
+<style>
+  :root{
+    --bg:#0b1120; --surface:#0f1f3a; --surface-2:#13294d;
+    --border:#1e3a5f; --text:#e8eef7; --muted:#9fb3d9;
+    --accent:#2563eb; --accent-2:#1d4ed8; --ok:#34d399; --bad:#f87171; --en:#34d399;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+  .wrap{max-width:760px;margin:0 auto;padding:14px}
+  .top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .back{width:42px;height:42px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;font-size:20px;font-weight:900;text-decoration:none}
+  h1{font-size:20px;margin:0}
+  .sub{color:var(--muted);font-size:13px;margin:2px 0 0}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
+  .step-title{font-weight:900;font-size:15px;margin:0 0 10px}
+  .btn{border:0;border-radius:12px;padding:13px 18px;font:800 14px system-ui,sans-serif;cursor:pointer}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff}
+  .btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+  .btn-ok{background:linear-gradient(135deg,#27ce6d,#14aa55);color:#fff}
+  .btn:disabled{opacity:.5;cursor:default}
+  .file-label{display:inline-flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:13px 18px;font:800 14px system-ui,sans-serif;cursor:pointer}
+  #preview{max-width:100%;border-radius:12px;margin-top:12px;display:none}
+  .progress{height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-top:12px;display:none}
+  .progress>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#60a5fa,#34d399);transition:width .2s}
+  .status{font-size:13px;color:var(--muted);margin-top:10px;min-height:18px}
+  .status.ok{color:var(--ok)} .status.bad{color:var(--bad)}
+  .row{display:flex;gap:8px;align-items:flex-start;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px}
+  .row .num{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:900;margin-top:4px}
+  .row .fields{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+  .row textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:14px;resize:vertical;min-height:38px;font-family:inherit}
+  .row textarea.en{color:var(--en);font-weight:600}
+  .row .del{flex:0 0 auto;background:transparent;border:0;color:var(--bad);font-size:20px;cursor:pointer;padding:4px}
+  .actions-bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .hidden{display:none!important}
+  .hint{font-size:12px;color:var(--muted);margin-top:8px}
+  .count{font-size:13px;color:var(--muted);margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="./index.html" title="Ana menü">←</a>
+    <div>
+      <h1>📷 Fotoğraftan Ekle</h1>
+      <p class="sub">Fotoğraftaki İngilizce cümleleri tara, düzenle, çevir ve pratiğe ekle.</p>
+    </div>
+  </div>
+
+  <!-- 1. Fotoğraf -->
+  <div class="card">
+    <p class="step-title">1 · Fotoğraf seç</p>
+    <label class="file-label">📷 Fotoğraf çek / seç
+      <input type="file" id="photoInput" accept="image/*" capture="environment" hidden />
+    </label>
+    <img id="preview" alt="önizleme" />
+    <div class="progress" id="progress"><span id="progressBar"></span></div>
+    <div class="status" id="ocrStatus"></div>
+  </div>
+
+  <!-- 2. Cümleler -->
+  <div class="card hidden" id="sentencesCard">
+    <p class="step-title">2 · Cümleleri düzenle</p>
+    <div class="count" id="sentCount"></div>
+    <div class="hint">Yanlış taranan cümleleri düzelt, istemediklerini 🗑️ ile sil. Hazır olunca çevir.</div>
+    <div id="sentenceList"></div>
+    <div class="actions-bar">
+      <button class="btn btn-ghost" id="addRowBtn">+ Satır ekle</button>
+      <button class="btn btn-primary" id="translateBtn">🌐 Çevir</button>
+    </div>
+    <div class="status" id="trStatus"></div>
+  </div>
+
+  <!-- 3. Kaydet -->
+  <div class="card hidden" id="saveCard">
+    <p class="step-title">3 · Pratiğe ekle</p>
+    <div class="hint">Cümleler "📷 OCR Cümlelerim" modülüne eklenir. Pratik ekranından çalışabilirsin.</div>
+    <div class="actions-bar">
+      <button class="btn btn-ok" id="saveBtn">💾 Pratiğe kaydet</button>
+    </div>
+    <div class="status" id="saveStatus"></div>
+  </div>
+</div>
+
+<script src="./learning-error-system.js?v=2"></script>
+<script>
+(function(){
+  "use strict";
+  var GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+  var GROQ_MODEL = "llama-3.3-70b-versatile";
+  var OCR_MODULE = "📷 OCR Cümlelerim";
+  var OCR_STORE_KEY = "dh-ocr-sentences-v1";  // IndexedDB/localStorage'da saklanan OCR cümleleri
+
+  function $(id){ return document.getElementById(id); }
+  function getKeys(){ try{ return (JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){ return []; } }
+
+  // ---- 1. OCR ----
+  var photoInput=$("photoInput"), preview=$("preview"), progress=$("progress"), progressBar=$("progressBar"), ocrStatus=$("ocrStatus");
+
+  photoInput.onchange=function(e){
+    var file=e.target.files && e.target.files[0];
+    if(!file) return;
+    // önizleme
+    var url=URL.createObjectURL(file);
+    preview.src=url; preview.style.display="block";
+    runOCR(file);
+  };
+
+  function loadTesseract(){
+    if(window.Tesseract) return Promise.resolve();
+    return new Promise(function(res,rej){
+      var s=document.createElement("script");
+      s.src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js";
+      s.onload=res; s.onerror=function(){ rej(new Error("OCR motoru yüklenemedi (internet?)")); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function runOCR(file){
+    ocrStatus.className="status"; ocrStatus.textContent="OCR motoru hazırlanıyor…";
+    progress.style.display="block"; progressBar.style.width="5%";
+    try{
+      await loadTesseract();
+      ocrStatus.textContent="Metin taranıyor… (ilk seferde dil verisi inebilir, biraz sürebilir)";
+      var result=await window.Tesseract.recognize(file, "eng", {
+        logger:function(m){
+          if(m.status==="recognizing text" && m.progress!=null){
+            progressBar.style.width=Math.round(10+m.progress*90)+"%";
+          }
+        }
+      });
+      progressBar.style.width="100%";
+      var text=(result && result.data && result.data.text) || "";
+      var sentences=splitSentences(text);
+      if(!sentences.length){
+        ocrStatus.className="status bad";
+        ocrStatus.textContent="Fotoğraftan metin okunamadı. Daha net/düz bir fotoğraf dene.";
+        return;
+      }
+      ocrStatus.className="status ok";
+      ocrStatus.textContent="✓ "+sentences.length+" cümle bulundu. Aşağıdan düzenle.";
+      renderSentences(sentences);
+      setTimeout(function(){ progress.style.display="none"; }, 600);
+    }catch(err){
+      ocrStatus.className="status bad";
+      ocrStatus.textContent="OCR hatası: "+(err&&err.message?err.message:"bilinmeyen")+" — internet bağlantını kontrol et.";
+      progress.style.display="none";
+    }
+  }
+
+  // İngilizce metni cümlelere böl
+  function splitSentences(raw){
+    var t=String(raw||"")
+      .replace(/\r/g," ")
+      .replace(/\n+/g," ")
+      .replace(/\s+/g," ")
+      .trim();
+    if(!t) return [];
+    // nokta/soru/ünlem sonrası böl; çok kısa parçaları ele
+    var parts=t.split(/(?<=[.!?])\s+/);
+    var out=[];
+    parts.forEach(function(p){
+      p=p.trim();
+      // en az 2 kelime ve harf içersin
+      if(p && /[a-zA-Z]/.test(p) && p.split(/\s+/).length>=2){
+        out.push(p);
+      }
+    });
+    return out;
+  }
+
+  // ---- 2. Cümle listesi (düzenle/sil) ----
+  var sentencesCard=$("sentencesCard"), sentenceList=$("sentenceList"), sentCount=$("sentCount");
+
+  function rowTemplate(en, tr){
+    var div=document.createElement("div");
+    div.className="row";
+    div.innerHTML=''
+      + '<div class="num"></div>'
+      + '<div class="fields">'
+      +   '<textarea class="en" rows="1" placeholder="İngilizce cümle">'+escapeHtml(en||"")+'</textarea>'
+      +   '<textarea class="tr" rows="1" placeholder="Türkçe çeviri (Çevir ile dolar)">'+escapeHtml(tr||"")+'</textarea>'
+      + '</div>'
+      + '<button class="del" title="Sil">🗑️</button>';
+    div.querySelector(".del").onclick=function(){ div.remove(); renumber(); };
+    return div;
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
+
+  function renderSentences(sentences){
+    sentenceList.innerHTML="";
+    sentences.forEach(function(s){ sentenceList.appendChild(rowTemplate(s,"")); });
+    sentencesCard.classList.remove("hidden");
+    renumber();
+    sentencesCard.scrollIntoView({behavior:"smooth"});
+  }
+  function renumber(){
+    var rows=sentenceList.querySelectorAll(".row");
+    rows.forEach(function(r,i){ r.querySelector(".num").textContent=(i+1); });
+    sentCount.textContent=rows.length+" cümle";
+  }
+
+  $("addRowBtn").onclick=function(){ sentenceList.appendChild(rowTemplate("","")); renumber(); };
+
+  function collectRows(){
+    var rows=sentenceList.querySelectorAll(".row");
+    var arr=[];
+    rows.forEach(function(r){
+      var en=r.querySelector(".en").value.trim();
+      var tr=r.querySelector(".tr").value.trim();
+      if(en) arr.push({en:en, tr:tr, el:r});
+    });
+    return arr;
+  }
+
+  // ---- Çevir (Groq) ----
+  var trStatus=$("trStatus");
+  $("translateBtn").onclick=async function(){
+    var rows=collectRows();
+    if(!rows.length){ trStatus.className="status bad"; trStatus.textContent="Çevrilecek cümle yok."; return; }
+    var keys=getKeys();
+    if(!keys.length){ trStatus.className="status bad"; trStatus.textContent="Çeviri için Groq API anahtarı gerekli (öğretmen ekranından ekleyebilirsin)."; return; }
+    trStatus.className="status"; trStatus.textContent="Çevriliyor…";
+    $("translateBtn").disabled=true;
+    try{
+      var englishList=rows.map(function(r,i){ return (i+1)+". "+r.en; }).join("\n");
+      var prompt="Aşağıdaki numaralı İngilizce cümleleri Türkçeye çevir. "
+        + "SADECE çevirileri, her satırda numara ve çeviri olacak şekilde döndür (örn: '1. ...'). "
+        + "Açıklama ekleme.\n\n"+englishList;
+      var translated=await groqChat([{role:"user",content:prompt}]);
+      // numaralı satırları ayrıştır
+      var map={};
+      translated.split(/\n+/).forEach(function(line){
+        var m=line.match(/^\s*(\d+)[\.\)]\s*(.+)$/);
+        if(m) map[parseInt(m[1],10)]=m[2].trim();
+      });
+      rows.forEach(function(r,i){
+        var tr=map[i+1];
+        if(tr) r.el.querySelector(".tr").value=tr;
+      });
+      trStatus.className="status ok"; trStatus.textContent="✓ Çeviri tamam. Gerekirse düzelt, sonra kaydet.";
+      $("saveCard").classList.remove("hidden");
+      $("saveCard").scrollIntoView({behavior:"smooth"});
+    }catch(e){
+      trStatus.className="status bad";
+      var code=(e&&e.code)||"";
+      trStatus.textContent = code==="no-key" ? "API anahtarı yok." : ("Çeviri başarısız: "+(e&&e.message?e.message:code||"hata"));
+    }finally{ $("translateBtn").disabled=false; }
+  };
+
+  async function groqChat(messages){
+    var keys=getKeys();
+    if(!keys.length) throw {code:"no-key"};
+    var lastErr=null;
+    for(var i=0;i<keys.length;i++){
+      try{
+        var res=await fetch(GROQ_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+keys[i]},body:JSON.stringify({model:GROQ_MODEL,messages:messages,temperature:.3,max_tokens:1500})});
+        if(res.status===401){lastErr={code:"bad-key"};continue;}
+        if(res.status===429){lastErr={code:"rate"};continue;}
+        if(!res.ok){lastErr={code:"http",status:res.status};continue;}
+        var data=await res.json();
+        return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || "").trim();
+      }catch(e){ lastErr={code:"network",message:"bağlantı hatası"}; }
+    }
+    throw lastErr || {code:"unknown"};
+  }
+
+  // ---- 3. Kaydet ----
+  var saveStatus=$("saveStatus");
+  $("saveBtn").onclick=async function(){
+    var rows=collectRows();
+    if(!rows.length){ saveStatus.className="status bad"; saveStatus.textContent="Kaydedilecek cümle yok."; return; }
+    // mevcut OCR cümlelerini oku, yenileri ekle
+    var existing=loadOcr();
+    var base=Date.now();
+    rows.forEach(function(r,i){
+      existing.push({
+        id:"ocr-"+base+"-"+i,
+        en:r.en,
+        tr:r.tr||"",
+        module:OCR_MODULE,
+        level:"OCR",
+        order:existing.length+i
+      });
+    });
+    saveOcr(existing);
+    saveStatus.className="status ok";
+    saveStatus.textContent="✓ "+rows.length+" cümle eklendi. Pratik ekranında \""+OCR_MODULE+"\" modülünden çalışabilirsin.";
+    // listeyi temizle
+    setTimeout(function(){
+      sentenceList.innerHTML=""; renumber();
+      sentencesCard.classList.add("hidden");
+      $("saveCard").classList.add("hidden");
+      preview.style.display="none"; photoInput.value="";
+      ocrStatus.textContent="";
+    }, 1800);
+  };
+
+  function loadOcr(){
+    try{ return JSON.parse(localStorage.getItem(OCR_STORE_KEY)||"[]")||[]; }catch(e){ return []; }
+  }
+  function saveOcr(arr){
+    try{ localStorage.setItem(OCR_STORE_KEY, JSON.stringify(arr)); }catch(e){}
+  }
+})();
+</script>
+<script src="./cloud-sync.js?v=2"></script>
+</body>
+</html>

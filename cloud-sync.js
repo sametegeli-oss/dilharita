@@ -22,7 +22,7 @@
   window.__dhCloudSyncInstalled = true;
 
   // Senkronlanacak localStorage anahtarları
-  var LS_KEYS = ["dh_ai_prompt_teacher", "dh-study-tracker-v1", "groqApiKeys"];
+  var LS_KEYS = ["dh_ai_prompt_teacher", "dh-study-tracker-v1", "groqApiKeys", "dh-ocr-sentences-v1"];
 
   // Buluttan gelen belgeyi normalize et: {ls:{...}, errors:[...]}
   // Hem yeni kök-seviye yapı hem eski data.ls yapısını destekler.
@@ -59,6 +59,7 @@
 
   var fb = null;        // { auth, db, ... }
   var user = null;      // { uid } | null
+  var authResolved = false;  // onAuthStateChanged ilk kez çalıştı mı (oturum belirlendi mi)
   var ready = false;
   var saveTimer = null;
 
@@ -79,6 +80,13 @@
       }catch(e){ app = appMod.initializeApp(firebaseConfig); }
       var auth = authMod.getAuth(app);
       var db = fsMod.getFirestore(app);
+      // Oturumu kalıcı tut: kullanıcı bir kez giriş yapınca tarayıcı kapansa bile
+      // hatırlansın, her açılışta tekrar şifre istenmesin.
+      try{
+        if(authMod.setPersistence && authMod.browserLocalPersistence){
+          authMod.setPersistence(auth, authMod.browserLocalPersistence);
+        }
+      }catch(e){}
       fb = {
         auth: auth, db: db,
         onAuth: function(cb){ return authMod.onAuthStateChanged(auth, cb); },
@@ -101,6 +109,7 @@
       ready = true;
       fb.onAuth(function(u){
         user = u ? { uid: u.uid } : null;
+        authResolved = true;   // oturum durumu ilk kez belirlendi
         if (user) initialSync();
       });
     }).catch(function(e){
@@ -216,33 +225,49 @@
 
   // Genel "Bulutla Senkronize Et" — buluttan çek, birleştir, geri yaz.
   // Kullanıcıya gösterilecek sonuç döndürür: {ok, message}
+  // Oturumun (onAuthStateChanged) ilk kez çözülmesini bekler. Firebase, kalıcı
+  // oturumu IndexedDB'den okurken birkaç yüz ms gecikir; bu yüzden "giriş yok"
+  // demeden önce oturumun yüklenmesine şans tanırız.
+  function waitForAuth(maxMs){
+    return new Promise(function(resolve){
+      if (authResolved) return resolve();
+      var waited = 0;
+      var iv = setInterval(function(){
+        waited += 100;
+        if (authResolved || waited >= (maxMs||4000)){ clearInterval(iv); resolve(); }
+      }, 100);
+    });
+  }
+
   function fullSync(){
     if (!ready) return Promise.resolve({ ok:false, message:"Bulut bağlantısı henüz hazır değil. Birkaç saniye sonra tekrar dene." });
-    if (!user) return Promise.resolve({ ok:false, message:"Senkron için önce giriş yapmalısın." });
-    return fb.loadSettings(user.uid).then(function(remote){
-      var rd = parseRemote(remote);
-      // BASİT MANTIK: Senkron = buluttakini getir, yerele yaz. Geri yazma yok.
-      var pulled = 0;
-      for (var ki=0; ki<LS_KEYS.length; ki++){
-        var k = LS_KEYS[ki];
-        var remoteVal = (rd.ls && rd.ls.hasOwnProperty(k)) ? rd.ls[k] : null;
-        if (remoteVal == null || remoteVal === "") continue; // bulutta yoksa atla
-        try{ localStorage.setItem(k, remoteVal); pulled++; }catch(e){}
-      }
-      // hata defteri: buluttan gelenleri yerele ekle (birleştir)
-      return mergeRemoteErrors(rd.errors || []).then(function(addedErr){
-        return { ok:true, pulled:pulled, addedErrors:addedErr||0 };
+    return waitForAuth(4000).then(function(){
+      if (!user) return { ok:false, message:"Senkron için önce giriş yapmalısın." };
+      return fb.loadSettings(user.uid).then(function(remote){
+        var rd = parseRemote(remote);
+        // BASİT MANTIK: Senkron = buluttakini getir, yerele yaz. Geri yazma yok.
+        var pulled = 0;
+        for (var ki=0; ki<LS_KEYS.length; ki++){
+          var k = LS_KEYS[ki];
+          var remoteVal = (rd.ls && rd.ls.hasOwnProperty(k)) ? rd.ls[k] : null;
+          if (remoteVal == null || remoteVal === "") continue; // bulutta yoksa atla
+          try{ localStorage.setItem(k, remoteVal); pulled++; }catch(e){}
+        }
+        // hata defteri: buluttan gelenleri yerele ekle (birleştir)
+        return mergeRemoteErrors(rd.errors || []).then(function(addedErr){
+          return { ok:true, pulled:pulled, addedErrors:addedErr||0 };
+        });
+      }).then(function(res){
+        var parts = [];
+        if (res.pulled) parts.push(res.pulled + " ayar buluttan alındı");
+        if (res.addedErrors) parts.push(res.addedErrors + " hata kaydı eklendi");
+        if (!parts.length) parts.push("bulutta veri yok veya zaten güncel");
+        return { ok:true, message:"✓ Buluttan alındı. " + parts.join(", ") + "." };
+      }).catch(function(e){
+        var msg = (e && e.message) ? e.message : "bağlantı hatası";
+        if (/permission/i.test(msg)) msg = "İzin hatası (Firebase kuralı). Lütfen tekrar dene.";
+        return { ok:false, message:"Senkron başarısız: " + msg };
       });
-    }).then(function(res){
-      var parts = [];
-      if (res.pulled) parts.push(res.pulled + " ayar buluttan alındı");
-      if (res.addedErrors) parts.push(res.addedErrors + " hata kaydı eklendi");
-      if (!parts.length) parts.push("bulutta veri yok veya zaten güncel");
-      return { ok:true, message:"✓ Buluttan alındı. " + parts.join(", ") + "." };
-    }).catch(function(e){
-      var msg = (e && e.message) ? e.message : "bağlantı hatası";
-      if (/permission/i.test(msg)) msg = "İzin hatası (Firebase kuralı). Lütfen tekrar dene.";
-      return { ok:false, message:"Senkron başarısız: " + msg };
     });
   }
 

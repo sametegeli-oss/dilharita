@@ -938,6 +938,21 @@ async function loadData(){
   State.byModule = byModule;
   State.byLevel = byLevel;
   State.srs = await srsAll();
+  // OCR ile fotoğraftan eklenen cümleleri özel modül olarak ekle
+  try{
+    const ocr = JSON.parse(localStorage.getItem("dh-ocr-sentences-v1")||"[]")||[];
+    if(Array.isArray(ocr) && ocr.length){
+      const OCR_MODULE = "📷 OCR Cümlelerim";
+      const arr = ocr.filter(s=>s&&s.en).map((s,i)=>({
+        en:s.en, tr:s.tr||"", module:OCR_MODULE, level:"OCR", order:s.order!=null?s.order:i,
+        id:s.id||("ocr-"+i)
+      }));
+      arr.sort((a,b)=>(a.order||0)-(b.order||0));
+      State.byModule.set(OCR_MODULE, arr);
+      if(!State.byLevel.has("OCR")) State.byLevel.set("OCR", []);
+      State.byLevel.get("OCR").push(OCR_MODULE);
+    }
+  }catch(e){}
   // sözlüğü arka planda yükle (popup için); başarısız olsa da uygulama çalışır
   try{ State.dictionary = await fetchFirst(DATA_PATHS.dictionary); }
   catch{ State.dictionary = {}; }
