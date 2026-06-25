@@ -1075,7 +1075,6 @@ async function renderPicker(){
       <span class="legend-item"><span class="legend-dot" style="background:#60a5fa"></span>Boşluk doldur (pekiştirme)</span>
       <span class="legend-item"><span class="legend-dot" style="background:#34d399"></span>Sıfırdan kur (ustalık)</span>
     </div>
-    <button class="backup-link" id="backupBtn">⬇⬆ İlerlemeyi taşı / yedekle</button>
   </div>`;
   root.innerHTML = html;
 
@@ -1089,8 +1088,7 @@ async function renderPicker(){
       else startModuleSession(mod);
     };
   });
-  const backupBtn = document.getElementById("backupBtn");
-  if (backupBtn) backupBtn.onclick = openBackupSheet;
+  /* yedekleme artık ana menüde */
   root.querySelectorAll(".mode-tab").forEach(t => t.onclick = () => {
     const m = t.dataset.mode;
     if (m === State.mode) return;
@@ -1272,24 +1270,32 @@ async function openBackupSheet(){
   sheet.querySelector("#bkCancel").onclick = close;
 
   // --- indir ---
-  sheet.querySelector("#bkDownload").onclick = () => {
+  sheet.querySelector("#bkDownload").onclick = async () => {
     const at = new Date().toISOString();
+    // Ek veriler: prompt, günlük takip, API anahtarları (localStorage) + hata defteri (IndexedDB)
+    const extraKeys = ["dh_ai_prompt_teacher", "dh-study-tracker-v1", "groqApiKeys"];
+    const ls = {};
+    extraKeys.forEach(k => { try{ const v = localStorage.getItem(k); if (v != null) ls[k] = v; }catch(e){} });
+    let errors = [];
+    try{ if (window.LearningErrorDB && LearningErrorDB.all) errors = await LearningErrorDB.all(); }catch(e){}
     const payload = {
       app: "sentence-mode-practice",
-      version: 1,
+      version: 2,
       exportedAt: at,
       count,
       srs: all,
+      ls,
+      errors,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `sentence-mode-ilerleme-${at.slice(0,10)}.json`;
+    a.download = `dilharita-yedek-${at.slice(0,10)}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     setLastBackup({ at, count });
-    msg.textContent = "✓ Yedek indirildi. Şimdi Drive’a yükleyebilirsin.";
+    msg.textContent = "✓ Tam yedek indirildi (ilerleme + prompt + hata defteri + takip).";
     msg.className = "sheet-note ok";
     const st = sheet.querySelector(".bk-status");
     if (st){ st.textContent = `Son yedek: ${fmtDate(at)}`; st.className = "bk-status ok"; }
@@ -1304,20 +1310,25 @@ async function openBackupSheet(){
       let data;
       try{
         data = JSON.parse(reader.result);
-        if (!data || typeof data.srs !== "object" || !data.srs) throw new Error("biçim");
+        const hasAny = data && (data.srs || data.ls || (Array.isArray(data.errors) && data.errors.length));
+        if (!hasAny) throw new Error("biçim");
       }catch{
         preview.hidden = true;
         msg.textContent = "Bu dosya okunamadı. Uygulamadan indirdiğin .json yedeğini seçtiğinden emin ol.";
         msg.className = "sheet-note bad";
         return;
       }
-      const incomingCount = Object.keys(data.srs).length;
+      const incomingCount = data.srs ? Object.keys(data.srs).length : 0;
+      const errCount = Array.isArray(data.errors) ? data.errors.length : 0;
+      const hasExtras = !!(data.ls && Object.keys(data.ls).length);
       const when = data.exportedAt ? fmtDate(data.exportedAt) : "tarih bilinmiyor";
       msg.textContent = "";
       preview.hidden = false;
       preview.innerHTML = `
         <div class="bk-preview-head">Bu yedek yüklensin mi?</div>
         <div class="bk-preview-row"><span>İçindeki cümle</span><b>${incomingCount}</b></div>
+        ${errCount ? `<div class="bk-preview-row"><span>Hata kaydı</span><b>${errCount}</b></div>` : ""}
+        ${hasExtras ? `<div class="bk-preview-row"><span>Ayarlar (prompt, takip)</span><b>var</b></div>` : ""}
         <div class="bk-preview-row"><span>Alınma zamanı</span><b>${when}</b></div>
         <div class="bk-preview-actions">
           <button class="btn btn-ghost" id="bkCancelRestore">Vazgeç</button>
@@ -1328,21 +1339,41 @@ async function openBackupSheet(){
       };
       preview.querySelector("#bkConfirmRestore").onclick = async () => {
         let written = 0, skipped = 0;
-        for (const id of Object.keys(data.srs)){
-          const incoming = data.srs[id];
-          if (!incoming || typeof incoming.rep !== "number") { skipped++; continue; }
-          const existing = State.srs[id];
-          if (!existing || (incoming.last||0) >= (existing.last||0)){
-            await srsSet(id, incoming);
-            State.srs[id] = incoming;
-            written++;
-          } else skipped++;
+        // 1) SRS (cümle ilerlemesi) — daha yeni olanı koru
+        if (data.srs){
+          for (const id of Object.keys(data.srs)){
+            const incoming = data.srs[id];
+            if (!incoming || typeof incoming.rep !== "number") { skipped++; continue; }
+            const existing = State.srs[id];
+            if (!existing || (incoming.last||0) >= (existing.last||0)){
+              await srsSet(id, incoming);
+              State.srs[id] = incoming;
+              written++;
+            } else skipped++;
+          }
+        }
+        // 2) Ayarlar: prompt, günlük takip, API anahtarları (localStorage)
+        let lsWritten = 0;
+        if (data.ls){
+          for (const k of Object.keys(data.ls)){
+            const v = data.ls[k];
+            if (v == null || v === "") continue;
+            try{ localStorage.setItem(k, v); lsWritten++; }catch(e){}
+          }
+        }
+        // 3) Hata defteri — buluttan birleştirme mantığıyla (kopyasız)
+        let errMerged = 0;
+        if (Array.isArray(data.errors) && data.errors.length && window.LearningErrorDB && LearningErrorDB.bulkMerge){
+          try{ errMerged = await LearningErrorDB.bulkMerge(data.errors); }catch(e){}
         }
         preview.hidden = true;
-        msg.textContent = `✓ Geri yüklendi: ${written} kayıt güncellendi${skipped ? `, ${skipped} kayıt zaten güncel/atlandı` : ""}.`;
+        const parts = [`${written} cümle güncellendi`];
+        if (errMerged) parts.push(`${errMerged} hata kaydı eklendi`);
+        if (lsWritten) parts.push(`ayarlar geri yüklendi`);
+        msg.textContent = `✓ Geri yüklendi: ${parts.join(", ")}.`;
         msg.className = "sheet-note ok";
         cloudSaveSoon();
-        setTimeout(() => { close(); renderPicker(); }, 1100);
+        setTimeout(() => { close(); renderPicker(); }, 1300);
       };
     };
     reader.readAsText(file);

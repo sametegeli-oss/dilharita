@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="tr">
 <head>
+<script src="./auth-guard.js?v=1"></script>
 <script src="./storage-bridge.js?v=2"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -59,12 +60,21 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   </div>
   <div id="dhCloudSyncMsg" style="text-align:center;font-size:13px;color:#9fb3d9;min-height:18px;margin-bottom:8px"></div>
 
+  <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:4px 0 6px">
+    <button id="dhBackupBtn" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font:800 13px system-ui,sans-serif">⬇ Yedeği indir</button>
+    <label style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font:800 13px system-ui,sans-serif">⬆ Yedekten geri yükle
+      <input type="file" id="dhRestoreFile" accept="application/json,.json" hidden />
+    </label>
+  </div>
+  <div id="dhBackupMsg" style="text-align:center;font-size:13px;color:#9fb3d9;min-height:18px;margin-bottom:8px"></div>
+
   <div class="note">
     <b>Not:</b> Bu aşamada <code>service worker</code> bilerek eklenmedi. Önce kurulum ve açılış stabil olacak. Sonra offline cache’i kontrollü ekleriz.
   </div>
 </div>
 <script src="./pwa-install.js"></script>
 <script src="./daily-dashboard.js?v=2"></script>
+<script src="./learning-error-system.js?v=2"></script>
 <script src="./cloud-sync.js?v=2"></script>
 <script>
 (function(){
@@ -96,6 +106,100 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     }finally{
       btn.disabled=false; btn.textContent=old;
     }
+  };
+})();
+
+/* ---- Bağımsız yedekleme (ana menü): SRS (IndexedDB) + localStorage + hata defteri ---- */
+(function(){
+  var backupBtn=document.getElementById("dhBackupBtn");
+  var restoreInput=document.getElementById("dhRestoreFile");
+  var msg=document.getElementById("dhBackupMsg");
+  if(!backupBtn) return;
+  var LS_KEYS=["dh_ai_prompt_teacher","dh-study-tracker-v1","groqApiKeys"];
+
+  function openSrsDB(){
+    return new Promise(function(res,rej){
+      if(!("indexedDB" in window)) return rej("no-idb");
+      var r=indexedDB.open("sentence-mode",1);
+      r.onupgradeneeded=function(){ var db=r.result; if(!db.objectStoreNames.contains("kv")) db.createObjectStore("kv"); };
+      r.onsuccess=function(){ res(r.result); };
+      r.onerror=function(){ rej(r.error); };
+    });
+  }
+  function readPrefix(prefix){
+    return openSrsDB().then(function(db){ return new Promise(function(res,rej){
+      var out={}, store=db.transaction("kv","readonly").objectStore("kv"), rq=store.openCursor();
+      rq.onsuccess=function(){ var c=rq.result; if(c){ if(typeof c.key==="string"&&c.key.indexOf(prefix)===0) out[c.key]=c.value; c.continue(); } else res(out); };
+      rq.onerror=function(){ rej(rq.error); };
+    });}).catch(function(){ return {}; });
+  }
+  function writeKV(key,val){
+    return openSrsDB().then(function(db){ return new Promise(function(res,rej){
+      var tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(val,key);
+      tx.oncomplete=function(){ res(true); }; tx.onerror=function(){ rej(tx.error); };
+    });}).catch(function(){ return false; });
+  }
+
+  // İNDİR
+  backupBtn.onclick=async function(){
+    msg.style.color="#9fb3d9"; msg.textContent="Yedek hazırlanıyor…";
+    try{
+      var srs=await readPrefix("srs:");     // cümle ilerlemesi
+      var lsrs=await readPrefix("lsrs:");    // dinleme modu ilerlemesi
+      var ls={};
+      LS_KEYS.forEach(function(k){ try{ var v=localStorage.getItem(k); if(v!=null) ls[k]=v; }catch(e){} });
+      var errors=[];
+      try{ if(window.LearningErrorDB && LearningErrorDB.all) errors=await LearningErrorDB.all(); }catch(e){}
+      var at=new Date().toISOString();
+      var payload={ app:"dilharita-full", version:3, exportedAt:at,
+        srsKV:srs, lsrsKV:lsrs, ls:ls, errors:errors };
+      var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement("a"); a.href=url; a.download="dilharita-yedek-"+at.slice(0,10)+".json";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+      var n=Object.keys(srs).length, e=errors.length;
+      msg.style.color="#34d399";
+      msg.textContent="✓ Tam yedek indirildi ("+n+" cümle, "+e+" hata kaydı, ayarlar).";
+    }catch(e){ msg.style.color="#f87171"; msg.textContent="Yedek alınamadı: "+(e&&e.message?e.message:"hata"); }
+  };
+
+  // GERİ YÜKLE
+  restoreInput.onchange=function(ev){
+    var file=ev.target.files && ev.target.files[0];
+    if(!file) return;
+    var reader=new FileReader();
+    reader.onload=async function(){
+      var data;
+      try{ data=JSON.parse(reader.result); }
+      catch(e){ msg.style.color="#f87171"; msg.textContent="Dosya okunamadı. Doğru .json yedeğini seç."; return; }
+      // Yeni format (srsKV) veya eski practice format (srs) ikisini de destekle
+      var srsKV = data.srsKV || null;
+      var lsrsKV = data.lsrsKV || null;
+      var oldSrs = (!srsKV && data.srs && typeof data.srs==="object") ? data.srs : null;
+      if(!srsKV && !oldSrs && !data.ls && !(data.errors&&data.errors.length)){
+        msg.style.color="#f87171"; msg.textContent="Bu dosyada yüklenecek veri yok."; return;
+      }
+      if(!confirm("Bu yedeği yüklemek mevcut ayarların (prompt, takip) üzerine yazabilir. Devam edilsin mi?")) { ev.target.value=""; return; }
+      msg.style.color="#9fb3d9"; msg.textContent="Geri yükleniyor…";
+      var srsN=0, errN=0, lsN=0;
+      try{
+        if(srsKV){ for(var k in srsKV){ if(srsKV.hasOwnProperty(k)){ await writeKV(k, srsKV[k]); srsN++; } } }
+        if(lsrsKV){ for(var k2 in lsrsKV){ if(lsrsKV.hasOwnProperty(k2)){ await writeKV(k2, lsrsKV[k2]); } } }
+        if(oldSrs){ for(var id in oldSrs){ if(oldSrs.hasOwnProperty(id)){ await writeKV("srs:"+id, oldSrs[id]); srsN++; } } }
+        if(data.ls){ for(var lk in data.ls){ if(data.ls.hasOwnProperty(lk) && data.ls[lk]!=null){ try{ localStorage.setItem(lk, data.ls[lk]); lsN++; }catch(e){} } } }
+        if(Array.isArray(data.errors) && data.errors.length && window.LearningErrorDB && LearningErrorDB.bulkMerge){
+          try{ errN=await LearningErrorDB.bulkMerge(data.errors); }catch(e){}
+        }
+        var parts=[srsN+" cümle"];
+        if(errN) parts.push(errN+" hata kaydı");
+        if(lsN) parts.push("ayarlar");
+        msg.style.color="#34d399";
+        msg.textContent="✓ Geri yüklendi: "+parts.join(", ")+". (Sayfayı yenile)";
+      }catch(e){ msg.style.color="#f87171"; msg.textContent="Geri yükleme hatası: "+(e&&e.message?e.message:"hata"); }
+      ev.target.value="";
+    };
+    reader.readAsText(file);
   };
 })();
 </script>
