@@ -1042,6 +1042,10 @@ async function renderPicker(){
   const listen = State.mode === "listen";
   const due = dueCount();
   const levels = LEVEL_ORDER.filter(l => State.byLevel.has(l));
+  // LEVEL_ORDER dışındaki özel seviyeleri (örn. "OCR") sona ekle
+  for (const lv of State.byLevel.keys()){
+    if (!levels.includes(lv)) levels.push(lv);
+  }
   let html = `
   <div class="picker">
     <div class="picker-top">
