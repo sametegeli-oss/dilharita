@@ -58,9 +58,14 @@
   <!-- 1. Fotoğraf -->
   <div class="card">
     <p class="step-title">1 · Fotoğraf seç</p>
-    <label class="file-label">📷 Fotoğraf çek / seç
-      <input type="file" id="photoInput" accept="image/*" capture="environment" hidden />
-    </label>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <label class="file-label">📷 Kameradan çek
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden />
+      </label>
+      <label class="file-label">🖼️ Galeriden seç
+        <input type="file" id="galleryInput" accept="image/*" hidden />
+      </label>
+    </div>
     <img id="preview" alt="önizleme" />
     <div class="progress" id="progress"><span id="progressBar"></span></div>
     <div class="status" id="ocrStatus"></div>
@@ -103,16 +108,18 @@
   function getKeys(){ try{ return (JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){ return []; } }
 
   // ---- 1. OCR ----
-  var photoInput=$("photoInput"), preview=$("preview"), progress=$("progress"), progressBar=$("progressBar"), ocrStatus=$("ocrStatus");
+  var cameraInput=$("cameraInput"), galleryInput=$("galleryInput");
+  var preview=$("preview"), progress=$("progress"), progressBar=$("progressBar"), ocrStatus=$("ocrStatus");
 
-  photoInput.onchange=function(e){
+  function handlePhoto(e){
     var file=e.target.files && e.target.files[0];
     if(!file) return;
-    // önizleme
     var url=URL.createObjectURL(file);
     preview.src=url; preview.style.display="block";
     runOCR(file);
-  };
+  }
+  cameraInput.onchange=handlePhoto;
+  galleryInput.onchange=handlePhoto;
 
   function loadTesseract(){
     if(window.Tesseract) return Promise.resolve();
@@ -299,7 +306,7 @@
       sentenceList.innerHTML=""; renumber();
       sentencesCard.classList.add("hidden");
       $("saveCard").classList.add("hidden");
-      preview.style.display="none"; photoInput.value="";
+      preview.style.display="none"; cameraInput.value=""; galleryInput.value="";
       ocrStatus.textContent="";
     }, 1800);
   };
