@@ -132,12 +132,13 @@ async function groqChat(messages){
   const keys=getKeys();
   if(!keys.length) throw {code:"no-key"};
   let last=null;
+  let rateCount=0;
   for(let n=0;n<keys.length;n++){
     const key=keys[(_ki+n)%keys.length];
     try{
       const res=await fetch(GROQ_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model:GROQ_MODEL,messages,temperature:0.3,max_tokens:2500})});
       if(res.status===401){ last={code:"bad-key"}; continue; }
-      if(res.status===429){ last={code:"rate"}; continue; }
+      if(res.status===429){ rateCount++; last={code:"rate", tried:keys.length, rated:rateCount}; continue; }
       if(!res.ok){ last={code:"http"}; continue; }
       const data=await res.json(); _ki=(_ki+n)%keys.length;
       return data.choices?.[0]?.message?.content?.trim()||"";
@@ -605,7 +606,11 @@ function handleError(e, silent){
   const code = e && e.code;
   if (code==="no-key" || code==="bad-key"){ openKeySheet(code==="bad-key"); if(!silent) setOut(""); return; }
   let msg="Bir sorun oluştu, tekrar dene.";
-  if (code==="rate") msg="API limiti doldu. Biraz bekle.";
+  if (code==="rate"){
+    var t = e && e.tried ? e.tried : 1;
+    if (t > 1) msg = t + " API anahtarının hepsi limit doldu. Birkaç dakika bekle. (Anahtarlar aynı Groq hesabındansa hepsi aynı anda dolar; farklı hesaplardan anahtar eklemek daha iyi olur.)";
+    else msg = "API limiti doldu (tek anahtar). Birkaç dakika bekle veya ek anahtar gir.";
+  }
   else if (code==="network") msg="İnternet bağlantısı yok gibi görünüyor.";
   if (!silent) setOut(`<div class="state"><h2>Olmadı</h2><p>${msg}</p><button class="btn btn-primary" onclick="location.reload()">Tekrar dene</button></div>`);
 }
