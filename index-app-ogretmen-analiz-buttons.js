@@ -31,6 +31,29 @@ function addStyle(){
     font-size:20px;font-weight:900;line-height:1;
     border-radius:12px;
   }
+  .dh-list-btn{
+    background:#13294d;border:1px solid #1e3a5f;color:#e8eef7;
+    border-radius:12px;padding:9px 13px;font:800 13px system-ui,sans-serif;cursor:pointer;min-height:42px;
+  }
+  .dh-list-modal{
+    position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:2147483000;
+    display:none;align-items:center;justify-content:center;padding:16px;
+  }
+  .dh-list-modal.show{display:flex}
+  .dh-list-box{
+    background:#0f1f3a;border:1px solid #1e3a5f;border-radius:16px;
+    width:min(640px,100%);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;
+  }
+  .dh-list-headbar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1e3a5f;color:#e8eef7;font-size:16px}
+  .dh-list-headbar button{background:#13294d;border:1px solid #1e3a5f;color:#e8eef7;border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer}
+  .dh-list-body{overflow-y:auto;padding:8px}
+  .dh-list-loading{padding:24px;text-align:center;color:#9fb3d9}
+  .dh-list-row{display:flex;gap:10px;align-items:flex-start;padding:10px;border-bottom:1px solid #1e3a5f}
+  .dh-list-row.active{background:#1e3a5f55;border-radius:8px}
+  .dh-list-n{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:#2563eb;color:#fff;display:grid;place-items:center;font-size:11px;font-weight:900;margin-top:2px}
+  .dh-list-txt{flex:1;min-width:0}
+  .dh-list-e{color:#34d399;font-weight:700;font-size:14px}
+  .dh-list-t{color:#9fb3d9;font-size:13px;margin-top:2px}
   .index-app-top-actions a{
     display:inline-flex;
     align-items:center;
@@ -108,8 +131,92 @@ function ensureTopActions(){
   row.className = "index-app-top-actions";
   row.innerHTML = `
     <a class="home dh-back-arrow" href="./index.html" title="Ana menü">←</a>
+    <button type="button" class="dh-list-btn" id="dhModuleListBtn" title="Modül cümleleri">📋 Liste</button>
   `;
   document.body.appendChild(row);
+  const lb = row.querySelector("#dhModuleListBtn");
+  if (lb) lb.onclick = openModuleList;
+}
+
+// --- Modül cümle listesi ---
+var _sentencesCache = null;
+function loadAllSentences(){
+  if (_sentencesCache) return Promise.resolve(_sentencesCache);
+  return fetch("./data/sentences.json").then(r=>r.ok?r.json():[]).then(function(arr){
+    var list = Array.isArray(arr) ? arr.slice() : [];
+    // OCR cümlelerini de ekle
+    try{
+      var ocr = JSON.parse(localStorage.getItem("dh-ocr-sentences-v1")||"[]")||[];
+      ocr.forEach(function(s){ if(s&&s.en) list.push({en:s.en,tr:s.tr||"",module:"📷 OCR Cümlelerim",order:s.order||0}); });
+    }catch(e){}
+    _sentencesCache = list;
+    return list;
+  }).catch(function(){ return []; });
+}
+function currentModuleName(){
+  var el = document.querySelector(".study-title");
+  return el ? (el.textContent||"").trim() : "";
+}
+function currentSentenceEN(){
+  var c = currentCard();
+  return c ? clean(c.querySelector(".card-en")?.innerText||"") : "";
+}
+function escH(s){ return String(s==null?"":s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
+
+function openModuleList(){
+  var modName = currentModuleName();
+  ensureListModal();
+  var modal = document.getElementById("dhListModal");
+  var body = document.getElementById("dhListBody");
+  var head = document.getElementById("dhListHead");
+  head.textContent = modName ? ("📋 "+modName) : "📋 Modül cümleleri";
+  body.innerHTML = '<div class="dh-list-loading">Yükleniyor…</div>';
+  modal.classList.add("show");
+
+  loadAllSentences().then(function(all){
+    // modül adını normalize ederek eşleştir (DOM'daki ad json'dakiyle birebir olmayabilir)
+    var key = modName.toLowerCase().replace(/\s+/g," ").trim();
+    var rows = all.filter(function(s){
+      var m = (s.module||"").toLowerCase().replace(/\s+/g," ").trim();
+      return m === key || (key && m.indexOf(key)===0) || (m && key.indexOf(m)===0);
+    });
+    if(!rows.length){
+      // eşleşme yoksa: modül kodu (A2-M01) ile dene
+      var codeMatch = (modName.match(/[A-C][12]-M\d+/)||[])[0];
+      if(codeMatch){
+        rows = all.filter(function(s){ return (s.module||"").indexOf(codeMatch)!==-1; });
+      }
+    }
+    rows.sort(function(a,b){ return (a.order||0)-(b.order||0); });
+    if(!rows.length){
+      body.innerHTML = '<div class="dh-list-loading">Bu modülün cümleleri bulunamadı.</div>';
+      return;
+    }
+    var curEN = currentSentenceEN().toLowerCase().trim();
+    body.innerHTML = rows.map(function(s,i){
+      var active = curEN && (s.en||"").toLowerCase().trim()===curEN;
+      return '<div class="dh-list-row'+(active?" active":"")+'">'
+        + '<div class="dh-list-n">'+(i+1)+'</div>'
+        + '<div class="dh-list-txt"><div class="dh-list-e">'+escH(s.en)+'</div><div class="dh-list-t">'+escH(s.tr||"")+'</div></div>'
+        + '</div>';
+    }).join("");
+    // aktif olana kaydır
+    var act = body.querySelector(".dh-list-row.active");
+    if(act) act.scrollIntoView({block:"center"});
+  });
+}
+function ensureListModal(){
+  if(document.getElementById("dhListModal")) return;
+  var m = document.createElement("div");
+  m.id = "dhListModal";
+  m.className = "dh-list-modal";
+  m.innerHTML = '<div class="dh-list-box">'
+    + '<div class="dh-list-headbar"><b id="dhListHead">📋 Modül cümleleri</b><button id="dhListClose">✕</button></div>'
+    + '<div class="dh-list-body" id="dhListBody"></div>'
+    + '</div>';
+  document.body.appendChild(m);
+  m.onclick = function(e){ if(e.target===m) m.classList.remove("show"); };
+  m.querySelector("#dhListClose").onclick = function(){ m.classList.remove("show"); };
 }
 
 function currentCard(){
