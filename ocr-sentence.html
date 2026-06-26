@@ -104,17 +104,19 @@
     });
   }
 
-  // ---- TTS ----
+  // ---- TTS (OCR cümleleri saf İngilizce — doğrudan İngilizce seslendir) ----
   function speak(text, lang, rate){
+    try{ speechSynthesis.cancel(); }catch(e){}
     try{
-      if(window.DH_LongTTSAvatarSync && window.DH_LongTTSAvatarSync.speak && (rate==null)){
-        window.DH_LongTTSAvatarSync.speak(text); return;
-      }
-    }catch(e){}
-    try{
-      speechSynthesis.cancel();
       var u=new SpeechSynthesisUtterance(text);
-      u.lang=lang||"en-US"; if(rate) u.rate=rate;
+      u.lang=lang||"en-US";
+      if(rate) u.rate=rate;
+      // İngilizce ses seç (varsa)
+      try{
+        var voices=speechSynthesis.getVoices()||[];
+        var enVoice=voices.find(function(v){ return /en[-_]/i.test(v.lang); });
+        if(enVoice && (lang||"en-US").indexOf("en")===0) u.voice=enVoice;
+      }catch(e){}
       speechSynthesis.speak(u);
     }catch(e){}
   }
@@ -269,14 +271,31 @@
     }catch(e){ p.innerHTML=errMsg(e); }
   }
 
-  // ---- Görsel (Unsplash) ----
-  function showImage(s){
+  // ---- Görsel ----
+  async function showImage(s){
     var wrap=$("imgWrap"), img=$("sImg");
     if(wrap.style.display==="block"){ wrap.style.display="none"; return; }
-    // cümleden anahtar kelimeler
-    var q=(s.en||"").replace(/[^a-zA-Z ]/g," ").split(/\s+/).filter(function(w){return w.length>3;}).slice(0,3).join(",")||"english";
-    img.src="https://source.unsplash.com/600x300/?"+encodeURIComponent(q);
-    img.alt=q; wrap.style.display="block";
+    wrap.style.display="block";
+    img.removeAttribute("src");
+    img.alt="Görsel yükleniyor…";
+    // Cümleye uygun görsel için iyi bir İngilizce arama terimi: AI varsa AI'dan, yoksa basit kelime
+    var term="";
+    try{
+      term=(await groqChat([{role:"user",content:"Give 1-3 simple English keywords (comma-separated, no explanation) describing the main visual subject of this sentence, for an image search: \""+s.en+"\""}],40))
+        .replace(/[^a-zA-Z, ]/g,"").split(/\n/)[0].trim();
+    }catch(e){}
+    if(!term){
+      term=(s.en||"").replace(/[^a-zA-Z ]/g," ").split(/\s+/).filter(function(w){return w.length>3;}).slice(0,2).join(",")||"learning";
+    }
+    var keywords=term.replace(/\s*,\s*/g,",").replace(/\s+/g,"%20");
+    // loremflickr: anahtarsız, etiketli görsel servisi (çalışır durumda)
+    img.src="https://loremflickr.com/600/300/"+encodeURIComponent(keywords.replace(/%20/g," "))+"?lock="+Math.floor(Math.random()*1000);
+    img.alt=term;
+    img.onerror=function(){
+      // yedek: picsum (her zaman bir görsel verir, alakasız da olsa)
+      img.onerror=null;
+      img.src="https://picsum.photos/seed/"+encodeURIComponent((s.id||"x"))+"/600/300";
+    };
   }
 
   // ---- Cümle Yaz (yazıp AI kontrol) ----
@@ -306,6 +325,7 @@
 
   // ---- Başlat ----
   (async function init(){
+    try{ speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged=function(){}; }catch(e){}
     await waitForStorage();
     var raw=[];
     try{ raw=JSON.parse(localStorage.getItem(OCR_STORE_KEY)||"[]")||[]; }catch(e){}
