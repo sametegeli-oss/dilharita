@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<script src="./auth-guard.js?v=1"></script>
+<script src="./storage-bridge.js?v=2"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1120">
+<title>🔗 Phrasal Verbs — Dil Haritası</title>
+<style>
+  :root{
+    --bg:#0b1120; --surface:#0f1f3a; --surface-2:#13294d; --border:#1e3a5f;
+    --text:#e8eef7; --muted:#9fb3d9; --accent:#2563eb; --ok:#34d399; --en:#34d399; --warn:#f59e0b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+  .wrap{max-width:720px;margin:0 auto;padding:14px 14px 60px}
+  .topbar{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .back{width:42px;height:42px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;font-size:20px;font-weight:900;text-decoration:none;flex:0 0 auto}
+  .title h1{font-size:18px;margin:0}
+  .title p{font-size:12px;color:var(--muted);margin:1px 0 0}
+  .count{margin-left:auto;font-size:12px;color:var(--muted);font-weight:800}
+  .searchbar{position:sticky;top:0;background:var(--bg);padding:6px 0 10px;z-index:5}
+  .searchbar input{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:12px 14px;font-size:15px}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .pv-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;transition:.12s}
+  .pv-item:hover{border-color:var(--accent)}
+  .pv-item .pv{font-size:16px;font-weight:800;color:var(--en)}
+  .pv-item .gloss{font-size:13px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pv-item .tr{font-size:13px;color:var(--text);margin-top:2px}
+  .more{display:block;width:100%;margin-top:12px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:12px;font:800 14px system-ui;cursor:pointer}
+  .empty{text-align:center;color:var(--muted);padding:40px 20px}
+  /* detay modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:2000;display:none;align-items:center;justify-content:center;padding:16px}
+  .modal.show{display:flex}
+  .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:min(640px,100%);max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
+  .modal-head .pv{font-size:20px;font-weight:800;color:var(--en)}
+  .modal-head button{background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:8px;width:34px;height:34px;font-size:16px;cursor:pointer}
+  .modal-body{overflow-y:auto;padding:16px}
+  .modal-body h3{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:16px 0 6px}
+  .modal-body h3:first-child{margin-top:0}
+  .tr-big{font-size:16px;color:var(--text);font-weight:700}
+  .tr-empty{font-size:13px;color:var(--muted);font-style:italic}
+  .meaning{margin:0 0 6px;padding-left:16px;position:relative}
+  .meaning:before{content:"•";position:absolute;left:2px;color:var(--accent)}
+  .example{color:var(--en);font-size:14px;margin:0 0 6px;padding-left:16px;position:relative}
+  .example:before{content:"›";position:absolute;left:2px;color:var(--muted)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{background:var(--surface-2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:3px 10px;font-size:12px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+  .btn{border:0;border-radius:10px;padding:10px 14px;font:800 13px system-ui;cursor:pointer}
+  .b-blue{background:var(--accent);color:#fff}
+  .b-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+  .b-green{background:linear-gradient(135deg,#27ce6d,#14aa55);color:#fff}
+  .loading{text-align:center;color:var(--muted);padding:40px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="./index.html" title="Ana menü">←</a>
+    <div class="title">
+      <h1>🔗 Phrasal Verbs</h1>
+      <p>İngilizce öbek fiiller ve anlamları</p>
+    </div>
+    <div class="count" id="count">–</div>
+  </div>
+
+  <div class="searchbar">
+    <input id="search" type="text" placeholder="Ara: ör. give up, look..." autocomplete="off" spellcheck="false">
+  </div>
+
+  <div id="list" class="list"><div class="loading">Yükleniyor…</div></div>
+  <button id="moreBtn" class="more" style="display:none">Daha fazla göster</button>
+</div>
+
+<!-- Detay modal -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="pv" id="mPv"></span>
+      <button id="mClose">✕</button>
+    </div>
+    <div class="modal-body" id="mBody"></div>
+  </div>
+</div>
+
+<script src="./ai-teacher-prompt-tts.js?v=2"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=2"></script>
+<script>
+(function(){
+  "use strict";
+  var DATA=[];
+  var filtered=[];
+  var shown=0;
+  var PAGE=40;
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+
+  // ---- TTS (İngilizce) ----
+  var _voices=[];
+  function refreshVoices(){ try{ _voices=speechSynthesis.getVoices()||[]; }catch(e){ _voices=[]; } }
+  refreshVoices();
+  try{ speechSynthesis.onvoiceschanged=refreshVoices; }catch(e){}
+  function pickEn(){
+    if(!_voices.length) refreshVoices();
+    return _voices.find(function(v){return /^en[-_]US/i.test(v.lang);})
+        || _voices.find(function(v){return /^en[-_]/i.test(v.lang);})
+        || _voices.find(function(v){return /english/i.test(v.name||"");}) || null;
+  }
+  function speak(text){
+    try{ speechSynthesis.cancel(); }catch(e){}
+    try{
+      var u=new SpeechSynthesisUtterance(text);
+      u.lang="en-US";
+      var v=pickEn(); if(v){ u.voice=v; u.lang=v.lang; }
+      speechSynthesis.speak(u);
+    }catch(e){}
+  }
+
+  // ---- Liste render ----
+  function renderList(reset){
+    var listEl=$("list");
+    if(reset){ shown=0; listEl.innerHTML=""; }
+    if(!filtered.length){
+      listEl.innerHTML='<div class="empty">Sonuç bulunamadı.</div>';
+      $("moreBtn").style.display="none";
+      return;
+    }
+    var slice=filtered.slice(shown, shown+PAGE);
+    var html=slice.map(function(item,idx){
+      var realIdx=shown+idx;
+      var gloss=(item.meanings&&item.meanings[0])||"";
+      return '<div class="pv-item" data-i="'+realIdx+'">'
+        +'<div class="pv">'+esc(item.pv)+'</div>'
+        +(item.tr?'<div class="tr">'+esc(item.tr)+'</div>':'')
+        +(gloss?'<div class="gloss">'+esc(gloss)+'</div>':'')
+        +'</div>';
+    }).join("");
+    listEl.insertAdjacentHTML("beforeend", html);
+    shown+=slice.length;
+    $("moreBtn").style.display = shown<filtered.length ? "block" : "none";
+    // tıklama
+    listEl.querySelectorAll(".pv-item:not([data-bound])").forEach(function(el){
+      el.setAttribute("data-bound","1");
+      el.onclick=function(){ openDetail(filtered[parseInt(el.getAttribute("data-i"),10)]); };
+    });
+  }
+
+  // ---- Arama ----
+  function applySearch(q){
+    q=(q||"").toLowerCase().trim();
+    if(!q){ filtered=DATA; }
+    else{
+      filtered=DATA.filter(function(it){
+        if(it.pv.toLowerCase().indexOf(q)!==-1) return true;
+        if(it.tr && it.tr.toLowerCase().indexOf(q)!==-1) return true;
+        return false;
+      });
+    }
+    $("count").textContent=filtered.length+" öbek";
+    renderList(true);
+  }
+
+  // ---- Detay ----
+  function openDetail(item){
+    if(!item) return;
+    $("mPv").textContent=item.pv;
+    var b=$("mBody");
+    var h="";
+    // Türkçe
+    h+='<h3>Türkçe</h3>';
+    h+= item.tr ? '<div class="tr-big">'+esc(item.tr)+'</div>'
+                : '<div class="tr-empty">Türkçe çeviri henüz eklenmedi.</div>';
+    // anlamlar
+    if(item.meanings&&item.meanings.length){
+      h+='<h3>Anlam(lar)</h3>';
+      h+=item.meanings.map(function(m){return '<p class="meaning">'+esc(m)+'</p>';}).join("");
+    }
+    // örnekler
+    if(item.examples&&item.examples.length){
+      h+='<h3>Örnek cümleler</h3>';
+      h+=item.examples.map(function(e){return '<p class="example">'+esc(e)+'</p>';}).join("");
+    }
+    // çekimler
+    if(item.forms&&item.forms.length){
+      h+='<h3>Çekimler</h3><div class="chips">'+item.forms.map(function(f){return '<span class="chip">'+esc(f)+'</span>';}).join("")+'</div>';
+    }
+    // eş anlamlılar
+    if(item.synonyms&&item.synonyms.length){
+      h+='<h3>Eş anlamlılar</h3><div class="chips">'+item.synonyms.map(function(s){return '<span class="chip">'+esc(s)+'</span>';}).join("")+'</div>';
+    }
+    // aksiyonlar
+    h+='<div class="actions">'
+      +'<button class="btn b-blue" id="dPlay">🔊 Dinle</button>'
+      +'<button class="btn b-green" id="dTeacher">🎓 Öğretmene Sor</button>'
+      +'</div>';
+    b.innerHTML=h;
+    // örnek varsa onu, yoksa öbeği dinlet
+    var sayText=(item.examples&&item.examples[0])||item.pv;
+    $("dPlay").onclick=function(){ speak(sayText); };
+    $("dTeacher").onclick=function(){
+      var s=(item.examples&&item.examples[0])||item.pv;
+      location.href="./teacher.html?s="+encodeURIComponent(s)+"&t="+encodeURIComponent(item.tr||"")+"&return="+encodeURIComponent("phrasal-verbs.html");
+    };
+    $("modal").classList.add("show");
+  }
+  function closeDetail(){ $("modal").classList.remove("show"); }
+
+  // ---- Başlat ----
+  $("moreBtn").onclick=function(){ renderList(false); };
+  $("mClose").onclick=closeDetail;
+  $("modal").onclick=function(e){ if(e.target===$("modal")) closeDetail(); };
+  var si=null;
+  $("search").oninput=function(){
+    clearTimeout(si);
+    var v=this.value;
+    si=setTimeout(function(){ applySearch(v); }, 180);
+  };
+
+  fetch("./data/phrasal-verbs.json").then(function(r){ return r.ok?r.json():[]; }).then(function(arr){
+    DATA=Array.isArray(arr)?arr:[];
+    filtered=DATA;
+    $("count").textContent=DATA.length+" öbek";
+    renderList(true);
+  }).catch(function(){
+    $("list").innerHTML='<div class="empty">Veri yüklenemedi. İnternet bağlantını kontrol et.</div>';
+  });
+})();
+</script>
+<script src="./cloud-sync.js?v=2"></script>
+</body>
+</html>
