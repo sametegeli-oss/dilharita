@@ -60,6 +60,21 @@
   .empty{text-align:center;padding:50px 20px;color:var(--muted)}
   .empty a{color:var(--accent);font-weight:800}
   .loading{display:inline-block;width:16px;height:16px;border:2px solid #fff4;border-top-color:#fff;border-radius:50%;animation:sp 1s linear infinite;vertical-align:middle}
+  .listbtn{background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 12px;font:800 12px system-ui;cursor:pointer}
+  .del-current{background:#7f1d1d;border:1px solid #b91c1c;color:#fff;border-radius:10px;padding:10px 14px;font:800 13px system-ui;cursor:pointer}
+  .listmodal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;display:none;align-items:center;justify-content:center;padding:16px}
+  .listmodal.show{display:flex}
+  .listmodal-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:min(640px,100%);max-height:85vh;display:flex;flex-direction:column;overflow:hidden}
+  .listmodal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);font-size:16px}
+  .listmodal-close{background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:8px;width:32px;height:32px;font-size:16px;cursor:pointer}
+  .listmodal-body{overflow-y:auto;padding:8px}
+  .list-row{display:flex;gap:10px;align-items:flex-start;padding:10px;border-bottom:1px solid var(--border)}
+  .list-row .n{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:900;margin-top:2px}
+  .list-row .txt{flex:1;min-width:0}
+  .list-row .txt .e{color:var(--en);font-weight:700;font-size:14px}
+  .list-row .txt .t{color:var(--muted);font-size:13px;margin-top:2px}
+  .list-row .x{flex:0 0 auto;background:transparent;border:0;color:var(--bad);font-size:18px;cursor:pointer;padding:2px 6px}
+  .list-row.active{background:#13294d55;border-radius:8px}
   @keyframes sp{to{transform:rotate(360deg)}}
   .write-box{margin-top:12px;display:none}
   .write-box textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-size:15px;font-family:inherit;min-height:60px}
@@ -74,9 +89,20 @@
       <h1>📷 OCR Sentence Mode</h1>
       <p>Fotoğraftan eklediğin cümleler</p>
     </div>
+    <button class="listbtn" id="listBtn" title="Tüm cümleler">📋 Liste</button>
     <div class="counter" id="counter">–/–</div>
   </div>
   <div class="prog"><span id="progBar"></span></div>
+
+  <div class="listmodal" id="listModal">
+    <div class="listmodal-box">
+      <div class="listmodal-head">
+        <b>📋 OCR Cümlelerim</b>
+        <button class="listmodal-close" id="listClose">✕</button>
+      </div>
+      <div class="listmodal-body" id="listBody"></div>
+    </div>
+  </div>
 
   <div id="main"></div>
 </div>
@@ -104,21 +130,57 @@
     });
   }
 
-  // ---- TTS (OCR cümleleri saf İngilizce — doğrudan İngilizce seslendir) ----
-  function speak(text, lang, rate){
+  // ---- TTS (OCR cümleleri saf İngilizce — kesin İngilizce sesle oku) ----
+  var _voices=[];
+  function refreshVoices(){
+    try{ _voices=speechSynthesis.getVoices()||[]; }catch(e){ _voices=[]; }
+  }
+  refreshVoices();
+  try{ speechSynthesis.onvoiceschanged=refreshVoices; }catch(e){}
+
+  function pickEnglishVoice(){
+    if(!_voices.length) refreshVoices();
+    if(!_voices.length) return null;
+    // Tercih sırası: en-US > en-GB > herhangi en* > adı İngilizce içeren
+    return _voices.find(function(v){return /^en[-_]US/i.test(v.lang);})
+        || _voices.find(function(v){return /^en[-_]GB/i.test(v.lang);})
+        || _voices.find(function(v){return /^en[-_]/i.test(v.lang);})
+        || _voices.find(function(v){return /english/i.test(v.name||"");})
+        || null;
+  }
+
+  function speakNow(text, lang, rate){
     try{ speechSynthesis.cancel(); }catch(e){}
     try{
       var u=new SpeechSynthesisUtterance(text);
+      var isEn=(lang||"en-US").indexOf("en")===0;
       u.lang=lang||"en-US";
       if(rate) u.rate=rate;
-      // İngilizce ses seç (varsa)
-      try{
-        var voices=speechSynthesis.getVoices()||[];
-        var enVoice=voices.find(function(v){ return /en[-_]/i.test(v.lang); });
-        if(enVoice && (lang||"en-US").indexOf("en")===0) u.voice=enVoice;
-      }catch(e){}
+      if(isEn){
+        var v=pickEnglishVoice();
+        if(v){ u.voice=v; u.lang=v.lang; }   // İngilizce ses bulduysa onu zorla kullan
+      }
       speechSynthesis.speak(u);
     }catch(e){}
+  }
+
+  function speak(text, lang, rate){
+    // Sesler henüz yüklenmediyse bir kez bekleyip tekrar dene (mobilde sık olur)
+    if((lang||"en-US").indexOf("en")===0 && !pickEnglishVoice()){
+      refreshVoices();
+      if(!pickEnglishVoice()){
+        var tries=0;
+        var t=setInterval(function(){
+          refreshVoices(); tries++;
+          if(pickEnglishVoice() || tries>10){
+            clearInterval(t);
+            speakNow(text, lang, rate);
+          }
+        }, 120);
+        return;
+      }
+    }
+    speakNow(text, lang, rate);
   }
 
   // ---- Groq ----
@@ -177,6 +239,7 @@
       +    '<button class="btn b-ghost" id="bSlow">🐢 Yavaş</button>'
       +    '<button class="btn b-ghost" id="bDetail">Detay</button>'
       +    '<button class="btn b-green" id="bTeacher">🎓 Öğretmen</button>'
+      +    '<button class="del-current" id="bDelete" title="Bu cümleyi sil">🗑️ Sil</button>'
       +  '</div>'
       +  '<div class="panel" id="detailPanel"></div>'
       +  '<div class="divider"></div>'
@@ -222,6 +285,7 @@
     $("bGrammar").onclick=function(){ aiTool("grammar",s); };
     $("bImage").onclick=function(){ showImage(s); };
     $("bWrite").onclick=function(){ toggleWrite(s); };
+    $("bDelete").onclick=function(){ deleteSentence(s.id); };
 
     $("gHard").onclick=function(){ gradeSentence(s.id,"hard"); nextCard(); };
     $("gNormal").onclick=function(){ gradeSentence(s.id,"normal"); nextCard(); };
@@ -229,6 +293,9 @@
 
     $("prev").onclick=function(){ if(State.i>0){State.i--;render();} };
     $("next").onclick=function(){ nextCard(); };
+
+    // Cümleye uygun görseli otomatik göster
+    autoImage(s);
   }
   function nextCard(){
     if(State.i<State.list.length-1){ State.i++; render(); }
@@ -271,31 +338,82 @@
     }catch(e){ p.innerHTML=errMsg(e); }
   }
 
-  // ---- Görsel ----
-  async function showImage(s){
+  // ---- Cümle sil ----
+  function deleteSentence(id){
+    if(!confirm("Bu cümle OCR listenden silinsin mi?")) return;
+    State.list=State.list.filter(function(x){ return x.id!==id; });
+    persistList();
+    if(State.i>=State.list.length) State.i=Math.max(0,State.list.length-1);
+    render();
+    if($("listModal").classList.contains("show")) renderListModal();
+  }
+  // OCR listesini kalıcı kaydet (silme sonrası)
+  function persistList(){
+    try{
+      // saklanan ham formatı koru
+      var out=State.list.map(function(x,i){ return {id:x.id,en:x.en,tr:x.tr||"",module:"📷 OCR Cümlelerim",level:"OCR",order:i}; });
+      localStorage.setItem(OCR_STORE_KEY, JSON.stringify(out));
+    }catch(e){}
+  }
+
+  // ---- Otomatik görsel (her cümlede) ----
+  var _imgCache={};
+  async function autoImage(s){
     var wrap=$("imgWrap"), img=$("sImg");
-    if(wrap.style.display==="block"){ wrap.style.display="none"; return; }
+    if(!wrap||!img) return;
     wrap.style.display="block";
-    img.removeAttribute("src");
-    img.alt="Görsel yükleniyor…";
-    // Cümleye uygun görsel için iyi bir İngilizce arama terimi: AI varsa AI'dan, yoksa basit kelime
+    if(_imgCache[s.id]){ img.src=_imgCache[s.id]; return; }
+    img.removeAttribute("src"); img.alt="Görsel yükleniyor…";
     var term="";
     try{
-      term=(await groqChat([{role:"user",content:"Give 1-3 simple English keywords (comma-separated, no explanation) describing the main visual subject of this sentence, for an image search: \""+s.en+"\""}],40))
+      term=(await groqChat([{role:"user",content:"Give 1-3 simple English keywords (comma-separated, no explanation) for an image search describing the main visual subject of: \""+s.en+"\""}],40))
         .replace(/[^a-zA-Z, ]/g,"").split(/\n/)[0].trim();
     }catch(e){}
-    if(!term){
-      term=(s.en||"").replace(/[^a-zA-Z ]/g," ").split(/\s+/).filter(function(w){return w.length>3;}).slice(0,2).join(",")||"learning";
+    if(!term){ term=(s.en||"").replace(/[^a-zA-Z ]/g," ").split(/\s+/).filter(function(w){return w.length>3;}).slice(0,2).join(",")||"learning"; }
+    var url="https://loremflickr.com/600/300/"+encodeURIComponent(term.replace(/\s*,\s*/g,","))+"?lock="+Math.abs(hashCode(s.id))%1000;
+    _imgCache[s.id]=url;
+    img.onerror=function(){ img.onerror=null; img.src="https://picsum.photos/seed/"+encodeURIComponent(s.id||"x")+"/600/300"; };
+    img.src=url; img.alt=term;
+  }
+  function hashCode(str){ var h=0,i; str=String(str); for(i=0;i<str.length;i++){ h=((h<<5)-h)+str.charCodeAt(i); h|=0; } return h; }
+
+  // ---- Liste modal ----
+  function renderListModal(){
+    var body=$("listBody");
+    if(!State.list.length){ body.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Liste boş.</div>'; return; }
+    body.innerHTML=State.list.map(function(x,i){
+      return '<div class="list-row'+(i===State.i?" active":"")+'" data-i="'+i+'">'
+        +'<div class="n">'+(i+1)+'</div>'
+        +'<div class="txt"><div class="e">'+esc(x.en)+'</div><div class="t">'+esc(x.tr||"(çeviri yok)")+'</div></div>'
+        +'<button class="x" data-del="'+esc(x.id)+'" title="Sil">🗑️</button>'
+        +'</div>';
+    }).join("");
+    // satıra tıkla → o cümleye git
+    body.querySelectorAll(".list-row").forEach(function(row){
+      row.onclick=function(e){
+        if(e.target.closest(".x")) return;
+        State.i=parseInt(row.getAttribute("data-i"),10)||0;
+        closeListModal(); render();
+      };
+    });
+    body.querySelectorAll(".x").forEach(function(btn){
+      btn.onclick=function(e){ e.stopPropagation(); deleteSentence(btn.getAttribute("data-del")); };
+    });
+  }
+  function openListModal(){ renderListModal(); $("listModal").classList.add("show"); }
+  function closeListModal(){ $("listModal").classList.remove("show"); }
+
+  // ---- Görsel (manuel düğme — yeni/farklı görsel getir) ----
+  async function showImage(s){
+    delete _imgCache[s.id];        // cache'i temizle ki farklı görsel gelsin
+    var img=$("sImg");
+    if(img){
+      // farklı sonuç için lock'u rastgele değiştir
+      img.onerror=function(){ img.onerror=null; img.src="https://picsum.photos/seed/"+Math.random()+"/600/300"; };
     }
-    var keywords=term.replace(/\s*,\s*/g,",").replace(/\s+/g,"%20");
-    // loremflickr: anahtarsız, etiketli görsel servisi (çalışır durumda)
-    img.src="https://loremflickr.com/600/300/"+encodeURIComponent(keywords.replace(/%20/g," "))+"?lock="+Math.floor(Math.random()*1000);
-    img.alt=term;
-    img.onerror=function(){
-      // yedek: picsum (her zaman bir görsel verir, alakasız da olsa)
-      img.onerror=null;
-      img.src="https://picsum.photos/seed/"+encodeURIComponent((s.id||"x"))+"/600/300";
-    };
+    await autoImage(s);
+    // autoImage cache'e koyduğu için bir sonraki farklılık için tekrar sil
+    delete _imgCache[s.id];
   }
 
   // ---- Cümle Yaz (yazıp AI kontrol) ----
@@ -325,8 +443,12 @@
 
   // ---- Başlat ----
   (async function init(){
-    try{ speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged=function(){}; }catch(e){}
     await waitForStorage();
+    // Liste modal düğmeleri
+    var lb=$("listBtn"), lc=$("listClose"), lm=$("listModal");
+    if(lb) lb.onclick=openListModal;
+    if(lc) lc.onclick=closeListModal;
+    if(lm) lm.onclick=function(e){ if(e.target===lm) closeListModal(); };
     var raw=[];
     try{ raw=JSON.parse(localStorage.getItem(OCR_STORE_KEY)||"[]")||[]; }catch(e){}
     State.list=(Array.isArray(raw)?raw:[]).filter(function(x){return x&&x.en;}).map(function(x,i){
