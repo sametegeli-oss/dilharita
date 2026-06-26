@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<script src="./auth-guard.js?v=1"></script>
+<script src="./storage-bridge.js?v=2"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1120">
+<title>📷 OCR Sentence Mode — Dil Haritası</title>
+<style>
+  :root{
+    --bg:#0b1120; --surface:#0f1f3a; --surface-2:#13294d; --border:#1e3a5f;
+    --text:#e8eef7; --muted:#9fb3d9; --accent:#2563eb; --accent-2:#1d4ed8;
+    --ok:#34d399; --bad:#f87171; --warn:#f59e0b; --purple:#8b5cf6; --en:#34d399;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+  .wrap{max-width:720px;margin:0 auto;padding:14px 14px 60px}
+  .topbar{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .back{width:42px;height:42px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;font-size:20px;font-weight:900;text-decoration:none}
+  .title h1{font-size:18px;margin:0}
+  .title p{font-size:12px;color:var(--muted);margin:1px 0 0}
+  .counter{margin-left:auto;font-size:13px;color:var(--muted);font-weight:800}
+  .prog{height:5px;background:var(--surface);border-radius:99px;overflow:hidden;margin-bottom:16px}
+  .prog>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#60a5fa,#34d399);transition:width .3s}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:18px;margin-bottom:14px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{background:var(--surface-2);color:var(--muted);border-radius:8px;padding:3px 10px;font-size:11px;font-weight:800}
+  .chip-lv{background:var(--accent);color:#fff}
+  .chip-md{background:#a78bfa22;color:#c4b5fd}
+  .sentence{font-size:25px;font-weight:800;margin:6px 0 8px;line-height:1.35}
+  .tr{color:var(--muted);font-size:15px;margin-bottom:6px}
+  .ipa{color:var(--warn);font-size:13px;font-style:italic;margin-bottom:4px;display:none}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .btn{border:0;border-radius:10px;padding:10px 14px;font:800 13px system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .b-blue{background:var(--accent);color:#fff}
+  .b-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+  .b-green{background:linear-gradient(135deg,#27ce6d,#14aa55);color:#fff}
+  .b-purple{background:var(--purple);color:#fff}
+  .divider{height:1px;background:var(--border);margin:14px 0}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  @media(max-width:560px){.grid{grid-template-columns:repeat(2,1fr)}}
+  .tile{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center;cursor:pointer;font-size:12px;font-weight:800;color:var(--text);display:flex;flex-direction:column;align-items:center;gap:5px;transition:.15s}
+  .tile:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .tile .ic{font-size:20px}
+  .tile.amber{background:#78350f33;border-color:#a16207}
+  .tile.purple{background:#5b21b633;border-color:#7c3aed}
+  .tile.blue{background:#1e3a8a33;border-color:#2563eb}
+  .grade{display:flex;gap:10px;margin-top:14px}
+  .grade button{flex:1;border:0;border-radius:12px;padding:14px;font:900 15px system-ui;cursor:pointer;color:#fff}
+  .g-hard{background:#dc2626} .g-normal{background:#2563eb} .g-easy{background:#16a34a}
+  #imgWrap{margin:10px 0;display:none}
+  #imgWrap img{width:100%;border-radius:12px;max-height:240px;object-fit:cover}
+  .panel{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:12px;display:none;white-space:pre-wrap;font-size:14px}
+  .panel.show{display:block}
+  .panel .en{color:var(--en);font-weight:700}
+  .nav{display:flex;gap:10px;margin-top:16px}
+  .nav button{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:13px;font:800 14px system-ui;cursor:pointer}
+  .nav button:disabled{opacity:.4;cursor:default}
+  .empty{text-align:center;padding:50px 20px;color:var(--muted)}
+  .empty a{color:var(--accent);font-weight:800}
+  .loading{display:inline-block;width:16px;height:16px;border:2px solid #fff4;border-top-color:#fff;border-radius:50%;animation:sp 1s linear infinite;vertical-align:middle}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .write-box{margin-top:12px;display:none}
+  .write-box textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-size:15px;font-family:inherit;min-height:60px}
+  .write-box .res{margin-top:8px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="./index.html" title="Ana menü">←</a>
+    <div class="title">
+      <h1>📷 OCR Sentence Mode</h1>
+      <p>Fotoğraftan eklediğin cümleler</p>
+    </div>
+    <div class="counter" id="counter">–/–</div>
+  </div>
+  <div class="prog"><span id="progBar"></span></div>
+
+  <div id="main"></div>
+</div>
+
+<script src="./ai-teacher-prompt-tts.js?v=2"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=2"></script>
+<script src="./learning-error-system.js?v=2"></script>
+<script>
+(function(){
+  "use strict";
+  var GROQ_URL="https://api.groq.com/openai/v1/chat/completions";
+  var GROQ_MODEL="llama-3.3-70b-versatile";
+  var OCR_STORE_KEY="dh-ocr-sentences-v1";
+
+  var State={ list:[], i:0 };
+
+  function $(id){ return document.getElementById(id); }
+  function getKeys(){ try{ return (JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){ return []; } }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+  function waitForStorage(){
+    return new Promise(function(res){
+      if(typeof window.__dhStorageReady==="undefined"||window.__dhStorageReady){res();return;}
+      var d=false; function go(){if(d)return;d=true;res();}
+      window.addEventListener("dh-storage-ready",go,{once:true}); setTimeout(go,2000);
+    });
+  }
+
+  // ---- TTS ----
+  function speak(text, lang, rate){
+    try{
+      if(window.DH_LongTTSAvatarSync && window.DH_LongTTSAvatarSync.speak && (rate==null)){
+        window.DH_LongTTSAvatarSync.speak(text); return;
+      }
+    }catch(e){}
+    try{
+      speechSynthesis.cancel();
+      var u=new SpeechSynthesisUtterance(text);
+      u.lang=lang||"en-US"; if(rate) u.rate=rate;
+      speechSynthesis.speak(u);
+    }catch(e){}
+  }
+
+  // ---- Groq ----
+  async function groqChat(messages, maxTokens){
+    var keys=getKeys();
+    if(!keys.length) throw {code:"no-key"};
+    var lastErr=null;
+    for(var i=0;i<keys.length;i++){
+      try{
+        var res=await fetch(GROQ_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+keys[i]},body:JSON.stringify({model:GROQ_MODEL,messages:messages,temperature:.6,max_tokens:maxTokens||500})});
+        if(res.status===401){lastErr={code:"bad-key"};continue;}
+        if(res.status===429){lastErr={code:"rate"};continue;}
+        if(!res.ok){lastErr={code:"http",status:res.status};continue;}
+        var data=await res.json();
+        return (data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||"").trim();
+      }catch(e){ lastErr={code:"network"}; }
+    }
+    throw lastErr||{code:"unknown"};
+  }
+
+  // ---- SRS (basit, OCR'a özel: localStorage) ----
+  var SRS_KEY="dh-ocr-srs-v1";
+  function loadSrs(){ try{ return JSON.parse(localStorage.getItem(SRS_KEY)||"{}")||{}; }catch(e){ return {}; } }
+  function saveSrs(o){ try{ localStorage.setItem(SRS_KEY, JSON.stringify(o)); }catch(e){} }
+  function gradeSentence(id, grade){
+    var srs=loadSrs();
+    var r=srs[id]||{rep:0,due:0,last:0};
+    var now=Date.now(), day=86400000;
+    if(grade==="hard"){ r.rep=0; r.due=now+day*1; }
+    else if(grade==="normal"){ r.rep=(r.rep||0)+1; r.due=now+day*Math.min(7,r.rep*2); }
+    else { r.rep=(r.rep||0)+2; r.due=now+day*Math.min(21,r.rep*4); }
+    r.last=now; srs[id]=r; saveSrs(srs);
+  }
+
+  // ---- Render ----
+  function render(){
+    var main=$("main");
+    if(!State.list.length){
+      main.innerHTML='<div class="empty">Henüz fotoğraftan eklenmiş cümle yok.<br><br><a href="./foto-ekle.html">📷 Fotoğraftan Ekle</a> sayfasından cümle ekleyebilirsin.</div>';
+      $("counter").textContent="0/0";
+      return;
+    }
+    var s=State.list[State.i];
+    $("counter").textContent=(State.i+1)+"/"+State.list.length;
+    $("progBar").style.width=((State.i+1)/State.list.length*100)+"%";
+
+    main.innerHTML=''
+      +'<div class="card">'
+      +  '<div class="chips"><span class="chip chip-lv">OCR</span><span class="chip chip-md">📷 OCR Cümlelerim</span></div>'
+      +  '<div id="imgWrap"><img id="sImg" alt=""></div>'
+      +  '<div class="sentence" id="enText">'+esc(s.en)+'</div>'
+      +  '<div class="tr">'+esc(s.tr||"(çeviri yok)")+'</div>'
+      +  '<div class="ipa" id="ipa"></div>'
+      +  '<div class="actions">'
+      +    '<button class="btn b-blue" id="bPlay">▶ Dinle</button>'
+      +    '<button class="btn b-ghost" id="bSlow">🐢 Yavaş</button>'
+      +    '<button class="btn b-ghost" id="bDetail">Detay</button>'
+      +    '<button class="btn b-green" id="bTeacher">🎓 Öğretmen</button>'
+      +  '</div>'
+      +  '<div class="panel" id="detailPanel"></div>'
+      +  '<div class="divider"></div>'
+      +  '<div class="grid">'
+      +    tile("bShadow","🗣️","Shadow","amber")
+      +    tile("bAiTest","✨","AI Test","blue")
+      +    tile("bSimilar","🔁","Benzer","blue")
+      +    tile("bStory","📖","Hikaye","blue")
+      +    tile("bConv","💬","Konuşma","blue")
+      +    tile("bWrite","✏️","Cümle Yaz","purple")
+      +    tile("bImage","🖼️","Görsel","blue")
+      +    tile("bGrammar","🔍","Gramer","blue")
+      +  '</div>'
+      +  '<div class="panel" id="toolPanel"></div>'
+      +  '<div class="write-box" id="writeBox"><textarea id="writeInput" placeholder="Bu cümleyi İngilizce yaz…"></textarea><button class="btn b-purple" id="writeCheck" style="margin-top:8px">Kontrol et</button><div class="res" id="writeRes"></div></div>'
+      +  '<div class="grade">'
+      +    '<button class="g-hard" id="gHard">Zor</button>'
+      +    '<button class="g-normal" id="gNormal">Normal</button>'
+      +    '<button class="g-easy" id="gEasy">Kolay</button>'
+      +  '</div>'
+      +'</div>'
+      +'<div class="nav"><button id="prev"'+(State.i===0?" disabled":"")+'>← Önceki</button><button id="next">Sonraki →</button></div>';
+
+    bindActions(s);
+  }
+  function tile(id,ic,label,cls){
+    return '<div class="tile '+(cls||"")+'" id="'+id+'"><span class="ic">'+ic+'</span>'+label+'</div>';
+  }
+
+  function bindActions(s){
+    $("bPlay").onclick=function(){ speak(s.en,"en-US"); };
+    $("bSlow").onclick=function(){ speak(s.en,"en-US",0.6); };
+    $("bTeacher").onclick=function(){
+      location.href="./teacher.html?s="+encodeURIComponent(s.en)+"&t="+encodeURIComponent(s.tr||"")+"&return="+encodeURIComponent("ocr-sentence.html");
+    };
+    $("bDetail").onclick=function(){ toggleDetail(s); };
+
+    $("bShadow").onclick=function(){ shadow(s); };
+    $("bAiTest").onclick=function(){ aiTool("test",s); };
+    $("bSimilar").onclick=function(){ aiTool("similar",s); };
+    $("bStory").onclick=function(){ aiTool("story",s); };
+    $("bConv").onclick=function(){ aiTool("conv",s); };
+    $("bGrammar").onclick=function(){ aiTool("grammar",s); };
+    $("bImage").onclick=function(){ showImage(s); };
+    $("bWrite").onclick=function(){ toggleWrite(s); };
+
+    $("gHard").onclick=function(){ gradeSentence(s.id,"hard"); nextCard(); };
+    $("gNormal").onclick=function(){ gradeSentence(s.id,"normal"); nextCard(); };
+    $("gEasy").onclick=function(){ gradeSentence(s.id,"easy"); nextCard(); };
+
+    $("prev").onclick=function(){ if(State.i>0){State.i--;render();} };
+    $("next").onclick=function(){ nextCard(); };
+  }
+  function nextCard(){
+    if(State.i<State.list.length-1){ State.i++; render(); }
+    else { State.i=0; render(); }
+  }
+
+  // ---- Detay (IPA + gramer, AI) ----
+  async function toggleDetail(s){
+    var p=$("detailPanel");
+    if(p.classList.contains("show")){ p.classList.remove("show"); return; }
+    p.classList.add("show"); p.innerHTML='<span class="loading"></span> Detay hazırlanıyor…';
+    try{
+      var out=await groqChat([{role:"user",content:"For the English sentence \""+s.en+"\": give (1) IPA pronunciation, (2) a short Turkish grammar note. Format:\nIPA: ...\nGramer: ... (Türkçe). Be concise."}],300);
+      p.innerHTML=esc(out);
+    }catch(e){ p.innerHTML=errMsg(e); }
+  }
+
+  // ---- Shadow (dinle, tekrarla) ----
+  function shadow(s){
+    var p=$("toolPanel"); p.classList.add("show");
+    p.innerHTML="🗣️ Shadow: Cümleyi dinle, hemen ardından sesli tekrar et.\n\n<b>"+esc(s.en)+"</b>";
+    speak(s.en,"en-US");
+  }
+
+  // ---- AI araçları (test, benzer, hikaye, konuşma, gramer) ----
+  async function aiTool(kind, s){
+    var p=$("toolPanel"); p.classList.add("show");
+    p.innerHTML='<span class="loading"></span> Hazırlanıyor…';
+    var prompts={
+      test:"Create ONE short multiple-choice quiz question (Turkish) testing understanding of this English sentence: \""+s.en+"\". Give 3 options (A,B,C), mark the correct one at the end. Keep it short.",
+      similar:"Give 3 similar English example sentences using the same grammar pattern as: \""+s.en+"\". For each add a short Turkish translation. Format each as: English — Türkçe",
+      story:"Write a very short (3-4 sentence) simple English story that naturally uses this sentence: \""+s.en+"\". Then give a one-line Turkish summary.",
+      conv:"Write a short natural English dialogue (4-6 lines) where this sentence appears: \""+s.en+"\". Add Turkish translation under each line.",
+      grammar:"Explain the grammar of this English sentence in Turkish, clearly and briefly: \""+s.en+"\". Mention tense and structure."
+    };
+    try{
+      var out=await groqChat([{role:"user",content:prompts[kind]}], 600);
+      // İngilizce kısımları yeşil yapmak için basit: tüm metni göster
+      p.innerHTML=esc(out);
+    }catch(e){ p.innerHTML=errMsg(e); }
+  }
+
+  // ---- Görsel (Unsplash) ----
+  function showImage(s){
+    var wrap=$("imgWrap"), img=$("sImg");
+    if(wrap.style.display==="block"){ wrap.style.display="none"; return; }
+    // cümleden anahtar kelimeler
+    var q=(s.en||"").replace(/[^a-zA-Z ]/g," ").split(/\s+/).filter(function(w){return w.length>3;}).slice(0,3).join(",")||"english";
+    img.src="https://source.unsplash.com/600x300/?"+encodeURIComponent(q);
+    img.alt=q; wrap.style.display="block";
+  }
+
+  // ---- Cümle Yaz (yazıp AI kontrol) ----
+  function toggleWrite(s){
+    var b=$("writeBox");
+    b.style.display = b.style.display==="block" ? "none" : "block";
+    if(b.style.display==="block"){
+      $("writeInput").value=""; $("writeRes").textContent="";
+      $("writeCheck").onclick=async function(){
+        var val=$("writeInput").value.trim();
+        if(!val){ return; }
+        $("writeRes").innerHTML='<span class="loading"></span> Kontrol ediliyor…';
+        try{
+          var out=await groqChat([{role:"user",content:"Target English sentence: \""+s.en+"\". The learner wrote: \""+val+"\". In Turkish, say if it's correct; if not, show the corrected version and briefly explain. Be encouraging and short."}],300);
+          $("writeRes").innerHTML=esc(out);
+        }catch(e){ $("writeRes").innerHTML=errMsg(e); }
+      };
+    }
+  }
+
+  function errMsg(e){
+    var c=(e&&e.code)||"";
+    if(c==="no-key") return "⚠️ Bu özellik için Groq API anahtarı gerekli (öğretmen ekranından ekleyebilirsin).";
+    if(c==="rate") return "⚠️ Çok fazla istek. Biraz bekle.";
+    return "⚠️ İşlem başarısız. İnternet/anahtar kontrol et.";
+  }
+
+  // ---- Başlat ----
+  (async function init(){
+    await waitForStorage();
+    var raw=[];
+    try{ raw=JSON.parse(localStorage.getItem(OCR_STORE_KEY)||"[]")||[]; }catch(e){}
+    State.list=(Array.isArray(raw)?raw:[]).filter(function(x){return x&&x.en;}).map(function(x,i){
+      return { id:x.id||("ocr-"+i), en:x.en, tr:x.tr||"", order:x.order!=null?x.order:i };
+    }).sort(function(a,b){return (a.order||0)-(b.order||0);});
+    render();
+  })();
+})();
+</script>
+<script src="./cloud-sync.js?v=2"></script>
+</body>
+</html>
