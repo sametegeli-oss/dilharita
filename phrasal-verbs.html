@@ -56,6 +56,20 @@
   .loading{text-align:center;color:var(--muted);padding:40px}
   .m-tr{display:block;color:var(--text);font-size:13px;margin-top:2px;opacity:.85}
   .ex-tr{display:block;color:var(--muted);font-size:13px;margin-top:2px;font-style:normal}
+  /* sıralama & filtre çubuğu */
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px;align-items:center}
+  .seg{display:flex;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .seg button{background:transparent;border:0;color:var(--muted);padding:9px 13px;font:800 13px system-ui;cursor:pointer}
+  .seg button.active{background:var(--accent);color:#fff}
+  .freqsel{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:9px 12px;font:800 13px system-ui;cursor:pointer}
+  /* frekans rozeti */
+  .freq-badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:900;border-radius:8px;padding:1px 7px;margin-left:8px;vertical-align:middle}
+  .fb-5{background:#7c2d12;color:#fdba74}
+  .fb-4{background:#78350f;color:#fcd34d}
+  .fb-3{background:#1e3a5f;color:#93c5fd}
+  .fb-2{background:#1e293b;color:#94a3b8}
+  .fb-1{background:#1e293b;color:#64748b}
+  .pv-row-top{display:flex;align-items:center;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -71,6 +85,19 @@
 
   <div class="searchbar">
     <input id="search" type="text" placeholder="Ara: ör. give up, look..." autocomplete="off" spellcheck="false">
+  </div>
+
+  <div class="toolbar">
+    <div class="seg" id="sortSeg">
+      <button data-sort="freq" class="active">⭐ Sık kullanılan</button>
+      <button data-sort="alpha">🔤 A–Z</button>
+    </div>
+    <select id="freqFilter" class="freqsel">
+      <option value="0">Tümü</option>
+      <option value="3">Sadece çok yaygın (★★★+)</option>
+      <option value="2">Yaygın (★★+)</option>
+      <option value="1">En az bir kez (★+)</option>
+    </select>
   </div>
 
   <div id="list" class="list"><div class="loading">Yükleniyor…</div></div>
@@ -97,6 +124,8 @@
   var filtered=[];
   var shown=0;
   var PAGE=40;
+  var sortMode="freq";   // "freq" | "alpha"
+  var minFreq=0;          // frekans filtresi eşiği
 
   function $(id){ return document.getElementById(id); }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
@@ -136,7 +165,7 @@
       var realIdx=shown+idx;
       var gloss=(item.meanings&&item.meanings[0])||"";
       return '<div class="pv-item" data-i="'+realIdx+'">'
-        +'<div class="pv">'+esc(item.pv)+'</div>'
+        +'<div class="pv-row-top"><span class="pv">'+esc(item.pv)+'</span>'+freqBadge(item.freq)+'</div>'
         +(item.tr?'<div class="tr">'+esc(item.tr)+'</div>':'')
         +(gloss?'<div class="gloss">'+esc(gloss)+'</div>':'')
         +'</div>';
@@ -151,17 +180,42 @@
     });
   }
 
-  // ---- Arama ----
+  // ---- Frekans rozeti ----
+  function freqBadge(f){
+    f = f||0;
+    if(f<1) return "";
+    var stars = "★".repeat(Math.min(f,5));
+    return '<span class="freq-badge fb-'+Math.min(f,5)+'" title="Kullanım sıklığı: '+f+'/5">'+stars+'</span>';
+  }
+
+  // ---- Sıralama + filtre + arama ----
   function applySearch(q){
     q=(q||"").toLowerCase().trim();
-    if(!q){ filtered=DATA; }
-    else{
-      filtered=DATA.filter(function(it){
+    var arr = DATA;
+    // frekans filtresi
+    if(minFreq>0){
+      arr = arr.filter(function(it){ return (it.freq||0) >= minFreq; });
+    }
+    // metin araması
+    if(q){
+      arr = arr.filter(function(it){
         if(it.pv.toLowerCase().indexOf(q)!==-1) return true;
         if(it.tr && it.tr.toLowerCase().indexOf(q)!==-1) return true;
         return false;
       });
     }
+    // sıralama
+    arr = arr.slice();
+    if(sortMode==="freq"){
+      arr.sort(function(a,b){
+        var fd = (b.freq||0)-(a.freq||0);
+        if(fd!==0) return fd;
+        return a.pv.toLowerCase()<b.pv.toLowerCase() ? -1 : 1;
+      });
+    }else{
+      arr.sort(function(a,b){ return a.pv.toLowerCase()<b.pv.toLowerCase() ? -1 : 1; });
+    }
+    filtered = arr;
     $("count").textContent=filtered.length+" öbek";
     renderList(true);
   }
@@ -176,6 +230,11 @@
     h+='<h3>Türkçe</h3>';
     h+= item.tr ? '<div class="tr-big">'+esc(item.tr)+'</div>'
                 : '<div class="tr-empty">Türkçe çeviri henüz eklenmedi.</div>';
+    // kullanım sıklığı
+    if(item.freq && item.freq>=1){
+      h+='<div style="margin-top:8px">'+freqBadge(item.freq)+
+         '<span style="font-size:12px;color:var(--muted);margin-left:6px">kullanım sıklığı</span></div>';
+    }
     // anlamlar
     if(item.meanings&&item.meanings.length){
       h+='<h3>Anlam(lar)</h3>';
@@ -228,11 +287,30 @@
     si=setTimeout(function(){ applySearch(v); }, 180);
   };
 
+  // sıralama segmenti
+  var seg=$("sortSeg");
+  if(seg){
+    seg.querySelectorAll("button").forEach(function(btn){
+      btn.onclick=function(){
+        seg.querySelectorAll("button").forEach(function(b){ b.classList.remove("active"); });
+        btn.classList.add("active");
+        sortMode=btn.getAttribute("data-sort");
+        applySearch($("search").value);
+      };
+    });
+  }
+  // frekans filtresi
+  var ff=$("freqFilter");
+  if(ff){
+    ff.onchange=function(){
+      minFreq=parseInt(ff.value,10)||0;
+      applySearch($("search").value);
+    };
+  }
+
   fetch("./data/phrasal-verbs.json").then(function(r){ return r.ok?r.json():[]; }).then(function(arr){
     DATA=Array.isArray(arr)?arr:[];
-    filtered=DATA;
-    $("count").textContent=DATA.length+" öbek";
-    renderList(true);
+    applySearch("");  // başlangıçta freq'e göre sıralı göster
   }).catch(function(){
     $("list").innerHTML='<div class="empty">Veri yüklenemedi. İnternet bağlantını kontrol et.</div>';
   });
