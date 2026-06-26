@@ -27,6 +27,7 @@ body{
 .wrap{max-width:680px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
 
 .top{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-soft);z-index:10}
+.keybtn{margin-left:auto;flex:0 0 auto;background:var(--surface,#0f1f3a);border:1px solid var(--border);border-radius:10px;width:40px;height:40px;font-size:18px;cursor:pointer;color:var(--text)}
 .back{background:var(--surface);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:17px;flex-shrink:0;text-decoration:none;display:flex;align-items:center;justify-content:center}
 .back:hover{background:var(--surface-2)}
 .ava{
@@ -105,6 +106,13 @@ body{
 .sheet input{width:100%;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px;font:600 14px monospace;margin-bottom:12px}
 .sheet input:focus{outline:none;border-color:var(--accent)}
 .sheet .btn{width:100%;margin-bottom:9px;display:block;text-align:center}
+.keylist{margin-bottom:12px;display:flex;flex-direction:column;gap:8px}
+.keylist-empty{color:var(--muted);font-size:13px;padding:8px 0}
+.keyrow{display:flex;align-items:center;gap:8px}
+.keyrow .keynum{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--accent,#2563eb);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800}
+.keyrow .keyval{flex:1;min-width:0;margin:0;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font:600 12px monospace}
+.keyrow .keydel{flex:0 0 auto;background:transparent;border:0;color:#f87171;font-size:17px;cursor:pointer;padding:4px 6px}
+.note.ok{color:#34d399}
 .sheet a{color:#93c5fd}
 .row2{display:flex;gap:8px}.row2 .btn{flex:1}
 .note{font-size:13px;min-height:16px;margin:4px 0 8px}.note.bad{color:var(--bad)}.note.ok{color:var(--ok)}
@@ -128,19 +136,39 @@ const KEYS_LS = "groqApiKeys";
 function getKeys(){ try{ return (JSON.parse(localStorage.getItem(KEYS_LS)||"[]")||[]).filter(Boolean); }catch{ return []; } }
 function saveKey(k){ const ks=getKeys(); if(!ks.includes(k)) ks.push(k); try{ localStorage.setItem(KEYS_LS, JSON.stringify(ks)); }catch{} }
 let _ki=0;
+// word'deki sağlam sistem: rate limit yiyen anahtarı geçici "yasakla",
+// bu sürede diğer anahtarları kullan, süre dolunca geri al.
+let _keyBan={};        // { keyIndex: serbestKalmaZamanı(ms) }
+function nextUsableKey(keys){
+  const now=Date.now();
+  // süresi dolan yasakları kaldır
+  Object.keys(_keyBan).forEach(k=>{ if(_keyBan[k]<now) delete _keyBan[k]; });
+  // yasaklı olmayan ilk anahtarı bul
+  for(let e=0;e<keys.length;e++){
+    const idx=(_ki+e)%keys.length;
+    if(!_keyBan[idx]){ _ki=idx; return {idx, key:keys[idx]}; }
+  }
+  // hepsi yasaklı → en erken serbest kalacakı döndür (bekleme bilgisiyle)
+  const soonest=Object.entries(_keyBan).sort((a,b)=>a[1]-b[1])[0];
+  return { idx:-1, key:null, waitMs: soonest ? Math.max(0, soonest[1]-now) : 0 };
+}
 async function groqChat(messages){
   const keys=getKeys();
   if(!keys.length) throw {code:"no-key"};
   let last=null;
-  let rateCount=0;
-  for(let n=0;n<keys.length;n++){
-    const key=keys[(_ki+n)%keys.length];
+  // her anahtarı en fazla 1 kez dene; rate limit yiyeni 60sn yasakla
+  for(let attempt=0; attempt<keys.length; attempt++){
+    const pick=nextUsableKey(keys);
+    if(pick.idx===-1){
+      // tüm anahtarlar yasaklı
+      throw { code:"rate", tried:keys.length, waitMs:pick.waitMs };
+    }
     try{
-      const res=await fetch(GROQ_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model:GROQ_MODEL,messages,temperature:0.3,max_tokens:2500})});
-      if(res.status===401){ last={code:"bad-key"}; continue; }
-      if(res.status===429){ rateCount++; last={code:"rate", tried:keys.length, rated:rateCount}; continue; }
-      if(!res.ok){ last={code:"http"}; continue; }
-      const data=await res.json(); _ki=(_ki+n)%keys.length;
+      const res=await fetch(GROQ_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+pick.key},body:JSON.stringify({model:GROQ_MODEL,messages,temperature:0.3,max_tokens:2500})});
+      if(res.status===401){ last={code:"bad-key"}; _keyBan[pick.idx]=Date.now()+5*60*1000; continue; }  // geçersiz anahtar: uzun yasak
+      if(res.status===429){ last={code:"rate", tried:keys.length}; _keyBan[pick.idx]=Date.now()+60*1000; continue; }  // rate limit: 60sn yasak
+      if(!res.ok){ last={code:"http"}; _keyBan[pick.idx]=Date.now()+10*1000; continue; }
+      const data=await res.json();
       return data.choices?.[0]?.message?.content?.trim()||"";
     }catch(e){ last={code:"network"}; }
   }
@@ -468,6 +496,7 @@ function render(){
     <a href="./index.html" class="back" id="teacherBack" title="Geri">←</a>
     <div class="ava" title="Fotoğraflı öğretmen"><img id="teacherAvaImg" alt="Öğretmen avatarı"></div>
     <div class="tinfo"><h1>İngilizce Öğretmeni</h1><p>Türkçe anlatımlı İngilizce öğretmeni</p></div>
+    <button class="keybtn" id="teacherKeyBtn" title="API anahtarları">🔑</button>
   </div>
   <div class="body">
     <div class="teacher-hero"><img class="teacher-photo" id="teacherHeroImg" alt="Fotoğraflı öğretmen avatarı"></div>
@@ -480,6 +509,8 @@ function render(){
   </div>`;
   mountTeacherAvatar();
   // Geri düğmesi davranışı
+  var keyBtn = document.getElementById("teacherKeyBtn");
+  if (keyBtn) keyBtn.onclick = () => openKeySheet();
   var backEl = document.getElementById("teacherBack");
   if (backEl){
     var p2 = new URLSearchParams(location.search);
@@ -608,8 +639,9 @@ function handleError(e, silent){
   let msg="Bir sorun oluştu, tekrar dene.";
   if (code==="rate"){
     var t = e && e.tried ? e.tried : 1;
-    if (t > 1) msg = t + " API anahtarının hepsi limit doldu. Birkaç dakika bekle. (Anahtarlar aynı Groq hesabındansa hepsi aynı anda dolar; farklı hesaplardan anahtar eklemek daha iyi olur.)";
-    else msg = "API limiti doldu (tek anahtar). Birkaç dakika bekle veya ek anahtar gir.";
+    var w = e && e.waitMs ? Math.ceil(e.waitMs/1000) : 0;
+    if (t > 1) msg = t + " API anahtarının hepsi şu an limitte" + (w?(" (~"+w+" sn sonra açılır)"):"") + ". Farklı Groq hesaplarından anahtar eklersen kesinti azalır.";
+    else msg = "API limiti doldu (tek anahtar). Birkaç dakika bekle veya '🔑 Anahtarlar'dan ek anahtar gir.";
   }
   else if (code==="network") msg="İnternet bağlantısı yok gibi görünüyor.";
   if (!silent) setOut(`<div class="state"><h2>Olmadı</h2><p>${msg}</p><button class="btn btn-primary" onclick="location.reload()">Tekrar dene</button></div>`);
@@ -644,27 +676,57 @@ function openPromptSheet(){
   };
 }
 
-/* ---------- API anahtarı ---------- */
+/* ---------- API anahtarları (çoklu, okunur) ---------- */
+function removeKey(k){
+  let ks=getKeys().filter(x=>x!==k);
+  try{ localStorage.setItem(KEYS_LS, JSON.stringify(ks)); }catch{}
+}
+function keyListHTML(){
+  const ks=getKeys();
+  if(!ks.length) return `<div class="keylist-empty">Henüz anahtar yok.</div>`;
+  return ks.map((k,i)=>`
+    <div class="keyrow">
+      <span class="keynum">${i+1}</span>
+      <input class="keyval" type="text" readonly value="${esc(k)}" />
+      <button class="keydel" data-k="${esc(k)}" title="Sil">🗑️</button>
+    </div>`).join("");
+}
 function openKeySheet(invalid){
   const sheet=document.createElement("div"); sheet.className="sheet-overlay";
   sheet.innerHTML=`
     <div class="sheet">
-      <h3>Öğretmen için API anahtarı</h3>
-      <p>Öğretmen, ücretsiz <b>Groq</b> yapay zekasını kullanır. Kendi anahtarını bir kez gir; cihazında saklanır. <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a> adresinden ücretsiz alabilirsin.</p>
-      <input id="keyInput" type="text" placeholder="gsk_..." autocomplete="off" spellcheck="false" />
+      <h3>Öğretmen için API anahtarları</h3>
+      <p>Öğretmen, ücretsiz <b>Groq</b> yapay zekasını kullanır. Birden fazla anahtar ekleyebilirsin; biri limite takılırsa diğerine geçilir. <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a> adresinden ücretsiz alabilirsin.</p>
+      <div class="keylist" id="keyList">${keyListHTML()}</div>
+      <input id="keyInput" type="text" placeholder="Yeni anahtar: gsk_..." autocomplete="off" spellcheck="false" />
       <div class="note ${invalid?"bad":""}" id="keyNote">${invalid?"Önceki anahtar geçersizdi.":""}</div>
-      <button class="btn btn-primary" id="keySave">Kaydet ve başla</button>
-      <button class="btn" id="keyCancel">Vazgeç</button>
+      <button class="btn btn-primary" id="keyAdd">+ Anahtar ekle</button>
+      <button class="btn btn-primary" id="keyDone">Bitti</button>
+      <button class="btn" id="keyCancel">Kapat</button>
     </div>`;
   document.body.appendChild(sheet);
   const close=()=>sheet.remove();
+  const refresh=()=>{ sheet.querySelector("#keyList").innerHTML=keyListHTML(); bindDel(); };
+  const bindDel=()=>{
+    sheet.querySelectorAll(".keydel").forEach(btn=>{
+      btn.onclick=()=>{ removeKey(btn.getAttribute("data-k")); refresh(); };
+    });
+  };
+  bindDel();
   sheet.onclick=e=>{ if(e.target===sheet) close(); };
   sheet.querySelector("#keyCancel").onclick=close;
   sheet.querySelector("#keyInput").focus();
-  sheet.querySelector("#keySave").onclick=()=>{
-    const k=sheet.querySelector("#keyInput").value.trim();
+  const addKey=()=>{
+    const inp=sheet.querySelector("#keyInput");
+    const k=inp.value.trim();
     if(!k||!k.startsWith("gsk_")){ sheet.querySelector("#keyNote").textContent="Anahtar 'gsk_' ile başlamalı."; sheet.querySelector("#keyNote").className="note bad"; return; }
-    saveKey(k); close(); explain();
+    saveKey(k); inp.value=""; sheet.querySelector("#keyNote").textContent="✓ Eklendi."; sheet.querySelector("#keyNote").className="note ok"; refresh();
+  };
+  sheet.querySelector("#keyAdd").onclick=addKey;
+  sheet.querySelector("#keyInput").onkeydown=e=>{ if(e.key==="Enter") addKey(); };
+  sheet.querySelector("#keyDone").onclick=()=>{
+    if(!getKeys().length){ sheet.querySelector("#keyNote").textContent="En az bir anahtar gerekli."; sheet.querySelector("#keyNote").className="note bad"; return; }
+    close(); explain();
   };
 }
 
