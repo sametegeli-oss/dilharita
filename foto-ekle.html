@@ -155,14 +155,28 @@
       });
       progressBar.style.width="100%";
       var text=(result && result.data && result.data.text) || "";
-      var sentences=splitSentences(text);
-      if(!sentences.length){
+      if(!text.trim()){
         ocrStatus.className="status bad";
         ocrStatus.textContent="Fotoğraftan metin okunamadı. Daha net/düz bir fotoğraf dene.";
         return;
       }
+      // Ham OCR metnini AI'a gönder: düzgün, doğru cümleler üretsin.
+      ocrStatus.className="status"; ocrStatus.textContent="Cümleler yapay zeka ile düzenleniyor…";
+      var sentences=[];
+      try{
+        sentences=await aiExtractSentences(text);
+      }catch(e){
+        // AI başarısız (anahtar yok/internet yok): basit bölmeye düş
+        sentences=splitSentences(text);
+      }
+      if(!sentences.length) sentences=splitSentences(text);  // AI boş döndüyse de yedek
+      if(!sentences.length){
+        ocrStatus.className="status bad";
+        ocrStatus.textContent="Metin işlenemedi. Daha net bir fotoğraf dene.";
+        return;
+      }
       ocrStatus.className="status ok";
-      ocrStatus.textContent="✓ "+sentences.length+" cümle bulundu. Aşağıdan düzenle.";
+      ocrStatus.textContent="✓ "+sentences.length+" cümle hazır. Gerekirse düzenle/sil.";
       renderSentences(sentences);
       setTimeout(function(){ progress.style.display="none"; }, 600);
     }catch(err){
@@ -192,7 +206,29 @@
     return out;
   }
 
-  // Hafif temizlik: sadece bariz gürültü sembollerini ayıkla, metni bozma.
+  // Ham OCR metnini AI'a gönderip düzgün, doğru İngilizce cümleler üret.
+  async function aiExtractSentences(rawText){
+    var keys=getKeys();
+    if(!keys.length) throw {code:"no-key"};
+    var clipped=String(rawText||"").slice(0, 4000);  // çok uzun metni kırp
+    var prompt=
+      "Below is raw OCR text scanned from a page. It may contain noise, broken line breaks, "
+      + "garbage symbols, and split words. Reconstruct the correct, clean ENGLISH sentences from it.\n"
+      + "Rules:\n"
+      + "- Output ONLY the corrected English sentences, one per line.\n"
+      + "- Fix obvious OCR errors and join words split across lines.\n"
+      + "- Remove page numbers, headers, and meaningless symbols.\n"
+      + "- Do NOT translate. Do NOT number the lines. Do NOT add explanations.\n"
+      + "- If a fragment is not a real sentence, skip it.\n\n"
+      + "RAW OCR TEXT:\n" + clipped;
+    var out=await groqChat([{role:"user",content:prompt}]);
+    // her satır bir cümle
+    var lines=out.split(/\n+/).map(function(l){
+      return l.replace(/^\s*[-*\d.)]+\s*/,"").trim();  // baştaki madde işareti/numara temizle
+    }).filter(function(l){ return l && /[A-Za-z]/.test(l) && l.length>=3; });
+    return lines;
+  }
+
   function cleanLine(s){
     return String(s||"")
       .replace(/[|~_=*<>\^`]+/g, " ")          // tipik OCR gürültü sembolleri
