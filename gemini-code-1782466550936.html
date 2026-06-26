@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akın Dil YDS Phrasal Verbs Kartları</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent-color: #38bdf8;
+            --accent-hover: #0284c7;
+            --border-color: #334155;
+            --success-color: #4ade80;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        header {
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--accent-color);
+            margin: 0 0 5px 0;
+            font-size: 1.6rem;
+        }
+
+        h2 {
+            color: var(--text-muted);
+            margin: 0 0 15px 0;
+            font-size: 1rem;
+            font-weight: 400;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .phrasal-verb {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .meaning {
+            font-size: 1.3rem;
+            color: var(--accent-color);
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .example {
+            font-style: italic;
+            color: var(--success-color);
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 10px;
+            width: 100%;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: #0f172a;
+            border: none;
+            padding: 12px 15px;
+            font-size: 0.95rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+            color: white;
+        }
+
+        button.secondary {
+            background-color: #1e293b;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        button.secondary:hover {
+            background-color: #334155;
+        }
+
+        .progress {
+            text-align: center;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .list-section {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        summary {
+            cursor: pointer;
+            color: var(--accent-color);
+            font-weight: 600;
+            padding: 5px;
+            user-select: none;
+        }
+
+        .pv-table-wrapper {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            background-color: var(--card-bg);
+        }
+
+        tr.clickable-row {
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+
+        tr.clickable-row:hover {
+            background-color: #334155;
+        }
+
+        tr.active-row {
+            background-color: #1e3a8a;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Phrasal Verbs Öğrenme İstasyonu</h1>
+        <h2>Akın Dil Eğitim Merkezi Referans Listesi</h2>
+        <div class="progress" id="progressText">0 / 0</div>
+    </header>
+
+    <input type="text" class="search-box" id="searchBox" placeholder="Kelime veya anlam ara..." oninput="searchWord()">
+
+    <div class="card" id="flashcard" onclick="toggleReveal()">
+        <div class="phrasal-verb" id="pvText">Yükleniyor...</div>
+        <div class="meaning" id="meaningText" style="display: none;">Anlamı</div>
+        <div class="example" id="exampleText" style="display: none;">Example sentence.</div>
+    </div>
+
+    <div class="btn-group">
+        <button class="secondary" onclick="prevCard()">◀ Geri</button>
+        <button onclick="toggleReveal()">Anlamı Göster / Gizle</button>
+        <button class="secondary" onclick="nextCard()">İleri ▶</button>
+    </div>
+
+    <div class="list-section">
+        <details open>
+            <summary>Akın Dil Kelime Listesi (<span id="totalCountText">0</span> Kayıt)</summary>
+            <div class="pv-table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Kelime (Phrasal Verb)</th>
+                            <th>Anlamı</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pvTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </details>
+    </div>
+</div>
+
+<script>
+    // Akın Dil PDF içeriğinden doğrudan parse edilen tam kelime havuzu
+    const masterTSV = `Abide by	kurala veya kanuna uymak	If you want to stay at this school, you must abide by the rules.
+Account for	sorumlu olmak / rakama veya orana karşılık gelmek	I hope you can account for the money you spent! / The amount of the unemployed accounts for 25% in Greece.
+Act on	harekete geçmek	The police acted on the call they received.
+Add up	akla yatkın olmak	Her story just doesn't add up.
+Adhere to	desteklemek / uymak & bağlı kalmak	All contestants must adhere to the rules.
+Agree with	fikre katılmak	I agree with you. I think she deserves the award too.
+Aim at	nişan almak / hedeflemek	The policeman aimed his gun at the hijacker.
+Amount to	miktarına karşılık gelmek	The total cost amounts to 1200€. / His statement amounted to a confession.
+Appeal to	rica etmek / istemek / cazip gelmek	The organizers appealed to the crowd to stay calm. / Skiing doesn't appeal to me.
+Apply for	resmi başvuru yapmak	He applied for the job advertised.
+Arrive at	ulaşmak / varmak	It seems that they will arrive at an agreement at the end of the meeting.
+Ask in	davet etmek	Upon seeing her, I asked her in.
+Avail (oneself) of	yararlanmak / fırsatı değerlendirmek	When the company is privatized, you should avail yourself of the opportunity and buy some shares.
+Back down	geri çekilmek / yenilgiyi kabul etmek	Local authorities backed down on their plans to demolish the cinema.
+Back off	geri çekilmek / geri adım atmak	The thugs backed off when they saw the police.
+Back out	caymak / sözünden dönmek	We made a deal. You can't back out now!
+Back up	desteklemek / arka çıkmak / yedeğini almak	If I tell the boss we've got too much work, will you back me up? / It is recommended to back up all files.
+Bail out	Kefalet ödemek / Para ile kurtarmak	When he was arrested, his family refused to bail him out. / The government bailed out the bank.
+Band together	Grup olarak birleşmek / Bir araya gelmek	Consumers banded together to protest against the measures.
+Bank on	Ümit bağlama / İtibar etmek	Don't forget the date. I'm banking on your help.
+Bargain for	Pazarlık etmek	The interview was more difficult than he had bargained for.
+Bear out	Onaylamak / Tasdik etmek	The other witnesses will bear out my testimony.
+Block off	Bloke etmek / Engellemek	The area was blocked off during the demonstration.
+Blow up	Patlamak / Havaya uçurmak	The terrorists said the bomb would blow up at 9 o'clock. / The car blew up but luckily there was nobody in it.
+Break away	Kaçmak / Firar etmek	A few horses broke away from the paddock.
+Break down	Bozulmak / Sinirini bozmak (Ağlama krizine girmek)	John's car broke down on the way to the airport. / The parents broke down when they heard the bad news.
+Break into	Zorla girmek	The burglars broke into the house around midnight.
+Break off	Durdurmak / Kesintiye uğratmak	It was decided to break off diplomatic relations with that country.
+Break out	Patlak vermek / Aniden başlamak	Rioting broke out as a result of the strike.
+Break up	Ayrılmak	After her marriage broke up, Emma went to live in London.
+Bring off	Üstesinden gelmek / Zorluklara rağmen başarmak	I never thought you'd bring that off!
+Bring up	Çocuk yetiştirmek / Bir konuyu gündeme getirmek	She stopped working in order to bring up her children. / His friends knew he had lost his job but they decided not to bring up the subject.
+Bump into	Çarpmak / Tesadüfen karşılaşmak	As we turned left, we bumped into another car. / Jack bumped into his ex-girlfriend at the supermarket.
+Burn out	Yanıp yok olmak	Due to the fire, the entire house was burned out.
+Call back	Çağrıya dönmek	I'll call you back as soon as possible.
+Call off	İptal etmek	The meeting was called off because of the strike.
+Call on/upon	Çağrıda bulunmak / Resmi olarak davet etmek	I now call upon the President to address the assembly.
+Calm down	Sakinleşmek	He was angry at first, but he eventually calmed down.
+Carry on	Sürdürmek	He carried on gardening in spite of the rain.
+Carry out	Yürütmek / İşletmek (Deney/Plan vb.)	The plan was carried out to perfection. / Tests are carried out to determine the efficiency of a new drug.
+Catch up with	Seviyesine yetişmek	I've missed some classes so I'll have to work hard to catch up with the others.
+Check in	Giriş yapmak / Kayıt olmak	For security reasons, you have to check in two hours before your flight.
+Check out	Kontrol etmek	I don't know if the address is still valid. I'll check it out.
+Cheer up	Neşelendirmek	I told her a joke to try and cheer her up.
+Close down	Kapatmak	When the factory closed down, the employees lost their jobs.
+Come across	Karşılaşmak	Julie came across some photographs of her grandparents in the attic. / The candidate came across as a dynamic person during the interview.
+Come forward	İleri çıkmak / Kendini göstermek (Gönüllü olmak)	The police have asked any witnesses to come forward.
+Come up against	Karşılaşmak / İtiraz görmek	The project came up against a lot of criticism.
+Come up with	Bir fikirle ortaya çıkmak	Sally came up with a great idea for the experiment.
+Count on	Güvenme / İtibar etmek	I'm counting on the taxi driver to find the theatre.
+Cross out	Elemek / Üzerini çizmek	In some exercises you are asked to cross out the incorrect word.
+Cut down on	Azaltmak / Kesmek	The doctor told him to cut down on cigarettes.
+Cut out	Kesmek / Durdurmak / Bırakmak	She cut out a picture in a magazine. / I'm going to cut out eating sweet food.
+Deal with	Ele almak / Uğraşmak	The manager is good at dealing with difficult customers.
+Dig into	Dibini kazıp aramak / Bir konuyu eşelemek	He dug into his pocket and found a coin. / It was time to dig into the murder of Alexander the Great.
+Dig up	Toprağı kazmak / Açığa çıkartmak	He tried to dig up the tree by its roots. / Some newspapers often try to dig up scandalous information.
+Do away with	Kurtulmak / Yürürlükten kaldırmak	Some people think it's time to do away with the monarchy.
+Do without	Onsuz yapmak	The shops are closed so we'll have to do without sugar.
+Drag on	Beklenenden fazla sürmek	We expected a short speech but it dragged on and on!
+Drag out	Gereğinden fazla uzatmak / Ağzından laf almak	Let's decide now and not drag out this discussion. / The police finally dragged out a confession from the suspect.
+Draw up	Kaleme almak (Sözleşme vb.)	An agreement was drawn up and signed by the two parties.
+Dress up	Giyinip kuşanmak / Kılık değiştirmek	We will dress up for the upcoming party. / To disguise yourself, you have to dress up.
+Drift apart	Uzaklaşmak / Birbirinden uzaklaşmak	Continents drifted apart slowly but remarkably. / We were childhood friends but we drifted apart over the years.
+Drop behind	Gerisinde kalmak	Our sales have dropped behind those of our competitors.
+Drop in	Ziyaret etmek (Uğramak)	I sometimes drop in to see my grandparents on my way home from school.
+Drop off	Araçla bir yere bırakmak / Uyuyakalmak	I'll drop you off at the bus stop if you like. / Granddad often drops off in front of the TV.
+Drop out	Üyelikten atılmak / Okulu terk etmek	She decided to go to art school, then dropped out after the first term.
+Drown out	Sesini bastırmak	She turned up the music to drown out the noise of the children outside.
+Ease off/up	Kolaylaştırmak / Hafifletmek	After Christmas, the workload generally eases off.
+Embark on/upon	Başlamak / Bir işe girişmek	She embarked on a career that lead her to fame. / The two countries embarked on war.
+End in	Sonlanmak	Their marriage ended in divorce.
+End up	Sonuçlanmak	If he continues his misconduct, he'll end up in prison.
+Even out	Dengede tutmak / Fikir ayrılıklarını gidermek	After a long discussion they managed to even out their differences.
+Explain away	Açıklamak / Bahane bulmak	How are you going to explain away the missing money?
+Face up (to)	Katlanmak / Yüzleşmek	Sam will have to face up to the fact that Jenny is not in love with him.
+Fall apart	Ayrılmak / Anlaşamamak / Parçalanmak	My car is so old it's falling apart. / Their marriage fell apart after they both lost their jobs.
+Fall behind	Gerisinde kalmak	She fell behind at school and had to study harder.
+Fall through	Başarısızlığa uğramak / Suya düşmek	Our planned boat trip fell through because of the storm.
+Figure out	Keşfetmek / Anlamak	I'm trying to figure out how to assemble the wardrobe.
+Fill out	Boşluk doldurmak (Form vb.)	Please fill out the enclosed form and send it back as soon as possible.
+Find out	Anlamak / Keşfetmek	I'm going to call the cinema to find out what time the film starts.
+Fit in (with)	Uymak / Uyum sağlamak	He just doesn't fit in with the others.
+Fix up	Tamir etmek / Elden geçirmek	They're going to fix up the house before moving in.
+Focus on	Odaklanmak	The advertising campaign will focus on the quality of the product.
+Freak out	Çıldırmak / Öfkeden delirmek	She nearly freaked out when she saw the colour of her hair. It was a disaster!
+Get about/around	Hareket etmek / Yayılmak, dolaşmak	It's not easy to get around the city without a map. / News of their separation soon got about.
+Get along (with)	Biri ile geçinmek	I get along (well) with my mother-in-law.
+Get away	Kaçmak	The robbers got away in a black car.
+Get by (on)	Hayatta kalmak / Geçimini sürdürmek	It's difficult to get by on a low salary.
+Get down to	İşe koyulmak / Bir işte yol almak	It's time to get down to some serious work!
+Get in	İçeri girmek	How did the burglar get in?
+Get off	Araçtan inmek	Get off the bus at Times Square.
+Get on	Araca binmek	You can pay when you get on the bus.
+Get on well with	Anlaşmak / İyi geçinmek	Be calm and get on well with your friends.
+Get out	Çıkmak	He got out of the trouble easily.
+Get out of (+verb)	Bir şey yapmaktan kaçınmak	Some researchers manage to get out of doing any research.
+Get over	Üstesinden gelmek / Atlatmak	Charlie had the 'flu but he got over it.
+Get rid of	Kurtulmak	It's difficult to get rid of old habits.
+Get round to	Zaman bulmak	I finally got round to making the list that I promised.
+Get together	Buluşmak	Let's get together for lunch one day.
+Get up	Uyanmak / Yataktan kalkmak	I usually get up at 7 o'clock.
+Give away	Bağışlamak / Açığa çıkarmak	He gave away most of his paintings. / The names of the witnesses will not be given away.
+Give back	Geri vermek	He promised to give back the money he borrowed.
+Give up	Bırakmak / Vazgeçmek	Sarah gave up smoking five years ago.
+Go along (with)	Desteklemek / Kabul etmek	Alex tends to go along with anything his wife says.
+Go back	Geri dönmek	Children go back to school after the holidays.
+Go away	Uzaklaşmak / Yok olmak	We decided to go away for a few days. / The stain still hasn't gone away.
+Go in for	İlgi duymak	She doesn't really go in for sports.
+Go through	Başından geçirmek / Yaşamak	Allan went through a lot of pain after the incident.
+Go with/together	Uymak / Yanına yakışmak	The curtains don't go with the carpet.
+Grow up	Büyümek	He grew up in a small village in the mountains.
+Hand back	Geri vermek	She read the article and then handed it back.
+Hand down	Devretmek / Miras bırakmak	This building was handed down to me by my grandfather.
+Hand in	Teslim etmek	All application forms must be handed in before the end of the month.
+Hand out	Dağıtmak	Samples will be handed out at the end of the demonstration.
+Hand over	Birine yetki/teslimat vermek	The boy was forced to hand over the mobile phone he had stolen.
+Hang back	İstekiz olmak / Geri durmak	All the children rushed towards the clown except one boy who hung back.
+Hang on	Beklemek	Hang on a minute. I'm nearly ready.
+Hang on (to)	Tutunmak / Sahip çıkmak	Hang on to that rope and you'll be ok.
+Hang out	Vakit geçirmek / Takılmak	Where does he hang out these days? Who does he hang out with?
+Hang up	Telefonu kapatmak	Don't hang up. I haven't finished yet.
+Head off	Bir yere doğru yola çıkmak	He headed off to the train station.
+Head for	Bir yere doğru yönelmek	The boat was heading for the rocks.
+Hit back	Karşılık vermek / Misilleme yapmak	When he was attacked, the boy hit back.
+Hold on	Beklemek / Sımsıkı tutmak	Hold on please. I'll put you through to the manager. / She held on to the railing as she crossed the bridge.
+Hold up	Örnek göstermek / Geciktirmek	She held up the diagram for all to see.
+Hurry up	Acele etmek	Hurry up! We'll miss the bus!
+Iron out	Pürüzleri gidermek / Çözmek	The meeting tomorrow will be an opportunity to iron out difficulties.
+Impose on/upon	Empoze etmek / Zorla kabul ettirmek	The victorious countries imposed on their own terms.
+Improve on/upon	Geliştirmek / İleriye götürmek	The runner improved on his previous performance.
+Insure against	Sigortalamak	The house is insured against fire.
+Join in	Katılmak / İştirak etmek	She was too shy to join in the game.
+Join up	Bir gruba/orduya katılmak	I joined up the army as soon as I graduated.
+Jot down	Not almak / Karalama yapmak	I jotted down the address while watching the programme on TV.
+Keep at	Korumak / Azimle devam etmek	His father encouraged him to keep at his studies.
+Keep back	Önlemek / Geride tutmak	A barrier was installed to keep back the fans.
+Keep on	Sürdürmek / Devam etmek	I told him to be quiet but he kept on making noise.
+Keep up with	Ayak uydurabilmek	Bill walks so fast it's difficult to keep up with him.
+Kneel down	Diz çökmek	Most people kneel down to pray.
+Kick off	Başlamak	The football match kicked off at 3 p.m.
+Know of	Duymuş olmak / Haberi olmak	Do you know of anyone else attending the conference?
+Lay off	İşten çıkartmak / İşi bırakmak	Many factories have had to lay off workers.
+Leak out	Sızdırmak / Açığa çıkmak	All the secret parts of the meeting were leaked out.
+Leave out	Hariç tutmak / Dışarıda bırakmak	Tom's name was left out of the report.
+Let down	Hayal kırıklığına uğratmak / Yüzüstü bırakmak	You promised to come to the party, so don't let me down!
+Light up	Aydınlatmak / Işıldamak	The street lamps light up the street. / The screen lights up when you turn on a computer.
+Line up	Sıraya girmek / Dizilmek	The books were lined up neatly on the shelves.
+Live through	Başından geçirmek / Yaşamak	My grandparents lived through two major wars.
+Log in/on	Bir sisteme giriş yapmak	You need to log in to your account before you use the services.
+Log off	Bir sistemden çıkış yapmak	Log off the system and then turn off the computer.
+Look after	Bakıcılık yapmak / Göz kulak olmak	A babysitter looks after the children when their parents go out.
+Look ahead	İleriye bakmak / Geleceği düşünmek	It's time to forget the past and look ahead.
+Look back on	Anımsamak / Geçmişe bakmak	My parents and their friends like to look back on "the good old days".
+Look down on	Küçük görmek / Aşağılamak	He tends to look down on anyone who is not successful.
+Look into	Araştırmak / İncelemek	I'll look into the matter and call you back.
+Look for	Aramak	We are looking for the truth as we seek evidence.
+Look forward to	İple çekmek / Dört gözle beklemek	I look forward to seeing you soon.
+Look up to	Hayran olmak / Örnek almak	He was a wonderful teacher and many students looked up to him.
+Lose out on/to	Kaybetmek / Başarısız olmak	I'm the one who'll lose out if our plan goes wrong.
+Make fun of	Alay etmek / Dalga geçmek	The old lady dresses so strangely that the children make fun of her.
+Make off with	Çalmak / Aşırmak	He made off with my briefcase while I was checking the timetable.
+Make up	İcat etmek / Uydurmak	Some employees make up excuses when they arrive late for work.
+Make up (with)	Barışmak	It's time to shake hands and make up.
+Make up for	Telafi etmek	With hard work I can make up for the days I was absent.
+Mark down	Ucuzlatmak / Fiyat düşürmek	The coat was marked down by 40% - a real bargain!
+Miss out (on)	Hakkını kaybetmek / Fırsatı kaçırmak	If you leave before Saturday you'll miss out on the party.
+Mix up	Karmakarışık etmek / Karıştırmak	I don't know the members' names yet. I tend to mix them up.
+Move in	Taşınmak (Yeni eve/ofise gelmek)	You've bought a new house? When are you moving in?
+Move out	Taşınmak (Evden/ofisten ayrılmak)	My neighbour is leaving. He's moving out next Saturday.
+Name after	Adını vermek (Birinin ismini koymak)	Samuel L. Jackson was named after his grandfather.
+Narrow down	Daraltmak (Seçenekleri azaltmak)	The list of suspects has been narrowed down to three people.
+Note down	Kaydetmek / Not almak	I'll call the station and note down the departure times.
+Opt out	Vazgeçmek / Katılmamayı seçmek	I enjoy tennis but I'm so busy I had to opt out of the tournament.
+Own up	İtiraf etmek	The boy owned up. He said he kicked the ball through the window.
+Pass away	Ölmek / Vefat etmek	The old lady passed away peacefully.
+Pass on	Nakletmek / Aktarmak	Don't forget to pass on the information.
+Pass out	Kendinden geçmek / Bayılmak	She passed out when she heard the bad news.
+Pay back	Geri ödemek / Ödeşmek	I will lend you 20€ provided you pay me back before the end of the week.
+Pick on	Kusur bulmak / Sataşmak / Uğraşmak	The other children were always picking on Charlie because of his red hair.
+Pick out	Seçmek / Ayırt etmek	I am sure that you picked up the best product from the store.
+Pile up	Birikmek	Carbon dioxide is piling up in the atmosphere.
+Pick up	Kavramak / Birini bir yerden almak (Öğrenmek)	Children are quick to pick up a new language. / James is coming to pick me up at 8 o'clock.
+Play up	Abartmak / Önemini vurgulamak	He always plays up his achievements.
+Play down	Önemsememek / Hafife almak	The government played down the gravity of the situation.
+Pop in	Bir yere kısa süreli uğramak	He sometimes pops in for a cup of coffee.
+Pop up	Aniden belirmek / Ortaya çıkmak	The question popped up during the meeting.
+Pull through	Üstesinden gelmek / İyileşmek	My grandmother caught pneumonia but she pulled through.
+Put away	Yerine koymak (Kaldırmak)	Please put away the dictionary when you've finished using it.
+Put off	Ertelemek	The meeting was put off because of the strike.
+Put on	Giyinmek	Put on your coat - it's getting cold.
+Put out	Söndürmek	It took a long time to put out the fire.
+Put through	İki kişiyi telefonda bağlamak	I'll put you through to Mr. Brown.
+Put up	İnşa etmek / Kurmak	She is going to put up a new wall over her garden soon.
+Put up with	Katlanmak / Dayanmak	I don't know how you can put up with all the noise.
+Point out	Göstermek / İşaret etmek	The teacher pointed out the mistake.
+Rely on	Güvenmek / Bel bağlamak	Don't worry. You can rely on me. I can keep a secret.
+Ring back	Geri aramak	John rang and asked if you could ring him back.
+Ring off	Konuşmaya son vermek (Telefonu kapatmak)	He gave his name and then rang off.
+Rule out	Reddetmek / Elemek	The police ruled out political motives.
+Run away	Kaçmak	He ran away from home at the age of fourteen.
+Run into	Tesadüfen karşılaşmak	I ran into an old friend as I was walking down the street.
+Run out of	Tükenmek / Bitmek	What a nuisance! I've run out of coffee.
+Set off	Yola çıkmak	Early Saturday morning we set off for the ski slopes.
+Set up	Kurmak / Başlatmak	She set up her own company 10 years ago.
+Settle for	Kabul etmek / Razı olmak	I was hoping for a better proposal, but I'll settle for the amount you offer.
+Show off	Gösteriş yapmak / Hava atmak	There's David showing off in his new sports car!
+Show up	Görünmek / Çıka gelmek	We expected William to come but he didn't Show up.
+Sign away	Devretmek / Haklarından vazgeçmek	He signed away his property and joined a religious community.
+Sign in	Kaydolmak / Giriş yapmak	I will sign into the hotel first.
+Sign out	Çıkış yapmak / Oturumu kapatmak	He signed out and left for the airport.
+Single out	Seçip ayırmak / Özel ilgi göstermek	Two boys were singled out for extra coaching.
+Sleep over	Gecelemek / Misafir kalmak	You're welcome to sleep over if you don't want to drive in this weather.
+Slip up	Hata yapmak / Dili sürçmek	You slipped up there! His name is Alex, not Alan!
+Sort out	Halletmek / Çözümlemek	Students should sort out their books at the end of the school year.
+Stand for	Temsil etmek / Savunucusu olmak	VAT stands for value added tax. / I'm not going to stand for such behaviour!
+Stand up	Ayağa kalkmak	The pupils stood up when the headmaster arrived.
+Stick to	Bağlı kalmak / Değiştirmemek	We must decide on a plan of action and stick to it.
+Stick up for	Savunmak / Tarafını tutmak	It's important to stick up for one's principles.
+Take after	Birisine çekmek / Benzemek	Jamie really takes after his dad.
+Take apart	Parçalara ayırmak / Sökmek	The technician has to take the machine apart in order to repair it.
+Take away	Alıp götürmek (Paket servis)	Two beef curries to take away please.
+Take back	Geri almak / Sözünü geri almak	We will take back goods only if you can produce the receipt.
+Take care of	İlgilenmek / Bakmak	I'll take care of your plants while you're away.
+Take off	Kalkış yapmak (Uçak) / Çıkarmak	The plane took off at 7 o'clock.
+Take in	İçeri almak / Kavramak (Anlamak)	She's always taking in stray cats and dogs! / The man immediately took in the scene and called the police.
+Take on	İşe almak / Üstlenmek	Business is good so the company is taking on extra staff.
+Take out	Çıkartmak / Yemeğe çıkartmak	She took out a pen to note the address. / He took her out for a meal on her birthday.
+Talk into	İkna etmek	I talked John into buying a new car.
+Talk out of	Vazgeçirmek	I tried to talk Amy out of leaving her job.
+Tear up	Parçalara ayırmak / Yırtmak	Tear up the boxes before you put them in the bin.
+Tell off	Azarlamak / Eleştirmek	The teacher told her off for not doing her homework.
+Test out	Sınama yapmak / Denemek	The theory hasn't been tested out yet.
+think over	Düşünmek / İyice değerlendirmek	I'll have to think over the proposal before I decide.
+Throw away	Çöpe atmak	You can throw away that book - it's a load of rubbish!
+Throw up	Kusmak	I nearly threw up when I saw the injured passengers.
+Tire out	Pestilini çıkarmak / Çok yormak	The children tired out their grandmother.
+Track down	İzini sürmek / Bulmak	The police finally tracked down the main suspect.
+Trade in	Takas yapmak / Üste verip yenisini almak	I traded in my car for a new model.
+Try on	Kıyafet denemek	I'm not sure about the size. Can I try it on?
+Turn away	Geri çevirmek / İçeri almamak	Hundreds of fans were turned away from the football stadium.
+Turn down	Reddetmek / Sesi kısmak	Please turn down the music; it's too loud. / I couldn't turn down an offer like that!
+Turn off	Kapatmak (Şalter/Düğme vb.)	Turn off the lights please before you leave.
+Turn up	Çıkagelmek / Sesi yükseltmek	She turned up an hour late. / Could you turn up the radio please?
+Use up	Tüketmek	The kids have used up all the toothpaste.
+Ward off	Defetmek / Uzak tutmak	I take plenty of vitamin C to ward off colds.
+Warm up	Isıtmak	She warmed up some left-over soup.
+Wash up	Bulaşık yıkamak	Who's going to help me wash up?
+Watch out	Dikkat etmek	Watch out! There's a car coming.
+Wear out	Yıpranmak / Aşınmak / Çok yorulmak	Julie wore out her shoes sightseeing. / At the end of the day Julie was worn out.
+Work out	İdman yapmak / Çözmek (Hesaplamak)	I work out twice a week at the gym club. / It's expensive but I haven't worked out the exact cost yet.
+Wind up	Bitirmek / Son vermek	Before winding up his speech he thanked everyone for their presence. / He decided to wind up his business and retire.
+Wipe out	Yok etmek	The plague wiped out many people in the world.
+Wrap up	Sarmak / Paketlemek / Bitirmek	She's busy wrapping up her Christmas presents. / The salesman hoped to wrap up a few deals.`;
+
+    let dataItems = [];
+    let currentPool = [];
+    let currentIndex = 0;
+    let isRevealed = false;
+
+    function parseTSV(tsvText) {
+        const lines = tsvText.trim().split('\n');
+        const result = [];
+        lines.forEach(line => {
+            if (line.trim() === '') return;
+            const columns = line.split('\t');
+            if (columns.length >= 2) {
+                result.push({
+                    phrasalVerb: columns[0] ? columns[0].trim() : '',
+                    meaning: columns[1] ? columns[1].trim() : '',
+                    example: columns[2] ? columns[2].trim() : ''
+                });
+            }
+        });
+        return result;
+    }
+
+    function initApp(tsvData) {
+        dataItems = parseTSV(tsvData);
+        currentPool = [...dataItems];
+        currentIndex = 0;
+        
+        document.getElementById('totalCountText').innerText = dataItems.length;
+        
+        buildTable(currentPool);
+        showCard();
+    }
+
+    function showCard() {
+        if (currentPool.length === 0) {
+            document.getElementById('pvText').innerText = "Sonuç Bulunamadı";
+            document.getElementById('meaningText').innerText = "";
+            document.getElementById('exampleText').innerText = "";
+            document.getElementById('progressText').innerText = "0 / 0";
+            return;
+        }
+        
+        const item = currentPool[currentIndex];
+        document.getElementById('pvText').innerText = item.phrasalVerb;
+        document.getElementById('meaningText').innerText = item.meaning;
+        document.getElementById('exampleText').innerText = item.example || '';
+
+        isRevealed = false;
+        document.getElementById('meaningText').style.display = 'none';
+        document.getElementById('exampleText').style.display = 'none';
+
+        document.getElementById('progressText').innerText = `${currentIndex + 1} / ${currentPool.length}`;
+        updateActiveRow();
+    }
+
+    function toggleReveal() {
+        if (currentPool.length === 0) return;
+        isRevealed = !isRevealed;
+        const displayMode = isRevealed ? 'block' : 'none';
+        
+        document.getElementById('meaningText').style.display = displayMode;
+        if (currentPool[currentIndex].example) document.getElementById('exampleText').style.display = displayMode;
+    }
+
+    function nextCard() {
+        if (currentPool.length === 0) return;
+        currentIndex++;
+        if (currentIndex >= currentPool.length) {
+            currentIndex = 0;
+        }
+        showCard();
+    }
+
+    function prevCard() {
+        if (currentPool.length === 0) return;
+        currentIndex--;
+        if (currentIndex < 0) {
+            currentPool.length - 1;
+            currentIndex = currentPool.length - 1;
+        }
+        showCard();
+    }
+
+    function selectWord(index) {
+        currentIndex = index;
+        showCard();
+        document.getElementById('flashcard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function buildTable(list) {
+        const tbody = document.getElementById('pvTableBody');
+        tbody.innerHTML = '';
+        
+        list.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.className = 'clickable-row';
+            tr.id = `row-${index}`;
+            tr.onclick = () => selectWord(index);
+            
+            tr.innerHTML = `
+                <td style="font-weight:bold; color:#fff;">${item.phrasalVerb}</td>
+                <td>${item.meaning}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function updateActiveRow() {
+        document.querySelectorAll('.clickable-row').forEach(row => row.classList.remove('active-row'));
+        const activeRow = document.getElementById(`row-${currentIndex}`);
+        if (activeRow) {
+            activeRow.classList.add('active-row');
+        }
+    }
+
+    function searchWord() {
+        const query = document.getElementById('searchBox').value.toLowerCase().trim();
+        if (query === "") {
+            currentPool = [...dataItems];
+        } else {
+            currentPool = dataItems.filter(item => 
+                item.phrasalVerb.toLowerCase().includes(query) || 
+                item.meaning.toLowerCase().includes(query)
+            );
+        }
+        currentIndex = 0;
+        buildTable(currentPool);
+        showCard();
+    }
+
+    window.onload = function() {
+        initApp(masterTSV);
+    };
+</script>
+
+</body>
+</html>
