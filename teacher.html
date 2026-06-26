@@ -443,9 +443,6 @@ function renderRich(text){
   let html = esc(text);
   // [[....]] -> koyu yeşil (çift köşeli parantez içi İngilizce). Parantezler kaldırılır.
   html = html.replace(/\[\[([\s\S]*?)\]\]/g, '<span class="en">$1</span>');
-  // "....." -> yeşil (çift tırnak ya da düz/eğik tırnak)
-  html = html.replace(/&quot;([^&]*?)&quot;/g, '<span class="en">$1</span>');
-  html = html.replace(/[“”]([^“”]*?)[“”]/g, '<span class="en">$1</span>');
   // **kalın**
   html = html.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
   return html;
@@ -474,7 +471,7 @@ function render(){
   <div class="body">
     <div class="teacher-hero"><img class="teacher-photo" id="teacherHeroImg" alt="Fotoğraflı öğretmen avatarı"></div>
     <div class="subject">
-      <div class="subject-en" id="subEn">${renderRich('"'+esc(State.en)+'"')}</div>
+      <div class="subject-en" id="subEn">${renderRich('[['+esc(State.en)+']]')}</div>
       ${State.tr ? `<div class="subject-tr">${esc(State.tr)}</div>` : ""}
       <button class="subject-play" id="playBtn">🔊 Cümleyi dinle</button>
     </div>
