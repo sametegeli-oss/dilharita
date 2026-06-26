@@ -54,6 +54,8 @@
   .b-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
   .b-green{background:linear-gradient(135deg,#27ce6d,#14aa55);color:#fff}
   .loading{text-align:center;color:var(--muted);padding:40px}
+  .m-tr{display:block;color:var(--text);font-size:13px;margin-top:2px;opacity:.85}
+  .ex-tr{display:block;color:var(--muted);font-size:13px;margin-top:2px;font-style:normal}
 </style>
 </head>
 <body>
@@ -177,12 +179,18 @@
     // anlamlar
     if(item.meanings&&item.meanings.length){
       h+='<h3>Anlam(lar)</h3>';
-      h+=item.meanings.map(function(m){return '<p class="meaning">'+esc(m)+'</p>';}).join("");
+      h+=item.meanings.map(function(m,i){
+        var t=(item.meanings_tr&&item.meanings_tr[i])?'<span class="m-tr">'+esc(item.meanings_tr[i])+'</span>':'';
+        return '<p class="meaning">'+esc(m)+t+'</p>';
+      }).join("");
     }
     // örnekler
     if(item.examples&&item.examples.length){
       h+='<h3>Örnek cümleler</h3>';
-      h+=item.examples.map(function(e){return '<p class="example">'+esc(e)+'</p>';}).join("");
+      h+=item.examples.map(function(e,i){
+        var t=(item.examples_tr&&item.examples_tr[i])?'<span class="ex-tr">'+esc(item.examples_tr[i])+'</span>':'';
+        return '<p class="example">'+esc(e)+t+'</p>';
+      }).join("");
     }
     // çekimler
     if(item.forms&&item.forms.length){
