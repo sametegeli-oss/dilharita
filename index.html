@@ -46,7 +46,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     <a class="card" href="./practice.html"><b>✍️ Çalışma</b><span>Cümle çalışma ekranı</span></a>
     <a class="card" href="./foto-ekle.html"><b>📷 Fotoğraftan Ekle</b><span>Fotoğraftaki cümleleri tara, çevir, pratiğe ekle</span></a>
     <a class="card" href="./ocr-sentence.html"><b>📷 OCR Sentence Mode</b><span>Fotoğraftan eklediğin cümleleri zengin modda çalış</span></a>
-    <a class="card" href="./phrasal-verbs.html"><b>🔗 Phrasal Verbs</b><span>3350 İngilizce öbek fiil — anlam, örnek, dinle</span></a>
+    <a class="card" href="./phrasal-verbs.html"><b>🔗 Phrasal Verbs</b><span>881 İngilizce öbek fiil — anlam, örnek, dinle</span></a>
     <a class="card" href="./teacher.html"><b>🎓 Öğretmen</b><span>Türkçe anlatımlı İngilizce öğretmeni</span></a>
     <a class="card" href="./chat.html"><b>💬 Sohbet</b><span>Fotoğraflı konuşan avatar senaryoları</span></a>
     <a class="card" href="./library.html"><b>📚 Kütüphane</b><span>Kitap / metin okuma ekranı</span></a>
@@ -56,6 +56,28 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     <a class="card" href="./gunluk-takip.html"><b>🔥 Günlük Takip</b><span>Seri, hedef ve haftalık çalışma takibi</span></a>
     <a class="card" href="./ogrenme-yolu.html"><b>🛤️ Öğrenme Yolu</b><span>Busuu tarzı bölüm ve ilerleme yolu</span></a>
     <a class="card" href="./pwa-hard-reset.html"><b>🧹 Önbellek Temizle</b><span>Gerekirse Service Worker ve cache temizliği</span></a>
+  </div>
+
+  <!-- ==== Bildirim Ayarları ==== -->
+  <div id="dhNotifCard" style="margin:18px 0 20px;background:linear-gradient(180deg,#10264a,#0b172d);border:1px solid #f59e0b44;border-radius:22px;padding:18px;box-shadow:0 18px 46px #0005">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+      <div>
+        <div style="font-size:20px;font-weight:950;color:#fff">🔔 Günlük Hatırlatma</div>
+        <div style="font-size:13px;color:#9fb0c8;margin-top:3px">Her gün seçtiğin saatte çalışma hatırlatması al</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:54px;height:30px;flex:0 0 auto">
+        <input type="checkbox" id="dhNotifToggle" style="opacity:0;width:0;height:0">
+        <span id="dhNotifSlider" style="position:absolute;inset:0;cursor:pointer;background:#334155;border-radius:30px;transition:.2s"></span>
+      </label>
+    </div>
+    <div id="dhNotifBody" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <span style="font-size:13px;color:#cbd5e1;font-weight:800">Saat:</span>
+        <input type="time" id="dhNotifTime" value="20:00" style="background:#08172d;border:1px solid #ffffff22;color:#e8eef7;border-radius:12px;padding:9px 12px;font:800 14px system-ui">
+        <button id="dhNotifTest" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:9px 14px;background:#1d2b48;color:#fff;font:800 13px system-ui">🔔 Test et</button>
+      </div>
+      <div id="dhNotifMsg" style="font-size:13px;color:#9fb3d9;min-height:18px"></div>
+    </div>
   </div>
 
   <div style="display:flex;justify-content:center;margin:18px 0 6px">
@@ -72,13 +94,14 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   <div id="dhBackupMsg" style="text-align:center;font-size:13px;color:#9fb3d9;min-height:18px;margin-bottom:8px"></div>
 
   <div class="note">
-    <b>Not:</b> Bu aşamada <code>service worker</code> bilerek eklenmedi. Önce kurulum ve açılış stabil olacak. Sonra offline cache’i kontrollü ekleriz.
+    <b>Not:</b> Bildirimler için <code>service worker</code> etkin. Günlük hatırlatma için yukarıdaki 🔔 kartından izin ver ve saat seç.
   </div>
 </div>
 <script src="./pwa-install.js"></script>
 <script src="./daily-dashboard.js?v=2"></script>
 <script src="./learning-error-system.js?v=2"></script>
 <script src="./cloud-sync.js?v=2"></script>
+<script src="./notifications.js?v=1"></script>
 <script>
 (function(){
   var btn=document.getElementById("dhCloudSyncBtn");
@@ -204,6 +227,111 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     };
     reader.readAsText(file);
   };
+})();
+
+/* ==== Service Worker kaydı (bildirimler için gerekli) ==== */
+(function(){
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("./sw.js?v=2", { scope:"./" })
+        .catch(function(e){ console.warn("SW kayıt hata:", e); });
+    });
+  }
+})();
+
+/* ==== Bildirim ayar kartı davranışı ==== */
+(function(){
+  var toggle = document.getElementById("dhNotifToggle");
+  var slider = document.getElementById("dhNotifSlider");
+  var body   = document.getElementById("dhNotifBody");
+  var timeEl = document.getElementById("dhNotifTime");
+  var testBtn= document.getElementById("dhNotifTest");
+  var msg    = document.getElementById("dhNotifMsg");
+  var card   = document.getElementById("dhNotifCard");
+  if(!toggle || !card) return;
+
+  function setSliderOn(on){
+    slider.style.background = on ? "#16a34a" : "#334155";
+    slider.innerHTML = '<span style="position:absolute;top:3px;left:'+(on?'27px':'3px')+
+      ';width:24px;height:24px;background:#fff;border-radius:50%;transition:.2s"></span>';
+  }
+  function showMsg(text, color){
+    msg.textContent = text || "";
+    msg.style.color = color || "#9fb3d9";
+  }
+  function refreshUI(){
+    var N = window.DHNotifications;
+    if(!N || !N.supported()){
+      card.style.display = "none";
+      return;
+    }
+    var s = N.load();
+    var on = !!s.enabled && N.permission()==="granted";
+    toggle.checked = on;
+    setSliderOn(on);
+    body.style.display = on ? "block" : "none";
+    var hh = String(s.hour||20).padStart(2,"0");
+    var mm = String(s.minute||0).padStart(2,"0");
+    timeEl.value = hh+":"+mm;
+    if(N.permission()==="denied"){
+      showMsg("Bildirim izni tarayıcıdan engellenmiş. Site ayarlarından izin vermelisin.", "#f87171");
+    }
+  }
+
+  function parseTime(){
+    var v = (timeEl.value||"20:00").split(":");
+    return { hour: parseInt(v[0],10)||20, minute: parseInt(v[1],10)||0 };
+  }
+
+  toggle.onchange = function(){
+    var N = window.DHNotifications;
+    if(!N){ return; }
+    if(toggle.checked){
+      var t = parseTime();
+      showMsg("İzin isteniyor…");
+      N.enable(t.hour, t.minute).then(function(r){
+        if(r.ok){
+          setSliderOn(true);
+          body.style.display = "block";
+          showMsg("✓ Bildirimler açık. Her gün "+String(t.hour).padStart(2,"0")+":"+String(t.minute).padStart(2,"0")+"'de hatırlatacağım.", "#34d399");
+        }else{
+          toggle.checked = false; setSliderOn(false);
+          if(r.permission==="denied") showMsg("İzin reddedildi. Tarayıcı site ayarlarından açabilirsin.", "#f87171");
+          else showMsg("Bildirim izni verilmedi.", "#f87171");
+        }
+      });
+    }else{
+      N.disable();
+      setSliderOn(false);
+      body.style.display = "none";
+      showMsg("Bildirimler kapatıldı.");
+    }
+  };
+
+  timeEl.onchange = function(){
+    var N = window.DHNotifications; if(!N) return;
+    var t = parseTime();
+    N.setTime(t.hour, t.minute);
+    if(toggle.checked){
+      N.enable(t.hour, t.minute);
+      showMsg("✓ Saat güncellendi: "+String(t.hour).padStart(2,"0")+":"+String(t.minute).padStart(2,"0"), "#34d399");
+    }
+  };
+
+  testBtn.onclick = function(){
+    var N = window.DHNotifications; if(!N) return;
+    showMsg("Test bildirimi gönderiliyor…");
+    N.test().then(function(r){
+      if(r.ok) showMsg("✓ Test bildirimi gösterildi. Görmediysen cihazın bildirim ayarlarını kontrol et.", "#34d399");
+      else if(r.permission==="denied") showMsg("İzin reddedilmiş. Tarayıcı site ayarlarından açmalısın.", "#f87171");
+      else showMsg("Önce bildirimleri aç.", "#f59e0b");
+    });
+  };
+
+  // storage-bridge hazır olunca UI'ı doldur
+  if(window.__dhStorageReady) refreshUI();
+  else window.addEventListener("dh-storage-ready", refreshUI, { once:true });
+  setTimeout(refreshUI, 1200);
 })();
 </script>
 </body>
