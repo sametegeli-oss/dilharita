@@ -6,6 +6,7 @@
 <script src="./progress-engine.js?v=2"></script>
 <script src="./teacher-policy.js?v=2"></script>
 <script src="./lesson-engine.js?v=2"></script>
+<script src="./teacher-bubble.js?v=1"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0b1120">
@@ -175,6 +176,10 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
     return '<div class="teacher"><div class="ava">🎓</div><div class="bubble">'+esc(text)+'</div></div>';
   }
 
+  // ---- Öğretmene Sor artık kayan öğretmen (teacher-bubble.js) ile ----
+  // Her adımda dhSetTopic(topicForStep(s)) çağrılır; kullanıcı köşedeki
+  // öğretmen avatarına tıklayınca o konuyu sorabilir.
+
   function renderStep(){
     if(idx>=lesson.steps.length) return renderDone();
     var s=lesson.steps[idx];
@@ -208,6 +213,23 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
     }
     $("content").innerHTML=html;
     bindStep(s);
+    // kayan öğretmene aktif konuyu bildir
+    try{ if(window.dhSetTopic) dhSetTopic(topicForStep(s)); }catch(e){}
+  }
+
+  function topicForStep(s){
+    var it=s.item||{};
+    if(s.phase==="gramer"){
+      return { baslik:"Gramer: "+(it.label||""), soru:(it.label||"")+(it.pattern?" — "+it.pattern:""), ceviri:it.aiExplain||"", baglam:"Gramer konusu" };
+    }
+    if(s.type==="pv"){
+      return { baslik:it.label||"", soru:(it.label||"")+(it.examples&&it.examples[0]?" — "+it.examples[0]:""), ceviri:it.tr||"", baglam:"Phrasal verb" };
+    }
+    if(s.type==="word"){
+      return { baslik:it.label||"", soru:it.label||"", ceviri:it.tr||"", baglam:"Kelime" };
+    }
+    // cümle
+    return { baslik:it.label||"", soru:it.label||"", ceviri:it.tr||"", baglam:(s.phase==="telaffuz"?"Telaffuz cümlesi":s.phase==="video"?"Video cümlesi":"Cümle") };
   }
 
   function renderTeachCard(s){
@@ -254,8 +276,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       +tags
       +'<div class="actions">'
       +'<button class="btn b-blue" id="gSpeak">🔊 Örnekleri dinle</button>'
-      +'<button class="btn b-green" id="gGot">Anladım ✓</button>'
-      +'</div></div>';
+      +'<button class="btn b-green" id="gGot">Anladım ✓</button>'      +'</div></div>';
   }
 
   function renderVideoStep(s){
@@ -268,8 +289,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       +'<div class="actions">'
       +'<button class="btn b-blue" id="vSpeak">🔊 Dinle</button>'
       +'<button class="btn b-green" id="vGo">🎬 Video eğitime git</button>'
-      +'<button class="btn b-ghost" id="vSkip">Atla</button>'
-      +'</div></div>';
+      +'<button class="btn b-ghost" id="vSkip">Atla</button>'      +'</div></div>';
   }
 
   function renderPron(s){

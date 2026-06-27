@@ -226,6 +226,8 @@ select,input[type=number]{background:var(--surface-2);border:1px solid var(--bor
     if(session.idx >= session.items.length){ return renderDone(); }
     updateProgress();
     var item = session.items[session.idx];
+    // kayan öğretmene bu öbeği bildir
+    try{ if(window.dhSetTopic) dhSetTopic({ baslik:item.pv, soru:item.pv+(item.examples&&item.examples[0]?" — "+item.examples[0]:""), ceviri:item.tr||"", baglam:"Phrasal verb pratiği" }); }catch(e){}
     if(session.mode==="choice") return renderChoice(item);
     if(session.mode==="fill") return renderFill(item);
     if(session.mode==="listen") return renderListen(item);
@@ -421,6 +423,7 @@ select,input[type=number]{background:var(--surface-2);border:1px solid var(--bor
   });
 })();
 </script>
+<script src="./teacher-bubble.js?v=1"></script>
 <script src="./cloud-sync.js?v=3"></script>
 </body>
 </html>

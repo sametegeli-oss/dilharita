@@ -236,6 +236,8 @@
   function openDetail(item){
     if(!item) return;
     $("mPv").textContent=item.pv;
+    // kayan öğretmene bu öbeği bildir
+    try{ if(window.dhSetTopic) dhSetTopic({ baslik:item.pv, soru:item.pv+(item.examples&&item.examples[0]?" — "+item.examples[0]:""), ceviri:item.tr||"", baglam:"Phrasal verb" }); }catch(e){}
     var b=$("mBody");
     var h="";
     // Türkçe
@@ -357,6 +359,7 @@
   });
 })();
 </script>
+<script src="./teacher-bubble.js?v=1"></script>
 <script src="./cloud-sync.js?v=3"></script>
 </body>
 </html>

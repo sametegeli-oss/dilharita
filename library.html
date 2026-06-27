@@ -564,6 +564,8 @@ function openWordPopup(rawWord, contextSentence){
   function render(entry){
     const body = overlay.querySelector("#wordPopupBody");
     const meanings = entry && entry.meanings && entry.meanings.length ? entry.meanings.map(m=>`<li>${esc(m)}</li>`).join("") : "";
+    // kayan öğretmene bu kelimeyi bildir
+    try{ if(window.dhSetTopic) dhSetTopic({ baslik:word, soru:word, ceviri:(entry&&entry.meanings?entry.meanings[0]:(rawWord||"")), baglam:"Kelime" }); }catch(e){}
     // kelimeyi gördü → en azından "öğreniliyor" işaretle (zaten learned değilse)
     let wordKey = word;
     try{
@@ -731,5 +733,6 @@ init();
 })();
 </script>
 <script src="./study-tracker.js?v=1"></script>
+<script src="./teacher-bubble.js?v=1"></script>
 </body>
 </html>
