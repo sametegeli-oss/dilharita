@@ -3,9 +3,9 @@
 <head>
 <script src="./auth-guard.js?v=1"></script>
 <script src="./storage-bridge.js?v=2"></script>
-<script src="./progress-engine.js?v=1"></script>
-<script src="./teacher-policy.js?v=1"></script>
-<script src="./lesson-engine.js?v=1"></script>
+<script src="./progress-engine.js?v=2"></script>
+<script src="./teacher-policy.js?v=2"></script>
+<script src="./lesson-engine.js?v=2"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0b1120">
@@ -14,7 +14,7 @@
 :root{
   --bg:#0b1120; --surface:#0f1f3a; --surface-2:#13294d; --border:#1e3a5f;
   --text:#e8eef7; --muted:#9fb3d9; --accent:#2563eb;
-  --isinma:#60a5fa; --tekrar:#f59e0b; --yeni:#34d399; --pekistirme:#a78bfa; --telaffuz:#f472b6;
+  --isinma:#60a5fa; --tekrar:#f59e0b; --yeni:#34d399; --pekistirme:#a78bfa; --telaffuz:#f472b6; --gramer:#38bdf8; --video:#fb7185;
   --ok:#34d399; --bad:#f87171;
 }
 *{box-sizing:border-box}
@@ -40,6 +40,17 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 .phase-pill.yeni.active{background:var(--yeni);border-color:var(--yeni);color:#06281b}
 .phase-pill.pekistirme.active{background:var(--pekistirme);border-color:var(--pekistirme)}
 .phase-pill.telaffuz.active{background:var(--telaffuz);border-color:var(--telaffuz)}
+.phase-pill.gramer.active{background:var(--gramer);border-color:var(--gramer);color:#06283b}
+.phase-pill.video.active{background:var(--video);border-color:var(--video)}
+.pt-gramer{background:#38bdf822;color:var(--gramer)}
+.pt-video{background:#fb718522;color:var(--video)}
+.gram-pattern{font-size:18px;font-weight:900;color:var(--gramer);background:#38bdf812;border:1px solid #38bdf833;border-radius:10px;padding:10px 14px;margin:10px 0;text-align:center;font-family:ui-monospace,monospace}
+.gram-ex{font-size:15px;padding:8px 0;border-bottom:1px solid var(--border)}
+.gram-ex:last-child{border:none}
+.gram-ex .en{color:var(--text);font-weight:700}
+.gram-ex .tr{color:var(--muted);font-size:13px;margin-top:2px}
+.gram-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.gram-tag{background:var(--surface-2);border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:3px 9px;font-size:12px}
 .pt-telaffuz{background:#f472b622;color:var(--telaffuz)}
 .mic-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;margin:18px 0 6px}
 .mic-btn{width:88px;height:88px;border-radius:50%;border:4px solid var(--telaffuz);background:#fff;color:#db2777;font-size:34px;cursor:pointer;display:grid;place-items:center}
@@ -147,8 +158,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
   rv(); try{ speechSynthesis.onvoiceschanged=rv; }catch(e){}
   function speak(t){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.lang="en-US"; var v=_voices.find(function(x){return /^en/i.test(x.lang);}); if(v)u.voice=v; speechSynthesis.speak(u);}catch(e){} }
 
-  var PHASE_LABEL={ isinma:"Isınma", tekrar:"Tekrar", yeni:"Yeni", pekistirme:"Pekiştirme", telaffuz:"Telaffuz" };
-  var PHASE_ORDER=["isinma","tekrar","yeni","pekistirme","telaffuz"];
+  var PHASE_LABEL={ gramer:"Gramer", isinma:"Isınma", tekrar:"Tekrar", yeni:"Yeni", pekistirme:"Pekiştirme", video:"Video", telaffuz:"Telaffuz" };
+  var PHASE_ORDER=["gramer","isinma","tekrar","yeni","pekistirme","video","telaffuz"];
 
   function renderPhaseStrip(){
     var counts=lesson.intro.breakdown||{};
@@ -172,17 +183,23 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
     // evre değişiminde öğretmen konuşur
     var prevPhase = idx>0 ? lesson.steps[idx-1].phase : null;
     if(s.phase!==prevPhase){
-      if(s.phase==="tekrar") teacherMsg=m.tekrarGiris||"Önce tekrar edelim.";
+      if(s.phase==="gramer") teacherMsg=m.gramerGiris||"Önce gramer konusunu öğrenelim.";
+      else if(s.phase==="tekrar") teacherMsg=m.tekrarGiris||"Önce tekrar edelim.";
       else if(s.phase==="yeni") teacherMsg=m.yeniGiris||"Şimdi yeni bir şey öğrenelim.";
       else if(s.phase==="isinma") teacherMsg="Hadi ısınmayla başlayalım.";
       else if(s.phase==="pekistirme") teacherMsg="Öğrendiklerini bir deneyelim.";
+      else if(s.phase==="video") teacherMsg=m.videoGiris||"Şimdi bunu video ile pekiştirelim.";
       else if(s.phase==="telaffuz") teacherMsg="Şimdi telaffuz çalışalım. Cümleyi sesli oku.";
     }
 
     var html=renderPhaseStrip();
     if(teacherMsg) html+=teacherSays(teacherMsg);
 
-    if(s.phase==="telaffuz"){
+    if(s.phase==="gramer"){
+      html+=renderGrammar(s);
+    }else if(s.phase==="video"){
+      html+=renderVideoStep(s);
+    }else if(s.phase==="telaffuz"){
       html+=renderPron(s);
     }else if(s.exercise){
       html+=renderExercise(s);
@@ -217,6 +234,42 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       +'<button class="btn b-ghost" id="sHard">Zor geldi</button>'
       +'</div>'
       +'</div>';
+  }
+
+  function renderGrammar(s){
+    var it=s.item;
+    var ex=(it.examples||[]).map(function(e){
+      return '<div class="gram-ex"><div class="en">'+esc(e.en||e.label||"")+'</div>'+(e.tr?'<div class="tr">'+esc(e.tr)+'</div>':'')+'</div>';
+    }).join("");
+    var tags="";
+    if(it.grammarTags){
+      tags='<div class="gram-tags">'+String(it.grammarTags).split(",").map(function(t){ return '<span class="gram-tag">'+esc(t.trim())+'</span>'; }).join("")+'</div>';
+    }
+    return '<div class="card">'
+      +'<span class="phase-tag pt-gramer">Gramer'+(it.level?" · "+esc(it.level):"")+'</span>'
+      +'<div class="item-main" style="font-size:21px">'+esc(it.label)+'</div>'
+      +(it.pattern?'<div class="gram-pattern">'+esc(it.pattern)+'</div>':'')
+      +(it.aiExplain?'<div class="item-detail">'+esc(it.aiExplain)+'</div>':'')
+      +(ex?'<div style="margin-top:12px"><div class="sec-label" style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:800">ÖRNEKLER</div>'+ex+'</div>':'')
+      +tags
+      +'<div class="actions">'
+      +'<button class="btn b-blue" id="gSpeak">🔊 Örnekleri dinle</button>'
+      +'<button class="btn b-green" id="gGot">Anladım ✓</button>'
+      +'</div></div>';
+  }
+
+  function renderVideoStep(s){
+    var it=s.item;
+    return '<div class="card">'
+      +'<span class="phase-tag pt-video">Video ile Öğren</span>'
+      +'<div class="item-main" style="font-size:20px">'+esc(it.label)+'</div>'
+      +(it.tr?'<div class="item-tr">'+esc(it.tr)+'</div>':'')
+      +'<div class="item-detail">Bu cümleyi video, ses ve mikrofonla çalış. Telaffuzunu da puanlar.</div>'
+      +'<div class="actions">'
+      +'<button class="btn b-blue" id="vSpeak">🔊 Dinle</button>'
+      +'<button class="btn b-green" id="vGo">🎬 Video eğitime git</button>'
+      +'<button class="btn b-ghost" id="vSkip">Atla</button>'
+      +'</div></div>';
   }
 
   function renderPron(s){
@@ -267,6 +320,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
   }
 
   function bindStep(s){
+    if(s.phase==="gramer"){ return bindGrammar(s); }
+    if(s.phase==="video"){ return bindVideoStep(s); }
     if(s.phase==="telaffuz"){ return bindPron(s); }
     if(s.exercise){
       var opts=$("exOpts");
@@ -301,6 +356,31 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, false); }catch(e){}
       next();
     };
+  }
+
+  // ---- Gramer adımı davranışı ----
+  function bindGrammar(s){
+    var it=s.item;
+    var sp=$("gSpeak"); if(sp) sp.onclick=function(){
+      var exs=(it.examples||[]).map(function(e){ return e.en||e.label||""; }).filter(Boolean);
+      if(!exs.length) return;
+      var i=0; (function sayNext(){ if(i>=exs.length) return; speak(exs[i]); i++; setTimeout(sayNext, 2200); })();
+    };
+    var got=$("gGot"); if(got) got.onclick=function(){ next(); };
+  }
+
+  // ---- Video adımı davranışı ----
+  function bindVideoStep(s){
+    var it=s.item;
+    var sp=$("vSpeak"); if(sp) sp.onclick=function(){ speak(it.label); };
+    var skip=$("vSkip"); if(skip) skip.onclick=function(){ next(); };
+    var go=$("vGo"); if(go) go.onclick=function(){
+      try{ sessionStorage.setItem("dh-ders-return", String(idx)); }catch(e){}
+      location.href="./videopractice.html?from=ders&sid="+encodeURIComponent(it.id)
+        +"&level="+encodeURIComponent(it.level||"")+"&module="+encodeURIComponent(it.module||"")
+        +"&return="+encodeURIComponent("ders.html");
+    };
+    setTimeout(function(){ speak(it.label); }, 400);
   }
 
   // ---- Telaffuz adımı davranışı ----
@@ -470,6 +550,6 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
   else { window.addEventListener("dh-storage-ready", startOnce, {once:true}); setTimeout(startOnce, 1500); }
 })();
 </script>
-<script src="./cloud-sync.js?v=2"></script>
+<script src="./cloud-sync.js?v=3"></script>
 </body>
 </html>
