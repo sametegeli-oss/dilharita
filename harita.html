@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<script src="./auth-guard.js?v=1"></script>
+<script src="./storage-bridge.js?v=2"></script>
+<script src="./progress-engine.js?v=1"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1120">
+<title>🗺️ İlerleme Haritası — Dil Harita</title>
+<style>
+:root{
+  --bg:#0b1120; --surface:#0f1f3a; --surface-2:#13294d; --border:#1e3a5f;
+  --text:#e8eef7; --muted:#9fb3d9; --accent:#2563eb;
+  --new:#334155; --learning:#f59e0b; --learned:#34d399;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+.wrap{max-width:760px;margin:0 auto;padding:14px 14px 60px}
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.back{width:42px;height:42px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;font-size:20px;font-weight:900;text-decoration:none;flex:0 0 auto}
+.title h1{font-size:19px;margin:0}
+.title p{font-size:12px;color:var(--muted);margin:1px 0 0}
+
+/* ÜST ÖZET — büyük halka */
+.hero{background:linear-gradient(180deg,#10264a,#0b172d);border:1px solid var(--border);border-radius:22px;padding:22px;margin:14px 0;display:flex;gap:22px;align-items:center;flex-wrap:wrap;justify-content:center}
+.ring{position:relative;width:150px;height:150px;flex:0 0 auto}
+.ring svg{transform:rotate(-90deg)}
+.ring .lbl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .lbl .big{font-size:34px;font-weight:950;line-height:1}
+.ring .lbl .sub{font-size:11px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+.hero-stats{display:flex;flex-direction:column;gap:10px;min-width:170px}
+.hs-row{display:flex;align-items:center;gap:10px;font-size:14px}
+.hs-dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto}
+.hs-row b{font-weight:900;min-width:54px;text-align:right;font-variant-numeric:tabular-nums}
+.hs-row span{color:var(--muted)}
+
+/* MODÜL KARTLARI */
+.section-h{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:900;margin:22px 4px 10px}
+.mod{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:16px;margin-bottom:14px}
+.mod-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.mod-emoji{font-size:26px;flex:0 0 auto}
+.mod-name{font-size:16px;font-weight:900}
+.mod-sub{font-size:12px;color:var(--muted)}
+.mod-pct{margin-left:auto;font-size:22px;font-weight:950;font-variant-numeric:tabular-nums}
+.bar{height:9px;background:#0a1830;border-radius:99px;overflow:hidden;display:flex;margin-bottom:10px}
+.bar .seg-learned{background:var(--learned)}
+.bar .seg-learning{background:var(--learning)}
+.mod-nums{display:flex;gap:16px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.mod-nums b{color:var(--text)}
+
+/* ISI IZGARASI — imza öğe */
+.heat{margin-top:12px}
+.heat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(11px,1fr));gap:3px}
+.cell{width:100%;aspect-ratio:1;border-radius:2px;background:var(--new)}
+.cell.s1{background:var(--learning)}
+.cell.s2{background:var(--learned)}
+.heat-note{font-size:11px;color:var(--muted);margin-top:8px}
+.heat-toggle{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font:800 11px system-ui;cursor:pointer;margin-top:10px}
+
+.legend{display:flex;gap:16px;justify-content:center;margin:8px 0 0;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.loading{text-align:center;color:var(--muted);padding:50px}
+.empty-hint{font-size:12px;color:var(--muted);text-align:center;padding:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="./index.html" title="Ana menü">←</a>
+    <div class="title">
+      <h1>🗺️ İlerleme Haritası</h1>
+      <p>Tüm modüllerde ne kadar yol katettin</p>
+    </div>
+  </div>
+
+  <div id="content"><div class="loading">Harita hesaplanıyor…</div></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  function $(id){ return document.getElementById(id); }
+
+  // Modül tanımları: tür, görünen ad, emoji, veri yolu, toplam (fallback)
+  var MODULES=[
+    { type:"sentence", name:"Cümleler", emoji:"✍️", sub:"Sentence Mode", data:"./data/sentences.json", count:null, link:"./practice.html" },
+    { type:"pv",       name:"Phrasal Verbs", emoji:"🔗", sub:"Öbek fiiller", data:"./data/phrasal-verbs.json", count:null, link:"./phrasal-verbs.html" },
+    { type:"word",     name:"Kelimeler", emoji:"📖", sub:"Sözlük", data:"./data/dictionary.json", count:null, link:"./library.html" }
+  ];
+
+  // veri sayımı (toplam öğe) — id listesi gerekmiyor, sadece adet + örnek id'ler ısı için
+  function loadCounts(){
+    return Promise.all(MODULES.map(function(m){
+      return fetch(m.data).then(function(r){ return r.ok?r.json():null; }).then(function(d){
+        if(!d){ m.count=0; m.ids=[]; return; }
+        if(Array.isArray(d)){
+          m.count=d.length;
+          // ısı ızgarası için id listesi (cümle/pv)
+          m.ids=d.map(function(x){ return m.type==="pv" ? x.pv : (x.id||""); }).filter(Boolean);
+        }else if(typeof d==="object"){
+          // dictionary: {kelime:...} → anahtarlar
+          var keys=Object.keys(d);
+          m.count=keys.length;
+          m.ids=keys;
+        }
+      }).catch(function(){ m.count=0; m.ids=[]; });
+    }));
+  }
+
+  // halka SVG çiz
+  function ring(pct, size, learnedColor){
+    var r=(size/2)-9, c=2*Math.PI*r, off=c*(1-pct/100);
+    return '<svg width="'+size+'" height="'+size+'">'
+      +'<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="#0a1830" stroke-width="12"/>'
+      +'<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="'+learnedColor+'" stroke-width="12" stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+off+'"/>'
+      +'</svg>';
+  }
+
+  // ısı ızgarası (örnekleme: çok öğe varsa temsili göster)
+  function heatGrid(ids, statusMap, maxCells){
+    maxCells=maxCells||600;
+    var list=ids;
+    var sampled=false;
+    if(ids.length>maxCells){
+      // eşit aralıklı örnekle
+      var step=ids.length/maxCells;
+      list=[];
+      for(var i=0;i<maxCells;i++){ list.push(ids[Math.floor(i*step)]); }
+      sampled=true;
+    }
+    var cells=list.map(function(id){
+      var st=statusMap[id]||0;
+      return '<div class="cell'+(st===1?" s1":st===2?" s2":"")+'"></div>';
+    }).join("");
+    return { html:'<div class="heat-grid">'+cells+'</div>', sampled:sampled, shown:list.length };
+  }
+
+  function render(summaries, statusMaps){
+    var g=summaries._grand;
+    var html="";
+
+    // HERO halka
+    html+='<div class="hero">'
+      +'<div class="ring">'+ring(g.pct,150,"var(--learned)")
+      +'<div class="lbl"><div class="big">%'+g.pct+'</div><div class="sub">Öğrenildi</div></div></div>'
+      +'<div class="hero-stats">'
+      +'<div class="hs-row"><span class="hs-dot" style="background:var(--learned)"></span><b>'+g.learned.toLocaleString("tr")+'</b><span>öğrenildi</span></div>'
+      +'<div class="hs-row"><span class="hs-dot" style="background:var(--learning)"></span><b>'+g.learning.toLocaleString("tr")+'</b><span>öğreniliyor</span></div>'
+      +'<div class="hs-row"><span class="hs-dot" style="background:var(--new)"></span><b>'+g.new.toLocaleString("tr")+'</b><span>başlanmadı</span></div>'
+      +'<div class="hs-row" style="margin-top:4px;border-top:1px solid var(--border);padding-top:8px"><b>'+g.total.toLocaleString("tr")+'</b><span>toplam öğe</span></div>'
+      +'</div></div>';
+
+    html+='<div class="legend">'
+      +'<span><i style="background:var(--learned)"></i> Öğrenildi</span>'
+      +'<span><i style="background:var(--learning)"></i> Öğreniliyor</span>'
+      +'<span><i style="background:var(--new)"></i> Başlanmadı</span>'
+      +'</div>';
+
+    html+='<div class="section-h">Modüller</div>';
+
+    MODULES.forEach(function(m){
+      var s=summaries[m.type]; if(!s) return;
+      var learnedW=s.total? 100*s.learned/s.total : 0;
+      var learningW=s.total? 100*s.learning/s.total : 0;
+      html+='<div class="mod" data-type="'+m.type+'">'
+        +'<div class="mod-top">'
+        +'<span class="mod-emoji">'+m.emoji+'</span>'
+        +'<div><div class="mod-name">'+m.name+'</div><div class="mod-sub">'+m.sub+'</div></div>'
+        +'<div class="mod-pct" style="color:var(--learned)">%'+s.pct+'</div>'
+        +'</div>'
+        +'<div class="bar"><span class="seg-learned" style="width:'+learnedW+'%"></span><span class="seg-learning" style="width:'+learningW+'%"></span></div>'
+        +'<div class="mod-nums">'
+        +'<span><b>'+s.learned.toLocaleString("tr")+'</b> öğrenildi</span>'
+        +'<span><b>'+s.learning.toLocaleString("tr")+'</b> öğreniliyor</span>'
+        +'<span><b>'+s.total.toLocaleString("tr")+'</b> toplam</span>'
+        +'</div>'
+        +'<div class="heat" id="heat-'+m.type+'"></div>'
+        +'</div>';
+    });
+
+    $("content").innerHTML=html;
+
+    // ısı ızgaralarını çiz (varsayılan kapalı, butonla aç — performans)
+    MODULES.forEach(function(m){
+      var box=$("heat-"+m.type); if(!box) return;
+      if(!m.ids || !m.ids.length){ box.innerHTML='<div class="empty-hint">Bu modül için ızgara verisi yok.</div>'; return; }
+      var touched=0; var sm=statusMaps[m.type]||{};
+      for(var k in sm){ if(sm[k]>0) touched++; }
+      box.innerHTML='<button class="heat-toggle">🗺️ Isı haritasını göster ('+m.ids.length.toLocaleString("tr")+' öğe)</button>';
+      box.querySelector(".heat-toggle").onclick=function(){
+        var res=heatGrid(m.ids, sm, 600);
+        box.innerHTML=res.html+'<div class="heat-note">'
+          +(res.sampled? "Temsili görünüm — "+res.shown+" örnek hücre gösteriliyor. ":"")
+          +"Her kare bir öğe; yeşil = öğrenildi, turuncu = öğreniliyor.</div>";
+      };
+    });
+  }
+
+  // ---- Başlat ----
+  loadCounts().then(function(){
+    var spec={};
+    MODULES.forEach(function(m){ spec[m.type]=m.count||0; });
+    if(!window.DHProgress){
+      $("content").innerHTML='<div class="loading">İlerleme motoru yüklenemedi.</div>';
+      return;
+    }
+    // hem özet hem tür bazlı durum haritası
+    Promise.all([
+      DHProgress.summaryAll(spec),
+      Promise.all(MODULES.map(function(m){ return DHProgress.getAllForType(m.type); }))
+    ]).then(function(out){
+      var summaries=out[0];
+      var maps={};
+      MODULES.forEach(function(m,i){ maps[m.type]=out[1][i]||{}; });
+      render(summaries, maps);
+    }).catch(function(e){
+      $("content").innerHTML='<div class="loading">Hata: '+(e&&e.message||e)+'</div>';
+    });
+  });
+})();
+</script>
+<script src="./cloud-sync.js?v=2"></script>
+</body>
+</html>
