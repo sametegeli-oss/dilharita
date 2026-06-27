@@ -223,6 +223,38 @@
           steps.push({ phase:"pekistirme", type:src.type, itemId:src.itemId, item:src.item, prompt:"Az önce öğrendiğin '"+src.item.label+"' ile küçük bir alıştırma.", exercise:true });
         }
 
+        // 5) TELAFFUZ — anayasaya göre konuşma pratiği (cümlelerle)
+        var tel = policy.telaffuz||{};
+        if(tel.acik){
+          var telN = Math.max(0, tel.adimSayisi||0);
+          // önce bu derste geçen cümleler, yetmezse seviyeye uygun cümleler
+          var lessonSentences = steps.filter(function(s){ return s.type==="sentence"; }).map(function(s){ return s.item; });
+          var telPool = lessonSentences.slice();
+          if(telPool.length < telN){
+            // bilinen/öğreniliyor cümlelerden ekle
+            var extra = (lists.sentence||[]).filter(function(it){
+              var st = statusOf(state,"sentence",it.id);
+              return st>=1 && telPool.indexOf(it)<0;
+            }).slice(0, telN-telPool.length);
+            telPool = telPool.concat(extra);
+          }
+          // hâlâ yetmezse herhangi bir cümle
+          if(telPool.length < telN){
+            telPool = telPool.concat((lists.sentence||[]).slice(0, telN-telPool.length));
+          }
+          for(var ti=0; ti<telN && ti<telPool.length; ti++){
+            var sit = telPool[ti];
+            steps.push({
+              phase:"telaffuz",
+              type:"sentence",
+              itemId:"sentence:"+sit.id,
+              item:sit,
+              prompt:sit.label,
+              yontem: tel.yontem||"ders-ici"
+            });
+          }
+        }
+
         var intro = buildIntro(policy, state, steps);
         return {
           intro: intro,

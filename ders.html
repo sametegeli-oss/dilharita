@@ -14,7 +14,7 @@
 :root{
   --bg:#0b1120; --surface:#0f1f3a; --surface-2:#13294d; --border:#1e3a5f;
   --text:#e8eef7; --muted:#9fb3d9; --accent:#2563eb;
-  --isinma:#60a5fa; --tekrar:#f59e0b; --yeni:#34d399; --pekistirme:#a78bfa;
+  --isinma:#60a5fa; --tekrar:#f59e0b; --yeni:#34d399; --pekistirme:#a78bfa; --telaffuz:#f472b6;
   --ok:#34d399; --bad:#f87171;
 }
 *{box-sizing:border-box}
@@ -39,6 +39,17 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 .phase-pill.tekrar.active{background:var(--tekrar);border-color:var(--tekrar)}
 .phase-pill.yeni.active{background:var(--yeni);border-color:var(--yeni);color:#06281b}
 .phase-pill.pekistirme.active{background:var(--pekistirme);border-color:var(--pekistirme)}
+.phase-pill.telaffuz.active{background:var(--telaffuz);border-color:var(--telaffuz)}
+.pt-telaffuz{background:#f472b622;color:var(--telaffuz)}
+.mic-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;margin:18px 0 6px}
+.mic-btn{width:88px;height:88px;border-radius:50%;border:4px solid var(--telaffuz);background:#fff;color:#db2777;font-size:34px;cursor:pointer;display:grid;place-items:center}
+.mic-btn.rec{background:#ef4444;color:#fff;border-color:#fff;animation:pulseMic 1s infinite}
+@keyframes pulseMic{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+.mic-cap{font-size:13px;color:var(--muted);text-align:center}
+.heard{font-size:15px;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border)}
+.heard.good{border-color:var(--ok);color:var(--ok)}
+.heard.bad{border-color:var(--bad);color:var(--bad)}
+.score-big{font-size:34px;font-weight:950;text-align:center;margin:6px 0}
 .prog{height:6px;background:var(--surface);border-radius:99px;overflow:hidden;margin:8px 0 18px}
 .prog>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#2563eb,#34d399);transition:width .3s}
 
@@ -136,8 +147,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
   rv(); try{ speechSynthesis.onvoiceschanged=rv; }catch(e){}
   function speak(t){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.lang="en-US"; var v=_voices.find(function(x){return /^en/i.test(x.lang);}); if(v)u.voice=v; speechSynthesis.speak(u);}catch(e){} }
 
-  var PHASE_LABEL={ isinma:"Isınma", tekrar:"Tekrar", yeni:"Yeni", pekistirme:"Pekiştirme" };
-  var PHASE_ORDER=["isinma","tekrar","yeni","pekistirme"];
+  var PHASE_LABEL={ isinma:"Isınma", tekrar:"Tekrar", yeni:"Yeni", pekistirme:"Pekiştirme", telaffuz:"Telaffuz" };
+  var PHASE_ORDER=["isinma","tekrar","yeni","pekistirme","telaffuz"];
 
   function renderPhaseStrip(){
     var counts=lesson.intro.breakdown||{};
@@ -165,12 +176,15 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       else if(s.phase==="yeni") teacherMsg=m.yeniGiris||"Şimdi yeni bir şey öğrenelim.";
       else if(s.phase==="isinma") teacherMsg="Hadi ısınmayla başlayalım.";
       else if(s.phase==="pekistirme") teacherMsg="Öğrendiklerini bir deneyelim.";
+      else if(s.phase==="telaffuz") teacherMsg="Şimdi telaffuz çalışalım. Cümleyi sesli oku.";
     }
 
     var html=renderPhaseStrip();
     if(teacherMsg) html+=teacherSays(teacherMsg);
 
-    if(s.exercise){
+    if(s.phase==="telaffuz"){
+      html+=renderPron(s);
+    }else if(s.exercise){
       html+=renderExercise(s);
     }else{
       html+=renderTeachCard(s);
@@ -205,6 +219,37 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       +'</div>';
   }
 
+  function renderPron(s){
+    var it=s.item;
+    if(s.yontem==="videopractice"){
+      // köprü: videopractice'e o cümlenin seviyesi/modülüyle git, derse dönecek işaret bırak
+      return '<div class="card">'
+        +'<span class="phase-tag pt-telaffuz">Telaffuz</span>'
+        +'<div class="item-main" style="font-size:20px">'+esc(it.label)+'</div>'
+        +(it.tr?'<div class="item-tr">'+esc(it.tr)+'</div>':'')
+        +'<div class="item-detail">Bu cümleyi tam ekran telaffuz pratiğinde çalış. Videolu, mikrofonlu, puanlı.</div>'
+        +'<div class="actions">'
+        +'<button class="btn b-blue" id="pSpeak">🔊 Dinle</button>'
+        +'<button class="btn b-green" id="pGo">🎬 Telaffuz pratiğine git</button>'
+        +'<button class="btn b-ghost" id="pSkip">Atla</button>'
+        +'</div></div>';
+    }
+    // ders-içi hafif telaffuz: TTS + mikrofon (SpeechRecognition)
+    return '<div class="card">'
+      +'<span class="phase-tag pt-telaffuz">Telaffuz</span>'
+      +'<div class="item-main" style="font-size:20px">'+esc(it.label)+'</div>'
+      +(it.tr?'<div class="item-tr">'+esc(it.tr)+'</div>':'')
+      +'<div class="mic-wrap">'
+      +'<button class="mic-btn" id="micBtn">🎤</button>'
+      +'<div class="mic-cap" id="micCap">Önce dinle, sonra mikrofona bas ve cümleyi söyle.</div>'
+      +'</div>'
+      +'<div id="pronResult"></div>'
+      +'<div class="actions">'
+      +'<button class="btn b-blue" id="pSpeak">🔊 Dinle</button>'
+      +'<button class="btn b-ghost" id="pSkip">Atla</button>'
+      +'</div></div>';
+  }
+
   function renderExercise(s){
     // basit çoktan seçmeli: doğru anlam + 3 çeldirici (aynı türden)
     var it=s.item;
@@ -222,6 +267,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
   }
 
   function bindStep(s){
+    if(s.phase==="telaffuz"){ return bindPron(s); }
     if(s.exercise){
       var opts=$("exOpts");
       if(opts){
@@ -254,6 +300,77 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
     var hard=$("sHard"); if(hard) hard.onclick=function(){
       try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, false); }catch(e){}
       next();
+    };
+  }
+
+  // ---- Telaffuz adımı davranışı ----
+  function normSpeech(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9'\s]/g," ").replace(/\s+/g," ").trim(); }
+  function pronScore(target, heard){
+    var a=normSpeech(target).split(" ").filter(Boolean);
+    var b=normSpeech(heard).split(" ").filter(Boolean);
+    if(!a.length) return 0;
+    var bSet={}; b.forEach(function(w){ bSet[w]=(bSet[w]||0)+1; });
+    var hit=0;
+    a.forEach(function(w){ if(bSet[w]>0){ hit++; bSet[w]--; } });
+    return Math.round(100*hit/a.length);
+  }
+  function bindPron(s){
+    var it=s.item;
+    var sp=$("pSpeak"); if(sp) sp.onclick=function(){ speak(it.label); };
+    var skip=$("pSkip"); if(skip) skip.onclick=function(){ next(); };
+
+    if(s.yontem==="videopractice"){
+      var go=$("pGo");
+      if(go) go.onclick=function(){
+        // derse dönüş işareti bırak, videopractice'e git
+        try{ sessionStorage.setItem("dh-ders-return", String(idx)); }catch(e){}
+        var lvl = it.level||"";
+        var mod = it.module||"";
+        location.href="./videopractice.html?from=ders&sid="+encodeURIComponent(it.id)
+          +"&level="+encodeURIComponent(lvl)+"&module="+encodeURIComponent(mod)
+          +"&return="+encodeURIComponent("ders.html");
+      };
+      // ilk açılışta cümleyi bir kez seslendir
+      setTimeout(function(){ speak(it.label); }, 400);
+      return;
+    }
+
+    // ders-içi: mikrofon + ses tanıma
+    setTimeout(function(){ speak(it.label); }, 400);
+    var micBtn=$("micBtn"), micCap=$("micCap"), result=$("pronResult");
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){
+      // ses tanıma yoksa: dinle + "söyledim" ile geç
+      if(micCap) micCap.textContent="Bu tarayıcı mikrofonla değerlendirmeyi desteklemiyor. Dinleyip sesli tekrarla, hazırsan devam et.";
+      if(micBtn){ micBtn.textContent="✓"; micBtn.onclick=function(){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId,true); }catch(e){} next(); }; }
+      return;
+    }
+    var rec=null, listening=false;
+    if(micBtn) micBtn.onclick=function(){
+      if(listening){ try{ rec && rec.stop(); }catch(e){} return; }
+      try{
+        rec=new SR(); rec.lang="en-US"; rec.interimResults=false; rec.maxAlternatives=3;
+        listening=true; micBtn.classList.add("rec"); micBtn.textContent="■";
+        if(micCap) micCap.textContent="Dinliyorum… cümleyi söyle.";
+        rec.onresult=function(ev){
+          var best="";
+          try{ best=ev.results[0][0].transcript||""; }catch(e){}
+          var score=pronScore(it.label, best);
+          var ok=score>=70;
+          if(result){
+            result.innerHTML='<div class="score-big" style="color:'+(ok?"var(--ok)":"var(--bad)")+'">%'+score+'</div>'
+              +'<div class="heard '+(ok?"good":"bad")+'">Duyduğum: '+esc(best||"(boş)")+'</div>'
+              +'<div class="actions"><button class="btn b-green" id="pNext">'+(ok?"Devam et →":"Tekrar dene")+'</button>'
+              +'<button class="btn b-ghost" id="pNext2">Sonraki →</button></div>';
+            var pn=$("pNext"), pn2=$("pNext2");
+            if(pn) pn.onclick=function(){ if(ok){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId,true); }catch(e){} next(); } else { result.innerHTML=""; if(micCap) micCap.textContent="Tekrar mikrofona bas ve söyle."; } };
+            if(pn2) pn2.onclick=function(){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, ok); }catch(e){} next(); };
+          }
+        };
+        rec.onerror=function(){ if(micCap) micCap.textContent="Mikrofon hatası. Tekrar dene veya atla."; };
+        rec.onend=function(){ listening=false; micBtn.classList.remove("rec"); micBtn.textContent="🎤"; };
+        rec.start();
+      }catch(e){ listening=false; if(micCap) micCap.textContent="Mikrofon başlatılamadı."; }
     };
   }
 
@@ -301,6 +418,14 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
           return;
         }
         // açılış selamı + ilk adım
+        var returnIdx=null;
+        try{ var r=sessionStorage.getItem("dh-ders-return"); if(r!==null){ returnIdx=parseInt(r,10); sessionStorage.removeItem("dh-ders-return"); } }catch(e){}
+        if(returnIdx!==null && !isNaN(returnIdx)){
+          // videopractice'ten döndük: o telaffuz adımını tamamlanmış say, sonrakine geç
+          idx = Math.min(returnIdx+1, lesson.steps.length);
+          renderStep();
+          return;
+        }
         $("content").innerHTML=teacherSays(lesson.intro.greeting);
         setTimeout(renderStep, 700);
       });

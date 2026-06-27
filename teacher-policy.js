@@ -40,6 +40,13 @@
       pekistirme: 0.10       // dersin alıştırması / değerlendirme
     },
 
+    // -- Telaffuz (konuşma) pratiği --
+    telaffuz: {
+      acik: true,            // derste telaffuz adımı olsun mu
+      adimSayisi: 1,         // her derste kaç telaffuz adımı
+      yontem: "ders-ici"     // "ders-ici" (TTS+mikrofon, hafif) | "videopractice" (tam ekran)
+    },
+
     // -- Konu seçim önceliği (yukarıdan aşağıya) --
     // Öğretmen sıradaki içeriği bu sırayla arar.
     oncelikSirasi: [
