@@ -32,6 +32,23 @@
     dersUzunlugu: 12,        // bir derste toplam kaç öğe (adım) olsun
     gunlukYeniSiniri: 7,     // bir günde en fazla kaç YENİ öğe öğretilsin (bilişsel yük)
 
+    // -- Öğrenci seviyesi --
+    // "auto" → StudyTracker'dan/ilerlemeden otomatik; ya da "A1".."C1" sabitle
+    seviye: "auto",
+    seviyeUstuneIzin: 1,     // mevcut seviyenin kaç üstündeki içeriğe izin (0=sadece kendi seviyesi)
+
+    // -- Gramer dersi bölümü --
+    gramer: {
+      acik: true,            // her derste gramer konusu anlatılsın mı
+      konuSayisi: 1          // derste kaç gramer konusu işlensin
+    },
+
+    // -- Video ile öğren bölümü --
+    video: {
+      acik: true,            // derste video ile öğrenme adımı olsun mu
+      adimSayisi: 1          // kaç video adımı
+    },
+
     // -- Ders evrelerinin oranı (toplamı ~1.0 olmalı) --
     evreOranlari: {
       isinma: 0.15,          // bilinen öğelerle güven tazeleme
@@ -85,6 +102,8 @@
     // -- Ton / mesaj stili (öğretmenin öğrenciye seslenişi; gösterim) --
     mesajlar: {
       gunaydin: "Bugünkü dersine başlayalım. Hazırsan ilk konudan gidelim.",
+      gramerGiris: "Önce bugünün gramer konusunu öğrenelim.",
+      videoGiris: "Şimdi bunu video ile pekiştirelim.",
       tekrarGiris: "Önce geçen sefer takıldığın yerleri pekiştirelim.",
       yeniGiris: "Şimdi yeni bir şey öğrenelim.",
       tamamlandi: "Bugünkü dersi tamamladın, eline sağlık. Yarın devam edelim.",

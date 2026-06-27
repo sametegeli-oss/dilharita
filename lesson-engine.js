@@ -38,10 +38,18 @@
           return { id:x.id, label:x.en, tr:x.tr, level:x.level||"", module:x.module||"", topic:x.topic||"", grammar:x.grammar||"", aiExplain:x.aiExplain||"", commonMistake:x.commonMistake||"" };
         });
       }else if(d && typeof d==="object"){
-        // dictionary {kelime:...}
+        // dictionary {kelime:...} — alan adları Türkçe: seviye, frekans, anlamlar, oku
         list = Object.keys(d).map(function(k){
           var v=d[k]||{};
-          return { id:k, label:k, tr:(typeof v==="string"?v:(v.tr||"")), level:(v.level||""), freq:(v.freq||0), meanings:(v.meanings||(typeof v==="string"?[v]:[])) };
+          if(typeof v==="string") return { id:k, label:k, tr:v, level:"", freq:0, meanings:[v], oku:"" };
+          return {
+            id:k, label:k,
+            tr:(v.anlamlar && v.anlamlar.length ? v.anlamlar[0] : (v.tr||"")),
+            level:(v.seviye||v.level||""),
+            freq:(v.frekans||v.freq||0),
+            meanings:(v.anlamlar||v.meanings||[]),
+            oku:(v.oku||"")
+          };
         });
       }
       cache[type]=list;
@@ -86,9 +94,36 @@
   // ---- yardımcılar ----
   function statusOf(state, type, id){ return (state.progress[type]||{})[id] || 0; }
 
+  var LEVEL_ORDER=["A1","A2","B1","B2","C1","C2"];
+  function levelIndex(lv){ var i=LEVEL_ORDER.indexOf((lv||"").toUpperCase()); return i<0?0:i; }
+
+  // öğrencinin seviyesini belirle (anayasa "auto" ise ilerlemeden tahmin)
+  function resolveLevel(policy, state, lists){
+    var s=(policy.seviye||"auto");
+    if(s!=="auto" && LEVEL_ORDER.indexOf(s)>=0) return s;
+    // auto: öğrenilmiş en yüksek seviyeli cümleye bak; yoksa A1
+    var prog=state.progress.sentence||{};
+    var maxLv=0, seen=false;
+    (lists.sentence||[]).forEach(function(it){
+      if(prog[it.id]>=1 && it.level){ seen=true; var li=levelIndex(it.level); if(li>maxLv) maxLv=li; }
+    });
+    return seen ? LEVEL_ORDER[maxLv] : "A1";
+  }
+
+  // bir öğenin seviyesi öğrenciye uygun mu (kendi seviyesi + izin verilen üst)
+  function levelOk(itemLevel, studentLevel, allowAbove){
+    if(!itemLevel) return true; // seviyesiz içerik her zaman uygun
+    var diff = levelIndex(itemLevel) - levelIndex(studentLevel);
+    return diff <= (allowAbove||0); // kendi seviyesi ve altı + izin verilen üst
+  }
+
   // bir türde "yeni" (hiç dokunulmamış) öğeleri frekans/sıra ile getir
-  function pickNew(list, state, type, n, frekansOnce){
-    var arr = list.filter(function(it){ return statusOf(state,type,it.id)===0; });
+  function pickNew(list, state, type, n, frekansOnce, studentLevel, allowAbove){
+    var arr = list.filter(function(it){
+      if(statusOf(state,type,it.id)!==0) return false;
+      if(studentLevel && !levelOk(it.level, studentLevel, allowAbove)) return false;
+      return true;
+    });
     if(frekansOnce && (type==="pv"||type==="word")){
       arr = arr.slice().sort(function(a,b){ return (b.freq||0)-(a.freq||0); });
     }
@@ -143,6 +178,29 @@
     return out;
   }
 
+  // ---- Gramer konusu seç (öğrencinin seviyesinden, henüz iyi bilinmeyen) ----
+  function pickGrammar(lists, state, studentLevel, allowAbove, n){
+    var sentences = lists.sentence||[];
+    var groups={};
+    sentences.forEach(function(it){
+      if(!it.grammar) return;
+      if(!levelOk(it.level, studentLevel, allowAbove)) return;
+      var g=it.grammar;
+      if(!groups[g]) groups[g]={ grammar:g, level:it.level, pattern:"", aiExplain:"", grammarTags:it.grammarTags, sentences:[], learned:0, total:0 };
+      groups[g].total++;
+      if(statusOf(state,"sentence",it.id)>=2) groups[g].learned++;
+      if(groups[g].sentences.length<4) groups[g].sentences.push(it);
+      if(it.aiExplain && !groups[g].aiExplain) groups[g].aiExplain=it.aiExplain;
+      if(it.pattern && !groups[g].pattern) groups[g].pattern=it.pattern;
+    });
+    var arr=Object.keys(groups).map(function(g){ return groups[g]; });
+    arr.sort(function(a,b){
+      var ar=a.total? a.learned/a.total:0, br=b.total? b.learned/b.total:0;
+      return ar-br;
+    });
+    return arr.slice(0, n);
+  }
+
   // ---- ANA: ders planı üret ----
   function buildLesson(){
     var policy = window.DHTeacherPolicy ? DHTeacherPolicy.load() : null;
@@ -152,6 +210,10 @@
       .then(function(res){
         var lists = { sentence:res[0], pv:res[1], word:res[2] };
         var state = res[3];
+
+        // öğrenci seviyesi
+        var studentLevel = resolveLevel(policy, state, lists);
+        var allowAbove = (typeof policy.seviyeUstuneIzin==="number") ? policy.seviyeUstuneIzin : 1;
 
         var total = policy.dersUzunlugu||12;
         var o = policy.evreOranlari||{};
@@ -176,6 +238,21 @@
 
         var steps=[];
 
+        // 0) GRAMER — dersin başında konu anlatımı
+        var gram = policy.gramer||{};
+        if(gram.acik){
+          var gtopics = pickGrammar(lists, state, studentLevel, allowAbove, Math.max(0,gram.konuSayisi||0));
+          gtopics.forEach(function(gt){
+            steps.push({
+              phase:"gramer",
+              type:"grammar",
+              itemId:"grammar:"+gt.grammar,
+              item:{ label:gt.grammar, level:gt.level, pattern:gt.pattern, aiExplain:gt.aiExplain, grammarTags:gt.grammarTags, examples:gt.sentences },
+              isGrammar:true
+            });
+          });
+        }
+
         // 1) ISINMA — öğrenilmiş öğelerle
         var warm = [];
         ["pv","sentence","word"].forEach(function(t){
@@ -198,7 +275,7 @@
         var newPicks={ sentence:[], pv:[], word:[] };
         // her tür için yeni aday havuzunu hazırla
         ["sentence","pv","word"].forEach(function(t){
-          newPicks[t] = pickNew(lists[t], state, t, nYeni, policy.frekansOnce);
+          newPicks[t] = pickNew(lists[t], state, t, nYeni, policy.frekansOnce, studentLevel, allowAbove);
         });
         var newIdx={ sentence:0, pv:0, word:0 };
         types.forEach(function(t){
@@ -223,7 +300,25 @@
           steps.push({ phase:"pekistirme", type:src.type, itemId:src.itemId, item:src.item, prompt:"Az önce öğrendiğin '"+src.item.label+"' ile küçük bir alıştırma.", exercise:true });
         }
 
-        // 5) TELAFFUZ — anayasaya göre konuşma pratiği (cümlelerle)
+        // 5) VİDEO İLE ÖĞREN — konu cümlesini videopractice'te öğret
+        var vid = policy.video||{};
+        if(vid.acik){
+          var vidN = Math.max(0, vid.adimSayisi||0);
+          var lessonSent = steps.filter(function(s){ return s.type==="sentence"; }).map(function(s){ return s.item; });
+          var vPool = lessonSent.slice();
+          if(vPool.length<vidN){
+            var vExtra=(lists.sentence||[]).filter(function(it){
+              return levelOk(it.level,studentLevel,allowAbove) && vPool.indexOf(it)<0;
+            }).slice(0, vidN-vPool.length);
+            vPool=vPool.concat(vExtra);
+          }
+          for(var vi=0; vi<vidN && vi<vPool.length; vi++){
+            var vit=vPool[vi];
+            steps.push({ phase:"video", type:"sentence", itemId:"sentence:"+vit.id, item:vit, isVideo:true });
+          }
+        }
+
+        // 6) TELAFFUZ — anayasaya göre konuşma pratiği (cümlelerle)
         var tel = policy.telaffuz||{};
         if(tel.acik){
           var telN = Math.max(0, tel.adimSayisi||0);
