@@ -22,7 +22,7 @@
   window.__dhCloudSyncInstalled = true;
 
   // Senkronlanacak localStorage anahtarları
-  var LS_KEYS = ["dh_ai_prompt_teacher", "dh-study-tracker-v1", "groqApiKeys", "dh-ocr-sentences-v1"];
+  var LS_KEYS = ["dh_ai_prompt_teacher", "dh-study-tracker-v1", "groqApiKeys", "dh-ocr-sentences-v1", "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1"];
 
   // Buluttan gelen belgeyi normalize et: {ls:{...}, errors:[...]}
   // Hem yeni kök-seviye yapı hem eski data.ls yapısını destekler.
@@ -170,6 +170,9 @@
   // --- Yerel durumu buluta yaz ---
   function pushNow(){
     if (!ready || !user || !fb) return Promise.resolve();
+    // en güncel öğrenme ilerlemesini localStorage aynasına yaz (sonra collectLocal okur)
+    var prep = (window.DHProgress && DHProgress.mirrorNow) ? DHProgress.mirrorNow() : Promise.resolve();
+    return Promise.resolve(prep).then(function(){
     var local = collectLocal();
     var ts = {};
     for (var i=0;i<LS_KEYS.length;i++){ ts[LS_KEYS[i]] = localTs(LS_KEYS[i]); }
@@ -181,6 +184,7 @@
       };
       return fb.saveSettings(user.uid, payload);
     }).catch(function(e){ console.warn("cloud-sync yazma hata:", e); });
+    });
   }
 
   function pushSoon(){
@@ -255,7 +259,11 @@
         }
         // hata defteri: buluttan gelenleri yerele ekle (birleştir)
         return mergeRemoteErrors(rd.errors || []).then(function(addedErr){
-          return { ok:true, pulled:pulled, addedErrors:addedErr||0 };
+          // öğrenme ilerlemesi aynasını IndexedDB'ye uygula
+          var progP = (window.DHProgress && DHProgress.applyMirror) ? DHProgress.applyMirror() : Promise.resolve(0);
+          return progP.then(function(addedProg){
+            return { ok:true, pulled:pulled, addedErrors:addedErr||0, addedProgress:addedProg||0 };
+          });
         });
       }).then(function(res){
         var parts = [];

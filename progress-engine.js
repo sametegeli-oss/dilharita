@@ -136,6 +136,7 @@
   function setStatus(itemId, status){
     var rec={ status:status, updated:Date.now() };
     return kvSet(PROG_PREFIX+itemId, rec).then(function(){
+      mirrorSoon();
       try{ window.dispatchEvent(new CustomEvent("dh-progress-changed",{detail:{itemId:itemId,status:status}})); }catch(e){}
       return rec;
     });
@@ -160,6 +161,7 @@
       }
       var rec={ status:status, streak:streak, updated:Date.now() };
       return kvSet(PROG_PREFIX+itemId, rec).then(function(){
+        mirrorSoon();
         try{ window.dispatchEvent(new CustomEvent("dh-progress-changed",{detail:{itemId:itemId,status:status}})); }catch(e){}
         return rec;
       });
@@ -233,6 +235,61 @@
       });
   }
 
+  // ============================================================
+  //  BULUT SENKRON KÖPRÜSÜ
+  //  prog: verisi IndexedDB'de durur; cloud-sync localStorage'ı
+  //  senkronladığı için durumu bir localStorage anahtarına
+  //  ("dh-progress-mirror-v1") yansıtırız. Diğer cihazda bu ayna
+  //  geri IndexedDB'ye uygulanır. Son-yazan-kazanır (updated'a göre).
+  // ============================================================
+  var MIRROR_KEY = "dh-progress-mirror-v1";
+  var _mirrorTimer = null;
+
+  function mirrorSoon(){
+    if(_mirrorTimer) clearTimeout(_mirrorTimer);
+    _mirrorTimer = setTimeout(mirrorNow, 800);
+  }
+  function mirrorNow(){
+    return kvAll(PROG_PREFIX).then(function(prog){
+      // {itemId: {status, streak?, updated}} → kompakt {itemId:[status,updated]}
+      var compact={};
+      for(var key in prog){
+        var r=prog[key];
+        if(r && typeof r.status==="number"){ compact[key]=[r.status, r.updated||0]; }
+      }
+      try{
+        localStorage.setItem(MIRROR_KEY, JSON.stringify(compact));
+        localStorage.setItem("__ts_"+MIRROR_KEY, String(Date.now()));
+      }catch(e){}
+    }).catch(function(){});
+  }
+
+  // localStorage aynasından IndexedDB'ye geri uygula (senkron sonrası çağrılır)
+  function applyMirror(){
+    var raw;
+    try{ raw = localStorage.getItem(MIRROR_KEY); }catch(e){ raw=null; }
+    if(!raw) return Promise.resolve(0);
+    var compact;
+    try{ compact = JSON.parse(raw); }catch(e){ return Promise.resolve(0); }
+    return kvAll(PROG_PREFIX).then(function(local){
+      var jobs=[]; var applied=0;
+      for(var key in compact){
+        var rStatus=compact[key][0], rUpdated=compact[key][1]||0;
+        var lr=local[key];
+        var lUpdated=(lr && lr.updated)||0;
+        // uzak daha yeniyse veya yerelde yoksa uygula
+        if(!lr || rUpdated>lUpdated){
+          jobs.push(kvSet(PROG_PREFIX+key, { status:rStatus, updated:rUpdated }));
+          applied++;
+        }
+      }
+      return Promise.all(jobs).then(function(){
+        if(applied){ try{ window.dispatchEvent(new CustomEvent("dh-progress-changed",{detail:{bulk:true}})); }catch(e){} }
+        return applied;
+      });
+    });
+  }
+
   // ---- Dışa açılan API ----
   window.DHProgress = {
     NEW:NEW, LEARNING:LEARNING, LEARNED:LEARNED,
@@ -244,6 +301,17 @@
     summaryAll: summaryAll,
     // yardımcılar
     id: function(type, id){ return type+":"+id; },
-    parse: parse
+    parse: parse,
+    // bulut senkron köprüsü
+    mirrorNow: mirrorNow,
+    applyMirror: applyMirror,
+    MIRROR_KEY: MIRROR_KEY
   };
+
+  // sayfa açılışında: aynayı IndexedDB'ye uygula (senkronla gelen veriyi yansıt)
+  function bootMirror(){
+    try{ applyMirror(); }catch(e){}
+  }
+  if(window.__dhStorageReady){ setTimeout(bootMirror, 600); }
+  else{ window.addEventListener("dh-storage-ready", function(){ setTimeout(bootMirror, 600); }, {once:true}); setTimeout(bootMirror, 1800); }
 })();
