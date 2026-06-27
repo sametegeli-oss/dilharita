@@ -2,6 +2,7 @@
 <html lang="tr">
 <head>
 <script src="./storage-bridge.js?v=2"></script>
+<script src="./progress-engine.js?v=1"></script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0b1120" />
@@ -1179,6 +1180,13 @@ async function checkEnglish(heard,mode,preScore,confidence){
   const next=srsGrade(await srsGet(s.id),grade);
   await srsSet(s.id,next);
   State.srs[s.id]=next;
+
+  // Ortak ilerleme motoru: video pratiği cümleyi günceller (sentence: kimliği)
+  try{
+    if(window.DHProgress && s.id){
+      DHProgress.recordResult("sentence:"+s.id, grade!=="hard");
+    }
+  }catch(e){}
 
   // Hata Defteri: video/telaffuz hatalarını da öğrenme profiline yaz
   if (window.LearningErrorDB && grade !== "easy"){
