@@ -21,7 +21,16 @@
 
   // ---- Aktif konu deposu ----
   var topic = null; // { baslik, soru, ceviri, baglam }
-  window.dhSetTopic = function(t){ topic = t || null; updateHint(); };
+  window.dhSetTopic = function(t){
+    topic = t || null;
+    updateHint();
+    // panel açık ve henüz soru sorulmadıysa (başlangıç ekranı) yeni konuyu yansıt
+    try{
+      if(panel && panel.classList.contains("open") && bodyEl && bodyEl.dataset.mode==="start"){
+        renderStart();
+      }
+    }catch(e){}
+  };
   window.dhClearTopic = function(){ topic = null; updateHint(); };
 
   // ---- Groq (teacher.html ile ortak mantık) ----
@@ -164,14 +173,12 @@
         try{ avaHost.innerHTML=""; DilAvatar.mount(avaHost); avatarMounted=true; }catch(e){}
       }
     });
-    // ilk açılış içeriği
-    if(!bodyEl.dataset.started){
-      bodyEl.dataset.started="1";
-      renderStart();
-    }
+    // HER açılışta güncel konuyla başla (eski cevap kalmasın)
+    renderStart();
   }
 
   function renderStart(){
+    if(bodyEl) bodyEl.dataset.mode="start";
     var html="";
     if(topic && (topic.baslik||topic.soru)){
       html+='<div class="dh-tb-topic">Bu sayfadaki konu: <b>'+esc(topic.baslik||topic.soru)+'</b></div>';
@@ -204,6 +211,7 @@
     userText=(userText||"").trim();
     if(!userText && topic) userText="Bunu açıkla";
     if(!userText) return;
+    if(bodyEl) bodyEl.dataset.mode="answer";
     inputEl.value="";
     bodyEl.innerHTML='<div class="dh-tb-loading">🎓 Öğretmen düşünüyor…</div>';
     try{ if(window.DilAvatar&&DilAvatar.thinking) DilAvatar.thinking(true); }catch(e){}
