@@ -124,6 +124,7 @@ window.StudyTracker={todayKey,load,save,ensure,recordActivity,markLessonDone,isD
     var path=(location.pathname||"").toLowerCase();
     var map=[
       ["index-app","sentence"],
+      ["pv-practice","review"],
       ["practice","sentence"],
       ["teacher","lesson"],
       ["chat","lesson"],
