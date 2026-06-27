@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<script src="./auth-guard.js?v=1"></script>
+<script src="./storage-bridge.js?v=2"></script>
+<script src="./progress-engine.js?v=1"></script>
+<script src="./teacher-policy.js?v=1"></script>
+<script src="./lesson-engine.js?v=1"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1120">
+<title>🎓 Bugünkü Dersim — Dil Harita</title>
+<style>
+:root{
+  --bg:#0b1120; --surface:#0f1f3a; --surface-2:#13294d; --border:#1e3a5f;
+  --text:#e8eef7; --muted:#9fb3d9; --accent:#2563eb;
+  --isinma:#60a5fa; --tekrar:#f59e0b; --yeni:#34d399; --pekistirme:#a78bfa;
+  --ok:#34d399; --bad:#f87171;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+.wrap{max-width:680px;margin:0 auto;padding:14px 14px 80px}
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.back{width:42px;height:42px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;font-size:20px;font-weight:900;text-decoration:none;flex:0 0 auto}
+.title h1{font-size:19px;margin:0}
+.title p{font-size:12px;color:var(--muted);margin:1px 0 0}
+.gear{margin-left:auto;width:42px;height:42px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;font-size:18px;cursor:pointer;text-decoration:none}
+
+/* öğretmen baloncuğu */
+.teacher{display:flex;gap:12px;align-items:flex-start;margin:16px 0}
+.teacher .ava{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#1d4ed8);display:grid;place-items:center;font-size:24px;flex:0 0 auto}
+.teacher .bubble{background:var(--surface);border:1px solid var(--border);border-radius:16px 16px 16px 4px;padding:14px 16px;font-size:15px}
+
+/* ilerleme şeridi */
+.phases{display:flex;gap:6px;margin:16px 0}
+.phase-pill{flex:1;text-align:center;font-size:11px;font-weight:900;padding:7px 4px;border-radius:9px;background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+.phase-pill.active{color:#fff}
+.phase-pill.isinma.active{background:var(--isinma);border-color:var(--isinma)}
+.phase-pill.tekrar.active{background:var(--tekrar);border-color:var(--tekrar)}
+.phase-pill.yeni.active{background:var(--yeni);border-color:var(--yeni);color:#06281b}
+.phase-pill.pekistirme.active{background:var(--pekistirme);border-color:var(--pekistirme)}
+.prog{height:6px;background:var(--surface);border-radius:99px;overflow:hidden;margin:8px 0 18px}
+.prog>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#2563eb,#34d399);transition:width .3s}
+
+/* ders kartı */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px;margin-bottom:14px}
+.phase-tag{display:inline-block;font-size:11px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;padding:3px 10px;border-radius:8px;margin-bottom:12px}
+.pt-isinma{background:#60a5fa22;color:var(--isinma)}
+.pt-tekrar{background:#f59e0b22;color:var(--tekrar)}
+.pt-yeni{background:#34d39922;color:var(--yeni)}
+.pt-pekistirme{background:#a78bfa22;color:var(--pekistirme)}
+.item-main{font-size:24px;font-weight:900;margin-bottom:6px}
+.item-tr{font-size:16px;color:var(--yeni);margin-bottom:12px}
+.item-detail{font-size:14px;color:var(--muted);line-height:1.55;border-top:1px solid var(--border);padding-top:12px;margin-top:12px}
+.item-detail b{color:var(--text)}
+.item-ex{font-size:14px;font-style:italic;color:var(--text);margin-top:8px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.btn{border:0;border-radius:12px;padding:13px 18px;font:900 15px system-ui;cursor:pointer}
+.b-blue{background:var(--accent);color:#fff}
+.b-green{background:linear-gradient(135deg,#27ce6d,#14aa55);color:#fff}
+.b-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+.b-amber{background:#d97706;color:#fff}
+
+/* mini alıştırma (pekiştirme) */
+.opts{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.opt{background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:13px 15px;font:800 15px system-ui;cursor:pointer;text-align:left}
+.opt.correct{background:#34d39922;border-color:var(--ok);color:var(--ok)}
+.opt.wrong{background:#f8717122;border-color:var(--bad);color:var(--bad)}
+
+/* bitiş */
+.done{text-align:center;padding:36px 16px}
+.done .big{font-size:52px;margin-bottom:8px}
+.done h2{margin:0 0 6px;font-size:24px}
+.done p{color:var(--muted);margin:0 0 18px}
+
+/* anayasa düzenleyici (modal) */
+.modal{position:fixed;inset:0;background:rgba(2,6,23,.8);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px}
+.modal.show{display:flex}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:18px;width:min(640px,100%);max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
+.modal-head h3{margin:0;font-size:16px}
+.modal-head button{background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:8px;width:34px;height:34px;cursor:pointer}
+.modal-body{padding:16px;overflow-y:auto}
+.modal-body p.hint{font-size:13px;color:var(--muted);margin:0 0 12px;line-height:1.5}
+#policyText{width:100%;min-height:300px;background:#08172d;border:1px solid var(--border);color:#cfe;border-radius:12px;padding:12px;font:13px ui-monospace,monospace;line-height:1.5;resize:vertical}
+.modal-foot{display:flex;gap:10px;padding:14px 16px;border-top:1px solid var(--border);flex-wrap:wrap}
+.policy-msg{font-size:13px;margin-top:8px;min-height:18px}
+.loading{text-align:center;color:var(--muted);padding:50px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="./index.html" title="Ana menü">←</a>
+    <div class="title">
+      <h1>🎓 Bugünkü Dersim</h1>
+      <p>Öğretmenin senin için hazırladığı ders</p>
+    </div>
+    <a class="gear" id="policyBtn" title="Öğretmen ayarları">⚙️</a>
+  </div>
+
+  <div id="content"><div class="loading">Öğretmen dersini hazırlıyor…</div></div>
+</div>
+
+<!-- Anayasa düzenleyici -->
+<div class="modal" id="policyModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>⚙️ Öğretmen Anayasası</h3>
+      <button id="policyClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint">Bu, öğretmenin uyduğu kuralların tamamıdır — bir nevi öğretmene verdiğin talimat. Düzenleyip kaydedebilirsin; dersler bu kurallara göre üretilir. İstediğin an varsayılana dönebilirsin.</p>
+      <textarea id="policyText" spellcheck="false"></textarea>
+      <div class="policy-msg" id="policyMsg"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn b-green" id="policySave">Kaydet</button>
+      <button class="btn b-amber" id="policyReset">↺ Varsayılana dön</button>
+      <button class="btn b-ghost" id="policyCancel">İptal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+
+  var lesson=null, idx=0;
+
+  // ---- TTS ----
+  var _voices=[];
+  function rv(){ try{_voices=speechSynthesis.getVoices()||[];}catch(e){_voices=[];} }
+  rv(); try{ speechSynthesis.onvoiceschanged=rv; }catch(e){}
+  function speak(t){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.lang="en-US"; var v=_voices.find(function(x){return /^en/i.test(x.lang);}); if(v)u.voice=v; speechSynthesis.speak(u);}catch(e){} }
+
+  var PHASE_LABEL={ isinma:"Isınma", tekrar:"Tekrar", yeni:"Yeni", pekistirme:"Pekiştirme" };
+  var PHASE_ORDER=["isinma","tekrar","yeni","pekistirme"];
+
+  function renderPhaseStrip(){
+    var counts=lesson.intro.breakdown||{};
+    var cur = lesson.steps[idx] ? lesson.steps[idx].phase : "pekistirme";
+    return '<div class="phases">'+PHASE_ORDER.map(function(p){
+      if(!counts[p]) return "";
+      return '<div class="phase-pill '+p+(p===cur?" active":"")+'">'+PHASE_LABEL[p]+'</div>';
+    }).join("")+'</div>'
+    +'<div class="prog"><span style="width:'+(100*idx/lesson.steps.length)+'%"></span></div>';
+  }
+
+  function teacherSays(text){
+    return '<div class="teacher"><div class="ava">🎓</div><div class="bubble">'+esc(text)+'</div></div>';
+  }
+
+  function renderStep(){
+    if(idx>=lesson.steps.length) return renderDone();
+    var s=lesson.steps[idx];
+    var m=lesson.policy.mesajlar||{};
+    var teacherMsg="";
+    // evre değişiminde öğretmen konuşur
+    var prevPhase = idx>0 ? lesson.steps[idx-1].phase : null;
+    if(s.phase!==prevPhase){
+      if(s.phase==="tekrar") teacherMsg=m.tekrarGiris||"Önce tekrar edelim.";
+      else if(s.phase==="yeni") teacherMsg=m.yeniGiris||"Şimdi yeni bir şey öğrenelim.";
+      else if(s.phase==="isinma") teacherMsg="Hadi ısınmayla başlayalım.";
+      else if(s.phase==="pekistirme") teacherMsg="Öğrendiklerini bir deneyelim.";
+    }
+
+    var html=renderPhaseStrip();
+    if(teacherMsg) html+=teacherSays(teacherMsg);
+
+    if(s.exercise){
+      html+=renderExercise(s);
+    }else{
+      html+=renderTeachCard(s);
+    }
+    $("content").innerHTML=html;
+    bindStep(s);
+  }
+
+  function renderTeachCard(s){
+    var it=s.item;
+    var detail="";
+    if(s.type==="sentence"){
+      if(it.grammar) detail+='<div class="item-detail"><b>Yapı:</b> '+esc(it.grammar)+'</div>';
+      if(it.aiExplain) detail+='<div class="item-detail">'+esc(it.aiExplain)+'</div>';
+      if(it.commonMistake) detail+='<div class="item-detail"><b>Dikkat:</b> '+esc(it.commonMistake)+'</div>';
+    }else if(s.type==="pv"){
+      if(it.meanings&&it.meanings[0]) detail+='<div class="item-detail">'+esc(it.meanings[0])+'</div>';
+      if(it.examples&&it.examples[0]) detail+='<div class="item-ex">"'+esc(it.examples[0])+'"</div>';
+    }else if(s.type==="word"){
+      if(it.meanings&&it.meanings.length) detail+='<div class="item-detail">'+esc(it.meanings.slice(0,2).join("; "))+'</div>';
+    }
+    return '<div class="card">'
+      +'<span class="phase-tag pt-'+s.phase+'">'+PHASE_LABEL[s.phase]+'</span>'
+      +'<div class="item-main">'+esc(it.label)+'</div>'
+      +(it.tr?'<div class="item-tr">'+esc(it.tr)+'</div>':'')
+      +detail
+      +'<div class="actions">'
+      +'<button class="btn b-blue" id="sSpeak">🔊 Dinle</button>'
+      +(s.phase==="yeni"||s.phase==="isinma"?'<button class="btn b-green" id="sGot">Anladım ✓</button>':'<button class="btn b-green" id="sGot">Hatırladım ✓</button>')
+      +'<button class="btn b-ghost" id="sHard">Zor geldi</button>'
+      +'</div>'
+      +'</div>';
+  }
+
+  function renderExercise(s){
+    // basit çoktan seçmeli: doğru anlam + 3 çeldirici (aynı türden)
+    var it=s.item;
+    var pool = (DHLesson && lesson._pool && lesson._pool[s.type]) || [];
+    var distract = pool.filter(function(x){ return x.id!==it.id && x.tr; });
+    distract = shuffle(distract).slice(0,3);
+    var opts = shuffle([it].concat(distract));
+    var html='<div class="card">'
+      +'<span class="phase-tag pt-pekistirme">Pekiştirme</span>'
+      +'<div class="item-main" style="font-size:18px">"'+esc(it.label)+'" ne demek?</div>'
+      +'<div class="opts" id="exOpts">'
+      + opts.map(function(o){ return '<button class="opt" data-id="'+esc(String(o.id))+'">'+esc(o.tr||o.label)+'</button>'; }).join("")
+      +'</div></div>';
+    return html;
+  }
+
+  function bindStep(s){
+    if(s.exercise){
+      var opts=$("exOpts");
+      if(opts){
+        opts.querySelectorAll(".opt").forEach(function(btn){
+          btn.onclick=function(){
+            var correct = btn.getAttribute("data-id")===String(s.item.id);
+            opts.querySelectorAll(".opt").forEach(function(b){
+              b.disabled=true;
+              if(b.getAttribute("data-id")===String(s.item.id)) b.classList.add("correct");
+              else if(b===btn) b.classList.add("wrong");
+            });
+            try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, correct); }catch(e){}
+            setTimeout(next, 900);
+          };
+        });
+      }
+      return;
+    }
+    var sp=$("sSpeak"); if(sp) sp.onclick=function(){ speak(s.item.label); };
+    var got=$("sGot"); if(got) got.onclick=function(){
+      // anladım/hatırladım → ilerleme: yeni ise learning, tekrar/ısınma ise pekiştir
+      try{
+        if(window.DHProgress){
+          if(s.phase==="yeni") DHProgress.setStatus(s.itemId, DHProgress.LEARNING);
+          else DHProgress.recordResult(s.itemId, true);
+        }
+      }catch(e){}
+      next();
+    };
+    var hard=$("sHard"); if(hard) hard.onclick=function(){
+      try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, false); }catch(e){}
+      next();
+    };
+  }
+
+  function next(){ idx++; recordMinute(); renderStep(); }
+
+  function renderDone(){
+    try{ if(window.StudyTracker) StudyTracker.recordActivity("lesson",1,{source:"ders"}); }catch(e){}
+    var m=lesson.policy.mesajlar||{};
+    $("content").innerHTML='<div class="done">'
+      +'<div class="big">🎉</div>'
+      +'<h2>Ders tamamlandı!</h2>'
+      +'<p>'+esc(m.tamamlandi||"Eline sağlık, yarın devam edelim.")+'</p>'
+      +'<div class="actions" style="justify-content:center">'
+      +'<a class="btn b-blue" href="./harita.html">🗺️ İlerlememe bak</a>'
+      +'<button class="btn b-green" id="againBtn">🔁 Yeni ders</button>'
+      +'</div></div>';
+    $("againBtn").onclick=function(){ start(); };
+  }
+
+  function shuffle(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; } return a; }
+
+  // dakika kaydı (kaba)
+  var _lastMin=Date.now();
+  function recordMinute(){
+    var now=Date.now();
+    if(now-_lastMin>=60000){
+      try{ if(window.StudyTracker) StudyTracker.recordActivity("minute",1,{source:"ders"}); }catch(e){}
+      _lastMin=now;
+    }
+  }
+
+  // ---- Ders üret ----
+  function start(){
+    idx=0;
+    $("content").innerHTML='<div class="loading">Öğretmen dersini hazırlıyor…</div>';
+    if(!window.DHLesson){ $("content").innerHTML='<div class="loading">Ders motoru yüklenemedi.</div>'; return; }
+    DHLesson.build().then(function(L){
+      lesson=L;
+      // pekiştirme alıştırması için havuzu sakla
+      lesson._pool={};
+      Promise.all([DHLesson._loadData("sentence"),DHLesson._loadData("pv"),DHLesson._loadData("word")]).then(function(r){
+        lesson._pool={sentence:r[0],pv:r[1],word:r[2]};
+        if(!lesson.steps.length){
+          $("content").innerHTML=teacherSays("Şu an çalışılacak içerik bulamadım. Biraz pratik yapıp tekrar gel.");
+          return;
+        }
+        // açılış selamı + ilk adım
+        $("content").innerHTML=teacherSays(lesson.intro.greeting);
+        setTimeout(renderStep, 700);
+      });
+    }).catch(function(e){
+      $("content").innerHTML='<div class="loading">Hata: '+esc(e&&e.message||e)+'</div>';
+    });
+  }
+
+  // ---- Anayasa düzenleyici ----
+  function openPolicy(){
+    $("policyText").value = DHTeacherPolicy.toText();
+    $("policyMsg").textContent="";
+    $("policyModal").classList.add("show");
+  }
+  function closePolicy(){ $("policyModal").classList.remove("show"); }
+  $("policyBtn").onclick=openPolicy;
+  $("policyClose").onclick=closePolicy;
+  $("policyCancel").onclick=closePolicy;
+  $("policyModal").onclick=function(e){ if(e.target===$("policyModal")) closePolicy(); };
+  $("policySave").onclick=function(){
+    try{
+      DHTeacherPolicy.fromText($("policyText").value);
+      $("policyMsg").style.color="#34d399";
+      $("policyMsg").textContent="✓ Kaydedildi. Yeni ders bu kurallara göre hazırlanacak.";
+      setTimeout(function(){ closePolicy(); start(); }, 800);
+    }catch(e){
+      $("policyMsg").style.color="#f87171";
+      $("policyMsg").textContent="Geçersiz JSON: "+(e.message||"biçim hatası");
+    }
+  };
+  $("policyReset").onclick=function(){
+    DHTeacherPolicy.reset();
+    $("policyText").value=DHTeacherPolicy.toText();
+    $("policyMsg").style.color="#f59e0b";
+    $("policyMsg").textContent="↺ Varsayılana dönüldü.";
+  };
+
+  // başlat
+  var _started=false;
+  function startOnce(){ if(_started) return; _started=true; start(); }
+  if(window.__dhStorageReady) startOnce();
+  else { window.addEventListener("dh-storage-ready", startOnce, {once:true}); setTimeout(startOnce, 1500); }
+})();
+</script>
+<script src="./cloud-sync.js?v=2"></script>
+</body>
+</html>
