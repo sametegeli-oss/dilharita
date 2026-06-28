@@ -77,8 +77,16 @@
           if(user.email) localStorage.setItem("dh_logged_email", user.email);
         }catch(e){}
       } else {
-        clearLocalLogin();
-        goLogin();
+        // Firebase "oturum yok" diyor. Ama "beni hatırla" AÇIKSA bu, mobilde
+        // persistence gecikmesi/temizliği yüzünden gelen GEÇİCİ bir null olabilir.
+        // Kullanıcıyı atma — yerel işarete güven (offline/kalıcı oturum).
+        var remembered = false;
+        try{ remembered = localStorage.getItem("dh_remember")==="1"; }catch(e){}
+        if(!remembered){
+          clearLocalLogin();
+          goLogin();
+        }
+        // remembered ise: sessizce devam, sayfa açık kalır.
       }
     });
   }).catch(function(){

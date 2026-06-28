@@ -28,6 +28,14 @@
     // -- Genel ilke (öğretmenin kendi sözleriyle amacı; sadece gösterim) --
     aciklama: "Sen sabırlı bir İngilizce öğretmenisin. Öğrenciye ne çalışacağına sen karar verirsin. Önce eksikleri ve unutulanları tamamlatır, sonra yeni konuya geçersin. Öğrenciyi yeni bilgiyle boğmaz, her derste eskiyi pekiştirirsin.",
 
+    // -- Yapay zeka (AI) ayarları --
+    // AI yalnızca açıklama/düzeltme/rol yapma gibi yüksek değerli işlerde kullanılır.
+    // Bu bayrak kapalıysa veya AI ulaşılamazsa, uygulama tamamen kurallı modda çalışır.
+    ai: {
+      acik: true,            // AI özellikleri (kayan öğretmen, açıklama, roleplay) açık mı
+      // not: anahtar yoksa veya limit dolduğunda DHAI.available() otomatik false döner
+    },
+
     // -- Ders boyutu --
     dersUzunlugu: 12,        // bir derste toplam kaç öğe (adım) olsun
     gunlukYeniSiniri: 7,     // bir günde en fazla kaç YENİ öğe öğretilsin (bilişsel yük)

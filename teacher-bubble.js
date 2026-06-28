@@ -213,6 +213,20 @@
     if(!userText) return;
     if(bodyEl) bodyEl.dataset.mode="answer";
     inputEl.value="";
+
+    // AI kullanılabilir mi? Değilse zarifçe kurallı mesaj göster (çökme yok).
+    if(window.DHAI && !DHAI.available()){
+      var why = DHAI.reason() || "AI öğretmen şu an kullanılamıyor.";
+      var local = topic ? buildLocalHint() : "";
+      bodyEl.innerHTML='<div class="dh-tb-err">'+esc(why)+'</div>'
+        +(local?'<div class="dh-tb-ans" style="margin-top:10px">'+local+'</div>':'')
+        +'<div class="dh-tb-quick" style="margin-top:10px">'
+        +(DHAI.hasKeys()?'<button class="dh-tb-chip" id="dhTbRetry">↻ Tekrar dene</button>':'<a class="dh-tb-chip" href="./teacher.html" style="text-decoration:none">🔑 Anahtar ekle</a>')
+        +'</div>';
+      var rr=document.getElementById("dhTbRetry"); if(rr) rr.onclick=function(){ ask(userText); };
+      return;
+    }
+
     bodyEl.innerHTML='<div class="dh-tb-loading">🎓 Öğretmen düşünüyor…</div>';
     try{ if(window.DilAvatar&&DilAvatar.thinking) DilAvatar.thinking(true); }catch(e){}
 
@@ -221,21 +235,36 @@
       {role:"user",content:buildUserMessage(userText)}
     ];
     groqChat(msgs).then(function(answer){
+      try{ if(window.DHAI) DHAI.noteSuccess(); }catch(e){}
       try{ if(window.DilAvatar&&DilAvatar.thinking) DilAvatar.thinking(false); }catch(e){}
       showAnswer(answer||"(boş yanıt)");
       // avatar konuşsun (İngilizce kısımları değil, kısa özet)
       try{ if(window.DilAvatar&&DilAvatar.speakText){ DilAvatar.speakText(stripForSpeech(answer)); } }catch(e){}
     }).catch(function(err){
+      if(err&&err.code==="rate"){ try{ if(window.DHAI) DHAI.noteRateLimit(); }catch(e){} }
       try{ if(window.DilAvatar&&DilAvatar.thinking) DilAvatar.thinking(false); }catch(e){}
       var m="Bir sorun oldu.";
       if(err&&err.code==="no-key") m='Öğretmen için Groq API anahtarı gerekiyor. Sohbet/öğretmen sayfasından bir anahtar ekleyebilirsin (console.groq.com/keys — ücretsiz).';
       else if(err&&err.code==="rate") m="Tüm API anahtarları şu an limitte. Biraz sonra tekrar dene.";
       else if(err&&err.code==="bad-key") m="API anahtarı geçersiz görünüyor. Öğretmen sayfasından kontrol et.";
+      var localHint = topic ? buildLocalHint() : "";
       bodyEl.innerHTML='<div class="dh-tb-err">'+esc(m)+'</div>'
+        +(localHint?'<div class="dh-tb-ans" style="margin-top:10px">'+localHint+'</div>':'')
         +'<div class="dh-tb-quick" style="margin-top:10px"><button class="dh-tb-chip" id="dhTbRetry">↻ Tekrar dene</button>'
         +'<a class="dh-tb-chip" href="./teacher.html" style="text-decoration:none">🎓 Öğretmen sayfası</a></div>';
       var r=document.getElementById("dhTbRetry"); if(r) r.onclick=function(){ ask(userText); };
     });
+  }
+
+  // AI yokken yerel ipucu — anayasa/veriden, internetsiz
+  function buildLocalHint(){
+    if(!topic) return "";
+    var parts=[];
+    if(topic.baslik) parts.push("<b>"+esc(topic.baslik)+"</b>");
+    if(topic.ceviri) parts.push("Türkçesi: "+esc(topic.ceviri));
+    if(topic.baglam) parts.push("("+esc(topic.baglam)+")");
+    if(!parts.length) return "";
+    return "Çevrimdışı ipucu: "+parts.join(" — ");
   }
 
   function showAnswer(text){

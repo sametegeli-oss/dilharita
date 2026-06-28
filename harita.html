@@ -85,7 +85,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 
   // Modül tanımları: tür, görünen ad, emoji, veri yolu, toplam (fallback)
   var MODULES=[
-    { type:"sentence", name:"Cümleler", emoji:"✍️", sub:"Sentence Mode", data:"./data/sentences.json", count:null, link:"./practice.html" },
+    { type:"sentence", name:"Cümleler", emoji:"✍️", sub:"Cümle çalışması", data:"./data/sentences.json", count:null, link:"./practice.html" },
     { type:"pv",       name:"Phrasal Verbs", emoji:"🔗", sub:"Öbek fiiller", data:"./data/phrasal-verbs.json", count:null, link:"./phrasal-verbs.html" },
     { type:"word",     name:"Kelimeler", emoji:"📖", sub:"Sözlük", data:"./data/dictionary.json", count:null, link:"./library.html" }
   ];
@@ -221,7 +221,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
   });
 })();
 </script>
-<script src="./teacher-bubble.js?v=2"></script>
+<script src="./ai-status.js?v=1"></script>
+<script src="./teacher-bubble.js?v=3"></script>
 <script src="./cloud-sync.js?v=3"></script>
 </body>
 </html>
