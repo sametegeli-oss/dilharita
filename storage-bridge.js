@@ -102,6 +102,10 @@
   // Yazma kuyruğu (arka planda IndexedDB'ye sırayla yazılır)
   var writeQueue = Promise.resolve();
   function queueWrite(fn){ writeQueue = writeQueue.then(fn).catch(function(){}); }
+  // Bekleyen tüm yazımların IndexedDB'ye işlenmesini bekle (sayfa geçişi öncesi).
+  function flush(){ return writeQueue.then(function(){}).catch(function(){}); }
+  // Hemen dışa aç (ready beklemeden de çağrılabilir, her zaman güvenli)
+  try{ window.__dhStorageFlush = flush; }catch(e){}
 
   // Orijinal localStorage'a referans (taşıma için)
   var nativeLS = null;
@@ -234,6 +238,8 @@
 
     // Hazır olduğunu bildir (isteyen scriptler bekleyebilir)
     window.__dhStorageReady = true;
+    // Sayfa geçişi öncesi bekleyen yazımları boşaltmak için dışa açık API
+    window.__dhStorageFlush = flush;
     try{ window.dispatchEvent(new Event("dh-storage-ready")); }catch(e){}
   }).catch(function(e){
     // IndexedDB hiç açılamazsa (çok eski tarayıcı / gizli mod):

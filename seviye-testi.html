@@ -88,6 +88,7 @@
   <div id="screen"></div>
 </div>
 
+<script src="./storage-bridge.js?v=3"></script>
 <script src="./teacher-policy.js?v=3"></script>
 <script src="./level-test.js?v=1"></script>
 <script>
@@ -214,17 +215,36 @@
       +'<button class="btn btn-primary" id="goLesson">🎓 Derse başla</button>'
       +'<button class="btn btn-ghost" id="goHome" style="margin-top:10px">Ana sayfa</button>'
       +'</div>';
-    $("goLesson").onclick = function(){ location.href="./ders.html"; };
-    $("goHome").onclick = function(){ location.href="./index.html"; };
+    $("goLesson").onclick = function(){ goAfterSave("./ders.html"); };
+    $("goHome").onclick = function(){ goAfterSave("./index.html"); };
+  }
+
+  // Yönlendirmeden önce, anayasa yazımının IndexedDB'ye işlenmesini bekle.
+  // (Aksi halde yeni sayfa eski veriyi okur ve sınav kaydı görünmez.)
+  function goAfterSave(url){
+    var done=false;
+    function go(){ if(done) return; done=true; location.href=url; }
+    try{
+      if(window.__dhStorageFlush){
+        window.__dhStorageFlush().then(go);
+        setTimeout(go, 1200); // güvenlik: en geç 1.2 sn sonra yine git
+      }else{
+        setTimeout(go, 300);
+      }
+    }catch(e){ go(); }
   }
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
 
-  // başlat
+  // başlat — storage hazır olunca (anayasa okuma/yazma için)
   screen.innerHTML = '<div class="card"><div class="q-hint">Yükleniyor…</div></div>';
-  loadSentences().then(renderGoal).catch(function(){
-    screen.innerHTML = '<div class="card"><div class="q-hint" style="color:var(--bad)">Cümleler yüklenemedi. İnternet bağlantını kontrol et.</div></div>';
-  });
+  function boot(){
+    loadSentences().then(renderGoal).catch(function(){
+      screen.innerHTML = '<div class="card"><div class="q-hint" style="color:var(--bad)">Cümleler yüklenemedi. İnternet bağlantını kontrol et.</div></div>';
+    });
+  }
+  if(window.__dhStorageReady) boot();
+  else{ window.addEventListener("dh-storage-ready", boot, {once:true}); setTimeout(boot, 1500); }
 })();
 </script>
 </body>
