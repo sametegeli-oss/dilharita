@@ -45,6 +45,10 @@
     seviye: "auto",
     seviyeUstuneIzin: 1,     // mevcut seviyenin kaç üstündeki içeriğe izin (0=sadece kendi seviyesi)
 
+    // -- Tanı (seviye sınavı sonucu) --
+    amac: "",                // "gunluk" | "seyahat" | "is" | "akademik" (seviye sınavından)
+    seviyeTesti: null,       // { level, confidence, tarih, soruSayisi } — sınav yapılınca dolar
+
     // -- Gramer dersi bölümü --
     gramer: {
       acik: true,            // her derste gramer konusu anlatılsın mı

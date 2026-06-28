@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Seviye Belirleme · Dil Harita</title>
+<style>
+  :root{
+    --bg:#0a1628; --surface:#0f1f3a; --surface-2:#13294d; --border:#1e3a5f;
+    --text:#e8eef7; --muted:#9fb3d9; --accent:#2563eb; --accent2:#38bdf8;
+    --ok:#34d399; --bad:#f87171; --amber:#f59e0b;
+    --shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:radial-gradient(circle at 50% 0%, #14305a 0%, var(--bg) 55%);
+    color:var(--text); min-height:100vh;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:max(20px,env(safe-area-inset-top)) 16px 32px;
+  }
+  .wrap{max-width:560px;margin:0 auto}
+  .top{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .top .badge{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#2563eb,#1d4ed8);display:grid;place-items:center;font-size:24px}
+  .top h1{font-size:20px;margin:0;font-weight:800}
+  .top p{margin:2px 0 0;color:var(--muted);font-size:13px}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px;box-shadow:var(--shadow)}
+
+  /* ilerleme çubuğu */
+  .prog{height:6px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:20px}
+  .prog > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px;transition:width .35s ease;width:0}
+  .qmeta{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:14px;font-weight:700}
+  .lvl-pill{background:var(--surface-2);border:1px solid var(--border);border-radius:99px;padding:4px 11px;color:var(--accent2);font-weight:900}
+
+  /* soru */
+  .q-label{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+  .q-tr{font-size:22px;font-weight:800;line-height:1.3;margin-bottom:6px}
+  .q-hint{font-size:13px;color:var(--muted);margin-bottom:20px}
+
+  .opt{display:block;width:100%;text-align:left;background:var(--surface-2);border:2px solid var(--border);
+    border-radius:14px;padding:15px 16px;margin-bottom:11px;color:var(--text);font-size:16px;font-weight:600;
+    cursor:pointer;transition:border-color .15s,background .15s;line-height:1.35}
+  .opt:hover{border-color:var(--accent)}
+  .opt:disabled{cursor:default;opacity:.95}
+  .opt.correct{border-color:var(--ok);background:#34d39922}
+  .opt.wrong{border-color:var(--bad);background:#f8717122}
+
+  .btn{border:0;border-radius:14px;padding:15px 20px;font-size:16px;font-weight:800;cursor:pointer;width:100%}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+
+  /* amaç seçimi */
+  .goal-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:18px 0 6px}
+  .goal{background:var(--surface-2);border:2px solid var(--border);border-radius:16px;padding:18px 14px;cursor:pointer;text-align:center;transition:border-color .15s}
+  .goal:hover{border-color:var(--accent)}
+  .goal.sel{border-color:var(--accent);background:#2563eb22}
+  .goal .ico{font-size:30px;display:block;margin-bottom:8px}
+  .goal b{font-size:15px;display:block}
+  .goal span{font-size:12px;color:var(--muted)}
+
+  /* sonuç */
+  .result-level{font-size:64px;font-weight:950;text-align:center;background:linear-gradient(135deg,var(--accent2),var(--ok));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:10px 0}
+  .result-sub{text-align:center;color:var(--muted);margin-bottom:20px}
+  .result-bars{margin:18px 0}
+  .rb{margin-bottom:10px}
+  .rb-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+  .rb-track{height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+  .rb-track > i{display:block;height:100%;border-radius:99px}
+
+  .fade{animation:fade .3s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .hidden{display:none!important}
+  @media(max-width:560px){ .q-tr{font-size:20px} .result-level{font-size:54px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="badge">🎓</div>
+    <div>
+      <h1>Seviye Belirleme</h1>
+      <p id="topSub">Sana doğru dersi hazırlamak için birkaç soru</p>
+    </div>
+  </div>
+
+  <div id="screen"></div>
+</div>
+
+<script src="./teacher-policy.js?v=3"></script>
+<script src="./level-test.js?v=1"></script>
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var screen = $("screen");
+  var sentences = [];
+  var test = null;
+  var chosenGoal = "";
+
+  // -------- veri yükle --------
+  function loadSentences(){
+    return fetch("./data/sentences.json").then(function(r){ return r.json(); }).then(function(d){
+      sentences = Array.isArray(d) ? d : (d.sentences||[]);
+    });
+  }
+
+  // -------- 1) amaç ekranı --------
+  function renderGoal(){
+    var goals = [
+      { id:"gunluk", ico:"💬", b:"Günlük konuşma", s:"Sohbet, arkadaşlar" },
+      { id:"seyahat", ico:"✈️", b:"Seyahat", s:"Gezi, tatil" },
+      { id:"is", ico:"💼", b:"İş / kariyer", s:"Toplantı, e-posta" },
+      { id:"akademik", ico:"🎓", b:"Akademik / sınav", s:"IELTS, okul" }
+    ];
+    screen.innerHTML =
+      '<div class="card fade">'
+      +'<div class="q-label">Adım 1 / 2</div>'
+      +'<div class="q-tr">İngilizceyi neden öğreniyorsun?</div>'
+      +'<div class="q-hint">Dersleri ilgi alanına göre şekillendireceğiz.</div>'
+      +'<div class="goal-grid" id="goalGrid">'
+      + goals.map(function(g){ return '<button class="goal" data-id="'+g.id+'"><span class="ico">'+g.ico+'</span><b>'+g.b+'</b><span>'+g.s+'</span></button>'; }).join("")
+      +'</div>'
+      +'<button class="btn btn-primary" id="goalNext" style="margin-top:16px" disabled>Devam et →</button>'
+      +'</div>';
+    var grid = $("goalGrid");
+    grid.querySelectorAll(".goal").forEach(function(b){
+      b.onclick = function(){
+        grid.querySelectorAll(".goal").forEach(function(x){ x.classList.remove("sel"); });
+        b.classList.add("sel");
+        chosenGoal = b.getAttribute("data-id");
+        $("goalNext").disabled = false;
+      };
+    });
+    $("goalNext").onclick = startTest;
+  }
+
+  // -------- 2) test --------
+  function startTest(){
+    test = window.DHLevelTest.create(sentences);
+    renderQuestion();
+  }
+
+  function renderQuestion(){
+    var q = test.next();
+    if(!q || test.done()){ return renderResult(); }
+    var pct = Math.round((test.count-1) / test.maxQuestions * 100);
+    screen.innerHTML =
+      '<div class="card fade">'
+      +'<div class="prog"><i style="width:'+pct+'%"></i></div>'
+      +'<div class="qmeta"><span>Soru '+test.count+' / ~'+test.maxQuestions+'</span><span class="lvl-pill">'+q.level+'</span></div>'
+      +'<div class="q-label">Bu cümlenin İngilizcesi hangisi?</div>'
+      +'<div class="q-tr">'+esc(q.tr)+'</div>'
+      +'<div class="q-hint">Doğru çeviriyi seç.</div>'
+      +'<div id="opts">'
+      + q.options.map(function(o,i){ return '<button class="opt" data-i="'+i+'">'+esc(o)+'</button>'; }).join("")
+      +'</div>'
+      +'</div>';
+    var opts = $("opts");
+    opts.querySelectorAll(".opt").forEach(function(b){
+      b.onclick = function(){
+        var sel = parseInt(b.getAttribute("data-i"),10);
+        var r = test.answer(sel);
+        // görsel geri bildirim
+        opts.querySelectorAll(".opt").forEach(function(x,i){
+          x.disabled = true;
+          if(i===r.correctIndex) x.classList.add("correct");
+          else if(i===sel) x.classList.add("wrong");
+        });
+        setTimeout(function(){
+          if(r.finished) renderResult();
+          else renderQuestion();
+        }, 750);
+      };
+    });
+  }
+
+  // -------- 3) sonuç --------
+  var LABELS = {
+    A1:"Başlangıç", A2:"Temel", B1:"Orta", B2:"Orta-üstü", C1:"İleri"
+  };
+  function renderResult(){
+    var res = test.result();
+    var lvl = res.level;
+    // anayasaya yaz
+    try{
+      if(window.DHTeacherPolicy){
+        DHTeacherPolicy.set("seviye", lvl);
+        DHTeacherPolicy.set("amac", chosenGoal);
+        DHTeacherPolicy.set("seviyeTesti", { level:lvl, confidence:res.confidence, tarih:Date.now(), soruSayisi:res.questionCount });
+      }
+    }catch(e){}
+
+    // beceri çubukları (votes'tan)
+    var LEVELS = ["A1","A2","B1","B2","C1"];
+    var barsHtml = LEVELS.map(function(l){
+      var v = res.votes[l];
+      var total = v ? (v.r+v.w) : 0;
+      var rate = total ? Math.round(100*v.r/total) : 0;
+      if(!total) return "";
+      var col = rate>=60 ? "var(--ok)" : (rate>=40 ? "var(--amber)" : "var(--bad)");
+      return '<div class="rb"><div class="rb-top"><span>'+l+' — '+LABELS[l]+'</span><span>'+rate+'%</span></div>'
+        +'<div class="rb-track"><i style="width:'+rate+'%;background:'+col+'"></i></div></div>';
+    }).join("");
+
+    screen.innerHTML =
+      '<div class="card fade">'
+      +'<div class="q-label" style="text-align:center">Seviyen belirlendi</div>'
+      +'<div class="result-level">'+lvl+'</div>'
+      +'<div class="result-sub">'+LABELS[lvl]+' seviye · %'+res.confidence+' güven</div>'
+      +(barsHtml?'<div class="result-bars">'+barsHtml+'</div>':'')
+      +'<div class="q-hint" style="text-align:center;margin:16px 0">Öğretmenin artık dersleri bu seviyeye göre hazırlayacak. Zamanla ilerledikçe seviyen güncellenecek.</div>'
+      +'<button class="btn btn-primary" id="goLesson">🎓 Derse başla</button>'
+      +'<button class="btn btn-ghost" id="goHome" style="margin-top:10px">Ana sayfa</button>'
+      +'</div>';
+    $("goLesson").onclick = function(){ location.href="./ders.html"; };
+    $("goHome").onclick = function(){ location.href="./index.html"; };
+  }
+
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+
+  // başlat
+  screen.innerHTML = '<div class="card"><div class="q-hint">Yükleniyor…</div></div>';
+  loadSentences().then(renderGoal).catch(function(){
+    screen.innerHTML = '<div class="card"><div class="q-hint" style="color:var(--bad)">Cümleler yüklenemedi. İnternet bağlantını kontrol et.</div></div>';
+  });
+})();
+</script>
+</body>
+</html>

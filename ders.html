@@ -5,7 +5,7 @@
 <script src="./storage-bridge.js?v=2"></script>
 <script src="./progress-engine.js?v=2"></script>
 <script src="./teacher-policy.js?v=3"></script>
-<script src="./lesson-engine.js?v=2"></script>
+<script src="./lesson-engine.js?v=3"></script>
 <script src="./ai-status.js?v=1"></script>
 <script src="./teacher-bubble.js?v=3"></script>
 <meta charset="UTF-8">
@@ -504,8 +504,42 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
   }
 
   // ---- Ders üret ----
+  // Seviye sınavı hiç yapılmamış mı + bu oturumda atlanmamış mı?
+  function shouldSuggestLevelTest(){
+    try{
+      if(window.DHTeacherPolicy){
+        var p = DHTeacherPolicy.load();
+        if(p && p.seviyeTesti) return false;          // sınav yapılmış
+      }
+      if(sessionStorage.getItem("dh-skip-leveltest")==="1") return false; // bu oturumda atladı
+    }catch(e){}
+    return true;
+  }
+
+  function renderLevelTestSuggestion(){
+    $("content").innerHTML =
+      '<div class="card" style="text-align:center">'
+      +'<div style="font-size:46px;margin-bottom:6px">🎯</div>'
+      +'<div class="item-main" style="font-size:21px">Önce seviyeni belirleyelim</div>'
+      +'<div class="item-detail" style="margin:10px 0 4px">Sana en uygun dersi hazırlayabilmem için kısa bir seviye testi yapalım. Sadece birkaç dakika — 10 soru. İstersen sonra da yapabilirsin.</div>'
+      +'<div class="actions" style="justify-content:center;margin-top:18px">'
+      +'<button class="btn b-green" id="ltGo">🎓 Seviye testine başla</button>'
+      +'<button class="btn b-ghost" id="ltSkip">Şimdilik atla</button>'
+      +'</div></div>';
+    $("ltGo").onclick=function(){ location.href="./seviye-testi.html"; };
+    $("ltSkip").onclick=function(){
+      try{ sessionStorage.setItem("dh-skip-leveltest","1"); }catch(e){}
+      start();
+    };
+  }
+
   function start(){
     idx=0;
+    // Seviye sınavı hiç yapılmamışsa, derse başlamadan önce nazikçe öner (bir kez).
+    if(shouldSuggestLevelTest()){
+      renderLevelTestSuggestion();
+      return;
+    }
     $("content").innerHTML='<div class="loading">Öğretmen dersini hazırlıyor…</div>';
     if(!window.DHLesson){ $("content").innerHTML='<div class="loading">Ders motoru yüklenemedi.</div>'; return; }
     DHLesson.build().then(function(L){

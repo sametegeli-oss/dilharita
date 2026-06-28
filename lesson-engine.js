@@ -111,17 +111,21 @@
   }
 
   // bir öğenin seviyesi öğrenciye uygun mu (kendi seviyesi + izin verilen üst)
-  function levelOk(itemLevel, studentLevel, allowAbove){
+  function levelOk(itemLevel, studentLevel, allowAbove, belowLimit){
     if(!itemLevel) return true; // seviyesiz içerik her zaman uygun
     var diff = levelIndex(itemLevel) - levelIndex(studentLevel);
-    return diff <= (allowAbove||0); // kendi seviyesi ve altı + izin verilen üst
+    if(diff > (allowAbove||0)) return false;          // çok üst seviye
+    // alt sınır: seviye sınavı yapıldıysa, çok düşük seviyeyi YENİ olarak verme
+    // (öğrenci o seviyeyi zaten biliyor varsayılır). belowLimit=kaç alt seviyeye izin.
+    if(typeof belowLimit==="number" && diff < -belowLimit) return false;
+    return true;
   }
 
   // bir türde "yeni" (hiç dokunulmamış) öğeleri frekans/sıra ile getir
-  function pickNew(list, state, type, n, frekansOnce, studentLevel, allowAbove){
+  function pickNew(list, state, type, n, frekansOnce, studentLevel, allowAbove, belowLimit){
     var arr = list.filter(function(it){
       if(statusOf(state,type,it.id)!==0) return false;
-      if(studentLevel && !levelOk(it.level, studentLevel, allowAbove)) return false;
+      if(studentLevel && !levelOk(it.level, studentLevel, allowAbove, belowLimit)) return false;
       return true;
     });
     if(frekansOnce && (type==="pv"||type==="word")){
@@ -179,12 +183,12 @@
   }
 
   // ---- Gramer konusu seç (öğrencinin seviyesinden, henüz iyi bilinmeyen) ----
-  function pickGrammar(lists, state, studentLevel, allowAbove, n){
+  function pickGrammar(lists, state, studentLevel, allowAbove, n, belowLimit){
     var sentences = lists.sentence||[];
     var groups={};
     sentences.forEach(function(it){
       if(!it.grammar) return;
-      if(!levelOk(it.level, studentLevel, allowAbove)) return;
+      if(!levelOk(it.level, studentLevel, allowAbove, belowLimit)) return;
       var g=it.grammar;
       if(!groups[g]) groups[g]={ grammar:g, level:it.level, pattern:"", aiExplain:"", grammarTags:it.grammarTags, sentences:[], learned:0, total:0 };
       groups[g].total++;
@@ -214,6 +218,9 @@
         // öğrenci seviyesi
         var studentLevel = resolveLevel(policy, state, lists);
         var allowAbove = (typeof policy.seviyeUstuneIzin==="number") ? policy.seviyeUstuneIzin : 1;
+        // Seviye sınavı yapıldıysa: çok düşük seviyeyi YENİ olarak verme (1 alt seviyeye kadar).
+        // Yapılmadıysa: sınır yok (A1'den doğal başlangıç).
+        var belowLimit = (policy.seviyeTesti && policy.seviye && policy.seviye!=="auto") ? 1 : null;
 
         var total = policy.dersUzunlugu||12;
         var o = policy.evreOranlari||{};
@@ -241,7 +248,7 @@
         // 0) GRAMER — dersin başında konu anlatımı
         var gram = policy.gramer||{};
         if(gram.acik){
-          var gtopics = pickGrammar(lists, state, studentLevel, allowAbove, Math.max(0,gram.konuSayisi||0));
+          var gtopics = pickGrammar(lists, state, studentLevel, allowAbove, Math.max(0,gram.konuSayisi||0), belowLimit);
           gtopics.forEach(function(gt){
             steps.push({
               phase:"gramer",
@@ -275,7 +282,7 @@
         var newPicks={ sentence:[], pv:[], word:[] };
         // her tür için yeni aday havuzunu hazırla
         ["sentence","pv","word"].forEach(function(t){
-          newPicks[t] = pickNew(lists[t], state, t, nYeni, policy.frekansOnce, studentLevel, allowAbove);
+          newPicks[t] = pickNew(lists[t], state, t, nYeni, policy.frekansOnce, studentLevel, allowAbove, belowLimit);
         });
         var newIdx={ sentence:0, pv:0, word:0 };
         types.forEach(function(t){
