@@ -4,7 +4,9 @@
 <script src="./auth-guard.js?v=1"></script>
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./progress-engine.js?v=2"></script>
+<script src="./mastery-engine.js?v=1"></script>
 <script src="./teacher-policy.js?v=3"></script>
+<script src="./level-badge.js?v=1"></script>
 <script src="./lesson-engine.js?v=3"></script>
 <script src="./ai-status.js?v=1"></script>
 <script src="./study-tracker.js?v=1"></script>
@@ -358,6 +360,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
               else if(b===btn) b.classList.add("wrong");
             });
             try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, correct); }catch(e){}
+            recordMastery(s.itemId, s.phase, correct, true);
             setTimeout(next, 900);
           };
         });
@@ -373,10 +376,12 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
           else DHProgress.recordResult(s.itemId, true);
         }
       }catch(e){}
+      recordMastery(s.itemId, s.phase, true, false);
       next();
     };
     var hard=$("sHard"); if(hard) hard.onclick=function(){
       try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, false); }catch(e){}
+      recordMastery(s.itemId, s.phase, false, false);
       next();
     };
   }
@@ -445,7 +450,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
     if(!SR){
       // ses tanıma yoksa: dinle + "söyledim" ile geç
       if(micCap) micCap.textContent="Bu tarayıcı mikrofonla değerlendirmeyi desteklemiyor. Dinleyip sesli tekrarla, hazırsan devam et.";
-      if(micBtn){ micBtn.textContent="✓"; micBtn.onclick=function(){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId,true); }catch(e){} next(); }; }
+      if(micBtn){ micBtn.textContent="✓"; micBtn.onclick=function(){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId,true); }catch(e){} recordMastery(s.itemId,s.phase,true,false); next(); }; }
       return;
     }
     var rec=null, listening=false;
@@ -466,8 +471,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
               +'<div class="actions"><button class="btn b-green" id="pNext">'+(ok?"Devam et →":"Tekrar dene")+'</button>'
               +'<button class="btn b-ghost" id="pNext2">Sonraki →</button></div>';
             var pn=$("pNext"), pn2=$("pNext2");
-            if(pn) pn.onclick=function(){ if(ok){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId,true); }catch(e){} next(); } else { result.innerHTML=""; if(micCap) micCap.textContent="Tekrar mikrofona bas ve söyle."; } };
-            if(pn2) pn2.onclick=function(){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, ok); }catch(e){} next(); };
+            if(pn) pn.onclick=function(){ if(ok){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId,true); }catch(e){} recordMastery(s.itemId,s.phase,true,false); next(); } else { result.innerHTML=""; if(micCap) micCap.textContent="Tekrar mikrofona bas ve söyle."; } };
+            if(pn2) pn2.onclick=function(){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, ok); }catch(e){} recordMastery(s.itemId,s.phase,ok,false); next(); };
           }
         };
         rec.onerror=function(){ if(micCap) micCap.textContent="Mikrofon hatası. Tekrar dene veya atla."; };
@@ -478,6 +483,25 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
   }
 
   function next(){ idx++; recordMinute(); renderStep(); }
+
+  // --- Mastery Engine'e kanıt yaz: adımın evresine göre doğru beceriyi seç ---
+  function phaseToSkill(phase, exercise){
+    if(phase==="telaffuz") return "akicilik";
+    if(phase==="video") return "dinleme";
+    if(phase==="gramer") return "tanima";
+    if(exercise) return "hatirlama";   // pekiştirme alıştırması = hatırlama
+    if(phase==="yeni") return "tanima";
+    if(phase==="tekrar") return "hatirlama";
+    if(phase==="isinma") return "tanima";
+    return "tanima";
+  }
+  function recordMastery(itemId, phase, correct, exercise){
+    try{
+      if(window.DHMastery && itemId){
+        DHMastery.record(itemId, phaseToSkill(phase, exercise), correct, {kaynak:"ders"});
+      }
+    }catch(e){}
+  }
 
   function renderDone(){
     try{ if(window.StudyTracker) StudyTracker.recordActivity("lesson",1,{source:"ders"}); }catch(e){}
@@ -491,11 +515,23 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 
   function showDoneScreen(){
     var m=lesson.policy.mesajlar||{};
+    // Bu derste en çok çalışılan cümle modülünü bul (modül sınavı önerisi için)
+    var modCount={};
+    try{
+      (lesson.steps||[]).forEach(function(s){ if(s.type==="sentence" && s.item && s.item.module){ modCount[s.item.module]=(modCount[s.item.module]||0)+1; } });
+    }catch(e){}
+    var topMod="", topN=0;
+    Object.keys(modCount).forEach(function(k){ if(modCount[k]>topN){ topN=modCount[k]; topMod=k; } });
+    var modBtn = topMod
+      ? '<a class="btn b-blue" href="./modul-testi.html?module='+encodeURIComponent(topMod)+'">📝 Bu modülü sına</a>'
+      : '';
+
     $("content").innerHTML='<div class="done">'
       +'<div class="big">🎉</div>'
       +'<h2>Ders tamamlandı!</h2>'
       +'<p>'+esc(m.tamamlandi||"Eline sağlık, yarın devam edelim.")+'</p>'
-      +'<div class="actions" style="justify-content:center">'
+      +'<div class="actions" style="justify-content:center;flex-wrap:wrap">'
+      + modBtn
       +'<a class="btn b-blue" href="./harita.html">🗺️ İlerlememe bak</a>'
       +'<button class="btn b-green" id="againBtn">🔁 Yeni ders</button>'
       +'</div></div>';
@@ -567,7 +603,11 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
         var returnIdx=null;
         try{ var r=sessionStorage.getItem("dh-ders-return"); if(r!==null){ returnIdx=parseInt(r,10); sessionStorage.removeItem("dh-ders-return"); } }catch(e){}
         if(returnIdx!==null && !isNaN(returnIdx)){
-          // videopractice'ten döndük: o telaffuz adımını tamamlanmış say, sonrakine geç
+          // videopractice'ten döndük: o adımı tamamlanmış say, mastery kanıtı yaz, sonrakine geç
+          try{
+            var rs = lesson.steps[returnIdx];
+            if(rs && rs.itemId) recordMastery(rs.itemId, rs.phase, true, false);
+          }catch(e){}
           idx = Math.min(returnIdx+1, lesson.steps.length);
           renderStep();
           return;

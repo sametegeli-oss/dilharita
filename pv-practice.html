@@ -2,8 +2,11 @@
 <html lang="tr">
 <head>
 <script src="./auth-guard.js?v=1"></script>
-<script src="./storage-bridge.js?v=2"></script>
+<script src="./storage-bridge.js?v=3"></script>
 <script src="./progress-engine.js?v=2"></script>
+<script src="./teacher-policy.js?v=3"></script>
+<script src="./mastery-engine.js?v=1"></script>
+<script src="./level-badge.js?v=1"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0b1120">
@@ -346,6 +349,13 @@ select,input[type=number]{background:var(--surface-2);border:1px solid var(--bor
     else{ session.wrong++; logError(item, mode, answer); }
     // ortak ilerleme motoruna kaydet
     try{ if(window.DHProgress) DHProgress.recordResult("pv:"+item.pv, correct); }catch(e){}
+    // Mastery: pratiğin türüne göre beceri (choice=tanıma, fill=hatırlama, listen=dinleme)
+    try{
+      if(window.DHMastery){
+        var sk = mode==="listen" ? "dinleme" : (mode==="fill" ? "hatirlama" : "tanima");
+        DHMastery.record("pv:"+item.pv, sk, correct, {kaynak:"pv-practice"});
+      }
+    }catch(e){}
     var reveal = '<div class="reveal">Öbek: <b>'+esc(item.pv)+'</b> — '+esc(item.tr)+'</div>';
     if(mode==="listen" && exForListen){ reveal += '<div class="reveal">Cümle: '+esc(exForListen)+'</div>'; }
     fb.innerHTML =
