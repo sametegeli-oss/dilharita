@@ -2,11 +2,13 @@
 <html lang="tr">
 <head>
 <script src="./auth-guard.js?v=1"></script>
-<script src="./storage-bridge.js?v=2"></script>
+<script src="./storage-bridge.js?v=3"></script>
 <script src="./progress-engine.js?v=2"></script>
 <script src="./teacher-policy.js?v=3"></script>
 <script src="./lesson-engine.js?v=3"></script>
 <script src="./ai-status.js?v=1"></script>
+<script src="./study-tracker.js?v=1"></script>
+<script src="./streak-screen.js?v=1"></script>
 <script src="./teacher-bubble.js?v=3"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -479,6 +481,15 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 
   function renderDone(){
     try{ if(window.StudyTracker) StudyTracker.recordActivity("lesson",1,{source:"ders"}); }catch(e){}
+    // Önce öğrenme çizgisi (streak) ekranını göster, sonra bitiş ekranı.
+    if(window.DHStreak && DHStreak.show){
+      DHStreak.show({ onContinue: showDoneScreen });
+    } else {
+      showDoneScreen();
+    }
+  }
+
+  function showDoneScreen(){
     var m=lesson.policy.mesajlar||{};
     $("content").innerHTML='<div class="done">'
       +'<div class="big">🎉</div>'

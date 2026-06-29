@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <script src="./auth-guard.js?v=1"></script>
-<script src="./storage-bridge.js?v=2"></script>
+<script src="./storage-bridge.js?v=3"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0b1120">
@@ -40,6 +40,8 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
 <div class="wrap">
   <h1>Dil Harita</h1>
   <p>Güvenli PWA aşama 1: Bu menü statik çalışır, siteyi döngüye sokmaz. PWA için manifest ve kurulum yardımcısı eklidir.</p>
+
+  <div id="dhStreakSlot" style="margin:0 0 16px;cursor:pointer"></div>
 
   <div class="grid">
     <a class="card" href="./ders.html"><b>🎓 Bugünkü Dersim</b><span>Öğretmen senin için ders hazırlasın — nereden başlayacağına o karar versin</span></a>
@@ -105,6 +107,8 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
 <script src="./daily-dashboard.js?v=2"></script>
 <script src="./learning-error-system.js?v=2"></script>
 <script src="./ai-status.js?v=1"></script>
+<script src="./study-tracker.js?v=1"></script>
+<script src="./streak-screen.js?v=1"></script>
 <script src="./teacher-bubble.js?v=3"></script>
 <script src="./cloud-sync.js?v=3"></script>
 <script src="./notifications.js?v=1"></script>
@@ -338,6 +342,21 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   if(window.__dhStorageReady) refreshUI();
   else window.addEventListener("dh-storage-ready", refreshUI, { once:true });
   setTimeout(refreshUI, 1200);
+})();
+</script>
+<script>
+(function(){
+  function fillStreak(){
+    var slot=document.getElementById("dhStreakSlot");
+    if(!slot || !window.DHStreak) return;
+    try{
+      slot.innerHTML = DHStreak.card();
+      slot.onclick = function(){ DHStreak.show(); };
+    }catch(e){}
+  }
+  if(window.__dhStorageReady) setTimeout(fillStreak,300);
+  else window.addEventListener("dh-storage-ready", function(){ setTimeout(fillStreak,300); }, {once:true});
+  setTimeout(fillStreak, 1500);
 })();
 </script>
 </body>
