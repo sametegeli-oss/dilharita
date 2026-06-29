@@ -199,8 +199,13 @@
       var correct = false;
       if(current.type==="tanima" || current.type==="dinleme" || current.type==="gramer"){
         correct = (payload && payload.index === current.correctIndex);
-      } else if(current.type==="siralama" || current.type==="yazma"){
+      } else if(current.type==="siralama"){
         correct = (norm(payload && payload.text) === norm(current.answer));
+      } else if(current.type==="yazma"){
+        // Yazma: HTML tarafı AI/esnek kontrol sonucunu önceden verir (payload.correct).
+        // Verilmemişse birebir karşılaştırmaya düş (geriye uyumluluk).
+        if(payload && typeof payload.correct==="boolean") correct = payload.correct;
+        else correct = (norm(payload && payload.text) === norm(current.answer));
       }
 
       history.push({ level:current.level, correct:correct, type:current.type });

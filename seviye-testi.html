@@ -111,7 +111,8 @@
 
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./teacher-policy.js?v=3"></script>
-<script src="./level-test.js?v=4"></script>
+<script src="./ai-status.js?v=1"></script>
+<script src="./level-test.js?v=5"></script>
 <script>
 (function(){
   "use strict";
@@ -271,25 +272,115 @@
 
   // ---- yazma (serbest) ----
   function renderWrite(q, head){
+    var aiVar = !!(window.DHAI && DHAI.available());
     screen.innerHTML = '<div class="card fade">'+head
       +'<div class="q-label">'+esc(q.prompt)+'</div>'
       +'<div class="q-tr">'+esc(q.tr)+'</div>'
-      +'<div class="q-hint">İngilizce karşılığını yaz.</div>'
+      +'<div class="q-hint">İngilizce karşılığını yaz. '+(aiVar?"(Farklı doğru çeviriler de kabul edilir.)":"(AI kapalı — yakın çeviriler kabul edilir.)")+'</div>'
       +'<input class="write-input" id="writeIn" type="text" placeholder="İngilizce cümleyi yaz..." autocomplete="off" autocapitalize="off">'
       +'<button class="btn btn-primary" id="writeCheck" style="margin-top:14px">Kontrol et</button>'
       +'<div id="writeFb"></div>'
       +'</div>';
     var inp=$("writeIn"), btn=$("writeCheck");
     setTimeout(function(){ try{ inp.focus(); }catch(e){} }, 200);
-    function submit(){
-      var r=test.answer({text:inp.value});
-      $("writeFb").innerHTML = '<div class="fb '+(r.correct?"ok":"bad")+'">'
-        +(r.correct?"✓ Doğru!":"Doğrusu: <b>"+esc(r.answer)+"</b>")+'</div>';
+
+    function finalize(correct, feedback){
+      var r=test.answer({text:inp.value, correct:correct});
+      var fbHtml = '<div class="fb '+(correct?"ok":"bad")+'">';
+      if(correct){
+        fbHtml += "✓ Doğru!" + (feedback?(" <span style='font-weight:600;opacity:.85'>"+esc(feedback)+"</span>"):"");
+      } else {
+        fbHtml += (feedback?esc(feedback)+"<br>":"") + "Örnek doğru cevap: <b>"+esc(r.answer)+"</b>";
+      }
+      fbHtml += '</div>';
+      $("writeFb").innerHTML = fbHtml;
       inp.disabled=true; btn.disabled=true;
       advance(r);
     }
+
+    function submit(){
+      var text=(inp.value||"").trim();
+      if(!text){ finalize(false, "Boş bırakıldı."); return; }
+      btn.disabled=true; btn.textContent="Kontrol ediliyor…";
+
+      // AI varsa esnek değerlendirme, yoksa kurallı esnek kontrol
+      if(window.DHAI && DHAI.available()){
+        evaluateWithAI(q.tr, q.answer, text).then(function(res){
+          finalize(res.correct, res.feedback);
+        }).catch(function(){
+          // AI hata verirse kurallı kontrole düş
+          var r=flexibleCheck(text, q.answer);
+          finalize(r.correct, r.correct?"":"Anlam yeterince yakın değil.");
+        });
+      } else {
+        var r=flexibleCheck(text, q.answer);
+        finalize(r.correct, r.correct?"":"");
+      }
+    }
     btn.onclick=submit;
-    inp.addEventListener("keydown",function(e){ if(e.key==="Enter") submit(); });
+    inp.addEventListener("keydown",function(e){ if(e.key==="Enter" && !btn.disabled) submit(); });
+  }
+
+  // --- AI ile yazma değerlendirme (Groq) ---
+  function evaluateWithAI(turkce, ornek, ogrenci){
+    var keys=[]; try{ keys=(JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){}
+    if(!keys.length) return Promise.reject("no-key");
+    var sys = "Sen bir İngilizce sınav değerlendiricisisin. Öğrencinin Türkçe bir cümleyi İngilizceye çevirisini değerlendir. "
+      + "Anlam doğruysa ve dilbilgisi kabul edilebilirse DOĞRU say — birebir aynı kelimeler gerekmez, farklı ama geçerli çeviriler kabul edilir. "
+      + "Küçük yazım hatalarını (ör. 'budged'→'budget') hoş gör ama not et. "
+      + "SADECE şu JSON formatında yanıt ver, başka hiçbir şey yazma: {\"correct\": true veya false, \"feedback\": \"çok kısa Türkçe not (en fazla 8 kelime)\"}";
+    var usr = "Türkçe cümle: \""+turkce+"\"\nÖrnek doğru çeviri: \""+ornek+"\"\nÖğrencinin çevirisi: \""+ogrenci+"\"\nDeğerlendir.";
+    return fetch("https://api.groq.com/openai/v1/chat/completions",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+keys[0]},
+      body:JSON.stringify({model:"llama-3.3-70b-versatile",messages:[{role:"system",content:sys},{role:"user",content:usr}],temperature:0.1,max_tokens:120})
+    }).then(function(res){
+      if(res.status===429){ try{ if(window.DHAI) DHAI.noteRateLimit(); }catch(e){} throw "rate"; }
+      if(!res.ok) throw "http";
+      try{ if(window.DHAI) DHAI.noteSuccess(); }catch(e){}
+      return res.json();
+    }).then(function(d){
+      var txt=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||"").trim();
+      // JSON ayıkla
+      var m=txt.match(/\{[\s\S]*\}/);
+      if(m){
+        try{ var o=JSON.parse(m[0]); return { correct:!!o.correct, feedback:o.feedback||"" }; }catch(e){}
+      }
+      // JSON gelmezse metinde "true/doğru" ara
+      var low=txt.toLowerCase();
+      return { correct: low.indexOf("true")>=0 || low.indexOf("doğru")>=0, feedback:"" };
+    });
+  }
+
+  // --- Kurallı esnek kontrol (AI yoksa) ---
+  function flexibleCheck(text, answer){
+    var a=normW(text), b=normW(answer);
+    if(a.join(" ")===b.join(" ")) return {correct:true};
+    // anahtar (içerik) kelimelerin ne kadarı tutuyor?
+    var STOP={the:1,a:1,an:1,is:1,are:1,was:1,were:1,to:1,of:1,"in":1,on:1,at:1,"for":1,and:1,or:1,by:1,been:1,have:1,has:1,had:1,this:1,that:1,it:1,be:1};
+    var bContent=b.filter(function(w){ return !STOP[w]; });
+    var aset={}; a.forEach(function(w){ aset[w]=1; });
+    if(!bContent.length) return {correct:a.join(" ")===b.join(" ")};
+    var hit=0; bContent.forEach(function(w){
+      if(aset[w]) hit++;
+      else { // yazım toleransı: 1 harf farkı say
+        for(var k in aset){ if(editDist1(w,k)){ hit++; break; } }
+      }
+    });
+    var ratio=hit/bContent.length;
+    return {correct: ratio>=0.7}; // içerik kelimelerinin %70'i tutarsa kabul
+  }
+  function normW(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9'\s]/g," ").replace(/\s+/g," ").trim().split(" ").filter(Boolean); }
+  function editDist1(a,b){ // en fazla 1 düzenleme farkı mı (kaba)
+    if(a===b) return true;
+    if(Math.abs(a.length-b.length)>1) return false;
+    var i=0,j=0,diff=0;
+    while(i<a.length&&j<b.length){
+      if(a[i]===b[j]){i++;j++;}
+      else{ diff++; if(diff>1)return false;
+        if(a.length>b.length)i++; else if(b.length>a.length)j++; else {i++;j++;} }
+    }
+    return true;
   }
 
   // -------- 3) sonuç --------
