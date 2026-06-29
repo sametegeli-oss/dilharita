@@ -403,6 +403,9 @@
     var hit=0; tw.forEach(function(w){ if(sset[w]) hit++; });
     return hit/tw.length >= 0.75;
   }
+
+  // --- AI ile yazma değerlendirme (Groq) ---
+  function evaluateWithAI(turkce, ornek, ogrenci){
     var keys=[]; try{ keys=(JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){}
     if(!keys.length) return Promise.reject("no-key");
     var sys = "Sen bir İngilizce sınav değerlendiricisisin. Öğrencinin Türkçe bir cümleyi İngilizceye çevirisini değerlendir. "
