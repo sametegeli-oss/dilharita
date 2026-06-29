@@ -87,31 +87,42 @@
       return wordsOf(str).filter(function(w){ return !STOP[w]; });
     }
     function similarity(a, b){
-      // ortak içerik kelimesi + uzunluk yakınlığı
+      // ortak içerik kelimesi + UZUNLUK uyumu (güçlü ağırlık)
       var aw = contentWords(a), bw = contentWords(b);
       var bset = {}; bw.forEach(function(w){ bset[w]=1; });
       var common = 0; aw.forEach(function(w){ if(bset[w]) common++; });
       var lenA = wordsOf(a).length, lenB = wordsOf(b).length;
-      var lenPenalty = Math.abs(lenA-lenB) * 0.3; // uzunluk farkı cezası
-      return common - lenPenalty;
+      // uzunluk farkı GÜÇLÜ ceza: kısa-uzun karışmasın (öğrenci uzunluğa bakıp seçemesin)
+      var lenDiff = Math.abs(lenA - lenB);
+      var lenScore = Math.max(0, 4 - lenDiff); // 0 fark=4 puan, 4+ fark=0 puan
+      return common * 1.5 + lenScore;
     }
     function distractorsEN(correct, level){
-      var pool = (byLevel[level]||[]).filter(function(s){ return s.en!==correct.en; });
-      // benzerliğe göre sırala (en benzer önce), ama hepsi aynı olmasın diye ilk 12'den rastgele 3 seç
+      var corLen = wordsOf(correct.en).length;
+      var pool = (byLevel[level]||[]).filter(function(s){
+        if(s.en===correct.en) return false;
+        var sl = wordsOf(s.en).length;
+        // uzunluk bandı: doğru cevaba yakın uzunlukta olsun (çok kısa/uzun şık ele)
+        // korLen büyükse en az korLen-3, küçükse esnek
+        if(corLen>=6 && sl < corLen-3) return false; // uzun doğru yanında çok kısa şık olmasın
+        if(sl > corLen+4) return false;
+        return true;
+      });
+      // benzerliğe göre sırala
       var scored = pool.map(function(s){ return { en:s.en, sim:similarity(correct.en, s.en) }; });
       scored.sort(function(a,b){ return b.sim-a.sim; });
-      // en benzer 12 adaydan rastgele 3 (çeşitlilik için), benzerlik 0'dan büyük olanları tercih et
-      var candidates = scored.filter(function(x){ return x.sim>0; }).slice(0, 12);
+      var candidates = scored.slice(0, 12);
+      // yeterli aday yoksa uzunluk bandını gevşet
       if(candidates.length<3){
-        // yeterli benzer yoksa, en benzerlerle tamamla
-        candidates = scored.slice(0, 12);
+        var pool2 = (byLevel[level]||[]).filter(function(s){ return s.en!==correct.en; });
+        var scored2 = pool2.map(function(s){ return { en:s.en, sim:similarity(correct.en, s.en) }; }).sort(function(a,b){ return b.sim-a.sim; });
+        candidates = scored2.slice(0, 12);
       }
       var picked = [];
       var seen = {};
       shuffle(candidates).forEach(function(x){
         if(picked.length<3 && !seen[x.en] && x.en!==correct.en){ seen[x.en]=1; picked.push(x.en); }
       });
-      // hâlâ eksikse diğer seviyelerden benzer ekle (tekrarsız)
       if(picked.length<3){
         var all=[]; LEVELS.forEach(function(l){ (byLevel[l]||[]).forEach(function(s){ if(s.en!==correct.en && !seen[s.en]) all.push(s.en); }); });
         var allScored = all.map(function(en){ return {en:en, sim:similarity(correct.en,en)}; }).sort(function(a,b){ return b.sim-a.sim; });
