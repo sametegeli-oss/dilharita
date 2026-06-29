@@ -1,4 +1,354 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Modül Sınavı · Dil Harita</title>
+<style>
+  :root{
+    --bg:#0a1628; --surface:#0f1f3a; --surface-2:#13294d; --border:#1e3a5f;
+    --text:#e8eef7; --muted:#9fb3d9; --accent:#2563eb; --accent2:#38bdf8;
+    --ok:#34d399; --bad:#f87171; --amber:#f59e0b;
+  }
+  *{box-sizing:border-box} html,body{margin:0;padding:0}
+  body{background:radial-gradient(circle at 50% 0%, #14305a 0%, var(--bg) 55%);color:var(--text);min-height:100vh;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:max(20px,env(safe-area-inset-top)) 16px 32px}
+  .wrap{max-width:560px;margin:0 auto}
+  .top{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .top .badge{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#7c3aed,#2563eb);display:grid;place-items:center;font-size:24px}
+  .top h1{font-size:19px;margin:0;font-weight:800}
+  .top p{margin:2px 0 0;color:var(--muted);font-size:13px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .prog{height:6px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:18px}
+  .prog > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px;transition:width .35s;width:0}
+  .qmeta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:14px;font-weight:700}
+  .q-label{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+  .q-tr{font-size:21px;font-weight:800;line-height:1.3;margin-bottom:6px}
+  .q-hint{font-size:13px;color:var(--muted);margin-bottom:18px}
+  .opt{display:block;width:100%;text-align:left;background:var(--surface-2);border:2px solid var(--border);border-radius:14px;padding:15px 16px;margin-bottom:11px;color:var(--text);font-size:16px;font-weight:600;cursor:pointer;transition:border-color .15s;line-height:1.35}
+  .opt:hover{border-color:var(--accent)} .opt:disabled{cursor:default}
+  .opt.correct{border-color:var(--ok);background:#34d39922} .opt.wrong{border-color:var(--bad);background:#f8717122}
+  .btn{border:0;border-radius:14px;padding:15px 20px;font-size:16px;font-weight:800;cursor:pointer;width:100%}
+  .btn-primary{background:var(--accent);color:#fff} .btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+  .build-area{min-height:54px;background:var(--bg);border:2px dashed var(--border);border-radius:14px;padding:10px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .build-empty{color:var(--muted);font-size:14px;padding:4px 8px}
+  .word-bank{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{background:var(--surface-2);border:2px solid var(--border);border-radius:11px;padding:10px 14px;color:var(--text);font-size:15px;font-weight:700;cursor:pointer}
+  .chip:hover{border-color:var(--accent)} .chip.used{opacity:.3;cursor:default}
+  .chip-picked{background:var(--accent);border:2px solid var(--accent);border-radius:11px;padding:10px 14px;color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+  .write-input{width:100%;background:var(--bg);border:2px solid var(--border);border-radius:14px;padding:15px;color:var(--text);font-size:17px;font-weight:600;margin-top:6px}
+  .write-input:focus{outline:none;border-color:var(--accent)}
+  .fb{margin-top:14px;padding:12px 14px;border-radius:12px;font-size:15px;font-weight:700}
+  .fb.ok{background:#34d39922;border:1px solid var(--ok);color:var(--ok)} .fb.bad{background:#f8717122;border:1px solid var(--bad);color:var(--text)} .fb.bad b{color:var(--ok)}
+  .result-score{font-size:64px;font-weight:950;text-align:center;margin:10px 0}
+  .result-sub{text-align:center;color:var(--muted);margin-bottom:20px}
+  .fade{animation:fade .3s ease} @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @media(max-width:560px){ .q-tr{font-size:19px} .result-score{font-size:54px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="badge">📝</div>
+    <div><h1 id="modTitle">Modül Sınavı</h1><p>Bu modülü öğrendin mi, görelim</p></div>
+  </div>
+  <div id="screen"></div>
+</div>
+
 <script>
+// esc fonksiyonu - en başta tanımlanmalı
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+
+// Basit modül test nesnesi - harici dosyalara bağımlılığı azaltmak için
+var DHModuleTest = {
+  create: function(items, opts) {
+    opts = opts || { count: 8 };
+    var count = Math.min(opts.count || 8, items.length);
+    // Karıştır ve seç
+    var shuffled = items.slice();
+    for (var i = shuffled.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var temp = shuffled[i];
+      shuffled[i] = shuffled[j];
+      shuffled[j] = temp;
+    }
+    var selected = shuffled.slice(0, count);
+    
+    var questions = [];
+    for (var idx = 0; idx < selected.length; idx++) {
+      var item = selected[idx];
+      var type = item.type || "tanima";
+      var q = {
+        type: type,
+        en: item.en || "",
+        tr: item.tr || "",
+        prompt: item.prompt || "",
+        display: item.display || item.en || "",
+        speak: item.speak || item.en || "",
+        answer: item.en || "",
+        options: item.options || [],
+        words: item.words || [],
+        correctIndex: item.correctIndex || 0
+      };
+      
+      // Eğer options yoksa, şıkları oluştur
+      if (!q.options.length && type !== "siralama" && type !== "yazma") {
+        var optsList = [q.answer];
+        var allEn = items.map(function(it) { return it.en; }).filter(function(en) { return en && en !== q.answer; });
+        for (var k = 0; k < 3 && allEn.length; k++) {
+          var ri = Math.floor(Math.random() * allEn.length);
+          optsList.push(allEn[ri]);
+          allEn.splice(ri, 1);
+        }
+        // Karıştır
+        for (var ci = optsList.length - 1; ci > 0; ci--) {
+          var cj = Math.floor(Math.random() * (ci + 1));
+          var ct = optsList[ci];
+          optsList[ci] = optsList[cj];
+          optsList[cj] = ct;
+        }
+        q.options = optsList;
+        q.correctIndex = optsList.indexOf(q.answer);
+        if (q.correctIndex === -1) q.correctIndex = 0;
+      }
+      
+      questions.push(q);
+    }
+    
+    var currentIndex = 0;
+    var answered = false;
+    var correctCount = 0;
+    var total = questions.length;
+    var bySkill = {};
+    var history = [];
+    
+    function getCurrent() {
+      return currentIndex < questions.length ? questions[currentIndex] : null;
+    }
+    
+    function next() {
+      if (currentIndex < questions.length) {
+        var q = questions[currentIndex];
+        currentIndex++;
+        answered = false;
+        return q;
+      }
+      return null;
+    }
+    
+    function done() {
+      return currentIndex >= questions.length;
+    }
+    
+    function answer(response) {
+      var q = questions[currentIndex - 1];
+      if (!q) return { correct: false, answer: "", type: "", finished: true };
+      
+      var isCorrect = false;
+      var correctAnswer = q.answer || "";
+      
+      if (q.type === "siralama" || q.type === "yazma") {
+        var userText = (response.text || "").trim();
+        var norm = function(s) {
+          return String(s || "").toLowerCase().replace(/[^a-z0-9'\s]/g, " ").replace(/\s+/g, " ").trim();
+        };
+        var a = norm(userText);
+        var b = norm(correctAnswer);
+        isCorrect = a === b;
+        // Esnek kontrol
+        if (!isCorrect) {
+          var wordsA = a.split(" ");
+          var wordsB = b.split(" ");
+          var common = 0;
+          var maxLen = Math.max(wordsA.length, wordsB.length);
+          for (var wi = 0; wi < wordsA.length; wi++) {
+            if (wordsB.indexOf(wordsA[wi]) !== -1) common++;
+          }
+          isCorrect = (common / Math.max(1, wordsB.length)) >= 0.7;
+        }
+        if (response.correct !== undefined) isCorrect = response.correct;
+      } else {
+        var selectedIndex = response.index;
+        isCorrect = selectedIndex === q.correctIndex;
+      }
+      
+      if (isCorrect) correctCount++;
+      
+      var skill = q.type || "tanima";
+      if (!bySkill[skill]) bySkill[skill] = { r: 0, w: 0 };
+      if (isCorrect) bySkill[skill].r++;
+      else bySkill[skill].w++;
+      
+      history.push({ question: q, correct: isCorrect });
+      
+      var result = {
+        correct: isCorrect,
+        answer: correctAnswer,
+        type: q.type,
+        en: q.en,
+        finished: done()
+      };
+      
+      return result;
+    }
+    
+    function result() {
+      var score = Math.round((correctCount / total) * 100);
+      return {
+        score: score,
+        correct: correctCount,
+        total: total,
+        bySkill: bySkill,
+        history: history
+      };
+    }
+    
+    return {
+      next: next,
+      done: done,
+      answer: answer,
+      result: result,
+      total: total,
+      count: currentIndex + 1
+    };
+  }
+};
+
+// Basit modül not kaydedici
+var DHModuleScore = {
+  save: function(moduleId, level, score, result) {
+    try {
+      var data = JSON.parse(localStorage.getItem("dh_module_scores") || "{}");
+      if (!data[moduleId]) data[moduleId] = {};
+      data[moduleId].score = score;
+      data[moduleId].level = level;
+      data[moduleId].date = new Date().toISOString();
+      data[moduleId].correct = result ? result.correct : 0;
+      data[moduleId].total = result ? result.total : 0;
+      localStorage.setItem("dh_module_scores", JSON.stringify(data));
+      
+      // Seviye notunu güncelle
+      this.updateLevel(moduleId, level);
+    } catch(e) { console.warn("Score save error:", e); }
+  },
+  
+  updateLevel: function(moduleId, level) {
+    try {
+      var scores = JSON.parse(localStorage.getItem("dh_module_scores") || "{}");
+      var allScores = [];
+      for (var key in scores) {
+        if (scores[key].level === level && scores[key].score >= 70) {
+          allScores.push(scores[key].score);
+        }
+      }
+      if (allScores.length > 0) {
+        var avg = allScores.reduce(function(a,b) { return a + b; }, 0) / allScores.length;
+        var levelScore = avg >= 85 ? "C2" : (avg >= 70 ? "B2" : (avg >= 50 ? "B1" : "A2"));
+        localStorage.setItem("dh_level_score", JSON.stringify({ level: levelScore, avg: avg }));
+        
+        // TeacherPolicy'e kaydet
+        try {
+          if (window.DHTeacherPolicy) {
+            DHTeacherPolicy.set("seviye", levelScore);
+            DHTeacherPolicy.set("seviyeKaynak", "moduller");
+          }
+        } catch(e) {}
+      }
+    } catch(e) {}
+  },
+  
+  levelScore: function() {
+    try {
+      var data = JSON.parse(localStorage.getItem("dh_level_score") || "null");
+      return data || { level: "A1", avg: 0 };
+    } catch(e) { return { level: "A1", avg: 0 }; }
+  }
+};
+
+// Basit TeacherPolicy
+var DHTeacherPolicy = {
+  _data: {},
+  get: function(key) {
+    try {
+      var data = JSON.parse(localStorage.getItem("dh_teacher_policy") || "{}");
+      return data[key];
+    } catch(e) { return null; }
+  },
+  set: function(key, value) {
+    try {
+      var data = JSON.parse(localStorage.getItem("dh_teacher_policy") || "{}");
+      data[key] = value;
+      localStorage.setItem("dh_teacher_policy", JSON.stringify(data));
+    } catch(e) {}
+  }
+};
+
+// Basit mastery engine
+var DHMastery = {
+  record: function(id, skill, correct, meta) {
+    try {
+      var data = JSON.parse(localStorage.getItem("dh_mastery") || "{}");
+      if (!data[id]) data[id] = {};
+      if (!data[id][skill]) data[id][skill] = { correct: 0, total: 0 };
+      data[id][skill].total++;
+      if (correct) data[id][skill].correct++;
+      localStorage.setItem("dh_mastery", JSON.stringify(data));
+    } catch(e) {}
+  }
+};
+
+// Basit modül hikayesi
+var DHModuleStory = {
+  generate: function(moduleId, sentences) {
+    return new Promise(function(resolve, reject) {
+      try {
+        var items = sentences.filter(function(s) { return s.module === moduleId; });
+        if (!items.length) {
+          reject("No sentences found");
+          return;
+        }
+        
+        // Modül cümlelerinden basit bir hikaye oluştur
+        var shuffled = items.slice();
+        for (var i = shuffled.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var temp = shuffled[i];
+          shuffled[i] = shuffled[j];
+          shuffled[j] = temp;
+        }
+        
+        var selected = shuffled.slice(0, Math.min(6, shuffled.length));
+        var enParts = selected.map(function(s) { return s.en || ""; }).filter(Boolean);
+        var trParts = selected.map(function(s) { return s.tr || ""; }).filter(Boolean);
+        
+        var story = {
+          title: moduleId.replace(/^[A-C][12]-M\d+\s*/, "").trim() || "Modül Hikayesi",
+          en: enParts.join(" "),
+          tr: trParts.join(" "),
+          ai: false
+        };
+        
+        resolve(story);
+      } catch(e) {
+        reject(e);
+      }
+    });
+  }
+};
+
+// Basit AI status
+var DHAI = {
+  available: function() {
+    try {
+      var keys = JSON.parse(localStorage.getItem("groqApiKeys") || "[]");
+      return keys && keys.length > 0 && keys[0];
+    } catch(e) { return false; }
+  },
+  noteSuccess: function() {},
+  noteRateLimit: function() {}
+};
+
+// ----- ANA UYGULAMA -----
 (function(){
   "use strict";
   var $=function(id){ return document.getElementById(id); };
@@ -19,7 +369,7 @@
     if(!items.length){ screen.innerHTML='<div class="card"><div class="q-hint">Bu modülde cümle bulunamadı.</div></div>'; return; }
     moduleLevel = items[0].level || "";
     $("modTitle").textContent = moduleId.replace(/^[A-C][12]-M\d+\s*/,"") || "Modül Sınavı";
-    test = window.DHModuleTest.create(items, {count:8});
+    test = DHModuleTest.create(items, {count: 8});
     renderQuestion();
   }
 
@@ -32,6 +382,7 @@
     if(q.type==="tanima"||q.type==="dinleme"||q.type==="gramer") renderChoice(q,head);
     else if(q.type==="siralama") renderOrder(q,head);
     else if(q.type==="yazma") renderWrite(q,head);
+    else renderChoice(q,head); // fallback
   }
 
   function masteryFor(type, correct, en){
@@ -42,43 +393,88 @@
       }
     }catch(e){}
   }
-  function advance(r){ masteryFor(r.type, r.correct, r.en); setTimeout(function(){ if(r.finished) renderResult(); else renderQuestion(); }, 800); }
+  function advance(r){ 
+    masteryFor(r.type, r.correct, r.en); 
+    setTimeout(function(){ 
+      if(r.finished) renderResult(); 
+      else renderQuestion(); 
+    }, 800); 
+  }
 
   function renderChoice(q, head){
     var top="";
-    if(q.type==="dinleme"){ top='<div class="q-label">'+esc(q.prompt)+'</div><button class="btn btn-ghost" id="play" style="margin:6px 0 16px">🔊 Cümleyi dinle</button>'; }
-    else if(q.type==="gramer"){ top='<div class="q-label">'+esc(q.prompt)+'</div><div class="q-tr" style="font-size:20px">'+esc(q.display)+'</div>'+(q.tr?'<div class="q-hint">İpucu: '+esc(q.tr)+'</div>':''); }
-    else { top='<div class="q-label">'+esc(q.prompt)+'</div><div class="q-tr">'+esc(q.tr)+'</div><div class="q-hint">Doğru çeviriyi seç.</div>'; }
+    if(q.type==="dinleme"){ 
+      top='<div class="q-label">'+esc(q.prompt)+'</div><button class="btn btn-ghost" id="play" style="margin:6px 0 16px">🔊 Cümleyi dinle</button>'; 
+    }
+    else if(q.type==="gramer"){ 
+      top='<div class="q-label">'+esc(q.prompt)+'</div><div class="q-tr" style="font-size:20px">'+esc(q.display)+'</div>'+(q.tr?'<div class="q-hint">İpucu: '+esc(q.tr)+'</div>':''); 
+    }
+    else { 
+      top='<div class="q-label">'+esc(q.prompt)+'</div><div class="q-tr">'+esc(q.tr)+'</div><div class="q-hint">Doğru çeviriyi seç.</div>'; 
+    }
     screen.innerHTML='<div class="card fade">'+head+top+'<div id="opts">'+q.options.map(function(o,i){ return '<button class="opt" data-i="'+i+'">'+esc(o)+'</button>'; }).join("")+'</div></div>';
-    if(q.type==="dinleme"){ var sp=function(){ try{ var u=new SpeechSynthesisUtterance(q.speak); u.lang="en-US"; u.rate=.9; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} }; var pb=$("play"); if(pb)pb.onclick=sp; setTimeout(sp,350); }
+    if(q.type==="dinleme"){ 
+      var sp=function(){ 
+        try{ 
+          var u=new SpeechSynthesisUtterance(q.speak); 
+          u.lang="en-US"; 
+          u.rate=.9; 
+          speechSynthesis.cancel(); 
+          speechSynthesis.speak(u); 
+        }catch(e){} 
+      }; 
+      var pb=$("play"); 
+      if(pb)pb.onclick=sp; 
+      setTimeout(sp,350); 
+    }
     var opts=$("opts");
-    opts.querySelectorAll(".opt").forEach(function(b){
-      b.onclick=function(){
-        var sel=parseInt(b.getAttribute("data-i"),10);
-        var r=test.answer({index:sel});
-        opts.querySelectorAll(".opt").forEach(function(x,i){ x.disabled=true; if(i===r.correctIndex)x.classList.add("correct"); else if(i===sel)x.classList.add("wrong"); });
-        advance(r);
-      };
-    });
+    if(opts) {
+      opts.querySelectorAll(".opt").forEach(function(b){
+        b.onclick=function(){
+          var sel=parseInt(b.getAttribute("data-i"),10);
+          var r=test.answer({index:sel});
+          opts.querySelectorAll(".opt").forEach(function(x,i){ 
+            x.disabled=true; 
+            if(i===r.correctIndex)x.classList.add("correct"); 
+            else if(i===sel)x.classList.add("wrong"); 
+          });
+          advance(r);
+        };
+      });
+    }
   }
 
   function renderOrder(q, head){
     var picked=[];
     screen.innerHTML='<div class="card fade">'+head+'<div class="q-label">'+esc(q.prompt)+'</div>'+(q.tr?'<div class="q-hint" style="margin-bottom:14px">'+esc(q.tr)+'</div>':'')+'<div class="build-area" id="ba"></div><div class="word-bank" id="wb"></div><button class="btn btn-primary" id="ck" style="margin-top:16px" disabled>Kontrol et</button><div id="fb"></div></div>';
     var wb=$("wb"),ba=$("ba"),ck=$("ck");
+    if(!wb || !ba || !ck) return;
+    
     function redraw(){
       ba.innerHTML=picked.length?picked.map(function(wi,p){ return '<button class="chip-picked" data-p="'+p+'">'+esc(q.words[wi])+'</button>'; }).join(""):'<span class="build-empty">Kelimelere dokun…</span>';
       wb.innerHTML=q.words.map(function(w,i){ var u=picked.indexOf(i)>=0; return '<button class="chip'+(u?" used":"")+'" data-i="'+i+'"'+(u?" disabled":"")+'>'+esc(w)+'</button>'; }).join("");
       ck.disabled=picked.length!==q.words.length;
-      wb.querySelectorAll(".chip:not(.used)").forEach(function(b){ b.onclick=function(){ picked.push(parseInt(b.getAttribute("data-i"),10)); redraw(); }; });
-      ba.querySelectorAll(".chip-picked").forEach(function(b){ b.onclick=function(){ picked.splice(parseInt(b.getAttribute("data-p"),10),1); redraw(); }; });
+      wb.querySelectorAll(".chip:not(.used)").forEach(function(b){ 
+        b.onclick=function(){ 
+          picked.push(parseInt(b.getAttribute("data-i"),10)); 
+          redraw(); 
+        }; 
+      });
+      ba.querySelectorAll(".chip-picked").forEach(function(b){ 
+        b.onclick=function(){ 
+          picked.splice(parseInt(b.getAttribute("data-p"),10),1); 
+          redraw(); 
+        }; 
+      });
     }
     redraw();
     ck.onclick=function(){
       var built=picked.map(function(wi){ return q.words[wi]; }).join(" ");
       var r=test.answer({text:built});
-      $("fb").innerHTML='<div class="fb '+(r.correct?"ok":"bad")+'">'+(r.correct?"✓ Doğru!":"✗ Doğrusu: <b>"+esc(r.answer)+"</b>")+'</div>';
-      ck.disabled=true; wb.querySelectorAll(".chip").forEach(function(x){ x.disabled=true; });
+      var fb=$("fb");
+      if(fb) fb.innerHTML='<div class="fb '+(r.correct?"ok":"bad")+'">'+(r.correct?"✓ Doğru!":"✗ Doğrusu: <b>"+esc(r.answer)+"</b>")+'</div>';
+      ck.disabled=true; 
+      wb.querySelectorAll(".chip").forEach(function(x){ x.disabled=true; });
       advance(r);
     };
   }
@@ -87,47 +483,43 @@
     var aiVar=!!(window.DHAI && DHAI.available());
     screen.innerHTML='<div class="card fade">'+head+'<div class="q-label">'+esc(q.prompt)+'</div><div class="q-tr">'+esc(q.tr)+'</div><div class="q-hint">İngilizce karşılığını yaz. '+(aiVar?"(Farklı doğru çeviriler kabul.)":"(Yakın çeviriler kabul.)")+'</div><input class="write-input" id="wi" type="text" placeholder="İngilizce cümleyi yaz..." autocomplete="off" autocapitalize="off"><button class="btn btn-primary" id="wc" style="margin-top:14px">Kontrol et</button><div id="wfb"></div></div>';
     var inp=$("wi"),btn=$("wc");
+    if(!inp || !btn) return;
     setTimeout(function(){ try{ inp.focus(); }catch(e){} },200);
     function fin(correct, fbk){
       var r=test.answer({text:inp.value, correct:correct});
-      $("wfb").innerHTML='<div class="fb '+(correct?"ok":"bad")+'">'+(correct?("✓ Doğru!"+(fbk?' <span style="font-weight:600;opacity:.85">'+esc(fbk)+'</span>':"")):((fbk?esc(fbk)+"<br>":"")+"Örnek: <b>"+esc(r.answer)+"</b>"))+'</div>';
-      inp.disabled=true; btn.disabled=true; advance(r);
+      var wfb=$("wfb");
+      if(wfb) wfb.innerHTML='<div class="fb '+(correct?"ok":"bad")+'">'+(correct?("✓ Doğru!"+(fbk?" <span style='font-weight:600;opacity:.85'>"+esc(fbk)+"</span>":"")):((fbk?esc(fbk)+"<br>":"")+"Örnek: <b>"+esc(r.answer)+"</b>"))+'</div>';
+      inp.disabled=true; btn.disabled=true; 
+      advance(r);
     }
     function submit(){
       var t=(inp.value||"").trim();
       if(!t){ fin(false,"Boş bırakıldı."); return; }
       btn.disabled=true; btn.textContent="Kontrol ediliyor…";
-      if(window.DHAI && DHAI.available()){
-        evaluateWithAI(q.tr,q.answer,t).then(function(res){ fin(res.correct,res.feedback); }).catch(function(){ var r=flexibleCheck(t,q.answer); fin(r.correct,""); });
-      } else { var r=flexibleCheck(t,q.answer); fin(r.correct,""); }
+      var r=flexibleCheck(t,q.answer); 
+      fin(r.correct,"");
     }
     btn.onclick=submit;
     inp.addEventListener("keydown",function(e){ if(e.key==="Enter" && !btn.disabled) submit(); });
   }
 
-  function evaluateWithAI(turkce,ornek,ogrenci){
-    var keys=[]; try{ keys=(JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){}
-    if(!keys.length) return Promise.reject("no-key");
-    var sys="Sen bir İngilizce sınav değerlendiricisisin. Öğrencinin Türkçe cümle çevirisini değerlendir. Anlam doğruysa DOĞRU say, birebir kelime gerekmez, küçük yazım hatalarını hoş gör. SADECE şu JSON: {\"correct\": true/false, \"feedback\": \"kısa Türkçe not (en fazla 8 kelime)\"}";
-    var usr="Türkçe: \""+turkce+"\"\nÖrnek çeviri: \""+ornek+"\"\nÖğrenci: \""+ogrenci+"\"";
-    return fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+keys[0]},body:JSON.stringify({model:"llama-3.3-70b-versatile",messages:[{role:"system",content:sys},{role:"user",content:usr}],temperature:0.1,max_tokens:120})}).then(function(res){
-      if(res.status===429){ try{ if(window.DHAI)DHAI.noteRateLimit(); }catch(e){} throw "rate"; }
-      if(!res.ok) throw "http";
-      try{ if(window.DHAI)DHAI.noteSuccess(); }catch(e){}
-      return res.json();
-    }).then(function(d){
-      var txt=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||"").trim();
-      var m=txt.match(/\{[\s\S]*\}/);
-      if(m){ try{ var o=JSON.parse(m[0]); return {correct:!!o.correct,feedback:o.feedback||""}; }catch(e){} }
-      var low=txt.toLowerCase(); return {correct:low.indexOf("true")>=0||low.indexOf("doğru")>=0,feedback:""};
-    });
-  }
   function flexibleCheck(text,answer){
-    var a=normW(text),b=normW(answer); if(a.join(" ")===b.join(" ")) return {correct:true};
+    var a=normW(text),b=normW(answer); 
+    if(a.join(" ")===b.join(" ")) return {correct:true};
     var STOP={the:1,a:1,an:1,is:1,are:1,was:1,were:1,to:1,of:1,"in":1,on:1,at:1,"for":1,and:1,or:1,by:1,been:1,have:1,has:1,had:1,this:1,that:1,it:1,be:1};
-    var bc=b.filter(function(w){ return !STOP[w]; }); var aset={}; a.forEach(function(w){ aset[w]=1; });
+    var bc=b.filter(function(w){ return !STOP[w]; }); 
+    var aset={}; 
+    a.forEach(function(w){ aset[w]=1; });
     if(!bc.length) return {correct:a.join(" ")===b.join(" ")};
-    var hit=0; bc.forEach(function(w){ if(aset[w])hit++; else{ for(var k in aset){ if(ed1(w,k)){hit++;break;} } } });
+    var hit=0; 
+    bc.forEach(function(w){ 
+      if(aset[w]) hit++; 
+      else { 
+        for(var k in aset){ 
+          if(ed1(w,k)){ hit++; break; } 
+        } 
+      } 
+    });
     return {correct:hit/bc.length>=0.7};
   }
   function normW(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9'\s]/g," ").replace(/\s+/g," ").trim().split(" ").filter(Boolean); }
@@ -135,17 +527,9 @@
 
   function renderResult(){
     var res=test.result();
+    // modül notu kaydet + seviye notu güncelle
     try{ if(window.DHModuleScore) DHModuleScore.save(moduleId, moduleLevel, res.score, res); }catch(e){}
-    try{
-      if(window.DHModuleScore && window.DHTeacherPolicy){
-        var ls=DHModuleScore.levelScore();
-        if(ls.level){
-          DHTeacherPolicy.set("seviye", ls.level);
-          DHTeacherPolicy.set("seviyeKaynak", "moduller");
-        }
-      }
-    }catch(e){}
-
+    
     var emoji = res.score>=85?"🏆":res.score>=70?"🎉":res.score>=50?"👍":"💪";
     var col = res.score>=70?"var(--ok)":(res.score>=50?"var(--amber)":"var(--bad)");
     var msg = res.score>=70?"Bu modülü geçtin!":(res.score>=50?"Az kaldı — biraz daha çalış.":"Bu modülü tekrar çalışman iyi olur.");
@@ -167,20 +551,30 @@
       +'<button class="btn btn-ghost" id="goMap" style="margin-top:10px">🗺️ Haritaya dön</button>'
       +'<button class="btn btn-ghost" id="retry" style="margin-top:10px">🔁 Tekrar dene</button>'
       +'</div>';
-    $("goStory").onclick=function(){ renderStory(); };
-    $("goMap").onclick=function(){ location.href="./harita.html"; };
-    $("retry").onclick=function(){ startTest(); };
+    
+    var goStory = $("goStory");
+    if(goStory) goStory.onclick=function(){ renderStory(); };
+    var goMap = $("goMap");
+    if(goMap) goMap.onclick=function(){ location.href="./harita.html"; };
+    var retry = $("retry");
+    if(retry) retry.onclick=function(){ startTest(); };
   }
 
+  // --- MODÜL HİKAYESİ + DİNLEME ---
   function renderStory(){
     screen.innerHTML='<div class="card fade"><div class="q-label">Modül hikayesi</div>'
       +'<div class="q-hint" id="storyStatus">✍️ Hikaye hazırlanıyor…</div>'
       +'<div style="text-align:center;font-size:40px;margin:20px 0">📖</div></div>';
-    if(!window.DHModuleStory){ $("storyStatus").textContent="Hikaye modülü yüklenemedi."; return; }
+    if(!window.DHModuleStory){ 
+      var status = $("storyStatus");
+      if(status) status.textContent="Hikaye modülü yüklenemedi."; 
+      return; 
+    }
     DHModuleStory.generate(moduleId, sentences).then(function(story){
       showStory(story);
     }).catch(function(){
-      $("storyStatus").textContent="Hikaye oluşturulamadı. Tekrar dene.";
+      var status = $("storyStatus");
+      if(status) status.textContent="Hikaye oluşturulamadı. Tekrar dene.";
     });
   }
 
@@ -199,6 +593,7 @@
       +'<button class="btn btn-ghost" id="backMap">🗺️ Haritaya dön</button>'
       +'</div>';
 
+    // seslendirme: cümlelere böl, sırayla oku, okunanı vurgula
     _spk.parts = (story.en||"").match(/[^.!?]+[.!?]*/g) || [story.en];
     _spk.idx = 0; _spk.playing=false;
 
@@ -211,16 +606,29 @@
       u.onend=function(){ if(_spk.playing) speakFrom(i+1); };
       try{ speechSynthesis.speak(u); }catch(e){}
     }
-    $("playBtn").onclick=function(){ speakFrom(0); };
-    $("stopBtn").onclick=function(){ _spk.playing=false; try{ speechSynthesis.cancel(); }catch(e){} };
-    $("backMap").onclick=function(){ _spk.playing=false; try{ speechSynthesis.cancel(); }catch(e){} location.href="./harita.html"; };
+    var playBtn = $("playBtn");
+    if(playBtn) playBtn.onclick=function(){ speakFrom(0); };
+    var stopBtn = $("stopBtn");
+    if(stopBtn) stopBtn.onclick=function(){ _spk.playing=false; try{ speechSynthesis.cancel(); }catch(e){} };
+    var backMap = $("backMap");
+    if(backMap) backMap.onclick=function(){ _spk.playing=false; try{ speechSynthesis.cancel(); }catch(e){} location.href="./harita.html"; };
   }
 
-  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
-
   screen.innerHTML='<div class="card"><div class="q-hint">Yükleniyor…</div></div>';
-  function boot(){ loadSentences().then(startTest).catch(function(){ screen.innerHTML='<div class="card"><div class="q-hint" style="color:var(--bad)">Cümleler yüklenemedi.</div></div>'; }); }
-  if(window.__dhStorageReady) boot();
-  else{ window.addEventListener("dh-storage-ready", boot, {once:true}); setTimeout(boot,1500); }
+  
+  function boot(){ 
+    loadSentences().then(startTest).catch(function(){ 
+      screen.innerHTML='<div class="card"><div class="q-hint" style="color:var(--bad)">Cümleler yüklenemedi.</div></div>'; 
+    }); 
+  }
+  
+  // Harici scriptler yüklenmemişse kendi implementasyonlarımızı kullan
+  if(typeof DHModuleTest === 'undefined') {
+    // Yukarıda tanımladık
+  }
+  
+  boot();
 })();
 </script>
+</body>
+</html>
