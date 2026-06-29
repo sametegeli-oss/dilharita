@@ -60,6 +60,7 @@
 <script src="./mastery-engine.js?v=1"></script>
 <script src="./module-test.js?v=1"></script>
 <script src="./module-score.js?v=1"></script>
+<script src="./module-story.js?v=1"></script>
 <script src="./ai-status.js?v=1"></script>
 <script>
 (function(){
@@ -228,11 +229,59 @@
       +'<div class="result-sub">Modül notun · '+res.correct+'/'+res.total+' doğru</div>'
       +'<div class="q-hint" style="text-align:center;margin-bottom:16px">'+msg+'</div>'
       +(skillRows?'<div class="q-label" style="margin-bottom:8px">Beceri kırılımı</div>'+skillRows:'')
-      +'<button class="btn btn-primary" id="goMap" style="margin-top:18px">🗺️ Haritaya dön</button>'
+      +'<button class="btn btn-primary" id="goStory" style="margin-top:18px;background:linear-gradient(135deg,#7c3aed,#2563eb)">📖 Modülün hikayesini oku & dinle</button>'
+      +'<button class="btn btn-ghost" id="goMap" style="margin-top:10px">🗺️ Haritaya dön</button>'
       +'<button class="btn btn-ghost" id="retry" style="margin-top:10px">🔁 Tekrar dene</button>'
       +'</div>';
+    $("goStory").onclick=function(){ renderStory(); };
     $("goMap").onclick=function(){ location.href="./harita.html"; };
     $("retry").onclick=function(){ startTest(); };
+  }
+
+  // --- MODÜL HİKAYESİ + DİNLEME ---
+  function renderStory(){
+    screen.innerHTML='<div class="card fade"><div class="q-label">Modül hikayesi</div>'
+      +'<div class="q-hint" id="storyStatus">✍️ Hikaye hazırlanıyor…</div>'
+      +'<div style="text-align:center;font-size:40px;margin:20px 0">📖</div></div>';
+    if(!window.DHModuleStory){ $("storyStatus").textContent="Hikaye modülü yüklenemedi."; return; }
+    DHModuleStory.generate(moduleId, sentences).then(function(story){
+      showStory(story);
+    }).catch(function(){
+      $("storyStatus").textContent="Hikaye oluşturulamadı. Tekrar dene.";
+    });
+  }
+
+  var _spk = { playing:false, parts:[], idx:0 };
+  function showStory(story){
+    var aiNote = story.ai ? "" : '<div class="q-hint" style="color:var(--amber);margin-bottom:8px">AI kapalı — modül cümlelerinden basit derleme. Tam hikaye için öğretmen sayfasından Groq anahtarı ekle.</div>';
+    screen.innerHTML='<div class="card fade">'
+      +'<div class="q-label">📖 '+esc(story.title||"Modül Hikayesi")+'</div>'
+      + aiNote
+      +'<div style="display:flex;gap:10px;margin:10px 0 16px">'
+      +'<button class="btn btn-primary" id="playBtn" style="background:linear-gradient(135deg,#7c3aed,#2563eb)">🔊 Dinle</button>'
+      +'<button class="btn btn-ghost" id="stopBtn" style="max-width:120px">⏹ Durdur</button>'
+      +'</div>'
+      +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;line-height:1.7;font-size:16px" id="storyEn">'+esc(story.en)+'</div>'
+      +(story.tr?'<details style="margin-bottom:14px"><summary style="cursor:pointer;color:var(--accent2);font-weight:700;font-size:14px">🇹🇷 Türkçe çevirisini göster</summary><div style="background:var(--surface-2);border-radius:14px;padding:16px;margin-top:10px;line-height:1.7;font-size:15px;color:var(--muted)">'+esc(story.tr)+'</div></details>':'')
+      +'<button class="btn btn-ghost" id="backMap">🗺️ Haritaya dön</button>'
+      +'</div>';
+
+    // seslendirme: cümlelere böl, sırayla oku, okunanı vurgula
+    _spk.parts = (story.en||"").match(/[^.!?]+[.!?]*/g) || [story.en];
+    _spk.idx = 0; _spk.playing=false;
+
+    function speakFrom(i){
+      try{ speechSynthesis.cancel(); }catch(e){}
+      if(i>=_spk.parts.length){ _spk.playing=false; return; }
+      _spk.idx=i; _spk.playing=true;
+      var u=new SpeechSynthesisUtterance(_spk.parts[i].trim());
+      u.lang="en-US"; u.rate=0.92;
+      u.onend=function(){ if(_spk.playing) speakFrom(i+1); };
+      try{ speechSynthesis.speak(u); }catch(e){}
+    }
+    $("playBtn").onclick=function(){ speakFrom(0); };
+    $("stopBtn").onclick=function(){ _spk.playing=false; try{ speechSynthesis.cancel(); }catch(e){} };
+    $("backMap").onclick=function(){ _spk.playing=false; try{ speechSynthesis.cancel(); }catch(e){} location.href="./harita.html"; };
   }
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
