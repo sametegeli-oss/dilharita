@@ -53,8 +53,19 @@
         var wc = s.en.split(/\s+/).length;
         if((type==="siralama"||type==="yazma") && (wc<3 || wc>7)) return false;
         if(type==="gramer" && wc<3) return false;
+        // tanıma/dinleme: çok uzun cümleler (kelime avına/okuma yüküne yol açar) elenir
+        if((type==="tanima"||type==="dinleme") && wc>11) return false;
         return true;
       });
+      if(!pool.length){
+        pool = (byLevel[level]||[]).filter(function(s){
+          var wc=s.en.split(/\s+/).length;
+          if((type==="siralama"||type==="yazma")&&(wc<3||wc>7)) return false;
+          if((type==="tanima"||type==="dinleme") && wc>11) return false;
+          return true;
+        });
+      }
+      // hâlâ boşsa uzunluk şartını kaldır
       if(!pool.length){
         pool = (byLevel[level]||[]).filter(function(s){
           var wc=s.en.split(/\s+/).length;
@@ -66,14 +77,47 @@
       return pool[Math.floor(Math.random()*pool.length)];
     }
 
+    // Akıllı çeldirici: doğru cevaba BENZER cümleler seç (ortak kelime + benzer uzunluk).
+    // Rastgele/alakasız çeldirici "kelime avı"na yol açar; benzer olanlar gerçek ayırt etme gerektirir.
+    function wordsOf(str){
+      return String(str||"").toLowerCase().replace(/[.,!?;:]/g," ").split(/\s+/).filter(function(w){ return w.length>0; });
+    }
+    var STOP = {"the":1,"a":1,"an":1,"is":1,"are":1,"was":1,"were":1,"to":1,"of":1,"in":1,"on":1,"at":1,"for":1,"and":1,"or":1,"i":1,"you":1,"he":1,"she":1,"it":1,"we":1,"they":1,"has":1,"have":1,"had":1,"will":1,"my":1,"your":1,"this":1,"that":1};
+    function contentWords(str){
+      return wordsOf(str).filter(function(w){ return !STOP[w]; });
+    }
+    function similarity(a, b){
+      // ortak içerik kelimesi + uzunluk yakınlığı
+      var aw = contentWords(a), bw = contentWords(b);
+      var bset = {}; bw.forEach(function(w){ bset[w]=1; });
+      var common = 0; aw.forEach(function(w){ if(bset[w]) common++; });
+      var lenA = wordsOf(a).length, lenB = wordsOf(b).length;
+      var lenPenalty = Math.abs(lenA-lenB) * 0.3; // uzunluk farkı cezası
+      return common - lenPenalty;
+    }
     function distractorsEN(correct, level){
       var pool = (byLevel[level]||[]).filter(function(s){ return s.en!==correct.en; });
-      var d = shuffle(pool).slice(0,3).map(function(s){ return s.en; });
-      if(d.length<3){
-        var all=[]; LEVELS.forEach(function(l){ (byLevel[l]||[]).forEach(function(s){ if(s.en!==correct.en && d.indexOf(s.en)<0) all.push(s.en); }); });
-        all=shuffle(all); while(d.length<3 && all.length) d.push(all.shift());
+      // benzerliğe göre sırala (en benzer önce), ama hepsi aynı olmasın diye ilk 12'den rastgele 3 seç
+      var scored = pool.map(function(s){ return { en:s.en, sim:similarity(correct.en, s.en) }; });
+      scored.sort(function(a,b){ return b.sim-a.sim; });
+      // en benzer 12 adaydan rastgele 3 (çeşitlilik için), benzerlik 0'dan büyük olanları tercih et
+      var candidates = scored.filter(function(x){ return x.sim>0; }).slice(0, 12);
+      if(candidates.length<3){
+        // yeterli benzer yoksa, en benzerlerle tamamla
+        candidates = scored.slice(0, 12);
       }
-      return d;
+      var picked = [];
+      var seen = {};
+      shuffle(candidates).forEach(function(x){
+        if(picked.length<3 && !seen[x.en] && x.en!==correct.en){ seen[x.en]=1; picked.push(x.en); }
+      });
+      // hâlâ eksikse diğer seviyelerden benzer ekle (tekrarsız)
+      if(picked.length<3){
+        var all=[]; LEVELS.forEach(function(l){ (byLevel[l]||[]).forEach(function(s){ if(s.en!==correct.en && !seen[s.en]) all.push(s.en); }); });
+        var allScored = all.map(function(en){ return {en:en, sim:similarity(correct.en,en)}; }).sort(function(a,b){ return b.sim-a.sim; });
+        var ai=0; while(picked.length<3 && ai<allScored.length){ if(!seen[allScored[ai].en]){ seen[allScored[ai].en]=1; picked.push(allScored[ai].en); } ai++; }
+      }
+      return picked;
     }
 
     function buildQuestion(type, s){
