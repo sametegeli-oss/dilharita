@@ -72,6 +72,27 @@
   .fade{animation:fade .3s ease}
   @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   .hidden{display:none!important}
+
+  /* sıralama */
+  .build-area{min-height:54px;background:var(--bg);border:2px dashed var(--border);border-radius:14px;padding:10px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .build-empty{color:var(--muted);font-size:14px;padding:4px 8px}
+  .word-bank{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{background:var(--surface-2);border:2px solid var(--border);border-radius:11px;padding:10px 14px;color:var(--text);font-size:15px;font-weight:700;cursor:pointer}
+  .chip:hover{border-color:var(--accent)}
+  .chip.used{opacity:.3;cursor:default}
+  .chip-picked{background:var(--accent);border:2px solid var(--accent);border-radius:11px;padding:10px 14px;color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+  .chip-picked:hover{background:#1d4ed8}
+
+  /* yazma */
+  .write-input{width:100%;background:var(--bg);border:2px solid var(--border);border-radius:14px;padding:15px;color:var(--text);font-size:17px;font-weight:600;margin-top:6px}
+  .write-input:focus{outline:none;border-color:var(--accent)}
+
+  /* feedback */
+  .fb{margin-top:14px;padding:12px 14px;border-radius:12px;font-size:15px;font-weight:700}
+  .fb.ok{background:#34d39922;border:1px solid var(--ok);color:var(--ok)}
+  .fb.bad{background:#f8717122;border:1px solid var(--bad);color:var(--text)}
+  .fb.bad b{color:var(--ok)}
+
   @media(max-width:560px){ .q-tr{font-size:20px} .result-level{font-size:54px} }
 </style>
 </head>
@@ -90,7 +111,7 @@
 
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./teacher-policy.js?v=3"></script>
-<script src="./level-test.js?v=1"></script>
+<script src="./level-test.js?v=2"></script>
 <script>
 (function(){
   "use strict";
@@ -147,34 +168,128 @@
     var q = test.next();
     if(!q || test.done()){ return renderResult(); }
     var pct = Math.round((test.count-1) / test.maxQuestions * 100);
-    screen.innerHTML =
-      '<div class="card fade">'
-      +'<div class="prog"><i style="width:'+pct+'%"></i></div>'
-      +'<div class="qmeta"><span>Soru '+test.count+' / ~'+test.maxQuestions+'</span><span class="lvl-pill">'+q.level+'</span></div>'
-      +'<div class="q-label">Bu cümlenin İngilizcesi hangisi?</div>'
-      +'<div class="q-tr">'+esc(q.tr)+'</div>'
-      +'<div class="q-hint">Doğru çeviriyi seç.</div>'
+    var head =
+      '<div class="prog"><i style="width:'+pct+'%"></i></div>'
+      +'<div class="qmeta"><span>Soru '+test.count+' / ~'+test.maxQuestions+'</span><span class="lvl-pill">'+q.level+'</span></div>';
+
+    if(q.type==="tanima" || q.type==="dinleme" || q.type==="gramer"){
+      renderChoice(q, head);
+    } else if(q.type==="siralama"){
+      renderOrder(q, head);
+    } else if(q.type==="yazma"){
+      renderWrite(q, head);
+    }
+  }
+
+  // ---- ortak: cevap sonrası ilerle ----
+  function advance(r){
+    setTimeout(function(){ if(r.finished) renderResult(); else renderQuestion(); }, 850);
+  }
+
+  // ---- seçmeli (tanıma / dinleme / gramer) ----
+  function renderChoice(q, head){
+    var topHtml="";
+    if(q.type==="dinleme"){
+      topHtml = '<div class="q-label">'+esc(q.prompt)+'</div>'
+        +'<button class="btn btn-ghost" id="playSound" style="margin:6px 0 16px">🔊 Cümleyi dinle</button>';
+    } else if(q.type==="gramer"){
+      topHtml = '<div class="q-label">'+esc(q.prompt)+'</div>'
+        +'<div class="q-tr" style="font-size:20px">'+esc(q.display)+'</div>'
+        +(q.tr?'<div class="q-hint">İpucu: '+esc(q.tr)+'</div>':'');
+    } else { // tanima
+      topHtml = '<div class="q-label">'+esc(q.prompt)+'</div>'
+        +'<div class="q-tr">'+esc(q.tr)+'</div>'
+        +'<div class="q-hint">Doğru çeviriyi seç.</div>';
+    }
+    screen.innerHTML = '<div class="card fade">'+head+topHtml
       +'<div id="opts">'
       + q.options.map(function(o,i){ return '<button class="opt" data-i="'+i+'">'+esc(o)+'</button>'; }).join("")
-      +'</div>'
-      +'</div>';
-    var opts = $("opts");
+      +'</div></div>';
+
+    if(q.type==="dinleme"){
+      var play=$("playSound");
+      var speak=function(){ try{ var u=new SpeechSynthesisUtterance(q.speak); u.lang="en-US"; u.rate=.9; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} };
+      if(play) play.onclick=speak;
+      setTimeout(speak, 350); // otomatik bir kez
+    }
+
+    var opts=$("opts");
     opts.querySelectorAll(".opt").forEach(function(b){
-      b.onclick = function(){
-        var sel = parseInt(b.getAttribute("data-i"),10);
-        var r = test.answer(sel);
-        // görsel geri bildirim
+      b.onclick=function(){
+        var sel=parseInt(b.getAttribute("data-i"),10);
+        var r=test.answer({index:sel});
         opts.querySelectorAll(".opt").forEach(function(x,i){
-          x.disabled = true;
+          x.disabled=true;
           if(i===r.correctIndex) x.classList.add("correct");
           else if(i===sel) x.classList.add("wrong");
         });
-        setTimeout(function(){
-          if(r.finished) renderResult();
-          else renderQuestion();
-        }, 750);
+        advance(r);
       };
     });
+  }
+
+  // ---- sıralama (kelimeleri diz) ----
+  function renderOrder(q, head){
+    var picked=[]; // seçilen kelime indeksleri
+    screen.innerHTML = '<div class="card fade">'+head
+      +'<div class="q-label">'+esc(q.prompt)+'</div>'
+      +(q.tr?'<div class="q-hint" style="margin-bottom:14px">'+esc(q.tr)+'</div>':'')
+      +'<div class="build-area" id="buildArea"></div>'
+      +'<div class="word-bank" id="wordBank"></div>'
+      +'<button class="btn btn-primary" id="orderCheck" style="margin-top:16px" disabled>Kontrol et</button>'
+      +'<div id="orderFb"></div>'
+      +'</div>';
+    var bank=$("wordBank"), area=$("buildArea"), checkBtn=$("orderCheck");
+
+    function redraw(){
+      area.innerHTML = picked.length
+        ? picked.map(function(wi,pos){ return '<button class="chip-picked" data-pos="'+pos+'">'+esc(q.words[wi])+'</button>'; }).join("")
+        : '<span class="build-empty">Kelimelere dokun…</span>';
+      bank.innerHTML = q.words.map(function(w,i){
+        var used = picked.indexOf(i)>=0;
+        return '<button class="chip'+(used?" used":"")+'" data-i="'+i+'"'+(used?" disabled":"")+'>'+esc(w)+'</button>';
+      }).join("");
+      checkBtn.disabled = picked.length!==q.words.length;
+      bank.querySelectorAll(".chip:not(.used)").forEach(function(b){
+        b.onclick=function(){ picked.push(parseInt(b.getAttribute("data-i"),10)); redraw(); };
+      });
+      area.querySelectorAll(".chip-picked").forEach(function(b){
+        b.onclick=function(){ picked.splice(parseInt(b.getAttribute("data-pos"),10),1); redraw(); };
+      });
+    }
+    redraw();
+    checkBtn.onclick=function(){
+      var built = picked.map(function(wi){ return q.words[wi]; }).join(" ");
+      var r=test.answer({text:built});
+      $("orderFb").innerHTML = '<div class="fb '+(r.correct?"ok":"bad")+'">'
+        +(r.correct?"✓ Doğru!":"✗ Doğrusu: <b>"+esc(r.answer)+"</b>")+'</div>';
+      checkBtn.disabled=true;
+      bank.querySelectorAll(".chip").forEach(function(x){ x.disabled=true; });
+      advance(r);
+    };
+  }
+
+  // ---- yazma (serbest) ----
+  function renderWrite(q, head){
+    screen.innerHTML = '<div class="card fade">'+head
+      +'<div class="q-label">'+esc(q.prompt)+'</div>'
+      +'<div class="q-tr">'+esc(q.tr)+'</div>'
+      +'<div class="q-hint">İngilizce karşılığını yaz.</div>'
+      +'<input class="write-input" id="writeIn" type="text" placeholder="İngilizce cümleyi yaz..." autocomplete="off" autocapitalize="off">'
+      +'<button class="btn btn-primary" id="writeCheck" style="margin-top:14px">Kontrol et</button>'
+      +'<div id="writeFb"></div>'
+      +'</div>';
+    var inp=$("writeIn"), btn=$("writeCheck");
+    setTimeout(function(){ try{ inp.focus(); }catch(e){} }, 200);
+    function submit(){
+      var r=test.answer({text:inp.value});
+      $("writeFb").innerHTML = '<div class="fb '+(r.correct?"ok":"bad")+'">'
+        +(r.correct?"✓ Doğru!":"Doğrusu: <b>"+esc(r.answer)+"</b>")+'</div>';
+      inp.disabled=true; btn.disabled=true;
+      advance(r);
+    }
+    btn.onclick=submit;
+    inp.addEventListener("keydown",function(e){ if(e.key==="Enter") submit(); });
   }
 
   // -------- 3) sonuç --------
@@ -189,7 +304,7 @@
       if(window.DHTeacherPolicy){
         DHTeacherPolicy.set("seviye", lvl);
         DHTeacherPolicy.set("amac", chosenGoal);
-        DHTeacherPolicy.set("seviyeTesti", { level:lvl, confidence:res.confidence, tarih:Date.now(), soruSayisi:res.questionCount });
+        DHTeacherPolicy.set("seviyeTesti", { level:lvl, confidence:res.confidence, tarih:Date.now(), soruSayisi:res.questionCount, beceriler:res.skills });
       }
     }catch(e){}
 
@@ -205,12 +320,23 @@
         +'<div class="rb-track"><i style="width:'+rate+'%;background:'+col+'"></i></div></div>';
     }).join("");
 
+    // beceri kırılımı (Mastery Engine habercisi)
+    var SKILL_LABEL={ tanima:"Tanıma", dinleme:"Dinleme", gramer:"Gramer", siralama:"Cümle kurma", yazma:"Yazma" };
+    var skillsHtml = Object.keys(res.skills||{}).map(function(sk){
+      var v=res.skills[sk]; var total=v.r+v.w; if(!total) return "";
+      var rate=Math.round(100*v.r/total);
+      var col = rate>=60 ? "var(--ok)" : (rate>=40 ? "var(--amber)" : "var(--bad)");
+      return '<div class="rb"><div class="rb-top"><span>'+(SKILL_LABEL[sk]||sk)+'</span><span>'+rate+'%</span></div>'
+        +'<div class="rb-track"><i style="width:'+rate+'%;background:'+col+'"></i></div></div>';
+    }).join("");
+
     screen.innerHTML =
       '<div class="card fade">'
       +'<div class="q-label" style="text-align:center">Seviyen belirlendi</div>'
       +'<div class="result-level">'+lvl+'</div>'
       +'<div class="result-sub">'+LABELS[lvl]+' seviye · %'+res.confidence+' güven</div>'
-      +(barsHtml?'<div class="result-bars">'+barsHtml+'</div>':'')
+      +(barsHtml?'<div class="result-bars"><div class="q-label" style="margin-bottom:8px">Seviye dağılımı</div>'+barsHtml+'</div>':'')
+      +(skillsHtml?'<div class="result-bars"><div class="q-label" style="margin-bottom:8px">Beceri kırılımı</div>'+skillsHtml+'</div>':'')
       +'<div class="q-hint" style="text-align:center;margin:16px 0">Öğretmenin artık dersleri bu seviyeye göre hazırlayacak. Zamanla ilerledikçe seviyen güncellenecek.</div>'
       +'<button class="btn btn-primary" id="goLesson">🎓 Derse başla</button>'
       +'<button class="btn btn-ghost" id="goHome" style="margin-top:10px">Ana sayfa</button>'

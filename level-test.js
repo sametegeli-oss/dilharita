@@ -1,33 +1,36 @@
-/* level-test.js — DİNAMİK SEVİYE SINAVI (IRT mantıklı)
+/* level-test.js — ÇOK BECERİLİ DİNAMİK SEVİYE SINAVI (IRT mantıklı)
    Dil Harita — Aşama 1: Tanı.
 
-   Türkçe cümle gösterilir, öğrenci 4 İngilizce seçenekten doğruyu seçer.
-   Uyarlanabilir: B1'den başlar. Üst üste 2 hata → bir alt seviye.
-   Rahat geçerse → üst seviye. ~10 soruda nokta atışı seviye belirler.
+   5 soru türü (farklı beceriler — şansla geçilemesin diye yazmalılar serpiştirilir):
+     1. tanima    : TR gösterilir, doğru EN'i 4 şıktan seç (pasif tanıma)
+     2. siralama  : Karışık kelimeleri doğru sıraya diz (üretim — şans yok)
+     3. gramer    : Cümlede boşluk, doğru kelimeyi 4 şıktan seç (dilbilgisi)
+     4. dinleme   : EN sesli okunur (TTS), ne duyduğunu 4 şıktan seç (dinleme)
+     5. yazma     : TR gösterilir, EN'i serbest yaz (aktif üretim — en zor)
 
-   Tamamen KURALLI (AI yok). Sorular gerçek cümle verisinden üretilir.
-
-   API:
-     var test = DHLevelTest.create(sentences);   // cümle listesi
-     test.next();        // sıradaki soru {tr, options[4], correctIndex, level}
-     test.answer(idx);   // cevabı işle, true/false döner
-     test.done();        // bitti mi
-     test.result();      // {level, confidence, history}
+   ~15 soru, uyarlanabilir: B1'den başlar, 2 dogru -> zorlasir, 2 yanlis -> kolaylasir.
+   Tamamen KURALLI (AI yok). Sorular gercek cumle verisinden uretilir.
 */
 (function(global){
   "use strict";
 
   var LEVELS = ["A1","A2","B1","B2","C1"];
   var START_LEVEL = "B1";
-  var MAX_QUESTIONS = 10;
-  var MIN_QUESTIONS = 6;
+  var MAX_QUESTIONS = 15;
+  var MIN_QUESTIONS = 10;
+
+  var TYPE_PLAN = [
+    "tanima","dinleme","gramer","siralama","tanima",
+    "yazma","gramer","dinleme","siralama","tanima",
+    "gramer","yazma","dinleme","siralama","tanima"
+  ];
 
   function idx(lv){ var i=LEVELS.indexOf(lv); return i<0?2:i; }
   function clampLevel(i){ return LEVELS[Math.max(0, Math.min(LEVELS.length-1, i))]; }
   function shuffle(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; } return a; }
+  function norm(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9'\s]/g," ").replace(/\s+/g," ").trim(); }
 
   function create(sentences){
-    // seviyeye göre grupla
     var byLevel = {};
     LEVELS.forEach(function(l){ byLevel[l]=[]; });
     (sentences||[]).forEach(function(s){
@@ -35,120 +38,159 @@
     });
 
     var curLevel = START_LEVEL;
-    var asked = [];           // sorulan cümle id/en'leri (tekrar olmasın)
-    var history = [];         // {level, correct}
-    var consecutiveWrong = 0;
-    var consecutiveRight = 0;
+    var asked = [];
+    var history = [];
+    var consecutiveWrong = 0, consecutiveRight = 0;
     var qCount = 0;
     var current = null;
     var finished = false;
-    var levelVotes = {};      // her seviyede doğru/yanlış sayısı
+    var levelVotes = {};
+    var skillVotes = {};
 
-    function pickSentence(level){
-      var pool = byLevel[level] || [];
-      // sorulmamışları tercih et
-      var fresh = pool.filter(function(s){ return asked.indexOf(s.en)<0; });
-      var use = fresh.length ? fresh : pool;
-      if(!use.length) return null;
-      return use[Math.floor(Math.random()*use.length)];
+    function pickSentence(level, type){
+      var pool = (byLevel[level] || []).filter(function(s){
+        if(asked.indexOf(s.en)>=0) return false;
+        var wc = s.en.split(/\s+/).length;
+        if((type==="siralama"||type==="yazma") && (wc<3 || wc>7)) return false;
+        if(type==="gramer" && wc<3) return false;
+        return true;
+      });
+      if(!pool.length){
+        pool = (byLevel[level]||[]).filter(function(s){
+          var wc=s.en.split(/\s+/).length;
+          if((type==="siralama"||type==="yazma")&&(wc<3||wc>7)) return false;
+          return true;
+        });
+      }
+      if(!pool.length) return null;
+      return pool[Math.floor(Math.random()*pool.length)];
     }
 
-    // yanlış şıklar: aynı seviyeden farklı cümleler (çeldirici)
-    function makeOptions(correct, level){
+    function distractorsEN(correct, level){
       var pool = (byLevel[level]||[]).filter(function(s){ return s.en!==correct.en; });
-      var distractors = shuffle(pool).slice(0,3).map(function(s){ return s.en; });
-      // yetersizse diğer seviyelerden tamamla
-      if(distractors.length<3){
-        var all = [];
-        LEVELS.forEach(function(l){ (byLevel[l]||[]).forEach(function(s){ if(s.en!==correct.en && distractors.indexOf(s.en)<0) all.push(s.en); }); });
-        all = shuffle(all);
-        while(distractors.length<3 && all.length){ distractors.push(all.shift()); }
+      var d = shuffle(pool).slice(0,3).map(function(s){ return s.en; });
+      if(d.length<3){
+        var all=[]; LEVELS.forEach(function(l){ (byLevel[l]||[]).forEach(function(s){ if(s.en!==correct.en && d.indexOf(s.en)<0) all.push(s.en); }); });
+        all=shuffle(all); while(d.length<3 && all.length) d.push(all.shift());
       }
-      var opts = shuffle(distractors.concat([correct.en]));
-      return { options: opts, correctIndex: opts.indexOf(correct.en) };
+      return d;
+    }
+
+    function buildQuestion(type, s){
+      var base = { type:type, level:curLevel, en:s.en, tr:s.tr, grammar:s.grammar||"" };
+      if(type==="tanima" || type==="dinleme"){
+        var opts = shuffle(distractorsEN(s, curLevel).concat([s.en]));
+        base.options = opts;
+        base.correctIndex = opts.indexOf(s.en);
+        base.prompt = (type==="dinleme") ? "Duydugun cumle hangisi?" : "Bu cumlenin Ingilizcesi hangisi?";
+        base.speak = (type==="dinleme") ? s.en : null;
+        if(type==="dinleme") base.tr = null;
+      }
+      else if(type==="siralama"){
+        var words = s.en.replace(/\s+/g," ").trim().split(" ");
+        base.words = shuffle(words);
+        base.answer = s.en;
+        base.prompt = "Kelimeleri dogru siraya diz:";
+      }
+      else if(type==="yazma"){
+        base.prompt = "Bu cumleyi Ingilizce yaz:";
+        base.answer = s.en;
+      }
+      else if(type==="gramer"){
+        var ws = s.en.split(" ");
+        var blankPos = ws.length>=4 ? 1 + Math.floor(Math.random()*(ws.length-2)) : Math.floor(ws.length/2);
+        var answer = ws[blankPos].replace(/[.,!?]/g,"");
+        var display = ws.slice();
+        display[blankPos] = "_____";
+        var cand = {};
+        (byLevel[curLevel]||[]).forEach(function(o){
+          o.en.split(" ").forEach(function(w){
+            var ww=w.replace(/[.,!?]/g,"").toLowerCase();
+            if(ww && ww!==answer.toLowerCase() && ww.length>1) cand[ww]=1;
+          });
+        });
+        var distr = shuffle(Object.keys(cand)).slice(0,3);
+        var fallback=["is","are","the","a","to","do","have","will"];
+        var fi=0; while(distr.length<3 && fi<fallback.length){ if(distr.indexOf(fallback[fi])<0) distr.push(fallback[fi]); fi++; }
+        var gopts = shuffle(distr.concat([answer]));
+        base.options = gopts;
+        base.correctIndex = gopts.indexOf(answer);
+        base.display = display.join(" ");
+        base.prompt = "Bosluga hangi kelime gelir?";
+        base.tr = s.tr;
+      }
+      return base;
     }
 
     function next(){
       if(finished) return null;
-      var s = pickSentence(curLevel);
+      var type = TYPE_PLAN[qCount % TYPE_PLAN.length];
+      var s = pickSentence(curLevel, type);
       if(!s){
-        // bu seviyede soru yok — komşu seviyeye kaydır
-        var alt = pickSentence(clampLevel(idx(curLevel)-1)) || pickSentence(clampLevel(idx(curLevel)+1));
-        if(!alt){ finished=true; return null; }
-        s = alt;
+        s = pickSentence(clampLevel(idx(curLevel)-1), type) || pickSentence(clampLevel(idx(curLevel)+1), type);
+        if(!s){
+          type="tanima"; s=pickSentence(curLevel,"tanima");
+          if(!s){ finished=true; return null; }
+        }
       }
       asked.push(s.en);
-      var o = makeOptions(s, curLevel);
-      current = { tr:s.tr, en:s.en, options:o.options, correctIndex:o.correctIndex, level:curLevel, grammar:s.grammar||"" };
+      current = buildQuestion(type, s);
       qCount++;
       return current;
     }
 
-    function answer(selectedIndex){
+    function answer(payload){
       if(!current || finished) return null;
-      var correct = (selectedIndex === current.correctIndex);
-      history.push({ level:current.level, correct:correct });
+      var correct = false;
+      if(current.type==="tanima" || current.type==="dinleme" || current.type==="gramer"){
+        correct = (payload && payload.index === current.correctIndex);
+      } else if(current.type==="siralama" || current.type==="yazma"){
+        correct = (norm(payload && payload.text) === norm(current.answer));
+      }
+
+      history.push({ level:current.level, correct:correct, type:current.type });
       levelVotes[current.level] = levelVotes[current.level] || {r:0,w:0};
-      if(correct){ levelVotes[current.level].r++; } else { levelVotes[current.level].w++; }
+      correct ? levelVotes[current.level].r++ : levelVotes[current.level].w++;
+      skillVotes[current.type] = skillVotes[current.type] || {r:0,w:0};
+      correct ? skillVotes[current.type].r++ : skillVotes[current.type].w++;
 
       if(correct){
         consecutiveRight++; consecutiveWrong=0;
-        // 2 üst üste doğru → bir üst seviyeye çık (zorlaştır)
-        if(consecutiveRight>=2 && idx(curLevel)<LEVELS.length-1){
-          curLevel = clampLevel(idx(curLevel)+1);
-          consecutiveRight=0;
-        }
+        if(consecutiveRight>=2 && idx(curLevel)<LEVELS.length-1){ curLevel=clampLevel(idx(curLevel)+1); consecutiveRight=0; }
       } else {
         consecutiveWrong++; consecutiveRight=0;
-        // 2 üst üste yanlış → bir alt seviyeye in (kolaylaştır)
-        if(consecutiveWrong>=2 && idx(curLevel)>0){
-          curLevel = clampLevel(idx(curLevel)-1);
-          consecutiveWrong=0;
-        }
+        if(consecutiveWrong>=2 && idx(curLevel)>0){ curLevel=clampLevel(idx(curLevel)-1); consecutiveWrong=0; }
       }
 
-      // bitiş koşulu
       if(qCount>=MAX_QUESTIONS) finished=true;
       else if(qCount>=MIN_QUESTIONS){
-        // erken bitiş: son 4 cevap istikrarlıysa (hep doğru veya hep yanlış değil, kararlı seviye)
-        var recent = history.slice(-4);
-        var levelsSeen = {};
-        recent.forEach(function(h){ levelsSeen[h.level]=1; });
-        if(Object.keys(levelsSeen).length<=1) finished=true; // son 4 soru aynı seviyede → kararlı
+        var recent = history.slice(-5);
+        var seen={}; recent.forEach(function(h){ seen[h.level]=1; });
+        if(Object.keys(seen).length<=1) finished=true;
       }
 
-      var cur = current;
-      current = null;
-      return { correct:correct, correctIndex:cur.correctIndex, finished:finished };
+      var cur = current; current=null;
+      var out = { correct:correct, finished:finished, type:cur.type };
+      if(cur.type==="tanima"||cur.type==="dinleme"||cur.type==="gramer") out.correctIndex=cur.correctIndex;
+      if(cur.type==="siralama"||cur.type==="yazma") out.answer=cur.answer;
+      return out;
     }
 
     function result(){
-      // en çok ve en kararlı doğru cevaplanan seviyeyi bul
-      // strateji: history'de doğru cevapların en yüksek seviyesi (art arda en az 1 doğru)
       var best = "A1";
-      // her seviye için doğruluk oranı
-      var scores = {};
-      LEVELS.forEach(function(l){
-        var v = levelVotes[l];
-        if(v && (v.r+v.w)>0){ scores[l] = v.r/(v.r+v.w); }
-      });
-      // en yüksek seviyeden aşağı in: o seviyede yeterli doğru ve oran≥0.6 ise o seviyedir
       for(var i=LEVELS.length-1;i>=0;i--){
         var l=LEVELS[i], v=levelVotes[l];
         if(v && v.r>=2 && (v.r/(v.r+v.w))>=0.6){ best=l; break; }
-        // tek soru sorulduysa daha esnek (oran≥0.5)
         if(v && v.r>=1 && (v.r+v.w)===1){ best=l; break; }
       }
-      // güven: o seviyedeki cevap sayısı + tutarlılık
       var bv = levelVotes[best] || {r:0,w:0};
       var total = bv.r+bv.w;
       var confidence = total>0 ? Math.round(100*bv.r/total) : 50;
-      return { level:best, confidence:confidence, history:history, votes:levelVotes, questionCount:qCount };
+      return { level:best, confidence:confidence, history:history, votes:levelVotes, skills:skillVotes, questionCount:qCount };
     }
 
     return {
-      next: next,
-      answer: answer,
+      next: next, answer: answer,
       done: function(){ return finished; },
       result: result,
       get current(){ return current; },
