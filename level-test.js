@@ -20,9 +20,9 @@
   var MIN_QUESTIONS = 10;
 
   var TYPE_PLAN = [
-    "tanima","dinleme","gramer","siralama","tanima",
-    "yazma","gramer","dinleme","siralama","tanima",
-    "gramer","yazma","dinleme","siralama","tanima"
+    "tanima","dinleme","gramer","tanima","konusma",
+    "gramer","siralama","tanima","dinleme","yazma",
+    "tanima","gramer","konusma","dinleme","siralama"
   ];
 
   function idx(lv){ var i=LEVELS.indexOf(lv); return i<0?2:i; }
@@ -51,7 +51,7 @@
       var pool = (byLevel[level] || []).filter(function(s){
         if(asked.indexOf(s.en)>=0) return false;
         var wc = s.en.split(/\s+/).length;
-        if((type==="siralama"||type==="yazma") && (wc<3 || wc>7)) return false;
+        if((type==="siralama"||type==="yazma"||type==="konusma") && (wc<3 || wc>8)) return false;
         if(type==="gramer" && wc<3) return false;
         // tanıma/dinleme: çok uzun cümleler (kelime avına/okuma yüküne yol açar) elenir
         if((type==="tanima"||type==="dinleme") && wc>11) return false;
@@ -60,7 +60,7 @@
       if(!pool.length){
         pool = (byLevel[level]||[]).filter(function(s){
           var wc=s.en.split(/\s+/).length;
-          if((type==="siralama"||type==="yazma")&&(wc<3||wc>7)) return false;
+          if((type==="siralama"||type==="yazma"||type==="konusma")&&(wc<3||wc>8)) return false;
           if((type==="tanima"||type==="dinleme") && wc>11) return false;
           return true;
         });
@@ -69,7 +69,7 @@
       if(!pool.length){
         pool = (byLevel[level]||[]).filter(function(s){
           var wc=s.en.split(/\s+/).length;
-          if((type==="siralama"||type==="yazma")&&(wc<3||wc>7)) return false;
+          if((type==="siralama"||type==="yazma"||type==="konusma")&&(wc<3||wc>8)) return false;
           return true;
         });
       }
@@ -86,57 +86,73 @@
     function contentWords(str){
       return wordsOf(str).filter(function(w){ return !STOP[w]; });
     }
+    // cümlenin öznesini (ilk anlamlı kelime grubunu) çıkar — özne uyumu için
+    function subjectOf(str){
+      var w = wordsOf(str);
+      if(!w.length) return "";
+      var first = w[0];
+      // "the/a/an" ile başlıyorsa sonraki kelimeyi de al (the village...)
+      if((first==="the"||first==="a"||first==="an") && w[1]) return first+" "+w[1];
+      return first;
+    }
     function similarity(a, b){
-      // ortak içerik kelimesi + UZUNLUK uyumu (güçlü ağırlık)
+      // ortak içerik kelimesi + UZUNLUK uyumu + ÖZNE uyumu
       var aw = contentWords(a), bw = contentWords(b);
       var bset = {}; bw.forEach(function(w){ bset[w]=1; });
       var common = 0; aw.forEach(function(w){ if(bset[w]) common++; });
       var lenA = wordsOf(a).length, lenB = wordsOf(b).length;
-      // uzunluk farkı GÜÇLÜ ceza: kısa-uzun karışmasın (öğrenci uzunluğa bakıp seçemesin)
       var lenDiff = Math.abs(lenA - lenB);
-      var lenScore = Math.max(0, 4 - lenDiff); // 0 fark=4 puan, 4+ fark=0 puan
-      return common * 1.5 + lenScore;
+      var lenScore = Math.max(0, 4 - lenDiff);
+      // özne uyumu: aynı özneyle başlıyorsa güçlü bonus (öğrenci özneden eleyemesin)
+      var subjScore = (subjectOf(a) === subjectOf(b)) ? 5 : 0;
+      return common * 1.5 + lenScore + subjScore;
     }
     function distractorsEN(correct, level){
       var corLen = wordsOf(correct.en).length;
       var pool = (byLevel[level]||[]).filter(function(s){
         if(s.en===correct.en) return false;
         var sl = wordsOf(s.en).length;
-        // uzunluk bandı: doğru cevaba yakın uzunlukta olsun (çok kısa/uzun şık ele)
-        // korLen büyükse en az korLen-3, küçükse esnek
-        if(corLen>=6 && sl < corLen-3) return false; // uzun doğru yanında çok kısa şık olmasın
+        if(corLen>=6 && sl < corLen-3) return false;
         if(sl > corLen+4) return false;
         return true;
       });
-      // benzerliğe göre sırala
-      var scored = pool.map(function(s){ return { en:s.en, sim:similarity(correct.en, s.en) }; });
+      var corSubj = subjectOf(correct.en);
+      var scored = pool.map(function(s){ return { en:s.en, sim:similarity(correct.en, s.en), sameSubj:(subjectOf(s.en)===corSubj) }; });
       scored.sort(function(a,b){ return b.sim-a.sim; });
-      var candidates = scored.slice(0, 12);
-      // yeterli aday yoksa uzunluk bandını gevşet
+      var sameSubj = scored.filter(function(x){ return x.sameSubj; });
+      var candidates = (sameSubj.length>=3 ? sameSubj : scored).slice(0, 12);
       if(candidates.length<3){
         var pool2 = (byLevel[level]||[]).filter(function(s){ return s.en!==correct.en; });
-        var scored2 = pool2.map(function(s){ return { en:s.en, sim:similarity(correct.en, s.en) }; }).sort(function(a,b){ return b.sim-a.sim; });
+        var scored2 = pool2.map(function(s){ return { en:s.en, sim:similarity(correct.en, s.en), sameSubj:(subjectOf(s.en)===corSubj) }; }).sort(function(a,b){ return b.sim-a.sim; });
         candidates = scored2.slice(0, 12);
       }
       var picked = [];
+      var pickedSims = [];
       var seen = {};
       shuffle(candidates).forEach(function(x){
-        if(picked.length<3 && !seen[x.en] && x.en!==correct.en){ seen[x.en]=1; picked.push(x.en); }
+        if(picked.length<3 && !seen[x.en] && x.en!==correct.en){ seen[x.en]=1; picked.push(x.en); pickedSims.push(x.sim); }
       });
       if(picked.length<3){
         var all=[]; LEVELS.forEach(function(l){ (byLevel[l]||[]).forEach(function(s){ if(s.en!==correct.en && !seen[s.en]) all.push(s.en); }); });
         var allScored = all.map(function(en){ return {en:en, sim:similarity(correct.en,en)}; }).sort(function(a,b){ return b.sim-a.sim; });
-        var ai=0; while(picked.length<3 && ai<allScored.length){ if(!seen[allScored[ai].en]){ seen[allScored[ai].en]=1; picked.push(allScored[ai].en); } ai++; }
+        var ai=0; while(picked.length<3 && ai<allScored.length){ if(!seen[allScored[ai].en]){ seen[allScored[ai].en]=1; picked.push(allScored[ai].en); pickedSims.push(allScored[ai].sim); } ai++; }
       }
-      return picked;
+      // kalite skoru: seçilen çeldiricilerin ortalama benzerliği + aynı özne oranı
+      var avgSim = pickedSims.length ? (pickedSims.reduce(function(a,b){return a+b;},0)/pickedSims.length) : 0;
+      var sameSubjCount = picked.filter(function(en){ return subjectOf(en)===corSubj; }).length;
+      // kalite: özne uyumu güçlüyse ve benzerlik makulse iyi sayılır
+      var quality = (avgSim>=6 && sameSubjCount>=2) ? "good" : (avgSim>=4 ? "ok" : "weak");
+      return { list: picked, quality: quality, avgSim: Math.round(avgSim*10)/10 };
     }
 
     function buildQuestion(type, s){
       var base = { type:type, level:curLevel, en:s.en, tr:s.tr, grammar:s.grammar||"" };
       if(type==="tanima" || type==="dinleme"){
-        var opts = shuffle(distractorsEN(s, curLevel).concat([s.en]));
+        var dist = distractorsEN(s, curLevel);
+        var opts = shuffle(dist.list.concat([s.en]));
         base.options = opts;
         base.correctIndex = opts.indexOf(s.en);
+        base.distractorQuality = dist.quality;  // "good"|"ok"|"weak" — weak ise HTML AI deneyebilir
         base.prompt = (type==="dinleme") ? "Duydugun cumle hangisi?" : "Bu cumlenin Ingilizcesi hangisi?";
         base.speak = (type==="dinleme") ? s.en : null;
         if(type==="dinleme") base.tr = null;
@@ -150,6 +166,12 @@
       else if(type==="yazma"){
         base.prompt = "Bu cumleyi Ingilizce yaz:";
         base.answer = s.en;
+      }
+      else if(type==="konusma"){
+        // ekranda İngilizce cümle gösterilir, öğrenci sesli okur; SpeechRecognition ile karşılaştırılır
+        base.prompt = "Bu cumleyi sesli oku:";
+        base.answer = s.en;     // söylenmesi gereken
+        base.showEn = s.en;     // ekranda gösterilecek
       }
       else if(type==="gramer"){
         var ws = s.en.split(" ");
@@ -194,6 +216,29 @@
       return current;
     }
 
+    // AI'dan gelen çeldiricilerle mevcut soruyu yeniden kur (HTML çağırır)
+    // aiDistractors: 3 İngilizce yanlış cümle. Geçersizler atılır, eksik kalırsa kurallı tamamlanır.
+    function applyAIDistractors(aiDistractors){
+      if(!current || (current.type!=="tanima" && current.type!=="dinleme")) return current;
+      var correctEn = current.en;
+      var clean = (aiDistractors||[]).map(function(x){ return String(x||"").trim(); })
+        .filter(function(x){ return x && norm(x)!==norm(correctEn); });
+      // benzersiz
+      var seen={}, uniq=[];
+      clean.forEach(function(x){ if(!seen[norm(x)]){ seen[norm(x)]=1; uniq.push(x); } });
+      // 3'e tamamla (kurallı yedekle)
+      if(uniq.length<3){
+        var fb = distractorsEN({en:correctEn}, current.level).list;
+        for(var i=0;i<fb.length && uniq.length<3;i++){ if(!seen[norm(fb[i])] && norm(fb[i])!==norm(correctEn)){ seen[norm(fb[i])]=1; uniq.push(fb[i]); } }
+      }
+      uniq = uniq.slice(0,3);
+      var opts = shuffle(uniq.concat([correctEn]));
+      current.options = opts;
+      current.correctIndex = opts.indexOf(correctEn);
+      current.distractorQuality = "ai";
+      return current;
+    }
+
     function answer(payload){
       if(!current || finished) return null;
       var correct = false;
@@ -203,23 +248,38 @@
         correct = (norm(payload && payload.text) === norm(current.answer));
       } else if(current.type==="yazma"){
         // Yazma: HTML tarafı AI/esnek kontrol sonucunu önceden verir (payload.correct).
-        // Verilmemişse birebir karşılaştırmaya düş (geriye uyumluluk).
+        if(payload && typeof payload.correct==="boolean") correct = payload.correct;
+        else correct = (norm(payload && payload.text) === norm(current.answer));
+      } else if(current.type==="konusma"){
+        // Konuşma: HTML, SpeechRecognition sonucunu (payload.correct) önceden değerlendirir.
         if(payload && typeof payload.correct==="boolean") correct = payload.correct;
         else correct = (norm(payload && payload.text) === norm(current.answer));
       }
 
       history.push({ level:current.level, correct:correct, type:current.type });
-      levelVotes[current.level] = levelVotes[current.level] || {r:0,w:0};
-      correct ? levelVotes[current.level].r++ : levelVotes[current.level].w++;
+      var seviyeSinyali0 = (current.type!=="yazma" && current.type!=="konusma");
+      if(seviyeSinyali0){
+        levelVotes[current.level] = levelVotes[current.level] || {r:0,w:0};
+        correct ? levelVotes[current.level].r++ : levelVotes[current.level].w++;
+      }
       skillVotes[current.type] = skillVotes[current.type] || {r:0,w:0};
       correct ? skillVotes[current.type].r++ : skillVotes[current.type].w++;
 
+      // Seviye kararı için: üretim soruları (yazma/konuşma) zordur; bunlarda yanlış
+      // olması SEVİYE düşürmemeli (o beceri zayıf olabilir ama seviye düşük değil).
+      // Tanıma/dinleme/gramer/sıralama → seviye sinyali. Yazma/konuşma → sadece beceri kaydı.
+      var seviyeSinyali = (current.type!=="yazma" && current.type!=="konusma");
+
       if(correct){
-        consecutiveRight++; consecutiveWrong=0;
-        if(consecutiveRight>=2 && idx(curLevel)<LEVELS.length-1){ curLevel=clampLevel(idx(curLevel)+1); consecutiveRight=0; }
+        if(seviyeSinyali){
+          consecutiveRight++; consecutiveWrong=0;
+          if(consecutiveRight>=2 && idx(curLevel)<LEVELS.length-1){ curLevel=clampLevel(idx(curLevel)+1); consecutiveRight=0; }
+        }
       } else {
-        consecutiveWrong++; consecutiveRight=0;
-        if(consecutiveWrong>=2 && idx(curLevel)>0){ curLevel=clampLevel(idx(curLevel)-1); consecutiveWrong=0; }
+        if(seviyeSinyali){
+          consecutiveWrong++; consecutiveRight=0;
+          if(consecutiveWrong>=2 && idx(curLevel)>0){ curLevel=clampLevel(idx(curLevel)-1); consecutiveWrong=0; }
+        }
       }
 
       if(qCount>=MAX_QUESTIONS) finished=true;
@@ -240,8 +300,14 @@
       var best = "A1";
       for(var i=LEVELS.length-1;i>=0;i--){
         var l=LEVELS[i], v=levelVotes[l];
-        if(v && v.r>=2 && (v.r/(v.r+v.w))>=0.6){ best=l; break; }
-        if(v && v.r>=1 && (v.r+v.w)===1){ best=l; break; }
+        if(!v) continue;
+        var tot = v.r+v.w;
+        // genel kural: en az 2 doğru ve oran ≥0.6
+        if(v.r>=2 && (v.r/tot)>=0.6){ best=l; break; }
+        // o seviyede az soru sorulduysa (1-2): 1 doğru yeterli (oraya çıkabilmiş demektir)
+        if(v.r>=1 && tot<=2){ best=l; break; }
+        // en üst seviyeye (C1) ulaşıp orada en az 1 doğru verdiyse, kabul (oraya çıkmak zor)
+        if(i===LEVELS.length-1 && v.r>=1 && (v.r/tot)>=0.5){ best=l; break; }
       }
       var bv = levelVotes[best] || {r:0,w:0};
       var total = bv.r+bv.w;
@@ -251,6 +317,7 @@
 
     return {
       next: next, answer: answer,
+      applyAIDistractors: applyAIDistractors,
       done: function(){ return finished; },
       result: result,
       get current(){ return current; },

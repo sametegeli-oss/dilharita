@@ -112,7 +112,7 @@
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./teacher-policy.js?v=3"></script>
 <script src="./ai-status.js?v=1"></script>
-<script src="./level-test.js?v=5"></script>
+<script src="./level-test.js?v=6"></script>
 <script>
 (function(){
   "use strict";
@@ -174,12 +174,44 @@
       +'<div class="qmeta"><span>Soru '+test.count+' / ~'+test.maxQuestions+'</span><span class="lvl-pill">'+q.level+'</span></div>';
 
     if(q.type==="tanima" || q.type==="dinleme" || q.type==="gramer"){
+      // Çeldiriciler zayıfsa VE AI varsa: AI'dan daha iyi çeldirici iste, sonra göster
+      if((q.type==="tanima"||q.type==="dinleme") && q.distractorQuality==="weak" && window.DHAI && DHAI.available()){
+        screen.innerHTML='<div class="card fade">'+head+'<div class="q-hint">Soru hazırlanıyor…</div></div>';
+        aiDistractors(q.en, q.level).then(function(list){
+          if(list && list.length){ test.applyAIDistractors(list); }
+          renderChoice(test.current, head);
+        }).catch(function(){ renderChoice(q, head); });
+        return;
+      }
       renderChoice(q, head);
     } else if(q.type==="siralama"){
       renderOrder(q, head);
     } else if(q.type==="yazma"){
       renderWrite(q, head);
+    } else if(q.type==="konusma"){
+      renderSpeak(q, head);
     }
+  }
+
+  // AI'dan çeldirici iste (sadece kurallı çeldirici zayıf kalınca)
+  function aiDistractors(correctEn, level){
+    var keys=[]; try{ keys=(JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){}
+    if(!keys.length) return Promise.reject("no-key");
+    var sys="Sen bir İngilizce sınav hazırlayıcısısın. Verilen DOĞRU cümle için 3 YANLIŞ ama İNANDIRICI şık üret. "
+      +"Kurallar: aynı özneyle başla, benzer uzunlukta olsun, "+(level||"B1")+" seviyesinde olsun, gramer/kelime hatası içersin ama mantıklı görünsün. "
+      +"Doğru cümleyle AYNI olmasınlar. SADECE JSON dizi döndür: [\"yanlış1\",\"yanlış2\",\"yanlış3\"]";
+    var usr="Doğru cümle: \""+correctEn+"\"\n3 inandırıcı yanlış şık üret.";
+    return fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+keys[0]},body:JSON.stringify({model:"llama-3.3-70b-versatile",messages:[{role:"system",content:sys},{role:"user",content:usr}],temperature:0.6,max_tokens:200})}).then(function(res){
+      if(res.status===429){ try{ if(window.DHAI)DHAI.noteRateLimit(); }catch(e){} throw "rate"; }
+      if(!res.ok) throw "http";
+      try{ if(window.DHAI)DHAI.noteSuccess(); }catch(e){}
+      return res.json();
+    }).then(function(d){
+      var txt=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||"").trim();
+      var m=txt.match(/\[[\s\S]*\]/);
+      if(m){ try{ var arr=JSON.parse(m[0]); if(Array.isArray(arr)) return arr.map(String).slice(0,3); }catch(e){} }
+      return [];
+    });
   }
 
   // ---- ortak: cevap sonrası ilerle ----
@@ -321,8 +353,56 @@
     inp.addEventListener("keydown",function(e){ if(e.key==="Enter" && !btn.disabled) submit(); });
   }
 
-  // --- AI ile yazma değerlendirme (Groq) ---
-  function evaluateWithAI(turkce, ornek, ogrenci){
+  // ---- konuşma (sesli oku, SpeechRecognition ile kontrol) ----
+  function renderSpeak(q, head){
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){
+      // cihaz desteklemiyorsa bu soruyu atla (doğru say, akışı bozma)
+      screen.innerHTML='<div class="card fade">'+head+'<div class="q-hint">Bu cihaz konuşma tanımayı desteklemiyor, bu soru atlanıyor…</div></div>';
+      setTimeout(function(){ var r=test.answer({correct:true}); advance(r); }, 1200);
+      return;
+    }
+    screen.innerHTML='<div class="card fade">'+head
+      +'<div class="q-label">'+esc(q.prompt)+'</div>'
+      +'<div class="q-tr">'+esc(q.showEn)+'</div>'
+      +'<div class="q-hint">Mikrofona bas ve cümleyi sesli oku.</div>'
+      +'<button class="btn btn-primary" id="micBtn" style="margin-top:6px">🎤 Bas ve oku</button>'
+      +'<div id="spkFb"></div>'
+      +'</div>';
+    var micBtn=$("micBtn");
+    function finalize(correct, heard){
+      var r=test.answer({text:heard||"", correct:correct});
+      $("spkFb").innerHTML='<div class="fb '+(correct?"ok":"bad")+'">'
+        +(correct?"✓ Güzel okudun!":"Duyulan: <b>"+esc(heard||"(anlaşılmadı)")+"</b><br>Hedef: "+esc(q.showEn))+'</div>';
+      micBtn.disabled=true;
+      advance(r);
+    }
+    micBtn.onclick=function(){
+      micBtn.textContent="🎙️ Dinleniyor…"; micBtn.disabled=true;
+      var rec=new SR(); rec.lang="en-US"; rec.maxAlternatives=3; rec.interimResults=false;
+      var done=false;
+      rec.onresult=function(e){
+        done=true;
+        var alts=[]; for(var i=0;i<e.results[0].length;i++) alts.push(e.results[0][i].transcript);
+        var target=normSp(q.answer);
+        var ok = alts.some(function(a){ return similarSpeech(normSp(a), target); });
+        finalize(ok, alts[0]);
+      };
+      rec.onerror=function(){ if(!done) finalize(false, ""); };
+      rec.onend=function(){ if(!done) finalize(false, ""); };
+      try{ rec.start(); }catch(e){ finalize(false, ""); }
+    };
+  }
+  function normSp(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9'\s]/g," ").replace(/\s+/g," ").trim(); }
+  // konuşmada esnek karşılaştırma: kelimelerin %75'i tutuyorsa doğru say (telaffuz/tanıma toleransı)
+  function similarSpeech(said, target){
+    if(said===target) return true;
+    var sw=said.split(" ").filter(Boolean), tw=target.split(" ").filter(Boolean);
+    if(!tw.length) return false;
+    var sset={}; sw.forEach(function(w){ sset[w]=1; });
+    var hit=0; tw.forEach(function(w){ if(sset[w]) hit++; });
+    return hit/tw.length >= 0.75;
+  }
     var keys=[]; try{ keys=(JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){}
     if(!keys.length) return Promise.reject("no-key");
     var sys = "Sen bir İngilizce sınav değerlendiricisisin. Öğrencinin Türkçe bir cümleyi İngilizceye çevirisini değerlendir. "
@@ -412,7 +492,7 @@
     }).join("");
 
     // beceri kırılımı (Mastery Engine habercisi)
-    var SKILL_LABEL={ tanima:"Tanıma", dinleme:"Dinleme", gramer:"Gramer", siralama:"Cümle kurma", yazma:"Yazma" };
+    var SKILL_LABEL={ tanima:"Tanıma", dinleme:"Dinleme", gramer:"Gramer", siralama:"Cümle kurma", yazma:"Yazma", konusma:"Konuşma" };
     var skillsHtml = Object.keys(res.skills||{}).map(function(sk){
       var v=res.skills[sk]; var total=v.r+v.w; if(!total) return "";
       var rate=Math.round(100*v.r/total);

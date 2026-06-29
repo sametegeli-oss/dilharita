@@ -24,12 +24,19 @@
 
   var STOP = {"the":1,"a":1,"an":1,"is":1,"are":1,"was":1,"were":1,"to":1,"of":1,"in":1,"on":1,"at":1,"for":1,"and":1,"or":1,"i":1,"you":1,"he":1,"she":1,"it":1,"we":1,"they":1,"has":1,"have":1,"had":1,"will":1,"my":1,"your":1,"this":1,"that":1};
   function contentWords(str){ return wordsOf(str).filter(function(w){ return !STOP[w]; }); }
+  function subjectOf(str){
+    var w=wordsOf(str); if(!w.length) return "";
+    var first=w[0];
+    if((first==="the"||first==="a"||first==="an") && w[1]) return first+" "+w[1];
+    return first;
+  }
   function similarity(a, b){
     var aw=contentWords(a), bw=contentWords(b), bset={};
     bw.forEach(function(w){ bset[w]=1; });
     var common=0; aw.forEach(function(w){ if(bset[w]) common++; });
     var lenDiff=Math.abs(wordsOf(a).length-wordsOf(b).length);
-    return common*1.5 + Math.max(0,4-lenDiff);
+    var subjScore = (subjectOf(a)===subjectOf(b)) ? 5 : 0;
+    return common*1.5 + Math.max(0,4-lenDiff) + subjScore;
   }
 
   // soru türleri — modül sınavında dengeli dağılım
@@ -58,11 +65,14 @@
     }
 
     function distractors(correct){
-      // önce modül içinden benzer, yetmezse modül içinden rastgele
+      // önce modül içinden benzer + AYNI ÖZNELİ, yetmezse genel benzer
+      var corSubj=subjectOf(correct.en);
       var others = pool.filter(function(s){ return s.en!==correct.en; });
-      var scored = others.map(function(s){ return {en:s.en, sim:similarity(correct.en,s.en)}; }).sort(function(a,b){ return b.sim-a.sim; });
+      var scored = others.map(function(s){ return {en:s.en, sim:similarity(correct.en,s.en), sameSubj:(subjectOf(s.en)===corSubj)}; }).sort(function(a,b){ return b.sim-a.sim; });
+      var same = scored.filter(function(x){ return x.sameSubj; });
+      var src = (same.length>=3 ? same : scored);
       var picked=[], seen={};
-      shuffle(scored.slice(0,10)).forEach(function(x){ if(picked.length<3 && !seen[x.en]){ seen[x.en]=1; picked.push(x.en); } });
+      shuffle(src.slice(0,10)).forEach(function(x){ if(picked.length<3 && !seen[x.en]){ seen[x.en]=1; picked.push(x.en); } });
       var i=0; while(picked.length<3 && i<scored.length){ if(!seen[scored[i].en]){ seen[scored[i].en]=1; picked.push(scored[i].en); } i++; }
       return picked;
     }
