@@ -1,4 +1,4 @@
-/* index-app-ogretmen-analiz-buttons.js v2
+/* index-app-ogretmen-analiz-buttons.js v3
    index-app.html için:
    1) her ekranda üstte Ana Menü / Hata Defteri / Akıllı Tekrar kısayolları
    2) cümle kartında Öğretmene Sor + Zayıf Analiz düğmeleri
@@ -6,49 +6,78 @@
 (function(){
 "use strict";
 
-const STYLE_ID = "index-app-extra-actions-style-v2";
+const STYLE_ID = "index-app-extra-actions-style-v3";
 
 function addStyle(){
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement("style");
   s.id = STYLE_ID;
   s.textContent = `
-  /* Dinle'nin altına taşınan Zor/Normal/Kolay grubu */
-  .dh-grade-under-listen{ margin-top:6px !important; }
-  /* Yukarı taşınan gerçek Sonraki butonu — kart içindeki sıraya uysun */
-  .dh-next-moved{ margin:0 !important; }
-
-  /* ---- KOMPAKT MOBİL BUTON GÖRÜNÜMÜ ---- */
-  /* kart içi aksiyon butonlarını küçült */
+  /* ---- DÜZENLİ BUTON YERLEŞİMİ ---- */
+  .card-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+  
   .card-actions button,
-  .extra-learning-actions button,
-  .dh-grade-under-listen button{
-    padding:8px 12px !important;
-    font-size:14px !important;
-    min-height:0 !important;
-    border-radius:11px !important;
-    font-weight:800 !important;
+  .card-actions a {
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    border-radius: 10px !important;
+    min-height: 36px !important;
+    white-space: nowrap !important;
   }
-  .card-actions{
-    gap:7px !important;
-    flex-wrap:wrap !important;
+
+  /* Zor/Normal/Kolay grubu - Dinle butonunun yanında */
+  .dh-grade-group {
+    display: inline-flex !important;
+    gap: 4px !important;
+    align-items: center !important;
+    margin-left: 4px !important;
   }
-  .extra-learning-actions{
-    display:flex; gap:7px; flex-wrap:wrap; margin-top:7px;
+  .dh-grade-group button {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    min-height: 30px !important;
+    border-radius: 8px !important;
+    background: #1a2a4a !important;
+    border: 1px solid #2a3a5a !important;
+    color: #c8d8f0 !important;
   }
-  /* Zor/Normal/Kolay grubu: eşit, kompakt, hizalı */
-  .dh-grade-under-listen{
-    display:flex !important; gap:7px !important; flex-wrap:nowrap !important;
+  .dh-grade-group button.active-grade {
+    background: #2563eb !important;
+    border-color: #3b82f6 !important;
+    color: #fff !important;
   }
-  .dh-grade-under-listen button{
-    flex:1 1 0 !important; padding:9px 6px !important; font-size:14px !important;
+
+  /* Zayıf Analiz butonu - Detay ile aynı hizada */
+  .extra-weak-btn {
+    background: linear-gradient(135deg, #7c3aed, #4338ca) !important;
+    border: 1px solid #8b5cf6 !important;
+    color: #fff !important;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+    min-height: 36px !important;
   }
-  /* alt ızgara (Shadow, AI Test, Benzer...) kutucuklarını biraz küçült */
-  @media (max-width:520px){
-    .card-actions button, .extra-learning-actions button{
-      padding:7px 10px !important; font-size:13px !important;
-    }
+
+  /* Öğretmen butonlarını tamamen gizle */
+  button:has-text(/Öğretmen/i):not(:has-text(/Sor/i)),
+  a:has-text(/Öğretmen/i):not(:has-text(/Sor/i)) {
+    display: none !important;
   }
+  button:has-text(/Öğretmene Sor/i),
+  a:has-text(/Öğretmene Sor/i) {
+    display: none !important;
+  }
+
+  /* Üst menü sabit */
   .index-app-top-actions{
     position:fixed;
     top:8px;
@@ -63,9 +92,6 @@ function addStyle(){
     padding:4px;
     border-radius:12px;
   }
-  /* Bu sayfada (sentence mode) AI Prompt düğmesi görünmesin */
-  #dhAiPromptBtn{ display:none !important; }
-  /* Ana menüye dönüş: çalışma ekranındaki gibi geri ok */
   .index-app-top-actions a.dh-back-arrow{
     width:42px;height:42px;min-height:42px;padding:0;
     font-size:20px;font-weight:900;line-height:1;
@@ -75,6 +101,8 @@ function addStyle(){
     background:#13294d;border:1px solid #1e3a5f;color:#e8eef7;
     border-radius:12px;padding:9px 13px;font:800 13px system-ui,sans-serif;cursor:pointer;min-height:42px;
   }
+
+  /* Liste modalı */
   .dh-list-modal{
     position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:2147483000;
     display:none;align-items:center;justify-content:center;padding:16px;
@@ -94,50 +122,8 @@ function addStyle(){
   .dh-list-txt{flex:1;min-width:0}
   .dh-list-e{color:#34d399;font-weight:700;font-size:14px}
   .dh-list-t{color:#9fb3d9;font-size:13px;margin-top:2px}
-  .index-app-top-actions a{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:7px;
-    min-height:38px;
-    padding:8px 12px;
-    border-radius:999px;
-    border:1px solid rgba(255,255,255,.16);
-    color:#fff;
-    text-decoration:none;
-    font:900 13px Nunito,system-ui,sans-serif;
-    background:rgba(15,30,58,.86);
-    box-shadow:0 10px 26px rgba(0,0,0,.32);
-    backdrop-filter:blur(8px);
-    -webkit-backdrop-filter:blur(8px);
-  }
-  .index-app-top-actions .home{background:linear-gradient(135deg,#16a34a,#15803d)}
-  .index-app-top-actions .error{background:linear-gradient(135deg,#dc2626,#991b1b)}
-  .index-app-top-actions .review{background:linear-gradient(135deg,#2563eb,#1d4ed8)}
-  .extra-learning-actions{
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-    margin-top:12px;
-    padding-top:12px;
-    border-top:1px solid rgba(255,255,255,.10);
-  }
-  .extra-learning-actions .extra-btn{
-    border:1px solid rgba(255,255,255,.16);
-    cursor:pointer;
-    color:#fff;
-    border-radius:12px;
-    padding:10px 14px;
-    font:800 14px Nunito,system-ui,sans-serif;
-    background:#1d2b48;
-    text-decoration:none;
-    display:inline-flex;
-    align-items:center;
-    gap:7px;
-    min-height:42px;
-  }
-  .extra-learning-actions .extra-teacher{background:linear-gradient(135deg,#16a34a,#15803d);border-color:#22c55e88}
-  .extra-learning-actions .extra-weak{background:linear-gradient(135deg,#7c3aed,#4338ca);border-color:#a78bfa88}
+
+  /* Zayıf analiz modalı */
   .weak-modal{
     position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
     padding:18px;background:rgba(0,0,0,.62);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
@@ -153,17 +139,29 @@ function addStyle(){
   .weak-card .weak-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
   .weak-card button,.weak-card a{border:0;border-radius:12px;background:#2563eb;color:#fff;padding:10px 14px;font-weight:900;text-decoration:none;cursor:pointer}
   .weak-card button.close{background:#334155}
-  @media(max-width:760px){
+
+  /* Mobil düzenleme */
+  @media(max-width:520px){
+    .card-actions button,
+    .card-actions a {
+      padding: 6px 10px !important;
+      font-size: 11px !important;
+      min-height: 30px !important;
+    }
+    .dh-grade-group button {
+      padding: 4px 8px !important;
+      font-size: 10px !important;
+      min-height: 26px !important;
+    }
     .index-app-top-actions{position:static;margin:10px;display:grid;grid-template-columns:1fr 1fr 1fr}
     .index-app-top-actions a{border-radius:12px;font-size:12px;padding:8px 6px}
-    .extra-learning-actions{display:grid;grid-template-columns:1fr 1fr}
-    .extra-learning-actions .extra-btn{justify-content:center;font-size:12px;padding:9px 8px}
   }`;
   document.head.appendChild(s);
 }
 
+// Yardımcı fonksiyonlar
 function clean(s){ return String(s||"").replace(/\s+/g," ").trim(); }
-function escapeHtml(s){ return String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+function escapeHtml(s){ return String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
 
 function ensureTopActions(){
   if (document.querySelector(".index-app-top-actions")) return;
@@ -178,13 +176,23 @@ function ensureTopActions(){
   if (lb) lb.onclick = openModuleList;
 }
 
+function currentCard(){
+  const cards = [...document.querySelectorAll(".card")];
+  return cards.find(c => c.querySelector(".card-en") && c.querySelector(".card-actions"));
+}
+function sentenceEN(card){
+  return clean(card?.querySelector(".card-en")?.innerText || "");
+}
+function sentenceTR(card){
+  return clean(card?.querySelector(".card-tr")?.innerText || "");
+}
+
 // --- Modül cümle listesi ---
 var _sentencesCache = null;
 function loadAllSentences(){
   if (_sentencesCache) return Promise.resolve(_sentencesCache);
   return fetch("./data/sentences.json").then(r=>r.ok?r.json():[]).then(function(arr){
     var list = Array.isArray(arr) ? arr.slice() : [];
-    // OCR cümlelerini de ekle
     try{
       var ocr = JSON.parse(localStorage.getItem("dh-ocr-sentences-v1")||"[]")||[];
       ocr.forEach(function(s){ if(s&&s.en) list.push({en:s.en,tr:s.tr||"",module:"📷 OCR Cümlelerim",order:s.order||0}); });
@@ -214,14 +222,12 @@ function openModuleList(){
   modal.classList.add("show");
 
   loadAllSentences().then(function(all){
-    // modül adını normalize ederek eşleştir (DOM'daki ad json'dakiyle birebir olmayabilir)
     var key = modName.toLowerCase().replace(/\s+/g," ").trim();
     var rows = all.filter(function(s){
       var m = (s.module||"").toLowerCase().replace(/\s+/g," ").trim();
       return m === key || (key && m.indexOf(key)===0) || (m && key.indexOf(m)===0);
     });
     if(!rows.length){
-      // eşleşme yoksa: modül kodu (A2-M01) ile dene
       var codeMatch = (modName.match(/[A-C][12]-M\d+/)||[])[0];
       if(codeMatch){
         rows = all.filter(function(s){ return (s.module||"").indexOf(codeMatch)!==-1; });
@@ -240,7 +246,6 @@ function openModuleList(){
         + '<div class="dh-list-txt"><div class="dh-list-e">'+escH(s.en)+'</div><div class="dh-list-t">'+escH(s.tr||"")+'</div></div>'
         + '</div>';
     }).join("");
-    // aktif olana kaydır
     var act = body.querySelector(".dh-list-row.active");
     if(act) act.scrollIntoView({block:"center"});
   });
@@ -259,17 +264,7 @@ function ensureListModal(){
   m.querySelector("#dhListClose").onclick = function(){ m.classList.remove("show"); };
 }
 
-function currentCard(){
-  const cards = [...document.querySelectorAll(".card")];
-  return cards.find(c => c.querySelector(".card-en") && c.querySelector(".card-actions"));
-}
-function sentenceEN(card){
-  return clean(card?.querySelector(".card-en")?.innerText || "");
-}
-function sentenceTR(card){
-  return clean(card?.querySelector(".card-tr")?.innerText || "");
-}
-
+// --- Öğretmen overlay ---
 function openTeacher(card){
   const en = sentenceEN(card);
   const tr = sentenceTR(card);
@@ -279,11 +274,9 @@ function openTeacher(card){
   openTeacherOverlay(url);
 }
 
-// Öğretmeni çalışma sayfasının ÜSTÜNDE tam ekran iframe katmanı olarak açar.
-// Çalışma sayfası arkada açık/aktif kalır; katman kapanınca aynı cümleden devam edilir.
 function openTeacherOverlay(url){
   let ov = document.getElementById("teacherOverlay");
-  if (ov) ov.remove(); // varsa eskisini temizle
+  if (ov) ov.remove();
   ov = document.createElement("div");
   ov.id = "teacherOverlay";
   ov.style.cssText = [
@@ -315,20 +308,20 @@ function openTeacherOverlay(url){
   ov.appendChild(bar);
   ov.appendChild(frame);
   document.body.appendChild(ov);
-  document.body.style.overflow = "hidden"; // arka plan kaymasın
+  document.body.style.overflow = "hidden";
 }
 
 function closeTeacherOverlay(){
   const ov = document.getElementById("teacherOverlay");
   if (ov) ov.remove();
-  document.body.style.overflow = ""; // arka planı geri aç
+  document.body.style.overflow = "";
 }
 
-// teacher.html (iframe içinden) kapatma isteği gönderebilsin diye dinleyici
 window.addEventListener("message", function(ev){
   if (ev && ev.data === "dh-teacher-close") closeTeacherOverlay();
 });
 
+// --- Zayıf Analiz ---
 function collectDetails(card){
   return [...card.querySelectorAll(".detail-row")].map(r => {
     const k = clean(r.querySelector(".detail-label")?.innerText || "");
@@ -381,103 +374,93 @@ function showWeakAnalysis(card){
   document.body.appendChild(modal);
 }
 
-function enhanceCard(){
+// --- ANA FONKSİYON: Butonları düzenle ---
+function organizeButtons(){
   const card = currentCard();
   if (!card) return;
+
   const actions = card.querySelector(".card-actions");
   if (!actions) return;
 
-  // Zayıf Analiz butonunu ekle (Öğretmene Sor kaldırıldı)
-  if (card.dataset.extraLearningButtons !== "1"){
-    const row = document.createElement("div");
-    row.className = "extra-learning-actions";
-    row.innerHTML = `
-      <button type="button" class="extra-btn extra-weak">📉 Zayıf Analiz</button>
-    `;
-    row.querySelector(".extra-weak").onclick = () => showWeakAnalysis(card);
-    actions.insertAdjacentElement("afterend", row);
-    card.dataset.extraLearningButtons = "1";
+  // 1. Gereksiz Öğretmen butonlarını gizle
+  [...document.querySelectorAll("button, a")].forEach(b => {
+    const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
+    if (t.includes("öğretmene sor")) b.style.display = "none";
+    if (t.includes("öğretmen") && !t.includes("sor")) b.style.display = "none";
+  });
+
+  // 2. "Zayıf Analiz" butonunu ekle veya taşı
+  let weakBtn = card.querySelector(".extra-weak-btn");
+  if (!weakBtn) {
+    weakBtn = document.createElement("button");
+    weakBtn.type = "button";
+    weakBtn.className = "extra-weak-btn";
+    weakBtn.textContent = "📉 Zayıf Analiz";
+    weakBtn.onclick = () => showWeakAnalysis(card);
   }
 
-  // İstenen yeni düzeni uygula (her render'da güvenli, idempotent)
-  relayoutButtons(card);
-}
+  // Detay butonunu bul ve Zayıf Analiz'i yanına ekle
+  const detayBtn = [...actions.querySelectorAll("button, a")].find(b => {
+    const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
+    return t.includes("detay");
+  });
 
-// Buton metnine göre bul (React minified sınıflarına bağlı kalmamak için)
-function findBtnByText(root, txt){
-  const btns = [...root.querySelectorAll("button, a")];
-  const t = txt.toLocaleLowerCase("tr");
-  return btns.find(b => (b.textContent||"").toLocaleLowerCase("tr").includes(t)) || null;
-}
+  if (detayBtn && !actions.contains(weakBtn)) {
+    detayBtn.insertAdjacentElement("afterend", weakBtn);
+  } else if (!actions.contains(weakBtn)) {
+    actions.appendChild(weakBtn);
+  }
 
-function relayoutButtons(card){
-  try{
-    const actions = card.querySelector(".card-actions");
-    if (!actions) return;
+  // 3. "Sonraki" butonunu yerinde bırak (gereksiz taşıma yapma)
+  // 4. Zor/Normal/Kolay'ı Dinle'nin yanına düzgün yerleştir
+  const dinleBtn = [...actions.querySelectorAll("button, a")].find(b => {
+    const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
+    return t.includes("dinle") || t.includes("listen");
+  });
 
-    // 0) "Öğretmene Sor" butonlarını tamamen gizle (nerede olursa olsun)
-    [...document.querySelectorAll("button,a")].forEach(b => {
-      const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
-      if (t.includes("öğretmene sor")) b.style.display = "none";
-    });
+  // Zorluk butonlarını bul (sadece kart içinde)
+  const zorBtn = [...actions.querySelectorAll("button, a")].find(b => {
+    const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
+    return t === "zor" || t === "z";
+  });
+  const normalBtn = [...actions.querySelectorAll("button, a")].find(b => {
+    const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
+    return t === "normal" || t === "n";
+  });
+  const kolayBtn = [...actions.querySelectorAll("button, a")].find(b => {
+    const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
+    return t === "kolay" || t === "k";
+  });
 
-    // 1) "Öğretmen" butonunu kaldır; GERÇEK alttaki "Sonraki →" butonunu onun yerine taşı.
-    //    (Sahte kopya çalışmıyordu — gerçek butonu taşımak hem çalışır hem doğru yerde durur.)
-    const ogretmenBtn = [...actions.querySelectorAll("button,a")].find(b => {
-      const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
-      return t.includes("öğretmen") && !t.includes("sor");
-    });
-    // gerçek "Sonraki →" butonu: kartın DIŞINDA, sayfanın altındaki
-    let realNext = null;
-    const allNext = [...document.querySelectorAll("button,a")].filter(b => {
-      const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
-      return t.includes("sonraki");
-    });
-    // kartın içindeki (benim eklediğim eski sahte) hariç, dışarıdaki gerçek olanı seç
-    realNext = allNext.find(b => !card.contains(b)) || null;
-
-    if (ogretmenBtn && realNext && !realNext.dataset.dhMovedUp){
-      realNext.dataset.dhMovedUp = "1";
-      realNext.classList.add("dh-next-moved");
-      // Öğretmen butonunun yerine gerçek Sonraki'yi koy
-      ogretmenBtn.replaceWith(realNext);
-    } else if (realNext && realNext.dataset.dhMovedUp === "1"){
-      // zaten taşındı: kart yeniden render olduysa actions içinde değilse geri yerleştir
-      if (ogretmenBtn) ogretmenBtn.replaceWith(realNext);
-    }
-
-    // 2) "Zayıf Analiz"i Detay butonunun yanına taşı
-    const detayBtn = findBtnByText(actions, "detay");
-    const weakRow = card.querySelector(".extra-learning-actions");
-    const weakBtn = weakRow ? weakRow.querySelector(".extra-weak") : null;
-    if (detayBtn && weakBtn && weakBtn.parentElement !== actions){
-      detayBtn.insertAdjacentElement("afterend", weakBtn);
-    }
-
-    // 3) Zor / Normal / Kolay butonlarını "Dinle"nin altına taşı
-    const dinleBtn = findBtnByText(card, "dinle");
-    if (dinleBtn){
-      // zorluk butonlarını sayfada bul (metinleri: Zor / Normal / Kolay)
-      const zor = findBtnByText(document, "zor");
-      const normal = findBtnByText(document, "normal");
-      const kolay = findBtnByText(document, "kolay");
-      if (zor && normal && kolay && !card.querySelector(".dh-grade-under-listen")){
-        const wrap = zor.parentElement; // üç butonun ortak kabı
-        if (wrap && [zor,normal,kolay].every(b => wrap.contains(b))){
-          wrap.classList.add("dh-grade-under-listen");
-          // Dinle butonunun hemen altına taşı
-          const host = dinleBtn.closest(".card-actions") || dinleBtn.parentElement;
-          host.insertAdjacentElement("afterend", wrap);
-        }
+  if (dinleBtn && zorBtn && normalBtn && kolayBtn) {
+    // Zorluk butonlarının mevcut konteynerini bul
+    let gradeGroup = card.querySelector(".dh-grade-group");
+    if (!gradeGroup) {
+      gradeGroup = document.createElement("span");
+      gradeGroup.className = "dh-grade-group";
+      // Mevcut butonları gruba taşı
+      const parent = zorBtn.parentElement;
+      if (parent) {
+        const btns = [zorBtn, normalBtn, kolayBtn];
+        btns.forEach(b => {
+          parent.removeChild(b);
+          gradeGroup.appendChild(b);
+        });
+        // Dinle butonundan sonraya ekle
+        dinleBtn.insertAdjacentElement("afterend", gradeGroup);
       }
     }
-  }catch(e){ /* sessiz: düzen bozulursa orijinal kalır */ }
+  }
+
+  // Eski düzenleme kodlarını temizle
+  const oldRows = card.querySelectorAll(".extra-learning-actions");
+  oldRows.forEach(r => r.remove());
 }
 
 function enhance(){
   addStyle();
   ensureTopActions();
-  enhanceCard();
+  organizeButtons();
 }
 
 let timer = null;
