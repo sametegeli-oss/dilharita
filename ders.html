@@ -330,11 +330,10 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
   }
 
   function renderExercise(s){
-    // basit çoktan seçmeli: doğru anlam + 3 çeldirici (aynı türden)
+    // çoktan seçmeli: doğru anlam + 3 AKILLI çeldirici (benzer uzunluk + konu/gramer yakınlığı)
     var it=s.item;
     var pool = (DHLesson && lesson._pool && lesson._pool[s.type]) || [];
-    var distract = pool.filter(function(x){ return x.id!==it.id && x.tr; });
-    distract = shuffle(distract).slice(0,3);
+    var distract = pickSmartDistractors(it, pool, 3);
     var opts = shuffle([it].concat(distract));
     var html='<div class="card">'
       +'<span class="phase-tag pt-pekistirme">Pekiştirme</span>'
@@ -343,6 +342,36 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       + opts.map(function(o){ return '<button class="opt" data-id="'+esc(String(o.id))+'">'+esc(o.tr||o.label)+'</button>'; }).join("")
       +'</div></div>';
     return html;
+  }
+
+  // Akıllı çeldirici seçimi: doğru cevaba benzer uzunlukta + aynı gramer/modülden öncelikli.
+  // Amaç: öğrenci uzunluğa veya konuya bakarak doğruyu eleyemesin.
+  function pickSmartDistractors(correct, pool, n){
+    var corTr = String(correct.tr||"");
+    var corLen = corTr.split(/\s+/).filter(Boolean).length;
+    var corGram = correct.grammar || (correct.item && correct.item.grammar) || "";
+    var corMod = correct.module || "";
+    var cands = pool.filter(function(x){ return x.id!==correct.id && x.tr && x.tr!==corTr; });
+    if(!cands.length) return [];
+
+    // her aday için puan: uzunluk yakınlığı (en önemli) + aynı gramer + aynı modül
+    cands.forEach(function(x){
+      var xLen = String(x.tr).split(/\s+/).filter(Boolean).length;
+      var lenDiff = Math.abs(xLen - corLen);
+      var lenScore = Math.max(0, 6 - lenDiff*1.5);     // uzunluk çok farklıysa ağır ceza
+      var gramScore = (corGram && (x.grammar||"")===corGram) ? 3 : 0;
+      var modScore = (corMod && (x.module||"")===corMod) ? 2 : 0;
+      x._score = lenScore + gramScore + modScore + Math.random()*0.8; // küçük rastgelelik
+    });
+    cands.sort(function(a,b){ return b._score - a._score; });
+
+    // uzunluk bandı sıkı: doğru uzunsa (≥5 kelime) çok kısa şık (≤2) alma
+    var filtered = cands;
+    if(corLen >= 5){
+      var strict = cands.filter(function(x){ return String(x.tr).split(/\s+/).filter(Boolean).length >= corLen-3; });
+      if(strict.length >= n) filtered = strict;
+    }
+    return filtered.slice(0, n);
   }
 
   function bindStep(s){
