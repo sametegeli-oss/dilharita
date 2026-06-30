@@ -15,8 +15,8 @@ function addStyle(){
   s.textContent = `
   /* Dinle'nin altına taşınan Zor/Normal/Kolay grubu */
   .dh-grade-under-listen{ margin-top:8px !important; }
-  /* İçeri taşınan Sonraki butonu (eski Öğretmen yerinde) */
-  .dh-next-inline{ }
+  /* Yukarı taşınan gerçek Sonraki butonu — kart içindeki sıraya uysun */
+  .dh-next-moved{ margin:0 !important; }
   .index-app-top-actions{
     position:fixed;
     top:10px;
@@ -381,25 +381,29 @@ function relayoutButtons(card){
     const actions = card.querySelector(".card-actions");
     if (!actions) return;
 
-    // 1) "Öğretmen" butonunu kaldır, yerine "Sonraki" koy
-    //    (sayfadaki gerçek "Sonraki →" butonuna tıklamayı tetikler)
+    // 1) "Öğretmen" butonunu kaldır; GERÇEK alttaki "Sonraki →" butonunu onun yerine taşı.
+    //    (Sahte kopya çalışmıyordu — gerçek butonu taşımak hem çalışır hem doğru yerde durur.)
     const ogretmenBtn = [...actions.querySelectorAll("button,a")].find(b => {
       const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
-      // "öğretmene sor" değil, sadece "öğretmen"
       return t.includes("öğretmen") && !t.includes("sor");
     });
-    if (ogretmenBtn && !ogretmenBtn.dataset.dhReplaced){
-      const realNext = findBtnByText(document, "sonraki");
-      const nextBtn = document.createElement("button");
-      nextBtn.type = "button";
-      nextBtn.className = ogretmenBtn.className; // aynı görünüm
-      nextBtn.classList.add("dh-next-inline");
-      nextBtn.textContent = "Sonraki →";
-      nextBtn.onclick = () => {
-        const rn = findBtnByText(document, "sonraki");
-        if (rn) rn.click();
-      };
-      ogretmenBtn.replaceWith(nextBtn);
+    // gerçek "Sonraki →" butonu: kartın DIŞINDA, sayfanın altındaki
+    let realNext = null;
+    const allNext = [...document.querySelectorAll("button,a")].filter(b => {
+      const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
+      return t.includes("sonraki");
+    });
+    // kartın içindeki (benim eklediğim eski sahte) hariç, dışarıdaki gerçek olanı seç
+    realNext = allNext.find(b => !card.contains(b)) || null;
+
+    if (ogretmenBtn && realNext && !realNext.dataset.dhMovedUp){
+      realNext.dataset.dhMovedUp = "1";
+      realNext.classList.add("dh-next-moved");
+      // Öğretmen butonunun yerine gerçek Sonraki'yi koy
+      ogretmenBtn.replaceWith(realNext);
+    } else if (realNext && realNext.dataset.dhMovedUp === "1"){
+      // zaten taşındı: kart yeniden render olduysa actions içinde değilse geri yerleştir
+      if (ogretmenBtn) ogretmenBtn.replaceWith(realNext);
     }
 
     // 2) "Zayıf Analiz"i Detay butonunun yanına taşı
