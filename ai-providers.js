@@ -46,7 +46,18 @@
   ];
 
   function keysOf(store){
-    try{ return (JSON.parse(localStorage.getItem(store)||"[]")||[]).filter(Boolean); }catch(e){ return []; }
+    try{
+      var all = (JSON.parse(localStorage.getItem(store)||"[]")||[]).filter(Boolean);
+      var off = disabledSet();
+      return all.filter(function(k){ return !off[k]; });  // pasif anahtarları atla
+    }catch(e){ return []; }
+  }
+  // pasif (devre dışı) anahtarlar — silinmez, sadece kullanılmaz
+  function disabledSet(){
+    try{
+      var arr = JSON.parse(localStorage.getItem("dh-disabled-keys")||"[]")||[];
+      var m={}; arr.forEach(function(k){ m[k]=1; }); return m;
+    }catch(e){ return {}; }
   }
   function hasAnyKey(){
     return PROVIDERS.some(function(p){ return keysOf(p.keyStore).length>0; });

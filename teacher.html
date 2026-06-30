@@ -113,6 +113,14 @@ body{
 .keyrow .keynum{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--accent,#2563eb);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800}
 .keyrow .keyval{flex:1;min-width:0;margin:0;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font:600 12px monospace}
 .keyrow .keydel{flex:0 0 auto;background:transparent;border:0;color:#f87171;font-size:17px;cursor:pointer;padding:4px 6px}
+.keyrow.keyoff .keyval{opacity:.45;text-decoration:line-through}
+.keyrow.keyoff .keynum{background:#475569}
+.keytgl{flex:0 0 auto;position:relative;display:inline-flex;align-items:center;cursor:pointer}
+.keytgl input{position:absolute;opacity:0;width:0;height:0}
+.keytgl-track{width:38px;height:22px;border-radius:99px;background:#475569;transition:background .18s;display:inline-block;position:relative}
+.keytgl-dot{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .18s}
+.keytgl input:checked + .keytgl-track{background:#34d399}
+.keytgl input:checked + .keytgl-track .keytgl-dot{transform:translateX(16px)}
 .note.ok{color:#34d399}
 .sheet a{color:#93c5fd}
 .row2{display:flex;gap:8px}.row2 .btn{flex:1}
@@ -694,15 +702,30 @@ function removeKey(k){
   let ks=getKeys().filter(x=>x!==k);
   try{ localStorage.setItem(KEYS_LS, JSON.stringify(ks)); }catch{}
 }
+/* pasif (devre dışı) anahtarlar — silinmez, sadece AI'da kullanılmaz */
+function getDisabled(){ try{ return JSON.parse(localStorage.getItem("dh-disabled-keys")||"[]")||[]; }catch{ return []; } }
+function isKeyOff(k){ return getDisabled().indexOf(k)>=0; }
+function setKeyActive(k, active){
+  let off=getDisabled().filter(x=>x!==k);
+  if(!active) off.push(k);
+  try{ localStorage.setItem("dh-disabled-keys", JSON.stringify(off)); }catch{}
+}
 function keyListHTMLFor(store){
   const ks=getKeysFor(store);
   if(!ks.length) return `<div class="keylist-empty">Henüz anahtar yok.</div>`;
-  return ks.map((k,i)=>`
-    <div class="keyrow">
+  return ks.map((k,i)=>{
+    const off=isKeyOff(k);
+    return `
+    <div class="keyrow ${off?"keyoff":""}">
       <span class="keynum">${i+1}</span>
       <input class="keyval" type="text" readonly value="${esc(k)}" />
+      <label class="keytgl" title="${off?"Pasif — dokun, aktifleştir":"Aktif — dokun, pasifleştir"}">
+        <input type="checkbox" class="keychk" data-k="${esc(k)}" ${off?"":"checked"} />
+        <span class="keytgl-track"><span class="keytgl-dot"></span></span>
+      </label>
       <button class="keydel" data-store="${store}" data-k="${esc(k)}" title="Sil">🗑️</button>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
 function openKeySheet(invalid){
   const sheet=document.createElement("div"); sheet.className="sheet-overlay";
@@ -732,17 +755,30 @@ function openKeySheet(invalid){
   document.body.appendChild(sheet);
   const close=()=>sheet.remove();
   const note=(msg,ok)=>{ const n=sheet.querySelector("#keyNote"); n.textContent=msg; n.className="note "+(ok?"ok":"bad"); };
-  const refresh=(pid)=>{ const m=PROVIDER_META[pid]; sheet.querySelector("#keyList_"+pid).innerHTML=keyListHTMLFor(m.store); bindDel(); };
-  const bindDel=()=>{
+  function storeToPid(store){ return Object.keys(PROVIDER_META).find(p=>PROVIDER_META[p].store===store); }
+  const refresh=(pid)=>{ const m=PROVIDER_META[pid]; sheet.querySelector("#keyList_"+pid).innerHTML=keyListHTMLFor(m.store); bindRows(); };
+  const refreshAll=()=>{ Object.keys(PROVIDER_META).forEach(refresh); };
+  const bindRows=()=>{
     sheet.querySelectorAll(".keydel").forEach(btn=>{
-      btn.onclick=()=>{ removeKeyFor(btn.getAttribute("data-store"), btn.getAttribute("data-k")); refresh(btn.getAttribute("data-store").replace("ApiKeys","").replace("gemini","gemini")); 
-        // store→pid çöz
-        const pid=Object.keys(PROVIDER_META).find(p=>PROVIDER_META[p].store===btn.getAttribute("data-store"));
-        if(pid) refresh(pid);
+      btn.onclick=()=>{
+        const store=btn.getAttribute("data-store");
+        removeKeyFor(store, btn.getAttribute("data-k"));
+        const pid=storeToPid(store); if(pid) refresh(pid);
+      };
+    });
+    sheet.querySelectorAll(".keychk").forEach(chk=>{
+      chk.onchange=()=>{
+        setKeyActive(chk.getAttribute("data-k"), chk.checked);
+        // satırın görünümünü güncelle (aktif/pasif) ve en az bir aktif kontrolü
+        const row=chk.closest(".keyrow");
+        if(row) row.classList.toggle("keyoff", !chk.checked);
+        const anyActive=Object.keys(PROVIDER_META).some(pid=>getKeysFor(PROVIDER_META[pid].store).some(k=>!isKeyOff(k)));
+        if(!anyActive) note("Uyarı: tüm anahtarlar pasif — AI çalışmaz.", false);
+        else note(chk.checked?"✓ Anahtar aktif.":"Anahtar pasifleştirildi.", true);
       };
     });
   };
-  bindDel();
+  bindRows();
   sheet.onclick=e=>{ if(e.target===sheet) close(); };
   sheet.querySelector("#keyCancel").onclick=close;
   sheet.querySelectorAll(".keyAddBtn").forEach(btn=>{
@@ -756,8 +792,10 @@ function openKeySheet(invalid){
     };
   });
   sheet.querySelector("#keyDone").onclick=()=>{
-    const any=Object.keys(PROVIDER_META).some(pid=>getKeysFor(PROVIDER_META[pid].store).length>0);
-    if(!any){ note("En az bir anahtar gerekli (herhangi bir sağlayıcı).",false); return; }
+    const anyKey=Object.keys(PROVIDER_META).some(pid=>getKeysFor(PROVIDER_META[pid].store).length>0);
+    if(!anyKey){ note("En az bir anahtar gerekli (herhangi bir sağlayıcı).",false); return; }
+    const anyActive=Object.keys(PROVIDER_META).some(pid=>getKeysFor(PROVIDER_META[pid].store).some(k=>!isKeyOff(k)));
+    if(!anyActive){ note("En az bir anahtar AKTİF olmalı (hepsi pasif).",false); return; }
     close(); explain();
   };
 }
