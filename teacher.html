@@ -741,6 +741,11 @@ function openKeySheet(invalid){
       <div class="keylist" id="keyList_${pid}">${keyListHTMLFor(m.store)}</div>
       <input id="keyInput_${pid}" type="text" placeholder="Yeni anahtar: ${m.prefix}..." autocomplete="off" spellcheck="false" style="width:100%" />
       <button class="btn btn-primary keyAddBtn" data-prov="${pid}" style="margin-top:8px">+ ${m.label} anahtarı ekle</button>
+      <div class="modelpick" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line,#1e3a5f)">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px">Model <span class="modelhint" data-prov="${pid}" style="color:#93c5fd;cursor:pointer">↻ listeyi güncelle</span></label>
+        <select id="modelSel_${pid}" style="width:100%;margin-bottom:6px"><option>${esc(window.DHProviders?DHProviders.getModel(pid):"")}</option></select>
+        <input id="modelInput_${pid}" type="text" placeholder="veya model adı yaz (ör. ${esc(window.DHProviders?DHProviders.getModel(pid):"")})" autocomplete="off" spellcheck="false" style="width:100%;font:600 12px monospace" />
+      </div>
     </div>`;
   }).join("");
   sheet.innerHTML=`
@@ -779,6 +784,40 @@ function openKeySheet(invalid){
     });
   };
   bindRows();
+
+  // ---- Model seçici: doldur, seç, canlı güncelle ----
+  function fillModelSelect(pid, models){
+    const sel=sheet.querySelector("#modelSel_"+pid); if(!sel) return;
+    const cur=(window.DHProviders?DHProviders.getModel(pid):"");
+    const list = models.slice();
+    if(cur && list.indexOf(cur)<0) list.unshift(cur);  // mevcut seçim listede yoksa ekle
+    sel.innerHTML = list.map(mid=>`<option value="${esc(mid)}" ${mid===cur?"selected":""}>${esc(mid)}</option>`).join("");
+  }
+  function loadModels(pid, live){
+    const hint=sheet.querySelector('.modelhint[data-prov="'+pid+'"]');
+    if(!window.DHProviders){ return; }
+    if(live && hint){ hint.textContent="↻ güncelleniyor…"; }
+    // canlı çek (CORS olursa gömülü listeye düşer)
+    DHProviders.listModels(pid).then(models=>{
+      fillModelSelect(pid, models);
+      if(hint) hint.textContent="↻ listeyi güncelle";
+    }).catch(()=>{ if(hint) hint.textContent="↻ listeyi güncelle"; });
+  }
+  Object.keys(PROVIDER_META).forEach(pid=>{
+    // başlangıçta gömülü liste ile doldur (hızlı), sonra anahtar varsa canlı dene
+    const p=(window.DHProviders?DHProviders.PROVIDERS.find(x=>x.id===pid):null);
+    if(p) fillModelSelect(pid, p.models||[]);
+    const sel=sheet.querySelector("#modelSel_"+pid);
+    const inp=sheet.querySelector("#modelInput_"+pid);
+    const hint=sheet.querySelector('.modelhint[data-prov="'+pid+'"]');
+    if(sel) sel.onchange=()=>{ if(window.DHProviders){ DHProviders.setModel(pid, sel.value); } if(inp) inp.value=""; note("✓ "+PROVIDER_META[pid].label+" modeli: "+sel.value, true); };
+    if(inp) inp.onchange=()=>{ const v=inp.value.trim(); if(v && window.DHProviders){ DHProviders.setModel(pid, v); note("✓ "+PROVIDER_META[pid].label+" modeli: "+v, true); loadModels(pid,false); } };
+    if(hint) hint.onclick=()=>loadModels(pid, true);
+    // anahtar varsa canlı listeyi dene (Cerebras anahtarsız da çeker)
+    const hasKey=(getKeysFor(PROVIDER_META[pid].store).length>0) || pid==="cerebras";
+    if(hasKey) loadModels(pid, false);
+  });
+
   sheet.onclick=e=>{ if(e.target===sheet) close(); };
   sheet.querySelector("#keyCancel").onclick=close;
   sheet.querySelectorAll(".keyAddBtn").forEach(btn=>{

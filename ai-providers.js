@@ -20,12 +20,17 @@
   if(global.DHProviders) return;
 
   // Sağlayıcı tanımları — sıra = öncelik (Groq önce)
+  // model: VARSAYILAN model (kullanıcı seçmezse). models: bilinen güncel liste (canlı çekme
+  // başarısız olursa kullanılır). modelsUrl: canlı model listesi endpoint'i (varsa).
   var PROVIDERS = [
     {
       id:"groq",
       keyStore:"groqApiKeys",
       url:"https://api.groq.com/openai/v1/chat/completions",
       model:"llama-3.3-70b-versatile",
+      models:["llama-3.3-70b-versatile","openai/gpt-oss-120b","openai/gpt-oss-20b","llama-3.1-8b-instant","qwen3-32b","llama-4-scout"],
+      modelsUrl:"https://api.groq.com/openai/v1/models",   // anahtar gerekli
+      modelsAuth:true,
       kind:"openai"
     },
     {
@@ -33,17 +38,32 @@
       keyStore:"cerebrasApiKeys",
       url:"https://api.cerebras.ai/v1/chat/completions",
       model:"gpt-oss-120b",
+      models:["gpt-oss-120b","zai-glm-4.7"],
+      modelsUrl:"https://api.cerebras.ai/public/v1/models",  // anahtarsız, public
+      modelsAuth:false,
       kind:"openai"
     },
     {
       id:"gemini",
       keyStore:"geminiApiKeys",
-      // {KEY} runtime'da değiştirilir
-      url:"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      url:"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent",
       model:"gemini-2.5-flash",
+      // Gemini: SADECE Flash ücretsiz (Pro ücretli — listeye koymuyoruz)
+      models:["gemini-2.5-flash","gemini-2.5-flash-lite"],
+      modelsUrl:"https://generativelanguage.googleapis.com/v1beta/models",  // ?key= ile
+      modelsAuth:"query",
       kind:"gemini"
     }
   ];
+
+  // Kullanıcının seçtiği model (yoksa varsayılan)
+  function modelOf(p){
+    try{
+      var m = localStorage.getItem("dh-model-"+p.id);
+      if(m && m.trim()) return m.trim();
+    }catch(e){}
+    return p.model;
+  }
 
   function keysOf(store){
     try{
@@ -69,7 +89,7 @@
   // --- OpenAI-uyumlu çağrı (Groq, Cerebras) ---
   function callOpenAI(p, key, messages, opts){
     var body = {
-      model: p.model,
+      model: modelOf(p),
       messages: messages,
       temperature: (opts.temperature!=null?opts.temperature:0.3),
       max_tokens: (opts.max_tokens||800)
@@ -118,7 +138,8 @@
       }
     };
     if(sys) bodyObj.systemInstruction = { parts:[{text:sys}] };
-    var url = p.url + "?key=" + encodeURIComponent(key);
+    var endpoint = p.url.replace("{MODEL}", modelOf(p));
+    var url = endpoint + "?key=" + encodeURIComponent(key);
     return fetch(url, {
       method:"POST",
       headers:{ "Content-Type":"application/json" },
@@ -177,10 +198,56 @@
     return tryProvider();
   }
 
+  // Canlı model listesi çek (CORS başarısız olursa gömülü listeye düş)
+  function listModels(providerId){
+    var p = PROVIDERS.filter(function(x){ return x.id===providerId; })[0];
+    if(!p) return Promise.resolve([]);
+    var fallback = (p.models||[]).slice();
+    if(!p.modelsUrl) return Promise.resolve(fallback);
+
+    var url = p.modelsUrl, headers = {};
+    var keys = keysOf(p.keyStore);
+    if(p.modelsAuth===true){
+      if(!keys.length) return Promise.resolve(fallback);
+      headers["Authorization"] = "Bearer "+keys[0];
+    } else if(p.modelsAuth==="query"){
+      if(!keys.length) return Promise.resolve(fallback);
+      url += "?key="+encodeURIComponent(keys[0]);
+    }
+    return fetch(url, {headers:headers}).then(function(res){
+      if(!res.ok) throw 0;
+      return res.json();
+    }).then(function(d){
+      var ids = [];
+      // OpenAI biçimi: {data:[{id},...]}  |  Gemini: {models:[{name:"models/xxx"},...]}
+      if(d && Array.isArray(d.data)) ids = d.data.map(function(m){ return m.id; });
+      else if(d && Array.isArray(d.models)) ids = d.models.map(function(m){ return String(m.name||"").replace(/^models\//,""); });
+      ids = ids.filter(Boolean);
+      // Gemini'de sadece üretim (generateContent) + ÜCRETSİZ olanlar: flash'lar.
+      // Pro modelleri ücretli olduğundan listeden çıkarılır.
+      if(providerId==="gemini") ids = ids.filter(function(x){ return /flash/i.test(x) && !/pro/i.test(x); });
+      return ids.length ? ids : fallback;
+    }).catch(function(){ return fallback; });  // CORS/hata → gömülü liste
+  }
+
+  function setModel(providerId, model){
+    try{
+      if(model && model.trim()) localStorage.setItem("dh-model-"+providerId, model.trim());
+      else localStorage.removeItem("dh-model-"+providerId);
+    }catch(e){}
+  }
+  function getModel(providerId){
+    var p = PROVIDERS.filter(function(x){ return x.id===providerId; })[0];
+    return p ? modelOf(p) : "";
+  }
+
   global.DHProviders = {
     chat: chat,
     hasAnyKey: hasAnyKey,
     activeProviders: activeProviders,
+    listModels: listModels,
+    setModel: setModel,
+    getModel: getModel,
     PROVIDERS: PROVIDERS
   };
 })(window);
