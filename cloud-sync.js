@@ -2,10 +2,18 @@
    Cihazlar arası senkron — mevcut "sentencemode" Firebase projesini kullanır.
 
    NE SENKRONLANIR (pratik SRS hariç; o practice.html'de zaten senkronlu):
-   - AI prompt           (localStorage: dh_ai_prompt_teacher)
-   - Günlük takip/streak  (localStorage: dh-study-tracker-v1)
-   - Groq API anahtarları (localStorage: groqApiKeys)
-   - Hata defteri         (IndexedDB: LearningErrorDB)
+   - AI prompt            (dh_ai_prompt_teacher)
+   - Günlük takip/streak   (dh-study-tracker-v1)
+   - AI anahtarları        (groqApiKeys, cerebrasApiKeys, geminiApiKeys)
+   - Model seçimleri       (dh-model-groq/cerebras/gemini)
+   - Pasif anahtarlar      (dh-disabled-keys)
+   - Öğretmen ayarları     (dh-teacher-policy-v1, dh-notif-settings-v1, selectedTeacherAvatar)
+   - İlerleme aynası       (dh-progress-mirror-v1)
+   - OCR cümleleri         (dh-ocr-sentences-v1)
+   - Mastery skorları      (mas:* , ev:*)
+   - Modül notları/profil  (modscore:* , gramprof:*)
+   - Modül hikayeleri      (story:*)
+   - Hata defteri          (IndexedDB: LearningErrorDB)
 
    NASIL ÇALIŞIR:
    - Kullanıcı giriş yapınca (Firebase Auth) buluttan "settings/{uid}" belgesini çeker,
@@ -21,8 +29,27 @@
   if (window.__dhCloudSyncInstalled) return;
   window.__dhCloudSyncInstalled = true;
 
-  // Senkronlanacak localStorage anahtarları
-  var LS_KEYS = ["dh_ai_prompt_teacher", "dh-study-tracker-v1", "groqApiKeys", "dh-ocr-sentences-v1", "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1"];
+  // Senkronlanacak SABİT localStorage anahtarları
+  var LS_KEYS = [
+    "dh_ai_prompt_teacher", "dh-study-tracker-v1", "dh-ocr-sentences-v1",
+    "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1",
+    // AI sağlayıcı anahtarları (çok sağlayıcılı)
+    "groqApiKeys", "cerebrasApiKeys", "geminiApiKeys",
+    // model seçimleri + pasif anahtar listesi
+    "dh-model-groq", "dh-model-cerebras", "dh-model-gemini", "dh-disabled-keys",
+    // seçili öğretmen avatarı
+    "selectedTeacherAvatar"
+  ];
+
+  // Senkronlanacak PREFIX'li anahtarlar (çoklu kayıt: mastery, modül notları, hikayeler).
+  // Bu öneklerle başlayan TÜM localStorage anahtarları toplanıp senkronlanır.
+  var LS_PREFIXES = [
+    "mas:",        // mastery skorları
+    "ev:",         // mastery kanıtları
+    "modscore:",   // modül notları
+    "gramprof:",   // gramer profili
+    "story:"       // modül hikaye önbelleği
+  ];
 
   // Buluttan gelen belgeyi normalize et: {ls:{...}, errors:[...]}
   // Hem yeni kök-seviye yapı hem eski data.ls yapısını destekler.
@@ -43,6 +70,10 @@
     }
     if (remote.__ts && typeof remote.__ts === "object"){
       for (var tk2 in remote.__ts){ if (remote.__ts.hasOwnProperty(tk2)) out.ts[tk2] = remote.__ts[tk2]; }
+    }
+    // __bulk: nokta/özel karakterli anahtarlar (mas:/ev:/modscore:/gramprof:/story:)
+    if (remote.__bulk && typeof remote.__bulk === "object"){
+      for (var bk in remote.__bulk){ if (remote.__bulk.hasOwnProperty(bk) && remote.__bulk[bk] != null) out.ls[bk] = remote.__bulk[bk]; }
     }
     if (Array.isArray(remote.__errors)) out.errors = out.errors.concat(remote.__errors);
     return out;
@@ -98,8 +129,20 @@
         saveSettings: function(uid, data){
           // Veriyi KÖK seviyeye yaz (data.ls sarmalı yok). merge:true ile
           // diğer alanlar korunur. Yapı: { <lsKey>: value, __ts:{...}, __errors:[...] }
-          var doc2 = {};
-          if (data && data.ls){ for (var k in data.ls){ if (data.ls.hasOwnProperty(k)) doc2[k] = data.ls[k]; } }
+          // ANCAK: anahtar adında nokta (.) veya / olanlar Firestore alan adı olamaz —
+          // bunları güvenli "__bulk" nesnesine koy (ör. cümle ID'li mas:/story: anahtarları).
+          var doc2 = {}, bulk = {};
+          if (data && data.ls){
+            for (var k in data.ls){
+              if (!data.ls.hasOwnProperty(k)) continue;
+              if (k.indexOf(".")>=0 || k.indexOf("/")>=0 || k.indexOf("~")>=0 || k.indexOf("[")>=0 || k.indexOf("]")>=0 || k.indexOf("*")>=0){
+                bulk[k] = data.ls[k];          // sorunlu karakterli → sarmalı
+              } else {
+                doc2[k] = data.ls[k];          // güvenli → kök alan
+              }
+            }
+          }
+          if (Object.keys(bulk).length) doc2.__bulk = bulk;
           if (data && data.ts){ doc2.__ts = data.ts; }
           if (data && data.errors){ doc2.__errors = data.errors; }
           doc2.updated_at = Date.now();
@@ -123,6 +166,19 @@
     for (var i=0;i<LS_KEYS.length;i++){
       try{ var v = localStorage.getItem(LS_KEYS[i]); if (v != null) out.ls[LS_KEYS[i]] = v; }catch(e){}
     }
+    // prefix'li anahtarlar (mastery, modül notları, hikayeler): tüm eşleşenleri tara
+    try{
+      for (var j=0;j<localStorage.length;j++){
+        var key = localStorage.key(j);
+        if (!key) continue;
+        for (var p=0;p<LS_PREFIXES.length;p++){
+          if (key.indexOf(LS_PREFIXES[p]) === 0){
+            try{ var vv = localStorage.getItem(key); if (vv != null) out.ls[key] = vv; }catch(e){}
+            break;
+          }
+        }
+      }
+    }catch(e){}
     return out;
   }
 
@@ -251,11 +307,18 @@
         var rd = parseRemote(remote);
         // BASİT MANTIK: Senkron = buluttakini getir, yerele yaz. Geri yazma yok.
         var pulled = 0;
-        for (var ki=0; ki<LS_KEYS.length; ki++){
-          var k = LS_KEYS[ki];
-          var remoteVal = (rd.ls && rd.ls.hasOwnProperty(k)) ? rd.ls[k] : null;
-          if (remoteVal == null || remoteVal === "") continue; // bulutta yoksa atla
-          try{ localStorage.setItem(k, remoteVal); pulled++; }catch(e){}
+        // hem sabit LS_KEYS hem prefix'li (mas:/story: vb.) — rd.ls'deki HER anahtarı çek
+        if (rd.ls){
+          for (var rk in rd.ls){
+            if (!rd.ls.hasOwnProperty(rk)) continue;
+            var rv = rd.ls[rk];
+            if (rv == null || rv === "") continue;
+            // sadece bilinen anahtarları/önekleri yaz (çöp veri yazma)
+            var ok = (LS_KEYS.indexOf(rk) >= 0);
+            if (!ok){ for (var pp=0; pp<LS_PREFIXES.length; pp++){ if (rk.indexOf(LS_PREFIXES[pp])===0){ ok=true; break; } } }
+            if (!ok) continue;
+            try{ localStorage.setItem(rk, rv); pulled++; }catch(e){}
+          }
         }
         // hata defteri: buluttan gelenleri yerele ekle (birleştir)
         return mergeRemoteErrors(rd.errors || []).then(function(addedErr){
