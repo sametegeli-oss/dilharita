@@ -13,6 +13,10 @@ function addStyle(){
   const s = document.createElement("style");
   s.id = STYLE_ID;
   s.textContent = `
+  /* Dinle'nin altına taşınan Zor/Normal/Kolay grubu */
+  .dh-grade-under-listen{ margin-top:8px !important; }
+  /* İçeri taşınan Sonraki butonu (eski Öğretmen yerinde) */
+  .dh-next-inline{ }
   .index-app-top-actions{
     position:fixed;
     top:10px;
@@ -343,20 +347,87 @@ function showWeakAnalysis(card){
 
 function enhanceCard(){
   const card = currentCard();
-  if (!card || card.dataset.extraLearningButtons === "1") return;
+  if (!card) return;
   const actions = card.querySelector(".card-actions");
   if (!actions) return;
 
-  const row = document.createElement("div");
-  row.className = "extra-learning-actions";
-  row.innerHTML = `
-    <button type="button" class="extra-btn extra-teacher">🎓 Öğretmene Sor</button>
-    <button type="button" class="extra-btn extra-weak">📉 Zayıf Analiz</button>
-  `;
-  row.querySelector(".extra-teacher").onclick = () => openTeacher(card);
-  row.querySelector(".extra-weak").onclick = () => showWeakAnalysis(card);
-  actions.insertAdjacentElement("afterend", row);
-  card.dataset.extraLearningButtons = "1";
+  // Zayıf Analiz + Öğretmene Sor satırını ekle (yalnız bir kez)
+  if (card.dataset.extraLearningButtons !== "1"){
+    const row = document.createElement("div");
+    row.className = "extra-learning-actions";
+    row.innerHTML = `
+      <button type="button" class="extra-btn extra-teacher">🎓 Öğretmene Sor</button>
+      <button type="button" class="extra-btn extra-weak">📉 Zayıf Analiz</button>
+    `;
+    row.querySelector(".extra-teacher").onclick = () => openTeacher(card);
+    row.querySelector(".extra-weak").onclick = () => showWeakAnalysis(card);
+    actions.insertAdjacentElement("afterend", row);
+    card.dataset.extraLearningButtons = "1";
+  }
+
+  // İstenen yeni düzeni uygula (her render'da güvenli, idempotent)
+  relayoutButtons(card);
+}
+
+// Buton metnine göre bul (React minified sınıflarına bağlı kalmamak için)
+function findBtnByText(root, txt){
+  const btns = [...root.querySelectorAll("button, a")];
+  const t = txt.toLocaleLowerCase("tr");
+  return btns.find(b => (b.textContent||"").toLocaleLowerCase("tr").includes(t)) || null;
+}
+
+function relayoutButtons(card){
+  try{
+    const actions = card.querySelector(".card-actions");
+    if (!actions) return;
+
+    // 1) "Öğretmen" butonunu kaldır, yerine "Sonraki" koy
+    //    (sayfadaki gerçek "Sonraki →" butonuna tıklamayı tetikler)
+    const ogretmenBtn = [...actions.querySelectorAll("button,a")].find(b => {
+      const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
+      // "öğretmene sor" değil, sadece "öğretmen"
+      return t.includes("öğretmen") && !t.includes("sor");
+    });
+    if (ogretmenBtn && !ogretmenBtn.dataset.dhReplaced){
+      const realNext = findBtnByText(document, "sonraki");
+      const nextBtn = document.createElement("button");
+      nextBtn.type = "button";
+      nextBtn.className = ogretmenBtn.className; // aynı görünüm
+      nextBtn.classList.add("dh-next-inline");
+      nextBtn.textContent = "Sonraki →";
+      nextBtn.onclick = () => {
+        const rn = findBtnByText(document, "sonraki");
+        if (rn) rn.click();
+      };
+      ogretmenBtn.replaceWith(nextBtn);
+    }
+
+    // 2) "Zayıf Analiz"i Detay butonunun yanına taşı
+    const detayBtn = findBtnByText(actions, "detay");
+    const weakRow = card.querySelector(".extra-learning-actions");
+    const weakBtn = weakRow ? weakRow.querySelector(".extra-weak") : null;
+    if (detayBtn && weakBtn && weakBtn.parentElement !== actions){
+      detayBtn.insertAdjacentElement("afterend", weakBtn);
+    }
+
+    // 3) Zor / Normal / Kolay butonlarını "Dinle"nin altına taşı
+    const dinleBtn = findBtnByText(card, "dinle");
+    if (dinleBtn){
+      // zorluk butonlarını sayfada bul (metinleri: Zor / Normal / Kolay)
+      const zor = findBtnByText(document, "zor");
+      const normal = findBtnByText(document, "normal");
+      const kolay = findBtnByText(document, "kolay");
+      if (zor && normal && kolay && !card.querySelector(".dh-grade-under-listen")){
+        const wrap = zor.parentElement; // üç butonun ortak kabı
+        if (wrap && [zor,normal,kolay].every(b => wrap.contains(b))){
+          wrap.classList.add("dh-grade-under-listen");
+          // Dinle butonunun hemen altına taşı
+          const host = dinleBtn.closest(".card-actions") || dinleBtn.parentElement;
+          host.insertAdjacentElement("afterend", wrap);
+        }
+      }
+    }
+  }catch(e){ /* sessiz: düzen bozulursa orijinal kalır */ }
 }
 
 function enhance(){
