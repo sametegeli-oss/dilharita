@@ -14,18 +14,54 @@ function addStyle(){
   s.id = STYLE_ID;
   s.textContent = `
   /* Dinle'nin altına taşınan Zor/Normal/Kolay grubu */
-  .dh-grade-under-listen{ margin-top:8px !important; }
+  .dh-grade-under-listen{ margin-top:6px !important; }
   /* Yukarı taşınan gerçek Sonraki butonu — kart içindeki sıraya uysun */
   .dh-next-moved{ margin:0 !important; }
+
+  /* ---- KOMPAKT MOBİL BUTON GÖRÜNÜMÜ ---- */
+  /* kart içi aksiyon butonlarını küçült */
+  .card-actions button,
+  .extra-learning-actions button,
+  .dh-grade-under-listen button{
+    padding:8px 12px !important;
+    font-size:14px !important;
+    min-height:0 !important;
+    border-radius:11px !important;
+    font-weight:800 !important;
+  }
+  .card-actions{
+    gap:7px !important;
+    flex-wrap:wrap !important;
+  }
+  .extra-learning-actions{
+    display:flex; gap:7px; flex-wrap:wrap; margin-top:7px;
+  }
+  /* Zor/Normal/Kolay grubu: eşit, kompakt, hizalı */
+  .dh-grade-under-listen{
+    display:flex !important; gap:7px !important; flex-wrap:nowrap !important;
+  }
+  .dh-grade-under-listen button{
+    flex:1 1 0 !important; padding:9px 6px !important; font-size:14px !important;
+  }
+  /* alt ızgara (Shadow, AI Test, Benzer...) kutucuklarını biraz küçült */
+  @media (max-width:520px){
+    .card-actions button, .extra-learning-actions button{
+      padding:7px 10px !important; font-size:13px !important;
+    }
+  }
   .index-app-top-actions{
     position:fixed;
-    top:10px;
-    left:10px;
-    z-index:99998;
+    top:8px;
+    left:8px;
+    z-index:2147483600;
     display:flex;
-    gap:8px;
+    gap:6px;
     flex-wrap:wrap;
     pointer-events:auto;
+    background:rgba(11,17,32,.82);
+    backdrop-filter:blur(6px);
+    padding:4px;
+    border-radius:12px;
   }
   /* Bu sayfada (sentence mode) AI Prompt düğmesi görünmesin */
   #dhAiPromptBtn{ display:none !important; }
@@ -351,15 +387,13 @@ function enhanceCard(){
   const actions = card.querySelector(".card-actions");
   if (!actions) return;
 
-  // Zayıf Analiz + Öğretmene Sor satırını ekle (yalnız bir kez)
+  // Zayıf Analiz butonunu ekle (Öğretmene Sor kaldırıldı)
   if (card.dataset.extraLearningButtons !== "1"){
     const row = document.createElement("div");
     row.className = "extra-learning-actions";
     row.innerHTML = `
-      <button type="button" class="extra-btn extra-teacher">🎓 Öğretmene Sor</button>
       <button type="button" class="extra-btn extra-weak">📉 Zayıf Analiz</button>
     `;
-    row.querySelector(".extra-teacher").onclick = () => openTeacher(card);
     row.querySelector(".extra-weak").onclick = () => showWeakAnalysis(card);
     actions.insertAdjacentElement("afterend", row);
     card.dataset.extraLearningButtons = "1";
@@ -380,6 +414,12 @@ function relayoutButtons(card){
   try{
     const actions = card.querySelector(".card-actions");
     if (!actions) return;
+
+    // 0) "Öğretmene Sor" butonlarını tamamen gizle (nerede olursa olsun)
+    [...document.querySelectorAll("button,a")].forEach(b => {
+      const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
+      if (t.includes("öğretmene sor")) b.style.display = "none";
+    });
 
     // 1) "Öğretmen" butonunu kaldır; GERÇEK alttaki "Sonraki →" butonunu onun yerine taşı.
     //    (Sahte kopya çalışmıyordu — gerçek butonu taşımak hem çalışır hem doğru yerde durur.)
