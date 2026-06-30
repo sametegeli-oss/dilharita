@@ -111,6 +111,7 @@
 
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./teacher-policy.js?v=3"></script>
+<script src="./ai-providers.js?v=1"></script>
 <script src="./ai-status.js?v=1"></script>
 <script src="./level-test.js?v=6"></script>
 <script>
@@ -195,19 +196,13 @@
 
   // AI'dan çeldirici iste (sadece kurallı çeldirici zayıf kalınca)
   function aiDistractors(correctEn, level){
-    var keys=[]; try{ keys=(JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){}
-    if(!keys.length) return Promise.reject("no-key");
+    if(!window.DHProviders || !DHProviders.hasAnyKey()) return Promise.reject("no-key");
     var sys="Sen bir İngilizce sınav hazırlayıcısısın. Verilen DOĞRU cümle için 3 YANLIŞ ama İNANDIRICI şık üret. "
       +"Kurallar: aynı özneyle başla, benzer uzunlukta olsun, "+(level||"B1")+" seviyesinde olsun, gramer/kelime hatası içersin ama mantıklı görünsün. "
       +"Doğru cümleyle AYNI olmasınlar. SADECE JSON dizi döndür: [\"yanlış1\",\"yanlış2\",\"yanlış3\"]";
     var usr="Doğru cümle: \""+correctEn+"\"\n3 inandırıcı yanlış şık üret.";
-    return fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+keys[0]},body:JSON.stringify({model:"llama-3.3-70b-versatile",messages:[{role:"system",content:sys},{role:"user",content:usr}],temperature:0.6,max_tokens:200})}).then(function(res){
-      if(res.status===429){ try{ if(window.DHAI)DHAI.noteRateLimit(); }catch(e){} throw "rate"; }
-      if(!res.ok) throw "http";
-      try{ if(window.DHAI)DHAI.noteSuccess(); }catch(e){}
-      return res.json();
-    }).then(function(d){
-      var txt=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||"").trim();
+    return DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}], {temperature:0.6, max_tokens:200}).then(function(txt){
+      txt=(txt||"").trim();
       var m=txt.match(/\[[\s\S]*\]/);
       if(m){ try{ var arr=JSON.parse(m[0]); if(Array.isArray(arr)) return arr.map(String).slice(0,3); }catch(e){} }
       return [];
@@ -404,32 +399,20 @@
     return hit/tw.length >= 0.75;
   }
 
-  // --- AI ile yazma değerlendirme (Groq) ---
+  // --- AI ile yazma değerlendirme (çok sağlayıcılı) ---
   function evaluateWithAI(turkce, ornek, ogrenci){
-    var keys=[]; try{ keys=(JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){}
-    if(!keys.length) return Promise.reject("no-key");
+    if(!window.DHProviders || !DHProviders.hasAnyKey()) return Promise.reject("no-key");
     var sys = "Sen bir İngilizce sınav değerlendiricisisin. Öğrencinin Türkçe bir cümleyi İngilizceye çevirisini değerlendir. "
       + "Anlam doğruysa ve dilbilgisi kabul edilebilirse DOĞRU say — birebir aynı kelimeler gerekmez, farklı ama geçerli çeviriler kabul edilir. "
       + "Küçük yazım hatalarını (ör. 'budged'→'budget') hoş gör ama not et. "
       + "SADECE şu JSON formatında yanıt ver, başka hiçbir şey yazma: {\"correct\": true veya false, \"feedback\": \"çok kısa Türkçe not (en fazla 8 kelime)\"}";
     var usr = "Türkçe cümle: \""+turkce+"\"\nÖrnek doğru çeviri: \""+ornek+"\"\nÖğrencinin çevirisi: \""+ogrenci+"\"\nDeğerlendir.";
-    return fetch("https://api.groq.com/openai/v1/chat/completions",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+keys[0]},
-      body:JSON.stringify({model:"llama-3.3-70b-versatile",messages:[{role:"system",content:sys},{role:"user",content:usr}],temperature:0.1,max_tokens:120})
-    }).then(function(res){
-      if(res.status===429){ try{ if(window.DHAI) DHAI.noteRateLimit(); }catch(e){} throw "rate"; }
-      if(!res.ok) throw "http";
-      try{ if(window.DHAI) DHAI.noteSuccess(); }catch(e){}
-      return res.json();
-    }).then(function(d){
-      var txt=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||"").trim();
-      // JSON ayıkla
+    return DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}], {temperature:0.1, max_tokens:120}).then(function(txt){
+      txt=(txt||"").trim();
       var m=txt.match(/\{[\s\S]*\}/);
       if(m){
         try{ var o=JSON.parse(m[0]); return { correct:!!o.correct, feedback:o.feedback||"" }; }catch(e){}
       }
-      // JSON gelmezse metinde "true/doğru" ara
       var low=txt.toLowerCase();
       return { correct: low.indexOf("true")>=0 || low.indexOf("doğru")>=0, feedback:"" };
     });

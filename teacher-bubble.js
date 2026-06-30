@@ -45,6 +45,11 @@
     return {idx:-1,key:null};
   }
   function groqChat(messages){
+    // Çok sağlayıcılı katman varsa onu kullan (Groq→Cerebras→Gemini)
+    if(window.DHProviders && DHProviders.hasAnyKey){
+      return DHProviders.chat(messages, {temperature:0.3, max_tokens:1500});
+    }
+    // yedek: doğrudan Groq
     var keys=getKeys();
     if(!keys.length) return Promise.reject({code:"no-key"});
     var attempt=0;

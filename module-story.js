@@ -44,8 +44,7 @@
 
   // AI ile hikaye üret
   function generateAI(prof){
-    var ks=keys();
-    if(!ks.length) return Promise.reject({code:"no-key"});
+    if(!(global.DHProviders && DHProviders.hasAnyKey())) return Promise.reject({code:"no-key"});
     var sys = "Sen bir İngilizce öğretmenisin. Öğrenci için KISA, akıcı ve eğlenceli bir hikaye yaz. "
       + "Hikaye, verilen gramer konusunu BOL BOL kullanmalı (öğrenci o yapıyı bağlamda görsün). "
       + "Seviye: "+(prof.level||"B1")+" — kelimeler ve cümleler bu seviyeye uygun olsun, fazla zorlaştırma. "
@@ -57,17 +56,8 @@
       + "Bu yapıları kullanan örnek cümleler:\n- " + prof.samples.slice(0,6).join("\n- ")
       + "\n\nBu gramer konusunu bolca kullanan, "+(prof.level||"B1")+" seviyesine uygun kısa bir hikaye yaz.";
 
-    return fetch("https://api.groq.com/openai/v1/chat/completions",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+ks[0]},
-      body:JSON.stringify({model:"llama-3.3-70b-versatile",messages:[{role:"system",content:sys},{role:"user",content:usr}],temperature:0.7,max_tokens:700})
-    }).then(function(res){
-      if(res.status===429){ try{ if(global.DHAI) DHAI.noteRateLimit(); }catch(e){} throw {code:"rate"}; }
-      if(!res.ok) throw {code:"http"};
-      try{ if(global.DHAI) DHAI.noteSuccess(); }catch(e){}
-      return res.json();
-    }).then(function(d){
-      var txt=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||"").trim();
+    return DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}], {temperature:0.7, max_tokens:700}).then(function(txt){
+      txt=(txt||"").trim();
       var m=txt.match(/\{[\s\S]*\}/);
       if(m){
         try{

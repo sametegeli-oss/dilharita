@@ -3,6 +3,7 @@
 <head>
 <script src="./auth-guard.js?v=1"></script>
 <script src="./storage-bridge.js?v=3"></script>
+<script src="./ai-providers.js?v=1"></script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0b1120" />
@@ -135,6 +136,16 @@ const GROQ_MODEL = "llama-3.3-70b-versatile";
 const KEYS_LS = "groqApiKeys";
 function getKeys(){ try{ return (JSON.parse(localStorage.getItem(KEYS_LS)||"[]")||[]).filter(Boolean); }catch{ return []; } }
 function saveKey(k){ const ks=getKeys(); if(!ks.includes(k)) ks.push(k); try{ localStorage.setItem(KEYS_LS, JSON.stringify(ks)); }catch{} }
+
+/* ---------- Çok sağlayıcılı anahtar yönetimi ---------- */
+const PROVIDER_META = {
+  groq:     { store:"groqApiKeys",     label:"Groq",     prefix:"gsk_", url:"https://console.groq.com/keys",       note:"En hızlısı, ücretsiz." },
+  cerebras: { store:"cerebrasApiKeys", label:"Cerebras", prefix:"csk-", url:"https://cloud.cerebras.ai",            note:"Yüksek hacim, ücretsiz." },
+  gemini:   { store:"geminiApiKeys",   label:"Gemini",   prefix:"AIza", url:"https://aistudio.google.com/apikey",  note:"En cömert (Google), ücretsiz." }
+};
+function getKeysFor(store){ try{ return (JSON.parse(localStorage.getItem(store)||"[]")||[]).filter(Boolean); }catch{ return []; } }
+function saveKeyFor(store,k){ const ks=getKeysFor(store); if(!ks.includes(k)) ks.push(k); try{ localStorage.setItem(store, JSON.stringify(ks)); }catch{} }
+function removeKeyFor(store,k){ const ks=getKeysFor(store).filter(x=>x!==k); try{ localStorage.setItem(store, JSON.stringify(ks)); }catch{} }
 let _ki=0;
 // word'deki sağlam sistem: rate limit yiyen anahtarı geçici "yasakla",
 // bu sürede diğer anahtarları kullan, süre dolunca geri al.
@@ -153,20 +164,22 @@ function nextUsableKey(keys){
   return { idx:-1, key:null, waitMs: soonest ? Math.max(0, soonest[1]-now) : 0 };
 }
 async function groqChat(messages){
+  // Çok sağlayıcılı katman varsa onu kullan (Groq→Cerebras→Gemini, aşamalı)
+  if(window.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
+    try{ return await DHProviders.chat(messages, {temperature:0.3, max_tokens:2500}); }
+    catch(e){ throw (e&&e.code?e:{code:"network"}); }
+  }
+  // yedek: doğrudan Groq (çok anahtarlı)
   const keys=getKeys();
   if(!keys.length) throw {code:"no-key"};
   let last=null;
-  // her anahtarı en fazla 1 kez dene; rate limit yiyeni 60sn yasakla
   for(let attempt=0; attempt<keys.length; attempt++){
     const pick=nextUsableKey(keys);
-    if(pick.idx===-1){
-      // tüm anahtarlar yasaklı
-      throw { code:"rate", tried:keys.length, waitMs:pick.waitMs };
-    }
+    if(pick.idx===-1){ throw { code:"rate", tried:keys.length, waitMs:pick.waitMs }; }
     try{
       const res=await fetch(GROQ_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+pick.key},body:JSON.stringify({model:GROQ_MODEL,messages,temperature:0.3,max_tokens:2500})});
-      if(res.status===401){ last={code:"bad-key"}; _keyBan[pick.idx]=Date.now()+5*60*1000; continue; }  // geçersiz anahtar: uzun yasak
-      if(res.status===429){ last={code:"rate", tried:keys.length}; _keyBan[pick.idx]=Date.now()+60*1000; continue; }  // rate limit: 60sn yasak
+      if(res.status===401){ last={code:"bad-key"}; _keyBan[pick.idx]=Date.now()+5*60*1000; continue; }
+      if(res.status===429){ last={code:"rate", tried:keys.length}; _keyBan[pick.idx]=Date.now()+60*1000; continue; }
       if(!res.ok){ last={code:"http"}; _keyBan[pick.idx]=Date.now()+10*1000; continue; }
       const data=await res.json();
       return data.choices?.[0]?.message?.content?.trim()||"";
@@ -681,51 +694,70 @@ function removeKey(k){
   let ks=getKeys().filter(x=>x!==k);
   try{ localStorage.setItem(KEYS_LS, JSON.stringify(ks)); }catch{}
 }
-function keyListHTML(){
-  const ks=getKeys();
+function keyListHTMLFor(store){
+  const ks=getKeysFor(store);
   if(!ks.length) return `<div class="keylist-empty">Henüz anahtar yok.</div>`;
   return ks.map((k,i)=>`
     <div class="keyrow">
       <span class="keynum">${i+1}</span>
       <input class="keyval" type="text" readonly value="${esc(k)}" />
-      <button class="keydel" data-k="${esc(k)}" title="Sil">🗑️</button>
+      <button class="keydel" data-store="${store}" data-k="${esc(k)}" title="Sil">🗑️</button>
     </div>`).join("");
 }
 function openKeySheet(invalid){
   const sheet=document.createElement("div"); sheet.className="sheet-overlay";
+  const sections = Object.keys(PROVIDER_META).map(pid=>{
+    const m=PROVIDER_META[pid];
+    return `
+    <div class="prov-sec" data-prov="${pid}" style="margin-bottom:16px;border:1px solid var(--line,#1e3a5f);border-radius:12px;padding:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <b style="font-size:15px">${m.label}</b>
+        <a href="${m.url}" target="_blank" rel="noopener" style="font-size:12px">Ücretsiz anahtar al →</a>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${m.note}</div>
+      <div class="keylist" id="keyList_${pid}">${keyListHTMLFor(m.store)}</div>
+      <input id="keyInput_${pid}" type="text" placeholder="Yeni anahtar: ${m.prefix}..." autocomplete="off" spellcheck="false" style="width:100%" />
+      <button class="btn btn-primary keyAddBtn" data-prov="${pid}" style="margin-top:8px">+ ${m.label} anahtarı ekle</button>
+    </div>`;
+  }).join("");
   sheet.innerHTML=`
     <div class="sheet">
       <h3>Öğretmen için API anahtarları</h3>
-      <p>Öğretmen, ücretsiz <b>Groq</b> yapay zekasını kullanır. Birden fazla anahtar ekleyebilirsin; biri limite takılırsa diğerine geçilir. <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a> adresinden ücretsiz alabilirsin.</p>
-      <div class="keylist" id="keyList">${keyListHTML()}</div>
-      <input id="keyInput" type="text" placeholder="Yeni anahtar: gsk_..." autocomplete="off" spellcheck="false" />
+      <p>Öğretmen, ücretsiz yapay zeka kullanır. <b>Groq, Cerebras veya Gemini</b>'den anahtar ekleyebilirsin — biri limite takılırsa otomatik diğerine geçilir (aşamalı). En az birini eklemen yeterli.</p>
       <div class="note ${invalid?"bad":""}" id="keyNote">${invalid?"Önceki anahtar geçersizdi.":""}</div>
-      <button class="btn btn-primary" id="keyAdd">+ Anahtar ekle</button>
+      ${sections}
       <button class="btn btn-primary" id="keyDone">Bitti</button>
       <button class="btn" id="keyCancel">Kapat</button>
     </div>`;
   document.body.appendChild(sheet);
   const close=()=>sheet.remove();
-  const refresh=()=>{ sheet.querySelector("#keyList").innerHTML=keyListHTML(); bindDel(); };
+  const note=(msg,ok)=>{ const n=sheet.querySelector("#keyNote"); n.textContent=msg; n.className="note "+(ok?"ok":"bad"); };
+  const refresh=(pid)=>{ const m=PROVIDER_META[pid]; sheet.querySelector("#keyList_"+pid).innerHTML=keyListHTMLFor(m.store); bindDel(); };
   const bindDel=()=>{
     sheet.querySelectorAll(".keydel").forEach(btn=>{
-      btn.onclick=()=>{ removeKey(btn.getAttribute("data-k")); refresh(); };
+      btn.onclick=()=>{ removeKeyFor(btn.getAttribute("data-store"), btn.getAttribute("data-k")); refresh(btn.getAttribute("data-store").replace("ApiKeys","").replace("gemini","gemini")); 
+        // store→pid çöz
+        const pid=Object.keys(PROVIDER_META).find(p=>PROVIDER_META[p].store===btn.getAttribute("data-store"));
+        if(pid) refresh(pid);
+      };
     });
   };
   bindDel();
   sheet.onclick=e=>{ if(e.target===sheet) close(); };
   sheet.querySelector("#keyCancel").onclick=close;
-  sheet.querySelector("#keyInput").focus();
-  const addKey=()=>{
-    const inp=sheet.querySelector("#keyInput");
-    const k=inp.value.trim();
-    if(!k||!k.startsWith("gsk_")){ sheet.querySelector("#keyNote").textContent="Anahtar 'gsk_' ile başlamalı."; sheet.querySelector("#keyNote").className="note bad"; return; }
-    saveKey(k); inp.value=""; sheet.querySelector("#keyNote").textContent="✓ Eklendi."; sheet.querySelector("#keyNote").className="note ok"; refresh();
-  };
-  sheet.querySelector("#keyAdd").onclick=addKey;
-  sheet.querySelector("#keyInput").onkeydown=e=>{ if(e.key==="Enter") addKey(); };
+  sheet.querySelectorAll(".keyAddBtn").forEach(btn=>{
+    btn.onclick=()=>{
+      const pid=btn.getAttribute("data-prov"), m=PROVIDER_META[pid];
+      const inp=sheet.querySelector("#keyInput_"+pid);
+      const k=inp.value.trim();
+      if(!k){ note(m.label+" anahtarı boş.",false); return; }
+      // gevşek önek kontrolü (yanlış sağlayıcıya yapıştırmayı önler, ama zorlamaz)
+      saveKeyFor(m.store,k); inp.value=""; note("✓ "+m.label+" anahtarı eklendi.",true); refresh(pid);
+    };
+  });
   sheet.querySelector("#keyDone").onclick=()=>{
-    if(!getKeys().length){ sheet.querySelector("#keyNote").textContent="En az bir anahtar gerekli."; sheet.querySelector("#keyNote").className="note bad"; return; }
+    const any=Object.keys(PROVIDER_META).some(pid=>getKeysFor(PROVIDER_META[pid].store).length>0);
+    if(!any){ note("En az bir anahtar gerekli (herhangi bir sağlayıcı).",false); return; }
     close(); explain();
   };
 }

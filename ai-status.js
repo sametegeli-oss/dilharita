@@ -32,8 +32,15 @@
 
   function hasKeys(){
     try{
-      var ks = JSON.parse(localStorage.getItem("groqApiKeys") || "[]") || [];
-      return ks.filter(Boolean).length > 0;
+      // Çok sağlayıcılı: herhangi birinde anahtar varsa yeterli
+      if(global.DHProviders && DHProviders.hasAnyKey) return DHProviders.hasAnyKey();
+      // yedek: doğrudan kontrol
+      var stores=["groqApiKeys","cerebrasApiKeys","geminiApiKeys"];
+      for(var i=0;i<stores.length;i++){
+        var ks=JSON.parse(localStorage.getItem(stores[i])||"[]")||[];
+        if(ks.filter(Boolean).length>0) return true;
+      }
+      return false;
     }catch(e){ return false; }
   }
 
@@ -56,7 +63,7 @@
   // Neden kullanılamıyor — kullanıcıya kısa mesaj için
   function reason(){
     if (!policyAiOpen()) return "AI öğretmen ayarlardan kapalı.";
-    if (!hasKeys())      return "AI için Groq anahtarı gerekiyor (öğretmen sayfasından ekle).";
+    if (!hasKeys())      return "AI için bir anahtar gerekiyor (Groq, Cerebras veya Gemini — öğretmen sayfasından ekle).";
     if (!online())       return "İnternet yok — öğretmen şu an çevrimdışı modda.";
     if (rateLimited()){
       var sec = Math.max(1, Math.ceil((_rateUntil - Date.now())/1000));

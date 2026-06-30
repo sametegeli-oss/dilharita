@@ -1,44 +1,64 @@
-# Günlük Derse Telaffuz Eklendi
+# Çok Sağlayıcılı AI: Groq + Cerebras + Gemini (Aşamalı)
 
-Artık her ders, anayasaya göre telaffuz (konuşma) pratiği de içeriyor. İki yöntem var, hangisinin kullanılacağına anayasadan karar veriliyor.
+Artık öğretmen üç ücretsiz AI sağlayıcısını **aşamalı** kullanıyor: biri limite
+takılırsa otomatik diğerine geçer. Hiçbiri ücret istemez (kart yok).
 
-## Dosyalar
-| Dosya | İşlem | Açıklama |
-|-------|-------|----------|
-| `teacher-policy.js` | **Değiştir** | Anayasaya `telaffuz` ayarları eklendi |
-| `lesson-engine.js` | **Değiştir** | Derse telaffuz adımı üretimi eklendi |
-| `ders.html` | **Değiştir** | İki telaffuz modu (gömülü mikrofon + videopractice köprüsü) |
-| `videopractice.html` | **Değiştir** | Dersten gelen cümleyle başlama + derse dönüş |
+## Mantık
+**Groq → Cerebras → Gemini** sırasıyla denenir. Bir sağlayıcı limitlenirse (429) veya
+başarısız olursa, sıradaki devreye girer. Aynı sağlayıcının birden çok anahtarı varsa
+onlar da sırayla denenir. Hepsi tükenirse kurallı moda düşülür (çökmez).
 
-## Anayasadaki yeni ayarlar
-```json
-"telaffuz": {
-  "acik": true,            // derste telaffuz olsun mu
-  "adimSayisi": 1,         // her derste kaç telaffuz adımı
-  "yontem": "ders-ici"     // "ders-ici" veya "videopractice"
-}
-```
-Ders sayfasındaki ⚙️ ile bunları düzenleyebilir, kapatabilir, sayısını artırabilir veya yöntemi değiştirebilirsin.
+Sıra = öncelik: Groq en hızlı, o yüzden önce. Cerebras yüksek hacim. Gemini en cömert
+(Google, günde 1.500 istek + dakikada 1M token) ama farklı format — yedek olarak ideal.
 
-## İki yöntem
+## Yeni dosya
+- **`ai-providers.js`**: Merkezi AI katmanı. `DHProviders.chat(messages, opts)` tek
+  fonksiyon — içinde üç sağlayıcı + fallback. Groq/Cerebras OpenAI-uyumlu; Gemini ayrı
+  format (systemInstruction/contents/parts) otomatik çevriliyor.
 
-**`ders-ici` (hafif, varsayılan):** Ders sayfasından çıkmadan telaffuz. Cümle gösterilir, dinlenir, mikrofona basıp okunur. Tarayıcının ses tanımasıyla (SpeechRecognition) duyduğu metin yazıya çevrilir, hedefle karşılaştırılıp %puan verilir. %70+ başarılı sayılır. Video/avatar yok — hızlı ve hafif.
-- Ses tanıma desteklemeyen tarayıcıda: dinle + "söyledim" ile geçilir (puan vermeden).
+## Anahtar girişi (teacher.html)
+🔑 panelinde artık **üç bölüm** var: Groq, Cerebras, Gemini. Her birine ayrı anahtar
+eklenir. En az biri yeterli. Ücretsiz alma linkleri panelde:
+- Groq: console.groq.com/keys (gsk_...)
+- Cerebras: cloud.cerebras.ai (csk-...)
+- Gemini: aistudio.google.com/apikey (AIza...)
 
-**`videopractice` (tam ekran):** Telaffuz adımına gelince öğrenci, o cümlenin modülüyle mevcut **videopractice.html**'e yönlendirilir (videolu, avatarlı, tam puanlama). Bitince "← Derse dön" ile ders kaldığı yerden devam eder. Mevcut, test edilmiş video motoru hiç değişmeden kullanılır.
+Anahtarlar localStorage'da ayrı saklanır: `groqApiKeys`, `cerebrasApiKeys`, `geminiApiKeys`.
 
-## Sistem entegrasyonu
-- Her iki yöntemde de telaffuz sonucu **ortak ilerleme motoruna** (`sentence:` kimliği) yazılır → harita ve tekrar sistemi güncellenir.
-- Telaffuz adımı dersin **sonunda** gelir (öğrenme → pekiştirme → konuşma sırası).
-- Telaffuz cümleleri öncelikle o derste geçen cümlelerden seçilir (öğrendiğini hemen konuşturur).
+## Güncellenen AI çağrıları (hepsi artık çok sağlayıcılı)
+- Seviye testi: yazma değerlendirme + AI çeldirici
+- Modül sınavı: yazma değerlendirme
+- Modül hikayesi: hikaye üretimi
+- Kayan öğretmen (teacher-bubble): sohbet
+- Öğretmen sayfası (teacher.html): cümle analizi
+
+`ai-status.js` (DHAI) artık "herhangi bir sağlayıcıda anahtar var mı" diye bakıyor
+(sadece Groq değil).
+
+## Dosyalar (13)
+Yeni: `ai-providers.js`
+Değişti: `ai-status.js`, `module-story.js`, `teacher-bubble.js`, `teacher.html`
+(3 sağlayıcılı anahtar paneli + çok sağlayıcılı çağrı), `seviye-testi.html`,
+`modul-testi.html`, ve ai-providers script'i eklenen sayfalar (`ders/harita/index/
+library/pv-practice/phrasal-verbs.html`).
 
 ## Test edildi
-- Anayasa: telaffuz açık/kapalı, adım sayısı, yöntem değişimi ✓
-- Motor: telaffuz adımı doğru sırada (sona) üretiliyor, 2 adım ayarı çalışıyor ✓
-- Skorlama: tam eşleşme %100, kısmi %75, yanlış %0 ✓
-- Köprü: dersten videopractice'e cümleyle gidiş + dönüşte kaldığı adımdan devam ✓
+- Aşamalı fallback: Groq limit→Cerebras, sadece Gemini, üçü birden ✓
+- Gemini format çevirisi (system→systemInstruction, contents/parts) ✓
+- Tüm sözdizimi (node --check) + script dengeleri ✓
+- Geriye uyumluluk: sadece Groq anahtarıyla eskisi gibi çalışır ✓
+
+## Önemli düzeltme
+modul-testi.html'de eski bir string hatası (renderWrite feedback) vardı, bu pakette
+düzeltildi.
+
+## Yükledikten sonra
+1. 13 dosyayı yükle, sert yenile (Ctrl+Shift+R).
+2. teacher.html → 🔑 → istediğin sağlayıcı(lar)dan ücretsiz anahtar ekle.
+3. Tek sağlayıcı yeterli; ama 2-3 eklersen biri limitlenince kesinti olmaz.
 
 ## Not
-- `ders-ici` telaffuz için mikrofon izni gerekir; tarayıcı ilk kullanımda sorar.
-- Ses tanıma en iyi Chrome/Edge'de çalışır; bazı tarayıcılarda sınırlı olabilir (o durumda otomatik "dinle + geç" moduna düşer).
-- `videopractice` yöntemi için Pexels API anahtarı (videopractice'in kendi ayarı) gerekir; yoksa video gelmez ama telaffuz yine çalışır.
+- Mevcut Groq anahtarların aynen çalışmaya devam eder — hiçbir şey kaybolmaz.
+- Gemini ücretsiz katmanı en cömert; Groq limitleri 2026'da düştüğü için Cerebras/Gemini
+  eklemek kesintiyi ciddi azaltır.
+- Gemini istekleri Google tarafından eğitimde kullanılabilir (dil öğrenme için sorun değil).
