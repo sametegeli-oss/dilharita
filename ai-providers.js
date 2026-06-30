@@ -32,7 +32,7 @@
       id:"cerebras",
       keyStore:"cerebrasApiKeys",
       url:"https://api.cerebras.ai/v1/chat/completions",
-      model:"llama-3.3-70b",
+      model:"gpt-oss-120b",
       kind:"openai"
     },
     {
@@ -81,8 +81,18 @@
     }).then(function(res){
       if(res.status===429) throw {code:"rate", provider:p.id};
       if(res.status===401||res.status===403) throw {code:"bad-key", provider:p.id};
-      if(!res.ok) throw {code:"http", provider:p.id, status:res.status};
+      if(!res.ok){
+        // hata gövdesini oku (model adı yanlışsa Cerebras 400 + açıklama döner)
+        return res.text().then(function(t){
+          try{ console.warn("["+p.id+"] HTTP "+res.status+": "+t.slice(0,300)); }catch(e){}
+          throw {code:"http", provider:p.id, status:res.status, detail:t};
+        });
+      }
       return res.json();
+    }, function(networkErr){
+      // fetch reddedildi → CORS veya ağ hatası
+      try{ console.warn("["+p.id+"] ağ/CORS hatası:", networkErr && networkErr.message); }catch(e){}
+      throw {code:"network", provider:p.id};
     }).then(function(d){
       var txt = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
       if(txt==null) throw {code:"empty", provider:p.id};
