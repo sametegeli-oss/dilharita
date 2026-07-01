@@ -429,7 +429,10 @@ function organizeButtons(){
   }
 
   // 3. "Sonraki" butonunu yerinde bırak (gereksiz taşıma yapma)
-  // 4. Zor/Normal/Kolay'ı Dinle'nin yanına düzgün yerleştir
+  // 4. Zor/Normal/Kolay yerleştirmesi ARTIK index-app-layout.js tarafından yapılıyor
+  //    (cümle Türkçesinin altına). Burada taşıma yapmıyoruz — çakışmayı önlemek için.
+  return;
+  // eslint-disable-next-line no-unreachable
   const dinleBtn = [...actions.querySelectorAll("button, a")].find(b => {
     const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
     return t.includes("dinle") || t.includes("listen");
