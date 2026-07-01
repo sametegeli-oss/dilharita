@@ -252,7 +252,8 @@ function speakText(text){
     const u=new SpeechSynthesisUtterance(text);
     const voice = pickVoice();
     if(voice) u.voice = voice;
-    u.lang = voice ? voice.lang : "en-US";
+    u.lang = "en-US";          // sohbet HER ZAMAN İngilizce
+    u.__dhMixed = true;        // karma-dil patch'ini atla (Türkçe okumayı engelle)
     u.rate = .96;
     u.pitch = .78;
     u.onend=()=>{if(run===speechRun) avatar.stop();};
