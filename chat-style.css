@@ -239,3 +239,12 @@ button,input,textarea{font:inherit}
     font-size:24px!important;
   }
 }
+
+/* "Sen öner" butonu (öneri) */
+.suggest-btn{background:linear-gradient(180deg,#34d399,#059669)}
+.suggest-btn:disabled{opacity:.5}
+@media(max-width:520px){
+  /* 3 buton + textarea sığsın: biraz küçült */
+  .input-row .icon-fab{width:46px;height:46px;font-size:20px}
+  .input-row{gap:7px}
+}

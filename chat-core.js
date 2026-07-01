@@ -177,7 +177,7 @@ class PhotoAvatar{
 
 function buildUI(){
   const root=document.getElementById("chatApp") || document.body.appendChild(document.createElement("div"));
-  root.innerHTML=`<div class="chat-shell"><div class="chat-top"><a class="back-btn" href="${Scenario.backHref||'chat.html'}">←</a><div class="chat-title-wrap"><div class="chat-title">${esc(Scenario.title)}</div><div class="chat-sub" id="subtitle">${esc(Scenario.subtitle)} · ${State.level}</div></div><button class="level-pill" id="levelBtn" type="button">${State.level}</button></div><div class="avatar-stage"><img id="avatarImg" alt="Fotoğraflı konuşan avatar"></div><div class="panel"><div class="chat-history" id="chatHistory"></div><div class="input-row"><div class="input-wrap"><textarea id="textIn" class="text-in" rows="1" placeholder="Yaz ya da 🎙 ile konuş..."></textarea></div><button class="icon-fab mic-btn" id="micBtn" type="button">🎙</button><button class="icon-fab send-btn" id="sendBtn" type="button">➤</button></div></div></div><div class="sheet" id="explainSheet"><div class="sheet-card"><h3>TR Açıkla</h3><p id="explainText">Yükleniyor...</p><div class="sheet-btns"><button class="sheet-btn primary" id="closeExplain">Kapat</button></div></div></div><div class="sheet" id="levelSheet"><div class="sheet-card"><h3>Seviye seç</h3><div class="sheet-btns"><button class="sheet-btn levelOpt" data-level="A1">A1</button><button class="sheet-btn levelOpt" data-level="A2">A2</button><button class="sheet-btn levelOpt" data-level="B1">B1</button><button class="sheet-btn levelOpt" data-level="B2">B2</button><button class="sheet-btn levelOpt" data-level="C1">C1</button></div><div class="sheet-btns"><button class="sheet-btn primary" id="closeLevel">Kapat</button></div></div></div><div class="sheet" id="keySheet"><div class="sheet-card"><h3>Groq API anahtarı</h3><p>Konuşma için Groq API anahtarını ekle. Birden fazla anahtar saklanabilir.</p><input id="keyInput" type="text" placeholder="gsk_..." autocomplete="off"><div class="sheet-btns"><button class="sheet-btn primary" id="saveKey">Kaydet</button><button class="sheet-btn" id="closeKey">Kapat</button></div><div class="note" id="keyNote">Anahtar bu tarayıcıda saklanır.</div></div></div>`;
+  root.innerHTML=`<div class="chat-shell"><div class="chat-top"><a class="back-btn" href="${Scenario.backHref||'chat.html'}">←</a><div class="chat-title-wrap"><div class="chat-title">${esc(Scenario.title)}</div><div class="chat-sub" id="subtitle">${esc(Scenario.subtitle)} · ${State.level}</div></div><button class="level-pill" id="levelBtn" type="button">${State.level}</button></div><div class="avatar-stage"><img id="avatarImg" alt="Fotoğraflı konuşan avatar"></div><div class="panel"><div class="chat-history" id="chatHistory"></div><div class="input-row"><div class="input-wrap"><textarea id="textIn" class="text-in" rows="1" placeholder="Yaz ya da 🎙 ile konuş..."></textarea></div><button class="icon-fab suggest-btn" id="suggestBtn" type="button" title="Sen öner">💡</button><button class="icon-fab mic-btn" id="micBtn" type="button">🎙</button><button class="icon-fab send-btn" id="sendBtn" type="button">➤</button></div></div></div><div class="sheet" id="explainSheet"><div class="sheet-card"><h3>TR Açıkla</h3><p id="explainText">Yükleniyor...</p><div class="sheet-btns"><button class="sheet-btn primary" id="closeExplain">Kapat</button></div></div></div><div class="sheet" id="levelSheet"><div class="sheet-card"><h3>Seviye seç</h3><div class="sheet-btns"><button class="sheet-btn levelOpt" data-level="A1">A1</button><button class="sheet-btn levelOpt" data-level="A2">A2</button><button class="sheet-btn levelOpt" data-level="B1">B1</button><button class="sheet-btn levelOpt" data-level="B2">B2</button><button class="sheet-btn levelOpt" data-level="C1">C1</button></div><div class="sheet-btns"><button class="sheet-btn primary" id="closeLevel">Kapat</button></div></div></div><div class="sheet" id="keySheet"><div class="sheet-card"><h3>Groq API anahtarı</h3><p>Konuşma için Groq API anahtarını ekle. Birden fazla anahtar saklanabilir.</p><input id="keyInput" type="text" placeholder="gsk_..." autocomplete="off"><div class="sheet-btns"><button class="sheet-btn primary" id="saveKey">Kaydet</button><button class="sheet-btn" id="closeKey">Kapat</button></div><div class="note" id="keyNote">Anahtar bu tarayıcıda saklanır.</div></div></div>`;
 }
 function addBubble(role, text, options){
   const hist = $("chatHistory");
@@ -273,6 +273,38 @@ async function explainText(text){
     $("explainText").textContent=reply || "Açıklama alınamadı.";
   }catch(e){ $("explainText").textContent="Açıklama alınamadı. API anahtarını kontrol et veya tekrar dene."; }
 }
+async function suggestReply(){
+  if(State.busy) return;
+  const input=$("textIn");
+  const sBtn=$("suggestBtn");
+  await ensureStorageReady();
+  if(!getKeys().length){ $("keySheet").classList.add("open"); return; }
+  const prev=sBtn ? sBtn.textContent : "";
+  if(sBtn){ sBtn.disabled=true; sBtn.textContent="⏳"; }
+  try{
+    // Sohbet bağlamına göre, kullanıcının SÖYLEYEBİLECEĞİ uygun bir İngilizce cevap öner.
+    const sys = systemPrompt()
+      + "\n\nNOW: The USER is stuck and wants a suggested reply. Based on the conversation so far and the partner's last message, write ONE natural English sentence that the USER (the learner) could say next. "
+      + "Match the learner's level ("+State.level+"): keep it simple and appropriate. "
+      + "Reply with ONLY that single English sentence — no quotes, no Turkish, no explanation.";
+    const messages=[{role:"system",content:sys},{role:"assistant",content:Scenario.opener},...State.history.slice(-10),
+      {role:"user",content:"(Suggest what I could say next — English only, one sentence.)"}];
+    let reply=await groqChat(messages);
+    reply=String(reply||"").trim().replace(/^["'“”]+|["'“”]+$/g,"").split("\n")[0].trim();
+    if(reply){
+      input.value=reply;
+      input.dispatchEvent(new Event("input"));
+      input.focus();
+      // imleci sona al
+      try{ input.setSelectionRange(reply.length, reply.length); }catch(e){}
+    }
+  }catch(e){
+    // sessiz: öneri alınamazsa kutuyu boş bırak
+  }finally{
+    if(sBtn){ sBtn.disabled=false; sBtn.textContent=prev||"💡"; }
+  }
+}
+
 async function sendUser(){
   const input=$("textIn");
   const text=input.value.trim();
@@ -331,6 +363,8 @@ function setupEvents(){
   $("textIn").addEventListener("input",e=>{ e.target.style.height="auto"; e.target.style.height=Math.min(120,e.target.scrollHeight)+"px"; });
   $("textIn").addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); sendUser(); } });
   $("sendBtn").onclick=sendUser;
+  const sBtn=$("suggestBtn");
+  if(sBtn) sBtn.onclick=suggestReply;
   if(STT){
     let rec=null,listening=false;
     $("micBtn").onclick=()=>{
