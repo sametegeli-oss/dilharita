@@ -165,7 +165,40 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
   var _voices=[];
   function rv(){ try{_voices=speechSynthesis.getVoices()||[];}catch(e){_voices=[];} }
   rv(); try{ speechSynthesis.onvoiceschanged=rv; }catch(e){}
-  function speak(t){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.lang="en-US"; var v=_voices.find(function(x){return /^en/i.test(x.lang);}); if(v)u.voice=v; speechSynthesis.speak(u);}catch(e){} }
+  // sesleri garanti et: masaüstü Chrome'da getVoices ilk başta boş döner
+  function ensureVoices(cb){
+    rv();
+    if(_voices && _voices.length){ cb(); return; }
+    var tries=0;
+    var t=setInterval(function(){
+      rv(); tries++;
+      if((_voices && _voices.length) || tries>10){ clearInterval(t); cb(); }
+    },120);
+  }
+  function speak(t){
+    t=String(t||"").trim(); if(!t) return;
+    try{
+      // Chrome masaüstü bug'ı: cancel hemen ardından speak sessiz kalabilir → küçük gecikme
+      speechSynthesis.cancel();
+      ensureVoices(function(){
+        try{
+          var u=new SpeechSynthesisUtterance(t);
+          u.lang="en-US";
+          var v=_voices.find(function(x){return /^en[-_]?US/i.test(x.lang);}) || _voices.find(function(x){return /^en/i.test(x.lang);});
+          if(v) u.voice=v;
+          u.rate=.95; u.pitch=1;
+          u.__dhMixed=true; u.__longTTSAvatarSync=true;
+          setTimeout(function(){
+            try{
+              speechSynthesis.speak(u);
+              // Chrome bazen "paused" durumda takılır → resume
+              if(speechSynthesis.paused){ try{ speechSynthesis.resume(); }catch(e){} }
+            }catch(e){}
+          }, 60);
+        }catch(e){}
+      });
+    }catch(e){}
+  }
 
   var PHASE_LABEL={ gramer:"Gramer", isinma:"Isınma", tekrar:"Tekrar", yeni:"Yeni", pekistirme:"Pekiştirme", video:"Video", telaffuz:"Telaffuz" };
   var PHASE_ORDER=["gramer","isinma","tekrar","yeni","pekistirme","video","telaffuz"];
@@ -693,6 +726,6 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 })();
 </script>
 <script src="./cloud-sync.js?v=4"></script>
-<script src="./word-popup.js?v=2"></script>
+<script src="./word-popup.js?v=1"></script>
 </body>
 </html>
