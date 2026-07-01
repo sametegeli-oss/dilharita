@@ -67,16 +67,6 @@ function addStyle(){
     min-height: 36px !important;
   }
 
-  /* Öğretmen butonlarını tamamen gizle */
-  button:has-text(/Öğretmen/i):not(:has-text(/Sor/i)),
-  a:has-text(/Öğretmen/i):not(:has-text(/Sor/i)) {
-    display: none !important;
-  }
-  button:has-text(/Öğretmene Sor/i),
-  a:has-text(/Öğretmene Sor/i) {
-    display: none !important;
-  }
-
   /* Üst menü sabit */
   .index-app-top-actions{
     position:fixed;
@@ -399,12 +389,8 @@ function organizeButtons(){
   const actions = card.querySelector(".card-actions");
   if (!actions) return;
 
-  // 1. Gereksiz Öğretmen butonlarını gizle
-  [...document.querySelectorAll("button, a")].forEach(b => {
-    const t = (b.textContent||"").toLocaleLowerCase("tr").trim();
-    if (t.includes("öğretmene sor")) b.style.display = "none";
-    if (t.includes("öğretmen") && !t.includes("sor")) b.style.display = "none";
-  });
+  // 1. Öğretmen/Öğretmene Sor butonları GİZLENMİYOR — index-app-layout.js
+  //    bunları "Araçlar" paneline taşıyor.
 
   // 2. "Zayıf Analiz" butonunu ekle veya taşı
   let weakBtn = card.querySelector(".extra-weak-btn");

@@ -90,10 +90,18 @@
     }
     // içerikleri panele taşı (bir kez)
     if(card && card.dataset.dhToolsFilled!=="1"){
+      // Öğretmen (sor olmayan) → araçlara
       var teacher=card.querySelector(".teacher-btn")||btnByText(card,"öğretmen");
       if(teacher && !/sor/i.test(teacher.textContent||"")){ teacher.classList.add("dh-moved-btn"); box.appendChild(teacher); }
+      // Öğretmene Sor → araçlara
+      var teacherAsk=[].slice.call(card.querySelectorAll("button,a")).find(function(b){
+        return /öğretmene sor/i.test(b.textContent||"");
+      });
+      if(teacherAsk){ teacherAsk.style.display=""; teacherAsk.classList.add("dh-moved-btn"); box.appendChild(teacherAsk); }
+      // Detay → araçlara
       var detay=btnByText(card,"detay");
       if(detay){ detay.classList.add("dh-moved-btn"); box.appendChild(detay); }
+      // Zayıf Analiz → araçlara
       var weak=card.querySelector(".extra-weak")||btnByText(card,"zayıf");
       if(weak){ weak.classList.add("dh-moved-btn"); box.appendChild(weak); }
       card.dataset.dhToolsFilled="1";
