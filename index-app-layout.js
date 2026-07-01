@@ -1,5 +1,4 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v2)
-   index-app.html React arayüzünü kullanıcı dostu yapar (bundle'a dokunmadan).
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v3 — döngü-güvenli)
    1) İleri/geri (.study-nav) → altta SABİT çubuk
    2) Zor/Normal/Kolay → cümlenin Türkçesinin (.card-tr) ALTINA
    3) Detay + Zayıf Analiz + Öğretmen + 9'lu ızgara → "🛠 Araçlar" paneline (gizli)
@@ -7,6 +6,9 @@
 (function(){
   "use strict";
   var STYLE_ID="dh-ia-layout-css";
+  var applying=false;      // kendi DOM değişikliğimizi observer'da yok say
+  var scheduled=false;     // debounce
+
   function addStyle(){
     if(document.getElementById(STYLE_ID)) return;
     var s=document.createElement("style"); s.id=STYLE_ID;
@@ -42,47 +44,70 @@
     if(nav && !nav.classList.contains("dh-fixed-nav")) nav.classList.add("dh-fixed-nav");
   }
   function moveGrade(card){
+    // kart zaten işlendiyse çık (döngüyü kes)
+    if(card.dataset.dhGradeDone==="1") return;
     var tr=card.querySelector(".card-tr"); if(!tr) return;
     var zor=card.querySelector(".grade-hard")||btnByText(card,"zor");
     var nor=card.querySelector(".grade-normal")||btnByText(card,"normal");
     var kol=card.querySelector(".grade-easy")||btnByText(card,"kolay");
     if(!(zor&&nor&&kol)) return;
     var grp=card.querySelector(".dh-grade-under");
-    if(grp && grp.contains(zor)) return;
     if(!grp){ grp=document.createElement("div"); grp.className="dh-grade-under"; }
     grp.appendChild(zor); grp.appendChild(nor); grp.appendChild(kol);
     var anchor=card.querySelector(".card-pron")||tr;
     anchor.insertAdjacentElement("afterend", grp);
+    card.dataset.dhGradeDone="1";
   }
   function foldTools(card){
-    var box=card.querySelector(".dh-tools-box");
-    var toggle=card.querySelector(".dh-tools-toggle");
-    if(!box){
-      toggle=document.createElement("button");
-      toggle.type="button"; toggle.className="dh-tools-toggle";
-      toggle.innerHTML='🛠 Araçlar <span class="chev">▾</span>';
-      box=document.createElement("div"); box.className="dh-tools-box dh-hidden";
-      toggle.onclick=function(){ var hid=box.classList.toggle("dh-hidden"); toggle.classList.toggle("open", !hid); };
-      card.appendChild(toggle); card.appendChild(box);
+    if(card.dataset.dhToolsDone==="1"){
+      // sadece ızgara sonradan geldiyse ekle
+      var g=document.querySelector(".wd-tools-row");
+      var b=card.querySelector(".dh-tools-box");
+      if(g && b && g.parentElement!==b) b.appendChild(g);
+      return;
     }
+    var box=document.createElement("div"); box.className="dh-tools-box dh-hidden";
+    var toggle=document.createElement("button");
+    toggle.type="button"; toggle.className="dh-tools-toggle";
+    toggle.innerHTML='🛠 Araçlar <span class="chev">▾</span>';
+    toggle.onclick=function(){ var hid=box.classList.toggle("dh-hidden"); toggle.classList.toggle("open", !hid); };
+    card.appendChild(toggle); card.appendChild(box);
+
     var teacher=card.querySelector(".teacher-btn")||btnByText(card,"öğretmen");
-    if(teacher && teacher.parentElement!==box && !/sor/i.test(teacher.textContent||"")){ teacher.classList.add("dh-moved-btn"); box.appendChild(teacher); }
+    if(teacher && !/sor/i.test(teacher.textContent||"")){ teacher.classList.add("dh-moved-btn"); box.appendChild(teacher); }
     var detay=btnByText(card,"detay");
-    if(detay && detay.parentElement!==box){ detay.classList.add("dh-moved-btn"); box.appendChild(detay); }
+    if(detay){ detay.classList.add("dh-moved-btn"); box.appendChild(detay); }
     var weak=card.querySelector(".extra-weak")||btnByText(card,"zayıf");
-    if(weak && weak.parentElement!==box){ weak.classList.add("dh-moved-btn"); box.appendChild(weak); }
+    if(weak){ weak.classList.add("dh-moved-btn"); box.appendChild(weak); }
     var grid=document.querySelector(".wd-tools-row");
-    if(grid && grid.parentElement!==box){ box.appendChild(grid); }
+    if(grid){ box.appendChild(grid); }
+    card.dataset.dhToolsDone="1";
   }
   function apply(){
-    addStyle(); fixNav();
-    var card=currentCard();
-    if(card){ moveGrade(card); foldTools(card); }
+    if(applying) return;
+    applying=true;
+    try{
+      addStyle(); fixNav();
+      var card=currentCard();
+      if(card){ moveGrade(card); foldTools(card); }
+    }catch(e){}
+    applying=false;
+  }
+  function schedule(){
+    if(scheduled) return;
+    scheduled=true;
+    setTimeout(function(){ scheduled=false; apply(); }, 150);  // debounce
   }
   function boot(){
     apply();
-    try{ new MutationObserver(function(){ apply(); }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
-    var n=0, t=setInterval(function(){ apply(); if(++n>25) clearInterval(t); }, 350);
+    try{
+      new MutationObserver(function(){
+        if(applying) return;   // kendi değişikliğimiz → yok say
+        schedule();            // debounce'lu tetik
+      }).observe(document.body,{childList:true,subtree:true});
+    }catch(e){}
+    // ilk render için birkaç kez dene, sonra dur (sonsuz değil)
+    var n=0, t=setInterval(function(){ apply(); if(++n>12) clearInterval(t); }, 400);
   }
   if(document.readyState!=="loading") boot();
   else document.addEventListener("DOMContentLoaded", boot);
