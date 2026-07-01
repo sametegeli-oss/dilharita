@@ -175,6 +175,17 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       if((_voices && _voices.length) || tries>10){ clearInterval(t); cb(); }
     },120);
   }
+  function pickEnVoice(){
+    // Chrome masaüstü bug'ı: "Google" sesleri sunucudan yüklenemeyince sessiz kalır.
+    // Öncelik: yerel (localService) İngilizce > Microsoft > Google olmayan > herhangi İngilizce
+    var en=_voices.filter(function(x){ return /^en/i.test(x.lang); });
+    if(!en.length) return null;
+    return en.find(function(x){ return x.localService && /^en[-_]?US/i.test(x.lang); })
+        || en.find(function(x){ return x.localService; })
+        || en.find(function(x){ return /microsoft/i.test(x.name); })
+        || en.find(function(x){ return !/google/i.test(x.name); })
+        || en[0];
+  }
   function speak(t){
     t=String(t||"").trim(); if(!t) return;
     try{
@@ -183,11 +194,10 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
         try{
           var u=new SpeechSynthesisUtterance(t);
           u.lang="en-US";
-          var v=_voices.find(function(x){return /^en[-_]?US/i.test(x.lang);}) || _voices.find(function(x){return /^en/i.test(x.lang);});
+          var v=pickEnVoice();
           if(v) u.voice=v;
           u.rate=.95; u.pitch=1;
           u.__dhMixed=true; u.__longTTSAvatarSync=true;
-          // Chrome masaüstü: uzun metinlerde ~14sn sonra durur → periyodik resume ile canlı tut
           var keepAlive=setInterval(function(){
             if(speechSynthesis.speaking){ try{ speechSynthesis.pause(); speechSynthesis.resume(); }catch(e){} }
             else clearInterval(keepAlive);
