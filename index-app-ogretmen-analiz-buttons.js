@@ -153,8 +153,25 @@ function addStyle(){
       font-size: 10px !important;
       min-height: 26px !important;
     }
-    .index-app-top-actions{position:static;margin:10px;display:grid;grid-template-columns:1fr 1fr 1fr}
-    .index-app-top-actions a{border-radius:12px;font-size:12px;padding:8px 6px}
+    /* geri-ok + Liste: en üstte KENDİ şeridinde, kart içeriğiyle çakışmasın */
+    .index-app-top-actions{
+      position:fixed !important;
+      top:0 !important; left:0 !important; right:0 !important;
+      margin:0 !important;
+      display:flex !important;
+      gap:8px !important;
+      justify-content:flex-start !important;
+      align-items:center !important;
+      padding:6px 8px !important;
+      border-radius:0 !important;
+      background:rgba(11,17,32,.95) !important;
+      border-bottom:1px solid rgba(255,255,255,.08) !important;
+    }
+    .index-app-top-actions a,
+    .index-app-top-actions button{border-radius:10px;font-size:12px;padding:8px 10px}
+    /* kart içeriği üst şeridin altından başlasın */
+    #root, body > div{ padding-top:2px; }
+    #root [class*="card"]:first-of-type{ margin-top:52px; }
   }`;
   document.head.appendChild(s);
 }
