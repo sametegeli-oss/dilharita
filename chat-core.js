@@ -253,7 +253,8 @@ function speakText(text){
     const voice = pickVoice();
     if(voice) u.voice = voice;
     u.lang = "en-US";          // sohbet HER ZAMAN İngilizce
-    u.__dhMixed = true;        // karma-dil patch'ini atla (Türkçe okumayı engelle)
+    u.__dhMixed = true;        // karma-dil patch'ini atla
+    u.__longTTSAvatarSync = true;  // long-avatar patch'ini de atla (Türkçe okumayı kesin engelle)
     u.rate = .96;
     u.pitch = .78;
     u.onend=()=>{if(run===speechRun) avatar.stop();};
