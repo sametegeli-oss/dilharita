@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a1628">
+<title>Kelime Öğren · Dil Harita</title>
+<style>
+  :root{
+    --bg:#0a1628; --surface:#0f1f3a; --surface-2:#13294d; --border:#1e3a5f;
+    --text:#e8eef7; --muted:#9fb3d9; --accent:#2563eb; --accent2:#38bdf8;
+    --ok:#34d399; --bad:#f87171; --amber:#f59e0b; --gold:#fbbf24;
+  }
+  *{box-sizing:border-box} html,body{margin:0;padding:0}
+  body{
+    background:radial-gradient(circle at 50% -10%, #16305c 0%, var(--bg) 55%);
+    color:var(--text); min-height:100vh;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding:max(16px,env(safe-area-inset-top)) 14px 28px;
+  }
+  .wrap{max-width:520px;margin:0 auto}
+
+  /* üst şerit */
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .top a.back{width:40px;height:40px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;color:var(--text);text-decoration:none;font-size:19px;flex:0 0 auto}
+  .top .tt{flex:1;min-width:0}
+  .top h1{margin:0;font-size:17px;font-weight:800}
+  .top p{margin:2px 0 0;color:var(--muted);font-size:12px}
+  .top .cfg{width:40px;height:40px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--muted);font-size:17px;cursor:pointer;flex:0 0 auto}
+
+  /* ilerleme çubuğu */
+  .bar{height:6px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:4px}
+  .bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--ok));border-radius:99px;transition:width .3s;width:0}
+  .barmeta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:16px;font-weight:700}
+
+  /* kelime kartı */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:22px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .imgwrap{position:relative;width:100%;aspect-ratio:16/10;background:linear-gradient(135deg,#13294d,#0d1e3a);display:grid;place-items:center;overflow:hidden}
+  .imgwrap img{width:100%;height:100%;object-fit:cover;display:block}
+  .imgwrap .noimg{color:#43598a;font-size:44px}
+  .imgwrap .imgtag{position:absolute;bottom:8px;right:8px;font-size:10px;color:#cbd5e1;background:rgba(0,0,0,.5);padding:3px 7px;border-radius:99px;backdrop-filter:blur(4px)}
+  .imgwrap .lvtag{position:absolute;top:10px;left:10px;font-size:11px;font-weight:900;color:#fff;background:var(--accent);padding:4px 10px;border-radius:99px}
+  .imgwrap .freqtag{position:absolute;top:10px;right:10px;font-size:11px;font-weight:800;color:#0a1628;background:var(--gold);padding:4px 9px;border-radius:99px}
+
+  .cbody{padding:20px}
+  .word{font-size:34px;font-weight:900;letter-spacing:-.5px;margin:0;line-height:1.05}
+  .pron{color:var(--accent2);font-size:15px;font-weight:700;margin:6px 0 0}
+  .speak{margin-top:4px;background:none;border:0;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 0}
+
+  /* anlam (kart modunda gizli→açık) */
+  .reveal-btn{margin-top:16px;width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:14px;padding:14px;font-size:15px;font-weight:800;cursor:pointer}
+  .meanings{margin:16px 0 0;padding:0;list-style:none;display:none}
+  .meanings.show{display:block;animation:fade .25s ease}
+  .meanings li{color:var(--text);font-size:16px;padding:9px 0;border-bottom:1px solid var(--surface-2);line-height:1.4}
+  .meanings li:last-child{border-bottom:0}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* kart modu: biliyorum/bilmiyorum */
+  .know-row{display:none;gap:10px;margin-top:18px}
+  .know-row.show{display:flex}
+  .know-row button{flex:1;border:0;border-radius:14px;padding:15px;font-size:15px;font-weight:900;cursor:pointer}
+  .btn-no{background:linear-gradient(180deg,#ff6b6b,#e23636);color:#fff}
+  .btn-yes{background:linear-gradient(180deg,#34d399,#059669);color:#fff}
+
+  /* quiz modu */
+  .qprompt{font-size:13px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin:0 0 12px}
+  .opts{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+  .opt{text-align:left;background:var(--surface-2);border:2px solid var(--border);border-radius:14px;padding:14px 15px;color:var(--text);font-size:16px;font-weight:600;cursor:pointer;line-height:1.35;transition:border-color .15s}
+  .opt:hover{border-color:var(--accent)}
+  .opt:disabled{cursor:default}
+  .opt.correct{border-color:var(--ok);background:#34d39922}
+  .opt.wrong{border-color:var(--bad);background:#f8717122}
+
+  .mode-badge{display:inline-block;font-size:11px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;color:var(--accent2);margin-bottom:2px}
+
+  /* alt aksiyon */
+  .foot{display:flex;gap:10px;margin-top:14px}
+  .foot button{flex:1;border:0;border-radius:12px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+  .foot button.primary{background:var(--accent);color:#fff;border-color:transparent}
+
+  /* durum rozeti */
+  .status-pill{position:absolute;bottom:8px;left:8px;font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px}
+  .st-new{background:#33415588;color:#cbd5e1}
+  .st-learning{background:#f59e0b33;color:#fbbf24}
+  .st-learned{background:#34d39933;color:#34d399}
+
+  .loading{text-align:center;color:var(--muted);padding:50px 0;font-size:15px}
+  .sheet{position:fixed;inset:0;z-index:100;background:rgba(2,6,23,.72);display:flex;align-items:center;justify-content:center;padding:16px}
+  .sheet-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px;max-width:380px;width:100%}
+  .sheet-card h3{margin:0 0 8px;font-size:18px}
+  .sheet-card p{color:var(--muted);font-size:13px;line-height:1.5;margin:0 0 14px}
+  .sheet-card input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:12px;font-size:14px;margin-bottom:12px}
+  .sheet-btns{display:flex;gap:8px}
+  .sheet-btns button{flex:1;border:0;border-radius:12px;padding:12px;font-weight:800;cursor:pointer}
+  .sheet-btns .save{background:var(--accent);color:#fff}
+  .sheet-btns .close{background:var(--surface-2);color:var(--text)}
+  .cfgrow{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--surface-2)}
+  .cfgrow label{font-size:14px;font-weight:700}
+  .cfgrow select{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="./index.html" title="Ana menü">←</a>
+    <div class="tt"><h1>Kelime Öğren</h1><p id="subtitle">En sık kullanılan kelimeler</p></div>
+    <button class="cfg" id="cfgBtn" title="Ayarlar">⚙️</button>
+  </div>
+  <div class="bar"><i id="progFill"></i></div>
+  <div class="barmeta"><span id="progText">—</span><span id="sessionText">Oturum: 0</span></div>
+  <div id="stage"><div class="loading">Kelimeler yükleniyor…</div></div>
+</div>
+
+<script src="./storage-bridge.js?v=3"></script>
+<script src="./progress-engine.js?v=2"></script>
+<script src="./teacher-policy.js?v=3"></script>
+<script>
+(function(){
+  "use strict";
+  var $=function(id){return document.getElementById(id);};
+  var DICT_PATHS=["./data/dictionary.json","data/dictionary.json","./dictionary.json"];
+  var State={ words:[], idx:0, dict:null, level:"all", session:0, imgCache:{} };
+
+  // ---------- sözlük yükle ----------
+  function loadDict(){
+    var i=0;
+    function tryPath(){
+      if(i>=DICT_PATHS.length) return Promise.resolve({});
+      return fetch(DICT_PATHS[i++]).then(function(r){ if(!r.ok) throw 0; return r.json(); }).catch(tryPath);
+    }
+    return tryPath();
+  }
+
+  // ---------- kelime listesini kur (frekans sıralı) ----------
+  function buildList(dict){
+    var arr=[];
+    for(var w in dict){
+      if(!dict.hasOwnProperty(w)) continue;
+      var e=dict[w];
+      var anlamlar=Array.isArray(e.anlamlar)?e.anlamlar:(e.anlamlar?[e.anlamlar]:[]);
+      if(!anlamlar.length) continue;
+      arr.push({
+        word:w,
+        oku:e.oku||"",
+        anlamlar:anlamlar,
+        seviye:e.seviye||"",
+        frekans:typeof e.frekans==="number"?e.frekans:0
+      });
+    }
+    // frekans azalan (en sık önce)
+    arr.sort(function(a,b){ return b.frekans-a.frekans; });
+    return arr;
+  }
+
+  // ---------- durum (DHProgress) ----------
+  function statusOf(word){
+    if(!window.DHProgress) return Promise.resolve(0);
+    return DHProgress.getStatus("word:"+word).catch(function(){ return 0; });
+  }
+  function setStatus(word, st){
+    try{ if(window.DHProgress) DHProgress.setStatus("word:"+word, st); }catch(e){}
+  }
+  function recordResult(word, correct){
+    try{ if(window.DHProgress) DHProgress.recordResult("word:"+word, correct); }catch(e){}
+  }
+
+  // ---------- görsel: Openverse (anahtarsız) → Pexels (anahtar varsa) ----------
+  function isVisualizable(item){
+    var txt=item.anlamlar.join(" ");
+    // dilbilgisi/fonksiyon kelimeleri: resim DENEME (alakasız sonuç gelir)
+    if(/\[zf\.\]|\[ed\.\]|\[bağ\.\]|\[ünl\.\]|\[zm\.\]/.test(txt)) return false;  // zarf/edat/bağlaç/ünlem/zamir
+    // çok sık fonksiyon kelimeleri (the, a, of, is...) genelde çok kısa
+    if(item.word.length<=2) return false;
+    // isim/sıfat → görsel iyi olur
+    if(/\[i\.\]|\[s\.\]/.test(txt)) return true;
+    // fiil → bazıları görsel (run, jump), denenebilir ama uzun/soyut olanları ele
+    if(/\[f\.\]/.test(txt)) return item.word.length<=10;
+    // etiketi yoksa: kısa ve muhtemelen somut → dene
+    return item.word.length<=10;
+  }
+  function pexelsKey(){
+    // videopractice ile aynı: IndexedDB kv "pexels-api-key" — storage-bridge localStorage'a köprülüyor
+    try{ return localStorage.getItem("pexels-api-key")||""; }catch(e){ return ""; }
+  }
+  function fetchOpenverse(word){
+    var url="https://api.openverse.org/v1/images/?q="+encodeURIComponent(word)+"&page_size=3&license_type=all&mature=false";
+    return fetch(url).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(d){
+      var res=(d&&d.results)||[];
+      for(var i=0;i<res.length;i++){
+        var u=res[i].thumbnail||res[i].url;
+        if(u) return {url:u, src:"Openverse"};
+      }
+      throw 0;
+    });
+  }
+  function fetchPexels(word){
+    var key=pexelsKey();
+    if(!key) return Promise.reject(0);
+    var url="https://api.pexels.com/v1/search?query="+encodeURIComponent(word)+"&per_page=1&orientation=landscape";
+    return fetch(url,{headers:{Authorization:key}}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(d){
+      var ph=(d&&d.photos)||[];
+      if(ph.length && ph[0].src) return {url:ph[0].src.medium||ph[0].src.small, src:"Pexels"};
+      throw 0;
+    });
+  }
+  function loadImage(item){
+    var w=item.word;
+    if(State.imgCache[w]!==undefined) return Promise.resolve(State.imgCache[w]);
+    if(!isVisualizable(item)){ State.imgCache[w]=null; return Promise.resolve(null); }
+    // Openverse önce (anahtarsız), sonra Pexels
+    return fetchOpenverse(w).catch(function(){ return fetchPexels(w); })
+      .then(function(img){ State.imgCache[w]=img; return img; })
+      .catch(function(){ State.imgCache[w]=null; return null; });
+  }
+
+  // ---------- seslendirme ----------
+  function speak(text){
+    try{ var u=new SpeechSynthesisUtterance(text); u.lang="en-US"; u.rate=.85; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
+  }
+
+  // ---------- mod seçimi: kart mı quiz mi ----------
+  function pickMode(item, st){
+    // yeni kelime (hiç görülmemiş) → KART (önce tanıştır)
+    // görülmüş (learning/learned) → QUIZ (pekiştir)
+    if(st===0) return "card";
+    // %60 quiz, %40 kart karışık
+    return Math.random()<0.6 ? "quiz" : "card";
+  }
+
+  // ---------- render ----------
+  function currentItem(){ return State.words[State.idx]; }
+
+  function updateProgressBar(){
+    var total=State.words.length;
+    var pct= total? Math.round((State.idx)/total*100):0;
+    $("progFill").style.width=pct+"%";
+    $("progText").textContent=(State.idx+1)+" / "+total;
+    $("sessionText").textContent="Oturum: "+State.session;
+  }
+
+  function render(){
+    var item=currentItem();
+    if(!item){ renderDone(); return; }
+    updateProgressBar();
+    statusOf(item.word).then(function(st){
+      var mode=pickMode(item, st);
+      if(mode==="card") renderCard(item, st);
+      else renderQuiz(item, st);
+      // görseli arka planda yükle
+      loadImage(item).then(function(img){ applyImage(item, img); });
+    });
+  }
+
+  function statusPill(st){
+    if(st===2) return '<span class="status-pill st-learned">✓ Öğrenildi</span>';
+    if(st===1) return '<span class="status-pill st-learning">◔ Öğreniliyor</span>';
+    return '<span class="status-pill st-new">Yeni</span>';
+  }
+  function imgBlock(item, st){
+    return '<div class="imgwrap" id="imgwrap">'
+      +'<div class="noimg" id="noimg">🖼️</div>'
+      +'<div class="lvtag">'+esc(item.seviye||"—")+'</div>'
+      +(item.frekans>0?'<div class="freqtag">sık '+item.frekans+'</div>':'')
+      + statusPill(st)
+      +'</div>';
+  }
+  function applyImage(item, img){
+    var wrap=$("imgwrap"); if(!wrap || currentItem()!==item) return;
+    var noimg=$("noimg");
+    if(img && img.url){
+      var im=new Image();
+      im.onload=function(){
+        if(currentItem()!==item) return;
+        if(noimg) noimg.style.display="none";
+        var old=wrap.querySelector("img.loaded"); if(old) old.remove();
+        im.className="loaded";
+        wrap.insertBefore(im, wrap.firstChild);
+        var tag=document.createElement("div"); tag.className="imgtag"; tag.textContent=img.src;
+        wrap.appendChild(tag);
+      };
+      im.onerror=function(){};
+      im.src=img.url;
+    }
+  }
+
+  // KART modu
+  function renderCard(item, st){
+    $("stage").innerHTML='<div class="card">'
+      + imgBlock(item, st)
+      +'<div class="cbody">'
+      +'<span class="mode-badge">📖 Kelime kartı</span>'
+      +'<h2 class="word">'+esc(item.word)+'</h2>'
+      +(item.oku?'<div class="pron">/'+esc(item.oku)+'/</div>':'')
+      +'<button class="speak" id="speakBtn">🔊 Sesli oku</button>'
+      +'<button class="reveal-btn" id="revealBtn">Anlamı göster</button>'
+      +'<ul class="meanings" id="meanings">'+item.anlamlar.map(function(m){return '<li>'+esc(m)+'</li>';}).join("")+'</ul>'
+      +'<div class="know-row" id="knowRow">'
+      +'<button class="btn-no" id="noBtn">Bilmiyordum</button>'
+      +'<button class="btn-yes" id="yesBtn">Biliyordum</button>'
+      +'</div>'
+      +'</div></div>';
+    $("speakBtn").onclick=function(){ speak(item.word); };
+    $("revealBtn").onclick=function(){
+      $("meanings").classList.add("show");
+      $("knowRow").classList.add("show");
+      $("revealBtn").style.display="none";
+      speak(item.word);
+    };
+    $("noBtn").onclick=function(){ setStatus(item.word,1); recordResult(item.word,false); next(); };
+    $("yesBtn").onclick=function(){
+      statusOf(item.word).then(function(cur){
+        setStatus(item.word, cur>=1?2:1); recordResult(item.word,true); next();
+      });
+    };
+  }
+
+  // QUIZ modu
+  function renderQuiz(item, st){
+    // 3 çeldirici anlam (başka kelimelerden)
+    var correct=item.anlamlar[0];
+    var pool=State.words.filter(function(x){ return x.word!==item.word && x.anlamlar.length; });
+    shuffle(pool);
+    var distractors=[]; var seen={}; seen[correct.toLowerCase()]=1;
+    for(var i=0;i<pool.length && distractors.length<3;i++){
+      var m=pool[i].anlamlar[0];
+      if(m && !seen[m.toLowerCase()]){ seen[m.toLowerCase()]=1; distractors.push(m); }
+    }
+    var opts=shuffle([correct].concat(distractors));
+    var correctIdx=opts.indexOf(correct);
+
+    $("stage").innerHTML='<div class="card">'
+      + imgBlock(item, st)
+      +'<div class="cbody">'
+      +'<span class="mode-badge">🎯 Anlamını seç</span>'
+      +'<h2 class="word">'+esc(item.word)+'</h2>'
+      +(item.oku?'<div class="pron">/'+esc(item.oku)+'/</div>':'')
+      +'<button class="speak" id="speakBtn">🔊 Sesli oku</button>'
+      +'<p class="qprompt" style="margin-top:14px">Bu kelime ne demek?</p>'
+      +'<div class="opts" id="opts">'+opts.map(function(o,i){return '<button class="opt" data-i="'+i+'">'+esc(o)+'</button>';}).join("")+'</div>'
+      +'</div></div>';
+    $("speakBtn").onclick=function(){ speak(item.word); };
+    var optsEl=$("opts");
+    optsEl.querySelectorAll(".opt").forEach(function(b){
+      b.onclick=function(){
+        var sel=parseInt(b.getAttribute("data-i"),10);
+        var correctSel=(sel===correctIdx);
+        optsEl.querySelectorAll(".opt").forEach(function(x,i){
+          x.disabled=true;
+          if(i===correctIdx) x.classList.add("correct");
+          else if(i===sel) x.classList.add("wrong");
+        });
+        recordResult(item.word, correctSel);
+        statusOf(item.word).then(function(cur){
+          if(correctSel) setStatus(item.word, cur>=1?2:1);
+          else setStatus(item.word, 1);
+        });
+        speak(item.word);
+        setTimeout(next, 1100);
+      };
+    });
+  }
+
+  function renderDone(){
+    $("stage").innerHTML='<div class="card"><div class="cbody" style="text-align:center;padding:40px 20px">'
+      +'<div style="font-size:48px">🎉</div>'
+      +'<h2 style="margin:12px 0 6px">Bu turu bitirdin!</h2>'
+      +'<p style="color:var(--muted);margin:0 0 20px">Bu oturumda '+State.session+' kelime çalıştın.</p>'
+      +'<button class="reveal-btn" id="againBtn" style="background:var(--accent);color:#fff;border:0">Yeni tur başlat</button>'
+      +'</div></div>';
+    $("againBtn").onclick=function(){ startSession(); };
+  }
+
+  function next(){
+    State.session++;
+    State.idx++;
+    if(State.idx>=State.words.length){ renderDone(); return; }
+    render();
+  }
+
+  // ---------- oturum kur ----------
+  function startSession(){
+    // seviye filtresi + öğrenilmemiş/az öğrenilmişleri öne al
+    var pool=State.words.slice();
+    if(State.level!=="all") pool=pool.filter(function(x){ return x.seviye===State.level; });
+    if(!pool.length) pool=State.words.slice();
+    // durumları çek, NEW/LEARNING olanları öne al (öğrenilmişleri sona)
+    var promises=pool.slice(0,400).map(function(x){ return statusOf(x.word).then(function(st){ return {x:x,st:st}; }); });
+    Promise.all(promises).then(function(rows){
+      // sırala: önce st (az öğrenilmiş önce), sonra frekans (sık önce)
+      rows.sort(function(a,b){
+        if(a.st!==b.st) return a.st-b.st;
+        return b.x.frekans-a.x.frekans;
+      });
+      State.words=rows.map(function(r){ return r.x; }).slice(0,60); // oturum başına 60 kelime
+      State.idx=0; State.session=0;
+      render();
+    });
+  }
+
+  // ---------- ayarlar ----------
+  function openConfig(){
+    var lv=State.level;
+    var sheet=document.createElement("div"); sheet.className="sheet";
+    sheet.innerHTML='<div class="sheet-card">'
+      +'<h3>Ayarlar</h3>'
+      +'<div class="cfgrow"><label>Seviye</label>'
+      +'<select id="lvSel">'
+      +['all','A1','A2','B1','B2','C1'].map(function(l){return '<option value="'+l+'"'+(l===lv?' selected':'')+'>'+(l==="all"?"Tümü":l)+'</option>';}).join("")
+      +'</select></div>'
+      +'<p style="margin:14px 0 4px">🖼️ Resimler önce ücretsiz Openverse\'ten gelir. İstersen Pexels anahtarı da ekleyebilirsin (video ekranıyla aynı anahtar).</p>'
+      +'<input id="pxKey" type="password" placeholder="Pexels API anahtarı (opsiyonel)">'
+      +'<div class="sheet-btns"><button class="save" id="cfgSave">Kaydet</button><button class="close" id="cfgClose">Kapat</button></div>'
+      +'</div>';
+    document.body.appendChild(sheet);
+    try{ var k=pexelsKey(); if(k) $("pxKey").value=k; }catch(e){}
+    sheet.onclick=function(e){ if(e.target===sheet) sheet.remove(); };
+    $("cfgClose").onclick=function(){ sheet.remove(); };
+    $("cfgSave").onclick=function(){
+      State.level=$("lvSel").value;
+      try{ localStorage.setItem("dh-word-level", State.level); }catch(e){}
+      var pk=$("pxKey").value.trim();
+      if(pk){ try{ localStorage.setItem("pexels-api-key", pk); }catch(e){} }
+      $("subtitle").textContent = State.level==="all"?"En sık kullanılan kelimeler":State.level+" seviyesi kelimeleri";
+      sheet.remove();
+      State.imgCache={};
+      startSession();
+    };
+  }
+
+  // ---------- yardımcılar ----------
+  function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; } return a; }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+
+  // ---------- boot ----------
+  function boot(){
+    try{ State.level=localStorage.getItem("dh-word-level")||"all"; }catch(e){}
+    $("subtitle").textContent = State.level==="all"?"En sık kullanılan kelimeler":State.level+" seviyesi kelimeleri";
+    $("cfgBtn").onclick=openConfig;
+    loadDict().then(function(dict){
+      State.dict=dict;
+      State.words=buildList(dict);
+      if(!State.words.length){ $("stage").innerHTML='<div class="loading">Sözlük yüklenemedi.</div>'; return; }
+      startSession();
+    }).catch(function(){ $("stage").innerHTML='<div class="loading">Sözlük yüklenemedi.</div>'; });
+  }
+  if(window.__dhStorageReady) boot();
+  else{ window.addEventListener("dh-storage-ready", boot, {once:true}); setTimeout(boot, 1500); }
+})();
+</script>
+<script src="./word-popup.js?v=1"></script>
+</body>
+</html>
