@@ -7,7 +7,7 @@
 <script src="./mastery-engine.js?v=1"></script>
 <script src="./teacher-policy.js?v=3"></script>
 <script src="./level-badge.js?v=1"></script>
-<script src="./lesson-engine.js?v=3"></script>
+<script src="./lesson-engine.js?v=4"></script>
 <script src="./ai-providers.js?v=1"></script>
 <script src="./ai-status.js?v=1"></script>
 <script src="./study-tracker.js?v=1"></script>
@@ -178,7 +178,6 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
   function speak(t){
     t=String(t||"").trim(); if(!t) return;
     try{
-      // Chrome masaüstü bug'ı: cancel hemen ardından speak sessiz kalabilir → küçük gecikme
       speechSynthesis.cancel();
       ensureVoices(function(){
         try{
@@ -188,10 +187,16 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
           if(v) u.voice=v;
           u.rate=.95; u.pitch=1;
           u.__dhMixed=true; u.__longTTSAvatarSync=true;
+          // Chrome masaüstü: uzun metinlerde ~14sn sonra durur → periyodik resume ile canlı tut
+          var keepAlive=setInterval(function(){
+            if(speechSynthesis.speaking){ try{ speechSynthesis.pause(); speechSynthesis.resume(); }catch(e){} }
+            else clearInterval(keepAlive);
+          }, 8000);
+          u.onend=function(){ clearInterval(keepAlive); };
+          u.onerror=function(){ clearInterval(keepAlive); };
           setTimeout(function(){
             try{
               speechSynthesis.speak(u);
-              // Chrome bazen "paused" durumda takılır → resume
               if(speechSynthesis.paused){ try{ speechSynthesis.resume(); }catch(e){} }
             }catch(e){}
           }, 60);

@@ -33,7 +33,7 @@
       var list=[];
       if(Array.isArray(d)){
         list = d.map(function(x){
-          if(type==="pv") return { id:x.pv, label:x.pv, tr:x.tr, freq:x.freq||0, meanings:x.meanings, examples:x.examples, level:x.level||"" };
+          if(type==="pv") return { id:x.pv, label:x.pv, tr:x.tr, freq:x.freq||0, meanings:x.meanings, meanings_tr:x.meanings_tr, examples:x.examples, examples_tr:x.examples_tr, level:x.level||"" };
           // sentence
           return { id:x.id, label:x.en, tr:x.tr, level:x.level||"", module:x.module||"", topic:x.topic||"", grammar:x.grammar||"", aiExplain:x.aiExplain||"", commonMistake:x.commonMistake||"" };
         });
