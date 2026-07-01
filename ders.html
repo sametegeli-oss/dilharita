@@ -82,7 +82,9 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 .item-tr{font-size:16px;color:var(--yeni);margin-bottom:12px}
 .item-detail{font-size:14px;color:var(--muted);line-height:1.55;border-top:1px solid var(--border);padding-top:12px;margin-top:12px}
 .item-detail b{color:var(--text)}
+.item-detail-tr{font-size:14px;color:var(--yeni,#38bdf8);line-height:1.55;margin-top:4px}
 .item-ex{font-size:14px;font-style:italic;color:var(--text);margin-top:8px}
+.item-ex-tr{font-size:13px;color:var(--muted);margin-top:3px}
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
 .btn{border:0;border-radius:12px;padding:13px 18px;font:900 15px system-ui;cursor:pointer}
 .b-blue{background:var(--accent);color:#fff}
@@ -246,8 +248,12 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       if(it.aiExplain) detail+='<div class="item-detail">'+esc(it.aiExplain)+'</div>';
       if(it.commonMistake) detail+='<div class="item-detail"><b>Dikkat:</b> '+esc(it.commonMistake)+'</div>';
     }else if(s.type==="pv"){
+      // İngilizce tanım + Türkçe tanım
       if(it.meanings&&it.meanings[0]) detail+='<div class="item-detail">'+esc(it.meanings[0])+'</div>';
+      if(it.meanings_tr&&it.meanings_tr[0]) detail+='<div class="item-detail-tr">'+esc(it.meanings_tr[0])+'</div>';
+      // İngilizce örnek + Türkçe örnek
       if(it.examples&&it.examples[0]) detail+='<div class="item-ex">"'+esc(it.examples[0])+'"</div>';
+      if(it.examples_tr&&it.examples_tr[0]) detail+='<div class="item-ex-tr">'+esc(it.examples_tr[0])+'</div>';
     }else if(s.type==="word"){
       if(it.meanings&&it.meanings.length) detail+='<div class="item-detail">'+esc(it.meanings.slice(0,2).join("; "))+'</div>';
     }
