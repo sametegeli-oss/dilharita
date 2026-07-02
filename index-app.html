@@ -4,41 +4,124 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0b1120" />
+<!-- MOBILE WEB APP CAPABLE - DÜZELTİLDİ -->
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-<title>Sentence Mode · Eski Uygulama</title>
-
-<!-- ÖNCE REACT VE REACT-DOM YÜKLENMELİ -->
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-
-<!-- SONRA DİĞER SCRIPT'LER -->
-<script type="module" crossorigin src="./assets/app.js"></script>
+<title>Sentence Mode · Dil Harita</title>
 <link rel="stylesheet" crossorigin href="./assets/app.css">
 </head>
 <body>
 <div id="root"></div>
+
+<!-- ============================================ -->
+<!-- 1. REACT VE REACT-DOM YÜKLE                  -->
+<!-- ============================================ -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+<!-- ============================================ -->
+<!-- 2. REACT'İ GLOBAL WINDOW'A ATA              -->
+<!-- ============================================ -->
+<script>
+(function initReact() {
+  try {
+    // React'i window'a ata
+    window.React = window.React || React;
+    window.ReactDOM = window.ReactDOM || ReactDOM;
+    
+    // Hook'ları doğrudan window'a ata
+    window.useState = React.useState;
+    window.useEffect = React.useEffect;
+    window.useCallback = React.useCallback;
+    window.useMemo = React.useMemo;
+    window.useRef = React.useRef;
+    window.useContext = React.useContext;
+    window.useReducer = React.useReducer;
+    
+    console.log('✅ React hook\'ları window\'a atandı');
+    console.log('  useState:', typeof window.useState);
+    console.log('  useEffect:', typeof window.useEffect);
+  } catch(e) {
+    console.error('❌ React başlatma hatası:', e);
+  }
+})();
+</script>
+
+<!-- ============================================ -->
+<!-- 3. app.js MODULE SCRIPT                      -->
+<!-- ============================================ -->
+<script type="module" crossorigin src="./assets/app.js"></script>
+
+<!-- ============================================ -->
+<!-- 4. SERVICE WORKER KAYIT                     -->
+<!-- ============================================ -->
+<script>
+// Service worker'ı kaydet
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(reg => {
+      console.log('✅ Service Worker kaydedildi');
+    })
+    .catch(err => {
+      console.warn('⚠️ Service Worker kayıt hatası:', err);
+    });
+}
+
+// Cache temizleme fonksiyonu
+window.clearAppCache = function() {
+  if ('caches' in window) {
+    caches.keys().then(keys => {
+      keys.forEach(key => {
+        caches.delete(key);
+        console.log('🗑️ Cache silindi:', key);
+      });
+    });
+  }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(reg => {
+        reg.unregister();
+        console.log('🗑️ Service Worker kaldırıldı');
+      });
+    });
+  }
+  localStorage.clear();
+  sessionStorage.clear();
+  console.log('✅ Tüm önbellek temizlendi! Sayfayı yenileyin.');
+  alert('Önbellek temizlendi! Sayfa yenilenecek.');
+  location.reload();
+};
+</script>
+
+<!-- ============================================ -->
+<!-- 5. HATA YAKALAMA                            -->
+<!-- ============================================ -->
 <script>
 window.addEventListener('error', function(e){
+  console.error('❌ Hata yakalandı:', e.message);
   var box=document.getElementById('appErrorBox');
   if(!box){
     box=document.createElement('pre');
     box.id='appErrorBox';
-    box.style.cssText='position:fixed;left:10px;right:10px;bottom:10px;z-index:99999;background:#220b0b;color:#fecaca;padding:12px;border:1px solid #ef4444;border-radius:10px;white-space:pre-wrap;font:12px monospace';
+    box.style.cssText='position:fixed;left:10px;right:10px;bottom:10px;z-index:99999;background:#220b0b;color:#fecaca;padding:12px;border:1px solid #ef4444;border-radius:10px;white-space:pre-wrap;font:12px monospace;max-height:200px;overflow:auto';
     document.body.appendChild(box);
   }
-  box.textContent += '\n' + (e.message||'error') + '\n' + (e.filename||'') + ':' + (e.lineno||'');
+  box.textContent = e.message + '\n' + (e.filename||'') + ':' + (e.lineno||'');
+});
+
+// Promise hatalarını yakala
+window.addEventListener('unhandledrejection', function(e) {
+  console.error('❌ Promise hatası:', e.reason);
 });
 </script>
 
-<!-- YARDIMCI SCRIPT'LER (React kullanıyorsa) -->
-<script>
-// React'i window'a ata (eğer module script'te kullanılacaksa)
-window.React = React;
-window.ReactDOM = ReactDOM;
-</script>
-
+<!-- ============================================ -->
+<!-- 6. DİĞER SCRIPT'LER                         -->
+<!-- ============================================ -->
 <script src="./image-addon.js?v=restore1"></script>
 <script src="./teacher-addon.js?v=restore1"></script>
 <script src="./index-app-ogretmen-analiz-buttons.js?v=5"></script>
@@ -48,7 +131,38 @@ window.ReactDOM = ReactDOM;
 <script src="./avatar-blink-sync.js?v=1"></script>
 <script src="./study-tracker.js?v=1"></script>
 
-<!-- EN SON index-app-layout.js YÜKLENMELİ -->
-<script src="./index-app-layout.js?v=6"></script>
+<!-- ============================================ -->
+<!-- 7. EN SON index-app-layout.js YÜKLE         -->
+<!-- ============================================ -->
+<script>
+// index-app-layout.js'yi yüklemeden önce React'in hazır olduğunu kontrol et
+if (typeof window.React !== 'undefined' && window.React.useState) {
+  console.log('✅ React hazır, index-app-layout.js yükleniyor...');
+} else {
+  console.warn('⚠️ React hazır değil, bekleniyor...');
+  // React hazır olana kadar bekle
+  const checkReact = setInterval(() => {
+    if (typeof window.React !== 'undefined' && window.React.useState) {
+      clearInterval(checkReact);
+      console.log('✅ React hazır, index-app-layout.js yükleniyor...');
+      loadLayoutScript();
+    }
+  }, 100);
+  setTimeout(() => {
+    clearInterval(checkReact);
+    console.warn('⚠️ React yüklenemedi, yine de deniyor...');
+    loadLayoutScript();
+  }, 5000);
+}
+
+function loadLayoutScript() {
+  const script = document.createElement('script');
+  script.src = './index-app-layout.js?v=7';
+  document.head.appendChild(script);
+}
+</script>
+
+<!-- Yedek olarak doğrudan yükle -->
+<script src="./index-app-layout.js?v=7"></script>
 </body>
 </html>
