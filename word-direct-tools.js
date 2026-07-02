@@ -179,6 +179,22 @@ function currentData(card=currentCard()){
     level:clean(card?.querySelector(".chip-level")?.innerText||""),
     grammar:clean([...card?.querySelectorAll?.(".detail-row")||[]].map(r=>clean(r.innerText)).find(x=>/grammar|gramer|structure|yapı/i.test(x))||"")
   };
+   function openGoogleTranslate(){
+
+    const d = currentData();
+
+    if(!d.sentence){
+        alert("Cümle bulunamadı.");
+        return;
+    }
+
+    const url =
+        "https://translate.google.com/?sl=en&tl=tr&text=" +
+        encodeURIComponent(d.sentence) +
+        "&op=translate";
+
+    window.open(url,"_blank");
+}
 }
 function panel(title, bodyHTML){
   const ov=document.createElement("div");
@@ -810,6 +826,7 @@ function enhance(){
   const row=document.createElement("div");
   row.className="wd-tools-row";
   row.innerHTML=`
+  <button data-wd="translate"><b>🌐</b> Translate</button>
     <button data-wd="shadow"><b>👥</b>Shadow</button>
     <button class="wd-gold" data-wd="test"><b>📝</b>AI Test</button>
     <button class="wd-blue" data-wd="similar"><b>✨</b>Benzer</button>
@@ -820,7 +837,7 @@ function enhance(){
     <button data-wd="partner"><b>🗨️</b>Partner</button>
     <button data-wd="visual"><b>🖼️</b>Görsel</button>
   `;
-  const map={shadow:openShadow,test:openAITest,similar:openSimilarSentences,story:openStory,podcast:openPodcast,conversation:openConversation,writing:openWriting,partner:openPartner,visual:openVisual};
+  const map={translate: openGoogleTranslate,shadow:openShadow,test:openAITest,similar:openSimilarSentences,story:openStory,podcast:openPodcast,conversation:openConversation,writing:openWriting,partner:openPartner,visual:openVisual};
   row.querySelectorAll("[data-wd]").forEach(b=>b.onclick=()=>map[b.dataset.wd]());
   anchor.insertAdjacentElement("afterend", row);
   card.dataset.wordDirectTools="1";
