@@ -768,8 +768,9 @@
       const sys = "You are an English writing teacher for Turkish learners. Reply in Turkish. Be concise.";
       const user = `Öğrenci cümlesi: ${val}\nHedef örnek: ${d.sentence}\nCümleyi düzelt, kısa açıklama ver ve daha doğal bir versiyon yaz.`;
       const ai = await callAI(sys, user, "writing");
-      const cap = /^[A-Z]/.test(val.trim(),
-        end = /[.!?]$/.test(val.trim());
+       // DOĞRU (iki ayrı değişken)
+const cap = /^[A-Z]/.test(val.trim());
+const end = /[.!?]$/.test(val.trim());       
         out.innerHTML = esc(ai || `Kontrol sonucu:\n- Büyük harfle başlama: ${cap?"uygun":"eksik"}\n- Noktalama: ${end?"uygun":"eksik"}\n- Hedef kalıba yakın cümle kurmaya çalış.\n\nÖrnek: ${d.sentence}`).replace(/\n/g, "<br>");
     };
   }
