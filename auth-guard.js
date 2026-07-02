@@ -67,26 +67,27 @@
     }catch(e){}
 
     var decided = false;
+    var nullTimer = null;
     authMod.onAuthStateChanged(auth, function(user){
-      if (decided) return;
-      decided = true;
       if (user){
+        decided = true;
+        if (nullTimer){ clearTimeout(nullTimer); nullTimer=null; }
         try{
           localStorage.setItem("dh_logged_in","1");
           localStorage.setItem("dh_logged_uid", user.uid || "");
           if(user.email) localStorage.setItem("dh_logged_email", user.email);
         }catch(e){}
       } else {
-        // Firebase "oturum yok" diyor. Ama "beni hatırla" AÇIKSA bu, mobilde
-        // persistence gecikmesi/temizliği yüzünden gelen GEÇİCİ bir null olabilir.
-        // Kullanıcıyı atma — yerel işarete güven (offline/kalıcı oturum).
-        var remembered = false;
-        try{ remembered = localStorage.getItem("dh_remember")==="1"; }catch(e){}
-        if(!remembered){
+        if (decided) return;
+        // İlk null GEÇİCİ olabilir (mobilde persistence gecikmesi). Kısa bekle;
+        // 1.5 sn içinde gerçek oturum gelmezse, oturum gerçekten yok → login'e at.
+        if (nullTimer) return;
+        nullTimer = setTimeout(function(){
+          if (decided) return;
+          decided = true;
           clearLocalLogin();
           goLogin();
-        }
-        // remembered ise: sessizce devam, sayfa açık kalır.
+        }, 1500);
       }
     });
   }).catch(function(){
