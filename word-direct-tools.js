@@ -195,7 +195,6 @@ function currentData(card=currentCard()){
 
     window.open(url,"_blank");
 }
-}
 function panel(title, bodyHTML){
   const ov=document.createElement("div");
   ov.className="wd-ov";
