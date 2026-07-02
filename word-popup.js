@@ -80,11 +80,16 @@
     return merged.join(" · ")||w;
   }
 
-  // Cümleyi Google Translate sitesinde aç (EN→TR), yeni sekmede.
+  // Cümleyi Google Translate'te aç (EN→TR). Android'de Chrome'a zorlar (uygulama boş açıyor).
   function openGoogleTranslate(text){
     text=String(text||"").trim(); if(!text) return;
-    var url="https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(text);
-    window.open(url, "_blank");
+    var q=encodeURIComponent(text);
+    var webUrl="https://translate.google.com/?sl=en&tl=tr&op=translate&text="+q;
+    if(/Android/i.test(navigator.userAgent||"")){
+      var intentUrl="intent://translate.google.com/?sl=en&tl=tr&op=translate&text="+q+"#Intent;scheme=https;package=com.android.chrome;end";
+      try{ window.location.href=intentUrl; return; }catch(e){}
+    }
+    window.open(webUrl, "_blank");
   }
 
   function speak(text, rate){

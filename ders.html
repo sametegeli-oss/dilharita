@@ -188,7 +188,13 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
   }
   function gtranslate(t){
     t=String(t||"").trim(); if(!t) return;
-    window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(t), "_blank");
+    var q=encodeURIComponent(t);
+    var webUrl="https://translate.google.com/?sl=en&tl=tr&op=translate&text="+q;
+    if(/Android/i.test(navigator.userAgent||"")){
+      var intentUrl="intent://translate.google.com/?sl=en&tl=tr&op=translate&text="+q+"#Intent;scheme=https;package=com.android.chrome;end";
+      try{ window.location.href=intentUrl; return; }catch(e){}
+    }
+    window.open(webUrl, "_blank");
   }
   function speak(t){
     t=String(t||"").trim(); if(!t) return;

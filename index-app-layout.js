@@ -63,7 +63,14 @@
         gb.innerHTML="🌐 Google Translate";
         gb.onclick=function(){
           var txt=(en.textContent||"").trim();
-          if(txt) window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(txt), "_blank");
+          if(!txt) return;
+          var q=encodeURIComponent(txt);
+          var webUrl="https://translate.google.com/?sl=en&tl=tr&op=translate&text="+q;
+          if(/Android/i.test(navigator.userAgent||"")){
+            var intentUrl="intent://translate.google.com/?sl=en&tl=tr&op=translate&text="+q+"#Intent;scheme=https;package=com.android.chrome;end";
+            try{ window.location.href=intentUrl; return; }catch(e){}
+          }
+          window.open(webUrl, "_blank");
         };
         tr.insertAdjacentElement("afterend", gb);
       }
