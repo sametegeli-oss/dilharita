@@ -1,251 +1,345 @@
-/* storage-bridge.js
-   localStorage'ı IndexedDB destekli hale getiren köprü.
+// storage-bridge.js - Düzeltilmiş versiyon
 
-   AMAÇ: localStorage'ın küçük kotası (~5MB) dolunca yaşanan
-   QuotaExceededError sorununu kökten çözmek. Mevcut kodun
-   hiçbir satırını değiştirmeden, tüm localStorage.getItem/
-   setItem/removeItem çağrılarını bellek + IndexedDB'ye yönlendirir.
-
-   ÇALIŞMA MANTIĞI:
-   - Sayfa açılışında IndexedDB'deki tüm anahtarlar belleğe okunur.
-   - localStorage.getItem/setItem/removeItem/clear/key/length
-     senkron şekilde bu bellek kopyasını kullanır (eski kod aynen çalışır).
-   - Her yazma arka planda IndexedDB'ye kaydedilir (kota neredeyse sınırsız).
-   - İlk açılışta, varsa eski gerçek localStorage verisi IndexedDB'ye taşınır.
-
-   ÖNEMLİ: Bu dosya, depolama kullanan TÜM diğer scriptlerden ÖNCE,
-   sayfanın <head> kısmının başına yüklenmelidir.
-*/
-(function(){
-  "use strict";
-  if (window.__dhStorageBridgeInstalled) return;
-  window.__dhStorageBridgeInstalled = true;
-
-  var DB_NAME = "dh-storage";
-  var STORE = "kv";
-  var dbPromise = null;
-
-  function openDB(){
-    if (dbPromise) return dbPromise;
-    dbPromise = new Promise(function(resolve, reject){
-      var req = indexedDB.open(DB_NAME, 1);
-      req.onupgradeneeded = function(){
-        var db = req.result;
-        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
-      };
-      req.onsuccess = function(){ resolve(req.result); };
-      req.onerror = function(){ reject(req.error); };
-    });
-    return dbPromise;
+class StorageBridge {
+  constructor() {
+    this.localCache = new Map();
+    this.isInitialized = false;
+    this.pendingOperations = [];
+    this.useCloud = true; // Varsayılan olarak bulut kullan
   }
 
-  function idbGetAll(){
-    return openDB().then(function(db){
-      return new Promise(function(resolve){
-        var out = {};
-        try{
-          var tx = db.transaction(STORE, "readonly");
-          var store = tx.objectStore(STORE);
-          var cur = store.openCursor();
-          cur.onsuccess = function(){
-            var c = cur.result;
-            if (c){ out[c.key] = c.value; c.continue(); }
-            else resolve(out);
-          };
-          cur.onerror = function(){ resolve(out); };
-        }catch(e){ resolve(out); }
-      });
-    });
-  }
-
-  function idbSet(key, val){
-    return openDB().then(function(db){
-      return new Promise(function(resolve){
-        try{
-          var tx = db.transaction(STORE, "readwrite");
-          tx.objectStore(STORE).put(val, key);
-          tx.oncomplete = function(){ resolve(true); };
-          tx.onerror = function(){ resolve(false); };
-        }catch(e){ resolve(false); }
-      });
-    });
-  }
-
-  function idbDel(key){
-    return openDB().then(function(db){
-      return new Promise(function(resolve){
-        try{
-          var tx = db.transaction(STORE, "readwrite");
-          tx.objectStore(STORE).delete(key);
-          tx.oncomplete = function(){ resolve(true); };
-          tx.onerror = function(){ resolve(false); };
-        }catch(e){ resolve(false); }
-      });
-    });
-  }
-
-  function idbClear(){
-    return openDB().then(function(db){
-      return new Promise(function(resolve){
-        try{
-          var tx = db.transaction(STORE, "readwrite");
-          tx.objectStore(STORE).clear();
-          tx.oncomplete = function(){ resolve(true); };
-          tx.onerror = function(){ resolve(false); };
-        }catch(e){ resolve(false); }
-      });
-    });
-  }
-
-  // Bellek içi senkron ayna (eski kodun beklediği senkron davranış için)
-  var mem = {};
-  // Yazma kuyruğu (arka planda IndexedDB'ye sırayla yazılır)
-  var writeQueue = Promise.resolve();
-  function queueWrite(fn){ writeQueue = writeQueue.then(fn).catch(function(){}); }
-  // Bekleyen tüm yazımların IndexedDB'ye işlenmesini bekle (sayfa geçişi öncesi).
-  function flush(){ return writeQueue.then(function(){}).catch(function(){}); }
-  // Hemen dışa aç (ready beklemeden de çağrılabilir, her zaman güvenli)
-  try{ window.__dhStorageFlush = flush; }catch(e){}
-
-  // Orijinal localStorage'a referans (taşıma için)
-  var nativeLS = null;
-  try{ nativeLS = window.localStorage; }catch(e){ nativeLS = null; }
-
-  // Yeni senkron localStorage arayüzü (bellek üstünden çalışır, IDB'ye yansıtır)
-  var shim = {
-    getItem: function(k){
-      k = String(k);
-      return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null;
-    },
-    setItem: function(k, v){
-      k = String(k); v = String(v);
-      mem[k] = v;
-      queueWrite(function(){ return idbSet(k, v); });
-      // Küçük değerleri (anahtar/ayar/prompt) localStorage'a da yansıt ki
-      // sonraki açılışta SENKRON okunabilsinler. Büyükleri yazmaya çalışma (kota).
-      try{
-        if (nativeLS && v.length <= 20000){ nativeLS.setItem(k, v); }
-      }catch(e){ /* kota dolarsa sorun değil, IDB'de zaten var */ }
-    },
-    removeItem: function(k){
-      k = String(k);
-      delete mem[k];
-      queueWrite(function(){ return idbDel(k); });
-      try{ if (nativeLS) nativeLS.removeItem(k); }catch(e){}
-    },
-    clear: function(){
-      mem = {};
-      queueWrite(function(){ return idbClear(); });
-      try{ if (nativeLS) nativeLS.clear(); }catch(e){}
-    },
-    key: function(i){
-      var keys = Object.keys(mem);
-      return i >= 0 && i < keys.length ? keys[i] : null;
-    },
-    get length(){ return Object.keys(mem).length; }
-  };
-
-  // localStorage'ı shim ile değiştir
-  function install(){
-    try{
-      Object.defineProperty(window, "localStorage", {
-        configurable: true,
-        get: function(){ return shim; }
-      });
-    }catch(e){
-      // defineProperty başarısızsa metodları doğrudan ata (kısmi)
-      try{
-        window.localStorage.getItem = shim.getItem;
-        window.localStorage.setItem = shim.setItem;
-        window.localStorage.removeItem = shim.removeItem;
-        window.localStorage.clear = shim.clear;
-      }catch(_){}
+  // Başlangıç
+  async init() {
+    if (this.isInitialized) return;
+    
+    try {
+      // IndexedDB bağlantısını kontrol et
+      await this.checkIndexedDB();
+      
+      // LocalStorage'ı kontrol et
+      await this.loadFromLocalStorage();
+      
+      this.isInitialized = true;
+      console.log('💾 StorageBridge başlatıldı');
+      
+    } catch (error) {
+      console.error('StorageBridge başlatma hatası:', error);
+      this.useCloud = false;
+      this.isInitialized = true;
     }
   }
 
-  // Başlatma: IDB'yi belleğe yükle, eski LS verisini taşı, sonra shim'i kur.
-  // Senkron kod IDB hazır olmadan çalışabileceği için, önce eski LS'yi
-  // belleğe alıp shim'i HEMEN kuruyoruz; IDB yüklenince birleştiriyoruz.
-  function preloadFromNativeLS(){
-    if (!nativeLS) return;
-    try{
-      for (var i = 0; i < nativeLS.length; i++){
-        var k = nativeLS.key(i);
-        if (k == null) continue;
-        if (k === "__dh_idb_migrated__") continue;
-        mem[k] = nativeLS.getItem(k);
+  // Veri kaydet
+  async set(key, value, sync = true) {
+    try {
+      await this.init();
+      
+      // Yerel cache'e kaydet
+      this.localCache.set(key, value);
+      
+      // LocalStorage'a kaydet
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+        console.warn('LocalStorage kaydetme hatası:', e);
       }
-    }catch(e){}
+      
+      // IndexedDB'ye kaydet
+      try {
+        await this.saveToIndexedDB(key, value);
+      } catch (e) {
+        console.warn('IndexedDB kaydetme hatası:', e);
+      }
+      
+      // Buluta gönder
+      if (sync && this.useCloud && window.cloudSync) {
+        window.cloudSync.addChange('data', { key, value });
+      }
+      
+      return true;
+      
+    } catch (error) {
+      console.error('Veri kaydetme hatası:', key, error);
+      return false;
+    }
   }
 
-  // 1) Eski localStorage verisini belleğe al (senkron, anında)
-  preloadFromNativeLS();
-  // 2) shim'i hemen kur (artık tüm çağrılar bellekten çalışır)
-  install();
-
-  // 3) IndexedDB'yi yükle ve belleği birleştir (asenkron)
-  idbGetAll().then(function(stored){
-
-    // IDB'de "migrated" işareti var mı?
-    var alreadyMigrated = stored.__dh_idb_migrated__ === "1";
-
-    if (!alreadyMigrated){
-      // İlk kez: bellekteki (eski LS'den gelen) her şeyi IDB'ye yaz
-      var pending = [];
-      for (var k in mem){
-        if (mem.hasOwnProperty(k)) pending.push(idbSet(k, mem[k]));
+  // Veri al
+  async get(key) {
+    try {
+      await this.init();
+      
+      // Önce cache'den dene
+      if (this.localCache.has(key)) {
+        return this.localCache.get(key);
       }
-      Promise.all(pending).then(function(){
-        return idbSet("__dh_idb_migrated__","1");
-      }).then(function(){
-        mem["__dh_idb_migrated__"] = "1";
-        // Veri artık IDB'de güvende. localStorage'ı TÜMÜYLE boşaltmıyoruz:
-        // küçük değerler (API anahtarı, ayarlar, prompt) localStorage'da kalsın ki
-        // sayfa açılışında SENKRON okunabilsinler (IDB asenkron yüklenir).
-        // Sadece kotayı şişiren BÜYÜK değerleri (>20KB) localStorage'dan kaldırırız.
-        try{
-          if (nativeLS){
-            var big = [];
-            for (var j = 0; j < nativeLS.length; j++){
-              var kk = nativeLS.key(j); if (!kk) continue;
-              var val = nativeLS.getItem(kk) || "";
-              if (val.length > 20000) big.push(kk); // ~20KB üstü = büyük
-            }
-            big.forEach(function(kk){ try{ nativeLS.removeItem(kk); }catch(e){} });
+      
+      // LocalStorage'dan dene
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          this.localCache.set(key, parsed);
+          return parsed;
+        }
+      } catch (e) {
+        console.warn('LocalStorage okuma hatası:', e);
+      }
+      
+      // IndexedDB'den dene
+      try {
+        const value = await this.loadFromIndexedDB(key);
+        if (value !== undefined) {
+          this.localCache.set(key, value);
+          return value;
+        }
+      } catch (e) {
+        console.warn('IndexedDB okuma hatası:', e);
+      }
+      
+      return null;
+      
+    } catch (error) {
+      console.error('Veri okuma hatası:', key, error);
+      return null;
+    }
+  }
+
+  // Tüm verileri al
+  async getAll(prefix = '') {
+    try {
+      await this.init();
+      
+      const results = {};
+      
+      // LocalStorage'dan al
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(prefix)) {
+          try {
+            results[key] = JSON.parse(localStorage.getItem(key));
+          } catch (e) {
+            results[key] = localStorage.getItem(key);
           }
-        }catch(e){}
-      }).catch(function(e){
-        // Taşıma başarısızsa localStorage'a DOKUNMA (veri kaybını önle)
-        console.warn("storage-bridge: taşıma tamamlanamadı, eski veri korunuyor.", e);
-      });
-    } else {
-      // Sonraki açılışlar: IDB ana kaynak. Belleği IDB ile birleştir
-      // (IDB'deki değerler önceliklidir, çünkü en güncel olan o)
-      for (var sk in stored){
-        if (stored.hasOwnProperty(sk)){
-          mem[sk] = stored[sk];
-          // Küçük değerleri localStorage'a geri yaz ki SONRAKİ açılışta
-          // senkron okunabilsinler (örn. API anahtarları kutusu çıkmasın).
-          try{
-            if (nativeLS && sk !== "__dh_idb_migrated__" &&
-                typeof stored[sk] === "string" && stored[sk].length <= 20000){
-              nativeLS.setItem(sk, stored[sk]);
+        }
+      }
+      
+      // IndexedDB'den al (LocalStorage'da olmayanlar)
+      try {
+        const dbResults = await this.loadAllFromIndexedDB(prefix);
+        for (const [key, value] of Object.entries(dbResults)) {
+          if (!(key in results)) {
+            results[key] = value;
+          }
+        }
+      } catch (e) {
+        console.warn('IndexedDB toplu okuma hatası:', e);
+      }
+      
+      return results;
+      
+    } catch (error) {
+      console.error('Toplu veri okuma hatası:', error);
+      return {};
+    }
+  }
+
+  // Veri sil
+  async delete(key, sync = true) {
+    try {
+      await this.init();
+      
+      this.localCache.delete(key);
+      localStorage.removeItem(key);
+      await this.deleteFromIndexedDB(key);
+      
+      if (sync && this.useCloud && window.cloudSync) {
+        window.cloudSync.addChange('delete', { key });
+      }
+      
+      return true;
+      
+    } catch (error) {
+      console.error('Veri silme hatası:', key, error);
+      return false;
+    }
+  }
+
+  // IndexedDB işlemleri
+  async checkIndexedDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('DilharitaDB', 1);
+      
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('storage')) {
+          db.createObjectStore('storage', { keyPath: 'id' });
+        }
+      };
+      
+      request.onsuccess = () => {
+        request.result.close();
+        resolve();
+      };
+      
+      request.onerror = () => {
+        reject(request.error);
+      };
+    });
+  }
+
+  async saveToIndexedDB(key, value) {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('DilharitaDB', 1);
+      
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction('storage', 'readwrite');
+        const store = transaction.objectStore('storage');
+        const putRequest = store.put({ id: key, value: value });
+        
+        putRequest.onsuccess = () => resolve();
+        putRequest.onerror = () => reject(putRequest.error);
+        
+        transaction.oncomplete = () => db.close();
+      };
+      
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async loadFromIndexedDB(key) {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('DilharitaDB', 1);
+      
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction('storage', 'readonly');
+        const store = transaction.objectStore('storage');
+        const getRequest = store.get(key);
+        
+        getRequest.onsuccess = () => {
+          const result = getRequest.result;
+          resolve(result ? result.value : undefined);
+        };
+        
+        getRequest.onerror = () => reject(getRequest.error);
+        
+        transaction.oncomplete = () => db.close();
+      };
+      
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async loadAllFromIndexedDB(prefix = '') {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('DilharitaDB', 1);
+      
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction('storage', 'readonly');
+        const store = transaction.objectStore('storage');
+        const results = {};
+        
+        const cursorRequest = store.openCursor();
+        
+        cursorRequest.onsuccess = (event) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            const key = cursor.value.id;
+            if (key.startsWith(prefix)) {
+              results[key] = cursor.value.value;
             }
-          }catch(e){}
+            cursor.continue();
+          } else {
+            resolve(results);
+          }
+        };
+        
+        cursorRequest.onerror = () => reject(cursorRequest.error);
+        
+        transaction.oncomplete = () => db.close();
+      };
+      
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async deleteFromIndexedDB(key) {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('DilharitaDB', 1);
+      
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction('storage', 'readwrite');
+        const store = transaction.objectStore('storage');
+        const deleteRequest = store.delete(key);
+        
+        deleteRequest.onsuccess = () => resolve();
+        deleteRequest.onerror = () => reject(deleteRequest.error);
+        
+        transaction.oncomplete = () => db.close();
+      };
+      
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // LocalStorage'dan yükle
+  async loadFromLocalStorage() {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && !key.startsWith('_')) {
+        try {
+          const value = JSON.parse(localStorage.getItem(key));
+          this.localCache.set(key, value);
+        } catch (e) {
+          // JSON değilse string olarak sakla
+          this.localCache.set(key, localStorage.getItem(key));
         }
       }
     }
+  }
 
-    // Hazır olduğunu bildir (isteyen scriptler bekleyebilir)
-    window.__dhStorageReady = true;
-    // Sayfa geçişi öncesi bekleyen yazımları boşaltmak için dışa açık API
-    window.__dhStorageFlush = flush;
-    try{ window.dispatchEvent(new Event("dh-storage-ready")); }catch(e){}
-  }).catch(function(e){
-    // IndexedDB hiç açılamazsa (çok eski tarayıcı / gizli mod):
-    // bellek + (mümkünse) eski localStorage ile devam et, çökme.
-    window.__dhStorageReady = true;
-    try{ window.dispatchEvent(new Event("dh-storage-ready")); }catch(_){}
-    console.warn("storage-bridge: IndexedDB kullanılamadı, bellek modunda devam ediliyor.", e);
-  });
-})();
+  // Senkronizasyon durumunu kontrol et
+  async checkSyncStatus() {
+    const status = {
+      isOnline: navigator.onLine,
+      hasPendingChanges: this.pendingOperations.length > 0,
+      useCloud: this.useCloud,
+      cacheSize: this.localCache.size
+    };
+    
+    if (window.cloudSync) {
+      status.syncActive = window.cloudSync.isSyncing;
+      status.pendingChanges = window.cloudSync.pendingChanges.length;
+    }
+    
+    return status;
+  }
+
+  // Tüm depolamayı temizle
+  async clear() {
+    this.localCache.clear();
+    localStorage.clear();
+    
+    try {
+      const request = indexedDB.open('DilharitaDB', 1);
+      request.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction('storage', 'readwrite');
+        const store = transaction.objectStore('storage');
+        store.clear();
+        transaction.oncomplete = () => db.close();
+      };
+    } catch (e) {
+      console.warn('IndexedDB temizleme hatası:', e);
+    }
+    
+    return true;
+  }
+}
+
+// Global instance
+window.storageBridge = new StorageBridge();
