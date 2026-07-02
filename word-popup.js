@@ -80,16 +80,21 @@
     return merged.join(" · ")||w;
   }
 
-  // Cümleyi Google Translate'te aç (EN→TR). Android'de Chrome'a zorlar (uygulama boş açıyor).
+  // Cümleyi PANOYA KOPYALA (garanti) + Google Translate'i aç. Açılınca yapıştırılır.
   function openGoogleTranslate(text){
     text=String(text||"").trim(); if(!text) return;
-    var q=encodeURIComponent(text);
-    var webUrl="https://translate.google.com/?sl=en&tl=tr&op=translate&text="+q;
-    if(/Android/i.test(navigator.userAgent||"")){
-      var intentUrl="intent://translate.google.com/?sl=en&tl=tr&op=translate&text="+q+"#Intent;scheme=https;package=com.android.chrome;end";
-      try{ window.location.href=intentUrl; return; }catch(e){}
+    function fallbackCopy(t){
+      try{ var ta=document.createElement("textarea"); ta.value=t; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }catch(e){}
     }
-    window.open(webUrl, "_blank");
+    try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).catch(function(){ fallbackCopy(text); }); } else { fallbackCopy(text); } }catch(e){ fallbackCopy(text); }
+    try{
+      var n=document.createElement("div");
+      n.textContent="📋 Cümle kopyalandı — Translate'te yapıştır";
+      n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #2563eb;padding:12px 18px;border-radius:12px;font:700 13px system-ui;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:90vw;text-align:center";
+      document.body.appendChild(n);
+      setTimeout(function(){ n.style.transition="opacity .4s"; n.style.opacity="0"; setTimeout(function(){ n.remove(); },400); },3000);
+    }catch(e){}
+    window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(text), "_blank");
   }
 
   function speak(text, rate){
