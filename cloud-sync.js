@@ -425,7 +425,12 @@
           // öğrenme ilerlemesi aynasını IndexedDB'ye uygula
           var progP = (window.DHProgress && DHProgress.applyMirror) ? DHProgress.applyMirror() : Promise.resolve(0);
           return progP.then(function(addedProg){
-            return { ok:true, pulled:pulled, addedErrors:addedErr||0, addedProgress:addedProg||0 };
+            // KRİTİK: Birleştirilmiş sonucu buluta GERİ YAZ.
+            // Böylece bu cihazda oluşan birleşim diğer cihazlara da yansır.
+            // (Aksi halde birleştirme sadece bu cihazda kalır, bulut eski kalır.)
+            return pushNow().catch(function(){}).then(function(){
+              return { ok:true, pulled:pulled, addedErrors:addedErr||0, addedProgress:addedProg||0 };
+            });
           });
         });
       }).then(function(res){
