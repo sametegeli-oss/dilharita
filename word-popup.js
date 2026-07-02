@@ -80,6 +80,13 @@
     return merged.join(" · ")||w;
   }
 
+  // Cümleyi Google Translate sitesinde aç (EN→TR), yeni sekmede.
+  function openGoogleTranslate(text){
+    text=String(text||"").trim(); if(!text) return;
+    var url="https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(text);
+    window.open(url, "_blank");
+  }
+
   function speak(text, rate){
     try{
       speechSynthesis.cancel();
@@ -121,9 +128,10 @@
     +".dh-wp-rec{background:#dc2626;color:#fff}"
     +".dh-wp-sec-title{font-size:13px;font-weight:800;color:#9fb3d9;margin:6px 0 8px}"
     +".dh-wp-sent{background:#0b1830;border:1px solid #1e3a5f;border-radius:12px;padding:11px 12px;margin-bottom:8px;position:relative}"
-    +".dh-wp-sent .en{color:#e8eef7;font-size:14px;line-height:1.4;padding-right:28px}"
+    +".dh-wp-sent .en{color:#e8eef7;font-size:14px;line-height:1.4;padding-right:56px}"
     +".dh-wp-sent .tr{color:#9fb3d9;font-size:13px;margin-top:3px}"
     +".dh-wp-sent .play{position:absolute;top:10px;right:10px;background:none;border:0;color:#38bdf8;font-size:16px;cursor:pointer}"
+    +".dh-wp-sent .gtr{position:absolute;top:10px;right:38px;background:none;border:0;font-size:15px;cursor:pointer}"
     +".dh-wp-ai-out{background:#0b1830;border:1px solid #10b98155;border-radius:12px;padding:12px;margin-bottom:10px;color:#d1fae5;font-size:14px;line-height:1.5;white-space:pre-wrap}"
     +".dh-wp-rec-out{font-size:13px;font-weight:700;margin:4px 0 10px;min-height:18px}"
     +".dh-wp-muted{color:#64748b;font-size:13px;padding:6px 0}";
@@ -223,9 +231,10 @@
       if(!found.length){ host.innerHTML='<div class="dh-wp-muted">Bu kelime için örnek cümle bulunamadı.</div>'; return; }
       host.innerHTML=found.map(function(s){
         var en=(s.en||"").replace(re, function(m){ return "<b style=\"color:#38bdf8\">"+m+"</b>"; });
-        return '<div class="dh-wp-sent"><div class="en">'+en+'</div>'+(s.tr?'<div class="tr">'+esc(s.tr)+'</div>':'')+'<button class="play" data-en="'+esc(s.en||"")+'">▶</button></div>';
+        return '<div class="dh-wp-sent"><div class="en">'+en+'</div>'+(s.tr?'<div class="tr">'+esc(s.tr)+'</div>':'')+'<button class="play" data-en="'+esc(s.en||"")+'">▶</button><button class="gtr" data-en="'+esc(s.en||"")+'" title="Google Translate">🌐</button></div>';
       }).join("");
       host.querySelectorAll(".play").forEach(function(b){ b.onclick=function(){ speak(b.getAttribute("data-en"),0.9); }; });
+      host.querySelectorAll(".gtr").forEach(function(b){ b.onclick=function(){ openGoogleTranslate(b.getAttribute("data-en")); }; });
     });
   }
 

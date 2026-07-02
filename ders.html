@@ -186,6 +186,10 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
         || en.find(function(x){ return !/google/i.test(x.name); })
         || en[0];
   }
+  function gtranslate(t){
+    t=String(t||"").trim(); if(!t) return;
+    window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(t), "_blank");
+  }
   function speak(t){
     t=String(t||"").trim(); if(!t) return;
     try{
@@ -312,6 +316,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       +detail
       +'<div class="actions">'
       +'<button class="btn b-blue" id="sSpeak">🔊 Dinle</button>'
+      +'<button class="btn b-ghost" id="sGtr">🌐 Çeviri</button>'
       +(s.phase==="yeni"||s.phase==="isinma"?'<button class="btn b-green" id="sGot">Anladım ✓</button>':'<button class="btn b-green" id="sGot">Hatırladım ✓</button>')
       +'<button class="btn b-ghost" id="sHard">Zor geldi</button>'
       +'</div>'
@@ -452,6 +457,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       return;
     }
     var sp=$("sSpeak"); if(sp) sp.onclick=function(){ speak(s.item.label); };
+    var sgt=$("sGtr"); if(sgt) sgt.onclick=function(){ gtranslate(s.item.label); };
     var got=$("sGot"); if(got) got.onclick=function(){
       // anladım/hatırladım → ilerleme: yeni ise learning, tekrar/ısınma ise pekiştir
       try{

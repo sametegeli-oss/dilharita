@@ -14,6 +14,7 @@
     var s=document.createElement("style"); s.id=STYLE_ID;
     s.textContent =
     "body{padding-bottom:78px !important}"
+    +".legend{display:none !important}"
     +".study-nav.dh-fixed-nav{position:fixed !important;left:0;right:0;bottom:0;z-index:9000;display:flex !important;gap:8px;align-items:center;justify-content:space-between;margin:0 !important;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(9,15,28,.96);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.10);box-shadow:0 -8px 30px rgba(0,0,0,.4)}"
     +".study-nav.dh-fixed-nav .btn{flex:1;min-height:48px;font-size:15px !important;font-weight:800 !important;border-radius:14px !important}"
     +".study-nav.dh-fixed-nav > *:not(.btn):not(.dh-tools-toggle){flex:0 0 auto}"
@@ -23,6 +24,8 @@
     +".dh-tools-toggle .chev{transition:transform .2s;font-size:11px}"
     +".dh-tools-toggle.open .chev{transform:rotate(180deg)}"
     +".dh-grade-under{display:flex !important;gap:8px;margin:10px 0 4px}"
+    +".dh-gtr-btn{display:inline-flex;align-items:center;gap:6px;margin:8px 0 2px;padding:8px 14px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:#1a2942;color:#cfe0ff;font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}"
+    +".dh-gtr-btn:hover{background:#22344f}"
     +".dh-grade-under button{flex:1;min-height:44px;border-radius:12px;font-weight:800;font-size:14px;border:1px solid rgba(255,255,255,.14);cursor:pointer}"
     /* Araçlar paneli: alt çubuğun ÜSTÜNDE açılan sabit kayan panel */
     +".dh-tools-box{position:fixed;left:0;right:0;bottom:70px;z-index:8999;margin:0;padding:14px;max-height:60vh;overflow-y:auto;border-radius:18px 18px 0 0;background:#0d1a30;border-top:1px solid rgba(255,255,255,.12);box-shadow:0 -10px 40px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:10px;animation:dhToolsUp .2s ease}"
@@ -51,6 +54,20 @@
   function moveGrade(card){
     if(card.dataset.dhGradeDone==="1") return;
     var tr=card.querySelector(".card-tr"); if(!tr) return;
+    // Google Translate butonu: cümlenin (card-en) altına ekle
+    if(!card.querySelector(".dh-gtr-btn")){
+      var en=card.querySelector(".card-en");
+      if(en){
+        var gb=document.createElement("button");
+        gb.type="button"; gb.className="dh-gtr-btn";
+        gb.innerHTML="🌐 Google Translate";
+        gb.onclick=function(){
+          var txt=(en.textContent||"").trim();
+          if(txt) window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(txt), "_blank");
+        };
+        tr.insertAdjacentElement("afterend", gb);
+      }
+    }
     var zor=card.querySelector(".grade-hard")||btnByText(card,"zor");
     var nor=card.querySelector(".grade-normal")||btnByText(card,"normal");
     var kol=card.querySelector(".grade-easy")||btnByText(card,"kolay");
