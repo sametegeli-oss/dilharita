@@ -121,6 +121,7 @@
       fb = {
         auth: auth, db: db,
         onAuth: function(cb){ return authMod.onAuthStateChanged(auth, cb); },
+        signOut: function(){ try{ return authMod.signOut(auth); }catch(e){ return Promise.resolve(); } },
         loadSettings: function(uid){
           return fsMod.getDoc(fsMod.doc(db, "settings", uid)).then(function(snap){
             return snap.exists() ? snap.data() : null;
@@ -217,10 +218,36 @@
 
   // --- Giriş sonrası ilk senkron: buluttan çek + birleştir + geri yaz ---
   function initialSync(){
-    // Giriş sonrası OTOMATİK senkron yapılmaz (yanlışlıkla bulutu ezmesin).
-    // Bulut yalnızca: (1) prompt vb. kaydedilince yazılır,
-    // (2) kullanıcı "Senkronize Et" deyince okunur.
-    return;
+    // AÇILIŞTA: buluttan ÇEK (yerel veriyi buluttakiyle güncelle).
+    // Yükleme yapmaz — yükleme yalnızca çıkışta (signOut) veya setItem sonrası pushSoon ile.
+    // Böylece açılışta yanlışlıkla bulut ezilmez.
+    waitForAuth(5000).then(function(){
+      if (!ready || !user || !fb) return;
+      fullSync().then(function(res){
+        try{ if (window.__dhAutoSyncDone) window.__dhAutoSyncDone(res); }catch(e){}
+      }).catch(function(){});
+    });
+  }
+
+  // ÇIKIŞ: önce buluta yaz (o oturumdaki değişiklikleri kaydet), sonra oturumu kapat.
+  function signOutAndPush(){
+    return waitForAuth(3000).then(function(){
+      var doPush = (ready && user && fb) ? pushNow() : Promise.resolve();
+      return doPush.catch(function(){}).then(function(){
+        // storage-bridge asenkron olabilir: yazmanın tamamlanması için kısa bekle
+        return new Promise(function(res){ setTimeout(res, 600); });
+      }).then(function(){
+        try{ if (fb && fb.signOut) return fb.signOut(); }catch(e){}
+      }).then(function(){
+        // yerel oturum bayraklarını temizle + giriş sayfasına dön
+        try{
+          localStorage.removeItem("dh_logged_in");
+          localStorage.removeItem("dh_logged_uid");
+          localStorage.removeItem("dh_logged_email");
+        }catch(e){}
+        return { ok:true };
+      });
+    });
   }
 
   // --- Yerel durumu buluta yaz ---
@@ -353,5 +380,5 @@
       return null;
     });
   }
-  window.DHCloudSync = { push: pushNow, sync: initialSync, pull: pull, fullSync: fullSync, get ready(){ return ready; }, get user(){ return user; } };
+  window.DHCloudSync = { push: pushNow, sync: initialSync, pull: pull, fullSync: fullSync, signOut: signOutAndPush, get ready(){ return ready; }, get user(){ return user; } };
 })();

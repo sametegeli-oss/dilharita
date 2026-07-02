@@ -221,13 +221,8 @@ function addStyle(){
 }
 function createUI(){
   addStyle();
-  if(!document.getElementById("dhAiPromptBtn")){
-    const b=document.createElement("button");
-    b.id="dhAiPromptBtn";
-    b.textContent="⚙️ AI Prompt";
-    b.onclick=()=>openPanel();
-    document.body.appendChild(b);
-  }
+  // NOT: Sol alttaki sabit "AI Prompt" butonu KALDIRILDI.
+  // Panel artık yalnızca teacher.html'deki ayarlardan (window.DHOpenAIPrompt) açılıyor.
   if(!document.getElementById("dhAiPromptPanel")){
     const p=document.createElement("div");
     p.id="dhAiPromptPanel";
@@ -254,6 +249,8 @@ function openPanel(){
   p.querySelector("#dhAiPromptText").value=getPrompt();
   p.classList.add("active");
 }
+// teacher.html ayarlarından açmak için global erişim
+window.DHOpenAIPrompt = openPanel;
 
 /* Yeni AI mesajlarına iki dilli oku butonu ekle */
 function addReadButtons(){

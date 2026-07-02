@@ -14,6 +14,7 @@
     var s=document.createElement("style"); s.id=STYLE_ID;
     s.textContent =
     "body{padding-bottom:78px !important}"
+    +".legend{display:none !important}"
     +".study-nav.dh-fixed-nav{position:fixed !important;left:0;right:0;bottom:0;z-index:9000;display:flex !important;gap:8px;align-items:center;justify-content:space-between;margin:0 !important;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(9,15,28,.96);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.10);box-shadow:0 -8px 30px rgba(0,0,0,.4)}"
     +".study-nav.dh-fixed-nav .btn{flex:1;min-height:48px;font-size:15px !important;font-weight:800 !important;border-radius:14px !important}"
     +".study-nav.dh-fixed-nav > *:not(.btn):not(.dh-tools-toggle){flex:0 0 auto}"

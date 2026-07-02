@@ -517,6 +517,7 @@ function render(){
     <a href="./index.html" class="back" id="teacherBack" title="Geri">←</a>
     <div class="ava" title="Fotoğraflı öğretmen"><img id="teacherAvaImg" alt="Öğretmen avatarı"></div>
     <div class="tinfo"><h1>İngilizce Öğretmeni</h1><p>Türkçe anlatımlı İngilizce öğretmeni</p></div>
+    <button class="keybtn" id="teacherPromptBtn" title="AI Prompt ayarı" style="margin-right:6px">⚙️</button>
     <button class="keybtn" id="teacherKeyBtn" title="API anahtarları">🔑</button>
   </div>
   <div class="body">
@@ -532,6 +533,8 @@ function render(){
   // Geri düğmesi davranışı
   var keyBtn = document.getElementById("teacherKeyBtn");
   if (keyBtn) keyBtn.onclick = () => openKeySheet();
+  var promptBtn = document.getElementById("teacherPromptBtn");
+  if (promptBtn) promptBtn.onclick = () => { if(window.DHOpenAIPrompt) window.DHOpenAIPrompt(); };
   var backEl = document.getElementById("teacherBack");
   if (backEl){
     var p2 = new URLSearchParams(location.search);
@@ -849,7 +852,7 @@ render();
 <script src="./tts-avatar-long-sync-fix.js?v=2"></script>
 <script src="./avatar-blink-sync.js?v=2"></script>
 <script src="./study-tracker.js?v=2"></script>
-<script src="./cloud-sync.js?v=4"></script>
+<script src="./cloud-sync.js?v=5"></script>
 <script src="./word-popup.js?v=1"></script>
 </body>
 </html>
