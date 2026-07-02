@@ -17,6 +17,78 @@
 <body>
 <div id="root"></div>
 
+
+  <!-- index-app.html - EKLEMELER -->
+
+<!-- ============================================ -->
+<!-- YENİ: BULUT SENKRONİZASYON VE BİLDİRİM      -->
+<!-- ============================================ -->
+<script src="./cloud-sync.js?v=1"></script>
+<script src="./notification-helper.js?v=1"></script>
+
+<!-- ============================================ -->
+<!-- YENİ: CACHE TEMİZLEME BUTONU                 -->
+<!-- ============================================ -->
+<script>
+// Cache temizleme fonksiyonu (global)
+window.clearAppCache = function() {
+  if (confirm('Tüm önbellek ve Service Worker temizlensin mi?')) {
+    // Service Worker'ı temizle
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations.forEach(reg => reg.unregister());
+        console.log('🗑️ Service Worker kaldırıldı');
+      });
+    }
+    
+    // Cache'i temizle
+    if ('caches' in window) {
+      caches.keys().then(keys => {
+        keys.forEach(key => {
+          caches.delete(key);
+          console.log('🗑️ Cache silindi:', key);
+        });
+      });
+    }
+    
+    // LocalStorage'ı temizle (sadece uygulama verileri)
+    const keepKeys = ['dilharita_userId', 'dilharita_reminder_time', 'dilharita_reminder_enabled'];
+    const toRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && !keepKeys.includes(key) && (key.startsWith('srs:') || key.startsWith('prog:') || key.startsWith('sm:'))) {
+        toRemove.push(key);
+      }
+    }
+    toRemove.forEach(key => localStorage.removeItem(key));
+    
+    console.log(`🗑️ ${toRemove.length} veri temizlendi`);
+    alert('Önbellek temizlendi! Sayfa yenilenecek.');
+    location.reload();
+  }
+};
+
+// Yedek indir
+window.downloadBackup = function() {
+  if (window.cloudSync) {
+    window.cloudSync.downloadBackup();
+  }
+};
+
+// Yedekten geri yükle
+window.restoreBackup = function() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function(e) {
+    const file = e.target.files[0];
+    if (file && window.cloudSync) {
+      window.cloudSync.restoreBackup(file);
+    }
+  };
+  input.click();
+};
+</script>
 <!-- ============================================ -->
 <!-- 1. REACT VE REACT-DOM YÜKLE                  -->
 <!-- ============================================ -->
