@@ -87,8 +87,9 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     </div>
   </div>
 
-  <div style="display:flex;justify-content:center;margin:18px 0 6px">
+  <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:18px 0 6px">
     <button id="dhCloudSyncBtn" type="button" style="display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;border-radius:14px;padding:14px 22px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font:800 15px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3)">🔄 Bulutla Senkronize Et</button>
+    <button id="dhLogoutBtn" type="button" style="display:inline-flex;align-items:center;gap:8px;border:1px solid #f8717155;cursor:pointer;border-radius:14px;padding:14px 22px;background:#1a1420;color:#fca5a5;font:800 15px system-ui,sans-serif">🚪 Çıkış Yap</button>
   </div>
   <div id="dhCloudSyncMsg" style="text-align:center;font-size:13px;color:#9fb3d9;min-height:18px;margin-bottom:8px"></div>
 
@@ -112,7 +113,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
 <script src="./study-tracker.js?v=1"></script>
 <script src="./streak-screen.js?v=1"></script>
 <script src="./teacher-bubble.js?v=3"></script>
-<script src="./cloud-sync.js?v=4"></script>
+<script src="./cloud-sync.js?v=5"></script>
 <script src="./notifications.js?v=1"></script>
 <script>
 (function(){
@@ -145,6 +146,27 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
       btn.disabled=false; btn.textContent=old;
     }
   };
+
+  // ---- ÇIKIŞ: önce buluta yükle, sonra oturumu kapat, giriş sayfasına dön ----
+  var logoutBtn=document.getElementById("dhLogoutBtn");
+  if(logoutBtn){
+    logoutBtn.onclick=async function(){
+      if(!confirm("Çıkış yapılsın mı? Verilerin buluta kaydedilecek.")) return;
+      var old=logoutBtn.textContent;
+      logoutBtn.disabled=true; logoutBtn.textContent="⏳ Kaydediliyor...";
+      if(msg){ msg.textContent="Veriler buluta yükleniyor..."; msg.style.color="#9fb3d9"; }
+      try{
+        if(window.DHCloudSync && window.DHCloudSync.signOut){
+          await window.DHCloudSync.signOut();
+        }else{
+          // bulut yoksa sadece yerel oturum bayraklarını temizle
+          try{ localStorage.removeItem("dh_logged_in"); localStorage.removeItem("dh_logged_uid"); localStorage.removeItem("dh_logged_email"); }catch(e){}
+        }
+      }catch(e){}
+      // giriş sayfasına dön
+      location.href="./login.html";
+    };
+  }
 })();
 
 /* ---- Bağımsız yedekleme (ana menü): SRS (IndexedDB) + localStorage + hata defteri ---- */
