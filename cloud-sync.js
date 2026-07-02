@@ -1,82 +1,106 @@
-// cloud-sync.js - Düzeltilmiş versiyon
+// ============================================
+// cloud-sync.js - Bulut Senkronizasyon Motoru
+// ============================================
 
 class CloudSync {
   constructor() {
-    this.syncInterval = null;
+    this.isConnected = false;
     this.isSyncing = false;
     this.pendingChanges = [];
     this.lastSyncTime = 0;
     this.retryCount = 0;
-    this.maxRetries = 5;
-    this.syncDelay = 5000; // 5 saniye
-    this.isOnline = navigator.onLine;
+    this.maxRetries = 3;
+    this.syncInterval = null;
+    this.userId = null;
+    this.apiUrl = 'https://api.dilharita.com/sync'; // Veya kendi API URL'n
     
-    // Network durumunu izle
+    // Bağlantıyı kontrol et
+    this.checkConnection();
+    
+    // Network değişikliklerini izle
     window.addEventListener('online', () => {
-      this.isOnline = true;
-      this.retryCount = 0;
-      this.triggerSync();
+      this.checkConnection();
+      this.sync();
     });
     
     window.addEventListener('offline', () => {
-      this.isOnline = false;
+      this.isConnected = false;
     });
   }
 
-  // Başlangıç
-  start() {
-    if (this.syncInterval) {
-      clearInterval(this.syncInterval);
+  // Bağlantıyı kontrol et
+  async checkConnection() {
+    try {
+      // Basit bir ping testi
+      const response = await fetch(this.apiUrl + '/ping', {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(3000)
+      });
+      this.isConnected = response.ok;
+      console.log('☁️ Bulut bağlantısı:', this.isConnected ? '✅ Bağlı' : '❌ Bağlı değil');
+      return this.isConnected;
+    } catch (e) {
+      this.isConnected = false;
+      console.warn('⚠️ Bulut bağlantısı kontrol edilemedi:', e.message);
+      return false;
     }
-    
-    // Her 30 saniyede bir senkronizasyon dene
-    this.syncInterval = setInterval(() => {
-      this.triggerSync();
-    }, 30000);
-    
-    // İlk senkronizasyonu hemen yap
-    setTimeout(() => this.triggerSync(), 1000);
-    
-    console.log('☁️ CloudSync başlatıldı');
   }
 
-  // Senkronizasyonu tetikle
-  async triggerSync(force = false) {
+  // Kullanıcı ID'sini al
+  getUserId() {
+    if (this.userId) return this.userId;
+    
+    this.userId = localStorage.getItem('dilharita_userId');
+    if (!this.userId) {
+      this.userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+      localStorage.setItem('dilharita_userId', this.userId);
+    }
+    return this.userId;
+  }
+
+  // Senkronizasyon başlat
+  async sync(force = false) {
     if (this.isSyncing) {
-      console.log('⏳ Zaten senkronizasyon devam ediyor...');
+      console.log('⏳ Senkronizasyon devam ediyor...');
       return;
     }
     
-    if (!this.isOnline) {
-      console.log('📡 İnternet bağlantısı yok, senkronizasyon bekletiliyor...');
-      return;
-    }
-    
-    if (!force && this.pendingChanges.length === 0) {
-      // Bekleyen değişiklik yoksa kontrol et
-      await this.checkForRemoteChanges();
-      return;
-    }
-    
-    try {
-      this.isSyncing = true;
-      console.log('🔄 Senkronizasyon başlıyor...');
-      
-      // Önce yerel değişiklikleri gönder
-      if (this.pendingChanges.length > 0) {
-        await this.pushChanges();
+    if (!this.isConnected) {
+      const connected = await this.checkConnection();
+      if (!connected) {
+        console.warn('⚠️ Bulut bağlantısı yok, senkronizasyon ertelendi');
+        return;
       }
+    }
+
+    this.isSyncing = true;
+    console.log('🔄 Senkronizasyon başlıyor...');
+
+    try {
+      // 1. Yerel değişiklikleri gönder
+      await this.pushChanges();
       
-      // Sonra uzak değişiklikleri çek
+      // 2. Uzaktan değişiklikleri al
       await this.pullChanges();
       
       this.lastSyncTime = Date.now();
       this.retryCount = 0;
       console.log('✅ Senkronizasyon tamamlandı');
       
+      // UI'ı güncelle
+      this.updateUIStatus('success');
+      
     } catch (error) {
       console.error('❌ Senkronizasyon hatası:', error);
-      this.handleSyncError(error);
+      this.retryCount++;
+      
+      if (this.retryCount < this.maxRetries) {
+        const delay = 5000 * this.retryCount;
+        console.log(`🔄 ${delay}ms sonra tekrar deneniyor... (${this.retryCount}/${this.maxRetries})`);
+        setTimeout(() => this.sync(true), delay);
+      } else {
+        this.updateUIStatus('error', error.message);
+      }
     } finally {
       this.isSyncing = false;
     }
@@ -85,168 +109,219 @@ class CloudSync {
   // Değişiklikleri gönder
   async pushChanges() {
     if (this.pendingChanges.length === 0) return;
-    
+
     const changes = [...this.pendingChanges];
     this.pendingChanges = [];
-    
+
     try {
-      const userId = await this.getUserId();
-      const response = await fetch('/api/sync/push', {
+      const response = await fetch(this.apiUrl + '/push', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: userId,
+          userId: this.getUserId(),
           changes: changes,
           timestamp: Date.now()
         })
       });
-      
+
       if (!response.ok) {
-        throw new Error(`Push başarısız: ${response.status}`);
+        throw new Error(`Push hatası: ${response.status}`);
       }
-      
-      const result = await response.json();
+
       console.log(`📤 ${changes.length} değişiklik gönderildi`);
       
     } catch (error) {
-      // Hata durumunda değişiklikleri tekrar queue'ya ekle
+      // Hata durumunda değişiklikleri geri ekle
       this.pendingChanges = [...changes, ...this.pendingChanges];
       throw error;
     }
   }
 
-  // Uzaktan değişiklikleri çek
+  // Uzaktan değişiklikleri al
   async pullChanges() {
     try {
-      const userId = await this.getUserId();
-      const response = await fetch(`/api/sync/pull?userId=${userId}&since=${this.lastSyncTime}`, {
-        method: 'GET',
+      const response = await fetch(this.apiUrl + '/pull', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({
+          userId: this.getUserId(),
+          since: this.lastSyncTime
+        })
       });
-      
+
       if (!response.ok) {
-        throw new Error(`Pull başarısız: ${response.status}`);
+        throw new Error(`Pull hatası: ${response.status}`);
       }
-      
+
       const data = await response.json();
       
       if (data.changes && data.changes.length > 0) {
         console.log(`📥 ${data.changes.length} değişiklik alındı`);
-        await this.applyRemoteChanges(data.changes);
+        this.applyChanges(data.changes);
       }
       
     } catch (error) {
-      console.error('Pull hatası:', error);
-      throw error;
+      console.warn('Pull hatası:', error.message);
+      // Sessizce devam et
     }
   }
 
-  // Uzaktaki değişiklikleri uygula
-  async applyRemoteChanges(changes) {
+  // Değişiklikleri uygula
+  applyChanges(changes) {
     for (const change of changes) {
       try {
         switch (change.type) {
           case 'study':
-            await this.applyStudyChange(change.data);
+            this.applyStudyData(change.data);
             break;
           case 'progress':
-            await this.applyProgressChange(change.data);
+            this.applyProgressData(change.data);
             break;
           case 'settings':
-            await this.applySettingsChange(change.data);
+            this.applySettings(change.data);
             break;
           default:
             console.warn('Bilinmeyen değişiklik tipi:', change.type);
         }
       } catch (error) {
-        console.error('Değişiklik uygulama hatası:', change, error);
-        throw error;
+        console.error('Değişiklik uygulama hatası:', error);
       }
     }
   }
 
-  // Yeni bir değişiklik ekle
+  // Çalışma verilerini uygula
+  applyStudyData(data) {
+    // SRS verilerini güncelle
+    if (data.srs) {
+      for (const [key, value] of Object.entries(data.srs)) {
+        localStorage.setItem('srs:' + key, JSON.stringify(value));
+      }
+    }
+  }
+
+  // İlerleme verilerini uygula
+  applyProgressData(data) {
+    if (data.progress) {
+      for (const [key, value] of Object.entries(data.progress)) {
+        localStorage.setItem('prog:' + key, JSON.stringify(value));
+      }
+    }
+  }
+
+  // Ayarları uygula
+  applySettings(data) {
+    if (data.settings) {
+      for (const [key, value] of Object.entries(data.settings)) {
+        localStorage.setItem(key, JSON.stringify(value));
+      }
+    }
+  }
+
+  // Yeni değişiklik ekle
   addChange(type, data) {
     this.pendingChanges.push({
-      id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      id: Date.now() + '_' + Math.random().toString(36).substr(2, 6),
       type: type,
       data: data,
       timestamp: Date.now()
     });
     
-    // Hemen senkronize etmeyi dene
-    if (this.isOnline && !this.isSyncing) {
-      setTimeout(() => this.triggerSync(), 100);
+    // Otomatik senkronizasyon
+    if (this.isConnected) {
+      setTimeout(() => this.sync(), 1000);
     }
   }
 
-  // Hata yönetimi
-  handleSyncError(error) {
-    this.retryCount++;
-    
-    if (this.retryCount < this.maxRetries) {
-      const delay = this.syncDelay * Math.pow(2, this.retryCount - 1);
-      console.log(`🔄 ${delay}ms sonra tekrar deneniyor... (${this.retryCount}/${this.maxRetries})`);
-      
-      setTimeout(() => {
-        if (this.isOnline) {
-          this.triggerSync(true);
-        }
-      }, delay);
-    } else {
-      console.error('⚠️ Maksimum yeniden deneme sayısına ulaşıldı. Senkronizasyon durduruldu.');
-      this.retryCount = 0;
-    }
-  }
-
-  // Kullanıcı ID'sini al
-  async getUserId() {
-    // LocalStorage veya IndexedDB'den kullanıcı ID'sini al
-    let userId = localStorage.getItem('dilharita_userId');
-    
-    if (!userId) {
-      userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('dilharita_userId', userId);
-    }
-    
-    return userId;
-  }
-
-  // Uzaktaki değişiklikleri kontrol et (periyodik kontrol için)
-  async checkForRemoteChanges() {
+  // Yedek indir
+  async downloadBackup() {
     try {
-      const userId = await this.getUserId();
-      const response = await fetch(`/api/sync/check?userId=${userId}&since=${this.lastSyncTime}`, {
-        method: 'HEAD'
-      });
+      const allData = {};
       
-      const hasChanges = response.headers.get('X-Has-Changes') === 'true';
-      
-      if (hasChanges) {
-        await this.pullChanges();
+      // Tüm localStorage verilerini al
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && !key.startsWith('_')) {
+          try {
+            allData[key] = JSON.parse(localStorage.getItem(key));
+          } catch {
+            allData[key] = localStorage.getItem(key);
+          }
+        }
       }
       
+      // JSON olarak indir
+      const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dilharita_yedek_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      console.log('✅ Yedek indirildi');
+      return true;
+      
     } catch (error) {
-      // Sessizce başarısız ol - periyodik kontrol için
-      console.debug('Uzaktan değişiklik kontrolü başarısız:', error);
+      console.error('❌ Yedek indirme hatası:', error);
+      alert('Yedek indirilemedi: ' + error.message);
+      return false;
     }
   }
 
-  // Senkronizasyonu durdur
-  stop() {
-    if (this.syncInterval) {
-      clearInterval(this.syncInterval);
-      this.syncInterval = null;
+  // Yedekten geri yükle
+  async restoreBackup(file) {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      
+      let count = 0;
+      for (const [key, value] of Object.entries(data)) {
+        if (key.startsWith('srs:') || key.startsWith('prog:') || key === 'dilharita_userId') {
+          localStorage.setItem(key, JSON.stringify(value));
+          count++;
+        }
+      }
+      
+      console.log(`✅ ${count} veri geri yüklendi`);
+      alert(`${count} veri başarıyla geri yüklendi. Sayfa yenilenecek.`);
+      location.reload();
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Geri yükleme hatası:', error);
+      alert('Geri yükleme başarısız: ' + error.message);
+      return false;
     }
+  }
+
+  // UI durumunu güncelle
+  updateUIStatus(status, message = '') {
+    const statusEl = document.getElementById('sync-status');
+    if (!statusEl) return;
     
-    this.isSyncing = false;
-    console.log('⏹️ CloudSync durduruldu');
+    if (status === 'success') {
+      statusEl.textContent = '✅ Son senkronizasyon: ' + new Date().toLocaleTimeString();
+      statusEl.style.color = '#4ade80';
+    } else if (status === 'error') {
+      statusEl.textContent = '❌ Hata: ' + message;
+      statusEl.style.color = '#ef4444';
+    } else {
+      statusEl.textContent = '⏳ Senkronizasyon bekleniyor...';
+      statusEl.style.color = '#fbbf24';
+    }
   }
 }
 
 // Global instance
 window.cloudSync = new CloudSync();
+
+// Her 5 dakikada bir senkronizasyon dene
+setInterval(() => {
+  window.cloudSync.sync();
+}, 300000);
+
+console.log('☁️ CloudSync yüklendi');
