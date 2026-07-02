@@ -1,3 +1,15 @@
+// index-app-layout.js - DÜZELTİLMİŞ VERSİYON
+
+// React hook'larını al
+const React = window.React || (typeof require !== 'undefined' ? require('react') : null);
+const { useState, useEffect, useCallback, useMemo, useRef } = React || {};
+
+// Eğer React yoksa hata ver
+if (!React || !useState) {
+  console.error('React yüklenemedi! window.React:', window.React);
+  throw new Error('React required for index-app-layout.js');
+}
+
 // index-app-layout.js - Ekleme
 
 // Uygulama başlatıldığında
