@@ -286,9 +286,11 @@
       var origSet = proto.setItem.bind(proto);
       proto.setItem = function(k, v){
         origSet(k, v);
-        if (LS_KEYS.indexOf(String(k)) >= 0){
-          // Bu anahtarın yerel değişiklik zamanını kaydet (en-son-kazanır için)
-          try{ origSet("__ts_" + k, String(Date.now())); }catch(e){}
+        var key=String(k);
+        var match = (LS_KEYS.indexOf(key) >= 0);
+        if(!match){ for(var p=0;p<LS_PREFIXES.length;p++){ if(key.indexOf(LS_PREFIXES[p])===0){ match=true; break; } } }
+        if (match){
+          try{ origSet("__ts_" + key, String(Date.now())); }catch(e){}
           pushSoon();
         }
       };
@@ -301,6 +303,22 @@
   // Hata defterine kayıt eklenince de buluta gönder
   window.addEventListener("learning-error-added", pushSoon);
   window.addEventListener("learning-errors-cleared", pushSoon);
+
+  // EKRAN ÇIKIŞI / SAYFA GİZLENMESİ: bekleyen değişiklikleri hemen buluta yaz.
+  // pagehide + visibilitychange(hidden): sayfa geçişi, sekme kapatma, mobilde arka plan.
+  function flushOnLeave(){
+    try{
+      // storage-bridge'i diske it (asenkron shim), sonra push
+      if(window.__dhStorageFlush) window.__dhStorageFlush();
+    }catch(e){}
+    // bekleyen debounce'u iptal edip hemen yaz
+    try{ clearTimeout(saveTimer); }catch(e){}
+    pushNow();
+  }
+  window.addEventListener("pagehide", flushOnLeave);
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState==="hidden") flushOnLeave();
+  });
 
   // Başlat
   function start(){
