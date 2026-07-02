@@ -51,6 +51,50 @@
     "story:"       // modül hikaye önbelleği
   ];
 
+  // AKTİF GÜNLER birleştirme: iki cihazın günlerini birleştir (union).
+  function mergeStudyTracker(localStr, remoteStr){
+    var L={}, R={};
+    try{ L=JSON.parse(localStr||"{}")||{}; }catch(e){}
+    try{ R=JSON.parse(remoteStr||"{}")||{}; }catch(e){}
+    var out={};
+    for(var k in R){ if(R.hasOwnProperty(k) && k!=="days") out[k]=R[k]; }
+    for(var k2 in L){ if(L.hasOwnProperty(k2) && k2!=="days") out[k2]=L[k2]; }
+    var ld=(L.days)||{}, rd=(R.days)||{}, days={}, allKeys={};
+    for(var d1 in ld){ if(ld.hasOwnProperty(d1)) allKeys[d1]=1; }
+    for(var d2 in rd){ if(rd.hasOwnProperty(d2)) allKeys[d2]=1; }
+    for(var day in allKeys){
+      var a=ld[day], b=rd[day];
+      if(a && b){
+        days[day]={ date:day,
+          lessons:Math.max(a.lessons||0,b.lessons||0),
+          minutes:Math.max(a.minutes||0,b.minutes||0),
+          sentences:Math.max(a.sentences||0,b.sentences||0),
+          videos:Math.max(a.videos||0,b.videos||0),
+          reviews:Math.max(a.reviews||0,b.reviews||0),
+          errors:Math.max(a.errors||0,b.errors||0),
+          events:(a.events||[]).concat(b.events||[]) };
+      } else { days[day]= a || b; }
+    }
+    out.days=days;
+    return JSON.stringify(out);
+  }
+  // İLERLEME AYNASI birleştirme: {itemId:[status,updated]} — daha yeni/ileri olan kazanır.
+  function mergeProgressMirror(localStr, remoteStr){
+    var L={}, R={};
+    try{ L=JSON.parse(localStr||"{}")||{}; }catch(e){}
+    try{ R=JSON.parse(remoteStr||"{}")||{}; }catch(e){}
+    var out={};
+    for(var k in L){ if(L.hasOwnProperty(k)) out[k]=L[k]; }
+    for(var k2 in R){
+      if(!R.hasOwnProperty(k2)) continue;
+      var r=R[k2], l=out[k2];
+      if(!l){ out[k2]=r; continue; }
+      var lU=(l&&l[1])||0, rU=(r&&r[1])||0;
+      if(rU>lU || (rU===lU && (r[0]||0)>(l[0]||0))) out[k2]=r;
+    }
+    return JSON.stringify(out);
+  }
+
   // Buluttan gelen belgeyi normalize et: {ls:{...}, errors:[...]}
   // Hem yeni kök-seviye yapı hem eski data.ls yapısını destekler.
   function parseRemote(remote){
@@ -362,7 +406,18 @@
             var ok = (LS_KEYS.indexOf(rk) >= 0);
             if (!ok){ for (var pp=0; pp<LS_PREFIXES.length; pp++){ if (rk.indexOf(LS_PREFIXES[pp])===0){ ok=true; break; } } }
             if (!ok) continue;
-            try{ localStorage.setItem(rk, rv); pulled++; }catch(e){}
+            try{
+              if (rk === "dh-study-tracker-v1"){
+                // AKTİF GÜNLER: ezme, BİRLEŞTİR (iki cihazın günlerini birleştir)
+                localStorage.setItem(rk, mergeStudyTracker(localStorage.getItem(rk), rv));
+              } else if (rk === "dh-progress-mirror-v1"){
+                // İLERLEME AYNASI: "daha yeni olan kazanır" ile birleştir
+                localStorage.setItem(rk, mergeProgressMirror(localStorage.getItem(rk), rv));
+              } else {
+                localStorage.setItem(rk, rv);
+              }
+              pulled++;
+            }catch(e){}
           }
         }
         // hata defteri: buluttan gelenleri yerele ekle (birleştir)
