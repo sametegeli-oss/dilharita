@@ -1,6 +1,6 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v7 — ultra kompakt yan yana butonlar)
-   1) Zor/Normal/Kolay → Yan yana (flex-row) dizildi, kapsayıcı div'i büyütmez
-   2) Öğretmen ve Zayıf Analiz butonları ana karttan KALDIRILDI (Araçlar içinde)
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v8 — mükerrer buton engelli)
+   1) Öğretmen ve Zayıf Analiz butonları CSS ve DOM düzeyinde ana karttan KESİN OLARAK GİZLENDİ
+   2) Zor/Normal/Kolay → Yan yana (flex-row) dizildi, kapsayıcıyı büyütmez
    3) İleri/geri/araçlar (.study-nav) → Sağ sütunda boşa çıkan alt alana sığdırıldı
    4) Detay + Zayıf Analiz + Öğretmen + 9'lu ızgara → Araçlar panelinde
 */
@@ -15,6 +15,10 @@
     s.textContent =
      ".legend,.legend-item,.legend-dot{display:none !important}"
     +".study-nav .legend,.study-nav .legend-item{display:none !important}"
+    /* Ana ekranda Öğretmen ve Zayıf Analiz butonlarının TEKRAR BELİRMESİNİ ENGELLEYEN CSS */
+    +".card-actions .teacher-btn, .card-actions .extra-weak, .card-actions button:contains('Öğretmen'), .card-actions button:contains('Zayıf') {display:none !important}"
+    /* Araçlar paneli içindeki butonların görünmesini sağlama */
+    +".dh-tools-box .dh-moved-btn {display:flex !important; visibility:visible !important}"
     /* ---- 2 SÜTUN DÜZEN ---- */
     +".dh-col-left,.dh-col-right{display:block}"
 +"@media (orientation:landscape),(min-width:680px){"
@@ -22,13 +26,12 @@
 +".card.dh-split>*{grid-column:1;min-width:0}"
 +".card.dh-split>.dh-col-right{grid-column:2;grid-row:1/99;display:flex;flex-direction:column;gap:6px;align-self:start}"
 +".card.dh-split .sm-img-wrap{margin:6px 0}"
-/* Zor/Normal/Kolay butonlarının div büyümesini engelleyen ve yan yana dizen ayarı */
 +".card.dh-split .dh-grade-under{flex-direction:row !important;gap:4px !important;margin:0;width:100%;box-sizing:border-box}"
 +".card.dh-split .dh-grade-under button{flex:1 !important;min-height:32px !important;padding:4px 2px !important;font-size:12px !important;border-radius:8px !important;white-space:nowrap;overflow:hidden}"
 +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}"
 +".card.dh-split .card-actions button{min-height:32px !important;padding:6px 10px !important;font-size:12px !important;border-radius:9px !important}"
 +"}"
-    /* Sağ sütuna sığdırılan alt bar ayarları */
+    /* Sağ sütun alt bar ayarları */
     +".study-nav.dh-card-nav{position:relative !important;display:flex !important;gap:6px;align-items:center;justify-content:space-between;margin:10px 0 0 !important;padding:0 !important;background:transparent !important;border-top:none !important;box-shadow:none !important;width:100%}"
     +".study-nav.dh-card-nav .btn{flex:1;min-height:40px;font-size:13px !important;font-weight:800 !important;border-radius:10px !important;padding:4px 8px !important}"
     +".study-nav.dh-card-nav > *:not(.btn):not(.dh-tools-toggle){flex:0 0 auto}"
@@ -37,16 +40,16 @@
     +".dh-tools-toggle:hover{background:#22304f}"
     +".dh-tools-toggle .chev{transition:transform .2s;font-size:11px}"
     +".dh-tools-toggle.open .chev{transform:rotate(180deg)}"
-    /* Mobil/Dikey görünüm için varsayılan esnek grup yapısı */
+    /* Varsayılan esnek grup yapısı */
     +".dh-grade-under{display:flex !important;flex-direction:row !important;gap:4px;margin:10px 0 4px;width:100%}"
     +".dh-gtr-btn{display:inline-flex;align-items:center;gap:6px;margin:8px 0 2px;padding:8px 14px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:#1a2942;color:#cfe0ff;font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}"
     +".dh-gtr-btn:hover{background:#22344f}"
     +".dh-grade-under button{flex:1;min-height:38px;border-radius:10px;font-weight:800;font-size:13px;border:1px solid rgba(255,255,255,.14);cursor:pointer;padding:4px}"
-    /* Araçlar paneli popup ayarı */
+    /* Araçlar paneli popup */
     +".dh-tools-box{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:8999;width:90%;max-width:400px;margin:0;padding:14px;max-height:50vh;overflow-y:auto;border-radius:16px;background:#0d1a30;border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 40px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px;animation:dhToolsUp .2s ease}"
     +"@keyframes dhToolsUp{from{transform:translate(-50%, 10px);opacity:.4}to{transform:translate(-50%, 0);opacity:1}}"
     +".dh-tools-box.dh-hidden{display:none !important}"
-    +".dh-tools-box .dh-moved-btn{width:100%;min-height:42px;border-radius:10px}"
+    +".dh-tools-box .dh-moved-btn{width:100%;min-height:42px;border-radius:10px;display:flex !important}"
     +".dh-tools-box .wd-tools-row{margin-top:0 !important}"
     +".dh-tools-title{font:900 13px Nunito,system-ui,sans-serif;color:#9fb3d9;text-align:center;margin-bottom:2px}";
     document.head.appendChild(s);
@@ -166,9 +169,12 @@
       else nav.appendChild(toggle);
     }
 
-    if(card && card.dataset.dhToolsFilled!=="1"){
+    // MutationObserver tetiklendiğinde butonların ana ekranda kalmasını KESİN OLARAK engelleme adımı
+    if(card){
+      var actions = card.querySelector(".card-actions");
+      
       var teacher=card.querySelector(".teacher-btn")||btnByText(card,"öğretmen");
-      if(teacher && !/sor/i.test(teacher.textContent||"")){ 
+      if(teacher && !/sor/i.test(teacher.textContent||"") && teacher.parentElement !== box){ 
         teacher.classList.add("dh-moved-btn"); 
         box.appendChild(teacher); 
       }
@@ -176,21 +182,32 @@
       var teacherAsk=[].slice.call(card.querySelectorAll("button,a")).find(function(b){
         return /öğretmene sor/i.test(b.textContent||"");
       });
-      if(teacherAsk){ 
-        teacherAsk.style.display=""; 
+      if(teacherAsk && teacherAsk.parentElement !== box){ 
         teacherAsk.classList.add("dh-moved-btn"); 
         box.appendChild(teacherAsk); 
       }
       
       var detay=btnByText(card,"detay");
-      if(detay){ detay.classList.add("dh-moved-btn"); box.appendChild(detay); }
+      if(detay && detay.parentElement !== box){ 
+        detay.classList.add("dh-moved-btn"); 
+        box.appendChild(detay); 
+      }
       
       var weak=card.querySelector(".extra-weak")||btnByText(card,"zayıf");
-      if(weak){ 
+      if(weak && weak.parentElement !== box){ 
         weak.classList.add("dh-moved-btn"); 
         box.appendChild(weak); 
       }
-      
+
+      // Klonlanan ya da geride kalan mükerrer butonları bulup DOM düzeyinde gizle
+      if (actions) {
+        [].slice.call(actions.querySelectorAll("button, a")).forEach(function(btn){
+          var txt = (btn.textContent || "").toLowerCase();
+          if (txt.indexOf("öğretmen") >= 0 || txt.indexOf("zayıf") >= 0 || txt.indexOf("detay") >= 0) {
+            btn.style.setProperty("display", "none", "important");
+          }
+        });
+      }
       card.dataset.dhToolsFilled="1";
     }
     var grid=document.querySelector(".wd-tools-row");
