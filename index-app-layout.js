@@ -1,8 +1,8 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v9.1 — araçlar butonlu, küçük butonlar)
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v9.2 — ileri/geri düzeltildi, araçlar gizli)
    1) Tüm üst başlıklar kaldırıldı
    2) Zor/Normal/Kolay → cümlenin Türkçesinin ALTINA
    3) Araçlar paneli (Detay, Zayıf Analiz, Öğretmen, 9'lu ızgara) → sadece "Araçlar" butonuna tıklanınca açılır
-   4) Önceki, Araçlar, Sonraki butonları kartın altında
+   4) Önceki, Araçlar, Sonraki butonları kartın altında (sabit)
    5) Altta sabit çubuk KALDIRILDI
 */
 (function(){
@@ -44,7 +44,8 @@
     
     /* Kart içi nav satırı */
     +".dh-nav-row{display:flex !important;gap:6px;align-items:center;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.08);width:100%}"
-    +".dh-nav-row .btn{flex:1;min-height:36px;font-size:13px !important;font-weight:700 !important;border-radius:10px !important;padding:4px 8px}"
+    +".dh-nav-row .btn{flex:1;min-height:36px;font-size:13px !important;font-weight:700 !important;border-radius:10px !important;padding:4px 8px;background:#0d1a30;border:1px solid rgba(255,255,255,0.08);color:#cfe0ff;cursor:pointer}"
+    +".dh-nav-row .btn:hover{background:#1a2a44}"
     +".dh-nav-row .dh-tools-toggle{flex:0 0 auto !important;min-height:36px;padding:0 12px;border:1px solid rgba(255,255,255,.10);border-radius:10px;background:#17233a;color:#eaf2ff;font:700 12px Nunito,system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap}"
     +".dh-nav-row .dh-tools-toggle:hover{background:#22304f}"
     +".dh-nav-row .dh-tools-toggle .chev{transition:transform .2s;font-size:9px}"
@@ -197,14 +198,10 @@
     card.dataset.dhSplitDone="1";
   }
 
-  // NAV'ı kartın içine taşı
+  // NAV'ı kartın içine taşı (study-nav veya card-actions içinden)
   function moveNavToCard(card){
     if(card.dataset.dhNavMoved==="1") return;
     
-    var nav = document.querySelector(".study-nav");
-    if(!nav) return;
-    
-    // Varolan nav row'u kontrol et
     var navRow = card.querySelector(".dh-nav-row");
     if(!navRow){
       navRow = document.createElement("div");
@@ -212,17 +209,65 @@
       card.appendChild(navRow);
     }
     
-    // Butonları nav'dan al
-    var btns = nav.querySelectorAll(".btn");
+    // Önceki ve Sonraki butonlarını bul
+    var prevBtn = null, nextBtn = null;
     
-    // Önceki butonu
-    if(btns.length >= 1){
-      var prevBtn = btns[0].cloneNode(true);
-      prevBtn.className = "btn";
-      navRow.appendChild(prevBtn);
+    // 1. study-nav içinde ara
+    var nav = document.querySelector(".study-nav");
+    if(nav){
+      var btns = nav.querySelectorAll(".btn");
+      if(btns.length >= 2){
+        prevBtn = btns[0].cloneNode(true);
+        nextBtn = btns[1].cloneNode(true);
+      }
+      // study-nav'ı gizle
+      nav.style.display = "none";
     }
     
-    // Araçlar butonu (toggle) - yeni oluştur
+    // 2. Eğer study-nav'da bulunamadıysa, card-actions içinde metinle ara
+    if(!prevBtn || !nextBtn){
+      var actions = card.querySelector(".card-actions");
+      if(actions){
+        var allBtns = actions.querySelectorAll("button, a");
+        for(var i=0; i<allBtns.length; i++){
+          var txt = (allBtns[i].textContent || "").toLowerCase().trim();
+          if(txt.indexOf("önceki") !== -1 || txt.indexOf("previous") !== -1){
+            prevBtn = allBtns[i].cloneNode(true);
+          }
+          if(txt.indexOf("sonraki") !== -1 || txt.indexOf("next") !== -1){
+            nextBtn = allBtns[i].cloneNode(true);
+          }
+        }
+        // Eğer bulundularsa, orijinallerini gizle (isteğe bağlı)
+      }
+    }
+    
+    // 3. Hala yoksa, manuel oluştur
+    if(!prevBtn){
+      prevBtn = document.createElement("button");
+      prevBtn.className = "btn";
+      prevBtn.textContent = "← Önceki";
+      prevBtn.onclick = function(){ 
+        var p = document.querySelector(".study-nav .btn:first-child");
+        if(p) p.click(); 
+      };
+    }
+    if(!nextBtn){
+      nextBtn = document.createElement("button");
+      nextBtn.className = "btn";
+      nextBtn.textContent = "Sonraki →";
+      nextBtn.onclick = function(){ 
+        var n = document.querySelector(".study-nav .btn:last-child");
+        if(n) n.click(); 
+      };
+    }
+    
+    // Butonları temizle ve ekle
+    prevBtn.className = "btn";
+    nextBtn.className = "btn";
+    navRow.appendChild(prevBtn);
+    
+    // Araçlar butonu (toggle)
     var toolsToggle = document.createElement("button");
     toolsToggle.className = "dh-tools-toggle";
     toolsToggle.innerHTML = '🛠 Araçlar <span class="chev">▾</span>';
@@ -235,15 +280,7 @@
     };
     navRow.appendChild(toolsToggle);
     
-    // Sonraki butonu
-    if(btns.length >= 2){
-      var nextBtn = btns[1].cloneNode(true);
-      nextBtn.className = "btn";
-      navRow.appendChild(nextBtn);
-    }
-    
-    // Orijinal nav'ı gizle
-    nav.style.display = "none";
+    navRow.appendChild(nextBtn);
     
     card.dataset.dhNavMoved = "1";
   }
