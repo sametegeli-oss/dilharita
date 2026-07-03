@@ -44,7 +44,7 @@
   // Senkronlanacak PREFIX'li anahtarlar (çoklu kayıt: mastery, modül notları, hikayeler).
   // Bu öneklerle başlayan TÜM localStorage anahtarları toplanıp senkronlanır.
   var LS_PREFIXES = [
-    "sm:",         // index-app (React) modül ilerlemesi — Zor/Normal/Kolay notları, kaldığın cümle
+    "sm:", "smv:", // index-app (React) modül ilerlemesi (smv:=IndexedDB kv, sm:=localStorage yedeği) — Zor/Normal/Kolay notları, kaldığın cümle
     "mas:",        // mastery skorları
     "ev:",         // mastery kanıtları
     "modscore:",   // modül notları
@@ -332,8 +332,10 @@
         var c=e.target.result;
         if(c){
           var k=String(c.key);
-          if(k.indexOf("sm:")===0){
-            try{ out[k]=JSON.stringify(c.value); }catch(_){ out[k]=String(c.value); }
+          // React modül verisi = img: (resim önbelleği) HARİÇ tüm kv kayıtları (ham anahtarlı)
+          if(k && k.indexOf("img:")!==0){
+            var v; try{ v=JSON.stringify(c.value); }catch(_){ v=String(c.value); }
+            if(v && v.length<=200000) out["smv:"+k]=v;   // buluta smv: önekiyle
           }
           c.continue();
         } else { db.close(); res(out); }
@@ -349,7 +351,8 @@
       keys.forEach(function(k){
         var v=obj[k];
         try{ v=JSON.parse(obj[k]); }catch(_){ }
-        try{ st.put(v, k); n++; }catch(_){ }
+        var raw = (k.indexOf("smv:")===0) ? k.slice(4) : k;   // buluttaki smv: önekini soy
+        try{ st.put(v, raw); n++; }catch(_){ }
       });
       tx.oncomplete=function(){ db.close(); res(n); };
       tx.onerror=function(){ db.close(); res(n); };
@@ -503,7 +506,7 @@
             if (!ok){ for (var pp=0; pp<LS_PREFIXES.length; pp++){ if (rk.indexOf(LS_PREFIXES[pp])===0){ ok=true; break; } } }
             if (!ok) continue;
             try{
-              if (rk.indexOf("sm:")===0){
+              if (rk.indexOf("smv:")===0){
                 // MODÜL İLERLEMESİ: localStorage'a değil IndexedDB'ye (React oradan okur)
                 smIncoming[rk]=rv; pulled++;
               } else if (rk === "dh-study-tracker-v1"){
