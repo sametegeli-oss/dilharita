@@ -1,8 +1,8 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v11 — yatayda başlık gizleme)
-   1) Ekran YATAY (landscape) olduğunda modül adı ve üst çubuk tamamen kaldırılır, dikeyde görünür.
-   2) Öğretmen ve Zayıf Analiz butonları arka planda CSS ile gizlendi (Sonsuz döngü engelli).
-   3) Araçlar panelinde sabit tetikleyiciler (proxy) çalışır.
-   4) Zor/Normal/Kolay → Yan yana (flex-row) kompakt düzendedir.
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v12 — Gelişmiş Yatay Düzen)
+   1) Yatayda İngilizce cümle resmin üzerine transparan/yarı şeffaf katman olarak biner.
+   2) Sol sütun (resim alanı) kendi içinde kaydırılabilir (scrollable), sağ sütun (butonlar) sabittir.
+   3) Ekran YATAY (landscape) olduğunda modül adı ve üst çubuk tamamen kaldırılır.
+   4) Öğretmen ve Zayıf Analiz butonları proxy mantığıyla arka planda gizlidir, döngü yapmaz.
 */
 (function(){
   "use strict";
@@ -21,26 +21,47 @@
     
     /* ---- EKRAN YATAYKEN ÜST MODÜL BAŞLIĞINI KALDIRMA ---- */
     +"@media (orientation: landscape) {"
-      /* Genelde üst bar .study-header, .app-header veya kartın üstündeki sibling elementlerdir */
       +".study-header, .app-header, .practice-header, div[class*='header']:not(.card), div[class*='top-bar'] { display:none !important; }"
-      /* Görseldeki sol üstteki geri oku/liste butonu ve sağ üstteki 8/25 modül adının olduğu satırı kapsar */
       +".card ~ div:first-of-type, body > div > div:first-child:not(.card) { display:none !important; }"
+      
+      /* İngilizce cümleyi resmin üzerine bindirme kuralları */
+      +".card.dh-split .dh-col-left { position: relative !important; }"
+      +".card.dh-split .card-en {"
+        +"position: absolute !important;"
+        +"bottom: 15px !important;"
+        +"left: 15px !important;"
+        +"right: 15px !important;"
+        +"z-index: 10 !important;"
+        +"background: rgba(13, 26, 48, 0.85) !important;"
+        +"backdrop-filter: blur(6px) !important;"
+        +"padding: 12px 18px !important;"
+        +"border-radius: 12px !important;"
+        +"border: 1px solid rgba(255, 255, 255, 0.1) !important;"
+        +"box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;"
+        +"margin: 0 !important;"
+        +"text-align: center !important;"
+      +"}"
+      /* Resim kapsayıcısının konumlanma temeli oluşturması */
+      +".card.dh-split .sm-img-wrap { position: relative !important; width: 100% !important; }"
     +"}"
 
-    /* ---- 2 SÜTUN DÜZEN ---- */
-    +".dh-col-left,.dh-col-right{display:block}"
+    /* ---- 2 SÜTUN VE SCROLL DÜZENİ ---- */
+    +".dh-col-left{display:block; min-width:0;}"
+    +".dh-col-right{display:block; min-width:0;}"
 +"@media (orientation:landscape),(min-width:680px){"
-+".card.dh-split{display:grid !important;grid-template-columns:1.5fr .9fr;gap:14px 16px;align-items:start}"
-+".card.dh-split>*{grid-column:1;min-width:0}"
-+".card.dh-split>.dh-col-right{grid-column:2;grid-row:1/99;display:flex;flex-direction:column;gap:6px;align-self:start;margin-top:0 !important}"
-+".card.dh-split .sm-img-wrap{margin:6px 0}"
++".card.dh-split{display:grid !important;grid-template-columns:1.4fr 1fr;gap:16px;align-items:start;max-height:92vh !important;overflow:hidden !important;padding:12px !important;}"
+/* Sol sütun: Resim ve alt metinler burada kayar */
++".card.dh-split>.dh-col-left{grid-column:1; max-height:88vh !important; overflow-y:auto !important; padding-right:4px; box-sizing:border-box; display:flex; flex-direction:column; gap:8px;}"
+/* Sağ sütun: Butonlar ekrana kilitlenir ve kaymaz */
++".card.dh-split>.dh-col-right{grid-column:2;grid-row:1;display:flex;flex-direction:column;gap:8px;position:sticky !important;top:0 !important;align-self:start;box-sizing:border-box;}"
++".card.dh-split .sm-img-wrap{margin:0}"
 +".card.dh-split .dh-grade-under{flex-direction:row !important;gap:4px !important;margin:0;width:100%;box-sizing:border-box}"
-+".card.dh-split .dh-grade-under button{flex:1 !important;min-height:32px !important;padding:4px 2px !important;font-size:12px !important;border-radius:8px !important;white-space:nowrap;overflow:hidden}"
++".card.dh-split .dh-grade-under button{flex:1 !important;min-height:34px !important;padding:4px 2px !important;font-size:12px !important;border-radius:8px !important;white-space:nowrap;overflow:hidden}"
 +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}"
 +".card.dh-split .card-actions button{min-height:32px !important;padding:6px 10px !important;font-size:12px !important;border-radius:9px !important}"
 +"}"
     /* Sağ sütun alt bar ayarları */
-    +".study-nav.dh-card-nav{position:relative !important;display:flex !important;gap:6px;align-items:center;justify-content:space-between;margin:10px 0 0 !important;padding:0 !important;background:transparent !important;border-top:none !important;box-shadow:none !important;width:100%}"
+    +".study-nav.dh-card-nav{position:relative !important;display:flex !important;gap:6px;align-items:center;justify-content:space-between;margin:8px 0 0 !important;padding:0 !important;background:transparent !important;border-top:none !important;box-shadow:none !important;width:100%}"
     +".study-nav.dh-card-nav .btn{flex:1;min-height:40px;font-size:13px !important;font-weight:800 !important;border-radius:10px !important;padding:4px 8px !important}"
     +".study-nav.dh-card-nav > *:not(.btn):not(.dh-tools-toggle){flex:0 0 auto}"
     /* Kompakt Araçlar butonu */
@@ -87,7 +108,7 @@
     return nav;
   }
 
-  function moveGrade(card){
+  function moveGrade(card, leftCol){
     if(card.dataset.dhGradeDone==="1") return;
     var tr=card.querySelector(".card-tr"); if(!tr) return;
 
@@ -111,7 +132,9 @@
           }catch(e){}
           window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(txt), "_blank");
         };
-        tr.insertAdjacentElement("afterend", gb);
+        // Translate butonunu sol sütuna (Türkçe kelimenin altına) ekle
+        if(leftCol) { leftCol.appendChild(gb); }
+        else { tr.insertAdjacentElement("afterend", gb); }
       }
     }
     var zor=card.querySelector(".grade-hard")||btnByText(card,"zor");
@@ -121,37 +144,51 @@
     var grp=card.querySelector(".dh-grade-under");
     if(!grp){ grp=document.createElement("div"); grp.className="dh-grade-under"; }
     grp.appendChild(zor); grp.appendChild(nor); grp.appendChild(kol);
-    var anchor=card.querySelector(".card-pron")||tr;
-    anchor.insertAdjacentElement("afterend", grp);
+    
+    // Değerlendirme butonlarını sağ sütunun tepesine yerleştirmek için splitCard içinde append edeceğiz
     card.dataset.dhGradeDone="1";
   }
 
   function splitCard(card){
-    if(card.dataset.dhSplitDone==="1") return card.querySelector(".dh-col-right");
+    var left = card.querySelector(".dh-col-left");
+    var right = card.querySelector(".dh-col-right");
     
-    var enEl=card.querySelector(".card-en"); if(!enEl){ return null; }
-    var grade=card.querySelector(".dh-grade-under");
-    var actions=card.querySelector(".card-actions");
-    if(!grade || !actions){ return null; }
+    if(!left) {
+      left = document.createElement("div"); left.className="dh-col-left";
+      // Orijinal içerik elemanlarını (Resim, ingilizce, türkçe, telaffuz vb.) sol tarafa topla
+      var imgWrap = card.querySelector(".sm-img-wrap") || card.querySelector("img")?.parentElement;
+      var enEl = card.querySelector(".card-en");
+      var trEl = card.querySelector(".card-tr");
+      var pronEl = card.querySelector(".card-pron");
+      var tags = card.querySelector("div[class*='tags']") || card.querySelector(".badge")?.parentElement;
 
-    var right=card.querySelector(".dh-col-right");
+      if(tags) left.appendChild(tags);
+      if(imgWrap) left.appendChild(imgWrap);
+      if(enEl) left.appendChild(enEl);
+      if(trEl) left.appendChild(trEl);
+      if(pronEl) left.appendChild(pronEl);
+      card.insertBefore(left, card.firstChild);
+    }
+
     if(!right) {
-      right = document.createElement("div");
-      right.className="dh-col-right";
+      right = document.createElement("div"); right.className="dh-col-right";
+      card.appendChild(right);
     }
     
-    var q=[].slice.call(card.querySelectorAll("*")).find(function(e){
+    var grade = card.querySelector(".dh-grade-under");
+    var actions = card.querySelector(".card-actions");
+    
+    var q = [].slice.call(card.querySelectorAll("*")).find(function(e){
       return e.children.length===0 && /ne kadar biliyorsun/i.test(e.textContent||"");
     });
     if(q) { q.remove(); }
     
-    right.appendChild(grade);
-    right.appendChild(actions);
+    if(grade) right.appendChild(grade);
+    if(actions) right.appendChild(actions);
     
-    card.appendChild(right);
     card.classList.add("dh-split");
     card.dataset.dhSplitDone="1";
-    return right;
+    return { left: left, right: right };
   }
 
   function ensureTools(card, nav){
@@ -216,12 +253,12 @@
     try{
       addStyle();
       var card=currentCard();
-      var rightCol=null;
+      var cols=null;
       if(card){ 
-        moveGrade(card); 
-        rightCol = splitCard(card);
+        cols = splitCard(card);
+        moveGrade(card, cols?.left); 
       }
-      var nav=fixNav(rightCol);
+      var nav=fixNav(cols?.right);
       ensureTools(card, nav);
     }catch(e){}
     applying=false;
