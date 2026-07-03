@@ -1,8 +1,8 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v10 — döngüsüz, kararlı sürüm)
-   1) "Bu cümleyi ne kadar biliyorsun?" yazısı kaldırıldı.
-   2) Öğretmen ve Zayıf Analiz ana ekranda CSS ile tamamen gizlendi (Sonsuz döngü bitti).
-   3) Araçlar panelinde sabit tetikleyiciler oluşturuldu, mükerrer buton üretimi engellendi.
-   4) Zor/Normal/Kolay → Yan yana (flex-row) kompakt düzende sığdırıldı.
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v4 — döngü-güvenli)
+   1) İleri/geri (.study-nav) → altta SABİT çubuk
+   2) "🛠 Araçlar" butonu → Önceki ile Sonraki ARASINA (alt çubukta)
+   3) Zor/Normal/Kolay → cümlenin Türkçesinin (.card-tr) ALTINA
+   4) Detay + Zayıf Analiz + Öğretmen + 9'lu ızgara → Araçlar panelinde (alttan açılır)
 */
 (function(){
   "use strict";
@@ -13,76 +13,107 @@
     if(document.getElementById(STYLE_ID)) return;
     var s=document.createElement("style"); s.id=STYLE_ID;
     s.textContent =
-     ".legend,.legend-item,.legend-dot{display:none !important}"
+    "body{padding-bottom:78px !important}"
+    +".legend,.legend-item,.legend-dot{display:none !important}"
     +".study-nav .legend,.study-nav .legend-item{display:none !important}"
-    
-    /* Ana arayüzdeki Öğretmen ve Zayıf Analiz butonlarını alan kaplamayacak şekilde KESİN GİZLE */
-    +".card-actions .teacher-btn, .card-actions .extra-weak, button.teacher-btn, button.extra-weak { display:none !important; width:0 !important; height:0 !important; margin:0 !important; padding:0 !important; overflow:hidden !important; position:absolute !important; pointer-events:none !important; }"
-    
-    /* ---- 2 SÜTUN DÜZEN ---- */
+    /* ---- 2 SÜTUN DÜZEN (practice.html tarzı) ---- */
     +".dh-col-left,.dh-col-right{display:block}"
-+"@media (orientation:landscape),(min-width:680px){"
-+".card.dh-split{display:grid !important;grid-template-columns:1.5fr .9fr;gap:14px 16px;align-items:start}"
-+".card.dh-split>*{grid-column:1;min-width:0}"
-+".card.dh-split>.dh-col-right{grid-column:2;grid-row:1/99;display:flex;flex-direction:column;gap:6px;align-self:start;margin-top:0 !important}"
-+".card.dh-split .sm-img-wrap{margin:6px 0}"
-+".card.dh-split .dh-grade-under{flex-direction:row !important;gap:4px !important;margin:0;width:100%;box-sizing:border-box}"
-+".card.dh-split .dh-grade-under button{flex:1 !important;min-height:32px !important;padding:4px 2px !important;font-size:12px !important;border-radius:8px !important;white-space:nowrap;overflow:hidden}"
-+".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}"
-+".card.dh-split .card-actions button{min-height:32px !important;padding:6px 10px !important;font-size:12px !important;border-radius:9px !important}"
-+"}"
-    /* Sağ sütun alt bar ayarları */
-    +".study-nav.dh-card-nav{position:relative !important;display:flex !important;gap:6px;align-items:center;justify-content:space-between;margin:10px 0 0 !important;padding:0 !important;background:transparent !important;border-top:none !important;box-shadow:none !important;width:100%}"
-    +".study-nav.dh-card-nav .btn{flex:1;min-height:40px;font-size:13px !important;font-weight:800 !important;border-radius:10px !important;padding:4px 8px !important}"
-    +".study-nav.dh-card-nav > *:not(.btn):not(.dh-tools-toggle){flex:0 0 auto}"
-    /* Kompakt Araçlar butonu */
-    +".dh-tools-toggle{flex:0 0 auto !important;min-height:40px;padding:0 12px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:#17233a;color:#eaf2ff;font:900 13px Nunito,system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}"
+    +"@media(min-width:680px){"
+    +".card.dh-split{display:grid !important;grid-template-columns:1.5fr 0.9fr;gap:14px 16px;align-items:start}"
+    +".card.dh-split > *{grid-column:1;min-width:0}"
+    +".card.dh-split > .dh-col-right{grid-column:2;grid-row:1 / 99;display:flex;flex-direction:column;gap:6px;align-self:start}"
+    +".card.dh-split .sm-img-wrap{margin:6px 0}"
+    +".card.dh-split .dh-grade-under{flex-direction:column !important;gap:6px !important;margin:0}"
+    +".card.dh-split .dh-grade-under button{min-height:34px !important;padding:7px 8px !important;font-size:13px !important;border-radius:9px !important}"
+    +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}"
+    +".card.dh-split .card-actions button{min-height:32px !important;padding:6px 10px !important;font-size:12px !important;border-radius:9px !important}"
+    +"}"
+    +".study-nav.dh-fixed-nav{position:fixed !important;left:0;right:0;bottom:0;z-index:9000;display:flex !important;gap:8px;align-items:center;justify-content:space-between;margin:0 !important;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(9,15,28,.96);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.10);box-shadow:0 -8px 30px rgba(0,0,0,.4)}"
+    +".study-nav.dh-fixed-nav .btn{flex:1;min-height:48px;font-size:15px !important;font-weight:800 !important;border-radius:14px !important}"
+    +".study-nav.dh-fixed-nav > *:not(.btn):not(.dh-tools-toggle){flex:0 0 auto}"
+    +".study-nav.dh-nav-inpanel{position:static !important;display:flex;flex-direction:column;gap:6px;margin-top:6px;padding:0;background:none;border:0;box-shadow:none}"
+    +".study-nav.dh-nav-inpanel .btn{width:100%;min-height:36px !important;font-size:13px !important;border-radius:9px !important}"
+    +".study-nav.dh-nav-inpanel .dh-tools-toggle{width:100%}"
+    /* Araçlar butonu: nav ortasında, kompakt */
+    +".dh-tools-toggle{flex:0 0 auto !important;min-height:48px;padding:0 16px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:#17233a;color:#eaf2ff;font:900 14px Nunito,system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}"
     +".dh-tools-toggle:hover{background:#22304f}"
     +".dh-tools-toggle .chev{transition:transform .2s;font-size:11px}"
     +".dh-tools-toggle.open .chev{transform:rotate(180deg)}"
-    /* Varsayılan esnek grup yapısı */
-    +".dh-grade-under{display:flex !important;flex-direction:row !important;gap:4px;margin:10px 0 4px;width:100%}"
+    +".dh-grade-under{display:flex !important;gap:8px;margin:10px 0 4px}"
     +".dh-gtr-btn{display:inline-flex;align-items:center;gap:6px;margin:8px 0 2px;padding:8px 14px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:#1a2942;color:#cfe0ff;font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}"
     +".dh-gtr-btn:hover{background:#22344f}"
-    +".dh-grade-under button{flex:1;min-height:38px;border-radius:10px;font-weight:800;font-size:13px;border:1px solid rgba(255,255,255,.14);cursor:pointer;padding:4px}"
-    /* Araçlar paneli popup */
-    +".dh-tools-box{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:8999;width:90%;max-width:400px;margin:0;padding:14px;max-height:50vh;overflow-y:auto;border-radius:16px;background:#0d1a30;border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 40px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px;animation:dhToolsUp .2s ease}"
-    +"@keyframes dhToolsUp{from{transform:translate(-50%, 10px);opacity:.4}to{transform:translate(-50%, 0);opacity:1}}"
+    +".dh-grade-under button{flex:1;min-height:44px;border-radius:12px;font-weight:800;font-size:14px;border:1px solid rgba(255,255,255,.14);cursor:pointer}"
+    /* Araçlar paneli: alt çubuğun ÜSTÜNDE açılan sabit kayan panel */
+    +".dh-tools-box{position:fixed;left:0;right:0;bottom:70px;z-index:8999;margin:0;padding:14px;max-height:60vh;overflow-y:auto;border-radius:18px 18px 0 0;background:#0d1a30;border-top:1px solid rgba(255,255,255,.12);box-shadow:0 -10px 40px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:10px;animation:dhToolsUp .2s ease}"
+    +"@keyframes dhToolsUp{from{transform:translateY(20px);opacity:.4}to{transform:none;opacity:1}}"
     +".dh-tools-box.dh-hidden{display:none !important}"
-    +".dh-tools-box .dh-custom-btn{width:100%;min-height:42px;border-radius:10px;display:flex !important;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.15);font-weight:800;font-size:13px;cursor:pointer;background:#1e293b;color:#f8fafc;}"
-    +".dh-tools-box .dh-custom-btn:hover{background:#334155}"
+    +".dh-tools-box .dh-moved-btn{width:100%;min-height:46px;border-radius:12px}"
     +".dh-tools-box .wd-tools-row{margin-top:0 !important}"
     +".dh-tools-title{font:900 13px Nunito,system-ui,sans-serif;color:#9fb3d9;text-align:center;margin-bottom:2px}";
     document.head.appendChild(s);
   }
-
   function currentCard(){
     var cards=[].slice.call(document.querySelectorAll(".card"));
     return cards.find(function(c){ return c.querySelector(".card-en") && c.querySelector(".card-actions"); });
   }
-
   function btnByText(root, txt){
     var t=txt.toLocaleLowerCase("tr");
     return [].slice.call(root.querySelectorAll("button,a")).find(function(b){
       return (b.textContent||"").toLocaleLowerCase("tr").indexOf(t)>=0;
     })||null;
   }
+  // Kartı 2 sütuna böl: sol=resim+cümle, sağ=butonlar+zorluk (practice.html tarzı)
+  function splitCard(card){
+    if(card.dataset.dhSplitDone==="1") return;
+    // Genişlik kontrolü YOK — DOM'u her zaman böleriz, görünümü CSS medya sorgusu belirler.
+    // Böylece telefon yatay/dikey çevrilince otomatik 2 sütun ↔ tek sütun geçişi olur.
+    var enEl=card.querySelector(".card-en"); if(!enEl){ console.log("[dh-split] card-en yok"); return; }
+    var grade=card.querySelector(".dh-grade-under");
+    var actions=card.querySelector(".card-actions");
+    if(!grade || !actions){ console.log("[dh-split] hazır değil — grade:", !!grade, "actions:", !!actions); return; }
+    console.log("[dh-split] BÖLÜNÜYOR ✓");
 
-  function fixNav(rightCol){
+    // ÖNEMLİ: Resmi (.sm-img-wrap) ve .card-en'i TAŞIMA — image-addon onları
+    // kartın çocuğu sanıp insertBefore yapıyor; taşırsak hata verir + resim kaybolur.
+    // Bunun yerine: SADECE grade+actions'ı sağ sütuna al. Geri kalanı kartta kalsın
+    // (sol sütun görevi görür). Kartı flex yapıp sol içerik + sağ panel dizeriz.
+
+    var right=document.createElement("div"); right.className="dh-col-right";
+    // "ne kadar biliyorsun" başlığı + grade + actions → sağ
+    var q=[].slice.call(card.querySelectorAll("*")).find(function(e){
+      return e.children.length===0 && /ne kadar biliyorsun/i.test(e.textContent||"");
+    });
+    if(q) right.appendChild(q);
+    right.appendChild(grade);
+    right.appendChild(actions);
+    card.appendChild(right);
+    card.classList.add("dh-split");
+    card.dataset.dhSplitDone="1";
+
+    // Önceki/Araçlar/Sonraki (study-nav) → sağ panelin altına al (diğer butonların yanına)
+    try{
+      var nav=document.querySelector(".study-nav");
+      if(nav && nav.parentElement!==right){
+        nav.classList.remove("dh-fixed-nav");   // alt sabit çubuğu bırak
+        nav.classList.add("dh-nav-inpanel");
+        right.appendChild(nav);
+        document.body.style.paddingBottom="";    // alt boşluğa gerek yok
+      }
+    }catch(e){}
+  }
+
+  function fixNav(){
     var nav=document.querySelector(".study-nav");
-    if(!nav) return null;
-    if(!nav.classList.contains("dh-card-nav")) nav.classList.add("dh-card-nav");
-    
-    if(rightCol && nav.parentElement !== rightCol){
-      rightCol.appendChild(nav);
+    // nav sağ panele alındıysa (dh-nav-inpanel) sabit çubuğa geri döndürme
+    if(nav && !nav.classList.contains("dh-nav-inpanel") && !nav.classList.contains("dh-fixed-nav")){
+      nav.classList.add("dh-fixed-nav");
     }
     return nav;
   }
-
   function moveGrade(card){
     if(card.dataset.dhGradeDone==="1") return;
     var tr=card.querySelector(".card-tr"); if(!tr) return;
-
+    // Google Translate butonu: cümlenin (card-en) altına ekle
     if(!card.querySelector(".dh-gtr-btn")){
       var en=card.querySelector(".card-en");
       if(en){
@@ -117,73 +148,16 @@
     anchor.insertAdjacentElement("afterend", grp);
     card.dataset.dhGradeDone="1";
   }
-
-  function splitCard(card){
-    if(card.dataset.dhSplitDone==="1") return card.querySelector(".dh-col-right");
-    
-    var enEl=card.querySelector(".card-en"); if(!enEl){ return null; }
-    var grade=card.querySelector(".dh-grade-under");
-    var actions=card.querySelector(".card-actions");
-    if(!grade || !actions){ return null; }
-
-    var right=card.querySelector(".dh-col-right");
-    if(!right) {
-      right = document.createElement("div");
-      right.className="dh-col-right";
-    }
-    
-    // "ne kadar biliyorsun" yazısını bul ve kaldır
-    var q=[].slice.call(card.querySelectorAll("*")).find(function(e){
-      return e.children.length===0 && /ne kadar biliyorsun/i.test(e.textContent||"");
-    });
-    if(q) { q.remove(); }
-    
-    right.appendChild(grade);
-    right.appendChild(actions);
-    
-    card.appendChild(right);
-    card.classList.add("dh-split");
-    card.dataset.dhSplitDone="1";
-    return right;
-  }
-
+  // Araçlar butonu (nav ortasına) + panel (body'de sabit)
   function ensureTools(card, nav){
     var box=document.getElementById("dhToolsBox");
     var toggle=document.getElementById("dhToolsToggle");
-    
     if(!box){
       box=document.createElement("div");
       box.id="dhToolsBox"; box.className="dh-tools-box dh-hidden";
       box.innerHTML='<div class="dh-tools-title">🛠 Araçlar</div>';
-      
-      // Panel içine sonsuz döngüye girmeyen 1'er adet sabit tetikleyici buton ekle
-      var btnTeacher = document.createElement("button");
-      btnTeacher.className = "dh-custom-btn"; btnTeacher.innerHTML = "🎓 Öğretmen";
-      btnTeacher.onclick = function(){
-        var target = document.querySelector(".card .teacher-btn") || btnByText(document.querySelector(".card"), "öğretmen");
-        if(target) target.click();
-      };
-      
-      var btnWeak = document.createElement("button");
-      btnWeak.className = "dh-custom-btn"; btnWeak.innerHTML = "📉 Zayıf Analiz";
-      btnWeak.onclick = function(){
-        var target = document.querySelector(".card .extra-weak") || btnByText(document.querySelector(".card"), "zayıf");
-        if(target) target.click();
-      };
-
-      var btnDetay = document.createElement("button");
-      btnDetay.className = "dh-custom-btn"; btnDetay.innerHTML = "🔍 Detay";
-      btnDetay.onclick = function(){
-        var target = btnByText(document.querySelector(".card"), "detay");
-        if(target) target.click();
-      };
-      
-      box.appendChild(btnTeacher);
-      box.appendChild(btnWeak);
-      box.appendChild(btnDetay);
       document.body.appendChild(box);
     }
-
     if(!toggle){
       toggle=document.createElement("button");
       toggle.id="dhToolsToggle"; toggle.type="button"; toggle.className="dh-tools-toggle";
@@ -193,40 +167,53 @@
         toggle.classList.toggle("open", !hid);
       };
     }
-    
+    // toggle'ı nav'da Önceki ile Sonraki ARASINA koy
     if(nav && toggle.parentElement!==nav){
       var btns=[].slice.call(nav.querySelectorAll(".btn"));
+      // ilk .btn = Önceki, son .btn = Sonraki → ortaya ekle
       if(btns.length>=2){ nav.insertBefore(toggle, btns[btns.length-1]); }
       else nav.appendChild(toggle);
     }
-
+    // içerikleri panele taşı (bir kez)
+    if(card && card.dataset.dhToolsFilled!=="1"){
+      // Öğretmen (sor olmayan) → araçlara
+      var teacher=card.querySelector(".teacher-btn")||btnByText(card,"öğretmen");
+      if(teacher && !/sor/i.test(teacher.textContent||"")){ teacher.classList.add("dh-moved-btn"); box.appendChild(teacher); }
+      // Öğretmene Sor → araçlara
+      var teacherAsk=[].slice.call(card.querySelectorAll("button,a")).find(function(b){
+        return /öğretmene sor/i.test(b.textContent||"");
+      });
+      if(teacherAsk){ teacherAsk.style.display=""; teacherAsk.classList.add("dh-moved-btn"); box.appendChild(teacherAsk); }
+      // Detay → araçlara
+      var detay=btnByText(card,"detay");
+      if(detay){ detay.classList.add("dh-moved-btn"); box.appendChild(detay); }
+      // Zayıf Analiz → araçlara
+      var weak=card.querySelector(".extra-weak")||btnByText(card,"zayıf");
+      if(weak){ weak.classList.add("dh-moved-btn"); box.appendChild(weak); }
+      card.dataset.dhToolsFilled="1";
+    }
+    // ızgara sonradan gelebilir
     var grid=document.querySelector(".wd-tools-row");
     if(grid && grid.parentElement!==box){ box.appendChild(grid); }
   }
-
   function apply(){
     if(applying) return;
     applying=true;
     try{
       addStyle();
+      var nav=fixNav();
       var card=currentCard();
-      var rightCol=null;
-      if(card){ 
-        moveGrade(card); 
-        rightCol = splitCard(card);
-      }
-      var nav=fixNav(rightCol);
+      if(card){ moveGrade(card); }
       ensureTools(card, nav);
+      if(card){ splitCard(card); }
     }catch(e){}
     applying=false;
   }
-
   function schedule(){
     if(scheduled) return;
     scheduled=true;
     setTimeout(function(){ scheduled=false; apply(); }, 150);
   }
-
   function boot(){
     apply();
     try{
