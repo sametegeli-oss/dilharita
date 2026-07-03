@@ -1,8 +1,8 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v8 — mükerrer buton engelli)
-   1) Öğretmen ve Zayıf Analiz butonları CSS ve DOM düzeyinde ana karttan KESİN OLARAK GİZLENDİ
-   2) Zor/Normal/Kolay → Yan yana (flex-row) dizildi, kapsayıcıyı büyütmez
-   3) İleri/geri/araçlar (.study-nav) → Sağ sütunda boşa çıkan alt alana sığdırıldı
-   4) Detay + Zayıf Analiz + Öğretmen + 9'lu ızgara → Araçlar panelinde
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v9 — tam temizlik ve alan kazanımı)
+   1) "Bu cümleyi ne kadar biliyorsun?" yazısı tamamen KALDIRILDI ve alan kazanıldı.
+   2) Öğretmen ve Zayıf Analiz butonları ana ekrandan KESİN OLARAK SİLİNDİ (.remove() + CSS).
+   3) Zor/Normal/Kolay → Yan yana (flex-row) kompakt düzende sığdırıldı.
+   4) İleri/geri/araçlar (.study-nav) → Sağ sütunda en alta yerleştirildi.
 */
 (function(){
   "use strict";
@@ -15,16 +15,19 @@
     s.textContent =
      ".legend,.legend-item,.legend-dot{display:none !important}"
     +".study-nav .legend,.study-nav .legend-item{display:none !important}"
-    /* Ana ekranda Öğretmen ve Zayıf Analiz butonlarının TEKRAR BELİRMESİNİ ENGELLEYEN CSS */
-    +".card-actions .teacher-btn, .card-actions .extra-weak, .card-actions button:contains('Öğretmen'), .card-actions button:contains('Zayıf') {display:none !important}"
-    /* Araçlar paneli içindeki butonların görünmesini sağlama */
-    +".dh-tools-box .dh-moved-btn {display:flex !important; visibility:visible !important}"
+    
+    /* Ana ekrandaki Öğretmen, Zayıf Analiz butonlarını ve "ne kadar biliyorsun" yazılarını CSS ile KESİN ENGELEME */
+    +".card-actions .teacher-btn, .card-actions .extra-weak, .teacher-btn, .extra-weak {display:none !important; opacity:0 !important; visibility:hidden !important; pointer-events:none !important}"
+    
+    /* Araçlar paneli içindeki klonların görünmesini garanti et */
+    +".dh-tools-box .dh-moved-btn {display:flex !important; visibility:visible !important; opacity:1 !important}"
+    
     /* ---- 2 SÜTUN DÜZEN ---- */
     +".dh-col-left,.dh-col-right{display:block}"
 +"@media (orientation:landscape),(min-width:680px){"
 +".card.dh-split{display:grid !important;grid-template-columns:1.5fr .9fr;gap:14px 16px;align-items:start}"
 +".card.dh-split>*{grid-column:1;min-width:0}"
-+".card.dh-split>.dh-col-right{grid-column:2;grid-row:1/99;display:flex;flex-direction:column;gap:6px;align-self:start}"
++".card.dh-split>.dh-col-right{grid-column:2;grid-row:1/99;display:flex;flex-direction:column;gap:6px;align-self:start;margin-top:0 !important}"
 +".card.dh-split .sm-img-wrap{margin:6px 0}"
 +".card.dh-split .dh-grade-under{flex-direction:row !important;gap:4px !important;margin:0;width:100%;box-sizing:border-box}"
 +".card.dh-split .dh-grade-under button{flex:1 !important;min-height:32px !important;padding:4px 2px !important;font-size:12px !important;border-radius:8px !important;white-space:nowrap;overflow:hidden}"
@@ -131,10 +134,13 @@
       right.className="dh-col-right";
     }
     
+    // "ne kadar biliyorsun" yazısını bul ve DOM'dan tamamen SİL
     var q=[].slice.call(card.querySelectorAll("*")).find(function(e){
       return e.children.length===0 && /ne kadar biliyorsun/i.test(e.textContent||"");
     });
-    if(q) right.appendChild(q);
+    if(q) { q.remove(); }
+    
+    // Doğrudan Zor/Normal/Kolay ve diğer dinleme aksiyonlarını ekle
     right.appendChild(grade);
     right.appendChild(actions);
     
@@ -169,47 +175,71 @@
       else nav.appendChild(toggle);
     }
 
-    // MutationObserver tetiklendiğinde butonların ana ekranda kalmasını KESİN OLARAK engelleme adımı
     if(card){
       var actions = card.querySelector(".card-actions");
       
+      // Öğretmen Butonu Kontrolü
       var teacher=card.querySelector(".teacher-btn")||btnByText(card,"öğretmen");
-      if(teacher && !/sor/i.test(teacher.textContent||"") && teacher.parentElement !== box){ 
-        teacher.classList.add("dh-moved-btn"); 
-        box.appendChild(teacher); 
+      if(teacher && !/sor/i.test(teacher.textContent||"")){ 
+        if(teacher.parentElement !== box && !box.querySelector(".teacher-btn")) {
+          var tClone = teacher.cloneNode(true);
+          tClone.className = "dh-moved-btn btn btn-primary";
+          tClone.style.display = "flex";
+          box.appendChild(tClone);
+        }
+        teacher.remove(); // Ana ekrandakini kesin imha et
       }
       
+      // Öğretmene Sor Butonu Kontrolü
       var teacherAsk=[].slice.call(card.querySelectorAll("button,a")).find(function(b){
         return /öğretmene sor/i.test(b.textContent||"");
       });
-      if(teacherAsk && teacherAsk.parentElement !== box){ 
-        teacherAsk.classList.add("dh-moved-btn"); 
-        box.appendChild(teacherAsk); 
+      if(teacherAsk){ 
+        if(teacherAsk.parentElement !== box && !btnByText(box, "öğretmene sor")) {
+          var taClone = teacherAsk.cloneNode(true);
+          taClone.className = "dh-moved-btn btn";
+          taClone.style.display = "flex";
+          box.appendChild(taClone);
+        }
+        teacherAsk.remove(); // Ana ekrandakini kesin imha et
       }
       
+      // Detay Butonu Kontrolü
       var detay=btnByText(card,"detay");
-      if(detay && detay.parentElement !== box){ 
-        detay.classList.add("dh-moved-btn"); 
-        box.appendChild(detay); 
+      if(detay){ 
+        if(detay.parentElement !== box && !btnByText(box, "detay")) {
+          var dClone = detay.cloneNode(true);
+          dClone.className = "dh-moved-btn btn";
+          dClone.style.display = "flex";
+          box.appendChild(dClone);
+        }
+        detay.remove();
       }
       
+      // Zayıf Analiz Butonu Kontrolü
       var weak=card.querySelector(".extra-weak")||btnByText(card,"zayıf");
-      if(weak && weak.parentElement !== box){ 
-        weak.classList.add("dh-moved-btn"); 
-        box.appendChild(weak); 
+      if(weak){ 
+        if(weak.parentElement !== box && !box.querySelector(".extra-weak")) {
+          var wClone = weak.cloneNode(true);
+          wClone.className = "dh-moved-btn btn btn-warning";
+          wClone.style.display = "flex";
+          box.appendChild(wClone);
+        }
+        weak.remove(); // Ana ekrandakini kesin imha et
       }
 
-      // Klonlanan ya da geride kalan mükerrer butonları bulup DOM düzeyinde gizle
+      // Sitenin MutationObserver ile sonradan üretebileceği kalıntıları döngüyle temizle
       if (actions) {
         [].slice.call(actions.querySelectorAll("button, a")).forEach(function(btn){
           var txt = (btn.textContent || "").toLowerCase();
           if (txt.indexOf("öğretmen") >= 0 || txt.indexOf("zayıf") >= 0 || txt.indexOf("detay") >= 0) {
-            btn.style.setProperty("display", "none", "important");
+            btn.remove();
           }
         });
       }
       card.dataset.dhToolsFilled="1";
     }
+    
     var grid=document.querySelector(".wd-tools-row");
     if(grid && grid.parentElement!==box){ box.appendChild(grid); }
   }
