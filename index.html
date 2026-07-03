@@ -3,6 +3,7 @@
 <head>
 <script src="./auth-guard.js?v=1"></script>
 <script src="./storage-bridge.js?v=3"></script>
+<script src="./progress-engine.js?v=2"></script>
 <script src="./teacher-policy.js?v=3"></script>
 <script src="./mastery-engine.js?v=1"></script>
 <script src="./level-badge.js?v=1"></script>
@@ -139,6 +140,11 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
         " · hazır:" + (rdy?"evet":"hayır") +
         " · yerel prompt:" + (yerel?("'"+yerel+"...'"):"BOŞ") + "</small>";
       msg.style.color=res.ok ? "#34d399" : "#f87171";
+      // Giriş yoksa: mesajla bırakma, LOGIN'e yönlendir.
+      if(!res.ok && /giriş/i.test(res.message||"")){
+        msg.innerHTML += "<br><small style='color:#38bdf8'>Giriş sayfasına yönlendiriliyorsun…</small>";
+        setTimeout(function(){ location.href="./login.html"; }, 1200);
+      }
       // Senkron başarılıysa: IndexedDB güncellendi ama açık ekranlar eski veriyi tutuyor.
       // Kısa bekleyip sayfayı yenile ki güncel veri (kelime/ilerleme) ekrana gelsin.
       if(res.ok){
