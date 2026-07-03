@@ -3,7 +3,7 @@
    2) "🛠 Araçlar" butonu → Önceki ile Sonraki ARASINA (alt çubukta)
    3) Zor/Normal/Kolay → cümlenin Türkçesinin (.card-tr) ALTINA
    4) Detay + Zayıf Analiz + Öğretmen + 9'lu ızgara → Araçlar panelinde (alttan açılır)
-   5) Mobil yatayda her şey tek ekranda görünecek şekilde optimize
+   5) Mobil yatayda her şey tek ekranda görünecek şekilde optimize (büyük ekranlar bozulmaz)
 */
 (function(){
   "use strict";
@@ -17,59 +17,61 @@
     "body{padding-bottom:78px !important}"
     +".legend,.legend-item,.legend-dot{display:none !important}"
     +".study-nav .legend,.study-nav .legend-item{display:none !important}"
-    
-    /* ---- MOBİL YATAY OPTİMİZE 2 SÜTUN DÜZEN ---- */
+    /* ---- 2 SÜTUN DÜZEN (practice.html tarzı) ---- */
     +".dh-col-left,.dh-col-right{display:block}"
     
-    /* Dikey modda (telefon portre) tek sütun */
-    +".card.dh-split{display:flex !important;flex-direction:column;gap:10px}"
-    +".card.dh-split .dh-col-right{display:flex;flex-direction:column;gap:6px;width:100%}"
-    
-    /* Yatay modda (landscape) 2 sütun + tüm içerik tek ekranda */
-    +"@media (orientation:landscape) and (max-height:500px){"
-    +"body{padding-bottom:70px !important}"
-    +".card.dh-split{display:grid !important;grid-template-columns:1.2fr 1fr;gap:8px 12px;align-items:start;max-height:calc(100vh - 80px);overflow-y:auto;padding:8px 10px !important}"
+    /* Büyük ekranlar (masaüstü) - ORİJİNAL YAPI KORUNUR */
+    +"@media (orientation:landscape),(min-width:680px){"
+    +".card.dh-split{display:grid !important;grid-template-columns:1.5fr .9fr;gap:14px 16px;align-items:start}"
     +".card.dh-split>*{grid-column:1;min-width:0}"
-    +".card.dh-split>.dh-col-right{grid-column:2;grid-row:1/99;display:flex;flex-direction:column;gap:4px;align-self:start}"
-    +".card.dh-split .sm-img-wrap{margin:4px 0;max-height:120px}"
-    +".card.dh-split .sm-img-wrap img{max-height:120px;width:auto;object-fit:contain}"
-    +".card.dh-split .card-en{font-size:15px !important;line-height:1.3}"
-    +".card.dh-split .card-tr{font-size:14px !important;line-height:1.3}"
-    +".card.dh-split .dh-grade-under{flex-direction:row !important;gap:4px !important;margin:2px 0}"
-    +".card.dh-split .dh-grade-under button{min-height:28px !important;padding:4px 8px !important;font-size:11px !important;border-radius:8px !important;flex:1}"
-    +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}"
-    +".card.dh-split .card-actions button{min-height:26px !important;padding:4px 8px !important;font-size:10px !important;border-radius:8px !important;flex:1 0 auto}"
-    +".card.dh-split .dh-gtr-btn{padding:4px 10px !important;font-size:11px !important;margin:2px 0}"
-    +".dh-tools-box{max-height:45vh !important;bottom:62px !important;padding:8px 12px !important;gap:6px !important}"
-    +".dh-tools-box .dh-moved-btn{min-height:30px !important;font-size:11px !important;padding:4px 10px !important}"
-    +".dh-tools-box .wd-tools-row{display:grid !important;grid-template-columns:repeat(3,1fr) !important;gap:4px !important}"
-    +".dh-tools-box .wd-tools-row button{min-height:28px !important;font-size:10px !important;padding:3px 6px !important}"
-    +".study-nav.dh-fixed-nav{padding:6px 8px calc(6px + env(safe-area-inset-bottom)) !important;gap:4px !important}"
-    +".study-nav.dh-fixed-nav .btn{min-height:34px !important;font-size:12px !important;padding:4px 8px !important}"
-    +".dh-tools-toggle{min-height:34px !important;padding:0 10px !important;font-size:11px !important}"
+    +".card.dh-split>.dh-col-right{grid-column:2;grid-row:1/99;display:flex;flex-direction:column;gap:6px;align-self:start}"
+    +".card.dh-split .sm-img-wrap{margin:6px 0}"
+    +".card.dh-split .dh-grade-under{flex-direction:column !important;gap:6px !important;margin:0}"
+    +".card.dh-split .dh-grade-under button{min-height:34px !important;padding:7px 8px !important;font-size:13px !important;border-radius:9px !important}"
+    +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}"
+    +".card.dh-split .card-actions button{min-height:32px !important;padding:6px 10px !important;font-size:12px !important;border-radius:9px !important}"
     +"}"
     
-    /* Orta boyutlu yatay (tablet) */
-    +"@media (orientation:landscape) and (min-height:501px) and (max-height:800px){"
-    +".card.dh-split{grid-template-columns:1.3fr 1fr;gap:12px 16px}"
-    +".card.dh-split .sm-img-wrap img{max-height:160px}"
-    +".card.dh-split .card-en{font-size:17px}"
-    +".card.dh-split .card-tr{font-size:15px}"
-    +".card.dh-split .dh-grade-under button{min-height:32px;font-size:12px}"
-    +".card.dh-split .card-actions button{min-height:30px;font-size:11px}"
+    /* ---- MOBİL YATAY (LANDSCAPE) ÖZEL OPTİMİZASYON - SADECE KÜÇÜK EKRANLAR ---- */
+    +"@media (orientation:landscape) and (max-height:500px){"
+    +"body{padding-bottom:62px !important}"
+    /* Kartı daha kompakt yap */
+    +".card.dh-split{grid-template-columns:1.2fr 1fr !important;gap:6px 10px !important;padding:6px 8px !important;max-height:calc(100vh - 70px);overflow-y:auto}"
+    +".card.dh-split .sm-img-wrap{margin:2px 0;max-height:90px}"
+    +".card.dh-split .sm-img-wrap img{max-height:90px;width:auto;object-fit:contain}"
+    +".card.dh-split .card-en{font-size:14px !important;line-height:1.2;margin:2px 0}"
+    +".card.dh-split .card-tr{font-size:13px !important;line-height:1.2;margin:2px 0}"
+    +".card.dh-split .card-pron{font-size:12px !important;margin:1px 0}"
+    +".card.dh-split .dh-grade-under{flex-direction:row !important;gap:3px !important;margin:2px 0}"
+    +".card.dh-split .dh-grade-under button{min-height:24px !important;padding:3px 6px !important;font-size:10px !important;border-radius:6px !important;flex:1}"
+    +".card.dh-split .card-actions{gap:3px;margin-top:1px}"
+    +".card.dh-split .card-actions button{min-height:24px !important;padding:3px 6px !important;font-size:9px !important;border-radius:6px !important;flex:1 0 auto}"
+    +".card.dh-split .dh-gtr-btn{padding:3px 8px !important;font-size:10px !important;margin:1px 0}"
+    +".card.dh-split .dh-col-right{gap:2px !important}"
+    /* Google Translate butonu küçült */
+    +".dh-gtr-btn{font-size:10px !important;padding:3px 8px !important;margin:2px 0}"
+    /* Alt nav çubuğu küçült */
+    +".study-nav.dh-fixed-nav{padding:4px 6px calc(4px + env(safe-area-inset-bottom)) !important;gap:4px !important}"
+    +".study-nav.dh-fixed-nav .btn{min-height:30px !important;font-size:11px !important;padding:3px 6px !important;border-radius:10px !important}"
+    +".dh-tools-toggle{min-height:30px !important;padding:0 10px !important;font-size:10px !important;border-radius:10px !important}"
+    /* Araçlar paneli küçült */
+    +".dh-tools-box{max-height:40vh !important;bottom:56px !important;padding:6px 10px !important;gap:4px !important}"
+    +".dh-tools-box .dh-moved-btn{min-height:26px !important;font-size:10px !important;padding:3px 8px !important;border-radius:8px !important}"
+    +".dh-tools-box .wd-tools-row{grid-template-columns:repeat(3,1fr) !important;gap:3px !important}"
+    +".dh-tools-box .wd-tools-row button{min-height:24px !important;font-size:9px !important;padding:2px 4px !important;border-radius:6px !important}"
+    +".dh-tools-title{font-size:10px !important;margin-bottom:1px}"
+    +".dh-tools-box .dh-tools-title{font-size:10px !important}"
     +"}"
     
-    /* Büyük ekran yatay */
-    +"@media (orientation:landscape) and (min-height:801px){"
-    +".card.dh-split{grid-template-columns:1.5fr 0.9fr;gap:14px 20px}"
-    +".card.dh-split .sm-img-wrap img{max-height:200px}"
-    +".card.dh-split .card-en{font-size:19px}"
-    +".card.dh-split .card-tr{font-size:16px}"
-    +".card.dh-split .dh-grade-under button{min-height:38px;font-size:13px}"
-    +".card.dh-split .card-actions button{min-height:34px;font-size:12px}"
+    /* ---- MOBİL PORTRE (DİKEY) - ORİJİNAL DÜZEN ---- */
+    +"@media (orientation:portrait) and (max-width:680px){"
+    +".card.dh-split{display:flex !important;flex-direction:column;gap:8px}"
+    +".card.dh-split .dh-col-right{width:100%}"
+    +".card.dh-split .dh-grade-under{flex-direction:row !important;gap:6px}"
+    +".card.dh-split .dh-grade-under button{min-height:38px !important;font-size:13px !important}"
     +"}"
     
-    /* ALT NAV - SABİT */
+    /* ALT NAV - SABİT (ORİJİNAL) */
     +".study-nav.dh-fixed-nav{position:fixed !important;left:0;right:0;bottom:0;z-index:9000;display:flex !important;gap:8px;align-items:center;justify-content:space-between;margin:0 !important;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(9,15,28,.96);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.10);box-shadow:0 -8px 30px rgba(0,0,0,.4)}"
     +".study-nav.dh-fixed-nav .btn{flex:1;min-height:48px;font-size:15px !important;font-weight:800 !important;border-radius:14px !important}"
     +".study-nav.dh-fixed-nav > *:not(.btn):not(.dh-tools-toggle){flex:0 0 auto}"
@@ -110,7 +112,6 @@
     })||null;
   }
   
-  // Kartı 2 sütuna böl
   function splitCard(card){
     if(card.dataset.dhSplitDone==="1") return;
     var enEl=card.querySelector(".card-en"); 
@@ -145,7 +146,6 @@
     var tr=card.querySelector(".card-tr"); 
     if(!tr) return;
     
-    // Google Translate butonu
     if(!card.querySelector(".dh-gtr-btn")){
       var en=card.querySelector(".card-en");
       if(en){
@@ -214,7 +214,6 @@
     card.dataset.dhGradeDone="1";
   }
   
-  // Araçlar butonu ve panel
   function ensureTools(card, nav){
     var box=document.getElementById("dhToolsBox");
     var toggle=document.getElementById("dhToolsToggle");
@@ -239,7 +238,6 @@
       };
     }
     
-    // toggle'ı nav'da Önceki ile Sonraki ARASINA koy
     if(nav && toggle.parentElement!==nav){
       var btns=[].slice.call(nav.querySelectorAll(".btn"));
       if(btns.length>=2){ 
@@ -248,7 +246,6 @@
       else nav.appendChild(toggle);
     }
     
-    // içerikleri panele taşı
     if(card && card.dataset.dhToolsFilled!=="1"){
       var teacher=card.querySelector(".teacher-btn")||btnByText(card,"öğretmen");
       if(teacher && !/sor/i.test(teacher.textContent||"")){ 
