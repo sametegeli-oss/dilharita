@@ -52,6 +52,15 @@
   ];
 
   // AKTİF GÜNLER birleştirme: iki cihazın günlerini birleştir (union).
+  // events birleştirme: tekrarları at + günde en çok 30 olay tut (Firestore 1MB alan limiti!)
+  function mergeEvents(a, b){
+    var all=(a||[]).concat(b||[]), seen={}, out=[];
+    for(var i=0;i<all.length;i++){
+      var k; try{ k=JSON.stringify(all[i]); }catch(e){ k=String(all[i]); }
+      if(!seen[k]){ seen[k]=1; out.push(all[i]); }
+    }
+    return out.slice(-30);
+  }
   function mergeStudyTracker(localStr, remoteStr){
     var L={}, R={};
     try{ L=JSON.parse(localStr||"{}")||{}; }catch(e){}
@@ -72,7 +81,7 @@
           videos:Math.max(a.videos||0,b.videos||0),
           reviews:Math.max(a.reviews||0,b.reviews||0),
           errors:Math.max(a.errors||0,b.errors||0),
-          events:(a.events||[]).concat(b.events||[]) };
+          events:mergeEvents(a.events, b.events) };
       } else { days[day]= a || b; }
     }
     out.days=days;
@@ -295,7 +304,37 @@
   }
 
   // --- Yerel durumu buluta yaz ---
+  // Şişmiş study-tracker ONARIMI: her günün events'ini tekrarsız + en çok 30'a indir.
+  // (Eski merge her senkronda events'i katlıyordu → 1MB Firestore limitini aşıp
+  //  tüm yazmaları bloke etti. Bu fonksiyon mevcut hasarı temizler.)
+  function sanitizeStudyTracker(){
+    try{
+      var raw = localStorage.getItem("dh-study-tracker-v1");
+      if(!raw || raw.length < 400000) return;   // küçükse dokunma
+      var d = JSON.parse(raw)||{};
+      var days = d.days||{};
+      for(var day in days){
+        if(!days.hasOwnProperty(day)) continue;
+        var ev = days[day] && days[day].events;
+        if(ev && ev.length) days[day].events = mergeEvents(ev, []);
+      }
+      d.days = days;
+      var out = JSON.stringify(d);
+      // hâlâ devasa ise events'leri tamamen boşalt (sayaçlar korunur — asıl veri onlar)
+      if(out.length > 900000){
+        for(var day2 in days){ if(days.hasOwnProperty(day2) && days[day2]) days[day2].events=[]; }
+        out = JSON.stringify(d);
+      }
+      if(out.length >= raw.length) return;  // küçülmediyse yazma (pushSoon döngüsünü önle)
+      localStorage.setItem("dh-study-tracker-v1", out);
+      console.log("[cloud-sync] study-tracker küçültüldü:", raw.length, "→", out.length, "byte");
+    }catch(e){}
+  }
+
   function pushNow(){
+    // GÜVENLİK: Firestore tek alan limiti ~1MB. study-tracker şiştiyse önce küçült,
+    // yoksa TÜM push başarısız olur (hiçbir veri buluta gitmez).
+    sanitizeStudyTracker();
     if (!ready || !user || !fb) return Promise.resolve();
     // en güncel öğrenme ilerlemesini localStorage aynasına yaz (sonra collectLocal okur)
     var prep = (window.DHProgress && DHProgress.mirrorNow) ? DHProgress.mirrorNow() : Promise.resolve();
@@ -428,6 +467,8 @@
           // öğrenme ilerlemesi aynasını IndexedDB'ye uygula
           var progP = (window.DHProgress && DHProgress.applyMirror) ? DHProgress.applyMirror() : Promise.resolve(0);
           return progP.then(function(addedProg){
+            // applyMirror IndexedDB'ye yazdı; mobilde köprüyü tekrar diske it (kesin kalıcılık)
+            try{ if(window.__dhStorageFlush) window.__dhStorageFlush(); }catch(e){}
             // KRİTİK: Birleştirilmiş sonucu buluta GERİ YAZ.
             // Böylece bu cihazda oluşan birleşim diğer cihazlara da yansır.
             // (Aksi halde birleştirme sadece bu cihazda kalır, bulut eski kalır.)
