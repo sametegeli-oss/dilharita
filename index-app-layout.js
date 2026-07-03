@@ -1,8 +1,8 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v13 — Kesin Çözüm ve Tam Uyum Sürümü)
-   1) Seçici mantığı güncellendi; DOM değişikliklerinden etkilenmeden kartı kesin bulur.
-   2) İngilizce, Okunuş (IPA) ve Türkçe metinler tamamen sol sütundaki resim alanına gömüldü.
-   3) Üst bar, liste butonu ve ilerleme çubuğu yatay modda zorla gizlendi.
-   4) Sağ taraftaki tüm butonlar 2'li grid düzene alınarak alt navigasyonun önü tamamen açıldı.
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v15 — Öğretmen Panelli Sürüm)
+   1) Yatay modda İngilizce, Okunuş ve Türkçe metinler resmin üzerine bindirildi.
+   2) Öğretmen butonu ana ekrandan gizlendi ancak Araçlar panelinde tutuldu.
+   3) Zayıf Analiz butonu arayüzden ve panelden tamamen kaldırıldı.
+   4) Mobil yatay modda (Landscape) 0-Scroll (Kaydırmasız) tam ekran düzeni sağlandı.
 */
 (function(){
   "use strict";
@@ -49,7 +49,7 @@
     /* İngilizce Cümle (Resmin Üstüne Alt Ortaya Bindirme) */
     +".card.dh-split .card-en{position:absolute !important; bottom:40px !important; left:0 !important; right:0 !important; z-index:10 !important; margin:0 !important; padding:6px 10px !important; background:rgba(4,10,24,.85) !important; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); font-size:15px !important; line-height:1.2 !important; text-align:center !important; width:100% !important; box-sizing:border-box !important;}"
     
-    /* Okunuş / IPA Satırı (Yatayda Alanı Korumak İçin Küçük Şeritle Resme Gömdük) */
+    /* Okunuş / IPA Satırı */
     +".card.dh-split .card-pron{position:absolute !important; bottom:22px !important; left:0 !important; right:0 !important; z-index:9 !important; margin:0 !important; padding:2px 10px !important; background:rgba(4,10,24,.70) !important; font-size:11px !important; text-align:center !important; color:#ecc94b !important; width:100% !important; box-sizing:border-box !important; display:block !important;}"
     
     /* Türkçe Anlam (Resmin En Altına Şerit Olarak Yapışır) */
@@ -69,10 +69,10 @@
     +".card.dh-split .card-actions{display:grid !important; grid-template-columns:1fr 1fr !important; gap:4px !important; margin:0 !important; padding:0 !important; order:2 !important;}"
     +".card.dh-split .card-actions button, .card.dh-split .card-actions .btn{min-height:32px !important; max-height:34px !important; padding:2px 4px !important; font-size:11px !important; border-radius:6px !important; margin:0 !important; display:flex !important; align-items:center !important; justify-content:center !important;}"
     
-    /* Orijinal kalabalık yaratan gizli butonlar */
+    /* Orijinal kalabalık yaratan butonları ez */
     +".card.dh-split .card-actions .teacher-btn, .card.dh-split .card-actions .extra-weak { display:none !important; }"
     
-    /* Alt Navigasyon Barı (Önceki - Araçlar - Sonraki) Artık En Altta Asla Kapanmaz */
+    /* Alt Navigasyon Barı (Önceki - Araçlar - Sonraki) */
     +".study-nav.dh-card-nav{margin:0 !important; padding:0 !important; gap:4px !important; order:3 !important; width:100% !important; display:flex !important; position:relative !important; bottom:0 !important;}"
     +".study-nav.dh-card-nav .btn{min-height:36px !important; font-size:12px !important; border-radius:8px !important; flex:1 !important;}"
     +".dh-tools-toggle{min-height:36px !important; padding:0 8px !important; border-radius:8px !important;}"
@@ -107,7 +107,6 @@
 
   function currentCard(){
     var cards=[].slice.call(document.querySelectorAll(".card"));
-    // Sadece .card-en barındıran en geniş kapsayıcıyı seçerek esnekliği artırıyoruz
     return cards.find(function(c){ return c.querySelector(".card-en") || c.querySelector("[class*='card-en']"); });
   }
 
@@ -164,7 +163,6 @@
       right.className="dh-col-right";
     }
     
-    // "ne kadar biliyorsun" yazısını temizle
     var q=[].slice.call(card.querySelectorAll("*")).find(function(e){
       return e.children.length===0 && /ne kadar biliyorsun/i.test(e.textContent||"");
     });
@@ -188,17 +186,11 @@
       box.id="dhToolsBox"; box.className="dh-tools-box dh-hidden";
       box.innerHTML='<div class="dh-tools-title">🛠 Araçlar</div>';
       
+      // Panel içerisine sadece Öğretmen ve Detay butonları eklendi.
       var btnTeacher = document.createElement("button");
       btnTeacher.className = "dh-custom-btn"; btnTeacher.innerHTML = "🎓 Öğretmen";
       btnTeacher.onclick = function(){
         var target = document.querySelector(".card .teacher-btn") || btnByText(document.querySelector(".card"), "öğretmen");
-        if(target) target.click();
-      };
-      
-      var btnWeak = document.createElement("button");
-      btnWeak.className = "dh-custom-btn"; btnWeak.innerHTML = "📉 Zayıf Analiz";
-      btnWeak.onclick = function(){
-        var target = document.querySelector(".card .extra-weak") || btnByText(document.querySelector(".card"), "zayıf");
         if(target) target.click();
       };
 
@@ -210,7 +202,6 @@
       };
       
       box.appendChild(btnTeacher);
-      box.appendChild(btnWeak);
       box.appendChild(btnDetay);
       document.body.appendChild(box);
     }
