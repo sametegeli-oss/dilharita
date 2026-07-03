@@ -31,6 +31,22 @@
 +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}"
 +".card.dh-split .card-actions button{min-height:32px !important;padding:6px 10px !important;font-size:12px !important;border-radius:9px !important}"
 +"}"
+    /* ---- YATAY MOBİL: TEK EKRANA SIĞDIR (kaydırma yok) ---- */
+    +"@media (orientation:landscape) and (max-height:520px){"
+    +".study-header,.study-progress{display:none !important}"
+    +"body{padding-top:0 !important;padding-bottom:0 !important}"
+    +".study-main{padding:6px 10px !important;margin:0 !important}"
+    +".card.dh-split{padding:10px !important;gap:6px 12px !important;margin:0 !important}"
+    /* resim + İngilizce cümle AYNI grid hücresinde → cümle resmin üzerine transparan biner */
+    +".card.dh-split .sm-img-wrap{grid-row:1;grid-column:1;margin:0 !important}"
+    +".card.dh-split .sm-img-wrap img,.card.dh-split .sm-img{max-height:52vh;width:100%;object-fit:cover;display:block;border-radius:12px}"
+    +".card.dh-split .card-en{grid-row:1;grid-column:1;align-self:end;z-index:2;margin:0 !important;padding:8px 12px !important;background:rgba(4,10,24,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);border-radius:0 0 12px 12px;font-size:18px !important;line-height:1.3 !important}"
+    /* etiket satırını (A1/Identity/...) gizle — yer kazan */
+    +".card.dh-split > div:has(.chip-level){display:none !important}"
+    +".card.dh-split .card-tr{margin:2px 0 !important;font-size:14px !important}"
+    +".card.dh-split .card-pron{font-size:12px !important;margin:0 !important}"
+    +".card.dh-split .dh-gtr-btn{margin:2px 0 !important;padding:5px 10px !important;font-size:12px !important}"
+    +"}"
     /* Sağ sütun alt bar ayarları */
     +".study-nav.dh-card-nav{position:relative !important;display:flex !important;gap:6px;align-items:center;justify-content:space-between;margin:10px 0 0 !important;padding:0 !important;background:transparent !important;border-top:none !important;box-shadow:none !important;width:100%}"
     +".study-nav.dh-card-nav .btn{flex:1;min-height:40px;font-size:13px !important;font-weight:800 !important;border-radius:10px !important;padding:4px 8px !important}"
