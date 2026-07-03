@@ -19,9 +19,9 @@
     /* ---- 2 SÜTUN DÜZEN (practice.html tarzı) ---- */
     +".dh-col-left,.dh-col-right{display:block}"
     +"@media(min-width:760px){"
-    +".card.dh-split{display:grid !important;grid-template-columns:1.35fr 1fr;gap:18px;align-items:start}"
-    +".card.dh-split .dh-col-left{min-width:0}"
-    +".card.dh-split .dh-col-right{min-width:0;display:flex;flex-direction:column;gap:9px;justify-content:flex-start}"
+    +".card.dh-split{display:grid !important;grid-template-columns:1.35fr 1fr;gap:18px 20px;align-items:start}"
+    +".card.dh-split > *{grid-column:1;min-width:0}"
+    +".card.dh-split > .dh-col-right{grid-column:2;grid-row:1 / 99;display:flex;flex-direction:column;gap:9px;align-self:start}"
     +".card.dh-split .sm-img-wrap{margin:8px 0}"
     +".card.dh-split .dh-grade-under{flex-direction:column !important;gap:8px;margin:0}"
     +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}"
@@ -67,31 +67,19 @@
     if(!grade || !actions){ console.log("[dh-split] hazır değil — grade:", !!grade, "actions:", !!actions); return; }
     console.log("[dh-split] BÖLÜNÜYOR ✓");
 
-    var left=document.createElement("div"); left.className="dh-col-left";
+    // ÖNEMLİ: Resmi (.sm-img-wrap) ve .card-en'i TAŞIMA — image-addon onları
+    // kartın çocuğu sanıp insertBefore yapıyor; taşırsak hata verir + resim kaybolur.
+    // Bunun yerine: SADECE grade+actions'ı sağ sütuna al. Geri kalanı kartta kalsın
+    // (sol sütun görevi görür). Kartı flex yapıp sol içerik + sağ panel dizeriz.
+
     var right=document.createElement("div"); right.className="dh-col-right";
-
-    // seviye etiketleri (A1/Negation/Present Simple) — .card-en'in hemen öncesindeki div
-    var chipRow=null;
-    if(enEl.previousElementSibling && !enEl.previousElementSibling.classList.contains("sm-img-wrap")){
-      chipRow=enEl.previousElementSibling;
-    }
-
-    // SOL — DOĞRU SIRAYLA: etiketler → resim → cümle → tr → pron → gtr
-    if(chipRow) left.appendChild(chipRow);
-    [".sm-img-wrap",".card-en",".card-tr",".card-pron",".dh-gtr-btn"].forEach(function(sel){
-      var el=card.querySelector(sel);
-      if(el && el.parentElement!==left) left.appendChild(el);
-    });
-
-    // SAĞ: "ne kadar biliyorsun" başlığı + grade + actions
+    // "ne kadar biliyorsun" başlığı + grade + actions → sağ
     var q=[].slice.call(card.querySelectorAll("*")).find(function(e){
       return e.children.length===0 && /ne kadar biliyorsun/i.test(e.textContent||"");
     });
     if(q) right.appendChild(q);
     right.appendChild(grade);
     right.appendChild(actions);
-
-    card.insertBefore(left, card.firstChild);
     card.appendChild(right);
     card.classList.add("dh-split");
     card.dataset.dhSplitDone="1";
