@@ -11,77 +11,80 @@
 <script type="module" crossorigin src="./assets/app.js"></script>
 <link rel="stylesheet" crossorigin href="./assets/app.css">
 
-<!-- GÖRSELLERDEKİ SAĞ PANEL, GRID TAŞMASI VE BUTON EZİLME HATALARINI DÜZELTEN TÜM CSS -->
+<!-- ARAÇLARI VARSAYILAN OLARAK GİZLEYEN VE AÇILIR-KAPANIR YAPAN CSS -->
 <style>
-  /* 1. Sağ taraftaki kontrol panelinin ana dikey flex akışı */
+  /* 1. Sağ panel ana dikey flex akışı */
   div[class*="panel"][class*="right"], 
-  div[class*="control-panel"] {
+  div[class*="control-panel"],
+  .right-panel-container {
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-start !important;
     height: 100% !important;
+    max-height: calc(100vh - 120px) !important;
     box-sizing: border-box !important;
-    overflow: hidden !important;
+    overflow-y: auto !important;
+    padding-bottom: 20px !important;
   }
 
-  /* 2. Dokuzlu Grid Buton Grubu (Shadow, AI Test, Benzer vb.) */
+  /* 2. Dokuzlu Grid Araç Kutusu - VARSAYILAN OLARAK GİZLENDİ */
   .tools-grid, 
   div[class*="grid"][class*="tool"],
   div[class*="buttons"][class*="container"] {
-    display: grid !important;
+    display: none !important; /* İlk açılışta görünmez yap */
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 8px !important;
     margin-bottom: 12px !important;
     flex-shrink: 0 !important;
   }
 
-  /* Dokuzlu grid butonlarının içindeki yazıların taşmasını ve dikeyde ezilmesini önler */
+  /* .show-tools sınıfı tetiklendiğinde grid görünür olacak */
+  .tools-grid.show-tools,
+  div[class*="grid"][class*="tool"].show-tools,
+  div[class*="buttons"][class*="container"].show-tools {
+    display: grid !important;
+  }
+
   .tools-grid button, 
   div[class*='tool-btn'], 
   .tool-btn {
-    min-height: 52px !important;
-    padding: 6px 2px !important;
-    font-size: 13px !important;
+    min-height: 48px !important;
+    padding: 4px 2px !important;
+    font-size: 12px !important;
     box-sizing: border-box !important;
   }
 
-  /* 3. Zor, Normal, Kolay butonlarının yer aldığı satır */
+  /* 3. Zor, Normal, Kolay Buton Satırı */
   .difficulty-buttons-row, 
   div[class*="level"], 
   div[class*="zor"] {
     display: flex !important;
     justify-content: space-between !important;
     gap: 6px !important;
-    margin-top: auto !important; /* Esnek boşluğu yukarı alarak grubu alta yaslar */
-    margin-bottom: 8px !important;
+    margin-top: auto !important; /* Esnek boşluğu yukarı alıp butonları alta yaslar */
+    margin-bottom: 10px !important;
     flex-shrink: 0 !important;
-    position: relative !important;
   }
 
-  /* Zor-Normal-Kolay butonlarının dikey yüksekliğini sabitleyerek Sonraki butonunu sıkıştırmasını önler */
   .btn-diff, 
   button[class*="zor"], 
   button[class*="kolay"], 
   button[class*="normal"] {
-    height: 42px !important;
-    line-height: 42px !important;
+    height: 38px !important;
+    line-height: 38px !important;
     padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
   }
 
-  /* 4. En altta ezilen mavi renkli "Sonraki →" butonu ve kapsayıcısı */
-  .navigation-buttons, 
+  /* 4. Alt kısımdaki yönlendirme satırları */
   div[class*="sonraki"],
-  button[class*="sonraki"] {
+  button[class*="sonraki"],
+  .navigation-buttons {
     display: block !important;
     width: 100% !important;
     margin-top: 6px !important;
-    margin-bottom: 4px !important;
+    margin-bottom: 6px !important;
     flex-shrink: 0 !important;
-    position: relative !important;
-    clear: both !important; /* Üstteki elemanların taşmasını kesin olarak sıfırlar */
+    clear: both !important;
   }
 </style>
 </head>
@@ -111,5 +114,33 @@ window.addEventListener('error', function(e){
 <script src="./avatar-blink-sync.js?v=1"></script>
 <script src="./study-tracker.js?v=1"></script>
 <script src="./index-app-layout.js?v=5"></script>
+
+<!-- DİNAMİK ENJEKTE EDİLEN BUTONA TIKLAMA OLAYINI BAĞLAYAN SCRIPT -->
+<script>
+  (function() {
+    // JS dosyaları arayüzü asenkron çizdiği için sayfa içinde sürekli kontrol eden bir gözlemci kuruyoruz
+    var checkTimer = setInterval(function() {
+      // İngiliz anahtarı simgesi olan araçlar butonunu bul (görseldeki buton)
+      var toolToggleBtn = document.querySelector('button[class*="toggle"], div[class*="toggle"], button:has([class*="anahtar"]), button:contains("🛠")') || 
+                          Array.from(document.querySelectorAll('button, div')).find(el => el.textContent.includes('🛠') || el.textContent.includes('Yatay'));
+
+      if (toolToggleBtn) {
+        // Buton bulunduğunda tıklama olayını dinle
+        toolToggleBtn.removeAttribute('onclick'); // Eğer eski bozuk bir fonksiyon varsa temizle
+        toolToggleBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Dokuzlu grid panellerini bul ve "show-tools" sınıfını aç/kapat (toggle)
+          var grids = document.querySelectorAll('.tools-grid, div[class*="grid"][class*="tool"], div[class*="buttons"][class*="container"]');
+          grids.forEach(function(grid) {
+            grid.classList.toggle('show-tools');
+          });
+        });
+        clearInterval(checkTimer); // Eleman bulununca döngüyü sonlandır
+      }
+    }, 500);
+  })();
+</script>
 </body>
 </html>
