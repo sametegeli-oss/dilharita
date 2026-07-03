@@ -1,8 +1,8 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v9 — tam temizlik ve alan kazanımı)
-   1) "Bu cümleyi ne kadar biliyorsun?" yazısı tamamen KALDIRILDI ve alan kazanıldı.
-   2) Öğretmen ve Zayıf Analiz butonları ana ekrandan KESİN OLARAK SİLİNDİ (.remove() + CSS).
-   3) Zor/Normal/Kolay → Yan yana (flex-row) kompakt düzende sığdırıldı.
-   4) İleri/geri/araçlar (.study-nav) → Sağ sütunda en alta yerleştirildi.
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v10 — döngüsüz, kararlı sürüm)
+   1) "Bu cümleyi ne kadar biliyorsun?" yazısı kaldırıldı.
+   2) Öğretmen ve Zayıf Analiz ana ekranda CSS ile tamamen gizlendi (Sonsuz döngü bitti).
+   3) Araçlar panelinde sabit tetikleyiciler oluşturuldu, mükerrer buton üretimi engellendi.
+   4) Zor/Normal/Kolay → Yan yana (flex-row) kompakt düzende sığdırıldı.
 */
 (function(){
   "use strict";
@@ -16,11 +16,8 @@
      ".legend,.legend-item,.legend-dot{display:none !important}"
     +".study-nav .legend,.study-nav .legend-item{display:none !important}"
     
-    /* Ana ekrandaki Öğretmen, Zayıf Analiz butonlarını ve "ne kadar biliyorsun" yazılarını CSS ile KESİN ENGELEME */
-    +".card-actions .teacher-btn, .card-actions .extra-weak, .teacher-btn, .extra-weak {display:none !important; opacity:0 !important; visibility:hidden !important; pointer-events:none !important}"
-    
-    /* Araçlar paneli içindeki klonların görünmesini garanti et */
-    +".dh-tools-box .dh-moved-btn {display:flex !important; visibility:visible !important; opacity:1 !important}"
+    /* Ana arayüzdeki Öğretmen ve Zayıf Analiz butonlarını alan kaplamayacak şekilde KESİN GİZLE */
+    +".card-actions .teacher-btn, .card-actions .extra-weak, button.teacher-btn, button.extra-weak { display:none !important; width:0 !important; height:0 !important; margin:0 !important; padding:0 !important; overflow:hidden !important; position:absolute !important; pointer-events:none !important; }"
     
     /* ---- 2 SÜTUN DÜZEN ---- */
     +".dh-col-left,.dh-col-right{display:block}"
@@ -52,7 +49,8 @@
     +".dh-tools-box{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:8999;width:90%;max-width:400px;margin:0;padding:14px;max-height:50vh;overflow-y:auto;border-radius:16px;background:#0d1a30;border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 40px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px;animation:dhToolsUp .2s ease}"
     +"@keyframes dhToolsUp{from{transform:translate(-50%, 10px);opacity:.4}to{transform:translate(-50%, 0);opacity:1}}"
     +".dh-tools-box.dh-hidden{display:none !important}"
-    +".dh-tools-box .dh-moved-btn{width:100%;min-height:42px;border-radius:10px;display:flex !important}"
+    +".dh-tools-box .dh-custom-btn{width:100%;min-height:42px;border-radius:10px;display:flex !important;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.15);font-weight:800;font-size:13px;cursor:pointer;background:#1e293b;color:#f8fafc;}"
+    +".dh-tools-box .dh-custom-btn:hover{background:#334155}"
     +".dh-tools-box .wd-tools-row{margin-top:0 !important}"
     +".dh-tools-title{font:900 13px Nunito,system-ui,sans-serif;color:#9fb3d9;text-align:center;margin-bottom:2px}";
     document.head.appendChild(s);
@@ -134,13 +132,12 @@
       right.className="dh-col-right";
     }
     
-    // "ne kadar biliyorsun" yazısını bul ve DOM'dan tamamen SİL
+    // "ne kadar biliyorsun" yazısını bul ve kaldır
     var q=[].slice.call(card.querySelectorAll("*")).find(function(e){
       return e.children.length===0 && /ne kadar biliyorsun/i.test(e.textContent||"");
     });
     if(q) { q.remove(); }
     
-    // Doğrudan Zor/Normal/Kolay ve diğer dinleme aksiyonlarını ekle
     right.appendChild(grade);
     right.appendChild(actions);
     
@@ -153,12 +150,40 @@
   function ensureTools(card, nav){
     var box=document.getElementById("dhToolsBox");
     var toggle=document.getElementById("dhToolsToggle");
+    
     if(!box){
       box=document.createElement("div");
       box.id="dhToolsBox"; box.className="dh-tools-box dh-hidden";
       box.innerHTML='<div class="dh-tools-title">🛠 Araçlar</div>';
+      
+      // Panel içine sonsuz döngüye girmeyen 1'er adet sabit tetikleyici buton ekle
+      var btnTeacher = document.createElement("button");
+      btnTeacher.className = "dh-custom-btn"; btnTeacher.innerHTML = "🎓 Öğretmen";
+      btnTeacher.onclick = function(){
+        var target = document.querySelector(".card .teacher-btn") || btnByText(document.querySelector(".card"), "öğretmen");
+        if(target) target.click();
+      };
+      
+      var btnWeak = document.createElement("button");
+      btnWeak.className = "dh-custom-btn"; btnWeak.innerHTML = "📉 Zayıf Analiz";
+      btnWeak.onclick = function(){
+        var target = document.querySelector(".card .extra-weak") || btnByText(document.querySelector(".card"), "zayıf");
+        if(target) target.click();
+      };
+
+      var btnDetay = document.createElement("button");
+      btnDetay.className = "dh-custom-btn"; btnDetay.innerHTML = "🔍 Detay";
+      btnDetay.onclick = function(){
+        var target = btnByText(document.querySelector(".card"), "detay");
+        if(target) target.click();
+      };
+      
+      box.appendChild(btnTeacher);
+      box.appendChild(btnWeak);
+      box.appendChild(btnDetay);
       document.body.appendChild(box);
     }
+
     if(!toggle){
       toggle=document.createElement("button");
       toggle.id="dhToolsToggle"; toggle.type="button"; toggle.className="dh-tools-toggle";
@@ -175,71 +200,6 @@
       else nav.appendChild(toggle);
     }
 
-    if(card){
-      var actions = card.querySelector(".card-actions");
-      
-      // Öğretmen Butonu Kontrolü
-      var teacher=card.querySelector(".teacher-btn")||btnByText(card,"öğretmen");
-      if(teacher && !/sor/i.test(teacher.textContent||"")){ 
-        if(teacher.parentElement !== box && !box.querySelector(".teacher-btn")) {
-          var tClone = teacher.cloneNode(true);
-          tClone.className = "dh-moved-btn btn btn-primary";
-          tClone.style.display = "flex";
-          box.appendChild(tClone);
-        }
-        teacher.remove(); // Ana ekrandakini kesin imha et
-      }
-      
-      // Öğretmene Sor Butonu Kontrolü
-      var teacherAsk=[].slice.call(card.querySelectorAll("button,a")).find(function(b){
-        return /öğretmene sor/i.test(b.textContent||"");
-      });
-      if(teacherAsk){ 
-        if(teacherAsk.parentElement !== box && !btnByText(box, "öğretmene sor")) {
-          var taClone = teacherAsk.cloneNode(true);
-          taClone.className = "dh-moved-btn btn";
-          taClone.style.display = "flex";
-          box.appendChild(taClone);
-        }
-        teacherAsk.remove(); // Ana ekrandakini kesin imha et
-      }
-      
-      // Detay Butonu Kontrolü
-      var detay=btnByText(card,"detay");
-      if(detay){ 
-        if(detay.parentElement !== box && !btnByText(box, "detay")) {
-          var dClone = detay.cloneNode(true);
-          dClone.className = "dh-moved-btn btn";
-          dClone.style.display = "flex";
-          box.appendChild(dClone);
-        }
-        detay.remove();
-      }
-      
-      // Zayıf Analiz Butonu Kontrolü
-      var weak=card.querySelector(".extra-weak")||btnByText(card,"zayıf");
-      if(weak){ 
-        if(weak.parentElement !== box && !box.querySelector(".extra-weak")) {
-          var wClone = weak.cloneNode(true);
-          wClone.className = "dh-moved-btn btn btn-warning";
-          wClone.style.display = "flex";
-          box.appendChild(wClone);
-        }
-        weak.remove(); // Ana ekrandakini kesin imha et
-      }
-
-      // Sitenin MutationObserver ile sonradan üretebileceği kalıntıları döngüyle temizle
-      if (actions) {
-        [].slice.call(actions.querySelectorAll("button, a")).forEach(function(btn){
-          var txt = (btn.textContent || "").toLowerCase();
-          if (txt.indexOf("öğretmen") >= 0 || txt.indexOf("zayıf") >= 0 || txt.indexOf("detay") >= 0) {
-            btn.remove();
-          }
-        });
-      }
-      card.dataset.dhToolsFilled="1";
-    }
-    
     var grid=document.querySelector(".wd-tools-row");
     if(grid && grid.parentElement!==box){ box.appendChild(grid); }
   }
