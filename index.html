@@ -139,6 +139,13 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
         " · hazır:" + (rdy?"evet":"hayır") +
         " · yerel prompt:" + (yerel?("'"+yerel+"...'"):"BOŞ") + "</small>";
       msg.style.color=res.ok ? "#34d399" : "#f87171";
+      // Senkron başarılıysa: IndexedDB güncellendi ama açık ekranlar eski veriyi tutuyor.
+      // Kısa bekleyip sayfayı yenile ki güncel veri (kelime/ilerleme) ekrana gelsin.
+      if(res.ok){
+        try{ if(window.__dhStorageFlush) window.__dhStorageFlush(); }catch(e){}
+        msg.innerHTML += "<br><small style='color:#38bdf8'>Sayfa yenileniyor…</small>";
+        setTimeout(function(){ location.reload(); }, 1400);
+      }
     }catch(e){
       msg.textContent="Senkron sırasında hata: "+(e&&e.message?e.message:"bilinmeyen");
       msg.style.color="#f87171";

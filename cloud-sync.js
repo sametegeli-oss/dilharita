@@ -422,6 +422,9 @@
         }
         // hata defteri: buluttan gelenleri yerele ekle (birleştir)
         return mergeRemoteErrors(rd.errors || []).then(function(addedErr){
+          // MOBİL: localStorage→IndexedDB köprüsü asenkron. Çekilen veriyi diske ZORLA yaz.
+          var flushP = (window.__dhStorageFlush) ? Promise.resolve(window.__dhStorageFlush()).catch(function(){}) : Promise.resolve();
+          return flushP.then(function(){
           // öğrenme ilerlemesi aynasını IndexedDB'ye uygula
           var progP = (window.DHProgress && DHProgress.applyMirror) ? DHProgress.applyMirror() : Promise.resolve(0);
           return progP.then(function(addedProg){
@@ -431,6 +434,7 @@
             return pushNow().catch(function(){}).then(function(){
               return { ok:true, pulled:pulled, addedErrors:addedErr||0, addedProgress:addedProg||0 };
             });
+          });
           });
         });
       }).then(function(res){
