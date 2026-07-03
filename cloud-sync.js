@@ -9,6 +9,9 @@
   // Orijinal localStorage tetikleyicisini güvenli senkron için sakla
   var rawLocalStorageSet = window.localStorage.setItem.bind(window.localStorage);
 
+  // KRİTİK: Senkronizasyon sırasında push tetiklenmesini önlemek için kilit bayrağı
+  var isSyncing = false;
+
   // Senkronlanacak SABİT localStorage anahtarları
   var LS_KEYS = [
     "dh_ai_prompt_teacher", "dh-study-tracker-v1", "dh-ocr-sentences-v1",
@@ -261,6 +264,9 @@
   }
 
   function pushNow(){
+    // Eğer senkronizasyon işlemi yürütülüyorsa buluta push yapma
+    if (isSyncing) return Promise.resolve();
+    
     sanitizeStudyTracker();
     if (!ready || !user || !fb) return Promise.resolve();
     var prep = (window.DHProgress && DHProgress.mirrorNow) ? DHProgress.mirrorNow() : Promise.resolve();
@@ -280,7 +286,7 @@
   }
 
   function pushSoon(){
-    if (!ready || !user) return;
+    if (!ready || !user || isSyncing) return;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(pushNow, 1500);
   }
@@ -293,6 +299,10 @@
         origSet(k, v);
         var key=String(k);
         if (key.indexOf("__ts_") === 0) return;
+        
+        // Senkronizasyon sırasında tetiklenen yerel setItem'ları yoksay
+        if (isSyncing) return;
+
         var match = (LS_KEYS.indexOf(key) >= 0);
         if(!match){ for(var p=0;p<LS_PREFIXES.length;p++){ if(key.indexOf(LS_PREFIXES[p])===0){ match=true; break; } } }
         if (match){
@@ -307,15 +317,16 @@
     try{ return parseInt(localStorage.getItem("__ts_" + k) || "0", 10) || 0; }catch(e){ return 0; }
   }
 
-  window.addEventListener("learning-error-added", pushSoon);
-  window.addEventListener("learning-errors-cleared", pushSoon);
+  // Event dinleyicilerine isSyncing kilidi eklendi
+  window.addEventListener("learning-error-added", function() { if(!isSyncing) pushSoon(); });
+  window.addEventListener("learning-errors-cleared", function() { if(!isSyncing) pushSoon(); });
 
   function flushOnLeave(){
     try{
       if(window.__dhStorageFlush) window.__dhStorageFlush();
     }catch(e){}
     try{ clearTimeout(saveTimer); }catch(e){}
-    pushNow();
+    if(!isSyncing) pushNow();
   }
   window.addEventListener("pagehide", flushOnLeave);
   document.addEventListener("visibilitychange", function(){
@@ -333,6 +344,11 @@
     if (!ready) return Promise.resolve({ ok:false, message:"Bulut bağlantısı henüz hazır değil. Birkaç saniye sonra tekrar dene." });
     return waitForAuth(4000).then(function(){
       if (!user) return { ok:false, message:"Senkron için önce giriş yapmalısın." };
+      
+      // KRİTİK: Senkronizasyon başladı, kilitleri devreye al
+      isSyncing = true;
+      clearTimeout(saveTimer);
+
       return fb.loadSettings(user.uid).then(function(remote){
         var rd = parseRemote(remote);
         var pulled = 0;
@@ -364,7 +380,7 @@
                 rawLocalStorageSet("__ts_" + rk, String(Math.max(rTs, parseInt(nowTs, 10))));
                 pulled++;
               }
-            }catch(e){ console.error("Key sync error: " + rk, e); }
+            }catch(e) { console.error("Key sync error: " + rk, e); }
           }
         }
 
@@ -375,12 +391,19 @@
             return progP.then(function(addedProg){
               try{ if(window.__dhStorageFlush) window.__dhStorageFlush(); }catch(e){}
               
+              // Senkronizasyon bitti, kilidi kaldırıyoruz
+              isSyncing = false;
+
+              // Birleştirilmiş en son temiz veriyi tek bir seferliğine buluta kaydet
               return pushNow().catch(function(){}).then(function(){
                 return { ok:true, pulled:pulled, addedErrors:addedErr||0, addedProgress:addedProg||0 };
               });
             });
           });
         });
+      }).catch(function(err){
+        isSyncing = false; // Hata durumunda da kilidi açmayı unutma
+        throw err;
       }).then(function(res){
         var parts = [];
         if (res.pulled) parts.push(res.pulled + " ayar buluttan alındı");
