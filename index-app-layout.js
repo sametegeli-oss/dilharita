@@ -18,13 +18,15 @@
     +".study-nav .legend,.study-nav .legend-item{display:none !important}"
     /* ---- 2 SÜTUN DÜZEN (practice.html tarzı) ---- */
     +".dh-col-left,.dh-col-right{display:block}"
-    +"@media(min-width:760px){"
-    +".card.dh-split{display:grid !important;grid-template-columns:1.35fr 1fr;gap:18px 20px;align-items:start}"
+    +"@media(min-width:680px){"
+    +".card.dh-split{display:grid !important;grid-template-columns:1.5fr 0.9fr;gap:14px 16px;align-items:start}"
     +".card.dh-split > *{grid-column:1;min-width:0}"
-    +".card.dh-split > .dh-col-right{grid-column:2;grid-row:1 / 99;display:flex;flex-direction:column;gap:9px;align-self:start}"
-    +".card.dh-split .sm-img-wrap{margin:8px 0}"
-    +".card.dh-split .dh-grade-under{flex-direction:column !important;gap:8px;margin:0}"
-    +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}"
+    +".card.dh-split > .dh-col-right{grid-column:2;grid-row:1 / 99;display:flex;flex-direction:column;gap:6px;align-self:start}"
+    +".card.dh-split .sm-img-wrap{margin:6px 0}"
+    +".card.dh-split .dh-grade-under{flex-direction:column !important;gap:6px !important;margin:0}"
+    +".card.dh-split .dh-grade-under button{min-height:34px !important;padding:7px 8px !important;font-size:13px !important;border-radius:9px !important}"
+    +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}"
+    +".card.dh-split .card-actions button{min-height:32px !important;padding:6px 10px !important;font-size:12px !important;border-radius:9px !important}"
     +"}"
     +".study-nav.dh-fixed-nav{position:fixed !important;left:0;right:0;bottom:0;z-index:9000;display:flex !important;gap:8px;align-items:center;justify-content:space-between;margin:0 !important;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(9,15,28,.96);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.10);box-shadow:0 -8px 30px rgba(0,0,0,.4)}"
     +".study-nav.dh-fixed-nav .btn{flex:1;min-height:48px;font-size:15px !important;font-weight:800 !important;border-radius:14px !important}"
@@ -60,7 +62,8 @@
   // Kartı 2 sütuna böl: sol=resim+cümle, sağ=butonlar+zorluk (practice.html tarzı)
   function splitCard(card){
     if(card.dataset.dhSplitDone==="1") return;
-    if(window.innerWidth<760){ console.log("[dh-split] atlandı: ekran dar", window.innerWidth); return; }
+    // Genişlik kontrolü YOK — DOM'u her zaman böleriz, görünümü CSS medya sorgusu belirler.
+    // Böylece telefon yatay/dikey çevrilince otomatik 2 sütun ↔ tek sütun geçişi olur.
     var enEl=card.querySelector(".card-en"); if(!enEl){ console.log("[dh-split] card-en yok"); return; }
     var grade=card.querySelector(".dh-grade-under");
     var actions=card.querySelector(".card-actions");
