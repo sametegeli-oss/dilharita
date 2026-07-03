@@ -1,9 +1,8 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v9.2 — ileri/geri düzeltildi, araçlar gizli)
-   1) Tüm üst başlıklar kaldırıldı
-   2) Zor/Normal/Kolay → cümlenin Türkçesinin ALTINA
-   3) Araçlar paneli (Detay, Zayıf Analiz, Öğretmen, 9'lu ızgara) → sadece "Araçlar" butonuna tıklanınca açılır
-   4) Önceki, Araçlar, Sonraki butonları kartın altında (sabit)
-   5) Altta sabit çubuk KALDIRILDI
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v9.2 — Nav ve Araçlar Tam Korumalı)
+   1) Üst başlıklar ve alttaki sabit çubuk kaldırıldı
+   2) Zor/Normal/Kolay butonları Türkçenin altına taşındı
+   3) Araçlar paneli default olarak gizlidir, sadece "Araçlar" butonuna basınca açılır
+   4) Geliştirilmiş seçicilerle İleri/Geri ve tüm Araç butonları (div/span dahil) hatasız yakalanır
 */
 (function(){
   "use strict";
@@ -22,19 +21,18 @@
   function addStyle(){
     if(document.getElementById(STYLE_ID)) return;
     var s=document.createElement("style"); s.id=STYLE_ID;
-    
     var vh = updateViewportHeight();
     
     s.textContent =
     /* === TÜM ÜST BAŞLIKLARI GİZLE === */
-    +".app-header, .app-header *, .module-header, .module-title, .top-header, "
+    ".app-header, .app-header *, .module-header, .module-title, .top-header, "
     +".study-header, .page-header, .breadcrumb, .header-title, .module-name, "
     +".level-title, .unit-title, .lesson-title, [class*='header']:not(.study-nav), "
     +".card-title, .section-title, .heading, h1, h2, h3, h4, "
     +"[class*='title']:not(.dh-tools-title), [class*='Level'], [class*='Unit'], "
     +"[class*='Lesson'], [class*='Confirmation'], [class*='Present']{display:none !important}"
     
-    /* A1, Confirmation, Present Simple gibi metinleri gizle */
+    /* Kart içi temizlik */
     +".card > div:first-child, .card > p:first-child, .card > span:first-child{display:none !important}"
     +".card > *:not(.card-en):not(.card-tr):not(.card-pron):not(.sm-img-wrap):not(.dh-col-right):not(.dh-grade-under):not(.card-actions):not(.dh-gtr-btn):not(.dh-nav-row):not(.dh-tools-box){display:none !important}"
     
@@ -44,25 +42,21 @@
     
     /* Kart içi nav satırı */
     +".dh-nav-row{display:flex !important;gap:6px;align-items:center;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.08);width:100%}"
-    +".dh-nav-row .btn{flex:1;min-height:36px;font-size:13px !important;font-weight:700 !important;border-radius:10px !important;padding:4px 8px;background:#0d1a30;border:1px solid rgba(255,255,255,0.08);color:#cfe0ff;cursor:pointer}"
-    +".dh-nav-row .btn:hover{background:#1a2a44}"
+    +".dh-nav-row button, .dh-nav-row a, .dh-nav-row .dh-nav-btn{flex:1;min-height:36px;font-size:13px !important;font-weight:700 !important;border-radius:10px !important;padding:4px 8px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer}"
     +".dh-nav-row .dh-tools-toggle{flex:0 0 auto !important;min-height:36px;padding:0 12px;border:1px solid rgba(255,255,255,.10);border-radius:10px;background:#17233a;color:#eaf2ff;font:700 12px Nunito,system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap}"
     +".dh-nav-row .dh-tools-toggle:hover{background:#22304f}"
     +".dh-nav-row .dh-tools-toggle .chev{transition:transform .2s;font-size:9px}"
     +".dh-nav-row .dh-tools-toggle.open .chev{transform:rotate(180deg)}"
     
-    /* ---- ARAÇLAR PANELİ (sadece açıkken görünür) ---- */
+    /* ---- ARAÇLAR PANELİ (Varsayılan olarak gizli) ---- */
     +".dh-tools-box{display:none !important;flex-direction:column;gap:4px;margin-top:4px;padding:6px 8px;background:#0d1a30;border-radius:8px;border:1px solid rgba(255,255,255,.08);width:100%}"
     +".dh-tools-box.open{display:flex !important}"
     +".dh-tools-box .dh-tools-title{font:700 10px Nunito,system-ui,sans-serif;color:#9fb3d9;text-align:center;margin:0 0 4px 0;padding:0}"
-    /* Araç butonları - küçük ve grid */
+    
+    /* Araç butonları grid yapısı */
     +".dh-tools-box .dh-tools-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}"
-    +".dh-tools-box .dh-tools-grid .dh-tool-btn{min-height:26px;border-radius:6px;font-size:10px;font-weight:600;padding:2px 4px;border:1px solid rgba(255,255,255,0.06);background:#1a2942;color:#9bb8e8;cursor:pointer;transition:all .2s;text-align:center}"
-    +".dh-tools-box .dh-tools-grid .dh-tool-btn:hover{background:#22344f;color:#fff;border-color:rgba(255,255,255,0.15)}"
-    /* Eski buton stilleri (uyumluluk) */
-    +".dh-tools-box .dh-moved-btn{width:100%;min-height:26px;border-radius:6px;font-size:10px;font-weight:600;padding:2px 4px;border:1px solid rgba(255,255,255,0.06);background:#1a2942;color:#9bb8e8;cursor:pointer;text-align:center}"
-    +".dh-tools-box .wd-tools-row{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:2px}"
-    +".dh-tools-box .wd-tools-row button{min-height:26px;border-radius:6px;font-size:10px;font-weight:600;padding:2px 4px;border:1px solid rgba(255,255,255,0.06);background:#1a2942;color:#9bb8e8;cursor:pointer}"
+    +".dh-tools-box .dh-tools-grid > *{min-height:28px;border-radius:6px;font-size:10px;font-weight:600;padding:2px 4px;border:1px solid rgba(255,255,255,0.06) !important;background:#1a2942 !important;color:#9bb8e8 !important;cursor:pointer;transition:all .2s;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-sizing:border-box}"
+    +".dh-tools-box .dh-tools-grid > *:hover{background:#22344f !important;color:#fff !important;border-color:rgba(255,255,255,0.15) !important}"
     
     /* ---- 2 SÜTUN DÜZEN ---- */
     +".dh-col-left,.dh-col-right{display:block}"
@@ -72,75 +66,35 @@
     +".card.dh-split{display:grid !important;grid-template-columns:1.5fr .9fr;gap:12px 14px;align-items:start}"
     +".card.dh-split>*{grid-column:1;min-width:0}"
     +".card.dh-split>.dh-col-right{grid-column:2;grid-row:1/99;display:flex;flex-direction:column;gap:4px;align-self:start}"
-    +".card.dh-split .sm-img-wrap{margin:4px 0}"
-    +".card.dh-split .dh-grade-under{flex-direction:column !important;gap:4px !important;margin:0}"
-    +".card.dh-split .dh-grade-under button{min-height:32px !important;padding:6px 8px !important;font-size:12px !important;border-radius:8px !important}"
-    +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}"
-    +".card.dh-split .card-actions button{min-height:30px !important;padding:5px 8px !important;font-size:11px !important;border-radius:8px !important}"
-    /* Nav row 2 sütunda */
     +".card.dh-split .dh-nav-row{grid-column:1/3;margin-top:8px;padding-top:8px}"
     +".card.dh-split .dh-tools-box{grid-column:1/3}"
     +"}"
     
-    /* ---- MOBİL YATAY ---- */
+    /* Mobil Yatay */
     +"@media (orientation:landscape) and (max-height:500px){"
     +"html,body{height:100%;overflow:hidden;margin:0;padding:0}"
-    +".app-container,.app-content,.main-container,.container{height:100%;overflow:hidden;padding:0 !important;margin:0 !important}"
-    /* Kartı tam ekran yap */
-    +".card.dh-split{display:grid !important;grid-template-columns:1.1fr 1fr !important;gap:2px 5px !important;padding:2px 4px !important;height:100% !important;max-height:100vh !important;overflow-y:auto;margin:0 !important;border-radius:0 !important}"
-    +".card.dh-split .sm-img-wrap{margin:0;max-height:80px}"
-    +".card.dh-split .sm-img-wrap img{max-height:80px;width:auto;object-fit:contain}"
-    +".card.dh-split .card-en{font-size:" + Math.max(10, Math.min(13, vh * 0.025)) + "px !important;line-height:1.1;margin:0}"
-    +".card.dh-split .card-tr{font-size:" + Math.max(9, Math.min(12, vh * 0.023)) + "px !important;line-height:1.1;margin:0}"
-    +".card.dh-split .card-pron{font-size:" + Math.max(8, Math.min(10, vh * 0.02)) + "px !important;margin:0}"
-    +".card.dh-split .dh-grade-under{flex-direction:row !important;gap:1px !important;margin:0}"
-    +".card.dh-split .dh-grade-under button{min-height:" + Math.max(14, Math.min(22, vh * 0.04)) + "px !important;padding:0 2px !important;font-size:" + Math.max(6, Math.min(9, vh * 0.018)) + "px !important;border-radius:3px !important;flex:1}"
-    +".card.dh-split .card-actions{gap:1px;margin:0;display:flex;flex-wrap:wrap}"
-    +".card.dh-split .card-actions button{min-height:" + Math.max(14, Math.min(22, vh * 0.04)) + "px !important;padding:0 2px !important;font-size:" + Math.max(6, Math.min(8, vh * 0.016)) + "px !important;border-radius:3px !important;flex:1 0 auto}"
-    +".card.dh-split .dh-gtr-btn{padding:0 3px !important;font-size:" + Math.max(6, Math.min(8, vh * 0.016)) + "px !important;margin:0}"
-    +".card.dh-split .dh-col-right{gap:0 !important}"
-    +".dh-gtr-btn{font-size:" + Math.max(6, Math.min(8, vh * 0.016)) + "px !important;padding:0 3px !important;margin:0}"
-    /* Nav row */
+    +".card.dh-split{display:grid !important;grid-template-columns:1.1fr 1fr !important;gap:2px 5px !important;padding:2px 4px !important;height:100% !important;max-height:100vh !important;overflow-y:auto}"
     +".card.dh-split .dh-nav-row{grid-column:1/3;margin-top:3px;padding-top:3px;gap:2px}"
-    +".card.dh-split .dh-nav-row .btn{min-height:" + Math.max(18, Math.min(26, vh * 0.045)) + "px !important;font-size:" + Math.max(7, Math.min(10, vh * 0.02)) + "px !important;padding:0 2px !important;border-radius:4px !important}"
-    +".card.dh-split .dh-nav-row .dh-tools-toggle{min-height:" + Math.max(18, Math.min(26, vh * 0.045)) + "px !important;padding:0 6px !important;font-size:" + Math.max(7, Math.min(9, vh * 0.018)) + "px !important;border-radius:4px !important}"
-    /* Araçlar paneli yatayda */
     +".card.dh-split .dh-tools-box{grid-column:1/3}"
     +".card.dh-split .dh-tools-box .dh-tools-grid{grid-template-columns:repeat(4,1fr)}"
-    +".card.dh-split .dh-tools-box .dh-tools-grid .dh-tool-btn{min-height:" + Math.max(16, Math.min(22, vh * 0.04)) + "px !important;font-size:" + Math.max(6, Math.min(8, vh * 0.016)) + "px !important;padding:1px 3px !important}"
-    /* "Bu cümleyi ne kadar biliyorsun?" yazısını küçült */
-    +".dh-col-right > div:first-child{font-size:" + Math.max(5, Math.min(7, vh * 0.014)) + "px !important;margin:0 !important;padding:0 !important}"
-    /* Scroll bar */
-    +".card.dh-split::-webkit-scrollbar{width:1.5px}"
-    +".card.dh-split::-webkit-scrollbar-track{background:transparent}"
-    +".card.dh-split::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:1px}"
     +"}"
     
-    /* ---- MOBİL PORTRE ---- */
+    /* Mobil Dikey */
     +"@media (orientation:portrait) and (max-width:680px){"
-    +".card.dh-split{display:flex !important;flex-direction:column;gap:4px;padding-top:0 !important;margin-top:0 !important}"
+    +".card.dh-split{display:flex !important;flex-direction:column;gap:4px}"
     +".card.dh-split .dh-col-right{width:100%}"
-    +".card.dh-split .dh-grade-under{flex-direction:row !important;gap:3px}"
-    +".card.dh-split .dh-grade-under button{min-height:32px !important;font-size:11px !important}"
-    +".card.dh-split .dh-nav-row{margin-top:4px;padding-top:4px}"
-    +".card.dh-split .dh-tools-box .dh-tools-grid{grid-template-columns:repeat(3,1fr)}"
     +"}"
     
-    /* Zorluk butonları */
+    /* Zorluk ve Translate Butonları */
     +".dh-grade-under{display:flex !important;gap:6px;margin:6px 0 2px}"
     +".dh-gtr-btn{display:inline-flex;align-items:center;gap:3px;margin:3px 0 1px;padding:5px 10px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:#1a2942;color:#cfe0ff;font:700 11px Nunito,system-ui,sans-serif;cursor:pointer}"
-    +".dh-gtr-btn:hover{background:#22344f}"
     +".dh-grade-under button{flex:1;min-height:36px;border-radius:8px;font-weight:700;font-size:12px;border:1px solid rgba(255,255,255,.10);cursor:pointer}"
-    
-    /* Kart - genel */
     +".legend,.legend-item,.legend-dot{display:none !important}"
-    +".card{padding-top:4px !important;margin-top:0 !important}"
-    +".card.dh-split{margin-top:0 !important;padding-top:2px !important}";
+    +".card{padding-top:4px !important;margin-top:0 !important}";
     
     document.head.appendChild(s);
   }
   
-  // Viewport listener
   function setupViewportListener() {
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', function() {
@@ -151,40 +105,26 @@
         apply();
       });
     }
-    var resizeTimer;
-    window.addEventListener('resize', function() {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(function() {
-        updateViewportHeight();
-        var oldStyle = document.getElementById(STYLE_ID);
-        if (oldStyle) oldStyle.remove();
-        addStyle();
-        apply();
-      }, 200);
-    });
   }
   
   function currentCard(){
     var cards=[].slice.call(document.querySelectorAll(".card"));
-    return cards.find(function(c){ return c.querySelector(".card-en") && c.querySelector(".card-actions"); });
+    return cards.find(function(c){ return c.querySelector(".card-en"); });
   }
   
   function btnByText(root, txt){
     var t=txt.toLocaleLowerCase("tr");
-    return [].slice.call(root.querySelectorAll("button,a")).find(function(b){
-      return (b.textContent||"").toLocaleLowerCase("tr").indexOf(t)>=0;
+    return [].slice.call(root.querySelectorAll("button,a,div,span")).find(function(b){
+      return b.children.length === 0 && (b.textContent||"").toLocaleLowerCase("tr").indexOf(t)>=0;
     })||null;
   }
   
   function splitCard(card){
     if(card.dataset.dhSplitDone==="1") return;
-    var enEl=card.querySelector(".card-en"); 
-    if(!enEl){ return; }
     var grade=card.querySelector(".dh-grade-under");
-    var actions=card.querySelector(".card-actions");
-    if(!grade || !actions){ return; }
+    if(!grade) return;
 
-    var right=document.createElement("div"); 
+    var right=card.querySelector(".dh-col-right") || document.createElement("div"); 
     right.className="dh-col-right";
     
     var q=[].slice.call(card.querySelectorAll("*")).find(function(e){
@@ -192,86 +132,44 @@
     });
     if(q) right.appendChild(q);
     right.appendChild(grade);
-    right.appendChild(actions);
+    
+    var actions=card.querySelector(".card-actions");
+    if(actions) right.appendChild(actions);
+    
     card.appendChild(right);
     card.classList.add("dh-split");
     card.dataset.dhSplitDone="1";
   }
 
-  // NAV'ı kartın içine taşı (study-nav veya card-actions içinden)
   function moveNavToCard(card){
     if(card.dataset.dhNavMoved==="1") return;
     
-    var navRow = card.querySelector(".dh-nav-row");
-    if(!navRow){
-      navRow = document.createElement("div");
-      navRow.className = "dh-nav-row";
-      card.appendChild(navRow);
+    // Sitedeki alt gezinti barını (nav) seçicilerle tarayalım
+    var nav = document.querySelector(".study-nav, [class*='study-nav'], [class*='nav-fixed']");
+    if(!nav) return;
+    
+    var navRow = card.querySelector(".dh-nav-row") || document.createElement("div");
+    navRow.className = "dh-nav-row";
+    card.appendChild(navRow);
+    
+    // Sınıf adına bakılmaksızın tüm tıklanabilir elemanları (İleri / Geri butonlarını) topla
+    var allNavBtns = [].slice.call(nav.querySelectorAll("button, a, [role='button']"));
+    
+    // Önceki / Geri Butonu
+    if(allNavBtns.length >= 1){
+      var prevBtn = allNavBtns[0].cloneNode(true);
+      prevBtn.className = "dh-nav-btn";
+      if(allNavBtns[0].onclick) prevBtn.onclick = allNavBtns[0].onclick;
+      navRow.appendChild(prevBtn);
     }
     
-    // Önceki ve Sonraki butonlarını bul
-    var prevBtn = null, nextBtn = null;
-    
-    // 1. study-nav içinde ara
-    var nav = document.querySelector(".study-nav");
-    if(nav){
-      var btns = nav.querySelectorAll(".btn");
-      if(btns.length >= 2){
-        prevBtn = btns[0].cloneNode(true);
-        nextBtn = btns[1].cloneNode(true);
-      }
-      // study-nav'ı gizle
-      nav.style.display = "none";
-    }
-    
-    // 2. Eğer study-nav'da bulunamadıysa, card-actions içinde metinle ara
-    if(!prevBtn || !nextBtn){
-      var actions = card.querySelector(".card-actions");
-      if(actions){
-        var allBtns = actions.querySelectorAll("button, a");
-        for(var i=0; i<allBtns.length; i++){
-          var txt = (allBtns[i].textContent || "").toLowerCase().trim();
-          if(txt.indexOf("önceki") !== -1 || txt.indexOf("previous") !== -1){
-            prevBtn = allBtns[i].cloneNode(true);
-          }
-          if(txt.indexOf("sonraki") !== -1 || txt.indexOf("next") !== -1){
-            nextBtn = allBtns[i].cloneNode(true);
-          }
-        }
-        // Eğer bulundularsa, orijinallerini gizle (isteğe bağlı)
-      }
-    }
-    
-    // 3. Hala yoksa, manuel oluştur
-    if(!prevBtn){
-      prevBtn = document.createElement("button");
-      prevBtn.className = "btn";
-      prevBtn.textContent = "← Önceki";
-      prevBtn.onclick = function(){ 
-        var p = document.querySelector(".study-nav .btn:first-child");
-        if(p) p.click(); 
-      };
-    }
-    if(!nextBtn){
-      nextBtn = document.createElement("button");
-      nextBtn.className = "btn";
-      nextBtn.textContent = "Sonraki →";
-      nextBtn.onclick = function(){ 
-        var n = document.querySelector(".study-nav .btn:last-child");
-        if(n) n.click(); 
-      };
-    }
-    
-    // Butonları temizle ve ekle
-    prevBtn.className = "btn";
-    nextBtn.className = "btn";
-    navRow.appendChild(prevBtn);
-    
-    // Araçlar butonu (toggle)
+    // Ortadaki Dinamik Araçlar Butonu (Toggle)
     var toolsToggle = document.createElement("button");
     toolsToggle.className = "dh-tools-toggle";
+    toolsToggle.type = "button";
     toolsToggle.innerHTML = '🛠 Araçlar <span class="chev">▾</span>';
-    toolsToggle.onclick = function(){
+    toolsToggle.onclick = function(e){
+      e.preventDefault();
       var box = document.getElementById("dhToolsBox");
       if(box){
         box.classList.toggle("open");
@@ -280,8 +178,15 @@
     };
     navRow.appendChild(toolsToggle);
     
-    navRow.appendChild(nextBtn);
+    // Sonraki / İleri Butonu
+    if(allNavBtns.length >= 2){
+      var nextBtn = allNavBtns[1].cloneNode(true);
+      nextBtn.className = "dh-nav-btn";
+      if(allNavBtns[1].onclick) nextBtn.onclick = allNavBtns[1].onclick;
+      navRow.appendChild(nextBtn);
+    }
     
+    nav.style.setProperty("display", "none", "important");
     card.dataset.dhNavMoved = "1";
   }
   
@@ -300,39 +205,6 @@
         gb.onclick=function(){
           var txt=(en.textContent||"").trim();
           if(!txt) return;
-          function fallbackCopy(x){ 
-            try{ 
-              var ta=document.createElement("textarea"); 
-              ta.value=x; 
-              ta.style.position="fixed"; 
-              ta.style.opacity="0"; 
-              document.body.appendChild(ta); 
-              ta.focus(); 
-              ta.select(); 
-              document.execCommand("copy"); 
-              document.body.removeChild(ta); 
-            }catch(e){} 
-          }
-          try{ 
-            if(navigator.clipboard && navigator.clipboard.writeText){ 
-              navigator.clipboard.writeText(txt).catch(function(){ fallbackCopy(txt); }); 
-            } else { 
-              fallbackCopy(txt); 
-            } 
-          }catch(e){ 
-            fallbackCopy(txt); 
-          }
-          try{
-            var n=document.createElement("div");
-            n.textContent="📋 Kopyalandı! Google Translate açılıyor...";
-            n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #2563eb;padding:8px 14px;border-radius:8px;font:700 11px system-ui;box-shadow:0 4px 16px rgba(0,0,0,.5);max-width:90vw;text-align:center";
-            document.body.appendChild(n);
-            setTimeout(function(){ 
-              n.style.transition="opacity .3s"; 
-              n.style.opacity="0"; 
-              setTimeout(function(){ n.remove(); },300); 
-            },2000);
-          }catch(e){}
           window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(txt), "_blank");
         };
         tr.insertAdjacentElement("afterend", gb);
@@ -344,11 +216,9 @@
     var kol=card.querySelector(".grade-easy")||btnByText(card,"kolay");
     if(!(zor&&nor&&kol)) return;
     
-    var grp=card.querySelector(".dh-grade-under");
-    if(!grp){ 
-      grp=document.createElement("div"); 
-      grp.className="dh-grade-under"; 
-    }
+    var grp=card.querySelector(".dh-grade-under") || document.createElement("div"); 
+    grp.className="dh-grade-under"; 
+    
     grp.appendChild(zor); 
     grp.appendChild(nor); 
     grp.appendChild(kol);
@@ -360,75 +230,48 @@
   
   function ensureTools(card){
     var box = document.getElementById("dhToolsBox");
-    
     if(!box){
       box = document.createElement("div");
       box.id = "dhToolsBox";
       box.className = "dh-tools-box";
       box.innerHTML = '<div class="dh-tools-title">🛠 Araçlar</div>';
-      
-      // Grid container
       var grid = document.createElement("div");
-      grid.className = "dh-tools-grid";
+      grid.className = "grid dh-tools-grid";
       box.appendChild(grid);
-      
-      // Kartın içine ekle (navRow'dan önce)
       card.appendChild(box);
     }
     
     if(card && card.dataset.dhToolsFilled!=="1"){
       var grid = box.querySelector(".dh-tools-grid");
-      if(!grid){
-        grid = document.createElement("div");
-        grid.className = "dh-tools-grid";
-        box.appendChild(grid);
-      }
       
-      // Araç butonlarını bul ve grid'e ekle
-      var allBtns = card.querySelectorAll("button, a");
-      var toolTexts = ["düşük", "yavaş", "öğretmen", "zayıf analiz", 
-                       "detay", "shadow", "al test", "benzer", 
-                       "hikaye", "podcast", "konuşma", "cümle yaz", "partner", "görsel"];
-      var added = 0;
-      allBtns.forEach(function(btn){
+      // Genişletilmiş araç anahtar kelimeleri (Yazım hataları ve div yapıları dahil)
+      var toolTexts = ["düşük", "yavaş", "öğretmen", "analiz", "detay", "shadow", 
+                       "test", "benzer", "hikaye", "podcast", "konuşma", "cümle", "partner", "görsel", "dinle"];
+      
+      // Kart içindeki tüm alt elemanları tara (div, span, button, a)
+      var potentialBtns = card.querySelectorAll("button, a, div, span, [role='button']");
+      
+      potentialBtns.forEach(function(btn){
+        if (btn.children.length > 2) return; // Kapsayıcı ana kutuları atla
         var txt = (btn.textContent || "").toLowerCase().trim();
-        // Zorluk butonlarını atla
-        if (txt === "zor" || txt === "normal" || txt === "kolay") return;
-        // Google Translate butonunu atla
-        if (btn.classList.contains("dh-gtr-btn")) return;
-        // Nav butonlarını atla
-        if (btn.closest(".dh-nav-row")) return;
+        
+        if (!txt || txt === "zor" || txt === "normal" || txt === "kolay" || txt.indexOf("google") !== -1) return;
+        if (btn.closest(".dh-nav-row") || btn.id === "dhToolsBox" || btn.classList.contains("dh-tools-title")) return;
         
         var isTool = toolTexts.some(function(t){ return txt.indexOf(t) !== -1; });
-        if (isTool || btn.classList.contains("teacher-btn") || btn.classList.contains("extra-weak")) {
+        if (isTool) {
           var clone = btn.cloneNode(true);
-          clone.className = "dh-tool-btn";
-          // Orijinal onclick'i kopyala
-          if (btn.onclick) {
-            clone.onclick = btn.onclick;
-          }
+          if (btn.onclick) clone.onclick = btn.onclick;
+          
+          // Orijinal elemandaki tıklama olaylarını simüle et (Klonlarda kaybolma ihtimaline karşı)
+          clone.addEventListener('click', function(e) {
+            btn.click();
+          });
+
           grid.appendChild(clone);
-          btn.style.display = "none";
-          added++;
+          btn.style.setProperty("display", "none", "important");
         }
       });
-      
-      // Eğer hiç buton eklenmediyse, mevcut .wd-tools-row'u dene
-      if (added === 0) {
-        var oldGrid = card.querySelector(".wd-tools-row");
-        if (oldGrid) {
-          grid.innerHTML = '';
-          var items = oldGrid.querySelectorAll("button, a");
-          items.forEach(function(item){
-            var clone = item.cloneNode(true);
-            clone.className = "dh-tool-btn";
-            if (item.onclick) clone.onclick = item.onclick;
-            grid.appendChild(clone);
-            item.style.display = "none";
-          });
-          oldGrid.style.display = "none";
-        }
-      }
       
       card.dataset.dhToolsFilled = "1";
     }
@@ -457,7 +300,7 @@
     setTimeout(function(){ 
       scheduled=false; 
       apply(); 
-    }, 150);
+    }, 100);
   }
   
   function boot(){
@@ -472,8 +315,8 @@
     }catch(e){}
     var n=0, t=setInterval(function(){ 
       apply(); 
-      if(++n>12) clearInterval(t); 
-    }, 400);
+      if(++n>10) clearInterval(t); 
+    }, 300);
   }
   
   if(document.readyState!=="loading") boot();
