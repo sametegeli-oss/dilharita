@@ -9,7 +9,7 @@
   // Orijinal localStorage tetikleyicisini güvenli senkron için sakla
   var rawLocalStorageSet = window.localStorage.setItem.bind(window.localStorage);
 
-  // KRİTİK: Senkronizasyon sırasında push tetiklenmesini önlemek için kilit bayrağı
+  // Senkronizasyon sırasında push tetiklenmesini önlemek için kilit bayrağı
   var isSyncing = false;
 
   // Senkronlanacak SABİT localStorage anahtarları
@@ -29,6 +29,18 @@
     "gramprof:",   
     "story:"       
   ];
+
+  // --- KRİTİK HOISTING DÜZELTMESİ: waitForAuth üst seviyede tanımlandı ---
+  function waitForAuth(maxMs){
+    return new Promise(function(resolve){
+      if (authResolved) return resolve();
+      var waited = 0;
+      var iv = setInterval(function(){
+        waited += 100;
+        if (authResolved || waited >= (maxMs||4000)){ clearInterval(iv); resolve(); }
+      }, 100);
+    });
+  }
 
   function mergeEvents(a, b){
     var all=(a||[]).concat(b||[]), seen={}, out=[];
@@ -264,7 +276,6 @@
   }
 
   function pushNow(){
-    // Eğer senkronizasyon işlemi yürütülüyorsa buluta push yapma
     if (isSyncing) return Promise.resolve();
     
     sanitizeStudyTracker();
@@ -299,8 +310,6 @@
         origSet(k, v);
         var key=String(k);
         if (key.indexOf("__ts_") === 0) return;
-        
-        // Senkronizasyon sırasında tetiklenen yerel setItem'ları yoksay
         if (isSyncing) return;
 
         var match = (LS_KEYS.indexOf(key) >= 0);
@@ -317,7 +326,6 @@
     try{ return parseInt(localStorage.getItem("__ts_" + k) || "0", 10) || 0; }catch(e){ return 0; }
   }
 
-  // Event dinleyicilerine isSyncing kilidi eklendi
   window.addEventListener("learning-error-added", function() { if(!isSyncing) pushSoon(); });
   window.addEventListener("learning-errors-cleared", function() { if(!isSyncing) pushSoon(); });
 
@@ -345,7 +353,6 @@
     return waitForAuth(4000).then(function(){
       if (!user) return { ok:false, message:"Senkron için önce giriş yapmalısın." };
       
-      // KRİTİK: Senkronizasyon başladı, kilitleri devreye al
       isSyncing = true;
       clearTimeout(saveTimer);
 
@@ -391,10 +398,8 @@
             return progP.then(function(addedProg){
               try{ if(window.__dhStorageFlush) window.__dhStorageFlush(); }catch(e){}
               
-              // Senkronizasyon bitti, kilidi kaldırıyoruz
               isSyncing = false;
 
-              // Birleştirilmiş en son temiz veriyi tek bir seferliğine buluta kaydet
               return pushNow().catch(function(){}).then(function(){
                 return { ok:true, pulled:pulled, addedErrors:addedErr||0, addedProgress:addedProg||0 };
               });
@@ -402,7 +407,7 @@
           });
         });
       }).catch(function(err){
-        isSyncing = false; // Hata durumunda da kilidi açmayı unutma
+        isSyncing = false; 
         throw err;
       }).then(function(res){
         var parts = [];
