@@ -11,10 +11,20 @@
 <script type="module" crossorigin src="./assets/app.js"></script>
 <link rel="stylesheet" crossorigin href="./assets/app.css">
 
-<!-- GÖRSELLERDEKİ SAĞ PANEL VE BUTON TAŞMA HATALARINI DÜZELTEN EK CSS -->
+<!-- GÖRSELLERDEKİ SAĞ PANEL, GRID TAŞMASI VE BUTON EZİLME HATALARINI DÜZELTEN TÜM CSS -->
 <style>
-  /* 1. Dokuzlu Grid Buton Grubu (Shadow, AI Test vb.) */
-  /* index-app-ogretmen-analiz-buttons.js içindeki grid yapısını kontrol altına alır */
+  /* 1. Sağ taraftaki kontrol panelinin ana dikey flex akışı */
+  div[class*="panel"][class*="right"], 
+  div[class*="control-panel"] {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    height: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  /* 2. Dokuzlu Grid Buton Grubu (Shadow, AI Test, Benzer vb.) */
   .tools-grid, 
   div[class*="grid"][class*="tool"],
   div[class*="buttons"][class*="container"] {
@@ -25,8 +35,17 @@
     flex-shrink: 0 !important;
   }
 
-  /* 2. Zor, Normal, Kolay butonlarının yer aldığı satır */
-  /* Altındaki Sonraki butonunun üzerine binmesini engeller */
+  /* Dokuzlu grid butonlarının içindeki yazıların taşmasını ve dikeyde ezilmesini önler */
+  .tools-grid button, 
+  div[class*='tool-btn'], 
+  .tool-btn {
+    min-height: 52px !important;
+    padding: 6px 2px !important;
+    font-size: 13px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 3. Zor, Normal, Kolay butonlarının yer aldığı satır */
   .difficulty-buttons-row, 
   div[class*="level"], 
   div[class*="zor"] {
@@ -39,7 +58,20 @@
     position: relative !important;
   }
 
-  /* 3. En altta ezilen mavi renkli "Sonraki →" butonu ve kapsayıcısı */
+  /* Zor-Normal-Kolay butonlarının dikey yüksekliğini sabitleyerek Sonraki butonunu sıkıştırmasını önler */
+  .btn-diff, 
+  button[class*="zor"], 
+  button[class*="kolay"], 
+  button[class*="normal"] {
+    height: 42px !important;
+    line-height: 42px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* 4. En altta ezilen mavi renkli "Sonraki →" butonu ve kapsayıcısı */
   .navigation-buttons, 
   div[class*="sonraki"],
   button[class*="sonraki"] {
@@ -50,18 +82,6 @@
     flex-shrink: 0 !important;
     position: relative !important;
     clear: both !important; /* Üstteki elemanların taşmasını kesin olarak sıfırlar */
-  }
-
-  /* 4. Sağ taraftaki kontrol panelinin ana dikey flex akışı */
-  /* index-app-layout.js'ten gelen ana kapsayıcıyı hizalar */
-  div[class*="panel"][class*="right"], 
-  div[class*="control-panel"] {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: flex-start !important;
-    height: 100% !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
   }
 </style>
 </head>
