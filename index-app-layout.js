@@ -14,7 +14,16 @@
     var s=document.createElement("style"); s.id=STYLE_ID;
     s.textContent =
     "body{padding-bottom:78px !important}"
-    +".legend{display:none !important}"
+    +".legend,.legend-item,.legend-dot{display:none !important}"
+    +".study-nav .legend,.study-nav .legend-item{display:none !important}"
+    /* ---- 2 SÜTUN DÜZEN (practice.html tarzı) ---- */
+    +".dh-col-left,.dh-col-right{display:block}"
+    +"@media(min-width:760px){"
+    +".card.dh-split{display:grid !important;grid-template-columns:1.35fr 1fr;gap:16px;align-items:start}"
+    +".card.dh-split .dh-col-right{display:flex;flex-direction:column;gap:9px}"
+    +".card.dh-split .dh-grade-under{flex-direction:column !important;gap:8px}"
+    +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:8px}"
+    +"}"
     +".study-nav.dh-fixed-nav{position:fixed !important;left:0;right:0;bottom:0;z-index:9000;display:flex !important;gap:8px;align-items:center;justify-content:space-between;margin:0 !important;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(9,15,28,.96);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.10);box-shadow:0 -8px 30px rgba(0,0,0,.4)}"
     +".study-nav.dh-fixed-nav .btn{flex:1;min-height:48px;font-size:15px !important;font-weight:800 !important;border-radius:14px !important}"
     +".study-nav.dh-fixed-nav > *:not(.btn):not(.dh-tools-toggle){flex:0 0 auto}"
@@ -46,6 +55,37 @@
       return (b.textContent||"").toLocaleLowerCase("tr").indexOf(t)>=0;
     })||null;
   }
+  // Kartı 2 sütuna böl: sol=resim+cümle, sağ=butonlar+zorluk (practice.html tarzı)
+  function splitCard(card){
+    if(card.dataset.dhSplitDone==="1") return;
+    if(window.innerWidth<760){ console.log("[dh-split] atlandı: ekran dar", window.innerWidth); return; }
+    var enEl=card.querySelector(".card-en"); if(!enEl){ console.log("[dh-split] card-en yok"); return; }
+    var grade=card.querySelector(".dh-grade-under");
+    var actions=card.querySelector(".card-actions");
+    if(!grade || !actions){ console.log("[dh-split] hazır değil — grade:", !!grade, "actions:", !!actions); return; }
+    console.log("[dh-split] BÖLÜNÜYOR ✓");
+
+    var left=document.createElement("div"); left.className="dh-col-left";
+    var right=document.createElement("div"); right.className="dh-col-right";
+
+    // SOL: resim (.sm-img-wrap) + cümle + tr + pron + gtr butonu
+    var moveLeft=[".sm-img-wrap",".card-en",".card-tr",".card-pron",".dh-gtr-btn"];
+    moveLeft.forEach(function(sel){
+      var el=card.querySelector(sel);
+      if(el) left.appendChild(el);
+    });
+    // SAĞ: grade + actions
+    right.appendChild(grade);
+    right.appendChild(actions);
+    // araçlar toggle+box body'de sabit, dokunma
+
+    // kartın başına sol+sağ ekle
+    card.insertBefore(left, card.firstChild);
+    card.appendChild(right);
+    card.classList.add("dh-split");
+    card.dataset.dhSplitDone="1";
+  }
+
   function fixNav(){
     var nav=document.querySelector(".study-nav");
     if(nav && !nav.classList.contains("dh-fixed-nav")) nav.classList.add("dh-fixed-nav");
@@ -146,6 +186,7 @@
       var card=currentCard();
       if(card){ moveGrade(card); }
       ensureTools(card, nav);
+      if(card){ splitCard(card); }
     }catch(e){}
     applying=false;
   }
