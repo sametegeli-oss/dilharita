@@ -11,7 +11,7 @@
 <script type="module" crossorigin src="./assets/app.js"></script>
 <link rel="stylesheet" crossorigin href="./assets/app.css">
 
-<!-- ARAÇLARI VARSAYILAN OLARAK GİZLEYEN VE AÇILIR-KAPANIR YAPAN CSS -->
+<!-- ARAÇLARI VARSAYILAN OLARAK GİZLEYEN VE AÇILIR-KAPANIR YAPAN DÜZGÜN CSS -->
 <style>
   /* 1. Sağ panel ana dikey flex akışı */
   div[class*="panel"][class*="right"], 
@@ -31,7 +31,7 @@
   .tools-grid, 
   div[class*="grid"][class*="tool"],
   div[class*="buttons"][class*="container"] {
-    display: none !important; /* İlk açılışta görünmez yap */
+    display: none !important; /* İlk açılışta tamamen gizle */
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 8px !important;
     margin-bottom: 12px !important;
@@ -115,29 +115,43 @@ window.addEventListener('error', function(e){
 <script src="./study-tracker.js?v=1"></script>
 <script src="./index-app-layout.js?v=5"></script>
 
-<!-- DİNAMİK ENJEKTE EDİLEN BUTONA TIKLAMA OLAYINI BAĞLAYAN SCRIPT -->
+<!-- GÜVENLİ VE STANDARTLARA UYGUN GEÇERLİ TIKLAMA MANTIĞI -->
 <script>
   (function() {
-    // JS dosyaları arayüzü asenkron çizdiği için sayfa içinde sürekli kontrol eden bir gözlemci kuruyoruz
     var checkTimer = setInterval(function() {
-      // İngiliz anahtarı simgesi olan araçlar butonunu bul (görseldeki buton)
-      var toolToggleBtn = document.querySelector('button[class*="toggle"], div[class*="toggle"], button:has([class*="anahtar"]), button:contains("🛠")') || 
-                          Array.from(document.querySelectorAll('button, div')).find(el => el.textContent.includes('🛠') || el.textContent.includes('Yatay'));
+      // Standartlara uygun temiz CSS seçicileriyle tüm buton ve div'leri tara
+      var allElements = document.querySelectorAll('button, div[role="button"], span');
+      var toolToggleBtn = null;
+
+      for (var i = 0; i < allElements.length; i++) {
+        var txt = allElements[i].textContent || "";
+        // İçerisinde İngiliz anahtarı emojisi veya "Yatay" geçen arayüz butonunu yakala
+        if (txt.indexOf('🛠') !== -1 || (txt.indexOf('Yatay') !== -1 && allElements[i].tagName === 'BUTTON')) {
+          toolToggleBtn = allElements[i];
+          break;
+        }
+      }
 
       if (toolToggleBtn) {
-        // Buton bulunduğunda tıklama olayını dinle
-        toolToggleBtn.removeAttribute('onclick'); // Eğer eski bozuk bir fonksiyon varsa temizle
+        // Buton bulununca eski onclick tetikleyicilerini sıfırla ve yeni güvenli event ata
+        toolToggleBtn.onclick = null; 
         toolToggleBtn.addEventListener('click', function(e) {
           e.preventDefault();
           e.stopPropagation();
           
-          // Dokuzlu grid panellerini bul ve "show-tools" sınıfını aç/kapat (toggle)
+          // Sınıf adına göre dokuzlu grid yapılarını bul
           var grids = document.querySelectorAll('.tools-grid, div[class*="grid"][class*="tool"], div[class*="buttons"][class*="container"]');
+          if (grids.length === 0) {
+            // Eğer sınıf eşleşmesi bulamazsa alternatif olarak içindeki ilk büyük grid elemanını seç
+            var potentialGrid = document.querySelector('div[style*="grid"], div[style*="GRID"]');
+            if (potentialGrid) grids = [potentialGrid];
+          }
+
           grids.forEach(function(grid) {
             grid.classList.toggle('show-tools');
           });
         });
-        clearInterval(checkTimer); // Eleman bulununca döngüyü sonlandır
+        clearInterval(checkTimer); // Döngüyü başarıyla sonlandır ve temizle
       }
     }, 500);
   })();
