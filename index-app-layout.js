@@ -1,5 +1,5 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v11 — Mobil Yatay Tam Ekran Kararlı Sürüm)
-   1) "Bu cümleyi ne kadar biliyorsun?" yazısı ve üst ilerleme/liste barı yatayda kaldırıldı.
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v12 — Çakışma Önleyici Tam Ekran Sürümü)
+   1) Yatay modda İngilizce ve Türkçe metinler resmin üzerine bindirildi; butonların kapanması engellendi.
    2) Öğretmen ve Zayıf Analiz ana ekranda CSS ile tamamen gizlendi (Sonsuz döngü bitti).
    3) Araçlar panelinde sabit tetikleyiciler oluşturuldu, mükerrer buton üretimi engellendi.
    4) Mobil yatay modda (Landscape) 0-Scroll (Kaydırmasız) tam ekran düzeni sağlandı.
@@ -24,7 +24,7 @@
     /* ---- 2 SÜTUN DÜZEN ---- */
     +".dh-col-left,.dh-col-right{display:block}"
 +"@media (orientation:landscape),(min-width:680px){"
-+".card.dh-split{display:grid !important;grid-template-columns:1.5fr .9fr;gap:14px 16px;align-items:start}"
++".card.dh-split{display:grid !important;grid-template-columns:1.4fr 1fr;gap:14px 16px;align-items:start}"
 +".card.dh-split>*{grid-column:1;min-width:0}"
 +".card.dh-split>.dh-col-right{grid-column:2;grid-row:1/99;display:flex;flex-direction:column;gap:6px;align-self:start;margin-top:0 !important}"
 +".card.dh-split .sm-img-wrap{margin:6px 0}"
@@ -34,46 +34,48 @@
 +".card.dh-split .card-actions button{min-height:32px !important;padding:6px 10px !important;font-size:12px !important;border-radius:9px !important}"
 +"}"
     /* ---- YATAY MOBİL: TEK EKRANA SIĞDIR (KAYDIRMA YOK - TAM EKRAN MODU) ---- */
-    +"@media (orientation:landscape) and (max-height:600px){"
+    +"@media (orientation:landscape) and (max-width:767px){"
     +".study-header, .study-progress, .study-header *, [class*='header'], :has(> .btn:contains('Liste')){display:none !important}"
     +"body, html {overflow:hidden !important; height:100vh !important; max-height:100vh !important; padding:0 !important; margin:0 !important; background:#040a18 !important;}"
-    +".study-main{padding:4px !important; margin:0 !important; height:100vh !important; display:flex !important; align-items:center !important; justify-content:center !important; box-sizing:border-box !important;}"
+    +".study-main{padding:6px !important; margin:0 !important; height:100vh !important; display:flex !important; align-items:center !important; justify-content:center !important; box-sizing:border-box !important;}"
     
     /* Ana Kartı Tam Ekran Yap */
-    +".card.dh-split{width:100vw !important; height:98vh !important; max-height:98vh !important; padding:8px !important; gap:8px 12px !important; margin:0 !important; box-sizing:border-box !important; overflow:hidden !important; grid-template-columns:1.3fr 1fr !important; align-items:stretch !important;}"
+    +".card.dh-split{width:100vw !important; height:96vh !important; max-height:96vh !important; padding:8px !important; gap:8px 12px !important; margin:0 !important; box-sizing:border-box !important; overflow:hidden !important; grid-template-columns:1.3fr 1fr !important; align-items:stretch !important;}"
     
-    /* SOL SÜTUN: Resim + Yazı Bindirme */
-    +".card.dh-split .sm-img-wrap{grid-row:1; grid-column:1; margin:0 !important; height:100% !important; position:relative !important;}"
+    /* SOL SÜTUN: Resim Sarıcı Konumlandırması */
+    +".card.dh-split .sm-img-wrap{grid-row:1/3 !important; grid-column:1 !important; margin:0 !important; height:100% !important; position:relative !important; display:flex !important; flex-direction:column !important;}"
     +".card.dh-split .sm-img-wrap img, .card.dh-split .sm-img{height:100% !important; max-height:100% !important; width:100% !important; object-fit:cover !important; display:block !important; border-radius:10px !important;}"
     
-    /* İngilizce Cümle (Resmin Altına Bindirme) */
-    +".card.dh-split .card-en{position:absolute !important; bottom:0 !important; left:0 !important; right:0 !important; z-index:2; margin:0 !important; padding:6px 10px !important; background:rgba(4,10,24,.75) !important; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); border-radius:0 0 10px 10px; font-size:16px !important; line-height:1.2 !important; text-align:center !important;}"
+    /* İngilizce Cümle (Resmin Altına Katman Olarak Bindirme) */
+    +".card.dh-split .card-en{position:absolute !important; bottom:28px !important; left:0 !important; right:0 !important; z-index:5 !important; margin:0 !important; padding:6px 10px !important; background:rgba(4,10,24,.80) !important; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); border-radius:0 !important; font-size:15px !important; line-height:1.2 !important; text-align:center !important; width:100% !important; box-sizing:border-box !important;}"
     
-    /* Alt Bilgiler: Türkçe Anlam, Pronunciation ve Google Translate */
-    +".card.dh-split .card-tr{grid-row:2; grid-column:1; margin:2px 0 0 0 !important; font-size:13px !important; line-height:1.2 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}"
-    +".card.dh-split .card-pron{grid-row:2; grid-column:1; display:none !important;}" /* Yer kazanmak için okunuşu yatayda gizle */
-    +".card.dh-split .dh-gtr-btn{display:none !important;}" /* Yatayda alanı kurtarmak için Translate butonunu gizle */
+    /* Türkçe Anlam (Resmin En Altına Şerit Olarak Bindirme - Düğmeleri Kapatması Engellendi) */
+    +".card.dh-split .card-tr{position:absolute !important; bottom:0 !important; left:0 !important; right:0 !important; z-index:5 !important; margin:0 !important; padding:4px 10px !important; background:rgba(10,25,50,.90) !important; color:#9fb3d9 !important; border-radius:0 0 10px 10px !important; font-size:12px !important; line-height:1.2 !important; text-align:center !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100% !important; box-sizing:border-box !important; grid-row:auto !important; grid-column:auto !important;}"
     
-    /* SAĞ SÜTUN: Butonları Çoklu Sütun Yaparak Sığdırma */
-    +".card.dh-split .dh-col-right{grid-column:2; grid-row:1/3; display:flex !important; flex-direction:column !important; justify-content:space-between !important; height:100% !important; gap:4px !important; margin:0 !important;}"
+    /* Yer kazanmak için gereksiz alanları uçur */
+    +".card.dh-split .card-pron{display:none !important;}" 
+    +".card.dh-split .dh-gtr-btn{display:none !important;}"
+    
+    /* SAĞ SÜTUN: Buton Alanı */
+    +".card.dh-split .dh-col-right{grid-column:2 !important; grid-row:1/3 !important; display:flex !important; flex-direction:column !important; justify-content:space-between !important; height:100% !important; gap:4px !important; margin:0 !important; overflow:hidden !important;}"
     
     /* Zor-Normal-Kolay Grubu */
-    +".card.dh-split .dh-grade-under{margin:0 !important; gap:4px !important; display:flex !important;}"
-    +".card.dh-split .dh-grade-under button{min-height:28px !important; padding:2px !important; font-size:11px !important; border-radius:6px !important;}"
+    +".card.dh-split .dh-grade-under{margin:0 !important; gap:4px !important; display:flex !important; order:1 !important;}"
+    +".card.dh-split .dh-grade-under button{min-height:30px !important; padding:2px !important; font-size:11px !important; border-radius:6px !important;}"
     
-    /* Diğer Aksiyon Butonları Alanı */
-    +".card.dh-split .card-actions{display:grid !important; grid-template-columns:1fr 1fr !important; gap:4px !important; margin:0 !important; padding:0 !important;}"
-    +".card.dh-split .card-actions button, .card.dh-split .card-actions .btn{min-height:28px !important; max-height:32px !important; padding:2px 4px !important; font-size:11px !important; border-radius:6px !important; margin:0 !important; display:flex !important; align-items:center !important; justify-content:center !important;}"
+    /* Diğer Aksiyon Butonları Alanı (2 Sütun Düzen) */
+    +".card.dh-split .card-actions{display:grid !important; grid-template-columns:1fr 1fr !important; gap:4px !important; margin:0 !important; padding:0 !important; order:2 !important;}"
+    +".card.dh-split .card-actions button, .card.dh-split .card-actions .btn{min-height:30px !important; max-height:34px !important; padding:2px 4px !important; font-size:11px !important; border-radius:6px !important; margin:0 !important; display:flex !important; align-items:center !important; justify-content:center !important;}"
     
-    /* Yatay modda kalabalık yapan ekstra büyük butonları zorla ezerek yok et */
-    +".card.dh-split .card-actions .teacher-btn, .card.dh-split .card-actions .extra-weak, .card.dh-split button:contains('Öğretmen'), .card.dh-split button:contains('Zayıf') { display:none !important; width:0 !important; height:0 !important; margin:0 !important; padding:0 !important; }"
+    /* Orijinal kalabalık butonları ez */
+    +".card.dh-split .card-actions .teacher-btn, .card.dh-split .card-actions .extra-weak { display:none !important; }"
     
-    /* Navigasyon Alt Barı (Önceki - Araçlar - Sonraki) */
-    +".study-nav.dh-card-nav{margin:0 !important; padding:0 !important; gap:4px !important;}"
-    +".study-nav.dh-card-nav .btn{min-height:32px !important; font-size:12px !important; border-radius:8px !important;}"
-    +".dh-tools-toggle{min-height:32px !important; padding:0 8px !important; border-radius:8px !important;}"
+    /* Navigasyon Alt Barı (Önceki - Araçlar - Sonraki) En Altta Rahatça Kalacak */
+    +".study-nav.dh-card-nav{margin:0 !important; padding:0 !important; gap:4px !important; order:3 !important; width:100% !important; display:flex !important;}"
+    +".study-nav.dh-card-nav .btn{min-height:34px !important; font-size:12px !important; border-radius:8px !important; flex:1 !important;}"
+    +".dh-tools-toggle{min-height:34px !important; padding:0 8px !important; border-radius:8px !important;}"
     
-    /* Chip/Seviye alanlarını kesin gizle */
+    /* Üst seviye etiketlerini gizle */
     +".card.dh-split > div:has(.chip-level), .card.dh-split div[class*='chip']{display:none !important}"
     +"}"
     /* Sağ sütun alt bar ayarları */
@@ -93,7 +95,7 @@
     /* Araçlar paneli popup */
     +".dh-tools-box{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:8999;width:90%;max-width:400px;margin:0;padding:14px;max-height:50vh;overflow-y:auto;border-radius:16px;background:#0d1a30;border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 40px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px;animation:dhToolsUp .2s ease}"
     +"@keyframes dhToolsUp{from{transform:translate(-50%, 10px);opacity:.4}to{transform:translate(-50%, 0);opacity:1}}"
-    +".dh-tools-box.dh-hidden{display:none !important}"
+    +".dh-hidden{display:none !important}"
     +".dh-tools-box .dh-custom-btn{width:100%;min-height:42px;border-radius:10px;display:flex !important;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.15);font-weight:800;font-size:13px;cursor:pointer;background:#1e293b;color:#f8fafc;}"
     +".dh-tools-box .dh-custom-btn:hover{background:#334155}"
     +".dh-tools-box .wd-tools-row{margin-top:0 !important}"
