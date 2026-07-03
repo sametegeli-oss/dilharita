@@ -19,10 +19,12 @@
     /* ---- 2 SÜTUN DÜZEN (practice.html tarzı) ---- */
     +".dh-col-left,.dh-col-right{display:block}"
     +"@media(min-width:760px){"
-    +".card.dh-split{display:grid !important;grid-template-columns:1.35fr 1fr;gap:16px;align-items:start}"
-    +".card.dh-split .dh-col-right{display:flex;flex-direction:column;gap:9px}"
-    +".card.dh-split .dh-grade-under{flex-direction:column !important;gap:8px}"
-    +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:8px}"
+    +".card.dh-split{display:grid !important;grid-template-columns:1.35fr 1fr;gap:18px;align-items:start}"
+    +".card.dh-split .dh-col-left{min-width:0}"
+    +".card.dh-split .dh-col-right{min-width:0;display:flex;flex-direction:column;gap:9px;justify-content:flex-start}"
+    +".card.dh-split .sm-img-wrap{margin:8px 0}"
+    +".card.dh-split .dh-grade-under{flex-direction:column !important;gap:8px;margin:0}"
+    +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}"
     +"}"
     +".study-nav.dh-fixed-nav{position:fixed !important;left:0;right:0;bottom:0;z-index:9000;display:flex !important;gap:8px;align-items:center;justify-content:space-between;margin:0 !important;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(9,15,28,.96);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.10);box-shadow:0 -8px 30px rgba(0,0,0,.4)}"
     +".study-nav.dh-fixed-nav .btn{flex:1;min-height:48px;font-size:15px !important;font-weight:800 !important;border-radius:14px !important}"
@@ -68,18 +70,27 @@
     var left=document.createElement("div"); left.className="dh-col-left";
     var right=document.createElement("div"); right.className="dh-col-right";
 
-    // SOL: resim (.sm-img-wrap) + cümle + tr + pron + gtr butonu
-    var moveLeft=[".sm-img-wrap",".card-en",".card-tr",".card-pron",".dh-gtr-btn"];
-    moveLeft.forEach(function(sel){
+    // seviye etiketleri (A1/Negation/Present Simple) — .card-en'in hemen öncesindeki div
+    var chipRow=null;
+    if(enEl.previousElementSibling && !enEl.previousElementSibling.classList.contains("sm-img-wrap")){
+      chipRow=enEl.previousElementSibling;
+    }
+
+    // SOL — DOĞRU SIRAYLA: etiketler → resim → cümle → tr → pron → gtr
+    if(chipRow) left.appendChild(chipRow);
+    [".sm-img-wrap",".card-en",".card-tr",".card-pron",".dh-gtr-btn"].forEach(function(sel){
       var el=card.querySelector(sel);
-      if(el) left.appendChild(el);
+      if(el && el.parentElement!==left) left.appendChild(el);
     });
-    // SAĞ: grade + actions
+
+    // SAĞ: "ne kadar biliyorsun" başlığı + grade + actions
+    var q=[].slice.call(card.querySelectorAll("*")).find(function(e){
+      return e.children.length===0 && /ne kadar biliyorsun/i.test(e.textContent||"");
+    });
+    if(q) right.appendChild(q);
     right.appendChild(grade);
     right.appendChild(actions);
-    // araçlar toggle+box body'de sabit, dokunma
 
-    // kartın başına sol+sağ ekle
     card.insertBefore(left, card.firstChild);
     card.appendChild(right);
     card.classList.add("dh-split");
