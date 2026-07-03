@@ -1,8 +1,8 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v10 — döngüsüz, kararlı sürüm)
-   1) "Bu cümleyi ne kadar biliyorsun?" yazısı kaldırıldı.
-   2) Öğretmen ve Zayıf Analiz ana ekranda CSS ile tamamen gizlendi (Sonsuz döngü bitti).
-   3) Araçlar panelinde sabit tetikleyiciler oluşturuldu, mükerrer buton üretimi engellendi.
-   4) Zor/Normal/Kolay → Yan yana (flex-row) kompakt düzende sığdırıldı.
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v11 — yatayda başlık gizleme)
+   1) Ekran YATAY (landscape) olduğunda modül adı ve üst çubuk tamamen kaldırılır, dikeyde görünür.
+   2) Öğretmen ve Zayıf Analiz butonları arka planda CSS ile gizlendi (Sonsuz döngü engelli).
+   3) Araçlar panelinde sabit tetikleyiciler (proxy) çalışır.
+   4) Zor/Normal/Kolay → Yan yana (flex-row) kompakt düzendedir.
 */
 (function(){
   "use strict";
@@ -16,9 +16,17 @@
      ".legend,.legend-item,.legend-dot{display:none !important}"
     +".study-nav .legend,.study-nav .legend-item{display:none !important}"
     
-    /* Ana arayüzdeki Öğretmen ve Zayıf Analiz butonlarını alan kaplamayacak şekilde KESİN GİZLE */
+    /* Ana arayüzdeki Öğretmen ve Zayıf Analiz butonlarını gizle */
     +".card-actions .teacher-btn, .card-actions .extra-weak, button.teacher-btn, button.extra-weak { display:none !important; width:0 !important; height:0 !important; margin:0 !important; padding:0 !important; overflow:hidden !important; position:absolute !important; pointer-events:none !important; }"
     
+    /* ---- EKRAN YATAYKEN ÜST MODÜL BAŞLIĞINI KALDIRMA ---- */
+    +"@media (orientation: landscape) {"
+      /* Genelde üst bar .study-header, .app-header veya kartın üstündeki sibling elementlerdir */
+      +".study-header, .app-header, .practice-header, div[class*='header']:not(.card), div[class*='top-bar'] { display:none !important; }"
+      /* Görseldeki sol üstteki geri oku/liste butonu ve sağ üstteki 8/25 modül adının olduğu satırı kapsar */
+      +".card ~ div:first-of-type, body > div > div:first-child:not(.card) { display:none !important; }"
+    +"}"
+
     /* ---- 2 SÜTUN DÜZEN ---- */
     +".dh-col-left,.dh-col-right{display:block}"
 +"@media (orientation:landscape),(min-width:680px){"
@@ -132,7 +140,6 @@
       right.className="dh-col-right";
     }
     
-    // "ne kadar biliyorsun" yazısını bul ve kaldır
     var q=[].slice.call(card.querySelectorAll("*")).find(function(e){
       return e.children.length===0 && /ne kadar biliyorsun/i.test(e.textContent||"");
     });
@@ -156,7 +163,6 @@
       box.id="dhToolsBox"; box.className="dh-tools-box dh-hidden";
       box.innerHTML='<div class="dh-tools-title">🛠 Araçlar</div>';
       
-      // Panel içine sonsuz döngüye girmeyen 1'er adet sabit tetikleyici buton ekle
       var btnTeacher = document.createElement("button");
       btnTeacher.className = "dh-custom-btn"; btnTeacher.innerHTML = "🎓 Öğretmen";
       btnTeacher.onclick = function(){
