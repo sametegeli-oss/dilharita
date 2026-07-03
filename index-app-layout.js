@@ -1,6 +1,6 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v5 — içerik altı gezinme)
-   1) İleri/geri (.study-nav) → Sağ sütunda butonların ALTINA taşındı
-   2) "🛠 Araçlar" butonu → Önceki ile Sonraki ARASINA (nav içinde)
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v6 — temiz ve kompakt sağ panel)
+   1) Öğretmen ve Zayıf Analiz butonları ana karttan KALDIRILDI (Araçlar içinde mevcut)
+   2) İleri/geri/araçlar (.study-nav) → Sağ sütunda boşa çıkan alt alana sığdırıldı
    3) Zor/Normal/Kolay → cümlenin Türkçesinin (.card-tr) ALTINA
    4) Detay + Zayıf Analiz + Öğretmen + 9'lu ızgara → Araçlar panelinde
 */
@@ -27,12 +27,12 @@
 +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}"
 +".card.dh-split .card-actions button{min-height:32px !important;padding:6px 10px !important;font-size:12px !important;border-radius:9px !important}"
 +"}"
-    /* Sabit alt bar iptal edildi, normal akışa alındı */
-    +".study-nav.dh-card-nav{position:relative !important;display:flex !important;gap:8px;align-items:center;justify-content:space-between;margin:12px 0 0 !important;padding:0 !important;background:transparent !important;border-top:none !important;box-shadow:none !important}"
-    +".study-nav.dh-card-nav .btn{flex:1;min-height:44px;font-size:14px !important;font-weight:800 !important;border-radius:12px !important}"
+    /* Sağ sütuna sığdırılan alt bar ayarları */
+    +".study-nav.dh-card-nav{position:relative !important;display:flex !important;gap:6px;align-items:center;justify-content:space-between;margin:10px 0 0 !important;padding:0 !important;background:transparent !important;border-top:none !important;box-shadow:none !important;width:100%}"
+    +".study-nav.dh-card-nav .btn{flex:1;min-height:40px;font-size:13px !important;font-weight:800 !important;border-radius:10px !important;padding:4px 8px !important}"
     +".study-nav.dh-card-nav > *:not(.btn):not(.dh-tools-toggle){flex:0 0 auto}"
-    /* Araçlar butonu */
-    +".dh-tools-toggle{flex:0 0 auto !important;min-height:44px;padding:0 12px;border:1px solid rgba(255,255,255,.14);border-radius:12px;background:#17233a;color:#eaf2ff;font:900 13px Nunito,system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}"
+    /* Kompakt Araçlar butonu */
+    +".dh-tools-toggle{flex:0 0 auto !important;min-height:40px;padding:0 12px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:#17233a;color:#eaf2ff;font:900 13px Nunito,system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}"
     +".dh-tools-toggle:hover{background:#22304f}"
     +".dh-tools-toggle .chev{transition:transform .2s;font-size:11px}"
     +".dh-tools-toggle.open .chev{transform:rotate(180deg)}"
@@ -40,7 +40,7 @@
     +".dh-gtr-btn{display:inline-flex;align-items:center;gap:6px;margin:8px 0 2px;padding:8px 14px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:#1a2942;color:#cfe0ff;font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}"
     +".dh-gtr-btn:hover{background:#22344f}"
     +".dh-grade-under button{flex:1;min-height:44px;border-radius:12px;font-weight:800;font-size:14px;border:1px solid rgba(255,255,255,.14);cursor:pointer}"
-    /* Araçlar paneli: Kartın üzerinde açılan akıllı panel */
+    /* Araçlar paneli popup ayarı */
     +".dh-tools-box{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:8999;width:90%;max-width:400px;margin:0;padding:14px;max-height:50vh;overflow-y:auto;border-radius:16px;background:#0d1a30;border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 40px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px;animation:dhToolsUp .2s ease}"
     +"@keyframes dhToolsUp{from{transform:translate(-50%, 10px);opacity:.4}to{transform:translate(-50%, 0);opacity:1}}"
     +".dh-tools-box.dh-hidden{display:none !important}"
@@ -67,7 +67,7 @@
     if(!nav) return null;
     if(!nav.classList.contains("dh-card-nav")) nav.classList.add("dh-card-nav");
     
-    // Gezinme çubuğunu sağ sütunun (butonların) en altına taşı
+    // Gezinme çubuğunu sağ sütunun (Zor/Normal/Kolay'ın) hemen altına ekle
     if(rightCol && nav.parentElement !== rightCol){
       rightCol.appendChild(nav);
     }
@@ -132,7 +132,10 @@
     });
     if(q) right.appendChild(q);
     right.appendChild(grade);
+    
+    // card-actions içindeki "Dinle" ve "Yavaş" butonlarını sağ sütunda tutuyoruz
     right.appendChild(actions);
+    
     card.appendChild(right);
     card.classList.add("dh-split");
     card.dataset.dhSplitDone="1";
@@ -157,22 +160,42 @@
         toggle.classList.toggle("open", !hid);
       };
     }
+    
+    // Toggle butonunu nav içinde ortaya yerleştir
     if(nav && toggle.parentElement!==nav){
       var btns=[].slice.call(nav.querySelectorAll(".btn"));
       if(btns.length>=2){ nav.insertBefore(toggle, btns[btns.length-1]); }
       else nav.appendChild(toggle);
     }
+
     if(card && card.dataset.dhToolsFilled!=="1"){
+      // Öğretmen butonunu ana ekrandan bul, gizle/kaldır ve sadece PANEL içine ekle
       var teacher=card.querySelector(".teacher-btn")||btnByText(card,"öğretmen");
-      if(teacher && !/sor/i.test(teacher.textContent||"")){ teacher.classList.add("dh-moved-btn"); box.appendChild(teacher); }
+      if(teacher && !/sor/i.test(teacher.textContent||"")){ 
+        teacher.classList.add("dh-moved-btn"); 
+        box.appendChild(teacher); 
+      }
+      
       var teacherAsk=[].slice.call(card.querySelectorAll("button,a")).find(function(b){
         return /öğretmene sor/i.test(b.textContent||"");
       });
-      if(teacherAsk){ teacherAsk.style.display=""; teacherAsk.classList.add("dh-moved-btn"); box.appendChild(teacherAsk); }
+      if(teacherAsk){ 
+        teacherAsk.style.display=""; 
+        teacherAsk.classList.add("dh-moved-btn"); 
+        box.appendChild(teacherAsk); 
+      }
+      
+      // Detay butonunu panele taşı
       var detay=btnByText(card,"detay");
       if(detay){ detay.classList.add("dh-moved-btn"); box.appendChild(detay); }
+      
+      // Zayıf Analiz butonunu ana ekrandan bul, kaldır ve sadece PANEL içine ekle
       var weak=card.querySelector(".extra-weak")||btnByText(card,"zayıf");
-      if(weak){ weak.classList.add("dh-moved-btn"); box.appendChild(weak); }
+      if(weak){ 
+        weak.classList.add("dh-moved-btn"); 
+        box.appendChild(weak); 
+      }
+      
       card.dataset.dhToolsFilled="1";
     }
     var grid=document.querySelector(".wd-tools-row");
