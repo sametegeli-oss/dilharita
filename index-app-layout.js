@@ -1,8 +1,8 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v12 — Çakışma Önleyici Tam Ekran Sürümü)
-   1) Yatay modda İngilizce ve Türkçe metinler resmin üzerine bindirildi; butonların kapanması engellendi.
-   2) Öğretmen ve Zayıf Analiz ana ekranda CSS ile tamamen gizlendi (Sonsuz döngü bitti).
-   3) Araçlar panelinde sabit tetikleyiciler oluşturuldu, mükerrer buton üretimi engellendi.
-   4) Mobil yatay modda (Landscape) 0-Scroll (Kaydırmasız) tam ekran düzeni sağlandı.
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v13 — Kesin Çözüm ve Tam Uyum Sürümü)
+   1) Seçici mantığı güncellendi; DOM değişikliklerinden etkilenmeden kartı kesin bulur.
+   2) İngilizce, Okunuş (IPA) ve Türkçe metinler tamamen sol sütundaki resim alanına gömüldü.
+   3) Üst bar, liste butonu ve ilerleme çubuğu yatay modda zorla gizlendi.
+   4) Sağ taraftaki tüm butonlar 2'li grid düzene alınarak alt navigasyonun önü tamamen açıldı.
 */
 (function(){
   "use strict";
@@ -15,7 +15,7 @@
     s.textContent =
      ".legend,.legend-item,.legend-dot{display:none !important}"
     /* YATAY (landscape) modda üst modül barı + ilerleme çubuğu gizli; dikeyde görünür */
-    +"@media (orientation:landscape){.study-header,.study-progress{display:none !important}}"
+    +"@media (orientation:landscape){.study-header,.study-progress,.study-header *, [class*='header'], :has(> .btn:contains('Liste')){display:none !important}}"
     +".study-nav .legend,.study-nav .legend-item{display:none !important}"
     
     /* Ana arayüzdeki Öğretmen ve Zayıf Analiz butonlarını alan kaplamayacak şekilde KESİN GİZLE */
@@ -24,9 +24,9 @@
     /* ---- 2 SÜTUN DÜZEN ---- */
     +".dh-col-left,.dh-col-right{display:block}"
 +"@media (orientation:landscape),(min-width:680px){"
-+".card.dh-split{display:grid !important;grid-template-columns:1.4fr 1fr;gap:14px 16px;align-items:start}"
++".card.dh-split{display:grid !important;grid-template-columns:1.4fr 1fr !important;gap:14px 16px;align-items:start}"
 +".card.dh-split>*{grid-column:1;min-width:0}"
-+".card.dh-split>.dh-col-right{grid-column:2;grid-row:1/99;display:flex;flex-direction:column;gap:6px;align-self:start;margin-top:0 !important}"
++".card.dh-split>.dh-col-right{grid-column:2 !important;grid-row:1/99 !important;display:flex !important;flex-direction:column !important;gap:6px;align-self:start;margin-top:0 !important}"
 +".card.dh-split .sm-img-wrap{margin:6px 0}"
 +".card.dh-split .dh-grade-under{flex-direction:row !important;gap:4px !important;margin:0;width:100%;box-sizing:border-box}"
 +".card.dh-split .dh-grade-under button{flex:1 !important;min-height:32px !important;padding:4px 2px !important;font-size:12px !important;border-radius:8px !important;white-space:nowrap;overflow:hidden}"
@@ -34,48 +34,50 @@
 +".card.dh-split .card-actions button{min-height:32px !important;padding:6px 10px !important;font-size:12px !important;border-radius:9px !important}"
 +"}"
     /* ---- YATAY MOBİL: TEK EKRANA SIĞDIR (KAYDIRMA YOK - TAM EKRAN MODU) ---- */
-    +"@media (orientation:landscape) and (max-width:767px){"
-    +".study-header, .study-progress, .study-header *, [class*='header'], :has(> .btn:contains('Liste')){display:none !important}"
+    +"@media (orientation:landscape) and (max-width:920px){"
+    +".study-header, .study-progress, .study-header *, [class*='header']{display:none !important}"
     +"body, html {overflow:hidden !important; height:100vh !important; max-height:100vh !important; padding:0 !important; margin:0 !important; background:#040a18 !important;}"
-    +".study-main{padding:6px !important; margin:0 !important; height:100vh !important; display:flex !important; align-items:center !important; justify-content:center !important; box-sizing:border-box !important;}"
+    +".study-main{padding:4px !important; margin:0 !important; height:100vh !important; display:flex !important; align-items:center !important; justify-content:center !important; box-sizing:border-box !important;}"
     
     /* Ana Kartı Tam Ekran Yap */
-    +".card.dh-split{width:100vw !important; height:96vh !important; max-height:96vh !important; padding:8px !important; gap:8px 12px !important; margin:0 !important; box-sizing:border-box !important; overflow:hidden !important; grid-template-columns:1.3fr 1fr !important; align-items:stretch !important;}"
+    +".card.dh-split{width:100vw !important; height:98vh !important; max-height:98vh !important; padding:6px !important; gap:6px 10px !important; margin:0 !important; box-sizing:border-box !important; overflow:hidden !important; grid-template-columns:1.3fr 1fr !important; align-items:stretch !important;}"
     
-    /* SOL SÜTUN: Resim Sarıcı Konumlandırması */
-    +".card.dh-split .sm-img-wrap{grid-row:1/3 !important; grid-column:1 !important; margin:0 !important; height:100% !important; position:relative !important; display:flex !important; flex-direction:column !important;}"
+    /* SOL SÜTUN: Resim Sarıcı Alanı */
+    +".card.dh-split .sm-img-wrap{grid-row:1/3 !important; grid-column:1 !important; margin:0 !important; height:100% !important; position:relative !important; display:flex !important; flex-direction:column !important; overflow:hidden !important; border-radius:10px !important;}"
     +".card.dh-split .sm-img-wrap img, .card.dh-split .sm-img{height:100% !important; max-height:100% !important; width:100% !important; object-fit:cover !important; display:block !important; border-radius:10px !important;}"
     
-    /* İngilizce Cümle (Resmin Altına Katman Olarak Bindirme) */
-    +".card.dh-split .card-en{position:absolute !important; bottom:28px !important; left:0 !important; right:0 !important; z-index:5 !important; margin:0 !important; padding:6px 10px !important; background:rgba(4,10,24,.80) !important; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); border-radius:0 !important; font-size:15px !important; line-height:1.2 !important; text-align:center !important; width:100% !important; box-sizing:border-box !important;}"
+    /* İngilizce Cümle (Resmin Üstüne Alt Ortaya Bindirme) */
+    +".card.dh-split .card-en{position:absolute !important; bottom:40px !important; left:0 !important; right:0 !important; z-index:10 !important; margin:0 !important; padding:6px 10px !important; background:rgba(4,10,24,.85) !important; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); font-size:15px !important; line-height:1.2 !important; text-align:center !important; width:100% !important; box-sizing:border-box !important;}"
     
-    /* Türkçe Anlam (Resmin En Altına Şerit Olarak Bindirme - Düğmeleri Kapatması Engellendi) */
-    +".card.dh-split .card-tr{position:absolute !important; bottom:0 !important; left:0 !important; right:0 !important; z-index:5 !important; margin:0 !important; padding:4px 10px !important; background:rgba(10,25,50,.90) !important; color:#9fb3d9 !important; border-radius:0 0 10px 10px !important; font-size:12px !important; line-height:1.2 !important; text-align:center !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100% !important; box-sizing:border-box !important; grid-row:auto !important; grid-column:auto !important;}"
+    /* Okunuş / IPA Satırı (Yatayda Alanı Korumak İçin Küçük Şeritle Resme Gömdük) */
+    +".card.dh-split .card-pron{position:absolute !important; bottom:22px !important; left:0 !important; right:0 !important; z-index:9 !important; margin:0 !important; padding:2px 10px !important; background:rgba(4,10,24,.70) !important; font-size:11px !important; text-align:center !important; color:#ecc94b !important; width:100% !important; box-sizing:border-box !important; display:block !important;}"
     
-    /* Yer kazanmak için gereksiz alanları uçur */
-    +".card.dh-split .card-pron{display:none !important;}" 
+    /* Türkçe Anlam (Resmin En Altına Şerit Olarak Yapışır) */
+    +".card.dh-split .card-tr{position:absolute !important; bottom:0 !important; left:0 !important; right:0 !important; z-index:10 !important; margin:0 !important; padding:4px 10px !important; background:rgba(12,24,48,.95) !important; color:#cfe0ff !important; font-size:12px !important; line-height:1.2 !important; text-align:center !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100% !important; box-sizing:border-box !important; grid-row:auto !important; grid-column:auto !important;}"
+    
+    /* Gereksiz ekstra butonları uçur */
     +".card.dh-split .dh-gtr-btn{display:none !important;}"
     
-    /* SAĞ SÜTUN: Buton Alanı */
+    /* SAĞ SÜTUN: Buton Alanı Koruması */
     +".card.dh-split .dh-col-right{grid-column:2 !important; grid-row:1/3 !important; display:flex !important; flex-direction:column !important; justify-content:space-between !important; height:100% !important; gap:4px !important; margin:0 !important; overflow:hidden !important;}"
     
     /* Zor-Normal-Kolay Grubu */
     +".card.dh-split .dh-grade-under{margin:0 !important; gap:4px !important; display:flex !important; order:1 !important;}"
-    +".card.dh-split .dh-grade-under button{min-height:30px !important; padding:2px !important; font-size:11px !important; border-radius:6px !important;}"
+    +".card.dh-split .dh-grade-under button{min-height:32px !important; padding:2px !important; font-size:11px !important; border-radius:6px !important;}"
     
-    /* Diğer Aksiyon Butonları Alanı (2 Sütun Düzen) */
+    /* Diğer Aksiyon Butonları Alanı (Yan Yana Çift Sütun Yapısı) */
     +".card.dh-split .card-actions{display:grid !important; grid-template-columns:1fr 1fr !important; gap:4px !important; margin:0 !important; padding:0 !important; order:2 !important;}"
-    +".card.dh-split .card-actions button, .card.dh-split .card-actions .btn{min-height:30px !important; max-height:34px !important; padding:2px 4px !important; font-size:11px !important; border-radius:6px !important; margin:0 !important; display:flex !important; align-items:center !important; justify-content:center !important;}"
+    +".card.dh-split .card-actions button, .card.dh-split .card-actions .btn{min-height:32px !important; max-height:34px !important; padding:2px 4px !important; font-size:11px !important; border-radius:6px !important; margin:0 !important; display:flex !important; align-items:center !important; justify-content:center !important;}"
     
-    /* Orijinal kalabalık butonları ez */
+    /* Orijinal kalabalık yaratan gizli butonlar */
     +".card.dh-split .card-actions .teacher-btn, .card.dh-split .card-actions .extra-weak { display:none !important; }"
     
-    /* Navigasyon Alt Barı (Önceki - Araçlar - Sonraki) En Altta Rahatça Kalacak */
-    +".study-nav.dh-card-nav{margin:0 !important; padding:0 !important; gap:4px !important; order:3 !important; width:100% !important; display:flex !important;}"
-    +".study-nav.dh-card-nav .btn{min-height:34px !important; font-size:12px !important; border-radius:8px !important; flex:1 !important;}"
-    +".dh-tools-toggle{min-height:34px !important; padding:0 8px !important; border-radius:8px !important;}"
+    /* Alt Navigasyon Barı (Önceki - Araçlar - Sonraki) Artık En Altta Asla Kapanmaz */
+    +".study-nav.dh-card-nav{margin:0 !important; padding:0 !important; gap:4px !important; order:3 !important; width:100% !important; display:flex !important; position:relative !important; bottom:0 !important;}"
+    +".study-nav.dh-card-nav .btn{min-height:36px !important; font-size:12px !important; border-radius:8px !important; flex:1 !important;}"
+    +".dh-tools-toggle{min-height:36px !important; padding:0 8px !important; border-radius:8px !important;}"
     
-    /* Üst seviye etiketlerini gizle */
+    /* Üst çip etiketlerini gizle */
     +".card.dh-split > div:has(.chip-level), .card.dh-split div[class*='chip']{display:none !important}"
     +"}"
     /* Sağ sütun alt bar ayarları */
@@ -105,7 +107,8 @@
 
   function currentCard(){
     var cards=[].slice.call(document.querySelectorAll(".card"));
-    return cards.find(function(c){ return c.querySelector(".card-en") && c.querySelector(".card-actions"); });
+    // Sadece .card-en barındıran en geniş kapsayıcıyı seçerek esnekliği artırıyoruz
+    return cards.find(function(c){ return c.querySelector(".card-en") || c.querySelector("[class*='card-en']"); });
   }
 
   function btnByText(root, txt){
@@ -116,7 +119,7 @@
   }
 
   function fixNav(rightCol){
-    var nav=document.querySelector(".study-nav");
+    var nav=document.querySelector(".study-nav") || document.querySelector("[class*='study-nav']");
     if(!nav) return null;
     if(!nav.classList.contains("dh-card-nav")) nav.classList.add("dh-card-nav");
     
@@ -128,39 +131,19 @@
 
   function moveGrade(card){
     if(card.dataset.dhGradeDone==="1") return;
-    var tr=card.querySelector(".card-tr"); if(!tr) return;
+    var tr=card.querySelector(".card-tr") || card.querySelector("[class*='card-tr']"); 
+    if(!tr) return;
 
-    if(!card.querySelector(".dh-gtr-btn")){
-      var en=card.querySelector(".card-en");
-      if(en){
-        var gb=document.createElement("button");
-        gb.type="button"; gb.className="dh-gtr-btn";
-        gb.innerHTML="🌐 Google Translate";
-        gb.onclick=function(){
-          var txt=(en.textContent||"").trim();
-          if(!txt) return;
-          function fallbackCopy(x){ try{ var ta=document.createElement("textarea"); ta.value=x; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }catch(e){} }
-          try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).catch(function(){ fallbackCopy(txt); }); } else { fallbackCopy(txt); } }catch(e){ fallbackCopy(txt); }
-          try{
-            var n=document.createElement("div");
-            n.textContent="📋 Cümle kopyalandı — Translate'te yapıştır";
-            n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #2563eb;padding:12px 18px;border-radius:12px;font:700 13px system-ui;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:90vw;text-align:center";
-            document.body.appendChild(n);
-            setTimeout(function(){ n.style.transition="opacity .4s"; n.style.opacity="0"; setTimeout(function(){ n.remove(); },400); },3000);
-          }catch(e){}
-          window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(txt), "_blank");
-        };
-        tr.insertAdjacentElement("afterend", gb);
-      }
-    }
     var zor=card.querySelector(".grade-hard")||btnByText(card,"zor");
     var nor=card.querySelector(".grade-normal")||btnByText(card,"normal");
     var kol=card.querySelector(".grade-easy")||btnByText(card,"kolay");
     if(!(zor&&nor&&kol)) return;
+    
     var grp=card.querySelector(".dh-grade-under");
     if(!grp){ grp=document.createElement("div"); grp.className="dh-grade-under"; }
     grp.appendChild(zor); grp.appendChild(nor); grp.appendChild(kol);
-    var anchor=card.querySelector(".card-pron")||tr;
+    
+    var anchor=card.querySelector(".card-pron") || card.querySelector("[class*='card-pron']") || tr;
     anchor.insertAdjacentElement("afterend", grp);
     card.dataset.dhGradeDone="1";
   }
@@ -168,9 +151,11 @@
   function splitCard(card){
     if(card.dataset.dhSplitDone==="1") return card.querySelector(".dh-col-right");
     
-    var enEl=card.querySelector(".card-en"); if(!enEl){ return null; }
+    var enEl=card.querySelector(".card-en") || card.querySelector("[class*='card-en']"); 
+    if(!enEl){ return null; }
+    
     var grade=card.querySelector(".dh-grade-under");
-    var actions=card.querySelector(".card-actions");
+    var actions=card.querySelector(".card-actions") || card.querySelector("[class*='card-actions']");
     if(!grade || !actions){ return null; }
 
     var right=card.querySelector(".dh-col-right");
@@ -179,7 +164,7 @@
       right.className="dh-col-right";
     }
     
-    // "ne kadar biliyorsun" yazısını bul ve kaldır
+    // "ne kadar biliyorsun" yazısını temizle
     var q=[].slice.call(card.querySelectorAll("*")).find(function(e){
       return e.children.length===0 && /ne kadar biliyorsun/i.test(e.textContent||"");
     });
@@ -203,7 +188,6 @@
       box.id="dhToolsBox"; box.className="dh-tools-box dh-hidden";
       box.innerHTML='<div class="dh-tools-title">🛠 Araçlar</div>';
       
-      // Panel içine sonsuz döngüye girmeyen 1'er adet sabit tetikleyici buton ekle
       var btnTeacher = document.createElement("button");
       btnTeacher.className = "dh-custom-btn"; btnTeacher.innerHTML = "🎓 Öğretmen";
       btnTeacher.onclick = function(){
