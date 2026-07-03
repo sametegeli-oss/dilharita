@@ -14,6 +14,8 @@
     var s=document.createElement("style"); s.id=STYLE_ID;
     s.textContent =
      ".legend,.legend-item,.legend-dot{display:none !important}"
+    /* YATAY (landscape) modda üst modül barı + ilerleme çubuğu gizli; dikeyde görünür */
+    +"@media (orientation:landscape){.study-header,.study-progress{display:none !important}}"
     +".study-nav .legend,.study-nav .legend-item{display:none !important}"
     
     /* Ana arayüzdeki Öğretmen ve Zayıf Analiz butonlarını alan kaplamayacak şekilde KESİN GİZLE */
