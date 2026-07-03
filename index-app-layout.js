@@ -1,6 +1,6 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v16 — Kesin Temizlik ve Düzen Sürümü)
-   1) Öğretmen ve Zayıf Analiz butonları DOM seviyesinde metin kontrolüyle tamamen silindi.
-   2) Önceki - Araçlar - Sonraki navigasyon barı Zor-Normal-Kolay grubunun hemen altına taşındı.
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v17 — Yanıp Sönme / Titreme Engelleyici Kararlı Sürüm)
+   1) Öğretmen ve Zayıf Analiz butonları silinmek yerine CSS ile görünmez kılınarak sonsuz döngü/titreme bitirildi.
+   2) Önceki - Araçlar - Sonraki navigasyon barı Zor-Normal-Kolay grubunun hemen altına sabitlendi.
    3) İngilizce, Okunuş ve Türkçe metinler kesin olarak sol sütundaki resim alanına gömüldü.
    4) Mobil yatay modda (Landscape) 0-Scroll (Kaydırmasız) tam ekran düzeni sağlandı.
 */
@@ -17,6 +17,13 @@
     /* YATAY (landscape) modda üst modül barı + ilerleme çubuğu gizli; dikeyde görünür */
     +"@media (orientation:landscape){.study-header,.study-progress,.study-header *, [class*='header'], :has(> .btn:contains('Liste')){display:none !important}}"
     +" .study-nav .legend,.study-nav .legend-item{display:none !important}"
+    
+    /* ---- ÖĞRETMEN VE ZAYIF ANALİZ BUTONLARINI YANIP SÖNMEDEN KESİN GİZLEME KURALI ---- */
+    +".card-actions .teacher-btn, .card-actions .extra-weak, button.teacher-btn, button.extra-weak, "
+    +"[class*='teacher'], [class*='weak'], :has(> button:contains('Öğretmen')), :has(> button:contains('Zayıf')) {"
+    +"  display:none !important; width:0 !important; height:0 !important; margin:0 !important; padding:0 !important; "
+    +"  overflow:hidden !important; position:absolute !important; pointer-events:none !important; visibility:hidden !important; opacity:0 !important;"
+    +"}"
     
     /* ---- 2 SÜTUN DÜZEN ---- */
     +".dh-col-left,.dh-col-right{display:block}"
@@ -112,14 +119,15 @@
     })||null;
   }
 
-  /* ÖĞRETMEN VE ZAYIF ANALİZ BUTONLARINI DOM'DAN TAMAMEN SİLME METODU */
-  function hardCleanButtons(root){
+  /* BUTONLARI YANIP SÖNMEDEN GİZLEMEK İÇİN SİLMEK YERİNE CSS/STİL ENJEKTE EDEN YENİ METOD */
+  function softHideButtons(root){
     if(!root) return;
     var targets = [].slice.call(root.querySelectorAll("button, a"));
     targets.forEach(function(b){
       var text = (b.textContent || "").toLocaleLowerCase("tr");
       if(text.indexOf("öğretmen") >= 0 || text.indexOf("zayıf") >= 0 || b.classList.contains("teacher-btn") || b.classList.contains("extra-weak")){
-        b.remove();
+        // DOM'dan silmiyoruz, tarayıcıyı kandırmak için görünmez yapıyoruz.
+        b.style.cssText = "display:none !important; width:0 !important; height:0 !important; visibility:hidden !important; opacity:0 !important; position:absolute !important; pointer-events:none !important;";
       }
     });
   }
@@ -155,7 +163,7 @@
   }
 
   function splitCard(card){
-    hardCleanButtons(card); // Bölmeden önce istenmeyen butonları temizle
+    softHideButtons(card); // Butonları yanıp sönmeden yumuşakça gizle
     
     if(card.dataset.dhSplitDone==="1") return card.querySelector(".dh-col-right");
     
@@ -195,7 +203,6 @@
       box.id="dhToolsBox"; box.className="dh-tools-box dh-hidden";
       box.innerHTML='<div class="dh-tools-title">🛠 Araçlar</div>';
       
-      // Panel içinde sadece Detay butonu bırakıldı (Öğretmen ve Zayıf tamamen kalktı)
       var btnDetay = document.createElement("button");
       btnDetay.className = "dh-custom-btn"; btnDetay.innerHTML = "🔍 Detay";
       btnDetay.onclick = function(){
@@ -233,7 +240,7 @@
     try{
       addStyle();
       var card=currentCard();
-      if(card) { hardCleanButtons(card); } // Her taramada butonları zorla temizle
+      if(card) { softHideButtons(card); } // Her döngüde elementleri yumuşakça kör et
       var rightCol=null;
       if(card){ 
         moveGrade(card); 
