@@ -305,6 +305,57 @@
   }
 
   // --- Yerel durumu buluta yaz ---
+  // ---- React modül ilerlemesi köprüsü ----
+  // index-app (React) modül notlarını localStorage'a DEĞİL, IndexedDB'ye yazar:
+  // DB "sentence-mode", kv deposu, anahtarlar "sm:*". Senkron için buradan okuyup yazarız.
+  function smStore(mode, fn){
+    return new Promise(function(res){
+      try{
+        var r=indexedDB.open("sentence-mode");
+        r.onsuccess=function(){
+          var db=r.result;
+          try{
+            var name = db.objectStoreNames.contains("kv") ? "kv" : db.objectStoreNames[0];
+            if(!name){ db.close(); return res(null); }
+            var tx=db.transaction(name, mode), st=tx.objectStore(name);
+            fn(st, tx, res, db);
+          }catch(e){ try{db.close();}catch(_){ } res(null); }
+        };
+        r.onerror=function(){ res(null); };
+      }catch(e){ res(null); }
+    });
+  }
+  function smGetAll(){
+    return smStore("readonly", function(st, tx, res, db){
+      var out={}, req=st.openCursor();
+      req.onsuccess=function(e){
+        var c=e.target.result;
+        if(c){
+          var k=String(c.key);
+          if(k.indexOf("sm:")===0){
+            try{ out[k]=JSON.stringify(c.value); }catch(_){ out[k]=String(c.value); }
+          }
+          c.continue();
+        } else { db.close(); res(out); }
+      };
+      req.onerror=function(){ db.close(); res({}); };
+    }).then(function(v){ return v||{}; });
+  }
+  function smSetMany(obj){
+    var keys=Object.keys(obj||{});
+    if(!keys.length) return Promise.resolve(0);
+    return smStore("readwrite", function(st, tx, res, db){
+      var n=0;
+      keys.forEach(function(k){
+        var v=obj[k];
+        try{ v=JSON.parse(obj[k]); }catch(_){ }
+        try{ st.put(v, k); n++; }catch(_){ }
+      });
+      tx.oncomplete=function(){ db.close(); res(n); };
+      tx.onerror=function(){ db.close(); res(n); };
+    }).then(function(v){ return v||0; });
+  }
+
   // Şişmiş study-tracker ONARIMI: her günün events'ini tekrarsız + en çok 30'a indir.
   // (Eski merge her senkronda events'i katlıyordu → 1MB Firestore limitini aşıp
   //  tüm yazmaları bloke etti. Bu fonksiyon mevcut hasarı temizler.)
@@ -343,7 +394,10 @@
     var local = collectLocal();
     var ts = {};
     for (var i=0;i<LS_KEYS.length;i++){ ts[LS_KEYS[i]] = localTs(LS_KEYS[i]); }
-    return getLocalErrors().then(function(errors){
+    // React modül ilerlemesini IndexedDB'den al, payload'a kat
+    return smGetAll().then(function(sm){
+      for (var sk in sm){ if(sm.hasOwnProperty(sk)) local.ls[sk]=sm[sk]; }
+      return getLocalErrors().then(function(errors){
       var payload = {
         ls: local.ls,
         ts: ts,
@@ -351,6 +405,7 @@
       };
       return fb.saveSettings(user.uid, payload);
     }).catch(function(e){ console.warn("cloud-sync yazma hata:", e); });
+    });
     });
   }
 
@@ -437,6 +492,7 @@
         // BASİT MANTIK: Senkron = buluttakini getir, yerele yaz. Geri yazma yok.
         var pulled = 0;
         // hem sabit LS_KEYS hem prefix'li (mas:/story: vb.) — rd.ls'deki HER anahtarı çek
+        var smIncoming = {};
         if (rd.ls){
           for (var rk in rd.ls){
             if (!rd.ls.hasOwnProperty(rk)) continue;
@@ -447,7 +503,10 @@
             if (!ok){ for (var pp=0; pp<LS_PREFIXES.length; pp++){ if (rk.indexOf(LS_PREFIXES[pp])===0){ ok=true; break; } } }
             if (!ok) continue;
             try{
-              if (rk === "dh-study-tracker-v1"){
+              if (rk.indexOf("sm:")===0){
+                // MODÜL İLERLEMESİ: localStorage'a değil IndexedDB'ye (React oradan okur)
+                smIncoming[rk]=rv; pulled++;
+              } else if (rk === "dh-study-tracker-v1"){
                 // AKTİF GÜNLER: ezme, BİRLEŞTİR (iki cihazın günlerini birleştir)
                 localStorage.setItem(rk, mergeStudyTracker(localStorage.getItem(rk), rv));
               } else if (rk === "dh-progress-mirror-v1"){
@@ -461,6 +520,7 @@
           }
         }
         // hata defteri: buluttan gelenleri yerele ekle (birleştir)
+        return smSetMany(smIncoming).then(function(){
         return mergeRemoteErrors(rd.errors || []).then(function(addedErr){
           // MOBİL: localStorage→IndexedDB köprüsü asenkron. Çekilen veriyi diske ZORLA yaz.
           var flushP = (window.__dhStorageFlush) ? Promise.resolve(window.__dhStorageFlush()).catch(function(){}) : Promise.resolve();
@@ -479,18 +539,19 @@
           });
           });
         });
+        });
       }).then(function(res){
         var parts = [];
         if (res.pulled) parts.push(res.pulled + " ayar buluttan alındı");
         if (res.addedErrors) parts.push(res.addedErrors + " hata kaydı eklendi");
         if (!parts.length) parts.push("bulutta veri yok veya zaten güncel");
-        // TEŞHİS: bu cihazdaki modül (sm:) ve kelime aynası kayıt sayısı — cihazlar arası karşılaştırma için
-        var smCount=0, mirCount=0;
-        try{
-          for(var qi=0; qi<localStorage.length; qi++){ if(String(localStorage.key(qi)).indexOf("sm:")===0) smCount++; }
-          mirCount = Object.keys(JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")).length;
-        }catch(e){}
-        return { ok:true, message:"✓ Buluttan alındı. " + parts.join(", ") + ". [cihazda modül:"+smCount+" · kelime:"+mirCount+"]" };
+        // TEŞHİS: bu cihazdaki modül (IndexedDB sm:) ve kelime aynası kayıt sayısı
+        var mirCount=0;
+        try{ mirCount = Object.keys(JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")).length; }catch(e){}
+        return smGetAll().then(function(sm){
+          var smCount = Object.keys(sm).length;
+          return { ok:true, message:"✓ Buluttan alındı. " + parts.join(", ") + ". [cihazda modül:"+smCount+" · kelime:"+mirCount+"]" };
+        });
       }).catch(function(e){
         var msg = (e && e.message) ? e.message : "bağlantı hatası";
         if (/permission/i.test(msg)) msg = "İzin hatası (Firebase kuralı). Lütfen tekrar dene.";
