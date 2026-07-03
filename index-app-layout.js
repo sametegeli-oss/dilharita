@@ -1,7 +1,7 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v15 — Öğretmen Panelli Sürüm)
-   1) Yatay modda İngilizce, Okunuş ve Türkçe metinler resmin üzerine bindirildi.
-   2) Öğretmen butonu ana ekrandan gizlendi ancak Araçlar panelinde tutuldu.
-   3) Zayıf Analiz butonu arayüzden ve panelden tamamen kaldırıldı.
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v16 — Kesin Temizlik ve Düzen Sürümü)
+   1) Öğretmen ve Zayıf Analiz butonları DOM seviyesinde metin kontrolüyle tamamen silindi.
+   2) Önceki - Araçlar - Sonraki navigasyon barı Zor-Normal-Kolay grubunun hemen altına taşındı.
+   3) İngilizce, Okunuş ve Türkçe metinler kesin olarak sol sütundaki resim alanına gömüldü.
    4) Mobil yatay modda (Landscape) 0-Scroll (Kaydırmasız) tam ekran düzeni sağlandı.
 */
 (function(){
@@ -16,10 +16,7 @@
      ".legend,.legend-item,.legend-dot{display:none !important}"
     /* YATAY (landscape) modda üst modül barı + ilerleme çubuğu gizli; dikeyde görünür */
     +"@media (orientation:landscape){.study-header,.study-progress,.study-header *, [class*='header'], :has(> .btn:contains('Liste')){display:none !important}}"
-    +".study-nav .legend,.study-nav .legend-item{display:none !important}"
-    
-    /* Ana arayüzdeki Öğretmen ve Zayıf Analiz butonlarını alan kaplamayacak şekilde KESİN GİZLE */
-    +".card-actions .teacher-btn, .card-actions .extra-weak, button.teacher-btn, button.extra-weak { display:none !important; width:0 !important; height:0 !important; margin:0 !important; padding:0 !important; overflow:hidden !important; position:absolute !important; pointer-events:none !important; }"
+    +" .study-nav .legend,.study-nav .legend-item{display:none !important}"
     
     /* ---- 2 SÜTUN DÜZEN ---- */
     +".dh-col-left,.dh-col-right{display:block}"
@@ -59,28 +56,26 @@
     +".card.dh-split .dh-gtr-btn{display:none !important;}"
     
     /* SAĞ SÜTUN: Buton Alanı Koruması */
-    +".card.dh-split .dh-col-right{grid-column:2 !important; grid-row:1/3 !important; display:flex !important; flex-direction:column !important; justify-content:space-between !important; height:100% !important; gap:4px !important; margin:0 !important; overflow:hidden !important;}"
+    +".card.dh-split .dh-col-right{grid-column:2 !important; grid-row:1/3 !important; display:flex !important; flex-direction:column !important; justify-content:flex-start !important; height:100% !important; gap:6px !important; margin:0 !important; overflow:hidden !important;}"
     
-    /* Zor-Normal-Kolay Grubu */
-    +".card.dh-split .dh-grade-under{margin:0 !important; gap:4px !important; display:flex !important; order:1 !important;}"
-    +".card.dh-split .dh-grade-under button{min-height:32px !important; padding:2px !important; font-size:11px !important; border-radius:6px !important;}"
+    /* 1. SIRA: Zor-Normal-Kolay Grubu (En Üstte) */
+    +".card.dh-split .dh-grade-under{margin:0 !important; gap:4px !important; display:flex !important; order:1 !important; width:100% !important;}"
+    +".card.dh-split .dh-grade-under button{min-height:34px !important; max-height:36px !important; padding:2px !important; font-size:12px !important; border-radius:6px !important; font-weight:800 !important;}"
     
-    /* Diğer Aksiyon Butonları Alanı (Yan Yana Çift Sütun Yapısı) */
-    +".card.dh-split .card-actions{display:grid !important; grid-template-columns:1fr 1fr !important; gap:4px !important; margin:0 !important; padding:0 !important; order:2 !important;}"
-    +".card.dh-split .card-actions button, .card.dh-split .card-actions .btn{min-height:32px !important; max-height:34px !important; padding:2px 4px !important; font-size:11px !important; border-radius:6px !important; margin:0 !important; display:flex !important; align-items:center !important; justify-content:center !important;}"
+    /* 2. SIRA: Navigasyon Alt Barı (Zor-Normal-Kolay'ın Hemen Altında) */
+    +".study-nav.dh-card-nav{margin:2px 0 !important; padding:0 !important; gap:4px !important; order:2 !important; width:100% !important; display:flex !important; position:relative !important;}"
+    +".study-nav.dh-card-nav .btn{min-height:36px !important; max-height:38px !important; font-size:12px !important; border-radius:8px !important; flex:1 !important; font-weight:800 !important;}"
+    +".dh-tools-toggle{min-height:36px !important; max-height:38px !important; padding:0 10px !important; border-radius:8px !important;}"
     
-    /* Orijinal kalabalık yaratan butonları ez */
-    +".card.dh-split .card-actions .teacher-btn, .card.dh-split .card-actions .extra-weak { display:none !important; }"
-    
-    /* Alt Navigasyon Barı (Önceki - Araçlar - Sonraki) */
-    +".study-nav.dh-card-nav{margin:0 !important; padding:0 !important; gap:4px !important; order:3 !important; width:100% !important; display:flex !important; position:relative !important; bottom:0 !important;}"
-    +".study-nav.dh-card-nav .btn{min-height:36px !important; font-size:12px !important; border-radius:8px !important; flex:1 !important;}"
-    +".dh-tools-toggle{min-height:36px !important; padding:0 8px !important; border-radius:8px !important;}"
+    /* 3. SIRA: Diğer Aksiyon Butonları Alanı (Dinle, Yavaş, Detay) */
+    +".card.dh-split .card-actions{display:grid !important; grid-template-columns:1fr 1fr !important; gap:4px !important; margin:2px 0 0 0 !important; padding:0 !important; order:3 !important; width:100% !important;}"
+    +".card.dh-split .card-actions button, .card.dh-split .card-actions .btn{min-height:32px !important; max-height:36px !important; padding:2px 4px !important; font-size:11px !important; border-radius:6px !important; margin:0 !important; display:flex !important; align-items:center !important; justify-content:center !important;}"
     
     /* Üst çip etiketlerini gizle */
     +".card.dh-split > div:has(.chip-level), .card.dh-split div[class*='chip']{display:none !important}"
     +"}"
-    /* Sağ sütun alt bar ayarları */
+    
+    /* Sağ sütun alt bar varsayılan ayarları */
     +".study-nav.dh-card-nav{position:relative !important;display:flex !important;gap:6px;align-items:center;justify-content:space-between;margin:10px 0 0 !important;padding:0 !important;background:transparent !important;border-top:none !important;box-shadow:none !important;width:100%}"
     +".study-nav.dh-card-nav .btn{flex:1;min-height:40px;font-size:13px !important;font-weight:800 !important;border-radius:10px !important;padding:4px 8px !important}"
     +".study-nav.dh-card-nav > *:not(.btn):not(.dh-tools-toggle){flex:0 0 auto}"
@@ -117,6 +112,18 @@
     })||null;
   }
 
+  /* ÖĞRETMEN VE ZAYIF ANALİZ BUTONLARINI DOM'DAN TAMAMEN SİLME METODU */
+  function hardCleanButtons(root){
+    if(!root) return;
+    var targets = [].slice.call(root.querySelectorAll("button, a"));
+    targets.forEach(function(b){
+      var text = (b.textContent || "").toLocaleLowerCase("tr");
+      if(text.indexOf("öğretmen") >= 0 || text.indexOf("zayıf") >= 0 || b.classList.contains("teacher-btn") || b.classList.contains("extra-weak")){
+        b.remove();
+      }
+    });
+  }
+
   function fixNav(rightCol){
     var nav=document.querySelector(".study-nav") || document.querySelector("[class*='study-nav']");
     if(!nav) return null;
@@ -148,6 +155,8 @@
   }
 
   function splitCard(card){
+    hardCleanButtons(card); // Bölmeden önce istenmeyen butonları temizle
+    
     if(card.dataset.dhSplitDone==="1") return card.querySelector(".dh-col-right");
     
     var enEl=card.querySelector(".card-en") || card.querySelector("[class*='card-en']"); 
@@ -186,14 +195,7 @@
       box.id="dhToolsBox"; box.className="dh-tools-box dh-hidden";
       box.innerHTML='<div class="dh-tools-title">🛠 Araçlar</div>';
       
-      // Panel içerisine sadece Öğretmen ve Detay butonları eklendi.
-      var btnTeacher = document.createElement("button");
-      btnTeacher.className = "dh-custom-btn"; btnTeacher.innerHTML = "🎓 Öğretmen";
-      btnTeacher.onclick = function(){
-        var target = document.querySelector(".card .teacher-btn") || btnByText(document.querySelector(".card"), "öğretmen");
-        if(target) target.click();
-      };
-
+      // Panel içinde sadece Detay butonu bırakıldı (Öğretmen ve Zayıf tamamen kalktı)
       var btnDetay = document.createElement("button");
       btnDetay.className = "dh-custom-btn"; btnDetay.innerHTML = "🔍 Detay";
       btnDetay.onclick = function(){
@@ -201,7 +203,6 @@
         if(target) target.click();
       };
       
-      box.appendChild(btnTeacher);
       box.appendChild(btnDetay);
       document.body.appendChild(box);
     }
@@ -232,6 +233,7 @@
     try{
       addStyle();
       var card=currentCard();
+      if(card) { hardCleanButtons(card); } // Her taramada butonları zorla temizle
       var rightCol=null;
       if(card){ 
         moveGrade(card); 
