@@ -44,6 +44,7 @@
   // Senkronlanacak PREFIX'li anahtarlar (çoklu kayıt: mastery, modül notları, hikayeler).
   // Bu öneklerle başlayan TÜM localStorage anahtarları toplanıp senkronlanır.
   var LS_PREFIXES = [
+    "sm:",         // index-app (React) modül ilerlemesi — Zor/Normal/Kolay notları, kaldığın cümle
     "mas:",        // mastery skorları
     "ev:",         // mastery kanıtları
     "modscore:",   // modül notları
