@@ -1,9 +1,9 @@
-/* index-app-layout.js — DÜZEN TOPARLAYICI (v7 — modül başlığı kaldırıldı, tüm kontroller altta)
-   1) İleri/geri (.study-nav) → altta SABİT çubuk
-   2) "🛠 Araçlar" butonu → Önceki ile Sonraki ARASINA (alt çubukta)
-   3) Zor/Normal/Kolay → cümlenin Türkçesinin (.card-tr) ALTINA
-   4) Detay + Zayıf Analiz + Öğretmen + 9'lu ızgara → Araçlar panelinde (alttan açılır)
-   5) "Modüller" başlığı kaldırıldı, tüm kontroller alt çubukta
+/* index-app-layout.js — DÜZEN TOPARLAYICI (v9 — tüm kontroller kart içinde)
+   1) Tüm üst başlıklar (A1, Confirmation, Present Simple) kaldırıldı
+   2) Zor/Normal/Kolay → cümlenin Türkçesinin (.card-tr) ALTINA
+   3) Detay + Zayıf Analiz + Öğretmen + 9'lu ızgara → Araçlar panelinde
+   4) Önceki, Araçlar, Sonraki butonları → kartın içine (alt kısma) taşındı
+   5) Altta sabit çubuk KALDIRILDI
 */
 (function(){
   "use strict";
@@ -24,104 +24,106 @@
     var s=document.createElement("style"); s.id=STYLE_ID;
     
     var vh = updateViewportHeight();
-    var navHeight = Math.min(56, Math.max(40, vh * 0.085));
-    var toolsHeight = Math.min(200, Math.max(120, vh * 0.32));
-    var cardMaxHeight = vh - navHeight - 6;
     
     s.textContent =
-    /* Modül başlığını gizle */
-    +".app-header, .app-header *, .module-header, .module-title, .top-header, .study-header, [class*='header']:not(.study-nav){display:none !important}"
-    +".page-title, .module-name, .breadcrumb, [class*='title']:not(.dh-tools-title){display:none !important}"
+    /* === TÜM ÜST BAŞLIKLARI GİZLE === */
+    +".app-header, .app-header *, .module-header, .module-title, .top-header, "
+    +".study-header, .page-header, .breadcrumb, .header-title, .module-name, "
+    +".level-title, .unit-title, .lesson-title, [class*='header']:not(.study-nav), "
+    +".card-title, .section-title, .heading, h1, h2, h3, h4, "
+    +"[class*='title']:not(.dh-tools-title), [class*='Level'], [class*='Unit'], "
+    +"[class*='Lesson'], [class*='Confirmation'], [class*='Present']{display:none !important}"
     
-    +"body{padding-bottom:" + (navHeight + 4) + "px !important}"
-    +".legend,.legend-item,.legend-dot{display:none !important}"
-    +".study-nav .legend,.study-nav .legend-item{display:none !important}"
+    /* A1, Confirmation, Present Simple gibi metinleri gizle */
+    +".card > div:first-child, .card > p:first-child, .card > span:first-child{display:none !important}"
+    +".card > *:not(.card-en):not(.card-tr):not(.card-pron):not(.sm-img-wrap):not(.dh-col-right):not(.dh-grade-under):not(.card-actions):not(.dh-gtr-btn):not(.dh-nav-row){display:none !important}"
+    
+    /* ALTTAN SABİT ÇUBUĞU KALDIR */
+    +".study-nav.dh-fixed-nav{display:none !important}"
+    +"body{padding-bottom:0 !important}"
+    
+    /* Kart içi nav satırı */
+    +".dh-nav-row{display:flex !important;gap:6px;align-items:center;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.08);width:100%}"
+    +".dh-nav-row .btn{flex:1;min-height:36px;font-size:13px !important;font-weight:700 !important;border-radius:10px !important;padding:4px 8px}"
+    +".dh-nav-row .dh-tools-toggle{flex:0 0 auto !important;min-height:36px;padding:0 12px;border:1px solid rgba(255,255,255,.10);border-radius:10px;background:#17233a;color:#eaf2ff;font:700 12px Nunito,system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap}"
+    +".dh-nav-row .dh-tools-toggle:hover{background:#22304f}"
+    +".dh-nav-row .dh-tools-toggle .chev{transition:transform .2s;font-size:9px}"
+    +".dh-nav-row .dh-tools-toggle.open .chev{transform:rotate(180deg)}"
     
     /* ---- 2 SÜTUN DÜZEN ---- */
     +".dh-col-left,.dh-col-right{display:block}"
     
     /* Büyük ekranlar */
     +"@media (orientation:landscape),(min-width:680px){"
-    +".card.dh-split{display:grid !important;grid-template-columns:1.5fr .9fr;gap:14px 16px;align-items:start}"
+    +".card.dh-split{display:grid !important;grid-template-columns:1.5fr .9fr;gap:12px 14px;align-items:start}"
     +".card.dh-split>*{grid-column:1;min-width:0}"
-    +".card.dh-split>.dh-col-right{grid-column:2;grid-row:1/99;display:flex;flex-direction:column;gap:6px;align-self:start}"
-    +".card.dh-split .sm-img-wrap{margin:6px 0}"
-    +".card.dh-split .dh-grade-under{flex-direction:column !important;gap:6px !important;margin:0}"
-    +".card.dh-split .dh-grade-under button{min-height:34px !important;padding:7px 8px !important;font-size:13px !important;border-radius:9px !important}"
-    +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}"
-    +".card.dh-split .card-actions button{min-height:32px !important;padding:6px 10px !important;font-size:12px !important;border-radius:9px !important}"
+    +".card.dh-split>.dh-col-right{grid-column:2;grid-row:1/99;display:flex;flex-direction:column;gap:4px;align-self:start}"
+    +".card.dh-split .sm-img-wrap{margin:4px 0}"
+    +".card.dh-split .dh-grade-under{flex-direction:column !important;gap:4px !important;margin:0}"
+    +".card.dh-split .dh-grade-under button{min-height:32px !important;padding:6px 8px !important;font-size:12px !important;border-radius:8px !important}"
+    +".card.dh-split .card-actions{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}"
+    +".card.dh-split .card-actions button{min-height:30px !important;padding:5px 8px !important;font-size:11px !important;border-radius:8px !important}"
+    /* Nav row 2 sütunda */
+    +".card.dh-split .dh-nav-row{grid-column:1/3;margin-top:8px;padding-top:8px}"
     +"}"
     
     /* ---- MOBİL YATAY ---- */
     +"@media (orientation:landscape) and (max-height:500px){"
-    /* Üst başlıkları gizle - zaten gizli */
-    +"body{padding-bottom:" + (navHeight + 2) + "px !important;overflow:hidden}"
-    +"html,body{height:100%;overflow:hidden}"
-    +".app-container,.app-content,.main-container{height:100%;overflow:hidden}"
-    /* Ana kart alanını üste yasla */
-    +".card.dh-split{margin-top:0 !important;padding-top:2px !important}"
-    +".card.dh-split{grid-template-columns:1.2fr 1fr !important;gap:3px 6px !important;padding:2px 6px !important;max-height:" + cardMaxHeight + "px !important;height:" + cardMaxHeight + "px !important;overflow-y:auto}"
-    +".card.dh-split .sm-img-wrap{margin:1px 0;max-height:" + (cardMaxHeight * 0.18) + "px}"
-    +".card.dh-split .sm-img-wrap img{max-height:" + (cardMaxHeight * 0.18) + "px;width:auto;object-fit:contain}"
-    +".card.dh-split .card-en{font-size:" + Math.max(10, Math.min(13, vh * 0.026)) + "px !important;line-height:1.1;margin:1px 0}"
-    +".card.dh-split .card-tr{font-size:" + Math.max(9, Math.min(12, vh * 0.024)) + "px !important;line-height:1.1;margin:1px 0}"
-    +".card.dh-split .card-pron{font-size:" + Math.max(8, Math.min(11, vh * 0.022)) + "px !important;margin:0}"
-    +".card.dh-split .dh-grade-under{flex-direction:row !important;gap:2px !important;margin:1px 0}"
-    +".card.dh-split .dh-grade-under button{min-height:" + Math.max(16, Math.min(24, vh * 0.045)) + "px !important;padding:1px 3px !important;font-size:" + Math.max(7, Math.min(10, vh * 0.02)) + "px !important;border-radius:4px !important;flex:1}"
-    +".card.dh-split .card-actions{gap:2px;margin-top:1px}"
-    +".card.dh-split .card-actions button{min-height:" + Math.max(16, Math.min(24, vh * 0.045)) + "px !important;padding:1px 3px !important;font-size:" + Math.max(6, Math.min(9, vh * 0.018)) + "px !important;border-radius:4px !important;flex:1 0 auto}"
-    +".card.dh-split .dh-gtr-btn{padding:1px 4px !important;font-size:" + Math.max(7, Math.min(9, vh * 0.018)) + "px !important;margin:0}"
-    +".card.dh-split .dh-col-right{gap:1px !important}"
-    +".dh-gtr-btn{font-size:" + Math.max(7, Math.min(9, vh * 0.018)) + "px !important;padding:1px 4px !important;margin:0}"
-    /* Alt nav - tüm kontroller burada */
-    +".study-nav.dh-fixed-nav{padding:2px 3px calc(2px + env(safe-area-inset-bottom)) !important;gap:2px !important;height:" + navHeight + "px !important;min-height:" + navHeight + "px !important}"
-    +".study-nav.dh-fixed-nav .btn{min-height:" + (navHeight - 6) + "px !important;font-size:" + Math.max(8, Math.min(11, vh * 0.022)) + "px !important;padding:1px 3px !important;border-radius:6px !important;flex:1}"
-    +".dh-tools-toggle{min-height:" + (navHeight - 6) + "px !important;padding:0 6px !important;font-size:" + Math.max(8, Math.min(10, vh * 0.02)) + "px !important;border-radius:6px !important}"
-    /* Araçlar paneli */
-    +".dh-tools-box{max-height:" + toolsHeight + "px !important;bottom:" + (navHeight + 2) + "px !important;padding:3px 6px !important;gap:2px !important}"
-    +".dh-tools-box .dh-moved-btn{min-height:" + Math.max(18, Math.min(28, vh * 0.05)) + "px !important;font-size:" + Math.max(7, Math.min(9, vh * 0.018)) + "px !important;padding:1px 4px !important;border-radius:4px !important}"
-    +".dh-tools-box .wd-tools-row{grid-template-columns:repeat(3,1fr) !important;gap:2px !important}"
-    +".dh-tools-box .wd-tools-row button{min-height:" + Math.max(16, Math.min(24, vh * 0.045)) + "px !important;font-size:" + Math.max(6, Math.min(8, vh * 0.016)) + "px !important;padding:1px 2px !important;border-radius:4px !important}"
-    +".dh-tools-title{font-size:" + Math.max(7, Math.min(9, vh * 0.018)) + "px !important;margin-bottom:0}"
-    +".dh-tools-box .dh-tools-title{font-size:" + Math.max(7, Math.min(9, vh * 0.018)) + "px !important}"
-    +".card.dh-split::-webkit-scrollbar{width:2px}"
+    +"html,body{height:100%;overflow:hidden;margin:0;padding:0}"
+    +".app-container,.app-content,.main-container,.container{height:100%;overflow:hidden;padding:0 !important;margin:0 !important}"
+    /* Kartı tam ekran yap */
+    +".card.dh-split{display:grid !important;grid-template-columns:1.1fr 1fr !important;gap:2px 5px !important;padding:2px 4px !important;height:100% !important;max-height:100vh !important;overflow-y:auto;margin:0 !important;border-radius:0 !important}"
+    +".card.dh-split .sm-img-wrap{margin:0;max-height:80px}"
+    +".card.dh-split .sm-img-wrap img{max-height:80px;width:auto;object-fit:contain}"
+    +".card.dh-split .card-en{font-size:" + Math.max(10, Math.min(13, vh * 0.025)) + "px !important;line-height:1.1;margin:0}"
+    +".card.dh-split .card-tr{font-size:" + Math.max(9, Math.min(12, vh * 0.023)) + "px !important;line-height:1.1;margin:0}"
+    +".card.dh-split .card-pron{font-size:" + Math.max(8, Math.min(10, vh * 0.02)) + "px !important;margin:0}"
+    +".card.dh-split .dh-grade-under{flex-direction:row !important;gap:1px !important;margin:0}"
+    +".card.dh-split .dh-grade-under button{min-height:" + Math.max(14, Math.min(22, vh * 0.04)) + "px !important;padding:0 2px !important;font-size:" + Math.max(6, Math.min(9, vh * 0.018)) + "px !important;border-radius:3px !important;flex:1}"
+    +".card.dh-split .card-actions{gap:1px;margin:0;display:flex;flex-wrap:wrap}"
+    +".card.dh-split .card-actions button{min-height:" + Math.max(14, Math.min(22, vh * 0.04)) + "px !important;padding:0 2px !important;font-size:" + Math.max(6, Math.min(8, vh * 0.016)) + "px !important;border-radius:3px !important;flex:1 0 auto}"
+    +".card.dh-split .dh-gtr-btn{padding:0 3px !important;font-size:" + Math.max(6, Math.min(8, vh * 0.016)) + "px !important;margin:0}"
+    +".card.dh-split .dh-col-right{gap:0 !important}"
+    +".dh-gtr-btn{font-size:" + Math.max(6, Math.min(8, vh * 0.016)) + "px !important;padding:0 3px !important;margin:0}"
+    /* Nav row */
+    +".card.dh-split .dh-nav-row{grid-column:1/3;margin-top:3px;padding-top:3px;gap:2px}"
+    +".card.dh-split .dh-nav-row .btn{min-height:" + Math.max(18, Math.min(26, vh * 0.045)) + "px !important;font-size:" + Math.max(7, Math.min(10, vh * 0.02)) + "px !important;padding:0 2px !important;border-radius:4px !important}"
+    +".card.dh-split .dh-nav-row .dh-tools-toggle{min-height:" + Math.max(18, Math.min(26, vh * 0.045)) + "px !important;padding:0 6px !important;font-size:" + Math.max(7, Math.min(9, vh * 0.018)) + "px !important;border-radius:4px !important}"
+    /* "Bu cümleyi ne kadar biliyorsun?" yazısını küçült */
+    +".dh-col-right > div:first-child{font-size:" + Math.max(5, Math.min(7, vh * 0.014)) + "px !important;margin:0 !important;padding:0 !important}"
+    /* Scroll bar */
+    +".card.dh-split::-webkit-scrollbar{width:1.5px}"
     +".card.dh-split::-webkit-scrollbar-track{background:transparent}"
-    +".card.dh-split::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:2px}"
+    +".card.dh-split::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:1px}"
     +"}"
     
     /* ---- MOBİL PORTRE ---- */
     +"@media (orientation:portrait) and (max-width:680px){"
-    +".card.dh-split{display:flex !important;flex-direction:column;gap:6px;padding-top:0 !important;margin-top:0 !important}"
+    +".card.dh-split{display:flex !important;flex-direction:column;gap:4px;padding-top:0 !important;margin-top:0 !important}"
     +".card.dh-split .dh-col-right{width:100%}"
-    +".card.dh-split .dh-grade-under{flex-direction:row !important;gap:4px}"
-    +".card.dh-split .dh-grade-under button{min-height:34px !important;font-size:12px !important}"
+    +".card.dh-split .dh-grade-under{flex-direction:row !important;gap:3px}"
+    +".card.dh-split .dh-grade-under button{min-height:32px !important;font-size:11px !important}"
+    +".card.dh-split .dh-nav-row{margin-top:4px;padding-top:4px}"
     +"}"
     
-    /* ALT NAV */
-    +".study-nav.dh-fixed-nav{position:fixed !important;left:0;right:0;bottom:0;z-index:9000;display:flex !important;gap:6px;align-items:center;justify-content:space-between;margin:0 !important;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:rgba(9,15,28,.96);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.08);box-shadow:0 -4px 20px rgba(0,0,0,.5)}"
-    +".study-nav.dh-fixed-nav .btn{flex:1;min-height:42px;font-size:14px !important;font-weight:700 !important;border-radius:12px !important}"
-    +".study-nav.dh-fixed-nav > *:not(.btn):not(.dh-tools-toggle){flex:0 0 auto}"
-    
-    /* Araçlar butonu */
-    +".dh-tools-toggle{flex:0 0 auto !important;min-height:42px;padding:0 14px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:#17233a;color:#eaf2ff;font:700 13px Nunito,system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}"
-    +".dh-tools-toggle:hover{background:#22304f}"
-    +".dh-tools-toggle .chev{transition:transform .2s;font-size:10px}"
-    +".dh-tools-toggle.open .chev{transform:rotate(180deg)}"
+    /* ---- ARAÇLAR PANELİ (alttan değil, kart içinde açılır) ---- */
+    +".dh-tools-box{display:none !important}"
+    +".dh-tools-box.open{display:flex !important;flex-direction:column;gap:4px;margin-top:4px;padding:6px 8px;background:#0d1a30;border-radius:8px;border:1px solid rgba(255,255,255,.08);width:100%}"
+    +".dh-tools-box .dh-moved-btn{width:100%;min-height:30px;border-radius:6px;font-size:11px;font-weight:600;padding:2px 6px}"
+    +".dh-tools-box .wd-tools-row{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:2px}"
+    +".dh-tools-box .wd-tools-row button{min-height:28px;border-radius:6px;font-size:10px;font-weight:600;padding:2px 4px}"
+    +".dh-tools-box .dh-tools-title{font:700 10px Nunito,system-ui,sans-serif;color:#9fb3d9;text-align:center;margin:0;padding:0}"
     
     /* Zorluk butonları */
-    +".dh-grade-under{display:flex !important;gap:8px;margin:8px 0 2px}"
-    +".dh-gtr-btn{display:inline-flex;align-items:center;gap:4px;margin:4px 0 1px;padding:6px 12px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:#1a2942;color:#cfe0ff;font:700 12px Nunito,system-ui,sans-serif;cursor:pointer}"
+    +".dh-grade-under{display:flex !important;gap:6px;margin:6px 0 2px}"
+    +".dh-gtr-btn{display:inline-flex;align-items:center;gap:3px;margin:3px 0 1px;padding:5px 10px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:#1a2942;color:#cfe0ff;font:700 11px Nunito,system-ui,sans-serif;cursor:pointer}"
     +".dh-gtr-btn:hover{background:#22344f}"
-    +".dh-grade-under button{flex:1;min-height:40px;border-radius:10px;font-weight:700;font-size:13px;border:1px solid rgba(255,255,255,.12);cursor:pointer}"
+    +".dh-grade-under button{flex:1;min-height:36px;border-radius:8px;font-weight:700;font-size:12px;border:1px solid rgba(255,255,255,.10);cursor:pointer}"
     
-    /* Araçlar paneli */
-    +".dh-tools-box{position:fixed;left:0;right:0;bottom:65px;z-index:8999;margin:0;padding:12px;max-height:55vh;overflow-y:auto;border-radius:16px 16px 0 0;background:#0d1a30;border-top:1px solid rgba(255,255,255,.10);box-shadow:0 -8px 30px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:8px;animation:dhToolsUp .2s ease}"
-    +"@keyframes dhToolsUp{from{transform:translateY(15px);opacity:.3}to{transform:none;opacity:1}}"
-    +".dh-tools-box.dh-hidden{display:none !important}"
-    +".dh-tools-box .dh-moved-btn{width:100%;min-height:42px;border-radius:10px;font-size:13px;font-weight:600}"
-    +".dh-tools-box .wd-tools-row{margin-top:0 !important;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}"
-    +".dh-tools-box .wd-tools-row button{min-height:36px;border-radius:8px;font-size:11px;font-weight:600;padding:3px 6px}"
-    +".dh-tools-title{font:700 12px Nunito,system-ui,sans-serif;color:#9fb3d9;text-align:center;margin-bottom:1px}";
+    /* Kart - genel */
+    +".legend,.legend-item,.legend-dot{display:none !important}"
+    +".card{padding-top:4px !important;margin-top:0 !important}"
+    +".card.dh-split{margin-top:0 !important;padding-top:2px !important}";
     
     document.head.appendChild(s);
   }
@@ -165,10 +167,10 @@
   function splitCard(card){
     if(card.dataset.dhSplitDone==="1") return;
     var enEl=card.querySelector(".card-en"); 
-    if(!enEl){ console.log("[dh-split] card-en yok"); return; }
+    if(!enEl){ return; }
     var grade=card.querySelector(".dh-grade-under");
     var actions=card.querySelector(".card-actions");
-    if(!grade || !actions){ console.log("[dh-split] hazır değil — grade:", !!grade, "actions:", !!actions); return; }
+    if(!grade || !actions){ return; }
 
     var right=document.createElement("div"); 
     right.className="dh-col-right";
@@ -184,10 +186,63 @@
     card.dataset.dhSplitDone="1";
   }
 
-  function fixNav(){
-    var nav=document.querySelector(".study-nav");
-    if(nav && !nav.classList.contains("dh-fixed-nav")) nav.classList.add("dh-fixed-nav");
-    return nav;
+  // NAV'ı kartın içine taşı
+  function moveNavToCard(card){
+    if(card.dataset.dhNavMoved==="1") return;
+    
+    var nav = document.querySelector(".study-nav");
+    if(!nav) return;
+    
+    // Varolan nav row'u kontrol et
+    var navRow = card.querySelector(".dh-nav-row");
+    if(!navRow){
+      navRow = document.createElement("div");
+      navRow.className = "dh-nav-row";
+      card.appendChild(navRow);
+    }
+    
+    // Butonları nav'dan al
+    var btns = nav.querySelectorAll(".btn");
+    var toolsToggle = document.getElementById("dhToolsToggle");
+    
+    // Önceki butonu
+    if(btns.length >= 1){
+      var prevBtn = btns[0].cloneNode(true);
+      prevBtn.className = "btn";
+      navRow.appendChild(prevBtn);
+    }
+    
+    // Araçlar butonu (toggle)
+    if(!toolsToggle){
+      toolsToggle = document.createElement("button");
+      toolsToggle.id = "dhToolsToggle";
+      toolsToggle.type = "button";
+      toolsToggle.className = "dh-tools-toggle";
+      toolsToggle.innerHTML = '🛠 <span class="chev">▾</span>';
+    }
+    // Toggle'ı kopyala
+    var newToggle = toolsToggle.cloneNode(true);
+    newToggle.id = "dhToolsToggleClone";
+    newToggle.onclick = function(){
+      var box = document.getElementById("dhToolsBox");
+      if(box){
+        box.classList.toggle("open");
+        this.classList.toggle("open");
+      }
+    };
+    navRow.appendChild(newToggle);
+    
+    // Sonraki butonu
+    if(btns.length >= 2){
+      var nextBtn = btns[1].cloneNode(true);
+      nextBtn.className = "btn";
+      navRow.appendChild(nextBtn);
+    }
+    
+    // Orijinal nav'ı gizle
+    nav.style.display = "none";
+    
+    card.dataset.dhNavMoved = "1";
   }
   
   function moveGrade(card){
@@ -229,14 +284,14 @@
           }
           try{
             var n=document.createElement("div");
-            n.textContent="📋 Cümle kopyalandı — Translate'te yapıştır";
-            n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #2563eb;padding:10px 16px;border-radius:10px;font:700 12px system-ui;box-shadow:0 6px 24px rgba(0,0,0,.5);max-width:90vw;text-align:center";
+            n.textContent="📋 Kopyalandı! Google Translate açılıyor...";
+            n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #2563eb;padding:8px 14px;border-radius:8px;font:700 11px system-ui;box-shadow:0 4px 16px rgba(0,0,0,.5);max-width:90vw;text-align:center";
             document.body.appendChild(n);
             setTimeout(function(){ 
               n.style.transition="opacity .3s"; 
               n.style.opacity="0"; 
               setTimeout(function(){ n.remove(); },300); 
-            },2500);
+            },2000);
           }catch(e){}
           window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(txt), "_blank");
         };
@@ -263,71 +318,56 @@
     card.dataset.dhGradeDone="1";
   }
   
-  function ensureTools(card, nav){
-    var box=document.getElementById("dhToolsBox");
-    var toggle=document.getElementById("dhToolsToggle");
+  function ensureTools(card){
+    var box = document.getElementById("dhToolsBox");
     
     if(!box){
-      box=document.createElement("div");
-      box.id="dhToolsBox"; 
-      box.className="dh-tools-box dh-hidden";
-      box.innerHTML='<div class="dh-tools-title">🛠 Araçlar</div>';
-      document.body.appendChild(box);
-    }
-    
-    if(!toggle){
-      toggle=document.createElement("button");
-      toggle.id="dhToolsToggle"; 
-      toggle.type="button"; 
-      toggle.className="dh-tools-toggle";
-      toggle.innerHTML='🛠 <span class="chev">▾</span>';
-      toggle.onclick=function(){
-        var hid=box.classList.toggle("dh-hidden");
-        toggle.classList.toggle("open", !hid);
-      };
-    }
-    
-    if(nav && toggle.parentElement!==nav){
-      var btns=[].slice.call(nav.querySelectorAll(".btn"));
-      if(btns.length>=2){ 
-        nav.insertBefore(toggle, btns[btns.length-1]); 
-      }
-      else nav.appendChild(toggle);
+      box = document.createElement("div");
+      box.id = "dhToolsBox";
+      box.className = "dh-tools-box";
+      box.innerHTML = '<div class="dh-tools-title">🛠 Araçlar</div>';
+      // Kartın içine ekle (navRow'dan önce)
+      card.appendChild(box);
     }
     
     if(card && card.dataset.dhToolsFilled!=="1"){
-      var teacher=card.querySelector(".teacher-btn")||btnByText(card,"öğretmen");
+      // Önceki içerikleri temizle (title hariç)
+      var title = box.querySelector(".dh-tools-title");
+      box.innerHTML = '';
+      if(title) box.appendChild(title);
+      
+      var teacher = card.querySelector(".teacher-btn") || btnByText(card, "öğretmen");
       if(teacher && !/sor/i.test(teacher.textContent||"")){ 
         teacher.classList.add("dh-moved-btn"); 
         box.appendChild(teacher); 
       }
       
-      var teacherAsk=[].slice.call(card.querySelectorAll("button,a")).find(function(b){
+      var teacherAsk = [].slice.call(card.querySelectorAll("button,a")).find(function(b){
         return /öğretmene sor/i.test(b.textContent||"");
       });
       if(teacherAsk){ 
-        teacherAsk.style.display=""; 
+        teacherAsk.style.display = ""; 
         teacherAsk.classList.add("dh-moved-btn"); 
         box.appendChild(teacherAsk); 
       }
       
-      var detay=btnByText(card,"detay");
+      var detay = btnByText(card, "detay");
       if(detay){ 
         detay.classList.add("dh-moved-btn"); 
         box.appendChild(detay); 
       }
       
-      var weak=card.querySelector(".extra-weak")||btnByText(card,"zayıf");
+      var weak = card.querySelector(".extra-weak") || btnByText(card, "zayıf");
       if(weak){ 
         weak.classList.add("dh-moved-btn"); 
         box.appendChild(weak); 
       }
-      card.dataset.dhToolsFilled="1";
-    }
-    
-    var grid=document.querySelector(".wd-tools-row");
-    if(grid && grid.parentElement!==box){ 
-      box.appendChild(grid); 
+      
+      var grid = document.querySelector(".wd-tools-row");
+      if(grid){ 
+        box.appendChild(grid); 
+      }
+      card.dataset.dhToolsFilled = "1";
     }
   }
   
@@ -337,14 +377,12 @@
     try{
       updateViewportHeight();
       addStyle();
-      var nav=fixNav();
-      var card=currentCard();
+      var card = currentCard();
       if(card){ 
         moveGrade(card); 
-      }
-      ensureTools(card, nav);
-      if(card){ 
-        splitCard(card); 
+        ensureTools(card);
+        moveNavToCard(card);
+        splitCard(card);
       }
     }catch(e){}
     applying=false;
