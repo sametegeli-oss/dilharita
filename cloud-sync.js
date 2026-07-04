@@ -1,60 +1,55 @@
-/* cloud-sync.js
-   Cihazlar arası senkron — mevcut "sentencemode" Firebase projesini kullanır.
+/* cloud-sync.js — v7 (SIFIRDAN TEMİZ TASARIM)
+   ═══════════════════════════════════════════════════════════════
+   MİMARİ (tek akış):
+     AÇILIŞ  → fullSync: buluttan ÇEK → BİRLEŞTİR → cihaza UYGULA → buluta GERİ YAZ
+     ÇALIŞMA → veri değişince 1.5 sn sonra otomatik push (debounce)
+     ÇIKIŞ   → ekrandan ayrılırken push (pagehide) · "Çıkış Yap" → push + signOut
 
-   NE SENKRONLANIR (pratik SRS hariç; o practice.html'de zaten senkronlu):
-   - AI prompt            (dh_ai_prompt_teacher)
-   - Günlük takip/streak   (dh-study-tracker-v1)
-   - AI anahtarları        (groqApiKeys, cerebrasApiKeys, geminiApiKeys)
-   - Model seçimleri       (dh-model-groq/cerebras/gemini)
-   - Pasif anahtarlar      (dh-disabled-keys)
-   - Öğretmen ayarları     (dh-teacher-policy-v1, dh-notif-settings-v1, selectedTeacherAvatar)
-   - İlerleme aynası       (dh-progress-mirror-v1)
-   - OCR cümleleri         (dh-ocr-sentences-v1)
-   - Mastery skorları      (mas:* , ev:*)
-   - Modül notları/profil  (modscore:* , gramprof:*)
-   - Modül hikayeleri      (story:*)
-   - Hata defteri          (IndexedDB: LearningErrorDB)
+   VERİ KAYNAKLARI (bu oturumda kanıtlanmış):
+     1) localStorage        : ayarlar, API anahtarları, aktif günler, kelime AYNASI
+     2) IndexedDB sentence-mode/kv : React modül ilerlemesi (img:* hariç, HAM anahtarlar)
+                              → buluta "smv:"+anahtar olarak gider/gelir
+     3) DHProgress (kendi IDB'si)  : kelime/cümle durumu — AYNA üzerinden
+                              (mirrorNow: IDB→localStorage, applyMirror: localStorage→IDB)
+     4) LearningErrorDB     : hata defteri (all / bulkMerge)
 
-   NASIL ÇALIŞIR:
-   - Kullanıcı giriş yapınca (Firebase Auth) buluttan "settings/{uid}" belgesini çeker,
-     cihazdakiyle birleştirir, sonucu hem cihaza hem buluta yazar.
-   - İlgili veri değişince (storage olayları) buluta yazar (debounce'lu).
-   - Giriş yoksa hiçbir şey yapmaz; her şey eskisi gibi yerel çalışır.
-
-   GÜVENLİK NOTU: API anahtarları da senkronlanır (kullanıcı isteğiyle).
-   Bunlar sizin Firebase projenizdeki Firestore'da, kullanıcının kendi belgesinde durur.
-*/
+   BİRLEŞTİRME KURALLARI:
+     dh-study-tracker-v1    → günler birleşir (union), sayaçlarda büyük kazanır,
+                              olaylar tekrarsız + gün başına ≤30 (1MB koruması)
+     dh-progress-mirror-v1  → kayıt başına "daha yeni / daha ileri" kazanır
+     smv:* ve diğerleri     → bulut kazanır; geri-yazma ile bulut = iki cihazın birleşimi
+   ═══════════════════════════════════════════════════════════════ */
 (function(){
   "use strict";
   if (window.__dhCloudSyncInstalled) return;
   window.__dhCloudSyncInstalled = true;
 
-  // Senkronlanacak SABİT localStorage anahtarları
+  /* ── 1) SABİTLER ─────────────────────────────────────────── */
   var LS_KEYS = [
     "dh_ai_prompt_teacher", "dh-study-tracker-v1", "dh-ocr-sentences-v1",
     "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1",
-    // AI sağlayıcı anahtarları (çok sağlayıcılı)
     "groqApiKeys", "cerebrasApiKeys", "geminiApiKeys",
-    // model seçimleri + pasif anahtar listesi
     "dh-model-groq", "dh-model-cerebras", "dh-model-gemini", "dh-disabled-keys",
-    // seçili öğretmen avatarı
     "selectedTeacherAvatar"
   ];
+  var LS_PREFIXES = ["sm:", "mas:", "ev:", "modscore:", "gramprof:", "story:"];
+  var MAX_VAL = 200000;      // alan başına üst sınır (Firestore alan limiti 1MB)
+  var TRACKER = "dh-study-tracker-v1";
+  var MIRROR  = "dh-progress-mirror-v1";
 
-  // Senkronlanacak PREFIX'li anahtarlar (çoklu kayıt: mastery, modül notları, hikayeler).
-  // Bu öneklerle başlayan TÜM localStorage anahtarları toplanıp senkronlanır.
-  var LS_PREFIXES = [
-    "sm:", "smv:", // index-app (React) modül ilerlemesi (smv:=IndexedDB kv, sm:=localStorage yedeği) — Zor/Normal/Kolay notları, kaldığın cümle
-    "mas:",        // mastery skorları
-    "ev:",         // mastery kanıtları
-    "modscore:",   // modül notları
-    "gramprof:",   // gramer profili
-    "story:"       // modül hikaye önbelleği
-  ];
+  var firebaseConfig = {
+    apiKey: "AIzaSyBZTHvP8xX94UMtKRt7hIYN7qpbO2gz0Zg",
+    authDomain: "sentencemode.firebaseapp.com",
+    projectId: "sentencemode",
+    storageBucket: "sentencemode.firebasestorage.app",
+    messagingSenderId: "1048475533632",
+    appId: "1:1048475533632:web:3f719b6da4397ed7c53aa5"
+  };
 
-  // AKTİF GÜNLER birleştirme: iki cihazın günlerini birleştir (union).
-  // events birleştirme: tekrarları at + günde en çok 30 olay tut (Firestore 1MB alan limiti!)
-  function mergeEvents(a, b){
+  var fb=null, user=null, ready=false, authResolved=false, saveTimer=null, syncing=false;
+
+  /* ── 2) BİRLEŞTİRME (saf fonksiyonlar) ───────────────────── */
+  function mergeEvents(a,b){
     var all=(a||[]).concat(b||[]), seen={}, out=[];
     for(var i=0;i<all.length;i++){
       var k; try{ k=JSON.stringify(all[i]); }catch(e){ k=String(all[i]); }
@@ -62,19 +57,19 @@
     }
     return out.slice(-30);
   }
-  function mergeStudyTracker(localStr, remoteStr){
-    var L={}, R={};
+  function mergeTracker(localStr, remoteStr){
+    var L={},R={};
     try{ L=JSON.parse(localStr||"{}")||{}; }catch(e){}
     try{ R=JSON.parse(remoteStr||"{}")||{}; }catch(e){}
     var out={};
-    for(var k in R){ if(R.hasOwnProperty(k) && k!=="days") out[k]=R[k]; }
-    for(var k2 in L){ if(L.hasOwnProperty(k2) && k2!=="days") out[k2]=L[k2]; }
-    var ld=(L.days)||{}, rd=(R.days)||{}, days={}, allKeys={};
-    for(var d1 in ld){ if(ld.hasOwnProperty(d1)) allKeys[d1]=1; }
-    for(var d2 in rd){ if(rd.hasOwnProperty(d2)) allKeys[d2]=1; }
-    for(var day in allKeys){
+    for(var k in R){ if(R.hasOwnProperty(k)&&k!=="days") out[k]=R[k]; }
+    for(var k2 in L){ if(L.hasOwnProperty(k2)&&k2!=="days") out[k2]=L[k2]; }
+    var ld=L.days||{}, rd=R.days||{}, days={}, all={};
+    for(var d in ld){ if(ld.hasOwnProperty(d)) all[d]=1; }
+    for(var d2 in rd){ if(rd.hasOwnProperty(d2)) all[d2]=1; }
+    for(var day in all){
       var a=ld[day], b=rd[day];
-      if(a && b){
+      if(a&&b){
         days[day]={ date:day,
           lessons:Math.max(a.lessons||0,b.lessons||0),
           minutes:Math.max(a.minutes||0,b.minutes||0),
@@ -82,15 +77,18 @@
           videos:Math.max(a.videos||0,b.videos||0),
           reviews:Math.max(a.reviews||0,b.reviews||0),
           errors:Math.max(a.errors||0,b.errors||0),
-          events:mergeEvents(a.events, b.events) };
-      } else { days[day]= a || b; }
+          events:mergeEvents(a.events,b.events) };
+      } else {
+        days[day]=a||b;
+        if(days[day]&&days[day].events&&days[day].events.length>30)
+          days[day].events=mergeEvents(days[day].events,[]);
+      }
     }
     out.days=days;
     return JSON.stringify(out);
   }
-  // İLERLEME AYNASI birleştirme: {itemId:[status,updated]} — daha yeni/ileri olan kazanır.
-  function mergeProgressMirror(localStr, remoteStr){
-    var L={}, R={};
+  function mergeMirror(localStr, remoteStr){
+    var L={},R={};
     try{ L=JSON.parse(localStr||"{}")||{}; }catch(e){}
     try{ R=JSON.parse(remoteStr||"{}")||{}; }catch(e){}
     var out={};
@@ -105,130 +103,95 @@
     return JSON.stringify(out);
   }
 
-  // Buluttan gelen belgeyi normalize et: {ls:{...}, errors:[...]}
-  // Hem yeni kök-seviye yapı hem eski data.ls yapısını destekler.
-  function parseRemote(remote){
-    var out = { ls: {}, ts: {}, errors: [] };
-    if (!remote) return out;
-    // Eski yapı: remote.data.ls / remote.data.errors
-    var d = remote.data && typeof remote.data === "object" ? remote.data : null;
-    if (d && d.ls){ for (var k in d.ls){ if (d.ls.hasOwnProperty(k)) out.ls[k] = d.ls[k]; } }
-    if (d && d.ts){ for (var tk in d.ts){ if (d.ts.hasOwnProperty(tk)) out.ts[tk] = d.ts[tk]; } }
-    if (d && Array.isArray(d.errors)){ out.errors = out.errors.concat(d.errors); }
-    // Yeni kök yapı: doğrudan belgenin alanları (LS_KEYS) + __ts + __errors
-    for (var i=0;i<LS_KEYS.length;i++){
-      var key = LS_KEYS[i];
-      if (Object.prototype.hasOwnProperty.call(remote, key) && remote[key] != null){
-        out.ls[key] = remote[key];
+  /* ── 3) 1MB KORUMASI: şişmiş tracker onarımı ─────────────── */
+  function sanitizeTracker(){
+    try{
+      var raw=localStorage.getItem(TRACKER);
+      if(!raw || raw.length<200000) return;
+      var d=JSON.parse(raw)||{}, days=d.days||{};
+      for(var day in days){ if(days.hasOwnProperty(day)&&days[day]&&days[day].events)
+        days[day].events=mergeEvents(days[day].events,[]); }
+      d.days=days;
+      var out=JSON.stringify(d);
+      if(out.length>180000){
+        for(var d2 in days){ if(days.hasOwnProperty(d2)&&days[d2]) days[d2].events=[]; }
+        out=JSON.stringify(d);
       }
-    }
-    if (remote.__ts && typeof remote.__ts === "object"){
-      for (var tk2 in remote.__ts){ if (remote.__ts.hasOwnProperty(tk2)) out.ts[tk2] = remote.__ts[tk2]; }
-    }
-    // __bulk: nokta/özel karakterli anahtarlar (mas:/ev:/modscore:/gramprof:/story:)
-    if (remote.__bulk && typeof remote.__bulk === "object"){
-      for (var bk in remote.__bulk){ if (remote.__bulk.hasOwnProperty(bk) && remote.__bulk[bk] != null) out.ls[bk] = remote.__bulk[bk]; }
-    }
-    if (Array.isArray(remote.__errors)) out.errors = out.errors.concat(remote.__errors);
-    return out;
+      if(out.length<raw.length){
+        localStorage.setItem(TRACKER,out);
+        console.log("[cloud-sync] tracker küçültüldü:",raw.length,"→",out.length);
+      }
+    }catch(e){}
   }
 
-  var firebaseConfig = {
-    apiKey: "AIzaSyBZTHvP8xX94UMtKRt7hIYN7qpbO2gz0Zg",
-    authDomain: "sentencemode.firebaseapp.com",
-    projectId: "sentencemode",
-    storageBucket: "sentencemode.firebasestorage.app",
-    messagingSenderId: "1048475533632",
-    appId: "1:1048475533632:web:3f719b6da4397ed7c53aa5"
-  };
-
-  var fb = null;        // { auth, db, ... }
-  var user = null;      // { uid } | null
-  var authResolved = false;  // onAuthStateChanged ilk kez çalıştı mı (oturum belirlendi mi)
-  var ready = false;
-  var saveTimer = null;
-
-  // Firebase modüllerini dinamik yükle (her sayfada kendi başına çalışsın)
-  function initFirebase(){
-    return Promise.all([
-      import("https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js"),
-      import("https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js"),
-      import("https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js")
-    ]).then(function(mods){
-      var appMod = mods[0], authMod = mods[1], fsMod = mods[2];
-      // practice.html zaten bir app başlatmış olabilir; çakışmayı önlemek için
-      // var olan app'i kullan, yoksa yeni başlat.
-      var app;
+  /* ── 4) React modül ilerlemesi: IndexedDB sentence-mode/kv ─ */
+  function kvOpen(){
+    return new Promise(function(res){
       try{
-        var existing = appMod.getApps && appMod.getApps();
-        app = (existing && existing.length) ? existing[0] : appMod.initializeApp(firebaseConfig);
-      }catch(e){ app = appMod.initializeApp(firebaseConfig); }
-      var auth = authMod.getAuth(app);
-      var db = fsMod.getFirestore(app);
-      // Oturumu kalıcı tut: kullanıcı bir kez giriş yapınca tarayıcı kapansa bile
-      // hatırlansın, her açılışta tekrar şifre istenmesin.
+        var r=indexedDB.open("sentence-mode");
+        r.onsuccess=function(){ res(r.result); };
+        r.onerror=function(){ res(null); };
+      }catch(e){ res(null); }
+    });
+  }
+  async function kvReadAll(){
+    var db=await kvOpen(); if(!db) return {};
+    return new Promise(function(res){
       try{
-        if(authMod.setPersistence && authMod.browserLocalPersistence){
-          authMod.setPersistence(auth, authMod.browserLocalPersistence);
-        }
-      }catch(e){}
-      fb = {
-        auth: auth, db: db,
-        onAuth: function(cb){ return authMod.onAuthStateChanged(auth, cb); },
-        signOut: function(){ try{ return authMod.signOut(auth); }catch(e){ return Promise.resolve(); } },
-        loadSettings: function(uid){
-          return fsMod.getDoc(fsMod.doc(db, "settings", uid)).then(function(snap){
-            return snap.exists() ? snap.data() : null;
-          });
-        },
-        saveSettings: function(uid, data){
-          // Veriyi KÖK seviyeye yaz (data.ls sarmalı yok). merge:true ile
-          // diğer alanlar korunur. Yapı: { <lsKey>: value, __ts:{...}, __errors:[...] }
-          // ANCAK: anahtar adında nokta (.) veya / olanlar Firestore alan adı olamaz —
-          // bunları güvenli "__bulk" nesnesine koy (ör. cümle ID'li mas:/story: anahtarları).
-          var doc2 = {}, bulk = {};
-          if (data && data.ls){
-            for (var k in data.ls){
-              if (!data.ls.hasOwnProperty(k)) continue;
-              if (k.indexOf(".")>=0 || k.indexOf("/")>=0 || k.indexOf("~")>=0 || k.indexOf("[")>=0 || k.indexOf("]")>=0 || k.indexOf("*")>=0){
-                bulk[k] = data.ls[k];          // sorunlu karakterli → sarmalı
-              } else {
-                doc2[k] = data.ls[k];          // güvenli → kök alan
-              }
+        var name=db.objectStoreNames.contains("kv")?"kv":db.objectStoreNames[0];
+        if(!name){ db.close(); return res({}); }
+        var out={}, req=db.transaction(name,"readonly").objectStore(name).openCursor();
+        req.onsuccess=function(e){
+          var c=e.target.result;
+          if(c){
+            var k=String(c.key);
+            if(k && k.indexOf("img:")!==0){          // resim önbelleği HARİÇ
+              var v; try{ v=JSON.stringify(c.value); }catch(_){ v=String(c.value); }
+              if(v && v.length<=MAX_VAL) out["smv:"+k]=v;
             }
-          }
-          if (Object.keys(bulk).length) doc2.__bulk = bulk;
-          if (data && data.ts){ doc2.__ts = data.ts; }
-          if (data && data.errors){ doc2.__errors = data.errors; }
-          doc2.updated_at = Date.now();
-          return fsMod.setDoc(fsMod.doc(db, "settings", uid), doc2, { merge: true });
-        }
-      };
-      ready = true;
-      fb.onAuth(function(u){
-        user = u ? { uid: u.uid } : null;
-        authResolved = true;   // oturum durumu ilk kez belirlendi
-        if (user) initialSync();
-      });
-    }).catch(function(e){
-      console.warn("cloud-sync: Firebase yüklenemedi, yerel modda devam.", e);
+            c.continue();
+          } else { db.close(); res(out); }
+        };
+        req.onerror=function(){ db.close(); res({}); };
+      }catch(e){ try{db.close();}catch(_){ } res({}); }
+    });
+  }
+  async function kvWriteAll(map){
+    var keys=Object.keys(map||{}); if(!keys.length) return 0;
+    var db=await kvOpen(); if(!db) return 0;
+    return new Promise(function(res){
+      try{
+        var name=db.objectStoreNames.contains("kv")?"kv":db.objectStoreNames[0];
+        if(!name){ db.close(); return res(0); }
+        var tx=db.transaction(name,"readwrite"), st=tx.objectStore(name), n=0;
+        keys.forEach(function(k){
+          var v=map[k]; try{ v=JSON.parse(map[k]); }catch(_){}
+          var raw=(k.indexOf("smv:")===0)?k.slice(4):k;
+          try{ st.put(v,raw); n++; }catch(_){}
+        });
+        tx.oncomplete=function(){ db.close(); res(n); };
+        tx.onerror=function(){ db.close(); res(n); };
+      }catch(e){ try{db.close();}catch(_){ } res(0); }
     });
   }
 
-  // --- Yerel veri toplama / uygulama ---
-  function collectLocal(){
-    var out = { ls: {}, errors: [] };
-    for (var i=0;i<LS_KEYS.length;i++){
-      try{ var v = localStorage.getItem(LS_KEYS[i]); if (v != null) out.ls[LS_KEYS[i]] = v; }catch(e){}
+  /* ── 5) Diğer yerel kaynaklar ─────────────────────────────── */
+  function mirrorNow(){ try{ if(window.DHProgress&&DHProgress.mirrorNow) return Promise.resolve(DHProgress.mirrorNow()).catch(function(){}); }catch(e){} return Promise.resolve(); }
+  function applyMirror(){ try{ if(window.DHProgress&&DHProgress.applyMirror) return Promise.resolve(DHProgress.applyMirror()).catch(function(){return 0;}); }catch(e){} return Promise.resolve(0); }
+  function errAll(){ try{ if(window.LearningErrorDB&&LearningErrorDB.all) return LearningErrorDB.all(); }catch(e){} return Promise.resolve([]); }
+  function errMerge(list){ try{ if(window.LearningErrorDB&&LearningErrorDB.bulkMerge&&Array.isArray(list)) return LearningErrorDB.bulkMerge(list); }catch(e){} return Promise.resolve(0); }
+
+  function lsCollect(){
+    var out={};
+    for(var i=0;i<LS_KEYS.length;i++){
+      try{ var v=localStorage.getItem(LS_KEYS[i]); if(v!=null&&v.length<=MAX_VAL) out[LS_KEYS[i]]=v; }catch(e){}
     }
-    // prefix'li anahtarlar (mastery, modül notları, hikayeler): tüm eşleşenleri tara
     try{
-      for (var j=0;j<localStorage.length;j++){
-        var key = localStorage.key(j);
-        if (!key) continue;
-        for (var p=0;p<LS_PREFIXES.length;p++){
-          if (key.indexOf(LS_PREFIXES[p]) === 0){
-            try{ var vv = localStorage.getItem(key); if (vv != null) out.ls[key] = vv; }catch(e){}
+      for(var j=0;j<localStorage.length;j++){
+        var key=localStorage.key(j); if(!key) continue;
+        for(var p=0;p<LS_PREFIXES.length;p++){
+          if(key.indexOf(LS_PREFIXES[p])===0){
+            try{ var vv=localStorage.getItem(key); if(vv!=null&&vv.length<=MAX_VAL) out[key]=vv; }catch(e){}
             break;
           }
         }
@@ -237,342 +200,208 @@
     return out;
   }
 
-  function applyLocal(remote){
-    if (!remote) return;
-    // localStorage anahtarları: bulut değeri varsa ve yerelde yoksa/boşsa uygula.
-    // (Çakışmada güncellik bilinmediği için: yerelde değer yoksa buluttan al.)
-    if (remote.ls){
-      for (var k in remote.ls){
-        if (!remote.ls.hasOwnProperty(k)) continue;
+  /* ── 6) TÜM YERELİ TOPLA (push yükü) ─────────────────────── */
+  async function collectAll(){
+    sanitizeTracker();
+    await mirrorNow();                       // kelime ilerlemesi → ayna (localStorage)
+    var ls=lsCollect();
+    var kv=await kvReadAll();                // modül ilerlemesi (smv:*)
+    for(var k in kv){ if(kv.hasOwnProperty(k)) ls[k]=kv[k]; }
+    var errors=await errAll().catch(function(){ return []; });
+    return { ls:ls, errors:Array.isArray(errors)?errors.slice(0,3000):[] };
+  }
+
+  /* ── 7) PUSH: yereli buluta yaz ──────────────────────────── */
+  async function pushNow(){
+    if(!ready||!user||!fb) return;
+    try{
+      var data=await collectAll();
+      await fb.saveSettings(user.uid, data);
+    }catch(e){ console.warn("cloud-sync yazma hata:", e); }
+  }
+  function pushSoon(){
+    if(!ready||!user) return;
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(function(){ pushNow(); },1500);
+  }
+
+  /* ── 8) FULL SYNC: çek → birleştir → uygula → geri yaz ───── */
+  function waitForAuth(maxMs){
+    return new Promise(function(res){
+      if(authResolved) return res();
+      var w=0, iv=setInterval(function(){
+        w+=100;
+        if(authResolved||w>=(maxMs||4000)){ clearInterval(iv); res(); }
+      },100);
+    });
+  }
+
+  async function fullSync(){
+    if(!ready) return { ok:false, message:"Bulut bağlantısı henüz hazır değil. Birkaç saniye sonra tekrar dene." };
+    await waitForAuth(4000);
+    if(!user) return { ok:false, message:"Senkron için önce giriş yapmalısın." };
+    if(syncing) return { ok:false, message:"Senkron zaten sürüyor…" };
+    syncing=true;
+    try{
+      var remote=await fb.loadSettings(user.uid);
+      var rd=parseRemote(remote);
+      var pulled=0, kvIncoming={};
+
+      for(var rk in rd.ls){
+        if(!rd.ls.hasOwnProperty(rk)) continue;
+        var rv=rd.ls[rk];
+        if(rv==null||rv==="") continue;
+        var ok=(LS_KEYS.indexOf(rk)>=0) || rk.indexOf("smv:")===0;
+        if(!ok){ for(var p=0;p<LS_PREFIXES.length;p++){ if(rk.indexOf(LS_PREFIXES[p])===0){ ok=true; break; } } }
+        if(!ok) continue;
         try{
-          var cur = localStorage.getItem(k);
-          if (cur == null || cur === "" || cur === "[]") {
-            localStorage.setItem(k, remote.ls[k]);
-          }
+          if(rk.indexOf("smv:")===0){ kvIncoming[rk]=rv; pulled++; }
+          else if(rk===TRACKER){ localStorage.setItem(rk, mergeTracker(localStorage.getItem(rk), rv)); pulled++; }
+          else if(rk===MIRROR){ localStorage.setItem(rk, mergeMirror(localStorage.getItem(rk), rv)); pulled++; }
+          else { localStorage.setItem(rk, rv); pulled++; }
         }catch(e){}
       }
+
+      await kvWriteAll(kvIncoming);                 // modül ilerlemesi → IndexedDB (React okur)
+      var addedErr=await errMerge(rd.errors||[]);   // hata defteri birleşir
+      var addedProg=await applyMirror();            // kelime aynası → DHProgress IDB
+      await pushNow();                              // GERİ YAZ: bulut = birleşim
+
+      // teşhis sayacı
+      var kvNow=await kvReadAll();
+      var mirCount=0; try{ mirCount=Object.keys(JSON.parse(localStorage.getItem(MIRROR)||"{}")).length; }catch(e){}
+      var parts=[];
+      if(pulled) parts.push(pulled+" kayıt buluttan alındı");
+      if(addedErr) parts.push(addedErr+" hata kaydı eklendi");
+      if(addedProg) parts.push(addedProg+" ilerleme uygulandı");
+      if(!parts.length) parts.push("her şey zaten güncel");
+      return { ok:true, message:"✓ "+parts.join(", ")+". [cihazda modül:"+Object.keys(kvNow).length+" · kelime:"+mirCount+"]" };
+    }catch(e){
+      return { ok:false, message:"Senkron başarısız: "+(e&&e.message?e.message:"bilinmeyen") };
+    }finally{
+      syncing=false;
     }
   }
 
-  // --- Hata defteri (IndexedDB) ---
-  function getLocalErrors(){
-    try{
-      if (window.LearningErrorDB && window.LearningErrorDB.all) return window.LearningErrorDB.all();
-    }catch(e){}
-    return Promise.resolve([]);
-  }
-  function mergeRemoteErrors(remoteErrors){
-    try{
-      if (window.LearningErrorDB && window.LearningErrorDB.bulkMerge && Array.isArray(remoteErrors)){
-        return window.LearningErrorDB.bulkMerge(remoteErrors);
-      }
-    }catch(e){}
-    return Promise.resolve(0);
+  /* ── 9) Uzak belgeyi normalize et (eski+yeni yapı+__bulk) ── */
+  function parseRemote(remote){
+    var out={ ls:{}, errors:[] };
+    if(!remote) return out;
+    var d=remote.data&&typeof remote.data==="object"?remote.data:null;
+    if(d&&d.ls){ for(var k in d.ls){ if(d.ls.hasOwnProperty(k)) out.ls[k]=d.ls[k]; } }
+    if(d&&Array.isArray(d.errors)) out.errors=out.errors.concat(d.errors);
+    for(var rk in remote){
+      if(!Object.prototype.hasOwnProperty.call(remote,rk)) continue;
+      if(rk==="data"||rk==="__ts"||rk==="__errors"||rk==="__bulk"||rk==="updated_at") continue;
+      if(remote[rk]!=null && typeof remote[rk]==="string") out.ls[rk]=remote[rk];
+    }
+    if(remote.__bulk&&typeof remote.__bulk==="object"){
+      for(var bk in remote.__bulk){ if(remote.__bulk.hasOwnProperty(bk)&&remote.__bulk[bk]!=null) out.ls[bk]=remote.__bulk[bk]; }
+    }
+    if(Array.isArray(remote.__errors)) out.errors=out.errors.concat(remote.__errors);
+    return out;
   }
 
-  // --- Giriş sonrası ilk senkron: buluttan çek + birleştir + geri yaz ---
+  /* ── 10) FIREBASE (kanıtlı çalışan başlatma) ─────────────── */
+  function initFirebase(){
+    return Promise.all([
+      import("https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js")
+    ]).then(function(mods){
+      var appMod=mods[0], authMod=mods[1], fsMod=mods[2];
+      var app;
+      try{
+        var existing=appMod.getApps&&appMod.getApps();
+        app=(existing&&existing.length)?existing[0]:appMod.initializeApp(firebaseConfig);
+      }catch(e){ app=appMod.initializeApp(firebaseConfig); }
+      var auth=authMod.getAuth(app);
+      var db=fsMod.getFirestore(app);
+      try{
+        if(authMod.setPersistence&&authMod.browserLocalPersistence)
+          authMod.setPersistence(auth, authMod.browserLocalPersistence);
+      }catch(e){}
+      fb={
+        auth:auth, db:db,
+        onAuth:function(cb){ return authMod.onAuthStateChanged(auth,cb); },
+        signOut:function(){ try{ return authMod.signOut(auth); }catch(e){ return Promise.resolve(); } },
+        loadSettings:function(uid){
+          return fsMod.getDoc(fsMod.doc(db,"settings",uid)).then(function(s){ return s.exists()?s.data():null; });
+        },
+        saveSettings:function(uid,data){
+          // nokta/özel karakterli anahtarlar Firestore alan adı olamaz → __bulk
+          var doc2={}, bulk={};
+          if(data&&data.ls){
+            for(var k in data.ls){
+              if(!data.ls.hasOwnProperty(k)) continue;
+              if(/[.\/~\[\]*]/.test(k)) bulk[k]=data.ls[k];
+              else doc2[k]=data.ls[k];
+            }
+          }
+          if(Object.keys(bulk).length) doc2.__bulk=bulk;
+          if(data&&data.errors) doc2.__errors=data.errors;
+          doc2.updated_at=Date.now();
+          return fsMod.setDoc(fsMod.doc(db,"settings",uid), doc2, { merge:true });
+        }
+      };
+      ready=true;
+      fb.onAuth(function(u){
+        user=u?{uid:u.uid}:null;
+        authResolved=true;
+        if(user) initialSync();
+      });
+    }).catch(function(e){ console.warn("cloud-sync: firebase yüklenemedi", e); });
+  }
+
+  /* ── 11) TETİKLEYİCİLER ──────────────────────────────────── */
   function initialSync(){
-    // AÇILIŞTA: buluttan ÇEK (yerel veriyi buluttakiyle güncelle).
-    // Yükleme yapmaz — yükleme yalnızca çıkışta (signOut) veya setItem sonrası pushSoon ile.
-    // Böylece açılışta yanlışlıkla bulut ezilmez.
     waitForAuth(5000).then(function(){
-      if (!ready || !user || !fb) return;
+      if(!ready||!user||!fb) return;
       fullSync().then(function(res){
-        try{ if (window.__dhAutoSyncDone) window.__dhAutoSyncDone(res); }catch(e){}
+        try{ if(window.__dhAutoSyncDone) window.__dhAutoSyncDone(res); }catch(e){}
       }).catch(function(){});
     });
   }
-
-  // ÇIKIŞ: önce buluta yaz (o oturumdaki değişiklikleri kaydet), sonra oturumu kapat.
-  function signOutAndPush(){
-    return waitForAuth(3000).then(function(){
-      var doPush = (ready && user && fb) ? pushNow() : Promise.resolve();
-      return doPush.catch(function(){}).then(function(){
-        // storage-bridge asenkron olabilir: yazmanın tamamlanması için kısa bekle
-        return new Promise(function(res){ setTimeout(res, 600); });
-      }).then(function(){
-        try{ if (fb && fb.signOut) return fb.signOut(); }catch(e){}
-      }).then(function(){
-        // yerel oturum bayraklarını temizle + giriş sayfasına dön
-        try{
-          localStorage.removeItem("dh_logged_in");
-          localStorage.removeItem("dh_logged_uid");
-          localStorage.removeItem("dh_logged_email");
-        }catch(e){}
-        return { ok:true };
-      });
-    });
-  }
-
-  // --- Yerel durumu buluta yaz ---
-  // ---- React modül ilerlemesi köprüsü ----
-  // index-app (React) modül notlarını localStorage'a DEĞİL, IndexedDB'ye yazar:
-  // DB "sentence-mode", kv deposu, anahtarlar "sm:*". Senkron için buradan okuyup yazarız.
-  function smStore(mode, fn){
-    return new Promise(function(res){
-      try{
-        var r=indexedDB.open("sentence-mode");
-        r.onsuccess=function(){
-          var db=r.result;
-          try{
-            var name = db.objectStoreNames.contains("kv") ? "kv" : db.objectStoreNames[0];
-            if(!name){ db.close(); return res(null); }
-            var tx=db.transaction(name, mode), st=tx.objectStore(name);
-            fn(st, tx, res, db);
-          }catch(e){ try{db.close();}catch(_){ } res(null); }
-        };
-        r.onerror=function(){ res(null); };
-      }catch(e){ res(null); }
-    });
-  }
-  function smGetAll(){
-    return smStore("readonly", function(st, tx, res, db){
-      var out={}, req=st.openCursor();
-      req.onsuccess=function(e){
-        var c=e.target.result;
-        if(c){
-          var k=String(c.key);
-          // React modül verisi = img: (resim önbelleği) HARİÇ tüm kv kayıtları (ham anahtarlı)
-          if(k && k.indexOf("img:")!==0){
-            var v; try{ v=JSON.stringify(c.value); }catch(_){ v=String(c.value); }
-            if(v && v.length<=200000) out["smv:"+k]=v;   // buluta smv: önekiyle
-          }
-          c.continue();
-        } else { db.close(); res(out); }
-      };
-      req.onerror=function(){ db.close(); res({}); };
-    }).then(function(v){ return v||{}; });
-  }
-  function smSetMany(obj){
-    var keys=Object.keys(obj||{});
-    if(!keys.length) return Promise.resolve(0);
-    return smStore("readwrite", function(st, tx, res, db){
-      var n=0;
-      keys.forEach(function(k){
-        var v=obj[k];
-        try{ v=JSON.parse(obj[k]); }catch(_){ }
-        var raw = (k.indexOf("smv:")===0) ? k.slice(4) : k;   // buluttaki smv: önekini soy
-        try{ st.put(v, raw); n++; }catch(_){ }
-      });
-      tx.oncomplete=function(){ db.close(); res(n); };
-      tx.onerror=function(){ db.close(); res(n); };
-    }).then(function(v){ return v||0; });
-  }
-
-  // Şişmiş study-tracker ONARIMI: her günün events'ini tekrarsız + en çok 30'a indir.
-  // (Eski merge her senkronda events'i katlıyordu → 1MB Firestore limitini aşıp
-  //  tüm yazmaları bloke etti. Bu fonksiyon mevcut hasarı temizler.)
-  function sanitizeStudyTracker(){
+  async function signOutAndPush(){
+    await waitForAuth(3000);
+    if(ready&&user&&fb){ try{ await pushNow(); }catch(e){} }
+    await new Promise(function(r){ setTimeout(r,400); });
+    try{ if(fb&&fb.signOut) await fb.signOut(); }catch(e){}
     try{
-      var raw = localStorage.getItem("dh-study-tracker-v1");
-      if(!raw || raw.length < 400000) return;   // küçükse dokunma
-      var d = JSON.parse(raw)||{};
-      var days = d.days||{};
-      for(var day in days){
-        if(!days.hasOwnProperty(day)) continue;
-        var ev = days[day] && days[day].events;
-        if(ev && ev.length) days[day].events = mergeEvents(ev, []);
-      }
-      d.days = days;
-      var out = JSON.stringify(d);
-      // hâlâ devasa ise events'leri tamamen boşalt (sayaçlar korunur — asıl veri onlar)
-      if(out.length > 900000){
-        for(var day2 in days){ if(days.hasOwnProperty(day2) && days[day2]) days[day2].events=[]; }
-        out = JSON.stringify(d);
-      }
-      if(out.length >= raw.length) return;  // küçülmediyse yazma (pushSoon döngüsünü önle)
-      localStorage.setItem("dh-study-tracker-v1", out);
-      console.log("[cloud-sync] study-tracker küçültüldü:", raw.length, "→", out.length, "byte");
+      localStorage.removeItem("dh_logged_in");
+      localStorage.removeItem("dh_logged_uid");
+      localStorage.removeItem("dh_logged_email");
     }catch(e){}
+    return { ok:true };
   }
-
-  function pushNow(){
-    // GÜVENLİK: Firestore tek alan limiti ~1MB. study-tracker şiştiyse önce küçült,
-    // yoksa TÜM push başarısız olur (hiçbir veri buluta gitmez).
-    sanitizeStudyTracker();
-    if (!ready || !user || !fb) return Promise.resolve();
-    // en güncel öğrenme ilerlemesini localStorage aynasına yaz (sonra collectLocal okur)
-    var prep = (window.DHProgress && DHProgress.mirrorNow) ? DHProgress.mirrorNow() : Promise.resolve();
-    return Promise.resolve(prep).then(function(){
-    var local = collectLocal();
-    var ts = {};
-    for (var i=0;i<LS_KEYS.length;i++){ ts[LS_KEYS[i]] = localTs(LS_KEYS[i]); }
-    // React modül ilerlemesini IndexedDB'den al, payload'a kat
-    return smGetAll().then(function(sm){
-      for (var sk in sm){ if(sm.hasOwnProperty(sk)) local.ls[sk]=sm[sk]; }
-      return getLocalErrors().then(function(errors){
-      var payload = {
-        ls: local.ls,
-        ts: ts,
-        errors: Array.isArray(errors) ? errors.slice(0, 3000) : []
-      };
-      return fb.saveSettings(user.uid, payload);
-    }).catch(function(e){ console.warn("cloud-sync yazma hata:", e); });
-    });
-    });
-  }
-
-  function pushSoon(){
-    if (!ready || !user) return;
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(pushNow, 1500);
-  }
-
-  // --- Değişiklikleri dinle ---
-  // Aynı sekmede localStorage.setItem storage olayını tetiklemez; bu yüzden
-  // setItem'i sarmalayıp ilgili anahtarlarda pushSoon çağırıyoruz.
   function hookLocalStorage(){
     try{
-      var proto = window.localStorage;
-      // storage-bridge shim'i defineProperty ile kurulmuş olabilir; setItem'i sarmala
-      var origSet = proto.setItem.bind(proto);
-      proto.setItem = function(k, v){
-        origSet(k, v);
+      var proto=window.localStorage;
+      var origSet=proto.setItem.bind(proto);
+      proto.setItem=function(k,v){
+        origSet(k,v);
         var key=String(k);
-        var match = (LS_KEYS.indexOf(key) >= 0);
+        var match=(LS_KEYS.indexOf(key)>=0);
         if(!match){ for(var p=0;p<LS_PREFIXES.length;p++){ if(key.indexOf(LS_PREFIXES[p])===0){ match=true; break; } } }
-        if (match){
-          try{ origSet("__ts_" + key, String(Date.now())); }catch(e){}
-          pushSoon();
-        }
+        if(match) pushSoon();
       };
     }catch(e){}
   }
-  // Bir anahtarın yerel zaman damgasını oku
-  function localTs(k){
-    try{ return parseInt(localStorage.getItem("__ts_" + k) || "0", 10) || 0; }catch(e){ return 0; }
-  }
-  // Hata defterine kayıt eklenince de buluta gönder
-  window.addEventListener("learning-error-added", pushSoon);
-  window.addEventListener("learning-errors-cleared", pushSoon);
-
-  // EKRAN ÇIKIŞI / SAYFA GİZLENMESİ: bekleyen değişiklikleri hemen buluta yaz.
-  // pagehide + visibilitychange(hidden): sayfa geçişi, sekme kapatma, mobilde arka plan.
   function flushOnLeave(){
-    try{
-      // storage-bridge'i diske it (asenkron shim), sonra push
-      if(window.__dhStorageFlush) window.__dhStorageFlush();
-    }catch(e){}
-    // bekleyen debounce'u iptal edip hemen yaz
     try{ clearTimeout(saveTimer); }catch(e){}
     pushNow();
   }
+
+  /* ── 12) BAŞLAT + DIŞ API ────────────────────────────────── */
+  hookLocalStorage();
+  window.addEventListener("learning-errors-cleared", pushSoon);
   window.addEventListener("pagehide", flushOnLeave);
-  document.addEventListener("visibilitychange", function(){
-    if(document.visibilityState==="hidden") flushOnLeave();
-  });
+  document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="hidden") flushOnLeave(); });
+  initFirebase();
 
-  // Başlat
-  function start(){
-    hookLocalStorage();
-    initFirebase();
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
-  else start();
-
-  // Genel "Bulutla Senkronize Et" — buluttan çek, birleştir, geri yaz.
-  // Kullanıcıya gösterilecek sonuç döndürür: {ok, message}
-  // Oturumun (onAuthStateChanged) ilk kez çözülmesini bekler. Firebase, kalıcı
-  // oturumu IndexedDB'den okurken birkaç yüz ms gecikir; bu yüzden "giriş yok"
-  // demeden önce oturumun yüklenmesine şans tanırız.
-  function waitForAuth(maxMs){
-    return new Promise(function(resolve){
-      if (authResolved) return resolve();
-      var waited = 0;
-      var iv = setInterval(function(){
-        waited += 100;
-        if (authResolved || waited >= (maxMs||4000)){ clearInterval(iv); resolve(); }
-      }, 100);
-    });
-  }
-
-  function fullSync(){
-    if (!ready) return Promise.resolve({ ok:false, message:"Bulut bağlantısı henüz hazır değil. Birkaç saniye sonra tekrar dene." });
-    return waitForAuth(4000).then(function(){
-      if (!user) return { ok:false, message:"Senkron için önce giriş yapmalısın." };
-      return fb.loadSettings(user.uid).then(function(remote){
-        var rd = parseRemote(remote);
-        // BASİT MANTIK: Senkron = buluttakini getir, yerele yaz. Geri yazma yok.
-        var pulled = 0;
-        // hem sabit LS_KEYS hem prefix'li (mas:/story: vb.) — rd.ls'deki HER anahtarı çek
-        var smIncoming = {};
-        if (rd.ls){
-          for (var rk in rd.ls){
-            if (!rd.ls.hasOwnProperty(rk)) continue;
-            var rv = rd.ls[rk];
-            if (rv == null || rv === "") continue;
-            // sadece bilinen anahtarları/önekleri yaz (çöp veri yazma)
-            var ok = (LS_KEYS.indexOf(rk) >= 0);
-            if (!ok){ for (var pp=0; pp<LS_PREFIXES.length; pp++){ if (rk.indexOf(LS_PREFIXES[pp])===0){ ok=true; break; } } }
-            if (!ok) continue;
-            try{
-              if (rk.indexOf("smv:")===0){
-                // MODÜL İLERLEMESİ: localStorage'a değil IndexedDB'ye (React oradan okur)
-                smIncoming[rk]=rv; pulled++;
-              } else if (rk === "dh-study-tracker-v1"){
-                // AKTİF GÜNLER: ezme, BİRLEŞTİR (iki cihazın günlerini birleştir)
-                localStorage.setItem(rk, mergeStudyTracker(localStorage.getItem(rk), rv));
-              } else if (rk === "dh-progress-mirror-v1"){
-                // İLERLEME AYNASI: "daha yeni olan kazanır" ile birleştir
-                localStorage.setItem(rk, mergeProgressMirror(localStorage.getItem(rk), rv));
-              } else {
-                localStorage.setItem(rk, rv);
-              }
-              pulled++;
-            }catch(e){}
-          }
-        }
-        // hata defteri: buluttan gelenleri yerele ekle (birleştir)
-        return smSetMany(smIncoming).then(function(){
-        return mergeRemoteErrors(rd.errors || []).then(function(addedErr){
-          // MOBİL: localStorage→IndexedDB köprüsü asenkron. Çekilen veriyi diske ZORLA yaz.
-          var flushP = (window.__dhStorageFlush) ? Promise.resolve(window.__dhStorageFlush()).catch(function(){}) : Promise.resolve();
-          return flushP.then(function(){
-          // öğrenme ilerlemesi aynasını IndexedDB'ye uygula
-          var progP = (window.DHProgress && DHProgress.applyMirror) ? DHProgress.applyMirror() : Promise.resolve(0);
-          return progP.then(function(addedProg){
-            // applyMirror IndexedDB'ye yazdı; mobilde köprüyü tekrar diske it (kesin kalıcılık)
-            try{ if(window.__dhStorageFlush) window.__dhStorageFlush(); }catch(e){}
-            // KRİTİK: Birleştirilmiş sonucu buluta GERİ YAZ.
-            // Böylece bu cihazda oluşan birleşim diğer cihazlara da yansır.
-            // (Aksi halde birleştirme sadece bu cihazda kalır, bulut eski kalır.)
-            return pushNow().catch(function(){}).then(function(){
-              return { ok:true, pulled:pulled, addedErrors:addedErr||0, addedProgress:addedProg||0 };
-            });
-          });
-          });
-        });
-        });
-      }).then(function(res){
-        var parts = [];
-        if (res.pulled) parts.push(res.pulled + " ayar buluttan alındı");
-        if (res.addedErrors) parts.push(res.addedErrors + " hata kaydı eklendi");
-        if (!parts.length) parts.push("bulutta veri yok veya zaten güncel");
-        // TEŞHİS: bu cihazdaki modül (IndexedDB sm:) ve kelime aynası kayıt sayısı
-        var mirCount=0;
-        try{ mirCount = Object.keys(JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")).length; }catch(e){}
-        return smGetAll().then(function(sm){
-          var smCount = Object.keys(sm).length;
-          return { ok:true, message:"✓ Buluttan alındı. " + parts.join(", ") + ". [cihazda modül:"+smCount+" · kelime:"+mirCount+"]" };
-        });
-      }).catch(function(e){
-        var msg = (e && e.message) ? e.message : "bağlantı hatası";
-        if (/permission/i.test(msg)) msg = "İzin hatası (Firebase kuralı). Lütfen tekrar dene.";
-        return { ok:false, message:"Senkron başarısız: " + msg };
-      });
-    });
-  }
-
-  // Dışarıya küçük API (manuel tetikleme için)
-  // pull(key): buluttaki settings belgesinden tek bir localStorage anahtarının
-  // güncel değerini döndürür (örn. "dh_ai_prompt_teacher").
-  function pull(key){
-    if (!ready || !user || !fb) return Promise.reject(new Error("Bulut hazır değil veya giriş yok"));
-    return fb.loadSettings(user.uid).then(function(remote){
-      var rd = parseRemote(remote);
-      if (rd.ls && Object.prototype.hasOwnProperty.call(rd.ls, key)) return rd.ls[key];
-      return null;
-    });
-  }
-  window.DHCloudSync = { push: pushNow, sync: initialSync, pull: pull, fullSync: fullSync, signOut: signOutAndPush, get ready(){ return ready; }, get user(){ return user; } };
+  window.DHCloudSync = {
+    push: pushNow, sync: initialSync, pull: fullSync, fullSync: fullSync,
+    signOut: signOutAndPush,
+    get ready(){ return ready; }, get user(){ return user; }
+  };
 })();
