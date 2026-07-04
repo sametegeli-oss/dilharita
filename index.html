@@ -49,6 +49,32 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
 
   <div class="grid">
     <a class="card" href="./ders.html"><b>🎓 Bugünkü Dersim</b><span>Öğretmen senin için ders hazırlasın — nereden başlayacağına o karar versin</span></a>
+    <a id="dhDayStart" href="./tekrar.html?plan=1" style="grid-column:1/-1;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#1d4ed8,#0e7490);border:0;border-radius:16px;padding:16px 18px;text-decoration:none;color:#fff">
+      <span style="font-size:26px">☀️</span>
+      <span style="flex:1"><b style="font-size:16px;display:block">Güne Başla</b><span id="dhDaySub" style="font-size:12px;opacity:.85">tekrar → yeni cümleler → 1 dk konuşma</span></span>
+      <span style="font-size:18px">▶</span>
+    </a>
+<script>
+(function(){ // vadesi gelen sayısını rozete yaz
+  try{
+    var r=indexedDB.open("sentence-mode",1);
+    r.onsuccess=function(){
+      var db=r.result, n=0, now=Date.now();
+      try{
+        var req=db.transaction("kv","readonly").objectStore("kv").openCursor();
+        req.onsuccess=function(e){ var c=e.target.result;
+          if(c){ var k=String(c.key);
+            if((k.indexOf("srs:")===0||k.indexOf("wsrs:")===0) && c.value && (c.value.due||0)<=now) n++;
+            c.continue();
+          } else { db.close();
+            var el=document.getElementById("dhDaySub");
+            if(el&&n) el.innerHTML="<b>"+n+" tekrar</b> → yeni cümleler → 1 dk konuşma";
+          } };
+      }catch(e){ try{db.close()}catch(_){}}
+    };
+  }catch(e){}
+})();
+</script>
     <a class="card" href="./seviye-testi.html"><b>🎯 Seviye Belirleme</b><span>Kısa bir testle seviyeni ölç — öğretmen dersleri ona göre hazırlasın</span></a>
     <a class="card" href="./harita.html"><b>🗺️ İlerleme Haritası</b><span>Tüm modüllerde ne kadar öğrendiğini gör</span></a>
     <a class="card photo-learn-card" href="./index-app.html"><b>📸 Fotoğraflı Cümle Öğren</b><span>Resimli cümle ekranı, zayıf analiz ve eski öğrenme modülleri</span></a>
