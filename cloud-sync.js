@@ -233,6 +233,7 @@
       var data=await collectAll();
       var g=shrinkToLimit(data.ls);
       await fb.saveSettings(user.uid, data);
+      try{ localStorage.setItem("dh-last-push-ts", String(Date.now())); }catch(e){}
       return { ok:true, size:g.size, dropped:g.dropped };
     }catch(e){
       console.warn("cloud-sync yazma hata:", e);
@@ -265,6 +266,9 @@
     try{
       var remote=await fb.loadSettings(user.uid);
       var rd=parseRemote(remote);
+      // MODÜL ÇAKIŞMA YÖNÜ: bulut, bu cihazın son yazmasından YENİYSE bulut kazanır;
+      // değilse (bu cihaz daha taze) yalnız yerelde OLMAYAN modül kayıtları alınır.
+      var cloudNewer = ((remote&&remote.updated_at)||0) > (+localStorage.getItem("dh-last-push-ts")||0);
       var pulled=0, kvIncoming={};
 
       for(var rk in rd.ls){
@@ -282,6 +286,11 @@
         }catch(e){}
       }
 
+      if(!cloudNewer){
+        // yerel daha taze: mevcut yerel kayıtların üzerine yazma, sadece eksikleri al
+        var have=await kvReadAll();
+        for(var hk in kvIncoming){ if(kvIncoming.hasOwnProperty(hk) && have[hk]!==undefined) delete kvIncoming[hk]; }
+      }
       await kvWriteAll(kvIncoming);                 // modül ilerlemesi → IndexedDB (React okur)
       var addedErr=await errMerge(rd.errors||[]);   // hata defteri birleşir
       var addedProg=await applyMirror();            // kelime aynası → DHProgress IDB
@@ -298,6 +307,8 @@
       var pmsg = pres&&pres.ok
         ? ("buluta yazıldı "+Math.round((pres.size||0)/1024)+"KB"+(pres.dropped?(" ("+pres.dropped+" büyük kayıt atlandı)"):""))
         : ("buluta YAZILAMADI: "+(pres&&pres.error||"?"));
+      try{ localStorage.setItem("dh-last-sync-ts", String(Date.now())); }catch(e){}
+      updateBadge(true);
       return { ok:true, message:"✓ "+parts.join(", ")+" · "+pmsg+". [cihazda modül:"+Object.keys(kvNow).length+" · kelime:"+mirCount+"]" };
     }catch(e){
       return { ok:false, message:"Senkron başarısız: "+(e&&e.message?e.message:"bilinmeyen") };
@@ -380,6 +391,8 @@
   function initialSync(){
     waitForAuth(5000).then(function(){
       if(!ready||!user||!fb) return;
+      // KISIT: son tam senkron 5 dk içindeyse sayfa gezinmelerinde tekrar etme
+      try{ if(Date.now()-(+localStorage.getItem("dh-last-sync-ts")||0) < 300000) return; }catch(e){}
       fullSync().then(function(res){
         try{ if(window.__dhAutoSyncDone) window.__dhAutoSyncDone(res); }catch(e){}
       }).catch(function(){});
@@ -415,12 +428,36 @@
     pushNow();
   }
 
+  /* ── 11b) DURUM ROZETİ: sağ-alt "☁ HH:MM" — tıkla = senkron ── */
+  function updateBadge(ok){
+    try{
+      var b=document.getElementById("dhSyncBadge");
+      if(!b){
+        b=document.createElement("button");
+        b.id="dhSyncBadge"; b.type="button";
+        b.style.cssText="position:fixed;right:10px;bottom:10px;z-index:9998;background:rgba(13,26,48,.92);color:#9fb3d9;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:5px 11px;font:700 11px system-ui;cursor:pointer;opacity:.85";
+        b.title="Son senkron — tıkla: şimdi senkronla";
+        b.onclick=function(){
+          b.textContent="☁ …";
+          fullSync().then(function(r){ if(!r.ok){ b.textContent="☁ ⚠"; b.style.color="#f87171"; } });
+        };
+        var mount=function(){ try{ document.body.appendChild(b); }catch(e){} };
+        if(document.body) mount(); else document.addEventListener("DOMContentLoaded",mount);
+      }
+      var ts=+localStorage.getItem("dh-last-sync-ts")||0;
+      var hhmm=ts?new Date(ts).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):"—";
+      b.textContent="☁ "+hhmm;
+      b.style.color=(ok===false)?"#f87171":"#9fb3d9";
+    }catch(e){}
+  }
+
   /* ── 12) BAŞLAT + DIŞ API ────────────────────────────────── */
   hookLocalStorage();
   window.addEventListener("learning-errors-cleared", pushSoon);
   window.addEventListener("pagehide", flushOnLeave);
   document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="hidden") flushOnLeave(); });
   initFirebase();
+  if(document.readyState!=="loading") updateBadge(); else document.addEventListener("DOMContentLoaded",function(){ updateBadge(); });
 
   window.DHCloudSync = {
     push: pushNow, sync: initialSync, pull: fullSync, fullSync: fullSync,

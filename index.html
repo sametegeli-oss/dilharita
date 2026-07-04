@@ -60,6 +60,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     <a class="card" href="./teacher.html"><b>🎓 Öğretmen</b><span>Türkçe anlatımlı İngilizce öğretmeni</span></a>
     <a class="card" href="./chat.html"><b>💬 Sohbet</b><span>Fotoğraflı konuşan avatar senaryoları</span></a>
     <a class="card" href="./kelime-ogren.html"><b>📖 Kelime Öğren</b><span>En sık kelimeler — kart, quiz ve resimlerle</span></a>
+    <a class="card" href="./tekrar.html"><b>🔁 Tekrar</b><span>Öğrenilen kelime + cümle tekrar kuyruğu</span></a>
     <a class="card" href="./library.html"><b>📚 Kütüphane</b><span>Kitap / metin okuma ekranı</span></a>
     <a class="card" href="./videopractice.html"><b>🎬 Video</b><span>Video ve telaffuz çalışması</span></a>
     <a class="card" href="./hata-defteri.html"><b>📌 Hata Defteri</b><span>Yanlış yapılan cümleler ve hata analizi</span></a>
@@ -99,7 +100,21 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     <label style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font:800 13px system-ui,sans-serif">⬆ Yedekten geri yükle
       <input type="file" id="dhRestoreFile" accept="application/json,.json" hidden />
     </label>
+    <button id="dhLegacyCleanBtn" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#1a1420;color:#cbd5e1;font:800 13px system-ui,sans-serif">🗑 Eski Verileri Temizle</button>
   </div>
+<script>
+(function(){
+  // Bu uygulamanın ESKİ/artık kullanılmayan IndexedDB'leri (diğer uygulamalara DOKUNMAZ)
+  var LEGACY_DBS=["DilHaritasiDB_v1","dil_haritasi_pro_indexeddb_v3","dil_haritasi_pro_indexeddb_v4","sentenceLibraryCacheV2"];
+  var b=document.getElementById("dhLegacyCleanBtn");
+  if(b) b.onclick=function(){
+    if(!confirm("Şu ESKİ veritabanları silinecek (mevcut ilerlemen ETKİLENMEZ):\n\n• "+LEGACY_DBS.join("\n• ")+"\n\nDevam?")) return;
+    LEGACY_DBS.forEach(function(name){ try{ indexedDB.deleteDatabase(name); }catch(e){} });
+    b.textContent="✓ Temizlendi";
+    setTimeout(function(){ b.textContent="🗑 Eski Verileri Temizle"; },3000);
+  };
+})();
+</script>
   <div id="dhBackupMsg" style="text-align:center;font-size:13px;color:#9fb3d9;min-height:18px;margin-bottom:8px"></div>
 
   <div class="note">

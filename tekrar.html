@@ -1,0 +1,99 @@
+<!doctype html><html lang="tr"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🔁 Tekrar — Dil Harita</title>
+<style>
+:root{--bg:#0a1628;--card:#0f1f3a;--line:#1e3a5f;--tx:#e8eef7;--mut:#9fb3d9;--acc:#2563eb}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,sans-serif;padding:14px}
+.top{display:flex;align-items:center;gap:10px;max-width:720px;margin:0 auto 14px}
+.top a{color:var(--mut);text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:7px 12px}
+h1{font-size:17px;margin:0;flex:1}.cnt{color:var(--mut);font-size:13px}
+.card{max-width:720px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+.kind{font-size:11px;font-weight:800;letter-spacing:.5px;color:#38bdf8;text-transform:uppercase}
+.q{font-size:24px;font-weight:800;margin:10px 0 4px}
+.a{font-size:17px;color:#a7f3d0;min-height:26px;margin:8px 0}
+.a.hid{visibility:hidden}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+button{border:0;border-radius:12px;padding:12px 16px;font:800 14px system-ui;cursor:pointer;color:#fff}
+.b-show{background:#334155;flex:1}.b-say{background:#0e7490}
+.b-hard{background:#dc2626;flex:1}.b-easy{background:#16a34a;flex:1}
+.done{max-width:720px;margin:40px auto;text-align:center;color:var(--mut)}
+.done b{color:#a7f3d0;font-size:20px;display:block;margin-bottom:8px}
+</style></head><body>
+<div class="top"><a href="./index.html">←</a><h1>🔁 Tekrar Kuyruğu</h1><span class="cnt" id="cnt"></span></div>
+<div class="card" id="card" style="display:none">
+  <div class="kind" id="kind"></div>
+  <div class="q" id="q"></div>
+  <div class="a hid" id="a"></div>
+  <div class="row">
+    <button class="b-show" id="bShow">👁 Göster</button>
+    <button class="b-say" id="bSay">🔊</button>
+  </div>
+  <div class="row" id="grade" style="display:none">
+    <button class="b-hard" id="bHard">Zor — tekrar gelsin</button>
+    <button class="b-easy" id="bEasy">Kolay ✓</button>
+  </div>
+</div>
+<div class="done" id="done" style="display:none"><b>🎉 Kuyruk boş!</b>Öğrenilmekte olan tüm kelime ve cümleleri tamamladın.<br><a href="./index.html" style="color:#38bdf8">Ana menüye dön</a></div>
+
+<script src="./auth-guard.js?v=2"></script>
+<script src="./progress-engine.js?v=2"></script>
+<script src="./cloud-sync-v8.js?v=1"></script>
+<script>
+(async function(){
+  var $=function(id){return document.getElementById(id)};
+  // 1) Kuyruk: aynadan "öğreniliyor" (status=1) kelime + cümleler
+  var mirror={}; try{ mirror=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; }catch(e){}
+  var q=[];
+  for(var id in mirror){ if(mirror.hasOwnProperty(id) && mirror[id] && mirror[id][0]===1) q.push(id); }
+  q.sort(function(a,b){ return ((mirror[a][1]||0)-(mirror[b][1]||0)); }); // en eskiden başla
+  $("cnt").textContent = q.length ? (q.length+" öğe") : "";
+  if(!q.length){ $("done").style.display="block"; return; }
+
+  // 2) Cümle metinleri (yalnız gerekiyorsa yükle)
+  var sentMap=null, dict=null;
+  var needSent=q.some(function(x){return x.indexOf("sentence:")===0;});
+  var needWord=q.some(function(x){return x.indexOf("word:")===0;});
+  if(needSent){
+    try{
+      var all=await (await fetch("./data/sentences.json")).json();
+      sentMap={}; all.forEach(function(s){ sentMap[s.id]=s; });
+    }catch(e){ sentMap={}; }
+  }
+  if(needWord){
+    try{ dict=await (await fetch("./data/dictionary.json")).json(); }catch(e){ dict={}; }
+  }
+
+  // 3) Akış
+  var i=0;
+  function speak(t){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.lang="en-US"; u.__dhMixed=true; u.__longTTSAvatarSync=true; speechSynthesis.speak(u); }catch(e){} }
+  function show(){
+    if(i>=q.length){ $("card").style.display="none"; $("done").style.display="block"; return; }
+    var id=q[i], en="", tr="", kind="";
+    if(id.indexOf("sentence:")===0){
+      kind="Cümle "+(i+1)+"/"+q.length;
+      var s=(sentMap||{})[id.slice(9)];
+      en=s?s.en:id.slice(9); tr=s?(s.tr||""):"";
+    }else if(id.indexOf("word:")===0){
+      kind="Kelime "+(i+1)+"/"+q.length;
+      var w=id.slice(5); en=w;
+      var d=(dict||{})[w]||(dict||{})[w.toLowerCase()];
+      tr=d&&d.anlamlar?d.anlamlar.slice(0,3).join(", "):"";
+    }else{ i++; return show(); }
+    $("kind").textContent=kind; $("q").textContent=en;
+    $("a").textContent=tr||"—"; $("a").classList.add("hid");
+    $("grade").style.display="none"; $("bShow").style.display="";
+    $("card").style.display="block";
+    $("bSay").onclick=function(){ speak(en); };
+  }
+  $("bShow").onclick=function(){ $("a").classList.remove("hid"); $("grade").style.display="flex"; $("bShow").style.display="none"; };
+  function grade(ok){
+    var id=q[i];
+    try{ if(window.DHProgress&&DHProgress.recordResult) DHProgress.recordResult(id, ok); }catch(e){}
+    i++; show();
+  }
+  $("bHard").onclick=function(){ grade(false); };
+  $("bEasy").onclick=function(){ grade(true); };
+  show();
+})();
+</script>
+</body></html>

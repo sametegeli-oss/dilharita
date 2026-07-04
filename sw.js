@@ -1,14 +1,12 @@
 /* sw.js — Dil Harita service worker
-   v2: Kalıcı SW. Bildirim tıklama desteği eklendi.
-
-   NOT: Önceki sürüm her açılışta cache'i silip kendini unregister eden
-   bir "kill switch" idi (eski bozuk cache sorununu çözmek için). Artık
-   bildirimler için kalıcı bir SW gerektiğinden o davranış kaldırıldı.
-   Yine de güvenli geçiş için: aktivasyonda ESKİ cache'ler temizlenir,
-   ama SW kendini SİLMEZ (kayıtlı kalır). Offline cache bilinçli olarak
-   eklenmedi (mevcut mimaride fetch doğrudan ağa gider).
+   v3: AĞ-ÖNCELİKLİ + ÖNBELLEK YEDEĞİ.
+   - Her istek önce AĞDAN alınır (dosyalar her zaman güncel — "yükledim ama değişmedi" biter).
+   - Başarılı yanıtlar önbelleğe kopyalanır; ağ yoksa önbellekten sunulur (offline çalışır,
+     eski 503 hatası biter).
+   - Bildirim tıklama/push davranışı v2 ile aynı.
 */
-var SW_VERSION = "dh-sw-v2";
+var SW_VERSION = "dh-sw-v3";
+var CACHE = SW_VERSION;
 
 self.addEventListener("install", function(event){
   self.skipWaiting();
@@ -18,16 +16,33 @@ self.addEventListener("activate", function(event){
   event.waitUntil((async function(){
     try{
       var keys = await caches.keys();
-      await Promise.all(keys.map(function(k){ return caches.delete(k); }));
+      await Promise.all(keys.map(function(k){ return k===CACHE ? null : caches.delete(k); }));
     }catch(e){}
     try{ await self.clients.claim(); }catch(e){}
   })());
 });
 
 self.addEventListener("fetch", function(event){
-  event.respondWith(fetch(event.request).catch(function(){
-    return new Response("", { status: 503, statusText: "offline" });
-  }));
+  var req = event.request;
+  // yalnız GET ve http(s) — Firestore/analytics POST'larına karışma
+  if (req.method !== "GET" || req.url.indexOf("http") !== 0) return;
+  event.respondWith((async function(){
+    try{
+      var res = await fetch(req);
+      // yalnız kendi origin'imizin başarılı yanıtlarını önbelleğe al
+      try{
+        if (res && res.ok && new URL(req.url).origin === self.location.origin){
+          var c = await caches.open(CACHE);
+          c.put(req, res.clone());
+        }
+      }catch(e){}
+      return res;
+    }catch(e){
+      var hit = await caches.match(req, { ignoreSearch:true });
+      if (hit) return hit;
+      return new Response("", { status: 503, statusText: "offline" });
+    }
+  })());
 });
 
 self.addEventListener("notificationclick", function(event){
