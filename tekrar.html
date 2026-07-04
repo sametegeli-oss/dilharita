@@ -142,7 +142,8 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   }
   function texts(it){
     if(it.kind==="s"){ var s=sentMap[it.id]||errText[it.id]||{};
-      return {en:s.en||it.id,tr:s.tr||"",exp:s.aiExplain||"",cm:s.commonMistake||"",co:(s.collocations||[]).slice(0,4).join(" · ")};
+      return {en:s.en||it.id,tr:s.tr||"",exp:s.aiExplain||"",cm:s.commonMistake||"",
+        co:Array.isArray(s.collocations)?s.collocations.slice(0,4).join(" · "):String(s.collocations||"")};
     }
     var d=dict[it.id]||dict[it.id.toLowerCase()];
     return {en:it.id,tr:(d&&d.anlamlar)?d.anlamlar.slice(0,3).join(", "):"",exp:"",cm:"",co:""};
