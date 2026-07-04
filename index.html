@@ -126,6 +126,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     <label style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font:800 13px system-ui,sans-serif">⬆ Yedekten geri yükle
       <input type="file" id="dhRestoreFile" accept="application/json,.json" hidden />
     </label>
+    <button id="dhSnapBtn" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font:800 13px system-ui,sans-serif">⏪ Geri Dön</button>
     <button id="dhLegacyCleanBtn" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#1a1420;color:#cbd5e1;font:800 13px system-ui,sans-serif">🗑 Eski Verileri Temizle</button>
   </div>
 <script>
@@ -435,6 +436,52 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   if(window.__dhStorageReady) setTimeout(fillStreak,300);
   else window.addEventListener("dh-storage-ready", function(){ setTimeout(fillStreak,300); }, {once:true});
   setTimeout(fillStreak, 1500);
+})();
+</script>
+<script>
+/* ⏪ günlük anlık görüntüye dönüş */
+(function(){
+  var b=document.getElementById("dhSnapBtn");
+  if(b) b.onclick=async function(){
+    var cs=window.DHCloudSync;
+    if(!(cs&&cs.snapList)){ alert("Senkron modülü hazır değil."); return; }
+    var list=cs.snapList();
+    if(!list.length){ alert("Henüz anlık görüntü yok (her gün ilk açılışta otomatik alınır)."); return; }
+    var day=prompt("Hangi güne dönülsün?\n"+list.join("\n"), list[list.length-1]);
+    if(!day||list.indexOf(day)<0) return;
+    if(!confirm(day+" günündeki ilerleme durumuna dönülecek ve buluta yazılacak. Emin misin?")) return;
+    b.textContent="⏳";
+    var r=await cs.restoreSnap(day);
+    alert(r.message); location.reload();
+  };
+})();
+/* kullanılmayan kartları katla (30 gün) */
+(function(){
+  var CORE=["index-app","practice","teacher","chat.html","kelime-ogren","tekrar","harita","hata-defteri","library"];
+  var K="dh-card-seen", now=Date.now(), G=30*86400000;
+  var seen={}; try{ seen=JSON.parse(localStorage.getItem(K)||"{}")||{}; }catch(e){}
+  var cards=[].slice.call(document.querySelectorAll("a.card"));
+  cards.forEach(function(a){
+    a.addEventListener("click",function(){ try{ seen[a.getAttribute("href")]=Date.now(); localStorage.setItem(K,JSON.stringify(seen)); }catch(e){} });
+  });
+  var fold=[];
+  cards.forEach(function(a){
+    var href=a.getAttribute("href")||"";
+    if(CORE.some(function(cn){ return href.indexOf(cn)!==-1; })) return;
+    var t=seen[href];
+    if(t===undefined){ seen[href]=now; return; }          // ilk görüş: 30 gün süre tanı
+    if(now-t>G) fold.push(a);
+  });
+  try{ localStorage.setItem(K,JSON.stringify(seen)); }catch(e){}
+  if(!fold.length) return;
+  var grid=fold[0].parentElement;
+  var det=document.createElement("details");
+  det.style.cssText="grid-column:1/-1;border:1px dashed #ffffff22;border-radius:14px;padding:10px 14px;color:#9fb3d9";
+  det.innerHTML='<summary style="cursor:pointer;font:800 13px system-ui">📦 Az kullanılanlar ('+fold.length+")</summary>";
+  var inner=document.createElement("div");
+  inner.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-top:10px";
+  fold.forEach(function(a){ inner.appendChild(a); });
+  det.appendChild(inner); grid.appendChild(det);
 })();
 </script>
 </body>

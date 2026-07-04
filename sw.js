@@ -27,6 +27,20 @@ self.addEventListener("fetch", function(event){
   // yalnız GET ve http(s) — Firestore/analytics POST'larına karışma
   if (req.method !== "GET" || req.url.indexOf("http") !== 0) return;
   event.respondWith((async function(){
+    // BÜYÜK VERİ (data/*.json): önce ÖNBELLEK (anında açılış), arka planda tazele
+    try{
+      var u=new URL(req.url);
+      if(u.origin===self.location.origin && u.pathname.indexOf("/data/")!==-1 && u.pathname.endsWith(".json")){
+        var cached=await caches.match(req,{ignoreSearch:true});
+        var refresh=fetch(req).then(async function(r){
+          if(r&&r.ok){ try{ (await caches.open(CACHE)).put(req,r.clone()); }catch(e){} }
+          return r;
+        }).catch(function(){ return null; });
+        if(cached){ event.waitUntil(refresh); return cached; }
+        var fresh=await refresh; if(fresh) return fresh;
+        return new Response("[]",{status:200,headers:{"Content-Type":"application/json"}});
+      }
+    }catch(e){}
     try{
       var res = await fetch(req);
       // yalnız kendi origin'imizin başarılı yanıtlarını önbelleğe al

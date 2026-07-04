@@ -187,7 +187,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   }
 
   /* ---- akış ---- */
-  var i=0, doneCount=0, cur=null, curT=null, revealed=false;
+  var i=0, doneCount=0, cur=null, curT=null, revealed=false, lastSc=-1;
   function speak(t){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.lang="en-US"; u.__dhMixed=true; u.__longTTSAvatarSync=true; speechSynthesis.speak(u); }catch(e){} }
 
   function render(){
@@ -229,7 +229,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     $("grade").style.display="flex";
     $("bShow").style.display="none"; $("bChk").style.display="none";
     if(mode==="prod"){
-      var sc=similarity($("inp").value, curT.en);
+      var sc=similarity($("inp").value, curT.en); lastSc=sc;
       $("score").innerHTML="Benzerlik: <span style='color:"+(sc>=80?"#4ade80":(sc>=50?"#fbbf24":"#f87171"))+"'>%"+sc+"</span>"+(sc>=80?" — Bildim'e hazır ✓":"");
       if(sc<80) showExplain(curT,false);   // eksik kurduysa açıklama hemen gelsin
       speak(curT.en);
@@ -255,6 +255,11 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     var it=cur;
     var key=(it.kind==="s"?"srs:":"wsrs:")+it.id;
     var rec=srsStep(it.kind==="s"?srs[it.id]:wsrs[it.id], hard);
+    // FREN: üretim modunda %50 altı benzerlikle "Bildim" → aralık yarıya (kendini kandırma önlenir)
+    if(!hard && mode==="prod" && lastSc>=0 && lastSc<50){
+      rec.interval=Math.max(1,Math.round(rec.interval/2)); rec.due=Date.now()+rec.interval*DAY;
+    }
+    lastSc=-1;
     var leech = hard && (rec.lapses||0)>=3;
     if(leech){ rec.interval=1; rec.due=Date.now()+DAY; }   // MADDE 4: bugünkü döngüden çıkar, yarına al
     if(it.kind==="s") srs[it.id]=rec; else wsrs[it.id]=rec;

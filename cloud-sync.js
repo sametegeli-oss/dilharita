@@ -360,9 +360,23 @@
         onAuth:function(cb){ return authMod.onAuthStateChanged(auth,cb); },
         signOut:function(){ try{ return authMod.signOut(auth); }catch(e){ return Promise.resolve(); } },
         loadSettings:function(uid){
-          return fsMod.getDoc(fsMod.doc(db,"settings",uid)).then(function(s){ return s.exists()?s.data():null; });
+          // İKİ BELGE: settings (ayarlar) + progress (srs/ayna/günler) — birleşik döndür.
+          // Eski tek-belge kurulumları da kapsar (progress boşsa settings'teki her şey okunur).
+          return Promise.all([
+            fsMod.getDoc(fsMod.doc(db,"settings",uid)).then(function(s){return s.exists()?s.data():null;}),
+            fsMod.getDoc(fsMod.doc(db,"progress",uid)).then(function(s){return s.exists()?s.data():null;}).catch(function(){return null;})
+          ]).then(function(a){
+            var st=a[0]||{}, pg=a[1]||{}, out={};
+            for(var k in st){ if(st.hasOwnProperty(k)) out[k]=st[k]; }
+            for(var k2 in pg){ if(pg.hasOwnProperty(k2)&&k2!=="updated_at") out[k2]=pg[k2]; }  // progress daha taze → üstüne
+            if(pg.__bulk){ out.__bulk=Object.assign({},st.__bulk||{},pg.__bulk); }
+            out.updated_at=Math.max(st.updated_at||0, pg.updated_at||0);
+            return out;
+          });
         },
         saveSettings:function(uid,data){
+          // BÖL: ilerleme (smv:*, wsrs, ayna, günler) → progress/{uid}; kalan ayarlar → settings/{uid}.
+          // İki belge = 2×1MB tavan; ayar değişimi koca ilerlemeyi yeniden yazmaz.
           // nokta/özel karakterli anahtarlar Firestore alan adı olamaz → __bulk
           var doc2={}, bulk={};
           if(data&&data.ls){
@@ -372,10 +386,18 @@
               else doc2[k]=data.ls[k];
             }
           }
-          if(Object.keys(bulk).length) doc2.__bulk=bulk;
-          if(data&&data.errors) doc2.__errors=data.errors;
-          doc2.updated_at=Date.now();
-          return fsMod.setDoc(fsMod.doc(db,"settings",uid), doc2, { merge:true });
+          var isProg=function(k){ return k.indexOf("smv:")===0 || k==="dh-progress-mirror-v1" || k==="dh-study-tracker-v1"; };
+          var pDoc={}, sDoc={}, pBulk={}, sBulk={};
+          for(var dk in doc2){ if(doc2.hasOwnProperty(dk)) (isProg(dk)?pDoc:sDoc)[dk]=doc2[dk]; }
+          for(var bk2 in bulk){ if(bulk.hasOwnProperty(bk2)) (isProg(bk2)?pBulk:sBulk)[bk2]=bulk[bk2]; }
+          if(Object.keys(sBulk).length) sDoc.__bulk=sBulk;
+          if(Object.keys(pBulk).length) pDoc.__bulk=pBulk;
+          if(data&&data.errors) sDoc.__errors=data.errors;
+          var now2=Date.now(); sDoc.updated_at=now2; pDoc.updated_at=now2;
+          return Promise.all([
+            fsMod.setDoc(fsMod.doc(db,"settings",uid), sDoc, { merge:true }),
+            fsMod.setDoc(fsMod.doc(db,"progress",uid), pDoc, { merge:true })
+          ]);
         }
       };
       ready=true;
@@ -451,17 +473,50 @@
     }catch(e){}
   }
 
+  /* ── 11c) GÜNLÜK ANLIK GÖRÜNTÜ: "dünü geri al" güvenlik ağı ── */
+  async function takeSnapshot(){
+    try{
+      var day=new Date().toISOString().slice(0,10), key="dh-snap-"+day;
+      if(localStorage.getItem(key)) return;
+      var snap={ m:localStorage.getItem(MIRROR)||"", t:localStorage.getItem(TRACKER)||"", kv:await kvReadAll() };
+      var str=JSON.stringify(snap);
+      if(str.length>1500000) { snap.kv={}; str=JSON.stringify(snap); }  // taşarsa kv'siz sakla
+      localStorage.setItem(key,str);
+      // en fazla 3 gün tut
+      var snaps=[]; for(var i2=0;i2<localStorage.length;i2++){ var k2=localStorage.key(i2); if(k2&&k2.indexOf("dh-snap-")===0) snaps.push(k2); }
+      snaps.sort(); while(snaps.length>3){ localStorage.removeItem(snaps.shift()); }
+    }catch(e){}
+  }
+  function snapList(){
+    var out=[]; try{ for(var i3=0;i3<localStorage.length;i3++){ var k3=localStorage.key(i3); if(k3&&k3.indexOf("dh-snap-")===0) out.push(k3.slice(8)); } }catch(e){}
+    return out.sort();
+  }
+  async function restoreSnap(day){
+    try{
+      var raw=localStorage.getItem("dh-snap-"+day); if(!raw) return {ok:false,message:"Anlık görüntü yok"};
+      var s2=JSON.parse(raw);
+      if(s2.m) localStorage.setItem(MIRROR,s2.m);
+      if(s2.t) localStorage.setItem(TRACKER,s2.t);
+      if(s2.kv) await kvWriteAll(s2.kv);
+      await applyMirror();
+      await pushNow();
+      return {ok:true,message:"✓ "+day+" durumuna dönüldü ve buluta yazıldı."};
+    }catch(e){ return {ok:false,message:"Geri dönüş hatası: "+(e&&e.message||"?")}; }
+  }
+
   /* ── 12) BAŞLAT + DIŞ API ────────────────────────────────── */
   hookLocalStorage();
   window.addEventListener("learning-errors-cleared", pushSoon);
   window.addEventListener("pagehide", flushOnLeave);
   document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="hidden") flushOnLeave(); });
   initFirebase();
+  setTimeout(function(){ takeSnapshot(); }, 4000);
   if(document.readyState!=="loading") updateBadge(); else document.addEventListener("DOMContentLoaded",function(){ updateBadge(); });
 
   window.DHCloudSync = {
     push: pushNow, sync: initialSync, pull: fullSync, fullSync: fullSync,
     signOut: signOutAndPush,
+    snapList: snapList, restoreSnap: restoreSnap,
     get ready(){ return ready; }, get user(){ return user; }
   };
 })();
