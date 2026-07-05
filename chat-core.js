@@ -177,7 +177,7 @@ class PhotoAvatar{
 
 function buildUI(){
   const root=document.getElementById("chatApp") || document.body.appendChild(document.createElement("div"));
-  root.innerHTML=`<div class="chat-shell"><div class="chat-top"><a class="back-btn" href="${Scenario.backHref||'chat.html'}">←</a><div class="chat-title-wrap"><div class="chat-title">${esc(Scenario.title)}</div><div class="chat-sub" id="subtitle">${esc(Scenario.subtitle)} · ${State.level}</div></div><button class="level-pill" id="levelBtn" type="button">${State.level}</button></div><div class="avatar-stage"><img id="avatarImg" alt="Fotoğraflı konuşan avatar"></div><div class="panel"><div class="chat-history" id="chatHistory"></div><div class="input-row"><div class="input-wrap"><textarea id="textIn" class="text-in" rows="1" placeholder="Yaz ya da 🎙 ile konuş..."></textarea></div><button class="icon-fab suggest-btn" id="suggestBtn" type="button" title="Sen öner">💡</button><button class="icon-fab suggest-btn" id="errSaveBtn" type="button" title="Bu konuşmadaki hatalarımı deftere kaydet" style="background:#b45309">📝</button><button class="icon-fab mic-btn" id="micBtn" type="button">🎙</button><button class="icon-fab send-btn" id="sendBtn" type="button">➤</button></div></div></div><div class="sheet" id="explainSheet"><div class="sheet-card"><h3>TR Açıkla</h3><p id="explainText">Yükleniyor...</p><div class="sheet-btns"><button class="sheet-btn primary" id="closeExplain">Kapat</button></div></div></div><div class="sheet" id="levelSheet"><div class="sheet-card"><h3>Seviye seç</h3><div class="sheet-btns"><button class="sheet-btn levelOpt" data-level="A1">A1</button><button class="sheet-btn levelOpt" data-level="A2">A2</button><button class="sheet-btn levelOpt" data-level="B1">B1</button><button class="sheet-btn levelOpt" data-level="B2">B2</button><button class="sheet-btn levelOpt" data-level="C1">C1</button></div><div class="sheet-btns"><button class="sheet-btn primary" id="closeLevel">Kapat</button></div></div></div><div class="sheet" id="keySheet"><div class="sheet-card"><h3>Groq API anahtarı</h3><p>Konuşma için Groq API anahtarını ekle. Birden fazla anahtar saklanabilir.</p><input id="keyInput" type="text" placeholder="gsk_..." autocomplete="off"><div class="sheet-btns"><button class="sheet-btn primary" id="saveKey">Kaydet</button><button class="sheet-btn" id="closeKey">Kapat</button></div><div class="note" id="keyNote">Anahtar bu tarayıcıda saklanır.</div></div></div>`;
+  root.innerHTML=`<div class="chat-shell"><div class="chat-top"><a class="back-btn" href="${Scenario.backHref||'chat.html'}">←</a><div class="chat-title-wrap"><div class="chat-title">${esc(Scenario.title)}</div><div class="chat-sub" id="subtitle">${esc(Scenario.subtitle)} · ${State.level}</div></div><button class="level-pill" id="levelBtn" type="button">${State.level}</button></div><div class="avatar-stage"><img id="avatarImg" alt="Fotoğraflı konuşan avatar"></div><div class="panel"><div class="chat-history" id="chatHistory"></div><div id="taskBar" style="font-size:11.5px;color:#9fb3d9;padding:4px 8px;border-top:1px dashed #ffffff18"></div><div class="input-row"><div class="input-wrap"><textarea id="textIn" class="text-in" rows="1" placeholder="Yaz ya da 🎙 ile konuş..."></textarea></div><button class="icon-fab suggest-btn" id="suggestBtn" type="button" title="Sen öner">💡</button><button class="icon-fab suggest-btn" id="errSaveBtn" type="button" title="Bu konuşmadaki hatalarımı deftere kaydet" style="background:#b45309">📝</button><button class="icon-fab suggest-btn" id="autoBtn" type="button" title="Eller serbest: avatar susunca mikrofon otomatik açılır" style="background:#334155">🔁</button><button class="icon-fab mic-btn" id="micBtn" type="button">🎙</button><button class="icon-fab send-btn" id="sendBtn" type="button">➤</button></div></div></div><div class="sheet" id="explainSheet"><div class="sheet-card"><h3>TR Açıkla</h3><p id="explainText">Yükleniyor...</p><div class="sheet-btns"><button class="sheet-btn primary" id="closeExplain">Kapat</button></div></div></div><div class="sheet" id="levelSheet"><div class="sheet-card"><h3>Seviye seç</h3><div class="sheet-btns"><button class="sheet-btn levelOpt" data-level="A1">A1</button><button class="sheet-btn levelOpt" data-level="A2">A2</button><button class="sheet-btn levelOpt" data-level="B1">B1</button><button class="sheet-btn levelOpt" data-level="B2">B2</button><button class="sheet-btn levelOpt" data-level="C1">C1</button></div><div class="sheet-btns"><button class="sheet-btn primary" id="closeLevel">Kapat</button></div></div></div><div class="sheet" id="keySheet"><div class="sheet-card"><h3>Groq API anahtarı</h3><p>Konuşma için Groq API anahtarını ekle. Birden fazla anahtar saklanabilir.</p><input id="keyInput" type="text" placeholder="gsk_..." autocomplete="off"><div class="sheet-btns"><button class="sheet-btn primary" id="saveKey">Kaydet</button><button class="sheet-btn" id="closeKey">Kapat</button></div><div class="note" id="keyNote">Anahtar bu tarayıcıda saklanır.</div></div></div>`;
 }
 function addBubble(role, text, options){
   const hist = $("chatHistory");
@@ -219,8 +219,69 @@ function removeTyping(){ const t = $("typingBubble"); if(t) t.remove(); }
 function levelGuide(){
   return ({A1:"The user is beginner A1. Use very short and easy sentences.",A2:"The user is elementary A2. Use simple and common words.",B1:"The user is intermediate B1. Use natural but clear English.",B2:"The user is upper intermediate B2. Speak naturally but keep it concise.",C1:"The user is advanced C1. Use fluent natural English, still keep replies concise."})[State.level] || "Use clear natural English.";
 }
+
+/* ---- ÖĞRENCİ PROFİLİ: uygulama verisinden AI'ya kısa özet (≤150 kelime) ---- */
+async function dhBuildProfile(){
+  var p=[];
+  try{ // streak + bugün
+    var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=Object.keys(tr.days||{}).sort();
+    var streak=0, d=new Date();
+    for(;;){ var key=d.toISOString().slice(0,10); if((tr.days||{})[key]){streak++; d.setDate(d.getDate()-1);} else break; }
+    if(streak) p.push("Seri: "+streak+" gün.");
+  }catch(e){}
+  try{ // kelime/cümle durumu
+    var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, w1=0,w2=0,s1=0,s2=0;
+    for(var k in m){ var st=m[k]&&m[k][0]; if(k.indexOf("word:")===0){ if(st===1)w1++; if(st===2)w2++; } if(k.indexOf("sentence:")===0){ if(st===1)s1++; if(st===2)s2++; } }
+    p.push("Kelime: "+w2+" öğrenildi/"+w1+" çalışılıyor. Cümle: "+s2+"/"+s1+".");
+  }catch(e){}
+  try{ // hata etiketleri (ilk 3)
+    if(window.LearningErrorDB&&LearningErrorDB.all){
+      var errs=await LearningErrorDB.all(), tally={};
+      (errs||[]).slice(-60).forEach(function(r){ var t=r&&r.type; if(t) tally[t]=(tally[t]||0)+1; });
+      var top=Object.keys(tally).sort(function(a,b){return tally[b]-tally[a]}).slice(0,3);
+      if(top.length) p.push("Sık hata türleri: "+top.join(", ")+".");
+    }
+  }catch(e){}
+  try{ // inatçı cümleler (ilk 3) + vadesi gelen
+    var due=0, leech=[];
+    await new Promise(function(res){ try{
+      var r=indexedDB.open("sentence-mode",1);
+      r.onsuccess=function(){ var db=r.result;
+        try{ var req=db.transaction("kv","readonly").objectStore("kv").openCursor(), now=Date.now();
+          req.onsuccess=function(e){ var c=e.target.result;
+            if(c){ var kk=String(c.key), v=c.value||{};
+              if(kk.indexOf("srs:")===0){ if((v.due||0)<=now) due++; if((v.lapses||0)>=3&&leech.length<3) leech.push(kk.slice(4)); }
+              c.continue();
+            } else { db.close(); res(); } };
+          req.onerror=function(){ db.close(); res(); };
+        }catch(e2){ try{db.close()}catch(_){ } res(); } };
+      r.onerror=function(){ res(); };
+    }catch(e3){ res(); } });
+    if(due) p.push("Bugün tekrar bekleyen: "+due+".");
+    if(leech.length) p.push("İnatçı (öğrenemediği) cümleler: "+leech.join(" | ")+".");
+  }catch(e){}
+  return p.join(" ").slice(0,900);
+}
+
+var __dhProfile=""; dhBuildProfile().then(function(t){ __dhProfile=t; });
+var __dhTasks=(window.Scenario&&Scenario.tasks)||["Selamlaş ve kendini kısaca tanıt","Senaryonun ana amacını gerçekleştir","Karşındakine en az bir soru sor"];
+var __dhTaskDone=__dhTasks.map(function(){return false;});
+function dhRenderTasks(){
+  var el=document.getElementById("taskBar"); if(!el) return;
+  el.innerHTML="🎯 "+__dhTasks.map(function(t,i){ return '<span style="opacity:'+(__dhTaskDone[i]?1:.6)+'">'+(__dhTaskDone[i]?"✅":"⬜")+" "+t+"</span>"; }).join("  ·  ");
+  if(__dhTaskDone.every(Boolean)) el.innerHTML+=' <b style="color:#4ade80">— 🎉 Görevler tamam!</b>';
+}
+function dhStripTasks(reply){
+  return String(reply||"").replace(/\[TASK_DONE:(\d)\]/g, function(_,n){
+    var i=(+n)-1; if(__dhTaskDone[i]===false){ __dhTaskDone[i]=true; setTimeout(dhRenderTasks,50); }
+    return "";
+  }).trim();
+}
 function systemPrompt(){
-  return [Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."), levelGuide(), "Always reply in English unless the user explicitly asks for Turkish.", "Keep replies short: 1 to 3 sentences.", "Ask a follow-up question to keep the conversation going.", "If the user makes a clear mistake, gently model the correct version without lecturing.", "No emojis."].join("\n");
+  return [Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."), levelGuide(), "Always reply in English unless the user explicitly asks for Turkish.", "Keep replies short: 1 to 3 sentences.", "Ask a follow-up question to keep the conversation going.", "If the user makes a clear mistake, gently model the correct version without lecturing.", "No emojis.",
+    (__dhProfile?("\n[STUDENT PROFILE — use this to personalize, in Turkish data]\n"+__dhProfile+"\nWhen the student repeats one of their known error patterns, gently correct it and briefly note it is a frequent mistake of theirs. Naturally create situations that make the student use the patterns they struggle with."):""),
+    "\n[TASKS] The student must complete these in-scenario tasks: "+__dhTasks.map(function(t,i){return (i+1)+") "+t;}).join(" ")+" Weave them naturally into the conversation. When the user GENUINELY completes task N, append the marker [TASK_DONE:N] at the very end of your reply. Never mention the markers or tasks mechanically."
+  ].join("\n");
 }
 function estimateDuration(text){ const n=Array.from(String(text||"")).length; return Math.max(1100, Math.min(12000, n * 82)); }
 
@@ -257,7 +318,8 @@ function speakText(text){
     u.__longTTSAvatarSync = true;  // long-avatar patch'ini de atla (Türkçe okumayı kesin engelle)
     u.rate = .96;
     u.pitch = .78;
-    u.onend=()=>{if(run===speechRun) avatar.stop();};
+    u.onend=()=>{if(run===speechRun) avatar.stop();
+      if(window.__dhAuto){ setTimeout(function(){ try{ var mb=document.getElementById("micBtn"); if(mb&&!mb.classList.contains("listening")) mb.click(); }catch(e){} }, 400); } };
     u.onerror=()=>{if(run===speechRun) avatar.stop();};
     speechSynthesis.speak(u);
   }catch(e){ setTimeout(()=>{ if(run===speechRun) avatar.stop(); }, duration); }
@@ -296,11 +358,22 @@ async function analyzeChatErrors(){
       try{ window.dispatchEvent(new Event("learning-errors-cleared")); }catch(e){}
     }
     b.textContent="✓"+arr.length;
+    if(arr.length===0 && userMsgs.length>=6 && !window.__dhLevelTipShown){
+      window.__dhLevelTipShown=true;
+      var order=["A1","A2","B1","B2","C1"], nx=order[order.indexOf(State.level)+1];
+      if(nx && confirm("Bu oturumda hiç hata bulunamadı — seviyeyi "+nx+" yapalım mı?")){
+        var ob=document.querySelector('.levelOpt[data-level="'+nx+'"]'); if(ob) ob.click();
+      }
+    }
   }catch(e){ b.textContent="⚠"; }
   setTimeout(()=>{ b.textContent="📝"; },2000);
 }
 
-document.addEventListener("click",function(e){ if(e.target&&e.target.id==="errSaveBtn") analyzeChatErrors(); });
+document.addEventListener("click",function(e){
+  if(e.target&&e.target.id==="errSaveBtn") analyzeChatErrors();
+  if(e.target&&e.target.id==="autoBtn"){ window.__dhAuto=!window.__dhAuto; e.target.style.background=window.__dhAuto?"#16a34a":"#334155"; }
+});
+setTimeout(dhRenderTasks, 800);
 async function suggestReply(){
   if(State.busy) return;
   const input=$("textIn");
@@ -348,7 +421,7 @@ async function sendUser(){
   if(!getKeys().length){
     removeTyping();
     $("keySheet").classList.add("open");
-    State.currentPartner=Scenario.noKeyReply;
+    State.currentPartner = Scenario.noKeyReply;
     addBubble("assistant", State.currentPartner);
     speakText(State.currentPartner);
     State.busy=false;
@@ -360,7 +433,7 @@ async function sendUser(){
     const messages=[{role:"system",content:systemPrompt()},{role:"assistant",content:Scenario.opener},...State.history.slice(-10)];
     const reply=await groqChat(messages);
     removeTyping();
-    State.currentPartner=reply || "Could you please say that again?";
+    State.currentPartner=dhStripTasks(reply) || "Could you please say that again?";
     State.history.push({role:"assistant",content:State.currentPartner});
     addBubble("assistant", State.currentPartner);
     speakText(State.currentPartner);

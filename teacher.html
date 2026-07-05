@@ -608,7 +608,8 @@ async function explain(){
   if (!getKeys().length){ openKeySheet(); setOut(""); return; }
   setOut(`<div class="loading"><div class="spinner"></div> Öğretmen cümleyi inceliyor…</div>`);
   const userMsg = `İngilizce cümle: "${State.en}"` + (State.tr ? `\nTürkçe çevirisi: ${State.tr}` : "");
-  State.history = [{ role:"system", content:getPrompt() }, { role:"user", content:userMsg }];
+  try{ var _mem=JSON.parse(localStorage.getItem("dh-teacher-mem")||"[]"); _mem.push({q:String(State.en||"").slice(0,90),ts:Date.now()}); localStorage.setItem("dh-teacher-mem",JSON.stringify(_mem.slice(-3))); }catch(e){}
+  State.history = [{ role:"system", content:getPrompt()+(window.__dhProfileBlock||"") }, { role:"user", content:userMsg }];
   try{
     const reply = await groqChat(State.history);
     State.history.push({ role:"assistant", content:reply });
@@ -855,5 +856,57 @@ render();
 <script src="./study-tracker.js?v=2"></script>
 <script src="./cloud-sync.js?v=5"></script>
 <script src="./word-popup.js?v=1"></script>
-</body>
+<script>
+
+/* ---- ÖĞRENCİ PROFİLİ: uygulama verisinden AI'ya kısa özet (≤150 kelime) ---- */
+async function dhBuildProfile(){
+  var p=[];
+  try{ // streak + bugün
+    var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=Object.keys(tr.days||{}).sort();
+    var streak=0, d=new Date();
+    for(;;){ var key=d.toISOString().slice(0,10); if((tr.days||{})[key]){streak++; d.setDate(d.getDate()-1);} else break; }
+    if(streak) p.push("Seri: "+streak+" gün.");
+  }catch(e){}
+  try{ // kelime/cümle durumu
+    var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, w1=0,w2=0,s1=0,s2=0;
+    for(var k in m){ var st=m[k]&&m[k][0]; if(k.indexOf("word:")===0){ if(st===1)w1++; if(st===2)w2++; } if(k.indexOf("sentence:")===0){ if(st===1)s1++; if(st===2)s2++; } }
+    p.push("Kelime: "+w2+" öğrenildi/"+w1+" çalışılıyor. Cümle: "+s2+"/"+s1+".");
+  }catch(e){}
+  try{ // hata etiketleri (ilk 3)
+    if(window.LearningErrorDB&&LearningErrorDB.all){
+      var errs=await LearningErrorDB.all(), tally={};
+      (errs||[]).slice(-60).forEach(function(r){ var t=r&&r.type; if(t) tally[t]=(tally[t]||0)+1; });
+      var top=Object.keys(tally).sort(function(a,b){return tally[b]-tally[a]}).slice(0,3);
+      if(top.length) p.push("Sık hata türleri: "+top.join(", ")+".");
+    }
+  }catch(e){}
+  try{ // inatçı cümleler (ilk 3) + vadesi gelen
+    var due=0, leech=[];
+    await new Promise(function(res){ try{
+      var r=indexedDB.open("sentence-mode",1);
+      r.onsuccess=function(){ var db=r.result;
+        try{ var req=db.transaction("kv","readonly").objectStore("kv").openCursor(), now=Date.now();
+          req.onsuccess=function(e){ var c=e.target.result;
+            if(c){ var kk=String(c.key), v=c.value||{};
+              if(kk.indexOf("srs:")===0){ if((v.due||0)<=now) due++; if((v.lapses||0)>=3&&leech.length<3) leech.push(kk.slice(4)); }
+              c.continue();
+            } else { db.close(); res(); } };
+          req.onerror=function(){ db.close(); res(); };
+        }catch(e2){ try{db.close()}catch(_){ } res(); } };
+      r.onerror=function(){ res(); };
+    }catch(e3){ res(); } });
+    if(due) p.push("Bugün tekrar bekleyen: "+due+".");
+    if(leech.length) p.push("İnatçı (öğrenemediği) cümleler: "+leech.join(" | ")+".");
+  }catch(e){}
+  return p.join(" ").slice(0,900);
+}
+
+(function(){
+  dhBuildProfile().then(function(p){
+    var mem=[]; try{ mem=JSON.parse(localStorage.getItem("dh-teacher-mem")||"[]"); }catch(e){}
+    var mm=mem.length?("\nÖnceki oturumlarda sorduğu cümleler: "+mem.map(function(x){return '"'+x.q+'"';}).join(", ")+"."):"";
+    window.__dhProfileBlock="\n\n[ÖĞRENCİ PROFİLİ — anlatımı buna göre kişiselleştir; sık hatalarına ve inatçı cümlelerine bağ kur]\n"+p+mm;
+  });
+})();
+</script>\n</body>
 </html>

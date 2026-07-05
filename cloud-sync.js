@@ -30,7 +30,7 @@
     "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1",
     "groqApiKeys", "cerebrasApiKeys", "geminiApiKeys",
     "dh-model-groq", "dh-model-cerebras", "dh-model-gemini", "dh-disabled-keys",
-    "selectedTeacherAvatar"
+    "selectedTeacherAvatar", "dh-teacher-mem"
   ];
   var LS_PREFIXES = ["sm:", "mas:", "ev:", "modscore:", "gramprof:", "story:"];
   var MAX_VAL = 200000;      // alan başına üst sınır (Firestore alan limiti 1MB)
