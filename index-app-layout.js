@@ -49,9 +49,12 @@
     +"@media (orientation:landscape),(min-width:680px){"
     +".card.dh-split{display:grid !important;grid-template-columns:1.55fr .85fr;gap:10px 16px;align-items:start}"
     +".card.dh-split>*{grid-column:1;min-width:0}"
-    +".card.dh-split>.grade-bar{grid-column:2;grid-row:1;flex-direction:column !important}"
+    +".card.dh-split>.grade-bar,.card.dh-split>.grade-done{grid-column:2;grid-row:1;flex-direction:column !important}"
     +".card.dh-split>.grade-bar .grade-btn{min-height:33px;font-size:12px}"
-    +".card.dh-split>.card-actions{grid-column:2;grid-row:2;display:flex;flex-wrap:wrap;gap:6px;align-content:start}"
+    +".card.dh-split>.dh-nav-trio{grid-column:2;grid-row:2}"
+    +".card.dh-split>.dh-nav-trio .dh-nav-btn{min-height:31px;padding:5px 9px !important;font-size:12px !important;border-radius:9px !important}"
+    +".card.dh-split>.dh-nav-trio .dh-tools-toggle{min-height:31px !important;padding:0 9px !important}"
+    +".card.dh-split>.card-actions{grid-column:2;grid-row:3;display:flex;flex-wrap:wrap;gap:6px;align-content:start}"
     +".card.dh-split>.card-actions button{min-height:31px;padding:5px 9px !important;font-size:12px !important;border-radius:9px !important}"
     +"}"
     /* ---- YATAY MOBİL: TEK EKRAN ---- */
@@ -151,11 +154,16 @@
     return nav ? nav.querySelector("button.btn-primary") : null;
   }
 
-  /* ⬅➡ üçlü — resmin üstüne (card-meta'nın hemen ardına) kendi öğem;
+  /* ⬅➡ üçlü — Zor/Normal/Kolay (grade-bar) düğmelerinin hemen altına kendi öğem;
+     grade-bar bazen "grade-done" mesajına dönüştüğü için ikisine de bakılır,
+     hiçbiri yoksa card-meta'nın altına düşer (kaybolmasın diye).
      gerçek React düğmelerine yalnız proxy .click() + disabled senkronu */
+  function gradeAnchor(c){
+    return c.querySelector(".grade-bar") || c.querySelector(".grade-done") || c.querySelector(".card-meta");
+  }
   function ensureNavTrio(c){
-    var meta=c.querySelector(".card-meta");
-    if(!meta) return null;
+    var anchor=gradeAnchor(c);
+    if(!anchor) return null;
     var trio=document.getElementById("dhNavTrio");
     if(!trio){
       trio=document.createElement("div");
@@ -168,10 +176,10 @@
       next.onclick=function(){ var r=realNextBtn(); if(r) r.click(); };
       trio.appendChild(prev);
       trio.appendChild(next);
-      meta.insertAdjacentElement("afterend", trio);
+      anchor.insertAdjacentElement("afterend", trio);
     }
-    if(trio.parentElement!==meta.parentElement || meta.nextElementSibling!==trio){
-      meta.insertAdjacentElement("afterend", trio); // React yeniden render ettiyse konumu düzelt
+    if(trio.previousElementSibling!==anchor || trio.parentElement!==anchor.parentElement){
+      anchor.insertAdjacentElement("afterend", trio); // React yeniden render ettiyse konumu düzelt
     }
     var rp=realPrevBtn(), rn=realNextBtn();
     var pBtn=trio.querySelector(".dh-nav-prev"), nBtn=trio.querySelector(".dh-nav-next");
