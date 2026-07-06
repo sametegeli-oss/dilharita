@@ -30,10 +30,12 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 .done{max-width:720px;margin:40px auto;text-align:center;color:var(--mut)}
 .done b{color:#a7f3d0;font-size:20px;display:block;margin-bottom:8px}
 .b-more{background:#2563eb;margin-top:12px}.b-next{background:#0e7490;margin:6px 4px 0}
-/* Diff Visual Styles */
-.diff-match{color:#4ade80;margin-right:4px;font-weight:bold}
-.diff-wrong{color:#f87171;text-decoration:line-through;margin-right:4px}
-.diff-missing{color:#6b7280;border-bottom:1px dashed #6b7280;margin-right:4px}
+
+/* Diff Visual Styles & Fixed Sizing for Auto-Wrap */
+.diff-box{margin-top:6px; background:#071120; padding:8px; border-radius:8px; font-weight:normal; display:inline-block; width:100%; word-break:break-word; white-space:normal;}
+.diff-match{color:#4ade80;margin-right:4px;font-weight:bold;display:inline-block;}
+.diff-wrong{color:#f87171;text-decoration:line-through;margin-right:4px;display:inline-block;}
+.diff-missing{color:#6b7280;border-bottom:1px dashed #6b7280;margin-right:4px;display:inline-block;}
 </style></head><body>
 <div class="top"><a href="./index.html">←</a><h1>🔁 Tekrar</h1><div class="cnt" id="cnt"></div></div>
 <div class="mode">Mod:
@@ -81,7 +83,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   var $=function(id){return document.getElementById(id)};
   var DAY=86400000, SESSION=40, now=Date.now();
   var PLAN=/[?&]plan=1/.test(location.search);
-  var mode=localStorage.getItem("dh-tekrar-mode")||"prod";   // prod | clas
+  var mode=localStorage.getItem("dh-tekrar-mode")||"prod";
   var showOnlyErrors=localStorage.getItem("dh-only-errors") === "1";
 
   /* ---- kv (practice ile ortak depo) ---- */
@@ -234,9 +236,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   /* ---- açıklama paneli ---- */
   function showExplain(t, leech){
     var html="";
-    if(t.exp) html+="<b>💡 Açıklama:</b> " + t.exp;
-    if(t.cm)  html+='<span class="cm">⚠ Tipik hata: ' + t.cm + "</span>";
-    if(t.co)  html+='<span class="co">🔗 Kalıplar: ' + t.co + "</span>";
+    if(t.exp) html+="<b>💡 Açıklama:</b> " + t.exp;[cite: 1]
+    if(t.cm)  html+='<span class="cm">⚠ Tipik hata: ' + t.cm + "</span>";[cite: 1]
+    if(t.co)  html+='<span class="co">🔗 Kalıplar: ' + t.co + "</span>";[cite: 1]
     if(leech){
       html+='<div class="askrow"><b style="color:#f87171">🧲 İnatçı öğe</b> — yarına ertelendi. '
           +'<button class="b-say" style="padding:7px 12px;font-size:12px" id="bAsk">🎓 Öğretmene sor</button></div>';
@@ -298,7 +300,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       
       var diffResult = getDiffHtml(userInputValue, curT.en);
       $("score").innerHTML="Benzerlik: <span style='color:"+(sc>=80?"#4ade80":(sc>=50?"#fbbf24":"#f87171"))+"'>%"+sc+"</span>"+(sc>=80?" — Bildim'e hazır ✓":"") + 
-                           "<br><div style='margin-top:6px; background:#071120; padding:8px; border-radius:8px; font-weight:normal;'>" + diffResult + "</div>";
+                           "<br><div class='diff-box'>" + diffResult + "</div>";
       
       if(sc<80) showExplain(curT,false);
       speak(curT.en);
@@ -373,8 +375,8 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     var userEn = $("inp").value.trim() || "[Kullanıcı boş bıraktı]";
     
     var systemNotes = "";
-    if (curT.cm) systemNotes += "\n⚠️ Bu cümle için bilinen tipik hata: " + curT.cm;
-    if (curT.exp) systemNotes += "\n💡 Sistem açıklaması: " + curT.exp;
+    if (curT.cm) systemNotes += "\n⚠️ Bu cümle için bilinen tipik hata: " + curT.cm;[cite: 1]
+    if (curT.exp) systemNotes += "\n💡 Sistem açıklaması: " + curT.exp;[cite: 1]
 
     var promptText = "Bir İngilizce öğrenme uygulamasında TR->EN üretimi çalışıyorum. Aşağıdaki eşleşmeyi analiz et:\n\n" +
                      "🇹🇷 Türkçe Kaynak: " + trSentence + "\n" +
