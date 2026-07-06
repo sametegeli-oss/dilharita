@@ -34,6 +34,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 /* Diff Visual Styles & Fixed Sizing for Auto-Wrap */
 .diff-box{margin-top:6px; background:#071120; padding:8px; border-radius:8px; font-weight:normal; display:inline-block; width:100%; word-break:break-word; white-space:normal;}
 .diff-match{color:#4ade80;margin-right:4px;font-weight:bold;display:inline-block;}
+.diff-typo{color:#f59e0b;margin-right:4px;font-weight:bold;display:inline-block;border-bottom:2px dashed #f59e0b;cursor:help;}
 .diff-wrong{color:#f87171;text-decoration:line-through;margin-right:4px;display:inline-block;}
 .diff-missing{color:#6b7280;border-bottom:1px dashed #6b7280;margin-right:4px;display:inline-block;}
 </style></head><body>
@@ -120,6 +121,24 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     return n;
   }
 
+  /* ---- Levenshtein Distance Algoritması (Harf Bazlı Benzerlik Oranı) ---- */
+  function getLevenshteinSimilarity(s1, s2) {
+    var m = s1.length, n = s2.length;
+    if (m === 0) return n === 0 ? 100 : 0;
+    if (n === 0) return 0;
+    var d = Array.from({ length: m + 1 }, function() { return new Array(n + 1).fill(0); });
+    for (var i = 0; i <= m; i++) d[i][0] = i;
+    for (var j = 0; j <= n; j++) d[0][j] = j;
+    for (var i = 1; i <= m; i++) {
+      for (var j = 1; j <= n; j++) {
+        var cost = (s1[i - 1] === s2[j - 1]) ? 0 : 1;
+        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      }
+    }
+    var maxLen = Math.max(m, n);
+    return Math.round(((maxLen - d[m][n]) / maxLen) * 100);
+  }
+
   /* ---- kuyruk ---- */
   var srs=await kvPrefix("srs:"), wsrs=await kvPrefix("wsrs:");
   var mirror={}; try{ mirror=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; }catch(e){}
@@ -193,7 +212,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     return Math.round(100*2*hit/(A.length+B.length));
   }
 
-  /* ---- Kelime Bazlı Fark Analizi (Diff Checker) ---- */
+  /* ---- Gelişmiş Fark Analizi (Typos & Levenshtein Destekli) ---- */
   function getDiffHtml(userText, correctText) {
     var uArr = norm(userText).split(" ").filter(Boolean);
     var cArr = norm(correctText).split(" ").filter(Boolean);
@@ -210,7 +229,14 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 
         if (lookAheadUser !== -1 && (lookAheadCorrect === -1 || lookAheadUser - i <= lookAheadCorrect - j)) {
           while (i < lookAheadUser) {
-            html += '<span class="diff-wrong">' + uArr[i] + '</span>';
+            // Typos Kontrolü: Yanlış yazılan kelime hedef kelimeye %75+ benzerlikte mi?
+            var levSim = getLevenshteinSimilarity(uArr[i], cArr[j]);
+            if(levSim >= 75) {
+              html += '<span class="diff-typo" title="Yazım Hatası! (Doğrusu: ' + cArr[j] + ') -> Benzerlik: %' + levSim + '">' + uArr[i] + '</span>';
+              j++; // Hedef kelimeyi de tüketmiş olalım
+            } else {
+              html += '<span class="diff-wrong">' + uArr[i] + '</span>';
+            }
             i++;
           }
         } else if (lookAheadCorrect !== -1) {
@@ -219,13 +245,18 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
             j++;
           }
         } else {
-          if (i < uArr.length) {
-            html += '<span class="diff-wrong">' + uArr[i] + '</span>';
-            i++;
-          }
-          if (j < cArr.length) {
-            html += '<span class="diff-missing">' + cArr[j] + '</span>';
-            j++;
+          if (i < uArr.length && j < cArr.length) {
+            var levSim = getLevenshteinSimilarity(uArr[i], cArr[j]);
+            if(levSim >= 75) {
+              html += '<span class="diff-typo" title="Yazım Hatası! (Doğrusu: ' + cArr[j] + ') -> Benzerlik: %' + levSim + '">' + uArr[i] + '</span>';
+              i++; j++;
+            } else {
+              html += '<span class="diff-wrong">' + uArr[i] + '</span>'; i++;
+              html += '<span class="diff-missing">' + cArr[j] + '</span>'; j++;
+            }
+          } else {
+            if (i < uArr.length) { html += '<span class="diff-wrong">' + uArr[i] + '</span>'; i++; }
+            if (j < cArr.length) { html += '<span class="diff-missing">' + cArr[j] + '</span>'; j++; }
           }
         }
       }
@@ -240,7 +271,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     if(t.cm)  html+='<span class="cm">⚠ Tipik hata: ' + t.cm + "</span>";[cite: 1]
     if(t.co)  html+='<span class="co">🔗 Kalıplar: ' + t.co + "</span>";[cite: 1]
     if(leech){
-      html+='<div class="askrow"><b style="color:#f87171">🧲 İnatçı öğe</b> — yarına ertelendi. '
+      html+='<div class="askrow"><b style="color:#f87171">🧲 İnatçı öğe</b> — kök kelimeleri oturumun önüne eklendi. '
           +'<button class="b-say" style="padding:7px 12px;font-size:12px" id="bAsk">🎓 Öğretmene sor</button></div>';
     }
     if(!html){ $("exp").style.display="none"; return; }
@@ -340,6 +371,24 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }catch(e){ $("bMic").textContent="🎤"; }
   };
 
+  /* Akıllı Ceza Kutusu Modülü (Leech Box - Kök Kelime Çözücü) */
+  function injectLeechWords(sentenceEn) {
+    var words = norm(sentenceEn).split(" ").filter(function(w) { return w.length > 3; }); // Kısa kelimeleri ele (the, in, a vb.)
+    var count = 0;
+    words.forEach(function(word) {
+      // Kelime sözlükte var mı ve daha önce eklenmemiş mi kontrol et
+      if((dict[word] || dict[word.toLowerCase()]) && !seen["w" + word]) {
+        // Oturumun tam bir sonraki adımına (i+1) EN->TR klasik kart olarak enjekte et
+        session.splice(i + 1, 0, { kind: "w", id: word, due: 0, tag: "leech", tries: 0 });
+        count++;
+      }
+    });
+    if(count > 0) {
+      // Oturum sayacını güncelle
+      session.length = session.length; 
+    }
+  }
+
   async function grade(hard){
     var it=cur;
     var key=(it.kind==="s"?"srs:":"wsrs:")+it.id;
@@ -349,7 +398,14 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
     lastSc=-1;
     var leech = hard && (rec.lapses||0)>=3;
-    if(leech){ rec.interval=1; rec.due=Date.now()+DAY; }
+    
+    if(leech){ 
+      rec.interval=1; rec.due=Date.now()+DAY; 
+      if(it.kind === "s") {
+        injectLeechWords(curT.en); // İnatçı cümlenin kelimelerini ön sıraya diz
+      }
+    }
+    
     if(it.kind==="s") srs[it.id]=rec; else wsrs[it.id]=rec;
     await kvPut(key, rec);
     try{ if(window.DHProgress&&DHProgress.recordResult) DHProgress.recordResult((it.kind==="s"?"sentence:":"word:")+it.id, !hard); }catch(e){}
