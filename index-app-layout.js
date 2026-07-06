@@ -18,12 +18,16 @@
     +"@media (orientation:landscape){.study-header,.study-progress{display:none !important}}"
     /* React'in Öğretmen/Zayıf butonları ana ekranda gizli (taşınmaz!) — panelde proxy'leri var */
     +".card-actions .teacher-btn,.card-actions .extra-weak,button.teacher-btn,button.extra-weak{display:none !important}"
+    /* Zayıf Analiz / Öğretmen düğmeleri artık kart üzerinde gösterilmiyor — sadece 🛠 Araçlar panelinde */
+    +".extra-weak-btn,.sm-teacher-btn{display:none !important}"
     /* grade-bar her modda kompakt yatay */
     +".grade-bar{display:flex !important;gap:6px;align-items:stretch}"
     +".grade-bar .grade-label{display:none !important}"
     +".grade-bar .grade-btn{flex:1;min-height:38px;border-radius:10px;font-weight:800;font-size:13px}"
-    /* GTR butonu */
-    +".dh-gtr-btn{display:inline-flex;align-items:center;gap:6px;margin:8px 0 2px;padding:7px 12px;border:1px solid rgba(255,255,255,.16);border-radius:11px;background:#1a2942;color:#cfe0ff;font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}"
+    /* GTR + AI'ye Sor — artık ikisi bir arada, üçlünün altında tek satır */
+    +".dh-ai-row{display:flex;gap:8px;margin:0 0 14px}"
+    +".dh-ai-row .dh-gtr-btn{flex:1;margin:0;justify-content:center}"
+    +".dh-gtr-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid rgba(255,255,255,.16);border-radius:11px;background:#1a2942;color:#cfe0ff;font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}"
     +".dh-gtr-btn:hover{background:#22344f}"
     +".dh-aiask-btn{background:linear-gradient(135deg,#7c3aed,#4338ca);border-color:#8b5cf6;color:#fff}"
     +".dh-aiask-btn:hover{background:linear-gradient(135deg,#8b4cf7,#4f46e0)}"
@@ -54,7 +58,9 @@
     +".card.dh-split>.dh-nav-trio{grid-column:2;grid-row:2}"
     +".card.dh-split>.dh-nav-trio .dh-nav-btn{min-height:31px;padding:5px 9px !important;font-size:12px !important;border-radius:9px !important}"
     +".card.dh-split>.dh-nav-trio .dh-tools-toggle{min-height:31px !important;padding:0 9px !important}"
-    +".card.dh-split>.card-actions{grid-column:2;grid-row:3;display:flex;flex-wrap:wrap;gap:6px;align-content:start}"
+    +".card.dh-split>.dh-ai-row{grid-column:2;grid-row:3}"
+    +".card.dh-split>.dh-ai-row .dh-gtr-btn{font-size:11px !important;padding:5px 9px !important;min-height:31px}"
+    +".card.dh-split>.card-actions{grid-column:2;grid-row:4;display:flex;flex-wrap:wrap;gap:6px;align-content:start}"
     +".card.dh-split>.card-actions button{min-height:31px;padding:5px 9px !important;font-size:12px !important;border-radius:9px !important}"
     +"}"
     /* ---- YATAY MOBİL: TEK EKRAN ---- */
@@ -88,60 +94,61 @@
     return null;
   }
 
-  /* 🌐 GTR — kendi öğem; .card-tr'nin yanına eklenir (React düğümü taşınmaz) */
-  function ensureGtr(c){
-    if(c.querySelector(".dh-gtr-btn")) return;
-    var tr=c.querySelector(".card-tr"), en=c.querySelector(".card-en");
-    if(!tr||!en) return;
-    var b=document.createElement("button");
-    b.type="button"; b.className="dh-gtr-btn"; b.textContent="🌐 Google Translate";
-    b.onclick=function(){
-      var t=(en.textContent||"").trim(); if(!t) return;
-      try{
-        if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t);
-        else{ var ta=document.createElement("textarea"); ta.value=t; ta.style.cssText="position:fixed;opacity:0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
-      }catch(e){}
-      try{
-        var n=document.createElement("div");
-        n.textContent="📋 Cümle kopyalandı — Translate'te yapıştır";
-        n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #2563eb;padding:11px 16px;border-radius:12px;font:700 13px system-ui;max-width:90vw;text-align:center";
-        document.body.appendChild(n);
-        setTimeout(function(){ n.remove(); },2600);
-      }catch(e){}
-      window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(t),"_blank");
-    };
-    tr.insertAdjacentElement("afterend", b);
-  }
-
-  /* 🤖 AI'ye Sor — cümleyi yapılarıyla öğret promptu üretir, panoya kopyalar,
-     Gemini'yi yeni sekmede açar. (Gemini URL ile otomatik prompt doldurmayı
-     desteklemediği için kullanıcı Gemini açılınca Ctrl/Cmd+V ile yapıştırıp
-     Enter'a basar — bildirim bunu hatırlatır.) */
-  function ensureAiAsk(c){
-    if(c.querySelector(".dh-aiask-btn")) return;
-    var gtr=c.querySelector(".dh-gtr-btn");
+  /* 🌐 Google Translate + 🤖 AI'ye Sor — tek satırda yan yana, kendi öğelerim;
+     Önceki/Araçlar/Sonraki üçlüsünün hemen altına yerleşir (React düğümü taşınmaz) */
+  function ensureAiRow(c, trio){
     var en=c.querySelector(".card-en");
     if(!en) return;
-    var b=document.createElement("button");
-    b.type="button"; b.className="dh-gtr-btn dh-aiask-btn"; b.textContent="🤖 AI'ye Sor";
-    b.onclick=function(){
-      var t=(en.textContent||"").trim(); if(!t) return;
-      var prompt=t+" cümlesindeki yapıları öğret";
-      try{
-        if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(prompt);
-        else{ var ta=document.createElement("textarea"); ta.value=prompt; ta.style.cssText="position:fixed;opacity:0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
-      }catch(e){}
-      try{
-        var n=document.createElement("div");
-        n.textContent="📋 Prompt kopyalandı — Gemini'de yapıştır (Ctrl/Cmd+V) ve Enter'a bas";
-        n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #7c3aed;padding:11px 16px;border-radius:12px;font:700 13px system-ui;max-width:90vw;text-align:center";
-        document.body.appendChild(n);
-        setTimeout(function(){ n.remove(); },3600);
-      }catch(e){}
-      window.open("https://gemini.google.com/app","_blank");
-    };
-    if(gtr) gtr.insertAdjacentElement("afterend", b);
-    else en.insertAdjacentElement("afterend", b);
+    var anchor = trio || gradeAnchor(c);
+    if(!anchor) return;
+    var row=document.getElementById("dhAiRow");
+    if(!row){
+      row=document.createElement("div");
+      row.id="dhAiRow"; row.className="dh-ai-row";
+
+      var gtr=document.createElement("button");
+      gtr.type="button"; gtr.className="dh-gtr-btn"; gtr.textContent="🌐 Google Translate";
+      gtr.onclick=function(){
+        var t=(en.textContent||"").trim(); if(!t) return;
+        try{
+          if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t);
+          else{ var ta=document.createElement("textarea"); ta.value=t; ta.style.cssText="position:fixed;opacity:0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+        }catch(e){}
+        try{
+          var n=document.createElement("div");
+          n.textContent="📋 Cümle kopyalandı — Translate'te yapıştır";
+          n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #2563eb;padding:11px 16px;border-radius:12px;font:700 13px system-ui;max-width:90vw;text-align:center";
+          document.body.appendChild(n);
+          setTimeout(function(){ n.remove(); },2600);
+        }catch(e){}
+        window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(t),"_blank");
+      };
+
+      var ai=document.createElement("button");
+      ai.type="button"; ai.className="dh-gtr-btn dh-aiask-btn"; ai.textContent="🤖 AI'ye Sor";
+      ai.onclick=function(){
+        var t=(en.textContent||"").trim(); if(!t) return;
+        var prompt=t+" cümlesindeki yapıları öğret";
+        try{
+          if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(prompt);
+          else{ var ta=document.createElement("textarea"); ta.value=prompt; ta.style.cssText="position:fixed;opacity:0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+        }catch(e){}
+        try{
+          var n=document.createElement("div");
+          n.textContent="📋 Prompt kopyalandı — Gemini'de yapıştır (Ctrl/Cmd+V) ve Enter'a bas";
+          n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #7c3aed;padding:11px 16px;border-radius:12px;font:700 13px system-ui;max-width:90vw;text-align:center";
+          document.body.appendChild(n);
+          setTimeout(function(){ n.remove(); },3600);
+        }catch(e){}
+        window.open("https://gemini.google.com/app","_blank");
+      };
+
+      row.appendChild(gtr);
+      row.appendChild(ai);
+    }
+    if(row.previousElementSibling!==anchor || row.parentElement!==anchor.parentElement){
+      anchor.insertAdjacentElement("afterend", row); // React yeniden render ettiyse konumu düzelt
+    }
   }
 
   /* Önceki / Sonraki gerçek React düğmeleri (study-nav içinde, taşınmaz) */
@@ -235,9 +242,9 @@
       var c=card();
       if(c){
         if(!c.classList.contains("dh-split")) c.classList.add("dh-split"); // React sınıfı silerse yeniden
-        ensureGtr(c);
-        ensureAiAsk(c);
         ensureNavTrio(c);
+        var trio=document.getElementById("dhNavTrio");
+        ensureAiRow(c, trio);
       }
       ensureTools();
     }catch(e){}
