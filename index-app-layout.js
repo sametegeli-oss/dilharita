@@ -27,10 +27,16 @@
     +".dh-gtr-btn:hover{background:#22344f}"
     +".dh-aiask-btn{background:linear-gradient(135deg,#7c3aed,#4338ca);border-color:#8b5cf6;color:#fff}"
     +".dh-aiask-btn:hover{background:linear-gradient(135deg,#8b4cf7,#4f46e0)}"
-    /* nav: kart altında kompakt (taşınmaz) */
-    +".study-nav{display:flex;gap:8px;align-items:center}"
-    +".study-nav .btn{flex:1;min-height:42px;font-weight:800;border-radius:11px}"
-    /* 🛠 toggle (benim öğem, nav içine eklenir) */
+    /* nav: orijinal alt satır artık gizli — üçlü resmin üstüne taşındı (proxy) */
+    +".study-nav{display:none !important}"
+    +".dh-nav-trio{display:flex;gap:8px;align-items:center;margin:0 0 14px}"
+    +".dh-nav-trio .dh-nav-btn{flex:1;min-height:42px;font-weight:800;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:#1a2942;color:#cfe0ff;font:800 14px Nunito,system-ui,sans-serif;cursor:pointer}"
+    +".dh-nav-trio .dh-nav-btn:hover{background:#22344f}"
+    +".dh-nav-trio .dh-nav-btn:disabled{opacity:.35;cursor:default}"
+    +".dh-nav-trio .dh-nav-next{background:#2563eb;color:#fff;border-color:transparent}"
+    +".dh-nav-trio .dh-nav-next:hover{background:#2f6fe0}"
+    +".dh-nav-trio .dh-tools-toggle{flex:0 0 auto !important;margin:0}"
+    /* 🛠 toggle (benim öğem, üçlünün ortasına eklenir) */
     +".dh-tools-toggle{flex:0 0 auto !important;min-height:42px;padding:0 13px;border:1px solid rgba(255,255,255,.14);border-radius:11px;background:#17233a;color:#eaf2ff;font:900 14px Nunito,system-ui,sans-serif;cursor:pointer}"
     +".dh-tools-toggle:hover{background:#22304f}"
     /* araç paneli (benim öğem) */
@@ -60,7 +66,7 @@
     +".card.dh-split>.card-tr{margin:2px 0 !important;font-size:14px !important}"
     +".card.dh-split>.card-pron,.card.dh-split>.card-ipa{font-size:11px !important;margin:0 !important}"
     +".card.dh-split .dh-gtr-btn{margin:2px 0 !important;padding:4px 9px !important;font-size:11px !important}"
-    +".study-nav .btn{min-height:34px;font-size:13px}"
+    +".dh-nav-trio .dh-nav-btn{min-height:34px;font-size:13px}"
     +".dh-tools-toggle{min-height:34px}"
     +"}";
     document.head.appendChild(s);
@@ -135,6 +141,45 @@
     else en.insertAdjacentElement("afterend", b);
   }
 
+  /* Önceki / Sonraki gerçek React düğmeleri (study-nav içinde, taşınmaz) */
+  function realPrevBtn(){
+    var nav=document.querySelector(".study-nav");
+    return nav ? nav.querySelector("button.btn:not(.btn-primary)") : null;
+  }
+  function realNextBtn(){
+    var nav=document.querySelector(".study-nav");
+    return nav ? nav.querySelector("button.btn-primary") : null;
+  }
+
+  /* ⬅➡ üçlü — resmin üstüne (card-meta'nın hemen ardına) kendi öğem;
+     gerçek React düğmelerine yalnız proxy .click() + disabled senkronu */
+  function ensureNavTrio(c){
+    var meta=c.querySelector(".card-meta");
+    if(!meta) return null;
+    var trio=document.getElementById("dhNavTrio");
+    if(!trio){
+      trio=document.createElement("div");
+      trio.id="dhNavTrio"; trio.className="dh-nav-trio";
+      var prev=document.createElement("button");
+      prev.type="button"; prev.className="dh-nav-btn dh-nav-prev"; prev.textContent="← Önceki";
+      prev.onclick=function(){ var r=realPrevBtn(); if(r) r.click(); };
+      var next=document.createElement("button");
+      next.type="button"; next.className="dh-nav-btn dh-nav-next"; next.textContent="Sonraki →";
+      next.onclick=function(){ var r=realNextBtn(); if(r) r.click(); };
+      trio.appendChild(prev);
+      trio.appendChild(next);
+      meta.insertAdjacentElement("afterend", trio);
+    }
+    if(trio.parentElement!==meta.parentElement || meta.nextElementSibling!==trio){
+      meta.insertAdjacentElement("afterend", trio); // React yeniden render ettiyse konumu düzelt
+    }
+    var rp=realPrevBtn(), rn=realNextBtn();
+    var pBtn=trio.querySelector(".dh-nav-prev"), nBtn=trio.querySelector(".dh-nav-next");
+    if(pBtn) pBtn.disabled = !!(rp && rp.disabled);
+    if(nBtn) nBtn.disabled = !!(rn && rn.disabled);
+    return trio;
+  }
+
   /* 🛠 toggle + panel — hepsi kendi öğem; React butonlarına yalnız proxy .click() */
   function ensureTools(){
     var box=document.getElementById("dhToolsBox");
@@ -161,10 +206,16 @@
       tg.id="dhToolsToggle"; tg.type="button"; tg.className="dh-tools-toggle"; tg.textContent="🛠";
       tg.onclick=function(){ box.classList.toggle("dh-hidden"); };
     }
-    var nav=document.querySelector(".study-nav");
-    if(nav&&tg.parentElement!==nav){
-      var btns=nav.querySelectorAll(".btn");
-      if(btns.length>=2) nav.insertBefore(tg,btns[btns.length-1]); else nav.appendChild(tg);
+    var trio=document.getElementById("dhNavTrio");
+    if(trio&&tg.parentElement!==trio){
+      var nextBtn=trio.querySelector(".dh-nav-next");
+      if(nextBtn) trio.insertBefore(tg,nextBtn); else trio.appendChild(tg);
+    }else if(!trio){
+      var nav=document.querySelector(".study-nav"); // yedek: kart bulunamazsa eski yere
+      if(nav&&tg.parentElement!==nav){
+        var btns=nav.querySelectorAll(".btn");
+        if(btns.length>=2) nav.insertBefore(tg,btns[btns.length-1]); else nav.appendChild(tg);
+      }
     }
   }
 
@@ -178,6 +229,7 @@
         if(!c.classList.contains("dh-split")) c.classList.add("dh-split"); // React sınıfı silerse yeniden
         ensureGtr(c);
         ensureAiAsk(c);
+        ensureNavTrio(c);
       }
       ensureTools();
     }catch(e){}
