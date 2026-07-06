@@ -29,7 +29,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 .exp .askrow{margin-top:10px}
 .done{max-width:720px;margin:40px auto;text-align:center;color:var(--mut)}
 .done b{color:#a7f3d0;font-size:20px;display:block;margin-bottom:8px}
-.b-more{background:#2563eb;margin-top:12px}.b-next{background:#0e7490;margin:6px 4px 0}
+.b-more{background:#2563eb;margin-top:12px}.b-more{background:#2563eb;margin-top:12px}.b-next{background:#0e7490;margin:6px 4px 0}
 
 /* Diff Visual Styles & Fixed Sizing for Auto-Wrap */
 .diff-box{margin-top:6px; background:#071120; padding:8px; border-radius:8px; font-weight:normal; display:inline-block; width:100%; word-break:break-word; white-space:normal;}
@@ -219,55 +219,57 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     return Math.round(100*2*hit/(A.length+B.length));
   }
 
-  /* ---- Gelişmiş Fark Analizi ---- */
+  /* ---- Gelişmiş LCS (Longest Common Subsequence) Tabanlı Fark Analizi ---- */
   function getDiffHtml(userText, correctText) {
     var uArr = norm(userText).split(" ").filter(Boolean);
     var cArr = norm(correctText).split(" ").filter(Boolean);
-    var html = "";
-    var i = 0, j = 0;
-
-    while (i < uArr.length || j < cArr.length) {
-      if (i < uArr.length && j < cArr.length && uArr[i] === cArr[j]) {
-        html += '<span class="diff-match">' + cArr[j] + '</span>';
-        i++; j++;
-      } else {
-        var lookAheadUser = uArr.indexOf(cArr[j], i);
-        var lookAheadCorrect = cArr.indexOf(uArr[i], j);
-
-        if (lookAheadUser !== -1 && (lookAheadCorrect === -1 || lookAheadUser - i <= lookAheadCorrect - j)) {
-          while (i < lookAheadUser) {
-            var levSim = getLevenshteinSimilarity(uArr[i], cArr[j]);
-            if(levSim >= 75) {
-              html += '<span class="diff-typo" title="Yazım Hatası! (Doğrusu: ' + cArr[j] + ') -> Benzerlik: %' + levSim + '">' + uArr[i] + '</span>';
-              j++;
-            } else {
-              html += '<span class="diff-wrong">' + uArr[i] + '</span>';
-            }
-            i++;
-          }
-        } else if (lookAheadCorrect !== -1) {
-          while (j < lookAheadCorrect) {
-            html += '<span class="diff-missing">' + cArr[j] + '</span>';
-            j++;
-          }
+    
+    // LCS Matris Yapısının Kurulması
+    var m = uArr.length, n = cArr.length;
+    var dp = Array.from({ length: m + 1 }, function() { return new Array(n + 1).fill(0); });
+    
+    for (var i = 1; i <= m; i++) {
+      for (var j = 1; j <= n; j++) {
+        if (uArr[i - 1] === cArr[j - 1]) {
+          dp[i][j] = dp[i - 1][j - 1] + 1;
         } else {
-          if (i < uArr.length && j < cArr.length) {
-            var levSim = getLevenshteinSimilarity(uArr[i], cArr[j]);
-            if(levSim >= 75) {
-              html += '<span class="diff-typo" title="Yazım Hatası! (Doğrusu: ' + cArr[j] + ') -> Benzerlik: %' + levSim + '">' + uArr[i] + '</span>';
-              i++; j++;
-            } else {
-              html += '<span class="diff-wrong">' + uArr[i] + '</span>'; i++;
-              html += '<span class="diff-missing">' + cArr[j] + '</span>'; j++;
-            }
-          } else {
-            if (i < uArr.length) { html += '<span class="diff-wrong">' + uArr[i] + '</span>'; i++; }
-            if (j < cArr.length) { html += '<span class="diff-missing">' + cArr[j] + '</span>'; j++; }
-          }
+          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
         }
       }
     }
-    return html || "<span style='color:var(--mut)'>[Boş Giriş]</span>";
+    
+    // Geriye Doğru İzleme (Backtracking) ile Fark Karşılaştırması
+    var htmlArr = [];
+    var i = m, j = n;
+    
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && uArr[i - 1] === cArr[j - 1]) {
+        htmlArr.unshift('<span class="diff-match">' + cArr[j - 1] + '</span>');
+        i--; j--;
+      } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+        // Sistemde olan ama kullanıcının yazmadığı kelime (Eksik)
+        htmlArr.unshift('<span class="diff-missing">' + cArr[j - 1] + '</span>');
+        j--;
+      } else {
+        // Kullanıcının yazdığı ama sistemde o sırada uyuşmayan kelime (Hatalı veya Fazla)
+        // Burada Typos (Yazım Hatası) kontrolünü de Levenshtein üzerinden koruyoruz
+        var typoMatched = false;
+        if (j > 0) {
+          var levSim = getLevenshteinSimilarity(uArr[i - 1], cArr[j - 1]);
+          if (levSim >= 75) {
+            htmlArr.unshift('<span class="diff-typo" title="Yazım Hatası! (Doğrusu: ' + cArr[j - 1] + ') -> Benzerlik: %' + levSim + '">' + uArr[i - 1] + '</span>');
+            i--; j--;
+            typoMatched = true;
+          }
+        }
+        if (!typoMatched) {
+          htmlArr.unshift('<span class="diff-wrong">' + uArr[i - 1] + '</span>');
+          i--;
+        }
+      }
+    }
+    
+    return htmlArr.join("") || "<span style='color:var(--mut)'>[Boş Giriş]</span>";
   }
 
   /* ---- açıklama paneli ---- */
@@ -304,7 +306,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     } catch(e) { console.error("Bulut senkronizasyon hatası:", e); }
   }
 
-  // Kullanıcı Ana Menü butonuna bastığında da toplu senkronizasyon tetiklensin
   $("btnHome").onclick = function() {
     triggerCloudSync();
   };
@@ -318,7 +319,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       if(PLAN) $("planNext").style.display="block";
       $("done").style.display="block";
       
-      // Optimizasyon: Anlık istek yerine sadece oturum başarıyla bittiğinde 1 kere istek atılır!
       triggerCloudSync();
       return;
     }
@@ -425,8 +425,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     try { await kvPut(key, rec); } catch(e) {}
     try{ if(window.DHProgress&&DHProgress.recordResult) DHProgress.recordResult((it.kind==="s"?"sentence:":"word:")+it.id, !hard); }catch(e){}
     
-    // NOT: Anlık çalışan DHCloudSync.push() tetikleyicisi Firebase kotalarını korumak için buradan tamamen kaldırıldı.
-    
     if(hard){
       showExplain(curT, leech);
       if(!leech && it.tries<2){ it.tries++; session.push(it); }
@@ -449,8 +447,8 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     var userEn = $("inp").value.trim() || "[Kullanıcı boş bıraktı]";
     
     var systemNotes = "";
-    if (curT.cm) systemNotes += "\n⚠️ Bu cümle için bilinen tipik hata: " + curT.cm;
-    if (curT.exp) systemNotes += "\n💡 Sistem açıklaması: " + curT.exp;
+    if (curT.cm) systemNotes += "\n⚠️ Bu cümle için bilinen tipik hata: " + curT.cm;[cite: 1]
+    if (curT.exp) systemNotes += "\n💡 Sistem açıklaması: " + curT.exp;[cite: 1]
 
     var promptText = "Bir İngilizce öğrenme uygulamasında TR->EN üretimi çalışıyorum. Aşağıdaki eşleşmeyi analiz et:\n\n" +
                      "🇹🇷 Türkçe Kaynak: " + trSentence + "\n" +
