@@ -29,7 +29,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 .exp .askrow{margin-top:10px}
 .done{max-width:720px;margin:40px auto;text-align:center;color:var(--mut)}
 .done b{color:#a7f3d0;font-size:20px;display:block;margin-bottom:8px}
-.b-more{background:#2563eb;margin-top:12px}.b-more{background:#2563eb;margin-top:12px}.b-next{background:#0e7490;margin:6px 4px 0}
+.b-more{background:#2563eb;margin-top:12px}.b-next{background:#0e7490;margin:6px 4px 0}
 
 /* Diff Visual Styles & Fixed Sizing for Auto-Wrap */
 .diff-box{margin-top:6px; background:#071120; padding:8px; border-radius:8px; font-weight:normal; display:inline-block; width:100%; word-break:break-word; white-space:normal;}
@@ -224,7 +224,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     var uArr = norm(userText).split(" ").filter(Boolean);
     var cArr = norm(correctText).split(" ").filter(Boolean);
     
-    // LCS Matris Yapısının Kurulması
     var m = uArr.length, n = cArr.length;
     var dp = Array.from({ length: m + 1 }, function() { return new Array(n + 1).fill(0); });
     
@@ -238,7 +237,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       }
     }
     
-    // Geriye Doğru İzleme (Backtracking) ile Fark Karşılaştırması
     var htmlArr = [];
     var i = m, j = n;
     
@@ -247,12 +245,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
         htmlArr.unshift('<span class="diff-match">' + cArr[j - 1] + '</span>');
         i--; j--;
       } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-        // Sistemde olan ama kullanıcının yazmadığı kelime (Eksik)
         htmlArr.unshift('<span class="diff-missing">' + cArr[j - 1] + '</span>');
         j--;
       } else {
-        // Kullanıcının yazdığı ama sistemde o sırada uyuşmayan kelime (Hatalı veya Fazla)
-        // Burada Typos (Yazım Hatası) kontrolünü de Levenshtein üzerinden koruyoruz
         var typoMatched = false;
         if (j > 0) {
           var levSim = getLevenshteinSimilarity(uArr[i - 1], cArr[j - 1]);
@@ -447,8 +442,8 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     var userEn = $("inp").value.trim() || "[Kullanıcı boş bıraktı]";
     
     var systemNotes = "";
-    if (curT.cm) systemNotes += "\n⚠️ Bu cümle için bilinen tipik hata: " + curT.cm;[cite: 1]
-    if (curT.exp) systemNotes += "\n💡 Sistem açıklaması: " + curT.exp;[cite: 1]
+    if (curT.cm) systemNotes += "\n⚠️ Bu cümle için bilinen tipik hata: " + curT.cm;
+    if (curT.exp) systemNotes += "\n💡 Sistem açıklaması: " + curT.exp;
 
     var promptText = "Bir İngilizce öğrenme uygulamasında TR->EN üretimi çalışıyorum. Aşağıdaki eşleşmeyi analiz et:\n\n" +
                      "🇹🇷 Türkçe Kaynak: " + trSentence + "\n" +
