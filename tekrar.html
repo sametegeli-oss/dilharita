@@ -38,7 +38,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 .diff-wrong{color:#f87171;text-decoration:line-through;margin-right:4px;display:inline-block;}
 .diff-missing{color:#6b7280;border-bottom:1px dashed #6b7280;margin-right:4px;display:inline-block;}
 </style></head><body>
-<div class="top"><a href="./index.html">←</a><h1>🔁 Tekrar</h1><div class="cnt" id="cnt"></div></div>
+<div class="top"><a href="./index.html" id="btnHome">←</a><h1>🔁 Tekrar</h1><div class="cnt" id="cnt"></div></div>
 <div class="mode">Mod:
   <button id="mProd">✍️ Üretim (TR→EN)</button>
   <button id="mClas">👁 Klasik (EN→TR)</button>
@@ -86,7 +86,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   var PLAN=/[?&]plan=1/.test(location.search);
   var mode=localStorage.getItem("dh-tekrar-mode")||"prod";
   
-  // Hata filtresinin başlangıçta kilitli kalmaması için kontrolü her açılışta temizle veya kapat
   var showOnlyErrors = false; 
   localStorage.setItem("dh-only-errors", "0");
 
@@ -142,7 +141,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     return Math.round(((maxLen - d[m][n]) / maxLen) * 100);
   }
 
-  /* ---- Veri Yükleme İşlemleri (Firebase Tıkanmalarına Karşı Korumalı) ---- */
+  /* ---- Veri Yükleme İşlemleri ---- */
   var srs = {}, wsrs = {};
   try {
     srs = await kvPrefix("srs:");
@@ -208,7 +207,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   };
   paintMode();
 
-  /* ---- benzerlik (üretim kontrolü) ---- */
+  /* ---- benzerlik ---- */
   function norm(t){ return String(t||"").toLowerCase().replace(/[^a-z0-9' ]+/g," ").replace(/\s+/g," ").trim(); }
   function similarity(a,b){
     a=norm(a); b=norm(b);
@@ -220,7 +219,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     return Math.round(100*2*hit/(A.length+B.length));
   }
 
-  /* ---- Gelişmiş Fark Analizi (Typos & Levenshtein Destekli) ---- */
+  /* ---- Gelişmiş Fark Analizi ---- */
   function getDiffHtml(userText, correctText) {
     var uArr = norm(userText).split(" ").filter(Boolean);
     var cArr = norm(correctText).split(" ").filter(Boolean);
@@ -295,6 +294,21 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   var i=0, doneCount=0, cur=null, curT=null, revealed=false, lastSc=-1;
   function speak(t){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.lang="en-US"; u.__dhMixed=true; u.__longTTSAvatarSync=true; speechSynthesis.speak(u); }catch(e){} }
 
+  /* Gelişmiş Toplu Bulut Senkronizasyonu (Kota Dostu Mod) */
+  function triggerCloudSync() {
+    try {
+      if (window.DHCloudSync && window.DHCloudSync.push) {
+        console.log("Oturum bitti veya çıkış yapılıyor, toplu bulut senkronizasyonu tetiklendi...");
+        window.DHCloudSync.push();
+      }
+    } catch(e) { console.error("Bulut senkronizasyon hatası:", e); }
+  }
+
+  // Kullanıcı Ana Menü butonuna bastığında da toplu senkronizasyon tetiklensin
+  $("btnHome").onclick = function() {
+    triggerCloudSync();
+  };
+
   function render(){
     if(i>=session.length){
       $("card").style.display="none";
@@ -303,7 +317,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       if(remaining) $("bMore").style.display="inline-block";
       if(PLAN) $("planNext").style.display="block";
       $("done").style.display="block";
-      try{ if(window.DHCloudSync) DHCloudSync.push(); }catch(e){}
+      
+      // Optimizasyon: Anlık istek yerine sadece oturum başarıyla bittiğinde 1 kere istek atılır!
+      triggerCloudSync();
       return;
     }
     cur=session[i]; curT=texts(cur); revealed=false;
@@ -381,11 +397,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   /* Akıllı Ceza Kutusu Modülü */
   function injectLeechWords(sentenceEn) {
     var words = norm(sentenceEn).split(" ").filter(function(w) { return w.length > 3; });
-    var count = 0;
     words.forEach(function(word) {
       if((dict[word] || dict[word.toLowerCase()]) && !seen["w" + word]) {
         session.splice(i + 1, 0, { kind: "w", id: word, due: 0, tag: "leech", tries: 0 });
-        count++;
       }
     });
   }
@@ -410,6 +424,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     if(it.kind==="s") srs[it.id]=rec; else wsrs[it.id]=rec;
     try { await kvPut(key, rec); } catch(e) {}
     try{ if(window.DHProgress&&DHProgress.recordResult) DHProgress.recordResult((it.kind==="s"?"sentence:":"word:")+it.id, !hard); }catch(e){}
+    
+    // NOT: Anlık çalışan DHCloudSync.push() tetikleyicisi Firebase kotalarını korumak için buradan tamamen kaldırıldı.
+    
     if(hard){
       showExplain(curT, leech);
       if(!leech && it.tries<2){ it.tries++; session.push(it); }
