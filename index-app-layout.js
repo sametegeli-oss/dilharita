@@ -25,6 +25,8 @@
     /* GTR butonu */
     +".dh-gtr-btn{display:inline-flex;align-items:center;gap:6px;margin:8px 0 2px;padding:7px 12px;border:1px solid rgba(255,255,255,.16);border-radius:11px;background:#1a2942;color:#cfe0ff;font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}"
     +".dh-gtr-btn:hover{background:#22344f}"
+    +".dh-aiask-btn{background:linear-gradient(135deg,#7c3aed,#4338ca);border-color:#8b5cf6;color:#fff}"
+    +".dh-aiask-btn:hover{background:linear-gradient(135deg,#8b4cf7,#4f46e0)}"
     /* nav: kart altında kompakt (taşınmaz) */
     +".study-nav{display:flex;gap:8px;align-items:center}"
     +".study-nav .btn{flex:1;min-height:42px;font-weight:800;border-radius:11px}"
@@ -102,6 +104,37 @@
     tr.insertAdjacentElement("afterend", b);
   }
 
+  /* 🤖 AI'ye Sor — cümleyi yapılarıyla öğret promptu üretir, panoya kopyalar,
+     Gemini'yi yeni sekmede açar. (Gemini URL ile otomatik prompt doldurmayı
+     desteklemediği için kullanıcı Gemini açılınca Ctrl/Cmd+V ile yapıştırıp
+     Enter'a basar — bildirim bunu hatırlatır.) */
+  function ensureAiAsk(c){
+    if(c.querySelector(".dh-aiask-btn")) return;
+    var gtr=c.querySelector(".dh-gtr-btn");
+    var en=c.querySelector(".card-en");
+    if(!en) return;
+    var b=document.createElement("button");
+    b.type="button"; b.className="dh-gtr-btn dh-aiask-btn"; b.textContent="🤖 AI'ye Sor";
+    b.onclick=function(){
+      var t=(en.textContent||"").trim(); if(!t) return;
+      var prompt=t+" cümlesindeki yapıları öğret";
+      try{
+        if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(prompt);
+        else{ var ta=document.createElement("textarea"); ta.value=prompt; ta.style.cssText="position:fixed;opacity:0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+      }catch(e){}
+      try{
+        var n=document.createElement("div");
+        n.textContent="📋 Prompt kopyalandı — Gemini'de yapıştır (Ctrl/Cmd+V) ve Enter'a bas";
+        n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #7c3aed;padding:11px 16px;border-radius:12px;font:700 13px system-ui;max-width:90vw;text-align:center";
+        document.body.appendChild(n);
+        setTimeout(function(){ n.remove(); },3600);
+      }catch(e){}
+      window.open("https://gemini.google.com/app","_blank");
+    };
+    if(gtr) gtr.insertAdjacentElement("afterend", b);
+    else en.insertAdjacentElement("afterend", b);
+  }
+
   /* 🛠 toggle + panel — hepsi kendi öğem; React butonlarına yalnız proxy .click() */
   function ensureTools(){
     var box=document.getElementById("dhToolsBox");
@@ -144,6 +177,7 @@
       if(c){
         if(!c.classList.contains("dh-split")) c.classList.add("dh-split"); // React sınıfı silerse yeniden
         ensureGtr(c);
+        ensureAiAsk(c);
       }
       ensureTools();
     }catch(e){}
