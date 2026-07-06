@@ -229,11 +229,10 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 
         if (lookAheadUser !== -1 && (lookAheadCorrect === -1 || lookAheadUser - i <= lookAheadCorrect - j)) {
           while (i < lookAheadUser) {
-            // Typos Kontrolü: Yanlış yazılan kelime hedef kelimeye %75+ benzerlikte mi?
             var levSim = getLevenshteinSimilarity(uArr[i], cArr[j]);
             if(levSim >= 75) {
               html += '<span class="diff-typo" title="Yazım Hatası! (Doğrusu: ' + cArr[j] + ') -> Benzerlik: %' + levSim + '">' + uArr[i] + '</span>';
-              j++; // Hedef kelimeyi de tüketmiş olalım
+              j++;
             } else {
               html += '<span class="diff-wrong">' + uArr[i] + '</span>';
             }
@@ -267,9 +266,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   /* ---- açıklama paneli ---- */
   function showExplain(t, leech){
     var html="";
-    if(t.exp) html+="<b>💡 Açıklama:</b> " + t.exp;[cite: 1]
-    if(t.cm)  html+='<span class="cm">⚠ Tipik hata: ' + t.cm + "</span>";[cite: 1]
-    if(t.co)  html+='<span class="co">🔗 Kalıplar: ' + t.co + "</span>";[cite: 1]
+    if(t.exp) html+="<b>💡 Açıklama:</b> " + t.exp;
+    if(t.cm)  html+='<span class="cm">⚠ Tipik hata: ' + t.cm + "</span>";
+    if(t.co)  html+='<span class="co">🔗 Kalıplar: ' + t.co + "</span>";
     if(leech){
       html+='<div class="askrow"><b style="color:#f87171">🧲 İnatçı öğe</b> — kök kelimeleri oturumun önüne eklendi. '
           +'<button class="b-say" style="padding:7px 12px;font-size:12px" id="bAsk">🎓 Öğretmene sor</button></div>';
@@ -373,18 +372,15 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 
   /* Akıllı Ceza Kutusu Modülü (Leech Box - Kök Kelime Çözücü) */
   function injectLeechWords(sentenceEn) {
-    var words = norm(sentenceEn).split(" ").filter(function(w) { return w.length > 3; }); // Kısa kelimeleri ele (the, in, a vb.)
+    var words = norm(sentenceEn).split(" ").filter(function(w) { return w.length > 3; });
     var count = 0;
     words.forEach(function(word) {
-      // Kelime sözlükte var mı ve daha önce eklenmemiş mi kontrol et
       if((dict[word] || dict[word.toLowerCase()]) && !seen["w" + word]) {
-        // Oturumun tam bir sonraki adımına (i+1) EN->TR klasik kart olarak enjekte et
         session.splice(i + 1, 0, { kind: "w", id: word, due: 0, tag: "leech", tries: 0 });
         count++;
       }
     });
     if(count > 0) {
-      // Oturum sayacını güncelle
       session.length = session.length; 
     }
   }
@@ -402,7 +398,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     if(leech){ 
       rec.interval=1; rec.due=Date.now()+DAY; 
       if(it.kind === "s") {
-        injectLeechWords(curT.en); // İnatçı cümlenin kelimelerini ön sıraya diz
+        injectLeechWords(curT.en);
       }
     }
     
@@ -431,8 +427,8 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     var userEn = $("inp").value.trim() || "[Kullanıcı boş bıraktı]";
     
     var systemNotes = "";
-    if (curT.cm) systemNotes += "\n⚠️ Bu cümle için bilinen tipik hata: " + curT.cm;[cite: 1]
-    if (curT.exp) systemNotes += "\n💡 Sistem açıklaması: " + curT.exp;[cite: 1]
+    if (curT.cm) systemNotes += "\n⚠️ Bu cümle için bilinen tipik hata: " + curT.cm;
+    if (curT.exp) systemNotes += "\n💡 Sistem açıklaması: " + curT.exp;
 
     var promptText = "Bir İngilizce öğrenme uygulamasında TR->EN üretimi çalışıyorum. Aşağıdaki eşleşmeyi analiz et:\n\n" +
                      "🇹🇷 Türkçe Kaynak: " + trSentence + "\n" +
