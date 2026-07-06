@@ -85,7 +85,10 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   var DAY=86400000, SESSION=40, now=Date.now();
   var PLAN=/[?&]plan=1/.test(location.search);
   var mode=localStorage.getItem("dh-tekrar-mode")||"prod";
-  var showOnlyErrors=localStorage.getItem("dh-only-errors") === "1";
+  
+  // Hata filtresinin başlangıçta kilitli kalmaması için kontrolü her açılışta temizle veya kapat
+  var showOnlyErrors = false; 
+  localStorage.setItem("dh-only-errors", "0");
 
   /* ---- kv (practice ile ortak depo) ---- */
   function kvOpen(){ return new Promise(function(res){ try{ var r=indexedDB.open("sentence-mode",1); r.onsuccess=function(){res(r.result)}; r.onerror=function(){res(null)}; }catch(e){res(null)} }); }
@@ -107,7 +110,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       }catch(e){ try{db.close()}catch(_){ } res(); } });
   }
 
-  /* ---- SM-2 (practice ile birebir) + inatçı-öğe sayacı ---- */
+  /* ---- SM-2 (practice ile birebir) ---- */
   function srsStep(n, hard){
     n=n&&typeof n==="object"?n:{rep:0,ef:2.5,interval:0,due:0,last:0};
     var r=Date.now();
@@ -121,7 +124,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     return n;
   }
 
-  /* ---- Levenshtein Distance Algoritması (Harf Bazlı Benzerlik Oranı) ---- */
+  /* ---- Levenshtein Distance Algoritması ---- */
   function getLevenshteinSimilarity(s1, s2) {
     var m = s1.length, n = s2.length;
     if (m === 0) return n === 0 ? 100 : 0;
@@ -139,8 +142,13 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     return Math.round(((maxLen - d[m][n]) / maxLen) * 100);
   }
 
-  /* ---- kuyruk ---- */
-  var srs=await kvPrefix("srs:"), wsrs=await kvPrefix("wsrs:");
+  /* ---- Veri Yükleme İşlemleri (Firebase Tıkanmalarına Karşı Korumalı) ---- */
+  var srs = {}, wsrs = {};
+  try {
+    srs = await kvPrefix("srs:");
+    wsrs = await kvPrefix("wsrs:");
+  } catch(e) { console.error("Lokal DB okuma hatası:", e); }
+
   var mirror={}; try{ mirror=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; }catch(e){}
   var errs=[]; try{ if(window.LearningErrorDB&&LearningErrorDB.all) errs=await LearningErrorDB.all(); }catch(e){}
   var items=[], seen={};
@@ -164,7 +172,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   items.sort(function(a,b){ return (a.due||0)-(b.due||0); });
   var total=items.length, session=items.slice(0,SESSION), remaining=total-session.length;
   $("cnt").innerHTML=total?("bugün: <b style='color:#e8eef7'>"+total+"</b>"+(remaining?(" · oturum: "+session.length):"")):"";
-  if(!total){ $("doneTitle").textContent=showOnlyErrors ? "🚨 Kritik hata/inatçı öğe kalmadı!" : "🎉 Bugünlük tekrar yok!"; $("doneSub").textContent="Vadesi gelen öğe bulunmuyor.";
+  if(!total){ $("doneTitle").textContent="🎉 Bugünlük tekrar yok!"; $("doneSub").textContent="Vadesi gelen öğe bulunmuyor.";
     if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; return; }
 
   /* ---- metinler ---- */
@@ -370,7 +378,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }catch(e){ $("bMic").textContent="🎤"; }
   };
 
-  /* Akıllı Ceza Kutusu Modülü (Leech Box - Kök Kelime Çözücü) */
+  /* Akıllı Ceza Kutusu Modülü */
   function injectLeechWords(sentenceEn) {
     var words = norm(sentenceEn).split(" ").filter(function(w) { return w.length > 3; });
     var count = 0;
@@ -380,9 +388,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
         count++;
       }
     });
-    if(count > 0) {
-      session.length = session.length; 
-    }
   }
 
   async function grade(hard){
@@ -403,7 +408,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
     
     if(it.kind==="s") srs[it.id]=rec; else wsrs[it.id]=rec;
-    await kvPut(key, rec);
+    try { await kvPut(key, rec); } catch(e) {}
     try{ if(window.DHProgress&&DHProgress.recordResult) DHProgress.recordResult((it.kind==="s"?"sentence:":"word:")+it.id, !hard); }catch(e){}
     if(hard){
       showExplain(curT, leech);
