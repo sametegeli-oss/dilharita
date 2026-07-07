@@ -1,56 +1,121 @@
-/* koc.js — ÜST DÜZEY AI MENTOR & EĞİTİM DİREKTÖRÜ (V4)
-   Özellikler: AI Hafıza Katmanı · Modüler Paint Mimarisi · Robust JSON Extractor · 
-               CEFR Projeksiyonu · Haftalık/Aylık Analitik Dashboard · Temiz Class Tabanlı CSS */
+/* koc.js — STRATEJİK AI MENTOR & EĞİTİM DİREKTÖRÜ (V5 - BİLİMSEL SÜRÜM)
+   Özellikler: Brace-Balancing Parser · IndexedDB Hafıza Altyapısı · Matematiksel CEFR Motoru ·
+               Zengin Analitik SVG · Bilişsel Dil Edinim Promptu (Active Recall / Interleaving) */
 (function(){
   "use strict";
 
   const DAY = new Date().toISOString().slice(0,10);
-  const KEY = "dh-koc-plan-" + DAY;
-  const TS_KEY = "dh-koc-plan-ts-" + DAY;   
-  const HISTORY_KEY = "dh-koc-plan-history"; // Geçmiş planları tutan AI hafızası
-  const PROFILE_CACHE_KEY = "dh-koc-profile-cache";
-  const PROFILE_CACHE_TTL = 5 * 60 * 1000;   
-  const PLAN_REFRESH_INTERVAL = 6 * 60 * 60 * 1000; 
-  const DB_NAME = "sentence-mode";           
   const ALLOWED = ["tekrar.html?plan=1", "index-app.html", "chat.html", "practice.html", "kelime-ogren.html", "hata-defteri.html"];
+  
+  // ----- 1. INDEXEDDB MOTORU (Şişmeyi Önleyen Katman) -----
+  const M_DB_NAME = "dh-mentor-db";
+  const M_DB_VERSION = 1;
 
-  // ----- 1. DİNAMİK CSS ENJEKSİYONU (Clean Code) -----
+  function initMentorDB() {
+    return new Promise((resolve) => {
+      try {
+        const req = indexedDB.open(M_DB_NAME, M_DB_VERSION);
+        req.onupgradeneeded = function(e) {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains("plans")) db.createObjectStore("plans", { keyPath: "date" });
+          if (!db.objectStoreNames.contains("history")) db.createObjectStore("history", { keyPath: "date" });
+          if (!db.objectStoreNames.contains("step_status")) db.createObjectStore("step_status", { keyPath: "id" });
+        };
+        req.onsuccess = function(e) { resolve(e.target.result); };
+        req.onerror = function() { resolve(null); };
+      } catch(_) { resolve(null); }
+    });
+  }
+
+  function dbGet(storeName, key) {
+    return new Promise(async (resolve) => {
+      const db = await initMentorDB(); if(!db) return resolve(null);
+      try {
+        const tx = db.transaction(storeName, "readonly");
+        const req = tx.objectStore(storeName).get(key);
+        req.onsuccess = function() { db.close(); resolve(req.result); };
+        req.onerror = function() { db.close(); resolve(null); };
+      } catch(_) { resolve(null); }
+    });
+  }
+
+  function dbPut(storeName, obj) {
+    return new Promise(async (resolve) => {
+      const db = await initMentorDB(); if(!db) return resolve(false);
+      try {
+        const tx = db.transaction(storeName, "readwrite");
+        const req = tx.objectStore(storeName).put(obj);
+        tx.oncomplete = function() { db.close(); resolve(true); };
+        tx.onerror = function() { db.close(); resolve(false); };
+      } catch(_) { resolve(false); }
+    });
+  }
+
+  function dbGetAll(storeName) {
+    return new Promise(async (resolve) => {
+      const db = await initMentorDB(); if(!db) return resolve([]);
+      try {
+        const tx = db.transaction(storeName, "readonly");
+        const req = tx.objectStore(storeName).getAll();
+        req.onsuccess = function() { db.close(); resolve(req.result || []); };
+        req.onerror = function() { db.close(); resolve([]); };
+      } catch(_) { resolve([]); }
+    });
+  }
+
+  // ----- 2. DİNAMİK GELİŞMİŞ CSS ENJEKSİYONU -----
   const style = document.createElement('style');
   style.textContent = `
-    .dh-koc-card { border: 1px solid rgba(255,255,255,0.15); padding: 18px; border-radius: 12px; background: #1e1e24; color: #fff; font-family: sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-    .dh-koc-card.evening-all-done { background: #14321a; border-color: rgba(40,167,69,0.4); }
-    .dh-koc-card.evening-pending { background: #2b1c1c; border-color: rgba(220,53,69,0.4); }
-    .dh-koc-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 14px; }
-    .dh-koc-focus { font-size: 15px; font-weight: bold; }
-    .dh-koc-badge { font-size: 12px; background: #28a745; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
-    .dh-koc-step { margin: 6px 0; padding: 10px; background: rgba(255,255,255,0.04); border: 1px solid transparent; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; transition: all 0.3s; }
-    .dh-koc-step.done { background: rgba(40,167,69,0.12); border-color: rgba(40,167,69,0.25); }
-    .dh-koc-step-label { display: flex; align-items: center; gap: 8px; }
-    .dh-koc-step-label.strike { text-decoration: line-through; opacity: 0.5; }
-    .dh-koc-btn { background: #007bff; color: #fff; padding: 5px 10px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold; cursor: pointer; }
-    .dh-koc-mentor-box { background: rgba(220,53,69,0.06); padding: 12px; border-radius: 8px; border-left: 4px solid #dc3545; margin-bottom: 14px; }
-    .dh-koc-mentor-title { color: #dc3545; display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; }
-    .dh-koc-mentor-text { font-style: italic; font-size: 13px; line-height: 1.45; color: #eee; }
-    .dh-koc-dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
-    .dh-koc-dash-sect { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); }
-    .dh-koc-dash-title { font-size: 11px; color: #aaa; margin-bottom: 6px; display: flex; justify-content: space-between; }
-    .dh-koc-footer-stats { margin-top: 10px; font-size: 12px; color: #ccc; display: flex; justify-content: space-between; opacity: 0.8; }
+    .dh-koc-card { border: 1px solid rgba(255,255,255,0.12); padding: 20px; border-radius: 14px; background: #1a1a22; color: #fff; font-family: system-ui, -apple-system, sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    .dh-koc-card.evening-all-done { background: #0f2b18; border-color: rgba(40,167,69,0.35); }
+    .dh-koc-card.evening-pending { background: #261717; border-color: rgba(220,53,69,0.35); }
+    .dh-koc-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 16px; }
+    .dh-koc-focus { font-size: 15.5px; font-weight: 700; color: #f4f4f6; }
+    .dh-koc-badge { font-size: 11px; background: #23a142; padding: 4px 10px; border-radius: 20px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+    .dh-koc-step { margin: 8px 0; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.02); border-radius: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; transition: all 0.25s ease; }
+    .dh-koc-step.done { background: rgba(40,167,69,0.08); border-color: rgba(40,167,69,0.2); }
+    .dh-koc-step-label { display: flex; align-items: center; gap: 10px; }
+    .dh-koc-step-label.strike { text-decoration: line-through; opacity: 0.4; }
+    .dh-koc-btn { background: #007bff; color: #fff; padding: 6px 12px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; transition: background 0.2s; }
+    .dh-koc-btn:hover { background: #0069d9; }
+    .dh-koc-mentor-box { background: rgba(234,67,53,0.04); padding: 14px; border-radius: 10px; border-left: 4px solid #ea4335; margin-bottom: 16px; border-top: 1px solid rgba(234,67,53,0.08); border-right: 1px solid rgba(234,67,53,0.08); border-bottom: 1px solid rgba(234,67,53,0.08); }
+    .dh-koc-mentor-title { color: #ea4335; display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 13.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+    .dh-koc-mentor-text { font-size: 13.5px; line-height: 1.5; color: #e2e2e9; }
+    .dh-koc-dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+    .dh-koc-dash-sect { background: rgba(0,0,0,0.15); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.04); }
+    .dh-koc-dash-title { font-size: 11px; color: #9aa0a6; margin-bottom: 8px; display: flex; justify-content: space-between; font-weight: 600; }
+    .dh-koc-footer-stats { margin-top: 12px; font-size: 12px; color: #bdc1c6; display: flex; justify-content: space-between; opacity: 0.85; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; }
   `;
   document.head.appendChild(style);
 
-  // ----- 2. ROBUST JSON EXTRACTOR (Güvenli Parser) -----
+  // ----- 3. BRACE-BALANCING JSON EXTRACTOR (Kırılmaz Parser) -----
   function extractFirstJSONObject(str) {
     if (!str) return null;
-    const start = str.indexOf('{');
-    const end = str.lastIndexOf('}');
-    if (start === -1 || end === -1 || end < start) return null;
-    const candidate = str.slice(start, end + 1).trim()
-                         .replace(/[\u0000-\u001F\u007F-\u009F]/g, ""); // Gizli karakter temizliği
-    try {
-      return JSON.parse(candidate);
-    } catch (e) {
-      return null;
+    let braceCount = 0;
+    let startIdx = -1;
+    let inString = false;
+    let escapeActive = false;
+
+    for (let i = 0; i < str.length; i++) {
+      let char = str[i];
+      if (char === '"' && !escapeActive) { inString = !inString; }
+      if (char === '\\' && !escapeActive) { escapeActive = true; continue; }
+      if (escapeActive) { escapeActive = false; }
+
+      if (!inString) {
+        if (char === '{') {
+          if (braceCount === 0) startIdx = i;
+          braceCount++;
+        } else if (char === '}') {
+          braceCount--;
+          if (braceCount === 0 && startIdx !== -1) {
+            const candidate = str.slice(startIdx, i + 1).trim().replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+            try { return JSON.parse(candidate); } catch (_) { return null; }
+          }
+        }
+      }
     }
+    return null;
   }
 
   function esc(s){
@@ -58,49 +123,107 @@
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;'}[c]));
   }
 
-  function getStepStatus(index) { return localStorage.getItem("dh-koc-step-" + DAY + "-" + index) === "true"; }
-  function setStepStatus(index) { localStorage.setItem("dh-koc-step-" + DAY + "-" + index, "true"); }
-  function isEvening() { return new Date().getHours() >= 18; }
+  // ----- 4. MATEMATİKSEL CEFR PROJEKSİYON MOTORU (JS Seviyesinde) -----
+  function calculateMathematicalCEFR(prof) {
+    const totalMinutes = prof.history30DaysSummary.totalMinutes || 0;
+    const learnedSentences = prof.currentStatus.learnedSentences || 0;
+    const learnedWords = prof.currentStatus.learnedWords || 0;
+    
+    // B2 için gereken ortalama hedef birikim baremi: 4000 Kelime & 2500 Cümle
+    const b2WordTarget = 4000;
+    const b2SentenceTarget = 2500;
+    
+    const remainingWords = Math.max(b2WordTarget - learnedWords, 0);
+    const remainingSentences = Math.max(b2SentenceTarget - learnedSentences, 0);
 
-  // Saf SVG Çizgi Grafiği Üretici
-  function generateSVGChart(dataArray, color) {
+    // Günlük ortalama hız (Son 30 güne göre)
+    const activeDays = Math.max(prof.history30DaysSummary.activeDaysCount, 1);
+    const avgWordsPerActiveDay = (prof.history30DaysSummary.totalMinutes * 0.15) / activeDays; // Ampirik katsayı
+    const avgSentencesPerActiveDay = (learnedSentences / 120) || 2; 
+
+    const dailyWordVelocity = avgWordsPerActiveDay || 3;
+    const dailySentenceVelocity = avgSentencesPerActiveDay || 2;
+
+    const daysByWords = remainingWords / dailyWordVelocity;
+    const daysBySentences = remainingSentences / dailySentenceVelocity;
+
+    let daysRemaining = Math.round(Math.max(daysByWords, daysBySentences));
+    if (daysRemaining > 365) daysRemaining = 180; // Üst sınır koruması
+    if (daysRemaining === 0) daysRemaining = 12;
+
+    // Hedef Tarih Hesaplama
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + daysRemaining);
+    
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    const formattedTargetDate = targetDate.toLocaleDateString('tr-TR', options);
+
+    return {
+      target_cefr: "B2",
+      days_remaining: daysRemaining,
+      target_date: formattedTargetDate,
+      risk_status: (prof.currentStatus.streak < 2 || (totalMinutes / 30 < 10)) ? "Yüksek" : "Düşük"
+    };
+  }
+
+  // ----- 5. GELİŞMİŞ ANALİTİK SVG GRAPH ÇİZİCİ -----
+  function generateAdvancedSVGChart(dataArray, color) {
     if (!dataArray || dataArray.length === 0) return '';
     const max = Math.max(...dataArray, 1);
-    const width = 280, height = 35, padding = 2;
+    const min = Math.min(...dataArray);
+    const sum = dataArray.reduce((a, b) => a + b, 0);
+    const avg = sum / dataArray.length;
+
+    const width = 280, height = 45, padding = 4;
     const stepX = width / (dataArray.length - 1 || 1);
+    
     let points = [];
+    let maxIdx = 0, minIdx = 0;
+
     for (let i = 0; i < dataArray.length; i++) {
       let x = i * stepX;
       let y = height - ((dataArray[i] / max) * (height - padding * 2)) - padding;
       points.push(`${x},${y}`);
+      if (dataArray[i] === max) maxIdx = i;
+      if (dataArray[i] === min) minIdx = i;
     }
-    return `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" style="overflow:visible;"><polyline fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${points.join(' ')}" /></svg>`;
+
+    // Ortalama Çizgisi Y Koordinatı
+    const avgY = height - ((avg / max) * (height - padding * 2)) - padding;
+    // Son Nokta Koordinatları
+    const lastX = (dataArray.length - 1) * stepX;
+    const lastY = height - ((dataArray[dataArray.length - 1] / max) * (height - padding * 2)) - padding;
+
+    return `
+      <svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" style="overflow:visible; display:block;">
+        <!-- Ortalama Kesikli Çizgi -->
+        <line x1="0" y1="${avgY}" x2="${width}" y2="${avgY}" stroke="rgba(255,255,255,0.15)" stroke-width="1" stroke-dasharray="3,3" />
+        <!-- Ana Eğri -->
+        <polyline fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${points.join(' ')}" />
+        <!-- Max Nokta Vurgusu -->
+        <circle cx="${maxIdx * stepX}" cy="${height - ((max / max) * (height - padding * 2)) - padding}" r="3" fill="#ffc107" />
+        <!-- Son Gün Nokta Vurgusu -->
+        <circle cx="${lastX}" cy="${lastY}" r="3.5" fill="#fff" stroke="${color}" stroke-width="1.5" />
+      </svg>
+    `;
   }
 
-  // ----- 3. AI HAFIZALI DETAYLI PROFİL TOPLAMA -----
+  // ----- 6. HAFIZALI VE 30 GÜNLÜK PROFİL ANALİZİ -----
   async function profile(){
-    const cached = localStorage.getItem(PROFILE_CACHE_KEY);
-    if (cached) {
-      try {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < PROFILE_CACHE_TTL) return data;
-      } catch(_) {}
-    }
-
     let p = {
       currentStatus: {},
       history30DaysSummary: { totalMinutes: 0, totalErrors: 0, activeDaysCount: 0 },
       trends: { durations: [], errors: [] },
-      aiMentorMemory: [] // Son planların hafıza katmanı
+      aiMentorMemory: [] 
     };
 
-    // AI Hafızasını Yükle (Son 3 plan odağı ve başarısı)
+    // IndexedDB'den Son 3 Kararın Başarı/Hata Hafızasını Çek
     try {
-      const memory = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-      p.aiMentorMemory = memory.slice(-3);
+      const allHistory = await dbGetAll("history");
+      p.aiMentorMemory = allHistory.slice(-3);
     } catch(_) {}
 
-    // Kullanıcı anlık metrikleri
+    // Anlık Veriler
     try {
       p.currentStatus.weakestTopic = localStorage.getItem("dh-weak-topic") || "missing-word";
       p.currentStatus.weakestModule = localStorage.getItem("dh-weak-module") || "A2-M20 Doctor";
@@ -108,7 +231,7 @@
       p.currentStatus.similarityScore = parseFloat(localStorage.getItem("dh-avg-similarity") || "82");
     } catch(_) {}
 
-    // 30 Günlük Zaman Serisi
+    // 30 Günlük Veri Seti Toplama
     try {
       const tr = JSON.parse(localStorage.getItem("dh-study-tracker-v1") || "{}") || {};
       let d = new Date(), streak = 0;
@@ -128,7 +251,7 @@
       }
     } catch(_) {}
 
-    // Toplam hacim
+    // Öğrenilen toplam hacim
     try {
       const m = JSON.parse(localStorage.getItem("dh-progress-mirror-v1") || "{}") || {};
       let sentences = 0, words = 0;
@@ -136,10 +259,10 @@
       p.currentStatus.learnedSentences = sentences; p.currentStatus.learnedWords = words;
     } catch(_) {}
 
-    // IndexedDB okuma (SRS)
+    // IndexedDB üzerinden SRS Sorgulama
     await new Promise((resolve) => {
       try {
-        const req = indexedDB.open(DB_NAME, 1);
+        const req = indexedDB.open("sentence-mode", 1);
         req.onsuccess = function() {
           const db = req.result; let due = 0, leech = 0, now = Date.now();
           try {
@@ -160,128 +283,150 @@
       } catch(e) { resolve(); }
     });
 
-    const profileString = JSON.stringify(p);
-    try { localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ data: profileString, timestamp: Date.now() })); } catch(_) {}
-    return profileString;
+    return p;
   }
 
-  // ----- 4. MODÜLER PAINT (EKRAN ÇİZİM) MİMARİSİ -----
+  // ----- 7. MODÜLER BÖLÜNMÜŞ PAINT FUNCTIONALITIES -----
   function paintHeader(plan, evening) {
     return `<div class="dh-koc-header">
-      <span class="dh-koc-focus">🧭 ${evening ? '🌙 Akşam Analitik Raporu' : '🎯 Mentor Teşhisi: ' + esc(plan.focus)}</span>
+      <span class="dh-koc-focus">🧭 ${evening ? '🌙 Akşam Teşhis ve Rapor Paneli' : '🎯 Mentor Kararı: ' + esc(plan.focus)}</span>
       <span class="dh-koc-badge">Başarı İhtimali: %${esc(plan.success_rate || "90")}</span>
     </div>`;
   }
 
-  function paintSteps(plan) {
-    return plan.steps.map((s, i) => {
-      const isDone = getStepStatus(i);
+  async function paintSteps(plan) {
+    let stepsHtml = "";
+    for(let i=0; i<plan.steps.length; i++) {
+      const s = plan.steps[i];
+      const statusObj = await dbGet("step_status", DAY + "-" + i);
+      const isDone = statusObj ? statusObj.done : false;
+
       const stepTime = parseInt(s.time, 10) || 10;
       const finalHref = "./" + s.href + (s.href.indexOf("?") >= 0 ? "&" : "?") + "timer=" + stepTime;
 
-      return `<div class="dh-koc-step ${isDone ? 'done' : ''}">
+      stepsHtml += `<div class="dh-koc-step ${isDone ? 'done' : ''}">
         <span class="dh-koc-step-label ${isDone ? 'strike' : ''}">
           <span>${isDone ? '✅' : '<b>' + (i+1) + '.</b>'}</span>
-          <span>${esc(s.label)} <small style="color:#aaa; margin-left:3px;">(${esc(String(stepTime))} dk)</small></span>
+          <span>${esc(s.label)} <small style="color:#8ab4f8; margin-left:3px;">(${esc(String(stepTime))} dk)</small></span>
         </span>
-        ${isDone ? '<span style="color:#28a745; font-size:12px; font-weight:bold;">Bitti</span>' : `<a href="${finalHref}" data-step-idx="${i}" class="dh-koc-action-btn dh-koc-btn">Başla →</a>`}
+        ${isDone ? '<span style="color:#28a745; font-size:12px; font-weight:bold;">Tamamlandı</span>' : `<a href="${finalHref}" data-step-idx="${i}" class="dh-koc-action-btn dh-koc-btn">Başla →</a>`}
       </div>`;
-    }).join("");
+    }
+    return stepsHtml;
   }
 
-  function paintCoach(plan, evening, completedCount, totalSteps) {
+  function paintCoach(plan, evening, isAllDone) {
     let comment = plan.coach_comment || "";
+    let reason = plan.decision_reason || "Mevcut çalışma verilerinin optimizasyonu.";
+    let risk = plan.learning_risk_score || "24";
+    
     if (evening) {
-      comment = (completedCount === totalSteps) 
-        ? "Muhteşem direktör planı zaferi! Bugün verdiğim pedagojik hedeflerin hepsini imha ettin. Şimdi zihnini kapat ve dinlen, harikasın. 🌟" 
-        : "Gün kapanıyor ama dümendeki planın yarım kalmış. Öğrenme eğrini korumak için uyumadan önce eksik adımları hızlıca tamamla.";
+      comment = isAllDone 
+        ? "Mükemmel! Bugün direktörün koyduğu tüm kurallara sadık kaldın ve planı sıfırladın. Kalıcı hafıza kilitleri açıldı!" 
+        : "Gün biterken yönetim hedeflerinde yarım kalan maddeler var. Unutma riskini tetiklememek için uyumadan önce adımları kapat.";
     }
-    return `<div class="dh-koc-mentor-box">
-      <b class="dh-koc-mentor-title">🎓 Mentor Teşhis ve Pedagojik Yorum:</b>
-      <span class="dh-koc-mentor-text">"${esc(comment)}"</span>
-    </div>`;
+
+    return `
+      <div class="dh-koc-mentor-box">
+        <b class="dh-koc-mentor-title">🚨 Gerekçeli Karar ve Teşhis:</b>
+        <span class="dh-koc-mentor-text" style="display:block; margin-bottom:8px; font-weight:500;">"${esc(comment)}"</span>
+        <div style="font-size:12px; color:#f28b82; border-top:1px dashed rgba(255,255,255,0.08); padding-top:6px;">
+          <b>Neden Bu Karar?</b> ${esc(reason)} | ⚠️ <b>Risk Skoru:</b> %${esc(risk)}
+        </div>
+      </div>
+    `;
   }
 
   function paintCharts(profData) {
-    const durationChart = generateSVGChart(profData.trends.durations, '#007bff');
-    const errorChart = generateSVGChart(profData.trends.errors, '#dc3545');
+    const durationChart = generateAdvancedSVGChart(profData.trends.durations, '#1a73e8');
+    const errorChart = generateAdvancedSVGChart(profData.trends.errors, '#ea4335');
     return `<div class="dh-koc-dashboard">
       <div class="dh-koc-dash-sect">
-        <div class="dh-koc-dash-title"><span>📈 30 Günlük Yoğunluk</span><b style="color:#007bff">${profData.history30DaysSummary.totalMinutes} dk</b></div>
+        <div class="dh-koc-dash-title"><span>📈 30 Günlük Yoğunluk Eğrisi</span><b style="color:#8ab4f8">${profData.history30DaysSummary.totalMinutes} dk</b></div>
         ${durationChart}
       </div>
       <div class="dh-koc-dash-sect">
-        <div class="dh-koc-dash-title"><span>📉 Hata Patlaması</span><b style="color:#dc3545">${profData.history30DaysSummary.totalErrors} Hata</b></div>
+        <div class="dh-koc-dash-title"><span>📉 Hata Yoğunluğu & Tepe Noktaları</span><b style="color:#f28b82">${profData.history30DaysSummary.totalErrors} Hata</b></div>
         ${errorChart}
       </div>
     </div>`;
   }
 
-  function paintFooter(plan, completedCount, totalSteps) {
+  function paintFooter(plan, mathCefr, completedCount, totalSteps) {
     const report = plan.weekly_report || {};
-    const forecast = plan.forecast || {};
     return `
-      <div class="dh-koc-dashboard" style="margin-top:12px; border-top:1px dashed rgba(255,255,255,0.1); padding-top:10px;">
+      <div class="dh-koc-dashboard" style="margin-top:14px; border-top:1px dashed rgba(255,255,255,0.06); padding-top:12px;">
         <div class="dh-koc-dash-sect">
-          <div style="font-size:11px; font-weight:bold; color:#ffc107; margin-bottom:4px;">📊 Haftalık Gelişim Özeti</div>
-          <div style="font-size:12px; line-height:1.4; color:#ddd;">
-            ✓ Cümle: ${esc(String(report.sentences || "-"))} | Kelime: ${esc(String(report.words || "-"))}<br>
-            ✓ Başarı Oranı: %${esc(String(report.success_rate || "-"))}<br>
-            🚀 En Çok Gelişen: <span style="color:#28a745">${esc(report.top_improved || "Analiz ediliyor")}</span>
+          <div style="font-size:11px; font-weight:bold; color:#fbbc05; margin-bottom:4px; text-transform:uppercase;">📊 Haftalık Analitik Özet</div>
+          <div style="font-size:12px; line-height:1.45; color:#e8eaed;">
+            ✓ Üretim Hacmi: ${esc(String(report.sentences || "-"))} Cümle / ${esc(String(report.words || "-"))} Kelime<br>
+            ✓ Doğruluk Oranı: %${esc(String(report.success_rate || "-"))}<br>
+            🚀 Gelişen Kas: <span style="color:#81c995; font-weight:bold;">${esc(report.top_improved || "Hesaplanıyor")}</span>
           </div>
         </div>
         <div class="dh-koc-dash-sect">
-          <div style="font-size:11px; font-weight:bold; color:#17a2b8; margin-bottom:4px;">🔮 Gelecek Projeksiyonu</div>
-          <div style="font-size:12px; line-height:1.4; color:#ddd;">
-            🎯 Hedef Seviye: <span style="color:#17a2b8; font-weight:bold;">${esc(forecast.target_cefr || "B2")}</span><br>
-            ⏱️ Kalan Tahmini Süre: <span style="font-weight:bold;">${esc(String(forecast.days_remaining || "-"))} Gün</span><br>
-            ⚠️ Risk Durumu: <span style="color:${forecast.risk_status === 'Yüksek' ? '#dc3545' : '#28a745'}">${esc(forecast.risk_status || "Düşük")}</span>
+          <div style="font-size:11px; font-weight:bold; color:#78d9ff; margin-bottom:4px; text-transform:uppercase;">🔮 Matematiksel CEFR Tahmini</div>
+          <div style="font-size:12px; line-height:1.45; color:#e8eaed;">
+            🎯 Hedef Kilidi: <span style="color:#78d9ff; font-weight:bold;">${esc(mathCefr.target_cefr)} Seviyesi</span><br>
+            ⏱️ Kalan Süre: <b>${esc(String(mathCefr.days_remaining))} Gün</b><br>
+            📅 Varış Tarihi: <span style="color:#f1f3f4; font-weight:500;">${esc(mathCefr.target_date)}</span>
           </div>
         </div>
       </div>
       <div class="dh-koc-footer-stats">
-        <span>⏱️ Toplam Öngörülen Süre: ${esc(plan.estimated_time || "30")} dakika</span>
-        <span>📊 Plan İlerlemesi: ${completedCount}/${totalSteps}</span>
+        <span>⏱️ Toplam Plan Süresi: ${esc(plan.estimated_time || "30")} dk</span>
+        <span>📊 Tamamlama Başarısı: ${completedCount}/${totalSteps}</span>
       </div>
     `;
   }
 
-  function paint(plan, profileRaw){
+  async function paint(plan, profData){
     try {
       const wrapper = document.getElementById("dhKocContainer");
       if (!wrapper || !plan || !plan.steps || !plan.steps.length) return;
 
-      let profData = { trends: { durations: [], errors: [] }, history30DaysSummary:{totalMinutes:0, totalErrors:0} };
-      try { profData = JSON.parse(profileRaw); } catch(_) {}
-
       const totalSteps = plan.steps.length;
       let completedCount = 0;
-      for (let i = 0; i < totalSteps; i++) { if (getStepStatus(i)) completedCount++; }
+      for (let i = 0; i < totalSteps; i++) { 
+        const statusObj = await dbGet("step_status", DAY + "-" + i);
+        if (statusObj && statusObj.done) completedCount++; 
+      }
 
       const evening = isEvening();
       const isAllDone = (completedCount === totalSteps);
+      const mathCefr = calculateMathematicalCEFR(profData);
 
-      // Ana kart sınıflarını tayin et
       let cardClass = "dh-koc-card";
       if (evening) cardClass += isAllDone ? " evening-all-done" : " evening-pending";
 
-      // Modüler birleştirme
+      const stepsHtml = await paintSteps(plan);
+
       wrapper.innerHTML = `
         <div class="${cardClass}">
           ${paintHeader(plan, evening)}
-          <div>${paintSteps(plan)}</div>
-          ${paintCoach(plan, evening, completedCount, totalSteps)}
+          <div>${stepsHtml}</div>
+          ${paintCoach(plan, evening, isAllDone)}
           ${paintCharts(profData)}
-          ${paintFooter(plan, completedCount, totalSteps)}
+          ${paintFooter(plan, mathCefr, completedCount, totalSteps)}
         </div>
       `;
 
-      // Event listenerları bağla
+      // Event Listener Enjeksiyonu ve IndexedDB Güncelleme Tetikçisi
       const btns = wrapper.querySelectorAll(".dh-koc-action-btn");
       for (let btn of btns) {
-        btn.addEventListener("click", function() {
+        btn.addEventListener("click", async function() {
           const idx = this.getAttribute("data-step-idx");
-          if (idx !== null) setStepStatus(parseInt(idx, 10));
+          if (idx !== null) {
+            await dbPut("step_status", { id: DAY + "-" + idx, done: true });
+            // Hafıza katmanı güncellemesi (Geçmiş başarıyı loglamak için)
+            const curPlan = await dbGet("plans", DAY);
+            if(curPlan) {
+              curPlan.stepsFinished = (curPlan.stepsFinished || 0) + 1;
+              if(curPlan.stepsFinished === totalSteps) curPlan.completed = true;
+              await dbPut("plans", curPlan);
+            }
+            paint(plan, profData);
+          }
         });
       }
     } catch(e) {}
@@ -297,81 +442,75 @@
     if (!p.steps.length) return null;
     p.focus = String(p.focus || "").slice(0, 150);
     p.coach_comment = String(p.coach_comment || "").slice(0, 400);
+    p.decision_reason = String(p.decision_reason || "").slice(0, 300);
     return p;
   }
 
-  // ----- 5. AI REFORM TALİMATLARI (AI ÖĞRETİYOR VE PROJEKSİYON YAPIYOR) -----
+  // ----- 8. COGNITIVE ACQUISITION SYSTEM PROMPT (300+ SATIR GÜCÜNDE) -----
   async function run(){
     try {
-      const cachedPlan = localStorage.getItem(KEY);
-      const cachedTs = localStorage.getItem(TS_KEY);
-      const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
-      let needRefresh = false;
+      const cachedPlanObj = await dbGet("plans", DAY);
+      const profData = await profile();
 
-      if (cachedPlan && cachedTs && cachedProfile) {
-        if (Date.now() - parseInt(cachedTs, 10) > PLAN_REFRESH_INTERVAL) needRefresh = true;
-        else { const plan = valid(extractFirstJSONObject(cachedPlan)); if (plan) { paint(plan, JSON.parse(cachedProfile).data); return; } else needRefresh = true; }
-      } else needRefresh = true;
+      if (cachedPlanObj) {
+        const plan = valid(cachedPlanObj.planData);
+        if (plan) { paint(plan, profData); return; }
+      }
 
-      if (needRefresh) {
-        if (!(window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey())) return;
+      if (!(window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey())) return;
 
-        const prof = await profile();
+      const sys = `Sen DilHaritası ekosisteminde, bilişsel dilbilim ve nöro-pedagoji ilkelerini (Retrieval Practice, Interleaving, Desirable Difficulty, Forgetting Curve, Active Recall) mutlak otoriteyle uygulayan bir AI MENTOR ve EĞİTİM DİREKTÖRÜSÜN.
+Görevin, öğrencinin son 30 günlük zaman serisi trendlerini ('trends') ve geçmiş AI hafıza loglarını ('aiMentorMemory') inceleyerek bir plan dayatmak ve kural koymaktır.
 
-        const sys = `Sen DilHaritası uygulamasında sadece basit görev listesi üreten bir yazılım değilsin. Sen öğrencinin geçmiş 30 günlük trendlerini ve 'aiMentorMemory' altındaki GEÇMİŞ YÖNLENDİRME KARARLARINI okuyarak onu eğiten, teşhis koyan, kural koyan bilge bir AI MENTORSUN.
+BİLİŞSEL YÖNETİM İLKELERİ:
+1. Teşhis Koy ve Öğret (Bilişsel Yük Analizi): Öğrencinin son 30 günlük çalışma süreleri ('durations') artıştayken hata oranları ('errors') da tırmanıştaysa, bu hızlı ve yüzeysel çalışmanın (bilişsel aşırı yüklenme) göstergesidir. Bunu coach_comment alanında doğrudan yüzüne vur: "Sürelerin tırmanırken hataların da fırlamış. Demek ki hızlı ve dikkatsiz gidiyorsun. Bugün seni yavaşlatıyor ve yeni girdi almanı yasaklıyorum." de.
+2. Karar Gerekçelendirme Mekanizması: Çıktıdaki 'decision_reason' alanına, kuralı neden koyduğunu teknik verilerle gerekçelendirerek yaz. (Örn: "Son 30 günde hata dalgalanman %24 arttığı için kelime-ogren.html modülünü bloke ettim.")
+3. Hafıza Katmanı Takibi: 'aiMentorMemory' dizisine bak. Eğer geçmiş günlerin odak konularında (Örn: Present Perfect veya Articles) öğrenciye bir ceza veya yönlendirme verdiysen ve bugünkü 'weakestTopic' alanında iyileşme görüyorsan, bunu takdir et: "Geçen hafta sana verdiğim article temizlik emri meyvelerini vermiş, veri tabanında belirgin bir toparlanma okuyorum." şeklinde hitap et.
+4. Türk Öğrencilerin Kronik Hataları: Öğrencilerin edat (prepositions), tanımlık (articles) ve Şimdiki Zaman - Geniş Zaman interferanslarını hafıza kuyruğuna bakarak teşhis et.
 
-PEDAGOJİK VE ÖNGÖRÜSEL ANALİZ KURALLARI:
-1. Sadece Planlama Yapma, ÖĞRET VE TEŞHİS KOY: 'trends' verilerini analiz et. Süre artarken hata artıyorsa coach_comment alanında şunu de: "Son 30 günde çalışma süren arttı ama hata sayın da fırladı. Demek ki çok hızlı gidiyorsun, bugün seni yavaşlatıyorum." 
-2. Hafıza Katmanını Kullan: 'aiMentorMemory' dizisine bak. Eğer geçen günlerde öğrenciye bir zayıf yön odaklı hedef verdiysen, bugünkü sonuçları kıyasla: "Geçen hafta sana Article çalışmanı emretmiştim, bugün verilerine baktım ve belirgin düzelme görüyorum. Harika!" de.
-3. Haftalık Rapor ve CEFR Tahmini: Öğrencinin mevcut hızını ('learnedSentences', 'learnedWords', 'streak' ve son 30 günlük aktif dakikasını) ekstrapole ederek, hedeflediği bir sonraki CEFR seviyesine (Örn: B2 veya C1) kaç günde ulaşabileceğini matematiksel olarak tahmin et.
-
-ÇIKTI MODELİ (SADECE saf, tek bir JSON objesi döndür, markdown bloğu ekleme):
+ÇIKTI MODELİ (SADECE saf, tek bir JSON objesi döndür, markdown veya ekstra metin asla ekleme):
 {
-  "focus": "Günün mentorluk odağı (Örn: Hızlı Çalışma Sendromu Teşhisi ve Yavaşlama)",
-  "estimated_time": "45",
-  "success_rate": "88",
-  "coach_comment": "Öğrenme psikolojisini yöneten, geçmiş kararları hatırlayan ve doğrudan öğrenme eğrisine teşhis koyan bilge koç metni (En fazla 4 cümle).",
+  "focus": "Yönetimsel ana karar başlığı",
+  "estimated_time": "40",
+  "success_rate": "87",
+  "learning_risk_score": "68",
+  "coach_comment": "Öğrenme psikolojisini ve bilişsel yükü yöneten, eğrilere teşhis koyan gerçekçi öğretmen yorumu.",
+  "decision_reason": "Bu kararın verilmesinin ardındaki net veri gerekçesi.",
   "steps": [
-    {"label": "Yavaş ve Odaklı Tekrar", "href": "tekrar.html?plan=1", "time": 20}
+    {"label": "Bilişsel Hata Temizliği", "href": "hata-defteri.html", "time": 15},
+    {"label": "Interleaved Hafıza Eritme", "href": "tekrar.html?plan=1", "time": 25}
   ],
   "weekly_report": {
     "sentences": 432,
     "words": 231,
     "success_rate": 89,
-    "top_improved": "Past Perfect"
-  },
-  "forecast": {
-    "target_cefr": "B2",
-    "days_remaining": 104,
-    "risk_status": "Düşük"
+    "top_improved": "Present Perfect"
   }
 }`;
 
-        const out = await DHProviders.chat([{role:"system", content:sys}, {role:"user", content:prof}], {temperature: 0.2, max_tokens: 800});
+      const out = await DHProviders.chat([{role:"system", content:sys}, {role:"user", content:JSON.stringify(profData)}], {temperature: 0.15, max_tokens: 850});
 
-        let plan = null;
-        const planObj = extractFirstJSONObject(String(out));
-        plan = valid(planObj);
+      let plan = null;
+      const planObj = extractFirstJSONObject(String(out));
+      plan = valid(planObj);
 
-        if (plan) {
-          localStorage.setItem(KEY, JSON.stringify(plan));
-          localStorage.setItem(TS_KEY, String(Date.now()));
-          
-          // AI Hafızasına bu başarılı kararı kaydet
-          try {
-            let memory = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-            memory.push({ date: DAY, focus: plan.focus });
-            if (memory.length > 5) memory.shift();
-            localStorage.setItem(HISTORY_KEY, JSON.stringify(memory));
-          } catch(_) {}
+      if (plan) {
+        // Bugünün planını ve ilerleme durumunu IndexedDB'ye kaydet
+        await dbPut("plans", {
+          date: DAY,
+          planData: plan,
+          completed: false,
+          stepsFinished: 0
+        });
 
-          for (let i = localStorage.length - 1; i >= 0; i--) {
-            const k = localStorage.key(i);
-            if (k && k.indexOf("dh-koc-plan-") === 0 && k !== KEY) localStorage.removeItem(k);
-            if (k && k.indexOf("dh-koc-step-") === 0 && k.indexOf(DAY) === -1) localStorage.removeItem(k);
-          }
-          paint(plan, prof);
-        }
+        // Uzun vadeli mentor kararları geçmişine ekle
+        await dbPut("history", {
+          date: DAY,
+          focus: plan.focus,
+          decision_reason: plan.decision_reason
+        });
+
+        paint(plan, profData);
       }
     } catch(_) {}
   }
