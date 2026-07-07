@@ -1,5 +1,5 @@
-/* koc.js — STRATEJİK AI MENTOR & EĞİTİM DİREKTÖRÜ (V6.4 - GRID LAYOUT INTEGRATED)
-   Özellikler: Grid Layout CSS Enjeksiyonu · DOM-Driven Profilleme · 
+/* koc.js — STRATEJİK AI MENTOR & EĞİTİM DİREKTÖRÜ (V6.5 - STATE FIX)
+   Özellikler: Href Tabanlı Adım Hafızası (Yalancı Bitti Hatası Düzeltildi) · DOM-Driven Profilleme · 
                Brace + Array Balancing Parser · Karar Kartı · Çift Enjeksiyon Koruması */
 (function(){
   "use strict";
@@ -65,18 +65,15 @@
     });
   }
 
-  // ----- 2. GRID DESTEKLİ ÇİFT ENJEKSİYON KORUMALI CSS YÜKLEYİCİ -----
+  // ----- 2. ÇİFT ENJEKSİYON KORUMALI CSS YÜKLEYİCİ -----
   if (!document.getElementById("dh-koc-style-v6")) {
     const style = document.createElement('style');
     style.id = "dh-koc-style-v6";
     style.textContent = `
-      /* Komuta Merkezi Grid Düzeni */
-      .dh-mentor-grid-container { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; width: 100%; align-items: start; margin-top: 15px; }
+      .dh-mentor-grid-container { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 20px; width: 100%; align-items: start; margin-top: 15px; }
       .dh-mentor-left-column { width: 100%; }
       .dh-mentor-right-column { display: flex; flex-direction: column; gap: 15px; width: 100%; }
-
-      /* Mentor Kart Tasarımları */
-      .dh-koc-card { border: 1px solid rgba(255,255,255,0.12); padding: 20px; border-radius: 14px; background: #1a1a22; color: #fff; font-family: system-ui, -apple-system, sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+      .dh-koc-card { border: 1px solid rgba(255,255,255,0.12); padding: 20px; border-radius: 14px; background: #1a1a22; color: #fff; font-family: system-ui, -apple-system, sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.4); margin-bottom: 20px; }
       .dh-koc-card.evening-all-done { background: #0f2b18; border-color: rgba(40,167,69,0.35); }
       .dh-koc-card.evening-pending { background: #261717; border-color: rgba(220,53,69,0.35); }
       .dh-koc-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 16px; }
@@ -94,11 +91,7 @@
       .dh-koc-dash-sect { background: rgba(0,0,0,0.15); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.04); }
       .dh-koc-dash-title { font-size: 11px; color: #9aa0a6; margin-bottom: 8px; display: flex; justify-content: space-between; font-weight: 600; }
       .dh-koc-footer-stats { margin-top: 12px; font-size: 12px; color: #bdc1c6; display: flex; justify-content: space-between; opacity: 0.85; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; }
-
-      /* Mobil Cihazlar İçin Responsive Kırılma Kuralı */
-      @media (max-width: 992px) {
-        .dh-mentor-grid-container { grid-template-columns: 1fr; }
-      }
+      @media (max-width: 992px) { .dh-mentor-grid-container { grid-template-columns: 1fr; } }
     `;
     document.head.appendChild(style);
   }
@@ -139,9 +132,10 @@
     };
   }
 
-  // ----- 5. GELİŞMİŞ ANALİTİK SVG GRAPH ÇİZİCİ -----
+  // ----- 5. SÜREKLİ DEĞİŞEN DİNAMİK GRAFİK JENERATÖRÜ -----
   function generateAdvancedSVGChart(seed, color) {
-    let mockData = [seed, seed-4, seed+2, seed-8, seed-2, seed+6, seed-1, seed-12, seed+4, seed];
+    // Statik farklar yerine seed katsayılı daha dinamik dalgalı bir eğri
+    let mockData = [seed, seed * 0.5, seed * 1.3, seed * 0.3, seed * 0.9, seed * 1.6, seed * 0.6, seed * 0.2, seed * 1.1, seed];
     const max = Math.max(...mockData, 1);
     const width = 280, height = 45, padding = 4; const stepX = width / (mockData.length - 1);
     let points = [];
@@ -176,7 +170,7 @@
   // ----- 7. MODÜLER VE GÜVENLİ ŞEMA DOĞRULAYICI -----
   function valid(p){
     if (!p || typeof p !== "object" || !Array.isArray(p.steps)) return null;
-    p.steps = p.steps.filter(s => s && s.label && ALLOWED.includes(String(s.href || ""))).slice(0, 5);
+    p.steps = p.steps.filter(s => s && s.label && s.href && ALLOWED.includes(String(s.href).split('?')[0])).slice(0, 5);
     if (!p.steps.length) return null;
 
     p.focus = String(p.focus || "Bugünkü Eğitim Planı").slice(0, 150);
@@ -198,14 +192,17 @@
     let stepsHtml = "";
     for(let i=0; i<plan.steps.length; i++) {
       const s = plan.steps[i];
-      const statusObj = await dbGet("step_status", DAY + "-" + i);
+      // 🚀 KRİTİK DEĞİŞİKLİK: İndeks yerine href bazlı tekil ID tanımı yapıldı
+      const stepCleanKey = String(s.href).replace(/[=?&.]/g, "-");
+      const statusObj = await dbGet("step_status", DAY + "-" + stepCleanKey);
       const isDone = statusObj ? statusObj.done : false;
+      
       const stepTime = s.time || 10;
       const finalHref = "./" + s.href + (s.href.indexOf("?") >= 0 ? "&" : "?") + "timer=" + stepTime;
 
       stepsHtml += `<div class="dh-koc-step ${isDone ? 'done' : ''}">
         <span class="dh-koc-step-label ${isDone ? 'strike' : ''}"><span>${isDone ? '✅' : '<b>' + (i+1) + '.</b>'}</span><span>${esc(s.label)} <small style="color:#8ab4f8; margin-left:3px;">(${esc(String(stepTime))} dk)</small></span></span>
-        ${isDone ? '<span style="color:#28a745; font-size:12px; font-weight:bold;">Bitti</span>' : `<a href="${finalHref}" data-step-idx="${i}" class="dh-koc-action-btn dh-koc-btn">Başla →</a>`}
+        ${isDone ? '<span style="color:#28a745; font-size:12px; font-weight:bold;">Bitti</span>' : `<a href="${finalHref}" data-step-href-key="${stepCleanKey}" class="dh-koc-action-btn dh-koc-btn">Başla →</a>`}
       </div>`;
     }
     return stepsHtml;
@@ -232,7 +229,12 @@
       if (!wrapper || !plan || !plan.steps || !plan.steps.length) return;
 
       const totalSteps = plan.steps.length; let completedCount = 0;
-      for (let i = 0; i < totalSteps; i++) { const statusObj = await dbGet("step_status", DAY + "-" + i); if (statusObj && statusObj.done) completedCount++; }
+      for (let i = 0; i < totalSteps; i++) { 
+        const s = plan.steps[i];
+        const stepCleanKey = String(s.href).replace(/[=?&.]/g, "-");
+        const statusObj = await dbGet("step_status", DAY + "-" + stepCleanKey); 
+        if (statusObj && statusObj.done) completedCount++; 
+      }
 
       const evening = new Date().getHours() >= 18; const isAllDone = (completedCount === totalSteps);
       const mathCefr = calculateMathematicalCEFR(profData);
@@ -244,9 +246,9 @@
       const btns = wrapper.querySelectorAll(".dh-koc-action-btn");
       for (let btn of btns) {
         btn.addEventListener("click", async function() {
-          const idx = this.getAttribute("data-step-idx");
-          if (idx !== null) {
-            await dbPut("step_status", { id: DAY + "-" + idx, done: true });
+          const hrefKey = this.getAttribute("data-step-href-key");
+          if (hrefKey !== null) {
+            await dbPut("step_status", { id: DAY + "-" + hrefKey, done: true });
             const curPlan = await dbGet("plans", DAY);
             if(curPlan) {
               curPlan.stepsFinished = (curPlan.stepsFinished || 0) + 1;
