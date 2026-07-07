@@ -1,5 +1,5 @@
-/* koc.js — STRATEJİK AI EĞİTİM DİREKTÖRÜ (MENTOR V3)
-   Özellikler: Geçmiş Eğilim (Trend) Analizi · Aktif Karar ve Yasaklama Mekanizması · Öğrenci Yönetimi
+/* koc.js — STRATEJİK AI EĞİTİM DİREKTÖRÜ (MENTOR V3 + 30 GÜNLÜK SVG GRAFİK)
+   Özellikler: 30 Günlük Geçmiş Analizi · Gömülü SVG Trend Grafikleri · Aktif Karar ve Yönetim Mekanizması
    Kurallar: AI mutlak otoritedir · Plan günlük önbellektedir · Hatalarda sessiz düşüş yapar. */
 (function(){
   "use strict";
@@ -8,11 +8,12 @@
   const KEY = "dh-koc-plan-" + DAY;
   const TS_KEY = "dh-koc-plan-ts-" + DAY;   
   const PROFILE_CACHE_KEY = "dh-koc-profile-cache";
-  const PROFILE_CACHE_TTL = 5 * 60 * 1000;
-  const PLAN_REFRESH_INTERVAL = 6 * 60 * 60 * 1000;
+  const PROFILE_CACHE_TTL = 5 * 60 * 1000;   
+  const PLAN_REFRESH_INTERVAL = 6 * 60 * 60 * 1000; 
   const DB_NAME = "sentence-mode";           
   const ALLOWED = ["tekrar.html?plan=1", "index-app.html", "chat.html", "practice.html", "kelime-ogren.html", "hata-defteri.html"];
 
+  // ----- Yardımcı Fonksiyonlar -----
   function esc(s){
     if (s == null) return "";
     return String(s).replace(/[&<>"']/g, function(c) {
@@ -31,7 +32,28 @@
     return new Date().getHours() >= 18;
   }
 
-  // ----- 1. GEÇMİŞ PERFORMANS VE EĞİLİM ANALİZİ (TRENDS) -----
+  // Saf SVG Çizgi Grafiği Üretici (Kütüphanesiz Hafif Çözüm)
+  function generateSVGChart(dataArray, color) {
+    if (!dataArray || dataArray.length === 0) return '';
+    const max = Math.max(...dataArray, 1);
+    const width = 280;
+    const height = 40;
+    const padding = 2;
+    const stepX = width / (dataArray.length - 1 || 1);
+    
+    let points = [];
+    for (let i = 0; i < dataArray.length; i++) {
+      let x = i * stepX;
+      let y = height - ((dataArray[i] / max) * (height - padding * 2)) - padding;
+      points.push(`${x},${y}`);
+    }
+    
+    return `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" style="overflow:visible;">
+      <polyline fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${points.join(' ')}" />
+    </svg>`;
+  }
+
+  // ----- 1. 30 GÜNLÜK DETAYLI PROFİL VE TREND TOPLAMA -----
   async function profile(){
     const cached = localStorage.getItem(PROFILE_CACHE_KEY);
     if (cached) {
@@ -43,48 +65,52 @@
 
     let p = {
       currentStatus: {},
-      historyTrends: { last5DaysActive: [], errorTrends: [], speechTrends: [] }
+      history30DaysSummary: { totalMinutes: 0, totalErrors: 0, activeDaysCount: 0 },
+      trends: { durations: [], errors: [] }
     };
 
-    // Anlık Durum
+    // Mevcut Zayıf Yönler
     try {
       p.currentStatus.weakestTopic = localStorage.getItem("dh-weak-topic") || "missing-word";
       p.currentStatus.weakestModule = localStorage.getItem("dh-weak-module") || "A2-M20 Doctor";
       p.currentStatus.pronunciationScore = parseFloat(localStorage.getItem("dh-avg-pronunciation") || "75");
     } catch(_) {}
 
-    // Zaman Serisi Geçmişi (Son 5 Günün Aktivite ve Skor Analizi)
+    // 30 Günlük Zaman Serisi Analizi
     try {
       const tr = JSON.parse(localStorage.getItem("dh-study-tracker-v1") || "{}") || {};
       let d = new Date();
       let streak = 0;
-      
-      // Streak bulma
       while (true) {
         if ((tr.days || {})[d.toISOString().slice(0,10)]) { streak++; d.setDate(d.getDate() - 1); } else break;
       }
       p.currentStatus.streak = streak;
 
-      // Son 5 günün çalışma sürelerini ve hata eğilimlerini haritalandır
-      for (let i = 0; i < 5; i++) {
+      // Son 30 günü geriye doğru tara
+      for (let i = 29; i >= 0; i--) {
         let checkDate = new Date();
         checkDate.setDate(checkDate.getDate() - i);
         let dateStr = checkDate.toISOString().slice(0,10);
         let dayData = (tr.days || {})[dateStr] || null;
-        
+
         if (dayData) {
-          p.historyTrends.last5DaysActive.push({
-            date: dateStr,
-            durationMinutes: dayData.duration || 0,
-            errorCount: dayData.errors || 0,
-            dominantErrorType: dayData.topErrorType || "none",
-            avgSpeechScore: dayData.speechScore || null
-          });
+          let mins = dayData.duration || 0;
+          let errs = dayData.errors || 0;
+          
+          p.trends.durations.push(mins);
+          p.trends.errors.push(errs);
+          
+          p.history30DaysSummary.totalMinutes += mins;
+          p.history30DaysSummary.totalErrors += errs;
+          p.history30DaysSummary.activeDaysCount++;
+        } else {
+          p.trends.durations.push(0);
+          p.trends.errors.push(0);
         }
       }
     } catch(_) {}
 
-    // Toplam hacim
+    // Öğrenilen toplam kayıt hacmi
     try {
       const m = JSON.parse(localStorage.getItem("dh-progress-mirror-v1") || "{}") || {};
       let sentences = 0, words = 0;
@@ -98,7 +124,7 @@
       p.currentStatus.learnedWords = words;
     } catch(_) {}
 
-    // SRS veritabanı
+    // SRS Veritabanı (IndexedDB)
     await new Promise((resolve) => {
       try {
         const req = indexedDB.open(DB_NAME, 1);
@@ -136,10 +162,14 @@
     return profileString;
   }
 
-  function paint(plan){
+  // ----- 2. PANEL ÇİZİMİ VE GÖMÜLÜ GRAPH ENJEKSİYONU -----
+  function paint(plan, profileRaw){
     try {
       const wrapper = document.getElementById("dhKocContainer");
       if (!wrapper || !plan || !plan.steps || !plan.steps.length) return;
+
+      let profData = { trends: { durations: [], errors: [] } };
+      try { profData = JSON.parse(profileRaw); } catch(_) {}
 
       const totalSteps = plan.steps.length;
       let completedCount = 0;
@@ -151,12 +181,12 @@
         const stepTime = parseInt(s.time, 10) || 10;
         const finalHref = "./" + s.href + (s.href.indexOf("?") >= 0 ? "&" : "?") + "timer=" + stepTime;
 
-        return `<div style="margin: 8px 0; padding: 12px; background: ${isDone ? 'rgba(40,167,69,0.15)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${isDone ? 'rgba(40,167,69,0.3)' : 'transparent'}; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s;">
-          <span style="display:flex; align-items:center; gap:8px; ${isDone ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
+        return `<div style="margin: 6px 0; padding: 10px; background: ${isDone ? 'rgba(40,167,69,0.12)' : 'rgba(255,255,255,0.04)'}; border: 1px solid ${isDone ? 'rgba(40,167,69,0.25)' : 'transparent'}; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size:14px;">
+          <span style="display:flex; align-items:center; gap:8px; ${isDone ? 'text-decoration: line-through; opacity: 0.5;' : ''}">
             <span>${isDone ? '✅' : '<b>' + (i+1) + '.</b>'}</span>
-            <span>${esc(s.label)} <small style="color:#aaa; margin-left:5px;">(${esc(String(stepTime))} dk)</small></span>
+            <span>${esc(s.label)} <small style="color:#aaa; margin-left:3px;">(${esc(String(stepTime))} dk)</small></span>
           </span>
-          ${isDone ? '<span style="color:#28a745; font-size:13px; font-weight:bold; padding:4px 10px;">Tamamlandı</span>' : `<a href="${finalHref}" data-step-idx="${i}" class="dh-koc-action-btn" style="background:#007bff; color:#fff; padding:6px 12px; border-radius:6px; text-decoration:none; font-size:13px; font-weight:bold; box-shadow: 0 2px 4px rgba(0,123,255,0.2);">Başla →</a>`}
+          ${isDone ? '<span style="color:#28a745; font-size:12px; font-weight:bold;">Bitti</span>' : `<a href="${finalHref}" data-step-idx="${i}" class="dh-koc-action-btn" style="background:#007bff; color:#fff; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:bold;">Başla →</a>`}
         </div>`;
       }).join("");
 
@@ -167,24 +197,50 @@
 
       let customComment = plan.coach_comment || "";
       if (evening) {
-        customComment = isAllDone ? "Muhteşem bir gün kapanışı! Bugün verdiğim planın tamamını eksiksiz bitirdin. Harika gidiyorsun, şimdi dinlenme zamanı! 🌟" : "Gün bitmek üzere ama günlük planın henüz tamamlanmamış! Çizgini korumak için eksik adımları hızlıca tamamlayalım. Hadi!";
+        customComment = isAllDone ? "Harika iş çıkardın! Bugün verdiğim tüm yönetimsel hedefleri başarıyla tamamladın. Zihnini dinlendir, yarın yeni kararlarla dümendeyim! 🌟" : "Gün kapanıyor ama yönetim planında eksikler var. Çizgini ve kararlılığını korumak için yatmadan önce adımları temizle.";
       }
 
+      // SVG Mini Grafikleri Çiz
+      const durationChart = generateSVGChart(profData.trends.durations, '#007bff');
+      const errorChart = generateSVGChart(profData.trends.errors, '#dc3545');
+
       wrapper.innerHTML = `
-        <div style="border: 1px solid ${borderHeader}; padding: 18px; border-radius: 12px; background: ${bgHeader}; color: #fff; font-family: sans-serif; transition: background 0.5s;">
+        <div style="border: 1px solid ${borderHeader}; padding: 18px; border-radius: 12px; background: ${bgHeader}; color: #fff; font-family: sans-serif;">
           <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; margin-bottom:14px;">
-            <span style="font-size:16px; font-weight:bold;">🧭 ${evening ? '🌙 Akşam Raporu' : '🎯 Günün Kararı: ' + esc(plan.focus)}</span>
+            <span style="font-size:15px; font-weight:bold;">🧭 ${evening ? '🌙 Akşam Durum Raporu' : '🎯 Yönetim Kararı: ' + esc(plan.focus)}</span>
             <span style="font-size:12px; background:#28a745; padding:3px 8px; border-radius:12px; font-weight:bold;">Başarı İhtimali: %${esc(plan.success_rate || "90")}</span>
           </div>
+          
           <div>${stepsHtml}</div>
-          <div style="margin-top:12px; font-size:13px; color:#ccc; display:flex; justify-content:space-between;">
-            <span>⏱️ <b>Toplam Öngörülen Süre:</b> ${esc(plan.estimated_time || "30")} dakika</span>
-            <span>📊 İlerleme: ${completedCount}/${totalSteps}</span>
+          
+          <div style="margin-top:10px; font-size:13px; color:#ccc; display:flex; justify-content:space-between;">
+            <span>⏱️ <b>Hedeflenen Süre:</b> ${esc(plan.estimated_time || "30")} dakika</span>
+            <span>📊 Tamamlanma: ${completedCount}/${totalSteps}</span>
           </div>
-          <hr style="border:0; border-top:1px dashed rgba(255,255,255,0.1); margin:14px 0;">
-          <div style="background: rgba(0,123,255,0.08); padding: 12px; border-radius: 8px; border-left: 4px solid #ea4335;">
-            <b style="color:#ea4335; display:block; margin-bottom:4px; font-size:13px;">🎓 Yönetici Koçun Gerekçeli Kararı:</b>
-            <span style="font-style:italic; font-size:13.5px; line-height:1.45; color:#eee;">"${esc(customComment)}"</span>
+          
+          <hr style="border:0; border-top:1px dashed rgba(255,255,255,0.1); margin:12px 0;">
+          
+          <div style="background: rgba(220,53,69,0.06); padding: 12px; border-radius: 8px; border-left: 4px solid #dc3545; margin-bottom:14px;">
+            <b style="color:#dc3545; display:block; margin-bottom:4px; font-size:13px;">🎓 Yönetici Koçun Gerekçeli Kararı:</b>
+            <span style="font-style:italic; font-size:13px; line-height:1.45; color:#eee;">"${esc(customComment)}"</span>
+          </div>
+
+          <!-- 30 Günlük Görsel Analiz Bölümü (Sparklines) -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+            <div>
+              <div style="font-size:11px; color:#aaa; margin-bottom:4px; display:flex; justify-content:space-between;">
+                <span>📈 30 Günlük Çalışma Trendi</span>
+                <b style="color:#007bff">${profData.history30DaysSummary.totalMinutes} dk</b>
+              </div>
+              ${durationChart}
+            </div>
+            <div>
+              <div style="font-size:11px; color:#aaa; margin-bottom:4px; display:flex; justify-content:space-between;">
+                <span>📉 30 Günlük Hata Eğrisi</span>
+                <b style="color:#dc3545">${profData.history30DaysSummary.totalErrors} Hata</b>
+              </div>
+              ${errorChart}
+            </div>
           </div>
         </div>
       `;
@@ -202,8 +258,7 @@
   function valid(p){
     if (!p || typeof p !== "object" || !Array.isArray(p.steps)) return null;
     p.steps = p.steps.filter(s => {
-      if (!s || !s.label) return false;
-      if (!ALLOWED.includes(String(s.href || ""))) return false;
+      if (!s || !s.label || !ALLOWED.includes(String(s.href || ""))) return false;
       s.time = parseInt(s.time, 10);
       if (isNaN(s.time) || s.time < 1) s.time = 10;
       return true;
@@ -217,16 +272,20 @@
     return p;
   }
 
-  // ----- 2. REFORM EDİLMİŞ SİSTEM TALİMATI (YÖNETİCİ PROMPT) -----
+  // ----- 3. AI ÇALIŞTIRMA VE COCH TALİMATLARI -----
   async function run(){
     try {
       const cachedPlan = localStorage.getItem(KEY);
       const cachedTs = localStorage.getItem(TS_KEY);
+      const cachedProfile = localStorage.getItem(PROFILE_CACHE_KEY);
       let needRefresh = false;
 
-      if (cachedPlan && cachedTs) {
+      if (cachedPlan && cachedTs && cachedProfile) {
         if (Date.now() - parseInt(cachedTs, 10) > PLAN_REFRESH_INTERVAL) needRefresh = true;
-        else { const plan = valid(JSON.parse(cachedPlan)); if (plan) { paint(plan); return; } else needRefresh = true; }
+        else { 
+          const plan = valid(JSON.parse(cachedPlan)); 
+          if (plan) { paint(plan, JSON.parse(cachedProfile).data); return; } else needRefresh = true; 
+        }
       } else needRefresh = true;
 
       if (needRefresh) {
@@ -234,23 +293,22 @@
 
         const prof = await profile();
 
-        const sys = `Sen DilHaritası uygulamasında sadece tavsiye veren bir koç değilsin; sen öğrencinin eğitim sürecini mikro düzeyde YÖNETEN, radikal kararlar alan otoriter ve bilge bir EĞİTİM DİREKTÖRÜSÜN.
-Görevin, öğrencinin bugünkü durumunu ve 'historyTrends' alanındaki son 5 günlük veri eğilimini inceleyerek stratejik kısıtlamalar ve yönlendirmeler uygulamaktır.
+        const sys = `Sen DilHaritası uygulamasında sadece basit görevler veren bir bot değil, öğrencinin eğitim sürecini mikro ve makro düzeyde YÖNETEN, radikal kararlar alan üst düzey bir EĞİTİM DİREKTÖRÜSÜN.
+Görevin, öğrencinin anlık durumunu ve 'trends' altındaki son 30 günlük çalışma süreleri ve hata eğrilerini analiz ederek stratejik kısıtlamalar uygulamaktır.
 
-YÖNETİM VE YASAKLAMA KURALLARI:
-1. Eğilimleri Analiz Et: 'historyTrends' verilerine bak. Eğer son 3-4 gündür hata sayısı sürekli artıyorsa (errorTrends) veya belirli bir hata türü birikmişse (Örn: 'articles', 'missing-word'), kesinlikle kelime-ogren.html modülünü YASAKLA. Plana dahil etme. Öğrenciye yükleme yapmayı kes.
-2. Telaffuz/Konuşma Eğilimi: Son günlerde 'avgSpeechScore' sürekli yükseliyorsa konuşma (chat.html) yerine artık kelime üretimine (practice.html) ağırlık ver. Eğer tam tersi düşüş varsa, üretime ara verdirip konuşma modülünü zorunlu kıl.
-3. Gerekçeli Karar: 'coach_comment' alanında bir tavsiye cümlesi kurma. Doğrudan geçmiş 4-5 günlük veriye atıfta bulunarak neden bu kısıtlamayı getirdiğini açıkla. (Örn: "Son 4 gündür article hataların %30 arttı. Bu yüzden bugün yeni kelime öğrenmeni yasakladım. Önce biriken yaraları saracağız.")
-4. Planı optimize et ve her gün aynı ezbere şablonu çıkarma.
+YÖNETİM PRENSİPLERİ VE KARAR YAPILARI:
+1. Makro 30 Günlük İnceleme: 'trends.durations' dizisindeki son 30 günün grafik dalgalanmalarına bak. Eğer öğrenci son 5-6 gündür sürekliliğini kaybettiyse veya çok düşük dakikalar çalıştıysa, ağır modüller (chat.html veya practice.html) yerine kesinlikle kısa süreli kelime-ogren.html veya tekrar.html?plan=1 ver.
+2. Hata Dalgalanmaları: 'trends.errors' dizisinde son günlerde hata patlaması yaşanıyorsa, öğrencinin yeni bilgiler öğrenmesini YASAKLA (kelime-ogren.html modülünü plana dahil etme). Önceliği hata-defteri.html modülüne ata.
+3. Direktör Hitabı: 'coach_comment' alanında bir tavsiye verme, doğrudan 30 günlük trende atıfta bulunarak kararını gerekçelendir. (Örn: "Son 30 günlük grafiklerini incelediğimde son bir haftadır hata eğrin dik bir ivmeyle tırmanıyor. Bu sebeple bugün yeni kelime çalışmanı askıya aldım; sadece yaraları saracağız.")
 
 ÇIKTI MODELİ (SADECE saf JSON, asla markdown bloğu olmasın):
 {
-  "focus": "Yönetimsel ana karar başlığı (Örn: Kelime Yüklemesini Durdurma ve Article Operasyonu)",
-  "estimated_time": "45",
+  "focus": "Yönetimsel kural başlığı",
+  "estimated_time": "40",
   "success_rate": "85",
-  "coach_comment": "Geçmiş 4 güne atıfta bulunan, kural koyucu ve dümende senin olduğunu hissettiren lider yönetici yorumu.",
+  "coach_comment": "Öğrenci eğrilerine ve trendlerine doğrudan atıfta bulunan, mutlak yönetici yorumu.",
   "steps": [
-    {"label": "Article Hata Temizliği", "href": "hata-defteri.html", "time": 15},
+    {"label": "Hata Eğrisi Temizliği", "href": "hata-defteri.html", "time": 15},
     {"label": "Kalıcı Hafıza Eritme", "href": "tekrar.html?plan=1", "time": 20}
   ]
 }
@@ -273,7 +331,7 @@ YÖNETİM VE YASAKLAMA KURALLARI:
             if (k && k.indexOf("dh-koc-plan-") === 0 && k !== KEY) localStorage.removeItem(k);
             if (k && k.indexOf("dh-koc-step-") === 0 && k.indexOf(DAY) === -1) localStorage.removeItem(k);
           }
-          paint(plan);
+          paint(plan, prof);
         }
       }
     } catch(_) {}
