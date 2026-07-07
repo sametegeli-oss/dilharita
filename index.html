@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dil Haritası — Eğitim Komuta Merkezi</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-family/system-ui/css/all.min.css">
+    <style>
+        /* --- Ana Uygulama Genel Teması --- */
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #0b0c10;
+            color: #ffffff;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        .dh-app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* --- Üst Başlık ve Profil Alanı --- */
+        .dh-app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .dh-app-title h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .dh-app-title p {
+            margin: 5px 0 0 0;
+            font-size: 12px;
+            color: #8fa0a6;
+        }
+
+        .dh-badge-level {
+            background: #007bff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+        }
+
+        /* --- 🔥 YENİ NESİL RESPONSIVE GRID KAPSAYICISI --- */
+        .dh-mentor-grid-container {
+            display: grid;
+            grid-template-columns: 1.25fr 0.75fr;
+            gap: 20px;
+            width: 100%;
+            align-items: start;
+            margin-bottom: 25px;
+        }
+
+        .dh-mentor-left-column {
+            width: 100%;
+        }
+
+        .dh-mentor-right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+        }
+
+        /* --- Geleneksel Modül Kartı Standartları --- */
+        .dh-standard-panel {
+            background: #15161e;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        .dh-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .dh-panel-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .dh-panel-sub-text {
+            font-size: 11px;
+            color: #71767a;
+            margin-top: -10px;
+            margin-bottom: 15px;
+        }
+
+        /* --- Çalışma Paneli İstatistik Gridleri --- */
+        .dh-stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .dh-stat-box {
+            background: #1e202b;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+
+        .dh-stat-val {
+            font-size: 22px;
+            font-weight: 800;
+            display: block;
+        }
+
+        .dh-stat-lbl {
+            font-size: 10px;
+            color: #9aa0a6;
+            display: block;
+            margin-top: 2px;
+        }
+
+        /* --- Analiz Detay Satırları --- */
+        .dh-analysis-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            font-size: 12px;
+        }
+
+        .dh-list-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .dh-pill {
+            background: #0056b3;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .dh-pill.red { background: #a72828; }
+        .dh-pill.gray { background: #3a3b45; }
+
+        /* --- Alt Kategori Mikro Navigasyon Grid Yapısı --- */
+        .dh-bottom-modules-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 5px;
+        }
+
+        .dh-micro-card {
+            background: #15161e;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .dh-micro-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        .dh-micro-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dh-micro-desc {
+            font-size: 11px;
+            color: #80868b;
+            line-height: 1.4;
+        }
+
+        /* --- Geniș/Masaüstü Olmayan Ekranlar İçin responsive Kırılma --- */
+        @media (max-width: 992px) {
+            .dh-mentor-grid-container {
+                grid-template-columns: 1fr;
+            }
+            .dh-bottom-modules-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 576px) {
+            .dh-bottom-modules-grid {
+                grid-template-columns: 1fr;
+            }
+            .dh-stats-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dh-app-container">
+
+    <!-- 1. Üst Alan -->
+    <header class="dh-app-header">
+        <div class="dh-app-title">
+            <h1>Dil Haritası</h1>
+            <p>Güvenli PWA aşama 1: Bu menü statik çalışır, siteyi döngüye sokmaz.</p>
+        </div>
+        <div class="dh-badge-level">
+            <span>B2</span>
+            <small style="opacity: 0.8;">Seviyen: Orta-Üstü</small>
+        </div>
+    </header>
+
+    <!-- 🔥 2. EĞİTİM KOMUTA MERKEZİ GRİD ALANI -->
+    <div class="dh-mentor-grid-container">
+        
+        <!-- SOL BÜYÜK SÜTUN: Yapay Zeka Mentor Ortaklığı (En Tepe Odak Noktası) -->
+        <main class="dh-mentor-left-column">
+            <div id="dhKocContainer">
+                <!-- koc.js (v6.4) burayı yakalayarak şık analitik Mentor Karar Kartını enjekte edecek -->
+                <div style="background: #1a1a22; padding: 20px; border-radius: 14px; border: 1px dashed rgba(255,255,255,0.1); text-align: center; color: #8aabf8;">
+                    <span style="font-size: 14px;">🧭 Yapay Zeka Stratejik Mentor Bağlantısı Kuruluyor...</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- SAĞ KÜÇÜK SÜTUN: Verisel Dashboard ve Analiz Odaları -->
+        <aside class="dh-mentor-right-column">
+            
+            <!-- A) Bugünkü Çalışma Paneli -->
+            <div class="dh-standard-panel">
+                <div class="dh-panel-header">
+                    <h3>📊 Bugünkü Çalışma Paneli</h3>
+                    <button style="background:#202124; color:#fff; border:1px solid #3c4043; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer;">Yenile</button>
+                </div>
+                <div class="dh-panel-sub-text">Hata Defteri + Akıllı Tekrar kayıtlarına göre önerilen günlük plan.</div>
+                
+                <div class="dh-stats-row">
+                    <div class="dh-stat-box">
+                        <span class="dh-stat-val" style="color: #ea4335;">9</span>
+                        <span class="dh-stat-lbl">öncelikli hata</span>
+                    </div>
+                    <div class="dh-stat-box">
+                        <span class="dh-stat-val" style="color: #ffc107;">26</span>
+                        <span class="dh-stat-lbl">hata kaydı</span>
+                    </div>
+                    <div class="dh-stat-box">
+                        <span class="dh-stat-val" style="color: #8ab4f8;">324</span>
+                        <span class="dh-stat-lbl">tekrar bekleyen</span>
+                    </div>
+                    <div class="dh-stat-box">
+                        <span class="dh-stat-val" style="color: #23a142;">455</span>
+                        <span class="dh-stat-lbl">öğrenilmiş kayıt</span>
+                    </div>
+                </div>
+
+                <div class="dh-analysis-split">
+                    <div>
+                        <b style="color:#aaa; display:block; margin-bottom:6px;">Bugünkü önerilen sıra</b>
+                        <div class="dh-list-item"><span>Yüksek öncelikli hatalar</span><span class="dh-pill red">9</span></div>
+                        <div class="dh-list-item"><span>En zayıf konu: missing-word</span><span class="dh-pill">26</span></div>
+                        <div class="dh-list-item"><span>En çok hata yapılan modül: A2-M20 Doctor</span><span class="dh-pill gray">6</span></div>
+                    </div>
+                    <div>
+                        <b style="color:#aaa; display:block; margin-bottom:6px;">Zayıf analiz özeti</b>
+                        <div class="dh-list-item"><span>Zayıf konu</span><span class="dh-pill">missing-word</span></div>
+                        <div class="dh-list-item"><span>Zayıf modül</span><span class="dh-pill gray">A2-M20 Doctor</span></div>
+                        <div class="dh-list-item"><span>Öneri</span><span class="dh-pill" style="background:#23a142;">Akıllı tekrar</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- B) Bugünkü Dersim -->
+            <div class="dh-standard-panel">
+                <div class="dh-micro-title">🎓 Bugünkü Dersim</div>
+                <p class="dh-micro-desc" style="margin: 6px 0 0 0;">Öğretmen senin için ders hazırlasın — nereden başlayacağına o karar versin.</p>
+            </div>
+
+        </aside>
+
+    </div>
+
+    <!-- 3. Alt Katman: Mikro Fonksiyonel Eğitim Kartları Grid Sistemi -->
+    <section class="dh-bottom-modules-grid">
+        <div class="dh-micro-card">
+            <div class="dh-micro-title">🎯 Seviye Belirleme</div>
+            <div class="dh-micro-desc">Kısa bir testle seviyeni ölç — öğretmen dersleri ona göre hazırlasın.</div>
+        </div>
+        <div class="dh-micro-card">
+            <div class="dh-micro-title">🗺️ İlerleme Haritası</div>
+            <div class="dh-micro-desc">Tüm modüllerde ne kadar öğrendiğini gör, eksiklerini izle.</div>
+        </div>
+        <div class="dh-micro-card">
+            <div class="dh-micro-title">📸 Fotoğraflı Cümle</div>
+            <div class="dh-micro-desc">Resimli cümle ekranı, zayıf analiz ve eski öğrenme modülleri.</div>
+        </div>
+        <div class="dh-micro-card">
+            <div class="dh-micro-title">✍️ Çalışma Modu</div>
+            <div class="dh-micro-desc">Cümle çalışma ekranı üzerinden aktif pratik yapma havuzu.</div>
+        </div>
+        <div class="dh-micro-card">
+            <div class="dh-micro-title">🗣️ Phrasal Verbs</div>
+            <div class="dh-micro-desc">881 İngilizce öbek fiil — anlam, örnek ve interaktif dinleme.</div>
+        </div>
+        <div class="dh-micro-card">
+            <div class="dh-micro-title">🎧 Phrasal Pratik</div>
+            <div class="dh-micro-desc">Çoktan seçmeli, boşluk doldurma ve dinle-yaz egzersizleri.</div>
+        </div>
+        <div class="dh-micro-card">
+            <div class="dh-micro-title">🏫 Öğretmen Modu</div>
+            <div class="dh-micro-desc">Türkçe anlatımlı İngilizce öğretmen simülatörü.</div>
+        </div>
+        <div class="dh-micro-card">
+            <div class="dh-micro-title">💬 Sohbet Odası</div>
+            <div class="dh-micro-desc">Fotoğraflı konuşan avatar senaryoları ile aktif speaking.</div>
+        </div>
+    </section>
+
+</div>
+
+<!-- ⚙️ Ekosistem Scriptleri Bağlantısı -->
+<script src="koc.js"></script>
+</body>
+</html>
