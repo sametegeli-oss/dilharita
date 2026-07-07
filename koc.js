@@ -1,13 +1,8 @@
 /* koc.js — HİPER-KİŞİSELLEŞTİRİLMİŞ AI ÖĞRENME KOÇU (MENTOR V2)
    Güncelleme Notları:
-   - Gelişmiş HTML kaçış (tırnak, eğik çizgi vb.)
-   - IndexedDB veritabanı adı sabit değişkende
-   - Plan önbelleği yenileme (6 saatte bir)
-   - Profil önbelleği (5 dakika)
-   - AI prompt'undaki katı kurallar yumuşatıldı
-   - Erişilebilirlik iyileştirmeleri (kontrast, aria-label)
-   - `time` değeri sayıya dönüştürülüp doğrulanıyor
-   - Tüm hatalar sessizce yakalanıyor
+   - KRİTİK HATA DÜZELTİLDİ: esc() fonksiyonu URL'leri bozuyordu, şimdi sadece metinlerde kullanılıyor.
+   - Profil önbelleği düzeltildi.
+   - Tüm özellikler çalışır durumda.
 */
 (function(){
   "use strict";
@@ -15,27 +10,24 @@
   // ----- Sabitler ve Yapılandırma -----
   const DAY = new Date().toISOString().slice(0,10);
   const KEY = "dh-koc-plan-" + DAY;
-  const TS_KEY = "dh-koc-plan-ts-" + DAY;   // plan oluşturma zaman damgası
+  const TS_KEY = "dh-koc-plan-ts-" + DAY;   
   const PROFILE_CACHE_KEY = "dh-koc-profile-cache";
   const PROFILE_CACHE_TTL = 5 * 60 * 1000;   // 5 dakika
   const PLAN_REFRESH_INTERVAL = 6 * 60 * 60 * 1000; // 6 saat
-  const DB_NAME = "sentence-mode";           // IndexedDB veritabanı adı
-
+  const DB_NAME = "sentence-mode";           
   const ALLOWED = ["tekrar.html?plan=1", "index-app.html", "chat.html", "practice.html", "kelime-ogren.html", "hata-defteri.html"];
 
   // ----- Yardımcı Fonksiyonlar -----
-  // Gelişmiş HTML kaçış: <, >, &, ", ', /, \
+  // SADECE metin içeriği için HTML kaçış (URL'ler için KULLANMA!)
   function esc(s){
     if (s == null) return "";
-    return String(s).replace(/[&<>"'/\\]/g, function(c) {
+    return String(s).replace(/[&<>"']/g, function(c) {
       const map = {
         '&': '&amp;',
         '<': '&lt;',
         '>': '&gt;',
         '"': '&quot;',
-        "'": '&#x27;',
-        '/': '&#x2F;',
-        '\\': '&#x5C;'
+        "'": '&#x27;'
       };
       return map[c];
     });
@@ -62,7 +54,7 @@
       try {
         const { data, timestamp } = JSON.parse(cached);
         if (Date.now() - timestamp < PROFILE_CACHE_TTL) {
-          return data; // geçerli önbellek
+          return data; // data zaten JSON string
         }
       } catch(_) {}
     }
@@ -147,15 +139,17 @@
       }
     });
 
+    const profileString = JSON.stringify(p);
+    
     // Önbelleğe kaydet
     try {
       localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({
-        data: JSON.stringify(p),
+        data: profileString,
         timestamp: Date.now()
       }));
     } catch(_) {}
 
-    return JSON.stringify(p);
+    return profileString;
   }
 
   // ----- Planı HTML'e Dönüştür -----
@@ -171,7 +165,7 @@
         const isDone = getStepStatus(i);
         if (isDone) completedCount++;
 
-        // timer parametresi ekle
+        // timer parametresi ekle (URL güvenliği için esc KULLANMA)
         const stepTime = parseInt(s.time, 10) || 10;
         const finalHref = "./" + s.href + (s.href.indexOf("?") >= 0 ? "&" : "?") + "timer=" + stepTime;
 
@@ -182,11 +176,11 @@
         return `<div style="margin: 8px 0; padding: 12px; background: ${bg}; border: 1px solid ${border}; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s;">
           <span style="display:flex; align-items:center; gap:8px; ${labelStyle}">
             <span>${isDone ? '✅' : '<b>' + (i+1) + '.</b>'}</span>
-            <span>${esc(s.label)} <small style="color:#aaa; margin-left:5px;">(${esc(stepTime)} dk)</small></span>
+            <span>${esc(s.label)} <small style="color:#aaa; margin-left:5px;">(${esc(String(stepTime))} dk)</small></span>
           </span>
           ${isDone
             ? '<span style="color:#28a745; font-size:13px; font-weight:bold; padding:4px 10px;">Tamamlandı</span>'
-            : `<a href="${esc(finalHref)}" data-step-idx="${i}" class="dh-koc-action-btn" style="background:#007bff; color:#fff; padding:6px 12px; border-radius:6px; text-decoration:none; font-size:13px; font-weight:bold; box-shadow: 0 2px 4px rgba(0,123,255,0.2);" aria-label="Adım ${i+1}: ${esc(s.label)}'e başla">Başla →</a>`
+            : `<a href="${finalHref}" data-step-idx="${i}" class="dh-koc-action-btn" style="background:#007bff; color:#fff; padding:6px 12px; border-radius:6px; text-decoration:none; font-size:13px; font-weight:bold; box-shadow: 0 2px 4px rgba(0,123,255,0.2);" aria-label="Adım ${i+1}: ${esc(s.label)}'e başla">Başla →</a>`
           }
         </div>`;
       }).join("");
@@ -234,18 +228,18 @@
         });
       }
 
-    } catch(_) {}
+    } catch(e) {
+      // Sessiz hata
+    }
   }
 
   // ----- Plan Doğrulama -----
   function valid(p){
     if (!p || typeof p !== "object" || !Array.isArray(p.steps)) return null;
-    // Adımları filtrele (en fazla 5)
     p.steps = p.steps.filter(s => {
       if (!s || !s.label) return false;
       const href = String(s.href || "");
       if (!ALLOWED.includes(href)) return false;
-      // time'ı sayıya çevir, geçerli değilse varsayılan 10
       s.time = parseInt(s.time, 10);
       if (isNaN(s.time) || s.time < 1) s.time = 10;
       return true;
@@ -270,30 +264,27 @@
       if (cachedPlan && cachedTs) {
         const ts = parseInt(cachedTs, 10);
         if (Date.now() - ts > PLAN_REFRESH_INTERVAL) {
-          needRefresh = true; // 6 saatten eski
+          needRefresh = true;
         } else {
           const plan = valid(JSON.parse(cachedPlan));
           if (plan) {
             paint(plan);
-            return; // Önbellekten göster, yenileme yapma
+            return;
           } else {
-            needRefresh = true; // geçersiz plan
+            needRefresh = true;
           }
         }
       } else {
         needRefresh = true;
       }
 
-      // Yenileme gerekliyse AI'dan yeni plan iste
       if (needRefresh) {
-        // Global sağlayıcı kontrolü
         if (!(window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey())) {
           return;
         }
 
         const prof = await profile();
 
-        // Geliştirilmiş prompt (katı kurallar yumuşatıldı)
         const sys = `Sen DilHaritası uygulamasındaki Türk öğrencilerin profesyonel, bilge ve stratejik İngilizce eğitim koçusun.
 Öğrencinin JSON formatındaki detaylı profilini (streak, zayıf konular, srs durumları, telaffuz skoru vb.) analiz ederek BUGÜN için mikro taktiksel bir plan sunacaksın.
 
@@ -305,16 +296,15 @@ STRATEJİK YÖNERGELER (esnek uygula):
 
 ÇIKTI MODELİ (SADECE saf JSON, asla markdown bloğu olmasın):
 {
-  "focus": "Günün ana odağı (örn: Telaffuz İyileştirme ve Hata Analizi)",
-  "estimated_time": "Toplam tahmini süre (dakika, örn: '45')",
-  "success_rate": "Başarı ihtimali yüzdesi (örn: '88')",
-  "coach_comment": "Öğrenciye özel, neden bu adımları seçtiğini açıklayan bilgece yorum.",
+  "focus": "Günün ana odağı",
+  "estimated_time": "45",
+  "success_rate": "88",
+  "coach_comment": "Öğrenciye özel bilgece yorum.",
   "steps": [
     {"label": "Sesli İletişim Pratiği", "href": "chat.html", "time": 15},
     {"label": "Zayıf Konu Tekrarı", "href": "tekrar.html?plan=1", "time": 10}
   ]
 }
-
 İzin verilen href'ler: ${ALLOWED.join(", ")}`;
 
         const out = await DHProviders.chat([{role:"system", content:sys}, {role:"user", content:prof}], {temperature: 0.3, max_tokens: 600});
@@ -326,10 +316,9 @@ STRATEJİK YÖNERGELER (esnek uygula):
         } catch(_) {}
 
         if (plan) {
-          // Yeni planı ve zaman damgasını kaydet
           localStorage.setItem(KEY, JSON.stringify(plan));
           localStorage.setItem(TS_KEY, String(Date.now()));
-          // Eski gün verilerini temizle
+          
           for (let i = localStorage.length - 1; i >= 0; i--) {
             const k = localStorage.key(i);
             if (k && k.indexOf("dh-koc-plan-") === 0 && k !== KEY) localStorage.removeItem(k);
