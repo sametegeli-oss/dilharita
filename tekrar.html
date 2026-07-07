@@ -86,7 +86,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 <script src="./progress-engine.js?v=2"></script>
 <script src="./cloud-sync-v8.js?v=1"></script>
 <script>
-(function(){
+(async function(){
   "use strict";
   var $=function(id){return document.getElementById(id)};
   var DAY=86400000, SESSION=40, now=Date.now();
@@ -440,9 +440,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
         $("bHard").click();
       } else if (key === "g") {
         $("bGemini").click();
-      } {
+      } else if (key === "t") {
         $("bTrans").click();
-      } if (key === "r") {
+      } else if (key === "r") {
         $("bRetry").click();
       } else if (key === "b" || e.key === " ") {
         e.preventDefault();
