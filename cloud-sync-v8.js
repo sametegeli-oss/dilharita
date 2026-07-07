@@ -47,6 +47,7 @@
   };
 
   var fb=null, user=null, ready=false, authResolved=false, saveTimer=null, syncing=false;
+  var autoPushFlag=true; // false yapılırsa (bazı modüller yapıyor), pushSoon() devre dışı kalır — yalnız pushNow()/flushOnLeave() ile kayıt olur
 
   /* ── 2) BİRLEŞTİRME (saf fonksiyonlar) ───────────────────── */
   function mergeEvents(a,b){
@@ -241,7 +242,7 @@
     }
   }
   function pushSoon(){
-    if(!ready||!user) return;
+    if(!ready||!user||!autoPushFlag) return;
     clearTimeout(saveTimer);
     saveTimer=setTimeout(function(){ pushNow(); },1500);
   }
@@ -517,6 +518,7 @@
     push: pushNow, sync: initialSync, pull: fullSync, fullSync: fullSync,
     signOut: signOutAndPush,
     snapList: snapList, restoreSnap: restoreSnap,
-    get ready(){ return ready; }, get user(){ return user; }
+    get ready(){ return ready; }, get user(){ return user; },
+    get autoPush(){ return autoPushFlag; }, set autoPush(v){ autoPushFlag=!!v; }
   };
 })();

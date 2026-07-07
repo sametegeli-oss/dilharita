@@ -248,6 +248,37 @@
     });
   }
 
+  function updateMeanings(list){
+    if(!popEl) return;
+    var box = popEl.querySelector(".dh-wp-box");
+    if(!box) return;
+    var head = box.querySelector(".dh-wp-boxhead");
+    box.innerHTML = "";
+    if(head) box.appendChild(head);
+    (list||[]).forEach(function(m,i){
+      var d=document.createElement("div"); d.className="dh-wp-mean"; d.textContent=(i+1)+". "+m;
+      box.appendChild(d);
+    });
+  }
+
+  /* Kelime yerel sözlükte (variants dahil) bulunamazsa: büyük ekranı yine de
+     aç, ve AI (Groq/Cerebras/Gemini) ile anlık Türkçe anlam üretmeyi dene. */
+  function defineWithAI(word){
+    open({ word: word, data: { anlamlar: ["⏳ Sözlükte yok — AI ile anlam aranıyor…"], oku:"", frekans:"", seviye:"" } });
+    if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
+      updateMeanings(["📕 Bu kelime yerel sözlükte yok. AI açıklaması için öğretmen sayfasından bir API anahtarı ekle (Groq, Cerebras veya Gemini)."]);
+      return;
+    }
+    var sys="Sen İngilizce-Türkçe sözlük gibi çalışıyorsun. Verilen İngilizce kelime bir çekim ekiyle gelmiş olabilir (örn. çoğul, geçmiş zaman, -ing) — önce sözlük kökünü bul, sonra o kökün 1-3 kısa Türkçe karşılığını SADECE virgülle ayrılmış liste halinde ver. Başka hiçbir açıklama, cümle veya noktalama ekleme.";
+    var usr="Kelime: \""+word+"\"";
+    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.3,max_tokens:60})
+      .then(function(txt){
+        var list=String(txt||"").split(",").map(function(s){ return s.trim(); }).filter(Boolean);
+        updateMeanings(list.length?list:["Anlam bulunamadı."]);
+      })
+      .catch(function(){ updateMeanings(["Anlam alınamadı. Bağlantı/anahtar kontrol et."]); });
+  }
+
   function onClick(e){
     if(!enabled || popEl) return;
     var t=e.target; if(!t) return;
@@ -257,7 +288,7 @@
     var word=wordAtPoint(e); if(!word) return;
     var cleaned=cleanWord(word);
     if(!cleaned || cleaned.length<2 || !/^[a-z'-]+$/.test(cleaned)) return;
-    loadDict().then(function(){ var entry=findEntry(cleaned); if(entry) open(entry); });
+    loadDict().then(function(){ var entry=findEntry(cleaned); if(entry) open(entry); else defineWithAI(cleaned); });
   }
   function wordAtPoint(e){
     try{
@@ -274,7 +305,7 @@
 
   global.DHWordPop = {
     __v2:true,
-    lookup:function(w){ loadDict().then(function(){ var e=findEntry(cleanWord(w)); if(e) open(e); }); },
+    lookup:function(w){ loadDict().then(function(){ var e=findEntry(cleanWord(w)); if(e) open(e); else defineWithAI(cleanWord(w)); }); },
     enable:function(){ enabled=true; }, disable:function(){ enabled=false; }, close:close
   };
   if(document.readyState!=="loading") document.addEventListener("click", onClick, true);
