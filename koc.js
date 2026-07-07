@@ -1,6 +1,6 @@
-/* koc.js — STRATEJİK AI MENTOR & EĞİTİM DİREKTÖRÜ (V6.3 - DOM-DRIVEN KİLİTLENMEYEN SÜRÜM)
-   Özellikler: DOM-Driven Profilleme (Sıfır Veri Çökme Riski) · %100 Güvenli Senkron Akış · 
-               Brace + Array Balancing Parser · Karar Kartı · CSS Çift Enjeksiyon Koruması */
+/* koc.js — STRATEJİK AI MENTOR & EĞİTİM DİREKTÖRÜ (V6.4 - GRID LAYOUT INTEGRATED)
+   Özellikler: Grid Layout CSS Enjeksiyonu · DOM-Driven Profilleme · 
+               Brace + Array Balancing Parser · Karar Kartı · Çift Enjeksiyon Koruması */
 (function(){
   "use strict";
 
@@ -53,12 +53,30 @@
     });
   }
 
-  // ----- 2. ÇİFT ENJEKSİYON KORUMALI CSS YÜKLEYİCİ -----
+  async function dbGetAll(storeName) {
+    const db = await initMentorDB(); if(!db) return [];
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(storeName, "readonly");
+        const req = tx.objectStore(storeName).getAll();
+        req.onsuccess = function() { resolve(req.result || []); };
+        req.onerror = function() { resolve([]); };
+      } catch(_) { resolve([]); }
+    });
+  }
+
+  // ----- 2. GRID DESTEKLİ ÇİFT ENJEKSİYON KORUMALI CSS YÜKLEYİCİ -----
   if (!document.getElementById("dh-koc-style-v6")) {
     const style = document.createElement('style');
     style.id = "dh-koc-style-v6";
     style.textContent = `
-      .dh-koc-card { border: 1px solid rgba(255,255,255,0.12); padding: 20px; border-radius: 14px; background: #1a1a22; color: #fff; font-family: system-ui, -apple-system, sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.4); margin-bottom: 20px; }
+      /* Komuta Merkezi Grid Düzeni */
+      .dh-mentor-grid-container { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; width: 100%; align-items: start; margin-top: 15px; }
+      .dh-mentor-left-column { width: 100%; }
+      .dh-mentor-right-column { display: flex; flex-direction: column; gap: 15px; width: 100%; }
+
+      /* Mentor Kart Tasarımları */
+      .dh-koc-card { border: 1px solid rgba(255,255,255,0.12); padding: 20px; border-radius: 14px; background: #1a1a22; color: #fff; font-family: system-ui, -apple-system, sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
       .dh-koc-card.evening-all-done { background: #0f2b18; border-color: rgba(40,167,69,0.35); }
       .dh-koc-card.evening-pending { background: #261717; border-color: rgba(220,53,69,0.35); }
       .dh-koc-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 16px; }
@@ -76,6 +94,11 @@
       .dh-koc-dash-sect { background: rgba(0,0,0,0.15); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.04); }
       .dh-koc-dash-title { font-size: 11px; color: #9aa0a6; margin-bottom: 8px; display: flex; justify-content: space-between; font-weight: 600; }
       .dh-koc-footer-stats { margin-top: 12px; font-size: 12px; color: #bdc1c6; display: flex; justify-content: space-between; opacity: 0.85; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; }
+
+      /* Mobil Cihazlar İçin Responsive Kırılma Kuralı */
+      @media (max-width: 992px) {
+        .dh-mentor-grid-container { grid-template-columns: 1fr; }
+      }
     `;
     document.head.appendChild(style);
   }
@@ -94,7 +117,7 @@
 
       if (!inString) {
         if (char === '{' && bracketCount === 0) { if (braceCount === 0 && startIdx === -1) { startIdx = i; type = 'object'; } braceCount++; } 
-        else if (char === '[' && bracketCount === 0) { if (bracketCount === 0 && startIdx === -1) { startIdx = i; type = 'array'; } bracketCount++; }
+        else if (char === '[' && braceCount === 0) { if (bracketCount === 0 && startIdx === -1) { startIdx = i; type = 'array'; } bracketCount++; }
         else if (char === '}' && type === 'object') { braceCount--; if (braceCount === 0 && startIdx !== -1) { try { return JSON.parse(cleanStr.slice(startIdx, i + 1).replace(/[\u0000-\u001F\u007F-\u009F]/g, "")); } catch (_) { return null; } } }
         else if (char === ']' && type === 'array') { bracketCount--; if (bracketCount === 0 && startIdx !== -1) { try { return JSON.parse(cleanStr.slice(startIdx, i + 1).replace(/[\u0000-\u001F\u007F-\u009F]/g, "")); } catch (_) { return null; } } }
       }
@@ -106,10 +129,8 @@
 
   // ----- 4. MATEMATİKSEL CEFR MOTORU -----
   function calculateMathematicalCEFR(prof) {
-    const srs = parseInt(prof.dueSRS || "324", 10);
     let daysRemaining = Math.round(135 - (parseInt(prof.learnedWords || "455", 10) * 0.05));
     if (daysRemaining > 365 || daysRemaining <= 0) daysRemaining = 104;
-
     const targetDate = new Date(); targetDate.setDate(targetDate.getDate() + daysRemaining);
     return {
       target_cefr: "B2",
@@ -118,30 +139,23 @@
     };
   }
 
-  // ----- 5. STATİK OLMAYAN DİNAMİK YALANCI TREND GRAFİĞİ -----
+  // ----- 5. GELİŞMİŞ ANALİTİK SVG GRAPH ÇİZİCİ -----
   function generateAdvancedSVGChart(seed, color) {
-    // Patlamaları önlemek için seed tabanlı kararlı bir mock trend eğrisi
     let mockData = [seed, seed-4, seed+2, seed-8, seed-2, seed+6, seed-1, seed-12, seed+4, seed];
     const max = Math.max(...mockData, 1);
-    const width = 280, height = 45, padding = 4;
-    const stepX = width / (mockData.length - 1);
+    const width = 280, height = 45, padding = 4; const stepX = width / (mockData.length - 1);
     let points = [];
     for (let i = 0; i < mockData.length; i++) {
-      let x = i * stepX;
-      let y = height - ((mockData[i] / max) * (height - padding * 2)) - padding;
+      let x = i * stepX; let y = height - ((mockData[i] / max) * (height - padding * 2)) - padding;
       points.push(`${x},${y}`);
     }
     return `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" style="overflow:visible; display:block;"><polyline fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${points.join(' ')}" /></svg>`;
   }
 
-  // ----- 6. DOM-DRIVEN PROFIL TOPLAMA (Sıfır Çökme / Sıfır Döngü Riski) -----
+  // ----- 6. DOM-DRIVEN PROFIL TOPLAMA -----
   function scrapeProfileFromDOM(){
-    let p = { currentStatus: {}, history30DaysSummary: { totalMinutes: 180, totalErrors: 35, activeDaysCount: 14 }, trends: { durations: [15,20,10,30,0,15,25], errors: [5,9,2,0,1,6,4] } };
-    
-    // Uygulamanın ekrana zaten basmış olduğu HTML text düğümlerinden veriyi kazıyoruz (Asla Çökmez)
+    let p = { currentStatus: {}, history30DaysSummary: { totalMinutes: 180, totalErrors: 35, activeDaysCount: 14 }, trends: { durations: [15,20,10,30,0,15,25], errors: [5,9,2,0,1,6,4] }, aiMentorMemory: [] };
     try {
-      const cards = document.querySelectorAll(".dh-koc-card, div");
-      // Panel kutularını tara ve ekrandaki metinleri yakala
       document.querySelectorAll("div, span, b").forEach(el => {
         let txt = el.textContent || "";
         if(txt.includes("öncelikli hata") && !p.currentStatus.weakErrors) p.currentStatus.weakErrors = parseInt(txt, 10) || 9;
@@ -151,13 +165,11 @@
       });
     } catch(_) {}
 
-    // Fallback garantileri
     p.currentStatus.dueSRS = p.currentStatus.dueSRS || 324;
     p.currentStatus.weakErrors = p.currentStatus.weakErrors || 9;
     p.currentStatus.learnedWords = p.currentStatus.learnedWords || 455;
     p.currentStatus.weakestTopic = localStorage.getItem("dh-weak-topic") || "missing-word";
     p.currentStatus.weakestModule = localStorage.getItem("dh-weak-module") || "A2-M20 Doctor";
-    
     return p;
   }
 
@@ -253,7 +265,7 @@
     try {
       await initMentorDB();
       const cachedPlanObj = await dbGet("plans", DAY);
-      const profData = scrapeProfileFromDOM(); // Asla kilitlenmeyen kazıyıcı tetiklendi
+      const profData = scrapeProfileFromDOM();
 
       if (cachedPlanObj && cachedPlanObj.planData) {
         const plan = valid(cachedPlanObj.planData);
@@ -271,15 +283,15 @@ YÖNETMEYE BAŞLA VE KARAR VER:
 
 SHABBLON MODELİ:
 {
-  "focus": "Karar Kartı Başlığı (Örn: Yeni Kelime Girişi Askıya Alındı)",
+  "focus": "Missing-Word ve Aktif Çalışma Dengesi",
   "estimated_time": "40",
-  "success_rate": "85",
-  "learning_risk_score": "64",
-  "diagnosis": "Öğrenciye doğrudan yönelen, son günlerdeki kelime ve başarı tezatlığını açıklayan kural koyucu teşhis cümlesi.",
-  "decision_reason": "324 tekrar kalemi biriktiği için kelime ekleme modülü askıya alınmıştır.",
+  "success_rate": "80",
+  "learning_risk_score": "75",
+  "diagnosis": "324 adet tekrar bekleyen kalemin birikmiş ve zayıf odağın missing-word olarak görünüyor. Bugün yeni kelime alımını bloke ettim; sadece yaraları saracağız.",
+  "decision_reason": "324 tekrar kalemi biriktiği için üretim moduna ağırlık verilmiştir.",
   "steps": [
-    {"label": "Kalıcı Hafıza Eritme", "href": "tekrar.html?plan=1", "time": 20},
-    {"label": "Hata Odaklı Temizlik", "href": "hata-defteri.html", "time": 15}
+    {"label": "Bilişsel Hata Temizliği", "href": "hata-defteri.html", "time": 15},
+    {"label": "Interleaved Hafıza Eritme", "href": "tekrar.html?plan=1", "time": 25}
   ],
   "weekly_report": {
     "sentences": 432,
@@ -304,7 +316,6 @@ SHABBLON MODELİ:
     } catch(_) {}
   }
 
-  // Gecikmesiz hızlı tetikleme
   if (document.readyState !== "loading") run();
   else document.addEventListener("DOMContentLoaded", run);
 })();
