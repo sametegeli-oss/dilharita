@@ -192,7 +192,7 @@
     document.getElementById("dhWpListen").onclick=function(){ speak(w,0.9); };
     document.getElementById("dhWpSlow").onclick=function(){ speak(w,0.55); };
     document.getElementById("dhWpFast").onclick=function(){ speak(w,1.25); };
-    document.getElementById("dhWpVideo").onclick=function(){ try{ localStorage.setItem("dh-video-word",w); }catch(e){} location.href="./videopractice.html"; };
+    document.getElementById("dhWpVideo").onclick=function(){ window.open("https://youglish.com/pronounce/"+encodeURIComponent(w)+"/english","_blank"); };
     document.getElementById("dhWpAI").onclick=function(){ aiExplain(w, anlamlar); };
     document.getElementById("dhWpRec").onclick=function(){ tryPronounce(w); };
     fillSentences(w);
@@ -276,7 +276,16 @@
         var list=String(txt||"").split(",").map(function(s){ return s.trim(); }).filter(Boolean);
         updateMeanings(list.length?list:["Anlam bulunamadı."]);
       })
-      .catch(function(){ updateMeanings(["Anlam alınamadı. Bağlantı/anahtar kontrol et."]); });
+      .catch(function(err){
+        var code = err && err.code;
+        var msg =
+          code==="no-key" ? "📕 Bu kelime yerel sözlükte yok ve AI anahtarı bulunamadı. Öğretmen sayfasından bir API anahtarı ekle (Groq, Cerebras veya Gemini)." :
+          code==="rate" || code==="all-failed" ? "⏳ Tüm AI sağlayıcıları şu an limitte/başarısız. Biraz sonra tekrar dene." :
+          code==="bad-key" ? "🔑 API anahtarı geçersiz görünüyor. Öğretmen sayfasından anahtarını kontrol et." :
+          code==="network" ? "📡 Ağ/CORS hatası — internet bağlantını kontrol et." :
+          "Anlam alınamadı. Bağlantı/anahtar kontrol et.";
+        updateMeanings([msg]);
+      });
   }
 
   function onClick(e){
