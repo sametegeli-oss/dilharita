@@ -34,10 +34,12 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 
 /* Diff Visual Styles & Fixed Sizing for Auto-Wrap */
 .diff-box{margin-top:6px; background:#071120; padding:8px; border-radius:8px; font-weight:normal; display:inline-block; width:100%; word-break:break-word; white-space:normal;}
-.diff-match{color:#4ade80;margin-right:4px;font-weight:bold;display:inline-block;}
-.diff-typo{color:#f59e0b;margin-right:4px;font-weight:bold;display:inline-block;border-bottom:2px dashed #f59e0b;cursor:help;}
-.diff-wrong{color:#f87171;text-decoration:line-through;margin-right:4px;display:inline-block;}
-.diff-missing{color:#6b7280;border-bottom:1px dashed #6b7280;margin-right:4px;display:inline-block;}
+.diff-box span{cursor:pointer; margin-right:4px; display:inline-block;}
+.diff-box span:hover{opacity:0.8;}
+.diff-match{color:#4ade80;font-weight:bold;}
+.diff-typo{color:#f59e0b;font-weight:bold;border-bottom:2px dashed #f59e0b;}
+.diff-wrong{color:#f87171;text-decoration:line-through;}
+.diff-missing{color:#6b7280;border-bottom:1px dashed #6b7280;}
 </style></head><body>
 <div class="top"><a href="./index.html" id="btnHome">←</a><h1>🔁 Tekrar</h1><div class="cnt" id="cnt"></div></div>
 <div class="mode">Mod:
@@ -60,6 +62,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   </div>
   <div class="row" id="grade" style="display:none">
     <button class="b-hard" id="bHard">Zor</button>
+    <button class="b-retry" id="bRetry">🔄 Tekrar Dene</button>
     <button class="b-gemini" id="bGemini">✨ Gemini'ye Sor</button>
     <button class="b-easy" id="bEasy">Bildim ✓</button>
   </div>
@@ -90,8 +93,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   var showOnlyErrors = false; 
   localStorage.setItem("dh-only-errors", "0");
 
-  /* ---- Media Recorder Değişkenleri ---- */
-  var mediaRecorder = null, audioChunks = [], audioUrl = null;
+  /* ---- Durdurulabilir Mikrofon Değişkenleri ---- */
+  var mediaRecorder = null, audioChunks = [], audioUrl = null, audioStream = null;
+  var recognitionInstance = null, isRecording = false, accumulatedTranscript = "";
 
   /* ---- kv (practice ile ortak depo) ---- */
   function kvOpen(){ return new Promise(function(res){ try{ var r=indexedDB.open("sentence-mode",1); r.onsuccess=function(){res(r.result)}; r.onerror=function(){res(null)}; }catch(e){res(null)} }); }
@@ -307,7 +311,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   var i=0, doneCount=0, cur=null, curT=null, revealed=false, lastSc=-1;
   function speak(t){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.lang="en-US"; u.__dhMixed=true; u.__longTTSAvatarSync=true; speechSynthesis.speak(u); }catch(e){} }
 
-  /* Gelişmiş Toplu Bulut Senkronizasyonu (Kota Dostu Mod) */
+  /* Gelişmiş Toplu Bulut Senkronizasyonu */
   function triggerCloudSync() {
     try {
       if (window.DHCloudSync && window.DHCloudSync.push) {
@@ -347,8 +351,8 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     $("inp").value=""; $("score").textContent="";
     $("bShow").style.display=prod?"none":"";
     $("bChk").style.display=prod?"":"none";
-    $("bListenRetry").style.display="none"; // Yeni cümlede eski dinleme butonunu gizle
-    if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; } // Belleği temizle
+    $("bListenRetry").style.display="none";
+    if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
     $("grade").style.display="none";
     $("exp").style.display="none";
     $("card").style.display="block";
@@ -416,47 +420,74 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
   });
 
-  /* 🎤 Mikrofon & Eş Zamanlı Ses Kaydedici Entegrasyonu */
+  /* 🎤 Kesintisiz Manuel Mikrofon & Eş Zamanlı Ses Kaydedici Düzenlemesi */
   $("bMic").onclick=function(){
-    try {
-      var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
-      var rec=new SR(); rec.lang="en-US"; rec.interimResults=false;
+    var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
+    
+    if (!isRecording) {
+      // 1. ADIM: KAYDI BAŞLATMA
+      isRecording = true;
       $("bMic").textContent="🔴";
       $("bListenRetry").style.display = "none";
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
+      accumulatedTranscript = "";
 
-      // Paralel Ses Kayıt Mekanizması Başlatma
+      // Web Audio API & MediaRecorder Akışını Başlatma
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+        audioStream = stream;
         mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
         mediaRecorder.ondataavailable = function(e) { if (e.data.size > 0) audioChunks.push(e.data); };
         mediaRecorder.onstop = function() {
           var audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
           audioUrl = URL.createObjectURL(audioBlob);
-          $("bListenRetry").style.display = ""; // Kayıt bitince dinleme butonunu göster
-          
-          // Mikrofon akış kanallarını kapatarak donanımı serbest bırak
-          stream.getTracks().forEach(function(track) { track.stop(); });
+          $("bListenRetry").style.display = "";
         };
         mediaRecorder.start();
-      }).catch(function(err) { console.error("Kayıt donanımına erişilemedi:", err); });
+      }).catch(function(err) { console.error("Mikrofon donanımına erişilemedi:", err); isRecording = false; $("bMic").textContent="🎤"; });
 
-      rec.onresult=function(e){ 
-        $("inp").value=e.results[0][0].transcript; 
-        $("bMic").textContent="🎤"; 
-        if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
-        reveal(); 
+      // Sürekli Dinleme Motorunun Kurulması (Yarıda Kapanmayı Önler)
+      recognitionInstance = new SR();
+      recognitionInstance.lang = "en-US";
+      recognitionInstance.continuous = true; // Duraksamalarda otomatik kapanmayı engeller
+      recognitionInstance.interimResults = false;
+
+      recognitionInstance.onresult = function(e) {
+        for (var idx = e.resultIndex; idx < e.results.length; ++idx) {
+          if (e.results[idx].isFinal) {
+            accumulatedTranscript += e.results[idx][0].transcript + " ";
+          }
+        }
+        $("inp").value = accumulatedTranscript.trim();
       };
-      
-      rec.onerror=rec.onend=function(){ 
-        $("bMic").textContent="🎤"; 
-        if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
-      };
-      
-      rec.start();
-    }catch(e){ 
-      $("bMic").textContent="🎤"; 
-      if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+
+      recognitionInstance.onerror = function(err) { console.error("Tanıma hatası:", err); };
+      recognitionInstance.start();
+
+    } else {
+      // 2. ADIM: MANUEL DURDURMA (Kullanıcı Butona Tekrar Bastığında)
+      isRecording = false;
+      $("bMic").textContent="🎤";
+
+      // Ses tanıma motorunu kapat
+      if (recognitionInstance) {
+        recognitionInstance.stop();
+        recognitionInstance = null;
+      }
+
+      // Medya kaydediciyi kapat ve donanımları serbest bırak
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+      if (audioStream) {
+        audioStream.getTracks().forEach(function(track) { track.stop(); });
+        audioStream = null;
+      }
+
+      // Kısa bir süre bekleyerek son asenkron kelimelerin dolmasını sağla ve analizi tetikle
+      setTimeout(function() {
+        reveal();
+      }, 300);
     }
   };
 
@@ -497,6 +528,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     
     if(it.kind==="s") srs[it.id]=rec; else wsrs[it.id]=rec;
     try { await kvPut(key, rec); } catch(e) {}
+    try{ if(window.DHProgress&&DHProgress.recordResult) DHProgress.recordResult((it.kind==="s"?"sentence:":"word:")+it.id, !hard); }catch(e){}
     
     if(hard){
       showExplain(curT, leech);
