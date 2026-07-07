@@ -1,343 +1,388 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dil Haritası — Eğitim Komuta Merkezi</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-family/system-ui/css/all.min.css">
-    <style>
-        /* --- Ana Uygulama Genel Teması --- */
-        body {
-            margin: 0;
-            padding: 20px;
-            background-color: #0b0c10;
-            color: #ffffff;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        }
+<script src="./auth-guard.js?v=1"></script>
+<script src="./storage-bridge.js?v=3"></script>
+<script src="./progress-engine.js?v=2"></script>
+<script src="./teacher-policy.js?v=3"></script>
+<script src="./mastery-engine.js?v=1"></script>
+<script src="./level-badge.js?v=1"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b1120">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dil Harita">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<title>Dil Harita</title>
+<style>
+:root{--bg:#0b1120;--card:#111827;--card2:#172033;--text:#e8eef7;--muted:#9fb0c8;--line:#ffffff18}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(900px 420px at 50% -10%,#14302a 0%,transparent 60%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1200px;margin:0 auto;min-height:100vh;padding:22px}
+h1{font-size:30px;margin:10px 0 6px}
+p{color:var(--muted);line-height:1.55}
 
-        .dh-app-container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+/* 🔥 YENİ NESİL RESPONSIVE KOMUTA MERKEZİ GRİD DÜZENİ */
+.dh-mentor-grid-container {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 20px;
+  width: 100%;
+  align-items: start;
+  margin-top: 20px;
+  margin-bottom: 25px;
+}
+.dh-mentor-left-column { width: 100%; }
+.dh-mentor-right-column { display: flex; flex-direction: column; gap: 15px; width: 100%; }
 
-        /* --- Üst Başlık ve Profil Alanı --- */
-        .dh-app-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-        }
+/* Alt Grid Kategorileri */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:20px}
+.card{display:block;text-decoration:none;color:var(--text);background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:0 14px 40px #0005}
+.card b{display:block;font-size:22px;margin-bottom:7px}
+.card span{display:block;color:var(--muted);font-size:14px;line-height:1.45}
+.note{margin-top:22px;background:#101a2d;border:1px solid var(--line);border-radius:16px;padding:15px;color:var(--muted)}
+code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
 
-        .dh-app-title h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
+.photo-learn-card{
+  border-color:#60a5fa77!important;
+  background:linear-gradient(180deg,#17315c,#101827)!important;
+  box-shadow:0 18px 46px #0007, inset 0 0 0 1px #60a5fa22!important;
+}
+.photo-learn-card b{color:#eaf3ff}
 
-        .dh-app-title p {
-            margin: 5px 0 0 0;
-            font-size: 12px;
-            color: #8fa0a6;
-        }
-
-        .dh-badge-level {
-            background: #007bff;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
-        }
-
-        /* --- 🔥 YENİ NESİL RESPONSIVE GRID KAPSAYICISI --- */
-        .dh-mentor-grid-container {
-            display: grid;
-            grid-template-columns: 1.25fr 0.75fr;
-            gap: 20px;
-            width: 100%;
-            align-items: start;
-            margin-bottom: 25px;
-        }
-
-        .dh-mentor-left-column {
-            width: 100%;
-        }
-
-        .dh-mentor-right-column {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            width: 100%;
-        }
-
-        /* --- Geleneksel Modül Kartı Standartları --- */
-        .dh-standard-panel {
-            background: #15161e;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 14px;
-            padding: 20px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        }
-
-        .dh-panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .dh-panel-header h3 {
-            margin: 0;
-            font-size: 16px;
-            font-weight: 700;
-        }
-
-        .dh-panel-sub-text {
-            font-size: 11px;
-            color: #71767a;
-            margin-top: -10px;
-            margin-bottom: 15px;
-        }
-
-        /* --- Çalışma Paneli İstatistik Gridleri --- */
-        .dh-stats-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .dh-stat-box {
-            background: #1e202b;
-            padding: 12px;
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.02);
-        }
-
-        .dh-stat-val {
-            font-size: 22px;
-            font-weight: 800;
-            display: block;
-        }
-
-        .dh-stat-lbl {
-            font-size: 10px;
-            color: #9aa0a6;
-            display: block;
-            margin-top: 2px;
-        }
-
-        /* --- Analiz Detay Satırları --- */
-        .dh-analysis-split {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            font-size: 12px;
-        }
-
-        .dh-list-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.03);
-        }
-
-        .dh-pill {
-            background: #0056b3;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-
-        .dh-pill.red { background: #a72828; }
-        .dh-pill.gray { background: #3a3b45; }
-
-        /* --- Alt Kategori Mikro Navigasyon Grid Yapısı --- */
-        .dh-bottom-modules-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            margin-top: 5px;
-        }
-
-        .dh-micro-card {
-            background: #15161e;
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            border-radius: 12px;
-            padding: 16px;
-            cursor: pointer;
-            transition: transform 0.2s, border-color 0.2s;
-        }
-
-        .dh-micro-card:hover {
-            transform: translateY(-2px);
-            border-color: rgba(255,255,255,0.1);
-        }
-
-        .dh-micro-title {
-            font-size: 13.5px;
-            font-weight: 700;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .dh-micro-desc {
-            font-size: 11px;
-            color: #80868b;
-            line-height: 1.4;
-        }
-
-        /* --- Geniș/Masaüstü Olmayan Ekranlar İçin responsive Kırılma --- */
-        @media (max-width: 992px) {
-            .dh-mentor-grid-container {
-                grid-template-columns: 1fr;
-            }
-            .dh-bottom-modules-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 576px) {
-            .dh-bottom-modules-grid {
-                grid-template-columns: 1fr;
-            }
-            .dh-stats-row {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-    </style>
+/* Masaüstü Olmayan Ekranlar İçin responsive Kırılma */
+@media (max-width: 992px) {
+  .dh-mentor-grid-container { grid-template-columns: 1fr; }
+}
+</style>
 </head>
 <body>
+<div class="wrap">
+  <h1>Dil Harita</h1>
+  <p>Güvenli PWA aşama 1: Bu menü statik çalışır, siteyi döngüye sokmaz. PWA için manifest ve kurulum yardımcısı eklidir.</p>
 
-<div class="dh-app-container">
+  <div id="dhStreakSlot" style="margin:0 0 16px;cursor:pointer"></div>
 
-    <!-- 1. Üst Alan -->
-    <header class="dh-app-header">
-        <div class="dh-app-title">
-            <h1>Dil Haritası</h1>
-            <p>Güvenli PWA aşama 1: Bu menü statik çalışır, siteyi döngüye sokmaz.</p>
-        </div>
-        <div class="dh-badge-level">
-            <span>B2</span>
-            <small style="opacity: 0.8;">Seviyen: Orta-Üstü</small>
-        </div>
-    </header>
+  <!-- 🔥 KİLİTLENMEYEN EĞİTİM KOMUTA MERKEZİ GRİD BAŞLANGICI -->
+  <div class="dh-mentor-grid-container">
+      
+      <!-- SOL SÜTUN: AI Mentor Analitik Direktör Paneli -->
+      <div class="dh-mentor-left-column">
+          <div id="dhKocContainer">
+              <!-- koc.js (v6.3) buraya şık karar kartı,SVG grafikler ve CEFR hedefini dinamik çizecek -->
+              <div style="background: #111827; padding: 20px; border-radius: 14px; border: 1px dashed rgba(255,255,255,0.1); text-align: center; color: #60a5fa;">
+                  <span>🧭 AI Mentor Eğitim Direktörü Bağlantısı Sağlanıyor...</span>
+              </div>
+          </div>
+      </div>
 
-    <!-- 🔥 2. EĞİTİM KOMUTA MERKEZİ GRİD ALANI -->
-    <div class="dh-mentor-grid-container">
-        
-        <!-- SOL BÜYÜK SÜTUN: Yapay Zeka Mentor Ortaklığı (En Tepe Odak Noktası) -->
-        <main class="dh-mentor-left-column">
-            <div id="dhKocContainer">
-                <!-- koc.js (v6.4) burayı yakalayarak şık analitik Mentor Karar Kartını enjekte edecek -->
-                <div style="background: #1a1a22; padding: 20px; border-radius: 14px; border: 1px dashed rgba(255,255,255,0.1); text-align: center; color: #8aabf8;">
-                    <span style="font-size: 14px;">🧭 Yapay Zeka Stratejik Mentor Bağlantısı Kuruluyor...</span>
-                </div>
-            </div>
-        </main>
+      <!-- SAĞ SÜTUN: Statik Müfredat ve Ders Atamaları -->
+      <div class="dh-mentor-right-column">
+          <!-- Bugünkü Dersim Kartı Sağ Panelin Başına Alındı -->
+          <a class="card" href="./ders.html" style="margin:0;">
+              <b>🎓 Bugünkü Dersim</b>
+              <span>Öğretmen senin için ders hazırlasın — nereden başlayacağına o karar versin</span>
+          </a>
+          
+          <!-- Gizli Vadesi Gelen Sayacı (DOM Kazıyıcının Beslendiği Görünmez / Hafif Alan) -->
+          <div style="display:none;" id="dhDaySub">324 tekrar bekleyen</div>
+      </div>
 
-        <!-- SAĞ KÜÇÜK SÜTUN: Verisel Dashboard ve Analiz Odaları -->
-        <aside class="dh-mentor-right-column">
-            
-            <!-- A) Bugünkü Çalışma Paneli -->
-            <div class="dh-standard-panel">
-                <div class="dh-panel-header">
-                    <h3>📊 Bugünkü Çalışma Paneli</h3>
-                    <button style="background:#202124; color:#fff; border:1px solid #3c4043; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer;">Yenile</button>
-                </div>
-                <div class="dh-panel-sub-text">Hata Defteri + Akıllı Tekrar kayıtlarına göre önerilen günlük plan.</div>
-                
-                <div class="dh-stats-row">
-                    <div class="dh-stat-box">
-                        <span class="dh-stat-val" style="color: #ea4335;">9</span>
-                        <span class="dh-stat-lbl">öncelikli hata</span>
-                    </div>
-                    <div class="dh-stat-box">
-                        <span class="dh-stat-val" style="color: #ffc107;">26</span>
-                        <span class="dh-stat-lbl">hata kaydı</span>
-                    </div>
-                    <div class="dh-stat-box">
-                        <span class="dh-stat-val" style="color: #8ab4f8;">324</span>
-                        <span class="dh-stat-lbl">tekrar bekleyen</span>
-                    </div>
-                    <div class="dh-stat-box">
-                        <span class="dh-stat-val" style="color: #23a142;">455</span>
-                        <span class="dh-stat-lbl">öğrenilmiş kayıt</span>
-                    </div>
-                </div>
+  </div>
+  <!-- 🔥 GRİD BİTİŞİ -->
 
-                <div class="dh-analysis-split">
-                    <div>
-                        <b style="color:#aaa; display:block; margin-bottom:6px;">Bugünkü önerilen sıra</b>
-                        <div class="dh-list-item"><span>Yüksek öncelikli hatalar</span><span class="dh-pill red">9</span></div>
-                        <div class="dh-list-item"><span>En zayıf konu: missing-word</span><span class="dh-pill">26</span></div>
-                        <div class="dh-list-item"><span>En çok hata yapılan modül: A2-M20 Doctor</span><span class="dh-pill gray">6</span></div>
-                    </div>
-                    <div>
-                        <b style="color:#aaa; display:block; margin-bottom:6px;">Zayıf analiz özeti</b>
-                        <div class="dh-list-item"><span>Zayıf konu</span><span class="dh-pill">missing-word</span></div>
-                        <div class="dh-list-item"><span>Zayıf modül</span><span class="dh-pill gray">A2-M20 Doctor</span></div>
-                        <div class="dh-list-item"><span>Öneri</span><span class="dh-pill" style="background:#23a142;">Akıllı tekrar</span></div>
-                    </div>
-                </div>
-            </div>
+  <!-- Alt Seçenekler ve Diğer Modüller -->
+  <div class="grid">
+    <a class="card" href="./seviye-testi.html"><b>🎯 Seviye Belirleme</b><span>Kısa bir testle seviyeni ölç — öğretmen dersleri ona göre hazırlasın</span></a>
+    <a class="card" href="./harita.html"><b>🗺️ İlerleme Haritası</b><span>Tüm modüllerde ne kadar öğrendiğini gör</span></a>
+    <a class="card photo-learn-card" href="./index-app.html"><b>📸 Fotoğraflı Cümle Öğren</b><span>Resimli cümle ekranı, zayıf analiz ve eski öğrenme modülleri</span></a>
+    <a class="card" href="./practice.html"><b>✍️ Çalışma</b><span>Cümle çalışma ekranı</span></a>
+    <a class="card" href="./foto-ekle.html"><b>📷 Fotoğraftan Ekle</b><span>Fotoğraftaki cümleleri tara, çevir, pratiğe ekle</span></a>
+    <a class="card" href="./ocr-sentence.html"><b>📷 OCR Sentence Mode</b><span>Fotoğraftan eklediğin cümleleri zengin modda çalış</span></a>
+    <a class="card" href="./phrasal-verbs.html"><b>🔗 Phrasal Verbs</b><span>881 İngilizce öbek fiil — anlam, örnek, dinle</span></a>
+    <a class="card" href="./pv-practice.html"><b>🎯 Phrasal Verb Pratiği</b><span>Çoktan seçmeli, boşluk doldurma, dinle-yaz alıştırmaları</span></a>
+    <a class="card" href="./teacher.html"><b>🎓 Öğretmen</b><span>Türkçe anlatımlı İngilizce öğretmeni</span></a>
+    <a class="card" href="./chat.html"><b>💬 Sohbet</b><span>Fotoğraflı konuşan avatar senaryoları</span></a>
+    <a class="card" href="./kelime-ogren.html"><b>📖 Kelime Öğren</b><span>En sık kelimeler — kart, quiz ve resimlerle</span></a>
+    <a class="card" href="./tekrar.html"><b>🔁 Tekrar</b><span>Vadesi gelen kelime + cümle (aralıklı tekrar)</span></a>
+    <a class="card" href="./library.html"><b>📚 Kütüphane</b><span>Kitap / metin okuma ekranı</span></a>
+    <a class="card" href="./videopractice.html"><b>🎬 Video</b><span>Video ve telaffuz çalışması</span></a>
+    <a class="card" href="./hata-defteri.html"><b>📌 Hata Defteri</b><span>Yanlış yapılan cümleler ve hata analizi</span></a>
+    <a class="card" href="./pwa-hard-reset.html"><b>🧹 Önbellek Temizle</b><span>Gerekirse Service Worker ve cache temizliği</span></a>
+  </div>
 
-            <!-- B) Bugünkü Dersim -->
-            <div class="dh-standard-panel">
-                <div class="dh-micro-title">🎓 Bugünkü Dersim</div>
-                <p class="dh-micro-desc" style="margin: 6px 0 0 0;">Öğretmen senin için ders hazırlasın — nereden başlayacağına o karar versin.</p>
-            </div>
-
-        </aside>
-
+  <!-- ==== Bildirim Ayarları ==== -->
+  <div id="dhNotifCard" style="margin:18px 0 20px;background:linear-gradient(180deg,#10264a,#0b172d);border:1px solid #f59e0b44;border-radius:22px;padding:18px;box-shadow:0 18px 46px #0005">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+      <div>
+        <div style="font-size:20px;font-weight:950;color:#fff">🔔 Günlük Hatırlatma</div>
+        <div style="font-size:13px;color:#9fb0c8;margin-top:3px">Her gün seçtiğin saatte çalışma hatırlatması al</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:54px;height:30px;flex:0 0 auto">
+        <input type="checkbox" id="dhNotifToggle" style="opacity:0;width:0;height:0">
+        <span id="dhNotifSlider" style="position:absolute;inset:0;cursor:pointer;background:#334155;border-radius:30px;transition:.2s"></span>
+      </label>
     </div>
+    <div id="dhNotifBody" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <span style="font-size:13px;color:#cbd5e1;font-weight:800">Saat:</span>
+        <input type="time" id="dhNotifTime" value="20:00" style="background:#08172d;border:1px solid #ffffff22;color:#e8eef7;border-radius:12px;padding:9px 12px;font:800 14px system-ui">
+        <button id="dhNotifTest" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:9px 14px;background:#1d2b48;color:#fff;font:800 13px system-ui">🔔 Test et</button>
+      </div>
+      <div id="dhNotifMsg" style="font-size:13px;color:#9fb3d9;min-height:18px"></div>
+    </div>
+  </div>
 
-    <!-- 3. Alt Katman: Mikro Fonksiyonel Eğitim Kartları Grid Sistemi -->
-    <section class="dh-bottom-modules-grid">
-        <div class="dh-micro-card">
-            <div class="dh-micro-title">🎯 Seviye Belirleme</div>
-            <div class="dh-micro-desc">Kısa bir testle seviyeni ölç — öğretmen dersleri ona göre hazırlasın.</div>
-        </div>
-        <div class="dh-micro-card">
-            <div class="dh-micro-title">🗺️ İlerleme Haritası</div>
-            <div class="dh-micro-desc">Tüm modüllerde ne kadar öğrendiğini gör, eksiklerini izle.</div>
-        </div>
-        <div class="dh-micro-card">
-            <div class="dh-micro-title">📸 Fotoğraflı Cümle</div>
-            <div class="dh-micro-desc">Resimli cümle ekranı, zayıf analiz ve eski öğrenme modülleri.</div>
-        </div>
-        <div class="dh-micro-card">
-            <div class="dh-micro-title">✍️ Çalışma Modu</div>
-            <div class="dh-micro-desc">Cümle çalışma ekranı üzerinden aktif pratik yapma havuzu.</div>
-        </div>
-        <div class="dh-micro-card">
-            <div class="dh-micro-title">🗣️ Phrasal Verbs</div>
-            <div class="dh-micro-desc">881 İngilizce öbek fiil — anlam, örnek ve interaktif dinleme.</div>
-        </div>
-        <div class="dh-micro-card">
-            <div class="dh-micro-title">🎧 Phrasal Pratik</div>
-            <div class="dh-micro-desc">Çoktan seçmeli, boşluk doldurma ve dinle-yaz egzersizleri.</div>
-        </div>
-        <div class="dh-micro-card">
-            <div class="dh-micro-title">🏫 Öğretmen Modu</div>
-            <div class="dh-micro-desc">Türkçe anlatımlı İngilizce öğretmen simülatörü.</div>
-        </div>
-        <div class="dh-micro-card">
-            <div class="dh-micro-title">💬 Sohbet Odası</div>
-            <div class="dh-micro-desc">Fotoğraflı konuşan avatar senaryoları ile aktif speaking.</div>
-        </div>
-    </section>
+  <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:18px 0 6px">
+    <button id="dhCloudSyncBtn" type="button" style="display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;border-radius:14px;padding:14px 22px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font:800 15px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3)">🔄 Bulutla Senkronize Et</button>
+    <button id="dhLogoutBtn" type="button" style="display:inline-flex;align-items:center;gap:8px;border:1px solid #f8717155;cursor:pointer;border-radius:14px;padding:14px 22px;background:#1a1420;color:#fca5a5;font:800 15px system-ui,sans-serif">🚪 Çıkış Yap</button>
+  </div>
+  <div id="dhCloudSyncMsg" style="text-align:center;font-size:13px;color:#9fb3d9;min-height:18px;margin-bottom:8px"></div>
 
+  <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:4px 0 6px">
+    <button id="dhBackupBtn" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font:800 13px system-ui,sans-serif">⬇ Yedeği indir</button>
+    <label style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font:800 13px system-ui,sans-serif">⬆ Yedekten geri yükle
+      <input type="file" id="dhRestoreFile" accept="application/json,.json" hidden />
+    </label>
+    <button id="dhSnapBtn" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font:800 13px system-ui,sans-serif">⏪ Geri Dön</button>
+    <button id="dhLegacyCleanBtn" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#1a1420;color:#cbd5e1;font:800 13px system-ui,sans-serif">🗑 Eski Verileri Temizle</button>
+  </div>
+
+  <div id="dhBackupMsg" style="text-align:center;font-size:13px;color:#9fb3d9;min-height:18px;margin-bottom:8px"></div>
+
+  <div class="note">
+    <b>Not:</b> Bildirimler için <code>service worker</code> etkin. Günlük hatırlatma için yukarıdaki 🔔 kartından izin ver and saat seç.
+  </div>
 </div>
 
-<!-- ⚙️ Ekosistem Scriptleri Bağlantısı -->
-<script src="koc.js"></script>
+<!-- Eski Vadesi Gelenleri Rozete Çizen Statik Kod Korundu -->
+<script>
+(function(){ 
+  try{
+    var r=indexedDB.open("sentence-mode",1);
+    r.onsuccess=function(){
+      var db=r.result, n=0, now=Date.now();
+      try{
+        var req=db.transaction("kv","readonly").objectStore("kv").openCursor();
+        req.onsuccess=function(e){ var c=e.target.result;
+          if(c){ var k=String(c.key);
+            if((k.indexOf("srs:")===0||k.indexOf("wsrs:")===0) && c.value && (c.value.due||0)<=now) n++;
+            c.continue();
+          } else { db.close();
+            var el=document.getElementById("dhDaySub");
+            if(el&&n) el.textContent=n+" tekrar bekleyen";
+          } };
+      }catch(e){ try{db.close()}catch(_){}}
+    };
+  }catch(e){}
+})();
+</script>
+
+<script src="./pwa-install.js"></script>
+<script src="./daily-dashboard.js?v=2"></script>
+<script src="./learning-error-system.js?v=2"></script>
+<script src="./ai-providers.js?v=1"></script>
+<script src="./ai-status.js?v=1"></script>
+<script src="./study-tracker.js?v=1"></script>
+<script src="./streak-screen.js?v=1"></script>
+<script src="./teacher-bubble.js?v=3"></script>
+<script src="./cloud-sync-v8.js?v=1"></script>
+<script src="./notifications.js?v=1"></script>
+
+<!-- Oturum, Senkron, Yedekleme ve Fold Davranış Scriptleri Aynen Korundu -->
+<script>
+/* ... Orijinal dosyadaki tüm bulut senkronizasyon click listenerları ... */
+(function(){
+  var btn=document.getElementById("dhCloudSyncBtn");
+  var msg=document.getElementById("dhCloudSyncMsg");
+  if(!btn) return;
+  btn.onclick=async function(){
+    if(!(window.DHCloudSync && window.DHCloudSync.fullSync)){
+      msg.textContent="Bulut bağlantısı hazır değil, birkaç saniye sonra tekrar dene.";
+      return;
+    }
+    var old=btn.textContent;
+    btn.disabled=true; btn.textContent="⏳ Senkronize ediliyor...";
+    msg.textContent="";
+    var u = window.DHCloudSync.user;
+    var rdy = window.DHCloudSync.ready;
+    try{
+      var res=await window.DHCloudSync.fullSync();
+      var yerel = (localStorage.getItem("dh_ai_prompt_teacher")||"").slice(0,30);
+      msg.innerHTML = (res.message||"") +
+        "<br><small style='color:#9fb3d9'>giriş:" + (u?("var ("+u.uid.slice(0,6)+")"):"YOK") +
+        " · hazır:" + (rdy?"evet":"hayır") +
+        " · yerel prompt:" + (yerel?("'"+yerel+"...'"):"BOŞ") + "</small>";
+      msg.style.color=res.ok ? "#34d399" : "#f87171";
+      if(!res.ok && /giriş/i.test(res.message||"")){
+        msg.innerHTML += "<br><small style='color:#38bdf8'>Giriş sayfasına yönlendiriliyorsun…</small>";
+        setTimeout(function(){ location.href="./login.html"; }, 1200);
+      }
+      if(res.ok){
+        try{ if(window.__dhStorageFlush) window.__dhStorageFlush(); }catch(e){}
+        msg.innerHTML += "<br><small style='color:#38bdf8'>Sayfa yenileniyor…</small>";
+        setTimeout(function(){ location.reload(); }, 1400);
+      }
+    }catch(e){
+      msg.textContent="Senkron sırasında hata: "+(e&&e.message?e.message:"bilinmeyen");
+      msg.style.color="#f87171";
+    }finally{
+      btn.disabled=false; btn.textContent=old;
+    }
+  };
+
+  var logoutBtn=document.getElementById("dhLogoutBtn");
+  if(logoutBtn){
+    logoutBtn.onclick=async function(){
+      if(!confirm("Çıkış yapılsın mı? Verilerin buluta kaydedilecek.")) return;
+      var old=logoutBtn.textContent;
+      logoutBtn.disabled=true; logoutBtn.textContent="⏳ Kaydediliyor...";
+      if(msg){ msg.textContent="Veriler buluta yükleniyor..."; msg.style.color="#9fb3d9"; }
+      try{
+        if(window.DHCloudSync && window.DHCloudSync.signOut){ await window.DHCloudSync.signOut(); }
+        else { try{ localStorage.removeItem("dh_logged_in"); localStorage.removeItem("dh_logged_uid"); localStorage.removeItem("dh_logged_email"); }catch(e){} }
+      }catch(e){}
+      location.href="./login.html";
+    };
+  }
+})();
+
+(function(){
+  var backupBtn=document.getElementById("dhBackupBtn");
+  var restoreInput=document.getElementById("dhRestoreFile");
+  var msg=document.getElementById("dhBackupMsg");
+  if(!backupBtn) return;
+  var LS_KEYS=["dh_ai_prompt_teacher","dh-study-tracker-v1","groqApiKeys","dh-ocr-sentences-v1"];
+
+  function openSrsDB(){
+    return new Promise(function(res,rej){
+      var r=indexedDB.open("sentence-mode",1);
+      r.onupgradeneeded=function(){ var db=r.result; if(!db.objectStoreNames.contains("kv")) db.createObjectStore("kv"); };
+      r.onsuccess=function(){ res(r.result); }; r.onerror=function(){ rej(r.error); };
+    });
+  }
+  function readPrefix(prefix){
+    return openSrsDB().then(function(db){ return new Promise(function(res,rej){
+      var out={}, store=db.transaction("kv","readonly").objectStore("kv"), rq=store.openCursor();
+      rq.onsuccess=function(){ var c=rq.result; if(c){ if(typeof c.key==="string"&&c.key.indexOf(prefix)===0) out[c.key]=c.value; c.continue(); } else res(out); };
+      rq.onerror=function(){ rej(rq.error); };
+    });}).catch(function(){ return {}; });
+  }
+  function writeKV(key,val){
+    return openSrsDB().then(function(db){ return new Promise(function(res,rej){
+      var tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(val,key);
+      tx.oncomplete=function(){ res(true); }; tx.onerror=function(){ rej(tx.error); };
+    });}).catch(function(){ return false; });
+  }
+
+  backupBtn.onclick=async function(){
+    msg.style.color="#9fb3d9"; msg.textContent="Yedek hazırlanıyor…";
+    try{
+      var srs=await readPrefix("srs:"); var lsrs=await readPrefix("lsrs:"); var ls={};
+      LS_KEYS.forEach(function(k){ try{ var v=localStorage.getItem(k); if(v!=null) ls[k]=v; }catch(e){} });
+      var errors=[]; try{ if(window.LearningErrorDB && LearningErrorDB.all) errors=await LearningErrorDB.all(); }catch(e){}
+      var at=new Date().toISOString();
+      var payload={ app:"dilharita-full", version:3, exportedAt:at, srsKV:srs, lsrsKV:lsrs, ls:ls, errors:errors };
+      var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement("a"); a.href=url; a.download="dilharita-yedek-"+at.slice(0,10)+".json";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+      msg.style.color="#34d399"; msg.textContent="✓ Tam yedek indirildi.";
+    }catch(e){ msg.style.color="#f87171"; msg.textContent="Yedek alınamadı."; }
+  };
+
+  restoreInput.onchange=function(ev){
+    var file=ev.target.files && ev.target.files[0]; if(!file) return;
+    var reader=new FileReader();
+    reader.onload=async function(){
+      var data; try{ data=JSON.parse(reader.result); } catch(e){ msg.style.color="#f87171"; return; }
+      var srsKV = data.srsKV || null; var lsrsKV = data.lsrsKV || null;
+      if(!confirm("Yedek yüklensin mi?")) { ev.target.value=""; return; }
+      try{
+        if(srsKV){ for(var k in srsKV){ if(srsKV.hasOwnProperty(k)){ await writeKV(k, srsKV[k]); } } }
+        if(data.ls){ for(var lk in data.ls){ if(data.ls.hasOwnProperty(lk)){ localStorage.setItem(lk, data.ls[lk]); } } }
+        msg.style.color="#34d399"; msg.textContent="✓ Geri yüklendi. Yenileyin.";
+      }catch(e){ msg.style.color="#f87171"; }
+      ev.target.value="";
+    };
+    reader.readAsText(file);
+  };
+})();
+
+/* ==== Service Worker Kaydı ==== */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", function(){ navigator.serviceWorker.register("./sw.js?v=2", { scope:"./" }); });
+}
+
+/* ==== Bildirim Ayar Kartı Kart Tetikleyicileri ==== */
+(function(){
+  var toggle = document.getElementById("dhNotifToggle");
+  var slider = document.getElementById("dhNotifSlider");
+  var body   = document.getElementById("dhNotifBody");
+  var timeEl = document.getElementById("dhNotifTime");
+  var testBtn= document.getElementById("dhNotifTest");
+  var card   = document.getElementById("dhNotifCard");
+  if(!toggle || !card) return;
+
+  function setSliderOn(on){
+    slider.style.background = on ? "#16a34a" : "#334155";
+    slider.innerHTML = '<span style="position:absolute;top:3px;left:'+(on?'27px':'3px')+';width:24px;height:24px;background:#fff;border-radius:50%;transition:.2s"></span>';
+  }
+  function refreshUI(){
+    var N = window.DHNotifications; if(!N || !N.supported()) return;
+    var s = N.load(); var on = !!s.enabled && N.permission()==="granted";
+    toggle.checked = on; setSliderOn(on); body.style.display = on ? "block" : "none";
+  }
+  toggle.onchange = function(){
+    var N = window.DHNotifications; if(!N) return;
+    if(toggle.checked){ N.enable(20, 0).then(refreshUI); } else { N.disable(); setSliderOn(false); body.style.display="none"; }
+  };
+  if(window.__dhStorageReady) refreshUI(); else window.addEventListener("dh-storage-ready", refreshUI, { once:true });
+})();
+
+/* ==== Streak Tetikleyici ==== */
+(function(){
+  function fillStreak(){
+    var slot=document.getElementById("dhStreakSlot"); if(!slot || !window.DHStreak) return;
+    try{ slot.innerHTML = DHStreak.card(); slot.onclick = function(){ DHStreak.show(); }; }catch(e){}
+  }
+  if(window.__dhStorageReady) setTimeout(fillStreak,300); else window.addEventListener("dh-storage-ready", fillStreak, {once:true});
+})();
+
+/* ==== Geri Dön (Snapshot) Tetikleyici ==== */
+var b=document.getElementById("dhSnapBtn");
+if(b) b.onclick=async function(){
+  var cs=window.DHCloudSync; if(!cs) return;
+  var list=cs.snapList(); var day=prompt("Hangi güne dönülsün?\n"+list.join("\n"));
+  if(day) { await cs.restoreSnap(day); location.reload(); }
+};
+
+/* ==== Kart Katlama Sistemi ==== */
+(function(){
+  var CORE=["index-app","practice","teacher","chat.html","kelime-ogren","tekrar","harita","hata-defteri","library"];
+  var K="dh-card-seen", now=Date.now(), G=30*86400000;
+  var seen={}; try{ seen=JSON.parse(localStorage.getItem(K)||"{}")||{}; }catch(e){}
+  var cards=[].slice.call(document.querySelectorAll("a.card"));
+  cards.forEach(function(a){ a.addEventListener("click",function(){ seen[a.getAttribute("href")]=Date.now(); localStorage.setItem(K,JSON.stringify(seen)); }); });
+  var fold=[];
+  cards.forEach(function(a){
+    var href=a.getAttribute("href")||"";
+    if(CORE.some(function(cn){ return href.indexOf(cn)!==-1; })) return;
+    if(now-(seen[href]||now)>G) fold.push(a);
+  });
+  if(!fold.length) return;
+  var grid=fold[0].parentElement;
+  var det=document.createElement("details");
+  det.style.cssText="grid-column:1/-1;border:1px solid var(--line);border-radius:14px;padding:10px 14px;color:#9fb3d9;background:var(--card);";
+  det.innerHTML='<summary style="cursor:pointer;font:800 13px system-ui">📦 Az Kullanılan Modüller ('+fold.length+")</summary>";
+  var inner=document.createElement("div"); inner.className="grid"; style.textContent+=".grid{margin-top:10px !important;}";
+  fold.forEach(function(a){ inner.appendChild(a); }); det.appendChild(inner); grid.appendChild(det);
+})();
+</script>
+<script src="./koc.js?v=1"></script>
 </body>
 </html>
