@@ -23,7 +23,7 @@ h1{font-size:17px;margin:0;flex:1}.cnt{color:var(--mut);font-size:12px;text-alig
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cursor:pointer;color:#fff}
 .b-show{background:#334155;flex:1}.b-say{background:#0e7490}.b-mic{background:#7c3aed}.b-chk{background:#2563eb;flex:1}
-.b-hard{background:#dc2626;flex:1}.b-easy{background:#16a34a;flex:1}.b-gemini{background:#4f46e5;flex:1}
+.b-hard{background:#dc2626;flex:1}.b-easy{background:#16a34a;flex:1}.b-gemini{background:#4f46e5;flex:1}.b-retry{background:#64748b;flex:1}
 .exp{margin-top:12px;background:#101c33;border:1px solid #274468;border-radius:12px;padding:12px;font-size:13.5px;display:none}
 .exp b{color:#93c5fd}.exp .cm{color:#fbbf24;display:block;margin-top:6px}.exp .co{color:#86efac;display:block;margin-top:6px}
 .exp .askrow{margin-top:10px}
@@ -59,6 +59,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   </div>
   <div class="row" id="grade" style="display:none">
     <button class="b-hard" id="bHard">Zor</button>
+    <button class="b-retry" id="bRetry">🔄 Tekrar Dene</button>
     <button class="b-gemini" id="bGemini">✨ Gemini'ye Sor</button>
     <button class="b-easy" id="bEasy">Bildim ✓</button>
   </div>
@@ -358,6 +359,23 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   $("bShow").onclick=function(){ reveal(); };
   $("bChk").onclick=function(){ reveal(); };
   
+  /* 🔄 Tekrar Dene Buton İşlevi */
+  $("bRetry").onclick = function() {
+    revealed = false;
+    $("a").classList.add("hid");
+    $("grade").style.display = "none";
+    $("exp").style.display = "none";
+    $("score").textContent = "";
+    
+    if (mode === "prod") {
+      $("bChk").style.display = "";
+      $("inp").value = "";
+      setTimeout(function(){ try { $("inp").focus(); } catch(e){} }, 30);
+    } else {
+      $("bShow").style.display = "";
+    }
+  };
+
   window.addEventListener("keydown", function(e) {
     var activeTag = document.activeElement.tagName.toLowerCase();
     if (activeTag === "input") {
@@ -370,6 +388,8 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
         $("bHard").click();
       } else if (key === "g") {
         $("bGemini").click();
+      } else if (key === "r") {
+        $("bRetry").click(); // R tuşu ile tekrar deneme kısayolu
       } else if (key === "b" || e.key === " ") {
         e.preventDefault();
         $("bEasy").click();
@@ -418,9 +438,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     
     if(it.kind==="s") srs[it.id]=rec; else wsrs[it.id]=rec;
     try { await kvPut(key, rec); } catch(e) {}
-    
-    // KESİN ÇÖZÜM: progress-engine'den tetiklenen ve anlık bulut isteği gönderen DHProgress.recordResult çağrısı tamamen kaldırıldı.
-    // İlerlemeler sadece yukarıdaki kvPut ile doğrudan lokal IndexedDB'ye yazılır, Firebase kotalarını anlık etkilemez.
     
     if(hard){
       showExplain(curT, leech);
