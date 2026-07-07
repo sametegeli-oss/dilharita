@@ -14,8 +14,10 @@ h1{font-size:17px;margin:0;flex:1}.cnt{color:var(--mut);font-size:12px;text-alig
 .card{max-width:720px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
 .kind{font-size:11px;font-weight:800;letter-spacing:.5px;color:#38bdf8;text-transform:uppercase}
 .kind .err{color:#fbbf24}.kind .leech{color:#f87171}
-.q{font-size:23px;font-weight:800;margin:10px 0 4px}
-.a{font-size:17px;color:#a7f3d0;min-height:26px;margin:8px 0}
+.q{font-size:23px;font-weight:800;margin:10px 0 4px;line-height:1.4}
+.q span, .a span {cursor:pointer;margin-right:4px;display:inline-block;}
+.q span:hover, .a span:hover {color:#38bdf8;}
+.a{font-size:17px;color:#a7f3d0;min-height:26px;margin:8px 0;line-height:1.4}
 .a.hid{visibility:hidden}
 .inrow{display:flex;gap:8px;margin:10px 0 2px}
 .inrow input{flex:1;background:#0a1628;border:1px solid var(--line);border-radius:11px;color:#fff;font:600 16px system-ui;padding:11px 13px}
@@ -23,8 +25,7 @@ h1{font-size:17px;margin:0;flex:1}.cnt{color:var(--mut);font-size:12px;text-alig
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cursor:pointer;color:#fff}
 .b-show{background:#334155;flex:1}.b-say{background:#0e7490}.b-mic{background:#7c3aed}.b-chk{background:#2563eb;flex:1}
-.b-hard{background:#dc2626;flex:1}.b-easy{background:#16a34a;flex:1}.b-gemini{background:#4f46e5;flex:1}.b-retry{background:#64748b;flex:1}
-.b-listen{background:#0284c7;font-size:13px;padding:11px 13px;display:none}
+.b-hard{background:#dc2626;flex:1}.b-easy{background:#16a34a;flex:1}.b-gemini{background:#4f46e5;flex:1}.b-retry{background:#64748b;flex:1}.b-trans{background:#0284c7;flex:1}
 .exp{margin-top:12px;background:#101c33;border:1px solid #274468;border-radius:12px;padding:12px;font-size:13.5px;display:none}
 .exp b{color:#93c5fd}.exp .cm{color:#fbbf24;display:block;margin-top:6px}.exp .co{color:#86efac;display:block;margin-top:6px}
 .exp .askrow{margin-top:10px}
@@ -62,8 +63,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   </div>
   <div class="row" id="grade" style="display:none">
     <button class="b-hard" id="bHard">Zor</button>
-    <button class="b-retry" id="bRetry">🔄 Tekrar Dene</button>
-    <button class="b-gemini" id="bGemini">✨ Gemini'ye Sor</button>
+    <button class="b-retry" id="bRetry">🔄 Tekrar</button>
+    <button class="b-trans" id="bTrans">🌐 Çeviri</button>
+    <button class="b-gemini" id="bGemini">✨ Gemini</button>
     <button class="b-easy" id="bEasy">Bildim ✓</button>
   </div>
   <div class="exp" id="exp"></div>
@@ -93,7 +95,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   var showOnlyErrors = false; 
   localStorage.setItem("dh-only-errors", "0");
 
-  /* ---- Durdurulabilir Mikrofon Değişkenleri ---- */
   var mediaRecorder = null, audioChunks = [], audioUrl = null, audioStream = null;
   var recognitionInstance = null, isRecording = false, accumulatedTranscript = "";
 
@@ -185,10 +186,10 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   /* ---- metinler ---- */
   var sentMap={}, dict={};
   if(session.some(function(x){return x.kind==="s"})){
-    try{ var all=await (await fetch("./data/sentences.json")).json(); all.forEach(function(s){sentMap[s.id]=s;}); }catch(e){}
+    try { var all=await (await fetch("./data/sentences.json")).json(); all.forEach(function(s){sentMap[s.id]=s;}); }catch(e){}
   }
   if(session.some(function(x){return x.kind==="w"})){
-    try{ dict=await (await fetch("./data/dictionary.json")).json()||{}; }catch(e){}
+    try { dict=await (await fetch("./data/dictionary.json")).json()||{}; }catch(e){}
   }
   function texts(it){
     if(it.kind==="s"){ var s=sentMap[it.id]||errText[it.id]||{};
@@ -287,6 +288,16 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     return htmlArr.join("") || "<span style='color:var(--mut)'>[Boş Giriş]</span>";
   }
 
+  /* ---- Cümleleri Tıklanabilir Span Yapısına Dönüştüren Evrensel Fonksiyon ---- */
+  function makeTextClickable(text) {
+    if (!text) return "";
+    var words = text.split(" ");
+    return words.map(function(w) {
+      var clean = w.replace(/[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ']+/g, "");
+      return '<span onclick="handleWordClick(\'' + clean + '\')">' + w + '</span>';
+    }).join(" ");
+  }
+
   /* ---- açıklama paneli ---- */
   function showExplain(t, leech){
     var html="";
@@ -344,8 +355,13 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       +(cur.tag==="hata"?' <span class="err">⚠ hata defterinden</span>':"")
       +(cur.tag==="leech"?' <span class="leech">🧲 inatçı</span>':"")
       +(cur.tag==="yeni"?" · yeni":"");
-    $("q").textContent = prod ? (curT.tr||curT.en) : curT.en;
-    $("a").textContent = prod ? curT.en : (curT.tr||"—");
+    
+    var rawQuestion = prod ? (curT.tr||curT.en) : curT.en;
+    $("q").innerHTML = makeTextClickable(rawQuestion);
+    
+    var rawAnswer = prod ? curT.en : (curT.tr||"—");
+    $("a").innerHTML = makeTextClickable(rawAnswer);
+    
     $("a").classList.add("hid");
     $("prodBox").style.display=prod?"block":"none";
     $("inp").value=""; $("score").textContent="";
@@ -411,6 +427,8 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
         $("bHard").click();
       } else if (key === "g") {
         $("bGemini").click();
+      } else if (key === "t") {
+        $("bTrans").click(); // T tuşu ile Google Translate kısayolu
       } else if (key === "r") {
         $("bRetry").click();
       } else if (key === "b" || e.key === " ") {
@@ -420,19 +438,17 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
   });
 
-  /* 🎤 Kesintisiz Manuel Mikrofon & Eş Zamanlı Ses Kaydedici Düzenlemesi */
+  /* 🎤 Manuel Mikrofon & Eş Zamanlı Ses Kaydedici Düzenlemesi */
   $("bMic").onclick=function(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
     
     if (!isRecording) {
-      // 1. ADIM: KAYDI BAŞLATMA
       isRecording = true;
       $("bMic").textContent="🔴";
       $("bListenRetry").style.display = "none";
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
       accumulatedTranscript = "";
 
-      // Web Audio API & MediaRecorder Akışını Başlatma
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
         audioStream = stream;
         mediaRecorder = new MediaRecorder(stream);
@@ -446,10 +462,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
         mediaRecorder.start();
       }).catch(function(err) { console.error("Mikrofon donanımına erişilemedi:", err); isRecording = false; $("bMic").textContent="🎤"; });
 
-      // Sürekli Dinleme Motorunun Kurulması (Yarıda Kapanmayı Önler)
       recognitionInstance = new SR();
       recognitionInstance.lang = "en-US";
-      recognitionInstance.continuous = true; // Duraksamalarda otomatik kapanmayı engeller
+      recognitionInstance.continuous = true; 
       recognitionInstance.interimResults = false;
 
       recognitionInstance.onresult = function(e) {
@@ -465,17 +480,14 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       recognitionInstance.start();
 
     } else {
-      // 2. ADIM: MANUEL DURDURMA (Kullanıcı Butona Tekrar Bastığında)
       isRecording = false;
       $("bMic").textContent="🎤";
 
-      // Ses tanıma motorunu kapat
       if (recognitionInstance) {
         recognitionInstance.stop();
         recognitionInstance = null;
       }
 
-      // Medya kaydediciyi kapat ve donanımları serbest bırak
       if (mediaRecorder && mediaRecorder.state !== "inactive") {
         mediaRecorder.stop();
       }
@@ -484,7 +496,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
         audioStream = null;
       }
 
-      // Kısa bir süre bekleyerek son asenkron kelimelerin dolmasını sağla ve analizi tetikle
       setTimeout(function() {
         reveal();
       }, 300);
@@ -528,7 +539,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     
     if(it.kind==="s") srs[it.id]=rec; else wsrs[it.id]=rec;
     try { await kvPut(key, rec); } catch(e) {}
-    try{ if(window.DHProgress&&DHProgress.recordResult) DHProgress.recordResult((it.kind==="s"?"sentence:":"word:")+it.id, !hard); }catch(e){}
     
     if(hard){
       showExplain(curT, leech);
@@ -545,9 +555,16 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   $("bHard").onclick=function(){ grade(true); };
   $("bEasy").onclick=function(){ grade(false); };
 
+  /* Google Translate Entegrasyonu */
+  $("bTrans").onclick = function() {
+    var correctEn = curT.en;
+    var translateUrl = "https://translate.google.com/?sl=en&tl=tr&text=" + encodeURIComponent(correctEn) + "&op=translate";
+    window.open(translateUrl, "_blank");
+  };
+
   /* Gelişmiş Gemini Entegrasyonu */
   $("bGemini").onclick = function() {
-    var trSentence = (mode === "prod") ? $("q").textContent : (curT.tr || "");
+    var trSentence = (mode === "prod") ? (curT.tr || "") : (curT.tr || "");
     var correctEn = curT.en;
     var userEn = $("inp").value.trim() || "[Kullanıcı boş bıraktı]";
     
