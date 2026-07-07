@@ -24,6 +24,7 @@ h1{font-size:17px;margin:0;flex:1}.cnt{color:var(--mut);font-size:12px;text-alig
 button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cursor:pointer;color:#fff}
 .b-show{background:#334155;flex:1}.b-say{background:#0e7490}.b-mic{background:#7c3aed}.b-chk{background:#2563eb;flex:1}
 .b-hard{background:#dc2626;flex:1}.b-easy{background:#16a34a;flex:1}.b-gemini{background:#4f46e5;flex:1}.b-retry{background:#64748b;flex:1}
+.b-listen{background:#0284c7;font-size:13px;padding:11px 13px;display:none}
 .exp{margin-top:12px;background:#101c33;border:1px solid #274468;border-radius:12px;padding:12px;font-size:13.5px;display:none}
 .exp b{color:#93c5fd}.exp .cm{color:#fbbf24;display:block;margin-top:6px}.exp .co{color:#86efac;display:block;margin-top:6px}
 .exp .askrow{margin-top:10px}
@@ -49,7 +50,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <div class="q" id="q"></div>
   <div class="a hid" id="a"></div>
   <div id="prodBox" style="display:none">
-    <div class="inrow"><input id="inp" autocomplete="off" autocapitalize="off" placeholder="İngilizcesini yaz…"><button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button></div>
+    <div class="inrow"><input id="inp" autocomplete="off" autocapitalize="off" placeholder="İngilizcesini yaz…"><button class="b-retry" id="bListenRetry" style="display:none;padding:11px 13px;max-width:50px" title="Kendi sesini tekrar dinle">👂</button><button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button></div>
     <div class="score" id="score"></div>
   </div>
   <div class="row">
@@ -59,7 +60,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   </div>
   <div class="row" id="grade" style="display:none">
     <button class="b-hard" id="bHard">Zor</button>
-    <button class="b-retry" id="bRetry">🔄 Tekrar Dene</button>
     <button class="b-gemini" id="bGemini">✨ Gemini'ye Sor</button>
     <button class="b-easy" id="bEasy">Bildim ✓</button>
   </div>
@@ -89,6 +89,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   
   var showOnlyErrors = false; 
   localStorage.setItem("dh-only-errors", "0");
+
+  /* ---- Media Recorder Değişkenleri ---- */
+  var mediaRecorder = null, audioChunks = [], audioUrl = null;
 
   /* ---- kv (practice ile ortak depo) ---- */
   function kvOpen(){ return new Promise(function(res){ try{ var r=indexedDB.open("sentence-mode",1); r.onsuccess=function(){res(r.result)}; r.onerror=function(){res(null)}; }catch(e){res(null)} }); }
@@ -220,7 +223,19 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     return Math.round(100*2*hit/(A.length+B.length));
   }
 
-  /* ---- Gelişmiş LCS (Longest Common Subsequence) Tabanlı Fark Analizi ---- */
+  /* ---- Kelime Tıklama Tetikleyicisi ---- */
+  window.handleWordClick = function(word) {
+    var cleaned = word.toLowerCase().replace(/[^a-z0-9']+/g, "");
+    var d = dict[cleaned];
+    if (d && d.anlamlar) {
+      var html = "<b>📕 " + cleaned + "</b>: " + d.anlamlar.slice(0, 4).join(", ");
+      $("exp").innerHTML = html;
+      $("exp").style.display = "block";
+      speak(cleaned);
+    }
+  };
+
+  /* ---- Gelişmiş LCS Tabanlı Fark Analizi ---- */
   function getDiffHtml(userText, correctText) {
     var uArr = norm(userText).split(" ").filter(Boolean);
     var cArr = norm(correctText).split(" ").filter(Boolean);
@@ -243,23 +258,23 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     
     while (i > 0 || j > 0) {
       if (i > 0 && j > 0 && uArr[i - 1] === cArr[j - 1]) {
-        htmlArr.unshift('<span class="diff-match">' + cArr[j - 1] + '</span>');
+        htmlArr.unshift('<span class="diff-match" onclick="handleWordClick(\''+cArr[j - 1]+'\')">' + cArr[j - 1] + '</span>');
         i--; j--;
       } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-        htmlArr.unshift('<span class="diff-missing">' + cArr[j - 1] + '</span>');
+        htmlArr.unshift('<span class="diff-missing" onclick="handleWordClick(\''+cArr[j - 1]+'\')">' + cArr[j - 1] + '</span>');
         j--;
       } else {
         var typoMatched = false;
         if (j > 0) {
           var levSim = getLevenshteinSimilarity(uArr[i - 1], cArr[j - 1]);
           if (levSim >= 75) {
-            htmlArr.unshift('<span class="diff-typo" title="Yazım Hatası! (Doğrusu: ' + cArr[j - 1] + ') -> Benzerlik: %' + levSim + '">' + uArr[i - 1] + '</span>');
+            htmlArr.unshift('<span class="diff-typo" title="Yazım Hatası! (Doğrusu: ' + cArr[j - 1] + ')" onclick="handleWordClick(\''+cArr[j - 1]+'\')">' + uArr[i - 1] + '</span>');
             i--; j--;
             typoMatched = true;
           }
         }
-        if (!typoMatched) {
-          htmlArr.unshift('<span class="diff-wrong">' + uArr[i - 1] + '</span>');
+        if (! typoMatched) {
+          htmlArr.unshift('<span class="diff-wrong" onclick="handleWordClick(\''+uArr[i - 1]+'\')">' + uArr[i - 1] + '</span>');
           i--;
         }
       }
@@ -332,6 +347,8 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     $("inp").value=""; $("score").textContent="";
     $("bShow").style.display=prod?"none":"";
     $("bChk").style.display=prod?"":"none";
+    $("bListenRetry").style.display="none"; // Yeni cümlede eski dinleme butonunu gizle
+    if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; } // Belleği temizle
     $("grade").style.display="none";
     $("exp").style.display="none";
     $("card").style.display="block";
@@ -366,6 +383,8 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     $("grade").style.display = "none";
     $("exp").style.display = "none";
     $("score").textContent = "";
+    $("bListenRetry").style.display = "none";
+    if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
     
     if (mode === "prod") {
       $("bChk").style.display = "";
@@ -389,7 +408,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       } else if (key === "g") {
         $("bGemini").click();
       } else if (key === "r") {
-        $("bRetry").click(); // R tuşu ile tekrar deneme kısayolu
+        $("bRetry").click();
       } else if (key === "b" || e.key === " ") {
         e.preventDefault();
         $("bEasy").click();
@@ -397,16 +416,56 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
   });
 
-  /* 🎤 mikrofon */
+  /* 🎤 Mikrofon & Eş Zamanlı Ses Kaydedici Entegrasyonu */
   $("bMic").onclick=function(){
     try {
       var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
       var rec=new SR(); rec.lang="en-US"; rec.interimResults=false;
       $("bMic").textContent="🔴";
-      rec.onresult=function(e){ $("inp").value=e.results[0][0].transcript; $("bMic").textContent="🎤"; reveal(); };
-      rec.onerror=rec.onend=function(){ $("bMic").textContent="🎤"; };
+      $("bListenRetry").style.display = "none";
+      if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
+
+      // Paralel Ses Kayıt Mekanizması Başlatma
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = function(e) { if (e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.onstop = function() {
+          var audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+          audioUrl = URL.createObjectURL(audioBlob);
+          $("bListenRetry").style.display = ""; // Kayıt bitince dinleme butonunu göster
+          
+          // Mikrofon akış kanallarını kapatarak donanımı serbest bırak
+          stream.getTracks().forEach(function(track) { track.stop(); });
+        };
+        mediaRecorder.start();
+      }).catch(function(err) { console.error("Kayıt donanımına erişilemedi:", err); });
+
+      rec.onresult=function(e){ 
+        $("inp").value=e.results[0][0].transcript; 
+        $("bMic").textContent="🎤"; 
+        if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+        reveal(); 
+      };
+      
+      rec.onerror=rec.onend=function(){ 
+        $("bMic").textContent="🎤"; 
+        if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+      };
+      
       rec.start();
-    }catch(e){ $("bMic").textContent="🎤"; }
+    }catch(e){ 
+      $("bMic").textContent="🎤"; 
+      if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+    }
+  };
+
+  /* 👂 Kendi Sesini Geri Dinleme İşlevi */
+  $("bListenRetry").onclick = function() {
+    if (audioUrl) {
+      var playAudio = new Audio(audioUrl);
+      playAudio.play();
+    }
   };
 
   /* Akıllı Ceza Kutusu Modülü */
