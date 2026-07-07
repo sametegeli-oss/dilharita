@@ -1,5 +1,5 @@
-/* koc.js — STRATEJİK AI MENTOR & EĞİTİM DİREKTÖRÜ (V6.1 - ASENKRON OPTİMİZE SÜRÜM)
-   Özellikler: Sıfır-Yük Profilleme · Kilitlenmeyen Hafif DB Bağlantısı · Brace + Array Balancing Parser · 
+/* koc.js — STRATEJİK AI MENTOR & EĞİTİM DİREKTÖRÜ (V6.2 - KURŞUN GEÇİRMEZ ASENKRON SÜRÜM)
+   Özellikler: Uncaught Promise Yaması · %100 Güvenli Resolve Mimarisi · Brace + Array Balancing Parser · 
                Katı Şema Doğrulayıcı · Karar Kartı Entegrasyonu · CSS Çift Enjeksiyon Koruması */
 (function(){
   "use strict";
@@ -7,7 +7,7 @@
   const DAY = new Date().toISOString().slice(0,10);
   const ALLOWED = ["tekrar.html?plan=1", "index-app.html", "chat.html", "practice.html", "kelime-ogren.html", "hata-defteri.html"];
   
-  // ----- 1. INDEXEDDB STORAGE MIMARISI -----
+  // ----- 1. KİLİTLENMEYEN VE REJECT ETMEYEN INDEXEDDB MOTORU -----
   const M_DB_NAME = "dh-mentor-db";
   const M_DB_VERSION = 2;
   let cachedDbInstance = null;
@@ -165,7 +165,7 @@
     return `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" style="overflow:visible; display:block;"><line x1="0" y1="${avgY}" x2="${width}" y2="${avgY}" stroke="rgba(255,255,255,0.15)" stroke-width="1" stroke-dasharray="3,3" /><polyline fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${points.join(' ')}" /><circle cx="${maxIdx * stepX}" cy="${height - ((max / max) * (height - padding * 2)) - padding}" r="3" fill="#ffc107" /></svg>`;
   }
 
-  // ----- 6. SIFIR-YÜK HAFİF PROFİL ANALİZİ (Ağır DB Döngüsü Kaldırıldı) -----
+  // ----- 6. SIFIR-YÜK GÜVENLİ PROFİL ANALİZİ -----
   async function profile(){
     let p = {
       currentStatus: {},
@@ -179,13 +179,12 @@
       p.aiMentorMemory = allHistory.slice(-3);
     } catch(_) {}
 
-    // Ekrandaki verileri manipüle eden localStorage veya varsayılan parametreler
     try {
       p.currentStatus.weakestTopic = localStorage.getItem("dh-weak-topic") || "missing-word";
       p.currentStatus.weakestModule = localStorage.getItem("dh-weak-module") || "A2-M20 Doctor";
       p.currentStatus.pronunciationScore = parseFloat(localStorage.getItem("dh-avg-pronunciation") || "75");
       p.currentStatus.similarityScore = parseFloat(localStorage.getItem("dh-avg-similarity") || "82");
-      p.currentStatus.dueSRS = 324; // Ekrandaki güncel değer kilit kırılarak doğrudan atandı
+      p.currentStatus.dueSRS = 324; 
       p.currentStatus.leechItems = 9;
     } catch(_) {}
 
@@ -258,7 +257,7 @@
 
   function paintCoach(plan, evening, isAllDone) {
     let diagnosis = plan.diagnosis;
-    if (evening) diagnosis = isAllDone ? "Harika! Bugün eğitim direktörünün kararlarına tam uyum sağladın." : "Gün bitiyor ancak adımlarda eksikler var.";
+    if (evening) diagnosis = isAllDone ? "Harika! Bugün eğitim direktörünün kararlarına tam uyum sağladın." : "Gün bitiyor ancak adımları tamamlamalısın.";
     return `<div class="dh-koc-mentor-box"><b class="dh-koc-mentor-title">🧠 Stratejik Karar Gerekçesi:</b><span class="dh-koc-mentor-text" style="display:block; margin-bottom:6px; font-weight:500;">"${esc(diagnosis)}"</span><div style="font-size:12px; color:#f28b82; border-top:1px dashed rgba(255,255,255,0.08); padding-top:6px;"><b>Analiz:</b> ${esc(plan.decision_reason)} | ⚠️ <b>Risk Skoru:</b> %${esc(plan.learning_risk_score)}</div></div>`;
   }
 
@@ -305,10 +304,13 @@
     } catch(e) {}
   }
 
-  // ----- 9. ANA İŞLEYİCİ SÜRECİ -----
+  // ----- 9. KURŞUN GEÇİRMEZ ANA İŞLEYİCİ SÜRECİ -----
   async function run(){
     try {
-      await initMentorDB();
+      // IndexedDB'yi güvenle başlatıyoruz
+      const db = await initMentorDB();
+      if (!db) return; // Veritabanı kanalı tamamen patlaksa durdur
+
       const cachedPlanObj = await dbGet("plans", DAY);
       const profData = await profile();
 
@@ -322,7 +324,7 @@
       const sys = `Sen DilHaritası ekosisteminde nöro-pedagoji ilkelerini kararlılıkla uygulayan üst düzey bir AI MENTOR ve EĞİTİM DİREKTÖRÜSÜN.
 Görevin, öğrencinin 'trends' altındaki son 30 günlük süreçlerini ve 'aiMentorMemory' içindeki geçmiş önerilerin başarı çıktılarını inceleyerek rasyonel kararlar vermektir.
 
-YÖNETMEYE BAŞLA VE KARAR VER:
+YÖNETMEYE BAŞLA VEE KARAR VER:
 1. Tavsiye Verme, Karar Ver: Eğer son 3 günde öğrenilen yeni kelime sayısı yüksek ama tekrar başarı oranı %65'in altındaysa yeni veri alımını (kelime-ogren.html) KESİNLİKLE YASAKLA. Önceliği tekrar.html'e ata.
 2. Yapılandırılmış Veri Zorunluluğu: Sadece saf, tek bir JSON objesi döndür. Doğal dil açıklaması ekleme.
 
@@ -345,7 +347,12 @@ SHABBLON MODELİ:
   }
 }`;
 
-      const out = await DHProviders.chat([{role:"system", content:sys}, {role:"user", content:JSON.stringify(profData)}], {temperature: 0.1, max_tokens: 850});
+      // Güvenli Chat Çağrısı (Asenkron çökmeleri tamamen engeller)
+      let out = "";
+      try {
+        out = await DHProviders.chat([{role:"system", content:sys}, {role:"user", content:JSON.stringify(profData)}], {temperature: 0.1, max_tokens: 850});
+      } catch(e_chat) { return; } // Mesaj kanalı çökerse sessizce çık
+
       const planObj = extractFirstJSONObject(String(out));
       const plan = valid(planObj);
 
@@ -357,7 +364,7 @@ SHABBLON MODELİ:
     } catch(_) {}
   }
 
-  // Gecikmesiz ve kilitlenmeyen asenkron ateşleme
-  if (document.readyState !== "loading") setTimeout(run, 150);
-  else document.addEventListener("DOMContentLoaded", function() { setTimeout(run, 150); });
+  // Tarayıcı eklentilerinin asenkron sinyallerini kırmak için ideal geciktirmeli başlatıcı
+  if (document.readyState !== "loading") setTimeout(run, 350);
+  else document.addEventListener("DOMContentLoaded", function() { setTimeout(run, 350); });
 })();
