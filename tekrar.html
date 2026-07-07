@@ -428,7 +428,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       } else if (key === "g") {
         $("bGemini").click();
       } else if (key === "t") {
-        $("bTrans").click(); // T tuşu ile Google Translate kısayolu
+        $("bTrans").click();
       } else if (key === "r") {
         $("bRetry").click();
       } else if (key === "b" || e.key === " ") {
@@ -438,9 +438,10 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
   });
 
-  /* 🎤 Manuel Mikrofon & Eş Zamanlı Ses Kaydedici Düzenlemesi */
+  /* 🎤 Manuel Mikrofon, Gramer Listesi & Eş Zamanlı Ses Kaydedici */
   $("bMic").onclick=function(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
+    var SGL=window.SpeechGrammarList||window.webkitSpeechGrammarList;
     
     if (!isRecording) {
       isRecording = true;
@@ -465,15 +466,33 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       recognitionInstance = new SR();
       recognitionInstance.lang = "en-US";
       recognitionInstance.continuous = true; 
-      recognitionInstance.interimResults = false;
+      recognitionInstance.interimResults = true; // Canlı revizyon analizi için true yapıldı
+
+      // İYİLEŞTİRME: Doğru İngilizce cümlenin kelimelerini ağırlık olarak tarayıcıya fırlatma (Gramer Hinting)
+      if (SGL && curT.en) {
+        var grammarListInstance = new SGL();
+        // JSGF formatında cümlenin ağırlıklı kelime kalıbını hazırlıyoruz
+        var cleanWords = curT.en.toLowerCase().replace(/[^a-z0-9 ]+/g, "");
+        var grammarPattern = '#JSGF V1.0; grammar targetWords; public <word> = ' + cleanWords.split(" ").join(" | ") + ' ;';
+        grammarListInstance.addFromString(grammarPattern, 1.5); // 1.5 katsayısıyla bu kelimelere öncelik verilir
+        recognitionInstance.grammars = grammarListInstance;
+      }
 
       recognitionInstance.onresult = function(e) {
+        var interimTranscript = "";
+        var finalTranscript = "";
+        
         for (var idx = e.resultIndex; idx < e.results.length; ++idx) {
           if (e.results[idx].isFinal) {
-            accumulatedTranscript += e.results[idx][0].transcript + " ";
+            finalTranscript += e.results[idx][0].transcript + " ";
+          } else {
+            interimTranscript += e.results[idx][0].transcript;
           }
         }
-        $("inp").value = accumulatedTranscript.trim();
+        
+        if (finalTranscript) accumulatedTranscript += finalTranscript;
+        // Canlı olarak input alanında kelimelerin bağlama göre revize oluşunu izleyebilirsiniz
+        $("inp").value = (accumulatedTranscript + interimTranscript).trim();
       };
 
       recognitionInstance.onerror = function(err) { console.error("Tanıma hatası:", err); };
@@ -498,7 +517,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 
       setTimeout(function() {
         reveal();
-      }, 300);
+      }, 400); // Revize edilen son kelimelerin inputa pürüzsüz dolması için süre 400ms yapıldı
     }
   };
 
