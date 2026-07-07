@@ -99,7 +99,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   var mediaRecorder = null, audioChunks = [], audioUrl = null, audioStream = null, activeAudioObj = null;
   var recognitionInstance = null, isRecording = false, accumulatedTranscript = "";
 
-  // KESİN KORUMA: cloud-sync kütüphanesinin anlık yazma kancasını (auto sync) devre dışı bırakıyoruz.
+  // KESİN KORUMA: cloud-sync kütüphanesinin anlık yazma kancasını (auto sync) tamamen pasifleştiriyoruz.
   if (window.DHCloudSync) {
     window.DHCloudSync.autoPush = false; 
     console.log("Firebase anlık tetikleyicileri bu sayfa için tamamen susturuldu.");
@@ -155,16 +155,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
     var maxLen = Math.max(m, n);
     return Math.round(((maxLen - d[m][n]) / maxLen) * 100);
-  }
-
-  /* ---- Veri Yükleme İşlemleri ---- */
-  var srs = {}, wsrs = {};
-  async function loadData() {
-    try {
-      srs = await kvPrefix("srs:");
-      wsrs = await kvPrefix("wsrs:");
-      initApp();
-    } catch(e) { console.error("Lokal DB okuma hatası:", e); initApp(); }
   }
 
   var mirror={}; try{ mirror=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; }catch(e){}
@@ -262,6 +252,17 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }).join(" ");
   }
 
+  /* ---- Metin Sözlük ve Anlam Çözücü Yardımcı Fonksiyon (YERİ BAĞLANAN YER) ---- */
+  var sentMap={}, dict={};
+  function texts(it){
+    if(it.kind==="s"){ var s=sentMap[it.id]||errText[it.id]||{};
+      return {en:s.en||it.id,tr:s.tr||"",exp:s.aiExplain||"",cm:s.commonMistake||"",
+        co:Array.isArray(s.collocations)?s.collocations.slice(0,4).join(" · "):String(s.collocations||"")};
+    }
+    var d=dict[it.id]||dict[it.id.toLowerCase()];
+    return {en:it.id,tr:(d&&d.anlamlar)?d.anlamlar.slice(0,3).join(", "):"",exp:"",cm:"",co:""};
+  }
+
   /* ---- açıklama paneli ---- */
   function showExplain(t, leech){
     var html="";
@@ -301,7 +302,31 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   };
 
   var total = 0, session = [], remaining = 0;
-  var sentMap={}, dict={};
+  var errText={};
+
+  async function loadData() {
+    try {
+      srs = await kvPrefix("srs:");
+      wsrs = await kvPrefix("wsrs:");
+      await initApp();
+    } catch(e) { console.error("Lokal DB okuma hatası:", e); await initApp(); }
+  }
+
+  /* ---- mod anahtarı ---- */
+  function paintMode(){ 
+    $("mProd").classList.toggle("on",mode==="prod"); 
+    $("mClas").classList.toggle("on",mode==="clas"); 
+    $("mOnlyErrs").classList.toggle("err-on", showOnlyErrors);
+  }
+  $("mProd").onclick=function(){ mode="prod"; localStorage.setItem("dh-tekrar-mode",mode); paintMode(); render(); };
+  $("mClas").onclick=function(){ mode="clas"; localStorage.setItem("dh-tekrar-mode",mode); paintMode(); render(); };
+  
+  $("mOnlyErrs").onclick=function(){
+    showOnlyErrors = !showOnlyErrors;
+    localStorage.setItem("dh-only-errors", showOnlyErrors ? "1" : "0");
+    location.reload();
+  };
+  paintMode();
 
   async function initApp() {
     for(var sid in srs){ if(srs.hasOwnProperty(sid)){ var r0=srs[sid]||{}; if((r0.due||0)<=now) push("s",sid,r0.due,(r0.lapses||0)>=3?"leech":""); } }
@@ -310,7 +335,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
         if(mid.indexOf("sentence:")===0){ var s1=mid.slice(9); if(!srs[s1]) push("s",s1,0,"yeni"); }
         else if(mid.indexOf("word:")===0){ var w1=mid.slice(5); var wr=wsrs[w1]; if(!wr) push("w",w1,0,"yeni"); else if((wr.due||0)<=now) push("w",w1,wr.due,(wr.lapses||0)>=3?"leech":""); }
       } }
-    var errText={};
+    
     errs.forEach(function(r){ var id=r&&(r.sentenceId||r.id); if(!id) return;
       if(!errText[id]) errText[id]={en:r.sentenceEN||r.sentence||r.en||"",tr:r.sentenceTR||r.tr||""};
       if(!srs[id]) push("s",id,0,"hata"); });
@@ -636,7 +661,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   };
 
   $("bMore").onclick=function(){ location.reload(); };
-  loadData();
+  await loadData();
 })();
 </script>
 </body></html>
