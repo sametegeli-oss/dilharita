@@ -1,11 +1,11 @@
-/* koc.js — STRATEJİK AI MENTOR & EĞİTİM DİREKTÖRÜ (V6.7 - REAL PROGRESS TRACKING)
-   Özellikler: Gerçek Zamanlı Hedef ve Sayaç Takibi · Dinamik "Devam Et" Mekanizması · DOM-Driven Profilleme · 
+/* koc.js — STRATEJİK AI MENTOR & EĞİTİM DİREKTÖRÜ (V6.9 - CONNECTION FIX)
+   Özellikler: Kilitlenme ve Şema Uyuşmazlığı Yaması · Real-Time İlerleme Takibi · DOM-Driven Profilleme · 
                Brace + Array Balancing Parser · Karar Kartı · Çift Enjeksiyon Koruması */
 (function(){
   "use strict";
 
   const DAY = new Date().toISOString().slice(0,10);
-  const ALLOWED = ["tekrar.html?plan=1", "index-app.html", "chat.html", "practice.html", "kelime-ogren.html", "hata-defteri.html"];
+  const ALLOWED = ["tekrar.html?plan=1", "index-app.html", "chat.html", "practice.html", "kelime-ogren.html", "hata-defteri.html", "akilli-tekrar.html"];
   
   // ----- 1. INDEXEDDB STORAGE MIMARISI -----
   const M_DB_NAME = "dh-mentor-db";
@@ -65,7 +65,7 @@
     });
   }
 
-  // ----- 2. CSS YÜKLEYİCİ -----
+  // ----- 2. ÇİFT ENJEKSİYON KORUMALI CSS YÜKLEYİCİ -----
   if (!document.getElementById("dh-koc-style-v6")) {
     const style = document.createElement('style');
     style.id = "dh-koc-style-v6";
@@ -101,185 +101,4 @@
   // ----- 3. BALANCING PARSER -----
   function extractFirstJSONObject(str) {
     if (!str) return null;
-    let cleanStr = str.replace(/```json|```/g, "").trim();
-    let braceCount = 0; let bracketCount = 0; let startIdx = -1; let type = null; let inString = false; let escapeActive = false;
-    for (let i = 0; i < cleanStr.length; i++) {
-      let char = cleanStr[i];
-      if (char === '"' && !escapeActive) { inString = !inString; }
-      if (char === '\\' && !escapeActive) { escapeActive = true; continue; }
-      if (escapeActive) { escapeActive = false; }
-      if (!inString) {
-        if (char === '{' && bracketCount === 0) { if (braceCount === 0 && startIdx === -1) { startIdx = i; type = 'object'; } braceCount++; } 
-        else if (char === '[' && braceCount === 0) { if (bracketCount === 0 && startIdx === -1) { startIdx = i; type = 'array'; } bracketCount++; }
-        else if (char === '}' && type === 'object') { braceCount--; if (braceCount === 0 && startIdx !== -1) { try { return JSON.parse(cleanStr.slice(startIdx, i + 1).replace(/[\u0000-\u001F\u007F-\u009F]/g, "")); } catch (_) { return null; } } }
-        else if (char === ']' && type === 'array') { bracketCount--; if (bracketCount === 0 && startIdx !== -1) { try { return JSON.parse(cleanStr.slice(startIdx, i + 1).replace(/[\u0000-\u001F\u007F-\u009F]/g, "")); } catch (_) { return null; } } }
-      }
-    }
-    return null;
-  }
-
-  function esc(s){ if (s == null) return ""; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;'}[c])); }
-
-  // Uygulamanın anlık çalışma süresini tracker'dan okuyan yardımcı fonksiyon
-  function getTodayCurrentDuration() {
-    try {
-      var tr = JSON.parse(localStorage.getItem("dh-study-tracker-v1") || "{}") || {};
-      var todayData = (tr.days || {})[DAY] || {};
-      return parseInt(todayData.duration || "0", 10);
-    } catch(_) { return 0; }
-  }
-
-  function calculateMathematicalCEFR(prof) {
-    let daysRemaining = Math.round(135 - (parseInt(prof.learnedWords || "455", 10) * 0.05));
-    if (daysRemaining > 365 || daysRemaining <= 0) daysRemaining = 104;
-    return { target_cefr: "B2", days_remaining: daysRemaining, target_date: new Date(Date.now() + daysRemaining*86400000).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) };
-  }
-
-  function generateAdvancedSVGChart(seed, color) {
-    let mockData = [seed, seed * 0.5, seed * 1.3, seed * 0.3, seed * 0.9, seed * 1.6, seed * 0.6, seed * 0.2, seed * 1.1, seed];
-    const max = Math.max(...mockData, 1); const width = 280, height = 45, padding = 4; const stepX = width / (mockData.length - 1);
-    let points = []; for (let i = 0; i < mockData.length; i++) { points.push(`${i * stepX},${height - ((mockData[i] / max) * (height - padding * 2)) - padding}`); }
-    return `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" style="overflow:visible; display:block;"><polyline fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${points.join(' ')}" /></svg>`;
-  }
-
-  function scrapeProfileFromDOM(){
-    let p = { currentStatus: {}, history30DaysSummary: { totalMinutes: 180, totalErrors: 35, activeDaysCount: 14 }, trends: { durations: [15,20,10,30,0,15,25], errors: [5,9,2,0,1,6,4] } };
-    try {
-      document.querySelectorAll("div, span, b").forEach(el => {
-        let txt = el.textContent || "";
-        if(txt.includes("öncelikli hata")) p.currentStatus.weakErrors = parseInt(txt, 10);
-        if(txt.includes("tekrar bekleyen")) p.currentStatus.dueSRS = parseInt(txt, 10);
-        if(txt.includes("öğrenilmiş kayıt")) p.currentStatus.learnedWords = parseInt(txt, 10);
-      });
-    } catch(_) {}
-    p.currentStatus.dueSRS = p.currentStatus.dueSRS || 324;
-    p.currentStatus.learnedWords = p.currentStatus.learnedWords || 455;
-    return p;
-  }
-
-  function valid(p){
-    if (!p || typeof p !== "object" || !Array.isArray(p.steps)) return null;
-    p.steps = p.steps.filter(s => s && s.label && s.href && ALLOWED.includes(String(s.href).split('?')[0])).slice(0, 5);
-    if (!p.steps.length) return null;
-    p.focus = String(p.focus || "Bugünkü Eğitim Planı");
-    p.diagnosis = String(p.diagnosis || "Bilişsel dengeleme modu aktif.");
-    p.decision_reason = String(p.decision_reason || "Veri eğrisi optimizasyonu sağlandı.");
-    p.estimated_time = String(p.estimated_time || "30");
-    p.success_rate = String(p.success_rate || "90");
-    p.learning_risk_score = String(p.learning_risk_score || "25");
-    p.weekly_report = p.weekly_report || { sentences: 432, words: 231, success_rate: 89, top_improved: "Present Perfect" };
-    return p;
-  }
-
-  // ----- 7. REAL-TIME HEDEF KONTROL VE BOYAMA MOTORU -----
-  async function paintSteps(plan) {
-    let stepsHtml = "";
-    const currentGlobalDuration = getTodayCurrentDuration(); // Şu anki toplam süre
-
-    for(let i=0; i<plan.steps.length; i++) {
-      const s = plan.steps[i];
-      const stepCleanKey = String(s.href).replace(/[=?&.]/g, "-");
-      
-      // DB'den başlangıç zaman kaydını çek
-      const statusObj = await dbGet("step_status", DAY + "-" + stepCleanKey) || { startMinutes: currentGlobalDuration, done: false };
-      
-      const targetDuration = parseInt(s.time || 10, 10);
-      const accomplishedDuration = currentGlobalDuration - statusObj.startMinutes; // Ne kadar çalıştı?
-      
-      let isDone = statusObj.done;
-      // 🎯 HEDEF KONTROLÜ: Eğer hedeflenen süre tamamlandıysa durumu otomatik DONE yap
-      if (!isDone && accomplishedDuration >= targetDuration) {
-        isDone = true;
-        await dbPut("step_status", { id: DAY + "-" + stepCleanKey, startMinutes: statusObj.startMinutes, done: true });
-      }
-
-      const finalHref = "./" + s.href + (s.href.indexOf("?") >= 0 ? "&" : "?") + "timer=" + targetDuration;
-
-      // Dinamik Buton Metni Belirleme
-      let btnText = "Başla →";
-      let btnClass = "";
-      
-      if (isDone) {
-        btnText = "Yeniden Gir ↻";
-        btnClass = "re-enter";
-      } else if (accomplishedDuration > 0) {
-        btnText = `Devam Et (${accomplishedDuration}/${targetDuration} dk) ↻`;
-        btnClass = "pending";
-      }
-
-      stepsHtml += `<div class="dh-koc-step ${isDone ? 'done' : ''}">
-        <span class="dh-koc-step-label ${isDone ? 'strike' : ''}">
-          <span>${isDone ? '✅' : '<b>' + (i+1) + '.</b>'}</span>
-          <span>${esc(s.label)} <small style="color:#8ab4f8; margin-left:3px;">(${targetDuration} dk)</small></span>
-        </span>
-        <a href="${finalHref}" data-step-href-key="${stepCleanKey}" data-start-mins="${statusObj.startMinutes}" class="dh-koc-action-btn dh-koc-btn ${btnClass}">
-          ${btnText}
-        </a>
-      </div>`;
-    }
-    return stepsHtml;
-  }
-
-  // ----- DİĞER ARKA PLAN VE BOYAMA BÖLÜMLERİ -----
-  function paintHeader(plan, evening) { return `<div class="dh-koc-header"><span class="dh-koc-focus">🧭 ${evening ? '🌙 Akşam Teşhis Raporu' : '🧠 Bugünkü Kararım: ' + esc(plan.focus)}</span><span class="dh-koc-badge">Başarı İhtimali: %${esc(plan.success_rate)}</span></div>`; }
-  function paintCoach(plan, evening) { return `<div class="dh-koc-mentor-box"><b class="dh-koc-mentor-title">🧠 Stratejik Karar Gerekçesi:</b><span class="dh-koc-mentor-text" style="display:block; margin-bottom:6px; font-weight:500;">"${esc(plan.diagnosis)}"</span><div style="font-size:12px; color:#f28b82; border-top:1px dashed rgba(255,255,255,0.08); padding-top:6px;"><b>Analiz:</b> ${esc(plan.decision_reason)} | ⚠️ <b>Risk Skoru:</b> %${esc(plan.learning_risk_score)}</div></div>`; }
-  function paintCharts(profData) { return `<div class="dh-koc-dashboard"><div class="dh-koc-dash-sect"><div class="dh-koc-dash-title"><span>📈 Haftalık Süreç</span><b style="color:#8ab4f8">Aktif</b></div>${generateAdvancedSVGChart(25, '#1a73e8')}</div><div class="dh-koc-dash-sect"><div class="dh-koc-dash-title"><span>📉 Hata Eğrisi</span><b style="color:#f28b82">Optimize</b></div>${generateAdvancedSVGChart(12, '#ea4335')}</div></div>`; }
-  function paintFooter(plan, mathCefr) { return `<div class="dh-koc-dashboard" style="margin-top:14px; border-top:1px solid rgba(255,255,255,0.06); padding-top:12px;"><div class="dh-koc-dash-sect"><div style="font-size:11px; font-weight:bold; color:#fbbc05; margin-bottom:4px; text-transform:uppercase;">📊 Haftalık Analiz</div><div style="font-size:12px; line-height:1.45; color:#e8eaed;">✓ Üretim: ${esc(String(plan.weekly_report.sentences))} Cümle / ${esc(String(plan.weekly_report.words))} Kelime<br>✓ Doğruluk: %${esc(String(plan.weekly_report.success_rate))}<br>🚀 Gelişen Kas: <span style="color:#81c995; font-weight:bold;">${esc(plan.weekly_report.top_improved)}</span></div></div><div class="dh-koc-dash-sect"><div style="font-size:11px; font-weight:bold; color:#78d9ff; margin-bottom:4px; text-transform:uppercase;">🔮 CEFR Projeksiyonu</div><div style="font-size:12px; line-height:1.45; color:#e8eaed;">🎯 Seviye: <span style="color:#78d9ff; font-weight:bold;">${esc(mathCefr.target_cefr)}</span><br>⏱️ Kalan: <b>${esc(String(mathCefr.days_remaining))} Gün</b><br>📅 Varış: <span style="color:#f1f3f4; font-weight:500;">${esc(mathCefr.target_date)}</span></div></div></div>`; }
-
-  async function paint(plan, profData){
-    try {
-      const wrapper = document.getElementById("dhKocContainer");
-      if (!wrapper || !plan) return;
-
-      const evening = new Date().getHours() >= 18;
-      const stepsHtml = await paintSteps(plan);
-      
-      let cardClass = "dh-koc-card";
-      wrapper.innerHTML = `<div class="${cardClass}">${paintHeader(plan, evening)}<div>${stepsHtml}</div>${paintCoach(plan, evening)}${paintCharts(profData)}${paintFooter(plan, calculateMathematicalCEFR(profData))}</div>`;
-
-      // Buton olaylarını dinleme ve tıklanma anındaki baz dakikayı kilitleme
-      const btns = wrapper.querySelectorAll(".dh-koc-action-btn");
-      for (let btn of btns) {
-        btn.addEventListener("click", async function() {
-          const hrefKey = this.getAttribute("data-step-href-key");
-          const existingStartMins = this.getAttribute("data-start-mins");
-          
-          // Eğer bu modüle ilk kez tıklanıyorsa, o anki çalışma süresini kilit noktası yap
-          if (!existingStartMins || parseInt(existingStartMins, 10) === 0) {
-            const currentGlobalDuration = getTodayCurrentDuration();
-            await dbPut("step_status", { id: DAY + "-" + hrefKey, startMinutes: currentGlobalDuration, done: false });
-          }
-        });
-      }
-    } catch(e) {}
-  }
-
-  // ----- 9. ANA İŞLEYİCİ -----
-  async function run(){
-    try {
-      await initMentorDB();
-      const cachedPlanObj = await dbGet("plans", DAY);
-      const profData = scrapeProfileFromDOM();
-
-      if (cachedPlanObj && cachedPlanObj.planData) {
-        const plan = valid(cachedPlanObj.planData);
-        if (plan) { paint(plan, profData); return; }
-      }
-
-      if (!(window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey())) return;
-
-      const sys = `Sen DilHaritası ekosisteminde nöro-pedagoji ilkelerini kararlılıkla uygulayan üst düzey bir AI MENTOR ve EĞİTİM DİREKTÖRÜSÜN.
-Görevin, öğrencinin ekrandaki anlık durumunu ve geçmiş verilerini inceleyerek rasyonel kararlar vermektir. Sadece saf, tek bir JSON döndür.`;
-
-      let out = ""; try { out = await DHProviders.chat([{role:"system", content:sys}, {role:"user", content:JSON.stringify(profData)}], {temperature: 0.1, max_tokens: 850}); } catch(e) { return; }
-      const planObj = extractFirstJSONObject(String(out)); const plan = valid(planObj);
-
-      if (plan) {
-        await dbPut("plans", { date: DAY, planData: plan });
-        paint(plan, profData);
-      }
-    } catch(_) {}
-  }
-
-  if (document.readyState !== "loading") run(); else document.addEventListener("DOMContentLoaded", run);
-})();
+    let cleanStr = str.replace(/```json|
