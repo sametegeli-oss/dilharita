@@ -86,7 +86,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 <script src="./progress-engine.js?v=2"></script>
 <script src="./cloud-sync-v8.js?v=1"></script>
 <script src="./ai-providers.js?v=1"></script>
-<script src="./word-popup.js?v=1"></script>
+<script src="./word-popup.js?v=2"></script>
 <script>
 (async function(){
   "use strict";
@@ -341,7 +341,8 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     for(var mid in mirror){ if(!mirror.hasOwnProperty(mid)) continue;
       if(mirror[mid]&&mirror[mid][0]===1){
         if(mid.indexOf("sentence:")===0){ var s1=mid.slice(9); if(!srs[s1]) push("s",s1,0,"yeni"); }
-        else if(mid.indexOf("word:")===0){ var w1=mid.slice(5); var wr=wsrs[w1]; if(!wr) push("w",w1,0,"yeni"); else if((wr.due||0)<=now) push("w",w1,wr.due,(wr.lapses||0)>=3?"leech":""); }
+        // 🔧 DÜZELTİLDİ: "word:" dalı devre dışı — kullanıcı isteği üzerine artık
+        // hiç tek kelime kartı üretilmiyor, sadece cümleler soruluyor.
       } }
     
     errs.forEach(function(r){ var id=r&&(r.sentenceId||r.id); if(!id) return;
@@ -584,15 +585,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
   };
 
-  /* Akıllı Ceza Kutusu Modülü */
-  function injectLeechWords(sentenceEn) {
-    var words = norm(sentenceEn).split(" ").filter(function(w) { return w.length > 3; });
-    words.forEach(function(word) {
-      if((dict[word] || dict[word.toLowerCase()]) && !seen["w" + word]) {
-        session.splice(i + 1, 0, { kind: "w", id: word, due: 0, tag: "leech", tries: 0 });
-      }
-    });
-  }
+  /* 🔧 DÜZELTİLDİ: Akıllı Ceza Kutusu artık tek kelime kartı ENJEKTE ETMİYOR —
+     kullanıcı isteği üzerine sadece cümleler sorulsun diye devre dışı bırakıldı. */
+  function injectLeechWords(sentenceEn) { /* devre dışı: no-op */ }
 
   async function grade(hard){
     var it=cur;
