@@ -79,7 +79,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     <a href="./index-app.html"><button class="b-next">🆕 Yeni cümleler</button></a>
     <a href="./chat.html"><button class="b-next">💬 1 dk konuşma</button></a>
   </div>
-  <div style="margin-top:10px"><a href="./index.html" style="color:#38bdf8">Ana menü</a></div>
+  <div style="margin-top:10px"><a href="./index.html" style="color:#38bdf8">Ana menu</a></div>
 </div>
 
 <script src="./auth-guard.js?v=2"></script>
@@ -184,10 +184,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     return Math.round(100*2*hit/(A.length+B.length));
   }
 
-  /* ---- Kelime Tıklama Tetikleyicisi ----
-     Önce zengin word-popup.js modülüne yönlendirilir: o hem çekim eklerini
-     çözer (convened → convene) hem de tam donanımlı büyük kelime ekranını açar.
-     word-popup.js herhangi bir sebeple yüklenemezse, eski küçük kutuya (tam eşleşme) düşülür. */
+  /* ---- Kelime Tıklama Tetikleyicisi ---- */
   window.handleWordClick = function(word) {
     if (window.DHWordPop && DHWordPop.lookup) { DHWordPop.lookup(word); return; }
     var cleaned = word.toLowerCase().replace(/[^a-z0-9']+/g, "");
@@ -258,7 +255,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }).join(" ");
   }
 
-  /* ---- Metin Sözlük ve Anlam Çözücü Yardımcı Fonksiyon (YERİ BAĞLANAN YER) ---- */
+  /* ---- Metin Sözlük ve Anlam Çözücü Yardımcı Fonksiyon ---- */
   var sentMap={}, dict={};
   function texts(it){
     if(it.kind==="s"){ var s=sentMap[it.id]||errText[it.id]||{};
@@ -341,8 +338,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     for(var mid in mirror){ if(!mirror.hasOwnProperty(mid)) continue;
       if(mirror[mid]&&mirror[mid][0]===1){
         if(mid.indexOf("sentence:")===0){ var s1=mid.slice(9); if(!srs[s1]) push("s",s1,0,"yeni"); }
-        // 🔧 DÜZELTİLDİ: "word:" dalı devre dışı — kullanıcı isteği üzerine artık
-        // hiç tek kelime kartı üretilmiyor, sadece cümleler soruluyor.
       } }
     
     errs.forEach(function(r){ var id=r&&(r.sentenceId||r.id); if(!id) return;
@@ -485,7 +480,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
   });
 
-  /* 🎤 Manuel Mikrofon, Gramer Listesi & Eş Zamanlı Ses Kaydedici */
+  /* 🎤 Geliştirilmiş Güvenli Mikrofon Kontrolü */
   $("bMic").onclick=function(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
     var SGL=window.SpeechGrammarList||window.webkitSpeechGrammarList;
@@ -497,6 +492,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       $("bListenRetry").style.display = "none";
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
       accumulatedTranscript = "";
+      $("inp").value = ""; 
 
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
         audioStream = stream;
@@ -509,7 +505,11 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
           $("bListenRetry").style.display = "";
         };
         mediaRecorder.start();
-      }).catch(function(err) { console.error("Mikrofon donanımına erişilemedi:", err); isRecording = false; $("bMic").textContent="🎤"; });
+      }).catch(function(err) { 
+        console.error("Mikrofon donanımına erişilemedi:", err); 
+        isRecording = false; 
+        $("bMic").textContent="🎤"; 
+      });
 
       recognitionInstance = new SR();
       recognitionInstance.lang = "en-US";
@@ -540,7 +540,10 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
         $("inp").value = (accumulatedTranscript + interimTranscript).trim();
       };
 
-      recognitionInstance.onerror = function(err) { console.error("Tanıma hatası:", err); };
+      recognitionInstance.onerror = function(err) { 
+        console.error("Tanıma hatası:", err); 
+      };
+      
       recognitionInstance.start();
 
     } else {
@@ -585,8 +588,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
   };
 
-  /* 🔧 DÜZELTİLDİ: Akıllı Ceza Kutusu artık tek kelime kartı ENJEKTE ETMİYOR —
-     kullanıcı isteği üzerine sadece cümleler sorulsun diye devre dışı bırakıldı. */
   function injectLeechWords(sentenceEn) { /* devre dışı: no-op */ }
 
   async function grade(hard){
