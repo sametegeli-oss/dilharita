@@ -7,7 +7,6 @@
 <title>Fotoğraflı Sohbet Senaryoları</title>
 <link rel="stylesheet" href="./chat-style.css?v=17">[cite: 1]
 <style>
-    /* Yapay Zeka Seçim Kutusu Alanı */
     .ai-selector-container {
         background: #111e36;
         border: 1px solid #23395b;
@@ -38,7 +37,6 @@
         cursor: pointer;
         outline: none;
     }
-    
     .card {
         display: flex !important;
         flex-direction: column !important;
@@ -46,7 +44,6 @@
         padding-bottom: 12px !important;
         height: auto !important;
     }
-
     .external-ai-btn {
         display: block;
         margin: 10px 12px 0 12px;
@@ -62,9 +59,7 @@
         border: none;
         cursor: pointer;
     }
-    .external-ai-btn:hover {
-        opacity: 0.9;
-    }
+    .external-ai-btn:hover { opacity: 0.9; }
 </style>
 </head>
 <body>
@@ -73,7 +68,6 @@
 <h1>Erkek konuşan avatarlar</h1>[cite: 1]
 <p>Tüm senaryolar erkek karakterdir. Her karakter aynı grid içinde tam set olarak üretildi; sesler tam fotoğraf kareleriyle çalışır.</p>[cite: 1]
 
-<!-- Ana Ekrandaki AI Seçim Kutusu -->
 <div class="ai-selector-container">
     <label for="aiEngineSelect">🧠 Dışarıda Açılacak AI Motoru:</label>
     <select id="aiEngineSelect" class="ai-select" onchange="saveAIEngine(this.value)">
@@ -85,41 +79,32 @@
 </div>
 
 <div class="grid">[cite: 1]
-    <!-- Otel Kartı (Ses İndexi: 0) -->
     <div class="card">
-        <a href="#" onclick="navigateToInternalChat(event, 'chathotel.html', 0)" style="text-decoration: none; color: inherit; display: block;">
+        <a href="#" onclick="navigateToInternalChat(event, 'chathotel.html', 0)">
             <img src="assets/avatars_v3/hotel/idle.webp"><b>Otel</b><span>Erkek resepsiyonist · A2</span>[cite: 1]
         </a>
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Otel Resepsiyonisti (A2)')">Sohbete Başla ✨</button>
     </div>
-
-    <!-- Restoran Kartı (Ses İndexi: 1) -->
     <div class="card">
-        <a href="#" onclick="navigateToInternalChat(event, 'chatrestaurant.html', 1)" style="text-decoration: none; color: inherit; display: block;">
+        <a href="#" onclick="navigateToInternalChat(event, 'chatrestaurant.html', 1)">
             <img src="assets/avatars_v3/restaurant/idle.webp"><b>Restoran</b><span>Erkek garson · A2</span>[cite: 1]
         </a>
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Restoran Garsonu (A2)')">Sohbete Başla ✨</button>
     </div>
-
-    <!-- Doktor Kartı (Ses İndexi: 2) -->
     <div class="card">
-        <a href="#" onclick="navigateToInternalChat(event, 'chatdoctor.html', 2)" style="text-decoration: none; color: inherit; display: block;">
+        <a href="#" onclick="navigateToInternalChat(event, 'chatdoctor.html', 2)">
             <img src="assets/avatars_v3/doctor/idle.webp"><b>Doktor</b><span>Erkek doktor · B1</span>[cite: 1]
         </a>
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Erkek Doktor (B1)')">Sohbete Başla ✨</button>
     </div>
-
-    <!-- Havaalanı Kartı (Ses İndexi: 3) -->
     <div class="card">
-        <a href="#" onclick="navigateToInternalChat(event, 'chatairport.html', 3)" style="text-decoration: none; color: inherit; display: block;">
+        <a href="#" onclick="navigateToInternalChat(event, 'chatairport.html', 3)">
             <img src="assets/avatars_v3/airport/idle.webp"><b>Havaalanı</b><span>Erkek check-in görevlisi · A2</span>[cite: 1]
         </a>
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Havaalanı Check-in Görevlisi (A2)')">Sohbete Başla ✨</button>
     </div>
-
-    <!-- AI Öğretmen Kartı (Ses İndexi: 4) -->
     <div class="card">
-        <a href="#" onclick="navigateToInternalChat(event, 'chatteacher.html', 4)" style="text-decoration: none; color: inherit; display: block;">
+        <a href="#" onclick="navigateToInternalChat(event, 'chatteacher.html', 4)">
             <img src="assets/avatars_v3/teacher1/idle.webp"><b>AI Öğretmen</b><span>2 erkek öğretmen opsiyonu</span>[cite: 1]
         </a>
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'İngilizce Öğretmeni')">Sohbete Başla ✨</button>
@@ -133,10 +118,6 @@
     document.addEventListener("DOMContentLoaded", function() {
         const savedAI = localStorage.getItem('external_ai_target') || 'gemini';
         document.getElementById('aiEngineSelect').value = savedAI;
-        
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.getVoices();
-        }
     });
 
     function saveAIEngine(val) {
@@ -145,79 +126,33 @@
 
     function navigateToInternalChat(event, targetPage, voiceIndex) {
         event.preventDefault();
-        
-        // Seçilen karakterin ses sıra numarasını hafızaya net olarak kazıyalım
+        // Index bilgisini alt sayfaların okuyabileceği şekilde kalıcı hafızaya alıyoruz
         localStorage.setItem('forced_voice_index', voiceIndex);
-        
-        // Hedef sayfaya git
         window.location.href = targetPage;
     }
-
-    // --- KESİN SES ÇÖZÜMÜ (MONKEY PATCH / INJECTION) ---
-    // Bu script, alt sayfa açıldığında tarayıcının ses mekanizmasını (SpeechSynthesisUtterance) 
-    // ele geçirir ve alt sayfa ne okumaya çalışırsa çalışsın hafızadaki ses indexini zorla dayatır.
-    (function() {
-        if ('speechSynthesis' in window) {
-            const originalSpeak = window.speechSynthesis.speak;
-            
-            window.speechSynthesis.speak = function(utterance) {
-                const forcedIndex = localStorage.getItem('forced_voice_index');
-                
-                if (forcedIndex !== null) {
-                    const allVoices = window.speechSynthesis.getVoices();
-                    // Sadece İngilizce (en) sesleri filtrele
-                    const englishVoices = allVoices.filter(v => v.lang.startsWith('en') || v.lang.startsWith('EN'));
-                    
-                    if (englishVoices.length > 0) {
-                        const idx = parseInt(forcedIndex, 10) % englishVoices.length;
-                        // Alt sayfadaki kod ne ses seçmiş olursa olsun, burada bizim istediğimiz sesi ezerek atıyoruz!
-                        utterance.voice = englishVoices[idx];
-                        // Dilin İngilizce olduğundan emin olalım
-                        utterance.lang = englishVoices[idx].lang;
-                    }
-                }
-                // Orijinal ses motorunu bizim manipüle ettiğimiz sesle tetikle
-                return originalSpeak.call(window.speechSynthesis, utterance);
-            };
-        }
-    })();
 
     function handleExternalAIClick(event, roleName) {
         event.stopPropagation();
         event.preventDefault();
-        
         const selectedAI = document.getElementById('aiEngineSelect').value;
         const promptText = `You are a professional English conversation partner. Act as a ${roleName}. Keep your sentences suitable for this level. Let's start the conversation.`;
 
         if (selectedAI === 'gemini') {
             openWithClipboardFallback('https://gemini.google.com/', promptText);
         } else if (selectedAI === 'openai') {
-            const encodedPrompt = encodeURIComponent(promptText);
-            const targetUrl = `https://chatgpt.com/?q=${encodedPrompt}`;
-            window.open(targetUrl, '_blank');
+            window.open(`https://chatgpt.com/?q=${encodeURIComponent(promptText)}`, '_blank');
         } else {
-            const aiUrls = {
-                'claude': 'https://claude.ai/',
-                'deepseek': 'https://chat.deepseek.com/'
-            };
-            const targetUrl = aiUrls[selectedAI] || 'https://chatgpt.com/';
-            openWithClipboardFallback(targetUrl, promptText);
+            const aiUrls = { 'claude': 'https://claude.ai/', 'deepseek': 'https://chat.deepseek.com/' };
+            openWithClipboardFallback(aiUrls[selectedAI] || 'https://chatgpt.com/', promptText);
         }
     }
 
     function openWithClipboardFallback(url, text) {
         navigator.clipboard.writeText(text).then(() => {
-            alert("Sohbet promptu otomatik olarak hafızaya kopyalandı!\nAçılan yapay zeka ekranına direkt yapıştırıp (CTRL+V) başlayabilirsiniz.");
+            alert("Sohbet promptu kopyalandı! (CTRL+V) yapıp başlayabilirsiniz.");
             window.open(url, '_blank');
-        }).catch(() => {
-            window.open(url, '_blank');
-        });
+        }).catch(() => { window.open(url, '_blank'); });
     }
 </script>
-
-<script src="./ai-teacher-prompt-tts.js?v=1"></script>[cite: 1]
-<script src="./tts-avatar-long-sync-fix.js?v=1"></script>[cite: 1]
-<script src="./avatar-blink-sync.js?v=1"></script>[cite: 1]
-<script src="./chat-gemini-continue.js?v=1"></script>[cite: 1]
 </body>
 </html>
