@@ -85,41 +85,41 @@
 </div>
 
 <div class="grid">[cite: 1]
-    <!-- Otel Kartı (Ses: en-US-Journey-F - Örnek resmi/akıcı erkek sesi) -->
-    <div class="card" data-voice="en-US-Journey-F">
-        <a href="#" onclick="navigateToInternalChat(event, 'chathotel.html', 'en-US-Journey-F')" style="text-decoration: none; color: inherit; display: block;">
+    <!-- Otel Kartı (Ses Sırası: 0) -->
+    <div class="card">
+        <a href="#" onclick="navigateToInternalChat(event, 'chathotel.html', 0)" style="text-decoration: none; color: inherit; display: block;">
             <img src="assets/avatars_v3/hotel/idle.webp"><b>Otel</b><span>Erkek resepsiyonist · A2</span>[cite: 1]
         </a>
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Otel Resepsiyonisti (A2)')">Sohbete Başla ✨</button>
     </div>
 
-    <!-- Restoran Kartı (Ses: en-US-Standard-B - Örnek genç erkek sesi) -->
-    <div class="card" data-voice="en-US-Standard-B">
-        <a href="#" onclick="navigateToInternalChat(event, 'chatrestaurant.html', 'en-US-Standard-B')" style="text-decoration: none; color: inherit; display: block;">
+    <!-- Restoran Kartı (Ses Sırası: 1) -->
+    <div class="card">
+        <a href="#" onclick="navigateToInternalChat(event, 'chatrestaurant.html', 1)" style="text-decoration: none; color: inherit; display: block;">
             <img src="assets/avatars_v3/restaurant/idle.webp"><b>Restoran</b><span>Erkek garson · A2</span>[cite: 1]
         </a>
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Restoran Garsonu (A2)')">Sohbete Başla ✨</button>
     </div>
 
-    <!-- Doktor Kartı (Ses: en-GB-Neural-B - Örnek olgun İngiliz erkek sesi) -->
-    <div class="card" data-voice="en-GB-Neural-B">
-        <a href="#" onclick="navigateToInternalChat(event, 'chatdoctor.html', 'en-GB-Neural-B')" style="text-decoration: none; color: inherit; display: block;">
+    <!-- Doktor Kartı (Ses Sırası: 2) -->
+    <div class="card">
+        <a href="#" onclick="navigateToInternalChat(event, 'chatdoctor.html', 2)" style="text-decoration: none; color: inherit; display: block;">
             <img src="assets/avatars_v3/doctor/idle.webp"><b>Doktor</b><span>Erkek doktor · B1</span>[cite: 1]
         </a>
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Erkek Doktor (B1)')">Sohbete Başla ✨</button>
     </div>
 
-    <!-- Havaalanı Kartı (Ses: en-US-Neural-D - Örnek net/Check-in erkek sesi) -->
-    <div class="card" data-voice="en-US-Neural-D">
-        <a href="#" onclick="navigateToInternalChat(event, 'chatairport.html', 'en-US-Neural-D')" style="text-decoration: none; color: inherit; display: block;">
+    <!-- Havaalanı Kartı (Ses Sırası: 3) -->
+    <div class="card">
+        <a href="#" onclick="navigateToInternalChat(event, 'chatairport.html', 3)" style="text-decoration: none; color: inherit; display: block;">
             <img src="assets/avatars_v3/airport/idle.webp"><b>Havaalanı</b><span>Erkek check-in görevlisi · A2</span>[cite: 1]
         </a>
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Havaalanı Check-in Görevlisi (A2)')">Sohbete Başla ✨</button>
     </div>
 
-    <!-- AI Öğretmen Kartı (Ses: en-US-Wavenet-D - Örnek tane tane konuşan öğretmen sesi) -->
-    <div class="card" data-voice="en-US-Wavenet-D">
-        <a href="#" onclick="navigateToInternalChat(event, 'chatteacher.html', 'en-US-Wavenet-D')" style="text-decoration: none; color: inherit; display: block;">
+    <!-- AI Öğretmen Kartı (Ses Sırası: 4) -->
+    <div class="card">
+        <a href="#" onclick="navigateToInternalChat(event, 'chatteacher.html', 4)" style="text-decoration: none; color: inherit; display: block;">
             <img src="assets/avatars_v3/teacher1/idle.webp"><b>AI Öğretmen</b><span>2 erkek öğretmen opsiyonu</span>[cite: 1]
         </a>
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'İngilizce Öğretmeni')">Sohbete Başla ✨</button>
@@ -133,19 +133,39 @@
     document.addEventListener("DOMContentLoaded", function() {
         const savedAI = localStorage.getItem('external_ai_target') || 'gemini';
         document.getElementById('aiEngineSelect').value = savedAI;
+        
+        // Tarayıcının ses listesini arka planda tetikle ve hazırla
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.getVoices();
+        }
     });
 
     function saveAIEngine(val) {
         localStorage.setItem('external_ai_target', val);
     }
 
-    // PROGRAM İÇİ CHAT'E YÖNLENDİRİRKEN SES PARAMETRESİNİ TAŞIR
-    function navigateToInternalChat(event, targetPage, voiceName) {
+    // PROGRAM İÇİ CHAT'E GİDERKEN SES INDEX'İNİ HAFIZAYA VE URL'YE ENJEKTE EDER
+    function navigateToInternalChat(event, targetPage, voiceIndex) {
         event.preventDefault();
-        // Seçilen sesi yerel hafızaya kaydet ki alt sayfa (chathotel.html vb.) okuyabilsin
-        localStorage.setItem('current_avatar_voice', voiceName);
-        // İstersen URL parametresi olarak da geçebilirsin: targetPage?voice=en-US-Standard-B
-        window.location.href = `${targetPage}?voice=${voiceName}`;
+        
+        // Tarayıcıdaki İngilizce sesleri filtrele
+        const allVoices = window.speechSynthesis.getVoices();
+        const englishVoices = allVoices.filter(v => v.lang.startsWith('en'));
+        
+        // Eğer sistemde yeterli İngilizce ses varyasyonu varsa ilgili index'i seç, yoksa genel index kullan
+        let selectedVoiceName = "";
+        if (englishVoices.length > 0) {
+            // Karakter sayısına göre sesleri dağıt (döngüsel koruma ile)
+            const voice = englishVoices[voiceIndex % englishVoices.length];
+            selectedVoiceName = voice.name;
+        }
+
+        // Alt sayfadaki TTS dosyalarının okuyabilmesi için tarayıcı hafızasına ve URL'ye yazıyoruz
+        localStorage.setItem('current_avatar_voice', selectedVoiceName);
+        localStorage.setItem('current_voice_index', voiceIndex);
+        
+        // Hedef sayfaya yönlendir
+        window.location.href = `${targetPage}?voice=${encodeURIComponent(selectedVoiceName)}&vidx=${voiceIndex}`;
     }
 
     function handleExternalAIClick(event, roleName) {
