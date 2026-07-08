@@ -118,8 +118,15 @@
     } catch(_) { return 0; }
   }
 
+  // 🔧 DÜZELTİLDİ: profData.learnedWords diye bir alan hiç yok — gerçek değer
+  // profData.currentStatus.learnedWords altında. Eskisi hep undefined okuyup
+  // "455" varsayılanına düşüyordu, yani projeksiyon kullanıcının GERÇEK ilerlemesi
+  // ne olursa olsun her zaman sabit 112 gün çıkıyordu.
   function calculateMathematicalCEFR(prof) {
-    let daysRemaining = Math.round(135 - (parseInt(prof.learnedWords || "455", 10) * 0.05));
+    var learnedRaw = (prof && prof.currentStatus && typeof prof.currentStatus.learnedWords === "number")
+      ? prof.currentStatus.learnedWords
+      : (prof && prof.learnedWords);
+    let daysRemaining = Math.round(135 - (parseInt(learnedRaw || 455, 10) * 0.05));
     if (daysRemaining > 365 || daysRemaining <= 0) daysRemaining = 104;
     var futureMs = Date.now() + (daysRemaining * 86400000);
     var targetDateObj = new Date(futureMs);
@@ -134,19 +141,30 @@
     return '<svg width="100%" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '" style="overflow:visible; display:block;"><polyline fill="none" stroke="' + color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="' + points.join(' ') + '" /></svg>';
   }
 
-  // 🚀 SYNTAX HATASI ÇÖZÜLDÜ (Fazladan ')' parantezi kaldırıldı ve radix 10 eklendi)
+  // 🔧 DÜZELTİLDİ: Sayı ve etiket farklı kardeş <div>'lerde duruyor
+  // (<div class="daily-num">35</div><div class="daily-label">öncelikli hata</div>).
+  // Eskisi tek elemanın metnini okuyup parseInt yapıyordu → etiket div'inde sayı
+  // hiç olmadığı için hep NaN dönüyor, "||varsayılan" da NaN'ı sessizce maskeliyordu
+  // (ki gerçek değer 0 olsa bile yanlışlıkla varsayılana düşüyordu).
   function scrapeProfileFromDOM() {
     let p = { currentStatus: {}, history30DaysSummary: { totalMinutes: 180, totalErrors: 35, activeDaysCount: 14 }, trends: { durations: [15,20,10,30,0,15,25], errors: [5,9,2,0,1,6,4] } };
     try {
-      document.querySelectorAll("div, span, b").forEach(el => {
-        let txt = el.textContent || "";
-        if(txt.includes("öncelikli hata") && !p.currentStatus.weakErrors) p.currentStatus.weakErrors = parseInt(txt, 10);
-        if(txt.includes("tekrar bekleyen") && !p.currentStatus.dueSRS) p.currentStatus.dueSRS = parseInt(txt, 10);
-        if(txt.includes("öğrenilmiş kayıt") && !p.currentStatus.learnedWords) p.currentStatus.learnedWords = parseInt(txt, 10);
+      document.querySelectorAll(".daily-stat").forEach(stat => {
+        const numEl = stat.querySelector(".daily-num");
+        const labelEl = stat.querySelector(".daily-label");
+        if (!numEl || !labelEl) return;
+        const num = parseInt(String(numEl.textContent||"").replace(/[^\d-]/g,""), 10);
+        if (Number.isNaN(num)) return;
+        const label = labelEl.textContent || "";
+        if (label.includes("öncelikli hata")) p.currentStatus.weakErrors = num;
+        else if (label.includes("tekrar bekleyen")) p.currentStatus.dueSRS = num;
+        else if (label.includes("öğrenilmiş kayıt")) p.currentStatus.learnedWords = num;
       });
     } catch(_) {}
-    p.currentStatus.dueSRS = p.currentStatus.dueSRS || 330;
-    p.currentStatus.learnedWords = p.currentStatus.learnedWords || 455;
+    // gerçek 0 değerini yanlışlıkla ezmemek için "||" yerine typeof kontrolü
+    if (typeof p.currentStatus.weakErrors !== "number") p.currentStatus.weakErrors = 0;
+    if (typeof p.currentStatus.dueSRS !== "number") p.currentStatus.dueSRS = 330;
+    if (typeof p.currentStatus.learnedWords !== "number") p.currentStatus.learnedWords = 455;
     return p;
   }
 
@@ -177,8 +195,22 @@
     p.estimated_time = clampInt(p.estimated_time, 5, 180, 30);
     p.success_rate = clampInt(p.success_rate, 0, 100, 90);
     p.learning_risk_score = clampInt(p.learning_risk_score, 0, 100, 25);
-    
-    p.weekly_report = p.weekly_report || { sentences: 432, words: 231, success_rate: 89, top_improved: "Present Perfect" };
+
+    // 🔧 DÜZELTİLDİ: her adımın süresi/hedefi de clamp'lenmeli — yoksa AI'ın
+    // gönderdiği bozuk/eksik "time" değeri NaN olarak href'e ve karşılaştırma
+    // mantığına sızıyordu (adım hiç tamamlanamıyor, URL'de "timer=NaN" oluşuyordu).
+    p.steps.forEach(function(s){ s.time = clampInt(s.time, 1, 120, 10); });
+
+    // 🔧 DÜZELTİLDİ: eskisi sadece "p.weekly_report tamamen yoksa" varsayılana
+    // düşüyordu. AI eksik alanlı bir obje (örn. {}) döndürürse alanlar
+    // "undefined" olarak ekrana basılıyordu. Şimdi her alan AYRI AYRI doğrulanıyor.
+    var wr = (p.weekly_report && typeof p.weekly_report === "object") ? p.weekly_report : {};
+    p.weekly_report = {
+      sentences: clampInt(wr.sentences, 0, 100000, 432),
+      words: clampInt(wr.words, 0, 100000, 231),
+      success_rate: clampInt(wr.success_rate, 0, 100, 89),
+      top_improved: String(wr.top_improved || "Present Perfect")
+    };
     return p;
   }
 
@@ -230,13 +262,20 @@
 
       const btns = wrapper.querySelectorAll(".dh-koc-action-btn");
       for (let btn of btns) {
-        btn.addEventListener("click", async function() {
+        // 🔧 DÜZELTİLDİ: eskisi normal <a href> tıklamasını ENGELLEMEDEN
+        // async dbPut çağırıyordu — tarayıcı IndexedDB yazması bitmeden sayfadan
+        // ayrılabiliyor, bu da başlangıç değerinin sessizce kaybolmasına yol açıyordu.
+        // Şimdi önce yazma tamamlanıyor, sonra yönlendirme elle yapılıyor.
+        btn.addEventListener("click", async function(e) {
+          const existingStartVal = this.getAttribute("data-start-val");
+          const needsInit = !existingStartVal || parseInt(existingStartVal, 10) === 0;
+          if (!needsInit) return; // zaten kayıtlı — normal <a> gezinmesine izin ver
+          e.preventDefault();
           const hrefKey = this.getAttribute("data-step-href-key");
           const hrefRaw = this.getAttribute("data-href-raw");
-          const existingStartVal = this.getAttribute("data-start-val");
-          if (!existingStartVal || parseInt(existingStartVal, 10) === 0) {
-            await dbPut("step_status", { id: DAY + "-" + hrefKey, startValue: getProgressMetric(hrefRaw), done: false });
-          }
+          const target = this.getAttribute("href");
+          await dbPut("step_status", { id: DAY + "-" + hrefKey, startValue: getProgressMetric(hrefRaw), done: false });
+          location.href = target;
         });
       }
     } catch(e) {}

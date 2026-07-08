@@ -178,7 +178,14 @@ function checkAnswer(){
   }
 }
 function markDone(){
-  DONE++; IDX++; renderCard();
+  DONE++; IDX++;
+  try{
+    var d = new Date().toISOString().slice(0,10);
+    var k = "dh-akilli-tekrar-completed-count-" + d;
+    var n = parseInt(localStorage.getItem(k) || "0", 10) + 1;
+    localStorage.setItem(k, String(n));
+  }catch(e){}
+  renderCard();
 }
 function speak(text){
   try{
