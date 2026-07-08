@@ -101,9 +101,14 @@ function uniqueBySentence(records){
   }
   return [...map.values()];
 }
+function isDue(r){
+  // hiç SRS'e girmemiş kayıt (yeni hata) → hemen uygun; SRS'e girmişse vadesi gelmeli
+  if(!r.srs || !r.srs.due) return true;
+  return r.srs.due <= Date.now();
+}
 function buildQueue(records){
   return uniqueBySentence(records)
-    .filter(r=>r.target && r.answer && (r.reviewPriority==="high" || Number(r.score||0)<85))
+    .filter(r=>r.target && r.answer && (r.reviewPriority==="high" || Number(r.score||0)<85) && isDue(r))
     .sort((a,b)=>scoreRecord(b)-scoreRecord(a))
     .slice(0,30);
 }
@@ -160,7 +165,16 @@ function renderCard(){
   $("listenBtn").onclick=()=>speak(r.target);
   $("showBtn").onclick=()=>$("correctBox").classList.remove("hidden");
   $("doneBtn").onclick=()=>markDone();
-  $("againBtn").onclick=()=>{QUEUE.push(r); IDX++; renderCard();};
+  $("againBtn").onclick=()=>{
+    // 🔧 DÜZELTİLDİ: eskisi sadece bu OTURUM içinde kuyruğa geri ekliyordu —
+    // kalıcı SRS durumu güncellenmediği için sonraki günlerde bu bilgi kayboluyordu.
+    // Şimdi "hard" ile SRS sıfırlanıyor (rep=0, hemen tekrar due) — hem şimdi hem
+    // gelecekte doğru zamanlamayla karşımıza çıkacak.
+    if (r && r.id && window.LearningErrorDB && LearningErrorDB.markReviewed) {
+      LearningErrorDB.markReviewed(r.id, { grade: "hard" }).catch(()=>{});
+    }
+    QUEUE.push(r); IDX++; renderCard();
+  };
   $("checkBtn").onclick=()=>checkAnswer();
   $("answerInput").onkeydown=e=>{if(e.key==="Enter")checkAnswer();};
   setTimeout(()=>$("answerInput")?.focus(),60);
@@ -170,14 +184,19 @@ function checkAnswer(){
   const ok=norm(val)===norm(r.target);
   const fb=$("fb");
   if(ok){
-    fb.innerHTML=`<div class="feedback ok">✅ Doğru. Bu hata çalışıldı.</div>`;
-    setTimeout(markDone,500);
+    // 🔧 DÜZELTİLDİ: eskisi 0.5 sn sonra otomatik markDone() çağırıp bir sonraki
+    // cümleye geçiyordu — kullanıcıya geri bildirimi okuma ya da "Bildim"e kendi
+    // basma fırsatı vermiyordu. Şimdi yanlış cevap akışıyla tutarlı: kullanıcı
+    // "✅ Bildim" veya "↻ Tekrar" ile ne zaman ilerleyeceğine kendi karar veriyor.
+    fb.innerHTML=`<div class="feedback ok">✅ Doğru! Devam etmek için "Bildim"e bas.</div>`;
+    $("answerInput").disabled=true;
   }else{
     fb.innerHTML=`<div class="feedback bad">📌 Henüz tam değil. Doğru cevabı gösterip tekrar yaz.</div>`;
     $("correctBox").classList.remove("hidden");
   }
 }
 function markDone(){
+  const r = current(); // 🔧 önce hangi kayıt tamamlandı onu yakala (IDX artmadan önce)
   DONE++; IDX++;
   try{
     var d = new Date().toISOString().slice(0,10);
@@ -185,6 +204,13 @@ function markDone(){
     var n = parseInt(localStorage.getItem(k) || "0", 10) + 1;
     localStorage.setItem(k, String(n));
   }catch(e){}
+  // 🔧 DÜZELTİLDİ: eskisi hatanın kendisini (skor/öncelik) hiç güncellemiyordu —
+  // bu yüzden sayfa yeniden açıldığında boot() aynı kaydı aynı filtreyle tekrar
+  // buluyor, "bildiğin" cümle tekrar karşına çıkıyordu. Şimdi kayıt kalıcı olarak
+  // "gözden geçirildi" işaretleniyor (skor yükseltiliyor, öncelik düşürülüyor).
+  if (r && r.id && window.LearningErrorDB && LearningErrorDB.markReviewed) {
+    LearningErrorDB.markReviewed(r.id, { score: 90, grade: "easy" }).catch(()=>{});
+  }
   renderCard();
 }
 function speak(text){

@@ -219,5 +219,64 @@ async function bulkMerge(records){
   if(added) window.dispatchEvent(new CustomEvent("learning-errors-merged",{detail:{added}}));
   return added;
 }
-window.LearningErrorDB={add,all,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge};
+const DAY_MS = 86400000;
+function srsDefault(){ return { rep:0, interval:0, ef:2.5, last:0, due:0 }; }
+// Bu fonksiyon practice.html/tekrar.html'deki SM-2 zamanlamasının BİREBİR aynısı —
+// tüm site genelinde tutarlı bir aralıklı tekrar (SRS) ritmi sağlamak için.
+function srsGrade(prev, grade){
+  const n = Object.assign(srsDefault(), prev||{});
+  const now = Date.now();
+  if (grade === "hard"){
+    n.rep = 0; n.interval = 0; n.ef = Math.max(1.3, n.ef - 0.2);
+  } else {
+    const q = grade === "easy" ? 5 : 4;
+    n.ef = Math.max(1.3, n.ef + (0.1 - (5-q) * (0.08 + (5-q) * 0.02)));
+    n.rep += 1;
+    if (n.rep === 1)      n.interval = grade === "easy" ? 3 : 1;
+    else if (n.rep === 2) n.interval = grade === "easy" ? 7 : 4;
+    else                  n.interval = Math.round(n.interval * n.ef * (grade === "easy" ? 1.3 : 1));
+  }
+  n.last = now;
+  n.due  = now + n.interval * DAY_MS;
+  return n;
+}
+
+// 🆕 Bir hata kaydı gerçekten "çalışıldı" sayıldığında (akıllı tekrarda doğru
+// cevaplandığında) skorunu/önceliğini VE bir sonraki gözden geçirme tarihini
+// (SRS) kalıcı olarak günceller. "hard" (Tekrar) → hemen tekrar due; "easy"/"good"
+// (Bildim) → SM-2 ladder'ına göre günler sonrasına ertelenir. Bu olmadan aynı
+// kayıt her boot()'ta hep aynı filtreye takılıp sonsuza dek tekrar listesine düşüyordu.
+async function markReviewed(id, opts){
+  opts = opts || {};
+  const grade = opts.grade || "easy";
+  const boostScore = grade === "hard" ? null : Number(opts.score != null ? opts.score : 90);
+  function applyPatch(rec){
+    rec.srs = srsGrade(rec.srs, grade);
+    if (boostScore != null) rec.score = Math.max(Number(rec.score||0), boostScore);
+    rec.grade = grade;
+    rec.reviewPriority = priority(rec);
+    rec.lastReviewedAt = nowISO();
+    rec.reviewCount = Number(rec.reviewCount||0) + (grade !== "hard" ? 1 : 0);
+    rec.dueAt = rec.srs.due; // buildQueue'nun düz alan olarak kolayca okuyabilmesi için
+    return rec;
+  }
+  let rec = null;
+  try{
+    const arr = await idbAll();
+    const idx = arr.findIndex(r=>r&&r.id===id);
+    if(idx<0) return null;
+    rec = applyPatch(arr[idx]);
+    await idbAdd(rec); // put => aynı id'yi (aynı kaydı) günceller, kopya oluşturmaz
+  }catch(e){
+    const arr = fbAll();
+    const idx = arr.findIndex(r=>r&&r.id===id);
+    if(idx<0) return null;
+    rec = applyPatch(arr[idx]);
+    arr[idx] = rec;
+    fbSave(arr);
+  }
+  window.dispatchEvent(new CustomEvent("learning-error-updated",{detail:rec}));
+  return rec;
+}
+window.LearningErrorDB={add,all,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed};
 })();
