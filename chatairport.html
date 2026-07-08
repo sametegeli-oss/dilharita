@@ -21,7 +21,7 @@ function applyUniqueVoice() {
         
         if (englishVoices.length > 0) {
             // Havaalanı için 3. sıradaki sesi (veya duruma göre döngüsel karşılığını) zorla ata
-            const selectedVoice = englishVoices[3 % englishVoices.length];
+            const selectedVoice = englishVoices[1 % englishVoices.length];
             
             // Core kütüphanelerin sesi tanıması için senaryo objesine zorla yazıyoruz
             window.CHAT_SCENARIO.voiceName = selectedVoice.name;
