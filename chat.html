@@ -85,7 +85,7 @@
 </div>
 
 <div class="grid">[cite: 1]
-    <!-- Otel Kartı (Ses Sırası: 0) -->
+    <!-- Otel Kartı (Ses İndexi: 0) -->
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chathotel.html', 0)" style="text-decoration: none; color: inherit; display: block;">
             <img src="assets/avatars_v3/hotel/idle.webp"><b>Otel</b><span>Erkek resepsiyonist · A2</span>[cite: 1]
@@ -93,7 +93,7 @@
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Otel Resepsiyonisti (A2)')">Sohbete Başla ✨</button>
     </div>
 
-    <!-- Restoran Kartı (Ses Sırası: 1) -->
+    <!-- Restoran Kartı (Ses İndexi: 1) -->
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chatrestaurant.html', 1)" style="text-decoration: none; color: inherit; display: block;">
             <img src="assets/avatars_v3/restaurant/idle.webp"><b>Restoran</b><span>Erkek garson · A2</span>[cite: 1]
@@ -101,7 +101,7 @@
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Restoran Garsonu (A2)')">Sohbete Başla ✨</button>
     </div>
 
-    <!-- Doktor Kartı (Ses Sırası: 2) -->
+    <!-- Doktor Kartı (Ses İndexi: 2) -->
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chatdoctor.html', 2)" style="text-decoration: none; color: inherit; display: block;">
             <img src="assets/avatars_v3/doctor/idle.webp"><b>Doktor</b><span>Erkek doktor · B1</span>[cite: 1]
@@ -109,7 +109,7 @@
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Erkek Doktor (B1)')">Sohbete Başla ✨</button>
     </div>
 
-    <!-- Havaalanı Kartı (Ses Sırası: 3) -->
+    <!-- Havaalanı Kartı (Ses İndexi: 3) -->
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chatairport.html', 3)" style="text-decoration: none; color: inherit; display: block;">
             <img src="assets/avatars_v3/airport/idle.webp"><b>Havaalanı</b><span>Erkek check-in görevlisi · A2</span>[cite: 1]
@@ -117,7 +117,7 @@
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Havaalanı Check-in Görevlisi (A2)')">Sohbete Başla ✨</button>
     </div>
 
-    <!-- AI Öğretmen Kartı (Ses Sırası: 4) -->
+    <!-- AI Öğretmen Kartı (Ses İndexi: 4) -->
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chatteacher.html', 4)" style="text-decoration: none; color: inherit; display: block;">
             <img src="assets/avatars_v3/teacher1/idle.webp"><b>AI Öğretmen</b><span>2 erkek öğretmen opsiyonu</span>[cite: 1]
@@ -134,7 +134,6 @@
         const savedAI = localStorage.getItem('external_ai_target') || 'gemini';
         document.getElementById('aiEngineSelect').value = savedAI;
         
-        // Tarayıcının ses listesini arka planda tetikle ve hazırla
         if ('speechSynthesis' in window) {
             window.speechSynthesis.getVoices();
         }
@@ -144,29 +143,44 @@
         localStorage.setItem('external_ai_target', val);
     }
 
-    // PROGRAM İÇİ CHAT'E GİDERKEN SES INDEX'İNİ HAFIZAYA VE URL'YE ENJEKTE EDER
     function navigateToInternalChat(event, targetPage, voiceIndex) {
         event.preventDefault();
         
-        // Tarayıcıdaki İngilizce sesleri filtrele
-        const allVoices = window.speechSynthesis.getVoices();
-        const englishVoices = allVoices.filter(v => v.lang.startsWith('en'));
+        // Seçilen karakterin ses sıra numarasını hafızaya net olarak kazıyalım
+        localStorage.setItem('forced_voice_index', voiceIndex);
         
-        // Eğer sistemde yeterli İngilizce ses varyasyonu varsa ilgili index'i seç, yoksa genel index kullan
-        let selectedVoiceName = "";
-        if (englishVoices.length > 0) {
-            // Karakter sayısına göre sesleri dağıt (döngüsel koruma ile)
-            const voice = englishVoices[voiceIndex % englishVoices.length];
-            selectedVoiceName = voice.name;
-        }
-
-        // Alt sayfadaki TTS dosyalarının okuyabilmesi için tarayıcı hafızasına ve URL'ye yazıyoruz
-        localStorage.setItem('current_avatar_voice', selectedVoiceName);
-        localStorage.setItem('current_voice_index', voiceIndex);
-        
-        // Hedef sayfaya yönlendir
-        window.location.href = `${targetPage}?voice=${encodeURIComponent(selectedVoiceName)}&vidx=${voiceIndex}`;
+        // Hedef sayfaya git
+        window.location.href = targetPage;
     }
+
+    // --- KESİN SES ÇÖZÜMÜ (MONKEY PATCH / INJECTION) ---
+    // Bu script, alt sayfa açıldığında tarayıcının ses mekanizmasını (SpeechSynthesisUtterance) 
+    // ele geçirir ve alt sayfa ne okumaya çalışırsa çalışsın hafızadaki ses indexini zorla dayatır.
+    (function() {
+        if ('speechSynthesis' in window) {
+            const originalSpeak = window.speechSynthesis.speak;
+            
+            window.speechSynthesis.speak = function(utterance) {
+                const forcedIndex = localStorage.getItem('forced_voice_index');
+                
+                if (forcedIndex !== null) {
+                    const allVoices = window.speechSynthesis.getVoices();
+                    // Sadece İngilizce (en) sesleri filtrele
+                    const englishVoices = allVoices.filter(v => v.lang.startsWith('en') || v.lang.startsWith('EN'));
+                    
+                    if (englishVoices.length > 0) {
+                        const idx = parseInt(forcedIndex, 10) % englishVoices.length;
+                        // Alt sayfadaki kod ne ses seçmiş olursa olsun, burada bizim istediğimiz sesi ezerek atıyoruz!
+                        utterance.voice = englishVoices[idx];
+                        // Dilin İngilizce olduğundan emin olalım
+                        utterance.lang = englishVoices[idx].lang;
+                    }
+                }
+                // Orijinal ses motorunu bizim manipüle ettiğimiz sesle tetikle
+                return originalSpeak.call(window.speechSynthesis, utterance);
+            };
+        }
+    })();
 
     function handleExternalAIClick(event, roleName) {
         event.stopPropagation();
