@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#071226">
+<title>Fotoğraflı Sohbet Senaryoları</title>
+<link rel="stylesheet" href="./chat-style.css?v=17">
+<style>
+    /* Yapay Zeka Seçim Alanı Tasarımı */
+    .ai-selector-container {
+        background: #111e36;
+        border: 1px solid #23395b;
+        padding: 15px;
+        border-radius: 10px;
+        margin: 15px auto 25px auto;
+        max-width: 500px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .ai-selector-container label {
+        font-size: 14px;
+        font-weight: bold;
+        color: #4fa3ff;
+    }
+    .ai-select {
+        width: 100%;
+        max-width: 300px;
+        background: #1c2e4a;
+        color: #fff;
+        border: 1px solid #344e75;
+        padding: 10px 15px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    .ai-select:focus {
+        border-color: #4fa3ff;
+    }
+    /* Kartların altındaki butonların genel tasarımı */
+    .card-btn {
+        display: block;
+        margin-top: 10px;
+        background: linear-gradient(135deg, #6366f1, #a855f7);
+        color: white;
+        text-align: center;
+        padding: 8px 12px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: bold;
+        transition: opacity 0.2s;
+    }
+    .card-btn:hover {
+        opacity: 0.9;
+    }
+</style>
+</head>
+<body>
+<div class="menu">
+<div class="menu-actions"><a class="menu-btn" href="index.html">🏠 Ana menüye dön</a></div>
+<h1>Erkek konuşan avatarlar</h1>
+<p>Tüm senaryolar erkek karakterdir. Her karakter aynı grid içinde tam set olarak üretildi; sesler tam fotoğraf kareleriyle çalışır.[cite: 1]</p>
+
+<!-- Ana Ekrana Eklenen Sabit AI Seçim Kutusu -->
+<div class="ai-selector-container">
+    <label for="aiEngineSelect">🧠 Yapay Zeka Motoru Seçin:</label>
+    <select id="aiEngineSelect" class="ai-select" onchange="saveAIEngine(this.value)">
+        <option value="gemini">Google Gemini</option>
+        <option value="openai">OpenAI ChatGPT</option>
+        <option value="claude">Anthropic Claude</option>
+        <option value="deepseek">DeepSeek V3</option>
+        <option value="ollama">Ollama (Lokal Model)</option>
+    </select>
+</div>
+
+<div class="grid">
+    <!-- Kartlar artık fonksiyon üzerinden dinamik linkle yönlendiriliyor -->
+    <div class="card">
+        <img src="assets/avatars_v3/hotel/idle.webp"><b>Otel</b><span>Erkek resepsiyonist · A2</span>[cite: 1]
+        <a class="card-btn" href="#" onclick="navigateToChat(event, 'chathotel.html')">Sohbete Başla ✨</a>
+    </div>
+    <div class="card">
+        <img src="assets/avatars_v3/restaurant/idle.webp"><b>Restoran</b><span>Erkek garson · A2</span>[cite: 1]
+        <a class="card-btn" href="#" onclick="navigateToChat(event, 'chatrestaurant.html')">Sohbete Başla ✨</a>
+    </div>
+    <div class="card">
+        <img src="assets/avatars_v3/doctor/idle.webp"><b>Doktor</b><span>Erkek doktor · B1</span>[cite: 1]
+        <a class="card-btn" href="#" onclick="navigateToChat(event, 'chatdoctor.html')">Sohbete Başla ✨</a>
+    </div>
+    <div class="card">
+        <img src="assets/avatars_v3/airport/idle.webp"><b>Havaalanı</b><span>Erkek check-in görevlisi · A2</span>[cite: 1]
+        <a class="card-btn" href="#" onclick="navigateToChat(event, 'chatairport.html')">Sohbete Başla ✨</a>
+    </div>
+    <div class="card">
+        <img src="assets/avatars_v3/teacher1/idle.webp"><b>AI Öğretmen</b><span>2 erkek öğretmen opsiyonu</span>[cite: 1]
+        <a class="card-btn" href="#" onclick="navigateToChat(event, 'chatteacher.html')">Sohbete Başla ✨</a>
+    </div>
+</div>
+
+<div class="note-block"><b>V15:</b> Tüm karakterler erkek. Her avatar setinde idle, blink, listen, A, E, I, O, U, MBP, FV, L, TH kareleri vardır. Kodda yüz parçası kesme yoktur; her ses tam fotoğraf karesiyle gösterilir.[cite: 1]</div>
+</div>
+
+<script>
+    // Sayfa yüklendiğinde hafızada kayıtlı AI varsa seçim kutusunu güncelle
+    document.addEventListener("DOMContentLoaded", function() {
+        const savedAI = localStorage.getItem('selected_ai') || 'gemini';
+        document.getElementById('aiEngineSelect').value = savedAI;
+    });
+
+    // Seçim kutusu değiştikçe hafızaya kaydet
+    function saveAIEngine(val) {
+        localStorage.setItem('selected_ai', val);
+    }
+
+    // Kart tıklandığında seçili AI parametresiyle sayfaya git
+    function navigateToChat(event, targetPage) {
+        event.preventDefault();
+        const currentAI = document.getElementById('aiEngineSelect').value;
+        window.location.href = `${targetPage}?ai=${currentAI}`;
+    }
+</script>
+
+<script src="./ai-teacher-prompt-tts.js?v=1"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=1"></script>
+<script src="./avatar-blink-sync.js?v=1"></script>
+<script src="./chat-gemini-continue.js?v=1"></script>
+</body>
+</html>
