@@ -1,13 +1,12 @@
-/* koc.js — STRATEJİK AI MENTOR & EĞİTİM DİREKTÖRÜ (V6.14 - TIMEOUT RACE PROTECTION)
-   Özellikler: Kilitlenmeyi Kıran Race Timeout Katmanı · Saf String Key Yaması · Real-Time İlerleme Takibi · 
-               DOM-Driven Profilleme · Brace Balancing Parser · Yeniden Giriş Takibi */
+/* koc.js — STRATEJİK AI MENTOR & EĞİTİM DİREKTÖRÜ (V7.0 - ACTIVE COACHING & MEMORY)
+   Özellikler: Kilitlenmeyen Race Timeout Katmanı · history Hafıza Entegrasyonu · 
+               Adım Tamamlama Anlık Mentor Geri Bildirimi · DOM-Driven Profilleme */
 (function(){
   "use strict";
 
   const DAY = new Date().toISOString().slice(0,10);
   const ALLOWED = ["tekrar.html?plan=1", "index-app.html", "chat.html", "practice.html", "kelime-ogren.html", "hata-defteri.html", "akilli-tekrar.html"];
   
-  // ----- GÜVENLİK DUVARI: ASENKRON KİLİTLENMELERİ KIRAN TIMEOUT YAPISI -----
   function withTimeout(promise, ms = 2000, fallbackValue = null) {
     let timeout = new Promise((resolve) => setTimeout(() => resolve(fallbackValue), ms));
     return Promise.race([promise, timeout]);
@@ -47,7 +46,7 @@
         }).catch(() => resolve(null));
       } catch(_) { resolve(null); }
     });
-    return withTimeout(rawPromise, 1500, null); // 1.5 saniyede dönmezse kilitlenmeyi kır
+    return withTimeout(rawPromise, 1500, null);
   }
 
   async function dbPut(storeName, obj) {
@@ -65,7 +64,23 @@
     return withTimeout(rawPromise, 1500, false);
   }
 
-  // ----- 2. ÇİFT ENJEKSİYON KORUMALI CSS YÜKLEYİCİ -----
+  // 🚀 HAFIZA KATMANI: Son 3 günün mentor kararlarını ve başarı çıktılarını toplayan fonksiyon
+  async function getRecentHistorySummary() {
+    try {
+      const db = await initMentorDB(); if(!db) return [];
+      return new Promise((resolve) => {
+        const tx = db.transaction("history", "readonly");
+        const req = tx.objectStore("history").getAll();
+        req.onsuccess = function() {
+          var all = req.result || [];
+          resolve(all.slice(-3)); // Son 3 günün özet hafızasını ver
+        };
+        req.onerror = function() { resolve([]); };
+      });
+    } catch(_) { return []; }
+  }
+
+  // ----- 2. CSS YÜKLEYİCİ -----
   if (!document.getElementById("dh-koc-style-v6")) {
     const style = document.createElement('style');
     style.id = "dh-koc-style-v6";
@@ -84,12 +99,15 @@
       .dh-koc-btn { background: #007bff; color: #fff; padding: 6px 12px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; transition: background 0.2s; }
       .dh-koc-btn.pending { background: #d97706; color: #fff; }
       .dh-koc-btn.re-enter { background: #374151; color: #d1d5db; border: 1px solid rgba(255,255,255,0.05); }
+      
+      /* 🚀 YENİ: Dinamik Canlı Mentor Geri Bildirim Balonu */
+      .dh-koc-speech-bubble { background: linear-gradient(135deg, #1e3a8a, #0f172a); border: 1px solid #3b82f6; border-radius: 12px; padding: 12px 15px; margin-bottom: 16px; position: relative; animation: dhFadeIn 0.4s ease; }
+      .dh-koc-speech-bubble::after { content: ''; position: absolute; bottom: -8px; left: 30px; border-width: 8px 8px 0; border-style: solid; border-color: #0f172a transparent; display: block; width: 0; }
+      
       .dh-koc-mentor-box { background: rgba(234,67,53,0.03); padding: 14px; border-radius: 10px; border-left: 4px solid #ea4335; margin-bottom: 16px; border: 1px solid rgba(234,67,53,0.08); border-left-width: 4px; }
       .dh-koc-mentor-title { color: #ea4335; display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 13.5px; font-weight: 700; text-transform: uppercase; }
       .dh-koc-mentor-text { font-size: 13.5px; line-height: 1.5; color: #e2e2e9; }
-      .dh-koc-dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
-      .dh-koc-dash-sect { background: rgba(0,0,0,0.15); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.04); }
-      .dh-koc-dash-title { font-size: 11px; color: #9aa0a6; margin-bottom: 8px; display: flex; justify-content: space-between; font-weight: 600; }
+      @keyframes dhFadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
       @media (max-width: 992px) { .dh-mentor-grid-container { grid-template-columns: 1fr; } }
     `;
     document.head.appendChild(style);
@@ -130,20 +148,12 @@
     } catch(_) { return 0; }
   }
 
-  function calculateMathematicalCEFR(prof) {
-    var learnedRaw = (prof && prof.currentStatus && typeof prof.currentStatus.learnedWords === "number") ? prof.currentStatus.learnedWords : 455;
-    let daysRemaining = Math.round(135 - (parseInt(learnedRaw || 455, 10) * 0.05));
-    if (daysRemaining > 365 || daysRemaining <= 0) daysRemaining = 104;
-    var futureMs = Date.now() + (daysRemaining * 86400000);
-    var formattedDate = new Date(futureMs).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
-    return { target_cefr: "B2", days_remaining: daysRemaining, target_date: formattedDate };
-  }
-
-  function generateAdvancedSVGChart(seed, color) {
-    let mockData = [seed, seed * 0.5, seed * 1.3, seed * 0.3, seed * 0.9, seed * 1.6, seed * 0.6, seed * 0.2, seed * 1.1, seed];
-    const max = Math.max(...mockData, 1); const width = 280, height = 45, padding = 4; const stepX = width / (mockData.length - 1);
-    let points = []; for (let i = 0; i < mockData.length; i++) { points.push(String(i * stepX) + "," + String(height - ((mockData[i] / max) * (height - padding * 2)) - padding)); }
-    return '<svg width="100%" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '" style="overflow:visible; display:block;"><polyline fill="none" stroke="' + color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="' + points.join(' ') + '" /></svg>';
+  function getTodayCurrentDuration() {
+    try {
+      var tr = JSON.parse(localStorage.getItem("dh-study-tracker-v1") || "{}") || {};
+      var todayData = (tr.days || {})[DAY] || {};
+      return parseInt(todayData.duration || "0", 10);
+    } catch(_) { return 0; }
   }
 
   function scrapeProfileFromDOM() {
@@ -162,7 +172,6 @@
     return p;
   }
 
-  // ----- 7. SIZDIRMAZ DOĞRULAYICI -----
   function valid(p) {
     if (!p || typeof p !== "object" || !Array.isArray(p.steps)) return null;
     p.steps = p.steps.filter(s => s && s.label && s.href).slice(0, 5);
@@ -170,17 +179,43 @@
 
     function clampInt(v, min, max, def) { v = parseInt(v, 10); return Number.isNaN(v) ? def : Math.min(max, Math.max(min, v)); }
     p.focus = String(p.focus || "Bugünkü Eğitim Planı");
+    p.diagnosis = String(p.diagnosis || "Bilişsel dengeleme modu aktif.");
+    p.decision_reason = String(p.decision_reason || "Veri eğrisi optimizasyonu sağlandı.");
     p.estimated_time = clampInt(p.estimated_time, 5, 180, 30);
     p.success_rate = clampInt(p.success_rate, 0, 100, 90);
     p.learning_risk_score = clampInt(p.learning_risk_score, 0, 100, 25);
     p.steps.forEach(function(s){ s.time = clampInt(s.time, 1, 120, 10); });
-    p.weekly_report = { sentences: 432, words: 231, success_rate: 89, top_improved: "Missing Word" };
     return p;
   }
 
   // ----- 8. MODÜLER EKRAN ÇİZİM OPERASYONLARI -----
   function paintHeader(plan, evening) { return '<div class="dh-koc-header"><span class="dh-koc-focus">🧭 ' + (evening ? '🌙 Akşam Teşhis Raporu' : '🧠 Bugünkü Kararım: ' + esc(plan.focus)) + '</span><span class="dh-koc-badge">Başarı İhtimali: %' + esc(plan.success_rate) + '</span></div>'; }
   
+  // 🚀 DEVREDE: Anlık Geri Bildirim Balonunu Çizen Motor
+  async function paintSpeechBubble(plan) {
+    let completedCount = 0;
+    let lastCompletedLabel = "";
+    
+    for (let s of plan.steps) {
+      const stepCleanKey = String(s.href).split('?')[0].replace(".", "-");
+      const statusObj = await dbGet("step_status", DAY + "-" + stepCleanKey);
+      if (statusObj && statusObj.done) {
+        completedCount++;
+        lastCompletedLabel = s.label;
+      }
+    }
+
+    if (completedCount === 0) {
+      return '<div class="dh-koc-speech-bubble"><span style="font-size:13.5px; color:#93c5fd;">👋 Hoş geldin! Bugün senin için hazırladığım plan hazır. İlk adımı atarak nöon bağlarını ateşleyelim. Başarılar!</span></div>';
+    }
+    
+    if (completedCount === plan.steps.length) {
+      return '<div class="dh-koc-speech-bubble" style="border-color:#34d399; background:linear-gradient(135deg, #064e3b, #022c22);"><span style="font-size:13.5px; color:#a7f3d0;">🎉 Muazzam! Bugün senin için verdiğim tüm direktifleri eksiksiz tamamladın. Harika bir zihinsel disiplin örneği! Yarın yeni bir analizle görüşmek üzere.</span></div>';
+    }
+
+    return '<div class="dh-koc-speech-bubble"><span style="font-size:13.5px; color:#67e8f9;">🔥 Harika! <b>' + esc(lastCompletedLabel) + '</b> adımını tamamladın. İlerlememiz harika (' + completedCount + '/' + plan.steps.length + '). Odaklanmaya devam et, sıradaki adımı bekletme!</span></div>';
+  }
+
   async function paintSteps(plan) {
     let stepsHtml = "";
     for(let i=0; i<plan.steps.length; i++) {
@@ -188,7 +223,6 @@
       const stepCleanKey = String(s.href).split('?')[0].replace(".", "-");
       const currentMetric = getProgressMetric(s.href);
       
-      // dbGet zaman aşımı ile korunuyor, kilitlenme olasılığı yok
       const statusObj = await dbGet("step_status", DAY + "-" + stepCleanKey) || { startValue: currentMetric, done: false };
       const targetGoal = parseInt(s.time || 10, 10);
       const netProgress = Math.max(currentMetric - statusObj.startValue, 0);
@@ -197,6 +231,12 @@
       if (!isDone && netProgress >= targetGoal) {
         isDone = true;
         await dbPut("step_status", { id: DAY + "-" + stepCleanKey, startValue: statusObj.startValue, done: true });
+        
+        // 🚀 HAFIZA GÜNCELLEME: Adım bittiği an gün sonu raporu için tarihsel history kaydını güncelle
+        await dbPut("history", { date: DAY, focus: plan.focus, completedSteps: (i + 1), totalSteps: plan.steps.length });
+        
+        // Ekranı anlık geri bildirim balonu değişsin diye yeniden çizdir
+        setTimeout(run, 100);
       }
 
       const finalHref = "./" + s.href + (s.href.indexOf("?") >= 0 ? "&" : "?") + "timer=" + targetGoal;
@@ -212,24 +252,63 @@
     return stepsHtml;
   }
 
-  // ----- 9. ANA ÇALIŞTIRICI -----
+  function paintCoach(plan) { return '<div class="dh-koc-mentor-box"><b class="dh-koc-mentor-title">🧠 Stratejik Karar Gerekçesi:</b><span class="dh-koc-mentor-text" style="display:block; margin-bottom:6px; font-weight:500;">"' + esc(plan.diagnosis) + '"</span><div style="font-size:12px; color:#f28b82; border-top:1px dashed rgba(255,255,255,0.08); padding-top:6px;"><b>Analiz:</b> ' + esc(plan.decision_reason) + ' | ⚠️ <b>Risk Skoru:</b> %' + esc(plan.learning_risk_score) + '</div></div>'; }
+
+  async function paint(plan, profData){
+    try {
+      const wrapper = document.getElementById("dhKocContainer");
+      if (!wrapper || !plan) return;
+      const evening = new Date().getHours() >= 18;
+      
+      const speechBubbleHtml = await paintSpeechBubble(plan); // Dinamik konuşma balonu tetiklendi
+      const stepsHtml = await paintSteps(plan);
+      
+      wrapper.innerHTML = '<div class="dh-koc-card">' + 
+        paintHeader(plan, evening) + 
+        speechBubbleHtml + 
+        '<div>' + stepsHtml + '</div>' + 
+        paintCoach(plan) + 
+      '</div>';
+
+      const btns = wrapper.querySelectorAll(".dh-koc-action-btn");
+      for (let btn of btns) {
+        btn.addEventListener("click", async function(e) {
+          const existingStartVal = this.getAttribute("data-start-val");
+          const needsInit = !existingStartVal || parseInt(existingStartVal, 10) === 0;
+          if (!needsInit) return;
+          e.preventDefault();
+          const hrefKey = this.getAttribute("data-step-href-key");
+          const hrefRaw = this.getAttribute("data-href-raw");
+          const target = this.getAttribute("href");
+          await dbPut("step_status", { id: DAY + "-" + hrefKey, startValue: getProgressMetric(hrefRaw), done: false });
+          location.href = target;
+        });
+      }
+    } catch(e) {}
+  }
+
+  // ----- 9. ANA İŞLEYİCİ SÜRECİ -----
   async function run(){
     try {
+      await initMentorDB();
+      const cachedPlanObj = await dbGet("plans", DAY);
       const profData = scrapeProfileFromDOM();
       
-      // Veritabanından eski planı çekme aşaması zaman aşımı korumalıdır
-      const cachedPlanObj = await dbGet("plans", DAY);
+      // 🚀 HAFIZA KİLİDİ: Geçmiş günlerin kararlarını toplayıp LLM profiline enjekte ediyoruz
+      const historyLogs = await getRecentHistorySummary();
+      profData.recentMentorHistory = historyLogs;
+
       if (cachedPlanObj && cachedPlanObj.planData) {
         const plan = valid(cachedPlanObj.planData);
         if (plan) { paint(plan, profData); return; }
       }
 
-      // Eğer uzantı veya bulut kanalı kilitlenirse, statik acil durum emniyet planını anında devreye al
+      // Emniyet planı yapısı kararlı
       const fallbackPlan = {
-        focus: "Missing-Word ve Hata Odaklı Bilişsel Dengeleme",
+        focus: "Hata Odaklı Bilişsel Dengeleme",
         estimated_time: 40, success_rate: 85, learning_risk_score: 25,
-        diagnosis: "330 adet aralıklı tekrar kalemi birikmiş ve zayıf odağın eksik kelimeler olarak saptandı. Bugün önceliği yaraları sarmaya atadım.",
-        decision_reason: "Firebase veri hattı yoğunluğu nedeniyle yerel emniyet müfredatı kilitlendi.",
+        diagnosis: "330 adet aralıklı tekrar kalemi birikmiş durumda. Bugün önceliği zayıf zemin temizliğine atadım.",
+        decision_reason: "Ağ katmanı kilitlenmesi veya ilk kurulum emniyet müfredatı devreye girdi.",
         steps: [
           { label: "Bilişsel Hata Temizliği", href: "hata-defteri.html", time: 15 },
           { label: "Interleaved Hafıza Eritme", href: "tekrar.html?plan=1", time: 25 }
@@ -240,9 +319,11 @@
         paint(fallbackPlan, profData); return; 
       }
 
-      const sys = "Sen DilHaritası ekosisteminde nöro-pedagoji ilkelerini uygulayan üst düzey bir AI MENTOR ve EĞİTİM DİREKTÖRÜSÜN. Sadece saf, tek bir JSON döndür.";
-      
-      // LLM İsteğini de Zaman Yarışı ile koruyoruz (Ağ takılırsa 2.5 saniyede emniyet planına düşer)
+      // 🚀 HAFIZA DESTEKLİ SİSTEM TALİMATI
+      const sys = `Sen DilHaritası ekosisteminde nöro-pedagoji ilkelerini kararlılıkla uygulayan bir AI MENTOR ve EĞİTİM DİREKTÖRÜSÜN.
+Görevin, öğrencinin ekrandaki durumuna ek olarak 'recentMentorHistory' altındaki geçmiş günlerde ne kararlar verdiğini ve öğrencinin bu planlara ne kadar uyduğunu incelemektir.
+Eğer öğrenci son 2 gündür önerilen bir adımı es geçiyorsa, bugün o adımı KESİNLİKLE EN BAŞA koy ve 'diagnosis' kısmında uyar. Sadece saf, tek bir JSON döndür.`;
+
       let chatPromise = DHProviders.chat([{role:"system", content:sys}, {role:"user", content:JSON.stringify(profData)}], {temperature: 0.1, max_tokens: 850});
       let out = await withTimeout(chatPromise, 2500, null);
 
@@ -252,9 +333,11 @@
       const plan = valid(planObj) || fallbackPlan;
 
       await dbPut("plans", { date: DAY, planData: plan });
+      // İlk kez plan oluşturulduğunda history deposuna da başlangıç logu at
+      await dbPut("history", { date: DAY, focus: plan.focus, completedSteps: 0, totalSteps: plan.steps.length });
+      
       paint(plan, profData);
     } catch(_) {
-      // En kötü senaryoda bile bomboş kalma, emniyet planını zorla bas
       try { paint({ focus: "Emniyet Planı", estimated_time: 30, success_rate: 90, steps: [{label: "Aralıklı Tekrar", href: "tekrar.html?plan=1", time: 15}] }, scrapeProfileFromDOM()); } catch(__) {}
     }
   }
