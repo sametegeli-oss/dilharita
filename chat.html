@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#071226">
 <title>Fotoğraflı Sohbet Senaryoları</title>
-<link rel="stylesheet" href="./chat-style.css?v=17">
+<link rel="stylesheet" href="./chat-style.css?v=17">[cite: 1]
 <style>
-    /* Yapay Zeka Seçim Kutusu Alanı */
+    /* Yapay Zeka Seçim Kutusu Alanı - Tasarımınla Uyumlu */
     .ai-selector-container {
         background: #111e36;
         border: 1px solid #23395b;
@@ -48,7 +48,7 @@
         height: auto !important;
     }
 
-    /* Orijinal tasarımdaki butona benzeyen yeni dış yönlendirme butonu */
+    /* Orijinal tasarımdaki butona benzeyen harici yönlendirme butonu */
     .external-ai-btn {
         display: block;
         margin: 10px 12px 0 12px;
@@ -77,7 +77,7 @@
 
 <!-- Ana Ekrandaki AI Seçim Kutusu -->
 <div class="ai-selector-container">
-    <label for="aiEngineSelect">🧠 Sohbete Başla İçin AI Motoru:</label>
+    <label for="aiEngineSelect">🧠 Dışarıda Açılacak AI Motoru:</label>
     <select id="aiEngineSelect" class="ai-select" onchange="saveAIEngine(this.value)">
         <option value="gemini">Google Gemini</option>
         <option value="openai">OpenAI ChatGPT</option>
@@ -89,12 +89,12 @@
 <div class="grid">[cite: 1]
     <!-- Otel Kartı -->
     <div class="card">
-        <!-- Fotoğraf, başlık ve alt metin doğrudan senin iç sayfandaki chat'e gider -->
+        <!-- Fotoğraf ve metin tıklandığında senin yazdığın program içi chat açılır -->
         <a href="chathotel.html" style="text-decoration: none; color: inherit; display: block;">[cite: 1]
             <img src="assets/avatars_v3/hotel/idle.webp"><b>Otel</b><span>Erkek resepsiyonist · A2</span>[cite: 1]
         </a>
-        <!-- Alttaki buton ise seçili dış AI'a yönlendirir -->
-        <button class="external-ai-btn" onclick="goToExternalAI(event)">Sohbete Başla ✨</button>
+        <!-- Butona tıklandığında promptu taşıyacak fonksiyon tetiklenir -->
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Otel Resepsiyonisti (A2)')">Sohbete Başla ✨</button>
     </div>
 
     <!-- Restoran Kartı -->
@@ -102,7 +102,7 @@
         <a href="chatrestaurant.html" style="text-decoration: none; color: inherit; display: block;">[cite: 1]
             <img src="assets/avatars_v3/restaurant/idle.webp"><b>Restoran</b><span>Erkek garson · A2</span>[cite: 1]
         </a>
-        <button class="external-ai-btn" onclick="goToExternalAI(event)">Sohbete Başla ✨</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Restoran Garsonu (A2)')">Sohbete Başla ✨</button>
     </div>
 
     <!-- Doktor Kartı -->
@@ -110,7 +110,7 @@
         <a href="chatdoctor.html" style="text-decoration: none; color: inherit; display: block;">[cite: 1]
             <img src="assets/avatars_v3/doctor/idle.webp"><b>Doktor</b><span>Erkek doktor · B1</span>[cite: 1]
         </a>
-        <button class="external-ai-btn" onclick="goToExternalAI(event)">Sohbete Başla ✨</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Erkek Doktor (B1)')">Sohbete Başla ✨</button>
     </div>
 
     <!-- Havaalanı Kartı -->
@@ -118,7 +118,7 @@
         <a href="chatairport.html" style="text-decoration: none; color: inherit; display: block;">[cite: 1]
             <img src="assets/avatars_v3/airport/idle.webp"><b>Havaalanı</b><span>Erkek check-in görevlisi · A2</span>[cite: 1]
         </a>
-        <button class="external-ai-btn" onclick="goToExternalAI(event)">Sohbete Başla ✨</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Havaalanı Check-in Görevlisi (A2)')">Sohbete Başla ✨</button>
     </div>
 
     <!-- AI Öğretmen Kartı -->
@@ -126,7 +126,7 @@
         <a href="chatteacher.html" style="text-decoration: none; color: inherit; display: block;">[cite: 1]
             <img src="assets/avatars_v3/teacher1/idle.webp"><b>AI Öğretmen</b><span>2 erkek öğretmen opsiyonu</span>[cite: 1]
         </a>
-        <button class="external-ai-btn" onclick="goToExternalAI(event)">Sohbete Başla ✨</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'İngilizce Öğretmeni')">Sohbete Başla ✨</button>
     </div>
 </div>[cite: 1]
 
@@ -134,33 +134,58 @@
 </div>
 
 <script>
-    // Sayfa açıldığında daha önce seçilen bir harici AI varsa kutuda o görünür
+    // Sayfa açıldığında hafızadaki seçimi yükle
     document.addEventListener("DOMContentLoaded", function() {
         const savedAI = localStorage.getItem('external_ai_target') || 'gemini';
         document.getElementById('aiEngineSelect').value = savedAI;
     });
 
-    // Kutudan seçim değiştikçe tarayıcı hafızasına kaydeder
     function saveAIEngine(val) {
         localStorage.setItem('external_ai_target', val);
     }
 
-    // "Sohbete Başla" butonuna basıldığında tetiklenen fonksiyon
-    function goToExternalAI(event) {
-        event.stopPropagation(); // Kartın kendi linkini tetiklemesini engeller
+    // "Sohbete Başla" tıklandığında prompt aktarımını yöneten ana fonksiyon
+    function handleExternalAIClick(event, roleName) {
+        event.stopPropagation();
         event.preventDefault();
         
         const selectedAI = document.getElementById('aiEngineSelect').value;
         
-        const aiUrls = {
-            'gemini': 'https://gemini.google.com/',
-            'openai': 'https://chatgpt.com/',
-            'claude': 'https://claude.ai/',
-            'deepseek': 'https://chat.deepseek.com/'
-        };
+        // Gönderilecek sistem prompt metni
+        const promptText = `You are a professional English conversation partner. Act as a ${roleName}. Keep your sentences suitable for this level. Let's start the conversation.`;
 
-        const targetUrl = aiUrls[selectedAI] || 'https://gemini.google.com/';
-        window.open(targetUrl, '_blank'); // Yeni sekmede dış yapay zekayı açar
+        // 1. Eğer seçim GEMINI ise, senin orijinal `chat-gemini-continue.js` içindeki mekanizmayı tetikleyebiliriz
+        if (selectedAI === 'gemini') {
+            // Eğer senin orijinal JS dosyanda butona basıldığında tetiklenen global bir fonksiyon varsa ismiyle çağırabilirsin.
+            // Yoksa, promptu taşımak için tarayıcının panosuna atıp Gemini'yi açıyoruz:
+            openWithClipboardFallback('https://gemini.google.com/', promptText);
+        } 
+        // 2. Eğer seçim OPENAI (ChatGPT) ise, URL parametresiyle prompt taşımayı destekler:
+        else if (selectedAI === 'openai') {
+            const encodedPrompt = encodeURIComponent(promptText);
+            const targetUrl = `https://chatgpt.com/?q=${encodedPrompt}`;
+            window.open(targetUrl, '_blank');
+        } 
+        // 3. CLAUDE veya DEEPSEEK url üzerinden doğrudan prompt kabul etmeyebilir (güvenlik/mimari gereği).
+        // Onlar için en kesin çözüm: Promptu panoya (clipboard) kopyalayıp siteyi açmaktır.
+        else {
+            const aiUrls = {
+                'claude': 'https://claude.ai/',
+                'deepseek': 'https://chat.deepseek.com/'
+            };
+            const targetUrl = aiUrls[selectedAI] || 'https://chatgpt.com/';
+            openWithClipboardFallback(targetUrl, promptText);
+        }
+    }
+
+    // Panoya kopyalayıp yönlendiren yardımcı fonksiyon
+    function openWithClipboardFallback(url, text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert("Sohbet promptu otomatik olarak hafızaya kopyalandı!\nAçılan yapay zeka ekranına direkt yapıştırıp (CTRL+V) başlayabilirsiniz.");
+            window.open(url, '_blank');
+        }).catch(() => {
+            window.open(url, '_blank');
+        });
     }
 </script>
 
