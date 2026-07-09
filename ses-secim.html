@@ -38,11 +38,11 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
   function loadPref(slug){ try{ return JSON.parse(localStorage.getItem(key(slug))||"null")||{}; }catch(e){ return {}; } }
   function savePref(slug,p){ try{ localStorage.setItem(key(slug),JSON.stringify(p)); }catch(e){} }
 
+  var grid=document.getElementById("grid");
   var voices=[];
   function refresh(){ voices=(speechSynthesis.getVoices()||[]).filter(function(v){ return /^en/i.test(v.lang||""); }); paint(); }
   if(typeof speechSynthesis!=="undefined"){ refresh(); speechSynthesis.onvoiceschanged=refresh; }
 
-  var grid=document.getElementById("grid");
   function paint(){
     grid.innerHTML="";
     if(!voices.length){
