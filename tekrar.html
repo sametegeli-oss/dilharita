@@ -460,22 +460,40 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       if(sc<80) showExplain(curT,false);
       speak(curT.en);
       // Kelime eşleşmesi düşük ama farklı, geçerli bir ifade olabilir (eş anlamlı alternatif cümle) —
-      // sessizce AI'ya "anlamca doğru mu?" diye sor; onaylarsa rozeti ve cezayı güncelle.
-      if(sc>=25 && sc<80 && userInputValue.trim().length>2 &&
-         window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
-        var checkFor=cur, checkInput=userInputValue, checkTarget=curT.en;
-        DHProviders.chat([
-          {role:"system",content:"You judge if a Turkish English-learner's sentence means the SAME as a reference sentence, even with very different wording/synonyms. Reply ONLY JSON: {\"ok\":true|false}. No prose."},
-          {role:"user",content:"Reference: "+checkTarget+"\nStudent: "+checkInput}
-        ],{temperature:0,max_tokens:20}).then(function(out){
-          if(cur!==checkFor) return;   // kullanıcı bu arada ilerledi, geç kalmış cevabı yoksay
-          var ok=false; try{ ok=!!JSON.parse(String(out).replace(/```json|```/g,"").trim()).ok; }catch(e){}
-          if(ok){
-            lastSemanticOk=true;
-            var sEl=$("score");
-            if(sEl) sEl.innerHTML="<span style='color:#4ade80'>✓ Anlamca doğru (farklı ama geçerli bir ifade) — Bildim'e hazır</span><br>"+sEl.innerHTML;
-          }
-        }).catch(function(){});
+      // AI'ya "anlamca doğru mu?" diye sor; sonucu HER DURUMDA görünür şekilde bildir.
+      if(sc>=25 && sc<80 && userInputValue.trim().length>2){
+        var hasKey = window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey();
+        if(!hasKey){
+          var noteEl=document.createElement("div");
+          noteEl.style.cssText="margin-top:8px;font-size:12px;color:#9fb3d9";
+          noteEl.textContent="🤖 Farklı ama doğru olabilecek cümleleri otomatik kontrol etmek için bir API anahtarı ekle (Ayarlar).";
+          $("score").appendChild(noteEl);
+        } else {
+          var checkFor=cur, checkInput=userInputValue, checkTarget=curT.en;
+          var waitEl=document.createElement("div");
+          waitEl.id="semCheckNote";
+          waitEl.style.cssText="margin-top:8px;font-size:12px;color:#9fb3d9";
+          waitEl.textContent="🤖 Farklı yazdığın için anlamca kontrol ediliyor…";
+          $("score").appendChild(waitEl);
+          DHProviders.chat([
+            {role:"system",content:"You judge if a Turkish English-learner's sentence means the SAME as a reference sentence, even with very different wording/synonyms. Reply ONLY JSON: {\"ok\":true|false}. No prose."},
+            {role:"user",content:"Reference: "+checkTarget+"\nStudent: "+checkInput}
+          ],{temperature:0,max_tokens:20}).then(function(out){
+            if(cur!==checkFor) return;   // kullanıcı bu arada ilerledi, geç kalmış cevabı yoksay
+            var ok=false; try{ ok=!!JSON.parse(String(out).replace(/```json|```/g,"").trim()).ok; }catch(e){}
+            var w=document.getElementById("semCheckNote"); if(!w) return;
+            if(ok){
+              lastSemanticOk=true;
+              w.style.color="#4ade80";
+              w.textContent="🤖 ✓ Anlamca doğru (farklı ama geçerli bir ifade) — Bildim'e hazır";
+            } else {
+              w.style.color="#f87171";
+              w.textContent="🤖 Anlamca da farklı görünüyor — açıklamaya bak.";
+            }
+          }).catch(function(){
+            var w=document.getElementById("semCheckNote"); if(w){ w.style.color="#f87171"; w.textContent="🤖 Kontrol edilemedi (bağlantı/anahtar sorunu)."; }
+          });
+        }
       }
     }
   }
