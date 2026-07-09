@@ -101,13 +101,12 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   var mediaRecorder = null, audioChunks = [], audioUrl = null, audioStream = null, activeAudioObj = null;
   var recognitionInstance = null, isRecording = false, accumulatedTranscript = "";
 
-  // KESİN KORUMA: cloud-sync kütüphanesinin anlık yazma kancasını (auto sync) tamamen pasifleştiriyoruz.
   if (window.DHCloudSync) {
     window.DHCloudSync.autoPush = false; 
     console.log("Firebase anlık tetikleyicileri bu sayfa için tamamen susturuldu.");
   }
 
-  /* ---- kv (practice ile ortak depo) ---- */
+  /* ---- kv ---- */
   function kvOpen(){ return new Promise(function(res){ try{ var r=indexedDB.open("sentence-mode",1); r.onsuccess=function(){res(r.result)}; r.onerror=function(){res(null)}; }catch(e){res(null)} }); }
   async function kvPrefix(pre){
     var db=await kvOpen(); if(!db) return {};
@@ -127,7 +126,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       }catch(e){ try{db.close()}catch(_){ } res(); } });
   }
 
-  /* ---- SM-2 (practice ile birebir) ---- */
+  /* ---- SM-2 ---- */
   function srsStep(n, hard){
     n=n&&typeof n==="object"?n:{rep:0,ef:2.5,interval:0,due:0,last:0};
     var r=Date.now();
@@ -186,20 +185,19 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   function norm(t){ 
     return expandContractions(t)
       .replace(/-/g, " ") 
-      .replace(/['\u2019\u2018]/g, "")   // kalan tüm kesme işaretleri kaldırılır — tırnak kaynaklı uyumsuzluk kabul edilir
+      .replace(/['\u2019\u2018]/g, "") 
       .replace(/[^a-z0-9 ]+/g," ")
       .replace(/\s+/g," ")
       .trim(); 
   }
 
-  /* ---- Anlamsız/bozuk cümle tespiti: "book, books, booking" gibi kelime-formu listeleri ---- */
   function looksLikeSentence(en){
     var t=String(en||"").trim();
     if(!t) return false;
     var segs=t.split(",").map(function(s){return s.trim();}).filter(Boolean);
     if(segs.length>=2){
       var allSingleWords=segs.every(function(s){ return s && !/\s/.test(s) && /^[a-zA-ZçğıöşüÇĞİÖŞÜ'-]+$/.test(s); });
-      if(allSingleWords) return false;   // "book, books, booking" tipi liste — cümle değil
+      if(allSingleWords) return false;
     }
     return true;
   }
@@ -215,7 +213,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     return Math.round(100*2*hit/(A.length+B.length));
   }
 
-  /* ---- Kelime Tıklama Tetikleyicisi ---- */
   window.handleWordClick = function(word) {
     if (window.DHWordPop && DHWordPop.lookup) { DHWordPop.lookup(word); return; }
     var cleaned = word.toLowerCase().replace(/[^a-z0-9']+/g, "");
@@ -228,11 +225,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
   };
 
-  /* ---- Gelişmiş LCS Tabanlı Fark Analizi ---- */
   function getDiffHtml(userText, correctText) {
     var uArr = String(userText || "").split(" ").filter(Boolean);
     var cArr = String(correctText || "").split(" ").filter(Boolean);
-    
     var m = uArr.length, n = cArr.length;
     var dp = Array.from({ length: m + 1 }, function() { return new Array(n + 1).fill(0); });
     
@@ -272,11 +267,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
         }
       }
     }
-    
     return htmlArr.join("") || "<span style='color:var(--mut)'>[Boş Giriş]</span>";
   }
 
-  /* ---- Cümleleri Tıklanabilir Span Yapısına Dönüştüren Evrensel Fonksiyon ---- */
   function makeTextClickable(text) {
     if (!text) return "";
     var words = text.split(" ");
@@ -286,7 +279,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }).join(" ");
   }
 
-  /* ---- Metin Sözlük ve Anlam Çözücü Yardımcı Fonksiyon ---- */
   var sentMap={}, dict={};
   function texts(it){
     if(it.kind==="s"){ var s=sentMap[it.id]||errText[it.id]||{};
@@ -297,7 +289,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     return {en:it.id,tr:(d&&d.anlamlar)?d.anlamlar.slice(0,3).join(", "):"",exp:"",cm:"",co:""};
   }
 
-  /* ---- açıklama paneli ---- */
   function showExplain(t, leech){
     var html="";
     if(t.exp) html+="<b>💡 Açıklama:</b> " + t.exp;
@@ -317,11 +308,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     };
   }
 
-  /* ---- akış ---- */
   var i=0, doneCount=0, cur=null, curT=null, revealed=false, lastSc=-1, lastSemanticOk=false;
   function speak(t){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.lang="en-US"; u.__dhMixed=true; u.__longTTSAvatarSync=true; speechSynthesis.speak(u); }catch(e){} }
 
-  /* Gelişmiş Toplu Bulut Senkronizasyonu (Kota Dostu Mod) */
   function triggerCloudSync() {
     try {
       if (window.DHCloudSync && window.DHCloudSync.push) {
@@ -331,9 +320,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     } catch(e) { console.error("Bulut senkronizasyon hatası:", e); }
   }
 
-  $("btnHome").onclick = function() {
-    triggerCloudSync();
-  };
+  $("btnHome").onclick = function() { triggerCloudSync(); };
 
   var total = 0, session = [], remaining = 0;
   var errText={};
@@ -347,7 +334,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     } catch(e) { console.error("Lokal DB okuma hatası:", e); await initApp(); }
   }
 
-  /* ---- mod anahtarı ---- */
   function paintMode(){ 
     $("mProd").classList.toggle("on",mode==="prod"); 
     $("mClas").classList.toggle("on",mode==="clas"); 
@@ -410,13 +396,12 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       if(remaining) $("bMore").style.display="inline-block";
       if(PLAN) $("planNext").style.display="block";
       $("done").style.display="block";
-      
       triggerCloudSync();
       return;
     }
     cur=session[i]; curT=texts(cur); revealed=false;
-    if(cur.kind==="s" && !looksLikeSentence(curT.en)){ i++; return render(); }  // "book, books, booking" tipi bozuk kayıt — sorulmadan atla
-    if(cur.kind==="s" && curT.tr && similarity(curT.tr, curT.en)>=70){ i++; return render(); }  // TR alanı da İngilizce (çeviri eksik/bozuk) — atla
+    if(cur.kind==="s" && !looksLikeSentence(curT.en)){ i++; return render(); }
+    if(cur.kind==="s" && curT.tr && similarity(curT.tr, curT.en)>=70){ i++; return render(); }
     var prod=(mode==="prod");
     var lbl=(cur.kind==="s"?"Cümle":"Kelime")+" "+(i+1)+"/"+session.length;
     $("kind").innerHTML=lbl
@@ -460,8 +445,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       
       if(sc<80) showExplain(curT,false);
       speak(curT.en);
-      // Kelime eşleşmesi düşük ama farklı, geçerli bir ifade olabilir (eş anlamlı alternatif cümle) —
-      // AI'ya "anlamca doğru mu?" diye sor; sonucu HER DURUMDA görünür şekilde bildir.
+
       if(sc>=25 && sc<80 && userInputValue.trim().length>2){
         var hasKey = window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey();
         if(!hasKey){
@@ -470,16 +454,19 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
           noteEl.textContent="🤖 Farklı ama doğru olabilecek cümleleri otomatik kontrol etmek için bir API anahtarı ekle (Ayarlar).";
           $("score").appendChild(noteEl);
         } else {
-          var checkFor=cur, checkInput=userInputValue, checkTarget=curT.en;
+          var checkFor=cur, checkInput=userInputValue, checkTarget=curT.en, checkSourceTr=curT.tr||"";
           var waitEl=document.createElement("div");
           waitEl.id="semCheckNote";
           waitEl.style.cssText="margin-top:8px;font-size:12px;color:#9fb3d9";
           waitEl.textContent="🤖 Farklı yazdığın için anlamca kontrol ediliyor…";
           $("score").appendChild(waitEl);
+          
+          /* KURAL GÜNCELLEMESİ: LLM modelinin dil bilgisi hatalarını veya anlam kaymalarını gözden kaçırmaması için katı kurallar içeren yeni prompt yerleştirildi */
           var semMsgs=[
-            {role:"system",content:"Bir İngilizce öğrenme uygulamasında öğrencinin cümlesinin referans cümleyle AYNI ANLAMA gelip gelmediğini değerlendiriyorsun (farklı kelimeler/yapı olabilir, önemli olan anlam). SADECE tek kelime cevap ver: EVET ya da HAYIR. Başka hiçbir şey yazma."},
-            {role:"user",content:"Referans: "+checkTarget+"\nÖğrenci: "+checkInput}
+            {role:"system",content:"Bir İngilizce öğrenme uygulamasında öğrencinin yazdığı cümlenin doğruluğunu denetleyen titiz bir dil öğretmenisin. Öğrencinin cümlesini hem GRAMMAR (dil bilgisi/yapısal bütünlük) hem de SEMANTIC (anlam örtüşmesi) açısından referans ve Türkçe kaynak cümleyle kıyasla.\n\nKATI KURALLAR:\n1. Öğrenci cümlesinde bariz dil bilgisi hataları varsa (örn: 'can you insisted', 'he do', 'she walk') doğrudan HAYIR cevabı ver.\n2. Öğrenci cümlesi referanstaki anahtar vurguları (örn: 'derhal/immediately' yerine 'tekrar/again') değiştirip anlamı saptırıyorsa doğrudan HAYIR cevabı ver.\n3. Sadece ve sadece cümle gramer olarak hatasızsa VE kaynak/referans cümleyle aynı tam anlamı (farklı kelimeler veya alternatif geçerli yapılar kullanarak) koruyorsa EVET yaz.\n\nCevap formatın sadece tek bir kelime olmalıdır: EVET ya da HAYIR. Açıklama ekleme."},
+            {role:"user",content:"Türkçe Kaynak Anlam: "+checkSourceTr+"\nReferans Doğru İngilizce: "+checkTarget+"\nÖğrencinin Yazdığı İfade: "+checkInput}
           ];
+          
           function runSemCheck(tokBudget, isRetry){
             DHProviders.chat(semMsgs,{temperature:0,max_tokens:tokBudget}).then(function(out){
               if(cur!==checkFor) return;
@@ -488,19 +475,19 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
               if(/evet|yes/i.test(t)){
                 lastSemanticOk=true;
                 w.style.color="#4ade80";
-                w.textContent="🤖 ✓ Anlamca doğru (farklı ama geçerli bir ifade) — Bildim'e hazır";
+                w.textContent="🤖 ✓ Anlamca ve gramer olarak doğru (farklı ama geçerli bir ifade) — Bildim'e hazır";
               } else if(/hayır|hayir|no/i.test(t)){
                 w.style.color="#f87171";
-                w.textContent="🤖 Anlamca da farklı görünüyor — açıklamaya bak.";
+                w.textContent="🤖 Dil bilgisi hatası veya anlam sapması tespit edildi — açıklamaya bak.";
               } else if(!isRetry){
-                runSemCheck(220, true);   // boş/anlaşılmaz cevap → bir kez daha, daha geniş bütçeyle
+                runSemCheck(220, true);
               } else {
                 w.style.color="#f87171";
                 w.textContent="🤖 Model net cevap vermedi, tekrar deneyebilirsin.";
               }
             }).catch(function(err){
               console.warn("[tekrar] semantik kontrol hatası:", err);
-              if(!isRetry && err && err.code==="empty"){ return runSemCheck(220, true); }  // boş cevap → tek seferlik retry
+              if(!isRetry && err && err.code==="empty"){ return runSemCheck(220, true); }
               var w=document.getElementById("semCheckNote"); if(!w) return;
               w.style.color="#f87171";
               var code=err&&err.code;
@@ -519,7 +506,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   $("bShow").onclick=function(){ reveal(); };
   $("bChk").onclick=function(){ reveal(); };
   
-  /* 🔄 Tekrar Dene Buton İşlevi */
   $("bRetry").onclick = function() {
     revealed = false;
     $("a").classList.add("hid");
@@ -539,7 +525,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
   };
 
-  /* Textarea İçin Enter ile Gönderme Mantığı */
   $("inp").onkeydown = function(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault(); 
@@ -567,7 +552,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
   });
 
-  /* 🎤 Geliştirilmiş Güvenli Mikrofon Kontrolü */
   $("bMic").onclick=function(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
     var SGL=window.SpeechGrammarList||window.webkitSpeechGrammarList;
@@ -614,7 +598,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       recognitionInstance.onresult = function(e) {
         var interimTranscript = "";
         var finalTranscript = "";
-        
         for (var idx = e.resultIndex; idx < e.results.length; ++idx) {
           if (e.results[idx].isFinal) {
             finalTranscript += e.results[idx][0].transcript + " ";
@@ -622,41 +605,24 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
             interimTranscript += e.results[idx][0].transcript;
           }
         }
-        
         if (finalTranscript) accumulatedTranscript += finalTranscript;
         $("inp").value = (accumulatedTranscript + interimTranscript).trim();
       };
-
-      recognitionInstance.onerror = function(err) { 
-        console.error("Tanıma hatası:", err); 
-      };
-      
+      recognitionInstance.onerror = function(err) { console.error("Tanıma hatası:", err); };
       recognitionInstance.start();
-
     } else {
       isRecording = false;
       $("bMic").textContent="🎤";
-
-      if (recognitionInstance) {
-        recognitionInstance.stop();
-        recognitionInstance = null;
-      }
-
-      if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        mediaRecorder.stop();
-      }
+      if (recognitionInstance) { recognitionInstance.stop(); recognitionInstance = null; }
+      if (mediaRecorder && mediaRecorder.state !== "inactive") { mediaRecorder.stop(); }
       if (audioStream) {
         audioStream.getTracks().forEach(function(track) { track.stop(); });
         audioStream = null;
       }
-
-      setTimeout(function() {
-        reveal();
-      }, 400);
+      setTimeout(function() { reveal(); }, 400);
     }
   };
 
-  /* 👂/⏹️ Kendi Sesini Oynatma / Durdurma İşlevi */
   $("bListenRetry").onclick = function() {
     if (activeAudioObj) {
       stopActiveAudio();
@@ -675,8 +641,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
   };
 
-  function injectLeechWords(sentenceEn) { /* devre dışı: no-op */ }
-
   async function grade(hard){
     var it=cur;
     var key=(it.kind==="s"?"srs:":"wsrs:")+it.id;
@@ -689,11 +653,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     
     if(leech){ 
       rec.interval=1; rec.due=Date.now()+DAY; 
-      if(it.kind === "s") {
-        injectLeechWords(curT.en);
-      }
     }
-    
     if(it.kind==="s") srs[it.id]=rec; else wsrs[it.id]=rec;
     try { await kvPut(key, rec); } catch(e) {}
     
@@ -702,7 +662,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       if(!leech && it.tries<2){ it.tries++; session.push(it); }
       $("grade").style.display="none";
       var go=document.createElement("button"); go.className="b-chk"; go.style.marginTop="10px"; go.textContent="Devam →";
-      go.onclick=function(){ go.remove(); doneOrNext(!leech&&it.tries<=2&&false); };
+      go.onclick=function(){ go.remove(); doneOrNext(); };
       $("exp").appendChild(go);
       function doneOrNext(){ i++; render(); }
       return;
@@ -712,19 +672,16 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   $("bHard").onclick=function(){ grade(true); };
   $("bEasy").onclick=function(){ grade(false); };
 
-  /* Google Translate Entegrasyonu */
   $("bTrans").onclick = function() {
     var correctEn = curT.en;
     var translateUrl = "https://translate.google.com/?sl=en&tl=tr&text=" + encodeURIComponent(correctEn) + "&op=translate";
     window.open(translateUrl, "_blank");
   };
 
-  /* Gelişmiş Gemini Entegrasyonu */
   $("bGemini").onclick = function() {
     var trSentence = (mode === "prod") ? (curT.tr || "") : (curT.tr || "");
     var correctEn = curT.en;
     var userEn = $("inp").value.trim() || "[Kullanıcı boş bıraktı]";
-    
     var systemNotes = "";
     if (curT.cm) systemNotes += "\n⚠️ Bu cümle için bilinen tipik hata: " + curT.cm;
     if (curT.exp) systemNotes += "\n💡 Sistem açıklaması: " + curT.exp;
@@ -741,13 +698,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
                      "4) Bu cümlenin günlük konuşma dilinde (Spoken English) sıkça kullanılan 1 alternatifini göster.";
 
     var geminiUrl = "https://gemini.google.com/app?prompt=" + encodeURIComponent(promptText);
-
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(promptText);
-      }
-    } catch (e) { console.error(e); }
-
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(promptText); } } catch (e) { console.error(e); }
     window.open(geminiUrl, "_blank");
   };
 
