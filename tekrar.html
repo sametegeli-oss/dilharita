@@ -318,7 +318,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   }
 
   /* ---- akış ---- */
-  var i=0, doneCount=0, cur=null, curT=null, revealed=false, lastSc=-1;
+  var i=0, doneCount=0, cur=null, curT=null, revealed=false, lastSc=-1, lastSemanticOk=false;
   function speak(t){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.lang="en-US"; u.__dhMixed=true; u.__longTTSAvatarSync=true; speechSynthesis.speak(u); }catch(e){} }
 
   /* Gelişmiş Toplu Bulut Senkronizasyonu (Kota Dostu Mod) */
@@ -451,7 +451,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     $("bShow").style.display="none"; $("bChk").style.display="none";
     if(mode==="prod"){
       var userInputValue = $("inp").value;
-      var sc=similarity(userInputValue, curT.en); lastSc=sc;
+      var sc=similarity(userInputValue, curT.en); lastSc=sc; lastSemanticOk=false;
       
       var diffResult = getDiffHtml(userInputValue, curT.en);
       $("score").innerHTML="Benzerlik: <span style='color:"+(sc>=80?"#4ade80":(sc>=50?"#fbbf24":"#f87171"))+"'>%"+sc+"</span>"+(sc>=80?" — Bildim'e hazır ✓":"") + 
@@ -459,6 +459,24 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       
       if(sc<80) showExplain(curT,false);
       speak(curT.en);
+      // Kelime eşleşmesi düşük ama farklı, geçerli bir ifade olabilir (eş anlamlı alternatif cümle) —
+      // sessizce AI'ya "anlamca doğru mu?" diye sor; onaylarsa rozeti ve cezayı güncelle.
+      if(sc>=25 && sc<80 && userInputValue.trim().length>2 &&
+         window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
+        var checkFor=cur, checkInput=userInputValue, checkTarget=curT.en;
+        DHProviders.chat([
+          {role:"system",content:"You judge if a Turkish English-learner's sentence means the SAME as a reference sentence, even with very different wording/synonyms. Reply ONLY JSON: {\"ok\":true|false}. No prose."},
+          {role:"user",content:"Reference: "+checkTarget+"\nStudent: "+checkInput}
+        ],{temperature:0,max_tokens:20}).then(function(out){
+          if(cur!==checkFor) return;   // kullanıcı bu arada ilerledi, geç kalmış cevabı yoksay
+          var ok=false; try{ ok=!!JSON.parse(String(out).replace(/```json|```/g,"").trim()).ok; }catch(e){}
+          if(ok){
+            lastSemanticOk=true;
+            var sEl=$("score");
+            if(sEl) sEl.innerHTML="<span style='color:#4ade80'>✓ Anlamca doğru (farklı ama geçerli bir ifade) — Bildim'e hazır</span><br>"+sEl.innerHTML;
+          }
+        }).catch(function(){});
+      }
     }
   }
   $("bShow").onclick=function(){ reveal(); };
@@ -626,10 +644,10 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     var it=cur;
     var key=(it.kind==="s"?"srs:":"wsrs:")+it.id;
     var rec=srsStep(it.kind==="s"?srs[it.id]:wsrs[it.id], hard);
-    if(!hard && mode==="prod" && lastSc>=0 && lastSc<50){
+    if(!hard && mode==="prod" && !lastSemanticOk && lastSc>=0 && lastSc<50){
       rec.interval=Math.max(1,Math.round(rec.interval/2)); rec.due=Date.now()+rec.interval*DAY;
     }
-    lastSc=-1;
+    lastSc=-1; lastSemanticOk=false;
     var leech = hard && (rec.lapses||0)>=3;
     
     if(leech){ 
