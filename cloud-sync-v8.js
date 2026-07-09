@@ -227,26 +227,30 @@
     try{ size=JSON.stringify(ls).length; }catch(e){}
     return {size:size,dropped:dropped};
   }
-  var __pushBusy=false;
+  var __pushBusy=false, __failStreak=0, __cooldownUntil=0;
   async function pushNow(){
     if(!ready||!user||!fb) return { ok:false, error:"hazır değil" };
-    if(__pushBusy) return { ok:false, error:"zaten yazılıyor" };   // çakışan push'ları engelle (resource-exhausted koruması)
+    if(__pushBusy) return { ok:false, error:"zaten yazılıyor" };
+    if(Date.now()<__cooldownUntil) return { ok:false, error:"bekleme modunda (art arda hata)" };  // devre kesici
     __pushBusy=true;
     try{
       var data=await collectAll();
       var g=shrinkToLimit(data.ls);
       await fb.saveSettings(user.uid, data);
       try{ localStorage.setItem("dh-last-push-ts", String(Date.now())); }catch(e){}
+      __failStreak=0;
       return { ok:true, size:g.size, dropped:g.dropped };
     }catch(e){
       console.warn("cloud-sync yazma hata:", e);
+      __failStreak++;
+      if(__failStreak>=2){ __cooldownUntil=Date.now()+90000; console.warn("[cloud-sync] art arda hata — 90sn otomatik yazma durduruldu"); }
       return { ok:false, error:(e&&e.message?e.message:"bilinmeyen").slice(0,120) };
     }finally{ __pushBusy=false; }
   }
   function pushSoon(){
     if(!ready||!user) return;
     clearTimeout(saveTimer);
-    saveTimer=setTimeout(function(){ pushNow(); },1500);
+    saveTimer=setTimeout(function(){ pushNow(); },1500+Math.floor(Math.random()*1200));  // rastgele gecikme: çoklu sekme çakışmasını azaltır
   }
 
   /* ── 8) FULL SYNC: çek → birleştir → uygula → geri yaz ───── */
