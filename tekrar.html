@@ -165,12 +165,43 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   function push(kind,id,due,tag){ if(seen[kind+id]) return; seen[kind+id]=1; items.push({kind:kind,id:id,due:due||0,tag:tag||"",tries:0}); }
   
   /* ---- Metin Normalizasyonu ---- */
+  var CONTRACTIONS = {
+    "i'm":"i am","i'll":"i will","i've":"i have","i'd":"i would",
+    "you're":"you are","you'll":"you will","you've":"you have","you'd":"you would",
+    "we're":"we are","we'll":"we will","we've":"we have","we'd":"we would",
+    "they're":"they are","they'll":"they will","they've":"they have","they'd":"they would",
+    "he's":"he is","she's":"she is","it's":"it is","that's":"that is","there's":"there is",
+    "who's":"who is","what's":"what is","let's":"let us",
+    "don't":"do not","doesn't":"does not","didn't":"did not",
+    "isn't":"is not","aren't":"are not","wasn't":"was not","weren't":"were not",
+    "can't":"can not","cannot":"can not","won't":"will not","wouldn't":"would not",
+    "couldn't":"could not","shouldn't":"should not","mustn't":"must not",
+    "haven't":"have not","hasn't":"has not","hadn't":"had not"
+  };
+  function expandContractions(t){
+    return String(t||"").toLowerCase().replace(/[\u2019\u2018]/g,"'").replace(
+      /\b(i'm|i'll|i've|i'd|you're|you'll|you've|you'd|we're|we'll|we've|we'd|they're|they'll|they've|they'd|he's|she's|it's|that's|there's|who's|what's|let's|don't|doesn't|didn't|isn't|aren't|wasn't|weren't|can't|cannot|won't|wouldn't|couldn't|shouldn't|mustn't|haven't|hasn't|hadn't)\b/g,
+      function(m){ return CONTRACTIONS[m]||m; });
+  }
   function norm(t){ 
-    return String(t||"").toLowerCase()
-      .replace(/-/g, "") 
-      .replace(/[^a-z0-9' ]+/g," ")
+    return expandContractions(t)
+      .replace(/-/g, " ") 
+      .replace(/['\u2019\u2018]/g, "")   // kalan tüm kesme işaretleri kaldırılır — tırnak kaynaklı uyumsuzluk kabul edilir
+      .replace(/[^a-z0-9 ]+/g," ")
       .replace(/\s+/g," ")
       .trim(); 
+  }
+
+  /* ---- Anlamsız/bozuk cümle tespiti: "book, books, booking" gibi kelime-formu listeleri ---- */
+  function looksLikeSentence(en){
+    var t=String(en||"").trim();
+    if(!t) return false;
+    var segs=t.split(",").map(function(s){return s.trim();}).filter(Boolean);
+    if(segs.length>=2){
+      var allSingleWords=segs.every(function(s){ return s && !/\s/.test(s) && /^[a-zA-ZçğıöşüÇĞİÖŞÜ'-]+$/.test(s); });
+      if(allSingleWords) return false;   // "book, books, booking" tipi liste — cümle değil
+    }
+    return true;
   }
 
   function similarity(a,b){
@@ -384,6 +415,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       return;
     }
     cur=session[i]; curT=texts(cur); revealed=false;
+    if(cur.kind==="s" && !looksLikeSentence(curT.en)){ i++; return render(); }  // "book, books, booking" tipi bozuk kayıt — sorulmadan atla
     var prod=(mode==="prod");
     var lbl=(cur.kind==="s"?"Cümle":"Kelime")+" "+(i+1)+"/"+session.length;
     $("kind").innerHTML=lbl
