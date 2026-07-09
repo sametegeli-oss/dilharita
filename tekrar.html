@@ -416,6 +416,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
     cur=session[i]; curT=texts(cur); revealed=false;
     if(cur.kind==="s" && !looksLikeSentence(curT.en)){ i++; return render(); }  // "book, books, booking" tipi bozuk kayıt — sorulmadan atla
+    if(cur.kind==="s" && curT.tr && similarity(curT.tr, curT.en)>=70){ i++; return render(); }  // TR alanı da İngilizce (çeviri eksik/bozuk) — atla
     var prod=(mode==="prod");
     var lbl=(cur.kind==="s"?"Cümle":"Kelime")+" "+(i+1)+"/"+session.length;
     $("kind").innerHTML=lbl
@@ -478,7 +479,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
           DHProviders.chat([
             {role:"system",content:"You judge if a Turkish English-learner's sentence means the SAME as a reference sentence, even with very different wording/synonyms. Reply ONLY JSON: {\"ok\":true|false}. No prose."},
             {role:"user",content:"Reference: "+checkTarget+"\nStudent: "+checkInput}
-          ],{temperature:0,max_tokens:20}).then(function(out){
+          ],{temperature:0,max_tokens:60}).then(function(out){
             if(cur!==checkFor) return;   // kullanıcı bu arada ilerledi, geç kalmış cevabı yoksay
             var ok=false; try{ ok=!!JSON.parse(String(out).replace(/```json|```/g,"").trim()).ok; }catch(e){}
             var w=document.getElementById("semCheckNote"); if(!w) return;
