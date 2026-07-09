@@ -490,8 +490,15 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
               w.style.color="#f87171";
               w.textContent="🤖 Anlamca da farklı görünüyor — açıklamaya bak.";
             }
-          }).catch(function(){
-            var w=document.getElementById("semCheckNote"); if(w){ w.style.color="#f87171"; w.textContent="🤖 Kontrol edilemedi (bağlantı/anahtar sorunu)."; }
+          }).catch(function(err){
+            console.warn("[tekrar] semantik kontrol hatası:", err);
+            var w=document.getElementById("semCheckNote"); if(!w) return;
+            w.style.color="#f87171";
+            var code=err&&err.code;
+            var msg = code==="no-key" ? "🤖 Kontrol edilemedi: hiç API anahtarı bulunamadı."
+              : code==="all-failed" || code==="all-keys-failed" ? "🤖 Kontrol edilemedi: sağlayıcı(lar) şu an yanıt vermiyor (kota/limit dolmuş olabilir)."
+              : "🤖 Kontrol edilemedi ("+(code||(err&&err.message)||"bilinmeyen hata")+"). Konsolu kontrol et.";
+            w.textContent=msg;
           });
         }
       }
