@@ -1,0 +1,94 @@
+<!doctype html><html lang="tr"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🔊 Avatar Ses Seçimi</title>
+<style>
+:root{--bg:#0a1628;--card:#0f1f3a;--line:#1e3a5f;--tx:#e8eef7;--mut:#9fb3d9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,sans-serif;padding:14px}
+.top{display:flex;align-items:center;gap:10px;max-width:760px;margin:0 auto 14px}
+.top a{color:var(--mut);text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:7px 12px}
+h1{font-size:17px;margin:0}
+.note{max-width:760px;margin:0 auto 14px;color:var(--mut);font-size:12.5px;background:#101c33;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.grid{max-width:760px;margin:0 auto;display:grid;gap:12px}
+.row{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:center}
+.row img{width:52px;height:52px;border-radius:50%;object-fit:cover;background:#1e293b}
+.name{font-weight:800}
+.sub{color:var(--mut);font-size:12px;margin-bottom:6px}
+select{width:100%;background:#0a1628;color:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:600 13px system-ui}
+.btns{display:flex;gap:8px;margin-top:8px}
+button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cursor:pointer;color:#fff}
+.b-try{background:#0e7490}.b-def{background:#334155}
+.rate{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--mut)}
+.rate input{flex:1}
+.saved{color:#4ade80;font-size:11px;margin-left:6px}
+</style></head><body>
+<div class="top"><a href="./chat.html">←</a><h1>🔊 Avatar Ses Seçimi</h1></div>
+<div class="note">Her karakter için bu CİHAZDA farklı bir ses seçebilirsin. Seçim yalnız bu cihazda geçerlidir (telefon ve bilgisayarın ses listeleri farklı olduğundan senkronlanmaz) — her ikisinde de ayrı ayrı ayarla.</div>
+<div class="grid" id="grid"></div>
+<script>
+(function(){
+  var CHARS=[
+    {slug:"assets/avatars_v3/hotel/",   name:"🏨 Otel — resepsiyonist",  img:"assets/avatars_v3/hotel/idle.webp",       sample:"Hello, welcome to our hotel. Do you have a reservation?"},
+    {slug:"assets/avatars_v3/restaurant/",name:"🍽 Restoran — garson",    img:"assets/avatars_v3/restaurant/idle.webp",  sample:"Good evening! Are you ready to order, or do you need more time?"},
+    {slug:"assets/avatars_v3/doctor/",  name:"🩺 Doktor",                img:"assets/avatars_v3/doctor/idle.webp",      sample:"Hello, please have a seat. What brings you in today?"},
+    {slug:"assets/avatars_v3/airport/", name:"✈️ Havaalanı — görevli",   img:"assets/avatars_v3/airport/idle.webp",     sample:"Good morning, may I see your passport and ticket please?"},
+    {slug:"assets/avatars_v3/teacher1/",name:"🎓 Öğretmen 1",            img:"assets/avatars_v3/teacher1/idle.webp",    sample:"Hi there! Ready for today's lesson? Let's get started."},
+    {slug:"assets/avatars_v3/teacher2/",name:"🎓 Öğretmen 2",            img:"assets/avatars_v3/teacher2/idle.webp",    sample:"Hello! I'm excited to practice English with you today."}
+  ];
+  function key(slug){ return "dh-voice:"+slug.replace(/[^a-z0-9]+/gi,"-"); }
+  function loadPref(slug){ try{ return JSON.parse(localStorage.getItem(key(slug))||"null")||{}; }catch(e){ return {}; } }
+  function savePref(slug,p){ try{ localStorage.setItem(key(slug),JSON.stringify(p)); }catch(e){} }
+
+  var voices=[];
+  function refresh(){ voices=(speechSynthesis.getVoices()||[]).filter(function(v){ return /^en/i.test(v.lang||""); }); paint(); }
+  if(typeof speechSynthesis!=="undefined"){ refresh(); speechSynthesis.onvoiceschanged=refresh; }
+
+  var grid=document.getElementById("grid");
+  function paint(){
+    grid.innerHTML="";
+    if(!voices.length){
+      grid.innerHTML='<div class="note">Ses listesi yükleniyor… (mobilde birkaç saniye sürebilir, sayfayı bir dokunuşla uyandırabilir.)</div>';
+      return;
+    }
+    CHARS.forEach(function(ch){
+      var pref=loadPref(ch.slug);
+      var row=document.createElement("div"); row.className="row";
+      var img=document.createElement("img"); img.src=ch.img; img.onerror=function(){ img.style.display="none"; };
+      var right=document.createElement("div");
+      right.innerHTML='<div class="name">'+ch.name+'<span class="saved" id="sv_'+ch.slug.replace(/[^a-z0-9]/gi,"")+'" style="display:'+(pref.name?"inline":"none")+'">✓ kayıtlı</span></div><div class="sub">Bu karakter hangi sesle konuşsun?</div>';
+      var sel=document.createElement("select");
+      voices.forEach(function(v){
+        var o=document.createElement("option"); o.value=v.name; o.textContent=v.name+" ("+v.lang+")";
+        if(pref.name===v.name) o.selected=true;
+        sel.appendChild(o);
+      });
+      var rateWrap=document.createElement("div"); rateWrap.className="rate";
+      var rateVal=pref.rate||0.96;
+      rateWrap.innerHTML='Hız: <input type="range" min="0.7" max="1.2" step="0.02" value="'+rateVal+'"><span>'+rateVal+'</span>';
+      var rateInput=rateWrap.querySelector("input"), rateLabel=rateWrap.querySelector("span");
+      rateInput.oninput=function(){ rateLabel.textContent=rateInput.value; };
+      var btns=document.createElement("div"); btns.className="btns";
+      var bTry=document.createElement("button"); bTry.className="b-try"; bTry.textContent="🔊 Dene ve Kaydet";
+      var bDef=document.createElement("button"); bDef.className="b-def"; bDef.textContent="Varsayılana dön";
+      btns.appendChild(bTry); btns.appendChild(bDef);
+      right.appendChild(sel); right.appendChild(rateWrap); right.appendChild(btns);
+      row.appendChild(img); row.appendChild(right); grid.appendChild(row);
+
+      bTry.onclick=function(){
+        var name=sel.value, rate=parseFloat(rateInput.value);
+        savePref(ch.slug,{name:name,rate:rate,pitch:pref.pitch!=null?pref.pitch:0.78});
+        var badge=document.getElementById("sv_"+ch.slug.replace(/[^a-z0-9]/gi,"")); if(badge) badge.style.display="inline";
+        try{
+          speechSynthesis.cancel();
+          var u=new SpeechSynthesisUtterance(ch.sample);
+          var v=voices.find(function(x){return x.name===name;}); if(v) u.voice=v;
+          u.lang="en-US"; u.rate=rate; u.pitch=pref.pitch!=null?pref.pitch:0.78;
+          speechSynthesis.speak(u);
+        }catch(e){}
+      };
+      bDef.onclick=function(){ try{ localStorage.removeItem(key(ch.slug)); }catch(e){} paint(); };
+    });
+  }
+  paint();
+})();
+</script>
+</body></html>

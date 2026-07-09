@@ -24,10 +24,8 @@ const DEFAULT_SCENARIO = {
   noKeyReply:"I can continue when you add a Groq API key. What would you like to practice?"
 };
 const Scenario = Object.assign({}, DEFAULT_SCENARIO, window.CHAT_SCENARIO || {});
-
-// CRITICAL FIX: Dışarıdan gelen cinsiyet ayarını ezmemesi için sabit atama kaldırıldı.
+Scenario.voiceGender = "male";
 Scenario.frames = Object.assign({}, DEFAULT_SCENARIO.frames, (window.CHAT_SCENARIO && window.CHAT_SCENARIO.frames) || {});
-
 const State = {
   level: localStorage.getItem("chat:level:" + safeId(Scenario.title + ":" + (Scenario.avatarDir||""))) || Scenario.level || "A2",
   currentPartner: Scenario.opener,
@@ -293,36 +291,29 @@ if(typeof speechSynthesis !== "undefined"){
   refreshVoices();
   speechSynthesis.onvoiceschanged = refreshVoices;
 }
-
-/* ---- AKILLI SES SEÇİCİ (FARKLI SENARYO SESLERİ İÇİN) ---- */
+function avatarVoiceKey(){ return "dh-voice:" + (activeAvatarDir()||"default").replace(/[^a-z0-9]+/gi,"-"); }
 function pickVoice(){
   refreshVoices();
   const voices = cachedVoices.filter(v => /^en/i.test(v.lang || ""));
   if(!voices.length) return null;
-
-  // 1. ÖNCELİK: Senaryo objesinden doğrudan tam ses ismi verilmişse (birebir eşleştirme)
-  if (Scenario.voiceName) {
-    const customVoice = voices.find(v => v.name === Scenario.voiceName);
-    if (customVoice) return customVoice;
-  }
-
-  // 2. ÖNCELİK: Senaryo objesinden spesifik ses sıra numarası (Index) istenmişse
-  if (typeof Scenario.voiceIndex === "number") {
-    return voices[Scenario.voiceIndex % voices.length];
-  }
-
-  // 3. ÖNCELİK: Herhangi bir kısıt verilmediyse standart cinsiyet / isim analizine geç
+  // 1) Bu karakter için CİHAZDA kayıtlı seçim varsa onu kullan
+  try{
+    const saved = JSON.parse(localStorage.getItem(avatarVoiceKey())||"null");
+    if(saved && saved.name){
+      const f = voices.find(v => v.name===saved.name);
+      if(f) return f;
+    }
+  }catch(e){}
+  // 2) Yoksa: karakter adına göre sabit bir sese düş (aynı karakter her zaman aynı varsayılan sesle konuşsun)
   const maleRe = /(male|david|mark|george|daniel|james|john|alex|fred|thomas|guy|brian|ryan|matthew|arthur|oliver)/i;
-  const femaleRe = /(female|zira|hazel|susan|mary|linda|karen|jennifer|sarah|michelle|emily|moira|fiona)/i;
-  
   let preferred = voices.filter(v => /en-US|en_GB|en-GB|en_US/i.test(v.lang || ""));
   if(!preferred.length) preferred = voices;
-
-  if (Scenario.voiceGender === "female") {
-    return preferred.find(v => femaleRe.test(v.name || "")) || preferred[0];
-  }
-  
-  return preferred.find(v => maleRe.test(v.name || "")) || preferred[0];
+  const pool = preferred.filter(v => maleRe.test(v.name||"")).length ? preferred.filter(v => maleRe.test(v.name||"")) : preferred;
+  let h=0; const dir=activeAvatarDir()||""; for(let i=0;i<dir.length;i++) h=(h*31+dir.charCodeAt(i))>>>0;
+  return pool[h % pool.length] || preferred[0] || voices[0];
+}
+function avatarVoicePrefs(){
+  try{ return JSON.parse(localStorage.getItem(avatarVoiceKey())||"null") || {}; }catch(e){ return {}; }
 }
 
 let avatar; let speechRun=0;
@@ -337,11 +328,12 @@ function speakText(text){
     const u=new SpeechSynthesisUtterance(text);
     const voice = pickVoice();
     if(voice) u.voice = voice;
-    u.lang = voice ? voice.lang : "en-US"; 
-    u.__dhMixed = true;        
-    u.__longTTSAvatarSync = true;  
-    u.rate = .96;
-    u.pitch = .78;
+    u.lang = "en-US";          // sohbet HER ZAMAN İngilizce
+    u.__dhMixed = true;        // karma-dil patch'ini atla
+    u.__longTTSAvatarSync = true;  // long-avatar patch'ini de atla (Türkçe okumayı kesin engelle)
+    const vp=avatarVoicePrefs();
+    u.rate = vp.rate || .96;
+    u.pitch = vp.pitch != null ? vp.pitch : .78;
     u.onend=()=>{if(run===speechRun) avatar.stop();
       if(window.__dhAuto){ setTimeout(function(){ try{ var mb=document.getElementById("micBtn"); if(mb&&!mb.classList.contains("listening")) mb.click(); }catch(e){} }, 400); } };
     u.onerror=()=>{if(run===speechRun) avatar.stop();};
@@ -407,6 +399,7 @@ async function suggestReply(){
   const prev=sBtn ? sBtn.textContent : "";
   if(sBtn){ sBtn.disabled=true; sBtn.textContent="⏳"; }
   try{
+    // Sohbet bağlamına göre, kullanıcının SÖYLEYEBİLECEĞİ uygun bir İngilizce cevap öner.
     const sys = systemPrompt()
       + "\n\nNOW: The USER is stuck and wants a suggested reply. Based on the conversation so far and the partner's last message, write ONE natural English sentence that the USER (the learner) could say next. "
       + "Match the learner's level ("+State.level+"): keep it simple and appropriate. "
@@ -419,9 +412,11 @@ async function suggestReply(){
       input.value=reply;
       input.dispatchEvent(new Event("input"));
       input.focus();
+      // imleci sona al
       try{ input.setSelectionRange(reply.length, reply.length); }catch(e){}
     }
   }catch(e){
+    // sessiz: öneri alınamazsa kutuyu boş bırak
   }finally{
     if(sBtn){ sBtn.disabled=false; sBtn.textContent=prev||"💡"; }
   }
