@@ -227,8 +227,11 @@
     try{ size=JSON.stringify(ls).length; }catch(e){}
     return {size:size,dropped:dropped};
   }
+  var __pushBusy=false;
   async function pushNow(){
     if(!ready||!user||!fb) return { ok:false, error:"hazır değil" };
+    if(__pushBusy) return { ok:false, error:"zaten yazılıyor" };   // çakışan push'ları engelle (resource-exhausted koruması)
+    __pushBusy=true;
     try{
       var data=await collectAll();
       var g=shrinkToLimit(data.ls);
@@ -238,7 +241,7 @@
     }catch(e){
       console.warn("cloud-sync yazma hata:", e);
       return { ok:false, error:(e&&e.message?e.message:"bilinmeyen").slice(0,120) };
-    }
+    }finally{ __pushBusy=false; }
   }
   function pushSoon(){
     if(!ready||!user) return;

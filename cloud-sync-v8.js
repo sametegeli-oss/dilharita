@@ -47,7 +47,6 @@
   };
 
   var fb=null, user=null, ready=false, authResolved=false, saveTimer=null, syncing=false;
-  var autoPushFlag=true; // false yapılırsa (bazı modüller yapıyor), pushSoon() devre dışı kalır — yalnız pushNow()/flushOnLeave() ile kayıt olur
 
   /* ── 2) BİRLEŞTİRME (saf fonksiyonlar) ───────────────────── */
   function mergeEvents(a,b){
@@ -176,82 +175,6 @@
     });
   }
 
-  /* ── 5b) KOÇ (koc.js) SENKRONU — dh-mentor-db: plans/history/step_status ──
-     koc.js'in kendi IndexedDB'si daha önce hiç senkronize edilmiyordu (plan,
-     geçmiş arşivi ve adım tamamlama durumu her cihazda tamamen yerel kalıyordu).
-     Şema, koc.js'teki initMentorDB() ile BİREBİR aynı — hangi script önce
-     çalışırsa çalışsın (guard'lı createObjectStore) DB bozulmadan paylaşılır. */
-  var MENTOR_DB_NAME="dh-mentor-db", MENTOR_DB_VERSION=3;
-  var MENTOR_STORES=["plans","history","step_status"];
-  function mentorOpenDB(){
-    return new Promise(function(resolve){
-      try{
-        var req=indexedDB.open(MENTOR_DB_NAME, MENTOR_DB_VERSION);
-        req.onupgradeneeded=function(e){
-          var db=e.target.result;
-          if(!db.objectStoreNames.contains("plans")) db.createObjectStore("plans",{keyPath:"date"});
-          if(!db.objectStoreNames.contains("history")) db.createObjectStore("history",{keyPath:"date"});
-          if(!db.objectStoreNames.contains("step_status")) db.createObjectStore("step_status",{keyPath:"id"});
-        };
-        req.onsuccess=function(e){ resolve(e.target.result); };
-        req.onerror=function(){ resolve(null); };
-      }catch(e){ resolve(null); }
-    });
-  }
-  function mentorGetAll(storeName){
-    return mentorOpenDB().then(function(db){
-      if(!db) return [];
-      return new Promise(function(resolve){
-        try{
-          var tx=db.transaction(storeName,"readonly");
-          var req=tx.objectStore(storeName).getAll();
-          req.onsuccess=function(){ try{db.close();}catch(_){} resolve(req.result||[]); };
-          req.onerror=function(){ try{db.close();}catch(_){} resolve([]); };
-        }catch(e){ try{db.close();}catch(_){} resolve([]); }
-      });
-    });
-  }
-  function mentorPutAll(storeName, records){
-    if(!Array.isArray(records)||!records.length) return Promise.resolve(0);
-    return mentorOpenDB().then(function(db){
-      if(!db) return 0;
-      return new Promise(function(resolve){
-        try{
-          var tx=db.transaction(storeName,"readwrite");
-          var st=tx.objectStore(storeName);
-          var n=0;
-          records.forEach(function(r){ if(r&&(r.date||r.id)){ try{ st.put(r); n++; }catch(_){} } });
-          tx.oncomplete=function(){ try{db.close();}catch(_){} resolve(n); };
-          tx.onerror=function(){ try{db.close();}catch(_){} resolve(n); };
-        }catch(e){ try{db.close();}catch(_){} resolve(0); }
-      });
-    });
-  }
-  async function mentorCollectAll(){
-    var out={};
-    for(var i=0;i<MENTOR_STORES.length;i++){
-      out[MENTOR_STORES[i]]=await mentorGetAll(MENTOR_STORES[i]);
-    }
-    return out;
-  }
-  // Fill-gap birleştirme: koç verisinde tarih/versiyon damgası olmadığından,
-  // MEVCUT yerel kayıtların üzerine yazmıyoruz (kendi cihazının ilerlemesi
-  // kaybolmasın), sadece yerelde HİÇ olmayan planı/günü/adımı ekliyoruz.
-  async function mentorMergeAll(mentorData){
-    if(!mentorData || typeof mentorData!=="object") return 0;
-    var total=0;
-    for(var i=0;i<MENTOR_STORES.length;i++){
-      var name=MENTOR_STORES[i];
-      var incoming=Array.isArray(mentorData[name])?mentorData[name]:[];
-      if(!incoming.length) continue;
-      var existing=await mentorGetAll(name);
-      var haveKeys={}; existing.forEach(function(r){ haveKeys[r.date||r.id]=true; });
-      var missing=incoming.filter(function(r){ return r && !haveKeys[r.date||r.id]; });
-      total+=await mentorPutAll(name, missing);
-    }
-    return total;
-  }
-
   /* ── 5) Diğer yerel kaynaklar ─────────────────────────────── */
   function mirrorNow(){ try{ if(window.DHProgress&&DHProgress.mirrorNow) return Promise.resolve(DHProgress.mirrorNow()).catch(function(){}); }catch(e){} return Promise.resolve(); }
   function applyMirror(){ try{ if(window.DHProgress&&DHProgress.applyMirror) return Promise.resolve(DHProgress.applyMirror()).catch(function(){return 0;}); }catch(e){} return Promise.resolve(0); }
@@ -285,8 +208,7 @@
     var kv=await kvReadAll();                // modül ilerlemesi (smv:*)
     for(var k in kv){ if(kv.hasOwnProperty(k)) ls[k]=kv[k]; }
     var errors=await errAll().catch(function(){ return []; });
-    var mentor=await mentorCollectAll().catch(function(){ return {plans:[],history:[],step_status:[]}; }); // 🆕 koç planı/geçmişi/adım durumu
-    return { ls:ls, errors:Array.isArray(errors)?errors.slice(0,3000):[], mentor:mentor };
+    return { ls:ls, errors:Array.isArray(errors)?errors.slice(0,3000):[] };
   }
 
   /* ── 7) PUSH: yereli buluta yaz ──────────────────────────── */
@@ -305,8 +227,11 @@
     try{ size=JSON.stringify(ls).length; }catch(e){}
     return {size:size,dropped:dropped};
   }
+  var __pushBusy=false;
   async function pushNow(){
     if(!ready||!user||!fb) return { ok:false, error:"hazır değil" };
+    if(__pushBusy) return { ok:false, error:"zaten yazılıyor" };   // çakışan push'ları engelle (resource-exhausted koruması)
+    __pushBusy=true;
     try{
       var data=await collectAll();
       var g=shrinkToLimit(data.ls);
@@ -316,10 +241,10 @@
     }catch(e){
       console.warn("cloud-sync yazma hata:", e);
       return { ok:false, error:(e&&e.message?e.message:"bilinmeyen").slice(0,120) };
-    }
+    }finally{ __pushBusy=false; }
   }
   function pushSoon(){
-    if(!ready||!user||!autoPushFlag) return;
+    if(!ready||!user) return;
     clearTimeout(saveTimer);
     saveTimer=setTimeout(function(){ pushNow(); },1500);
   }
@@ -372,7 +297,6 @@
       await kvWriteAll(kvIncoming);                 // modül ilerlemesi → IndexedDB (React okur)
       var addedErr=await errMerge(rd.errors||[]);   // hata defteri birleşir
       var addedProg=await applyMirror();            // kelime aynası → DHProgress IDB
-      var addedMentor=await mentorMergeAll(rd.mentor);  // 🆕 koç planı/geçmişi/adım durumu (fill-gap)
       var pres=await pushNow();                     // GERİ YAZ: bulut = birleşim
 
       // teşhis sayacı
@@ -382,7 +306,6 @@
       if(pulled) parts.push(pulled+" kayıt buluttan alındı");
       if(addedErr) parts.push(addedErr+" hata kaydı eklendi");
       if(addedProg) parts.push(addedProg+" ilerleme uygulandı");
-      if(addedMentor) parts.push(addedMentor+" koç kaydı eklendi"); // 🆕
       if(!parts.length) parts.push("her şey zaten güncel");
       var pmsg = pres&&pres.ok
         ? ("buluta yazıldı "+Math.round((pres.size||0)/1024)+"KB"+(pres.dropped?(" ("+pres.dropped+" büyük kayıt atlandı)"):""))
@@ -399,12 +322,11 @@
 
   /* ── 9) Uzak belgeyi normalize et (eski+yeni yapı+__bulk) ── */
   function parseRemote(remote){
-    var out={ ls:{}, errors:[], mentor:{plans:[],history:[],step_status:[]} };
+    var out={ ls:{}, errors:[] };
     if(!remote) return out;
     var d=remote.data&&typeof remote.data==="object"?remote.data:null;
     if(d&&d.ls){ for(var k in d.ls){ if(d.ls.hasOwnProperty(k)) out.ls[k]=d.ls[k]; } }
     if(d&&Array.isArray(d.errors)) out.errors=out.errors.concat(d.errors);
-    if(d&&d.mentor&&typeof d.mentor==="object") out.mentor=d.mentor; // 🆕
     for(var rk in remote){
       if(!Object.prototype.hasOwnProperty.call(remote,rk)) continue;
       if(rk==="data"||rk==="__ts"||rk==="__errors"||rk==="__bulk"||rk==="updated_at") continue;
@@ -414,7 +336,6 @@
       for(var bk in remote.__bulk){ if(remote.__bulk.hasOwnProperty(bk)&&remote.__bulk[bk]!=null) out.ls[bk]=remote.__bulk[bk]; }
     }
     if(Array.isArray(remote.__errors)) out.errors=out.errors.concat(remote.__errors);
-    if(remote.__mentor && typeof remote.__mentor==="object") out.mentor=remote.__mentor; // 🆕
     return out;
   }
 
@@ -475,7 +396,6 @@
           if(Object.keys(sBulk).length) sDoc.__bulk=sBulk;
           if(Object.keys(pBulk).length) pDoc.__bulk=pBulk;
           if(data&&data.errors) sDoc.__errors=data.errors;
-          if(data&&data.mentor) sDoc.__mentor=data.mentor; // 🆕 koç planı/geçmişi/adım durumu
           var now2=Date.now(); sDoc.updated_at=now2; pDoc.updated_at=now2;
           return Promise.all([
             fsMod.setDoc(fsMod.doc(db,"settings",uid), sDoc, { merge:true }),
@@ -600,7 +520,6 @@
     push: pushNow, sync: initialSync, pull: fullSync, fullSync: fullSync,
     signOut: signOutAndPush,
     snapList: snapList, restoreSnap: restoreSnap,
-    get ready(){ return ready; }, get user(){ return user; },
-    get autoPush(){ return autoPushFlag; }, set autoPush(v){ autoPushFlag=!!v; }
+    get ready(){ return ready; }, get user(){ return user; }
   };
 })();

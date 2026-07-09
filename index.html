@@ -255,7 +255,11 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   var restoreInput=document.getElementById("dhRestoreFile");
   var msg=document.getElementById("dhBackupMsg");
   if(!backupBtn) return;
-  var LS_KEYS=["dh_ai_prompt_teacher","dh-study-tracker-v1","groqApiKeys","dh-ocr-sentences-v1"];
+  // TAM KAPSAM: cloud-sync.js ile birebir aynı anahtar/önek listesi (başka cihazda sıfırdan geri yükleme için şart)
+  var LS_KEYS=["dh_ai_prompt_teacher","dh-study-tracker-v1","dh-ocr-sentences-v1","dh-teacher-policy-v1",
+    "dh-notif-settings-v1","dh-progress-mirror-v1","groqApiKeys","cerebrasApiKeys","geminiApiKeys",
+    "dh-model-groq","dh-model-cerebras","dh-model-gemini","dh-disabled-keys","selectedTeacherAvatar","dh-teacher-mem"];
+  var LS_PREFIXES=["mas:","ev:","modscore:","gramprof:","story:"];
 
   function openSrsDB(){
     return new Promise(function(res,rej){
@@ -271,6 +275,14 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
       rq.onerror=function(){ rej(rq.error); };
     });}).catch(function(){ return {}; });
   }
+  function readAllKV(){   // img: HARİÇ tüm modül/kelime verisi (React ilerlemesi dahil)
+    return openSrsDB().then(function(db){ return new Promise(function(res,rej){
+      var out={}, store=db.transaction("kv","readonly").objectStore("kv"), rq=store.openCursor();
+      rq.onsuccess=function(){ var c=rq.result;
+        if(c){ if(typeof c.key==="string"&&c.key.indexOf("img:")!==0) out[c.key]=c.value; c.continue(); } else res(out); };
+      rq.onerror=function(){ rej(rq.error); };
+    });}).catch(function(){ return {}; });
+  }
   function writeKV(key,val){
     return openSrsDB().then(function(db){ return new Promise(function(res,rej){
       var tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(val,key);
@@ -281,11 +293,13 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   backupBtn.onclick=async function(){
     msg.style.color="#9fb3d9"; msg.textContent="Yedek hazırlanıyor…";
     try{
-      var srs=await readPrefix("srs:"); var lsrs=await readPrefix("lsrs:"); var ls={};
+      var allKV=await readAllKV(); var ls={};
       LS_KEYS.forEach(function(k){ try{ var v=localStorage.getItem(k); if(v!=null) ls[k]=v; }catch(e){} });
+      try{ for(var i=0;i<localStorage.length;i++){ var kk=localStorage.key(i); if(!kk) continue;
+        for(var p=0;p<LS_PREFIXES.length;p++){ if(kk.indexOf(LS_PREFIXES[p])===0){ var vv=localStorage.getItem(kk); if(vv!=null) ls[kk]=vv; break; } } } }catch(e){}
       var errors=[]; try{ if(window.LearningErrorDB && LearningErrorDB.all) errors=await LearningErrorDB.all(); }catch(e){}
       var at=new Date().toISOString();
-      var payload={ app:"dilharita-full", version:3, exportedAt:at, srsKV:srs, lsrsKV:lsrs, ls:ls, errors:errors };
+      var payload={ app:"dilharita-full", version:4, exportedAt:at, kv:allKV, ls:ls, errors:errors };
       var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
       var url=URL.createObjectURL(blob);
       var a=document.createElement("a"); a.href=url; a.download="dilharita-yedek-"+at.slice(0,10)+".json";
@@ -300,13 +314,17 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     var reader=new FileReader();
     reader.onload=async function(){
       var data; try{ data=JSON.parse(reader.result); } catch(e){ msg.style.color="#f87171"; return; }
-      var srsKV = data.srsKV || null; var lsrsKV = data.lsrsKV || null;
-      if(!confirm("Yedek yüklensin mi?")) { ev.target.value=""; return; }
+      // v3 (eski) ve v4 (yeni, tam kapsamlı) yedeklerini birlikte destekle
+      var kvAll = data.kv || data.srsKV || {};
+      if(data.lsrsKV){ for(var lk2 in data.lsrsKV){ if(data.lsrsKV.hasOwnProperty(lk2)) kvAll[lk2]=data.lsrsKV[lk2]; } }
+      if(!confirm("Yedek yüklensin mi? (Bu cihazdaki mevcut ilerleme buluttaki en güncel haliyle birleşecek.)")) { ev.target.value=""; return; }
       try{
-        if(srsKV){ for(var k in srsKV){ if(srsKV.hasOwnProperty(k)){ await writeKV(k, srsKV[k]); } } }
+        for(var k in kvAll){ if(kvAll.hasOwnProperty(k)) await writeKV(k, kvAll[k]); }
         if(data.ls){ for(var lk in data.ls){ if(data.ls.hasOwnProperty(lk)){ localStorage.setItem(lk, data.ls[lk]); } } }
-        msg.style.color="#34d399"; msg.textContent="✓ Geri yüklendi. Yenileyin.";
-      }catch(e){ msg.style.color="#f87171"; }
+        try{ if(window.DHProgress&&DHProgress.applyMirror) await DHProgress.applyMirror(); }catch(e){}
+        try{ if(window.DHCloudSync&&DHCloudSync.push) await DHCloudSync.push(); }catch(e){}   // yeni cihazı hemen buluta bağla
+        msg.style.color="#34d399"; msg.textContent="✓ Tam geri yüklendi ve buluta yazıldı. Yenileyin.";
+      }catch(e){ msg.style.color="#f87171"; msg.textContent="Geri yükleme hatası."; }
       ev.target.value="";
     };
     reader.readAsText(file);
@@ -383,6 +401,6 @@ if(b) b.onclick=async function(){
   fold.forEach(function(a){ inner.appendChild(a); }); det.appendChild(inner); grid.appendChild(det);
 })();
 </script>
-<script src="./koc.js?v=1"></script>
+<script src="./koc.js?v=2"></script>
 </body>
 </html>
