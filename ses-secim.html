@@ -66,22 +66,28 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
       rateWrap.innerHTML='Hız: <input type="range" min="0.7" max="1.2" step="0.02" value="'+rateVal+'"><span>'+rateVal+'</span>';
       var rateInput=rateWrap.querySelector("input"), rateLabel=rateWrap.querySelector("span");
       rateInput.oninput=function(){ rateLabel.textContent=rateInput.value; };
+
+      var pitchWrap=document.createElement("div"); pitchWrap.className="rate";
+      var pitchVal=pref.pitch!=null?pref.pitch:0.78;
+      pitchWrap.innerHTML='Ton: <input type="range" min="0.5" max="1.8" step="0.02" value="'+pitchVal+'"><span>'+pitchVal+'</span>';
+      var pitchInput=pitchWrap.querySelector("input"), pitchLabel=pitchWrap.querySelector("span");
+      pitchInput.oninput=function(){ pitchLabel.textContent=pitchInput.value; };
       var btns=document.createElement("div"); btns.className="btns";
       var bTry=document.createElement("button"); bTry.className="b-try"; bTry.textContent="🔊 Dene ve Kaydet";
       var bDef=document.createElement("button"); bDef.className="b-def"; bDef.textContent="Varsayılana dön";
       btns.appendChild(bTry); btns.appendChild(bDef);
-      right.appendChild(sel); right.appendChild(rateWrap); right.appendChild(btns);
+      right.appendChild(sel); right.appendChild(rateWrap); right.appendChild(pitchWrap); right.appendChild(btns);
       row.appendChild(img); row.appendChild(right); grid.appendChild(row);
 
       bTry.onclick=function(){
-        var name=sel.value, rate=parseFloat(rateInput.value);
-        savePref(ch.slug,{name:name,rate:rate,pitch:pref.pitch!=null?pref.pitch:0.78});
+        var name=sel.value, rate=parseFloat(rateInput.value), pitch=parseFloat(pitchInput.value);
+        savePref(ch.slug,{name:name,rate:rate,pitch:pitch});
         var badge=document.getElementById("sv_"+ch.slug.replace(/[^a-z0-9]/gi,"")); if(badge) badge.style.display="inline";
         try{
           speechSynthesis.cancel();
           var u=new SpeechSynthesisUtterance(ch.sample);
           var v=voices.find(function(x){return x.name===name;}); if(v) u.voice=v;
-          u.lang="en-US"; u.rate=rate; u.pitch=pref.pitch!=null?pref.pitch:0.78;
+          u.lang="en-US"; u.rate=rate; u.pitch=pitch;
           speechSynthesis.speak(u);
         }catch(e){}
       };
