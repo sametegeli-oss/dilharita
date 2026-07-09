@@ -476,31 +476,42 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
           waitEl.style.cssText="margin-top:8px;font-size:12px;color:#9fb3d9";
           waitEl.textContent="🤖 Farklı yazdığın için anlamca kontrol ediliyor…";
           $("score").appendChild(waitEl);
-          DHProviders.chat([
-            {role:"system",content:"You judge if a Turkish English-learner's sentence means the SAME as a reference sentence, even with very different wording/synonyms. Reply ONLY JSON: {\"ok\":true|false}. No prose."},
-            {role:"user",content:"Reference: "+checkTarget+"\nStudent: "+checkInput}
-          ],{temperature:0,max_tokens:60}).then(function(out){
-            if(cur!==checkFor) return;   // kullanıcı bu arada ilerledi, geç kalmış cevabı yoksay
-            var ok=false; try{ ok=!!JSON.parse(String(out).replace(/```json|```/g,"").trim()).ok; }catch(e){}
-            var w=document.getElementById("semCheckNote"); if(!w) return;
-            if(ok){
-              lastSemanticOk=true;
-              w.style.color="#4ade80";
-              w.textContent="🤖 ✓ Anlamca doğru (farklı ama geçerli bir ifade) — Bildim'e hazır";
-            } else {
+          var semMsgs=[
+            {role:"system",content:"Bir İngilizce öğrenme uygulamasında öğrencinin cümlesinin referans cümleyle AYNI ANLAMA gelip gelmediğini değerlendiriyorsun (farklı kelimeler/yapı olabilir, önemli olan anlam). SADECE tek kelime cevap ver: EVET ya da HAYIR. Başka hiçbir şey yazma."},
+            {role:"user",content:"Referans: "+checkTarget+"\nÖğrenci: "+checkInput}
+          ];
+          function runSemCheck(tokBudget, isRetry){
+            DHProviders.chat(semMsgs,{temperature:0,max_tokens:tokBudget}).then(function(out){
+              if(cur!==checkFor) return;
+              var t=String(out||"").trim();
+              var w=document.getElementById("semCheckNote"); if(!w) return;
+              if(/evet|yes/i.test(t)){
+                lastSemanticOk=true;
+                w.style.color="#4ade80";
+                w.textContent="🤖 ✓ Anlamca doğru (farklı ama geçerli bir ifade) — Bildim'e hazır";
+              } else if(/hayır|hayir|no/i.test(t)){
+                w.style.color="#f87171";
+                w.textContent="🤖 Anlamca da farklı görünüyor — açıklamaya bak.";
+              } else if(!isRetry){
+                runSemCheck(220, true);   // boş/anlaşılmaz cevap → bir kez daha, daha geniş bütçeyle
+              } else {
+                w.style.color="#f87171";
+                w.textContent="🤖 Model net cevap vermedi, tekrar deneyebilirsin.";
+              }
+            }).catch(function(err){
+              console.warn("[tekrar] semantik kontrol hatası:", err);
+              if(!isRetry && err && err.code==="empty"){ return runSemCheck(220, true); }  // boş cevap → tek seferlik retry
+              var w=document.getElementById("semCheckNote"); if(!w) return;
               w.style.color="#f87171";
-              w.textContent="🤖 Anlamca da farklı görünüyor — açıklamaya bak.";
-            }
-          }).catch(function(err){
-            console.warn("[tekrar] semantik kontrol hatası:", err);
-            var w=document.getElementById("semCheckNote"); if(!w) return;
-            w.style.color="#f87171";
-            var code=err&&err.code;
-            var msg = code==="no-key" ? "🤖 Kontrol edilemedi: hiç API anahtarı bulunamadı."
-              : code==="all-failed" || code==="all-keys-failed" ? "🤖 Kontrol edilemedi: sağlayıcı(lar) şu an yanıt vermiyor (kota/limit dolmuş olabilir)."
-              : "🤖 Kontrol edilemedi ("+(code||(err&&err.message)||"bilinmeyen hata")+"). Konsolu kontrol et.";
-            w.textContent=msg;
-          });
+              var code=err&&err.code;
+              var msg = code==="no-key" ? "🤖 Kontrol edilemedi: hiç API anahtarı bulunamadı."
+                : code==="all-failed" || code==="all-keys-failed" ? "🤖 Kontrol edilemedi: sağlayıcı(lar) şu an yanıt vermiyor (kota/limit dolmuş olabilir)."
+                : code==="empty" ? "🤖 Model boş cevap verdi (iki denemede de). Başka bir sağlayıcı/model dene."
+                : "🤖 Kontrol edilemedi ("+(code||(err&&err.message)||"bilinmeyen hata")+"). Konsolu kontrol et.";
+              w.textContent=msg;
+            });
+          }
+          runSemCheck(120, false);
         }
       }
     }
