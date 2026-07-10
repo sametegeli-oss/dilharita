@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Azar UUEG Complete IndexedDB Parser & LMS Engine (PRODUCTION READY)</title>
+    <title>Azar UUEG Complete IndexedDB Parser & LMS Engine (v5 Stable)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PDF.js Production Stable CDN -->
+    <!-- PDF.js Legacy Engine (Main Thread Uyumlu v2.16.105) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script>
-        // Sunucu üzerinde (GitHub Pages) çalışırken direkt standart CDN worker'ı güvenle kullanabiliriz
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        // Sunucu/Uzantı engellerini aşmak için worker'ı tamamen devre dışı bırakıyoruz.
+        // Tüm dönüştürme işlemi harici fetch çağrısı yapmadan ana script içinde çözülecek.
+        pdfjsLib.GlobalWorkerOptions.workerSrc = ''; 
         
         tailwind.config = {
             darkMode: 'class',
@@ -43,8 +44,8 @@
                     A
                 </div>
                 <div>
-                    <span class="font-bold text-base bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Azar Dynamic Engine v4</span>
-                    <span class="text-xs block text-slate-500 font-mono">Hosted Server Content Pipeline</span>
+                    <span class="font-bold text-base bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Azar Dynamic Engine v5</span>
+                    <span class="text-xs block text-slate-500 font-mono">Isolated Main-Thread Pipeline</span>
                 </div>
             </div>
             
@@ -64,7 +65,7 @@
     <div id="uploadProgressOverlay" class="hidden bg-slate-950/90 fixed inset-0 z-50 flex flex-col items-center justify-center space-y-4 p-4">
         <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         <div class="text-center">
-            <h3 class="text-lg font-bold text-slate-200">Parsing PDF Booklet Text Tracks...</h3>
+            <h3 class="text-lg font-bold text-slate-200">Parsing PDF Booklet Text Tracks (Main-Thread Mode)...</h3>
             <p id="progressStatusText" class="text-xs text-slate-500 font-mono mt-1">Reading page 0 / 0</p>
         </div>
         <div class="w-64 bg-slate-800 h-1.5 rounded-full overflow-hidden border border-slate-700">
@@ -93,7 +94,7 @@
                 <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
                 <div class="flex items-center justify-between mb-2">
                     <span id="activePageBadge" class="text-xs font-mono text-indigo-400 font-semibold uppercase tracking-wider">PAGE MAP: NONE</span>
-                    <span class="text-[11px] text-slate-500 font-mono">Server-Secured Text Stream</span>
+                    <span class="text-[11px] text-slate-500 font-mono">Isolated Text Stream</span>
                 </div>
                 <h2 class="text-sm font-bold text-slate-300 mb-2">Extracted Text Buffer</h2>
                 <div id="extractedTextPanel" class="text-slate-300 text-xs md:text-sm leading-relaxed bg-slate-900 border border-slate-800 p-4 rounded-lg font-mono min-h-[180px] max-h-[250px] overflow-y-auto whitespace-pre-wrap break-words">
@@ -123,10 +124,6 @@
             </div>
         </div>
     </main>
-
-    <footer class="border-t border-slate-800 bg-slate-950 py-3 text-center text-xs text-slate-600 font-mono w-full">
-        Hosted Web Sandbox Environment // Powered by Local Browser Resources & PDF.js Cloud Core.
-    </footer>
 
     <script>
         const DB_NAME = "AzarGrammarStorage";
@@ -182,7 +179,7 @@
             });
         }
 
-        // PDF Pipeline Input
+        // Main Thread-Safe PDF Input Pipeline
         document.getElementById('pdfFileInput').addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -193,7 +190,14 @@
             fileReader.onload = async function() {
                 try {
                     const typedarray = new Uint8Array(this.result);
-                    const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+                    
+                    // CRITICAL FIX: disableWorker parametresi ile harici script/sw engellerini tamamen bypass ediyoruz.
+                    const loadingTask = pdfjsLib.getDocument({ 
+                        data: typedarray,
+                        disableWorker: true 
+                    });
+                    
+                    const pdf = await loadingTask.promise;
                     const totalPages = pdf.numPages;
                     
                     const transaction = db.transaction([STORE_NAME], "readwrite");
