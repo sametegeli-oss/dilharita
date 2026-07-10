@@ -58,7 +58,7 @@
         <div class="grid grid-cols-3 gap-4">
             <div class="bg-slate-900/50 border border-slate-900 p-4 rounded-2xl text-center">
                 <div id="stat-studying" class="text-2xl font-black text-purple-400">0</div>
-                <div class="text-xs text-slate-400 font-semibold mt-1">çalışılan</div>
+                <div class="text-xs text-slate-400 font-semibold mt-1">çallışılan</div>
             </div>
             <div class="bg-slate-900/50 border border-slate-900 p-4 rounded-2xl text-center">
                 <div id="stat-learned" class="text-2xl font-black text-green-400">0</div>
@@ -129,11 +129,10 @@
         </div>
     </div>
 
-    <!-- Uygulama Veri ve Akış Yönetimi Katalizörü -->
-    <script src="definitions.js?v=1"></script>
-    <script src="main.js?v=1"></script>
+    <!-- Hatalı yollar kökten düzeltildi (./ eklendi) -->
+    <script src="./definitions.js?v=1"></script>
+    <script src="./main.js?v=1"></script>
     <script>
-        // Sayfa içi temel UI aksiyonları ve veri bağlama operasyonları
         function openSettings() {
             document.getElementById('cfg-auto-speak').checked = localStorage.getItem('dh-cfg-auto-speak') !== '0';
             document.getElementById('cfg-show-colors').checked = localStorage.getItem('dh-cfg-show-colors') !== '0';
@@ -148,7 +147,6 @@
             closeSettings();
         }
 
-        // Modülleri Ekrana Basma Fonksiyonu
         function renderModules() {
             const container = document.getElementById('modules-container');
             if(!container || !window.definitions) return;
@@ -165,7 +163,6 @@
                 const mod = definitions[modKey];
                 const totalSentences = mod.sentences ? mod.sentences.length : 0;
                 
-                // Bu modüle ait çalışılan ve öğrenilen durumlarını say
                 let currentStudying = 0;
                 let currentLearned = 0;
                 
@@ -206,24 +203,23 @@
             document.getElementById('stat-studying').textContent = totalStudying;
             document.getElementById('stat-learned').textContent = totalLearned;
 
-            // SRS Tekrar sayısını IndexedDB'den çekip ekrana basma
             calculateDueCount();
 
-            // --- AI KOÇ SÜPER ENTEGRASYONU ---
-            // Modüller DOM'a basıldıktan hemen sonra koçun direktifini yerine getir
+            // Modüller basıldığı an koç emrini sorgula
             checkKocDirective();
         }
 
-        // Koçtan gelen yönlendirmeyi denetleyen fonksiyon
+        // Koç yönlendirmesini yerine getiren asıl mekanizma
         function checkKocDirective() {
             const urlParams = new URLSearchParams(window.location.search);
-            const targetMod = urlParams.get('mod'); // Örn: "A1-M01-P2"
+            const targetMod = urlParams.get('mod');
 
             if (targetMod && window.definitions && window.definitions[targetMod]) {
                 console.log(`🚀 AI Koç Emri Devrede: ${targetMod} otomatik başlatılıyor...`);
+                // Dom yerleşiminden emin olmak için çok kısa bir es verip tetikliyoruz
                 setTimeout(() => {
                     startPractice(targetMod);
-                }, 200);
+                }, 100);
             }
         }
 
@@ -263,18 +259,15 @@
 
         function startPractice(modKey) {
             if(!window.definitions || !definitions[modKey]) return;
-            // main.js içindeki orijinal çalışma mekanizmasını tetikler veya sayfayı yönlendirir
             localStorage.setItem('dh-current-module', modKey);
             window.location.href = `practice.html?mod=${modKey}`;
         }
 
-        // Sayfa ayağa kalktığında tetikle
         window.addEventListener('DOMContentLoaded', () => {
-            // Eğer main.js asenkron basıyorsa güvenceye alalım
             if(window.definitions) {
                 renderModules();
             } else {
-                setTimeout(renderModules, 500);
+                setTimeout(renderModules, 300);
             }
         });
     </script>
