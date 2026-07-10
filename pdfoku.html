@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Azar UUEG Complete IndexedDB Parser & LMS Engine (v5 Stable)</title>
+    <title>Azar UUEG - Portable AI Prompt Hub</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PDF.js Legacy Engine (Main Thread Uyumlu v2.16.105) -->
+    <!-- PDF.js Legacy Core -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- Tesseract.js -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
     <script>
-        // Sunucu/Uzantı engellerini aşmak için worker'ı tamamen devre dışı bırakıyoruz.
-        // Tüm dönüştürme işlemi harici fetch çağrısı yapmadan ana script içinde çözülecek.
         pdfjsLib.GlobalWorkerOptions.workerSrc = ''; 
         
         tailwind.config = {
@@ -40,21 +40,32 @@
     <nav class="border-b border-slate-800 bg-slate-950/80 sticky top-0 z-50 backdrop-blur-md">
         <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
                     A
                 </div>
                 <div>
-                    <span class="font-bold text-base bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Azar Dynamic Engine v5</span>
-                    <span class="text-xs block text-slate-500 font-mono">Isolated Main-Thread Pipeline</span>
+                    <span class="font-bold text-base bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Azar AI-LMS Core v12</span>
+                    <span class="text-xs block text-slate-500 font-mono">Cross-Device JSON Data Pipeline</span>
                 </div>
             </div>
             
-            <div class="flex items-center space-x-4">
-                <div id="dbStatusBadge" class="text-xs px-3 py-1 rounded-full font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <!-- Importer & Exporter Controls -->
+            <div class="flex items-center space-x-2 md:space-x-3">
+                <div id="dbStatusBadge" class="hidden md:block text-xs px-3 py-1 rounded-full font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20">
                     IndexedDB: Empty
                 </div>
-                <label class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-md">
-                    <span>Import PDF Book</span>
+                
+                <button id="exportJsonBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition border border-slate-700 hidden">
+                    📥 Export JSON
+                </button>
+                
+                <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition border border-slate-700">
+                    <span>📤 Import JSON</span>
+                    <input type="file" id="jsonFileInput" accept=".json" class="hidden">
+                </label>
+
+                <label class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow-md">
+                    <span>📷 OCR Scan PDF</span>
                     <input type="file" id="pdfFileInput" accept=".pdf" class="hidden">
                 </label>
             </div>
@@ -62,14 +73,14 @@
     </nav>
 
     <!-- Progress Overlay -->
-    <div id="uploadProgressOverlay" class="hidden bg-slate-950/90 fixed inset-0 z-50 flex flex-col items-center justify-center space-y-4 p-4">
-        <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    <div id="uploadProgressOverlay" class="hidden bg-slate-950/95 fixed inset-0 z-50 flex flex-col items-center justify-center space-y-4 p-4">
+        <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
         <div class="text-center">
-            <h3 class="text-lg font-bold text-slate-200">Parsing PDF Booklet Text Tracks (Main-Thread Mode)...</h3>
-            <p id="progressStatusText" class="text-xs text-slate-500 font-mono mt-1">Reading page 0 / 0</p>
+            <h3 class="text-lg font-bold text-slate-200">Running Neural OCR Character Recognition...</h3>
+            <p id="progressStatusText" class="text-xs text-slate-400 font-mono mt-1">Generating bitmap render matrix...</p>
         </div>
-        <div class="w-64 bg-slate-800 h-1.5 rounded-full overflow-hidden border border-slate-700">
-            <div id="uploadProgressBar" class="bg-blue-500 h-full w-0 transition-all duration-150"></div>
+        <div class="w-80 bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700">
+            <div id="uploadProgressBar" class="bg-indigo-500 h-full w-0 transition-all duration-150"></div>
         </div>
     </div>
 
@@ -79,57 +90,60 @@
         <!-- Left Sidebar -->
         <div class="lg:col-span-1 space-y-4">
             <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col h-[75vh]">
-                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 font-mono">IndexedDB Syntax Blocks</h2>
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 font-mono">Extracted Book Nodes</h2>
                 <div class="space-y-1.5 overflow-y-auto pr-1 flex-grow font-mono text-xs" id="dynamicChapterMenu">
-                    <div class="text-slate-500 text-center py-8 italic">Please import the PDF grammar book to build the interactive index map.</div>
+                    <div class="text-slate-500 text-center py-8 italic">Scan a PDF book or import a previously exported JSON library file to active nodes.</div>
                 </div>
             </div>
         </div>
 
-        <!-- Right Playground Area -->
+        <!-- Right Content Playground Area -->
         <div class="lg:col-span-3 space-y-6">
             
             <!-- Context Card -->
             <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-xl relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
                 <div class="flex items-center justify-between mb-2">
-                    <span id="activePageBadge" class="text-xs font-mono text-indigo-400 font-semibold uppercase tracking-wider">PAGE MAP: NONE</span>
-                    <span class="text-[11px] text-slate-500 font-mono">Isolated Text Stream</span>
+                    <span id="activePageBadge" class="text-xs font-mono text-emerald-400 font-semibold uppercase tracking-wider">PAGE MAP: NONE</span>
+                    <span class="text-[11px] text-slate-500 font-mono">Active Database Buffer Stream</span>
                 </div>
-                <h2 class="text-sm font-bold text-slate-300 mb-2">Extracted Text Buffer</h2>
-                <div id="extractedTextPanel" class="text-slate-300 text-xs md:text-sm leading-relaxed bg-slate-900 border border-slate-800 p-4 rounded-lg font-mono min-h-[180px] max-h-[250px] overflow-y-auto whitespace-pre-wrap break-words">
-                    Upload the Betty Azar handbook. The engine will render page contents here in real-time upon clicking any panel block on the left.
+                <h2 class="text-sm font-bold text-slate-300 mb-2">OCR Extracted Panel</h2>
+                <div id="extractedTextPanel" class="text-slate-300 text-xs font-mono bg-slate-900 border border-slate-800 p-4 rounded-lg max-h-[120px] overflow-y-auto whitespace-pre-wrap break-words">
+                    Select a page node item from the sidebar directory to frame data lines.
                 </div>
             </div>
 
-            <!-- Quiz Board -->
-            <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                    <span class="text-xs font-medium text-slate-400 font-mono">Algorithmic Exercise Generator (via IndexedDB Storage)</span>
-                    <button id="nextGenBtn" class="text-xs text-blue-400 hover:text-blue-300 font-mono transition bg-blue-500/10 px-2.5 py-1 rounded border border-blue-500/20 hidden">Regenerate Token →</button>
-                </div>
-
-                <!-- Sentence Display -->
-                <div class="bg-slate-900 border border-slate-800 rounded-lg p-6">
-                    <div id="lmsSentenceTarget" class="text-base md:text-lg font-medium text-slate-200 text-center leading-relaxed font-mono">
-                        No active sentences built yet. Import book data to activate the parser.
+            <!-- Automation Trigger Panel -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-xl text-center space-y-6">
+                <div class="max-w-md mx-auto space-y-2">
+                    <div class="w-12 h-12 bg-blue-500/10 border border-blue-500/20 text-blue-400 font-bold rounded-xl flex items-center justify-center mx-auto text-xl">
+                        🚀
                     </div>
+                    <h2 class="text-base font-bold text-slate-200">One-Click Gemini Training Pipeline</h2>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Butona tıkladığında, bu sayfanın verileri ve Türk öğrencilere özel eğitim müfredat komutları panona kopyalanacak ve yeni sekmede **Google Gemini** açılacaktır. Tek yapman gereken kutuya yapıştırıp <span class="text-yellow-400 font-semibold font-mono">Enter</span> tuşuna basmak!
+                    </p>
                 </div>
 
-                <!-- Options -->
-                <div id="lmsOptionsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
-
-                <!-- Feedback Screen -->
-                <div id="lmsAlertPanel" class="rounded-lg p-4 hidden border transition-all duration-200 font-mono text-xs"></div>
+                <div class="pt-2 border-t border-slate-800 max-w-sm mx-auto">
+                    <button id="geminiLaunchBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 shadow-lg font-mono text-xs md:text-sm tracking-wide disabled:opacity-30 disabled:pointer-events-none" disabled>
+                        COMPILE PROMPT & LAUNCH GEMINI
+                    </button>
+                    <div id="clipboardToast" class="text-[11px] text-emerald-400 font-mono mt-2 hidden animate-pulse">✓ Prompt copied safely! Ready to paste into Gemini window.</div>
+                </div>
             </div>
         </div>
     </main>
+
+    <canvas id="ocrRenderCanvas" class="hidden"></canvas>
 
     <script>
         const DB_NAME = "AzarGrammarStorage";
         const DB_VERSION = 1;
         const STORE_NAME = "bookPages";
         let db = null;
+        let activePageContent = "";
+        let activePageNum = 0;
 
         function openDatabase() {
             return new Promise((resolve, reject) => {
@@ -179,7 +193,7 @@
             });
         }
 
-        // Main Thread-Safe PDF Input Pipeline
+        // --- CORE OCR INGESTION PIPELINE ---
         document.getElementById('pdfFileInput').addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -190,65 +204,124 @@
             fileReader.onload = async function() {
                 try {
                     const typedarray = new Uint8Array(this.result);
-                    
-                    // CRITICAL FIX: disableWorker parametresi ile harici script/sw engellerini tamamen bypass ediyoruz.
-                    const loadingTask = pdfjsLib.getDocument({ 
-                        data: typedarray,
-                        disableWorker: true 
-                    });
-                    
+                    const loadingTask = pdfjsLib.getDocument({ data: typedarray, disableWorker: true });
                     const pdf = await loadingTask.promise;
                     const totalPages = pdf.numPages;
                     
-                    const transaction = db.transaction([STORE_NAME], "readwrite");
-                    transaction.objectStore(STORE_NAME).clear();
+                    const clearTx = db.transaction([STORE_NAME], "readwrite");
+                    clearTx.objectStore(STORE_NAME).clear();
+
+                    const canvas = document.getElementById('ocrRenderCanvas');
+                    const ctx = canvas.getContext('2d');
+
+                    const worker = await Tesseract.createWorker();
+                    await worker.loadLanguage('eng');
+                    await worker.initialize('eng');
 
                     for (let i = 1; i <= totalPages; i++) {
                         const page = await pdf.getPage(i);
-                        const textObj = await page.getTextContent();
-                        const pageText = textObj.items.map(item => item.str).join(" ");
-                        
-                        await savePageToDB(i, pageText);
+                        const viewport = page.getViewport({ scale: 2.0 });
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+
+                        const renderContext = { canvasContext: ctx, viewport: viewport };
+                        await page.render(renderContext).promise;
+
+                        const { data: { text } } = await worker.recognize(canvas);
+                        await savePageToDB(i, text);
                         
                         const pct = Math.round((i / totalPages) * 100);
                         document.getElementById('uploadProgressBar').style.width = `${pct}%`;
-                        document.getElementById('progressStatusText').innerText = `Extracting book text layer: ${i} / ${totalPages}`;
                     }
                     
+                    await worker.terminate();
                     document.getElementById('uploadProgressOverlay').classList.add('hidden');
                     updateSystemStatus();
                 } catch (error) {
-                    alert("Parsing Exception: " + error.message);
+                    alert("OCR Exception: " + error.message);
                     document.getElementById('uploadProgressOverlay').classList.add('hidden');
                 }
             };
             fileReader.readAsArrayBuffer(file);
         });
 
+        // --- JSON DATA INTEROPERABILITY SHUTTLE (EXPORT / IMPORT) ---
+        
+        // Database to JSON Downloader File Linker
+        document.getElementById('exportJsonBtn').addEventListener('click', async () => {
+            const records = await getAllPagesFromDB();
+            if (!records || records.length === 0) return;
+
+            const jsonString = JSON.stringify(records, null, 2);
+            const blob = new Blob([jsonString], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.href = url;
+            downloadAnchor.download = `Azar_UUEG_IndexedDB_Backup_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            document.body.removeChild(downloadAnchor);
+        });
+
+        // JSON File Upload directly into Local IndexedDB Storage
+        document.getElementById('jsonFileInput').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const parsedData = JSON.parse(e.target.result);
+                    if (!Array.isArray(parsedData)) throw new Error("Format schema mismatch.");
+
+                    // Flash clear old data structures
+                    const transaction = db.transaction([STORE_NAME], "readwrite");
+                    const store = transaction.objectStore(STORE_NAME);
+                    store.clear();
+
+                    // Seed entire payload matrix to storage stores
+                    for (const entry of parsedData) {
+                        if (entry.pageNumber && entry.content) {
+                            await savePageToDB(entry.pageNumber, entry.content);
+                        }
+                    }
+
+                    alert(`✓ JSON Library Synchronized! ${parsedData.length} book pages deployed successfully.`);
+                    updateSystemStatus();
+                } catch (err) {
+                    alert("Invalid JSON data track standard: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // --- UI DRAW ENGINE ---
         async function updateSystemStatus() {
             const records = await getAllPagesFromDB();
-            const badge = document.getElementById('dbStatusBadge');
             const menuContainer = document.getElementById('dynamicChapterMenu');
+            const badge = document.getElementById('dbStatusBadge');
+            const exportBtn = document.getElementById('exportJsonBtn');
             
             if (records && records.length > 0) {
                 badge.innerText = `IndexedDB: ${records.length} Pages Loaded`;
                 badge.className = "text-xs px-3 py-1 rounded-full font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                exportBtn.classList.remove('hidden'); // Show export once database turns alive
                 
                 menuContainer.innerHTML = '';
                 records.forEach(page => {
-                    let label = `Page Cluster ${page.pageNumber}`;
-                    if(page.content.includes("CHART") || page.content.includes("EXERCISE") || page.content.includes("CHAPTER")) {
-                        label = `📘 Block ${page.pageNumber} (Target)`;
-                    }
-                    
                     const itemBtn = document.createElement('button');
                     itemBtn.className = "w-full text-left p-2.5 rounded bg-slate-900 border border-slate-800/60 hover:bg-slate-800 text-slate-300 font-mono transition truncate block";
-                    itemBtn.innerText = label;
+                    itemBtn.innerText = `📘 Page Segment ${page.pageNumber}`;
                     itemBtn.onclick = () => activateLMSBlock(page.pageNumber);
                     menuContainer.appendChild(itemBtn);
                 });
 
                 activateLMSBlock(records[0].pageNumber);
+            } else {
+                exportBtn.classList.add('hidden');
+                badge.innerText = "IndexedDB: Empty";
+                badge.className = "text-xs px-3 py-1 rounded-full font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20";
             }
         }
 
@@ -256,107 +329,62 @@
             const pageRecord = await getPageFromDB(pageNumber);
             if(!pageRecord) return;
 
-            document.getElementById('activePageBadge').innerText = `PAGE MAP: ${pageRecord.pageNumber}`;
-            const textPanel = document.getElementById('extractedTextPanel');
-            
-            if (pageRecord.content && pageRecord.content.trim() !== "") {
-                textPanel.innerText = pageRecord.content;
-                buildLmsExerciseFromText(pageRecord.content);
-            } else {
-                textPanel.innerText = "[Empty Page or Non-Text Elements Found]";
-                document.getElementById('lmsSentenceTarget').innerText = "Awaiting structural pipeline stream.";
-            }
+            activePageNum = pageRecord.pageNumber;
+            activePageContent = pageRecord.content;
+
+            document.getElementById('activePageBadge').innerText = `PAGE MAP: ${activePageNum}`;
+            document.getElementById('extractedTextPanel').innerText = activePageContent;
+            document.getElementById('geminiLaunchBtn').disabled = false;
         }
 
-        function buildLmsExerciseFromText(rawText) {
-            if (!rawText || rawText.trim() === "") return;
+        // --- COUPLING CODES ---
+        document.getElementById('geminiLaunchBtn').addEventListener('click', () => {
+            if(!activePageContent) return;
 
-            const sentences = rawText.match(/[A-Z][^.!?]*[.!?]/g) || [];
-            let validSentence = "";
-            let targetWord = "";
-            
-            const syntaxFocusWords = ["is", "are", "was", "were", "has", "have", "walked", "watched", "tastes", "consists", "sits", "do", "does", "did", "am", "breathes", "snows", "watches"];
-            
-            for (let i = 0; i < sentences.length; i++) {
-                let tokens = sentences[i].split(/\s+/);
-                let found = tokens.find(t => syntaxFocusWords.includes(t.toLowerCase().replace(/[^a-z]/g, "")));
-                if (found && tokens.length > 3) {
-                    validSentence = sentences[i];
-                    targetWord = found;
-                    break;
-                }
-            }
+            const targetPromptPayload = `
+Sen, Betty Azar'ın "Understanding and Using English Grammar" (3rd Edition) kitabının öğretim metodolojisine ve müfredatına tamamen hakim uzman bir yapay zeka İngilizce öğretmenisin[cite: 1].
 
-            const targetBox = document.getElementById('lmsSentenceTarget');
-            const optionsContainer = document.getElementById('lmsOptionsContainer');
-            const alertPanel = document.getElementById('lmsAlertPanel');
-            alertPanel.classList.add('hidden');
+Aşağıda, kitabın ${activePageNum}. sayfasından OCR ile taranarak elde edilmiş ham bir metin bulunuyor. Bu metindeki tarama/harf hatalarını bağlamdan yola çıkarak onar[cite: 1].
 
-            if (!validSentence && rawText.length > 20) {
-                const words = rawText.split(/\s+/).filter(w => w.length > 4);
-                if (words.length > 4) {
-                    targetWord = words[Math.floor(Math.random() * words.length)];
-                    validSentence = rawText.substring(0, 120) + "...";
-                    if (!validSentence.includes(targetWord)) {
-                        validSentence = `Context matrix validation for the word: ${targetWord}`;
-                    }
-                }
-            }
+KİTAP SAYFASI HAM VERİSİ (PAGE: ${activePageNum}):
+--------------------------------------------------
+${activePageContent}
+--------------------------------------------------
 
-            if (!validSentence) {
-                targetBox.innerText = "Analyzing continuous tables or indicators... Select another block.";
-                optionsContainer.innerHTML = '';
-                document.getElementById('nextGenBtn').classList.add('hidden');
-                return;
-            }
+TÜRK ÖĞRENCİ İÇİN EĞİTİM MATERYALİ HAZIRLAMA TALİMATLARI:
+1. Yukarıdaki metni analiz et, bunun Betty Azar müfredatındaki hangi konuya ait olduğunu süz[cite: 1].
+2. Bu sayfa içeriğinden yola çıkarak, ana dili Türkçe olan bir öğrencinin dil mantığına uygun harika bir interaktif ders tasarla. Türk öğrencilerin en çok düştüğü kontrast hatalarını özellikle vurgula[cite: 1].
 
-            document.getElementById('nextGenBtn').classList.remove('hidden');
-            document.getElementById('nextGenBtn').onclick = () => buildLmsExerciseFromText(rawText);
+LÜTFEN BANA AŞAĞIDAKİ ŞABLONA GÖRE ÇIKTI ÜRET (Doğrudan Türkçe anlatım kullan):
 
-            const cleanTarget = targetWord.replace(/[^a-zA-Z]/g, "");
-            const sentencePlaceholder = validSentence.replace(targetWord, " [ _____ ] ");
-            
-            targetBox.innerText = sentencePlaceholder;
+# 📘 [İlgili Azar Ünitesi Başlığı] - Sayfa ${activePageNum} Ders Özeti[cite: 1]
+- **Gramer Odağı:** Bu sayfadaki kuralın mantığını, formülünü Türk öğrencilerin anlayacağı şekilde net örneklerle açıkla[cite: 1].
+- **Türk Öğrenciler İçin Kritik İpucu:** Türkçeden İngilizceye düşünürken bu konuda yapılan en yaygın hatayı ve çözümünü yaz.
 
-            let distractors = [];
-            if(["is", "are", "was", "were", "am"].includes(cleanTarget.toLowerCase())) {
-                distractors = ["be", "been", "being", "was"].filter(v => v !== cleanTarget.toLowerCase());
-            } else if(["has", "have", "had"].includes(cleanTarget.toLowerCase())) {
-                distractors = ["had", "having", "has", "have"].filter(v => v !== cleanTarget.toLowerCase());
-            } else {
-                distractors = [`${cleanTarget}ing`, `${cleanTarget}s`, `${cleanTarget}ed`, "will " + cleanTarget];
-            }
-            
-            const choices = [cleanTarget, ...distractors].filter((v, i, a) => a.indexOf(v) === i).slice(0, 4).sort(() => Math.random() - 0.5);
-            optionsContainer.innerHTML = '';
+# 📝 Örnek Cümle Analizleri (Book Sentences)
+Sayfada geçen en önemli 2-3 örnek cümleyi veya diyalog satırını ayıkla, İngilizce orijinal hallerini ve hemen altına en doğru Türkçe akademik çevirilerini yaz[cite: 1].
 
-            choices.forEach(choice => {
-                const choiceBtn = document.createElement('button');
-                choiceBtn.className = "w-full text-left p-3.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition font-mono text-xs md:text-sm";
-                choiceBtn.innerText = choice;
-                choiceBtn.onclick = () => {
-                    const isCorrect = choice === cleanTarget;
-                    
-                    alertPanel.className = `rounded-lg p-4 font-mono text-xs border ${isCorrect ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/5 border-rose-500/20 text-rose-400'}`;
-                    alertPanel.innerHTML = `<strong>${isCorrect ? '✓ VALIDATED' : '✗ DISCREPANCY'}</strong><br><span class="opacity-70 text-[11px]">Database Master Token: "${cleanTarget}"</span>`;
-                    alertPanel.classList.remove('hidden');
+# 🧠 İnteraktif Alıştırma Paneli (Interactive Quiz)
+Sayfadaki egzersizlerden yola çıkarak 3 adet boşluk doldurma sorusu üret. Boşlukları "[ _____ ]" şeklinde bırak[cite: 1]. Soruların altına şıkları (A, B, C, D) koy. 
+*En alta ise "Cevap Anahtarı ve Detaylı Dil Bilgisi Açıklaması" ekleyerek öğrencinin neden o şıkkı seçmesi gerektiğini gerekçelendir.*
+            `.trim();
 
-                    Array.from(optionsContainer.children).forEach(b => {
-                        if(b.innerText === cleanTarget) b.className = "w-full text-left p-3.5 rounded-lg border border-emerald-500 bg-emerald-500/10 text-emerald-400 font-mono text-xs md:text-sm";
-                        else if(b.innerText === choice && !isCorrect) b.className = "w-full text-left p-3.5 rounded-lg border border-rose-500 bg-rose-500/10 text-rose-400 font-mono text-xs md:text-sm";
-                        else b.className = "w-full text-left p-3.5 rounded-lg border border-slate-900 opacity-20 font-mono text-xs md:text-sm pointer-events-none";
-                    });
-                };
-                optionsContainer.appendChild(choiceBtn);
+            navigator.clipboard.writeText(targetPromptPayload).then(() => {
+                const toast = document.getElementById('clipboardToast');
+                toast.classList.remove('hidden');
+                setTimeout(() => { toast.classList.add('hidden'); }, 3000);
+                window.open('https://gemini.google.com', '_blank');
+            }).catch(err => {
+                alert("Clipboard allocation failed.");
             });
-        }
+        });
 
         window.onload = async () => {
             try {
                 await openDatabase();
                 await updateSystemStatus();
             } catch (err) {
-                console.error("Storage offline:", err);
+                console.error("Storage state down:", err);
             }
         };
     </script>
