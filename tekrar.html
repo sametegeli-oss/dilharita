@@ -34,13 +34,16 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 .done b{color:#a7f3d0;font-size:20px;display:block;margin-bottom:8px}
 .b-more{background:#2563eb;margin-top:12px}.b-next{background:#0e7490;margin:6px 4px 0}
 
-/* İsteğe Bağlı Yapay Zeka Anlam Kontrolü Butonu */
-.b-sem-chk{background:#1e1b4b; color:#a5b4fc; border:1px solid #4338ca; padding:8px 12px; font-size:12.5px; font-weight:700; border-radius:10px; margin-top:8px; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s;}
+/* Yapay Zeka Butonları ve Canlı Düzenleme Alanı */
+.b-sem-chk{background:#1e1b4b; color:#a5b4fc; border:1px solid #4338ca; padding:8px 12px; font-size:12.5px; font-weight:700; border-radius:10px; margin-top:8px; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; cursor:pointer;}
 .b-sem-chk:hover{background:#312e81; color:#fff;}
+.ai-settings-toggle{color:var(--mut); font-size:11.5px; text-decoration:underline; cursor:pointer; display:block; margin-top:10px; text-align:right;}
+.ai-settings-panel{background:#071120; border:1px solid var(--line); border-radius:10px; padding:10px; margin-top:8px; display:none;}
+.ai-settings-panel textarea{width:100%; height:90px; background:#0a1628; color:#fff; border:1px solid var(--line); border-radius:6px; padding:8px; font-size:12px; resize:vertical; font-family:system-ui;}
 
-/* Görsel Alanı İçin Stil Kuralları */
-.img-box{margin-top:12px; text-align:center; width:100%; display:none;}
-.img-box img{max-width:100%; max-height:240px; border-radius:12px; border:1px solid var(--line); object-fit:cover; box-shadow:0 4px 12px rgba(0,0,0,0.3);}
+/* Görsel Alanı İçin Stil Kuralları (Garantili Düzen) */
+.img-box{margin-top:12px; text-align:center; width:100%; display:none; min-height:150px;}
+.img-box img{max-width:100%; max-height:240px; border-radius:12px; border:1px solid var(--line); object-fit:cover; box-shadow:0 4px 12px rgba(0,0,0,0.3); background:#071120;}
 
 /* Diff Visual Styles & Fixed Sizing for Auto-Wrap */
 .diff-box{margin-top:6px; background:#071120; padding:8px; border-radius:8px; font-weight:normal; display:inline-block; width:100%; word-break:break-word; white-space:normal;}
@@ -68,6 +71,13 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <div id="prodBox" style="display:none">
     <div class="inrow"><textarea id="inp" placeholder="İngilizcesini yaz…"></textarea><button class="b-retry" id="bListenRetry" style="display:none;padding:11px 13px;max-width:50px;min-width:50px" title="Kendi sesini tekrar dinle">👂</button><button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button></div>
     <div class="score" id="score"></div>
+    
+    <!-- Kullanıcı Tarafından Düzenlenebilir Yapay Zeka Panel Ayarı -->
+    <span class="ai-settings-toggle" id="toggleAiSettings">⚙️ Yapay Zeka Kriter Ayarları</span>
+    <div class="ai-settings-panel" id="aiSettingsPanel">
+      <div style="font-size:11px; color:var(--mut); margin-bottom:4px; font-weight:bold;">Yapay Zekanın Denetleme Promptu (İstediğin gibi düzenle):</div>
+      <textarea id="aiPromptInput"></textarea>
+    </div>
   </div>
   <div class="row">
     <button class="b-show" id="bShow" style="display:none">👁 Göster</button>
@@ -111,6 +121,24 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   
   var showOnlyErrors = false; 
   localStorage.setItem("dh-only-errors", "0");
+
+  // Varsayılan Sıkılaştırılmış Yapay Zeka Prompt Kural Seti
+  var defaultAiPrompt = "Sen bir İngilizce öğretmenisin. Öğrencinin yazdığı cümlenin, referans cümleyle ANLAMSAL OLARAK TAMAMEN EŞİT olup olmadığını denetliyorsun. Sadece kelime dizilimi veya birebir eş anlamlı kelime alternatifleri (Örn: 'car' yerine 'automobile', 'start' yerine 'begin' veya 'I think' yerine 'In my opinion') gibi kesin ve geçerli dil bilgisi varyasyonlarını kabul et. Eğer öğrencinin cümlesinde zaman (tense) uyumsuzluğu varsa, cümlenin ana ögelerinden biri eksikse, anlam çok uzaklaşmışsa veya sadece felsefi/uzak bir benzerlik varsa kesinlikle reddet. SADECE tek kelime cevap ver: EVET ya da HAYIR. Başka hiçbir açıklama yapma.";
+  
+  // LocalStorage üzerinden kaydedilmiş promptu yükle yoksa varsayılanı al
+  var savedPrompt = localStorage.getItem("dh-custom-ai-prompt") || defaultAiPrompt;
+  $("aiPromptInput").value = savedPrompt;
+
+  // Ayarlar Paneli Aç/Kapat
+  $("toggleAiSettings").onclick = function() {
+    var panel = $("aiSettingsPanel");
+    panel.style.display = (panel.style.display === "block") ? "none" : "block";
+  };
+  
+  // Prompt her değiştiğinde otomatik kaydet
+  $("aiPromptInput").oninput = function() {
+    localStorage.setItem("dh-custom-ai-prompt", $("aiPromptInput").value);
+  };
 
   var mediaRecorder = null, audioChunks = [], audioUrl = null, audioStream = null, activeAudioObj = null;
   var recognitionInstance = null, isRecording = false, accumulatedTranscript = "";
@@ -440,7 +468,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     if(prod) setTimeout(function(){ try{$("inp").focus();}catch(e){} },50);
   }
 
-  /* 🤖 BUTON TETİKLEMELİ YAPAY ZEKA ANLAM KONTROLÜ FONKSİYONU */
+  /* 🤖 KULLANICI PROMPTU TABANLI YAPAY ZEKA ANLAM KONTROLÜ FONKSİYONU */
   window.triggerAiSemanticCheck = function(userInputValue, targetValue) {
     var waitEl = document.getElementById("semCheckNote");
     if(!waitEl) {
@@ -450,15 +478,17 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       $("score").appendChild(waitEl);
     }
     
-    // Aktif kontrol butonunu gizle/sustur
     var btnSem = document.getElementById("btnTriggerSem");
     if(btnSem) btnSem.style.display = "none";
     
     waitEl.style.color = "#9fb3d9";
     waitEl.textContent = "🤖 Cümleniz anlamca kontrol ediliyor…";
 
+    // Tamamen dinamik, kullanıcının o an kutuda düzenlediği güncel kriter promptu alınır
+    var activeCriteriaPrompt = $("aiPromptInput").value.trim() || defaultAiPrompt;
+
     var semMsgs = [
-      {role:"system",content:"Bir İngilizce öğrenme uygulamasında öğrencinin cümlesinin referans cümleyle AYNI ANLAMA gelip gelmediğini değerlendiriyorsun (farklı kelimeler/yapı olabilir, önemli olan anlam). SADECE tek kelime cevap ver: EVET ya da HAYIR. Başka hiçbir şey yazma."},
+      {role:"system",content: activeCriteriaPrompt},
       {role:"user",content:"Referans: " + targetValue + "\nÖğrenci: " + userInputValue}
     ];
 
@@ -475,14 +505,14 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
               dbox.style.opacity = "0.55";
               var hint = document.getElementById("micHintNote") || document.createElement("div");
               hint.id = "micHintNote"; hint.style.cssText = "margin-top:6px;font-size:11.5px;color:#9fb3d9";
-              hint.textContent = "ℹ️ Yazılan alternatif cümle yapay zeka tarafından kabul edildi. Kelime kelime eşleşme aranmıyor.";
+              hint.textContent = "ℹ️ Yazılan alternatif cümle belirlediğin kriterlere göre yapay zeka tarafından onaylandı.";
               dbox.insertAdjacentElement("afterend", hint);
             }
           } catch(e){}
         } else if(/hayır|hayir|no/i.test(t)){
           semanticNo = true;
           waitEl.style.color = "#f87171";
-          waitEl.textContent = "🤖 Anlamca da farklı görünüyor — açıklamalara göz atın.";
+          waitEl.textContent = "🤖 Belirttiğin kriterlere göre anlam veya yapı farklı çıktı — açıklamalara bak.";
           showExplain(curT, false);
         } else if(!isRetry){
           runCheck(220, true);
@@ -507,21 +537,25 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     $("grade").style.display="flex";
     $("bShow").style.display="none"; $("bChk").style.display="none";
 
-    // 📸 KESİN ÇÖZÜMLÜ HAREKETLİ/DİNAMİK GÖRSEL YÜKLEYİCİ
+    // 📸 RESİM SORUNUNU KÖKTEN ÇÖZEN ULTRA KARARLI DİNAMİK CDN SİSTEMİ
     if(curT.img && curT.img.trim() !== "") {
       $("imgContainer").innerHTML = `<img src="${curT.img}" alt="Dil Harita Visual Context" loading="lazy">`;
       $("imgContainer").style.display = "block";
     } else if (window.DHImageAddon && window.DHImageAddon.renderFor) {
       window.DHImageAddon.renderFor(cur.id, $("imgContainer"));
     } else if (curT.en) {
+      // Kelimeleri temizle ve garantili çalışan arama motoru CDN'ine pasla
       var cleanQuery = curT.en.toLowerCase()
         .replace(/[^a-z0-9 ]/g, "")
         .split(" ")
-        .filter(function(w) { return w.length > 2; }) 
-        .slice(0, 3)
+        .filter(function(w) { return w.length > 3; }) // 'the', 'for' gibi işlevsiz kelimeleri ayıkla
+        .slice(0, 2)
         .join(",");
-      if(!cleanQuery) cleanQuery = "education,language";
-      $("imgContainer").innerHTML = `<img src="https://images.unsplash.com/featured/500x300/?${cleanQuery}" alt="Context Visual" onerror="this.style.display='none'">`;
+      
+      if(!cleanQuery) cleanQuery = "objects";
+      
+      // Unsplash Source kapandığı için kelime bazlı kesintisiz görsel sunan LoremFlickr alt yapısı
+      $("imgContainer").innerHTML = `<img src="https://loremflickr.com/500/280/${cleanQuery}" alt="Visual Context" onerror="this.style.display='none'">`;
       $("imgContainer").style.display = "block";
     }
 
@@ -544,7 +578,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       if(sc<80 && !viaMic) showExplain(curT,false);
       speak(curT.en);
       
-      // 🤖 OTOMATİK ÇAĞRI YERİNE BUTONLU YAPAY ZEKA TETİKLEME ALGORİTMASI
+      // 🤖 TETİKLEME BUTONU
       var bandLo = viaMic ? 10 : 25, bandHi = viaMic ? 95 : 80;
       if(sc>=bandLo && sc<bandHi && userInputValue.trim().length>2){
         var hasKey = window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey();
