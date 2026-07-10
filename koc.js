@@ -5,7 +5,6 @@
   "use strict";
   var DAY=new Date().toISOString().slice(0,10), KEY="dh-koc-plan-"+DAY;
   
-  // Tam eşleşenler veya ön eki eşleşenler için kontrol dizisi
   var ALLOWED_BASE = ["tekrar.html?plan=1", "index-app.html", "chat.html", "practice.html?auto=due", "kelime-ogren.html", "hata-defteri.html"];
   
   function isHrefAllowed(href) {
@@ -33,7 +32,7 @@
       __lastS1=s1; __lastW1=w1; __lastS2=s2; __lastW2=w2;
     }catch(e){}
 
-    // --- AKTİF MODÜLLERİ VE İLERLEMELERİNİ PROFİLE EKLEME ---
+    // Sistemdeki modülleri koça besle
     try {
       if(window.definitions) {
         var modLog = [];
@@ -45,7 +44,6 @@
             var status = m["sentence:" + modKey + "_" + i];
             if(status && (status[0] === 1 || status[0] === 2)) done++;
           }
-          // AI'a sadece modülün ID'sini, adını ve ilerleme durumunu besliyoruz
           modLog.push("Modül ID:" + modKey + " (" + (mod.title || modKey) + " - İlerleme:" + done + "/" + total + ")");
         }
         if(modLog.length) {
@@ -53,7 +51,6 @@
         }
       }
     } catch(e){}
-    // ---------------------------------------------------------
 
     var errCount=0;
     try{ if(window.LearningErrorDB&&LearningErrorDB.all){
@@ -134,14 +131,13 @@
     var aiSteps=p.steps.filter(function(s){ return s&&s.label&&isHrefAllowed(String(s.href||"")); });
     if(!window.__dhErrCount){ aiSteps=aiSteps.filter(function(s){ return s.href!=="hata-defteri.html"; }); }
 
-    // GARANTİLİ İSKELET YAPISI
     var spine=[];
     if(due>0) spine.push({label:due+" öğeyi tekrarla", href:"tekrar.html?plan=1"});
     
-    // Yapay zeka spesifik bir modül seçti mi kontrol et (index-app.html?mod=...)
+    // AI'ın belirlediği dinamik modüllü adımı iskelete koruyarak ekle
     var aiSelectedMod = aiSteps.find(function(s){ return String(s.href).indexOf("index-app.html?mod=") === 0; });
     if(aiSelectedMod) {
-      spine.push({label: aiSelectedMod.label, href: aiSelectedMod.href});
+      spine.push({label: aiSelectedMod.label, href: aiSelectedMod.href}); // Örn: "Present Tense Modülünü Çalış"
     } else {
       spine.push({label:"Yeni cümleler öğren", href:"index-app.html"});
     }
@@ -169,9 +165,9 @@
       
       var sys='Türk öğrencinin İngilizce koçusun. Profile göre BUGÜN için kısa, SOMUT bir plan yap. '
         +'KESİN KURALLAR: (1) "Hata defteri: BOŞ" yazıyorsa hata-defteri.html adımını KESİNLİKLE ekleme. '
-        +'(2) Yalnız profildeki gerçek sayılara dayanan, spesifik adımlar öner (örn. "Tekrar bekleyen: 12" varsa "12 kelimeyi tekrarla" gibi). '
-        +'(3) Cümle çalışması adımı için sana gönderilen "Sistemdeki Mevcut Modüller" listesinden öğrencinin ilerlemesi yarım kalmış veya sıradaki mantıklı bir modülü seç. '
-        +'Bu adımın href değerini KESİNLİKLE "index-app.html?mod=SEÇİLEN_MODÜL_ID" yap ve label kısmına modülün gerçek adını yaz (Örn: "label": "Present Continuous Modülünü Çalış", "href": "index-app.html?mod=mod_present_cont"). '
+        +'(2) Yalnız profildeki gerçek sayılara dayanan, spesifik adımlar öner. '
+        +'(3) Cümle çalışması adımı için sana gönderilen "Sistemdeki Mevcut Modüller" listesinden öğrencinin ilerlemesi eksik kalmış ya da çalışması gereken mantıklı bir modül seç. '
+        +'Bu adımın href değerini KESİNLİKLE "index-app.html?mod=SEÇİLEN_MODÜL_ID" yap ve label kısmına modülün gerçek adını yaz (Örn: "label": "Modül: Present Continuous Çalış", "href": "index-app.html?mod=mod_present_cont"). '
         +'(4) Tekrar bekleyen 0 ise tekrar.html adımını ekleme. '
         +'SADECE JSON döndür, açıklama yok: {"focus":"günün odağı tek cümle (Türkçe)","note":"kısa motivasyon/uyarı (Türkçe, en çok 15 kelime)","why":"bu planı NEDEN önerdiğini profildeki sayılara dayanarak açıklayan 1 cümle (Türkçe, en çok 20 kelime)","steps":[{"label":"somut, sayıya dayalı adım (Türkçe, kısa)","href":"..."}]} steps 2-3 adet olacak ve href YALNIZ şunlardan biri veya index-app.html?mod=... varyasyonu olmalıdır: '+ALLOWED_BASE.join(", ");
       
