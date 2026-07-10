@@ -37,5 +37,31 @@ window.addEventListener('error', function(e){
 <script src="./avatar-blink-sync.js?v=1"></script>
 <script src="./study-tracker.js?v=1"></script>
 <script src="./index-app-layout.js?v=12"></script>
+  // --- AI KOÇ OTOMATİK MODÜL BAŞLATICI ---
+document.addEventListener("DOMContentLoaded", function() {
+  // Sayfa yüklendikten hemen sonra (render için 500ms opsiyonel bir gecikme iyi olur)
+  setTimeout(function() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var targetMod = urlParams.get('mod'); // Koçun gönderdiği örn: "A1-M01-P2"
+
+    if (targetMod) {
+      console.log("AI Koç Talimatı Alındı: " + targetMod + " modülü başlatılıyor...");
+      
+      // Senin index-app.html içindeki ana başlatma fonksiyonun:
+      if (typeof startPractice === "function") {
+        startPractice(targetMod);
+      } else {
+        // Eğer fonksiyon o an globalde değilse, ilgili karta tıklama simüle et
+        var cards = document.querySelectorAll('.bg-slate-800\\/50, [onclick*="startPractice"]');
+        cards.forEach(function(card) {
+          if (card.getAttribute('onclick') && card.getAttribute('onclick').indexOf(targetMod) >= 0) {
+            card.click();
+          }
+        });
+      }
+    }
+  }, 500); 
+});
+// ----------------------------------------
 </body>
 </html>
