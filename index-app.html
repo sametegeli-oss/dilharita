@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentence Mode - Dil Haritası</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+        body {
+            font-family: 'Nunito', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-blue-500/30">
+
+    <!-- Üst Bar -->
+    <header class="border-b border-slate-900 bg-slate-950/80 backdrop-blur sticky top-0 z-40 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="index.html" class="p-2 hover:bg-slate-900 rounded-xl transition text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </a>
+                <div>
+                    <h1 class="text-2xl font-black tracking-wide bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                        Sentence Mode
+                    </h1>
+                    <p class="text-xs text-slate-500 font-medium">Cümle tabanlı İngilizce — gramer renkleriyle</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button onclick="window.location.href='hata-defteri.html'" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-xs font-bold rounded-xl border border-slate-800 transition flex items-center gap-2">
+                    <i class="fa-solid fa-book-bookmark text-red-400"></i>
+                    <span>Liste</span>
+                </button>
+                <button onclick="openSettings()" class="p-2.5 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 transition text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+        <!-- Genel İstatistik Özet Alanı -->
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-slate-900/50 border border-slate-900 p-4 rounded-2xl text-center">
+                <div id="stat-studying" class="text-2xl font-black text-purple-400">0</div>
+                <div class="text-xs text-slate-400 font-semibold mt-1">çalışılan</div>
+            </div>
+            <div class="bg-slate-900/50 border border-slate-900 p-4 rounded-2xl text-center">
+                <div id="stat-learned" class="text-2xl font-black text-green-400">0</div>
+                <div class="text-xs text-slate-400 font-semibold mt-1">öğrenilen</div>
+            </div>
+            <div class="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl text-center shadow-lg shadow-amber-500/5">
+                <div id="stat-due" class="text-2xl font-black text-amber-400">0</div>
+                <div class="text-xs text-slate-400 font-semibold mt-1">tekrar bekliyor</div>
+            </div>
+        </div>
+
+        <!-- Büyük Hızlı Tekrar Butonu -->
+        <div id="due-banner" class="hidden">
+            <button onclick="window.location.href='tekrar.html'" class="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-slate-950 font-black py-4 px-6 rounded-2xl transition shadow-lg shadow-orange-500/10 flex items-center justify-center gap-3 text-base">
+                <i class="fa-solid fa-rotate"></i>
+                <span id="due-banner-text">Bugün 0 cümleyi tekrar et</span>
+            </button>
+        </div>
+
+        <!-- Seviye Sekmeleri ve Modüller -->
+        <div class="space-y-4">
+            <div class="flex items-center gap-2 border-b border-slate-900 pb-2">
+                <span class="px-3 py-1 bg-blue-600 text-white font-black text-xs rounded-lg">A1</span>
+                <span id="total-modules-count" class="text-xs text-slate-500 font-bold">0 modül</span>
+            </div>
+
+            <!-- Modüller Dinamik Grid -->
+            <div id="modules-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- JavaScript tarafından doldurulacak -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Ayarlar Modal Penceresi -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl p-6 space-y-6">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-black flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-blue-400"></i>
+                    <span>Tercihler</span>
+                </h3>
+                <button onclick="closeSettings()" class="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-900">
+                    <div>
+                        <div class="text-sm font-bold">Otomatik Ses (TTS)</div>
+                        <div class="text-xs text-slate-500">Cümle açıldığında seslendir</div>
+                    </div>
+                    <input type="checkbox" id="cfg-auto-speak" class="w-4 h-4 rounded bg-slate-900 border-slate-800 text-blue-600 focus:ring-blue-500/20" checked>
+                </div>
+                <div class="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-900">
+                    <div>
+                        <div class="text-sm font-bold">Gramer Renkleri</div>
+                        <div class="text-xs text-slate-500">Kelimeleri türlerine göre boya</div>
+                    </div>
+                    <input type="checkbox" id="cfg-show-colors" class="w-4 h-4 rounded bg-slate-900 border-slate-800 text-blue-600 focus:ring-blue-500/20" checked>
+                </div>
+            </div>
+
+            <button onclick="saveSettings()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition">
+                Kaydet ve Kapat
+            </button>
+        </div>
+    </div>
+
+    <!-- Uygulama Veri ve Akış Yönetimi Katalizörü -->
+    <script src="definitions.js?v=1"></script>
+    <script src="main.js?v=1"></script>
+    <script>
+        // Sayfa içi temel UI aksiyonları ve veri bağlama operasyonları
+        function openSettings() {
+            document.getElementById('cfg-auto-speak').checked = localStorage.getItem('dh-cfg-auto-speak') !== '0';
+            document.getElementById('cfg-show-colors').checked = localStorage.getItem('dh-cfg-show-colors') !== '0';
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+        function saveSettings() {
+            localStorage.setItem('dh-cfg-auto-speak', document.getElementById('cfg-auto-speak').checked ? '1' : '0');
+            localStorage.setItem('dh-cfg-show-colors', document.getElementById('cfg-show-colors').checked ? '1' : '0');
+            closeSettings();
+        }
+
+        // Modülleri Ekrana Basma Fonksiyonu
+        function renderModules() {
+            const container = document.getElementById('modules-container');
+            if(!container || !window.definitions) return;
+
+            const progressMirror = JSON.parse(localStorage.getItem('dh-progress-mirror-v1') || '{}');
+            const keys = Object.keys(definitions);
+            document.getElementById('total-modules-count').textContent = `${keys.length} modül`;
+
+            let html = '';
+            let totalStudying = 0;
+            let totalLearned = 0;
+
+            keys.forEach(modKey => {
+                const mod = definitions[modKey];
+                const totalSentences = mod.sentences ? mod.sentences.length : 0;
+                
+                // Bu modüle ait çalışılan ve öğrenilen durumlarını say
+                let currentStudying = 0;
+                let currentLearned = 0;
+                
+                for(let i=0; i<totalSentences; i++) {
+                    const status = progressMirror[`sentence:${modKey}_${i}`];
+                    if(status) {
+                        if(status[0] === 1) currentStudying++;
+                        if(status[0] === 2) currentLearned++;
+                    }
+                }
+
+                totalStudying += currentStudying;
+                totalLearned += currentLearned;
+
+                const completedCount = currentStudying + currentLearned;
+                const progressPercent = totalSentences > 0 ? (completedCount / totalSentences) * 100 : 0;
+
+                html += `
+                    <div onclick="startPractice('${modKey}')" class="bg-slate-800/20 hover:bg-slate-800/40 border border-slate-900 hover:border-slate-800 p-4 rounded-2xl cursor-pointer transition flex flex-col justify-between group h-32">
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-200 group-hover:text-white transition line-clamp-1">${mod.title || modKey}</h4>
+                            <p class="text-xs text-slate-500 font-medium mt-0.5">${totalSentences} cümle</p>
+                        </div>
+                        <div class="space-y-1.5">
+                            <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                                <div class="bg-gradient-to-r from-teal-500 to-blue-500 h-full rounded-full transition-all duration-300" style="width: ${progressPercent}%"></div>
+                            </div>
+                            <div class="flex items-center justify-between text-[10px] text-slate-500 font-bold">
+                                <span>İlerleme</span>
+                                <span class="text-slate-400">${completedCount}/${totalSentences}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            document.getElementById('stat-studying').textContent = totalStudying;
+            document.getElementById('stat-learned').textContent = totalLearned;
+
+            // SRS Tekrar sayısını IndexedDB'den çekip ekrana basma
+            calculateDueCount();
+
+            // --- AI KOÇ SÜPER ENTEGRASYONU ---
+            // Modüller DOM'a basıldıktan hemen sonra koçun direktifini yerine getir
+            checkKocDirective();
+        }
+
+        // Koçtan gelen yönlendirmeyi denetleyen fonksiyon
+        function checkKocDirective() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetMod = urlParams.get('mod'); // Örn: "A1-M01-P2"
+
+            if (targetMod && window.definitions && window.definitions[targetMod]) {
+                console.log(`🚀 AI Koç Emri Devrede: ${targetMod} otomatik başlatılıyor...`);
+                setTimeout(() => {
+                    startPractice(targetMod);
+                }, 200);
+            }
+        }
+
+        function calculateDueCount() {
+            try {
+                const request = indexedDB.open("sentence-mode", 1);
+                request.onsuccess = function() {
+                    const db = request.result;
+                    let dueCount = 0;
+                    const now = Date.now();
+                    
+                    const transaction = db.transaction("kv", "readonly");
+                    const store = transaction.objectStore("kv");
+                    const cursorRequest = store.openCursor();
+                    
+                    cursorRequest.onsuccess = function(e) {
+                        const cursor = e.target.result;
+                        if (cursor) {
+                            const key = String(cursor.key);
+                            const val = cursor.value || {};
+                            if (key.indexOf("srs:") === 0 && (val.due || 0) <= now) {
+                                dueCount++;
+                            }
+                            cursor.continue();
+                        } else {
+                            db.close();
+                            document.getElementById('stat-due').textContent = dueCount;
+                            if(dueCount > 0) {
+                                document.getElementById('due-banner').classList.remove('hidden');
+                                document.getElementById('due-banner-text').textContent = `Bugün ${dueCount} cümleyi tekrar et`;
+                            }
+                        }
+                    };
+                };
+            } catch(e) { console.error("SRS sayım hatası:", e); }
+        }
+
+        function startPractice(modKey) {
+            if(!window.definitions || !definitions[modKey]) return;
+            // main.js içindeki orijinal çalışma mekanizmasını tetikler veya sayfayı yönlendirir
+            localStorage.setItem('dh-current-module', modKey);
+            window.location.href = `practice.html?mod=${modKey}`;
+        }
+
+        // Sayfa ayağa kalktığında tetikle
+        window.addEventListener('DOMContentLoaded', () => {
+            // Eğer main.js asenkron basıyorsa güvenceye alalım
+            if(window.definitions) {
+                renderModules();
+            } else {
+                setTimeout(renderModules, 500);
+            }
+        });
+    </script>
+</body>
+</html>
