@@ -64,7 +64,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <div class="q no-wordpop" id="q"></div>
   <div class="a hid no-wordpop" id="a"></div>
   
-  <!-- Resim Eklentisi Yuvası (Soru satırının hemen altında) -->
+  <!-- Resim Eklentisi Yuvası -->
   <div class="img-box" id="imgContainer"></div>
 
   <div id="prodBox" style="display:none">
@@ -116,6 +116,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   var DAY=86400000, SESSION=25, now=Date.now();
   var PLAN=/[?&]plan=1/.test(location.search);
   var mode=localStorage.getItem("dh-tekrar-mode")||"prod";
+  var showOnlyErrors = false; 
   
   var defaultAiPrompt = "Sen bir İngilizce öğretmenisin. Öğrencinin yazdığı cümlenin, referans cümleyle ANLAMSAL OLARAK TAMAMEN EŞİT olup olmadığını denetliyorsun. Sadece kelime dizilimi veya birebir eş anlamlı kelime alternatifleri (Örn: 'car' yerine 'automobile', 'start' yerine 'begin' veya 'I think' yerine 'In my opinion') gibi kesin ve geçerli dil bilgisi varyasyonlarını kabul et. Eğer öğrencinin cümlesinde zaman (tense) uyumsuzluğu varsa, cümlenin ana ögelerinden biri eksikse, anlam çok uzaklaşmışsa veya sadece felsefi/uzak bir benzerlik varsa kesinlikle reddet. SADECE tek kelime cevap ver: EVET ya da HAYIR. Başka hiçbir açıklama yapma.";
   
@@ -375,9 +376,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     localStorage.setItem("dh-only-errors", showOnlyErrors ? "1" : "0");
     location.reload();
   };
-  paintMode();
-  $("bMore").textContent = "Sonraki "+SESSION+"'i getir →";
-
+  
   async function initApp() {
     for(var sid in srs){ if(srs.hasOwnProperty(sid)){ var r0=srs[sid]||{}; if((r0.due||0)<=now) push("s",sid,r0.due,(r0.lapses||0)>=3?"leech":""); } }
     for(var mid in mirror){ if(!mirror.hasOwnProperty(mid)) continue;
@@ -404,6 +403,8 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     if(session.some(function(x){return x.kind==="w"})){
       try { dict=await (await fetch("./data/dictionary.json")).json()||{}; }catch(e){}
     }
+    paintMode();
+    $("bMore").textContent = "Sonraki "+SESSION+"'i getir →";
     render();
   }
 
@@ -442,7 +443,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     
     $("a").classList.add("hid");
     
-    // 📸 RESMİ CÜMLE SORULUR SORULMAZ GÖSTEREN GÜNCEL MANTIK (REVEAL YERİNE RENDER İÇİNDE)
+    // 📸 GARANTİLİ CANLI RESİM YÜKLEYİCİ (CÜMLE İLK SORULDUĞU AN RENDERDA ÇALIŞIR)
     $("imgContainer").style.display = "none"; 
     $("imgContainer").innerHTML = "";
     if(curT.img && curT.img.trim() !== "") {
@@ -476,7 +477,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     if(prod) setTimeout(function(){ try{$("inp").focus();}catch(e){} },50);
   }
 
-  /* ---- YAPAY ZEKA ANLAM KONTROLÜ FONKSİYONU ---- */
+  /* ---- YAPAY ZEKA KULLANICI PROMPTU DENETLEME MOTORU ---- */
   window.triggerAiSemanticCheck = function(userInputValue, targetValue) {
     var waitEl = document.getElementById("semCheckNote");
     if(!waitEl) {
