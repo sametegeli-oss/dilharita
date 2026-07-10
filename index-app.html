@@ -58,7 +58,7 @@
         <div class="grid grid-cols-3 gap-4">
             <div class="bg-slate-900/50 border border-slate-900 p-4 rounded-2xl text-center">
                 <div id="stat-studying" class="text-2xl font-black text-purple-400">0</div>
-                <div class="text-xs text-slate-400 font-semibold mt-1">çallışılan</div>
+                <div class="text-xs text-slate-400 font-semibold mt-1">çalışılan</div>
             </div>
             <div class="bg-slate-900/50 border border-slate-900 p-4 rounded-2xl text-center">
                 <div id="stat-learned" class="text-2xl font-black text-green-400">0</div>
@@ -82,7 +82,8 @@
         <div class="space-y-4">
             <div class="flex items-center gap-2 border-b border-slate-900 pb-2">
                 <span class="px-3 py-1 bg-blue-600 text-white font-black text-xs rounded-lg">A1</span>
-                <span id="total-modules-count" class="text-xs text-slate-500 font-bold">0 modül</span>
+                <!-- OKLA GÖSTERİLEN YER: Koç yönlendirmesine göre dinamikleşen alan -->
+                <span id="total-modules-count" class="text-xs text-slate-400 font-bold bg-slate-900 px-2 py-1 rounded-md border border-slate-800 transition-all">Modüller yükleniyor...</span>
             </div>
 
             <!-- Modüller Dinamik Grid -->
@@ -129,9 +130,9 @@
         </div>
     </div>
 
-    <!-- Hatalı yollar kökten düzeltildi (./ eklendi) -->
-    <script src="./definitions.js?v=1"></script>
-    <script src="./main.js?v=1"></script>
+    <!-- GitHub Pages 404 Hatasını Önlemek İçin Bağıntılı Yollar Temizlendi (./ kaldırıldı) -->
+    <script src="definitions.js?v=1"></script>
+    <script src="main.js?v=1"></script>
     <script>
         function openSettings() {
             document.getElementById('cfg-auto-speak').checked = localStorage.getItem('dh-cfg-auto-speak') !== '0';
@@ -151,13 +152,27 @@
             const container = document.getElementById('modules-container');
             if(!container || !window.definitions) return;
 
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetMod = urlParams.get('mod'); // Koçun açtığı modül ID'si
+
             const progressMirror = JSON.parse(localStorage.getItem('dh-progress-mirror-v1') || '{}');
             const keys = Object.keys(definitions);
+            
+            // Ok ile gösterilen yerin varsayılan metni
             document.getElementById('total-modules-count').textContent = `${keys.length} modül`;
 
             let html = '';
             let totalStudying = 0;
             let totalLearned = 0;
+
+            // Eğer URL'den bir modül geldiyse, okla işaretlenen yere ismini bas ve tıklandığında açılmasını sağla
+            if (targetMod && definitions[targetMod]) {
+                const targetTitle = definitions[targetMod].title || targetMod;
+                const labelEl = document.getElementById('total-modules-count');
+                labelEl.innerHTML = `<span class="text-amber-400 animate-pulse">👉 Bugünün Modülü: ${targetTitle} (Başlatmak için Tıkla)</span>`;
+                labelEl.className = "text-xs font-black bg-amber-950/40 px-3 py-1 rounded-lg border border-amber-500/30 cursor-pointer transition hover:bg-amber-900/50";
+                labelEl.onclick = function() { startPractice(targetMod); };
+            }
 
             keys.forEach(modKey => {
                 const mod = definitions[modKey];
@@ -180,10 +195,15 @@
                 const completedCount = currentStudying + currentLearned;
                 const progressPercent = totalSentences > 0 ? (completedCount / totalSentences) * 100 : 0;
 
+                // Koçun hedeflediği modül ise kartın etrafına parlak bir çerçeve ekleyelim
+                const isTarget = (modKey === targetMod) ? 'border-amber-500 bg-amber-950/10 shadow-lg shadow-amber-500/5' : 'border-slate-900 bg-slate-800/20';
+
                 html += `
-                    <div onclick="startPractice('${modKey}')" class="bg-slate-800/20 hover:bg-slate-800/40 border border-slate-900 hover:border-slate-800 p-4 rounded-2xl cursor-pointer transition flex flex-col justify-between group h-32">
+                    <div onclick="startPractice('${modKey}')" class="${isTarget} hover:bg-slate-800/40 hover:border-slate-800 p-4 rounded-2xl cursor-pointer transition flex flex-col justify-between group h-32">
                         <div>
-                            <h4 class="font-bold text-sm text-slate-200 group-hover:text-white transition line-clamp-1">${mod.title || modKey}</h4>
+                            <h4 class="font-bold text-sm text-slate-200 group-hover:text-white transition line-clamp-1">
+                                ${modKey === targetMod ? '⭐ ' : ''}${mod.title || modKey}
+                            </h4>
                             <p class="text-xs text-slate-500 font-medium mt-0.5">${totalSentences} cümle</p>
                         </div>
                         <div class="space-y-1.5">
@@ -204,22 +224,16 @@
             document.getElementById('stat-learned').textContent = totalLearned;
 
             calculateDueCount();
-
-            // Modüller basıldığı an koç emrini sorgula
             checkKocDirective();
         }
 
-        // Koç yönlendirmesini yerine getiren asıl mekanizma
         function checkKocDirective() {
             const urlParams = new URLSearchParams(window.location.search);
             const targetMod = urlParams.get('mod');
 
             if (targetMod && window.definitions && window.definitions[targetMod]) {
-                console.log(`🚀 AI Koç Emri Devrede: ${targetMod} otomatik başlatılıyor...`);
-                // Dom yerleşiminden emin olmak için çok kısa bir es verip tetikliyoruz
-                setTimeout(() => {
-                    startPractice(targetMod);
-                }, 100);
+                // Sayfa ilk yüklendiğinde kullanıcıyı bekletmeden direkt pratik sayfasına fırlatmak istiyorsanız alt satırı aktif edin.
+                // startPractice(targetMod);
             }
         }
 
@@ -267,7 +281,15 @@
             if(window.definitions) {
                 renderModules();
             } else {
-                setTimeout(renderModules, 300);
+                let attempts = 0;
+                const interval = setInterval(() => {
+                    attempts++;
+                    if(window.definitions) {
+                        clearInterval(interval);
+                        renderModules();
+                    }
+                    if(attempts > 10) clearInterval(interval);
+                }, 200);
             }
         });
     </script>
