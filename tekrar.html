@@ -34,6 +34,10 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 .done b{color:#a7f3d0;font-size:20px;display:block;margin-bottom:8px}
 .b-more{background:#2563eb;margin-top:12px}.b-next{background:#0e7490;margin:6px 4px 0}
 
+/* İsteğe Bağlı Yapay Zeka Anlam Kontrolü Butonu */
+.b-sem-chk{background:#1e1b4b; color:#a5b4fc; border:1px solid #4338ca; padding:8px 12px; font-size:12.5px; font-weight:700; border-radius:10px; margin-top:8px; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s;}
+.b-sem-chk:hover{background:#312e81; color:#fff;}
+
 /* Görsel Alanı İçin Stil Kuralları */
 .img-box{margin-top:12px; text-align:center; width:100%; display:none;}
 .img-box img{max-width:100%; max-height:240px; border-radius:12px; border:1px solid var(--line); object-fit:cover; box-shadow:0 4px 12px rgba(0,0,0,0.3);}
@@ -58,7 +62,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <div class="q no-wordpop" id="q"></div>
   <div class="a hid no-wordpop" id="a"></div>
   
-  <!-- Resim Eklentisi Yuvası (VARSAYILAN OLARAK GİZLİ) -->
+  <!-- Resim Eklentisi Yuvası -->
   <div class="img-box" id="imgContainer"></div>
 
   <div id="prodBox" style="display:none">
@@ -95,8 +99,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 <script src="./cloud-sync-v8.js?v=1"></script>
 <script src="./ai-providers.js?v=1"></script>
 <script src="./word-popup.js?v=2"></script>
-
-<!-- ESKİ UYGULAMADAKİ GÖRSEL MANTIĞINI SİSTEME DAHİL EDEN REKURSİF SCRİPT -->
 <script src="./image-addon.js?v=restore1"></script>
 
 <script>
@@ -152,7 +154,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     return n;
   }
 
-  /* ---- Levenshtein Distance ---- */
+  /* ---- Levenshtein Distance Algoritması ---- */
   function getLevenshteinSimilarity(s1, s2) {
     var m = s1.length, n = s2.length;
     if (m === 0) return n === 0 ? 100 : 0;
@@ -197,7 +199,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   function norm(t){ 
     return expandContractions(t)
       .replace(/-/g, " ") 
-      .replace(/['\u2019\u2018]/g, "") 
+      .replace(/['\u2019\u2018]/g, "")   
       .replace(/[^a-z0-9 ]+/g," ")
       .replace(/\s+/g," ")
       .trim(); 
@@ -209,7 +211,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     var segs=t.split(",").map(function(s){return s.trim();}).filter(Boolean);
     if(segs.length>=2){
       var allSingleWords=segs.every(function(s){ return s && !/\s/.test(s) && /^[a-zA-ZçğıöşüÇĞİÖŞÜ'-]+$/.test(s); });
-      if(allSingleWords) return false;
+      if(allSingleWords) return false;   
     }
     return true;
   }
@@ -421,7 +423,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     $("a").innerHTML = makeTextClickable(rawAnswer);
     
     $("a").classList.add("hid");
-    $("imgContainer").style.display = "none"; // Her yeni kartta görseli başta gizle
+    $("imgContainer").style.display = "none"; 
     $("imgContainer").innerHTML = "";
     
     $("prodBox").style.display=prod?"block":"none";
@@ -438,25 +440,89 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     if(prod) setTimeout(function(){ try{$("inp").focus();}catch(e){} },50);
   }
 
+  /* 🤖 BUTON TETİKLEMELİ YAPAY ZEKA ANLAM KONTROLÜ FONKSİYONU */
+  window.triggerAiSemanticCheck = function(userInputValue, targetValue) {
+    var waitEl = document.getElementById("semCheckNote");
+    if(!waitEl) {
+      waitEl = document.createElement("div");
+      waitEl.id = "semCheckNote";
+      waitEl.style.cssText = "margin-top:8px;font-size:12px;color:#9fb3d9";
+      $("score").appendChild(waitEl);
+    }
+    
+    // Aktif kontrol butonunu gizle/sustur
+    var btnSem = document.getElementById("btnTriggerSem");
+    if(btnSem) btnSem.style.display = "none";
+    
+    waitEl.style.color = "#9fb3d9";
+    waitEl.textContent = "🤖 Cümleniz anlamca kontrol ediliyor…";
+
+    var semMsgs = [
+      {role:"system",content:"Bir İngilizce öğrenme uygulamasında öğrencinin cümlesinin referans cümleyle AYNI ANLAMA gelip gelmediğini değerlendiriyorsun (farklı kelimeler/yapı olabilir, önemli olan anlam). SADECE tek kelime cevap ver: EVET ya da HAYIR. Başka hiçbir şey yazma."},
+      {role:"user",content:"Referans: " + targetValue + "\nÖğrenci: " + userInputValue}
+    ];
+
+    function runCheck(tokBudget, isRetry) {
+      DHProviders.chat(semMsgs, {temperature:0, max_tokens:tokBudget}).then(function(out){
+        var t = String(out||"").trim();
+        if(/evet|yes/i.test(t)){
+          lastSemanticOk = true;
+          waitEl.style.color = "#4ade80";
+          waitEl.textContent = "🤖 ✓ Anlamca doğru (farklı ama geçerli bir ifade) — Bildim'e hazır";
+          try {
+            var dbox = document.querySelector(".diff-box");
+            if(dbox) {
+              dbox.style.opacity = "0.55";
+              var hint = document.getElementById("micHintNote") || document.createElement("div");
+              hint.id = "micHintNote"; hint.style.cssText = "margin-top:6px;font-size:11.5px;color:#9fb3d9";
+              hint.textContent = "ℹ️ Yazılan alternatif cümle yapay zeka tarafından kabul edildi. Kelime kelime eşleşme aranmıyor.";
+              dbox.insertAdjacentElement("afterend", hint);
+            }
+          } catch(e){}
+        } else if(/hayır|hayir|no/i.test(t)){
+          semanticNo = true;
+          waitEl.style.color = "#f87171";
+          waitEl.textContent = "🤖 Anlamca da farklı görünüyor — açıklamalara göz atın.";
+          showExplain(curT, false);
+        } else if(!isRetry){
+          runCheck(220, true);
+        } else {
+          waitEl.style.color = "#f87171";
+          waitEl.textContent = "🤖 Model net bir yanıt üretemedi.";
+        }
+      }).catch(function(err){
+        console.warn("[tekrar] semantik kontrol hatası:", err);
+        if(!isRetry && err && err.code === "empty") return runCheck(220, true);
+        var code = err && err.code;
+        waitEl.style.color = "#f87171";
+        waitEl.textContent = code === "no-key" ? "🤖 Kontrol başarısız: API anahtarı bulunamadı." : "🤖 Kontrol başarısız: Sağlayıcı şu an yanıt vermiyor.";
+      });
+    }
+    runCheck(120, false);
+  };
+
   function reveal(auto){
     if(revealed) return; revealed=true;
     $("a").classList.remove("hid");
     $("grade").style.display="flex";
     $("bShow").style.display="none"; $("bChk").style.display="none";
 
-    // GÖRSEL TETİKLEME ALGORİTMASI (image-addon.js entegrasyonu)
-    if(curT.img) {
-      // Eğer veride doğrudan bir imaj URL'i varsa bas
+    // 📸 KESİN ÇÖZÜMLÜ HAREKETLİ/DİNAMİK GÖRSEL YÜKLEYİCİ
+    if(curT.img && curT.img.trim() !== "") {
       $("imgContainer").innerHTML = `<img src="${curT.img}" alt="Dil Harita Visual Context" loading="lazy">`;
       $("imgContainer").style.display = "block";
     } else if (window.DHImageAddon && window.DHImageAddon.renderFor) {
-      // image-addon.js içindeki özel bir render fonksiyonu varsa onu çağır
       window.DHImageAddon.renderFor(cur.id, $("imgContainer"));
-    } else {
-      // Yedek plan: Unsplash kaynaklı anahtar kelime tabanlı dinamik görsel yükle (Sıfır maliyet)
-      var queryWords = curT.en.toLowerCase().replace(/[^a-z0-9 ]/g, "").split(" ").slice(0, 3).join(",");
-      $("imgContainer").innerHTML = `<img src="https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&w=500&q=80" alt="Context Visual" onerror="this.style.display='none'">`;
-      // Not: Projende kendi Unsplash entegrasyonun varsa linki değiştirebilirsin.
+    } else if (curT.en) {
+      var cleanQuery = curT.en.toLowerCase()
+        .replace(/[^a-z0-9 ]/g, "")
+        .split(" ")
+        .filter(function(w) { return w.length > 2; }) 
+        .slice(0, 3)
+        .join(",");
+      if(!cleanQuery) cleanQuery = "education,language";
+      $("imgContainer").innerHTML = `<img src="https://images.unsplash.com/featured/500x300/?${cleanQuery}" alt="Context Visual" onerror="this.style.display='none'">`;
+      $("imgContainer").style.display = "block";
     }
 
     if(mode==="prod"){
@@ -468,6 +534,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       var micTag = viaMic ? "🎤 " : "";
       $("score").innerHTML="Benzerlik: <span style='color:"+(sc>=80?"#4ade80":(sc>=50?"#fbbf24":"#f87171"))+"'>%"+sc+"</span>"+(sc>=80?" — Bildim'e hazır ✓":"") + 
                            "<br><div class='diff-box no-wordpop'"+diffStyle+">"+micTag+diffResult+"</div>";
+      
       if(viaMic && sc<80){
         var micNote=document.createElement("div");
         micNote.id="micHintNote"; micNote.style.cssText="margin-top:6px;font-size:11.5px;color:#9fb3d9";
@@ -477,74 +544,19 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       if(sc<80 && !viaMic) showExplain(curT,false);
       speak(curT.en);
       
+      // 🤖 OTOMATİK ÇAĞRI YERİNE BUTONLU YAPAY ZEKA TETİKLEME ALGORİTMASI
       var bandLo = viaMic ? 10 : 25, bandHi = viaMic ? 95 : 80;
       if(sc>=bandLo && sc<bandHi && userInputValue.trim().length>2){
         var hasKey = window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey();
-        if(!hasKey){
-          var noteEl=document.createElement("div");
-          noteEl.style.cssText="margin-top:8px;font-size:12px;color:#9fb3d9";
-          noteEl.textContent="🤖 Farklı ama doğru olabilecek cümleleri otomatik kontrol etmek için bir API anahtarı ekle (Ayarlar).";
-          $("score").appendChild(noteEl);
-        } else {
-          var checkFor=cur, checkInput=userInputValue, checkTarget=curT.en;
-          var waitEl=document.createElement("div");
-          waitEl.id="semCheckNote";
-          waitEl.style.cssText="margin-top:8px;font-size:12px;color:#9fb3d9";
-          waitEl.textContent="🤖 Farklı yazdığın için anlamca kontrol ediliyor…";
-          $("score").appendChild(waitEl);
-          var semMsgs=[
-            {role:"system",content:"Bir İngilizce öğrenme uygulamasında öğrencinin cümlesinin referans cümleyle AYNI ANLAMA gelip gelmediğini değerlendiriyorsun (farklı kelimeler/yapı olabilir, önemli olan anlam). SADECE tek kelime cevap ver: EVET ya da HAYIR. Başka hiçbir şey yazma."},
-            {role:"user",content:"Referans: "+checkTarget+"\nÖğrenci: "+checkInput}
-          ];
-          function runSemCheck(tokBudget, isRetry){
-            DHProviders.chat(semMsgs,{temperature:0,max_tokens:tokBudget}).then(function(out){
-              if(cur!==checkFor) return;
-              var t=String(out||"").trim();
-              var w=document.getElementById("semCheckNote"); if(!w) return;
-              if(/evet|yes/i.test(t)){
-                lastSemanticOk=true;
-                w.style.color="#4ade80";
-                w.textContent="🤖 ✓ Anlamca doğru (farklı ama geçerli bir ifade) — Bildim'e hazır";
-                try{
-                  var dbox=document.querySelector(".diff-box");
-                  if(dbox){
-                    dbox.style.opacity="0.55";
-                    var hint=document.getElementById("micHintNote");
-                    if(!hint){ hint=document.createElement("div"); hint.id="micHintNote"; hint.style.cssText="margin-top:6px;font-size:11.5px;color:#9fb3d9"; dbox.insertAdjacentElement("afterend", hint); }
-                    hint.textContent="ℹ️ Yukarıdaki fark muhtemelen mikrofonun yanlış duyup yazması — anlam AI tarafından doğru kabul edildi, kelime kelime eşleşme aranmıyor.";
-                  }
-                }catch(e){}
-              } else if(/hayır|hayir|no/i.test(t)){
-                semanticNo=true;
-                w.style.color="#f87171";
-                w.textContent="🤖 Anlamca da farklı görünüyor — açıklamaya bak.";
-                if(viaMic){
-                  try{
-                    var dbox2=document.querySelector(".diff-box"); if(dbox2) dbox2.style.opacity="1";
-                    var oldHint2=document.getElementById("micHintNote"); if(oldHint2) oldHint2.remove();
-                  }catch(e){}
-                  showExplain(curT,false);  
-                }
-              } else if(!isRetry){
-                runSemCheck(220, true);  
-              } else {
-                w.style.color="#f87171";
-                w.textContent="🤖 Model net cevap vermedi, tekrar deneyebilirsin.";
-              }
-            }).catch(function(err){
-              console.warn("[tekrar] semantik kontrol hatası:", err);
-              if(!isRetry && err && err.code==="empty"){ return runSemCheck(220, true); } 
-              var w=document.getElementById("semCheckNote"); if(!w) return;
-              w.style.color="#f87171";
-              var code=err&&err.code;
-              var msg = code==="no-key" ? "🤖 Kontrol edilemedi: hiç API anahtarı bulunamadı."
-                : code==="all-failed" || code==="all-keys-failed" ? "🤖 Kontrol edilemedi: sağlayıcı(lar) şu an yanıt vermiyor (kota/limit dolmuş olabilir)."
-                : code==="empty" ? "🤖 Model boş cevap verdi (iki denemede de). Başka bir sağlayıcı/model dene."
-                : "🤖 Kontrol edilemedi ("+(code||(err&&err.message)||"bilinmeyen hata")+"). Konsolu kontrol et.";
-              w.textContent=msg;
-            });
-          }
-          runSemCheck(120, false);
+        if(hasKey) {
+          var btnSem = document.createElement("button");
+          btnSem.id = "btnTriggerSem";
+          btnSem.className = "b-sem-chk";
+          btnSem.innerHTML = "🤖 Farklı Yazdım, Anlamı Kontrol Et";
+          btnSem.onclick = function() {
+            window.triggerAiSemanticCheck(userInputValue, curT.en);
+          };
+          $("score").appendChild(btnSem);
         }
       }
     }
@@ -601,170 +613,99 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     }
   });
 
-  /* 🎤 Mobil Uyumlu Güvenli Mikrofon Kontrolü */
+  /* 🎤 Mikrofon Kontrolü */
   $("bMic").onclick=function(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
     var SGL=window.SpeechGrammarList||window.webkitSpeechGrammarList;
-    
     if (!isRecording) {
-      isRecording = true;
-      $("bMic").textContent="🔴";
-      stopActiveAudio();
-      $("bListenRetry").style.display = "none";
+      isRecording = true; $("bMic").textContent="🔴"; stopActiveAudio(); $("bListenRetry").style.display = "none";
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
-      accumulatedTranscript = "";
-      $("inp").value = ""; 
-      viaMic = true;
-
+      accumulatedTranscript = ""; $("inp").value = ""; viaMic = true;
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
-        audioStream = stream;
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
+        audioStream = stream; mediaRecorder = new MediaRecorder(stream); audioChunks = [];
         mediaRecorder.ondataavailable = function(e) { if (e.data.size > 0) audioChunks.push(e.data); };
         mediaRecorder.onstop = function() {
-          var audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-          audioUrl = URL.createObjectURL(audioBlob);
-          $("bListenRetry").style.display = "";
+          var audioBlob = new Blob(audioChunks, { type: 'audio/mp3' }); audioUrl = URL.createObjectURL(audioBlob); $("bListenRetry").style.display = "";
         };
         mediaRecorder.start();
-      }).catch(function(err) { 
-        console.error("Mikrofon donanımına erişilemedi:", err); 
-        isRecording = false; 
-        $("bMic").textContent="🎤"; 
-      });
-
-      recognitionInstance = new SR();
-      recognitionInstance.lang = "en-US";
-      
+      }).catch(function(err) { console.error(err); isRecording = false; $("bMic").textContent="🎤"; });
+      recognitionInstance = new SR(); recognitionInstance.lang = "en-US";
       var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      recognitionInstance.continuous = !isMobile; 
-      recognitionInstance.interimResults = true;
-
+      recognitionInstance.continuous = !isMobile; recognitionInstance.interimResults = true;
       if (SGL && curT.en) {
-        var grammarListInstance = new SGL();
-        var cleanWords = curT.en.toLowerCase().replace(/[^a-z0-9 ]+/g, "");
+        var grammarListInstance = new SGL(); var cleanWords = curT.en.toLowerCase().replace(/[^a-z0-9 ]+/g, "");
         var grammarPattern = '#JSGF V1.0; grammar targetWords; public <word> = ' + cleanWords.split(" ").join(" | ") + ' ;';
-        grammarListInstance.addFromString(grammarPattern, 1.5);
-        recognitionInstance.grammars = grammarListInstance;
+        grammarListInstance.addFromString(grammarPattern, 1.5); recognitionInstance.grammars = grammarListInstance;
       }
-
       recognitionInstance.onresult = function(e) {
-        var finalTranscript = "";
-        var interimTranscript = "";
-        
+        var finalTranscript = ""; var interimTranscript = "";
         for (var idx = e.resultIndex; idx < e.results.length; ++idx) {
           var text = e.results[idx][0].transcript;
-          if (e.results[idx].isFinal) {
-            finalTranscript += text + " ";
-          } else {
-            interimTranscript += text;
-          }
+          if (e.results[idx].isFinal) finalTranscript += text + " "; else interimTranscript += text;
         }
-        
-        if (finalTranscript) {
-          if (!accumulatedTranscript.includes(finalTranscript.trim())) {
-            accumulatedTranscript += finalTranscript;
-          }
-        }
-        
+        if (finalTranscript) { if (!accumulatedTranscript.includes(finalTranscript.trim())) accumulatedTranscript += finalTranscript; }
         var currentRaw = (accumulatedTranscript + interimTranscript).trim();
-        var words = currentRaw.split(/\s+/);
-        var cleanWordsArr = [];
+        var words = currentRaw.split(/\s+/); var cleanWordsArr = [];
         for (var wIdx = 0; wIdx < words.length; wIdx++) {
-          if (wIdx === 0 || words[wIdx].toLowerCase() !== words[wIdx - 1].toLowerCase()) {
-            cleanWordsArr.push(words[wIdx]);
-          }
+          if (wIdx === 0 || words[wIdx].toLowerCase() !== words[wIdx - 1].toLowerCase()) cleanWordsArr.push(words[wIdx]);
         }
-        
         $("inp").value = cleanWordsArr.join(" ");
       };
-
-      recognitionInstance.onerror = function(err) { console.error("Tanıma hatası:", err); };
-      recognitionInstance.start();
-
+      recognitionInstance.onerror = function(err) { console.error(err); }; recognitionInstance.start();
     } else {
-      isRecording = false;
-      $("bMic").textContent="🎤";
+      isRecording = false; $("bMic").textContent="🎤";
       if (recognitionInstance) { recognitionInstance.stop(); recognitionInstance = null; }
-      if (mediaRecorder && mediaRecorder.state !== "inactive") { mediaRecorder.stop(); }
+      if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
       if (audioStream) { audioStream.getTracks().forEach(function(track) { track.stop(); }); audioStream = null; }
       setTimeout(function() { reveal(); }, 400);
     }
   };
 
-  /* Kendi Sesini Oynatma / Durdurma */
   $("bListenRetry").onclick = function() {
-    if (activeAudioObj) {
-      stopActiveAudio();
-    } else if (audioUrl) {
-      activeAudioObj = new Audio(audioUrl);
-      $("bListenRetry").textContent = "⏹️";
+    if (activeAudioObj) { stopActiveAudio(); } 
+    else if (audioUrl) {
+      activeAudioObj = new Audio(audioUrl); $("bListenRetry").textContent = "⏹️";
       activeAudioObj.onended = function() { $("bListenRetry").textContent = "👂"; activeAudioObj = null; };
       activeAudioObj.play().catch(function(err){ console.error(err); $("bListenRetry").textContent = "👂"; activeAudioObj = null; });
     }
   };
 
-  function injectLeechWords(sentenceEn) { }
-
   async function grade(hard){
-    var it=cur;
-    var key=(it.kind==="s"?"srs:":"wsrs:")+it.id;
-    var rec=srsStep(it.kind==="s"?srs[it.id]:wsrs[it.id], hard);
+    var it=cur; var key=(it.kind==="s"?"srs:":"wsrs:")+it.id; var rec=srsStep(it.kind==="s"?srs[it.id]:wsrs[it.id], hard);
     if(!hard && mode==="prod" && !lastSemanticOk && !(viaMic && !semanticNo) && lastSc>=0 && lastSc<50){
       rec.interval=Math.max(1,Math.round(rec.interval/2)); rec.due=Date.now()+rec.interval*DAY;
     }
-    lastSc=-1; lastSemanticOk=false; semanticNo=false;
-    var leech = hard && (rec.lapses||0)>=3;
-    
-    if(leech){ 
-      rec.interval=1; rec.due=Date.now()+DAY; 
-    }
-    
+    lastSc=-1; lastSemanticOk=false; semanticNo=false; var leech = hard && (rec.lapses||0)>=3;
+    if(leech) { rec.interval=1; rec.due=Date.now()+DAY; }
     if(it.kind==="s") srs[it.id]=rec; else wsrs[it.id]=rec;
     try { await kvPut(key, rec); } catch(e) {}
-    
     if(hard){
-      showExplain(curT, leech);
-      if(!leech && it.tries<2){ it.tries++; session.push(it); }
-      $("grade").style.display="none";
-      var go=document.createElement("button"); go.className="b-chk"; go.style.marginTop="10px"; go.textContent="Devam →";
-      go.onclick=function(){ go.remove(); doneOrNext(); };
-      $("exp").appendChild(go);
-      function doneOrNext(){ i++; render(); }
-      return;
+      showExplain(curT, leech); if(!leech && it.tries<2){ it.tries++; session.push(it); }
+      $("grade").style.display="none"; var go=document.createElement("button"); go.className="b-chk"; go.style.marginTop="10px"; go.textContent="Devam →";
+      go.onclick=function(){ go.remove(); doneOrNext(); }; $("exp").appendChild(go);
+      function doneOrNext(){ i++; render(); } return;
     }
     doneCount++; i++; render();
   }
-  $("bHard").onclick=function(){ grade(true); };
-  $("bEasy").onclick=function(){ grade(false); };
+  $("bHard").onclick=function(){ grade(true); }; $("bEasy").onclick=function(){ grade(false); };
 
   $("bTrans").onclick = function() {
-    var correctEn = curT.en;
-    var translateUrl = "https://translate.google.com/?sl=en&tl=tr&text=" + encodeURIComponent(correctEn) + "&op=translate";
+    var translateUrl = "https://translate.google.com/?sl=en&tl=tr&text=" + encodeURIComponent(curT.en) + "&op=translate";
     window.open(translateUrl, "_blank");
   };
 
   $("bGemini").onclick = function() {
-    var trSentence = curT.tr || "";
-    var correctEn = curT.en;
-    var userEn = $("inp").value.trim() || "[Kullanıcı boş bıraktı]";
-    var systemNotes = "";
-    if (curT.cm) systemNotes += "\n⚠️ Bu cümle için bilinen tipik hata: " + curT.cm;
+    var trSentence = curT.tr || ""; var correctEn = curT.en; var userEn = $("inp").value.trim() || "[Kullanıcı boş bıraktı]";
+    var systemNotes = ""; if (curT.cm) systemNotes += "\n⚠️ Bu cümle için bilinen tipik hata: " + curT.cm;
     if (curT.exp) systemNotes += "\n💡 Sistem açıklaması: " + curT.exp;
-
     var promptText = "Bir İngilizce öğrenme uygulamasında TR->EN üretimi çalışıyorum. Aşağıdaki eşleşmeyi analiz et:\n\n" +
                      "🇹🇷 Türkçe Kaynak: " + trSentence + "\n" +
                      "✅ Altın Standart Çeviri: " + correctEn + "\n" +
                      "✍️ Benim Yazdığım Çeviri: " + userEn + "\n" +
                      systemNotes + "\n\n" +
-                     "Senden ricam:\n" +
-                     "1) Benim cümlemi dil bilgisi ve yazım (spelling) açısından incele.\n" +
-                     "2) Eğer yapısal olarak doğruysa ama 'Altın Standart' ile farklıysa, iki cümle arasındaki nüans/anlam farkını (resmiyet, vurgu, ton) açıkla.\n" +
-                     "3) Benim yazdığım alternatife 10 üzerinden bir doğallık puanı ver.\n" +
-                     "4) Bu cümlenin günlük konuşma dilinde (Spoken English) sıkça kullanılan 1 alternatifini göster.";
-
+                     "Senden ricam:\n1) Dil bilgisi incelemesi yap.\n2) Farklıysa nüansları açıkla.\n3) 10 üzerinden puan ver.\n4) 1 konuşma dili alternatifi ekle.";
     var geminiUrl = "https://gemini.google.com/app?prompt=" + encodeURIComponent(promptText);
-    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(promptText); } } catch (e) { console.error(e); }
+    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(promptText); } catch (e) {}
     window.open(geminiUrl, "_blank");
   };
 
