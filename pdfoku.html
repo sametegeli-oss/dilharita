@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azar UUEG Complete IndexedDB Parser & LMS Engine (PRODUCTION READY)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF.js Production Stable CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        // Sunucu üzerinde (GitHub Pages) çalışırken direkt standart CDN worker'ı güvenle kullanabiliriz
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        azarNavy: '#0c1a30',
+                        azarBlue: '#2563eb'
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Top Navigation -->
+    <nav class="border-b border-slate-800 bg-slate-950/80 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                    A
+                </div>
+                <div>
+                    <span class="font-bold text-base bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Azar Dynamic Engine v4</span>
+                    <span class="text-xs block text-slate-500 font-mono">Hosted Server Content Pipeline</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div id="dbStatusBadge" class="text-xs px-3 py-1 rounded-full font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    IndexedDB: Empty
+                </div>
+                <label class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-md">
+                    <span>Import PDF Book</span>
+                    <input type="file" id="pdfFileInput" accept=".pdf" class="hidden">
+                </label>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Progress Overlay -->
+    <div id="uploadProgressOverlay" class="hidden bg-slate-950/90 fixed inset-0 z-50 flex flex-col items-center justify-center space-y-4 p-4">
+        <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <div class="text-center">
+            <h3 class="text-lg font-bold text-slate-200">Parsing PDF Booklet Text Tracks...</h3>
+            <p id="progressStatusText" class="text-xs text-slate-500 font-mono mt-1">Reading page 0 / 0</p>
+        </div>
+        <div class="w-64 bg-slate-800 h-1.5 rounded-full overflow-hidden border border-slate-700">
+            <div id="uploadProgressBar" class="bg-blue-500 h-full w-0 transition-all duration-150"></div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <main class="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-4 gap-8 flex-grow w-full">
+        
+        <!-- Left Sidebar -->
+        <div class="lg:col-span-1 space-y-4">
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col h-[75vh]">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 font-mono">IndexedDB Syntax Blocks</h2>
+                <div class="space-y-1.5 overflow-y-auto pr-1 flex-grow font-mono text-xs" id="dynamicChapterMenu">
+                    <div class="text-slate-500 text-center py-8 italic">Please import the PDF grammar book to build the interactive index map.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Playground Area -->
+        <div class="lg:col-span-3 space-y-6">
+            
+            <!-- Context Card -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-xl relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                <div class="flex items-center justify-between mb-2">
+                    <span id="activePageBadge" class="text-xs font-mono text-indigo-400 font-semibold uppercase tracking-wider">PAGE MAP: NONE</span>
+                    <span class="text-[11px] text-slate-500 font-mono">Server-Secured Text Stream</span>
+                </div>
+                <h2 class="text-sm font-bold text-slate-300 mb-2">Extracted Text Buffer</h2>
+                <div id="extractedTextPanel" class="text-slate-300 text-xs md:text-sm leading-relaxed bg-slate-900 border border-slate-800 p-4 rounded-lg font-mono min-h-[180px] max-h-[250px] overflow-y-auto whitespace-pre-wrap break-words">
+                    Upload the Betty Azar handbook. The engine will render page contents here in real-time upon clicking any panel block on the left.
+                </div>
+            </div>
+
+            <!-- Quiz Board -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <span class="text-xs font-medium text-slate-400 font-mono">Algorithmic Exercise Generator (via IndexedDB Storage)</span>
+                    <button id="nextGenBtn" class="text-xs text-blue-400 hover:text-blue-300 font-mono transition bg-blue-500/10 px-2.5 py-1 rounded border border-blue-500/20 hidden">Regenerate Token →</button>
+                </div>
+
+                <!-- Sentence Display -->
+                <div class="bg-slate-900 border border-slate-800 rounded-lg p-6">
+                    <div id="lmsSentenceTarget" class="text-base md:text-lg font-medium text-slate-200 text-center leading-relaxed font-mono">
+                        No active sentences built yet. Import book data to activate the parser.
+                    </div>
+                </div>
+
+                <!-- Options -->
+                <div id="lmsOptionsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+
+                <!-- Feedback Screen -->
+                <div id="lmsAlertPanel" class="rounded-lg p-4 hidden border transition-all duration-200 font-mono text-xs"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="border-t border-slate-800 bg-slate-950 py-3 text-center text-xs text-slate-600 font-mono w-full">
+        Hosted Web Sandbox Environment // Powered by Local Browser Resources & PDF.js Cloud Core.
+    </footer>
+
+    <script>
+        const DB_NAME = "AzarGrammarStorage";
+        const DB_VERSION = 1;
+        const STORE_NAME = "bookPages";
+        let db = null;
+
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onerror = (e) => reject("Database error: " + e.target.errorCode);
+                request.onsuccess = (e) => {
+                    db = e.target.result;
+                    resolve(db);
+                };
+                request.onupgradeneeded = (e) => {
+                    let database = e.target.result;
+                    if (!database.objectStoreNames.contains(STORE_NAME)) {
+                        database.createObjectStore(STORE_NAME, { keyPath: "pageNumber" });
+                    }
+                };
+            });
+        }
+
+        function savePageToDB(pageNumber, textContent) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], "readwrite");
+                const store = transaction.objectStore(STORE_NAME);
+                const record = { pageNumber: pageNumber, content: textContent, timestamp: Date.now() };
+                const request = store.put(record);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject();
+            });
+        }
+
+        function getPageFromDB(pageNumber) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], "readonly");
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.get(pageNumber);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject();
+            });
+        }
+
+        function getAllPagesFromDB() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], "readonly");
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject();
+            });
+        }
+
+        // PDF Pipeline Input
+        document.getElementById('pdfFileInput').addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('uploadProgressOverlay').classList.remove('hidden');
+            const fileReader = new FileReader();
+
+            fileReader.onload = async function() {
+                try {
+                    const typedarray = new Uint8Array(this.result);
+                    const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+                    const totalPages = pdf.numPages;
+                    
+                    const transaction = db.transaction([STORE_NAME], "readwrite");
+                    transaction.objectStore(STORE_NAME).clear();
+
+                    for (let i = 1; i <= totalPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textObj = await page.getTextContent();
+                        const pageText = textObj.items.map(item => item.str).join(" ");
+                        
+                        await savePageToDB(i, pageText);
+                        
+                        const pct = Math.round((i / totalPages) * 100);
+                        document.getElementById('uploadProgressBar').style.width = `${pct}%`;
+                        document.getElementById('progressStatusText').innerText = `Extracting book text layer: ${i} / ${totalPages}`;
+                    }
+                    
+                    document.getElementById('uploadProgressOverlay').classList.add('hidden');
+                    updateSystemStatus();
+                } catch (error) {
+                    alert("Parsing Exception: " + error.message);
+                    document.getElementById('uploadProgressOverlay').classList.add('hidden');
+                }
+            };
+            fileReader.readAsArrayBuffer(file);
+        });
+
+        async function updateSystemStatus() {
+            const records = await getAllPagesFromDB();
+            const badge = document.getElementById('dbStatusBadge');
+            const menuContainer = document.getElementById('dynamicChapterMenu');
+            
+            if (records && records.length > 0) {
+                badge.innerText = `IndexedDB: ${records.length} Pages Loaded`;
+                badge.className = "text-xs px-3 py-1 rounded-full font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                
+                menuContainer.innerHTML = '';
+                records.forEach(page => {
+                    let label = `Page Cluster ${page.pageNumber}`;
+                    if(page.content.includes("CHART") || page.content.includes("EXERCISE") || page.content.includes("CHAPTER")) {
+                        label = `📘 Block ${page.pageNumber} (Target)`;
+                    }
+                    
+                    const itemBtn = document.createElement('button');
+                    itemBtn.className = "w-full text-left p-2.5 rounded bg-slate-900 border border-slate-800/60 hover:bg-slate-800 text-slate-300 font-mono transition truncate block";
+                    itemBtn.innerText = label;
+                    itemBtn.onclick = () => activateLMSBlock(page.pageNumber);
+                    menuContainer.appendChild(itemBtn);
+                });
+
+                activateLMSBlock(records[0].pageNumber);
+            }
+        }
+
+        async function activateLMSBlock(pageNumber) {
+            const pageRecord = await getPageFromDB(pageNumber);
+            if(!pageRecord) return;
+
+            document.getElementById('activePageBadge').innerText = `PAGE MAP: ${pageRecord.pageNumber}`;
+            const textPanel = document.getElementById('extractedTextPanel');
+            
+            if (pageRecord.content && pageRecord.content.trim() !== "") {
+                textPanel.innerText = pageRecord.content;
+                buildLmsExerciseFromText(pageRecord.content);
+            } else {
+                textPanel.innerText = "[Empty Page or Non-Text Elements Found]";
+                document.getElementById('lmsSentenceTarget').innerText = "Awaiting structural pipeline stream.";
+            }
+        }
+
+        function buildLmsExerciseFromText(rawText) {
+            if (!rawText || rawText.trim() === "") return;
+
+            const sentences = rawText.match(/[A-Z][^.!?]*[.!?]/g) || [];
+            let validSentence = "";
+            let targetWord = "";
+            
+            const syntaxFocusWords = ["is", "are", "was", "were", "has", "have", "walked", "watched", "tastes", "consists", "sits", "do", "does", "did", "am", "breathes", "snows", "watches"];
+            
+            for (let i = 0; i < sentences.length; i++) {
+                let tokens = sentences[i].split(/\s+/);
+                let found = tokens.find(t => syntaxFocusWords.includes(t.toLowerCase().replace(/[^a-z]/g, "")));
+                if (found && tokens.length > 3) {
+                    validSentence = sentences[i];
+                    targetWord = found;
+                    break;
+                }
+            }
+
+            const targetBox = document.getElementById('lmsSentenceTarget');
+            const optionsContainer = document.getElementById('lmsOptionsContainer');
+            const alertPanel = document.getElementById('lmsAlertPanel');
+            alertPanel.classList.add('hidden');
+
+            if (!validSentence && rawText.length > 20) {
+                const words = rawText.split(/\s+/).filter(w => w.length > 4);
+                if (words.length > 4) {
+                    targetWord = words[Math.floor(Math.random() * words.length)];
+                    validSentence = rawText.substring(0, 120) + "...";
+                    if (!validSentence.includes(targetWord)) {
+                        validSentence = `Context matrix validation for the word: ${targetWord}`;
+                    }
+                }
+            }
+
+            if (!validSentence) {
+                targetBox.innerText = "Analyzing continuous tables or indicators... Select another block.";
+                optionsContainer.innerHTML = '';
+                document.getElementById('nextGenBtn').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('nextGenBtn').classList.remove('hidden');
+            document.getElementById('nextGenBtn').onclick = () => buildLmsExerciseFromText(rawText);
+
+            const cleanTarget = targetWord.replace(/[^a-zA-Z]/g, "");
+            const sentencePlaceholder = validSentence.replace(targetWord, " [ _____ ] ");
+            
+            targetBox.innerText = sentencePlaceholder;
+
+            let distractors = [];
+            if(["is", "are", "was", "were", "am"].includes(cleanTarget.toLowerCase())) {
+                distractors = ["be", "been", "being", "was"].filter(v => v !== cleanTarget.toLowerCase());
+            } else if(["has", "have", "had"].includes(cleanTarget.toLowerCase())) {
+                distractors = ["had", "having", "has", "have"].filter(v => v !== cleanTarget.toLowerCase());
+            } else {
+                distractors = [`${cleanTarget}ing`, `${cleanTarget}s`, `${cleanTarget}ed`, "will " + cleanTarget];
+            }
+            
+            const choices = [cleanTarget, ...distractors].filter((v, i, a) => a.indexOf(v) === i).slice(0, 4).sort(() => Math.random() - 0.5);
+            optionsContainer.innerHTML = '';
+
+            choices.forEach(choice => {
+                const choiceBtn = document.createElement('button');
+                choiceBtn.className = "w-full text-left p-3.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition font-mono text-xs md:text-sm";
+                choiceBtn.innerText = choice;
+                choiceBtn.onclick = () => {
+                    const isCorrect = choice === cleanTarget;
+                    
+                    alertPanel.className = `rounded-lg p-4 font-mono text-xs border ${isCorrect ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/5 border-rose-500/20 text-rose-400'}`;
+                    alertPanel.innerHTML = `<strong>${isCorrect ? '✓ VALIDATED' : '✗ DISCREPANCY'}</strong><br><span class="opacity-70 text-[11px]">Database Master Token: "${cleanTarget}"</span>`;
+                    alertPanel.classList.remove('hidden');
+
+                    Array.from(optionsContainer.children).forEach(b => {
+                        if(b.innerText === cleanTarget) b.className = "w-full text-left p-3.5 rounded-lg border border-emerald-500 bg-emerald-500/10 text-emerald-400 font-mono text-xs md:text-sm";
+                        else if(b.innerText === choice && !isCorrect) b.className = "w-full text-left p-3.5 rounded-lg border border-rose-500 bg-rose-500/10 text-rose-400 font-mono text-xs md:text-sm";
+                        else b.className = "w-full text-left p-3.5 rounded-lg border border-slate-900 opacity-20 font-mono text-xs md:text-sm pointer-events-none";
+                    });
+                };
+                optionsContainer.appendChild(choiceBtn);
+            });
+        }
+
+        window.onload = async () => {
+            try {
+                await openDatabase();
+                await updateSystemStatus();
+            } catch (err) {
+                console.error("Storage offline:", err);
+            }
+        };
+    </script>
+</body>
+</html>
