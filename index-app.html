@@ -114,22 +114,8 @@
         </div>
     </div>
 
-    <!-- GITHUB PAGES 404 HATASINI ÖNLEYEN DİNAMİK YÜKLEYİCİ -->
-    <script>
-        (function() {
-            var basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-            
-            function injectScript(src) {
-                var s = document.createElement('script');
-                s.src = basePath + src + '?v=' + Date.now();
-                s.async = false;
-                document.head.appendChild(s);
-            }
-            
-            injectScript('definitions.js');
-            injectScript('main.js');
-        })();
-    </script>
+    <!-- SADECE DEFINITIONS DOSYASINI BAĞIL YOL PROBLEMİ OLMADAN DOĞRUDAN ÇAĞIRIYORUZ -->
+    <script src="definitions.js"></script>
 
     <script>
         function openSettings() {
@@ -160,6 +146,7 @@
             let totalStudying = 0;
             let totalLearned = 0;
 
+            // Okla gösterdiğin yere o gün çalışılacak modülün ismini basıp tıklanabilir yapıyoruz
             if (targetMod && definitions[targetMod]) {
                 const targetTitle = definitions[targetMod].title || targetMod;
                 const labelEl = document.getElementById('total-modules-count');
@@ -256,6 +243,7 @@
             window.location.href = `practice.html?mod=${modKey}`;
         }
 
+        // Sayfa veya tanımlar yüklendiğinde render etmeyi garantileyen döngü
         window.addEventListener('load', () => {
             let checkInterval = setInterval(() => {
                 if (window.definitions) {
@@ -265,9 +253,5 @@
             }, 100);
         });
     </script>
-
-    <!-- Eski enjektör script bloğunu tamamen sil ve yerine sadece bunu yapıştır -->
-    <script src="definitions.js"></script>
-    <script src="main.js"></script>
 </body>
 </html>
