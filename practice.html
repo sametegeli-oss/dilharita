@@ -1915,6 +1915,32 @@ async function evaluate(s, answer, layer){
     }
   }catch(e){ console.warn("Hata defteri kaydı atlandı:", e); }
   renderFeedback(s, d, grade, layer);
+  // tekrar.html ile TUTARLI: kelime eşleşmesi tam değilse (farklı ama geçerli bir ifade olabilir)
+  // AI'ya "anlamca doğru mu?" diye sor. SRS/kayıt değişmez — yalnız bilgilendirme notu eklenir.
+  if(grade!=="easy" && d.ratio>=0.25 && d.ratio<0.95 && answer.trim().length>2 &&
+     window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
+    var fbEl=document.getElementById("feedbackArea");
+    var noteEl=document.createElement("div");
+    noteEl.style.cssText="margin-top:8px;font-size:12px;color:#9fb3d9";
+    noteEl.textContent="🤖 Farklı yazdığın için anlamca kontrol ediliyor…";
+    if(fbEl) fbEl.appendChild(noteEl);
+    var semMsgs=[
+      {role:"system",content:"Bir İngilizce öğrenme uygulamasında öğrencinin cümlesinin referans cümleyle AYNI ANLAMA gelip gelmediğini değerlendiriyorsun (farklı kelimeler/yapı olabilir, önemli olan anlam). SADECE tek kelime cevap ver: EVET ya da HAYIR. Başka hiçbir şey yazma."},
+      {role:"user",content:"Referans: "+s.en+"\nÖğrenci: "+answer}
+    ];
+    DHProviders.chat(semMsgs,{temperature:0,max_tokens:120}).then(function(out){
+      var t=String(out||"").trim();
+      if(!fbEl || !document.body.contains(noteEl)) return;
+      if(/evet|yes/i.test(t)){
+        noteEl.style.color="#4ade80";
+        noteEl.textContent="🤖 ✓ Anlamca doğru (farklı ama geçerli bir ifade)";
+      } else if(/hayır|hayir|no/i.test(t)){
+        noteEl.remove();   // hayırsa panel zaten diff/açıklamayı gösteriyor — ek not gerekmez
+      } else {
+        noteEl.remove();
+      }
+    }).catch(function(){ if(noteEl) noteEl.remove(); });
+  }
 }
 
 function verdictMeta(grade){
