@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Azar UUEG - Portable AI Prompt Hub</title>
+    <title>Azar UUEG - AI Prompt Hub with Checkpoint Resume</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js Legacy Core -->
@@ -44,12 +44,12 @@
                     A
                 </div>
                 <div>
-                    <span class="font-bold text-base bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Azar AI-LMS Core v12</span>
-                    <span class="text-xs block text-slate-500 font-mono">Cross-Device JSON Data Pipeline</span>
+                    <span class="font-bold text-base bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Azar AI-LMS Core v13</span>
+                    <span class="text-xs block text-slate-500 font-mono">Smart Checkpoint Resume Storage</span>
                 </div>
             </div>
             
-            <!-- Importer & Exporter Controls -->
+            <!-- Controls -->
             <div class="flex items-center space-x-2 md:space-x-3">
                 <div id="dbStatusBadge" class="hidden md:block text-xs px-3 py-1 rounded-full font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20">
                     IndexedDB: Empty
@@ -76,7 +76,7 @@
     <div id="uploadProgressOverlay" class="hidden bg-slate-950/95 fixed inset-0 z-50 flex flex-col items-center justify-center space-y-4 p-4">
         <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
         <div class="text-center">
-            <h3 class="text-lg font-bold text-slate-200">Running Neural OCR Character Recognition...</h3>
+            <h3 class="text-lg font-bold text-slate-200" id="progressMainTitle">Running Neural OCR Character Recognition...</h3>
             <p id="progressStatusText" class="text-xs text-slate-400 font-mono mt-1">Generating bitmap render matrix...</p>
         </div>
         <div class="w-80 bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700">
@@ -97,7 +97,7 @@
             </div>
         </div>
 
-        <!-- Right Content Playground Area -->
+        <!-- Right Content Area -->
         <div class="lg:col-span-3 space-y-6">
             
             <!-- Context Card -->
@@ -193,7 +193,7 @@
             });
         }
 
-        // --- CORE OCR INGESTION PIPELINE ---
+        // --- RESUME-AWARE OCR PROCESSING ENGINE ---
         document.getElementById('pdfFileInput').addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -208,8 +208,9 @@
                     const pdf = await loadingTask.promise;
                     const totalPages = pdf.numPages;
                     
-                    const clearTx = db.transaction([STORE_NAME], "readwrite");
-                    clearTx.objectStore(STORE_NAME).clear();
+                    // Mevcut veritabanı durum haritasını kontrol et (Kaldığı yeri bulma)
+                    const existingRecords = await getAllPagesFromDB();
+                    const existingPageMap = new Set(existingRecords.map(r => r.pageNumber));
 
                     const canvas = document.getElementById('ocrRenderCanvas');
                     const ctx = canvas.getContext('2d');
@@ -218,7 +219,19 @@
                     await worker.loadLanguage('eng');
                     await worker.initialize('eng');
 
+                    document.getElementById('progressMainTitle').innerText = "Resuming OCR Character Recognition...";
+
                     for (let i = 1; i <= totalPages; i++) {
+                        const pct = Math.round((i / totalPages) * 100);
+                        document.getElementById('uploadProgressBar').style.width = `${pct}%`;
+
+                        // CHECKPOINT LOGIC: Eğer sayfa veritabanında zaten varsa OCR adımını atla
+                        if (existingPageMap.has(i) && existingRecords.find(r => r.pageNumber === i).content.trim().length > 10) {
+                            document.getElementById('progressStatusText').innerText = `⏩ Skipping cached page ${i} / ${totalPages} (Loaded)`;
+                            continue; 
+                        }
+
+                        document.getElementById('progressStatusText').innerText = `[Step 1/2] Rendering Vector Image: ${i} / ${totalPages}`;
                         const page = await pdf.getPage(i);
                         const viewport = page.getViewport({ scale: 2.0 });
                         canvas.height = viewport.height;
@@ -227,27 +240,24 @@
                         const renderContext = { canvasContext: ctx, viewport: viewport };
                         await page.render(renderContext).promise;
 
+                        document.getElementById('progressStatusText').innerText = `[Step 2/2] Scanning Scanned Layer: ${i} / ${totalPages}...`;
                         const { data: { text } } = await worker.recognize(canvas);
-                        await savePageToDB(i, text);
                         
-                        const pct = Math.round((i / totalPages) * 100);
-                        document.getElementById('uploadProgressBar').style.width = `${pct}%`;
+                        await savePageToDB(i, text);
                     }
                     
                     await worker.terminate();
                     document.getElementById('uploadProgressOverlay').classList.add('hidden');
                     updateSystemStatus();
                 } catch (error) {
-                    alert("OCR Exception: " + error.message);
+                    alert("OCR Checkpoint Exception: " + error.message);
                     document.getElementById('uploadProgressOverlay').classList.add('hidden');
                 }
             };
             fileReader.readAsArrayBuffer(file);
         });
 
-        // --- JSON DATA INTEROPERABILITY SHUTTLE (EXPORT / IMPORT) ---
-        
-        // Database to JSON Downloader File Linker
+        // --- JSON IMPORT / EXPORT SHUTTLE ---
         document.getElementById('exportJsonBtn').addEventListener('click', async () => {
             const records = await getAllPagesFromDB();
             if (!records || records.length === 0) return;
@@ -264,7 +274,6 @@
             document.body.removeChild(downloadAnchor);
         });
 
-        // JSON File Upload directly into Local IndexedDB Storage
         document.getElementById('jsonFileInput').addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -275,19 +284,17 @@
                     const parsedData = JSON.parse(e.target.result);
                     if (!Array.isArray(parsedData)) throw new Error("Format schema mismatch.");
 
-                    // Flash clear old data structures
                     const transaction = db.transaction([STORE_NAME], "readwrite");
                     const store = transaction.objectStore(STORE_NAME);
                     store.clear();
 
-                    // Seed entire payload matrix to storage stores
                     for (const entry of parsedData) {
                         if (entry.pageNumber && entry.content) {
                             await savePageToDB(entry.pageNumber, entry.content);
                         }
                     }
 
-                    alert(`✓ JSON Library Synchronized! ${parsedData.length} book pages deployed successfully.`);
+                    alert(`✓ JSON Library Synchronized! ${parsedData.length} book pages deployed.`);
                     updateSystemStatus();
                 } catch (err) {
                     alert("Invalid JSON data track standard: " + err.message);
@@ -306,10 +313,10 @@
             if (records && records.length > 0) {
                 badge.innerText = `IndexedDB: ${records.length} Pages Loaded`;
                 badge.className = "text-xs px-3 py-1 rounded-full font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-                exportBtn.classList.remove('hidden'); // Show export once database turns alive
+                exportBtn.classList.remove('hidden');
                 
                 menuContainer.innerHTML = '';
-                records.forEach(page => {
+                records.sort((a,b) => a.pageNumber - b.pageNumber).forEach(page => {
                     const itemBtn = document.createElement('button');
                     itemBtn.className = "w-full text-left p-2.5 rounded bg-slate-900 border border-slate-800/60 hover:bg-slate-800 text-slate-300 font-mono transition truncate block";
                     itemBtn.innerText = `📘 Page Segment ${page.pageNumber}`;
