@@ -32,7 +32,7 @@
       __lastS1=s1; __lastW1=w1; __lastS2=s2; __lastW2=w2;
     }catch(e){}
 
-    // Sistemdeki modülleri koça besle
+    // Sistemdeki modülleri koça bildir
     try {
       if(window.definitions) {
         var modLog = [];
@@ -88,6 +88,23 @@
         return;
       }
       if(sub) sub.textContent=(plan.dueCount||0)+" tekrar bekleyen";
+      
+      // --- ANA SAYFADAKİ STATİK KARTI DA BURADA EŞ ZAMANLI GÜNCELLİYORUZ ---
+      var targetStep = plan.steps.find(function(s) {
+        return s && s.href && s.href.indexOf("index-app.html?mod=") === 0;
+      });
+      if (targetStep) {
+        var mainCard = document.getElementById("mainPhotoLearnCard");
+        var cardTitle = document.getElementById("photoLearnTitle");
+        var cardSub = document.getElementById("photoLearnSub");
+        if (mainCard && cardTitle && cardSub) {
+          cardTitle.innerHTML = "📌 " + targetStep.label;
+          cardSub.innerHTML = "Koçunuz bugün bu modülü bitirmenizi önerdi. Başlamak için tıklayın.";
+          mainCard.href = "./" + targetStep.href;
+        }
+      }
+      // ------------------------------------------------------------------
+
       if(box){
         box.dataset.dhFilled="1";
         var stepsHtml=plan.steps.map(function(s,i){
@@ -134,10 +151,9 @@
     var spine=[];
     if(due>0) spine.push({label:due+" öğeyi tekrarla", href:"tekrar.html?plan=1"});
     
-    // AI'ın belirlediği dinamik modüllü adımı iskelete koruyarak ekle
     var aiSelectedMod = aiSteps.find(function(s){ return String(s.href).indexOf("index-app.html?mod=") === 0; });
     if(aiSelectedMod) {
-      spine.push({label: aiSelectedMod.label, href: aiSelectedMod.href}); // Örn: "Present Tense Modülünü Çalış"
+      spine.push({label: aiSelectedMod.label, href: aiSelectedMod.href});
     } else {
       spine.push({label:"Yeni cümleler öğren", href:"index-app.html"});
     }
