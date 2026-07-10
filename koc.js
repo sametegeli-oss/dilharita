@@ -133,8 +133,34 @@
     if(!p.steps.length) return null;
     p.focus=String(p.focus||"").slice(0,120); p.note=String(p.note||"").slice(0,140);
     p.why=String(p.why||"").slice(0,180);
-    if(!p.stats) p.stats={due:due, s2:__lastS2||0, w2:__lastW2||0, s1:__lastS1||0, w1:__lastW1||0};
+    // stats artık burada değil — run() içinde HER açılışta canlı hesaplanır (bkz. liveStats)
     return p;
+  }
+
+  // İstatistik çubukları HİÇ önbelleğe alınmaz — plan (adımlar) günde 1 kez AI'dan gelse de,
+  // "Öğrenilmiş/Çalışılıyor/Tekrar bekleyen" sayıları her açılışta CANLI hesaplanır ki
+  // gün içinde yapılan çalışma anında yansısın.
+  async function liveStats(){
+    var s1=0,s2=0,w1=0,w2=0,due=0;
+    try{
+      var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{};
+      for(var k in m){ if(!m[k]) continue; var st0=m[k][0];
+        if(k.indexOf("sentence:")===0){ if(st0===1)s1++; else if(st0===2)s2++; }
+        else if(k.indexOf("word:")===0){ if(st0===1)w1++; else if(st0===2)w2++; }
+      }
+    }catch(e){}
+    await new Promise(function(res){ try{
+      var r=indexedDB.open("sentence-mode",1);
+      r.onsuccess=function(){ var db=r.result, now=Date.now();
+        try{ var q=db.transaction("kv","readonly").objectStore("kv").openCursor();
+          q.onsuccess=function(e){ var c=e.target.result;
+            if(c){ var kk=String(c.key),v=c.value||{}; if(kk.indexOf("srs:")===0 && (v.due||0)<=now) due++; c.continue(); }
+            else { db.close(); res(); } };
+          q.onerror=function(){ db.close(); res(); };
+        }catch(e2){ try{db.close()}catch(_){ } res(); } };
+      r.onerror=function(){ res(); };
+    }catch(e3){ res(); } });
+    return {due:due, s1:s1, s2:s2, w1:w1, w2:w2};
   }
 
   async function run(){
@@ -142,7 +168,7 @@
       try{ window.__dhErrCount = window.LearningErrorDB&&LearningErrorDB.all ? (await LearningErrorDB.all()||[]).length : 0; }catch(e){ window.__dhErrCount=0; }
       __nextModule = await pickNextModule();
       var cached=localStorage.getItem(KEY);
-      if(cached){ var cp=valid(JSON.parse(cached)); if(cp) paint(cp); return; }
+      if(cached){ var cp=valid(JSON.parse(cached)); if(cp){ cp.stats=await liveStats(); paint(cp); } return; }
       if(!(window.DHProviders&&DHProviders.chat&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())) return;
       var prof=await profile(); if(!prof) return;
       var sys='Türk öğrencinin İngilizce koçusun. Profile göre BUGÜN için kısa, SOMUT bir plan yap. '
@@ -156,6 +182,7 @@
       localStorage.setItem(KEY,JSON.stringify(plan));
       // eski gün planlarını temizle
       for(var i=localStorage.length-1;i>=0;i--){ var k=localStorage.key(i); if(k&&k.indexOf("dh-koc-plan-")===0&&k!==KEY) localStorage.removeItem(k); }
+      plan.stats=await liveStats();
       paint(plan);
     }catch(e){}
   }
