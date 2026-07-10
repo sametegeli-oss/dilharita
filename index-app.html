@@ -70,7 +70,7 @@
         <div class="space-y-4">
             <div class="flex items-center gap-2 border-b border-slate-900 pb-2">
                 <span class="px-3 py-1 bg-blue-600 text-white font-black text-xs rounded-lg">A1</span>
-                <!-- OKLA GÖSTERİLEN ALAN: Modül ismini dinamik basar, tıklandığında açar -->
+                <!-- OKLA GÖSTERİLEN ALAN -->
                 <span id="total-modules-count" class="text-xs text-slate-400 font-bold bg-slate-900 px-2 py-1 rounded-md border border-slate-800 transition-all">Modüller yükleniyor...</span>
             </div>
 
@@ -114,9 +114,7 @@
         </div>
     </div>
 
-    <!-- SADECE DEFINITIONS DOSYASINI BAĞIL YOL PROBLEMİ OLMADAN DOĞRUDAN ÇAĞIRIYORUZ -->
-    <script src="definitions.js"></script>
-
+    <!-- DIŞ SCRIPTLERIN HEPSİ SİLİNDİ, BURADAN SONRASI SAF YEREL KOD -->
     <script>
         function openSettings() {
             document.getElementById('cfg-auto-speak').checked = localStorage.getItem('dh-cfg-auto-speak') !== '0';
@@ -132,21 +130,22 @@
 
         function renderModules() {
             const container = document.getElementById('modules-container');
-            if(!container || !window.definitions) return;
+            // Sayfadaki mevcut tanımlama objelerini kontrol et
+            const definitions = window.definitions || {};
+            const keys = Object.keys(definitions);
+            
+            if(!container || keys.length === 0) return;
 
             const urlParams = new URLSearchParams(window.location.search);
             const targetMod = urlParams.get('mod'); 
 
             const progressMirror = JSON.parse(localStorage.getItem('dh-progress-mirror-v1') || '{}');
-            const keys = Object.keys(definitions);
-            
             document.getElementById('total-modules-count').textContent = `${keys.length} modül`;
 
             let html = '';
             let totalStudying = 0;
             let totalLearned = 0;
 
-            // Okla gösterdiğin yere o gün çalışılacak modülün ismini basıp tıklanabilir yapıyoruz
             if (targetMod && definitions[targetMod]) {
                 const targetTitle = definitions[targetMod].title || targetMod;
                 const labelEl = document.getElementById('total-modules-count');
@@ -238,20 +237,18 @@
         }
 
         function startPractice(modKey) {
-            if(!window.definitions || !definitions[modKey]) return;
             localStorage.setItem('dh-current-module', modKey);
             window.location.href = `practice.html?mod=${modKey}`;
         }
 
-        // Sayfa veya tanımlar yüklendiğinde render etmeyi garantileyen döngü
-        window.addEventListener('load', () => {
-            let checkInterval = setInterval(() => {
-                if (window.definitions) {
-                    clearInterval(checkInterval);
-                    renderModules();
-                }
-            }, 100);
-        });
+        // Modüllerin yüklenmesini dinleyen döngü
+        let checkInterval = setInterval(() => {
+            if (window.definitions || (typeof definitions !== 'undefined')) {
+                clearInterval(checkInterval);
+                if(!window.definitions && typeof definitions !== 'undefined') window.definitions = definitions;
+                renderModules();
+            }
+        }, 200);
     </script>
 </body>
 </html>

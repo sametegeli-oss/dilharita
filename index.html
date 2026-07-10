@@ -25,7 +25,7 @@ body{margin:0;background:radial-gradient(900px 420px at 50% -10%,#14302a 0%,tran
 h1{font-size:30px;margin:10px 0 6px}
 p{color:var(--muted);line-height:1.55}
 
-/* 🔥 RESPONSIVE KOMUTA MERKEZİ GRİD DÜZENİ */
+/* 🔥 YENİ NESİL RESPONSIVE KOMUTA MERKEZİ GRİD DÜZENİ */
 .dh-mentor-grid-container {
   display: grid;
   grid-template-columns: 1.25fr 0.75fr;
@@ -53,6 +53,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
 }
 .photo-learn-card b{color:#fffde6}
 
+/* Masaüstü Olmayan Ekranlar İçin responsive Kırılma */
 @media (max-width: 992px) {
   .dh-mentor-grid-container { grid-template-columns: 1fr; }
 }
@@ -79,6 +80,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
 
       <!-- SAĞ SÜTUN: Statik Müfredat ve Ders Atamaları -->
       <div class="dh-mentor-right-column">
+          <!-- Bugünkü Dersim Kartı -->
           <a class="card" href="./ders.html" style="margin:0;">
               <b>🎓 Bugünkü Dersim</b>
               <span>Öğretmen senin için ders hazırlasın — nereden başlayacağına o karar versin</span>
@@ -145,7 +147,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
 
   <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:4px 0 6px">
     <button id="dhBackupBtn" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font:800 13px system-ui,sans-serif">⬇ Yedeği indir</button>
-    <label style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font:800 13px system-ui,sans-serif">⬆ Yedekten geri yükle
+    <label style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font-800 13px system-ui,sans-serif">⬆ Yedekten geri yükle
       <input type="file" id="dhRestoreFile" accept="application/json,.json" hidden />
     </label>
     <button id="dhSnapBtn" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font:800 13px system-ui,sans-serif">⏪ Geri Dön</button>
@@ -192,66 +194,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
 <script src="./cloud-sync-v8.js?v=1"></script>
 <script src="./notifications.js?v=1"></script>
 
-<script>
-/* Bulut yedekleme kod bloğu */
-(function(){
-  var btn=document.getElementById("dhCloudSyncBtn");
-  var msg=document.getElementById("dhCloudSyncMsg");
-  if(!btn) return;
-  btn.onclick=async function(){
-    if(!(window.DHCloudSync && window.DHCloudSync.fullSync)){
-      msg.textContent="Bulut bağlantısı hazır değil, birkaç saniye sonra tekrar dene.";
-      return;
-    }
-    var old=btn.textContent;
-    btn.disabled=true; btn.textContent="⏳ Senkronize ediliyor...";
-    msg.textContent="";
-    var u = window.DHCloudSync.user;
-    var rdy = window.DHCloudSync.ready;
-    try{
-      var res=await window.DHCloudSync.fullSync();
-      var yerel = (localStorage.getItem("dh_ai_prompt_teacher")||"").slice(0,30);
-      msg.innerHTML = (res.message||"") +
-        "<br><small style='color:#9fb3d9'>giriş:" + (u?("var ("+u.uid.slice(0,6)+")"):"YOK") +
-        " · hazır:" + (rdy?"evet":"hayır") +
-        " · yerel prompt:" + (yerel?("'"+yerel+"...'"):"BOŞ") + "</small>";
-      msg.style.color=res.ok ? "#34d399" : "#f87171";
-      if(!res.ok && /giriş/i.test(res.message||"")){
-        msg.innerHTML += "<br><small style='color:#38bdf8'>Giriş sayfasına yönlendiriliyorsun…</small>";
-        setTimeout(function(){ location.href="./login.html"; }, 1200);
-      }
-      if(res.ok){
-        try{ if(window.__dhStorageFlush) window.__dhStorageFlush(); }catch(e){}
-        msg.innerHTML += "<br><small style='color:#38bdf8'>Sayfa yenileniyor…</small>";
-        setTimeout(function(){ location.reload(); }, 1400);
-      }
-    }catch(e){
-      msg.textContent="Senkron sırasında hata: "+(e&&e.message?e.message:"bilinmeyen");
-      msg.style.color="#f87171";
-    }finally{
-      btn.disabled=false; btn.textContent=old;
-    }
-  };
-})();
-</script>
-
-<!-- GITHUB PAGES BAĞIL YOL 404 HATASINI ÖNLEYEN DİNAMİK SCRIPT ENJEKTÖRÜ -->
-<script>
-(function() {
-    var basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-    
-    function injectScript(src) {
-        var s = document.createElement('script');
-        s.src = basePath + src + '?v=' + Date.now();
-        s.async = false;
-        document.head.appendChild(s);
-    }
-    
-
-  
-})();
-</script>
-  <script src="definitions.js"></script>
-    <script src="koc.js"></script>
+<!-- GEREKSİZ DIŞ BAĞIMLILIKLAR TEMİZLENDİ -->
+<script src="./koc.js?v=2"></script>
 </body>
 </html>
