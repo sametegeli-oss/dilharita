@@ -12,9 +12,13 @@
       for(;;){ if((tr.days||{})[d.toISOString().slice(0,10)]){st++;d.setDate(d.getDate()-1);} else break; }
       if(st) p.push("Seri:"+st+" gün.");
     }catch(e){}
-    try{ var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, s1=0,w1=0;
-      for(var k in m){ if(m[k]&&m[k][0]===1){ if(k.indexOf("sentence:")===0)s1++; else if(k.indexOf("word:")===0)w1++; } }
-      p.push("Çalışılan cümle:"+s1+", kelime:"+w1+".");
+    try{ var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, s1=0,w1=0,s2=0,w2=0;
+      for(var k in m){ if(!m[k]) continue; var st0=m[k][0];
+        if(k.indexOf("sentence:")===0){ if(st0===1)s1++; else if(st0===2)s2++; }
+        else if(k.indexOf("word:")===0){ if(st0===1)w1++; else if(st0===2)w2++; }
+      }
+      p.push("Çalışılan cümle:"+s1+", kelime:"+w1+". Öğrenilmiş cümle:"+s2+", kelime:"+w2+".");
+      __lastS1=s1; __lastW1=w1; __lastS2=s2; __lastW2=w2;
     }catch(e){}
     var errCount=0;
     try{ if(window.LearningErrorDB&&LearningErrorDB.all){
@@ -60,11 +64,24 @@
             +'<span style="background:#2563eb;color:#fff;font:800 12px system-ui;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:0 0 auto">'+(i+1)+'</span>'
             +'<span style="font-size:13.5px;font-weight:700">'+esc(s.label)+'</span></a>';
         }).join("");
+        var st=plan.stats||{}, learned=(st.s2||0)+(st.w2||0), studying=(st.s1||0)+(st.w1||0), due=st.due||0;
+        var maxV=Math.max(learned,studying,due,1);
+        function bar(label,val,color){
+          var pct=Math.round(100*val/maxV);
+          return '<div style="display:flex;align-items:center;gap:8px;margin-top:5px">'
+            +'<span style="width:78px;font-size:11px;color:#9fb3d9;flex:0 0 auto">'+label+'</span>'
+            +'<div style="flex:1;background:#0a1628;border-radius:6px;height:10px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+color+'"></div></div>'
+            +'<span style="width:26px;text-align:right;font-size:11px;color:#e8eef7;flex:0 0 auto">'+val+'</span></div>';
+        }
+        var chartHtml='<div style="margin:10px 0 12px">'
+          +bar("Öğrenilmiş", learned, "#4ade80")+bar("Çalışılıyor", studying, "#38bdf8")+bar("Tekrar bekleyen", due, "#f59e0b")
+          +'</div>';
         box.innerHTML='<div style="background:#111827;padding:18px;border-radius:14px;border:1px solid rgba(255,255,255,.1)">'
           +'<div style="color:#60a5fa;font:900 12px system-ui;letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px">🧭 AI Mentor — Bugünün Planı</div>'
           +'<div style="font:800 16px system-ui;margin-bottom:2px">'+esc(plan.focus||"")+'</div>'
-          +(plan.note?('<div style="color:#9fb3d9;font-size:12.5px;margin-bottom:4px">💬 '+esc(plan.note)+'</div>'):'')
-          +stepsHtml+'</div>';
+          +(plan.note?('<div style="color:#9fb3d9;font-size:12.5px;margin-bottom:2px">💬 '+esc(plan.note)+'</div>'):'')
+          +(plan.why?('<div style="color:#facc15;font-size:11.5px;margin-bottom:4px">🎯 '+esc(plan.why)+'</div>'):'')
+          +chartHtml+stepsHtml+'</div>';
       } else {
         // eski basit banner (geri uyumluluk — bazı sayfalarda hâlâ olabilir)
         var a2=document.getElementById("dhDayStart");
@@ -74,16 +91,27 @@
     }catch(e){}
   }
   function esc(s){ return String(s||"").replace(/[<>&]/g,function(c){return {"<":"&lt;",">":"&gt;","&":"&amp;"}[c];}); }
-  var __lastDue=0;
+  var __lastDue=0, __lastS1=0, __lastW1=0, __lastS2=0, __lastW2=0;
   function valid(p){
     if(!p||typeof p!=="object"||!Array.isArray(p.steps)) return null;
-    p.dueCount=__lastDue;
-    p.steps=p.steps.filter(function(s){ return s&&s.label&&ALLOWED.indexOf(String(s.href||""))>=0; });
-    // SERT FİLTRE: hata defteri boşsa, AI ne önerirse önersin bu adımı kaldır (halüsinasyon koruması)
-    if(!window.__dhErrCount){ p.steps=p.steps.filter(function(s){ return s.href!=="hata-defteri.html"; }); }
-    p.steps=p.steps.slice(0,4);
+    var due = (p.dueCount!=null ? p.dueCount : __lastDue);
+    p.dueCount=due;
+    var aiSteps=p.steps.filter(function(s){ return s&&s.label&&ALLOWED.indexOf(String(s.href||""))>=0; });
+    if(!window.__dhErrCount){ aiSteps=aiSteps.filter(function(s){ return s.href!=="hata-defteri.html"; }); }
+
+    // GARANTİLİ İSKELET (eski ☀️ Güne Başla tasarımı): tekrar → yeni cümleler → 1 dk konuşma.
+    var spine=[];
+    if(due>0) spine.push({label:due+" öğeyi tekrarla", href:"tekrar.html?plan=1"});
+    spine.push({label:"Yeni cümleler öğren", href:"index-app.html"});
+    spine.push({label:"1 dakika konuş", href:"chat.html"});
+    var hrefs=spine.map(function(s){return s.href;});
+    var bonus=aiSteps.find(function(s){ return hrefs.indexOf(s.href)<0; });
+    p.steps = bonus ? spine.concat([bonus]) : spine;
+
     if(!p.steps.length) return null;
     p.focus=String(p.focus||"").slice(0,120); p.note=String(p.note||"").slice(0,140);
+    p.why=String(p.why||"").slice(0,180);
+    if(!p.stats) p.stats={due:due, s2:__lastS2||0, w2:__lastW2||0, s1:__lastS1||0, w1:__lastW1||0};
     return p;
   }
 
@@ -98,7 +126,7 @@
         +'KESİN KURALLAR: (1) "Hata defteri: BOŞ" yazıyorsa hata-defteri.html adımını KESİNLİKLE ekleme. '
         +'(2) Yalnız profildeki gerçek sayılara dayanan, spesifik adımlar öner (örn. "Tekrar bekleyen: 12" varsa "12 kelimeyi tekrarla" gibi somut bir adım — "pratik yap" gibi belirsiz/genel etiket kullanma). '
         +'(3) Tekrar bekleyen 0 ise tekrar.html adımını ekleme. '
-        +'SADECE JSON döndür, açıklama yok: {"focus":"günün odağı tek cümle (Türkçe)","note":"kısa motivasyon/uyarı (Türkçe, en çok 15 kelime)","steps":[{"label":"somut, sayıya dayalı adım (Türkçe, kısa)","href":"..."}]} steps 2-3 adet olacak ve href YALNIZ şunlardan biri: '+ALLOWED.join(", ");
+        +'SADECE JSON döndür, açıklama yok: {"focus":"günün odağı tek cümle (Türkçe)","note":"kısa motivasyon/uyarı (Türkçe, en çok 15 kelime)","why":"bu planı NEDEN önerdiğini profildeki sayılara dayanarak açıklayan 1 cümle (Türkçe, en çok 20 kelime)","steps":[{"label":"somut, sayıya dayalı adım (Türkçe, kısa)","href":"..."}]} steps 2-3 adet olacak ve href YALNIZ şunlardan biri: '+ALLOWED.join(", ");
       var out=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:prof}],{temperature:0.4,max_tokens:400});
       var plan=null; try{ plan=valid(JSON.parse(String(out).replace(/```json|```/g,"").trim())); }catch(e){}
       if(!plan) return;                      // sessiz düşüş: banner statik kalır
