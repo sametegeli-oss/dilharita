@@ -8,10 +8,22 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
-        body { font-family: 'Nunito', sans-serif; }
+        body {
+            font-family: 'Nunito', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen antialiased">
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-blue-500/30">
 
     <!-- Üst Bar -->
     <header class="border-b border-slate-900 bg-slate-950/80 backdrop-blur sticky top-0 z-40 px-4 py-3">
@@ -46,7 +58,7 @@
         <div class="grid grid-cols-3 gap-4">
             <div class="bg-slate-900/50 border border-slate-900 p-4 rounded-2xl text-center">
                 <div id="stat-studying" class="text-2xl font-black text-purple-400">0</div>
-                <div class="text-xs text-slate-400 font-semibold mt-1">çalışılan</div>
+                <div class="text-xs text-slate-400 font-semibold mt-1">çallışılan</div>
             </div>
             <div class="bg-slate-900/50 border border-slate-900 p-4 rounded-2xl text-center">
                 <div id="stat-learned" class="text-2xl font-black text-green-400">0</div>
@@ -70,8 +82,7 @@
         <div class="space-y-4">
             <div class="flex items-center gap-2 border-b border-slate-900 pb-2">
                 <span class="px-3 py-1 bg-blue-600 text-white font-black text-xs rounded-lg">A1</span>
-                <!-- OKLA GÖSTERİLEN ALAN -->
-                <span id="total-modules-count" class="text-xs text-slate-400 font-bold bg-slate-900 px-2 py-1 rounded-md border border-slate-800 transition-all">Modüller yükleniyor...</span>
+                <span id="total-modules-count" class="text-xs text-slate-500 font-bold">0 modül</span>
             </div>
 
             <!-- Modüller Dinamik Grid -->
@@ -94,6 +105,7 @@
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
+            
             <div class="space-y-4">
                 <div class="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-900">
                     <div>
@@ -110,18 +122,25 @@
                     <input type="checkbox" id="cfg-show-colors" class="w-4 h-4 rounded bg-slate-900 border-slate-800 text-blue-600 focus:ring-blue-500/20" checked>
                 </div>
             </div>
-            <button onclick="saveSettings()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition">Kaydet ve Kapat</button>
+
+            <button onclick="saveSettings()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition">
+                Kaydet ve Kapat
+            </button>
         </div>
     </div>
 
-    <!-- DIŞ SCRIPTLERIN HEPSİ SİLİNDİ, BURADAN SONRASI SAF YEREL KOD -->
+    <!-- Hatalı yollar kökten düzeltildi (./ eklendi) -->
+    <script src="./definitions.js?v=1"></script>
+    <script src="./main.js?v=1"></script>
     <script>
         function openSettings() {
             document.getElementById('cfg-auto-speak').checked = localStorage.getItem('dh-cfg-auto-speak') !== '0';
             document.getElementById('cfg-show-colors').checked = localStorage.getItem('dh-cfg-show-colors') !== '0';
             document.getElementById('settings-modal').classList.remove('hidden');
         }
-        function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
         function saveSettings() {
             localStorage.setItem('dh-cfg-auto-speak', document.getElementById('cfg-auto-speak').checked ? '1' : '0');
             localStorage.setItem('dh-cfg-show-colors', document.getElementById('cfg-show-colors').checked ? '1' : '0');
@@ -130,29 +149,15 @@
 
         function renderModules() {
             const container = document.getElementById('modules-container');
-            // Sayfadaki mevcut tanımlama objelerini kontrol et
-            const definitions = window.definitions || {};
-            const keys = Object.keys(definitions);
-            
-            if(!container || keys.length === 0) return;
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const targetMod = urlParams.get('mod'); 
+            if(!container || !window.definitions) return;
 
             const progressMirror = JSON.parse(localStorage.getItem('dh-progress-mirror-v1') || '{}');
+            const keys = Object.keys(definitions);
             document.getElementById('total-modules-count').textContent = `${keys.length} modül`;
 
             let html = '';
             let totalStudying = 0;
             let totalLearned = 0;
-
-            if (targetMod && definitions[targetMod]) {
-                const targetTitle = definitions[targetMod].title || targetMod;
-                const labelEl = document.getElementById('total-modules-count');
-                labelEl.innerHTML = `<span class="text-amber-400 animate-pulse">🎯 Bugünün Modülü: ${targetTitle} (Açmak için tıkla)</span>`;
-                labelEl.className = "text-xs font-black bg-amber-950/40 px-3 py-1 rounded-lg border border-amber-500/30 cursor-pointer transition hover:bg-amber-900/50";
-                labelEl.onclick = function() { startPractice(targetMod); };
-            }
 
             keys.forEach(modKey => {
                 const mod = definitions[modKey];
@@ -162,7 +167,8 @@
                 let currentLearned = 0;
                 
                 for(let i=0; i<totalSentences; i++) {
-                    const status = progressMirror[`sentence:${modKey}_${i}`];
+                    const sid = mod.sentences[i] && mod.sentences[i].id;
+                    const status = sid ? progressMirror[`sentence:${sid}`] : null;
                     if(status) {
                         if(status[0] === 1) currentStudying++;
                         if(status[0] === 2) currentLearned++;
@@ -175,14 +181,10 @@
                 const completedCount = currentStudying + currentLearned;
                 const progressPercent = totalSentences > 0 ? (completedCount / totalSentences) * 100 : 0;
 
-                const isTarget = (modKey === targetMod) ? 'border-amber-500 bg-amber-950/20 shadow-lg shadow-amber-500/10' : 'border-slate-900 bg-slate-800/20';
-
                 html += `
-                    <div onclick="startPractice('${modKey}')" class="${isTarget} hover:bg-slate-800/40 hover:border-slate-800 p-4 rounded-2xl cursor-pointer transition flex flex-col justify-between group h-32">
+                    <div onclick="startPractice('${modKey}')" class="bg-slate-800/20 hover:bg-slate-800/40 border border-slate-900 hover:border-slate-800 p-4 rounded-2xl cursor-pointer transition flex flex-col justify-between group h-32">
                         <div>
-                            <h4 class="font-bold text-sm text-slate-200 group-hover:text-white transition line-clamp-1">
-                                ${modKey === targetMod ? '⭐ ' : ''}${mod.title || modKey}
-                            </h4>
+                            <h4 class="font-bold text-sm text-slate-200 group-hover:text-white transition line-clamp-1">${mod.title || modKey}</h4>
                             <p class="text-xs text-slate-500 font-medium mt-0.5">${totalSentences} cümle</p>
                         </div>
                         <div class="space-y-1.5">
@@ -203,6 +205,23 @@
             document.getElementById('stat-learned').textContent = totalLearned;
 
             calculateDueCount();
+
+            // Modüller basıldığı an koç emrini sorgula
+            checkKocDirective();
+        }
+
+        // Koç yönlendirmesini yerine getiren asıl mekanizma
+        function checkKocDirective() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetMod = urlParams.get('mod');
+
+            if (targetMod && window.definitions && window.definitions[targetMod]) {
+                console.log(`🚀 AI Koç Emri Devrede: ${targetMod} otomatik başlatılıyor...`);
+                // Dom yerleşiminden emin olmak için çok kısa bir es verip tetikliyoruz
+                setTimeout(() => {
+                    startPractice(targetMod);
+                }, 100);
+            }
         }
 
         function calculateDueCount() {
@@ -212,6 +231,7 @@
                     const db = request.result;
                     let dueCount = 0;
                     const now = Date.now();
+                    
                     const transaction = db.transaction("kv", "readonly");
                     const store = transaction.objectStore("kv");
                     const cursorRequest = store.openCursor();
@@ -221,7 +241,9 @@
                         if (cursor) {
                             const key = String(cursor.key);
                             const val = cursor.value || {};
-                            if (key.indexOf("srs:") === 0 && (val.due || 0) <= now) dueCount++;
+                            if (key.indexOf("srs:") === 0 && (val.due || 0) <= now) {
+                                dueCount++;
+                            }
                             cursor.continue();
                         } else {
                             db.close();
@@ -237,18 +259,18 @@
         }
 
         function startPractice(modKey) {
+            if(!window.definitions || !definitions[modKey]) return;
             localStorage.setItem('dh-current-module', modKey);
             window.location.href = `practice.html?mod=${modKey}`;
         }
 
-        // Modüllerin yüklenmesini dinleyen döngü
-        let checkInterval = setInterval(() => {
-            if (window.definitions || (typeof definitions !== 'undefined')) {
-                clearInterval(checkInterval);
-                if(!window.definitions && typeof definitions !== 'undefined') window.definitions = definitions;
+        window.addEventListener('DOMContentLoaded', () => {
+            if(window.definitions) {
                 renderModules();
+            } else {
+                setTimeout(renderModules, 300);
             }
-        }, 200);
+        });
     </script>
 </body>
 </html>

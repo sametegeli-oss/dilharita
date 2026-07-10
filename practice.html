@@ -2035,8 +2035,12 @@ async function boot(){
     await loadData();
     const restored = await restoreTeacherReturnIfNeeded();
     if (!restored){
-      var wantAuto = new URLSearchParams(location.search).get("auto")==="due";
-      if(wantAuto) await startDueSession(); else renderPicker();
+      var qp = new URLSearchParams(location.search);
+      var wantMod = qp.get("mod");
+      var wantAuto = qp.get("auto")==="due";
+      if(wantMod && State.byModule && State.byModule.has(wantMod)) await startModuleSession(wantMod);
+      else if(wantAuto) await startDueSession();
+      else renderPicker();
     }
     setupCloud();
   }catch(e){
