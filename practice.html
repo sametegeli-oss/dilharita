@@ -2034,7 +2034,10 @@ async function boot(){
   try{
     await loadData();
     const restored = await restoreTeacherReturnIfNeeded();
-    if (!restored) renderPicker();
+    if (!restored){
+      var wantAuto = new URLSearchParams(location.search).get("auto")==="due";
+      if(wantAuto) await startDueSession(); else renderPicker();
+    }
     setupCloud();
   }catch(e){
     renderError(e.message || String(e));

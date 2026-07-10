@@ -4,7 +4,7 @@
 (function(){
   "use strict";
   var DAY=new Date().toISOString().slice(0,10), KEY="dh-koc-plan-"+DAY;
-  var ALLOWED=["tekrar.html?plan=1","index-app.html","chat.html","practice.html","kelime-ogren.html","hata-defteri.html"];
+  var ALLOWED=["tekrar.html?plan=1","index-app.html","chat.html","practice.html?auto=due","kelime-ogren.html","hata-defteri.html"];
 
   async function profile(){
     var p=[];
@@ -16,12 +16,15 @@
       for(var k in m){ if(m[k]&&m[k][0]===1){ if(k.indexOf("sentence:")===0)s1++; else if(k.indexOf("word:")===0)w1++; } }
       p.push("Çalışılan cümle:"+s1+", kelime:"+w1+".");
     }catch(e){}
+    var errCount=0;
     try{ if(window.LearningErrorDB&&LearningErrorDB.all){
       var errs=await LearningErrorDB.all(), t={};
+      errCount=(errs||[]).length;
       (errs||[]).slice(-60).forEach(function(r){ if(r&&r.type) t[r.type]=(t[r.type]||0)+1; });
       var top=Object.keys(t).sort(function(a,b){return t[b]-t[a]}).slice(0,3);
-      if(top.length) p.push("Sık hatalar:"+top.join(",")+".");
+      p.push(top.length ? ("Hata defteri: "+errCount+" kayıt. Sık hatalar:"+top.join(",")+".") : "Hata defteri: BOŞ (0 kayıt) — hata defteri önerme.");
     }}catch(e){}
+    window.__dhErrCount=errCount;
     await new Promise(function(res){ try{
       var r=indexedDB.open("sentence-mode",1);
       r.onsuccess=function(){ var db=r.result, due=0, leech=0, now=Date.now();
@@ -75,7 +78,10 @@
   function valid(p){
     if(!p||typeof p!=="object"||!Array.isArray(p.steps)) return null;
     p.dueCount=__lastDue;
-    p.steps=p.steps.filter(function(s){ return s&&s.label&&ALLOWED.indexOf(String(s.href||""))>=0; }).slice(0,4);
+    p.steps=p.steps.filter(function(s){ return s&&s.label&&ALLOWED.indexOf(String(s.href||""))>=0; });
+    // SERT FİLTRE: hata defteri boşsa, AI ne önerirse önersin bu adımı kaldır (halüsinasyon koruması)
+    if(!window.__dhErrCount){ p.steps=p.steps.filter(function(s){ return s.href!=="hata-defteri.html"; }); }
+    p.steps=p.steps.slice(0,4);
     if(!p.steps.length) return null;
     p.focus=String(p.focus||"").slice(0,120); p.note=String(p.note||"").slice(0,140);
     return p;
@@ -83,11 +89,16 @@
 
   async function run(){
     try{
+      try{ window.__dhErrCount = window.LearningErrorDB&&LearningErrorDB.all ? (await LearningErrorDB.all()||[]).length : 0; }catch(e){ window.__dhErrCount=0; }
       var cached=localStorage.getItem(KEY);
       if(cached){ var cp=valid(JSON.parse(cached)); if(cp) paint(cp); return; }
       if(!(window.DHProviders&&DHProviders.chat&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())) return;
       var prof=await profile(); if(!prof) return;
-      var sys='Türk öğrencinin İngilizce koçusun. Profile göre BUGÜN için kısa plan yap. SADECE JSON döndür, açıklama yok: {"focus":"günün odağı tek cümle (Türkçe)","note":"kısa motivasyon/uyarı (Türkçe, en çok 15 kelime)","steps":[{"label":"adım (Türkçe, kısa)","href":"..."}]} steps 2-4 adet olacak ve href YALNIZ şunlardan biri: '+ALLOWED.join(", ");
+      var sys='Türk öğrencinin İngilizce koçusun. Profile göre BUGÜN için kısa, SOMUT bir plan yap. '
+        +'KESİN KURALLAR: (1) "Hata defteri: BOŞ" yazıyorsa hata-defteri.html adımını KESİNLİKLE ekleme. '
+        +'(2) Yalnız profildeki gerçek sayılara dayanan, spesifik adımlar öner (örn. "Tekrar bekleyen: 12" varsa "12 kelimeyi tekrarla" gibi somut bir adım — "pratik yap" gibi belirsiz/genel etiket kullanma). '
+        +'(3) Tekrar bekleyen 0 ise tekrar.html adımını ekleme. '
+        +'SADECE JSON döndür, açıklama yok: {"focus":"günün odağı tek cümle (Türkçe)","note":"kısa motivasyon/uyarı (Türkçe, en çok 15 kelime)","steps":[{"label":"somut, sayıya dayalı adım (Türkçe, kısa)","href":"..."}]} steps 2-3 adet olacak ve href YALNIZ şunlardan biri: '+ALLOWED.join(", ");
       var out=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:prof}],{temperature:0.4,max_tokens:400});
       var plan=null; try{ plan=valid(JSON.parse(String(out).replace(/```json|```/g,"").trim())); }catch(e){}
       if(!plan) return;                      // sessiz düşüş: banner statik kalır
