@@ -1607,6 +1607,94 @@ function exposeSceneVideoAnswer(s){
   }catch{}
 }
 
+/* ============================================================
+   🧭 KOÇ BALONU — interaktif, veri-temelli anlık geri bildirim
+   (AI çağrısı YOK — tamamen hata defteri geçmişine dayalı, anlık ve ücretsiz)
+   ============================================================ */
+(function(){
+  var css=document.createElement("style");
+  css.textContent=".dh-coach{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px);opacity:0;"
+    +"max-width:min(92vw,460px);background:#111827;border:1px solid rgba(255,255,255,.14);border-radius:14px;"
+    +"padding:12px 16px;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:9999;font:600 13.5px system-ui,sans-serif;color:#e8eef7;"
+    +"display:flex;gap:10px;align-items:flex-start;transition:opacity .25s,transform .25s;pointer-events:none}"
+    +".dh-coach.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}"
+    +".dh-coach .em{font-size:20px;flex:0 0 auto}"
+    +".dh-coach.praise{border-color:#22c55e55}.dh-coach.warn{border-color:#f59e0b55}"
+    +".dh-coach.tip{border-color:#38bdf855}.dh-coach.stat{border-color:#a78bfa55}";
+  document.head.appendChild(css);
+  var box=document.createElement("div"); box.className="dh-coach"; document.body.appendChild(box);
+  var hideT=null, lastMsg="", lastAt=0;
+  window.dhCoachSay=function(msg, kind, emoji){
+    if(!msg) return;
+    if(msg===lastMsg && Date.now()-lastAt<4000) return;   // aynı mesajı üst üste tekrarlama
+    lastMsg=msg; lastAt=Date.now();
+    box.className="dh-coach "+(kind||"tip");
+    box.innerHTML='<span class="em">'+(emoji||"🧭")+'</span><span>'+msg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>';
+    requestAnimationFrame(function(){ box.classList.add("show"); });
+    clearTimeout(hideT);
+    hideT=setTimeout(function(){ box.classList.remove("show"); }, 5200);
+  };
+  box.onclick=function(){ box.classList.remove("show"); };
+})();
+var DH_TYPE_LABEL={
+  "missing-word":"kelime atlama","extra-word":"fazladan kelime","auxiliary-missing":"yardımcı fiil eksikliği (am/is/are/do/did...)",
+  "auxiliary-extra":"gereksiz yardımcı fiil","article":"a/an/the kullanımı","pronoun":"zamir kullanımı",
+  "past-simple":"geçmiş zaman (past simple)","present-continuous":"şimdiki zaman (present continuous)",
+  "question-order":"soru cümlesi sıralaması","pronunciation":"telaffuz","sentence-accuracy":"cümle doğruluğu"
+};
+var DH_coachState={ seenModules:{}, evalCount:0, errCache:null, errCacheAt:0 };
+async function dhErrHistory(){
+  var now=Date.now();
+  if(DH_coachState.errCache && now-DH_coachState.errCacheAt<15000) return DH_coachState.errCache;
+  try{ DH_coachState.errCache = (window.LearningErrorDB && await LearningErrorDB.all()) || []; }catch(e){ DH_coachState.errCache=[]; }
+  DH_coachState.errCacheAt=now;
+  return DH_coachState.errCache;
+}
+async function dhCoachOnAnswer(s, answer, grade, d){
+  try{
+    var hist=await dhErrHistory();
+    var curTypes = (window.LearningErrorDB && LearningErrorDB.detectTypes)
+      ? LearningErrorDB.detectTypes({target:s.en, answer:answer, diffParts:d&&d.parts, grammar:s.grammarStructure||s.pattern||"", module:s.module||"", topic:s.topic||""})
+      : [];
+    var sameSentencePast = hist.filter(function(r){ return r.sentenceId===s.id && r.grade==="hard"; });
+    var ok = (grade==="easy" || grade==="good");
+
+    if(ok && sameSentencePast.length){
+      dhCoachSay("Aferin! Daha önce bu cümlede zorlanmıştın, bu kez doğru yaptın 🎉","praise","👏");
+      return;
+    }
+    if(!ok && sameSentencePast.length){
+      dhCoachSay("Dikkat: bu cümlede daha önce de hata yapmıştın. Tekrar bak: "+(s.commonMistake||"kelime sırasına ve yardımcı fiile dikkat et."),"warn","⚠️");
+      return;
+    }
+    if(!ok){
+      var overlap = hist.filter(function(r){ return r.grade==="hard" && Array.isArray(r.types) && r.types.some(function(t){return curTypes.indexOf(t)>=0;}); });
+      if(overlap.length>=2 && curTypes.length){
+        dhCoachSay("Bu, sık yaptığın bir hata türü: "+(DH_TYPE_LABEL[curTypes[0]]||curTypes[0])+". Cümle kurarken buna özellikle dikkat et.","warn","🎯");
+        return;
+      }
+    }
+    DH_coachState.evalCount++;
+    if(DH_coachState.evalCount % 5===0){
+      var tally={};
+      hist.forEach(function(r){ if(r.grade==="hard" && Array.isArray(r.types)) r.types.forEach(function(t){ tally[t]=(tally[t]||0)+1; }); });
+      var top=Object.keys(tally).sort(function(a,b){return tally[b]-tally[a];})[0];
+      if(top && tally[top]>=3){
+        dhCoachSay("Genel olarak ağırlıklı hata türün: "+(DH_TYPE_LABEL[top]||top)+" ("+tally[top]+" kez). Cümle kurarken buna dikkat et.","stat","📊");
+      }
+    }
+  }catch(e){}
+}
+function dhCoachModuleIntro(s){
+  try{
+    var mod=s.module||""; if(!mod || DH_coachState.seenModules[mod]) return;
+    DH_coachState.seenModules[mod]=1;
+    if(s.commonMistake){
+      dhCoachSay("Bu yapıyı yeni öğreniyorsun. Genelde şu hata yapılır: "+s.commonMistake,"tip","🆕");
+    }
+  }catch(e){}
+}
+
 function renderCard(){
   if (State.idx >= State.queue.length) return renderSessionDone();
   const s = currentSentence();
@@ -1614,6 +1702,7 @@ function renderCard(){
   const layer = chooseLayer(srs);
   State.answered = false;
   State.layer = layer;
+  try{ dhCoachModuleIntro(s); }catch(e){}
 
   const listen = State.mode === "listen";
   const pct = Math.round(State.idx / State.queue.length * 100);
@@ -1915,6 +2004,7 @@ async function evaluate(s, answer, layer){
     }
   }catch(e){ console.warn("Hata defteri kaydı atlandı:", e); }
   renderFeedback(s, d, grade, layer);
+  dhCoachOnAnswer(s, answer, grade, d);
   // tekrar.html ile TUTARLI: kelime eşleşmesi tam değilse (farklı ama geçerli bir ifade olabilir)
   // AI'ya "anlamca doğru mu?" diye sor. SRS/kayıt değişmez — yalnız bilgilendirme notu eklenir.
   if(grade!=="easy" && d.ratio>=0.25 && d.ratio<0.95 && answer.trim().length>2 &&
