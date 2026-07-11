@@ -249,6 +249,8 @@
     spine.push({label:"1 dakika konuş", href:"chat.html"});
     var hrefs=spine.map(function(s){return s.href;});
     var bonus=aiSteps.find(function(s){ return hrefs.indexOf(s.href)<0; });
+    // GÜVENCE: AI talimata uymayıp etikete sayı gömerse bile temizle (bayat sayı bir daha görünmesin)
+    if(bonus) bonus.label=String(bonus.label||"").replace(/\b\d+\b/g," ").replace(/\s{2,}/g," ").trim() || "Önerilen çalışma";
     p.steps = bonus ? spine.concat([bonus]) : spine;
 
     if(!p.steps.length) return null;

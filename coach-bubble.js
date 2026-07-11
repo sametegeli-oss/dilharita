@@ -133,8 +133,14 @@
         var top=Object.keys(tally).sort(function(a,b){return tally[b]-tally[a];})[0];
         if(top && tally[top]>=3){
           dhCoachSay("GENEL DEĞERLENDİRME: En çok "+(TYPE_LABEL[top]||top)+" konusunda hata yapıyorsun ("+tally[top]+" kez). Tavsiyem: "+(TYPE_TIP[top]||"buna özellikle dikkat et")+".","stat");
+          return;
         }
       }
+      // HİÇBİR ÖZEL KOŞUL TUTMADI: "her aktivitede yorum" ilkesi gereği yine de kısa bir tepki ver.
+      var DEF_OK=["Doğru! Böyle devam et.","Aferin, tam isabet.","Güzel, ilerliyorsun.","Doğru cevap — bir sonrakine geç."];
+      var DEF_NO=["Olmadı, doğrusuna bak ve devam et.","Bu sefer olmadı — açıklamayı oku, unutma.","Yanlış, ama önemli değil — öğrenmenin parçası."];
+      var pick = opts.ok ? DEF_OK[state.evalCount%DEF_OK.length] : DEF_NO[state.evalCount%DEF_NO.length];
+      dhCoachSay(pick, opts.ok?"praise":"warn");
     }catch(e){}
   };
   window.dhCoachModuleIntro=function(mod, commonMistake){
@@ -150,7 +156,7 @@
   (async function genericTip(){
     try{
       var lastT=+localStorage.getItem("dh-coach-last-generic-tip")||0;
-      if(Date.now()-lastT<3*3600000) return;   // 3 saatte bir en fazla
+      if(Date.now()-lastT<20*60000) return;   // 20 dakikada bir en fazla — "koç her yerde olmalı" isteği gereği sıklaştırıldı
       var tr={}; try{ tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
       var d=new Date(), streak=0;
       for(;;){ if((tr.days||{})[d.toISOString().slice(0,10)]){streak++; d.setDate(d.getDate()-1);} else break; }
