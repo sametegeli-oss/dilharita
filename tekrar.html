@@ -443,7 +443,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     
     $("a").classList.add("hid");
     
-    // 📸 GARANTİLİ CANLI RESİM YÜKLEYİCİ (CÜMLE İLK SORULDUĞU AN RENDERDA ÇALIŞIR)
+    // 📸 Resim: yalnız gerçek eşleşen kaynak varsa göster; alakasız rastgele resim ARTIK ÇEKİLMİYOR
     $("imgContainer").style.display = "none"; 
     $("imgContainer").innerHTML = "";
     if(curT.img && curT.img.trim() !== "") {
@@ -451,18 +451,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       $("imgContainer").style.display = "block";
     } else if (window.DHImageAddon && window.DHImageAddon.renderFor) {
       window.DHImageAddon.renderFor(cur.id, $("imgContainer"));
-    } else if (curT.en) {
-      var cleanQuery = curT.en.toLowerCase()
-        .replace(/[^a-z0-9 ]/g, "")
-        .split(" ")
-        .filter(function(w) { return w.length > 3; }) 
-        .slice(0, 2)
-        .join(",");
-      if(!cleanQuery) cleanQuery = "objects";
-      $("imgContainer").innerHTML = `<img src="https://loremflickr.com/500/280/${cleanQuery}" alt="Visual Context" onerror="this.style.display='none'">`;
-      $("imgContainer").style.display = "block";
     }
-    
+    // Not: eskiden buraya cümledeki kelimelerden rastgele stok fotoğraf (loremflickr) çekiliyordu —
+    // anahtar kelime eşleşmesi çok gevşek olduğundan tamamen alakasız görseller geliyordu (kaldırıldı).
     $("prodBox").style.display=prod?"block":"none";
     $("inp").value=""; $("score").textContent="";
     $("bShow").style.display=prod?"none":"";

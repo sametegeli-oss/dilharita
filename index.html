@@ -93,6 +93,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
 
   <!-- Alt Seçenekler ve Diğer Modüller -->
   <div id="dhBadges" style="max-width:960px;margin:0 auto 14px;display:flex;gap:8px;flex-wrap:wrap"></div>
+  <div id="dhDailyGoal" style="max-width:960px;margin:0 auto 14px;background:#0f1f3a;border:1px solid #1e3a5f;border-radius:14px;padding:14px 18px"></div>
   <div class="grid">
     <a class="card" href="./seviye-testi.html"><b>🎯 Seviye Belirleme</b><span>Kısa bir testle seviyeni ölç — öğretmen dersleri ona göre hazırlasın</span></a>
     <a class="card" href="./harita.html"><b>🗺️ İlerleme Haritası</b><span>Tüm modüllerde ne kadar öğrendiğini gör</span></a>
@@ -228,6 +229,33 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     }
   }catch(e){}
   out.innerHTML = badges.length ? badges.join("") : "";
+})();
+
+/* 📊 Günlük cümle hedefi (25/gün sınırı, canlı) — sayfa her açıldığında/geri dönüldüğünde günceller */
+(function(){
+  var DAILY_TARGET = 25;
+  function render(){
+    var box=document.getElementById("dhDailyGoal"); if(!box) return;
+    var n=0;
+    try{
+      var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{};
+      var today=new Date().toISOString().slice(0,10);
+      n=(tr.days&&tr.days[today]&&tr.days[today].sentences)||0;
+    }catch(e){}
+    var pct=Math.min(100, Math.round(100*n/DAILY_TARGET));
+    var over = n>=DAILY_TARGET;
+    var color = over ? "#4ade80" : (pct>=60?"#38bdf8":"#f59e0b");
+    box.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+      +'<span style="font:800 12px system-ui;color:#60a5fa;text-transform:uppercase;letter-spacing:.4px">📊 Bugünkü Cümle Hedefi</span>'
+      +'<span style="font:800 13px system-ui;color:'+color+'">'+n+' / '+DAILY_TARGET+'</span></div>'
+      +'<div style="background:#0a1628;border-radius:8px;height:12px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+color+';transition:width .4s"></div></div>'
+      +(over?'<div style="margin-top:8px;font-size:12px;color:#4ade80">✅ Bugünkü hedefini tamamladın! Aşırı yüklenmeden aralıklı tekrara devam edebilirsin.</div>'
+             :'<div style="margin-top:8px;font-size:12px;color:#9fb3d9">Günde en fazla '+DAILY_TARGET+' yeni cümle önerilir — kaliteli, kalıcı öğrenme için tempo bu şekilde korunur.</div>');
+  }
+  render();
+  document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="visible") render(); });
+  window.addEventListener("pageshow", render);   // geri/ileri gezinmede (bfcache) de güncellensin
 })();
 </script>
 </body>

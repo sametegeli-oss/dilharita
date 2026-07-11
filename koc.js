@@ -220,9 +220,15 @@
 
     // GARANTİLİ İSKELET (eski ☀️ Güne Başla tasarımı): tekrar → yeni cümleler → 1 dk konuşma.
     var spine=[];
-    if(due>0) spine.push({label:due+" öğeyi tekrarla", href:"tekrar.html?plan=1"});
-    spine.push({label: __nextModule ? ("Yeni cümleler: "+__nextModule.replace(/^[A-C]\d-M\d+\s*/,"")) : "Yeni cümleler öğren",
-                href: __nextModule ? ("index-app.html?mod="+encodeURIComponent(__nextModule)) : "index-app.html"});
+    if(due>0) spine.push({label:"Vadesi gelen kelime/cümleleri tekrarla", href:"tekrar.html?plan=1"});
+    // Günlük 25 cümle sınırı: bugün zaten 25+ çalıştıysa "yeni cümleler" adımı önerilmez (aşırı yükleme önlenir)
+    var todayCount=0;
+    try{ var tr2=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, tk=new Date().toISOString().slice(0,10);
+      todayCount=(tr2.days&&tr2.days[tk]&&tr2.days[tk].sentences)||0; }catch(e){}
+    if(todayCount<25){
+      spine.push({label: __nextModule ? ("Yeni cümleler: "+__nextModule.replace(/^[A-C]\d-M\d+\s*/,"")) : "Yeni cümleler öğren",
+                  href: __nextModule ? ("index-app.html?mod="+encodeURIComponent(__nextModule)) : "index-app.html"});
+    }
     spine.push({label:"1 dakika konuş", href:"chat.html"});
     var hrefs=spine.map(function(s){return s.href;});
     var bonus=aiSteps.find(function(s){ return hrefs.indexOf(s.href)<0; });
@@ -303,7 +309,7 @@
       var prof=await profile(); if(!prof) return;
       var sys='Türk öğrencinin İngilizce koçusun. Profile göre BUGÜN için kısa, SOMUT bir plan yap. '
         +'KESİN KURALLAR: (1) "Hata defteri: BOŞ" yazıyorsa hata-defteri.html adımını KESİNLİKLE ekleme. '
-        +'(2) Yalnız profildeki gerçek sayılara dayanan, spesifik adımlar öner (örn. "Tekrar bekleyen: 12" varsa "12 kelimeyi tekrarla" gibi somut bir adım — "pratik yap" gibi belirsiz/genel etiket kullanma). '
+        +'(2) Adım etiketlerine SAYI GÖMME (örn. "12 kelimeyi tekrarla" değil "kelimeleri tekrarla" de) — sayılar üstteki çubuklarda zaten CANLI gösteriliyor, etikete gömülen sayı gün içinde bayatlar. Yalnız gerçek duruma uygun, somut ama sayısız bir eylem adımı öner ("pratik yap" gibi aşırı genel de olmasın). '
         +'(3) Tekrar bekleyen 0 ise tekrar.html adımını ekleme. '
         +'(4) TON: cılız/nötr cümleler kurma. "note" ve "why" alanları KOMUT NİTELİĞİNDE ve YÖNLENDİRİCİ olsun — sadece gözlem değil, ne yapması gerektiğini AÇIKÇA söyle (örn. "Bugün mutlaka past-simple çalış, 3 gündür ihmal ediyorsun" gibi net bir yönerge; "iyi gidiyorsun" gibi genel geçer laf etme). '
         +'SADECE JSON döndür, açıklama yok: {"focus":"günün odağı tek cümle (Türkçe, buyurgan/yönlendirici üslupla)","note":"NET bir yönerge/komut (Türkçe, en çok 15 kelime)","why":"bu planı NEDEN önerdiğini profildeki sayılara dayanarak açıklayan, yönlendirici 1 cümle (Türkçe, en çok 20 kelime)","steps":[{"label":"somut, sayıya dayalı adım (Türkçe, kısa)","href":"..."}]} steps 2-3 adet olacak ve href YALNIZ şunlardan biri: '+ALLOWED.join(", ");
