@@ -30,9 +30,12 @@
       var K="dh-activity-log-v1";
       var log=JSON.parse(localStorage.getItem(K)||"[]")||[];
       var today=new Date().toISOString().slice(0,10);
-      log=log.filter(function(e){ return e.d===today; });   // yalnız bugünü tut, eskiyi at
+      // KALICI GEÇMİŞ: eskiden yalnız "bugün" tutulup her yazımda önceki günler silinirdi.
+      // Artık son 30 günü saklıyoruz — koç ve aktivite ekranı gerçek geçmiş üzerinden analiz yapabilsin.
+      var cutoff=Date.now()-30*86400000;
+      log=log.filter(function(e){ return (e.ts||0)>=cutoff; });
       log.push({ts:Date.now(), d:today, page:(location.pathname.split("/").pop()||"index.html"), detail:String(detail||"").slice(0,140), kind:kind||"info"});
-      if(log.length>500) log=log.slice(-500);
+      if(log.length>4000) log=log.slice(-4000);   // 30 gün için üst sınır (depolama koruması)
       localStorage.setItem(K, JSON.stringify(log));
     }catch(e){}
   };
@@ -173,12 +176,25 @@
   }
   window.dhBumpDailyTracker=bumpDailyTracker;
 
+  var __dhSession={correct:0, wrong:0};
+  function logSessionRate(force){
+    var total=__dhSession.correct+__dhSession.wrong;
+    if(!total) return;
+    if(!force && total%10!==0) return;   // her 10 cevapta bir, ya da sayfadan ayrılırken (force)
+    var pct=Math.round(100*__dhSession.correct/total);
+    try{ window.dhLogActivity("📊 Oturum doğruluğu: %"+pct+" ("+__dhSession.correct+"/"+total+")", "rate"); }catch(e){}
+  }
+  window.addEventListener("pagehide", function(){ logSessionRate(true); });
+  document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="hidden") logSessionRate(true); });
+
   window.dhCoachEvaluate=async function(opts){
     try{
       opts=opts||{};
       bumpDailyTracker(opts.trackKind||"sentence");
       window.dhCoachMarkStepDone && window.dhCoachMarkStepDone(__dhPage);
+      if(opts.ok) __dhSession.correct++; else __dhSession.wrong++;
       try{ window.dhLogActivity((opts.ok?"✅ Doğru: ":"❌ Yanlış: ")+(opts.en||opts.sentenceId||""), opts.ok?"correct":"wrong"); }catch(e){}
+      logSessionRate(false);
       var hist=await errHistory();
       var curTypes = (window.LearningErrorDB && LearningErrorDB.detectTypes)
         ? LearningErrorDB.detectTypes({target:opts.en, answer:opts.answer, grammar:opts.grammar||"", module:opts.module||"", topic:opts.topic||""})

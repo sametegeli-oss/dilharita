@@ -28,9 +28,9 @@ h1{font-size:17px;margin:0;flex:1}
 <script>
 (function(){
   var K="dh-activity-log-v1";
-  var log=[]; try{ log=JSON.parse(localStorage.getItem(K)||"[]")||[]; }catch(e){}
+  var fullLog=[]; try{ fullLog=JSON.parse(localStorage.getItem(K)||"[]")||[]; }catch(e){}
   var today=new Date().toISOString().slice(0,10);
-  log=log.filter(function(e){ return e.d===today; }).sort(function(a,b){ return a.ts-b.ts; });
+  var log=fullLog.filter(function(e){ return e.d===today; }).sort(function(a,b){ return a.ts-b.ts; });
 
   var correct=0, wrong=0, visits=0, chats=0;
   log.forEach(function(e){ if(e.kind==="correct")correct++; else if(e.kind==="wrong")wrong++; else if(e.kind==="visit")visits++; else if(e.kind==="chat")chats++; });
@@ -42,7 +42,18 @@ h1{font-size:17px;margin:0;flex:1}
 
   var feed=document.getElementById("feed");
 
-  // 🧭 Koçun günlük değerlendirmesi — bugünkü GERÇEK log verisine bakarak (AI çağrısı yok)
+  // 📈 ÇOK GÜNLÜ DOĞRULUK TRENDİ — artık log 30 gün saklandığı için gerçek geçmiş üzerinden
+  var dayAcc={};
+  fullLog.forEach(function(e){
+    if(e.kind!=="correct" && e.kind!=="wrong") return;
+    if(!dayAcc[e.d]) dayAcc[e.d]={c:0,w:0};
+    if(e.kind==="correct") dayAcc[e.d].c++; else dayAcc[e.d].w++;
+  });
+  var last7=[]; for(var wi=6;wi>=0;wi--){ var dd=new Date(); dd.setDate(dd.getDate()-wi); last7.push(dd.toISOString().slice(0,10)); }
+  var weekTotal={c:0,w:0}; last7.forEach(function(dk){ if(dayAcc[dk]){ weekTotal.c+=dayAcc[dk].c; weekTotal.w+=dayAcc[dk].w; } });
+  var weekAcc = (weekTotal.c+weekTotal.w) ? Math.round(100*weekTotal.c/(weekTotal.c+weekTotal.w)) : null;
+
+  // 🧭 Koçun günlük değerlendirmesi — bugünkü + son 7 günlük GERÇEK log verisine bakarak (AI çağrısı yok)
   (function(){
     var rv=document.getElementById("dhDayReview"); if(!rv) return;
     var total=correct+wrong, acc=total?Math.round(100*correct/total):null;
@@ -51,18 +62,39 @@ h1{font-size:17px;margin:0;flex:1}
       var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=tr.days||{}, d=new Date();
       for(;;){ var k=d.toISOString().slice(0,10); if(days[k]){streak++; d.setDate(d.getDate()-1);} else break; }
     }catch(e){}
-    if(!log.length){ rv.innerHTML=""; return; }
+    if(!log.length && !weekAcc){ rv.innerHTML=""; return; }
     var lines=[];
     if(total===0) lines.push("Bugün sayfalarda gezindin ama henüz bir cevap işaretlenmedi.");
     else if(acc>=90) lines.push("Bugün %"+acc+" doğrulukla harika bir performans sergiledin! ("+correct+"/"+total+")");
     else if(acc>=70) lines.push("Bugün %"+acc+" doğruluk gösterdin, fena değil ama gelişim payı var. ("+correct+"/"+total+")");
     else lines.push("Bugün %"+acc+" doğruluk düşük kaldı ("+correct+"/"+total+") — yorgunsan mola ver, ya da tekrar ile pekiştir.");
+    if(weekAcc!=null && total>0){
+      if(weekAcc>acc+5) lines.push("Son 7 gün ortalaman %"+weekAcc+" — bugün ortalamandan düşüksün, dikkatini toparla.");
+      else if(acc>weekAcc+5) lines.push("Son 7 gün ortalaman %"+weekAcc+" — bugün ortalamanın ÜSTÜNDESİN, harika!");
+      else lines.push("Son 7 gün ortalaman %"+weekAcc+" — bugün de bu düzeyi koruyorsun.");
+    }
     if(chats>0) lines.push(chats+" sohbet mesajı gönderdin — konuşma pratiği harika bir alışkanlık.");
     if(visits>=8) lines.push("Bugün "+visits+" farklı ekran gezdin, oldukça aktif bir gündü.");
     if(streak>=3) lines.push("🔥 "+streak+" günlük serin sürüyor, bugünü de kaydettiğin için tebrikler.");
     rv.innerHTML='<div style="background:linear-gradient(135deg,#111827,#0a2233);border-left:6px solid #38bdf8;border-radius:14px;padding:16px 20px">'
       +'<div style="color:#60a5fa;font:900 12px system-ui;letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px">🧭 Koçun Bugünkü Değerlendirmesi</div>'
       +'<div style="font-size:14px;line-height:1.5">'+lines.join("<br>")+'</div></div>';
+  })();
+
+  // 📈 7 günlük doğruluk çubuğu (görsel)
+  (function(){
+    var wrap=document.getElementById("stats"); if(!wrap) return;
+    var bars=last7.map(function(dk){
+      var rec=dayAcc[dk], t=rec?rec.c+rec.w:0, pct=t?Math.round(100*rec.c/t):0;
+      var lbl=["Pz","Pt","Sa","Ça","Pe","Cu","Ct"][new Date(dk).getDay()];
+      var h=t?Math.max(6,Math.round(pct*0.4)):3;
+      var col=!t?"#1e3a5f":pct>=80?"#4ade80":pct>=50?"#f59e0b":"#f87171";
+      return '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1"><div style="width:100%;max-width:22px;height:42px;display:flex;align-items:flex-end"><div style="width:100%;height:'+h+'px;background:'+col+';border-radius:3px" title="'+dk+': %'+pct+'"></div></div><span style="font-size:9px;color:#64748b">'+lbl+'</span></div>';
+    }).join("");
+    var box=document.createElement("div");
+    box.style.cssText="max-width:720px;margin:0 auto 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px";
+    box.innerHTML='<div style="font:800 11px system-ui;color:#60a5fa;text-transform:uppercase;margin-bottom:8px">📈 Son 7 Gün Doğruluk'+(weekAcc!=null?(' — ortalama %'+weekAcc):'')+'</div><div style="display:flex;gap:6px;align-items:flex-end">'+bars+'</div>';
+    wrap.parentNode.insertBefore(box, wrap.nextSibling);
   })();
 
   if(!log.length){ feed.innerHTML='<div class="empty">Bugün henüz bir aktivite kaydedilmedi.<br>Bir modülde çalışmaya başlayınca burada anlık olarak görünecek.</div>'; return; }
