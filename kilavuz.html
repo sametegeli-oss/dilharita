@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dil Harita — Kullanım Kılavuzu</title>
+<style>
+:root{
+  --bg:#0a1628; --bg2:#0f1f3a; --card:#0f1f3a; --card2:#0d1a30; --line:#1e3a5f; --line-soft:#1e3a5f55;
+  --text:#e8eef7; --mut:#9fb3d9; --mut2:#64748b;
+  --flame:#f97316; --flame-glow:#fb923c; --coach:#38bdf8; --teach:#22c55e; --warn:#f59e0b; --purple:#a78bfa;
+  --display: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 var(--body);
+  background-image:radial-gradient(ellipse 900px 500px at 15% -10%, #f9731611, transparent),
+                    radial-gradient(ellipse 700px 500px at 100% 20%, #38bdf811, transparent);}
+::selection{background:#f9731640}
+
+/* ---------- Kabuk / grid ---------- */
+.shell{display:grid;grid-template-columns:280px 1fr;max-width:1180px;margin:0 auto;min-height:100vh}
+@media (max-width:900px){.shell{grid-template-columns:1fr}.side{display:none}}
+
+/* ---------- Yan patika (meşale rotası) ---------- */
+.side{position:sticky;top:0;height:100vh;padding:28px 14px 28px 24px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;padding:0 6px}
+.brand .torch{font-size:26px;filter:drop-shadow(0 0 10px #f9731688)}
+.brand b{font:900 15px var(--display);letter-spacing:.2px}
+.brand span{display:block;font-size:11px;color:var(--mut2)}
+.trail{position:relative;padding-left:22px}
+.trail::before{content:"";position:absolute;left:9px;top:6px;bottom:6px;width:2px;background:linear-gradient(180deg,var(--flame),var(--line) 15%,var(--line) 85%,var(--flame))}
+.trail-marker{position:absolute;left:2px;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle,var(--flame-glow),var(--flame));box-shadow:0 0 14px 3px #f9731666;transition:top .25s cubic-bezier(.4,0,.2,1);top:6px;z-index:2}
+.toc-item{position:relative;display:block;padding:8px 10px 8px 8px;border-radius:10px;color:var(--mut);text-decoration:none;font-size:13.5px;font-weight:600;transition:color .15s,background .15s}
+.toc-item:hover{color:var(--text);background:#ffffff08}
+.toc-item.active{color:#fff;background:#f9731618}
+.toc-item .n{display:inline-block;width:18px;color:var(--mut2);font:700 11px var(--mono)}
+.toc-item.active .n{color:var(--flame)}
+
+/* ---------- Ana içerik ---------- */
+.main{padding:0 28px 120px}
+.hero{padding:64px 4px 40px;border-bottom:1px solid var(--line-soft)}
+.hero .eyebrow{display:inline-flex;align-items:center;gap:7px;font:800 11.5px var(--mono);letter-spacing:1px;color:var(--flame);text-transform:uppercase;background:#f9731614;border:1px solid #f9731633;padding:6px 12px;border-radius:99px;margin-bottom:20px}
+.hero h1{font:900 clamp(32px,5vw,52px)/1.08 var(--display);margin:0 0 16px;letter-spacing:-.5px}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--flame),var(--flame-glow));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{font-size:17px;color:var(--mut);max-width:640px;margin:0 0 28px}
+.hero-stats{display:flex;gap:28px;flex-wrap:wrap}
+.hero-stats div b{display:block;font:900 24px var(--display);color:#fff}
+.hero-stats div span{font-size:12px;color:var(--mut2)}
+
+.search-wrap{margin:28px 0 0;position:relative;max-width:420px}
+.search-wrap input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 14px 12px 40px;color:var(--text);font:14px var(--body)}
+.search-wrap input:focus{outline:2px solid var(--coach);outline-offset:1px}
+.search-wrap::before{content:"🔍";position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:14px;opacity:.6}
+.search-note{font-size:12px;color:var(--mut2);margin-top:8px}
+
+section.sec{padding:56px 4px 8px;scroll-margin-top:24px}
+section.sec.hide{display:none}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+.sec-num{font:900 13px var(--mono);color:var(--flame);opacity:.7}
+.sec-head h2{font:900 26px var(--display);margin:0;letter-spacing:-.3px}
+.sec-desc{color:var(--mut);font-size:15px;max-width:640px;margin:10px 0 28px}
+
+/* Uygulamanın kendi kart dilini ödünç alan blok */
+.uicard{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin:14px 0}
+.uicard.learn{background:linear-gradient(180deg,#0f2a1e,#0a1f16);border-color:#22c55e4d}
+.uicard.coach{background:linear-gradient(135deg,#111827,#0a2233);border-color:#38bdf84d}
+.uicard h3{margin:0 0 6px;font:800 15.5px var(--body);display:flex;align-items:center;gap:8px}
+.uicard p{margin:0;font-size:13.5px;color:var(--mut);line-height:1.55}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:640px){.grid2{grid-template-columns:1fr}}
+
+kbd{font:700 12px var(--mono);background:#1a2942;border:1px solid #2a3f61;border-radius:6px;padding:2px 7px;color:#cfe0ff}
+
+.steps{counter-reset:step;list-style:none;padding:0;margin:18px 0}
+.steps li{counter-increment:step;position:relative;padding:0 0 20px 40px;border-left:2px solid var(--line-soft);margin-left:14px}
+.steps li:last-child{border-color:transparent;padding-bottom:0}
+.steps li::before{content:counter(step);position:absolute;left:-15px;top:-2px;width:28px;height:28px;border-radius:50%;background:var(--card2);border:2px solid var(--flame);display:flex;align-items:center;justify-content:center;font:800 12px var(--mono);color:var(--flame)}
+.steps li b{display:block;font-size:14.5px;margin-bottom:3px}
+.steps li p{margin:0;color:var(--mut);font-size:13.5px}
+
+/* Sahte önizleme kutucukları (gerçek arayüz stilini taklit eder) */
+.demo{border:1px dashed #ffffff22;border-radius:14px;padding:16px;margin:16px 0;background:#0a162880}
+.demo-label{font:800 10.5px var(--mono);color:var(--mut2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.demo-bubble{display:flex;gap:12px;align-items:center;background:linear-gradient(135deg,#111827,#0d2818);border-left:5px solid var(--teach);border-radius:12px;padding:12px 16px;font:700 13.5px/1.4 var(--body)}
+.demo-face{font-size:26px}
+.torch-demo{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#1c0f05,#0f1f3a);border:1px solid #f9731655;border-radius:14px;padding:14px 18px}
+.torch-demo .fl{font-size:38px}
+.torch-demo b{font:900 20px var(--display);display:block}
+.torch-demo span{font-size:12px;color:#fdba74}
+
+.faq{border:1px solid var(--line);border-radius:12px;margin:10px 0;overflow:hidden;background:var(--card2)}
+.faq summary{cursor:pointer;padding:14px 16px;font-weight:700;font-size:14px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font:900 18px var(--mono);color:var(--mut2);transition:transform .2s}
+.faq[open] summary::after{transform:rotate(45deg)}
+.faq .body{padding:0 16px 16px;color:var(--mut);font-size:13.5px;line-height:1.6}
+
+.tag-row{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.tag{font:700 11.5px var(--mono);padding:4px 9px;border-radius:999px;border:1px solid var(--line)}
+.tag.g{color:#86efac;border-color:#22c55e55;background:#22c55e11}
+.tag.o{color:#fdba74;border-color:#f9731655;background:#f9731611}
+.tag.b{color:#93c5fd;border-color:#38bdf855;background:#38bdf811}
+
+.footer{padding:60px 4px 40px;border-top:1px solid var(--line-soft);color:var(--mut2);font-size:12.5px;text-align:center}
+.top-btn{position:fixed;right:20px;bottom:20px;width:44px;height:44px;border-radius:50%;background:var(--card2);border:1px solid var(--line);color:var(--mut);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:16px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+.top-btn.show{opacity:1;pointer-events:auto}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- ================= YAN PATİKA ================= -->
+  <nav class="side">
+    <div class="brand"><span class="torch">🔥</span><div><b>Dil Harita</b><span>Kullanım Kılavuzu</span></div></div>
+    <div class="trail" id="trail">
+      <div class="trail-marker" id="marker"></div>
+      <a class="toc-item" href="#baslarken" data-i="0"><span class="n">01</span> Başlarken</a>
+      <a class="toc-item" href="#ana-ekran" data-i="1"><span class="n">02</span> Ana Ekran &amp; Koç</a>
+      <a class="toc-item" href="#ogrenme" data-i="2"><span class="n">03</span> Öğrenme Ekranları</a>
+      <a class="toc-item" href="#pratik" data-i="3"><span class="n">04</span> Pratik &amp; Tekrar</a>
+      <a class="toc-item" href="#sohbet" data-i="4"><span class="n">05</span> Sohbet &amp; Öğretmen</a>
+      <a class="toc-item" href="#hata-defteri" data-i="5"><span class="n">06</span> Hata Defteri</a>
+      <a class="toc-item" href="#ilerleme" data-i="6"><span class="n">07</span> İlerleme Takibi</a>
+      <a class="toc-item" href="#koc-balonu" data-i="7"><span class="n">08</span> Koç Balonu</a>
+      <a class="toc-item" href="#ayarlar" data-i="8"><span class="n">09</span> Ayarlar &amp; Bakım</a>
+      <a class="toc-item" href="#sss" data-i="9"><span class="n">10</span> Sık Sorulanlar</a>
+    </div>
+  </nav>
+
+  <!-- ================= ANA İÇERİK ================= -->
+  <main class="main">
+    <div class="hero">
+      <span class="eyebrow">🗺️ Dil Harita — Kılavuz</span>
+      <h1>Bir dili öğrenmek,<br><em>yürünecek bir yol</em> gibidir.</h1>
+      <p>Bu kılavuz, Dil Harita'nın her ekranını — koç kartından hata defterine, tekrar sistemine kadar — nasıl kullanacağını gösterir. Sol taraftaki meşale, kılavuzda nerede olduğunu takip eder; tıpkı uygulamanın kendi seri göstergesi gibi.</p>
+      <div class="hero-stats">
+        <div><b>10</b><span>bölüm</span></div>
+        <div><b>20+</b><span>ekran anlatımı</span></div>
+        <div><b>🔥</b><span>gerçek arayüz örnekleriyle</span></div>
+      </div>
+      <div class="search-wrap">
+        <input type="text" id="search" placeholder="Kılavuzda ara — örn. 'senkron', 'mikrofon', 'seviye'…" autocomplete="off">
+        <div class="search-note" id="searchNote"></div>
+      </div>
+    </div>
+
+    <!-- 01 BAŞLARKEN -->
+    <section class="sec" id="baslarken">
+      <div class="sec-head"><span class="sec-num">01</span><h2>Başlarken</h2></div>
+      <p class="sec-desc">Uygulamayı ilk açtığında yapman gereken üç şey.</p>
+      <ol class="steps">
+        <li><b>Giriş yap</b><p>Sağ üstteki hesap simgesinden giriş yap. Giriş yapmadan ilerlemen kaydedilmez ve cihazlar arası senkron çalışmaz.</p></li>
+        <li><b>Seviyeni belirle</b><p>Ana menüden <kbd>🎯 Seviye Belirleme</kbd>'ye gir, kısa testi tamamla. Öğretmen ve koç, sana önerdiği içerikleri bu seviyeye göre ayarlar.</p></li>
+        <li><b>Bugünkü Cümle Hedefine göz at</b><p>Ana ekranın altında günlük 25 cümle hedefini gösteren bir çubuk var — bu, bir günde aşırı yüklenmeden, kalıcı öğrenme için konulmuş bir sınırdır.</p></li>
+      </ol>
+      <div class="uicard">
+        <h3>💾 Cihaz değiştirirken</h3>
+        <p>İlerlemen otomatik olarak buluta yedeklenir. Yeni bir cihazda aynı hesapla giriş yaptığında, ana menüdeki <kbd>☁ Bulutla Senkronize Et</kbd> butonuna bir kez basman yeterli.</p>
+      </div>
+    </section>
+
+    <!-- 02 ANA EKRAN -->
+    <section class="sec" id="ana-ekran">
+      <div class="sec-head"><span class="sec-num">02</span><h2>Ana Ekran &amp; Koç</h2></div>
+      <p class="sec-desc">Uygulamayı her açtığında karşına çıkan üç şey: koçun günün planı, meşalen ve rozetlerin.</p>
+
+      <div class="uicard coach">
+        <h3>🧭 AI Mentor — Bugünün Planı</h3>
+        <p>Koç, son 30 günlük gerçek verine (kaç gün çalıştığın, hangi hatalarda iyileştiğin/kötüleştiğin) bakarak her gün <b>sana özel</b> bir plan hazırlar. Kart üstünde <b>"Neden bu plan?"</b> kutusunda gerekçesini görürsün. Altındaki adımlar tamamladıkça yeşile döner.</p>
+      </div>
+      <div class="demo">
+        <div class="demo-label">Örnek plan kartı</div>
+        <div style="font:800 15px var(--body);margin-bottom:4px">Hata defterini düzenliyoruz</div>
+        <div style="background:#1e1b0f;border:1px solid #facc1555;border-radius:10px;padding:9px 12px;margin:8px 0;font-size:12.5px;color:#fde68a"><b>🎯 Neden bu plan?</b><br>Hata defterinde 84 kayıt var, düzenleme zamanı.</div>
+      </div>
+
+      <div class="torch-demo" style="margin-top:22px">
+        <div class="fl">🔥</div>
+        <div><b>Meşale — kaç gündür kesintisiz çalıştığını gösterir.</b><span>Her gün en az bir cevap verdiğinde meşale yanık kalır. Bir gün atlarsan sıfırlanır — bu yüzden kısa da olsa her gün gel.</span></div>
+      </div>
+
+      <div class="grid2" style="margin-top:16px">
+        <div class="uicard"><h3>🏅 Rozetler</h3><p>Seri uzunluğu, öğrenilen kelime/cümle sayısı ve sıfırladığın hata türleri için otomatik kazanılır. Ekstra bir işlem gerekmez.</p></div>
+        <div class="uicard"><h3>📊 Bugünkü Cümle Hedefi</h3><p>Günde en fazla 25 yeni cümle önerilir. Sayı buna ulaşınca koç, seni tekrara yönlendirir.</p></div>
+      </div>
+
+      <p style="margin-top:20px"><b style="color:#86efac">🟢 Yeşil kartlar</b> gerçekten bir şey öğretir/pratik yaptırır (Çalışma, Kelime Öğren, Sohbet…). <b style="color:var(--mut)">Nötr kartlar</b> ölçüm veya yönetim ekranlarıdır (Seviye Belirleme, Hata Defteri, Rapor…).</p>
+    </section>
+
+    <!-- 03 ÖĞRENME EKRANLARI -->
+    <section class="sec" id="ogrenme">
+      <div class="sec-head"><span class="sec-num">03</span><h2>Öğrenme Ekranları</h2></div>
+      <p class="sec-desc">Yeni içerik öğrendiğin, modül modül ilerlediğin ekranlar.</p>
+      <div class="grid2">
+        <div class="uicard learn"><h3>📖 Kelime Öğren</h3><p>En sık kullanılan kelimeleri kart, quiz ve resimlerle çalışırsın.</p></div>
+        <div class="uicard learn"><h3>✍️ Çalışma (Practice)</h3><p>Cümleleri üç farklı biçimde kurarsın: sırala, boşluk doldur, ya da sıfırdan yaz/söyle. Koç her cevaptan sonra tepki verir.</p></div>
+        <div class="uicard learn"><h3>🔗 Phrasal Verbs</h3><p>881 öbek fiil — anlam, örnek cümle ve telaffuzla.</p></div>
+        <div class="uicard learn"><h3>📷 Fotoğraftan Ekle / OCR</h3><p>Bir kitap ya da yazıdaki cümleyi fotoğraflayıp uygulamaya cümle olarak eklersin, sonra pratiğe dahil olur.</p></div>
+      </div>
+      <div class="uicard" style="margin-top:16px">
+        <h3>🗺️ Modül seçimi otomatik</h3>
+        <p>Koç, hangi modülde eksiğin olduğuna bakıp seni oraya yönlendirir — ilerlemesi tamamlanmamış <b>ilk modülden</b> devam edersin. Elle modül seçmek istersen, ilgili ekranın kendi modül listesinden de girebilirsin.</p>
+      </div>
+    </section>
+
+    <!-- 04 PRATİK & TEKRAR -->
+    <section class="sec" id="pratik">
+      <div class="sec-head"><span class="sec-num">04</span><h2>Pratik &amp; Tekrar</h2></div>
+      <p class="sec-desc">Öğrendiğini unutmaman için aralıklı tekrar sistemi burada devreye girer.</p>
+
+      <div class="uicard"><h3>🔁 Tekrar</h3>
+        <p>Vadesi gelen kelime ve cümleleri tek kuyrukta getirir. İki mod arasında geçebilirsin:</p>
+        <div class="tag-row"><span class="tag o">🍅 Üretim (TR→EN)</span><span class="tag b">👁 Klasik (EN→TR)</span></div>
+        <p>Üretim modunda Türkçe cümle gösterilir, sen İngilizcesini <b>yazarak ya da 🎤 mikrofonla söyleyerek</b> kurarsın. Benzerlik oranı renkli gösterilir; farklı ama doğru bir ifade yazdıysan sistem AI ile kontrol edip kabul edebilir.</p>
+      </div>
+
+      <div class="demo">
+        <div class="demo-label">Mikrofon kullanırken</div>
+        <p style="margin:0;color:var(--mut);font-size:13.5px">🎤 ikonuna bas, cümleyi söyle. Mikrofon girişinde sistem daha toleranslıdır — küçük tanıma hatalarını (mikrofonun yanlış duyması) senin hatan saymaz, önce anlam kontrolü yapar.</p>
+      </div>
+
+      <div class="uicard"><h3>🧠 Akıllı Tekrar</h3><p>Hata defterindeki cümleleri hedefli olarak tekrar ettirir — en çok hata yaptığın türden başlar.</p></div>
+      <div class="uicard"><h3>🎬 Video</h3><p>Video izleyip duyduğun cümleyi yazarsın ya da söylersin; telaffuz ve dinleme pratiği için.</p></div>
+    </section>
+
+    <!-- 05 SOHBET & ÖĞRETMEN -->
+    <section class="sec" id="sohbet">
+      <div class="sec-head"><span class="sec-num">05</span><h2>Sohbet &amp; Öğretmen</h2></div>
+      <p class="sec-desc">Gerçek bir konuşma ortamında pratik yapman için iki farklı yol.</p>
+
+      <div class="uicard learn"><h3>💬 Sohbet</h3>
+        <p>Otel, restoran, doktor, havaalanı gibi senaryolarda fotoğraflı bir avatarla İngilizce konuşursun. Her senaryonun altında küçük görevler vardır:</p>
+        <div class="tag-row"><span class="tag g">✓ Selamlaş ve tanıt</span><span class="tag g">✓ Ana amacı gerçekleştir</span><span class="tag">⬜ En az bir soru sor</span></div>
+        <p>Bir soru sorduğunda (mesajın "?" ile bitmesi ya da soru kelimesiyle başlaması yeterli) ilgili görev otomatik işaretlenir.</p>
+      </div>
+      <div class="uicard"><h3>🔊 Avatar Sesini Ayarla</h3><p>Sohbet ekranındaki ses simgesinden her karakter için ayrı bir ses ve ton seçebilirsin. Bu seçim yalnızca <b>o cihazda</b> geçerlidir, telefon ve bilgisayarın ses listeleri farklı olduğundan senkronlanmaz.</p></div>
+      <div class="uicard learn"><h3>🎓 Öğretmen</h3><p>Türkçe anlatımlı bir İngilizce öğretmeni — soru sorabilir, cümle kurdurabilir, gramer sorabilirsin. Profilindeki sık hatalarını bilerek konuşur.</p></div>
+    </section>
+
+    <!-- 06 HATA DEFTERİ -->
+    <section class="sec" id="hata-defteri">
+      <div class="sec-head"><span class="sec-num">06</span><h2>Hata Defteri</h2></div>
+      <p class="sec-desc">Yaptığın her hata otomatik olarak burada toplanır — hangi konuda, hangi kelimede, hangi cümlede zorlandığını gösterir.</p>
+      <div class="uicard"><h3>Otomatik toplama</h3><p>Practice, video pratik ve sohbet gibi ekranlarda yanlış yaptığın her cevap, hata türüyle (kelime atlama, yanlış zaman, zamir vb.) birlikte kaydedilir.</p></div>
+      <div class="grid2">
+        <div class="uicard"><h3>🧹 Kabul Edilenleri Temizle</h3><p>Zamir ya da kısaltma farkından ibaret ("she/he", "is not / isn't") sahte hataları anında, ücretsiz temizler.</p></div>
+        <div class="uicard"><h3>🤖 AI ile Temizle</h3><p>Daha ince gramer alternatiflerini ("there is not any" / "there aren't any" gibi) tek tek AI'ya sorup temizler. Biraz zaman alır, API kotanı kullanır.</p></div>
+      </div>
+      <div class="uicard"><h3>🗑 Tekil silme</h3><p>Herhangi bir kaydın altındaki "Bu kaydı sil" butonuyla, senin gözünde anlamsız olan tek bir kaydı da elle silebilirsin.</p></div>
+    </section>
+
+    <!-- 07 İLERLEME TAKİBİ -->
+    <section class="sec" id="ilerleme">
+      <div class="sec-head"><span class="sec-num">07</span><h2>İlerleme Takibi</h2></div>
+      <p class="sec-desc">Ne kadar ilerlediğini görmek için dört farklı ekran.</p>
+      <div class="grid2">
+        <div class="uicard"><h3>🗺️ İlerleme Haritası</h3><p>Tüm modüllerde ne kadar öğrendiğini görsel olarak gösterir.</p></div>
+        <div class="uicard"><h3>📅 İlerleme Raporu</h3><p>Son 30 günün aktivite takvimi ve hata türü eğilimleri (iyileşiyor mu, kötüleşiyor mu).</p></div>
+        <div class="uicard"><h3>📋 Bugünkü Aktivitem</h3><p>Bugün yaptığın her şeyin saat saat dökümü — kaç doğru, kaç yanlış, hangi sayfalarda ne kadar vakit geçirdiğin.</p></div>
+        <div class="uicard"><h3>🎯 Seviye Belirleme</h3><p>Kısa bir testle mevcut seviyeni ölçer, öğretmen ve koç içerikleri buna göre ayarlar.</p></div>
+      </div>
+    </section>
+
+    <!-- 08 KOÇ BALONU -->
+    <section class="sec" id="koc-balonu">
+      <div class="sec-head"><span class="sec-num">08</span><h2>Koç Balonu</h2></div>
+      <p class="sec-desc">Ekranın sağ altında seni hep takip eden, ifadesi değişen bir yüz görürsün — koç bu.</p>
+      <div class="demo">
+        <div class="demo-label">Övgü örneği</div>
+        <div class="demo-bubble"><span class="demo-face">👏</span>MÜKEMMEL! Daha önce bu cümlede zorlanmıştın, şimdi tam doğru yaptın.</div>
+      </div>
+      <div class="tag-row">
+        <span class="tag g">😊 Yeşil — övgü</span><span class="tag o">😟 Turuncu — uyarı</span><span class="tag b">🙂 Mavi — ipucu</span><span class="tag" style="color:#c4b5fd;border-color:#a78bfa55;background:#a78bfa11">📊 Mor — genel değerlendirme</span>
+      </div>
+      <p>Avatara <b>tıklarsan</b> son yorumunu tekrar gösterir; hiç yeni yorum yoksa anlık bir genel durum özeti üretir. Balon kendiliğinden kapanmaz — bitirince ✕ ile ya da üzerine tıklayarak kapatırsın.</p>
+    </section>
+
+    <!-- 09 AYARLAR -->
+    <section class="sec" id="ayarlar">
+      <div class="sec-head"><span class="sec-num">09</span><h2>Ayarlar &amp; Bakım</h2></div>
+      <p class="sec-desc">Uygulamayı sorunsuz tutmak için bilmen gereken birkaç şey.</p>
+      <div class="grid2">
+        <div class="uicard"><h3>☁ Bulutla Senkronize Et</h3><p>Cihazlar arası geçişte elle tetiklemen gereken tek buton. Basınca sayfa otomatik yenilenir.</p></div>
+        <div class="uicard"><h3>🔔 Günlük Hatırlatma</h3><p>Seçtiğin saatte çalışma bildirimi alırsın. Tarayıcı bildirim izni vermen gerekir.</p></div>
+        <div class="uicard"><h3>⬇⬆ Yedek indir / geri yükle</h3><p>Tüm ilerlemeni tek bir dosyaya indirip başka bir cihaza elle taşıyabilirsin — otomatik senkron çalışmasa bile bir güvenlik ağı.</p></div>
+        <div class="uicard"><h3>🧹 Önbellek Temizle</h3><p>Sayfa güncellenmiyor gibi görünüyorsa (eski buton, eski metin) ilk deneyeceğin şey budur.</p></div>
+      </div>
+      <div class="uicard"><h3>⏪ Geri Dön</h3><p>Her gün otomatik alınan bir yedekten, ilerlemeni önceki bir güne döndürebilirsin — yanlışlıkla bir şey bozulursa güvenlik ağın.</p></div>
+    </section>
+
+    <!-- 10 SSS -->
+    <section class="sec" id="sss">
+      <div class="sec-head"><span class="sec-num">10</span><h2>Sık Sorulanlar</h2></div>
+      <details class="faq"><summary>Meşalem neden "0 gün" gösteriyor, hâlâ çalıştım?</summary><div class="body">Meşale, gerçek bir cevap verildiğinde güncellenir — yalnızca bir sayfayı açmak yetmez. Bir modülde/tekrar da tek bir soruyu cevapla, ana menüye dönünce meşalenin arttığını göreceksin.</div></details>
+      <details class="faq"><summary>Bir cevabımı sistem yanlış saydı ama bence doğruydu, ne yapmalıyım?</summary><div class="body">Kelime seçimi farklı ama anlam aynıysa (örn. eş anlamlı cümleler) sistem çoğu zaman AI ile kontrol edip kabul eder. Hâlâ yanlış görünüyorsa hata defterine düşer — oradan "Bu kaydı sil" ile elle temizleyebilirsin.</div></details>
+      <details class="faq"><summary>Ses seçimim diğer cihazımda neden yok?</summary><div class="body">Avatar sesleri bilerek cihaza özeldir — telefon ve bilgisayarın ses listeleri farklı olduğundan senkronlanmaz. Her cihazda ayrı ayrı seçmen gerekir.</div></details>
+      <details class="faq"><summary>Koçun günlük planı neden bazen aynı kalıyor?</summary><div class="body">Plan günde bir kez üretilir (API kotasını korumak için). Sayılar ve çubuklar yine de her açılışta canlı güncellenir; yalnızca planın metni ertesi güne kadar sabit kalır.</div></details>
+      <details class="faq"><summary>Günde en fazla kaç cümle çalışmalıyım?</summary><div class="body">25 yeni cümle önerilir. Bunu aşman engellenmez ama koç seni tekrara yönlendirir — kaliteli, kalıcı öğrenme için tempo bu şekilde korunur.</div></details>
+    </section>
+
+    <div class="footer">Dil Harita — Kullanım Kılavuzu · Bu belge, uygulamanın kendisiyle birlikte güncellenir.</div>
+  </main>
+</div>
+
+<a href="#" class="top-btn" id="topBtn">↑</a>
+
+<script>
+(function(){
+  var items=[].slice.call(document.querySelectorAll(".toc-item"));
+  var secs=items.map(function(a){ return document.querySelector(a.getAttribute("href")); });
+  var marker=document.getElementById("marker"), trail=document.getElementById("trail");
+
+  function updateMarker(activeIdx){
+    if(activeIdx<0) return;
+    var el=items[activeIdx];
+    var top = el.offsetTop + el.offsetHeight/2 - 8;
+    marker.style.top = top+"px";
+  }
+  function onScroll(){
+    var pos=window.scrollY+120, active=0;
+    secs.forEach(function(s,i){ if(s && s.offsetTop<=pos) active=i; });
+    items.forEach(function(a,i){ a.classList.toggle("active", i===active); });
+    updateMarker(active);
+    document.getElementById("topBtn").classList.toggle("show", window.scrollY>500);
+  }
+  window.addEventListener("scroll", onScroll, {passive:true});
+  onScroll();
+
+  // arama/filtre
+  var input=document.getElementById("search"), note=document.getElementById("searchNote");
+  var allSecs=[].slice.call(document.querySelectorAll("section.sec"));
+  input.addEventListener("input", function(){
+    var q=input.value.trim().toLowerCase();
+    if(!q){ allSecs.forEach(function(s){ s.classList.remove("hide"); }); note.textContent=""; return; }
+    var shown=0;
+    allSecs.forEach(function(s){
+      var match = s.textContent.toLowerCase().indexOf(q)>=0;
+      s.classList.toggle("hide", !match);
+      if(match) shown++;
+    });
+    note.textContent = shown ? shown+" bölümde eşleşme bulundu." : "Eşleşme bulunamadı.";
+  });
+
+  document.getElementById("topBtn").addEventListener("click", function(e){ e.preventDefault(); window.scrollTo({top:0,behavior:"smooth"}); });
+})();
+</script>
+</body>
+</html>
