@@ -121,6 +121,16 @@
       if(box){
         box.dataset.dhFilled="1";
         var doneSet={}; try{ doneSet=JSON.parse(localStorage.getItem("dh-koc-steps-done-"+new Date().toISOString().slice(0,10))||"{}")||{}; }catch(e){}
+        // GÜVENLİK DENETİMİ: eski/bayat bayraklar yüzünden "tamamlandı" ile meşale/hedefin çelişmesini
+        // önlemek için, bugün GERÇEKTEN hiç aktivite yoksa (dh-study-tracker-v1 bugünkü kayıt boşsa)
+        // hiçbir adım "tamamlandı" gösterilmez — tek doğruluk kaynağı gerçek aktivite olur.
+        var realActivityToday=false;
+        try{
+          var trX=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{};
+          var tdX=(trX.days||{})[new Date().toISOString().slice(0,10)];
+          realActivityToday = !!(tdX && ((tdX.sentences||0)+(tdX.reviews||0)+(tdX.lessons||0)+(tdX.videos||0) > 0));
+        }catch(e){}
+        if(!realActivityToday) doneSet={};
         // "chat.html" adımı için: herhangi bir gerçek sohbet sayfası (chathotel.html, chatteacher.html...) ziyareti de sayılır
         var anyChatDone = Object.keys(doneSet).some(function(k){ return /^chat[a-z]*\.html$/.test(k); });
         var stepsHtml=plan.steps.map(function(s,i){

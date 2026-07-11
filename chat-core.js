@@ -464,7 +464,23 @@ async function sendUser(){
     const reply=await groqChat(messages);
     removeTyping();
     State.currentPartner=dhStripTasks(reply) || "Could you please say that again?";
-    try{ window.dhLogActivity && window.dhLogActivity("💬 Sohbet: \""+(text||"").slice(0,60)+"\"", "chat"); window.dhBumpDailyTracker && window.dhBumpDailyTracker("lesson"); window.dhCoachMarkStepDone && window.dhCoachMarkStepDone(location.pathname.split("/").pop()||"chat.html"); }catch(e){}
+    try{
+      window.dhLogActivity && window.dhLogActivity(
+        "💬 Sohbet: \""+(text||"").slice(0,60)+"\"",
+        "chat",
+        { target:Scenario&&Scenario.title, answer:text, module:(Scenario&&Scenario.title)||"", score:null,
+          // AI'nin cevabı + hangi görevlerin o an tamamlanmış olduğu da saklanır (derin analiz için)
+          types:(function(){ try{ return __dhTasks.map(function(t,i){ return __dhTaskDone[i]?("✓"+t):null; }).filter(Boolean); }catch(e){ return undefined; } })()
+        }
+      );
+      // AI'nin cevabını AYRI bir kayıt olarak da tut (kullanıcı mesajından ayrı, karışmasın)
+      window.dhLogActivity && window.dhLogActivity(
+        "🤖 Yanıt: \""+String(State.currentPartner||"").slice(0,80)+"\"", "chat-reply",
+        { target:State.currentPartner, module:(Scenario&&Scenario.title)||"" }
+      );
+      window.dhBumpDailyTracker && window.dhBumpDailyTracker("lesson");
+      window.dhCoachMarkStepDone && window.dhCoachMarkStepDone(location.pathname.split("/").pop()||"chat.html");
+    }catch(e){}
     State.history.push({role:"assistant",content:State.currentPartner});
     addBubble("assistant", State.currentPartner);
     speakText(State.currentPartner);
