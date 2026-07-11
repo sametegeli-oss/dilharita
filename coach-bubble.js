@@ -11,16 +11,11 @@
   if(window.__dhCoachInstalled) return;
   window.__dhCoachInstalled = true;
 
-  /* Sayfa ziyareti = "koçun bugünkü görevi" işaretlemesi için otomatik kayıt.
-     React (index-app) gibi sayfalara doğrudan müdahale etmiyoruz — coach-bubble.js'in
-     yüklenmiş olması bile "bu sayfaya bugün girildi" sinyali olarak yeterli ve güvenli. */
-  try{
-    var __dhK="dh-koc-steps-done-"+new Date().toISOString().slice(0,10);
-    var __dhS=JSON.parse(localStorage.getItem(__dhK)||"{}")||{};
-    var __dhPage=(location.pathname.split("/").pop()||"index.html");
-    __dhS[__dhPage]=1;
-    localStorage.setItem(__dhK, JSON.stringify(__dhS));
-  }catch(e){}
+  /* ÖNEMLİ DÜZELTME: "sayfayı ziyaret etmek" görev tamamlama için ARTIK yeterli değil —
+     meşale/hedef gerçek cevaplara bakarken, adım işaretleri yalnız ziyarete bakıyordu ve
+     bu ikisi çelişiyordu (3 görev "tamamlandı" görünürken meşale "0 gün" kalabiliyordu).
+     Artık "görev tamamlandı" da SADECE gerçek etkileşimde (dhCoachEvaluate/sohbet mesajı) işaretlenir. */
+  var __dhPage=(location.pathname.split("/").pop()||"index.html");
   window.dhCoachMarkStepDone=function(page){
     try{ var k="dh-koc-steps-done-"+new Date().toISOString().slice(0,10); var s=JSON.parse(localStorage.getItem(k)||"{}")||{}; s[page]=1; localStorage.setItem(k, JSON.stringify(s)); }catch(e){}
   };
@@ -182,6 +177,7 @@
     try{
       opts=opts||{};
       bumpDailyTracker(opts.trackKind||"sentence");
+      window.dhCoachMarkStepDone && window.dhCoachMarkStepDone(__dhPage);
       try{ window.dhLogActivity((opts.ok?"✅ Doğru: ":"❌ Yanlış: ")+(opts.en||opts.sentenceId||""), opts.ok?"correct":"wrong"); }catch(e){}
       var hist=await errHistory();
       var curTypes = (window.LearningErrorDB && LearningErrorDB.detectTypes)
