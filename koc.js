@@ -137,11 +137,26 @@
         var chartHtml='<div style="margin:10px 0 12px">'
           +bar("Öğrenilmiş", learned, "#4ade80")+bar("Çalışılıyor", studying, "#38bdf8")+bar("Tekrar bekleyen", due, "#f59e0b")
           +'</div>';
+        // 7 günlük mini aktivite grafiği (rapor.html'in küçük özeti — koç kartında doğrudan görünür)
+        var weekHtml="";
+        try{
+          var tr7=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days7=tr7.days||{}, cells7=[];
+          for(var wi=6;wi>=0;wi--){
+            var dd7=new Date(); dd7.setDate(dd7.getDate()-wi);
+            var k7=dd7.toISOString().slice(0,10), rec7=days7[k7];
+            var v7=rec7?((rec7.lessons||0)+(rec7.sentences||0)/5+(rec7.reviews||0)/3):0;
+            var h7=Math.max(6, Math.min(28, Math.round(v7*3)));
+            var lbl7=["Pt","Sa","Ça","Pe","Cu","Ct","Pz"][dd7.getDay()===0?6:dd7.getDay()-1];
+            cells7.push('<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1"><div style="width:100%;max-width:18px;height:28px;display:flex;align-items:flex-end"><div style="width:100%;height:'+h7+'px;background:'+(v7>0?"#38bdf8":"#1e3a5f")+';border-radius:3px"></div></div><span style="font-size:9px;color:#64748b">'+lbl7+'</span></div>');
+          }
+          weekHtml='<div style="margin:2px 0 12px"><div style="font-size:10.5px;color:#64748b;margin-bottom:4px">SON 7 GÜN</div><div style="display:flex;gap:5px;align-items:flex-end">'+cells7.join("")+'</div></div>';
+        }catch(e){}
         box.innerHTML='<div style="background:#111827;padding:18px;border-radius:14px;border:1px solid rgba(255,255,255,.1)">'
           +'<div style="color:#60a5fa;font:900 12px system-ui;letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px">🧭 AI Mentor — Bugünün Planı</div>'
-          +'<div style="font:800 16px system-ui;margin-bottom:2px">'+esc(plan.focus||"")+'</div>'
-          +(plan.note?('<div style="color:#9fb3d9;font-size:12.5px;margin-bottom:2px">💬 '+esc(plan.note)+'</div>'):'')
-          +(plan.why?('<div style="color:#facc15;font-size:11.5px;margin-bottom:4px">🎯 '+esc(plan.why)+'</div>'):'')
+          +'<div style="font:800 17px system-ui;margin-bottom:6px">'+esc(plan.focus||"")+'</div>'
+          +(plan.why?('<div style="background:#1e1b0f;border:1px solid #facc1555;border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:13px;color:#fde68a"><b>🎯 Neden bu plan?</b><br>'+esc(plan.why)+'</div>'):'')
+          +(plan.note?('<div style="color:#9fb3d9;font-size:12.5px;margin-bottom:8px">💬 '+esc(plan.note)+'</div>'):'')
+          +weekHtml
           +(window.__dhLevelSuggest?('<a href="./seviye-testi.html" style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:9px 12px;background:#1e1b4b;border:1px solid #818cf8;border-radius:11px;text-decoration:none;color:#e0e7ff;font-size:12.5px"><span>🎓</span><span><b>Seviye yükseltme zamanı olabilir!</b><br><span style="opacity:.85">'+esc(window.__dhLevelReason||"")+'</span></span></a>'):'')
           +(function(){
               var gg=window.__dhGoal; if(!gg) return "";
@@ -156,7 +171,9 @@
               }
               return html;
             })()
-          +chartHtml+stepsHtml+'</div>';
+          +chartHtml+stepsHtml
+          +'<a href="./rapor.html" style="display:block;text-align:center;margin-top:10px;font-size:11.5px;color:#60a5fa;text-decoration:none">📅 Detaylı 30 günlük rapor →</a>'
+          +'</div>';
       } else {
         // eski basit banner (geri uyumluluk — bazı sayfalarda hâlâ olabilir)
         var a2=document.getElementById("dhDayStart");

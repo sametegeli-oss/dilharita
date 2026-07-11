@@ -104,6 +104,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 
 <script src="./auth-guard.js?v=2"></script>
 <script src="./progress-engine.js?v=2"></script>
+<script src="./coach-bubble.js?v=1"></script>
 <script src="./cloud-sync-v8.js?v=1"></script>
 <script src="./ai-providers.js?v=1"></script>
 <script src="./word-popup.js?v=2"></script>
@@ -682,6 +683,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 
   async function grade(hard){
     var it=cur; var key=(it.kind==="s"?"srs:":"wsrs:")+it.id; var rec=srsStep(it.kind==="s"?srs[it.id]:wsrs[it.id], hard);
+    try{ window.dhCoachEvaluate && window.dhCoachEvaluate({sentenceId:it.id, en:curT.en, answer:(mode==="prod"?($("inp")&&$("inp").value||""):""), ok:!hard, commonMistake:curT.cm||""}); }catch(e){}
     if(!hard && mode==="prod" && !lastSemanticOk && !(viaMic && !semanticNo) && lastSc>=0 && lastSc<50){
       rec.interval=Math.max(1,Math.round(rec.interval/2)); rec.due=Date.now()+rec.interval*DAY;
     }

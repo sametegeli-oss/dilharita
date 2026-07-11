@@ -4,6 +4,7 @@
 <script src="./auth-guard.js?v=1"></script>
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./progress-engine.js?v=2"></script>
+<script src="./coach-bubble.js?v=1"></script>
 <script src="./teacher-policy.js?v=3"></script>
 <script src="./mastery-engine.js?v=1"></script>
 <script src="./level-badge.js?v=1"></script>
@@ -1607,130 +1608,9 @@ function exposeSceneVideoAnswer(s){
   }catch{}
 }
 
-/* ============================================================
-   🧭 KOÇ BALONU — interaktif, veri-temelli anlık geri bildirim
-   (AI çağrısı YOK — tamamen hata defteri geçmişine dayalı, anlık ve ücretsiz)
-   ============================================================ */
-(function(){
-  var css=document.createElement("style");
-  css.textContent=".dh-coach{position:fixed !important;left:50% !important;top:22px !important;bottom:auto !important;"
-    +"transform:translateX(-50%) translateY(-40px) scale(.85);opacity:0;"
-    +"max-width:min(95vw,640px);background:#111827;border-left:8px solid #38bdf8;border-radius:16px;"
-    +"padding:20px 26px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:2147483000;font:800 18px/1.4 system-ui,sans-serif;color:#f8fafc;"
-    +"display:flex;gap:16px;align-items:center;transition:opacity .3s,transform .3s;pointer-events:none}"
-    +".dh-coach.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1);pointer-events:auto}"
-    +".dh-coach.show.praise{animation:dhClap .6s ease 2}"
-    +".dh-coach.show.warn{animation:dhShake .5s ease}"
-    +".dh-coach.show.tip,.dh-coach.show.stat{animation:dhPulse .5s ease}"
-    +"@keyframes dhPulse{0%{transform:translateX(-50%) translateY(0) scale(1.08)}100%{transform:translateX(-50%) translateY(0) scale(1)}}"
-    +"@keyframes dhClap{0%,100%{transform:translateX(-50%) translateY(0) scale(1) rotate(0)}25%{transform:translateX(-50%) translateY(-6px) scale(1.05) rotate(-2deg)}50%{transform:translateX(-50%) translateY(0) scale(1.1) rotate(2deg)}75%{transform:translateX(-50%) translateY(-4px) scale(1.05) rotate(-1deg)}}"
-    +"@keyframes dhShake{0%,100%{transform:translateX(-50%) translateY(0) scale(1)}20%{transform:translate(calc(-50% - 10px),0) scale(1)}40%{transform:translate(calc(-50% + 10px),0) scale(1)}60%{transform:translate(calc(-50% - 6px),0) scale(1)}80%{transform:translate(calc(-50% + 6px),0) scale(1)}}"
-    +".dh-coach .em{font-size:38px;flex:0 0 auto;line-height:1}"
-    +".dh-coach .em.bounce{animation:dhEmojiBounce .4s ease 3}"
-    +"@keyframes dhEmojiBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}"
-    +".dh-coach .x{position:absolute;top:8px;right:11px;font-size:15px;color:#94a3b8;cursor:pointer;font-weight:400}"
-    +".dh-coach.praise{border-color:#22c55e;background:linear-gradient(135deg,#111827,#0d2818)}"
-    +".dh-coach.warn{border-color:#f59e0b;background:linear-gradient(135deg,#111827,#2d1a06)}"
-    +".dh-coach.tip{border-color:#38bdf8;background:linear-gradient(135deg,#111827,#0a2233)}"
-    +".dh-coach.stat{border-color:#a78bfa;background:linear-gradient(135deg,#111827,#22183f)}";
-  document.head.appendChild(css);
-  var box=document.createElement("div"); box.className="dh-coach";
-  document.body.appendChild(box);
-  var hideT=null, lastMsg="", lastAt=0, streak=0;
-  window.dhCoachSay=function(msg, kind, emoji){
-    if(!msg) return;
-    if(msg===lastMsg && Date.now()-lastAt<4000) return;   // aynı mesajı üst üste tekrarlama
-    lastMsg=msg; lastAt=Date.now();
-    box.classList.remove("show");   // önceki animasyonu sıfırla ki yeni animasyon tekrar tetiklensin
-    void box.offsetWidth;           // reflow zorla (animasyon yeniden başlasın)
-    box.className="dh-coach "+(kind||"tip");
-    // alkış/somurtma: kind'e göre emoji otomatik seç (dışarıdan verilmediyse)
-    var autoEmoji = kind==="praise" ? "👏" : kind==="warn" ? "😟" : (emoji||"🧭");
-    box.innerHTML='<span class="em bounce">'+(emoji||autoEmoji)+'</span><span style="flex:1">'+msg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span><span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
-    requestAnimationFrame(function(){ box.classList.add("show"); });
-    clearTimeout(hideT);
-    hideT=setTimeout(function(){ box.classList.remove("show"); }, 7500);
-  };
-  box.onclick=function(){ box.classList.remove("show"); };
-})();
-var DH_TYPE_LABEL={
-  "missing-word":"kelime atlama","extra-word":"fazladan kelime","auxiliary-missing":"yardımcı fiil eksikliği (am/is/are/do/did...)",
-  "auxiliary-extra":"gereksiz yardımcı fiil","article":"a/an/the kullanımı","pronoun":"zamir kullanımı",
-  "past-simple":"geçmiş zaman (past simple)","present-continuous":"şimdiki zaman (present continuous)",
-  "question-order":"soru cümlesi sıralaması","pronunciation":"telaffuz","sentence-accuracy":"cümle doğruluğu"
-};
-var DH_TYPE_TIP={
-  "missing-word":"Cümleyi yazmadan önce zihninde İngilizce olarak yüksek sesle tekrar et — atladığın kelimeyi bulman kolaylaşır.",
-  "extra-word":"Yazdıktan sonra cümleyi tek tek kelime kelime referansla karşılaştır, fazlalık varsa sil.",
-  "auxiliary-missing":"Her cümlede önce 'yardımcı fiil var mı?' diye kontrol et: am/is/are/was/were/do/does/did/have/has.",
-  "auxiliary-extra":"Basit cümlelerde gereksiz yere 'do/does' ekleme — sadece soru ve olumsuzda gerekir.",
-  "article":"'a' ünsüzle, 'an' ünlüyle başlayan kelimeden önce gelir; belirli nesnede 'the' kullan.",
-  "pronoun":"Özneyi (I/you/he/she...) cümlenin başında MUTLAKA belirt, Türkçedeki gibi atlama.",
-  "past-simple":"Fiilin -ed halini ya da düzensiz geçmiş formunu (was/were/went/did...) kullanmayı unutma.",
-  "present-continuous":"'am/is/are' + fiil-ing kalıbını birlikte kullan, ikisinden birini atlama.",
-  "question-order":"Soru cümlesinde yardımcı fiil ÖZNEDEN ÖNCE gelir: Do you...? / Are you...?",
-  "sentence-accuracy":"Cümleyi kurmadan önce Türkçesini kelime kelime İngilizceye çevirmek yerine kalıbı bütün olarak hatırla."
-};
-var DH_coachState={ seenModules:{}, evalCount:0, errCache:null, errCacheAt:0, correctStreak:0 };
-async function dhErrHistory(){
-  var now=Date.now();
-  if(DH_coachState.errCache && now-DH_coachState.errCacheAt<15000) return DH_coachState.errCache;
-  try{ DH_coachState.errCache = (window.LearningErrorDB && await LearningErrorDB.all()) || []; }catch(e){ DH_coachState.errCache=[]; }
-  DH_coachState.errCacheAt=now;
-  return DH_coachState.errCache;
-}
-async function dhCoachOnAnswer(s, answer, grade, d){
-  try{
-    var hist=await dhErrHistory();
-    var curTypes = (window.LearningErrorDB && LearningErrorDB.detectTypes)
-      ? LearningErrorDB.detectTypes({target:s.en, answer:answer, diffParts:d&&d.parts, grammar:s.grammarStructure||s.pattern||"", module:s.module||"", topic:s.topic||""})
-      : [];
-    var sameSentencePast = hist.filter(function(r){ return r.sentenceId===s.id && r.grade==="hard"; });
-    var ok = (grade==="easy" || grade==="good");
-    if(ok) DH_coachState.correctStreak++; else DH_coachState.correctStreak=0;
-
-    // ÜST ÜSTE BAŞARI: art arda 3/5/10... doğruda özel alkışlı kutlama (geçmiş hatadan bağımsız)
-    if(ok && DH_coachState.correctStreak>=3 && DH_coachState.correctStreak%3===0){
-      dhCoachSay("HARİKASIN! Art arda "+DH_coachState.correctStreak+" doğru cevap verdin, bu ritmi koru!","praise","🎉");
-      return;
-    }
-
-    if(ok && sameSentencePast.length){
-      dhCoachSay("MÜKEMMEL! Daha önce bu cümlede zorlanmıştın, şimdi tam doğru yaptın. Bu ilerlemeyi böyle sürdür — aynı dikkatle devam et!","praise","👏");
-      return;
-    }
-    if(!ok && sameSentencePast.length){
-      dhCoachSay("DİKKAT: Bu cümlede daha önce de hata yapmıştın, şimdi yine yaptın. "+(s.commonMistake||"Kelime sırasına ve yardımcı fiile dikkat et.")+" Devam etmeden önce bu cümleyi bir kez daha oku.","warn","⚠️");
-      return;
-    }
-    if(!ok){
-      var overlap = hist.filter(function(r){ return r.grade==="hard" && Array.isArray(r.types) && r.types.some(function(t){return curTypes.indexOf(t)>=0;}); });
-      if(overlap.length>=2 && curTypes.length){
-        var tp=curTypes[0];
-        dhCoachSay("TEKRARLANAN HATA: "+(DH_TYPE_LABEL[tp]||tp)+". Yapman gereken: "+(DH_TYPE_TIP[tp]||"Cümle kurarken buna özellikle dikkat et.")+" Bir sonraki cümlede bunu bilerek uygula!","warn","🎯");
-        return;
-      }
-    }
-    DH_coachState.evalCount++;
-    if(DH_coachState.evalCount % 5===0){
-      var tally={};
-      hist.forEach(function(r){ if(r.grade==="hard" && Array.isArray(r.types)) r.types.forEach(function(t){ tally[t]=(tally[t]||0)+1; }); });
-      var top=Object.keys(tally).sort(function(a,b){return tally[b]-tally[a];})[0];
-      if(top && tally[top]>=3){
-        dhCoachSay("GENEL DEĞERLENDİRME: En çok "+(DH_TYPE_LABEL[top]||top)+" konusunda hata yapıyorsun ("+tally[top]+" kez). Tavsiyem: "+(DH_TYPE_TIP[top]||"cümle kurarken buna özellikle dikkat et")+".","stat","📊");
-      }
-    }
-  }catch(e){}
-}
-function dhCoachModuleIntro(s){
-  try{
-    var mod=s.module||""; if(!mod || DH_coachState.seenModules[mod]) return;
-    DH_coachState.seenModules[mod]=1;
-    if(s.commonMistake){
-      dhCoachSay("YENİ KONU: Bu yapıyı ilk kez çalışıyorsun. Genelde şu hata yapılır: "+s.commonMistake+" — cümleleri kurarken buna dikkat ederek başla.","tip","🆕");
-    }
-  }catch(e){}
-}
+/* 🧭 KOÇ BALONU — global coach-bubble.js kullanılıyor (paylaşılan UI+karar mantığı) */
+function dhCoachModuleIntro(s){ try{ dhCoachModuleIntro_global(s.module, s.commonMistake); }catch(e){} }
+function dhCoachModuleIntro_global(mod, cm){ try{ window.dhCoachModuleIntro && window.dhCoachModuleIntro(mod, cm); }catch(e){} }
 
 function renderCard(){
   if (State.idx >= State.queue.length) return renderSessionDone();
@@ -2042,7 +1922,7 @@ async function evaluate(s, answer, layer){
   }catch(e){ console.warn("Hata defteri kaydı atlandı:", e); }
   renderFeedback(s, d, grade, layer);
   try{ if(window.DHProgress&&DHProgress.recordResult) DHProgress.recordResult("sentence:"+s.id, (grade==="easy"||grade==="good")); }catch(e){}
-  dhCoachOnAnswer(s, answer, grade, d);
+  try{ window.dhCoachEvaluate && window.dhCoachEvaluate({sentenceId:s.id, en:s.en, answer:answer, ok:(grade==="easy"||grade==="good"), commonMistake:s.commonMistake, grammar:s.grammarStructure||s.pattern||"", module:s.module||""}); }catch(e){}
   // tekrar.html ile TUTARLI: kelime eşleşmesi tam değilse (farklı ama geçerli bir ifade olabilir)
   // AI'ya "anlamca doğru mu?" diye sor. SRS/kayıt değişmez — yalnız bilgilendirme notu eklenir.
   if(grade!=="easy" && d.ratio>=0.25 && d.ratio<0.95 && answer.trim().length>2 &&
