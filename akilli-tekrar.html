@@ -77,7 +77,15 @@ html,body{margin:0;min-height:100%;background:linear-gradient(180deg,#071226,#08
 <script>
 let ALL=[], QUEUE=[], IDX=0, DONE=0;
 const $=id=>document.getElementById(id);
-const norm=s=>String(s||"").toLowerCase().replace(/[^a-z0-9ğüşöçıİĞÜŞÖÇ\s]/gi," ").replace(/\s+/g," ").trim();
+const CONTRACTIONS={"isn't":"is not","aren't":"are not","wasn't":"was not","weren't":"were not",
+  "don't":"do not","doesn't":"does not","didn't":"did not","can't":"can not","won't":"will not",
+  "i'm":"i am","you're":"you are","he's":"he is","she's":"she is","it's":"it is",
+  "we're":"we are","they're":"they are","i've":"i have","i'll":"i will","i'd":"i would","that's":"that is"};
+const norm=s=>{
+  var t=String(s||"").toLowerCase().replace(/[\u2019\u2018]/g,"'");
+  Object.keys(CONTRACTIONS).forEach(function(k){ t=t.replace(new RegExp("\\b"+k+"\\b","g"), CONTRACTIONS[k]); });
+  return t.replace(/[^a-z0-9ğüşöçıİĞÜŞÖÇ\s]/gi," ").replace(/\s+/g," ").trim();
+};
 function scoreRecord(r){
   let s=0;
   if(r.reviewPriority==="high")s+=100;
