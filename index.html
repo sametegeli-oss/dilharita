@@ -93,6 +93,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   <!-- 🔥 GRİD BİTİŞİ -->
 
   <!-- Alt Seçenekler ve Diğer Modüller -->
+  <div id="dhTorch" style="max-width:960px;margin:0 auto 14px"></div>
   <div id="dhBadges" style="max-width:960px;margin:0 auto 14px;display:flex;gap:8px;flex-wrap:wrap"></div>
   <div id="dhDailyGoal" style="max-width:960px;margin:0 auto 14px;background:#0f1f3a;border:1px solid #1e3a5f;border-radius:14px;padding:14px 18px"></div>
   <div class="grid">
@@ -257,6 +258,32 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   render();
   document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="visible") render(); });
   window.addEventListener("pageshow", render);   // geri/ileri gezinmede (bfcache) de güncellensin
+})();
+
+/* 🔥 Çalışılan gün meşalesi — büyük, göze çarpan seri göstergesi */
+(function(){
+  function render(){
+    var box=document.getElementById("dhTorch"); if(!box) return;
+    var streak=0;
+    try{
+      var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=tr.days||{}, d=new Date();
+      for(;;){ var k=d.toISOString().slice(0,10); if(days[k]){streak++; d.setDate(d.getDate()-1);} else break; }
+    }catch(e){}
+    var size = streak===0 ? 34 : streak<3 ? 40 : streak<7 ? 48 : streak<14 ? 56 : streak<30 ? 64 : 72;
+    var glow = streak===0 ? "none" : "0 0 "+(streak*2+10)+"px rgba(249,115,22,."+(Math.min(70,30+streak*2))+")";
+    var msg = streak===0 ? "Bugün henüz çalışmadın — meşaleyi yak!"
+      : streak<3 ? "Meşale yeni yandı, devam et!"
+      : streak<7 ? "Güzel gidiyor, bir haftaya tamamla!"
+      : streak<30 ? "Meşale güçlü yanıyor — sönmesin!"
+      : "Efsanevi bir seri! Bu ateş sönmesin.";
+    box.innerHTML='<div style="background:linear-gradient(135deg,#1c0f05,#0f1f3a);border:1px solid #f9731655;border-radius:16px;padding:18px 22px;display:flex;align-items:center;gap:18px">'
+      +'<div style="font-size:'+size+'px;line-height:1;filter:drop-shadow('+glow+');transition:all .4s">'+(streak>0?"🔥":"🕯️")+'</div>'
+      +'<div><div style="font:900 26px system-ui;color:#fff">'+streak+' gün</div>'
+      +'<div style="font-size:12.5px;color:#fdba74">'+msg+'</div></div></div>';
+  }
+  render();
+  document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="visible") render(); });
+  window.addEventListener("pageshow", render);
 })();
 </script>
 </body>

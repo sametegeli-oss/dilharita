@@ -44,17 +44,43 @@
     +".dh-coach.praise{border-color:#22c55e;background:linear-gradient(135deg,#111827,#0d2818)}"
     +".dh-coach.warn{border-color:#f59e0b;background:linear-gradient(135deg,#111827,#2d1a06)}"
     +".dh-coach.tip{border-color:#38bdf8;background:linear-gradient(135deg,#111827,#0a2233)}"
-    +".dh-coach.stat{border-color:#a78bfa;background:linear-gradient(135deg,#111827,#22183f)}";
+    +".dh-coach.stat{border-color:#a78bfa;background:linear-gradient(135deg,#111827,#22183f)}"
+    +".dh-avatar{position:fixed !important;right:14px;bottom:78px;z-index:2147482900;width:54px;height:54px;border-radius:50%;"
+    +"background:#111827;border:3px solid #38bdf8;box-shadow:0 6px 20px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;"
+    +"cursor:pointer;animation:dhBreathe 3s ease-in-out infinite}"
+    +"@keyframes dhBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}"
+    +".dh-avatar.reacting{animation:dhAvatarReact .6s ease}"
+    +"@keyframes dhAvatarReact{0%{transform:scale(1)}30%{transform:scale(1.25)}60%{transform:scale(.95)}100%{transform:scale(1)}}"
+    +".dh-avatar svg{width:40px;height:40px}"
+    +".dh-avatar .ring{position:absolute;inset:-3px;border-radius:50%;border:2px solid #38bdf8;opacity:0;pointer-events:none}"
+    +".dh-avatar.reacting .ring{animation:dhRing .8s ease}"
+    +"@keyframes dhRing{0%{opacity:.8;transform:scale(1)}100%{opacity:0;transform:scale(1.6)}}";
   document.head.appendChild(css);
   var box=document.createElement("div"); box.className="dh-coach";
-  function mount(){ document.body.appendChild(box); }
+  var avatar=document.createElement("div"); avatar.className="dh-avatar"; avatar.title="Koçun — tıkla, son yorumunu tekrar göster";
+  avatar.innerHTML='<div class="ring"></div>'+faceSvg("tip");
+  function mount(){ document.body.appendChild(box); document.body.appendChild(avatar); }
   if(document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
+  var avatarResetT=null;
+  function setAvatarFace(kind){
+    try{
+      avatar.querySelector("svg") && avatar.querySelector("svg").remove();
+      avatar.insertAdjacentHTML("beforeend", faceSvg(kind||"tip"));
+      avatar.classList.remove("reacting"); void avatar.offsetWidth; avatar.classList.add("reacting");
+      clearTimeout(avatarResetT);
+      avatarResetT=setTimeout(function(){
+        avatar.querySelector("svg") && avatar.querySelector("svg").remove();
+        avatar.insertAdjacentHTML("beforeend", faceSvg("tip"));   // nötr yüze dön
+      }, 8000);
+    }catch(e){}
+  }
 
-  var hideT=null, lastMsg="", lastAt=0;
+  var hideT=null, lastMsg="", lastAt=0, lastKind="tip";
   window.dhCoachSay=function(msg, kind, faceOverride){
     if(!msg || !document.body) return;
     if(msg===lastMsg && Date.now()-lastAt<4000) return;
-    lastMsg=msg; lastAt=Date.now();
+    lastMsg=msg; lastAt=Date.now(); lastKind=kind||"tip";
+    setAvatarFace(kind);
     box.classList.remove("show");
     void box.offsetWidth;
     box.className="dh-coach "+(kind||"tip");
@@ -64,6 +90,10 @@
     hideT=setTimeout(function(){ box.classList.remove("show"); }, 7500);
   };
   box.onclick=function(){ box.classList.remove("show"); };
+  avatar.onclick=function(){
+    if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+faceSvg(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span><span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
+    else { try{ window.__dhCoachManualStatus && window.__dhCoachManualStatus(); }catch(e){} }
+  };
 
   /* ---------- ORTAK TÜR ETİKETİ + SOMUT TAVSİYE ---------- */
   var TYPE_LABEL={
@@ -151,27 +181,36 @@
     }catch(e){}
   };
 
-  /* ---------- PASİF SAYFALAR İÇİN GENEL YÖNLENDİRME (cevap değerlendirmesi olmayan ekranlar) ---------- */
-  // Her sayfada değil, en fazla birkaç saatte bir; sıkıcı/tekrarlı olmasın diye zaman kilidi var.
+  /* ---------- PASİF SAYFALAR İÇİN GENEL YÖNLENDİRME + GENEL DURUM YORUMU ---------- */
+  async function buildStatusMessage(){
+    var tr={}; try{ tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
+    var d=new Date(), streak=0;
+    for(;;){ if((tr.days||{})[d.toISOString().slice(0,10)]){streak++; d.setDate(d.getDate()-1);} else break; }
+    var due=0, learned=0;
+    try{
+      var r=await new Promise(function(res){ var rq=indexedDB.open("sentence-mode",1); rq.onsuccess=function(){res(rq.result);}; rq.onerror=function(){res(null);}; });
+      if(r){ await new Promise(function(res){ var now=Date.now(), q=r.transaction("kv","readonly").objectStore("kv").openCursor();
+        q.onsuccess=function(e){ var c=e.target.result; if(c){ var k=String(c.key); if(k.indexOf("srs:")===0 && c.value && (c.value.due||0)<=now) due++; c.continue(); } else { r.close(); res(); } };
+        q.onerror=function(){ res(); }; }); }
+    }catch(e){}
+    try{ var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; for(var k in m){ if(m[k]&&m[k][0]===2) learned++; } }catch(e){}
+    var msg=null, kind="tip";
+    if(streak===0 && due>10){ msg="Bugün henüz çalışmadın ama "+due+" tekrar bekliyor — hemen 10 dakikanı ayır, seriye başla!"; kind="warn"; }
+    else if(streak>=7){ msg="🔥 "+streak+" günlük serin devam ediyor, harikasın! Bugünü de kaçırma, meşale sönmesin."; kind="praise"; }
+    else if(streak>=3){ msg=streak+" günlük serin devam ediyor, iyi gidiyorsun — bugünü de kaçırma!"; kind="praise"; }
+    else if(due>30){ msg="Tekrar bekleyen "+due+" öğe birikmiş — bugün önce tekrarları bitir, sonra yeni cümlelere geç."; kind="warn"; }
+    else { msg="Genel durumun: "+learned+" öğrenilmiş kayıt, "+due+" tekrar bekliyor. İstersen 'Tekrar' ya da 'Yeni Cümleler'den devam et."; kind="tip"; }
+    return {msg:msg, kind:kind};
+  }
+  window.__dhCoachManualStatus=async function(){
+    try{ var s=await buildStatusMessage(); if(s.msg) dhCoachSay(s.msg, s.kind); }catch(e){}
+  };
   (async function genericTip(){
     try{
       var lastT=+localStorage.getItem("dh-coach-last-generic-tip")||0;
       if(Date.now()-lastT<20*60000) return;   // 20 dakikada bir en fazla — "koç her yerde olmalı" isteği gereği sıklaştırıldı
-      var tr={}; try{ tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
-      var d=new Date(), streak=0;
-      for(;;){ if((tr.days||{})[d.toISOString().slice(0,10)]){streak++; d.setDate(d.getDate()-1);} else break; }
-      var due=0;
-      try{
-        var r=await new Promise(function(res){ var rq=indexedDB.open("sentence-mode",1); rq.onsuccess=function(){res(rq.result);}; rq.onerror=function(){res(null);}; });
-        if(r){ await new Promise(function(res){ var now=Date.now(), q=r.transaction("kv","readonly").objectStore("kv").openCursor();
-          q.onsuccess=function(e){ var c=e.target.result; if(c){ var k=String(c.key); if(k.indexOf("srs:")===0 && c.value && (c.value.due||0)<=now) due++; c.continue(); } else { r.close(); res(); } };
-          q.onerror=function(){ res(); }; }); }
-      }catch(e){}
-      var msg=null, kind="tip";
-      if(streak===0 && due>10) msg="Bugün henüz çalışmadın ama "+due+" tekrar bekliyor — hemen 10 dakikanı ayır, seriye başla!";
-      else if(streak>=3) msg=streak+" günlük serin devam ediyor, harika gidiyorsun — bugünü de kaçırma!";
-      else if(due>30) msg="Tekrar bekleyen "+due+" öğe birikmiş — bugün önce tekrarları bitir, sonra yeni cümlelere geç.";
-      if(msg){ dhCoachSay(msg, kind); localStorage.setItem("dh-coach-last-generic-tip", String(Date.now())); }
+      var s=await buildStatusMessage();
+      if(s.msg){ dhCoachSay(s.msg, s.kind); localStorage.setItem("dh-coach-last-generic-tip", String(Date.now())); }
     }catch(e){}
   })();
 })();
