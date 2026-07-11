@@ -878,6 +878,12 @@ async function dhBuildProfile(){
       (errs||[]).slice(-60).forEach(function(r){ var t=r&&r.type; if(t) tally[t]=(tally[t]||0)+1; });
       var top=Object.keys(tally).sort(function(a,b){return tally[b]-tally[a]}).slice(0,3);
       if(top.length) p.push("Sık hata türleri: "+top.join(", ")+".");
+      // 30 günlük eğilim: iyileşen/kötüleşen ilk 2 tür (öğretmen bunu bilerek konuşsun)
+      var now30=Date.now(), c15=now30-15*86400000, c30=now30-30*86400000, o30={}, r30={};
+      errs.forEach(function(r){ var ts=r.ts||0; if(ts<c30) return; var ty=Array.isArray(r.types)&&r.types.length?r.types:(r.type?[r.type]:[]);
+        ty.forEach(function(t){ if(ts>=c15) r30[t]=(r30[t]||0)+1; else o30[t]=(o30[t]||0)+1; }); });
+      var trend30=[]; Object.keys(Object.assign({},o30,r30)).forEach(function(t){ var o=o30[t]||0,r=r30[t]||0; if(o&&r<o) trend30.push(t+" iyileşiyor"); else if(r>=2&&r>o) trend30.push(t+" kötüleşiyor"); });
+      if(trend30.length) p.push("Son 30 gün eğilimi: "+trend30.slice(0,2).join(", ")+".");
     }
   }catch(e){}
   try{ // inatçı cümleler (ilk 3) + vadesi gelen

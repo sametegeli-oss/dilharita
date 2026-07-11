@@ -99,14 +99,42 @@
     return false;
   }
 
+  // 30 günlük hafızadan: kaç gündür açılmadı + bu hafta kaç gün çalışıldı
+  function memorySignals(){
+    var out={missedDays:0, thisWeekActive:0};
+    try{
+      var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=tr.days||{}, d=new Date();
+      var miss=0;
+      for(;;){ var key=d.toISOString().slice(0,10); if(days[key]) break; miss++; d.setDate(d.getDate()-1); if(miss>30) break; }
+      out.missedDays=miss;
+      var d2=new Date(), wk=0;
+      for(var i=0;i<7;i++){ var k2=d2.toISOString().slice(0,10); if(days[k2]) wk++; d2.setDate(d2.getDate()-1); }
+      out.thisWeekActive=wk;
+    }catch(e){}
+    return out;
+  }
+
   // ---- Hatırlatma mesajını üret ----
   function buildMessage(){
     var streak = currentStreak();
+    var mem = memorySignals();
     if(!studiedToday()){
       if(streak>=2){
         return {
           title:"🔥 "+streak+" günlük serini kaybetme!",
           body:"Bugün henüz çalışmadın. Birkaç dakika ayır, seriyi sürdür."
+        };
+      }
+      if(mem.missedDays>=3){
+        return {
+          title:"👋 Seni özledik!",
+          body:mem.missedDays+" gündür açmadın — düzenin bozulmasın, 5 dakikalığına bile olsa gel."
+        };
+      }
+      if(mem.thisWeekActive>=5){
+        return {
+          title:"📚 Çalışma vakti!",
+          body:"Bu hafta "+mem.thisWeekActive+" gün çalıştın, harika gidiyorsun — bugünü de tamamla!"
         };
       }
       return {

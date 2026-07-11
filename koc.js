@@ -6,12 +6,58 @@
   var DAY=new Date().toISOString().slice(0,10), KEY="dh-koc-plan-"+DAY;
   var ALLOWED=["tekrar.html?plan=1","index-app.html","chat.html","practice.html?auto=due","kelime-ogren.html","hata-defteri.html"];
 
+  // ── 30 GÜNLÜK DERİN ANALİZ: koç kullanıcıyı gerçekten tanısın ──
+  function activityTrend30(){
+    try{
+      var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=tr.days||{};
+      var active=0, lessons=0, sentences=0, reviews=0, first15=0, last15=0, d=new Date();
+      for(var i=0;i<30;i++){
+        var key=d.toISOString().slice(0,10), rec=days[key];
+        if(rec){
+          active++; lessons+=rec.lessons||0; sentences+=rec.sentences||0; reviews+=rec.reviews||0;
+          if(i<15) last15++; else first15++;
+        }
+        d.setDate(d.getDate()-1);
+      }
+      var trend = last15>first15 ? "artıyor" : (last15<first15 ? "azalıyor" : "sabit");
+      return {text:"Son 30 günde "+active+"/30 gün aktif oldu (önceki 15 gün:"+first15+", son 15 gün:"+last15+" — düzen "+trend+"). "
+        +"Toplam: "+lessons+" ders, "+sentences+" cümle, "+reviews+" tekrar.", active:active, first15:first15, last15:last15};
+    }catch(e){ return {text:"", active:0, first15:0, last15:0}; }
+  }
+  async function errorTrend30(){
+    var rows=[];
+    try{
+      if(!(window.LearningErrorDB&&LearningErrorDB.all)) return {text:"", rows:rows};
+      var errs=await LearningErrorDB.all(); if(!errs||!errs.length) return {text:"", rows:rows};
+      var now=Date.now(), cut15=now-15*86400000, cut30=now-30*86400000;
+      var older={}, recent={};
+      errs.forEach(function(r){
+        var ts=r.ts||0; if(ts<cut30) return;
+        var types=Array.isArray(r.types)&&r.types.length ? r.types : (r.type?[r.type]:[]);
+        types.forEach(function(t){ if(ts>=cut15) recent[t]=(recent[t]||0)+1; else older[t]=(older[t]||0)+1; });
+      });
+      var allTypes={}; Object.keys(older).forEach(function(t){allTypes[t]=1;}); Object.keys(recent).forEach(function(t){allTypes[t]=1;});
+      var lines=[];
+      Object.keys(allTypes).forEach(function(t){
+        var o=older[t]||0, r=recent[t]||0;
+        if(o===0 && r===0) return;
+        rows.push({type:t, older:o, recent:r});
+        if(r<o) lines.push(t+": azalıyor ("+o+"→"+r+", iyileşme)");
+        else if(r>o) lines.push(t+": artıyor ("+o+"→"+r+", dikkat)");
+      });
+      if(!lines.length) return {text:"", rows:rows};
+      lines.sort(function(a,b){ return (b.indexOf("dikkat")>=0?1:0)-(a.indexOf("dikkat")>=0?1:0); });
+      return {text:"Son 30 günde hata türü eğilimleri (önceki 15 gün → son 15 gün): "+lines.slice(0,4).join("; ")+".", rows:rows};
+    }catch(e){ return {text:"", rows:rows}; }
+  }
+
   async function profile(){
     var p=[];
     try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, d=new Date(), st=0;
       for(;;){ if((tr.days||{})[d.toISOString().slice(0,10)]){st++;d.setDate(d.getDate()-1);} else break; }
       if(st) p.push("Seri:"+st+" gün.");
     }catch(e){}
+    var act=activityTrend30(); if(act.text) p.push(act.text);
     try{ var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, s1=0,w1=0,s2=0,w2=0;
       for(var k in m){ if(!m[k]) continue; var st0=m[k][0];
         if(k.indexOf("sentence:")===0){ if(st0===1)s1++; else if(st0===2)s2++; }
@@ -24,11 +70,26 @@
     try{ if(window.LearningErrorDB&&LearningErrorDB.all){
       var errs=await LearningErrorDB.all(), t={};
       errCount=(errs||[]).length;
-      (errs||[]).slice(-60).forEach(function(r){ if(r&&r.type) t[r.type]=(t[r.type]||0)+1; });
+      (errs||[]).slice(-60).forEach(function(r){
+        var types=Array.isArray(r.types)&&r.types.length ? r.types : (r.type?[r.type]:[]);
+        types.forEach(function(ty){ t[ty]=(t[ty]||0)+1; });
+      });
       var top=Object.keys(t).sort(function(a,b){return t[b]-t[a]}).slice(0,3);
       p.push(top.length ? ("Hata defteri: "+errCount+" kayıt. Sık hatalar:"+top.join(",")+".") : "Hata defteri: BOŞ (0 kayıt) — hata defteri önerme.");
     }}catch(e){}
     window.__dhErrCount=errCount;
+    var errT=await errorTrend30(); if(errT.text) p.push(errT.text);
+
+    // ── SEVİYE ÖNERİSİ: AI'nin insafına değil, GERÇEK KANIT'a dayalı (kod-tabanlı) ──
+    try{
+      var improving = errT.rows.filter(function(r){ return r.older>0 && r.recent<=Math.ceil(r.older*0.5); });
+      var worsening = errT.rows.filter(function(r){ return r.recent>=3 && r.recent>r.older; });
+      window.__dhLevelSuggest = (act.active>=20 && improving.length>=2 && worsening.length===0);
+      window.__dhLevelReason = window.__dhLevelSuggest
+        ? ("Son 30 günde "+act.active+" gün aktif oldun ve "+improving.length+" hata türünde belirgin iyileşme var — seviye yükseltmeyi hak ediyorsun.")
+        : "";
+    }catch(e){ window.__dhLevelSuggest=false; }
+
     await new Promise(function(res){ try{
       var r=indexedDB.open("sentence-mode",1);
       r.onsuccess=function(){ var db=r.result, due=0, leech=0, now=Date.now();
@@ -81,6 +142,20 @@
           +'<div style="font:800 16px system-ui;margin-bottom:2px">'+esc(plan.focus||"")+'</div>'
           +(plan.note?('<div style="color:#9fb3d9;font-size:12.5px;margin-bottom:2px">💬 '+esc(plan.note)+'</div>'):'')
           +(plan.why?('<div style="color:#facc15;font-size:11.5px;margin-bottom:4px">🎯 '+esc(plan.why)+'</div>'):'')
+          +(window.__dhLevelSuggest?('<a href="./seviye-testi.html" style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:9px 12px;background:#1e1b4b;border:1px solid #818cf8;border-radius:11px;text-decoration:none;color:#e0e7ff;font-size:12.5px"><span>🎓</span><span><b>Seviye yükseltme zamanı olabilir!</b><br><span style="opacity:.85">'+esc(window.__dhLevelReason||"")+'</span></span></a>'):'')
+          +(function(){
+              var gg=window.__dhGoal; if(!gg) return "";
+              var html="";
+              if(gg.result){
+                html+='<div style="margin-top:8px;padding:9px 12px;background:'+(gg.result.achieved?"#052e1655":"#3f1d1d55")+';border:1px solid '+(gg.result.achieved?"#4ade8055":"#f8717155")+';border-radius:11px;font-size:12px">'
+                  +(gg.result.achieved?"✅ Geçen haftaki hedefini tuttun! ":"⏳ Geçen haftaki hedefe tam ulaşamadın. ")
+                  +gg.result.type+": "+gg.result.before+" → "+gg.result.now+'</div>';
+              }
+              if(gg.goal){
+                html+='<div style="margin-top:6px;padding:9px 12px;background:#0d1526;border:1px solid #1e3a5f;border-radius:11px;font-size:12px;color:#9fb3d9">📌 Bu haftanın hedefi: <b style="color:#e8eef7">'+gg.goal.type+'</b> hatasını '+gg.goal.baseline+"'ten "+gg.goal.targetCount+"'e indir</div>";
+              }
+              return html;
+            })()
           +chartHtml+stepsHtml+'</div>';
       } else {
         // eski basit banner (geri uyumluluk — bazı sayfalarda hâlâ olabilir)
@@ -163,10 +238,42 @@
     return {due:due, s1:s1, s2:s2, w1:w1, w2:w2};
   }
 
+  // ── HEDEF TAKİBİ: koç haftalık bir hedef koyar, 7 gün sonra kendi kendine kontrol eder ──
+  function checkAndSetGoal(errT){
+    var g=null; try{ g=JSON.parse(localStorage.getItem("dh-koc-goal")||"null"); }catch(e){}
+    var now=Date.now(), result=null;
+    if(g && now-g.setAt>=7*86400000){
+      // 7 gün doldu: hedef tutmuş mu kontrol et
+      var cur = errT.rows.find(function(r){ return r.type===g.type; });
+      var nowCount = cur ? cur.recent : 0;
+      var achieved = nowCount <= g.targetCount;
+      result = { type:g.type, achieved:achieved, before:g.baseline, now:nowCount };
+      g=null; // hedefi temizle, yeni belirlenecek
+    }
+    if(!g){
+      // yeni hedef: en çok tekrarlanan (kötüleşen ya da baskın) hata türünü seç
+      var worst = errT.rows.slice().sort(function(a,b){ return b.recent-a.recent; })[0];
+      if(worst && worst.recent>=2){
+        g={ type:worst.type, baseline:worst.recent, targetCount:Math.max(0,Math.ceil(worst.recent*0.5)), setAt:now };
+        try{ localStorage.setItem("dh-koc-goal", JSON.stringify(g)); }catch(e){}
+      }
+    }
+    return { goal:g, result:result };
+  }
+
   async function run(){
     try{
       try{ window.__dhErrCount = window.LearningErrorDB&&LearningErrorDB.all ? (await LearningErrorDB.all()||[]).length : 0; }catch(e){ window.__dhErrCount=0; }
       __nextModule = await pickNextModule();
+      // seviye önerisi HER açılışta canlı hesaplanır (cache-hit dahil, profile() cache-hit'te çalışmaz)
+      try{
+        var _act=activityTrend30(), _errT=await errorTrend30();
+        var _imp=_errT.rows.filter(function(r){ return r.older>0 && r.recent<=Math.ceil(r.older*0.5); });
+        var _wor=_errT.rows.filter(function(r){ return r.recent>=3 && r.recent>r.older; });
+        window.__dhLevelSuggest = (_act.active>=20 && _imp.length>=2 && _wor.length===0);
+        window.__dhLevelReason = window.__dhLevelSuggest ? ("Son 30 günde "+_act.active+" gün aktif oldun ve "+_imp.length+" hata türünde belirgin iyileşme var — seviye yükseltmeyi hak ediyorsun.") : "";
+        window.__dhGoal = checkAndSetGoal(_errT);
+      }catch(e){ window.__dhLevelSuggest=false; window.__dhGoal=null; }
       var cached=localStorage.getItem(KEY);
       if(cached){ var cp=valid(JSON.parse(cached)); if(cp){ cp.stats=await liveStats(); paint(cp); } return; }
       if(!(window.DHProviders&&DHProviders.chat&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())) return;

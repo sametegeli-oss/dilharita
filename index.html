@@ -92,6 +92,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   <!-- 🔥 GRİD BİTİŞİ -->
 
   <!-- Alt Seçenekler ve Diğer Modüller -->
+  <div id="dhBadges" style="max-width:960px;margin:0 auto 14px;display:flex;gap:8px;flex-wrap:wrap"></div>
   <div class="grid">
     <a class="card" href="./seviye-testi.html"><b>🎯 Seviye Belirleme</b><span>Kısa bir testle seviyeni ölç — öğretmen dersleri ona göre hazırlasın</span></a>
     <a class="card" href="./harita.html"><b>🗺️ İlerleme Haritası</b><span>Tüm modüllerde ne kadar öğrendiğini gör</span></a>
@@ -111,6 +112,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     <a class="card" href="./chat.html"><b>💬 Sohbet</b><span>Fotoğraflı konuşan avatar senaryoları</span></a>
     <a class="card" href="./kelime-ogren.html"><b>📖 Kelime Öğren</b><span>En sık kelimeler — kart, quiz ve resimlerle</span></a>
     <a class="card" href="./tekrar.html"><b>🔁 Tekrar</b><span>Vadesi gelen kelime + cümle (aralıklı tekrar)</span></a>
+    <a class="card" href="./rapor.html"><b>📅 İlerleme Raporu</b><span>30 günlük aktivite ve hata trendleri</span></a>
     <a class="card" href="./library.html"><b>📚 Kütüphane</b><span>Kitap / metin okuma ekranı</span></a>
     <a class="card" href="./videopractice.html"><b>🎬 Video</b><span>Video ve telaffuz çalışması</span></a>
     <a class="card" href="./hata-defteri.html"><b>📌 Hata Defteri</b><span>Yanlış yapılan cümleler ve hata analizi</span></a>
@@ -196,5 +198,37 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
 
 <!-- GEREKSİZ DIŞ BAĞIMLILIKLAR TEMİZLENDİ -->
 <script src="./koc.js?v=2"></script>
+<script>
+/* 🏅 Başarı rozetleri — mevcut verilerden, ek maliyetsiz hesaplanır */
+(async function(){
+  var out=document.getElementById("dhBadges"); if(!out) return;
+  var badges=[];
+  function chip(emoji,label,color){ return '<div style="display:flex;align-items:center;gap:6px;background:#0f1f3a;border:1px solid '+color+'55;border-radius:999px;padding:6px 12px;font:700 12px system-ui;color:#e8eef7"><span>'+emoji+'</span>'+label+'</div>'; }
+  try{
+    var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=tr.days||{}, d=new Date(), streak=0;
+    for(;;){ var k=d.toISOString().slice(0,10); if(days[k]){streak++; d.setDate(d.getDate()-1);} else break; }
+    if(streak>=30) badges.push(chip("🏆","30 gün kesintisiz","#facc15"));
+    else if(streak>=7) badges.push(chip("🔥",streak+" gün seri","#f97316"));
+    else if(streak>=3) badges.push(chip("✨",streak+" gün seri","#38bdf8"));
+  }catch(e){}
+  try{
+    var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, s2=0,w2=0;
+    for(var k2 in m){ if(m[k2]&&m[k2][0]===2){ if(k2.indexOf("sentence:")===0)s2++; else if(k2.indexOf("word:")===0)w2++; } }
+    if(s2>=500) badges.push(chip("📚","500+ cümle öğrenildi","#22c55e"));
+    else if(s2>=100) badges.push(chip("📗","100+ cümle öğrenildi","#22c55e"));
+    if(w2>=200) badges.push(chip("🔤","200+ kelime öğrenildi","#a78bfa"));
+  }catch(e){}
+  try{
+    if(window.LearningErrorDB&&LearningErrorDB.all){
+      var errs=await LearningErrorDB.all();
+      var now=Date.now(), c15=now-15*86400000, c30=now-30*86400000, o={}, r={};
+      errs.forEach(function(e){ var ts=e.ts||0; if(ts<c30) return; var ty=Array.isArray(e.types)&&e.types.length?e.types:(e.type?[e.type]:[]);
+        ty.forEach(function(t){ if(ts>=c15) r[t]=(r[t]||0)+1; else o[t]=(o[t]||0)+1; }); });
+      Object.keys(o).forEach(function(t){ if(o[t]>0 && (r[t]||0)===0) badges.push(chip("🎯",t+" hatasını sıfırladın!","#4ade80")); });
+    }
+  }catch(e){}
+  out.innerHTML = badges.length ? badges.join("") : "";
+})();
+</script>
 </body>
 </html>
