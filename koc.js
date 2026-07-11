@@ -120,10 +120,13 @@
       if(sub) sub.textContent=(plan.dueCount||0)+" tekrar bekleyen";
       if(box){
         box.dataset.dhFilled="1";
+        var doneSet={}; try{ doneSet=JSON.parse(localStorage.getItem("dh-koc-steps-done-"+new Date().toISOString().slice(0,10))||"{}")||{}; }catch(e){}
         var stepsHtml=plan.steps.map(function(s,i){
-          return '<a href="./'+s.href+'" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0d1526;border:1px solid #1e3a5f;border-radius:11px;text-decoration:none;color:#e8eef7;margin-top:8px">'
-            +'<span style="background:#2563eb;color:#fff;font:800 12px system-ui;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:0 0 auto">'+(i+1)+'</span>'
-            +'<span style="font-size:13.5px;font-weight:700">'+esc(s.label)+'</span></a>';
+          var page=(s.href||"").split("?")[0];
+          var done=!!doneSet[page];
+          return '<a href="./'+s.href+'" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:'+(done?"#0d2618":"#0d1526")+';border:1px solid '+(done?"#22c55e55":"#1e3a5f")+';border-radius:11px;text-decoration:none;color:#e8eef7;margin-top:8px'+(done?";opacity:.75":"")+'">'
+            +'<span style="background:'+(done?"#22c55e":"#2563eb")+';color:#fff;font:800 12px system-ui;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:0 0 auto">'+(done?"✓":(i+1))+'</span>'
+            +'<span style="font-size:13.5px;font-weight:700;'+(done?"text-decoration:line-through":"")+'">'+esc(s.label)+(done?' <span style="opacity:.8;font-weight:600">(tamamlandı)</span>':'')+'</span></a>';
         }).join("");
         var st=plan.stats||{}, learned=(st.s2||0)+(st.w2||0), studying=(st.s1||0)+(st.w1||0), due=st.due||0;
         var maxV=Math.max(learned,studying,due,1);

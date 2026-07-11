@@ -11,6 +11,38 @@
   if(window.__dhCoachInstalled) return;
   window.__dhCoachInstalled = true;
 
+  /* Sayfa ziyareti = "koçun bugünkü görevi" işaretlemesi için otomatik kayıt.
+     React (index-app) gibi sayfalara doğrudan müdahale etmiyoruz — coach-bubble.js'in
+     yüklenmiş olması bile "bu sayfaya bugün girildi" sinyali olarak yeterli ve güvenli. */
+  try{
+    var __dhK="dh-koc-steps-done-"+new Date().toISOString().slice(0,10);
+    var __dhS=JSON.parse(localStorage.getItem(__dhK)||"{}")||{};
+    var __dhPage=(location.pathname.split("/").pop()||"index.html");
+    __dhS[__dhPage]=1;
+    localStorage.setItem(__dhK, JSON.stringify(__dhS));
+  }catch(e){}
+  window.dhCoachMarkStepDone=function(page){
+    try{ var k="dh-koc-steps-done-"+new Date().toISOString().slice(0,10); var s=JSON.parse(localStorage.getItem(k)||"{}")||{}; s[page]=1; localStorage.setItem(k, JSON.stringify(s)); }catch(e){}
+  };
+
+  /* ---------- 📋 GÜNLÜK AKTİVİTE KAYDI ("Bugünkü Aktivitem" ekranı için) ---------- */
+  var PAGE_LABEL={"index.html":"Ana Menü","practice.html":"Pratik","tekrar.html":"Tekrar","index-app.html":"Cümle Öğrenimi",
+    "chat.html":"Sohbet Seçimi","chathotel.html":"Sohbet: Otel","chatrestaurant.html":"Sohbet: Restoran","chatdoctor.html":"Sohbet: Doktor",
+    "chatairport.html":"Sohbet: Havaalanı","chatteacher.html":"Sohbet: Öğretmen","teacher.html":"Öğretmen","kelime-ogren.html":"Kelime Öğren",
+    "videopractice.html":"Video Pratik","hata-defteri.html":"Hata Defteri","rapor.html":"İlerleme Raporu"};
+  window.dhLogActivity=function(detail, kind){
+    try{
+      var K="dh-activity-log-v1";
+      var log=JSON.parse(localStorage.getItem(K)||"[]")||[];
+      var today=new Date().toISOString().slice(0,10);
+      log=log.filter(function(e){ return e.d===today; });   // yalnız bugünü tut, eskiyi at
+      log.push({ts:Date.now(), d:today, page:(location.pathname.split("/").pop()||"index.html"), detail:String(detail||"").slice(0,140), kind:kind||"info"});
+      if(log.length>500) log=log.slice(-500);
+      localStorage.setItem(K, JSON.stringify(log));
+    }catch(e){}
+  };
+  try{ window.dhLogActivity(PAGE_LABEL[__dhPage]?( "📍 "+PAGE_LABEL[__dhPage]+" sayfasını açtı"):("📍 "+__dhPage+" sayfasını açtı"), "visit"); }catch(e){}
+
   /* ---------- SVG YÜZ (dış dosyaya bağımlı değil, her zaman çalışır) ---------- */
   function faceSvg(kind){
     var mouth = kind==="praise" ? '<path d="M20 40 Q32 52 44 40" stroke="#0a1628" stroke-width="4" fill="none" stroke-linecap="round"/>'
@@ -87,7 +119,7 @@
     box.innerHTML='<span class="face">'+(faceOverride||faceSvg(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span><span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
     requestAnimationFrame(function(){ box.classList.add("show"); });
     clearTimeout(hideT);
-    hideT=setTimeout(function(){ box.classList.remove("show"); }, 7500);
+    // otomatik kapanma KALDIRILDI — kullanıcı isteği: balon yalnız ✕ ile veya elle kapatılır
   };
   box.onclick=function(){ box.classList.remove("show"); };
   avatar.onclick=function(){
@@ -129,6 +161,7 @@
   window.dhCoachEvaluate=async function(opts){
     try{
       opts=opts||{};
+      try{ window.dhLogActivity((opts.ok?"✅ Doğru: ":"❌ Yanlış: ")+(opts.en||opts.sentenceId||""), opts.ok?"correct":"wrong"); }catch(e){}
       var hist=await errHistory();
       var curTypes = (window.LearningErrorDB && LearningErrorDB.detectTypes)
         ? LearningErrorDB.detectTypes({target:opts.en, answer:opts.answer, grammar:opts.grammar||"", module:opts.module||"", topic:opts.topic||""})

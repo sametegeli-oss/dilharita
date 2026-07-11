@@ -1813,6 +1813,17 @@ function renderClozeLayer(s){
       }
       return w;
     });
+    // BOŞLUK PUANLAMASI: cloze'da yalnız GİZLENEN kelimeler test edilir — görünen kelimeler
+    // zaten verildiği için tüm cümle üzerinden puanlamak yanlış yüksek skor üretiyordu (düzeltildi).
+    var gapTotal=0, gapCorrect=0;
+    gapIdx.forEach(function(i){
+      gapTotal++;
+      var inp = inputs.find(x => +x.dataset.gi === i);
+      var userW = ((inp && inp.value)||"").trim().toLowerCase().replace(/[^a-z']/g,"");
+      var correctW = String(toks[i]||"").trim().toLowerCase().replace(/[^a-z']/g,"");
+      if(userW && userW===correctW) gapCorrect++;
+    });
+    window.__dhClozeGapStats = { correct:gapCorrect, total:gapTotal };
     evaluate(s, answerToks.join(" "), "cloze");
   };
 }
@@ -1909,7 +1920,15 @@ async function evaluate(s, answer, layer){
   State._gradeBase[s.id] = await mGet(s.id);   // null olabilir (ilk kez)
   const d = diffWords(answer, s.en);
   const hadExtra = d.parts.some(p => p.type === "extra");
-  const grade = autoGrade(d.ratio, hadExtra);
+  var grade;
+  if(layer==="cloze" && window.__dhClozeGapStats && window.__dhClozeGapStats.total>0){
+    var gs=window.__dhClozeGapStats; window.__dhClozeGapStats=null;
+    var gapRatio = gs.correct/gs.total;
+    grade = gapRatio>=0.999 ? "easy" : gapRatio>=0.5 ? "good" : "hard";
+    d.ratio = Math.round(gapRatio*100);   // geri bildirim ekranında da gerçek (boşluk bazlı) skor görünsün
+  } else {
+    grade = autoGrade(d.ratio, hadExtra);
+  }
   const next = srsGrade(State._gradeBase[s.id], grade);
   await mSet(s.id, next);
   State.srs[s.id] = next;   // yereli güncelle
