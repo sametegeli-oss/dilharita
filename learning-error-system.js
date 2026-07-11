@@ -10,9 +10,7 @@ const ERROR_STORE="errors";
 const FALLBACK_KEY="learning-errors-v1";
 
 /* ── YAZMADAN ÖNCE ELEME: zamir/kısaltma farkından ibaret "sahte hatalar"ın
-   hata defterine hiç yazılmasını engelleyen son güvenlik katmanı. Normalde
-   ilgili ekranlar (practice.html vb.) bunları zaten "easy" olarak notlandırıp
-   loglamıyor — bu, o kontrolü unutan/atlayan çağrılar için ikinci bir güvence. */
+   hata defterine hiç yazılmasını engelleyen güvenlik katmanı. */
 const _CONTRACTIONS={"isn't":["is","not"],"aren't":["are","not"],"wasn't":["was","not"],"weren't":["were","not"],
   "don't":["do","not"],"doesn't":["does","not"],"didn't":["did","not"],"can't":["can","not"],"won't":["will","not"],
   "i'm":["i","am"],"you're":["you","are"],"he's":["he","is"],"she's":["she","is"],"it's":["it","is"],
@@ -28,9 +26,9 @@ function isFalsePositive(target, answer){
   for(var i=0;i<a.length;i++){
     if(a[i]===b[i]) continue;
     var grp=_PRONOUN_GROUPS.find(function(g){ return g.indexOf(a[i])>=0 && g.indexOf(b[i])>=0; });
-    if(!grp) return false;   // gerçekten farklı bir kelime var — sahte değil, GERÇEK hata
+    if(!grp) return false;
   }
-  return true;   // yalnız zamir/kısaltma farkı — sahte hata, yazma
+  return true;
 }
 
 function uid(){
@@ -99,7 +97,6 @@ function fbAll(){
 function fbSave(arr){ try{localStorage.setItem(FALLBACK_KEY,JSON.stringify(arr));return true}catch{return false} }
 
 async function add(record){
-  // SAHTE HATA ELEME: zamir/kısaltma farkından ibaretse hiç yazma
   if(isFalsePositive(record&&record.target, record&&record.answer)) return null;
   record.id=record.id||uid();
   record.createdAt=record.createdAt||nowISO();

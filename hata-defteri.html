@@ -43,6 +43,7 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
       <a class="btn purple" href="./akilli-tekrar.html">🧠 Akıllı Tekrar</a>
       <button class="btn green" id="exportBtn">JSON dışa aktar</button>
       <button class="btn" id="revalBtn" style="background:#0e7490">🧹 Kabul Edilenleri Temizle</button>
+      <button class="btn" id="aiCleanBtn" style="background:#7c3aed">🤖 AI ile Temizle</button>
       <button class="btn red" id="clearBtn">Temizle</button>
     </div>
   </div>
@@ -98,7 +99,15 @@ function renderRecords(){
       <div>Doğrusu: <span class="target">${LearningErrorDB.esc(r.target||"")}</span></div>
       <div class="meta" style="margin-top:8px"><span>Skor: <b>${Math.round(r.score||0)}%</b></span><span>Not: <b>${LearningErrorDB.esc(r.grade||"")}</b></span><span>Gramer: ${LearningErrorDB.esc(r.grammar||"")}</span></div>
       <div class="types">${(r.types||[]).map(t=>`<span class="type">${LearningErrorDB.esc(t)}</span>`).join("")}</div>
+      <button class="btn red" data-del="${LearningErrorDB.esc(r.id)}" style="margin-top:10px;padding:6px 12px;font-size:12px">🗑 Bu kaydı sil</button>
     </div>`).join(""):`<div class="empty">Bu filtrede kayıt yok.</div>`;
+  $("records").querySelectorAll("[data-del]").forEach(function(b){
+    b.onclick=async function(){
+      if(!confirm("Bu tek kayıt silinsin mi? (Anlamsız/kabul edilebilir bir hata olduğunu düşünüyorsan silebilirsin.)")) return;
+      await LearningErrorDB.deleteMany([b.getAttribute("data-del")]);
+      load();
+    };
+  });
 }
 $("search").oninput=renderRecords;$("source").onchange=renderRecords;$("priority").onchange=renderRecords;
 $("clearBtn").onclick=async()=>{if(confirm("Tüm hata defteri silinsin mi?")){await LearningErrorDB.clearAll();load();}};
@@ -107,9 +116,8 @@ $("exportBtn").onclick=()=>{
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hata-defteri.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 };
 
-/* 🧹 Kabul Edilenleri Temizle — bu oturumda düzelttiğimiz kurallarla (zamir eşdeğerliği,
-   kısaltma esnekliği) geçmiş kayıtları YENİDEN değerlendirir; artık gerçek hata sayılmayanları
-   siler. AI çağrısı YOK — deterministik, ücretsiz, anlık. */
+/* 🧹 Kabul Edilenleri Temizle — kesin/deterministik kurallar (zamir eşdeğerliği, kısaltma
+   esnekliği). AI çağrısı YOK, anlık ve ücretsiz. */
 (function(){
   var CONTRACTIONS={"isn't":["is","not"],"aren't":["are","not"],"wasn't":["was","not"],"weren't":["were","not"],
     "don't":["do","not"],"doesn't":["does","not"],"didn't":["did","not"],"can't":["can","not"],"won't":["will","not"],
@@ -132,19 +140,59 @@ $("exportBtn").onclick=()=>{
     return false;
   }
   document.getElementById("revalBtn").onclick=async function(){
-    if(!confirm("Tüm hata kayıtların bu oturumda düzeltilen kurallarla (zamir eşdeğerliği, kısaltma esnekliği) yeniden değerlendirilecek. Artık gerçek hata sayılmayanlar silinecek. Devam?")) return;
+    if(!confirm("Tüm hata kayıtların kesin kurallarla (zamir eşdeğerliği, kısaltma esnekliği) yeniden değerlendirilecek. Artık gerçek hata sayılmayanlar silinecek. Devam?")) return;
     var btn=this; btn.disabled=true; btn.textContent="⏳ Değerlendiriliyor...";
     try{
       var all=await LearningErrorDB.all();
       var toDelete=all.filter(function(r){ return !stillWrong(r); }).map(function(r){ return r.id; });
       if(!toDelete.length){ alert("Temizlenecek kayıt bulunamadı — hepsi hâlâ geçerli hatalar."); }
-      else{
-        await LearningErrorDB.deleteMany(toDelete);
-        alert("✓ "+toDelete.length+" kayıt temizlendi (artık kabul edilen alternatifler).");
-        load();
-      }
+      else{ await LearningErrorDB.deleteMany(toDelete); alert("✓ "+toDelete.length+" kayıt temizlendi (kesin kurallarla)."); load(); }
     }catch(e){ alert("Hata: "+(e&&e.message||e)); }
     btn.disabled=false; btn.textContent="🧹 Kabul Edilenleri Temizle";
+  };
+})();
+
+/* 🤖 AI ile Temizle — kesin kuralların yakalayamadığı daha İNCE gramer alternatiflerini
+   (örn. "there is not any towel" vs "there aren't any towels") AI tek tek kontrol eder.
+   Tek kelime EVET/HAYIR cevabı istenir (JSON formatı istenmez — daha güvenilir). */
+(function(){
+  document.getElementById("aiCleanBtn").onclick=async function(){
+    if(!(window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
+      alert("AI ile temizlemek için önce Ayarlar'dan bir API anahtarı ekle."); return;
+    }
+    var all=await LearningErrorDB.all();
+    var candidates=all.filter(function(r){ return (r.target||r.sentenceEN) && r.answer; });
+    if(!candidates.length){ alert("Kontrol edilecek uygun kayıt yok (hedef/cevap metni eksik)."); return; }
+    if(!confirm(candidates.length+" kayıt AI ile tek tek kontrol edilecek. Bu biraz zaman alabilir ve API kotanı kullanır. Devam?")) return;
+    var btn=this; btn.disabled=true;
+    var toDelete=[], checked=0, deleted=0;
+    async function checkOne(rec, tries){
+      var target=rec.target||rec.sentenceEN, msgs=[
+        {role:"system",content:"Bir İngilizce öğrenme uygulamasında öğrencinin cevabının referans cümleyle AYNI ANLAMA gelip gelmediğini değerlendiriyorsun (farklı kelimeler/yapı olabilir, önemli olan anlam VE dilbilgisi doğruluğu). SADECE tek kelime cevap ver: EVET ya da HAYIR."},
+        {role:"user",content:"Referans: "+target+"\nÖğrenci cevabı: "+rec.answer}
+      ];
+      try{
+        var out=await DHProviders.chat(msgs,{temperature:0,max_tokens:(tries?220:120)});
+        var t=String(out||"").trim();
+        if(/evet|yes/i.test(t)) return true;
+        if(/hayır|hayir|no/i.test(t)) return false;
+        if(!tries) return await checkOne(rec, true);   // boş/anlaşılmaz cevap → bir kez daha, geniş bütçeyle
+        return false;
+      }catch(e){
+        if(!tries && e && e.code==="empty") return await checkOne(rec, true);
+        return false;   // hata durumunda güvenli taraf: silme
+      }
+    }
+    for(var i=0;i<candidates.length;i++){
+      btn.textContent="⏳ "+(i+1)+"/"+candidates.length+" kontrol ediliyor... ("+deleted+" temizlendi)";
+      var isEquivalent=await checkOne(candidates[i], false);
+      checked++;
+      if(isEquivalent){ toDelete.push(candidates[i].id); deleted++; }
+    }
+    if(toDelete.length) await LearningErrorDB.deleteMany(toDelete);
+    btn.disabled=false; btn.textContent="🤖 AI ile Temizle";
+    alert("✓ "+checked+" kayıt AI ile kontrol edildi, "+toDelete.length+" tanesi anlamca doğru bulunup temizlendi.");
+    load();
   };
 })();
 
