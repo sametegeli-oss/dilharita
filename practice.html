@@ -1613,29 +1613,40 @@ function exposeSceneVideoAnswer(s){
    ============================================================ */
 (function(){
   var css=document.createElement("style");
-  css.textContent=".dh-coach{position:fixed;left:50%;top:14px;transform:translateX(-50%) translateY(-30px) scale(.9);opacity:0;"
-    +"max-width:min(94vw,560px);background:#111827;border-left:6px solid #38bdf8;border-radius:14px;"
-    +"padding:16px 20px;box-shadow:0 16px 44px rgba(0,0,0,.65);z-index:99999;font:700 16px/1.4 system-ui,sans-serif;color:#f8fafc;"
-    +"display:flex;gap:14px;align-items:center;transition:opacity .3s,transform .3s;pointer-events:none}"
-    +".dh-coach.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1);pointer-events:auto;animation:dhPulse .5s ease}"
-    +"@keyframes dhPulse{0%{transform:translateX(-50%) translateY(0) scale(1.06)}100%{transform:translateX(-50%) translateY(0) scale(1)}}"
-    +".dh-coach .em{font-size:30px;flex:0 0 auto;line-height:1}"
-    +".dh-coach .x{position:absolute;top:6px;right:9px;font-size:13px;color:#94a3b8;cursor:pointer;font-weight:400}"
-    +".dh-coach{position:fixed}"
+  css.textContent=".dh-coach{position:fixed !important;left:50% !important;top:22px !important;bottom:auto !important;"
+    +"transform:translateX(-50%) translateY(-40px) scale(.85);opacity:0;"
+    +"max-width:min(95vw,640px);background:#111827;border-left:8px solid #38bdf8;border-radius:16px;"
+    +"padding:20px 26px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:2147483000;font:800 18px/1.4 system-ui,sans-serif;color:#f8fafc;"
+    +"display:flex;gap:16px;align-items:center;transition:opacity .3s,transform .3s;pointer-events:none}"
+    +".dh-coach.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1);pointer-events:auto}"
+    +".dh-coach.show.praise{animation:dhClap .6s ease 2}"
+    +".dh-coach.show.warn{animation:dhShake .5s ease}"
+    +".dh-coach.show.tip,.dh-coach.show.stat{animation:dhPulse .5s ease}"
+    +"@keyframes dhPulse{0%{transform:translateX(-50%) translateY(0) scale(1.08)}100%{transform:translateX(-50%) translateY(0) scale(1)}}"
+    +"@keyframes dhClap{0%,100%{transform:translateX(-50%) translateY(0) scale(1) rotate(0)}25%{transform:translateX(-50%) translateY(-6px) scale(1.05) rotate(-2deg)}50%{transform:translateX(-50%) translateY(0) scale(1.1) rotate(2deg)}75%{transform:translateX(-50%) translateY(-4px) scale(1.05) rotate(-1deg)}}"
+    +"@keyframes dhShake{0%,100%{transform:translateX(-50%) translateY(0) scale(1)}20%{transform:translate(calc(-50% - 10px),0) scale(1)}40%{transform:translate(calc(-50% + 10px),0) scale(1)}60%{transform:translate(calc(-50% - 6px),0) scale(1)}80%{transform:translate(calc(-50% + 6px),0) scale(1)}}"
+    +".dh-coach .em{font-size:38px;flex:0 0 auto;line-height:1}"
+    +".dh-coach .em.bounce{animation:dhEmojiBounce .4s ease 3}"
+    +"@keyframes dhEmojiBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}"
+    +".dh-coach .x{position:absolute;top:8px;right:11px;font-size:15px;color:#94a3b8;cursor:pointer;font-weight:400}"
     +".dh-coach.praise{border-color:#22c55e;background:linear-gradient(135deg,#111827,#0d2818)}"
     +".dh-coach.warn{border-color:#f59e0b;background:linear-gradient(135deg,#111827,#2d1a06)}"
     +".dh-coach.tip{border-color:#38bdf8;background:linear-gradient(135deg,#111827,#0a2233)}"
     +".dh-coach.stat{border-color:#a78bfa;background:linear-gradient(135deg,#111827,#22183f)}";
   document.head.appendChild(css);
-  var box=document.createElement("div"); box.className="dh-coach"; box.style.position="relative";
+  var box=document.createElement("div"); box.className="dh-coach";
   document.body.appendChild(box);
-  var hideT=null, lastMsg="", lastAt=0;
+  var hideT=null, lastMsg="", lastAt=0, streak=0;
   window.dhCoachSay=function(msg, kind, emoji){
     if(!msg) return;
     if(msg===lastMsg && Date.now()-lastAt<4000) return;   // aynı mesajı üst üste tekrarlama
     lastMsg=msg; lastAt=Date.now();
+    box.classList.remove("show");   // önceki animasyonu sıfırla ki yeni animasyon tekrar tetiklensin
+    void box.offsetWidth;           // reflow zorla (animasyon yeniden başlasın)
     box.className="dh-coach "+(kind||"tip");
-    box.innerHTML='<span class="em">'+(emoji||"🧭")+'</span><span style="flex:1">'+msg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span><span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
+    // alkış/somurtma: kind'e göre emoji otomatik seç (dışarıdan verilmediyse)
+    var autoEmoji = kind==="praise" ? "👏" : kind==="warn" ? "😟" : (emoji||"🧭");
+    box.innerHTML='<span class="em bounce">'+(emoji||autoEmoji)+'</span><span style="flex:1">'+msg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span><span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
     requestAnimationFrame(function(){ box.classList.add("show"); });
     clearTimeout(hideT);
     hideT=setTimeout(function(){ box.classList.remove("show"); }, 7500);
@@ -1660,7 +1671,7 @@ var DH_TYPE_TIP={
   "question-order":"Soru cümlesinde yardımcı fiil ÖZNEDEN ÖNCE gelir: Do you...? / Are you...?",
   "sentence-accuracy":"Cümleyi kurmadan önce Türkçesini kelime kelime İngilizceye çevirmek yerine kalıbı bütün olarak hatırla."
 };
-var DH_coachState={ seenModules:{}, evalCount:0, errCache:null, errCacheAt:0 };
+var DH_coachState={ seenModules:{}, evalCount:0, errCache:null, errCacheAt:0, correctStreak:0 };
 async function dhErrHistory(){
   var now=Date.now();
   if(DH_coachState.errCache && now-DH_coachState.errCacheAt<15000) return DH_coachState.errCache;
@@ -1676,6 +1687,13 @@ async function dhCoachOnAnswer(s, answer, grade, d){
       : [];
     var sameSentencePast = hist.filter(function(r){ return r.sentenceId===s.id && r.grade==="hard"; });
     var ok = (grade==="easy" || grade==="good");
+    if(ok) DH_coachState.correctStreak++; else DH_coachState.correctStreak=0;
+
+    // ÜST ÜSTE BAŞARI: art arda 3/5/10... doğruda özel alkışlı kutlama (geçmiş hatadan bağımsız)
+    if(ok && DH_coachState.correctStreak>=3 && DH_coachState.correctStreak%3===0){
+      dhCoachSay("HARİKASIN! Art arda "+DH_coachState.correctStreak+" doğru cevap verdin, bu ritmi koru!","praise","🎉");
+      return;
+    }
 
     if(ok && sameSentencePast.length){
       dhCoachSay("MÜKEMMEL! Daha önce bu cümlede zorlanmıştın, şimdi tam doğru yaptın. Bu ilerlemeyi böyle sürdür — aynı dikkatle devam et!","praise","👏");
@@ -2023,6 +2041,7 @@ async function evaluate(s, answer, layer){
     }
   }catch(e){ console.warn("Hata defteri kaydı atlandı:", e); }
   renderFeedback(s, d, grade, layer);
+  try{ if(window.DHProgress&&DHProgress.recordResult) DHProgress.recordResult("sentence:"+s.id, (grade==="easy"||grade==="good")); }catch(e){}
   dhCoachOnAnswer(s, answer, grade, d);
   // tekrar.html ile TUTARLI: kelime eşleşmesi tam değilse (farklı ama geçerli bir ifade olabilir)
   // AI'ya "anlamca doğru mu?" diye sor. SRS/kayıt değişmez — yalnız bilgilendirme notu eklenir.
