@@ -21,6 +21,7 @@ h1{font-size:17px;margin:0;flex:1}
 .empty{text-align:center;color:var(--mut);padding:40px 20px}
 </style></head><body>
 <div class="top"><a href="./index.html">←</a><h1>📋 Bugünkü Aktivitem</h1></div>
+<div id="dhDayReview" style="max-width:720px;margin:0 auto 14px"></div>
 <div class="stats" id="stats"></div>
 <div class="feed" id="feed"></div>
 
@@ -31,8 +32,8 @@ h1{font-size:17px;margin:0;flex:1}
   var today=new Date().toISOString().slice(0,10);
   log=log.filter(function(e){ return e.d===today; }).sort(function(a,b){ return a.ts-b.ts; });
 
-  var correct=0, wrong=0, visits=0;
-  log.forEach(function(e){ if(e.kind==="correct")correct++; else if(e.kind==="wrong")wrong++; else if(e.kind==="visit")visits++; });
+  var correct=0, wrong=0, visits=0, chats=0;
+  log.forEach(function(e){ if(e.kind==="correct")correct++; else if(e.kind==="wrong")wrong++; else if(e.kind==="visit")visits++; else if(e.kind==="chat")chats++; });
   document.getElementById("stats").innerHTML =
     '<div class="stat"><b style="color:#4ade80">'+correct+'</b><span>doğru cevap</span></div>'
     +'<div class="stat"><b style="color:#f59e0b">'+wrong+'</b><span>yanlış cevap</span></div>'
@@ -40,6 +41,30 @@ h1{font-size:17px;margin:0;flex:1}
     +'<div class="stat"><b>'+log.length+'</b><span>toplam olay</span></div>';
 
   var feed=document.getElementById("feed");
+
+  // 🧭 Koçun günlük değerlendirmesi — bugünkü GERÇEK log verisine bakarak (AI çağrısı yok)
+  (function(){
+    var rv=document.getElementById("dhDayReview"); if(!rv) return;
+    var total=correct+wrong, acc=total?Math.round(100*correct/total):null;
+    var streak=0;
+    try{
+      var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=tr.days||{}, d=new Date();
+      for(;;){ var k=d.toISOString().slice(0,10); if(days[k]){streak++; d.setDate(d.getDate()-1);} else break; }
+    }catch(e){}
+    if(!log.length){ rv.innerHTML=""; return; }
+    var lines=[];
+    if(total===0) lines.push("Bugün sayfalarda gezindin ama henüz bir cevap işaretlenmedi.");
+    else if(acc>=90) lines.push("Bugün %"+acc+" doğrulukla harika bir performans sergiledin! ("+correct+"/"+total+")");
+    else if(acc>=70) lines.push("Bugün %"+acc+" doğruluk gösterdin, fena değil ama gelişim payı var. ("+correct+"/"+total+")");
+    else lines.push("Bugün %"+acc+" doğruluk düşük kaldı ("+correct+"/"+total+") — yorgunsan mola ver, ya da tekrar ile pekiştir.");
+    if(chats>0) lines.push(chats+" sohbet mesajı gönderdin — konuşma pratiği harika bir alışkanlık.");
+    if(visits>=8) lines.push("Bugün "+visits+" farklı ekran gezdin, oldukça aktif bir gündü.");
+    if(streak>=3) lines.push("🔥 "+streak+" günlük serin sürüyor, bugünü de kaydettiğin için tebrikler.");
+    rv.innerHTML='<div style="background:linear-gradient(135deg,#111827,#0a2233);border-left:6px solid #38bdf8;border-radius:14px;padding:16px 20px">'
+      +'<div style="color:#60a5fa;font:900 12px system-ui;letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px">🧭 Koçun Bugünkü Değerlendirmesi</div>'
+      +'<div style="font-size:14px;line-height:1.5">'+lines.join("<br>")+'</div></div>';
+  })();
+
   if(!log.length){ feed.innerHTML='<div class="empty">Bugün henüz bir aktivite kaydedilmedi.<br>Bir modülde çalışmaya başlayınca burada anlık olarak görünecek.</div>'; return; }
 
   // saate göre grupla (en yeni üstte)

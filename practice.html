@@ -1813,15 +1813,21 @@ function renderClozeLayer(s){
       }
       return w;
     });
-    // BOŞLUK PUANLAMASI: cloze'da yalnız GİZLENEN kelimeler test edilir — görünen kelimeler
-    // zaten verildiği için tüm cümle üzerinden puanlamak yanlış yüksek skor üretiyordu (düzeltildi).
+    // BOŞLUK PUANLAMASI: cloze'da yalnız GİZLENEN kelimeler test edilir — kısaltmalar (isn't = is not)
+    // de eşdeğer kabul edilir (mevcut CONTRACTIONS haritası kullanılır).
+    function expandForCompare(w){
+      var n=norm(w);
+      var exp=CONTRACTIONS[n];
+      return exp ? exp.join(" ") : n;
+    }
     var gapTotal=0, gapCorrect=0;
     gapIdx.forEach(function(i){
       gapTotal++;
       var inp = inputs.find(x => +x.dataset.gi === i);
-      var userW = ((inp && inp.value)||"").trim().toLowerCase().replace(/[^a-z']/g,"");
-      var correctW = String(toks[i]||"").trim().toLowerCase().replace(/[^a-z']/g,"");
-      if(userW && userW===correctW) gapCorrect++;
+      var userRaw = ((inp && inp.value)||"").trim();
+      var userExp = userRaw.split(/\s+/).map(expandForCompare).join(" ");
+      var correctExp = expandForCompare(toks[i]);
+      if(userRaw && userExp===correctExp) gapCorrect++;
     });
     window.__dhClozeGapStats = { correct:gapCorrect, total:gapTotal };
     evaluate(s, answerToks.join(" "), "cloze");

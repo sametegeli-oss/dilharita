@@ -455,6 +455,7 @@ async function sendUser(){
     const reply=await groqChat(messages);
     removeTyping();
     State.currentPartner=dhStripTasks(reply) || "Could you please say that again?";
+    try{ window.dhLogActivity && window.dhLogActivity("💬 Sohbet: \""+(text||"").slice(0,60)+"\"", "chat"); }catch(e){}
     State.history.push({role:"assistant",content:State.currentPartner});
     addBubble("assistant", State.currentPartner);
     speakText(State.currentPartner);
