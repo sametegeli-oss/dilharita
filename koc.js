@@ -121,9 +121,11 @@
       if(box){
         box.dataset.dhFilled="1";
         var doneSet={}; try{ doneSet=JSON.parse(localStorage.getItem("dh-koc-steps-done-"+new Date().toISOString().slice(0,10))||"{}")||{}; }catch(e){}
+        // "chat.html" adımı için: herhangi bir gerçek sohbet sayfası (chathotel.html, chatteacher.html...) ziyareti de sayılır
+        var anyChatDone = Object.keys(doneSet).some(function(k){ return /^chat[a-z]*\.html$/.test(k); });
         var stepsHtml=plan.steps.map(function(s,i){
           var page=(s.href||"").split("?")[0];
-          var done=!!doneSet[page];
+          var done = !!doneSet[page] || (page==="chat.html" && anyChatDone);
           return '<a href="./'+s.href+'" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:'+(done?"#0d2618":"#0d1526")+';border:1px solid '+(done?"#22c55e55":"#1e3a5f")+';border-radius:11px;text-decoration:none;color:#e8eef7;margin-top:8px'+(done?";opacity:.75":"")+'">'
             +'<span style="background:'+(done?"#22c55e":"#2563eb")+';color:#fff;font:800 12px system-ui;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:0 0 auto">'+(done?"✓":(i+1))+'</span>'
             +'<span style="font-size:13.5px;font-weight:700;'+(done?"text-decoration:line-through":"")+'">'+esc(s.label)+(done?' <span style="opacity:.8;font-weight:600">(tamamlandı)</span>':'')+'</span></a>';

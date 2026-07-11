@@ -806,6 +806,20 @@ function normSeq(text){
   }
   return out;
 }
+/* Türkçe kaynak cümle cinsiyet belirtmez ("O" = he/she/it) — İngilizce hedef tek cinsiyet
+   seçmek zorunda kalır. Cevap yalnız zamir seçiminde farklıysa (başka hiçbir kelime farklı
+   değilse) doğru kabul edilir. */
+const PRONOUN_GROUPS = [["he","she","it"],["him","her","it"],["his","her","its"],["himself","herself","itself"]];
+function pronounEquivalent(answer, target){
+  const a = normSeq(answer), b = normSeq(target);
+  if (a.length !== b.length) return false;
+  for (let i=0;i<a.length;i++){
+    if (a[i].n === b[i].n) continue;
+    const grp = PRONOUN_GROUPS.find(g => g.includes(a[i].n) && g.includes(b[i].n));
+    if (!grp) return false;
+  }
+  return true;
+}
 // iki cümleyi kelime kelime karşılaştır (LCS tabanlı diff, kasıllaşma-duyarlı)
 function diffWords(answer, target){
   const a = normSeq(answer);
@@ -1927,7 +1941,9 @@ async function evaluate(s, answer, layer){
   const d = diffWords(answer, s.en);
   const hadExtra = d.parts.some(p => p.type === "extra");
   var grade;
-  if(layer==="cloze" && window.__dhClozeGapStats && window.__dhClozeGapStats.total>0){
+  if(pronounEquivalent(answer, s.en)){
+    grade="easy"; d.ratio=100; d.parts=d.parts.map(p=>({type:"ok",word:p.word}));  // zamir dışında tam doğru
+  } else if(layer==="cloze" && window.__dhClozeGapStats && window.__dhClozeGapStats.total>0){
     var gs=window.__dhClozeGapStats; window.__dhClozeGapStats=null;
     var gapRatio = gs.correct/gs.total;
     grade = gapRatio>=0.999 ? "easy" : gapRatio>=0.5 ? "good" : "hard";
@@ -1950,7 +1966,7 @@ async function evaluate(s, answer, layer){
   try{ window.dhCoachEvaluate && window.dhCoachEvaluate({sentenceId:s.id, en:s.en, answer:answer, ok:(grade==="easy"||grade==="good"), commonMistake:s.commonMistake, grammar:s.grammarStructure||s.pattern||"", module:s.module||""}); }catch(e){}
   // tekrar.html ile TUTARLI: kelime eşleşmesi tam değilse (farklı ama geçerli bir ifade olabilir)
   // AI'ya "anlamca doğru mu?" diye sor. SRS/kayıt değişmez — yalnız bilgilendirme notu eklenir.
-  if(grade!=="easy" && d.ratio>=0.25 && d.ratio<0.95 && answer.trim().length>2 &&
+  if(grade!=="easy" && d.ratio>=0.15 && d.ratio<0.999 && answer.trim().length>2 &&
      window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
     var fbEl=document.getElementById("feedbackArea");
     var noteEl=document.createElement("div");

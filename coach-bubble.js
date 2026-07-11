@@ -158,9 +158,30 @@
   }
 
   /* ---------- CEVAP DEĞERLENDİRME (practice/tekrar ORTAK karar mantığı) ---------- */
+  /* ---------- 🔥 GÜNLÜK TAKİP (streak/meşale) — KANITLANDI: dh-study-tracker-v1'i
+     sistemde hiçbir dosya yazmıyordu, bu yüzden meşale hep "0 gün" kalıyordu.
+     Artık her gerçek cevap değerlendirmesinde bugünün kaydı burada oluşturulur/güncellenir. */
+  function bumpDailyTracker(kind){
+    try{
+      var K="dh-study-tracker-v1";
+      var tr=JSON.parse(localStorage.getItem(K)||"{}")||{};
+      if(!tr.days) tr.days={};
+      var today=new Date().toISOString().slice(0,10);
+      if(!tr.days[today]) tr.days[today]={date:today,lessons:0,minutes:0,sentences:0,videos:0,reviews:0,errors:0};
+      var d=tr.days[today];
+      if(kind==="sentence") d.sentences=(d.sentences||0)+1;
+      else if(kind==="review") d.reviews=(d.reviews||0)+1;
+      else if(kind==="video") d.videos=(d.videos||0)+1;
+      else if(kind==="lesson") d.lessons=(d.lessons||0)+1;
+      localStorage.setItem(K, JSON.stringify(tr));
+    }catch(e){}
+  }
+  window.dhBumpDailyTracker=bumpDailyTracker;
+
   window.dhCoachEvaluate=async function(opts){
     try{
       opts=opts||{};
+      bumpDailyTracker(opts.trackKind||"sentence");
       try{ window.dhLogActivity((opts.ok?"✅ Doğru: ":"❌ Yanlış: ")+(opts.en||opts.sentenceId||""), opts.ok?"correct":"wrong"); }catch(e){}
       var hist=await errHistory();
       var curTypes = (window.LearningErrorDB && LearningErrorDB.detectTypes)

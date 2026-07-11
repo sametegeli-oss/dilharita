@@ -451,11 +451,20 @@ async function sendUser(){
   }
   try{
     State.history.push({role:"user",content:text});
+    // GÜVENCE: "soru sor" türü görevler AI'nin [TASK_DONE] işaretine güvenmeden de tespit edilir
+    try{
+      var isQuestion = /\?\s*$/.test(text.trim()) || /^\s*(is|are|do|does|did|can|could|will|would|what|where|when|why|how|who|which)\b/i.test(text.trim());
+      if(isQuestion){
+        __dhTasks.forEach(function(t,i){
+          if(!__dhTaskDone[i] && /soru\s*sor/i.test(t)){ __dhTaskDone[i]=true; setTimeout(dhRenderTasks,50); }
+        });
+      }
+    }catch(e){}
     const messages=[{role:"system",content:systemPrompt()},{role:"assistant",content:Scenario.opener},...State.history.slice(-10)];
     const reply=await groqChat(messages);
     removeTyping();
     State.currentPartner=dhStripTasks(reply) || "Could you please say that again?";
-    try{ window.dhLogActivity && window.dhLogActivity("💬 Sohbet: \""+(text||"").slice(0,60)+"\"", "chat"); }catch(e){}
+    try{ window.dhLogActivity && window.dhLogActivity("💬 Sohbet: \""+(text||"").slice(0,60)+"\"", "chat"); window.dhBumpDailyTracker && window.dhBumpDailyTracker("lesson"); }catch(e){}
     State.history.push({role:"assistant",content:State.currentPartner});
     addBubble("assistant", State.currentPartner);
     speakText(State.currentPartner);
