@@ -9,6 +9,30 @@ const DB_VER=1;
 const ERROR_STORE="errors";
 const FALLBACK_KEY="learning-errors-v1";
 
+/* ── YAZMADAN ÖNCE ELEME: zamir/kısaltma farkından ibaret "sahte hatalar"ın
+   hata defterine hiç yazılmasını engelleyen son güvenlik katmanı. Normalde
+   ilgili ekranlar (practice.html vb.) bunları zaten "easy" olarak notlandırıp
+   loglamıyor — bu, o kontrolü unutan/atlayan çağrılar için ikinci bir güvence. */
+const _CONTRACTIONS={"isn't":["is","not"],"aren't":["are","not"],"wasn't":["was","not"],"weren't":["were","not"],
+  "don't":["do","not"],"doesn't":["does","not"],"didn't":["did","not"],"can't":["can","not"],"won't":["will","not"],
+  "i'm":["i","am"],"you're":["you","are"],"he's":["he","is"],"she's":["she","is"],"it's":["it","is"],
+  "we're":["we","are"],"they're":["they","are"],"i've":["i","have"],"i'll":["i","will"],"i'd":["i","would"]};
+function _tokenize(s){ return (String(s||"").match(/[A-Za-z']+(?:-[A-Za-z']+)*|\d+/g) || []); }
+function _norm(w){ return w.toLowerCase().replace(/[\u2019\u2018]/g,"'").replace(/[.,!?;:"()]/g,"").trim(); }
+function _normSeq(text){ var out=[]; _tokenize(text).forEach(function(raw){ var n=_norm(raw); if(_CONTRACTIONS[n]) _CONTRACTIONS[n].forEach(function(x){out.push(x);}); else out.push(n); }); return out; }
+const _PRONOUN_GROUPS=[["he","she","it"],["him","her","it"],["his","her","its"]];
+function isFalsePositive(target, answer){
+  if(!target || !answer) return false;
+  var a=_normSeq(answer), b=_normSeq(target);
+  if(a.length!==b.length) return false;
+  for(var i=0;i<a.length;i++){
+    if(a[i]===b[i]) continue;
+    var grp=_PRONOUN_GROUPS.find(function(g){ return g.indexOf(a[i])>=0 && g.indexOf(b[i])>=0; });
+    if(!grp) return false;   // gerçekten farklı bir kelime var — sahte değil, GERÇEK hata
+  }
+  return true;   // yalnız zamir/kısaltma farkı — sahte hata, yazma
+}
+
 function uid(){
   return "err_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,8);
 }
@@ -75,6 +99,8 @@ function fbAll(){
 function fbSave(arr){ try{localStorage.setItem(FALLBACK_KEY,JSON.stringify(arr));return true}catch{return false} }
 
 async function add(record){
+  // SAHTE HATA ELEME: zamir/kısaltma farkından ibaretse hiç yazma
+  if(isFalsePositive(record&&record.target, record&&record.answer)) return null;
   record.id=record.id||uid();
   record.createdAt=record.createdAt||nowISO();
   record.updatedAt=nowISO();
@@ -99,6 +125,21 @@ async function all(){
   let arr=[];
   try{arr=await idbAll();}catch{arr=fbAll();}
   return arr.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+}
+async function deleteMany(ids){
+  var idSet={}; (ids||[]).forEach(function(id){ idSet[id]=1; });
+  if(!Object.keys(idSet).length) return 0;
+  var n=0;
+  try{
+    var db=await openDB();
+    await new Promise(function(res){
+      var tx=db.transaction(ERROR_STORE,"readwrite"), st=tx.objectStore(ERROR_STORE);
+      Object.keys(idSet).forEach(function(id){ try{ st.delete(id); n++; }catch(e){} });
+      tx.oncomplete=res; tx.onerror=res;
+    });
+  }catch(e){}
+  try{ var arr=fbAll(); var kept=arr.filter(function(r){ return !idSet[r.id]; }); fbSave(kept); }catch(e){}
+  return n;
 }
 async function clearAll(){
   try{await idbClear();}catch{}
@@ -278,5 +319,5 @@ async function markReviewed(id, opts){
   window.dispatchEvent(new CustomEvent("learning-error-updated",{detail:rec}));
   return rec;
 }
-window.LearningErrorDB={add,all,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed};
+window.LearningErrorDB={add,all,deleteMany,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed};
 })();

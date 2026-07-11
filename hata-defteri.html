@@ -42,6 +42,7 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
     <div class="actions">
       <a class="btn purple" href="./akilli-tekrar.html">🧠 Akıllı Tekrar</a>
       <button class="btn green" id="exportBtn">JSON dışa aktar</button>
+      <button class="btn" id="revalBtn" style="background:#0e7490">🧹 Kabul Edilenleri Temizle</button>
       <button class="btn red" id="clearBtn">Temizle</button>
     </div>
   </div>
@@ -105,6 +106,48 @@ $("exportBtn").onclick=()=>{
   const blob=new Blob([JSON.stringify(RECORDS,null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hata-defteri.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 };
+
+/* 🧹 Kabul Edilenleri Temizle — bu oturumda düzelttiğimiz kurallarla (zamir eşdeğerliği,
+   kısaltma esnekliği) geçmiş kayıtları YENİDEN değerlendirir; artık gerçek hata sayılmayanları
+   siler. AI çağrısı YOK — deterministik, ücretsiz, anlık. */
+(function(){
+  var CONTRACTIONS={"isn't":["is","not"],"aren't":["are","not"],"wasn't":["was","not"],"weren't":["were","not"],
+    "don't":["do","not"],"doesn't":["does","not"],"didn't":["did","not"],"can't":["can","not"],"won't":["will","not"],
+    "i'm":["i","am"],"you're":["you","are"],"he's":["he","is"],"she's":["she","is"],"it's":["it","is"],
+    "we're":["we","are"],"they're":["they","are"],"i've":["i","have"],"i'll":["i","will"],"i'd":["i","would"]};
+  function tokenize(s){ return (String(s||"").match(/[A-Za-z']+(?:-[A-Za-z']+)*|\d+/g) || []); }
+  function norm(w){ return w.toLowerCase().replace(/[\u2019\u2018]/g,"'").replace(/[.,!?;:"()]/g,"").trim(); }
+  function normSeq(text){ var out=[]; tokenize(text).forEach(function(raw){ var n=norm(raw); if(CONTRACTIONS[n]) CONTRACTIONS[n].forEach(function(x){out.push(x);}); else out.push(n); }); return out; }
+  var PRONOUN_GROUPS=[["he","she","it"],["him","her","it"],["his","her","its"]];
+  function stillWrong(rec){
+    var target=rec.target||rec.sentenceEN||"", answer=rec.answer||"";
+    if(!target || !answer) return true;
+    var a=normSeq(answer), b=normSeq(target);
+    if(a.length!==b.length) return true;
+    for(var i=0;i<a.length;i++){
+      if(a[i]===b[i]) continue;
+      var grp=PRONOUN_GROUPS.find(function(g){ return g.indexOf(a[i])>=0 && g.indexOf(b[i])>=0; });
+      if(!grp) return true;
+    }
+    return false;
+  }
+  document.getElementById("revalBtn").onclick=async function(){
+    if(!confirm("Tüm hata kayıtların bu oturumda düzeltilen kurallarla (zamir eşdeğerliği, kısaltma esnekliği) yeniden değerlendirilecek. Artık gerçek hata sayılmayanlar silinecek. Devam?")) return;
+    var btn=this; btn.disabled=true; btn.textContent="⏳ Değerlendiriliyor...";
+    try{
+      var all=await LearningErrorDB.all();
+      var toDelete=all.filter(function(r){ return !stillWrong(r); }).map(function(r){ return r.id; });
+      if(!toDelete.length){ alert("Temizlenecek kayıt bulunamadı — hepsi hâlâ geçerli hatalar."); }
+      else{
+        await LearningErrorDB.deleteMany(toDelete);
+        alert("✓ "+toDelete.length+" kayıt temizlendi (artık kabul edilen alternatifler).");
+        load();
+      }
+    }catch(e){ alert("Hata: "+(e&&e.message||e)); }
+    btn.disabled=false; btn.textContent="🧹 Kabul Edilenleri Temizle";
+  };
+})();
+
 load();
 </script>
 <script src="./cloud-sync.js?v=4"></script>
