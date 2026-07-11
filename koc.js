@@ -170,9 +170,27 @@
 
   // "Yeni cümleler öğren" adımı için hedef modülü koç DETERMİNİSTİK olarak seçer (AI değil):
   // ilerlemesi tamamlanmamış (mirror'da status!==2) en az bir cümlesi olan İLK modül.
+  function kvReadPrefix(pre){
+    return new Promise(function(res){
+      try{
+        var r=indexedDB.open("sentence-mode",1);
+        r.onsuccess=function(){ var db=r.result, out={};
+          try{ var q=db.transaction("kv","readonly").objectStore("kv").openCursor();
+            q.onsuccess=function(e){ var c=e.target.result;
+              if(c){ var k=String(c.key); if(k.indexOf(pre)===0) out[k.slice(pre.length)]=c.value; c.continue(); }
+              else { db.close(); res(out); } };
+            q.onerror=function(){ db.close(); res(out); };
+          }catch(e2){ try{db.close()}catch(_){ } res(out); } };
+        r.onerror=function(){ res({}); };
+      }catch(e){ res({}); }
+    });
+  }
   async function pickNextModule(){
     try{
       var mirror={}; try{ mirror=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; }catch(e){}
+      // practice.html kendi SRS kaydını (srs:<id>) tutar, mirror'a hiç yazmaz — bu yüzden koç
+      // practice'te çalışılan modülleri de "ilerleme var" saysın diye SRS kaydına da bakıyor.
+      var srs=await kvReadPrefix("srs:");
       var all=await (await fetch("./data/sentences.json")).json();
       var order=[], seen={}, byMod={};
       all.forEach(function(s){
@@ -182,7 +200,12 @@
       });
       for(var i=0;i<order.length;i++){
         var mod=order[i];
-        var incomplete=byMod[mod].some(function(s){ var m=mirror["sentence:"+s.id]; return !(m && m[0]===2); });
+        // "hiç dokunulmamış" = ne mirror'da öğrenilmiş(2) ne de practice'te en az 2 kez doğru cevaplanmış (rep>=2)
+        var incomplete=byMod[mod].some(function(s){
+          var m=mirror["sentence:"+s.id]; var learned = m && m[0]===2;
+          var sr=srs[s.id]; var practiced = sr && (sr.rep||0)>=2;
+          return !(learned || practiced);
+        });
         if(incomplete) return mod;
       }
       return order[0]||null;
@@ -282,7 +305,8 @@
         +'KESİN KURALLAR: (1) "Hata defteri: BOŞ" yazıyorsa hata-defteri.html adımını KESİNLİKLE ekleme. '
         +'(2) Yalnız profildeki gerçek sayılara dayanan, spesifik adımlar öner (örn. "Tekrar bekleyen: 12" varsa "12 kelimeyi tekrarla" gibi somut bir adım — "pratik yap" gibi belirsiz/genel etiket kullanma). '
         +'(3) Tekrar bekleyen 0 ise tekrar.html adımını ekleme. '
-        +'SADECE JSON döndür, açıklama yok: {"focus":"günün odağı tek cümle (Türkçe)","note":"kısa motivasyon/uyarı (Türkçe, en çok 15 kelime)","why":"bu planı NEDEN önerdiğini profildeki sayılara dayanarak açıklayan 1 cümle (Türkçe, en çok 20 kelime)","steps":[{"label":"somut, sayıya dayalı adım (Türkçe, kısa)","href":"..."}]} steps 2-3 adet olacak ve href YALNIZ şunlardan biri: '+ALLOWED.join(", ");
+        +'(4) TON: cılız/nötr cümleler kurma. "note" ve "why" alanları KOMUT NİTELİĞİNDE ve YÖNLENDİRİCİ olsun — sadece gözlem değil, ne yapması gerektiğini AÇIKÇA söyle (örn. "Bugün mutlaka past-simple çalış, 3 gündür ihmal ediyorsun" gibi net bir yönerge; "iyi gidiyorsun" gibi genel geçer laf etme). '
+        +'SADECE JSON döndür, açıklama yok: {"focus":"günün odağı tek cümle (Türkçe, buyurgan/yönlendirici üslupla)","note":"NET bir yönerge/komut (Türkçe, en çok 15 kelime)","why":"bu planı NEDEN önerdiğini profildeki sayılara dayanarak açıklayan, yönlendirici 1 cümle (Türkçe, en çok 20 kelime)","steps":[{"label":"somut, sayıya dayalı adım (Türkçe, kısa)","href":"..."}]} steps 2-3 adet olacak ve href YALNIZ şunlardan biri: '+ALLOWED.join(", ");
       var out=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:prof}],{temperature:0.4,max_tokens:400});
       var plan=null; try{ plan=valid(JSON.parse(String(out).replace(/```json|```/g,"").trim())); }catch(e){}
       if(!plan) return;                      // sessiz düşüş: banner statik kalır
