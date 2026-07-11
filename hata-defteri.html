@@ -8,6 +8,7 @@
 <title>Hata Defteri · Dil Haritası</title>
 <script src="./learning-error-system.js"></script>
 <script src="./ai-providers.js?v=1"></script>
+<script src="./coach-bubble.js?v=1"></script>
 <style>
 :root{--bg:#071226;--panel:#0d1c34;--panel2:#132647;--line:#ffffff16;--text:#edf4ff;--muted:#9fb1d0;--blue:#3b82f6;--green:#22c55e;--red:#ef4444;--orange:#f59e0b}
 *{box-sizing:border-box}
@@ -106,6 +107,8 @@ function renderRecords(){
     b.onclick=async function(){
       if(!confirm("Bu tek kayıt silinsin mi? (Anlamsız/kabul edilebilir bir hata olduğunu düşünüyorsan silebilirsin.)")) return;
       await LearningErrorDB.deleteMany([b.getAttribute("data-del")]);
+      try{ window.dhCoachMarkStepDone && window.dhCoachMarkStepDone("hata-defteri.html"); }catch(e){}
+      try{ window.dhLogActivity && window.dhLogActivity("🗑 Hata kaydı silindi (tekil)", "cleanup"); }catch(e){}
       load();
     };
   });
@@ -147,7 +150,7 @@ $("exportBtn").onclick=()=>{
       var all=await LearningErrorDB.all();
       var toDelete=all.filter(function(r){ return !stillWrong(r); }).map(function(r){ return r.id; });
       if(!toDelete.length){ alert("Temizlenecek kayıt bulunamadı — hepsi hâlâ geçerli hatalar."); }
-      else{ await LearningErrorDB.deleteMany(toDelete); alert("✓ "+toDelete.length+" kayıt temizlendi (kesin kurallarla)."); load(); }
+      else{ await LearningErrorDB.deleteMany(toDelete); try{ window.dhCoachMarkStepDone && window.dhCoachMarkStepDone("hata-defteri.html"); window.dhLogActivity && window.dhLogActivity("🧹 Kesin kurallarla "+toDelete.length+" kayıt temizlendi", "cleanup"); }catch(e){} alert("✓ "+toDelete.length+" kayıt temizlendi (kesin kurallarla)."); load(); }
     }catch(e){ alert("Hata: "+(e&&e.message||e)); }
     btn.disabled=false; btn.textContent="🧹 Kabul Edilenleri Temizle";
   };
@@ -191,6 +194,7 @@ $("exportBtn").onclick=()=>{
       if(isEquivalent){ toDelete.push(candidates[i].id); deleted++; }
     }
     if(toDelete.length) await LearningErrorDB.deleteMany(toDelete);
+    try{ window.dhCoachMarkStepDone && window.dhCoachMarkStepDone("hata-defteri.html"); window.dhLogActivity && window.dhLogActivity("🤖 AI ile "+checked+" kayıt kontrol edildi, "+toDelete.length+" temizlendi", "cleanup"); }catch(e){}
     btn.disabled=false; btn.textContent="🤖 AI ile Temizle";
     alert("✓ "+checked+" kayıt AI ile kontrol edildi, "+toDelete.length+" tanesi anlamca doğru bulunup temizlendi.");
     load();
