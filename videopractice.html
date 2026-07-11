@@ -996,7 +996,7 @@ async function checkEnglish(heard,mode,preScore,confidence){
   const next=srsGrade(await srsGet(s.id),grade); await srsSet(s.id,next); State.srs[s.id]=next;
   try{ if(window.DHProgress && s.id){ DHProgress.recordResult("sentence:"+s.id, grade!=="hard"); } }catch(e){}
   if (window.LearningErrorDB && grade !== "easy"){ LearningErrorDB.logFromVideo({ sentence:s, heard, grade, score, diff, mode }); }
-  try{ window.dhCoachEvaluate && window.dhCoachEvaluate({sentenceId:s.id, en:s.en, answer:heard, ok:(grade!=="hard"), commonMistake:s.commonMistake}); }catch(e){}
+  try{ window.dhCoachEvaluate && window.dhCoachEvaluate({sentenceId:s.id, en:s.en, answer:heard, ok:(grade!=="hard"), commonMistake:s.commonMistake, layer:mode, score:score}); }catch(e){}
   showPronunciationResult(score,diff,heard,score>=72);
 }
 function clearVideoStatus(){

@@ -1963,7 +1963,7 @@ async function evaluate(s, answer, layer){
   }catch(e){ console.warn("Hata defteri kaydı atlandı:", e); }
   renderFeedback(s, d, grade, layer);
   try{ if(window.DHProgress&&DHProgress.recordResult) DHProgress.recordResult("sentence:"+s.id, (grade==="easy"||grade==="good")); }catch(e){}
-  try{ window.dhCoachEvaluate && window.dhCoachEvaluate({sentenceId:s.id, en:s.en, answer:answer, ok:(grade==="easy"||grade==="good"), commonMistake:s.commonMistake, grammar:s.grammarStructure||s.pattern||"", module:s.module||""}); }catch(e){}
+  try{ window.dhCoachEvaluate && window.dhCoachEvaluate({sentenceId:s.id, en:s.en, answer:answer, ok:(grade==="easy"||grade==="good"), commonMistake:s.commonMistake, grammar:s.grammarStructure||s.pattern||"", module:s.module||"", layer:layer, score:d.ratio!=null?(d.ratio<=1?d.ratio*100:d.ratio):null}); }catch(e){}
   // tekrar.html ile TUTARLI: kelime eşleşmesi tam değilse (farklı ama geçerli bir ifade olabilir)
   // AI'ya "anlamca doğru mu?" diye sor. SRS/kayıt değişmez — yalnız bilgilendirme notu eklenir.
   if(grade!=="easy" && d.ratio>=0.15 && d.ratio<0.999 && answer.trim().length>2 &&
