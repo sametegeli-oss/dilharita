@@ -27,6 +27,12 @@ req("EMAILJS_TEMPLATE_ID", EMAILJS_TEMPLATE_ID);
 req("EMAILJS_PUBLIC_KEY", EMAILJS_PUBLIC_KEY);
 req("EMAILJS_PRIVATE_KEY", EMAILJS_PRIVATE_KEY);
 
+// TEŞHİS: anahtarın kendisini asla yazdırmıyoruz, sadece var olup olmadığını ve uzunluğunu
+// (GitHub Actions zaten secret değerlerini loglarda otomatik *** ile maskeler, bu ekstra güvenlik).
+console.log("Teşhis — Private Key uzunluğu:", EMAILJS_PRIVATE_KEY.length, "karakter");
+console.log("Teşhis — Public Key uzunluğu:", EMAILJS_PUBLIC_KEY.length, "karakter");
+console.log("Teşhis — ikisi aynı mı (olmamalı):", EMAILJS_PRIVATE_KEY === EMAILJS_PUBLIC_KEY);
+
 // ---- Türkiye saatine göre "bugün/dün" (UTC+3, DST yok) ----
 const TR_OFFSET_MS = 3 * 3600000;
 function trNow() { return new Date(Date.now() + TR_OFFSET_MS); }
