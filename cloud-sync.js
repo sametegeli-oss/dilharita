@@ -30,12 +30,13 @@
     "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1",
     "groqApiKeys", "cerebrasApiKeys", "geminiApiKeys",
     "dh-model-groq", "dh-model-cerebras", "dh-model-gemini", "dh-disabled-keys",
-    "selectedTeacherAvatar", "dh-teacher-mem"
+    "selectedTeacherAvatar", "dh-teacher-mem", "dh-activity-log-v1"
   ];
   var LS_PREFIXES = ["sm:", "mas:", "ev:", "modscore:", "gramprof:", "story:"];
   var MAX_VAL = 200000;      // alan başına üst sınır (Firestore alan limiti 1MB)
   var TRACKER = "dh-study-tracker-v1";
   var MIRROR  = "dh-progress-mirror-v1";
+  var ACTLOG  = "dh-activity-log-v1";
 
   var firebaseConfig = {
     apiKey: "AIzaSyBZTHvP8xX94UMtKRt7hIYN7qpbO2gz0Zg",
@@ -100,6 +101,22 @@
       var lU=(l&&l[1])||0, rU=(r&&r[1])||0;
       if(rU>lU || (rU===lU && (r[0]||0)>(l[0]||0))) out[k2]=r;
     }
+    return JSON.stringify(out);
+  }
+  // Aktivite logu: iki cihazın kayıtlarını BİRLEŞTİRİR (basit üzerine yazma değil —
+  // aksi halde bir cihazın günü diğerininkini silerdi). Zaman damgasına göre tekilleştirilir,
+  // en yeni 600 kayıt / 150KB sınırında tutulur (Firestore güvenliği).
+  function mergeActivityLog(localStr, remoteStr){
+    var L=[],R=[];
+    try{ L=JSON.parse(localStr||"[]")||[]; }catch(e){}
+    try{ R=JSON.parse(remoteStr||"[]")||[]; }catch(e){}
+    var seen={}, out=[];
+    L.concat(R).forEach(function(e){
+      var key=(e&&e.ts)+"|"+(e&&e.page)+"|"+(e&&e.kind);
+      if(!seen[key]){ seen[key]=1; out.push(e); }
+    });
+    out.sort(function(a,b){ return (a.ts||0)-(b.ts||0); });
+    while(out.length>600 || JSON.stringify(out).length>150000) out.shift();
     return JSON.stringify(out);
   }
 
@@ -289,6 +306,7 @@
           if(rk.indexOf("smv:")===0){ kvIncoming[rk]=rv; pulled++; }
           else if(rk===TRACKER){ localStorage.setItem(rk, mergeTracker(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk===MIRROR){ localStorage.setItem(rk, mergeMirror(localStorage.getItem(rk), rv)); pulled++; }
+          else if(rk===ACTLOG){ localStorage.setItem(rk, mergeActivityLog(localStorage.getItem(rk), rv)); pulled++; }
           else { localStorage.setItem(rk, rv); pulled++; }
         }catch(e){}
       }

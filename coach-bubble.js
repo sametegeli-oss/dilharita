@@ -30,12 +30,14 @@
       var K="dh-activity-log-v1";
       var log=JSON.parse(localStorage.getItem(K)||"[]")||[];
       var today=new Date().toISOString().slice(0,10);
-      // KALICI GEÇMİŞ: eskiden yalnız "bugün" tutulup her yazımda önceki günler silinirdi.
-      // Artık son 30 günü saklıyoruz — koç ve aktivite ekranı gerçek geçmiş üzerinden analiz yapabilsin.
-      var cutoff=Date.now()-30*86400000;
+      // KALICI GEÇMİŞ: son 10 gün / en fazla 600 kayıt saklanır. Bu sınır bilinçli seçildi:
+      // Firestore'un tek-alan 1MB sınırına (bu projede daha önce ciddi soruna yol açmıştı)
+      // asla yaklaşmasın diye — buluta senkronlanacağı için boyutu kesinlikle güvenli tutuyoruz.
+      var cutoff=Date.now()-10*86400000;
       log=log.filter(function(e){ return (e.ts||0)>=cutoff; });
       log.push({ts:Date.now(), d:today, page:(location.pathname.split("/").pop()||"index.html"), detail:String(detail||"").slice(0,140), kind:kind||"info"});
-      if(log.length>4000) log=log.slice(-4000);   // 30 gün için üst sınır (depolama koruması)
+      log.sort(function(a,b){ return a.ts-b.ts; });
+      while(log.length>600 || JSON.stringify(log).length>150000) log.shift();   // hem sayı hem gerçek boyut sınırı
       localStorage.setItem(K, JSON.stringify(log));
     }catch(e){}
   };
