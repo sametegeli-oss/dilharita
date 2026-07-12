@@ -276,6 +276,52 @@
     return p;
   }
 
+  /* ---------- why/note TAZELEME (AI ÇAĞRISI YOK) ----------
+     Plan günde 1 kez AI'dan gelir (token tasarrufu). Ama "why"/"note" metni
+     planın ÜRETİLDİĞİ ANDAKİ duruma göre yazılır: sabah "0 cümle yaptın, hemen
+     başla" diyen metin, akşam 60 cümle yapıldıktan sonra da aynı kalıyordu.
+     Çözüm: plan üretilirken o anki durumu (todaySentences/due) plana gömüyoruz;
+     her açılışta canlı durumla kıyaslayıp ANLAMLI sapma varsa why/note'u
+     kod-tabanlı taze metinle EZİYORUZ. Sapma yoksa AI'nın metni aynen kalır. */
+  function todaySentences(){
+    try{
+      var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{};
+      var d=(tr.days||{})[new Date().toISOString().slice(0,10)]||{};
+      return (d.sentences||0)+(d.reviews||0)+(d.lessons||0)+(d.videos||0);
+    }catch(e){ return 0; }
+  }
+
+  function freshenPlan(plan, stats){
+    try{
+      if(!plan) return plan;
+      var snap=plan.madeAt||null;
+      if(!snap) return plan;                       // eski/anlık görüntüsüz plan: dokunma
+      var nowCnt=todaySentences(), wasCnt=snap.count||0;
+      var nowDue=(stats&&stats.due)||0,  wasDue=snap.due||0;
+      var didWork=nowCnt-wasCnt;                   // plandan beri yapılan aktivite
+      var clearedDue=wasDue-nowDue;                // eritilen tekrar borcu
+
+      // Sapma yoksa AI metnine DOKUNMA (asıl değerli metin odur).
+      if(didWork<5 && clearedDue<5) return plan;
+
+      var p={}; for(var k in plan) p[k]=plan[k];   // kopya (önbelleği kirletme)
+      if(nowDue===0 && clearedDue>=5){
+        p.why="Plan sabah yazıldı; o zamandan beri "+didWork+" çalışma yaptın ve tekrar borcunu bitirdin.";
+        p.note="Tekrarların bitti — yeni cümlelere geç, bugünü öyle kapat.";
+      } else if(didWork>=25){
+        p.why="Plan sabah yazıldı; bugün "+didWork+" çalışma yaptın, hedefin çoktan üstündesin.";
+        p.note=nowDue>0 ? ("Sıra tekrarda: "+nowDue+" bekleyen kaldı, onları da temizle.")
+                        : "Bugünlük yeterli — yarın aynı ritimle devam et.";
+      } else {
+        p.why="Plan sabah yazıldı; o zamandan beri "+didWork+" çalışma yaptın, plan buna göre güncellendi.";
+        p.note=nowDue>0 ? ("Devam et: "+nowDue+" tekrar bekliyor, önce onları bitir.")
+                        : "İyi gidiyorsun — yeni cümlelerle devam et.";
+      }
+      p.__freshened=true;
+      return p;
+    }catch(e){ return plan; }
+  }
+
   // İstatistik çubukları HİÇ önbelleğe alınmaz — plan (adımlar) günde 1 kez AI'dan gelse de,
   // "Öğrenilmiş/Çalışılıyor/Tekrar bekleyen" sayıları her açılışta CANLI hesaplanır ki
   // gün içinde yapılan çalışma anında yansısın.
@@ -339,7 +385,16 @@
         window.__dhGoal = checkAndSetGoal(_errT);
       }catch(e){ window.__dhLevelSuggest=false; window.__dhGoal=null; }
       var cached=localStorage.getItem(KEY);
-      if(cached){ var cp=valid(JSON.parse(cached)); if(cp){ cp.stats=await liveStats(); paint(cp); } return; }
+      if(cached){
+        var cp=valid(JSON.parse(cached));
+        if(cp){
+          // madeAt anlık görüntüsü valid() tarafından düşürülmesin diye ham plandan geri al
+          try{ var raw=JSON.parse(cached); if(raw&&raw.madeAt) cp.madeAt=raw.madeAt; }catch(e){}
+          cp.stats=await liveStats();
+          paint(freshenPlan(cp, cp.stats));   // why/note gün içinde bayatlamasın (AI çağrısı YOK)
+        }
+        return;
+      }
       if(!(window.DHProviders&&DHProviders.chat&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())) return;
       var prof=await profile(); if(!prof) return;
       var sys='Türk öğrencinin İngilizce koçusun. Profile göre BUGÜN için kısa, SOMUT bir plan yap. '
@@ -351,10 +406,14 @@
       var out=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:prof}],{temperature:0.4,max_tokens:400});
       var plan=null; try{ plan=valid(JSON.parse(String(out).replace(/```json|```/g,"").trim())); }catch(e){}
       if(!plan) return;                      // sessiz düşüş: banner statik kalır
+      var st=await liveStats();
+      // ANLIK GÖRÜNTÜ: why/note bu duruma göre yazıldı. Gün içinde durum değişirse
+      // freshenPlan() bunu kıyaslayıp metni AI'sız tazeler (bkz. freshenPlan).
+      plan.madeAt={ count:todaySentences(), due:(st.due||0), ts:Date.now() };
       localStorage.setItem(KEY,JSON.stringify(plan));
       // eski gün planlarını temizle
       for(var i=localStorage.length-1;i>=0;i--){ var k=localStorage.key(i); if(k&&k.indexOf("dh-koc-plan-")===0&&k!==KEY) localStorage.removeItem(k); }
-      plan.stats=await liveStats();
+      plan.stats=st;
       paint(plan);
     }catch(e){}
   }

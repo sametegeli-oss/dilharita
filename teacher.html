@@ -124,6 +124,28 @@ body{
 .keytgl input:checked + .keytgl-track{background:#34d399}
 .keytgl input:checked + .keytgl-track .keytgl-dot{transform:translateX(16px)}
 .note.ok{color:#34d399}
+/* ---- mini test (etkileşimli) ---- */
+.quiz{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:14px}
+.quiz-h{font-weight:900;color:var(--teacher);font-size:14px;margin-bottom:6px}
+.quiz-q{font-size:15px;line-height:1.6;margin-bottom:12px;white-space:pre-wrap}
+.quiz-q .en{color:var(--green-strong);font-weight:800}
+.quiz-opts{display:flex;flex-direction:column;gap:8px}
+.quiz-opt{display:flex;align-items:center;gap:10px;text-align:left;width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:12px 13px;font:700 14px Nunito,sans-serif;cursor:pointer;transition:border-color .15s,background .15s}
+.quiz-opt:hover:not(:disabled){border-color:var(--teacher)}
+.quiz-opt:disabled{cursor:default}
+.quiz-opt .ltr{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:#0b1120;border:1px solid var(--border);display:grid;place-items:center;font-size:12px;font-weight:900}
+.quiz-opt .otx{flex:1;min-width:0}
+.quiz-opt .otx .en{color:var(--green-strong);font-weight:800}
+.quiz-opt.correct{border-color:var(--ok);background:#34d39922}
+.quiz-opt.correct .ltr{background:var(--ok);color:#06281c;border-color:transparent}
+.quiz-opt.wrong{border-color:var(--bad);background:#f8717122}
+.quiz-opt.wrong .ltr{background:var(--bad);color:#3c0d0d;border-color:transparent}
+.quiz-exp{margin-top:12px;font-size:14px;line-height:1.65;color:var(--muted);border-top:1px dashed var(--border);padding-top:11px;display:none}
+.quiz-exp.show{display:block}
+.quiz-exp .en{color:var(--green-strong);font-weight:800}
+.quiz-verdict{font-weight:900;margin-bottom:4px}
+.quiz-verdict.ok{color:var(--ok)}
+.quiz-verdict.bad{color:var(--bad)}
 .sheet a{color:#93c5fd}
 .row2{display:flex;gap:8px}.row2 .btn{flex:1}
 .note{font-size:13px;min-height:16px;margin:4px 0 8px}.note.bad{color:var(--bad)}.note.ok{color:var(--ok)}
@@ -500,6 +522,60 @@ function renderRich(text){
   return html;
 }
 
+/* ---------- MİNİ TEST AYRIŞTIRICI ----------
+   AI'nın ürettiği "9. MİNİ TEST" bölümünü ham metinden ayırıp
+   tıklanabilir şıklara çevirir. Biçim beklendiği gibi değilse null döner —
+   bu durumda metin ESKİSİ GİBİ düz gösterilir (bozulma olmaz, sadece o sefer
+   koça sayılmaz). AI çıktısı garanti biçimli değildir, bilinçli tolerans. */
+function parseQuiz(text){
+  try{
+    var src=String(text||"");
+    // "MİNİ TEST" başlığını bul (9., ###, ** vb. süslerden bağımsız)
+    var mHead=/(?:^|\n)[^\S\n]*(?:#{1,4}[^\S\n]*)?(?:\*\*)?[^\S\n]*(?:9[.)][^\S\n]*)?M[İI]N[İI][^\S\n]+TEST[^\n]*\n/i.exec(src);
+    if(!mHead) return null;
+    var head=mHead.index + mHead[0].length;   // testin gövdesi burada başlar
+    var body=src.slice(head);
+    var before=src.slice(0, mHead.index);     // testten önceki tüm açıklama
+
+    // Şıklar: A) / A. / A- / **A)** ... satır başında
+    var optRe=/(?:^|\n)[^\S\n]*(?:\*\*)?[^\S\n]*([A-D])[).\-:][^\S\n]*(?:\*\*)?[^\S\n]*([^\n]+)/g;
+    var opts=[], seen={}, m;
+    while((m=optRe.exec(body))){
+      var L=m[1].toUpperCase();
+      if(seen[L]) continue;               // aynı harf iki kez → ilkini al
+      var t=m[2].replace(/\*\*/g,"").trim();
+      if(!t) continue;
+      seen[L]=1; opts.push({letter:L, text:t, at:m.index});
+    }
+    if(opts.length!==4) return null;       // 4 şık yoksa güvenme
+
+    // Soru metni: test başlığı ile ilk şık arasındaki kısım
+    var q=body.slice(0, opts[0].at).replace(/\*\*/g,"").trim();
+    if(!q) return null;
+
+    // Cevap: son şıktan SONRAKİ metinde "Cevap ... X" ara (şıkların içine bakma)
+    var tail=body.slice(opts[3].at + 1);
+    // "Cevap: B" / "**Cevap:** (C)" / "Cevap" satırı + altında "B" — hepsini kabul et.
+    // Harften sonra harf/Türkçe harf gelmemeli ki "Cevap: Bu ..." yanlış eşleşmesin.
+    var mAns=/Cevap[^A-D]{0,20}?(?:\*\*)?\s*\(?([A-D])\)?(?![a-zA-ZçğıöşüÇĞİÖŞÜ])/i.exec(tail);
+    // Yedek kalıp: "Cevap: Bu yapıda D şıkkı doğrudur." gibi cümle içi ifade.
+    if(!mAns) mAns=/(?:^|\n)[^\n]*Cevap[^\n]*?\(?([A-D])\)?[^\S\n]*(?:şıkkı|şık|seçeneği|seçenek)/i.exec(tail);
+    if(!mAns) return null;
+    var ans=mAns[1].toUpperCase();
+    if(!seen[ans]) return null;
+
+    // Açıklama: cevap harfinden sonrası. Baştaki noktalama ve tekrar edilen
+    // şık metnini ("B) cities are — çünkü...") temizle.
+    var exp=tail.slice(mAns.index + mAns[0].length).replace(/\*\*/g,"");
+    var ansTxt=(opts.filter(function(o){return o.letter===ans;})[0]||{}).text||"";
+    exp=exp.replace(/^[\s:—\-–.)]*/,"");
+    if(ansTxt && exp.indexOf(ansTxt)===0) exp=exp.slice(ansTxt.length);   // şık metni tekrarlanmışsa at
+    exp=exp.replace(/^[\s:—\-–.)]*/,"").trim();
+
+    return { before:before, question:q, options:opts, answer:ans, explain:exp };
+  }catch(e){ return null; }
+}
+
 const root = document.getElementById("root");
 const State = { en:"", tr:"", history:[], explanation:"" };
 
@@ -620,8 +696,24 @@ async function explain(){
 
 function renderExplanation(reply){
   State.explanation = reply || "";
+
+  // Mini testi ayırmayı dene. Tutmazsa (quiz=null) metin bütün olarak ESKİSİ GİBİ gösterilir.
+  const quiz = parseQuiz(reply);
+  const mainText = quiz ? quiz.before : reply;
+
+  const quizHTML = quiz ? `
+    <div class="quiz" id="quizBox">
+      <div class="quiz-h">📝 MİNİ TEST</div>
+      <div class="quiz-q">${renderRich(quiz.question)}</div>
+      <div class="quiz-opts" id="quizOpts">
+        ${quiz.options.map(o=>`<button class="quiz-opt" data-l="${o.letter}"><span class="ltr">${o.letter}</span><span class="otx">${renderRich(o.text)}</span></button>`).join("")}
+      </div>
+      <div class="quiz-exp" id="quizExp"></div>
+    </div>` : "";
+
   setOut(`
-    <div class="explain">${renderRich(reply)}</div>
+    <div class="explain">${renderRich(mainText)}</div>
+    ${quizHTML}
     <div class="explain-actions">
       <button class="explain-play" id="explainListenBtn">🔊 Oku</button>
       <button class="explain-play" id="sentenceListenBtn">🔊 Cümleyi dinle</button>
@@ -637,6 +729,50 @@ function renderExplanation(reply){
   document.getElementById("regenBtn").onclick = () => explain();
   document.getElementById("explainListenBtn").onclick = () => speakFromScreen(document.querySelector(".explain"));
   document.getElementById("sentenceListenBtn").onclick = () => speakEnglish(State.en);
+  if(quiz) bindQuiz(quiz);
+}
+
+/* Mini test tıklaması → koça GERÇEK etkileşim olarak bildirilir.
+   Şıklar ilk tıklamadan sonra kilitlenir, yani her test bir kez sayılır. */
+function bindQuiz(quiz){
+  const box=document.getElementById("quizOpts");
+  const expEl=document.getElementById("quizExp");
+  if(!box) return;
+  box.querySelectorAll(".quiz-opt").forEach(btn=>{
+    btn.onclick=()=>{
+      const picked=btn.getAttribute("data-l");
+      const ok=(picked===quiz.answer);
+      const correctOpt=quiz.options.find(o=>o.letter===quiz.answer);
+      const pickedOpt=quiz.options.find(o=>o.letter===picked);
+
+      box.querySelectorAll(".quiz-opt").forEach(b=>{
+        b.disabled=true;
+        const L=b.getAttribute("data-l");
+        if(L===quiz.answer) b.classList.add("correct");
+        else if(L===picked) b.classList.add("wrong");
+      });
+
+      if(expEl){
+        expEl.innerHTML = `<div class="quiz-verdict ${ok?"ok":"bad"}">`
+          + (ok ? "✅ Doğru!" : "❌ Yanlış — doğrusu "+quiz.answer+") "+esc(correctOpt?correctOpt.text:""))
+          + `</div>` + (quiz.explain ? renderRich(quiz.explain) : "");
+        expEl.classList.add("show");
+      }
+
+      /* KOÇ BAĞLANTISI: tracker (lessons) + aktivite logu + görev işareti + koç yorumu */
+      try{
+        if(window.dhCoachEvaluate) window.dhCoachEvaluate({
+          ok: ok,
+          en: State.en || (correctOpt?correctOpt.text:""),
+          answer: pickedOpt?pickedOpt.text:picked,
+          sentenceId: State.en ? ("teacher:"+State.en.slice(0,60)) : "",
+          trackKind: "lesson",
+          module: "teacher",
+          topic: "dilbilgisi"
+        });
+      }catch(e){}
+    };
+  });
 }
 
 async function askFollowup(q){

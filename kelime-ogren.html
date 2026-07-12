@@ -163,8 +163,21 @@
   function setStatus(word, st){
     try{ if(window.DHProgress) DHProgress.setStatus("word:"+word, st); }catch(e){}
   }
-  function recordResult(word, correct){
+  function recordResult(word, correct, meaning, picked){
     try{ if(window.DHProgress) DHProgress.recordResult("word:"+word, correct); }catch(e){}
+    /* KOÇ BAĞLANTISI: kelime testi artık gerçek etkileşim olarak sayılır —
+       tracker (lessons), aktivite logu, görev işareti ve koç yorumu tetiklenir. */
+    try{
+      if(window.dhCoachEvaluate) window.dhCoachEvaluate({
+        ok: !!correct,
+        en: word,
+        answer: correct ? (meaning||"") : (picked||""),
+        sentenceId: "word:"+word,
+        trackKind: "lesson",
+        module: "vocabulary",
+        topic: "kelime"
+      });
+    }catch(e){}
   }
 
   // ---------- görsel: Openverse (anahtarsız) → Pexels (anahtar varsa) ----------
@@ -309,10 +322,10 @@
       $("revealBtn").style.display="none";
       speak(item.word);
     };
-    $("noBtn").onclick=function(){ setStatus(item.word,1); recordResult(item.word,false); next(); };
+    $("noBtn").onclick=function(){ setStatus(item.word,1); recordResult(item.word,false,item.anlamlar[0],"(bilmiyordum)"); next(); };
     $("yesBtn").onclick=function(){
       statusOf(item.word).then(function(cur){
-        setStatus(item.word, cur>=1?2:1); recordResult(item.word,true); next();
+        setStatus(item.word, cur>=1?2:1); recordResult(item.word,true,item.anlamlar[0],item.anlamlar[0]); next();
       });
     };
   }
@@ -352,7 +365,7 @@
           if(i===correctIdx) x.classList.add("correct");
           else if(i===sel) x.classList.add("wrong");
         });
-        recordResult(item.word, correctSel);
+        recordResult(item.word, correctSel, correct, opts[sel]);
         statusOf(item.word).then(function(cur){
           if(correctSel) setStatus(item.word, cur>=1?2:1);
           else setStatus(item.word, 1);
