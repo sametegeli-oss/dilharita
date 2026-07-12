@@ -1,0 +1,30 @@
+name: Günlük Rapor Maili
+
+on:
+  schedule:
+    # 05:00 UTC = 08:00 Türkiye saati (Türkiye yaz saati uygulamadığı için sabit)
+    - cron: "0 5 * * *"
+  workflow_dispatch: {}   # test için elle de tetiklenebilir (Actions sekmesinden "Run workflow")
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Bağımlılıkları yükle
+        run: npm install firebase-admin
+
+      - name: Raporu gönder
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_UID: ${{ secrets.FIREBASE_UID }}
+          EMAILJS_SERVICE_ID: ${{ secrets.EMAILJS_SERVICE_ID }}
+          EMAILJS_TEMPLATE_ID: ${{ secrets.EMAILJS_TEMPLATE_ID }}
+          EMAILJS_PUBLIC_KEY: ${{ secrets.EMAILJS_PUBLIC_KEY }}
+          EMAILJS_PRIVATE_KEY: ${{ secrets.EMAILJS_PRIVATE_KEY }}
+        run: node daily-report.mjs
