@@ -212,6 +212,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   function chip(emoji,label,color){ return '<div style="display:flex;align-items:center;gap:6px;background:#0f1f3a;border:1px solid '+color+'55;border-radius:999px;padding:6px 12px;font:700 12px system-ui;color:#e8eef7"><span>'+emoji+'</span>'+label+'</div>'; }
   try{
     var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=tr.days||{}, d=new Date(), streak=0;
+    if(!days[d.toISOString().slice(0,10)]) d.setDate(d.getDate()-1);   // bugün henüz boşsa dünden say (seri erken sıfırlanmasın)
     for(;;){ var k=d.toISOString().slice(0,10); if(days[k]){streak++; d.setDate(d.getDate()-1);} else break; }
     if(streak>=30) badges.push(chip("🏆","30 gün kesintisiz","#facc15"));
     else if(streak>=7) badges.push(chip("🔥",streak+" gün seri","#f97316"));
@@ -270,6 +271,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
     var streak=0;
     try{
       var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=tr.days||{}, d=new Date();
+      if(!days[d.toISOString().slice(0,10)]) d.setDate(d.getDate()-1);
       for(;;){ var k=d.toISOString().slice(0,10); if(days[k]){streak++; d.setDate(d.getDate()-1);} else break; }
     }catch(e){}
     var size = streak===0 ? 34 : streak<3 ? 40 : streak<7 ? 48 : streak<14 ? 56 : streak<30 ? 64 : 72;

@@ -54,6 +54,7 @@
   async function profile(){
     var p=[];
     try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, d=new Date(), st=0;
+      if(!(tr.days||{})[d.toISOString().slice(0,10)]) d.setDate(d.getDate()-1);
       for(;;){ if((tr.days||{})[d.toISOString().slice(0,10)]){st++;d.setDate(d.getDate()-1);} else break; }
       if(st) p.push("Seri:"+st+" gün.");
     }catch(e){}

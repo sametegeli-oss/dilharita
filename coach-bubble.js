@@ -253,6 +253,7 @@
   async function buildStatusMessage(){
     var tr={}; try{ tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
     var d=new Date(), streak=0;
+    if(!(tr.days||{})[d.toISOString().slice(0,10)]) d.setDate(d.getDate()-1);
     for(;;){ if((tr.days||{})[d.toISOString().slice(0,10)]){streak++; d.setDate(d.getDate()-1);} else break; }
     var due=0, learned=0;
     try{
