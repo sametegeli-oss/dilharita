@@ -198,7 +198,13 @@ body{
 .gbtn{flex:1;border:none;color:#fff;border-radius:11px;padding:12px;
   font:800 14px Nunito,sans-serif;cursor:pointer}
 .gbtn:active{transform:scale(.96)}
-.g-hard{background:#ef4444}.g-good{background:#3b82f6}.g-easy{background:#22c55e}
+/* Notlama düğmeleri VARSAYILAN GRİ durur; sistemin verdiği not (.sel) renklenir.
+   Böylece hangi notun kaydedildiği tek bakışta belli olur. */
+.gbtn{background:#334155;color:#94a3b8}
+.gbtn:hover{background:#475569;color:#cbd5e1}
+.g-hard.sel{background:#ef4444;color:#fff}
+.g-good.sel{background:#3b82f6;color:#fff}
+.g-easy.sel{background:#22c55e;color:#fff}
 .gbtn.sel{outline:2px solid #fff;outline-offset:2px}
 
 .next-btn{margin-top:14px;width:100%;background:linear-gradient(135deg,#16a34a,#15803d);
@@ -407,10 +413,10 @@ body{
   #gradeDock .grade-row{display:block!important}
   #gradeDock .grade-q{display:none!important}
   #gradeDock .grade-btns{display:flex!important;flex-direction:column!important;gap:20px!important}
-  #gradeDock .gbtn{width:100%!important;min-height:110px!important;border-radius:24px!important;font-size:34px!important;font-weight:950!important;color:#fff!important}
-  #gradeDock .g-hard{background:linear-gradient(180deg,#ff5959,#ea3434)!important}
-  #gradeDock .g-good{background:linear-gradient(180deg,#2b8dff,#176eff)!important}
-  #gradeDock .g-easy{background:linear-gradient(180deg,#31c75e,#20ad48)!important}
+  #gradeDock .gbtn{width:100%!important;min-height:110px!important;border-radius:24px!important;font-size:34px!important;font-weight:950!important;background:#334155!important;color:#94a3b8!important}
+  #gradeDock .g-hard.sel{background:linear-gradient(180deg,#ff5959,#ea3434)!important;color:#fff!important}
+  #gradeDock .g-good.sel{background:linear-gradient(180deg,#2b8dff,#176eff)!important;color:#fff!important}
+  #gradeDock .g-easy.sel{background:linear-gradient(180deg,#31c75e,#20ad48)!important;color:#fff!important}
   #gradeDock .gbtn.sel{outline:4px solid rgba(255,255,255,.28)!important}
   #gradeDock .next-btn{width:100%!important;min-height:110px!important;border-radius:24px!important;font-size:36px!important;font-weight:950!important;background:linear-gradient(180deg,#ffac20,#ee8d00)!important;color:#fff!important;border:0!important}
 }
@@ -487,10 +493,10 @@ body{
   #gradeDock .grade-row{display:block!important}
   #gradeDock .grade-q{display:none!important}
   #gradeDock .grade-btns{display:flex!important;flex-direction:column!important;gap:8px!important}
-  #gradeDock .gbtn{width:100%!important;min-height:46px!important;border-radius:12px!important;font-size:16px!important;font-weight:900!important;color:#fff!important}
-  #gradeDock .g-hard{background:linear-gradient(180deg,#ff5959,#ea3434)!important}
-  #gradeDock .g-good{background:linear-gradient(180deg,#2b8dff,#176eff)!important}
-  #gradeDock .g-easy{background:linear-gradient(180deg,#31c75e,#20ad48)!important}
+  #gradeDock .gbtn{width:100%!important;min-height:46px!important;border-radius:12px!important;font-size:16px!important;font-weight:900!important;background:#334155!important;color:#94a3b8!important}
+  #gradeDock .g-hard.sel{background:linear-gradient(180deg,#ff5959,#ea3434)!important;color:#fff!important}
+  #gradeDock .g-good.sel{background:linear-gradient(180deg,#2b8dff,#176eff)!important;color:#fff!important}
+  #gradeDock .g-easy.sel{background:linear-gradient(180deg,#31c75e,#20ad48)!important;color:#fff!important}
   #gradeDock .gbtn.sel{outline:3px solid rgba(255,255,255,.28)!important}
   #gradeDock .next-btn{width:100%!important;min-height:46px!important;border-radius:12px!important;font-size:16px!important;font-weight:900!important;background:linear-gradient(180deg,#ffac20,#ee8d00)!important;color:#fff!important;border:0!important}
 }
