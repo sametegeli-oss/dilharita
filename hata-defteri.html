@@ -190,21 +190,88 @@ var DH=(function(){
     "i'm":["i","am"],"you're":["you","are"],"he's":["he","is"],"she's":["she","is"],"it's":["it","is"],
     "we're":["we","are"],"they're":["they","are"],"i've":["i","have"],"i'll":["i","will"],"i'd":["i","would"]};
   var PRONOUN_GROUPS=[["he","she","it"],["him","her","it"],["his","her","its"]];
-  function tok(s){ return (String(s||"").match(/[A-Za-z']+(?:-[A-Za-z']+)*|\d+/g) || []); }
+
+  /* SAYI ↔ KELİME: "20" ile "twenty" aynı cevaptır. Rakamla yazmak hata değildir,
+     ama sistem eskiden bunu yanlış sayıyordu (metin karşılaştırması yaptığı için). */
+  var NUM_WORDS={
+    "0":"zero","1":"one","2":"two","3":"three","4":"four","5":"five","6":"six","7":"seven",
+    "8":"eight","9":"nine","10":"ten","11":"eleven","12":"twelve","13":"thirteen","14":"fourteen",
+    "15":"fifteen","16":"sixteen","17":"seventeen","18":"eighteen","19":"nineteen","20":"twenty",
+    "30":"thirty","40":"forty","50":"fifty","60":"sixty","70":"seventy","80":"eighty","90":"ninety",
+    "100":"hundred","1000":"thousand","1000000":"million"
+  };
+  var ORDINALS={
+    "1st":"first","2nd":"second","3rd":"third","4th":"fourth","5th":"fifth","6th":"sixth",
+    "7th":"seventh","8th":"eighth","9th":"ninth","10th":"tenth","11th":"eleventh","12th":"twelfth",
+    "13th":"thirteenth","20th":"twentieth","21st":"twentyfirst","30th":"thirtieth"
+  };
+  /* Rakamı İngilizce kelimeye çevir (21-99 arası bileşikler dahil: 21 -> twentyone) */
+  function numToWord(n){
+    if(NUM_WORDS[n]) return NUM_WORDS[n];
+    var v=parseInt(n,10);
+    if(isNaN(v) || v<21 || v>99) return null;
+    var tens=Math.floor(v/10)*10, ones=v%10;
+    if(!ones) return NUM_WORDS[String(tens)]||null;
+    var t=NUM_WORDS[String(tens)], o=NUM_WORDS[String(ones)];
+    return (t&&o) ? (t+o) : null;   // "twentyone" — birleşik yazılır, tire/boşluk farkı önemsiz
+  }
+  /* Her kelimeyi karşılaştırılabilir tek bir biçime indir: rakamsa kelimeye çevir */
+  function canon(w){
+    w=String(w||"").toLowerCase();
+    if(ORDINALS[w]) return ORDINALS[w];
+    if(/^\d+$/.test(w)){ var t=numToWord(w); if(t) return t; }
+    return w.replace(/-/g,"");      // "twenty-one" == "twentyone"
+  }
+
+  function tok(s){ return (String(s||"").match(/[A-Za-z']+(?:-[A-Za-z']+)*|\d+(?:st|nd|rd|th)?/g) || []); }
   function norm(w){ return String(w||"").toLowerCase().replace(/[\u2019\u2018]/g,"'").replace(/[.,!?;:"()]/g,"").trim(); }
   function normSeq(text){
     var out=[];
     tok(text).forEach(function(raw){
       var n=norm(raw);
-      if(CONTRACTIONS[n]) CONTRACTIONS[n].forEach(function(x){ out.push(x); });
-      else out.push(n);
+      if(CONTRACTIONS[n]) CONTRACTIONS[n].forEach(function(x){ out.push(canon(x)); });
+      else out.push(canon(n));
     });
     return out;
   }
   function pronounEq(a,b){
     return PRONOUN_GROUPS.some(function(g){ return g.indexOf(a)>=0 && g.indexOf(b)>=0; });
   }
-  return { tok:tok, norm:norm, normSeq:normSeq, pronounEq:pronounEq };
+
+  /* Bileşik sayı düzleştirme: "one hundred" (2 kelime) ile "100" (1 kelime) eşit sayılsın.
+     Dizideki ardışık sayı kelimelerini tek bir sayısal değere indirir.
+     Örn: [one,hundred] -> [100] · [twenty,one] -> [21] · [a,hundred] -> [100] */
+  var W2N={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,
+    eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,
+    nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
+  var MULT={hundred:100,thousand:1000,million:1000000};
+  function collapseNums(seq){
+    var out=[], i=0;
+    while(i<seq.length){
+      var w=seq[i];
+      // "a hundred" = "one hundred"
+      var isA = (w==="a" && MULT[seq[i+1]]);
+      if(W2N[w]===undefined && !MULT[w] && !isA && !/^\d+$/.test(w)){ out.push(w); i++; continue; }
+
+      var total=0, cur=0, used=0;
+      while(i<seq.length){
+        var t=seq[i];
+        if(t==="a" && MULT[seq[i+1]]){ cur=1; i++; used++; continue; }
+        if(/^\d+$/.test(t)){ cur = cur ? cur : 0; cur += parseInt(t,10); i++; used++; continue; }
+        if(W2N[t]!==undefined){ cur += W2N[t]; i++; used++; continue; }
+        if(MULT[t]){
+          cur = (cur||1) * MULT[t];
+          if(MULT[t]>=1000){ total += cur; cur=0; }
+          i++; used++; continue;
+        }
+        break;
+      }
+      if(!used){ out.push(seq[i]); i++; continue; }
+      out.push(String(total+cur));
+    }
+    return out;
+  }
+  return { tok:tok, norm:norm, normSeq:normSeq, pronounEq:pronounEq, canon:canon, collapseNums:collapseNums };
 })();
 
 /* 🧹 Kabul Edilenleri Temizle — kesin/deterministik kurallar (zamir eşdeğerliği, kısaltma
@@ -392,7 +459,8 @@ var Drill=(function(){
 
   function isCorrect(answer, target){
     if(!answer || !target) return false;
-    var a=DH.normSeq(answer), b=DH.normSeq(target);
+    /* Sayılar düzleştirilir: "20"=="twenty", "one hundred"=="100", "twenty-one"=="21" */
+    var a=DH.collapseNums(DH.normSeq(answer)), b=DH.collapseNums(DH.normSeq(target));
     if(a.length!==b.length) return false;
     for(var k=0;k<a.length;k++){
       if(a[k]===b[k]) continue;
@@ -401,16 +469,18 @@ var Drill=(function(){
     return true;
   }
 
-  /* Kelime kelime fark (LCS) — nerede hata yaptığını göster */
+  /* Kelime kelime fark (LCS). Karşılaştırma canon() ile yapılır (20 == twenty),
+     ama ekranda kullanıcının/hedefin GERÇEK yazımı gösterilir. */
+  function eqw(a,b){ return DH.canon(DH.norm(a))===DH.canon(DH.norm(b)); }
   function diff(answer, target){
     var A=DH.tok(answer), B=DH.tok(target), n=A.length, m=B.length, dp=[];
     for(var x=0;x<=n;x++){ dp[x]=[]; for(var y=0;y<=m;y++) dp[x][y]=0; }
     for(var x=1;x<=n;x++) for(var y=1;y<=m;y++)
-      dp[x][y]=(DH.norm(A[x-1])===DH.norm(B[y-1])) ? dp[x-1][y-1]+1
+      dp[x][y]=eqw(A[x-1],B[y-1]) ? dp[x-1][y-1]+1
               : Math.max(dp[x-1][y], dp[x][y-1]);
     var out=[], p=n, q=m;
     while(p>0 && q>0){
-      if(DH.norm(A[p-1])===DH.norm(B[q-1])){ out.unshift({t:"ok",w:B[q-1]}); p--; q--; }
+      if(eqw(A[p-1],B[q-1])){ out.unshift({t:"ok",w:B[q-1]}); p--; q--; }
       else if(dp[p-1][q] >= dp[p][q-1]){ out.unshift({t:"extra",w:A[p-1]}); p--; }
       else { out.unshift({t:"missing",w:B[q-1]}); q--; }
     }

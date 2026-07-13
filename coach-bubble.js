@@ -233,7 +233,14 @@
         return;
       }
       if(!opts.ok && sameSentencePast.length){
-        dhCoachSay("DİKKAT: Bu cümlede daha önce de hata yapmıştın. "+(opts.commonMistake||"Kelime sırasına ve yardımcı fiile dikkat et.")+" Devam etmeden önce bir kez daha oku.","warn");
+        /* commonMistake ÖRNEK CÜMLE içerir ve o cümlede cevabın kelimeleri geçer
+           ("He has twenty years" → "twenty" sızar). Hata defterinde cümleyi YENİDEN
+           çözerken bu mesaj çıkarsa cevabı söylemiş oluruz. Bu yüzden stripAnswer ile
+           yalnız güvenli açıklama kısmı gösterilir; güvenli değilse genel uyarı verilir. */
+        var _safe = stripAnswer(opts.commonMistake, opts.en);
+        dhCoachSay("DİKKAT: Bu cümlede daha önce de hata yapmıştın. "
+          + (_safe ? (_safe+".") : "Kelime sırasına ve yardımcı fiile dikkat et.")
+          + " Devam etmeden önce bir kez daha oku.","warn");
         return;
       }
       if(!opts.ok){
