@@ -1650,6 +1650,33 @@ function exposeSceneVideoAnswer(s){
 function dhCoachModuleIntro(s){ try{ dhCoachModuleIntro_global(s.module, s.commonMistake, s.en); }catch(e){} }
 function dhCoachModuleIntro_global(mod, cm, target){ try{ window.dhCoachModuleIntro && window.dhCoachModuleIntro(mod, cm, target); }catch(e){} }
 
+/* ---------- ENTER KISAYOLU (tek yerde, bir kez kurulur) ----------
+   İki aşamalı:
+     • Cevap verilmemişken  -> "Kontrol et"
+     • Cevap verilmiş/notlanmışken -> "İleri"
+   Metin kutuları kendi Enter'ını zaten işliyor (cloze sıradaki boşluğa geçer,
+   full/listen doğrudan kontrol eder) — orada bu dinleyici DEVREYE GİRMEZ, çift
+   tetikleme olmasın diye. Buradaki asıl işlev: (a) "kelimeleri sırala" katmanında
+   klavyeden kontrol, (b) her katmanda cevap sonrası Enter ile İleri. */
+document.addEventListener("keydown", function(e){
+  if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+
+  var t=e.target, tag=(t && t.tagName || "").toLowerCase();
+  var typing = (tag==="textarea" || tag==="input" || (t && t.isContentEditable));
+
+  if (!State.answered){
+    // Cevap aşaması: metin kutusundaysa oranın kendi Enter mantığı çalışsın, karışma.
+    if (typing) return;
+    var cb=document.getElementById("checkBtn");
+    if (cb && !cb.disabled){ e.preventDefault(); cb.click(); }
+    return;
+  }
+
+  // Not verilmiş: Enter = İleri (metin kutusunda olsa bile, cevap bitti).
+  var nb=document.getElementById("nextBtn");
+  if (nb){ e.preventDefault(); nb.click(); }
+});
+
 function renderCard(){
   if (State.idx >= State.queue.length) return renderSessionDone();
   const s = currentSentence();
@@ -1835,8 +1862,10 @@ function renderClozeLayer(s){
   if (inputs[0]) inputs[0].focus();
   inputs.forEach((inp, k) => {
     inp.onkeydown = e => {
-      if (e.key === "Enter"){
-        if (k < inputs.length-1) inputs[k+1].focus();
+      if (State.answered) return;   // cevap verildi -> Enter "İleri" olsun
+      if (e.key === "Enter" && !e.isComposing){
+        e.preventDefault();
+        if (k < inputs.length-1) inputs[k+1].focus();   // sıradaki boşluğa geç
         else document.getElementById("checkBtn").click();
       }
     };
@@ -1891,7 +1920,13 @@ function renderFullLayer(s){
   const input = document.getElementById("fullInput");
   input.focus();
   input.onkeydown = e => {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)){ document.getElementById("checkBtn").click(); }
+    // Cevap zaten verildiyse karışma: Enter'ı belge dinleyicisi alsın ve "İleri"yi tetiklesin.
+    if (State.answered) return;
+    // Enter = Kontrol et. Shift+Enter yeni satır bırakır (textarea olduğu için).
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing){
+      e.preventDefault();
+      document.getElementById("checkBtn").click();
+    }
   };
   document.getElementById("hearBtn").onclick = () => speak(s.en);
   document.getElementById("checkBtn").onclick = () => {
@@ -1930,7 +1965,13 @@ function renderListenLayer(s){
 
   const input = document.getElementById("listenInput");
   input.focus();
-  input.onkeydown = e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) document.getElementById("checkBtn").click(); };
+  input.onkeydown = e => {
+    if (State.answered) return;   // cevap verildi -> Enter "İleri" olsun
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing){
+      e.preventDefault();
+      document.getElementById("checkBtn").click();
+    }
+  };
   document.getElementById("checkBtn").onclick = () => {
     const answer = input.value.trim();
     if (!answer) { input.focus(); return; }
@@ -2168,6 +2209,9 @@ function renderFeedback(s, d, grade, layer){
 
   const gradeRoot = dock || fb;
   gradeRoot.querySelectorAll(".gbtn").forEach(b => b.onclick = async () => {
+    // Odağı düğmede bırakma: aksi halde sonraki Enter, tarayıcının varsayılan
+    // davranışıyla AYNI not düğmesini tekrar tıklar. Enter "İleri" olmalı.
+    try{ b.blur(); }catch(e){}
     const g = b.dataset.g;
     const prevBase = State._gradeBase && State._gradeBase[s.id];
     const base = prevBase !== undefined ? prevBase : null;
