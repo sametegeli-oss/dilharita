@@ -1039,35 +1039,85 @@ function showFeedback(title,html,score,ok){
 }
 function openApiSheet(force){const old=document.getElementById("apiSheet");if(old)old.remove();const sheet=document.createElement("div");sheet.className="api-sheet";sheet.id="apiSheet";sheet.innerHTML=`<div class="api-card"><h2>Pexels API Key</h2><p>Video otomatik gelsin diye Pexels API anahtarını bir defa kaydet. Anahtar IndexedDB'de tutulur.</p><input id="apiInput" type="password" placeholder="Pexels API anahtarını yaz"/><div class="api-actions"><button class="btn primary" id="apiSave">Kaydet</button><button class="btn" id="apiClose">Kapat</button><button class="btn red" id="apiDelete">Sil</button></div><p id="apiMsg" style="min-height:20px;font-weight:800;color:#2563eb"></p></div>`;document.body.appendChild(sheet);kvGet(API_KEY).then(k=>{if(k)document.getElementById("apiInput").value=k});document.getElementById("apiClose").onclick=()=>{sheet.remove()};document.getElementById("apiDelete").onclick=async()=>{await kvDel(API_KEY);document.getElementById("apiInput").value="";document.getElementById("apiMsg").textContent="API key silindi."};document.getElementById("apiSave").onclick=async()=>{const key=document.getElementById("apiInput").value.trim();if(!key){document.getElementById("apiMsg").textContent="API key boş.";return}await kvSet(API_KEY,key);sheet.remove();if(currentSentence())autoLoadVideo(currentSentence())};sheet.onclick=e=>{if(e.target===sheet&&!force)sheet.remove()}}
 function hash(str){let h=0;str=String(str||"");for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h|=0}return Math.abs(h).toString(36)}
-async function boot(){renderLoading();try{await loadData();
+async function boot(){
+  renderLoading();
   try{
-    var qp=new URLSearchParams(location.search);
-    /* "q" = cümlenin İngilizce metni. index-app.html'den (React) geçişte cümlenin
-       id'sini DOM'dan okuyamadığımız için, metnini gönderip burada id'yi buluyoruz. */
-    var sid=qp.get("sid")||""; var mod=qp.get("module")||"";
-    var q=qp.get("q")||"";
-    if(q && !sid){
-      var qn=q.toLowerCase().replace(/\s+/g," ").replace(/[^a-z0-9' ]/g,"").trim();
-      var hit=State.sentences.find(function(s){
-        return String(s.en||"").toLowerCase().replace(/\s+/g," ").replace(/[^a-z0-9' ]/g,"").trim()===qn;
-      });
-      if(hit){ sid=String(hit.id); if(!mod) mod=hit.module; }
-    }
-    if(qp.get("from")==="ders" || q){
-      window.__dhFromDers=true;
-      if(!mod && sid){
-        var found=null; State.byModule.forEach(function(arr,mname){ if(!found){ for(var i=0;i<arr.length;i++){ if(String(arr[i].id)===String(sid)){ found=mname; break; } } } });
-        if(found) mod=found;
+    await loadData();
+    try{
+      var qp = new URLSearchParams(location.search);
+      var sid = qp.get("sid") || "";
+      var mod = qp.get("module") || "";
+      var q = qp.get("q") || "";
+
+      // --- YENİ: ?q= ile gelen cümleyi normalleştirerek eşleştir ---
+      if (q && !sid) {
+        var qn = q.toLowerCase()
+                  .replace(/\s+/g, " ")
+                  .replace(/[^a-z0-9' ]/g, "")
+                  .trim();
+        var hit = null;
+        for (var i = 0; i < State.sentences.length; i++) {
+          var s = State.sentences[i];
+          var enClean = String(s.en || "")
+                        .toLowerCase()
+                        .replace(/\s+/g, " ")
+                        .replace(/[^a-z0-9' ]/g, "")
+                        .trim();
+          if (enClean === qn) {
+            hit = s;
+            break;
+          }
+        }
+        if (hit) {
+          sid = String(hit.id);
+          if (!mod) mod = hit.module;
+        } else {
+          console.warn("videopractice: ?q= ile eşleşen cümle bulunamadı:", q);
+          // Eşleşme yoksa ana ekrana yönlendir
+          renderPicker();
+          return;
+        }
       }
-      if(mod && State.byModule.has(mod)){
-        var arr=State.byModule.get(mod)||[]; var startIdx=0;
-        if(sid){ for(var i=0;i<arr.length;i++){ if(String(arr[i].id)===String(sid)){ startIdx=i; break; } } }
-        startModule(mod, startIdx); return;
+
+      if (qp.get("from") === "ders" || q) {
+        window.__dhFromDers = true;
+        if (!mod && sid) {
+          var found = null;
+          State.byModule.forEach(function(arr, mname){
+            if (!found) {
+              for (var i = 0; i < arr.length; i++) {
+                if (String(arr[i].id) === String(sid)) {
+                  found = mname;
+                  break;
+                }
+              }
+            }
+          });
+          if (found) mod = found;
+        }
+        if (mod && State.byModule.has(mod)) {
+          var arr = State.byModule.get(mod) || [];
+          var startIdx = 0;
+          if (sid) {
+            for (var i = 0; i < arr.length; i++) {
+              if (String(arr[i].id) === String(sid)) {
+                startIdx = i;
+                break;
+              }
+            }
+          }
+          startModule(mod, startIdx);
+          return;
+        }
       }
+    } catch(e) {
+      console.warn("Parametre işleme hatası:", e);
     }
-  }catch(e){}
-  renderPicker();
-}catch(e){renderError(e.message||String(e))}}
+    renderPicker();
+  } catch(e){
+    renderError(e.message || String(e));
+  }
+}
 if(speechSynthesis)speechSynthesis.onvoiceschanged=()=>{};
 boot();
 })();
