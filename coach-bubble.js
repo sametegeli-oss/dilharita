@@ -203,13 +203,33 @@
         : [];
       var sameSentencePast = hist.filter(function(r){ return r.sentenceId===opts.sentenceId && r.grade==="hard"; });
 
-      if(opts.ok) state.correctStreak++; else state.correctStreak=0;
-      if(opts.ok && state.correctStreak>=3 && state.correctStreak%3===0){
-        dhCoachSay("HARİKASIN! Art arda "+state.correctStreak+" doğru cevap verdin, bu ritmi koru!","praise");
+      /* TAM DOĞRU mu, YALNIZCA YAKIN mı?
+         opts.ok tek başına yetmiyordu: practice.html "good" (Neredeyse) notunu da ok=true
+         gönderiyor. Koç bu ikisini ayırmayınca yarım doğruya "tam doğru yaptın" diyordu
+         ve seriyi de şişiriyordu. Artık:
+           perfect (easy / skor ~100) -> tam övgü, seri sayılır
+           partial (good / Neredeyse) -> "yaklaştın" tonu, TAM DOĞRU DENMEZ, seri SAYILMAZ */
+      var _sc = (opts.score!=null) ? (opts.score<=1 ? opts.score*100 : opts.score) : null;
+      var perfect = opts.grade ? (opts.grade==="easy")
+                  : (opts.ok && (_sc==null || _sc>=99.9));
+      var partial = opts.ok && !perfect;
+
+      if(perfect) state.correctStreak++; else state.correctStreak=0;
+
+      if(perfect && state.correctStreak>=3 && state.correctStreak%3===0){
+        dhCoachSay("HARİKASIN! Art arda "+state.correctStreak+" cümleyi TAM doğru yaptın, bu ritmi koru!","praise");
         return;
       }
-      if(opts.ok && sameSentencePast.length){
+      if(perfect && sameSentencePast.length){
         dhCoachSay("MÜKEMMEL! Daha önce bu cümlede zorlanmıştın, şimdi tam doğru yaptın. Aynı dikkatle devam et!","praise");
+        return;
+      }
+      if(partial && sameSentencePast.length){
+        dhCoachSay("İLERLEME VAR: Bu cümlede daha önce zorlanmıştın, bu sefer çok yaklaştın — ama henüz tam değil. Farkı yukarıdan karşılaştır.","tip");
+        return;
+      }
+      if(partial){
+        dhCoachSay("YAKLAŞTIN, ama tam değil. Kırmızı işaretli yerlere bak — küçük bir düzeltmeyle tam doğru olacak.","tip");
         return;
       }
       if(!opts.ok && sameSentencePast.length){
@@ -235,10 +255,12 @@
         }
       }
       // HİÇBİR ÖZEL KOŞUL TUTMADI: "her aktivitede yorum" ilkesi gereği yine de kısa bir tepki ver.
+      // NOT: partial (Neredeyse) durumu YUKARIDA yakalanıp döndü — buraya yalnız
+      // TAM DOĞRU ya da YANLIŞ düşer. Bu yüzden "tam isabet" demek artık güvenli.
       var DEF_OK=["Doğru! Böyle devam et.","Aferin, tam isabet.","Güzel, ilerliyorsun.","Doğru cevap — bir sonrakine geç."];
       var DEF_NO=["Olmadı, doğrusuna bak ve devam et.","Bu sefer olmadı — açıklamayı oku, unutma.","Yanlış, ama önemli değil — öğrenmenin parçası."];
-      var pick = opts.ok ? DEF_OK[state.evalCount%DEF_OK.length] : DEF_NO[state.evalCount%DEF_NO.length];
-      dhCoachSay(pick, opts.ok?"praise":"warn");
+      var pick = perfect ? DEF_OK[state.evalCount%DEF_OK.length] : DEF_NO[state.evalCount%DEF_NO.length];
+      dhCoachSay(pick, perfect?"praise":"warn");
     }catch(e){}
   };
   /* CEVAP SIZDIRMA KORUMASI:

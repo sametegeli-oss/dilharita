@@ -1987,7 +1987,7 @@ async function evaluate(s, answer, layer){
   }catch(e){ console.warn("Hata defteri kaydı atlandı:", e); }
   renderFeedback(s, d, grade, layer);
   try{ if(window.DHProgress&&DHProgress.recordResult) DHProgress.recordResult("sentence:"+s.id, (grade==="easy"||grade==="good")); }catch(e){}
-  try{ window.dhCoachEvaluate && window.dhCoachEvaluate({sentenceId:s.id, en:s.en, answer:answer, ok:(grade==="easy"||grade==="good"), commonMistake:s.commonMistake, grammar:s.grammarStructure||s.pattern||"", module:s.module||"", layer:layer, score:d.ratio!=null?(d.ratio<=1?d.ratio*100:d.ratio):null}); }catch(e){}
+  try{ window.dhCoachEvaluate && window.dhCoachEvaluate({sentenceId:s.id, en:s.en, answer:answer, ok:(grade==="easy"||grade==="good"), grade:grade, commonMistake:s.commonMistake, grammar:s.grammarStructure||s.pattern||"", module:s.module||"", layer:layer, score:d.ratio!=null?(d.ratio<=1?d.ratio*100:d.ratio):null}); }catch(e){}
   // tekrar.html ile AYNI MANTIK: cevap tam doğru değilse iki düğme sunulur —
   // (1) 🤖 AI'ya "anlamca doğru mu?" diye sor (düzenlenebilir kriter promptuyla)
   // (2) ✨ Gemini'de aç (anahtar gerekmez, karşılaştırmayı yeni sekmede açar)
