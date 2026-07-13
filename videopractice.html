@@ -1042,7 +1042,13 @@ function finishVoiceCheck(s){
   }
   checkEnglish(finalText,"voice",finalScore,best.confidence||0);
 }
-
+document.getElementById("photoBackBtn").onclick=()=>{
+  try{ 
+    localStorage.setItem("dh-bridge-return", JSON.stringify({en:s.en, module:s.module, at:Date.now()}));
+    localStorage.setItem("dh-module-open", s.module); // YENİ SATIR
+  }catch(e){}
+  location.href="./index-app.html";
+};
 async function checkEnglish(heard,mode,preScore,confidence){
   const s=currentSentence(); heard=cleanText(heard);
   if(!heard){showFeedback("Cümle alınamadı","Ses veya yazı algılanamadı.",0,false);return}
