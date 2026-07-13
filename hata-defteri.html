@@ -44,6 +44,22 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
 .drill-bar{height:6px;background:#0a172c;border-radius:99px;overflow:hidden;margin-bottom:16px}
 .drill-bar span{display:block;height:100%;background:linear-gradient(90deg,#3b82f6,#22c55e);transition:width .3s}
 .drill-tr{font-size:22px;font-weight:900;line-height:1.4;margin-bottom:6px}
+
+/* ---- görsel ipucu (yalnız ALAKALI olduğunda gösterilir) ---- */
+.drill-img{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;
+  background:linear-gradient(135deg,#13294d,#0d1e3a);margin-bottom:12px;display:none}
+.drill-img.show{display:block}
+.drill-img img{width:100%;height:100%;object-fit:cover;display:block}
+.drill-img .cap{position:absolute;bottom:6px;right:8px;font-size:10px;color:#e2e8f0;
+  background:#000000a8;padding:3px 8px;border-radius:99px}
+.drill-img .kw{position:absolute;top:8px;left:8px;font-size:11px;font-weight:900;color:#fff;
+  background:#3b82f6cc;padding:4px 10px;border-radius:99px}
+
+/* ---- mikrofon ---- */
+.mic-b{background:#4c1d95;border-color:#7c3aed}
+.mic-b.rec{background:#7f1d1d;border-color:#ef4444;animation:micPulse 1s infinite}
+@keyframes micPulse{0%,100%{opacity:1}50%{opacity:.55}}
+.mic-live{color:#c4b5fd;font-size:13px;margin-top:8px;min-height:18px}
 .drill-hint{color:var(--muted);font-size:13px;margin-bottom:12px}
 .drill-was{background:#2a0f14;border:1px solid #ef444455;border-radius:12px;padding:9px 12px;margin-bottom:12px;font-size:13px;color:#fca5a5}
 .drill-in{width:100%;background:#0a172c;border:2px dashed #3b82f666;border-radius:14px;color:#fff;padding:14px;font:800 18px Nunito,sans-serif;resize:vertical;min-height:64px}
@@ -271,6 +287,106 @@ var DH=(function(){
    SİLME = "bu hata sayılmasın" · ÇÖZME = "bunu gerçekten öğrendim".
    İkisi farklı şeylerdir; eskiden yalnız silme vardı.
    ============================================================ */
+/* ============================================================
+   GÖRSEL İPUCU — index-app'teki image-addon.js ile AYNI MANTIK.
+   Resim cümleden TAHMİN EDİLMEZ: data/sentences.json içinde her cümlenin
+   elle yazılmış kendi "imgQuery" terimi vardır (9417 cümlenin 8934'ünde).
+   O terimle Openverse → Wikimedia Commons → Wikipedia sırasıyla aranır.
+   Terim yoksa ya da resim bulunamazsa HİÇBİR ŞEY GÖSTERİLMEZ — rastgele/
+   alakasız stok fotoğraf konmaz (tekrar.html'de düzeltilen hata tekrarlanmasın).
+   ============================================================ */
+var Img=(function(){
+  var map=null, loading=null, cache={};
+  function normEn(s){ return String(s||"").toLowerCase().replace(/\s+/g," ").replace(/[^a-z0-9' ]/g,"").trim(); }
+
+  function loadMap(){
+    if(map) return Promise.resolve(map);
+    if(loading) return loading;
+    loading=(async function(){
+      var paths=["data/sentences.json","./data/sentences.json","sentences.json"];
+      for(var i=0;i<paths.length;i++){
+        try{
+          var r=await fetch(paths[i]); if(!r.ok) continue;
+          var arr=await r.json(), m={};
+          for(var k=0;k<arr.length;k++){
+            var s=arr[k];
+            if(s && s.en && s.imgQuery) m[normEn(s.en)]=s.imgQuery;
+          }
+          map=m; return m;
+        }catch(e){}
+      }
+      map={}; return map;
+    })();
+    return loading;
+  }
+
+  async function fromOpenverse(q){
+    try{
+      var r=await fetch("https://api.openverse.org/v1/images/?q="+encodeURIComponent(q)+"&page_size=1&mature=false",{headers:{Accept:"application/json"}});
+      if(!r.ok) return null;
+      var j=await r.json(), f=(j.results||[])[0];
+      return f ? (f.thumbnail||f.url) : null;
+    }catch(e){ return null; }
+  }
+  async function fromCommons(q){
+    try{
+      var r=await fetch("https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch="+encodeURIComponent("filetype:bitmap "+q)+"&gsrlimit=1&prop=imageinfo&iiprop=url&iiurlwidth=600");
+      var j=await r.json(), pages=(j.query&&j.query.pages)||{};
+      for(var p in pages){ var ii=pages[p].imageinfo&&pages[p].imageinfo[0]; if(ii&&ii.thumburl) return ii.thumburl; }
+      return null;
+    }catch(e){ return null; }
+  }
+  async function fromWikipedia(q){
+    try{
+      var s=await fetch("https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&list=search&srsearch="+encodeURIComponent(q)+"&srlimit=1");
+      var sj=await s.json(), hit=((sj.query&&sj.query.search)||[])[0];
+      if(!hit) return null;
+      var r=await fetch("https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=pageimages&piprop=thumbnail&pithumbsize=600&pageids="+hit.pageid);
+      var rj=await r.json(), pages=(rj.query&&rj.query.pages)||{};
+      for(var p in pages){ if(pages[p].thumbnail) return pages[p].thumbnail.source; }
+      return null;
+    }catch(e){ return null; }
+  }
+
+  /* Cümlenin görselini getirir. imgQuery YOKSA null döner (zorlama arama YAPILMAZ). */
+  async function find(en){
+    var key=normEn(en);
+    if(!key) return null;
+    if(cache[key]!==undefined) return cache[key];
+
+    var m=await loadMap();
+    var q=m[key];
+    if(!q){ cache[key]=null; return null; }   // ← ALAKASIZLIĞI ÖNLEYEN SATIR: terim yoksa arama yok
+
+    var url=null;
+    var fns=[fromOpenverse, fromCommons, fromWikipedia];
+    for(var i=0;i<fns.length && !url;i++) url=await fns[i](q);
+    cache[key]=url||null;
+    return cache[key];
+  }
+
+  /* Kutuya yerleştir. Bulamazsa kutu gizli kalır. */
+  async function paint(boxId, en){
+    var box=document.getElementById(boxId);
+    if(!box) return;
+    box.classList.remove("show");
+    box.innerHTML="";
+    var m=await loadMap();
+    var q=m[normEn(en)];
+    var url=await find(en);
+    if(!url) return;                          // resim yok -> hiçbir şey gösterme
+    var cur=document.getElementById(boxId);   // kullanıcı bu arada geçmiş olabilir
+    if(!cur || cur!==box) return;
+    box.innerHTML='<img src="'+LearningErrorDB.esc(url)+'" alt="" loading="lazy">'
+      + (q?'<span class="kw">'+LearningErrorDB.esc(q)+'</span>':'')
+      + '<span class="cap">açık kaynak görsel</span>';
+    box.querySelector("img").onerror=function(){ box.classList.remove("show"); box.innerHTML=""; };
+    box.classList.add("show");
+  }
+
+  return { paint:paint };
+})();
+
 var Drill=(function(){
   var queue=[], i=0, done=0, fixed=0, answered=false;
 
@@ -303,7 +419,7 @@ var Drill=(function(){
     return out;
   }
 
-  function close(){ var o=document.getElementById("drillOv"); if(o) o.remove(); load(); }
+  function close(){ stopMic(); var o=document.getElementById("drillOv"); if(o) o.remove(); load(); }
 
   function start(list){
     queue=(list||[]).filter(function(r){ return (r.target||r.sentenceEN); });
@@ -327,6 +443,7 @@ var Drill=(function(){
       '<div class="drill-top"><h3>🎯 Hatanı Düzelt</h3><button class="drill-x" id="dX" title="Kapat">✕</button></div>'
       +'<div class="drill-prog">'+(i+1)+' / '+queue.length+' · Düzeltilen: <b>'+fixed+'</b></div>'
       +'<div class="drill-bar"><span style="width:'+pct+'%"></span></div>'
+      +'<div class="drill-img" id="dImg"></div>'
       +(r.sentenceTR
           ? '<div class="drill-tr">'+LearningErrorDB.esc(r.sentenceTR)+'</div>'
             +'<div class="drill-hint">Bu cümlenin İngilizcesini baştan yaz. Daha önce burada hata yapmıştın.</div>'
@@ -336,15 +453,21 @@ var Drill=(function(){
       +'<textarea class="drill-in" id="dIn" placeholder="İngilizce cümleyi buraya yaz…" autocomplete="off" autocapitalize="sentences" spellcheck="false"></textarea>'
       +'<div class="drill-btns">'
       +  '<button class="btn" id="dHear" style="background:#132647">🔊 Dinle</button>'
+      +  '<button class="btn mic-b" id="dMic">🎙️ Söyle</button>'
       +  '<button class="btn" id="dSkip" style="background:#334155">Atla</button>'
       +  '<button class="btn green" id="dChk">Kontrol et</button>'
       +'</div>'
+      +'<div class="mic-live" id="dLive"></div>'
       +'<div class="drill-res" id="dRes"></div>';
+
+    /* Görsel ipucu: cümlenin imgQuery'si varsa gelir, yoksa kutu hiç görünmez */
+    try{ Img.paint("dImg", target); }catch(e){}
 
     document.getElementById("dX").onclick=function(){ if(confirm("Alıştırmadan çıkılsın mı?")) close(); };
     document.getElementById("dHear").onclick=function(){ say(target); };
-    document.getElementById("dSkip").onclick=function(){ i++; render(); };
+    document.getElementById("dSkip").onclick=function(){ stopMic(); i++; render(); };
     document.getElementById("dChk").onclick=check;
+    document.getElementById("dMic").onclick=toggleMic;
 
     var inp=document.getElementById("dIn");
     inp.focus();
@@ -360,13 +483,65 @@ var Drill=(function(){
     try{ var u=new SpeechSynthesisUtterance(String(t||"")); u.lang="en-US"; u.rate=0.9;
          speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
   }
-  function next(){ i++; render(); }
+
+  /* ---- 🎙️ MİKROFON: cümleyi yazmak yerine söyleyebilirsin ---- */
+  var rec=null, recording=false;
+  function stopMic(){
+    recording=false;
+    try{ if(rec) rec.stop(); }catch(e){}
+    rec=null;
+    var b=document.getElementById("dMic");
+    if(b){ b.classList.remove("rec"); b.textContent="🎙️ Söyle"; }
+  }
+  function toggleMic(){
+    var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){ alert("Bu tarayıcı mikrofonla yazmayı desteklemiyor (Chrome öneriyoruz)."); return; }
+    if(recording){ stopMic(); return; }
+
+    var btn=document.getElementById("dMic");
+    var live=document.getElementById("dLive");
+    var inp=document.getElementById("dIn");
+
+    rec=new SR();
+    rec.lang="en-US";               // cevap İngilizce olacak
+    rec.interimResults=true;
+    rec.continuous=false;
+    recording=true;
+    btn.classList.add("rec");
+    btn.textContent="🔴 Dinliyorum…";
+    if(live) live.textContent="Konuş… (bitince düğmeye tekrar bas)";
+
+    var finalTxt="";
+    rec.onresult=function(e){
+      var interim="";
+      for(var k=e.resultIndex;k<e.results.length;k++){
+        var t=e.results[k][0].transcript;
+        if(e.results[k].isFinal) finalTxt+=t;
+        else interim+=t;
+      }
+      if(inp) inp.value=(finalTxt+interim).trim();
+      if(live) live.textContent=interim?("… "+interim):"";
+    };
+    rec.onerror=function(ev){
+      if(live) live.textContent = (ev&&ev.error==="not-allowed")
+        ? "Mikrofon izni verilmedi." : "Mikrofon hatası, tekrar dene.";
+      stopMic();
+    };
+    rec.onend=function(){
+      stopMic();
+      if(live) live.textContent = (inp&&inp.value.trim()) ? "✓ Yazıldı — kontrol edebilirsin." : "";
+    };
+    try{ rec.start(); }catch(e){ stopMic(); }
+  }
+
+  function next(){ stopMic(); i++; render(); }
 
   async function check(){
     if(answered) return next();
     var r=queue[i], target=r.target||r.sentenceEN||"";
     var ans=(document.getElementById("dIn").value||"").trim();
     if(!ans){ document.getElementById("dIn").focus(); return; }
+    stopMic();
     answered=true; done++;
 
     var ok=isCorrect(ans,target);
