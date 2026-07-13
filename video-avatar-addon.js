@@ -22,6 +22,18 @@ window.__dhVideoAvatarAddon = true;
 var API_KEY="dh-pexels-key";
 var State={ en:"", tr:"", sentence:null, videoPayload:null };
 
+
+/* ---------- videopractice'ten eksik kalan GLOBALLER ----------
+   playTeaching/karaoke bunlara yazıyor; alınmadıkları için
+   'ReferenceError: _lastVisemeWord is not defined' hatası veriyordu. */
+let _nextTapLock=false;
+let _feedbackTimer=null;
+let _statusTimer=null;
+let _dict=null, _dictPromise=null;
+let _lastVisemeWord=-1;
+let _perWordEstimate=420;   /* karaoke kelime süresi (ms). Bildirimi eksikti:
+                               "use strict" altında atama ReferenceError veriyordu. */
+let _pronMap=[];
 /* ---------- videopractice'in beklediği global yardımcılar ---------- */
 function $(id){ return document.getElementById(id); }
 function currentSentence(){ return State.sentence || {en:State.en, tr:State.tr}; }
@@ -779,12 +791,26 @@ function panelHTML(){
 }
 
 function mountPanel(card){
-  if(card.querySelector("#vaPanel")) return card.querySelector("#vaPanel");
+  /* Panel KARTIN İÇİNDE olmalı. Sayfada başka bir yerde kalmış kopya varsa
+     (layout.js kartı yeniden düzenlerken dışarıda bırakabiliyor) onu temizle. */
+  document.querySelectorAll("#vaPanel").forEach(function(old){
+    if(!card.contains(old)) old.remove();
+  });
+  var ex=card.querySelector("#vaPanel");
+  if(ex) return ex;
+
   var p=document.createElement("div");
   p.id="vaPanel"; p.className="va-panel";
   p.innerHTML=panelHTML();
+
+  /* Yerleşim önceliği: Türkçe cümleden sonra -> yoksa İngilizceden sonra
+     -> yoksa düğmelerden önce -> son çare kartın sonu. */
+  var tr=card.querySelector(".card-tr");
+  var en=card.querySelector(".card-en");
   var acts=card.querySelector(".card-actions");
-  if(acts) acts.insertAdjacentElement("beforebegin", p);
+  if(tr && tr.parentNode) tr.insertAdjacentElement("afterend", p);
+  else if(en && en.parentNode) en.insertAdjacentElement("afterend", p);
+  else if(acts && acts.parentNode) acts.insertAdjacentElement("beforebegin", p);
   else card.appendChild(p);
   return p;
 }
