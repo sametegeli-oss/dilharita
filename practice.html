@@ -1982,12 +1982,18 @@ async function evaluate(s, answer, layer){
   renderFeedback(s, d, grade, layer);
   try{ if(window.DHProgress&&DHProgress.recordResult) DHProgress.recordResult("sentence:"+s.id, (grade==="easy"||grade==="good")); }catch(e){}
   try{ window.dhCoachEvaluate && window.dhCoachEvaluate({sentenceId:s.id, en:s.en, answer:answer, ok:(grade==="easy"||grade==="good"), commonMistake:s.commonMistake, grammar:s.grammarStructure||s.pattern||"", module:s.module||"", layer:layer, score:d.ratio!=null?(d.ratio<=1?d.ratio*100:d.ratio):null}); }catch(e){}
-  // tekrar.html ile AYNI MANTIK: kelime eşleşmesi tam değilse iki düğme sunulur —
+  // tekrar.html ile AYNI MANTIK: cevap tam doğru değilse iki düğme sunulur —
   // (1) 🤖 AI'ya "anlamca doğru mu?" diye sor (düzenlenebilir kriter promptuyla)
   // (2) ✨ Gemini'de aç (anahtar gerekmez, karşılaştırmayı yeni sekmede açar)
   // Otomatik çağrı YOK: token ancak sen istersen harcanır.
+  //
+  // EŞİK NOTU: alt sınır (%15) yalnız "full"da anlamlı — orada gerçekten alakasız
+  // bir şey yazılmış olabilir. cloze/order'da d.ratio BOŞLUK oranıdır (tek boşluklu
+  // cümlede yanlış cevap = 0), oysa answer yine TAM CÜMLEDİR; alt sınır uygulanırsa
+  // düğmeler hiç çıkmaz. Bu yüzden alt sınır sadece full katmanında uygulanır.
   var _r = (d.ratio!=null && d.ratio<=1) ? d.ratio*100 : d.ratio;   // 0-1 veya 0-100 gelebiliyor
-  if(grade!=="easy" && answer.trim().length>2 && _r>=15 && _r<99.9){
+  var _minOk = (layer==="full") ? (_r>=15) : true;
+  if(grade!=="easy" && answer.trim().length>2 && _minOk && _r<99.9){
     renderSemRow(s, answer);
   }
 }
