@@ -1,8 +1,13 @@
-/* mode-toggle.js — 📷 Resim / 🎬 Video seçici (v3)
-   v2: nav-bridge ile observer döngüsü çözüldü (donma bitti).
-   v3 YENİ: Video ekranına "← Önceki" butonu eklendi. videopractice'in
-   global State / savePos / renderVideoCard fonksiyonlarına bağlanır;
-   "Sıradaki →" butonunun yanında durur, ilk cümlede pasif olur. */
+/* mode-toggle.js — 📷 Resim / 🎬 Video seçici (v4)
+   v2: nav-bridge observer döngüsü çözüldü (donma bitti).
+   v3: Video ekranına "← Önceki" butonu eklendi.
+   v4 YENİ: CÜMLE SENKRONU — video ekranında ileri/geri gidildikçe alttaki
+   foto ekranı (index-app) da aynı cümleye adım adım taşınır:
+   - Video her cümle değişiminde parent'a {dhVideoStep, delta} mesajı yollar.
+   - Foto tarafı dhNavTrio'daki Önceki/Sonraki proxy butonlarına delta kadar
+     tıklar (React'e dokunmadan).
+   - Modal kapanırken metin doğrulaması yapılır; kayma olduysa cümle metnine
+     göre ileri/geri taranıp yakalanır. */
 (function(){
   "use strict";
   if (window.__dhModeToggle) return;
@@ -12,6 +17,10 @@
   var LS_KEY = "dh-practice-mode";
 
   function setPref(v){ try{ localStorage.setItem(LS_KEY, v); }catch(e){} }
+  function wait(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function norm(s){
+    return String(s||"").toLowerCase().replace(/[^a-z0-9ğüşöçıi]+/g," ").trim();
+  }
 
   /* ---------- Stil ---------- */
   function addStyle(){
@@ -29,7 +38,6 @@
       ".dh-mode-btn:not(.active):hover{color:#e2e8f0;background:#ffffff14}",
       ".dh-mode-toggle.on-photo{vertical-align:middle;margin:0 6px}",
       ".dh-mode-toggle.on-video{position:fixed;left:16px;top:126px;z-index:130}",
-      /* Video ekranı: ← Önceki butonu (Sıradaki'nin solunda) */
       ".dh-prev-float{position:fixed;right:140px;top:72px;z-index:60;border:0;",
       "  border-radius:999px;background:#334155;color:#fff;font-weight:950;",
       "  padding:12px 16px;box-shadow:0 22px 70px rgba(0,0,0,.45);cursor:pointer;",
@@ -42,9 +50,8 @@
       "  .dh-mode-toggle.on-video{top:auto;left:12px;",
       "    bottom:calc(178px + env(safe-area-inset-bottom))}",
       "  .dh-prev-float{top:auto;right:12px;",
-      "    bottom:calc(184px + env(safe-area-inset-bottom))}", /* Sıradaki'nin üstünde */
+      "    bottom:calc(184px + env(safe-area-inset-bottom))}",
       "}",
-      /* Eski tekil butonları görsel olarak gizle — işlev toggle'da */
       "#nbVideoBtn{display:none !important}",
       ".photo-float{display:none !important}"
     ].join("\n");
@@ -55,7 +62,7 @@
   function goVideo(){
     setPref("video");
     var nb = document.getElementById("nbVideoBtn");
-    if (nb){ nb.click(); return; } // nav-bridge modalı: cümle senkronu hazır
+    if (nb){ nb.click(); return; }
     var card = document.querySelector(".card");
     var en = card && card.querySelector(".card-en");
     var text = en ? (en.textContent || "").trim() : "";
@@ -66,44 +73,49 @@
 
   function goPhoto(){
     setPref("photo");
+    // Kapanmadan önce son cümleyi parent'a bildir (doğrulama için)
+    try{
+      if (window.parent !== window && typeof State !== "undefined"){
+        var s = State.queue && State.queue[State.idx];
+        if (s && s.en) parent.postMessage({ type:"dhVideoAt", en:s.en }, "*");
+      }
+    }catch(e){}
     var pb = document.getElementById("photoBackBtn");
-    if (pb){ pb.click(); return; } // kaldığın cümleyi kaydeder + modalı kapatır
+    if (pb){ pb.click(); return; }
     if (window.parent !== window){
       try{ parent.postMessage({ type: "closeVideoModal" }, "*"); return; }catch(e){}
     }
     location.href = "./index-app.html";
   }
 
-  /* ---------- Toggle oluşturma ---------- */
+  /* ---------- Toggle ---------- */
   function buildToggle(){
     var wrap = document.createElement("div");
     wrap.id = "dhModeToggle";
     wrap.className = "dh-mode-toggle " + (IS_VIDEO ? "on-video" : "on-photo");
-
     var bPhoto = document.createElement("button");
     bPhoto.type = "button";
     bPhoto.className = "dh-mode-btn" + (IS_VIDEO ? "" : " active");
     bPhoto.textContent = "📷 Resim";
     bPhoto.onclick = function(){ if (IS_VIDEO) goPhoto(); };
-
     var bVideo = document.createElement("button");
     bVideo.type = "button";
     bVideo.className = "dh-mode-btn" + (IS_VIDEO ? " active" : "");
     bVideo.textContent = "🎬 Video";
     bVideo.onclick = function(){ if (!IS_VIDEO) goVideo(); };
-
     wrap.appendChild(bPhoto);
     wrap.appendChild(bVideo);
     return wrap;
   }
 
-  /* ---------- VIDEO: ← Önceki butonu ---------- */
+  /* ================================================================
+     VIDEO TARAFI
+     ================================================================ */
   var _prevLock = false;
   async function goPrevCard(){
     if (_prevLock) return;
     _prevLock = true;
     try{
-      // uiNextCard'daki temizlik adımlarının aynısı (hepsi global, varsa çağır)
       try{ clearUiTimers(); }catch(e){}
       try{ hideFeedback(); }catch(e){}
       try{ clearVideoStatus(); }catch(e){}
@@ -130,7 +142,6 @@
     var nextBtn = document.getElementById("nextBtn");
     var prev = document.getElementById("dhPrevBtn");
     if (!nextBtn){
-      // Modül seçme / bitiş ekranı: butonu gizle
       if (prev) prev.style.display = "none";
       return;
     }
@@ -141,7 +152,7 @@
       prev.className = "dh-prev-float";
       prev.textContent = "← Önceki";
       prev.onclick = goPrevCard;
-      document.body.appendChild(prev); // body'de → render'lar silemez
+      document.body.appendChild(prev);
     }
     prev.style.display = "";
     var canGoBack = false;
@@ -149,14 +160,101 @@
     prev.disabled = !canGoBack;
   }
 
+  /* Cümle değişimini izle → parent'a adım mesajı yolla */
+  var _syncIdx = null;
+  function syncTick(){
+    try{
+      if (window.parent === window) return;                 // modal içinde değiliz
+      if (typeof State === "undefined") return;
+      if (!State.queue || !State.queue.length) return;
+      if (State.idx < 0 || State.idx >= State.queue.length) return;
+      if (_syncIdx === null){ _syncIdx = State.idx; return; } // başlangıç: ?q= ile zaten eşit
+      if (State.idx !== _syncIdx){
+        var delta = State.idx - _syncIdx;
+        _syncIdx = State.idx;
+        var s = State.queue[State.idx];
+        parent.postMessage({ type:"dhVideoStep", delta:delta, en:(s&&s.en)||"" }, "*");
+      }
+    }catch(e){}
+  }
+
+  /* ================================================================
+     FOTO TARAFI — gelen adımları React'in Önceki/Sonraki proxy
+     butonlarına uygular (#dhNavTrio, index-app-layout.js kuruyor)
+     ================================================================ */
+  var _pending = 0, _stepping = false, _lastVideoEn = "";
+
+  function cardEnText(){
+    var el = document.querySelector(".card .card-en");
+    return el ? (el.textContent || "").trim() : "";
+  }
+  function clickNav(dir){
+    var sel = dir > 0 ? ".dh-nav-next" : ".dh-nav-prev";
+    var b = document.querySelector("#dhNavTrio " + sel);
+    if (b && !b.disabled){ b.click(); return true; }
+    return false;
+  }
+  async function drainSteps(){
+    if (_stepping) return;
+    _stepping = true;
+    try{
+      var guard = 0;
+      while (_pending !== 0 && guard++ < 400){
+        var dir = _pending > 0 ? 1 : -1;
+        if (!clickNav(dir)) break;   // kuyruk sonu/başı: bekleyeni bırak
+        _pending -= dir;
+        await wait(230);             // React'in kartı çizmesine süre tanı
+      }
+    } finally { _stepping = false; }
+  }
+  /* Modal kapandıktan sonra: metin eşleşiyor mu? Kayma varsa tara-yakala */
+  async function verifyAlign(){
+    var i;
+    // Önce bekleyen adımlar bitsin
+    for (i = 0; i < 40 && (_stepping || _pending !== 0); i++){
+      await drainSteps(); await wait(150);
+    }
+    if (!_lastVideoEn) return;
+    var target = norm(_lastVideoEn);
+    if (norm(cardEnText()) === target) return;   // zaten senkron
+    // İleri tara (en fazla 30 adım)
+    for (i = 0; i < 30; i++){
+      if (!clickNav(1)) break;
+      await wait(230);
+      if (norm(cardEnText()) === target) return;
+    }
+    // Bulunamadı: geri tara (gittiğin + 30 adım)
+    var back = i + 30;
+    for (var j = 0; j < back; j++){
+      if (!clickNav(-1)) return;
+      await wait(230);
+      if (norm(cardEnText()) === target) return;
+    }
+  }
+
+  function listenPhotoSync(){
+    window.addEventListener("message", function(e){
+      var d = e.data || {};
+      if (d.type === "dhVideoStep"){
+        _pending += (d.delta | 0);
+        if (d.en) _lastVideoEn = d.en;
+        drainSteps();
+      } else if (d.type === "dhVideoAt"){
+        if (d.en) _lastVideoEn = d.en;
+      } else if (d.type === "closeVideoModal"){
+        // nav-bridge modalı kapatır; biz de hizayı doğrularız
+        setTimeout(function(){ verifyAlign(); }, 450);
+      }
+    });
+  }
+
   /* ---------- Mount ----------
-     KRİTİK KURAL: öğe DOM'da duruyorsa yeniden KONUMLANDIRMA yok
-     (v1'deki donmanın sebebi buydu). Sadece silinmişse eklenir. */
+     KRİTİK KURAL: öğe DOM'da duruyorsa yeniden KONUMLANDIRMA yok. */
   function mountPhoto(){
     if (document.getElementById("dhModeToggle")) return;
     var anchor = document.getElementById("nbVideoBtn") ||
                  document.getElementById("dhNavTrio");
-    if (!anchor) return; // observer tekrar deneyecek
+    if (!anchor) return;
     anchor.insertAdjacentElement("afterend", buildToggle());
   }
 
@@ -165,14 +263,13 @@
       document.body.appendChild(buildToggle());
     }
     ensurePrevBtn();
+    syncTick();
   }
 
   function boot(){
     try{ addStyle(); }catch(e){}
     if (IS_VIDEO){
       mountVideo();
-      // Her kartta root.innerHTML yenileniyor → prev butonunun
-      // durumunu (görünür/pasif) observer ile taze tut
       try{
         new MutationObserver(function(){
           try{ mountVideo(); }catch(e){}
@@ -180,7 +277,9 @@
       }catch(e){
         setInterval(mountVideo, 1500);
       }
+      setInterval(syncTick, 800); // observer kaçırırsa güvence
     } else {
+      listenPhotoSync();
       try{
         new MutationObserver(function(){
           try{ mountPhoto(); }catch(e){}
