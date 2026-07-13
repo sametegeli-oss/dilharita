@@ -882,7 +882,13 @@ function mountVideoRow(){
     return;
   }
   if(existing && existing.previousElementSibling===trio) return; // zaten doğru yerde
-  if(existing) existing.remove();
+  if(existing){
+    /* SİLİP YENİDEN OLUŞTURMAK YERİNE TAŞI: eski kod remove()+create() yapıyordu,
+       bu da üstündeki tıklama işlevlerini (onclick) kaybettiriyordu — "Video getir"
+       ve "🔑" bu yüzden tepki vermiyordu. Var olan düğmeyi taşımak state'i korur. */
+    trio.insertAdjacentElement("afterend", existing);
+    return;
+  }
   var div=document.createElement("div");
   div.innerHTML=videoRowHTML();
   var row=div.firstChild;
@@ -890,13 +896,30 @@ function mountVideoRow(){
 }
 
 function bindPanel(){
-  var vb=$("vaVideoBtn"); if(vb) vb.onclick=function(){ loadVideo(State.en); };
-  var kb=$("vaKeyBtn");   if(kb) kb.onclick=openApiSheet;
-  var tb=$("teachListenBtn"); if(tb) tb.onclick=function(){ playTeaching(currentSentence()); };
-  var mb=$("micBtn");     if(mb) mb.onclick=function(){ startEnglishCheck(); };
-  var ov=$("ownVoiceBtn");if(ov) ov.onclick=function(){ playOwnVoice(); };
+  /* NOT: asıl tıklama garantisi aşağıdaki EVENT DELEGATION ile sağlanıyor
+     (bkz. document click dinleyicisi). Burası yalnız avatar'ı bağlıyor —
+     o, id yerine mount() çağrısı gerektiriyor, delegation'a uygun değil. */
   try{ if(window.DilAvatar&&DilAvatar.mount) DilAvatar.mount("teachAvatar"); }catch(e){}
 }
+
+/* ---------- TIKLAMA GARANTİSİ (event delegation) ----------
+   mountVideoRow/mountPanel bazı durumlarda düğmeleri yeniden oluşturabiliyor
+   (layout.js'in kendi DOM düzenlemesiyle çakışınca). Doğrudan .onclick atamak
+   bu yüzden güvenilmezdi — "Video getir" ve "🔑" tepki vermiyordu.
+   document üzerinde TEK bir dinleyici DOM'dan bağımsız çalışır: hangi eleman
+   yeniden oluşursa oluşsun, id aynı kaldığı sürece tıklama yakalanır. */
+document.addEventListener("click", function(e){
+  var t=e.target.closest("#vaVideoBtn, #vaKeyBtn, #teachListenBtn, #micBtn, #ownVoiceBtn");
+  if(!t) return;
+  e.preventDefault();
+  try{
+    if(t.id==="vaVideoBtn")      loadVideo(State.en);
+    else if(t.id==="vaKeyBtn")   openApiSheet();
+    else if(t.id==="teachListenBtn") playTeaching(currentSentence());
+    else if(t.id==="micBtn")     startEnglishCheck();
+    else if(t.id==="ownVoiceBtn") playOwnVoice();
+  }catch(err){ console.warn("[video-avatar] tıklama hatası", err); }
+}, true);
 
 /* ---------- KARTI İZLE (image-addon.js ile aynı desen) ---------- */
 var _lastEn="";
