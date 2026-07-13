@@ -3,6 +3,7 @@
 <head>
 <script src="./auth-guard.js?v=1"></script>
 <script src="./storage-bridge.js?v=3"></script>
+<script src="./ai-providers.js?v=1"></script>
 <script src="./progress-engine.js?v=2"></script>
 <script src="./coach-bubble.js?v=1"></script>
 <script src="./teacher-policy.js?v=3"></script>
@@ -209,6 +210,23 @@ body{
   border-radius:9px;padding:6px 12px;font:700 12px Nunito,sans-serif;cursor:pointer;
   display:inline-flex;align-items:center;gap:6px;margin-top:6px}
 .audio-btn:hover{background:var(--accent-strong);color:#fff}
+
+/* ---- AI anlam kontrolü + Gemini (tekrar.html ile aynı mantık) ---- */
+.sem-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.b-sem-chk{background:#1e293b;border:1px solid #38bdf855;color:#7dd3fc;border-radius:9px;
+  padding:7px 12px;font:800 12px Nunito,sans-serif;cursor:pointer}
+.b-sem-chk:hover{background:#0284c7;color:#fff}
+.b-gemini{background:#4f46e5;border:1px solid #6366f1;color:#fff;border-radius:9px;
+  padding:7px 12px;font:800 12px Nunito,sans-serif;cursor:pointer}
+.b-gemini:hover{background:#6366f1}
+.sem-note{margin-top:8px;font-size:12px;color:#9fb3d9;line-height:1.5}
+.ai-settings-toggle{color:var(--muted);font-size:11.5px;text-decoration:underline;cursor:pointer;
+  display:block;margin-top:10px;text-align:right}
+.ai-settings-panel{background:#071120;border:1px solid var(--border);border-radius:10px;
+  padding:10px;margin-top:8px;display:none}
+.ai-settings-panel textarea{width:100%;height:110px;background:#0a1628;color:#fff;
+  border:1px solid var(--border);border-radius:6px;padding:8px;font-size:12px;
+  resize:vertical;font-family:system-ui}
 
 /* ---- states ---- */
 .state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -1964,32 +1982,112 @@ async function evaluate(s, answer, layer){
   renderFeedback(s, d, grade, layer);
   try{ if(window.DHProgress&&DHProgress.recordResult) DHProgress.recordResult("sentence:"+s.id, (grade==="easy"||grade==="good")); }catch(e){}
   try{ window.dhCoachEvaluate && window.dhCoachEvaluate({sentenceId:s.id, en:s.en, answer:answer, ok:(grade==="easy"||grade==="good"), commonMistake:s.commonMistake, grammar:s.grammarStructure||s.pattern||"", module:s.module||"", layer:layer, score:d.ratio!=null?(d.ratio<=1?d.ratio*100:d.ratio):null}); }catch(e){}
-  // tekrar.html ile TUTARLI: kelime eşleşmesi tam değilse (farklı ama geçerli bir ifade olabilir)
-  // AI'ya "anlamca doğru mu?" diye sor. SRS/kayıt değişmez — yalnız bilgilendirme notu eklenir.
-  if(grade!=="easy" && d.ratio>=0.15 && d.ratio<0.999 && answer.trim().length>2 &&
-     window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
-    var fbEl=document.getElementById("feedbackArea");
-    var noteEl=document.createElement("div");
-    noteEl.style.cssText="margin-top:8px;font-size:12px;color:#9fb3d9";
-    noteEl.textContent="🤖 Farklı yazdığın için anlamca kontrol ediliyor…";
-    if(fbEl) fbEl.appendChild(noteEl);
-    var semMsgs=[
-      {role:"system",content:"Bir İngilizce öğrenme uygulamasında öğrencinin cümlesinin referans cümleyle AYNI ANLAMA gelip gelmediğini değerlendiriyorsun (farklı kelimeler/yapı olabilir, önemli olan anlam). SADECE tek kelime cevap ver: EVET ya da HAYIR. Başka hiçbir şey yazma."},
-      {role:"user",content:"Referans: "+s.en+"\nÖğrenci: "+answer}
-    ];
-    DHProviders.chat(semMsgs,{temperature:0,max_tokens:120}).then(function(out){
-      var t=String(out||"").trim();
-      if(!fbEl || !document.body.contains(noteEl)) return;
-      if(/evet|yes/i.test(t)){
-        noteEl.style.color="#4ade80";
-        noteEl.textContent="🤖 ✓ Anlamca doğru (farklı ama geçerli bir ifade)";
-      } else if(/hayır|hayir|no/i.test(t)){
-        noteEl.remove();   // hayırsa panel zaten diff/açıklamayı gösteriyor — ek not gerekmez
-      } else {
-        noteEl.remove();
-      }
-    }).catch(function(){ if(noteEl) noteEl.remove(); });
+  // tekrar.html ile AYNI MANTIK: kelime eşleşmesi tam değilse iki düğme sunulur —
+  // (1) 🤖 AI'ya "anlamca doğru mu?" diye sor (düzenlenebilir kriter promptuyla)
+  // (2) ✨ Gemini'de aç (anahtar gerekmez, karşılaştırmayı yeni sekmede açar)
+  // Otomatik çağrı YOK: token ancak sen istersen harcanır.
+  var _r = (d.ratio!=null && d.ratio<=1) ? d.ratio*100 : d.ratio;   // 0-1 veya 0-100 gelebiliyor
+  if(grade!=="easy" && answer.trim().length>2 && _r>=15 && _r<99.9){
+    renderSemRow(s, answer);
   }
+}
+
+/* ---- Yapay zeka denetim promptu (tekrar.html ile ORTAK anahtar: dh-custom-ai-prompt) ---- */
+var DH_DEFAULT_AI_PROMPT = "Sen bir İngilizce öğretmenisin. Öğrencinin yazdığı cümlenin, referans cümleyle ANLAMSAL OLARAK TAMAMEN EŞİT olup olmadığını denetliyorsun. Sadece kelime dizilimi veya birebir eş anlamlı kelime alternatifleri (Örn: 'car' yerine 'automobile', 'start' yerine 'begin' veya 'I think' yerine 'In my opinion') gibi kesin ve geçerli dil bilgisi varyasyonlarını kabul et. Eğer öğrencinin cümlesinde zaman (tense) uyumsuzluğu varsa, cümlenin ana ögelerinden biri eksikse, anlam çok uzaklaşmışsa veya sadece felsefi/uzak bir benzerlik varsa kesinlikle reddet. SADECE tek kelime cevap ver: EVET ya da HAYIR. Başka hiçbir açıklama yapma.";
+function dhGetAiPrompt(){
+  try{ return localStorage.getItem("dh-custom-ai-prompt") || DH_DEFAULT_AI_PROMPT; }
+  catch(e){ return DH_DEFAULT_AI_PROMPT; }
+}
+
+/* Geri bildirim panelinin altına AI kontrol + Gemini düğmelerini ve kriter ayarını basar. */
+function renderSemRow(s, answer){
+  var fbEl=document.getElementById("feedbackArea");
+  if(!fbEl) return;
+  var hasKey = window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey();
+
+  var row=document.createElement("div");
+  row.className="sem-row";
+  row.innerHTML =
+    (hasKey ? '<button class="b-sem-chk" id="btnTriggerSem" type="button">🤖 Farklı Yazdım, Anlamı Kontrol Et</button>' : '')
+    + '<button class="b-gemini" id="btnGemini" type="button">✨ Gemini</button>';
+  fbEl.appendChild(row);
+
+  // Kriter ayar paneli (tekrar.html'deki ⚙️ ile aynı, prompt aynı anahtarda saklanır)
+  if(hasKey){
+    var tog=document.createElement("span");
+    tog.className="ai-settings-toggle";
+    tog.textContent="⚙️ Yapay Zeka Kriter Ayarları";
+    var pan=document.createElement("div");
+    pan.className="ai-settings-panel";
+    pan.innerHTML='<div style="font-size:11px;color:#9fb3d9;margin-bottom:4px;font-weight:bold">Yapay Zekanın Denetleme Promptu (istediğin gibi düzenle):</div>'
+      + '<textarea id="aiPromptInput"></textarea>';
+    fbEl.appendChild(tog); fbEl.appendChild(pan);
+    var ta=pan.querySelector("#aiPromptInput");
+    ta.value=dhGetAiPrompt();
+    tog.onclick=function(){ pan.style.display = (pan.style.display==="block" ? "none" : "block"); };
+    ta.oninput=function(){ try{ localStorage.setItem("dh-custom-ai-prompt", ta.value); }catch(e){} };
+    document.getElementById("btnTriggerSem").onclick=function(){ dhSemanticCheck(s, answer, row); };
+  }
+
+  document.getElementById("btnGemini").onclick=function(){ dhOpenGemini(s, answer); };
+}
+
+/* AI'ya EVET/HAYIR sorar. NOT: notu (SRS) DEĞİŞTİRMEZ — sadece bilgi verir.
+   "Kolay"a çevirmek istersen aşağıdaki grade düğmelerini kullanabilirsin. */
+function dhSemanticCheck(s, answer, row){
+  var btn=document.getElementById("btnTriggerSem");
+  if(btn) btn.style.display="none";
+  var note=document.createElement("div");
+  note.className="sem-note";
+  note.textContent="🤖 Cümlen anlamca kontrol ediliyor…";
+  row.insertAdjacentElement("afterend", note);
+
+  var semMsgs=[
+    {role:"system", content: dhGetAiPrompt()},
+    {role:"user",   content: "Referans: "+s.en+"\nÖğrenci: "+answer}
+  ];
+  function runCheck(tok, isRetry){
+    DHProviders.chat(semMsgs,{temperature:0,max_tokens:tok}).then(function(out){
+      var t=String(out||"").trim();
+      if(/evet|yes/i.test(t)){
+        note.style.color="#4ade80";
+        note.innerHTML="🤖 ✓ Anlamca doğru — farklı ama geçerli bir ifade kurmuşsun."
+          + "<br><span style='color:#9fb3d9'>Notunu değiştirmek istersen aşağıdan <b>Kolay</b>'ı seçebilirsin.</span>";
+      } else if(/hayır|hayir|no/i.test(t)){
+        note.style.color="#f87171";
+        note.textContent="🤖 Belirlediğin kriterlere göre anlam veya yapı farklı çıktı — yukarıdaki açıklamalara bak.";
+      } else if(!isRetry){
+        runCheck(220, true);
+      } else {
+        note.style.color="#f87171";
+        note.textContent="🤖 Model net bir yanıt üretemedi.";
+      }
+    }).catch(function(err){
+      if(!isRetry && err && err.code==="empty") return runCheck(220, true);
+      note.style.color="#f87171";
+      note.textContent = (err && err.code==="no-key")
+        ? "🤖 Kontrol başarısız: API anahtarı bulunamadı."
+        : "🤖 Kontrol başarısız: Sağlayıcı şu an yanıt vermiyor.";
+    });
+  }
+  runCheck(120, false);
+}
+
+/* Gemini'yi yeni sekmede karşılaştırma promptuyla açar (API anahtarı GEREKMEZ). */
+function dhOpenGemini(s, answer){
+  var userEn = (answer||"").trim() || "[boş bıraktım]";
+  var notes = "";
+  if(s.commonMistake) notes += "\n⚠️ Bu cümle için bilinen tipik hata: " + s.commonMistake;
+  if(s.aiExplain)     notes += "\n💡 Sistem açıklaması: " + s.aiExplain;
+  var promptText =
+    "Bir İngilizce öğrenme uygulamasında TR->EN üretimi çalışıyorum. Aşağıdaki eşleşmeyi analiz et:\n\n" +
+    "🇹🇷 Türkçe Kaynak: " + (s.tr||"") + "\n" +
+    "✅ Altın Standart Çeviri: " + s.en + "\n" +
+    "✍️ Benim Yazdığım Çeviri: " + userEn + "\n" +
+    notes + "\n\n" +
+    "Senden ricam:\n1) Dil bilgisi incelemesi yap.\n2) Farklıysa nüansları açıkla.\n3) 10 üzerinden puan ver.\n4) 1 konuşma dili alternatifi ekle.";
+  try{ if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(promptText); }catch(e){}
+  window.open("https://gemini.google.com/app?prompt=" + encodeURIComponent(promptText), "_blank");
 }
 
 function verdictMeta(grade){
