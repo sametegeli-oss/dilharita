@@ -19,8 +19,12 @@
 if (window.__dhVideoAvatarAddon) return;
 window.__dhVideoAvatarAddon = true;
 
-var API_KEY="dh-pexels-key";
-var State={ en:"", tr:"", sentence:null, videoPayload:null };
+var API_KEY="pexels-api-key";   /* videopractice ile AYNI anahtar — kullanıcının önceden girdiği Pexels anahtarı buradan da bulunsun */
+var State={ en:"", tr:"", sentence:null, videoPayload:null,
+  /* ses kaydı fonksiyonları (startOwnVoiceRecording vb.) bu alanları BEKLİYOR;
+     eksik oldukları için "mediaStream is not defined" türü hatalar veriyordu. */
+  listening:false, mediaStream:null, mediaRecorder:null, recordedChunks:[],
+  lastVoiceUrl:"", lastVoiceBlob:null };
 
 
 
@@ -28,6 +32,8 @@ var State={ en:"", tr:"", sentence:null, videoPayload:null };
    'STT is not defined' hatası bu yüzden çıkıyordu. */
 const DAY=1440*60*1000;
 const STT=window.SpeechRecognition||window.webkitSpeechRecognition;
+const STORE="kv";
+const SRS_PREFIX="video-srs:";   /* videopractice ile AYNI önek — SRS kayıtları paylaşılsın */
 const EN_CONTRACTIONS={
   "i'm":["i","am"],"you're":["you","are"],"we're":["we","are"],"they're":["they","are"],
   "he's":["he","is"],"she's":["she","is"],"it's":["it","is"],"that's":["that","is"],
