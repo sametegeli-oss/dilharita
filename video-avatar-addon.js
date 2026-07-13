@@ -23,6 +23,25 @@ var API_KEY="dh-pexels-key";
 var State={ en:"", tr:"", sentence:null, videoPayload:null };
 
 
+
+/* ---------- eksik kalan SABİTLER (const) ----------
+   'STT is not defined' hatası bu yüzden çıkıyordu. */
+const DAY=1440*60*1000;
+const STT=window.SpeechRecognition||window.webkitSpeechRecognition;
+const EN_CONTRACTIONS={
+  "i'm":["i","am"],"you're":["you","are"],"we're":["we","are"],"they're":["they","are"],
+  "he's":["he","is"],"she's":["she","is"],"it's":["it","is"],"that's":["that","is"],
+  "there's":["there","is"],"here's":["here","is"],"what's":["what","is"],"who's":["who","is"],
+  "i've":["i","have"],"you've":["you","have"],"we've":["we","have"],"they've":["they","have"],
+  "i'll":["i","will"],"you'll":["you","will"],"we'll":["we","will"],"they'll":["they","will"],
+  "he'll":["he","will"],"she'll":["she","will"],"it'll":["it","will"],
+  "i'd":["i","would"],"you'd":["you","would"],"we'd":["we","would"],"they'd":["they","would"],
+  "isn't":["is","not"],"aren't":["are","not"],"wasn't":["was","not"],"weren't":["were_not"],
+  "don't":["do","not"],"doesn't":["does","not"],"didn't":["did","not"],
+  "haven't":["have","not"],"hasn't":["has","not"],"hadn't":["had","not"],
+  "won't":["will","not"],"wouldn't":["would","not"],"can't":["can","not"],"cannot":["can","not"],
+  "couldn't":["could","not"],"shouldn't":["should","not"],"mustn't":["must","not"],"let's":["let","us"]
+};
 /* ---------- videopractice'ten eksik kalan GLOBALLER ----------
    playTeaching/karaoke bunlara yazıyor; alınmadıkları için
    'ReferenceError: _lastVisemeWord is not defined' hatası veriyordu. */
@@ -261,6 +280,10 @@ var VA_CSS = `
 .va-feedback{margin-top:10px;border-radius:12px;padding:12px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;font-size:14px}
 .va-feedback.hidden{display:none}
 .kara-line{margin:8px 0;font-size:17px;font-weight:800;line-height:1.7;color:#e2e8f0}
+.va-hidden{position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none}
+/* Eski büyük "Cümleyi Dinle & Öğren" katmanı artık üretilmiyor.
+   Sayfada kalıntısı varsa (önbellek) o da gizlensin: */
+.teach-overlay{display:none !important}
 /* ÇAKIŞMA GİDERİLDİ: word-direct-tools'un "Shadow" aracı gizlendi.
    Sebep: buradaki mikrofon onun her şeyini yapıyor (kayıt, yavaş dinleme) ve ÜSTELİK
    koça bildirip hata defterine ve SRS'e yazıyor — Shadow bunların hiçbirini yapmıyordu.
@@ -775,17 +798,18 @@ function panelHTML(){
   +   '<button class="va-btn" id="vaKeyBtn">🔑</button>'
   +   '<span class="va-status" id="vaStatus"></span>'
   + '</div>'
-  + '<div class="teach-overlay" id="vaTeach">'
-  +   '<div class="teach-head">🎧 Cümleyi Dinle &amp; Öğren</div>'
-  +   '<div class="avatar" id="teachAvatar"></div>'
-  +   '<div id="karaokeLine" class="kara-line"></div>'
-  +   '<div class="teach-tr" id="teachTr"></div>'
-  +   '<button class="teach-listen" id="teachListenBtn">🔊 Dinle</button>'
-  + '</div>'
+  /* "🎧 CÜMLEYİ DİNLE & ÖĞREN" KATMANI KALDIRILDI.
+     İçindeki her şey (Dinle, avatar, karaoke) zaten alttaki araç satırında vardı —
+     tekrar ediyordu ve kartın üstünü kapatıyordu.
+     Avatar ve teachTr ELEMENTLERİ silinmedi: telaffuz/karaoke fonksiyonları onlara
+     yazıyor, kaldırılırsa hata verirler. Görünmez (.va-hidden) tutuluyorlar. */
+  + '<div id="karaokeLine" class="kara-line"></div>'
+  + '<div class="va-hidden"><div class="avatar" id="teachAvatar"></div><div id="teachTr"></div></div>'
   + '<div class="va-mic-wrap">'
-  +   '<button class="mic-btn" id="micBtn">🎙️</button>'
-  +   '<div class="mic-caption" id="micCaption">Tıkla ve İngilizceyi oku</div>'
+  +   '<button class="va-btn" id="teachListenBtn">🔊 Dinle</button>'
+  +   '<button class="mic-btn" id="micBtn">🎙️ Oku</button>'
   +   '<button class="va-btn" id="ownVoiceBtn">▶ Kendi sesimi dinle</button>'
+  +   '<span class="mic-caption" id="micCaption"></span>'
   + '</div>'
   + '<div class="va-feedback hidden" id="vaFeedback"></div>';
 }
