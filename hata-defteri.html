@@ -33,6 +33,40 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
 .en{font-size:18px;font-weight:900;margin-bottom:4px}.tr{color:#cbd5e1;margin-bottom:8px}.ans{color:#fca5a5}.target{color:#86efac}
 .types{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.type{font-size:12px;border:1px solid #3b82f666;color:#bfdbfe;border-radius:999px;padding:3px 8px}
 .empty{text-align:center;color:var(--muted);padding:40px}
+
+/* ---- 🎯 ALIŞTIRMA MODU (hatalarını yeniden çöz) ---- */
+.drill-ov{position:fixed;inset:0;z-index:999;background:#040b18e6;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px}
+.drill{background:var(--panel);border:1px solid var(--line);border-radius:22px;width:100%;max-width:620px;max-height:92vh;overflow-y:auto;padding:22px}
+.drill-top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.drill-top h3{margin:0;font-size:20px;flex:1}
+.drill-x{background:#132647;border:1px solid var(--line);color:#fff;border-radius:10px;width:36px;height:36px;font-size:18px;cursor:pointer}
+.drill-prog{color:var(--muted);font-size:13px;margin-bottom:14px}
+.drill-bar{height:6px;background:#0a172c;border-radius:99px;overflow:hidden;margin-bottom:16px}
+.drill-bar span{display:block;height:100%;background:linear-gradient(90deg,#3b82f6,#22c55e);transition:width .3s}
+.drill-tr{font-size:22px;font-weight:900;line-height:1.4;margin-bottom:6px}
+.drill-hint{color:var(--muted);font-size:13px;margin-bottom:12px}
+.drill-was{background:#2a0f14;border:1px solid #ef444455;border-radius:12px;padding:9px 12px;margin-bottom:12px;font-size:13px;color:#fca5a5}
+.drill-in{width:100%;background:#0a172c;border:2px dashed #3b82f666;border-radius:14px;color:#fff;padding:14px;font:800 18px Nunito,sans-serif;resize:vertical;min-height:64px}
+.drill-in:focus{outline:none;border-color:var(--blue);border-style:solid}
+.drill-btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.drill-btns .btn{flex:1;min-width:120px}
+.drill-res{margin-top:14px;border-radius:14px;padding:14px;display:none}
+.drill-res.show{display:block}
+.drill-res.ok{background:#052e1a;border:1px solid #22c55e66}
+.drill-res.no{background:#2a0f14;border:1px solid #ef444466}
+.drill-verdict{font-weight:950;font-size:17px;margin-bottom:8px}
+.drill-res.ok .drill-verdict{color:#4ade80}
+.drill-res.no .drill-verdict{color:#f87171}
+.drill-diff{font-size:19px;font-weight:800;line-height:1.7;margin-bottom:8px}
+.drill-diff .w-ok{color:#4ade80}
+.drill-diff .w-bad{color:#f87171;text-decoration:underline wavy #f87171}
+.drill-diff .w-missing{color:#f87171;opacity:.55;text-decoration:line-through}
+.drill-diff .w-extra{color:#fbbf24;font-style:italic;opacity:.75}
+.drill-correct{color:#86efac;font-weight:900;font-size:17px}
+.drill-note{color:var(--muted);font-size:13px;margin-top:8px;line-height:1.5}
+.drill-done{text-align:center;padding:26px 10px}
+.drill-done .big{font-size:46px;margin-bottom:8px}
+@media(max-width:760px){.drill{padding:16px;border-radius:16px}.drill-tr{font-size:19px}}
 @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.actions{width:100%}.btn{flex:1}.top{align-items:flex-start}.title h1{font-size:23px}}
 </style>
 </head>
@@ -42,6 +76,7 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
     <a class="back" href="./index.html">←</a>
     <div class="title"><h1>Hata Defteri</h1><p>Kullanıcının yanlışlarından öğrenen sistem: hangi konuda, hangi kelimede, hangi cümlede hata yapıldığını toplar.</p></div>
     <div class="actions">
+      <button class="btn" id="drillBtn" style="background:#b45309;border-color:#f59e0b">🎯 Hatalarını Çöz</button>
       <a class="btn purple" href="./akilli-tekrar.html">🧠 Akıllı Tekrar</a>
       <button class="btn green" id="exportBtn">JSON dışa aktar</button>
       <button class="btn" id="revalBtn" style="background:#0e7490">🧹 Kabul Edilenleri Temizle</button>
@@ -101,8 +136,17 @@ function renderRecords(){
       <div>Doğrusu: <span class="target">${LearningErrorDB.esc(r.target||"")}</span></div>
       <div class="meta" style="margin-top:8px"><span>Skor: <b>${Math.round(r.score||0)}%</b></span><span>Not: <b>${LearningErrorDB.esc(r.grade||"")}</b></span><span>Gramer: ${LearningErrorDB.esc(r.grammar||"")}</span></div>
       <div class="types">${(r.types||[]).map(t=>`<span class="type">${LearningErrorDB.esc(t)}</span>`).join("")}</div>
-      <button class="btn red" data-del="${LearningErrorDB.esc(r.id)}" style="margin-top:10px;padding:6px 12px;font-size:12px">🗑 Bu kaydı sil</button>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn" data-drill="${LearningErrorDB.esc(r.id)}" style="background:#b45309;border-color:#f59e0b;padding:6px 12px;font-size:12px">🎯 Bunu çöz</button>
+        <button class="btn red" data-del="${LearningErrorDB.esc(r.id)}" style="padding:6px 12px;font-size:12px">🗑 Bu kaydı sil</button>
+      </div>
     </div>`).join(""):`<div class="empty">Bu filtrede kayıt yok.</div>`;
+  $("records").querySelectorAll("[data-drill]").forEach(function(b){
+    b.onclick=function(){
+      var rec=RECORDS.find(function(r){ return String(r.id)===b.getAttribute("data-drill"); });
+      if(rec) Drill.start([rec]);
+    };
+  });
   $("records").querySelectorAll("[data-del]").forEach(function(b){
     b.onclick=async function(){
       if(!confirm("Bu tek kayıt silinsin mi? (Anlamsız/kabul edilebilir bir hata olduğunu düşünüyorsan silebilirsin.)")) return;
@@ -120,26 +164,44 @@ $("exportBtn").onclick=()=>{
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hata-defteri.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 };
 
-/* 🧹 Kabul Edilenleri Temizle — kesin/deterministik kurallar (zamir eşdeğerliği, kısaltma
-   esnekliği). AI çağrısı YOK, anlık ve ücretsiz. */
-(function(){
+/* ---- ORTAK METİN KURALLARI ----
+   Kısaltma (isn't = is not) ve zamir (he/she/it) toleransı. Hem "Kabul Edilenleri
+   Temizle" hem 🎯 Alıştırma modu AYNI kuralları kullanır ki bir yerde "doğru" sayılan
+   cevap öbür yerde "yanlış" sayılmasın. */
+var DH=(function(){
   var CONTRACTIONS={"isn't":["is","not"],"aren't":["are","not"],"wasn't":["was","not"],"weren't":["were","not"],
     "don't":["do","not"],"doesn't":["does","not"],"didn't":["did","not"],"can't":["can","not"],"won't":["will","not"],
     "i'm":["i","am"],"you're":["you","are"],"he's":["he","is"],"she's":["she","is"],"it's":["it","is"],
     "we're":["we","are"],"they're":["they","are"],"i've":["i","have"],"i'll":["i","will"],"i'd":["i","would"]};
-  function tokenize(s){ return (String(s||"").match(/[A-Za-z']+(?:-[A-Za-z']+)*|\d+/g) || []); }
-  function norm(w){ return w.toLowerCase().replace(/[\u2019\u2018]/g,"'").replace(/[.,!?;:"()]/g,"").trim(); }
-  function normSeq(text){ var out=[]; tokenize(text).forEach(function(raw){ var n=norm(raw); if(CONTRACTIONS[n]) CONTRACTIONS[n].forEach(function(x){out.push(x);}); else out.push(n); }); return out; }
   var PRONOUN_GROUPS=[["he","she","it"],["him","her","it"],["his","her","its"]];
+  function tok(s){ return (String(s||"").match(/[A-Za-z']+(?:-[A-Za-z']+)*|\d+/g) || []); }
+  function norm(w){ return String(w||"").toLowerCase().replace(/[\u2019\u2018]/g,"'").replace(/[.,!?;:"()]/g,"").trim(); }
+  function normSeq(text){
+    var out=[];
+    tok(text).forEach(function(raw){
+      var n=norm(raw);
+      if(CONTRACTIONS[n]) CONTRACTIONS[n].forEach(function(x){ out.push(x); });
+      else out.push(n);
+    });
+    return out;
+  }
+  function pronounEq(a,b){
+    return PRONOUN_GROUPS.some(function(g){ return g.indexOf(a)>=0 && g.indexOf(b)>=0; });
+  }
+  return { tok:tok, norm:norm, normSeq:normSeq, pronounEq:pronounEq };
+})();
+
+/* 🧹 Kabul Edilenleri Temizle — kesin/deterministik kurallar (zamir eşdeğerliği, kısaltma
+   esnekliği). AI çağrısı YOK, anlık ve ücretsiz. */
+(function(){
   function stillWrong(rec){
     var target=rec.target||rec.sentenceEN||"", answer=rec.answer||"";
     if(!target || !answer) return true;
-    var a=normSeq(answer), b=normSeq(target);
+    var a=DH.normSeq(answer), b=DH.normSeq(target);
     if(a.length!==b.length) return true;
     for(var i=0;i<a.length;i++){
       if(a[i]===b[i]) continue;
-      var grp=PRONOUN_GROUPS.find(function(g){ return g.indexOf(a[i])>=0 && g.indexOf(b[i])>=0; });
-      if(!grp) return true;
+      if(!DH.pronounEq(a[i],b[i])) return true;
     }
     return false;
   }
@@ -200,6 +262,192 @@ $("exportBtn").onclick=()=>{
     load();
   };
 })();
+
+/* ============================================================
+   🎯 ALIŞTIRMA MODU — hata defterini PASİF ARŞİV olmaktan çıkarır.
+   Hatalarını tek tek yeniden çözersin; doğru yaparsan kayıt SRS ile
+   "öğrenildi"ye doğru ilerler (markReviewed), yanlış yaparsan önceliği
+   yükselir ve tekrar karşına çıkar.
+   SİLME = "bu hata sayılmasın" · ÇÖZME = "bunu gerçekten öğrendim".
+   İkisi farklı şeylerdir; eskiden yalnız silme vardı.
+   ============================================================ */
+var Drill=(function(){
+  var queue=[], i=0, done=0, fixed=0, answered=false;
+
+  function isCorrect(answer, target){
+    if(!answer || !target) return false;
+    var a=DH.normSeq(answer), b=DH.normSeq(target);
+    if(a.length!==b.length) return false;
+    for(var k=0;k<a.length;k++){
+      if(a[k]===b[k]) continue;
+      if(!DH.pronounEq(a[k],b[k])) return false;   // he/she/it farkı hata sayılmaz
+    }
+    return true;
+  }
+
+  /* Kelime kelime fark (LCS) — nerede hata yaptığını göster */
+  function diff(answer, target){
+    var A=DH.tok(answer), B=DH.tok(target), n=A.length, m=B.length, dp=[];
+    for(var x=0;x<=n;x++){ dp[x]=[]; for(var y=0;y<=m;y++) dp[x][y]=0; }
+    for(var x=1;x<=n;x++) for(var y=1;y<=m;y++)
+      dp[x][y]=(DH.norm(A[x-1])===DH.norm(B[y-1])) ? dp[x-1][y-1]+1
+              : Math.max(dp[x-1][y], dp[x][y-1]);
+    var out=[], p=n, q=m;
+    while(p>0 && q>0){
+      if(DH.norm(A[p-1])===DH.norm(B[q-1])){ out.unshift({t:"ok",w:B[q-1]}); p--; q--; }
+      else if(dp[p-1][q] >= dp[p][q-1]){ out.unshift({t:"extra",w:A[p-1]}); p--; }
+      else { out.unshift({t:"missing",w:B[q-1]}); q--; }
+    }
+    while(p>0){ out.unshift({t:"extra",w:A[--p]}); }
+    while(q>0){ out.unshift({t:"missing",w:B[--q]}); }
+    return out;
+  }
+
+  function close(){ var o=document.getElementById("drillOv"); if(o) o.remove(); load(); }
+
+  function start(list){
+    queue=(list||[]).filter(function(r){ return (r.target||r.sentenceEN); });
+    if(!queue.length){ alert("Çözülecek uygun kayıt yok (cümle metni eksik kayıtlar atlanır)."); return; }
+    i=0; done=0; fixed=0;
+    var o=document.createElement("div");
+    o.className="drill-ov"; o.id="drillOv";
+    o.innerHTML='<div class="drill" id="drillBox"></div>';
+    document.body.appendChild(o);
+    o.addEventListener("click",function(e){ if(e.target===o && confirm("Alıştırmadan çıkılsın mı?")) close(); });
+    render();
+  }
+
+  function render(){
+    var box=document.getElementById("drillBox"); if(!box) return;
+    if(i>=queue.length) return renderDone(box);
+    answered=false;
+    var r=queue[i], target=r.target||r.sentenceEN||"", pct=Math.round(i/queue.length*100);
+
+    box.innerHTML=
+      '<div class="drill-top"><h3>🎯 Hatanı Düzelt</h3><button class="drill-x" id="dX" title="Kapat">✕</button></div>'
+      +'<div class="drill-prog">'+(i+1)+' / '+queue.length+' · Düzeltilen: <b>'+fixed+'</b></div>'
+      +'<div class="drill-bar"><span style="width:'+pct+'%"></span></div>'
+      +(r.sentenceTR
+          ? '<div class="drill-tr">'+LearningErrorDB.esc(r.sentenceTR)+'</div>'
+            +'<div class="drill-hint">Bu cümlenin İngilizcesini baştan yaz. Daha önce burada hata yapmıştın.</div>'
+          : '<div class="drill-tr">Cümleyi hatırla ve yeniden yaz</div>'
+            +'<div class="drill-hint">Bu kayıtta Türkçe karşılık yok. 🔊 Dinle ile ipucu alabilirsin.</div>')
+      +(r.answer?'<div class="drill-was">Önceki yanlış cevabın: '+LearningErrorDB.esc(r.answer)+'</div>':'')
+      +'<textarea class="drill-in" id="dIn" placeholder="İngilizce cümleyi buraya yaz…" autocomplete="off" autocapitalize="sentences" spellcheck="false"></textarea>'
+      +'<div class="drill-btns">'
+      +  '<button class="btn" id="dHear" style="background:#132647">🔊 Dinle</button>'
+      +  '<button class="btn" id="dSkip" style="background:#334155">Atla</button>'
+      +  '<button class="btn green" id="dChk">Kontrol et</button>'
+      +'</div>'
+      +'<div class="drill-res" id="dRes"></div>';
+
+    document.getElementById("dX").onclick=function(){ if(confirm("Alıştırmadan çıkılsın mı?")) close(); };
+    document.getElementById("dHear").onclick=function(){ say(target); };
+    document.getElementById("dSkip").onclick=function(){ i++; render(); };
+    document.getElementById("dChk").onclick=check;
+
+    var inp=document.getElementById("dIn");
+    inp.focus();
+    inp.onkeydown=function(e){
+      if(e.key==="Enter" && !e.shiftKey && !e.isComposing){
+        e.preventDefault();
+        if(answered) next(); else check();
+      }
+    };
+  }
+
+  function say(t){
+    try{ var u=new SpeechSynthesisUtterance(String(t||"")); u.lang="en-US"; u.rate=0.9;
+         speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
+  }
+  function next(){ i++; render(); }
+
+  async function check(){
+    if(answered) return next();
+    var r=queue[i], target=r.target||r.sentenceEN||"";
+    var ans=(document.getElementById("dIn").value||"").trim();
+    if(!ans){ document.getElementById("dIn").focus(); return; }
+    answered=true; done++;
+
+    var ok=isCorrect(ans,target);
+    if(ok) fixed++;
+
+    var res=document.getElementById("dRes");
+    res.className="drill-res show "+(ok?"ok":"no");
+    var dh=diff(ans,target).map(function(p){
+      var c=p.t==="ok"?"w-ok":p.t==="extra"?"w-extra":"w-missing";
+      return '<span class="'+c+'">'+LearningErrorDB.esc(p.w)+'</span>';
+    }).join(" ");
+
+    res.innerHTML=
+      '<div class="drill-verdict">'+(ok?"✅ Doğru! Bu hatayı düzelttin.":"❌ Hâlâ tam değil.")+'</div>'
+      +'<div class="drill-diff">'+dh+'</div>'
+      +'<div class="drill-correct">Doğrusu: '+LearningErrorDB.esc(target)+'</div>'
+      +'<div class="drill-note">'+(ok
+          ? "Kaydın önceliği düştü. Birkaç kez daha doğru yaparsan defterden tamamen çıkacak."
+          : "Kayıt defterde kalıyor ve önceliği yükseldi — yakında tekrar karşına çıkacak.")+'</div>'
+      +'<div class="drill-btns" style="margin-top:12px">'
+      +  '<button class="btn green" id="dNext">'+((i+1)>=queue.length?"Bitir":"Sonraki ›")+'</button>'
+      +'</div>';
+
+    document.getElementById("dNext").onclick=next;
+    say(target);
+
+    /* SRS: markReviewed learning-error-system.js'te ZATEN VARDI ama hiçbir yerde
+       kullanılmıyordu. Doğruysa öncelik düşer/vade uzar, yanlışsa öncelik yükselir. */
+    try{
+      if(LearningErrorDB.markReviewed)
+        await LearningErrorDB.markReviewed(r.id, { grade: ok?"easy":"hard", score: ok?100:0 });
+    }catch(e){}
+
+    /* Koça GERÇEK çalışma olarak bildir (kayıt silmek değil, hatayı düzeltmek) */
+    try{
+      window.dhCoachEvaluate && window.dhCoachEvaluate({
+        ok:ok, grade: ok?"easy":"hard", score: ok?100:0,
+        en:target, answer:ans, sentenceId:r.sentenceId||("err:"+r.id),
+        trackKind:"review", module:r.module||"", grammar:r.grammar||"",
+        commonMistake:r.commonMistake||""
+      });
+    }catch(e){}
+  }
+
+  function renderDone(box){
+    var pct=done?Math.round(100*fixed/done):0;
+    box.innerHTML=
+      '<div class="drill-done">'
+      +'<div class="big">'+(pct>=80?"🎉":pct>=50?"👍":"💪")+'</div>'
+      +'<h3 style="margin:0 0 8px">Alıştırma bitti</h3>'
+      +'<p style="color:#9fb1d0;margin:0 0 6px">'+done+' hata çözdün, <b style="color:#4ade80">'+fixed+'</b> tanesini düzelttin.</p>'
+      +'<p style="color:#9fb1d0;margin:0 0 18px;font-size:13px">Doğru çözdüklerinin önceliği düştü. Birkaç tekrar daha yaparsan defterden çıkacaklar.</p>'
+      +'<button class="btn green" id="dClose" style="padding:12px 24px">Deftere dön</button>'
+      +'</div>';
+    document.getElementById("dClose").onclick=close;
+    try{
+      window.dhCoachMarkStepDone && window.dhCoachMarkStepDone("hata-defteri.html");
+      window.dhLogActivity && window.dhLogActivity("🎯 Hata alıştırması: "+done+" çözüldü, "+fixed+" düzeltildi","drill");
+    }catch(e){}
+  }
+
+  return { start:start };
+})();
+
+/* Toplu alıştırma: vadesi gelenler ve yüksek öncelikliler önce */
+document.getElementById("drillBtn").onclick=function(){
+  var now=Date.now();
+  var pool=RECORDS.filter(function(r){ return (r.target||r.sentenceEN); });
+  if(!pool.length){ alert("Defterde çözülecek hata yok."); return; }
+  var PRI={high:0,medium:1,low:2};
+  pool.sort(function(a,b){
+    var da=new Date(a.dueAt||0).getTime()||0, db=new Date(b.dueAt||0).getTime()||0;
+    var ua=(da<=now)?0:1, ub=(db<=now)?0:1;
+    if(ua!==ub) return ua-ub;                                   // vadesi gelen önce
+    var pa=PRI[a.reviewPriority]!=null?PRI[a.reviewPriority]:3;
+    var pb=PRI[b.reviewPriority]!=null?PRI[b.reviewPriority]:3;
+    if(pa!==pb) return pa-pb;                                   // yüksek öncelik önce
+    return (a.score||0)-(b.score||0);                           // düşük skor önce
+  });
+  Drill.start(pool.slice(0,20));                                // oturum başına en fazla 20
+};
 
 load();
 </script>
