@@ -1,17 +1,3 @@
-/* nav-bridge.js — index-app.html (foto) ile videopractice.html (video) arasında
-   geçiş köprüsü. React'e (assets/app.js, minified) HİÇ dokunmuyor; sadece DOM'u
-   izleyip cümle metnini okuyor ve bir "🎬 Video" düğmesi ekliyor.
-
-   YÖN 1 (foto -> video): TAM SENKRONİZE. Kartın .card-en metnini videopractice'e
-   ?q=<cümle> ile yolluyoruz; orada bu metinle eşleşen cümle bulunup TAM O CÜMLEDE
-   açılıyor (videopractice.html'deki boot() güncellemesi).
-
-   YÖN 2 (video -> foto): TAM SENKRONİZE EDİLEMEZ. React kendi iç state'ini
-   kontrol ediyor, URL parametresi okumuyor ve dışarıdan "şu cümleye git" komutu
-   kabul etmiyor. Bunu React'in DOM'unu kör tıklamalarla simüle ederek "çözmek"
-   yanlış elemana basıp state'i bozma riski taşırdı. Bunun yerine: videopractice
-   sayfasından dönüşte kaldığın cümleyi localStorage'dan okuyup üstte bir
-   bildirim olarak GÖSTERİYORUZ (best-effort, dürüst bir orta yol). */
 (function(){
   "use strict";
   if (window.__dhNavBridge) return;
@@ -23,18 +9,17 @@
       .nb-video-btn{background:#4c1d95;border:1px solid #7c3aed;color:#fff;border-radius:10px;
         padding:8px 14px;font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}
       .nb-video-btn:hover{background:#5b21b6}
-      .nb-return-banner{position:fixed;left:12px;right:12px;top:12px;z-index:9999;
-        background:#0f172a;border:1px solid #7c3aed88;border-radius:14px;padding:12px 16px;
-        color:#e2e8f0;font:600 13px Nunito,system-ui,sans-serif;display:flex;gap:10px;
-        align-items:center;box-shadow:0 12px 34px rgba(0,0,0,.4)}
-      .nb-return-banner b{color:#c4b5fd}
-      .nb-return-x{margin-left:auto;background:transparent;border:0;color:#94a3b8;
-        font-size:16px;cursor:pointer;padding:4px 8px}
+      .nb-sync-overlay{position:fixed;inset:0;background:#0b1120;z-index:100000;
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        color:#fff;font:700 16px Nunito,sans-serif;gap:12px}
+      .nb-spinner{width:30px;height:30px;border:3px solid #ffffff24;border-top-color:#7c3aed;
+        border-radius:50%;animation:nbspin .6s linear infinite}
+      @keyframes nbspin{to{transform:rotate(360deg)}}
     `;
     document.head.appendChild(css);
   }
 
-  /* ---- YÖN 1: foto -> video (tam senkronize) ---- */
+  /* ---- FOTO -> VİDEO GEÇİŞİ ---- */
   function mountVideoButton(){
     var trio = document.getElementById("dhNavTrio");
     var existing = document.getElementById("nbVideoBtn");
@@ -42,7 +27,7 @@
       if (trio && existing.previousElementSibling !== trio) trio.insertAdjacentElement("afterend", existing);
       return;
     }
-    if (!trio) return;   // layout.js henüz kurmadıysa bekle, sonraki mutasyonda tekrar denenir
+    if (!trio) return;
     var b = document.createElement("button");
     b.id = "nbVideoBtn"; b.className = "nb-video-btn";
     b.textContent = "🎬 Video";
@@ -56,49 +41,84 @@
     trio.insertAdjacentElement("afterend", b);
   }
 
-  /* ---- YÖN 2: video -> foto dönüşü (best-effort bildirim) ---- */
-  function showReturnBanner(){
+  /* ---- VİDEO -> FOTO TAM SENKRONİZASYON (React DOM Otomasyonu) ---- */
+  var syncAttempts = 0;
+  function trySyncReactState() {
     var raw;
-    try{ raw = localStorage.getItem("dh-bridge-return"); }catch(e){ return; }
+    try { raw = localStorage.getItem("dh-bridge-return"); } catch(e) { return; }
     if (!raw) return;
+    
     var info;
-    try{ info = JSON.parse(raw); }catch(e){ return; }
+    try { info = JSON.parse(raw); } catch(e) { return; }
     if (!info || !info.en) return;
-    // 10 dakikadan eskiyse gösterme (bayat bilgi kafa karıştırmasın)
-    if (Date.now() - (info.at||0) > 10*60*1000){
-      try{ localStorage.removeItem("dh-bridge-return"); }catch(e){}
+    
+    // 5 dakikadan eskiyse senkronize etme
+    if (Date.now() - (info.at||0) > 5*60*1000) {
+      try { localStorage.removeItem("dh-bridge-return"); } catch(e){}
       return;
     }
-    if (document.getElementById("nbReturnBanner")) return;
 
-    var box = document.createElement("div");
-    box.id = "nbReturnBanner";
-    box.className = "nb-return-banner";
-    box.innerHTML =
-      '<span>📍 Videodan döndün — kaldığın cümle: <b></b>'
-      + (info.module ? ' · '+esc2(info.module) : '') + '</span>'
-      + '<button class="nb-return-x" id="nbReturnX">✕</button>';
-    box.querySelector("b").textContent = info.en;
-    document.body.appendChild(box);
-    document.getElementById("nbReturnX").onclick = function(){
-      box.remove();
-      try{ localStorage.removeItem("dh-bridge-return"); }catch(e){}
-    };
-    setTimeout(function(){ if(box.parentNode) box.remove(); }, 15000);
+    // Kullanıcıya yükleniyor ekranı göster (Arka plandaki zıplamaları görmesin)
+    var overlay = document.getElementById("nbSyncOverlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "nbSyncOverlay";
+      overlay.className = "nb-sync-overlay";
+      overlay.innerHTML = '<div class="nb-spinner"></div><div>Kaldığınız cümle senkronize ediliyor...</div>';
+      document.body.appendChild(overlay);
+    }
+
+    var cardEnEl = document.querySelector(".card-en");
+    if (!cardEnEl) {
+      // React henüz yüklenmediyse veya modül seçilmediyse beklemeye devam et
+      syncAttempts++;
+      if (syncAttempts > 40) { // 4 saniye zaman aşımı
+        if (overlay) overlay.remove();
+        return;
+      }
+      setTimeout(trySyncReactState, 100);
+      return;
+    }
+
+    var currentEn = cardEnEl.textContent.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    var targetEn = info.en.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    if (currentEn === targetEn) {
+      // Tam eşleşme sağlandı! Başarı çizgisi.
+      if (overlay) overlay.remove();
+      try { localStorage.removeItem("dh-bridge-return"); } catch(e){}
+    } else {
+      // Eşleşme yoksa React uygulamasının "Sıradaki / İleri" butonunu bulup simüle tıkla
+      // Projenizdeki ileri butonunun sınıfını veya id'sini (örn: .next-btn veya #nextBtn) buraya yazın.
+      // Genel bir yaklaşım olarak "Sıradaki" veya "İleri" içeren butonları arayalım:
+      var nextBtn = Array.from(document.querySelectorAll("button")).find(function(btn) {
+        var text = (btn.textContent || "").toLowerCase();
+        return text.includes("sonraki") || text.includes("ileri") || text.includes("→");
+      });
+
+      if (nextBtn) {
+        nextBtn.click();
+        // Bir sonraki karta geçişi beklemek için kısa bir döngü
+        setTimeout(trySyncReactState, 80);
+      } else {
+        // İleri butonu bulunamadıysa işlemi sonlandır
+        if (overlay) overlay.remove();
+      }
+    }
   }
-  function esc2(s){ return String(s).replace(/[&<>"']/g, function(c){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
-  }); }
 
   function boot(){
     try{ addStyle(); }catch(e){}
-    try{ showReturnBanner(); }catch(e){}
     try{
       new MutationObserver(function(){ try{ mountVideoButton(); }catch(e){} })
         .observe(document.body, {childList:true, subtree:true});
       mountVideoButton();
     }catch(e){}
+    
+    // Video sayfasından dönüş kontrolünü tetikle
+    try { trySyncReactState(); } catch(e){}
   }
+  
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 })();
