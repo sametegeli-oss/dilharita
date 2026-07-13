@@ -275,8 +275,15 @@ var VA_CSS = `
 .teach-hint{display:none!important}
 .va-panel{margin:12px 0}
 .va-media{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#0f172a;border:1px solid #ffffff14;display:none}
-.va-media.has-video{display:block}
-.va-media video{width:100%;height:100%;object-fit:cover;display:block}
+.va-media.has-video,.va-media.has-photo{display:block}
+/* Video ve fotoğraf TAM AYNI konumda üst üste durur (ikisi de inset:0);
+   hangisinin göründüğü DOM taşımadan, yalnızca visibility ile değişir. */
+.va-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;visibility:hidden}
+.va-media.has-video video{visibility:visible}
+.va-photo-slot{position:absolute;inset:0;visibility:visible}
+.va-media.has-video .va-photo-slot{visibility:hidden}
+.va-photo-slot .sm-img-wrap{position:absolute;inset:0;margin:0 !important;border:none !important;border-radius:0 !important}
+.va-photo-slot .sm-img{width:100%;height:100%;object-fit:cover;display:block}
 .va-loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:#cbd5e1;font-size:13px;background:#020617aa}
 .va-row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
 .va-btn{background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:10px;padding:8px 12px;font-weight:800;cursor:pointer;font-size:13px}
@@ -795,20 +802,14 @@ function openApiSheet(){
 /* ---------- PANELİ KARTA BAS ---------- */
 function panelHTML(){
   return ''
+  /* TEK MEDYA KUTUSU: image-addon.js'in bulduğu fotoğraf (.sm-img-wrap) buraya
+     TAŞINIR (kopyalanmaz) — video yüklenene kadar fotoğraf görünür, "Video getir"
+     ile video onun yerini alır. Artık iki ayrı görsel alanı yok. */
   + '<div class="va-media" id="vaMedia">'
   +   '<video id="vaVideo" muted playsinline loop></video>'
+  +   '<div class="va-photo-slot" id="vaPhotoSlot"></div>'
   +   '<div class="va-loading" id="vaLoading"><span>Yükleniyor…</span></div>'
   + '</div>'
-  + '<div class="va-row">'
-  +   '<button class="va-btn" id="vaVideoBtn">🎬 Video getir</button>'
-  +   '<button class="va-btn" id="vaKeyBtn">🔑</button>'
-  +   '<span class="va-status" id="vaStatus"></span>'
-  + '</div>'
-  /* "🎧 CÜMLEYİ DİNLE & ÖĞREN" KATMANI KALDIRILDI.
-     İçindeki her şey (Dinle, avatar, karaoke) zaten alttaki araç satırında vardı —
-     tekrar ediyordu ve kartın üstünü kapatıyordu.
-     Avatar ve teachTr ELEMENTLERİ silinmedi: telaffuz/karaoke fonksiyonları onlara
-     yazıyor, kaldırılırsa hata verirler. Görünmez (.va-hidden) tutuluyorlar. */
   + '<div id="karaokeLine" class="kara-line"></div>'
   + '<div class="va-hidden"><div class="avatar" id="teachAvatar"></div><div id="teachTr"></div></div>'
   + '<div class="va-mic-wrap">'
@@ -820,6 +821,30 @@ function panelHTML(){
   + '<div class="va-feedback hidden" id="vaFeedback"></div>';
 }
 
+/* Video düğmelerini AYRI bir kutuya koyuyoruz; bu kutu karta değil, layout.js'in
+   ürettiği "Sonraki" ile "Google Translate/Ai'ye Sor" satırları arasına, sağ
+   sütuna yerleştirilir (bkz. mountVideoRow). Panelin geri kalanı kartta kalır. */
+function videoRowHTML(){
+  return '<div class="va-row" id="vaRow">'
+  +   '<button class="va-btn" id="vaVideoBtn">🎬 Video getir</button>'
+  +   '<button class="va-btn" id="vaKeyBtn">🔑</button>'
+  +   '<span class="va-status" id="vaStatus"></span>'
+  + '</div>';
+}
+
+/* image-addon.js'in eklediği fotoğrafı TEK kutuya taşır (var olan img'i taşır,
+   yenisini fetch etmez — image-addon zaten önbellekli/isabetli arıyor). */
+function relocatePhoto(card){
+  var slot=$("vaPhotoSlot"), media=$("vaMedia");
+  if(!slot) return;
+  var wrap=card.querySelector(".sm-img-wrap");
+  if(wrap && wrap.parentElement!==slot){
+    slot.innerHTML="";
+    slot.appendChild(wrap);
+  }
+  if(media) media.classList.toggle("has-photo", !!slot.querySelector(".sm-img-wrap"));
+}
+
 function mountPanel(card){
   /* Panel KARTIN İÇİNDE olmalı. Sayfada başka bir yerde kalmış kopya varsa
      (layout.js kartı yeniden düzenlerken dışarıda bırakabiliyor) onu temizle. */
@@ -827,7 +852,7 @@ function mountPanel(card){
     if(!card.contains(old)) old.remove();
   });
   var ex=card.querySelector("#vaPanel");
-  if(ex) return ex;
+  if(ex){ relocatePhoto(card); return ex; }
 
   var p=document.createElement("div");
   p.id="vaPanel"; p.className="va-panel";
@@ -842,7 +867,26 @@ function mountPanel(card){
   else if(en && en.parentNode) en.insertAdjacentElement("afterend", p);
   else if(acts && acts.parentNode) acts.insertAdjacentElement("beforebegin", p);
   else card.appendChild(p);
+  relocatePhoto(card);
   return p;
+}
+
+/* Video düğmelerini "Sonraki" ile "Google Translate/Ai'ye Sor" arasındaki
+   boşluğa yerleştirir. layout.js'in ürettiği #dhNavTrio elemanının hemen
+   ardına ekler — o elemana DOKUNMADAN, sadece yanına ekleniyoruz. */
+function mountVideoRow(){
+  var trio=document.getElementById("dhNavTrio");
+  var existing=document.getElementById("vaRow");
+  if(!trio){
+    // layout.js henüz nav'ı kurmadıysa: düğmeleri geçici olarak panelde bırak.
+    return;
+  }
+  if(existing && existing.previousElementSibling===trio) return; // zaten doğru yerde
+  if(existing) existing.remove();
+  var div=document.createElement("div");
+  div.innerHTML=videoRowHTML();
+  var row=div.firstChild;
+  trio.insertAdjacentElement("afterend", row);
 }
 
 function bindPanel(){
@@ -866,6 +910,7 @@ function scan(){
   if(!en) return;
 
   mountPanel(card);
+  mountVideoRow();
   if(en===_lastEn) return;      // aynı cümle: yeniden kurma
   _lastEn=en;
 
