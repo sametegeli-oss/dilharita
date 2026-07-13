@@ -1,13 +1,12 @@
 /* nav-bridge.js — index-app.html (foto) ile videopractice.html (video) arasında
-   geçiş köprüsü. React'e HİÇ dokunmuyor; sadece DOM'u izleyip "🎬 Video" butonunu
-   ekliyor ve tıklandığında cümle metnini ?q= ile videopractice'e yolluyor.
-
-   Videopractice'de eşleşme yoksa bile fallback olarak o cümleyle devam eder. */
+   köprü. Artık yönlendirme yok; video butonu aynı sayfada modal açıyor ve içine
+   videopractice.html'yi iframe olarak yüklüyor. */
 (function(){
   "use strict";
   if (window.__dhNavBridge) return;
   window.__dhNavBridge = true;
 
+  // CSS ekle
   function addStyle(){
     var css = document.createElement("style");
     css.textContent = `
@@ -21,10 +20,66 @@
       .nb-return-banner b{color:#c4b5fd}
       .nb-return-x{margin-left:auto;background:transparent;border:0;color:#94a3b8;
         font-size:16px;cursor:pointer;padding:4px 8px}
+      /* Modal */
+      .nb-modal-overlay{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);
+        display:flex;align-items:center;justify-content:center;padding:10px;backdrop-filter:blur(4px)}
+      .nb-modal-box{width:100%;max-width:1100px;height:95vh;background:#0b1120;border-radius:22px;
+        overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,0.6);border:1px solid #ffffff22;position:relative}
+      .nb-modal-close{position:absolute;top:12px;right:16px;z-index:10;background:#000000aa;border:0;
+        color:#fff;font-size:28px;width:44px;height:44px;border-radius:999px;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;transition:background .2s}
+      .nb-modal-close:hover{background:#dc2626aa}
+      .nb-modal-iframe{width:100%;height:100%;border:0;display:block}
     `;
     document.head.appendChild(css);
   }
 
+  // Modal oluştur
+  function createModal(iframeSrc){
+    var overlay = document.createElement("div");
+    overlay.className = "nb-modal-overlay";
+    overlay.id = "nbModalOverlay";
+
+    var box = document.createElement("div");
+    box.className = "nb-modal-box";
+
+    var closeBtn = document.createElement("button");
+    closeBtn.className = "nb-modal-close";
+    closeBtn.textContent = "✕";
+    closeBtn.setAttribute("aria-label","Kapat");
+
+    var iframe = document.createElement("iframe");
+    iframe.className = "nb-modal-iframe";
+    iframe.src = iframeSrc;
+    iframe.allow = "microphone; autoplay; encrypted-media";
+    iframe.allowFullscreen = true;
+
+    box.appendChild(closeBtn);
+    box.appendChild(iframe);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    function closeModal(){
+      if(overlay.parentNode) overlay.remove();
+      window.removeEventListener("message", onMessage);
+    }
+
+    function onMessage(e){
+      if(e.data && e.data.type === "closeVideoModal"){
+        closeModal();
+      }
+    }
+    window.addEventListener("message", onMessage);
+
+    closeBtn.addEventListener("click", closeModal);
+    overlay.addEventListener("click", function(e){
+      if(e.target === overlay) closeModal();
+    });
+
+    return { overlay, iframe, close: closeModal };
+  }
+
+  // Butonu mount et
   function mountVideoButton(retryCount){
     retryCount = retryCount || 0;
     var trio = document.getElementById("dhNavTrio");
@@ -42,18 +97,23 @@
       return;
     }
     var b = document.createElement("button");
-    b.id = "nbVideoBtn"; b.className = "nb-video-btn";
+    b.id = "nbVideoBtn";
+    b.className = "nb-video-btn";
     b.textContent = "🎬 Video";
     b.onclick = function(){
       var card = document.querySelector(".card");
       var en = card && card.querySelector(".card-en");
       var text = en ? (en.textContent||"").trim() : "";
-      if (!text){ location.href = "./videopractice.html"; return; }
-      location.href = "./videopractice.html?q=" + encodeURIComponent(text);
+      var src = "./videopractice.html";
+      if(text){
+        src += "?q=" + encodeURIComponent(text);
+      }
+      createModal(src);
     };
     trio.insertAdjacentElement("afterend", b);
   }
 
+  // Dönüş banner'ı (aynı)
   function showReturnBanner(){
     var raw;
     try{ raw = localStorage.getItem("dh-bridge-return"); }catch(e){ return; }
