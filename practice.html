@@ -1641,8 +1641,8 @@ function exposeSceneVideoAnswer(s){
 }
 
 /* 🧭 KOÇ BALONU — global coach-bubble.js kullanılıyor (paylaşılan UI+karar mantığı) */
-function dhCoachModuleIntro(s){ try{ dhCoachModuleIntro_global(s.module, s.commonMistake); }catch(e){} }
-function dhCoachModuleIntro_global(mod, cm){ try{ window.dhCoachModuleIntro && window.dhCoachModuleIntro(mod, cm); }catch(e){} }
+function dhCoachModuleIntro(s){ try{ dhCoachModuleIntro_global(s.module, s.commonMistake, s.en); }catch(e){} }
+function dhCoachModuleIntro_global(mod, cm, target){ try{ window.dhCoachModuleIntro && window.dhCoachModuleIntro(mod, cm, target); }catch(e){} }
 
 function renderCard(){
   if (State.idx >= State.queue.length) return renderSessionDone();

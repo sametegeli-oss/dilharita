@@ -241,11 +241,56 @@
       dhCoachSay(pick, opts.ok?"praise":"warn");
     }catch(e){}
   };
-  window.dhCoachModuleIntro=function(mod, commonMistake){
+  /* CEVAP SIZDIRMA KORUMASI:
+     "YENİ KONU" mesajı SORU EKRANDAYKEN gösteriliyor (cevaptan ÖNCE). commonMistake
+     alanı ise çoğu zaman TAM bir örnek cümle içeriyor ("Everyone is here but John
+     isn't coming ✕ (farklı yapı)") — bu cümle, boşluğa girecek kelimeyi de barındırdığı
+     için testi bozuyordu: koç cevabı öğrenciye söylemiş oluyordu.
+     Artık örnek cümle ATILIR, yalnız parantez içindeki KISA AÇIKLAMA gösterilir
+     ("farklı yapı" gibi). Açıklama yoksa ya da açıklama bile hedef cümleden kelime
+     sızdırıyorsa mesaj HİÇ gösterilmez — ipucu vermektense susmak yeğdir. */
+  function stripAnswer(commonMistake, target){
+    var cm=String(commonMistake||"").trim();
+    if(!cm) return "";
+
+    // 1) Parantez içindeki kısa açıklamayı çıkar: "... ✕ (özne farklı)" -> "özne farklı"
+    var note="";
+    var mp=/\(([^()]{3,60})\)\s*$/.exec(cm);
+    if(mp) note=mp[1].trim();
+
+    // 2) Açıklama yoksa: metin bir ÖRNEK CÜMLE mi, yoksa zaten açıklama mı?
+    //    Örnek cümle işareti: arka arkaya 3+ İNGİLİZCE kelime (Türkçe'ye özgü harf yok).
+    //    "Zaman uyumu hatası" gibi Türkçe açıklamalar boşa atılmasın diye tr harf denetimi şart.
+    if(!note){
+      var hasTr=/[çğıöşüÇĞİÖŞÜ]/.test(cm);
+      var looksLikeSentence = !hasTr && /\b[A-Za-z']+\s+[A-Za-z']+\s+[A-Za-z']+\b/.test(cm);
+      if(looksLikeSentence) return "";   // örnek cümle var, açıklama yok -> güvenli değil, sus
+      note=cm;
+    }
+
+    // 3) SON KONTROL: açıklama, hedef cümlenin kelimelerini içeriyor mu?
+    //    Kısa kelimeler DE sızıntıdır ("due", "for", "up" gibi cevaplar 3 harflik olabilir),
+    //    o yüzden uzunluk filtresi YOK. Yalnız gerçekten anlamsız/dolgu kelimeler muaf.
+    //    Kelime SINIRIYLA eşleşme aranır ki "is" -> "his/this" gibi yanlış eşleşme olmasın.
+    if(target){
+      var STOP={the:1,a:1,an:1,and:1,or:1,of:1,to:1,in:1,on:1,at:1,i:1,you:1,he:1,she:1,it:1,we:1,they:1};
+      var tw=String(target).toLowerCase().replace(/[^a-z' ]/g," ").split(/\s+/)
+              .filter(function(w){ return w && !STOP[w]; });
+      var nl=" "+note.toLowerCase().replace(/[^a-zçğıöşü' ]/g," ")+" ";
+      for(var i=0;i<tw.length;i++){
+        if(nl.indexOf(" "+tw[i]+" ")>=0) return "";   // hedeften kelime sızıyor -> sus
+      }
+    }
+    return note;
+  }
+
+  window.dhCoachModuleIntro=function(mod, commonMistake, target){
     try{
       if(!mod || state.seenTypesToday[mod]) return;
       state.seenTypesToday[mod]=1;
-      if(commonMistake) dhCoachSay("YENİ KONU: Bu yapıyı ilk kez çalışıyorsun. Genelde şu hata yapılır: "+commonMistake+" — buna dikkat ederek başla.","tip");
+      var note=stripAnswer(commonMistake, target);
+      if(note) dhCoachSay("YENİ KONU: Bu yapıyı ilk kez çalışıyorsun. Dikkat etmen gereken nokta: "+note+".","tip");
+      else     dhCoachSay("YENİ KONU: Bu yapıyı ilk kez çalışıyorsun. Acele etme, cümleyi kurmadan önce yapıyı bir düşün.","tip");
     }catch(e){}
   };
 
