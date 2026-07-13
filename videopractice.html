@@ -539,7 +539,48 @@ function moduleProgress(mod){const arr=State.byModule.get(mod)||[];let learned=0
 function renderLoading(){root.innerHTML=`<div class="state"><div class="spinner"></div><p>Video practice hazırlanıyor…</p></div>`}
 function renderError(msg){root.innerHTML=`<div class="state"><h2>Veri yüklenemedi</h2><p>${esc(msg)}</p><button class="btn primary" onclick="location.reload()">Yeniden dene</button></div>`}
 async function renderPicker(){clearUiTimers();State.srs=await srsAll();const levels=LEVEL_ORDER.filter(l=>State.byLevel.has(l));let html=`<div class="picker"><div class="picker-top"><a href="./index.html" class="home-link">← Ana uygulama</a><button class="btn api-mini" id="apiBtn">🔑 Pexels API</button></div><div class="pick-intro"><h1>Video Practice</h1><p>Bu ekranda kelime sıralama yok. Video otomatik gelir; ortada İngilizce cümle görünür. Sen ekrandaki <b>İngilizce cümleyi</b> mikrofona okuyorsun; sistem bunu <b>SentenceEN</b> ile practice.html mantığından karşılaştırıyor. Türkçe sadece anlam/yardım olarak görünür.</p></div>`;for(const lv of levels){const mods=State.byLevel.get(lv);html+=`<div class="lv-group"><div class="lv-head"><span class="lv-badge">${esc(lv)}</span><span>${mods.length} modül</span></div><div class="mod-grid">`;for(const mod of mods){const p=moduleProgress(mod);const name=mod.replace(/^[A-C]\d-M\d+\s*/,"");const pos=await loadPos(mod);html+=`<button class="mod-tile" data-mod="${esc(mod)}"><span class="mod-name">${esc(name)}</span><span class="mod-count">${p.total} cümle${pos?` · ${pos.idx+1}. cümlede kaldın`:""}</span><span class="mod-prog"><span style="width:${p.pct}%"></span></span></button>`}html+=`</div></div>`}html+=`</div>`;root.innerHTML=html;document.getElementById("apiBtn").onclick=()=>openApiSheet(false);root.querySelectorAll(".mod-tile").forEach(b=>b.onclick=async()=>{const mod=b.dataset.mod;const pos=await loadPos(mod);startModule(mod,pos?.idx||0)})}
-async function startModule(mod,idx){State.srs=await srsAll();const arr=(State.byModule.get(mod)||[]).slice();const now=Date.now();function bucket(s){const r=State.srs[s.id];if(!r||!r.rep)return 1;if((r.due||0)<=now)return 0;return 2}arr.sort((a,b)=>{const ba=bucket(a),bb=bucket(b);if(ba!==bb)return ba-bb;if(ba===0)return(State.srs[a.id].due||0)-(State.srs[b.id].due||0);if(ba===1)return(a.order||0)-(b.order||0);return(State.srs[a.id].due||0)-(State.srs[b.id].due||0)});State.queue=arr;State.idx=Math.min(Math.max(0,idx||0),Math.max(0,arr.length-1));State.activeModule=mod;State.sessionTitle=mod.replace(/^[A-C]\d-M\d+\s*/,"");renderVideoCard()}
+
+  
+  
+  // videopractice.html içindeki mevcut startModule fonksiyonunu bununla güncelleyin:
+async function startModule(mod, idx){
+  State.srs = await srsAll();
+  const arr = (State.byModule.get(mod) || []).slice();
+  const now = Date.now();
+  
+  // URL'den spesifik bir cümle hedeflenmiş mi kontrol et
+  var qp = new URLSearchParams(location.search);
+  var hasTarget = qp.get("q") || qp.get("sid");
+
+  // Eğer dışarıdan doğrudan bir cümle açılmak istenmiyorsa normal SRS sıralamasını yap
+  if (!hasTarget) {
+    function bucket(s){
+      const r = State.srs[s.id];
+      if(!r||!r.rep) return 1;
+      if((r.due||0)<=now) return 0;
+      return 2;
+    }
+    arr.sort((a,b)=>{
+      const ba=bucket(a), bb=bucket(b);
+      if(ba!==bb) return ba-bb;
+      if(ba===0) return (State.srs[a.id].due||0)-(State.srs[b.id].due||0);
+      if(ba===1) return (a.order||0)-(b.order||0);
+      return (State.srs[a.id].due||0)-(State.srs[b.id].due||0);
+    });
+  } else {
+    // Eğer dışarıdan hedef cümle geldiyse, sentences.json'daki doğal 'order' sırasını koru
+    arr.sort((a,b) => (a.order||0) - (b.order||0));
+  }
+
+  State.queue = arr;
+  State.idx = Math.min(Math.max(0, idx || 0), Math.max(0, arr.length - 1));
+  State.activeModule = mod;
+  State.sessionTitle = mod.replace(/^[A-C]\d-M\d+\s*/, "");
+  renderVideoCard();
+}
+  
+  
+  async function startModuleSilinecek(mod,idx){State.srs=await srsAll();const arr=(State.byModule.get(mod)||[]).slice();const now=Date.now();function bucket(s){const r=State.srs[s.id];if(!r||!r.rep)return 1;if((r.due||0)<=now)return 0;return 2}arr.sort((a,b)=>{const ba=bucket(a),bb=bucket(b);if(ba!==bb)return ba-bb;if(ba===0)return(State.srs[a.id].due||0)-(State.srs[b.id].due||0);if(ba===1)return(a.order||0)-(b.order||0);return(State.srs[a.id].due||0)-(State.srs[b.id].due||0)});State.queue=arr;State.idx=Math.min(Math.max(0,idx||0),Math.max(0,arr.length-1));State.activeModule=mod;State.sessionTitle=mod.replace(/^[A-C]\d-M\d+\s*/,"");renderVideoCard()}
 function currentSentence(){return State.queue[State.idx]}
 let _nextTapLock=false;
 let _feedbackTimer=null;
