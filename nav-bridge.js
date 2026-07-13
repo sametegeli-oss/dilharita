@@ -6,10 +6,7 @@
    ?q=<cümle> ile yolluyoruz; orada bu metinle eşleşen cümle bulunup TAM O CÜMLEDE
    açılıyor (videopractice.html'deki boot() güncellemesi).
 
-   YÖN 2 (video -> foto): ARTIK MODÜL OTOMATİK AÇILIYOR.
-   localStorage'dan dh-bridge-return bilgisini okuyup, sayfadaki
-   [data-mod="..."] butonuna tıklıyoruz. Böylece kullanıcı doğrudan kaldığı
-   modüle yönlenir. */
+   YÖN 2 (video -> foto): ARTIK MODÜL OTOMATİK AÇILIYOR (metin eşleşmesi ile). */
 (function(){
   "use strict";
   if (window.__dhNavBridge) return;
@@ -40,7 +37,7 @@
       if (trio && existing.previousElementSibling !== trio) trio.insertAdjacentElement("afterend", existing);
       return;
     }
-    if (!trio) return;   // layout.js henüz kurmadıysa bekle, sonraki mutasyonda tekrar denenir
+    if (!trio) return;
     var b = document.createElement("button");
     b.id = "nbVideoBtn"; b.className = "nb-video-btn";
     b.textContent = "🎬 Video";
@@ -58,12 +55,28 @@
   function tryOpenModule(moduleName){
     if (!moduleName) return false;
 
-    // Butonu bul ve tıkla
+    // Butonları bul: metin eşleşmesi ile
+    function findModuleButton(){
+      var btns = document.querySelectorAll('button, .mod-tile, [role="button"]');
+      var normalizedTarget = moduleName.trim().toLowerCase();
+      for (var i = 0; i < btns.length; i++) {
+        var btn = btns[i];
+        var text = (btn.textContent || '').trim().toLowerCase();
+        // Buton metni normalizedTarget'i içeriyorsa ve buton tıklanabilir görünüyorsa
+        if (text.includes(normalizedTarget)) {
+          return btn;
+        }
+      }
+      return null;
+    }
+
     function clickModule(){
-      var selector = '[data-mod="' + moduleName.replace(/"/g, '\\"') + '"]';
-      var btn = document.querySelector(selector);
+      var btn = findModuleButton();
       if (btn) {
-        btn.click();
+        // Dispatch click event
+        btn.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
+        // Ayrıca click() dene
+        try { btn.click(); } catch(e) {}
         return true;
       }
       return false;
@@ -96,7 +109,6 @@
     var info;
     try{ info = JSON.parse(raw); }catch(e){ return; }
     if (!info || !info.en) return;
-    // 10 dakikadan eskiyse gösterme (bayat bilgi kafa karıştırmasın)
     if (Date.now() - (info.at||0) > 10*60*1000){
       try{ localStorage.removeItem("dh-bridge-return"); }catch(e){}
       return;
@@ -118,14 +130,13 @@
     };
     setTimeout(function(){ if(box.parentNode) box.remove(); }, 15000);
 
-    // ----- YENİ: modülü otomatik açmayı dene -----
+    // Modülü açmayı dene (biraz bekle)
     if (info.module) {
-      // Biraz bekle ki React modül listesini oluştursun
       setTimeout(function(){
         tryOpenModule(info.module);
-        // Açıldıktan sonra localStorage bilgisini silelim (artık banner da kalkar)
+        // Açıldıktan sonra localStorage bilgisini silelim
         try{ localStorage.removeItem("dh-bridge-return"); }catch(e){}
-      }, 300);
+      }, 500);
     }
   }
 
