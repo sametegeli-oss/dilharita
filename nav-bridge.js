@@ -1,15 +1,8 @@
 /* nav-bridge.js — index-app.html (foto) ile videopractice.html (video) arasında
-   geçiş köprüsü. React'e (assets/app.js, minified) HİÇ dokunmuyor; sadece DOM'u
-   izleyip cümle metnini okuyor ve bir "🎬 Video" düğmesi ekliyor.
+   geçiş köprüsü. React'e HİÇ dokunmuyor; sadece DOM'u izleyip "🎬 Video" butonunu
+   ekliyor ve tıklandığında cümle metnini ?q= ile videopractice'e yolluyor.
 
-   YÖN 1 (foto -> video): TAM SENKRONİZE. Kartın .card-en metnini videopractice'e
-   ?q=<cümle> ile yolluyoruz; orada bu metinle eşleşen cümle bulunup TAM O CÜMLEDE
-   açılıyor (videopractice.html'deki boot() güncellemesi).
-
-   YÖN 2 (video -> foto): TAM SENKRONİZE EDİLEMEZ. React kendi iç state'ini
-   kontrol ediyor, URL parametresi okumuyor ve dışarıdan "şu cümleye git" komutu
-   kabul etmiyor. Bunun yerine: videopractice sayfasından dönüşte kaldığın cümleyi
-   localStorage'dan okuyup üstte bir bildirim olarak GÖSTERİYORUZ (best-effort). */
+   Videopractice'de eşleşme yoksa bile fallback olarak o cümleyle devam eder. */
 (function(){
   "use strict";
   if (window.__dhNavBridge) return;
@@ -32,7 +25,6 @@
     document.head.appendChild(css);
   }
 
-  /* ---- YÖN 1: foto -> video (tam senkronize) ---- */
   function mountVideoButton(retryCount){
     retryCount = retryCount || 0;
     var trio = document.getElementById("dhNavTrio");
@@ -44,7 +36,6 @@
       return;
     }
     if (!trio) {
-      // dhNavTrio henüz DOM'a eklenmemiş; 300ms sonra tekrar dene (en fazla 5 kez)
       if (retryCount < 5) {
         setTimeout(function(){ mountVideoButton(retryCount + 1); }, 300);
       }
@@ -63,7 +54,6 @@
     trio.insertAdjacentElement("afterend", b);
   }
 
-  /* ---- YÖN 2: video -> foto dönüşü (best-effort bildirim) ---- */
   function showReturnBanner(){
     var raw;
     try{ raw = localStorage.getItem("dh-bridge-return"); }catch(e){ return; }
@@ -71,7 +61,6 @@
     var info;
     try{ info = JSON.parse(raw); }catch(e){ return; }
     if (!info || !info.en) return;
-    // 10 dakikadan eskiyse gösterme (bayat bilgi kafa karıştırmasın)
     if (Date.now() - (info.at||0) > 10*60*1000){
       try{ localStorage.removeItem("dh-bridge-return"); }catch(e){}
       return;
@@ -101,11 +90,9 @@
     try{ addStyle(); }catch(e){}
     try{ showReturnBanner(); }catch(e){}
     try{
-      // DOM mutasyonlarını izle (dhNavTrio sonradan eklenebilir)
       new MutationObserver(function(){
         try{ mountVideoButton(); }catch(e){}
       }).observe(document.body, {childList:true, subtree:true});
-      // ilk deneme
       mountVideoButton();
     }catch(e){}
   }
