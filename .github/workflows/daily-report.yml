@@ -3,7 +3,7 @@ name: Günlük Rapor Maili
 on:
   schedule:
     # 05:00 UTC = 08:00 Türkiye saati (Türkiye yaz saati uygulamadığı için sabit)
-    - cron: "0 5 * * *"
+    - cron: "0 2 * * *"
   workflow_dispatch: {}   # test için elle de tetiklenebilir (Actions sekmesinden "Run workflow")
 
 jobs:
