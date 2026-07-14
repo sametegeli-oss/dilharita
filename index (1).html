@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<script src="./auth-guard.js?v=1"></script>
+<script src="./storage-bridge.js?v=3"></script>
+<script src="./progress-engine.js?v=2"></script>
+<script src="./coach-bubble.js?v=3"></script>
+<script src="./teacher-policy.js?v=3"></script>
+<script src="./mastery-engine.js?v=1"></script>
+<script src="./level-badge.js?v=1"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b1120">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dil Harita">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<title>Dil Harita</title>
+<style>
+:root{--bg:#0b1120;--card:#111827;--card2:#172033;--text:#e8eef7;--muted:#9fb0c8;--line:#ffffff18}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(900px 420px at 50% -10%,#14302a 0%,transparent 60%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1200px;margin:0 auto;min-height:100vh;padding:22px}
+h1{font-size:30px;margin:10px 0 6px}
+p{color:var(--muted);line-height:1.55}
+
+/* 🔥 YENİ NESİL RESPONSIVE KOMUTA MERKEZİ GRİD DÜZENİ */
+.dh-mentor-grid-container {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 20px;
+  width: 100%;
+  align-items: start;
+  margin-top: 20px;
+  margin-bottom: 25px;
+}
+.dh-mentor-left-column { width: 100%; }
+.dh-mentor-right-column { display: flex; flex-direction: column; gap: 15px; width: 100%; }
+
+/* Alt Grid Kategorileri */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:20px}
+.card{display:block;text-decoration:none;color:var(--text);background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:0 14px 40px #0005}
+.card-learn{background:linear-gradient(180deg,#0f2a1e,#0a1f16);border:1px solid #22c55e55;box-shadow:0 14px 40px #0006, inset 0 0 0 1px #22c55e11}
+.card-learn b{color:#86efac}
+.card b{display:block;font-size:22px;margin-bottom:7px}
+.card span{display:block;color:var(--muted);font-size:14px;line-height:1.45}
+.note{margin-top:22px;background:#101a2d;border:1px solid var(--line);border-radius:16px;padding:15px;color:var(--muted)}
+code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
+
+.photo-learn-card{
+  border-color:#facc1577!important;
+  background:linear-gradient(180deg,#242111,#101827)!important;
+  box-shadow:0 18px 46px #0007, inset 0 0 0 1px #facc1522!important;
+}
+.photo-learn-card b{color:#fffde6}
+
+/* 📁 KATLANABİLİR GRUPLAR: ana menü hiyerarşisi */
+details.dh-group{margin-top:14px;background:#0e1729;border:1px solid var(--line);border-radius:18px;overflow:hidden}
+details.dh-group>summary{list-style:none;cursor:pointer;padding:16px 18px;font-weight:900;font-size:16px;color:#dbe7ff;display:flex;align-items:center;gap:10px;user-select:none}
+details.dh-group>summary::-webkit-details-marker{display:none}
+details.dh-group>summary:after{content:"▸";margin-left:auto;color:#64748b;transition:transform .15s}
+details.dh-group[open]>summary:after{transform:rotate(90deg)}
+details.dh-group>summary small{font-weight:700;color:#64748b;font-size:12px}
+details.dh-group>.grid{margin:0;padding:0 14px 14px}
+details.dh-group>.dh-settings-body{padding:0 14px 14px}
+.dh-daily-title{margin:22px 0 -8px;font-weight:900;font-size:16px;color:#93c5fd}
+
+/* Masaüstü Olmayan Ekranlar İçin responsive Kırılma */
+@media (max-width: 992px) {
+  .dh-mentor-grid-container { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Dil Harita</h1>
+  <p>Bugün ne çalışacağına koçun karar verir — sen sadece başla. 👇</p>
+
+  <div id="dhStreakSlot" style="margin:0 0 16px;cursor:pointer"></div>
+
+  <!-- 🔥 KİLİTLENMEYEN EĞİTİM KOMUTA MERKEZİ GRİD BAŞLANGICI -->
+  <div class="dh-mentor-grid-container">
+      
+      <!-- SOL SÜTUN: AI Mentor Analitik Direktör Paneli -->
+      <div class="dh-mentor-left-column">
+          <div id="dhKocContainer">
+              <div style="background: #111827; padding: 20px; border-radius: 14px; border: 1px dashed rgba(255,255,255,0.1); text-align: center; color: #60a5fa;">
+                  <span>🧭 AI Mentor Eğitim Direktörü Bağlantısı Sağlanıyor...</span>
+              </div>
+          </div>
+      </div>
+
+      <!-- SAĞ SÜTUN: Statik Müfredat ve Ders Atamaları -->
+      <div class="dh-mentor-right-column">
+          <!-- Bugünkü Dersim Kartı -->
+          <a class="card" href="./ders.html" style="margin:0;">
+              <b>🎓 Bugünkü Dersim</b>
+              <span>Öğretmen senin için ders hazırlasın — nereden başlayacağına o karar versin</span>
+          </a>
+          <div style="display:none;" id="dhDaySub">324 tekrar bekleyen</div>
+      </div>
+
+  </div>
+  <!-- 🔥 GRİD BİTİŞİ -->
+
+  <!-- Alt Seçenekler ve Diğer Modüller -->
+  <div id="dhTorch" style="max-width:960px;margin:0 auto 14px"></div>
+  <div id="dhBadges" style="max-width:960px;margin:0 auto 14px;display:flex;gap:8px;flex-wrap:wrap"></div>
+  <div id="dhDailyGoal" style="max-width:960px;margin:0 auto 14px;background:#0f1f3a;border:1px solid #1e3a5f;border-radius:14px;padding:14px 18px"></div>
+  <div class="dh-daily-title">🌞 Her gün</div>
+  <div class="grid">
+    <!-- KOÇUN ADIMINA GÖRE GÜNCELLENEN DİNAMİK KART -->
+    <a id="mainPhotoLearnCard" class="card photo-learn-card" href="./index-app.html">
+        <b id="photoLearnTitle">📸 Fotoğraflı Cümle Öğren</b>
+        <span id="photoLearnSub">Resimli cümle ekranı, zayıf analiz ve eski öğrenme modülleri</span>
+    </a>
+    <a class="card card-learn" href="./tekrar.html"><b>🔁 Tekrar</b><span>Vadesi gelen kelime + cümle (aralıklı tekrar)</span></a>
+    <a class="card card-learn" href="./chat.html"><b>💬 Sohbet</b><span>Fotoğraflı konuşan avatar senaryoları</span></a>
+    <a class="card card-learn" href="./videopractice.html"><b>🎬 Video</b><span>Video ve telaffuz çalışması</span></a>
+  </div>
+
+  <details class="dh-group" id="grpLearn">
+    <summary>📚 Öğrenme araçları <small>kelime · phrasal · öğretmen · kütüphane</small></summary>
+    <div class="grid">
+      <a class="card card-learn" href="./kelime-ogren.html"><b>📖 Kelime Öğren</b><span>En sık kelimeler — kart, quiz ve resimlerle</span></a>
+      <a class="card card-learn" href="./phrasal-verbs.html"><b>🔗 Phrasal Verbs</b><span>881 İngilizce öbek fiil — anlam, örnek, dinle</span></a>
+      <a class="card card-learn" href="./pv-practice.html"><b>🎯 Phrasal Verb Pratiği</b><span>Çoktan seçmeli, boşluk doldurma, dinle-yaz alıştırmaları</span></a>
+      <a class="card card-learn" href="./teacher.html"><b>🎓 Öğretmen</b><span>Türkçe anlatımlı İngilizce öğretmeni</span></a>
+      <a class="card card-learn" href="./practice.html"><b>✍️ Çalışma</b><span>Cümle çalışma ekranı</span></a>
+      <a class="card" href="./library.html"><b>📚 Kütüphane</b><span>Kitap / metin okuma ekranı</span></a>
+    </div>
+  </details>
+
+  <details class="dh-group" id="grpPhoto">
+    <summary>📷 Fotoğraftan ekle <small>tara · çevir · çalış</small></summary>
+    <div class="grid">
+      <a class="card card-learn" href="./foto-ekle.html"><b>📷 Fotoğraftan Ekle</b><span>Fotoğraftaki cümleleri tara, çevir, pratiğe ekle</span></a>
+      <a class="card card-learn" href="./ocr-sentence.html"><b>📷 OCR Sentence Mode</b><span>Fotoğraftan eklediğin cümleleri zengin modda çalış</span></a>
+    </div>
+  </details>
+
+  <details class="dh-group" id="grpStats">
+    <summary>📊 İlerleme &amp; analiz <small>harita · rapor · hatalar</small></summary>
+    <div class="grid">
+      <a class="card" href="./harita.html"><b>🗺️ İlerleme Haritası</b><span>Tüm modüllerde ne kadar öğrendiğini gör</span></a>
+      <a class="card" href="./rapor.html"><b>📅 İlerleme Raporu</b><span>30 günlük aktivite ve hata trendleri</span></a>
+      <a class="card" href="./aktivite.html"><b>📋 Bugünkü Aktivitem</b><span>Bugün yaptığın her şey, saat saat</span></a>
+      <a class="card" href="./hata-defteri.html"><b>📌 Hata Defteri</b><span>Yanlış yapılan cümleler ve hata analizi</span></a>
+      <a class="card" href="./seviye-testi.html"><b>🎯 Seviye Belirleme</b><span>Kısa bir testle seviyeni ölç — öğretmen dersleri ona göre hazırlasın</span></a>
+    </div>
+  </details>
+
+  <details class="dh-group" id="grpSettings">
+    <summary>⚙️ Ayarlar &amp; veri <small>bildirim · yedek · senkron</small></summary>
+    <div class="dh-settings-body">
+      <a class="card" href="./pwa-hard-reset.html" style="margin-top:14px"><b>🧹 Önbellek Temizle</b><span>Gerekirse Service Worker ve cache temizliği</span></a>
+  
+
+  <!-- ==== Bildirim Ayarları ==== -->
+  <div id="dhNotifCard" style="margin:18px 0 20px;background:linear-gradient(180deg,#10264a,#0b172d);border:1px solid #f59e0b44;border-radius:22px;padding:18px;box-shadow:0 18px 46px #0005">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+      <div>
+        <div style="font-size:20px;font-weight:950;color:#fff">🔔 Günlük Hatırlatma</div>
+        <div style="font-size:13px;color:#9fb0c8;margin-top:3px">Her gün seçtiğin saatte çalışma hatırlatması al</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:54px;height:30px;flex:0 0 auto">
+        <input type="checkbox" id="dhNotifToggle" style="opacity:0;width:0;height:0">
+        <span id="dhNotifSlider" style="position:absolute;inset:0;cursor:pointer;background:#334155;border-radius:30px;transition:.2s"></span>
+      </label>
+    </div>
+    <div id="dhNotifBody" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <span style="font-size:13px;color:#cbd5e1;font-weight:800">Saat:</span>
+        <input type="time" id="dhNotifTime" value="20:00" style="background:#08172d;border:1px solid #ffffff22;color:#e8eef7;border-radius:12px;padding:9px 12px;font:800 14px system-ui">
+        <button id="dhNotifTest" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:9px 14px;background:#1d2b48;color:#fff;font:800 13px system-ui">🔔 Test et</button>
+      </div>
+      <div id="dhNotifMsg" style="font-size:13px;color:#9fb3d9;min-height:18px"></div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:18px 0 6px">
+    <button id="dhCloudSyncBtn" type="button" style="display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;border-radius:14px;padding:14px 22px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font:800 15px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3)">🔄 Bulutla Senkronize Et</button>
+    <button id="dhLogoutBtn" type="button" style="display:inline-flex;align-items:center;gap:8px;border:1px solid #f8717155;cursor:pointer;border-radius:14px;padding:14px 22px;background:#1a1420;color:#fca5a5;font:800 15px system-ui,sans-serif">🚪 Çıkış Yap</button>
+  </div>
+  <div id="dhCloudSyncMsg" style="text-align:center;font-size:13px;color:#9fb3d9;min-height:18px;margin-bottom:8px"></div>
+
+  <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:4px 0 6px">
+    <button id="dhBackupBtn" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font:800 13px system-ui,sans-serif">⬇ Yedeği indir</button>
+    <label style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font-800 13px system-ui,sans-serif">⬆ Yedekten geri yükle
+      <input type="file" id="dhRestoreFile" accept="application/json,.json" hidden />
+    </label>
+    <button id="dhSnapBtn" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#13294d;color:#e8eef7;font:800 13px system-ui,sans-serif">⏪ Geri Dön</button>
+    <button id="dhLegacyCleanBtn" type="button" style="border:1px solid #ffffff22;cursor:pointer;border-radius:12px;padding:11px 16px;background:#1a1420;color:#cbd5e1;font:800 13px system-ui,sans-serif">🗑 Eski Verileri Temizle</button>
+  </div>
+
+  <div id="dhBackupMsg" style="text-align:center;font-size:13px;color:#9fb3d9;min-height:18px;margin-bottom:8px"></div>
+
+  <div class="note">
+    <b>Not:</b> Bildirimler için <code>service worker</code> etkin. Günlük hatırlatma için yukarıdaki 🔔 kartından izin ver ve saat seç.
+  </div>
+    </div>
+  </details>
+</div>
+
+<script>
+(function(){ 
+  try{
+    var r=indexedDB.open("sentence-mode",1);
+    r.onsuccess=function(){
+      var db=r.result, n=0, now=Date.now();
+      try{
+        var req=db.transaction("kv","readonly").objectStore("kv").openCursor();
+        req.onsuccess=function(e){ var c=e.target.result;
+          if(c){ var k=String(c.key);
+            if((k.indexOf("srs:")===0||k.indexOf("wsrs:")===0) && c.value && (c.value.due||0)<=now) n++;
+            c.continue();
+          } else { db.close();
+            var el=document.getElementById("dhDaySub");
+            if(el&&n) el.textContent=n+" tekrar bekleyen";
+          } };
+      }catch(e){ try{db.close()}catch(_){}}
+    };
+  }catch(e){}
+})();
+</script>
+
+<script src="./pwa-install.js"></script>
+<script src="./daily-dashboard.js?v=2"></script>
+<script src="./learning-error-system.js?v=2"></script>
+<script src="./ai-providers.js?v=2"></script>
+<script src="./ai-status.js?v=1"></script>
+<script src="./study-tracker.js?v=1"></script>
+<script src="./streak-screen.js?v=1"></script>
+<script src="./teacher-bubble.js?v=5"></script>
+<script src="./cloud-sync-v8.js?v=1"></script>
+<script src="./notifications.js?v=1"></script>
+
+<!-- GEREKSİZ DIŞ BAĞIMLILIKLAR TEMİZLENDİ -->
+<script src="./koc.js?v=2"></script>
+<script>
+/* 🏅 Başarı rozetleri — mevcut verilerden, ek maliyetsiz hesaplanır */
+(async function(){
+  var out=document.getElementById("dhBadges"); if(!out) return;
+  var badges=[];
+  function chip(emoji,label,color){ return '<div style="display:flex;align-items:center;gap:6px;background:#0f1f3a;border:1px solid '+color+'55;border-radius:999px;padding:6px 12px;font:700 12px system-ui;color:#e8eef7"><span>'+emoji+'</span>'+label+'</div>'; }
+  try{
+    var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=tr.days||{}, d=new Date(), streak=0;
+    if(!days[d.toISOString().slice(0,10)]) d.setDate(d.getDate()-1);   // bugün henüz boşsa dünden say (seri erken sıfırlanmasın)
+    for(;;){ var k=d.toISOString().slice(0,10); if(days[k]){streak++; d.setDate(d.getDate()-1);} else break; }
+    if(streak>=30) badges.push(chip("🏆","30 gün kesintisiz","#facc15"));
+    else if(streak>=7) badges.push(chip("🔥",streak+" gün seri","#f97316"));
+    else if(streak>=3) badges.push(chip("✨",streak+" gün seri","#38bdf8"));
+  }catch(e){}
+  try{
+    var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, s2=0,w2=0;
+    for(var k2 in m){ if(m[k2]&&m[k2][0]===2){ if(k2.indexOf("sentence:")===0)s2++; else if(k2.indexOf("word:")===0)w2++; } }
+    if(s2>=500) badges.push(chip("📚","500+ cümle öğrenildi","#22c55e"));
+    else if(s2>=100) badges.push(chip("📗","100+ cümle öğrenildi","#22c55e"));
+    if(w2>=200) badges.push(chip("🔤","200+ kelime öğrenildi","#a78bfa"));
+  }catch(e){}
+  try{
+    if(window.LearningErrorDB&&LearningErrorDB.all){
+      var errs=await LearningErrorDB.all();
+      var now=Date.now(), c15=now-15*86400000, c30=now-30*86400000, o={}, r={};
+      errs.forEach(function(e){ var ts=e.ts||0; if(ts<c30) return; var ty=Array.isArray(e.types)&&e.types.length?e.types:(e.type?[e.type]:[]);
+        ty.forEach(function(t){ if(ts>=c15) r[t]=(r[t]||0)+1; else o[t]=(o[t]||0)+1; }); });
+      Object.keys(o).forEach(function(t){ if(o[t]>0 && (r[t]||0)===0) badges.push(chip("🎯",t+" hatasını sıfırladın!","#4ade80")); });
+    }
+  }catch(e){}
+  out.innerHTML = badges.length ? badges.join("") : "";
+})();
+
+/* 📊 Günlük cümle hedefi (25/gün sınırı, canlı) — sayfa her açıldığında/geri dönüldüğünde günceller */
+(function(){
+  var DAILY_TARGET = 25;
+  function render(){
+    var box=document.getElementById("dhDailyGoal"); if(!box) return;
+    var n=0;
+    try{
+      var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{};
+      var today=new Date().toISOString().slice(0,10);
+      n=(tr.days&&tr.days[today]&&tr.days[today].sentences)||0;
+    }catch(e){}
+    var pct=Math.min(100, Math.round(100*n/DAILY_TARGET));
+    var over = n>=DAILY_TARGET;
+    var color = over ? "#4ade80" : (pct>=60?"#38bdf8":"#f59e0b");
+    box.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+      +'<span style="font:800 12px system-ui;color:#60a5fa;text-transform:uppercase;letter-spacing:.4px">📊 Bugünkü Cümle Hedefi</span>'
+      +'<span style="font:800 13px system-ui;color:'+color+'">'+n+' / '+DAILY_TARGET+'</span></div>'
+      +'<div style="background:#0a1628;border-radius:8px;height:12px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+color+';transition:width .4s"></div></div>'
+      +(over?'<div style="margin-top:8px;font-size:12px;color:#4ade80">✅ Bugünkü hedefini tamamladın! Aşırı yüklenmeden aralıklı tekrara devam edebilirsin.</div>'
+             :'<div style="margin-top:8px;font-size:12px;color:#9fb3d9">Günde en fazla '+DAILY_TARGET+' yeni cümle önerilir — kaliteli, kalıcı öğrenme için tempo bu şekilde korunur.</div>');
+  }
+  render();
+  document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="visible") render(); });
+  window.addEventListener("pageshow", render);   // geri/ileri gezinmede (bfcache) de güncellensin
+})();
+
+/* 🔥 Çalışılan gün meşalesi — büyük, göze çarpan seri göstergesi */
+(function(){
+  function render(){
+    var box=document.getElementById("dhTorch"); if(!box) return;
+    var streak=0;
+    try{
+      var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=tr.days||{}, d=new Date();
+      if(!days[d.toISOString().slice(0,10)]) d.setDate(d.getDate()-1);
+      for(;;){ var k=d.toISOString().slice(0,10); if(days[k]){streak++; d.setDate(d.getDate()-1);} else break; }
+    }catch(e){}
+    var size = streak===0 ? 34 : streak<3 ? 40 : streak<7 ? 48 : streak<14 ? 56 : streak<30 ? 64 : 72;
+    var glow = streak===0 ? "none" : "0 0 "+(streak*2+10)+"px rgba(249,115,22,."+(Math.min(70,30+streak*2))+")";
+    var msg = streak===0 ? "Bugün henüz çalışmadın — meşaleyi yak!"
+      : streak<3 ? "Meşale yeni yandı, devam et!"
+      : streak<7 ? "Güzel gidiyor, bir haftaya tamamla!"
+      : streak<30 ? "Meşale güçlü yanıyor — sönmesin!"
+      : "Efsanevi bir seri! Bu ateş sönmesin.";
+    box.innerHTML='<div style="background:linear-gradient(135deg,#1c0f05,#0f1f3a);border:1px solid #f9731655;border-radius:16px;padding:18px 22px;display:flex;align-items:center;gap:18px">'
+      +'<div style="font-size:'+size+'px;line-height:1;filter:drop-shadow('+glow+');transition:all .4s">'+(streak>0?"🔥":"🕯️")+'</div>'
+      +'<div><div style="font:900 26px system-ui;color:#fff">'+streak+' gün</div>'
+      +'<div style="font-size:12.5px;color:#fdba74">'+msg+'</div></div></div>';
+  }
+  render();
+  document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="visible") render(); });
+  window.addEventListener("pageshow", render);
+})();
+</script>
+<script>
+/* 📁 Grup aç/kapa durumunu hatırla */
+(function(){
+  try{
+    document.querySelectorAll("details.dh-group").forEach(function(d){
+      var k="dh-grp-"+d.id;
+      if(localStorage.getItem(k)==="1") d.open=true;
+      d.addEventListener("toggle",function(){ localStorage.setItem(k, d.open?"1":"0"); });
+    });
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
