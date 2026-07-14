@@ -4,7 +4,7 @@
 <script src="./auth-guard.js?v=1"></script>
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./progress-engine.js?v=2"></script>
-<script src="./coach-bubble.js?v=2"></script>
+<script src="./coach-bubble.js?v=3"></script>
 <script src="./teacher-policy.js?v=3"></script>
 <script src="./mastery-engine.js?v=1"></script>
 <script src="./level-badge.js?v=1"></script>
@@ -56,6 +56,17 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
 }
 .photo-learn-card b{color:#fffde6}
 
+/* 📁 KATLANABİLİR GRUPLAR: ana menü hiyerarşisi */
+details.dh-group{margin-top:14px;background:#0e1729;border:1px solid var(--line);border-radius:18px;overflow:hidden}
+details.dh-group>summary{list-style:none;cursor:pointer;padding:16px 18px;font-weight:900;font-size:16px;color:#dbe7ff;display:flex;align-items:center;gap:10px;user-select:none}
+details.dh-group>summary::-webkit-details-marker{display:none}
+details.dh-group>summary:after{content:"▸";margin-left:auto;color:#64748b;transition:transform .15s}
+details.dh-group[open]>summary:after{transform:rotate(90deg)}
+details.dh-group>summary small{font-weight:700;color:#64748b;font-size:12px}
+details.dh-group>.grid{margin:0;padding:0 14px 14px}
+details.dh-group>.dh-settings-body{padding:0 14px 14px}
+.dh-daily-title{margin:22px 0 -8px;font-weight:900;font-size:16px;color:#93c5fd}
+
 /* Masaüstü Olmayan Ekranlar İçin responsive Kırılma */
 @media (max-width: 992px) {
   .dh-mentor-grid-container { grid-template-columns: 1fr; }
@@ -65,7 +76,7 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
 <body>
 <div class="wrap">
   <h1>Dil Harita</h1>
-  <p>Güvenli PWA aşama 1: Bu menü statik çalışır, siteyi döngüye sokmaz. PWA için manifest ve kurulum yardımcısı eklidir.</p>
+  <p>Bugün ne çalışacağına koçun karar verir — sen sadece başla. 👇</p>
 
   <div id="dhStreakSlot" style="margin:0 0 16px;cursor:pointer"></div>
 
@@ -98,32 +109,54 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   <div id="dhTorch" style="max-width:960px;margin:0 auto 14px"></div>
   <div id="dhBadges" style="max-width:960px;margin:0 auto 14px;display:flex;gap:8px;flex-wrap:wrap"></div>
   <div id="dhDailyGoal" style="max-width:960px;margin:0 auto 14px;background:#0f1f3a;border:1px solid #1e3a5f;border-radius:14px;padding:14px 18px"></div>
+  <div class="dh-daily-title">🌞 Her gün</div>
   <div class="grid">
-    <a class="card" href="./seviye-testi.html"><b>🎯 Seviye Belirleme</b><span>Kısa bir testle seviyeni ölç — öğretmen dersleri ona göre hazırlasın</span></a>
-    <a class="card" href="./harita.html"><b>🗺️ İlerleme Haritası</b><span>Tüm modüllerde ne kadar öğrendiğini gör</span></a>
-    
     <!-- KOÇUN ADIMINA GÖRE GÜNCELLENEN DİNAMİK KART -->
     <a id="mainPhotoLearnCard" class="card photo-learn-card" href="./index-app.html">
         <b id="photoLearnTitle">📸 Fotoğraflı Cümle Öğren</b>
         <span id="photoLearnSub">Resimli cümle ekranı, zayıf analiz ve eski öğrenme modülleri</span>
     </a>
-    
-    <a class="card card-learn" href="./practice.html"><b>✍️ Çalışma</b><span>Cümle çalışma ekranı</span></a>
-    <a class="card card-learn" href="./foto-ekle.html"><b>📷 Fotoğraftan Ekle</b><span>Fotoğraftaki cümleleri tara, çevir, pratiğe ekle</span></a>
-    <a class="card card-learn" href="./ocr-sentence.html"><b>📷 OCR Sentence Mode</b><span>Fotoğraftan eklediğin cümleleri zengin modda çalış</span></a>
-    <a class="card card-learn" href="./phrasal-verbs.html"><b>🔗 Phrasal Verbs</b><span>881 İngilizce öbek fiil — anlam, örnek, dinle</span></a>
-    <a class="card card-learn" href="./pv-practice.html"><b>🎯 Phrasal Verb Pratiği</b><span>Çoktan seçmeli, boşluk doldurma, dinle-yaz alıştırmaları</span></a>
-    <a class="card card-learn" href="./teacher.html"><b>🎓 Öğretmen</b><span>Türkçe anlatımlı İngilizce öğretmeni</span></a>
-    <a class="card card-learn" href="./chat.html"><b>💬 Sohbet</b><span>Fotoğraflı konuşan avatar senaryoları</span></a>
-    <a class="card card-learn" href="./kelime-ogren.html"><b>📖 Kelime Öğren</b><span>En sık kelimeler — kart, quiz ve resimlerle</span></a>
     <a class="card card-learn" href="./tekrar.html"><b>🔁 Tekrar</b><span>Vadesi gelen kelime + cümle (aralıklı tekrar)</span></a>
-    <a class="card" href="./rapor.html"><b>📅 İlerleme Raporu</b><span>30 günlük aktivite ve hata trendleri</span></a>
-    <a class="card" href="./aktivite.html"><b>📋 Bugünkü Aktivitem</b><span>Bugün yaptığın her şey, saat saat</span></a>
-    <a class="card" href="./library.html"><b>📚 Kütüphane</b><span>Kitap / metin okuma ekranı</span></a>
+    <a class="card card-learn" href="./chat.html"><b>💬 Sohbet</b><span>Fotoğraflı konuşan avatar senaryoları</span></a>
     <a class="card card-learn" href="./videopractice.html"><b>🎬 Video</b><span>Video ve telaffuz çalışması</span></a>
-    <a class="card" href="./hata-defteri.html"><b>📌 Hata Defteri</b><span>Yanlış yapılan cümleler ve hata analizi</span></a>
-    <a class="card" href="./pwa-hard-reset.html"><b>🧹 Önbellek Temizle</b><span>Gerekirse Service Worker ve cache temizliği</span></a>
   </div>
+
+  <details class="dh-group" id="grpLearn">
+    <summary>📚 Öğrenme araçları <small>kelime · phrasal · öğretmen · kütüphane</small></summary>
+    <div class="grid">
+      <a class="card card-learn" href="./kelime-ogren.html"><b>📖 Kelime Öğren</b><span>En sık kelimeler — kart, quiz ve resimlerle</span></a>
+      <a class="card card-learn" href="./phrasal-verbs.html"><b>🔗 Phrasal Verbs</b><span>881 İngilizce öbek fiil — anlam, örnek, dinle</span></a>
+      <a class="card card-learn" href="./pv-practice.html"><b>🎯 Phrasal Verb Pratiği</b><span>Çoktan seçmeli, boşluk doldurma, dinle-yaz alıştırmaları</span></a>
+      <a class="card card-learn" href="./teacher.html"><b>🎓 Öğretmen</b><span>Türkçe anlatımlı İngilizce öğretmeni</span></a>
+      <a class="card card-learn" href="./practice.html"><b>✍️ Çalışma</b><span>Cümle çalışma ekranı</span></a>
+      <a class="card" href="./library.html"><b>📚 Kütüphane</b><span>Kitap / metin okuma ekranı</span></a>
+    </div>
+  </details>
+
+  <details class="dh-group" id="grpPhoto">
+    <summary>📷 Fotoğraftan ekle <small>tara · çevir · çalış</small></summary>
+    <div class="grid">
+      <a class="card card-learn" href="./foto-ekle.html"><b>📷 Fotoğraftan Ekle</b><span>Fotoğraftaki cümleleri tara, çevir, pratiğe ekle</span></a>
+      <a class="card card-learn" href="./ocr-sentence.html"><b>📷 OCR Sentence Mode</b><span>Fotoğraftan eklediğin cümleleri zengin modda çalış</span></a>
+    </div>
+  </details>
+
+  <details class="dh-group" id="grpStats">
+    <summary>📊 İlerleme &amp; analiz <small>harita · rapor · hatalar</small></summary>
+    <div class="grid">
+      <a class="card" href="./harita.html"><b>🗺️ İlerleme Haritası</b><span>Tüm modüllerde ne kadar öğrendiğini gör</span></a>
+      <a class="card" href="./rapor.html"><b>📅 İlerleme Raporu</b><span>30 günlük aktivite ve hata trendleri</span></a>
+      <a class="card" href="./aktivite.html"><b>📋 Bugünkü Aktivitem</b><span>Bugün yaptığın her şey, saat saat</span></a>
+      <a class="card" href="./hata-defteri.html"><b>📌 Hata Defteri</b><span>Yanlış yapılan cümleler ve hata analizi</span></a>
+      <a class="card" href="./seviye-testi.html"><b>🎯 Seviye Belirleme</b><span>Kısa bir testle seviyeni ölç — öğretmen dersleri ona göre hazırlasın</span></a>
+    </div>
+  </details>
+
+  <details class="dh-group" id="grpSettings">
+    <summary>⚙️ Ayarlar &amp; veri <small>bildirim · yedek · senkron</small></summary>
+    <div class="dh-settings-body">
+      <a class="card" href="./pwa-hard-reset.html" style="margin-top:14px"><b>🧹 Önbellek Temizle</b><span>Gerekirse Service Worker ve cache temizliği</span></a>
+  
 
   <!-- ==== Bildirim Ayarları ==== -->
   <div id="dhNotifCard" style="margin:18px 0 20px;background:linear-gradient(180deg,#10264a,#0b172d);border:1px solid #f59e0b44;border-radius:22px;padding:18px;box-shadow:0 18px 46px #0005">
@@ -165,8 +198,10 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   <div id="dhBackupMsg" style="text-align:center;font-size:13px;color:#9fb3d9;min-height:18px;margin-bottom:8px"></div>
 
   <div class="note">
-    <b>Not:</b> Bildirimler için <code>service worker</code> etkin. Günlük hatırlatma için yukarıdaki 🔔 kartından izin ver and saat seç.
+    <b>Not:</b> Bildirimler için <code>service worker</code> etkin. Günlük hatırlatma için yukarıdaki 🔔 kartından izin ver ve saat seç.
   </div>
+    </div>
+  </details>
 </div>
 
 <script>
@@ -289,6 +324,18 @@ code{background:#0004;padding:2px 5px;border-radius:6px;color:#bfdbfe}
   render();
   document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="visible") render(); });
   window.addEventListener("pageshow", render);
+})();
+</script>
+<script>
+/* 📁 Grup aç/kapa durumunu hatırla */
+(function(){
+  try{
+    document.querySelectorAll("details.dh-group").forEach(function(d){
+      var k="dh-grp-"+d.id;
+      if(localStorage.getItem(k)==="1") d.open=true;
+      d.addEventListener("toggle",function(){ localStorage.setItem(k, d.open?"1":"0"); });
+    });
+  }catch(e){}
 })();
 </script>
 </body>
