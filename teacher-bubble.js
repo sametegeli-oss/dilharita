@@ -44,10 +44,11 @@
     for(var e=0;e<keys.length;e++){ var idx=(_ki+e)%keys.length; if(!_ban[idx]){ _ki=idx; return {idx:idx,key:keys[idx]}; } }
     return {idx:-1,key:null};
   }
-  function groqChat(messages){
-    // Çok sağlayıcılı katman varsa onu kullan (Groq→Cerebras→Gemini)
-    if(window.DHProviders && DHProviders.hasAnyKey){
-      return DHProviders.chat(messages, {temperature:0.3, max_tokens:1500});
+  function groqChat(messages, provider){
+    // Çok sağlayıcılı katman varsa onu kullan (Groq→Cerebras→Gemini).
+    // provider verilirse ("gemini") SADECE o sağlayıcıya sorulur.
+    if(window.DHProviders && (provider || DHProviders.hasAnyKey())){
+      return DHProviders.chat(messages, {temperature:0.3, max_tokens:1500, provider:provider||undefined});
     }
     // yedek: doğrudan Groq
     var keys=getKeys();
@@ -148,13 +149,17 @@
       +'<button class="dh-tb-x" id="dhTbX">✕</button>'
       +'</div>'
       +'<div class="dh-tb-body" id="dhTbBody"></div>'
-      +'<div class="dh-tb-foot"><input id="dhTbInput" type="text" placeholder="Sorunu yaz..."><button class="dh-tb-send" id="dhTbSend">Sor</button></div>';
+      +'<div class="dh-tb-foot"><input id="dhTbInput" type="text" placeholder="Sorunu yaz...">'
+      +'<button class="dh-tb-send" id="dhTbSend">Sor</button>'
+      +'<button class="dh-tb-send" id="dhTbGem" title="Gemini\'ye sor" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">💎</button>'
+      +'</div>';
     document.body.appendChild(panel);
     bodyEl=panel.querySelector("#dhTbBody");
     inputEl=panel.querySelector("#dhTbInput");
     avaHost=panel.querySelector("#dhTbAva");
     panel.querySelector("#dhTbX").onclick=closePanel;
     panel.querySelector("#dhTbSend").onclick=function(){ ask(inputEl.value); };
+    panel.querySelector("#dhTbGem").onclick=function(){ openInGemini(inputEl.value); };
     inputEl.addEventListener("keydown",function(e){ if(e.key==="Enter") ask(inputEl.value); });
     updateHint();
   }
@@ -212,7 +217,31 @@
     return (ctx ? (ctx+"\nÖğrencinin isteği: ") : "") + userText;
   }
 
-  function ask(userText){
+  /* 💎 GEMİNİ'DE AÇ — TOKEN HARCAMAZ (resimli öğrenmedeki 🤖 AI'ye Sor yapısıyla aynı):
+     öğretmen bağlamlı promptu panoya kopyalar, Gemini uygulamasını yeni sekmede açar.
+     Kullanıcı yapıştırıp Enter'a basar; kota/anahtar gerekmez. */
+  function openInGemini(userText){
+    userText=(userText||"").trim();
+    if(!userText && topic) userText="Bunu açıkla";
+    if(!userText){ inputEl.focus(); inputEl.placeholder="Önce sorunu yaz, sonra 💎'a bas"; return; }
+    var prompt="Türkçe açıklama yapan sabırlı bir İngilizce öğretmeni gibi davran. Kısa, örnekli anlat.\n\n"
+      + buildUserMessage(userText);
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(prompt);
+      else{ var ta=document.createElement("textarea"); ta.value=prompt; ta.style.cssText="position:fixed;opacity:0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+    }catch(e){}
+    try{
+      var n=document.createElement("div");
+      n.textContent="📋 Prompt kopyalandı — Gemini'de yapıştır (Ctrl/Cmd+V) ve Enter'a bas";
+      n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #7c3aed;padding:11px 16px;border-radius:12px;font:700 13px system-ui;max-width:90vw;text-align:center";
+      document.body.appendChild(n);
+      setTimeout(function(){ n.remove(); },3600);
+    }catch(e){}
+    window.open("https://gemini.google.com/app","_blank");
+    inputEl.value="";
+  }
+
+  function ask(userText, provider){
     userText=(userText||"").trim();
     if(!userText && topic) userText="Bunu açıkla";
     if(!userText) return;
@@ -220,6 +249,7 @@
     inputEl.value="";
 
     // AI kullanılabilir mi? Değilse zarifçe kurallı mesaj göster (çökme yok).
+    // (Gemini özellikle istendiyse ve anahtarı varsa bu kapıya takılma)
     if(window.DHAI && !DHAI.available()){
       var why = DHAI.reason() || "AI öğretmen şu an kullanılamıyor.";
       var local = topic ? buildLocalHint() : "";
@@ -232,17 +262,17 @@
       return;
     }
 
-    bodyEl.innerHTML='<div class="dh-tb-loading">🎓 Öğretmen düşünüyor…</div>';
+    bodyEl.innerHTML='<div class="dh-tb-loading">'+"🎓 Öğretmen düşünüyor…"+'</div>';
     try{ if(window.DilAvatar&&DilAvatar.thinking) DilAvatar.thinking(true); }catch(e){}
 
     var msgs=[
       {role:"system",content:systemPrompt()},
       {role:"user",content:buildUserMessage(userText)}
     ];
-    groqChat(msgs).then(function(answer){
+    groqChat(msgs, provider).then(function(answer){
       try{ if(window.DHAI) DHAI.noteSuccess(); }catch(e){}
       try{ if(window.DilAvatar&&DilAvatar.thinking) DilAvatar.thinking(false); }catch(e){}
-      showAnswer(answer||"(boş yanıt)");
+      showAnswer(answer||"(boş yanıt)", provider);
       // avatar konuşsun (İngilizce kısımları değil, kısa özet)
       try{ if(window.DilAvatar&&DilAvatar.speakText){ DilAvatar.speakText(stripForSpeech(answer)); } }catch(e){}
     }).catch(function(err){
@@ -257,7 +287,7 @@
         +(localHint?'<div class="dh-tb-ans" style="margin-top:10px">'+localHint+'</div>':'')
         +'<div class="dh-tb-quick" style="margin-top:10px"><button class="dh-tb-chip" id="dhTbRetry">↻ Tekrar dene</button>'
         +'<a class="dh-tb-chip" href="./teacher.html" style="text-decoration:none">🎓 Öğretmen sayfası</a></div>';
-      var r=document.getElementById("dhTbRetry"); if(r) r.onclick=function(){ ask(userText); };
+      var r=document.getElementById("dhTbRetry"); if(r) r.onclick=function(){ ask(userText, provider); };
     });
   }
 
@@ -272,14 +302,15 @@
     return "Çevrimdışı ipucu: "+parts.join(" — ");
   }
 
-  function showAnswer(text){
-    // İngilizce örnekleri yeşil göster (kaba: tırnak içi veya satır başı büyük harf cümleler)
-    bodyEl.innerHTML='<div class="dh-tb-ans">'+esc(text)+'</div>'
+  function showAnswer(text, provider){
+    var tag = provider==="gemini"
+      ? '<div style="font-size:11px;font-weight:900;color:#a5b4fc;margin-bottom:6px">💎 Gemini yanıtladı</div>' : '';
+    bodyEl.innerHTML=tag+'<div class="dh-tb-ans">'+esc(text)+'</div>'
       +'<div class="dh-tb-quick" style="margin-top:12px">'
       +'<button class="dh-tb-chip" data-q="daha basit anlat">🔁 Daha basit</button>'
       +'<button class="dh-tb-chip" data-q="bir örnek daha">➕ Bir örnek daha</button>'
       +'</div>';
-    bodyEl.querySelectorAll(".dh-tb-chip").forEach(function(c){ c.onclick=function(){ ask(c.getAttribute("data-q")); }; });
+    bodyEl.querySelectorAll(".dh-tb-chip").forEach(function(c){ c.onclick=function(){ ask(c.getAttribute("data-q"), provider); }; });
   }
 
   function stripForSpeech(t){
