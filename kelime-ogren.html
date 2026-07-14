@@ -112,7 +112,7 @@
 </div>
 
 <script src="./storage-bridge.js?v=3"></script>
-<script src="./coach-bubble.js?v=2"></script>
+<script src="./coach-bubble.js?v=3"></script>
 <script src="./auth-guard.js?v=1"></script>
 <script src="./cloud-sync.js?v=5"></script>
 <script src="./progress-engine.js?v=2"></script>
@@ -163,7 +163,33 @@
   function setStatus(word, st){
     try{ if(window.DHProgress) DHProgress.setStatus("word:"+word, st); }catch(e){}
   }
+  /* 🔁 wsrs: kelimeyi ARALIKLI TEKRAR döngüsüne sok (tekrar.html'in okuduğu kayıt).
+     Bu yoktu — burada öğrenilen kelime tekrara hiç girmiyordu, kalıcılaşmıyordu. */
+  function kvOpen(){ return new Promise(function(res,rej){ var r=indexedDB.open("sentence-mode",1);
+    r.onupgradeneeded=function(){ try{ r.result.createObjectStore("kv"); }catch(e){} };
+    r.onsuccess=function(){ res(r.result); }; r.onerror=function(){ rej(r.error); }; }); }
+  function kvGet(key){ return kvOpen().then(function(db){ return new Promise(function(res){
+    var q=db.transaction("kv").objectStore("kv").get(key);
+    q.onsuccess=function(){ db.close(); res(q.result||null); }; q.onerror=function(){ db.close(); res(null); }; }); }).catch(function(){ return null; }); }
+  function kvSet(key,val){ return kvOpen().then(function(db){ return new Promise(function(res){
+    var tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(val,key);
+    tx.oncomplete=function(){ db.close(); res(1); }; tx.onerror=function(){ db.close(); res(0); }; }); }).catch(function(){ return 0; }); }
+  function wsrsStep(n, ok){
+    n=(n&&typeof n==="object")?n:{rep:0,ef:2.5,interval:0,due:0,last:0,lapses:0};
+    var now=Date.now(), DAY=86400000;
+    if(ok){ n.rep=(n.rep||0)+1;
+      n.interval = n.rep===1?1 : (n.rep===2?3 : Math.round((n.interval||1)*(n.ef||2.5)));
+      n.ef=Math.min(2.8,(n.ef||2.5)+0.05);
+    } else { n.lapses=(n.lapses||0)+1; n.rep=0; n.interval=1; n.ef=Math.max(1.3,(n.ef||2.5)-0.2); }
+    n.last=now; n.due=now+n.interval*DAY; return n;
+  }
+  function wsrsRecord(word, ok){
+    var key="wsrs:"+word;
+    return kvGet(key).then(function(cur){ return kvSet(key, wsrsStep(cur, ok)); });
+  }
+
   function recordResult(word, correct, meaning, picked){
+    try{ wsrsRecord(word, !!correct); }catch(e){}
     try{ if(window.DHProgress) DHProgress.recordResult("word:"+word, correct); }catch(e){}
     /* KOÇ BAĞLANTISI: kelime testi artık gerçek etkileşim olarak sayılır —
        tracker (lessons), aktivite logu, görev işareti ve koç yorumu tetiklenir. */
@@ -230,17 +256,161 @@
   }
 
   // ---------- seslendirme ----------
+  /* 📝 BAĞLAM CÜMLESİ: kelimeyi gerçek cümle içinde göster.
+     data/sentences.json (1.3MB) İLK istekte bir kez yüklenir, sonra bellekte. */
+  var __sentCache=null, __sentLoading=null;
+  function loadSentences(){
+    if(__sentCache) return Promise.resolve(__sentCache);
+    if(__sentLoading) return __sentLoading;
+    __sentLoading=fetch("./data/sentences.json").then(function(r){ return r.json(); })
+      .then(function(d){ __sentCache=Array.isArray(d)?d:[]; return __sentCache; })
+      .catch(function(){ __sentCache=[]; return __sentCache; });
+    return __sentLoading;
+  }
+  function findExamples(word, cb){
+    loadSentences().then(function(arr){
+      var re=new RegExp("\\b"+word.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i");
+      var RANK={A1:1,A2:2,B1:3,B2:4,C1:5,C2:6};
+      var hits=[];
+      for(var i=0;i<arr.length;i++){            // TÜM eşleşmeler (önceden 2 ile sınırlıydı)
+        var it=arr[i], en=it&&it.en;
+        if(en && re.test(en)){
+          hits.push({en:en, tr:it.tr||"", lv:it.level||"", rank:RANK[it.level]||9});
+        }
+      }
+      /* 📈 kolaydan zora: önce seviye (A1→C2), eşitse kısa cümle önce */
+      hits.sort(function(a,b){
+        if(a.rank!==b.rank) return a.rank-b.rank;
+        return a.en.length-b.en.length;
+      });
+      cb(hits);
+    });
+  }
+  function exampleBtnHtml(){
+    return '<button class="speak" id="exBtn" style="margin-left:8px">📝 Örnek cümle</button><div id="exBox" style="margin-top:10px"></div>';
+  }
+  function bindExample(item){
+    var b=$("exBtn"); if(!b) return;
+    b.onclick=function(){
+      b.disabled=true; b.textContent="⏳ ...";
+      findExamples(item.word, function(hits){
+        b.style.display="none";
+        var box=$("exBox"); if(!box) return;
+        if(!hits.length){ box.innerHTML='<span style="color:#64748b;font-size:13px">Bu kelimeyle kayıtlı örnek cümle yok.</span>'; return; }
+        var PAGE=20, shown=0;
+        var hlRe=new RegExp("\\b("+item.word.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")\\b","ig");
+        var LVC={A1:"#4ade80",A2:"#a3e635",B1:"#facc15",B2:"#fb923c",C1:"#f87171",C2:"#e879f9"};
+        function rowHtml(h,i){
+          var hl=h.en.replace(hlRe,'<b style="color:#facc15">$1</b>');
+          return '<div style="background:#0a1526;border:1px solid #ffffff14;border-radius:12px;padding:10px 12px;margin-top:8px">'
+            +'<div style="font-size:15px;line-height:1.5">'
+            +(h.lv?'<span style="font-size:10px;font-weight:900;color:'+(LVC[h.lv]||"#9fb0c8")+';border:1px solid currentColor;border-radius:6px;padding:1px 5px;margin-right:7px;vertical-align:2px">'+h.lv+'</span>':'')
+            +hl+' <button data-say="'+i+'" style="border:0;background:transparent;cursor:pointer;font-size:15px">🔊</button></div>'
+            +(h.tr?'<div style="font-size:12.5px;color:#9fb0c8;margin-top:4px">'+esc(h.tr)+'</div>':'')
+            +'<a href="./videopractice.html?q='+encodeURIComponent(h.en)+'" '
+            +'style="display:inline-block;margin-top:8px;background:#1d4ed8;color:#fff;text-decoration:none;'
+            +'font-weight:800;font-size:12px;padding:6px 12px;border-radius:999px">▶ Bu cümleyi çalış</a>'
+            +'</div>';
+        }
+        box.innerHTML='<div style="font-size:12px;color:#93c5fd;font-weight:800;margin-top:6px">📚 '+hits.length+' cümlede geçiyor — kolaydan zora:</div>'
+          +'<div id="exList"></div>'
+          +'<button id="exMore" class="speak" style="display:none;width:100%;margin-top:10px">▼ 20 daha göster</button>';
+        var list=$("exList"), more=$("exMore");
+        function showMore(){
+          var end=Math.min(shown+PAGE, hits.length), html="";
+          for(var i=shown;i<end;i++) html+=rowHtml(hits[i],i);
+          list.insertAdjacentHTML("beforeend", html);
+          shown=end;
+          more.style.display = shown<hits.length ? "block" : "none";
+          if(shown<hits.length) more.textContent="▼ "+Math.min(PAGE,hits.length-shown)+" daha göster (kalan "+(hits.length-shown)+")";
+        }
+        more.onclick=showMore;
+        box.onclick=function(e){
+          var sb=e.target.closest&&e.target.closest("[data-say]");
+          if(sb) speak(hits[parseInt(sb.getAttribute("data-say"),10)].en);
+        };
+        showMore();
+      });
+    };
+  }
+
   function speak(text){
     try{ var u=new SpeechSynthesisUtterance(text); u.lang="en-US"; u.rate=.85; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
   }
 
-  // ---------- mod seçimi: kart mı quiz mi ----------
+  // ---------- ✍️ ÜRETİM MODU: yazarak hatırlama (recall) — tanımadan güçlüdür ----------
+  function lev1(a,b){ /* 1 harf toleranslı karşılaştırma */
+    a=(a||"").toLowerCase().trim(); b=(b||"").toLowerCase().trim();
+    if(a===b) return 0;
+    if(Math.abs(a.length-b.length)>1) return 2;
+    var i=0,j=0,d=0;
+    while(i<a.length&&j<b.length){
+      if(a[i]===b[j]){i++;j++;continue;}
+      d++; if(d>1) return 2;
+      if(a.length>b.length) i++; else if(b.length>a.length) j++; else {i++;j++;}
+    }
+    return d+(a.length-i)+(b.length-j)>1?2:1;
+  }
+  function renderType(item, st, listenOnly){
+    var badge = listenOnly ? "👂 Dinle ve yaz" : "✍️ İngilizcesini yaz";
+    $("stage").innerHTML='<div class="card">'
+      +(listenOnly?"":imgBlock(item, st))
+      +'<div class="cbody">'
+      +'<span class="mode-badge">'+badge+'</span>'
+      +(listenOnly
+        ? '<button class="speak" id="speakBtn" style="font-size:20px;padding:14px 22px;margin:16px 0">🔊 Dinle</button>'
+        : '<h2 class="word" style="font-size:22px">'+esc(item.anlamlar[0])+'</h2><p class="qprompt">Bu anlamın İngilizcesi ne?</p>')
+      +'<input id="typeInp" autocomplete="off" autocapitalize="none" spellcheck="false" '
+      +'style="width:100%;margin-top:12px;background:#0a1526;border:1px solid #ffffff26;color:#e8eef7;'
+      +'border-radius:14px;padding:14px 16px;font:800 18px system-ui" placeholder="İngilizce kelimeyi yaz...">'
+      +'<div style="display:flex;gap:10px;margin-top:12px">'
+      +'<button class="btn-no" id="giveBtn" style="flex:1">Bilmiyorum</button>'
+      +'<button class="btn-yes" id="chkBtn" style="flex:1">Kontrol ✓</button>'
+      +'</div>'
+      +'<div id="typeFb" style="margin-top:10px;min-height:22px;font-weight:800"></div>'
+      +'</div></div>';
+    if(listenOnly){ $("speakBtn").onclick=function(){ speak(item.word); }; setTimeout(function(){ speak(item.word); },350); }
+    var inp=$("typeInp"); inp.focus();
+    function finish(ok, near){
+      inp.disabled=true; $("chkBtn").disabled=true; $("giveBtn").disabled=true;
+      $("typeFb").innerHTML = ok
+        ? (near?'<span style="color:#f59e0b">≈ Çok yakın! Doğrusu: <b>'+esc(item.word)+'</b></span>'
+               :'<span style="color:#4ade80">✓ Doğru: <b>'+esc(item.word)+'</b></span>')
+        : '<span style="color:#f87171">✗ Doğrusu: <b>'+esc(item.word)+'</b> — '+esc(item.anlamlar[0])+'</span>';
+      speak(item.word);
+      recordResult(item.word, ok, item.anlamlar[0], inp.value);
+      statusOf(item.word).then(function(cur){
+        if(ok && !near) setStatus(item.word, cur>=1?2:1);
+        else if(!ok) setStatus(item.word, 1);
+      });
+      setTimeout(next, ok?1300:2200);
+    }
+    function check(){
+      var d=lev1(inp.value, item.word);
+      if(d===0) finish(true,false);
+      else if(d===1) finish(true,true);   // 1 harf: yakın sayılır ama status yükselmez
+      else finish(false,false);
+    }
+    $("chkBtn").onclick=check;
+    inp.addEventListener("keydown",function(e){ if(e.key==="Enter") check(); });
+    $("giveBtn").onclick=function(){ finish(false,false); };
+  }
+
+  // ---------- mod seçimi: kart / quiz / yazma / dinle-yaz ----------
   function pickMode(item, st){
     // yeni kelime (hiç görülmemiş) → KART (önce tanıştır)
     // görülmüş (learning/learned) → QUIZ (pekiştir)
     if(st===0) return "card";
-    // %60 quiz, %40 kart karışık
-    return Math.random()<0.6 ? "quiz" : "card";
+    /* 🔬 zorluk merdiveni: yeni kelime kartla tanınır, ilerledikçe üretime geçilir
+       (st=0: kart/quiz — st>=1: %35 yazma, %15 dinle-yaz, %30 quiz, %20 kart) */
+    var r=Math.random();
+    if(st>=1){
+      if(r<0.35) return "type";
+      if(r<0.50) return "listen";
+      if(r<0.80) return "quiz";
+      return "card";
+    }
+    return r<0.6 ? "quiz" : "card";
   }
 
   // ---------- render ----------
@@ -260,7 +430,9 @@
     updateProgressBar();
     statusOf(item.word).then(function(st){
       var mode=pickMode(item, st);
-      if(mode==="card") renderCard(item, st);
+      if(mode==="type") renderType(item, st, false);
+      else if(mode==="listen") renderType(item, st, true);
+      else if(mode==="card") renderCard(item, st);
       else renderQuiz(item, st);
       // görseli arka planda yükle
       loadImage(item).then(function(img){ applyImage(item, img); });
@@ -308,6 +480,7 @@
       +'<h2 class="word">'+esc(item.word)+'</h2>'
       +(item.oku?'<div class="pron">/'+esc(item.oku)+'/</div>':'')
       +'<button class="speak" id="speakBtn">🔊 Sesli oku</button>'
+      +exampleBtnHtml()
       +'<button class="reveal-btn" id="revealBtn">Anlamı göster</button>'
       +'<ul class="meanings" id="meanings">'+item.anlamlar.map(function(m){return '<li>'+esc(m)+'</li>';}).join("")+'</ul>'
       +'<div class="know-row" id="knowRow">'
@@ -316,6 +489,7 @@
       +'</div>'
       +'</div></div>';
     $("speakBtn").onclick=function(){ speak(item.word); };
+    bindExample(item);
     $("revealBtn").onclick=function(){
       $("meanings").classList.add("show");
       $("knowRow").classList.add("show");
@@ -332,10 +506,21 @@
 
   // QUIZ modu
   function renderQuiz(item, st){
-    // 3 çeldirici anlam (başka kelimelerden)
+    // 3 çeldirici anlam — AKILLI: önce aynı seviye + aynı sözcük türü ([i.]/[f.]/[s.]...)
+    // rastgele alakasız şıklar quizi bedavaya getiriyordu.
     var correct=item.anlamlar[0];
-    var pool=State.words.filter(function(x){ return x.word!==item.word && x.anlamlar.length; });
+    function posOf(m){ var t=/\[(i|f|s|zf|ed|bağ|zm|ünl)\.\]/.exec(m||""); return t?t[1]:""; }
+    var myPos=posOf(correct);
+    var all=State.fullPool||State.words;
+    var pool=all.filter(function(x){ return x.word!==item.word && x.anlamlar.length; });
     shuffle(pool);
+    pool.sort(function(a,b){
+      function sc(x){ var s=0;
+        if(x.seviye===item.seviye) s-=2;
+        if(myPos && posOf(x.anlamlar[0])===myPos) s-=3;
+        return s; }
+      return sc(a)-sc(b);
+    });
     var distractors=[]; var seen={}; seen[correct.toLowerCase()]=1;
     for(var i=0;i<pool.length && distractors.length<3;i++){
       var m=pool[i].anlamlar[0];
@@ -400,10 +585,16 @@
     if(State.level!=="all") pool=pool.filter(function(x){ return x.seviye===State.level; });
     if(!pool.length) pool=State.words.slice();
     // durumları çek, NEW/LEARNING olanları öne al (öğrenilmişleri sona)
-    var promises=pool.slice(0,400).map(function(x){ return statusOf(x.word).then(function(st){ return {x:x,st:st}; }); });
+    State.fullPool=pool.slice(0,600);                     // quiz çeldiricileri için geniş havuz
+    var promises=pool.slice(0,400).map(function(x){
+      return Promise.all([statusOf(x.word), kvGet("wsrs:"+x.word)]).then(function(rr){
+        var w=rr[1]||{}; return {x:x, st:rr[0], due:(w.due&&w.due<=Date.now())?1:0};
+      });
+    });
     Promise.all(promises).then(function(rows){
-      // sırala: önce st (az öğrenilmiş önce), sonra frekans (sık önce)
+      // sırala: 🔁 vadesi gelen tekrarlar EN önde, sonra az öğrenilmiş, sonra frekans
       rows.sort(function(a,b){
+        if(a.due!==b.due) return b.due-a.due;
         if(a.st!==b.st) return a.st-b.st;
         return b.x.frekans-a.x.frekans;
       });
