@@ -49,8 +49,13 @@
       "@media(max-width:640px){",
       "  .dh-mode-toggle.on-video{top:auto;left:12px;",
       "    bottom:calc(178px + env(safe-area-inset-bottom))}",
+      /* SAĞ YIĞIN DÜZELTMESİ: koç avatarı sağ altta 78-132px arasını kaplıyor;",
+         Sıradaki butonu 126'dan başlayınca üstüne biniyordu. Yeni istif:",
+         avatar 78-132 → Sıradaki 140-188 → Önceki 196-244 (tr-panel 300'de, temas yok) */
+      "  .next-float{top:auto!important;right:12px!important;",
+      "    bottom:calc(140px + env(safe-area-inset-bottom))!important}",
       "  .dh-prev-float{top:auto;right:12px;",
-      "    bottom:calc(184px + env(safe-area-inset-bottom))}",
+      "    bottom:calc(196px + env(safe-area-inset-bottom))}",
       "}",
       "#nbVideoBtn{display:none !important}",
       ".photo-float{display:none !important}"

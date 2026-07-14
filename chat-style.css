@@ -248,3 +248,15 @@ button,input,textarea{font:inherit}
   .input-row .icon-fab{width:46px;height:46px;font-size:20px}
   .input-row{gap:7px}
 }
+
+/* ===== MOBİL DÜZELTME (v17): yazı kutusu ÇOK DARDI —
+   5 buton tek satırda metin kutusunu eziyordu. Artık mobilde
+   kutu tam genişlik alır, butonlar altta ayrı satıra iner. ===== */
+@media(max-width:640px){
+  .input-row{flex-wrap:wrap!important;gap:8px!important}
+  .input-wrap{flex:1 1 100%!important;min-height:50px!important;order:-1}
+  .icon-fab{width:46px!important;height:46px!important;font-size:21px!important}
+  .suggest-btn{width:42px!important;height:42px!important;font-size:19px!important}
+  /* buton grubunu sağa yasla: ilk buton öncesi boşluk esner */
+  .input-row .icon-fab:nth-of-type(1){margin-left:auto}
+}

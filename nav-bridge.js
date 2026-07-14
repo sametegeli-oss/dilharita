@@ -13,7 +13,7 @@
       .nb-video-btn{background:#4c1d95;border:1px solid #7c3aed;color:#fff;border-radius:10px;
         padding:8px 14px;font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}
       .nb-video-btn:hover{background:#5b21b6}
-      .nb-return-banner{position:fixed;left:12px;right:12px;top:12px;z-index:9999;
+      .nb-return-banner{position:fixed;left:12px;right:76px;bottom:12px;top:auto;z-index:9999;
         background:#0f172a;border:1px solid #7c3aed88;border-radius:14px;padding:12px 16px;
         color:#e2e8f0;font:600 13px Nunito,system-ui,sans-serif;display:flex;gap:10px;
         align-items:center;box-shadow:0 12px 34px rgba(0,0,0,.4)}
