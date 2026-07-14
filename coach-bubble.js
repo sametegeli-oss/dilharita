@@ -89,41 +89,78 @@
     +"@keyframes dhRing{0%{opacity:.8;transform:scale(1)}100%{opacity:0;transform:scale(1.6)}}";
   document.head.appendChild(css);
   var box=document.createElement("div"); box.className="dh-coach";
+  /* ---------- ÖĞRETMEN YÜZÜ: koç, seçili öğretmenin fotoğrafıyla konuşur ----------
+     selectedTeacherAvatar (chatteacher.html'de seçiliyor) yoksa teacher1 varsayılır.
+     Fotoğraf yüklenemezse img kendini siler ve SVG yüz devreye girer. */
+  function coachFace(kind, big){
+    var sel="teacher1";
+    try{ sel=localStorage.getItem("selectedTeacherAvatar")||"teacher1"; }catch(e){}
+    var px=big?48:34;
+    /* Fotoğraf yüklenemezse img kendini siler ve gizli SVG yüz görünür olur */
+    return '<img class="dh-tface" src="./assets/avatars_v3/'+sel+'/idle.webp" alt="" '
+      +'style="width:'+px+'px;height:'+px+'px;border-radius:50%;object-fit:cover;object-position:top;display:block;box-shadow:0 0 0 2px #ffffff26" '
+      +'onerror="this.nextElementSibling&&(this.nextElementSibling.style.display=\'\');this.remove();">'
+      +'<span class="dh-svg-fb" style="display:none">'+faceSvg(kind)+'</span>';
+  }
+  function teacherHref(focus){
+    var sel="teacher1";
+    try{ sel=localStorage.getItem("selectedTeacherAvatar")||"teacher1"; }catch(e){}
+    var page = sel==="teacher2" ? "chatteacher2.html" : "chatteacher1.html";
+    return "./"+page+(focus?("?focus="+encodeURIComponent(focus)):"");
+  }
+  function focusBtnHtml(t){
+    if(!t) return "";
+    return '<a class="dh-coach-teach" href="'+teacherHref(t)+'" onclick="event.stopPropagation()" '
+      +'style="margin-left:6px;flex:none;align-self:center;background:#1d4ed8;color:#fff;text-decoration:none;'
+      +'font-weight:800;font-size:11.5px;padding:6px 10px;border-radius:999px;white-space:nowrap">🧑‍🏫 Öğretmenle çalış</a>';
+  }
+  try{
+    var tfCss=document.createElement("style");
+    tfCss.textContent=".dh-coach .face .dh-tface{flex:none}";
+    document.head.appendChild(tfCss);
+  }catch(e){}
+
   var avatar=document.createElement("div"); avatar.className="dh-avatar"; avatar.title="Koçun — tıkla, son yorumunu tekrar göster";
-  avatar.innerHTML='<div class="ring"></div>'+faceSvg("tip");
+  avatar.innerHTML='<div class="ring"></div>'+coachFace("tip", true);
   function mount(){ document.body.appendChild(box); document.body.appendChild(avatar); }
   if(document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
   var avatarResetT=null;
+  function clearFace(){
+    try{
+      avatar.querySelectorAll("svg,.dh-tface,.dh-svg-fb").forEach(function(n){ n.remove(); });
+    }catch(e){}
+  }
   function setAvatarFace(kind){
     try{
-      avatar.querySelector("svg") && avatar.querySelector("svg").remove();
-      avatar.insertAdjacentHTML("beforeend", faceSvg(kind||"tip"));
+      clearFace();
+      avatar.insertAdjacentHTML("beforeend", coachFace(kind||"tip", true));
       avatar.classList.remove("reacting"); void avatar.offsetWidth; avatar.classList.add("reacting");
       clearTimeout(avatarResetT);
       avatarResetT=setTimeout(function(){
-        avatar.querySelector("svg") && avatar.querySelector("svg").remove();
-        avatar.insertAdjacentHTML("beforeend", faceSvg("tip"));   // nötr yüze dön
+        clearFace();
+        avatar.insertAdjacentHTML("beforeend", coachFace("tip", true));   // nötr yüze dön
       }, 8000);
     }catch(e){}
   }
 
-  var hideT=null, lastMsg="", lastAt=0, lastKind="tip";
-  window.dhCoachSay=function(msg, kind, faceOverride){
+  var hideT=null, lastMsg="", lastAt=0, lastKind="tip", lastFocus="";
+  window.dhCoachSay=function(msg, kind, faceOverride, opts){
     if(!msg || !document.body) return;
     if(msg===lastMsg && Date.now()-lastAt<4000) return;
     lastMsg=msg; lastAt=Date.now(); lastKind=kind||"tip";
+    lastFocus=(opts && opts.focusType) || "";
     setAvatarFace(kind);
     box.classList.remove("show");
     void box.offsetWidth;
     box.className="dh-coach "+(kind||"tip");
-    box.innerHTML='<span class="face">'+(faceOverride||faceSvg(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span><span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
+    box.innerHTML='<span class="face">'+(faceOverride||coachFace(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
     requestAnimationFrame(function(){ box.classList.add("show"); });
     clearTimeout(hideT);
     // otomatik kapanma KALDIRILDI — kullanıcı isteği: balon yalnız ✕ ile veya elle kapatılır
   };
   box.onclick=function(){ box.classList.remove("show"); };
   avatar.onclick=function(){
-    if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+faceSvg(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span><span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
+    if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
     else { try{ window.__dhCoachManualStatus && window.__dhCoachManualStatus(); }catch(e){} }
   };
 
@@ -247,7 +284,7 @@
         var overlap = hist.filter(function(r){ return r.grade==="hard" && Array.isArray(r.types) && r.types.some(function(t){return curTypes.indexOf(t)>=0;}); });
         if(overlap.length>=2 && curTypes.length){
           var tp=curTypes[0];
-          dhCoachSay("TEKRARLANAN HATA: "+(TYPE_LABEL[tp]||tp)+". Yapman gereken: "+(TYPE_TIP[tp]||"Cümle kurarken buna özellikle dikkat et.")+" Bir sonraki cümlede bilerek uygula!","warn");
+          dhCoachSay("TEKRARLANAN HATA: "+(TYPE_LABEL[tp]||tp)+". Yapman gereken: "+(TYPE_TIP[tp]||"Cümle kurarken buna özellikle dikkat et.")+" Bir sonraki cümlede bilerek uygula!","warn",null,{focusType:tp});
           return;
         }
       }
@@ -257,7 +294,7 @@
         hist.forEach(function(r){ if(r.grade==="hard" && Array.isArray(r.types)) r.types.forEach(function(t){ tally[t]=(tally[t]||0)+1; }); });
         var top=Object.keys(tally).sort(function(a,b){return tally[b]-tally[a];})[0];
         if(top && tally[top]>=3){
-          dhCoachSay("GENEL DEĞERLENDİRME: En çok "+(TYPE_LABEL[top]||top)+" konusunda hata yapıyorsun ("+tally[top]+" kez). Tavsiyem: "+(TYPE_TIP[top]||"buna özellikle dikkat et")+".","stat");
+          dhCoachSay("GENEL DEĞERLENDİRME: En çok "+(TYPE_LABEL[top]||top)+" konusunda hata yapıyorsun ("+tally[top]+" kez). Tavsiyem: "+(TYPE_TIP[top]||"buna özellikle dikkat et")+".","stat",null,{focusType:top});
           return;
         }
       }

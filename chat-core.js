@@ -26,6 +26,11 @@ const DEFAULT_SCENARIO = {
 const Scenario = Object.assign({}, DEFAULT_SCENARIO, window.CHAT_SCENARIO || {});
 Scenario.voiceGender = "male";
 Scenario.frames = Object.assign({}, DEFAULT_SCENARIO.frames, (window.CHAT_SCENARIO && window.CHAT_SCENARIO.frames) || {});
+/* KOÇ BEYNİ: öğretmen senaryosu mu? (koç planı/hedefi YALNIZ öğretmene aktarılır —
+   otel resepsiyonisti öğrencinin çalışma planını bilirse rol bozulur) */
+var __dhIsTeacher = /teacher|öğretmen|ogretmen/i.test((Scenario.title||"") + " " + (Scenario.role||""));
+/* Koç balonundan "?focus=hataTürü" ile gelinirse bu oturum o hataya odaklanır */
+var __dhFocus = ""; try{ __dhFocus = new URLSearchParams(location.search).get("focus") || ""; }catch(e){}
 const State = {
   level: localStorage.getItem("chat:level:" + safeId(Scenario.title + ":" + (Scenario.avatarDir||""))) || Scenario.level || "A2",
   currentPartner: Scenario.opener,
@@ -265,7 +270,26 @@ async function dhBuildProfile(){
     if(due) p.push("Bugün tekrar bekleyen: "+due+".");
     if(leech.length) p.push("İnatçı (öğrenemediği) cümleler: "+leech.join(" | ")+".");
   }catch(e){}
-  return p.join(" ").slice(0,900);
+  try{ /* KOÇ BEYNİ → öğretmene: günün planı + haftalık hedef */
+    if(__dhIsTeacher){
+      var kDay=new Date().toISOString().slice(0,10);
+      var kPlan=null; try{ kPlan=JSON.parse(localStorage.getItem("dh-koc-plan-"+kDay)||"null"); }catch(e){}
+      if(kPlan && kPlan.focus){
+        var kDone={}; try{ kDone=JSON.parse(localStorage.getItem("dh-koc-steps-done-"+kDay)||"{}")||{}; }catch(e){}
+        var kSteps=(kPlan.steps||[]).map(function(s){
+          var pg=String(s.href||"").split("?")[0];
+          return (kDone[pg]?"✅":"⬜")+" "+(s.label||pg);
+        }).join("; ");
+        p.push("BUGÜNÜN KOÇ PLANI — Odak: "+kPlan.focus+"."+(kPlan.note?(" Not: "+kPlan.note+"."):"")+(kSteps?(" Adımlar: "+kSteps+"."):""));
+      }
+      var kGoal=null; try{ kGoal=JSON.parse(localStorage.getItem("dh-koc-goal")||"null"); }catch(e){}
+      if(kGoal && kGoal.type){
+        var kKalan=Math.max(0, Math.ceil(((kGoal.setAt||Date.now())+7*86400000-Date.now())/86400000));
+        p.push("HAFTALIK HEDEF: '"+kGoal.type+"' hatasını azaltmak (kalan "+kKalan+" gün).");
+      }
+    }
+  }catch(e){}
+  return p.join(" ").slice(0, __dhIsTeacher ? 1500 : 900);
 }
 
 var __dhProfile=""; dhBuildProfile().then(function(t){ __dhProfile=t; });
@@ -285,6 +309,8 @@ function dhStripTasks(reply){
 function systemPrompt(){
   return [Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."), levelGuide(), "Always reply in English unless the user explicitly asks for Turkish.", "Keep replies short: 1 to 3 sentences.", "Ask a follow-up question to keep the conversation going.", "If the user makes a clear mistake, gently model the correct version without lecturing.", "No emojis.",
     (__dhProfile?("\n[STUDENT PROFILE — use this to personalize, in Turkish data]\n"+__dhProfile+"\nWhen the student repeats one of their known error patterns, gently correct it and briefly note it is a frequent mistake of theirs. Naturally create situations that make the student use the patterns they struggle with."):""),
+    (__dhIsTeacher?"\n[COACH ROLE] You are not only a conversation partner but also the student's personal coach. The profile above includes their daily coach plan (BUGÜNÜN KOÇ PLANI) and weekly goal (HAFTALIK HEDEF). In your FIRST reply, acknowledge their streak, plan or goal in ONE short friendly sentence, then continue teaching. Steer the practice toward the weekly goal and the unfinished (⬜) plan steps. If they completed steps (✅), congratulate briefly.":""),
+    (__dhFocus?("\n[FOCUS DRILL] The coach sent the student to you specifically to work on this error type: \""+__dhFocus+"\". Build most of this session around it: create short prompts that force the student to produce this pattern, correct their attempts, and give ONE short Turkish tip when they slip. Mention at the start, in one sentence, that you two will practice this together."):""),
     "\n[TASKS] The student must complete these in-scenario tasks: "+__dhTasks.map(function(t,i){return (i+1)+") "+t;}).join(" ")+" Weave them naturally into the conversation. When the user GENUINELY completes task N, append the marker [TASK_DONE:N] at the very end of your reply. Never mention the markers or tasks mechanically."
   ].join("\n");
 }
