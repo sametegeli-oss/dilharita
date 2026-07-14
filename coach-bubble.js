@@ -20,6 +20,51 @@
     try{ var k="dh-koc-steps-done-"+new Date().toISOString().slice(0,10); var s=JSON.parse(localStorage.getItem(k)||"{}")||{}; s[page]=1; localStorage.setItem(k, JSON.stringify(s)); }catch(e){}
   };
 
+  /* ---------- 🔗 GÜNLÜK PLAN ZİNCİRİ ----------
+     ~10 gerçek etkileşimden sonra: bu sayfa bugünkü planın bir adımıysa,
+     koç "adım tamam ✅ sıradaki: ..." balonuyla bir SONRAKİ adımın linkini uzatır.
+     Kullanıcı menüye dönmeden günü koçun elinden bitirir. Sayfa başına günde 1 kez. */
+  function dhToday(){ return new Date().toISOString().slice(0,10); }
+  function dhPlanSteps(){ try{ var p=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); return (p&&p.steps)||[]; }catch(e){ return []; } }
+  function dhStepsDone(){ try{ return JSON.parse(localStorage.getItem("dh-koc-steps-done-"+dhToday())||"{}")||{}; }catch(e){ return {}; } }
+  var __chainN=0;
+  window.dhCoachChainBump=function(){
+    __chainN++;
+    if(__chainN!==10) return;
+    try{
+      var steps=dhPlanSteps(); if(!steps.length) return;
+      var isStep=steps.some(function(st){ return String(st.href||"").split("?")[0]===__dhPage; });
+      if(!isStep) return;
+      var G="dh-koc-chain-"+dhToday()+"-"+__dhPage;
+      if(localStorage.getItem(G)) return;
+      localStorage.setItem(G,"1");
+      window.dhCoachMarkStepDone(__dhPage);
+      var done=dhStepsDone(), next=null;
+      for(var i=0;i<steps.length;i++){
+        var pg=String(steps[i].href||"").split("?")[0];
+        if(pg!==__dhPage && !done[pg]){ next=steps[i]; break; }
+      }
+      if(next){
+        window.dhCoachSay("Bu adımı hakkıyla çalıştın ✅ Plandaki sıradaki adım: "+(next.label||"devam"),"praise",null,
+          {actionHref:"./"+next.href, actionLabel:"▶ Devam et"});
+      } else {
+        window.dhCoachSay("GÜNÜN PLANI TAMAM! 🎉 Bugünkü hedeflerini bitirdin. İstersen dinlen, istersen serbest çalışmaya geç.","praise");
+      }
+    }catch(e){}
+  };
+  /* index-app'te dhCoachEvaluate çağrılmaz (React) — kart notlama (.grade-bar)
+     tıklamalarını etkileşim sinyali olarak kullan */
+  if(__dhPage==="index-app.html"){
+    document.addEventListener("click",function(e){
+      try{
+        if(e.target && e.target.closest && e.target.closest(".grade-bar")){
+          window.dhCoachMarkStepDone(__dhPage);
+          window.dhCoachChainBump();
+        }
+      }catch(err){}
+    }, true);
+  }
+
   /* ---------- 📋 GÜNLÜK AKTİVİTE KAYDI ("Bugünkü Aktivitem" ekranı için) ---------- */
   var PAGE_LABEL={"index.html":"Ana Menü","practice.html":"Pratik","tekrar.html":"Tekrar","index-app.html":"Cümle Öğrenimi",
     "chat.html":"Sohbet Seçimi","chathotel.html":"Sohbet: Otel","chatrestaurant.html":"Sohbet: Restoran","chatdoctor.html":"Sohbet: Doktor",
@@ -114,6 +159,15 @@
       +'style="margin-left:6px;flex:none;align-self:center;background:#1d4ed8;color:#fff;text-decoration:none;'
       +'font-weight:800;font-size:11.5px;padding:6px 10px;border-radius:999px;white-space:nowrap">🧑‍🏫 Öğretmenle çalış</a>';
   }
+  /* Genel eylem düğmesi: plan zinciri vb. için {actionHref, actionLabel} */
+  function actionBtnHtml(a){
+    if(!a || !a.actionHref) return "";
+    var lbl=String(a.actionLabel||"Devam et").replace(/[<>&"]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c];});
+    var hrf=String(a.actionHref).replace(/"/g,"&quot;");
+    return '<a class="dh-coach-teach" href="'+hrf+'" onclick="event.stopPropagation()" '
+      +'style="margin-left:6px;flex:none;align-self:center;background:#15803d;color:#fff;text-decoration:none;'
+      +'font-weight:800;font-size:11.5px;padding:6px 10px;border-radius:999px;white-space:nowrap">'+lbl+'</a>';
+  }
   try{
     var tfCss=document.createElement("style");
     tfCss.textContent=".dh-coach .face .dh-tface{flex:none}";
@@ -143,24 +197,25 @@
     }catch(e){}
   }
 
-  var hideT=null, lastMsg="", lastAt=0, lastKind="tip", lastFocus="";
+  var hideT=null, lastMsg="", lastAt=0, lastKind="tip", lastFocus="", lastAction=null;
   window.dhCoachSay=function(msg, kind, faceOverride, opts){
     if(!msg || !document.body) return;
     if(msg===lastMsg && Date.now()-lastAt<4000) return;
     lastMsg=msg; lastAt=Date.now(); lastKind=kind||"tip";
     lastFocus=(opts && opts.focusType) || "";
+    lastAction=(opts && opts.actionHref) ? opts : null;
     setAvatarFace(kind);
     box.classList.remove("show");
     void box.offsetWidth;
     box.className="dh-coach "+(kind||"tip");
-    box.innerHTML='<span class="face">'+(faceOverride||coachFace(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
+    box.innerHTML='<span class="face">'+(faceOverride||coachFace(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
     requestAnimationFrame(function(){ box.classList.add("show"); });
     clearTimeout(hideT);
     // otomatik kapanma KALDIRILDI — kullanıcı isteği: balon yalnız ✕ ile veya elle kapatılır
   };
   box.onclick=function(){ box.classList.remove("show"); };
   avatar.onclick=function(){
-    if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
+    if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
     else { try{ window.__dhCoachManualStatus && window.__dhCoachManualStatus(); }catch(e){} }
   };
 
@@ -231,6 +286,7 @@
       opts=opts||{};
       bumpDailyTracker(opts.trackKind||"sentence");
       window.dhCoachMarkStepDone && window.dhCoachMarkStepDone(__dhPage);
+      try{ window.dhCoachChainBump && window.dhCoachChainBump(); }catch(e){}
       if(opts.ok) __dhSession.correct++; else __dhSession.wrong++;
       try{ window.dhLogActivity((opts.ok?"✅ Doğru: ":"❌ Yanlış: ")+(opts.en||opts.sentenceId||""), opts.ok?"correct":"wrong"); }catch(e){}
       logSessionRate(false);

@@ -104,7 +104,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 
 <script src="./auth-guard.js?v=2"></script>
 <script src="./progress-engine.js?v=2"></script>
-<script src="./coach-bubble.js?v=1"></script>
+<script src="./coach-bubble.js?v=3"></script>
 <script src="./cloud-sync-v8.js?v=1"></script>
 <script src="./ai-providers.js?v=1"></script>
 <script src="./word-popup.js?v=2"></script>
@@ -114,7 +114,40 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 (async function(){
   "use strict";
   var $=function(id){return document.getElementById(id)};
-  var DAY=86400000, SESSION=25, now=Date.now();
+  var DAY=86400000, SESSION=(/[?&]plan=1/.test(location.search)?15:25), now=Date.now();
+
+  /* 💛 TEKRAR AFFI (günde 1 kez): 2 haftadan eski birikmiş tekrar dağı,
+     kullanıcıyı kaçırtan en büyük etken. 30+ eski öğe birikmişse en kritik
+     %30'u (çok takılanlar + en eskiler) bugünde kalır; gerisi SİLİNMEZ,
+     önümüzdeki 1-14 güne eşit porsiyonlanır. */
+  async function srsAmnesty(){
+    try{
+      var K="dh-srs-amnesty-"+new Date().toISOString().slice(0,10);
+      if(localStorage.getItem(K)) return;
+      localStorage.setItem(K,"1");
+      var CUT=now-14*DAY, changed=0;
+      var groups=[{o:srs,pre:"srs:"},{o:wsrs,pre:"wsrs:"}];
+      for(var g=0; g<groups.length; g++){
+        var o=groups[g].o, pre=groups[g].pre, old=[];
+        for(var id in o){ if(!o.hasOwnProperty(id)) continue;
+          var r=o[id]||{}; if((r.due||0)>0 && r.due<=CUT) old.push(id); }
+        if(old.length<30) continue;             // küçük birikim: dokunma
+        old.sort(function(a,b){                 // kritiklik: çok takılan önce, sonra en eski
+          var la=(o[a].lapses||0), lb=(o[b].lapses||0);
+          if(lb!==la) return lb-la;
+          return (o[a].due||0)-(o[b].due||0);
+        });
+        var keep=Math.max(15, Math.round(old.length*0.3));
+        for(var i=keep;i<old.length;i++){
+          var id2=old[i], r2=o[id2];
+          r2.due = now + ((i-keep)%14+1)*DAY;
+          await kvPut(pre+id2, r2); changed++;
+        }
+      }
+      if(changed && window.dhCoachSay)
+        dhCoachSay("Birikmiş "+changed+" eski tekrarı önümüzdeki 2 haftaya porsiyonladım — bugün sadece en kritik olanlara odaklanıyoruz. Borç stresi yok!","tip");
+    }catch(e){}
+  }
   var PLAN=/[?&]plan=1/.test(location.search);
   var mode=localStorage.getItem("dh-tekrar-mode")||"prod";
   var showOnlyErrors = false; 
@@ -361,6 +394,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     try {
       srs = await kvPrefix("srs:");
       wsrs = await kvPrefix("wsrs:");
+      await srsAmnesty();   // 💛 eski birikmişleri porsiyonla (günde 1 kez)
       await initApp();
     } catch(e) { console.error("Lokal DB okuma hatası:", e); await initApp(); }
   }
@@ -394,7 +428,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 
     items.sort(function(a,b){ return (a.due||0)-(b.due||0); });
     total=items.length; session=items.slice(0,SESSION); remaining=total-session.length;
-    $("cnt").innerHTML=total?("bugün: <b style='color:#e8eef7'>"+total+"</b>"+(remaining?(" · oturum: "+session.length):"")):"";
+    $("cnt").innerHTML = total ? (total>30
+      ? ("bu oturum: <b style='color:#e8eef7'>"+session.length+"</b> · gerisi yarınlara porsiyonlandı 💛")
+      : ("bugün: <b style='color:#e8eef7'>"+total+"</b>"+(remaining?(" · oturum: "+session.length):""))) : "";
     if(!total){ $("doneTitle").textContent="🎉 Bugünlük tekrar yok!"; $("doneSub").textContent="Vadesi gelen öğe bulunmuyor.";
       if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; return; }
 

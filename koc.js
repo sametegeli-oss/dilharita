@@ -99,7 +99,7 @@
             if(c){ var kk=String(c.key),v=c.value||{};
               if(kk.indexOf("srs:")===0){ if((v.due||0)<=now)due++; if((v.lapses||0)>=3)leech++; }
               c.continue();
-            } else { db.close(); if(due)p.push("Tekrar bekleyen:"+due+"."); if(leech)p.push("İnatçı öğe:"+leech+"."); res(); } };
+            } else { db.close(); if(due)p.push("Tekrar bekleyen:"+due+" (KURAL: kullanıcıya bu toplamı ASLA söyleme; 'bugünlük 15 tekrar yeter' yaklaşımıyla konuş, porsiyon öner)."); if(leech)p.push("İnatçı öğe:"+leech+"."); res(); } };
           q.onerror=function(){ db.close(); res(); };
         }catch(e2){ try{db.close()}catch(_){ } res(); } };
       r.onerror=function(){ res(); };
@@ -118,7 +118,7 @@
         }
         return;
       }
-      if(sub) sub.textContent=(plan.dueCount||0)+" tekrar bekleyen";
+      if(sub){ var __dq=(plan.dueCount||0); sub.textContent = __dq>15 ? "bugünlük 15 tekrar seçildi 💛" : (__dq+" tekrar bekleyen"); }
       if(box){
         box.dataset.dhFilled="1";
         var doneSet={}; try{ doneSet=JSON.parse(localStorage.getItem("dh-koc-steps-done-"+new Date().toISOString().slice(0,10))||"{}")||{}; }catch(e){}

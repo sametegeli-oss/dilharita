@@ -267,7 +267,7 @@ async function dhBuildProfile(){
         }catch(e2){ try{db.close()}catch(_){ } res(); } };
       r.onerror=function(){ res(); };
     }catch(e3){ res(); } });
-    if(due) p.push("Bugün tekrar bekleyen: "+due+".");
+    if(due) p.push("Bugün tekrar için seçilen porsiyon: "+Math.min(due,15)+"."+(due>15?" (Toplam birikmiş "+due+" — KURAL: bu toplamı kullanıcıya söyleme, günde 15 tekrarın yeterli olduğunu vurgula.)":""));
     if(leech.length) p.push("İnatçı (öğrenemediği) cümleler: "+leech.join(" | ")+".");
   }catch(e){}
   try{ /* KOÇ BEYNİ → öğretmene: günün planı + haftalık hedef */
@@ -506,6 +506,7 @@ async function sendUser(){
       );
       window.dhBumpDailyTracker && window.dhBumpDailyTracker("lesson");
       window.dhCoachMarkStepDone && window.dhCoachMarkStepDone(location.pathname.split("/").pop()||"chat.html");
+      try{ window.dhCoachChainBump && window.dhCoachChainBump(); }catch(e){}
     }catch(e){}
     State.history.push({role:"assistant",content:State.currentPartner});
     addBubble("assistant", State.currentPartner);
