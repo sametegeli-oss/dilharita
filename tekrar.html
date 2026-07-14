@@ -116,6 +116,22 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   var $=function(id){return document.getElementById(id)};
   var DAY=86400000, SESSION=(/[?&]plan=1/.test(location.search)?15:25), now=Date.now();
 
+  /* 🔬 HATIRLAMA OLAY GÜNLÜĞÜ: kişisel unutma eğrisinin ham verisi.
+     Her notlama bir deneydir: "son görüşten X gün sonra hatırlandı mı?"
+     rapor.html bu veriden Ebbinghaus eğrini çizer. */
+  function dhRecallLog(kind, id, prevLast, prevRep, ok){
+    try{
+      if(!prevLast) return;                       // ilk görüş: eğriye girmez
+      var gapD = Math.round((Date.now()-prevLast)/DAY*10)/10;
+      if(gapD < 0.02) return;                     // aynı dakikadaki tekrar: gürültü
+      var K="dh-recall-log";
+      var log=[]; try{ log=JSON.parse(localStorage.getItem(K)||"[]")||[]; }catch(e){}
+      log.push({t:Date.now(), k:kind, id:String(id).slice(0,40), g:gapD, r:prevRep||0, ok:ok?1:0});
+      if(log.length>3000) log=log.slice(log.length-3000); // ~3000 olay ≈ 150KB tavan
+      localStorage.setItem(K, JSON.stringify(log));
+    }catch(e){}
+  }
+
   /* 💛 TEKRAR AFFI (günde 1 kez): 2 haftadan eski birikmiş tekrar dağı,
      kullanıcıyı kaçırtan en büyük etken. 30+ eski öğe birikmişse en kritik
      %30'u (çok takılanlar + en eskiler) bugünde kalır; gerisi SİLİNMEZ,
@@ -718,7 +734,10 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   };
 
   async function grade(hard){
-    var it=cur; var key=(it.kind==="s"?"srs:":"wsrs:")+it.id; var rec=srsStep(it.kind==="s"?srs[it.id]:wsrs[it.id], hard);
+    var it=cur; var key=(it.kind==="s"?"srs:":"wsrs:")+it.id;
+    var __prev=(it.kind==="s"?srs[it.id]:wsrs[it.id])||{};        // 🔬 eski kayıt (srsStep ezmeden)
+    try{ dhRecallLog(it.kind, it.id, __prev.last||0, __prev.rep||0, !hard); }catch(e){}
+    var rec=srsStep(it.kind==="s"?srs[it.id]:wsrs[it.id], hard);
     try{ window.dhCoachEvaluate && window.dhCoachEvaluate({sentenceId:it.id, en:curT.en, answer:(mode==="prod"?($("inp")&&$("inp").value||""):""), ok:!hard, commonMistake:curT.cm||"", layer:mode}); }catch(e){}
     if(!hard && mode==="prod" && !lastSemanticOk && !(viaMic && !semanticNo) && lastSc>=0 && lastSc<50){
       rec.interval=Math.max(1,Math.round(rec.interval/2)); rec.due=Date.now()+rec.interval*DAY;

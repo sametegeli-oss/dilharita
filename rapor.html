@@ -41,6 +41,10 @@ h1{font-size:17px;margin:0}
 <div class="card">
   <h2>Hata Türü Eğilimleri (önceki 15 gün → son 15 gün)</h2>
   <div id="trendList"><div class="empty">Yükleniyor…</div></div>
+
+  <h2>🔬 Kişisel Unutma Eğrin</h2>
+  <div style="font-size:12.5px;color:#9fb0c8;margin:-6px 0 10px">Her sütun: "son görüşten X gün sonra hatırlama oranın". Ebbinghaus'un eğrisi — ama senin verinle.</div>
+  <div id="recallCurve"><div class="empty">Yükleniyor…</div></div>
 </div>
 
 <script>
@@ -92,6 +96,53 @@ h1{font-size:17px;margin:0}
         +'<span class="'+cls+'">'+x.o+'→'+x.r+' <small>('+icon+')</small></span></div>';
     }).join("");
   }catch(e){ out.innerHTML='<div class="empty">Rapor oluşturulamadı.</div>'; }
+})();
+</script>
+<script>
+/* 🔬 UNUTMA EĞRİSİ: tekrar.html'in yazdığı dh-recall-log'dan.
+   Kovalar: aralık gün cinsinden. Her kovada hatırlama %'si + olay sayısı. */
+(function(){
+  var el=document.getElementById("recallCurve"); if(!el) return;
+  var log=[]; try{ log=JSON.parse(localStorage.getItem("dh-recall-log")||"[]")||[]; }catch(e){}
+  if(log.length<30){
+    el.innerHTML='<div class="empty">Veri birikiyor… ('+log.length+'/30 olay)<br>Tekrar oturumları yaptıkça kişisel unutma eğrin burada çizilecek.</div>';
+    return;
+  }
+  var buckets=[
+    {max:1.5,  label:"1 gün"},
+    {max:2.5,  label:"2 gün"},
+    {max:4,    label:"3 gün"},
+    {max:7,    label:"4-6 gün"},
+    {max:14,   label:"1-2 hafta"},
+    {max:30,   label:"2-4 hafta"},
+    {max:1e9,  label:"1 ay+"}
+  ];
+  buckets.forEach(function(b){ b.ok=0; b.n=0; });
+  log.forEach(function(ev){
+    for(var i=0;i<buckets.length;i++){
+      if(ev.g<=buckets[i].max){ buckets[i].n++; if(ev.ok) buckets[i].ok++; break; }
+    }
+  });
+  var html="", drop=null;
+  buckets.forEach(function(b){
+    if(b.n<5) return;                                  // 5'ten az veri: gösterme
+    var pct=Math.round(100*b.ok/b.n);
+    if(drop===null && pct<80) drop=b.label;
+    var col = pct>=80 ? "#4ade80" : (pct>=60 ? "#f59e0b" : "#f87171");
+    html+='<div style="display:flex;align-items:center;gap:10px;margin:7px 0">'
+      +'<div style="width:78px;font-size:12px;color:#9fb0c8;text-align:right;flex:none">'+b.label+'</div>'
+      +'<div style="flex:1;background:#ffffff10;border-radius:8px;height:22px;position:relative;overflow:hidden">'
+      +'<div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:8px"></div>'
+      +'<div style="position:absolute;inset:0;display:flex;align-items:center;padding-left:8px;font-size:12px;font-weight:800;color:#0b1120">%'+pct+'</div>'
+      +'</div>'
+      +'<div style="width:52px;font-size:11px;color:#64748b;flex:none">'+b.n+' olay</div>'
+      +'</div>';
+  });
+  if(!html){ el.innerHTML='<div class="empty">Henüz yeterli dağılım yok — tekrarlara devam.</div>'; return; }
+  var tip = drop
+    ? '<div style="margin-top:10px;font-size:13px;color:#93c5fd">💡 Hatırlaman %80\'in altına <b>'+drop+'</b> aralığında düşüyor — ideal tekrar aralığın bunun hemen öncesi.</div>'
+    : '<div style="margin-top:10px;font-size:13px;color:#4ade80">💪 Tüm aralıklarda %80+ hatırlıyorsun — aralıklar senin için ideal, hatta uzatılabilir.</div>';
+  el.innerHTML=html+tip;
 })();
 </script>
 </body></html>

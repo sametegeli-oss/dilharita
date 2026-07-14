@@ -277,6 +277,20 @@
     if(!force && total%10!==0) return;   // her 10 cevapta bir, ya da sayfadan ayrılırken (force)
     var pct=Math.round(100*__dhSession.correct/total);
     try{ window.dhLogActivity("📊 Oturum doğruluğu: %"+pct+" ("+__dhSession.correct+"/"+total+")", "rate"); }catch(e){}
+    /* 🔬 %85 KURALI (optimal öğrenme zorluğu): bilimsel bulgu, öğrenmenin
+       ~%80-85 başarı oranında en hızlı olduğunu gösteriyor. Koç sapmalarda
+       yön verir — oturumda her uyarı türü 1 kez. */
+    if(!force && total>=10){
+      try{
+        if(pct>=95 && !sessionStorage.getItem("dh-85-easy")){
+          sessionStorage.setItem("dh-85-easy","1");
+          window.dhCoachSay("Doğruluğun %"+pct+" — bu içerik sana KOLAY geliyor 🎯 Öğrenme bilimi en hızlı ilerlemenin %80-85 zorlukta olduğunu söylüyor: üretim moduna geç (yazarak/söyleyerek) ya da bir sonraki modüle atla.","tip");
+        } else if(pct<=60 && !sessionStorage.getItem("dh-85-hard")){
+          sessionStorage.setItem("dh-85-hard","1");
+          window.dhCoachSay("Doğruluk %"+pct+" — şu an fazla zorlanıyorsun, bu normal 💪 Tempoyu düşür: cümleyi önce 1-2 kez dinle, gerekirse yavaş oynat, sonra dene. %80'lere çıkınca hız kendiliğinden gelir.","warn");
+        }
+      }catch(e){}
+    }
   }
   window.addEventListener("pagehide", function(){ logSessionRate(true); });
   document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="hidden") logSessionRate(true); });
