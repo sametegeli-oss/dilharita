@@ -40,12 +40,16 @@ window.addEventListener('error', function(e){
      React kartını sol (resim + cümle) / sağ (butonlar + notlama) diye bölen dosya budur. -->
 <script src="./index-app-layout.js?v=12"></script>
 
+<!-- AI KOÇ OTOMATİK MODÜL BAŞLATICI: koçun ?mod= linkiyle gelen modülü
+     doğrudan açar (eski startPractice tabanlı kod React'te çalışmıyordu). -->
+<script src="./mod-autopen.js?v=1"></script>
+
 <!-- FOTO <-> VİDEO GEÇİŞ KÖPRÜSÜ: React'e dokunmadan "🎬 Video" düğmesi ekler
      ve videopractice.html'e cümleyi TAM senkronize gönderir. -->
-<script src="./nav-bridge.js?v=1"></script>
+<script src="./nav-bridge.js?v=2"></script>
 
 <!-- RESİM / VİDEO SEÇİCİ: iki ekran arasında geçiş toggle'ı.
      nav-bridge'den SONRA yüklenmeli (modal açmayı ona devreder). -->
-<script src="./mode-toggle.js?v=4"></script>
+<script src="./mode-toggle.js?v=5"></script>
 </body>
 </html>
