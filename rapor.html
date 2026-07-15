@@ -47,6 +47,7 @@ h1{font-size:17px;margin:0}
   <div id="recallCurve"><div class="empty">Yükleniyor…</div></div>
 </div>
 
+<script src="./learning-error-system.js"></script>
 <script>
 (function(){
   var tr={}; try{ tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
@@ -105,7 +106,7 @@ h1{font-size:17px;margin:0}
   var el=document.getElementById("recallCurve"); if(!el) return;
   var log=[]; try{ log=JSON.parse(localStorage.getItem("dh-recall-log")||"[]")||[]; }catch(e){}
   if(log.length<30){
-    el.innerHTML='<div class="empty">Veri birikiyor… ('+log.length+'/30 olay)<br>Tekrar oturumları yaptıkça kişisel unutma eğrin burada çizilecek.</div>';
+    el.innerHTML='<div class="empty">Veri birikiyor… ('+log.length+'/30 olay)<br>Tekrar ve kelime oturumları yaptıkça kişisel unutma eğrin burada çizilecek (eski oturumlar sayılmaz — veri bugünden birikir).</div>';
     return;
   }
   var buckets=[

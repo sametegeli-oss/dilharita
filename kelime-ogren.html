@@ -185,7 +185,22 @@
   }
   function wsrsRecord(word, ok){
     var key="wsrs:"+word;
-    return kvGet(key).then(function(cur){ return kvSet(key, wsrsStep(cur, ok)); });
+    return kvGet(key).then(function(cur){
+      /* 🔬 unutma eğrisi günlüğü: önceki görüş varsa "X gün sonra hatırlandı mı" olayı yaz */
+      try{
+        var prevLast=cur&&cur.last;
+        if(prevLast){
+          var gapD=Math.round((Date.now()-prevLast)/86400000*10)/10;
+          if(gapD>=0.02){
+            var log=[]; try{ log=JSON.parse(localStorage.getItem("dh-recall-log")||"[]")||[]; }catch(e){}
+            log.push({t:Date.now(), k:"w", id:String(word).slice(0,40), g:gapD, r:(cur.rep||0), ok:ok?1:0});
+            if(log.length>3000) log=log.slice(log.length-3000);
+            localStorage.setItem("dh-recall-log", JSON.stringify(log));
+          }
+        }
+      }catch(e){}
+      return kvSet(key, wsrsStep(cur, ok));
+    });
   }
 
   function recordResult(word, correct, meaning, picked){
