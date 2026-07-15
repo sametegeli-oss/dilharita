@@ -175,6 +175,14 @@
      bir geri çağırma sorusu ve yarının küçük sözü. Gün kapandıktan sonra
      "bugünü kaçırma" tarzı dürtmeler o gün için susturulur. */
   function dcEsc(t){ return String(t==null?"":t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+  /* error-drill.js'i ihtiyaç anında yükle — HTML dosyalarına ekleme gerekmez */
+  function dhLoadDrill(cb){
+    if(window.dhErrorDrill) return cb();
+    var sc=document.createElement("script");
+    sc.src="./error-drill.js"; sc.onload=cb;
+    sc.onerror=function(){ alert("Antrenman modülü yüklenemedi."); };
+    document.head.appendChild(sc);
+  }
   window.dhCoachDayClose=async function(){
     if(document.getElementById("dhDayClosePanel")) return;
     try{ localStorage.setItem("dh-day-closed-"+dhToday(),"1"); }catch(e){}
@@ -258,9 +266,14 @@
     var due=0; try{ var pl=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); due=(pl&&pl.dueCount)||0; }catch(e){}
     var tomorrow='<div style="margin-top:12px;font-size:13px;color:#9fb3d9">🌅 Yarın: '+(due?('tekrarlarından 15\'i'):'yeni planın')+' ve taze bir modül seni bekliyor — 10 dakikan yeter. Şimdi dinlenmeyi hak ettin, iyi geceler! 🌙</div>';
 
-    body.innerHTML=lessonHtml
+    var drillBtn = errs.length
+      ? '<button id="dhDcDrill" style="display:block;width:100%;margin-top:12px;background:linear-gradient(135deg,#059669,#0d9488);border:0;color:#fff;border-radius:12px;padding:13px;font-weight:900;font-size:15px;cursor:pointer">🏋️ Şimdi interaktif çalış ('+errs.length+' hata)</button>'
+      : "";
+    body.innerHTML=lessonHtml + drillBtn
       +'<div style="margin-top:12px;background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:12px">'+praise+'</div>'
       +quiz+tomorrow;
+    var db=document.getElementById("dhDcDrill");
+    if(db) db.onclick=function(){ dhLoadDrill(function(){ window.dhErrorDrill&&window.dhErrorDrill.open(errs); }); };
     var rv=document.getElementById("dhDcReveal");
     if(rv) rv.onclick=function(){ rv.style.display="none"; document.getElementById("dhDcAnswer").style.display="block"; };
   };
