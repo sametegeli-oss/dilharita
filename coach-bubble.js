@@ -584,10 +584,21 @@
     try{ var s=await buildStatusMessage(); if(s.msg) dhCoachSay(s.msg, s.kind, null, s.dayClose?{dayClose:true}:null); }catch(e){}
   };
   function allPlanStepsDone(){
+    /* koç kartındaki (koc.js) "tamamlandı" kurallarının BİREBİR kopyası —
+       fark yüzünden kart ✓ gösterirken burası "bitmemiş" sanıyordu:
+       1) bugün gerçek aktivite yoksa hiçbir adım tamam sayılmaz,
+       2) chat.html adımı HERHANGİ bir sohbet sayfası ziyaretiyle tamamlanır. */
     try{
       var steps=dhPlanSteps(); if(!steps.length) return false;
       var done=dhStepsDone();
-      return steps.every(function(st){ return done[String(st.href||"").split("?")[0]]; });
+      var tr={}; try{ tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
+      var td=(tr.days||{})[dhToday()];
+      if(!(td && ((td.sentences||0)+(td.reviews||0)+(td.lessons||0)+(td.videos||0)>0))) return false;
+      var anyChat=Object.keys(done).some(function(k){ return /^chat[a-z0-9]*\.html$/.test(k); });
+      return steps.every(function(st){
+        var page=String(st.href||"").split("?")[0];
+        return !!done[page] || (page==="chat.html" && anyChat);
+      });
     }catch(e){ return false; }
   }
   /* 🌙 Plan bitmiş ama gün kapatılmamışsa: sayfa açılışında teklif et.
