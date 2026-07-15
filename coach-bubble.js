@@ -176,6 +176,7 @@
      "bugünü kaçırma" tarzı dürtmeler o gün için susturulur. */
   function dcEsc(t){ return String(t==null?"":t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
   /* error-drill.js'i ihtiyaç anında yükle — HTML dosyalarına ekleme gerekmez */
+  window.dhCoachLoadDrill=dhLoadDrill;
   function dhLoadDrill(cb){
     if(window.dhErrorDrill) return cb();
     var sc=document.createElement("script");
@@ -573,10 +574,29 @@
   window.__dhCoachManualStatus=async function(){
     try{ var s=await buildStatusMessage(); if(s.msg) dhCoachSay(s.msg, s.kind); }catch(e){}
   };
+  function allPlanStepsDone(){
+    try{
+      var steps=dhPlanSteps(); if(!steps.length) return false;
+      var done=dhStepsDone();
+      return steps.every(function(st){ return done[String(st.href||"").split("?")[0]]; });
+    }catch(e){ return false; }
+  }
+  /* 🌙 Plan bitmiş ama gün kapatılmamışsa: sayfa açılışında teklif et.
+     (Eski tetikleyici yalnız son adım biterken çalışıyordu — plan zaten
+     bitmişse teklif hiç doğmuyordu. Artık kalıcı bir kapı var.) */
+  setTimeout(function(){
+    try{
+      if(localStorage.getItem("dh-day-closed-"+dhToday())) return;
+      if(!allPlanStepsDone()) return;
+      window.dhCoachSay("Bugünün planı tamam 🎉 Günü kapatalım mı? Hataların dersini çıkarıp interaktif çalışabilirsin.","praise",null,{dayClose:true});
+    }catch(e){}
+  }, 2800);
+
   (async function genericTip(){
     try{
-      /* 🌙 gün kapatıldıysa: o gün artık "kaçırma/çalış" dürtmesi yok */
+      /* 🌙 gün kapatıldıysa YA DA plan bitmişse: "kaçırma/çalış" dürtmesi yok */
       try{ if(localStorage.getItem("dh-day-closed-"+dhToday())) return; }catch(e){}
+      try{ if(allPlanStepsDone()) return; }catch(e){}
       var lastT=+localStorage.getItem("dh-coach-last-generic-tip")||0;
       if(Date.now()-lastT<20*60000) return;   // 20 dakikada bir en fazla — "koç her yerde olmalı" isteği gereği sıklaştırıldı
       var s=await buildStatusMessage();
