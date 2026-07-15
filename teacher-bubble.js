@@ -119,13 +119,17 @@
    +".dh-tb-topic b{color:#e8eef7}"
    +".dh-tb-ans{white-space:pre-wrap}"
    +".dh-tb-ans .en{color:#34d399}"
-   +".dh-tb-foot{padding:10px 12px;border-top:1px solid #1e3a5f;display:flex;gap:8px}"
+   +".dh-tb-foot{padding:10px 12px;border-top:1px solid #1e3a5f;display:flex;flex-direction:column;gap:8px}"
+   +".dh-tb-btnrow{display:flex;gap:8px}"
+   +".dh-tb-btnrow .dh-tb-send{flex:1;padding:11px 8px}"
    +".dh-tb-foot input{flex:1;background:#0b1120;border:1px solid #1e3a5f;color:#e8eef7;border-radius:10px;padding:10px 12px;font-size:14px}"
    +".dh-tb-send{background:#2563eb;border:0;color:#fff;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}"
    +".dh-tb-quick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}"
    +".dh-tb-chip{background:#13294d;border:1px solid #1e3a5f;color:#cfe;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}"
    +".dh-tb-loading{color:#9fb3d9;font-style:italic}"
-   +".dh-tb-err{color:#fca5a5;font-size:13px}";
+   +".dh-tb-err{color:#fca5a5;font-size:13px}"
+   /* Panel açıkken koç köşe avatarı Sor/Gemini düğmelerinin üstüne biniyordu — gizle */
+   +"body.dh-tb-panel-open .dh-avatar{display:none !important}";
 
   function injectCSS(){ var st=document.createElement("style"); st.textContent=css; document.head.appendChild(st); }
 
@@ -149,9 +153,12 @@
       +'<button class="dh-tb-x" id="dhTbX">✕</button>'
       +'</div>'
       +'<div class="dh-tb-body" id="dhTbBody"></div>'
-      +'<div class="dh-tb-foot"><input id="dhTbInput" type="text" placeholder="Sorunu yaz...">'
+      +'<div class="dh-tb-foot">'
+      +'<input id="dhTbInput" type="text" placeholder="Sorunu yaz...">'
+      +'<div class="dh-tb-btnrow">'
       +'<button class="dh-tb-send" id="dhTbSend">Sor</button>'
-      +'<button class="dh-tb-send" id="dhTbGem" title="Gemini\'ye sor" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">💎</button>'
+      +'<button class="dh-tb-send" id="dhTbGem" title="Soruyu Gemini sayfasında aç (token harcamaz)" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">💎 Gemini</button>'
+      +'</div>'
       +'</div>';
     document.body.appendChild(panel);
     bodyEl=panel.querySelector("#dhTbBody");
@@ -173,10 +180,15 @@
   }
 
   function togglePanel(){ panel.classList.contains("open") ? closePanel() : openPanel(); }
-  function closePanel(){ panel.classList.remove("open"); try{ if(window.DilAvatar&&DilAvatar.stop) DilAvatar.stop(); }catch(e){} }
+  function closePanel(){
+    panel.classList.remove("open");
+    try{ document.body.classList.remove("dh-tb-panel-open"); }catch(e){}
+    try{ if(window.DilAvatar&&DilAvatar.stop) DilAvatar.stop(); }catch(e){}
+  }
 
   function openPanel(){
     panel.classList.add("open");
+    try{ document.body.classList.add("dh-tb-panel-open"); }catch(e){}
     // avatar yükle + mount (bir kez)
     loadAvatar().then(function(ok){
       if(ok && !avatarMounted && window.DilAvatar){
