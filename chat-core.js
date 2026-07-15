@@ -348,6 +348,32 @@ function avatarVoicePrefs(){
 }
 
 let avatar; let speechRun=0;
+/* 🔤 KARMA DİL OKUMA: öğretmen Türkçe ipucu + İngilizce örnek karışık konuşur.
+   Eski kod her şeyi en-US'a sabitliyordu ("Türkçe okumayı kesin engelle") —
+   bu sefer tersi sorun çıkmıştı: Türkçe cümleler İngilizce aksanla okunuyordu.
+   Doğrusu: cümle cümle dil tespiti — Türkçe karakter/kelime içeren parça TR
+   sesiyle, gerisi İngilizce sesiyle sırayla okunur. */
+function isTrChunk(s){
+  s=String(s||"");
+  if(/[ğüşöçıİĞÜŞÖÇ]/.test(s)) return true;
+  return /\b(şimdi|şöyle|çünkü|doğru|yanlış|anlam|cümle|örnek|kural|yani|ipucu|harika|aferin|dene|deneyelim|hadi|tekrar|söyle|güzel|evet|hayır|bakalım|Türkçe)\b/i.test(s);
+}
+function splitMixedSpeech(text){
+  var parts=String(text||"").replace(/\*\*/g,"").split(/\n+|(?<=[.!?…])\s+|(?<=:)\s+/).map(function(x){return x.trim();}).filter(Boolean);
+  var chunks=[];
+  parts.forEach(function(p){
+    var lang=isTrChunk(p)?"tr-TR":"en-US";
+    var last=chunks[chunks.length-1];
+    if(last && last.lang===lang) last.text+=" "+p;   // ardışık aynı dilde: birleştir (akıcılık)
+    else chunks.push({text:p, lang:lang});
+  });
+  return chunks.length?chunks:[{text:String(text||""), lang:"en-US"}];
+}
+function pickTrVoice(){
+  refreshVoices();
+  var tr=cachedVoices.filter(function(v){ return /^tr/i.test(v.lang||""); });
+  return tr[0] || cachedVoices.find(function(v){ return /turkish|türk/i.test(v.name||""); }) || null;
+}
 function speakText(text){
   text=String(text||"").trim();
   if(!text) return;
@@ -355,21 +381,43 @@ function speakText(text){
   try{speechSynthesis.cancel();}catch(e){}
   const duration=estimateDuration(text);
   avatar.speakText(text, duration+300);
-  try{
-    const u=new SpeechSynthesisUtterance(text);
-    const voice = pickVoice();
-    if(voice) u.voice = voice;
-    u.lang = "en-US";          // sohbet HER ZAMAN İngilizce
-    u.__dhMixed = true;        // karma-dil patch'ini atla
-    u.__longTTSAvatarSync = true;  // long-avatar patch'ini de atla (Türkçe okumayı kesin engelle)
-    const vp=avatarVoicePrefs();
-    u.rate = vp.rate || .96;
-    u.pitch = vp.pitch != null ? vp.pitch : .78;
-    u.onend=()=>{if(run===speechRun) avatar.stop();
-      if(window.__dhAuto){ setTimeout(function(){ try{ var mb=document.getElementById("micBtn"); if(mb&&!mb.classList.contains("listening")) mb.click(); }catch(e){} }, 400); } };
-    u.onerror=()=>{if(run===speechRun) avatar.stop();};
-    speechSynthesis.speak(u);
-  }catch(e){ setTimeout(()=>{ if(run===speechRun) avatar.stop(); }, duration); }
+  const vp=avatarVoicePrefs();
+  const chunks=splitMixedSpeech(text);
+  let ci=0;
+  function finishAll(){
+    if(run!==speechRun) return;
+    avatar.stop();
+    if(window.__dhAuto){ setTimeout(function(){ try{ var mb=document.getElementById("micBtn"); if(mb&&!mb.classList.contains("listening")) mb.click(); }catch(e){} }, 400); }
+  }
+  function speakNext(){
+    if(run!==speechRun) return;              // yeni konuşma başladı: bu kuyruk iptal
+    if(ci>=chunks.length){ finishAll(); return; }
+    const c=chunks[ci++];
+    try{
+      const u=new SpeechSynthesisUtterance(c.text);
+      if(c.lang==="tr-TR"){
+        const tv=pickTrVoice();
+        if(tv) u.voice=tv;
+        u.lang="tr-TR";
+        u.rate=vp.rate || .96;
+        u.pitch=1;                            // TR seslerinde düşük pitch doğal durmuyor
+      } else {
+        const voice=pickVoice();
+        if(voice) u.voice=voice;
+        u.lang="en-US";
+        u.rate=vp.rate || .96;
+        u.pitch=vp.pitch != null ? vp.pitch : .78;
+      }
+      u.__dhMixed=true;                       // global karma-dil patch'i atla (biz zaten böldük)
+      u.__longTTSAvatarSync=true;             // long-avatar patch'ini de atla
+      let done=false;
+      function go(){ if(done) return; done=true; clearTimeout(wd); setTimeout(speakNext,60); }
+      var wd=setTimeout(go, Math.max(4000, c.text.length*80)+1500);  // onend gelmezse takılma
+      u.onend=go; u.onerror=go;
+      speechSynthesis.speak(u);
+    }catch(e){ speakNext(); }
+  }
+  try{ speakNext(); }catch(e){ setTimeout(function(){ if(run===speechRun) avatar.stop(); }, duration); }
 }
 async function explainText(text){
   $("explainSheet").classList.add("open");
