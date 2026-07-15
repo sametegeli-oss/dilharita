@@ -482,7 +482,7 @@
       if(!b){
         b=document.createElement("button");
         b.id="dhSyncBadge"; b.type="button";
-        b.style.cssText="position:fixed;right:10px;bottom:10px;z-index:9998;background:rgba(13,26,48,.92);color:#9fb3d9;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:5px 11px;font:700 11px system-ui;cursor:pointer;opacity:.85";
+        b.style.cssText="position:fixed;left:10px;bottom:10px;z-index:9998;background:rgba(13,26,48,.92);color:#9fb3d9;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:5px 11px;font:700 11px system-ui;cursor:pointer;opacity:.85";
         b.title="Son senkron — tıkla: şimdi senkronla";
         b.onclick=function(){
           b.textContent="☁ …";

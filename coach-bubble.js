@@ -122,7 +122,7 @@
     +".dh-coach.warn{border-color:#f59e0b;background:linear-gradient(135deg,#111827,#2d1a06)}"
     +".dh-coach.tip{border-color:#38bdf8;background:linear-gradient(135deg,#111827,#0a2233)}"
     +".dh-coach.stat{border-color:#a78bfa;background:linear-gradient(135deg,#111827,#22183f)}"
-    +".dh-avatar{position:fixed !important;right:14px;bottom:78px;z-index:2147482900;width:54px;height:54px;border-radius:50%;"
+    +".dh-avatar{position:fixed !important;right:14px;bottom:88px;z-index:2147482900;width:54px;height:54px;border-radius:50%;"
     +"background:#111827;border:3px solid #38bdf8;box-shadow:0 6px 20px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;"
     +"cursor:pointer;animation:dhBreathe 3s ease-in-out infinite}"
     +"@keyframes dhBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}"

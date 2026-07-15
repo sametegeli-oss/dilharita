@@ -47,15 +47,17 @@
       ".dh-prev-float:active{transform:scale(.97)}",
       ".dh-prev-float[disabled]{opacity:.35;cursor:default;pointer-events:none}",
       "@media(max-width:640px){",
-      "  .dh-mode-toggle.on-video{top:auto;left:12px;",
+      /* MOBİL YERLEŞİM v2 (ekran görüntüsü düzeltmesi): orta bant altyazı/teach
+         alanına buton yığmak metni okunmaz yapıyordu. Yeni düzen:
+         - Resim|Video seçici → EN ÜSTE, başlığın altına (videonun sol üst köşesi)
+         - ← Önceki → SOL kenara, gizlenen 📷 Fotoğraf'ın eski yuvasına (178)
+         - Sıradaki → uygulamanın KENDİ doğal konumuna iade (126, override yok)
+         - Koç köşe avatarı bu ekranda gizli (mesaj balonları çalışmaya devam eder) */
+      "  .dh-mode-toggle.on-video{bottom:auto;left:12px;",
+      "    top:calc(env(safe-area-inset-top, 0px) + 92px)}",
+      "  .dh-prev-float{top:auto;right:auto;left:12px;",
       "    bottom:calc(178px + env(safe-area-inset-bottom))}",
-      /* SAĞ YIĞIN DÜZELTMESİ: koç avatarı sağ altta 78-132px arasını kaplıyor;",
-         Sıradaki butonu 126'dan başlayınca üstüne biniyordu. Yeni istif:",
-         avatar 78-132 → Sıradaki 140-188 → Önceki 196-244 (tr-panel 300'de, temas yok) */
-      "  .next-float{top:auto!important;right:12px!important;",
-      "    bottom:calc(140px + env(safe-area-inset-bottom))!important}",
-      "  .dh-prev-float{top:auto;right:12px;",
-      "    bottom:calc(196px + env(safe-area-inset-bottom))}",
+      (IS_VIDEO?"  .dh-avatar{display:none !important}":""),
       "}",
       "#nbVideoBtn{display:none !important}",
       ".photo-float{display:none !important}"
