@@ -551,6 +551,15 @@
 
   /* ---------- PASİF SAYFALAR İÇİN GENEL YÖNLENDİRME + GENEL DURUM YORUMU ---------- */
   async function buildStatusMessage(){
+    /* 🌙 Öncelik sırası: gün kapandıysa veda; plan bittiyse Günü Kapat TEKLİFİ.
+       (Eskiden bu iki durumda bile "bugünü kaçırma!" nag'ı dönüyordu — avatar
+       tıklamasındaki manuel yol korumasızdı, teklifi de ezebiliyordu.) */
+    try{
+      if(localStorage.getItem("dh-day-closed-"+dhToday()))
+        return {msg:"Bugünü kapattın 🌙 Dinlenmek de antrenmanın parçası — yarın taze kafayla devam!", kind:"praise"};
+      if(allPlanStepsDone())
+        return {msg:"Bugünün planı tamam 🎉 Günü kapatalım mı? Hataların dersini çıkarıp interaktif çalışabilirsin.", kind:"praise", dayClose:true};
+    }catch(e){}
     var tr={}; try{ tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
     var d=new Date(), streak=0;
     if(!(tr.days||{})[d.toISOString().slice(0,10)]) d.setDate(d.getDate()-1);
@@ -572,7 +581,7 @@
     return {msg:msg, kind:kind};
   }
   window.__dhCoachManualStatus=async function(){
-    try{ var s=await buildStatusMessage(); if(s.msg) dhCoachSay(s.msg, s.kind); }catch(e){}
+    try{ var s=await buildStatusMessage(); if(s.msg) dhCoachSay(s.msg, s.kind, null, s.dayClose?{dayClose:true}:null); }catch(e){}
   };
   function allPlanStepsDone(){
     try{
@@ -594,13 +603,13 @@
 
   (async function genericTip(){
     try{
-      /* 🌙 gün kapatıldıysa YA DA plan bitmişse: "kaçırma/çalış" dürtmesi yok */
+      /* 🌙 gün kapatıldıysa: periyodik mesaj tamamen susar
+         (plan bittiyse buildStatusMessage zaten nag yerine Günü Kapat teklifi döndürür) */
       try{ if(localStorage.getItem("dh-day-closed-"+dhToday())) return; }catch(e){}
-      try{ if(allPlanStepsDone()) return; }catch(e){}
       var lastT=+localStorage.getItem("dh-coach-last-generic-tip")||0;
       if(Date.now()-lastT<20*60000) return;   // 20 dakikada bir en fazla — "koç her yerde olmalı" isteği gereği sıklaştırıldı
       var s=await buildStatusMessage();
-      if(s.msg){ dhCoachSay(s.msg, s.kind); localStorage.setItem("dh-coach-last-generic-tip", String(Date.now())); }
+      if(s.msg){ dhCoachSay(s.msg, s.kind, null, s.dayClose?{dayClose:true}:null); localStorage.setItem("dh-coach-last-generic-tip", String(Date.now())); }
     }catch(e){}
   })();
 })();
