@@ -48,7 +48,7 @@
         window.dhCoachSay("Bu adımı hakkıyla çalıştın ✅ Plandaki sıradaki adım: "+(next.label||"devam"),"praise",null,
           {actionHref:"./"+next.href, actionLabel:"▶ Devam et"});
       } else {
-        window.dhCoachSay("GÜNÜN PLANI TAMAM! 🎉 Bugünkü hedeflerini bitirdin. İstersen dinlen, istersen serbest çalışmaya geç.","praise");
+        window.dhCoachSay("GÜNÜN PLANI TAMAM! 🎉 Günü kapatmadan önce bugünün hatalarından kısa bir ders çıkaralım mı?","praise",null,{dayClose:true});
       }
     }catch(e){}
   };
@@ -103,7 +103,7 @@
 
   /* ---------- CSS + KUTU ---------- */
   var css=document.createElement("style");
-  css.textContent=".dh-coach{position:fixed !important;left:50% !important;top:22px !important;bottom:auto !important;"
+  css.textContent=".dh-coach{position:fixed !important;left:50% !important;top:22px !important;bottom:auto !important;width:min(92vw,400px);"
     +"transform:translateX(-50%) translateY(-40px) scale(.85);opacity:0;"
     +"max-width:min(95vw,640px);background:#111827;border-left:8px solid #38bdf8;border-radius:16px;"
     +"padding:18px 24px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:2147483000;font:800 17px/1.4 system-ui,sans-serif;color:#f8fafc;"
@@ -168,6 +168,110 @@
       +'style="margin-left:6px;flex:none;align-self:center;background:#15803d;color:#fff;text-decoration:none;'
       +'font-weight:800;font-size:11.5px;padding:6px 10px;border-radius:999px;white-space:nowrap">'+lbl+'</a>';
   }
+
+  /* ---------- 🌙 GÜNÜ KAPAT: hata dersi → rakamlı takdir → mini test → yarın ----------
+     Pedagojik sıra kullanıcının önerisi: gün, o günün hatalarının DERSİYLE kapanır
+     (hatalar tazeyken düzeltmek en kalıcısı), sonra somut takdir, uyku öncesi
+     bir geri çağırma sorusu ve yarının küçük sözü. Gün kapandıktan sonra
+     "bugünü kaçırma" tarzı dürtmeler o gün için susturulur. */
+  function dcEsc(t){ return String(t==null?"":t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+  window.dhCoachDayClose=async function(){
+    if(document.getElementById("dhDayClosePanel")) return;
+    try{ localStorage.setItem("dh-day-closed-"+dhToday(),"1"); }catch(e){}
+    var ov=document.createElement("div");
+    ov.id="dhDayClosePanel";
+    ov.style.cssText="position:fixed;inset:0;z-index:2147483200;background:rgba(2,8,20,.72);display:flex;align-items:center;justify-content:center;padding:14px";
+    ov.innerHTML='<div style="background:#0f1f3a;border:1px solid #1e3a5f;border-radius:18px;width:min(560px,96vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden">'
+      +'<div style="display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid #1e3a5f">'
+      +coachFace("tip")
+      +'<b style="color:#e8eef7;font-size:16px;flex:1">🌙 Günü Kapat</b>'
+      +'<button id="dhDcX" style="background:#13294d;border:1px solid #1e3a5f;color:#e8eef7;border-radius:8px;width:32px;height:32px;cursor:pointer">✕</button>'
+      +'</div>'
+      +'<div id="dhDcBody" style="padding:16px;overflow-y:auto;color:#dbe7ff;font-size:14px;line-height:1.65">⏳ Günün hataları inceleniyor…</div>'
+      +'</div>';
+    document.body.appendChild(ov);
+    document.getElementById("dhDcX").onclick=function(){ ov.remove(); };
+    ov.addEventListener("click",function(e){ if(e.target===ov) ov.remove(); });
+    var body=document.getElementById("dhDcBody");
+
+    /* 1) Bugünün hataları */
+    var errs=[];
+    try{
+      if(window.LearningErrorDB && LearningErrorDB.all){
+        var all=await LearningErrorDB.all();
+        var t0=new Date(); t0.setHours(0,0,0,0);
+        errs=all.filter(function(r){ return new Date(r.createdAt||0)>=t0; }).slice(0,8);
+      }
+    }catch(e){}
+
+    var lessonHtml="";
+    if(!errs.length){
+      lessonHtml='<div style="background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:12px">Bugün hiç hata kaydı yok — tertemiz bir gün 👏</div>';
+    } else {
+      /* kural tabanlı taban: tür bazlı gruplar + öğrencinin kendi cümleleri */
+      var groups={};
+      errs.forEach(function(r){ var t=r.primaryType||"general"; (groups[t]=groups[t]||[]).push(r); });
+      var TL=window.DH_COACH_TYPE_LABEL||{}, TT=window.DH_COACH_TYPE_TIP||{};
+      lessonHtml=Object.keys(groups).map(function(t){
+        var g=groups[t];
+        return '<div style="background:#13294d;border:1px solid #1e3a5f;border-radius:12px;padding:12px;margin-bottom:10px">'
+          +'<b style="color:#facc15">'+dcEsc(TL[t]||t)+'</b> ('+g.length+' kez)'
+          +'<div style="margin:6px 0;font-size:13px;color:#9fb3d9">'+dcEsc(TT[t]||"Bu kalıba dikkat.")+'</div>'
+          +g.slice(0,2).map(function(r){
+            return '<div style="margin-top:6px;font-size:13.5px">✗ <s style="color:#f87171">'+dcEsc(r.answer||"")+'</s><br>✓ <span style="color:#4ade80">'+dcEsc(r.target||"")+'</span></div>';
+          }).join("")
+          +'</div>';
+      }).join("");
+      /* AI varsa kök neden dersiyle zenginleştir */
+      if(window.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
+        try{
+          var sys="Türkçe konuşan sıcak bir İngilizce öğretmenisin. Öğrencinin BUGÜN yaptığı hatalar verilecek. Görevin: (1) hataları KÖK NEDENE göre en fazla 3 grupta topla, (2) her grup için 2-3 cümlelik Türkçe mini ders yaz ve öğrencinin KENDİ yanlış cümlesini yanlış→doğru olarak örnek göster, (3) her gruba tek satırlık küçük bir alıştırma sorusu ekle. Kısa ve samimi tut; başlıklara emoji koy.";
+          var usr=errs.map(function(r){ return "Yanlış: "+(r.answer||"")+" | Doğru: "+(r.target||"")+" | Tür: "+(r.primaryType||""); }).join("\n");
+          var ai=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.4,max_tokens:900});
+          if(ai && ai.trim()){
+            lessonHtml='<div style="white-space:pre-wrap;background:#13294d;border:1px solid #1e3a5f;border-radius:12px;padding:12px">'+dcEsc(ai.trim())+'</div>';
+          }
+        }catch(e){ /* AI yoksa kural tabanlı ders zaten hazır */ }
+      }
+    }
+
+    /* 2) Rakamlı takdir */
+    var rec={};
+    try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; rec=(tr.days||{})[dhToday()]||{}; }catch(e){}
+    var praise='📊 Bugün: <b>'+(rec.lessons||0)+'</b> ders · <b>'+(rec.sentences||0)+'</b> cümle · <b>'+(rec.reviews||0)+'</b> tekrar'
+      +(errs.length?' · <b>'+errs.length+'</b> hatadan ders çıkarıldı':'')
+      +'. Emeğinin karşılığı bu — planı bitirdin 👏';
+
+    /* 3) Mini test: bugünkü bir hatanın doğru cümlesi, TR ipucuyla */
+    var quiz="";
+    var q=errs.filter(function(r){ return r.sentenceTR && r.target; })[0];
+    if(q){
+      quiz='<div style="background:#1a1033;border:1px solid #4c1d95;border-radius:12px;padding:12px;margin-top:12px">'
+        +'<b style="color:#c4b5fd">🌙 Uyku öncesi mini test</b>'
+        +'<div style="margin-top:6px">"'+dcEsc(q.sentenceTR)+'" — İngilizcesi neydi?</div>'
+        +'<button id="dhDcReveal" style="margin-top:8px;background:#4c1d95;border:0;color:#fff;border-radius:9px;padding:8px 13px;font-weight:800;cursor:pointer">Cevabı göster</button>'
+        +'<div id="dhDcAnswer" style="display:none;margin-top:8px;color:#4ade80;font-weight:800">'+dcEsc(q.target)+'</div>'
+        +'</div>';
+    }
+
+    /* 4) Yarının tohumu */
+    var due=0; try{ var pl=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); due=(pl&&pl.dueCount)||0; }catch(e){}
+    var tomorrow='<div style="margin-top:12px;font-size:13px;color:#9fb3d9">🌅 Yarın: '+(due?('tekrarlarından 15\'i'):'yeni planın')+' ve taze bir modül seni bekliyor — 10 dakikan yeter. Şimdi dinlenmeyi hak ettin, iyi geceler! 🌙</div>';
+
+    body.innerHTML=lessonHtml
+      +'<div style="margin-top:12px;background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:12px">'+praise+'</div>'
+      +quiz+tomorrow;
+    var rv=document.getElementById("dhDcReveal");
+    if(rv) rv.onclick=function(){ rv.style.display="none"; document.getElementById("dhDcAnswer").style.display="block"; };
+  };
+
+  function dayCloseBtnHtml(on){
+    if(!on) return "";
+    return '<button class="dh-coach-teach" style="margin-left:6px;flex:none;align-self:center;border:0;cursor:pointer;'
+      +'background:#0e7490;color:#fff;font-weight:800;font-size:11.5px;padding:6px 10px;border-radius:999px;white-space:nowrap" '
+      +'onclick="event.stopPropagation();window.dhCoachDayClose&&window.dhCoachDayClose()">🌙 Günü kapat</button>';
+  }
+
   try{
     var tfCss=document.createElement("style");
     tfCss.textContent=".dh-coach .face .dh-tface{flex:none}";
@@ -197,25 +301,26 @@
     }catch(e){}
   }
 
-  var hideT=null, lastMsg="", lastAt=0, lastKind="tip", lastFocus="", lastAction=null;
+  var hideT=null, lastMsg="", lastAt=0, lastKind="tip", lastFocus="", lastAction=null, lastDayClose=false;
   window.dhCoachSay=function(msg, kind, faceOverride, opts){
     if(!msg || !document.body) return;
     if(msg===lastMsg && Date.now()-lastAt<4000) return;
     lastMsg=msg; lastAt=Date.now(); lastKind=kind||"tip";
     lastFocus=(opts && opts.focusType) || "";
     lastAction=(opts && opts.actionHref) ? opts : null;
+    lastDayClose=!!(opts && opts.dayClose);
     setAvatarFace(kind);
     box.classList.remove("show");
     void box.offsetWidth;
     box.className="dh-coach "+(kind||"tip");
-    box.innerHTML='<span class="face">'+(faceOverride||coachFace(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
+    box.innerHTML='<span class="face">'+(faceOverride||coachFace(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
     requestAnimationFrame(function(){ box.classList.add("show"); });
     clearTimeout(hideT);
     // otomatik kapanma KALDIRILDI — kullanıcı isteği: balon yalnız ✕ ile veya elle kapatılır
   };
   box.onclick=function(){ box.classList.remove("show"); };
   avatar.onclick=function(){
-    if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
+    if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
     else { try{ window.__dhCoachManualStatus && window.__dhCoachManualStatus(); }catch(e){} }
   };
 
@@ -457,6 +562,8 @@
   };
   (async function genericTip(){
     try{
+      /* 🌙 gün kapatıldıysa: o gün artık "kaçırma/çalış" dürtmesi yok */
+      try{ if(localStorage.getItem("dh-day-closed-"+dhToday())) return; }catch(e){}
       var lastT=+localStorage.getItem("dh-coach-last-generic-tip")||0;
       if(Date.now()-lastT<20*60000) return;   // 20 dakikada bir en fazla — "koç her yerde olmalı" isteği gereği sıklaştırıldı
       var s=await buildStatusMessage();
