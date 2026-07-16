@@ -11,51 +11,43 @@
   if(window.__dhCoachInstalled) return;
   window.__dhCoachInstalled = true;
 
-  /* ---------- 🛡️ GİZLİ SEKME / DEPOLAMA KORUMASI (SafeStorage) ---------- */
-  var safeStorage = {
-    memoryDb: {},
-    getItem: function(key) {
-      try { return localStorage.getItem(key); } catch(e) { return this.memoryDb[key] || null; }
-    },
-    setItem: function(key, val) {
-      try { localStorage.setItem(key, val); } catch(e) { this.memoryDb[key] = String(val); }
-    },
-    removeItem: function(key) {
-      try { localStorage.removeItem(key); } catch(e) { delete this.memoryDb[key]; }
-    }
-  };
-
+  /* ÖNEMLİ DÜZELTME: "sayfayı ziyaret etmek" görev tamamlama için ARTIK yeterli değil —
+     meşale/hedef gerçek cevaplara bakarken, adım işaretleri yalnız ziyarete bakıyordu ve
+     bu ikisi çelişiyordu (3 görev "tamamlandı" görünürken meşale "0 gün" kalabiliyordu).
+     Artık "görev tamamlandı" da SADECE gerçek etkileşimde (dhCoachEvaluate/sohbet mesajı) işaretlenir. */
   var __dhPage=(location.pathname.split("/").pop()||"index.html");
   window.dhCoachMarkStepDone=function(page){
-    try{ 
-      var k="dh-koc-steps-done-"+new Date().toISOString().slice(0,10); 
-      var s=JSON.parse(safeStorage.getItem(k)||"{}")||{}; 
-      s[page]=1; 
-      safeStorage.setItem(k, JSON.stringify(s)); 
-    }catch(e){}
+    try{ var k="dh-koc-steps-done-"+new Date().toISOString().slice(0,10); var s=JSON.parse(localStorage.getItem(k)||"{}")||{}; s[page]=1; localStorage.setItem(k, JSON.stringify(s)); }catch(e){}
   };
 
-  /* ---------- 🔗 GÜNLÜK PLAN ZİNCİRİ ---------- */
+  /* ---------- 🔗 GÜNLÜK PLAN ZİNCİRİ ----------
+     ~10 gerçek etkileşimden sonra: bu sayfa bugünkü planın bir adımıysa,
+     koç "adım tamam ✅ sıradaki: ..." balonuyla bir SONRAKİ adımın linkini uzatır.
+     Kullanıcı menüye dönmeden günü koçun elinden bitirir. Sayfa başına günde 1 kez. */
   function dhToday(){ return new Date().toISOString().slice(0,10); }
   function dhEffortNow(){
-    try{ 
-      var tr=JSON.parse(safeStorage.getItem("dh-study-tracker-v1")||"{}")||{};
-      var d=(tr.days||{})[dhToday()]||{}; 
-      return (d.sentences||0)+(d.reviews||0); 
-    }catch(e){ return 0; }
+    try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{};
+      var d=(tr.days||{})[dhToday()]||{}; return (d.sentences||0)+(d.reviews||0); }catch(e){ return 0; }
   }
-
+  /* Gün kapalı mı? Bayrak {t,effort} tutar; kapanıştan sonra +5 efor birikirse
+     "demek ki devam ediyorsun" deyip günü OTOMATİK yeniden açar. Eski "1" biçimi
+     de kapalı sayılır (geri uyum). */
   function dhDayClosed(){
     try{
-      var raw=safeStorage.getItem("dh-day-closed-"+dhToday()); if(!raw) return false;
+      var raw=localStorage.getItem("dh-day-closed-"+dhToday()); if(!raw) return false;
       var o=null; try{ o=JSON.parse(raw); }catch(e){}
       if(o && typeof o.effort==="number" && dhEffortNow()>=o.effort+5){
-        safeStorage.removeItem("dh-day-closed-"+dhToday()); return false;
+        localStorage.removeItem("dh-day-closed-"+dhToday()); return false;
       }
       return true;
     }catch(e){ return false; }
   }
-
+  /* GÜNÜN KARNESİ — kapanma şartlarının tek doğruluk kaynağı.
+     Profesyonel kural: SRS uygulamasında TEKRAR pazarlık konusu değildir.
+       • Tekrar: bekleyen varsa en az min(10, bekleyen) tekrar ŞART
+       • Cümle:  en az 5 cümle çalışması (üretim/yeni öğrenme)
+     Gün ancak TÜM şartlar sağlanınca "hakkıyla" kapanır; kapanış turu da
+     +N efor değil, bu karneyi geçmekle tamamlanır. */
   var __dueCache={t:0,v:null};
   function dhCountDueSRS(){
     return new Promise(function(res){
@@ -77,11 +69,13 @@
       }catch(e){ res(null); }
     });
   }
-
   async function dhDayRequirements(){
-    var rec={}; try{ var tr=JSON.parse(safeStorage.getItem("dh-study-tracker-v1")||"{}")||{}; rec=(tr.days||{})[dhToday()]||{}; }catch(e){}
+    var rec={}; try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; rec=(tr.days||{})[dhToday()]||{}; }catch(e){}
+    /* bekleyen tekrar: ÖNCE canlı SRS sayımı (cümle srs: + kelime wsrs:);
+       DB okunamazsa plandaki dueCount'a düşer. Plandaki sayı üretim anında
+       0 kalabildiği için tek başına GÜVENİLMEZ — karnenin çökme nedeni buydu. */
     var due=null; try{ due=await dhCountDueSRS(); }catch(e){}
-    if(due==null){ try{ var pl=JSON.parse(safeStorage.getItem("dh-koc-plan-"+dhToday())||"null"); due=(pl&&pl.dueCount)||0; }catch(e){ due=0; } }
+    if(due==null){ try{ var pl=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); due=(pl&&pl.dueCount)||0; }catch(e){ due=0; } }
     var items=[];
     var needRev=Math.min(10, due);
     items.push({key:"rev", label:"Tekrar (SRS)", got:rec.reviews||0, need:needRev,
@@ -90,32 +84,37 @@
                 ok:(rec.sentences||0)>=5, href:"./index-app.html", cta:"📖 Cümle çalış"});
     return { ok: items.every(function(i){return i.ok;}), items:items, rec:rec, due:due };
   }
-
+  /* Kapanış turu: kullanıcıyı tekrar sayfasına gönderdiysek koç SUSAR.
+     Durumlar: 0=tur yok · 1=tur sürüyor (teklifi bastırır) · 2=tur bitti (+8 efor
+     birikti → kutlamalı teklif). 45 dk sonra bayat tur kendiliğinden düşer. */
   function dhTourState(req){
     try{
-      var raw=safeStorage.getItem("dh-close-tour"); if(!raw) return 0;
+      var raw=localStorage.getItem("dh-close-tour"); if(!raw) return 0;
       var o=JSON.parse(raw);
-      if(o.done){ if(Date.now()-(o.t||0)>12*3600000){ safeStorage.removeItem("dh-close-tour"); return 0; } return 2; }
+      /* "tamamlandı" kalıcıdır — okuma bayrağı TÜKETMEZ (aksi halde aynı sayfadaki
+         ikinci kontrol bayrağı bulamayıp kutlamanın üstüne sıradan teklif yazıyordu).
+         Bayrağı ancak günün kapanması (dhCoachDayClose) ya da 12 saat düşürür. */
+      if(o.done){ if(Date.now()-(o.t||0)>12*3600000){ localStorage.removeItem("dh-close-tour"); return 0; } return 2; }
       if(req && req.ok){
-        safeStorage.setItem("dh-close-tour", JSON.stringify({done:1, t:o.t||Date.now()}));
+        localStorage.setItem("dh-close-tour", JSON.stringify({done:1, t:o.t||Date.now()}));
         return 2;
       }
       if(Date.now()-(o.t||0)<45*60000) return 1;
-      safeStorage.removeItem("dh-close-tour"); return 0;
+      localStorage.removeItem("dh-close-tour"); return 0;
     }catch(e){ return 0; }
   }
-
   window.dhCoachReopenDay=function(){
-    try{ safeStorage.removeItem("dh-day-closed-"+dhToday()); }catch(e){}
-    try{ safeStorage.removeItem("dh-koc-steps-done-"+dhToday()); }catch(e){}
-    try{ safeStorage.removeItem("dh-close-tour"); }catch(e){}
+    /* Yeniden açmak = taze oturum: kilit KALKAR, plan adımlarının ✓ işaretleri
+       SIFIRLANIR (yeşil/üstü çizili kalmasın — kullanıcı isteği). Plan ve tüm
+       öğrenme verileri korunur; kart güncel görünsün diye sayfa tazelenir. */
+    try{ localStorage.removeItem("dh-day-closed-"+dhToday()); }catch(e){}
+    try{ localStorage.removeItem("dh-koc-steps-done-"+dhToday()); }catch(e){}
+    try{ localStorage.removeItem("dh-close-tour"); }catch(e){}
     try{ window.dhCoachSay("Gün yeniden açıldı — adımlar sıfırlandı, haydi baştan 💪","praise"); }catch(e){}
     try{ setTimeout(function(){ location.reload(); }, 1300); }catch(e){}
   };
-
-  function dhPlanSteps(){ try{ var p=JSON.parse(safeStorage.getItem("dh-koc-plan-"+dhToday())||"null"); return (p&&p.steps)||[]; }catch(e){ return []; } }
-  function dhStepsDone(){ try{ return JSON.parse(safeStorage.getItem("dh-koc-steps-done-"+dhToday())||"{}")||{}; }catch(e){ return {}; } }
-  
+  function dhPlanSteps(){ try{ var p=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); return (p&&p.steps)||[]; }catch(e){ return []; } }
+  function dhStepsDone(){ try{ return JSON.parse(localStorage.getItem("dh-koc-steps-done-"+dhToday())||"{}")||{}; }catch(e){ return {}; } }
   var __chainN=0;
   window.dhCoachChainBump=function(){
     __chainN++;
@@ -125,8 +124,8 @@
       var isStep=steps.some(function(st){ return String(st.href||"").split("?")[0]===__dhPage; });
       if(!isStep) return;
       var G="dh-koc-chain-"+dhToday()+"-"+__dhPage;
-      if(safeStorage.getItem(G)) return;
-      safeStorage.setItem(G,"1");
+      if(localStorage.getItem(G)) return;
+      localStorage.setItem(G,"1");
       window.dhCoachMarkStepDone(__dhPage);
       var done=dhStepsDone(), next=null;
       for(var i=0;i<steps.length;i++){
@@ -141,7 +140,8 @@
       }
     }catch(e){}
   };
-
+  /* index-app'te dhCoachEvaluate çağrılmaz (React) — kart notlama (.grade-bar)
+     tıklamalarını etkileşim sinyali olarak kullan */
   if(__dhPage==="index-app.html"){
     document.addEventListener("click",function(e){
       try{
@@ -153,63 +153,49 @@
     }, true);
   }
 
-  /* ---------- 📋 GÜNLÜK AKTİVİTE KAYDI ---------- */
+  /* ---------- 📋 GÜNLÜK AKTİVİTE KAYDI ("Bugünkü Aktivitem" ekranı için) ---------- */
   var PAGE_LABEL={"index.html":"Ana Menü","practice.html":"Pratik","tekrar.html":"Tekrar","index-app.html":"Cümle Öğrenimi",
     "chat.html":"Sohbet Seçimi","chathotel.html":"Sohbet: Otel","chatrestaurant.html":"Sohbet: Restoran","chatdoctor.html":"Sohbet: Doktor",
     "chatairport.html":"Sohbet: Havaalanı","chatteacher.html":"Sohbet: Öğretmen","teacher.html":"Öğretmen","kelime-ogren.html":"Kelime Öğren",
     "videopractice.html":"Video Pratik","hata-defteri.html":"Hata Defteri","rapor.html":"İlerleme Raporu"};
-  
   window.dhLogActivity=function(detail, kind){
     try{
       var K="dh-activity-log-v1";
-      var log=JSON.parse(safeStorage.getItem(K)||"[]")||[];
+      var log=JSON.parse(localStorage.getItem(K)||"[]")||[];
       var today=new Date().toISOString().slice(0,10);
+      // KALICI GEÇMİŞ: son 10 gün / en fazla 600 kayıt saklanır. Bu sınır bilinçli seçildi:
+      // Firestore'un tek-alan 1MB sınırına (bu projede daha önce ciddi soruna yol açmıştı)
+      // asla yaklaşmasın diye — buluta senkronlanacağı için boyutu kesinlikle güvenli tutuyoruz.
       var cutoff=Date.now()-10*86400000;
       log=log.filter(function(e){ return (e.ts||0)>=cutoff; });
       log.push({ts:Date.now(), d:today, page:(location.pathname.split("/").pop()||"index.html"), detail:String(detail||"").slice(0,140), kind:kind||"info"});
       log.sort(function(a,b){ return a.ts-b.ts; });
-      while(log.length>600 || JSON.stringify(log).length>150000) log.shift();
-      safeStorage.setItem(K, JSON.stringify(log));
+      while(log.length>600 || JSON.stringify(log).length>150000) log.shift();   // hem sayı hem gerçek boyut sınırı
+      localStorage.setItem(K, JSON.stringify(log));
     }catch(e){}
   };
   try{ window.dhLogActivity(PAGE_LABEL[__dhPage]?( "📍 "+PAGE_LABEL[__dhPage]+" sayfasını açtı"):("📍 "+__dhPage+" sayfasını açtı"), "visit"); }catch(e){}
 
-  /* ---------- 🎨 SVG YÜZ VE SERİ ÖZELLEŞTİRMESİ ---------- */
+  /* ---------- SVG YÜZ (dış dosyaya bağımlı değil, her zaman çalışır) ---------- */
   function faceSvg(kind){
-    var streak = 0;
-    try {
-      var tr = JSON.parse(safeStorage.getItem("dh-study-tracker-v1") || "{}") || {};
-      var d = new Date();
-      if (!(tr.days || {})[d.toISOString().slice(0, 10)]) d.setDate(d.getDate() - 1);
-      for (;;) {
-        if ((tr.days || {})[d.toISOString().slice(0, 10)]) { streak++; d.setDate(d.getDate() - 1); } else break;
-      }
-    } catch(e) {}
-
     var mouth = kind==="praise" ? '<path d="M20 40 Q32 52 44 40" stroke="#0a1628" stroke-width="4" fill="none" stroke-linecap="round"/>'
       : kind==="warn" ? '<path d="M20 46 Q32 36 44 46" stroke="#0a1628" stroke-width="4" fill="none" stroke-linecap="round"/>'
       : '<line x1="22" y1="42" x2="42" y2="42" stroke="#0a1628" stroke-width="4" stroke-linecap="round"/>';
-    
     var eyeShape = kind==="praise"
       ? '<path d="M16 26 Q20 20 24 26" stroke="#0a1628" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M40 26 Q44 20 48 26" stroke="#0a1628" stroke-width="3.5" fill="none" stroke-linecap="round"/>'
       : '<circle cx="20" cy="25" r="3.5" fill="#0a1628"/><circle cx="44" cy="25" r="3.5" fill="#0a1628"/>';
-    
     var bg = kind==="praise" ? "#4ade80" : kind==="warn" ? "#f59e0b" : kind==="stat" ? "#a78bfa" : "#38bdf8";
     var brow = kind==="warn" ? '<path d="M14 18 L26 21" stroke="#0a1628" stroke-width="3" stroke-linecap="round"/><path d="M50 18 L38 21" stroke="#0a1628" stroke-width="3" stroke-linecap="round"/>' : "";
-    
-    var crown = streak >= 7 ? '<path d="M18 11 L23 4 L32 10 L41 4 L46 11 Z" fill="#facc15" stroke="#0a1628" stroke-width="1.5"/>' : '';
-
-    return '<svg viewBox="0 0 64 64" width="46" height="46" style="flex:0 0 auto">' + crown + '<circle cx="32" cy="32" r="30" fill="'+bg+'"/>'+brow+eyeShape+mouth+'</svg>';
+    return '<svg viewBox="0 0 64 64" width="46" height="46" style="flex:0 0 auto"><circle cx="32" cy="32" r="30" fill="'+bg+'"/>'+brow+eyeShape+mouth+'</svg>';
   }
 
-  /* ---------- CSS + DRAGGABLE KUTU TASARIMI ---------- */
+  /* ---------- CSS + KUTU ---------- */
   var css=document.createElement("style");
   css.textContent=".dh-coach{position:fixed !important;left:50% !important;top:22px !important;bottom:auto !important;width:min(92vw,400px);"
     +"transform:translateX(-50%) translateY(-40px) scale(.85);opacity:0;"
     +"max-width:min(95vw,640px);background:#111827;border-left:8px solid #38bdf8;border-radius:16px;"
     +"padding:18px 24px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:2147483000;font:800 17px/1.4 system-ui,sans-serif;color:#f8fafc;"
-    +"display:flex;gap:16px;align-items:center;transition:opacity .3s,transform .3s;pointer-events:none;cursor:grab;user-select:none;}"
-    +".dh-coach:active{cursor:grabbing;}"
+    +"display:flex;gap:16px;align-items:center;transition:opacity .3s,transform .3s;pointer-events:none}"
     +".dh-coach.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1);pointer-events:auto}"
     +".dh-coach.show.praise{animation:dhClap .6s ease 2}"
     +".dh-coach.show.warn{animation:dhShake .5s ease}"
@@ -235,62 +221,23 @@
     +".dh-avatar.reacting .ring{animation:dhRing .8s ease}"
     +"@keyframes dhRing{0%{opacity:.8;transform:scale(1)}100%{opacity:0;transform:scale(1.6)}}";
   document.head.appendChild(css);
-  
   var box=document.createElement("div"); box.className="dh-coach";
-
-  /* ---------- SÜRÜKLENEBİLİR ARAYÜZ DESTEĞİ ---------- */
-  function makeElementDraggable(elm) {
-    var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-    elm.onmousedown = dragMouseDown;
-    elm.ontouchstart = dragMouseDown;
-
-    function dragMouseDown(e) {
-      if (e.target.closest("a, button, input, .x")) return;
-      e = e || window.event;
-      var clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      var clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      pos3 = clientX;
-      pos4 = clientY;
-      document.onmouseup = closeDragElement;
-      document.onmousemove = elementDrag;
-      document.ontouchend = closeDragElement;
-      document.ontouchmove = elementDrag;
-    }
-
-    function elementDrag(e) {
-      e = e || window.event;
-      var clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      var clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      pos1 = pos3 - clientX;
-      pos2 = pos4 - clientY;
-      pos3 = clientX;
-      pos4 = clientY;
-      elm.style.top = (elm.offsetTop - pos2) + "px";
-      elm.style.left = (elm.offsetLeft - pos1) + "px";
-      elm.style.transform = "none";
-    }
-
-    function closeDragElement() {
-      document.onmouseup = null;
-      document.onmousemove = null;
-      document.ontouchend = null;
-      document.ontouchmove = null;
-    }
-  }
-
-  /* ---------- AVATAR VE İSKELET ---------- */
+  /* ---------- ÖĞRETMEN YÜZÜ: koç, seçili öğretmenin fotoğrafıyla konuşur ----------
+     selectedTeacherAvatar (chatteacher.html'de seçiliyor) yoksa teacher1 varsayılır.
+     Fotoğraf yüklenemezse img kendini siler ve SVG yüz devreye girer. */
   function coachFace(kind, big){
     var sel="teacher1";
-    try{ sel=safeStorage.getItem("selectedTeacherAvatar")||"teacher1"; }catch(e){}
+    try{ sel=localStorage.getItem("selectedTeacherAvatar")||"teacher1"; }catch(e){}
     var px=big?48:34;
+    /* Fotoğraf yüklenemezse img kendini siler ve gizli SVG yüz görünür olur */
     return '<img class="dh-tface" src="./assets/avatars_v3/'+sel+'/idle.webp" alt="" '
       +'style="width:'+px+'px;height:'+px+'px;border-radius:50%;object-fit:cover;object-position:top;display:block;box-shadow:0 0 0 2px #ffffff26" '
-      +'onerror="this.nextElementSibling&&(this.nextElementSibling.style.display=\'\\');this.remove();">'
+      +'onerror="this.nextElementSibling&&(this.nextElementSibling.style.display=\'\');this.remove();">'
       +'<span class="dh-svg-fb" style="display:none">'+faceSvg(kind)+'</span>';
   }
   function teacherHref(focus){
     var sel="teacher1";
-    try{ sel=safeStorage.getItem("selectedTeacherAvatar")||"teacher1"; }catch(e){}
+    try{ sel=localStorage.getItem("selectedTeacherAvatar")||"teacher1"; }catch(e){}
     var page = sel==="teacher2" ? "chatteacher2.html" : "chatteacher1.html";
     return "./"+page+(focus?("?focus="+encodeURIComponent(focus)):"");
   }
@@ -300,6 +247,7 @@
       +'style="margin-left:6px;flex:none;align-self:center;background:#1d4ed8;color:#fff;text-decoration:none;'
       +'font-weight:800;font-size:11.5px;padding:6px 10px;border-radius:999px;white-space:nowrap">🧑‍🏫 Öğretmenle çalış</a>';
   }
+  /* Genel eylem düğmesi: plan zinciri vb. için {actionHref, actionLabel} */
   function actionBtnHtml(a){
     if(!a || !a.actionHref) return "";
     var lbl=String(a.actionLabel||"Devam et").replace(/[<>&"]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c];});
@@ -309,8 +257,13 @@
       +'font-weight:800;font-size:11.5px;padding:6px 10px;border-radius:999px;white-space:nowrap">'+lbl+'</a>';
   }
 
-  /* ---------- 🌙 GÜNÜ KAPAT PANELİ ---------- */
+  /* ---------- 🌙 GÜNÜ KAPAT: hata dersi → rakamlı takdir → mini test → yarın ----------
+     Pedagojik sıra kullanıcının önerisi: gün, o günün hatalarının DERSİYLE kapanır
+     (hatalar tazeyken düzeltmek en kalıcısı), sonra somut takdir, uyku öncesi
+     bir geri çağırma sorusu ve yarının küçük sözü. Gün kapandıktan sonra
+     "bugünü kaçırma" tarzı dürtmeler o gün için susturulur. */
   function dcEsc(t){ return String(t==null?"":t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+  /* error-drill.js'i ihtiyaç anında yükle — HTML dosyalarına ekleme gerekmez */
   window.dhCoachLoadDrill=dhLoadDrill;
   function dhLoadDrill(cb){
     if(window.dhErrorDrill) return cb();
@@ -337,6 +290,9 @@
     ov.addEventListener("click",function(e){ if(e.target===ov) ov.remove(); });
     var body=document.getElementById("dhDcBody");
 
+    /* 0) DÜRÜSTLÜK KAPISI — plan adımları "bitmiş" görünebilir ama gün gerçekten
+       dolu mu? Adımlar sayfa ziyaretiyle işaretlenebildiği için tek ölçü olamaz.
+       Gerçek efor = cümle + tekrar. Hafifse önce kısa bir kapanış turu öneririz. */
     var req0=await dhDayRequirements();
     if(!force && !req0.ok){
       var rows=req0.items.map(function(it){
@@ -354,13 +310,14 @@
       document.getElementById("dhDcAnyway").onclick=function(){ ov.remove(); window.dhCoachDayClose(true); };
       var __tour=document.getElementById("dhDcTour");
       if(__tour) __tour.addEventListener("click",function(){
-        try{ safeStorage.setItem("dh-close-tour", JSON.stringify({t:Date.now()})); }catch(e){}
+        try{ localStorage.setItem("dh-close-tour", JSON.stringify({t:Date.now()})); }catch(e){}
       });
       return;
     }
-    try{ safeStorage.setItem("dh-day-closed-"+dhToday(), JSON.stringify({t:Date.now(),effort:dhEffortNow()})); }catch(e){}
-    try{ safeStorage.removeItem("dh-close-tour"); }catch(e){}
+    try{ localStorage.setItem("dh-day-closed-"+dhToday(), JSON.stringify({t:Date.now(),effort:dhEffortNow()})); }catch(e){}
+    try{ localStorage.removeItem("dh-close-tour"); }catch(e){}
 
+    /* 1) Bugünün hataları */
     var errs=[];
     try{
       if(window.LearningErrorDB && LearningErrorDB.all){
@@ -372,11 +329,12 @@
 
     var lessonHtml="";
     if(!errs.length){
-      var __prod=0; try{ var __tr=JSON.parse(safeStorage.getItem("dh-study-tracker-v1")||"{}")||{}; __prod=((__tr.days||{})[dhToday()]||{}).sentences||0; }catch(e){}
+      var __prod=0; try{ var __tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; __prod=((__tr.days||{})[dhToday()]||{}).sentences||0; }catch(e){}
       lessonHtml = __prod>=5
         ? '<div style="background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:12px">'+__prod+' cümle çalıştın ve hiç hata kaydı yok — gerçekten temiz bir gün 👏</div>'
         : '<div style="background:#2a1f0a;border:1px solid #92610a;border-radius:12px;padding:12px">Bugün hata kaydı yok ama üretim de azdı ('+__prod+' cümle). Hata çıkmıyorsa yeterince konuşup yazmıyorsun demektir 😉 Yarın konuşma/yazma ekleyelim.</div>';
     } else {
+      /* kural tabanlı taban: tür bazlı gruplar + öğrencinin kendi cümleleri */
       var groups={};
       errs.forEach(function(r){ var t=r.primaryType||"general"; (groups[t]=groups[t]||[]).push(r); });
       var TL=window.DH_COACH_TYPE_LABEL||{}, TT=window.DH_COACH_TYPE_TIP||{};
@@ -390,6 +348,7 @@
           }).join("")
           +'</div>';
       }).join("");
+      /* AI varsa kök neden dersiyle zenginleştir */
       if(window.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
         try{
           var sys="Türkçe konuşan sıcak bir İngilizce öğretmenisin. Öğrencinin BUGÜN yaptığı hatalar verilecek. Görevin: (1) hataları KÖK NEDENE göre en fazla 3 grupta topla, (2) her grup için 2-3 cümlelik Türkçe mini ders yaz ve öğrencinin KENDİ yanlış cümlesini yanlış→doğru olarak örnek göster, (3) her gruba tek satırlık küçük bir alıştırma sorusu ekle. Kısa ve samimi tut; başlıklara emoji koy.";
@@ -398,12 +357,13 @@
           if(ai && ai.trim()){
             lessonHtml='<div style="white-space:pre-wrap;background:#13294d;border:1px solid #1e3a5f;border-radius:12px;padding:12px">'+dcEsc(ai.trim())+'</div>';
           }
-        }catch(e){}
+        }catch(e){ /* AI yoksa kural tabanlı ders zaten hazır */ }
       }
     }
 
+    /* 2) Rakamlı takdir */
     var rec={};
-    try{ var tr=JSON.parse(safeStorage.getItem("dh-study-tracker-v1")||"{}")||{}; rec=(tr.days||{})[dhToday()]||{}; }catch(e){}
+    try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; rec=(tr.days||{})[dhToday()]||{}; }catch(e){}
     var reqP=await dhDayRequirements();
     var praise='📊 Bugün: <b>'+(rec.lessons||0)+'</b> ders · <b>'+(rec.sentences||0)+'</b> cümle · <b>'+(rec.reviews||0)+'</b> tekrar'
       +(errs.length?' · <b>'+errs.length+'</b> hatadan ders çıkarıldı':'')
@@ -411,6 +371,7 @@
         ? '. Karne tam — dolu dolu bir gün, planı hakkıyla bitirdin 👏'
         : '. Karne eksik kapandı — yarın önce tekrarlardan başlayalım 💪');
 
+    /* 3) Mini test: bugünkü bir hatanın doğru cümlesi, TR ipucuyla */
     var quiz="";
     var q=errs.filter(function(r){ return r.sentenceTR && r.target; })[0];
     if(q){
@@ -422,7 +383,8 @@
         +'</div>';
     }
 
-    var due=0; try{ var pl=JSON.parse(safeStorage.getItem("dh-koc-plan-"+dhToday())||"null"); due=(pl&&pl.dueCount)||0; }catch(e){}
+    /* 4) Yarının tohumu */
+    var due=0; try{ var pl=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); due=(pl&&pl.dueCount)||0; }catch(e){}
     var tomorrow='<div style="margin-top:12px;font-size:13px;color:#9fb3d9">🌅 Yarın: '+(due?('tekrarlarından 15\'i'):'yeni planın')+' ve taze bir modül seni bekliyor — 10 dakikan yeter. Şimdi dinlenmeyi hak ettin, iyi geceler! 🌙</div>';
 
     var drillBtn = errs.length
@@ -458,14 +420,8 @@
 
   var avatar=document.createElement("div"); avatar.className="dh-avatar"; avatar.title="Koçun — tıkla, son yorumunu tekrar göster";
   avatar.innerHTML='<div class="ring"></div>'+coachFace("tip", true);
-  
-  function mount(){ 
-    document.body.appendChild(box); 
-    document.body.appendChild(avatar); 
-    makeElementDraggable(box);
-  }
+  function mount(){ document.body.appendChild(box); document.body.appendChild(avatar); }
   if(document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
-  
   var avatarResetT=null;
   function clearFace(){
     try{
@@ -480,7 +436,7 @@
       clearTimeout(avatarResetT);
       avatarResetT=setTimeout(function(){
         clearFace();
-        avatar.insertAdjacentHTML("beforeend", coachFace("tip", true));
+        avatar.insertAdjacentHTML("beforeend", coachFace("tip", true));   // nötr yüze dön
       }, 8000);
     }catch(e){}
   }
@@ -498,18 +454,18 @@
     box.classList.remove("show");
     void box.offsetWidth;
     box.className="dh-coach "+(kind||"tip");
-    box.innerHTML='<span class="face">'+(faceOverride||coachFace(kind))+'</span><span style="flex:1">'+String(msg)+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
+    box.innerHTML='<span class="face">'+(faceOverride||coachFace(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
     requestAnimationFrame(function(){ box.classList.add("show"); });
     clearTimeout(hideT);
+    // otomatik kapanma KALDIRILDI — kullanıcı isteği: balon yalnız ✕ ile veya elle kapatılır
   };
-  
-  box.onclick=function(){};
+  box.onclick=function(){ box.classList.remove("show"); };
   avatar.onclick=function(){
-    if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
+    if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
     else { try{ window.__dhCoachManualStatus && window.__dhCoachManualStatus(); }catch(e){} }
   };
 
-  /* ---------- ORTAK TÜR ETİKETİ ---------- */
+  /* ---------- ORTAK TÜR ETİKETİ + SOMUT TAVSİYE ---------- */
   var TYPE_LABEL={
     "missing-word":"kelime atlama","extra-word":"fazladan kelime","auxiliary-missing":"yardımcı fiil eksikliği (am/is/are/do/did...)",
     "auxiliary-extra":"gereksiz yardımcı fiil","article":"a/an/the kullanımı","pronoun":"zamir kullanımı",
@@ -539,77 +495,14 @@
     return state.errCache;
   }
 
-  /* ---------- 🔥 COGNITIVE OVERLOAD (TÜKENMİŞLİK KORUMASI) ---------- */
-  function checkCognitiveOverload() {
-    try {
-      var tr=JSON.parse(safeStorage.getItem("dh-study-tracker-v1")||"{}")||{};
-      var d=(tr.days||{})[dhToday()]||{};
-      var total = (d.sentences||0) + (d.reviews||0);
-      if (total >= 60 && !sessionStorage.getItem("dh-overload-warned")) {
-        sessionStorage.setItem("dh-overload-warned", "1");
-        window.dhCoachSay(
-          "Mola zamanı! 🛑 Bugün tam 60+ çalışma barajını aştın. Beynin yeni bilgileri sindirmek için dinlenmeye ihtiyaç duyar. Bugünlük bu kadar yeter, harika iş çıkardın!", 
-          "praise"
-        );
-        return true;
-      }
-    } catch(e) {}
-    return false;
-  }
-
-  /* ---------- 🏋️ ANLIK MINI-DRILL (BOŞLUK DOLDURMA ANTRENMANI) ---------- */
-  window.dhCoachMiniDrill = function(targetSentence, wrongAnswer) {
-    var words = targetSentence.split(" ");
-    var wrongWords = wrongAnswer.split(" ");
-    var foundIndex = -1;
-    
-    for (var i = 0; i < words.length; i++) {
-      if (words[i].toLowerCase() !== (wrongWords[i] || "").toLowerCase()) {
-        foundIndex = i;
-        break;
-      }
-    }
-    if (foundIndex === -1) foundIndex = words.length - 1;
-
-    var targetWord = words[foundIndex].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
-    var drillText = words.map(function(w, idx) {
-      if (idx === foundIndex) {
-        return '<input type="text" id="dhMiniInput" data-ans="'+targetWord+'" '
-          +'style="width:85px; background:#1e293b; border:2px solid #38bdf8; color:#fff; '
-          +'border-radius:6px; padding:2px 6px; font-weight:800; text-align:center; outline:none;">';
-      }
-      return w;
-    }).join(" ");
-
-    window.dhCoachSay(
-      'Anlık antrenman! Farkı gör ve boşluğu tamamla:<br>'
-      +'<span style="font-size:14.5px; color:#cbd5e1; display:inline-block; margin-top:6px;">'+drillText+'</span>',
-      "warn"
-    );
-
-    setTimeout(function() {
-      var inp = document.getElementById("dhMiniInput");
-      if (inp) {
-        inp.focus();
-        inp.oninput = function() {
-          if (inp.value.trim().toLowerCase() === inp.dataset.ans.toLowerCase()) {
-            inp.style.borderColor = "#22c55e";
-            inp.style.background = "#064e3b";
-            inp.disabled = true;
-            setTimeout(function() {
-              window.dhCoachSay("Mükemmel! Hatandan anında öğrendin. 🎯", "praise");
-            }, 500);
-          }
-        };
-      }
-    }, 120);
-  };
-
-  /* ---------- CEVAP DEĞERLENDİRME ---------- */
+  /* ---------- CEVAP DEĞERLENDİRME (practice/tekrar ORTAK karar mantığı) ---------- */
+  /* ---------- 🔥 GÜNLÜK TAKİP (streak/meşale) — KANITLANDI: dh-study-tracker-v1'i
+     sistemde hiçbir dosya yazmıyordu, bu yüzden meşale hep "0 gün" kalıyordu.
+     Artık her gerçek cevap değerlendirmesinde bugünün kaydı burada oluşturulur/güncellenir. */
   function bumpDailyTracker(kind){
     try{
       var K="dh-study-tracker-v1";
-      var tr=JSON.parse(safeStorage.getItem(K)||"{}")||{};
+      var tr=JSON.parse(localStorage.getItem(K)||"{}")||{};
       if(!tr.days) tr.days={};
       var today=new Date().toISOString().slice(0,10);
       if(!tr.days[today]) tr.days[today]={date:today,lessons:0,minutes:0,sentences:0,videos:0,reviews:0,errors:0};
@@ -618,7 +511,7 @@
       else if(kind==="review") d.reviews=(d.reviews||0)+1;
       else if(kind==="video") d.videos=(d.videos||0)+1;
       else if(kind==="lesson") d.lessons=(d.lessons||0)+1;
-      safeStorage.setItem(K, JSON.stringify(tr));
+      localStorage.setItem(K, JSON.stringify(tr));
     }catch(e){}
   }
   window.dhBumpDailyTracker=bumpDailyTracker;
@@ -627,17 +520,20 @@
   function logSessionRate(force){
     var total=__dhSession.correct+__dhSession.wrong;
     if(!total) return;
-    if(!force && total%10!==0) return;
+    if(!force && total%10!==0) return;   // her 10 cevapta bir, ya da sayfadan ayrılırken (force)
     var pct=Math.round(100*__dhSession.correct/total);
     try{ window.dhLogActivity("📊 Oturum doğruluğu: %"+pct+" ("+__dhSession.correct+"/"+total+")", "rate"); }catch(e){}
+    /* 🔬 %85 KURALI (optimal öğrenme zorluğu): bilimsel bulgu, öğrenmenin
+       ~%80-85 başarı oranında en hızlı olduğunu gösteriyor. Koç sapmalarda
+       yön verir — oturumda her uyarı türü 1 kez. */
     if(!force && total>=10){
       try{
         if(pct>=95 && !sessionStorage.getItem("dh-85-easy")){
           sessionStorage.setItem("dh-85-easy","1");
-          window.dhCoachSay("Doğruluğun %"+pct+" — bu içerik sana KOLAY geliyor 🎯 Öğrenme bilimi en hızlı ilerlemenin %80-85 zorlukta olduğunu söylüyor: üretim moduna geç ya da bir sonraki modüle atla.","tip");
+          window.dhCoachSay("Doğruluğun %"+pct+" — bu içerik sana KOLAY geliyor 🎯 Öğrenme bilimi en hızlı ilerlemenin %80-85 zorlukta olduğunu söylüyor: üretim moduna geç (yazarak/söyleyerek) ya da bir sonraki modüle atla.","tip");
         } else if(pct<=60 && !sessionStorage.getItem("dh-85-hard")){
           sessionStorage.setItem("dh-85-hard","1");
-          window.dhCoachSay("Doğruluk %"+pct+" — şu an fazla zorlanıyorsun, bu normal 💪 Tempoyu düşür: cümleyi önce 1-2 kez dinle, gerekirse yavaş oynat, sonra dene.","warn");
+          window.dhCoachSay("Doğruluk %"+pct+" — şu an fazla zorlanıyorsun, bu normal 💪 Tempoyu düşür: cümleyi önce 1-2 kez dinle, gerekirse yavaş oynat, sonra dene. %80'lere çıkınca hız kendiliğinden gelir.","warn");
         }
       }catch(e){}
     }
@@ -654,17 +550,21 @@
       if(opts.ok) __dhSession.correct++; else __dhSession.wrong++;
       try{ window.dhLogActivity((opts.ok?"✅ Doğru: ":"❌ Yanlış: ")+(opts.en||opts.sentenceId||""), opts.ok?"correct":"wrong"); }catch(e){}
       logSessionRate(false);
-      
-      if(checkCognitiveOverload()) return;
-
       var hist=await errHistory();
       var curTypes = (window.LearningErrorDB && LearningErrorDB.detectTypes)
         ? LearningErrorDB.detectTypes({target:opts.en, answer:opts.answer, grammar:opts.grammar||"", module:opts.module||"", topic:opts.topic||""})
         : [];
       var sameSentencePast = hist.filter(function(r){ return r.sentenceId===opts.sentenceId && r.grade==="hard"; });
 
+      /* TAM DOĞRU mu, YALNIZCA YAKIN mı?
+         opts.ok tek başına yetmiyordu: practice.html "good" (Neredeyse) notunu da ok=true
+         gönderiyor. Koç bu ikisini ayırmayınca yarım doğruya "tam doğru yaptın" diyordu
+         ve seriyi de şişiriyordu. Artık:
+           perfect (easy / skor ~100) -> tam övgü, seri sayılır
+           partial (good / Neredeyse) -> "yaklaştın" tonu, TAM DOĞRU DENMEZ, seri SAYILMAZ */
       var _sc = (opts.score!=null) ? (opts.score<=1 ? opts.score*100 : opts.score) : null;
-      var perfect = opts.grade ? (opts.grade==="easy") : (opts.ok && (_sc==null || _sc>=99.9));
+      var perfect = opts.grade ? (opts.grade==="easy")
+                  : (opts.ok && (_sc==null || _sc>=99.9));
       var partial = opts.ok && !perfect;
 
       if(perfect) state.correctStreak++; else state.correctStreak=0;
@@ -685,13 +585,11 @@
         dhCoachSay("YAKLAŞTIN, ama tam değil. Kırmızı işaretli yerlere bak — küçük bir düzeltmeyle tam doğru olacak.","tip");
         return;
       }
-      
-      if(!opts.ok && opts.en && opts.answer) {
-        window.dhCoachMiniDrill(opts.en, opts.answer);
-        return;
-      }
-
       if(!opts.ok && sameSentencePast.length){
+        /* commonMistake ÖRNEK CÜMLE içerir ve o cümlede cevabın kelimeleri geçer
+           ("He has twenty years" → "twenty" sızar). Hata defterinde cümleyi YENİDEN
+           çözerken bu mesaj çıkarsa cevabı söylemiş oluruz. Bu yüzden stripAnswer ile
+           yalnız güvenli açıklama kısmı gösterilir; güvenli değilse genel uyarı verilir. */
         var _safe = stripAnswer(opts.commonMistake, opts.en);
         dhCoachSay("DİKKAT: Bu cümlede daha önce de hata yapmıştın. "
           + (_safe ? (_safe+".") : "Kelime sırasına ve yardımcı fiile dikkat et.")
@@ -716,32 +614,53 @@
           return;
         }
       }
+      // HİÇBİR ÖZEL KOŞUL TUTMADI: "her aktivitede yorum" ilkesi gereği yine de kısa bir tepki ver.
+      // NOT: partial (Neredeyse) durumu YUKARIDA yakalanıp döndü — buraya yalnız
+      // TAM DOĞRU ya da YANLIŞ düşer. Bu yüzden "tam isabet" demek artık güvenli.
       var DEF_OK=["Doğru! Böyle devam et.","Aferin, tam isabet.","Güzel, ilerliyorsun.","Doğru cevap — bir sonrakine geç."];
       var DEF_NO=["Olmadı, doğrusuna bak ve devam et.","Bu sefer olmadı — açıklamayı oku, unutma.","Yanlış, ama önemli değil — öğrenmenin parçası."];
       var pick = perfect ? DEF_OK[state.evalCount%DEF_OK.length] : DEF_NO[state.evalCount%DEF_NO.length];
       dhCoachSay(pick, perfect?"praise":"warn");
     }catch(e){}
   };
-
+  /* CEVAP SIZDIRMA KORUMASI:
+     "YENİ KONU" mesajı SORU EKRANDAYKEN gösteriliyor (cevaptan ÖNCE). commonMistake
+     alanı ise çoğu zaman TAM bir örnek cümle içeriyor ("Everyone is here but John
+     isn't coming ✕ (farklı yapı)") — bu cümle, boşluğa girecek kelimeyi de barındırdığı
+     için testi bozuyordu: koç cevabı öğrenciye söylemiş oluyordu.
+     Artık örnek cümle ATILIR, yalnız parantez içindeki KISA AÇIKLAMA gösterilir
+     ("farklı yapı" gibi). Açıklama yoksa ya da açıklama bile hedef cümleden kelime
+     sızdırıyorsa mesaj HİÇ gösterilmez — ipucu vermektense susmak yeğdir. */
   function stripAnswer(commonMistake, target){
     var cm=String(commonMistake||"").trim();
     if(!cm) return "";
+
+    // 1) Parantez içindeki kısa açıklamayı çıkar: "... ✕ (özne farklı)" -> "özne farklı"
     var note="";
     var mp=/\(([^()]{3,60})\)\s*$/.exec(cm);
     if(mp) note=mp[1].trim();
+
+    // 2) Açıklama yoksa: metin bir ÖRNEK CÜMLE mi, yoksa zaten açıklama mı?
+    //    Örnek cümle işareti: arka arkaya 3+ İNGİLİZCE kelime (Türkçe'ye özgü harf yok).
+    //    "Zaman uyumu hatası" gibi Türkçe açıklamalar boşa atılmasın diye tr harf denetimi şart.
     if(!note){
       var hasTr=/[çğıöşüÇĞİÖŞÜ]/.test(cm);
-      var looksLikeSentence = !hasTr && /\b[A-Za-z']+\s+[A-Za-z']+\s+[A-Za-z']+\s+\b/.test(cm);
-      if(looksLikeSentence) return "";
+      var looksLikeSentence = !hasTr && /\b[A-Za-z']+\s+[A-Za-z']+\s+[A-Za-z']+\b/.test(cm);
+      if(looksLikeSentence) return "";   // örnek cümle var, açıklama yok -> güvenli değil, sus
       note=cm;
     }
+
+    // 3) SON KONTROL: açıklama, hedef cümlenin kelimelerini içeriyor mu?
+    //    Kısa kelimeler DE sızıntıdır ("due", "for", "up" gibi cevaplar 3 harflik olabilir),
+    //    o yüzden uzunluk filtresi YOK. Yalnız gerçekten anlamsız/dolgu kelimeler muaf.
+    //    Kelime SINIRIYLA eşleşme aranır ki "is" -> "his/this" gibi yanlış eşleşme olmasın.
     if(target){
       var STOP={the:1,a:1,an:1,and:1,or:1,of:1,to:1,in:1,on:1,at:1,i:1,you:1,he:1,she:1,it:1,we:1,they:1};
       var tw=String(target).toLowerCase().replace(/[^a-z' ]/g," ").split(/\s+/)
               .filter(function(w){ return w && !STOP[w]; });
       var nl=" "+note.toLowerCase().replace(/[^a-zçğıöşü' ]/g," ")+" ";
       for(var i=0;i<tw.length;i++){
-        if(nl.indexOf(" "+tw[i]+" ")>=0) return "";
+        if(nl.indexOf(" "+tw[i]+" ")>=0) return "";   // hedeften kelime sızıyor -> sus
       }
     }
     return note;
@@ -757,8 +676,11 @@
     }catch(e){}
   };
 
-  /* ---------- PASİF SAYFALAR İÇİN DURUM MESAJI ---------- */
+  /* ---------- PASİF SAYFALAR İÇİN GENEL YÖNLENDİRME + GENEL DURUM YORUMU ---------- */
   async function buildStatusMessage(manual){
+    /* 🌙 Öncelik sırası: gün kapandıysa veda; plan bittiyse Günü Kapat TEKLİFİ.
+       (Eskiden bu iki durumda bile "bugünü kaçırma!" nag'ı dönüyordu — avatar
+       tıklamasındaki manuel yol korumasızdı, teklifi de ezebiliyordu.) */
     try{
       if(dhDayClosed())
         return {msg:"Bugünü kapattın 🌙 Dinlenmek de antrenmanın parçası. Devam etmek istersen günü yeniden açabilirsin.", kind:"praise", reopen:true};
@@ -766,9 +688,14 @@
         var rq=await dhDayRequirements();
         var tv=dhTourState(rq);
         if(tv===2) return {msg:"Kapanış turunu tamamladın 💪 Şimdi günü gönül rahatlığıyla kapatabiliriz.", kind:"praise", dayClose:true};
-        if(tv===1) return manual
-          ? {msg:"Kapanış turundasın — tekrarları bitir, günü sonra birlikte kapatırız 💪", kind:"tip"}
-          : {msg:"", kind:"tip"};
+        if(tv===1){
+          if(!manual) return {msg:"", kind:"tip"};   /* tur sürerken otomatik teklif YOK */
+          /* avatara tıklayana bağlam ver: hangi şart, ne kadar kaldı + tura dönüş düğmesi */
+          var ff=rq.items.filter(function(i){return !i.ok;})[0];
+          var kal=ff?(ff.need-ff.got):0;
+          return {msg:"Kapanış turundasın — "+(ff?(ff.label+" için "+kal+" kaldı ("+ff.got+"/"+ff.need+")"):"az kaldı")+". Bitir, günü birlikte kapatalım 💪",
+                  kind:"tip", actionHref:(ff&&ff.href)||"./tekrar.html?plan=1", actionLabel:"⚡ Tura dön"};
+        }
         if(!rq.ok){
           var miss=rq.items.filter(function(i){return !i.ok;}).map(function(i){return (i.need-i.got)+" "+i.label.toLowerCase();}).join(" + ");
           return {msg:"Plan adımları tamam ama karnede eksik var: "+miss+". Kapanış turuna çıkalım mı? 🌙", kind:"tip", dayClose:true};
@@ -776,7 +703,7 @@
         return {msg:"Bugünün planı tamam 🎉 Karne de tam — günü kapatalım mı? Hataların dersini çıkarıp interaktif çalışabilirsin.", kind:"praise", dayClose:true};
       }
     }catch(e){}
-    var tr={}; try{ tr=JSON.parse(safeStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
+    var tr={}; try{ tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
     var d=new Date(), streak=0;
     if(!(tr.days||{})[d.toISOString().slice(0,10)]) d.setDate(d.getDate()-1);
     for(;;){ if((tr.days||{})[d.toISOString().slice(0,10)]){streak++; d.setDate(d.getDate()-1);} else break; }
@@ -787,7 +714,7 @@
         q.onsuccess=function(e){ var c=e.target.result; if(c){ var k=String(c.key); if(k.indexOf("srs:")===0 && c.value && (c.value.due||0)<=now) due++; c.continue(); } else { r.close(); res(); } };
         q.onerror=function(){ res(); }; }); }
     }catch(e){}
-    try{ var m=JSON.parse(safeStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; for(var k in m){ if(m[k]&&m[k][0]===2) learned++; } }catch(e){}
+    try{ var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; for(var k in m){ if(m[k]&&m[k][0]===2) learned++; } }catch(e){}
     var msg=null, kind="tip";
     if(streak===0 && due>10){ msg="Bugün henüz çalışmadın ama "+due+" tekrar bekliyor — hemen 10 dakikanı ayır, seriye başla!"; kind="warn"; }
     else if(streak>=7){ msg="🔥 "+streak+" günlük serin devam ediyor, harikasın! Bugünü de kaçırma, meşale sönmesin."; kind="praise"; }
@@ -797,13 +724,17 @@
     return {msg:msg, kind:kind};
   }
   window.__dhCoachManualStatus=async function(){
-    try{ var s=await buildStatusMessage(true); if(s.msg) dhCoachSay(s.msg, s.kind, null, {dayClose:!!s.dayClose, reopen:!!s.reopen}); }catch(e){}
+    try{ var s=await buildStatusMessage(true); if(s.msg) dhCoachSay(s.msg, s.kind, null, {dayClose:!!s.dayClose, reopen:!!s.reopen, actionHref:s.actionHref, actionLabel:s.actionLabel}); }catch(e){}
   };
   function allPlanStepsDone(){
+    /* koç kartındaki (koc.js) "tamamlandı" kurallarının BİREBİR kopyası —
+       fark yüzünden kart ✓ gösterirken burası "bitmemiş" sanıyordu:
+       1) bugün gerçek aktivite yoksa hiçbir adım tamam sayılmaz,
+       2) chat.html adımı HERHANGİ bir sohbet sayfası ziyaretiyle tamamlanır. */
     try{
       var steps=dhPlanSteps(); if(!steps.length) return false;
       var done=dhStepsDone();
-      var tr={}; try{ tr=JSON.parse(safeStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
+      var tr={}; try{ tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
       var td=(tr.days||{})[dhToday()];
       if(!(td && ((td.sentences||0)+(td.reviews||0)+(td.lessons||0)+(td.videos||0)>0))) return false;
       var anyChat=Object.keys(done).some(function(k){ return /^chat[a-z0-9]*\.html$/.test(k); });
@@ -813,14 +744,16 @@
       });
     }catch(e){ return false; }
   }
-
+  /* 🌙 Plan bitmiş ama gün kapatılmamışsa: sayfa açılışında teklif et.
+     (Eski tetikleyici yalnız son adım biterken çalışıyordu — plan zaten
+     bitmişse teklif hiç doğmuyordu. Artık kalıcı bir kapı var.) */
   setTimeout(async function(){
     try{
       if(dhDayClosed()) return;
       if(!allPlanStepsDone()) return;
       var rq2=await dhDayRequirements();
       var tv=dhTourState(rq2);
-      if(tv===1) return;
+      if(tv===1) return;   /* kapanış turu sürüyor: öğrencinin üstüne balon açma */
       if(tv===2){ window.dhCoachSay("Kapanış turunu tamamladın 💪 Şimdi günü gönül rahatlığıyla kapatabiliriz.","praise",null,{dayClose:true}); return; }
       window.dhCoachSay(rq2.ok
         ? "Bugünün planı tamam 🎉 Karne de tam — günü kapatalım mı? Hataların dersini çıkarıp interaktif çalışabilirsin."
@@ -831,11 +764,13 @@
 
   (async function genericTip(){
     try{
+      /* 🌙 gün kapatıldıysa: periyodik mesaj tamamen susar
+         (plan bittiyse buildStatusMessage zaten nag yerine Günü Kapat teklifi döndürür) */
       try{ if(dhDayClosed()) return; }catch(e){}
-      var lastT=+safeStorage.getItem("dh-coach-last-generic-tip")||0;
-      if(Date.now()-lastT<20*60000) return;
+      var lastT=+localStorage.getItem("dh-coach-last-generic-tip")||0;
+      if(Date.now()-lastT<20*60000) return;   // 20 dakikada bir en fazla — "koç her yerde olmalı" isteği gereği sıklaştırıldı
       var s=await buildStatusMessage();
-      if(s.msg){ dhCoachSay(s.msg, s.kind, null, {dayClose:!!s.dayClose, reopen:!!s.reopen}); safeStorage.setItem("dh-coach-last-generic-tip", String(Date.now())); }
+      if(s.msg){ dhCoachSay(s.msg, s.kind, null, {dayClose:!!s.dayClose, reopen:!!s.reopen, actionHref:s.actionHref, actionLabel:s.actionLabel}); localStorage.setItem("dh-coach-last-generic-tip", String(Date.now())); }
     }catch(e){}
   })();
 })();
