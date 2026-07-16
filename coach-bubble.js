@@ -42,6 +42,25 @@
       return true;
     }catch(e){ return false; }
   }
+  /* Kapanış turu: kullanıcıyı tekrar sayfasına gönderdiysek koç SUSAR.
+     Durumlar: 0=tur yok · 1=tur sürüyor (teklifi bastırır) · 2=tur bitti (+8 efor
+     birikti → kutlamalı teklif). 45 dk sonra bayat tur kendiliğinden düşer. */
+  function dhTourState(){
+    try{
+      var raw=localStorage.getItem("dh-close-tour"); if(!raw) return 0;
+      var o=JSON.parse(raw);
+      /* "tamamlandı" kalıcıdır — okuma bayrağı TÜKETMEZ (aksi halde aynı sayfadaki
+         ikinci kontrol bayrağı bulamayıp kutlamanın üstüne sıradan teklif yazıyordu).
+         Bayrağı ancak günün kapanması (dhCoachDayClose) ya da 12 saat düşürür. */
+      if(o.done){ if(Date.now()-(o.t||0)>12*3600000){ localStorage.removeItem("dh-close-tour"); return 0; } return 2; }
+      if(dhEffortNow()>=(o.effort||0)+8){
+        localStorage.setItem("dh-close-tour", JSON.stringify({done:1, t:o.t||Date.now()}));
+        return 2;
+      }
+      if(Date.now()-(o.t||0)<45*60000) return 1;
+      localStorage.removeItem("dh-close-tour"); return 0;
+    }catch(e){ return 0; }
+  }
   window.dhCoachReopenDay=function(){
     try{ localStorage.removeItem("dh-day-closed-"+dhToday()); }catch(e){}
     try{ window.dhCoachSay("Gün yeniden açıldı — kaldığın yerden devam 💪","praise"); }catch(e){}
@@ -235,12 +254,17 @@
         +'bugün <b>'+(rec0.sentences||0)+'</b> cümle ve <b>'+(rec0.reviews||0)+'</b> tekrar yaptın'
         +(due0>0?', <b>'+due0+'</b> tekrar hâlâ bekliyor':'')+'.'
         +'<div style="margin-top:6px;font-size:13px;color:#d8c9a3">Kısa bir kapanış turuyla günü gerçekten hak ederek bitirebilirsin — 10 tekrar ≈ 5 dakika.</div></div>'
-        +'<a href="./tekrar.html?plan=1" style="display:block;text-align:center;margin-top:12px;background:linear-gradient(135deg,#059669,#0d9488);color:#fff;text-decoration:none;font-weight:900;padding:13px;border-radius:12px">⚡ Kapanış turu: tekrarları yap (önerilen)</a>'
+        +'<a id="dhDcTour" href="./tekrar.html?plan=1" style="display:block;text-align:center;margin-top:12px;background:linear-gradient(135deg,#059669,#0d9488);color:#fff;text-decoration:none;font-weight:900;padding:13px;border-radius:12px">⚡ Kapanış turu: tekrarları yap (önerilen)</a>'
         +'<button id="dhDcAnyway" style="display:block;width:100%;margin-top:8px;background:#334155;border:0;color:#cbd5e1;border-radius:11px;padding:11px;font-weight:700;cursor:pointer">Yine de günü kapat</button>';
       document.getElementById("dhDcAnyway").onclick=function(){ ov.remove(); window.dhCoachDayClose(true); };
+      var __tour=document.getElementById("dhDcTour");
+      if(__tour) __tour.addEventListener("click",function(){
+        try{ localStorage.setItem("dh-close-tour", JSON.stringify({t:Date.now(), effort:effort0})); }catch(e){}
+      });
       return;
     }
     try{ localStorage.setItem("dh-day-closed-"+dhToday(), JSON.stringify({t:Date.now(),effort:dhEffortNow()})); }catch(e){}
+    try{ localStorage.removeItem("dh-close-tour"); }catch(e){}
 
     /* 1) Bugünün hataları */
     var errs=[];
@@ -601,15 +625,21 @@
   };
 
   /* ---------- PASİF SAYFALAR İÇİN GENEL YÖNLENDİRME + GENEL DURUM YORUMU ---------- */
-  async function buildStatusMessage(){
+  async function buildStatusMessage(manual){
     /* 🌙 Öncelik sırası: gün kapandıysa veda; plan bittiyse Günü Kapat TEKLİFİ.
        (Eskiden bu iki durumda bile "bugünü kaçırma!" nag'ı dönüyordu — avatar
        tıklamasındaki manuel yol korumasızdı, teklifi de ezebiliyordu.) */
     try{
       if(dhDayClosed())
         return {msg:"Bugünü kapattın 🌙 Dinlenmek de antrenmanın parçası. Devam etmek istersen günü yeniden açabilirsin.", kind:"praise", reopen:true};
-      if(allPlanStepsDone())
+      if(allPlanStepsDone()){
+        var tv=dhTourState();
+        if(tv===2) return {msg:"Kapanış turunu tamamladın 💪 Şimdi günü gönül rahatlığıyla kapatabiliriz.", kind:"praise", dayClose:true};
+        if(tv===1) return manual
+          ? {msg:"Kapanış turundasın — tekrarları bitir, günü sonra birlikte kapatırız 💪", kind:"tip"}
+          : {msg:"", kind:"tip"};   /* tur sürerken otomatik teklif YOK: çalışan öğrencinin üstüne balon açma */
         return {msg:"Bugünün planı tamam 🎉 Günü kapatalım mı? Hataların dersini çıkarıp interaktif çalışabilirsin.", kind:"praise", dayClose:true};
+      }
     }catch(e){}
     var tr={}; try{ tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
     var d=new Date(), streak=0;
@@ -632,7 +662,7 @@
     return {msg:msg, kind:kind};
   }
   window.__dhCoachManualStatus=async function(){
-    try{ var s=await buildStatusMessage(); if(s.msg) dhCoachSay(s.msg, s.kind, null, {dayClose:!!s.dayClose, reopen:!!s.reopen}); }catch(e){}
+    try{ var s=await buildStatusMessage(true); if(s.msg) dhCoachSay(s.msg, s.kind, null, {dayClose:!!s.dayClose, reopen:!!s.reopen}); }catch(e){}
   };
   function allPlanStepsDone(){
     /* koç kartındaki (koc.js) "tamamlandı" kurallarının BİREBİR kopyası —
@@ -657,9 +687,13 @@
      bitmişse teklif hiç doğmuyordu. Artık kalıcı bir kapı var.) */
   setTimeout(function(){
     try{
-      if(localStorage.getItem("dh-day-closed-"+dhToday())) return;
+      if(dhDayClosed()) return;
       if(!allPlanStepsDone()) return;
-      window.dhCoachSay("Bugünün planı tamam 🎉 Günü kapatalım mı? Hataların dersini çıkarıp interaktif çalışabilirsin.","praise",null,{dayClose:true});
+      var tv=dhTourState();
+      if(tv===1) return;   /* kapanış turu sürüyor: öğrencinin üstüne balon açma */
+      window.dhCoachSay(tv===2
+        ? "Kapanış turunu tamamladın 💪 Şimdi günü gönül rahatlığıyla kapatabiliriz."
+        : "Bugünün planı tamam 🎉 Günü kapatalım mı? Hataların dersini çıkarıp interaktif çalışabilirsin.","praise",null,{dayClose:true});
     }catch(e){}
   }, 2800);
 
