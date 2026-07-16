@@ -189,7 +189,22 @@
             })()
           +chartHtml+stepsHtml
           +'<a href="./rapor.html" style="display:block;text-align:center;margin-top:10px;font-size:11.5px;color:#60a5fa;text-decoration:none">📅 Detaylı 30 günlük rapor →</a>'
+          +'<button id="dhResetToday" style="display:block;width:100%;margin-top:8px;background:transparent;border:1px dashed #334155;color:#64748b;border-radius:9px;padding:7px;font-size:11px;cursor:pointer">⏭️ Sonraki günü başlat (yeni plan kurulur)</button>'
           +'</div>';
+        var __rb=document.getElementById("dhResetToday");
+        if(__rb) __rb.onclick=function(){
+          /* "Sonraki gün" simülasyonu: takvimle oynamadan yarın sabahki durumu kurar.
+             Silinen: bugünün planı (yeniden yazılır), adım işaretleri, gün-kapandı,
+             koç balonu zamanlayıcısı. KORUNAN: tüm öğrenme verileri + modül ziyaret
+             defteri (bitirdiğin modül yeni planda da önerilmesin diye). */
+          try{
+            localStorage.removeItem("dh-koc-plan-"+DAY);
+            localStorage.removeItem("dh-koc-steps-done-"+DAY);
+            localStorage.removeItem("dh-day-closed-"+DAY);
+            localStorage.removeItem("dh-coach-last-generic-tip");
+          }catch(e){}
+          location.reload();
+        };
       } else {
         // eski basit banner (geri uyumluluk — bazı sayfalarda hâlâ olabilir)
         var a2=document.getElementById("dhDayStart");
