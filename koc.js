@@ -1,29 +1,15 @@
 /* koc.js — AI KOÇ: günde 1 kez profil → öğretmen → günün planı.
    Kurallar: AI yalnız ÖNERİR (hiç veri yazmaz) · plan günlük önbellekte ·
-   AI yoksa/parse hatasında banner statik haline dokunulmaz (sessiz düşüş).
-*/
+   AI yoksa/parse hatasında banner statik haline dokunulmaz (sessiz düşüş). */
 (function(){
   "use strict";
   var DAY=new Date().toISOString().slice(0,10), KEY="dh-koc-plan-"+DAY;
   var ALLOWED=["tekrar.html?plan=1","index-app.html","chat.html","practice.html?auto=due","kelime-ogren.html","hata-defteri.html"];
 
-  /* ---------- 🛡️ GİZLİ SEKME / DEPOLAMA KORUMASI (SafeStorage) ---------- */
-  var safeStorage = {
-    memoryDb: {},
-    getItem: function(key) {
-      try { return localStorage.getItem(key); } catch(e) { return this.memoryDb[key] || null; }
-    },
-    setItem: function(key, val) {
-      try { localStorage.setItem(key, val); } catch(e) { this.memoryDb[key] = String(val); }
-    },
-    removeItem: function(key) {
-      try { localStorage.removeItem(key); } catch(e) { delete this.memoryDb[key]; }
-    }
-  };
-
+  // ── 30 GÜNLÜK DERİN ANALİZ: koç kullanıcıyı gerçekten tanısın ──
   function activityTrend30(){
     try{
-      var tr=JSON.parse(safeStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=tr.days||{};
+      var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=tr.days||{};
       var active=0, lessons=0, sentences=0, reviews=0, first15=0, last15=0, d=new Date();
       for(var i=0;i<30;i++){
         var key=d.toISOString().slice(0,10), rec=days[key];
@@ -38,7 +24,6 @@
         +"Toplam: "+lessons+" ders, "+sentences+" cümle, "+reviews+" tekrar.", active:active, first15:first15, last15:last15};
     }catch(e){ return {text:"", active:0, first15:0, last15:0}; }
   }
-
   async function errorTrend30(){
     var rows=[];
     try{
@@ -68,13 +53,13 @@
 
   async function profile(){
     var p=[];
-    try{ var tr=JSON.parse(safeStorage.getItem("dh-study-tracker-v1")||"{}")||{}, d=new Date(), st=0;
+    try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, d=new Date(), st=0;
       if(!(tr.days||{})[d.toISOString().slice(0,10)]) d.setDate(d.getDate()-1);
       for(;;){ if((tr.days||{})[d.toISOString().slice(0,10)]){st++;d.setDate(d.getDate()-1);} else break; }
       if(st) p.push("Seri:"+st+" gün.");
     }catch(e){}
     var act=activityTrend30(); if(act.text) p.push(act.text);
-    try{ var m=JSON.parse(safeStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, s1=0,w1=0,s2=0,w2=0;
+    try{ var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, s1=0,w1=0,s2=0,w2=0;
       for(var k in m){ if(!m[k]) continue; var st0=m[k][0];
         if(k.indexOf("sentence:")===0){ if(st0===1)s1++; else if(st0===2)s2++; }
         else if(k.indexOf("word:")===0){ if(st0===1)w1++; else if(st0===2)w2++; }
@@ -96,6 +81,7 @@
     window.__dhErrCount=errCount;
     var errT=await errorTrend30(); if(errT.text) p.push(errT.text);
 
+    // ── SEVİYE ÖNERİSİ: AI'nin insafına değil, GERÇEK KANIT'a dayalı (kod-tabanlı) ──
     try{
       var improving = errT.rows.filter(function(r){ return r.older>0 && r.recent<=Math.ceil(r.older*0.5); });
       var worsening = errT.rows.filter(function(r){ return r.recent>=3 && r.recent>r.older; });
@@ -121,47 +107,11 @@
     return p.join(" ");
   }
 
-  /* ---------- 🧠 EBBINGHAUS UNUTMA EĞRİSİ TAHMİNCİSİ (Kritik Tekrarlar) ---------- */
-  function detectForgetfulnessCritical() {
-    return new Promise(function(res) {
-      try {
-        var r = indexedDB.open("sentence-mode", 1);
-        r.onsuccess = function() {
-          var db = r.result, now = Date.now(), critical = [];
-          try {
-            var q = db.transaction("kv", "readonly").objectStore("kv").openCursor();
-            q.onsuccess = function(e) {
-              var c = e.target.result;
-              if (c) {
-                var k = String(c.key), v = c.value || {};
-                if (k.indexOf("srs:") === 0) {
-                  var lastRep = v.lastAt || (v.due - (v.interval || 1) * 86400000);
-                  var elapsed = now - lastRep;
-                  var intervalMs = (v.interval || 1) * 86400000;
-                  // Eğer vadenin %85'i aşılmışsa, bellek izi (memory trace) kritik sınırdadır
-                  if (elapsed > intervalMs * 0.85 && (v.reps || 0) > 0) {
-                    critical.push({ id: k.slice(4), text: v.text, lapses: v.lapses || 0 });
-                  }
-                }
-                c.continue();
-              } else {
-                db.close();
-                critical.sort(function(a, b){ return b.lapses - a.lapses; });
-                res(critical[0] || null);
-              }
-            };
-            q.onerror = function() { db.close(); res(null); };
-          } catch(err) { db.close(); res(null); }
-        };
-        r.onerror = function() { res(null); };
-      } catch(e) { res(null); }
-    });
-  }
-
-  async function paint(plan){
+  function paint(plan){
     try{
+      // Öncelik: yeni "AI Mentor" konteyneri (#dhKocContainer). Yoksa eski basit banner'a düş.
       var box=document.getElementById("dhKocContainer");
-      var sub=document.getElementById("dhDaySub");
+      var sub=document.getElementById("dhDaySub");     // gizli sayaç beslemesi (geri uyumluluk)
       if(!plan||!plan.steps||!plan.steps.length){
         if(box && box.dataset.dhFilled!=="1"){
           box.innerHTML='<div style="background:#111827;padding:16px;border-radius:14px;border:1px dashed rgba(255,255,255,.15);color:#93c5fd;font-size:13px;text-align:center">AI Mentor için API anahtarı ekleyince burada günün planı görünecek.</div>';
@@ -171,16 +121,18 @@
       if(sub){ var __dq=(plan.dueCount||0); sub.textContent = __dq>15 ? "bugünlük 15 tekrar seçildi 💛" : (__dq+" tekrar bekleyen"); }
       if(box){
         box.dataset.dhFilled="1";
-        var doneSet={}; try{ doneSet=JSON.parse(safeStorage.getItem("dh-koc-steps-done-"+new Date().toISOString().slice(0,10))||"{}")||{}; }catch(e){}
-        
+        var doneSet={}; try{ doneSet=JSON.parse(localStorage.getItem("dh-koc-steps-done-"+new Date().toISOString().slice(0,10))||"{}")||{}; }catch(e){}
+        // GÜVENLİK DENETİMİ: eski/bayat bayraklar yüzünden "tamamlandı" ile meşale/hedefin çelişmesini
+        // önlemek için, bugün GERÇEKTEN hiç aktivite yoksa (dh-study-tracker-v1 bugünkü kayıt boşsa)
+        // hiçbir adım "tamamlandı" gösterilmez — tek doğruluk kaynağı gerçek aktivite olur.
         var realActivityToday=false;
         try{
-          var trX=JSON.parse(safeStorage.getItem("dh-study-tracker-v1")||"{}")||{};
+          var trX=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{};
           var tdX=(trX.days||{})[new Date().toISOString().slice(0,10)];
           realActivityToday = !!(tdX && ((tdX.sentences||0)+(tdX.reviews||0)+(tdX.lessons||0)+(tdX.videos||0) > 0));
         }catch(e){}
         if(!realActivityToday) doneSet={};
-        
+        // "chat.html" adımı için: herhangi bir gerçek sohbet sayfası (chathotel.html, chatteacher.html...) ziyareti de sayılır
         var anyChatDone = Object.keys(doneSet).some(function(k){ return /^chat[a-z]*\.html$/.test(k); });
         var stepsHtml=plan.steps.map(function(s,i){
           var page=(s.href||"").split("?")[0];
@@ -189,7 +141,6 @@
             +'<span style="background:'+(done?"#22c55e":"#2563eb")+';color:#fff;font:800 12px system-ui;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:0 0 auto">'+(done?"✓":(i+1))+'</span>'
             +'<span style="font-size:13.5px;font-weight:700;'+(done?"text-decoration:line-through":"")+'">'+esc(s.label)+(done?' <span style="opacity:.8;font-weight:600">(tamamlandı)</span>':'')+'</span></a>';
         }).join("");
-        
         var st=plan.stats||{}, learned=(st.s2||0)+(st.w2||0), studying=(st.s1||0)+(st.w1||0), due=st.due||0;
         var maxV=Math.max(learned,studying,due,1);
         function bar(label,val,color){
@@ -202,10 +153,10 @@
         var chartHtml='<div style="margin:10px 0 12px">'
           +bar("Öğrenilmiş", learned, "#4ade80")+bar("Çalışılıyor", studying, "#38bdf8")+bar("Tekrar bekleyen", due, "#f59e0b")
           +'</div>';
-        
+        // 7 günlük mini aktivite grafiği (rapor.html'in küçük özeti — koç kartında doğrudan görünür)
         var weekHtml="";
         try{
-          var tr7=JSON.parse(safeStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days7=tr7.days||{}, cells7=[];
+          var tr7=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days7=tr7.days||{}, cells7=[];
           for(var wi=6;wi>=0;wi--){
             var dd7=new Date(); dd7.setDate(dd7.getDate()-wi);
             var k7=dd7.toISOString().slice(0,10), rec7=days7[k7];
@@ -216,24 +167,10 @@
           }
           weekHtml='<div style="margin:2px 0 12px"><div style="font-size:10.5px;color:#64748b;margin-bottom:4px">SON 7 GÜN</div><div style="display:flex;gap:5px;align-items:flex-end">'+cells7.join("")+'</div></div>';
         }catch(e){}
-
-        /* ---------- 🧠 UNUTMA EŞİĞİNDEKİ KART GÖSTERİMİ ---------- */
-        var forgetfulHtml = "";
-        try {
-          var crit = await detectForgetfulnessCritical();
-          if (crit && crit.text) {
-            forgetfulHtml = '<div style="background:#31111d; border:1px solid #f43f5e55; border-radius:11px; padding:10px 12px; margin-bottom:8px; font-size:12.5px; color:#fecdd3;">'
-              +'<b>⏳ Bellek Uyarısı (Ebbinghaus):</b> Unutulmak üzere olan bir kartın var!<br>'
-              +'<span style="color:#fda4af; font-style:italic;">"'+esc(crit.text)+'"</span>'
-              +'</div>';
-          }
-        } catch(e) {}
-
         box.innerHTML='<div style="background:#111827;padding:18px;border-radius:14px;border:1px solid rgba(255,255,255,.1)">'
           +'<div style="color:#60a5fa;font:900 12px system-ui;letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px">🧭 AI Mentor — Bugünün Planı</div>'
           +'<div style="font:800 17px system-ui;margin-bottom:6px">'+esc(plan.focus||"")+'</div>'
           +(plan.why?('<div style="background:#1e1b0f;border:1px solid #facc1555;border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:13px;color:#fde68a"><b>🎯 Neden bu plan?</b><br>'+esc(plan.why)+'</div>'):'')
-          +forgetfulHtml
           +(plan.note?('<div style="color:#9fb3d9;font-size:12.5px;margin-bottom:8px">💬 '+esc(plan.note)+'</div>'):'')
           +weekHtml
           +(window.__dhLevelSuggest?('<a href="./seviye-testi.html" style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:9px 12px;background:#1e1b4b;border:1px solid #818cf8;border-radius:11px;text-decoration:none;color:#e0e7ff;font-size:12.5px"><span>🎓</span><span><b>Seviye yükseltme zamanı olabilir!</b><br><span style="opacity:.85">'+esc(window.__dhLevelReason||"")+'</span></span></a>'):'')
@@ -254,18 +191,22 @@
           +'<a href="./rapor.html" style="display:block;text-align:center;margin-top:10px;font-size:11.5px;color:#60a5fa;text-decoration:none">📅 Detaylı 30 günlük rapor →</a>'
           +'<button id="dhResetToday" style="display:block;width:100%;margin-top:8px;background:transparent;border:1px dashed #334155;color:#64748b;border-radius:9px;padding:7px;font-size:11px;cursor:pointer">⏭️ Sonraki günü başlat (yeni plan kurulur)</button>'
           +'</div>';
-        
         var __rb=document.getElementById("dhResetToday");
         if(__rb) __rb.onclick=function(){
+          /* "Sonraki gün" simülasyonu: takvimle oynamadan yarın sabahki durumu kurar.
+             Silinen: bugünün planı (yeniden yazılır), adım işaretleri, gün-kapandı,
+             koç balonu zamanlayıcısı. KORUNAN: tüm öğrenme verileri + modül ziyaret
+             defteri (bitirdiğin modül yeni planda da önerilmesin diye). */
           try{
-            safeStorage.removeItem("dh-koc-plan-"+DAY);
-            safeStorage.removeItem("dh-koc-steps-done-"+DAY);
-            safeStorage.removeItem("dh-day-closed-"+DAY);
-            safeStorage.removeItem("dh-coach-last-generic-tip");
+            localStorage.removeItem("dh-koc-plan-"+DAY);
+            localStorage.removeItem("dh-koc-steps-done-"+DAY);
+            localStorage.removeItem("dh-day-closed-"+DAY);
+            localStorage.removeItem("dh-coach-last-generic-tip");
           }catch(e){}
           location.reload();
         };
       } else {
+        // eski basit banner (geri uyumluluk — bazı sayfalarda hâlâ olabilir)
         var a2=document.getElementById("dhDayStart");
         if(a2 && sub){ a2.href="./"+plan.steps[0].href;
           sub.innerHTML="<b>"+esc(plan.focus||"")+"</b> — "+plan.steps.map(function(s,i){return (i+1)+") "+esc(s.label);}).join(" → "); }
@@ -275,6 +216,8 @@
   function esc(s){ return String(s||"").replace(/[<>&]/g,function(c){return {"<":"&lt;",">":"&gt;","&":"&amp;"}[c];}); }
   var __lastDue=0, __lastS1=0, __lastW1=0, __lastS2=0, __lastW2=0, __nextModule=null;
 
+  // "Yeni cümleler öğren" adımı için hedef modülü koç DETERMİNİSTİK olarak seçer (AI değil):
+  // ilerlemesi tamamlanmamış (mirror'da status!==2) en az bir cümlesi olan İLK modül.
   function kvReadPrefix(pre){
     return new Promise(function(res){
       try{
@@ -292,7 +235,9 @@
   }
   async function pickNextModule(){
     try{
-      var mirror={}; try{ mirror=JSON.parse(safeStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; }catch(e){}
+      var mirror={}; try{ mirror=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; }catch(e){}
+      // practice.html kendi SRS kaydını (srs:<id>) tutar, mirror'a hiç yazmaz — bu yüzden koç
+      // practice'te çalışılan modülleri de "ilerleme var" saysın diye SRS kaydına da bakıyor.
       var srs=await kvReadPrefix("srs:");
       var all=await (await fetch("./data/sentences.json")).json();
       var order=[], seen={}, byMod={};
@@ -301,19 +246,45 @@
         if(!seen[s.module]){ seen[s.module]=1; order.push(s.module); byMod[s.module]=[]; }
         byMod[s.module].push(s);
       });
-      var visited={}; try{ visited=JSON.parse(safeStorage.getItem("dh-mod-visited-v1")||"{}")||{}; }catch(e){}
+      /* "Yeni cümleler" GERÇEKTEN yeni olmalı. Eski kural "tam öğrenilmemiş İLK modül"dü;
+         SRS gereği cümleler günlerce status 2 olmadığı için dün bitirdiğin modüle
+         ertesi gün YİNE yönlendiriyordu. Yeni öncelik sırası:
+           1) hiç dokunulmamış ilk modül (tek cümlesine bile başlanmamış)
+           2) yoksa: eksik olup son 2 gündür ziyaret EDİLMEMİŞ ilk modül
+           3) yoksa: eksik ilk modül (eski davranış) */
+      var visited={}; try{ visited=JSON.parse(localStorage.getItem("dh-mod-visited-v1")||"{}")||{}; }catch(e){}
+      /* GERÇEK ilerleme IndexedDB'de ("sentence:" anahtarları) — localStorage
+         aynasını hiçbir kod doldurmuyor, o yüzden ayna hep boştu ve her modül
+         "bakir" görünüp hep İLK (çoktan bitmiş) modül seçiliyordu. */
+      var prog={}; try{ prog=await kvReadPrefix("sentence:"); }catch(e){}
+      function stOf(s){ return prog[s.id] || mirror["sentence:"+s.id]; }
       var yd=new Date(); yd.setDate(yd.getDate()-1); yd=yd.toISOString().slice(0,10);
       function unfinished(s){
-        var m=mirror["sentence:"+s.id]; var learned = m && m[0]===2;
+        var m=stOf(s); var learned = m && m[0]===2;
         var sr=srs[s.id]; var practiced = sr && (sr.rep||0)>=2;
         return !(learned || practiced);
       }
-      function touched(s){ return !!(mirror["sentence:"+s.id] || srs[s.id]); }
+      function touched(s){ return !!(stOf(s) || srs[s.id]); }
+      /* SÜREKLİLİK: bugün girilen modülde hâlâ hiç görülmemiş cümle varsa
+         (yarım kalmış yeni öğrenme) önce onu bitir. Tamamı görülmüşse
+         ("kullanıcı bitirdi") bu kural devreye GİRMEZ — yeni modüle geçilir. */
+      for(var c=0;c<order.length;c++){
+        if(visited[order[c]]===DAY && byMod[order[c]].some(function(s){return !touched(s);}))
+          return order[c];
+      }
+      /* 1) MÜFREDAT SIRASINDA görülmemiş cümlesi olan İLK modül.
+         Parçalı yapı (her konu P1→P4) için kritik: P2'de 17 görülmemiş cümle
+         dururken "tamamen bakir" arayıp P3/P4'e ya da çok ileriye zıplamak yanlış —
+         kısmen başlanmış parça, doğal sıradaki yeni öğrenme noktasıdır. */
+      for(var n=0;n<order.length;n++){
+        if(byMod[order[n]].some(function(s){return !touched(s);})) return order[n];
+      }
+      /* 2) her cümle en az bir kez görülmüşse: pekişmemiş olup 2 gündür
+         dinlenen ilk modül; 3) o da yoksa ilk pekişmemiş (eski davranış) */
       var firstIncomplete=null, firstRested=null;
       for(var i=0;i<order.length;i++){
         var mod=order[i];
         if(!byMod[mod].some(unfinished)) continue;
-        if(!byMod[mod].some(touched)) return mod;
         if(!firstIncomplete) firstIncomplete=mod;
         var v=visited[mod];
         if(v!==DAY && v!==yd && !firstRested) firstRested=mod;
@@ -328,10 +299,12 @@
     var aiSteps=p.steps.filter(function(s){ return s&&s.label&&ALLOWED.indexOf(String(s.href||""))>=0; });
     if(!window.__dhErrCount){ aiSteps=aiSteps.filter(function(s){ return s.href!=="hata-defteri.html"; }); }
 
+    // GARANTİLİ İSKELET (eski ☀️ Güne Başla tasarımı): tekrar → yeni cümleler → 1 dk konuşma.
     var spine=[];
     if(due>0) spine.push({label:"Vadesi gelen kelime/cümleleri tekrarla", href:"tekrar.html?plan=1"});
+    // Günlük 25 cümle sınırı: bugün zaten 25+ çalıştıysa "yeni cümleler" adımı önerilmez (aşırı yükleme önlenir)
     var todayCount=0;
-    try{ var tr2=JSON.parse(safeStorage.getItem("dh-study-tracker-v1")||"{}")||{}, tk=new Date().toISOString().slice(0,10);
+    try{ var tr2=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, tk=new Date().toISOString().slice(0,10);
       todayCount=(tr2.days&&tr2.days[tk]&&tr2.days[tk].sentences)||0; }catch(e){}
     if(todayCount<25){
       spine.push({label: __nextModule ? ("Yeni cümleler: "+__nextModule.replace(/^[A-C]\d-M\d+\s*/,"")) : "Yeni cümleler öğren",
@@ -340,18 +313,27 @@
     spine.push({label:"1 dakika konuş", href:"chat.html"});
     var hrefs=spine.map(function(s){return s.href;});
     var bonus=aiSteps.find(function(s){ return hrefs.indexOf(s.href)<0; });
+    // GÜVENCE: AI talimata uymayıp etikete sayı gömerse bile temizle (bayat sayı bir daha görünmesin)
     if(bonus) bonus.label=String(bonus.label||"").replace(/\b\d+\b/g," ").replace(/\s{2,}/g," ").trim() || "Önerilen çalışma";
     p.steps = bonus ? spine.concat([bonus]) : spine;
 
     if(!p.steps.length) return null;
     p.focus=String(p.focus||"").slice(0,120); p.note=String(p.note||"").slice(0,140);
     p.why=String(p.why||"").slice(0,180);
+    // stats artık burada değil — run() içinde HER açılışta canlı hesaplanır (bkz. liveStats)
     return p;
   }
 
+  /* ---------- why/note TAZELEME (AI ÇAĞRISI YOK) ----------
+     Plan günde 1 kez AI'dan gelir (token tasarrufu). Ama "why"/"note" metni
+     planın ÜRETİLDİĞİ ANDAKİ duruma göre yazılır: sabah "0 cümle yaptın, hemen
+     başla" diyen metin, akşam 60 cümle yapıldıktan sonra da aynı kalıyordu.
+     Çözüm: plan üretilirken o anki durumu (todaySentences/due) plana gömüyoruz;
+     her açılışta canlı durumla kıyaslayıp ANLAMLI sapma varsa why/note'u
+     kod-tabanlı taze metinle EZİYORUZ. Sapma yoksa AI'nın metni aynen kalır. */
   function todaySentences(){
     try{
-      var tr=JSON.parse(safeStorage.getItem("dh-study-tracker-v1")||"{}")||{};
+      var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{};
       var d=(tr.days||{})[new Date().toISOString().slice(0,10)]||{};
       return (d.sentences||0)+(d.reviews||0)+(d.lessons||0)+(d.videos||0);
     }catch(e){ return 0; }
@@ -361,15 +343,16 @@
     try{
       if(!plan) return plan;
       var snap=plan.madeAt||null;
-      if(!snap) return plan;
+      if(!snap) return plan;                       // eski/anlık görüntüsüz plan: dokunma
       var nowCnt=todaySentences(), wasCnt=snap.count||0;
       var nowDue=(stats&&stats.due)||0,  wasDue=snap.due||0;
-      var didWork=nowCnt-wasCnt;
-      var clearedDue=wasDue-nowDue;
+      var didWork=nowCnt-wasCnt;                   // plandan beri yapılan aktivite
+      var clearedDue=wasDue-nowDue;                // eritilen tekrar borcu
 
+      // Sapma yoksa AI metnine DOKUNMA (asıl değerli metin odur).
       if(didWork<5 && clearedDue<5) return plan;
 
-      var p={}; for(var k in plan) p[k]=plan[k];
+      var p={}; for(var k in plan) p[k]=plan[k];   // kopya (önbelleği kirletme)
       if(nowDue===0 && clearedDue>=5){
         p.why="Plan sabah yazıldı; o zamandan beri "+didWork+" çalışma yaptın ve tekrar borcunu bitirdin.";
         p.note="Tekrarların bitti — yeni cümlelere geç, bugünü öyle kapat.";
@@ -387,10 +370,13 @@
     }catch(e){ return plan; }
   }
 
+  // İstatistik çubukları HİÇ önbelleğe alınmaz — plan (adımlar) günde 1 kez AI'dan gelse de,
+  // "Öğrenilmiş/Çalışılıyor/Tekrar bekleyen" sayıları her açılışta CANLI hesaplanır ki
+  // gün içinde yapılan çalışma anında yansısın.
   async function liveStats(){
     var s1=0,s2=0,w1=0,w2=0,due=0;
     try{
-      var m=JSON.parse(safeStorage.getItem("dh-progress-mirror-v1")||"{}")||{};
+      var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{};
       for(var k in m){ if(!m[k]) continue; var st0=m[k][0];
         if(k.indexOf("sentence:")===0){ if(st0===1)s1++; else if(st0===2)s2++; }
         else if(k.indexOf("word:")===0){ if(st0===1)w1++; else if(st0===2)w2++; }
@@ -410,21 +396,24 @@
     return {due:due, s1:s1, s2:s2, w1:w1, w2:w2};
   }
 
+  // ── HEDEF TAKİBİ: koç haftalık bir hedef koyar, 7 gün sonra kendi kendine kontrol eder ──
   function checkAndSetGoal(errT){
-    var g=null; try{ g=JSON.parse(safeStorage.getItem("dh-koc-goal")||"null"); }catch(e){}
+    var g=null; try{ g=JSON.parse(localStorage.getItem("dh-koc-goal")||"null"); }catch(e){}
     var now=Date.now(), result=null;
     if(g && now-g.setAt>=7*86400000){
+      // 7 gün doldu: hedef tutmuş mu kontrol et
       var cur = errT.rows.find(function(r){ return r.type===g.type; });
       var nowCount = cur ? cur.recent : 0;
       var achieved = nowCount <= g.targetCount;
       result = { type:g.type, achieved:achieved, before:g.baseline, now:nowCount };
-      g=null;
+      g=null; // hedefi temizle, yeni belirlenecek
     }
     if(!g){
+      // yeni hedef: en çok tekrarlanan (kötüleşen ya da baskın) hata türünü seç
       var worst = errT.rows.slice().sort(function(a,b){ return b.recent-a.recent; })[0];
       if(worst && worst.recent>=2){
         g={ type:worst.type, baseline:worst.recent, targetCount:Math.max(0,Math.ceil(worst.recent*0.5)), setAt:now };
-        try{ safeStorage.setItem("dh-koc-goal", JSON.stringify(g)); }catch(e){}
+        try{ localStorage.setItem("dh-koc-goal", JSON.stringify(g)); }catch(e){}
       }
     }
     return { goal:g, result:result };
@@ -434,6 +423,7 @@
     try{
       try{ window.__dhErrCount = window.LearningErrorDB&&LearningErrorDB.all ? (await LearningErrorDB.all()||[]).length : 0; }catch(e){ window.__dhErrCount=0; }
       __nextModule = await pickNextModule();
+      // seviye önerisi HER açılışta canlı hesaplanır (cache-hit dahil, profile() cache-hit'te çalışmaz)
       try{
         var _act=activityTrend30(), _errT=await errorTrend30();
         var _imp=_errT.rows.filter(function(r){ return r.older>0 && r.recent<=Math.ceil(r.older*0.5); });
@@ -442,25 +432,36 @@
         window.__dhLevelReason = window.__dhLevelSuggest ? ("Son 30 günde "+_act.active+" gün aktif oldun ve "+_imp.length+" hata türünde belirgin iyileşme var — seviye yükseltmeyi hak ediyorsun.") : "";
         window.__dhGoal = checkAndSetGoal(_errT);
       }catch(e){ window.__dhLevelSuggest=false; window.__dhGoal=null; }
-      
-      var cached=safeStorage.getItem(KEY);
+      var cached=localStorage.getItem(KEY);
       if(cached){
         var cp=valid(JSON.parse(cached));
         if(cp){
+          // madeAt anlık görüntüsü valid() tarafından düşürülmesin diye ham plandan geri al
           try{ var raw=JSON.parse(cached); if(raw&&raw.madeAt) cp.madeAt=raw.madeAt; }catch(e){}
+          /* KENDİNİ ONARIM: eski sürümle yazılmış planlarda "yeni cümleler" adımı
+             ?mod= parametresiz kalmış olabilir → tüm bağlantılar modül LİSTESİNE
+             düşer. Böyle bir adım görürsek hedef modülü şimdi seçip adımı yamala. */
           try{
-            var __plain=cp.steps.filter(function(st){ return String(st.href||"")==="index-app.html"; })[0];
-            if(__plain){
+            var __step=cp.steps.filter(function(st){ return String(st.href||"").indexOf("index-app.html")===0; })[0];
+            if(__step){
+              var __curMod=null;
+              try{ var __m=String(__step.href).match(/[?&]mod=([^&]+)/); if(__m) __curMod=decodeURIComponent(__m[1]); }catch(e){}
               var __nm=await pickNextModule();
-              if(__nm){
-                __plain.href="index-app.html?mod="+encodeURIComponent(__nm);
-                __plain.label="Yeni cümleler: "+__nm.replace(/^[A-C]\d-M\d+\s*/,"");
-                safeStorage.setItem(KEY, JSON.stringify(cp));
+              /* yönlendir: (a) adım modülsüzse, ya da (b) adımın modülü seçicinin
+                 önerisinden farklıysa VE o modüle bugün gidilmediyse (gün içi kararlılık) */
+              var __todayVisited=false;
+              try{ var __vd=JSON.parse(localStorage.getItem("dh-mod-visited-v1")||"{}")||{}; __todayVisited=(__curMod&&__vd[__curMod]===DAY); }catch(e){}
+              if(__nm && (__curMod===null || __curMod!==__nm)){
+                __step.href="index-app.html?mod="+encodeURIComponent(__nm);
+                __step.label="Yeni cümleler: "+__nm.replace(/^[A-C]\d-M\d+\s*/,"");
               }
             }
+            /* kart ile depo AYNI kalsın: valid() adımları kanonikleştirir ama
+               kaydetmezdi → tekrar.html düğmesi depodaki bayat modüle gidiyordu */
+            localStorage.setItem(KEY, JSON.stringify(cp));
           }catch(e){}
           cp.stats=await liveStats();
-          paint(freshenPlan(cp, cp.stats));
+          paint(freshenPlan(cp, cp.stats));   // why/note gün içinde bayatlamasın (AI çağrısı YOK)
         }
         return;
       }
@@ -474,11 +475,14 @@
         +'SADECE JSON döndür, açıklama yok: {"focus":"günün odağı tek cümle (Türkçe, buyurgan/yönlendirici üslupla)","note":"NET bir yönerge/komut (Türkçe, en çok 15 kelime)","why":"bu planı NEDEN önerdiğini profildeki sayılara dayanarak açıklayan, yönlendirici 1 cümle (Türkçe, en çok 20 kelime)","steps":[{"label":"somut, sayıya dayalı adım (Türkçe, kısa)","href":"..."}]} steps 2-3 adet olacak ve href YALNIZ şunlardan biri: '+ALLOWED.join(", ");
       var out=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:prof}],{temperature:0.4,max_tokens:400});
       var plan=null; try{ plan=valid(JSON.parse(String(out).replace(/```json|```/g,"").trim())); }catch(e){}
-      if(!plan) return;
+      if(!plan) return;                      // sessiz düşüş: banner statik kalır
       var st=await liveStats();
+      // ANLIK GÖRÜNTÜ: why/note bu duruma göre yazıldı. Gün içinde durum değişirse
+      // freshenPlan() bunu kıyaslayıp metni AI'sız tazeler (bkz. freshenPlan).
       plan.madeAt={ count:todaySentences(), due:(st.due||0), ts:Date.now() };
-      safeStorage.setItem(KEY,JSON.stringify(plan));
-      for(var i=localStorage.length-1;i>=0;i--){ var k=localStorage.key(i); if(k&&k.indexOf("dh-koc-plan-")===0&&k!==KEY) safeStorage.removeItem(k); }
+      localStorage.setItem(KEY,JSON.stringify(plan));
+      // eski gün planlarını temizle
+      for(var i=localStorage.length-1;i>=0;i--){ var k=localStorage.key(i); if(k&&k.indexOf("dh-koc-plan-")===0&&k!==KEY) localStorage.removeItem(k); }
       plan.stats=st;
       paint(plan);
     }catch(e){}
