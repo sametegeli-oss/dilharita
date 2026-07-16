@@ -25,9 +25,22 @@
      koç "adım tamam ✅ sıradaki: ..." balonuyla bir SONRAKİ adımın linkini uzatır.
      Kullanıcı menüye dönmeden günü koçun elinden bitirir. Sayfa başına günde 1 kez. */
   function dhToday(){ return new Date().toISOString().slice(0,10); }
+  function dhEpoch(){
+    try{ return JSON.parse(localStorage.getItem("dh-koc-epoch-"+dhToday())||"null")||null; }catch(e){ return null; }
+  }
+  /* Bugünün sayaçları — "Sonraki günü başlat" sıfır noktası düşülmüş hali.
+     Karne, efor, övgü ve temiz-gün metni hep bunu kullanır. */
+  function dhRecToday(){
+    var rec={}; try{ var __t=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; rec=(__t.days||{})[dhToday()]||{}; }catch(e){}
+    var ep=dhEpoch();
+    if(!ep) return rec;
+    return { lessons:Math.max(0,(rec.lessons||0)-(ep.lessons||0)),
+             sentences:Math.max(0,(rec.sentences||0)-(ep.sentences||0)),
+             reviews:Math.max(0,(rec.reviews||0)-(ep.reviews||0)),
+             videos:Math.max(0,(rec.videos||0)-(ep.videos||0)) };
+  }
   function dhEffortNow(){
-    try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{};
-      var d=(tr.days||{})[dhToday()]||{}; return (d.sentences||0)+(d.reviews||0); }catch(e){ return 0; }
+    var d=dhRecToday(); return (d.sentences||0)+(d.reviews||0);
   }
   /* Gün kapalı mı? Bayrak {t,effort} tutar; kapanıştan sonra +5 efor birikirse
      "demek ki devam ediyorsun" deyip günü OTOMATİK yeniden açar. Eski "1" biçimi
@@ -70,7 +83,7 @@
     });
   }
   async function dhDayRequirements(){
-    var rec={}; try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; rec=(tr.days||{})[dhToday()]||{}; }catch(e){}
+    var rec=dhRecToday();
     /* bekleyen tekrar: ÖNCE canlı SRS sayımı (cümle srs: + kelime wsrs:);
        DB okunamazsa plandaki dueCount'a düşer. Plandaki sayı üretim anında
        0 kalabildiği için tek başına GÜVENİLMEZ — karnenin çökme nedeni buydu. */
@@ -335,7 +348,7 @@
 
     var lessonHtml="";
     if(!errs.length){
-      var __prod=0; try{ var __tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; __prod=((__tr.days||{})[dhToday()]||{}).sentences||0; }catch(e){}
+      var __prod=dhRecToday().sentences||0;
       lessonHtml = __prod>=5
         ? '<div style="background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:12px">'+__prod+' cümle çalıştın ve hiç hata kaydı yok — gerçekten temiz bir gün 👏'+(backlog.length?'<div style="margin-top:6px;font-size:13px;color:#9fb3d9">Ama defterinde çözülmeyi bekleyen eski hataların var — kapanış antrenmanını onlardan kurdum 👇</div>':'')+'</div>'
         : '<div style="background:#2a1f0a;border:1px solid #92610a;border-radius:12px;padding:12px">Bugün hata kaydı yok ama üretim de azdı ('+__prod+' cümle). Hata çıkmıyorsa yeterince konuşup yazmıyorsun demektir 😉 Yarın konuşma/yazma ekleyelim.</div>';
@@ -368,8 +381,7 @@
     }
 
     /* 2) Rakamlı takdir */
-    var rec={};
-    try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; rec=(tr.days||{})[dhToday()]||{}; }catch(e){}
+    var rec=dhRecToday();
     var reqP=await dhDayRequirements();
     var praise='📊 Bugün: <b>'+(rec.lessons||0)+'</b> ders · <b>'+(rec.sentences||0)+'</b> cümle · <b>'+(rec.reviews||0)+'</b> tekrar'
       +(errs.length?' · <b>'+errs.length+'</b> hatadan ders çıkarıldı':'')

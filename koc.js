@@ -202,6 +202,13 @@
             localStorage.removeItem("dh-koc-steps-done-"+DAY);
             localStorage.removeItem("dh-day-closed-"+DAY);
             localStorage.removeItem("dh-coach-last-generic-tip");
+            /* sıfır noktası: koç mantığı (25 sınırı, karne, efor) sayaçları
+               bu andan itibaren sayar — gerçek istatistik/seri bozulmaz */
+            var __tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{};
+            var __d=(__tr.days||{})[DAY]||{};
+            localStorage.setItem("dh-koc-epoch-"+DAY, JSON.stringify({
+              sentences:__d.sentences||0, reviews:__d.reviews||0,
+              lessons:__d.lessons||0, videos:__d.videos||0 }));
           }catch(e){}
           location.reload();
         };
@@ -292,6 +299,9 @@
       return firstRested || firstIncomplete || order[0] || null;
     }catch(e){ return null; }
   }
+  function dayEpoch(){
+    try{ return JSON.parse(localStorage.getItem("dh-koc-epoch-"+DAY)||"null")||null; }catch(e){ return null; }
+  }
   function valid(p){
     if(!p||typeof p!=="object"||!Array.isArray(p.steps)) return null;
     var due = (p.dueCount!=null ? p.dueCount : __lastDue);
@@ -306,6 +316,9 @@
     var todayCount=0;
     try{ var tr2=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, tk=new Date().toISOString().slice(0,10);
       todayCount=(tr2.days&&tr2.days[tk]&&tr2.days[tk].sentences)||0; }catch(e){}
+    /* "Sonraki günü başlat" sıfır noktası: simüle günde sayaç 0'dan başlar,
+       yoksa 25+ cümlelik gerçek günün sayısı yeni planda "Yeni cümleler"i gizler */
+    try{ var __ep=dayEpoch(); if(__ep) todayCount=Math.max(0, todayCount-(__ep.sentences||0)); }catch(e){}
     if(todayCount<25){
       spine.push({label: __nextModule ? ("Yeni cümleler: "+__nextModule.replace(/^[A-C]\d-M\d+\s*/,"")) : "Yeni cümleler öğren",
                   href: __nextModule ? ("index-app.html?mod="+encodeURIComponent(__nextModule)) : "index-app.html"});
@@ -335,7 +348,10 @@
     try{
       var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{};
       var d=(tr.days||{})[new Date().toISOString().slice(0,10)]||{};
-      return (d.sentences||0)+(d.reviews||0)+(d.lessons||0)+(d.videos||0);
+      var t=(d.sentences||0)+(d.reviews||0)+(d.lessons||0)+(d.videos||0);
+      var ep=dayEpoch();
+      if(ep) t=Math.max(0, t-((ep.sentences||0)+(ep.reviews||0)+(ep.lessons||0)+(ep.videos||0)));
+      return t;
     }catch(e){ return 0; }
   }
 
