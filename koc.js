@@ -418,6 +418,20 @@
         if(cp){
           // madeAt anlık görüntüsü valid() tarafından düşürülmesin diye ham plandan geri al
           try{ var raw=JSON.parse(cached); if(raw&&raw.madeAt) cp.madeAt=raw.madeAt; }catch(e){}
+          /* KENDİNİ ONARIM: eski sürümle yazılmış planlarda "yeni cümleler" adımı
+             ?mod= parametresiz kalmış olabilir → tüm bağlantılar modül LİSTESİNE
+             düşer. Böyle bir adım görürsek hedef modülü şimdi seçip adımı yamala. */
+          try{
+            var __plain=cp.steps.filter(function(st){ return String(st.href||"")==="index-app.html"; })[0];
+            if(__plain){
+              var __nm=await pickNextModule();
+              if(__nm){
+                __plain.href="index-app.html?mod="+encodeURIComponent(__nm);
+                __plain.label="Yeni cümleler: "+__nm.replace(/^[A-C]\d-M\d+\s*/,"");
+                localStorage.setItem(KEY, JSON.stringify(cp));
+              }
+            }
+          }catch(e){}
           cp.stats=await liveStats();
           paint(freshenPlan(cp, cp.stats));   // why/note gün içinde bayatlamasın (AI çağrısı YOK)
         }

@@ -104,8 +104,14 @@
     }catch(e){ return 0; }
   }
   window.dhCoachReopenDay=function(){
+    /* Yeniden açmak = taze oturum: kilit KALKAR, plan adımlarının ✓ işaretleri
+       SIFIRLANIR (yeşil/üstü çizili kalmasın — kullanıcı isteği). Plan ve tüm
+       öğrenme verileri korunur; kart güncel görünsün diye sayfa tazelenir. */
     try{ localStorage.removeItem("dh-day-closed-"+dhToday()); }catch(e){}
-    try{ window.dhCoachSay("Gün yeniden açıldı — kaldığın yerden devam 💪","praise"); }catch(e){}
+    try{ localStorage.removeItem("dh-koc-steps-done-"+dhToday()); }catch(e){}
+    try{ localStorage.removeItem("dh-close-tour"); }catch(e){}
+    try{ window.dhCoachSay("Gün yeniden açıldı — adımlar sıfırlandı, haydi baştan 💪","praise"); }catch(e){}
+    try{ setTimeout(function(){ location.reload(); }, 1300); }catch(e){}
   };
   function dhPlanSteps(){ try{ var p=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); return (p&&p.steps)||[]; }catch(e){ return []; } }
   function dhStepsDone(){ try{ return JSON.parse(localStorage.getItem("dh-koc-steps-done-"+dhToday())||"{}")||{}; }catch(e){ return {}; } }
