@@ -197,7 +197,6 @@
     var bg = kind==="praise" ? "#4ade80" : kind==="warn" ? "#f59e0b" : kind==="stat" ? "#a78bfa" : "#38bdf8";
     var brow = kind==="warn" ? '<path d="M14 18 L26 21" stroke="#0a1628" stroke-width="3" stroke-linecap="round"/><path d="M50 18 L38 21" stroke="#0a1628" stroke-width="3" stroke-linecap="round"/>' : "";
     
-    // 7+ Gün Serisine Özel Mini Altın Taç
     var crown = streak >= 7 ? '<path d="M18 11 L23 4 L32 10 L41 4 L46 11 Z" fill="#facc15" stroke="#0a1628" stroke-width="1.5"/>' : '';
 
     return '<svg viewBox="0 0 64 64" width="46" height="46" style="flex:0 0 auto">' + crown + '<circle cx="32" cy="32" r="30" fill="'+bg+'"/>'+brow+eyeShape+mouth+'</svg>';
@@ -239,7 +238,7 @@
   
   var box=document.createElement("div"); box.className="dh-coach";
 
-  /* ---------- SÜRÜKLENEBİLİR ARAYÜZ DESTEĞİ (Draggable Box) ---------- */
+  /* ---------- SÜRÜKLENEBİLİR ARAYÜZ DESTEĞİ ---------- */
   function makeElementDraggable(elm) {
     var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
     elm.onmousedown = dragMouseDown;
@@ -670,7 +669,6 @@
 
       if(perfect) state.correctStreak++; else state.correctStreak=0;
 
-      // SÖZDİZİMİ HATASI DÜZELTİLDİ: syntax hatasına yol açan gereksiz kelimeler elendi
       if(perfect && state.correctStreak>=3 && state.correctStreak%3===0){
         dhCoachSay("HARİKASIN! Art arda "+state.correctStreak+" cümleyi TAM doğru yaptın, bu ritmi koru!","praise");
         return;
