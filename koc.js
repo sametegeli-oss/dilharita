@@ -231,17 +231,30 @@
         if(!seen[s.module]){ seen[s.module]=1; order.push(s.module); byMod[s.module]=[]; }
         byMod[s.module].push(s);
       });
+      /* "Yeni cümleler" GERÇEKTEN yeni olmalı. Eski kural "tam öğrenilmemiş İLK modül"dü;
+         SRS gereği cümleler günlerce status 2 olmadığı için dün bitirdiğin modüle
+         ertesi gün YİNE yönlendiriyordu. Yeni öncelik sırası:
+           1) hiç dokunulmamış ilk modül (tek cümlesine bile başlanmamış)
+           2) yoksa: eksik olup son 2 gündür ziyaret EDİLMEMİŞ ilk modül
+           3) yoksa: eksik ilk modül (eski davranış) */
+      var visited={}; try{ visited=JSON.parse(localStorage.getItem("dh-mod-visited-v1")||"{}")||{}; }catch(e){}
+      var yd=new Date(); yd.setDate(yd.getDate()-1); yd=yd.toISOString().slice(0,10);
+      function unfinished(s){
+        var m=mirror["sentence:"+s.id]; var learned = m && m[0]===2;
+        var sr=srs[s.id]; var practiced = sr && (sr.rep||0)>=2;
+        return !(learned || practiced);
+      }
+      function touched(s){ return !!(mirror["sentence:"+s.id] || srs[s.id]); }
+      var firstIncomplete=null, firstRested=null;
       for(var i=0;i<order.length;i++){
         var mod=order[i];
-        // "hiç dokunulmamış" = ne mirror'da öğrenilmiş(2) ne de practice'te en az 2 kez doğru cevaplanmış (rep>=2)
-        var incomplete=byMod[mod].some(function(s){
-          var m=mirror["sentence:"+s.id]; var learned = m && m[0]===2;
-          var sr=srs[s.id]; var practiced = sr && (sr.rep||0)>=2;
-          return !(learned || practiced);
-        });
-        if(incomplete) return mod;
+        if(!byMod[mod].some(unfinished)) continue;          // tamamen pekişmiş → atla
+        if(!byMod[mod].some(touched)) return mod;           // 1) hiç dokunulmamış → hemen bu
+        if(!firstIncomplete) firstIncomplete=mod;
+        var v=visited[mod];
+        if(v!==DAY && v!==yd && !firstRested) firstRested=mod;  // 2) 2 gündür dinlenen
       }
-      return order[0]||null;
+      return firstRested || firstIncomplete || order[0] || null;
     }catch(e){ return null; }
   }
   function valid(p){

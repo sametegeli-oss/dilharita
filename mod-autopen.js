@@ -8,6 +8,16 @@
    olduğundan, metni ekranda bulur ve kartın tıklanabilir atasına click yollar
    (React'in kendi olay dinleyicisi tetiklenir). */
 (function(){
+  /* ziyaret defteri: koç aynı modüle üst üste yönlendirmesin diye */
+  try{
+    var __mv=new URLSearchParams(location.search).get("mod");
+    if(__mv){
+      var __vk="dh-mod-visited-v1", __vd=JSON.parse(localStorage.getItem(__vk)||"{}")||{};
+      __vd[__mv]=new Date().toISOString().slice(0,10);
+      localStorage.setItem(__vk, JSON.stringify(__vd));
+    }
+  }catch(e){}
+
   "use strict";
   var mod="", q="";
   try{
