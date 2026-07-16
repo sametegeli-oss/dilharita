@@ -25,6 +25,27 @@
      koç "adım tamam ✅ sıradaki: ..." balonuyla bir SONRAKİ adımın linkini uzatır.
      Kullanıcı menüye dönmeden günü koçun elinden bitirir. Sayfa başına günde 1 kez. */
   function dhToday(){ return new Date().toISOString().slice(0,10); }
+  function dhEffortNow(){
+    try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{};
+      var d=(tr.days||{})[dhToday()]||{}; return (d.sentences||0)+(d.reviews||0); }catch(e){ return 0; }
+  }
+  /* Gün kapalı mı? Bayrak {t,effort} tutar; kapanıştan sonra +5 efor birikirse
+     "demek ki devam ediyorsun" deyip günü OTOMATİK yeniden açar. Eski "1" biçimi
+     de kapalı sayılır (geri uyum). */
+  function dhDayClosed(){
+    try{
+      var raw=localStorage.getItem("dh-day-closed-"+dhToday()); if(!raw) return false;
+      var o=null; try{ o=JSON.parse(raw); }catch(e){}
+      if(o && typeof o.effort==="number" && dhEffortNow()>=o.effort+5){
+        localStorage.removeItem("dh-day-closed-"+dhToday()); return false;
+      }
+      return true;
+    }catch(e){ return false; }
+  }
+  window.dhCoachReopenDay=function(){
+    try{ localStorage.removeItem("dh-day-closed-"+dhToday()); }catch(e){}
+    try{ window.dhCoachSay("Gün yeniden açıldı — kaldığın yerden devam 💪","praise"); }catch(e){}
+  };
   function dhPlanSteps(){ try{ var p=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); return (p&&p.steps)||[]; }catch(e){ return []; } }
   function dhStepsDone(){ try{ return JSON.parse(localStorage.getItem("dh-koc-steps-done-"+dhToday())||"{}")||{}; }catch(e){ return {}; } }
   var __chainN=0;
@@ -219,7 +240,7 @@
       document.getElementById("dhDcAnyway").onclick=function(){ ov.remove(); window.dhCoachDayClose(true); };
       return;
     }
-    try{ localStorage.setItem("dh-day-closed-"+dhToday(),"1"); }catch(e){}
+    try{ localStorage.setItem("dh-day-closed-"+dhToday(), JSON.stringify({t:Date.now(),effort:dhEffortNow()})); }catch(e){}
 
     /* 1) Bugünün hataları */
     var errs=[];
@@ -302,6 +323,12 @@
     if(rv) rv.onclick=function(){ rv.style.display="none"; document.getElementById("dhDcAnswer").style.display="block"; };
   };
 
+  function reopenBtnHtml(on){
+    if(!on) return "";
+    return '<button style="background:#334155;border:0;color:#fff;font-weight:800;font-size:12px;'
+      +'padding:7px 12px;border-radius:999px;cursor:pointer;margin-left:6px;flex-shrink:0" '
+      +'onclick="event.stopPropagation();window.dhCoachReopenDay&&window.dhCoachReopenDay()">🔓 Günü yeniden aç</button>';
+  }
   function dayCloseBtnHtml(on){
     if(!on) return "";
     return '<button class="dh-coach-teach" style="margin-left:6px;flex:none;align-self:center;border:0;cursor:pointer;'
@@ -338,7 +365,7 @@
     }catch(e){}
   }
 
-  var hideT=null, lastMsg="", lastAt=0, lastKind="tip", lastFocus="", lastAction=null, lastDayClose=false;
+  var hideT=null, lastMsg="", lastAt=0, lastKind="tip", lastFocus="", lastAction=null, lastDayClose=false, lastReopen=false;
   window.dhCoachSay=function(msg, kind, faceOverride, opts){
     if(!msg || !document.body) return;
     if(msg===lastMsg && Date.now()-lastAt<4000) return;
@@ -346,18 +373,19 @@
     lastFocus=(opts && opts.focusType) || "";
     lastAction=(opts && opts.actionHref) ? opts : null;
     lastDayClose=!!(opts && opts.dayClose);
+    lastReopen=!!(opts && opts.reopen);
     setAvatarFace(kind);
     box.classList.remove("show");
     void box.offsetWidth;
     box.className="dh-coach "+(kind||"tip");
-    box.innerHTML='<span class="face">'+(faceOverride||coachFace(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
+    box.innerHTML='<span class="face">'+(faceOverride||coachFace(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
     requestAnimationFrame(function(){ box.classList.add("show"); });
     clearTimeout(hideT);
     // otomatik kapanma KALDIRILDI — kullanıcı isteği: balon yalnız ✕ ile veya elle kapatılır
   };
   box.onclick=function(){ box.classList.remove("show"); };
   avatar.onclick=function(){
-    if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
+    if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
     else { try{ window.__dhCoachManualStatus && window.__dhCoachManualStatus(); }catch(e){} }
   };
 
@@ -578,8 +606,8 @@
        (Eskiden bu iki durumda bile "bugünü kaçırma!" nag'ı dönüyordu — avatar
        tıklamasındaki manuel yol korumasızdı, teklifi de ezebiliyordu.) */
     try{
-      if(localStorage.getItem("dh-day-closed-"+dhToday()))
-        return {msg:"Bugünü kapattın 🌙 Dinlenmek de antrenmanın parçası — yarın taze kafayla devam!", kind:"praise"};
+      if(dhDayClosed())
+        return {msg:"Bugünü kapattın 🌙 Dinlenmek de antrenmanın parçası. Devam etmek istersen günü yeniden açabilirsin.", kind:"praise", reopen:true};
       if(allPlanStepsDone())
         return {msg:"Bugünün planı tamam 🎉 Günü kapatalım mı? Hataların dersini çıkarıp interaktif çalışabilirsin.", kind:"praise", dayClose:true};
     }catch(e){}
@@ -604,7 +632,7 @@
     return {msg:msg, kind:kind};
   }
   window.__dhCoachManualStatus=async function(){
-    try{ var s=await buildStatusMessage(); if(s.msg) dhCoachSay(s.msg, s.kind, null, s.dayClose?{dayClose:true}:null); }catch(e){}
+    try{ var s=await buildStatusMessage(); if(s.msg) dhCoachSay(s.msg, s.kind, null, {dayClose:!!s.dayClose, reopen:!!s.reopen}); }catch(e){}
   };
   function allPlanStepsDone(){
     /* koç kartındaki (koc.js) "tamamlandı" kurallarının BİREBİR kopyası —
@@ -639,11 +667,11 @@
     try{
       /* 🌙 gün kapatıldıysa: periyodik mesaj tamamen susar
          (plan bittiyse buildStatusMessage zaten nag yerine Günü Kapat teklifi döndürür) */
-      try{ if(localStorage.getItem("dh-day-closed-"+dhToday())) return; }catch(e){}
+      try{ if(dhDayClosed()) return; }catch(e){}
       var lastT=+localStorage.getItem("dh-coach-last-generic-tip")||0;
       if(Date.now()-lastT<20*60000) return;   // 20 dakikada bir en fazla — "koç her yerde olmalı" isteği gereği sıklaştırıldı
       var s=await buildStatusMessage();
-      if(s.msg){ dhCoachSay(s.msg, s.kind, null, s.dayClose?{dayClose:true}:null); localStorage.setItem("dh-coach-last-generic-tip", String(Date.now())); }
+      if(s.msg){ dhCoachSay(s.msg, s.kind, null, {dayClose:!!s.dayClose, reopen:!!s.reopen}); localStorage.setItem("dh-coach-last-generic-tip", String(Date.now())); }
     }catch(e){}
   })();
 })();
