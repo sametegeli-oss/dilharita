@@ -197,7 +197,7 @@
     var bg = kind==="praise" ? "#4ade80" : kind==="warn" ? "#f59e0b" : kind==="stat" ? "#a78bfa" : "#38bdf8";
     var brow = kind==="warn" ? '<path d="M14 18 L26 21" stroke="#0a1628" stroke-width="3" stroke-linecap="round"/><path d="M50 18 L38 21" stroke="#0a1628" stroke-width="3" stroke-linecap="round"/>' : "";
     
-    // 7+ Seri Başarısına Özel Mini Altın Taç Süslemesi
+    // 7+ Gün Serisine Özel Mini Altın Taç
     var crown = streak >= 7 ? '<path d="M18 11 L23 4 L32 10 L41 4 L46 11 Z" fill="#facc15" stroke="#0a1628" stroke-width="1.5"/>' : '';
 
     return '<svg viewBox="0 0 64 64" width="46" height="46" style="flex:0 0 auto">' + crown + '<circle cx="32" cy="32" r="30" fill="'+bg+'"/>'+brow+eyeShape+mouth+'</svg>';
@@ -246,7 +246,6 @@
     elm.ontouchstart = dragMouseDown;
 
     function dragMouseDown(e) {
-      // Eğer etkileşimli bir butona veya kapama işaretine tıklandıysa taşımayı tetikleme
       if (e.target.closest("a, button, input, .x")) return;
       e = e || window.event;
       var clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -269,7 +268,7 @@
       pos4 = clientY;
       elm.style.top = (elm.offsetTop - pos2) + "px";
       elm.style.left = (elm.offsetLeft - pos1) + "px";
-      elm.style.transform = "none"; // ortalama transformunu devre dışı bırak
+      elm.style.transform = "none";
     }
 
     function closeDragElement() {
@@ -280,7 +279,7 @@
     }
   }
 
-  /* ---------- AVATAR VE İSKELET AYARLARI ---------- */
+  /* ---------- AVATAR VE İSKELET ---------- */
   function coachFace(kind, big){
     var sel="teacher1";
     try{ sel=safeStorage.getItem("selectedTeacherAvatar")||"teacher1"; }catch(e){}
@@ -464,7 +463,7 @@
   function mount(){ 
     document.body.appendChild(box); 
     document.body.appendChild(avatar); 
-    makeElementDraggable(box); // Sürükleme özelliğini aktifleştir
+    makeElementDraggable(box);
   }
   if(document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
   
@@ -504,7 +503,8 @@
     requestAnimationFrame(function(){ box.classList.add("show"); });
     clearTimeout(hideT);
   };
-  box.onclick=function(){ /* sürükleme anında kapanmayı engellemek için tıklandığında hemen kapanma kaldırıldı */ };
+  
+  box.onclick=function(){};
   avatar.onclick=function(){
     if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
     else { try{ window.__dhCoachManualStatus && window.__dhCoachManualStatus(); }catch(e){} }
@@ -656,7 +656,7 @@
       try{ window.dhLogActivity((opts.ok?"✅ Doğru: ":"❌ Yanlış: ")+(opts.en||opts.sentenceId||""), opts.ok?"correct":"wrong"); }catch(e){}
       logSessionRate(false);
       
-      if(checkCognitiveOverload()) return; // Zihinsel tükenmişlik koruması tetiklendiyse dur.
+      if(checkCognitiveOverload()) return;
 
       var hist=await errHistory();
       var curTypes = (window.LearningErrorDB && LearningErrorDB.detectTypes)
@@ -670,7 +670,8 @@
 
       if(perfect) state.correctStreak++; else state.correctStreak=0;
 
-      if(perfect && state.correctStreak Levant && state.correctStreak>=3 && state.correctStreak%3===0){
+      // SÖZDİZİMİ HATASI DÜZELTİLDİ: syntax hatasına yol açan gereksiz kelimeler elendi
+      if(perfect && state.correctStreak>=3 && state.correctStreak%3===0){
         dhCoachSay("HARİKASIN! Art arda "+state.correctStreak+" cümleyi TAM doğru yaptın, bu ritmi koru!","praise");
         return;
       }
@@ -687,7 +688,6 @@
         return;
       }
       
-      // HATA DURUMU: Yanlış cevapta anlık mini-drill'i tetikle
       if(!opts.ok && opts.en && opts.answer) {
         window.dhCoachMiniDrill(opts.en, opts.answer);
         return;
@@ -733,7 +733,7 @@
     if(mp) note=mp[1].trim();
     if(!note){
       var hasTr=/[çğıöşüÇĞİÖŞÜ]/.test(cm);
-      var looksLikeSentence = !hasTr && /\b[A-Za-z']+\s+[A-Za-z']+\s+[A-Za-z']+\b/.test(cm);
+      var looksLikeSentence = !hasTr && /\b[A-Za-z']+\s+[A-Za-z']+\s+[A-Za-z']+\s+\b/.test(cm);
       if(looksLikeSentence) return "";
       note=cm;
     }
@@ -759,7 +759,7 @@
     }catch(e){}
   };
 
-  /* ---------- PASİF SAYFALAR İÇİN GENEL DURUM YORUMU ---------- */
+  /* ---------- PASİF SAYFALAR İÇİN DURUM MESAJI ---------- */
   async function buildStatusMessage(manual){
     try{
       if(dhDayClosed())
