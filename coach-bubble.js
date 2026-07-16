@@ -317,13 +317,19 @@
     try{ localStorage.setItem("dh-day-closed-"+dhToday(), JSON.stringify({t:Date.now(),effort:dhEffortNow()})); }catch(e){}
     try{ localStorage.removeItem("dh-close-tour"); }catch(e){}
 
-    /* 1) Bugünün hataları */
-    var errs=[];
+    /* 1) Bugünün hataları — bugün YOKSA interaktif kapanış defter birikiminden
+       kurulur (öncelik puanı en yüksek eski hatalar). Kapanış asla pasif geçmez. */
+    var errs=[], backlog=[];
     try{
       if(window.LearningErrorDB && LearningErrorDB.all){
         var all=await LearningErrorDB.all();
         var t0=new Date(); t0.setHours(0,0,0,0);
         errs=all.filter(function(r){ return new Date(r.createdAt||0)>=t0; }).slice(0,8);
+        if(!errs.length){
+          backlog=all.filter(function(r){ return r && r.target; })
+            .sort(function(a,b){ return (b.reviewPriority||0)-(a.reviewPriority||0); })
+            .slice(0,6);
+        }
       }
     }catch(e){}
 
@@ -331,7 +337,7 @@
     if(!errs.length){
       var __prod=0; try{ var __tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; __prod=((__tr.days||{})[dhToday()]||{}).sentences||0; }catch(e){}
       lessonHtml = __prod>=5
-        ? '<div style="background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:12px">'+__prod+' cümle çalıştın ve hiç hata kaydı yok — gerçekten temiz bir gün 👏</div>'
+        ? '<div style="background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:12px">'+__prod+' cümle çalıştın ve hiç hata kaydı yok — gerçekten temiz bir gün 👏'+(backlog.length?'<div style="margin-top:6px;font-size:13px;color:#9fb3d9">Ama defterinde çözülmeyi bekleyen eski hataların var — kapanış antrenmanını onlardan kurdum 👇</div>':'')+'</div>'
         : '<div style="background:#2a1f0a;border:1px solid #92610a;border-radius:12px;padding:12px">Bugün hata kaydı yok ama üretim de azdı ('+__prod+' cümle). Hata çıkmıyorsa yeterince konuşup yazmıyorsun demektir 😉 Yarın konuşma/yazma ekleyelim.</div>';
     } else {
       /* kural tabanlı taban: tür bazlı gruplar + öğrencinin kendi cümleleri */
@@ -373,7 +379,7 @@
 
     /* 3) Mini test: bugünkü bir hatanın doğru cümlesi, TR ipucuyla */
     var quiz="";
-    var q=errs.filter(function(r){ return r.sentenceTR && r.target; })[0];
+    var q=(errs.length?errs:backlog).filter(function(r){ return r.sentenceTR && r.target; })[0];
     if(q){
       quiz='<div style="background:#1a1033;border:1px solid #4c1d95;border-radius:12px;padding:12px;margin-top:12px">'
         +'<b style="color:#c4b5fd">🌙 Uyku öncesi mini test</b>'
@@ -387,14 +393,16 @@
     var due=0; try{ var pl=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); due=(pl&&pl.dueCount)||0; }catch(e){}
     var tomorrow='<div style="margin-top:12px;font-size:13px;color:#9fb3d9">🌅 Yarın: '+(due?('tekrarlarından 15\'i'):'yeni planın')+' ve taze bir modül seni bekliyor — 10 dakikan yeter. Şimdi dinlenmeyi hak ettin, iyi geceler! 🌙</div>';
 
-    var drillBtn = errs.length
-      ? '<button id="dhDcDrill" style="display:block;width:100%;margin-top:12px;background:linear-gradient(135deg,#059669,#0d9488);border:0;color:#fff;border-radius:12px;padding:13px;font-weight:900;font-size:15px;cursor:pointer">🏋️ Şimdi interaktif çalış ('+errs.length+' hata)</button>'
+    var drillSet = errs.length ? errs : backlog;
+    var drillBtn = drillSet.length
+      ? '<button id="dhDcDrill" style="display:block;width:100%;margin-top:12px;background:linear-gradient(135deg,#059669,#0d9488);border:0;color:#fff;border-radius:12px;padding:13px;font-weight:900;font-size:15px;cursor:pointer">🏋️ '
+        +(errs.length?('Şimdi interaktif çalış ('+errs.length+' hata)'):('Kapanış antrenmanı: defterden '+backlog.length+' hata'))+'</button>'
       : "";
     body.innerHTML=lessonHtml + drillBtn
       +'<div style="margin-top:12px;background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:12px">'+praise+'</div>'
       +quiz+tomorrow;
     var db=document.getElementById("dhDcDrill");
-    if(db) db.onclick=function(){ dhLoadDrill(function(){ window.dhErrorDrill&&window.dhErrorDrill.open(errs); }); };
+    if(db) db.onclick=function(){ dhLoadDrill(function(){ window.dhErrorDrill&&window.dhErrorDrill.open(drillSet); }); };
     var rv=document.getElementById("dhDcReveal");
     if(rv) rv.onclick=function(){ rv.style.display="none"; document.getElementById("dhDcAnswer").style.display="block"; };
   };
