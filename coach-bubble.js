@@ -48,9 +48,34 @@
        • Cümle:  en az 5 cümle çalışması (üretim/yeni öğrenme)
      Gün ancak TÜM şartlar sağlanınca "hakkıyla" kapanır; kapanış turu da
      +N efor değil, bu karneyi geçmekle tamamlanır. */
-  function dhDayRequirements(){
+  var __dueCache={t:0,v:null};
+  function dhCountDueSRS(){
+    return new Promise(function(res){
+      if(Date.now()-__dueCache.t<60000 && __dueCache.v!=null) return res(__dueCache.v);
+      try{
+        var r=indexedDB.open("sentence-mode",1);
+        r.onsuccess=function(){ var db=r.result, n=0, now=Date.now();
+          try{
+            var q=db.transaction("kv","readonly").objectStore("kv").openCursor();
+            q.onsuccess=function(e){ var c=e.target.result;
+              if(c){ var k=String(c.key), v=c.value||{};
+                if((k.indexOf("srs:")===0||k.indexOf("wsrs:")===0) && (v.due||0)<=now) n++;
+                c.continue();
+              } else { db.close(); __dueCache={t:Date.now(),v:n}; res(n); } };
+            q.onerror=function(){ try{db.close()}catch(_){} res(null); };
+          }catch(e2){ try{db.close()}catch(_){} res(null); }
+        };
+        r.onerror=function(){ res(null); };
+      }catch(e){ res(null); }
+    });
+  }
+  async function dhDayRequirements(){
     var rec={}; try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; rec=(tr.days||{})[dhToday()]||{}; }catch(e){}
-    var due=0; try{ var pl=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); due=(pl&&pl.dueCount)||0; }catch(e){}
+    /* bekleyen tekrar: ÖNCE canlı SRS sayımı (cümle srs: + kelime wsrs:);
+       DB okunamazsa plandaki dueCount'a düşer. Plandaki sayı üretim anında
+       0 kalabildiği için tek başına GÜVENİLMEZ — karnenin çökme nedeni buydu. */
+    var due=null; try{ due=await dhCountDueSRS(); }catch(e){}
+    if(due==null){ try{ var pl=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); due=(pl&&pl.dueCount)||0; }catch(e){ due=0; } }
     var items=[];
     var needRev=Math.min(10, due);
     items.push({key:"rev", label:"Tekrar (SRS)", got:rec.reviews||0, need:needRev,
@@ -62,7 +87,7 @@
   /* Kapanış turu: kullanıcıyı tekrar sayfasına gönderdiysek koç SUSAR.
      Durumlar: 0=tur yok · 1=tur sürüyor (teklifi bastırır) · 2=tur bitti (+8 efor
      birikti → kutlamalı teklif). 45 dk sonra bayat tur kendiliğinden düşer. */
-  function dhTourState(){
+  function dhTourState(req){
     try{
       var raw=localStorage.getItem("dh-close-tour"); if(!raw) return 0;
       var o=JSON.parse(raw);
@@ -70,7 +95,7 @@
          ikinci kontrol bayrağı bulamayıp kutlamanın üstüne sıradan teklif yazıyordu).
          Bayrağı ancak günün kapanması (dhCoachDayClose) ya da 12 saat düşürür. */
       if(o.done){ if(Date.now()-(o.t||0)>12*3600000){ localStorage.removeItem("dh-close-tour"); return 0; } return 2; }
-      if(dhDayRequirements().ok){
+      if(req && req.ok){
         localStorage.setItem("dh-close-tour", JSON.stringify({done:1, t:o.t||Date.now()}));
         return 2;
       }
@@ -262,7 +287,7 @@
     /* 0) DÜRÜSTLÜK KAPISI — plan adımları "bitmiş" görünebilir ama gün gerçekten
        dolu mu? Adımlar sayfa ziyaretiyle işaretlenebildiği için tek ölçü olamaz.
        Gerçek efor = cümle + tekrar. Hafifse önce kısa bir kapanış turu öneririz. */
-    var req0=dhDayRequirements();
+    var req0=await dhDayRequirements();
     if(!force && !req0.ok){
       var rows=req0.items.map(function(it){
         return '<div style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin-top:7px;border-radius:10px;'
@@ -333,9 +358,10 @@
     /* 2) Rakamlı takdir */
     var rec={};
     try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; rec=(tr.days||{})[dhToday()]||{}; }catch(e){}
+    var reqP=await dhDayRequirements();
     var praise='📊 Bugün: <b>'+(rec.lessons||0)+'</b> ders · <b>'+(rec.sentences||0)+'</b> cümle · <b>'+(rec.reviews||0)+'</b> tekrar'
       +(errs.length?' · <b>'+errs.length+'</b> hatadan ders çıkarıldı':'')
-      +(dhDayRequirements().ok
+      +(reqP.ok
         ? '. Karne tam — dolu dolu bir gün, planı hakkıyla bitirdin 👏'
         : '. Karne eksik kapandı — yarın önce tekrarlardan başlayalım 💪');
 
@@ -653,12 +679,12 @@
       if(dhDayClosed())
         return {msg:"Bugünü kapattın 🌙 Dinlenmek de antrenmanın parçası. Devam etmek istersen günü yeniden açabilirsin.", kind:"praise", reopen:true};
       if(allPlanStepsDone()){
-        var tv=dhTourState();
+        var rq=await dhDayRequirements();
+        var tv=dhTourState(rq);
         if(tv===2) return {msg:"Kapanış turunu tamamladın 💪 Şimdi günü gönül rahatlığıyla kapatabiliriz.", kind:"praise", dayClose:true};
         if(tv===1) return manual
           ? {msg:"Kapanış turundasın — tekrarları bitir, günü sonra birlikte kapatırız 💪", kind:"tip"}
           : {msg:"", kind:"tip"};   /* tur sürerken otomatik teklif YOK: çalışan öğrencinin üstüne balon açma */
-        var rq=dhDayRequirements();
         if(!rq.ok){
           var miss=rq.items.filter(function(i){return !i.ok;}).map(function(i){return (i.need-i.got)+" "+i.label.toLowerCase();}).join(" + ");
           return {msg:"Plan adımları tamam ama karnede eksik var: "+miss+". Kapanış turuna çıkalım mı? 🌙", kind:"tip", dayClose:true};
@@ -710,14 +736,14 @@
   /* 🌙 Plan bitmiş ama gün kapatılmamışsa: sayfa açılışında teklif et.
      (Eski tetikleyici yalnız son adım biterken çalışıyordu — plan zaten
      bitmişse teklif hiç doğmuyordu. Artık kalıcı bir kapı var.) */
-  setTimeout(function(){
+  setTimeout(async function(){
     try{
       if(dhDayClosed()) return;
       if(!allPlanStepsDone()) return;
-      var tv=dhTourState();
+      var rq2=await dhDayRequirements();
+      var tv=dhTourState(rq2);
       if(tv===1) return;   /* kapanış turu sürüyor: öğrencinin üstüne balon açma */
       if(tv===2){ window.dhCoachSay("Kapanış turunu tamamladın 💪 Şimdi günü gönül rahatlığıyla kapatabiliriz.","praise",null,{dayClose:true}); return; }
-      var rq2=dhDayRequirements();
       window.dhCoachSay(rq2.ok
         ? "Bugünün planı tamam 🎉 Karne de tam — günü kapatalım mı? Hataların dersini çıkarıp interaktif çalışabilirsin."
         : "Plan adımları tamam ama karnede eksik var: "+rq2.items.filter(function(i){return !i.ok;}).map(function(i){return (i.need-i.got)+" "+i.label.toLowerCase();}).join(" + ")+". Kapanış turuna çıkalım mı? 🌙",
