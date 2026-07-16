@@ -184,9 +184,8 @@
     sc.onerror=function(){ alert("Antrenman modülü yüklenemedi."); };
     document.head.appendChild(sc);
   }
-  window.dhCoachDayClose=async function(){
+  window.dhCoachDayClose=async function(force){
     if(document.getElementById("dhDayClosePanel")) return;
-    try{ localStorage.setItem("dh-day-closed-"+dhToday(),"1"); }catch(e){}
     var ov=document.createElement("div");
     ov.id="dhDayClosePanel";
     ov.style.cssText="position:fixed;inset:0;z-index:2147483200;background:rgba(2,8,20,.72);display:flex;align-items:center;justify-content:center;padding:14px";
@@ -203,6 +202,25 @@
     ov.addEventListener("click",function(e){ if(e.target===ov) ov.remove(); });
     var body=document.getElementById("dhDcBody");
 
+    /* 0) DÜRÜSTLÜK KAPISI — plan adımları "bitmiş" görünebilir ama gün gerçekten
+       dolu mu? Adımlar sayfa ziyaretiyle işaretlenebildiği için tek ölçü olamaz.
+       Gerçek efor = cümle + tekrar. Hafifse önce kısa bir kapanış turu öneririz. */
+    var rec0={}; try{ var tr0=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; rec0=(tr0.days||{})[dhToday()]||{}; }catch(e){}
+    var due0=0; try{ var pl0=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); due0=(pl0&&pl0.dueCount)||0; }catch(e){}
+    var effort0=(rec0.sentences||0)+(rec0.reviews||0);
+    if(!force && effort0<10){
+      body.innerHTML='<div style="background:#2a1f0a;border:1px solid #92610a;border-radius:12px;padding:13px">'
+        +'<b style="color:#facc15">Dürüst olayım:</b> plan adımları tamam ama gün hafif geçti — '
+        +'bugün <b>'+(rec0.sentences||0)+'</b> cümle ve <b>'+(rec0.reviews||0)+'</b> tekrar yaptın'
+        +(due0>0?', <b>'+due0+'</b> tekrar hâlâ bekliyor':'')+'.'
+        +'<div style="margin-top:6px;font-size:13px;color:#d8c9a3">Kısa bir kapanış turuyla günü gerçekten hak ederek bitirebilirsin — 10 tekrar ≈ 5 dakika.</div></div>'
+        +'<a href="./tekrar.html?plan=1" style="display:block;text-align:center;margin-top:12px;background:linear-gradient(135deg,#059669,#0d9488);color:#fff;text-decoration:none;font-weight:900;padding:13px;border-radius:12px">⚡ Kapanış turu: tekrarları yap (önerilen)</a>'
+        +'<button id="dhDcAnyway" style="display:block;width:100%;margin-top:8px;background:#334155;border:0;color:#cbd5e1;border-radius:11px;padding:11px;font-weight:700;cursor:pointer">Yine de günü kapat</button>';
+      document.getElementById("dhDcAnyway").onclick=function(){ ov.remove(); window.dhCoachDayClose(true); };
+      return;
+    }
+    try{ localStorage.setItem("dh-day-closed-"+dhToday(),"1"); }catch(e){}
+
     /* 1) Bugünün hataları */
     var errs=[];
     try{
@@ -215,7 +233,10 @@
 
     var lessonHtml="";
     if(!errs.length){
-      lessonHtml='<div style="background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:12px">Bugün hiç hata kaydı yok — tertemiz bir gün 👏</div>';
+      var __prod=0; try{ var __tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; __prod=((__tr.days||{})[dhToday()]||{}).sentences||0; }catch(e){}
+      lessonHtml = __prod>=5
+        ? '<div style="background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:12px">'+__prod+' cümle çalıştın ve hiç hata kaydı yok — gerçekten temiz bir gün 👏</div>'
+        : '<div style="background:#2a1f0a;border:1px solid #92610a;border-radius:12px;padding:12px">Bugün hata kaydı yok ama üretim de azdı ('+__prod+' cümle). Hata çıkmıyorsa yeterince konuşup yazmıyorsun demektir 😉 Yarın konuşma/yazma ekleyelim.</div>';
     } else {
       /* kural tabanlı taban: tür bazlı gruplar + öğrencinin kendi cümleleri */
       var groups={};
@@ -249,7 +270,9 @@
     try{ var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; rec=(tr.days||{})[dhToday()]||{}; }catch(e){}
     var praise='📊 Bugün: <b>'+(rec.lessons||0)+'</b> ders · <b>'+(rec.sentences||0)+'</b> cümle · <b>'+(rec.reviews||0)+'</b> tekrar'
       +(errs.length?' · <b>'+errs.length+'</b> hatadan ders çıkarıldı':'')
-      +'. Emeğinin karşılığı bu — planı bitirdin 👏';
+      +((((rec.sentences||0)+(rec.reviews||0))>=15)
+        ? '. Emeğinin karşılığı bu — dolu dolu bir gün, planı hakkıyla bitirdin 👏'
+        : '. Az ama sıfır değil — yarın çıtayı biraz yükseltelim 💪');
 
     /* 3) Mini test: bugünkü bir hatanın doğru cümlesi, TR ipucuyla */
     var quiz="";
