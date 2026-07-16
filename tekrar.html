@@ -762,6 +762,15 @@ try{
     if(it.kind==="s") srs[it.id]=rec; else wsrs[it.id]=rec;
     try { await kvPut(key, rec); } catch(e) {}
     if(hard){
+      /* 🌙 gün sonu antrenmanı için: bugün "Zor" denen kalemleri kaydet (tekilleştirilmiş) */
+      try{
+        var __hk="dh-hard-reviews-"+new Date().toISOString().slice(0,10);
+        var __hl=JSON.parse(localStorage.getItem(__hk)||"[]")||[];
+        if(curT&&curT.en&&!__hl.some(function(x){return x.en===curT.en;})){
+          __hl.push({en:curT.en, tr:curT.tr||"", kind:it.kind, id:it.id});
+          localStorage.setItem(__hk, JSON.stringify(__hl.slice(0,30)));
+        }
+      }catch(e){}
       showExplain(curT, leech); if(!leech && it.tries<2){ it.tries++; session.push(it); }
       $("grade").style.display="none"; var go=document.createElement("button"); go.className="b-chk"; go.style.marginTop="10px"; go.textContent="Devam →";
       go.onclick=function(){ go.remove(); doneOrNext(); }; $("exp").appendChild(go);

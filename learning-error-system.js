@@ -113,6 +113,27 @@ async function add(record){
   record.types=Array.isArray(record.types)&&record.types.length?record.types:detectTypes(record);
   record.primaryType=record.types[0]||"general";
   record.reviewPriority=priority(record);
+  /* TEKİLLEŞTİRME: aynı hedef cümle defterde varsa yeni kayıt AÇMA —
+     mevcut kaydı güncelle (son yanlış cevap, tür birleşimi, sayaç+öncelik artar). */
+  try{
+    var __nt=String(record.target||"").toLowerCase().replace(/[^a-z0-9']+/g," ").trim();
+    if(__nt){
+      var __arr=await all();
+      var __dup=__arr.find(function(r){ return String(r.target||"").toLowerCase().replace(/[^a-z0-9']+/g," ").trim()===__nt; });
+      if(__dup){
+        __dup.answer=record.answer||__dup.answer;
+        __dup.sentenceTR=__dup.sentenceTR||record.sentenceTR;
+        __dup.updatedAt=nowISO();
+        __dup.count=(__dup.count||1)+1;
+        __dup.types=Array.from(new Set((__dup.types||[]).concat(record.types||[])));
+        __dup.primaryType=__dup.types[0]||__dup.primaryType||"general";
+        __dup.reviewPriority=(__dup.reviewPriority||0)+1;
+        try{ await idbAdd(__dup); }catch(e){ const a2=fbAll().filter(function(r){return r.id!==__dup.id;}); a2.unshift(__dup); fbSave(a2.slice(0,2000)); }
+        window.dispatchEvent(new CustomEvent("learning-error-added",{detail:__dup}));
+        return __dup;
+      }
+    }
+  }catch(e){}
   try{ await idbAdd(record); }
   catch(e){ const arr=fbAll(); arr.unshift(record); fbSave(arr.slice(0,2000)); }
   window.dispatchEvent(new CustomEvent("learning-error-added",{detail:record}));
@@ -316,5 +337,20 @@ async function markReviewed(id, opts){
   window.dispatchEvent(new CustomEvent("learning-error-updated",{detail:rec}));
   return rec;
 }
+/* GEÇMİŞ TEMİZLİĞİ (tek sefer): aynı hedef cümlenin eski kopyalarını birleştir */
+setTimeout(async function dedupeOnce(){
+  try{
+    if(localStorage.getItem("dh-errdb-deduped-v1")) return;
+    var arr=await all(); var seen={}, kill=[];
+    arr.slice().reverse().forEach(function(r){       // eskiden yeniye: İLK kayıt kalır
+      var k=String(r.target||"").toLowerCase().replace(/[^a-z0-9']+/g," ").trim();
+      if(!k) return;
+      if(seen[k]){ seen[k].count=(seen[k].count||1)+1; kill.push(r.id); }
+      else seen[k]=r;
+    });
+    if(kill.length && typeof deleteMany==="function") await deleteMany(kill);
+    localStorage.setItem("dh-errdb-deduped-v1","1");
+  }catch(e){}
+}, 2500);
 window.LearningErrorDB={add,all,deleteMany,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed};
 })();

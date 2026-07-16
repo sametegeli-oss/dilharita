@@ -72,7 +72,7 @@
   /* ================= ALIŞTIRMA ÜRETİCİLERİ ================= */
   function exChoice(err){
     var opts=[err.target];
-    if(norm(err.answer)!==norm(err.target)) opts.push(err.answer);
+    if(err.answer && norm(err.answer)!==norm(err.target)) opts.push(err.answer);
     var d=String(err.target).replace(/\b(is|are|am|was|were|do|does|did|have|has)\b\s*/i,"");
     if(norm(d)!==norm(err.target)&&opts.every(function(o){return norm(o)!==norm(d);})) opts.push(d);
     var d2=String(err.target).replace(/\b(a|an|the)\b\s*/i,"");
@@ -95,9 +95,11 @@
   function exListen(err){ return ("speechSynthesis" in window)?{kind:"listen"}:null; }
   function exFix(err){ return {kind:"fix"}; }
 
-  function pickGuided(err){ return exChoice(err)||exCloze(err)||exFix(err); }
+  function pickGuided(err){
+    return exChoice(err)||exCloze(err)||(err.answer?exFix(err):(exBuild(err)||exTr2En(err)||exListen(err)||exChoice(err)));
+  }
   function pickProduction(err, salt){
-    var pool=[exBuild(err),exTr2En(err),exListen(err),exFix(err)].filter(Boolean);
+    var pool=[exBuild(err),exTr2En(err),exListen(err),(err.answer?exFix(err):null)].filter(Boolean);
     return pool[(salt||0)%pool.length];
   }
 
@@ -187,7 +189,7 @@
     var e=it.err, L=it.lesson||{};
     var tp=e.primaryType||"general";
     B().innerHTML='<div style="color:#93c5fd;font-weight:800;font-size:12.5px">📖 DERS · '+esc(TL[tp]||tp)+'</div>'
-      +'<div style="background:#2a0f14;border:1px solid #7f1d1d;border-radius:12px;padding:11px;margin-top:10px">✗ <s>'+esc(e.answer||"")+'</s></div>'
+      +(e.answer?'<div style="background:#2a0f14;border:1px solid #7f1d1d;border-radius:12px;padding:11px;margin-top:10px">✗ <s>'+esc(e.answer)+'</s></div>':'<div style="background:#13294d;border:1px solid #1e3a5f;border-radius:12px;padding:11px;margin-top:10px">Tekrarda zorlandığın kalem — bugün pekiştirelim 💪</div>')
       +'<div style="background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:11px;margin-top:8px">✓ <b>'+esc(e.target)+'</b> <button id="dhLsnSpk" style="border:0;background:transparent;cursor:pointer;font-size:16px">🔊</button>'
       +(e.sentenceTR?'<div style="font-size:12.5px;color:#9fb3d9;margin-top:4px">'+esc(e.sentenceTR)+'</div>':'')+'</div>'
       +(L.why?'<div style="margin-top:10px"><b style="color:#facc15">Neden?</b> '+esc(L.why)+'</div>':'')
