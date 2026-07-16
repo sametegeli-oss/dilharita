@@ -405,12 +405,47 @@
     var due=0; try{ var pl=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); due=(pl&&pl.dueCount)||0; }catch(e){}
     var tomorrow='<div style="margin-top:12px;font-size:13px;color:#9fb3d9">🌅 Yarın: '+(due?('tekrarlarından 15\'i'):'yeni planın')+' ve taze bir modül seni bekliyor — 10 dakikan yeter. Şimdi dinlenmeyi hak ettin, iyi geceler! 🌙</div>';
 
-    var drillSet = errs.length ? errs : backlog;
+    /* Tekrarda "Zor" denen kalemler antrenman setine katılır (yanlış-cevapsız kalem) */
+    var hardRev=[];
+    try{ hardRev=(JSON.parse(localStorage.getItem("dh-hard-reviews-"+dhToday())||"[]")||[])
+      .map(function(h){ return {target:h.en, sentenceTR:h.tr||"", answer:"", primaryType:"review", module:"tekrar"}; }); }catch(e){}
+    var seenT={}; 
+    var todaySet=errs.concat(hardRev).filter(function(r){
+      var k=String(r.target||"").toLowerCase(); if(!k||seenT[k]) return false; seenT[k]=1; return true;
+    }).slice(0,8);
+    var drillSet = todaySet.length ? todaySet : backlog;
     var drillBtn = drillSet.length
       ? '<button id="dhDcDrill" style="display:block;width:100%;margin-top:12px;background:linear-gradient(135deg,#059669,#0d9488);border:0;color:#fff;border-radius:12px;padding:13px;font-weight:900;font-size:15px;cursor:pointer">🏋️ '
-        +(errs.length?('Şimdi interaktif çalış ('+errs.length+' hata)'):('Kapanış antrenmanı: defterden '+backlog.length+' hata'))+'</button>'
+        +(todaySet.length?('Şimdi interaktif çalış ('+todaySet.length+' kalem)'):('Kapanış antrenmanı: defterden '+backlog.length+' hata'))+'</button>'
       : "";
-    body.innerHTML=lessonHtml + drillBtn
+    /* 📋 GÜNÜN KARNESİ: şartlar ✓/✗ + başarılar + zorlanılanlar */
+    var kRows=reqP.items.map(function(it){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;margin-top:5px;border-radius:9px;background:'
+        +(it.ok?"#0a2818":"#2a0f14")+';border:1px solid '+(it.ok?"#14532d":"#7f1d1d")+'">'
+        +(it.ok?"✅":"❌")+' <span style="flex:1">'+it.label+'</span><b style="color:'+(it.ok?"#4ade80":"#f87171")+'">'+it.got+' / '+it.need+'</b></div>';
+    }).join("");
+    var wins=[];
+    if((rec.sentences||0)>0) wins.push(rec.sentences+" cümle");
+    if((rec.reviews||0)>0) wins.push(rec.reviews+" tekrar");
+    if((rec.lessons||0)>0) wins.push(rec.lessons+" ders");
+    var modsToday=[];
+    try{ var vd=JSON.parse(localStorage.getItem("dh-mod-visited-v1")||"{}")||{};
+      for(var mk in vd){ if(vd[mk]===dhToday()) modsToday.push(mk.replace(/^[A-C]\d-M\d+\s*/,"")); } }catch(e){}
+    if(modsToday.length) wins.push("modül: "+modsToday.slice(0,3).join(", "));
+    var strug=[];
+    hardRev.slice(0,3).forEach(function(h){ strug.push('"'+dcEsc(h.target)+'"'); });
+    if(hardRev.length>3) strug.push("+"+(hardRev.length-3)+" kalem daha");
+    if(errs.length){
+      var tCnt={}; errs.forEach(function(r){ var t=r.primaryType||"general"; tCnt[t]=(tCnt[t]||0)+1; });
+      var TLK=window.DH_COACH_TYPE_LABEL||{};
+      Object.keys(tCnt).slice(0,3).forEach(function(t){ strug.push((TLK[t]||t)+" ×"+tCnt[t]); });
+    }
+    var karne='<div style="margin-top:12px;background:#0b1120;border:1px solid #1e3a5f;border-radius:12px;padding:12px">'
+      +'<b style="color:#93c5fd">📋 GÜNÜN KARNESİ</b>'+kRows
+      +'<div style="margin-top:9px;font-size:13px"><b style="color:#4ade80">💪 Başardıkların:</b> '+(wins.length?dcEsc(wins.join(" · ")):"—")+'</div>'
+      +'<div style="margin-top:5px;font-size:13px"><b style="color:#f87171">🔻 Zorlandıkların:</b> '+(strug.length?strug.join(" · "):"kayıt yok — pürüzsüz gün 🎉")+'</div>'
+      +'</div>';
+    body.innerHTML=lessonHtml + karne + drillBtn
       +'<div style="margin-top:12px;background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:12px">'+praise+'</div>'
       +quiz+tomorrow;
     var db=document.getElementById("dhDcDrill");
