@@ -101,12 +101,27 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   </div>
   <div style="margin-top:10px"><a href="./index.html" style="color:#38bdf8">Ana menu</a></div>
 </div>
+<script>
+/* ☀️ "Günün sıradaki adımı" düğmeleri statikti — plandaki GERÇEK hedefe bağla.
+   Örn. "Yeni cümleler" artık index-app.html değil, koçun seçtiği modüle
+   (index-app.html?mod=...) gider; mod-autopen oradan devralır. */
+try{
+  var __p=JSON.parse(localStorage.getItem("dh-koc-plan-"+new Date().toISOString().slice(0,10))||"null");
+  if(__p&&__p.steps){
+    document.querySelectorAll("#planNext a").forEach(function(a){
+      var base=(a.getAttribute("href")||"").replace("./","").split("?")[0];
+      var st=__p.steps.filter(function(x){ return String(x.href||"").split("?")[0]===base; })[0];
+      if(st&&st.href) a.setAttribute("href","./"+st.href);
+    });
+  }
+}catch(e){}
+</script>
 
 <script src="./auth-guard.js?v=2"></script>
 <script src="./progress-engine.js?v=2"></script>
 <script src="./coach-bubble.js?v=3"></script>
 <script src="./cloud-sync-v8.js?v=1"></script>
-<script src="./ai-providers.js?v=1"></script>
+<script src="./ai-providers.js?v=2"></script>
 <script src="./word-popup.js?v=2"></script>
 <script src="./image-addon.js?v=restore1"></script>
 
