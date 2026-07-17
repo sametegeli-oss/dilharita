@@ -749,11 +749,15 @@ try{
   };
 
   async function grade(hard){
+    /* 📊 GÜNÜN KARNESİ bu sayaca bakar: her notlanan kalem 1 TEKRAR.
+       (Eskiden hiç yazılmıyordu → karne 0/10'da kilitli kalıyor, kutlama ve
+       gün-sonu paneli asla gelmiyordu.) */
+    try{ window.dhBumpDailyTracker && window.dhBumpDailyTracker("review"); }catch(e){}
     var it=cur; var key=(it.kind==="s"?"srs:":"wsrs:")+it.id;
     var __prev=(it.kind==="s"?srs[it.id]:wsrs[it.id])||{};        // 🔬 eski kayıt (srsStep ezmeden)
     try{ dhRecallLog(it.kind, it.id, __prev.last||0, __prev.rep||0, !hard); }catch(e){}
     var rec=srsStep(it.kind==="s"?srs[it.id]:wsrs[it.id], hard);
-    try{ window.dhCoachEvaluate && window.dhCoachEvaluate({sentenceId:it.id, en:curT.en, answer:(mode==="prod"?($("inp")&&$("inp").value||""):""), ok:!hard, commonMistake:curT.cm||"", layer:mode}); }catch(e){}
+    try{ window.dhCoachEvaluate && window.dhCoachEvaluate({trackKind:"skip", sentenceId:it.id, en:curT.en, answer:(mode==="prod"?($("inp")&&$("inp").value||""):""), ok:!hard, commonMistake:curT.cm||"", layer:mode}); }catch(e){}
     if(!hard && mode==="prod" && !lastSemanticOk && !(viaMic && !semanticNo) && lastSc>=0 && lastSc<50){
       rec.interval=Math.max(1,Math.round(rec.interval/2)); rec.due=Date.now()+rec.interval*DAY;
     }
