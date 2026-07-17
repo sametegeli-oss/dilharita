@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DilHarita - Akıllı Grafik Analiz Laboratuvarı (Nihai Sürüm)</title>
+  <title>DilHarita - Grafik Analiz Laboratuvarı (Nihai Sürüm)</title>
   <style>
     body {
       background: #0b1120;
@@ -102,7 +102,7 @@
       padding: 15px;
       margin-bottom: 15px;
       text-align: left;
-      display: none; /* JS doğrudan değiştirecek */
+      display: none; /* JS tarafından doğrudan block yapılacak */
     }
     .report-title { font-weight: 900; font-size: 13px; color: #a5b4fc; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;}
     .report-item { font-size: 13.5px; line-height: 1.6; margin-top: 6px; color: #e0e7ff; }
@@ -210,7 +210,8 @@
   let samplingIntervalId = null;
 
   const liveCanvas = document.getElementById("liveVisualizer");
-  const liveCtx = liveCanvas.getContext;
+  // --- ÖNEMLİ DÜZELTME: getContext("2d") parantezleri eklendi! ---
+  const liveCtx = liveCanvas.getContext("2d"); 
   const ttsCanvas = document.getElementById("ttsGraphCanvas");
   const userCanvas = document.getElementById("userGraphCanvas");
 
@@ -358,6 +359,17 @@
           let dur = (Date.now() - userStartTime) / 1000;
           document.getElementById("userDuration").textContent = dur.toFixed(1) + "s";
 
+          // Canlı küçük frekans çubuklarını çiz (Parantez düzeldiği için burası artık patlamaz)
+          if(liveCtx) {
+            liveCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
+            liveCtx.fillStyle = "#2563eb";
+            let w = liveCanvas.width / dataArray.length;
+            for(let i=0; i<dataArray.length; i++) {
+              let h = dataArray[i] / 4;
+              liveCtx.fillRect(i*w, liveCanvas.height - h, w - 1, h);
+            }
+          }
+
           if (avg < 4) setMouth("rest");
           else if (avg < 15) setMouth("closed");
           else if (avg < 35) setMouth("wide");
@@ -375,13 +387,18 @@
       recordBtn.classList.remove("recording");
       setAvatarSpeaking(false); setMouth("rest");
       clearInterval(samplingIntervalId);
+      if(liveCtx) liveCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
+      
+      if (recognition) { try{ recognition.stop(); }catch(e){} }
+      if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+      if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
     }
   };
 
   function processComparison() {
     if (!heardText) {
       scoreDisplay.textContent = "0%";
-      diffLine.innerHTML = `<span style="color:#f87171">Ses algılanamadı ama grafikler yüklendi.</span>`;
+      diffLine.innerHTML = `<span style="color:#f87171">Ses algılanamadı ama grafikler başarıyla yüklendi.</span>`;
       return;
     }
     statusField.textContent = `Algılanan Söz: "${heardText}"`;
@@ -419,11 +436,11 @@
     ctx.fillStyle = colorHex + "15"; ctx.fill();
   }
 
-  // --- 🔍 AKILLI GRAFİK KIYASLAMA VE GÜVENLİ AÇMA MOTORU ---
+  // --- 🔍 ADIM: SESSİZLİK BUDAMA VE GARANTİLİ DOĞRUDAN GÖSTERİM MOTORU ---
   analyzeGraphsBtn.onclick = function() {
     if (!ttsTimelineData.length || !userTimelineData.length) return;
 
-    const SILENCE_THRESHOLD = 6;
+    const SILENCE_THRESHOLD = 8; // Canlı mikrofon verisi için en ideal budama eşiği
 
     function getTrimBoundsSafe(data) {
       let start = 0;
@@ -432,10 +449,7 @@
       while (start < data.length && data[start] < SILENCE_THRESHOLD) start++;
       while (end > start && data[end] < SILENCE_THRESHOLD) end--;
       
-      if (start >= end || (start === 0 && end === data.length - 1 && data.every(x => x < 2))) {
-        start = Math.floor(data.length * 0.15);
-        end = Math.floor(data.length * 0.85);
-      }
+      if (start >= end) { start = 0; end = data.length - 1; }
       return { start, end };
     }
 
@@ -473,7 +487,7 @@
     let reportHtml = "";
 
     if (durDiff < 0.3) {
-      reportHtml += `<div class="report-item">⏱️ <b>Konuşma Hızı:</b> Harika! Boşluklar temizlendiğinde hoca ile net hızın dengeli (Hoca: ${ttsRealDur.toFixed(1)}s, Sen: ${userRealDur.toFixed(1)}s).</div>`;
+      reportHtml += `<div class="report-item">⏱️ <b>Konuşma Hızı:</b> Harika! Baş ve son boşluklar temizlendiğinde hoca ile net hızın tamamen dengeli (Hoca: ${ttsRealDur.toFixed(1)}s, Sen: ${userRealDur.toFixed(1)}s).</div>`;
     } else if (userRealDur > ttsRealDur) {
       reportHtml += `<div class="report-item">⏱️ <b>Konuşma Hızı:</b> Net konuşma süren hoca sesine göre biraz uzun (${userRealDur.toFixed(1)}s vs ${ttsRealDur.toFixed(1)}s). Akıcı bağlamayı dene.</div>`;
     } else {
@@ -492,9 +506,8 @@
       reportHtml += `<div class="report-item">🎵 <b>Melodi & Vurgu:</b> Çok iyi! Konuşma alanındaki akustik tırmanışların hocanın grafiğindeki akustik tepe noktalarıyla örtüşüyor.</div>`;
     }
 
-    // 🚀 DOĞRUDAN GÖSTERİM YAMASI (Sınıf yerine doğrudan stili tetikliyoruz)
     reportContent.innerHTML = reportHtml;
-    mentorReportPanel.style.display = "block";
+    mentorReportPanel.style.display = "block"; // Doğrudan stili tetikle
     statusField.textContent = "Grafik hizalama ve telaffuz analizi raporu hazır!";
   };
 
