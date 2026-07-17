@@ -148,7 +148,7 @@
     .btn.play { background: #16a34a; }
     .btn.hoca { background: #0e7490; }
     .btn.analyze-graphs { background: #7c3aed; }
-    .btn.duet { background: #d97706; } /* Turuncu Düet Butonu */
+    .btn.duet { background: #d97706; } 
     .btn[disabled] { opacity: 0.3; cursor: default; }
     
     .status { font-size: 13px; color: #93a4bd; margin-top: 12px; min-height: 20px; }
@@ -203,7 +203,6 @@
   <button class="btn" id="recordBtn" disabled>🎙️ Mikrofonu Aç ve Cümleyi Oku</button>
   <button class="btn analyze-graphs" id="analyzeGraphsBtn" disabled>🔍 Grafikleri Karşılaştır & Telaffuz Analizi Yap</button>
   
-  <!-- 💥 YENİ DÜET BUTONU -->
   <button class="btn duet" id="duetBtn" disabled>▶ Hocayı ve Beni Aynı Anda Dinle (Kırpılmış Düet)</button>
   <button class="btn play" id="playBtn" disabled>▶ Sadece Kendi Sesimi Dinle</button>
 
@@ -225,7 +224,6 @@
   let finalTtsData = [];
   let finalUserData = [];
 
-  // Akıllı senkronizasyon için sınır objeleri
   let cachedTtsBounds = { start: 0, end: 0 };
   let cachedUserBounds = { start: 0, end: 0 };
 
@@ -457,7 +455,10 @@
       studioCtx.lineWidth = isUser ? 3 : 2.5; 
       studioCtx.strokeStyle = colorHex; studioCtx.lineCap = "round"; studioCtx.lineJoin = "round";
       studioCtx.beginPath();
-      const stepX = W / Math.max(dataPoints.length, 100);
+      
+      // 🌟 ÖNEMLİ DÜZELTME: Kırpılmış veriyi tam ekrana yaymak için stepX güncellendi!
+      const stepX = W / Math.max(dataPoints.length - 1, 1);
+      
       for (let i = 0; i < dataPoints.length; i++) {
         let val = dataPoints[i];
         let y = H - (val / 100) * (H * 0.82) - 4;
@@ -481,7 +482,7 @@
     }
   }
 
-  // --- 🔍 ADIM: SESSİZLİK BUDAMA VE RAPOR MOTORU ---
+  // --- SESSİZLİK BUDAMA VE RAPOR MOTORU ---
   analyzeGraphsBtn.onclick = function() {
     if (!ttsTimelineData.length || !userTimelineData.length) return;
 
@@ -495,15 +496,15 @@
       return { start, end };
     }
 
-    // İndeksleri önbelleğe al (Düet butonu kullanacak)
     cachedTtsBounds = getTrimBoundsSafe(ttsTimelineData);
     cachedUserBounds = getTrimBoundsSafe(userTimelineData);
 
     finalTtsData = ttsTimelineData.slice(cachedTtsBounds.start, cachedTtsBounds.end + 1);
     finalUserData = userTimelineData.slice(cachedUserBounds.start, cachedUserBounds.end + 1);
 
+    // 🌟 Kırpılmış veriyi tam ekrana yayılmış olarak baştan çizdir
     drawStudioGraphs();
-    duetBtn.disabled = false; // Analiz yapılınca Düet modunu aktif et!
+    duetBtn.disabled = false; 
 
     const ttsRealDur = finalTtsData.length * 0.04;
     const userRealDur = finalUserData.length * 0.04;
@@ -537,7 +538,7 @@
     }
 
     if (ttsHasPause && !userHasPause) {
-      reportHtml += `<div class="report-item">💨 <b>Nefes Kontrolü:</b> Grafiğinde hocanınki gibi belirgin bir vadi (es noktası) yok. Cümleyi <b>blok halinde tek bir nefeste</b> okumuşsun[cite: 1]. <i>I am not</i> dedikten sonra sesini kesip, <i>responsible</i> kelimesine yeni bir nefesle başla[cite: 1].</div>`;
+      reportHtml += `<div class="report-item">💨 <b>Nefes Kontrolü:</b> Grafiğinde hocanınki gibi belirgin bir vadi (es noktası) yok[cite: 1]. Cümleyi <b>blok halinde tek bir nefeste</b> okumuşsun[cite: 1]. <i>I am not</i> dedikten sonra sesini kesip, <i>responsible</i> kelimesine yeni bir nefesle başla[cite: 1].</div>`;
     } else {
       reportHtml += `<div class="report-item">💨 <b>Nefes Kontrolü:</b> Başarılı! Grafiklerde hoca ile aynı es/duraklama noktasını yakaladın.</div>`;
     }
@@ -553,29 +554,25 @@
     statusField.textContent = "Görsel grafik bindirme ve telaffuz analizi raporu hazır!";
   };
 
-  // --- 💥 4. ADIM: PARALEL SES OYNATMA (KIRPILMIŞ DÜET MODU) ---
+  // --- PARALEL SES OYNATMA (DÜET MODU) ---
   duetBtn.onclick = function() {
     if (!voiceUrl || !finalUserData.length || !finalTtsData.length) return;
     statusField.textContent = "Düet Başladı! İki ses de tam kırpılmış başlangıç noktalarından paralel çalıyor.";
     
     try { speechSynthesis.cancel(); } catch(e){}
 
-    // A. Hoca Sesini Kur (Kırpılmış süreyi simüle etmek için offset ile kilitliyoruz)
     const ttsAudioUtterance = new SpeechSynthesisUtterance(TARGET_TEXT);
     ttsAudioUtterance.lang = "en-US"; ttsAudioUtterance.rate = 0.88;
 
-    // B. Kullanıcı Sesini Kur ve Kırpılmış Başlangıç Saniyesine Ayarla
     const userAudio = new Audio(voiceUrl);
-    // userBounds.start her 40ms'de bir indeks olduğu için saniyeye çeviriyoruz (Örn: 25 indeks = 1.0 saniye)
     const userStartSeconds = cachedUserBounds.start * 0.04;
     
+    // Tarayıcı çizgisinin tam kilitli yürümesi için en uzun örnek boyutunu baz alıyoruz
     let totalSamples = Math.max(finalTtsData.length, finalUserData.length);
     let currentSampleIdx = 0;
 
-    // İki sesi tam senkronize ateşleme tetikleyicisi
     ttsAudioUtterance.onstart = () => {
       setAvatarSpeaking(true);
-      // Kullanıcı sesini tam sesin gerçek başladığı saniyeden başlatıyoruz (Sessizlik budandı!)
       userAudio.currentTime = userStartSeconds;
       userAudio.play();
 
@@ -590,7 +587,6 @@
       }, 40);
     };
 
-    // Herhangi biri durduğunda veya bittiğinde sistemi temizle
     const stopDuet = () => {
       clearInterval(samplingIntervalId);
       try { speechSynthesis.cancel(); } catch(e){}
@@ -630,6 +626,7 @@
       }, 40);
     };
     audio.onended = () => { clearInterval(samplingIntervalId); setAvatarSpeaking(false); setMouth("rest"); playheadProgress = -1; drawStudioGraphs(); };
+    audio.play();
   };
 </script>
 
