@@ -15,7 +15,13 @@
   if(window.dhErrorDrill && window.dhErrorDrill.__v2) return;
 
   function esc(t){ return String(t==null?"":t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
-  function norm(t){ return String(t||"").toLowerCase().replace(/[^a-z0-9ğüşöçıi']+/g," ").trim(); }
+  var __EQC={"don't":"do not","doesn't":"does not","didn't":"did not","isn't":"is not","aren't":"are not","wasn't":"was not","weren't":"were not","can't":"can not","cannot":"can not","couldn't":"could not","won't":"will not","wouldn't":"would not","shouldn't":"should not","mustn't":"must not","haven't":"have not","hasn't":"has not","hadn't":"had not","i'm":"i am","you're":"you are","we're":"we are","they're":"they are","he's":"he is","she's":"she is","it's":"it is","that's":"that is","there's":"there is","let's":"let us","i've":"i have","we've":"we have","they've":"they have","you've":"you have","i'll":"i will","we'll":"we will","you'll":"you will","they'll":"they will","he'll":"he will","she'll":"she will"};
+  function norm(t){
+    t=String(t||"").toLowerCase().replace(/[\u2019\u2018]/g,"'");
+    t=t.replace(/\b[a-z']+\b/g,function(w){ return __EQC[w]||w; });      /* didn't = did not */
+    t=t.replace(/\b(he|she|it|him|her|his|hers|its)\b/g,"o3");                              /* he=she=it=him=her */
+    return t.replace(/[^a-z0-9ğüşöçıi0-9 ']+/g," ").replace(/\s+/g," ").trim();
+  }
   function words(t){ return norm(t).split(" ").filter(Boolean); }
   function rawWords(t){ return String(t||"").replace(/[.!?,;]+/g,"").split(/\s+/).filter(Boolean); }
   function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var x=a[i]; a[i]=a[j]; a[j]=x; } return a; }
@@ -80,8 +86,10 @@
     return opts.length>=2?{kind:"choice",options:shuffle(opts.slice(0,3))}:null;
   }
   function exCloze(err){
-    var tw=words(err.target), am={}; words(err.answer).forEach(function(w){am[w]=1;});
-    var miss=tw.filter(function(w){return !am[w];}).slice(0,2);
+    var twRaw=rawWords(err.target);
+    var am={}; words(err.answer).forEach(function(w){am[w]=1;});
+    var miss=twRaw.filter(function(w){ var k=words(w)[0]; return k&&!am[k]; }).slice(0,2);
+    var tw=words(err.target);
     if(!miss.length) return null;
     var re=new RegExp("\\b("+miss.map(function(w){return w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");}).join("|")+")\\b","ig");
     return {kind:"cloze",missing:miss,shown:esc(err.target).replace(re,'<b style="color:#facc15">____</b>')};
@@ -105,7 +113,7 @@
 
   function checkEx(ex, err, val){
     if(ex.kind==="choice") return norm(val)===norm(err.target);
-    if(ex.kind==="cloze"){ var g=words(val); return ex.missing.every(function(w){return g.indexOf(w)>=0;}); }
+    if(ex.kind==="cloze"){ var g=words(val); return ex.missing.every(function(w){ var k=words(w)[0]; return !k||g.indexOf(k)>=0; }); }
     if(ex.kind==="build") return norm(val)===norm(err.target);
     return norm(val)===norm(err.target);  // fix / tr2en / listen: tam cümle
   }

@@ -285,8 +285,20 @@ try{
       .replace(/-/g, " ") 
       .replace(/['\u2019\u2018]/g, "")   
       .replace(/[^a-z0-9 ]+/g," ")
+      /* TR kaynak cinsiyet/canlılık taşımaz: 3. tekil zamirler TEK sınıf */
+      .replace(/\b(he|she|it|him|her|his|hers|its)\b/g,"o3")
       .replace(/\s+/g," ")
       .trim(); 
+  }
+  /* Fark çizimi için: karşılaştırma anahtarı + görünen kelime AYRI tutulur.
+     (Eski kod kelime-kelime norm çağırıyordu; "didn't"→"did not" 2 kelimeye
+     açılınca tek kelimeyle asla eşleşemiyordu — kısaltmalar hep kırmızıydı.) */
+  function eqTokens(text){
+    return expandContractions(text)
+      .replace(/-/g," ").replace(/['\u2019\u2018]/g,"")
+      .replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim()
+      .split(" ").filter(Boolean)
+      .map(function(w){ return { d:w, k:/^(he|she|it|him|her|his|hers|its)$/.test(w)?"o3":w }; });
   }
 
   function looksLikeSentence(en){
@@ -324,13 +336,13 @@ try{
   };
 
   function getDiffHtml(userText, correctText) {
-    var uArr = String(userText || "").split(" ").filter(Boolean);
-    var cArr = String(correctText || "").split(" ").filter(Boolean);
+    var uArr = eqTokens(userText);
+    var cArr = eqTokens(correctText);
     var m = uArr.length, n = cArr.length;
     var dp = Array.from({ length: m + 1 }, function() { return new Array(n + 1).fill(0); });
     for (var i = 1; i <= m; i++) {
       for (var j = 1; j <= n; j++) {
-        if (norm(uArr[i - 1]) === norm(cArr[j - 1])) {
+        if (uArr[i - 1].k === cArr[j - 1].k) {
           dp[i][j] = dp[i - 1][j - 1] + 1;
         } else {
           dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
@@ -340,11 +352,11 @@ try{
     var htmlArr = [];
     var i = m, j = n;
     while (i > 0 || j > 0) {
-      if (i > 0 && j > 0 && norm(uArr[i - 1]) === norm(cArr[j - 1])) {
-        htmlArr.unshift('<span class="diff-match" onclick="handleWordClick(\''+cArr[j - 1]+'\')">' + cArr[j - 1] + '</span>');
+      if (i > 0 && j > 0 && uArr[i - 1].k === cArr[j - 1].k) {
+        htmlArr.unshift('<span class="diff-match" onclick="handleWordClick(\''+cArr[j - 1].d+'\')">' + cArr[j - 1].d + '</span>');
         i--; j--;
       } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-        htmlArr.unshift('<span class="diff-missing" onclick="handleWordClick(\''+cArr[j - 1]+'\')">' + cArr[j - 1] + '</span>');
+        htmlArr.unshift('<span class="diff-missing" onclick="handleWordClick(\''+cArr[j - 1].d+'\')">' + cArr[j - 1].d + '</span>');
         j--;
       } else {
         var typoMatched = false;
@@ -357,7 +369,7 @@ try{
           }
         }
         if (! typoMatched) {
-          htmlArr.unshift('<span class="diff-wrong" onclick="handleWordClick(\''+uArr[i - 1]+'\')">' + uArr[i - 1] + '</span>');
+          htmlArr.unshift('<span class="diff-wrong" onclick="handleWordClick(\''+uArr[i - 1].d+'\')">' + uArr[i - 1] + '</span>');
           i--;
         }
       }

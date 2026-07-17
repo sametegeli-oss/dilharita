@@ -624,6 +624,12 @@
       if(opts.ok) __dhSession.correct++; else __dhSession.wrong++;
       try{ window.dhLogActivity((opts.ok?"✅ Doğru: ":"❌ Yanlış: ")+(opts.en||opts.sentenceId||""), opts.ok?"correct":"wrong"); }catch(e){}
       logSessionRate(false);
+      /* Eşdeğer yazım (didn't=did not, he=she=it): aslında DOĞRU cevap */
+      if(!opts.ok && opts.en && opts.answer && window.LearningErrorDB && LearningErrorDB.eqNorm
+         && LearningErrorDB.eqNorm(opts.en)===LearningErrorDB.eqNorm(opts.answer)){
+        dhCoachSay("Cevabın aslında TAM DOĞRU ✓ (didn't = did not, he/she/it eşdeğer sayılır). Hata yazmadım.","praise");
+        return;
+      }
       /* Yazım sürçmesi (was→wad): hata muamelesi YOK — nazik düzeltme, defter yok */
       if(!opts.ok && opts.en && opts.answer && window.LearningErrorDB && LearningErrorDB.isTypoOnly
          && LearningErrorDB.isTypoOnly(opts.en, opts.answer)){

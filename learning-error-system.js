@@ -127,8 +127,17 @@ function isTypoOnly(target, answer){
     return __lev1(t,a);
   }catch(e){ return false; }
 }
+function eqNorm(t){
+  t=String(t||"").toLowerCase().replace(/[\u2019\u2018]/g,"'");
+  var C={"don't":"do not","doesn't":"does not","didn't":"did not","isn't":"is not","aren't":"are not","wasn't":"was not","weren't":"were not","can't":"can not","cannot":"can not","couldn't":"could not","won't":"will not","wouldn't":"would not","shouldn't":"should not","mustn't":"must not","haven't":"have not","hasn't":"has not","hadn't":"had not","i'm":"i am","you're":"you are","we're":"we are","they're":"they are","he's":"he is","she's":"she is","it's":"it is","that's":"that is","there's":"there is","let's":"let us"};
+  t=t.replace(/\b[a-z']+\b/g,function(w){ return C[w]||w; });
+  t=t.replace(/\b(he|she|it|him|her|his|hers|its)\b/g,"o3");
+  return t.replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim();
+}
 async function add(record){
   if(isFalsePositive(record&&record.target, record&&record.answer)) return null;
+  /* eşdeğer yazımlar (didn't=did not, he=she=it, him=her=it) HATA DEĞİLDİR */
+  if(record&&record.answer&&eqNorm(record.target)===eqNorm(record.answer)) return null;
   if(isTypoOnly(record&&record.target, record&&record.answer)) return null;   // yazım sürçmesi: hata değil
   record.id=record.id||uid();
   record.createdAt=record.createdAt||nowISO();
@@ -384,5 +393,5 @@ setTimeout(async function dedupeOnce(){
     localStorage.setItem("dh-errdb-deduped-v1","1");
   }catch(e){}
 }, 2500);
-window.LearningErrorDB={ isTypoOnly:isTypoOnly, add,all,deleteMany,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed};
+window.LearningErrorDB={ isTypoOnly:isTypoOnly, eqNorm:eqNorm, add,all,deleteMany,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed};
 })();
