@@ -46,7 +46,7 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
   function paint(){
     grid.innerHTML="";
     if(!voices.length){
-      grid.innerHTML='<div class="note">Ses listesi yükleniyor… (mobilde birkaç saniye sürebilir, sayfayı bir dokunuşla uyandırabilir.)</div>';
+      grid.innerHTML='<div class="note">Ses listesi yükleniyor… (mobilde birkaç saniye sürebilir; sayfaya bir kez dokun). İpucu: listede kadın sesi görünmüyorsa telefonda Ayarlar → Erişilebilirlik → Metin okuma → Google TTS içinden ek sesler yükleyebilirsin — yoksa 👩 Kadın tonu düğmesi tonu yükselterek kadın sesi elde eder.</div>';
       return;
     }
     CHARS.forEach(function(ch){
@@ -56,8 +56,11 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
       var right=document.createElement("div");
       right.innerHTML='<div class="name">'+ch.name+'<span class="saved" id="sv_'+ch.slug.replace(/[^a-z0-9]/gi,"")+'" style="display:'+(pref.name?"inline":"none")+'">✓ kayıtlı</span></div><div class="sub">Bu karakter hangi sesle konuşsun?</div>';
       var sel=document.createElement("select");
+      var femRe=/(female|kadın|samantha|victoria|susan|karen|zira|hazel|moira|tessa|fiona|veena|kate|serena|allison|ava|emma|joanna|salli|kimberly|ivy|aria|jenny|libby|sonia|natasha|olivia|amy|nicole|kendra)/i;
+      var malRe=/(male|erkek|david|mark|george|daniel|james|john|alex|fred|thomas|guy|brian|ryan|matthew|arthur|oliver)/i;
       voices.forEach(function(v){
-        var o=document.createElement("option"); o.value=v.name; o.textContent=v.name+" ("+v.lang+")";
+        var g=femRe.test(v.name||"")?"👩 ":(malRe.test(v.name||"")?"👨 ":"");
+        var o=document.createElement("option"); o.value=v.name; o.textContent=g+v.name+" ("+v.lang+")";
         if(pref.name===v.name) o.selected=true;
         sel.appendChild(o);
       });
@@ -72,11 +75,22 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
       pitchWrap.innerHTML='Ton: <input type="range" min="0" max="2" step="0.05" value="'+pitchVal+'"><span>'+pitchVal+'</span>';
       var pitchInput=pitchWrap.querySelector("input"), pitchLabel=pitchWrap.querySelector("span");
       pitchInput.oninput=function(){ pitchLabel.textContent=pitchInput.value; };
+      /* 📱 Mobil gerçeği: Android çoğu zaman tek-iki cinsiyetsiz ses verir ve
+         varsayılan ton (0.78) HER sesi erkek gibi gösterir. Kadın sesi için
+         tonu yükseltmek gerekir — tek dokunuş önayarlar: */
+      var gWrap=document.createElement("div"); gWrap.className="btns";
+      var bFem=document.createElement("button"); bFem.className="b-def"; bFem.textContent="👩 Kadın tonu";
+      var bMal=document.createElement("button"); bMal.className="b-def"; bMal.textContent="👨 Erkek tonu";
+      bFem.onclick=function(){ var f=voices.find(function(v){return femRe.test(v.name||"");}); if(f) sel.value=f.name;
+        pitchInput.value=1.3; pitchLabel.textContent="1.3"; rateInput.value=0.98; rateLabel.textContent="0.98"; };
+      bMal.onclick=function(){ var m=voices.find(function(v){return malRe.test(v.name||"");}); if(m) sel.value=m.name;
+        pitchInput.value=0.78; pitchLabel.textContent="0.78"; rateInput.value=0.96; rateLabel.textContent="0.96"; };
+      gWrap.appendChild(bFem); gWrap.appendChild(bMal);
       var btns=document.createElement("div"); btns.className="btns";
       var bTry=document.createElement("button"); bTry.className="b-try"; bTry.textContent="🔊 Dene ve Kaydet";
       var bDef=document.createElement("button"); bDef.className="b-def"; bDef.textContent="Varsayılana dön";
       btns.appendChild(bTry); btns.appendChild(bDef);
-      right.appendChild(sel); right.appendChild(rateWrap); right.appendChild(pitchWrap); right.appendChild(btns);
+      right.appendChild(sel); right.appendChild(gWrap); right.appendChild(rateWrap); right.appendChild(pitchWrap); right.appendChild(btns);
       row.appendChild(img); row.appendChild(right); grid.appendChild(row);
 
       bTry.onclick=function(){

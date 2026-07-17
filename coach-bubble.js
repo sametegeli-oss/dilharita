@@ -7,6 +7,7 @@
    Tüm kararlar YEREL veriye (hata defteri geçmişi) dayanır — AI çağrısı YOK, anlık ve ücretsiz.
 */
 (function(){
+  var __dhLastSayAt=0;
   "use strict";
   if(window.__dhCoachInstalled) return;
   window.__dhCoachInstalled = true;
@@ -207,7 +208,7 @@
   css.textContent=".dh-coach{position:fixed !important;left:50% !important;top:22px !important;bottom:auto !important;width:min(92vw,400px);"
     +"transform:translateX(-50%) translateY(-40px) scale(.85);opacity:0;"
     +"max-width:min(95vw,640px);background:#111827;border-left:8px solid #38bdf8;border-radius:16px;"
-    +"padding:18px 24px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:2147483000;font:800 17px/1.4 system-ui,sans-serif;color:#f8fafc;"
+    +"padding:18px 24px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:2147483000;font:800 19px/1.5 system-ui,sans-serif;color:#f8fafc;"
     +"display:flex;gap:16px;align-items:center;transition:opacity .3s,transform .3s;pointer-events:none}"
     +".dh-coach.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1);pointer-events:auto}"
     +".dh-coach.show.praise{animation:dhClap .6s ease 2}"
@@ -258,7 +259,7 @@
     if(!t) return "";
     return '<a class="dh-coach-teach" href="'+teacherHref(t)+'" onclick="event.stopPropagation()" '
       +'style="margin-left:6px;flex:none;align-self:center;background:#1d4ed8;color:#fff;text-decoration:none;'
-      +'font-weight:800;font-size:11.5px;padding:6px 10px;border-radius:999px;white-space:nowrap">🧑‍🏫 Öğretmenle çalış</a>';
+      +'font-weight:800;font-size:13px;padding:7px 12px;border-radius:999px;white-space:nowrap">🧑‍🏫 Öğretmenle çalış</a>';
   }
   /* Genel eylem düğmesi: plan zinciri vb. için {actionHref, actionLabel} */
   function actionBtnHtml(a){
@@ -267,7 +268,7 @@
     var hrf=String(a.actionHref).replace(/"/g,"&quot;");
     return '<a class="dh-coach-teach" href="'+hrf+'" onclick="event.stopPropagation()" '
       +'style="margin-left:6px;flex:none;align-self:center;background:#15803d;color:#fff;text-decoration:none;'
-      +'font-weight:800;font-size:11.5px;padding:6px 10px;border-radius:999px;white-space:nowrap">'+lbl+'</a>';
+      +'font-weight:800;font-size:13px;padding:7px 12px;border-radius:999px;white-space:nowrap">'+lbl+'</a>';
   }
 
   /* ---------- 🌙 GÜNÜ KAPAT: hata dersi → rakamlı takdir → mini test → yarın ----------
@@ -296,7 +297,7 @@
       +'<b style="color:#e8eef7;font-size:16px;flex:1">🌙 Günü Kapat</b>'
       +'<button id="dhDcX" style="background:#13294d;border:1px solid #1e3a5f;color:#e8eef7;border-radius:8px;width:32px;height:32px;cursor:pointer">✕</button>'
       +'</div>'
-      +'<div id="dhDcBody" style="padding:16px;overflow-y:auto;color:#dbe7ff;font-size:14px;line-height:1.65">⏳ Günün hataları inceleniyor…</div>'
+      +'<div id="dhDcBody" style="padding:16px;overflow-y:auto;color:#dbe7ff;font-size:15.5px;line-height:1.7">⏳ Günün hataları inceleniyor…</div>'
       +'</div>';
     document.body.appendChild(ov);
     document.getElementById("dhDcX").onclick=function(){ ov.remove(); };
@@ -418,32 +419,49 @@
       ? '<button id="dhDcDrill" style="display:block;width:100%;margin-top:12px;background:linear-gradient(135deg,#059669,#0d9488);border:0;color:#fff;border-radius:12px;padding:13px;font-weight:900;font-size:15px;cursor:pointer">🏋️ '
         +(todaySet.length?('Şimdi interaktif çalış ('+todaySet.length+' kalem)'):('Kapanış antrenmanı: defterden '+backlog.length+' hata'))+'</button>'
       : "";
-    /* 📋 GÜNÜN KARNESİ: şartlar ✓/✗ + başarılar + zorlanılanlar */
+    /* 📋 GÜNÜN KARNESİ — not harfi, ilerleme çubukları, rozetler */
+    var ratios=reqP.items.map(function(it){ return Math.min(1,(it.got||0)/Math.max(1,it.need||1)); });
+    var pct=Math.round(100*ratios.reduce(function(a,b){return a+b;},0)/Math.max(1,ratios.length));
+    var gLetter = pct>=100?"A+":(pct>=85?"A":(pct>=60?"B":(pct>=35?"C":"D")));
+    var gColor  = pct>=85?"#4ade80":(pct>=60?"#38bdf8":(pct>=35?"#facc15":"#f87171"));
     var kRows=reqP.items.map(function(it){
-      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;margin-top:5px;border-radius:9px;background:'
-        +(it.ok?"#0a2818":"#2a0f14")+';border:1px solid '+(it.ok?"#14532d":"#7f1d1d")+'">'
-        +(it.ok?"✅":"❌")+' <span style="flex:1">'+it.label+'</span><b style="color:'+(it.ok?"#4ade80":"#f87171")+'">'+it.got+' / '+it.need+'</b></div>';
+      var w=Math.round(100*Math.min(1,(it.got||0)/Math.max(1,it.need||1)));
+      return '<div style="margin-top:10px">'
+        +'<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">'
+        +'<span>'+(it.ok?"✅":"⏳")+' '+it.label+'</span><b style="color:'+(it.ok?"#4ade80":"#facc15")+'">'+it.got+' / '+it.need+'</b></div>'
+        +'<div style="height:8px;background:#0b1120;border-radius:99px;overflow:hidden">'
+        +'<div style="height:100%;width:'+w+'%;background:linear-gradient(90deg,'+(it.ok?"#059669,#4ade80":"#b45309,#facc15")+');border-radius:99px;transition:width .6s"></div></div></div>';
     }).join("");
     var wins=[];
-    if((rec.sentences||0)>0) wins.push(rec.sentences+" cümle");
-    if((rec.reviews||0)>0) wins.push(rec.reviews+" tekrar");
-    if((rec.lessons||0)>0) wins.push(rec.lessons+" ders");
+    if((rec.sentences||0)>0) wins.push("📖 "+rec.sentences+" cümle");
+    if((rec.reviews||0)>0) wins.push("🔁 "+rec.reviews+" tekrar");
+    if((rec.lessons||0)>0) wins.push("🎓 "+rec.lessons+" ders");
     var modsToday=[];
     try{ var vd=JSON.parse(localStorage.getItem("dh-mod-visited-v1")||"{}")||{};
       for(var mk in vd){ if(vd[mk]===dhToday()) modsToday.push(mk.replace(/^[A-C]\d-M\d+\s*/,"")); } }catch(e){}
-    if(modsToday.length) wins.push("modül: "+modsToday.slice(0,3).join(", "));
+    modsToday.slice(0,3).forEach(function(m){ wins.push("🗺️ "+m); });
     var strug=[];
     hardRev.slice(0,3).forEach(function(h){ strug.push('"'+dcEsc(h.target)+'"'); });
-    if(hardRev.length>3) strug.push("+"+(hardRev.length-3)+" kalem daha");
+    if(hardRev.length>3) strug.push("+"+(hardRev.length-3)+" kalem");
     if(errs.length){
       var tCnt={}; errs.forEach(function(r){ var t=r.primaryType||"general"; tCnt[t]=(tCnt[t]||0)+1; });
       var TLK=window.DH_COACH_TYPE_LABEL||{};
       Object.keys(tCnt).slice(0,3).forEach(function(t){ strug.push((TLK[t]||t)+" ×"+tCnt[t]); });
     }
-    var karne='<div style="margin-top:12px;background:#0b1120;border:1px solid #1e3a5f;border-radius:12px;padding:12px">'
-      +'<b style="color:#93c5fd">📋 GÜNÜN KARNESİ</b>'+kRows
-      +'<div style="margin-top:9px;font-size:13px"><b style="color:#4ade80">💪 Başardıkların:</b> '+(wins.length?dcEsc(wins.join(" · ")):"—")+'</div>'
-      +'<div style="margin-top:5px;font-size:13px"><b style="color:#f87171">🔻 Zorlandıkların:</b> '+(strug.length?strug.join(" · "):"kayıt yok — pürüzsüz gün 🎉")+'</div>'
+    function chips(arr,bg,bd){ return arr.map(function(x){
+      return '<span style="display:inline-block;background:'+bg+';border:1px solid '+bd+';border-radius:999px;padding:5px 11px;margin:3px 4px 0 0;font-size:12.5px">'+x+'</span>'; }).join(""); }
+    var karne='<div style="margin-top:14px;background:linear-gradient(180deg,#101c33,#0b1424);border:1px solid #24406b;border-radius:16px;padding:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)">'
+      +'<div style="display:flex;align-items:center;gap:12px">'
+      +'<div style="width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;'
+      +'font-size:21px;font-weight:900;color:'+gColor+';background:conic-gradient('+gColor+' '+(pct*3.6)+'deg,#1a2947 0);'
+      +'"><span style="background:#0b1424;width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center">'+gLetter+'</span></div>'
+      +'<div><b style="color:#93c5fd;letter-spacing:.5px">📋 GÜNÜN KARNESİ</b>'
+      +'<div style="font-size:12px;color:#9fb3d9">'+dhToday()+' · doluluk %'+pct+'</div></div></div>'
+      +kRows
+      +'<div style="margin-top:12px;font-size:13px;color:#4ade80;font-weight:800">💪 Başardıkların</div>'
+      +'<div>'+(wins.length?chips(wins,"#0a2818","#14532d"):'<span style="color:#64748b;font-size:12.5px">—</span>')+'</div>'
+      +'<div style="margin-top:10px;font-size:13px;color:#f87171;font-weight:800">🔻 Zorlandıkların</div>'
+      +'<div>'+(strug.length?chips(strug,"#2a0f14","#7f1d1d"):'<span style="color:#9fb3d9;font-size:12.5px">kayıt yok — pürüzsüz gün 🎉</span>')+'</div>'
       +'</div>';
     body.innerHTML=lessonHtml + karne + drillBtn
       +'<div style="margin-top:12px;background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:12px">'+praise+'</div>'
@@ -463,7 +481,7 @@
   function dayCloseBtnHtml(on){
     if(!on) return "";
     return '<button class="dh-coach-teach" style="margin-left:6px;flex:none;align-self:center;border:0;cursor:pointer;'
-      +'background:#0e7490;color:#fff;font-weight:800;font-size:11.5px;padding:6px 10px;border-radius:999px;white-space:nowrap" '
+      +'background:#0e7490;color:#fff;font-weight:800;font-size:13px;padding:7px 12px;border-radius:999px;white-space:nowrap" '
       +'onclick="event.stopPropagation();window.dhCoachDayClose&&window.dhCoachDayClose()">🌙 Günü kapat</button>';
   }
 
@@ -498,6 +516,7 @@
 
   var hideT=null, lastMsg="", lastAt=0, lastKind="tip", lastFocus="", lastAction=null, lastDayClose=false, lastReopen=false;
   window.dhCoachSay=function(msg, kind, faceOverride, opts){
+    __dhLastSayAt=Date.now();
     if(!msg || !document.body) return;
     if(msg===lastMsg && Date.now()-lastAt<4000) return;
     lastMsg=msg; lastAt=Date.now(); lastKind=kind||"tip";
@@ -605,6 +624,12 @@
       if(opts.ok) __dhSession.correct++; else __dhSession.wrong++;
       try{ window.dhLogActivity((opts.ok?"✅ Doğru: ":"❌ Yanlış: ")+(opts.en||opts.sentenceId||""), opts.ok?"correct":"wrong"); }catch(e){}
       logSessionRate(false);
+      /* Yazım sürçmesi (was→wad): hata muamelesi YOK — nazik düzeltme, defter yok */
+      if(!opts.ok && opts.en && opts.answer && window.LearningErrorDB && LearningErrorDB.isTypoOnly
+         && LearningErrorDB.isTypoOnly(opts.en, opts.answer)){
+        dhCoachSay("Bu sadece bir yazım sürçmesi 🙂 Doğrusu: "+opts.en+" — hata defterine İŞLEMEDİM, parmak hatası sayılmaz.","tip");
+        return;
+      }
       var hist=await errHistory();
       var curTypes = (window.LearningErrorDB && LearningErrorDB.detectTypes)
         ? LearningErrorDB.detectTypes({target:opts.en, answer:opts.answer, grammar:opts.grammar||"", module:opts.module||"", topic:opts.topic||""})
@@ -822,9 +847,18 @@
       /* 🌙 gün kapatıldıysa: periyodik mesaj tamamen susar
          (plan bittiyse buildStatusMessage zaten nag yerine Günü Kapat teklifi döndürür) */
       try{ if(dhDayClosed()) return; }catch(e){}
+      /* balonda ŞU AN görünen bir mesaj varsa üstüne yazma (örn. az önceki
+         değerlendirme/yazım mesajını ezmesin) */
+      /* son 15 sn içinde koç bir şey söylediyse genel mesajla ÜSTÜNE YAZMA
+         (.show sınıfı animasyon gecikmeli eklendiğinden tek başına güvenilmez) */
+      if(Date.now()-__dhLastSayAt<15000) return;
+      try{ var __b=document.querySelector(".dh-coach"); if(__b&&__b.classList.contains("show")) return; }catch(e){}
       var lastT=+localStorage.getItem("dh-coach-last-generic-tip")||0;
       if(Date.now()-lastT<20*60000) return;   // 20 dakikada bir en fazla — "koç her yerde olmalı" isteği gereği sıklaştırıldı
       var s=await buildStatusMessage();
+      /* durum hesabı beklenirken koç başka bir şey söylediyse ÜSTÜNE YAZMA
+         (koruma await ÖNCESİNDEydi — yarışta geç kalan mesaj taze mesajı eziyordu) */
+      if(Date.now()-__dhLastSayAt<15000) return;
       if(s.msg){ dhCoachSay(s.msg, s.kind, null, {dayClose:!!s.dayClose, reopen:!!s.reopen, actionHref:s.actionHref, actionLabel:s.actionLabel}); localStorage.setItem("dh-coach-last-generic-tip", String(Date.now())); }
     }catch(e){}
   })();

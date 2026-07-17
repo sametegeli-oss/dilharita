@@ -96,8 +96,40 @@ function fbAll(){
 }
 function fbSave(arr){ try{localStorage.setItem(FALLBACK_KEY,JSON.stringify(arr));return true}catch{return false} }
 
+const __COMMON_EN=new Set(("a an the is am are was were be been has have had do does did done he she it we they you i "
+  +"in on at of to for and or not no so if as by my his her its our your their this that these those will would can could may might").split(" "));
+function __lev1(a,b){
+  if(a===b) return true;
+  var la=a.length, lb=b.length;
+  if(Math.abs(la-lb)>1) return false;
+  var i=0,j=0,edits=0;
+  while(i<la&&j<lb){
+    if(a[i]===b[j]){i++;j++;continue;}
+    if(++edits>1) return false;
+    if(la>lb) i++; else if(lb>la) j++; else {i++;j++;}
+  }
+  return edits+(la-i)+(lb-j)<=1;
+}
+/* "was→wad" gibi TEK HARFLİK yazım sürçmesi: tespit edilir ama DEFTERE İŞLENMEZ.
+   Koşul: yalnız 1 kelime farklı + aradaki fark 1 harf + yazılan kelime gerçek bir
+   sık kelime DEĞİL (was→has gerçek karıştırmadır, kaydedilir). */
+function isTypoOnly(target, answer){
+  try{
+    var T=String(target||"").toLowerCase().replace(/[^a-z0-9' ]+/g," ").trim().split(/\s+/);
+    var A=String(answer||"").toLowerCase().replace(/[^a-z0-9' ]+/g," ").trim().split(/\s+/);
+    if(!T.length||T.length!==A.length) return false;
+    var diff=[];
+    for(var i=0;i<T.length;i++) if(T[i]!==A[i]) diff.push(i);
+    if(diff.length!==1) return false;
+    var t=T[diff[0]], a=A[diff[0]];
+    if(t.length<3||a.length<2) return false;
+    if(__COMMON_EN.has(a)) return false;
+    return __lev1(t,a);
+  }catch(e){ return false; }
+}
 async function add(record){
   if(isFalsePositive(record&&record.target, record&&record.answer)) return null;
+  if(isTypoOnly(record&&record.target, record&&record.answer)) return null;   // yazım sürçmesi: hata değil
   record.id=record.id||uid();
   record.createdAt=record.createdAt||nowISO();
   record.updatedAt=nowISO();
@@ -352,5 +384,5 @@ setTimeout(async function dedupeOnce(){
     localStorage.setItem("dh-errdb-deduped-v1","1");
   }catch(e){}
 }, 2500);
-window.LearningErrorDB={add,all,deleteMany,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed};
+window.LearningErrorDB={ isTypoOnly:isTypoOnly, add,all,deleteMany,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed};
 })();
