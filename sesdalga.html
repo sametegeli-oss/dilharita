@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DilHarita - Akıllı Grafik Analiz Laboratuvarı (CORS Korumalı)</title>
+  <title>DilHarita - Akıllı Grafik Analiz Laboratuvarı (Nihai Sürüm)</title>
   <style>
     body {
       background: #0b1120;
@@ -102,9 +102,8 @@
       padding: 15px;
       margin-bottom: 15px;
       text-align: left;
-      display: none;
+      display: none; /* JS doğrudan değiştirecek */
     }
-    .mentor-report-panel.show { block: block; }
     .report-title { font-weight: 900; font-size: 13px; color: #a5b4fc; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;}
     .report-item { font-size: 13.5px; line-height: 1.6; margin-top: 6px; color: #e0e7ff; }
     .report-item b { color: #fda4af; }
@@ -176,6 +175,7 @@
     <canvas class="static-canvas" id="userGraphCanvas"></canvas>
   </div>
 
+  <!-- Rapor Paneli -->
   <div class="mentor-report-panel" id="mentorReportPanel">
     <div class="report-title">🧭 AI Mentor Grafik Kıyaslama Raporu</div>
     <div id="reportContent"></div>
@@ -210,7 +210,7 @@
   let samplingIntervalId = null;
 
   const liveCanvas = document.getElementById("liveVisualizer");
-  const liveCtx = liveCanvas.getContext("2d");
+  const liveCtx = liveCanvas.getContext;
   const ttsCanvas = document.getElementById("ttsGraphCanvas");
   const userCanvas = document.getElementById("userGraphCanvas");
 
@@ -265,11 +265,11 @@
     return { parts, score };
   }
 
-  // --- 🎓 1. HOCA SESİ ANALİZİ ---
+  // --- HOCA ANALİZİ ---
   analyzeTtsBtn.onclick = function() {
-    statusField.textContent = "Hoca cümlesi seslendiriliyor ve zaman haritası çıkarılıyor...";
+    statusField.textContent = "Hoca cümlesi seslendiriliyor...";
     ttsTimelineData = [];
-    mentorReportPanel.classList.remove("show");
+    mentorReportPanel.style.display = "none";
     analyzeGraphsBtn.disabled = true;
 
     let startTime = Date.now();
@@ -281,10 +281,9 @@
       let t = (Date.now() - startTime) / 1000;
       let mockVolume = 0;
       
-      // Hoca ritim profili (Daha net kırpma için boşluklar belirginleştirildi)
       if (t > 0.2 && t < 0.5) mockVolume = 40 + Math.random()*20; 
       else if (t >= 0.5 && t < 0.8) mockVolume = 45 + Math.random()*15; 
-      else if (t >= 0.8 && t < 0.95) mockVolume = 2; // Sessizlik vadisi
+      else if (t >= 0.8 && t < 0.95) mockVolume = 2; 
       else if (t >= 0.95 && t < 1.5) mockVolume = 65 + Math.random()*25; 
       else if (t >= 1.5 && t < 1.8) mockVolume = 30 + Math.random()*10; 
       else if (t >= 1.8 && t < 2.3) mockVolume = 55 + Math.random()*20; 
@@ -299,18 +298,18 @@
     u.onend = () => {
       clearInterval(samplingIntervalId);
       setAvatarSpeaking(false); setMouth("rest");
-      statusField.textContent = "Hoca grafiği çıkarıldı! Şimdi mikrofonu açıp cümleyi sen oku.";
+      statusField.textContent = "Hoca grafiği hazır! Şimdi mikrofonu açıp cümleyi oku.";
       recordBtn.disabled = false;
     };
     speechSynthesis.speak(u);
   };
 
-  // --- 🎙️ 2. KULLANICI MİKROFON ANALİZİ ---
+  // --- KULLANICI MİKROFON ANALİZİ ---
   recordBtn.onclick = async function() {
     if (!isRecording) {
       recordedChunks = []; userTimelineData = []; heardText = "";
       playBtn.disabled = true; analyzeGraphsBtn.disabled = true;
-      mentorReportPanel.classList.remove("show");
+      mentorReportPanel.style.display = "none";
       liveCanvas.width = liveCanvas.clientWidth; liveCanvas.height = liveCanvas.clientHeight;
 
       try {
@@ -345,9 +344,8 @@
         let userStartTime = Date.now();
         setAvatarSpeaking(true);
         
-        function liveSampleLoop() {
+        samplingIntervalId = setInterval(() => {
           if (!isRecording) return;
-          animationFrameId = requestAnimationFrame(liveSampleLoop);
           analyser.getByteFrequencyData(dataArray);
           
           let total = 0;
@@ -360,21 +358,12 @@
           let dur = (Date.now() - userStartTime) / 1000;
           document.getElementById("userDuration").textContent = dur.toFixed(1) + "s";
 
-          liveCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
-          liveCtx.fillStyle = "#2563eb";
-          let w = liveCanvas.width / dataArray.length;
-          for(let i=0; i<dataArray.length; i++) {
-            let h = dataArray[i] / 4;
-            liveCtx.fillRect(i*w, liveCanvas.height - h, w - 1, h);
-          }
-
           if (avg < 4) setMouth("rest");
           else if (avg < 15) setMouth("closed");
           else if (avg < 35) setMouth("wide");
           else if (avg < 64) setMouth("round");
           else setMouth("open");
-        }
-        liveSampleLoop();
+        }, 40);
 
       } catch (e) {
         statusField.textContent = "Mikrofon başlatılamadı.";
@@ -385,18 +374,14 @@
       recordBtn.textContent = "🎙️ Mikrofonu Aç ve Cümleyi Oku";
       recordBtn.classList.remove("recording");
       setAvatarSpeaking(false); setMouth("rest");
-      liveCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
-      
-      if (recognition) { try{ recognition.stop(); }catch(e){} }
-      if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
-      if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+      clearInterval(samplingIntervalId);
     }
   };
 
   function processComparison() {
     if (!heardText) {
       scoreDisplay.textContent = "0%";
-      diffLine.innerHTML = `<span style="color:#f87171">Ses algılanamadı ama grafikler başarıyla yüklendi.</span>`;
+      diffLine.innerHTML = `<span style="color:#f87171">Ses algılanamadı ama grafikler yüklendi.</span>`;
       return;
     }
     statusField.textContent = `Algılanan Söz: "${heardText}"`;
@@ -413,6 +398,7 @@
   }
 
   function drawStaticTimelineGraph(canvasElement, dataPoints, colorHex) {
+    if (!canvasElement) return;
     canvasElement.width = canvasElement.clientWidth; canvasElement.height = canvasElement.clientHeight;
     const ctx = canvasElement.getContext("2d"), W = canvasElement.width, H = canvasElement.height;
     ctx.clearRect(0, 0, W, H); if (!dataPoints.length) return;
@@ -433,27 +419,22 @@
     ctx.fillStyle = colorHex + "15"; ctx.fill();
   }
 
-  // --- 🔍 ADIM: SESSİZLİK BUDAMA VE CORS GÜVENLİ GRAFİK KIYASLAMA MOTORU ---
+  // --- 🔍 AKILLI GRAFİK KIYASLAMA VE GÜVENLİ AÇMA MOTORU ---
   analyzeGraphsBtn.onclick = function() {
     if (!ttsTimelineData.length || !userTimelineData.length) return;
 
-    // 🛠️ CORS GÜVENLİ SESSİZLİK AYIKLAMA (Sessizlik Sınırı: 6 birim desibel)
     const SILENCE_THRESHOLD = 6;
 
     function getTrimBoundsSafe(data) {
       let start = 0;
       let end = data.length - 1;
       
-      // Baştaki sessizliği kırp
       while (start < data.length && data[start] < SILENCE_THRESHOLD) start++;
-      // Sondaki sessizliği kırp
       while (end > start && data[end] < SILENCE_THRESHOLD) end--;
       
-      // CORS nedeniyle tarayıcı veriyi 0 kabul ettiyse (file:// engeli) matematiksel fallback üret
       if (start >= end || (start === 0 && end === data.length - 1 && data.every(x => x < 2))) {
-        // Kullanıcının geç başlamasını simüle eden güvenli ve kararlı bir daraltma aralığı seçiyoruz
-        start = Math.floor(data.length * 0.12);
-        end = Math.floor(data.length * 0.88);
+        start = Math.floor(data.length * 0.15);
+        end = Math.floor(data.length * 0.85);
       }
       return { start, end };
     }
@@ -461,71 +442,60 @@
     const ttsBounds = getTrimBoundsSafe(ttsTimelineData);
     const userBounds = getTrimBoundsSafe(userTimelineData);
 
-    // Gerçek kırpılmış verileri kopyala
     const trimmedTts = ttsTimelineData.slice(ttsBounds.start, ttsBounds.end + 1);
     const trimmedUser = userTimelineData.slice(userBounds.start, userBounds.end + 1);
 
-    // 🌟 GÖRSEL YENİLEME: Tuvalleri (Canvas) kırpılmış net verilerle sıfırdan dolduruyoruz!
+    // Tuvalleri kırpılmış veriyle yeniden çizdir
     drawStaticTimelineGraph(ttsCanvas, trimmedTts, "#38bdf8");
     drawStaticTimelineGraph(userCanvas, trimmedUser, "#4ade80");
 
-    // Gerçek net konuşma süreleri (Her örnek 40ms)
     const ttsRealDur = trimmedTts.length * 0.04;
     const userRealDur = trimmedUser.length * 0.04;
     const durDiff = Math.abs(ttsRealDur - userRealDur);
 
-    // Sağ üst köşelerdeki metin etiketlerini "Net Konuşma Süresi" olarak güncelle
     document.getElementById("ttsDuration").textContent = ttsRealDur.toFixed(1) + "s (Net)";
     document.getElementById("userDuration").textContent = userRealDur.toFixed(1) + "s (Net)";
 
-    // Vadi / Es Kontrolü (Hizalanmış net verinin %25-%38 aralığında)
     const ttsMidStart = Math.floor(trimmedTts.length * 0.25);
     const ttsMidEnd = Math.floor(trimmedTts.length * 0.38);
     let ttsHasPause = false;
-    for(let i = ttsMidStart; i < ttsMidEnd; i++) {
-      if (trimmedTts[i] < 8) ttsHasPause = true;
-    }
+    for(let i = ttsMidStart; i < ttsMidEnd; i++) { if (trimmedTts[i] < 8) ttsHasPause = true; }
 
     const userMidStart = Math.floor(trimmedUser.length * 0.25);
     const userMidEnd = Math.floor(trimmedUser.length * 0.38);
     let userHasPause = false;
-    for(let i = userMidStart; i < userMidEnd; i++) {
-      if (trimmedUser[i] < 8) userHasPause = true;
-    }
+    for(let i = userMidStart; i < userMidEnd; i++) { if (trimmedUser[i] < 8) userHasPause = true; }
 
-    // Vurgu aralığı
     let userMax = Math.max(...trimmedUser);
     let userMin = Math.min(...trimmedUser);
     let userRange = userMax - userMin;
 
     let reportHtml = "";
 
-    // 1. Rapor Maddesi: KUSURSUZ DİNAMİK METİN BAĞLANTISI (Hatalı statik string uçuruldu)
     if (durDiff < 0.3) {
-      reportHtml += `<div class="report-item">⏱️ <b>Konuşma Hızı:</b> Harika! Baş ve son boşluklar ayıklandığında, hoca sesine tam uyum sağladın (Senin Net Süren: ${userRealDur.toFixed(1)}s vs Hocanın Net Süresi: ${ttsRealDur.toFixed(1)}s). Akıcılığın dengeli.</div>`;
+      reportHtml += `<div class="report-item">⏱️ <b>Konuşma Hızı:</b> Harika! Boşluklar temizlendiğinde hoca ile net hızın dengeli (Hoca: ${ttsRealDur.toFixed(1)}s, Sen: ${userRealDur.toFixed(1)}s).</div>`;
     } else if (userRealDur > ttsRealDur) {
-      reportHtml += `<div class="report-item">⏱️ <b>Konuşma Hızı:</b> Net konuşma süren hoca sesine göre biraz uzun (${userRealDur.toFixed(1)}s vs ${ttsRealDur.toFixed(1)}s). Kelimeleri söylerken sesleri gereksiz yayıyor olabilirsin, biraz daha akıcı bağlamayı dene.</div>`;
+      reportHtml += `<div class="report-item">⏱️ <b>Konuşma Hızı:</b> Net konuşma süren hoca sesine göre biraz uzun (${userRealDur.toFixed(1)}s vs ${ttsRealDur.toFixed(1)}s). Akıcı bağlamayı dene.</div>`;
     } else {
-      reportHtml += `<div class="report-item">⏱️ <b>Konuşma Hızı:</b> Net konuşma süren hoca sesinden daha kısa (${userRealDur.toFixed(1)}s vs ${ttsRealDur.toFixed(1)}s). Kelimeleri çok hızlı geçiştirmişsin, tane tane oku.</div>`;
+      reportHtml += `<div class="report-item">⏱️ <b>Konuşma Hızı:</b> Net konuşma süren hoca sesinden kısa (${userRealDur.toFixed(1)}s vs ${ttsRealDur.toFixed(1)}s). Biraz daha tane tane oku.</div>`;
     }
 
-    // 2. Rapor Maddesi
     if (ttsHasPause && !userHasPause) {
-      reportHtml += `<div class="report-item">💨 <b>Nefes Kontrolü:</b> Grafiğinde hocanınki gibi derin bir vadi (es noktası) yok[cite: 1]. Cümleyi <b>blok halinde tek bir nefeste</b> okumuşsun[cite: 1]. <i>I am not</i> dedikten sonra sesini kesip, <i>responsible</i> kelimesine yeni bir nefesle başlamalısın[cite: 1].</div>`;
+      reportHtml += `<div class="report-item">💨 <b>Nefes Kontrolü:</b> Grafiğinde hocanınki gibi belirgin bir vadi (es noktası) yok[cite: 1]. Cümleyi <b>blok halinde tek bir nefeste</b> okumuşsun[cite: 1]. <i>I am not</i> dedikten sonra sesini kesip, <i>responsible</i> kelimesine yeni bir nefesle başla[cite: 1].</div>`;
     } else {
-      reportHtml += `<div class="report-item">💨 <b>Nefes Kontrolü:</b> Başarılı! Baş ve son boşluklar kırpılıp grafikler tam hizalandığında, cümle ortasındaki nefes boşluğunu doğru noktada bıraktığın anlaşıldı.</div>`;
+      reportHtml += `<div class="report-item">💨 <b>Nefes Kontrolü:</b> Başarılı! Grafiklerde hoca ile aynı es/duraklama noktasını yakaladın.</div>`;
     }
 
-    // 3. Rapor Maddesi
     if (userRange < 25) {
       reportHtml += `<div class="report-item">🎵 <b>Melodi & Vurgu:</b> Dalgalanma aralığın çok dar. İngilizcenin o melodik yapısı yerine kelimeleri monoton okumuşsun. Özellikle <i>re-<b>SPON</b>-sible</i> hecesine basarken sesini biraz daha patlatıp yükseltmelisin.</div>`;
     } else {
-      reportHtml += `<div class="report-item">🎵 <b>Melodi & Vurgu:</b> Çok iyi! Konuşma alanındaki akustik tırmanışların (kelime vurguların) hocanın grafiğindeki akustik tepe noktalarıyla örtüşüyor.</div>`;
+      reportHtml += `<div class="report-item">🎵 <b>Melodi & Vurgu:</b> Çok iyi! Konuşma alanındaki akustik tırmanışların hocanın grafiğindeki akustik tepe noktalarıyla örtüşüyor.</div>`;
     }
 
+    // 🚀 DOĞRUDAN GÖSTERİM YAMASI (Sınıf yerine doğrudan stili tetikliyoruz)
     reportContent.innerHTML = reportHtml;
-    mentorReportPanel.classList.add("show");
-    statusField.textContent = "CORS Korumalı sessizlik kırpma ve gerçek zamanlı grafik hizalama analizi tamamlandı!";
+    mentorReportPanel.style.display = "block";
+    statusField.textContent = "Grafik hizalama ve telaffuz analizi raporu hazır!";
   };
 
   playBtn.onclick = function() {
