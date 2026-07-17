@@ -39,7 +39,7 @@ h1{font-size:17px;margin:0}
 </div>
 
 <div class="card">
-  <h2>Hata Türü Eğilimleri (önceki 15 gün → son 15 gün)</h2>
+  <h2>Hata Türü Eğilimleri — hata ORANI, önceki 15 gün → son 15 gün</h2>
   <div id="trendList"><div class="empty">Yükleniyor…</div></div>
 
   <h2>🔬 Kişisel Unutma Eğrin</h2>
@@ -85,19 +85,38 @@ h1{font-size:17px;margin:0}
       types.forEach(function(t){ if(ts>=cut15) recent[t]=(recent[t]||0)+1; else older[t]=(older[t]||0)+1; });
     });
     var all={}; Object.keys(older).forEach(function(t){all[t]=1;}); Object.keys(recent).forEach(function(t){all[t]=1;});
-    var rows=Object.keys(all).map(function(t){ return {t:t,o:older[t]||0,r:recent[t]||0}; })
-      .filter(function(x){ return x.o||x.r; })
-      .sort(function(a,b){ return (b.r-b.o)-(a.r-a.o); });
+    /* HAM SAYI YANILTIR: az çalışılan dönemde az hata "iyileşme" değildir.
+       Karşılaştırma HATA ORANI ile: dönemdeki hata / dönemdeki çalışma hacmi
+       (cümle+tekrar, izleyiciden). Hacim yoksa hata sayısına düşülür. */
+    var tr2={}; try{ tr2=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
+    var days2=tr2.days||{}, volOld=0, volRec=0;
+    for(var di=0;di<30;di++){
+      var dd2=new Date(); dd2.setDate(dd2.getDate()-di);
+      var rec2=days2[dd2.toISOString().slice(0,10)];
+      if(!rec2) continue;
+      var v=(rec2.sentences||0)+(rec2.reviews||0);
+      if(di<15) volRec+=v; else volOld+=v;
+    }
+    var totO=0,totR=0; Object.keys(older).forEach(function(t){totO+=older[t];}); Object.keys(recent).forEach(function(t){totR+=recent[t];});
+    if(volOld<=0) volOld=Math.max(1,totO);
+    if(volRec<=0) volRec=Math.max(1,totR);
+    function rate(n,vol){ return Math.round(1000*n/vol)/10; }   // %, 1 ondalık
+    var rows=Object.keys(all).map(function(t){
+      var o=older[t]||0, r=recent[t]||0;
+      return {t:t, o:o, r:r, po:rate(o,volOld), pr:rate(r,volRec)};
+    }).filter(function(x){ return x.o||x.r; })
+      .sort(function(a,b){ return (b.pr-b.po)-(a.pr-a.po); });
     if(!rows.length){ out.innerHTML='<div class="empty">Son 30 günde yeterli veri yok.</div>'; return; }
-    var max=Math.max.apply(null, rows.map(function(x){return Math.max(x.o,x.r);}))||1;
-    out.innerHTML=rows.map(function(x){
-      var improving=x.r<x.o, worsening=x.r>x.o;
+    var max=Math.max.apply(null, rows.map(function(x){return Math.max(x.po,x.pr);}))||1;
+    out.innerHTML='<div style="font-size:11.5px;color:#64748b;margin-bottom:6px">Oran = hata / çalışma hacmi. Önceki dönem hacmi: '+volOld+' · son dönem: '+volRec+'</div>'
+      +rows.map(function(x){
+      var improving=x.pr<x.po, worsening=x.pr>x.po;
       var cls=improving?"down":(worsening?"up":"");
       var icon=improving?"↓ iyileşiyor":(worsening?"↑ dikkat":"= sabit");
-      var pct=Math.round(100*x.r/max);
+      var pct=Math.round(100*x.pr/max);
       var col=improving?"#4ade80":(worsening?"#f87171":"#64748b");
       return '<div class="trend-item"><span>'+x.t+'</span><div class="bar"><div style="width:'+pct+'%;background:'+col+'"></div></div>'
-        +'<span class="'+cls+'">'+x.o+'→'+x.r+' <small>('+icon+')</small></span></div>';
+        +'<span class="'+cls+'" title="'+x.o+' → '+x.r+' kez">%'+x.po+' → %'+x.pr+' <small>('+icon+')</small></span></div>';
     }).join("");
   }catch(e){ out.innerHTML='<div class="empty">Rapor oluşturulamadı.</div>'; }
 })();
