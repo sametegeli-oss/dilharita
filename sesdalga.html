@@ -2,56 +2,56 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>DilHarita - Görsel Karşılaştırma & Düet Stüdyosu</title>
   <style>
-    body {
-      background: #0b1120;
-      color: #e8eef7;
-      font-family: system-ui, -apple-system, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px;
+    :root {
+      --bg: #0b1120;
+      --surface: #131c30;
+      --border: #ffffff18;
+      --text: #e8eef7;
+      --muted: #93a4bd;
     }
-    .container {
-      background: #131c30;
-      border: 1px solid #ffffff18;
-      border-radius: 24px;
-      padding: 30px;
-      width: min(100%, 540px);
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-      text-align: center;
-    }
-    h2 { color: #60a5fa; margin-top: 0; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; }
     
+    /* 📱 ANA KONTEYNER: Dikeyde esnek, yatayda Grid sütunlarına dönüşür */
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    h2 { color: #60a5fa; margin: 0 0 10px 0; font-size: 22px; text-align: center; grid-column: 1 / -1; }
+    
+    .left-column, .right-column { display: flex; flex-direction: column; gap: 12px; }
+
     .target-phrase-box {
       background: #1e293b;
       border: 1px dashed #38bdf8;
       border-radius: 14px;
-      padding: 15px;
-      margin-bottom: 15px;
+      padding: 12px;
     }
-    .target-en { font-size: 20px; font-weight: 800; color: #fff; }
-    .target-tr { font-size: 13px; color: #94a3b8; margin-top: 5px; font-style: italic; }
+    .target-en { font-size: 18px; font-weight: 800; color: #fff; text-align: center; }
+    .target-tr { font-size: 12px; color: #94a3b8; margin-top: 4px; font-style: italic; text-align: center; }
 
     .media-panel {
       background: #070d19;
       border: 1px solid #ffffff10;
-      border-radius: 20px;
-      padding: 15px;
-      margin-bottom: 15px;
+      border-radius: 16px;
+      padding: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 20px;
+      gap: 16px;
     }
     .avatar-box {
-      width: 80px;
-      height: 80px;
+      width: 70px;
+      height: 70px;
       border-radius: 50%;
       border: 3px solid #34d399;
       background: #050b16;
@@ -62,88 +62,86 @@
       transition: box-shadow 0.2s, border-color 0.2s;
     }
     .avatar-box.speaking { box-shadow: 0 0 20px rgba(37, 99, 235, 0.6); border-color: #2563eb; }
-    .eyes { display: flex; gap: 16px; margin-bottom: 8px; }
-    .eye { width: 8px; height: 8px; background: #e8eef7; border-radius: 50%; }
-    .mouth { width: 22px; height: 4px; background: #f87171; border-radius: 99px; transition: all 0.06s linear; }
-    .mouth.rest { height: 4px; width: 20px; }
-    .mouth.closed { height: 2px; width: 22px; }
-    .mouth.wide { height: 8px; width: 24px; border-radius: 50%; }
-    .mouth.round { height: 16px; width: 16px; border-radius: 50%; }
-    .mouth.open { height: 20px; width: 24px; border-radius: 40% 40% 50% 50%; }
+    .eyes { display: flex; gap: 14px; margin-bottom: 6px; }
+    .eye { width: 7px; height: 7px; background: #e8eef7; border-radius: 50%; }
+    .mouth { width: 18px; height: 4px; background: #f87171; border-radius: 99px; transition: all 0.06s linear; }
+    .mouth.rest { height: 4px; width: 16px; }
+    .mouth.closed { height: 2px; width: 18px; }
+    .mouth.wide { height: 8px; width: 20px; border-radius: 50%; }
+    .mouth.round { height: 14px; width: 16px; border-radius: 50%; }
+    .mouth.open { height: 18px; width: 20px; border-radius: 40% 40% 50% 50%; }
 
-    .live-canvas { width: 100%; height: 40px; background: #020617; border-radius: 8px; margin-bottom: 15px; }
+    .live-canvas { width: 100%; height: 35px; background: #020617; border-radius: 8px; }
 
-    /* 📊 GRAFİK PANELİ */
     .timeline-panel {
       background: #070d19;
       border: 1px solid #ffffff12;
       border-radius: 16px;
-      padding: 15px;
-      margin-bottom: 15px;
-      text-align: left;
+      padding: 12px;
     }
-    .graph-title { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-    .legend-box { display: flex; gap: 15px; font-size: 11px; margin-bottom: 8px; justify-content: flex-end;}
-    .leg-item { display: flex; align-items: center; gap: 5px; color: #94a3b8; }
-    .leg-color { width: 12px; height: 12px; border-radius: 3px; }
+    .graph-title { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .legend-box { display: flex; gap: 12px; font-size: 10.5px; margin-bottom: 6px; justify-content: flex-end;}
+    .leg-item { display: flex; align-items: center; gap: 4px; color: #94a3b8; }
+    .leg-color { width: 10px; height: 12px; border-radius: 2px; }
 
     .compare-studio-wrapper {
       position: relative;
       width: 100%;
-      height: 110px;
+      height: 95px;
       background: #020617;
       border-radius: 12px;
       border: 1px solid #ffffff05;
       overflow: hidden;
     }
-    .overlay-canvas {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
+    .overlay-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
     .mentor-report-panel {
       background: #1e1b4b;
       border: 1px solid #818cf844;
-      border-radius: 16px;
-      padding: 15px;
-      margin-bottom: 15px;
+      border-radius: 14px;
+      padding: 12px;
       text-align: left;
       display: none;
+      max-height: 140px;
+      overflow-y: auto;
     }
-    .report-title { font-weight: 900; font-size: 13px; color: #a5b4fc; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;}
-    .report-item { font-size: 13.5px; line-height: 1.6; margin-top: 6px; color: #e0e7ff; }
+    .report-title { font-weight: 900; font-size: 12px; color: #a5b4fc; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 4px; }
+    .report-item { font-size: 12.5px; line-height: 1.5; margin-top: 4px; color: #e0e7ff; }
 
     .feedback-box {
-      margin: 15px 0;
-      padding: 15px;
-      border-radius: 14px;
+      padding: 12px;
+      border-radius: 16px;
       background: #070d19;
       border: 1px solid #ffffff10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 110px;
     }
-    .score-display { font-size: 36px; font-weight: 900; color: #fff; margin-bottom: 10px; }
-    .diff-line { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; font-size: 16px; font-weight: 700; }
+    .score-display { font-size: 32px; font-weight: 900; color: #fff; margin-bottom: 6px; }
+    .diff-line { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; font-size: 14px; font-weight: 700; }
     
-    .wd-ok { color: #34d399; background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.3); padding: 4px 8px; border-radius: 8px; }
-    .wd-bad { color: #f87171; background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3); padding: 4px 8px; border-radius: 8px; text-decoration: line-through; }
-    .wd-missing { color: #94a3b8; background: rgba(148,163,184,0.08); border: 1px dashed rgba(148,163,184,0.3); padding: 4px 8px; border-radius: 8px; }
+    .wd-ok { color: #34d399; background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.3); padding: 3px 6px; border-radius: 6px; }
+    .wd-bad { color: #f87171; background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3); padding: 3px 6px; border-radius: 6px; text-decoration: line-through; }
+    .wd-missing { color: #94a3b8; background: rgba(148,163,184,0.08); border: 1px dashed rgba(148,163,184,0.3); padding: 3px 6px; border-radius: 6px; }
+
+    /* Buton Grubu Düzenleyicisi */
+    .action-controls { display: flex; flex-direction: column; gap: 6px; }
 
     .btn {
       width: 100%;
       background: #2563eb;
       color: white;
       border: none;
-      border-radius: 12px;
-      padding: 12px;
-      font-size: 15px;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13.5px;
       font-weight: bold;
       cursor: pointer;
-      margin-top: 6px;
-      transition: background 0.2s, transform 0.1s;
+      transition: background 0.15s;
     }
-    .btn:active { transform: scale(0.98); }
+    .btn:active { transform: scale(0.99); }
     .btn.recording { background: #ef4444; }
     .btn.play { background: #16a34a; }
     .btn.hoca { background: #0e7490; }
@@ -151,7 +149,22 @@
     .btn.duet { background: #d97706; } 
     .btn[disabled] { opacity: 0.3; cursor: default; }
     
-    .status { font-size: 13px; color: #93a4bd; margin-top: 12px; min-height: 20px; }
+    .status { font-size: 12px; color: #93a4bd; text-align: center; min-height: 18px; margin-top: 4px; }
+
+    /* 🔄 🎬 DETAYLI MOBİL YATAY (LANDSCAPE) GRİD SİHRİ */
+    @media (min-width: 640px) and (orientation: landscape), (min-width: 850px) {
+      .container {
+        grid-template-columns: 1.1fr 0.9fr; /* Sol genişlik hoca paneli, sağ genişlik kontrol kulesi */
+        padding: 12px;
+        gap: 12px;
+        height: 100vh;
+        align-content: center;
+      }
+      h2 { margin-bottom: 0px; font-size: 20px; }
+      .left-column { justify-content: center; }
+      .right-column { justify-content: center; }
+      .feedback-box { flex: 1; min-height: 90px; }
+    }
   </style>
 </head>
 <body>
@@ -159,54 +172,59 @@
 <div class="container">
   <h2>Görsel Karşılaştırma Stüdyosu</h2>
   
-  <div class="target-phrase-box">
-    <div class="target-en" id="targetEn">I am not responsible for the loss.</div>
-    <div class="target-tr">Kayıptan ben sorumlu değilim.</div>
-  </div>
-
-  <div class="media-panel">
-    <div class="avatar-box" id="avatarBox">
-      <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
-      <div class="mouth rest" id="mouth"></div>
+  <!-- SOL TARAF: AKUSTİK GÖRSEL PANEL -->
+  <div class="left-column">
+    <div class="target-phrase-box">
+      <div class="target-en" id="targetEn">I am not responsible for the loss.</div>
+      <div class="target-tr">Kayıptan ben sorumlu değilim.</div>
     </div>
-    <div style="flex: 1;">
-      <div style="font-size: 11px; color:#64748b; text-align: left; margin-bottom: 2px;">ANLIK FREKANS:</div>
-      <canvas class="live-canvas" id="liveVisualizer"></canvas>
-    </div>
-  </div>
 
-  <div class="timeline-panel">
-    <div class="graph-title">🎙️ Akustik Dalga Bindirme Alanı</div>
-    <div class="legend-box">
-      <div class="leg-item"><div class="leg-color" style="background: #38bdf8;"></div> Hoca <span id="ttsDuration" style="color:#64748b; margin-left:2px;">(0.0s)</span></div>
-      <div class="leg-item"><div class="leg-color" style="background: #4ade80;"></div> Sen <span id="userDuration" style="color:#64748b; margin-left:2px;">(0.0s)</span></div>
+    <div class="media-panel">
+      <div class="avatar-box" id="avatarBox">
+        <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+        <div class="mouth rest" id="mouth"></div>
+      </div>
+      <div style="flex: 1;">
+        <canvas class="live-canvas" id="liveVisualizer"></canvas>
+      </div>
     </div>
-    
-    <div class="compare-studio-wrapper">
-      <canvas class="overlay-canvas" id="studioCanvas"></canvas>
+
+    <div class="timeline-panel">
+      <div class="graph-title">🎙️ Akustik Dalga Bindirme Alanı</div>
+      <div class="legend-box">
+        <div class="leg-item"><div class="leg-color" style="background: #38bdf8;"></div> Hoca <span id="ttsDuration" style="color:#64748b; margin-left:2px;">(0.0s)</span></div>
+        <div class="leg-item"><div class="leg-color" style="background: #4ade80;"></div> Sen <span id="userDuration" style="color:#64748b; margin-left:2px;">(0.0s)</span></div>
+      </div>
+      <div class="compare-studio-wrapper">
+        <canvas class="overlay-canvas" id="studioCanvas"></canvas>
+      </div>
     </div>
-  </div>
 
-  <div class="mentor-report-panel" id="mentorReportPanel">
-    <div class="report-title">🧭 AI Mentor Grafik Kıyaslama Raporu</div>
-    <div id="reportContent"></div>
-  </div>
-
-  <div class="feedback-box">
-    <div class="score-display" id="scoreDisplay">--%</div>
-    <div class="diff-line" id="diffLine">
-      <span style="color:#64748b; font-weight:normal; font-size:14px;">Karşılaştırmak için hoca sesini çizdir ve cümleni oku.</span>
+    <div class="mentor-report-panel" id="mentorReportPanel">
+      <div class="report-title">🧭 AI Mentor Grafik Kıyaslama Raporu</div>
+      <div id="reportContent"></div>
     </div>
   </div>
 
-  <button class="btn hoca" id="analyzeTtsBtn">🎓 Önce Hoca Sesini Çizdir</button>
-  <button class="btn" id="recordBtn" disabled>🎙️ Mikrofonu Aç ve Cümleyi Oku</button>
-  <button class="btn analyze-graphs" id="analyzeGraphsBtn" disabled>🔍 Grafikleri Karşılaştır & Telaffuz Analizi Yap</button>
-  
-  <button class="btn duet" id="duetBtn" disabled>▶ Hocayı ve Beni Aynı Anda Dinle (Kırpılmış Düet)</button>
-  <button class="btn play" id="playBtn" disabled>▶ Sadece Kendi Sesimi Dinle</button>
+  <!-- SAĞ TARAF: KONTROL VE DEĞERLENDİRME KULESİ -->
+  <div class="right-column">
+    <div class="feedback-box">
+      <div class="score-display" id="scoreDisplay">--%</div>
+      <div class="diff-line" id="diffLine">
+        <span style="color:#64748b; font-weight:normal; font-size:13px; text-align: center;">Hoca sesini çizdir ve cümleni oku.</span>
+      </div>
+    </div>
 
-  <div class="status" id="statusField">Hazır. Başlamak için mavi "Hoca Sesini Çizdir" butonuna tıkla.</div>
+    <div class="action-controls">
+      <button class="btn hoca" id="analyzeTtsBtn">🎓 Önce Hoca Sesini Çizdir</button>
+      <button class="btn" id="recordBtn" disabled>🎙️ Mikrofonu Aç ve Cümleyi Oku</button>
+      <button class="btn analyze-graphs" id="analyzeGraphsBtn" disabled>🔍 Grafikleri Karşılaştır & Analiz Et</button>
+      <button class="btn duet" id="duetBtn" disabled>▶ Hocayı ve Beni Aynı Anda Dinle (Düet)</button>
+      <button class="btn play" id="playBtn" disabled>▶ Sadece Kendi Sesimi Dinle</button>
+    </div>
+
+    <div class="status" id="statusField">Hazır. Önce "Hoca Sesini Çizdir" butonuna tıkla.</div>
+  </div>
 </div>
 
 <script>
@@ -361,7 +379,7 @@
         recognition.start();
 
         isRecording = true;
-        recordBtn.textContent = "■ Bitir ve Grafikleri Kaydet";
+        recordBtn.textContent = "■ Bitir ve Grafiği Kaydet";
         recordBtn.classList.add("recording");
         statusField.textContent = "Cümleyi oku, bittiğinde butona tekrar tıkla...";
 
@@ -411,17 +429,13 @@
       setAvatarSpeaking(false); setMouth("rest");
       clearInterval(samplingIntervalId);
       if(liveCtx) liveCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
-      
-      if (recognition) { try{ recognition.stop(); }catch(e){} }
-      if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
-      if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
     }
   };
 
   function processComparison() {
     if (!heardText) {
       scoreDisplay.textContent = "0%";
-      diffLine.innerHTML = `<span style="color:#f87171">Ses algılanamadı ama grafikler başarıyla yüklendi.</span>`;
+      diffLine.innerHTML = `<span style="color:#f87171">Ses algılanamadı ama grafikler yüklendi.</span>`;
       return;
     }
     statusField.textContent = `Algılanan Söz: "${heardText}"`;
@@ -443,7 +457,6 @@
     studioCtx.clearRect(0, 0, studioCanvas.width, studioCanvas.height);
   }
 
-  // --- STÜDYO ÇİZİM MOTORU ---
   function drawStudioGraphs() {
     studioCanvas.width = studioCanvas.clientWidth;
     studioCanvas.height = studioCanvas.clientHeight;
@@ -456,7 +469,6 @@
       studioCtx.strokeStyle = colorHex; studioCtx.lineCap = "round"; studioCtx.lineJoin = "round";
       studioCtx.beginPath();
       
-      // 🌟 ÖNEMLİ DÜZELTME: Kırpılmış veriyi tam ekrana yaymak için stepX güncellendi!
       const stepX = W / Math.max(dataPoints.length - 1, 1);
       
       for (let i = 0; i < dataPoints.length; i++) {
@@ -502,7 +514,6 @@
     finalTtsData = ttsTimelineData.slice(cachedTtsBounds.start, cachedTtsBounds.end + 1);
     finalUserData = userTimelineData.slice(cachedUserBounds.start, cachedUserBounds.end + 1);
 
-    // 🌟 Kırpılmış veriyi tam ekrana yayılmış olarak baştan çizdir
     drawStudioGraphs();
     duetBtn.disabled = false; 
 
@@ -530,7 +541,7 @@
     let reportHtml = "";
 
     if (durDiff < 0.3) {
-      reportHtml += `<div class="report-item">⏱️ <b>Konuşma Hızı:</b> Harika! Baş ve son boşluklar temizlendiğinde hoca ile net hızın tamamen dengeli (Hoca: ${ttsRealDur.toFixed(1)}s, Sen: ${userRealDur.toFixed(1)}s).</div>`;
+      reportHtml += `<div class="report-item">⏱️ <b>Konuşma Hızı:</b> Harika! Hoca ile net hızın tamamen dengeli (Hoca: ${ttsRealDur.toFixed(1)}s, Sen: ${userRealDur.toFixed(1)}s).</div>`;
     } else if (userRealDur > ttsRealDur) {
       reportHtml += `<div class="report-item">⏱️ <b>Konuşma Hızı:</b> Net konuşma süren hoca sesine göre biraz uzun (${userRealDur.toFixed(1)}s vs ${ttsRealDur.toFixed(1)}s). Akıcı bağlamayı dene.</div>`;
     } else {
@@ -551,13 +562,13 @@
 
     reportContent.innerHTML = reportHtml;
     mentorReportPanel.style.display = "block";
-    statusField.textContent = "Görsel grafik bindirme ve telaffuz analizi raporu hazır!";
+    statusField.textContent = "Grafik hizalama ve telaffuz analizi raporu hazır!";
   };
 
   // --- PARALEL SES OYNATMA (DÜET MODU) ---
   duetBtn.onclick = function() {
     if (!voiceUrl || !finalUserData.length || !finalTtsData.length) return;
-    statusField.textContent = "Düet Başladı! İki ses de tam kırpılmış başlangıç noktalarından paralel çalıyor.";
+    statusField.textContent = "Düet Oynatılıyor...";
     
     try { speechSynthesis.cancel(); } catch(e){}
 
@@ -567,7 +578,6 @@
     const userAudio = new Audio(voiceUrl);
     const userStartSeconds = cachedUserBounds.start * 0.04;
     
-    // Tarayıcı çizgisinin tam kilitli yürümesi için en uzun örnek boyutunu baz alıyoruz
     let totalSamples = Math.max(finalTtsData.length, finalUserData.length);
     let currentSampleIdx = 0;
 
@@ -577,10 +587,7 @@
       userAudio.play();
 
       samplingIntervalId = setInterval(() => {
-        if (currentSampleIdx >= totalSamples) {
-          clearInterval(samplingIntervalId);
-          return;
-        }
+        if (currentSampleIdx >= totalSamples) { clearInterval(samplingIntervalId); return; }
         playheadProgress = (currentSampleIdx / totalSamples) * 100;
         drawStudioGraphs();
         currentSampleIdx++;
@@ -592,14 +599,11 @@
       try { speechSynthesis.cancel(); } catch(e){}
       try { userAudio.pause(); } catch(e){}
       setAvatarSpeaking(false); setMouth("rest");
-      playheadProgress = -1;
-      drawStudioGraphs();
+      playheadProgress = -1; drawStudioGraphs();
       statusField.textContent = "Düet oynatımı tamamlandı.";
     };
 
-    userAudio.onended = stopDuet;
-    ttsAudioUtterance.onend = stopDuet;
-
+    userAudio.onended = stopDuet; ttsAudioUtterance.onend = stopDuet;
     speechSynthesis.speak(ttsAudioUtterance);
   };
 
