@@ -151,7 +151,7 @@
       +'<div id="dhDrillBody" style="padding:16px;overflow-y:auto;color:#dbe7ff;font-size:14.5px;line-height:1.6"></div>'
       +'</div>';
     document.body.appendChild(ov);
-    document.getElementById("dhDrillX").onclick=function(){ ov.remove(); S=null; };
+    document.getElementById("dhDrillX").onclick=function(){ ov.remove(); S=null; clearState(); };
     S.overlay=ov;
   }
   function B(){ return document.getElementById("dhDrillBody"); }
@@ -184,6 +184,7 @@
 
   function cur(){ return S.q[S.qi]; }
   function next(){
+    saveState();
     if(S.qi>=S.q.length) return renderDone();
     var it=cur();
     setProg();
@@ -306,8 +307,10 @@
       +'<input id="dhFixInp" autocapitalize="none" autocomplete="off" spellcheck="false" style="width:100%;margin-top:6px;background:#0b1120;border:1px solid #4c1d95;color:#e8eef7;border-radius:10px;padding:11px;font-size:15px">'
       +'<div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap">'
       +'<button id="dhFixOk" style="background:#7c3aed;border:0;color:#fff;font-weight:800;font-size:12.5px;padding:8px 13px;border-radius:999px;cursor:pointer">Yazdım →</button>'
-      +'<a href="'+teacherHref(tp)+'" style="background:#1d4ed8;color:#fff;text-decoration:none;font-weight:800;font-size:12.5px;padding:8px 13px;border-radius:999px">🧑‍🏫 Öğretmenle çalış</a>'
+      +'<a id="dhFbTeach" href="'+teacherHref(tp)+'" style="background:#1d4ed8;color:#fff;text-decoration:none;font-weight:800;font-size:12.5px;padding:8px 13px;border-radius:999px">🧑‍🏫 Öğretmenle çalış</a>'
       +'</div>';
+    var __tl=document.getElementById("dhFbTeach");
+    if(__tl) __tl.addEventListener("click",function(){ stashTeachCtx(it); saveState(); });
     var fi=document.getElementById("dhFixInp"); fi.focus();
     function proceed(){
       if(norm(fi.value)!==norm(e.target)){ fi.style.borderColor="#f87171"; fi.placeholder="Aynen yaz: "+e.target; fi.value=""; return; }
@@ -327,6 +330,7 @@
 
   /* ---------- BİTİŞ ---------- */
   function renderDone(){
+    clearState();
     document.getElementById("dhDrillProg").textContent="";
     document.getElementById("dhDrillBarIn").style.width="100%";
     var total=S.right+S.wrong, pct=total?Math.round(100*S.right/total):0;
@@ -348,5 +352,41 @@
     try{ window.dhLogActivity&&window.dhLogActivity("🏋️ Hata antrenmanı: %"+pct+" ("+mastered.length+" ustalık)","drill"); }catch(e){}
   }
 
-  window.dhErrorDrill={ open:open, __v2:true };
+  /* ── OTURUM KALICILIĞI: öğretmene gidiş antrenmanı ÖLDÜRMEZ ──
+     next() her adımda durumu yazar; koç çipi kaldığın maddeden sürdürür. */
+  function saveState(){
+    try{
+      if(!S) return;
+      var idx=function(it){ return S.items.indexOf(it); };
+      sessionStorage.setItem("dh-drill-state", JSON.stringify({
+        t:Date.now(), returnTo:location.pathname+location.search,
+        items:S.items.map(function(it){ return {err:it.err,lesson:it.lesson,stage:it.stage,tries:it.tries,prodSalt:it.prodSalt,requeued:it.requeued,mastered:it.mastered,failed:it.failed}; }),
+        q:S.q.map(idx), qi:S.qi, right:S.right, wrong:S.wrong, typesWrong:S.typesWrong, t0:S.t0
+      }));
+    }catch(e){}
+  }
+  function clearState(){ try{ sessionStorage.removeItem("dh-drill-state"); }catch(e){} }
+  function resume(){
+    try{
+      var st=JSON.parse(sessionStorage.getItem("dh-drill-state")||"null");
+      if(!st||!st.items||!st.items.length) return false;
+      if(document.getElementById("dhDrillOverlay")) return true;
+      S={items:st.items.map(function(o){ return {err:o.err,lesson:o.lesson,stage:o.stage,tries:o.tries||0,prodSalt:o.prodSalt||0,requeued:o.requeued||0,mastered:!!o.mastered,failed:!!o.failed}; }),
+         q:[],qi:st.qi||0,right:st.right||0,wrong:st.wrong||0,typesWrong:st.typesWrong||{},t0:st.t0||Date.now(),overlay:null};
+      S.q=(st.q||[]).map(function(i){ return S.items[i]; }).filter(Boolean);
+      if(!S.q.length){ clearState(); return false; }
+      mount(); next();
+      return true;
+    }catch(e){ return false; }
+  }
+  function stashTeachCtx(it){
+    try{
+      var e=it.err, L=it.lesson||{}, tp=e.primaryType||"general";
+      sessionStorage.setItem("dh-teach-focus", JSON.stringify({
+        t:Date.now(), type:tp, label:(TL[tp]||tp),
+        target:e.target, answer:e.answer||"", tr:e.sentenceTR||"",
+        tip:L.why||L.rule||TT[tp]||"" }));
+    }catch(e2){}
+  }
+  window.dhErrorDrill={ open:open, resume:resume, __v2:true };
 })();

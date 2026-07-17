@@ -31,9 +31,27 @@ Scenario.frames = Object.assign({}, DEFAULT_SCENARIO.frames, (window.CHAT_SCENAR
 var __dhIsTeacher = /teacher|öğretmen|ogretmen/i.test((Scenario.title||"") + " " + (Scenario.role||""));
 /* Koç balonundan "?focus=hataTürü" ile gelinirse bu oturum o hataya odaklanır */
 var __dhFocus = ""; try{ __dhFocus = new URLSearchParams(location.search).get("focus") || ""; }catch(e){}
+/* Antrenmandan gelen SOMUT hata bağlamı (cümle, yanlış, kural) — öğretmen boş
+   karşılama yerine doğrudan o hatayı öğretmeye başlar */
+var __dhTeach=null; try{
+  var __tRaw=sessionStorage.getItem("dh-teach-focus");
+  if(__tRaw){ __dhTeach=JSON.parse(__tRaw); if(!__dhTeach||Date.now()-(__dhTeach.t||0)>2*3600000) __dhTeach=null; }
+}catch(e){}
+function __dhOpener(){
+  if(__dhTeach&&__dhTeach.target){
+    return "Welcome back! I heard you struggled with this sentence in your drill:\n"
+      +(__dhTeach.answer?("✗ "+__dhTeach.answer+"\n"):"")
+      +"✓ "+__dhTeach.target
+      +(__dhTeach.tip?("\n(Kural: "+__dhTeach.tip+")"):"")
+      +"\nLet's master it together. First, you try: "
+      +(__dhTeach.tr?("translate this into English — \""+__dhTeach.tr+"\""):"write the correct sentence yourself.");
+  }
+  if(__dhFocus) return "Your coach sent you to practice \""+__dhFocus+"\" with me. Let's work on it together! I'll give you short prompts — first, write any sentence using this pattern.";
+  return Scenario.opener;
+}
 const State = {
   level: localStorage.getItem("chat:level:" + safeId(Scenario.title + ":" + (Scenario.avatarDir||""))) || Scenario.level || "A2",
-  currentPartner: Scenario.opener,
+  currentPartner: __dhOpener(),
   busy:false,
   speaking:false,
   history:[]
@@ -310,6 +328,7 @@ function systemPrompt(){
   return [Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."), levelGuide(), "Always reply in English unless the user explicitly asks for Turkish.", "Keep replies short: 1 to 3 sentences.", "Ask a follow-up question to keep the conversation going.", "If the user makes a clear mistake, gently model the correct version without lecturing.", "No emojis.",
     (__dhProfile?("\n[STUDENT PROFILE — use this to personalize, in Turkish data]\n"+__dhProfile+"\nWhen the student repeats one of their known error patterns, gently correct it and briefly note it is a frequent mistake of theirs. Naturally create situations that make the student use the patterns they struggle with."):""),
     (__dhIsTeacher?"\n[COACH ROLE] You are not only a conversation partner but also the student's personal coach. The profile above includes their daily coach plan (BUGÜNÜN KOÇ PLANI) and weekly goal (HAFTALIK HEDEF). In your FIRST reply, acknowledge their streak, plan or goal in ONE short friendly sentence, then continue teaching. Steer the practice toward the weekly goal and the unfinished (⬜) plan steps. If they completed steps (✅), congratulate briefly.":""),
+    (__dhTeach&&__dhTeach.target?("\n[EXACT ERROR CONTEXT] The student's own mistake: wrong=\""+(__dhTeach.answer||"")+"\" correct=\""+__dhTeach.target+"\" (TR: \""+(__dhTeach.tr||"")+"\"). Rule: "+(__dhTeach.tip||"")+". Start THIS session by teaching exactly this, then create 2-3 similar practice prompts."):""),
     (__dhFocus?("\n[FOCUS DRILL] The coach sent the student to you specifically to work on this error type: \""+__dhFocus+"\". Build most of this session around it: create short prompts that force the student to produce this pattern, correct their attempts, and give ONE short Turkish tip when they slip. Mention at the start, in one sentence, that you two will practice this together."):""),
     "\n[TASKS] The student must complete these in-scenario tasks: "+__dhTasks.map(function(t,i){return (i+1)+") "+t;}).join(" ")+" Weave them naturally into the conversation. When the user GENUINELY completes task N, append the marker [TASK_DONE:N] at the very end of your reply. Never mention the markers or tasks mechanically."
   ].join("\n");
@@ -483,7 +502,7 @@ async function suggestReply(){
       + "\n\nNOW: The USER is stuck and wants a suggested reply. Based on the conversation so far and the partner's last message, write ONE natural English sentence that the USER (the learner) could say next. "
       + "Match the learner's level ("+State.level+"): keep it simple and appropriate. "
       + "Reply with ONLY that single English sentence — no quotes, no Turkish, no explanation.";
-    const messages=[{role:"system",content:sys},{role:"assistant",content:Scenario.opener},...State.history.slice(-10),
+    const messages=[{role:"system",content:sys},{role:"assistant",content:__dhOpener()},...State.history.slice(-10),
       {role:"user",content:"(Suggest what I could say next — English only, one sentence.)"}];
     let reply=await groqChat(messages);
     reply=String(reply||"").trim().replace(/^["'“”]+|["'“”]+$/g,"").split("\n")[0].trim();
@@ -534,7 +553,7 @@ async function sendUser(){
         });
       }
     }catch(e){}
-    const messages=[{role:"system",content:systemPrompt()},{role:"assistant",content:Scenario.opener},...State.history.slice(-10)];
+    const messages=[{role:"system",content:systemPrompt()},{role:"assistant",content:__dhOpener()},...State.history.slice(-10)];
     const reply=await groqChat(messages);
     removeTyping();
     State.currentPartner=dhStripTasks(reply) || "Could you please say that again?";

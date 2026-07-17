@@ -117,6 +117,34 @@
       localStorage.removeItem("dh-close-tour"); return 0;
     }catch(e){ return 0; }
   }
+  /* 🏋️ Yarım kalan antrenman: her sayfada devam çipi; #dh-drill-resume ile otomatik */
+  function dhDrillPending(){
+    try{ var st=JSON.parse(sessionStorage.getItem("dh-drill-state")||"null");
+      if(st&&st.items&&Date.now()-(st.t||0)<2*3600000) return st; }catch(e){}
+    return null;
+  }
+  function dhMountDrillChip(){
+    var st=dhDrillPending(); if(!st) return;
+    if(document.getElementById("dhDrillChip")||document.getElementById("dhDrillOverlay")) return;
+    var chip=document.createElement("button");
+    chip.id="dhDrillChip";
+    chip.textContent="🏋️ Antrenmana devam ("+Math.min((st.qi||0)+1, st.q.length)+"/"+st.q.length+")";
+    chip.style.cssText="position:fixed;left:14px;bottom:14px;z-index:2147482900;background:linear-gradient(135deg,#059669,#0d9488);color:#fff;border:0;border-radius:999px;padding:11px 16px;font:800 13.5px system-ui;box-shadow:0 8px 22px rgba(0,0,0,.45);cursor:pointer";
+    chip.onclick=function(){
+      chip.remove();
+      dhLoadDrill(function(){ window.dhErrorDrill&&window.dhErrorDrill.resume&&window.dhErrorDrill.resume(); });
+    };
+    document.body.appendChild(chip);
+  }
+  setTimeout(function(){
+    try{
+      if(location.hash==="#dh-drill-resume" && dhDrillPending()){
+        history.replaceState(null,"",location.pathname+location.search);
+        dhLoadDrill(function(){ window.dhErrorDrill&&window.dhErrorDrill.resume&&window.dhErrorDrill.resume(); });
+      } else dhMountDrillChip();
+    }catch(e){}
+  }, 900);
+
   window.dhCoachReopenDay=function(){
     /* Yeniden açmak = taze oturum: kilit KALKAR, plan adımlarının ✓ işaretleri
        SIFIRLANIR (yeşil/üstü çizili kalmasın — kullanıcı isteği). Plan ve tüm
@@ -124,6 +152,7 @@
     try{ localStorage.removeItem("dh-day-closed-"+dhToday()); }catch(e){}
     try{ localStorage.removeItem("dh-koc-steps-done-"+dhToday()); }catch(e){}
     try{ localStorage.removeItem("dh-close-tour"); }catch(e){}
+    try{ localStorage.setItem("dh-just-reopened", String(Date.now())); }catch(e){}
     try{ window.dhCoachSay("Gün yeniden açıldı — adımlar sıfırlandı, haydi baştan 💪","praise"); }catch(e){}
     try{ setTimeout(function(){ location.reload(); }, 1300); }catch(e){}
   };
@@ -768,6 +797,15 @@
        (Eskiden bu iki durumda bile "bugünü kaçırma!" nag'ı dönüyordu — avatar
        tıklamasındaki manuel yol korumasızdı, teklifi de ezebiliyordu.) */
     try{
+      /* az önce "günü yeniden aç" dendi: seri dürtmesi yerine devam selamı */
+      try{
+        var __ro=+localStorage.getItem("dh-just-reopened")||0;
+        if(__ro && Date.now()-__ro<2*60000){
+          /* bayrak TÜKETİLMEZ — 2 dk penceresi içinde her yol aynı selamı verir
+             (ilk okuyanın yutması, avatara tıklayana eski nag'ı gösteriyordu) */
+          return {msg:"Gün yeniden açık 🔓 Adımlar sıfırlandı — kaldığın yerden devam, ben buradayım!", kind:"praise"};
+        }
+      }catch(e){}
       if(dhDayClosed())
         return {msg:"Bugünü kapattın 🌙 Dinlenmek de antrenmanın parçası. Devam etmek istersen günü yeniden açabilirsin.", kind:"praise", reopen:true};
       if(allPlanStepsDone()){
