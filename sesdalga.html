@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DilHarita - Grafik Analiz Laboratuvarı (Nihai Sürüm)</title>
+  <title>DilHarita - Görsel Karşılaştırma & Düet Stüdyosu</title>
   <style>
     body {
       background: #0b1120;
@@ -22,7 +22,7 @@
       border: 1px solid #ffffff18;
       border-radius: 24px;
       padding: 30px;
-      width: min(100%, 520px);
+      width: min(100%, 540px);
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
       text-align: center;
     }
@@ -82,19 +82,28 @@
       margin-bottom: 15px;
       text-align: left;
     }
-    .graph-title { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-    .graph-title span { color: #fff; float: right; font-weight: normal; text-transform: none; }
-    .static-canvas {
+    .graph-title { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .legend-box { display: flex; gap: 15px; font-size: 11px; margin-bottom: 8px; justify-content: flex-end;}
+    .leg-item { display: flex; align-items: center; gap: 5px; color: #94a3b8; }
+    .leg-color { width: 12px; height: 12px; border-radius: 3px; }
+
+    .compare-studio-wrapper {
+      position: relative;
       width: 100%;
-      height: 70px;
+      height: 110px;
       background: #020617;
-      border-radius: 10px;
+      border-radius: 12px;
       border: 1px solid #ffffff05;
+      overflow: hidden;
+    }
+    .overlay-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
       display: block;
-      margin-bottom: 12px;
     }
 
-    /* 🧠 YAPAY MENTOR PEDAGOJİK ANALİZ PANELİ */
     .mentor-report-panel {
       background: #1e1b4b;
       border: 1px solid #818cf844;
@@ -102,13 +111,11 @@
       padding: 15px;
       margin-bottom: 15px;
       text-align: left;
-      display: none; /* JS tarafından doğrudan block yapılacak */
+      display: none;
     }
     .report-title { font-weight: 900; font-size: 13px; color: #a5b4fc; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;}
     .report-item { font-size: 13.5px; line-height: 1.6; margin-top: 6px; color: #e0e7ff; }
-    .report-item b { color: #fda4af; }
 
-    /* Sonuç Alanı */
     .feedback-box {
       margin: 15px 0;
       padding: 15px;
@@ -141,6 +148,7 @@
     .btn.play { background: #16a34a; }
     .btn.hoca { background: #0e7490; }
     .btn.analyze-graphs { background: #7c3aed; }
+    .btn.duet { background: #d97706; } /* Turuncu Düet Butonu */
     .btn[disabled] { opacity: 0.3; cursor: default; }
     
     .status { font-size: 13px; color: #93a4bd; margin-top: 12px; min-height: 20px; }
@@ -149,7 +157,7 @@
 <body>
 
 <div class="container">
-  <h2>Telaffuz Zaman/Şiddet Analizi</h2>
+  <h2>Görsel Karşılaştırma Stüdyosu</h2>
   
   <div class="target-phrase-box">
     <div class="target-en" id="targetEn">I am not responsible for the loss.</div>
@@ -168,14 +176,17 @@
   </div>
 
   <div class="timeline-panel">
-    <div class="graph-title">🌐 1. Orijinal Hoca Cümlesi <span id="ttsDuration">0.0s</span></div>
-    <canvas class="static-canvas" id="ttsGraphCanvas"></canvas>
-
-    <div class="graph-title">🎙️ 2. Senin Telaffuz Grafiğin <span id="userDuration">0.0s</span></div>
-    <canvas class="static-canvas" id="userGraphCanvas"></canvas>
+    <div class="graph-title">🎙️ Akustik Dalga Bindirme Alanı</div>
+    <div class="legend-box">
+      <div class="leg-item"><div class="leg-color" style="background: #38bdf8;"></div> Hoca <span id="ttsDuration" style="color:#64748b; margin-left:2px;">(0.0s)</span></div>
+      <div class="leg-item"><div class="leg-color" style="background: #4ade80;"></div> Sen <span id="userDuration" style="color:#64748b; margin-left:2px;">(0.0s)</span></div>
+    </div>
+    
+    <div class="compare-studio-wrapper">
+      <canvas class="overlay-canvas" id="studioCanvas"></canvas>
+    </div>
   </div>
 
-  <!-- Rapor Paneli -->
   <div class="mentor-report-panel" id="mentorReportPanel">
     <div class="report-title">🧭 AI Mentor Grafik Kıyaslama Raporu</div>
     <div id="reportContent"></div>
@@ -191,7 +202,10 @@
   <button class="btn hoca" id="analyzeTtsBtn">🎓 Önce Hoca Sesini Çizdir</button>
   <button class="btn" id="recordBtn" disabled>🎙️ Mikrofonu Aç ve Cümleyi Oku</button>
   <button class="btn analyze-graphs" id="analyzeGraphsBtn" disabled>🔍 Grafikleri Karşılaştır & Telaffuz Analizi Yap</button>
-  <button class="btn play" id="playBtn" disabled>▶ Kendi Sesimi Dinle & İncele</button>
+  
+  <!-- 💥 YENİ DÜET BUTONU -->
+  <button class="btn duet" id="duetBtn" disabled>▶ Hocayı ve Beni Aynı Anda Dinle (Kırpılmış Düet)</button>
+  <button class="btn play" id="playBtn" disabled>▶ Sadece Kendi Sesimi Dinle</button>
 
   <div class="status" id="statusField">Hazır. Başlamak için mavi "Hoca Sesini Çizdir" butonuna tıkla.</div>
 </div>
@@ -207,16 +221,25 @@
 
   let ttsTimelineData = [];
   let userTimelineData = [];
+  
+  let finalTtsData = [];
+  let finalUserData = [];
+
+  // Akıllı senkronizasyon için sınır objeleri
+  let cachedTtsBounds = { start: 0, end: 0 };
+  let cachedUserBounds = { start: 0, end: 0 };
+
   let samplingIntervalId = null;
+  let playheadProgress = -1; 
 
   const liveCanvas = document.getElementById("liveVisualizer");
-  // --- ÖNEMLİ DÜZELTME: getContext("2d") parantezleri eklendi! ---
-  const liveCtx = liveCanvas.getContext("2d"); 
-  const ttsCanvas = document.getElementById("ttsGraphCanvas");
-  const userCanvas = document.getElementById("userGraphCanvas");
+  const liveCtx = liveCanvas.getContext("2d");
+  const studioCanvas = document.getElementById("studioCanvas");
+  const studioCtx = studioCanvas.getContext("2d");
 
   const recordBtn = document.getElementById("recordBtn");
   const playBtn = document.getElementById("playBtn");
+  const duetBtn = document.getElementById("duetBtn");
   const analyzeTtsBtn = document.getElementById("analyzeTtsBtn");
   const analyzeGraphsBtn = document.getElementById("analyzeGraphsBtn");
   const mentorReportPanel = document.getElementById("mentorReportPanel");
@@ -269,9 +292,10 @@
   // --- HOCA ANALİZİ ---
   analyzeTtsBtn.onclick = function() {
     statusField.textContent = "Hoca cümlesi seslendiriliyor...";
-    ttsTimelineData = [];
+    ttsTimelineData = []; finalTtsData = []; finalUserData = []; playheadProgress = -1;
     mentorReportPanel.style.display = "none";
-    analyzeGraphsBtn.disabled = true;
+    analyzeGraphsBtn.disabled = true; duetBtn.disabled = true;
+    clearStudioCanvas();
 
     let startTime = Date.now();
     try { speechSynthesis.cancel(); } catch(e){}
@@ -291,8 +315,9 @@
       else mockVolume = 1;
 
       ttsTimelineData.push(mockVolume);
-      drawStaticTimelineGraph(ttsCanvas, ttsTimelineData, "#38bdf8");
-      document.getElementById("ttsDuration").textContent = t.toFixed(1) + "s";
+      finalTtsData = ttsTimelineData;
+      drawStudioGraphs();
+      document.getElementById("ttsDuration").textContent = `(${t.toFixed(1)}s)`;
     }, 40);
 
     u.onstart = () => setAvatarSpeaking(true);
@@ -308,8 +333,8 @@
   // --- KULLANICI MİKROFON ANALİZİ ---
   recordBtn.onclick = async function() {
     if (!isRecording) {
-      recordedChunks = []; userTimelineData = []; heardText = "";
-      playBtn.disabled = true; analyzeGraphsBtn.disabled = true;
+      recordedChunks = []; userTimelineData = []; finalUserData = []; playheadProgress = -1;
+      heardText = ""; playBtn.disabled = true; analyzeGraphsBtn.disabled = true; duetBtn.disabled = true;
       mentorReportPanel.style.display = "none";
       liveCanvas.width = liveCanvas.clientWidth; liveCanvas.height = liveCanvas.clientHeight;
 
@@ -354,12 +379,12 @@
           let avg = total / dataArray.length;
 
           userTimelineData.push(avg);
-          drawStaticTimelineGraph(userCanvas, userTimelineData, "#4ade80");
+          finalUserData = userTimelineData;
+          drawStudioGraphs();
           
           let dur = (Date.now() - userStartTime) / 1000;
-          document.getElementById("userDuration").textContent = dur.toFixed(1) + "s";
+          document.getElementById("userDuration").textContent = `(${dur.toFixed(1)}s)`;
 
-          // Canlı küçük frekans çubuklarını çiz (Parantez düzeldiği için burası artık patlamaz)
           if(liveCtx) {
             liveCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
             liveCtx.fillStyle = "#2563eb";
@@ -414,74 +439,91 @@
     });
   }
 
-  function drawStaticTimelineGraph(canvasElement, dataPoints, colorHex) {
-    if (!canvasElement) return;
-    canvasElement.width = canvasElement.clientWidth; canvasElement.height = canvasElement.clientHeight;
-    const ctx = canvasElement.getContext("2d"), W = canvasElement.width, H = canvasElement.height;
-    ctx.clearRect(0, 0, W, H); if (!dataPoints.length) return;
-
-    ctx.lineWidth = 2.5; ctx.strokeStyle = colorHex; ctx.lineCap = "round"; ctx.lineJoin = "round";
-    ctx.beginPath();
-    const stepX = W / Math.max(dataPoints.length, 100);
-    
-    for (let i = 0; i < dataPoints.length; i++) {
-      let val = dataPoints[i];
-      let y = H - (val / 100) * (H * 0.85) - 4;
-      y = Math.max(2, Math.min(y, H - 2));
-      let x = i * stepX;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-    ctx.lineTo((dataPoints.length - 1) * stepX, H); ctx.lineTo(0, H);
-    ctx.fillStyle = colorHex + "15"; ctx.fill();
+  function clearStudioCanvas() {
+    studioCanvas.width = studioCanvas.clientWidth;
+    studioCanvas.height = studioCanvas.clientHeight;
+    studioCtx.clearRect(0, 0, studioCanvas.width, studioCanvas.height);
   }
 
-  // --- 🔍 ADIM: SESSİZLİK BUDAMA VE GARANTİLİ DOĞRUDAN GÖSTERİM MOTORU ---
+  // --- STÜDYO ÇİZİM MOTORU ---
+  function drawStudioGraphs() {
+    studioCanvas.width = studioCanvas.clientWidth;
+    studioCanvas.height = studioCanvas.clientHeight;
+    const W = studioCanvas.width, H = studioCanvas.height;
+    studioCtx.clearRect(0, 0, W, H);
+
+    function drawSingleWave(dataPoints, colorHex, isUser) {
+      if (!dataPoints.length) return;
+      studioCtx.lineWidth = isUser ? 3 : 2.5; 
+      studioCtx.strokeStyle = colorHex; studioCtx.lineCap = "round"; studioCtx.lineJoin = "round";
+      studioCtx.beginPath();
+      const stepX = W / Math.max(dataPoints.length, 100);
+      for (let i = 0; i < dataPoints.length; i++) {
+        let val = dataPoints[i];
+        let y = H - (val / 100) * (H * 0.82) - 4;
+        y = Math.max(2, Math.min(y, H - 2));
+        let x = i * stepX;
+        if (i === 0) studioCtx.moveTo(x, y); else studioCtx.lineTo(x, y);
+      }
+      studioCtx.stroke();
+      studioCtx.lineTo((dataPoints.length - 1) * stepX, H); studioCtx.lineTo(0, H);
+      studioCtx.fillStyle = colorHex + (isUser ? "25" : "12"); studioCtx.fill();
+    }
+
+    drawSingleWave(finalTtsData, "#38bdf8", false);
+    drawSingleWave(finalUserData, "#4ade80", true);
+
+    if (playheadProgress >= 0 && playheadProgress <= 100) {
+      let lineX = (playheadProgress / 100) * W;
+      studioCtx.lineWidth = 2; studioCtx.strokeStyle = "#f43f5e"; studioCtx.shadowColor = "#f43f5e"; studioCtx.shadowBlur = 8;
+      studioCtx.beginPath(); studioCtx.moveTo(lineX, 0); studioCtx.lineTo(lineX, H); studioCtx.stroke();
+      studioCtx.shadowBlur = 0;
+    }
+  }
+
+  // --- 🔍 ADIM: SESSİZLİK BUDAMA VE RAPOR MOTORU ---
   analyzeGraphsBtn.onclick = function() {
     if (!ttsTimelineData.length || !userTimelineData.length) return;
 
-    const SILENCE_THRESHOLD = 8; // Canlı mikrofon verisi için en ideal budama eşiği
+    const SILENCE_THRESHOLD = 8;
 
     function getTrimBoundsSafe(data) {
-      let start = 0;
-      let end = data.length - 1;
-      
+      let start = 0; let end = data.length - 1;
       while (start < data.length && data[start] < SILENCE_THRESHOLD) start++;
       while (end > start && data[end] < SILENCE_THRESHOLD) end--;
-      
       if (start >= end) { start = 0; end = data.length - 1; }
       return { start, end };
     }
 
-    const ttsBounds = getTrimBoundsSafe(ttsTimelineData);
-    const userBounds = getTrimBoundsSafe(userTimelineData);
+    // İndeksleri önbelleğe al (Düet butonu kullanacak)
+    cachedTtsBounds = getTrimBoundsSafe(ttsTimelineData);
+    cachedUserBounds = getTrimBoundsSafe(userTimelineData);
 
-    const trimmedTts = ttsTimelineData.slice(ttsBounds.start, ttsBounds.end + 1);
-    const trimmedUser = userTimelineData.slice(userBounds.start, userBounds.end + 1);
+    finalTtsData = ttsTimelineData.slice(cachedTtsBounds.start, cachedTtsBounds.end + 1);
+    finalUserData = userTimelineData.slice(cachedUserBounds.start, cachedUserBounds.end + 1);
 
-    // Tuvalleri kırpılmış veriyle yeniden çizdir
-    drawStaticTimelineGraph(ttsCanvas, trimmedTts, "#38bdf8");
-    drawStaticTimelineGraph(userCanvas, trimmedUser, "#4ade80");
+    drawStudioGraphs();
+    duetBtn.disabled = false; // Analiz yapılınca Düet modunu aktif et!
 
-    const ttsRealDur = trimmedTts.length * 0.04;
-    const userRealDur = trimmedUser.length * 0.04;
+    const ttsRealDur = finalTtsData.length * 0.04;
+    const userRealDur = finalUserData.length * 0.04;
     const durDiff = Math.abs(ttsRealDur - userRealDur);
 
-    document.getElementById("ttsDuration").textContent = ttsRealDur.toFixed(1) + "s (Net)";
-    document.getElementById("userDuration").textContent = userRealDur.toFixed(1) + "s (Net)";
+    document.getElementById("ttsDuration").textContent = `(${ttsRealDur.toFixed(1)}s Net)`;
+    document.getElementById("userDuration").textContent = `(${userRealDur.toFixed(1)}s Net)`;
 
-    const ttsMidStart = Math.floor(trimmedTts.length * 0.25);
-    const ttsMidEnd = Math.floor(trimmedTts.length * 0.38);
+    const ttsMidStart = Math.floor(finalTtsData.length * 0.25);
+    const ttsMidEnd = Math.floor(finalTtsData.length * 0.38);
     let ttsHasPause = false;
-    for(let i = ttsMidStart; i < ttsMidEnd; i++) { if (trimmedTts[i] < 8) ttsHasPause = true; }
+    for(let i = ttsMidStart; i < ttsMidEnd; i++) { if (finalTtsData[i] < 8) ttsHasPause = true; }
 
-    const userMidStart = Math.floor(trimmedUser.length * 0.25);
-    const userMidEnd = Math.floor(trimmedUser.length * 0.38);
+    const userMidStart = Math.floor(finalUserData.length * 0.25);
+    const userMidEnd = Math.floor(finalUserData.length * 0.38);
     let userHasPause = false;
-    for(let i = userMidStart; i < userMidEnd; i++) { if (trimmedUser[i] < 8) userHasPause = true; }
+    for(let i = userMidStart; i < userMidEnd; i++) { if (finalUserData[i] < 8) userHasPause = true; }
 
-    let userMax = Math.max(...trimmedUser);
-    let userMin = Math.min(...trimmedUser);
+    let userMax = Math.max(...finalUserData);
+    let userMin = Math.min(...finalUserData);
     let userRange = userMax - userMin;
 
     let reportHtml = "";
@@ -495,7 +537,7 @@
     }
 
     if (ttsHasPause && !userHasPause) {
-      reportHtml += `<div class="report-item">💨 <b>Nefes Kontrolü:</b> Grafiğinde hocanınki gibi belirgin bir vadi (es noktası) yok[cite: 1]. Cümleyi <b>blok halinde tek bir nefeste</b> okumuşsun[cite: 1]. <i>I am not</i> dedikten sonra sesini kesip, <i>responsible</i> kelimesine yeni bir nefesle başla[cite: 1].</div>`;
+      reportHtml += `<div class="report-item">💨 <b>Nefes Kontrolü:</b> Grafiğinde hocanınki gibi belirgin bir vadi (es noktası) yok. Cümleyi <b>blok halinde tek bir nefeste</b> okumuşsun[cite: 1]. <i>I am not</i> dedikten sonra sesini kesip, <i>responsible</i> kelimesine yeni bir nefesle başla[cite: 1].</div>`;
     } else {
       reportHtml += `<div class="report-item">💨 <b>Nefes Kontrolü:</b> Başarılı! Grafiklerde hoca ile aynı es/duraklama noktasını yakaladın.</div>`;
     }
@@ -507,26 +549,87 @@
     }
 
     reportContent.innerHTML = reportHtml;
-    mentorReportPanel.style.display = "block"; // Doğrudan stili tetikle
-    statusField.textContent = "Grafik hizalama ve telaffuz analizi raporu hazır!";
+    mentorReportPanel.style.display = "block";
+    statusField.textContent = "Görsel grafik bindirme ve telaffuz analizi raporu hazır!";
   };
 
-  playBtn.onclick = function() {
-    if (!voiceUrl) return;
-    const audio = new Audio(voiceUrl);
-    audio.onplay = () => {
-      setAvatarSpeaking(true); let i = 0;
+  // --- 💥 4. ADIM: PARALEL SES OYNATMA (KIRPILMIŞ DÜET MODU) ---
+  duetBtn.onclick = function() {
+    if (!voiceUrl || !finalUserData.length || !finalTtsData.length) return;
+    statusField.textContent = "Düet Başladı! İki ses de tam kırpılmış başlangıç noktalarından paralel çalıyor.";
+    
+    try { speechSynthesis.cancel(); } catch(e){}
+
+    // A. Hoca Sesini Kur (Kırpılmış süreyi simüle etmek için offset ile kilitliyoruz)
+    const ttsAudioUtterance = new SpeechSynthesisUtterance(TARGET_TEXT);
+    ttsAudioUtterance.lang = "en-US"; ttsAudioUtterance.rate = 0.88;
+
+    // B. Kullanıcı Sesini Kur ve Kırpılmış Başlangıç Saniyesine Ayarla
+    const userAudio = new Audio(voiceUrl);
+    // userBounds.start her 40ms'de bir indeks olduğu için saniyeye çeviriyoruz (Örn: 25 indeks = 1.0 saniye)
+    const userStartSeconds = cachedUserBounds.start * 0.04;
+    
+    let totalSamples = Math.max(finalTtsData.length, finalUserData.length);
+    let currentSampleIdx = 0;
+
+    // İki sesi tam senkronize ateşleme tetikleyicisi
+    ttsAudioUtterance.onstart = () => {
+      setAvatarSpeaking(true);
+      // Kullanıcı sesini tam sesin gerçek başladığı saniyeden başlatıyoruz (Sessizlik budandı!)
+      userAudio.currentTime = userStartSeconds;
+      userAudio.play();
+
       samplingIntervalId = setInterval(() => {
-        let avg = userTimelineData[i++] || 0;
+        if (currentSampleIdx >= totalSamples) {
+          clearInterval(samplingIntervalId);
+          return;
+        }
+        playheadProgress = (currentSampleIdx / totalSamples) * 100;
+        drawStudioGraphs();
+        currentSampleIdx++;
+      }, 40);
+    };
+
+    // Herhangi biri durduğunda veya bittiğinde sistemi temizle
+    const stopDuet = () => {
+      clearInterval(samplingIntervalId);
+      try { speechSynthesis.cancel(); } catch(e){}
+      try { userAudio.pause(); } catch(e){}
+      setAvatarSpeaking(false); setMouth("rest");
+      playheadProgress = -1;
+      drawStudioGraphs();
+      statusField.textContent = "Düet oynatımı tamamlandı.";
+    };
+
+    userAudio.onended = stopDuet;
+    ttsAudioUtterance.onend = stopDuet;
+
+    speechSynthesis.speak(ttsAudioUtterance);
+  };
+
+  // --- SADECE KENDİ SESİNİ DİNLEME AKIŞI ---
+  playBtn.onclick = function() {
+    if (!voiceUrl || !finalUserData.length) return;
+    const audio = new Audio(voiceUrl);
+    let totalSamples = finalUserData.length;
+    let currentSampleIdx = 0;
+
+    audio.onplay = () => {
+      setAvatarSpeaking(true);
+      samplingIntervalId = setInterval(() => {
+        if (currentSampleIdx >= totalSamples) { clearInterval(samplingIntervalId); return; }
+        playheadProgress = (currentSampleIdx / totalSamples) * 100;
+        drawStudioGraphs();
+        let avg = finalUserData[currentSampleIdx] || 0;
         if (avg < 4) setMouth("rest");
         else if (avg < 15) setMouth("closed");
         else if (avg < 35) setMouth("wide");
         else if (avg < 64) setMouth("round");
         else setMouth("open");
+        currentSampleIdx++;
       }, 40);
     };
-    audio.onended = () => { clearInterval(samplingIntervalId); setAvatarSpeaking(false); setMouth("rest"); };
-    audio.play();
+    audio.onended = () => { clearInterval(samplingIntervalId); setAvatarSpeaking(false); setMouth("rest"); playheadProgress = -1; drawStudioGraphs(); };
   };
 </script>
 
