@@ -223,7 +223,44 @@
 
 <script>
   "use strict";
+  function dhSavedVoicePref(){
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(k&&k.indexOf("dh-voice:")===0){
+          var p=JSON.parse(localStorage.getItem(k)||"null");
+          if(p&&p.name) return p;
+        }
+      }
+    }catch(e){}
+    return null;
+  }
+  function dhApplyVoice(u){
+    try{
+      var p=dhSavedVoicePref(); if(!p) return;
+      var v=(speechSynthesis.getVoices()||[]).find(function(x){return x.name===p.name;});
+      if(v) u.voice=v;
+      if(p.rate) u.rate=p.rate;
+      if(p.pitch) u.pitch=p.pitch;
+    }catch(e){}
+  }
 
+
+  /* 🎯 Resimli öğrenme kartından gelen cümle: ?en=...&tr=...&back=... */
+  (function(){
+    try{
+      var q=new URLSearchParams(location.search);
+      var en=q.get("en"), tr=q.get("tr");
+      if(en){ document.getElementById("targetEn").textContent=en;
+              document.querySelector(".target-tr").textContent=tr||""; }
+      var back=q.get("back");
+      var b=document.createElement("button");
+      b.textContent="← Geri";
+      b.style.cssText="position:fixed;left:12px;top:12px;z-index:50;background:#131c30;border:1px solid #ffffff22;color:#e8eef7;border-radius:10px;padding:9px 14px;font:800 13px system-ui;cursor:pointer";
+      b.onclick=function(){ if(back) location.href=back; else history.back(); };
+      document.body.appendChild(b);
+    }catch(e){}
+  })();
   const TARGET_TEXT = document.getElementById("targetEn").textContent;
 
   let mediaStream = null, mediaRecorder = null, recordedChunks = [], voiceUrl = "";
@@ -266,15 +303,24 @@
 
   const EN_CONTRACTIONS = {
     "i'm":["i","am"],"you're":["you","are"],"we're":["we","are"],"they're":["they","are"],
-    "he's":["he","is"],"she's":["she","is"],"it's":["it","is"]
+    "he's":["he","is"],"she's":["she","is"],"it's":["it","is"],"that's":["that","is"],"there's":["there","is"],
+    "don't":["do","not"],"doesn't":["does","not"],"didn't":["did","not"],
+    "isn't":["is","not"],"aren't":["are","not"],"wasn't":["was","not"],"weren't":["were","not"],
+    "can't":["can","not"],"cannot":["can","not"],"couldn't":["could","not"],
+    "won't":["will","not"],"wouldn't":["would","not"],"shouldn't":["should","not"],"mustn't":["must","not"],
+    "haven't":["have","not"],"hasn't":["has","not"],"hadn't":["had","not"],
+    "i've":["i","have"],"you've":["you","have"],"we've":["we","have"],"they've":["they","have"],
+    "i'll":["i","will"],"you'll":["you","will"],"he'll":["he","will"],"she'll":["she","will"],"we'll":["we","will"],"they'll":["they","will"],
+    "let's":["let","us"]
   };
   function tokenizeEN(s) { return String(s || "").match(/[A-Za-z']+|\d+/g) || []; }
   function normSeqEN(text) {
     const out = [];
     for (const raw of tokenizeEN(text)) {
       const n = raw.toLowerCase().replace(/[\u2019\u2018]/g, "'");
-      if (EN_CONTRACTIONS[n]) EN_CONTRACTIONS[n].forEach(x => out.push({ n: x, raw: x }));
-      else if (n) out.push({ n: n, raw: raw });
+      const __pr = w => /^(he|she|it|him|her|his|hers|its)$/.test(w) ? "o3" : w;  /* TR: cinsiyetsiz 3. tekil */
+      if (EN_CONTRACTIONS[n]) EN_CONTRACTIONS[n].forEach(x => out.push({ n: __pr(x), raw: x }));
+      else if (n) out.push({ n: __pr(n), raw: raw });
     }
     return out;
   }
@@ -310,7 +356,7 @@
 
     let startTime = Date.now();
     try { speechSynthesis.cancel(); } catch(e){}
-    const u = new SpeechSynthesisUtterance(TARGET_TEXT);
+    const u = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(u);
     u.lang = "en-US"; u.rate = 0.88;
 
     samplingIntervalId = setInterval(() => {
@@ -432,6 +478,8 @@
   };
 
   function processComparison() {
+    try{ window.dhBumpDailyTracker && window.dhBumpDailyTracker("speaking"); }catch(e){}
+    try{ window.dhLogActivity && window.dhLogActivity("🎙️ Telaffuz stüdyosu: "+TARGET_TEXT.slice(0,40),"speaking"); }catch(e){}
     if (!heardText) {
       scoreDisplay.textContent = "0%";
       diffLine.innerHTML = `<span style="color:#f87171">Ses algılanamadı ama grafikler yüklendi.</span>`;
@@ -571,7 +619,7 @@
     
     try { speechSynthesis.cancel(); } catch(e){}
 
-    const ttsAudioUtterance = new SpeechSynthesisUtterance(TARGET_TEXT);
+    const ttsAudioUtterance = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(ttsAudioUtterance);
     ttsAudioUtterance.lang = "en-US"; ttsAudioUtterance.rate = 0.88;
 
     const userAudio = new Audio(voiceUrl);
@@ -633,5 +681,6 @@
   };
 </script>
 
+<script src="./coach-bubble.js"></script>
 </body>
 </html>

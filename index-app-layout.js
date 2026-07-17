@@ -143,6 +143,22 @@
         window.open("https://gemini.google.com/app","_blank");
       };
 
+      /* 🎙️ Telaffuz Stüdyosu: karttaki cümleyi sesdalga'ya taşır; geri dönüş
+         mod-autopen'in ?q= yürüyüşüyle AYNI karta gelir */
+      var stu=document.createElement("button");
+      stu.type="button"; stu.className="dh-gtr-btn"; stu.textContent="🎙️ Stüdyo";
+      stu.onclick=function(){
+        var t=(en.textContent||"").trim(); if(!t) return;
+        var trEl=c.querySelector(".card-tr");
+        var tr=trEl?(trEl.textContent||"").trim():"";
+        var back="";
+        try{
+          var mod=new URLSearchParams(location.search).get("mod");
+          if(mod) back="index-app.html?mod="+encodeURIComponent(mod)+"&q="+encodeURIComponent(t);
+        }catch(e){}
+        location.href="./sesdalga.html?en="+encodeURIComponent(t)+"&tr="+encodeURIComponent(tr)+(back?("&back="+encodeURIComponent(back)):"");
+      };
+      row.appendChild(stu);
       row.appendChild(gtr);
       row.appendChild(ai);
     }

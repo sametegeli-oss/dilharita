@@ -614,6 +614,7 @@
       else if(kind==="review") d.reviews=(d.reviews||0)+1;
       else if(kind==="video") d.videos=(d.videos||0)+1;
       else if(kind==="lesson") d.lessons=(d.lessons||0)+1;
+      else if(kind==="speaking") d.speaking=(d.speaking||0)+1;
       localStorage.setItem(K, JSON.stringify(tr));
     }catch(e){}
   }
