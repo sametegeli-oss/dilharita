@@ -77,7 +77,10 @@ h1{font-size:17px;margin:0}
     var now=Date.now(), cut15=now-15*86400000, cut30=now-30*86400000;
     var older={}, recent={};
     errs.forEach(function(r){
-      var ts=r.ts||0; if(ts<cut30) return;
+      /* kayıtların tarihi createdAt (ISO) alanında — ts diye bir alan yok;
+         eski kod bu yüzden HER kaydı eleyip "veri yok" diyordu */
+      var ts=r.ts || Date.parse(r.createdAt||r.updatedAt||0) || 0;
+      if(ts<cut30) return;
       var types=Array.isArray(r.types)&&r.types.length ? r.types : (r.type?[r.type]:[]);
       types.forEach(function(t){ if(ts>=cut15) recent[t]=(recent[t]||0)+1; else older[t]=(older[t]||0)+1; });
     });
