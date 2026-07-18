@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape" />
-  <title>DilHarita - Kelime Analizli Trainer v4</title>
+  <title>DilHarita - Mikro Akustik Trainer v4</title>
   <style>
     :root {
       --bg: #030712;
@@ -70,7 +70,6 @@
       text-align: center;
     }
     
-    /* 🛠️ Gelişmiş Kelime Kartları Görsel Geri Bildirim Yapısı */
     .word-feedback-container {
       display: flex;
       flex-wrap: wrap;
@@ -81,13 +80,16 @@
     .word-badge {
       font-size: 11px;
       font-weight: 700;
-      padding: 2px 5px;
+      padding: 2px 6px;
       border-radius: 4px;
       background: #1e293b;
       color: #fff;
       border: 1px solid transparent;
+      cursor: pointer;
+      user-select: none;
       transition: all 0.2s ease;
     }
+    .word-badge:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
     .word-badge.w-ok { background: rgba(16, 185, 129, 0.2); border-color: var(--status-perfect); color: #6ee7b7; }
     .word-badge.w-missing { background: rgba(245, 158, 11, 0.15); border-color: var(--status-try); color: #fde047; text-decoration: dotted underline; }
     .word-badge.w-extra { background: rgba(244, 63, 94, 0.2); border-color: var(--error-color); color: #fca5a5; text-decoration: line-through; }
@@ -257,15 +259,12 @@
 <div class="trainer-grid">
   <div class="header-panel">
     <h2>🎯 AKUSTİK ARTİKÜLASYON TRAINER v4</h2>
-    <div class="quick-tip" id="quickTip">Kelime bazlı bağımsız analiz aktif.</div>
+    <div class="quick-tip" id="quickTip">Tıkla: Sesi Dinle | Sağ Tık: Hocayı Dinle</div>
   </div>
   
   <div class="left-zone">
     <div class="phrase-card">
-      <!-- Kelimelerin tek tek parçalanıp renklendirileceği dinamik alan -->
-      <div class="word-feedback-container" id="targetEn" data-raw-text="This shirt is nice but it is too small for me.">
-        <!-- İlk yüklemede statik tokenler yerleşir -->
-      </div>
+      <div class="word-feedback-container" id="targetEn" data-raw-text="This shirt is nice but it is too small for me."></div>
       <div class="target-tr">Bu gömlek güzel ama benim için çok küçük.</div>
     </div>
 
@@ -358,7 +357,6 @@
   const targetEl = document.getElementById("targetEn");
   let TARGET_TEXT = targetEl.getAttribute("data-raw-text") || "This shirt is nice but it is too small for me.";
 
-  // URL parametre kontrolü ve ilk kelime yerleşimi
   (function initPhrase(){
     try{
       var q = new URLSearchParams(window.location.search);
@@ -369,7 +367,6 @@
     renderInitialWords(TARGET_TEXT);
   })();
 
-  // Cümleyi ilk başta nötr kelime butonları/badge'leri olarak basar
   function renderInitialWords(text) {
     targetEl.innerHTML = "";
     const words = text.match(/[A-Za-z']+|\d+/g) || [];
@@ -403,7 +400,8 @@
   let cachedUserBounds = { start: 0, end: 0 };
 
   let samplingIntervalId = null;
-  let playheadProgress = -1; 
+  let playheadProgress = -1;
+  let activeChunkAudio = null; // Çalışan aktif mikro-kesiti durdurabilmek için pointer
 
   const studioCanvas = document.getElementById("studioCanvas");
   const studioCtx = studioCanvas.getContext("2d");
@@ -514,13 +512,39 @@
     return resampled;
   }
 
+  // 🛠️ MİKRO-AKUSTİK PARÇALAMA VE OYNATMA MOTORU
+  function playWordChunk(audioUrl, wordIndex, totalWords, cachedBounds) {
+    if (!audioUrl) return;
+    if (activeChunkAudio) { try { activeChunkAudio.pause(); } catch(e){} }
+    
+    const audio = new Audio(audioUrl);
+    activeChunkAudio = audio;
+
+    const startOffset = cachedBounds.start * 0.04;
+    const endOffset = cachedBounds.end * 0.04;
+    const totalDuration = Math.max(0.1, endOffset - startOffset);
+    
+    const chunkLength = totalDuration / totalWords;
+    const wordStart = startOffset + (wordIndex * chunkLength);
+    const wordEnd = wordStart + chunkLength;
+    
+    audio.currentTime = wordStart;
+    audio.play().catch(e => {});
+    
+    audio.ontimeupdate = function() {
+      if (audio.currentTime >= wordEnd) {
+        audio.pause();
+      }
+    };
+  }
+
   analyzeTtsBtn.onclick = async function() {
     ttsTimelineData = []; ttsSpectrums = []; finalTtsData = []; finalUserData = []; 
     finalTtsSpectrums = []; finalUserSpectrums = []; playheadProgress = -1;
     teacherAudioUrl = null; feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
     avatarBoxHoca.className = "avatar-box speaking";
     avatarBoxUser.className = "avatar-box";
-    renderInitialWords(TARGET_TEXT); // Ekranı temizle
+    renderInitialWords(TARGET_TEXT);
 
     let capStream=null, capAnalyser=null, capData=null, capCtx=null, capRec=null;
     const teacherChunks=[];
@@ -645,7 +669,7 @@
     }
   };
 
-  // 🛠️ DİNAMİK KELİME BAZLI RENKLENDİRME EKRANI
+  // 🛠️ PARÇALI DİNLEME AKTİF KELİME KARTLARI TETİKLEME YERİ
   function handleSttResult() {
     if (!heardText) {
       document.getElementById("scoreBadge").textContent = "Yeniden Dene";
@@ -655,9 +679,13 @@
     const result = diffEN(heardText, TARGET_TEXT);
     document.getElementById("mSöz").textContent = result.score + "%";
 
-    // Orijinal arayüz kutusunu temizleyip analiz sonuçlarına göre yeniden inşa ediyoruz
     targetEl.innerHTML = "";
-    result.parts.forEach(p => {
+    
+    // Yalnızca hedef cümledeki (target) asıl kelimeleri filtrelemek ve hizalamak için sayaç
+    let baseWordIndex = 0;
+    const totalTargetWords = result.parts.filter(p => p.type !== "extra").length || 1;
+
+    result.parts.forEach((p) => {
       let span = document.createElement("span");
       span.className = "word-badge";
       
@@ -667,13 +695,38 @@
       } else if (p.type === "missing") {
         span.classList.add("w-missing");
         span.textContent = p.word;
-        span.title = "Bu kelime telaffuz edilemedi veya yutuldu.";
       } else if (p.type === "extra") {
         span.classList.add("w-extra");
         span.textContent = p.word;
-        span.title = "Fazladan söylenen veya anlaşılamayan kelime.";
       }
+
+      // Closure içinde index'i dondurmak için local kopya alıyoruz
+      const currentIdx = baseWordIndex;
+
+      // SOL TIK: Kullanıcının kendi kesitini çalar
+      span.addEventListener("click", (e) => {
+        e.stopPropagation();
+        statusField.textContent = `Sesiniz çalınıyor: "${p.word}"`;
+        playWordChunk(voiceUrl, currentIdx, totalTargetWords, cachedUserBounds);
+      });
+
+      // SAĞ TIK: Hocanın o kelimeye gelen kesitini çalar
+      span.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        statusField.textContent = `Hoca çalınıyor: "${p.word}"`;
+        if (teacherAudioUrl) {
+          playWordChunk(teacherAudioUrl, currentIdx, totalTargetWords, cachedTtsBounds);
+        } else {
+          statusField.textContent = "Hoca ses kaydı bulunamadı.";
+        }
+      });
+
       targetEl.appendChild(span);
+      
+      // Eğer kelime ekstra (kullanıcının uydurduğu fazlalık) değilse hedef dizin sayacını ilerlet
+      if (p.type !== "extra") {
+        baseWordIndex++;
+      }
     });
   }
 
@@ -716,7 +769,6 @@
 
     let sözSkor = parseInt(document.getElementById("mSöz").textContent) || 0;
 
-    // Hız Toleransı: İki konuşma ritmi arasındaki %30'a kadar olan farklar doğal kabul edilir.
     let durRatio = Math.abs(ttsDur - userDur) / ttsDur;
     let tempoSkor = 100;
     if (durRatio > 0.30) {
@@ -724,7 +776,6 @@
     }
     document.getElementById("mTempo").textContent = tempoSkor + "%";
 
-    // Göreceli Akustik Vurgu Tespiti
     let ttsMaxIdx = 0, ttsMaxVol = 0;
     for(let i = 0; i < sTts.length; i++) {
       if(sTts[i] > ttsMaxVol) { ttsMaxVol = sTts[i]; ttsMaxIdx = i; }
@@ -748,11 +799,10 @@
     else { badge.textContent = "Gelişmeli 🎯"; badge.style.background = "var(--status-try)"; }
 
     let advice = `🟢 <b>Metin Doğruluğu:</b> %${sözSkor}<br>`;
-    advice += `⏱️ <b>Doğal Hız Analizi:</b> Hızınız kendi içinde dengeli ve akıcı.<br>`;
-    advice += `🎯 <b>Kelime Bazlı İnceleme:</b> Yukarıdaki renkli kartları inceleyin. Yeşil başarılı, Sarı eksik/yutulan, Kırmızı ise fazladan algılanan heceleri simgeler.`;
+    advice += `⏱️ <b>Mikro Akustik Aktif:</b> Kelime kutularına <b>Sol Tıklayarak kendi sesinizi</b>, <b>Sağ Tıklayarak hocanın sesini</b> izole şekilde kıyaslayıp dinleyin!`;
     
     feedbackText.innerHTML = advice;
-    statusField.textContent = "Gelişmiş analiz tamamlandı!";
+    statusField.textContent = "Akustik mikro-analiz hazır!";
   };
 
   function drawStudioGraphs() {
