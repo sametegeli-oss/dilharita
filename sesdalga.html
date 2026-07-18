@@ -404,6 +404,8 @@
   let activeChunkAudio = null; // Çalışan aktif mikro-kesiti durdurabilmek için pointer
   let teacherWordTimings = [];
   let userWordTimings = [];
+  let recordingStartTime = 0;
+  let lastRecognizedWordCount = 0;
 
   const studioCanvas = document.getElementById("studioCanvas");
   const studioCtx = studioCanvas.getContext("2d");
@@ -514,14 +516,15 @@
     return resampled;
   }
 
-  // 🛠️ GERÇEK KELİME SEGMENTİ OYNATMA MOTORU
-  // Cümleyi eşit parçalara bölmez; her kelime için belirlenen gerçek
-  // zaman aralığını oynatır.
+  // 🛠️ GERÇEK ZAMAN DAMGALI KELİME OYNATMA
+  // Kelime tıklanınca cümleyi yeniden tahmin ederek bölmez.
+  // SpeechSynthesis onboundary / SpeechRecognition zaman bilgileriyle
+  // oluşturulan gerçek zaman aralığını kullanır.
   function playExactWordChunk(audioUrl, timing) {
     if (!audioUrl || !timing) return;
 
     if (activeChunkAudio) {
-      try { activeChunkAudio.pause(); } catch(e){}
+      try { activeChunkAudio.pause(); } catch(e) {}
     }
 
     const audio = new Audio(audioUrl);
@@ -530,64 +533,139 @@
     const start = Math.max(0, Number(timing.start) || 0);
     const end = Math.max(start + 0.06, Number(timing.end) || start + 0.06);
 
-    const stopAtEnd = () => {
+    let stopped = false;
+
+    const stop = () => {
+      if (stopped) return;
       if (audio.currentTime >= end) {
+        stopped = true;
         audio.pause();
-        audio.removeEventListener("timeupdate", stopAtEnd);
+        audio.removeEventListener("timeupdate", stop);
       }
     };
 
-    audio.addEventListener("timeupdate", stopAtEnd);
+    audio.addEventListener("timeupdate", stop);
     audio.currentTime = start;
-    audio.play().catch(() => {});
+    audio.play().catch(() => {
+      statusField.textContent = "Ses oynatılamadı.";
+    });
   }
 
-  // Ses enerjisini analiz ederek kelime segmentlerini belirler.
-  // Tarayıcı SpeechSynthesis kelime zaman damgası vermediği için,
-  // önce gerçek sesin aktif bölgelerini bulur; gerekirse doğal ağırlıklı
-  // fallback kullanır.
-  async function detectWordTimings(audioUrl, words, bounds) {
-    if (!audioUrl || !words || !words.length) return [];
+  function wordsFromText(text) {
+    return tokenizeEN(text).map(w => String(w).toLowerCase());
+  }
 
-    try {
-      const response = await fetch(audioUrl);
-      const arrayBuffer = await response.arrayBuffer();
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const buffer = await ctx.decodeAudioData(arrayBuffer);
-      const channel = buffer.getChannelData(0);
-      const sampleRate = buffer.sampleRate;
+  // SpeechSynthesis boundary event'inden kelime zamanlaması üretir.
+  function buildTeacherTimingFromBoundary(charIndex, elapsedSeconds) {
+    const targetWords = tokenizeEN(TARGET_TEXT);
+    const before = TARGET_TEXT.slice(0, Math.max(0, charIndex));
+    const wordIndex = tokenizeEN(before).length;
 
-      const start = Math.max(0, (bounds?.start || 0) * 0.04);
-      const end = Math.min(buffer.duration, (bounds?.end || 0) * 0.04);
-      const duration = Math.max(0.1, end - start);
+    if (wordIndex < 0 || wordIndex >= targetWords.length) return;
 
-      // Kelime uzunluğu + hece sayısına göre doğal süre ağırlığı
-      const weights = words.map(word => {
-        const w = String(word);
-        const syllables = Math.max(1, (w.match(/[aeiouy]+/gi) || []).length);
-        return Math.max(0.55, syllables * 0.8 + Math.min(w.length, 8) * 0.08);
-      });
+    const prev = teacherWordTimings[wordIndex - 1];
+    const start = prev ? prev.end : Math.max(0, elapsedSeconds - 0.08);
 
-      const totalWeight = weights.reduce((a, b) => a + b, 0);
-      const timings = [];
-      let cursor = start;
+    teacherWordTimings[wordIndex] = {
+      word: targetWords[wordIndex],
+      index: wordIndex,
+      start,
+      end: Math.max(start + 0.06, elapsedSeconds)
+    };
 
-      for (let i = 0; i < words.length; i++) {
-        const d = duration * weights[i] / totalWeight;
-        timings.push({
+    // Önceki kelimenin bitişini mevcut kelimenin başlangıcına bağla.
+    if (wordIndex > 0 && teacherWordTimings[wordIndex - 1]) {
+      teacherWordTimings[wordIndex - 1].end = start;
+    }
+  }
+
+  function finalizeTeacherTimings(totalDuration) {
+    const words = tokenizeEN(TARGET_TEXT);
+    if (!teacherWordTimings.length) return;
+
+    for (let i = 0; i < words.length; i++) {
+      if (!teacherWordTimings[i]) {
+        const prev = teacherWordTimings[i - 1];
+        const next = teacherWordTimings[i + 1];
+        teacherWordTimings[i] = {
           word: words[i],
           index: i,
-          start: cursor,
-          end: cursor + d
-        });
-        cursor += d;
+          start: prev ? prev.end : 0,
+          end: next ? next.start : totalDuration
+        };
       }
-
-      try { await ctx.close(); } catch(e) {}
-      return timings;
-    } catch(e) {
-      return [];
+      teacherWordTimings[i].word = words[i];
+      teacherWordTimings[i].index = i;
     }
+
+    const last = teacherWordTimings[teacherWordTimings.length - 1];
+    if (last) last.end = Math.max(last.start + 0.06, totalDuration);
+  }
+
+  // Kullanıcı konuşmasında SpeechRecognition'ın interim sonuçlarını
+  // gerçek kayıt süresiyle eşleştirerek kelime sınırlarını yaklaşık olarak
+  // canlı biçimde oluşturur. Bu, cümleyi eşit parçalara bölmez.
+  function updateUserWordTimingsFromTranscript(transcript, elapsedSeconds) {
+    const spokenWords = tokenizeEN(transcript);
+    const targetWords = tokenizeEN(TARGET_TEXT);
+
+    if (!spokenWords.length) return;
+
+    const count = Math.min(spokenWords.length, targetWords.length);
+
+    for (let i = 0; i < count; i++) {
+      if (!userWordTimings[i]) {
+        userWordTimings[i] = {
+          word: targetWords[i],
+          index: i,
+          start: i === 0 ? 0 : (userWordTimings[i - 1]?.end || 0),
+          end: elapsedSeconds
+        };
+      } else {
+        userWordTimings[i].end = Math.max(
+          userWordTimings[i].start + 0.06,
+          elapsedSeconds
+        );
+      }
+    }
+
+    lastRecognizedWordCount = spokenWords.length;
+  }
+
+  function finalizeUserWordTimings(totalDuration) {
+    const words = tokenizeEN(TARGET_TEXT);
+    if (!words.length) return;
+
+    // Eğer SpeechRecognition hiç ara sonuç vermediyse güvenli fallback.
+    if (!userWordTimings.length) {
+      const part = totalDuration / words.length;
+      userWordTimings = words.map((word, i) => ({
+        word,
+        index: i,
+        start: i * part,
+        end: (i + 1) * part
+      }));
+      return;
+    }
+
+    for (let i = 0; i < words.length; i++) {
+      if (!userWordTimings[i]) {
+        const start = i > 0 && userWordTimings[i - 1]
+          ? userWordTimings[i - 1].end
+          : 0;
+        userWordTimings[i] = {
+          word: words[i],
+          index: i,
+          start,
+          end: i === words.length - 1 ? totalDuration : start + 0.12
+        };
+      }
+      userWordTimings[i].word = words[i];
+      userWordTimings[i].index = i;
+    }
+
+    const last = userWordTimings[userWordTimings.length - 1];
+    if (last) last.end = Math.max(last.start + 0.06, totalDuration);
   }
 
   analyzeTtsBtn.onclick = async function() {
@@ -595,7 +673,6 @@
     finalTtsSpectrums = []; finalUserSpectrums = []; playheadProgress = -1;
     teacherAudioUrl = null;
     teacherWordTimings = [];
-    userWordTimings = [];
     feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
     avatarBoxHoca.className = "avatar-box speaking";
     avatarBoxUser.className = "avatar-box";
@@ -611,16 +688,7 @@
       capCtx.createMediaStreamSource(capStream).connect(capAnalyser);
       capRec=new MediaRecorder(capStream);
       capRec.ondataavailable=e=>{ if(e.data.size>0) teacherChunks.push(e.data); };
-      capRec.onstop=async ()=>{
-        if(teacherChunks.length) {
-          teacherAudioUrl=URL.createObjectURL(new Blob(teacherChunks,{type:"audio/webm"}));
-          teacherWordTimings = await detectWordTimings(
-            teacherAudioUrl,
-            tokenizeEN(TARGET_TEXT),
-            cachedTtsBounds
-          );
-        }
-      };
+      capRec.onstop=()=>{ if(teacherChunks.length) teacherAudioUrl=URL.createObjectURL(new Blob(teacherChunks,{type:"audio/webm"})); };
       capRec.start();
     }catch(e){}
 
@@ -628,6 +696,21 @@
     try { window.speechSynthesis.cancel(); } catch(e){}
     const u = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(u);
     u.lang = "en-US"; u.rate = 0.82;
+
+    // Chrome/Edge gibi tarayıcılarda SpeechSynthesis kelime sınırlarını
+    // onboundary ile verir. Bu olay varsa doğrudan kullanılır.
+    u.onstart = () => {
+      startTime = Date.now();
+    };
+
+    u.onboundary = (event) => {
+      if (event.name === "word" || typeof event.charIndex === "number") {
+        buildTeacherTimingFromBoundary(
+          event.charIndex,
+          (Date.now() - startTime) / 1000
+        );
+      }
+    };
 
     samplingIntervalId = setInterval(() => {
       let t = (Date.now() - startTime) / 1000;
@@ -654,6 +737,7 @@
         clearInterval(samplingIntervalId);
         avatarBoxHoca.className = "avatar-box"; mouthHoca.className = "mouth rest";
         try{ if(capRec) capRec.stop(); if(capStream) capStream.getTracks().forEach(tr=>tr.stop()); }catch(e){}
+        finalizeTeacherTimings((Date.now() - startTime) / 1000);
         statusField.textContent = "Hoca hazır. Cümlenizi okuyun.";
         feedbackText.innerHTML = "🎓 <b>Hoca Hazır:</b> Cümlenizi seslendirin.";
         recordBtn.disabled = false;
@@ -669,13 +753,14 @@
     avatarBoxUser.className = "avatar-box"; mouthUser.className = "mouth rest";
     clearInterval(samplingIntervalId);
     if (recognition) { try{ recognition.stop(); }catch(e){} }
+    finalizeUserWordTimings((Date.now() - recordingStartTime) / 1000);
     if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
     if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
   }
 
   recordBtn.onclick = async function() {
     if (!isRecording) {
-      recordedChunks = []; userTimelineData = []; userSpectrums = []; finalUserData = []; 
+      recordedChunks = []; userTimelineData = []; userSpectrums = []; finalUserData = [];\n      userWordTimings = []; lastRecognizedWordCount = 0; 
       finalUserSpectrums = []; playheadProgress = -1; heardText = "";
       avatarBoxUser.className = "avatar-box speaking";
       renderInitialWords(TARGET_TEXT);
@@ -691,21 +776,38 @@
 
         mediaRecorder = new MediaRecorder(mediaStream);
         mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
-        mediaRecorder.onstop = async () => {
+        mediaRecorder.onstop = () => {
           voiceUrl = URL.createObjectURL(new Blob(recordedChunks, { type: 'audio/webm' }));
-          userWordTimings = await detectWordTimings(
-            voiceUrl,
-            tokenizeEN(TARGET_TEXT),
-            cachedUserBounds
-          );
           analyzeGraphsBtn.disabled = false;
         };
         mediaRecorder.start();
 
         const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new STT(); recognition.lang = "en-US";
-        recognition.onresult = e => { heardText = e.results[0][0].transcript; };
-        recognition.onend = () => { if (isRecording) stopRecording(); handleSttResult(); };
+        recognition = new STT();
+        recognition.lang = "en-US";
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recordingStartTime = Date.now();
+
+        recognition.onresult = e => {
+          let fullTranscript = "";
+          for (let i = 0; i < e.results.length; i++) {
+            fullTranscript += " " + e.results[i][0].transcript;
+          }
+          heardText = fullTranscript.trim();
+
+          updateUserWordTimingsFromTranscript(
+            heardText,
+            (Date.now() - recordingStartTime) / 1000
+          );
+        };
+
+        recognition.onend = () => {
+          if (isRecording) stopRecording();
+          handleSttResult();
+        };
+
         recognition.start();
 
         isRecording = true;
@@ -776,7 +878,7 @@
         statusField.textContent = `Sesiniz çalınıyor: "${p.word}"`;
         const timing = userWordTimings[currentIdx];
         if (timing) playExactWordChunk(voiceUrl, timing);
-        else statusField.textContent = "Bu kelimenin ses segmenti hazır değil.";
+        else statusField.textContent = "Bu kelimenin ses zamanlaması bulunamadı.";
       });
 
       // SAĞ TIK: Hocanın o kelimeye gelen kesitini çalar
@@ -786,7 +888,7 @@
         if (teacherAudioUrl) {
           const timing = teacherWordTimings[currentIdx];
           if (timing) playExactWordChunk(teacherAudioUrl, timing);
-          else statusField.textContent = "Hocanın bu kelimesinin ses segmenti hazır değil.";
+          else statusField.textContent = "Hocanın bu kelimesinin ses zamanlaması bulunamadı.";
         } else {
           statusField.textContent = "Hoca ses kaydı bulunamadı.";
         }
