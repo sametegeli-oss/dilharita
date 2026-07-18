@@ -393,6 +393,13 @@
   let selectedWordIndex = null;
   let totalTtsDuration = 0;
 
+  // --- Gerçek kelime sınırı (word boundary) sistemi ---
+  let ttsAudioOffset = 0;        // Kayıt başlangıcı ile TTS zaman ekseni arasındaki fark (sn)
+  let boundarySupported = false; // Tarayıcı onboundary olayını destekledi mi
+  let teacherAudioBuffer = null; // Decode edilmiş hoca sesi (hassas kesit oynatma)
+  let activeSegmentSource = null;// O an çalan Web Audio kesit kaynağı
+  let activeSegmentAudio = null; // Fallback HTMLAudio referansı
+
   function prepareInteractiveWords(targetElement) {
     if (!targetElement) return;
     const text = targetElement.getAttribute("data-raw-text") || targetElement.textContent;
@@ -402,7 +409,12 @@
     targetElement.innerHTML = "";
 
     let idCounter = 0;
+    let searchCursor = 0;
     rawTokens.forEach(token => {
+      const tokenPos = text.indexOf(token, searchCursor);
+      const charStart = tokenPos >= 0 ? tokenPos : searchCursor;
+      searchCursor = charStart + token.length;
+
       const isWord = /[A-Za-z0-9]/.test(token);
       if (isWord) {
         const clean = token.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
@@ -419,12 +431,15 @@
           id: idCounter,
           raw: token,
           clean: clean,
-          dom: span
+          dom: span,
+          charStart: charStart,
+          charEnd: charStart + token.length
         });
 
+        const capturedId = idCounter;
         span.onclick = function(e) {
           e.stopPropagation();
-          onWordSelected(idCounter);
+          onWordSelected(capturedId);
         };
 
         targetElement.appendChild(span);
@@ -446,6 +461,64 @@
         end: (idx + 1) * segmentDuration
       };
     });
+  }
+
+  function buildAlignmentFromBoundaries(boundaryStarts) {
+    if (!wordsArray.length || totalTtsDuration <= 0) return false;
+
+    const knownCount = wordsArray.filter(w => typeof boundaryStarts[w.id] === "number").length;
+    if (knownCount < Math.max(2, Math.ceil(wordsArray.length * 0.6))) return false;
+
+    const starts = new Array(wordsArray.length).fill(null);
+    wordsArray.forEach((w, idx) => {
+      if (typeof boundaryStarts[w.id] === "number") starts[idx] = boundaryStarts[w.id];
+    });
+    if (starts[0] === null) starts[0] = 0;
+
+    // TTS motorunun atladığı kelimeleri komşular arasında doğrusal doldur
+    for (let i = 1; i < starts.length; i++) {
+      if (starts[i] !== null) continue;
+      const prev = i - 1;
+      let next = i + 1;
+      while (next < starts.length && starts[next] === null) next++;
+      const prevVal = starts[prev];
+      const nextVal = next < starts.length ? starts[next] : totalTtsDuration;
+      const gapCount = (next < starts.length ? next : starts.length) - prev;
+      starts[i] = prevVal + ((nextVal - prevVal) / gapCount) * (i - prev);
+    }
+
+    wordTimestamps = {};
+    wordsArray.forEach((w, idx) => {
+      const s = Math.max(0, Math.min(starts[idx], totalTtsDuration));
+      const rawEnd = idx + 1 < starts.length ? starts[idx + 1] : totalTtsDuration;
+      const e = Math.min(Math.max(rawEnd, s + 0.05), totalTtsDuration + 0.3);
+      wordTimestamps[w.id] = { start: s, end: e };
+    });
+    return true;
+  }
+
+  function stopActiveSegment() {
+    if (activeSegmentSource) { try { activeSegmentSource.stop(); } catch(e){} activeSegmentSource = null; }
+    if (activeSegmentAudio) {
+      try { activeSegmentAudio.pause(); activeSegmentAudio.ontimeupdate = null; } catch(e){}
+      activeSegmentAudio = null;
+    }
+  }
+
+  async function getTeacherAudioBuffer() {
+    if (teacherAudioBuffer) return teacherAudioBuffer;
+    if (!teacherAudioUrl) return null;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") { try { await audioCtx.resume(); } catch(e){} }
+      const resp = await fetch(teacherAudioUrl);
+      const rawBytes = await resp.arrayBuffer();
+      teacherAudioBuffer = await audioCtx.decodeAudioData(rawBytes);
+      return teacherAudioBuffer;
+    } catch (e) {
+      console.warn("Hoca sesi decode edilemedi, HTMLAudio fallback kullanılacak:", e);
+      return null;
+    }
   }
 
   function onWordSelected(wordId) {
@@ -479,27 +552,58 @@
     playRealWordSegment(bounds.start, bounds.end);
   }
 
-  function playRealWordSegment(startTime, endTime) {
+  async function playRealWordSegment(startTime, endTime) {
     if (!teacherAudioUrl) {
       statusField.textContent = "Gerçek hoca sesi henüz hazır değil.";
       return;
     }
 
+    try { window.speechSynthesis.cancel(); } catch(e){}
+    stopActiveSegment();
+
+    // Kelime zamanları TTS zaman ekseninde; ses dosyası kayıt ekseninde.
+    // Kayıt TTS'ten önce başladığı için offset ekleyerek dosya eksenine çeviriyoruz.
+    const aStart = Math.max(0, startTime + ttsAudioOffset);
+    const aEnd = Math.max(aStart + 0.05, endTime + ttsAudioOffset);
+
+    // 1) Tercih edilen yol: Web Audio ile örnekleme hassasiyetinde kesit
+    const buffer = await getTeacherAudioBuffer();
+    if (buffer) {
+      const clampedStart = Math.min(aStart, Math.max(0, buffer.duration - 0.05));
+      const clampedDur = Math.min(aEnd, buffer.duration) - clampedStart;
+      if (clampedDur <= 0) { statusField.textContent = "Kesit aralığı geçersiz."; return; }
+
+      const src = audioCtx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(audioCtx.destination);
+      src.onended = function() {
+        if (activeSegmentSource === src) activeSegmentSource = null;
+        statusField.textContent = "Kesit bitti.";
+      };
+      activeSegmentSource = src;
+      src.start(0, clampedStart, clampedDur);
+      statusField.textContent = "Gerçek ses kesiti oynatılıyor...";
+      return;
+    }
+
+    // 2) Fallback: HTMLAudio (decode desteklenmezse)
     try {
-      window.speechSynthesis.cancel(); 
       const audio = new Audio(teacherAudioUrl);
       audio.preload = "auto";
-      
+      activeSegmentAudio = audio;
+
       audio.oncanplaythrough = function() {
-        audio.currentTime = startTime;
+        audio.oncanplaythrough = null;
+        audio.currentTime = aStart;
         audio.play().catch(e => console.log("Oynatma hatası:", e));
         statusField.textContent = "Gerçek ses kesiti oynatılıyor...";
       };
 
       audio.ontimeupdate = function() {
-        if (audio.currentTime >= endTime) {
+        if (audio.currentTime >= aEnd) {
           audio.pause();
           audio.ontimeupdate = null;
+          if (activeSegmentAudio === audio) activeSegmentAudio = null;
           statusField.textContent = "Kesit bitti.";
         }
       };
@@ -705,7 +809,9 @@
   analyzeTtsBtn.onclick = async function() {
     ttsTimelineData = []; ttsSpectrums = []; finalTtsData = []; finalUserData = []; 
     finalTtsSpectrums = []; finalUserSpectrums = []; playheadProgress = -1;
-    teacherAudioUrl = null; feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
+    stopActiveSegment();
+    teacherAudioUrl = null; teacherAudioBuffer = null; ttsAudioOffset = 0;
+    feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
     avatarBoxHoca.className = "avatar-box speaking";
     avatarBoxUser.className = "avatar-box";
     document.getElementById("tunerPanel").style.display = "none";
@@ -713,6 +819,7 @@
     wordsArray.forEach(w => w.dom.classList.remove("selected-word"));
 
     let capStream=null, capAnalyser=null, capData=null, capCtx=null, capRec=null;
+    let recStartWall = 0;
     const teacherChunks=[];
     try{
       capStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false}});
@@ -724,12 +831,29 @@
       capRec.ondataavailable=e=>{ if(e.data.size>0) teacherChunks.push(e.data); };
       capRec.onstop=()=>{ if(teacherChunks.length) teacherAudioUrl=URL.createObjectURL(new Blob(teacherChunks,{type:"audio/webm"})); };
       capRec.start();
+      recStartWall = Date.now();
     }catch(e){}
 
     let startTime = Date.now();
     try { window.speechSynthesis.cancel(); } catch(e){}
     const u = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(u);
     u.lang = "en-US"; u.rate = 0.82;
+
+    // TTS motorunun bildirdiği GERÇEK kelime sınırlarını topla
+    const boundaryStarts = {};
+    boundarySupported = false;
+    u.onboundary = function(ev) {
+      if (ev.name && ev.name !== "word") return;
+      const tRel = (Date.now() - startTime) / 1000;
+      const ci = typeof ev.charIndex === "number" ? ev.charIndex : -1;
+      if (ci < 0) return;
+      let hit = wordsArray.find(w => ci >= w.charStart && ci < w.charEnd);
+      if (!hit) hit = wordsArray.find(w => ci < w.charStart); // sınır boşlukta raporlandıysa sıradaki kelime
+      if (hit && boundaryStarts[hit.id] === undefined) {
+        boundaryStarts[hit.id] = tRel;
+        boundarySupported = true;
+      }
+    };
 
     samplingIntervalId = setInterval(() => {
       let t = (Date.now() - startTime) / 1000;
@@ -758,11 +882,17 @@
       setTimeout(()=>{
         clearInterval(samplingIntervalId);
         totalTtsDuration = (Date.now() - startTime) / 1000;
-        calculateDefaultAlignment(); 
+        ttsAudioOffset = recStartWall ? Math.max(0, (startTime - recStartWall) / 1000) : 0;
+
+        if (!buildAlignmentFromBoundaries(boundaryStarts)) {
+          calculateDefaultAlignment();
+        }
 
         avatarBoxHoca.className = "avatar-box"; mouthHoca.className = "mouth rest";
         try{ if(capRec) capRec.stop(); if(capStream) capStream.getTracks().forEach(tr=>tr.stop()); }catch(e){}
-        statusField.textContent = "Hoca hazır. Kelimelere tıklayabilir veya cümlenizi okuyabilirsiniz.";
+        statusField.textContent = boundarySupported
+          ? "Hoca hazır (gerçek kelime sınırları algılandı). Kelimelere tıklayabilirsiniz."
+          : "Hoca hazır. Kelimelere tıklayabilir veya cümlenizi okuyabilirsiniz.";
         feedbackText.innerHTML = "🎓 <b>Hoca Hazır:</b> Kelimelere basarak gerçek ses kesitlerini dinleyip ayarlayabilirsiniz ya da cümlenizi mikrofondan okuyabilirsiniz.";
         recordBtn.disabled = false;
       }, 250);
@@ -786,11 +916,14 @@
       recordedChunks = []; userTimelineData = []; userSpectrums = []; finalUserData = []; 
       finalUserSpectrums = []; playheadProgress = -1; heardText = "";
       avatarBoxUser.className = "avatar-box speaking";
+      stopActiveSegment();
 
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         if (!audioCtx) {
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (!analyser) {
           analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
           dataArray = new Uint8Array(analyser.frequencyBinCount);
         }
@@ -1004,6 +1137,7 @@
   duetBtn.onclick = function() {
     if (!voiceUrl || !finalUserData.length) return;
     statusField.textContent = "Düet çalınıyor...";
+    stopActiveSegment();
     try { window.speechSynthesis.cancel(); } catch(e){}
 
     const tAudio = teacherAudioUrl ? new Audio(teacherAudioUrl) : null;
