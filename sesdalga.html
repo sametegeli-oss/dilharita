@@ -179,7 +179,41 @@
     }
     .tuner-label { font-size: 7.5px; color: var(--accent); font-weight: bold; }
     .tuner-controls { display: flex; gap: 4px; align-items: center; }
-    .tuner-slider { width: 85px; height: 12px; cursor: pointer; accent-color: var(--accent); }
+    .tuner-slider { width: 85px; height: 18px; cursor: pointer; accent-color: var(--accent); }
+    .btn-fs-mini { background: #334155; color: #fff; border: none; border-radius: 3px; font-size: 8px; padding: 3px 6px; cursor: pointer; font-weight: bold; flex: 0 0 auto; }
+
+    /* --- Tam ekran kelime ayar paneli --- */
+    #wordTunerOverlay {
+      position: fixed; inset: 0; z-index: 2000;
+      background: var(--bg);
+      display: none; flex-direction: column;
+      padding: 10px 14px; gap: 8px;
+    }
+    .wt-header { display: flex; justify-content: space-between; align-items: center; flex: 0 0 auto; }
+    .wt-title { font-size: 17px; font-weight: 900; color: var(--accent); }
+    .wt-header-btns { display: flex; gap: 8px; }
+    .wt-btn {
+      background: #1e293b; color: #fff; border: 1px solid var(--border); border-radius: 6px;
+      padding: 6px 12px; font-size: 11px; font-weight: bold; cursor: pointer; min-height: 34px;
+    }
+    .wt-btn:active { transform: scale(0.97); }
+    .wt-btn.wt-close { background: #7f1d1d; }
+    .wt-btn.wt-play { background: #047857; }
+    .wt-btn.wt-compare { background: #6d28d9; width: 100%; min-height: 40px; font-size: 12px; }
+    .wt-btn.wt-nudge { min-width: 38px; padding: 4px 0; font-size: 16px; line-height: 1; }
+    .wt-canvas-wrap { flex: 1; min-height: 60px; background: #020617; border: 1px solid #1e293b; border-radius: 6px; position: relative; }
+    #wtCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .wt-tracks { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }
+    .wt-track { background: #0f172a; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+    .wt-track.disabled { opacity: 0.4; pointer-events: none; }
+    .wt-track-head { display: flex; justify-content: space-between; align-items: center; }
+    .wt-track-label { font-size: 11px; font-weight: 900; }
+    .wt-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+    .wt-lab { font-size: 9px; color: var(--muted); width: 32px; flex: 0 0 auto; }
+    .wt-slider { flex: 1; height: 30px; accent-color: var(--accent); cursor: pointer; min-width: 0; }
+    .wt-val { font-size: 10px; font-family: monospace; background: #1e293b; padding: 2px 5px; border-radius: 3px; width: 52px; text-align: center; flex: 0 0 auto; }
+    .wt-footer { flex: 0 0 auto; display: flex; flex-direction: column; gap: 4px; }
+    .wt-status { font-size: 10px; color: var(--muted); text-align: center; min-height: 14px; }
     .tuner-val-badge { font-size: 7.5px; background: #1e293b; padding: 1px 3px; border-radius: 2px; font-family: monospace; }
 
     .score-terminal {
@@ -281,7 +315,7 @@
 <div class="trainer-grid">
   <div class="header-panel">
     <h2>🎯 AKUSTİK ARTİKÜLASYON TRAINER v4</h2>
-    <div class="quick-tip" id="quickTip">Kelimeye dokunarak gerçek ses kesitini dinleyebilir ve hizalayabilirsiniz.</div>
+    <div class="quick-tip" id="quickTip">Kelimeye dokunun • ⛶ ile tam ekranda hassas ayar ve Hoca↔Sen karşılaştırması yapın.</div>
   </div>
   
   <div class="left-zone">
@@ -324,11 +358,12 @@
         <div class="tuner-label" id="tunerLabel">SEÇİLİ KELİME: --</div>
         <div class="tuner-controls">
           <span style="font-size:7px; color:var(--muted)">Başla:</span>
-          <input type="range" class="tuner-slider" id="startSlider" min="0" max="100" value="0">
+          <input type="range" class="tuner-slider" id="startSlider" min="0" max="100" step="0.01" value="0">
           <span class="tuner-val-badge" id="startVal">0.0s</span>
           <span style="font-size:7px; color:var(--muted); margin-left:4px;">Bitir:</span>
-          <input type="range" class="tuner-slider" id="endSlider" min="0" max="100" value="100">
+          <input type="range" class="tuner-slider" id="endSlider" min="0" max="100" step="0.01" value="100">
           <span class="tuner-val-badge" id="endVal">0.0s</span>
+          <button class="btn-fs-mini" id="openTunerFsBtn" title="Tam ekran hassas ayar">⛶ Tam Ekran</button>
         </div>
       </div>
     </div>
@@ -361,6 +396,67 @@
     </div>
 
     <div class="status-bar" id="statusField">Trainer modülü hazır.</div>
+  </div>
+</div>
+
+<div id="wordTunerOverlay">
+  <div class="wt-header">
+    <div class="wt-title" id="wtTitle">KELİME</div>
+    <div class="wt-header-btns">
+      <button class="wt-btn" id="wtFsBtn">⛶ Tam Ekran</button>
+      <button class="wt-btn wt-close" id="wtCloseBtn">✕ Kapat</button>
+    </div>
+  </div>
+
+  <div class="wt-canvas-wrap"><canvas id="wtCanvas"></canvas></div>
+
+  <div class="wt-tracks">
+    <div class="wt-track" id="wtCoachTrack">
+      <div class="wt-track-head">
+        <span class="wt-track-label" style="color:var(--accent)">🎓 HOCA</span>
+        <button class="wt-btn wt-play" id="wtPlayCoach">▶ Dinle</button>
+      </div>
+      <div class="wt-row">
+        <span class="wt-lab">Başla</span>
+        <button class="wt-btn wt-nudge" data-track="coach" data-edge="start" data-delta="-0.05">−</button>
+        <input type="range" class="wt-slider" id="wtCoachStart" step="0.01">
+        <button class="wt-btn wt-nudge" data-track="coach" data-edge="start" data-delta="0.05">+</button>
+        <span class="wt-val" id="wtCoachStartVal">0.00s</span>
+      </div>
+      <div class="wt-row">
+        <span class="wt-lab">Bitir</span>
+        <button class="wt-btn wt-nudge" data-track="coach" data-edge="end" data-delta="-0.05">−</button>
+        <input type="range" class="wt-slider" id="wtCoachEnd" step="0.01">
+        <button class="wt-btn wt-nudge" data-track="coach" data-edge="end" data-delta="0.05">+</button>
+        <span class="wt-val" id="wtCoachEndVal">0.00s</span>
+      </div>
+    </div>
+
+    <div class="wt-track" id="wtUserTrack">
+      <div class="wt-track-head">
+        <span class="wt-track-label" style="color:var(--user-color)">🎙️ SEN</span>
+        <button class="wt-btn wt-play" id="wtPlayUser">▶ Dinle</button>
+      </div>
+      <div class="wt-row">
+        <span class="wt-lab">Başla</span>
+        <button class="wt-btn wt-nudge" data-track="user" data-edge="start" data-delta="-0.05">−</button>
+        <input type="range" class="wt-slider" id="wtUserStart" step="0.01">
+        <button class="wt-btn wt-nudge" data-track="user" data-edge="start" data-delta="0.05">+</button>
+        <span class="wt-val" id="wtUserStartVal">0.00s</span>
+      </div>
+      <div class="wt-row">
+        <span class="wt-lab">Bitir</span>
+        <button class="wt-btn wt-nudge" data-track="user" data-edge="end" data-delta="-0.05">−</button>
+        <input type="range" class="wt-slider" id="wtUserEnd" step="0.01">
+        <button class="wt-btn wt-nudge" data-track="user" data-edge="end" data-delta="0.05">+</button>
+        <span class="wt-val" id="wtUserEndVal">0.00s</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-footer">
+    <button class="wt-btn wt-compare" id="wtCompareBtn">🔁 Karşılaştır: Hoca → Sen</button>
+    <div class="wt-status" id="wtStatus"></div>
   </div>
 </div>
 
@@ -399,6 +495,13 @@
   let teacherAudioBuffer = null; // Decode edilmiş hoca sesi (hassas kesit oynatma)
   let activeSegmentSource = null;// O an çalan Web Audio kesit kaynağı
   let activeSegmentAudio = null; // Fallback HTMLAudio referansı
+
+  // --- Kullanıcı tarafı kelime hizalaması + tam ekran ayar paneli ---
+  let userWordTimestamps = {};   // Kullanıcının kendi kaydındaki kelime sınırları
+  let userTotalDuration = 0;     // Kullanıcı kaydının toplam süresi (sn)
+  let userAudioBuffer = null;    // Decode edilmiş kullanıcı sesi
+  let wtOpen = false;            // Tam ekran ayar paneli açık mı
+  let wtZoom = { coach: { min: 0, max: 1 }, user: { min: 0, max: 1 } };
 
   function prepareInteractiveWords(targetElement) {
     if (!targetElement) return;
@@ -497,6 +600,50 @@
     return true;
   }
 
+  function buildUserAlignment() {
+    userWordTimestamps = {};
+    if (!wordsArray.length || !userTimelineData.length) return;
+    userTotalDuration = userTimelineData.length * 0.04;
+    if (userTotalDuration <= 0) return;
+
+    const TH = 8;
+    const trim = d => {
+      let s = 0, e = d.length - 1;
+      while (s < d.length && d[s] < TH) s++;
+      while (e > s && d[e] < TH) e--;
+      return { start: s, end: e };
+    };
+
+    const uT = trim(userTimelineData);
+    const uStart = uT.start * 0.04;
+    const uEnd = Math.max(uT.end * 0.04, uStart + 0.2);
+
+    // Hoca hizalaması mevcutsa: hocanın kelime oranlarını kullanıcının
+    // konuşma aralığına oransal olarak eşle (uniform bölmeden çok daha isabetli)
+    const cT = trim(ttsTimelineData);
+    const cStart = cT.start * 0.04;
+    const cEnd = Math.max(cT.end * 0.04, cStart + 0.2);
+    const haveCoach = ttsTimelineData.length > 0 && (cEnd - cStart) > 0.1 &&
+                      wordsArray.every(w => wordTimestamps[w.id]);
+
+    if (haveCoach) {
+      const scale = (uEnd - uStart) / (cEnd - cStart);
+      wordsArray.forEach(w => {
+        const b = wordTimestamps[w.id];
+        let s = uStart + (b.start - cStart) * scale;
+        let e = uStart + (b.end - cStart) * scale;
+        s = Math.max(0, Math.min(s, userTotalDuration));
+        e = Math.max(s + 0.05, Math.min(e, userTotalDuration));
+        userWordTimestamps[w.id] = { start: s, end: e };
+      });
+    } else {
+      const seg = (uEnd - uStart) / wordsArray.length;
+      wordsArray.forEach((w, i) => {
+        userWordTimestamps[w.id] = { start: uStart + i * seg, end: uStart + (i + 1) * seg };
+      });
+    }
+  }
+
   function stopActiveSegment() {
     if (activeSegmentSource) { try { activeSegmentSource.stop(); } catch(e){} activeSegmentSource = null; }
     if (activeSegmentAudio) {
@@ -505,20 +652,31 @@
     }
   }
 
-  async function getTeacherAudioBuffer() {
-    if (teacherAudioBuffer) return teacherAudioBuffer;
-    if (!teacherAudioUrl) return null;
+  async function decodeUrlToBuffer(url) {
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === "suspended") { try { await audioCtx.resume(); } catch(e){} }
-      const resp = await fetch(teacherAudioUrl);
+      const resp = await fetch(url);
       const rawBytes = await resp.arrayBuffer();
-      teacherAudioBuffer = await audioCtx.decodeAudioData(rawBytes);
-      return teacherAudioBuffer;
+      return await audioCtx.decodeAudioData(rawBytes);
     } catch (e) {
-      console.warn("Hoca sesi decode edilemedi, HTMLAudio fallback kullanılacak:", e);
+      console.warn("Ses decode edilemedi, HTMLAudio fallback kullanılacak:", e);
       return null;
     }
+  }
+
+  async function getTeacherAudioBuffer() {
+    if (teacherAudioBuffer) return teacherAudioBuffer;
+    if (!teacherAudioUrl) return null;
+    teacherAudioBuffer = await decodeUrlToBuffer(teacherAudioUrl);
+    return teacherAudioBuffer;
+  }
+
+  async function getUserAudioBuffer() {
+    if (userAudioBuffer) return userAudioBuffer;
+    if (!voiceUrl) return null;
+    userAudioBuffer = await decodeUrlToBuffer(voiceUrl);
+    return userAudioBuffer;
   }
 
   function onWordSelected(wordId) {
@@ -552,43 +710,37 @@
     playRealWordSegment(bounds.start, bounds.end);
   }
 
-  async function playRealWordSegment(startTime, endTime) {
-    if (!teacherAudioUrl) {
-      statusField.textContent = "Gerçek hoca sesi henüz hazır değil.";
-      return;
+  function segStatus(msg) {
+    statusField.textContent = msg;
+    if (wtOpen) {
+      const el = document.getElementById("wtStatus");
+      if (el) el.textContent = msg;
     }
+  }
 
-    try { window.speechSynthesis.cancel(); } catch(e){}
-    stopActiveSegment();
+  function startBufferSegment(buffer, aStart, aEnd, onComplete) {
+    const clampedStart = Math.min(Math.max(0, aStart), Math.max(0, buffer.duration - 0.05));
+    const clampedDur = Math.min(aEnd, buffer.duration) - clampedStart;
+    if (clampedDur <= 0) { segStatus("Kesit aralığı geçersiz."); return false; }
 
-    // Kelime zamanları TTS zaman ekseninde; ses dosyası kayıt ekseninde.
-    // Kayıt TTS'ten önce başladığı için offset ekleyerek dosya eksenine çeviriyoruz.
-    const aStart = Math.max(0, startTime + ttsAudioOffset);
-    const aEnd = Math.max(aStart + 0.05, endTime + ttsAudioOffset);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(audioCtx.destination);
+    src.onended = function() {
+      if (activeSegmentSource === src) {
+        activeSegmentSource = null;
+        segStatus("Kesit bitti.");
+        if (typeof onComplete === "function") onComplete();
+      }
+    };
+    activeSegmentSource = src;
+    src.start(0, clampedStart, clampedDur);
+    return true;
+  }
 
-    // 1) Tercih edilen yol: Web Audio ile örnekleme hassasiyetinde kesit
-    const buffer = await getTeacherAudioBuffer();
-    if (buffer) {
-      const clampedStart = Math.min(aStart, Math.max(0, buffer.duration - 0.05));
-      const clampedDur = Math.min(aEnd, buffer.duration) - clampedStart;
-      if (clampedDur <= 0) { statusField.textContent = "Kesit aralığı geçersiz."; return; }
-
-      const src = audioCtx.createBufferSource();
-      src.buffer = buffer;
-      src.connect(audioCtx.destination);
-      src.onended = function() {
-        if (activeSegmentSource === src) activeSegmentSource = null;
-        statusField.textContent = "Kesit bitti.";
-      };
-      activeSegmentSource = src;
-      src.start(0, clampedStart, clampedDur);
-      statusField.textContent = "Gerçek ses kesiti oynatılıyor...";
-      return;
-    }
-
-    // 2) Fallback: HTMLAudio (decode desteklenmezse)
+  function startHtmlAudioSegment(url, aStart, aEnd, onComplete) {
     try {
-      const audio = new Audio(teacherAudioUrl);
+      const audio = new Audio(url);
       audio.preload = "auto";
       activeSegmentAudio = audio;
 
@@ -596,20 +748,68 @@
         audio.oncanplaythrough = null;
         audio.currentTime = aStart;
         audio.play().catch(e => console.log("Oynatma hatası:", e));
-        statusField.textContent = "Gerçek ses kesiti oynatılıyor...";
+        segStatus("Gerçek ses kesiti oynatılıyor...");
       };
 
       audio.ontimeupdate = function() {
         if (audio.currentTime >= aEnd) {
           audio.pause();
           audio.ontimeupdate = null;
-          if (activeSegmentAudio === audio) activeSegmentAudio = null;
-          statusField.textContent = "Kesit bitti.";
+          if (activeSegmentAudio === audio) {
+            activeSegmentAudio = null;
+            segStatus("Kesit bitti.");
+            if (typeof onComplete === "function") onComplete();
+          }
         }
       };
     } catch (e) {
       console.error("Kesit çalma hatası:", e);
     }
+  }
+
+  async function playRealWordSegment(startTime, endTime, onComplete) {
+    if (!teacherAudioUrl) {
+      segStatus("Gerçek hoca sesi henüz hazır değil.");
+      return;
+    }
+
+    try { window.speechSynthesis.cancel(); } catch(e){}
+    stopActiveSegment();
+
+    // Kelime zamanları TTS zaman ekseninde; ses dosyası kayıt ekseninde.
+    const aStart = Math.max(0, startTime + ttsAudioOffset);
+    const aEnd = Math.max(aStart + 0.05, endTime + ttsAudioOffset);
+
+    const buffer = await getTeacherAudioBuffer();
+    if (buffer) {
+      if (startBufferSegment(buffer, aStart, aEnd, onComplete)) {
+        segStatus("Hoca kesiti oynatılıyor...");
+      }
+      return;
+    }
+    startHtmlAudioSegment(teacherAudioUrl, aStart, aEnd, onComplete);
+  }
+
+  async function playUserWordSegment(startTime, endTime, onComplete) {
+    if (!voiceUrl) {
+      segStatus("Henüz kendi kaydınız yok. Önce '2. Mikrofonla Oku' adımını yapın.");
+      return;
+    }
+
+    try { window.speechSynthesis.cancel(); } catch(e){}
+    stopActiveSegment();
+
+    const aStart = Math.max(0, startTime);
+    const aEnd = Math.max(aStart + 0.05, endTime);
+
+    const buffer = await getUserAudioBuffer();
+    if (buffer) {
+      if (startBufferSegment(buffer, aStart, aEnd, onComplete)) {
+        segStatus("Sizin kesitiniz oynatılıyor...");
+      }
+      return;
+    }
+    startHtmlAudioSegment(voiceUrl, aStart, aEnd, onComplete);
   }
 
   document.getElementById("startSlider").oninput = function() {
@@ -810,6 +1010,7 @@
     ttsTimelineData = []; ttsSpectrums = []; finalTtsData = []; finalUserData = []; 
     finalTtsSpectrums = []; finalUserSpectrums = []; playheadProgress = -1;
     stopActiveSegment();
+    if (wtOpen) closeWordTuner();
     teacherAudioUrl = null; teacherAudioBuffer = null; ttsAudioOffset = 0;
     feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
     avatarBoxHoca.className = "avatar-box speaking";
@@ -887,6 +1088,7 @@
         if (!buildAlignmentFromBoundaries(boundaryStarts)) {
           calculateDefaultAlignment();
         }
+        if (userTimelineData.length) buildUserAlignment();
 
         avatarBoxHoca.className = "avatar-box"; mouthHoca.className = "mouth rest";
         try{ if(capRec) capRec.stop(); if(capStream) capStream.getTracks().forEach(tr=>tr.stop()); }catch(e){}
@@ -933,6 +1135,8 @@
         mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
         mediaRecorder.onstop = () => {
           voiceUrl = URL.createObjectURL(new Blob(recordedChunks, { type: 'audio/webm' }));
+          userAudioBuffer = null;
+          buildUserAlignment();
           analyzeGraphsBtn.disabled = false;
         };
         mediaRecorder.start();
@@ -1229,6 +1433,249 @@
     audio.onended = () => { clearInterval(samplingIntervalId); avatarBoxUser.className = "avatar-box"; mouthUser.className = "mouth rest"; playheadProgress = -1; drawStudioGraphs(); };
     audio.play().catch(e=>{});
   };
+
+  // ================= TAM EKRAN KELİME AYAR PANELİ =================
+  const wtOverlay = document.getElementById("wordTunerOverlay");
+
+  function wtGetBounds(track) {
+    if (selectedWordIndex === null) return null;
+    return track === "coach" ? wordTimestamps[selectedWordIndex] : userWordTimestamps[selectedWordIndex];
+  }
+  function wtDur(track) { return track === "coach" ? totalTtsDuration : userTotalDuration; }
+
+  function setupTunerZoom() {
+    const PAD = 0.5; // kelimenin ±0.5s çevresi — hassasiyetin kaynağı bu yakınlaştırma
+    const cb = wtGetBounds("coach");
+    if (cb) {
+      wtZoom.coach = {
+        min: Math.max(0, cb.start - PAD),
+        max: Math.min((totalTtsDuration || cb.end) + 0.3, cb.end + PAD)
+      };
+    }
+    const ub = wtGetBounds("user");
+    if (ub) {
+      wtZoom.user = {
+        min: Math.max(0, ub.start - PAD),
+        max: Math.min((userTotalDuration || ub.end) + 0.3, ub.end + PAD)
+      };
+    }
+  }
+
+  function wtApplySlider(idBase, zoom, bounds) {
+    const s = document.getElementById(idBase + "Start");
+    const e = document.getElementById(idBase + "End");
+    s.min = zoom.min.toFixed(2); s.max = zoom.max.toFixed(2); s.value = bounds.start;
+    e.min = zoom.min.toFixed(2); e.max = zoom.max.toFixed(2); e.value = bounds.end;
+    document.getElementById(idBase + "StartVal").textContent = bounds.start.toFixed(2) + "s";
+    document.getElementById(idBase + "EndVal").textContent = bounds.end.toFixed(2) + "s";
+  }
+
+  function refreshTunerControls() {
+    const cb = wtGetBounds("coach");
+    if (cb) wtApplySlider("wtCoach", wtZoom.coach, cb);
+    const ub = wtGetBounds("user");
+    document.getElementById("wtUserTrack").classList.toggle("disabled", !ub);
+    if (ub) wtApplySlider("wtUser", wtZoom.user, ub);
+  }
+
+  function syncMiniPanel() {
+    if (selectedWordIndex === null) return;
+    const b = wordTimestamps[selectedWordIndex];
+    if (!b) return;
+    const s = document.getElementById("startSlider"), e = document.getElementById("endSlider");
+    s.max = totalTtsDuration.toFixed(2); e.max = totalTtsDuration.toFixed(2);
+    s.value = b.start; e.value = b.end;
+    document.getElementById("startVal").textContent = b.start.toFixed(2) + "s";
+    document.getElementById("endVal").textContent = b.end.toFixed(2) + "s";
+  }
+
+  function drawTunerCanvas() {
+    const c = document.getElementById("wtCanvas");
+    const W = c.clientWidth, H = c.clientHeight;
+    if (!W || !H) return;
+    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+    const ctx = c.getContext("2d");
+    ctx.clearRect(0, 0, W, H);
+    const half = H / 2;
+
+    const cb = wtGetBounds("coach");
+    if (cb && ttsTimelineData.length) {
+      drawZoomTrack(ctx, ttsTimelineData, wtZoom.coach, cb, 0, half - 2, "#38bdf8", W);
+    }
+    const ub = wtGetBounds("user");
+    if (ub && userTimelineData.length) {
+      drawZoomTrack(ctx, userTimelineData, wtZoom.user, ub, half + 2, half - 2, "#4ade80", W);
+    }
+
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.beginPath(); ctx.moveTo(0, half); ctx.lineTo(W, half); ctx.stroke();
+  }
+
+  function drawZoomTrack(ctx, data, zoom, region, y0, h, color, W) {
+    const span = Math.max(zoom.max - zoom.min, 0.05);
+
+    const rx1 = ((region.start - zoom.min) / span) * W;
+    const rx2 = ((region.end - zoom.min) / span) * W;
+    ctx.fillStyle = "rgba(56, 189, 248, 0.12)";
+    ctx.fillRect(rx1, y0, rx2 - rx1, h);
+    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(rx1, y0); ctx.lineTo(rx1, y0 + h);
+    ctx.moveTo(rx2, y0); ctx.lineTo(rx2, y0 + h);
+    ctx.stroke();
+
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    let started = false;
+    for (let x = 0; x < W; x++) {
+      const t = zoom.min + (x / W) * span;
+      const fi = t / 0.04;
+      const i0 = Math.floor(fi);
+      if (i0 < 0 || i0 >= data.length) continue;
+      const i1 = Math.min(i0 + 1, data.length - 1);
+      const v = data[i0] * (1 - (fi - i0)) + data[i1] * (fi - i0);
+      const y = y0 + h - (v / 100) * (h * 0.9) - 1;
+      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  function openWordTuner(wordId) {
+    if (wordId === null || wordId === undefined) return;
+    if (!wordTimestamps[wordId]) {
+      segStatus("Önce '1. Hoca Çizdir' adımını tamamlayın.");
+      return;
+    }
+    selectedWordIndex = wordId;
+    wordsArray.forEach(w => w.dom.classList.remove("selected-word"));
+    const w = wordsArray.find(x => x.id === wordId);
+    if (!w) return;
+    w.dom.classList.add("selected-word");
+
+    document.getElementById("wtTitle").textContent = '"' + w.raw.toUpperCase() + '"';
+    wtOpen = true;
+    wtOverlay.style.display = "flex";
+
+    const ub = userWordTimestamps[wordId];
+    document.getElementById("wtStatus").textContent = ub
+      ? "Hassas mod: kaydırıcılar kelimenin ±0.5s çevresinde çalışır."
+      : "Kendi kaydınız yok — '2. Mikrofonla Oku' sonrası kelimeniz de burada görünür.";
+
+    setupTunerZoom();
+    refreshTunerControls();
+    drawTunerCanvas();
+
+    try {
+      if (wtOverlay.requestFullscreen) wtOverlay.requestFullscreen().catch(function(){});
+    } catch(e){}
+  }
+
+  function closeWordTuner() {
+    wtOpen = false;
+    stopActiveSegment();
+    try {
+      if (document.fullscreenElement === wtOverlay && document.exitFullscreen) {
+        document.exitFullscreen().catch(function(){});
+      }
+    } catch(e){}
+    wtOverlay.style.display = "none";
+    syncMiniPanel();
+    drawStudioGraphs();
+  }
+
+  function wtSlide(track, edge, el) {
+    const b = wtGetBounds(track);
+    if (!b) return;
+    let val = parseFloat(el.value);
+    if (edge === "start") {
+      if (val > b.end - 0.05) { val = b.end - 0.05; el.value = val; }
+      b.start = Math.max(0, val);
+      document.getElementById(el.id + "Val").textContent = b.start.toFixed(2) + "s";
+    } else {
+      if (val < b.start + 0.05) { val = b.start + 0.05; el.value = val; }
+      b.end = Math.min(val, wtDur(track) + 0.3);
+      document.getElementById(el.id + "Val").textContent = b.end.toFixed(2) + "s";
+    }
+    drawTunerCanvas();
+    if (track === "coach") { syncMiniPanel(); drawStudioGraphs(); }
+  }
+
+  document.getElementById("wtCoachStart").oninput = function(){ wtSlide("coach", "start", this); };
+  document.getElementById("wtCoachEnd").oninput   = function(){ wtSlide("coach", "end", this); };
+  document.getElementById("wtUserStart").oninput  = function(){ wtSlide("user", "start", this); };
+  document.getElementById("wtUserEnd").oninput    = function(){ wtSlide("user", "end", this); };
+
+  document.querySelectorAll(".wt-nudge").forEach(btn => {
+    btn.onclick = function() {
+      const track = btn.getAttribute("data-track");
+      const edge = btn.getAttribute("data-edge");
+      const d = parseFloat(btn.getAttribute("data-delta"));
+      const b = wtGetBounds(track);
+      if (!b) return;
+      if (edge === "start") {
+        b.start = Math.max(0, Math.min(b.start + d, b.end - 0.05));
+      } else {
+        b.end = Math.max(b.start + 0.05, Math.min(b.end + d, wtDur(track) + 0.3));
+      }
+      const z = wtZoom[track];
+      if (b.start < z.min) z.min = Math.max(0, b.start - 0.1);
+      if (b.end > z.max) z.max = b.end + 0.1;
+      refreshTunerControls();
+      drawTunerCanvas();
+      if (track === "coach") { syncMiniPanel(); drawStudioGraphs(); }
+    };
+  });
+
+  document.getElementById("wtPlayCoach").onclick = function() {
+    const b = wtGetBounds("coach");
+    if (b) playRealWordSegment(b.start, b.end);
+  };
+  document.getElementById("wtPlayUser").onclick = function() {
+    const b = wtGetBounds("user");
+    if (b) playUserWordSegment(b.start, b.end);
+  };
+  document.getElementById("wtCompareBtn").onclick = function() {
+    const cb = wtGetBounds("coach");
+    const ub = wtGetBounds("user");
+    if (!cb) return;
+    if (!ub) { segStatus("Karşılaştırma için önce kendi cümlenizi kaydedin."); return; }
+    segStatus("Karşılaştırma: önce hoca...");
+    playRealWordSegment(cb.start, cb.end, function() {
+      setTimeout(function() {
+        segStatus("...şimdi siz");
+        playUserWordSegment(ub.start, ub.end, function() {
+          segStatus("Karşılaştırma bitti.");
+        });
+      }, 250);
+    });
+  };
+
+  document.getElementById("wtCloseBtn").onclick = closeWordTuner;
+  document.getElementById("wtFsBtn").onclick = function() {
+    try {
+      if (document.fullscreenElement === wtOverlay) {
+        document.exitFullscreen().catch(function(){});
+      } else if (wtOverlay.requestFullscreen) {
+        wtOverlay.requestFullscreen().catch(function(){});
+      }
+    } catch(e){}
+  };
+  document.getElementById("openTunerFsBtn").onclick = function(e) {
+    e.stopPropagation();
+    if (selectedWordIndex !== null) openWordTuner(selectedWordIndex);
+    else segStatus("Önce bir kelimeye dokunun.");
+  };
+
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape" && wtOpen) closeWordTuner();
+  });
+  document.addEventListener("fullscreenchange", function() {
+    if (wtOpen) setTimeout(drawTunerCanvas, 60);
+  });
+  window.addEventListener("resize", function() {
+    if (wtOpen) drawTunerCanvas();
+  });
 </script>
 
 <script src="./coach-bubble.js" defer></script>
