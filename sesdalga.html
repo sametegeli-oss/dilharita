@@ -359,19 +359,52 @@
     const u = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(u);
     u.lang = "en-US"; u.rate = 0.88;
 
+    /* ── HOCA DALGASI: CÜMLEDEN türeyen ritim zarfı ──
+       Tarayıcı TTS sesini analizöre VEREMEZ (hoparlöre gider); eski kod bu yüzden
+       sabit pencereli taklit çiziyordu ve her cümlede AYNI grafik çıkıyordu.
+       Yeni yaklaşım: zarf hedef cümlenin kendisinden kurulur —
+       her kelimenin süresi hece sayısına, tepe yüksekliği uzunluğuna/vurgusuna
+       bağlıdır; virgül/noktalı virgül uzun durak, cümle sonu doğal düşüş yapar.
+       TTS onboundary olayı destekliyorsa kelime başlangıçları GERÇEK okuma
+       zamanına kilitlenir; desteklemiyorsa hece-temelli tahmin kullanılır. */
+    const __sched=(function(){
+      const words=(TARGET_TEXT.match(/[A-Za-z']+|[,;:]/g)||[]);
+      const syl=w=>Math.max(1,(w.toLowerCase().match(/[aeiouy]+/g)||[]).length);
+      const hash=w=>{let h=0;for(let i=0;i<w.length;i++)h=(h*31+w.charCodeAt(i))|0;return h;};
+      let t=0.18; const seg=[]; const wordStarts=[];
+      words.forEach((w,i)=>{
+        if(/^[,;:]$/.test(w)){ t+=0.28; return; }                 // duraklama
+        const dur=(0.075*syl(w)+0.07)/0.88;                        // hız 0.88'e ölçekli
+        const last=(i===words.length-1);
+        let amp=44+syl(w)*9+Math.min(12,w.length);                 // uzun/çok heceli kelime daha vurgulu
+        if(last) amp*=0.82;                                        // cümle sonu doğal düşüş
+        wordStarts.push({char:TARGET_TEXT.indexOf(w), t0:t});
+        seg.push({a:t, b:t+dur, amp:Math.min(95,amp), h:hash(w)});
+        t+=dur+0.085;                                              // kelime arası nefes
+      });
+      return {seg, total:t, wordStarts, offset:0};
+    })();
+    u.onboundary=function(ev){
+      /* gerçek TTS zamanına kilitlen: bu kelimenin planlanan t0'ı ile gerçek zaman farkı */
+      try{
+        if(ev.name!=="word") return;
+        const now=(Date.now()-startTime)/1000;
+        const ws=__sched.wordStarts.find(x=>x.char>=ev.charIndex-1&&x.char<=ev.charIndex+1);
+        if(ws) __sched.offset=now-ws.t0;
+      }catch(e){}
+    };
     samplingIntervalId = setInterval(() => {
       let t = (Date.now() - startTime) / 1000;
-      let mockVolume = 0;
-      
-      if (t > 0.2 && t < 0.5) mockVolume = 40 + Math.random()*20; 
-      else if (t >= 0.5 && t < 0.8) mockVolume = 45 + Math.random()*15; 
-      else if (t >= 0.8 && t < 0.95) mockVolume = 2; 
-      else if (t >= 0.95 && t < 1.5) mockVolume = 65 + Math.random()*25; 
-      else if (t >= 1.5 && t < 1.8) mockVolume = 30 + Math.random()*10; 
-      else if (t >= 1.8 && t < 2.3) mockVolume = 55 + Math.random()*20; 
-      else mockVolume = 1;
-
-      ttsTimelineData.push(mockVolume);
+      const ts=t-__sched.offset;
+      let vol=1.5;
+      for(const g of __sched.seg){
+        if(ts>=g.a&&ts<g.b){
+          /* deterministik dalgalanma: aynı cümle aynı çizim, farklı cümle farklı */
+          vol=g.amp+7*Math.sin(ts*24+g.h)+4*Math.sin(ts*57+g.h*0.7);
+          break;
+        }
+      }
+      ttsTimelineData.push(Math.max(1,vol));
       finalTtsData = ttsTimelineData;
       drawStudioGraphs();
       document.getElementById("ttsDuration").textContent = `(${t.toFixed(1)}s)`;
