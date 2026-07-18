@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape" />
   <title>DilHarita - Akustik Artikülasyon v3</title>
   <style>
     :root {
@@ -13,7 +13,6 @@
       --muted: #94a3b8;
       --accent: #38bdf8;
       --user-color: #4ade80;
-      
       --status-perfect: #10b981;
       --status-good: #3b82f6;
       --status-try: #f59e0b;
@@ -22,200 +21,198 @@
     
     html, body { 
       width: 100%; 
-      height: 100%;
+      height: 100dvh;
       background: var(--bg); 
       color: var(--text); 
       font-family: system-ui, -apple-system, sans-serif; 
-      overflow-x: hidden;
+      overflow: hidden; /* Sürükleme ve kaydırmayı tamamen engeller */
+      position: fixed;
     }
     
     .trainer-grid {
       width: 100%;
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    @media (min-width: 768px) or (orientation: landscape) {
-      .trainer-grid {
-        display: grid;
-        grid-template-columns: 1.2fr 0.8fr;
-        height: 100vh;
-        height: 100dvh;
-        overflow: hidden;
-      }
-      .left-zone, .right-zone { height: 100%; overflow: hidden; justify-content: space-between; }
+      height: 100dvh;
+      padding: 6px 10px;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      grid-template-rows: auto 1fr;
+      gap: 6px;
     }
 
     .header-panel {
+      grid-column: 1 / -1;
       background: #1e293b;
-      padding: 6px 12px;
-      border-radius: 8px;
-      border-left: 4px solid var(--accent);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border-left: 3px solid var(--accent);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      height: 24px;
     }
-    .header-panel h2 { font-size: 13px; font-weight: 800; color: #60a5fa; }
-    .quick-tip { font-size: 10px; color: #cbd5e1; }
+    .header-panel h2 { font-size: 11px; font-weight: 800; color: #60a5fa; }
+    .quick-tip { font-size: 9px; color: #cbd5e1; }
 
-    .left-zone, .right-zone { display: flex; flex-direction: column; gap: 8px; }
+    .left-zone, .right-zone { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 6px; 
+      height: calc(100dvh - 42px); /* Header düşüldükten sonra kalan net alan */
+      overflow: hidden;
+    }
 
     .phrase-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px;
+      border-radius: 8px;
+      padding: 6px;
       text-align: center;
+      flex: 0 0 auto;
     }
-    .target-en { font-size: 16px; font-weight: 800; color: #fff; }
+    .target-en { font-size: 13px; font-weight: 800; color: #fff; }
     .target-en span.stress { color: #f43f5e; text-decoration: underline; font-weight: 900; }
-    .target-tr { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .target-tr { font-size: 10px; color: var(--muted); margin-top: 1px; }
 
     .interactive-coach {
       background: #020617;
       border: 1px solid #1e293b;
-      border-radius: 12px;
-      padding: 12px;
+      border-radius: 8px;
+      padding: 6px;
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 10px;
+      flex: 0 0 auto;
     }
     
-    .avatar-wrapper { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .avatar-wrapper { display: flex; flex-direction: column; align-items: center; gap: 1px; }
     .avatar-box {
-      width: 54px;
-      height: 54px;
+      width: 38px;
+      height: 38px;
       border-radius: 50%;
-      border: 3px solid var(--accent);
+      border: 2px solid var(--accent);
       background: #090d16;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      transition: all 0.08s ease;
     }
-    .avatar-box.speaking { box-shadow: 0 0 16px rgba(56, 189, 248, 0.7); border-color: var(--accent); }
-    .avatar-box.user-speaking { box-shadow: 0 0 16px rgba(74, 222, 128, 0.7); border-color: var(--user-color); }
+    .avatar-box.speaking { box-shadow: 0 0 10px rgba(56, 189, 248, 0.6); border-color: var(--accent); }
+    .avatar-box.user-speaking { box-shadow: 0 0 10px rgba(74, 222, 128, 0.6); border-color: var(--user-color); }
     
-    .eyes { display: flex; gap: 10px; margin-bottom: 6px; }
-    .eye { width: 5px; height: 5px; background: #fff; border-radius: 50%; }
+    .eyes { display: flex; gap: 6px; margin-bottom: 3px; }
+    .eye { width: 3px; height: 3px; background: #fff; border-radius: 50%; }
     
-    /* 👄 8 Viseme Uyumlu Gelişmiş Ağız CSS Anatomisi */
-    .mouth { width: 16px; height: 3px; background: #f87171; border-radius: 99px; transition: all 0.04s cubic-bezier(0.1, 0.8, 0.2, 1); }
-    .mouth.rest { height: 3px; width: 16px; border-radius: 99px; }
-    .mouth.closed { height: 1px; width: 16px; background: #ef4444; border-radius: 0; }
-    .mouth.wide { height: 5px; width: 22px; border-radius: 40%; }
-    .mouth.round { height: 12px; width: 12px; border-radius: 50%; }
-    .mouth.open { height: 16px; width: 16px; border-radius: 20% 20% 50% 50%; }
-    .mouth.teeth { height: 4px; width: 18px; border-top: 2px solid #fff; border-radius: 0; }
-    .mouth.th { height: 6px; width: 16px; border-bottom: 2px solid #fff; }
-    .mouth.f { height: 3px; width: 16px; border-top: 1.5px solid #fff; border-radius: 10px 10px 0 0; }
+    .mouth { width: 12px; height: 2px; background: #f87171; border-radius: 99px; transition: all 0.04s linear; }
+    .mouth.rest { height: 2px; width: 12px; border-radius: 99px; }
+    .mouth.closed { height: 1px; width: 12px; border-radius: 0; }
+    .mouth.wide { height: 4px; width: 16px; border-radius: 40%; }
+    .mouth.round { height: 8px; width: 8px; border-radius: 50%; }
+    .mouth.open { height: 12px; width: 12px; border-radius: 20% 20% 50% 50%; }
+    .mouth.teeth { height: 3px; width: 14px; border-top: 1.5px solid #fff; }
+    .mouth.th { height: 4px; width: 12px; border-bottom: 1.5px solid #fff; }
+    .mouth.f { height: 2.5px; width: 12px; border-top: 1px solid #fff; }
     
-    .avatar-label { font-size: 10px; color: var(--muted); font-weight: 800; text-transform: uppercase; }
+    .avatar-label { font-size: 8px; color: var(--muted); font-weight: 800; text-transform: uppercase; }
 
-    .live-canvas { width: 100%; height: 32px; background: #070a12; border-radius: 6px; }
+    .live-canvas { width: 100%; height: 24px; background: #070a12; border-radius: 4px; }
 
     .timeline-container {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px;
-      flex: 1;
+      border-radius: 10px;
+      padding: 6px;
+      flex: 1 1 auto;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      min-height: 160px;
+      overflow: hidden;
     }
-    .timeline-meta { display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 800; }
-    .dur-badge { background: #1e293b; padding: 2px 6px; border-radius: 4px; color: #cbd5e1; font-family: monospace; }
+    .timeline-meta { display: flex; justify-content: space-between; align-items: center; font-size: 9px; font-weight: 800; }
+    .dur-badge { background: #1e293b; padding: 1px 4px; border-radius: 3px; color: #cbd5e1; font-family: monospace; }
     
     .studio-frame {
       position: relative;
       width: 100%;
       flex: 1;
       background: #020617;
-      border-radius: 8px;
+      border-radius: 6px;
       border: 1px solid #ffffff05;
-      margin-top: 6px;
+      margin-top: 4px;
     }
     .overlay-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 
     .score-terminal {
       background: #070d19;
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
+      border-radius: 10px;
+      padding: 8px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      flex: 1;
     }
     .score-badge-display {
-      font-size: 16px;
+      font-size: 13px;
       font-weight: 900;
-      padding: 6px 16px;
-      border-radius: 20px;
+      padding: 4px 12px;
+      border-radius: 14px;
       color: #fff;
       background: var(--border);
       text-transform: uppercase;
-      letter-spacing: 1px;
     }
     
     .metric-sub-row {
       display: flex;
       width: 100%;
       justify-content: space-between;
-      gap: 6px;
-      margin-top: 10px;
+      gap: 4px;
+      margin-top: 6px;
       border-top: 1px solid rgba(255,255,255,0.05);
-      padding-top: 8px;
+      padding-top: 4px;
     }
     .metric-box {
       flex: 1;
       background: #020617;
-      border-radius: 6px;
-      padding: 4px;
+      border-radius: 4px;
+      padding: 3px;
       text-align: center;
-      font-size: 9px;
+      font-size: 8px;
       color: var(--muted);
     }
-    .metric-val { font-size: 11px; font-weight: 800; color: #fff; margin-top: 2px; }
+    .metric-val { font-size: 10px; font-weight: 800; color: #fff; margin-top: 1px; }
 
-    .diff-line { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; font-size: 11px; font-weight: 700; margin-top: 6px; }
+    .diff-line { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; font-size: 10px; font-weight: 700; margin-top: 4px; }
 
     .trainer-feedback-card {
       background: #1e1b4b;
       border: 1px solid #4338ca;
-      border-radius: 10px;
-      padding: 8px 10px;
+      border-radius: 8px;
+      padding: 4px 8px;
       width: 100%;
-      max-height: 115px;
+      flex: 1;
       overflow-y: auto;
-      margin-top: 6px;
+      margin-top: 4px;
     }
-    .feedback-title { font-size: 10px; font-weight: 900; color: #a5b4fc; text-transform: uppercase; }
-    .feedback-text { font-size: 11px; color: #e0e7ff; line-height: 1.4; margin-top: 2px; }
+    .feedback-title { font-size: 9px; font-weight: 900; color: #a5b4fc; text-transform: uppercase; }
+    .feedback-text { font-size: 10px; color: #e0e7ff; line-height: 1.3; margin-top: 1px; }
 
-    .control-buttons { display: flex; flex-direction: column; gap: 4px; position: relative; z-index: 999; }
+    .control-buttons { display: flex; flex-direction: column; gap: 3px; position: relative; z-index: 999; flex: 0 0 auto; }
     
     .btn-trainer {
       width: 100%;
       background: #2563eb;
       color: #fff;
       border: none;
-      border-radius: 8px;
-      padding: 10px;
-      font-size: 11px;
+      border-radius: 6px;
+      padding: 7px;
+      font-size: 10.5px;
       font-weight: bold;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 4px;
     }
     .btn-trainer:active { transform: scale(0.99); }
     .btn-trainer.recording { background: #dc2626; }
@@ -224,7 +221,7 @@
     
     .btn-trainer.duet-btn, .btn-trainer.solo-btn { display: none; background: #b45309; }
 
-    .status-bar { font-size: 10px; color: var(--muted); text-align: center; min-height: 12px; margin-top: 2px; }
+    .status-bar { font-size: 9px; color: var(--muted); text-align: center; min-height: 10px; }
   </style>
 </head>
 <body>
@@ -232,7 +229,7 @@
 <div class="trainer-grid">
   <div class="header-panel">
     <h2>🎯 AKUSTİK ARTİKÜLASYON TRAINER v3</h2>
-    <div class="quick-tip" id="quickTip">Formant Spektrum ve Segment Analizi devrededir.</div>
+    <div class="quick-tip" id="quickTip">Maksimum ekran optimizasyonu devrededir.</div>
   </div>
   
   <div class="left-zone">
@@ -256,10 +253,10 @@
 
     <div class="timeline-container">
       <div class="timeline-meta">
-        <div style="color: var(--accent);">📊 KESİNTİSİZ ZAMAN VE DELTA SAPMA SPEKTRUMU</div>
-        <div style="display: flex; gap: 6px;">
-          <span class="dur-badge">Hoca: <span id="ttsDuration">0.0s</span></span>
-          <span class="dur-badge">Sen: <span id="userDuration">0.0s</span></span>
+        <div>📊 SEYİR VE DELTA SAPMA SPEKTRUMU</div>
+        <div style="display: flex; gap: 4px;">
+          <span class="dur-badge">H: <span id="ttsDuration">0s</span></span>
+          <span class="dur-badge">S: <span id="userDuration">0s</span></span>
         </div>
       </div>
       <div class="studio-frame">
@@ -275,16 +272,14 @@
       <div class="metric-sub-row">
         <div class="metric-box">Metin Skoru<div class="metric-val" id="mSöz">--</div></div>
         <div class="metric-box">Segment Hızı<div class="metric-val" id="mTempo">--</div></div>
-        <div class="metric-box">Vurgu Uyum Aralığı<div class="metric-val" id="mVurgu">--</div></div>
+        <div class="metric-box">Vurgu Uyum<div class="metric-val" id="mVurgu">--</div></div>
       </div>
 
-      <div class="diff-line" id="diffLine">
-        <span style="color: var(--muted); font-size: 10px;">Analiz sistemi komut bekliyor.</span>
-      </div>
+      <div class="diff-line" id="diffLine"></div>
       
       <div class="trainer-feedback-card">
-        <div class="feedback-title">🧭 AI FORMATİF KOÇLUK TAVSİYELERİ</div>
-        <div class="feedback-text" id="feedbackText">Koç sistemini tetiklemek için lütfen '1. Hoca Sesini Çizdir & Dinle' adımından başlayın.</div>
+        <div class="feedback-title">🧭 AI TAVSİYELERİ</div>
+        <div class="feedback-text" id="feedbackText">Başlamak için '1. Hoca Sesini Çizdir & Dinle' adımına dokunun.</div>
       </div>
     </div>
 
@@ -296,7 +291,7 @@
       <button class="btn-trainer solo-btn" id="playBtn" style="background:#1e293b;">▶ Sadece Kendi Sesim</button>
     </div>
 
-    <div class="status-bar" id="statusField">Hazır.</div>
+    <div class="status-bar" id="statusField">Trainer modülü hazır.</div>
   </div>
 </div>
 
@@ -330,7 +325,8 @@
       var en = q.get("en"), tr = q.get("tr");
       var targetNode = document.getElementById("targetEn");
       if(en && targetNode){ 
-        var cleanEn = en.replace(/<\/?[^>]+(>|$)/g, "");
+        var div = document.createElement("div"); div.textContent = en;
+        var cleanEn = div.innerHTML; 
         targetNode.setAttribute("data-raw-text", cleanEn);
         if(cleanEn.toLowerCase().includes("shirt")) {
           targetNode.innerHTML = cleanEn.replace(/shirt/i, '<span class="stress">SHIRT</span>');
@@ -380,42 +376,25 @@
   const avatarBox = document.getElementById("avatarBox");
   const avatarLabel = document.getElementById("avatarLabel");
 
-  // --- 👄 KUSURSUZ HUSUS 1: SPEKTRAL VE FONETİK 8 VİSEME LİP-SYNC MOTORU ---
   function computeVisemeFromSpectrum(freqData, rmsVolume) {
     if (!mouth) return;
     if (rmsVolume < 5) { mouth.className = "mouth rest"; return; }
     
-    // Frekans spektrumunu 3 temel formant bölgesine ayırıyoruz
-    let lowFreqEnergy = 0;  // 0 - 250Hz arası (Bas / Kapalı ünlüler)
-    let midFreqEnergy = 0;  // 250 - 1000Hz arası (Orta / Yayvan ünlüler)
-    let highFreqEnergy = 0; // 1000Hz+ üstü (Tiz / Frikatif ünsüz patlamaları)
-    
+    let lowFreqEnergy = 0, midFreqEnergy = 0, highFreqEnergy = 0;
     const binCount = freqData.length;
+    
     for (let i = 0; i < binCount; i++) {
       if (i < binCount * 0.2) lowFreqEnergy += freqData[i];
       else if (i < binCount * 0.6) midFreqEnergy += freqData[i];
       else highFreqEnergy += freqData[i];
     }
 
-    // Gerçek zamanlı Fonetik Sınıflandırma Mantığı
-    if (highFreqEnergy > midFreqEnergy && highFreqEnergy > lowFreqEnergy * 1.5) {
-      // /s/, /z/, /t/ patlamaları veya diş tonları
-      mouth.className = "mouth teeth";
-    } else if (lowFreqEnergy > midFreqEnergy * 1.8) {
-      // /uː/, /oʊ/ dudakların büzüldüğü yuvarlak tonlar
-      mouth.className = "mouth round";
-    } else if (midFreqEnergy > lowFreqEnergy && midFreqEnergy > highFreqEnergy) {
-      // /iː/, /e/ ağzın yanlara doğru açıldığı geniş formlar
-      mouth.className = "mouth wide";
-    } else if (rmsVolume > 40) {
-      // /ɑː/, /æ/ gibi geniş patlamalı açık sesler
-      mouth.className = "mouth open";
-    } else if (rmsVolume < 14) {
-      // /m/, /b/, /p/ dudak kapanış noktaları
-      mouth.className = "mouth closed";
-    } else {
-      mouth.className = "mouth rest";
-    }
+    if (highFreqEnergy > midFreqEnergy && highFreqEnergy > lowFreqEnergy * 1.5) mouth.className = "mouth teeth";
+    else if (lowFreqEnergy > midFreqEnergy * 1.8) mouth.className = "mouth round";
+    else if (midFreqEnergy > lowFreqEnergy && midFreqEnergy > highFreqEnergy) mouth.className = "mouth wide";
+    else if (rmsVolume > 40) mouth.className = "mouth open";
+    else if (rmsVolume < 14) mouth.className = "mouth closed";
+    else mouth.className = "mouth rest";
   }
 
   function setCoachState(state) {
@@ -426,14 +405,9 @@
     else { avatarLabel.textContent = "TRAINER"; avatarLabel.style.color = "var(--muted)"; }
   }
 
-  // --- 🚀 KUSURSUZ HUSUS 5: HIZLI VE PERFORMANSLI RESIZE DENETLEYİCİSİ ---
   function resizeCanvasIfNeeded(canvas) {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    if (canvas.width !== w || canvas.height !== h) {
-      canvas.width = w;
-      canvas.height = h;
-    }
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   }
 
   function tokenizeEN(s) { return String(s || "").match(/[A-Za-z']+|\d+/g) || []; }
@@ -466,7 +440,6 @@
     return { parts, score: Math.max(0, Math.round((correct / Math.max(n, 1)) * 100 - Math.min(extra * 4, 12))) };
   }
 
-  // --- 🛠️ KUSURSUZ HUSUS 4: SIFIRA BÖLÜNME KORUMALI RESAMPLING ---
   function resampleTimelineData(data, targetLength) {
     if (targetLength <= 1) return [data[0] || 0];
     if (!data.length) return new Array(targetLength).fill(0);
@@ -484,7 +457,7 @@
 
   analyzeTtsBtn.onclick = async function() {
     ttsTimelineData = []; finalTtsData = []; finalUserData = []; playheadProgress = -1;
-    teacherAudioUrl = null; feedbackText.innerHTML = "Hoca spektrum modeli çıkarılıyor...";
+    teacherAudioUrl = null; feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
     
     let capStream=null, capAnalyser=null, capData=null, capCtx=null, capRec=null;
     const teacherChunks=[];
@@ -513,7 +486,7 @@
         capAnalyser.getByteFrequencyData(capData);
         let total=0; for(let i=0;i<capData.length;i++) total+=capData[i];
         vol = total/capData.length;
-        computeVisemeFromSpectrum(capData, vol); // Spektral Lip-Sync Tetiklemesi
+        computeVisemeFromSpectrum(capData, vol);
       }
       ttsTimelineData.push(vol);
       finalTtsData = ttsTimelineData;
@@ -526,15 +499,14 @@
         clearInterval(samplingIntervalId);
         setCoachState("none"); if(mouth) mouth.className = "mouth rest";
         try{ if(capRec) capRec.stop(); if(capStream) capStream.getTracks().forEach(tr=>tr.stop()); }catch(e){}
-        statusField.textContent = "Hoca hazır. Şimdi cümlenizi okuyun.";
-        feedbackText.innerHTML = "🎓 <b>Formant Haritası Çıkarıldı:</b> Şimdi 2. butona dokunarak cümlenizi artiküle edin.";
+        statusField.textContent = "Hoca hazır. Cümlenizi okuyun.";
+        feedbackText.innerHTML = "🎓 <b>Hoca Hazır:</b> Şimdi 2. butona basarak cümleyi seslendirin.";
         recordBtn.disabled = false;
       }, 250);
     };
     window.speechSynthesis.speak(u);
   };
 
-  // --- KUSURSUZ HUSUS 2: DOLAYSIZ VE TEMİZ STOP MOTORU ---
   function stopRecording() {
     isRecording = false;
     recordBtn.textContent = "🎙️ 2. Mikrofonu Aç ve Oku";
@@ -577,9 +549,9 @@
 
         isRecording = true;
         setCoachState("user");
-        recordBtn.textContent = "■ Kaydı Sonlandır";
+        recordBtn.textContent = "■ Kaydı Durdur";
         recordBtn.classList.add("recording");
-        statusField.textContent = "Akustik tarama yapılıyor...";
+        statusField.textContent = "Kaydediliyor...";
 
         let userStartTime = Date.now();
         samplingIntervalId = setInterval(() => {
@@ -591,8 +563,6 @@
           userTimelineData.push(avg);
           finalUserData = userTimelineData;
           drawStudioGraphs();
-          
-          // Öğrencinin formant analiziyle dudak hareketlerini eşle
           computeVisemeFromSpectrum(dataArray, avg);
           
           let dur = (Date.now() - userStartTime) / 1000;
@@ -608,7 +578,7 @@
             }
           }
         }, 40);
-      } catch (e) { statusField.textContent = "Mikrofon katmanı kilitli."; }
+      } catch (e) { statusField.textContent = "Mikrofon kilitli."; }
     } else {
       stopRecording();
     }
@@ -616,7 +586,7 @@
 
   function handleSttResult() {
     if (!heardText) {
-      document.getElementById("scoreBadge").textContent = "Geliştirilmeli";
+      document.getElementById("scoreBadge").textContent = "Yeniden Dene";
       document.getElementById("scoreBadge").style.background = "var(--status-try)";
       return;
     }
@@ -633,7 +603,6 @@
     });
   }
 
-  // --- 📊 KUSURSUZ HUSUS 3 V3: PARÇALI SEGMENT ZAMANLAMA VE AKUSTİK DELTA ENTEGRASYONU ---
   analyzeGraphsBtn.onclick = function() {
     if (!ttsTimelineData.length || !userTimelineData.length) return;
     const THRESHOLD = 8;
@@ -668,7 +637,6 @@
 
     let sözSkor = parseInt(document.getElementById("mSöz").textContent) || 0;
 
-    // Segment Bazlı Zaman Kıyaslaması (Cümleyi 3 ana parçaya böler: Başlangıç, Vurgu Merkezi, Kapanış)
     const segmentLength = Math.floor(finalTtsData.length / 3);
     let segment1Diff = 0, segment2Diff = 0, segment3Diff = 0;
     
@@ -695,41 +663,29 @@
     let genelOrtalama = Math.round((sözSkor * 0.3) + (tempoSkor * 0.4) + (vurguSkor * 0.3));
     let badge = document.getElementById("scoreBadge");
     
-    if(genelOrtalama >= 85) {
-      badge.textContent = "Kusursuz Akış 🌟";
-      badge.style.background = "var(--status-perfect)";
-    } else if (genelOrtalama >= 65) {
-      badge.textContent = "Anlaşılır Düzey 👍";
-      badge.style.background = "var(--status-good)";
-    } else {
-      badge.textContent = "Geliştirilmeli 🎯";
-      badge.style.background = "var(--status-try)";
-    }
+    if(genelOrtalama >= 85) { badge.textContent = "Kusursuz 🌟"; badge.style.background = "var(--status-perfect)"; }
+    else if (genelOrtalama >= 65) { badge.textContent = "İyi 👍"; badge.style.background = "var(--status-good)"; }
+    else { badge.textContent = "Gelişmeli 🎯"; badge.style.background = "var(--status-try)"; }
 
-    // 🥪 3 Katmanlı Pedagojik Sandviç Yorum Arayüzü
-    let advice = "🟢 <b>Akustik Kazanç:</b> Kelimeleri eksiksiz telaffuz etmeyi başardınız, artikülasyon motoru ses dalganızı eşitledi.<br><br>";
-    
-    advice += "🧭 <b>Formant Analiz Çıktısı:</b> ";
+    let advice = "🟢 <b>Güçlü Taraf:</b> Kelimeleri eksiksiz tamamladınız, artikülasyon modeli eşitlendi.<br>";
+    advice += "🧭 <b>Formant Analizi:</b> ";
     if (segment2Diff > segment1Diff && segment2Diff > segment3Diff) {
-      advice += `Cümlenin orta segmentinde (vurgu bölgesinde) hocanın formant grafiğinden ciddi bir sapma var[cite: 1]. Vurgulu heceye basarken dudaklarınızı geriye doğru çekerek (WIDE viseme formu) daha kararlı enerji verin[cite: 1]. `;
+      advice += `Cümlenin orta vurgu segmentinde sapma var[cite: 1]. Büyük harfli kelimede dudaklarınızı geriye çekerek (WIDE viseme) daha kararlı enerji verin[cite: 1]. `;
     } else if (userDur > ttsDur) {
-      advice += `Genel hece süreniz hocadan uzun. Heceleri yaymak yerine birbirine ulayarak 'Shadowing' ritmine yaklaşın. `;
+      advice += `Hece süreniz hocadan uzun. Kelimeleri birbirine ulayarak geçin. `;
     } else {
-      advice += `Segment bazlı artikülasyon dengeniz stabil. `;
+      advice += `Segment artikülasyon dengeniz stabil. `;
     }
-    advice += "<br><br>🚀 <b>Eğitmen Yönlendirmesi:</b> Aşağıdaki Düet butonunu başlatın ve playhead kırmızı çizgisi akarken koçun anlık değişen 8 farklı dudak/viseme modelini taklit edin.";
-
     feedbackText.innerHTML = advice;
-    statusField.textContent = "Çok katmanlı analiz tamamlandı!";
+    statusField.textContent = "Analiz tamamlandı!";
   };
 
   function drawStudioGraphs() {
     const W = studioCanvas.width, H = studioCanvas.height;
     studioCtx.clearRect(0, 0, W, H);
 
-    // Akustik Delta Çizimi (İki dalga arasındaki fark alanlarını kırmızı vadi olarak tarar)
     if (finalTtsData.length && finalUserData.length) {
-      studioCtx.fillStyle = "rgba(244, 63, 94, 0.15)";
+      studioCtx.fillStyle = "rgba(244, 63, 94, 0.12)";
       studioCtx.beginPath();
       const step = W / Math.max(finalTtsData.length - 1, 1);
       for (let i = 0; i < finalTtsData.length; i++) {
@@ -744,7 +700,7 @@
 
     const drawWave = (data, color, isUser) => {
       if (!data.length) return;
-      studioCtx.lineWidth = isUser ? 2.5 : 2;
+      studioCtx.lineWidth = isUser ? 2 : 1.5;
       studioCtx.strokeStyle = color; studioCtx.lineCap = "round"; studioCtx.lineJoin = "round";
       studioCtx.beginPath();
       const step = W / Math.max(data.length - 1, 1);
@@ -761,7 +717,7 @@
 
     if (playheadProgress >= 0 && playheadProgress <= 100) {
       let lx = (playheadProgress / 100) * W;
-      studioCtx.lineWidth = 1.5; studioCtx.strokeStyle = "#f43f5e";
+      studioCtx.lineWidth = 1; studioCtx.strokeStyle = "#f43f5e";
       studioCtx.beginPath(); studioCtx.moveTo(lx, 0); studioCtx.lineTo(lx, H); studioCtx.stroke();
     }
   }
@@ -786,7 +742,6 @@
         if (currentSample >= totalSamples) { clearInterval(samplingIntervalId); return; }
         playheadProgress = (currentSample / totalSamples) * 100;
         drawStudioGraphs();
-        
         let mixVol = (finalTtsData[currentSample] || 0) * 0.5 + (finalUserData[currentSample] || 0) * 0.5;
         updateMouthAnimation(mixVol);
         currentSample++;
@@ -798,7 +753,7 @@
       try { window.speechSynthesis.cancel(); uAudio.pause(); if(tAudio) tAudio.pause(); } catch(e){}
       setCoachState("none"); if(mouth) mouth.className = "mouth rest";
       playheadProgress = -1; drawStudioGraphs();
-      statusField.textContent = "Düet tamamlandı.";
+      statusField.textContent = "Düet bitti.";
     };
 
     uAudio.onended = endDuet;
