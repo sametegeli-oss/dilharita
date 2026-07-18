@@ -22,21 +22,21 @@
       background: var(--bg); 
       color: var(--text); 
       font-family: system-ui, -apple-system, sans-serif; 
-      overflow-x: hidden;
     }
     
     .trainer-grid {
       width: 100%;
-      max-width: 1200px;
+      max-width: 1100px;
       margin: 0 auto;
       padding: 10px;
-      display: grid;
-      grid-template-columns: 1fr;
+      display: flex;
+      flex-direction: column;
       gap: 10px;
     }
 
     @media (min-width: 768px) or (orientation: landscape) {
       .trainer-grid {
+        display: grid;
         grid-template-columns: 1.2fr 0.8fr;
         height: 100vh;
         height: 100dvh;
@@ -46,17 +46,16 @@
     }
 
     .header-panel {
-      grid-column: 1 / -1;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       background: #1e293b;
       padding: 6px 12px;
       border-radius: 8px;
       border-left: 4px solid var(--accent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     .header-panel h2 { font-size: 13px; font-weight: 800; color: #60a5fa; }
-    .quick-tip { font-size: 10px; color: #cbd5e1; font-style: italic; }
+    .quick-tip { font-size: 10px; color: #cbd5e1; }
 
     .left-zone, .right-zone { display: flex; flex-direction: column; gap: 8px; }
 
@@ -64,12 +63,12 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 8px;
+      padding: 10px;
       text-align: center;
     }
-    .target-en { font-size: 15px; font-weight: 800; color: #fff; letter-spacing: 0.3px; }
+    .target-en { font-size: 16px; font-weight: 800; color: #fff; }
     .target-en span.stress { color: #f43f5e; text-decoration: underline; font-weight: 900; }
-    .target-tr { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .target-tr { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
     .interactive-coach {
       background: #020617;
@@ -81,15 +80,10 @@
       gap: 12px;
     }
     
-    .avatar-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-    }
+    .avatar-wrapper { display: flex; flex-direction: column; align-items: center; gap: 2px; }
     .avatar-box {
-      width: 44px;
-      height: 44px;
+      width: 46px;
+      height: 46px;
       border-radius: 50%;
       border: 2px solid var(--accent);
       background: #090d16;
@@ -97,16 +91,15 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      position: relative;
     }
     .avatar-box.speaking { box-shadow: 0 0 12px rgba(56, 189, 248, 0.6); border-color: var(--accent); }
     .avatar-box.user-speaking { box-shadow: 0 0 12px rgba(74, 222, 128, 0.6); border-color: var(--user-color); }
     .eyes { display: flex; gap: 8px; margin-bottom: 4px; }
     .eye { width: 4px; height: 4px; background: #fff; border-radius: 50%; }
     
-    .mouth { width: 14px; height: 3px; background: #f87171; border-radius: 99px; }
+    .mouth { width: 14px; height: 3px; background: #f87171; border-radius: 99px; transition: height 0.05s ease; }
     .mouth.rest { height: 3px; width: 14px; }
-    .mouth.closed { height: 1.5px; width: 14px; }
+    .mouth.closed { height: 1px; width: 14px; }
     .mouth.wide { height: 5px; width: 16px; border-radius: 40%; }
     .mouth.round { height: 9px; width: 9px; border-radius: 50%; }
     .mouth.open { height: 12px; width: 12px; border-radius: 20% 20% 50% 50%; }
@@ -119,7 +112,7 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 8px;
+      padding: 10px;
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -150,7 +143,7 @@
       align-items: center;
       justify-content: center;
     }
-    .score-circle { font-size: 26px; font-weight: 900; color: #fff; line-height: 1; }
+    .score-circle { font-size: 28px; font-weight: 900; color: #fff; line-height: 1; }
     .score-label { font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 2px; font-weight: bold; }
     .diff-line { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; font-size: 11px; font-weight: 700; margin-top: 4px; }
 
@@ -158,7 +151,7 @@
       background: #1e1b4b;
       border: 1px solid #4338ca;
       border-radius: 10px;
-      padding: 6px 10px;
+      padding: 8px 10px;
       width: 100%;
       max-height: 110px;
       overflow-y: auto;
@@ -167,7 +160,7 @@
     .feedback-title { font-size: 10px; font-weight: 900; color: #a5b4fc; text-transform: uppercase; }
     .feedback-text { font-size: 11px; color: #e0e7ff; line-height: 1.4; margin-top: 2px; }
 
-    .control-buttons { display: flex; flex-direction: column; gap: 4px; position: relative; z-index: 99; }
+    .control-buttons { display: flex; flex-direction: column; gap: 4px; position: relative; z-index: 999; }
     
     .btn-trainer {
       width: 100%;
@@ -175,7 +168,7 @@
       color: #fff;
       border: none;
       border-radius: 8px;
-      padding: 9px;
+      padding: 10px;
       font-size: 11px;
       font-weight: bold;
       cursor: pointer;
@@ -285,13 +278,233 @@
     }catch(e){}
   }
 
-  // URL Dinamik Besleme ve Cümle Vurgu Filtresi
+  // Güvenli URL Parametre ve Temizleme Filtresi (DOM Enjeksiyonunu Engeller)
   (function(){
     try{
       var q=new URLSearchParams(location.search);
       var en=q.get("en"), tr=q.get("tr");
       if(en){ 
-        let cleanEn = en.replace(/<\/?[^>]+(>|$)/g, "");
+        let div = document.createElement("div");
+        div.textContent = en;
+        let cleanEn = div.innerHTML; 
+        
+        if(cleanEn.toLowerCase().includes("shirt")) {
+          document.getElementById("targetEn").innerHTML = cleanEn.replace(/shirt/i, '<span class="stress">SHIRT</span>');
+        } else if(cleanEn.toLowerCase().includes("responsible")) {
+          document.getElementById("targetEn").innerHTML = cleanEn.replace(/responsible/i, 're-<span class="stress">SPON</span>-sible');
+        } else {
+          document.getElementById("targetEn").textContent = en;
+        }
+        if(tr) document.querySelector(".target-tr").textContent = tr;
+      }
+      var back=q.get("back");
+      var b=document.createElement("button");
+      b.textContent="← Geri";
+      b.style.cssText="position:fixed;left:6px;top:6px;z-index:99999;background:#131c30;border:1px solid #ffffff22;color:#e8eef7;border-radius:6px;padding:4px 8px;font:800 11px system-ui;cursor:pointer";
+      b.onclick=function(){ if(back) location.href=back; else history.back(); };
+      document.body.appendChild(b);
+    }catch(e){}
+  })();
+  
+  const TARGET_TEXT = document.getElementById("targetEn").textContent.replace(/-/g, "");
+
+  let mediaStream = null, mediaRecorder = null, recordedChunks = [], voiceUrl = "", teacherAudioUrl = null;
+  let isRecording = false, audioCtx = null, analyser = null, dataArray = null;
+  let recognition = null, heardText = "";
+
+  let ttsTimelineData = [];
+  let userTimelineData = [];
+  let finalTtsData = [];
+  let finalUserData = [];
+
+  let cachedTtsBounds = { start: 0, end: 0 };
+  let cachedUserBounds = { start: 0, end: 0 };
+
+  let samplingIntervalId = null;
+  let playheadProgress = -1; 
+
+  const liveCanvas = document.getElementById("liveVisualizer");
+  const liveCtx = liveCanvas.getContext("2d"); 
+  const studioCanvas = document.getElementById("studioCanvas");
+  const studioCtx = studioCanvas.getContext("2d");
+
+  const recordBtn = document.getElementById("recordBtn");
+  const playBtn = document.getElementById("playBtn");
+  const duetBtn = document.getElementById("duetBtn");
+  const analyzeTtsBtn = document.getElementById("analyzeTtsBtn");
+  const analyzeGraphsBtn = document.getElementById("analyzeGraphsBtn");
+  const feedbackText = document.getElementById("feedbackText");
+  const statusField = document.getElementById("statusField");
+  const scoreDisplay = document.getElementById("scoreDisplay");
+  const diffLine = document.getElementById("diffLine");
+  const mouth = document.getElementById("mouth");
+  const avatarBox = document.getElementById("avatarBox");
+  const avatarLabel = document.getElementById("avatarLabel");
+
+  function updateMouthAnimation(volume) {
+    if (!mouth) return;
+    if (volume < 4) mouth.className = "mouth rest";
+    else if (volume < 14) mouth.className = "mouth closed";
+    else if (volume < 28) mouth.className = "mouth wide";
+    else if (volume < 52) mouth.className = "mouth round";
+    else mouth.className = "mouth open";
+  }
+
+  function setCoachState(state) {
+    if(!avatarBox || !avatarLabel) return;
+    avatarBox.classList.remove("speaking", "user-speaking");
+    if(state === "coach") { avatarBox.classList.add("speaking"); avatarLabel.textContent = "AI COACH"; avatarLabel.style.color = "var(--accent)"; }
+    else if(state === "user") { avatarBox.classList.add("user-speaking"); avatarLabel.textContent = "YOU"; avatarLabel.style.color = "var(--user-color)"; }
+    else { avatarLabel.textContent = "TRAINER"; avatarLabel.style.color = "var(--muted)"; }
+  }
+
+  function tokenizeEN(s) { return String(s || "").match(/[A-Za-z']+|\d+/g) || []; }
+  function normSeqEN(text) {
+    const out = [];
+    for (const raw of tokenizeEN(text)) {
+      const n = raw.toLowerCase().replace(/[\u2019\u2018]/g, "'");
+      if (n) out.push({ n: n, raw: raw });
+    }
+    return out;
+  }
+  
+  function diffEN(answer, target) {
+    const A = normSeqEN(answer), B = normSeqEN(target);
+    const m = A.length, n = B.length;
+    const dp = Array.from({ length: m + 1 }, () => new Int16Array(n + 1));
+    for (let i = m - 1; i >= 0; i--) {
+      for (let j = n - 1; j >= 0; j--) {
+        dp[i][j] = A[i].n === B[j].n ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      }
+    }
+    const parts = []; let i = 0, j = 0, correct = 0, extra = 0;
+    while (i < m && j < n) {
+      if (A[i].n === B[j].n) { parts.push({ type: "ok", word: B[j].raw }); correct++; i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) { parts.push({ type: "extra", word: A[i].raw }); extra++; i++; }
+      else { parts.push({ type: "missing", word: B[j].raw }); j++; }
+    }
+    while (i < m) parts.push({ type: "extra", word: A[i++].raw });
+    while (j < n) parts.push({ type: "missing", word: B[j++].raw });
+    return { parts, score: Math.max(0, Math.round((correct / Math.max(n, 1)) * 100 - Math.min(extra * 4, 12))) };
+  }
+
+  function resampleTimelineData(data, targetLength) {
+    if (!data.length) return new Array(targetLength).fill(0);
+    if (data.length === targetLength) return [...data];
+    const resampled = [];
+    for (let i = 0; i < targetLength; i++) {
+      let rawIdx = (i / (targetLength - 1)) * (data.length - 1);
+      let idxA = Math.floor(rawIdx);
+      let idxB = Math.min(idxA + 1, data.length - 1);
+      let weight = rawIdx - idxA;
+      resampled.push(data[idxA] * (1 - weight) + data[idxB] * weight);
+    }
+    return resampled;
+  }
+
+  analyzeTtsBtn.onclick = async function() {
+    ttsTimelineData = []; finalTtsData = []; finalUserData = []; playheadProgress = -1;
+    teacherAudioUrl = null; feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
+    
+    let capStream=null, capAnalyser=null, capData=null, capCtx=null, capRec=null;
+    const teacherChunks=[];
+    try{
+      capStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false}});
+      capCtx=new(window.AudioContext||window.webkitAudioContext)();
+      capAnalyser=capCtx.createAnalyser(); capAnalyser.fftSize=64;
+      capData=new Uint8Array(capAnalyser.frequencyBinCount);
+      capCtx.createMediaStreamSource(capStream).connect(capAnalyser);
+      capRec=new MediaRecorder(capStream);
+      capRec.ondataavailable=e=>{ if(e.data.size>0) teacherChunks.push(e.data); };
+      capRec.onstop=()=>{ if(teacherChunks.length) teacherAudioUrl=URL.createObjectURL(new Blob(teacherChunks,{type:"audio/webm"})); };
+      capRec.start();
+    }catch(e){}
+
+    let startTime = Date.now();
+    try { speechSynthesis.cancel(); } catch(e){}
+    const u = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(u);
+    u.lang = "en-US"; u.rate = 0.82;
+
+    setCoachState("coach");
+    samplingIntervalId = setInterval(() => {
+      let t = (Date.now() - startTime) / 1000;
+      let vol = 15;
+      if(capAnalyser){
+        capAnalyser.getByteFrequencyData(capData);
+        let total=0; for(let i=0;i<capData.length;i++) total+=capData[i];
+        vol = total/capData.length;
+      }
+      ttsTimelineData.push(vol);
+      finalTtsData = ttsTimelineData;
+      updateMouthAnimation(vol);
+      drawStudioGraphs();
+      document.getElementById("ttsDuration").textContent = `${t.toFixed(1)}s`;
+    }, 40);
+
+    u.onend = () => {
+      setTimeout(()=>{
+        clearInterval(samplingIntervalId);
+        setCoachState("none"); if(mouth) mouth.className = "mouth rest";
+        try{ if(capRec) capRec.stop(); if(capStream) capStream.getTracks().forEach(tr=>tr.stop()); }catch(e){}
+        statusField.textContent = "Hoca hazır. Şimdi cümlenizi okuyun.";
+        feedbackText.innerHTML = "🎓 <b>Hoca Sesi Hazır:</b> Şimdi mikrofonu açarak cümleyi okuyun.";
+        recordBtn.disabled = false;
+      }, 250);
+    };
+    speechSynthesis.speak(u);
+  };
+
+  recordBtn.onclick = async function() {
+    if (!isRecording) {
+      recordedChunks = []; userTimelineData = []; finalUserData = []; playheadProgress = -1; heardText = "";
+      if(liveCanvas) { liveCanvas.width = liveCanvas.clientWidth; liveCanvas.height = liveCanvas.clientHeight; }
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+        audioCtx.createMediaStreamSource(mediaStream).connect(analyser);
+
+        mediaRecorder = new MediaRecorder(mediaStream);
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          voiceUrl = URL.createObjectURL(new Blob(recordedChunks, { type: 'audio/webm' }));
+          analyzeGraphsBtn.disabled = false; playBtn.disabled = false;
+        };
+        mediaRecorder.start();
+
+        const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new STT(); recognition.lang = "en-US";
+        recognition.onresult = e => { heardText = e.results[0][0].transcript; };
+        recognition.onend = () => { if (isRecording) recordBtn.click(); handleSttResult(); };
+        recognition.start();
+
+        isRecording = true;
+        setCoachState("user");
+        recordBtn.textContent = "■ Kaydı Durdur";
+        recordBtn.classList.add("recording");
+        statusField.textContent = "Sesiniz kaydediliyor...";
+
+        let userStartTime = Date.now();
+        samplingIntervalId = setInterval(() => {
+          if (!isRecording) return;
+          analyser.getByteFrequencyData(dataArray);
+          let total = 0; for (let i = 0; i < dataArray.length; i++) total += dataArray[i];
+          let avg = total / dataArray.length;
+
+          userTimelineData.push(avg);
+          finalUserData = userTimelineData;
+          drawStudioGraphs();
+          updateMouthAnimation(avg);
+          
+          let dur = (Date.now() - userStartTime) / 1000;
+          document.getElementById("userDuration").textContent = `${dur.toFixed(1)}s`;
+
+          if(liveCtx) {
+            liveCtx.clearRect(0, 0, l= en.replace(/<\/?[^>]+(>|$)/g, "");
         if(cleanEn.toLowerCase().includes("shirt")) {
           document.getElementById("targetEn").innerHTML = cleanEn.replace(/shirt/i, '<span class="stress">SHIRT</span>');
         } else if(cleanEn.toLowerCase().includes("responsible")) {
