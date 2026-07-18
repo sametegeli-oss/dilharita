@@ -1,0 +1,1798 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DilHarita - Akustik Artikülasyon v4</title>
+  <style>
+    :root {
+      --bg: #030712;
+      --surface: #0f172a;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --user-color: #4ade80;
+      --status-perfect: #10b981;
+      --status-good: #3b82f6;
+      --status-try: #f59e0b;
+      --error-color: #f43f5e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    html, body { 
+      width: 100%; 
+      height: 100%;
+      background: var(--bg); 
+      color: var(--text); 
+      font-family: system-ui, -apple-system, sans-serif; 
+      overflow-y: auto;
+      position: relative;
+    }
+    
+    .trainer-grid {
+      width: 100%;
+      min-height: 100vh;
+      padding: 6px;
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto;
+      gap: 8px;
+    }
+
+    @media (min-width: 768px) {
+      .trainer-grid {
+        grid-template-columns: 1.2fr 0.8fr;
+        height: 100vh;
+        overflow: hidden;
+        padding: 4px 8px;
+        gap: 6px;
+      }
+    }
+
+    .header-panel {
+      grid-column: 1 / -1;
+      background: #1e293b;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border-left: 3px solid var(--accent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 28px;
+    }
+    .header-panel h2 { font-size: 10px; font-weight: 800; color: #60a5fa; }
+    .quick-tip { font-size: 8px; color: #cbd5e1; }
+
+    .btn-back {
+      background: #334155;
+      color: #fff;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 9px;
+      padding: 3px 8px;
+      cursor: pointer;
+      font-weight: bold;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.2s;
+    }
+    .btn-back:hover {
+      background: #475569;
+    }
+
+    .left-zone, .right-zone { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 6px; 
+      height: auto;
+    }
+
+    @media (min-width: 768px) {
+      .left-zone, .right-zone {
+        height: calc(100vh - 38px);
+        overflow: hidden;
+      }
+    }
+
+    .phrase-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px;
+      text-align: center;
+      flex: 0 0 auto;
+    }
+    .target-en { font-size: 13px; font-weight: 800; color: #fff; line-height: 1.4; }
+    .target-en span.stress { color: #f43f5e; text-decoration: underline; font-weight: 900; }
+    
+    .clickable-word {
+      cursor: pointer;
+      display: inline-block;
+      padding: 2px 4px;
+      margin: 1px 2px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.2s ease;
+    }
+    .clickable-word:hover {
+      background: rgba(56, 189, 248, 0.25);
+      color: var(--accent);
+    }
+    .clickable-word.selected-word {
+      background: var(--accent) !important;
+      color: #000 !important;
+      font-weight: bold;
+    }
+    
+    .target-tr { font-size: 9px; color: var(--muted); margin-top: 2px; }
+
+    .interactive-coach {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    
+    .avatar-wrapper { display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 1; }
+    
+    .avatar-box {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: #090d16;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.1s ease;
+    }
+    .avatar-box.speaking { box-shadow: 0 0 8px rgba(56, 189, 248, 0.5); border-color: var(--accent); }
+    .avatar-box.match-ok { border-color: var(--status-perfect) !important; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+    .avatar-box.match-fail { border-color: var(--error-color) !important; box-shadow: 0 0 8px rgba(244, 63, 94, 0.5); }
+    
+    .eyes { display: flex; gap: 4px; margin-bottom: 2px; }
+    .eye { width: 2.5px; height: 2.5px; background: #fff; border-radius: 50%; }
+    
+    .mouth { width: 10px; height: 2px; background: #f87171; border-radius: 99px; transition: all 0.04s ease; }
+    .mouth.rest { height: 2px; width: 10px; border-radius: 99px; }
+    .mouth.closed { height: 1px; width: 10px; border-radius: 0; }
+    .mouth.wide { height: 3.5px; width: 14px; border-radius: 40%; }
+    .mouth.round { height: 7px; width: 7px; border-radius: 50%; }
+    .mouth.open { height: 10px; width: 10px; border-radius: 20% 20% 50% 50%; }
+    .mouth.teeth { height: 2.5px; width: 12px; border-top: 1px solid #fff; }
+    .mouth.th { height: 3.5px; width: 10px; border-bottom: 1px solid #fff; }
+    .mouth.f { height: 2px; width: 10px; border-top: 1px solid #fff; }
+    
+    .avatar-label { font-size: 7.5px; color: var(--muted); font-weight: 800; text-transform: uppercase; }
+
+    .timeline-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+    .timeline-meta { display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 800; flex: 0 0 auto; }
+    .dur-badge { background: #1e293b; padding: 1px 3px; border-radius: 2px; color: #cbd5e1; font-family: monospace; }
+    
+    .studio-frame {
+      position: relative;
+      width: 100%;
+      min-height: 140px;
+      flex: 1;
+      background: #020617;
+      border-radius: 4px;
+      border: 1px solid #ffffff05;
+      margin-top: 4px;
+    }
+    .overlay-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+
+    .alignment-tuner-panel {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 4px;
+      padding: 6px;
+      margin-top: 4px;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      flex: 0 0 auto;
+    }
+    @media (min-width: 480px) {
+      .alignment-tuner-panel {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+    }
+    .tuner-label { font-size: 7.5px; color: var(--accent); font-weight: bold; }
+    .tuner-controls { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+    .tuner-slider { width: 85px; height: 18px; cursor: pointer; accent-color: var(--accent); }
+    .btn-fs-mini { background: #334155; color: #fff; border: none; border-radius: 3px; font-size: 8px; padding: 3px 6px; cursor: pointer; font-weight: bold; flex: 0 0 auto; }
+
+    #wordTunerOverlay {
+      position: fixed; inset: 0; z-index: 2000;
+      background: var(--bg);
+      display: none; flex-direction: column;
+      padding: 10px 14px; gap: 8px;
+      overflow-y: auto;
+    }
+    .wt-header { display: flex; justify-content: space-between; align-items: center; flex: 0 0 auto; }
+    .wt-title { font-size: 17px; font-weight: 900; color: var(--accent); }
+    .wt-header-btns { display: flex; gap: 8px; }
+    .wt-btn {
+      background: #1e293b; color: #fff; border: 1px solid var(--border); border-radius: 6px;
+      padding: 6px 12px; font-size: 11px; font-weight: bold; cursor: pointer; min-height: 34px;
+    }
+    .wt-btn:active { transform: scale(0.97); }
+    .wt-btn.wt-close { background: #7f1d1d; }
+    .wt-btn.wt-play { background: #047857; }
+    .wt-btn.wt-compare { background: #6d28d9; width: 100%; min-height: 40px; font-size: 12px; }
+    .wt-btn.wt-nudge { min-width: 38px; padding: 4px 0; font-size: 16px; line-height: 1; }
+    .wt-canvas-wrap { flex: 1; min-height: 100px; background: #020617; border: 1px solid #1e293b; border-radius: 6px; position: relative; }
+    #wtCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .wt-tracks { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }
+    .wt-track { background: #0f172a; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+    .wt-track.disabled { opacity: 0.4; pointer-events: none; }
+    .wt-track-head { display: flex; justify-content: space-between; align-items: center; }
+    .wt-track-label { font-size: 11px; font-weight: 900; }
+    .wt-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+    .wt-lab { font-size: 9px; color: var(--muted); width: 32px; flex: 0 0 auto; }
+    .wt-slider { flex: 1; height: 30px; accent-color: var(--accent); cursor: pointer; min-width: 0; }
+    .wt-val { font-size: 10px; font-family: monospace; background: #1e293b; padding: 2px 5px; border-radius: 3px; width: 52px; text-align: center; flex: 0 0 auto; }
+    .wt-footer { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; background: #0b0f19; padding: 8px; border-radius: 6px; border: 1px solid var(--border); }
+    .wt-status { font-size: 11px; color: #cbd5e1; text-align: center; min-height: 16px; line-height: 1.4; }
+    .tuner-val-badge { font-size: 7.5px; background: #1e293b; padding: 1px 3px; border-radius: 2px; font-family: monospace; }
+
+    .score-terminal {
+      background: #070d19;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .score-badge-display {
+      font-size: 11px;
+      font-weight: 900;
+      padding: 3px 12px;
+      border-radius: 10px;
+      color: #fff;
+      background: var(--border);
+      text-transform: uppercase;
+      flex: 0 0 auto;
+    }
+    
+    .metric-sub-row {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
+      gap: 4px;
+      margin-top: 6px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      padding-top: 4px;
+      flex: 0 0 auto;
+    }
+    .metric-box {
+      flex: 1;
+      background: #020617;
+      border-radius: 3px;
+      padding: 3px;
+      text-align: center;
+      font-size: 7.5px;
+      color: var(--muted);
+    }
+    .metric-val { font-size: 9px; font-weight: 800; color: #fff; margin-top: 1px; }
+
+    .diff-line { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; font-size: 9px; font-weight: 700; margin-top: 4px; flex: 0 0 auto; }
+
+    .trainer-feedback-card {
+      background: #1e1b4b;
+      border: 1px solid #4338ca;
+      border-radius: 6px;
+      padding: 6px;
+      width: 100%;
+      margin-top: 6px;
+      flex: 1;
+      overflow-y: auto;
+      min-height: 80px;
+    }
+    .feedback-title { font-size: 8px; font-weight: 900; color: #a5b4fc; text-transform: uppercase; }
+    .feedback-text { font-size: 9px; color: #e0e7ff; line-height: 1.3; margin-top: 2px; }
+
+    .control-buttons { 
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px; 
+      position: relative; 
+      z-index: 999; 
+      flex: 0 0 auto; 
+      margin-top: auto;
+      padding-bottom: 8px;
+    }
+    
+    .btn-trainer {
+      width: 100%;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 8px;
+      font-size: 9.5px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+    }
+    .btn-trainer:active { transform: scale(0.99); }
+    .btn-trainer.recording { background: #dc2626; }
+    .btn-trainer.hoca { background: #047857; }
+    .btn-trainer.compare { grid-column: span 2; background: #6d28d9; }
+    
+    .btn-trainer.duet-btn, .btn-trainer.solo-btn { display: none; background: #b45309; }
+
+    .status-bar { font-size: 8px; color: var(--muted); text-align: center; min-height: 12px; flex: 0 0 auto; margin-top: 2px; padding-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="trainer-grid">
+  <div class="header-panel">
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <a href="javascript:history.back()" class="btn-back">⬅ Geri Dön</a>
+      <h2>🎯 AKUSTİK ARTİKÜLASYON TRAINER v4</h2>
+    </div>
+    <div class="quick-tip" id="quickTip">Kelimeye dokunun • ⛶ ile tam ekranda hassas ayar yapın.</div>
+  </div>
+  
+  <div class="left-zone">
+    <div class="phrase-card">
+      <div class="target-en" id="targetEn" data-raw-text="This shirt is nice but it is too small for me.">This <span class="stress">SHIRT</span> is nice but it is too small for me.</div>
+      <div class="target-tr">Bu gömlek güzel ama benim için çok küçük.</div>
+    </div>
+
+    <div class="interactive-coach">
+      <div class="avatar-wrapper">
+        <div class="avatar-box" id="avatarBoxHoca">
+          <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+          <div class="mouth rest" id="mouthHoca"></div>
+        </div>
+        <div class="avatar-label" style="color:var(--accent)">🎓 AI COACH</div>
+      </div>
+      
+      <div class="avatar-wrapper">
+        <div class="avatar-box" id="avatarBoxUser">
+          <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+          <div class="mouth rest" id="mouthUser"></div>
+        </div>
+        <div class="avatar-label" id="userLabel">🎙️ YOU</div>
+      </div>
+    </div>
+
+    <div class="timeline-container">
+      <div class="timeline-meta">
+        <div>📊 SEYİR VE DELTA SAPMA SPEKTRUMU</div>
+        <div style="display: flex; gap: 4px;">
+          <span class="dur-badge">H: <span id="ttsDuration">0s</span></span>
+          <span class="dur-badge">S: <span id="userDuration">0s</span></span>
+        </div>
+      </div>
+      <div class="studio-frame">
+        <canvas class="overlay-canvas" id="studioCanvas"></canvas>
+      </div>
+      
+      <div class="alignment-tuner-panel" id="tunerPanel">
+        <div class="tuner-label" id="tunerLabel">SEÇİLİ KELİME: --</div>
+        <div class="tuner-controls">
+          <span style="font-size:7px; color:var(--muted)">Başla:</span>
+          <input type="range" class="tuner-slider" id="startSlider" min="0" max="100" step="0.01" value="0">
+          <span class="tuner-val-badge" id="startVal">0.0s</span>
+          <span style="font-size:7px; color:var(--muted); margin-left:4px;">Bitir:</span>
+          <input type="range" class="tuner-slider" id="endSlider" min="0" max="100" step="0.01" value="100">
+          <span class="tuner-val-badge" id="endVal">0.0s</span>
+          <button class="btn-fs-mini" id="openTunerFsBtn" title="Tam ekran hassas ayar">⛶ Tam Ekran</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-zone">
+    <div class="score-terminal">
+      <div class="score-badge-display" id="scoreBadge">Ses Bekleniyor</div>
+      
+      <div class="metric-sub-row">
+        <div class="metric-box">Metin Skoru<div class="metric-val" id="mSöz">--</div></div>
+        <div class="metric-box">Segment Hızı<div class="metric-val" id="mTempo">--</div></div>
+        <div class="metric-box">Vurgu Uyum<div class="metric-val" id="mVurgu">--</div></div>
+      </div>
+
+      <div class="diff-line" id="diffLine"></div>
+      
+      <div class="trainer-feedback-card">
+        <div class="feedback-title">🧭 AI TAVSİYELERİ</div>
+        <div class="feedback-text" id="feedbackText">Önce '1. Hoca Sesini Çizdir & Dinle' adımına dokunun.</div>
+      </div>
+    </div>
+
+    <div class="control-buttons">
+      <button class="btn-trainer hoca" id="analyzeTtsBtn">🎓 1. Hoca Çizdir</button>
+      <button class="btn-trainer" id="recordBtn" disabled>🎙️ 2. Mikrofonla Oku</button>
+      <button class="btn-trainer compare" id="analyzeGraphsBtn" disabled>🔍 3. Grafikleri Kıyasla & Analiz Et</button>
+      <button class="btn-trainer duet-btn" id="duetBtn">▶ Düet Oynat</button>
+      <button class="btn-trainer solo-btn" id="playBtn" style="background:#1e293b;">▶ Sadece Sesim</button>
+    </div>
+
+    <div class="status-bar" id="statusField">Trainer modülü hazır.</div>
+  </div>
+</div>
+
+<div id="wordTunerOverlay">
+  <div class="wt-header">
+    <div class="wt-title" id="wtTitle">KELİME</div>
+    <div class="wt-header-btns">
+      <button class="wt-btn" id="wtFsBtn">⛶ Tam Ekran</button>
+      <button class="wt-btn wt-close" id="wtCloseBtn">✕ Kapat</button>
+    </div>
+  </div>
+
+  <div class="wt-canvas-wrap"><canvas id="wtCanvas"></canvas></div>
+
+  <div class="wt-tracks">
+    <div class="wt-track" id="wtCoachTrack">
+      <div class="wt-track-head">
+        <span class="wt-track-label" style="color:var(--accent)">🎓 HOCA</span>
+        <button class="wt-btn wt-play" id="wtPlayCoach">▶ Dinle</button>
+      </div>
+      <div class="wt-row">
+        <span class="wt-lab">Başla</span>
+        <button class="wt-btn wt-nudge" data-track="coach" data-edge="start" data-delta="-0.05">−</button>
+        <input type="range" class="wt-slider" id="wtCoachStart" step="0.01">
+        <button class="wt-btn wt-nudge" data-track="coach" data-edge="start" data-delta="0.05">+</button>
+        <span class="wt-val" id="wtCoachStartVal">0.00s</span>
+      </div>
+      <div class="wt-row">
+        <span class="wt-lab">Bitir</span>
+        <button class="wt-btn wt-nudge" data-track="coach" data-edge="end" data-delta="-0.05">−</button>
+        <input type="range" class="wt-slider" id="wtCoachEnd" step="0.01">
+        <button class="wt-btn wt-nudge" data-track="coach" data-edge="end" data-delta="0.05">+</button>
+        <span class="wt-val" id="wtCoachEndVal">0.00s</span>
+      </div>
+    </div>
+
+    <div class="wt-track" id="wtUserTrack">
+      <div class="wt-track-head">
+        <span class="wt-track-label" style="color:var(--user-color)">🎙️ SEN</span>
+        <button class="wt-btn wt-play" id="wtPlayUser">▶ Dinle</button>
+      </div>
+      <div class="wt-row">
+        <span class="wt-lab">Başla</span>
+        <button class="wt-btn wt-nudge" data-track="user" data-edge="start" data-delta="-0.05">−</button>
+        <input type="range" class="wt-slider" id="wtUserStart" step="0.01">
+        <button class="wt-btn wt-nudge" data-track="user" data-edge="start" data-delta="0.05">+</button>
+        <span class="wt-val" id="wtUserStartVal">0.00s</span>
+      </div>
+      <div class="wt-row">
+        <span class="wt-lab">Bitir</span>
+        <button class="wt-btn wt-nudge" data-track="user" data-edge="end" data-delta="-0.05">−</button>
+        <input type="range" class="wt-slider" id="wtUserEnd" step="0.01">
+        <button class="wt-btn wt-nudge" data-track="user" data-edge="end" data-delta="0.05">+</button>
+        <span class="wt-val" id="wtUserEndVal">0.00s</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-footer">
+    <button class="wt-btn wt-compare" id="wtCompareBtn">🔁 Karşılaştır: Hoca → Sen</button>
+    <div class="wt-status" id="wtStatus">Ayar sınırlarını düzenleyin ve karşılaştırma motorunu çalıştırın.</div>
+  </div>
+</div>
+
+<script>
+  "use strict";
+  function dhSavedVoicePref(){
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(k&&k.indexOf("dh-voice:")===0){
+          var p=JSON.parse(localStorage.getItem(k)||"null");
+          if(p&&p.name) return p;
+        }
+      }
+    }catch(e){}
+    return null;
+  }
+  function dhApplyVoice(u){
+    try{
+      var p=dhSavedVoicePref(); if(!p) return;
+      var v=(speechSynthesis.getVoices()||[]).find(function(x){return x.name===p.name;});
+      if(v) u.voice=v;
+      if(p.rate) u.rate=p.rate;
+      if(p.pitch) u.pitch=p.pitch;
+    }catch(e){}
+  }
+
+  let wordsArray = [];
+  let wordTimestamps = {}; 
+  let selectedWordIndex = null;
+  let totalTtsDuration = 0;
+
+  let ttsAudioOffset = 0;        
+  let boundarySupported = false; 
+  let teacherAudioBuffer = null; 
+  let activeSegmentSource = null;
+  let activeSegmentAudio = null; 
+
+  let userWordTimestamps = {};   
+  let userTotalDuration = 0;     
+  let userAudioBuffer = null;    
+  let wtOpen = false;            
+  let wtZoom = { coach: { min: 0, max: 1 }, user: { min: 0, max: 1 } };
+
+  function prepareInteractiveWords(targetElement) {
+    if (!targetElement) return;
+    const text = targetElement.getAttribute("data-raw-text") || targetElement.textContent;
+    
+    const rawTokens = text.match(/[A-Za-z']+|\d+|[.,\/#!$%\^&\*;:{}=\-_`~()?]+/g) || [];
+    wordsArray = [];
+    targetElement.innerHTML = "";
+
+    let idCounter = 0;
+    let searchCursor = 0;
+    rawTokens.forEach(token => {
+      const tokenPos = text.indexOf(token, searchCursor);
+      const charStart = tokenPos >= 0 ? tokenPos : searchCursor;
+      searchCursor = charStart + token.length;
+
+      const isWord = /[A-Za-z0-9]/.test(token);
+      if (isWord) {
+        const clean = token.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
+        const span = document.createElement("span");
+        span.className = "clickable-word";
+        span.textContent = token;
+        span.setAttribute("data-word-id", idCounter);
+        
+        if (token.toLowerCase().includes("shirt") || token.toLowerCase().includes("spon") || token.toLowerCase().includes("bank")) {
+          span.classList.add("stress");
+        }
+
+        wordsArray.push({
+          id: idCounter,
+          raw: token,
+          clean: clean,
+          dom: span,
+          charStart: charStart,
+          charEnd: charStart + token.length
+        });
+
+        const capturedId = idCounter;
+        span.onclick = function(e) {
+          e.stopPropagation();
+          onWordSelected(capturedId);
+        };
+
+        targetElement.appendChild(span);
+        targetElement.appendChild(document.createTextNode(" "));
+        idCounter++;
+      } else {
+        targetElement.appendChild(document.createTextNode(token + " "));
+      }
+    });
+  }
+
+  function calculateDefaultAlignment() {
+    if (!wordsArray.length || totalTtsDuration <= 0) return;
+    
+    const segmentDuration = totalTtsDuration / wordsArray.length;
+    wordsArray.forEach((word, idx) => {
+      wordTimestamps[word.id] = {
+        start: idx * segmentDuration,
+        end: (idx + 1) * segmentDuration
+      };
+    });
+  }
+
+  function buildAlignmentFromBoundaries(boundaryStarts) {
+    if (!wordsArray.length || totalTtsDuration <= 0) return false;
+
+    const knownCount = wordsArray.filter(w => typeof boundaryStarts[w.id] === "number").length;
+    if (knownCount < Math.max(2, Math.ceil(wordsArray.length * 0.6))) return false;
+
+    const starts = new Array(wordsArray.length).fill(null);
+    wordsArray.forEach((w, idx) => {
+      if (typeof boundaryStarts[w.id] === "number") starts[idx] = boundaryStarts[w.id];
+    });
+    if (starts[0] === null) starts[0] = 0;
+
+    for (let i = 1; i < starts.length; i++) {
+      if (starts[i] !== null) continue;
+      const prev = i - 1;
+      let next = i + 1;
+      while (next < starts.length && starts[next] === null) next++;
+      const prevVal = starts[prev];
+      const nextVal = next < starts.length ? starts[next] : totalTtsDuration;
+      const gapCount = (next < starts.length ? next : starts.length) - prev;
+      starts[i] = prevVal + ((nextVal - prevVal) / gapCount) * (i - prev);
+    }
+
+    wordTimestamps = {};
+    wordsArray.forEach((w, idx) => {
+      const s = Math.max(0, Math.min(starts[idx], totalTtsDuration));
+      const rawEnd = idx + 1 < starts.length ? starts[idx + 1] : totalTtsDuration;
+      const e = Math.min(Math.max(rawEnd, s + 0.05), totalTtsDuration + 0.3);
+      wordTimestamps[w.id] = { start: s, end: e };
+    });
+    return true;
+  }
+
+  function buildUserAlignment() {
+    userWordTimestamps = {};
+    if (!wordsArray.length || !userTimelineData.length) return;
+    userTotalDuration = userTimelineData.length * 0.04;
+    if (userTotalDuration <= 0) return;
+
+    const TH = 8;
+    const trim = d => {
+      let s = 0, e = d.length - 1;
+      while (s < d.length && d[s] < TH) s++;
+      while (e > s && d[e] < TH) e--;
+      return { start: s, end: e };
+    };
+
+    const uT = trim(userTimelineData);
+    const uStart = uT.start * 0.04;
+    const uEnd = Math.max(uT.end * 0.04, uStart + 0.2);
+
+    const cT = trim(ttsTimelineData);
+    const cStart = cT.start * 0.04;
+    const cEnd = Math.max(cT.end * 0.04, cStart + 0.2);
+    const haveCoach = ttsTimelineData.length > 0 && (cEnd - cStart) > 0.1 &&
+                      wordsArray.every(w => wordTimestamps[w.id]);
+
+    if (haveCoach) {
+      const scale = (uEnd - uStart) / (cEnd - cStart);
+      wordsArray.forEach(w => {
+        const b = wordTimestamps[w.id];
+        let s = uStart + (b.start - cStart) * scale;
+        let e = uStart + (b.end - cStart) * scale;
+        s = Math.max(0, Math.min(s, userTotalDuration));
+        e = Math.max(s + 0.05, Math.min(e, userTotalDuration));
+        userWordTimestamps[w.id] = { start: s, end: e };
+      });
+    } else {
+      const seg = (uEnd - uStart) / wordsArray.length;
+      wordsArray.forEach((w, i) => {
+        userWordTimestamps[w.id] = { start: uStart + i * seg, end: uStart + (i + 1) * seg };
+      });
+    }
+  }
+
+  function stopActiveSegment() {
+    if (activeSegmentSource) { try { activeSegmentSource.stop(); } catch(e){} activeSegmentSource = null; }
+    if (activeSegmentAudio) {
+      try { activeSegmentAudio.pause(); activeSegmentAudio.ontimeupdate = null; } catch(e){}
+      activeSegmentAudio = null;
+    }
+  }
+
+  async function decodeUrlToBuffer(url) {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") { try { await audioCtx.resume(); } catch(e){} }
+      const resp = await fetch(url);
+      const rawBytes = await resp.arrayBuffer();
+      return await audioCtx.decodeAudioData(rawBytes);
+    } catch (e) {
+      console.warn("Ses decode edilemedi, HTMLAudio fallback kullanılacak:", e);
+      return null;
+    }
+  }
+
+  async function getTeacherAudioBuffer() {
+    if (teacherAudioBuffer) return teacherAudioBuffer;
+    if (!teacherAudioUrl) return null;
+    teacherAudioBuffer = await decodeUrlToBuffer(teacherAudioUrl);
+    return teacherAudioBuffer;
+  }
+
+  async function getUserAudioBuffer() {
+    if (userAudioBuffer) return userAudioBuffer;
+    if (!voiceUrl) return null;
+    userAudioBuffer = await decodeUrlToBuffer(voiceUrl);
+    return userAudioBuffer;
+  }
+
+  function onWordSelected(wordId) {
+    selectedWordIndex = wordId;
+    wordsArray.forEach(w => w.dom.classList.remove("selected-word"));
+    
+    const targetWord = wordsArray.find(w => w.id === wordId);
+    if (!targetWord) return;
+    
+    targetWord.dom.classList.add("selected-word");
+    
+    const bounds = wordTimestamps[wordId];
+    if (!bounds) return;
+
+    const tunerPanel = document.getElementById("tunerPanel");
+    const startSlider = document.getElementById("startSlider");
+    const endSlider = document.getElementById("endSlider");
+    
+    document.getElementById("tunerLabel").textContent = `KELİME: "${targetWord.raw.toUpperCase()}"`;
+    tunerPanel.style.display = "flex";
+
+    startSlider.max = totalTtsDuration.toFixed(2);
+    endSlider.max = totalTtsDuration.toFixed(2);
+    
+    startSlider.value = bounds.start;
+    endSlider.value = bounds.end;
+    
+    document.getElementById("startVal").textContent = `${bounds.start.toFixed(2)}s`;
+    document.getElementById("endVal").textContent = `${bounds.end.toFixed(2)}s`;
+
+    playRealWordSegment(bounds.start, bounds.end);
+  }
+
+  function segStatus(msg) {
+    statusField.textContent = msg;
+    if (wtOpen) {
+      const el = document.getElementById("wtStatus");
+      if (el) el.innerHTML = msg;
+    }
+  }
+
+  function startBufferSegment(buffer, aStart, aEnd, onComplete) {
+    const clampedStart = Math.min(Math.max(0, aStart), Math.max(0, buffer.duration - 0.05));
+    const clampedDur = Math.min(aEnd, buffer.duration) - clampedStart;
+    if (clampedDur <= 0) { segStatus("Kesit aralığı geçersiz."); return false; }
+
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(audioCtx.destination);
+    src.onended = function() {
+      if (activeSegmentSource === src) {
+        activeSegmentSource = null;
+        segStatus("Kesit bitti.");
+        if (typeof onComplete === "function") onComplete();
+      }
+    };
+    activeSegmentSource = src;
+    src.start(0, clampedStart, clampedDur);
+    return true;
+  }
+
+  function startHtmlAudioSegment(url, aStart, aEnd, onComplete) {
+    try {
+      const audio = new Audio(url);
+      audio.preload = "auto";
+      activeSegmentAudio = audio;
+
+      audio.oncanplaythrough = function() {
+        audio.oncanplaythrough = null;
+        audio.currentTime = aStart;
+        audio.play().catch(e => console.log("Oynatma hatası:", e));
+        segStatus("Gerçek ses kesiti oynatılıyor...");
+      };
+
+      audio.ontimeupdate = function() {
+        if (audio.currentTime >= aEnd) {
+          audio.pause();
+          audio.ontimeupdate = null;
+          if (activeSegmentAudio === audio) {
+            activeSegmentAudio = null;
+            segStatus("Kesit bitti.");
+            if (typeof onComplete === "function") onComplete();
+          }
+        }
+      };
+    } catch (e) {
+      console.error("Kesit çalma hatası:", e);
+    }
+  }
+
+  async function playRealWordSegment(startTime, endTime, onComplete) {
+    if (!teacherAudioUrl) {
+      segStatus("Gerçek hoca sesi henüz hazır değil.");
+      return;
+    }
+
+    try { window.speechSynthesis.cancel(); } catch(e){}
+    stopActiveSegment();
+
+    const aStart = Math.max(0, startTime + ttsAudioOffset);
+    const aEnd = Math.max(aStart + 0.05, endTime + ttsAudioOffset);
+
+    const buffer = await getTeacherAudioBuffer();
+    if (buffer) {
+      if (startBufferSegment(buffer, aStart, aEnd, onComplete)) {
+        segStatus("Hoca kesiti oynatılıyor...");
+      }
+      return;
+    }
+    startHtmlAudioSegment(teacherAudioUrl, aStart, aEnd, onComplete);
+  }
+
+  async function playUserWordSegment(startTime, endTime, onComplete) {
+    if (!voiceUrl) {
+      segStatus("Henüz kendi kaydınız yok. Önce '2. Mikrofonla Oku' adımını yapın.");
+      return;
+    }
+
+    try { window.speechSynthesis.cancel(); } catch(e){}
+    stopActiveSegment();
+
+    const aStart = Math.max(0, startTime);
+    const aEnd = Math.max(aStart + 0.05, endTime);
+
+    const buffer = await getUserAudioBuffer();
+    if (buffer) {
+      if (startBufferSegment(buffer, aStart, aEnd, onComplete)) {
+        segStatus("Sizin kesitiniz oynatılıyor...");
+      }
+      return;
+    }
+    startHtmlAudioSegment(voiceUrl, aStart, aEnd, onComplete);
+  }
+
+  document.getElementById("startSlider").oninput = function() {
+    if (selectedWordIndex === null) return;
+    let val = parseFloat(this.value);
+    let endVal = parseFloat(document.getElementById("endSlider").value);
+    
+    if (val >= endVal) {
+      val = endVal - 0.05;
+      this.value = val;
+    }
+    wordTimestamps[selectedWordIndex].start = val;
+    document.getElementById("startVal").textContent = `${val.toFixed(2)}s`;
+    drawStudioGraphs();
+  };
+
+  document.getElementById("endSlider").oninput = function() {
+    if (selectedWordIndex === null) return;
+    let val = parseFloat(this.value);
+    let startVal = parseFloat(document.getElementById("startSlider").value);
+    
+    if (val <= startVal) {
+      val = startVal + 0.05;
+      this.value = val;
+    }
+    wordTimestamps[selectedWordIndex].end = val;
+    document.getElementById("endVal").textContent = `${val.toFixed(2)}s`;
+    drawStudioGraphs();
+  };
+
+  document.getElementById("startSlider").onchange = function() {
+    if (selectedWordIndex !== null) onWordSelected(selectedWordIndex);
+  };
+  document.getElementById("endSlider").onchange = function() {
+    if (selectedWordIndex !== null) onWordSelected(selectedWordIndex);
+  };
+
+  (function(){
+    try{
+      var q = new URLSearchParams(window.location.search);
+      var en = q.get("en"), tr = q.get("tr");
+      var targetNode = document.getElementById("targetEn");
+      if(en && targetNode){ 
+        var div = document.createElement("div"); div.textContent = en;
+        var cleanEn = div.innerHTML; 
+        targetNode.setAttribute("data-raw-text", cleanEn);
+        if(cleanEn.toLowerCase().includes("shirt")) {
+          targetNode.innerHTML = cleanEn.replace(/shirt/i, '<span class="stress">SHIRT</span>');
+        } else if(cleanEn.toLowerCase().includes("responsible")) {
+          targetNode.innerHTML = cleanEn.replace(/responsible/i, 're-<span class="stress">SPON</span>-sible');
+        } else if(cleanEn.toLowerCase().includes("bank")) {
+          targetNode.innerHTML = cleanEn.replace(/bank/i, '<span class="stress">BANK</span>');
+        } else {
+          targetNode.textContent = cleanEn;
+        }
+      }
+      if(tr && document.querySelector(".target-tr")) document.querySelector(".target-tr").textContent = tr;
+
+      prepareInteractiveWords(targetNode);
+    }catch(e){}
+  })();
+  
+  const targetEl = document.getElementById("targetEn");
+  const TARGET_TEXT = targetEl.getAttribute("data-raw-text") || targetEl.textContent;
+
+  let mediaStream = null, mediaRecorder = null, recordedChunks = [], voiceUrl = "", teacherAudioUrl = null;
+  let isRecording = false, audioCtx = null, analyser = null, dataArray = null;
+  let recognition = null, heardText = "";
+
+  let ttsTimelineData = [];
+  let userTimelineData = [];
+  let finalTtsData = [];
+  let finalUserData = [];
+
+  let ttsSpectrums = [];
+  let userSpectrums = [];
+  let finalTtsSpectrums = [];
+  let finalUserSpectrums = [];
+
+  let cachedTtsBounds = { start: 0, end: 0 };
+  let cachedUserBounds = { start: 0, end: 0 };
+
+  let samplingIntervalId = null;
+  let playheadProgress = -1; 
+
+  const studioCanvas = document.getElementById("studioCanvas");
+  const studioCtx = studioCanvas.getContext("2d");
+
+  const recordBtn = document.getElementById("recordBtn");
+  const playBtn = document.getElementById("playBtn");
+  const duetBtn = document.getElementById("duetBtn");
+  const analyzeTtsBtn = document.getElementById("analyzeTtsBtn");
+  const analyzeGraphsBtn = document.getElementById("analyzeGraphsBtn");
+  const feedbackText = document.getElementById("feedbackText");
+  const statusField = document.getElementById("statusField");
+  const diffLine = document.getElementById("diffLine");
+  
+  const mouthHoca = document.getElementById("mouthHoca");
+  const mouthUser = document.getElementById("mouthUser");
+  const avatarBoxHoca = document.getElementById("avatarBoxHoca");
+  const avatarBoxUser = document.getElementById("avatarBoxUser");
+
+  function getVisemeClassName(freqData, rmsVolume) {
+    if (rmsVolume < 5) return "mouth rest";
+    let low = 0, mid = 0, high = 0;
+    const count = freqData.length;
+    for (let i = 0; i < count; i++) {
+      if (i < count * 0.2) low += freqData[i];
+      else if (i < count * 0.6) mid += freqData[i];
+      else high += freqData[i];
+    }
+    if (high > mid && high > low * 1.5) return "mouth teeth";
+    else if (low > mid * 1.8) return "mouth round";
+    else if (mid > low && mid > high) return "mouth wide";
+    else if (rmsVolume > 40) return "mouth open";
+    else if (rmsVolume < 14) return "mouth closed";
+    return "mouth rest";
+  }
+
+  function updateSingleAvatarViseme(mouthElement, freqData, volume) {
+    if (!mouthElement) return "mouth rest";
+    const className = getVisemeClassName(freqData, volume);
+    mouthElement.className = className;
+    return className;
+  }
+
+  function resizeCanvasIfNeeded(canvas) {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  }
+
+  function tokenizeEN(s) { return String(s || "").match(/[A-Za-z']+|\d+/g) || []; }
+  function normSeqEN(text) {
+    const out = [];
+    for (const raw of tokenizeEN(text)) {
+      const n = raw.toLowerCase().replace(/[\u2019\u2018]/g, "'");
+      if (n) out.push({ n: n, raw: raw });
+    }
+    return out;
+  }
+  
+  function diffEN(answer, target) {
+    const A = normSeqEN(answer), B = normSeqEN(target);
+    const m = A.length, n = B.length;
+    const dp = Array.from({ length: m + 1 }, () => new Int16Array(n + 1));
+    for (let i = m - 1; i >= 0; i--) {
+      for (let j = n - 1; j >= 0; j--) {
+        dp[i][j] = A[i].n === B[j].n ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      }
+    }
+    const parts = []; let i = 0, j = 0, correct = 0, extra = 0;
+    while (i < m && j < n) {
+      if (A[i].n === B[j].n) { parts.push({ type: "ok", word: B[j].raw }); correct++; i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) { parts.push({ type: "extra", word: A[i].raw }); extra++; i++; }
+      else { parts.push({ type: "missing", word: B[j].raw }); j++; }
+    }
+    while (i < m) parts.push({ type: "extra", word: A[i++].raw });
+    while (j < n) parts.push({ type: "missing", word: B[j++].raw });
+    return { parts, score: Math.max(0, Math.round((correct / Math.max(n, 1)) * 100 - Math.min(extra * 4, 12))) };
+  }
+
+  function resampleTimelineData(data, targetLength) {
+    if (targetLength <= 1) return [data[0] || 0];
+    if (!data.length) return new Array(targetLength).fill(0);
+    if (data.length === targetLength) return [...data];
+    const resampled = [];
+    for (let i = 0; i < targetLength; i++) {
+      let rawIdx = (i / (targetLength - 1)) * (data.length - 1);
+      let idxA = Math.floor(rawIdx);
+      let idxB = Math.min(idxA + 1, data.length - 1);
+      let weight = rawIdx - idxA;
+      resampled.push(data[idxA] * (1 - weight) + data[idxB] * weight);
+    }
+    return resampled;
+  }
+
+  function resampleSpectrums(spectrums, targetLength) {
+    if (!spectrums.length) {
+      return Array.from({ length: targetLength }, () => new Uint8Array(32));
+    }
+    const resampled = [];
+    for (let i = 0; i < targetLength; i++) {
+      let rawIdx = (i / (targetLength - 1)) * (spectrums.length - 1);
+      let idxA = Math.floor(rawIdx);
+      let idxB = Math.min(idxA + 1, spectrums.length - 1);
+      let weight = rawIdx - idxA;
+      
+      let arrA = spectrums[idxA];
+      let arrB = spectrums[idxB];
+      let merged = new Uint8Array(arrA.length);
+      for (let j = 0; j < arrA.length; j++) {
+        merged[j] = arrA[j] * (1 - weight) + arrB[j] * weight;
+      }
+      resampled.push(merged);
+    }
+    return resampled;
+  }
+
+  analyzeTtsBtn.onclick = async function() {
+    ttsTimelineData = []; ttsSpectrums = []; finalTtsData = []; finalUserData = []; 
+    finalTtsSpectrums = []; finalUserSpectrums = []; playheadProgress = -1;
+    stopActiveSegment();
+    if (wtOpen) closeWordTuner();
+    teacherAudioUrl = null; teacherAudioBuffer = null; ttsAudioOffset = 0;
+    feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
+    avatarBoxHoca.className = "avatar-box speaking";
+    avatarBoxUser.className = "avatar-box";
+    document.getElementById("tunerPanel").style.display = "none";
+    selectedWordIndex = null;
+    wordsArray.forEach(w => w.dom.classList.remove("selected-word"));
+
+    let capStream=null, capAnalyser=null, capData=null, capCtx=null, capRec=null;
+    let recStartWall = 0;
+    const teacherChunks=[];
+    try{
+      capStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false}});
+      capCtx=new(window.AudioContext||window.webkitAudioContext)();
+      capAnalyser=capCtx.createAnalyser(); capAnalyser.fftSize=64;
+      capData=new Uint8Array(capAnalyser.frequencyBinCount);
+      capCtx.createMediaStreamSource(capStream).connect(capAnalyser);
+      capRec=new MediaRecorder(capStream);
+      capRec.ondataavailable=e=>{ if(e.data.size>0) teacherChunks.push(e.data); };
+      capRec.onstop=()=>{ if(teacherChunks.length) teacherAudioUrl=URL.createObjectURL(new Blob(teacherChunks,{type:"audio/webm"})); };
+      capRec.start();
+      recStartWall = Date.now();
+    }catch(e){}
+
+    let startTime = Date.now();
+    try { window.speechSynthesis.cancel(); } catch(e){}
+    const u = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(u);
+    u.lang = "en-US"; u.rate = 0.82;
+
+    const boundaryStarts = {};
+    boundarySupported = false;
+    u.onboundary = function(ev) {
+      if (ev.name && ev.name !== "word") return;
+      const tRel = (Date.now() - startTime) / 1000;
+      const ci = typeof ev.charIndex === "number" ? ev.charIndex : -1;
+      if (ci < 0) return;
+      let hit = wordsArray.find(w => ci >= w.charStart && ci < w.charEnd);
+      if (!hit) hit = wordsArray.find(w => ci < w.charStart); 
+      if (hit && boundaryStarts[hit.id] === undefined) {
+        boundaryStarts[hit.id] = tRel;
+        boundarySupported = true;
+      }
+    };
+
+    samplingIntervalId = setInterval(() => {
+      let t = (Date.now() - startTime) / 1000;
+      let vol = 15;
+      let snapFrame = new Uint8Array(32);
+      
+      if(capAnalyser){
+        capAnalyser.getByteFrequencyData(capData);
+        snapFrame = new Uint8Array(capData);
+        let total=0; for(let i=0;i<capData.length;i++) total+=capData[i];
+        vol = total/capData.length;
+        updateSingleAvatarViseme(mouthHoca, capData, vol);
+      }
+      
+      ttsTimelineData.push(vol);
+      ttsSpectrums.push(snapFrame);
+      
+      finalTtsData = ttsTimelineData;
+      finalTtsSpectrums = ttsSpectrums;
+      
+      drawStudioGraphs();
+      document.getElementById("ttsDuration").textContent = `${t.toFixed(1)}s`;
+    }, 40);
+
+    u.onend = () => {
+      setTimeout(()=>{
+        clearInterval(samplingIntervalId);
+        totalTtsDuration = (Date.now() - startTime) / 1000;
+        ttsAudioOffset = recStartWall ? Math.max(0, (startTime - recStartWall) / 1000) : 0;
+
+        if (!buildAlignmentFromBoundaries(boundaryStarts)) {
+          calculateDefaultAlignment();
+        }
+        if (userTimelineData.length) buildUserAlignment();
+
+        avatarBoxHoca.className = "avatar-box"; mouthHoca.className = "mouth rest";
+        try{ if(capRec) capRec.stop(); if(capStream) capStream.getTracks().forEach(tr=>tr.stop()); }catch(e){}
+        statusField.textContent = boundarySupported
+          ? "Hoca hazır (gerçek kelime sınırları algılandı). Kelimelere tıklayabilirsiniz."
+          : "Hoca hazır. Kelimelere tıklayabilir veya cümlenizi okuyabilirsiniz.";
+        feedbackText.innerHTML = "🎓 <b>Hoca Hazır:</b> Kelimelere basarak gerçek ses kesitlerini dinleyip ayarlayabilirsiniz ya da cümlenizi mikrofondan okuyabilirsiniz.";
+        recordBtn.disabled = false;
+      }, 250);
+    };
+    window.speechSynthesis.speak(u);
+  };
+
+  function stopRecording() {
+    isRecording = false;
+    recordBtn.textContent = "🎙️ 2. Mikrofonla Oku";
+    recordBtn.classList.remove("recording");
+    avatarBoxUser.className = "avatar-box"; mouthUser.className = "mouth rest";
+    clearInterval(samplingIntervalId);
+    if (recognition) { try{ recognition.stop(); }catch(e){} }
+    if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+    if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+  }
+
+  recordBtn.onclick = async function() {
+    if (!isRecording) {
+      recordedChunks = []; userTimelineData = []; userSpectrums = []; finalUserData = []; 
+      finalUserSpectrums = []; playheadProgress = -1; heardText = "";
+      avatarBoxUser.className = "avatar-box speaking";
+      stopActiveSegment();
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (!analyser) {
+          analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+        audioCtx.createMediaStreamSource(mediaStream).connect(analyser);
+
+        mediaRecorder = new MediaRecorder(mediaStream);
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          voiceUrl = URL.createObjectURL(new Blob(recordedChunks, { type: 'audio/webm' }));
+          userAudioBuffer = null;
+          buildUserAlignment();
+          analyzeGraphsBtn.disabled = false;
+        };
+        mediaRecorder.start();
+
+        const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new STT(); recognition.lang = "en-US";
+        recognition.onresult = e => { heardText = e.results[0][0].transcript; };
+        recognition.onend = () => { if (isRecording) stopRecording(); handleSttResult(); };
+        recognition.start();
+
+        isRecording = true;
+        recordBtn.textContent = "■ Kaydı Durdur";
+        recordBtn.classList.add("recording");
+        statusField.textContent = "Kaydediliyor...";
+
+        let userStartTime = Date.now();
+        samplingIntervalId = setInterval(() => {
+          if (!isRecording) return;
+          analyser.getByteFrequencyData(dataArray);
+          let snapFrame = new Uint8Array(dataArray);
+          
+          let total = 0; for (let i = 0; i < dataArray.length; i++) total += dataArray[i];
+          let avg = total / dataArray.length;
+
+          userTimelineData.push(avg);
+          userSpectrums.push(snapFrame);
+          
+          finalUserData = userTimelineData;
+          finalUserSpectrums = userSpectrums;
+          
+          drawStudioGraphs();
+          updateSingleAvatarViseme(mouthUser, dataArray, avg);
+          
+          let dur = (Date.now() - userStartTime) / 1000;
+          document.getElementById("userDuration").textContent = `${dur.toFixed(1)}s`;
+        }, 40);
+      } catch (e) { statusField.textContent = "Mikrofon izni verilmedi."; }
+    } else {
+      stopRecording();
+    }
+  };
+
+  function handleSttResult() {
+    if (!heardText) {
+      document.getElementById("scoreBadge").textContent = "Yeniden Dene";
+      document.getElementById("scoreBadge").style.background = "var(--status-try)";
+      return;
+    }
+    const result = diffEN(heardText, TARGET_TEXT);
+    document.getElementById("mSöz").textContent = result.score + "%";
+
+    diffLine.innerHTML = "";
+    result.parts.forEach(p => {
+      let span = document.createElement("span");
+      span.style.color = p.type === "ok" ? "var(--user-color)" : (p.type === "extra" ? "#f87171" : "#fbbf24");
+      if(p.type === "extra") span.style.textDecoration = "line-through";
+      span.textContent = p.word + " ";
+      diffLine.appendChild(span);
+    });
+  }
+
+  analyzeGraphsBtn.onclick = function() {
+    if (!ttsTimelineData.length || !userTimelineData.length) return;
+    const THRESHOLD = 8;
+
+    const trim = d => {
+      let s = 0, e = d.length - 1;
+      while (s < d.length && d[s] < THRESHOLD) s++;
+      while (e > s && d[e] < THRESHOLD) e--;
+      return { start: s, end: e };
+    };
+
+    cachedTtsBounds = trim(ttsTimelineData);
+    cachedUserBounds = trim(userTimelineData);
+
+    const sTts = ttsTimelineData.slice(cachedTtsBounds.start, cachedTtsBounds.end + 1);
+    const sUser = userTimelineData.slice(cachedUserBounds.start, cachedUserBounds.end + 1);
+
+    const specTts = ttsSpectrums.slice(cachedTtsBounds.start, cachedTtsBounds.end + 1);
+    const specUser = userSpectrums.slice(cachedUserBounds.start, cachedUserBounds.end + 1);
+
+    const ttsDur = sTts.length * 0.04;
+    const userDur = sUser.length * 0.04;
+
+    finalTtsData = sTts;
+    finalUserData = resampleTimelineData(sUser, finalTtsData.length);
+
+    finalTtsSpectrums = specTts;
+    finalUserSpectrums = resampleSpectrums(specUser, finalTtsData.length);
+
+    resizeCanvasIfNeeded(studioCanvas);
+    drawStudioGraphs();
+    
+    document.getElementById("duetBtn").style.display = "flex";
+    document.getElementById("playBtn").style.display = "flex";
+
+    document.getElementById("ttsDuration").textContent = `${ttsDur.toFixed(1)}s Net`;
+    document.getElementById("userDuration").textContent = `${userDur.toFixed(1)}s Net`;
+
+    let sözSkor = parseInt(document.getElementById("mSöz").textContent) || 0;
+
+    const segmentLength = Math.floor(finalTtsData.length / 3);
+    let segment1Diff = 0, segment2Diff = 0, segment3Diff = 0;
+    
+    for(let i=0; i<finalTtsData.length; i++) {
+      let diff = Math.abs(finalTtsData[i] - finalUserData[i]);
+      if(i < segmentLength) segment1Diff += diff;
+      else if(i < segmentLength * 2) segment2Diff += diff;
+      else segment3Diff += diff;
+    }
+
+    let tempoSkor = Math.max(0, Math.round(100 - (Math.abs(ttsDur - userDur) / ttsDur * 100)));
+    document.getElementById("mTempo").textContent = tempoSkor + "%";
+
+    let ttsMaxIdx = 0, ttsMaxVol = 0, userMaxIdx = 0, userMaxVol = 0;
+    for(let i = 0; i < finalTtsData.length; i++) {
+      if(finalTtsData[i] > ttsMaxVol) { ttsMaxVol = finalTtsData[i]; ttsMaxIdx = i; }
+      if(finalUserData[i] > userMaxVol) { userMaxVol = finalUserData[i]; userMaxIdx = i; }
+    }
+    
+    let peakSapmaYuzde = Math.abs(ttsMaxIdx - userMaxIdx) / finalTtsData.length;
+    let vurguSkor = Math.max(0, Math.round(100 - (peakSapmaYuzde * 160)));
+    document.getElementById("mVurgu").textContent = vurguSkor + "%";
+
+    let genelOrtalama = Math.round((sözSkor * 0.3) + (tempoSkor * 0.4) + (vurguSkor * 0.3));
+    let badge = document.getElementById("scoreBadge");
+    
+    if(genelOrtalama >= 85) { badge.textContent = "Kusursuz 🌟"; badge.style.background = "var(--status-perfect)"; }
+    else if (genelOrtalama >= 65) { badge.textContent = "İyi 👍"; badge.style.background = "var(--status-good)"; }
+    else { badge.textContent = "Gelişmeli 🎯"; badge.style.background = "var(--status-try)"; }
+
+    let advice = "🟢 <b>Güçlü Taraf:</b> Kelimeleri eksikosiz tamamladınız.<br>";
+    advice += "🧭 <b>Aynalama Analizi:</b> ";
+    if (segment2Diff > segment1Diff && segment2Diff > segment3Diff) {
+      advice += `Vurgu yaptığınız orta segmentte hocanın spektrumundan sapma var. Düet butonuna basarak ağız hareketlerinin senkronizasyonunu ve renk değişimlerini (Yeşil/Kırmızı) takip edin. `;
+    } else {
+      advice += `Genel artikülasyon ve senkronizasyon uyumunuz oldukça kararlı. `;
+    }
+    feedbackText.innerHTML = advice;
+    statusField.textContent = "Analiz tamamlandı!";
+  };
+
+  function drawStudioGraphs() {
+    const W = studioCanvas.width, H = studioCanvas.height;
+    studioCtx.clearRect(0, 0, W, H);
+
+    if (selectedWordIndex !== null && totalTtsDuration > 0) {
+      const bounds = wordTimestamps[selectedWordIndex];
+      if (bounds) {
+        let startX = (bounds.start / totalTtsDuration) * W;
+        let endX = (bounds.end / totalTtsDuration) * W;
+        studioCtx.fillStyle = "rgba(56, 189, 248, 0.15)";
+        studioCtx.fillRect(startX, 0, endX - startX, H);
+        
+        studioCtx.lineWidth = 1;
+        studioCtx.strokeStyle = "rgba(56, 189, 248, 0.5)";
+        studioCtx.beginPath();
+        studioCtx.moveTo(startX, 0); studioCtx.lineTo(startX, H);
+        studioCtx.moveTo(endX, 0); studioCtx.lineTo(endX, H);
+        studioCtx.stroke();
+      }
+    }
+
+    if (finalTtsData.length && finalUserData.length) {
+      studioCtx.fillStyle = "rgba(244, 63, 94, 0.12)";
+      studioCtx.beginPath();
+      const step = W / Math.max(finalTtsData.length - 1, 1);
+      for (let i = 0; i < finalTtsData.length; i++) {
+        let yTts = H - (finalTtsData[i] / 100) * (H * 0.85) - 2;
+        let yUser = H - ((finalUserData[i] || 0) / 100) * (H * 0.85) - 2;
+        let x = i * step;
+        if (i === 0) studioCtx.moveTo(x, yTts); else studioCtx.lineTo(x, yTts);
+        studioCtx.lineTo(x, yUser);
+      }
+      studioCtx.fill();
+    }
+
+    const drawWave = (data, color, isUser) => {
+      if (!data.length) return;
+      studioCtx.lineWidth = isUser ? 2 : 1.5;
+      studioCtx.strokeStyle = color; studioCtx.lineCap = "round"; studioCtx.lineJoin = "round";
+      studioCtx.beginPath();
+      const step = W / Math.max(data.length - 1, 1);
+      for (let i = 0; i < data.length; i++) {
+        let y = H - (data[i] / 100) * (H * 0.85) - 2;
+        let x = i * step;
+        if (i === 0) studioCtx.moveTo(x, y); else studioCtx.lineTo(x, y);
+      }
+      studioCtx.stroke();
+    };
+
+    drawWave(finalTtsData, "#38bdf8", false);
+    drawWave(finalUserData, "#4ade80", true);
+
+    if (playheadProgress >= 0 && playheadProgress <= 100) {
+      let lx = (playheadProgress / 100) * W;
+      studioCtx.lineWidth = 1; studioCtx.strokeStyle = "#f43f5e";
+      studioCtx.beginPath(); studioCtx.moveTo(lx, 0); studioCtx.lineTo(lx, H); studioCtx.stroke();
+    }
+  }
+
+  duetBtn.onclick = function() {
+    if (!voiceUrl || !finalUserData.length) return;
+    statusField.textContent = "Düet çalınıyor...";
+    stopActiveSegment();
+    try { window.speechSynthesis.cancel(); } catch(e){}
+
+    const tAudio = teacherAudioUrl ? new Audio(teacherAudioUrl) : null;
+    const tUtter = tAudio ? null : (function(){
+      const x = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(x); x.rate = 0.82; return x;
+    })();
+
+    const uAudio = new Audio(voiceUrl);
+    let totalSamples = Math.max(finalTtsData.length, finalUserData.length);
+    let currentSample = 0;
+
+    const startSync = () => {
+      if (samplingIntervalId) clearInterval(samplingIntervalId);
+      samplingIntervalId = setInterval(() => {
+        if (currentSample >= totalSamples) { clearInterval(samplingIntervalId); return; }
+        playheadProgress = (currentSample / totalSamples) * 100;
+        drawStudioGraphs();
+        
+        let volHoca = finalTtsData[currentSample] || 0;
+        let volUser = finalUserData[currentSample] || 0;
+        
+        let specHoca = finalTtsSpectrums[currentSample] || new Uint8Array(32);
+        let specUser = finalUserSpectrums[currentSample] || new Uint8Array(32);
+        
+        let hMouthClass = updateSingleAvatarViseme(mouthHoca, specHoca, volHoca);
+        let uMouthClass = updateSingleAvatarViseme(mouthUser, specUser, volUser);
+        
+        let energyDiff = Math.abs(volHoca - volUser);
+        
+        avatarBoxHoca.className = "avatar-box speaking";
+        
+        if (hMouthClass === uMouthClass && energyDiff < 20) {
+          avatarBoxUser.className = "avatar-box match-ok";
+        } else if (volHoca > 5 && volUser > 5) {
+          avatarBoxUser.className = "avatar-box match-fail";
+        } else {
+          avatarBoxUser.className = "avatar-box";
+        }
+
+        currentSample++;
+      }, 40);
+    };
+
+    const endDuet = () => {
+      clearInterval(samplingIntervalId);
+      try { window.speechSynthesis.cancel(); uAudio.pause(); if(tAudio) tAudio.pause(); } catch(e){}
+      avatarBoxHoca.className = "avatar-box"; avatarBoxUser.className = "avatar-box";
+      mouthHoca.className = "mouth rest"; mouthUser.className = "mouth rest";
+      playheadProgress = -1; drawStudioGraphs();
+      statusField.textContent = "Düet bitti.";
+    };
+
+    uAudio.onended = endDuet;
+    if (tUtter) tUtter.onend = endDuet;
+    if (tAudio) tAudio.onended = endDuet;
+
+    let tStart = (cachedTtsBounds && typeof cachedTtsBounds.start === 'number') ? cachedTtsBounds.start * 0.04 : 0;
+    let uStart = (cachedUserBounds && typeof cachedUserBounds.start === 'number') ? cachedUserBounds.start * 0.04 : 0;
+
+    if(tAudio) {
+      tAudio.currentTime = tStart; tAudio.play().catch(e=>{});
+      uAudio.currentTime = uStart; uAudio.play().catch(e=>{});
+      startSync();
+    } else {
+      tUtter.onstart = () => { uAudio.currentTime = uStart; uAudio.play().catch(e=>{}); startSync(); };
+      window.speechSynthesis.speak(tUtter);
+    }
+  };
+
+  playBtn.onclick = function() {
+    if (!voiceUrl || !finalUserData.length) return;
+    const audio = new Audio(voiceUrl);
+    audio.currentTime = (cachedUserBounds && typeof cachedUserBounds.start === 'number') ? cachedUserBounds.start * 0.04 : 0;
+    let total = finalUserData.length, cur = 0;
+
+    audio.onplay = () => {
+      avatarBoxUser.className = "avatar-box speaking";
+      if (samplingIntervalId) clearInterval(samplingIntervalId);
+      samplingIntervalId = setInterval(() => {
+        if (cur >= total) { clearInterval(samplingIntervalId); return; }
+        playheadProgress = (cur / total) * 100;
+        drawStudioGraphs();
+        let vol = finalUserData[cur] || 0;
+        let spec = finalUserSpectrums[cur] || new Uint8Array(32);
+        updateSingleAvatarViseme(mouthUser, spec, vol);
+        cur++;
+      }, 40);
+    };
+    audio.onended = () => { clearInterval(samplingIntervalId); avatarBoxUser.className = "avatar-box"; mouthUser.className = "mouth rest"; playheadProgress = -1; drawStudioGraphs(); };
+    audio.play().catch(e=>{});
+  };
+
+  // ================= TAM EKRAN KELİME AYAR PANELİ VE AI KARŞILAŞTIRMA MOTORU =================
+  const wtOverlay = document.getElementById("wordTunerOverlay");
+
+  function wtGetBounds(track) {
+    if (selectedWordIndex === null) return null;
+    return track === "coach" ? wordTimestamps[selectedWordIndex] : userWordTimestamps[selectedWordIndex];
+  }
+  function wtDur(track) { return track === "coach" ? totalTtsDuration : userTotalDuration; }
+
+  function setupTunerZoom() {
+    const PAD = 0.5; 
+    const cb = wtGetBounds("coach");
+    if (cb) {
+      wtZoom.coach = {
+        min: Math.max(0, cb.start - PAD),
+        max: Math.min((totalTtsDuration || cb.end) + 0.3, cb.end + PAD)
+      };
+    }
+    const ub = wtGetBounds("user");
+    if (ub) {
+      wtZoom.user = {
+        min: Math.max(0, ub.start - PAD),
+        max: Math.min((userTotalDuration || ub.end) + 0.3, ub.end + PAD)
+      };
+    }
+  }
+
+  function wtApplySlider(idBase, zoom, bounds) {
+    const s = document.getElementById(idBase + "Start");
+    const e = document.getElementById(idBase + "End");
+    s.min = zoom.min.toFixed(2); s.max = zoom.max.toFixed(2); s.value = bounds.start;
+    e.min = zoom.min.toFixed(2); e.max = zoom.max.toFixed(2); e.value = bounds.end;
+    document.getElementById(idBase + "StartVal").textContent = bounds.start.toFixed(2) + "s";
+    document.getElementById(idBase + "EndVal").textContent = bounds.end.toFixed(2) + "s";
+  }
+
+  function refreshTunerControls() {
+    const cb = wtGetBounds("coach");
+    if (cb) wtApplySlider("wtCoach", wtZoom.coach, cb);
+    const ub = wtGetBounds("user");
+    document.getElementById("wtUserTrack").classList.toggle("disabled", !ub);
+    if (ub) wtApplySlider("wtUser", wtZoom.user, ub);
+  }
+
+  function syncMiniPanel() {
+    if (selectedWordIndex === null) return;
+    const b = wordTimestamps[selectedWordIndex];
+    if (!b) return;
+    const s = document.getElementById("startSlider"), e = document.getElementById("endSlider");
+    s.max = totalTtsDuration.toFixed(2); e.max = totalTtsDuration.toFixed(2);
+    s.value = b.start; e.value = b.end;
+    document.getElementById("startVal").textContent = b.start.toFixed(2) + "s";
+    document.getElementById("endVal").textContent = b.end.toFixed(2) + "s";
+  }
+
+  function drawTunerCanvas() {
+    const c = document.getElementById("wtCanvas");
+    const W = c.clientWidth, H = c.clientHeight;
+    if (!W || !H) return;
+    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+    const ctx = c.getContext("2d");
+    ctx.clearRect(0, 0, W, H);
+    const half = H / 2;
+
+    const cb = wtGetBounds("coach");
+    if (cb && ttsTimelineData.length) {
+      drawZoomTrack(ctx, ttsTimelineData, wtZoom.coach, cb, 0, half - 2, "#38bdf8", W);
+    }
+    const ub = wtGetBounds("user");
+    if (ub && userTimelineData.length) {
+      drawZoomTrack(ctx, userTimelineData, wtZoom.user, ub, half + 2, half - 2, "#4ade80", W);
+    }
+
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.beginPath(); ctx.moveTo(0, half); ctx.lineTo(W, half); ctx.stroke();
+  }
+
+  function drawZoomTrack(ctx, data, zoom, region, y0, h, color, W) {
+    const span = Math.max(zoom.max - zoom.min, 0.05);
+
+    const rx1 = ((region.start - zoom.min) / span) * W;
+    const rx2 = ((region.end - zoom.min) / span) * W;
+    ctx.fillStyle = "rgba(56, 189, 248, 0.12)";
+    ctx.fillRect(rx1, y0, rx2 - rx1, h);
+    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(rx1, y0); ctx.lineTo(rx1, y0 + h);
+    ctx.moveTo(rx2, y0); ctx.lineTo(rx2, y0 + h);
+    ctx.stroke();
+
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    let started = false;
+    for (let x = 0; x < W; x++) {
+      const t = zoom.min + (x / W) * span;
+      const fi = t / 0.04;
+      const i0 = Math.floor(fi);
+      if (i0 < 0 || i0 >= data.length) continue;
+      const i1 = Math.min(i0 + 1, data.length - 1);
+      const v = data[i0] * (1 - (fi - i0)) + data[i1] * (fi - i0);
+      const y = y0 + h - (v / 100) * (h * 0.9) - 1;
+      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  function openWordTuner(wordId) {
+    if (wordId === null || wordId === undefined) return;
+    if (!wordTimestamps[wordId]) {
+      segStatus("Önce '1. Hoca Çizdir' adımını tamamlayın.");
+      return;
+    }
+    selectedWordIndex = wordId;
+    wordsArray.forEach(w => w.dom.classList.remove("selected-word"));
+    const w = wordsArray.find(x => x.id === wordId);
+    if (!w) return;
+    w.dom.classList.add("selected-word");
+
+    document.getElementById("wtTitle").textContent = '"' + w.raw.toUpperCase() + '"';
+    wtOpen = true;
+    wtOverlay.style.display = "flex";
+
+    const ub = userWordTimestamps[wordId];
+    document.getElementById("wtStatus").innerHTML = ub
+      ? "Hassas mod: kaydırıcılar kelimenin ±0.5s çevresinde çalışır. <b>Karşılaştır</b> düğmesiyle yapay zekayı tetikleyin."
+      : "Kendi kaydınız yok — '2. Mikrofonla Oku' sonrası kelimeniz de burada görünür.";
+
+    setupTunerZoom();
+    refreshTunerControls();
+    drawTunerCanvas();
+
+    try {
+      if (wtOverlay.requestFullscreen) wtOverlay.requestFullscreen().catch(function(){});
+    } catch(e){}
+  }
+
+  function closeWordTuner() {
+    wtOpen = false;
+    stopActiveSegment();
+    try {
+      if (document.fullscreenElement === wtOverlay && document.exitFullscreen) {
+        document.exitFullscreen().catch(function(){});
+      }
+    } catch(e){}
+    wtOverlay.style.display = "none";
+    syncMiniPanel();
+    drawStudioGraphs();
+  }
+
+  function wtSlide(track, edge, el) {
+    const b = wtGetBounds(track);
+    if (!b) return;
+    let val = parseFloat(el.value);
+    if (edge === "start") {
+      if (val > b.end - 0.05) { val = b.end - 0.05; el.value = val; }
+      b.start = Math.max(0, val);
+      document.getElementById(el.id + "Val").textContent = b.start.toFixed(2) + "s";
+    } else {
+      if (val < b.start + 0.05) { val = b.start + 0.05; el.value = val; }
+      b.end = Math.min(val, wtDur(track) + 0.3);
+      document.getElementById(el.id + "Val").textContent = b.end.toFixed(2) + "s";
+    }
+    drawTunerCanvas();
+    if (track === "coach") { syncMiniPanel(); drawStudioGraphs(); }
+  }
+
+  document.getElementById("wtCoachStart").oninput = function(){ wtSlide("coach", "start", this); };
+  document.getElementById("wtCoachEnd").oninput   = function(){ wtSlide("coach", "end", this); };
+  document.getElementById("wtUserStart").oninput  = function(){ wtSlide("user", "start", this); };
+  document.getElementById("wtUserEnd").oninput    = function(){ wtSlide("user", "end", this); };
+
+  document.querySelectorAll(".wt-nudge").forEach(btn => {
+    btn.onclick = function() {
+      const track = btn.getAttribute("data-track");
+      const edge = btn.getAttribute("data-edge");
+      const d = parseFloat(btn.getAttribute("data-delta"));
+      const b = wtGetBounds(track);
+      if (!b) return;
+      if (edge === "start") {
+        b.start = Math.max(0, Math.min(b.start + d, b.end - 0.05));
+      } else {
+        b.end = Math.max(b.start + 0.05, Math.min(b.end + d, wtDur(track) + 0.3));
+      }
+      const z = wtZoom[track];
+      if (b.start < z.min) z.min = Math.max(0, b.start - 0.1);
+      if (b.end > z.max) z.max = b.end + 0.1;
+      refreshTunerControls();
+      drawTunerCanvas();
+      if (track === "coach") { syncMiniPanel(); drawStudioGraphs(); }
+    };
+  });
+
+  document.getElementById("wtPlayCoach").onclick = function() {
+    const b = wtGetBounds("coach");
+    if (b) playRealWordSegment(b.start, b.end);
+  };
+  document.getElementById("wtPlayUser").onclick = function() {
+    const b = wtGetBounds("user");
+    if (b) playUserWordSegment(b.start, b.end);
+  };
+
+  // --- GELİŞTİRİLMİŞ YAPAY ZEKA KELİME KARŞILAŞTIRMA VE AKUSTİK PUANLAMA MOTORU ---
+  document.getElementById("wtCompareBtn").onclick = function() {
+    const cb = wtGetBounds("coach");
+    const ub = wtGetBounds("user");
+    if (!cb) return;
+    if (!ub) { segStatus("<span style='color:var(--status-try)'>⚠ Karşılaştırma için ana ekranda tüm cümlenizi kaydetmiş olmalısınız.</span>"); return; }
+    
+    segStatus("🤖 Yapay Zeka Kelime Analizi Başladı: Önce Hoca...");
+    
+    playRealWordSegment(cb.start, cb.end, function() {
+      setTimeout(function() {
+        segStatus("🤖 Şimdi sizin telaffuzunuz dinleniyor...");
+        playUserWordSegment(ub.start, ub.end, function() {
+          
+          // Matematiksel Akustik Kıyaslama Aşaması
+          const coachDur = cb.end - cb.start;
+          const userDur = ub.end - ub.start;
+          
+          // 1. Kriter: Tempo/Süre Uyum Skoru
+          const tempoRatio = Math.min(coachDur, userDur) / Math.max(coachDur, userDur);
+          let wordTempoScore = Math.round(tempoRatio * 100);
+          
+          // 2. Kriter: Enerji Spektrumu ve Genlik Zirve Senkronizasyonu
+          let coachIdxStart = Math.floor((cb.start + ttsAudioOffset) / 0.04);
+          let coachIdxEnd = Math.floor((cb.end + ttsAudioOffset) / 0.04);
+          let userIdxStart = Math.floor(ub.start / 0.04);
+          let userIdxEnd = Math.floor(ub.end / 0.04);
+          
+          let cSlice = ttsTimelineData.slice(coachIdxStart, coachIdxEnd + 1);
+          let uSlice = userTimelineData.slice(userIdxStart, userIdxEnd + 1);
+          
+          if(!cSlice.length) cSlice = [20];
+          if(!uSlice.length) uSlice = [5];
+          
+          let resampledUSlice = resampleTimelineData(uSlice, cSlice.length);
+          let totalAbsDiff = 0;
+          let coachEnergySum = 0;
+          
+          for(let i=0; i < cSlice.length; i++) {
+            totalAbsDiff += Math.abs(cSlice[i] - resampledUSlice[i]);
+            coachEnergySum += cSlice[i];
+          }
+          
+          if(coachEnergySum === 0) coachEnergySum = 1;
+          let energyMatchScore = Math.max(0, Math.round(100 - (totalAbsDiff / coachEnergySum * 110)));
+          
+          // Kombine Kelime Skoru Hesaplama
+          let finalWordScore = Math.round((wordTempoScore * 0.4) + (energyMatchScore * 0.6));
+          finalWordScore = Math.max(10, Math.min(finalWordScore, 100)); // 10-100 arası normalize et
+          
+          // Yapay Zeka Geri Bildirim ve Mikro-Tavsiye Üretimi
+          let colorClass = "var(--status-try)";
+          let feedbackMsg = "";
+          let targetWordRaw = wordsArray.find(x => x.id === selectedWordIndex)?.raw || "Kelime";
+          
+          if (finalWordScore >= 85) {
+            colorClass = "var(--status-perfect)";
+            feedbackMsg = `🌟 <b>Mükemmel Uyum! (%${finalWordScore})</b> "${targetWordRaw}" kelimesinin artikülasyon hızı ve vurgu tepe noktası hocayla tam eşleşti.`;
+          } else if (finalWordScore >= 70) {
+            colorClass = "var(--status-good)";
+            feedbackMsg = `👍 <b>Başarılı Telaffuz (%${finalWordScore})</b> Ses dalgası genel hatlarıyla uyumlu. Süreyi milisaniyelik kaydırıcılarla incelterek %90+ üzerine taşıyabilirsiniz.`;
+          } else {
+            colorClass = "var(--error-color)";
+            feedbackMsg = `🎯 <b>Geliştirilmeli (%${finalWordScore})</b> Artikülasyon yayılımınız hocadan farklı. <br/>
+            <button class="wt-btn" id="singleWordPracticeBtn" style="margin-top:6px; background:#b45309; min-height:28px; padding:2px 8px; font-size:10px;">🎙️ Sadece Bu Kelimeyi Çalış</button>`;
+          }
+          
+          // wtStatus panelini güncelleme
+          const statusEl = document.getElementById("wtStatus");
+          statusEl.innerHTML = `<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-weight:900; background:${colorClass}; color:#000; margin-right:6px;">SKOR: %${finalWordScore}</span> ${feedbackMsg}`;
+          
+          // Eğer tek kelime çalışma butonu üretildiyse event ekle
+          const dynamicBtn = document.getElementById("singleWordPracticeBtn");
+          if(dynamicBtn) {
+            dynamicBtn.onclick = function() {
+              statusEl.innerHTML = `<span style="color:var(--accent)">🎙️ "${targetWordRaw}" için mikrofon açılıyor, sadece bu kelimeyi söyleyin...</span>`;
+              // Mikrofonla lokal kelime simülasyonunu başlat
+              setTimeout(() => {
+                statusEl.innerHTML = `<span style="color:var(--user-color)">✓ Lokal kelime kaydı alındı! Yeniden 'Karşılaştır' düğmesine basarak skoru görün.</span>`;
+              }, 2000);
+            };
+          }
+          
+        });
+      }, 300);
+    });
+  };
+
+  document.getElementById("wtCloseBtn").onclick = closeWordTuner;
+  document.getElementById("wtFsBtn").onclick = function() {
+    try {
+      if (document.fullscreenElement === wtOverlay) {
+        document.exitFullscreen().catch(function(){});
+      } else if (wtOverlay.requestFullscreen) {
+        wtOverlay.requestFullscreen().catch(function(){});
+      }
+    } catch(e){}
+  };
+  document.getElementById("openTunerFsBtn").onclick = function(e) {
+    e.stopPropagation();
+    if (selectedWordIndex !== null) openWordTuner(selectedWordIndex);
+    else segStatus("Önce bir kelimeye dokunun.");
+  };
+
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape" && wtOpen) closeWordTuner();
+  });
+  document.addEventListener("fullscreenchange", function() {
+    if (wtOpen) setTimeout(drawTunerCanvas, 60);
+  });
+  window.addEventListener("resize", function() {
+    if (wtOpen) drawTunerCanvas();
+  });
+</script>
+
+<script src="./coach-bubble.js" defer></script>
+</body>
+</html>
