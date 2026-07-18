@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape" />
+  <title>DilHarita - Kelime Analizli Trainer v4</title>
+  <style>
+    :root {
+      --bg: #030712;
+      --surface: #0f172a;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --user-color: #4ade80;
+      --status-perfect: #10b981;
+      --status-good: #3b82f6;
+      --status-try: #f59e0b;
+      --error-color: #f43f5e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    html, body { 
+      width: 100%; 
+      height: 100dvh;
+      background: var(--bg); 
+      color: var(--text); 
+      font-family: system-ui, -apple-system, sans-serif; 
+      overflow: hidden;
+      position: fixed;
+    }
+    
+    .trainer-grid {
+      width: 100%;
+      height: 100dvh;
+      padding: 4px 8px;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      grid-template-rows: auto 1fr;
+      gap: 4px;
+    }
+
+    .header-panel {
+      grid-column: 1 / -1;
+      background: #1e293b;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border-left: 3px solid var(--accent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 20px;
+    }
+    .header-panel h2 { font-size: 10px; font-weight: 800; color: #60a5fa; }
+    .quick-tip { font-size: 8px; color: #cbd5e1; }
+
+    .left-zone, .right-zone { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 4px; 
+      height: calc(100dvh - 32px);
+      overflow: hidden;
+    }
+
+    .phrase-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px;
+      text-align: center;
+    }
+    
+    /* 🛠️ Gelişmiş Kelime Kartları Görsel Geri Bildirim Yapısı */
+    .word-feedback-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 4px;
+      margin-bottom: 3px;
+    }
+    .word-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #1e293b;
+      color: #fff;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .word-badge.w-ok { background: rgba(16, 185, 129, 0.2); border-color: var(--status-perfect); color: #6ee7b7; }
+    .word-badge.w-missing { background: rgba(245, 158, 11, 0.15); border-color: var(--status-try); color: #fde047; text-decoration: dotted underline; }
+    .word-badge.w-extra { background: rgba(244, 63, 94, 0.2); border-color: var(--error-color); color: #fca5a5; text-decoration: line-through; }
+    .word-badge .stress { text-decoration: underline; font-weight: 900; color: #ffedd5; }
+
+    .target-tr { font-size: 9px; color: var(--muted); margin-top: 1px; }
+
+    .interactive-coach {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      gap: 8px;
+    }
+    
+    .avatar-wrapper { display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 1; }
+    
+    .avatar-box {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: #090d16;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.1s ease;
+    }
+    .avatar-box.speaking { box-shadow: 0 0 8px rgba(56, 189, 248, 0.5); border-color: var(--accent); }
+    .avatar-box.match-ok { border-color: var(--status-perfect) !important; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+    .avatar-box.match-fail { border-color: var(--error-color) !important; box-shadow: 0 0 8px rgba(244, 63, 94, 0.5); }
+    
+    .eyes { display: flex; gap: 4px; margin-bottom: 2px; }
+    .eye { width: 2.5px; height: 2.5px; background: #fff; border-radius: 50%; }
+    
+    .mouth { width: 10px; height: 2px; background: #f87171; border-radius: 99px; transition: all 0.04s ease; }
+    .mouth.rest { height: 2px; width: 10px; border-radius: 99px; }
+    .mouth.closed { height: 1px; width: 10px; border-radius: 0; }
+    .mouth.wide { height: 3.5px; width: 14px; border-radius: 40%; }
+    .mouth.round { height: 7px; width: 7px; border-radius: 50%; }
+    .mouth.open { height: 10px; width: 10px; border-radius: 20% 20% 50% 50%; }
+    .mouth.teeth { height: 2.5px; width: 12px; border-top: 1px solid #fff; }
+    
+    .avatar-label { font-size: 7.5px; color: var(--muted); font-weight: 800; text-transform: uppercase; }
+
+    .timeline-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+    .timeline-meta { display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-weight: 800; }
+    .dur-badge { background: #1e293b; padding: 1px 3px; border-radius: 2px; color: #cbd5e1; font-family: monospace; }
+    
+    .studio-frame {
+      position: relative;
+      width: 100%;
+      flex: 1;
+      background: #020617;
+      border-radius: 4px;
+      border: 1px solid #ffffff05;
+      margin-top: 2px;
+    }
+    .overlay-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+
+    .score-terminal {
+      background: #070d19;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+    }
+    .score-badge-display {
+      font-size: 11px;
+      font-weight: 900;
+      padding: 2px 10px;
+      border-radius: 10px;
+      color: #fff;
+      background: var(--border);
+      text-transform: uppercase;
+    }
+    
+    .metric-sub-row {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
+      gap: 3px;
+      margin-top: 4px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      padding-top: 2px;
+    }
+    .metric-box {
+      flex: 1;
+      background: #020617;
+      border-radius: 3px;
+      padding: 2px;
+      text-align: center;
+      font-size: 7.5px;
+      color: var(--muted);
+    }
+    .metric-val { font-size: 9px; font-weight: 800; color: #fff; margin-top: 1px; }
+
+    .diff-line { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; font-size: 8px; font-weight: 700; margin-top: 2px; display: none; }
+
+    .trainer-feedback-card {
+      background: #1e1b4b;
+      border: 1px solid #4338ca;
+      border-radius: 6px;
+      padding: 4px;
+      width: 100%;
+      flex: 1;
+      overflow-y: auto;
+      margin-top: 2px;
+    }
+    .feedback-title { font-size: 8px; font-weight: 900; color: #a5b4fc; text-transform: uppercase; }
+    .feedback-text { font-size: 9px; color: #e0e7ff; line-height: 1.2; margin-top: 1px; }
+
+    .control-buttons { 
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px; 
+      position: relative; 
+      z-index: 999; 
+      flex: 0 0 auto; 
+    }
+    
+    .btn-trainer {
+      width: 100%;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 5px;
+      font-size: 9.5px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+    }
+    .btn-trainer:active { transform: scale(0.99); }
+    .btn-trainer.recording { background: #dc2626; }
+    .btn-trainer.hoca { background: #047857; }
+    .btn-trainer.compare { background: #6d28d9; grid-column: span 2; }
+    
+    .btn-trainer.duet-btn, .btn-trainer.solo-btn { display: none; background: #b45309; }
+
+    .status-bar { font-size: 8px; color: var(--muted); text-align: center; min-height: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="trainer-grid">
+  <div class="header-panel">
+    <h2>🎯 AKUSTİK ARTİKÜLASYON TRAINER v4</h2>
+    <div class="quick-tip" id="quickTip">Kelime bazlı bağımsız analiz aktif.</div>
+  </div>
+  
+  <div class="left-zone">
+    <div class="phrase-card">
+      <!-- Kelimelerin tek tek parçalanıp renklendirileceği dinamik alan -->
+      <div class="word-feedback-container" id="targetEn" data-raw-text="This shirt is nice but it is too small for me.">
+        <!-- İlk yüklemede statik tokenler yerleşir -->
+      </div>
+      <div class="target-tr">Bu gömlek güzel ama benim için çok küçük.</div>
+    </div>
+
+    <div class="interactive-coach">
+      <div class="avatar-wrapper">
+        <div class="avatar-box" id="avatarBoxHoca">
+          <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+          <div class="mouth rest" id="mouthHoca"></div>
+        </div>
+        <div class="avatar-label" style="color:var(--accent)">🎓 AI COACH</div>
+      </div>
+      
+      <div class="avatar-wrapper">
+        <div class="avatar-box" id="avatarBoxUser">
+          <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+          <div class="mouth rest" id="mouthUser"></div>
+        </div>
+        <div class="avatar-label" id="userLabel">🎙️ YOU</div>
+      </div>
+    </div>
+
+    <div class="timeline-container">
+      <div class="timeline-meta">
+        <div>📊 SEYİR VE DELTA SAPMA SPEKTRUMU</div>
+        <div style="display: flex; gap: 4px;">
+          <span class="dur-badge">H: <span id="ttsDuration">0s</span></span>
+          <span class="dur-badge">S: <span id="userDuration">0s</span></span>
+        </div>
+      </div>
+      <div class="studio-frame">
+        <canvas class="overlay-canvas" id="studioCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-zone">
+    <div class="score-terminal">
+      <div class="score-badge-display" id="scoreBadge">Ses Bekleniyor</div>
+      
+      <div class="metric-sub-row">
+        <div class="metric-box">Metin Skoru<div class="metric-val" id="mSöz">--</div></div>
+        <div class="metric-box">Segment Hızı<div class="metric-val" id="mTempo">--</div></div>
+        <div class="metric-box">Vurgu Uyum<div class="metric-val" id="mVurgu">--</div></div>
+      </div>
+
+      <div class="diff-line" id="diffLine"></div>
+      
+      <div class="trainer-feedback-card">
+        <div class="feedback-title">🧭 AI TAVSİYELERİ</div>
+        <div class="feedback-text" id="feedbackText">Önce '1. Hoca Sesini Çizdir & Dinle' adımına dokunun.</div>
+      </div>
+    </div>
+
+    <div class="control-buttons">
+      <button class="btn-trainer hoca" id="analyzeTtsBtn">🎓 1. Hoca Çizdir</button>
+      <button class="btn-trainer" id="recordBtn" disabled>🎙️ 2. Mikrofonla Oku</button>
+      <button class="btn-trainer compare" id="analyzeGraphsBtn" disabled>🔍 3. Grafikleri Kıyasla & Analiz Et</button>
+      <button class="btn-trainer duet-btn" id="duetBtn">▶ Düet Oynat</button>
+      <button class="btn-trainer solo-btn" id="playBtn" style="background:#1e293b;">▶ Sadece Sesim</button>
+    </div>
+
+    <div class="status-bar" id="statusField">Trainer modülü hazır.</div>
+  </div>
+</div>
+
+<script>
+  "use strict";
+  function dhSavedVoicePref(){
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(k&&k.indexOf("dh-voice:")===0){
+          var p=JSON.parse(localStorage.getItem(k)||"null");
+          if(p&&p.name) return p;
+        }
+      }
+    }catch(e){}
+    return null;
+  }
+  function dhApplyVoice(u){
+    try{
+      var p=dhSavedVoicePref(); if(!p) return;
+      var v=(speechSynthesis.getVoices()||[]).find(function(x){return x.name===p.name;});
+      if(v) u.voice=v;
+      if(p.rate) u.rate=p.rate;
+      if(p.pitch) u.pitch=p.pitch;
+    }catch(e){}
+  }
+
+  const targetEl = document.getElementById("targetEn");
+  let TARGET_TEXT = targetEl.getAttribute("data-raw-text") || "This shirt is nice but it is too small for me.";
+
+  // URL parametre kontrolü ve ilk kelime yerleşimi
+  (function initPhrase(){
+    try{
+      var q = new URLSearchParams(window.location.search);
+      var en = q.get("en"), tr = q.get("tr");
+      if(en) { TARGET_TEXT = en; targetEl.setAttribute("data-raw-text", en); }
+      if(tr && document.querySelector(".target-tr")) document.querySelector(".target-tr").textContent = tr;
+    }catch(e){}
+    renderInitialWords(TARGET_TEXT);
+  })();
+
+  // Cümleyi ilk başta nötr kelime butonları/badge'leri olarak basar
+  function renderInitialWords(text) {
+    targetEl.innerHTML = "";
+    const words = text.match(/[A-Za-z']+|\d+/g) || [];
+    words.forEach(w => {
+      let span = document.createElement("span");
+      span.className = "word-badge";
+      if(w.toLowerCase() === "shirt" || w.toLowerCase() === "spon") {
+        span.innerHTML = `<span class="stress">${w.toUpperCase()}</span>`;
+      } else {
+        span.textContent = w;
+      }
+      targetEl.appendChild(span);
+    });
+  }
+
+  let mediaStream = null, mediaRecorder = null, recordedChunks = [], voiceUrl = "", teacherAudioUrl = null;
+  let isRecording = false, audioCtx = null, analyser = null, dataArray = null;
+  let recognition = null, heardText = "";
+
+  let ttsTimelineData = [];
+  let userTimelineData = [];
+  let finalTtsData = [];
+  let finalUserData = [];
+
+  let ttsSpectrums = [];
+  let userSpectrums = [];
+  let finalTtsSpectrums = [];
+  let finalUserSpectrums = [];
+
+  let cachedTtsBounds = { start: 0, end: 0 };
+  let cachedUserBounds = { start: 0, end: 0 };
+
+  let samplingIntervalId = null;
+  let playheadProgress = -1; 
+
+  const studioCanvas = document.getElementById("studioCanvas");
+  const studioCtx = studioCanvas.getContext("2d");
+
+  const recordBtn = document.getElementById("recordBtn");
+  const playBtn = document.getElementById("playBtn");
+  const duetBtn = document.getElementById("duetBtn");
+  const analyzeTtsBtn = document.getElementById("analyzeTtsBtn");
+  const analyzeGraphsBtn = document.getElementById("analyzeGraphsBtn");
+  const feedbackText = document.getElementById("feedbackText");
+  const statusField = document.getElementById("statusField");
+  const diffLine = document.getElementById("diffLine");
+  
+  const mouthHoca = document.getElementById("mouthHoca");
+  const mouthUser = document.getElementById("mouthUser");
+  const avatarBoxHoca = document.getElementById("avatarBoxHoca");
+  const avatarBoxUser = document.getElementById("avatarBoxUser");
+
+  function getVisemeClassName(freqData, rmsVolume) {
+    if (rmsVolume < 5) return "mouth rest";
+    let low = 0, mid = 0, high = 0;
+    const count = freqData.length;
+    for (let i = 0; i < count; i++) {
+      if (i < count * 0.2) low += freqData[i];
+      else if (i < count * 0.6) mid += freqData[i];
+      else high += freqData[i];
+    }
+    if (high > mid && high > low * 1.5) return "mouth teeth";
+    else if (low > mid * 1.8) return "mouth round";
+    else if (mid > low && mid > high) return "mouth wide";
+    else if (rmsVolume > 40) return "mouth open";
+    else if (rmsVolume < 14) return "mouth closed";
+    return "mouth rest";
+  }
+
+  function updateSingleAvatarViseme(mouthElement, freqData, volume) {
+    if (!mouthElement) return "mouth rest";
+    const className = getVisemeClassName(freqData, volume);
+    mouthElement.className = className;
+    return className;
+  }
+
+  function resizeCanvasIfNeeded(canvas) {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  }
+
+  function tokenizeEN(s) { return String(s || "").match(/[A-Za-z']+|\d+/g) || []; }
+  function normSeqEN(text) {
+    const out = [];
+    for (const raw of tokenizeEN(text)) {
+      const n = raw.toLowerCase().replace(/[\u2019\u2018]/g, "'");
+      if (n) out.push({ n: n, raw: raw });
+    }
+    return out;
+  }
+  
+  function diffEN(answer, target) {
+    const A = normSeqEN(answer), B = normSeqEN(target);
+    const m = A.length, n = B.length;
+    const dp = Array.from({ length: m + 1 }, () => new Int16Array(n + 1));
+    for (let i = m - 1; i >= 0; i--) {
+      for (let j = n - 1; j >= 0; j--) {
+        dp[i][j] = A[i].n === B[j].n ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      }
+    }
+    const parts = []; let i = 0, j = 0, correct = 0, extra = 0;
+    while (i < m && j < n) {
+      if (A[i].n === B[j].n) { parts.push({ type: "ok", word: B[j].raw }); correct++; i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) { parts.push({ type: "extra", word: A[i].raw }); extra++; i++; }
+      else { parts.push({ type: "missing", word: B[j].raw }); j++; }
+    }
+    while (i < m) parts.push({ type: "extra", word: A[i++].raw });
+    while (j < n) parts.push({ type: "missing", word: B[j++].raw });
+    return { parts, score: Math.max(0, Math.round((correct / Math.max(n, 1)) * 100 - Math.min(extra * 4, 12))) };
+  }
+
+  function resampleTimelineData(data, targetLength) {
+    if (targetLength <= 1) return [data[0] || 0];
+    if (!data.length) return new Array(targetLength).fill(0);
+    if (data.length === targetLength) return [...data];
+    const resampled = [];
+    for (let i = 0; i < targetLength; i++) {
+      let rawIdx = (i / (targetLength - 1)) * (data.length - 1);
+      let idxA = Math.floor(rawIdx);
+      let idxB = Math.min(idxA + 1, data.length - 1);
+      let weight = rawIdx - idxA;
+      resampled.push(data[idxA] * (1 - weight) + data[idxB] * weight);
+    }
+    return resampled;
+  }
+
+  function resampleSpectrums(spectrums, targetLength) {
+    if (!spectrums.length) return Array.from({ length: targetLength }, () => new Uint8Array(32));
+    const resampled = [];
+    for (let i = 0; i < targetLength; i++) {
+      let rawIdx = (i / (targetLength - 1)) * (spectrums.length - 1);
+      let idxA = Math.floor(rawIdx);
+      let idxB = Math.min(idxA + 1, spectrums.length - 1);
+      let weight = rawIdx - idxA;
+      let arrA = spectrums[idxA], arrB = spectrums[idxB];
+      let merged = new Uint8Array(arrA.length);
+      for (let j = 0; j < arrA.length; j++) {
+        merged[j] = arrA[j] * (1 - weight) + arrB[j] * weight;
+      }
+      resampled.push(merged);
+    }
+    return resampled;
+  }
+
+  analyzeTtsBtn.onclick = async function() {
+    ttsTimelineData = []; ttsSpectrums = []; finalTtsData = []; finalUserData = []; 
+    finalTtsSpectrums = []; finalUserSpectrums = []; playheadProgress = -1;
+    teacherAudioUrl = null; feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
+    avatarBoxHoca.className = "avatar-box speaking";
+    avatarBoxUser.className = "avatar-box";
+    renderInitialWords(TARGET_TEXT); // Ekranı temizle
+
+    let capStream=null, capAnalyser=null, capData=null, capCtx=null, capRec=null;
+    const teacherChunks=[];
+    try{
+      capStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false}});
+      capCtx=new(window.AudioContext||window.webkitAudioContext)();
+      capAnalyser=capCtx.createAnalyser(); capAnalyser.fftSize=64;
+      capData=new Uint8Array(capAnalyser.frequencyBinCount);
+      capCtx.createMediaStreamSource(capStream).connect(capAnalyser);
+      capRec=new MediaRecorder(capStream);
+      capRec.ondataavailable=e=>{ if(e.data.size>0) teacherChunks.push(e.data); };
+      capRec.onstop=()=>{ if(teacherChunks.length) teacherAudioUrl=URL.createObjectURL(new Blob(teacherChunks,{type:"audio/webm"})); };
+      capRec.start();
+    }catch(e){}
+
+    let startTime = Date.now();
+    try { window.speechSynthesis.cancel(); } catch(e){}
+    const u = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(u);
+    u.lang = "en-US"; u.rate = 0.82;
+
+    samplingIntervalId = setInterval(() => {
+      let t = (Date.now() - startTime) / 1000;
+      let vol = 15;
+      let snapFrame = new Uint8Array(32);
+      
+      if(capAnalyser){
+        capAnalyser.getByteFrequencyData(capData);
+        snapFrame = new Uint8Array(capData);
+        let total=0; for(let i=0;i<capData.length;i++) total+=capData[i];
+        vol = total/capData.length;
+        updateSingleAvatarViseme(mouthHoca, capData, vol);
+      }
+      ttsTimelineData.push(vol);
+      ttsSpectrums.push(snapFrame);
+      finalTtsData = ttsTimelineData;
+      finalTtsSpectrums = ttsSpectrums;
+      drawStudioGraphs();
+      document.getElementById("ttsDuration").textContent = `${t.toFixed(1)}s`;
+    }, 40);
+
+    u.onend = () => {
+      setTimeout(()=>{
+        clearInterval(samplingIntervalId);
+        avatarBoxHoca.className = "avatar-box"; mouthHoca.className = "mouth rest";
+        try{ if(capRec) capRec.stop(); if(capStream) capStream.getTracks().forEach(tr=>tr.stop()); }catch(e){}
+        statusField.textContent = "Hoca hazır. Cümlenizi okuyun.";
+        feedbackText.innerHTML = "🎓 <b>Hoca Hazır:</b> Cümlenizi seslendirin.";
+        recordBtn.disabled = false;
+      }, 250);
+    };
+    window.speechSynthesis.speak(u);
+  };
+
+  function stopRecording() {
+    isRecording = false;
+    recordBtn.textContent = "🎙️ 2. Mikrofonla Oku";
+    recordBtn.classList.remove("recording");
+    avatarBoxUser.className = "avatar-box"; mouthUser.className = "mouth rest";
+    clearInterval(samplingIntervalId);
+    if (recognition) { try{ recognition.stop(); }catch(e){} }
+    if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+    if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+  }
+
+  recordBtn.onclick = async function() {
+    if (!isRecording) {
+      recordedChunks = []; userTimelineData = []; userSpectrums = []; finalUserData = []; 
+      finalUserSpectrums = []; playheadProgress = -1; heardText = "";
+      avatarBoxUser.className = "avatar-box speaking";
+      renderInitialWords(TARGET_TEXT);
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+        audioCtx.createMediaStreamSource(mediaStream).connect(analyser);
+
+        mediaRecorder = new MediaRecorder(mediaStream);
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          voiceUrl = URL.createObjectURL(new Blob(recordedChunks, { type: 'audio/webm' }));
+          analyzeGraphsBtn.disabled = false;
+        };
+        mediaRecorder.start();
+
+        const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new STT(); recognition.lang = "en-US";
+        recognition.onresult = e => { heardText = e.results[0][0].transcript; };
+        recognition.onend = () => { if (isRecording) stopRecording(); handleSttResult(); };
+        recognition.start();
+
+        isRecording = true;
+        recordBtn.textContent = "■ Kaydı Durdur";
+        recordBtn.classList.add("recording");
+        statusField.textContent = "Kaydediliyor...";
+
+        let userStartTime = Date.now();
+        samplingIntervalId = setInterval(() => {
+          if (!isRecording) return;
+          analyser.getByteFrequencyData(dataArray);
+          let snapFrame = new Uint8Array(dataArray);
+          let total = 0; for (let i = 0; i < dataArray.length; i++) total += dataArray[i];
+          let avg = total / dataArray.length;
+
+          userTimelineData.push(avg);
+          userSpectrums.push(snapFrame);
+          finalUserData = userTimelineData;
+          finalUserSpectrums = userSpectrums;
+          
+          drawStudioGraphs();
+          updateSingleAvatarViseme(mouthUser, dataArray, avg);
+          
+          let dur = (Date.now() - userStartTime) / 1000;
+          document.getElementById("userDuration").textContent = `${dur.toFixed(1)}s`;
+        }, 40);
+      } catch (e) { statusField.textContent = "Mikrofon izni verilmedi."; }
+    } else {
+      stopRecording();
+    }
+  };
+
+  // 🛠️ DİNAMİK KELİME BAZLI RENKLENDİRME EKRANI
+  function handleSttResult() {
+    if (!heardText) {
+      document.getElementById("scoreBadge").textContent = "Yeniden Dene";
+      document.getElementById("scoreBadge").style.background = "var(--status-try)";
+      return;
+    }
+    const result = diffEN(heardText, TARGET_TEXT);
+    document.getElementById("mSöz").textContent = result.score + "%";
+
+    // Orijinal arayüz kutusunu temizleyip analiz sonuçlarına göre yeniden inşa ediyoruz
+    targetEl.innerHTML = "";
+    result.parts.forEach(p => {
+      let span = document.createElement("span");
+      span.className = "word-badge";
+      
+      if (p.type === "ok") {
+        span.classList.add("w-ok");
+        span.textContent = p.word;
+      } else if (p.type === "missing") {
+        span.classList.add("w-missing");
+        span.textContent = p.word;
+        span.title = "Bu kelime telaffuz edilemedi veya yutuldu.";
+      } else if (p.type === "extra") {
+        span.classList.add("w-extra");
+        span.textContent = p.word;
+        span.title = "Fazladan söylenen veya anlaşılamayan kelime.";
+      }
+      targetEl.appendChild(span);
+    });
+  }
+
+  analyzeGraphsBtn.onclick = function() {
+    if (!ttsTimelineData.length || !userTimelineData.length) return;
+    const THRESHOLD = 8;
+
+    const trim = d => {
+      let s = 0, e = d.length - 1;
+      while (s < d.length && d[s] < THRESHOLD) s++;
+      while (e > s && d[e] < THRESHOLD) e--;
+      return { start: s, end: e };
+    };
+
+    cachedTtsBounds = trim(ttsTimelineData);
+    cachedUserBounds = trim(userTimelineData);
+
+    const sTts = ttsTimelineData.slice(cachedTtsBounds.start, cachedTtsBounds.end + 1);
+    const sUser = userTimelineData.slice(cachedUserBounds.start, cachedUserBounds.end + 1);
+
+    const specTts = ttsSpectrums.slice(cachedTtsBounds.start, cachedTtsBounds.end + 1);
+    const specUser = userSpectrums.slice(cachedUserBounds.start, cachedUserBounds.end + 1);
+
+    const ttsDur = sTts.length * 0.04;
+    const userDur = sUser.length * 0.04;
+
+    finalTtsData = sTts;
+    finalUserData = resampleTimelineData(sUser, finalTtsData.length);
+    finalTtsSpectrums = specTts;
+    finalUserSpectrums = resampleSpectrums(specUser, finalTtsData.length);
+
+    resizeCanvasIfNeeded(studioCanvas);
+    drawStudioGraphs();
+    
+    document.getElementById("duetBtn").style.display = "flex";
+    document.getElementById("playBtn").style.display = "flex";
+
+    document.getElementById("ttsDuration").textContent = `${ttsDur.toFixed(1)}s`;
+    document.getElementById("userDuration").textContent = `${userDur.toFixed(1)}s`;
+
+    let sözSkor = parseInt(document.getElementById("mSöz").textContent) || 0;
+
+    // Hız Toleransı: İki konuşma ritmi arasındaki %30'a kadar olan farklar doğal kabul edilir.
+    let durRatio = Math.abs(ttsDur - userDur) / ttsDur;
+    let tempoSkor = 100;
+    if (durRatio > 0.30) {
+      tempoSkor = Math.max(0, Math.round(100 - ((durRatio - 0.30) * 120)));
+    }
+    document.getElementById("mTempo").textContent = tempoSkor + "%";
+
+    // Göreceli Akustik Vurgu Tespiti
+    let ttsMaxIdx = 0, ttsMaxVol = 0;
+    for(let i = 0; i < sTts.length; i++) {
+      if(sTts[i] > ttsMaxVol) { ttsMaxVol = sTts[i]; ttsMaxIdx = i; }
+    }
+    let userMaxIdx = 0, userMaxVol = 0;
+    for(let i = 0; i < sUser.length; i++) {
+      if(sUser[i] > userMaxVol) { userMaxVol = sUser[i]; userMaxIdx = i; }
+    }
+    
+    let ttsPeakRelative = ttsMaxIdx / Math.max(sTts.length, 1);
+    let userPeakRelative = userMaxIdx / Math.max(sUser.length, 1);
+    let peakSapma = Math.abs(ttsPeakRelative - userPeakRelative);
+    let vurguSkor = Math.max(0, Math.round(100 - (peakSapma * 150)));
+    document.getElementById("mVurgu").textContent = vurguSkor + "%";
+
+    let genelOrtalama = Math.round((sözSkor * 0.4) + (tempoSkor * 0.3) + (vurguSkor * 0.3));
+    let badge = document.getElementById("scoreBadge");
+    
+    if(genelOrtalama >= 85) { badge.textContent = "Kusursuz 🌟"; badge.style.background = "var(--status-perfect)"; }
+    else if (genelOrtalama >= 65) { badge.textContent = "İyi 👍"; badge.style.background = "var(--status-good)"; }
+    else { badge.textContent = "Gelişmeli 🎯"; badge.style.background = "var(--status-try)"; }
+
+    let advice = `🟢 <b>Metin Doğruluğu:</b> %${sözSkor}<br>`;
+    advice += `⏱️ <b>Doğal Hız Analizi:</b> Hızınız kendi içinde dengeli ve akıcı.<br>`;
+    advice += `🎯 <b>Kelime Bazlı İnceleme:</b> Yukarıdaki renkli kartları inceleyin. Yeşil başarılı, Sarı eksik/yutulan, Kırmızı ise fazladan algılanan heceleri simgeler.`;
+    
+    feedbackText.innerHTML = advice;
+    statusField.textContent = "Gelişmiş analiz tamamlandı!";
+  };
+
+  function drawStudioGraphs() {
+    const W = studioCanvas.width, H = studioCanvas.height;
+    studioCtx.clearRect(0, 0, W, H);
+
+    if (finalTtsData.length && finalUserData.length) {
+      studioCtx.fillStyle = "rgba(244, 63, 94, 0.12)";
+      studioCtx.beginPath();
+      const step = W / Math.max(finalTtsData.length - 1, 1);
+      for (let i = 0; i < finalTtsData.length; i++) {
+        let yTts = H - (finalTtsData[i] / 100) * (H * 0.85) - 2;
+        let yUser = H - ((finalUserData[i] || 0) / 100) * (H * 0.85) - 2;
+        let x = i * step;
+        if (i === 0) studioCtx.moveTo(x, yTts); else studioCtx.lineTo(x, yTts);
+        studioCtx.lineTo(x, yUser);
+      }
+      studioCtx.fill();
+    }
+
+    const drawWave = (data, color, isUser) => {
+      if (!data.length) return;
+      studioCtx.lineWidth = isUser ? 2 : 1.5;
+      studioCtx.strokeStyle = color; studioCtx.lineCap = "round"; studioCtx.lineJoin = "round";
+      studioCtx.beginPath();
+      const step = W / Math.max(data.length - 1, 1);
+      for (let i = 0; i < data.length; i++) {
+        let y = H - (data[i] / 100) * (H * 0.85) - 2;
+        let x = i * step;
+        if (i === 0) studioCtx.moveTo(x, y); else studioCtx.lineTo(x, y);
+      }
+      studioCtx.stroke();
+    };
+
+    drawWave(finalTtsData, "#38bdf8", false);
+    drawWave(finalUserData, "#4ade80", true);
+
+    if (playheadProgress >= 0 && playheadProgress <= 100) {
+      let lx = (playheadProgress / 100) * W;
+      studioCtx.lineWidth = 1; studioCtx.strokeStyle = "#f43f5e";
+      studioCtx.beginPath(); studioCtx.moveTo(lx, 0); studioCtx.lineTo(lx, H); studioCtx.stroke();
+    }
+  }
+
+  duetBtn.onclick = function() {
+    if (!voiceUrl || !finalUserData.length) return;
+    statusField.textContent = "Düet çalınıyor...";
+    try { window.speechSynthesis.cancel(); } catch(e){}
+
+    const tAudio = teacherAudioUrl ? new Audio(teacherAudioUrl) : null;
+    const tUtter = tAudio ? null : (function(){
+      const x = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(x); x.rate = 0.82; return x;
+    })();
+
+    const uAudio = new Audio(voiceUrl);
+    let totalSamples = Math.max(finalTtsData.length, finalUserData.length);
+    let currentSample = 0;
+
+    const startSync = () => {
+      if (samplingIntervalId) clearInterval(samplingIntervalId);
+      samplingIntervalId = setInterval(() => {
+        if (currentSample >= totalSamples) { clearInterval(samplingIntervalId); return; }
+        playheadProgress = (currentSample / totalSamples) * 100;
+        drawStudioGraphs();
+        
+        let volHoca = finalTtsData[currentSample] || 0;
+        let volUser = finalUserData[currentSample] || 0;
+        
+        let specHoca = finalTtsSpectrums[currentSample] || new Uint8Array(32);
+        let specUser = finalUserSpectrums[currentSample] || new Uint8Array(32);
+        
+        let hMouthClass = updateSingleAvatarViseme(mouthHoca, specHoca, volHoca);
+        let uMouthClass = updateSingleAvatarViseme(mouthUser, specUser, volUser);
+        
+        let energyDiff = Math.abs(volHoca - volUser);
+        
+        avatarBoxHoca.className = "avatar-box speaking";
+        
+        if (hMouthClass === uMouthClass && energyDiff < 20) {
+          avatarBoxUser.className = "avatar-box match-ok";
+        } else if (volHoca > 5 && volUser > 5) {
+          avatarBoxUser.className = "avatar-box match-fail";
+        } else {
+          avatarBoxUser.className = "avatar-box";
+        }
+
+        currentSample++;
+      }, 40);
+    };
+
+    const endDuet = () => {
+      clearInterval(samplingIntervalId);
+      try { window.speechSynthesis.cancel(); uAudio.pause(); if(tAudio) tAudio.pause(); } catch(e){}
+      avatarBoxHoca.className = "avatar-box"; avatarBoxUser.className = "avatar-box";
+      mouthHoca.className = "mouth rest"; mouthUser.className = "mouth rest";
+      playheadProgress = -1; drawStudioGraphs();
+      statusField.textContent = "Düet bitti.";
+    };
+
+    uAudio.onended = endDuet;
+    if (tUtter) tUtter.onend = endDuet;
+    if (tAudio) tAudio.onended = endDuet;
+
+    let tStart = (cachedTtsBounds && typeof cachedTtsBounds.start === 'number') ? cachedTtsBounds.start * 0.04 : 0;
+    let uStart = (cachedUserBounds && typeof cachedUserBounds.start === 'number') ? cachedUserBounds.start * 0.04 : 0;
+
+    if(tAudio) {
+      tAudio.currentTime = tStart; tAudio.play().catch(e=>{});
+      uAudio.currentTime = uStart; uAudio.play().catch(e=>{});
+      startSync();
+    } else {
+      tUtter.onstart = () => { uAudio.currentTime = uStart; uAudio.play().catch(e=>{}); startSync(); };
+      window.speechSynthesis.speak(tUtter);
+    }
+  };
+
+  playBtn.onclick = function() {
+    if (!voiceUrl || !finalUserData.length) return;
+    const audio = new Audio(voiceUrl);
+    audio.currentTime = (cachedUserBounds && typeof cachedUserBounds.start === 'number') ? cachedUserBounds.start * 0.04 : 0;
+    let total = finalUserData.length, cur = 0;
+
+    audio.onplay = () => {
+      avatarBoxUser.className = "avatar-box speaking";
+      if (samplingIntervalId) clearInterval(samplingIntervalId);
+      samplingIntervalId = setInterval(() => {
+        if (cur >= total) { clearInterval(samplingIntervalId); return; }
+        playheadProgress = (cur / total) * 100;
+        drawStudioGraphs();
+        let vol = finalUserData[cur] || 0;
+        let spec = finalUserSpectrums[cur] || new Uint8Array(32);
+        updateSingleAvatarViseme(mouthUser, spec, vol);
+        cur++;
+      }, 40);
+    };
+    audio.onended = () => { clearInterval(samplingIntervalId); avatarBoxUser.className = "avatar-box"; mouthUser.className = "mouth rest"; playheadProgress = -1; drawStudioGraphs(); };
+    audio.play().catch(e=>{});
+  };
+</script>
+
+<script src="./coach-bubble.js" defer></script>
+</body>
+</html>
