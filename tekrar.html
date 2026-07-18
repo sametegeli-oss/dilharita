@@ -81,6 +81,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     <button class="b-show" id="bShow" style="display:none">👁 Göster</button>
     <button class="b-chk" id="bChk" style="display:none">Kontrol et</button>
     <button class="b-say" id="bSay">🔊</button>
+    <button class="b-say" id="bStudio" title="Telaffuz Stüdyosu">🎙️</button>
   </div>
   <div class="row" id="grade" style="display:none">
     <button class="b-hard" id="bHard">Zor</button>
@@ -545,6 +546,7 @@ try{
     $("exp").style.display="none";
     $("card").style.display="block";
     $("bSay").onclick=function(){ speak(curT.en); };
+    $("bStudio").onclick=function(){ location.href='./sesdalga.html?en='+encodeURIComponent(curT.en)+'&tr='+encodeURIComponent(curT.tr||''); };
     if(prod) setTimeout(function(){ try{$("inp").focus();}catch(e){} },50);
   }
 

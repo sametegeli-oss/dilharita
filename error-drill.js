@@ -199,13 +199,17 @@
     var tp=e.primaryType||"general";
     B().innerHTML='<div style="color:#93c5fd;font-weight:800;font-size:12.5px">📖 DERS · '+esc(TL[tp]||tp)+'</div>'
       +(e.answer?'<div style="background:#2a0f14;border:1px solid #7f1d1d;border-radius:12px;padding:11px;margin-top:10px">✗ <s>'+esc(e.answer)+'</s></div>':'<div style="background:#13294d;border:1px solid #1e3a5f;border-radius:12px;padding:11px;margin-top:10px">Tekrarda zorlandığın kalem — bugün pekiştirelim 💪</div>')
-      +'<div style="background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:11px;margin-top:8px">✓ <b>'+esc(e.target)+'</b> <button id="dhLsnSpk" style="border:0;background:transparent;cursor:pointer;font-size:16px">🔊</button>'
+      +'<div style="background:#0a2818;border:1px solid #14532d;border-radius:12px;padding:11px;margin-top:8px">✓ <b>'+esc(e.target)+'</b> <button id="dhLsnSpk" style="border:0;background:transparent;cursor:pointer;font-size:16px">🔊</button></b>'
+      +'<a id="dhLsnStudio" href="#" style="margin-left:6px;background:#7c3aed;color:#fff;text-decoration:none;font-weight:800;font-size:11.5px;padding:5px 10px;border-radius:999px">🎙️ Stüdyo</a><b>'
       +(e.sentenceTR?'<div style="font-size:12.5px;color:#9fb3d9;margin-top:4px">'+esc(e.sentenceTR)+'</div>':'')+'</div>'
       +(L.why?'<div style="margin-top:10px"><b style="color:#facc15">Neden?</b> '+esc(L.why)+'</div>':'')
       +'<div style="margin-top:8px"><b style="color:#facc15">Kural:</b> '+esc(L.rule||TT[tp]||"Bu kalıba dikkat et.")+'</div>'
       +(L.example?'<div style="margin-top:8px;background:#13294d;border:1px solid #1e3a5f;border-radius:10px;padding:9px;font-size:13.5px">Başka örnek: <i>'+esc(L.example)+'</i> <button id="dhLsnSpk2" style="border:0;background:transparent;cursor:pointer">🔊</button></div>':'')
       +'<button id="dhLsnGo" style="display:block;width:100%;margin-top:14px;background:#2563eb;border:0;color:#fff;border-radius:11px;padding:12px;font-weight:900;cursor:pointer">Anladım, alıştırmaya geç →</button>';
     var s1=document.getElementById("dhLsnSpk"); if(s1) s1.onclick=function(){ speakEn(e.target); };
+    var sSt=document.getElementById("dhLsnStudio");
+    if(sSt) sSt.onclick=function(ev){ ev.preventDefault(); saveState();
+      location.href='./sesdalga.html?en='+encodeURIComponent(e.target)+'&tr='+encodeURIComponent(e.sentenceTR||''); };
     var s2=document.getElementById("dhLsnSpk2"); if(s2) s2.onclick=function(){ speakEn(L.example); };
     document.getElementById("dhLsnGo").onclick=function(){ it.stage=1; next(); };
   }

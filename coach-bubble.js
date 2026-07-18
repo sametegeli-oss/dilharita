@@ -470,7 +470,10 @@
       for(var mk in vd){ if(vd[mk]===dhToday()) modsToday.push(mk.replace(/^[A-C]\d-M\d+\s*/,"")); } }catch(e){}
     modsToday.slice(0,3).forEach(function(m){ wins.push("🗺️ "+m); });
     var strug=[];
-    hardRev.slice(0,3).forEach(function(h){ strug.push('"'+dcEsc(h.target)+'"'); });
+    hardRev.slice(0,3).forEach(function(h){
+      strug.push('<a href="./sesdalga.html?en='+encodeURIComponent(h.target)+'&tr='+encodeURIComponent(h.sentenceTR||'')
+        +'" style="color:inherit;text-decoration:underline dotted" title="Stüdyoda söyle">"'+dcEsc(h.target)+'" 🎙️</a>');
+    });
     if(hardRev.length>3) strug.push("+"+(hardRev.length-3)+" kalem");
     if(errs.length){
       var tCnt={}; errs.forEach(function(r){ var t=r.primaryType||"general"; tCnt[t]=(tCnt[t]||0)+1; });
