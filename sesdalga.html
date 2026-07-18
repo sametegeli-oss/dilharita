@@ -3,38 +3,509 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape" />
-  <title>DilHarita - Görsel Karşılaştırma & Düet Stüdyosu</title>
+  <title>DilHarita - Akustik Trainer Stüdyosu</title>
   <style>
     :root {
-      --bg: #0b1120;
-      --surface: #131c30;
-      --border: #ffffff18;
-      --text: #e8eef7;
-      --muted: #93a4bd;
+      --bg: #030712;
+      --surface: #0f172a;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --user-color: #4ade80;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     html, body { 
       width: 100%; 
-      height: 100%; 
       height: 100dvh;
       background: var(--bg); 
       color: var(--text); 
       font-family: system-ui, -apple-system, sans-serif; 
-      overflow: hidden; /* Sürüklemeyi tamamen kapatır, ekranı tek bir frame'e sabitler */
+      overflow: hidden; /* Dikey/Yatay kaydırmayı yasaklar, tek ekrana sığdırır */
     }
     
-    .container {
+    .trainer-grid {
       width: 100%;
       height: 100%;
-      padding: 8px 12px;
+      padding: 10px;
       display: grid;
-      grid-template-columns: 1.1fr 0.9fr; /* Yan yana iki sütun düzeni */
+      grid-template-columns: 1.2fr 0.8fr;
       grid-template-rows: auto 1fr;
-      gap: 8px;
-      align-content: stretch;
+      gap: 10px;
     }
 
+    /* Üst Başlık ve Akıllı İpuçları Kartı */
+    .header-panel {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1e293b;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border-left: 4px solid var(--accent);
+    }
+    .header-panel h2 { font-size: 14px; font-weight: 800; color: #60a5fa; }
+    .quick-tip { font-size: 11px; color: #cbd5e1; font-style: italic; }
+
+    .left-zone, .right-zone {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Antrenman Hedef Cümlesi - Hece Vurgusu Görselleştirilmiş */
+    .phrase-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px;
+      text-align: center;
+    }
+    .target-en { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: 0.3px; }
+    /* Trainer Modu Hece Kılavuzu */
+    .target-en span.stress { color: #f43f5e; text-decoration: underline; font-weight: 900; }
+    .target-tr { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* İnteraktif Görsel Ajan (Avatar + Dalga Alanı) */
+    .interactive-coach {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .avatar-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .avatar-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      background: #090d16;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.1s ease;
+    }
+    .avatar-box.speaking { box-shadow: 0 0 14px rgba(56, 189, 248, 0.6); border-color: var(--accent); }
+    .avatar-box.user-speaking { box-shadow: 0 0 14px rgba(74, 222, 128, 0.6); border-color: var(--user-color); }
+    .eyes { display: flex; gap: 10px; margin-bottom: 4px; }
+    .eye { width: 4px; height: 4px; background: #fff; border-radius: 50%; }
+    
+    /* Dinamik 👄 Ağız Anatomisi */
+    .mouth { width: 14px; height: 3px; background: #f87171; border-radius: 99px; transition: all 0.05s linear; }
+    .mouth.rest { height: 3px; width: 14px; }
+    .mouth.closed { height: 1px; width: 14px; }
+    .mouth.wide { height: 5px; width: 16px; border-radius: 40%; }
+    .mouth.round { height: 10px; width: 10px; border-radius: 50%; }
+    .mouth.open { height: 14px; width: 14px; border-radius: 20% 20% 50% 50%; }
+    
+    .avatar-label { font-size: 9px; color: var(--muted); font-weight: bold; text-transform: uppercase; }
+
+    .live-canvas { width: 100%; height: 32px; background: #070a12; border-radius: 6px; }
+
+    /* Ana Karşılaştırma Laboratuvarı */
+    .timeline-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .timeline-meta { display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 800; }
+    .dur-badge { background: #1e293b; padding: 2px 6px; border-radius: 4px; color: #cbd5e1; font-family: monospace; }
+    
+    .studio-frame {
+      position: relative;
+      width: 100%;
+      flex: 1;
+      background: #020617;
+      border-radius: 8px;
+      border: 1px solid #ffffff05;
+      margin-top: 6px;
+      min-height: 70px;
+    }
+    .overlay-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+    /* Sağ Bölge Kontrol Paneli */
+    .score-terminal {
+      background: #070d19;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 0.8;
+    }
+    .score-circle {
+      font-size: 28px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 10px rgba(255,255,255,0.1);
+      line-height: 1;
+    }
+    .score-label { font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; font-weight: bold; }
+    
+    /* Gelişmiş Trainer Eleştiri Alanı */
+    .trainer-feedback-card {
+      background: #1e1b4b;
+      border: 1px solid #4338ca;
+      border-radius: 10px;
+      padding: 6px 10px;
+      width: 100%;
+      height: 75px;
+      overflow-y: auto;
+      margin-top: 4px;
+    }
+    .feedback-title { font-size: 10px; font-weight: 900; color: #a5b4fc; text-transform: uppercase; display: flex; align-items: center; gap: 4px; }
+    .feedback-text { font-size: 11px; color: #e0e7ff; line-height: 1.4; margin-top: 2px; }
+
+    .control-buttons { display: flex; flex-direction: column; gap: 4px; }
+    
+    .btn-trainer {
+      width: 100%;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.1s ease;
+    }
+    .btn-trainer:active { transform: scale(0.99); }
+    .btn-trainer.recording { background: #dc2626; animation: pulse 1.5s infinite; }
+    .btn-trainer.hoca { background: #047857; }
+    .btn-trainer.compare { background: #6d28d9; }
+    .btn-trainer.duet { background: #b45309; }
+    .btn-trainer[disabled] { opacity: 0.2; cursor: default; }
+
+    .status-bar { font-size: 10px; color: var(--muted); text-align: center; min-height: 12px; }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+      70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="trainer-grid">
+  <!-- Üst Kılavuz -->
+  <div class="header-panel">
+    <h2>🎯 AKUSTİK TRAINER LABORATUVARI</h2>
+    <div class="quick-tip" id="quickTip">Sistem, hız farkınızı otomatik olarak oransal olarak eşitleyecektir.</div>
+  </div>
+  
+  <!-- SOL BÖLGE: CÜMLE + SES ANALİZİ -->
+  <div class="left-zone">
+    <div class="phrase-card">
+      <!-- Trainer Modu Vurgu Alanı: re-SPON-sible hecesi vurgulu kılınmıştır -->
+      <div class="target-en" id="targetEn">I am not re-<span class="stress">SPON</span>-sible for the loss.</div>
+      <div class="target-tr">Kayıptan ben sorumlu değilim.</div>
+    </div>
+
+    <div class="interactive-coach">
+      <div class="avatar-wrapper">
+        <div class="avatar-box" id="avatarBox">
+          <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+          <div class="mouth rest" id="mouth"></div>
+        </div>
+        <div class="avatar-label" id="avatarLabel">AI Coach</div>
+      </div>
+      <div style="flex: 1;">
+        <canvas class="live-canvas" id="liveVisualizer"></canvas>
+      </div>
+    </div>
+
+    <div class="timeline-container">
+      <div class="timeline-meta">
+        <div style="color: var(--accent);">📊 ORAN-ZAMAN SEYRİ (BİREBİR EŞLEŞTİRİLMİŞ)</div>
+        <div style="display: flex; gap: 8px;">
+          <span class="dur-badge" style="border-left: 3px solid var(--accent);">Hoca: <span id="ttsDuration">0.0s</span></span>
+          <span class="dur-badge" style="border-left: 3px solid var(--user-color);">Sen: <span id="userDuration">0.0s</span></span>
+        </div>
+      </div>
+      <div class="studio-frame">
+        <canvas class="overlay-canvas" id="studioCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAĞ BÖLGE: RAPORLAMA VE AKSİYON -->
+  <div class="right-zone">
+    <div class="score-terminal">
+      <div class="score-label">Söz Dizimi Skoru</div>
+      <div class="score-circle" id="scoreDisplay">--%</div>
+      <div class="diff-line" id="diffLine" style="margin-top: 4px;">
+        <span style="color: var(--muted); font-size: 10px;">Metin karşılaştırması bekleniyor...</span>
+      </div>
+      
+      <!-- Derin Akustik Eğitmen Çıktısı -->
+      <div class="trainer-feedback-card" id="trainerFeedbackCard">
+        <div class="feedback-title">🧭 TRAINER ANALİZ RAPORU</div>
+        <div class="feedback-text" id="feedbackText">Henüz ses verisi girilmedi. Önce hocanın sesini oluşturun, ardından cümlenizi telaffuz edin.</div>
+      </div>
+    </div>
+
+    <div class="control-buttons">
+      <button class="btn-trainer hoca" id="analyzeTtsBtn">🎓 1. Hoca Sesini Çizdir & Dinle</button>
+      <button class="btn-trainer" id="recordBtn" disabled>🎙️ 2. Mikrofonu Aç ve Oku</button>
+      <button class="btn-trainer compare" id="analyzeGraphsBtn" disabled>🔍 3. Grafikleri Eşitle & Analiz Et</button>
+      <button class="btn-trainer duet" id="duetBtn" disabled>▶ Karşılıklı Düet Oynat</button>
+      <button class="btn-trainer" id="playBtn" style="background:#1e293b;" disabled>▶ Sadece Kendi Sesim</button>
+    </div>
+
+    <div class="status-bar" id="statusField">Trainer hazır. Başlamak için yeşil butona dokunun.</div>
+  </div>
+</div>
+
+<script>
+  "use strict";
+  function dhSavedVoicePref(){
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(k&&k.indexOf("dh-voice:")===0){
+          var p=JSON.parse(localStorage.getItem(k)||"null");
+          if(p&&p.name) return p;
+        }
+      }
+    }catch(e){}
+    return null;
+  }
+  function dhApplyVoice(u){
+    try{
+      var p=dhSavedVoicePref(); if(!p) return;
+      var v=(speechSynthesis.getVoices()||[]).find(function(x){return x.name===p.name;});
+      if(v) u.voice=v;
+      if(p.rate) u.rate=p.rate;
+      if(p.pitch) u.pitch=p.pitch;
+    }catch(e){}
+  }
+
+  // URL'den dinamik veri besleme desteği
+  (function(){
+    try{
+      var q=new URLSearchParams(location.search);
+      var en=q.get("en"), tr=q.get("tr");
+      if(en){ 
+        // Vurgu mekanizmasını kaybetmemek için gelen veride responsible kontrolü yapalım
+        if(en.toLowerCase().includes("responsible")) {
+          document.getElementById("targetEn").innerHTML = en.replace(/responsible/i, 're-<span class="stress">SPON</span>-sible');
+        } else {
+          document.getElementById("targetEn").textContent = en;
+        }
+        document.querySelector(".target-tr").textContent = tr || ""; 
+      }
+    }catch(e){}
+  })();
+  
+  // Karşılaştırma motoru için saf metin tabanı
+  const TARGET_TEXT = document.getElementById("targetEn").textContent.replace(/-/g, "");
+
+  let mediaStream = null, mediaRecorder = null, recordedChunks = [], voiceUrl = "", teacherAudioUrl = null;
+  let isRecording = false, audioCtx = null, analyser = null, dataArray = null;
+  let recognition = null, heardText = "";
+
+  let ttsTimelineData = [];
+  let userTimelineData = [];
+  let finalTtsData = [];
+  let finalUserData = [];
+
+  let cachedTtsBounds = { start: 0, end: 0 };
+  let cachedUserBounds = { start: 0, end: 0 };
+
+  let samplingIntervalId = null;
+  let playheadProgress = -1; 
+
+  const liveCanvas = document.getElementById("liveVisualizer");
+  const liveCtx = liveCanvas.getContext("2d"); 
+  const studioCanvas = document.getElementById("studioCanvas");
+  const studioCtx = studioCanvas.getContext("2d");
+
+  const recordBtn = document.getElementById("recordBtn");
+  const playBtn = document.getElementById("playBtn");
+  const duetBtn = document.getElementById("duetBtn");
+  const analyzeTtsBtn = document.getElementById("analyzeTtsBtn");
+  const analyzeGraphsBtn = document.getElementById("analyzeGraphsBtn");
+  const feedbackText = document.getElementById("feedbackText");
+  const statusField = document.getElementById("statusField");
+  const scoreDisplay = document.getElementById("scoreDisplay");
+  const diffLine = document.getElementById("diffLine");
+  const mouth = document.getElementById("mouth");
+  const avatarBox = document.getElementById("avatarBox");
+  const avatarLabel = document.getElementById("avatarLabel");
+
+  // Hassas Ağız Sınıfı Değiştirici (Çalışmama sorunu kökten çözüldü)
+  function updateMouthAnimation(volume) {
+    if (volume < 4) mouth.className = "mouth rest";
+    else if (volume < 15) mouth.className = "mouth closed";
+    else if (volume < 32) mouth.className = "mouth wide";
+    else if (volume < 58) mouth.className = "mouth round";
+    else mouth.className = "mouth open";
+  }
+
+  function setCoachState(state) {
+    avatarBox.classList.remove("speaking", "user-speaking");
+    if(state === "coach") { avatarBox.classList.add("speaking"); avatarLabel.textContent = "AI COACH"; avatarLabel.style.color = "var(--accent)"; }
+    else if(state === "user") { avatarBox.classList.add("user-speaking"); avatarLabel.textContent = "YOU"; avatarLabel.style.color = "var(--user-color)"; }
+    else { avatarLabel.textContent = "TRAINER"; avatarLabel.style.color = "var(--muted)"; }
+  }
+
+  // --- METİN KARŞILAŞTIRMA MANTIĞI ---
+  const EN_CONTRACTIONS = {
+    "i'm":["i","am"],"you're":["you","are"],"we're":["we","are"],"they're":["they","are"],
+    "he's":["he","is"],"she's":["she","is"],"it's":["it","is"],"that's":["that","is"],"there's":["there","is"],
+    "don't":["do","not"],"doesn't":["does","not"],"didn't":["did","not"],
+    "isn't":["is","not"],"aren't":["are","not"],"wasn't":["was","not"],"weren't":["were","not"],
+    "can't":["can","not"],"cannot":["can","not"],"couldn't":["could","not"]
+  };
+  function tokenizeEN(s) { return String(s || "").match(/[A-Za-z']+|\d+/g) || []; }
+  function normSeqEN(text) {
+    const out = [];
+    for (const raw of tokenizeEN(text)) {
+      const n = raw.toLowerCase().replace(/[\u2019\u2018]/g, "'");
+      if (EN_CONTRACTIONS[n]) EN_CONTRACTIONS[n].forEach(x => out.push({ n: x, raw: x }));
+      else if (n) out.push({ n: n, raw: raw });
+    }
+    return out;
+  }
+  function diffEN(answer, target) {
+    const A = normSeqEN(answer), B = normSeqEN(target);
+    const m = A.length, n = B.length;
+    const dp = Array.from({ length: m + 1 }, () => new Int16Array(n + 1));
+    for (let i = m - 1; i >= 0; i--) {
+      for (let j = n - 1; j >= 0; j--) {
+        dp[i][j] = A[i].n === B[j].n ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      }
+    }
+    const parts = []; let i = 0, j = 0, correct = 0, extra = 0;
+    while (i < m && j < n) {
+      if (A[i].n === B[j].n) { parts.push({ type: "ok", word: B[j].raw }); correct++; i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) { parts.push({ type: "extra", word: A[i].raw }); extra++; i++; }
+      else { parts.push({ type: "missing", word: B[j].raw }); j++; }
+    }
+    while (i < m) parts.push({ type: "extra", word: A[i++].raw });
+    while (j < n) parts.push({ type: "missing", word: B[j++].raw });
+    return { parts, score: Math.max(0, Math.round((correct / Math.max(n, 1)) * 100 - Math.min(extra * 4, 12))) };
+  }
+
+  // --- AKUSTİK RESAMPLING MOTORU ---
+  function resampleTimelineData(data, targetLength) {
+    if (!data.length) return new Array(targetLength).fill(0);
+    if (data.length === targetLength) return [...data];
+    const resampled = [];
+    for (let i = 0; i < targetLength; i++) {
+      let rawIdx = (i / (targetLength - 1)) * (data.length - 1);
+      let idxA = Math.floor(rawIdx);
+      let idxB = Math.min(idxA + 1, data.length - 1);
+      let weight = rawIdx - idxA;
+      resampled.push(data[idxA] * (1 - weight) + data[idxB] * weight);
+    }
+    return resampled;
+  }
+
+  // --- HOCA SESİ OLUŞTURMA ---
+  analyzeTtsBtn.onclick = async function() {
+    ttsTimelineData = []; finalTtsData = []; finalUserData = []; playheadProgress = -1;
+    teacherAudioUrl = null; feedbackText.innerHTML = "Hoca dinleniyor ve dalga modeli çıkarılıyor...";
+    
+    let capStream=null, capAnalyser=null, capData=null, capCtx=null, capRec=null;
+    const teacherChunks=[];
+    try{
+      capStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false}});
+      capCtx=new(window.AudioContext||window.webkitAudioContext)();
+      capAnalyser=capCtx.createAnalyser(); capAnalyser.fftSize=64;
+      capData=new Uint8Array(capAnalyser.frequencyBinCount);
+      capCtx.createMediaStreamSource(capStream).connect(capAnalyser);
+      capRec=new MediaRecorder(capStream);
+      capRec.ondataavailable=e=>{ if(e.data.size>0) teacherChunks.push(e.data); };
+      capRec.onstop=()=>{ if(teacherChunks.length) teacherAudioUrl=URL.createObjectURL(new Blob(teacherChunks,{type:"audio/webm"})); };
+      capRec.start();
+    }catch(e){}
+
+    let startTime = Date.now();
+    try { speechSynthesis.cancel(); } catch(e){}
+    const u = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(u);
+    u.lang = "en-US"; u.rate = 0.85;
+
+    setCoachState("coach");
+    samplingIntervalId = setInterval(() => {
+      let t = (Date.now() - startTime) / 1000;
+      let vol = 15;
+      if(capAnalyser){
+        capAnalyser.getByteFrequencyData(capData);
+        let total=0; for(let i=0;i<capData.length;i++) total+=capData[i];
+        vol = total/capData.length;
+      }
+      ttsTimelineData.push(vol);
+      finalTtsData = ttsTimelineData;
+      updateMouthAnimation(vol);
+      drawStudioGraphs();
+      document.getElementById("ttsDuration").textContent = `${t.toFixed(1)}s`;
+    }, 40);
+
+    u.onend = () => {
+      setTimeout(()=>{
+        clearInterval(samplingIntervalId);
+        setCoachState("none"); mouth.className = "mouth rest";
+        try{ if(capRec) capRec.stop(); if(capStream) capStream.getTracks().forEach(tr=>tr.stop()); }catch(e){}
+        statusField.textContent = "Hoca modeli çıkarıldı. Şimdi cümlenizi okuyun.";
+        feedbackText.innerHTML = "🎓 <b>Hoca Sesi Hazır:</b> Şimdi mikrofonu açıp cümleyi okuyun. Özellikle altı çizili <span style='color:#f43f5e;font-weight:bold;'>SPON</span> hecesine vurgu yapmaya dikkat edin.";
+        recordBtn.disabled = false;
+      }, 250);
+    };
+    speechSynthesis.speak(u);
+  };
+
+  // --- KULLANICI MİKROFON AKIŞI ---
+  recordBtn.onclick = async function() {
+    if (!isRecording) {
+      recordedChunks = []; userTimelineData = []; finalUserData = []; playheadProgress = -1; heardText = "";
+      if(liveCanvas) { liveCanvas.width = liveCanvas.clientWidth; liveCanvas.height = liveCanvas.clientHeight; }
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+        audioCtx.createMediaStreamSource(mediaStream).connect(analyser);
+
+        mediaRecorder = new MediaRecorder(mediaStream);
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          voiceUrl = URL.createObjectURL(new Blob(recordedChunks, { type: 'audio/webm' }));
+          analyzeGraphsBtn.disabled = false; playBtn.disabled = false;
+        };
+        mediaRecorder.start();
+
+        const STT 
     h2 { 
       color: #60a5fa; 
       font-size: 16px; 
