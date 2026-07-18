@@ -58,7 +58,7 @@
       display: flex; 
       flex-direction: column; 
       gap: 4px; 
-      height: calc(100dvh - 32px); /* Ekran yüksekliğine tam oturma garantisi */
+      height: calc(100dvh - 32px);
       overflow: hidden;
     }
 
@@ -90,7 +90,7 @@
       width: 36px;
       height: 36px;
       border-radius: 50%;
-      border: 2px solid var(--accent);
+      border: 2px solid var(--border);
       background: #090d16;
       display: flex;
       flex-direction: column;
@@ -115,9 +115,6 @@
     .mouth.th { height: 3.5px; width: 10px; border-bottom: 1px solid #fff; }
     .mouth.f { height: 2px; width: 10px; border-top: 1px solid #fff; }
     
-    .match-fail .mouth { background: var(--error-color) !important; }
-    .match-ok .mouth { background: var(--status-perfect) !important; }
-
     .avatar-label { font-size: 7.5px; color: var(--muted); font-weight: 800; text-transform: uppercase; }
 
     .timeline-container {
@@ -201,10 +198,9 @@
     .feedback-title { font-size: 8px; font-weight: 900; color: #a5b4fc; text-transform: uppercase; }
     .feedback-text { font-size: 9px; color: #e0e7ff; line-height: 1.2; margin-top: 1px; }
 
-    /* 🛠️ YATAY MOD İÇİN 2 SÜTUNLU YAN YANA KULLANIŞLI BUTON PANELİ */
     .control-buttons { 
       display: grid;
-      grid-template-columns: 1fr 1fr; /* Butonları yan yana iki sütun yapar, dikey alan kazanır */
+      grid-template-columns: 1fr 1fr;
       gap: 3px; 
       position: relative; 
       z-index: 999; 
@@ -229,7 +225,7 @@
     .btn-trainer:active { transform: scale(0.99); }
     .btn-trainer.recording { background: #dc2626; }
     .btn-trainer.hoca { background: #047857; }
-    .btn-trainer.compare { background: #6d28d9; grid-column: span 2; } /* Analiz Et butonu tam genişlik kaplar */
+    .btn-trainer.compare { background: #6d28d9; grid-column: span 2; }
     
     .btn-trainer.duet-btn, .btn-trainer.solo-btn { display: none; background: #b45309; }
 
@@ -364,10 +360,17 @@
   let isRecording = false, audioCtx = null, analyser = null, dataArray = null;
   let recognition = null, heardText = "";
 
+  // Grafikler için sadece RMS/Hacim değerlerini saklayacağız
   let ttsTimelineData = [];
   let userTimelineData = [];
   let finalTtsData = [];
   let finalUserData = [];
+
+  // Bağımsız dudak hareketleri için ham FFT spektrum matrislerini tutacağız
+  let ttsSpectrums = [];
+  let userSpectrums = [];
+  let finalTtsSpectrums = [];
+  let finalUserSpectrums = [];
 
   let cachedTtsBounds = { start: 0, end: 0 };
   let cachedUserBounds = { start: 0, end: 0 };
@@ -466,8 +469,32 @@
     return resampled;
   }
 
+  // Spektrum dizilerini (FFT) ölçeklemek/oranlamak için gelişmiş alt fonksiyon
+  function resampleSpectrums(spectrums, targetLength) {
+    if (!spectrums.length) {
+      return Array.from({ length: targetLength }, () => new Uint8Array(32));
+    }
+    const resampled = [];
+    for (let i = 0; i < targetLength; i++) {
+      let rawIdx = (i / (targetLength - 1)) * (spectrums.length - 1);
+      let idxA = Math.floor(rawIdx);
+      let idxB = Math.min(idxA + 1, spectrums.length - 1);
+      let weight = rawIdx - idxA;
+      
+      let arrA = spectrums[idxA];
+      let arrB = spectrums[idxB];
+      let merged = new Uint8Array(arrA.length);
+      for (let j = 0; j < arrA.length; j++) {
+        merged[j] = arrA[j] * (1 - weight) + arrB[j] * weight;
+      }
+      resampled.push(merged);
+    }
+    return resampled;
+  }
+
   analyzeTtsBtn.onclick = async function() {
-    ttsTimelineData = []; finalTtsData = []; finalUserData = []; playheadProgress = -1;
+    ttsTimelineData = []; ttsSpectrums = []; finalTtsData = []; finalUserData = []; 
+    finalTtsSpectrums = []; finalUserSpectrums = []; playheadProgress = -1;
     teacherAudioUrl = null; feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
     avatarBoxHoca.className = "avatar-box speaking";
     avatarBoxUser.className = "avatar-box";
@@ -494,14 +521,22 @@
     samplingIntervalId = setInterval(() => {
       let t = (Date.now() - startTime) / 1000;
       let vol = 15;
+      let snapFrame = new Uint8Array(32);
+      
       if(capAnalyser){
         capAnalyser.getByteFrequencyData(capData);
+        snapFrame = new Uint8Array(capData);
         let total=0; for(let i=0;i<capData.length;i++) total+=capData[i];
         vol = total/capData.length;
         updateSingleAvatarViseme(mouthHoca, capData, vol);
       }
+      
       ttsTimelineData.push(vol);
+      ttsSpectrums.push(snapFrame);
+      
       finalTtsData = ttsTimelineData;
+      finalTtsSpectrums = ttsSpectrums;
+      
       drawStudioGraphs();
       document.getElementById("ttsDuration").textContent = `${t.toFixed(1)}s`;
     }, 40);
@@ -532,7 +567,8 @@
 
   recordBtn.onclick = async function() {
     if (!isRecording) {
-      recordedChunks = []; userTimelineData = []; finalUserData = []; playheadProgress = -1; heardText = "";
+      recordedChunks = []; userTimelineData = []; userSpectrums = []; finalUserData = []; 
+      finalUserSpectrums = []; playheadProgress = -1; heardText = "";
       avatarBoxUser.className = "avatar-box speaking";
 
       try {
@@ -567,11 +603,17 @@
         samplingIntervalId = setInterval(() => {
           if (!isRecording) return;
           analyser.getByteFrequencyData(dataArray);
+          let snapFrame = new Uint8Array(dataArray);
+          
           let total = 0; for (let i = 0; i < dataArray.length; i++) total += dataArray[i];
           let avg = total / dataArray.length;
 
           userTimelineData.push(avg);
+          userSpectrums.push(snapFrame);
+          
           finalUserData = userTimelineData;
+          finalUserSpectrums = userSpectrums;
+          
           drawStudioGraphs();
           updateSingleAvatarViseme(mouthUser, dataArray, avg);
           
@@ -620,16 +662,22 @@
     const sTts = ttsTimelineData.slice(cachedTtsBounds.start, cachedTtsBounds.end + 1);
     const sUser = userTimelineData.slice(cachedUserBounds.start, cachedUserBounds.end + 1);
 
+    const specTts = ttsSpectrums.slice(cachedTtsBounds.start, cachedTtsBounds.end + 1);
+    const specUser = userSpectrums.slice(cachedUserBounds.start, cachedUserBounds.end + 1);
+
     const ttsDur = sTts.length * 0.04;
     const userDur = sUser.length * 0.04;
 
     finalTtsData = sTts;
     finalUserData = resampleTimelineData(sUser, finalTtsData.length);
 
+    // Ham spektrumlarımızı da hizalayarak bağımsız artikülasyonu hazırlıyoruz
+    finalTtsSpectrums = specTts;
+    finalUserSpectrums = resampleSpectrums(specUser, finalTtsData.length);
+
     resizeCanvasIfNeeded(studioCanvas);
     drawStudioGraphs();
     
-    // Düet butonlarını görünür yap
     document.getElementById("duetBtn").style.display = "flex";
     document.getElementById("playBtn").style.display = "flex";
 
@@ -745,19 +793,26 @@
         let volHoca = finalTtsData[currentSample] || 0;
         let volUser = finalUserData[currentSample] || 0;
         
-        let hMouthClass = updateSingleAvatarViseme(mouthHoca, [volHoca, volHoca*0.5, volHoca*0.1], volHoca);
-        let uMouthClass = updateSingleAvatarViseme(mouthUser, [volUser, volUser*0.5, volUser*0.1], volUser);
+        // Kaydedilen gerçek FFT spektrum dizilerini çekiyoruz
+        let specHoca = finalTtsSpectrums[currentSample] || new Uint8Array(32);
+        let specUser = finalUserSpectrums[currentSample] || new Uint8Array(32);
+        
+        // Avatarlar artık birbirinin kopyası yapay dizileri değil, kendi bağımsız frekanslarını işliyor!
+        let hMouthClass = updateSingleAvatarViseme(mouthHoca, specHoca, volHoca);
+        let uMouthClass = updateSingleAvatarViseme(mouthUser, specUser, volUser);
         
         let energyDiff = Math.abs(volHoca - volUser);
+        
+        // 🛠️ BAĞIMSIZ RENK KONTROLÜ: 
+        // Koç her zaman lider / konuşmacı rengini (Mavi) korur. Sizin kutunuz performansınıza göre renk değiştirir!
+        avatarBoxHoca.className = "avatar-box speaking";
+        
         if (hMouthClass === uMouthClass && energyDiff < 20) {
-          avatarBoxHoca.className = "avatar-box match-ok";
-          avatarBoxUser.className = "avatar-box match-ok";
+          avatarBoxUser.className = "avatar-box match-ok";   // Uyumluysa sadece kullanıcının etrafı YEŞİL olur
         } else if (volHoca > 5 && volUser > 5) {
-          avatarBoxHoca.className = "avatar-box match-fail";
-          avatarBoxUser.className = "avatar-box match-fail";
+          avatarBoxUser.className = "avatar-box match-fail"; // Uyumsuzsa sadece kullanıcının etrafı KIRMIZI olur
         } else {
-          avatarBoxHoca.className = "avatar-box";
-          avatarBoxUser.className = "avatar-box";
+          avatarBoxUser.className = "avatar-box";            // Ses yoksa varsayılan
         }
 
         currentSample++;
@@ -804,7 +859,8 @@
         playheadProgress = (cur / total) * 100;
         drawStudioGraphs();
         let vol = finalUserData[cur] || 0;
-        updateSingleAvatarViseme(mouthUser, [vol, vol*0.5, vol*0.1], vol);
+        let spec = finalUserSpectrums[cur] || new Uint8Array(32);
+        updateSingleAvatarViseme(mouthUser, spec, vol);
         cur++;
       }, 40);
     };
