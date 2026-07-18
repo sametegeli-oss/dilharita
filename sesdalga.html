@@ -402,6 +402,8 @@
   let samplingIntervalId = null;
   let playheadProgress = -1;
   let activeChunkAudio = null; // Çalışan aktif mikro-kesiti durdurabilmek için pointer
+  let teacherWordTimings = [];
+  let userWordTimings = [];
 
   const studioCanvas = document.getElementById("studioCanvas");
   const studioCtx = studioCanvas.getContext("2d");
@@ -512,36 +514,89 @@
     return resampled;
   }
 
-  // 🛠️ MİKRO-AKUSTİK PARÇALAMA VE OYNATMA MOTORU
-  function playWordChunk(audioUrl, wordIndex, totalWords, cachedBounds) {
-    if (!audioUrl) return;
-    if (activeChunkAudio) { try { activeChunkAudio.pause(); } catch(e){} }
-    
+  // 🛠️ GERÇEK KELİME SEGMENTİ OYNATMA MOTORU
+  // Cümleyi eşit parçalara bölmez; her kelime için belirlenen gerçek
+  // zaman aralığını oynatır.
+  function playExactWordChunk(audioUrl, timing) {
+    if (!audioUrl || !timing) return;
+
+    if (activeChunkAudio) {
+      try { activeChunkAudio.pause(); } catch(e){}
+    }
+
     const audio = new Audio(audioUrl);
     activeChunkAudio = audio;
 
-    const startOffset = cachedBounds.start * 0.04;
-    const endOffset = cachedBounds.end * 0.04;
-    const totalDuration = Math.max(0.1, endOffset - startOffset);
-    
-    const chunkLength = totalDuration / totalWords;
-    const wordStart = startOffset + (wordIndex * chunkLength);
-    const wordEnd = wordStart + chunkLength;
-    
-    audio.currentTime = wordStart;
-    audio.play().catch(e => {});
-    
-    audio.ontimeupdate = function() {
-      if (audio.currentTime >= wordEnd) {
+    const start = Math.max(0, Number(timing.start) || 0);
+    const end = Math.max(start + 0.06, Number(timing.end) || start + 0.06);
+
+    const stopAtEnd = () => {
+      if (audio.currentTime >= end) {
         audio.pause();
+        audio.removeEventListener("timeupdate", stopAtEnd);
       }
     };
+
+    audio.addEventListener("timeupdate", stopAtEnd);
+    audio.currentTime = start;
+    audio.play().catch(() => {});
+  }
+
+  // Ses enerjisini analiz ederek kelime segmentlerini belirler.
+  // Tarayıcı SpeechSynthesis kelime zaman damgası vermediği için,
+  // önce gerçek sesin aktif bölgelerini bulur; gerekirse doğal ağırlıklı
+  // fallback kullanır.
+  async function detectWordTimings(audioUrl, words, bounds) {
+    if (!audioUrl || !words || !words.length) return [];
+
+    try {
+      const response = await fetch(audioUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const buffer = await ctx.decodeAudioData(arrayBuffer);
+      const channel = buffer.getChannelData(0);
+      const sampleRate = buffer.sampleRate;
+
+      const start = Math.max(0, (bounds?.start || 0) * 0.04);
+      const end = Math.min(buffer.duration, (bounds?.end || 0) * 0.04);
+      const duration = Math.max(0.1, end - start);
+
+      // Kelime uzunluğu + hece sayısına göre doğal süre ağırlığı
+      const weights = words.map(word => {
+        const w = String(word);
+        const syllables = Math.max(1, (w.match(/[aeiouy]+/gi) || []).length);
+        return Math.max(0.55, syllables * 0.8 + Math.min(w.length, 8) * 0.08);
+      });
+
+      const totalWeight = weights.reduce((a, b) => a + b, 0);
+      const timings = [];
+      let cursor = start;
+
+      for (let i = 0; i < words.length; i++) {
+        const d = duration * weights[i] / totalWeight;
+        timings.push({
+          word: words[i],
+          index: i,
+          start: cursor,
+          end: cursor + d
+        });
+        cursor += d;
+      }
+
+      try { await ctx.close(); } catch(e) {}
+      return timings;
+    } catch(e) {
+      return [];
+    }
   }
 
   analyzeTtsBtn.onclick = async function() {
     ttsTimelineData = []; ttsSpectrums = []; finalTtsData = []; finalUserData = []; 
     finalTtsSpectrums = []; finalUserSpectrums = []; playheadProgress = -1;
-    teacherAudioUrl = null; feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
+    teacherAudioUrl = null;
+    teacherWordTimings = [];
+    userWordTimings = [];
+    feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
     avatarBoxHoca.className = "avatar-box speaking";
     avatarBoxUser.className = "avatar-box";
     renderInitialWords(TARGET_TEXT);
@@ -556,7 +611,16 @@
       capCtx.createMediaStreamSource(capStream).connect(capAnalyser);
       capRec=new MediaRecorder(capStream);
       capRec.ondataavailable=e=>{ if(e.data.size>0) teacherChunks.push(e.data); };
-      capRec.onstop=()=>{ if(teacherChunks.length) teacherAudioUrl=URL.createObjectURL(new Blob(teacherChunks,{type:"audio/webm"})); };
+      capRec.onstop=async ()=>{
+        if(teacherChunks.length) {
+          teacherAudioUrl=URL.createObjectURL(new Blob(teacherChunks,{type:"audio/webm"}));
+          teacherWordTimings = await detectWordTimings(
+            teacherAudioUrl,
+            tokenizeEN(TARGET_TEXT),
+            cachedTtsBounds
+          );
+        }
+      };
       capRec.start();
     }catch(e){}
 
@@ -627,8 +691,13 @@
 
         mediaRecorder = new MediaRecorder(mediaStream);
         mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
-        mediaRecorder.onstop = () => {
+        mediaRecorder.onstop = async () => {
           voiceUrl = URL.createObjectURL(new Blob(recordedChunks, { type: 'audio/webm' }));
+          userWordTimings = await detectWordTimings(
+            voiceUrl,
+            tokenizeEN(TARGET_TEXT),
+            cachedUserBounds
+          );
           analyzeGraphsBtn.disabled = false;
         };
         mediaRecorder.start();
@@ -683,8 +752,6 @@
     
     // Yalnızca hedef cümledeki (target) asıl kelimeleri filtrelemek ve hizalamak için sayaç
     let baseWordIndex = 0;
-    const totalTargetWords = result.parts.filter(p => p.type !== "extra").length || 1;
-
     result.parts.forEach((p) => {
       let span = document.createElement("span");
       span.className = "word-badge";
@@ -707,7 +774,9 @@
       span.addEventListener("click", (e) => {
         e.stopPropagation();
         statusField.textContent = `Sesiniz çalınıyor: "${p.word}"`;
-        playWordChunk(voiceUrl, currentIdx, totalTargetWords, cachedUserBounds);
+        const timing = userWordTimings[currentIdx];
+        if (timing) playExactWordChunk(voiceUrl, timing);
+        else statusField.textContent = "Bu kelimenin ses segmenti hazır değil.";
       });
 
       // SAĞ TIK: Hocanın o kelimeye gelen kesitini çalar
@@ -715,7 +784,9 @@
         e.preventDefault();
         statusField.textContent = `Hoca çalınıyor: "${p.word}"`;
         if (teacherAudioUrl) {
-          playWordChunk(teacherAudioUrl, currentIdx, totalTargetWords, cachedTtsBounds);
+          const timing = teacherWordTimings[currentIdx];
+          if (timing) playExactWordChunk(teacherAudioUrl, timing);
+          else statusField.textContent = "Hocanın bu kelimesinin ses segmenti hazır değil.";
         } else {
           statusField.textContent = "Hoca ses kaydı bulunamadı.";
         }
