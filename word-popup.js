@@ -144,12 +144,27 @@
     +".dh-wp-sent .gtr{position:absolute;top:10px;right:38px;background:none;border:0;font-size:15px;cursor:pointer}"
     +".dh-wp-ai-out{background:#0b1830;border:1px solid #10b98155;border-radius:12px;padding:12px;margin-bottom:10px;color:#d1fae5;font-size:14px;line-height:1.5;white-space:pre-wrap}"
     +".dh-wp-rec-out{font-size:13px;font-weight:700;margin:4px 0 10px;min-height:18px}"
-    +".dh-wp-muted{color:#64748b;font-size:13px;padding:6px 0}";
+    +".dh-wp-muted{color:#64748b;font-size:13px;padding:6px 0}"
+    +".dh-wp-wave-wrap{position:relative;width:100%;height:110px;background:#020617;border:1px solid #1e3a5f;border-radius:10px;overflow:hidden;margin-bottom:8px}"
+    +".dh-wp-wave-wrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}"
+    +".dh-wp-wave-meta{display:flex;gap:8px;align-items:center;font-size:11px;font-weight:800;color:#9fb3d9;margin-bottom:8px}"
+    +".dh-wp-wave-meta .dur{background:#13294d;border:1px solid #1e3a5f;padding:2px 7px;border-radius:6px;font-family:monospace;color:#cbd5e1}"
+    +".dh-wp-wave-score{margin-left:auto;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:900;color:#03131c;display:none}"
+    +".dh-wp-wv-row{display:flex;gap:6px;margin-bottom:6px}"
+    +".dh-wp-wv-row button{flex:1;border:0;border-radius:10px;padding:9px 4px;font-size:11.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px}"
+    +".dh-wp-wv-row button:disabled{opacity:.4;cursor:default}"
+    +".dh-wp-wv-coach{background:#38bdf8;color:#03131c}"
+    +".dh-wp-wv-rec{background:#dc2626;color:#fff}"
+    +".dh-wp-wv-rec.on{background:#f43f5e;animation:dhWvPulse 1s infinite}"
+    +"@keyframes dhWvPulse{50%{opacity:.6}}"
+    +".dh-wp-wv-cmp{background:linear-gradient(180deg,#10b981,#059669);color:#fff}"
+    +".dh-wp-wv-play{background:#13294d;color:#e8eef7;border:1px solid #1e3a5f!important}"
+    +".dh-wp-wv-status{font-size:12px;font-weight:700;color:#9fb3d9;min-height:16px;line-height:1.4}";
     document.head.appendChild(st);
   }
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
-  function close(){ if(popEl){ popEl.remove(); popEl=null; } try{ speechSynthesis.cancel(); }catch(e){} }
+  function close(){ wvCleanup(); if(popEl){ popEl.remove(); popEl=null; } try{ speechSynthesis.cancel(); }catch(e){} }
 
   function open(entry){
     injectCSS(); close();
@@ -183,6 +198,25 @@
        +'<div class="dh-wp-rec-out" id="dhWpRecOut"></div>'
        +'<button class="dh-wp-full dh-wp-rec" id="dhWpRec">🎙 Kaydı başlat</button>'
      +'</div>'
+     +'<div class="dh-wp-box"><div class="dh-wp-boxhead">🌊 Ses Dalgası Analizi</div>'
+       +'<div class="dh-wp-wave-wrap"><canvas id="dhWpWvCanvas"></canvas></div>'
+       +'<div class="dh-wp-wave-meta">'
+         +'<span class="dur">🎓 <span id="dhWpWvDurC">0.0s</span></span>'
+         +'<span class="dur">🎙️ <span id="dhWpWvDurU">0.0s</span></span>'
+         +'<span class="dh-wp-wave-score" id="dhWpWvScore"></span>'
+       +'</div>'
+       +'<div class="dh-wp-wv-row">'
+         +'<button class="dh-wp-wv-coach" id="dhWpWvCoach">🎓 1. Hoca Çizdir</button>'
+         +'<button class="dh-wp-wv-rec" id="dhWpWvRec" disabled>🎙️ 2. Sen Oku</button>'
+         +'<button class="dh-wp-wv-cmp" id="dhWpWvCmp" disabled>🔍 3. Kıyasla</button>'
+       +'</div>'
+       +'<div class="dh-wp-wv-row">'
+         +'<button class="dh-wp-wv-play" id="dhWpWvPlayC" disabled>▶ Hoca</button>'
+         +'<button class="dh-wp-wv-play" id="dhWpWvPlayU" disabled>▶ Sen</button>'
+         +'<button class="dh-wp-wv-play" id="dhWpWvDuet" disabled>▶ Düet</button>'
+       +'</div>'
+       +'<div class="dh-wp-wv-status" id="dhWpWvStatus">Önce \'1. Hoca Çizdir\'e dokunun — hocanın dalgası mavi, seninki yeşil çizilir.</div>'
+     +'</div>'
      +'<div class="dh-wp-sec-title" id="dhWpSentTitle">Bu kelimenin geçtiği cümleler</div>'
      +'<div id="dhWpSents"><div class="dh-wp-muted">Cümleler yükleniyor…</div></div>'
      +'</div>';
@@ -195,6 +229,7 @@
     document.getElementById("dhWpVideo").onclick=function(){ window.open("https://youglish.com/pronounce/"+encodeURIComponent(w)+"/english","_blank"); };
     document.getElementById("dhWpAI").onclick=function(){ aiExplain(w, anlamlar); };
     document.getElementById("dhWpRec").onclick=function(){ tryPronounce(w); };
+    wvInit(w);
     fillSentences(w);
   }
 
@@ -287,6 +322,253 @@
         updateMeanings([msg]);
       });
   }
+
+  /* ================= 🌊 SES DALGASI (sesdalga.html mantığı — kelime bazlı) =================
+     Aynı ölçüm hattı: analyser fftSize=64, 40ms örnekleme, ortalama genlik.
+     Hoca: TTS hoparlörden konuşurken mikrofon (yankı bastırma KAPALI) gerçek sesi kaydeder.
+     Kıyas: sessizlik kırpma (eşik 8) → süre (tempo), zirve konumu (vurgu), STT (söz). */
+  var WV = null;
+  function wvCleanup(){
+    if(!WV) return;
+    try{ if(WV.timer) clearInterval(WV.timer); }catch(e){}
+    try{ if(WV.rec && WV.rec.state!=="inactive") WV.rec.stop(); }catch(e){}
+    try{ if(WV.stream) WV.stream.getTracks().forEach(function(t){t.stop();}); }catch(e){}
+    try{ if(WV.sr) WV.sr.stop(); }catch(e){}
+    try{ (WV.playing||[]).forEach(function(a){a.pause();}); }catch(e){}
+    if(WV.coachUrl){ try{ URL.revokeObjectURL(WV.coachUrl); }catch(e){} }
+    if(WV.userUrl){ try{ URL.revokeObjectURL(WV.userUrl); }catch(e){} }
+    WV=null;
+  }
+  function wvEl(id){ return document.getElementById(id); }
+  function wvStatus(msg,color){ var s=wvEl("dhWpWvStatus"); if(s){ s.textContent=msg; s.style.color=color||"#9fb3d9"; } }
+  function wvAvg(arr){ var t=0; for(var i=0;i<arr.length;i++) t+=arr[i]; return t/arr.length; }
+  function wvTrim(d){ var TH=8,s=0,e=d.length-1; while(s<d.length&&d[s]<TH)s++; while(e>s&&d[e]<TH)e--; return d.slice(s,e+1); }
+  function wvResample(data,len){
+    if(!data.length||data.length===len) return data.slice();
+    var out=[],r=(data.length-1)/Math.max(len-1,1);
+    for(var i=0;i<len;i++){ var p=i*r,a=Math.floor(p),b=Math.min(a+1,data.length-1),w=p-a; out.push(data[a]*(1-w)+data[b]*w); }
+    return out;
+  }
+  function wvTemplate(word){
+    var n=Math.max(1,syllabify(word).split("·").length), frames=Math.max(14,n*11), out=[];
+    for(var i=0;i<frames;i++){
+      var pos=i/frames*n, k=Math.floor(pos), c=(pos-k)-0.5;
+      out.push(Math.max(6,Math.round(62*Math.exp(-c*c*10))));
+    }
+    return out;
+  }
+  function wvDraw(){
+    if(!WV) return;
+    var cv=wvEl("dhWpWvCanvas"); if(!cv) return;
+    var w=cv.clientWidth,h=cv.clientHeight;
+    if(cv.width!==w||cv.height!==h){ cv.width=w; cv.height=h; }
+    var ctx=cv.getContext("2d"); ctx.clearRect(0,0,w,h);
+    var C=WV.viewC||[], U=WV.viewU||[];
+    if(C.length&&U.length&&C.length===U.length){
+      ctx.fillStyle="rgba(244,63,94,0.12)"; ctx.beginPath();
+      var st=w/Math.max(C.length-1,1);
+      for(var i=0;i<C.length;i++){
+        var yC=h-(C[i]/100)*(h*0.85)-2, yU=h-((U[i]||0)/100)*(h*0.85)-2, x=i*st;
+        if(i===0) ctx.moveTo(x,yC); else ctx.lineTo(x,yC);
+        ctx.lineTo(x,yU);
+      }
+      ctx.fill();
+    }
+    function line(data,color){
+      if(!data.length) return;
+      ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
+      var st=w/Math.max(data.length-1,1);
+      for(var i=0;i<data.length;i++){
+        var y=h-(data[i]/100)*(h*0.85)-2;
+        if(i===0) ctx.moveTo(0,y); else ctx.lineTo(i*st,y);
+      }
+      ctx.stroke();
+    }
+    line(C,"#38bdf8"); line(U,"#4ade80");
+  }
+  function wvInit(word){
+    wvCleanup();
+    WV={word:word,coach:[],user:[],viewC:[],viewU:[],coachUrl:null,userUrl:null,
+        coachDur:0,userDur:0,timer:null,stream:null,rec:null,sr:null,heard:"",
+        recording:false,playing:[]};
+    var bC=wvEl("dhWpWvCoach"),bR=wvEl("dhWpWvRec"),bK=wvEl("dhWpWvCmp"),
+        pC=wvEl("dhWpWvPlayC"),pU=wvEl("dhWpWvPlayU"),pD=wvEl("dhWpWvDuet");
+    if(!bC) return;
+    bC.onclick=function(){ wvCoach(word); };
+    bR.onclick=function(){ WV.recording ? wvStopRec() : wvRecord(word); };
+    bK.onclick=function(){ wvCompare(word); };
+    pC.onclick=function(){ wvPlay("coach",word); };
+    pU.onclick=function(){ wvPlay("user",word); };
+    pD.onclick=function(){ wvPlay("duet",word); };
+    setTimeout(wvDraw,60);
+  }
+  function wvStopAudio(){ try{ (WV.playing||[]).forEach(function(a){a.pause();}); }catch(e){} WV.playing=[]; }
+  function wvCoach(word){
+    var me=WV; if(!me) return;
+    wvStopAudio();
+    me.coach=[]; me.viewC=[]; me.viewU=me.user.slice();
+    if(me.coachUrl){ try{ URL.revokeObjectURL(me.coachUrl); }catch(e){} me.coachUrl=null; }
+    var sc=wvEl("dhWpWvScore"); if(sc) sc.style.display="none";
+    wvEl("dhWpWvCoach").disabled=true;
+    wvStatus("🎓 Hoca konuşuyor — hoparlör açık olsun, dalga canlı çiziliyor…","#38bdf8");
+    var capStream=null,capCtx=null,capAn=null,capData=null,capRec=null,chunks=[],micFail=false;
+    function finish(){
+      if(WV!==me) return;
+      clearInterval(me.timer); me.timer=null;
+      try{ if(capRec&&capRec.state!=="inactive") capRec.stop(); }catch(e){}
+      try{ if(capStream) capStream.getTracks().forEach(function(t){t.stop();}); }catch(e){}
+      try{ if(capCtx) capCtx.close(); }catch(e){}
+      setTimeout(function(){
+        if(WV!==me) return;
+        var mx=0; for(var i=0;i<me.coach.length;i++) if(me.coach[i]>mx) mx=me.coach[i];
+        if(micFail||!me.coach.length||mx<20){
+          me.coach=wvTemplate(word); me.coachUrl=null;
+          wvStatus(micFail?"⚠️ Mikrofon izni yok — ritim şablonu kullanıldı. Yine de kaydını kıyaslayabilirsin.":"⚠️ Mikrofon hocayı duyamadı (kulaklık takılı olabilir) — ritim şablonu kullanıldı.","#f59e0b");
+        }else{
+          wvStatus("🎓 Hoca hazır (gerçek kayıt). Şimdi '2. Sen Oku' ile aynı kelimeyi söyle.","#4ade80");
+        }
+        me.coachDur=me.coach.length*0.04;
+        me.viewC=me.coach.slice();
+        wvEl("dhWpWvDurC").textContent=me.coachDur.toFixed(1)+"s";
+        wvEl("dhWpWvCoach").disabled=false;
+        wvEl("dhWpWvRec").disabled=false;
+        wvEl("dhWpWvPlayC").disabled=false;
+        if(me.user.length) wvEl("dhWpWvCmp").disabled=false;
+        wvDraw();
+      },250);
+    }
+    var pStream = (navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)
+      ? navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false}})
+      : Promise.reject();
+    pStream.then(function(st){
+      if(WV!==me){ st.getTracks().forEach(function(t){t.stop();}); return; }
+      capStream=st;
+      capCtx=new (window.AudioContext||window.webkitAudioContext)();
+      capAn=capCtx.createAnalyser(); capAn.fftSize=64;
+      capData=new Uint8Array(capAn.frequencyBinCount);
+      capCtx.createMediaStreamSource(st).connect(capAn);
+      try{
+        capRec=new MediaRecorder(st);
+        capRec.ondataavailable=function(e){ if(e.data.size>0) chunks.push(e.data); };
+        capRec.onstop=function(){ if(chunks.length&&WV===me) me.coachUrl=URL.createObjectURL(new Blob(chunks,{type:"audio/webm"})); };
+        capRec.start();
+      }catch(e){}
+    }).catch(function(){ micFail=true; })
+    .then(function(){
+      if(WV!==me) return;
+      if(!("speechSynthesis" in window)){ me.coach=wvTemplate(word); finish(); return; }
+      try{ speechSynthesis.cancel(); }catch(e){}
+      var u=new SpeechSynthesisUtterance(word);
+      u.lang="en-US"; u.rate=0.78; u.__dhMixed=true;
+      me.timer=setInterval(function(){
+        var vol=15;
+        if(capAn){ capAn.getByteFrequencyData(capData); vol=wvAvg(capData); }
+        me.coach.push(vol);
+        me.viewC=me.coach;
+        wvEl("dhWpWvDurC").textContent=(me.coach.length*0.04).toFixed(1)+"s";
+        wvDraw();
+      },40);
+      u.onend=finish;
+      u.onerror=finish;
+      speechSynthesis.speak(u);
+      setTimeout(function(){ if(me.timer) finish(); },6000); /* emniyet */
+    });
+  }
+  function wvRecord(word){
+    var me=WV; if(!me||me.recording) return;
+    wvStopAudio();
+    me.user=[]; me.viewU=[]; me.viewC=me.coach.slice(); me.heard="";
+    if(me.userUrl){ try{ URL.revokeObjectURL(me.userUrl); }catch(e){} me.userUrl=null; }
+    var sc=wvEl("dhWpWvScore"); if(sc) sc.style.display="none";
+    navigator.mediaDevices.getUserMedia({audio:true}).then(function(st){
+      if(WV!==me){ st.getTracks().forEach(function(t){t.stop();}); return; }
+      me.stream=st;
+      var ctxA=new (window.AudioContext||window.webkitAudioContext)();
+      me.ctxA=ctxA;
+      var an=ctxA.createAnalyser(); an.fftSize=64;
+      var da=new Uint8Array(an.frequencyBinCount);
+      ctxA.createMediaStreamSource(st).connect(an);
+      var chunks=[];
+      try{
+        me.rec=new MediaRecorder(st);
+        me.rec.ondataavailable=function(e){ if(e.data.size>0) chunks.push(e.data); };
+        me.rec.onstop=function(){ if(chunks.length&&WV===me){ me.userUrl=URL.createObjectURL(new Blob(chunks,{type:"audio/webm"})); wvEl("dhWpWvPlayU").disabled=false; if(me.coachUrl) wvEl("dhWpWvDuet").disabled=false; } };
+        me.rec.start();
+      }catch(e){}
+      var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+      if(SR){ try{ me.sr=new SR(); me.sr.lang="en-US"; me.sr.onresult=function(e){ me.heard=(e.results[0][0].transcript||"").toLowerCase(); }; me.sr.start(); }catch(e){ me.sr=null; } }
+      me.recording=true;
+      var b=wvEl("dhWpWvRec"); b.textContent="■ Durdur"; b.classList.add("on");
+      wvStatus("🎙️ Kaydediliyor — \""+word+"\" de ve durdur…","#f43f5e");
+      me.timer=setInterval(function(){
+        an.getByteFrequencyData(da);
+        me.user.push(wvAvg(da));
+        me.viewU=me.user;
+        wvEl("dhWpWvDurU").textContent=(me.user.length*0.04).toFixed(1)+"s";
+        wvDraw();
+        if(me.user.length*0.04>=6) wvStopRec(); /* tek kelime için emniyet tavanı */
+      },40);
+    }).catch(function(){ wvStatus("Mikrofon izni verilmedi.","#f87171"); });
+  }
+  function wvStopRec(){
+    var me=WV; if(!me||!me.recording) return;
+    me.recording=false;
+    clearInterval(me.timer); me.timer=null;
+    try{ if(me.rec&&me.rec.state!=="inactive") me.rec.stop(); }catch(e){}
+    try{ if(me.stream) me.stream.getTracks().forEach(function(t){t.stop();}); }catch(e){}
+    try{ if(me.ctxA) me.ctxA.close(); }catch(e){}
+    try{ if(me.sr) me.sr.stop(); }catch(e){}
+    me.stream=null; me.rec=null;
+    me.userDur=me.user.length*0.04;
+    var b=wvEl("dhWpWvRec"); b.textContent="🎙️ 2. Sen Oku"; b.classList.remove("on");
+    if(me.coach.length) wvEl("dhWpWvCmp").disabled=false;
+    wvStatus("Kaydın hazır. '3. Kıyasla' ile hocayla karşılaştır.","#4ade80");
+  }
+  function wvCompare(word){
+    var me=WV; if(!me||!me.coach.length||!me.user.length) return;
+    var sC=wvTrim(me.coach), sU=wvTrim(me.user);
+    if(!sC.length||!sU.length){ wvStatus("Ses algılanamadı — tekrar dene.","#f59e0b"); return; }
+    var dC=sC.length*0.04, dU=sU.length*0.04;
+    var rU=wvResample(sU,sC.length);
+    me.viewC=sC; me.viewU=rU; wvDraw();
+    wvEl("dhWpWvDurC").textContent=dC.toFixed(1)+"s Net";
+    wvEl("dhWpWvDurU").textContent=dU.toFixed(1)+"s Net";
+    /* sesdalga formülleri */
+    var tempo=Math.max(0,Math.round(100-(Math.abs(dC-dU)/dC*100)));
+    var mC=0,iC=0,mU=0,iU=0;
+    for(var i=0;i<sC.length;i++){
+      if(sC[i]>mC){mC=sC[i];iC=i;}
+      if(rU[i]>mU){mU=rU[i];iU=i;}
+    }
+    var vurgu=Math.max(0,Math.round(100-(Math.abs(iC-iU)/sC.length*160)));
+    var soz=null;
+    if(me.sr!==undefined&&me.heard) soz=(me.heard.indexOf(String(word).toLowerCase())>=0)?100:40;
+    var genel=(soz!==null)?Math.round(soz*0.3+tempo*0.4+vurgu*0.3):Math.round(tempo*0.55+vurgu*0.45);
+    var sc=wvEl("dhWpWvScore");
+    sc.style.display="inline-block";
+    if(genel>=85){ sc.textContent="Kusursuz 🌟 %"+genel; sc.style.background="#10b981"; }
+    else if(genel>=65){ sc.textContent="İyi 👍 %"+genel; sc.style.background="#3b82f6"; sc.style.color="#fff"; }
+    else{ sc.textContent="Gelişmeli 🎯 %"+genel; sc.style.background="#f59e0b"; }
+    var det="Tempo %"+tempo+" • Vurgu %"+vurgu+(soz!==null?" • Söz %"+soz:"");
+    if(genel>=85) wvStatus("🌟 "+det+" — dalgan hocayla neredeyse örtüşüyor.","#34d399");
+    else if(genel>=65) wvStatus("👍 "+det+" — Düet ile farkı dinleyip tekrar dene.","#60a5fa");
+    else wvStatus("🎯 "+det+" — süre/vurgu sapıyor; hocayı dinle, ▶ Düet ile aynala.","#f59e0b");
+  }
+  function wvPlay(mode,word){
+    var me=WV; if(!me) return;
+    wvStopAudio();
+    function coachAudio(){
+      if(me.coachUrl){ var a=new Audio(me.coachUrl); me.playing.push(a); a.play().catch(function(){}); }
+      else speak(word,0.78);
+    }
+    function userAudio(){
+      if(me.userUrl){ var a=new Audio(me.userUrl); me.playing.push(a); a.play().catch(function(){}); }
+    }
+    if(mode==="coach") coachAudio();
+    else if(mode==="user") userAudio();
+    else{ coachAudio(); userAudio(); } /* düet: birebir senkron */
+  }
+  /* ================= /SES DALGASI ================= */
 
   function onClick(e){
     if(!enabled || popEl) return;
