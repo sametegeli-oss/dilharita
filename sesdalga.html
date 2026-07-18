@@ -71,6 +71,19 @@
     }
     .target-en { font-size: 12px; font-weight: 800; color: #fff; }
     .target-en span.stress { color: #f43f5e; text-decoration: underline; font-weight: 900; }
+    
+    /* Kelimelerin tıklanabilir olduğunu belirten interaktif stil tanımı */
+    .clickable-word {
+      cursor: pointer;
+      display: inline-block;
+      transition: color 0.15s ease, transform 0.1s ease;
+      padding: 0 1px;
+    }
+    .clickable-word:hover {
+      color: var(--accent);
+      transform: scale(1.05);
+    }
+    
     .target-tr { font-size: 9px; color: var(--muted); margin-top: 1px; }
 
     .interactive-coach {
@@ -332,6 +345,61 @@
     }catch(e){}
   }
 
+  // Kelimeleri dinamik span etiketlerine ayıran ve tıklama olayı bağlayan yeni fonksiyon
+  function makeWordsClickable(targetElement) {
+    if (!targetElement) return;
+    const rawText = targetElement.getAttribute("data-raw-text") || targetElement.textContent;
+    
+    // Cümleyi kelime ve noktalama/boşluk gruplarına ayırır
+    const tokens = rawText.split(/(\s+)/);
+    targetElement.innerHTML = "";
+    
+    tokens.forEach(token => {
+      if (token.trim().length === 0) {
+        targetElement.appendChild(document.createTextNode(token));
+        return;
+      }
+      
+      // Kelimenin yalın halini temizler (Noktalama işaretlerini ayıklar)
+      const cleanWord = token.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
+      
+      const span = document.createElement("span");
+      span.className = "clickable-word";
+      span.textContent = token;
+      
+      // Orijinal kod tabanındaki vurgu görsel stil mantığı entegrasyonu
+      if (token.toLowerCase().includes("shirt")) {
+        span.classList.add("stress");
+      } else if (token.toLowerCase().includes("spon")) {
+        span.classList.add("stress");
+      }
+      
+      // Kelimeye tıklama olayı
+      span.onclick = function(e) {
+        e.stopPropagation(); // Diğer tetikleyicileri engelle
+        playSingleWord(cleanWord);
+      };
+      
+      targetElement.appendChild(span);
+    });
+  }
+
+  // Yalnızca tek bir kelimeyi seslendiren fonksiyon
+  function playSingleWord(word) {
+    if (!word) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(word);
+      dhApplyVoice(utterance);
+      utterance.lang = "en-US";
+      utterance.rate = 0.90; // Tekil kelimelerin net duyulması için ideal tempo oranı
+      window.speechSynthesis.speak(utterance);
+      statusField.textContent = `Kelime seslendiriliyor: "${word}"`;
+    } catch (e) {
+      console.error("Kelime seslendirme hatası:", e);
+    }
+  }
+
   (function(){
     try{
       var q = new URLSearchParams(window.location.search);
@@ -350,6 +418,9 @@
         }
       }
       if(tr && document.querySelector(".target-tr")) document.querySelector(".target-tr").textContent = tr;
+      
+      // DOM ve parametre yüklemesi sonrası kelimeleri tıklanabilir hale getir
+      makeWordsClickable(targetNode);
     }catch(e){}
   })();
   
@@ -469,7 +540,6 @@
     return resampled;
   }
 
-  // Spektrum dizilerini (FFT) ölçeklemek/oranlamak için gelişmiş alt fonksiyon
   function resampleSpectrums(spectrums, targetLength) {
     if (!spectrums.length) {
       return Array.from({ length: targetLength }, () => new Uint8Array(32));
@@ -671,7 +741,6 @@
     finalTtsData = sTts;
     finalUserData = resampleTimelineData(sUser, finalTtsData.length);
 
-    // Ham spektrumlarımızı da hizalayarak bağımsız artikülasyonu hazırlıyoruz
     finalTtsSpectrums = specTts;
     finalUserSpectrums = resampleSpectrums(specUser, finalTtsData.length);
 
@@ -793,26 +862,22 @@
         let volHoca = finalTtsData[currentSample] || 0;
         let volUser = finalUserData[currentSample] || 0;
         
-        // Kaydedilen gerçek FFT spektrum dizilerini çekiyoruz
         let specHoca = finalTtsSpectrums[currentSample] || new Uint8Array(32);
         let specUser = finalUserSpectrums[currentSample] || new Uint8Array(32);
         
-        // Avatarlar artık birbirinin kopyası yapay dizileri değil, kendi bağımsız frekanslarını işliyor!
         let hMouthClass = updateSingleAvatarViseme(mouthHoca, specHoca, volHoca);
         let uMouthClass = updateSingleAvatarViseme(mouthUser, specUser, volUser);
         
         let energyDiff = Math.abs(volHoca - volUser);
         
-        // 🛠️ BAĞIMSIZ RENK KONTROLÜ: 
-        // Koç her zaman lider / konuşmacı rengini (Mavi) korur. Sizin kutunuz performansınıza göre renk değiştirir!
         avatarBoxHoca.className = "avatar-box speaking";
         
         if (hMouthClass === uMouthClass && energyDiff < 20) {
-          avatarBoxUser.className = "avatar-box match-ok";   // Uyumluysa sadece kullanıcının etrafı YEŞİL olur
+          avatarBoxUser.className = "avatar-box match-ok";
         } else if (volHoca > 5 && volUser > 5) {
-          avatarBoxUser.className = "avatar-box match-fail"; // Uyumsuzsa sadece kullanıcının etrafı KIRMIZI olur
+          avatarBoxUser.className = "avatar-box match-fail";
         } else {
-          avatarBoxUser.className = "avatar-box";            // Ses yoksa varsayılan
+          avatarBoxUser.className = "avatar-box";
         }
 
         currentSample++;
