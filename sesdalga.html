@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape" />
-  <title>DilHarita - Akustik Artikülasyon v3</title>
+  <title>DilHarita - Akustik Artikülasyon v4</title>
   <style>
     :root {
       --bg: #030712;
@@ -13,9 +13,11 @@
       --muted: #94a3b8;
       --accent: #38bdf8;
       --user-color: #4ade80;
+      
       --status-perfect: #10b981;
       --status-good: #3b82f6;
       --status-try: #f59e0b;
+      --error-color: #f43f5e;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
@@ -25,7 +27,7 @@
       background: var(--bg); 
       color: var(--text); 
       font-family: system-ui, -apple-system, sans-serif; 
-      overflow: hidden; /* Sürükleme ve kaydırmayı tamamen engeller */
+      overflow: hidden;
       position: fixed;
     }
     
@@ -57,7 +59,7 @@
       display: flex; 
       flex-direction: column; 
       gap: 6px; 
-      height: calc(100dvh - 42px); /* Header düşüldükten sonra kalan net alan */
+      height: calc(100dvh - 42px);
       overflow: hidden;
     }
 
@@ -73,6 +75,7 @@
     .target-en span.stress { color: #f43f5e; text-decoration: underline; font-weight: 900; }
     .target-tr { font-size: 10px; color: var(--muted); margin-top: 1px; }
 
+    /* 👄 ÇİFT AVATAR YAN YANA STÜDYO ALANI */
     .interactive-coach {
       background: #020617;
       border: 1px solid #1e293b;
@@ -80,14 +83,16 @@
       padding: 6px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: space-around;
+      gap: 12px;
       flex: 0 0 auto;
     }
     
-    .avatar-wrapper { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+    .avatar-wrapper { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
+    
     .avatar-box {
-      width: 38px;
-      height: 38px;
+      width: 42px;
+      height: 42px;
       border-radius: 50%;
       border: 2px solid var(--accent);
       background: #090d16;
@@ -95,14 +100,19 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      transition: all 0.1s ease;
     }
     .avatar-box.speaking { box-shadow: 0 0 10px rgba(56, 189, 248, 0.6); border-color: var(--accent); }
-    .avatar-box.user-speaking { box-shadow: 0 0 10px rgba(74, 222, 128, 0.6); border-color: var(--user-color); }
+    
+    /* Dinamik Durum Renkleri */
+    .avatar-box.match-ok { border-color: var(--status-perfect) !important; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+    .avatar-box.match-fail { border-color: var(--error-color) !important; box-shadow: 0 0 10px rgba(244, 63, 94, 0.5); }
     
     .eyes { display: flex; gap: 6px; margin-bottom: 3px; }
     .eye { width: 3px; height: 3px; background: #fff; border-radius: 50%; }
     
-    .mouth { width: 12px; height: 2px; background: #f87171; border-radius: 99px; transition: all 0.04s linear; }
+    /* 8 Viseme CSS Tanımlamaları */
+    .mouth { width: 12px; height: 2px; background: #f87171; border-radius: 99px; transition: all 0.04s ease; }
     .mouth.rest { height: 2px; width: 12px; border-radius: 99px; }
     .mouth.closed { height: 1px; width: 12px; border-radius: 0; }
     .mouth.wide { height: 4px; width: 16px; border-radius: 40%; }
@@ -112,9 +122,11 @@
     .mouth.th { height: 4px; width: 12px; border-bottom: 1.5px solid #fff; }
     .mouth.f { height: 2.5px; width: 12px; border-top: 1px solid #fff; }
     
-    .avatar-label { font-size: 8px; color: var(--muted); font-weight: 800; text-transform: uppercase; }
+    /* Hata durumunda ağız içi uyarı rengi */
+    .match-fail .mouth { background: var(--error-color) !important; }
+    .match-ok .mouth { background: var(--status-perfect) !important; }
 
-    .live-canvas { width: 100%; height: 24px; background: #070a12; border-radius: 4px; }
+    .avatar-label { font-size: 8px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; }
 
     .timeline-container {
       background: var(--surface);
@@ -228,8 +240,8 @@
 
 <div class="trainer-grid">
   <div class="header-panel">
-    <h2>🎯 AKUSTİK ARTİKÜLASYON TRAINER v3</h2>
-    <div class="quick-tip" id="quickTip">Maksimum ekran optimizasyonu devrededir.</div>
+    <h2>🎯 AKUSTİK ARTİKÜLASYON TRAINER v4</h2>
+    <div class="quick-tip" id="quickTip">Canlı Aynalama ve Renkli Lip-Sync Geribildirimi aktiftir.</div>
   </div>
   
   <div class="left-zone">
@@ -238,16 +250,22 @@
       <div class="target-tr">Bu gömlek güzel ama benim için çok küçük.</div>
     </div>
 
+    <!-- Yan Yana Çift Canlı Aynalama Paneli -->
     <div class="interactive-coach">
       <div class="avatar-wrapper">
-        <div class="avatar-box" id="avatarBox">
+        <div class="avatar-box" id="avatarBoxHoca">
           <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
-          <div class="mouth rest" id="mouth"></div>
+          <div class="mouth rest" id="mouthHoca"></div>
         </div>
-        <div class="avatar-label" id="avatarLabel">AI Coach</div>
+        <div class="avatar-label" style="color:var(--accent)">🎓 AI COACH</div>
       </div>
-      <div style="flex: 1;">
-        <canvas class="live-canvas" id="liveVisualizer"></canvas>
+      
+      <div class="avatar-wrapper">
+        <div class="avatar-box" id="avatarBoxUser">
+          <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+          <div class="mouth rest" id="mouthUser"></div>
+        </div>
+        <div class="avatar-label" id="userLabel">🎙️ YOU</div>
       </div>
     </div>
 
@@ -358,8 +376,6 @@
   let samplingIntervalId = null;
   let playheadProgress = -1; 
 
-  const liveCanvas = document.getElementById("liveVisualizer");
-  const liveCtx = liveCanvas.getContext("2d"); 
   const studioCanvas = document.getElementById("studioCanvas");
   const studioCtx = studioCanvas.getContext("2d");
 
@@ -372,37 +388,35 @@
   const statusField = document.getElementById("statusField");
   const scoreDisplay = document.getElementById("scoreDisplay");
   const diffLine = document.getElementById("diffLine");
-  const mouth = document.getElementById("mouth");
-  const avatarBox = document.getElementById("avatarBox");
-  const avatarLabel = document.getElementById("avatarLabel");
+  
+  const mouthHoca = document.getElementById("mouthHoca");
+  const mouthUser = document.getElementById("mouthUser");
+  const avatarBoxHoca = document.getElementById("avatarBoxHoca");
+  const avatarBoxUser = document.getElementById("avatarBoxUser");
 
-  function computeVisemeFromSpectrum(freqData, rmsVolume) {
-    if (!mouth) return;
-    if (rmsVolume < 5) { mouth.className = "mouth rest"; return; }
-    
-    let lowFreqEnergy = 0, midFreqEnergy = 0, highFreqEnergy = 0;
-    const binCount = freqData.length;
-    
-    for (let i = 0; i < binCount; i++) {
-      if (i < binCount * 0.2) lowFreqEnergy += freqData[i];
-      else if (i < binCount * 0.6) midFreqEnergy += freqData[i];
-      else highFreqEnergy += freqData[i];
+  // Gelişmiş Formant Spektrum Sınıflandırıcı (Hoca veya Öğrenci Seçimli)
+  function getVisemeClassName(freqData, rmsVolume) {
+    if (rmsVolume < 5) return "mouth rest";
+    let low = 0, mid = 0, high = 0;
+    const count = freqData.length;
+    for (let i = 0; i < count; i++) {
+      if (i < count * 0.2) low += freqData[i];
+      else if (i < count * 0.6) mid += freqData[i];
+      else high += freqData[i];
     }
-
-    if (highFreqEnergy > midFreqEnergy && highFreqEnergy > lowFreqEnergy * 1.5) mouth.className = "mouth teeth";
-    else if (lowFreqEnergy > midFreqEnergy * 1.8) mouth.className = "mouth round";
-    else if (midFreqEnergy > lowFreqEnergy && midFreqEnergy > highFreqEnergy) mouth.className = "mouth wide";
-    else if (rmsVolume > 40) mouth.className = "mouth open";
-    else if (rmsVolume < 14) mouth.className = "mouth closed";
-    else mouth.className = "mouth rest";
+    if (high > mid && high > low * 1.5) return "mouth teeth";
+    else if (low > mid * 1.8) return "mouth round";
+    else if (mid > low && mid > high) return "mouth wide";
+    else if (rmsVolume > 40) return "mouth open";
+    else if (rmsVolume < 14) return "mouth closed";
+    return "mouth rest";
   }
 
-  function setCoachState(state) {
-    if(!avatarBox || !avatarLabel) return;
-    avatarBox.classList.remove("speaking", "user-speaking");
-    if(state === "coach") { avatarBox.classList.add("speaking"); avatarLabel.textContent = "AI COACH"; avatarLabel.style.color = "var(--accent)"; }
-    else if(state === "user") { avatarBox.classList.add("user-speaking"); avatarLabel.textContent = "YOU"; avatarLabel.style.color = "var(--user-color)"; }
-    else { avatarLabel.textContent = "TRAINER"; avatarLabel.style.color = "var(--muted)"; }
+  function updateSingleAvatarViseme(mouthElement, freqData, volume) {
+    if (!mouthElement) return "mouth rest";
+    const className = getVisemeClassName(freqData, volume);
+    mouthElement.className = className;
+    return className;
   }
 
   function resizeCanvasIfNeeded(canvas) {
@@ -458,7 +472,9 @@
   analyzeTtsBtn.onclick = async function() {
     ttsTimelineData = []; finalTtsData = []; finalUserData = []; playheadProgress = -1;
     teacherAudioUrl = null; feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
-    
+    avatarBoxHoca.className = "avatar-box speaking";
+    avatarBoxUser.className = "avatar-box";
+
     let capStream=null, capAnalyser=null, capData=null, capCtx=null, capRec=null;
     const teacherChunks=[];
     try{
@@ -478,7 +494,6 @@
     const u = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(u);
     u.lang = "en-US"; u.rate = 0.82;
 
-    setCoachState("coach");
     samplingIntervalId = setInterval(() => {
       let t = (Date.now() - startTime) / 1000;
       let vol = 15;
@@ -486,7 +501,7 @@
         capAnalyser.getByteFrequencyData(capData);
         let total=0; for(let i=0;i<capData.length;i++) total+=capData[i];
         vol = total/capData.length;
-        computeVisemeFromSpectrum(capData, vol);
+        updateSingleAvatarViseme(mouthHoca, capData, vol);
       }
       ttsTimelineData.push(vol);
       finalTtsData = ttsTimelineData;
@@ -497,9 +512,9 @@
     u.onend = () => {
       setTimeout(()=>{
         clearInterval(samplingIntervalId);
-        setCoachState("none"); if(mouth) mouth.className = "mouth rest";
+        avatarBoxHoca.className = "avatar-box"; mouthHoca.className = "mouth rest";
         try{ if(capRec) capRec.stop(); if(capStream) capStream.getTracks().forEach(tr=>tr.stop()); }catch(e){}
-        statusField.textContent = "Hoca hazır. Cümlenizi okuyun.";
+        statusField.textContent = "Hoca modeli çizildi. Şimdi cümlenizi okuyun.";
         feedbackText.innerHTML = "🎓 <b>Hoca Hazır:</b> Şimdi 2. butona basarak cümleyi seslendirin.";
         recordBtn.disabled = false;
       }, 250);
@@ -511,9 +526,8 @@
     isRecording = false;
     recordBtn.textContent = "🎙️ 2. Mikrofonu Aç ve Oku";
     recordBtn.classList.remove("recording");
-    setCoachState("none"); if(mouth) mouth.className = "mouth rest";
+    avatarBoxUser.className = "avatar-box"; mouthUser.className = "mouth rest";
     clearInterval(samplingIntervalId);
-    if(liveCtx) liveCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
     if (recognition) { try{ recognition.stop(); }catch(e){} }
     if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
     if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
@@ -522,7 +536,7 @@
   recordBtn.onclick = async function() {
     if (!isRecording) {
       recordedChunks = []; userTimelineData = []; finalUserData = []; playheadProgress = -1; heardText = "";
-      resizeCanvasIfNeeded(liveCanvas);
+      avatarBoxUser.className = "avatar-box speaking";
 
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -548,7 +562,6 @@
         recognition.start();
 
         isRecording = true;
-        setCoachState("user");
         recordBtn.textContent = "■ Kaydı Durdur";
         recordBtn.classList.add("recording");
         statusField.textContent = "Kaydediliyor...";
@@ -563,22 +576,12 @@
           userTimelineData.push(avg);
           finalUserData = userTimelineData;
           drawStudioGraphs();
-          computeVisemeFromSpectrum(dataArray, avg);
+          updateSingleAvatarViseme(mouthUser, dataArray, avg);
           
           let dur = (Date.now() - userStartTime) / 1000;
           document.getElementById("userDuration").textContent = `${dur.toFixed(1)}s`;
-
-          if(liveCtx) {
-            let w = liveCanvas.width / dataArray.length;
-            liveCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
-            liveCtx.fillStyle = "var(--user-color)";
-            for(let i=0; i<dataArray.length; i++) {
-              let h = dataArray[i] / 4;
-              liveCtx.fillRect(i*w, liveCanvas.height - h, w - 1, h);
-            }
-          }
         }, 40);
-      } catch (e) { statusField.textContent = "Mikrofon kilitli."; }
+      } catch (e) { statusField.textContent = "Mikrofon izni verilmedi."; }
     } else {
       stopRecording();
     }
@@ -668,13 +671,11 @@
     else { badge.textContent = "Gelişmeli 🎯"; badge.style.background = "var(--status-try)"; }
 
     let advice = "🟢 <b>Güçlü Taraf:</b> Kelimeleri eksiksiz tamamladınız, artikülasyon modeli eşitlendi.<br>";
-    advice += "🧭 <b>Formant Analizi:</b> ";
+    advice += "🧭 <b>Aynalama Analizi:</b> ";
     if (segment2Diff > segment1Diff && segment2Diff > segment3Diff) {
-      advice += `Cümlenin orta vurgu segmentinde sapma var[cite: 1]. Büyük harfli kelimede dudaklarınızı geriye çekerek (WIDE viseme) daha kararlı enerji verin[cite: 1]. `;
-    } else if (userDur > ttsDur) {
-      advice += `Hece süreniz hocadan uzun. Kelimeleri birbirine ulayarak geçin. `;
+      advice += `Vurgu yaptığınız orta segmentte hocanın spektrumundan sapma var[cite: 1]. Düet butonuna basarak ağız hareketlerinin senkronizasyonunu ve renk değişimlerini (Yeşil/Kırmızı) takip edin. `;
     } else {
-      advice += `Segment artikülasyon dengeniz stabil. `;
+      advice += `Genel artikülasyon ve senkronizasyon uyumunuz oldukça kararlı. `;
     }
     feedbackText.innerHTML = advice;
     statusField.textContent = "Analiz tamamlandı!";
@@ -722,6 +723,7 @@
     }
   }
 
+  // --- 🌟 KUSURSUZ YENİLİK: DÜET ESNASINDA YAN YANA GERÇEK ZAMANLI RENKLİ AYNALAMA MOTORU ---
   duetBtn.onclick = function() {
     if (!voiceUrl || !finalUserData.length) return;
     statusField.textContent = "Düet çalınıyor...";
@@ -742,8 +744,29 @@
         if (currentSample >= totalSamples) { clearInterval(samplingIntervalId); return; }
         playheadProgress = (currentSample / totalSamples) * 100;
         drawStudioGraphs();
-        let mixVol = (finalTtsData[currentSample] || 0) * 0.5 + (finalUserData[currentSample] || 0) * 0.5;
-        updateMouthAnimation(mixVol);
+        
+        let volHoca = finalTtsData[currentSample] || 0;
+        let volUser = finalUserData[currentSample] || 0;
+        
+        // Yapay Zeka Spektrum Kılavuzuna Göre Anlık Sınıf Atama
+        // Not: Gerçek fftData yerine eldeki normalize genlik dizilerinden simüle spektrum türetilir
+        let hMouthClass = updateSingleAvatarViseme(mouthHoca, [volHoca, volHoca*0.5, volHoca*0.1], volHoca);
+        let uMouthClass = updateSingleAvatarViseme(mouthUser, [volUser, volUser*0.5, volUser*0.1], volUser);
+        
+        // 🟢 / 🔴 BAŞARILI / HATALI AĞIZ HAREKETİ RENK GERİBİLDİRİMİ
+        // Eğer iki ağız formu eşleşiyorsa veya enerji sapması %20'den az ise YEŞIL, sapma büyükse KIRMIZI yap
+        let energyDiff = Math.abs(volHoca - volUser);
+        if (hMouthClass === uMouthClass && energyDiff < 20) {
+          avatarBoxHoca.className = "avatar-box match-ok";
+          avatarBoxUser.className = "avatar-box match-ok";
+        } else if (volHoca > 5 && volUser > 5) {
+          avatarBoxHoca.className = "avatar-box match-fail";
+          avatarBoxUser.className = "avatar-box match-fail";
+        } else {
+          avatarBoxHoca.className = "avatar-box";
+          avatarBoxUser.className = "avatar-box";
+        }
+
         currentSample++;
       }, 40);
     };
@@ -751,7 +774,8 @@
     const endDuet = () => {
       clearInterval(samplingIntervalId);
       try { window.speechSynthesis.cancel(); uAudio.pause(); if(tAudio) tAudio.pause(); } catch(e){}
-      setCoachState("none"); if(mouth) mouth.className = "mouth rest";
+      avatarBoxHoca.className = "avatar-box"; avatarBoxUser.className = "avatar-box";
+      mouthHoca.className = "mouth rest"; mouthUser.className = "mouth rest";
       playheadProgress = -1; drawStudioGraphs();
       statusField.textContent = "Düet bitti.";
     };
@@ -766,9 +790,9 @@
     if(tAudio) {
       tAudio.currentTime = tStart; tAudio.play().catch(e=>{});
       uAudio.currentTime = uStart; uAudio.play().catch(e=>{});
-      setCoachState("coach"); startSync();
+      startSync();
     } else {
-      tUtter.onstart = () => { uAudio.currentTime = uStart; uAudio.play().catch(e=>{}); setCoachState("coach"); startSync(); };
+      tUtter.onstart = () => { uAudio.currentTime = uStart; uAudio.play().catch(e=>{}); startSync(); };
       window.speechSynthesis.speak(tUtter);
     }
   };
@@ -780,17 +804,18 @@
     let total = finalUserData.length, cur = 0;
 
     audio.onplay = () => {
-      setCoachState("user");
+      avatarBoxUser.className = "avatar-box speaking";
       if (samplingIntervalId) clearInterval(samplingIntervalId);
       samplingIntervalId = setInterval(() => {
         if (cur >= total) { clearInterval(samplingIntervalId); return; }
         playheadProgress = (cur / total) * 100;
         drawStudioGraphs();
-        updateMouthAnimation(finalUserData[cur] || 0);
+        let vol = finalUserData[cur] || 0;
+        updateSingleAvatarViseme(mouthUser, [vol, vol*0.5, vol*0.1], vol);
         cur++;
       }, 40);
     };
-    audio.onended = () => { clearInterval(samplingIntervalId); setCoachState("none"); if(mouth) mouth.className = "mouth rest"; playheadProgress = -1; drawStudioGraphs(); };
+    audio.onended = () => { clearInterval(samplingIntervalId); avatarBoxUser.className = "avatar-box"; mouthUser.className = "mouth rest"; playheadProgress = -1; drawStudioGraphs(); };
     audio.play().catch(e=>{});
   };
 </script>
