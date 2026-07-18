@@ -72,7 +72,6 @@
     .target-en { font-size: 12px; font-weight: 800; color: #fff; }
     .target-en span.stress { color: #f43f5e; text-decoration: underline; font-weight: 900; }
     
-    /* Kelimelerin interaktif tıklama tasarımı */
     .clickable-word {
       cursor: pointer;
       display: inline-block;
@@ -161,7 +160,6 @@
     }
     .overlay-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 
-    /* Kullanıcı Zaman Ayar Paneli */
     .alignment-tuner-panel {
       background: #111827;
       border: 1px solid #1f2937;
@@ -312,7 +310,6 @@
         <canvas class="overlay-canvas" id="studioCanvas"></canvas>
       </div>
       
-      <!-- Kullanıcının Yardımcı Olabileceği Zaman Ayar Arayüzü -->
       <div class="alignment-tuner-panel" id="tunerPanel">
         <div class="tuner-label" id="tunerLabel">SEÇİLİ KELİME: --</div>
         <div class="tuner-controls">
@@ -381,9 +378,8 @@
     }catch(e){}
   }
 
-  // Kelimeleri dinamik düğümlere bölen ve kelime bazlı nesneleri kuran global yapı
   let wordsArray = [];
-  let wordTimestamps = {}; // Kelimelerin hoca sesi üzerindeki start/end matrisi
+  let wordTimestamps = {}; 
   let selectedWordIndex = null;
   let totalTtsDuration = 0;
 
@@ -391,7 +387,6 @@
     if (!targetElement) return;
     const text = targetElement.getAttribute("data-raw-text") || targetElement.textContent;
     
-    // Cümleyi kelime sınırlarına göre tokenize et
     const rawTokens = text.match(/[A-Za-z']+|\d+|[.,\/#!$%\^&\*;:{}=\-_`~()?]+/g) || [];
     wordsArray = [];
     targetElement.innerHTML = "";
@@ -423,17 +418,14 @@
         };
 
         targetElement.appendChild(span);
-        // Doğal boşluk bırak
         targetElement.appendChild(document.createTextNode(" "));
         idCounter++;
       } else {
-        // Noktalama işareti ise düz text olarak ekle
         targetElement.appendChild(document.createTextNode(token + " "));
       }
     });
   }
 
-  // Yarı otomatik ilk zaman matrisi oluşturucu
   function calculateDefaultAlignment() {
     if (!wordsArray.length || totalTtsDuration <= 0) return;
     
@@ -446,7 +438,6 @@
     });
   }
 
-  // Kelime seçildiğinde tetiklenen arayüz ve oynatma mekanizması
   function onWordSelected(wordId) {
     selectedWordIndex = wordId;
     wordsArray.forEach(w => w.dom.classList.remove("selected-word"));
@@ -459,7 +450,6 @@
     const bounds = wordTimestamps[wordId];
     if (!bounds) return;
 
-    // Ayar panelini göster ve sınırları ata
     const tunerPanel = document.getElementById("tunerPanel");
     const startSlider = document.getElementById("startSlider");
     const endSlider = document.getElementById("endSlider");
@@ -467,7 +457,6 @@
     document.getElementById("tunerLabel").textContent = `KELİME: "${targetWord.raw.toUpperCase()}"`;
     tunerPanel.style.display = "flex";
 
-    // Slider sınır ve değer atamaları (Maksimum süreye göre oranla)
     startSlider.max = totalTtsDuration.toFixed(2);
     endSlider.max = totalTtsDuration.toFixed(2);
     
@@ -477,11 +466,9 @@
     document.getElementById("startVal").textContent = `${bounds.start.toFixed(2)}s`;
     document.getElementById("endVal").textContent = `${bounds.end.toFixed(2)}s`;
 
-    // Gerçek hoca sesinden kesiti oynat
     playRealWordSegment(bounds.start, bounds.end);
   }
 
-  // Gerçek ses dosyasını belirli zaman sınırlarında oynatan çekirdek motor
   function playRealWordSegment(startTime, endTime) {
     if (!teacherAudioUrl) {
       statusField.textContent = "Gerçek hoca sesi henüz hazır değil.";
@@ -489,9 +476,9 @@
     }
 
     try {
-      window.speechSynthesis.cancel(); // Çakışmaları engelle
+      window.speechSynthesis.cancel(); 
       const audio = new Audio(teacherAudioUrl);
-      audio.currentTime = startTime[cite: 1];
+      audio.currentTime = startTime;
       
       audio.play().catch(e => console.log("Oynatma hatası:", e));
       statusField.textContent = "Gerçek ses kesiti oynatılıyor...";
@@ -508,7 +495,6 @@
     }
   }
 
-  // Kullanıcı kaydırma çubuklarıyla (Slider) ince ayar yaptığında
   document.getElementById("startSlider").oninput = function() {
     if (selectedWordIndex === null) return;
     let val = parseFloat(this.value);
@@ -537,7 +523,6 @@
     drawStudioGraphs();
   };
 
-  // Kullanıcı elini slider'dan çektiğinde yeni ayarı test etmek için sesi çal
   document.getElementById("startSlider").onchange = function() {
     if (selectedWordIndex !== null) onWordSelected(selectedWordIndex);
   };
@@ -564,7 +549,6 @@
       }
       if(tr && document.querySelector(".target-tr")) document.querySelector(".target-tr").textContent = tr;
 
-      // Kelimeleri etkileşimli hale getiren modülü başlat
       prepareInteractiveWords(targetNode);
     }catch(e){}
   })();
@@ -696,7 +680,7 @@
       
       let arrA = spectrums[idxA];
       let arrB = spectrums[idxB];
-      let merged = new Uint8Array(arrA.length);
+      let merged = new Uint8Array(merged);
       for (let j = 0; j < arrA.length; j++) {
         merged[j] = arrA[j] * (1 - weight) + arrB[j] * weight;
       }
@@ -761,7 +745,7 @@
       setTimeout(()=>{
         clearInterval(samplingIntervalId);
         totalTtsDuration = (Date.now() - startTime) / 1000;
-        calculateDefaultAlignment(); // Yarı otomatik zaman dilimlerini ata
+        calculateDefaultAlignment(); 
 
         avatarBoxHoca.className = "avatar-box"; mouthHoca.className = "mouth rest";
         try{ if(capRec) capRec.stop(); if(capStream) capStream.getTracks().forEach(tr=>tr.stop()); }catch(e){}
@@ -934,10 +918,10 @@
     else if (genelOrtalama >= 65) { badge.textContent = "İyi 👍"; badge.style.background = "var(--status-good)"; }
     else { badge.textContent = "Gelişmeli 🎯"; badge.style.background = "var(--status-try)"; }
 
-    let advice = "🟢 <b>Güçlü Taraf:</b> Kelimeleri eksikosiz tamamladınız.<br>";
+    let advice = "🟢 <b>Güçlü Taraf:</b> Kelimeleri eksiksiz tamamladınız.<br>";
     advice += "🧭 <b>Aynalama Analizi:</b> ";
     if (segment2Diff > segment1Diff && segment2Diff > segment3Diff) {
-      advice += `Vurgu yaptığınız orta segmentte hocanın spektrumundan sapma var[cite: 1]. Düet butonuna basarak ağız hareketlerinin senkronizasyonunu ve renk değişimlerini (Yeşil/Kırmızı) takip edin. `;
+      advice += `Vurgu yaptığınız orta segmentte hocanın spektrumundan sapma var. Düet butonuna basarak ağız hareketlerinin senkronizasyonunu ve renk değişimlerini (Yeşil/Kırmızı) takip edin. `;
     } else {
       advice += `Genel artikülasyon ve senkronizasyon uyumunuz oldukça kararlı. `;
     }
@@ -949,7 +933,6 @@
     const W = studioCanvas.width, H = studioCanvas.height;
     studioCtx.clearRect(0, 0, W, H);
 
-    // Seçili kelimenin zaman aralığını grafik üzerinde yarı saydam bir blok olarak görselleştir
     if (selectedWordIndex !== null && totalTtsDuration > 0) {
       const bounds = wordTimestamps[selectedWordIndex];
       if (bounds) {
@@ -958,7 +941,6 @@
         studioCtx.fillStyle = "rgba(56, 189, 248, 0.15)";
         studioCtx.fillRect(startX, 0, endX - startX, H);
         
-        // Sınır çizgileri
         studioCtx.lineWidth = 1;
         studioCtx.strokeStyle = "rgba(56, 189, 248, 0.5)";
         studioCtx.beginPath();
