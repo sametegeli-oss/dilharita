@@ -72,16 +72,22 @@
     .target-en { font-size: 12px; font-weight: 800; color: #fff; }
     .target-en span.stress { color: #f43f5e; text-decoration: underline; font-weight: 900; }
     
-    /* Kelimelerin tıklanabilir olduğunu belirten interaktif stil tanımı */
+    /* Kelimelerin interaktif tıklama tasarımı */
     .clickable-word {
       cursor: pointer;
       display: inline-block;
-      transition: color 0.15s ease, transform 0.1s ease;
-      padding: 0 1px;
+      padding: 1px 3px;
+      margin: 0 1px;
+      border-radius: 3px;
+      transition: all 0.2s ease;
     }
     .clickable-word:hover {
+      background: rgba(56, 189, 248, 0.2);
       color: var(--accent);
-      transform: scale(1.05);
+    }
+    .clickable-word.selected-word {
+      background: var(--accent) !important;
+      color: #000 !important;
     }
     
     .target-tr { font-size: 9px; color: var(--muted); margin-top: 1px; }
@@ -154,6 +160,23 @@
       margin-top: 2px;
     }
     .overlay-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+
+    /* Kullanıcı Zaman Ayar Paneli */
+    .alignment-tuner-panel {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 4px;
+      padding: 3px 6px;
+      margin-top: 2px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .tuner-label { font-size: 7.5px; color: var(--accent); font-weight: bold; }
+    .tuner-controls { display: flex; gap: 4px; align-items: center; }
+    .tuner-slider { width: 90px; height: 12px; cursor: pointer; accent-color: var(--accent); }
+    .tuner-val-badge { font-size: 7.5px; background: #1e293b; padding: 1px 3px; border-radius: 2px; font-family: monospace; }
 
     .score-terminal {
       background: #070d19;
@@ -250,7 +273,7 @@
 <div class="trainer-grid">
   <div class="header-panel">
     <h2>🎯 AKUSTİK ARTİKÜLASYON TRAINER v4</h2>
-    <div class="quick-tip" id="quickTip">Sıkışma ve taşma önleme kilidi aktiftir.</div>
+    <div class="quick-tip" id="quickTip">Kelimeye dokunarak gerçek ses kesitini dinleyebilir ve hizalayabilirsiniz.</div>
   </div>
   
   <div class="left-zone">
@@ -287,6 +310,19 @@
       </div>
       <div class="studio-frame">
         <canvas class="overlay-canvas" id="studioCanvas"></canvas>
+      </div>
+      
+      <!-- Kullanıcının Yardımcı Olabileceği Zaman Ayar Arayüzü -->
+      <div class="alignment-tuner-panel" id="tunerPanel">
+        <div class="tuner-label" id="tunerLabel">SEÇİLİ KELİME: --</div>
+        <div class="tuner-controls">
+          <span style="font-size:7px; color:var(--muted)">Başla:</span>
+          <input type="range" class="tuner-slider" id="startSlider" min="0" max="100" value="0">
+          <span class="tuner-val-badge" id="startVal">0.0s</span>
+          <span style="font-size:7px; color:var(--muted); margin-left:4px;">Bitir:</span>
+          <input type="range" class="tuner-slider" id="endSlider" min="0" max="100" value="100">
+          <span class="tuner-val-badge" id="endVal">0.0s</span>
+        </div>
       </div>
     </div>
   </div>
@@ -345,60 +381,169 @@
     }catch(e){}
   }
 
-  // Kelimeleri dinamik span etiketlerine ayıran ve tıklama olayı bağlayan yeni fonksiyon
-  function makeWordsClickable(targetElement) {
+  // Kelimeleri dinamik düğümlere bölen ve kelime bazlı nesneleri kuran global yapı
+  let wordsArray = [];
+  let wordTimestamps = {}; // Kelimelerin hoca sesi üzerindeki start/end matrisi
+  let selectedWordIndex = null;
+  let totalTtsDuration = 0;
+
+  function prepareInteractiveWords(targetElement) {
     if (!targetElement) return;
-    const rawText = targetElement.getAttribute("data-raw-text") || targetElement.textContent;
+    const text = targetElement.getAttribute("data-raw-text") || targetElement.textContent;
     
-    // Cümleyi kelime ve noktalama/boşluk gruplarına ayırır
-    const tokens = rawText.split(/(\s+)/);
+    // Cümleyi kelime sınırlarına göre tokenize et
+    const rawTokens = text.match(/[A-Za-z']+|\d+|[.,\/#!$%\^&\*;:{}=\-_`~()?]+/g) || [];
+    wordsArray = [];
     targetElement.innerHTML = "";
-    
-    tokens.forEach(token => {
-      if (token.trim().length === 0) {
-        targetElement.appendChild(document.createTextNode(token));
-        return;
+
+    let idCounter = 0;
+    rawTokens.forEach(token => {
+      const isWord = /[A-Za-z0-9]/.test(token);
+      if (isWord) {
+        const clean = token.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
+        const span = document.createElement("span");
+        span.className = "clickable-word";
+        span.textContent = token;
+        span.setAttribute("data-word-id", idCounter);
+        
+        if (token.toLowerCase().includes("shirt") || token.toLowerCase().includes("spon")) {
+          span.classList.add("stress");
+        }
+
+        wordsArray.push({
+          id: idCounter,
+          raw: token,
+          clean: clean,
+          dom: span
+        });
+
+        span.onclick = function(e) {
+          e.stopPropagation();
+          onWordSelected(idCounter);
+        };
+
+        targetElement.appendChild(span);
+        // Doğal boşluk bırak
+        targetElement.appendChild(document.createTextNode(" "));
+        idCounter++;
+      } else {
+        // Noktalama işareti ise düz text olarak ekle
+        targetElement.appendChild(document.createTextNode(token + " "));
       }
-      
-      // Kelimenin yalın halini temizler (Noktalama işaretlerini ayıklar)
-      const cleanWord = token.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
-      
-      const span = document.createElement("span");
-      span.className = "clickable-word";
-      span.textContent = token;
-      
-      // Orijinal kod tabanındaki vurgu görsel stil mantığı entegrasyonu
-      if (token.toLowerCase().includes("shirt")) {
-        span.classList.add("stress");
-      } else if (token.toLowerCase().includes("spon")) {
-        span.classList.add("stress");
-      }
-      
-      // Kelimeye tıklama olayı
-      span.onclick = function(e) {
-        e.stopPropagation(); // Diğer tetikleyicileri engelle
-        playSingleWord(cleanWord);
-      };
-      
-      targetElement.appendChild(span);
     });
   }
 
-  // Yalnızca tek bir kelimeyi seslendiren fonksiyon
-  function playSingleWord(word) {
-    if (!word) return;
+  // Yarı otomatik ilk zaman matrisi oluşturucu
+  function calculateDefaultAlignment() {
+    if (!wordsArray.length || totalTtsDuration <= 0) return;
+    
+    const segmentDuration = totalTtsDuration / wordsArray.length;
+    wordsArray.forEach((word, idx) => {
+      wordTimestamps[word.id] = {
+        start: idx * segmentDuration,
+        end: (idx + 1) * segmentDuration
+      };
+    });
+  }
+
+  // Kelime seçildiğinde tetiklenen arayüz ve oynatma mekanizması
+  function onWordSelected(wordId) {
+    selectedWordIndex = wordId;
+    wordsArray.forEach(w => w.dom.classList.remove("selected-word"));
+    
+    const targetWord = wordsArray.find(w => w.id === wordId);
+    if (!targetWord) return;
+    
+    targetWord.dom.classList.add("selected-word");
+    
+    const bounds = wordTimestamps[wordId];
+    if (!bounds) return;
+
+    // Ayar panelini göster ve sınırları ata
+    const tunerPanel = document.getElementById("tunerPanel");
+    const startSlider = document.getElementById("startSlider");
+    const endSlider = document.getElementById("endSlider");
+    
+    document.getElementById("tunerLabel").textContent = `KELİME: "${targetWord.raw.toUpperCase()}"`;
+    tunerPanel.style.display = "flex";
+
+    // Slider sınır ve değer atamaları (Maksimum süreye göre oranla)
+    startSlider.max = totalTtsDuration.toFixed(2);
+    endSlider.max = totalTtsDuration.toFixed(2);
+    
+    startSlider.value = bounds.start;
+    endSlider.value = bounds.end;
+    
+    document.getElementById("startVal").textContent = `${bounds.start.toFixed(2)}s`;
+    document.getElementById("endVal").textContent = `${bounds.end.toFixed(2)}s`;
+
+    // Gerçek hoca sesinden kesiti oynat
+    playRealWordSegment(bounds.start, bounds.end);
+  }
+
+  // Gerçek ses dosyasını belirli zaman sınırlarında oynatan çekirdek motor
+  function playRealWordSegment(startTime, endTime) {
+    if (!teacherAudioUrl) {
+      statusField.textContent = "Gerçek hoca sesi henüz hazır değil.";
+      return;
+    }
+
     try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(word);
-      dhApplyVoice(utterance);
-      utterance.lang = "en-US";
-      utterance.rate = 0.90; // Tekil kelimelerin net duyulması için ideal tempo oranı
-      window.speechSynthesis.speak(utterance);
-      statusField.textContent = `Kelime seslendiriliyor: "${word}"`;
+      window.speechSynthesis.cancel(); // Çakışmaları engelle
+      const audio = new Audio(teacherAudioUrl);
+      audio.currentTime = startTime[cite: 1];
+      
+      audio.play().catch(e => console.log("Oynatma hatası:", e));
+      statusField.textContent = "Gerçek ses kesiti oynatılıyor...";
+
+      audio.ontimeupdate = function() {
+        if (audio.currentTime >= endTime) {
+          audio.pause();
+          audio.ontimeupdate = null;
+          statusField.textContent = "Kesit bitti.";
+        }
+      };
     } catch (e) {
-      console.error("Kelime seslendirme hatası:", e);
+      console.error("Kesit çalma hatası:", e);
     }
   }
+
+  // Kullanıcı kaydırma çubuklarıyla (Slider) ince ayar yaptığında
+  document.getElementById("startSlider").oninput = function() {
+    if (selectedWordIndex === null) return;
+    let val = parseFloat(this.value);
+    let endVal = parseFloat(document.getElementById("endSlider").value);
+    
+    if (val >= endVal) {
+      val = endVal - 0.05;
+      this.value = val;
+    }
+    wordTimestamps[selectedWordIndex].start = val;
+    document.getElementById("startVal").textContent = `${val.toFixed(2)}s`;
+    drawStudioGraphs();
+  };
+
+  document.getElementById("endSlider").oninput = function() {
+    if (selectedWordIndex === null) return;
+    let val = parseFloat(this.value);
+    let startVal = parseFloat(document.getElementById("startSlider").value);
+    
+    if (val <= startVal) {
+      val = startVal + 0.05;
+      this.value = val;
+    }
+    wordTimestamps[selectedWordIndex].end = val;
+    document.getElementById("endVal").textContent = `${val.toFixed(2)}s`;
+    drawStudioGraphs();
+  };
+
+  // Kullanıcı elini slider'dan çektiğinde yeni ayarı test etmek için sesi çal
+  document.getElementById("startSlider").onchange = function() {
+    if (selectedWordIndex !== null) onWordSelected(selectedWordIndex);
+  };
+  document.getElementById("endSlider").onchange = function() {
+    if (selectedWordIndex !== null) onWordSelected(selectedWordIndex);
+  };
 
   (function(){
     try{
@@ -418,9 +563,9 @@
         }
       }
       if(tr && document.querySelector(".target-tr")) document.querySelector(".target-tr").textContent = tr;
-      
-      // DOM ve parametre yüklemesi sonrası kelimeleri tıklanabilir hale getir
-      makeWordsClickable(targetNode);
+
+      // Kelimeleri etkileşimli hale getiren modülü başlat
+      prepareInteractiveWords(targetNode);
     }catch(e){}
   })();
   
@@ -431,13 +576,11 @@
   let isRecording = false, audioCtx = null, analyser = null, dataArray = null;
   let recognition = null, heardText = "";
 
-  // Grafikler için sadece RMS/Hacim değerlerini saklayacağız
   let ttsTimelineData = [];
   let userTimelineData = [];
   let finalTtsData = [];
   let finalUserData = [];
 
-  // Bağımsız dudak hareketleri için ham FFT spektrum matrislerini tutacağız
   let ttsSpectrums = [];
   let userSpectrums = [];
   let finalTtsSpectrums = [];
@@ -568,6 +711,9 @@
     teacherAudioUrl = null; feedbackText.innerHTML = "Hoca modeli oluşturuluyor...";
     avatarBoxHoca.className = "avatar-box speaking";
     avatarBoxUser.className = "avatar-box";
+    document.getElementById("tunerPanel").style.display = "none";
+    selectedWordIndex = null;
+    wordsArray.forEach(w => w.dom.classList.remove("selected-word"));
 
     let capStream=null, capAnalyser=null, capData=null, capCtx=null, capRec=null;
     const teacherChunks=[];
@@ -614,10 +760,13 @@
     u.onend = () => {
       setTimeout(()=>{
         clearInterval(samplingIntervalId);
+        totalTtsDuration = (Date.now() - startTime) / 1000;
+        calculateDefaultAlignment(); // Yarı otomatik zaman dilimlerini ata
+
         avatarBoxHoca.className = "avatar-box"; mouthHoca.className = "mouth rest";
         try{ if(capRec) capRec.stop(); if(capStream) capStream.getTracks().forEach(tr=>tr.stop()); }catch(e){}
-        statusField.textContent = "Hoca hazır. Cümlenizi okuyun.";
-        feedbackText.innerHTML = "🎓 <b>Hoca Hazır:</b> Cümlenizi seslendirin.";
+        statusField.textContent = "Hoca hazır. Kelimelere tıklayabilir veya cümlenizi okuyabilirsiniz.";
+        feedbackText.innerHTML = "🎓 <b>Hoca Hazır:</b> Kelimelere basarak gerçek ses kesitlerini dinleyip ayarlayabilirsiniz ya da cümlenizi mikrofondan okuyabilirsiniz.";
         recordBtn.disabled = false;
       }, 250);
     };
@@ -785,7 +934,7 @@
     else if (genelOrtalama >= 65) { badge.textContent = "İyi 👍"; badge.style.background = "var(--status-good)"; }
     else { badge.textContent = "Gelişmeli 🎯"; badge.style.background = "var(--status-try)"; }
 
-    let advice = "🟢 <b>Güçlü Taraf:</b> Kelimeleri eksiksiz tamamladınız.<br>";
+    let advice = "🟢 <b>Güçlü Taraf:</b> Kelimeleri eksikosiz tamamladınız.<br>";
     advice += "🧭 <b>Aynalama Analizi:</b> ";
     if (segment2Diff > segment1Diff && segment2Diff > segment3Diff) {
       advice += `Vurgu yaptığınız orta segmentte hocanın spektrumundan sapma var[cite: 1]. Düet butonuna basarak ağız hareketlerinin senkronizasyonunu ve renk değişimlerini (Yeşil/Kırmızı) takip edin. `;
@@ -799,6 +948,25 @@
   function drawStudioGraphs() {
     const W = studioCanvas.width, H = studioCanvas.height;
     studioCtx.clearRect(0, 0, W, H);
+
+    // Seçili kelimenin zaman aralığını grafik üzerinde yarı saydam bir blok olarak görselleştir
+    if (selectedWordIndex !== null && totalTtsDuration > 0) {
+      const bounds = wordTimestamps[selectedWordIndex];
+      if (bounds) {
+        let startX = (bounds.start / totalTtsDuration) * W;
+        let endX = (bounds.end / totalTtsDuration) * W;
+        studioCtx.fillStyle = "rgba(56, 189, 248, 0.15)";
+        studioCtx.fillRect(startX, 0, endX - startX, H);
+        
+        // Sınır çizgileri
+        studioCtx.lineWidth = 1;
+        studioCtx.strokeStyle = "rgba(56, 189, 248, 0.5)";
+        studioCtx.beginPath();
+        studioCtx.moveTo(startX, 0); studioCtx.lineTo(startX, H);
+        studioCtx.moveTo(endX, 0); studioCtx.lineTo(endX, H);
+        studioCtx.stroke();
+      }
+    }
 
     if (finalTtsData.length && finalUserData.length) {
       studioCtx.fillStyle = "rgba(244, 63, 94, 0.12)";
