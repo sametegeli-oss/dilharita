@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>DilHarita - Akustik Trainer Stüdyosu</title>
+  <title>DilHarita - Akustik Lip-Sync Trainer</title>
   <style>
     :root {
       --bg: #030712;
@@ -22,6 +22,7 @@
       background: var(--bg); 
       color: var(--text); 
       font-family: system-ui, -apple-system, sans-serif; 
+      overflow-x: hidden;
     }
     
     .trainer-grid {
@@ -70,41 +71,46 @@
     .target-en span.stress { color: #f43f5e; text-decoration: underline; font-weight: 900; }
     .target-tr { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
+    /* 👄 LİP-SYNC TRAINER AVATAR ALANI */
     .interactive-coach {
       background: #020617;
       border: 1px solid #1e293b;
       border-radius: 12px;
-      padding: 8px;
+      padding: 12px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
+      border-bottom: 3px solid var(--accent);
     }
     
-    .avatar-wrapper { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .avatar-wrapper { display: flex; flex-direction: column; align-items: center; gap: 4px; }
     .avatar-box {
-      width: 46px;
-      height: 46px;
+      width: 54px;
+      height: 54px;
       border-radius: 50%;
-      border: 2px solid var(--accent);
+      border: 3px solid var(--accent);
       background: #090d16;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      transition: all 0.1s ease;
     }
-    .avatar-box.speaking { box-shadow: 0 0 12px rgba(56, 189, 248, 0.6); border-color: var(--accent); }
-    .avatar-box.user-speaking { box-shadow: 0 0 12px rgba(74, 222, 128, 0.6); border-color: var(--user-color); }
-    .eyes { display: flex; gap: 8px; margin-bottom: 4px; }
-    .eye { width: 4px; height: 4px; background: #fff; border-radius: 50%; }
+    .avatar-box.speaking { box-shadow: 0 0 16px rgba(56, 189, 248, 0.7); border-color: var(--accent); }
+    .avatar-box.user-speaking { box-shadow: 0 0 16px rgba(74, 222, 128, 0.7); border-color: var(--user-color); }
     
-    .mouth { width: 14px; height: 3px; background: #f87171; border-radius: 99px; transition: height 0.05s ease; }
-    .mouth.rest { height: 3px; width: 14px; }
-    .mouth.closed { height: 1px; width: 14px; }
-    .mouth.wide { height: 5px; width: 16px; border-radius: 40%; }
-    .mouth.round { height: 9px; width: 9px; border-radius: 50%; }
-    .mouth.open { height: 12px; width: 12px; border-radius: 20% 20% 50% 50%; }
+    .eyes { display: flex; gap: 10px; margin-bottom: 6px; }
+    .eye { width: 5px; height: 5px; background: #fff; border-radius: 50%; }
     
-    .avatar-label { font-size: 9px; color: var(--muted); font-weight: bold; text-transform: uppercase; }
+    /* Gerçekçi Lip-Sync CSS Anatomisi */
+    .mouth { width: 16px; height: 3px; background: #f87171; border-radius: 99px; transition: all 0.04s linear; }
+    .mouth.rest { height: 3px; width: 16px; border-radius: 99px; }
+    .mouth.closed { height: 1px; width: 16px; background: #ef4444; }
+    .mouth.wide { height: 6px; width: 20px; border-radius: 40%; }
+    .mouth.round { height: 12px; width: 12px; border-radius: 50%; }
+    .mouth.open { height: 16px; width: 16px; border-radius: 15% 15% 50% 50%; }
+    
+    .avatar-label { font-size: 10px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
 
     .live-canvas { width: 100%; height: 32px; background: #070a12; border-radius: 6px; }
 
@@ -191,8 +197,8 @@
 
 <div class="trainer-grid">
   <div class="header-panel">
-    <h2>🎯 AKUSTİK TRAINER LABORATUVARI</h2>
-    <div class="quick-tip" id="quickTip">Zaman eşitleme algoritması aktiftir.</div>
+    <h2>🎯 LİP-SYNC AKUSTİK TRAINER</h2>
+    <div class="quick-tip" id="quickTip">Ses genliğine duyarlı yapay zeka koçu aktiftir.</div>
   </div>
   
   <div class="left-zone">
@@ -201,6 +207,7 @@
       <div class="target-tr">Bu gömlek güzel ama benim için çok küçük.</div>
     </div>
 
+    <!-- İnteraktif Lip-Sync Ajanı -->
     <div class="interactive-coach">
       <div class="avatar-wrapper">
         <div class="avatar-box" id="avatarBox">
@@ -216,7 +223,7 @@
 
     <div class="timeline-container">
       <div class="timeline-meta">
-        <div style="color: var(--accent);">📊 ORAN-ZAMAN SEYRİ (BİREBİR EŞLEŞTİRİLMİŞ)</div>
+        <div style="color: var(--accent);">📊 ORAN-ZAMAN MİKRO EŞLEŞMESİ</div>
         <div style="display: flex; gap: 6px;">
           <span class="dur-badge">Hoca: <span id="ttsDuration">0.0s</span></span>
           <span class="dur-badge">Sen: <span id="userDuration">0.0s</span></span>
@@ -238,7 +245,7 @@
       
       <div class="trainer-feedback-card">
         <div class="feedback-title">🧭 TRAINER ANALİZ RAPORU</div>
-        <div class="feedback-text" id="feedbackText">Önce hocanın sesini oluşturun, ardından cümlenizi telaffuz edin.</div>
+        <div class="feedback-text" id="feedbackText">Koçun konuşma motorunu başlatmak için 1. butona dokunun.</div>
       </div>
     </div>
 
@@ -250,7 +257,7 @@
       <button class="btn-trainer" id="playBtn" style="background:#1e293b;" disabled>▶ Sadece Kendi Sesim</button>
     </div>
 
-    <div class="status-bar" id="statusField">Trainer hazır. 1. butona dokunun.</div>
+    <div class="status-bar" id="statusField">Eğitmen modülü aktif.</div>
   </div>
 </div>
 
@@ -278,32 +285,30 @@
     }catch(e){}
   }
 
-  // URL Korumalı Güvenli Filtreleme Mekanizması
+  // Güvenli URL Parametre Kontrolü
   (function(){
     try{
       var q = new URLSearchParams(window.location.search);
       var en = q.get("en"), tr = q.get("tr");
       if(en){ 
-        var cleanEn = en.replace(/<\/?[^>]+(>|$)/g, "");
-        var targetNode = document.getElementById("targetEn");
+        var div = document.createElement("div"); div.textContent = en;
+        var cleanEn = div.innerHTML; 
         if(cleanEn.toLowerCase().includes("shirt")) {
-          targetNode.innerHTML = cleanEn.replace(/shirt/i, '<span class="stress">SHIRT</span>');
+          document.getElementById("targetEn").innerHTML = cleanEn.replace(/shirt/i, '<span class="stress">SHIRT</span>');
         } else if(cleanEn.toLowerCase().includes("responsible")) {
-          targetNode.innerHTML = cleanEn.replace(/responsible/i, 're-<span class="stress">SPON</span>-sible');
+          document.getElementById("targetEn").innerHTML = cleanEn.replace(/responsible/i, 're-<span class="stress">SPON</span>-sible');
         } else {
-          targetNode.textContent = cleanEn;
+          document.getElementById("targetEn").textContent = en;
         }
       }
-      if(tr && document.querySelector(".target-tr")) {
-        document.querySelector(".target-tr").textContent = tr;
-      }
+      if(tr && document.querySelector(".target-tr")) document.querySelector(".target-tr").textContent = tr;
       var back = q.get("back");
       var b = document.createElement("button");
       b.textContent = "← Geri";
       b.style.cssText = "position:fixed;left:6px;top:6px;z-index:99999;background:#131c30;border:1px solid #ffffff22;color:#e8eef7;border-radius:6px;padding:4px 8px;font:800 11px system-ui;cursor:pointer";
       b.onclick = function(){ if(back) window.location.href=back; else window.history.back(); };
       document.body.appendChild(b);
-    }catch(e){ console.error("URL Load Error safeguarded."); }
+    }catch(e){}
   })();
   
   const TARGET_TEXT = document.getElementById("targetEn").textContent.replace(/-/g, "");
@@ -341,13 +346,14 @@
   const avatarBox = document.getElementById("avatarBox");
   const avatarLabel = document.getElementById("avatarLabel");
 
+  // Akustik Lip-Sync Motoru: Desibel genliğine göre gerçek zamanlı ağız şekli
   function updateMouthAnimation(volume) {
     if (!mouth) return;
-    if (volume < 4) mouth.className = "mouth rest";
-    else if (volume < 14) mouth.className = "mouth closed";
-    else if (volume < 28) mouth.className = "mouth wide";
-    else if (volume < 52) mouth.className = "mouth round";
-    else mouth.className = "mouth open";
+    if (volume < 5) mouth.className = "mouth rest";         // Sessizlik / Duraklama
+    else if (volume < 16) mouth.className = "mouth closed"; // Hafif ünsüzler (m, b, p, f)
+    else if (volume < 34) mouth.className = "mouth wide";   // Dar ünlüler ve bağlaçlar (i, e, it)
+    else if (volume < 60) mouth.className = "mouth round";  // Yuvarlak ve yarı açık vurgular (too, short, small)
+    else mouth.className = "mouth open";                    // Maksimum açık hece vurgusu (SHIRT, SPON, MY)
   }
 
   function setCoachState(state) {
@@ -436,6 +442,8 @@
       }
       ttsTimelineData.push(vol);
       finalTtsData = ttsTimelineData;
+      
+      // Hoca konuşurken ses genliğine tam bağlı ağız simülasyonu
       updateMouthAnimation(vol);
       drawStudioGraphs();
       document.getElementById("ttsDuration").textContent = `${t.toFixed(1)}s`;
@@ -447,7 +455,7 @@
         setCoachState("none"); if(mouth) mouth.className = "mouth rest";
         try{ if(capRec) capRec.stop(); if(capStream) capStream.getTracks().forEach(tr=>tr.stop()); }catch(e){}
         statusField.textContent = "Hoca hazır. Şimdi cümlenizi okuyun.";
-        feedbackText.innerHTML = "🎓 <b>Hoca Sesi Hazır:</b> Şimdi mikrofonu açarak cümleyi okuyun.";
+        feedbackText.innerHTML = "🎓 <b>Hoca Lip-Sync Hazır:</b> Grafiğe bakarak kelimelerdeki ağız açma oranlarını inceleyin.";
         recordBtn.disabled = false;
       }, 250);
     };
@@ -498,6 +506,8 @@
           userTimelineData.push(avg);
           finalUserData = userTimelineData;
           drawStudioGraphs();
+          
+          // Kullanıcı konuşurken anlık ses analiziyle ağzı hareket ettir
           updateMouthAnimation(avg);
           
           let dur = (Date.now() - userStartTime) / 1000;
@@ -597,7 +607,7 @@
     }
 
     feedbackText.innerHTML = advice;
-    statusField.textContent = "Akustik analiz raporu güncellendi!";
+    statusField.textContent = "Lip-sync analiz raporu güncellendi!";
   };
 
   function clearStudioCanvas() {
@@ -637,6 +647,7 @@
     }
   }
 
+  // Düet esnasında hoca ve öğrenci ses dalga boylarının miks değerine göre eşzamanlı ağız senkronizasyonu
   duetBtn.onclick = function() {
     if (!voiceUrl || !finalUserData.length) return;
     statusField.textContent = "Düet çalınıyor...";
@@ -658,8 +669,10 @@
         playheadProgress = (currentSample / totalSamples) * 100;
         drawStudioGraphs();
         
+        // ORTAK LİP-SYNC: İki ses dalgasının o andaki enerjisine göre ağzı hareket ettir
         let mixVol = (finalTtsData[currentSample] || 0) * 0.5 + (finalUserData[currentSample] || 0) * 0.5;
         updateMouthAnimation(mixVol);
+        
         currentSample++;
       }, 40);
     };
@@ -702,7 +715,10 @@
         if (cur >= total) { clearInterval(samplingIntervalId); return; }
         playheadProgress = (cur / total) * 100;
         drawStudioGraphs();
+        
+        // Tekli oynatmada kullanıcının kendi ses enerjisine göre ağız senkronizasyonu
         updateMouthAnimation(finalUserData[cur] || 0);
+        
         cur++;
       }, 40);
     };
@@ -711,7 +727,6 @@
   };
 </script>
 
-<!-- Çakışmayı engellemek için tüm dom yüklendikten sonra en altta çağrılan harici balon scripti -->
 <script src="./coach-bubble.js" defer></script>
 </body>
 </html>
