@@ -184,13 +184,24 @@
     }catch(e){}
   };
   /* index-app'te dhCoachEvaluate çağrılmaz (React) — kart notlama (.grade-bar)
-     tıklamalarını etkileşim sinyali olarak kullan */
+     tıklamalarını etkileşim sinyali olarak kullan.
+     DÜZELTME: bu tıklamalar GÜNLÜK SAYACA (dh-study-tracker-v1) hiç yazılmıyordu;
+     karne "Cümle çalışması 0/5"te takılıyor, koç ne kadar çalışılırsa çalışılsın
+     "5 kaldı" diyordu. Artık her notlama = 1 cümle çalışması sayılır.
+     Aynı cümleyi hemen yeniden notlamayı çift saymamak için 4 sn eşik var. */
   if(__dhPage==="index-app.html"){
+    var __dhLastGradeBump=0;
     document.addEventListener("click",function(e){
       try{
         if(e.target && e.target.closest && e.target.closest(".grade-bar")){
           window.dhCoachMarkStepDone(__dhPage);
           window.dhCoachChainBump();
+          var gb=e.target.closest(".grade-btn");
+          if(gb && Date.now()-__dhLastGradeBump>4000){
+            __dhLastGradeBump=Date.now();
+            bumpDailyTracker("sentence");
+            try{ window.dhLogActivity("📖 Cümle notlandı ("+((gb.textContent||"").trim())+")","correct"); }catch(err2){}
+          }
         }
       }catch(err){}
     }, true);
