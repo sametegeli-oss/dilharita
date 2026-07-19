@@ -524,35 +524,79 @@
     if(me.coach.length) wvEl("dhWpWvCmp").disabled=false;
     wvStatus("Kaydın hazır. '3. Kıyasla' ile hocayla karşılaştır.","#4ade80");
   }
+  function wvNormEnv(d){
+    var mx=0; for(var i=0;i<d.length;i++) if(d[i]>mx) mx=d[i];
+    if(mx<=0) return d.slice();
+    var out=[]; for(var j=0;j<d.length;j++) out.push(d[j]/mx*100);
+    return out;
+  }
+  function wvPearson(a,b){
+    var n=Math.min(a.length,b.length); if(n<3) return 0;
+    var ma=0,mb=0,i;
+    for(i=0;i<n;i++){ ma+=a[i]; mb+=b[i]; } ma/=n; mb/=n;
+    var num=0,da=0,db=0;
+    for(i=0;i<n;i++){ var x=a[i]-ma,y=b[i]-mb; num+=x*y; da+=x*x; db+=y*y; }
+    var den=Math.sqrt(da*db);
+    return den?num/den:0;
+  }
+  function wvLevSim(a,b){
+    a=String(a||""); b=String(b||"");
+    if(!a.length||!b.length) return 0;
+    if(a===b) return 1;
+    var m=a.length,n=b.length,d=[],i,j;
+    for(i=0;i<=m;i++) d[i]=[i];
+    for(j=0;j<=n;j++) d[0][j]=j;
+    for(i=1;i<=m;i++) for(j=1;j<=n;j++)
+      d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+    return 1-d[m][n]/Math.max(m,n);
+  }
+  function wvSozScore(heard,word){
+    heard=String(heard||"").toLowerCase(); word=String(word||"").toLowerCase();
+    if(!heard) return null;
+    if(heard.indexOf(word)>=0) return 100;
+    var best=0, toks=heard.split(/[^a-z']+/);
+    for(var i=0;i<toks.length;i++){ var s=wvLevSim(toks[i],word); if(s>best) best=s; }
+    if(best>=0.8) return 100;
+    if(best>=0.5) return Math.round(60+best*40);
+    return Math.round(40+best*40);
+  }
   function wvCompare(word){
     var me=WV; if(!me||!me.coach.length||!me.user.length) return;
     var sC=wvTrim(me.coach), sU=wvTrim(me.user);
     if(!sC.length||!sU.length){ wvStatus("Ses algılanamadı — tekrar dene.","#f59e0b"); return; }
     var dC=sC.length*0.04, dU=sU.length*0.04;
-    var rU=wvResample(sU,sC.length);
-    me.viewC=sC; me.viewU=rU; wvDraw();
+    var nC=wvNormEnv(sC), nU=wvNormEnv(sU);
+    var rU=wvResample(nU,nC.length);
+    me.viewC=nC; me.viewU=rU; wvDraw();
     wvEl("dhWpWvDurC").textContent=dC.toFixed(1)+"s Net";
     wvEl("dhWpWvDurU").textContent=dU.toFixed(1)+"s Net";
-    /* sesdalga formülleri */
-    var tempo=Math.max(0,Math.round(100-(Math.abs(dC-dU)/dC*100)));
+    /* Tempo: tek kelimede ±0.15s serbest, sonrası yumuşak ceza */
+    var excess=Math.max(0,Math.abs(dC-dU)-0.15);
+    var tempo=Math.max(0,Math.round(100-excess/Math.max(dC,0.2)*80));
+    /* Şekil: normalize zarfların korelasyonu; r=1→100, r=0→50 */
+    var r=Math.max(-1,Math.min(1,wvPearson(nC,rU)));
+    var shape=Math.round(((r+1)/2)*100);
+    /* Vurgu: zirve konumu, %12 kayma serbest */
     var mC=0,iC=0,mU=0,iU=0;
-    for(var i=0;i<sC.length;i++){
-      if(sC[i]>mC){mC=sC[i];iC=i;}
+    for(var i=0;i<nC.length;i++){
+      if(nC[i]>mC){mC=nC[i];iC=i;}
       if(rU[i]>mU){mU=rU[i];iU=i;}
     }
-    var vurgu=Math.max(0,Math.round(100-(Math.abs(iC-iU)/sC.length*160)));
-    var soz=null;
-    if(me.sr!==undefined&&me.heard) soz=(me.heard.indexOf(String(word).toLowerCase())>=0)?100:40;
-    var genel=(soz!==null)?Math.round(soz*0.3+tempo*0.4+vurgu*0.3):Math.round(tempo*0.55+vurgu*0.45);
+    var shift=Math.abs(iC-iU)/nC.length;
+    var vurgu=shift<=0.12?100:Math.max(0,Math.round(100-(shift-0.12)*220));
+    var soz=wvSozScore(me.heard,word);
+    var genel=(soz!==null)
+      ? Math.round(soz*0.4+shape*0.25+vurgu*0.15+tempo*0.2)
+      : Math.round(shape*0.4+vurgu*0.25+tempo*0.35);
     var sc=wvEl("dhWpWvScore");
-    sc.style.display="inline-block";
+    sc.style.display="inline-block"; sc.style.color="#03131c";
     if(genel>=85){ sc.textContent="Kusursuz 🌟 %"+genel; sc.style.background="#10b981"; }
     else if(genel>=65){ sc.textContent="İyi 👍 %"+genel; sc.style.background="#3b82f6"; sc.style.color="#fff"; }
     else{ sc.textContent="Gelişmeli 🎯 %"+genel; sc.style.background="#f59e0b"; }
-    var det="Tempo %"+tempo+" • Vurgu %"+vurgu+(soz!==null?" • Söz %"+soz:"");
+    var det="Şekil %"+shape+" • Tempo %"+tempo+" • Vurgu %"+vurgu+(soz!==null?" • Söz %"+soz:"");
     if(genel>=85) wvStatus("🌟 "+det+" — dalgan hocayla neredeyse örtüşüyor.","#34d399");
     else if(genel>=65) wvStatus("👍 "+det+" — Düet ile farkı dinleyip tekrar dene.","#60a5fa");
-    else wvStatus("🎯 "+det+" — süre/vurgu sapıyor; hocayı dinle, ▶ Düet ile aynala.","#f59e0b");
+    else wvStatus("🎯 "+det+" — hocayı dinle, ▶ Düet ile aynala.","#f59e0b");
   }
   function wvPlay(mode,word){
     var me=WV; if(!me) return;
