@@ -394,6 +394,10 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
       "  width:42px;height:42px;border-radius:50%;border:none;cursor:pointer;",
       "  background:rgba(7,18,38,.85);color:#fff;font-size:20px;line-height:42px;",
       "  text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.35);padding:0;}",
+      /* Sohbet sayfalarında (chat-core) sağ-alt köşede Gönder (➤) düğmesi var —
+         ayar dişlisi tam üstüne biniyordu. O sayfalarda yukarı alınır. */
+      "body.dh-chat-page #mouthSpeedBtn{bottom:150px;background:rgba(7,18,38,.72);}",
+      "body.dh-chat-page #mouthSpeedPanel{bottom:200px;}",
       "#mouthSpeedBtn:active{transform:scale(.94);}",
       "#mouthSpeedPanel{position:fixed;right:12px;bottom:62px;z-index:99999;",
       "  width:230px;max-width:80vw;background:#0d1b32;color:#fff;border-radius:14px;",
@@ -414,6 +418,15 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
 
   function build(){
     injectCss();
+    /* Sohbet sayfası mı? chat-core arayüzü DOM'a sonradan kurulabildiği için
+       hemen ve kısa aralıklarla iki kez daha bakılır. */
+    function markChatPage(){
+      try{
+        if(document.querySelector(".chat-shell, .input-row .send-btn, #chatHistory"))
+          document.body.classList.add("dh-chat-page");
+      }catch(e){}
+    }
+    markChatPage(); setTimeout(markChatPage,600); setTimeout(markChatPage,2000);
     var btn = document.createElement("button");
     btn.id = "mouthSpeedBtn"; btn.type = "button";
     btn.title = "Avatar agiz hizi ayari"; btn.textContent = "\u2699";

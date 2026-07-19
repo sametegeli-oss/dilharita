@@ -356,23 +356,18 @@ try{
       if (i > 0 && j > 0 && uArr[i - 1].k === cArr[j - 1].k) {
         htmlArr.unshift('<span class="diff-match" onclick="handleWordClick(\''+cArr[j - 1].d+'\')">' + cArr[j - 1].d + '</span>');
         i--; j--;
+      } else if (i > 0 && j > 0
+                 && getLevenshteinSimilarity(norm(uArr[i - 1].d), norm(cArr[j - 1].d)) >= 75) {
+        /* Yazım sürçmesi (bak→back): missing/wrong'a bölünmeden ÖNCE yakala —
+           eski sırada bu dala hiç girilemiyordu. */
+        htmlArr.unshift('<span class="diff-typo" title="Yazım Hatası! (Doğrusu: ' + cArr[j - 1].d + ')" onclick="handleWordClick(\''+cArr[j - 1].d+'\')">' + uArr[i - 1].d + '</span>');
+        i--; j--;
       } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
         htmlArr.unshift('<span class="diff-missing" onclick="handleWordClick(\''+cArr[j - 1].d+'\')">' + cArr[j - 1].d + '</span>');
         j--;
       } else {
-        var typoMatched = false;
-        if (j > 0) {
-          var levSim = getLevenshteinSimilarity(norm(uArr[i - 1]), norm(cArr[j - 1]));
-          if (levSim >= 75) {
-            htmlArr.unshift('<span class="diff-typo" title="Yazım Hatası! (Doğrusu: ' + cArr[j - 1] + ')" onclick="handleWordClick(\''+cArr[j - 1]+'\')">' + uArr[i - 1] + '</span>');
-            i--; j--;
-            typoMatched = true;
-          }
-        }
-        if (! typoMatched) {
-          htmlArr.unshift('<span class="diff-wrong" onclick="handleWordClick(\''+uArr[i - 1].d+'\')">' + uArr[i - 1] + '</span>');
-          i--;
-        }
+        htmlArr.unshift('<span class="diff-wrong" onclick="handleWordClick(\''+uArr[i - 1].d+'\')">' + uArr[i - 1].d + '</span>');
+        i--;
       }
     }
     return htmlArr.join("") || "<span style='color:var(--mut)'>[Boş Giriş]</span>";
