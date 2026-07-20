@@ -606,6 +606,10 @@
     push: pushNow, sync: initialSync, pull: fullSync, fullSync: fullSync,
     signOut: signOutAndPush,
     snapList: snapList, restoreSnap: restoreSnap,
+    /* Yedekleme ekranı kendi kopya listesini tutmasın diye TEK KAYNAK burada.
+       (Eskiden index sayfası listeyi elle kopyalıyordu ve yeni anahtarlar
+        eklendiğinde yedeğe girmiyordu.) */
+    keys: function(){ return { list: LS_KEYS.slice(), prefixes: LS_PREFIXES.slice() }; },
     get ready(){ return ready; }, get user(){ return user; }
   };
 })();

@@ -238,6 +238,245 @@ details.dh-group>.dh-settings-body{padding:0 14px 14px}
 <script src="./notifications.js?v=1"></script>
 
 <!-- GEREKSİZ DIŞ BAĞIMLILIKLAR TEMİZLENDİ -->
+
+<!-- ══════════════════════════════════════════════════════════════════
+     AYAR/YEDEK DÜĞMELERİNİN İŞLEVLERİ
+     Bu düğmelerin HTML'i sayfada vardı ama onları çalıştıran kod
+     index.html'de yoktu (eski index2.html'de kalmıştı) — bu yüzden
+     tıklanınca hiçbir şey olmuyordu. Buraya taşındı.
+     ══════════════════════════════════════════════════════════════════ -->
+<script>
+/* ---- Bulutla senkronize et + Çıkış yap ---- */
+(function(){
+  var btn=document.getElementById("dhCloudSyncBtn");
+  var msg=document.getElementById("dhCloudSyncMsg");
+  if(!btn) return;
+  btn.onclick=async function(){
+    if(!(window.DHCloudSync && window.DHCloudSync.fullSync)){
+      if(msg){ msg.style.color="#f59e0b"; msg.textContent="Bulut bağlantısı hazır değil, birkaç saniye sonra tekrar dene."; }
+      return;
+    }
+    var old=btn.textContent;
+    btn.disabled=true; btn.textContent="⏳ Senkronize ediliyor...";
+    if(msg) msg.textContent="";
+    var u=window.DHCloudSync.user, rdy=window.DHCloudSync.ready;
+    try{
+      var res=await window.DHCloudSync.fullSync();
+      if(msg){
+        msg.innerHTML=(res.message||"")
+          +"<br><small style='color:#9fb3d9'>giriş:"+(u?("var ("+String(u.uid).slice(0,6)+")"):"YOK")
+          +" · hazır:"+(rdy?"evet":"hayır")+"</small>";
+        msg.style.color=res.ok?"#34d399":"#f87171";
+      }
+      if(!res.ok && /giriş/i.test(res.message||"")){
+        if(msg) msg.innerHTML+="<br><small style='color:#38bdf8'>Giriş sayfasına yönlendiriliyorsun…</small>";
+        setTimeout(function(){ location.href="./login.html"; },1200);
+      }
+      if(res.ok){
+        try{ if(window.__dhStorageFlush) window.__dhStorageFlush(); }catch(e){}
+        if(msg) msg.innerHTML+="<br><small style='color:#38bdf8'>Sayfa yenileniyor…</small>";
+        setTimeout(function(){ location.reload(); },1400);
+      }
+    }catch(e){
+      if(msg){ msg.textContent="Senkron sırasında hata: "+(e&&e.message?e.message:"bilinmeyen"); msg.style.color="#f87171"; }
+    }finally{ btn.disabled=false; btn.textContent=old; }
+  };
+
+  var logoutBtn=document.getElementById("dhLogoutBtn");
+  if(logoutBtn) logoutBtn.onclick=async function(){
+    if(!confirm("Çıkış yapılsın mı? Verilerin buluta kaydedilecek.")) return;
+    var old=logoutBtn.textContent;
+    logoutBtn.disabled=true; logoutBtn.textContent="⏳ Kaydediliyor...";
+    if(msg){ msg.textContent="Veriler buluta yükleniyor..."; msg.style.color="#9fb3d9"; }
+    try{
+      if(window.DHCloudSync && window.DHCloudSync.signOut) await window.DHCloudSync.signOut();
+      else { try{ localStorage.removeItem("dh_logged_in"); localStorage.removeItem("dh_logged_uid"); localStorage.removeItem("dh_logged_email"); }catch(e){} }
+    }catch(e){}
+    location.href="./login.html";
+  };
+})();
+
+/* ---- Yedeği indir / Yedekten geri yükle ---- */
+(function(){
+  var backupBtn=document.getElementById("dhBackupBtn");
+  var restoreInput=document.getElementById("dhRestoreFile");
+  var msg=document.getElementById("dhBackupMsg");
+  if(!backupBtn) return;
+
+  /* Anahtar listesi cloud-sync.js'ten alınır — burada KOPYA tutulmaz,
+     yoksa yeni anahtarlar eklendiğinde yedeğe girmez. */
+  function keySets(){
+    try{ if(window.DHCloudSync && DHCloudSync.keys) return DHCloudSync.keys(); }catch(e){}
+    return { list:["dh_ai_prompt_teacher","dh-study-tracker-v1","dh-ocr-sentences-v1","dh-teacher-policy-v1",
+      "dh-notif-settings-v1","dh-progress-mirror-v1","groqApiKeys","cerebrasApiKeys","geminiApiKeys",
+      "dh-model-groq","dh-model-cerebras","dh-model-gemini","dh-disabled-keys","selectedTeacherAvatar",
+      "dh-teacher-mem","dh-activity-log-v1"],
+      prefixes:["sm:","mas:","ev:","modscore:","gramprof:","story:","dh-koc-"] };
+  }
+  function openSrsDB(){
+    return new Promise(function(res,rej){
+      var r=indexedDB.open("sentence-mode",1);
+      r.onupgradeneeded=function(){ var db=r.result; if(!db.objectStoreNames.contains("kv")) db.createObjectStore("kv"); };
+      r.onsuccess=function(){ res(r.result); }; r.onerror=function(){ rej(r.error); };
+    });
+  }
+  function readAllKV(){   /* img: hariç tüm modül/kelime verisi */
+    return openSrsDB().then(function(db){ return new Promise(function(res,rej){
+      var out={}, rq=db.transaction("kv","readonly").objectStore("kv").openCursor();
+      rq.onsuccess=function(){ var c=rq.result;
+        if(c){ if(typeof c.key==="string" && c.key.indexOf("img:")!==0) out[c.key]=c.value; c.continue(); } else res(out); };
+      rq.onerror=function(){ rej(rq.error); };
+    });}).catch(function(){ return {}; });
+  }
+  function writeKV(key,val){
+    return openSrsDB().then(function(db){ return new Promise(function(res,rej){
+      var tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(val,key);
+      tx.oncomplete=function(){ res(true); }; tx.onerror=function(){ rej(tx.error); };
+    });}).catch(function(){ return false; });
+  }
+
+  backupBtn.onclick=async function(){
+    if(msg){ msg.style.color="#9fb3d9"; msg.textContent="Yedek hazırlanıyor…"; }
+    try{
+      var K=keySets(), allKV=await readAllKV(), ls={};
+      K.list.forEach(function(k){ try{ var v=localStorage.getItem(k); if(v!=null) ls[k]=v; }catch(e){} });
+      try{
+        for(var i=0;i<localStorage.length;i++){
+          var kk=localStorage.key(i); if(!kk) continue;
+          for(var p=0;p<K.prefixes.length;p++){
+            if(kk.indexOf(K.prefixes[p])===0){ var vv=localStorage.getItem(kk); if(vv!=null) ls[kk]=vv; break; }
+          }
+        }
+      }catch(e){}
+      var errors=[]; try{ if(window.LearningErrorDB && LearningErrorDB.all) errors=await LearningErrorDB.all(); }catch(e){}
+      var at=new Date().toISOString();
+      var payload={ app:"dilharita-full", version:4, exportedAt:at, kv:allKV, ls:ls, errors:errors };
+      var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement("a"); a.href=url; a.download="dilharita-yedek-"+at.slice(0,10)+".json";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+      if(msg){ msg.style.color="#34d399"; msg.textContent="✓ Tam yedek indirildi."; }
+    }catch(e){ if(msg){ msg.style.color="#f87171"; msg.textContent="Yedek alınamadı."; } }
+  };
+
+  if(restoreInput) restoreInput.onchange=function(ev){
+    var file=ev.target.files && ev.target.files[0]; if(!file) return;
+    var reader=new FileReader();
+    reader.onload=async function(){
+      var data; try{ data=JSON.parse(reader.result); }
+      catch(e){ if(msg){ msg.style.color="#f87171"; msg.textContent="Dosya okunamadı (geçerli bir yedek değil)."; } ev.target.value=""; return; }
+      var kvAll=data.kv||data.srsKV||{};
+      if(data.lsrsKV){ for(var lk2 in data.lsrsKV){ if(data.lsrsKV.hasOwnProperty(lk2)) kvAll[lk2]=data.lsrsKV[lk2]; } }
+      if(!confirm("Yedek yüklensin mi? (Bu cihazdaki mevcut ilerleme buluttaki en güncel haliyle birleşecek.)")){ ev.target.value=""; return; }
+      try{
+        for(var k in kvAll){ if(kvAll.hasOwnProperty(k)) await writeKV(k, kvAll[k]); }
+        if(data.ls){ for(var lk in data.ls){ if(data.ls.hasOwnProperty(lk)) localStorage.setItem(lk, data.ls[lk]); } }
+        try{ if(window.DHProgress && DHProgress.applyMirror) await DHProgress.applyMirror(); }catch(e){}
+        try{ if(window.DHCloudSync && DHCloudSync.push) await DHCloudSync.push(); }catch(e){}
+        if(data.errors && data.errors.length){ try{ if(window.LearningErrorDB && LearningErrorDB.bulkMerge) await LearningErrorDB.bulkMerge(data.errors); }catch(e){} }
+        if(msg){ msg.style.color="#34d399"; msg.textContent="✓ Tam geri yüklendi ve buluta yazıldı. Sayfayı yenile."; }
+      }catch(e){ if(msg){ msg.style.color="#f87171"; msg.textContent="Geri yükleme hatası."; } }
+      ev.target.value="";
+    };
+    reader.readAsText(file);
+  };
+})();
+
+/* ---- Geri Dön (bulut anlık görüntüsü) ---- */
+(function(){
+  var b=document.getElementById("dhSnapBtn");
+  if(!b) return;
+  b.onclick=async function(){
+    var cs=window.DHCloudSync;
+    var msg=document.getElementById("dhBackupMsg");
+    if(!cs || !cs.snapList){ if(msg){ msg.style.color="#f59e0b"; msg.textContent="Bulut bağlantısı hazır değil."; } return; }
+    var list=cs.snapList()||[];
+    if(!list.length){ if(msg){ msg.style.color="#f59e0b"; msg.textContent="Henüz geri dönülecek bir gün kaydı yok."; } return; }
+    var day=prompt("Hangi güne dönülsün?\n"+list.join("\n"));
+    if(!day) return;
+    if(list.indexOf(day)<0){ if(msg){ msg.style.color="#f59e0b"; msg.textContent="Listede olmayan bir gün yazdın."; } return; }
+    await cs.restoreSnap(day);
+    location.reload();
+  };
+})();
+
+/* ---- Eski Verileri Temizle (yalnız bu uygulamanın kullanılmayan veritabanları) ---- */
+(function(){
+  var LEGACY_DBS=["DilHaritasiDB_v1","dil_haritasi_pro_indexeddb_v3","dil_haritasi_pro_indexeddb_v4","sentenceLibraryCacheV2"];
+  var b=document.getElementById("dhLegacyCleanBtn");
+  if(!b) return;
+  b.onclick=function(){
+    if(!confirm("Şu ESKİ veritabanları silinecek (mevcut ilerlemen ETKİLENMEZ):\n\n• "+LEGACY_DBS.join("\n• ")+"\n\nDevam?")) return;
+    LEGACY_DBS.forEach(function(name){ try{ indexedDB.deleteDatabase(name); }catch(e){} });
+    var old="🗑 Eski Verileri Temizle";
+    b.textContent="✓ Temizlendi";
+    setTimeout(function(){ b.textContent=old; },3000);
+  };
+})();
+
+/* ---- Bildirim kartı (aç/kapa, saat, test) ---- */
+(function(){
+  var toggle=document.getElementById("dhNotifToggle");
+  var slider=document.getElementById("dhNotifSlider");
+  var body  =document.getElementById("dhNotifBody");
+  var timeEl=document.getElementById("dhNotifTime");
+  var testBtn=document.getElementById("dhNotifTest");
+  var card  =document.getElementById("dhNotifCard");
+  var nmsg  =document.getElementById("dhNotifMsg");
+  if(!toggle||!card) return;
+  function setSliderOn(on){
+    if(!slider) return;
+    slider.style.background=on?"#16a34a":"#334155";
+    slider.innerHTML='<span style="position:absolute;top:3px;left:'+(on?"27px":"3px")+';width:24px;height:24px;background:#fff;border-radius:50%;transition:.2s"></span>';
+  }
+  function refreshUI(){
+    var N=window.DHNotifications; if(!N||!N.supported()) return;
+    var s=N.load()||{}, on=!!s.enabled && N.permission()==="granted";
+    toggle.checked=on; setSliderOn(on);
+    if(body) body.style.display=on?"block":"none";
+    if(timeEl && s.hour!=null) timeEl.value=String(s.hour).padStart(2,"0")+":"+String(s.minute||0).padStart(2,"0");
+  }
+  toggle.onchange=function(){
+    var N=window.DHNotifications; if(!N) return;
+    if(toggle.checked){ N.enable(20,0).then(refreshUI); }
+    else { N.disable(); setSliderOn(false); if(body) body.style.display="none"; }
+  };
+  if(timeEl) timeEl.onchange=function(){
+    var N=window.DHNotifications; if(!N||!N.setTime) return;
+    var p=String(timeEl.value||"20:00").split(":");
+    N.setTime(parseInt(p[0],10)||20, parseInt(p[1],10)||0);
+    if(nmsg){ nmsg.style.color="#34d399"; nmsg.textContent="✓ Saat kaydedildi: "+timeEl.value; }
+  };
+  if(testBtn) testBtn.onclick=function(){
+    var N=window.DHNotifications;
+    if(!N||!N.test){ if(nmsg){ nmsg.style.color="#f59e0b"; nmsg.textContent="Bildirim sistemi hazır değil."; } return; }
+    N.test();
+    if(nmsg){ nmsg.style.color="#9fb3d9"; nmsg.textContent="Test bildirimi gönderildi."; }
+  };
+  if(window.__dhStorageReady) refreshUI();
+  else window.addEventListener("dh-storage-ready", refreshUI, {once:true});
+})();
+
+/* ---- Seri (streak) kartı ---- */
+(function(){
+  function fillStreak(){
+    var slot=document.getElementById("dhStreakSlot");
+    if(!slot||!window.DHStreak) return;
+    try{ slot.innerHTML=DHStreak.card(); slot.onclick=function(){ DHStreak.show(); }; }catch(e){}
+  }
+  if(window.__dhStorageReady) setTimeout(fillStreak,300);
+  else window.addEventListener("dh-storage-ready", fillStreak, {once:true});
+})();
+
+/* ---- Service Worker (çevrimdışı çalışma / PWA) ---- */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", function(){
+    try{ navigator.serviceWorker.register("./sw.js?v=2", {scope:"./"}); }catch(e){}
+  });
+}
+</script>
+
 <script src="./koc.js?v=2"></script>
 <script>
 /* 🏅 Başarı rozetleri — mevcut verilerden, ek maliyetsiz hesaplanır */
