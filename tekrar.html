@@ -123,6 +123,7 @@ try{
 <script src="./coach-bubble.js?v=3"></script>
 <script src="./cloud-sync-v8.js?v=1"></script>
 <script src="./ai-providers.js?v=2"></script>
+<script src="./gemini-bridge.js?v=1"></script>
 <script src="./word-popup.js?v=2"></script>
 <script src="./image-addon.js?v=restore1"></script>
 
@@ -607,6 +608,59 @@ try{
     runCheck(120, false);
   };
 
+  /* 💎 Gemini hakemliği: kopyala→sor→yapıştır turu. Cevap EVET ise
+     "Bildim" kilidini açar, HAYIR ise açıklamayı gösterir. */
+  window.askGeminiReferee = function(userInputValue, targetValue){
+    if(!window.DHGemini) return;
+    var criteria = ($("aiPromptInput") && $("aiPromptInput").value.trim()) || defaultAiPrompt;
+    var prompt =
+      criteria + "\n\n" +
+      "Referans cümle: " + targetValue + "\n" +
+      "Öğrencinin cümlesi: " + userInputValue + "\n\n" +
+      "Cevabına MUTLAKA tek kelimeyle başla: EVET ya da HAYIR.\n" +
+      "Sonra 1-2 cümleyle Türkçe gerekçe yaz; hata varsa doğrusunu göster.";
+    var waitEl = document.getElementById("semWait");
+    if(!waitEl){
+      waitEl = document.createElement("div");
+      waitEl.id = "semWait";
+      waitEl.style.cssText = "margin-top:8px;font-size:12.5px;font-weight:700;line-height:1.45";
+      $("score").appendChild(waitEl);
+    }
+    DHGemini.ask({
+      title: "💎 Gemini hakem kararı",
+      hint: "Gemini'nin cevabını buraya yapıştır ve Enter'a bas…",
+      prompt: prompt,
+      parse: DHGemini.parsers.yesNo,
+      onResult: function(res){
+        var note = String(res.note||"").replace(/^\s*(evet|hay[ıi]r|yes|no)\s*[.,:!—-]*\s*/i,"").trim();
+        var btnG = document.getElementById("btnGeminiRef"); if(btnG) btnG.style.display="none";
+        if(res.ok){
+          lastSemanticOk = true; semanticNo = false;
+          waitEl.style.color = "#4ade80";
+          waitEl.textContent = "💎 ✓ Gemini onayladı — farklı ama geçerli bir ifade. Bildim'e hazır.";
+          if(note){
+            var d=document.createElement("div");
+            d.style.cssText="margin-top:5px;font-size:11.5px;font-weight:600;color:#9fb3d9";
+            d.textContent="ℹ️ "+note.slice(0,400);
+            waitEl.appendChild(d);
+          }
+          try{ var dbox=document.querySelector(".diff-box"); if(dbox) dbox.style.opacity="0.55"; }catch(e){}
+        }else{
+          semanticNo = true; lastSemanticOk = false;
+          waitEl.style.color = "#f87171";
+          waitEl.textContent = "💎 Gemini kabul etmedi.";
+          if(note){
+            var d2=document.createElement("div");
+            d2.style.cssText="margin-top:5px;font-size:11.5px;font-weight:600;color:#fbbf24";
+            d2.textContent=note.slice(0,400);
+            waitEl.appendChild(d2);
+          }
+          showExplain(curT,false);
+        }
+      }
+    });
+  };
+
   function reveal(auto){
     if(revealed) return; revealed=true;
     $("a").classList.remove("hid");
@@ -644,6 +698,17 @@ try{
             window.triggerAiSemanticCheck(userInputValue, curT.en);
           };
           $("score").appendChild(btnSem);
+        }
+        /* 💎 GEMINI HAKEM: anahtar gerekmez. Prompt kopyalanır, Gemini'de sorulur,
+           cevabı yapıştırınca karar burada uygulanır (kopyala→yapıştır köprüsü). */
+        if(window.DHGemini){
+          var btnGem = document.createElement("button");
+          btnGem.id = "btnGeminiRef";
+          btnGem.className = "b-sem-chk";
+          btnGem.style.background = "#8b5cf6";
+          btnGem.innerHTML = "💎 Gemini'ye Sor (hakem)";
+          btnGem.onclick = function(){ window.askGeminiReferee(userInputValue, curT.en); };
+          $("score").appendChild(btnGem);
         }
       }
     }
