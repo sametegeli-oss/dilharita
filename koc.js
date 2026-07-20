@@ -505,4 +505,8 @@
   }
   if(document.readyState!=="loading") setTimeout(run,1200);
   else document.addEventListener("DOMContentLoaded",function(){ setTimeout(run,1200); });
+
+  /* Bulut senkronu bittiğinde kart ilk çizimden ESKİ kalmasın: diğer cihazda
+     tamamlanan adımlar ve güncellenen sayaçlar hemen görünsün. */
+  window.addEventListener("dh-cloud-synced", function(){ setTimeout(run,150); });
 })();

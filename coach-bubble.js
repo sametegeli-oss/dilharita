@@ -616,6 +616,16 @@
   /* ---------- 🔥 GÜNLÜK TAKİP (streak/meşale) — KANITLANDI: dh-study-tracker-v1'i
      sistemde hiçbir dosya yazmıyordu, bu yüzden meşale hep "0 gün" kalıyordu.
      Artık her gerçek cevap değerlendirmesinde bugünün kaydı burada oluşturulur/güncellenir. */
+  /* Bu cihaza özel kimlik. Senkron listesinde OLMADIĞI için her cihazda
+     farklı kalır — cihaz bazlı sayaçların temeli budur. */
+  function deviceId(){
+    var k="dh-device-id";
+    try{
+      var v=localStorage.getItem(k);
+      if(!v){ v="d"+Date.now().toString(36)+Math.random().toString(36).slice(2,8); localStorage.setItem(k,v); }
+      return v;
+    }catch(e){ return "d0"; }
+  }
   function bumpDailyTracker(kind){
     try{
       var K="dh-study-tracker-v1";
@@ -624,14 +634,23 @@
       var today=new Date().toISOString().slice(0,10);
       if(!tr.days[today]) tr.days[today]={date:today,lessons:0,minutes:0,sentences:0,videos:0,reviews:0,errors:0};
       var d=tr.days[today];
-      if(kind==="sentence") d.sentences=(d.sentences||0)+1;
-      else if(kind==="review") d.reviews=(d.reviews||0)+1;
-      else if(kind==="video") d.videos=(d.videos||0)+1;
-      else if(kind==="lesson") d.lessons=(d.lessons||0)+1;
-      else if(kind==="speaking") d.speaking=(d.speaking||0)+1;
+      var field = kind==="sentence"?"sentences" : kind==="review"?"reviews"
+                : kind==="video"?"videos" : kind==="lesson"?"lessons"
+                : kind==="speaking"?"speaking" : null;
+      if(!field) return;
+      d[field]=(d[field]||0)+1;
+      /* CİHAZ BAZLI KOVA: aynı gün hem telefonda hem bilgisayarda çalışınca
+         toplam doğru çıksın diye her cihazın katkısı ayrı tutulur.
+         Birleştirmede kovalar toplanır (bkz. cloud-sync mergeTracker) —
+         böylece tekrar tekrar senkronda çift sayım olmaz. */
+      var dev=deviceId();
+      if(!d.by) d.by={};
+      if(!d.by[dev]) d.by[dev]={};
+      d.by[dev][field]=(d.by[dev][field]||0)+1;
       localStorage.setItem(K, JSON.stringify(tr));
     }catch(e){}
   }
+  window.dhDeviceId=deviceId;
   window.dhBumpDailyTracker=bumpDailyTracker;
 
   var __dhSession={correct:0, wrong:0};

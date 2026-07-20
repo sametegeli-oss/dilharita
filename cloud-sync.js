@@ -32,7 +32,10 @@
     "dh-model-groq", "dh-model-cerebras", "dh-model-gemini", "dh-disabled-keys",
     "selectedTeacherAvatar", "dh-teacher-mem", "dh-activity-log-v1"
   ];
-  var LS_PREFIXES = ["sm:", "mas:", "ev:", "modscore:", "gramprof:", "story:"];
+  /* "dh-koc-" → günlük koç planı, tamamlanan adımlar, gün epoch'u ve hedef.
+     Bunlar cihaza özeldi; telefonda yapılan çalışma bilgisayarda görünmüyordu.
+     Artık senkrona dahil (birleştirme kuralları için mergeKoc'a bak). */
+  var LS_PREFIXES = ["sm:", "mas:", "ev:", "modscore:", "gramprof:", "story:", "dh-koc-"];
   var MAX_VAL = 200000;      // alan başına üst sınır (Firestore alan limiti 1MB)
   var TRACKER = "dh-study-tracker-v1";
   var MIRROR  = "dh-progress-mirror-v1";
@@ -58,6 +61,47 @@
     }
     return out.slice(-30);
   }
+  /* ── KOÇ VERİSİ BİRLEŞTİRME ("dh-koc-*") ───────────────────
+     Neden özel kural gerekiyor: bu anahtarlarda "son yazan kazanır"
+     mantığı iş kaybettirir. Telefonda 2 adım, bilgisayarda 1 adım
+     tamamladıysan düz üzerine yazma birini siler.
+       • steps-done-<gün> → BİRLEŞİM (iki cihazdaki tüm tamamlamalar)
+       • plan-<gün>       → ÖNCE KURULAN kazanır (plan gün içinde sabit kalmalı)
+       • epoch-<gün>      → GEÇ olan kazanır ("sonraki günü başlat" en son nerede
+                            basıldıysa sıfır noktası odur)
+       • goal             → YENİ olan kazanır (setAt)                          */
+  function mergeKoc(key, localStr, remoteStr){
+    if(localStr==null || localStr==="") return remoteStr;
+    if(remoteStr==null || remoteStr==="") return localStr;
+    var L=null,R=null;
+    try{ L=JSON.parse(localStr); }catch(e){}
+    try{ R=JSON.parse(remoteStr); }catch(e){}
+    if(!L || typeof L!=="object") return remoteStr;
+    if(!R || typeof R!=="object") return localStr;
+
+    if(key.indexOf("dh-koc-steps-done-")===0){
+      var out={}, k;
+      for(k in R){ if(R.hasOwnProperty(k) && R[k]) out[k]=R[k]; }
+      for(k in L){ if(L.hasOwnProperty(k) && L[k]) out[k]=L[k]; }
+      return JSON.stringify(out);
+    }
+    if(key.indexOf("dh-koc-plan-")===0){
+      var lt=(L.madeAt&&L.madeAt.ts)||0, rt=(R.madeAt&&R.madeAt.ts)||0;
+      if(lt && rt) return (lt<=rt) ? localStr : remoteStr;   /* önce kurulan */
+      if(rt && !lt) return remoteStr;
+      return localStr;
+    }
+    if(key.indexOf("dh-koc-epoch-")===0){
+      /* epoch'ta zaman damgası yok: daha ileri sayaçlar daha geç basılmıştır */
+      var ls=(L.sentences||0)+(L.reviews||0)+(L.lessons||0)+(L.videos||0);
+      var rs=(R.sentences||0)+(R.reviews||0)+(R.lessons||0)+(R.videos||0);
+      return (rs>ls) ? remoteStr : localStr;
+    }
+    if(key==="dh-koc-goal"){
+      return ((R.setAt||0) > (L.setAt||0)) ? remoteStr : localStr;
+    }
+    return localStr;
+  }
   function mergeTracker(localStr, remoteStr){
     var L={},R={};
     try{ L=JSON.parse(localStr||"{}")||{}; }catch(e){}
@@ -71,14 +115,31 @@
     for(var day in all){
       var a=ld[day], b=rd[day];
       if(a&&b){
-        days[day]={ date:day,
-          lessons:Math.max(a.lessons||0,b.lessons||0),
-          minutes:Math.max(a.minutes||0,b.minutes||0),
-          sentences:Math.max(a.sentences||0,b.sentences||0),
-          videos:Math.max(a.videos||0,b.videos||0),
-          reviews:Math.max(a.reviews||0,b.reviews||0),
-          errors:Math.max(a.errors||0,b.errors||0),
-          events:mergeEvents(a.events,b.events) };
+        /* CİHAZ KOVALARI: her cihazın katkısı ayrı tutulur. Aynı cihazın iki
+           kopyasında BÜYÜK olan alınır (idempotent), sonra cihazlar TOPLANIR.
+           Böylece telefon 6 + bilgisayar 4 = 10 olur; tekrarlanan senkronlarda
+           şişmez. Kovasız eski günlerde eski davranış (büyük olan) korunur. */
+        var by={}, dev, f, FIELDS=["lessons","minutes","sentences","videos","reviews","errors","speaking"];
+        [a.by||{}, b.by||{}].forEach(function(src){
+          for(var dv in src){
+            if(!src.hasOwnProperty(dv)) continue;
+            if(!by[dv]) by[dv]={};
+            for(var fl in src[dv]){
+              if(!src[dv].hasOwnProperty(fl)) continue;
+              by[dv][fl]=Math.max(by[dv][fl]||0, src[dv][fl]||0);
+            }
+          }
+        });
+        var sum={};
+        for(dev in by){ if(!by.hasOwnProperty(dev)) continue;
+          for(f in by[dev]){ if(by[dev].hasOwnProperty(f)) sum[f]=(sum[f]||0)+(by[dev][f]||0); } }
+        days[day]={ date:day, events:mergeEvents(a.events,b.events) };
+        if(Object.keys(by).length) days[day].by=by;
+        FIELDS.forEach(function(fl){
+          var legacy=Math.max(a[fl]||0, b[fl]||0);
+          var val=Math.max(legacy, sum[fl]||0);
+          if(val || a[fl]!=null || b[fl]!=null) days[day][fl]=val;
+        });
       } else {
         days[day]=a||b;
         if(days[day]&&days[day].events&&days[day].events.length>30)
@@ -307,6 +368,7 @@
           else if(rk===TRACKER){ localStorage.setItem(rk, mergeTracker(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk===MIRROR){ localStorage.setItem(rk, mergeMirror(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk===ACTLOG){ localStorage.setItem(rk, mergeActivityLog(localStorage.getItem(rk), rv)); pulled++; }
+          else if(rk.indexOf("dh-koc-")===0){ localStorage.setItem(rk, mergeKoc(rk, localStorage.getItem(rk), rv)); pulled++; }
           else { localStorage.setItem(rk, rv); pulled++; }
         }catch(e){}
       }
@@ -333,6 +395,8 @@
         ? ("buluta yazıldı "+Math.round((pres.size||0)/1024)+"KB"+(pres.dropped?(" ("+pres.dropped+" büyük kayıt atlandı)"):""))
         : ("buluta YAZILAMADI: "+(pres&&pres.error||"?"));
       try{ localStorage.setItem("dh-last-sync-ts", String(Date.now())); }catch(e){}
+      /* Ekrandaki kartlar (koç planı, sayaçlar) taze veriyle yeniden çizilsin */
+      try{ window.dispatchEvent(new CustomEvent("dh-cloud-synced",{detail:{pulled:pulled}})); }catch(e){}
       updateBadge(true);
       return { ok:true, message:"✓ "+parts.join(", ")+" · "+pmsg+". [cihazda modül:"+Object.keys(kvNow).length+" · kelime:"+mirCount+"]" };
     }catch(e){
