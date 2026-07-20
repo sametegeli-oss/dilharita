@@ -79,22 +79,46 @@ function teachCtx(){
     return o;
   }catch(e){ return null; }
 }
+function urlFocus(){
+  try{ var f=new URLSearchParams(location.search).get("focus")||""; return f.trim(); }catch(e){ return ""; }
+}
 function gatherErrors(){
   return new Promise(function(done){
     var ctx=teachCtx();
-    if(ctx && ctx.items && ctx.items.length) return done({label:ctx.label||"", items:ctx.items.slice(0,8)});
-    if(!(global.LearningErrorDB && global.LearningErrorDB.all)) return done({label:"",items:[]});
+    /* KOÇ ODAĞI ÖNCELİKLİDİR: koç seni belirli bir konuya gönderdiyse
+       ("Öğretmenle çalış — konu: X"), Gemini dersi de o konudan kurulmalı,
+       deftere göre genelleşmemeli. */
+    if(ctx && ctx.items && ctx.items.length)
+      return done({label:ctx.label||urlFocus()||"", items:ctx.items.slice(0,8), from:"coach"});
+    if(ctx && ctx.target)   /* tek cümlelik odak da geçerli malzemedir */
+      return done({label:ctx.label||urlFocus()||"", from:"coach",
+        items:[{target:ctx.target, answer:ctx.answer||"", tr:ctx.tr||"", type:ctx.type||""}]});
+
+    var focus=urlFocus();
+    var JUNK=/^(review|tekrar|practice|pratik|study|genel|general|plan|devam)$/i;
+    if(focus && JUNK.test(focus)) focus="";
+
+    if(!(global.LearningErrorDB && global.LearningErrorDB.all))
+      return done({label:focus, items:[], from:focus?"focus":""});
     Promise.resolve(global.LearningErrorDB.all()).then(function(all){
       all=(all||[]).filter(function(r){ return r && r.target; });
-      var t0=new Date(); t0.setHours(0,0,0,0);
-      var pick=all.filter(function(r){ return new Date(r.createdAt||0)>=t0; });
+      var TL=global.DH_COACH_TYPE_LABEL||{};
+      var pick=[];
+      /* URL'de gerçek bir konu etiketi varsa önce o türdeki hataları getir */
+      if(focus){
+        pick=all.filter(function(r){ return (r.primaryType||"")===focus || (r.types||[]).indexOf(focus)>=0; });
+      }
+      if(!pick.length){
+        var t0=new Date(); t0.setHours(0,0,0,0);
+        pick=all.filter(function(r){ return new Date(r.createdAt||0)>=t0; });
+      }
       if(!pick.length) pick=all.slice().sort(function(a,b){ return (b.reviewPriority||0)-(a.reviewPriority||0); });
       pick=pick.slice(0,8);
-      var TL=global.DH_COACH_TYPE_LABEL||{};
-      var lbl=pick.length?(TL[pick[0].primaryType]||pick[0].primaryType||""):"";
-      done({ label:lbl, items:pick.map(function(r){
+      var lbl=focus ? (TL[focus]||focus)
+                    : (pick.length?(TL[pick[0].primaryType]||pick[0].primaryType||""):"");
+      done({ label:lbl, from:focus?"focus":"", items:pick.map(function(r){
         return { target:r.target, answer:r.answer||"", tr:r.sentenceTR||"", type:r.primaryType||"" }; }) });
-    }).catch(function(){ done({label:"",items:[]}); });
+    }).catch(function(){ done({label:focus,items:[],from:focus?"focus":""}); });
   });
 }
 
@@ -105,18 +129,23 @@ function buildPrompt(mat){
       +(it.answer?("  |  Benim yazdığım: "+it.answer):"")
       +(it.tr?("  |  Türkçesi: "+it.tr):"");
   });
+  var topic = mat.label
+    ? (mat.from==="coach"
+        ? "Koçum beni bugün ŞU KONUYA çalışmaya gönderdi: "+mat.label+". Dersi bu konu üzerine kur."
+        : "Bugünün konusu: "+mat.label)
+    : "Bugünün konusu: kendi hatalarım";
   return [
     "Sen benim İngilizce öğretmenimsin. Ben Türkçe konuşuyorum, seviyem "+levelOf()+".",
     "Bu sohbet baştan sona bir DERS olacak; ben burada seninle çalışacağım.",
     "",
-    (mat.label?("Bugünün konusu: "+mat.label):"Bugünün konusu: kendi hatalarım"),
+    topic,
     "",
     (lines.length
-      ? "HATA DEFTERİMDEN GERÇEK HATALARIM:\n"+lines.join("\n")
-      : "Hata defterim şu an boş; seviyeme uygun konulardan başlat."),
+      ? "HATA DEFTERİMDEN BU KONUYLA İLGİLİ GERÇEK HATALARIM:\n"+lines.join("\n")
+      : "Hata defterim şu an boş; yukarıdaki konudan seviyeme uygun başlat."),
     "",
     "DERSİ ŞÖYLE YÜRÜT:",
-    "1) Kısa selam + bugün ne çalışacağımızı TEK cümlede söyle.",
+    "1) Kısa selam + bugün bu konuda ne çalışacağımızı TEK cümlede söyle. Konu dışına çıkma.",
     "2) Hataları kök nedene göre grupla. Her grup için 2-3 cümlelik Türkçe açıklama yap ve benim kendi yanlış cümlemi yanlış→doğru göster.",
     "3) Sonra alıştırma yaptır: BİR SEFERDE TEK SORU sor ve cevabımı bekle. Uzun listeler verme.",
     "4) Cevabımı düzelt, tek satır Türkçe ipucu ver, sonra bir sonraki soruya geç.",
