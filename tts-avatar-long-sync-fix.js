@@ -25,7 +25,63 @@ let mouthTimer = null;
 let savedSrc = new WeakMap();
 let mouthIndex = 0;
 
-function clean(s){ return String(s||"").replace(/\s+/g," ").trim(); }
+/* ── MERKEZİ TTS AYARLARI (Türkçe/İngilizce ayrı hız & pitch) ──────
+   Üç ayrı motor (bu dosya, ai-teacher-prompt-tts.js, teacher.html) artık
+   rate/pitch değerlerini TEK yerden okur. Kullanıcı ⚙ panelinden değiştirir,
+   localStorage'da saklanır. */
+var DH_TTS_DEFAULTS={ trRate:0.96, trPitch:1.0, enRate:0.88, enPitch:1.0 };
+function dhTtsCfg(){
+  try{
+    var s=JSON.parse(localStorage.getItem("dh-tts-voice-v1")||"null");
+    if(s&&typeof s==="object"){
+      return {
+        trRate:clampNum(s.trRate,0.5,1.6,DH_TTS_DEFAULTS.trRate),
+        trPitch:clampNum(s.trPitch,0.5,1.6,DH_TTS_DEFAULTS.trPitch),
+        enRate:clampNum(s.enRate,0.5,1.6,DH_TTS_DEFAULTS.enRate),
+        enPitch:clampNum(s.enPitch,0.5,1.6,DH_TTS_DEFAULTS.enPitch)
+      };
+    }
+  }catch(e){}
+  return Object.assign({},DH_TTS_DEFAULTS);
+}
+function clampNum(v,lo,hi,def){ v=parseFloat(v); if(isNaN(v))return def; return Math.min(hi,Math.max(lo,v)); }
+function dhApplyVoice(u, lang){
+  var c=dhTtsCfg(), tr=(lang==="tr-TR");
+  u.rate = tr?c.trRate:c.enRate;
+  u.pitch= tr?c.trPitch:c.enPitch;
+}
+window.DH_TTS = {
+  get:dhTtsCfg,
+  set:function(patch){
+    var cur=dhTtsCfg(); var next=Object.assign(cur,patch||{});
+    try{ localStorage.setItem("dh-tts-voice-v1", JSON.stringify(next)); }catch(e){}
+    return next;
+  },
+  reset:function(){ try{ localStorage.removeItem("dh-tts-voice-v1"); }catch(e){} return Object.assign({},DH_TTS_DEFAULTS); },
+  defaults:Object.assign({},DH_TTS_DEFAULTS),
+  apply:dhApplyVoice,
+  clean:dhSpeakClean
+};
+
+/* Seslendirmeden ÖNCE metni temizle: yıldız, kare, markdown, emoji, madde
+   imleri, kod/JSON süsleri okunmasın. Görsel metne DOKUNMAZ; sadece TTS'e
+   giden kopyayı sadeleştirir. */
+function dhSpeakClean(s){
+  s=String(s||"");
+  s=s.replace(/<br\s*\/?>/gi," ").replace(/<[^>]+>/g," ");   // html
+  s=s.replace(/```[\s\S]*?```/g," ").replace(/`+/g," ");      // kod blokları
+  s=s.replace(/!\[[^\]]*\]\([^)]*\)/g," ").replace(/\[([^\]]*)\]\([^)]*\)/g,"$1"); // md görsel/link
+  s=s.replace(/[*_~#>`^=|]+/g," ");                            // * _ ~ # > ` ^ = |
+  s=s.replace(/\[\[|\]\]/g," ").replace(/[\[\]{}<>]/g," ");    // köşeli/süslü/açı parantez
+  s=s.replace(/["“”„‟«»]+/g," ");                              // tırnaklar
+  s=s.replace(/[•·▪◦‣∙●○■□▶►▸→←↔↑↓⇒⇐➜➤✓✔✗✘★☆]/g," "); // madde/ok/tik işaretleri
+  s=s.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\uFE0F]/gu," "); // emoji/simge
+  s=s.replace(/(^|\s)[-–—]+(\s|$)/g," ");                      // ayraç tireler ("- madde", "— ")
+  s=s.replace(/\s*[:;]\s*(?=\s|$)/g," ");                      // yalnız kalan : ;
+  s=s.replace(/\s{2,}/g," ").trim();
+  return s;
+}
+function clean(s){ return dhSpeakClean(s); }
 function isTurkish(text){
   const s=String(text||"");
   if(/[ğüşöçıİĞÜŞÖÇ]/.test(s)) return true;
@@ -294,8 +350,7 @@ function speakChunkList(chunks){
     const c=chunks[i++];
     const u=new SpeechSynthesisUtterance(c.text);
     u.lang=c.lang;
-    u.rate=c.lang==="tr-TR" ? .96 : .88;
-    u.pitch=1;
+    dhApplyVoice(u, c.lang);
     u.__longTTSAvatarSync = true;
     let ended=false;
     function advance(){
@@ -405,6 +460,11 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
       "  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:none;}",
       "#mouthSpeedPanel.open{display:block;}",
       "#mouthSpeedPanel h4{margin:0 0 4px;font-size:14px;font-weight:600;}",
+      ".dh-voice-grid{display:grid;grid-template-columns:auto 1fr auto;gap:6px 8px;align-items:center;}",
+      ".dh-voice-grid b{font-size:11px;font-weight:700;white-space:nowrap;}",
+      ".dh-voice-grid input[type=range]{width:100%;margin:0;}",
+      ".dh-vv{font-size:10.5px;opacity:.7;font-family:monospace;min-width:30px;text-align:right;}",
+      "#mouthSpeedPanel #vTestTr,#mouthSpeedPanel #vTestEn,#mouthSpeedPanel #vReset{flex:1;padding:7px 4px;font-size:11px;border:1px solid rgba(255,255,255,.25);border-radius:8px;background:rgba(255,255,255,.08);color:inherit;cursor:pointer;}",
       "#mouthSpeedPanel p{margin:0 0 10px;font-size:11px;opacity:.7;line-height:1.4;}",
       "#mouthSpeedRange{width:100%;margin:6px 0 2px;}",
       "#mouthSpeedLabels{display:flex;justify-content:space-between;font-size:11px;opacity:.8;}",
@@ -438,8 +498,21 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
       '<p>A\u011f\u0131z hareketi sesle uyumsuzsa buradan ayarlay\u0131n. De\u011fi\u015fiklik kaydedilir.</p>' +
       '<input id="mouthSpeedRange" type="range" min="0.5" max="2.0" step="0.05">' +
       '<div id="mouthSpeedLabels"><span>H\u0131zl\u0131</span><span>Normal</span><span>Yava\u015f</span></div>' +
-      '<button id="mouthSpeedTest" type="button">\ud83d\udd0a Dene</button>' +
-      '<button id="mouthSpeedClose" type="button">Tamam</button>';
+      '<hr style="border:0;border-top:1px solid rgba(255,255,255,.12);margin:12px 0">' +
+      '<h4>\ud83d\udd0a Seslendirme</h4>' +
+      '<p>T\u00fcrk\u00e7e ve \u0130ngilizce i\u00e7in ayr\u0131 h\u0131z ve ton.</p>' +
+      '<div class="dh-voice-grid">' +
+        '<b>\ud83c\uddf9\ud83c\uddf7 T\u00fcrk\u00e7e h\u0131z</b><input id="vTrRate" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vTrRateV"></span>' +
+        '<b>\ud83c\uddf9\ud83c\uddf7 T\u00fcrk\u00e7e ton</b><input id="vTrPitch" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vTrPitchV"></span>' +
+        '<b>\ud83c\uddec\ud83c\udde7 \u0130ngilizce h\u0131z</b><input id="vEnRate" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vEnRateV"></span>' +
+        '<b>\ud83c\uddec\ud83c\udde7 \u0130ngilizce ton</b><input id="vEnPitch" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vEnPitchV"></span>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;margin-top:8px">' +
+        '<button id="vTestTr" type="button">\ud83c\uddf9\ud83c\uddf7 Dene</button>' +
+        '<button id="vTestEn" type="button">\ud83c\uddec\ud83c\udde7 Dene</button>' +
+        '<button id="vReset" type="button">S\u0131f\u0131rla</button>' +
+      '</div>' +
+      '<button id="mouthSpeedClose" type="button" style="margin-top:8px">Tamam</button>';
 
     document.body.appendChild(btn);
     document.body.appendChild(panel);
@@ -448,14 +521,49 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
     range.value = String(getVal());
     range.addEventListener("input", function(){ setVal(parseFloat(range.value)); });
 
+    /* ── Ses hız/pitch slider'ları (merkezi DH_TTS'e yazar) ── */
+    function vGet(){ return (window.DH_TTS&&DH_TTS.get)?DH_TTS.get():{trRate:.96,trPitch:1,enRate:.88,enPitch:1}; }
+    function vSync(){
+      var c=vGet();
+      var map={vTrRate:["trRate","vTrRateV"],vTrPitch:["trPitch","vTrPitchV"],vEnRate:["enRate","vEnRateV"],vEnPitch:["enPitch","vEnPitchV"]};
+      Object.keys(map).forEach(function(id){
+        var el=panel.querySelector("#"+id), lab=panel.querySelector("#"+map[id][1]);
+        if(el){ el.value=String(c[map[id][0]]); } if(lab){ lab.textContent=Number(c[map[id][0]]).toFixed(2); }
+      });
+    }
+    function vBind(id, key, labId){
+      var el=panel.querySelector("#"+id); if(!el) return;
+      el.addEventListener("input", function(){
+        var patch={}; patch[key]=parseFloat(el.value);
+        if(window.DH_TTS&&DH_TTS.set) DH_TTS.set(patch);
+        var lab=panel.querySelector("#"+labId); if(lab) lab.textContent=Number(el.value).toFixed(2);
+      });
+    }
+    vBind("vTrRate","trRate","vTrRateV"); vBind("vTrPitch","trPitch","vTrPitchV");
+    vBind("vEnRate","enRate","vEnRateV"); vBind("vEnPitch","enPitch","vEnPitchV");
+    function vSpeak(txt, lang){
+      try{
+        speechSynthesis.cancel();
+        var u=new SpeechSynthesisUtterance(txt); u.lang=lang;
+        if(window.DH_TTS&&DH_TTS.apply) DH_TTS.apply(u,lang);
+        u.__longTTSAvatarSync=true;   /* karma-metin yamasını atla: dil zaten belli */
+        speechSynthesis.speak(u);
+      }catch(e){}
+    }
+    var tTr=panel.querySelector("#vTestTr"); if(tTr) tTr.addEventListener("click", function(){ vSpeak("Merhaba, bu bir Türkçe seslendirme denemesidir.","tr-TR"); });
+    var tEn=panel.querySelector("#vTestEn"); if(tEn) tEn.addEventListener("click", function(){ vSpeak("Hello, this is an English voice test.","en-US"); });
+    var vR=panel.querySelector("#vReset"); if(vR) vR.addEventListener("click", function(){ if(window.DH_TTS&&DH_TTS.reset) DH_TTS.reset(); vSync(); });
+
     btn.addEventListener("click", function(){
       panel.classList.toggle("open");
       range.value = String(getVal());
+      vSync();
     });
     panel.querySelector("#mouthSpeedClose").addEventListener("click", function(){
       panel.classList.remove("open");
     });
-    panel.querySelector("#mouthSpeedTest").addEventListener("click", function(){
+    var _mst=panel.querySelector("#mouthSpeedTest");
+    if(_mst) _mst.addEventListener("click", function(){
       var sample = "Hello, this is a test. Merhaba, bu bir denemedir.";
       try{ if(window.DH_speakMixed){ window.DH_speakMixed(sample); return; } }catch(e){}
       try{ speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(sample)); }catch(e){}

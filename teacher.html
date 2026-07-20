@@ -433,14 +433,16 @@ function speak(text, lang){
     text=String(text||"").trim();
     if(!text) return;
     lang = lang || "tr-TR";
-    const u=new SpeechSynthesisUtterance(text);
+    var spoken = (window.DH_TTS&&DH_TTS.clean) ? DH_TTS.clean(text) : text;
+    if(!spoken) return;
+    const u=new SpeechSynthesisUtterance(spoken);
     const voice=pickVoiceForLang(lang);
     if(voice) u.voice=voice;
     u.lang = voice ? voice.lang : lang;
-    u.rate = /^tr/i.test(lang) ? 0.92 : 0.95;
-    u.pitch = 0.86;
+    if(window.DH_TTS&&DH_TTS.apply) DH_TTS.apply(u, /^tr/i.test(lang)?"tr-TR":"en-US");
+    else { u.rate = /^tr/i.test(lang) ? 0.92 : 0.95; u.pitch = 0.86; }
     speechSynthesis.cancel();
-    if(TeacherAvatar) TeacherAvatar.speakText(text, estimateSpeechDuration(text));
+    if(TeacherAvatar) TeacherAvatar.speakText(spoken, estimateSpeechDuration(spoken));
     u.onend=()=>{ if(TeacherAvatar) TeacherAvatar.stop(); };
     u.onerror=()=>{ if(TeacherAvatar) TeacherAvatar.stop(); };
     speechSynthesis.speak(u);

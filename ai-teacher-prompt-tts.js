@@ -136,9 +136,9 @@ function speakMixed(text){
     function next(){
       if(i>=chunks.length)return;
       const c=chunks[i++];
-      const u=new SpeechSynthesisUtterance(c.text);
+      const u=new SpeechSynthesisUtterance((window.DH_TTS&&DH_TTS.clean)?DH_TTS.clean(c.text):c.text);
       u.lang=c.lang;
-      u.rate=c.lang==="tr-TR"?.96:.88;
+      if(window.DH_TTS&&DH_TTS.apply) DH_TTS.apply(u,c.lang); else u.rate=c.lang==="tr-TR"?.96:.88;
       u.__dhMixed=true;
       let done=false;
       function go(){ if(done)return; done=true; clearTimeout(wd); setTimeout(next,60); }
