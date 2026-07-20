@@ -289,6 +289,60 @@
       +'onerror="this.nextElementSibling&&(this.nextElementSibling.style.display=\'\');this.remove();">'
       +'<span class="dh-svg-fb" style="display:none">'+faceSvg(kind)+'</span>';
   }
+  /* ── ÖĞRETMENE GİDERKEN GERÇEK MALZEME YOLLA ───────────────────
+     Eskiden öğretmene sadece "?focus=<etiket>" gidiyordu. Etiket çoğu zaman
+     bir plan adımı adıydı ("review" gibi), yani öğretmen NE çalışılacağını
+     bilmiyor, elinde tek bir cümle bile olmadan "bu kalıpla cümle yaz"
+     diyerek boş başlıyordu.
+     Artık gitmeden önce hata defterinden SOMUT malzeme hazırlanıp
+     sessionStorage'a yazılıyor — öğretmen zaten bu anahtarı okuyor
+     (chat-core.js: dh-teach-focus) ve dersi doğrudan bu cümlelerden kuruyor. */
+  var JUNK_FOCUS=/^(review|tekrar|practice|pratik|calis|çalış|study|genel|general|plan|devam)$/i;
+  function stashTeachFromDB(focus){
+    return new Promise(function(done){
+      var out={ label:"", items:[] };
+      try{
+        if(!(window.LearningErrorDB && window.LearningErrorDB.all)) return done(out);
+        Promise.resolve(window.LearningErrorDB.all()).then(function(all){
+          try{
+            all=(all||[]).filter(function(r){ return r && r.target; });
+            var t0=new Date(); t0.setHours(0,0,0,0);
+            var real = focus && !JUNK_FOCUS.test(focus) ? String(focus) : "";
+            /* 1) istenen türdeki hatalar 2) bugünküler 3) öncelik sırasına göre defter */
+            var pick=[];
+            if(real) pick=all.filter(function(r){ return (r.primaryType||"")===real || (r.types||[]).indexOf(real)>=0; });
+            if(!pick.length) pick=all.filter(function(r){ return new Date(r.createdAt||0)>=t0; });
+            if(!pick.length) pick=all.slice().sort(function(a,b){ return (b.reviewPriority||0)-(a.reviewPriority||0); });
+            pick=pick.slice(0,5);
+            if(!pick.length) return done(out);
+            var TL=window.DH_COACH_TYPE_LABEL||{}, TT=window.DH_COACH_TYPE_TIP||{};
+            var top=pick[0], tp=real||top.primaryType||"general";
+            out.label=TL[tp]||tp;
+            out.items=pick.map(function(r){
+              return { target:r.target, answer:r.answer||"", tr:r.sentenceTR||"", type:r.primaryType||"" };
+            });
+            sessionStorage.setItem("dh-teach-focus", JSON.stringify({
+              t:Date.now(), type:tp, label:out.label,
+              target:top.target, answer:top.answer||"", tr:top.sentenceTR||"",
+              tip:TT[tp]||"", items:out.items, from:"coach"
+            }));
+          }catch(e){}
+          done(out);
+        }).catch(function(){ done(out); });
+      }catch(e){ done(out); }
+    });
+  }
+  /* Düğmeye basılınca: önce malzemeyi hazırla, sonra git */
+  window.dhCoachGoTeacher=function(ev, focus){
+    try{ ev && ev.preventDefault && ev.preventDefault(); ev && ev.stopPropagation && ev.stopPropagation(); }catch(e){}
+    var go=function(res){
+      var lbl=(res&&res.label)||"";
+      var f = (focus && !JUNK_FOCUS.test(focus)) ? focus : (lbl||"");
+      location.href=teacherHref(f);
+    };
+    var timer=setTimeout(function(){ timer=null; go(null); },1500); /* defter yavaşsa bekletme */
+    stashTeachFromDB(focus).then(function(res){ if(timer){ clearTimeout(timer); go(res); } });
+  };
   function teacherHref(focus){
     var sel="teacher1";
     try{ sel=localStorage.getItem("selectedTeacherAvatar")||"teacher1"; }catch(e){}
@@ -297,7 +351,8 @@
   }
   function focusBtnHtml(t){
     if(!t) return "";
-    return '<a class="dh-coach-teach" href="'+teacherHref(t)+'" onclick="event.stopPropagation()" '
+    var ft=String(t).replace(/'/g,"\\'").replace(/"/g,"&quot;");
+    return '<a class="dh-coach-teach" href="'+teacherHref(t)+'" onclick="window.dhCoachGoTeacher(event,\''+ft+'\')" '
       +'style="margin-left:6px;flex:none;align-self:center;background:#1d4ed8;color:#fff;text-decoration:none;'
       +'font-weight:800;font-size:13px;padding:7px 12px;border-radius:999px;white-space:nowrap">🧑‍🏫 Öğretmenle çalış</a>';
   }

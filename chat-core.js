@@ -37,9 +37,16 @@ var __dhTeach=null; try{
   var __tRaw=sessionStorage.getItem("dh-teach-focus");
   if(__tRaw){ __dhTeach=JSON.parse(__tRaw); if(!__dhTeach||Date.now()-(__dhTeach.t||0)>2*3600000) __dhTeach=null; }
 }catch(e){}
+/* Anlamsız plan etiketleri ("review", "tekrar"…) konu adı değildir — bunlarla
+   "practice review" gibi boş bir açılış kurulmamalı. */
+var __dhJunkFocus=/^(review|tekrar|practice|pratik|study|genel|general|plan|devam)$/i;
+if(__dhFocus && __dhJunkFocus.test(__dhFocus)) __dhFocus="";
 function __dhOpener(){
   if(__dhTeach&&__dhTeach.target){
-    return "Welcome back! I heard you struggled with this sentence in your drill:\n"
+    var head = __dhTeach.from==="coach"
+      ? ("Koçun seni bugünün eksiğine çalışmaya gönderdi"+(__dhTeach.label?(" — konu: "+__dhTeach.label):"")+".\nDefterinden aldığım örnek:\n")
+      : "Welcome back! I heard you struggled with this sentence in your drill:\n";
+    return head
       +(__dhTeach.answer?("✗ "+__dhTeach.answer+"\n"):"")
       +"✓ "+__dhTeach.target
       +(__dhTeach.tip?("\n(Kural: "+__dhTeach.tip+")"):"")
@@ -329,6 +336,11 @@ function systemPrompt(){
     (__dhProfile?("\n[STUDENT PROFILE — use this to personalize, in Turkish data]\n"+__dhProfile+"\nWhen the student repeats one of their known error patterns, gently correct it and briefly note it is a frequent mistake of theirs. Naturally create situations that make the student use the patterns they struggle with."):""),
     (__dhIsTeacher?"\n[COACH ROLE] You are not only a conversation partner but also the student's personal coach. The profile above includes their daily coach plan (BUGÜNÜN KOÇ PLANI) and weekly goal (HAFTALIK HEDEF). In your FIRST reply, acknowledge their streak, plan or goal in ONE short friendly sentence, then continue teaching. Steer the practice toward the weekly goal and the unfinished (⬜) plan steps. If they completed steps (✅), congratulate briefly.":""),
     (__dhTeach&&__dhTeach.target?("\n[EXACT ERROR CONTEXT] The student's own mistake: wrong=\""+(__dhTeach.answer||"")+"\" correct=\""+__dhTeach.target+"\" (TR: \""+(__dhTeach.tr||"")+"\"). Rule: "+(__dhTeach.tip||"")+". Start THIS session by teaching exactly this, then create 2-3 similar practice prompts."):""),
+    /* Koç birden fazla gerçek hata yolladıysa tüm oturum bu listeden kurulur —
+       öğretmen malzemesiz kalıp genel sorulara kaçmasın. */
+    (__dhTeach&&__dhTeach.items&&__dhTeach.items.length>1?("\n[SESSION MATERIAL — the student's real mistakes from their error notebook"+(__dhTeach.label?(", topic: "+__dhTeach.label):"")+"]\n"
+      +__dhTeach.items.map(function(it,i){ return (i+1)+") wrong=\""+(it.answer||"")+"\" correct=\""+it.target+"\""+(it.tr?(" (TR: \""+it.tr+"\")"):""); }).join("\n")
+      +"\nWork through these one by one: for each, make the student produce the correct sentence themselves, correct them, give ONE short Turkish tip, then move to the next. Do NOT ask generic questions while this list is unfinished."):""),
     (__dhFocus?("\n[FOCUS DRILL] The coach sent the student to you specifically to work on this error type: \""+__dhFocus+"\". Build most of this session around it: create short prompts that force the student to produce this pattern, correct their attempts, and give ONE short Turkish tip when they slip. Mention at the start, in one sentence, that you two will practice this together."):""),
     "\n[TASKS] The student must complete these in-scenario tasks: "+__dhTasks.map(function(t,i){return (i+1)+") "+t;}).join(" ")+" Weave them naturally into the conversation. When the user GENUINELY completes task N, append the marker [TASK_DONE:N] at the very end of your reply. Never mention the markers or tasks mechanically."
   ].join("\n");
