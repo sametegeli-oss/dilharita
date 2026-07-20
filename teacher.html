@@ -6,6 +6,7 @@
 <script src="./coach-bubble.js?v=2"></script>
 <script src="./progress-engine.js?v=2"></script>
 <script src="./ai-providers.js?v=1"></script>
+<script src="./gemini-bridge.js?v=1"></script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0b1120" />
@@ -646,6 +647,29 @@ function render(){
   explain();
 }
 
+/* 💎 Cümle analizini Gemini'ye yaptır (anahtarsız köprü).
+   Öğretmenin normal sistem promptunun AYNISINI kullanır — çıktı formatı,
+   mini test yapısı, üslup birebir aynı olsun ki panel değişmeden çalışsın. */
+function askTeacherViaGemini(){
+  if(!window.DHGemini){ handleError(new Error("Gemini köprüsü yüklenmedi.")); return; }
+  var userMsg = `İngilizce cümle: "${State.en}"` + (State.tr ? `\nTürkçe çevirisi: ${State.tr}` : "");
+  var prompt = getPrompt() + (window.__dhProfileBlock||"")
+    + "\n\n---\n" + userMsg
+    + "\n\nYukarıdaki sistem talimatına BİREBİR uyarak yanıt ver (mini test dahil, aynı biçimde).";
+  DHGemini.ask({
+    title:"💎 Öğretmene Gemini ile sor",
+    hint:"Gemini'nin cevabını buraya yapıştır ve Enter'a bas…",
+    prompt: prompt,
+    parse: DHGemini.parsers.text,
+    onResult: function(reply){
+      State.history = [{ role:"system", content:getPrompt() }, { role:"user", content:userMsg }, { role:"assistant", content:reply }];
+      renderExplanation(reply);
+      try{ if(window.dhBumpDailyTracker) window.dhBumpDailyTracker("lesson"); }catch(e){}
+    }
+  });
+}
+window.askTeacherViaGemini = askTeacherViaGemini;
+
 function setOut(html){ document.getElementById("out").innerHTML = html; }
 
 async function explain(){
@@ -682,7 +706,26 @@ async function explain(){
       setTimeout(go, 1500); // güvenlik: en fazla 1.5 sn bekle
     });
   }
-  if (!getKeys().length){ openKeySheet(); setOut(""); return; }
+  if (!getKeys().length){
+    /* Anahtar yok — ama Gemini köprüsüyle yine de analiz yapılabilir.
+       Kullanıcıyı boş "anahtar ekle" ekranıyla bırakmak yerine seçenek sun. */
+    if(window.DHGemini && State.en){
+      setOut(`<div class="state">
+        <h2>Bu cümleyi nasıl inceleyelim?</h2>
+        <p>Cümlen: <b>${esc(State.en)}</b></p>
+        <div class="manual-entry" style="flex-direction:column;gap:10px">
+          <button id="dhTeachGemini" style="width:100%;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0;border-radius:11px;padding:13px;font:800 15px Nunito,sans-serif;cursor:pointer">💎 Gemini'ye sor (anahtar gerekmez)</button>
+          <button id="dhTeachAddKey" style="width:100%;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:11px;padding:12px;font:700 14px Nunito,sans-serif;cursor:pointer">🔑 Kendi API anahtarımı ekle</button>
+        </div>
+      </div>`);
+      var gb2=document.getElementById("dhTeachGemini");
+      if(gb2) gb2.onclick=function(){ askTeacherViaGemini(); };
+      var ak=document.getElementById("dhTeachAddKey");
+      if(ak) ak.onclick=function(){ openKeySheet(); };
+      return;
+    }
+    openKeySheet(); setOut(""); return;
+  }
   setOut(`<div class="loading"><div class="spinner"></div> Öğretmen cümleyi inceliyor…</div>`);
   const userMsg = `İngilizce cümle: "${State.en}"` + (State.tr ? `\nTürkçe çevirisi: ${State.tr}` : "");
   try{ var _mem=JSON.parse(localStorage.getItem("dh-teacher-mem")||"[]"); _mem.push({q:String(State.en||"").slice(0,90),ts:Date.now()}); localStorage.setItem("dh-teacher-mem",JSON.stringify(_mem.slice(-3))); }catch(e){}
@@ -722,11 +765,14 @@ function renderExplanation(reply){
       <input id="fuInput" type="text" placeholder="Bir sorun mu var? Öğretmene sor…" />
       <button id="fuSend">Sor</button>
     </div>
-    <button class="regen" id="regenBtn">↻ Yeniden açıkla</button>`);
+    <button class="regen" id="regenBtn">↻ Yeniden açıkla</button>
+    <button class="regen" id="dhGeminiAskBtn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0">💎 Gemini'ye sor</button>`);
   const fu = document.getElementById("fuInput");
   fu.onkeydown = e => { if (e.key==="Enter") askFollowup(fu.value); };
   document.getElementById("fuSend").onclick = () => askFollowup(fu.value);
   document.getElementById("regenBtn").onclick = () => explain();
+  var gAsk=document.getElementById("dhGeminiAskBtn");
+  if(gAsk){ if(window.DHGemini){ gAsk.onclick=function(){ askTeacherViaGemini(); }; } else { gAsk.style.display="none"; } }
   document.getElementById("explainListenBtn").onclick = () => speakFromScreen(document.querySelector(".explain"));
   document.getElementById("sentenceListenBtn").onclick = () => speakEnglish(State.en);
   if(quiz) bindQuiz(quiz);
@@ -991,7 +1037,7 @@ render();
 <script src="./tts-avatar-long-sync-fix.js?v=2"></script>
 <script src="./avatar-blink-sync.js?v=2"></script>
 <script src="./study-tracker.js?v=2"></script>
-<script src="./cloud-sync.js?v=5"></script>
+<script src="./cloud-sync.js?v=9"></script>
 <script src="./word-popup.js?v=1"></script>
 <script>
 
