@@ -319,6 +319,23 @@ function speakChunkList(chunks){
   if(!nativeSpeak) return false;
   chunks=(chunks||[]).filter(c=>c&&clean(c.text));
   if(!chunks.length) return false;
+  /* ── GEÇİŞ GECİKMESİNİ AZALT ──────────────────────────────────
+     Eskiden her cümle ayrı utterance idi; her utterance geçişinde
+     tarayıcının kendi boşluğu + bizim 60ms birikip uzun beklemeler
+     yaratıyordu. Artık AYNI DİLDEKİ ardışık parçalar tek utterance'ta
+     birleşiyor — dil (tr↔en) değişmedikçe hiç geçiş olmuyor.
+     Ekran vurgusu için orijinal parça sınırları .segs'te saklanır. */
+  var merged=[];
+  chunks.forEach(function(c){
+    var last=merged[merged.length-1];
+    if(last && last.lang===c.lang && (last.text.length + c.text.length) < 300){
+      last.text += " " + c.text;
+      last.segs.push(c);
+    } else {
+      merged.push({ text:c.text, lang:c.lang, el:c.el, segs:[c] });
+    }
+  });
+  chunks=merged;
   try{ speechSynthesis.cancel(); }catch(e){}
   setSpeakingState(true);
   // Mobil tarayıcılarda pause()/resume() TTS'i kilitleyip dondurabilir.
@@ -364,7 +381,7 @@ function speakChunkList(chunks){
       clearTimeout(watchdog);
       clearInterval(mouthTimer); mouthTimer=null;
       setSpeakingState(true);
-      setTimeout(next, 60);
+      next();   /* geçiş beklemesiz: bir sonraki parçaya hemen geç */
     }
     var watchdog2=null;
     // Zorlama zamanlayıcısı: Chrome bazen onend'i hiç çağırmaz; tahmini süre
@@ -374,8 +391,23 @@ function speakChunkList(chunks){
     var pad = isMobile ? 3500 : 1500;
     var estMs = Math.max(isMobile?6000:4000, c.text.length * perChar) + pad;
     const watchdog=setTimeout(advance, estMs);
-    u.onstart=()=>{ setSpeakingState(true); startMouthForText(c.text, c.lang); try{ if(window.__dhHighlight) window.__dhHighlight(c.el||null); }catch(e){} };
-    u.onboundary=(ev)=>{ setSpeakingState(true); if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex); };
+    u.onstart=()=>{ setSpeakingState(true); startMouthForText(c.text, c.lang); try{ if(window.__dhHighlight) window.__dhHighlight((c.segs&&c.segs[0]&&c.segs[0].el)||c.el||null); }catch(e){} };
+    u.onboundary=(ev)=>{
+      setSpeakingState(true);
+      if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex);
+      /* Birleşik parçada hangi segmentteyiz: karakter konumuna göre vurgula */
+      try{
+        if(c.segs && c.segs.length>1 && ev && typeof ev.charIndex==="number"){
+          var pos=0, hit=c.segs[0];
+          for(var k=0;k<c.segs.length;k++){
+            var len=(c.segs[k].text||"").length + 1;
+            if(ev.charIndex < pos+len){ hit=c.segs[k]; break; }
+            pos+=len;
+          }
+          if(hit && hit.el && window.__dhHighlight) window.__dhHighlight(hit.el);
+        }
+      }catch(e){}
+    };
     u.onend=advance;
     u.onerror=advance;
     try{ nativeSpeak(u); }catch(e){ advance(); }
