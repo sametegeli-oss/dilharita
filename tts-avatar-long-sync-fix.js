@@ -1,6 +1,6 @@
 /* tts-avatar-long-sync-fix.js
-   Uzun metinlerde ses devam ederken avatarın susmasını ve 
-   browser speech daemon kilitlenmesinden kaynaklı yarım kalmayı engeller.
+   Uzun metinlerde ses devam ederken avatarın susmasını ve
+   metin ayrıştırma hatalarından kaynaklı yarım kalma sorununu engeller.
 */
 (function(){
 "use strict";
@@ -12,9 +12,6 @@ const AVATAR_SELECTORS = [
   ".avatar-img",".avatar-image",".teacher-avatar img",".avatar img",
   "img[src*='avatars']","img[src*='avatar']","img[src*='idle.webp']","img[src*='mouth-']"
 ];
-
-// Browser Garbage Collection kilitlenmesini önleyen global tutucu
-window.__dhUtterances = new Set();
 
 let nativeSpeak = null;
 try { nativeSpeak = speechSynthesis.speak.bind(speechSynthesis); } catch(e){}
@@ -63,10 +60,10 @@ function dhSpeakClean(s){
   var r=orig;
   r=r.replace(/```[\s\S]*?```/g," ").replace(/`+/g," ");
   r=r.replace(/[*_~#>^=|]+/g," ");
-  r=r.replace(/["\u201C\u201D\u201E\u00AB\u00BB]+/g," ");
-  r=r.replace(/[\u2022\u00B7\u25AA\u25CF\u25A0\u25B6\u2192\u2190\u2713\u2714\u2717\u2605\u2606]/g," ");
-  r=r.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\uFE0F]/gu," ");
-  r=r.replace(/[\u2012-\u2015\u2212]/g," ");
+  r=r.replace(/["“”„«»]+/g," ");
+  r=r.replace(/[•·▪●■▶→←✓✔✗★☆]/g," ");
+  r=r.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}️]/gu," ");
+  r=r.replace(/[‒-―−]/g," ");
   r=r.replace(/(^|\s)-+(?=\s)/g," ");
   r=r.replace(/(\s)-+/g,"$1").replace(/-+(\s)/g,"$1");
   r=r.replace(/\b([A-Za-zÇĞİÖŞÜçğıöşü])\.(?=[A-Za-zÇĞİÖŞÜçğıöşü]\b)/g,"$1 ");
@@ -101,7 +98,7 @@ function isTurkish(text){
   return false;
 }
 
-function splitLongLine(line, maxLen=100){
+function splitLongLine(line, maxLen=90){
   line=clean(line);
   if(line.length<=maxLen) return [line];
   const parts=[];
@@ -161,13 +158,22 @@ function splitForSpeech(text){
     segmentsByBrackets(line).forEach(seg=>{
       const pieceClean = clean(seg.text);
       if(!pieceClean) return;
-      
-      const pieces = pieceClean.split(/(?<=[.!?])\s+/).filter(Boolean);
-      (pieces.length ? pieces : [pieceClean]).forEach(p=>{
-        splitLongLine(p, seg.lang==="tr-TR"?100:80).forEach(piece=>{
-          if(piece && piece.length > 0) chunks.push({text:piece, lang:seg.lang});
-        });
-      });
+
+      // Güvenli cümle bölme
+      const pieces = pieceClean.split(/([.!?]+(?:\s+|$))/).filter(Boolean);
+      let currentBuf = "";
+      for(let i=0; i<pieces.length; i++){
+        currentBuf += pieces[i];
+        if(i % 2 === 1 || i === pieces.length - 1){
+          const finalStr = clean(currentBuf);
+          if(finalStr){
+            splitLongLine(finalStr, seg.lang==="tr-TR"?90:75).forEach(piece=>{
+              if(piece && piece.length > 1) chunks.push({text:piece, lang:seg.lang});
+            });
+          }
+          currentBuf = "";
+        }
+      }
     });
   });
   return chunks.length ? chunks : [{text:clean(raw.replace(/\[\[|\]\]/g," ")), lang: isTurkish(raw) ? "tr-TR" : "en-US"}];
@@ -303,102 +309,115 @@ function speakSegments(segments){
     var text = clean(seg.text||"");
     if(!text) return;
     var el = seg.el || null;
-    splitLongLine(text, lang==="tr-TR"?100:80).forEach(function(piece){
-      if(piece && piece.length > 0) out.push({text:piece, lang:lang, el:el});
+    splitLongLine(text, lang==="tr-TR"?90:75).forEach(function(piece){
+      if(piece && piece.length > 1) out.push({text:piece, lang:lang, el:el});
     });
   });
   return speakChunkList(out);
 }
 
-// BROWSER DAEMON KİLİTLENMESİNİ ÖNLEN KESİNTİSİZ ARDIŞIK YIĞIN MİMARİSİ
 let currentQueueSession = 0;
-let queueList = [];
 
 function speakChunkList(chunks){
   if(!nativeSpeak) return false;
-  queueList = (chunks||[]).filter(c=>c && clean(c.text));
-  if(!queueList.length) return false;
+  chunks=(chunks||[]).filter(c=>c&&clean(c.text)&&clean(c.text).length>1);
+  if(!chunks.length) return false;
+
+  try{ speechSynthesis.cancel(); }catch(e){}
+  setSpeakingState(true);
 
   currentQueueSession++;
   const thisSession = currentQueueSession;
+  let index = 0;
 
-  try { 
-    speechSynthesis.cancel(); 
-    window.__dhUtterances.clear();
-  } catch(e){}
+  function playNext(){
+    if(thisSession !== currentQueueSession) return;
 
-  setSpeakingState(true);
-
-  // KİLİT ÇÖZÜCÜ 1: cancel() sonrası ses motorunun sıfırlanması için 100ms nefes süresi
-  setTimeout(()=>{
-    if(thisSession === currentQueueSession){
-      processQueue(thisSession);
-    }
-  }, 100);
-
-  return true;
-}
-
-function processQueue(session){
-  if(session !== currentQueueSession) return;
-
-  if(!queueList.length){
-    setTimeout(()=>setSpeakingState(false), 200);
-    try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
-    window.__dhUtterances.clear();
-    return;
-  }
-
-  const item = queueList.shift();
-  const u = new SpeechSynthesisUtterance(item.text);
-  u.lang = item.lang;
-  dhApplyVoice(u, item.lang);
-  u.__longTTSAvatarSync = true;
-
-  window.__dhUtterances.add(u);
-
-  let finished = false;
-
-  function stepNext(){
-    if(finished) return;
-    finished = true;
-    window.__dhUtterances.delete(u);
-    clearInterval(mouthTimer); mouthTimer=null;
-
-    if(window.__dhUserPaused){
-      setTimeout(stepNext, 500);
+    if(index >= chunks.length){
+      setTimeout(()=>setSpeakingState(false), 200);
+      try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
       return;
     }
 
-    // KİLİT ÇÖZÜCÜ 2: Tarayıcı ses işlemcisine 60ms zaman verip sıradaki parçaya geç
-    try { speechSynthesis.resume(); } catch(e){}
-    setTimeout(()=>{
-      processQueue(session);
-    }, 60);
+    const item = chunks[index++];
+    const u = new SpeechSynthesisUtterance(item.text);
+    u.lang = item.lang;
+    dhApplyVoice(u, item.lang);
+    u.__longTTSAvatarSync = true;
+
+    let hasAdvanced = false;
+    let fallbackTimer = null;
+    let keepAliveTimer = null;
+
+    function stepNext(){
+      if(hasAdvanced) return;
+      hasAdvanced = true;
+      if(fallbackTimer) clearTimeout(fallbackTimer);
+      if(keepAliveTimer){ clearInterval(keepAliveTimer); keepAliveTimer=null; }
+      clearInterval(mouthTimer); mouthTimer=null;
+
+      if(window.__dhUserPaused){
+        setTimeout(stepNext, 500);
+        return;
+      }
+
+      try { speechSynthesis.resume(); } catch(e){}
+      setTimeout(playNext, 25);
+    }
+
+    // Tarayıcı takılmasına karşı esnek güvenlik zamanlayıcısı.
+    // Eskiden süre sabit 130ms/karakter ile hesaplanıyordu ve kullanıcının
+    // ayarladığı okuma hızı (rate) hiç hesaba katılmıyordu. Hız yavaş
+    // seçildiğinde (ör. 0.6-0.7) gerçek seslendirme bu tahminden çok daha
+    // uzun sürüyor, zamanlayıcı erken tetiklenip bir sonraki parçaya
+    // geçiyor ve o an çalan cümle yarıda kesiliyordu. Artık rate'e göre
+    // ölçekleniyor ve üstüne pay bırakılıyor.
+    const msPerCharAtRate1 = item.lang==="tr-TR" ? 105 : 115;
+    const effectiveRate = Math.max(u.rate || 1, 0.4);
+    const expectedTimeMs = Math.max((item.text.length * msPerCharAtRate1) / effectiveRate, 4000) + 3000;
+    fallbackTimer = setTimeout(stepNext, expectedTimeMs);
+
+    u.onstart = () => {
+      if(thisSession !== currentQueueSession) return;
+      setSpeakingState(true);
+      startMouthForText(item.text, item.lang);
+      try{ if(window.__dhHighlight) window.__dhHighlight(item.el||null); }catch(e){}
+
+      // Chrome'un bilinen bir hatası: tek bir utterance ~15 saniyeden uzun
+      // sürdüğünde motor sesi sessizce durduruyor ama onend/onerror hiç
+      // tetiklenmiyor - "seslendirme yarıda kalıyor" hissinin asıl
+      // kaynaklarından biri budur. Belirli aralıklarla pause/resume
+      // çağırmak bu donmayı engelliyor.
+      if(keepAliveTimer) clearInterval(keepAliveTimer);
+      keepAliveTimer = setInterval(()=>{
+        try{
+          if(thisSession !== currentQueueSession){ clearInterval(keepAliveTimer); keepAliveTimer=null; return; }
+          if(speechSynthesis.speaking){
+            speechSynthesis.pause();
+            speechSynthesis.resume();
+          }
+        }catch(e){}
+      }, 8000);
+    };
+
+    u.onboundary = (ev) => {
+      if(thisSession !== currentQueueSession) return;
+      setSpeakingState(true);
+      if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex);
+    };
+
+    u.onend = stepNext;
+    u.onerror = stepNext;
+
+    try {
+      nativeSpeak(u);
+    } catch(e) {
+      stepNext();
+    }
   }
 
-  u.onstart = () => {
-    if(session !== currentQueueSession) return;
-    setSpeakingState(true);
-    startMouthForText(item.text, item.lang);
-    try{ if(window.__dhHighlight) window.__dhHighlight(item.el||null); }catch(e){}
-  };
-
-  u.onboundary = (ev) => {
-    if(session !== currentQueueSession) return;
-    setSpeakingState(true);
-    if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex);
-  };
-
-  u.onend = stepNext;
-  u.onerror = stepNext;
-
-  try {
-    speechSynthesis.resume();
-    nativeSpeak(u);
-  } catch(e) {
-    stepNext();
-  }
+  playNext();
+  return true;
 }
 
 window.DH_speakMixed = speakChunks;
@@ -409,8 +428,6 @@ try{
   const nativeCancel=speechSynthesis.cancel.bind(speechSynthesis);
   speechSynthesis.cancel=function(){
     currentQueueSession++;
-    queueList = [];
-    window.__dhUtterances.clear();
     setSpeakingState(false);
     return nativeCancel();
   };
@@ -505,30 +522,30 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
     markChatPage(); setTimeout(markChatPage,600); setTimeout(markChatPage,2000);
     var btn = document.createElement("button");
     btn.id = "mouthSpeedBtn"; btn.type = "button";
-    btn.title = "Avatar agiz hizi ayari"; btn.textContent = "\u2699";
+    btn.title = "Avatar agiz hizi ayari"; btn.textContent = "⚙";
 
     var panel = document.createElement("div");
     panel.id = "mouthSpeedPanel";
     panel.innerHTML =
-      '<h4>Avatar a\u011f\u0131z h\u0131z\u0131</h4>' +
-      '<p>A\u011f\u0131z hareketi sesle uyumsuzsa buradan ayarlay\u0131n. De\u011fi\u015fiklik kaydedilir.</p>' +
+      '<h4>Avatar ağız hızı</h4>' +
+      '<p>Ağız hareketi sesle uyumsuzsa buradan ayarlayın. Değişiklik kaydedilir.</p>' +
       '<input id="mouthSpeedRange" type="range" min="0.5" max="2.0" step="0.05">' +
-      '<div id="mouthSpeedLabels"><span>H\u0131zl\u0131</span><span>Normal</span><span>Yava\u015f</span></div>' +
-      '<button id="mouthSpeedTest" type="button">\ud83d\udd0a Dene</button>' +
+      '<div id="mouthSpeedLabels"><span>Hızlı</span><span>Normal</span><span>Yavaş</span></div>' +
+      '<button id="mouthSpeedTest" type="button">🔊 Dene</button>' +
       '<hr style="border:0;border-top:1px solid rgba(255,255,255,.12);margin:12px 0">' +
-      '<h4>\ud83d\udd0a Seslendirme h\u0131z\u0131 / tonu</h4>' +
-      '<label class="dh-vlabel">\ud83c\uddf9\ud83c\uddf7 T\u00fcrk\u00e7e ses</label><select id="vTrVoice" class="dh-vsel"></select>' +
-      '<label class="dh-vlabel">\ud83c\uddec\ud83c\udde7 \u0130ngilizce ses</label><select id="vEnVoice" class="dh-vsel"></select>' +
+      '<h4>🔊 Seslendirme hızı / tonu</h4>' +
+      '<label class="dh-vlabel">🇹🇷 Türkçe ses</label><select id="vTrVoice" class="dh-vsel"></select>' +
+      '<label class="dh-vlabel">🇬🇧 İngilizce ses</label><select id="vEnVoice" class="dh-vsel"></select>' +
       '<div class="dh-voice-grid">' +
-        '<b>\ud83c\uddf9\ud83c\uddf7 h\u0131z</b><input id="vTrRate" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vTrRateV"></span>' +
-        '<b>\ud83c\uddf9\ud83c\uddf7 ton</b><input id="vTrPitch" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vTrPitchV"></span>' +
-        '<b>\ud83c\uddec\ud83c\udde7 h\u0131z</b><input id="vEnRate" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vEnRateV"></span>' +
-        '<b>\ud83c\uddec\ud83c\udde7 ton</b><input id="vEnPitch" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vEnPitchV"></span>' +
+        '<b>🇹🇷 hız</b><input id="vTrRate" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vTrRateV"></span>' +
+        '<b>🇹🇷 ton</b><input id="vTrPitch" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vTrPitchV"></span>' +
+        '<b>🇬🇧 hız</b><input id="vEnRate" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vEnRateV"></span>' +
+        '<b>🇬🇧 ton</b><input id="vEnPitch" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vEnPitchV"></span>' +
       '</div>' +
       '<div style="display:flex;gap:6px;margin-top:8px">' +
-        '<button id="vTestTr" type="button">\ud83c\uddf9\ud83c\uddf7 Dene</button>' +
-        '<button id="vTestEn" type="button">\ud83c\uddec\ud83c\udde7 Dene</button>' +
-        '<button id="vReset" type="button">S\u0131f\u0131rla</button>' +
+        '<button id="vTestTr" type="button">🇹🇷 Dene</button>' +
+        '<button id="vTestEn" type="button">🇬🇧 Dene</button>' +
+        '<button id="vReset" type="button">Sıfırla</button>' +
       '</div>' +
       '<button id="mouthSpeedClose" type="button" style="margin-top:8px">Tamam</button>';
 
@@ -558,7 +575,7 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
         var sel=panel.querySelector("#"+row[0]); if(!sel) return;
         var list=(window.DH_TTS&&DH_TTS.voices)?DH_TTS.voices(row[1]):[];
         var cur=c[row[2]]||"";
-        var html='<option value="">Varsay\u0131lan ('+(list.length?list.length+" ses":"y\u00fckleniyor")+')</option>';
+        var html='<option value="">Varsayılan ('+(list.length?list.length+" ses":"yükleniyor")+')</option>';
         list.forEach(function(v){
           var id=v.voiceURI||v.name;
           var sel2=(id===cur)?" selected":"";
