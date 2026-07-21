@@ -23,6 +23,10 @@ const AVATAR_SELECTORS = [
 
 let nativeSpeak = null;
 try { nativeSpeak = speechSynthesis.speak.bind(speechSynthesis); } catch(e){}
+// Orijinal cancel'ı sakla: motor kilidini kurtarmak için, oturumu bozan
+// yamalı cancel yerine bunu kullanacağız.
+let nativeCancel = null;
+try { nativeCancel = speechSynthesis.cancel.bind(speechSynthesis); } catch(e){}
 
 let active = false;
 let activeTimer = null;
@@ -336,7 +340,8 @@ function speakChunkList(chunks){
   let curStarted = false;   // aktif cümlede onstart geldi mi
   let curDone = false;      // aktif cümle tamamlandı/atlandı mı
   let curCallTime = 0;      // speak() çağrı zamanı
-  let lastResume = Date.now();
+  let curStartAt = 0;       // onstart zamanı
+  let curMaxMs = 0;         // bu cümle için makul üst süre sınırı
   let watchdog = null;
 
   function stopWatchdog(){ if(watchdog){ clearInterval(watchdog); watchdog=null; } }
@@ -367,6 +372,13 @@ function speakChunkList(chunks){
     curStarted = false;
     curDone = false;
     curCallTime = Date.now();
+    curStartAt = 0;
+    // Bu cümle için beklenen konuşma süresi (rate'e göre) + 6 sn pay.
+    // Motor bundan uzun süre "konuşuyor" görünüp ilerlemezse kilitlenmiş
+    // sayıp kurtarıyoruz.
+    var _mp = item.lang==="tr-TR" ? 105 : 115;
+    var _rate = Math.max(u.rate||1, 0.4);
+    curMaxMs = Math.round(item.text.length * _mp / _rate) + 6000;
 
     __keepAliveRefs.push(u);
     if(__keepAliveRefs.length>8) __keepAliveRefs.splice(0, __keepAliveRefs.length-8);
@@ -374,7 +386,7 @@ function speakChunkList(chunks){
     u.onstart = function(){
       if(session!==currentQueueSession) return;
       curStarted = true;
-      lastResume = Date.now();
+      curStartAt = Date.now();
       setSpeakingState(true);
       startMouthForText(item.text, item.lang);
       try{ if(window.__dhHighlight) window.__dhHighlight(item.el||null); }catch(e){}
@@ -389,38 +401,34 @@ function speakChunkList(chunks){
     try{ nativeSpeak(u); }catch(e){ advance(); }
   }
 
-  // Tek watchdog: onend'e güvenmez; motor durumuna bakarak ilerler +
-  // 15 sn susma hatasına karşı periyodik pause/resume yapar.
+  // Tek watchdog: onend'e HİÇ güvenmez. Motorun gerçek durumuna bakarak
+  // ilerler ve motor kilitlenirse (Chrome ~15 sn sessizleşme hatası)
+  // yerel cancel + sıradaki cümle ile kurtarır. Böylece kalıcı durma olmaz.
   watchdog = setInterval(function(){
     if(session !== currentQueueSession){ stopWatchdog(); return; }
-
-    var speaking=false, pending=false, paused=false;
-    try{ speaking=speechSynthesis.speaking; pending=speechSynthesis.pending; paused=speechSynthesis.paused; }catch(e){}
 
     // Kullanıcı elle duraklattıysa hiçbir şey yapma.
     if(window.__dhUserPaused){ return; }
 
-    // İstemeden takılı kalmış duraklamayı kurtar.
-    if(paused && !window.__dhUserPaused){
-      try{ speechSynthesis.resume(); }catch(e){}
-      return;
-    }
+    var speaking=false, pending=false, paused=false;
+    try{ speaking=speechSynthesis.speaking; pending=speechSynthesis.pending; paused=speechSynthesis.paused; }catch(e){}
 
-    // 15 sn hatasını önle: konuşurken periyodik pause+resume.
-    if(speaking && (Date.now()-lastResume) > 9000){
-      try{ speechSynthesis.pause(); speechSynthesis.resume(); }catch(e){}
-      lastResume = Date.now();
-      return;
-    }
+    // İstemeden takılı kalmış duraklamayı kurtar.
+    if(paused){ try{ speechSynthesis.resume(); }catch(e){} return; }
 
     if(curDone) return;
 
-    // Cümle başladı ve motor artık konuşmuyorsa -> bitmiştir (onend düşmüş olabilir).
-    if(curStarted && !speaking && !pending){
-      advance(); return;
-    }
-    // Hiç başlamadı ve makul süre geçti -> motor sesi düşürdü, atla ki kuyruk durmasın.
-    if(!curStarted && !speaking && !pending && (Date.now()-curCallTime) > 3500){
+    // 1) Cümle başladı, motor artık konuşmuyor -> bitti (onend düşmüş olabilir).
+    if(curStarted && !speaking && !pending){ advance(); return; }
+
+    // 2) Hiç başlamadı, makul süre geçti -> ses düşürüldü, atla ki durmasın.
+    if(!curStarted && !speaking && !pending && (Date.now()-curCallTime) > 3500){ advance(); return; }
+
+    // 3) "Konuşuyor" görünüp beklenenden çok uzun sürdü -> motor kilitlendi.
+    //    Yerel cancel ile temizle ve sıradaki cümleye geç (temiz başlangıç
+    //    Chrome'un 15 sn sayacını da sıfırlar).
+    if(curStarted && curStartAt && (Date.now()-curStartAt) > curMaxMs){
+      try{ (nativeCancel || speechSynthesis.cancel)(); }catch(e){}
       advance(); return;
     }
   }, 250);
