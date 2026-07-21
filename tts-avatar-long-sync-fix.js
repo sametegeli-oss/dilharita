@@ -1,6 +1,6 @@
 /* tts-avatar-long-sync-fix.js
    Uzun metinlerde ses devam ederken avatarın susmasını ve 
-   metin ayrıştırma hatalarından kaynaklı yarım kalma sorununu engeller.
+   browser garbage collection kilitlenmesinden kaynaklı yarım kalmayı engeller.
 */
 (function(){
 "use strict";
@@ -12,6 +12,9 @@ const AVATAR_SELECTORS = [
   ".avatar-img",".avatar-image",".teacher-avatar img",".avatar img",
   "img[src*='avatars']","img[src*='avatar']","img[src*='idle.webp']","img[src*='mouth-']"
 ];
+
+// Browser Garbage Collection kilitlenmesini önleyen global tutucu
+window.__dhUtterances = new Set();
 
 let nativeSpeak = null;
 try { nativeSpeak = speechSynthesis.speak.bind(speechSynthesis); } catch(e){}
@@ -98,7 +101,7 @@ function isTurkish(text){
   return false;
 }
 
-function splitLongLine(line, maxLen=90){
+function splitLongLine(line, maxLen=100){
   line=clean(line);
   if(line.length<=maxLen) return [line];
   const parts=[];
@@ -159,21 +162,12 @@ function splitForSpeech(text){
       const pieceClean = clean(seg.text);
       if(!pieceClean) return;
       
-      // Güvenli cümle bölme
-      const pieces = pieceClean.split(/([.!?]+(?:\s+|$))/).filter(Boolean);
-      let currentBuf = "";
-      for(let i=0; i<pieces.length; i++){
-        currentBuf += pieces[i];
-        if(i % 2 === 1 || i === pieces.length - 1){
-          const finalStr = clean(currentBuf);
-          if(finalStr){
-            splitLongLine(finalStr, seg.lang==="tr-TR"?90:75).forEach(piece=>{
-              if(piece && piece.length > 1) chunks.push({text:piece, lang:seg.lang});
-            });
-          }
-          currentBuf = "";
-        }
-      }
+      const pieces = pieceClean.split(/(?<=[.!?])\s+/).filter(Boolean);
+      (pieces.length ? pieces : [pieceClean]).forEach(p=>{
+        splitLongLine(p, seg.lang==="tr-TR"?100:80).forEach(piece=>{
+          if(piece && piece.length > 1) chunks.push({text:piece, lang:seg.lang});
+        });
+      });
     });
   });
   return chunks.length ? chunks : [{text:clean(raw.replace(/\[\[|\]\]/g," ")), lang: isTurkish(raw) ? "tr-TR" : "en-US"}];
@@ -309,7 +303,7 @@ function speakSegments(segments){
     var text = clean(seg.text||"");
     if(!text) return;
     var el = seg.el || null;
-    splitLongLine(text, lang==="tr-TR"?90:75).forEach(function(piece){
+    splitLongLine(text, lang==="tr-TR"?100:80).forEach(function(piece){
       if(piece && piece.length > 1) out.push({text:piece, lang:lang, el:el});
     });
   });
@@ -323,7 +317,11 @@ function speakChunkList(chunks){
   chunks=(chunks||[]).filter(c=>c&&clean(c.text)&&clean(c.text).length>1);
   if(!chunks.length) return false;
 
-  try{ speechSynthesis.cancel(); }catch(e){}
+  try{ 
+    speechSynthesis.cancel(); 
+    window.__dhUtterances.clear();
+  }catch(e){}
+
   setSpeakingState(true);
 
   currentQueueSession++;
@@ -336,6 +334,7 @@ function speakChunkList(chunks){
     if(index >= chunks.length){
       setTimeout(()=>setSpeakingState(false), 200);
       try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
+      window.__dhUtterances.clear();
       return;
     }
 
@@ -345,27 +344,28 @@ function speakChunkList(chunks){
     dhApplyVoice(u, item.lang);
     u.__longTTSAvatarSync = true;
 
+    // GARBAGE COLLECTION KORUMASI: Utterance nesnesini küresel Set'e ekle
+    window.__dhUtterances.add(u);
+
     let hasAdvanced = false;
-    let fallbackTimer = null;
 
     function stepNext(){
       if(hasAdvanced) return;
       hasAdvanced = true;
-      if(fallbackTimer) clearTimeout(fallbackTimer);
       clearInterval(mouthTimer); mouthTimer=null;
+      
+      // Biten utterance'ı Set'ten çıkar
+      window.__dhUtterances.delete(u);
 
       if(window.__dhUserPaused){
         setTimeout(stepNext, 500);
         return;
       }
 
+      // Chrome ses motoru uyutma kilidini aç
       try { speechSynthesis.resume(); } catch(e){}
-      setTimeout(playNext, 25);
+      setTimeout(playNext, 30);
     }
-
-    // Tarayıcı takılmasına karşı esnek güvenlik zamanlayıcısı
-    const expectedTimeMs = Math.max(item.text.length * 130, 4000);
-    fallbackTimer = setTimeout(stepNext, expectedTimeMs);
 
     u.onstart = () => {
       if(thisSession !== currentQueueSession) return;
@@ -384,6 +384,7 @@ function speakChunkList(chunks){
     u.onerror = stepNext;
 
     try {
+      speechSynthesis.resume();
       nativeSpeak(u);
     } catch(e) {
       stepNext();
@@ -402,6 +403,7 @@ try{
   const nativeCancel=speechSynthesis.cancel.bind(speechSynthesis);
   speechSynthesis.cancel=function(){
     currentQueueSession++;
+    window.__dhUtterances.clear();
     setSpeakingState(false);
     return nativeCancel();
   };
