@@ -246,26 +246,54 @@ function idleSrc(src){
   if(!src) return src;
   return src.replace(/\/(mouth-[^\/]+|talk|speaking|mouth-open|blink)\.(webp|png|jpg|jpeg)(\?.*)?$/i, "/idle.$2$3");
 }
-function mouthFileForChar(ch){
-  ch = String(ch||"").toLocaleLowerCase("tr-TR");
-  if(ch==="a"||ch==="â") return "mouth-a";
-  if(ch==="e") return "mouth-e";
-  if(ch==="o"||ch==="u"||ch==="ö"||ch==="ü") return "mouth-o";
-  if(ch==="i"||ch==="ı"||ch==="y") return "mouth-i";
-  if(ch==="m"||ch==="b"||ch==="p") return "mouth-mbp";
-  if(ch==="f"||ch==="v") return "mouth-fv";
-  if(ch==="l") return "mouth-l";
-  if(ch==="t"||ch==="d"||ch==="s"||ch==="z"||ch==="ş") return "mouth-th";
-  if(/[a-zçğşö]/.test(ch)) return "mouth-e";
-  return null;
+// --- Dil-farkında ağız şekli (viseme) tabloları ---
+// Türkçe fonetiktir: harf ~ ses. Doğrudan eşleme yeterli.
+var DH_VISEME_TR = {
+  "a":"mouth-a","â":"mouth-a","e":"mouth-e",
+  "ı":"mouth-i","i":"mouth-i","y":"mouth-i",
+  "o":"mouth-o","u":"mouth-o","ö":"mouth-o","ü":"mouth-o",
+  "m":"mouth-mbp","b":"mouth-mbp","p":"mouth-mbp",
+  "f":"mouth-fv","v":"mouth-fv","l":"mouth-l",
+  "t":"mouth-th","d":"mouth-th","s":"mouth-th","z":"mouth-th","ş":"mouth-th","c":"mouth-th","ç":"mouth-th","j":"mouth-th",
+  "g":"mouth-e","ğ":"mouth-e","k":"mouth-e","h":"mouth-e","n":"mouth-e","r":"mouth-e"
+};
+// İngilizce'de yazım != telaffuz. Yaygın çift-harfleri (digraph) önce yakala.
+var DH_VISEME_EN_DIGRAPH = {
+  "th":"mouth-th","sh":"mouth-th","ch":"mouth-th","ph":"mouth-fv","gh":"mouth-fv",
+  "wh":"mouth-o","qu":"mouth-o","oo":"mouth-o","ou":"mouth-o","ow":"mouth-o","oa":"mouth-o",
+  "ee":"mouth-i","ea":"mouth-i","ie":"mouth-i","ey":"mouth-i",
+  "ai":"mouth-e","ay":"mouth-e","ng":"mouth-e","ck":"mouth-th"
+};
+var DH_VISEME_EN = {
+  "a":"mouth-a","e":"mouth-e","i":"mouth-i","o":"mouth-o","u":"mouth-o","y":"mouth-i",
+  "m":"mouth-mbp","b":"mouth-mbp","p":"mouth-mbp",
+  "f":"mouth-fv","v":"mouth-fv","w":"mouth-o","r":"mouth-e","l":"mouth-l",
+  "t":"mouth-th","d":"mouth-th","s":"mouth-th","z":"mouth-th","c":"mouth-th","g":"mouth-th","j":"mouth-th","k":"mouth-th","x":"mouth-th",
+  "n":"mouth-e","h":"mouth-e","q":"mouth-o"
+};
+
+// Verilen konumdaki ağız şeklini ve kaç karakter ilerleyeceğini döndürür.
+function visemeAt(text, pos, lang){
+  var s = String(text||"");
+  if(pos<0 || pos>=s.length) return {file:null, advance:1};
+  var isTr = (lang==="tr-TR");
+  var ch = s.charAt(pos).toLocaleLowerCase(isTr?"tr-TR":"en-US");
+  if(!isTr){
+    var two = s.substr(pos,2).toLowerCase();
+    if(DH_VISEME_EN_DIGRAPH[two]) return {file:DH_VISEME_EN_DIGRAPH[two], advance:2};
+    if(DH_VISEME_EN[ch]) return {file:DH_VISEME_EN[ch], advance:1};
+    return {file:null, advance:1}; // boşluk/noktalama -> idle (kapalı ağız)
+  }
+  if(DH_VISEME_TR[ch]) return {file:DH_VISEME_TR[ch], advance:1};
+  return {file:null, advance:1};
 }
-function frameForChar(baseSrc, ch){
+
+function frameForFile(baseSrc, file){
   if(!baseSrc) return null;
-  const file = mouthFileForChar(ch);
-  const q = baseSrc.includes("?") ? baseSrc.slice(baseSrc.indexOf("?")) : "";
-  const base = baseSrc.replace(/\?.*$/,"");
-  const dir = base.replace(/\/[^\/]*$/,"/");
-  const ext = (base.match(/\.(webp|png|jpg|jpeg)$/i)||[".webp","webp"])[1];
+  var q = baseSrc.includes("?") ? baseSrc.slice(baseSrc.indexOf("?")) : "";
+  var base = baseSrc.replace(/\?.*$/,"");
+  var dir = base.replace(/\/[^\/]*$/,"/");
+  var ext = (base.match(/\.(webp|png|jpg|jpeg)$/i)||[".webp","webp"])[1];
   return dir+(file||"idle")+"."+ext+q;
 }
 
@@ -288,23 +316,30 @@ function setSpeakingState(on){
 }
 
 let currentText="";
+let currentLang="tr-TR";
 let mouthPos=0;
 let perCharMs=75;
 
-function applyCharToAvatars(ch){
+function applyVisemeToAvatars(file){
   avatarImgs().forEach(img=>{
     const current=srcOf(img);
     if(!savedSrc.has(img)) savedSrc.set(img, idleSrc(current));
     if(img.dataset.avatarBlinking==="1") return;
     const base=savedSrc.get(img) || idleSrc(current) || current;
-    const next=frameForChar(base, ch);
+    const next=frameForFile(base, file);
     if(next){ try{ img.src=next; }catch(e){} }
   });
 }
+// Geriye dönük uyumluluk: tek karakterle çağrılırsa aktif dile göre eşle.
+function applyCharToAvatars(ch){
+  applyVisemeToAvatars(visemeAt(String(ch||""), 0, currentLang).file);
+}
+
 function startMouthForText(text, lang){
   currentText = String(text||"");
+  currentLang = (lang==="tr-TR") ? "tr-TR" : "en-US";
   mouthPos = 0;
-  let basePer = (lang==="tr-TR") ? 70 : 80;
+  let basePer = (currentLang==="tr-TR") ? 70 : 80;
   let mult = 1.0;
   try{
     const saved = parseFloat(localStorage.getItem("dh_mouthSpeed"));
@@ -315,10 +350,11 @@ function startMouthForText(text, lang){
   if(!currentText){ return; }
   mouthTimer=setInterval(()=>{
     if(!active || !currentText){ return; }
-    if(mouthPos >= currentText.length){ applyCharToAvatars(""); return; }
-    const ch = currentText.charAt(mouthPos);
-    applyCharToAvatars(ch);
-    mouthPos++;
+    if(mouthPos >= currentText.length){ applyVisemeToAvatars(null); return; }
+    // Aktif dile göre ağız şekli (TR: fonetik, EN: digraph-farkında).
+    const v = visemeAt(currentText, mouthPos, currentLang);
+    applyVisemeToAvatars(v.file);
+    mouthPos += (v.advance>0 ? v.advance : 1);
   }, perCharMs);
 }
 function alignMouthTo(charIndex){
