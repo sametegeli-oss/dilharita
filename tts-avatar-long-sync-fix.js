@@ -124,8 +124,6 @@ function splitForSpeech(text){
   const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
   const chunks=[];
 
-  // TEK DÜZELTME BURADA YAPILDI:
-  // Parantez/Tırnak dışındaki metinleri zorla tr-TR yapmak yerine isTurkish() kontrolüne sokuyoruz.
   function segmentsByBrackets(line){
     const segs=[];
     const re=/\[\[([\s\S]*?)\]\]|"([^"]*?)"|“([^”]*?)”/g;
@@ -133,7 +131,10 @@ function splitForSpeech(text){
     while((m=re.exec(line))!==null){
       if(m.index>last){
         const before=line.slice(last, m.index).trim();
-        if(before) segs.push({text:before, lang: isTurkish(before) ? "tr-TR" : "en-US"});
+        if(before){
+          var bLang = isTurkish(before) ? "tr-TR" : "en-US";
+          segs.push({text:before, lang:bLang});
+        }
       }
       const inner=((m[1]!=null?m[1]:(m[2]!=null?m[2]:m[3]))||"").trim();
       if(inner) segs.push({text:inner, lang:"en-US"});
@@ -141,11 +142,17 @@ function splitForSpeech(text){
     }
     if(last<line.length){
       const after=line.slice(last).trim();
-      if(after) segs.push({text:after, lang: isTurkish(after) ? "tr-TR" : "en-US"});
+      if(after){
+        var aLang = isTurkish(after) ? "tr-TR" : "en-US";
+        segs.push({text:after, lang:aLang});
+      }
     }
     if(!segs.length){
       const t=line.trim();
-      if(t) segs.push({text:t, lang: isTurkish(t) ? "tr-TR" : "en-US"});
+      if(t){
+        var tLang = isTurkish(t) ? "tr-TR" : "en-US";
+        segs.push({text:t, lang:tLang});
+      }
     }
     return segs;
   }
