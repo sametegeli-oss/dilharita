@@ -21,12 +21,26 @@ const AVATAR_SELECTORS = [
   "img[src*='avatars']","img[src*='avatar']","img[src*='idle.webp']","img[src*='mouth-']"
 ];
 
-let nativeSpeak = null;
-try { nativeSpeak = speechSynthesis.speak.bind(speechSynthesis); } catch(e){}
-// Orijinal cancel'ı sakla: motor kilidini kurtarmak için, oturumu bozan
-// yamalı cancel yerine bunu kullanacağız.
-let nativeCancel = null;
-try { nativeCancel = speechSynthesis.cancel.bind(speechSynthesis); } catch(e){}
+// ÇOK ÖNEMLİ: Bu sayfada BAŞKA bir script daha (ai-teacher-prompt-tts.js)
+// speechSynthesis.speak'i sarmalıyor. Native'i instance'tan (speechSynthesis.speak)
+// yakalarsak, onun sarmalayıcısını yakalarız; iç çağrılarımız tekrar ona
+// girer, o da speakChunkList'i yeniden çağırıp başında cancel() tetikler ve
+// ses birkaç cümlede durur (iki script birbirini iptal eder).
+// Bu yüzden GERÇEK native metotları PROTOTİPTEN alıyoruz — hiçbir instance
+// yaması araya giremez, döngü kırılır.
+let nativeSpeak = null, nativeCancel = null;
+(function captureNatives(){
+  try{
+    var P = (typeof SpeechSynthesis!=="undefined" && SpeechSynthesis.prototype) ? SpeechSynthesis.prototype : null;
+    if(P && typeof P.speak==="function"){
+      nativeSpeak  = P.speak.bind(speechSynthesis);
+      nativeCancel = P.cancel.bind(speechSynthesis);
+      return;
+    }
+  }catch(e){}
+  try{ nativeSpeak = speechSynthesis.speak.bind(speechSynthesis); }catch(e){}
+  try{ nativeCancel = speechSynthesis.cancel.bind(speechSynthesis); }catch(e){}
+})();
 
 let active = false;
 let activeTimer = null;
@@ -331,7 +345,7 @@ function speakChunkList(chunks){
                      .map(c=>({text:clean(c.text), lang:c.lang, el:c.el||null}));
   if(!chunks.length) return false;
 
-  try{ speechSynthesis.cancel(); }catch(e){}
+  try{ if(nativeCancel) nativeCancel(); else speechSynthesis.cancel(); }catch(e){}
   currentQueueSession++;
   const session = currentQueueSession;
   setSpeakingState(true);
@@ -465,13 +479,14 @@ window.DH_LongTTSAvatarSync = {
   stop:()=>{ try{ speechSynthesis.cancel(); }catch(e){} setSpeakingState(false); }
 };
 
-/* cancel() çağrıldığında oturumu geçersiz kıl ve durumu sıfırla. */
+/* cancel() çağrıldığında oturumu geçersiz kıl ve durumu sıfırla.
+   Not: gerçek iptali modül düzeyindeki nativeCancel (prototip native) ile
+   yapıyoruz; başka bir script'in cancel sarmalayıcısına girmeyiz. */
 try{
-  const nativeCancel=speechSynthesis.cancel.bind(speechSynthesis);
   speechSynthesis.cancel=function(){
     currentQueueSession++;
     setSpeakingState(false);
-    return nativeCancel();
+    try{ return nativeCancel ? nativeCancel() : SpeechSynthesis.prototype.cancel.call(speechSynthesis); }catch(e){}
   };
 }catch(e){}
 
