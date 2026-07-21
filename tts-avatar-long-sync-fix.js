@@ -1,17 +1,11 @@
 /* tts-avatar-long-sync-fix.js
-   Uzun metinlerde ses devam ederken avatarın susmasını engeller.
-   - TTS metnini küçük parçalara böler.
-   - Her parçada avatar-speaking durumunu canlı tutar.
-   - Avatar ağız frame'lerini tüm okuma bitene kadar döndürür.
-   - Türkçe kısımlar tr-TR, İngilizce kısımlar en-US okunur.
+   Uzun metinlerde ses devam ederken avatarın susmasını ve 
+   tarayıcı kilitlenmesinden kaynaklı yarım kalma sorununu engeller.
 */
 (function(){
 "use strict";
 if(window.__LongTTSAvatarSyncFixV2) return;
 window.__LongTTSAvatarSyncFixV2 = true;
-
-// ---- Kullanıcı duraklatma bayrağı (artık kullanılmıyor, güvenlik için false) ----
-window.__dhUserPaused = false;
 
 const AVATAR_SELECTORS = [
   "#avatarImg","#avatarImage","#teacherAvatarImg","#teacherAvatar","#mainAvatarImg",
@@ -104,14 +98,15 @@ function isTurkish(text){
   return false;
 }
 
-function splitLongLine(line, maxLen=120){
+// Mikro parçalama (Max 60 karakter) -> Tarayıcının 15sn kilitlenme bug'ını kesin çözer
+function splitLongLine(line, maxLen=60){
   line=clean(line);
   if(line.length<=maxLen) return [line];
   const parts=[];
   let rest=line;
   while(rest.length>maxLen){
     let cut=Math.max(rest.lastIndexOf(". ",maxLen), rest.lastIndexOf(", ",maxLen), rest.lastIndexOf("; ",maxLen), rest.lastIndexOf(" ",maxLen));
-    if(cut<40) cut=maxLen;
+    if(cut<15) cut=maxLen;
     parts.push(clean(rest.slice(0,cut+1)));
     rest=clean(rest.slice(cut+1));
   }
@@ -162,9 +157,12 @@ function splitForSpeech(text){
 
   lines.forEach(line=>{
     segmentsByBrackets(line).forEach(seg=>{
-      const pieces=seg.text.split(/(?<=[.!?])\s+/).filter(Boolean);
-      (pieces.length?pieces:[seg.text]).forEach(p=>{
-        splitLongLine(p, seg.lang==="tr-TR"?100:80).forEach(piece=>{
+      const pieceClean = clean(seg.text);
+      if(!pieceClean) return;
+      
+      const pieces = pieceClean.split(/(?<=[.!?])\s+/).filter(Boolean);
+      (pieces.length ? pieces : [pieceClean]).forEach(p=>{
+        splitLongLine(p, seg.lang==="tr-TR"?60:50).forEach(piece=>{
           if(piece) chunks.push({text:piece, lang:seg.lang});
         });
       });
@@ -181,7 +179,7 @@ function avatarImgs(){
   return [...set].filter(img=>{
     try{
       const r=img.getBoundingClientRect();
-      return r.width>24 && r.height>24 && r.bottom>0 && r.top<window.innerHeight;
+      return r.width>24 && r.height>24 && r.bottom>0 && r.top<innerHeight;
     }catch(e){ return true; }
   });
 }
@@ -305,7 +303,7 @@ function speakSegments(segments){
     var el = seg.el || null;
     var pieces = text.split(/(?<=[.!?])\s+/).filter(Boolean);
     (pieces.length?pieces:[text]).forEach(function(p){
-      splitLongLine(p, lang==="tr-TR"?100:80).forEach(function(piece){
+      splitLongLine(p, lang==="tr-TR"?60:50).forEach(function(piece){
         if(piece) out.push({text:piece, lang:lang, el:el});
       });
     });
@@ -313,7 +311,6 @@ function speakSegments(segments){
   return speakChunkList(out);
 }
 
-// KİLİTLENMEYİ VE DURMAYI ÖNLEYEN ZİNCİRLEME (QUEUE) YÖNETİCİSİ
 let currentQueueSession = 0;
 
 function speakChunkList(chunks){
@@ -326,7 +323,6 @@ function speakChunkList(chunks){
 
   currentQueueSession++;
   const thisSession = currentQueueSession;
-
   let index = 0;
 
   function playNext(){
@@ -345,22 +341,21 @@ function speakChunkList(chunks){
     u.__longTTSAvatarSync = true;
 
     let hasAdvanced = false;
-    let safetyTimer = null;
 
     function stepNext(){
       if(hasAdvanced) return;
       hasAdvanced = true;
-      if(safetyTimer) clearTimeout(safetyTimer);
       clearInterval(mouthTimer); mouthTimer=null;
 
-      // ★ DÜZELTİLDİ: window.__dhUserPaused kontrolü KALDIRILDI
-      // Tarayıcı duraklatma/resume işlevlerini kullanın, bu değişkene güvenmeyin.
-      setTimeout(playNext, 40);
-    }
+      if(window.__dhUserPaused){
+        setTimeout(stepNext, 500);
+        return;
+      }
 
-    // Her cümle için kelime başına ve karakter uzunluğuna göre cömert emniyet payı
-    const safeMs = Math.max(item.text.length * 150, 4500);
-    safetyTimer = setTimeout(stepNext, safeMs);
+      // Chrome ses motorunu "uyandırmak" ve donmayı önlemek için micro-delay
+      try { speechSynthesis.resume(); } catch(e){}
+      setTimeout(playNext, 20);
+    }
 
     u.onstart = () => {
       if(thisSession !== currentQueueSession) return;
@@ -393,45 +388,36 @@ window.DH_speakMixed = speakChunks;
 window.DH_speakSegments = speakSegments;
 window.DH_LongTTSAvatarSync = { speak:speakChunks, speakSegments:speakSegments, split:splitForSpeech, start:()=>setSpeakingState(true), stop:()=>setSpeakingState(false) };
 
-// ---- speechSynthesis.cancel override (güvenli) ----
 try{
-  const nativeCancel = speechSynthesis.cancel.bind(speechSynthesis);
-  speechSynthesis.cancel = function(){
+  const nativeCancel=speechSynthesis.cancel.bind(speechSynthesis);
+  speechSynthesis.cancel=function(){
     currentQueueSession++;
     setSpeakingState(false);
     return nativeCancel();
   };
 }catch(e){}
 
-// ---- speechSynthesis.speak override (daha sağlam) ----
 try{
   if(!speechSynthesis.__longAvatarSpeakPatch){
-    speechSynthesis.__longAvatarSpeakPatch = true;
-    speechSynthesis.speak = function(u){
+    speechSynthesis.__longAvatarSpeakPatch=true;
+    speechSynthesis.speak=function(u){
       try{
         if(u && u.__longTTSAvatarSync) return nativeSpeak(u);
-        const text = String(u && u.text || "");
-        if(text.length > 80 || /TÜRKÇE|ENGLISH|AÇIKLAMA|ÖZET|ğ|ü|ş|ö|ç|ı/i.test(text)){
+        const text=String(u&&u.text||"");
+        if(text.length>80 || /TÜRKÇE|ENGLISH|AÇIKLAMA|ÖZET|ğ|ü|ş|ö|ç|ı/i.test(text)){
           return speakChunks(text);
         }
-        const oldStart = u.onstart;
-        const oldBoundary = u.onboundary;
-        const oldEnd = u.onend;
-        const oldError = u.onerror;
-        u.onstart = function(ev){ setSpeakingState(true); if(oldStart) oldStart.call(this, ev); };
-        u.onboundary = function(ev){ setSpeakingState(true); if(oldBoundary) oldBoundary.call(this, ev); };
-        u.onend = function(ev){ setTimeout(()=>setSpeakingState(false), 180); if(oldEnd) oldEnd.call(this, ev); };
-        u.onerror = function(ev){ setTimeout(()=>setSpeakingState(false), 180); if(oldError) oldError.call(this, ev); };
-      }catch(e){ /* override içinde hata olursa sessizce geç */ }
-      try { return nativeSpeak(u); } catch(e) { return undefined; }
+        u.onstart=((old)=>function(ev){setSpeakingState(true); if(old) old.call(this,ev);})(u.onstart);
+        u.onboundary=((old)=>function(ev){setSpeakingState(true); if(old) old.call(this,ev);})(u.onboundary);
+        u.onend=((old)=>function(ev){setTimeout(()=>setSpeakingState(false),180); if(old) old.call(this,ev);})(u.onend);
+        u.onerror=((old)=>function(ev){setTimeout(()=>setSpeakingState(false),180); if(old) old.call(this,ev);})(u.onerror);
+      }catch(e){}
+      return nativeSpeak(u);
     };
   }
 }catch(e){}
 
-document.addEventListener("visibilitychange", ()=>{
-  if(document.hidden) setSpeakingState(false);
-});
-
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeakingState(false); });
 })();
 
 
