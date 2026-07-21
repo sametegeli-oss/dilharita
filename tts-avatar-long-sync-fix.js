@@ -1,11 +1,19 @@
-/* tts-avatar-long-sync-fix.js
-   Uzun metinlerde ses devam ederken avatarın susmasını ve
-   metin ayrıştırma hatalarından kaynaklı yarım kalma sorununu engeller.
+/* tts-avatar-long-sync-fix.js  (v3 - polling tabanlı, sağlam motor)
+   Uzun/karışık (TR+EN) metinleri baştan sona kesintisiz seslendirir,
+   avatar ağzını senkron tutar ve ekranda görünen metni birebir okur.
+
+   Tasarım notu: Chrome'un iki bilinen hatası bu iş için ölümcül:
+   1) Toplam kesintisiz konuşma ~15 sn'yi geçince ses sessizce durur.
+   2) onend/onerror bazen HİÇ tetiklenmez (cümle bitse de sıradaki gelmez).
+   Bu yüzden akış onend olayına GÜVENMEZ. Her 250 ms çalışan tek bir
+   "watchdog" motorun gerçek durumuna (speaking/pending/paused) bakarak
+   sıradaki cümleye geçer ve periyodik pause()+resume() ile 15 sn hatasını
+   önler. Böylece kuyruk her koşulda ilerler.
 */
 (function(){
 "use strict";
-if(window.__LongTTSAvatarSyncFixV2) return;
-window.__LongTTSAvatarSyncFixV2 = true;
+if(window.__LongTTSAvatarSyncFixV3) return;
+window.__LongTTSAvatarSyncFixV3 = true;
 
 const AVATAR_SELECTORS = [
   "#avatarImg","#avatarImage","#teacherAvatarImg","#teacherAvatar","#mainAvatarImg",
@@ -21,7 +29,8 @@ let activeTimer = null;
 let mouthTimer = null;
 let savedSrc = new WeakMap();
 
-var DH_TTS_DEFAULTS={ trRate:0.96, trPitch:1.0, enRate:0.88, enPitch:1.0 };
+/* ---------------- Ses / hız / ton ayarları ---------------- */
+var DH_TTS_DEFAULTS={ trRate:0.96, trPitch:1.0, enRate:0.90, enPitch:1.0 };
 function dhClampNum(v,lo,hi,def){ v=parseFloat(v); if(isNaN(v))return def; return Math.min(hi,Math.max(lo,v)); }
 function dhTtsCfg(){
   try{
@@ -37,8 +46,10 @@ function dhTtsCfg(){
   return { trRate:DH_TTS_DEFAULTS.trRate,trPitch:DH_TTS_DEFAULTS.trPitch,enRate:DH_TTS_DEFAULTS.enRate,enPitch:DH_TTS_DEFAULTS.enPitch,trVoice:"",enVoice:"" };
 }
 
+function dhAllVoices(){ try{ return speechSynthesis.getVoices()||[]; }catch(e){ return []; } }
+
 function dhPickVoice(lang){
-  var voices=[]; try{ voices=speechSynthesis.getVoices()||[]; }catch(e){}
+  var voices=dhAllVoices();
   if(!voices.length) return null;
   var c=dhTtsCfg(), tr=/^tr/i.test(lang);
   var want=tr?c.trVoice:c.enVoice;
@@ -53,24 +64,19 @@ function dhApplyVoice(u, lang){
   u.pitch=tr?c.trPitch:c.enPitch;
   var v=dhPickVoice(lang);
   if(!v){
-    // İstenen dilde yüklü ses yoksa (ör. Türkçe locale'li bir bilgisayarda
-    // sistemde hiç İngilizce ses bulunmuyorsa), utterance'ı u.lang="en-US"
-    // gibi DESTEKLENMEYEN bir dilde bırakmak Chrome'un sesi hiç
-    // sentezleyememesine yol açıyor: onerror neredeyse anında tetikleniyor,
-    // kuyruk o cümleyi atlayıp bir sonrakine geçiyor. Sonuç: "İngilizce
-    // cümleleri okumuyor" ve araya giren İngilizce parçalar yok olduğu için
-    // "cümleleri atlayarak okuyor" hissi. Bunu engellemek için mevcut
-    // herhangi bir sese (tercihen Türkçe, yoksa herhangi biri) düşüyoruz;
-    // böylece metin sessiz kalmak yerine en azından okunuyor.
-    var all=[]; try{ all=speechSynthesis.getVoices()||[]; }catch(e){}
+    // İstenen dilde ses yoksa desteklenmeyen bir lang'da bırakmak sesi
+    // tamamen susturur (onerror -> cümle atlanır). Mevcut herhangi bir sese
+    // düşüp en azından okunmasını sağlıyoruz.
+    var all=dhAllVoices();
     v = all.filter(function(x){ return /^tr/i.test(x.lang||""); })[0]
         || all.filter(function(x){ return /^en/i.test(x.lang||""); })[0]
         || all[0] || null;
   }
   if(v){ u.voice=v; u.lang=v.lang; }
-  else { try{ u.lang=""; }catch(e){} }  // hiç ses yoksa en azından desteklenmeyen dile kilitlenme
+  else { try{ u.lang = lang || ""; }catch(e){} }
 }
 
+/* ---------------- Metin temizleme ---------------- */
 function dhSpeakClean(s){
   var orig=String(s||"");
   var r=orig;
@@ -93,19 +99,41 @@ function dhSpeakClean(s){
 }
 function clean(s){ return dhSpeakClean(s); }
 
+// Gelen metni EKRANDA GÖRÜNEN düz metne çevirir (etiket temizler,
+// &amp; &nbsp; gibi entity'leri gerçek karaktere döndürür).
+function htmlToVisibleText(input){
+  var s = String(input||"");
+  try{
+    var hasTags = /<[^>]+>/.test(s);
+    var tmp = document.createElement("div");
+    if(hasTags){
+      s = s.replace(/<\s*br\s*\/?>/gi, "\n")
+           .replace(/<\s*\/\s*(p|div|li|h[1-6]|tr|section|article)\s*>/gi, "\n");
+      tmp.innerHTML = s;
+      try{ tmp.querySelectorAll("script,style,noscript").forEach(function(n){ n.remove(); }); }catch(e){}
+    } else {
+      tmp.innerHTML = s; // etiket yok ama entity olabilir
+    }
+    var out = (tmp.textContent || "").replace(/ /g, " ");
+    if(out && out.trim()) return out;
+  }catch(e){}
+  return s.replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g," ");
+}
+
 window.DH_TTS={
   get:dhTtsCfg,
   set:function(patch){ var n=Object.assign(dhTtsCfg(),patch||{}); try{ localStorage.setItem("dh-tts-voice-v1",JSON.stringify(n)); }catch(e){} return n; },
   reset:function(){ try{ localStorage.removeItem("dh-tts-voice-v1"); }catch(e){} return dhTtsCfg(); },
   apply:dhApplyVoice, clean:dhSpeakClean, defaults:DH_TTS_DEFAULTS, pickVoice:dhPickVoice,
   voices:function(lang){
-    var v=[]; try{ v=speechSynthesis.getVoices()||[]; }catch(e){}
+    var v=dhAllVoices();
     if(!lang) return v.slice();
     var re=/^tr/i.test(lang)?/^tr/i:/^en/i;
     return v.filter(function(x){ return re.test(x.lang||""); });
   }
 };
 
+/* ---------------- Dil tespiti + cümle bölme ---------------- */
 function isTurkish(text){
   const s=String(text||"");
   if(/[ğüşöçıİĞÜŞÖÇ]/.test(s)) return true;
@@ -114,7 +142,8 @@ function isTurkish(text){
   return false;
 }
 
-function splitLongLine(line, maxLen=90){
+function splitLongLine(line, maxLen){
+  maxLen = maxLen || 90;
   line=clean(line);
   if(line.length<=maxLen) return [line];
   const parts=[];
@@ -129,39 +158,8 @@ function splitLongLine(line, maxLen=90){
   return parts;
 }
 
-// Gelen metni EKRANDA GÖRÜNEN düz metne çevirir.
-// Regex ile etiket ayıklamak yerine tarayıcının kendi HTML çözücüsünü
-// kullanıyoruz; böylece hem etiketler temizlenir hem de &amp; &nbsp; &lt;
-// gibi HTML entity'leri doğru karaktere ("&", boşluk, "<") dönüşür. Amaç:
-// seslendirilen metnin, kullanıcının ekranda gördüğüyle birebir aynı olması.
-function htmlToVisibleText(input){
-  var s = String(input||"");
-  try{
-    var hasTags = /<[^>]+>/.test(s);
-    var tmp = document.createElement("div");
-    if(hasTags){
-      // Blok ve satır-sonu etiketlerini gerçek satır sonuna çevir ki
-      // cümleler birbirine yapışmasın (br, p/div/li/başlık kapanışları).
-      s = s.replace(/<\s*br\s*\/?>/gi, "\n")
-           .replace(/<\s*\/\s*(p|div|li|h[1-6]|tr|section|article)\s*>/gi, "\n");
-      tmp.innerHTML = s;
-      // Sesli okunmaması gereken görünmez öğeleri at.
-      try{ tmp.querySelectorAll("script,style,noscript").forEach(function(n){ n.remove(); }); }catch(e){}
-    } else {
-      // Etiket yok ama entity olabilir; innerHTML atayınca çözülür.
-      tmp.innerHTML = s;
-    }
-    var out = (tmp.textContent || "").replace(/ /g, " ");
-    // textContent boş dönerse ham metne geri düş.
-    if(out && out.trim()) return out;
-  }catch(e){}
-  // Tarayıcı yoksa / hata olursa eski regex yöntemine düş.
-  return s.replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g," ");
-}
-
 function splitForSpeech(text){
-  const raw=htmlToVisibleText(text)
-    .replace(/\*\*/g," ");
+  const raw=htmlToVisibleText(text).replace(/\*\*/g," ");
   const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
   const chunks=[];
 
@@ -169,28 +167,19 @@ function splitForSpeech(text){
     const segs=[];
     const re=/\[\[([\s\S]*?)\]\]|"([^"]*?)"|“([^”]*?)”/g;
     let last=0, m;
-
     while((m=re.exec(line))!==null){
       if(m.index > last){
         const before=line.slice(last, m.index).trim();
-        if(before){
-          segs.push({text:before, lang: isTurkish(before) ? "tr-TR" : "en-US"});
-        }
+        if(before) segs.push({text:before, lang: isTurkish(before) ? "tr-TR" : "en-US"});
       }
       const inner=((m[1]!=null?m[1]:(m[2]!=null?m[2]:m[3]))||"").trim();
-      if(inner){
-        segs.push({text:inner, lang:"en-US"});
-      }
+      if(inner) segs.push({text:inner, lang:"en-US"});
       last=re.lastIndex;
     }
-
     if(last < line.length){
       const after=line.slice(last).trim();
-      if(after){
-        segs.push({text:after, lang: isTurkish(after) ? "tr-TR" : "en-US"});
-      }
+      if(after) segs.push({text:after, lang: isTurkish(after) ? "tr-TR" : "en-US"});
     }
-
     if(!segs.length){
       const t=line.trim();
       if(t) segs.push({text:t, lang: isTurkish(t) ? "tr-TR" : "en-US"});
@@ -202,8 +191,6 @@ function splitForSpeech(text){
     segmentsByBrackets(line).forEach(seg=>{
       const pieceClean = clean(seg.text);
       if(!pieceClean) return;
-
-      // Güvenli cümle bölme
       const pieces = pieceClean.split(/([.!?]+(?:\s+|$))/).filter(Boolean);
       let currentBuf = "";
       for(let i=0; i<pieces.length; i++){
@@ -223,6 +210,7 @@ function splitForSpeech(text){
   return chunks.length ? chunks : [{text:clean(raw.replace(/\[\[|\]\]/g," ")), lang: isTurkish(raw) ? "tr-TR" : "en-US"}];
 }
 
+/* ---------------- Avatar ağız animasyonu ---------------- */
 function avatarImgs(){
   const set=new Set();
   AVATAR_SELECTORS.forEach(sel=>{
@@ -235,13 +223,11 @@ function avatarImgs(){
     }catch(e){ return true; }
   });
 }
-
 function srcOf(img){ return img.currentSrc || img.src || img.getAttribute("src") || ""; }
 function idleSrc(src){
   if(!src) return src;
   return src.replace(/\/(mouth-[^\/]+|talk|speaking|mouth-open|blink)\.(webp|png|jpg|jpeg)(\?.*)?$/i, "/idle.$2$3");
 }
-
 function mouthFileForChar(ch){
   ch = String(ch||"").toLocaleLowerCase("tr-TR");
   if(ch==="a"||ch==="â") return "mouth-a";
@@ -255,7 +241,6 @@ function mouthFileForChar(ch){
   if(/[a-zçğşö]/.test(ch)) return "mouth-e";
   return null;
 }
-
 function frameForChar(baseSrc, ch){
   if(!baseSrc) return null;
   const file = mouthFileForChar(ch);
@@ -298,7 +283,6 @@ function applyCharToAvatars(ch){
     if(next){ try{ img.src=next; }catch(e){} }
   });
 }
-
 function startMouthForText(text, lang){
   currentText = String(text||"");
   mouthPos = 0;
@@ -313,22 +297,15 @@ function startMouthForText(text, lang){
   if(!currentText){ return; }
   mouthTimer=setInterval(()=>{
     if(!active || !currentText){ return; }
-    if(mouthPos >= currentText.length){
-      applyCharToAvatars("");
-      return;
-    }
+    if(mouthPos >= currentText.length){ applyCharToAvatars(""); return; }
     const ch = currentText.charAt(mouthPos);
     applyCharToAvatars(ch);
     mouthPos++;
   }, perCharMs);
 }
-
 function alignMouthTo(charIndex){
-  if(typeof charIndex==="number" && charIndex>=0 && charIndex<=currentText.length){
-    mouthPos = charIndex;
-  }
+  if(typeof charIndex==="number" && charIndex>=0 && charIndex<=currentText.length){ mouthPos = charIndex; }
 }
-
 function stopMouthLoop(){
   clearInterval(mouthTimer); mouthTimer=null;
   currentText=""; mouthPos=0;
@@ -338,19 +315,131 @@ function stopMouthLoop(){
   });
 }
 
-function speakChunks(text){
+/* ================= SAĞLAM SESLENDİRME MOTORU (v3) ================= */
+let currentQueueSession = 0;
+// GC koruması: Chrome, JS referansı kalmayan utterance'ı konuşma bitmeden
+// çöp toplayıp sesi kesebiliyor. Son birkaç nesneyi elde tutuyoruz.
+let __keepAliveRefs = [];
+
+function speakChunkList(chunks){
   if(!nativeSpeak) return false;
-  const chunks=splitForSpeech(text).filter(c=>clean(c.text));
-  return speakChunkList(chunks);
+  chunks=(chunks||[]).filter(c=>c&&clean(c.text)&&clean(c.text).length>1)
+                     .map(c=>({text:clean(c.text), lang:c.lang, el:c.el||null}));
+  if(!chunks.length) return false;
+
+  try{ speechSynthesis.cancel(); }catch(e){}
+  currentQueueSession++;
+  const session = currentQueueSession;
+  setSpeakingState(true);
+
+  let idx = 0;
+  let curStarted = false;   // aktif cümlede onstart geldi mi
+  let curDone = false;      // aktif cümle tamamlandı/atlandı mı
+  let curCallTime = 0;      // speak() çağrı zamanı
+  let lastResume = Date.now();
+  let watchdog = null;
+
+  function stopWatchdog(){ if(watchdog){ clearInterval(watchdog); watchdog=null; } }
+
+  function finishAll(){
+    stopWatchdog();
+    setTimeout(()=>{ if(session===currentQueueSession) setSpeakingState(false); }, 150);
+    try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
+  }
+
+  function advance(){
+    if(curDone) return;
+    curDone = true;
+    clearInterval(mouthTimer); mouthTimer=null;
+    idx++;
+    setTimeout(()=>{ if(session===currentQueueSession) speakCurrent(); }, 20);
+  }
+
+  function speakCurrent(){
+    if(session !== currentQueueSession){ stopWatchdog(); return; }
+    if(idx >= chunks.length){ finishAll(); return; }
+
+    const item = chunks[idx];
+    const u = new SpeechSynthesisUtterance(item.text);
+    dhApplyVoice(u, item.lang);
+    u.__longTTSAvatarSync = true;
+
+    curStarted = false;
+    curDone = false;
+    curCallTime = Date.now();
+
+    __keepAliveRefs.push(u);
+    if(__keepAliveRefs.length>8) __keepAliveRefs.splice(0, __keepAliveRefs.length-8);
+
+    u.onstart = function(){
+      if(session!==currentQueueSession) return;
+      curStarted = true;
+      lastResume = Date.now();
+      setSpeakingState(true);
+      startMouthForText(item.text, item.lang);
+      try{ if(window.__dhHighlight) window.__dhHighlight(item.el||null); }catch(e){}
+    };
+    u.onboundary = function(ev){
+      if(session!==currentQueueSession) return;
+      if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex);
+    };
+    u.onend = function(){ advance(); };
+    u.onerror = function(){ advance(); };
+
+    try{ nativeSpeak(u); }catch(e){ advance(); }
+  }
+
+  // Tek watchdog: onend'e güvenmez; motor durumuna bakarak ilerler +
+  // 15 sn susma hatasına karşı periyodik pause/resume yapar.
+  watchdog = setInterval(function(){
+    if(session !== currentQueueSession){ stopWatchdog(); return; }
+
+    var speaking=false, pending=false, paused=false;
+    try{ speaking=speechSynthesis.speaking; pending=speechSynthesis.pending; paused=speechSynthesis.paused; }catch(e){}
+
+    // Kullanıcı elle duraklattıysa hiçbir şey yapma.
+    if(window.__dhUserPaused){ return; }
+
+    // İstemeden takılı kalmış duraklamayı kurtar.
+    if(paused && !window.__dhUserPaused){
+      try{ speechSynthesis.resume(); }catch(e){}
+      return;
+    }
+
+    // 15 sn hatasını önle: konuşurken periyodik pause+resume.
+    if(speaking && (Date.now()-lastResume) > 9000){
+      try{ speechSynthesis.pause(); speechSynthesis.resume(); }catch(e){}
+      lastResume = Date.now();
+      return;
+    }
+
+    if(curDone) return;
+
+    // Cümle başladı ve motor artık konuşmuyorsa -> bitmiştir (onend düşmüş olabilir).
+    if(curStarted && !speaking && !pending){
+      advance(); return;
+    }
+    // Hiç başlamadı ve makul süre geçti -> motor sesi düşürdü, atla ki kuyruk durmasın.
+    if(!curStarted && !speaking && !pending && (Date.now()-curCallTime) > 3500){
+      advance(); return;
+    }
+  }, 250);
+
+  speakCurrent();
+  return true;
 }
 
+function speakChunks(text){
+  if(!nativeSpeak) return false;
+  return speakChunkList(splitForSpeech(text));
+}
 function speakSegments(segments){
   if(!nativeSpeak || !Array.isArray(segments)) return false;
   const out=[];
   segments.forEach(function(seg){
     if(!seg) return;
     var lang = seg.lang ? seg.lang : (isTurkish(seg.text) ? "tr-TR" : "en-US");
-    var text = clean(seg.text||"");
+    var text = clean(htmlToVisibleText(seg.text||""));
     if(!text) return;
     var el = seg.el || null;
     splitLongLine(text, lang==="tr-TR"?90:75).forEach(function(piece){
@@ -360,147 +449,15 @@ function speakSegments(segments){
   return speakChunkList(out);
 }
 
-let currentQueueSession = 0;
-
-// Chrome'un çok bilinen ve hâlâ açık bir hatası (Chromium issue 509488):
-// SpeechSynthesisUtterance nesnesine JS tarafında kalıcı (global) bir
-// referans tutulmazsa, tarayıcı bunu konuşma daha bitmeden çöp toplayabiliyor.
-// Bu da sesin hiçbir hata/olay tetiklemeden aniden susmasına yol açıyor -
-// "birkaç cümle okuyup susma" belirtisiyle örtüşüyor. u üzerine eklenen
-// onstart/onend gibi alanlar bunu engellemiyor; nesneleri ayrıca global bir
-// dizide tutup erken çöp toplanmalarını engelliyoruz.
-let __dhUtteranceKeepAlive = [];
-
-function speakChunkList(chunks){
-  if(!nativeSpeak) return false;
-  chunks=(chunks||[]).filter(c=>c&&clean(c.text)&&clean(c.text).length>1);
-  if(!chunks.length) return false;
-
-  try{ speechSynthesis.cancel(); }catch(e){}
-  setSpeakingState(true);
-
-  currentQueueSession++;
-  const thisSession = currentQueueSession;
-  let index = 0;
-
-  function playNext(){
-    if(thisSession !== currentQueueSession) return;
-
-    if(index >= chunks.length){
-      setTimeout(()=>setSpeakingState(false), 200);
-      try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
-      return;
-    }
-
-    const item = chunks[index++];
-    const u = new SpeechSynthesisUtterance(item.text);
-    u.lang = item.lang;
-    dhApplyVoice(u, item.lang);
-    u.__longTTSAvatarSync = true;
-
-    // GC'ye karşı kalıcı referans: en fazla son birkaç utterance'ı tut.
-    __dhUtteranceKeepAlive.push(u);
-    if(__dhUtteranceKeepAlive.length > 6){
-      __dhUtteranceKeepAlive.splice(0, __dhUtteranceKeepAlive.length - 6);
-    }
-
-    let hasAdvanced = false;
-    let fallbackTimer = null;
-    let keepAliveTimer = null;
-    let retried = false;
-
-    function stepNext(){
-      if(hasAdvanced) return;
-      hasAdvanced = true;
-      if(fallbackTimer) clearTimeout(fallbackTimer);
-      if(keepAliveTimer){ clearInterval(keepAliveTimer); keepAliveTimer=null; }
-      clearInterval(mouthTimer); mouthTimer=null;
-
-      if(window.__dhUserPaused){
-        setTimeout(stepNext, 500);
-        return;
-      }
-
-      try { speechSynthesis.resume(); } catch(e){}
-      setTimeout(playNext, 25);
-    }
-
-    // Tarayıcı takılmasına karşı esnek güvenlik zamanlayıcısı.
-    // Süre, kullanıcının ayarladığı okuma hızına (rate) göre ölçekleniyor ve
-    // üstüne pay bırakılıyor; yavaş hızda cümlenin yarıda kesilmesini önler.
-    const msPerCharAtRate1 = item.lang==="tr-TR" ? 105 : 115;
-    const effectiveRate = Math.max(u.rate || 1, 0.4);
-    const expectedTimeMs = Math.max((item.text.length * msPerCharAtRate1) / effectiveRate, 4000) + 3000;
-    fallbackTimer = setTimeout(stepNext, expectedTimeMs);
-
-    u.onstart = () => {
-      if(thisSession !== currentQueueSession) return;
-      setSpeakingState(true);
-      startMouthForText(item.text, item.lang);
-      try{ if(window.__dhHighlight) window.__dhHighlight(item.el||null); }catch(e){}
-
-      // NOT: Daha önce burada her 8 saniyede bir speechSynthesis.pause()/resume()
-      // çağıran bir "keep-alive" vardı. Bu numara yalnızca ~15 saniyeden uzun
-      // TEK bir utterance için gereklidir. Metin zaten kısa parçalara
-      // bölündüğü için (birkaç saniye) bu trik gereksizdi ve Chrome'da
-      // konuşmayı ortada kesip kuyruğun durmasına yol açıyordu
-      // ("birkaç cümle okuyup durma"). Kaldırıldı; motor gerçekten takılırsa
-      // aşağıdaki rate'e göre ölçeklenen fallback zamanlayıcısı devreye girer.
-    };
-
-    u.onboundary = (ev) => {
-      if(thisSession !== currentQueueSession) return;
-      setSpeakingState(true);
-      if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex);
-    };
-
-    u.onend = stepNext;
-
-    u.onerror = (ev) => {
-      if(thisSession !== currentQueueSession) return;
-      // Konuşma hiç başlamadan hata alındıysa (ör. seçili ses o an kullanılamıyor)
-      // cümleyi hemen atlamak yerine bir kez daha, güvenli bir sesle deniyoruz.
-      // Böylece geçici ses/dil sorunlarında cümleler kaybolmuyor.
-      var reason = ev && ev.error;
-      var benignInterrupt = (reason==="interrupted" || reason==="canceled");
-      if(!retried && !benignInterrupt){
-        retried = true;
-        if(fallbackTimer) clearTimeout(fallbackTimer);
-        if(keepAliveTimer){ clearInterval(keepAliveTimer); keepAliveTimer=null; }
-        try{
-          const u2 = new SpeechSynthesisUtterance(item.text);
-          dhApplyVoice(u2, item.lang);   // en uygun/mevcut sese düşer
-          u2.__longTTSAvatarSync = true;
-          u2.onstart = u.onstart;
-          u2.onboundary = u.onboundary;
-          u2.onend = stepNext;
-          u2.onerror = () => stepNext();
-          __dhUtteranceKeepAlive.push(u2);
-          if(__dhUtteranceKeepAlive.length > 6) __dhUtteranceKeepAlive.splice(0, __dhUtteranceKeepAlive.length - 6);
-          // yeni fallback zamanlayıcısı
-          fallbackTimer = setTimeout(stepNext, expectedTimeMs);
-          nativeSpeak(u2);
-          return;
-        }catch(e){}
-      }
-      stepNext();
-    };
-
-    try {
-      nativeSpeak(u);
-    } catch(e) {
-      stepNext();
-    }
-  }
-
-  playNext();
-  return true;
-}
-
 window.DH_speakMixed = speakChunks;
 window.DH_speakSegments = speakSegments;
-window.DH_LongTTSAvatarSync = { speak:speakChunks, speakSegments:speakSegments, split:splitForSpeech, start:()=>setSpeakingState(true), stop:()=>setSpeakingState(false) };
+window.DH_LongTTSAvatarSync = {
+  speak:speakChunks, speakSegments:speakSegments, split:splitForSpeech,
+  start:()=>setSpeakingState(true),
+  stop:()=>{ try{ speechSynthesis.cancel(); }catch(e){} setSpeakingState(false); }
+};
 
+/* cancel() çağrıldığında oturumu geçersiz kıl ve durumu sıfırla. */
 try{
   const nativeCancel=speechSynthesis.cancel.bind(speechSynthesis);
   speechSynthesis.cancel=function(){
@@ -510,6 +467,8 @@ try{
   };
 }catch(e){}
 
+/* Uygulama düz speechSynthesis.speak çağırırsa: uzun/karışık metinleri
+   bizim motora yönlendir, kısa tekil metinleri sadece avatar durumuyla sar. */
 try{
   if(!speechSynthesis.__longAvatarSpeakPatch){
     speechSynthesis.__longAvatarSpeakPatch=true;
@@ -517,7 +476,7 @@ try{
       try{
         if(u && u.__longTTSAvatarSync) return nativeSpeak(u);
         const text=String(u&&u.text||"");
-        if(text.length>80 || /TÜRKÇE|ENGLISH|AÇIKLAMA|ÖZET|ğ|ü|ş|ö|ç|ı/i.test(text)){
+        if(text.length>60 || /TÜRKÇE|ENGLISH|AÇIKLAMA|ÖZET|ğ|ü|ş|ö|ç|ı/i.test(text) || /[.!?].+[.!?]/.test(text)){
           return speakChunks(text);
         }
         u.onstart=((old)=>function(ev){setSpeakingState(true); if(old) old.call(this,ev);})(u.onstart);
@@ -530,7 +489,7 @@ try{
   }
 }catch(e){}
 
-document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeakingState(false); });
+document.addEventListener("visibilitychange",()=>{ if(document.hidden){ try{ speechSynthesis.cancel(); }catch(e){} setSpeakingState(false); } });
 })();
 
 
@@ -543,10 +502,7 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
   var KEY = "dh_mouthSpeed";
 
   function getVal(){
-    try{
-      var v = parseFloat(localStorage.getItem(KEY));
-      if(isFinite(v) && v>=0.5 && v<=2.0) return v;
-    }catch(e){}
+    try{ var v = parseFloat(localStorage.getItem(KEY)); if(isFinite(v) && v>=0.5 && v<=2.0) return v; }catch(e){}
     return 1.0;
   }
   function setVal(v){ try{ localStorage.setItem(KEY, String(v)); }catch(e){} }
@@ -591,10 +547,7 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
   function build(){
     injectCss();
     function markChatPage(){
-      try{
-        if(document.querySelector(".chat-shell, .input-row .send-btn, #chatHistory"))
-          document.body.classList.add("dh-chat-page");
-      }catch(e){}
+      try{ if(document.querySelector(".chat-shell, .input-row .send-btn, #chatHistory")) document.body.classList.add("dh-chat-page"); }catch(e){}
     }
     markChatPage(); setTimeout(markChatPage,600); setTimeout(markChatPage,2000);
     var btn = document.createElement("button");
@@ -633,11 +586,11 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
     range.value = String(getVal());
     range.addEventListener("input", function(){ setVal(parseFloat(range.value)); });
 
-    function vGet(){ return (window.DH_TTS&&DH_TTS.get)?DH_TTS.get():DH_TTS_DEFAULTS; }
+    function vGet(){ return (window.DH_TTS&&DH_TTS.get)?DH_TTS.get():{}; }
     function vSync(){
       var c=vGet(), map={vTrRate:["trRate","vTrRateV"],vTrPitch:["trPitch","vTrPitchV"],vEnRate:["enRate","vEnRateV"],vEnPitch:["enPitch","vEnPitchV"]};
       Object.keys(map).forEach(function(id){ var el=panel.querySelector("#"+id),lab=panel.querySelector("#"+map[id][1]);
-        if(el) el.value=String(c[map[id][0]]); if(lab) lab.textContent=Number(c[map[id][0]]).toFixed(2); });
+        if(el && c[map[id][0]]!=null) el.value=String(c[map[id][0]]); if(lab && c[map[id][0]]!=null) lab.textContent=Number(c[map[id][0]]).toFixed(2); });
     }
     function vBind(id,key,labId){ var el=panel.querySelector("#"+id); if(!el)return;
       el.addEventListener("input", function(){ var pt={}; pt[key]=parseFloat(el.value);
@@ -685,26 +638,17 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
     var _vr=panel.querySelector("#vReset"); if(_vr) _vr.addEventListener("click",function(){ if(window.DH_TTS&&DH_TTS.reset) DH_TTS.reset(); vSync(); });
     vSync();
 
-    btn.addEventListener("click", function(){
-      panel.classList.toggle("open");
-      range.value = String(getVal());
-    });
-    panel.querySelector("#mouthSpeedClose").addEventListener("click", function(){
-      panel.classList.remove("open");
-    });
+    btn.addEventListener("click", function(){ panel.classList.toggle("open"); range.value = String(getVal()); });
+    panel.querySelector("#mouthSpeedClose").addEventListener("click", function(){ panel.classList.remove("open"); });
     panel.querySelector("#mouthSpeedTest").addEventListener("click", function(){
-      var sample = "Hello, this is a test. Merhaba, bu bir denemedir.";
+      var sample = "Hello, this is a test. Merhaba, bu bir denemedir. Bu cümle biraz daha uzun olsun ki uzun metinde durmadığını görelim.";
       try{ if(window.DH_speakMixed){ window.DH_speakMixed(sample); return; } }catch(e){}
       try{ speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(sample)); }catch(e){}
     });
     document.addEventListener("click", function(ev){
-      if(panel.classList.contains("open") && !panel.contains(ev.target) && ev.target!==btn){
-        panel.classList.remove("open");
-      }
+      if(panel.classList.contains("open") && !panel.contains(ev.target) && ev.target!==btn){ panel.classList.remove("open"); }
     });
   }
 
-  if(document.readyState==="loading"){
-    document.addEventListener("DOMContentLoaded", build);
-  } else { build(); }
+  if(document.readyState==="loading"){ document.addEventListener("DOMContentLoaded", build); } else { build(); }
 })();
