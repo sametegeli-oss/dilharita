@@ -1,9 +1,6 @@
 /* tts-avatar-long-sync-fix.js
-   Uzun metinlerde ses devam ederken avatarın susmasını engeller.
-   - TTS metnini küçük parçalara böler.
-   - Her parçada avatar-speaking durumunu canlı tutar.
-   - Avatar ağız frame'lerini tüm okuma bitene kadar döndürür.
-   - Türkçe kısımlar tr-TR, İngilizce kısımlar en-US okunur.
+   Uzun metinlerde ses devam ederken avatarın susmasını ve 
+   browser speech daemon kilitlenmesinden kaynaklı yarım kalmayı engeller.
 */
 (function(){
 "use strict";
@@ -15,6 +12,9 @@ const AVATAR_SELECTORS = [
   ".avatar-img",".avatar-image",".teacher-avatar img",".avatar img",
   "img[src*='avatars']","img[src*='avatar']","img[src*='idle.webp']","img[src*='mouth-']"
 ];
+
+// Browser Garbage Collection kilitlenmesini önleyen global tutucu
+window.__dhUtterances = new Set();
 
 let nativeSpeak = null;
 try { nativeSpeak = speechSynthesis.speak.bind(speechSynthesis); } catch(e){}
@@ -101,14 +101,14 @@ function isTurkish(text){
   return false;
 }
 
-function splitLongLine(line, maxLen=140){
+function splitLongLine(line, maxLen=100){
   line=clean(line);
   if(line.length<=maxLen) return [line];
   const parts=[];
   let rest=line;
   while(rest.length>maxLen){
     let cut=Math.max(rest.lastIndexOf(". ",maxLen), rest.lastIndexOf(", ",maxLen), rest.lastIndexOf("; ",maxLen), rest.lastIndexOf(" ",maxLen));
-    if(cut<60) cut=maxLen;
+    if(cut<25) cut=maxLen;
     parts.push(clean(rest.slice(0,cut+1)));
     rest=clean(rest.slice(cut+1));
   }
@@ -128,19 +128,28 @@ function splitForSpeech(text){
     const segs=[];
     const re=/\[\[([\s\S]*?)\]\]|"([^"]*?)"|“([^”]*?)”/g;
     let last=0, m;
+
     while((m=re.exec(line))!==null){
-      if(m.index>last){
+      if(m.index > last){
         const before=line.slice(last, m.index).trim();
-        if(before) segs.push({text:before, lang: isTurkish(before) ? "tr-TR" : "en-US"});
+        if(before){
+          segs.push({text:before, lang: isTurkish(before) ? "tr-TR" : "en-US"});
+        }
       }
       const inner=((m[1]!=null?m[1]:(m[2]!=null?m[2]:m[3]))||"").trim();
-      if(inner) segs.push({text:inner, lang:"en-US"});
+      if(inner){
+        segs.push({text:inner, lang:"en-US"});
+      }
       last=re.lastIndex;
     }
-    if(last<line.length){
+
+    if(last < line.length){
       const after=line.slice(last).trim();
-      if(after) segs.push({text:after, lang: isTurkish(after) ? "tr-TR" : "en-US"});
+      if(after){
+        segs.push({text:after, lang: isTurkish(after) ? "tr-TR" : "en-US"});
+      }
     }
+
     if(!segs.length){
       const t=line.trim();
       if(t) segs.push({text:t, lang: isTurkish(t) ? "tr-TR" : "en-US"});
@@ -150,10 +159,13 @@ function splitForSpeech(text){
 
   lines.forEach(line=>{
     segmentsByBrackets(line).forEach(seg=>{
-      const pieces=seg.text.split(/(?<=[.!?])\s+/).filter(Boolean);
-      (pieces.length?pieces:[seg.text]).forEach(p=>{
-        splitLongLine(p, seg.lang==="tr-TR"?110:90).forEach(piece=>{
-          if(piece) chunks.push({text:piece, lang:seg.lang});
+      const pieceClean = clean(seg.text);
+      if(!pieceClean) return;
+      
+      const pieces = pieceClean.split(/(?<=[.!?])\s+/).filter(Boolean);
+      (pieces.length ? pieces : [pieceClean]).forEach(p=>{
+        splitLongLine(p, seg.lang==="tr-TR"?100:80).forEach(piece=>{
+          if(piece && piece.length > 0) chunks.push({text:piece, lang:seg.lang});
         });
       });
     });
@@ -291,112 +303,102 @@ function speakSegments(segments){
     var text = clean(seg.text||"");
     if(!text) return;
     var el = seg.el || null;
-    var pieces = text.split(/(?<=[.!?])\s+/).filter(Boolean);
-    (pieces.length?pieces:[text]).forEach(function(p){
-      splitLongLine(p, lang==="tr-TR"?110:90).forEach(function(piece){
-        if(piece) out.push({text:piece, lang:lang, el:el});
-      });
+    splitLongLine(text, lang==="tr-TR"?100:80).forEach(function(piece){
+      if(piece && piece.length > 0) out.push({text:piece, lang:lang, el:el});
     });
   });
   return speakChunkList(out);
 }
 
+// BROWSER DAEMON KİLİTLENMESİNİ ÖNLEN KESİNTİSİZ ARDIŞIK YIĞIN MİMARİSİ
+let currentQueueSession = 0;
+let queueList = [];
+
 function speakChunkList(chunks){
   if(!nativeSpeak) return false;
-  chunks=(chunks||[]).filter(c=>c&&clean(c.text));
-  if(!chunks.length) return false;
+  queueList = (chunks||[]).filter(c=>c && clean(c.text));
+  if(!queueList.length) return false;
 
-  try{ speechSynthesis.cancel(); }catch(e){}
+  currentQueueSession++;
+  const thisSession = currentQueueSession;
+
+  try { 
+    speechSynthesis.cancel(); 
+    window.__dhUtterances.clear();
+  } catch(e){}
+
   setSpeakingState(true);
 
-  let i=0, stopped=false;
-  function next(){
-    if(stopped) return;
-    if(i>=chunks.length){
-      setTimeout(()=>setSpeakingState(false), 180);
-      try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
+  // KİLİT ÇÖZÜCÜ 1: cancel() sonrası ses motorunun sıfırlanması için 100ms nefes süresi
+  setTimeout(()=>{
+    if(thisSession === currentQueueSession){
+      processQueue(thisSession);
+    }
+  }, 100);
+
+  return true;
+}
+
+function processQueue(session){
+  if(session !== currentQueueSession) return;
+
+  if(!queueList.length){
+    setTimeout(()=>setSpeakingState(false), 200);
+    try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
+    window.__dhUtterances.clear();
+    return;
+  }
+
+  const item = queueList.shift();
+  const u = new SpeechSynthesisUtterance(item.text);
+  u.lang = item.lang;
+  dhApplyVoice(u, item.lang);
+  u.__longTTSAvatarSync = true;
+
+  window.__dhUtterances.add(u);
+
+  let finished = false;
+
+  function stepNext(){
+    if(finished) return;
+    finished = true;
+    window.__dhUtterances.delete(u);
+    clearInterval(mouthTimer); mouthTimer=null;
+
+    if(window.__dhUserPaused){
+      setTimeout(stepNext, 500);
       return;
     }
 
-    const c=chunks[i++];
-    const u=new SpeechSynthesisUtterance(c.text);
-    u.lang=c.lang;
-    dhApplyVoice(u, c.lang);
-    u.__longTTSAvatarSync = true;
-
-    let ended=false;
-
-    function advance(){
-      if(ended) return;
-      if(window.__dhUserPaused){
-        watchdog2 = setTimeout(advance, 1000);
-        return;
-      }
-      ended=true;
-      clearTimers();
-      clearInterval(mouthTimer); mouthTimer=null;
-      setSpeakingState(true);
-      setTimeout(next, 0);
-    }
-
-    var watchdog2=null, pollTimer=null;
-    var startedSpeaking=false, silentTicks=0, lastBoundaryAt=0, startAt=Date.now();
-
-    function clearTimers(){ 
-      clearTimeout(watchdog); 
-      if(watchdog2) clearTimeout(watchdog2);
-      if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } 
-    }
-
-    // Polling kontrolü: Erken atlamaması için süreler uzatıldı
-    pollTimer=setInterval(function(){
-      if(ended) return;
-      var sp=false; try{ sp=speechSynthesis.speaking; }catch(e){}
-      if(sp){ startedSpeaking=true; silentTicks=0; return; }
-
-      if(!startedSpeaking){
-        if(Date.now()-startAt > 3500) advance();
-        return;
-      }
-
-      if(Date.now()-lastBoundaryAt < 800){ silentTicks=0; return; }
-
-      // 12 tick (~1.2 saniyelik tam sessizlik) olmadan cümlenin bittiğine karar verme
-      if(++silentTicks>=12 && !(window.__dhUserPaused)) advance();
-    }, 100);
-
-    // DÜZELTME: Orijinal koddaki 1000ms sınırı kaldırıldı. 
-    // Metin uzunluğuna göre cümlenin ortasında kesilmeyecek cömert emniyet süresi verildi.
-    var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-    var estMs = Math.max(c.text.length * (isMobile?120:90), 5000);
-    var watchdog=setTimeout(advance, estMs);
-
-    u.onstart=()=>{ 
-      startedSpeaking=true; 
-      silentTicks=0; 
-      startAt=Date.now(); 
-      setSpeakingState(true); 
-      startMouthForText(c.text, c.lang); 
-      try{ if(window.__dhHighlight) window.__dhHighlight(c.el||null); }catch(e){}
-      clearTimeout(watchdog); 
-      watchdog=setTimeout(advance, Math.max(c.text.length*(isMobile?130:100), 6000)); 
-    };
-
-    u.onboundary=(ev)=>{
-      setSpeakingState(true);
-      startedSpeaking=true; 
-      silentTicks=0; 
-      lastBoundaryAt=Date.now();
-      if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex);
-    };
-
-    u.onend=advance;
-    u.onerror=advance;
-    try{ nativeSpeak(u); }catch(e){ advance(); }
+    // KİLİT ÇÖZÜCÜ 2: Tarayıcı ses işlemcisine 60ms zaman verip sıradaki parçaya geç
+    try { speechSynthesis.resume(); } catch(e){}
+    setTimeout(()=>{
+      processQueue(session);
+    }, 60);
   }
 
-  next();
-  return true;
+  u.onstart = () => {
+    if(session !== currentQueueSession) return;
+    setSpeakingState(true);
+    startMouthForText(item.text, item.lang);
+    try{ if(window.__dhHighlight) window.__dhHighlight(item.el||null); }catch(e){}
+  };
+
+  u.onboundary = (ev) => {
+    if(session !== currentQueueSession) return;
+    setSpeakingState(true);
+    if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex);
+  };
+
+  u.onend = stepNext;
+  u.onerror = stepNext;
+
+  try {
+    speechSynthesis.resume();
+    nativeSpeak(u);
+  } catch(e) {
+    stepNext();
+  }
 }
 
 window.DH_speakMixed = speakChunks;
@@ -406,6 +408,9 @@ window.DH_LongTTSAvatarSync = { speak:speakChunks, speakSegments:speakSegments, 
 try{
   const nativeCancel=speechSynthesis.cancel.bind(speechSynthesis);
   speechSynthesis.cancel=function(){
+    currentQueueSession++;
+    queueList = [];
+    window.__dhUtterances.clear();
     setSpeakingState(false);
     return nativeCancel();
   };
