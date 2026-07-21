@@ -68,12 +68,23 @@ function dhSpeakClean(s){
   r=r.replace(/["\u201C\u201D\u201E\u00AB\u00BB]+/g," ");
   r=r.replace(/[\u2022\u00B7\u25AA\u25CF\u25A0\u25B6\u2192\u2190\u2713\u2714\u2717\u2605\u2606]/g," ");
   r=r.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\uFE0F]/gu," ");
+  /* TİRELER: TTS bunları "tire" diye okuyabiliyor ya da uzun duraklıyor.
+     Kelime içindeki tireyi KORU (co-worker), ama ayraç olarak kullanılan
+     ( kelime - kelime , "- madde", en/em dash ) tireyi boşluğa çevir. */
+  r=r.replace(/[\u2012-\u2015\u2212]/g," ");   // – — ― − → boşluk
+  r=r.replace(/(^|\s)-+(?=\s)/g," ");           // " - " ve satır başı "- " → boşluk
+  r=r.replace(/(\s)-+/g,"$1").replace(/-+(\s)/g,"$1");
+  /* TEK HARF + NOKTA dizileri (a.b.c, U.S.A) "a nokta b nokta" diye okunur;
+     noktaları kaldır. Ama "3.5" gibi sayı ondalıklarına dokunma. */
+  r=r.replace(/\b([A-Za-zÇĞİÖŞÜçğıöşü])\.(?=[A-Za-zÇĞİÖŞÜçğıöşü]\b)/g,"$1 ");
   r=r.replace(/\s{2,}/g," ").trim();
-  /* Ardışık noktalar tarayıcıda çok uzun sessizlik yaratır: "..." ya da
-     ". . ." tek noktaya insin. Diğer noktalama tekrarları da sadeleşsin. */
-  r=r.replace(/\s*\.(?:\s*\.)+/g,".");   // ". . ." veya "..." → "."
-  r=r.replace(/([!?])\1+/g,"$1");         // "!!!" → "!", "???" → "?"
-  r=r.replace(/\.{2,}/g,".");             // kalan "…" güvenlik
+  /* Ardışık noktalar uzun sessizlik yaratır: "..." / ". . ." → "." */
+  r=r.replace(/\s*\.(?:\s*\.)+/g,".");
+  r=r.replace(/([!?])\1+/g,"$1");
+  r=r.replace(/\.{2,}/g,".");
+  /* Cümle bitişi OLMAYAN, tek başına kalmış noktalama (" . ", " , ") sessizlik
+     yaratır; noktalamadan önceki gereksiz boşluğu kaldır. */
+  r=r.replace(/\s+([.,;:!?])/g,"$1");
   r=r.replace(/\s{2,}/g," ").trim();
   return r.length ? r : orig.replace(/\s+/g," ").trim();
 }
@@ -159,6 +170,8 @@ function splitForSpeech(text){
       });
     });
   });
+  /* Not: aynı dildeki parçaların birleştirilmesi speakChunkList'te merkezi
+     olarak yapılır (hem bu yol hem speakSegments faydalansın diye). */
   return chunks.length ? chunks : [{text:clean(raw.replace(/\[\[|\]\]/g," ")), lang:"tr-TR"}];
 }
 function avatarImgs(){
@@ -327,6 +340,22 @@ function speakChunkList(chunks){
   if(!nativeSpeak) return false;
   chunks=(chunks||[]).filter(c=>c&&clean(c.text));
   if(!chunks.length) return false;
+  /* AYNI DİLDEKİ ARDIŞIK PARÇALARI BİRLEŞTİR (merkezi):
+     Cümle cümle bölünmüş parçalar burada dil değişmedikçe tek utterance'ta
+     toplanır → Türkçe cümleler arası duraklama ve gereksiz TR↔EN geçişi biter.
+     el (ekran vurgusu) varsa segment sınırları .segs'te korunur. */
+  var _merged=[];
+  chunks.forEach(function(c){
+    var last=_merged[_merged.length-1];
+    if(last && last.lang===c.lang && (last.text.length + String(c.text).length) < 240){
+      last.text += " " + c.text;
+      if(c.el && !last.el) last.el=c.el;
+      (last.segs || (last.segs=[])).push(c);
+    } else {
+      _merged.push({ text:c.text, lang:c.lang, el:c.el||null, segs:[c] });
+    }
+  });
+  chunks=_merged;
   try{ speechSynthesis.cancel(); }catch(e){}
   setSpeakingState(true);
   // Mobil tarayıcılarda pause()/resume() TTS'i kilitleyip dondurabilir.
@@ -396,7 +425,22 @@ function speakChunkList(chunks){
     var estMs = Math.max(isMobile?2500:1800, c.text.length * perChar) + 600;
     const watchdog=setTimeout(advance, estMs);
     u.onstart=()=>{ startedSpeaking=true; setSpeakingState(true); startMouthForText(c.text, c.lang); try{ if(window.__dhHighlight) window.__dhHighlight(c.el||null); }catch(e){} };
-    u.onboundary=(ev)=>{ setSpeakingState(true); if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex); };
+    u.onboundary=(ev)=>{
+      setSpeakingState(true);
+      if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex);
+      /* Birleşik parçada karakter konumuna göre doğru segmenti vurgula */
+      try{
+        if(c.segs && c.segs.length>1 && ev && typeof ev.charIndex==="number"){
+          var pos=0, hit=c.segs[0];
+          for(var k=0;k<c.segs.length;k++){
+            var len=String(c.segs[k].text||"").length + 1;
+            if(ev.charIndex < pos+len){ hit=c.segs[k]; break; }
+            pos+=len;
+          }
+          if(hit && hit.el && window.__dhHighlight) window.__dhHighlight(hit.el);
+        }
+      }catch(e){}
+    };
     u.onend=advance;
     u.onerror=advance;
     try{ nativeSpeak(u); }catch(e){ advance(); }
