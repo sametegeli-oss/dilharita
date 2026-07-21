@@ -404,29 +404,42 @@ function speakChunkList(chunks){
       setTimeout(next, 0);
     }
     var watchdog2=null, pollTimer=null;
-    /* Konuşma bitişini iki yoldan yakala:
-       1) onend (ideal) — hemen ilerle.
-       2) onend gelmezse: kısa aralıklarla speechSynthesis.speaking'i yokla.
-          Konuşma başlayıp bittiyse (speaking=false) HEMEN ilerle — watchdog'un
-          uzun süresini bekleme. Asıl "noktada uzun bekleme" bundan geliyordu.
-       3) İkisi de olmazsa emniyet watchdog'u (artık daha kısa). */
-    var startedSpeaking=false;
+    /* GEÇİŞ MANTIĞI (hedef: hiç atlamamak + hiçbir bekleme >1sn olmamamsı)
+       - onend gelirse: en güvenilir bitiş sinyali → hemen ilerle.
+       - onend gelmezse: konuşma başladıktan (startedSpeaking) sonra speaking
+         bayrağının 2 ardışık yoklamada (~200ms) false kalmasını bekle. Kısa
+         çünkü onboundary koruması zaten yarım-kesmeyi engelliyor.
+       - HİÇBİR sinyal gelmezse (bayrak da tıkalı): emniyet watchdog'u EN FAZLA
+         1sn sonra ilerletir → cümle asla atlanmaz, bekleme asla 1sn'yi aşmaz. */
+    var startedSpeaking=false, silentTicks=0, lastBoundaryAt=0, startAt=Date.now();
     function clearTimers(){ clearTimeout(watchdog); if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
     pollTimer=setInterval(function(){
       if(ended) return;
       var sp=false; try{ sp=speechSynthesis.speaking; }catch(e){}
-      if(sp) startedSpeaking=true;
-      /* Konuşma başladı ve artık bitti → onend'i bekleme, hemen geç */
-      if(startedSpeaking && !sp && !(window.__dhUserPaused)) advance();
-    }, 120);
-    // Emniyet watchdog'u: onend ve yoklama ikisi de tıkanırsa. Süre kısaltıldı;
-    // tahmini konuşma süresine yakın, cömert dolgu kaldırıldı.
-    var perChar = isMobile ? 80 : 65;
-    var estMs = Math.max(isMobile?2500:1800, c.text.length * perChar) + 600;
-    const watchdog=setTimeout(advance, estMs);
-    u.onstart=()=>{ startedSpeaking=true; setSpeakingState(true); startMouthForText(c.text, c.lang); try{ if(window.__dhHighlight) window.__dhHighlight(c.el||null); }catch(e){} };
+      if(sp){ startedSpeaking=true; silentTicks=0; return; }
+      /* Konuşma HİÇ başlamadıysa: tarayıcı sesi geç başlatıyor olabilir.
+         Ama 1sn geçtiyse başlamayacak demektir → ilerle (takılıp kalma). */
+      if(!startedSpeaking){
+        if(Date.now()-startAt > 1000) advance();
+        return;
+      }
+      /* Son 350ms'de kelime sınırı geldiyse konuşma sürüyor, kesme. */
+      if(Date.now()-lastBoundaryAt < 350){ silentTicks=0; return; }
+      if(++silentTicks>=2 && !(window.__dhUserPaused)) advance();
+    }, 100);
+    /* EMNİYET TAVANI: onend + bayrak ikisi de tıkalı olsa bile geçiş 1sn'yi
+       aşmaz. Tahmini konuşma süresi 1sn'den kısaysa o kadar, uzunsa da metin
+       gerçekten uzun demektir; yine de üst sınır makul tutulur. */
+    var estMs = Math.min(Math.max(c.text.length * (isMobile?60:45), 500), 1000);
+    var watchdog=setTimeout(advance, estMs);
+    /* Konuşma başladıysa watchdog'u konuşma süresine göre uzat (uzun cümle
+       ortada kesilmesin) — ama onend/bayrak zaten devrede olacağı için bu
+       yalnızca son çare. */
+    u.onstart=()=>{ startedSpeaking=true; silentTicks=0; startAt=Date.now(); setSpeakingState(true); startMouthForText(c.text, c.lang); try{ if(window.__dhHighlight) window.__dhHighlight(c.el||null); }catch(e){}
+      clearTimeout(watchdog); watchdog=setTimeout(advance, Math.min(Math.max(c.text.length*(isMobile?70:55), 800), 6000)); };
     u.onboundary=(ev)=>{
       setSpeakingState(true);
+      startedSpeaking=true; silentTicks=0; lastBoundaryAt=Date.now();
       if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex);
       /* Birleşik parçada karakter konumuna göre doğru segmenti vurgula */
       try{
