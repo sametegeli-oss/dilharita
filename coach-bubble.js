@@ -506,7 +506,10 @@
     try{ hardRev=(JSON.parse(localStorage.getItem("dh-hard-reviews-"+dhToday())||"[]")||[])
       .map(function(h){ return {target:h.en, sentenceTR:h.tr||"", answer:"", primaryType:"review", module:"tekrar"}; }); }catch(e){}
     var seenT={}; 
+    var __t0rev=new Date(); __t0rev.setHours(0,0,0,0);
     var todaySet=errs.concat(hardRev).filter(function(r){
+      /* bugün zaten drill'de gözden geçirilmiş kalemi tekrar sayma — buton hiç temizlenmiyordu */
+      if(r.lastReviewedAt && new Date(r.lastReviewedAt)>=__t0rev) return false;
       var k=String(r.target||"").toLowerCase(); if(!k||seenT[k]) return false; seenT[k]=1; return true;
     }).slice(0,8);
     var drillSet = todaySet.length ? todaySet : backlog;

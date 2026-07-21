@@ -295,6 +295,9 @@
       else {
         it.mastered=true;
         try{ if(window.LearningErrorDB&&LearningErrorDB.markReviewed&&e.id) LearningErrorDB.markReviewed(e.id,{grade:"easy"}); }catch(x){}
+        /* id'siz "Zor tekrar" kalemleri: ustalaşınca dh-hard-reviews listesinden çıkar,
+           yoksa "Günü Kapat"taki interaktif çalış butonu hiç temizlenmiyordu */
+        try{ if(e.target){ var __hk="dh-hard-reviews-"+new Date().toISOString().slice(0,10); var __ha=JSON.parse(localStorage.getItem(__hk)||"[]")||[]; var __hf=__ha.filter(function(h){ return String((h&&h.en)||"").trim()!==String(e.target||"").trim(); }); if(__hf.length!==__ha.length) localStorage.setItem(__hk, JSON.stringify(__hf)); } }catch(x){}
         setTimeout(advance,1000);
       }
       setProg();
