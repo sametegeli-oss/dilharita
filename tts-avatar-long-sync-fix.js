@@ -101,14 +101,14 @@ function isTurkish(text){
   return false;
 }
 
-function splitLongLine(line, maxLen=120){
+function splitLongLine(line, maxLen=100){
   line=clean(line);
   if(line.length<=maxLen) return [line];
   const parts=[];
   let rest=line;
   while(rest.length>maxLen){
     let cut=Math.max(rest.lastIndexOf(". ",maxLen), rest.lastIndexOf(", ",maxLen), rest.lastIndexOf("; ",maxLen), rest.lastIndexOf(" ",maxLen));
-    if(cut<40) cut=maxLen;
+    if(cut<30) cut=maxLen;
     parts.push(clean(rest.slice(0,cut+1)));
     rest=clean(rest.slice(cut+1));
   }
@@ -161,7 +161,7 @@ function splitForSpeech(text){
     segmentsByBrackets(line).forEach(seg=>{
       const pieces=seg.text.split(/(?<=[.!?])\s+/).filter(Boolean);
       (pieces.length?pieces:[seg.text]).forEach(p=>{
-        splitLongLine(p, seg.lang==="tr-TR"?100:80).forEach(piece=>{
+        splitLongLine(p, seg.lang==="tr-TR"?90:70).forEach(piece=>{
           if(piece) chunks.push({text:piece, lang:seg.lang});
         });
       });
@@ -302,7 +302,7 @@ function speakSegments(segments){
     var el = seg.el || null;
     var pieces = text.split(/(?<=[.!?])\s+/).filter(Boolean);
     (pieces.length?pieces:[text]).forEach(function(p){
-      splitLongLine(p, lang==="tr-TR"?100:80).forEach(function(piece){
+      splitLongLine(p, lang==="tr-TR"?90:70).forEach(function(piece){
         if(piece) out.push({text:piece, lang:lang, el:el});
       });
     });
@@ -310,7 +310,6 @@ function speakSegments(segments){
   return speakChunkList(out);
 }
 
-// KİLİTLENMEYİ VE DURMAYI ÖNLEYEN ZİNCİRLEME (QUEUE) YÖNETİCİSİ
 let currentQueueSession = 0;
 
 function speakChunkList(chunks){
@@ -323,7 +322,6 @@ function speakChunkList(chunks){
 
   currentQueueSession++;
   const thisSession = currentQueueSession;
-
   let index = 0;
 
   function playNext(){
@@ -342,26 +340,19 @@ function speakChunkList(chunks){
     u.__longTTSAvatarSync = true;
 
     let hasAdvanced = false;
-    let safetyTimer = null;
 
     function stepNext(){
       if(hasAdvanced) return;
       hasAdvanced = true;
-      if(safetyTimer) clearTimeout(safetyTimer);
       clearInterval(mouthTimer); mouthTimer=null;
 
       if(window.__dhUserPaused){
         setTimeout(stepNext, 500);
         return;
       }
-      
-      // Chrome/Safari ses motorunun tıkanmaması için minimal nefes payı
-      setTimeout(playNext, 40);
-    }
 
-    // Her cümle için kelime başına ve karakter uzunluğuna göre cömert emniyet payı
-    const safeMs = Math.max(item.text.length * 150, 4500);
-    safetyTimer = setTimeout(stepNext, safeMs);
+      setTimeout(playNext, 30);
+    }
 
     u.onstart = () => {
       if(thisSession !== currentQueueSession) return;
