@@ -369,20 +369,33 @@ function speakChunkList(chunks){
         return;
       }
       ended=true;
-      clearTimeout(watchdog);
+      clearTimers();
       clearInterval(mouthTimer); mouthTimer=null;
       setSpeakingState(true);
       setTimeout(next, 0);
     }
-    var watchdog2=null;
-    // Zorlama zamanlayıcısı: Chrome bazen onend'i hiç çağırmaz; tahmini süre
-    // dolunca zinciri zorla ilerlet ki sonraki parça okunsun (kesilme önlenir).
-    // Mobilde daha cömert süre: erken tetiklenip sesi kesmesin.
-    var perChar = isMobile ? 110 : 75;
-    var pad = isMobile ? 3500 : 1500;
-    var estMs = Math.max(isMobile?6000:4000, c.text.length * perChar) + pad;
+    var watchdog2=null, pollTimer=null;
+    /* Konuşma bitişini iki yoldan yakala:
+       1) onend (ideal) — hemen ilerle.
+       2) onend gelmezse: kısa aralıklarla speechSynthesis.speaking'i yokla.
+          Konuşma başlayıp bittiyse (speaking=false) HEMEN ilerle — watchdog'un
+          uzun süresini bekleme. Asıl "noktada uzun bekleme" bundan geliyordu.
+       3) İkisi de olmazsa emniyet watchdog'u (artık daha kısa). */
+    var startedSpeaking=false;
+    function clearTimers(){ clearTimeout(watchdog); if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+    pollTimer=setInterval(function(){
+      if(ended) return;
+      var sp=false; try{ sp=speechSynthesis.speaking; }catch(e){}
+      if(sp) startedSpeaking=true;
+      /* Konuşma başladı ve artık bitti → onend'i bekleme, hemen geç */
+      if(startedSpeaking && !sp && !(window.__dhUserPaused)) advance();
+    }, 120);
+    // Emniyet watchdog'u: onend ve yoklama ikisi de tıkanırsa. Süre kısaltıldı;
+    // tahmini konuşma süresine yakın, cömert dolgu kaldırıldı.
+    var perChar = isMobile ? 80 : 65;
+    var estMs = Math.max(isMobile?2500:1800, c.text.length * perChar) + 600;
     const watchdog=setTimeout(advance, estMs);
-    u.onstart=()=>{ setSpeakingState(true); startMouthForText(c.text, c.lang); try{ if(window.__dhHighlight) window.__dhHighlight(c.el||null); }catch(e){} };
+    u.onstart=()=>{ startedSpeaking=true; setSpeakingState(true); startMouthForText(c.text, c.lang); try{ if(window.__dhHighlight) window.__dhHighlight(c.el||null); }catch(e){} };
     u.onboundary=(ev)=>{ setSpeakingState(true); if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex); };
     u.onend=advance;
     u.onerror=advance;
