@@ -416,17 +416,14 @@ let _voiceCache=[];
 function refreshVoices(){ try{ _voiceCache = speechSynthesis.getVoices ? speechSynthesis.getVoices() : []; }catch{ _voiceCache=[]; } }
 try{ refreshVoices(); speechSynthesis.onvoiceschanged = refreshVoices; }catch{}
 function pickVoiceForLang(lang){
+  /* Artık merkezi seçim (DH_TTS) kullanılıyor: kullanıcının ⚙ panelinden
+     seçtiği ses (bayan dahil) her yerde aynı olsun. Erkek sesi ZORLANMAZ. */
+  if(window.DH_TTS && DH_TTS.pickVoice){ var v=DH_TTS.pickVoice(lang); if(v) return v; }
   refreshVoices();
   const voices = _voiceCache || [];
   const wantTr = /^tr/i.test(lang || "");
-  if(wantTr){
-    return voices.find(v=>/^tr/i.test(v.lang||"")) || voices.find(v=>/turkish|türk|turk/i.test(v.name||"")) || null;
-  }
-  const en = voices.filter(v=>/^en/i.test(v.lang||""));
-  if(!en.length) return null;
-  const male = /(male|david|mark|george|daniel|james|john|alex|fred|thomas|guy|brian|ryan|matthew|arthur|oliver)/i;
-  const pref = en.filter(v=>/en-US|en_GB|en-GB|en_US/i.test(v.lang||""));
-  return pref.find(v=>male.test(v.name||"")) || pref[0] || en[0];
+  if(wantTr) return voices.find(v=>/^tr/i.test(v.lang||"")) || null;
+  return voices.find(v=>/^en/i.test(v.lang||"")) || null;
 }
 function speak(text, lang){
   try{

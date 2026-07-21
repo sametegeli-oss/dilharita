@@ -34,12 +34,30 @@ function dhTtsCfg(){
       trRate:dhClampNum(s.trRate,0.5,1.6,DH_TTS_DEFAULTS.trRate),
       trPitch:dhClampNum(s.trPitch,0.5,1.6,DH_TTS_DEFAULTS.trPitch),
       enRate:dhClampNum(s.enRate,0.5,1.6,DH_TTS_DEFAULTS.enRate),
-      enPitch:dhClampNum(s.enPitch,0.5,1.6,DH_TTS_DEFAULTS.enPitch)
+      enPitch:dhClampNum(s.enPitch,0.5,1.6,DH_TTS_DEFAULTS.enPitch),
+      trVoice:s.trVoice||"", enVoice:s.enVoice||""
     };
   }catch(e){}
-  return { trRate:DH_TTS_DEFAULTS.trRate,trPitch:DH_TTS_DEFAULTS.trPitch,enRate:DH_TTS_DEFAULTS.enRate,enPitch:DH_TTS_DEFAULTS.enPitch };
+  return { trRate:DH_TTS_DEFAULTS.trRate,trPitch:DH_TTS_DEFAULTS.trPitch,enRate:DH_TTS_DEFAULTS.enRate,enPitch:DH_TTS_DEFAULTS.enPitch,trVoice:"",enVoice:"" };
 }
-function dhApplyVoice(u, lang){ var c=dhTtsCfg(), tr=(lang==="tr-TR"); u.rate=tr?c.trRate:c.enRate; u.pitch=tr?c.trPitch:c.enPitch; }
+/* Kayıtlı ses varsa onu, yoksa tarayıcının o dildeki ilk sesini seçer.
+   Artık BAYAN/ERKEK ayrımı zorlanmaz — kullanıcı panelden seçer. */
+function dhPickVoice(lang){
+  var voices=[]; try{ voices=speechSynthesis.getVoices()||[]; }catch(e){}
+  if(!voices.length) return null;
+  var c=dhTtsCfg(), tr=/^tr/i.test(lang);
+  var want=tr?c.trVoice:c.enVoice;
+  if(want){ var m=voices.filter(function(v){ return v.voiceURI===want||v.name===want; })[0]; if(m) return m; }
+  var pref=voices.filter(function(v){ return tr ? /^tr/i.test(v.lang||"") : /^en/i.test(v.lang||""); });
+  return pref[0] || null;
+}
+function dhApplyVoice(u, lang){
+  var c=dhTtsCfg(), tr=(lang==="tr-TR");
+  u.rate=tr?c.trRate:c.enRate;
+  u.pitch=tr?c.trPitch:c.enPitch;
+  var v=dhPickVoice(lang);
+  if(v){ u.voice=v; u.lang=v.lang; }
+}
 /* Seslendirmeye giden metinden işaretleri temizler. GÜVENLİK: sonuç boşsa
    orijinali döndürür — böylece "hiç ses çıkmama" durumu ASLA oluşmaz. */
 function dhSpeakClean(s){
@@ -51,6 +69,12 @@ function dhSpeakClean(s){
   r=r.replace(/[\u2022\u00B7\u25AA\u25CF\u25A0\u25B6\u2192\u2190\u2713\u2714\u2717\u2605\u2606]/g," ");
   r=r.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\uFE0F]/gu," ");
   r=r.replace(/\s{2,}/g," ").trim();
+  /* Ardışık noktalar tarayıcıda çok uzun sessizlik yaratır: "..." ya da
+     ". . ." tek noktaya insin. Diğer noktalama tekrarları da sadeleşsin. */
+  r=r.replace(/\s*\.(?:\s*\.)+/g,".");   // ". . ." veya "..." → "."
+  r=r.replace(/([!?])\1+/g,"$1");         // "!!!" → "!", "???" → "?"
+  r=r.replace(/\.{2,}/g,".");             // kalan "…" güvenlik
+  r=r.replace(/\s{2,}/g," ").trim();
   return r.length ? r : orig.replace(/\s+/g," ").trim();
 }
 function clean(s){ return dhSpeakClean(s); }
@@ -58,7 +82,13 @@ window.DH_TTS={
   get:dhTtsCfg,
   set:function(patch){ var n=Object.assign(dhTtsCfg(),patch||{}); try{ localStorage.setItem("dh-tts-voice-v1",JSON.stringify(n)); }catch(e){} return n; },
   reset:function(){ try{ localStorage.removeItem("dh-tts-voice-v1"); }catch(e){} return dhTtsCfg(); },
-  apply:dhApplyVoice, clean:dhSpeakClean, defaults:DH_TTS_DEFAULTS
+  apply:dhApplyVoice, clean:dhSpeakClean, defaults:DH_TTS_DEFAULTS, pickVoice:dhPickVoice,
+  voices:function(lang){
+    var v=[]; try{ v=speechSynthesis.getVoices()||[]; }catch(e){}
+    if(!lang) return v.slice();
+    var re=/^tr/i.test(lang)?/^tr/i:/^en/i;
+    return v.filter(function(x){ return re.test(x.lang||""); });
+  }
 };
 function isTurkish(text){
   const s=String(text||"");
@@ -442,6 +472,9 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
       "#mouthSpeedRange{width:100%;margin:6px 0 2px;}",
       "#mouthSpeedLabels{display:flex;justify-content:space-between;font-size:11px;opacity:.8;}",
       ".dh-voice-grid{display:grid;grid-template-columns:auto 1fr auto;gap:6px 8px;align-items:center;}",
+      ".dh-vlabel{display:block;font-size:11px;font-weight:700;margin:8px 0 3px;}",
+      ".dh-vsel{width:100%;padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:inherit;font-size:12px;}",
+      ".dh-vsel option{color:#111;}",
       ".dh-voice-grid b{font-size:11px;font-weight:700;white-space:nowrap;}",
       ".dh-voice-grid input[type=range]{width:100%;margin:0;}",
       ".dh-vv{font-size:10.5px;opacity:.7;font-family:monospace;min-width:30px;text-align:right;}",
@@ -479,6 +512,8 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
       '<button id="mouthSpeedTest" type="button">\ud83d\udd0a Dene</button>' +
       '<hr style="border:0;border-top:1px solid rgba(255,255,255,.12);margin:12px 0">' +
       '<h4>\ud83d\udd0a Seslendirme h\u0131z\u0131 / tonu</h4>' +
+      '<label class="dh-vlabel">\ud83c\uddf9\ud83c\uddf7 T\u00fcrk\u00e7e ses</label><select id="vTrVoice" class="dh-vsel"></select>' +
+      '<label class="dh-vlabel">\ud83c\uddec\ud83c\udde7 \u0130ngilizce ses</label><select id="vEnVoice" class="dh-vsel"></select>' +
       '<div class="dh-voice-grid">' +
         '<b>\ud83c\uddf9\ud83c\uddf7 h\u0131z</b><input id="vTrRate" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vTrRateV"></span>' +
         '<b>\ud83c\uddf9\ud83c\uddf7 ton</b><input id="vTrPitch" type="range" min="0.5" max="1.6" step="0.02"><span class="dh-vv" id="vTrPitchV"></span>' +
@@ -511,6 +546,42 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
         var lab=panel.querySelector("#"+labId); if(lab) lab.textContent=Number(el.value).toFixed(2); }); }
     vBind("vTrRate","trRate","vTrRateV"); vBind("vTrPitch","trPitch","vTrPitchV");
     vBind("vEnRate","enRate","vEnRateV"); vBind("vEnPitch","enPitch","vEnPitchV");
+
+    /* Ses seçici: tarayıcının DESTEKLEDİĞİ TÜM sesler (bayan dahil) listelenir.
+       Mobilde sesler geç gelir → onvoiceschanged ile tekrar doldurulur. */
+    function fillVoiceSelects(){
+      var c=(window.DH_TTS&&DH_TTS.get)?DH_TTS.get():{};
+      [["vTrVoice","tr-TR","trVoice"],["vEnVoice","en-US","enVoice"]].forEach(function(row){
+        var sel=panel.querySelector("#"+row[0]); if(!sel) return;
+        var list=(window.DH_TTS&&DH_TTS.voices)?DH_TTS.voices(row[1]):[];
+        var cur=c[row[2]]||"";
+        var html='<option value="">Varsay\u0131lan ('+(list.length?list.length+" ses":"y\u00fckleniyor")+')</option>';
+        list.forEach(function(v){
+          var id=v.voiceURI||v.name;
+          var sel2=(id===cur)?" selected":"";
+          html+='<option value="'+String(id).replace(/"/g,"&quot;")+'"'+sel2+'>'+String(v.name||id)+' ('+(v.lang||"")+')</option>';
+        });
+        sel.innerHTML=html;
+      });
+    }
+    function bindVoiceSel(id, key, lang){
+      var sel=panel.querySelector("#"+id); if(!sel) return;
+      sel.addEventListener("change", function(){
+        var patch={}; patch[key]=sel.value;
+        if(window.DH_TTS&&DH_TTS.set) DH_TTS.set(patch);
+        vSpeak(/^tr/i.test(lang)?"Merhaba, ses denemesi.":"Hello, voice test.", lang);
+      });
+    }
+    bindVoiceSel("vTrVoice","trVoice","tr-TR");
+    bindVoiceSel("vEnVoice","enVoice","en-US");
+    fillVoiceSelects();
+    try{ speechSynthesis.onvoiceschanged=function(){ fillVoiceSelects(); }; }catch(e){}
+    /* Mobilde ilk açılışta sesler henüz boş olabilir; birkaç kez dene */
+    var vtries=0, vtimer=setInterval(function(){
+      var n=(window.DH_TTS&&DH_TTS.voices)?DH_TTS.voices().length:0;
+      if(n>0){ fillVoiceSelects(); clearInterval(vtimer); }
+      if(++vtries>10) clearInterval(vtimer);
+    },500);
     function vSpeak(txt,lang){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(txt); u.lang=lang;
       if(window.DH_TTS&&DH_TTS.apply) DH_TTS.apply(u,lang); u.__longTTSAvatarSync=true; speechSynthesis.speak(u); }catch(e){} }
     var _tt=panel.querySelector("#vTestTr"); if(_tt) _tt.addEventListener("click",function(){ vSpeak("Merhaba, bu bir Türkçe seslendirme denemesidir.","tr-TR"); });
