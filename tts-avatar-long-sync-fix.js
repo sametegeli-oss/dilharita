@@ -10,9 +10,6 @@
 if(window.__LongTTSAvatarSyncFixV2) return;
 window.__LongTTSAvatarSyncFixV2 = true;
 
-// ---- Kullanıcı duraklatma bayrağı (varsayılan false) ----
-window.__dhUserPaused = false;
-
 const AVATAR_SELECTORS = [
   "#avatarImg","#avatarImage","#teacherAvatarImg","#teacherAvatar","#mainAvatarImg",
   ".avatar-img",".avatar-image",".teacher-avatar img",".avatar img",
@@ -104,14 +101,14 @@ function isTurkish(text){
   return false;
 }
 
-function splitLongLine(line, maxLen=120){
+function splitLongLine(line, maxLen=110){
   line=clean(line);
   if(line.length<=maxLen) return [line];
   const parts=[];
   let rest=line;
   while(rest.length>maxLen){
     let cut=Math.max(rest.lastIndexOf(". ",maxLen), rest.lastIndexOf(", ",maxLen), rest.lastIndexOf("; ",maxLen), rest.lastIndexOf(" ",maxLen));
-    if(cut<40) cut=maxLen;
+    if(cut<35) cut=maxLen;
     parts.push(clean(rest.slice(0,cut+1)));
     rest=clean(rest.slice(cut+1));
   }
@@ -162,8 +159,11 @@ function splitForSpeech(text){
 
   lines.forEach(line=>{
     segmentsByBrackets(line).forEach(seg=>{
-      const pieces=seg.text.split(/(?<=[.!?])\s+/).filter(Boolean);
-      (pieces.length?pieces:[seg.text]).forEach(p=>{
+      const pieceClean = clean(seg.text);
+      if(!pieceClean) return;
+      
+      const pieces = pieceClean.split(/(?<=[.!?])\s+/).filter(Boolean);
+      (pieces.length ? pieces : [pieceClean]).forEach(p=>{
         splitLongLine(p, seg.lang==="tr-TR"?100:80).forEach(piece=>{
           if(piece) chunks.push({text:piece, lang:seg.lang});
         });
@@ -181,8 +181,7 @@ function avatarImgs(){
   return [...set].filter(img=>{
     try{
       const r=img.getBoundingClientRect();
-      // ★ DÜZELTİLDİ: innerHeight → window.innerHeight
-      return r.width>24 && r.height>24 && r.bottom>0 && r.top<window.innerHeight;
+      return r.width>24 && r.height>24 && r.bottom>0 && r.top<innerHeight;
     }catch(e){ return true; }
   });
 }
@@ -314,7 +313,6 @@ function speakSegments(segments){
   return speakChunkList(out);
 }
 
-// KİLİTLENMEYİ VE DURMAYI ÖNLEYEN ZİNCİRLEME (QUEUE) YÖNETİCİSİ
 let currentQueueSession = 0;
 
 function speakChunkList(chunks){
@@ -327,7 +325,6 @@ function speakChunkList(chunks){
 
   currentQueueSession++;
   const thisSession = currentQueueSession;
-
   let index = 0;
 
   function playNext(){
@@ -346,26 +343,25 @@ function speakChunkList(chunks){
     u.__longTTSAvatarSync = true;
 
     let hasAdvanced = false;
-    let safetyTimer = null;
+    let fallbackTimer = null;
 
     function stepNext(){
       if(hasAdvanced) return;
       hasAdvanced = true;
-      if(safetyTimer) clearTimeout(safetyTimer);
+      if(fallbackTimer) clearTimeout(fallbackTimer);
       clearInterval(mouthTimer); mouthTimer=null;
 
       if(window.__dhUserPaused){
         setTimeout(stepNext, 500);
         return;
       }
-      
-      // Chrome/Safari ses motorunun tıkanmaması için minimal nefes payı
+
       setTimeout(playNext, 40);
     }
 
-    // Her cümle için kelime başına ve karakter uzunluğuna göre cömert emniyet payı
-    const safeMs = Math.max(item.text.length * 150, 4500);
-    safetyTimer = setTimeout(stepNext, safeMs);
+    // Tarayıcı onend fırlatmayı unutursa devreye giren esnek emniyet süresi
+    const expectedTimeMs = Math.max(item.text.length * 120, 3500);
+    fallbackTimer = setTimeout(stepNext, expectedTimeMs);
 
     u.onstart = () => {
       if(thisSession !== currentQueueSession) return;
