@@ -141,8 +141,8 @@ function speakMixed(text){
       if(window.DH_TTS&&DH_TTS.apply) DH_TTS.apply(u,c.lang); else u.rate=c.lang==="tr-TR"?.96:.88;
       u.__dhMixed=true;
       let done=false;
-      function go(){ if(done)return; done=true; clearTimeout(wd); next(); }
-      var wd=setTimeout(go, Math.max(3000, c.text.length*70)+700);
+      function go(){ if(done)return; done=true; clearTimeout(wd); setTimeout(next,60); }
+      var wd=setTimeout(go, Math.max(4000, c.text.length*75)+1500);
       u.onend=go;
       u.onerror=go;
       nativeSpeak.call(speechSynthesis,u);
