@@ -40,13 +40,25 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
 
   var grid=document.getElementById("grid");
   var voices=[];
-  function refresh(){ voices=(speechSynthesis.getVoices()||[]).filter(function(v){ return /^en/i.test(v.lang||""); }); paint(); }
+  function refresh(){
+    /* Dil filtresi KALDIRILDI: sistemdeki TÜM sesler (bayan dahil, her dil)
+       listelensin — kullanıcı duyarak kendisi seçer. Aynı diller bir arada
+       görünsün diye dile göre sıralanır. */
+    var all=(speechSynthesis.getVoices()||[]).slice();
+    all.sort(function(a,b){
+      var la=(a.lang||"").toLowerCase(), lb=(b.lang||"").toLowerCase();
+      if(la<lb) return -1; if(la>lb) return 1;
+      return (a.name||"").localeCompare(b.name||"");
+    });
+    voices=all;
+    paint();
+  }
   if(typeof speechSynthesis!=="undefined"){ refresh(); speechSynthesis.onvoiceschanged=refresh; }
 
   function paint(){
     grid.innerHTML="";
     if(!voices.length){
-      grid.innerHTML='<div class="note">Ses listesi yükleniyor… (mobilde birkaç saniye sürebilir; sayfaya bir kez dokun). İpucu: listede kadın sesi görünmüyorsa telefonda Ayarlar → Erişilebilirlik → Metin okuma → Google TTS içinden ek sesler yükleyebilirsin — yoksa 👩 Kadın tonu düğmesi tonu yükselterek kadın sesi elde eder.</div>';
+      grid.innerHTML='<div class="note">Ses listesi yükleniyor… (mobilde birkaç saniye sürebilir; sayfaya bir kez dokun). Sistemdeki tüm sesler burada listelenir — hangisinin kadın/erkek olduğunu ▶ ile dinleyerek anlayabilirsin.</div>';
       return;
     }
     CHARS.forEach(function(ch){
@@ -64,6 +76,24 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
         if(pref.name===v.name) o.selected=true;
         sel.appendChild(o);
       });
+
+      /* Seçili sesi ANINDA dinlet: cinsiyet isimden anlaşılamıyor (en_AU gibi),
+         kullanıcı DUYARAK karar versin. Seçim değişince de otomatik çalar. */
+      var listenWrap=document.createElement("div"); listenWrap.className="btns";
+      var bListen=document.createElement("button"); bListen.className="b-try"; bListen.textContent="▶ Bu sesi dinle";
+      function previewCurrent(){
+        try{
+          speechSynthesis.cancel();
+          var u=new SpeechSynthesisUtterance(ch.sample);
+          var v=voices.find(function(x){return x.name===sel.value;}); if(v){ u.voice=v; u.lang=v.lang; } else u.lang="en-US";
+          u.rate=parseFloat(rateInput.value)||0.96; u.pitch=parseFloat(pitchInput.value)||1.0;
+          speechSynthesis.speak(u);
+        }catch(e){}
+      }
+      bListen.onclick=previewCurrent;
+      sel.addEventListener("change", previewCurrent);
+      listenWrap.appendChild(bListen);
+
       var rateWrap=document.createElement("div"); rateWrap.className="rate";
       var rateVal=pref.rate||0.96;
       rateWrap.innerHTML='Hız: <input type="range" min="0.7" max="1.2" step="0.02" value="'+rateVal+'"><span>'+rateVal+'</span>';
@@ -79,18 +109,20 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
          varsayılan ton (0.78) HER sesi erkek gibi gösterir. Kadın sesi için
          tonu yükseltmek gerekir — tek dokunuş önayarlar: */
       var gWrap=document.createElement("div"); gWrap.className="btns";
+      var gNote=document.createElement("div"); gNote.className="sub"; gNote.style.margin="6px 0 2px";
+      gNote.textContent="Telefonunda kadın sesi ayrı görünmüyorsa: aşağıdaki tonu yükselterek kadın, düşürerek erkek sesi elde edebilirsin. ▶ ile dinle.";
       var bFem=document.createElement("button"); bFem.className="b-def"; bFem.textContent="👩 Kadın tonu";
       var bMal=document.createElement("button"); bMal.className="b-def"; bMal.textContent="👨 Erkek tonu";
       bFem.onclick=function(){ var f=voices.find(function(v){return femRe.test(v.name||"");}); if(f) sel.value=f.name;
-        pitchInput.value=1.3; pitchLabel.textContent="1.3"; rateInput.value=0.98; rateLabel.textContent="0.98"; };
+        pitchInput.value=1.3; pitchLabel.textContent="1.3"; rateInput.value=0.98; rateLabel.textContent="0.98"; previewCurrent(); };
       bMal.onclick=function(){ var m=voices.find(function(v){return malRe.test(v.name||"");}); if(m) sel.value=m.name;
-        pitchInput.value=0.78; pitchLabel.textContent="0.78"; rateInput.value=0.96; rateLabel.textContent="0.96"; };
+        pitchInput.value=0.7; pitchLabel.textContent="0.7"; rateInput.value=0.96; rateLabel.textContent="0.96"; previewCurrent(); };
       gWrap.appendChild(bFem); gWrap.appendChild(bMal);
       var btns=document.createElement("div"); btns.className="btns";
       var bTry=document.createElement("button"); bTry.className="b-try"; bTry.textContent="🔊 Dene ve Kaydet";
       var bDef=document.createElement("button"); bDef.className="b-def"; bDef.textContent="Varsayılana dön";
       btns.appendChild(bTry); btns.appendChild(bDef);
-      right.appendChild(sel); right.appendChild(gWrap); right.appendChild(rateWrap); right.appendChild(pitchWrap); right.appendChild(btns);
+      right.appendChild(sel); right.appendChild(listenWrap); right.appendChild(gNote); right.appendChild(gWrap); right.appendChild(rateWrap); right.appendChild(pitchWrap); right.appendChild(btns);
       row.appendChild(img); row.appendChild(right); grid.appendChild(row);
 
       bTry.onclick=function(){
@@ -100,8 +132,8 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
         try{
           speechSynthesis.cancel();
           var u=new SpeechSynthesisUtterance(ch.sample);
-          var v=voices.find(function(x){return x.name===name;}); if(v) u.voice=v;
-          u.lang="en-US"; u.rate=rate; u.pitch=pitch;
+          var v=voices.find(function(x){return x.name===name;}); if(v){ u.voice=v; u.lang=v.lang; } else u.lang="en-US";
+          u.rate=rate; u.pitch=pitch;
           speechSynthesis.speak(u);
         }catch(e){}
       };
