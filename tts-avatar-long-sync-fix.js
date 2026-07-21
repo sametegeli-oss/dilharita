@@ -129,10 +129,38 @@ function splitLongLine(line, maxLen=90){
   return parts;
 }
 
+// Gelen metni EKRANDA GÖRÜNEN düz metne çevirir.
+// Regex ile etiket ayıklamak yerine tarayıcının kendi HTML çözücüsünü
+// kullanıyoruz; böylece hem etiketler temizlenir hem de &amp; &nbsp; &lt;
+// gibi HTML entity'leri doğru karaktere ("&", boşluk, "<") dönüşür. Amaç:
+// seslendirilen metnin, kullanıcının ekranda gördüğüyle birebir aynı olması.
+function htmlToVisibleText(input){
+  var s = String(input||"");
+  try{
+    var hasTags = /<[^>]+>/.test(s);
+    var tmp = document.createElement("div");
+    if(hasTags){
+      // Blok ve satır-sonu etiketlerini gerçek satır sonuna çevir ki
+      // cümleler birbirine yapışmasın (br, p/div/li/başlık kapanışları).
+      s = s.replace(/<\s*br\s*\/?>/gi, "\n")
+           .replace(/<\s*\/\s*(p|div|li|h[1-6]|tr|section|article)\s*>/gi, "\n");
+      tmp.innerHTML = s;
+      // Sesli okunmaması gereken görünmez öğeleri at.
+      try{ tmp.querySelectorAll("script,style,noscript").forEach(function(n){ n.remove(); }); }catch(e){}
+    } else {
+      // Etiket yok ama entity olabilir; innerHTML atayınca çözülür.
+      tmp.innerHTML = s;
+    }
+    var out = (tmp.textContent || "").replace(/ /g, " ");
+    // textContent boş dönerse ham metne geri düş.
+    if(out && out.trim()) return out;
+  }catch(e){}
+  // Tarayıcı yoksa / hata olursa eski regex yöntemine düş.
+  return s.replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g," ");
+}
+
 function splitForSpeech(text){
-  const raw=String(text||"")
-    .replace(/<br\s*\/?>/gi,"\n")
-    .replace(/<[^>]+>/g," ")
+  const raw=htmlToVisibleText(text)
     .replace(/\*\*/g," ");
   const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
   const chunks=[];
@@ -411,18 +439,13 @@ function speakChunkList(chunks){
       startMouthForText(item.text, item.lang);
       try{ if(window.__dhHighlight) window.__dhHighlight(item.el||null); }catch(e){}
 
-      // Tek bir utterance ~15 saniyeden uzun sürdüğünde motorun sessizce
-      // durması hatasına karşı periyodik pause/resume.
-      if(keepAliveTimer) clearInterval(keepAliveTimer);
-      keepAliveTimer = setInterval(()=>{
-        try{
-          if(thisSession !== currentQueueSession){ clearInterval(keepAliveTimer); keepAliveTimer=null; return; }
-          if(speechSynthesis.speaking){
-            speechSynthesis.pause();
-            speechSynthesis.resume();
-          }
-        }catch(e){}
-      }, 8000);
+      // NOT: Daha önce burada her 8 saniyede bir speechSynthesis.pause()/resume()
+      // çağıran bir "keep-alive" vardı. Bu numara yalnızca ~15 saniyeden uzun
+      // TEK bir utterance için gereklidir. Metin zaten kısa parçalara
+      // bölündüğü için (birkaç saniye) bu trik gereksizdi ve Chrome'da
+      // konuşmayı ortada kesip kuyruğun durmasına yol açıyordu
+      // ("birkaç cümle okuyup durma"). Kaldırıldı; motor gerçekten takılırsa
+      // aşağıdaki rate'e göre ölçeklenen fallback zamanlayıcısı devreye girer.
     };
 
     u.onboundary = (ev) => {
