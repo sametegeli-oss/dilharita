@@ -1,5 +1,9 @@
 /* tts-avatar-long-sync-fix.js
-   Uzun metinlerde ses devam ederken avatarın susmasını ve donmasını engeller.
+   Uzun metinlerde ses devam ederken avatarın susmasını engeller.
+   - TTS metnini küçük parçalara böler.
+   - Her parçada avatar-speaking durumunu canlı tutar.
+   - Avatar ağız frame'lerini tüm okuma bitene kadar döndürür.
+   - Türkçe kısımlar tr-TR, İngilizce kısımlar en-US okunur.
 */
 (function(){
 "use strict";
@@ -97,14 +101,14 @@ function isTurkish(text){
   return false;
 }
 
-function splitLongLine(line, maxLen=120){
+function splitLongLine(line, maxLen=140){
   line=clean(line);
   if(line.length<=maxLen) return [line];
   const parts=[];
   let rest=line;
   while(rest.length>maxLen){
     let cut=Math.max(rest.lastIndexOf(". ",maxLen), rest.lastIndexOf(", ",maxLen), rest.lastIndexOf("; ",maxLen), rest.lastIndexOf(" ",maxLen));
-    if(cut<30) cut=maxLen;
+    if(cut<60) cut=maxLen;
     parts.push(clean(rest.slice(0,cut+1)));
     rest=clean(rest.slice(cut+1));
   }
@@ -120,32 +124,25 @@ function splitForSpeech(text){
   const lines=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
   const chunks=[];
 
+  // TEK DÜZELTME BURADA YAPILDI:
+  // Parantez/Tırnak dışındaki metinleri zorla tr-TR yapmak yerine isTurkish() kontrolüne sokuyoruz.
   function segmentsByBrackets(line){
     const segs=[];
     const re=/\[\[([\s\S]*?)\]\]|"([^"]*?)"|“([^”]*?)”/g;
     let last=0, m;
-
     while((m=re.exec(line))!==null){
-      if(m.index > last){
+      if(m.index>last){
         const before=line.slice(last, m.index).trim();
-        if(before){
-          segs.push({text:before, lang: isTurkish(before) ? "tr-TR" : "en-US"});
-        }
+        if(before) segs.push({text:before, lang: isTurkish(before) ? "tr-TR" : "en-US"});
       }
       const inner=((m[1]!=null?m[1]:(m[2]!=null?m[2]:m[3]))||"").trim();
-      if(inner){
-        segs.push({text:inner, lang:"en-US"});
-      }
+      if(inner) segs.push({text:inner, lang:"en-US"});
       last=re.lastIndex;
     }
-
-    if(last < line.length){
+    if(last<line.length){
       const after=line.slice(last).trim();
-      if(after){
-        segs.push({text:after, lang: isTurkish(after) ? "tr-TR" : "en-US"});
-      }
+      if(after) segs.push({text:after, lang: isTurkish(after) ? "tr-TR" : "en-US"});
     }
-
     if(!segs.length){
       const t=line.trim();
       if(t) segs.push({text:t, lang: isTurkish(t) ? "tr-TR" : "en-US"});
@@ -155,11 +152,8 @@ function splitForSpeech(text){
 
   lines.forEach(line=>{
     segmentsByBrackets(line).forEach(seg=>{
-      const pieceClean = clean(seg.text);
-      if(!pieceClean) return;
-      
-      const pieces = pieceClean.split(/(?<=[.!?])\s+/).filter(Boolean);
-      (pieces.length ? pieces : [pieceClean]).forEach(p=>{
+      const pieces=seg.text.split(/(?<=[.!?])\s+/).filter(Boolean);
+      (pieces.length?pieces:[seg.text]).forEach(p=>{
         splitLongLine(p, seg.lang==="tr-TR"?110:90).forEach(piece=>{
           if(piece) chunks.push({text:piece, lang:seg.lang});
         });
@@ -299,91 +293,146 @@ function speakSegments(segments){
     var text = clean(seg.text||"");
     if(!text) return;
     var el = seg.el || null;
-    splitLongLine(text, lang==="tr-TR"?110:90).forEach(function(piece){
-      if(piece) out.push({text:piece, lang:lang, el:el});
+    var pieces = text.split(/(?<=[.!?])\s+/).filter(Boolean);
+    (pieces.length?pieces:[text]).forEach(function(p){
+      splitLongLine(p, lang==="tr-TR"?110:90).forEach(function(piece){
+        if(piece) out.push({text:piece, lang:lang, el:el});
+      });
     });
   });
   return speakChunkList(out);
 }
 
-// TEMİZ ASYNC OKUMA YAPISI
-let currentSpeechSession = 0;
-
-async function speakChunkList(chunks){
+function speakChunkList(chunks){
   if(!nativeSpeak) return false;
-  chunks = (chunks||[]).filter(c=>c && clean(c.text));
+  chunks=(chunks||[]).filter(c=>c&&clean(c.text));
   if(!chunks.length) return false;
 
-  currentSpeechSession++;
-  const thisSession = currentSpeechSession;
+  var _merged=[];
+  chunks.forEach(function(c){
+    var last=_merged[_merged.length-1];
+    if(last && last.lang===c.lang && (last.text.length + String(c.text).length) < 240){
+      last.text += " " + c.text;
+      if(c.el && !last.el) last.el=c.el;
+      (last.segs || (last.segs=[])).push(c);
+    } else {
+      _merged.push({ text:c.text, lang:c.lang, el:c.el||null, segs:[c] });
+    }
+  });
+  chunks=_merged;
 
-  try { speechSynthesis.cancel(); } catch(e){}
+  try{ speechSynthesis.cancel(); }catch(e){}
   setSpeakingState(true);
 
-  // Chrome'un uzun okumalarda kilitlenmesini engelleyen tek hafif denetleyici
-  let keepAlive = setInterval(()=>{
-    try {
-      if(speechSynthesis.speaking) speechSynthesis.resume();
-    } catch(e){}
-  }, 4000);
+  var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  let keepAlive=null;
+  if(!isMobile){
+    keepAlive=setInterval(()=>{
+      try{
+        if(window.__dhUserPaused) return;
+        if(speechSynthesis.speaking && !speechSynthesis.paused){
+          speechSynthesis.pause(); speechSynthesis.resume();
+        }
+      }catch(e){}
+    }, 9000);
+  }
+  function stopKeepAlive(){ if(keepAlive){ clearInterval(keepAlive); keepAlive=null; } }
 
-  for (let i = 0; i < chunks.length; i++) {
-    if (thisSession !== currentSpeechSession) {
-      clearInterval(keepAlive);
-      return false;
+  let i=0, stopped=false;
+  function next(){
+    if(stopped) return;
+    if(i>=chunks.length){
+      stopKeepAlive();
+      setTimeout(()=>setSpeakingState(false), 180);
+      try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
+      return;
     }
 
-    const item = chunks[i];
-    
-    // Her cümleyi saf Promise ile bekle
-    await new Promise((resolve) => {
-      const u = new SpeechSynthesisUtterance(item.text);
-      u.lang = item.lang;
-      dhApplyVoice(u, item.lang);
+    const c=chunks[i++];
+    const u=new SpeechSynthesisUtterance(c.text);
+    u.lang=c.lang;
+    dhApplyVoice(u, c.lang);
+    u.__longTTSAvatarSync = true;
 
-      let isDone = false;
-      const done = () => {
-        if (isDone) return;
-        isDone = true;
-        clearInterval(mouthTimer); 
-        mouthTimer = null;
-        resolve();
-      };
+    let ended=false;
 
-      u.onstart = () => {
-        if (thisSession !== currentSpeechSession) return done();
-        setSpeakingState(true);
-        startMouthForText(item.text, item.lang);
-        try{ if(window.__dhHighlight) window.__dhHighlight(item.el||null); }catch(e){}
-      };
-
-      u.onboundary = (ev) => {
-        if (thisSession !== currentSpeechSession) return;
-        setSpeakingState(true);
-        if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex);
-      };
-
-      u.onend = done;
-      u.onerror = done;
-
-      try {
-        speechSynthesis.resume();
-        nativeSpeak(u);
-      } catch(e) {
-        done();
+    function advance(){
+      if(ended) return;
+      if(window.__dhUserPaused){
+        watchdog2 = setTimeout(advance, 1000);
+        return;
       }
-    });
+      ended=true;
+      clearTimers();
+      clearInterval(mouthTimer); mouthTimer=null;
+      setSpeakingState(true);
+      setTimeout(next, 0);
+    }
 
-    // Cümleler arası minimal rahatlama payı
-    await new Promise(r => setTimeout(r, 40));
+    var watchdog2=null, pollTimer=null;
+    var startedSpeaking=false, silentTicks=0, lastBoundaryAt=0, startAt=Date.now();
+
+    function clearTimers(){ 
+      clearTimeout(watchdog); 
+      if(watchdog2) clearTimeout(watchdog2);
+      if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } 
+    }
+
+    pollTimer=setInterval(function(){
+      if(ended) return;
+      var sp=false; try{ sp=speechSynthesis.speaking; }catch(e){}
+      if(sp){ startedSpeaking=true; silentTicks=0; return; }
+
+      if(!startedSpeaking){
+        if(Date.now()-startAt > 1000) advance();
+        return;
+      }
+
+      if(Date.now()-lastBoundaryAt < 350){ silentTicks=0; return; }
+
+      if(++silentTicks>=2 && !(window.__dhUserPaused)) advance();
+    }, 100);
+
+    var estMs = Math.min(Math.max(c.text.length * (isMobile?60:45), 500), 1000);
+    var watchdog=setTimeout(advance, estMs);
+
+    u.onstart=()=>{ 
+      startedSpeaking=true; 
+      silentTicks=0; 
+      startAt=Date.now(); 
+      setSpeakingState(true); 
+      startMouthForText(c.text, c.lang); 
+      try{ if(window.__dhHighlight) window.__dhHighlight(c.el||null); }catch(e){}
+      clearTimeout(watchdog); 
+      watchdog=setTimeout(advance, Math.min(Math.max(c.text.length*(isMobile?70:55), 800), 6000)); 
+    };
+
+    u.onboundary=(ev)=>{
+      setSpeakingState(true);
+      startedSpeaking=true; 
+      silentTicks=0; 
+      lastBoundaryAt=Date.now();
+      if(ev && (ev.name==="word"||ev.name===undefined)) alignMouthTo(ev.charIndex);
+      try{
+        if(c.segs && c.segs.length>1 && ev && typeof ev.charIndex==="number"){
+          var pos=0, hit=c.segs[0];
+          for(var k=0;k<c.segs.length;k++){
+            var len=String(c.segs[k].text||"").length + 1;
+            if(ev.charIndex < pos+len){ hit=c.segs[k]; break; }
+            pos+=len;
+          }
+          if(hit && hit.el && window.__dhHighlight) window.__dhHighlight(hit.el);
+        }
+      }catch(e){}
+    };
+
+    u.onend=advance;
+    u.onerror=advance;
+
+    try{ nativeSpeak(u); }catch(e){ advance(); }
   }
 
-  clearInterval(keepAlive);
-  if (thisSession === currentSpeechSession) {
-    setSpeakingState(false);
-    try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
-  }
-
+  next();
   return true;
 }
 
@@ -394,10 +443,29 @@ window.DH_LongTTSAvatarSync = { speak:speakChunks, speakSegments:speakSegments, 
 try{
   const nativeCancel=speechSynthesis.cancel.bind(speechSynthesis);
   speechSynthesis.cancel=function(){
-    currentSpeechSession++;
     setSpeakingState(false);
     return nativeCancel();
   };
+}catch(e){}
+
+try{
+  if(!speechSynthesis.__longAvatarSpeakPatch){
+    speechSynthesis.__longAvatarSpeakPatch=true;
+    speechSynthesis.speak=function(u){
+      try{
+        if(u && u.__longTTSAvatarSync) return nativeSpeak(u);
+        const text=String(u&&u.text||"");
+        if(text.length>80 || /TÜRKÇE|ENGLISH|AÇIKLAMA|ÖZET|ğ|ü|ş|ö|ç|ı/i.test(text)){
+          return speakChunks(text);
+        }
+        u.onstart=((old)=>function(ev){setSpeakingState(true); if(old) old.call(this,ev);})(u.onstart);
+        u.onboundary=((old)=>function(ev){setSpeakingState(true); if(old) old.call(this,ev);})(u.onboundary);
+        u.onend=((old)=>function(ev){setTimeout(()=>setSpeakingState(false),180); if(old) old.call(this,ev);})(u.onend);
+        u.onerror=((old)=>function(ev){setTimeout(()=>setSpeakingState(false),180); if(old) old.call(this,ev);})(u.onerror);
+      }catch(e){}
+      return nativeSpeak(u);
+    };
+  }
 }catch(e){}
 
 document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeakingState(false); });
@@ -550,7 +618,7 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden) setSpeaki
     },500);
     function vSpeak(txt,lang){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(txt); u.lang=lang;
       if(window.DH_TTS&&DH_TTS.apply) DH_TTS.apply(u,lang); u.__longTTSAvatarSync=true; speechSynthesis.speak(u); }catch(e){} }
-    var _tt=panel.querySelector("#vTestTr"); if(_tt) _tt.addEventListener("click",function(){ vSpeak("Merhaba, bu bir Türkçe seslendirme denemedir.","tr-TR"); });
+    var _tt=panel.querySelector("#vTestTr"); if(_tt) _tt.addEventListener("click",function(){ vSpeak("Merhaba, bu bir Türkçe seslendirme denemesidir.","tr-TR"); });
     var _te=panel.querySelector("#vTestEn"); if(_te) _te.addEventListener("click",function(){ vSpeak("Hello, this is an English voice test.","en-US"); });
     var _vr=panel.querySelector("#vReset"); if(_vr) _vr.addEventListener("click",function(){ if(window.DH_TTS&&DH_TTS.reset) DH_TTS.reset(); vSync(); });
     vSync();
