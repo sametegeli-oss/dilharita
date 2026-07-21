@@ -1,9 +1,7 @@
 /* tts-avatar-long-sync-fix.js
    Uzun metinlerde ses devam ederken avatarın susmasını engeller.
-   - TTS metnini küçük parçalara böler.
-   - Her parçada avatar-speaking durumunu canlı tutar.
-   - Avatar ağız frame'lerini tüm okuma bitene kadar döndürür.
-   - Yeşil renkli cümleler/öğeler en-US, geri kalanı tr-TR okunur.
+   - Yeşil renkli öğeler/cümleler en-US, geri kalanı tr-TR okunur.
+   - Tarayıcı seslerinin geç yüklenmesi durumu (voiceschanged) düzeltilmiştir.
 */
 (function(){
 "use strict";
@@ -18,11 +16,6 @@ const AVATAR_SELECTORS = [
 
 let nativeSpeak = null;
 try { nativeSpeak = speechSynthesis.speak.bind(speechSynthesis); } catch(e){}
-
-let active = false;
-let activeTimer = null;
-let mouthTimer = null;
-let savedSrc = new WeakMap();
 
 var DH_TTS_DEFAULTS = { trRate: 0.96, trPitch: 1.0, enRate: 0.88, enPitch: 1.0 };
 
@@ -46,78 +39,103 @@ function dhTtsCfg() {
   return { trRate: DH_TTS_DEFAULTS.trRate, trPitch: DH_TTS_DEFAULTS.trPitch, enRate: DH_TTS_DEFAULTS.enRate, enPitch: DH_TTS_DEFAULTS.enPitch, trVoice: "", enVoice: "" };
 }
 
+// Tarayıcıdaki ses listesinden en uygun olanı seçer
 function dhPickVoice(lang) {
   var voices = [];
   try { voices = speechSynthesis.getVoices() || []; } catch(e) {}
   if (!voices.length) return null;
-  var c = dhTtsCfg(), tr = /^tr/i.test(lang);
-  var want = tr ? c.trVoice : c.enVoice;
+  
+  var c = dhTtsCfg();
+  var isTr = /^tr/i.test(lang);
+  var want = isTr ? c.trVoice : c.enVoice;
+  
+  // 1. Öncelik: Kullanıcının seçtiği özel ses
   if (want) {
-    var m = voices.filter(function(v) { return v.voiceURI === want || v.name === want; })[0];
-    if (m) return m;
+    var matched = voices.find(function(v) { return v.voiceURI === want || v.name === want; });
+    if (matched) return matched;
   }
-  var pref = voices.filter(function(v) { return tr ? /^tr/i.test(v.lang || "") : /^en/i.test(v.lang || ""); });
-  return pref[0] || null;
+  
+  // 2. Öncelik: Tam dil eşleşmesi (Örn: en-US veya tr-TR)
+  var exactMatch = voices.find(function(v) { return v.lang && v.lang.toLowerCase() === lang.toLowerCase(); });
+  if (exactMatch) return exactMatch;
+
+  // 3. Öncelik: Dil ailesi eşleşmesi (Örn: "en" içeren herhangi bir ses)
+  var familyMatch = voices.find(function(v) { return isTr ? /^tr/i.test(v.lang || "") : /^en/i.test(v.lang || ""); });
+  return familyMatch || null;
 }
 
 function dhApplyVoice(u, lang) {
-  var c = dhTtsCfg(), tr = (lang === "tr-TR");
-  u.rate = tr ? c.trRate : c.enRate;
-  u.pitch = tr ? c.trPitch : c.enPitch;
+  var c = dhTtsCfg();
+  var isTr = (lang === "tr-TR");
+  u.rate = isTr ? c.trRate : c.enRate;
+  u.pitch = isTr ? c.trPitch : c.enPitch;
+  u.lang = lang; // Dil kodunu doğrudan set et
+  
   var v = dhPickVoice(lang);
-  if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = lang; }
+  if (v) { 
+    u.voice = v; 
+  }
 }
 
 function dhSpeakClean(s) {
   var r = String(s || "");
-  r = r.replace(/```[\s\S]*?```/g, " ")
-       .replace(/`([^`]+)`/g, "$1")
-       .replace(/[*_#~]/g, " ")
-       .replace(/\s+/g, " ")
-       .trim();
-  return r;
+  return r.replace(/```[\s\S]*?```/g, " ")
+          .replace(/`([^`]+)`/g, "$1")
+          .replace(/[*_#~]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
 }
 
 /**
- * Bir elementin veya metnin yeşil renkte olup olmadığını kontrol eder.
+ * Bir elementin stilinden veya renginden yeşil olup olmadığını tespit eder.
  */
 function isGreenElement(el) {
   if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
-  const style = window.getComputedStyle(el);
-  const color = style.color; // "rgb(r, g, b)" formatında döner
   
-  // RGB değerlerini ayrıştır
+  // Class ve inline stillere öncelikli bakış
+  if (el.classList.contains("green") || el.classList.contains("text-green") || el.style.color === "green") {
+    return true;
+  }
+
+  const style = window.getComputedStyle(el);
+  const color = style.color; // "rgb(r, g, b)"
+  
   const rgb = color.match(/\d+/g);
   if (rgb && rgb.length >= 3) {
     const r = parseInt(rgb[0], 10);
     const g = parseInt(rgb[1], 10);
     const b = parseInt(rgb[2], 10);
     
-    // Yeşil rengin baskınlık kontrolü (G değeri R ve B'den belirgin şekilde yüksekse)
-    if (g > 100 && g > r * 1.3 && g > b * 1.3) {
+    // Yeşil renk tespiti (G bileşeninin belirgin şekilde yüksek olması)
+    if (g > 80 && g > r * 1.2 && g > b * 1.2) {
       return true;
     }
   }
-  
-  // Inline style veya sınıf kontrolleri
-  if (el.classList.contains("green") || el.classList.contains("text-green") || el.style.color === "green") {
-    return true;
-  }
-  
   return false;
 }
 
 /**
- * DOM Öğesini tarar ve yeşil olanları en-US, diğerlerini tr-TR olarak dil parçalarına ayırır.
+ * HTML Alanını tarayıp yeşil yazıları en-US, diğerlerini tr-TR olarak parçalar.
  */
 function parseElementToSpeechSegments(containerEl) {
   const segments = [];
-  
+
   function traverse(node) {
     if (node.nodeType === Node.TEXT_NODE) {
       const text = dhSpeakClean(node.textContent);
       if (text) {
-        const isGreen = isGreenElement(node.parentElement);
+        let parent = node.parentElement;
+        let isGreen = false;
+        
+        // Üst hiyerarşide yeşil renk olan bir kapsayıcı var mı kontrol et
+        while (parent && parent !== containerEl) {
+          if (isGreenElement(parent)) {
+            isGreen = true;
+            break;
+          }
+          parent = parent.parentElement;
+        }
+
         segments.push({
           text: text,
           lang: isGreen ? "en-US" : "tr-TR"
@@ -135,50 +153,63 @@ function parseElementToSpeechSegments(containerEl) {
 }
 
 /**
- * Parçalı seslendirme yöneticisi
+ * Seslendirmeyi başlatan ana fonksiyon
  */
 window.speakSmartText = function(target) {
-  speechSynthesis.cancel();
-  
+  if ('speechSynthesis' in window) {
+    speechSynthesis.cancel(); // Mevcut seslendirmeyi durdur
+  }
+
   let segments = [];
-  
+
   if (typeof target === "string") {
-    // Düz metin verildiyse varsayılan tr-TR
     segments.push({ text: dhSpeakClean(target), lang: "tr-TR" });
   } else if (target && target.nodeType) {
-    // DOM Öğesi verildiyse renge göre dili otomatik tespit et
     segments = parseElementToSpeechSegments(target);
   }
 
   if (!segments.length) return;
 
-  let index = 0;
+  // Seslerin tarayıcıda yüklenmesini sağla
+  const runSpeech = () => {
+    let index = 0;
 
-  function playNext() {
-    if (index >= segments.length) return;
+    function playNext() {
+      if (index >= segments.length) return;
 
-    const seg = segments[index];
-    const u = new SpeechSynthesisUtterance(seg.text);
-    dhApplyVoice(u, seg.lang);
+      const seg = segments[index];
+      const u = new SpeechSynthesisUtterance(seg.text);
+      dhApplyVoice(u, seg.lang);
 
-    u.onend = function() {
-      index++;
-      playNext();
-    };
+      u.onend = function() {
+        index++;
+        playNext();
+      };
 
-    u.onerror = function() {
-      index++;
-      playNext();
-    };
+      u.onerror = function() {
+        index++;
+        playNext();
+      };
 
-    if (nativeSpeak) {
-      nativeSpeak(u);
-    } else {
-      speechSynthesis.speak(u);
+      if (nativeSpeak) {
+        nativeSpeak(u);
+      } else {
+        speechSynthesis.speak(u);
+      }
     }
-  }
 
-  playNext();
+    playNext();
+  };
+
+  // Sesler henüz hazır değilse listeyi bekle
+  if (speechSynthesis.getVoices().length === 0) {
+    speechSynthesis.onvoiceschanged = function() {
+      speechSynthesis.onvoiceschanged = null;
+      runSpeech();
+    };
+  } else {
+    runSpeech();
+  }
 };
 
 })();
