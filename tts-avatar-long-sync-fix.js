@@ -1,11 +1,13 @@
 /* tts-avatar-long-sync-fix.js
-   - yeşil renkli cümleler en-US, geri kalanı tr-TR seslendirilir.
-   - speechSynthesis.speak monkey-patch edilerek mevcut sisteme tam entegre edilmiştir.
+   - Yeşil cümleler: en-US (İngilizce)
+   - Diğer cümleler: tr-TR (Türkçe)
+   - Okunan cümle canlı olarak sarı dolgu rengiyle vurgulanır.
+   - Dash (---) ve Markdown simgeleri temizlendi.
 */
 (function(){
 "use strict";
-if(window.__LongTTSAvatarSyncFixV3) return;
-window.__LongTTSAvatarSyncFixV3 = true;
+if(window.__LongTTSAvatarSyncFixV4) return;
+window.__LongTTSAvatarSyncFixV4 = true;
 
 const DH_TTS_DEFAULTS = { trRate: 0.96, trPitch: 1.0, enRate: 0.88, enPitch: 1.0 };
 
@@ -43,7 +45,9 @@ function dhPickVoice(lang) {
     if (matched) return matched;
   }
   
-  var exactMatch = voices.find(function(v) { return v.lang && v.lang.toLowerCase().startsWith(lang.toLowerCase().slice(0,2)); });
+  var exactMatch = voices.find(function(v) { 
+    return v.lang && v.lang.toLowerCase().replace('_','-').startsWith(lang.toLowerCase().slice(0,2)); 
+  });
   return exactMatch || null;
 }
 
@@ -58,47 +62,85 @@ function dhApplyVoice(u, lang) {
   if (v) { u.voice = v; }
 }
 
-function dhSpeakClean(s) {
+// "Dash" okunmasını engellemek için metin temizliği
+function dhCleanText(s) {
   return String(s || "")
+    .replace(/[-─━_]{2,}/g, " ") // --- veya ___ çizgi karakterlerini tamamen yok et
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`([^`]+)`/g, "$1")
-    .replace(/[*_#~|]/g, " ")
+    .replace(/[*_#~|:<>-]/g, " ") // Noktalama ve tablo simgelerini temizle
     .replace(/\s+/g, " ")
     .trim();
 }
 
-/**
- * Sayfadaki yeşil renkteki DOM elemanlarını bulur ve text parçalarını dil bilgisiyle ayırır.
- */
-function getLanguageSegmentsFromDOM() {
-  const segments = [];
+// Yeşil renk tespiti
+function isElementGreen(el) {
+  if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
   
-  // Yeşil tonu kontrolü (RGB)
-  function isGreen(el) {
-    if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
-    const color = window.getComputedStyle(el).color;
-    const rgb = color.match(/\d+/g);
-    if (rgb && rgb.length >= 3) {
-      const r = parseInt(rgb[0], 10);
-      const g = parseInt(rgb[1], 10);
-      const b = parseInt(rgb[2], 10);
-      // Yeşil baskınlığı tespiti
-      if (g > 90 && g > r * 1.15 && g > b * 1.15) return true;
-    }
-    return false;
-  }
+  const style = window.getComputedStyle(el);
+  const color = style.color;
+  
+  // Standart yeşil class veya inline kontrolü
+  if (el.classList.contains("green") || el.style.color === "green") return true;
 
-  // Sayfada konuşma metninin bulunduğu tüm alanları tara
+  const rgb = color.match(/\d+/g);
+  if (rgb && rgb.length >= 3) {
+    const r = parseInt(rgb[0], 10);
+    const g = parseInt(rgb[1], 10);
+    const b = parseInt(rgb[2], 10);
+    
+    // Yeşil renk baskınlığı
+    if (g > 80 && g > r * 1.15 && g > b * 1.15) {
+      return true;
+    }
+  }
+  return false;
+}
+
+let activeHighlightEl = null;
+
+function clearHighlight() {
+  if (activeHighlightEl) {
+    activeHighlightEl.style.backgroundColor = "";
+    activeHighlightEl.style.borderRadius = "";
+    activeHighlightEl.style.transition = "";
+    activeHighlightEl = null;
+  }
+}
+
+function setHighlight(node) {
+  clearHighlight();
+  if (!node) return;
+  
+  let target = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+  if (target) {
+    activeHighlightEl = target;
+    target.style.transition = "background-color 0.2s ease";
+    target.style.backgroundColor = "#ffeb3b"; // Parlak sarı dolgu
+    target.style.color = "#000000"; // Okunabilirlik için siyah yazı
+    target.style.borderRadius = "4px";
+  }
+}
+
+/**
+ * DOM Ağacını tarayarak yeşil elemanları en-US, kalanları tr-TR olarak ayırır.
+ */
+function extractSegmentsFromDOM() {
+  const segments = [];
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+  
   let node;
   while (node = walker.nextNode()) {
-    const txt = dhSpeakClean(node.textContent);
-    if (!txt) continue;
+    const rawText = node.textContent;
+    const cleaned = dhCleanText(rawText);
+    
+    if (!cleaned) continue;
 
     let parent = node.parentElement;
     let greenFound = false;
+
     while (parent && parent !== document.body) {
-      if (isGreen(parent)) {
+      if (isElementGreen(parent)) {
         greenFound = true;
         break;
       }
@@ -106,53 +148,58 @@ function getLanguageSegmentsFromDOM() {
     }
 
     segments.push({
-      text: txt,
-      lang: greenFound ? "en-US" : "tr-TR"
+      text: cleaned,
+      lang: greenFound ? "en-US" : "tr-TR",
+      node: node
     });
   }
   return segments;
 }
 
-// Orijinal speechSynthesis.speak metodunu yakalıyoruz (Intercept)
 const originalSpeak = window.speechSynthesis.speak.bind(window.speechSynthesis);
 
 window.speechSynthesis.speak = function(utterance) {
-  if (!utterance || !utterance.text) {
-    return originalSpeak(utterance);
-  }
+  const segments = extractSegmentsFromDOM();
 
-  // Eğer sistem arka planda tek bir uzun metin gönderiyorsa, DOM üzerindeki yeşil/siyah duruma göre parçala
-  const domSegments = getLanguageSegmentsFromDOM();
-  
-  // Eğer DOM'dan yeşil renkli segmentler başarıyla çıkarıldıysa onları sırayla oku
-  if (domSegments.length > 0) {
-    window.speechSynthesis.cancel(); // Mevcut kuyruğu temizle
-    
+  if (segments.length > 0) {
+    window.speechSynthesis.cancel();
+    clearHighlight();
+
     let index = 0;
-    function playNextSegment() {
-      if (index >= domSegments.length) return;
 
-      const seg = domSegments[index];
-      const newUtterance = new SpeechSynthesisUtterance(seg.text);
-      dhApplyVoice(newUtterance, seg.lang);
+    function playNext() {
+      if (index >= segments.length) {
+        clearHighlight();
+        return;
+      }
 
-      newUtterance.onend = function() {
+      const seg = segments[index];
+      setHighlight(seg.node);
+
+      const u = new SpeechSynthesisUtterance(seg.text);
+      dhApplyVoice(u, seg.lang);
+
+      u.onend = function() {
         index++;
-        playNextSegment();
-      };
-      newUtterance.onerror = function() {
-        index++;
-        playNextSegment();
+        playNext();
       };
 
-      originalSpeak(newUtterance);
+      u.onerror = function() {
+        index++;
+        playNext();
+      };
+
+      originalSpeak(u);
     }
 
-    playNextSegment();
+    playNext();
     return;
   }
 
-  // DOM okunamazsa gelen standart utterance'ı olduğu gibi çalıştır
+  // Fallback: DOM elemanları okunamazsa standart okuma yap ve çizgileri temizle
+  if (utterance && utterance.text) {
+    utterance.text = dhCleanText(utterance.text);
+  }
   originalSpeak(utterance);
 };
 
