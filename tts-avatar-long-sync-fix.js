@@ -1,13 +1,13 @@
 /* tts-avatar-long-sync-fix.js
-   - Yeşil cümleler: en-US (İngilizce)
-   - Diğer cümleler: tr-TR (Türkçe)
-   - Okunan cümle canlı olarak sarı dolgu rengiyle vurgulanır.
-   - Dash (---) ve Markdown simgeleri temizlendi.
+   - Arka plandan gelen ham metni doğrudan analiz eder.
+   - Dash (---) ve karakter bozulmalarını engeller.
+   - İngilizce/Türkçe cümleleri otomatik tespit edip doğru dilde okur.
+   - Ekrandaki eşleşen metni canlı olarak sarı dolgu ile vurgular.
 */
 (function(){
 "use strict";
-if(window.__LongTTSAvatarSyncFixV4) return;
-window.__LongTTSAvatarSyncFixV4 = true;
+if(window.__LongTTSAvatarSyncFixV5) return;
+window.__LongTTSAvatarSyncFixV5 = true;
 
 const DH_TTS_DEFAULTS = { trRate: 0.96, trPitch: 1.0, enRate: 0.88, enPitch: 1.0 };
 
@@ -62,39 +62,29 @@ function dhApplyVoice(u, lang) {
   if (v) { u.voice = v; }
 }
 
-// "Dash" okunmasını engellemek için metin temizliği
-function dhCleanText(s) {
+// "Dash" ve gürültü çıkaran Markdown işaretlerini temizleme
+function cleanRawText(s) {
   return String(s || "")
-    .replace(/[-─━_]{2,}/g, " ") // --- veya ___ çizgi karakterlerini tamamen yok et
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/[*_#~|:<>-]/g, " ") // Noktalama ve tablo simgelerini temizle
+    .replace(/[-─━_]{2,}/g, " ")     // Çizgileri (---) tamamen kaldırır
+    .replace(/```[\s\S]*?```/g, " ")  // Kod bloklarını kaldırır
+    .replace(/`([^`]+)`/g, "$1")     // Inline kodları temizler
+    .replace(/[*_#~|:<>-]/g, " ")    // Tablo ve biçimlendirme simgelerini siler
     .replace(/\s+/g, " ")
     .trim();
 }
 
-// Yeşil renk tespiti
-function isElementGreen(el) {
-  if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
-  
-  const style = window.getComputedStyle(el);
-  const color = style.color;
-  
-  // Standart yeşil class veya inline kontrolü
-  if (el.classList.contains("green") || el.style.color === "green") return true;
-
-  const rgb = color.match(/\d+/g);
-  if (rgb && rgb.length >= 3) {
-    const r = parseInt(rgb[0], 10);
-    const g = parseInt(rgb[1], 10);
-    const b = parseInt(rgb[2], 10);
-    
-    // Yeşil renk baskınlığı
-    if (g > 80 && g > r * 1.15 && g > b * 1.15) {
-      return true;
-    }
+// Metnin İngilizce mi Türkçe mi olduğunu tespit eder
+function detectLanguage(text) {
+  // Türkçe karakter kontrolü (ş, ğ, ç, ı, ö, ü)
+  if (/[çğışöüÇĞİŞÖÜ]/.test(text)) {
+    return "tr-TR";
   }
-  return false;
+  // Genel İngilizce kelimeler ve Latik karakter baskınlığı
+  const englishWords = /\b(the|is|are|am|allowed|for|to|in|on|at|and|not|this|that|you|we|they|he|she|it|with|have|has|be|bring|limits|check|works|as|hired)\b/i;
+  if (englishWords.test(text)) {
+    return "en-US";
+  }
+  return "tr-TR";
 }
 
 let activeHighlightEl = null;
@@ -102,55 +92,48 @@ let activeHighlightEl = null;
 function clearHighlight() {
   if (activeHighlightEl) {
     activeHighlightEl.style.backgroundColor = "";
+    activeHighlightEl.style.color = "";
     activeHighlightEl.style.borderRadius = "";
-    activeHighlightEl.style.transition = "";
     activeHighlightEl = null;
   }
 }
 
-function setHighlight(node) {
+// Ekran üzerindeki metni bulup sarı dolgu ile vurgular
+function highlightOnScreen(phrase) {
   clearHighlight();
-  if (!node) return;
-  
-  let target = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
-  if (target) {
-    activeHighlightEl = target;
-    target.style.transition = "background-color 0.2s ease";
-    target.style.backgroundColor = "#ffeb3b"; // Parlak sarı dolgu
-    target.style.color = "#000000"; // Okunabilirlik için siyah yazı
-    target.style.borderRadius = "4px";
+  if (!phrase || phrase.length < 3) return;
+
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+  let node;
+  while (node = walker.nextNode()) {
+    if (node.textContent.includes(phrase)) {
+      let parent = node.parentElement;
+      if (parent) {
+        activeHighlightEl = parent;
+        parent.style.transition = "background-color 0.2s ease";
+        parent.style.backgroundColor = "#ffeb3b"; // Parlak sarı dolgu
+        parent.style.color = "#000000";             // Siyah metin
+        parent.style.borderRadius = "4px";
+        break;
+      }
+    }
   }
 }
 
-/**
- * DOM Ağacını tarayarak yeşil elemanları en-US, kalanları tr-TR olarak ayırır.
- */
-function extractSegmentsFromDOM() {
-  const segments = [];
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+// Metni cümle/parça seviyesinde böler
+function parseTextIntoSegments(fullText) {
+  const cleaned = cleanRawText(fullText);
+  // Cümle bitimleri (. ! ?) veya parantez geçişlerine göre ayırır
+  const rawParts = cleaned.split(/(?<=[.!?])\s+|(?=\()|(?<=\))/g);
   
-  let node;
-  while (node = walker.nextNode()) {
-    const rawText = node.textContent;
-    const cleaned = dhCleanText(rawText);
+  const segments = [];
+  for (let part of rawParts) {
+    const txt = part.trim();
+    if (!txt || txt.length < 2) continue;
     
-    if (!cleaned) continue;
-
-    let parent = node.parentElement;
-    let greenFound = false;
-
-    while (parent && parent !== document.body) {
-      if (isElementGreen(parent)) {
-        greenFound = true;
-        break;
-      }
-      parent = parent.parentElement;
-    }
-
     segments.push({
-      text: cleaned,
-      lang: greenFound ? "en-US" : "tr-TR",
-      node: node
+      text: txt,
+      lang: detectLanguage(txt)
     });
   }
   return segments;
@@ -158,8 +141,14 @@ function extractSegmentsFromDOM() {
 
 const originalSpeak = window.speechSynthesis.speak.bind(window.speechSynthesis);
 
+// Arka plandan gelen tüm seslendirme isteklerini yakala
 window.speechSynthesis.speak = function(utterance) {
-  const segments = extractSegmentsFromDOM();
+  if (!utterance || !utterance.text) {
+    return originalSpeak(utterance);
+  }
+
+  const rawText = utterance.text;
+  const segments = parseTextIntoSegments(rawText);
 
   if (segments.length > 0) {
     window.speechSynthesis.cancel();
@@ -174,7 +163,7 @@ window.speechSynthesis.speak = function(utterance) {
       }
 
       const seg = segments[index];
-      setHighlight(seg.node);
+      highlightOnScreen(seg.text); // Ekrandaki karşılığını sarı yap
 
       const u = new SpeechSynthesisUtterance(seg.text);
       dhApplyVoice(u, seg.lang);
@@ -196,10 +185,6 @@ window.speechSynthesis.speak = function(utterance) {
     return;
   }
 
-  // Fallback: DOM elemanları okunamazsa standart okuma yap ve çizgileri temizle
-  if (utterance && utterance.text) {
-    utterance.text = dhCleanText(utterance.text);
-  }
   originalSpeak(utterance);
 };
 
