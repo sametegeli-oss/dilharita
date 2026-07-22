@@ -440,6 +440,7 @@
       <button class="btn-trainer compare" id="analyzeGraphsBtn" disabled>🔍 3. Grafikleri Kıyasla & Analiz Et</button>
       <button class="btn-trainer duet-btn" id="duetBtn">▶ Düet Oynat</button>
       <button class="btn-trainer solo-btn" id="playBtn" style="background:#1e293b;">▶ Sadece Sesim</button>
+      <button class="btn-trainer" id="origVoiceBtn" style="background:#0e7490;">🔊 Orijinal Sesi Dinle</button>
     </div>
 
     <div class="status-bar" id="statusField">Trainer modülü hazır.</div>
@@ -942,6 +943,13 @@
   const recordBtn = document.getElementById("recordBtn");
   const playBtn = document.getElementById("playBtn");
   const duetBtn = document.getElementById("duetBtn");
+  const origVoiceBtn = document.getElementById("origVoiceBtn");
+  if (origVoiceBtn) origVoiceBtn.onclick = function(){
+    try{ window.speechSynthesis.cancel(); }catch(e){}
+    var u = new SpeechSynthesisUtterance(TARGET_TEXT);
+    try{ dhApplyVoice(u); }catch(e){}
+    window.speechSynthesis.speak(u);
+  };
   const analyzeTtsBtn = document.getElementById("analyzeTtsBtn");
   const analyzeGraphsBtn = document.getElementById("analyzeGraphsBtn");
   const feedbackText = document.getElementById("feedbackText");
@@ -1310,17 +1318,28 @@
       else segment3Diff += diff;
     }
 
-    let tempoSkor = Math.max(0, Math.round(100 - (Math.abs(ttsDur - userDur) / ttsDur * 100)));
+    // Hız benzerliği: süre oranı (simetrik). 2-3x yavaş bile kısmi puan alır, 0’a çakılmaz.
+    let tempoSkor = Math.round(Math.min(ttsDur, userDur) / Math.max(ttsDur, userDur, 0.001) * 100);
     document.getElementById("mTempo").textContent = tempoSkor + "%";
 
-    let ttsMaxIdx = 0, ttsMaxVol = 0, userMaxIdx = 0, userMaxVol = 0;
-    for(let i = 0; i < finalTtsData.length; i++) {
-      if(finalTtsData[i] > ttsMaxVol) { ttsMaxVol = finalTtsData[i]; ttsMaxIdx = i; }
-      if(finalUserData[i] > userMaxVol) { userMaxVol = finalUserData[i]; userMaxIdx = i; }
+    // VURGU UYUM = ses ŞİDDETİ konturu eşleşmesi.
+    // Her eğriyi KENDİ (max - min) aralığına normalize ediyoruz — kullanıcının
+    // istediği "birim" bu. Böylece mutlak yükseklik değil, kişinin kendi dinamik
+    // aralığı içindeki vurgu deseni kıyaslanır. Sonra TÜM kontur boyunca ortalama
+    // sapmadan puan üretiyoruz (tek tepe değil).
+    function dhNormRange(arr){
+      let mn = Infinity, mx = -Infinity;
+      for(let i=0;i<arr.length;i++){ let v=arr[i]; if(v<mn)mn=v; if(v>mx)mx=v; }
+      let rng = (mx - mn) || 1;
+      let o = new Array(arr.length);
+      for(let i=0;i<arr.length;i++) o[i] = (arr[i]-mn)/rng;
+      return o;
     }
-    
-    let peakSapmaYuzde = Math.abs(ttsMaxIdx - userMaxIdx) / finalTtsData.length;
-    let vurguSkor = Math.max(0, Math.round(100 - (peakSapmaYuzde * 160)));
+    let __nT = dhNormRange(finalTtsData), __nU = dhNormRange(finalUserData);
+    let __sap = 0, __N = Math.min(__nT.length, __nU.length);
+    for(let i=0;i<__N;i++) __sap += Math.abs(__nT[i] - __nU[i]);
+    let __ortSapma = __N ? (__sap / __N) : 1;        // 0 = birebir, 1 = tam zıt
+    let vurguSkor = Math.max(0, Math.round(100 * (1 - __ortSapma)));
     document.getElementById("mVurgu").textContent = vurguSkor + "%";
 
     let genelOrtalama = Math.round((sözSkor * 0.3) + (tempoSkor * 0.4) + (vurguSkor * 0.3));
