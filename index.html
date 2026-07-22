@@ -111,8 +111,13 @@ function stopBlink(){ clearInterval(blinkT); blinkT=null; }
 function speak(text, done){
   var el=document.getElementById("say"), c=document.getElementById("caret");
   clearTimeout(typeT); el.textContent=""; c.style.display="inline-block"; startMouth();
-  try{ if(soundOn()){ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(text.replace(/[\u{1F000}-\u{1FFFF}☀-➿✓]/gu,"")); u.lang="tr-TR"; u.rate=1; speechSynthesis.speak(u); } }catch(e){}
-  var i=0; (function tick(){ if(i<=text.length){ el.textContent=text.slice(0,i); i++; typeT=setTimeout(tick,18); } else { c.style.display="none"; stopMouth(); done&&done(); } })();
+  var spoke=false;
+  try{ if(soundOn()){ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(text.replace(/[\u{1F000}-\u{1FFFF}☀-➿✓]/gu,"")); u.lang="tr-TR"; u.rate=1;
+        u.onend=function(){ stopMouth(); }; u.onerror=function(){ stopMouth(); };
+        speechSynthesis.speak(u); spoke=true; } }catch(e){}
+  // Ağız, ses açıkken TTS bitene kadar (u.onend), sessizken yazı bitince durur —
+  // böylece konuşurken ağız yarıda kesilmez.
+  var i=0; (function tick(){ if(i<=text.length){ el.textContent=text.slice(0,i); i++; typeT=setTimeout(tick,18); } else { c.style.display="none"; if(!spoke) stopMouth(); done&&done(); } })();
 }
 
 /* ---- GERÇEK VERİ ---- */

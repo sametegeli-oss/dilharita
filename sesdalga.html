@@ -148,6 +148,7 @@
       width: 36px;
       height: 36px;
       border-radius: 50%;
+      position: relative; overflow: hidden;
       border: 2px solid var(--border);
       background: #090d16;
       display: flex;
@@ -159,6 +160,7 @@
     .avatar-box.speaking { box-shadow: 0 0 8px rgba(56, 189, 248, 0.5); border-color: var(--accent); }
     .avatar-box.match-ok { border-color: var(--status-perfect) !important; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
     .avatar-box.match-fail { border-color: var(--error-color) !important; box-shadow: 0 0 8px rgba(244, 63, 94, 0.5); }
+    .av-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
     
     .eyes { display: flex; gap: 4px; margin-bottom: 2px; }
     .eye { width: 2.5px; height: 2.5px; background: #fff; border-radius: 50%; }
@@ -374,16 +376,18 @@
     <div class="interactive-coach">
       <div class="avatar-wrapper">
         <div class="avatar-box" id="avatarBoxHoca">
-          <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
-          <div class="mouth rest" id="mouthHoca"></div>
+          <img class="av-img" id="imgHoca" src="assets/avatars_v3/teacher/idle.webp" alt="">
+          <div class="eyes" style="display:none"><div class="eye"></div><div class="eye"></div></div>
+          <div class="mouth rest" id="mouthHoca" style="display:none"></div>
         </div>
         <div class="avatar-label" style="color:var(--accent)">🎓 AI COACH</div>
       </div>
       
       <div class="avatar-wrapper">
         <div class="avatar-box" id="avatarBoxUser">
-          <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
-          <div class="mouth rest" id="mouthUser"></div>
+          <img class="av-img" id="imgUser" src="assets/avatars_v3/doctor/idle.webp" alt="">
+          <div class="eyes" style="display:none"><div class="eye"></div><div class="eye"></div></div>
+          <div class="mouth rest" id="mouthUser" style="display:none"></div>
         </div>
         <div class="avatar-label" id="userLabel">🎙️ YOU</div>
       </div>
@@ -978,10 +982,30 @@
     return "mouth rest";
   }
 
+  // Gerçek avatar kareleri (deploy'da assets/avatars_v3/... yolundan yüklenir)
+  var AV_HOCA = { idle:"assets/avatars_v3/teacher/idle.webp", small:"assets/avatars_v3/teacher/mouth-small.webp", medium:"assets/avatars_v3/teacher/mouth-medium.webp", open:"assets/avatars_v3/teacher/mouth-open.webp" };
+  var AV_USER = { idle:"assets/avatars_v3/doctor/idle.webp",  small:"assets/avatars_v3/doctor/mouth-small.webp",  medium:"assets/avatars_v3/doctor/mouth-medium.webp",  open:"assets/avatars_v3/doctor/mouth-open.webp" };
+  [AV_HOCA, AV_USER].forEach(function(set){ Object.keys(set).forEach(function(k){ var im=new Image(); im.src=set[k]; }); });
+  function frameForVol(set, vol){ if(vol<6) return set.idle; if(vol<22) return set.small; if(vol<50) return set.medium; return set.open; }
+
+  // Hoca ağzı: TTS sesini yakalamaya GÜVENMEZ; TTS süresince zamanla oynar (kesilmez).
+  var __hocaTalk = null;
+  function hocaTalkStart(){ var img=document.getElementById("imgHoca"); if(!img) return; img.dataset.lock="1"; clearInterval(__hocaTalk); var seq=[AV_HOCA.small,AV_HOCA.medium,AV_HOCA.open,AV_HOCA.medium], k=0; __hocaTalk=setInterval(function(){ img.src=seq[k%seq.length]; k++; },110); }
+  function hocaTalkStop(){ clearInterval(__hocaTalk); __hocaTalk=null; var img=document.getElementById("imgHoca"); if(img){ img.dataset.lock=""; img.src=AV_HOCA.idle; } }
+
   function updateSingleAvatarViseme(mouthElement, freqData, volume) {
     if (!mouthElement) return "mouth rest";
     const className = getVisemeClassName(freqData, volume);
     mouthElement.className = className;
+    // Gerçek kareli ağız: ses şiddetine göre aç/kapat (zaman-kilitli değilse).
+    try {
+      var img = (mouthElement.id === "mouthHoca") ? document.getElementById("imgHoca")
+              : (mouthElement.id === "mouthUser") ? document.getElementById("imgUser") : null;
+      if (img && img.dataset.lock !== "1") {
+        var set = (mouthElement.id === "mouthHoca") ? AV_HOCA : AV_USER;
+        img.src = frameForVol(set, volume);
+      }
+    } catch(e){}
     return className;
   }
 
@@ -1090,6 +1114,7 @@
     try { window.speechSynthesis.cancel(); } catch(e){}
     const u = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(u);
     u.lang = "en-US"; u.rate = 0.82;
+    u.onstart = function(){ hocaTalkStart(); };
 
     const boundaryStarts = {};
     boundarySupported = false;
@@ -1130,6 +1155,7 @@
     }, 40);
 
     u.onend = () => {
+      hocaTalkStop();
       setTimeout(()=>{
         clearInterval(samplingIntervalId);
         totalTtsDuration = (Date.now() - startTime) / 1000;
