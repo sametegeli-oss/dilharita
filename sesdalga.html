@@ -1184,10 +1184,30 @@
         mediaRecorder.start();
 
         const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new STT(); recognition.lang = "en-US";
-        recognition.onresult = e => { heardText = e.results[0][0].transcript; };
-        recognition.onend = () => { if (isRecording) stopRecording(); handleSttResult(); };
-        recognition.start();
+        if (STT) {
+          recognition = new STT(); recognition.lang = "en-US";
+          recognition.continuous = true;      // SÜREKLİ dinle — sen susunca kapanma
+          recognition.interimResults = true;  // ara sonuçları da topla
+          recognition.onresult = e => {
+            let txt = "";
+            for (let i = 0; i < e.results.length; i++) { txt += e.results[i][0].transcript + " "; }
+            heardText = txt.trim();
+          };
+          recognition.onend = () => {
+            // Chrome sessizlikte / süre dolunca onend atar. Kullanıcı düğmeye basıp
+            // ELLE durdurmadıysa (isRecording hâlâ true) tanımayı yeniden başlat;
+            // kaydı KAPATMA. Mikrofon, düğmeye tekrar basana kadar açık kalır.
+            if (isRecording) { setTimeout(() => { if (isRecording) { try { recognition.start(); } catch(e){} } }, 120); return; }
+            handleSttResult();
+          };
+          recognition.onerror = (ev) => {
+            // Geçici hatalarda (no-speech vb.) kayıttaysak sürdür; izin reddinde bırak.
+            if (isRecording && ev.error !== "not-allowed" && ev.error !== "service-not-allowed") return;
+          };
+          try { recognition.start(); } catch(e){}
+        } else {
+          recognition = null; // Tarayıcı konuşma tanımayı desteklemiyor — ses yine kaydedilir.
+        }
 
         isRecording = true;
         recordBtn.textContent = "■ Kaydı Durdur";
