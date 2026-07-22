@@ -138,18 +138,18 @@ function decide(R){
   var ad=R.sentences>0||R.reviews>0; var hi=ad?"Tekrar hoş geldin":"Merhaba"; 
   var pre=(R.streak&&R.streak>0)?(hi+" Samet! 🔥 "+R.streak+" günlük serin sürüyor. "):(hi+" Samet! ");
   if(R.due && R.due>0){
-    return { msg:pre+"Bekleyen "+R.due+" tekrarın var — 3 dakikada biter. Önce onları halledelim mi?",
-      acts:[ {t:"▶ "+R.due+" tekrarı yap",p:1,go:"tekrar.html"}, {t:"Önce bugünün dersi",go:"ders.html"} ] };
+    return { msg:pre+"Bugün tekrar zamanı ⏱ Hepsini birden değil — bugüne düşen porsiyonu yapacağız, birkaç dakikanı alır. Başlayalım mı?",
+      acts:[ {t:"▶ Tekrara başla",p:1,go:"tekrar.html"}, {t:"Önce bugünün dersi",go:"ders.html"} ] };
   }
   if(R.sentences < GOAL){
     var kalan=GOAL-R.sentences;
     return { msg:pre+(R.reviews>0?"Tekrarlar tamam ✓ ":"")+"Bugünkü cümle hedefin "+R.sentences+"/"+GOAL+". "+kalan+" cümle kaldı, birlikte bitirelim.",
-      acts:[ {t:"📸 Fotoğraftan cümle çalış",p:1,go:"foto-ekle.html"}, {t:"🎓 Hazır dersle çalış",go:"ders.html"} ] };
+      acts:[ {t:"📖 Cümle çalış",p:1,go:"index-app.html"}, {t:"🎓 Hazır dersle çalış",go:"ders.html"} ] };
   }
   if(R.weakCount>0){
     var w=WEAK[R.weakType]||R.weakType||"zayıf noktan";
     return { msg:pre+"Cümle hedefin tamam 👏 Son bir şey: en çok "+w+" hatası yapıyorsun. 5 dakikalık mini antrenman tam da buna. Yapalım mı?",
-      acts:[ {t:"🏋️ Hata antrenmanı",p:1,go:"index-app.html"}, {t:"Bugünlük yeter",go:null} ] };
+      acts:[ {t:"🏋️ Hata antrenmanı",p:1,go:"hata-defteri.html"}, {t:"Bugünlük yeter",go:null} ] };
   }
   return { msg:pre+"Bugünün planını hakkıyla bitirdin 🎉 Karnen dolu. İstersen serbest çalış, istersen dinlen — yarın görüşürüz!",
     acts:[ {t:"📚 Serbest çalış",p:1,menu:true}, {t:"👋 Bugünlük bu kadar",go:null} ] };
@@ -170,7 +170,7 @@ function renderDecision(R){
 }
 
 /* ---- kullanıcı koça yazınca: gerçek sayfaya götür ---- */
-var ROUTE=[ [/kelime|word/i,"kelime-ogren.html","kelime çalışması"], [/video|telaffuz/i,"videopractice.html","video pratiği"], [/phrasal|öbek/i,"phrasal-verbs.html","phrasal verbs"], [/sohbet|konuş|chat/i,"chat.html","sohbet"], [/tekrar|review/i,"tekrar.html","tekrar"], [/hata|defter/i,"hata-defteri.html","hata defteri"], [/seviye|test/i,"seviye-testi.html","seviye testi"], [/foto|resim|cümle/i,"foto-ekle.html","fotoğraftan cümle"] ];
+var ROUTE=[ [/kelime|word/i,"kelime-ogren.html","kelime çalışması"], [/video|telaffuz/i,"videopractice.html","video pratiği"], [/phrasal|öbek/i,"phrasal-verbs.html","phrasal verbs"], [/sohbet|konuş|chat/i,"chat.html","sohbet"], [/tekrar|review/i,"tekrar.html","tekrar"], [/hata|defter/i,"hata-defteri.html","hata defteri"], [/seviye|test/i,"seviye-testi.html","seviye testi"], [/cümle|pratik|çalış|öğren/i,"index-app.html","cümle çalışması"], [/foto|resim|tara/i,"foto-ekle.html","fotoğraftan ekleme"] ];
 function askCoach(){
   var v=(document.getElementById("askIn").value||"").trim(); if(!v) return; document.getElementById("askIn").value="";
   var box=document.getElementById("acts"); box.innerHTML=""; var hit=ROUTE.find(function(r){ return r[0].test(v); });

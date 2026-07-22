@@ -154,8 +154,8 @@ function decide(R){
   var ad=R.sentences>0||R.reviews>0; var hi=ad?"Tekrar hoş geldin":"Merhaba"; 
   var pre=(R.streak&&R.streak>0)?(hi+" Samet! 🔥 "+R.streak+" günlük serin sürüyor. "):(hi+" Samet! ");
   if(R.due && R.due>0){
-    return { msg:pre+"Bekleyen "+R.due+" tekrarın var — 3 dakikada biter. Önce onları halledelim mi?",
-      acts:[ {t:"▶ "+R.due+" tekrarı yap",p:1,go:"tekrar.html"}, {t:"Önce bugünün dersi",go:"ders.html"} ] };
+    return { msg:pre+"Bugün tekrar zamanı ⏱ Hepsini birden değil — bugüne düşen porsiyonu yapacağız, birkaç dakikanı alır. Başlayalım mı?",
+      acts:[ {t:"▶ Tekrara başla",p:1,go:"tekrar.html"}, {t:"Önce bugünün dersi",go:"ders.html"} ] };
   }
   if(R.sentences < GOAL){
     var kalan=GOAL-R.sentences;
