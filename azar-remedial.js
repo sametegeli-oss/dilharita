@@ -1,5 +1,5 @@
 /* ==========================================================================
-   azar-remedial.js — İlgili Cümleleri Kırmızı Vurgulayan Motor v15
+   azar-remedial.js — Gelişmiş OCR Temizleyicili & Kırmızı Vurgulu Azar Motoru v17
    ========================================================================== */
 
 (function (global) {
@@ -7,6 +7,7 @@
 
   var azarData = null;
 
+  // 1. JSON Veritabanını Yükleme
   function loadAzarData() {
     if (azarData) return Promise.resolve(azarData);
     
@@ -19,6 +20,50 @@
         azarData = data;
         return azarData;
       });
+  }
+
+  // 🛠️ GELİŞMİŞ OCR HATA VE BİTİŞİK KELİME DÜZELTİCİ
+  function fixOcrErrors(text) {
+    if (!text) return "";
+
+    return text
+      // 1. Üst bölümlerdeki garip karakter çöplerini temizle
+      .replace(/\}?\s*\\"\[[a-zA-Z0-9\s\{\}\\]+/g, '')
+      
+      // 2. [J EXERCISE, OJ EXERCISE, [0 EXERCISE başlık çöplerini düzelt
+      .replace(/[\[\(]?[J|O|0|eTolol]*\s*(EXERCISE\s*\d+)/gi, '$1')
+      
+      // 3. Soru başı simge ve liste numarası çöplerini temizle
+      .replace(/[@©®™]\s*—?/g, '')
+      .replace(/\(\d+\)\s*/g, '')
+      
+      // 4. Tilde (~) gibi çizik OCR çöplerini sil
+      .replace(/~{2,}/g, '')
+      
+      // 5. Nokta, soru işareti veya ünlemden sonra gelen bitişik harfi ayır (Notme.I -> Notme. I)
+      .replace(/([a-zA-Z0-9])([.?!])([a-zA-Z])/g, '$1$2 $3')
+      
+      // 6. Virgül, iki nokta veya noktalı virgülden sonra boşluk koy (preference:WOULD -> preference: WOULD)
+      .replace(/([a-zA-Z0-9])([,;:])([a-zA-Z])/g, '$1$2 $3')
+      
+      // 7. Bitişik kalmış küçük-büyük ve harf-rakam dizilimlerini ayır
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/([A-Za-z]+)(\d+)/g, '$1 $2')
+      .replace(/(\d+)([A-Za-z]+)/g, '$1 $2')
+      
+      // 8. OCR kaynaklı yaygın yapışık kelimeleri düzelt
+      .replace(/yourletter/gi, "your letter")
+      .replace(/nottogotobed/gi, "not to go to bed")
+      .replace(/Thatswhyl/gi, "That's why I")
+      .replace(/alotaftime/gi, "a lot of time")
+      .replace(/anapafteri/gi, "a nap after I")
+      .replace(/eversince/gi, "ever since")
+      .replace(/tothepakand/gi, "to the park and")
+      
+      // 9. Fazla noktaları ve boşlukları teke indir
+      .replace(/\.{4,}/g, '...')
+      .replace(/[ \t]+/g, ' ')
+      .trim();
   }
 
   var STOP_WORDS = ["a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for", "with", "please"];
@@ -72,16 +117,18 @@
     return scoredPages.slice(0, 3);
   }
 
-  // 🔴 İLGİLİ KELİME VEYA CÜMLELERİ KIRMIZI YAPMA SÜZGEÇİ
-  function highlightMatchedSentence(content, targetSentence) {
+  // 🔴 İLGİLİ CÜMLELERİ/KALIPLARI KIRMIZI YAPMA SÜZGEÇİ
+  function processAndHighlightText(content, targetSentence) {
     if (!content) return "";
     
+    // 1. Önce OCR hatalarını ve bitişiklikleri temizle
+    var cleanContent = fixOcrErrors(content);
+
     var signatures = extractCoreGrammar(targetSentence);
     var phrasesToHighlight = signatures
       .filter(function(s){ return s.weight >= 10 || s.phrase.indexOf(" ") !== -1; })
       .map(function(s){ return s.phrase; });
 
-    // Eğer özel kalıp yakalanamadıysa cümlenin ana kelimelerini kullan
     if (phrasesToHighlight.length === 0) {
       phrasesToHighlight = signatures.map(function(s){ return s.phrase; });
     }
@@ -90,16 +137,16 @@
       return str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     };
 
-    var safeContent = content
+    var safeContent = cleanContent
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
-    // İlgili hedef yapıları kırmızı span etiketine al
+    // 2. İlgili hedef gramer kelimelerini/cümlelerini KIRMIZI ile renklendir
     phrasesToHighlight.forEach(function(phrase) {
       if (!phrase || phrase.length < 3) return;
       var regex = new RegExp("(" + escapeRegex(phrase) + ")", "gi");
-      safeContent = safeContent.replace(regex, "<span style='color: #ef4444; font-weight: 800; background: rgba(239, 68, 68, 0.1); padding: 2px 4px; border-radius: 4px;'>$1</span>");
+      safeContent = safeContent.replace(regex, "<span style='color: #ef4444; font-weight: 800; background: rgba(239, 68, 68, 0.15); padding: 2px 5px; border-radius: 4px;'>$1</span>");
     });
 
     return safeContent;
@@ -141,10 +188,10 @@
       html += "<span style='background:#1e3a8a; color:#93c5fd; font-weight:bold; padding:4px 10px; border-radius:15px; font-size:12px;'>Sayfa: " + pageNums + "</span>";
       html += "</div>";
 
-      html += "<h4 style='color:#94a3b8; font-size:13px; margin-bottom:10px;'>📝 Orijinal Metinler ve İlgili Cümleler (Kırmızı Vurgulu)</h4>";
+      html += "<h4 style='color:#94a3b8; font-size:13px; margin-bottom:10px;'>📝 Orijinal Metinler ve İlgili Cümleler (OCR Düzeltilmiş & Kırmızı Vurgulu)</h4>";
       
       matchedPages.forEach(function (item) {
-        var highlightedText = highlightMatchedSentence(item.content, sentenceText);
+        var highlightedText = processAndHighlightText(item.content, sentenceText);
         
         html += "<div style='margin-bottom:15px; background:#1e293b; border:1px solid #334155; border-radius:8px; padding:12px;'>";
         html += "<div style='font-weight:bold; color:#38bdf8; font-size:13px; margin-bottom:6px;'>📄 Sayfa " + item.pageNumber + "</div>";
