@@ -1,4 +1,4 @@
-/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v4.3 - Manuel Gemini Web Entegrasyonu)
+/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v4.4 - Smart Phonetic Selection & Gemini Web)
    Dil Harita — Her sayfada İngilizce kelimeye tıkla, tam donanımlı panel aç.
 */
 (function(global){
@@ -271,14 +271,17 @@
     }
     btn.textContent="⏳ Şifre & Görsel Hazırlanıyor…"; btn.disabled=true;
     
-    var sys = "Sen kelimeleri Türkçe benzeşimle (mnemonic) ezberleten komik ve absürt bir uzmansın.\n"
-            + "Çıktında MUTLAKA şu adımları yaz:\n"
+    // Gelişmiş Eleme Mantıklı Sistem Promptu
+    var sys = "Sen kelimeleri Türkçe benzeşimle (mnemonic) ezberleten dahi bir uzmansın.\n\n"
+            + "ADIM 1: Kelimenin okunuşuna en yakın 3-4 farklı Türkçe benzeşim seçeneği üret ve zihninde kıyasla.\n"
+            + "ADIM 2: Bunlar arasından mantıklı, günlük Türkçeye uygun ve en doğal cümleyi/kelimeyi SEÇ.\n\n"
+            + "Çıktında SADECE şu adımları sun:\n"
             + "1. Kelimenin Okunuşu\n"
-            + "2. Türkçe Benzeşim/Şifre Sözcükleri\n"
-            + "3. Absürt & Komik Görsel Hikaye (Unutulmaz, komik veya sıra dışı bir sahne yarat)\n"
+            + "2. Seçilen En Güçlü Türkçe Benzeşim/Şifre\n"
+            + "3. Komik & Absürt Görsel Hikaye (Sadece seçilen şifre üzerinden yarat)\n"
             + "4. Kafiyeli Slogan/Hatırlama Cümlesi\n"
-            + "5. GÖRSEL_ARAMA: [Hikayedeki absürt görseli anlatan 3-4 İngilizce anahtar kelime]\n\n"
-            + "ÖNEMLİ: 5. adımı 'GÖRSEL_ARAMA: [kelimeler]' şeklinde yazmayı asla unutma.";
+            + "5. GÖRSEL_ARAMA: [Hikayedeki görseli anlatan 3-4 İngilizce anahtar kelime]\n\n"
+            + "ÖNEMLİ: 5. adımı 'GÖRSEL_ARAMA: [kelimeler]' şeklinde yazmayı unutma.";
 
     var usr = "Kelime: \"" + word + "\"\nAnlamı: " + anlamlar.join(", ");
 
@@ -334,7 +337,7 @@
       this.style.display = "none";
     };
 
-    // 1. Kutuya Yapıştırılan/Yazılan Hikayeden Resmi Üretme Butonu
+    // 1. Metin Kutusuna Yazılan/Yapıştırılan Hikayeden Resim Üretme
     document.getElementById("dhWpGenCustomImg").onclick = function(){
       var userText = document.getElementById("dhWpCustomScenario").value.trim();
       if(!userText) return;
@@ -345,14 +348,15 @@
       });
     };
 
-    // 2. ✨ Gemini İle Hikaye Üret Butonu (Prompt'u Kopyalar, Gemini Sayfasını Açar)
+    // 2. ✨ Gemini İle Hikaye Üret (Eleyerek En İyi Şifreyi Seçen Prompt'u Kopyalar ve Gemini Web'i Açar)
     document.getElementById("dhWpGeminiGenStory").onclick = function(){
-      var promptText = "Sen İngilizce kelimeleri Türkçe ses benzeşimiyle (mnemonic) ezberleten komik ve yaratıcı bir öğretmensin.\n\n"
-                     + "İngilizce Kelime: \"" + word + "\"\n"
+      var promptText = "Kelime: \"" + word + "\"\n"
                      + "Anlamı: " + (anlamlar ? anlamlar.join(", ") : "") + "\n\n"
-                     + "Lütfen bu kelime için 2-3 cümlelik, son derece komik, absürt ve akılda kalıcı bir Türkçe benzeşim hikayesi yaz.";
+                     + "Sana verilen bu İngilizce kelimenin okunuşuna bakarak Olası Türkçe Ses Benzeşimlerini türet (Örn: initiate -> İn, işi et!).\n"
+                     + "Aralarından en doğal, Türkçe anlam taşıyan ve en güçlü olanını ⭐ işaretiyle seç.\n"
+                     + "Ardından seçtiğin bu benzeşim üzerine 2-3 cümlelik çok komik, absürt ve unutulmaz bir görsel hikaye yaz.";
 
-      copyToClipboard(promptText, "📋 Prompt panoya kopyalandı!\n\nAçılan Gemini web sayfasına yapıştırın (Ctrl+V). Çıkan hikayeyi kopyalayıp buradaki kutuya koyun ve 'Resim Üret'e basın.");
+      copyToClipboard(promptText, "📋 Eleme kriterli prompt panoya kopyalandı!\n\nAçılan Gemini web sayfasına yapıştırın (Ctrl+V). Çıkan hikayeyi kopyalayıp kutuya koyun ve 'Resim Üret'e basın.");
       window.open("https://gemini.google.com/app", "_blank");
     };
   }
