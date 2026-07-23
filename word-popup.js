@@ -1,4 +1,4 @@
-/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v5.1 - Fixed Image Prompt & Alt Tag Sync)
+/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v5.2 - Fixed Syntax & Reliable Image Engine)
    Dil Harita — Her sayfada İngilizce kelimeye tıkla, tam donanımlı panel aç.
 */
 (function(global){
@@ -275,9 +275,9 @@
             + "ÇALIŞMA SİSTEMİ:\n"
             + "1. Kelimenin anlamını analiz et.\n"
             + "2. Kelimenin okunuşunu Türkçe kulağa göre parçalara ayır.\n"
-            + "3. Zihninde en az 5-10 farklı Türkçe ses benzeşimi üret. Bu benzeşimler Türkçede gerçekten kullanılan doğal kelimeler/emir ifadeleri olmalı.\n"
-            + "4. Adayları doğallık, akılda kalıcılık ve hikaye kolaylığı açısından değerlendirip EN İYİ BENZEŞİMİ seç.\n"
-            + "5. Seçilen benzeşimle 2-3 cümlelik komik, absürt ama MANTIKLI bir hikaye yaz. Hikayede Türkçe anlam MUTLAKA kullanılmalı.\n\n"
+            + "3. Zihninde en az 5-10 farklı Türkçe ses benzeşimi üret.\n"
+            + "4. Adayları doğallık ve akılda kalıcılık açısından değerlendirip EN İYİ BENZEŞİMİ seç.\n"
+            + "5. Seçilen benzeşimle 2-3 cümlelik komik hikaye yaz.\n\n"
             + "SONUÇ FORMATI:\n"
             + "İNGİLİZCE KELİME: " + word + "\n"
             + "ANLAMI: " + (anlamlar?anlamlar.join(", "):"") + "\n"
@@ -311,7 +311,7 @@
     var cleanPrompt = encodeURIComponent(searchTerms.trim() || word);
 
     var imgUrl = "https://image.pollinations.ai/prompt/" + cleanPrompt + "%20funny%20digital%20art%20illustration?width=600&height=300&nologo=true";
-    var fallbackSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' viewBox='0 0 600 300'><rect width='100%' height='100%' fill='%2313294d'/><text x='50%' y='45%' font-family='sans-serif' font-size='24' font-weight='bold' fill='%2338bdf8' text-anchor='middle'>💡 " + esc(word).toUpperCase() + "</text><text x='50%' y='62%' font-family='sans-serif' font-size='16' fill='%239fb3d9' text-anchor='middle'>" + esc(searchTerms) + "</text></svg>";
+    var fallbackSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' viewBox='0 0 600 300'><rect width='100%' height='100%' fill='%2313294d'/><text x='50%' y='45%' font-family='sans-serif' font-size='22' font-weight='bold' fill='%2338bdf8' text-anchor='middle'>💡 " + esc(word).toUpperCase() + "</text><text x='50%' y='62%' font-family='sans-serif' font-size='15' fill='%239fb3d9' text-anchor='middle'>" + esc(searchTerms) + "</text></svg>";
 
     var imgContainerHtml = '<div id="dhWpImgWrapper" style="position:relative;margin-top:10px;min-height:180px;background:#020617;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid #1e3a5f;">'
                          + '<div id="dhWpImgLoader" style="position:absolute;color:#9fb3d9;font-size:13px;font-weight:700;">🖼️ Görsel Çiziliyor...</div>'
@@ -340,7 +340,7 @@
       this.style.display = "none";
     };
 
-    // 1. Kutuya Yazılan/Yapıştırılan Hikayeden Resim Üret Butonu (DÜZELTİLDİ)
+    // 1. Kutuya Yazılan Hikayeden Resim Üretme
     document.getElementById("dhWpGenCustomImg").onclick = function(){
       var userText = document.getElementById("dhWpCustomScenario").value.trim();
       if(!userText) return;
@@ -358,65 +358,67 @@
                            + "ÇALIŞMA SİSTEMİ:\n"
                            + "1. Önce İngilizce kelimenin anlamını analiz et.\n"
                            + "2. İngilizce kelimenin telaffuzunu Türkçe kulağa göre parçalara ayır.\n"
-                           + "3. En az 5-10 farklı Türkçe ses benzeşimi üret. (Türkçede gerçekten kullanılan doğal kelimeler/emir cümleleri olmalı).\n"
+                           + "3. En az 5-10 farklı Türkçe ses benzeşimi üret.\n"
                            + "4. Adayların ses benzerliğini, Türkçedeki doğallığını ve akılda kalıcılığını değerlendir.\n"
                            + "5. En güçlü 1-3 Türkçe ses benzeşimini seç.\n"
-                           + "6. Seçilen benzeşimlerden biriyle 2-3 cümlelik kısa, komik, absürt ama MANTIKLI bir hikâye yaz.\n"
-                           + "7. Hikâyede önce TÜRKÇE ANLAM mutlaka kullanılmalı.\n\n"
-                           + "SONUÇ FORMATI:\n\n"
+                           + "6. Seçilen benzeşimlerden biriyle 2-3 cümlelik kısa, komik hikâye yaz.\n\n"
+                           + "SONUÇ FORMATI:\n"
                            + "İNGİLİZCE KELİME:\n[kelime]\n\n"
                            + "ANLAMI:\n[Türkçe anlam]\n\n"
-                           + "TELAFFUZ:\n[İngilizce telaffuz]\n\n"
-                           + "OLASI TÜRKÇE SES BENZEŞİMLERİ:\n1. ...\n2. ...\n3. ...\n4. ...\n5. ...\n\n"
                            + "EN İYİ BENZEŞİM:\n[seçilen Türkçe ifade]\n\n"
-                           + "HİKÂYE:\n[2-3 cümlelik komik, absürt ama mantıklı hikâye]\n\n"
-                           + "HAFIZA BAĞLANTISI:\n[Türkçe anlam] → [Türkçe ses benzeşimi] → [İngilizce kelime]\n\n"
+                           + "HİKÂYE:\n[2-3 cümlelik hikâye]\n\n"
                            + "ŞİMDİ ŞU KELİME İÇİN BU SİSTEMİ UYGULA:\n"
                            + "Kelime: \"" + word + "\"\n"
                            + "Anlamı: " + (anlamlar ? anlamlar.join(", ") : "");
 
-      copyToClipboard(fullMasterPrompt, "📋 Eleme sistemli Master Prompt panoya kopyalandı!\n\nAçılan Gemini web sayfasına yapıştırın (Ctrl+V). Üretilen yanıtı kopyalayıp buradaki kutuya koyun ve 'Resim Üret'e basın.");
+      copyToClipboard(fullMasterPrompt, "📋 Master Prompt panoya kopyalandı!\n\nAçılan Gemini web sayfasına yapıştırın (Ctrl+V). Üretilen yanıtı kopyalayıp buradaki kutuya koyun ve 'Resim Üret'e basın.");
       window.open("https://gemini.google.com/app", "_blank");
     };
   }
 
-  // Hikayeyi İngilizce Prompt'a Çevirip Resmi ve Alt Etiketini Güncelleyen Fonksiyon (DÜZELTİLDİ)
+  // Güvenli Resim Üretim Motoru
   function generateImageFromText(text, fallbackWord, callback){
     if(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
-      var sys = "Sen bir AI görsel prompt üreticisisin. Verilen Türkçe hikayeyi görsel çizen AI için 3-4 kelimelik İngilizce anahtar terime çevir (Örn: parachute falling into office funny). SADECE İngilizce kelimeleri ver, başka hiç metin ekleme.";
+      var sys = "Sen bir AI görsel prompt üreticisisin. Verilen Türkçe hikayeyi görsel çizen AI için 3-4 kelimelik İngilizce anahtar terime çevir (Örn: parachute falling into factory funny). SADECE İngilizce kelimeleri ver.";
       DHProviders.chat([{role:"system",content:sys},{role:"user",content:text}],{temperature:0.3,max_tokens:30})
         .then(function(translatedTerms){
           var cleanTerms = String(translatedTerms||"").trim().replace(/[^a-zA-Z0-9\s]/g, "");
-          var cleanPrompt = encodeURIComponent(cleanTerms || fallbackWord);
-          updateMnemonicImage(cleanPrompt, cleanTerms || fallbackWord);
+          updateMnemonicImage(cleanTerms || fallbackWord);
         })
         .catch(function(){
-          updateMnemonicImage(encodeURIComponent(fallbackWord), fallbackWord);
+          updateMnemonicImage(fallbackWord);
         })
         .then(function(){ if(callback) callback(); });
     } else {
-      // API Key yoksa hikayedeki Türkçe karakterleri temizle veya kelimeyi kullan
+      // API Key yoksa Türkçe karakterleri dönüştürüp arama yap
       var cleanTurkishText = text.replace(/[ıİğĞüÜşŞöÖçÇ]/g, function(c){
         return { 'ı':'i','İ':'I','ğ':'g','Ğ':'G','ü':'u','Ü':'U','ş':'s','Ş':'S','ö':'o','Ö':'O','ç':'c','Ç':'C' }[c] || c;
       }).replace(/[^a-zA-Z0-9\s]/g, "");
       
-      var finalPrompt = encodeURIComponent(cleanTurkishText.trim() || fallbackWord);
-      updateMnemonicImage(finalPrompt, cleanTurkishText || fallbackWord);
+      updateMnemonicImage(cleanTurkishText.trim() || fallbackWord);
       if(callback) callback();
     }
   }
 
-  // Resmi ve 'alt' Etiketini Eşzamanlı Güncelleyen Fonksiyon
-  function updateMnemonicImage(promptText, displayAltText){
+  function updateMnemonicImage(rawPromptText){
     var imgEl = document.getElementById("dhWpMnemonicImg");
     var loaderEl = document.getElementById("dhWpImgLoader");
     if(!imgEl) return;
     if(loaderEl) loaderEl.style.display = "block";
+
+    var safePrompt = encodeURIComponent(String(rawPromptText||"").trim());
+    imgEl.alt = rawPromptText;
     
-    // Alt açıklama etiketini de hikayeden çıkan terimle güncelle
-    imgEl.alt = displayAltText || "Senaryo Görseli";
-    
-    imgEl.src = "https://image.pollinations.ai/prompt/" + promptText + "%20funny%20digital%20art%20illustration?width=600&height=300&nologo=true&seed=" + Math.floor(Math.random()*1000);
+    // Hata durumunda (kırılma) gösterilecek yedek görsel
+    var fallbackSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' viewBox='0 0 600 300'><rect width='100%' height='100%' fill='%2313294d'/><text x='50%' y='50%' font-family='sans-serif' font-size='18' font-weight='bold' fill='%2338bdf8' text-anchor='middle'>🖼️ " + esc(rawPromptText) + "</text></svg>";
+
+    imgEl.onerror = function(){
+      this.onerror = null;
+      this.src = fallbackSvg;
+      if(loaderEl) loaderEl.style.display = 'none';
+    };
+
+    imgEl.src = "https://image.pollinations.ai/prompt/" + safePrompt + "%20funny%20illustration?width=600&height=300&nologo=true&seed=" + Math.floor(Math.random()*1000);
   }
 
   function fillSentences(word){
