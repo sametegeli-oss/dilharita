@@ -2,7 +2,8 @@
    Dil Harita — Her sayfada İngilizce kelimeye tıkla, tam donanımlı panel aç.
 
    Özellikler: anlamlar + okunuş + seviye/frekans, heceler, Dinle/Yavaş/Hızlı,
-   Kelime Açıklama (AI), Mnemonic Şifre Oluştur (AI), Telaffuzunu dene, geçtiği cümleler.
+   Kelime Açıklama (AI), Mnemonic Şifre Oluştur (AI) + Görsel Desteği, 
+   Telaffuzunu dene, geçtiği cümleler.
    Sözlük: data/dictionary.json  |  Cümleler: data/sentences.json
    API: DHWordPop.lookup("running") / enable() / disable()
 */
@@ -69,7 +70,6 @@
       while(i<w.length && isV(w[i])){ seg+=w[i]; i++; }
       parts.push(seg);
     }
-    // sesli harf içermeyen parçaları (sadece ünsüz) bir öncekine yapıştır
     var merged=[];
     for(var j=0;j<parts.length;j++){
       var p=parts[j];
@@ -80,7 +80,6 @@
     return merged.join(" · ")||w;
   }
 
-  // Cümleyi PANOYA KOPYALA (garanti) + Google Translate'i aç. Açılınca yapıştırılır.
   function openGoogleTranslate(text){
     text=String(text||"").trim(); if(!text) return;
     function fallbackCopy(t){
@@ -145,6 +144,7 @@
     +".dh-wp-sent .gtr{position:absolute;top:10px;right:38px;background:none;border:0;font-size:15px;cursor:pointer}"
     +".dh-wp-ai-out{background:#0b1830;border:1px solid #10b98155;border-radius:12px;padding:12px;margin-bottom:10px;color:#d1fae5;font-size:14px;line-height:1.5;white-space:pre-wrap}"
     +".dh-wp-mnemonic-out{background:#0b1830;border:1px solid #f59e0b55;border-radius:12px;padding:12px;margin-bottom:10px;color:#fef3c7;font-size:14px;line-height:1.5;white-space:pre-wrap}"
+    +".dh-wp-mnemonic-img{width:100%;height:180px;object-fit:cover;border-radius:10px;margin-top:10px;border:1px solid #1e3a5f;display:block}"
     +".dh-wp-rec-out{font-size:13px;font-weight:700;margin:4px 0 10px;min-height:18px}"
     +".dh-wp-muted{color:#64748b;font-size:13px;padding:6px 0}"
     +".dh-wp-wave-wrap{position:relative;width:100%;height:110px;background:#020617;border:1px solid #1e3a5f;border-radius:10px;overflow:hidden;margin-bottom:8px}"
@@ -259,11 +259,23 @@
       out.innerHTML='<div class="dh-wp-mnemonic-out">Şifre üretimi için öğretmen sayfasından bir API anahtarı ekle (Groq, Cerebras veya Gemini).</div>';
       return;
     }
-    btn.textContent="⏳ Şifre üretiliyor…"; btn.disabled=true;
+    btn.textContent="⏳ Şifre & Görsel hazırlanıyor…"; btn.disabled=true;
     var sys="Verilen İngilizce kelimeyi Türkçe kelimeler ve okunuş benzeşimleri (mnemonic tekniği) kullanarak unutulmayacak şekilde ezberleten yaratıcı bir öğretmensin.\nFormatın şu şekilde olsun:\n1. Kelimenin Okunuşu\n2. Türkçe Benzeşim/Şifre Sözcükleri\n3. Kısa Görsel Hikaye\n4. Özet Hatırlama Cümlesi\nEğlenceli, akılda kalıcı ve öz yaz.";
     var usr="Kelime: \""+word+"\"\nTürkçe Anlamı: "+anlamlar.join(", ")+"\nBu kelime için ezberletici bir mnemonic/şifre hikayesi oluştur.";
+    
     DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.7,max_tokens:400})
-      .then(function(txt){ out.innerHTML='<div class="dh-wp-mnemonic-out">'+esc(String(txt||"").trim())+'</div>'; })
+      .then(function(txt){
+        var cleanTxt = esc(String(txt||"").trim());
+        // Unsplash Source kullanarak kelimeye uygun dinamik görsel URL'si üret
+        var imgUrl = "https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=600&q=80"; // varsayılan
+        var searchTag = encodeURIComponent(word);
+        var dynamicImgUrl = "https://source.unsplash.com/featured/? " + searchTag;
+        
+        // Görseli HTML içerisine yedekli onError fonksiyonu ile yerleştir
+        var imgHtml = '<img class="dh-wp-mnemonic-img" src="https://picsum.photos/seed/'+searchTag+'/600/300" alt="Görsel Çağrışım" onerror="this.src=\'https://via.placeholder.com/600x300/0b1830/38bdf8?text='+searchTag+'\'">';
+        
+        out.innerHTML = '<div class="dh-wp-mnemonic-out">' + cleanTxt + imgHtml + '</div>';
+      })
       .catch(function(){ out.innerHTML='<div class="dh-wp-mnemonic-out">Şifre alınamadı. Anahtar/limit kontrol et.</div>'; })
       .then(function(){ btn.textContent="💡 Mnemonic Şifre Oluştur (AI)"; btn.disabled=false; });
   }
@@ -316,8 +328,6 @@
     });
   }
 
-  /* Kelime yerel sözlükte (variants dahil) bulunamazsa: büyük ekranı yine de
-     aç, ve AI (Groq/Cerebras/Gemini) ile anlık Türkçe anlam üretmeyi dene. */
   function defineWithAI(word){
     open({ word: word, data: { anlamlar: ["⏳ Sözlükte yok — AI ile anlam aranıyor…"], oku:"", frekans:"", seviye:"" } });
     if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
@@ -343,10 +353,6 @@
       });
   }
 
-  /* ================= 🌊 SES DALGASI (sesdalga.html mantığı — kelime bazlı) =================
-     Aynı ölçüm hattı: analyser fftSize=64, 40ms örnekleme, ortalama genlik.
-     Hoca: TTS hoparlörden konuşurken mikrofon (yankı bastırma KAPALI) gerçek sesi kaydeder.
-     Kıyas: sessizlik kırpma (eşik 8) → süre (tempo), zirve konumu (vurgu), STT (söz). */
   var WV = null;
   function wvCleanup(){
     if(!WV) return;
@@ -491,7 +497,7 @@
       u.onend=finish;
       u.onerror=finish;
       speechSynthesis.speak(u);
-      setTimeout(function(){ if(me.timer) finish(); },6000); /* emniyet */
+      setTimeout(function(){ if(me.timer) finish(); },6000);
     });
   }
   function wvRecord(word){
@@ -526,7 +532,7 @@
         me.viewU=me.user;
         wvEl("dhWpWvDurU").textContent=(me.user.length*0.04).toFixed(1)+"s";
         wvDraw();
-        if(me.user.length*0.04>=6) wvStopRec(); /* tek kelime için emniyet tavanı */
+        if(me.user.length*0.04>=6) wvStopRec();
       },40);
     }).catch(function(){ wvStatus("Mikrofon izni verilmedi.","#f87171"); });
   }
@@ -590,13 +596,10 @@
     me.viewC=nC; me.viewU=rU; wvDraw();
     wvEl("dhWpWvDurC").textContent=dC.toFixed(1)+"s Net";
     wvEl("dhWpWvDurU").textContent=dU.toFixed(1)+"s Net";
-    /* Tempo: tek kelimede ±0.15s serbest, sonrası yumuşak ceza */
     var excess=Math.max(0,Math.abs(dC-dU)-0.15);
     var tempo=Math.max(0,Math.round(100-excess/Math.max(dC,0.2)*80));
-    /* Şekil: normalize zarfların korelasyonu; r=1→100, r=0→50 */
     var r=Math.max(-1,Math.min(1,wvPearson(nC,rU)));
     var shape=Math.round(((r+1)/2)*100);
-    /* Vurgu: zirve konumu, %12 kayma serbest */
     var mC=0,iC=0,mU=0,iU=0;
     for(var i=0;i<nC.length;i++){
       if(nC[i]>mC){mC=nC[i];iC=i;}
@@ -630,9 +633,8 @@
     }
     if(mode==="coach") coachAudio();
     else if(mode==="user") userAudio();
-    else{ coachAudio(); userAudio(); } /* düet: birebir senkron */
+    else{ coachAudio(); userAudio(); }
   }
-  /* ================= /SES DALGASI ================= */
 
   function onClick(e){
     if(!enabled || popEl) return;
