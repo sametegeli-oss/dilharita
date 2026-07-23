@@ -1,4 +1,4 @@
-/* word-popup.js — BİLİMSEL KELİME ÖĞRENME POPUP (v4.1 - Gemini Story & Auto Image Generation)
+/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v4.3 - Manuel Gemini Web Entegrasyonu)
    Dil Harita — Her sayfada İngilizce kelimeye tıkla, tam donanımlı panel aç.
 */
 (function(global){
@@ -115,6 +115,17 @@
     }catch(e){}
   }
 
+  function copyToClipboard(text, alertMsg){
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text);
+      } else {
+        var ta=document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+      }
+      if(alertMsg) alert(alertMsg);
+    }catch(e){}
+  }
+
   function injectCSS(){
     if(document.getElementById("dh-wordpop-css")) return;
     var st=document.createElement("style"); st.id="dh-wordpop-css";
@@ -150,10 +161,10 @@
     +".dh-wp-blur{filter:blur(6px);user-select:none;pointer-events:none;transition:filter .3s}"
     +".dh-wp-blur-btn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;background:#f59e0b;color:#03131c;border:0;padding:10px 18px;border-radius:20px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.5)}"
     +".dh-wp-custom-box{margin-top:10px;border-top:1px dashed #1e3a5f;padding-top:10px}"
-    +".dh-wp-textarea{width:100%;box-sizing:border-box;background:#020617;border:1px solid #1e3a5f;border-radius:8px;color:#e8eef7;padding:8px 10px;font-size:13px;resize:vertical;min-height:50px;outline:none;margin-bottom:6px}"
+    +".dh-wp-textarea{width:100%;box-sizing:border-box;background:#020617;border:1px solid #1e3a5f;border-radius:8px;color:#e8eef7;padding:8px 10px;font-size:13px;resize:vertical;min-height:60px;outline:none;margin-bottom:6px}"
     +".dh-wp-btn-row{display:flex;gap:6px;margin-bottom:6px}"
-    +".dh-wp-gen-btn{flex:1;background:#38bdf8;color:#03131c;border:0;border-radius:8px;padding:8px;font-size:12px;font-weight:800;cursor:pointer}"
-    +".dh-wp-gemini-btn{flex:1;background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;border:0;border-radius:8px;padding:8px;font-size:12px;font-weight:800;cursor:pointer}"
+    +".dh-wp-gen-btn{flex:1;background:#38bdf8;color:#03131c;border:0;border-radius:8px;padding:9px;font-size:12px;font-weight:800;cursor:pointer}"
+    +".dh-wp-gemini-btn{flex:1;background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;border:0;border-radius:8px;padding:9px;font-size:12px;font-weight:800;cursor:pointer}"
     +".dh-wp-mnemonic-img{width:100%;height:180px;object-fit:cover;border-radius:10px;margin-top:10px;border:1px solid #1e3a5f;display:block}"
     +".dh-wp-muted{color:#64748b;font-size:13px;padding:6px 0}"
     +".dh-wp-wave-wrap{position:relative;width:100%;height:110px;background:#020617;border:1px solid #1e3a5f;border-radius:10px;overflow:hidden;margin-bottom:8px}"
@@ -306,7 +317,7 @@
 
     var customBoxHtml = '<div class="dh-wp-custom-box">'
                       + '<div style="font-size:12px;font-weight:800;color:#9fb3d9;margin-bottom:4px;">✍️ Hatırlama Senaryosu & Hikaye:</div>'
-                      + '<textarea class="dh-wp-textarea" id="dhWpCustomScenario" placeholder="Kendi hikayeni yaz veya Gemini\'ye ürettir..."></textarea>'
+                      + '<textarea class="dh-wp-textarea" id="dhWpCustomScenario" placeholder="Kendi hikayeni yapıştır veya Gemini\'ye ürettir..."></textarea>'
                       + '<div class="dh-wp-btn-row">'
                       + '<button class="dh-wp-gen-btn" id="dhWpGenCustomImg">🎨 Resim Üret</button>'
                       + '<button class="dh-wp-gemini-btn" id="dhWpGeminiGenStory">✨ Gemini İle Hikaye Üret</button>'
@@ -323,7 +334,7 @@
       this.style.display = "none";
     };
 
-    // 1. Yazılan Senaryo İçin Resim Üret Butonu
+    // 1. Kutuya Yapıştırılan/Yazılan Hikayeden Resmi Üretme Butonu
     document.getElementById("dhWpGenCustomImg").onclick = function(){
       var userText = document.getElementById("dhWpCustomScenario").value.trim();
       if(!userText) return;
@@ -334,42 +345,21 @@
       });
     };
 
-    // 2. ✨ Gemini İle Hikaye Üret & Resim Oluştur Butonu
+    // 2. ✨ Gemini İle Hikaye Üret Butonu (Prompt'u Kopyalar, Gemini Sayfasını Açar)
     document.getElementById("dhWpGeminiGenStory").onclick = function(){
-      var btn = this;
-      var txtArea = document.getElementById("dhWpCustomScenario");
-      if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
-        txtArea.value = "API anahtarı bulunamadı.";
-        return;
-      }
-      btn.textContent = "✨ Hikaye Yazılıyor…"; btn.disabled = true;
+      var promptText = "Sen İngilizce kelimeleri Türkçe ses benzeşimiyle (mnemonic) ezberleten komik ve yaratıcı bir öğretmensin.\n\n"
+                     + "İngilizce Kelime: \"" + word + "\"\n"
+                     + "Anlamı: " + (anlamlar ? anlamlar.join(", ") : "") + "\n\n"
+                     + "Lütfen bu kelime için 2-3 cümlelik, son derece komik, absürt ve akılda kalıcı bir Türkçe benzeşim hikayesi yaz.";
 
-      var sys = "Sen İngilizce kelimeleri Türkçe ses benzeşimiyle ezberleten komik ve yaratıcı bir öğretmensin.\n"
-              + "Sana verilen kelime ve anlamı için 2-3 cümlelik çok komik, absürt ve unutulmaz bir benzeşim hikayesi yaz.\n"
-              + "Yalnızca hikayeyi yaz, başka açıklama veya başlık ekleme.";
-      var usr = "Kelime: \"" + word + "\"\nAnlamı: " + (anlamlar?anlamlar.join(", "):"");
-
-      DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.8,max_tokens:200})
-        .then(function(storyTxt){
-          var cleanStory = String(storyTxt||"").trim();
-          txtArea.value = cleanStory;
-          btn.textContent = "⏳ Resim Üretiliyor…";
-          // Üretilen hikayeden resmi otomatik çizdir
-          generateImageFromText(cleanStory, word, function(){
-            btn.textContent = "✨ Gemini İle Hikaye Üret"; btn.disabled = false;
-          });
-        })
-        .catch(function(){
-          txtArea.value = "Hikaye üretilemedi.";
-          btn.textContent = "✨ Gemini İle Hikaye Üret"; btn.disabled = false;
-        });
+      copyToClipboard(promptText, "📋 Prompt panoya kopyalandı!\n\nAçılan Gemini web sayfasına yapıştırın (Ctrl+V). Çıkan hikayeyi kopyalayıp buradaki kutuya koyun ve 'Resim Üret'e basın.");
+      window.open("https://gemini.google.com/app", "_blank");
     };
   }
 
-  // Metni İngilizceye/Görsel Promptuna Çevirip Resmi Güncelleyen Ortak Yardımcı Fonksiyon
   function generateImageFromText(text, fallbackWord, callback){
     if(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
-      var sys = "Sen bir AI görsel prompt üreticisisin. Verilen Türkçe hikayeyi görsel çizen AI için 3-4 kelimelik İngilizce anahtar terime çevir (örn: factory assembly line master marbles). SADECE İngilizce kelimeleri ver.";
+      var sys = "Sen bir AI görsel prompt üreticisisin. Verilen Türkçe hikayeyi görsel çizen AI için 3-4 kelimelik İngilizce anahtar terime çevir. SADECE İngilizce kelimeleri ver.";
       DHProviders.chat([{role:"system",content:sys},{role:"user",content:text}],{temperature:0.3,max_tokens:30})
         .then(function(translatedTerms){
           var cleanPrompt = encodeURIComponent(String(translatedTerms||"").trim().replace(/[^a-zA-Z0-9\s]/g, "") || fallbackWord);
