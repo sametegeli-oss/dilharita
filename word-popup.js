@@ -1,4 +1,4 @@
-/* word-popup.js — BİLİMSEL KELİME ÖĞRENME POPUP (v3 - Spaced Repetition & Active Recall)
+/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v3.1)
    Dil Harita — Her sayfada İngilizce kelimeye tıkla, tam donanımlı panel aç.
 */
 (function(global){
@@ -74,7 +74,6 @@
     return merged.join(" · ")||w;
   }
 
-  // 📌 Spaced Repetition / LocalStorage Kayıt Fonksiyonu
   function toggleFav(word){
     try{
       var favs = JSON.parse(localStorage.getItem("dh_fav_words") || "{}");
@@ -140,7 +139,6 @@
     +".dh-wp-video{background:#dc2626;color:#fff}"
     +".dh-wp-ai{background:linear-gradient(180deg,#10b981,#059669);color:#fff}"
     +".dh-wp-mnemonic{background:linear-gradient(180deg,#f59e0b,#d97706);color:#fff}"
-    +".dh-wp-rec{background:#dc2626;color:#fff;width:100%;margin-bottom:10px}"
     +".dh-wp-sec-title{font-size:13px;font-weight:800;color:#9fb3d9;margin:6px 0 8px}"
     +".dh-wp-sent{background:#0b1830;border:1px solid #1e3a5f;border-radius:12px;padding:11px 12px;margin-bottom:8px;position:relative}"
     +".dh-wp-sent .en{color:#e8eef7;font-size:14px;line-height:1.4;padding-right:56px}"
@@ -149,8 +147,10 @@
     +".dh-wp-sent .gtr{position:absolute;top:10px;right:38px;background:none;border:0;font-size:15px;cursor:pointer}"
     +".dh-wp-ai-out{background:#0b1830;border:1px solid #10b98155;border-radius:12px;padding:12px;margin-bottom:10px;color:#d1fae5;font-size:14px;line-height:1.5;white-space:pre-wrap}"
     +".dh-wp-mnemonic-out{background:#0b1830;border:1px solid #f59e0b55;border-radius:12px;padding:12px;margin-bottom:10px;color:#fef3c7;font-size:14px;line-height:1.5;white-space:pre-wrap}"
+    +".dh-wp-custom-box{margin-top:10px;border-top:1px dashed #1e3a5f;padding-top:10px}"
+    +".dh-wp-textarea{width:100%;box-sizing:border-box;background:#020617;border:1px solid #1e3a5f;border-radius:8px;color:#e8eef7;padding:8px 10px;font-size:13px;resize:vertical;min-height:50px;outline:none;margin-bottom:6px}"
+    +".dh-wp-gen-btn{width:100%;background:#38bdf8;color:#03131c;border:0;border-radius:8px;padding:8px;font-size:12px;font-weight:800;cursor:pointer}"
     +".dh-wp-mnemonic-img{width:100%;height:180px;object-fit:cover;border-radius:10px;margin-top:10px;border:1px solid #1e3a5f;display:block}"
-    +".dh-wp-rec-out{font-size:13px;font-weight:700;margin:4px 0 10px;min-height:18px}"
     +".dh-wp-muted{color:#64748b;font-size:13px;padding:6px 0}"
     +".dh-wp-wave-wrap{position:relative;width:100%;height:110px;background:#020617;border:1px solid #1e3a5f;border-radius:10px;overflow:hidden;margin-bottom:8px}"
     +".dh-wp-wave-wrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}"
@@ -199,10 +199,6 @@
      +'</div>'
      +'<div id="dhWpAIOut"></div>'
      +'<div id="dhWpMnemonicOut"></div>'
-     +'<div class="dh-wp-box"><div class="dh-wp-boxhead">🎙 Telaffuzunu dene</div>'
-       +'<div class="dh-wp-rec-out" id="dhWpRecOut"></div>'
-       +'<button class="dh-wp-btn dh-wp-rec" id="dhWpRec">🎙 Kaydı başlat</button>'
-     +'</div>'
      +'<div class="dh-wp-box"><div class="dh-wp-boxhead">🌊 Ses Dalgası Analizi</div>'
        +'<div class="dh-wp-wave-wrap"><canvas id="dhWpWvCanvas"></canvas></div>'
        +'<div class="dh-wp-wave-meta">'
@@ -233,7 +229,6 @@
     document.getElementById("dhWpVideo").onclick=function(){ window.open("https://youglish.com/pronounce/"+encodeURIComponent(w)+"/english","_blank"); };
     document.getElementById("dhWpAI").onclick=function(){ aiExplain(w, anlamlar); };
     document.getElementById("dhWpMnemonic").onclick=function(){ aiMnemonic(w, anlamlar); };
-    document.getElementById("dhWpRec").onclick=function(){ tryPronounce(w); };
     wvInit(w);
     fillSentences(w);
   }
@@ -283,40 +278,71 @@
           rawText = rawText.replace(/(?:5\.\s*)?GÖRSEL_ARAMA:.*$/i, "").trim();
         }
 
-        var cleanTxt = esc(rawText);
-        var cleanPrompt = encodeURIComponent(searchTerms.trim() || word);
-
-        var imgUrl = "https://image.pollinations.ai/prompt/" + cleanPrompt + "%20digital%20art%20illustration?width=600&height=300&nologo=true";
-        var fallbackSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' viewBox='0 0 600 300'><rect width='100%' height='100%' fill='%2313294d'/><text x='50%' y='45%' font-family='sans-serif' font-size='24' font-weight='bold' fill='%2338bdf8' text-anchor='middle'>💡 " + esc(word).toUpperCase() + "</text><text x='50%' y='62%' font-family='sans-serif' font-size='16' fill='%239fb3d9' text-anchor='middle'>" + esc(searchTerms) + "</text></svg>";
-
-        var imgHtml = '<div style="position:relative;margin-top:10px;min-height:180px;background:#020617;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid #1e3a5f;">'
-                    + '<div id="dhWpImgLoader" style="position:absolute;color:#9fb3d9;font-size:13px;font-weight:700;">🖼️ Görsel Çiziliyor...</div>'
-                    + '<img class="dh-wp-mnemonic-img" src="' + imgUrl + '" alt="' + esc(searchTerms) + '" '
-                    + 'style="width:100%;height:180px;object-fit:cover;display:block;position:relative;z-index:2;" '
-                    + 'onload="document.getElementById(\'dhWpImgLoader\').style.display=\'none\';" '
-                    + 'onerror="this.onerror=null;this.src=\'' + fallbackSvg + '\';document.getElementById(\'dhWpImgLoader\').style.display=\'none\';">'
-                    + '</div>';
-
-        out.innerHTML = '<div class="dh-wp-mnemonic-out">' + cleanTxt + imgHtml + '</div>';
+        renderMnemonicBox(word, rawText, searchTerms);
       })
       .catch(function(){ out.innerHTML='<div class="dh-wp-mnemonic-out">Şifre üretilemedi.</div>'; })
       .then(function(){ btn.textContent="💡 Şifre Oluştur (AI)"; btn.disabled=false; });
   }
 
-  function tryPronounce(word){
-    var out=document.getElementById("dhWpRecOut");
-    var SR=global.SpeechRecognition||global.webkitSpeechRecognition;
-    if(!SR){ out.style.color="#f87171"; out.textContent="Ses tanıma desteklenmiyor."; return; }
-    var rec=new SR(); rec.lang="en-US"; rec.interimResults=false;
-    out.style.color="#38bdf8"; out.textContent="🎙 Dinliyorum…";
-    rec.onresult=function(e){
-      var heard=(e.results[0][0].transcript||"").toLowerCase().trim();
-      var ok=heard.indexOf(word.toLowerCase())>=0;
-      out.style.color= ok?"#34d399":"#f59e0b";
-      out.textContent= ok?"✓ Doğru telaffuz ("+heard+")":"Duyduğum: \""+heard+"\"";
+  // Mnemonic Kutusu ve Kullanıcı Senaryosu için Görsel Oluşturma Fonksiyonu
+  function renderMnemonicBox(word, text, searchTerms){
+    var out = document.getElementById("dhWpMnemonicOut");
+    var cleanTxt = esc(text);
+    var cleanPrompt = encodeURIComponent(searchTerms.trim() || word);
+
+    var imgUrl = "https://image.pollinations.ai/prompt/" + cleanPrompt + "%20digital%20art%20illustration?width=600&height=300&nologo=true";
+    var fallbackSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' viewBox='0 0 600 300'><rect width='100%' height='100%' fill='%2313294d'/><text x='50%' y='45%' font-family='sans-serif' font-size='24' font-weight='bold' fill='%2338bdf8' text-anchor='middle'>💡 " + esc(word).toUpperCase() + "</text><text x='50%' y='62%' font-family='sans-serif' font-size='16' fill='%239fb3d9' text-anchor='middle'>" + esc(searchTerms) + "</text></svg>";
+
+    var imgContainerHtml = '<div id="dhWpImgWrapper" style="position:relative;margin-top:10px;min-height:180px;background:#020617;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid #1e3a5f;">'
+                         + '<div id="dhWpImgLoader" style="position:absolute;color:#9fb3d9;font-size:13px;font-weight:700;">🖼️ Görsel Çiziliyor...</div>'
+                         + '<img class="dh-wp-mnemonic-img" id="dhWpMnemonicImg" src="' + imgUrl + '" alt="' + esc(searchTerms) + '" '
+                         + 'style="width:100%;height:180px;object-fit:cover;display:block;position:relative;z-index:2;" '
+                         + 'onload="var l=document.getElementById(\'dhWpImgLoader\'); if(l) l.style.display=\'none\';" '
+                         + 'onerror="this.onerror=null;this.src=\'' + fallbackSvg + '\';var l=document.getElementById(\'dhWpImgLoader\'); if(l) l.style.display=\'none\';">'
+                         + '</div>';
+
+    var customBoxHtml = '<div class="dh-wp-custom-box">'
+                      + '<div style="font-size:12px;font-weight:800;color:#9fb3d9;margin-bottom:4px;">✍️ Kendi Hatırlama Senaryonu Yaz:</div>'
+                      + '<textarea class="dh-wp-textarea" id="dhWpCustomScenario" placeholder="Örn: Koruyucu giysili adam şirketin kapısında duruyor..."></textarea>'
+                      + '<button class="dh-wp-gen-btn" id="dhWpGenCustomImg">🎨 Bu Senaryo İçin Resim Üret</button>'
+                      + '</div>';
+
+    out.innerHTML = '<div class="dh-wp-mnemonic-out">' + cleanTxt + imgContainerHtml + customBoxHtml + '</div>';
+
+    // Kullanıcının yazdığı senaryoya göre dinamik resim üretme olayı
+    document.getElementById("dhWpGenCustomImg").onclick = function(){
+      var userText = document.getElementById("dhWpCustomScenario").value.trim();
+      if(!userText) return;
+      var btn = this;
+      btn.textContent = "⏳ Görsel Çiziliyor…"; btn.disabled = true;
+
+      // Kullanıcının Türkçe senaryosunu İngilizce görsel promptuna çevirme
+      if(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
+        var sys = "Kullanıcının yazdığı Türkçe hikaye veya senaryoyu resim çizen bir AI için 3-5 kelimelik İngilizce görsel arama terimine çevir. Sadece İngilizce kelimeleri ver, başka hiçbir metin ekleme.";
+        DHProviders.chat([{role:"system",content:sys},{role:"user",content:userText}],{temperature:0.3,max_tokens:40})
+          .then(function(translatedTerms){
+            var cleanUserPrompt = encodeURIComponent(String(translatedTerms||"").trim().replace(/[^a-zA-Z0-9\s]/g, "") || word);
+            updateMnemonicImage(cleanUserPrompt);
+          })
+          .catch(function(){
+            var fallbackUserPrompt = encodeURIComponent(userText.replace(/[^a-zA-Z0-9\s]/g, "") || word);
+            updateMnemonicImage(fallbackUserPrompt);
+          })
+          .then(function(){ btn.textContent = "🎨 Bu Senaryo İçin Resim Üret"; btn.disabled = false; });
+      } else {
+        var fallbackUserPrompt = encodeURIComponent(userText.replace(/[^a-zA-Z0-9\s]/g, "") || word);
+        updateMnemonicImage(fallbackUserPrompt);
+        btn.textContent = "🎨 Bu Senaryo İçin Resim Üret"; btn.disabled = false;
+      }
     };
-    rec.onerror=function(){ out.style.color="#f87171"; out.textContent="Ses alınamadı."; };
-    try{ rec.start(); }catch(e){}
+  }
+
+  function updateMnemonicImage(promptText){
+    var imgEl = document.getElementById("dhWpMnemonicImg");
+    var loaderEl = document.getElementById("dhWpImgLoader");
+    if(!imgEl) return;
+    if(loaderEl) loaderEl.style.display = "block";
+    imgEl.src = "https://image.pollinations.ai/prompt/" + promptText + "%20digital%20art%20illustration?width=600&height=300&nologo=true&seed=" + Math.floor(Math.random()*1000);
   }
 
   function fillSentences(word){
