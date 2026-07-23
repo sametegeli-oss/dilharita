@@ -206,7 +206,60 @@
       .catch(function(){ out.innerHTML='<div class="dh-wp-ai-out">Açıklama alınamadı.</div>'; })
       .then(function(){ btn.textContent="🎓 Kelime Açıklama (AI)"; btn.disabled=false; });
   }
-function aiMnemonic(word, anlamlar){
+  function aiMnemonic(word, anlamlar){
+    var out=document.getElementById("dhWpMnemonicOut"), btn=document.getElementById("dhWpMnemonic");
+    if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
+      out.innerHTML='<div class="dh-wp-mnemonic-out">API anahtarı bulunamadı.</div>';
+      return;
+    }
+    btn.textContent="⏳ Şifre & Hikaye Görseli Hazırlanıyor…"; btn.disabled=true;
+    
+    var sys = "Sen kelimeleri Türkçe benzeşimle (mnemonic) ezberleten bir uzmansın.\n"
+            + "Çıktında MUTLAKA şu adımları yaz:\n"
+            + "1. Kelimenin Okunuşu\n"
+            + "2. Türkçe Benzeşim/Şifre Sözcükleri\n"
+            + "3. Kısa Görsel Hikaye\n"
+            + "4. Özet Hatırlama Cümlesi\n"
+            + "5. GÖRSEL_ARAMA: [Hikayedeki görseli anlatan 2-3 İngilizce anahtar kelime]\n\n"
+            + "ÖNEMLİ: 5. adımı 'GÖRSEL_ARAMA: [kelimeler]' şeklinde yazmayı asla unutma.";
+
+    var usr = "Kelime: \"" + word + "\"\nAnlamı: " + anlamlar.join(", ");
+
+    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.7,max_tokens:450})
+      .then(function(txt){
+        var rawText = String(txt||"").trim();
+        var searchTerms = word; // Garanti varsayılan
+
+        // 5. adımdaki arama terimini yakala
+        var match = rawText.match(/GÖRSEL_ARAMA:\s*\[?(.*?)\]?$/i);
+        if(match && match[1]){
+          searchTerms = match[1].trim().replace(/[^a-zA-Z0-9\s]/g, "");
+          rawText = rawText.replace(/(?:5\.\s*)?GÖRSEL_ARAMA:.*$/i, "").trim();
+        }
+
+        var cleanTxt = esc(rawText);
+        var cleanPrompt = encodeURIComponent(searchTerms.trim() || word);
+
+        // Görsel servis adresi (Pollinations AI)
+        var imgUrl = "https://image.pollinations.ai/prompt/" + cleanPrompt + "%20digital%20art%20illustration?width=600&height=300&nologo=true";
+
+        // Yedek SVG Görsel (İnternet/CORS hatasında boş kutu kalmaması için)
+        var fallbackSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' viewBox='0 0 600 300'><rect width='100%' height='100%' fill='%2313294d'/><text x='50%' y='45%' font-family='sans-serif' font-size='24' font-weight='bold' fill='%2338bdf8' text-anchor='middle'>💡 " + esc(word).toUpperCase() + "</text><text x='50%' y='62%' font-family='sans-serif' font-size='16' fill='%239fb3d9' text-anchor='middle'>" + esc(searchTerms) + "</text></svg>";
+
+        var imgHtml = '<div style="position:relative;margin-top:10px;min-height:180px;background:#020617;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid #1e3a5f;">'
+                    + '<div id="dhWpImgLoader" style="position:absolute;color:#9fb3d9;font-size:13px;font-weight:700;">🖼️ Görsel Çiziliyor...</div>'
+                    + '<img class="dh-wp-mnemonic-img" src="' + imgUrl + '" alt="' + esc(searchTerms) + '" '
+                    + 'style="width:100%;height:180px;object-fit:cover;display:block;position:relative;z-index:2;" '
+                    + 'onload="document.getElementById(\'dhWpImgLoader\').style.display=\'none\';" '
+                    + 'onerror="this.onerror=null;this.src=\'' + fallbackSvg + '\';document.getElementById(\'dhWpImgLoader\').style.display=\'none\';">'
+                    + '</div>';
+
+        out.innerHTML = '<div class="dh-wp-mnemonic-out">' + cleanTxt + imgHtml + '</div>';
+      })
+      .catch(function(){ out.innerHTML='<div class="dh-wp-mnemonic-out">Şifre üretilemedi.</div>'; })
+      .then(function(){ btn.textContent="💡 Mnemonic Şifre Oluştur (AI)"; btn.disabled=false; });
+  }
+function aiMnemonicsil2(word, anlamlar){
     var out=document.getElementById("dhWpMnemonicOut"), btn=document.getElementById("dhWpMnemonic");
     if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
       out.innerHTML='<div class="dh-wp-mnemonic-out">API anahtarı bulunamadı.</div>';
