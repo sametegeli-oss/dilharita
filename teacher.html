@@ -7,6 +7,11 @@
 <script src="./progress-engine.js?v=2"></script>
 <script src="./ai-providers.js?v=1"></script>
 <script src="./gemini-bridge.js?v=1"></script>
+
+<!-- 📘 Betty Azar Kitap Entegrasyon Dosyaları -->
+<script src="./azar-topic-map.js?v=1"></script>
+<script src="./azar-remedial.js?v=1"></script>
+
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0b1120" />
@@ -90,7 +95,7 @@ body{
 .spinner{width:22px;height:22px;border:3px solid var(--surface-2);border-top-color:var(--teacher);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.regen{margin-top:14px;width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:11px;font:800 14px Nunito,sans-serif;cursor:pointer}
+.regen{margin-top:10px;width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:11px;font:800 14px Nunito,sans-serif;cursor:pointer}
 .regen:hover{background:#22304f}
 
 .state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:0 24px;text-align:center;color:var(--muted)}
@@ -156,9 +161,6 @@ body{
 <div class="wrap" id="root"></div>
 <script>/* ============================================================
    teacher.html — Türkçe konuşan İngilizce öğretmeni paneli
-   Cümleyi URL'den (?s=...&t=...) alır, Groq'a düzenlenebilir
-   system prompt ile gönderir, açıklamadaki tırnak-içi İngilizceyi
-   koyu yeşil gösterir. Groq anahtarı chat.html ile ortaktır.
    ============================================================ */
 (function(){
 "use strict";
@@ -172,7 +174,7 @@ function saveKey(k){ const ks=getKeys(); if(!ks.includes(k)) ks.push(k); try{ lo
 
 /* ---------- Çok sağlayıcılı anahtar yönetimi ---------- */
 const PROVIDER_META = {
-  groq:     { store:"groqApiKeys",     label:"Groq",     prefix:"gsk_", url:"https://console.groq.com/keys",       note:"En hızlısı, ücretsiz." },
+  groq:     { store:"groqApiKeys",     label:"Groq",     prefix:"gsk_", url:"https://console.groq.com/keys",        note:"En hızlısı, ücretsiz." },
   cerebras: { store:"cerebrasApiKeys", label:"Cerebras", prefix:"csk-", url:"https://cloud.cerebras.ai",            note:"Yüksek hacim, ücretsiz." },
   gemini:   { store:"geminiApiKeys",   label:"Gemini",   prefix:"AIza", url:"https://aistudio.google.com/apikey",  note:"En cömert (Google), ücretsiz." }
 };
@@ -180,29 +182,24 @@ function getKeysFor(store){ try{ return (JSON.parse(localStorage.getItem(store)|
 function saveKeyFor(store,k){ const ks=getKeysFor(store); if(!ks.includes(k)) ks.push(k); try{ localStorage.setItem(store, JSON.stringify(ks)); }catch{} }
 function removeKeyFor(store,k){ const ks=getKeysFor(store).filter(x=>x!==k); try{ localStorage.setItem(store, JSON.stringify(ks)); }catch{} }
 let _ki=0;
-// word'deki sağlam sistem: rate limit yiyen anahtarı geçici "yasakla",
-// bu sürede diğer anahtarları kullan, süre dolunca geri al.
-let _keyBan={};        // { keyIndex: serbestKalmaZamanı(ms) }
+let _keyBan={};        
+
 function nextUsableKey(keys){
   const now=Date.now();
-  // süresi dolan yasakları kaldır
   Object.keys(_keyBan).forEach(k=>{ if(_keyBan[k]<now) delete _keyBan[k]; });
-  // yasaklı olmayan ilk anahtarı bul
   for(let e=0;e<keys.length;e++){
     const idx=(_ki+e)%keys.length;
     if(!_keyBan[idx]){ _ki=idx; return {idx, key:keys[idx]}; }
   }
-  // hepsi yasaklı → en erken serbest kalacakı döndür (bekleme bilgisiyle)
   const soonest=Object.entries(_keyBan).sort((a,b)=>a[1]-b[1])[0];
   return { idx:-1, key:null, waitMs: soonest ? Math.max(0, soonest[1]-now) : 0 };
 }
+
 async function groqChat(messages){
-  // Çok sağlayıcılı katman varsa onu kullan (Groq→Cerebras→Gemini, aşamalı)
   if(window.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
     try{ return await DHProviders.chat(messages, {temperature:0.3, max_tokens:2500}); }
     catch(e){ throw (e&&e.code?e:{code:"network"}); }
   }
-  // yedek: doğrudan Groq (çok anahtarlı)
   const keys=getKeys();
   if(!keys.length) throw {code:"no-key"};
   let last=null;
@@ -221,7 +218,6 @@ async function groqChat(messages){
   throw last||{code:"unknown"};
 }
 
-/* ---------- varsayılan prompt (kullanıcı düzenleyebilir) ---------- */
 const DEFAULT_PROMPT = `Sen, Türk öğrencilere İngilizce öğreten, çok deneyimli ve pedagojik olarak güçlü bir İngilizce öğretmenisin. Amacın sadece çeviri değil, cümledeki ASIL dilbilgisi yapısını öğrenciye doğru öğretmektir.
 
 EN ÖNEMLİ KURAL: Analiz kategorilerini ASLA uydurma. Sadece aşağıdaki listede adı geçen yapıları kullanabilirsin. "Reason Clause", "Habitual Action" gibi listede olmayan adlar KESİNLİKLE yasaktır.
@@ -232,89 +228,36 @@ ADIM 1 — GİZLİ YAPI TARAMASI (kullanıcıya gösterme)
 Cevabı yazmadan önce, cümleyi şu kontrol listesiyle YUKARIDAN AŞAĞIYA tara. Her madde için "var/yok" diye kendine sor. İlk "var" dediğin yapı, analiz edeceğin ANA yapıdır.
 
 1. Embedded / Noun Clause — Cümlede şunlardan biri var mı: "how/what/that/why/where/who/whether + ... + özne + fiil"?
-   ÖRNEK: "I know how noisy cities are", "I don't know what he wants", "Tell me where you live".
-   UYARI: "how + sıfat + özne + are/is/was" KESİNLİKLE buraya girer. "so", "usually" gibi kelimeler seni yanıltmasın.
-2. Relative Clause — "who/which/that/where" ile bir ismi niteleyen yan cümle var mı? (the man who called)
+2. Relative Clause — "who/which/that/where" ile bir ismi niteleyen yan cümle var mı?
 3. Conditional — "if / unless" ile koşul var mı?
-4. Passive Voice — "be + V3" (was made, is written) var mı?
+4. Passive Voice — "be + V3" var mı?
 5. Perfect / Perfect Continuous — "have/has/had + V3" veya "have been + V-ing" var mı?
 6. Modal — can, could, must, should, have to, be supposed to, used to var mı?
 7. Infinitive / Gerund — "to + V1" veya "V-ing" özne/nesne olarak var mı?
 8. Reported Speech — aktarılan söz var mı?
 9. Comparison — "more/-er/as...as/the most" var mı?
-10. Phrasal Verb — fiil + edat öbeği (give up, look for) var mı?
+10. Phrasal Verb — fiil + edat öbeği var mı?
 11. Idiom / Collocation — kalıplaşmış ifade var mı?
 12. Temel zaman/yapı — yukarıdakilerin hiçbiri yoksa, cümlenin temel zamanını seç.
-
-ÜST SIRADAKİ "var" ise, alt sıradakileri ANA yapı olarak ASLA seçme. "so/because/usually" gibi yüzey kelimeleri asla ana yapı olamaz.
 
 ====================================================
 ÇIKTI (kullanıcıya bunları, bu sırayla göster)
 ====================================================
 
-1. SEVİYE
-Cümlenin CEFR seviyesini (A1–C2) tek satırda belirt. A1–A2 ise kısa analiz yap; B1+ ise tam analiz yap.
-
+1. SEVİYE (A1-C2)
 2. TÜRKÇE ÇEVİRİ
-Doğal, akıcı Türkçe karşılık. Kelime kelime çevirme. (Tüm açıklamalar baştan sona %100 Türkçe olmalı; başka dilden tek kelime karışmamalı.)
-
 3. ANA DİLBİLGİSİ YAPISI
-- Yapının adı (yalnızca ADIM 1 listesindeki adlardan biri)
-- Bu cümlede neden kullanılmış
-- Türkçeye kattığı anlam/nüans
-- Günlük kullanımda ne kadar yaygın
-- Türk öğrencilerin yaptığı en yaygın hata
-
 4. FORMÜL + EŞLEŞTİRME
-Önce yapının formülünü EKSİKSİZ yaz (özne ve fiili atlama).
-Örnek: how + adjective + subject + verb
-Sonra cümleyi satır satır eşleştir:
-how → how
-adjective → noisy
-subject → cities
-verb → are
-
 5. KELİME VE ÖBEKLER (en fazla 4)
-Öncelik: Phrasal verb > Idiom > Collocation > Sabit ifade > Önemli kelime.
-KURAL: "very, usually, so, good, go" gibi basit/yüzeysel kelimeleri SEÇME.
-Her biri için: Türkçe anlamı, türü (isim/fiil/sıfat/zarf), CEFR seviyesi, ve [[ ]] içinde 3 günlük örnek cümle. Bu örneklerin de HER BİRİ mutlaka [[ ]] içinde olmalı.
-
 6. ALTERNATİF CÜMLELER (5 adet)
-Hepsi ANA yapıyla AYNI dilbilgisini kullanmalı (örn. ana yapı embedded clause ise, 5 cümlenin hepsinde "how/what/that + özne + fiil" olmalı).
-Sırasıyla şu senaryolardan: Ev, Okul, İş, Alışveriş, Seyahat.
-Her cümle [[ ]] içinde, hemen altında Türkçe çevirisi.
-
 7. ÖĞRENME İPUCU
-En fazla 2 cümle, akılda kalıcı bir ipucu.
-
 8. SIK YAPILAN HATA
-Tablo halinde, SADECE ana yapıya dair:
-| Hatalı | Doğru |
-| --- | --- |
-| ... | ... |
-
-9. MİNİ TEST
-Sadece ANA yapıyı ölçen 1 boşluk doldurma sorusu, 4 seçenek (A/B/C/D). En altta "Cevap" başlığıyla doğru şıkkı ve kısa açıklamasını ver.
-
-====================================================
-SON KONTROL (gizli, gösterme)
-====================================================
-Göndermeden önce sessizce doğrula:
-- Seçtiğim yapı ADIM 1 listesinde gerçekten VAR mı? Uydurma ad kullandım mı?
-- "how + sıfat + özne + are/is" gördüm ama embedded clause demedim mi? Öyleyse düzelt, embedded clause seç.
-- 5 alternatif cümlenin HEPSİ ana yapıyı içeriyor mu?
-- Mini test ana yapıyı mı ölçüyor?
-- Tüm İngilizce cümleler (örnekler dahil) [[ ]] içinde mi?
-- Türkçe metinde yabancı kelime kaldı mı?
-
-BİÇİM: Net başlıklar, bold vurgular, kısa paragraflar. Duvar yazısı yazma. Gereksiz uzatma — özellikle kolay cümlelerde kısa tut.`;
+9. MİNİ TEST`;
 
 const PROMPT_LS = "dh_ai_prompt_teacher";
 function getPrompt(){ try{ return localStorage.getItem(PROMPT_LS) || DEFAULT_PROMPT; }catch{ return DEFAULT_PROMPT; } }
 function setPrompt(p){ try{ localStorage.setItem(PROMPT_LS, p); }catch{} }
 
-/* ---------- TTS ---------- */
-/* ---------- fotoğraflı teacher avatar + TTS ---------- */
 const TEACHER_FRAMES = {
   idle:"idle.webp", blink:"blink.webp", listen:"listen.webp",
   a:"mouth-a.webp", e:"mouth-e.webp", i:"mouth-i.webp",
@@ -336,22 +279,14 @@ function teacherDir(){
 let TeacherAvatar = null;
 class PhotoTeacherAvatar{
   constructor(){
-    this.imgs=[];
-    this.frames={};
-    this.blinkTimer=null;
-    this.talkTimer=null;
-    this.endTimer=null;
-    this.seq=[];
-    this.idx=0;
-    this.speaking=false;
+    this.imgs=[]; this.frames={}; this.blinkTimer=null; this.talkTimer=null;
+    this.endTimer=null; this.seq=[]; this.idx=0; this.speaking=false;
   }
   mount(){
     this.imgs = ["teacherAvaImg","teacherHeroImg"].map(id=>document.getElementById(id)).filter(Boolean);
     const dir=teacherDir();
     for(const [k,v] of Object.entries(TEACHER_FRAMES)) this.frames[k]=dir+v;
-    this.preload();
-    this.show(this.frames.idle);
-    this.scheduleBlink(1200);
+    this.preload(); this.show(this.frames.idle); this.scheduleBlink(1200);
   }
   preload(){ Object.values(this.frames).forEach(src=>{ const im=new Image(); im.src=src; }); }
   show(src){ this.imgs.forEach(img=>{ img.src=src; }); }
@@ -379,8 +314,7 @@ class PhotoTeacherAvatar{
     return this.frames.i;
   }
   buildSeq(text){
-    const s=String(text||"");
-    const seq=[];
+    const s=String(text||""); const seq=[];
     for(let i=0;i<s.length;i++){
       const ch=s[i], next=s[i+1]||"";
       seq.push(this.frameForChar(ch,next));
@@ -390,8 +324,7 @@ class PhotoTeacherAvatar{
   }
   speakText(text,duration){
     clearInterval(this.talkTimer); clearTimeout(this.endTimer);
-    this.speaking=true;
-    this.seq=this.buildSeq(text);
+    this.speaking=true; this.seq=this.buildSeq(text);
     if(!this.seq.length) this.seq=[this.frames.i,this.frames.e,this.frames.a,this.frames.o,this.frames.u,this.frames.mbp,this.frames.idle];
     this.idx=0;
     this.talkTimer=setInterval(()=>{ this.show(this.seq[this.idx % this.seq.length]); this.idx++; },105);
@@ -399,43 +332,30 @@ class PhotoTeacherAvatar{
   }
   stop(){
     clearInterval(this.talkTimer); clearTimeout(this.endTimer);
-    this.speaking=false;
-    this.show(this.frames.listen);
+    this.speaking=false; this.show(this.frames.listen);
     setTimeout(()=>{ if(!this.speaking) this.show(this.frames.idle); },260);
     this.scheduleBlink(1200);
   }
 }
-function mountTeacherAvatar(){
-  TeacherAvatar = new PhotoTeacherAvatar();
-  TeacherAvatar.mount();
-}
-function estimateSpeechDuration(text){
-  return Math.max(900, Math.min(18000, Array.from(String(text||"")).length * 92));
-}
+function mountTeacherAvatar(){ TeacherAvatar = new PhotoTeacherAvatar(); TeacherAvatar.mount(); }
+function estimateSpeechDuration(text){ return Math.max(900, Math.min(18000, Array.from(String(text||"")).length * 92)); }
 let _voiceCache=[];
 function refreshVoices(){ try{ _voiceCache = speechSynthesis.getVoices ? speechSynthesis.getVoices() : []; }catch{ _voiceCache=[]; } }
 try{ refreshVoices(); speechSynthesis.onvoiceschanged = refreshVoices; }catch{}
 function pickVoiceForLang(lang){
-  /* Artık merkezi seçim (DH_TTS) kullanılıyor: kullanıcının ⚙ panelinden
-     seçtiği ses (bayan dahil) her yerde aynı olsun. Erkek sesi ZORLANMAZ. */
   if(window.DH_TTS && DH_TTS.pickVoice){ var v=DH_TTS.pickVoice(lang); if(v) return v; }
-  refreshVoices();
-  const voices = _voiceCache || [];
+  refreshVoices(); const voices = _voiceCache || [];
   const wantTr = /^tr/i.test(lang || "");
   if(wantTr) return voices.find(v=>/^tr/i.test(v.lang||"")) || null;
   return voices.find(v=>/^en/i.test(v.lang||"")) || null;
 }
 function speak(text, lang){
   try{
-    text=String(text||"").trim();
-    if(!text) return;
-    lang = lang || "tr-TR";
+    text=String(text||"").trim(); if(!text) return; lang = lang || "tr-TR";
     var spoken = (window.DH_TTS&&DH_TTS.clean) ? DH_TTS.clean(text) : text;
     if(!spoken) return;
-    const u=new SpeechSynthesisUtterance(spoken);
-    const voice=pickVoiceForLang(lang);
-    if(voice) u.voice=voice;
-    u.lang = voice ? voice.lang : lang;
+    const u=new SpeechSynthesisUtterance(spoken); const voice=pickVoiceForLang(lang);
+    if(voice) u.voice=voice; u.lang = voice ? voice.lang : lang;
     if(window.DH_TTS&&DH_TTS.apply) DH_TTS.apply(u, /^tr/i.test(lang)?"tr-TR":"en-US");
     else { u.rate = /^tr/i.test(lang) ? 0.92 : 0.95; u.pitch = 0.86; }
     speechSynthesis.cancel();
@@ -443,66 +363,46 @@ function speak(text, lang){
     u.onend=()=>{ if(TeacherAvatar) TeacherAvatar.stop(); };
     u.onerror=()=>{ if(TeacherAvatar) TeacherAvatar.stop(); };
     speechSynthesis.speak(u);
-  }catch{
-    if(TeacherAvatar) TeacherAvatar.stop();
-  }
+  }catch{ if(TeacherAvatar) TeacherAvatar.stop(); }
 }
 function speakEnglish(text){ speak(text, "en-US"); }
 function speakTurkish(text){ speak(text, "tr-TR"); }
-// Verilen kapsayıcı elementi ekrandan okur: .en (yeşil) = İngilizce, gerisi = Türkçe.
-// Ekranda görünen renk ayrımıyla okuma BİREBİR aynı olur.
+
 function speakFromScreen(boxEl){
   if(!boxEl) return false;
-  // Toggle: konuşuyorsa duraklat, duraklatılmışsa kaldığı yerden devam ettir.
   try{
     if(window.speechSynthesis){
       if(speechSynthesis.paused && speechSynthesis.speaking){
-        // Duraklatılmış: devam ettir
-        window.__dhUserPaused = false;
-        speechSynthesis.resume();
-        return false;
+        window.__dhUserPaused = false; speechSynthesis.resume(); return false;
       }
       if(speechSynthesis.speaking){
-        // Konuşuyor: duraklat (keep-alive'ın tekrar başlatmaması için işaret bırak)
-        window.__dhUserPaused = true;
-        speechSynthesis.pause();
-        return false;
+        window.__dhUserPaused = true; speechSynthesis.pause(); return false;
       }
     }
   }catch(e){}
-  window.__dhUserPaused = false;
-  var segs=[];
+  window.__dhUserPaused = false; var segs=[];
   (function walk(node){
-    // childNodes canlı liste; sarmalama yapacağımız için kopya üzerinde gez
     var kids=Array.prototype.slice.call(node.childNodes);
     kids.forEach(function(ch){
       if(ch.nodeType===3){
         var t=ch.textContent;
         if(t && t.trim()){
-          // Türkçe metin düğümünü span'e sar ki tek başına vurgulanabilsin
-          var sp=document.createElement("span");
-          sp.className="dh-seg";
-          sp.textContent=t;
+          var sp=document.createElement("span"); sp.className="dh-seg"; sp.textContent=t;
           if(ch.parentNode){ ch.parentNode.replaceChild(sp, ch); }
           segs.push({text:t, lang:"tr-TR", el:sp});
         }
       } else if(ch.nodeType===1){
         if(ch.classList && ch.classList.contains("en")){
-          var et=ch.textContent;
-          if(et && et.trim()) segs.push({text:et, lang:"en-US", el:ch});
-        } else {
-          walk(ch);
-        }
+          var et=ch.textContent; if(et && et.trim()) segs.push({text:et, lang:"en-US", el:ch});
+        } else { walk(ch); }
       }
     });
   })(boxEl);
   if(segs.length && window.DH_speakSegments){ window.DH_speakSegments(segs); return true; }
-  // Yedek
   if(window.DH_speakMixed){ window.DH_speakMixed(boxEl.textContent||""); return true; }
-  speakTurkish(boxEl.textContent||"");
-  return true;
+  speakTurkish(boxEl.textContent||""); return true;
 }
-// Okunan parçayı vurgular (öncekini temizler).
+
 window.__dhHighlight = function(el){
   try{
     document.querySelectorAll(".dh-reading").forEach(function(n){ n.classList.remove("dh-reading"); });
@@ -510,66 +410,46 @@ window.__dhHighlight = function(el){
   }catch(e){}
 };
 
-/* ---------- yardımcılar ---------- */
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
-// açıklamadaki tırnak-içi İngilizce -> koyu yeşil; **kalın** -> strong
 function renderRich(text){
   let html = esc(text);
-  // [[....]] -> koyu yeşil (çift köşeli parantez içi İngilizce). Parantezler kaldırılır.
   html = html.replace(/\[\[([\s\S]*?)\]\]/g, '<span class="en">$1</span>');
-  // **kalın**
   html = html.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
   return html;
 }
 
-/* ---------- MİNİ TEST AYRIŞTIRICI ----------
-   AI'nın ürettiği "9. MİNİ TEST" bölümünü ham metinden ayırıp
-   tıklanabilir şıklara çevirir. Biçim beklendiği gibi değilse null döner —
-   bu durumda metin ESKİSİ GİBİ düz gösterilir (bozulma olmaz, sadece o sefer
-   koça sayılmaz). AI çıktısı garanti biçimli değildir, bilinçli tolerans. */
 function parseQuiz(text){
   try{
     var src=String(text||"");
-    // "MİNİ TEST" başlığını bul (9., ###, ** vb. süslerden bağımsız)
     var mHead=/(?:^|\n)[^\S\n]*(?:#{1,4}[^\S\n]*)?(?:\*\*)?[^\S\n]*(?:9[.)][^\S\n]*)?M[İI]N[İI][^\S\n]+TEST[^\n]*\n/i.exec(src);
     if(!mHead) return null;
-    var head=mHead.index + mHead[0].length;   // testin gövdesi burada başlar
+    var head=mHead.index + mHead[0].length;
     var body=src.slice(head);
-    var before=src.slice(0, mHead.index);     // testten önceki tüm açıklama
+    var before=src.slice(0, mHead.index);
 
-    // Şıklar: A) / A. / A- / **A)** ... satır başında
     var optRe=/(?:^|\n)[^\S\n]*(?:\*\*)?[^\S\n]*([A-D])[).\-:][^\S\n]*(?:\*\*)?[^\S\n]*([^\n]+)/g;
     var opts=[], seen={}, m;
     while((m=optRe.exec(body))){
-      var L=m[1].toUpperCase();
-      if(seen[L]) continue;               // aynı harf iki kez → ilkini al
-      var t=m[2].replace(/\*\*/g,"").trim();
-      if(!t) continue;
+      var L=m[1].toUpperCase(); if(seen[L]) continue;
+      var t=m[2].replace(/\*\*/g,"").trim(); if(!t) continue;
       seen[L]=1; opts.push({letter:L, text:t, at:m.index});
     }
-    if(opts.length!==4) return null;       // 4 şık yoksa güvenme
+    if(opts.length!==4) return null;
 
-    // Soru metni: test başlığı ile ilk şık arasındaki kısım
     var q=body.slice(0, opts[0].at).replace(/\*\*/g,"").trim();
     if(!q) return null;
 
-    // Cevap: son şıktan SONRAKİ metinde "Cevap ... X" ara (şıkların içine bakma)
     var tail=body.slice(opts[3].at + 1);
-    // "Cevap: B" / "**Cevap:** (C)" / "Cevap" satırı + altında "B" — hepsini kabul et.
-    // Harften sonra harf/Türkçe harf gelmemeli ki "Cevap: Bu ..." yanlış eşleşmesin.
     var mAns=/Cevap[^A-D]{0,20}?(?:\*\*)?\s*\(?([A-D])\)?(?![a-zA-ZçğıöşüÇĞİÖŞÜ])/i.exec(tail);
-    // Yedek kalıp: "Cevap: Bu yapıda D şıkkı doğrudur." gibi cümle içi ifade.
     if(!mAns) mAns=/(?:^|\n)[^\n]*Cevap[^\n]*?\(?([A-D])\)?[^\S\n]*(?:şıkkı|şık|seçeneği|seçenek)/i.exec(tail);
     if(!mAns) return null;
     var ans=mAns[1].toUpperCase();
     if(!seen[ans]) return null;
 
-    // Açıklama: cevap harfinden sonrası. Baştaki noktalama ve tekrar edilen
-    // şık metnini ("B) cities are — çünkü...") temizle.
     var exp=tail.slice(mAns.index + mAns[0].length).replace(/\*\*/g,"");
     var ansTxt=(opts.filter(function(o){return o.letter===ans;})[0]||{}).text||"";
     exp=exp.replace(/^[\s:—\-–.)]*/,"");
-    if(ansTxt && exp.indexOf(ansTxt)===0) exp=exp.slice(ansTxt.length);   // şık metni tekrarlanmışsa at
+    if(ansTxt && exp.indexOf(ansTxt)===0) exp=exp.slice(ansTxt.length);
     exp=exp.replace(/^[\s:—\-–.)]*/,"").trim();
 
     return { before:before, question:q, options:opts, answer:ans, explain:exp };
@@ -579,16 +459,12 @@ function parseQuiz(text){
 const root = document.getElementById("root");
 const State = { en:"", tr:"", history:[], explanation:"" };
 
-/* ---------- URL parametreleri ---------- */
 function parseParams(){
   const p = new URLSearchParams(location.search);
   State.en = (p.get("s")||"").trim();
   State.tr = (p.get("t")||"").trim();
 }
 
-/* ============================================================
-   EKRAN
-   ============================================================ */
 function render(){
   root.innerHTML = `
   <div class="top">
@@ -608,7 +484,7 @@ function render(){
     <div id="out"></div>
   </div>`;
   mountTeacherAvatar();
-  // Geri düğmesi davranışı
+  
   var keyBtn = document.getElementById("teacherKeyBtn");
   if (keyBtn) keyBtn.onclick = () => openKeySheet();
   var promptBtn = document.getElementById("teacherPromptBtn");
@@ -618,27 +494,14 @@ function render(){
     var p2 = new URLSearchParams(location.search);
     var isEmbed = p2.get("embed") === "1";
     if (isEmbed){
-      // iframe katmanı içinde: üst pencereye "kapat" sinyali gönder.
-      // Çalışma sayfası arkada açık kaldığı için aynı cümleden devam edilir.
-      backEl.setAttribute("href", "#");
-      backEl.textContent = "←";
-      backEl.title = "Çalışmaya dön";
-      backEl.onclick = function(ev){
-        ev.preventDefault();
-        try{ parent.postMessage("dh-teacher-close", "*"); }catch(e){}
-      };
+      backEl.setAttribute("href", "#"); backEl.textContent = "←"; backEl.title = "Çalışmaya dön";
+      backEl.onclick = function(ev){ ev.preventDefault(); try{ parent.postMessage("dh-teacher-close", "*"); }catch(e){} };
     } else {
-      // Ayrı sayfa olarak açıldıysa: kayıtlı dönüş sayfasına git (yoksa ana menü)
-      var ret = "";
-      try{ ret = localStorage.getItem("teacherReturnURL") || ""; }catch(e){}
+      var ret = ""; try{ ret = localStorage.getItem("teacherReturnURL") || ""; }catch(e){}
       if (!ret){ ret = p2.get("return") || ""; }
       if (ret){
         backEl.setAttribute("href", ret);
-        backEl.onclick = function(ev){
-          ev.preventDefault();
-          try{ localStorage.removeItem("teacherReturnURL"); }catch(e){}
-          location.href = ret;
-        };
+        backEl.onclick = function(ev){ ev.preventDefault(); try{ localStorage.removeItem("teacherReturnURL"); }catch(e){} location.href = ret; };
       }
     }
   }
@@ -646,9 +509,6 @@ function render(){
   explain();
 }
 
-/* 💎 Cümle analizini Gemini'ye yaptır (anahtarsız köprü).
-   Öğretmenin normal sistem promptunun AYNISINI kullanır — çıktı formatı,
-   mini test yapısı, üslup birebir aynı olsun ki panel değişmeden çalışsın. */
 function askTeacherViaGemini(){
   if(!window.DHGemini){ handleError(new Error("Gemini köprüsü yüklenmedi.")); return; }
   var userMsg = `İngilizce cümle: "${State.en}"` + (State.tr ? `\nTürkçe çevirisi: ${State.tr}` : "");
@@ -683,48 +543,43 @@ async function explain(){
     </div>`);
     var inp = document.getElementById("manualSentence");
     var go = function(){
-      var v = (inp.value||"").trim();
-      if(!v) return;
-      State.en = v;
-      State.tr = "";
-      explain();
+      var v = (inp.value||"").trim(); if(!v) return;
+      State.en = v; State.tr = ""; explain();
     };
     if(inp){ inp.focus(); inp.onkeydown = function(e){ if(e.key==="Enter") go(); }; }
     var gb = document.getElementById("manualGo");
     if(gb) gb.onclick = go;
     return;
   }
-  // storage-bridge (IndexedDB) henüz belleğe yüklenmediyse, hazır olmasını bekle.
-  // Böylece anahtarlar IndexedDB'deyken yanlışlıkla "anahtar yok" kutusu açılmaz.
+
   if (typeof window.__dhStorageReady !== "undefined" && !window.__dhStorageReady && !getKeys().length){
     setOut(`<div class="loading"><div class="spinner"></div> Hazırlanıyor…</div>`);
     await new Promise(function(resolve){
-      var done=false;
-      function go(){ if(done) return; done=true; resolve(); }
+      var done=false; function go(){ if(done) return; done=true; resolve(); }
       window.addEventListener("dh-storage-ready", go, {once:true});
-      setTimeout(go, 1500); // güvenlik: en fazla 1.5 sn bekle
+      setTimeout(go, 1500);
     });
   }
+
   if (!getKeys().length){
-    /* Anahtar yok — ama Gemini köprüsüyle yine de analiz yapılabilir.
-       Kullanıcıyı boş "anahtar ekle" ekranıyla bırakmak yerine seçenek sun. */
     if(window.DHGemini && State.en){
       setOut(`<div class="state">
         <h2>Bu cümleyi nasıl inceleyelim?</h2>
         <p>Cümlen: <b>${esc(State.en)}</b></p>
         <div class="manual-entry" style="flex-direction:column;gap:10px">
           <button id="dhTeachGemini" style="width:100%;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0;border-radius:11px;padding:13px;font:800 15px Nunito,sans-serif;cursor:pointer">💎 Gemini'ye sor (anahtar gerekmez)</button>
+          <button id="dhTeachAzar" style="width:100%;background:linear-gradient(135deg,#4f46e5,#3b82f6);color:#fff;border:0;border-radius:11px;padding:13px;font:800 15px Nunito,sans-serif;cursor:pointer">📘 Bu Cümlenin Konusunu Azar Kitabından Çalış</button>
           <button id="dhTeachAddKey" style="width:100%;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:11px;padding:12px;font:700 14px Nunito,sans-serif;cursor:pointer">🔑 Kendi API anahtarımı ekle</button>
         </div>
       </div>`);
-      var gb2=document.getElementById("dhTeachGemini");
-      if(gb2) gb2.onclick=function(){ askTeacherViaGemini(); };
-      var ak=document.getElementById("dhTeachAddKey");
-      if(ak) ak.onclick=function(){ openKeySheet(); };
+      var gb2=document.getElementById("dhTeachGemini"); if(gb2) gb2.onclick=function(){ askTeacherViaGemini(); };
+      var az=document.getElementById("dhTeachAzar"); if(az) az.onclick=function(){ runAzarForTeacherSentence(); };
+      var ak=document.getElementById("dhTeachAddKey"); if(ak) ak.onclick=function(){ openKeySheet(); };
       return;
     }
     openKeySheet(); setOut(""); return;
   }
+
   setOut(`<div class="loading"><div class="spinner"></div> Öğretmen cümleyi inceliyor…</div>`);
   const userMsg = `İngilizce cümle: "${State.en}"` + (State.tr ? `\nTürkçe çevirisi: ${State.tr}` : "");
   try{ var _mem=JSON.parse(localStorage.getItem("dh-teacher-mem")||"[]"); _mem.push({q:String(State.en||"").slice(0,90),ts:Date.now()}); localStorage.setItem("dh-teacher-mem",JSON.stringify(_mem.slice(-3))); }catch(e){}
@@ -738,8 +593,6 @@ async function explain(){
 
 function renderExplanation(reply){
   State.explanation = reply || "";
-
-  // Mini testi ayırmayı dene. Tutmazsa (quiz=null) metin bütün olarak ESKİSİ GİBİ gösterilir.
   const quiz = parseQuiz(reply);
   const mainText = quiz ? quiz.before : reply;
 
@@ -765,20 +618,39 @@ function renderExplanation(reply){
       <button id="fuSend">Sor</button>
     </div>
     <button class="regen" id="regenBtn">↻ Yeniden açıkla</button>
-    <button class="regen" id="dhGeminiAskBtn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0">💎 Gemini'ye sor</button>`);
+    <button class="regen" id="dhGeminiAskBtn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0">💎 Gemini'ye sor</button>
+    <!-- 📘 BETTY AZAR KİTAP DÜĞMESİ -->
+    <button class="regen" id="dhAzarAskBtn" style="background:linear-gradient(135deg,#4f46e5,#3b82f6);color:#fff;border:0">📘 Bu Cümlenin Konusunu Azar Kitabından Çalış</button>`);
+
   const fu = document.getElementById("fuInput");
   fu.onkeydown = e => { if (e.key==="Enter") askFollowup(fu.value); };
   document.getElementById("fuSend").onclick = () => askFollowup(fu.value);
   document.getElementById("regenBtn").onclick = () => explain();
+  
   var gAsk=document.getElementById("dhGeminiAskBtn");
   if(gAsk){ if(window.DHGemini){ gAsk.onclick=function(){ askTeacherViaGemini(); }; } else { gAsk.style.display="none"; } }
+
+  // Azar Düğmesi Tıklama Olayı
+  var azAsk=document.getElementById("dhAzarAskBtn");
+  if(azAsk){ azAsk.onclick=function(){ runAzarForTeacherSentence(); }; }
+
   document.getElementById("explainListenBtn").onclick = () => speakFromScreen(document.querySelector(".explain"));
   document.getElementById("sentenceListenBtn").onclick = () => speakEnglish(State.en);
   if(quiz) bindQuiz(quiz);
 }
 
-/* Mini test tıklaması → koça GERÇEK etkileşim olarak bildirilir.
-   Şıklar ilk tıklamadan sonra kilitlenir, yani her test bir kez sayılır. */
+// Teacher Ekranındaki Aktif Cümleyi Azar Motoruna Gönderen Özel Fonksiyon
+function runAzarForTeacherSentence() {
+  if (State.en && window.DHAzarEngine) {
+    window.DHAzarEngine.startRemedialLesson(State.en);[cite: 1, 2]
+  } else if (!window.DHAzarEngine) {
+    alert("Azar motoru yüklenemedi. 'azar-remedial.js' dosyasını kontrol edin.");
+  } else {
+    alert("İncelenecek aktif bir cümle bulunamadı.");
+  }
+}
+window.runAzarForTeacherSentence = runAzarForTeacherSentence;
+
 function bindQuiz(quiz){
   const box=document.getElementById("quizOpts");
   const expEl=document.getElementById("quizExp");
@@ -804,7 +676,6 @@ function bindQuiz(quiz){
         expEl.classList.add("show");
       }
 
-      /* KOÇ BAĞLANTISI: tracker (lessons) + aktivite logu + görev işareti + koç yorumu */
       try{
         if(window.dhCoachEvaluate) window.dhCoachEvaluate({
           ok: ok,
@@ -821,10 +692,8 @@ function bindQuiz(quiz){
 }
 
 async function askFollowup(q){
-  q = (q||"").trim();
-  if (!q) return;
+  q = (q||"").trim(); if (!q) return;
   const out = document.getElementById("out");
-  // mevcut açıklamanın altına soru + cevap alanı
   const qa = document.createElement("div");
   qa.innerHTML = `<div class="qa-q">❓ ${esc(q)}</div><div class="loading"><div class="spinner"></div> Yanıtlanıyor…</div>`;
   out.appendChild(qa);
@@ -855,7 +724,6 @@ function handleError(e, silent){
   if (!silent) setOut(`<div class="state"><h2>Olmadı</h2><p>${msg}</p><button class="btn btn-primary" onclick="location.reload()">Tekrar dene</button></div>`);
 }
 
-/* ---------- prompt editörü ---------- */
 function openPromptSheet(){
   const sheet=document.createElement("div"); sheet.className="sheet-overlay";
   sheet.innerHTML=`
@@ -884,12 +752,10 @@ function openPromptSheet(){
   };
 }
 
-/* ---------- API anahtarları (çoklu, okunur) ---------- */
 function removeKey(k){
   let ks=getKeys().filter(x=>x!==k);
   try{ localStorage.setItem(KEYS_LS, JSON.stringify(ks)); }catch{}
 }
-/* pasif (devre dışı) anahtarlar — silinmez, sadece AI'da kullanılmaz */
 function getDisabled(){ try{ return JSON.parse(localStorage.getItem("dh-disabled-keys")||"[]")||[]; }catch{ return []; } }
 function isKeyOff(k){ return getDisabled().indexOf(k)>=0; }
 function setKeyActive(k, active){
@@ -961,7 +827,6 @@ function openKeySheet(invalid){
     sheet.querySelectorAll(".keychk").forEach(chk=>{
       chk.onchange=()=>{
         setKeyActive(chk.getAttribute("data-k"), chk.checked);
-        // satırın görünümünü güncelle (aktif/pasif) ve en az bir aktif kontrolü
         const row=chk.closest(".keyrow");
         if(row) row.classList.toggle("keyoff", !chk.checked);
         const anyActive=Object.keys(PROVIDER_META).some(pid=>getKeysFor(PROVIDER_META[pid].store).some(k=>!isKeyOff(k)));
@@ -972,26 +837,23 @@ function openKeySheet(invalid){
   };
   bindRows();
 
-  // ---- Model seçici: doldur, seç, canlı güncelle ----
   function fillModelSelect(pid, models){
     const sel=sheet.querySelector("#modelSel_"+pid); if(!sel) return;
     const cur=(window.DHProviders?DHProviders.getModel(pid):"");
     const list = models.slice();
-    if(cur && list.indexOf(cur)<0) list.unshift(cur);  // mevcut seçim listede yoksa ekle
+    if(cur && list.indexOf(cur)<0) list.unshift(cur);
     sel.innerHTML = list.map(mid=>`<option value="${esc(mid)}" ${mid===cur?"selected":""}>${esc(mid)}</option>`).join("");
   }
   function loadModels(pid, live){
     const hint=sheet.querySelector('.modelhint[data-prov="'+pid+'"]');
     if(!window.DHProviders){ return; }
     if(live && hint){ hint.textContent="↻ güncelleniyor…"; }
-    // canlı çek (CORS olursa gömülü listeye düşer)
     DHProviders.listModels(pid).then(models=>{
       fillModelSelect(pid, models);
       if(hint) hint.textContent="↻ listeyi güncelle";
     }).catch(()=>{ if(hint) hint.textContent="↻ listeyi güncelle"; });
   }
   Object.keys(PROVIDER_META).forEach(pid=>{
-    // başlangıçta gömülü liste ile doldur (hızlı), sonra anahtar varsa canlı dene
     const p=(window.DHProviders?DHProviders.PROVIDERS.find(x=>x.id===pid):null);
     if(p) fillModelSelect(pid, p.models||[]);
     const sel=sheet.querySelector("#modelSel_"+pid);
@@ -1000,7 +862,6 @@ function openKeySheet(invalid){
     if(sel) sel.onchange=()=>{ if(window.DHProviders){ DHProviders.setModel(pid, sel.value); } if(inp) inp.value=""; note("✓ "+PROVIDER_META[pid].label+" modeli: "+sel.value, true); };
     if(inp) inp.onchange=()=>{ const v=inp.value.trim(); if(v && window.DHProviders){ DHProviders.setModel(pid, v); note("✓ "+PROVIDER_META[pid].label+" modeli: "+v, true); loadModels(pid,false); } };
     if(hint) hint.onclick=()=>loadModels(pid, true);
-    // anahtar varsa canlı listeyi dene (Cerebras anahtarsız da çeker)
     const hasKey=(getKeysFor(PROVIDER_META[pid].store).length>0) || pid==="cerebras";
     if(hasKey) loadModels(pid, false);
   });
@@ -1013,7 +874,6 @@ function openKeySheet(invalid){
       const inp=sheet.querySelector("#keyInput_"+pid);
       const k=inp.value.trim();
       if(!k){ note(m.label+" anahtarı boş.",false); return; }
-      // gevşek önek kontrolü (yanlış sağlayıcıya yapıştırmayı önler, ama zorlamaz)
       saveKeyFor(m.store,k); inp.value=""; note("✓ "+m.label+" anahtarı eklendi.",true); refresh(pid);
     };
   });
@@ -1026,7 +886,6 @@ function openKeySheet(invalid){
   };
 }
 
-/* ---------- başlat ---------- */
 parseParams();
 render();
 
@@ -1040,27 +899,25 @@ render();
 <script src="./word-popup.js?v=1"></script>
 <script>
 
-/* ---- ÖĞRENCİ PROFİLİ: uygulama verisinden AI'ya kısa özet (≤150 kelime) ---- */
 async function dhBuildProfile(){
   var p=[];
-  try{ // streak + bugün
+  try{
     var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=Object.keys(tr.days||{}).sort();
     var streak=0, d=new Date();
     for(;;){ var key=d.toISOString().slice(0,10); if((tr.days||{})[key]){streak++; d.setDate(d.getDate()-1);} else break; }
     if(streak) p.push("Seri: "+streak+" gün.");
   }catch(e){}
-  try{ // kelime/cümle durumu
+  try{
     var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, w1=0,w2=0,s1=0,s2=0;
     for(var k in m){ var st=m[k]&&m[k][0]; if(k.indexOf("word:")===0){ if(st===1)w1++; if(st===2)w2++; } if(k.indexOf("sentence:")===0){ if(st===1)s1++; if(st===2)s2++; } }
     p.push("Kelime: "+w2+" öğrenildi/"+w1+" çalışılıyor. Cümle: "+s2+"/"+s1+".");
   }catch(e){}
-  try{ // hata etiketleri (ilk 3)
+  try{
     if(window.LearningErrorDB&&LearningErrorDB.all){
       var errs=await LearningErrorDB.all(), tally={};
       (errs||[]).slice(-60).forEach(function(r){ var t=r&&r.type; if(t) tally[t]=(tally[t]||0)+1; });
       var top=Object.keys(tally).sort(function(a,b){return tally[b]-tally[a]}).slice(0,3);
       if(top.length) p.push("Sık hata türleri: "+top.join(", ")+".");
-      // 30 günlük eğilim: iyileşen/kötüleşen ilk 2 tür (öğretmen bunu bilerek konuşsun)
       var now30=Date.now(), c15=now30-15*86400000, c30=now30-30*86400000, o30={}, r30={};
       errs.forEach(function(r){ var ts=r.ts||0; if(ts<c30) return; var ty=Array.isArray(r.types)&&r.types.length?r.types:(r.type?[r.type]:[]);
         ty.forEach(function(t){ if(ts>=c15) r30[t]=(r30[t]||0)+1; else o30[t]=(o30[t]||0)+1; }); });
@@ -1068,7 +925,7 @@ async function dhBuildProfile(){
       if(trend30.length) p.push("Son 30 gün eğilimi: "+trend30.slice(0,2).join(", ")+".");
     }
   }catch(e){}
-  try{ // inatçı cümleler (ilk 3) + vadesi gelen
+  try{
     var due=0, leech=[];
     await new Promise(function(res){ try{
       var r=indexedDB.open("sentence-mode",1);
@@ -1096,5 +953,6 @@ async function dhBuildProfile(){
     window.__dhProfileBlock="\n\n[ÖĞRENCİ PROFİLİ — anlatımı buna göre kişiselleştir; sık hatalarına ve inatçı cümlelerine bağ kur]\n"+p+mm;
   });
 })();
-</script>\n</body>
+</script>
+</body>
 </html>
