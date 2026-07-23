@@ -1,4 +1,4 @@
-/* azar-remedial.js — Tam Dinamik, Jenerik ve Kapsamlı Azar Konu Eşleştirici v8 */
+/* azar-remedial.js — Stop-Word Korumalı ve Tam Odaklı Azar Engine v12 */
 (function(global){
   "use strict";
 
@@ -11,103 +11,87 @@
       .then(function(data){ azarData = data; return azarData; });
   }
 
-  // Cümledeki tüm n-gramları (1'li, 2'li, 3'lü kelime öbeklerini) dinamik çıkartan fonksiyon
-  function generateNGrams(text) {
-    var cleanText = String(text || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ");
-    var words = cleanText.split(/\s+/).filter(function(w){ return w.length > 1; });
-    var nGrams = [];
+  // Arama parazitlerini engellemek için stop-word'leri eliyoruz
+  var STOP_WORDS = ["a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for", "with", "please"];
 
-    // Tekil, ikili, üçlü ve dörtlü öbekleri oluştur
-    for (var i = 0; i < words.length; i++) {
-      // 1-gram
-      nGrams.push({ phrase: words[i], weight: 1 });
-      // 2-gram (örn: "would rather")
-      if (i + 1 < words.length) {
-        nGrams.push({ phrase: words[i] + " " + words[i+1], weight: 5 });
-      }
-      // 3-gram (örn: "would rather not")
-      if (i + 2 < words.length) {
-        nGrams.push({ phrase: words[i] + " " + words[i+1] + " " + words[i+2], weight: 12 });
-      }
-      // 4-gram (örn: "would rather not be")
-      if (i + 3 < words.length) {
-        nGrams.push({ phrase: words[i] + " " + words[i+1] + " " + words[i+2] + " " + words[i+3], weight: 20 });
-      }
-    }
-    return nGrams;
+  function extractCoreGrammarPhrases(text) {
+    var cleanText = String(text || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ");
+    var words = cleanText.split(/\s+/).filter(function(w){ return w.length > 0; });
+    
+    var coreWords = words.filter(function(w){ return STOP_WORDS.indexOf(w) === -1; });
+    var phrases = [];
+
+    // Özel kalıpları (Phrasal Modals / Verbs) doğrudan çek
+    if (cleanText.indexOf("would like") !== -1 || cleanText.indexOf("d like") !== -1) phrases.push("would like");
+    if (cleanText.indexOf("would rather") !== -1 || cleanText.indexOf("d rather") !== -1) phrases.push("would rather");
+    if (cleanText.indexOf("had better") !== -1 || cleanText.indexOf("d better") !== -1) phrases.push("had better");
+    if (cleanText.indexOf("used to") !== -1) phrases.push("used to");
+
+    // Temizlenmiş kelimeleri de ekle
+    coreWords.forEach(function(w){ if(w.length > 2) phrases.push(w); });
+
+    return phrases;
   }
 
-  // 567 Sayfanın tamamında jenerik ve dinamik arama yapan motor
-  function findDynamicTopicPages(sentenceText, pages) {
-    if (!pages || !pages.length) return { chapterTitle: "General Grammar", pageNumbers: [], snippets: "" };
+  function findExactTopicPages(sentenceText, pages) {
+    if (!pages || !pages.length) return { snippets: "", pageNumbers: [] };
 
-    var nGrams = generateNGrams(sentenceText);
+    var phrases = extractCoreGrammarPhrases(sentenceText);
     
     var scoredPages = pages.map(function(page) {
       var content = String(page.content || "").toLowerCase();
       var score = 0;
 
-      nGrams.forEach(function(ngram) {
-        if (content.indexOf(ngram.phrase) !== -1) {
-          score += ngram.weight;
+      phrases.forEach(function(phrase) {
+        if (content.indexOf(phrase) !== -1) {
+          // Kalıp eşleşmelerine ezici yüksek puan ver ki Articles gibi yan sayfalar araya girmesin
+          score += (phrase.indexOf(" ") !== -1) ? 50 : 3;
         }
       });
 
       return { pageNumber: page.pageNumber, score: score, content: page.content };
     });
 
-    // Skoru en yüksek sayfaları sırala
     scoredPages.sort(function(a, b) { return b.score - a.score; });
 
-    // Anlamlı skor üreten tüm ana sayfaları filtrele
-    var topMatches = scoredPages.filter(function(p){ return p.score > 2; });
-    
-    if (!topMatches.length) {
-      topMatches = scoredPages.slice(0, 3);
-    }
+    // Sadece gerçekten yüksek puan alan (yani pure gramer kalıbını içeren) sayfaları al
+    var topMatches = scoredPages.filter(function(p){ return p.score >= 10; });
+    if (!topMatches.length) topMatches = scoredPages.slice(0, 2);
 
-    // Konu bütünlüğü için bulunan ana sayfaları ve konu devamlılığı sağlayan komşu sayfalarını dahil et
-    var targetPagesMap = {};
-    topMatches.slice(0, 5).forEach(function(p) {
-      targetPagesMap[p.pageNumber] = true;
-      // Konu anlatımı tek sayfada bitmeyeceği için öncesi ve sonrasındaki ardışık sayfaları da ekle
-      if (p.pageNumber > 1) targetPagesMap[p.pageNumber - 1] = true;
-      if (p.pageNumber < pages.length) targetPagesMap[p.pageNumber + 1] = true;
-    });
+    var targetPageNumbers = topMatches.map(function(p){ return p.pageNumber; }).sort(function(a,b){ return a-b; });
 
-    var sortedPages = Object.keys(targetPagesMap).map(Number).sort(function(a,b){ return a-b; });
-
-    // Seçilen TÜM sayfaların orijinal metinlerini eksiksiz birleştir
     var combinedSnippets = pages
-      .filter(function(p){ return targetPagesMap[p.pageNumber]; })
+      .filter(function(p){ return targetPageNumbers.indexOf(p.pageNumber) !== -1; })
       .map(function(p){ return "=== BETTY AZAR UUEG SAYFA " + p.pageNumber + " ===\n" + p.content; })
       .join("\n\n--------------------------------------------------\n\n");
 
     return {
-      chapterTitle: "Betty Azar UUEG (Tespit Edilen Konu Sayfaları: " + sortedPages.join(", ") + ")",
-      pageNumbers: sortedPages,
+      pageNumbers: targetPageNumbers,
       snippets: combinedSnippets
     };
   }
 
   function startRemedialLesson(sentenceText) {
     loadAzarData().then(function(pages) {
-      var topicData = findDynamicTopicPages(sentenceText, pages);
+      var result = findExactTopicPages(sentenceText, pages);
 
-      var promptPayload = "Sen Betty Azar'ın 'Understanding and Using English Grammar' (3rd Edition) kitabının müfredatına tamamen hakim uzman bir yapay zeka İngilizce öğretmenisin.\n\n"
-                        + "Öğrenci şu cümlede takıldı veya bu yapı/konu üzerinde çalışmak istiyor:\n"
+      var promptPayload = "Sen Betty Azar'ın 'Understanding and Using English Grammar' kitabının müfredatına hakim uzman bir yapay zeka öğretmenisin.\n\n"
+                        + "ÖĞRENCİNİN İNCELEMEK İSTEDİĞİ HEDEF CÜMLE:\n"
                         + "👉 \"" + sentenceText + "\"\n\n"
-                        + "Aşağıda kitabın 567 sayfalık tam veri tabanından dinamik olarak çıkarılan, bu cümleyi ve ilgili tüm gramer konusunu kapsayan ORİJİNAL TARAMA METİNLERİ yer almaktadır:\n\n"
-                        + topicData.snippets + "\n\n"
-                        + "LÜTFEN YUKARIDAKİ KİTAP METİNLERİNİ VE TABLOLARI KULLANARAK HİÇBİR ADET VE SAYI KISITLAMASI KOYMAKSIZIN EKSİKSİZ BİR DERS HAZIRLA (Doğrudan Türkçe anlatım kullan):\n\n"
-                        + "# 📘 " + topicData.chapterTitle + " - Tam Konu Özeti\n"
-                        + "- **Gramer Odağı:** Taranan metinlerde geçen konunun temel kuralını, tüm formüllerini (olumlu, olumsuz, soru, özel durumlar), tablo gruplarını ve istisnalarını eksiksiz açıkla.\n"
-                        + "- **Türk Öğrenciler İçin Kritik İpucu:** Türkçeden İngilizceye çeviri yaparken veya düşünürken bu konuda yapılan tüm yaygın kontrast hatalarını ve çözümlerini yaz.\n\n"
-                        + "# 📝 Örnek Cümle Analizleri (Book Sentences)\n"
-                        + "Yukarıdaki orijinal kitap sayfalarında ve alıştırmalarında geçen **TÜM İLGİLİ ÖRNEK CÜMLELERİ VE DİYALOGLARI (Hiçbir sınırlama ve adet kısıtlaması olmadan, hepsini)** ayıkla. İngilizce orijinal hallerini ve hemen altına en doğru Türkçe akademik çevirilerini liste şeklinde eksiksiz yaz.\n\n"
-                        + "# 🧠 İnteraktif Alıştırma Paneli (Interactive Quiz)\n"
-                        + "Yukarıdaki kitap sayfalarında yer alan egzersiz maddelerinin **HEPSİNİ/TAMAMINI** şıklı boşluk doldurma sorularına dönüştür ('[ _____ ]' formatında). Soruların altına A, B, C, D şıklarını koy.\n"
-                        + "*En alta ise 'Cevap Anahtarı ve Detaylı Dil Bilgisi Açıklaması' ekleyerek her bir sorunun dil bilgisi gerekçesini detaylıca anlat.*";
+                        + "Aşağıda kitabın taranmış veritabanından SADECE BU GRAMER KALIPIYLA İLGİLİ SAYFALARIN HAM METİNLERİ yer almaktadır:\n\n"
+                        + result.snippets + "\n\n"
+                        + "🎯 KESİN ODAK TALİMATI:\n"
+                        + "1. Cümledeki tek ve gerçek gramer konusu ne ise (Örn: 'Would like' ile istek belirtme) SADECE O KONUYU anlat.\n"
+                        + "2. Cümlede geçen nesnelerden, edatlardan veya alakasız kelimelerden yola çıkarak başka gramer konularına (Articles, Nouns vb.) KESİNLİKLE SAPMA.\n"
+                        + "3. Kitapta geçen 'Would like' ile ilgili TÜM ÖRNEKLERİ ve TÜM ALIŞTIRMALARI eksiksiz dök.\n\n"
+                        + "ŞU ŞABLONA BİREBİR UY (Doğrudan Türkçe anlatım kullan):\n\n"
+                        + "# 📘 Odak Cümle Gramer Analizi & Nokta Atışı Konu Özeti\n"
+                        + "- **Cümlenin Dil Bilgisi Formülü:** Target cümlenin tam yapısını, formülünü ve kurallarını açıkla.\n"
+                        + "- **Türk Öğrenciler İçin Kritik İpucu:** Bu spesifik kalıpta Türk öğrencilerin yaptığı en yaygın hatayı ve çözümünü yaz.\n\n"
+                        + "# 📝 Odak Konuyla Birebir İlgili Örnek Cümleler (TAM LİSTE)\n"
+                        + "Taranan sayfalarda geçen ve SADECE bu gramer kalıbına ('Would like') uyan TÜM İngilizce örnek cümleler ve hemen altında akademik Türkçe çevirileri.\n\n"
+                        + "# 🧠 Odak Pekiştirme Testi (Interactive Quiz - TÜM ALIŞTIRMALAR)\n"
+                        + "Taranan sayfalardaki 'Would like' alıştırma maddelerinin TAMAMINDAN üretilmiş şıklı boşluk doldurma soruları ('[ _____ ]' formatında) ve en alta detaylı cevap anahtarı.";
 
       try {
         if(navigator.clipboard && navigator.clipboard.writeText) {
@@ -118,7 +102,7 @@
           document.body.appendChild(ta); ta.focus(); ta.select();
           document.execCommand("copy"); document.body.removeChild(ta);
         }
-        alert("📘 Tam Dinamik Azar Taraması Başarılı!\n\nTaranan Sayfalar: " + topicData.pageNumbers.join(", ") + "\n\nPrompt kopyalandı! Gemini sayfasına yapıştırabilirsiniz (Ctrl+V).");
+        alert("🎯 Tam Odaklı Azar Taraması Başarılı!\n\nTaranan Sayfalar: " + result.pageNumbers.join(", ") + "\n\nPrompt kopyalandı!");
         window.open("https://gemini.google.com/app", "_blank");
       } catch(e) {
         alert("Prompt kopyalanamadı.");
