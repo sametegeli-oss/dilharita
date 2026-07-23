@@ -206,8 +206,52 @@
       .catch(function(){ out.innerHTML='<div class="dh-wp-ai-out">Açıklama alınamadı.</div>'; })
       .then(function(){ btn.textContent="🎓 Kelime Açıklama (AI)"; btn.disabled=false; });
   }
+function aiMnemonic(word, anlamlar){
+    var out=document.getElementById("dhWpMnemonicOut"), btn=document.getElementById("dhWpMnemonic");
+    if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
+      out.innerHTML='<div class="dh-wp-mnemonic-out">API anahtarı bulunamadı.</div>';
+      return;
+    }
+    btn.textContent="⏳ Şifre & Hikaye Görseli Hazırlanıyor…"; btn.disabled=true;
+    
+    var sys = "Sen kelimeleri Türkçe benzeşimle (mnemonic) ezberleten bir uzmansın.\n"
+            + "Çıktında MUTLAKA şu 5 adımı takip et:\n"
+            + "1. Kelimenin Okunuşu\n"
+            + "2. Türkçe Benzeşim/Şifre Sözcükleri\n"
+            + "3. Kısa Görsel Hikaye\n"
+            + "4. Özet Hatırlama Cümlesi\n"
+            + "5. GÖRSEL_ARAMA: [Hikayedeki ana unsurları tanımlayan 2-3 İngilizce kelime (örn: guardian orange logo)]\n\n"
+            + "ÖNEMLİ: 5. madde tam olarak 'GÖRSEL_ARAMA: [ingilizce kelimeler]' formatında bitmelidir.";
 
-  function aiMnemonic(word, anlamlar){
+    var usr = "Kelime: \"" + word + "\"\nAnlamı: " + anlamlar.join(", ");
+
+    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.7,max_tokens:450})
+      .then(function(txt){
+        var rawText = String(txt||"").trim();
+        var searchTerms = word;
+
+        var match = rawText.match(/GÖRSEL_ARAMA:\s*\[?(.*?)\]?$/i);
+        if(match && match[1]){
+          searchTerms = match[1].trim().replace(/[^a-zA-Z0-9\s]/g, "");
+          rawText = rawText.replace(/5\.\s*GÖRSEL_ARAMA:.*$/i, "").trim();
+        }
+
+        var cleanTxt = esc(rawText);
+        var cleanPrompt = encodeURIComponent(searchTerms.trim() || word);
+
+        // 1. Alternatif: Garanti çalışan anlık AI görsel oluşturucu (Pollinations)
+        var primaryImgUrl = "https://image.pollinations.ai/prompt/" + cleanPrompt + "?width=600&height=300&nologo=true";
+        // 2. Alternatif: Gerçek stok resim arama servisi (LoremFlickr)
+        var fallbackImgUrl = "https://loremflickr.com/600/300/" + cleanPrompt.replace(/%20/g, ",");
+
+        var imgHtml = '<img class="dh-wp-mnemonic-img" src="' + primaryImgUrl + '" alt="' + esc(searchTerms) + '" onerror="this.onerror=null;this.src=\'' + fallbackImgUrl + '\';">';
+
+        out.innerHTML = '<div class="dh-wp-mnemonic-out">' + cleanTxt + imgHtml + '</div>';
+      })
+      .catch(function(){ out.innerHTML='<div class="dh-wp-mnemonic-out">Şifre üretilemedi.</div>'; })
+      .then(function(){ btn.textContent="💡 Mnemonic Şifre Oluştur (AI)"; btn.disabled=false; });
+  }
+  function aiMnemonicsil(word, anlamlar){
     var out=document.getElementById("dhWpMnemonicOut"), btn=document.getElementById("dhWpMnemonic");
     if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
       out.innerHTML='<div class="dh-wp-mnemonic-out">API anahtarı bulunamadı.</div>';
