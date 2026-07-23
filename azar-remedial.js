@@ -1,10 +1,9 @@
-/* azar-remedial.js — Dinamik Cümle Analizi ve Azar Kitap Entegrasyonu */
+/* azar-remedial.js — İçerik Odaklı Akıllı Azar Kitap Eşleştirici */
 (function(global){
   "use strict";
 
   var azarData = null;
 
-  // JSON verisini çek
   function loadAzarData() {
     if(azarData) return Promise.resolve(azarData);
     return fetch('./data/azar_uueg.json')
@@ -12,66 +11,67 @@
       .then(function(data){ azarData = data; return azarData; });
   }
 
-  // Cümlenin yapısını analiz edip AZAR_TOPIC_MAP içindeki en uygun konuyu otomatik bulur
-  function detectTopicFromSentence(sentenceText) {
-    var text = String(sentenceText || "").toLowerCase();
+  // Başlıklara değil, doğrudan JSON içeriklerine (content) bakarak en uygun sayfayı bulan akıllı motor
+  function findBestPagesFromJSON(sentenceText, pages) {
+    var query = String(sentenceText || "").toLowerCase();
+    var words = query.replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(function(w){ return w.length > 2; });
+    
+    if (!pages || !pages.length) return { title: "General Grammar Review", pages: [15, 16] };
 
-    // Pattern Matching (Gramer İmzaları)
-    if (/\b(have|has)\s+[a-z]+ed\b|\b(have|has)\s+(been|gone|seen|eaten|done|taken|bought|written|met)\b/.test(text)) {
-      return "present_perfect";
-    }
-    if (/\b(must|have to|has to|had better|got to|gotta|hafta|hasta)\b/.test(text)) {
-      return "modals_necessity";
-    }
-    if (/\b(will|be going to|am going to|is going to|are going to)\b/.test(text)) {
-      return "future_time";
-    }
-    if (/\b(was|were)\s+[a-z]+ing\b/.test(text)) {
-      return "simple_past_progressive";
-    }
-    if (/\b(am|is|are)\s+[a-z]+ing\b/.test(text)) {
-      return "simple_present_progressive";
-    }
-    if (/\b(should|could|might|may)\b/.test(text)) {
-      return "degrees_of_certainty";
-    }
-    if (/\b(much|many|few|little|a lot of|some|any|furniture|information|water)\b/.test(text)) {
-      return "count_noncount_nouns";
-    }
+    var scoredPages = pages.map(function(page) {
+      var content = String(page.content || "").toLowerCase();
+      var score = 0;
 
-    // Varsayılan genel zamanlar özeti
-    return "present_tenses";
-  }
+      // 1. Gramer İmzalarına göre doğrudan içerik ağırlığı ver
+      if (/\b(since|for)\b/.test(query) && /\b(present perfect|duration)\b/.test(content)) score += 15;
+      if (/\b(must|have to|had better|should)\b/.test(query) && /\b(necessity|advisability|modal)\b/.test(content)) score += 15;
+      if (/\b(when|while|before|after|by the time)\b/.test(query) && /\b(time clause|adverb clause)\b/.test(content)) score += 15;
+      if (/\b(who|which|that|where)\b/.test(query) && /\b(adjective clause)\b/.test(content)) score += 15;
+      if (/\b(if|unless)\b/.test(query) && /\b(conditional)\b/.test(content)) score += 15;
 
-  // Dışarıdan doğrudan CÜMLE METNİ veya KONU ANAHTARI alabilen ana fonksiyon
-  function startRemedialForCurrentSentence(sentenceText, manualCategory) {
-    // Eğer kategorisi zaten tanımlıysa onu kullan, yoksa cümlenin metninden otomatik bul
-    var topicKey = manualCategory || detectTopicFromSentence(sentenceText);
-    var topicInfo = AZAR_TOPIC_MAP[topicKey] || AZAR_TOPIC_MAP["present_tenses"];
-
-    loadAzarData().then(function(pages) {
-      // İlgili konunun sayfalarını filtrele
-      var targetPages = pages.filter(function(p){ 
-        return topicInfo.pages.indexOf(p.pageNumber) !== -1; 
+      // 2. Kelime Eşleşmesi (İçerik taraması)
+      words.forEach(function(word) {
+        if (content.indexOf(word) !== -1) {
+          score += 1;
+        }
       });
 
-      var combinedContent = targetPages.map(function(p){ 
-        return "--- BETTY AZAR UUEG PAGE " + p.pageNumber + " ---\n" + p.content; 
-      }).join("\n\n");
+      return { pageNumber: page.pageNumber, score: score, content: page.content };
+    });
 
-      // Master Prompt Derleme
+    // En yüksek skora sahip sayfaları sırala
+    scoredPages.sort(function(a, b) { return b.score - a.score; });
+
+    // En iyi eşleşen ilk 2-3 sayfayı seç
+    var topPages = scoredPages.slice(0, 3).filter(function(p){ return p.score > 0; });
+    
+    if (!topPages.length) {
+      // Eşleşme çıkmazsa varsayılan genel zamanlar sayfaları
+      return { title: "Overview of Verb Tenses & Usage", pages: [15, 16, 17] };
+    }
+
+    return {
+      title: "Azar Grammar Target Section (Page " + topPages[0].pageNumber + ")",
+      pages: topPages.map(function(p){ return p.pageNumber; }),
+      snippets: topPages.map(function(p){ return "--- BETTY AZAR UUEG PAGE " + p.pageNumber + " ---\n" + p.content; }).join("\n\n")
+    };
+  }
+
+  function startRemedialLesson(sentenceText) {
+    loadAzarData().then(function(pages) {
+      // Doğrudan JSON içeriklerinden en iyi eşleşmeyi bul
+      var matchResult = findBestPagesFromJSON(sentenceText, pages);
+
       var promptPayload = "Sen Betty Azar'ın 'Understanding and Using English Grammar' kitabına hakim uzman bir İngilizce öğretmenisin.\n\n"
                         + "Öğrenci 'Dil Harita' uygulamasında şu cümlede takıldı ve zorlanıyor:\n"
                         + "👉 \" " + sentenceText + " \"\n\n"
-                        + "Bu cümlenin ait olduğu gramer konusu: [ " + topicInfo.title + " ]\n"
-                        + "Aşağıda kitabın " + topicInfo.pages.join(", ") + ". sayfalarından taranmış orijinal kitap ders içerikleri yer alıyor:\n\n"
-                        + combinedContent + "\n\n"
+                        + "Aşağıda kitabın içerik analiziyle tespit edilen en ilgili sayfalarından taranmış orijinal ders içerikleri yer alıyor:\n\n"
+                        + matchResult.snippets + "\n\n"
                         + "LÜTFEN ÖĞRENCİYE ŞU BÖLÜMLERİ SUN:\n"
                         + "1. 💡 **Cümle Analizi & Kilit Kural:** Öğrencinin takıldığı bu cümlenin gramer yapısını ve Türk öğrencilerin yaptığı tipik hatayı anlat.\n"
-                        + "2. 📝 **Kitaptan Benzer Örnekler:** Yukarıdaki sayfalardan bu yapıyla eşleşen 2 örneği Türkçe akademik çevirisiyle sun.\n"
+                        + "2. 📝 **Kitaptan Benzer Örnekler:** Yukarıdaki sayfalardan bu yapıyla eşleşen örnekleri Türkçe akademik çevirisiyle sun.\n"
                         + "3. 🎯 **Mini Telafi Testi:** Öğrencinin bu yapıyı pekiştirmesi için 3 adet şıklı boşluk doldurma sorusu hazırla ve en alta çözümlerini ekle.";
 
-      // Panoya kopyala ve Gemini'yi aç
       try {
         if(navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(promptPayload);
@@ -81,7 +81,7 @@
           document.body.appendChild(ta); ta.focus(); ta.select();
           document.execCommand("copy"); document.body.removeChild(ta);
         }
-        alert("📘 Akıllı Tespit Çalıştı!\n\nTakıldığınız Cümle: \"" + sentenceText + "\"\nTespit Edilen Konu: " + topicInfo.title + "\n\nAzar kitabından ilgili sayfalar derlendi ve prompt kopyalandı! Gemini sayfasına yapıştırabilirsiniz (Ctrl+V).");
+        alert("📘 İçerik Bazlı Akıllı Eşleşme Başarılı!\n\nTakıldığınız Cümle: \"" + sentenceText + "\"\nBulunan Sayfalar: " + matchResult.pages.join(", ") + "\n\nPrompt kopyalandı! Gemini sayfasına yapıştırabilirsiniz (Ctrl+V).");
         window.open("https://gemini.google.com/app", "_blank");
       } catch(e) {
         alert("Prompt kopyalanamadı.");
@@ -90,7 +90,6 @@
   }
 
   global.DHAzarEngine = {
-    startRemedialLesson: startRemedialForCurrentSentence,
-    detectTopic: detectTopicFromSentence
+    startRemedialLesson: startRemedialLesson
   };
 })(window);
