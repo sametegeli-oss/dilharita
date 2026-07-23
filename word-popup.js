@@ -1,4 +1,4 @@
-/* word-popup.js — BİLİMSEL KELİME ÖĞRENME POPUP (v4 - Active Recall & Absurd Mnemonics)
+/* word-popup.js — BİLİMSEL KELİME ÖĞRENME POPUP (v4.1 - Gemini Story & Auto Image Generation)
    Dil Harita — Her sayfada İngilizce kelimeye tıkla, tam donanımlı panel aç.
 */
 (function(global){
@@ -151,7 +151,9 @@
     +".dh-wp-blur-btn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;background:#f59e0b;color:#03131c;border:0;padding:10px 18px;border-radius:20px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.5)}"
     +".dh-wp-custom-box{margin-top:10px;border-top:1px dashed #1e3a5f;padding-top:10px}"
     +".dh-wp-textarea{width:100%;box-sizing:border-box;background:#020617;border:1px solid #1e3a5f;border-radius:8px;color:#e8eef7;padding:8px 10px;font-size:13px;resize:vertical;min-height:50px;outline:none;margin-bottom:6px}"
-    +".dh-wp-gen-btn{width:100%;background:#38bdf8;color:#03131c;border:0;border-radius:8px;padding:8px;font-size:12px;font-weight:800;cursor:pointer}"
+    +".dh-wp-btn-row{display:flex;gap:6px;margin-bottom:6px}"
+    +".dh-wp-gen-btn{flex:1;background:#38bdf8;color:#03131c;border:0;border-radius:8px;padding:8px;font-size:12px;font-weight:800;cursor:pointer}"
+    +".dh-wp-gemini-btn{flex:1;background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;border:0;border-radius:8px;padding:8px;font-size:12px;font-weight:800;cursor:pointer}"
     +".dh-wp-mnemonic-img{width:100%;height:180px;object-fit:cover;border-radius:10px;margin-top:10px;border:1px solid #1e3a5f;display:block}"
     +".dh-wp-muted{color:#64748b;font-size:13px;padding:6px 0}"
     +".dh-wp-wave-wrap{position:relative;width:100%;height:110px;background:#020617;border:1px solid #1e3a5f;border-radius:10px;overflow:hidden;margin-bottom:8px}"
@@ -264,7 +266,7 @@
             + "2. Türkçe Benzeşim/Şifre Sözcükleri\n"
             + "3. Absürt & Komik Görsel Hikaye (Unutulmaz, komik veya sıra dışı bir sahne yarat)\n"
             + "4. Kafiyeli Slogan/Hatırlama Cümlesi\n"
-            + "5. GÖRSEL_ARAMA: [Hikayedeki absürt görseli anlatan 2-3 İngilizce anahtar kelime]\n\n"
+            + "5. GÖRSEL_ARAMA: [Hikayedeki absürt görseli anlatan 3-4 İngilizce anahtar kelime]\n\n"
             + "ÖNEMLİ: 5. adımı 'GÖRSEL_ARAMA: [kelimeler]' şeklinde yazmayı asla unutma.";
 
     var usr = "Kelime: \"" + word + "\"\nAnlamı: " + anlamlar.join(", ");
@@ -280,13 +282,13 @@
           rawText = rawText.replace(/(?:5\.\s*)?GÖRSEL_ARAMA:.*$/i, "").trim();
         }
 
-        renderMnemonicBox(word, rawText, searchTerms);
+        renderMnemonicBox(word, rawText, searchTerms, anlamlar);
       })
       .catch(function(){ out.innerHTML='<div class="dh-wp-mnemonic-out">Şifre üretilemedi.</div>'; })
       .then(function(){ btn.textContent="💡 Şifre Oluştur (AI)"; btn.disabled=false; });
   }
 
-  function renderMnemonicBox(word, text, searchTerms){
+  function renderMnemonicBox(word, text, searchTerms, anlamlar){
     var out = document.getElementById("dhWpMnemonicOut");
     var cleanTxt = esc(text);
     var cleanPrompt = encodeURIComponent(searchTerms.trim() || word);
@@ -303,12 +305,14 @@
                          + '</div>';
 
     var customBoxHtml = '<div class="dh-wp-custom-box">'
-                      + '<div style="font-size:12px;font-weight:800;color:#9fb3d9;margin-bottom:4px;">✍️ Kendi Hatırlama Senaryonu Yaz:</div>'
-                      + '<textarea class="dh-wp-textarea" id="dhWpCustomScenario" placeholder="Örn: Koruyucu giysili adam şirket kapısında duruyor..."></textarea>'
-                      + '<button class="dh-wp-gen-btn" id="dhWpGenCustomImg">🎨 Bu Senaryo İçin Resim Üret</button>'
+                      + '<div style="font-size:12px;font-weight:800;color:#9fb3d9;margin-bottom:4px;">✍️ Hatırlama Senaryosu & Hikaye:</div>'
+                      + '<textarea class="dh-wp-textarea" id="dhWpCustomScenario" placeholder="Kendi hikayeni yaz veya Gemini\'ye ürettir..."></textarea>'
+                      + '<div class="dh-wp-btn-row">'
+                      + '<button class="dh-wp-gen-btn" id="dhWpGenCustomImg">🎨 Resim Üret</button>'
+                      + '<button class="dh-wp-gemini-btn" id="dhWpGeminiGenStory">✨ Gemini İle Hikaye Üret</button>'
+                      + '</div>'
                       + '</div>';
 
-    // Active Recall: İçeriği gizli/blur getirme ve 'Şifreyi Göster' butonu
     out.innerHTML = '<div class="dh-wp-mnemonic-out" style="position:relative;">'
                   + '<button class="dh-wp-blur-btn" id="dhWpRevealBtn">👁️ Şifreyi & Hikayeyi Göster</button>'
                   + '<div class="dh-wp-blur" id="dhWpBlurContent">' + cleanTxt + imgContainerHtml + customBoxHtml + '</div>'
@@ -319,30 +323,68 @@
       this.style.display = "none";
     };
 
+    // 1. Yazılan Senaryo İçin Resim Üret Butonu
     document.getElementById("dhWpGenCustomImg").onclick = function(){
       var userText = document.getElementById("dhWpCustomScenario").value.trim();
       if(!userText) return;
       var btn = this;
       btn.textContent = "⏳ Görsel Çiziliyor…"; btn.disabled = true;
-
-      if(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
-        var sys = "Kullanıcının yazdığı Türkçe hikaye veya senaryoyu resim çizen bir AI için 3-5 kelimelik İngilizce görsel arama terimine çevir. Sadece İngilizce kelimeleri ver, başka hiçbir metin ekleme.";
-        DHProviders.chat([{role:"system",content:sys},{role:"user",content:userText}],{temperature:0.3,max_tokens:40})
-          .then(function(translatedTerms){
-            var cleanUserPrompt = encodeURIComponent(String(translatedTerms||"").trim().replace(/[^a-zA-Z0-9\s]/g, "") || word);
-            updateMnemonicImage(cleanUserPrompt);
-          })
-          .catch(function(){
-            var fallbackUserPrompt = encodeURIComponent(userText.replace(/[^a-zA-Z0-9\s]/g, "") || word);
-            updateMnemonicImage(fallbackUserPrompt);
-          })
-          .then(function(){ btn.textContent = "🎨 Bu Senaryo İçin Resim Üret"; btn.disabled = false; });
-      } else {
-        var fallbackUserPrompt = encodeURIComponent(userText.replace(/[^a-zA-Z0-9\s]/g, "") || word);
-        updateMnemonicImage(fallbackUserPrompt);
-        btn.textContent = "🎨 Bu Senaryo İçin Resim Üret"; btn.disabled = false;
-      }
+      generateImageFromText(userText, word, function(){
+        btn.textContent = "🎨 Resim Üret"; btn.disabled = false;
+      });
     };
+
+    // 2. ✨ Gemini İle Hikaye Üret & Resim Oluştur Butonu
+    document.getElementById("dhWpGeminiGenStory").onclick = function(){
+      var btn = this;
+      var txtArea = document.getElementById("dhWpCustomScenario");
+      if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
+        txtArea.value = "API anahtarı bulunamadı.";
+        return;
+      }
+      btn.textContent = "✨ Hikaye Yazılıyor…"; btn.disabled = true;
+
+      var sys = "Sen İngilizce kelimeleri Türkçe ses benzeşimiyle ezberleten komik ve yaratıcı bir öğretmensin.\n"
+              + "Sana verilen kelime ve anlamı için 2-3 cümlelik çok komik, absürt ve unutulmaz bir benzeşim hikayesi yaz.\n"
+              + "Yalnızca hikayeyi yaz, başka açıklama veya başlık ekleme.";
+      var usr = "Kelime: \"" + word + "\"\nAnlamı: " + (anlamlar?anlamlar.join(", "):"");
+
+      DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.8,max_tokens:200})
+        .then(function(storyTxt){
+          var cleanStory = String(storyTxt||"").trim();
+          txtArea.value = cleanStory;
+          btn.textContent = "⏳ Resim Üretiliyor…";
+          // Üretilen hikayeden resmi otomatik çizdir
+          generateImageFromText(cleanStory, word, function(){
+            btn.textContent = "✨ Gemini İle Hikaye Üret"; btn.disabled = false;
+          });
+        })
+        .catch(function(){
+          txtArea.value = "Hikaye üretilemedi.";
+          btn.textContent = "✨ Gemini İle Hikaye Üret"; btn.disabled = false;
+        });
+    };
+  }
+
+  // Metni İngilizceye/Görsel Promptuna Çevirip Resmi Güncelleyen Ortak Yardımcı Fonksiyon
+  function generateImageFromText(text, fallbackWord, callback){
+    if(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
+      var sys = "Sen bir AI görsel prompt üreticisisin. Verilen Türkçe hikayeyi görsel çizen AI için 3-4 kelimelik İngilizce anahtar terime çevir (örn: factory assembly line master marbles). SADECE İngilizce kelimeleri ver.";
+      DHProviders.chat([{role:"system",content:sys},{role:"user",content:text}],{temperature:0.3,max_tokens:30})
+        .then(function(translatedTerms){
+          var cleanPrompt = encodeURIComponent(String(translatedTerms||"").trim().replace(/[^a-zA-Z0-9\s]/g, "") || fallbackWord);
+          updateMnemonicImage(cleanPrompt);
+        })
+        .catch(function(){
+          var fallbackPrompt = encodeURIComponent(text.replace(/[^a-zA-Z0-9\s]/g, "") || fallbackWord);
+          updateMnemonicImage(fallbackPrompt);
+        })
+        .then(function(){ if(callback) callback(); });
+    } else {
+      var fallbackPrompt = encodeURIComponent(text.replace(/[^a-zA-Z0-9\s]/g, "") || fallbackWord);
+      updateMnemonicImage(fallbackPrompt);
+      if(callback) callback();
+    }
   }
 
   function updateMnemonicImage(promptText){
