@@ -1,9 +1,9 @@
-/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v4.4 - Smart Phonetic Selection & Gemini Web)
+/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v5.0 - Advanced Mnemonic Engineering)
    Dil Harita — Her sayfada İngilizce kelimeye tıkla, tam donanımlı panel aç.
 */
 (function(global){
   "use strict";
-  if(global.DHWordPop && global.DHWordPop.__v4) return;
+  if(global.DHWordPop && global.DHWordPop.__v5) return;
 
   var DICT_PATHS = ["./data/dictionary.json","data/dictionary.json","./dictionary.json"];
   var SENT_PATHS = ["./data/sentences.json","data/sentences.json","./sentences.json"];
@@ -271,21 +271,25 @@
     }
     btn.textContent="⏳ Şifre & Görsel Hazırlanıyor…"; btn.disabled=true;
     
-    // Gelişmiş Eleme Mantıklı Sistem Promptu
-    var sys = "Sen kelimeleri Türkçe benzeşimle (mnemonic) ezberleten dahi bir uzmansın.\n\n"
-            + "ADIM 1: Kelimenin okunuşuna en yakın 3-4 farklı Türkçe benzeşim seçeneği üret ve zihninde kıyasla.\n"
-            + "ADIM 2: Bunlar arasından mantıklı, günlük Türkçeye uygun ve en doğal cümleyi/kelimeyi SEÇ.\n\n"
-            + "Çıktında SADECE şu adımları sun:\n"
-            + "1. Kelimenin Okunuşu\n"
-            + "2. Seçilen En Güçlü Türkçe Benzeşim/Şifre\n"
-            + "3. Komik & Absürt Görsel Hikaye (Sadece seçilen şifre üzerinden yarat)\n"
-            + "4. Kafiyeli Slogan/Hatırlama Cümlesi\n"
-            + "5. GÖRSEL_ARAMA: [Hikayedeki görseli anlatan 3-4 İngilizce anahtar kelime]\n\n"
-            + "ÖNEMLİ: 5. adımı 'GÖRSEL_ARAMA: [kelimeler]' şeklinde yazmayı unutma.";
+    // Gelişmiş Eleme Algoritmamız (Sistem Promptu)
+    var sys = "Sen İngilizce kelimeleri Türkçe ses benzeşimi (mnemonic) yöntemiyle ezberleten, yaratıcı ve komik bir İngilizce öğretmenisin.\n\n"
+            + "ÇALIŞMA SİSTEMİ:\n"
+            + "1. Kelimenin anlamını analiz et.\n"
+            + "2. Kelimenin okunuşunu Türkçe kulağa göre parçalara ayır.\n"
+            + "3. Zihninde en az 5-10 farklı Türkçe ses benzeşimi üret. Bu benzeşimler Türkçede gerçekten kullanılan doğal kelimeler/emir ifadeleri olmalı.\n"
+            + "4. Adayları doğallık, akılda kalıcılık ve hikaye kolaylığı açısından değerlendirip EN İYİ BENZEŞİMİ seç.\n"
+            + "5. Seçilen benzeşimle 2-3 cümlelik komik, absürt ama MANTIKLI bir hikaye yaz. Hikayede Türkçe anlam MUTLAKA kullanılmalı.\n\n"
+            + "SONUÇ FORMATI:\n"
+            + "İNGİLİZCE KELİME: " + word + "\n"
+            + "ANLAMI: " + (anlamlar?anlamlar.join(", "):"") + "\n"
+            + "EN İYİ BENZEŞİM: [seçilen Türkçe ifade]\n"
+            + "HİKÂYE: [2-3 cümlelik hikaye]\n"
+            + "HAFIZA BAĞLANTISI: [Türkçe anlam] → [Türkçe ses benzeşimi] → [İngilizce kelime]\n"
+            + "GÖRSEL_ARAMA: [Hikayedeki absürt sahneyi anlatan 3-4 İngilizce kelimelik görsel prompt]";
 
-    var usr = "Kelime: \"" + word + "\"\nAnlamı: " + anlamlar.join(", ");
+    var usr = "Şu kelime için bu sistemi uygula:\nKelime: \"" + word + "\"\nAnlamı: " + anlamlar.join(", ");
 
-    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.8,max_tokens:450})
+    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.8,max_tokens:500})
       .then(function(txt){
         var rawText = String(txt||"").trim();
         var searchTerms = word;
@@ -293,7 +297,7 @@
         var match = rawText.match(/GÖRSEL_ARAMA:\s*\[?(.*?)\]?$/i);
         if(match && match[1]){
           searchTerms = match[1].trim().replace(/[^a-zA-Z0-9\s]/g, "");
-          rawText = rawText.replace(/(?:5\.\s*)?GÖRSEL_ARAMA:.*$/i, "").trim();
+          rawText = rawText.replace(/(?:GÖRSEL_ARAMA:.*)$/i, "").trim();
         }
 
         renderMnemonicBox(word, rawText, searchTerms, anlamlar);
@@ -337,7 +341,7 @@
       this.style.display = "none";
     };
 
-    // 1. Metin Kutusuna Yazılan/Yapıştırılan Hikayeden Resim Üretme
+    // 1. Kutuya Yazılan/Yapıştırılan Metinden Resim Üret Butonu
     document.getElementById("dhWpGenCustomImg").onclick = function(){
       var userText = document.getElementById("dhWpCustomScenario").value.trim();
       if(!userText) return;
@@ -348,15 +352,31 @@
       });
     };
 
-    // 2. ✨ Gemini İle Hikaye Üret (Eleyerek En İyi Şifreyi Seçen Prompt'u Kopyalar ve Gemini Web'i Açar)
+    // 2. ✨ Gemini İle Hikaye Üret Butonu (Sistem Promptunu Panoya Kopyalar ve Gemini Web'i Açar)
     document.getElementById("dhWpGeminiGenStory").onclick = function(){
-      var promptText = "Kelime: \"" + word + "\"\n"
-                     + "Anlamı: " + (anlamlar ? anlamlar.join(", ") : "") + "\n\n"
-                     + "Sana verilen bu İngilizce kelimenin okunuşuna bakarak Olası Türkçe Ses Benzeşimlerini türet (Örn: initiate -> İn, işi et!).\n"
-                     + "Aralarından en doğal, Türkçe anlam taşıyan ve en güçlü olanını ⭐ işaretiyle seç.\n"
-                     + "Ardından seçtiğin bu benzeşim üzerine 2-3 cümlelik çok komik, absürt ve unutulmaz bir görsel hikaye yaz.";
+      var fullMasterPrompt = "Sen İngilizce kelimeleri Türkçe ses benzeşimi (mnemonic) yöntemiyle ezberleten, yaratıcı ve komik bir İngilizce öğretmenisin.\n\n"
+                           + "Görevin, verilen İngilizce kelimeyi doğrudan İngilizceden Türkçeye çevirmek değil; önce kelimenin TÜRKÇE ANLAMINDAN hareket ederek, o anlama uygun Türkçe ses benzeşimleri üretmektir.\n\n"
+                           + "ÇALIŞMA SİSTEMİ:\n"
+                           + "1. Önce İngilizce kelimenin anlamını analiz et.\n"
+                           + "2. İngilizce kelimenin telaffuzunu Türkçe kulağa göre parçalara ayır.\n"
+                           + "3. En az 5-10 farklı Türkçe ses benzeşimi üret. (Türkçede gerçekten kullanılan doğal kelimeler/emir cümleleri olmalı).\n"
+                           + "4. Adayların ses benzerliğini, Türkçedeki doğallığını ve akılda kalıcılığını değerlendir.\n"
+                           + "5. En güçlü 1-3 Türkçe ses benzeşimini seç.\n"
+                           + "6. Seçilen benzeşimlerden biriyle 2-3 cümlelik kısa, komik, absürt ama MANTIKLI bir hikâye yaz.\n"
+                           + "7. Hikâyede önce TÜRKÇE ANLAM mutlaka kullanılmalı.\n\n"
+                           + "SONUÇ FORMATI:\n\n"
+                           + "İNGİLİZCE KELİME:\n[kelime]\n\n"
+                           + "ANLAMI:\n[Türkçe anlam]\n\n"
+                           + "TELAFFUZ:\n[İngilizce telaffuz]\n\n"
+                           + "OLASI TÜRKÇE SES BENZEŞİMLERİ:\n1. ...\n2. ...\n3. ...\n4. ...\n5. ...\n\n"
+                           + "EN İYİ BENZEŞİM:\n[seçilen Türkçe ifade]\n\n"
+                           + "HİKÂYE:\n[2-3 cümlelik komik, absürt ama mantıklı hikâye]\n\n"
+                           + "HAFIZA BAĞLANTISI:\n[Türkçe anlam] → [Türkçe ses benzeşimi] → [İngilizce kelime]\n\n"
+                           + "ŞİMDİ ŞU KELİME İÇİN BU SİSTEMİ UYGULA:\n"
+                           + "Kelime: \"" + word + "\"\n"
+                           + "Anlamı: " + (anlamlar ? anlamlar.join(", ") : "");
 
-      copyToClipboard(promptText, "📋 Eleme kriterli prompt panoya kopyalandı!\n\nAçılan Gemini web sayfasına yapıştırın (Ctrl+V). Çıkan hikayeyi kopyalayıp kutuya koyun ve 'Resim Üret'e basın.");
+      copyToClipboard(fullMasterPrompt, "📋 Eleme sistemli Master Prompt panoya kopyalandı!\n\nAçılan Gemini web sayfasına yapıştırın (Ctrl+V). Üretilen yanıtı kopyalayıp buradaki kutuya koyun ve 'Resim Üret'e basın.");
       window.open("https://gemini.google.com/app", "_blank");
     };
   }
@@ -721,7 +741,7 @@
   }
 
   global.DHWordPop = {
-    __v4:true,
+    __v5:true,
     lookup:function(w){ loadDict().then(function(){ var e=findEntry(cleanWord(w)); if(e) open(e); else defineWithAI(cleanWord(w)); }); },
     enable:function(){ enabled=true; }, disable:function(){ enabled=false; }, close:close
   };
