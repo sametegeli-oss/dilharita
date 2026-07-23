@@ -1,4 +1,6 @@
-/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v2) */
+/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v2)
+   Dil Harita — Her sayfada İngilizce kelimeye tıkla, tam donanımlı panel aç.
+*/
 (function(global){
   "use strict";
   if(global.DHWordPop && global.DHWordPop.__v2) return;
@@ -113,30 +115,21 @@
     +".dh-wp-x{margin-left:auto;background:#13294d;border:1px solid #1e3a5f;color:#e8eef7;width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;flex:0 0 auto}"
     +".dh-wp-box{background:#0b1830;border:1px solid #1e3a5f;border-radius:14px;padding:12px 14px;margin-bottom:10px}"
     +".dh-wp-boxhead{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:#9fb3d9;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}"
-    +".dh-wp-tags{margin-left:auto;display:flex;gap:6px}"
-    +".dh-wp-tag{font-size:10px;font-weight:800;padding:3px 8px;border-radius:99px}"
-    +".dh-wp-tag.f{background:#065f46;color:#6ee7b7}"
-    +".dh-wp-tag.l{background:#1e3a8a;color:#93c5fd}"
     +".dh-wp-mean{color:#e8eef7;font-size:15px;padding:5px 0;line-height:1.4}"
     +".dh-wp-syl{font-size:16px;color:#e8eef7;font-weight:700;letter-spacing:1px}"
-    +".dh-wp-row{display:flex;gap:8px;margin-bottom:10px}"
-    +".dh-wp-row button{flex:1;border:0;border-radius:11px;padding:11px 6px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}"
+    +".dh-wp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}"
+    +".dh-wp-btn{border:0;border-radius:12px;padding:12px 8px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-align:center;line-height:1.2}"
     +".dh-wp-b1{background:#2563eb;color:#fff}"
-    +".dh-wp-b2{background:#13294d;color:#e8eef7;border:1px solid #1e3a5f}"
-    +".dh-wp-full{width:100%;border:0;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:7px}"
     +".dh-wp-video{background:#dc2626;color:#fff}"
     +".dh-wp-ai{background:linear-gradient(180deg,#10b981,#059669);color:#fff}"
     +".dh-wp-mnemonic{background:linear-gradient(180deg,#f59e0b,#d97706);color:#fff}"
-    +".dh-wp-rec{background:#dc2626;color:#fff}"
+    +".dh-wp-rec{background:#dc2626;color:#fff;width:100%;margin-bottom:10px}"
     +".dh-wp-sec-title{font-size:13px;font-weight:800;color:#9fb3d9;margin:6px 0 8px}"
     +".dh-wp-sent{background:#0b1830;border:1px solid #1e3a5f;border-radius:12px;padding:11px 12px;margin-bottom:8px;position:relative}"
     +".dh-wp-sent .en{color:#e8eef7;font-size:14px;line-height:1.4;padding-right:56px}"
     +".dh-wp-sent .tr{color:#9fb3d9;font-size:13px;margin-top:3px}"
-    +".dh-wp-sent .play{position:absolute;top:10px;right:10px;background:none;border:0;color:#38bdf8;font-size:16px;cursor:pointer}"
-    +".dh-wp-sent .gtr{position:absolute;top:10px;right:38px;background:none;border:0;font-size:15px;cursor:pointer}"
     +".dh-wp-ai-out{background:#0b1830;border:1px solid #10b98155;border-radius:12px;padding:12px;margin-bottom:10px;color:#d1fae5;font-size:14px;line-height:1.5;white-space:pre-wrap}"
     +".dh-wp-mnemonic-out{background:#0b1830;border:1px solid #f59e0b55;border-radius:12px;padding:12px;margin-bottom:10px;color:#fef3c7;font-size:14px;line-height:1.5;white-space:pre-wrap}"
-    +".dh-wp-mnemonic-img{width:100%;height:200px;object-fit:cover;border-radius:10px;margin-top:10px;border:1px solid #1e3a5f;display:block}"
     +".dh-wp-rec-out{font-size:13px;font-weight:700;margin:4px 0 10px;min-height:18px}"
     +".dh-wp-muted{color:#64748b;font-size:13px;padding:6px 0}";
     document.head.appendChild(st);
@@ -162,19 +155,17 @@
        + anlamlar.map(function(m,i){ return '<div class="dh-wp-mean">'+(i+1)+'. '+esc(m)+'</div>'; }).join("")
      +'</div>'
      +'<div class="dh-wp-box"><div class="dh-wp-boxhead">🔤 Heceler</div><div class="dh-wp-syl">'+esc(syllabify(w))+'</div></div>'
-     +'<div class="dh-wp-row">'
-       +'<button class="dh-wp-b1" id="dhWpListen">🔊 Dinle</button>'
-       +'<button class="dh-wp-b2" id="dhWpSlow">🐢 Yavaş</button>'
-       +'<button class="dh-wp-b2" id="dhWpFast">⚡ Hızlı</button>'
+     +'<div class="dh-wp-grid">'
+       +'<button class="dh-wp-btn dh-wp-b1" id="dhWpListen">🔊 Dinle</button>'
+       +'<button class="dh-wp-btn dh-wp-video" id="dhWpVideo">🎬 Videolarda Dinle</button>'
+       +'<button class="dh-wp-btn dh-wp-ai" id="dhWpAI">🎓 Açıklama (AI)</button>'
+       +'<button class="dh-wp-btn dh-wp-mnemonic" id="dhWpMnemonic">💡 Şifre Oluştur (AI)</button>'
      +'</div>'
-     +'<button class="dh-wp-full dh-wp-video" id="dhWpVideo">🎬 Gerçek videolarda dinle</button>'
-     +'<button class="dh-wp-full dh-wp-ai" id="dhWpAI">🎓 Kelime Açıklama (AI)</button>'
      +'<div id="dhWpAIOut"></div>'
-     +'<button class="dh-wp-full dh-wp-mnemonic" id="dhWpMnemonic">💡 Mnemonic Şifre Oluştur (AI)</button>'
      +'<div id="dhWpMnemonicOut"></div>'
      +'<div class="dh-wp-box"><div class="dh-wp-boxhead">🎙 Telaffuzunu dene</div>'
        +'<div class="dh-wp-rec-out" id="dhWpRecOut"></div>'
-       +'<button class="dh-wp-full dh-wp-rec" id="dhWpRec">🎙 Kaydı başlat</button>'
+       +'<button class="dh-wp-btn dh-wp-rec" id="dhWpRec">🎙 Kaydı başlat</button>'
      +'</div>'
      +'<div class="dh-wp-sec-title" id="dhWpSentTitle">Bu kelimenin geçtiği cümleler</div>'
      +'<div id="dhWpSents"><div class="dh-wp-muted">Cümleler yükleniyor…</div></div>'
@@ -183,8 +174,6 @@
     ov.addEventListener("click", function(e){ if(e.target===ov) close(); });
     document.getElementById("dhWpX").onclick=close;
     document.getElementById("dhWpListen").onclick=function(){ speak(w,0.9); };
-    document.getElementById("dhWpSlow").onclick=function(){ speak(w,0.55); };
-    document.getElementById("dhWpFast").onclick=function(){ speak(w,1.25); };
     document.getElementById("dhWpVideo").onclick=function(){ window.open("https://youglish.com/pronounce/"+encodeURIComponent(w)+"/english","_blank"); };
     document.getElementById("dhWpAI").onclick=function(){ aiExplain(w, anlamlar); };
     document.getElementById("dhWpMnemonic").onclick=function(){ aiMnemonic(w, anlamlar); };
@@ -195,24 +184,25 @@
   function aiExplain(word, anlamlar){
     var out=document.getElementById("dhWpAIOut"), btn=document.getElementById("dhWpAI");
     if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
-      out.innerHTML='<div class="dh-wp-ai-out">AI açıklaması için API anahtarı ekleyin.</div>';
+      out.innerHTML='<div class="dh-wp-ai-out">API anahtarı bulunamadı.</div>';
       return;
     }
-    btn.textContent="⏳ Açıklama hazırlanıyor…"; btn.disabled=true;
+    btn.textContent="⏳ Açıklanıyor…"; btn.disabled=true;
     var sys="Sen İngilizce öğretmenisin. Kelimeyi Türkçe açıkla: tanım, kullanım alanı, 1-2 örnek cümle.";
     var usr="Kelime: \""+word+"\"\nAnlamı: "+anlamlar.join(", ");
     DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.5,max_tokens:400})
       .then(function(txt){ out.innerHTML='<div class="dh-wp-ai-out">'+esc(String(txt||"").trim())+'</div>'; })
       .catch(function(){ out.innerHTML='<div class="dh-wp-ai-out">Açıklama alınamadı.</div>'; })
-      .then(function(){ btn.textContent="🎓 Kelime Açıklama (AI)"; btn.disabled=false; });
+      .then(function(){ btn.textContent="🎓 Açıklama (AI)"; btn.disabled=false; });
   }
+
   function aiMnemonic(word, anlamlar){
     var out=document.getElementById("dhWpMnemonicOut"), btn=document.getElementById("dhWpMnemonic");
     if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
       out.innerHTML='<div class="dh-wp-mnemonic-out">API anahtarı bulunamadı.</div>';
       return;
     }
-    btn.textContent="⏳ Şifre & Hikaye Görseli Hazırlanıyor…"; btn.disabled=true;
+    btn.textContent="⏳ Şifre & Görsel Hazırlanıyor…"; btn.disabled=true;
     
     var sys = "Sen kelimeleri Türkçe benzeşimle (mnemonic) ezberleten bir uzmansın.\n"
             + "Çıktında MUTLAKA şu adımları yaz:\n"
@@ -228,9 +218,8 @@
     DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.7,max_tokens:450})
       .then(function(txt){
         var rawText = String(txt||"").trim();
-        var searchTerms = word; // Garanti varsayılan
+        var searchTerms = word;
 
-        // 5. adımdaki arama terimini yakala
         var match = rawText.match(/GÖRSEL_ARAMA:\s*\[?(.*?)\]?$/i);
         if(match && match[1]){
           searchTerms = match[1].trim().replace(/[^a-zA-Z0-9\s]/g, "");
@@ -240,10 +229,8 @@
         var cleanTxt = esc(rawText);
         var cleanPrompt = encodeURIComponent(searchTerms.trim() || word);
 
-        // Görsel servis adresi (Pollinations AI)
         var imgUrl = "https://image.pollinations.ai/prompt/" + cleanPrompt + "%20digital%20art%20illustration?width=600&height=300&nologo=true";
 
-        // Yedek SVG Görsel (İnternet/CORS hatasında boş kutu kalmaması için)
         var fallbackSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' viewBox='0 0 600 300'><rect width='100%' height='100%' fill='%2313294d'/><text x='50%' y='45%' font-family='sans-serif' font-size='24' font-weight='bold' fill='%2338bdf8' text-anchor='middle'>💡 " + esc(word).toUpperCase() + "</text><text x='50%' y='62%' font-family='sans-serif' font-size='16' fill='%239fb3d9' text-anchor='middle'>" + esc(searchTerms) + "</text></svg>";
 
         var imgHtml = '<div style="position:relative;margin-top:10px;min-height:180px;background:#020617;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid #1e3a5f;">'
@@ -257,97 +244,7 @@
         out.innerHTML = '<div class="dh-wp-mnemonic-out">' + cleanTxt + imgHtml + '</div>';
       })
       .catch(function(){ out.innerHTML='<div class="dh-wp-mnemonic-out">Şifre üretilemedi.</div>'; })
-      .then(function(){ btn.textContent="💡 Mnemonic Şifre Oluştur (AI)"; btn.disabled=false; });
-  }
-function aiMnemonicsil2(word, anlamlar){
-    var out=document.getElementById("dhWpMnemonicOut"), btn=document.getElementById("dhWpMnemonic");
-    if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
-      out.innerHTML='<div class="dh-wp-mnemonic-out">API anahtarı bulunamadı.</div>';
-      return;
-    }
-    btn.textContent="⏳ Şifre & Hikaye Görseli Hazırlanıyor…"; btn.disabled=true;
-    
-    var sys = "Sen kelimeleri Türkçe benzeşimle (mnemonic) ezberleten bir uzmansın.\n"
-            + "Çıktında MUTLAKA şu 5 adımı takip et:\n"
-            + "1. Kelimenin Okunuşu\n"
-            + "2. Türkçe Benzeşim/Şifre Sözcükleri\n"
-            + "3. Kısa Görsel Hikaye\n"
-            + "4. Özet Hatırlama Cümlesi\n"
-            + "5. GÖRSEL_ARAMA: [Hikayedeki ana unsurları tanımlayan 2-3 İngilizce kelime (örn: guardian orange logo)]\n\n"
-            + "ÖNEMLİ: 5. madde tam olarak 'GÖRSEL_ARAMA: [ingilizce kelimeler]' formatında bitmelidir.";
-
-    var usr = "Kelime: \"" + word + "\"\nAnlamı: " + anlamlar.join(", ");
-
-    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.7,max_tokens:450})
-      .then(function(txt){
-        var rawText = String(txt||"").trim();
-        var searchTerms = word;
-
-        var match = rawText.match(/GÖRSEL_ARAMA:\s*\[?(.*?)\]?$/i);
-        if(match && match[1]){
-          searchTerms = match[1].trim().replace(/[^a-zA-Z0-9\s]/g, "");
-          rawText = rawText.replace(/5\.\s*GÖRSEL_ARAMA:.*$/i, "").trim();
-        }
-
-        var cleanTxt = esc(rawText);
-        var cleanPrompt = encodeURIComponent(searchTerms.trim() || word);
-
-        // 1. Alternatif: Garanti çalışan anlık AI görsel oluşturucu (Pollinations)
-        var primaryImgUrl = "https://image.pollinations.ai/prompt/" + cleanPrompt + "?width=600&height=300&nologo=true";
-        // 2. Alternatif: Gerçek stok resim arama servisi (LoremFlickr)
-        var fallbackImgUrl = "https://loremflickr.com/600/300/" + cleanPrompt.replace(/%20/g, ",");
-
-        var imgHtml = '<img class="dh-wp-mnemonic-img" src="' + primaryImgUrl + '" alt="' + esc(searchTerms) + '" onerror="this.onerror=null;this.src=\'' + fallbackImgUrl + '\';">';
-
-        out.innerHTML = '<div class="dh-wp-mnemonic-out">' + cleanTxt + imgHtml + '</div>';
-      })
-      .catch(function(){ out.innerHTML='<div class="dh-wp-mnemonic-out">Şifre üretilemedi.</div>'; })
-      .then(function(){ btn.textContent="💡 Mnemonic Şifre Oluştur (AI)"; btn.disabled=false; });
-  }
-  function aiMnemonicsil(word, anlamlar){
-    var out=document.getElementById("dhWpMnemonicOut"), btn=document.getElementById("dhWpMnemonic");
-    if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
-      out.innerHTML='<div class="dh-wp-mnemonic-out">API anahtarı bulunamadı.</div>';
-      return;
-    }
-    btn.textContent="⏳ Şifre & Hikaye Görseli Hazırlanıyor…"; btn.disabled=true;
-    
-    var sys = "Sen kelimeleri Türkçe benzeşimle (mnemonic) ezberleten bir uzmansın.\n"
-            + "Çıktında MUTLAKA şu 5 adımı takip et:\n"
-            + "1. Kelimenin Okunuşu\n"
-            + "2. Türkçe Benzeşim/Şifre Sözcükleri\n"
-            + "3. Kısa Görsel Hikaye\n"
-            + "4. Özet Hatırlama Cümlesi\n"
-            + "5. GÖRSEL_ARAMA: [Hikayedeki ana unsurları tanımlayan 2-3 İngilizce kelime (örn: blind musician orange)]\n\n"
-            + "ÖNEMLİ: 5. madde tam olarak 'GÖRSEL_ARAMA: [ingilizce kelimeler]' formatında bitmelidir.";
-
-    var usr = "Kelime: \"" + word + "\"\nAnlamı: " + anlamlar.join(", ");
-
-    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.7,max_tokens:450})
-      .then(function(txt){
-        var rawText = String(txt||"").trim();
-        var searchTerms = word; // varsayılan
-
-        // AI'nın ürettiği "GÖRSEL_ARAMA:" etiketini tespit et ve resmi buna göre çek
-        var match = rawText.match(/GÖRSEL_ARAMA:\s*\[?(.*?)\]?$/i);
-        if(match && match[1]){
-          searchTerms = match[1].trim().replace(/[^a-zA-Z0-9\s]/g, "");
-          rawText = rawText.replace(/5\.\s*GÖRSEL_ARAMA:.*$/i, "").trim(); // Etiketi metinden temizle
-        }
-
-        var cleanTxt = esc(rawText);
-        var encodedTerms = encodeURIComponent(searchTerms);
-
-        // Hikayedeki anahtar sözcüklere doğrudan uyan Unsplash görseli
-        var imgUrl = "https://source.unsplash.com/600x300/?" + encodedTerms;
-        var fallbackUrl = "https://loremflickr.com/600/300/" + encodedTerms;
-
-        var imgHtml = '<img class="dh-wp-mnemonic-img" src="' + imgUrl + '" alt="' + esc(searchTerms) + '" onerror="this.onerror=null;this.src=\'' + fallbackUrl + '\';">';
-
-        out.innerHTML = '<div class="dh-wp-mnemonic-out">' + cleanTxt + imgHtml + '</div>';
-      })
-      .catch(function(){ out.innerHTML='<div class="dh-wp-mnemonic-out">Şifre üretilemedi.</div>'; })
-      .then(function(){ btn.textContent="💡 Mnemonic Şifre Oluştur (AI)"; btn.disabled=false; });
+      .then(function(){ btn.textContent="💡 Şifre Oluştur (AI)"; btn.disabled=false; });
   }
 
   function tryPronounce(word){
