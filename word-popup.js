@@ -1,4 +1,4 @@
-/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v5.0 - Advanced Mnemonic Engineering)
+/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v5.1 - Fixed Image Prompt & Alt Tag Sync)
    Dil Harita — Her sayfada İngilizce kelimeye tıkla, tam donanımlı panel aç.
 */
 (function(global){
@@ -271,7 +271,6 @@
     }
     btn.textContent="⏳ Şifre & Görsel Hazırlanıyor…"; btn.disabled=true;
     
-    // Gelişmiş Eleme Algoritmamız (Sistem Promptu)
     var sys = "Sen İngilizce kelimeleri Türkçe ses benzeşimi (mnemonic) yöntemiyle ezberleten, yaratıcı ve komik bir İngilizce öğretmenisin.\n\n"
             + "ÇALIŞMA SİSTEMİ:\n"
             + "1. Kelimenin anlamını analiz et.\n"
@@ -341,7 +340,7 @@
       this.style.display = "none";
     };
 
-    // 1. Kutuya Yazılan/Yapıştırılan Metinden Resim Üret Butonu
+    // 1. Kutuya Yazılan/Yapıştırılan Hikayeden Resim Üret Butonu (DÜZELTİLDİ)
     document.getElementById("dhWpGenCustomImg").onclick = function(){
       var userText = document.getElementById("dhWpCustomScenario").value.trim();
       if(!userText) return;
@@ -352,7 +351,7 @@
       });
     };
 
-    // 2. ✨ Gemini İle Hikaye Üret Butonu (Sistem Promptunu Panoya Kopyalar ve Gemini Web'i Açar)
+    // 2. ✨ Gemini İle Hikaye Üret
     document.getElementById("dhWpGeminiGenStory").onclick = function(){
       var fullMasterPrompt = "Sen İngilizce kelimeleri Türkçe ses benzeşimi (mnemonic) yöntemiyle ezberleten, yaratıcı ve komik bir İngilizce öğretmenisin.\n\n"
                            + "Görevin, verilen İngilizce kelimeyi doğrudan İngilizceden Türkçeye çevirmek değil; önce kelimenin TÜRKÇE ANLAMINDAN hareket ederek, o anlama uygun Türkçe ses benzeşimleri üretmektir.\n\n"
@@ -381,31 +380,42 @@
     };
   }
 
+  // Hikayeyi İngilizce Prompt'a Çevirip Resmi ve Alt Etiketini Güncelleyen Fonksiyon (DÜZELTİLDİ)
   function generateImageFromText(text, fallbackWord, callback){
     if(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
-      var sys = "Sen bir AI görsel prompt üreticisisin. Verilen Türkçe hikayeyi görsel çizen AI için 3-4 kelimelik İngilizce anahtar terime çevir. SADECE İngilizce kelimeleri ver.";
+      var sys = "Sen bir AI görsel prompt üreticisisin. Verilen Türkçe hikayeyi görsel çizen AI için 3-4 kelimelik İngilizce anahtar terime çevir (Örn: parachute falling into office funny). SADECE İngilizce kelimeleri ver, başka hiç metin ekleme.";
       DHProviders.chat([{role:"system",content:sys},{role:"user",content:text}],{temperature:0.3,max_tokens:30})
         .then(function(translatedTerms){
-          var cleanPrompt = encodeURIComponent(String(translatedTerms||"").trim().replace(/[^a-zA-Z0-9\s]/g, "") || fallbackWord);
-          updateMnemonicImage(cleanPrompt);
+          var cleanTerms = String(translatedTerms||"").trim().replace(/[^a-zA-Z0-9\s]/g, "");
+          var cleanPrompt = encodeURIComponent(cleanTerms || fallbackWord);
+          updateMnemonicImage(cleanPrompt, cleanTerms || fallbackWord);
         })
         .catch(function(){
-          var fallbackPrompt = encodeURIComponent(text.replace(/[^a-zA-Z0-9\s]/g, "") || fallbackWord);
-          updateMnemonicImage(fallbackPrompt);
+          updateMnemonicImage(encodeURIComponent(fallbackWord), fallbackWord);
         })
         .then(function(){ if(callback) callback(); });
     } else {
-      var fallbackPrompt = encodeURIComponent(text.replace(/[^a-zA-Z0-9\s]/g, "") || fallbackWord);
-      updateMnemonicImage(fallbackPrompt);
+      // API Key yoksa hikayedeki Türkçe karakterleri temizle veya kelimeyi kullan
+      var cleanTurkishText = text.replace(/[ıİğĞüÜşŞöÖçÇ]/g, function(c){
+        return { 'ı':'i','İ':'I','ğ':'g','Ğ':'G','ü':'u','Ü':'U','ş':'s','Ş':'S','ö':'o','Ö':'O','ç':'c','Ç':'C' }[c] || c;
+      }).replace(/[^a-zA-Z0-9\s]/g, "");
+      
+      var finalPrompt = encodeURIComponent(cleanTurkishText.trim() || fallbackWord);
+      updateMnemonicImage(finalPrompt, cleanTurkishText || fallbackWord);
       if(callback) callback();
     }
   }
 
-  function updateMnemonicImage(promptText){
+  // Resmi ve 'alt' Etiketini Eşzamanlı Güncelleyen Fonksiyon
+  function updateMnemonicImage(promptText, displayAltText){
     var imgEl = document.getElementById("dhWpMnemonicImg");
     var loaderEl = document.getElementById("dhWpImgLoader");
     if(!imgEl) return;
     if(loaderEl) loaderEl.style.display = "block";
+    
+    // Alt açıklama etiketini de hikayeden çıkan terimle güncelle
+    imgEl.alt = displayAltText || "Senaryo Görseli";
+    
     imgEl.src = "https://image.pollinations.ai/prompt/" + promptText + "%20funny%20digital%20art%20illustration?width=600&height=300&nologo=true&seed=" + Math.floor(Math.random()*1000);
   }
 
