@@ -1,9 +1,9 @@
-/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v3.1)
+/* word-popup.js — BİLİMSEL KELİME ÖĞRENME POPUP (v4 - Active Recall & Absurd Mnemonics)
    Dil Harita — Her sayfada İngilizce kelimeye tıkla, tam donanımlı panel aç.
 */
 (function(global){
   "use strict";
-  if(global.DHWordPop && global.DHWordPop.__v3) return;
+  if(global.DHWordPop && global.DHWordPop.__v4) return;
 
   var DICT_PATHS = ["./data/dictionary.json","data/dictionary.json","./dictionary.json"];
   var SENT_PATHS = ["./data/sentences.json","data/sentences.json","./sentences.json"];
@@ -146,7 +146,9 @@
     +".dh-wp-sent .play{position:absolute;top:10px;right:10px;background:none;border:0;color:#38bdf8;font-size:16px;cursor:pointer}"
     +".dh-wp-sent .gtr{position:absolute;top:10px;right:38px;background:none;border:0;font-size:15px;cursor:pointer}"
     +".dh-wp-ai-out{background:#0b1830;border:1px solid #10b98155;border-radius:12px;padding:12px;margin-bottom:10px;color:#d1fae5;font-size:14px;line-height:1.5;white-space:pre-wrap}"
-    +".dh-wp-mnemonic-out{background:#0b1830;border:1px solid #f59e0b55;border-radius:12px;padding:12px;margin-bottom:10px;color:#fef3c7;font-size:14px;line-height:1.5;white-space:pre-wrap}"
+    +".dh-wp-mnemonic-out{background:#0b1830;border:1px solid #f59e0b55;border-radius:12px;padding:12px;margin-bottom:10px;color:#fef3c7;font-size:14px;line-height:1.5;white-space:pre-wrap;position:relative}"
+    +".dh-wp-blur{filter:blur(6px);user-select:none;pointer-events:none;transition:filter .3s}"
+    +".dh-wp-blur-btn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;background:#f59e0b;color:#03131c;border:0;padding:10px 18px;border-radius:20px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.5)}"
     +".dh-wp-custom-box{margin-top:10px;border-top:1px dashed #1e3a5f;padding-top:10px}"
     +".dh-wp-textarea{width:100%;box-sizing:border-box;background:#020617;border:1px solid #1e3a5f;border-radius:8px;color:#e8eef7;padding:8px 10px;font-size:13px;resize:vertical;min-height:50px;outline:none;margin-bottom:6px}"
     +".dh-wp-gen-btn{width:100%;background:#38bdf8;color:#03131c;border:0;border-radius:8px;padding:8px;font-size:12px;font-weight:800;cursor:pointer}"
@@ -256,18 +258,18 @@
     }
     btn.textContent="⏳ Şifre & Görsel Hazırlanıyor…"; btn.disabled=true;
     
-    var sys = "Sen kelimeleri Türkçe benzeşimle (mnemonic) ezberleten bir uzmansın.\n"
+    var sys = "Sen kelimeleri Türkçe benzeşimle (mnemonic) ezberleten komik ve absürt bir uzmansın.\n"
             + "Çıktında MUTLAKA şu adımları yaz:\n"
             + "1. Kelimenin Okunuşu\n"
             + "2. Türkçe Benzeşim/Şifre Sözcükleri\n"
-            + "3. Kısa Görsel Hikaye\n"
-            + "4. Özet Hatırlama Cümlesi\n"
-            + "5. GÖRSEL_ARAMA: [Hikayedeki görseli anlatan 2-3 İngilizce anahtar kelime]\n\n"
+            + "3. Absürt & Komik Görsel Hikaye (Unutulmaz, komik veya sıra dışı bir sahne yarat)\n"
+            + "4. Kafiyeli Slogan/Hatırlama Cümlesi\n"
+            + "5. GÖRSEL_ARAMA: [Hikayedeki absürt görseli anlatan 2-3 İngilizce anahtar kelime]\n\n"
             + "ÖNEMLİ: 5. adımı 'GÖRSEL_ARAMA: [kelimeler]' şeklinde yazmayı asla unutma.";
 
     var usr = "Kelime: \"" + word + "\"\nAnlamı: " + anlamlar.join(", ");
 
-    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.7,max_tokens:450})
+    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.8,max_tokens:450})
       .then(function(txt){
         var rawText = String(txt||"").trim();
         var searchTerms = word;
@@ -284,13 +286,12 @@
       .then(function(){ btn.textContent="💡 Şifre Oluştur (AI)"; btn.disabled=false; });
   }
 
-  // Mnemonic Kutusu ve Kullanıcı Senaryosu için Görsel Oluşturma Fonksiyonu
   function renderMnemonicBox(word, text, searchTerms){
     var out = document.getElementById("dhWpMnemonicOut");
     var cleanTxt = esc(text);
     var cleanPrompt = encodeURIComponent(searchTerms.trim() || word);
 
-    var imgUrl = "https://image.pollinations.ai/prompt/" + cleanPrompt + "%20digital%20art%20illustration?width=600&height=300&nologo=true";
+    var imgUrl = "https://image.pollinations.ai/prompt/" + cleanPrompt + "%20funny%20digital%20art%20illustration?width=600&height=300&nologo=true";
     var fallbackSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' viewBox='0 0 600 300'><rect width='100%' height='100%' fill='%2313294d'/><text x='50%' y='45%' font-family='sans-serif' font-size='24' font-weight='bold' fill='%2338bdf8' text-anchor='middle'>💡 " + esc(word).toUpperCase() + "</text><text x='50%' y='62%' font-family='sans-serif' font-size='16' fill='%239fb3d9' text-anchor='middle'>" + esc(searchTerms) + "</text></svg>";
 
     var imgContainerHtml = '<div id="dhWpImgWrapper" style="position:relative;margin-top:10px;min-height:180px;background:#020617;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid #1e3a5f;">'
@@ -303,20 +304,27 @@
 
     var customBoxHtml = '<div class="dh-wp-custom-box">'
                       + '<div style="font-size:12px;font-weight:800;color:#9fb3d9;margin-bottom:4px;">✍️ Kendi Hatırlama Senaryonu Yaz:</div>'
-                      + '<textarea class="dh-wp-textarea" id="dhWpCustomScenario" placeholder="Örn: Koruyucu giysili adam şirketin kapısında duruyor..."></textarea>'
+                      + '<textarea class="dh-wp-textarea" id="dhWpCustomScenario" placeholder="Örn: Koruyucu giysili adam şirket kapısında duruyor..."></textarea>'
                       + '<button class="dh-wp-gen-btn" id="dhWpGenCustomImg">🎨 Bu Senaryo İçin Resim Üret</button>'
                       + '</div>';
 
-    out.innerHTML = '<div class="dh-wp-mnemonic-out">' + cleanTxt + imgContainerHtml + customBoxHtml + '</div>';
+    // Active Recall: İçeriği gizli/blur getirme ve 'Şifreyi Göster' butonu
+    out.innerHTML = '<div class="dh-wp-mnemonic-out" style="position:relative;">'
+                  + '<button class="dh-wp-blur-btn" id="dhWpRevealBtn">👁️ Şifreyi & Hikayeyi Göster</button>'
+                  + '<div class="dh-wp-blur" id="dhWpBlurContent">' + cleanTxt + imgContainerHtml + customBoxHtml + '</div>'
+                  + '</div>';
 
-    // Kullanıcının yazdığı senaryoya göre dinamik resim üretme olayı
+    document.getElementById("dhWpRevealBtn").onclick = function(){
+      document.getElementById("dhWpBlurContent").classList.remove("dh-wp-blur");
+      this.style.display = "none";
+    };
+
     document.getElementById("dhWpGenCustomImg").onclick = function(){
       var userText = document.getElementById("dhWpCustomScenario").value.trim();
       if(!userText) return;
       var btn = this;
       btn.textContent = "⏳ Görsel Çiziliyor…"; btn.disabled = true;
 
-      // Kullanıcının Türkçe senaryosunu İngilizce görsel promptuna çevirme
       if(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
         var sys = "Kullanıcının yazdığı Türkçe hikaye veya senaryoyu resim çizen bir AI için 3-5 kelimelik İngilizce görsel arama terimine çevir. Sadece İngilizce kelimeleri ver, başka hiçbir metin ekleme.";
         DHProviders.chat([{role:"system",content:sys},{role:"user",content:userText}],{temperature:0.3,max_tokens:40})
@@ -342,7 +350,7 @@
     var loaderEl = document.getElementById("dhWpImgLoader");
     if(!imgEl) return;
     if(loaderEl) loaderEl.style.display = "block";
-    imgEl.src = "https://image.pollinations.ai/prompt/" + promptText + "%20digital%20art%20illustration?width=600&height=300&nologo=true&seed=" + Math.floor(Math.random()*1000);
+    imgEl.src = "https://image.pollinations.ai/prompt/" + promptText + "%20funny%20digital%20art%20illustration?width=600&height=300&nologo=true&seed=" + Math.floor(Math.random()*1000);
   }
 
   function fillSentences(word){
@@ -677,7 +685,7 @@
   }
 
   global.DHWordPop = {
-    __v3:true,
+    __v4:true,
     lookup:function(w){ loadDict().then(function(){ var e=findEntry(cleanWord(w)); if(e) open(e); else defineWithAI(cleanWord(w)); }); },
     enable:function(){ enabled=true; }, disable:function(){ enabled=false; }, close:close
   };
