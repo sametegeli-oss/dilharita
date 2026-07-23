@@ -103,6 +103,9 @@ body{
 .quiz-verdict.bad{color:var(--bad)}
 .row2{display:flex;gap:8px}.row2 .btn{flex:1}
 .note{font-size:13px;min-height:16px;margin:4px 0 8px}.note.bad{color:var(--bad)}.note.ok{color:var(--ok)}
+
+/* 📘 Azar Çıktı Alanı Stili */
+.azar-result-area{margin-top:16px;background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:16px}
 </style>
 </head>
 <body>
@@ -529,7 +532,9 @@ function renderExplanation(reply){
     <button class="regen" id="regenBtn">↻ Yeniden açıkla</button>
     <button class="regen" id="dhGeminiAskBtn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0">💎 Gemini'ye sor</button>
     <!-- 📘 BETTY AZAR KİTAP DÜĞMESİ -->
-    <button class="regen" id="dhAzarAskBtn" style="background:linear-gradient(135deg,#4f46e5,#3b82f6);color:#fff;border:0">📘 Bu Cümlenin Konusunu Azar Kitabından Çalış</button>`);
+    <button class="regen" id="dhAzarAskBtn" style="background:linear-gradient(135deg,#4f46e5,#3b82f6);color:#fff;border:0">📘 Bu Cümlenin Konusunu Azar Kitabından Çalış</button>
+    <!-- 📘 AZAR DERS SONUÇ PANENLİ (Cevap Tam Buraya Yazdırılacak) -->
+    <div id="azar-result-container"></div>`);
 
   const fu = document.getElementById("fuInput");
   fu.onkeydown = e => { if (e.key==="Enter") askFollowup(fu.value); };
@@ -547,14 +552,31 @@ function renderExplanation(reply){
   if(quiz) bindQuiz(quiz);
 }
 
+// 📘 AZAR ÇAĞIRMA FONKSİYONU (Düzeltilmiş ve Garantili)
 function runAzarForTeacherSentence() {
-  if (State.en && window.DHAzarEngine) {
-    window.DHAzarEngine.startRemedialLesson(State.en);
-  } else if (!window.DHAzarEngine) {
-    alert("Azar motoru yüklenemedi. 'azar-remedial.js' dosyasını kontrol edin.");
-  } else {
+  if (!State.en) {
     alert("İncelenecek aktif bir cümle bulunamadı.");
+    return;
   }
+  if (!window.DHAzarEngine) {
+    alert("Azar motoru yüklenemedi. 'azar-remedial.js' dosyasını kontrol edin.");
+    return;
+  }
+
+  // Dinamik olarak cevabı butonun altındaki container'a yazdırır
+  var container = document.getElementById("azar-result-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "azar-result-container";
+    var azBtn = document.getElementById("dhAzarAskBtn");
+    if (azBtn && azBtn.parentNode) {
+      azBtn.parentNode.appendChild(container);
+    } else {
+      document.getElementById("out").appendChild(container);
+    }
+  }
+
+  window.DHAzarEngine.startRemedialLesson(State.en, "azar-result-container");
 }
 window.runAzarForTeacherSentence = runAzarForTeacherSentence;
 
