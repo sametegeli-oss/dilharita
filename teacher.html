@@ -563,6 +563,171 @@ function runAzarForTeacherSentence() {
     return;
   }
 
+  var container = document.getElementById("azar-result-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "azar-result-container";
+    var azBtn = document.getElementById("dhAzarAskBtn");
+    if (azBtn && azBtn.parentNode) {
+      azBtn.parentNode.appendChild(container);
+    } else {
+      document.getElementById("out").appendChild(container);
+    }
+  }
+
+  window.DHAzarEngine.startRemedialLesson(State.en, "azar-result-container");
+}
+window.runAzarForTeacherSentence = runAzarForTeacherSentence;
+
+function bindQuiz(quiz){
+  const box=document.getElementById("quizOpts");
+  const expEl=document.getElementById("quizExp");
+  if(!box) return;
+  box.querySelectorAll(".quiz-opt").forEach(btn=>{
+    btn.onclick=()=>{
+      const picked=btn.getAttribute("data-l");
+      const ok=(picked===quiz.answer);
+      const correctOpt=quiz.options.find(o=>o.letter===quiz.answer);
+      const pickedOpt=quiz.options.find(o=>o.letter===picked);
+
+      box.querySelectorAll(".quiz-opt").forEach(b=>{
+        b.disabled=true;
+        const L=b.getAttribute("data-l");
+        if(L===quiz.answer) b.classList.add("correct");
+        else if(L===picked) b.classList.add("wrong");
+      });
+
+      if(expEl){
+        expEl.innerHTML = `<div class="quiz-verdict ${ok?"ok":"bad"}">`
+          + (ok ? "✅ Doğru!" : "❌ Yanlış — doğrusu "+quiz.answer+") "+esc(correctOpt?correctOpt.text:""))
+          + `</div>` + (quiz.explain ? renderRich(quiz.explain) : "");
+        expEl.classList.add("show");
+      }
+
+      try{
+        if(window.dhCoachEvaluate) window.dhCoachEvaluate({
+          ok: ok,
+          en: State.en || (correctOpt?correctOpt.text:""),
+          answer: pickedOpt?pickedOpt.text:picked,
+          sentenceId: State.en ? ("teacher:"+State.en.slice(0,60)) : "",
+          trackKind: "lesson",
+          module: "teacher",
+          topic: "dilbilgisi"
+        });
+      }catch(e){}
+    };
+  });
+}
+
+async function askFollowup(q){
+  q = (q||"").trim(); if (!q) return;
+  const out = document.getElementById("out");
+  const qa = document.createElement("div");
+  qa.innerHTML = `<div class="qa-q">❓ ${esc(q)}</div><div class="loading"><div class="spinner"></div> Yanıtlanıyor…</div>`;
+  out.appendChild(qa);
+  State.history.push({ role:"user", content:q });
+  try{
+    const reply = await groqChat(State.history);
+    State.history.push({ role:"assistant", content:reply });
+    qa.innerHTML = `<div class="qa-q">❓ ${esc(q)}</div><div class="explain qaExplain">${renderRich(reply)}</div><div class="explain-actions"><button class="explain-play qaListen">🔊 Oku</button></div>`;
+    const btn = qa.querySelector(".qaListen");
+    if(btn) btn.onclick = () => speakFromScreen(qa.querySelector(".qaExplain"));
+  }catch(e){
+    qa.querySelector(".loading").outerHTML = `<div class="note bad">Yanıt alınamadı.</div>`;
+    handleError(e, true);
+  }
+}
+
+function handleError(e, silent){
+  const code = e && e.code;
+  if (code==="no-key" || code==="bad-key"){ openKeySheet(code==="bad-key"); if(!silent) setOut(""); return; }
+  let msg="Bir sorun oluştu, tekrar dene.";
+  if (code==="rate"){
+    var t = e && e.tried ? e.tried : 1;
+    var w = e && e.waitMs ? Math.ceil(e.waitMs/1000) : 0;
+    if (t > 1) msg = t + " API anahtarının hepsi şu an limitte" + (w?(" (~"+w+" sn sonra açılır)"):"") + ". Farklı Groq hesaplarından anahtar eklersen kesinti azalır.";
+    else msg = "API limiti doldu (tek anahtar). Birkaç dakika bekle veya '🔑 Anahtarlar'dan ek anahtar gir.";
+  }
+  else if (code==="network") msg="İnternet bağlantısı yok gibi görünüyor.";
+  if (!silent) setOut(`<div class="state"><h2>Olmadı</h2><p>${msg}</p><button class="btn btn-primary" onclick="location.reload()">Tekrar dene</button></div>`);
+}
+
+parseParams();
+render();
+
+})();
+</script>
+<script src="./ai-teacher-prompt-tts.js?v=2"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=2"></script>
+<script src="./avatar-blink-sync.js?v=2"></script>
+<script src="./study-tracker.js?v=2"></script>
+<script src="./cloud-sync.js?v=2"></script>
+<script src="./word-popup.js?v=1"></script>
+</body>
+</html>
+  }catch(e){ handleError(e); }
+}
+
+function renderExplanation(reply){
+  State.explanation = reply || "";
+  const quiz = parseQuiz(reply);
+  const mainText = quiz ? quiz.before : reply;
+
+  const quizHTML = quiz ? `
+    <div class="quiz" id="quizBox">
+      <div class="quiz-h">📝 MİNİ TEST</div>
+      <div class="quiz-q">${renderRich(quiz.question)}</div>
+      <div class="quiz-opts" id="quizOpts">
+        ${quiz.options.map(o=>`<button class="quiz-opt" data-l="${o.letter}"><span class="ltr">${o.letter}</span><span class="otx">${renderRich(o.text)}</span></button>`).join("")}
+      </div>
+      <div class="quiz-exp" id="quizExp"></div>
+    </div>` : "";
+
+  setOut(`
+    <div class="explain">${renderRich(mainText)}</div>
+    ${quizHTML}
+    <div class="explain-actions">
+      <button class="explain-play" id="explainListenBtn">🔊 Oku</button>
+      <button class="explain-play" id="sentenceListenBtn">🔊 Cümleyi dinle</button>
+    </div>
+    <div class="followup">
+      <input id="fuInput" type="text" placeholder="Bir sorun mu var? Öğretmene sor…" />
+      <button id="fuSend">Sor</button>
+    </div>
+    <button class="regen" id="regenBtn">↻ Yeniden açıkla</button>
+    <button class="regen" id="dhGeminiAskBtn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0">💎 Gemini'ye sor</button>
+    <!-- 📘 BETTY AZAR KİTAP DÜĞMESİ -->
+    <button class="regen" id="dhAzarAskBtn" style="background:linear-gradient(135deg,#4f46e5,#3b82f6);color:#fff;border:0">📘 Bu Cümlenin Konusunu Azar Kitabından Çalış</button>
+    <!-- 📘 AZAR DERS SONUÇ PANENLİ (Cevap Tam Buraya Yazdırılacak) -->
+    <div id="azar-result-container"></div>`);
+
+  const fu = document.getElementById("fuInput");
+  fu.onkeydown = e => { if (e.key==="Enter") askFollowup(fu.value); };
+  document.getElementById("fuSend").onclick = () => askFollowup(fu.value);
+  document.getElementById("regenBtn").onclick = () => explain();
+  
+  var gAsk=document.getElementById("dhGeminiAskBtn");
+  if(gAsk){ if(window.DHGemini){ gAsk.onclick=function(){ askTeacherViaGemini(); }; } else { gAsk.style.display="none"; } }
+
+  var azAsk=document.getElementById("dhAzarAskBtn");
+  if(azAsk){ azAsk.onclick=function(){ runAzarForTeacherSentence(); }; }
+
+  document.getElementById("explainListenBtn").onclick = () => speakFromScreen(document.querySelector(".explain"));
+  document.getElementById("sentenceListenBtn").onclick = () => speakEnglish(State.en);
+  if(quiz) bindQuiz(quiz);
+}
+
+// 📘 AZAR ÇAĞIRMA FONKSİYONU (Düzeltilmiş ve Garantili)
+function runAzarForTeacherSentence() {
+  if (!State.en) {
+    alert("İncelenecek aktif bir cümle bulunamadı.");
+    return;
+  }
+  if (!window.DHAzarEngine) {
+    alert("Azar motoru yüklenemedi. 'azar-remedial.js' dosyasını kontrol edin.");
+    return;
+  }
+
   // Dinamik olarak cevabı butonun altındaki container'a yazdırır
   var container = document.getElementById("azar-result-container");
   if (!container) {
