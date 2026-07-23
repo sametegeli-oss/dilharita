@@ -1,14 +1,9 @@
-/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v2)
+/* word-popup.js — BİLİMSEL KELİME ÖĞRENME POPUP (v3 - Spaced Repetition & Active Recall)
    Dil Harita — Her sayfada İngilizce kelimeye tıkla, tam donanımlı panel aç.
-
-   Özellikler: anlamlar + okunuş + seviye/frekans, heceler, Dinle/Videolar/AI Açıklama/AI Şifre,
-   Telaffuzunu dene, Ses Dalgası Analizi (Canvas), geçtiği cümleler (Dinle & Translate).
-   Sözlük: data/dictionary.json  |  Cümleler: data/sentences.json
-   API: DHWordPop.lookup("running") / enable() / disable()
 */
 (function(global){
   "use strict";
-  if(global.DHWordPop && global.DHWordPop.__v2) return;
+  if(global.DHWordPop && global.DHWordPop.__v3) return;
 
   var DICT_PATHS = ["./data/dictionary.json","data/dictionary.json","./dictionary.json"];
   var SENT_PATHS = ["./data/sentences.json","data/sentences.json","./sentences.json"];
@@ -79,19 +74,35 @@
     return merged.join(" · ")||w;
   }
 
+  // 📌 Spaced Repetition / LocalStorage Kayıt Fonksiyonu
+  function toggleFav(word){
+    try{
+      var favs = JSON.parse(localStorage.getItem("dh_fav_words") || "{}");
+      var btn = document.getElementById("dhWpFavBtn");
+      if(favs[word]){
+        delete favs[word];
+        if(btn) btn.textContent = "☆";
+      } else {
+        favs[word] = { date: Date.now(), level: 1 };
+        if(btn) btn.textContent = "⭐";
+      }
+      localStorage.setItem("dh_fav_words", JSON.stringify(favs));
+    }catch(e){}
+  }
+
+  function isFav(word){
+    try{
+      var favs = JSON.parse(localStorage.getItem("dh_fav_words") || "{}");
+      return !!favs[word];
+    }catch(e){ return false; }
+  }
+
   function openGoogleTranslate(text){
     text=String(text||"").trim(); if(!text) return;
     function fallbackCopy(t){
       try{ var ta=document.createElement("textarea"); ta.value=t; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }catch(e){}
     }
     try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).catch(function(){ fallbackCopy(text); }); } else { fallbackCopy(text); } }catch(e){ fallbackCopy(text); }
-    try{
-      var n=document.createElement("div");
-      n.textContent="📋 Cümle kopyalandı — Translate'te yapıştır";
-      n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #2563eb;padding:12px 18px;border-radius:12px;font:700 13px system-ui;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:90vw;text-align:center";
-      document.body.appendChild(n);
-      setTimeout(function(){ n.style.transition="opacity .4s"; n.style.opacity="0"; setTimeout(function(){ n.remove(); },400); },3000);
-    }catch(e){}
     window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(text), "_blank");
   }
 
@@ -117,13 +128,10 @@
     +".dh-wp-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}"
     +".dh-wp-word{font-size:26px;font-weight:900;color:#818cf8}"
     +".dh-wp-read{font-size:15px;color:#fbbf24;font-weight:700;font-style:italic}"
+    +".dh-wp-fav{background:none;border:0;color:#f59e0b;font-size:22px;cursor:pointer;padding:0 5px}"
     +".dh-wp-x{margin-left:auto;background:#13294d;border:1px solid #1e3a5f;color:#e8eef7;width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;flex:0 0 auto}"
     +".dh-wp-box{background:#0b1830;border:1px solid #1e3a5f;border-radius:14px;padding:12px 14px;margin-bottom:10px}"
     +".dh-wp-boxhead{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:#9fb3d9;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}"
-    +".dh-wp-tags{margin-left:auto;display:flex;gap:6px}"
-    +".dh-wp-tag{font-size:10px;font-weight:800;padding:3px 8px;border-radius:99px}"
-    +".dh-wp-tag.f{background:#065f46;color:#6ee7b7}"
-    +".dh-wp-tag.l{background:#1e3a8a;color:#93c5fd}"
     +".dh-wp-mean{color:#e8eef7;font-size:15px;padding:5px 0;line-height:1.4}"
     +".dh-wp-syl{font-size:16px;color:#e8eef7;font-weight:700;letter-spacing:1px}"
     +".dh-wp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}"
@@ -174,14 +182,12 @@
      '<div class="dh-wp no-wordpop">'
      +'<div class="dh-wp-head">'
        +'<span class="dh-wp-word">'+esc(w)+'</span>'
+       +'<button class="dh-wp-fav" id="dhWpFavBtn" title="Favorilere Ekle / Aralıklı Tekrar">'+(isFav(w)?"⭐":"☆")+'</button>'
        +(d.oku?'<span class="dh-wp-read">'+esc(d.oku)+'</span>':'')
        +'<button class="dh-wp-x" id="dhWpX">✕</button>'
      +'</div>'
      +'<div class="dh-wp-box">'
-       +'<div class="dh-wp-boxhead">📖 Anlamlar<span class="dh-wp-tags">'
-         +(d.frekans?'<span class="dh-wp-tag f">frekans '+d.frekans+'</span>':'')
-         +(d.seviye?'<span class="dh-wp-tag l">'+esc(d.seviye)+'</span>':'')
-       +'</span></div>'
+       +'<div class="dh-wp-boxhead">📖 Anlamlar</div>'
        + anlamlar.map(function(m,i){ return '<div class="dh-wp-mean">'+(i+1)+'. '+esc(m)+'</div>'; }).join("")
      +'</div>'
      +'<div class="dh-wp-box"><div class="dh-wp-boxhead">🔤 Heceler</div><div class="dh-wp-syl">'+esc(syllabify(w))+'</div></div>'
@@ -222,6 +228,7 @@
     document.body.appendChild(ov); popEl=ov;
     ov.addEventListener("click", function(e){ if(e.target===ov) close(); });
     document.getElementById("dhWpX").onclick=close;
+    document.getElementById("dhWpFavBtn").onclick=function(){ toggleFav(w); };
     document.getElementById("dhWpListen").onclick=function(){ speak(w,0.9); };
     document.getElementById("dhWpVideo").onclick=function(){ window.open("https://youglish.com/pronounce/"+encodeURIComponent(w)+"/english","_blank"); };
     document.getElementById("dhWpAI").onclick=function(){ aiExplain(w, anlamlar); };
@@ -238,7 +245,7 @@
       return;
     }
     btn.textContent="⏳ Açıklanıyor…"; btn.disabled=true;
-    var sys="Sen İngilizce öğretmenisin. Kelimeyi Türkçe açıkla: tanım, kullanım alanı, 1-2 örnek cümle.";
+    var sys="Sen İngilizce öğretmenisin. Kelimeyi Türkçe açıkla: tanım, kullanım alanı, birlikte sık kullanıldığı 2-3 kelime (collocations) ve 1-2 örnek cümle.";
     var usr="Kelime: \""+word+"\"\nAnlamı: "+anlamlar.join(", ");
     DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.5,max_tokens:400})
       .then(function(txt){ out.innerHTML='<div class="dh-wp-ai-out">'+esc(String(txt||"").trim())+'</div>'; })
@@ -644,7 +651,7 @@
   }
 
   global.DHWordPop = {
-    __v2:true,
+    __v3:true,
     lookup:function(w){ loadDict().then(function(){ var e=findEntry(cleanWord(w)); if(e) open(e); else defineWithAI(cleanWord(w)); }); },
     enable:function(){ enabled=true; }, disable:function(){ enabled=false; }, close:close
   };
