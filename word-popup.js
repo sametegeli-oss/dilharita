@@ -2,7 +2,7 @@
    Dil Harita — Her sayfada İngilizce kelimeye tıkla, tam donanımlı panel aç.
 
    Özellikler: anlamlar + okunuş + seviye/frekans, heceler, Dinle/Yavaş/Hızlı,
-   Kelime Açıklama (AI), Telaffuzunu dene, geçtiği cümleler.
+   Kelime Açıklama (AI), Mnemonic Şifre Oluştur (AI), Telaffuzunu dene, geçtiği cümleler.
    Sözlük: data/dictionary.json  |  Cümleler: data/sentences.json
    API: DHWordPop.lookup("running") / enable() / disable()
 */
@@ -135,6 +135,7 @@
     +".dh-wp-full{width:100%;border:0;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:7px}"
     +".dh-wp-video{background:#dc2626;color:#fff}"
     +".dh-wp-ai{background:linear-gradient(180deg,#10b981,#059669);color:#fff}"
+    +".dh-wp-mnemonic{background:linear-gradient(180deg,#f59e0b,#d97706);color:#fff}"
     +".dh-wp-rec{background:#dc2626;color:#fff}"
     +".dh-wp-sec-title{font-size:13px;font-weight:800;color:#9fb3d9;margin:6px 0 8px}"
     +".dh-wp-sent{background:#0b1830;border:1px solid #1e3a5f;border-radius:12px;padding:11px 12px;margin-bottom:8px;position:relative}"
@@ -143,6 +144,7 @@
     +".dh-wp-sent .play{position:absolute;top:10px;right:10px;background:none;border:0;color:#38bdf8;font-size:16px;cursor:pointer}"
     +".dh-wp-sent .gtr{position:absolute;top:10px;right:38px;background:none;border:0;font-size:15px;cursor:pointer}"
     +".dh-wp-ai-out{background:#0b1830;border:1px solid #10b98155;border-radius:12px;padding:12px;margin-bottom:10px;color:#d1fae5;font-size:14px;line-height:1.5;white-space:pre-wrap}"
+    +".dh-wp-mnemonic-out{background:#0b1830;border:1px solid #f59e0b55;border-radius:12px;padding:12px;margin-bottom:10px;color:#fef3c7;font-size:14px;line-height:1.5;white-space:pre-wrap}"
     +".dh-wp-rec-out{font-size:13px;font-weight:700;margin:4px 0 10px;min-height:18px}"
     +".dh-wp-muted{color:#64748b;font-size:13px;padding:6px 0}"
     +".dh-wp-wave-wrap{position:relative;width:100%;height:110px;background:#020617;border:1px solid #1e3a5f;border-radius:10px;overflow:hidden;margin-bottom:8px}"
@@ -194,6 +196,8 @@
      +'<button class="dh-wp-full dh-wp-video" id="dhWpVideo">🎬 Gerçek videolarda dinle</button>'
      +'<button class="dh-wp-full dh-wp-ai" id="dhWpAI">🎓 Kelime Açıklama (AI)</button>'
      +'<div id="dhWpAIOut"></div>'
+     +'<button class="dh-wp-full dh-wp-mnemonic" id="dhWpMnemonic">💡 Mnemonic Şifre Oluştur (AI)</button>'
+     +'<div id="dhWpMnemonicOut"></div>'
      +'<div class="dh-wp-box"><div class="dh-wp-boxhead">🎙 Telaffuzunu dene</div>'
        +'<div class="dh-wp-rec-out" id="dhWpRecOut"></div>'
        +'<button class="dh-wp-full dh-wp-rec" id="dhWpRec">🎙 Kaydı başlat</button>'
@@ -228,6 +232,7 @@
     document.getElementById("dhWpFast").onclick=function(){ speak(w,1.25); };
     document.getElementById("dhWpVideo").onclick=function(){ window.open("https://youglish.com/pronounce/"+encodeURIComponent(w)+"/english","_blank"); };
     document.getElementById("dhWpAI").onclick=function(){ aiExplain(w, anlamlar); };
+    document.getElementById("dhWpMnemonic").onclick=function(){ aiMnemonic(w, anlamlar); };
     document.getElementById("dhWpRec").onclick=function(){ tryPronounce(w); };
     wvInit(w);
     fillSentences(w);
@@ -246,6 +251,21 @@
       .then(function(txt){ out.innerHTML='<div class="dh-wp-ai-out">'+esc(String(txt||"").trim())+'</div>'; })
       .catch(function(){ out.innerHTML='<div class="dh-wp-ai-out">Açıklama alınamadı. Anahtar/limit kontrol et.</div>'; })
       .then(function(){ btn.textContent="🎓 Kelime Açıklama (AI)"; btn.disabled=false; });
+  }
+
+  function aiMnemonic(word, anlamlar){
+    var out=document.getElementById("dhWpMnemonicOut"), btn=document.getElementById("dhWpMnemonic");
+    if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
+      out.innerHTML='<div class="dh-wp-mnemonic-out">Şifre üretimi için öğretmen sayfasından bir API anahtarı ekle (Groq, Cerebras veya Gemini).</div>';
+      return;
+    }
+    btn.textContent="⏳ Şifre üretiliyor…"; btn.disabled=true;
+    var sys="Verilen İngilizce kelimeyi Türkçe kelimeler ve okunuş benzeşimleri (mnemonic tekniği) kullanarak unutulmayacak şekilde ezberleten yaratıcı bir öğretmensin.\nFormatın şu şekilde olsun:\n1. Kelimenin Okunuşu\n2. Türkçe Benzeşim/Şifre Sözcükleri\n3. Kısa Görsel Hikaye\n4. Özet Hatırlama Cümlesi\nEğlenceli, akılda kalıcı ve öz yaz.";
+    var usr="Kelime: \""+word+"\"\nTürkçe Anlamı: "+anlamlar.join(", ")+"\nBu kelime için ezberletici bir mnemonic/şifre hikayesi oluştur.";
+    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.7,max_tokens:400})
+      .then(function(txt){ out.innerHTML='<div class="dh-wp-mnemonic-out">'+esc(String(txt||"").trim())+'</div>'; })
+      .catch(function(){ out.innerHTML='<div class="dh-wp-mnemonic-out">Şifre alınamadı. Anahtar/limit kontrol et.</div>'; })
+      .then(function(){ btn.textContent="💡 Mnemonic Şifre Oluştur (AI)"; btn.disabled=false; });
   }
 
   function tryPronounce(word){
