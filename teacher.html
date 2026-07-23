@@ -34,145 +34,88 @@ body{
   font-family:Nunito,system-ui,-apple-system,sans-serif;
 }
 .wrap{max-width:680px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
-
 .top{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg-soft);z-index:10}
 .keybtn{margin-left:auto;flex:0 0 auto;background:var(--surface,#0f1f3a);border:1px solid var(--border);border-radius:10px;width:40px;height:40px;font-size:18px;cursor:pointer;color:var(--text)}
 .back{background:var(--surface);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:17px;flex-shrink:0;text-decoration:none;display:flex;align-items:center;justify-content:center}
 .back:hover{background:var(--surface-2)}
-.ava{
-  width:44px;height:44px;border-radius:12px;background:#071226;
-  border:1px solid #34d39999;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  box-shadow:0 8px 22px #0006
-}
+.ava{width:44px;height:44px;border-radius:12px;background:#071226;border:1px solid #34d39999;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 8px 22px #0006}
 .ava img{width:100%;height:100%;object-fit:cover;display:block}
 .teacher-hero{display:flex;align-items:center;justify-content:center;padding:18px 0 14px}
-.teacher-photo{
-  width:min(58vw,230px);height:min(58vw,230px);max-width:230px;max-height:230px;
-  border-radius:22px;border:2px solid #34d399aa;background:#050b16;object-fit:contain;
-  box-shadow:0 18px 45px #0008
-}
-@media(max-width:520px){
-  .teacher-hero{padding:14px 0 10px}
-  .teacher-photo{width:170px;height:170px;border-radius:18px}
-}
+.teacher-photo{width:min(58vw,230px);height:min(58vw,230px);max-width:230px;max-height:230px;border-radius:22px;border:2px solid #34d399aa;background:#050b16;object-fit:contain;box-shadow:0 18px 45px #0008}
+@media(max-width:520px){.teacher-hero{padding:14px 0 10px}.teacher-photo{width:170px;height:170px;border-radius:18px}}
 .tinfo{flex:1;min-width:0}
 .tinfo h1{margin:0;font-family:Fraunces,serif;font-weight:600;font-size:17px}
 .tinfo p{margin:1px 0 0;font-size:12px;color:var(--muted)}
-.prompt-btn{background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:7px 11px;font:800 12px Nunito,sans-serif;cursor:pointer;flex-shrink:0}
-.prompt-btn:hover{background:var(--surface-2);color:var(--text)}
-
 .body{flex:1;overflow-y:auto;padding:16px}
-
-/* incelenen cümle kutusu */
 .subject{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px}
 .subject-en{font-size:20px;font-weight:700;line-height:1.4;margin-bottom:6px}
 .subject-tr{font-size:14px;color:var(--muted)}
 .subject-play{margin-top:10px;background:var(--surface-2);border:1px solid var(--border);color:var(--accent);border-radius:9px;padding:7px 13px;font:700 12px Nunito,sans-serif;cursor:pointer}
 .subject-play:hover{background:var(--accent-strong);color:#fff}
-
-/* açıklama */
 .explain{background:var(--bg-soft);border:1px solid var(--border);border-radius:14px;padding:16px;font-size:15px;line-height:1.7;white-space:pre-wrap;word-wrap:break-word}
 .explain .en{color:var(--green-strong);font-weight:800}
 .explain strong{color:var(--text);font-weight:900}
-
 .explain-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .explain-play{background:var(--surface-2);border:1px solid var(--border);color:var(--accent);border-radius:9px;padding:8px 13px;font:800 12px Nunito,sans-serif;cursor:pointer}
 .dh-reading{background:rgba(250,204,21,.28);border-radius:5px;box-shadow:0 0 0 2px rgba(250,204,21,.28);transition:background .15s}
 .manual-entry{display:flex;gap:8px;margin-top:14px;max-width:520px;margin-left:auto;margin-right:auto}
 .manual-entry input{flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 14px;font:600 15px Nunito,sans-serif}
 .manual-entry button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:12px 18px;font:800 14px Nunito,sans-serif;cursor:pointer;white-space:nowrap}
-.explain-play:hover{background:var(--accent-strong);color:#fff}
-
-
-/* takip sorusu */
 .followup{margin-top:14px;display:flex;gap:8px}
 .followup input{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:11px 13px;font:600 14px Nunito,sans-serif}
 .followup input:focus{outline:none;border-color:var(--teacher)}
 .followup button{background:var(--green-strong);color:#fff;border:none;border-radius:11px;padding:0 16px;font:800 14px Nunito,sans-serif;cursor:pointer}
 .qa-q{margin-top:14px;font-weight:800;color:var(--accent);font-size:14px}
-
 .loading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px;padding:10px 0}
 .spinner{width:22px;height:22px;border:3px solid var(--surface-2);border-top-color:var(--teacher);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-
 .regen{margin-top:10px;width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:11px;font:800 14px Nunito,sans-serif;cursor:pointer}
 .regen:hover{background:#22304f}
-
 .state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:0 24px;text-align:center;color:var(--muted)}
 .state h2{font-family:Fraunces,serif;color:var(--text);font-weight:600;margin:0;font-size:22px}
 .state p{margin:0;font-size:14px;line-height:1.6;max-width:380px}
 .btn{border:1px solid var(--border);background:var(--surface-2);color:var(--text);border-radius:12px;padding:13px 22px;font:800 15px Nunito,sans-serif;cursor:pointer;text-decoration:none}
 .btn-primary{background:var(--green-strong);color:#fff;border-color:transparent}
-
-/* sheet */
 .sheet-overlay{position:fixed;inset:0;z-index:1000;background:#000000a6;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--surface);border:1px solid var(--border);border-radius:20px 20px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:22px 20px calc(22px + env(safe-area-inset-bottom))}
 @media(min-width:560px){.sheet-overlay{align-items:center}.sheet{border-radius:20px}}
 .sheet h3{font-family:Fraunces,serif;font-weight:600;font-size:20px;margin:0 0 6px}
 .sheet p{color:var(--muted);font-size:13px;line-height:1.6;margin:0 0 12px}
 .sheet textarea{width:100%;min-height:240px;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:13px;font:500 13px ui-monospace,monospace;line-height:1.6;resize:vertical}
-.sheet textarea:focus{outline:none;border-color:var(--teacher)}
 .sheet input{width:100%;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px;font:600 14px monospace;margin-bottom:12px}
-.sheet input:focus{outline:none;border-color:var(--accent)}
-.sheet .btn{width:100%;margin-bottom:9px;display:block;text-align:center}
-.keylist{margin-bottom:12px;display:flex;flex-direction:column;gap:8px}
-.keylist-empty{color:var(--muted);font-size:13px;padding:8px 0}
-.keyrow{display:flex;align-items:center;gap:8px}
-.keyrow .keynum{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--accent,#2563eb);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800}
-.keyrow .keyval{flex:1;min-width:0;margin:0;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font:600 12px monospace}
-.keyrow .keydel{flex:0 0 auto;background:transparent;border:0;color:#f87171;font-size:17px;cursor:pointer;padding:4px 6px}
-.keyrow.keyoff .keyval{opacity:.45;text-decoration:line-through}
-.keyrow.keyoff .keynum{background:#475569}
-.keytgl{flex:0 0 auto;position:relative;display:inline-flex;align-items:center;cursor:pointer}
-.keytgl input{position:absolute;opacity:0;width:0;height:0}
-.keytgl-track{width:38px;height:22px;border-radius:99px;background:#475569;transition:background .18s;display:inline-block;position:relative}
-.keytgl-dot{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .18s}
-.keytgl input:checked + .keytgl-track{background:#34d399}
-.keytgl input:checked + .keytgl-track .keytgl-dot{transform:translateX(16px)}
-.note.ok{color:#34d399}
-/* ---- mini test (etkileşimli) ---- */
 .quiz{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:14px}
 .quiz-h{font-weight:900;color:var(--teacher);font-size:14px;margin-bottom:6px}
 .quiz-q{font-size:15px;line-height:1.6;margin-bottom:12px;white-space:pre-wrap}
-.quiz-q .en{color:var(--green-strong);font-weight:800}
 .quiz-opts{display:flex;flex-direction:column;gap:8px}
 .quiz-opt{display:flex;align-items:center;gap:10px;text-align:left;width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:12px 13px;font:700 14px Nunito,sans-serif;cursor:pointer;transition:border-color .15s,background .15s}
 .quiz-opt:hover:not(:disabled){border-color:var(--teacher)}
 .quiz-opt:disabled{cursor:default}
 .quiz-opt .ltr{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:#0b1120;border:1px solid var(--border);display:grid;place-items:center;font-size:12px;font-weight:900}
 .quiz-opt .otx{flex:1;min-width:0}
-.quiz-opt .otx .en{color:var(--green-strong);font-weight:800}
 .quiz-opt.correct{border-color:var(--ok);background:#34d39922}
 .quiz-opt.correct .ltr{background:var(--ok);color:#06281c;border-color:transparent}
 .quiz-opt.wrong{border-color:var(--bad);background:#f8717122}
 .quiz-opt.wrong .ltr{background:var(--bad);color:#3c0d0d;border-color:transparent}
 .quiz-exp{margin-top:12px;font-size:14px;line-height:1.65;color:var(--muted);border-top:1px dashed var(--border);padding-top:11px;display:none}
 .quiz-exp.show{display:block}
-.quiz-exp .en{color:var(--green-strong);font-weight:800}
 .quiz-verdict{font-weight:900;margin-bottom:4px}
 .quiz-verdict.ok{color:var(--ok)}
 .quiz-verdict.bad{color:var(--bad)}
-.sheet a{color:#93c5fd}
 .row2{display:flex;gap:8px}.row2 .btn{flex:1}
 .note{font-size:13px;min-height:16px;margin:4px 0 8px}.note.bad{color:var(--bad)}.note.ok{color:var(--ok)}
 </style>
 </head>
 <body>
 <div class="wrap" id="root"></div>
-<script>/* ============================================================
-   teacher.html — Türkçe konuşan İngilizce öğretmeni paneli
-   ============================================================ */
+<script>
 (function(){
 "use strict";
 
-/* ---------- Groq (chat.html ile ortak) ---------- */
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 const KEYS_LS = "groqApiKeys";
 function getKeys(){ try{ return (JSON.parse(localStorage.getItem(KEYS_LS)||"[]")||[]).filter(Boolean); }catch{ return []; } }
-function saveKey(k){ const ks=getKeys(); if(!ks.includes(k)) ks.push(k); try{ localStorage.setItem(KEYS_LS, JSON.stringify(ks)); }catch{} }
 
-/* ---------- Çok sağlayıcılı anahtar yönetimi ---------- */
 const PROVIDER_META = {
   groq:     { store:"groqApiKeys",     label:"Groq",     prefix:"gsk_", url:"https://console.groq.com/keys",        note:"En hızlısı, ücretsiz." },
   cerebras: { store:"cerebrasApiKeys", label:"Cerebras", prefix:"csk-", url:"https://cloud.cerebras.ai",            note:"Yüksek hacim, ücretsiz." },
@@ -218,41 +161,7 @@ async function groqChat(messages){
   throw last||{code:"unknown"};
 }
 
-const DEFAULT_PROMPT = `Sen, Türk öğrencilere İngilizce öğreten, çok deneyimli ve pedagojik olarak güçlü bir İngilizce öğretmenisin. Amacın sadece çeviri değil, cümledeki ASIL dilbilgisi yapısını öğrenciye doğru öğretmektir.
-
-EN ÖNEMLİ KURAL: Analiz kategorilerini ASLA uydurma. Sadece aşağıdaki listede adı geçen yapıları kullanabilirsin. "Reason Clause", "Habitual Action" gibi listede olmayan adlar KESİNLİKLE yasaktır.
-
-====================================================
-ADIM 1 — GİZLİ YAPI TARAMASI (kullanıcıya gösterme)
-====================================================
-Cevabı yazmadan önce, cümleyi şu kontrol listesiyle YUKARIDAN AŞAĞIYA tara. Her madde için "var/yok" diye kendine sor. İlk "var" dediğin yapı, analiz edeceğin ANA yapıdır.
-
-1. Embedded / Noun Clause — Cümlede şunlardan biri var mı: "how/what/that/why/where/who/whether + ... + özne + fiil"?
-2. Relative Clause — "who/which/that/where" ile bir ismi niteleyen yan cümle var mı?
-3. Conditional — "if / unless" ile koşul var mı?
-4. Passive Voice — "be + V3" var mı?
-5. Perfect / Perfect Continuous — "have/has/had + V3" veya "have been + V-ing" var mı?
-6. Modal — can, could, must, should, have to, be supposed to, used to var mı?
-7. Infinitive / Gerund — "to + V1" veya "V-ing" özne/nesne olarak var mı?
-8. Reported Speech — aktarılan söz var mı?
-9. Comparison — "more/-er/as...as/the most" var mı?
-10. Phrasal Verb — fiil + edat öbeği var mı?
-11. Idiom / Collocation — kalıplaşmış ifade var mı?
-12. Temel zaman/yapı — yukarıdakilerin hiçbiri yoksa, cümlenin temel zamanını seç.
-
-====================================================
-ÇIKTI (kullanıcıya bunları, bu sırayla göster)
-====================================================
-
-1. SEVİYE (A1-C2)
-2. TÜRKÇE ÇEVİRİ
-3. ANA DİLBİLGİSİ YAPISI
-4. FORMÜL + EŞLEŞTİRME
-5. KELİME VE ÖBEKLER (en fazla 4)
-6. ALTERNATİF CÜMLELER (5 adet)
-7. ÖĞRENME İPUCU
-8. SIK YAPILAN HATA
-9. MİNİ TEST`;
+const DEFAULT_PROMPT = `Sen, Türk öğrencilere İngilizce öğreten, çok deneyimli ve pedagojik olarak güçlü bir İngilizce öğretmenisin. Amacın sadece çeviri değil, cümledeki ASIL dilbilgisi yapısını öğrenciye doğru öğretmektir.`;
 
 const PROMPT_LS = "dh_ai_prompt_teacher";
 function getPrompt(){ try{ return localStorage.getItem(PROMPT_LS) || DEFAULT_PROMPT; }catch{ return DEFAULT_PROMPT; } }
@@ -630,7 +539,6 @@ function renderExplanation(reply){
   var gAsk=document.getElementById("dhGeminiAskBtn");
   if(gAsk){ if(window.DHGemini){ gAsk.onclick=function(){ askTeacherViaGemini(); }; } else { gAsk.style.display="none"; } }
 
-  // Azar Düğmesi Tıklama Olayı
   var azAsk=document.getElementById("dhAzarAskBtn");
   if(azAsk){ azAsk.onclick=function(){ runAzarForTeacherSentence(); }; }
 
@@ -639,10 +547,9 @@ function renderExplanation(reply){
   if(quiz) bindQuiz(quiz);
 }
 
-// Teacher Ekranındaki Aktif Cümleyi Azar Motoruna Gönderen Özel Fonksiyon
 function runAzarForTeacherSentence() {
   if (State.en && window.DHAzarEngine) {
-    window.DHAzarEngine.startRemedialLesson(State.en);[cite: 1, 2]
+    window.DHAzarEngine.startRemedialLesson(State.en);
   } else if (!window.DHAzarEngine) {
     alert("Azar motoru yüklenemedi. 'azar-remedial.js' dosyasını kontrol edin.");
   } else {
@@ -724,168 +631,6 @@ function handleError(e, silent){
   if (!silent) setOut(`<div class="state"><h2>Olmadı</h2><p>${msg}</p><button class="btn btn-primary" onclick="location.reload()">Tekrar dene</button></div>`);
 }
 
-function openPromptSheet(){
-  const sheet=document.createElement("div"); sheet.className="sheet-overlay";
-  sheet.innerHTML=`
-    <div class="sheet">
-      <h3>Öğretmen promptu</h3>
-      <p>Yapay zekanın nasıl öğreteceğini buradan değiştirebilirsin. Değişiklik cihazında saklanır. İstediğinde varsayılana dönebilirsin.</p>
-      <textarea id="promptArea">${esc(getPrompt())}</textarea>
-      <div class="note" id="promptNote"></div>
-      <button class="btn btn-primary" id="promptSave">Kaydet ve yeniden açıkla</button>
-      <div class="row2">
-        <button class="btn" id="promptReset">Varsayılana dön</button>
-        <button class="btn" id="promptCancel">Kapat</button>
-      </div>
-    </div>`;
-  document.body.appendChild(sheet);
-  const close=()=>sheet.remove();
-  sheet.onclick=e=>{ if(e.target===sheet) close(); };
-  sheet.querySelector("#promptCancel").onclick=close;
-  sheet.querySelector("#promptSave").onclick=()=>{
-    const v=sheet.querySelector("#promptArea").value.trim();
-    if(!v){ sheet.querySelector("#promptNote").textContent="Prompt boş olamaz."; sheet.querySelector("#promptNote").className="note bad"; return; }
-    setPrompt(v); close(); explain();
-  };
-  sheet.querySelector("#promptReset").onclick=()=>{
-    sheet.querySelector("#promptArea").value=DEFAULT_PROMPT;
-  };
-}
-
-function removeKey(k){
-  let ks=getKeys().filter(x=>x!==k);
-  try{ localStorage.setItem(KEYS_LS, JSON.stringify(ks)); }catch{}
-}
-function getDisabled(){ try{ return JSON.parse(localStorage.getItem("dh-disabled-keys")||"[]")||[]; }catch{ return []; } }
-function isKeyOff(k){ return getDisabled().indexOf(k)>=0; }
-function setKeyActive(k, active){
-  let off=getDisabled().filter(x=>x!==k);
-  if(!active) off.push(k);
-  try{ localStorage.setItem("dh-disabled-keys", JSON.stringify(off)); }catch{}
-}
-function keyListHTMLFor(store){
-  const ks=getKeysFor(store);
-  if(!ks.length) return `<div class="keylist-empty">Henüz anahtar yok.</div>`;
-  return ks.map((k,i)=>{
-    const off=isKeyOff(k);
-    return `
-    <div class="keyrow ${off?"keyoff":""}">
-      <span class="keynum">${i+1}</span>
-      <input class="keyval" type="text" readonly value="${esc(k)}" />
-      <label class="keytgl" title="${off?"Pasif — dokun, aktifleştir":"Aktif — dokun, pasifleştir"}">
-        <input type="checkbox" class="keychk" data-k="${esc(k)}" ${off?"":"checked"} />
-        <span class="keytgl-track"><span class="keytgl-dot"></span></span>
-      </label>
-      <button class="keydel" data-store="${store}" data-k="${esc(k)}" title="Sil">🗑️</button>
-    </div>`;
-  }).join("");
-}
-function openKeySheet(invalid){
-  const sheet=document.createElement("div"); sheet.className="sheet-overlay";
-  const sections = Object.keys(PROVIDER_META).map(pid=>{
-    const m=PROVIDER_META[pid];
-    return `
-    <div class="prov-sec" data-prov="${pid}" style="margin-bottom:16px;border:1px solid var(--line,#1e3a5f);border-radius:12px;padding:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <b style="font-size:15px">${m.label}</b>
-        <a href="${m.url}" target="_blank" rel="noopener" style="font-size:12px">Ücretsiz anahtar al →</a>
-      </div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${m.note}</div>
-      <div class="keylist" id="keyList_${pid}">${keyListHTMLFor(m.store)}</div>
-      <input id="keyInput_${pid}" type="text" placeholder="Yeni anahtar: ${m.prefix}..." autocomplete="off" spellcheck="false" style="width:100%" />
-      <button class="btn btn-primary keyAddBtn" data-prov="${pid}" style="margin-top:8px">+ ${m.label} anahtarı ekle</button>
-      <div class="modelpick" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line,#1e3a5f)">
-        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px">Model <span class="modelhint" data-prov="${pid}" style="color:#93c5fd;cursor:pointer">↻ listeyi güncelle</span></label>
-        <select id="modelSel_${pid}" style="width:100%;margin-bottom:6px"><option>${esc(window.DHProviders?DHProviders.getModel(pid):"")}</option></select>
-        <input id="modelInput_${pid}" type="text" placeholder="veya model adı yaz (ör. ${esc(window.DHProviders?DHProviders.getModel(pid):"")})" autocomplete="off" spellcheck="false" style="width:100%;font:600 12px monospace" />
-      </div>
-    </div>`;
-  }).join("");
-  sheet.innerHTML=`
-    <div class="sheet">
-      <h3>Öğretmen için API anahtarları</h3>
-      <p>Öğretmen, ücretsiz yapay zeka kullanır. <b>Groq, Cerebras veya Gemini</b>'den anahtar ekleyebilirsin — biri limite takılırsa otomatik diğerine geçilir (aşamalı). En az birini eklemen yeterli.</p>
-      <div class="note ${invalid?"bad":""}" id="keyNote">${invalid?"Önceki anahtar geçersizdi.":""}</div>
-      ${sections}
-      <button class="btn btn-primary" id="keyDone">Bitti</button>
-      <button class="btn" id="keyCancel">Kapat</button>
-    </div>`;
-  document.body.appendChild(sheet);
-  const close=()=>sheet.remove();
-  const note=(msg,ok)=>{ const n=sheet.querySelector("#keyNote"); n.textContent=msg; n.className="note "+(ok?"ok":"bad"); };
-  function storeToPid(store){ return Object.keys(PROVIDER_META).find(p=>PROVIDER_META[p].store===store); }
-  const refresh=(pid)=>{ const m=PROVIDER_META[pid]; sheet.querySelector("#keyList_"+pid).innerHTML=keyListHTMLFor(m.store); bindRows(); };
-  const refreshAll=()=>{ Object.keys(PROVIDER_META).forEach(refresh); };
-  const bindRows=()=>{
-    sheet.querySelectorAll(".keydel").forEach(btn=>{
-      btn.onclick=()=>{
-        const store=btn.getAttribute("data-store");
-        removeKeyFor(store, btn.getAttribute("data-k"));
-        const pid=storeToPid(store); if(pid) refresh(pid);
-      };
-    });
-    sheet.querySelectorAll(".keychk").forEach(chk=>{
-      chk.onchange=()=>{
-        setKeyActive(chk.getAttribute("data-k"), chk.checked);
-        const row=chk.closest(".keyrow");
-        if(row) row.classList.toggle("keyoff", !chk.checked);
-        const anyActive=Object.keys(PROVIDER_META).some(pid=>getKeysFor(PROVIDER_META[pid].store).some(k=>!isKeyOff(k)));
-        if(!anyActive) note("Uyarı: tüm anahtarlar pasif — AI çalışmaz.", false);
-        else note(chk.checked?"✓ Anahtar aktif.":"Anahtar pasifleştirildi.", true);
-      };
-    });
-  };
-  bindRows();
-
-  function fillModelSelect(pid, models){
-    const sel=sheet.querySelector("#modelSel_"+pid); if(!sel) return;
-    const cur=(window.DHProviders?DHProviders.getModel(pid):"");
-    const list = models.slice();
-    if(cur && list.indexOf(cur)<0) list.unshift(cur);
-    sel.innerHTML = list.map(mid=>`<option value="${esc(mid)}" ${mid===cur?"selected":""}>${esc(mid)}</option>`).join("");
-  }
-  function loadModels(pid, live){
-    const hint=sheet.querySelector('.modelhint[data-prov="'+pid+'"]');
-    if(!window.DHProviders){ return; }
-    if(live && hint){ hint.textContent="↻ güncelleniyor…"; }
-    DHProviders.listModels(pid).then(models=>{
-      fillModelSelect(pid, models);
-      if(hint) hint.textContent="↻ listeyi güncelle";
-    }).catch(()=>{ if(hint) hint.textContent="↻ listeyi güncelle"; });
-  }
-  Object.keys(PROVIDER_META).forEach(pid=>{
-    const p=(window.DHProviders?DHProviders.PROVIDERS.find(x=>x.id===pid):null);
-    if(p) fillModelSelect(pid, p.models||[]);
-    const sel=sheet.querySelector("#modelSel_"+pid);
-    const inp=sheet.querySelector("#modelInput_"+pid);
-    const hint=sheet.querySelector('.modelhint[data-prov="'+pid+'"]');
-    if(sel) sel.onchange=()=>{ if(window.DHProviders){ DHProviders.setModel(pid, sel.value); } if(inp) inp.value=""; note("✓ "+PROVIDER_META[pid].label+" modeli: "+sel.value, true); };
-    if(inp) inp.onchange=()=>{ const v=inp.value.trim(); if(v && window.DHProviders){ DHProviders.setModel(pid, v); note("✓ "+PROVIDER_META[pid].label+" modeli: "+v, true); loadModels(pid,false); } };
-    if(hint) hint.onclick=()=>loadModels(pid, true);
-    const hasKey=(getKeysFor(PROVIDER_META[pid].store).length>0) || pid==="cerebras";
-    if(hasKey) loadModels(pid, false);
-  });
-
-  sheet.onclick=e=>{ if(e.target===sheet) close(); };
-  sheet.querySelector("#keyCancel").onclick=close;
-  sheet.querySelectorAll(".keyAddBtn").forEach(btn=>{
-    btn.onclick=()=>{
-      const pid=btn.getAttribute("data-prov"), m=PROVIDER_META[pid];
-      const inp=sheet.querySelector("#keyInput_"+pid);
-      const k=inp.value.trim();
-      if(!k){ note(m.label+" anahtarı boş.",false); return; }
-      saveKeyFor(m.store,k); inp.value=""; note("✓ "+m.label+" anahtarı eklendi.",true); refresh(pid);
-    };
-  });
-  sheet.querySelector("#keyDone").onclick=()=>{
-    const anyKey=Object.keys(PROVIDER_META).some(pid=>getKeysFor(PROVIDER_META[pid].store).length>0);
-    if(!anyKey){ note("En az bir anahtar gerekli (herhangi bir sağlayıcı).",false); return; }
-    const anyActive=Object.keys(PROVIDER_META).some(pid=>getKeysFor(PROVIDER_META[pid].store).some(k=>!isKeyOff(k)));
-    if(!anyActive){ note("En az bir anahtar AKTİF olmalı (hepsi pasif).",false); return; }
-    close(); explain();
-  };
-}
-
 parseParams();
 render();
 
@@ -897,62 +642,5 @@ render();
 <script src="./study-tracker.js?v=2"></script>
 <script src="./cloud-sync.js?v=9"></script>
 <script src="./word-popup.js?v=1"></script>
-<script>
-
-async function dhBuildProfile(){
-  var p=[];
-  try{
-    var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=Object.keys(tr.days||{}).sort();
-    var streak=0, d=new Date();
-    for(;;){ var key=d.toISOString().slice(0,10); if((tr.days||{})[key]){streak++; d.setDate(d.getDate()-1);} else break; }
-    if(streak) p.push("Seri: "+streak+" gün.");
-  }catch(e){}
-  try{
-    var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, w1=0,w2=0,s1=0,s2=0;
-    for(var k in m){ var st=m[k]&&m[k][0]; if(k.indexOf("word:")===0){ if(st===1)w1++; if(st===2)w2++; } if(k.indexOf("sentence:")===0){ if(st===1)s1++; if(st===2)s2++; } }
-    p.push("Kelime: "+w2+" öğrenildi/"+w1+" çalışılıyor. Cümle: "+s2+"/"+s1+".");
-  }catch(e){}
-  try{
-    if(window.LearningErrorDB&&LearningErrorDB.all){
-      var errs=await LearningErrorDB.all(), tally={};
-      (errs||[]).slice(-60).forEach(function(r){ var t=r&&r.type; if(t) tally[t]=(tally[t]||0)+1; });
-      var top=Object.keys(tally).sort(function(a,b){return tally[b]-tally[a]}).slice(0,3);
-      if(top.length) p.push("Sık hata türleri: "+top.join(", ")+".");
-      var now30=Date.now(), c15=now30-15*86400000, c30=now30-30*86400000, o30={}, r30={};
-      errs.forEach(function(r){ var ts=r.ts||0; if(ts<c30) return; var ty=Array.isArray(r.types)&&r.types.length?r.types:(r.type?[r.type]:[]);
-        ty.forEach(function(t){ if(ts>=c15) r30[t]=(r30[t]||0)+1; else o30[t]=(o30[t]||0)+1; }); });
-      var trend30=[]; Object.keys(Object.assign({},o30,r30)).forEach(function(t){ var o=o30[t]||0,r=r30[t]||0; if(o&&r<o) trend30.push(t+" iyileşiyor"); else if(r>=2&&r>o) trend30.push(t+" kötüleşiyor"); });
-      if(trend30.length) p.push("Son 30 gün eğilimi: "+trend30.slice(0,2).join(", ")+".");
-    }
-  }catch(e){}
-  try{
-    var due=0, leech=[];
-    await new Promise(function(res){ try{
-      var r=indexedDB.open("sentence-mode",1);
-      r.onsuccess=function(){ var db=r.result;
-        try{ var req=db.transaction("kv","readonly").objectStore("kv").openCursor(), now=Date.now();
-          req.onsuccess=function(e){ var c=e.target.result;
-            if(c){ var kk=String(c.key), v=c.value||{};
-              if(kk.indexOf("srs:")===0){ if((v.due||0)<=now) due++; if((v.lapses||0)>=3&&leech.length<3) leech.push(kk.slice(4)); }
-              c.continue();
-            } else { db.close(); res(); } };
-          req.onerror=function(){ db.close(); res(); };
-        }catch(e2){ try{db.close()}catch(_){ } res(); } };
-      r.onerror=function(){ res(); };
-    }catch(e3){ res(); } });
-    if(due) p.push("Bugün tekrar bekleyen: "+due+".");
-    if(leech.length) p.push("İnatçı (öğrenemediği) cümleler: "+leech.join(" | ")+".");
-  }catch(e){}
-  return p.join(" ").slice(0,900);
-}
-
-(function(){
-  dhBuildProfile().then(function(p){
-    var mem=[]; try{ mem=JSON.parse(localStorage.getItem("dh-teacher-mem")||"[]"); }catch(e){}
-    var mm=mem.length?("\nÖnceki oturumlarda sorduğu cümleler: "+mem.map(function(x){return '"'+x.q+'"';}).join(", ")+"."):"";
-    window.__dhProfileBlock="\n\n[ÖĞRENCİ PROFİLİ — anlatımı buna göre kişiselleştir; sık hatalarına ve inatçı cümlelerine bağ kur]\n"+p+mm;
-  });
-})();
-</script>
 </body>
 </html>
