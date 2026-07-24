@@ -419,10 +419,30 @@ function listSimilarExcelSentences() {
 
   container.innerHTML = "<div style='padding:15px; text-align:center; color:#14b8a6;'>🎲 data/excelveri.json dosyasında bu cümleye en benzer veriler aranıyor...</div>";
 
-  // Duraklama kelimelerini ayıkla ve anahtar kelimeleri çıkar
-  var stopWords = new Set(["the", "a", "an", "is", "are", "was", "were", "in", "on", "at", "to", "it", "and", "or", "of", "for", "with", "that", "this", "by", "as", "be", "do", "does", "did", "have", "has", "had"]);
+  // Zamirler, edatlar, bağlaçlar ve yaygın kelimeleri kapsayan gelişmiş duraklama listesi
+  var stopWords = new Set([
+    "the", "a", "an", "is", "are", "was", "were", "in", "on", "at", "to", "it", 
+    "and", "or", "of", "for", "with", "that", "this", "by", "as", "be", "do", 
+    "does", "did", "have", "has", "had", "you", "your", "yours", "my", "me", 
+    "he", "his", "him", "she", "her", "we", "our", "us", "they", "them", "their",
+    "there", "here", "what", "where", "when", "why", "how"
+  ]);
+
   var words = currentSentence.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").split(/\s+/);
   var meaningfulWords = words.filter(function(w) { return w.length > 2 && !stopWords.has(w); });
+
+  // Gramer yapısını ve anahtar kalıpları tespit et (Örn: "shouldn't be able to", "be able to")
+  var keyPhrases = [];
+  var patterns = [
+    "shouldn't be able to", "should be able to", "might not be able to", 
+    "might be able to", "won't be able to", "will be able to", 
+    "wasn't able to", "was able to", "haven't been able to", "hasn't been able to",
+    "be able to", "able to", "used to", "would rather", "had better"
+  ];
+
+  patterns.forEach(function(p) {
+    if (currentSentence.includes(p)) keyPhrases.push(p);
+  });
 
   fetch('./data/excelveri.json')
     .then(function(res) {
@@ -435,40 +455,38 @@ function listSimilarExcelSentences() {
         return;
       }
 
-      // Her bir veriyi benzerlik puanına göre skorla
+      // Her bir veriyi benzerlik ve gramer kalıbı puanına göre skorla
       var scoredData = data.map(function(item) {
         var targetEn = String(item.ingilizce || "").toLowerCase();
         var targetTr = String(item.türkçe || "").toLowerCase();
         var score = 0;
 
-        // Birebir aynı cümleyi hariç tutmak için puan düş
+        // Birebir aynı cümleyi hariç tut
         if (targetEn === currentSentence) {
           return { item: item, score: -1 };
         }
 
-        meaningfulWords.forEach(function(word) {
-          if (targetEn.indexOf(word) !== -1) score += 3;
-          if (targetTr.indexOf(word) !== -1) score += 1;
+        // Gramer kalıbı eşleşmesi (+15 puan)
+        keyPhrases.forEach(function(phrase) {
+          if (targetEn.includes(phrase)) score += 15;
         });
 
-        // Yapı / Zaman (Tense) kelimeleri eşleşiyorsa ek puan (yet, have, has, brought, painted vb.)
-        words.forEach(function(w) {
-          if (w.length > 2 && targetEn.indexOf(w) !== -1) score += 1;
+        // Özgün/Anlamlı kelime eşleşmesi (+5 puan)
+        meaningfulWords.forEach(function(word) {
+          if (targetEn.includes(word)) score += 5;
+          if (targetTr.includes(word)) score += 2;
         });
 
         return { item: item, score: score };
       });
 
-      // Skora göre sırala
+      // Skora göre sırala ve yüksek puanlıları süz
       scoredData.sort(function(a, b) { return b.score - a.score; });
-
-      // Skoru 0'dan büyük olanları filtrele, eşleşen yoksa rastgele ilk 5 kaydı getir
-      var matches = scoredData.filter(function(m) { return m.score > 0; }).map(function(m) { return m.item; });
+      var matches = scoredData.filter(function(m) { return m.score >= 5; }).map(function(m) { return m.item; });
 
       if (matches.length === 0) {
-        matches = data.filter(function(item) {
-          return String(item.ingilizce || "").toLowerCase() !== currentSentence;
-        }).slice(0, 5);
+        container.innerHTML = "<div style='padding:15px; background:#1e293b; color:#93a4bd; border-radius:8px; margin-top:15px;'>⚠️ Bu cümlenin gramer yapısına veya kelimelerine uygun benzer bir cümle Excel veritabanında bulunamadı.</div>";
+        return;
       }
 
       var html = "<div style='background:#0f172a; border:1px solid #14b8a6; border-radius:12px; padding:18px; margin-top:15px; color:#e2e8f0;'>";
