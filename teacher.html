@@ -376,6 +376,97 @@ function parseParams(){
   State.tr = (p.get("t")||"").trim();
 }
 
+// 📂 EXCELVERI.JSON YÜKLEME VE RASTGELE SEÇME FONKSİYONLARI
+function loadExcelVeri(index = 0) {
+  fetch('./excelveri.json')
+    .then(response => {
+      if (!response.ok) throw new Error("excelveri.json yüklenemedi.");
+      return response.json();
+    })
+    .then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        const targetIndex = index % data.length;
+        const item = data[targetIndex]; 
+        State.en = item.ingilizce || "";
+        State.tr = item.türkçe || "";
+        render();
+      }
+    })
+    .catch(err => {
+      console.error("Excel verisi yükleme hatası:", err);
+    });
+}
+
+function loadRandomExcelVeri() {
+  fetch('./excelveri.json')
+    .then(res => res.json())
+    .then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        const randomIndex = Math.floor(Math.random() * data.length);
+        const item = data[randomIndex];
+        State.en = item.ingilizce || "";
+        State.tr = item.türkçe || "";
+        render();
+      }
+    })
+    .catch(err => console.error("Rastgele veri çekme hatası:", err));
+}
+window.loadRandomExcelVeri = loadRandomExcelVeri;
+
+// ✨ BENZER CÜMLE ÜRETME FONKSİYONU
+async function generateSimilarSentence() {
+  const currentEn = State.en;
+  const currentTr = State.tr;
+
+  if (!currentEn) {
+    alert("Önce benzeri üretilecek bir cümle seçmelisiniz.");
+    return;
+  }
+
+  setOut(`<div class="loading"><div class="spinner"></div> "${esc(currentEn)}" cümlesine benzer yeni bir cümle üretiliyor…</div>`);
+
+  const promptMessage = [
+    {
+      role: "system",
+      content: "Sen bir İngilizce dil öğretmenisin. Kullanıcının verdiği İngilizce cümlenin gramer yapısına, zamanına (tense) ve seviyesine benzer YENİ ve FARKLI bir İngilizce cümle ve onun Türkçe çevirisini üret.\n\nÇIKTI FORMATI SADECE ŞU JSON FORMATINDA OLMALIDIR (başka hiçbir metin yazma):\n{\"ingilizce\": \"...\", \"türkçe\": \"...\"}"
+    },
+    {
+      role: "user",
+      content: `Şu cümleye benzer bir cümle üret:\nİngilizce: "${currentEn}"\nTürkçe: "${currentTr}"`
+    }
+  ];
+
+  try {
+    let replyText = "";
+    
+    if (window.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()) {
+      replyText = await DHProviders.chat(promptMessage, { temperature: 0.7, max_tokens: 300 });
+    } else if (getKeys().length > 0) {
+      replyText = await groqChat(promptMessage);
+    } else {
+      alert("Cümle üretebilmek için bir API Anahtarı tanımlı olmalıdır.");
+      explain();
+      return;
+    }
+
+    const cleanJsonMatch = replyText.match(/\{[\s\S]*\}/);
+    if (!cleanJsonMatch) throw new Error("Format okunamadı.");
+    
+    const generated = JSON.parse(cleanJsonMatch[0]);
+
+    if (generated.ingilizce) {
+      State.en = generated.ingilizce;
+      State.tr = generated.türkçe || "";
+      render();
+    }
+  } catch (err) {
+    console.error("Benzer cümle üretme hatası:", err);
+    alert("Benzer cümle üretilirken bir hata oluştu. Lütfen tekrar deneyin.");
+    explain();
+  }
+}
+window.generateSimilarSentence = generateSimilarSentence;
+
 function render(){
   root.innerHTML = `
   <div class="top">
@@ -445,12 +536,13 @@ function setOut(html){ document.getElementById("out").innerHTML = html; }
 async function explain(){
   if (!State.en){
     setOut(`<div class="state">
-      <h2>Bir cümle yaz</h2>
-      <p>İncelemesini istediğin İngilizce (veya Türkçe) cümleyi yaz, öğretmen açıklasın.</p>
+      <h2>Bir cümle yaz veya Veritabanından Seç</h2>
+      <p>İncelemesini istediğin cümleyi yazabilir veya excelveri.json dosyasından yükleyebilirsin.</p>
       <div class="manual-entry">
         <input id="manualSentence" type="text" placeholder="Örn: She has been working all day." autocomplete="off" />
         <button id="manualGo">Açıkla</button>
       </div>
+      <button class="btn btn-primary" onclick="loadExcelVeri(0)" style="margin-top:12px;width:100%">📂 excelveri.json'dan Cümle Yükle</button>
     </div>`);
     var inp = document.getElementById("manualSentence");
     var go = function(){
@@ -530,6 +622,11 @@ function renderExplanation(reply){
       <input id="fuInput" type="text" placeholder="Bir sorun mu var? Öğretmene sor…" />
       <button id="fuSend">Sor</button>
     </div>
+    
+    <!-- ✨ YENİ BUTONLAR: BENZER CÜMLE ÜRET & EXCEL RASTGELE -->
+    <button class="regen" id="dhSimilarBtn" style="background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;border:0">✨ Bu Cümleye Benzer Cümle Üret</button>
+    <button class="regen" id="dhExcelBtn" style="background:linear-gradient(135deg,#0d9488,#14b8a6);color:#fff;border:0">🎲 Excel'den Başka Cümle Getir</button>
+
     <button class="regen" id="regenBtn">↻ Yeniden açıkla</button>
     <button class="regen" id="dhGeminiAskBtn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0">💎 Gemini'ye sor</button>
     
@@ -547,6 +644,12 @@ function renderExplanation(reply){
   document.getElementById("fuSend").onclick = () => askFollowup(fu.value);
   document.getElementById("regenBtn").onclick = () => explain();
   
+  var simBtn = document.getElementById("dhSimilarBtn");
+  if(simBtn) simBtn.onclick = function(){ generateSimilarSentence(); };
+
+  var excBtn = document.getElementById("dhExcelBtn");
+  if(excBtn) excBtn.onclick = function(){ loadRandomExcelVeri(); };
+
   var gAsk=document.getElementById("dhGeminiAskBtn");
   if(gAsk){ if(window.DHGemini){ gAsk.onclick=function(){ askTeacherViaGemini(); }; } else { gAsk.style.display="none"; } }
 
@@ -569,7 +672,7 @@ function runAzarForTeacherSentence() {
 }
 window.runAzarForTeacherSentence = runAzarForTeacherSentence;
 
-// 📖 ÇEVİRİ KILAVUZU (translation_guide.json) ÇAĞIRMA FONKSİYONU (TÜM EŞLEŞEN KAYITLAR - SKORLAMA)
+// 📖 ÇEVİRİ KILAVUZU (translation_guide.json) ÇAĞIRMA FONKSİYONU
 function runTranslationGuideSearch(queryText) {
   var rawSentence = (queryText || State.en || "").trim().toLowerCase();
   var container = document.getElementById("azar-result-container");
@@ -735,8 +838,13 @@ function handleError(e, silent){
   if (!silent) setOut(`<div class="state"><h2>Olmadı</h2><p>${msg}</p><button class="btn btn-primary" onclick="location.reload()">Tekrar dene</button></div>`);
 }
 
+// BAŞLATMA MANTIĞI: URL'den parametre gelmişse onu al, gelmemişse excelveri.json'ın 0. elemanını otomatik aç
 parseParams();
-render();
+if (!State.en) {
+  loadExcelVeri(0);
+} else {
+  render();
+}
 
 })();
 </script>
