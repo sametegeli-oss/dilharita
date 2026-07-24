@@ -106,6 +106,8 @@ body{
 
 /* Çıktı Alanı Stilleri */
 .azar-result-area{margin-top:16px;background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:16px}
+.clickable-item{cursor:pointer;transition:all .2s ease;border:1px solid transparent;}
+.clickable-item:hover{border-color:#60a5fa!important;background:#263554!important;transform:translateY(-2px);}
 </style>
 </head>
 <body>
@@ -376,20 +378,18 @@ function parseParams(){
   State.tr = (p.get("t")||"").trim();
 }
 
-// 📂 EXCELVERI.JSON YÜKLEME VE RASTGELE SEÇME FONKSİYONLARI
+// 📂 DATA/EXCELVERI.JSON YÜKLEME
 function loadExcelVeri(index = 0) {
   fetch('./data/excelveri.json')
     .then(response => {
-      if (!response.ok) throw new Error("excelveri.json yüklenemedi.");
+      if (!response.ok) throw new Error("data/excelveri.json yüklenemedi.");
       return response.json();
     })
     .then(data => {
       if (Array.isArray(data) && data.length > 0) {
         const targetIndex = index % data.length;
         const item = data[targetIndex]; 
-        State.en = item.ingilizce || "";
-        State.tr = item.türkçe || "";
-        render();
+        selectSentence(item.ingilizce, item.türkçe);
       }
     })
     .catch(err => {
@@ -397,42 +397,134 @@ function loadExcelVeri(index = 0) {
     });
 }
 
-function loadRandomExcelVeri() {
-  fetch('./data/excelveri.json')
-    .then(res => res.json())
-    .then(data => {
-      if (Array.isArray(data) && data.length > 0) {
-        const randomIndex = Math.floor(Math.random() * data.length);
-        const item = data[randomIndex];
-        State.en = item.ingilizce || "";
-        State.tr = item.türkçe || "";
-        render();
-      }
-    })
-    .catch(err => console.error("Rastgele veri çekme hatası:", err));
+// Tıklanan cümleyi üste yükleyip açıklatan fonksiyon
+function selectSentence(en, tr) {
+  State.en = en || "";
+  State.tr = tr || "";
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-window.loadRandomExcelVeri = loadRandomExcelVeri;
+window.selectSentence = selectSentence;
 
-// ✨ BENZER CÜMLE ÜRETME FONKSİYONU
-async function generateSimilarSentence() {
+// 🎲 EXCELVERI.JSON İÇİNDE ÇALIŞILAN CÜMLENİN BENZERLERİNİ BULUP LİSTELEME
+function listSimilarExcelSentences() {
+  var container = document.getElementById("azar-result-container");
+  if (!container) return;
+
+  var currentSentence = (State.en || "").trim().toLowerCase();
+  if (!currentSentence) {
+    alert("Önce benzerini aramak için aktif bir cümle seçmelisiniz.");
+    return;
+  }
+
+  container.innerHTML = "<div style='padding:15px; text-align:center; color:#14b8a6;'>🎲 data/excelveri.json dosyasında bu cümleye en benzer veriler aranıyor...</div>";
+
+  // Duraklama kelimelerini ayıkla ve anahtar kelimeleri çıkar
+  var stopWords = new Set(["the", "a", "an", "is", "are", "was", "were", "in", "on", "at", "to", "it", "and", "or", "of", "for", "with", "that", "this", "by", "as", "be", "do", "does", "did", "have", "has", "had"]);
+  var words = currentSentence.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").split(/\s+/);
+  var meaningfulWords = words.filter(function(w) { return w.length > 2 && !stopWords.has(w); });
+
+  fetch('./data/excelveri.json')
+    .then(res => {
+      if(!res.ok) throw new Error("data/excelveri.json bulunamadı.");
+      return res.json();
+    })
+    .then(data => {
+      if (!Array.isArray(data) || data.length === 0) {
+        container.innerHTML = "<div style='padding:15px; background:#450a0a; color:#fca5a5; border-radius:8px;'>❌ excelveri.json dosyasında veri bulunamadı.</div>";
+        return;
+      }
+
+      // Her bir veriyi benzerlik puanına göre skorla
+      var scoredData = data.map(function(item) {
+        var targetEn = String(item.ingilizce || "").toLowerCase();
+        var targetTr = String(item.türkçe || "").toLowerCase();
+        var score = 0;
+
+        // Birebir aynı cümleyi hariç tutmak için puan düş
+        if (targetEn === currentSentence) {
+          return { item: item, score: -1 };
+        }
+
+        meaningfulWords.forEach(function(word) {
+          if (targetEn.indexOf(word) !== -1) score += 3;
+          if (targetTr.indexOf(word) !== -1) score += 1;
+        });
+
+        // Yapı / Zaman (Tense) kelimeleri eşleşiyorsa ek puan (yet, have, has, brought, painted vb.)
+        words.forEach(function(w) {
+          if (w.length > 2 && targetEn.indexOf(w) !== -1) score += 1;
+        });
+
+        return { item: item, score: score };
+      });
+
+      // Skora göre sırala
+      scoredData.sort(function(a, b) { return b.score - a.score; });
+
+      // Skoru 0'dan büyük olanları filtrele, eşleşen yoksa rastgele ilk 5 kaydı getir
+      var matches = scoredData.filter(function(m) { return m.score > 0; }).map(function(m) { return m.item; });
+
+      if (matches.length === 0) {
+        matches = data.filter(function(item) {
+          return String(item.ingilizce || "").toLowerCase() !== currentSentence;
+        }).slice(0, 5);
+      }
+
+      var html = "<div style='background:#0f172a; border:1px solid #14b8a6; border-radius:12px; padding:18px; margin-top:15px; color:#e2e8f0;'>";
+      html += "<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #1e293b; padding-bottom:8px;'>";
+      html += "<h3 style='margin:0; color:#14b8a6; font-size:16px;'>🎲 Excel'deki Benzer Cümleler (" + matches.length + " Adet Bulundu)</h3>";
+      html += "<span style='font-size:11px; background:#1e293b; color:#34d399; padding:3px 8px; border-radius:6px;'>Tıkla ve Öğretmene Çalıştır</span>";
+      html += "</div>";
+
+      html += "<div style='max-height: 450px; overflow-y: auto; padding-right: 5px;'>";
+
+      matches.forEach(function(item, idx) {
+        var safeEn = esc(item.ingilizce || "");
+        var safeTr = esc(item.türkçe || "");
+
+        html += `<div class='clickable-item' onclick="selectSentence('${safeEn.replace(/'/g, "\\'")}', '${safeTr.replace(/'/g, "\\'")}')" style='background:#1e293b; border-radius:8px; padding:12px; margin-bottom:12px; border-left:3px solid #14b8a6;'>`;
+        html += "<div style='display:flex; justify-content:space-between; font-weight:bold; color:#34d399; margin-bottom:6px; font-size:12px;'>";
+        html += "<span>#" + (idx + 1) + " — Excel Veri Eşleşmesi</span>";
+        html += "<span style='color:#60a5fa;'>👉 Öğretmene Anlattır</span>";
+        html += "</div>";
+        html += "<div style='font-weight:700; color:#e8eef7; font-size:15px; margin-bottom:4px;'>" + safeEn + "</div>";
+        if(safeTr) html += "<div style='color:#93a4bd; font-size:13px;'>" + safeTr + "</div>";
+        html += "</div>";
+      });
+
+      html += "</div></div>";
+      container.innerHTML = html;
+    })
+    .catch(err => {
+      container.innerHTML = "<div style='padding:15px; background:#450a0a; color:#fca5a5; border-radius:8px;'>❌ Hata: " + err.message + "</div>";
+    });
+}
+window.listSimilarExcelSentences = listSimilarExcelSentences;
+
+// ✨ AI ile benzer cümleler üretip alttaki konteynerde listeleme
+async function generateSimilarSentencesList() {
   const currentEn = State.en;
   const currentTr = State.tr;
+  var container = document.getElementById("azar-result-container");
 
   if (!currentEn) {
     alert("Önce benzeri üretilecek bir cümle seçmelisiniz.");
     return;
   }
 
-  setOut(`<div class="loading"><div class="spinner"></div> "${esc(currentEn)}" cümlesine benzer yeni bir cümle üretiliyor…</div>`);
+  if (container) {
+    container.innerHTML = `<div style="padding:15px; text-align:center; color:#0284c7;"><div class="spinner" style="margin:0 auto 8px;"></div>✨ "${esc(currentEn)}" yapısına benzer yeni cümleler oluşturuluyor...</div>`;
+  }
 
   const promptMessage = [
     {
       role: "system",
-      content: "Sen bir İngilizce dil öğretmenisin. Kullanıcının verdiği İngilizce cümlenin gramer yapısına, zamanına (tense) ve seviyesine benzer YENİ ve FARKLI bir İngilizce cümle ve onun Türkçe çevirisini üret.\n\nÇIKTI FORMATI SADECE ŞU JSON FORMATINDA OLMALIDIR (başka hiçbir metin yazma):\n{\"ingilizce\": \"...\", \"türkçe\": \"...\"}"
+      content: "Sen bir İngilizce dil öğretmenisin. Kullanıcının verdiği İngilizce cümlenin gramer yapısına, zamanına (tense) ve seviyesine benzer 3 YENİ ve FARKLI İngilizce cümle ve Türkçe çevirilerini üret.\n\nÇIKTI FORMATI SADECE ŞU JSON FORMATINDA OLMALIDIR (başka hiçbir metin yazma):\n[\n  {\"ingilizce\": \"...\", \"türkçe\": \"...\"},\n  {\"ingilizce\": \"...\", \"türkçe\": \"...\"},\n  {\"ingilizce\": \"...\", \"türkçe\": \"...\"}\n]"
     },
     {
       role: "user",
-      content: `Şu cümleye benzer bir cümle üret:\nİngilizce: "${currentEn}"\nTürkçe: "${currentTr}"`
+      content: `Şu cümleye benzer 3 cümle üret:\nİngilizce: "${currentEn}"\nTürkçe: "${currentTr}"`
     }
   ];
 
@@ -440,32 +532,50 @@ async function generateSimilarSentence() {
     let replyText = "";
     
     if (window.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()) {
-      replyText = await DHProviders.chat(promptMessage, { temperature: 0.7, max_tokens: 300 });
+      replyText = await DHProviders.chat(promptMessage, { temperature: 0.7, max_tokens: 600 });
     } else if (getKeys().length > 0) {
       replyText = await groqChat(promptMessage);
     } else {
       alert("Cümle üretebilmek için bir API Anahtarı tanımlı olmalıdır.");
-      explain();
       return;
     }
 
-    const cleanJsonMatch = replyText.match(/\{[\s\S]*\}/);
+    const cleanJsonMatch = replyText.match(/\[[\s\S]*\]/);
     if (!cleanJsonMatch) throw new Error("Format okunamadı.");
     
-    const generated = JSON.parse(cleanJsonMatch[0]);
+    const generatedList = JSON.parse(cleanJsonMatch[0]);
 
-    if (generated.ingilizce) {
-      State.en = generated.ingilizce;
-      State.tr = generated.türkçe || "";
-      render();
+    if (Array.isArray(generatedList) && container) {
+      var html = "<div style='background:#0f172a; border:1px solid #0284c7; border-radius:12px; padding:18px; margin-top:15px; color:#e2e8f0;'>";
+      html += "<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #1e293b; padding-bottom:8px;'>";
+      html += "<h3 style='margin:0; color:#38bdf8; font-size:16px;'>✨ Üretilen Benzer Cümleler (" + generatedList.length + " Adet)</h3>";
+      html += "<span style='font-size:11px; background:#1e293b; color:#38bdf8; padding:3px 8px; border-radius:6px;'>Yapay Zeka Tasarımı</span>";
+      html += "</div>";
+
+      html += "<div>";
+      generatedList.forEach(function(item, idx) {
+        var safeEn = esc(item.ingilizce || "");
+        var safeTr = esc(item.türkçe || "");
+
+        html += `<div class='clickable-item' onclick="selectSentence('${safeEn.replace(/'/g, "\\'")}', '${safeTr.replace(/'/g, "\\'")}')" style='background:#1e293b; border-radius:8px; padding:12px; margin-bottom:12px; border-left:3px solid #0284c7;'>`;
+        html += "<div style='display:flex; justify-content:space-between; font-weight:bold; color:#38bdf8; margin-bottom:6px; font-size:12px;'>";
+        html += "<span>#" + (idx + 1) + " — Benzer Gramer Yapısı</span>";
+        html += "<span style='color:#34d399;'>👉 Tıkla ve Çalış</span>";
+        html += "</div>";
+        html += "<div style='font-weight:700; color:#e8eef7; font-size:15px; margin-bottom:4px;'>" + safeEn + "</div>";
+        if(safeTr) html += "<div style='color:#93a4bd; font-size:13px;'>" + safeTr + "</div>";
+        html += "</div>";
+      });
+      html += "</div></div>";
+
+      container.innerHTML = html;
     }
   } catch (err) {
     console.error("Benzer cümle üretme hatası:", err);
-    alert("Benzer cümle üretilirken bir hata oluştu. Lütfen tekrar deneyin.");
-    explain();
+    if(container) container.innerHTML = "<div style='padding:15px; background:#450a0a; color:#fca5a5; border-radius:8px;'>❌ Cümleler üretilirken bir sorun oluştu. Lütfen tekrar deneyin.</div>";
   }
 }
-window.generateSimilarSentence = generateSimilarSentence;
+window.generateSimilarSentencesList = generateSimilarSentencesList;
 
 function render(){
   root.innerHTML = `
@@ -537,12 +647,12 @@ async function explain(){
   if (!State.en){
     setOut(`<div class="state">
       <h2>Bir cümle yaz veya Veritabanından Seç</h2>
-      <p>İncelemesini istediğin cümleyi yazabilir veya excelveri.json dosyasından yükleyebilirsin.</p>
+      <p>İncelemesini istediğin cümleyi yazabilir veya data/excelveri.json dosyasından yükleyebilirsin.</p>
       <div class="manual-entry">
         <input id="manualSentence" type="text" placeholder="Örn: She has been working all day." autocomplete="off" />
         <button id="manualGo">Açıkla</button>
       </div>
-      <button class="btn btn-primary" onclick="loadExcelVeri(0)" style="margin-top:12px;width:100%">📂 excelveri.json'dan Cümle Yükle</button>
+      <button class="btn btn-primary" onclick="loadExcelVeri(0)" style="margin-top:12px;width:100%">📂 data/excelveri.json'dan Cümle Yükle</button>
     </div>`);
     var inp = document.getElementById("manualSentence");
     var go = function(){
@@ -623,7 +733,7 @@ function renderExplanation(reply){
       <button id="fuSend">Sor</button>
     </div>
     
-    <!-- ✨ YENİ BUTONLAR: BENZER CÜMLE ÜRET & EXCEL RASTGELE -->
+    <!-- YENİ DÜĞMELER -->
     <button class="regen" id="dhSimilarBtn" style="background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;border:0">✨ Bu Cümleye Benzer Cümle Üret</button>
     <button class="regen" id="dhExcelBtn" style="background:linear-gradient(135deg,#0d9488,#14b8a6);color:#fff;border:0">🎲 Excel'den Başka Cümle Getir</button>
 
@@ -645,10 +755,10 @@ function renderExplanation(reply){
   document.getElementById("regenBtn").onclick = () => explain();
   
   var simBtn = document.getElementById("dhSimilarBtn");
-  if(simBtn) simBtn.onclick = function(){ generateSimilarSentence(); };
+  if(simBtn) simBtn.onclick = function(){ generateSimilarSentencesList(); };
 
   var excBtn = document.getElementById("dhExcelBtn");
-  if(excBtn) excBtn.onclick = function(){ loadRandomExcelVeri(); };
+  if(excBtn) excBtn.onclick = function(){ listSimilarExcelSentences(); };
 
   var gAsk=document.getElementById("dhGeminiAskBtn");
   if(gAsk){ if(window.DHGemini){ gAsk.onclick=function(){ askTeacherViaGemini(); }; } else { gAsk.style.display="none"; } }
@@ -838,7 +948,7 @@ function handleError(e, silent){
   if (!silent) setOut(`<div class="state"><h2>Olmadı</h2><p>${msg}</p><button class="btn btn-primary" onclick="location.reload()">Tekrar dene</button></div>`);
 }
 
-// BAŞLATMA MANTIĞI: URL'den parametre gelmişse onu al, gelmemişse excelveri.json'ın 0. elemanını otomatik aç
+// BAŞLATMA MANTIĞI: URL'den parametre gelmişse onu al, gelmemişse data/excelveri.json'ın 0. elemanını otomatik aç
 parseParams();
 if (!State.en) {
   loadExcelVeri(0);
