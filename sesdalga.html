@@ -519,7 +519,7 @@
   "use strict";
 
   /* ====================================================================
-     GELİŞMİŞ VİSEME (AĞIZ HAREKETİ) VE SESLENDİRME MOTORU ENTEGRASYONU
+     KUSURSUZ VİSEME (AĞIZ HAREKETİ) VE SESLENDİRME MOTORU
      ==================================================================== */
   (function(){
     if(window.__LongTTSAvatarSyncFixV3) return;
@@ -541,14 +541,7 @@
     let savedSrc = new WeakMap();
 
     const AVATAR_SELECTORS = ["#imgHoca", "#imgUser", ".avatar-img", "img[src*='avatars']", "img[src*='avatar']"];
-    function avatarImgs(){
-      const set = new Set();
-      AVATAR_SELECTORS.forEach(sel => {
-        try{ document.querySelectorAll(sel).forEach(img => { if(img && img.tagName==="IMG") set.add(img); }); }catch(e){}
-      });
-      return [...set];
-    }
-
+    
     function srcOf(img){ return img.currentSrc || img.src || img.getAttribute("src") || ""; }
     function idleSrc(src){
       if(!src) return src;
@@ -624,7 +617,7 @@
       }
     }
 
-    // Doğrudan metne bağlı viseme oynatıcıyı global yap
+    // TÜM BUTONLAR İÇİN ORTAK VİSEME DESTEKLİ KONUŞMA MOTORU
     window.DH_PlayAvatarSpeech = function(text, targetImgId, onComplete){
       try{ nativeCancel(); }catch(e){}
       const u = new SpeechSynthesisUtterance(text);
@@ -1097,7 +1090,7 @@
   const duetBtn = document.getElementById("duetBtn");
   const origVoiceBtn = document.getElementById("origVoiceBtn");
   
-  // ORİJİNAL SESİ DİNLE BUTONU (Kusursuz viseme destekli DH_PlayAvatarSpeech kullanır)
+  // ORİJİNAL SESİ DİNLE (Hoca Ağzı Viseme Destekli)
   if (origVoiceBtn) origVoiceBtn.onclick = function(){
     if(window.DH_PlayAvatarSpeech) {
       window.DH_PlayAvatarSpeech(TARGET_TEXT, "imgHoca");
@@ -1119,23 +1112,6 @@
   const mouthUser = document.getElementById("mouthUser");
   const avatarBoxHoca = document.getElementById("avatarBoxHoca");
   const avatarBoxUser = document.getElementById("avatarBoxUser");
-
-  function getVisemeClassName(freqData, rmsVolume) {
-    if (rmsVolume < 5) return "mouth rest";
-    let low = 0, mid = 0, high = 0;
-    const count = freqData.length;
-    for (let i = 0; i < count; i++) {
-      if (i < count * 0.2) low += freqData[i];
-      else if (i < count * 0.6) mid += freqData[i];
-      else high += freqData[i];
-    }
-    if (high > mid && high > low * 1.5) return "mouth teeth";
-    else if (low > mid * 1.8) return "mouth round";
-    else if (mid > low && mid > high) return "mouth wide";
-    else if (rmsVolume > 40) return "mouth open";
-    else if (rmsVolume < 14) return "mouth closed";
-    return "mouth rest";
-  }
 
   function resizeCanvasIfNeeded(canvas) {
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -1209,7 +1185,7 @@
     return resampled;
   }
 
-  // 1. HOCA ÇİZDİR BUTONU (Kusursuz DH_PlayAvatarSpeech ile viseme senkronizasyonu)
+  // 1. HOCA ÇİZDİR (Viseme Destekli)
   analyzeTtsBtn.onclick = function() {
     ttsTimelineData = []; ttsSpectrums = []; finalTtsData = []; finalUserData = []; 
     finalTtsSpectrums = []; finalUserSpectrums = []; playheadProgress = -1;
@@ -1223,7 +1199,6 @@
 
     let startTime = Date.now();
     
-    // Simüle edilmiş dalga spektrumu ve grafik çizimi için interval
     samplingIntervalId = setInterval(() => {
       let t = (Date.now() - startTime) / 1000;
       let vol = 25 + Math.sin(t * 6) * 15;
@@ -1239,7 +1214,6 @@
       document.getElementById("ttsDuration").textContent = `${t.toFixed(1)}s`;
     }, 40);
 
-    // DH_PlayAvatarSpeech kullanarak hoca sesini ve kusursuz ağız hareketlerini başlat
     if(window.DH_PlayAvatarSpeech) {
       window.DH_PlayAvatarSpeech(TARGET_TEXT, "imgHoca", function(){
         clearInterval(samplingIntervalId);
@@ -1510,7 +1484,7 @@
     }
   }
 
-  // DÜET OYNAT BUTONU (DH_PlayAvatarSpeech ile hoca konuşmasını ve viseme senkronunu tetikler)
+  // DÜET OYNAT (Artık DH_PlayAvatarSpeech ile hoca ağzı viseme destekli konuşur)
   duetBtn.onclick = function() {
     if (!voiceUrl || !finalUserData.length) return;
     statusField.textContent = "Düet çalınıyor...";
@@ -1553,6 +1527,7 @@
     }
   };
 
+  // SADECE SESİM (Kullanıcının kendi ses kaydını dinlemesi)
   playBtn.onclick = function() {
     if (!voiceUrl || !finalUserData.length) return;
     const audio = new Audio(voiceUrl);
