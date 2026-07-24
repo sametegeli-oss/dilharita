@@ -967,23 +967,24 @@
   const mouthUser = document.getElementById("mouthUser");
   const avatarBoxHoca = document.getElementById("avatarBoxHoca");
   const avatarBoxUser = document.getElementById("avatarBoxUser");
-
+  
   function getVisemeClassName(freqData, rmsVolume) {
-    if (rmsVolume < 5) return "mouth rest";
+    if (rmsVolume < 8) return "mouth rest"; // Eşik biraz yükseltildi, boşluklarda kapalı kalır
     let low = 0, mid = 0, high = 0;
     const count = freqData.length;
     for (let i = 0; i < count; i++) {
-      if (i < count * 0.2) low += freqData[i];
-      else if (i < count * 0.6) mid += freqData[i];
+      if (i < count * 0.25) low += freqData[i];
+      else if (i < count * 0.65) mid += freqData[i];
       else high += freqData[i];
     }
-    if (high > mid && high > low * 1.5) return "mouth teeth";
-    else if (low > mid * 1.8) return "mouth round";
+    // Kelime içi fonetik geçişleri yumuşatma
+    if (high > mid * 1.3 && high > low) return "mouth teeth";
+    else if (low > mid * 1.5) return "mouth round";
     else if (mid > low && mid > high) return "mouth wide";
-    else if (rmsVolume > 40) return "mouth open";
-    else if (rmsVolume < 14) return "mouth closed";
+    else if (rmsVolume > 35) return "mouth open";
     return "mouth rest";
   }
+  
 
   var AV_HOCA = { idle:"assets/avatars_v3/teacher/idle.webp", small:"assets/avatars_v3/teacher/mouth-small.webp", medium:"assets/avatars_v3/teacher/mouth-medium.webp", open:"assets/avatars_v3/teacher/mouth-open.webp" };
   var AV_USER = { idle:"assets/avatars_v3/doctor/idle.webp",  small:"assets/avatars_v3/doctor/mouth-small.webp",  medium:"assets/avatars_v3/doctor/mouth-medium.webp",  open:"assets/avatars_v3/doctor/mouth-open.webp" };
