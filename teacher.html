@@ -378,6 +378,14 @@ function parseParams(){
   State.tr = (p.get("t")||"").trim();
 }
 
+// Metin normalleştirme (kesme işaretleri ve noktalama temizliği)
+function normalizeText(text) {
+  var t = String(text || "").toLowerCase();
+  t = t.replace(/’/g, "'").replace(/`/g, "'");
+  t = t.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
+  return t.replace(/\s+/g, " ").trim();
+}
+
 // 📂 DATA/EXCELVERI.JSON YÜKLEME
 function loadExcelVeri(index = 0) {
   fetch('./data/excelveri.json')
@@ -406,43 +414,54 @@ function selectSentence(en, tr) {
 }
 window.selectSentence = selectSentence;
 
-// 🎲 EXCELVERI.JSON İÇİNDE ÇALIŞILAN CÜMLENİN BENZERLERİNİ BULUP LİSTELEME
+// 🎲 EXCELVERI.JSON İÇİNDE ÇALIŞILAN CÜMLENİN BENZERLERİNİ BULUP LİSTELEME (Gramer & Tense Tabanlı Algoritma)
 function listSimilarExcelSentences() {
   var container = document.getElementById("azar-result-container");
   if (!container) return;
 
-  var currentSentence = (State.en || "").trim().toLowerCase();
-  if (!currentSentence) {
+  var currentRaw = State.en || "";
+  var currentClean = normalizeText(currentRaw);
+  if (!currentClean) {
     alert("Önce benzerini aramak için aktif bir cümle seçmelisiniz.");
     return;
   }
 
-  container.innerHTML = "<div style='padding:15px; text-align:center; color:#14b8a6;'>🎲 data/excelveri.json dosyasında bu cümleye en benzer veriler aranıyor...</div>";
+  container.innerHTML = "<div style='padding:15px; text-align:center; color:#14b8a6;'>🎲 data/excelveri.json dosyasında bu cümlenin gramer yapısına en benzer veriler taranıyor...</div>";
 
-  // Zamirler, edatlar, bağlaçlar ve yaygın kelimeleri kapsayan gelişmiş duraklama listesi
-  var stopWords = new Set([
-    "the", "a", "an", "is", "are", "was", "were", "in", "on", "at", "to", "it", 
-    "and", "or", "of", "for", "with", "that", "this", "by", "as", "be", "do", 
-    "does", "did", "have", "has", "had", "you", "your", "yours", "my", "me", 
-    "he", "his", "him", "she", "her", "we", "our", "us", "they", "them", "their",
-    "there", "here", "what", "where", "when", "why", "how"
-  ]);
-
-  var words = currentSentence.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").split(/\s+/);
-  var meaningfulWords = words.filter(function(w) { return w.length > 2 && !stopWords.has(w); });
-
-  // Gramer yapısını ve anahtar kalıpları tespit et (Örn: "shouldn't be able to", "be able to")
-  var keyPhrases = [];
+  // Gramer Kalıpları ve İmzaları (Regex Kuralları)
   var patterns = [
-    "shouldn't be able to", "should be able to", "might not be able to", 
-    "might be able to", "won't be able to", "will be able to", 
-    "wasn't able to", "was able to", "haven't been able to", "hasn't been able to",
-    "be able to", "able to", "used to", "would rather", "had better"
+    { name: "reported_speech_past_perfect_passive", regex: /\b(said|told|denied|claimed|explained|thought|asked|stated)\b.*\bhad\s+been\s+\w+(ed|en|t)\b/i, weight: 120 },
+    { name: "reported_speech_past_perfect", regex: /\b(said|told|denied|claimed|explained|thought|asked|stated)\b.*\bhad\s+(?:already|never|just)?\s*\w+(ed|en|t)\b/i, weight: 90 },
+    { name: "reported_speech", regex: /\b(said|told|asked|claimed|explained|denied|stated|thought|believed)\s+(that|if|whether|me|him|her|us|them|\w+)/i, weight: 50 },
+    { name: "past_perfect_passive", regex: /\bhad\s+been\s+\w+(ed|en|t)\b/i, weight: 80 },
+    { name: "present_perfect_passive", regex: /\b(has|have)\s+been\s+\w+(ed|en|t)\b/i, weight: 70 },
+    { name: "modal_be_able_to", regex: /\b(should|would|could|might|will|can|may|was|were|has\s+been|have\s+been|shouldn't|wouldn't|couldn't|mightn't|won't|can't|wasn't|weren't)\s+be\s+able\s+to\b/i, weight: 100 },
+    { name: "cond_type3", regex: /\bif\b.*\bhad\b.*\b(would|could|should|might)\s+have\b/i, weight: 90 },
+    { name: "cond_type2", regex: /\bif\b.*\b(were|did|\w+ed)\b.*\b(would|could)\b/i, weight: 70 },
+    { name: "past_perfect", regex: /\bhad\s+(?:already|never|just)?\s*\w+(ed|en|t)\b/i, weight: 40 },
+    { name: "present_perfect", regex: /\b(have|has)\s+(?:already|never|just|ever)?\s*\w+(ed|en|t)\b/i, weight: 30 },
+    { name: "passive_voice", regex: /\b(is|are|was|were|been|being|be)\s+\w+(ed|en|t)\b/i, weight: 30 }
   ];
 
+  // Aktif cümlenin taşıdığı gramer kurallarını tespit et
+  var activePatterns = [];
   patterns.forEach(function(p) {
-    if (currentSentence.includes(p)) keyPhrases.push(p);
+    if (p.regex.test(currentClean)) {
+      activePatterns.push(p);
+    }
   });
+
+  // Duraklama kelimeleri (Gramere etki etmeyen kelimeleri temizleme)
+  var stopWords = new Set([
+    "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+    "in", "on", "at", "to", "it", "and", "or", "of", "for", "with", "that", "this", "by", "as",
+    "do", "does", "did", "have", "has", "had", "you", "your", "yours", "my", "me", "he", "his", "him",
+    "she", "her", "we", "our", "us", "they", "them", "their", "there", "here", "what", "where", "when",
+    "why", "how", "said", "told", "asked", "if", "would", "could", "should"
+  ]);
+
+  var words = currentClean.split(" ");
+  var meaningfulWords = words.filter(function(w) { return w.length > 2 && !stopWords.has(w); });
 
   fetch('./data/excelveri.json')
     .then(function(res) {
@@ -455,37 +474,54 @@ function listSimilarExcelSentences() {
         return;
       }
 
-      // Her bir veriyi benzerlik ve gramer kalıbı puanına göre skorla
       var scoredData = data.map(function(item) {
-        var targetEn = String(item.ingilizce || "").toLowerCase();
-        var targetTr = String(item.türkçe || "").toLowerCase();
+        var en = item.ingilizce || "";
+        var tr = item.türkçe || "";
+        var candidateClean = normalizeText(en);
         var score = 0;
 
-        // Birebir aynı cümleyi hariç tut
-        if (targetEn === currentSentence) {
+        // Kendisiyle aynı cümleyi eliyoruz
+        if (!candidateClean || candidateClean === currentClean) {
           return { item: item, score: -1 };
         }
 
-        // Gramer kalıbı eşleşmesi (+15 puan)
-        keyPhrases.forEach(function(phrase) {
-          if (targetEn.includes(phrase)) score += 15;
+        var matchedTags = [];
+        // Gramer kalıpları eşleştirmesi
+        activePatterns.forEach(function(p) {
+          if (p.regex.test(candidateClean)) {
+            score += p.weight;
+            matchedTags.push(p.name);
+          }
         });
 
-        // Özgün/Anlamlı kelime eşleşmesi (+5 puan)
-        meaningfulWords.forEach(function(word) {
-          if (targetEn.includes(word)) score += 5;
-          if (targetTr.includes(word)) score += 2;
+        // Kelime eşleşmesi kontrolü (İkincil Faktör)
+        var candidateWordSet = new Set(candidateClean.split(" "));
+        var wordMatchCount = 0;
+        meaningfulWords.forEach(function(w) {
+          if (candidateWordSet.has(w)) wordMatchCount++;
         });
 
-        return { item: item, score: score };
+        // Eğer gramer kalıbı yakalandıysa kelime çakışması bonus puan verir (+4 puan/kelime)
+        if (activePatterns.length > 0) {
+          if (matchedTags.length > 0) {
+            score += (wordMatchCount * 4);
+          }
+        } else {
+          // Eğer özel gramer yapısı yoksa anlamlı kelimelere bakılır (+8 puan/kelime)
+          score += (wordMatchCount * 8);
+        }
+
+        return { item: item, score: score, matchedTags: matchedTags };
       });
 
-      // Skora göre sırala ve yüksek puanlıları süz
+      // Puanlarına göre büyükten küçüğe sırala
       scoredData.sort(function(a, b) { return b.score - a.score; });
-      var matches = scoredData.filter(function(m) { return m.score >= 5; }).map(function(m) { return m.item; });
+
+      // Skoru en az 30 olan yüksek kaliteli gramer eşleşmelerini seç
+      var matches = scoredData.filter(function(m) { return m.score >= 30; }).map(function(m) { return m.item; });
 
       if (matches.length === 0) {
-        container.innerHTML = "<div style='padding:15px; background:#1e293b; color:#93a4bd; border-radius:8px; margin-top:15px;'>⚠️ Bu cümlenin gramer yapısına veya kelimelerine uygun benzer bir cümle Excel veritabanında bulunamadı.</div>";
+        container.innerHTML = "<div style='padding:15px; background:#1e293b; color:#93a4bd; border-radius:8px; margin-top:15px;'>⚠️ Bu cümlenin gramer yapısına veya zamanına uygun benzer bir cümle Excel veritabanında bulunamadı.</div>";
         return;
       }
 
@@ -503,7 +539,7 @@ function listSimilarExcelSentences() {
 
         html += `<div class='clickable-item' onclick="selectSentence('${safeEn.replace(/'/g, "\\'")}', '${safeTr.replace(/'/g, "\\'")}')" style='background:#1e293b; border-radius:8px; padding:12px; margin-bottom:12px; border-left:3px solid #14b8a6;'>`;
         html += "<div style='display:flex; justify-content:space-between; font-weight:bold; color:#34d399; margin-bottom:6px; font-size:12px;'>";
-        html += "<span>#" + (idx + 1) + " — Excel Veri Eşleşmesi</span>";
+        html += "<span>#" + (idx + 1) + " — Excel Gramer Eşleşmesi</span>";
         html += "<span style='color:#60a5fa;'>👉 Öğretmene Anlattır</span>";
         html += "</div>";
         html += "<div style='font-weight:700; color:#e8eef7; font-size:15px; margin-bottom:4px;'>" + safeEn + "</div>";
