@@ -569,13 +569,23 @@ function runAzarForTeacherSentence() {
 }
 window.runAzarForTeacherSentence = runAzarForTeacherSentence;
 
-// 📖 ÇEVİRİ KILAVUZU (translation_guide.json) ÇAĞIRMA FONKSİYONU
+// 📖 ÇEVİRİ KILAVUZU (translation_guide.json) ÇAĞIRMA FONKSİYONU (TÜM EŞLEŞEN KAYITLAR - SKORLAMA)
 function runTranslationGuideSearch(queryText) {
-  var q = (queryText || State.en || "").trim().toLowerCase();
+  var rawSentence = (queryText || State.en || "").trim().toLowerCase();
   var container = document.getElementById("azar-result-container");
   if (!container) return;
 
-  container.innerHTML = "<div style='padding:15px; text-align:center; color:#34d399;'>📖 Türkçe Çeviri Kılavuzu taranıyor...</div>";
+  container.innerHTML = "<div style='padding:15px; text-align:center; color:#34d399;'>📖 Çeviri kılavuzundaki tüm eşleşmeler taranıyor...</div>";
+
+  var stopWords = new Set(["the", "a", "an", "is", "are", "was", "were", "in", "on", "at", "to", "it", "and", "or", "of", "for", "with", "that", "this", "by", "as", "be"]);
+  var words = rawSentence.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").split(/\s+/);
+  var meaningfulWords = words.filter(function(w) {
+    return w.length > 2 && !stopWords.has(w);
+  });
+
+  if (meaningfulWords.length === 0 && rawSentence.length > 2) {
+    meaningfulWords = [rawSentence.slice(0, 5)];
+  }
 
   fetch('./translation_guide.json')
     .then(function(res) {
@@ -583,33 +593,67 @@ function runTranslationGuideSearch(queryText) {
       return res.json();
     })
     .then(function(data) {
-      var matches = data.filter(function(item) {
+      var searchableData = data.filter(function(item) {
+        return item.id > 125;
+      });
+
+      var scoredMatches = searchableData.map(function(item) {
         var content = String(item.content || "").toLowerCase();
-        return content.indexOf(q) !== -1 || q.split(" ").some(function(w){ return w.length > 3 && content.indexOf(w) !== -1; });
-      }).slice(0, 4);
+        var section = String(item.section || "").toLowerCase();
+        var score = 0;
+
+        meaningfulWords.forEach(function(word) {
+          if (content.indexOf(word) !== -1) score += 2;
+          if (section.indexOf(word) !== -1) score += 1;
+        });
+
+        return { item: item, score: score };
+      });
+
+      scoredMatches.sort(function(a, b) {
+        return b.score - a.score;
+      });
+
+      var matches = scoredMatches.filter(function(m) {
+        return m.score > 0;
+      }).map(function(m) {
+        return m.item;
+      });
+
+      if (matches.length === 0 && meaningfulWords.length > 0) {
+        var fallbackWord = meaningfulWords[0];
+        matches = searchableData.filter(function(item) {
+          return String(item.content || "").toLowerCase().indexOf(fallbackWord) !== -1;
+        });
+      }
 
       if (matches.length === 0) {
-        container.innerHTML = "<div style='padding:15px; background:#451a03; color:#fcd34d; border-radius:8px; margin-top:10px;'>⚠️ Çeviri kılavuzunda bu ifadeyle ilgili eşleşme bulunamadı.</div>";
+        container.innerHTML = "<div style='padding:15px; background:#451a03; color:#fcd34d; border-radius:8px; margin-top:10px;'>⚠️ Çeviri kılavuzunda bu ifadeyle eşleşen kural bulunamadı.</div>";
         return;
       }
 
       var html = "<div style='background:#0f172a; border:1px solid #34d399; border-radius:12px; padding:18px; margin-top:15px; color:#e2e8f0;'>";
       html += "<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #1e293b; padding-bottom:8px;'>";
-      html += "<h3 style='margin:0; color:#34d399; font-size:16px;'>📖 Türkçe Çeviri Kılavuzu Bulguları</h3>";
-      html += "<span style='font-size:11px; background:#1e293b; color:#60a5fa; padding:3px 8px; border-radius:6px;'>Boztaş & Kocaman</span>";
+      html += "<h3 style='margin:0; color:#34d399; font-size:16px;'>📖 Çeviri Kılavuzu - Tüm Eşleşen Kayıtlar (" + matches.length + " Adet)</h3>";
+      html += "<span style='font-size:11px; background:#1e293b; color:#60a5fa; padding:3px 8px; border-radius:6px;'>Eksiksiz Liste</span>";
       html += "</div>";
 
-      matches.forEach(function(m) {
+      html += "<div style='max-height: 450px; overflow-y: auto; padding-right: 5px;'>";
+
+      matches.forEach(function(m, idx) {
         var badge = m.type === "E" ? "🇬🇧 İngilizce Örnek" : (m.type === "K" ? "⚖️ Karşılaştırmalı" : "🇹🇷 Kural / Açıklama");
         var color = m.type === "E" ? "#60a5fa" : (m.type === "K" ? "#f43f5e" : "#34d399");
 
         html += "<div style='background:#1e293b; border-radius:8px; padding:12px; margin-bottom:12px; border-left:3px solid " + color + ";'>";
-        html += "<div style='font-size:11px; font-weight:bold; color:" + color + "; margin-bottom:4px;'>" + badge + " — " + m.section + "</div>";
+        html += "<div style='display:flex; justify-content:space-between; font-size:11px; font-weight:bold; color:" + color + "; margin-bottom:4px;'>";
+        html += "<span>#" + (idx + 1) + " [" + badge + "] — Bölüm: " + m.section + "</span>";
+        html += "<span style='color:#94a3b8;'>ID: " + m.id + "</span>";
+        html += "</div>";
         html += "<div style='font-size:13px; color:#cbd5e1; line-height:1.5;'>" + m.content + "</div>";
         html += "</div>";
       });
 
-      html += "</div>";
+      html += "</div></div>";
       container.innerHTML = html;
     })
     .catch(function(err) {
