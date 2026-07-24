@@ -378,7 +378,6 @@ function parseParams(){
   State.tr = (p.get("t")||"").trim();
 }
 
-// Metin normalleştirme (kesme işaretleri ve noktalama temizliği)
 function normalizeText(text) {
   var t = String(text || "").toLowerCase();
   t = t.replace(/’/g, "'").replace(/`/g, "'");
@@ -405,7 +404,6 @@ function loadExcelVeri(index = 0) {
     });
 }
 
-// Tıklanan cümleyi üste yükleyip açıklatan fonksiyon
 function selectSentence(en, tr) {
   State.en = en || "";
   State.tr = tr || "";
@@ -414,7 +412,7 @@ function selectSentence(en, tr) {
 }
 window.selectSentence = selectSentence;
 
-// 🎲 EXCELVERI.JSON İÇİNDE ÇALIŞILAN CÜMLENİN BENZERLERİNİ BULUP LİSTELEME (Gramer & Tense Tabanlı Algoritma)
+// 🎲 HATA ARINDIRILMIŞ GRAMER / TENSE ODAKLI BENZERLİK ALGORİTMASI
 function listSimilarExcelSentences() {
   var container = document.getElementById("azar-result-container");
   if (!container) return;
@@ -428,22 +426,19 @@ function listSimilarExcelSentences() {
 
   container.innerHTML = "<div style='padding:15px; text-align:center; color:#14b8a6;'>🎲 data/excelveri.json dosyasında bu cümlenin gramer yapısına en benzer veriler taranıyor...</div>";
 
-  // Gramer Kalıpları ve İmzaları (Regex Kuralları)
+  // Hassas ve kesin gramer kalıpları (Rastgele kelime eşleşmesini önleyen V3 ve yapı imzaları)
   var patterns = [
-    { name: "reported_speech_past_perfect_passive", regex: /\b(said|told|denied|claimed|explained|thought|asked|stated)\b.*\bhad\s+been\s+\w+(ed|en|t)\b/i, weight: 120 },
-    { name: "reported_speech_past_perfect", regex: /\b(said|told|denied|claimed|explained|thought|asked|stated)\b.*\bhad\s+(?:already|never|just)?\s*\w+(ed|en|t)\b/i, weight: 90 },
-    { name: "reported_speech", regex: /\b(said|told|asked|claimed|explained|denied|stated|thought|believed)\s+(that|if|whether|me|him|her|us|them|\w+)/i, weight: 50 },
-    { name: "past_perfect_passive", regex: /\bhad\s+been\s+\w+(ed|en|t)\b/i, weight: 80 },
-    { name: "present_perfect_passive", regex: /\b(has|have)\s+been\s+\w+(ed|en|t)\b/i, weight: 70 },
+    { name: "reported_speech_past_perfect_passive", regex: /\b(said|told|denied|claimed|explained|thought|asked|stated)\b.*\bhad\s+been\s+(\w+ed|done|seen|taken|given|written|broken|chosen|driven|eaten|spoken|built|made|held|left|sent|paid|sold|spent|found|moved)\b/i, weight: 150 },
+    { name: "reported_speech_past_perfect", regex: /\b(said|told|denied|claimed|explained|thought|asked|stated)\b.*\bhad\s+(?:already|never|just)?\s*(\w+ed|done|seen|taken|given|written|broken|chosen|driven|eaten|spoken|built|made|held|left|sent|paid|sold|spent|found)\b/i, weight: 100 },
+    { name: "reported_speech", regex: /\b(said|told|asked|claimed|explained|denied|stated|thought|believed)\s+(that|if|whether|me|him|her|us|them|\b)/i, weight: 50 },
+    { name: "past_perfect_passive", regex: /\bhad\s+been\s+(\w+ed|done|seen|taken|given|written|broken|chosen|driven|eaten|spoken|built|made|held|left|sent|paid|sold|spent|found|moved|postponed|delayed)\b/i, weight: 90 },
+    { name: "present_perfect_passive", regex: /\b(has|have)\s+been\s+(\w+ed|done|seen|taken|given|written|broken|chosen|driven|eaten|spoken|built|made|held|left|sent|paid|sold|spent|found)\b/i, weight: 80 },
     { name: "modal_be_able_to", regex: /\b(should|would|could|might|will|can|may|was|were|has\s+been|have\s+been|shouldn't|wouldn't|couldn't|mightn't|won't|can't|wasn't|weren't)\s+be\s+able\s+to\b/i, weight: 100 },
     { name: "cond_type3", regex: /\bif\b.*\bhad\b.*\b(would|could|should|might)\s+have\b/i, weight: 90 },
     { name: "cond_type2", regex: /\bif\b.*\b(were|did|\w+ed)\b.*\b(would|could)\b/i, weight: 70 },
-    { name: "past_perfect", regex: /\bhad\s+(?:already|never|just)?\s*\w+(ed|en|t)\b/i, weight: 40 },
-    { name: "present_perfect", regex: /\b(have|has)\s+(?:already|never|just|ever)?\s*\w+(ed|en|t)\b/i, weight: 30 },
-    { name: "passive_voice", regex: /\b(is|are|was|were|been|being|be)\s+\w+(ed|en|t)\b/i, weight: 30 }
+    { name: "past_perfect", regex: /\bhad\s+(?:already|never|just)?\s*(\w+ed|done|seen|taken|given|written|broken|chosen|driven|eaten|spoken|built|made|held|left|sent|paid|sold|spent|found)\b/i, weight: 50 }
   ];
 
-  // Aktif cümlenin taşıdığı gramer kurallarını tespit et
   var activePatterns = [];
   patterns.forEach(function(p) {
     if (p.regex.test(currentClean)) {
@@ -451,7 +446,6 @@ function listSimilarExcelSentences() {
     }
   });
 
-  // Duraklama kelimeleri (Gramere etki etmeyen kelimeleri temizleme)
   var stopWords = new Set([
     "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
     "in", "on", "at", "to", "it", "and", "or", "of", "for", "with", "that", "this", "by", "as",
@@ -480,13 +474,11 @@ function listSimilarExcelSentences() {
         var candidateClean = normalizeText(en);
         var score = 0;
 
-        // Kendisiyle aynı cümleyi eliyoruz
         if (!candidateClean || candidateClean === currentClean) {
           return { item: item, score: -1 };
         }
 
         var matchedTags = [];
-        // Gramer kalıpları eşleştirmesi
         activePatterns.forEach(function(p) {
           if (p.regex.test(candidateClean)) {
             score += p.weight;
@@ -494,34 +486,28 @@ function listSimilarExcelSentences() {
           }
         });
 
-        // Kelime eşleşmesi kontrolü (İkincil Faktör)
         var candidateWordSet = new Set(candidateClean.split(" "));
         var wordMatchCount = 0;
         meaningfulWords.forEach(function(w) {
           if (candidateWordSet.has(w)) wordMatchCount++;
         });
 
-        // Eğer gramer kalıbı yakalandıysa kelime çakışması bonus puan verir (+4 puan/kelime)
         if (activePatterns.length > 0) {
           if (matchedTags.length > 0) {
             score += (wordMatchCount * 4);
           }
         } else {
-          // Eğer özel gramer yapısı yoksa anlamlı kelimelere bakılır (+8 puan/kelime)
           score += (wordMatchCount * 8);
         }
 
         return { item: item, score: score, matchedTags: matchedTags };
       });
 
-      // Puanlarına göre büyükten küçüğe sırala
       scoredData.sort(function(a, b) { return b.score - a.score; });
-
-      // Skoru en az 30 olan yüksek kaliteli gramer eşleşmelerini seç
-      var matches = scoredData.filter(function(m) { return m.score >= 30; }).map(function(m) { return m.item; });
+      var matches = scoredData.filter(function(m) { return m.score >= 50; }).map(function(m) { return m.item; });
 
       if (matches.length === 0) {
-        container.innerHTML = "<div style='padding:15px; background:#1e293b; color:#93a4bd; border-radius:8px; margin-top:15px;'>⚠️ Bu cümlenin gramer yapısına veya zamanına uygun benzer bir cümle Excel veritabanında bulunamadı.</div>";
+        container.innerHTML = "<div style='padding:15px; background:#1e293b; color:#93a4bd; border-radius:8px; margin-top:15px;'>⚠️ Bu cümlenin gramer yapısına uygun benzer bir cümle Excel veritabanında bulunamadı.</div>";
         return;
       }
 
