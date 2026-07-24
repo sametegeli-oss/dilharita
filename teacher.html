@@ -504,10 +504,25 @@ function listSimilarExcelSentences() {
       });
 
       scoredData.sort(function(a, b) { return b.score - a.score; });
-      var matches = scoredData.filter(function(m) { return m.score >= 50; }).map(function(m) { return m.item; });
+
+      // Eşik: özel bir gramer kalıbı yakalandıysa yüksek (kesin eşleşme), yoksa
+      // düşük tut ki basit/kısa cümlelerde de kelime benzerliğine göre sonuç gelsin.
+      var threshold = activePatterns.length > 0 ? 50 : 8;
+      var matches = scoredData
+        .filter(function(m) { return m.score >= threshold; })
+        .slice(0, 25)
+        .map(function(m) { return m.item; });
+
+      // Yine de boşsa: skoru pozitif olan en iyi 15 cümleyi göster (asla tamamen boş kalmasın)
+      if (matches.length === 0) {
+        matches = scoredData
+          .filter(function(m) { return m.score > 0; })
+          .slice(0, 15)
+          .map(function(m) { return m.item; });
+      }
 
       if (matches.length === 0) {
-        container.innerHTML = "<div style='padding:15px; background:#1e293b; color:#93a4bd; border-radius:8px; margin-top:15px;'>⚠️ Bu cümlenin gramer yapısına uygun benzer bir cümle Excel veritabanında bulunamadı.</div>";
+        container.innerHTML = "<div style='padding:15px; background:#1e293b; color:#93a4bd; border-radius:8px; margin-top:15px;'>⚠️ Bu cümleyle ortak kelime/yapı taşıyan bir cümle Excel veritabanında bulunamadı. Farklı bir cümle deneyin.</div>";
         return;
       }
 
