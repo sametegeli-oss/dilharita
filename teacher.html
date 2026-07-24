@@ -425,11 +425,11 @@ function listSimilarExcelSentences() {
   var meaningfulWords = words.filter(function(w) { return w.length > 2 && !stopWords.has(w); });
 
   fetch('./data/excelveri.json')
-    .then(res => {
-      if(!res.ok) throw new Error("data/excelveri.json bulunamadı.");
+    .then(function(res) {
+      if (!res.ok) throw new Error("data/excelveri.json dosyasına ulaşılamadı.");
       return res.json();
     })
-    .then(data => {
+    .then(function(data) {
       if (!Array.isArray(data) || data.length === 0) {
         container.innerHTML = "<div style='padding:15px; background:#450a0a; color:#fca5a5; border-radius:8px;'>❌ excelveri.json dosyasında veri bulunamadı.</div>";
         return;
@@ -496,7 +496,7 @@ function listSimilarExcelSentences() {
       html += "</div></div>";
       container.innerHTML = html;
     })
-    .catch(err => {
+    .catch(function(err) {
       container.innerHTML = "<div style='padding:15px; background:#450a0a; color:#fca5a5; border-radius:8px;'>❌ Hata: " + err.message + "</div>";
     });
 }
