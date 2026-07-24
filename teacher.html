@@ -378,7 +378,7 @@ function parseParams(){
 
 // 📂 EXCELVERI.JSON YÜKLEME VE RASTGELE SEÇME FONKSİYONLARI
 function loadExcelVeri(index = 0) {
-  fetch('./excelveri.json')
+  fetch('./data/excelveri.json')
     .then(response => {
       if (!response.ok) throw new Error("excelveri.json yüklenemedi.");
       return response.json();
@@ -398,7 +398,7 @@ function loadExcelVeri(index = 0) {
 }
 
 function loadRandomExcelVeri() {
-  fetch('./excelveri.json')
+  fetch('./data/excelveri.json')
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data) && data.length > 0) {
