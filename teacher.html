@@ -338,4 +338,369 @@ function parseQuiz(text){
     var body=src.slice(head);
     var before=src.slice(0, mHead.index);
 
-    var optRe=/(?:^|\n)[^\S\
+    var optRe=/(?:^|\n)[^\S\n]*(?:\*\*)?[^\S\n]*([A-D])[).\-:][^\S\n]*(?:\*\*)?[^\S\n]*([^\n]+)/g;
+    var opts=[], seen={}, m;
+    while((m=optRe.exec(body))){
+      var L=m[1].toUpperCase(); if(seen[L]) continue;
+      var t=m[2].replace(/\*\*/g,"").trim(); if(!t) continue;
+      seen[L]=1; opts.push({letter:L, text:t, at:m.index});
+    }
+    if(opts.length!==4) return null;
+
+    var q=body.slice(0, opts[0].at).replace(/\*\*/g,"").trim();
+    if(!q) return null;
+
+    var tail=body.slice(opts[3].at + 1);
+    var mAns=/Cevap[^A-D]{0,20}?(?:\*\*)?\s*\(?([A-D])\)?(?![a-zA-ZçğıöşüÇĞİÖŞÜ])/i.exec(tail);
+    if(!mAns) mAns=/(?:^|\n)[^\n]*Cevap[^\n]*?\(?([A-D])\)?[^\S\n]*(?:şıkkı|şık|seçeneği|seçenek)/i.exec(tail);
+    if(!mAns) return null;
+    var ans=mAns[1].toUpperCase();
+    if(!seen[ans]) return null;
+
+    var exp=tail.slice(mAns.index + mAns[0].length).replace(/\*\*/g,"");
+    var ansTxt=(opts.filter(function(o){return o.letter===ans;})[0]||{}).text||"";
+    exp=exp.replace(/^[\s:—\-–.)]*/,"");
+    if(ansTxt && exp.indexOf(ansTxt)===0) exp=exp.slice(ansTxt.length);
+    exp=exp.replace(/^[\s:—\-–.)]*/,"").trim();
+
+    return { before:before, question:q, options:opts, answer:ans, explain:exp };
+  }catch(e){ return null; }
+}
+
+const root = document.getElementById("root");
+const State = { en:"", tr:"", history:[], explanation:"" };
+
+function parseParams(){
+  const p = new URLSearchParams(location.search);
+  State.en = (p.get("s")||"").trim();
+  State.tr = (p.get("t")||"").trim();
+}
+
+function render(){
+  root.innerHTML = `
+  <div class="top">
+    <a href="./index.html" class="back" id="teacherBack" title="Geri">←</a>
+    <div class="ava" title="Fotoğraflı öğretmen"><img id="teacherAvaImg" alt="Öğretmen avatarı"></div>
+    <div class="tinfo"><h1>İngilizce Öğretmeni</h1><p>Türkçe anlatımlı İngilizce öğretmeni</p></div>
+    <button class="keybtn" id="teacherPromptBtn" title="AI Prompt ayarı" style="margin-right:6px">⚙️</button>
+    <button class="keybtn" id="teacherKeyBtn" title="API anahtarları">🔑</button>
+  </div>
+  <div class="body">
+    <div class="teacher-hero"><img class="teacher-photo" id="teacherHeroImg" alt="Fotoğraflı öğretmen avatarı"></div>
+    <div class="subject">
+      <div class="subject-en" id="subEn">${renderRich('[['+esc(State.en)+']]')}</div>
+      ${State.tr ? `<div class="subject-tr">${esc(State.tr)}</div>` : ""}
+      <button class="subject-play" id="playBtn">🔊 Cümleyi dinle</button>
+    </div>
+    <div id="out"></div>
+  </div>`;
+  mountTeacherAvatar();
+  
+  var keyBtn = document.getElementById("teacherKeyBtn");
+  if (keyBtn) keyBtn.onclick = () => openKeySheet();
+  var promptBtn = document.getElementById("teacherPromptBtn");
+  if (promptBtn) promptBtn.onclick = () => { if(window.DHOpenAIPrompt) window.DHOpenAIPrompt(); };
+  var backEl = document.getElementById("teacherBack");
+  if (backEl){
+    var p2 = new URLSearchParams(location.search);
+    var isEmbed = p2.get("embed") === "1";
+    if (isEmbed){
+      backEl.setAttribute("href", "#"); backEl.textContent = "←"; backEl.title = "Çalışmaya dön";
+      backEl.onclick = function(ev){ ev.preventDefault(); try{ parent.postMessage("dh-teacher-close", "*"); }catch(e){} };
+    } else {
+      var ret = ""; try{ ret = localStorage.getItem("teacherReturnURL") || ""; }catch(e){}
+      if (!ret){ ret = p2.get("return") || ""; }
+      if (ret){
+        backEl.setAttribute("href", ret);
+        backEl.onclick = function(ev){ ev.preventDefault(); try{ localStorage.removeItem("teacherReturnURL"); }catch(e){} location.href = ret; };
+      }
+    }
+  }
+  document.getElementById("playBtn").onclick = () => speakEnglish(State.en);
+  explain();
+}
+
+function askTeacherViaGemini(){
+  if(!window.DHGemini){ handleError(new Error("Gemini köprüsü yüklenmedi.")); return; }
+  var userMsg = `İngilizce cümle: "${State.en}"` + (State.tr ? `\nTürkçe çevirisi: ${State.tr}` : "");
+  var prompt = getPrompt() + (window.__dhProfileBlock||"")
+    + "\n\n---\n" + userMsg
+    + "\n\nYukarıdaki sistem talimatına BİREBİR uyarak yanıt ver (mini test dahil, aynı biçimde).";
+  DHGemini.ask({
+    title:"💎 Öğretmene Gemini ile sor",
+    hint:"Gemini'nin cevabını buraya yapıştır ve Enter'a bas…",
+    prompt: prompt,
+    parse: DHGemini.parsers.text,
+    onResult: function(reply){
+      State.history = [{ role:"system", content:getPrompt() }, { role:"user", content:userMsg }, { role:"assistant", content:reply }];
+      renderExplanation(reply);
+      try{ if(window.dhBumpDailyTracker) window.dhBumpDailyTracker("lesson"); }catch(e){}
+    }
+  });
+}
+window.askTeacherViaGemini = askTeacherViaGemini;
+
+function setOut(html){ document.getElementById("out").innerHTML = html; }
+
+async function explain(){
+  if (!State.en){
+    setOut(`<div class="state">
+      <h2>Bir cümle yaz</h2>
+      <p>İncelemesini istediğin İngilizce (veya Türkçe) cümleyi yaz, öğretmen açıklasın.</p>
+      <div class="manual-entry">
+        <input id="manualSentence" type="text" placeholder="Örn: She has been working all day." autocomplete="off" />
+        <button id="manualGo">Açıkla</button>
+      </div>
+    </div>`);
+    var inp = document.getElementById("manualSentence");
+    var go = function(){
+      var v = (inp.value||"").trim(); if(!v) return;
+      State.en = v; State.tr = ""; explain();
+    };
+    if(inp){ inp.focus(); inp.onkeydown = function(e){ if(e.key==="Enter") go(); }; }
+    var gb = document.getElementById("manualGo");
+    if(gb) gb.onclick = go;
+    return;
+  }
+
+  if (typeof window.__dhStorageReady !== "undefined" && !window.__dhStorageReady && !getKeys().length){
+    setOut(`<div class="loading"><div class="spinner"></div> Hazırlanıyor…</div>`);
+    await new Promise(function(resolve){
+      var done=false; function go(){ if(done) return; done=true; resolve(); }
+      window.addEventListener("dh-storage-ready", go, {once:true});
+      setTimeout(go, 1500);
+    });
+  }
+
+  if (!getKeys().length){
+    if(window.DHGemini && State.en){
+      setOut(`<div class="state">
+        <h2>Bu cümleyi nasıl inceleyelim?</h2>
+        <p>Cümlen: <b>${esc(State.en)}</b></p>
+        <div class="manual-entry" style="flex-direction:column;gap:10px">
+          <button id="dhTeachGemini" style="width:100%;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0;border-radius:11px;padding:13px;font:800 15px Nunito,sans-serif;cursor:pointer">💎 Gemini'ye sor (anahtar gerekmez)</button>
+          <button id="dhTeachAzar" style="width:100%;background:linear-gradient(135deg,#4f46e5,#3b82f6);color:#fff;border:0;border-radius:11px;padding:13px;font:800 15px Nunito,sans-serif;cursor:pointer">📘 Bu Cümlenin Konusunu Azar Kitabından Çalış</button>
+          <button id="dhTeachGuide" style="width:100%;background:linear-gradient(135deg,#059669,#34d399);color:#0f172a;border:0;border-radius:11px;padding:13px;font:800 15px Nunito,sans-serif;cursor:pointer">📖 Türkçe Çeviri Kılavuzunda Ara</button>
+          <button id="dhTeachAddKey" style="width:100%;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:11px;padding:12px;font:700 14px Nunito,sans-serif;cursor:pointer">🔑 Kendi API anahtarımı ekle</button>
+        </div>
+      </div>`);
+      var gb2=document.getElementById("dhTeachGemini"); if(gb2) gb2.onclick=function(){ askTeacherViaGemini(); };
+      var az=document.getElementById("dhTeachAzar"); if(az) az.onclick=function(){ runAzarForTeacherSentence(); };
+      var tg=document.getElementById("dhTeachGuide"); if(tg) tg.onclick=function(){ runTranslationGuideSearch(State.en); };
+      var ak=document.getElementById("dhTeachAddKey"); if(ak) ak.onclick=function(){ openKeySheet(); };
+      return;
+    }
+    openKeySheet(); setOut(""); return;
+  }
+
+  setOut(`<div class="loading"><div class="spinner"></div> Öğretmen cümleyi inceliyor…</div>`);
+  const userMsg = `İngilizce cümle: "${State.en}"` + (State.tr ? `\nTürkçe çevirisi: ${State.tr}` : "");
+  try{ var _mem=JSON.parse(localStorage.getItem("dh-teacher-mem")||"[]"); _mem.push({q:String(State.en||"").slice(0,90),ts:Date.now()}); localStorage.setItem("dh-teacher-mem",JSON.stringify(_mem.slice(-3))); }catch(e){}
+  State.history = [{ role:"system", content:getPrompt()+(window.__dhProfileBlock||"") }, { role:"user", content:userMsg }];
+  try{
+    const reply = await groqChat(State.history);
+    State.history.push({ role:"assistant", content:reply });
+    renderExplanation(reply);
+  }catch(e){ handleError(e); }
+}
+
+function renderExplanation(reply){
+  State.explanation = reply || "";
+  const quiz = parseQuiz(reply);
+  const mainText = quiz ? quiz.before : reply;
+
+  const quizHTML = quiz ? `
+    <div class="quiz" id="quizBox">
+      <div class="quiz-h">📝 MİNİ TEST</div>
+      <div class="quiz-q">${renderRich(quiz.question)}</div>
+      <div class="quiz-opts" id="quizOpts">
+        ${quiz.options.map(o=>`<button class="quiz-opt" data-l="${o.letter}"><span class="ltr">${o.letter}</span><span class="otx">${renderRich(o.text)}</span></button>`).join("")}
+      </div>
+      <div class="quiz-exp" id="quizExp"></div>
+    </div>` : "";
+
+  setOut(`
+    <div class="explain">${renderRich(mainText)}</div>
+    ${quizHTML}
+    <div class="explain-actions">
+      <button class="explain-play" id="explainListenBtn">🔊 Oku</button>
+      <button class="explain-play" id="sentenceListenBtn">🔊 Cümleyi dinle</button>
+    </div>
+    <div class="followup">
+      <input id="fuInput" type="text" placeholder="Bir sorun mu var? Öğretmene sor…" />
+      <button id="fuSend">Sor</button>
+    </div>
+    <button class="regen" id="regenBtn">↻ Yeniden açıkla</button>
+    <button class="regen" id="dhGeminiAskBtn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0">💎 Gemini'ye sor</button>
+    
+    <!-- 📘 BETTY AZAR KİTAP DÜĞMESİ -->
+    <button class="regen" id="dhAzarAskBtn" style="background:linear-gradient(135deg,#4f46e5,#3b82f6);color:#fff;border:0">📘 Bu Cümlenin Konusunu Azar Kitabından Çalış</button>
+    
+    <!-- 📖 ÇEVİRİ KILAVUZU DÜĞMESİ (translation_guide.json) -->
+    <button class="regen" id="dhGuideAskBtn" style="background:linear-gradient(135deg,#059669,#34d399);color:#0f172a;border:0">📖 Türkçe Çeviri Kılavuzunda Ara</button>
+    
+    <!-- 🔍 SONUÇLARIN YAZDIRILACAĞI ORTAK CONTAINER -->
+    <div id="azar-result-container"></div>`);
+
+  const fu = document.getElementById("fuInput");
+  fu.onkeydown = e => { if (e.key==="Enter") askFollowup(fu.value); };
+  document.getElementById("fuSend").onclick = () => askFollowup(fu.value);
+  document.getElementById("regenBtn").onclick = () => explain();
+  
+  var gAsk=document.getElementById("dhGeminiAskBtn");
+  if(gAsk){ if(window.DHGemini){ gAsk.onclick=function(){ askTeacherViaGemini(); }; } else { gAsk.style.display="none"; } }
+
+  var azAsk=document.getElementById("dhAzarAskBtn");
+  if(azAsk){ azAsk.onclick=function(){ runAzarForTeacherSentence(); }; }
+
+  var guideAsk=document.getElementById("dhGuideAskBtn");
+  if(guideAsk){ guideAsk.onclick=function(){ runTranslationGuideSearch(State.en); }; }
+
+  document.getElementById("explainListenBtn").onclick = () => speakFromScreen(document.querySelector(".explain"));
+  document.getElementById("sentenceListenBtn").onclick = () => speakEnglish(State.en);
+  if(quiz) bindQuiz(quiz);
+}
+
+// 📘 AZAR ÇAĞIRMA FONKSİYONU
+function runAzarForTeacherSentence() {
+  if (!State.en) { alert("İncelenecek aktif bir cümle bulunamadı."); return; }
+  if (!window.DHAzarEngine) { alert("Azar motoru yüklenemedi."); return; }
+  window.DHAzarEngine.startRemedialLesson(State.en, "azar-result-container");
+}
+window.runAzarForTeacherSentence = runAzarForTeacherSentence;
+
+// 📖 ÇEVİRİ KILAVUZU (translation_guide.json) ÇAĞIRMA FONKSİYONU
+function runTranslationGuideSearch(queryText) {
+  var q = (queryText || State.en || "").trim().toLowerCase();
+  var container = document.getElementById("azar-result-container");
+  if (!container) return;
+
+  container.innerHTML = "<div style='padding:15px; text-align:center; color:#34d399;'>📖 Türkçe Çeviri Kılavuzu taranıyor...</div>";
+
+  fetch('./translation_guide.json')
+    .then(function(res) {
+      if (!res.ok) throw new Error("translation_guide.json dosyasına ulaşılamadı.");
+      return res.json();
+    })
+    .then(function(data) {
+      var matches = data.filter(function(item) {
+        var content = String(item.content || "").toLowerCase();
+        return content.indexOf(q) !== -1 || q.split(" ").some(function(w){ return w.length > 3 && content.indexOf(w) !== -1; });
+      }).slice(0, 4);
+
+      if (matches.length === 0) {
+        container.innerHTML = "<div style='padding:15px; background:#451a03; color:#fcd34d; border-radius:8px; margin-top:10px;'>⚠️ Çeviri kılavuzunda bu ifadeyle ilgili eşleşme bulunamadı.</div>";
+        return;
+      }
+
+      var html = "<div style='background:#0f172a; border:1px solid #34d399; border-radius:12px; padding:18px; margin-top:15px; color:#e2e8f0;'>";
+      html += "<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #1e293b; padding-bottom:8px;'>";
+      html += "<h3 style='margin:0; color:#34d399; font-size:16px;'>📖 Türkçe Çeviri Kılavuzu Bulguları</h3>";
+      html += "<span style='font-size:11px; background:#1e293b; color:#60a5fa; padding:3px 8px; border-radius:6px;'>Boztaş & Kocaman</span>";
+      html += "</div>";
+
+      matches.forEach(function(m) {
+        var badge = m.type === "E" ? "🇬🇧 İngilizce Örnek" : (m.type === "K" ? "⚖️ Karşılaştırmalı" : "🇹🇷 Kural / Açıklama");
+        var color = m.type === "E" ? "#60a5fa" : (m.type === "K" ? "#f43f5e" : "#34d399");
+
+        html += "<div style='background:#1e293b; border-radius:8px; padding:12px; margin-bottom:12px; border-left:3px solid " + color + ";'>";
+        html += "<div style='font-size:11px; font-weight:bold; color:" + color + "; margin-bottom:4px;'>" + badge + " — " + m.section + "</div>";
+        html += "<div style='font-size:13px; color:#cbd5e1; line-height:1.5;'>" + m.content + "</div>";
+        html += "</div>";
+      });
+
+      html += "</div>";
+      container.innerHTML = html;
+    })
+    .catch(function(err) {
+      container.innerHTML = "<div style='padding:15px; background:#450a0a; color:#fca5a5; border-radius:8px;'>❌ Hata: " + err.message + "</div>";
+    });
+}
+window.runTranslationGuideSearch = runTranslationGuideSearch;
+
+function bindQuiz(quiz){
+  const box=document.getElementById("quizOpts");
+  const expEl=document.getElementById("quizExp");
+  if(!box) return;
+  box.querySelectorAll(".quiz-opt").forEach(btn=>{
+    btn.onclick=()=>{
+      const picked=btn.getAttribute("data-l");
+      const ok=(picked===quiz.answer);
+      const correctOpt=quiz.options.find(o=>o.letter===quiz.answer);
+      const pickedOpt=quiz.options.find(o=>o.letter===picked);
+
+      box.querySelectorAll(".quiz-opt").forEach(b=>{
+        b.disabled=true;
+        const L=b.getAttribute("data-l");
+        if(L===quiz.answer) b.classList.add("correct");
+        else if(L===picked) b.classList.add("wrong");
+      });
+
+      if(expEl){
+        expEl.innerHTML = `<div class="quiz-verdict ${ok?"ok":"bad"}">`
+          + (ok ? "✅ Doğru!" : "❌ Yanlış — doğrusu "+quiz.answer+") "+esc(correctOpt?correctOpt.text:""))
+          + `</div>` + (quiz.explain ? renderRich(quiz.explain) : "");
+        expEl.classList.add("show");
+      }
+
+      try{
+        if(window.dhCoachEvaluate) window.dhCoachEvaluate({
+          ok: ok,
+          en: State.en || (correctOpt?correctOpt.text:""),
+          answer: pickedOpt?pickedOpt.text:picked,
+          sentenceId: State.en ? ("teacher:"+State.en.slice(0,60)) : "",
+          trackKind: "lesson",
+          module: "teacher",
+          topic: "dilbilgisi"
+        });
+      }catch(e){}
+    };
+  });
+}
+
+async function askFollowup(q){
+  q = (q||"").trim(); if (!q) return;
+  const out = document.getElementById("out");
+  const qa = document.createElement("div");
+  qa.innerHTML = `<div class="qa-q">❓ ${esc(q)}</div><div class="loading"><div class="spinner"></div> Yanıtlanıyor…</div>`;
+  out.appendChild(qa);
+  State.history.push({ role:"user", content:q });
+  try{
+    const reply = await groqChat(State.history);
+    State.history.push({ role:"assistant", content:reply });
+    qa.innerHTML = `<div class="qa-q">❓ ${esc(q)}</div><div class="explain qaExplain">${renderRich(reply)}</div><div class="explain-actions"><button class="explain-play qaListen">🔊 Oku</button></div>`;
+    const btn = qa.querySelector(".qaListen");
+    if(btn) btn.onclick = () => speakFromScreen(qa.querySelector(".qaExplain"));
+  }catch(e){
+    qa.querySelector(".loading").outerHTML = `<div class="note bad">Yanıt alınamadı.</div>`;
+    handleError(e, true);
+  }
+}
+
+function handleError(e, silent){
+  const code = e && e.code;
+  if (code==="no-key" || code==="bad-key"){ openKeySheet(code==="bad-key"); if(!silent) setOut(""); return; }
+  let msg="Bir sorun oluştu, tekrar dene.";
+  if (code==="rate"){
+    var t = e && e.tried ? e.tried : 1;
+    var w = e && e.waitMs ? Math.ceil(e.waitMs/1000) : 0;
+    if (t > 1) msg = t + " API anahtarının hepsi şu an limitte" + (w?(" (~"+w+" sn sonra açılır)"):"") + ". Farklı Groq hesaplarından anahtar eklersen kesinti azalır.";
+    else msg = "API limiti doldu (tek anahtar). Birkaç dakika bekle veya '🔑 Anahtarlar'dan ek anahtar gir.";
+  }
+  else if (code==="network") msg="İnternet bağlantısı yok gibi görünüyor.";
+  if (!silent) setOut(`<div class="state"><h2>Olmadı</h2><p>${msg}</p><button class="btn btn-primary" onclick="location.reload()">Tekrar dene</button></div>`);
+}
+
+parseParams();
+render();
+
+})();
+</script>
+<script src="./ai-teacher-prompt-tts.js?v=2"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=2"></script>
+<script src="./avatar-blink-sync.js?v=2"></script>
+<script src="./study-tracker.js?v=2"></script>
+<script src="./cloud-sync.js?v=2"></script>
+<script src="./word-popup.js?v=1"></script>
+</body>
+</html>
