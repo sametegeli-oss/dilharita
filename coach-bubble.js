@@ -817,6 +817,30 @@
            - Yüksek benzerlik (≥%85) VE tek yönlü küçük fark → gerçek eksik/fazla, somut söyle.
            - Aksi halde (orta bant veya hem eksik hem fazla bir arada) → yapı farkı olabilir,
              kesin dil KULLANMA, öğrenciyi anlam hakemine (Gemini) yönlendir. */
+      /* ANALYZER SONUCU: kesin sınıflanmış gramer hatası varsa, koç TÜRÜNÜ net söyler.
+         Bu en güvenilir kaynaktır; kelime-diff sezgisinden önce gelir. */
+      var az = opts.analyzer;
+      if(az && az.verdict==="labeled" && az.errors && az.errors.length){
+        var LBL = {
+          TENSE_ERROR:"Fiil zamanı/çekimi hatası",
+          AUXILIARY_ERROR:"Yardımcı fiil hatası",
+          WORD_ORDER_ERROR:"Kelime sırası hatası",
+          MISSING_WORD:"Eksik kelime",
+          EXTRA_WORD:"Fazla kelime",
+          WORD_CHOICE_ERROR:"Kelime seçimi"
+        };
+        var e0 = az.errors.find(function(e){ return e.type!=="TYPO"; }) || az.errors[0];
+        var detail="";
+        if(e0.type==="TENSE_ERROR") detail=" “"+e0.user+"” yerine “"+e0.ref+"” olmalı (zaman uyumu).";
+        else if(e0.type==="AUXILIARY_ERROR") detail = e0.user ? " “"+e0.user+"” yerine “"+e0.ref+"”." : " “"+e0.ref+"” yardımcı fiili eksik.";
+        else if(e0.type==="MISSING_WORD") detail=" “"+e0.ref+"” kelimesi eksik.";
+        else if(e0.type==="EXTRA_WORD") detail=" “"+e0.user+"” fazla.";
+        else if(e0.type==="WORD_ORDER_ERROR") detail=" Kelimeler doğru ama sıraları yanlış.";
+        var typoTail = az.typoCount>0 ? " (Ayrıca "+az.typoCount+" yazım sürçmesi düzeltildi.)" : "";
+        dhCoachSay((LBL[e0.type]||"Hata")+":"+detail+typoTail+" Doğrusu: "+opts.en, "warn", null, {wordDiff:opts.wordDiff, refText:opts.en});
+        return;
+      }
+
       var wd = opts.wordDiff;
       if(wd && (wd.missing.length || wd.extra.length)){
         var scNow = (_sc==null? 100 : _sc);

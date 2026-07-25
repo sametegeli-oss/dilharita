@@ -212,6 +212,30 @@ function priority(r){
   return "low";
 }
 function detectTypes(r){
+  /* ÖNCE gerçek hizalama analizi (sentence-analyzer). Cümlenin metadata'sına
+     (grammar alanı) körlemesine güvenmek yerine, öğrencinin GERÇEKTE yaptığı farkı
+     analiz eder. Analyzer yoksa eski sezgisel yönteme düşer. */
+  if(typeof window!=="undefined" && window.SentenceAnalyzer && r.target && r.answer){
+    try{
+      var a = window.SentenceAnalyzer.analyze(r.target, r.answer);
+      var MAP = {
+        TENSE_ERROR:"tense", AUXILIARY_ERROR:"auxiliary", WORD_ORDER_ERROR:"word-order",
+        MISSING_WORD:"missing-word", EXTRA_WORD:"extra-word", WORD_CHOICE_ERROR:"word-choice"
+      };
+      var out=[];
+      (a.types||[]).forEach(function(tp){ if(MAP[tp] && out.indexOf(MAP[tp])<0) out.push(MAP[tp]); });
+      // yalnızca yazım sürçmesi ise ayrı etiket (öğrenme verisini kirletmesin)
+      if(a.verdict==="typo-only") return ["typo"];
+      if(a.verdict==="correct") return [];
+      // ses/telaffuz bağlamı
+      if(r.source==="video" || r.mode==="voice") out.push("pronunciation");
+      // analyzer belirsizse (eşanlamlı olabilir) ve başka etiket yoksa, genel doğruluk
+      if(!out.length && Number(r.score||0)<80) out.push(a.verdict==="uncertain"?"word-choice":"sentence-accuracy");
+      return out.filter(function(v,i,aa){ return aa.indexOf(v)===i; });
+    }catch(e){ /* analyzer patlarsa aşağıdaki eski yönteme düş */ }
+  }
+
+  // --- ESKİ SEZGİSEL YÖNTEM (analyzer yoksa yedek) ---
   const target=words(r.target);
   const answer=words(r.answer);
   const parts=Array.isArray(r.diffParts)?r.diffParts:[];
