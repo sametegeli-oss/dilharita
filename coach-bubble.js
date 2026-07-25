@@ -820,10 +820,17 @@
       var wd = opts.wordDiff;
       if(wd && (wd.missing.length || wd.extra.length)){
         var scNow = (_sc==null? 100 : _sc);
-        var bothSides = wd.missing.length>0 && wd.extra.length>0;   // kelime değiştirilmiş olabilir
-        var smallOneSided = !bothSides && (wd.missing.length + wd.extra.length) <= 2 && scNow >= 85;
+        var bothSides = wd.missing.length>0 && wd.extra.length>0;   // kelime değiştirilmiş
+        var totalDiff = wd.missing.length + wd.extra.length;
+        /* Somut geri bildirim ver (hakeme yönlendirme) şu durumlarda:
+             - Tek yönlü küçük eksik/fazla + benzerlik ≥85, VEYA
+             - Benzerlik çok yüksek (≥90) ve toplam fark ≤2 kelime (ör. solve→resolve).
+           Bu, "neredeyse tam" cümlelerde gereksiz 'farklı yapı' uyarısını önler. */
+        var smallOneSided = !bothSides && totalDiff <= 2 && scNow >= 85;
+        var tinyChange   = totalDiff <= 2 && scNow >= 90;
+        var concreteOK   = smallOneSided || tinyChange;
 
-        if(!smallOneSided){
+        if(!concreteOK){
           /* Hakem (Gemini/AI) zaten onayladıysa: yargılama yok, tebrik et. */
           if(opts.semanticOk){
             dhCoachSay("Farklı ama GEÇERLİ bir yapı kurmuşsun ✓ Anlam doğru — böyle esneklik iyidir. Referans: " + opts.en, "praise");
@@ -857,10 +864,19 @@
           }
         }catch(e){}
         var parts=[];
-        if(wd.missing.length) parts.push("“"+wd.missing.slice(0,3).join(", ")+"” "+(wd.missing.length>1?"kelimelerini":"kelimesini")+" atladın");
-        if(wd.extra.length) parts.push("“"+wd.extra.slice(0,3).join(", ")+"” fazladan yazdın");
+        if(bothSides && wd.missing.length===wd.extra.length){
+          /* Kelime değişimi (ör. solve→resolve): atladın/fazla yerine 'değiştirmişsin'. */
+          var pairs=[];
+          for(var _p=0;_p<Math.min(wd.missing.length,3);_p++){
+            pairs.push("“"+wd.extra[_p]+"” yerine “"+wd.missing[_p]+"”");
+          }
+          parts.push(pairs.join(", ")+" beklenir (anlamca yakın olabilir)");
+        } else {
+          if(wd.missing.length) parts.push("“"+wd.missing.slice(0,3).join(", ")+"” "+(wd.missing.length>1?"kelimelerini":"kelimesini")+" atladın");
+          if(wd.extra.length) parts.push("“"+wd.extra.slice(0,3).join(", ")+"” fazladan yazdın");
+        }
         var kindD = perfect ? "praise" : (partial ? "tip" : "warn");
-        var leadD = perfect ? "Neredeyse tam! Yalnızca " : "Çok yaklaştın — ";
+        var leadD = perfect ? "Neredeyse tam! " : "Çok yaklaştın — ";
         dhCoachSay(leadD + parts.join(" ve ") + "." + repeatNote + " Doğrusu: " + opts.en, kindD, null, {wordDiff:wd, refText:opts.en});
         return;
       }
