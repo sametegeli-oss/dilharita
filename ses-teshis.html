@@ -33,9 +33,21 @@
   <button onclick="testVoice()">▶ Seçili sesle konuş</button>
 </div>
 
+<div class="row">
+  <b>4) Sohbet teşhisini AÇ/KAPAT</b>
+  <button onclick="toggleDebug()">Sohbet teşhisini aç/kapat</button>
+  <div style="font-size:13px;color:#9fb3d9;margin-top:6px">Açtıktan sonra bir sohbete gir (chatdoctor gibi). Avatar konuşunca ekranın altında yeşil kutu çıkar — orada hangi sesin neden seçildiği yazar. O kutunun ekran görüntüsünü al.</div>
+</div>
+
 <pre id="out">Sonuçlar burada görünecek…</pre>
 
 <script>
+function toggleDebug(){
+  var cur=localStorage.getItem("dh-voice-debug")==="1";
+  if(cur){ localStorage.removeItem("dh-voice-debug"); log("Sohbet teşhisi KAPATILDI."); }
+  else { localStorage.setItem("dh-voice-debug","1"); log("Sohbet teşhisi AÇILDI ✅\n\nŞimdi bir sohbete gir (chatdoctor gibi). Avatar konuşunca ekranın altında yeşil bir kutu çıkacak. O kutunun ekran görüntüsünü al ve gönder."); }
+}
+
 var out=document.getElementById("out");
 function log(t){ out.textContent = t; }
 

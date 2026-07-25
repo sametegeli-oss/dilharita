@@ -372,14 +372,18 @@ function pickVoice(){
   refreshVoices();
   const voices = cachedVoices.filter(v => /^en/i.test(v.lang || ""));
   const allVoices = cachedVoices.slice();
-  if(!allVoices.length) return null;
+  if(!allVoices.length){ dhVoiceDebug("SESLER BOŞ (getVoices boş döndü) → varsayılana düşecek"); return null; }
   // TEK DOĞRU KAYNAK: ses ayar sayfası (ses-secim.html).
+  const _key = avatarVoiceKey();
   // 1) Bu karakter için kayıtlı seçim
   try{
-    const saved = JSON.parse(localStorage.getItem(avatarVoiceKey())||"null");
+    const saved = JSON.parse(localStorage.getItem(_key)||"null");
     if(saved && saved.name){
       const f = allVoices.find(v => v.name===saved.name);
-      if(f) return f;
+      if(f){ dhVoiceDebug("✅ karakter sesi: "+saved.name+" (anahtar: "+_key+")"); return f; }
+      dhVoiceDebug("⚠️ karakter kaydı VAR ("+saved.name+") ama cihazda o ses YOK → global'e düşüyor");
+    } else {
+      dhVoiceDebug("karakter kaydı yok (anahtar: "+_key+") → global'e bakılıyor");
     }
   }catch(e){}
   // 2) Karakter-özel yoksa: GLOBAL ayar (tüm karakterler için)
@@ -387,13 +391,34 @@ function pickVoice(){
     const gv = JSON.parse(localStorage.getItem("dh-voice:__global__")||"null");
     if(gv && gv.name){
       const f2 = allVoices.find(v => v.name===gv.name);
-      if(f2) return f2;
+      if(f2){ dhVoiceDebug("🌐 global ses: "+gv.name); return f2; }
+      dhVoiceDebug("⚠️ global kayıt VAR ("+gv.name+") ama cihazda o ses YOK → varsayılana düşüyor");
     }
   }catch(e){}
   // 3) Hiç ayar yoksa: nötr İngilizce ses (cinsiyet önyargısı YOK — ayar sayfası tek karar mercii)
   const pool = voices.length ? voices : allVoices;
+  dhVoiceDebug("varsayılan ses: "+((pool[0]&&pool[0].name)||"?"));
   return pool[0] || null;
 }
+/* Geçici teşhis: sohbette hangi sesin neden seçildiğini ekrana yazar.
+   localStorage'da dh-voice-debug="1" ise görünür. Kapatmak için silinir. */
+function dhVoiceDebug(msg){
+  try{
+    if(localStorage.getItem("dh-voice-debug")!=="1") return;
+    var box=document.getElementById("dhVoiceDebugBox");
+    if(!box){
+      box=document.createElement("div"); box.id="dhVoiceDebugBox";
+      box.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:999999;background:#071226;color:#9fe8b0;border:1px solid #2e7d66;border-radius:10px;padding:10px 12px;font:12px/1.4 monospace;max-height:38vh;overflow:auto;white-space:pre-wrap";
+      var x=document.createElement("button"); x.textContent="✕"; x.style.cssText="position:absolute;top:4px;right:6px;background:#334155;color:#fff;border:0;border-radius:6px;padding:2px 8px";
+      x.onclick=function(){ box.remove(); try{localStorage.removeItem("dh-voice-debug");}catch(e){} };
+      box.appendChild(x);
+      document.body.appendChild(box);
+    }
+    var line=document.createElement("div"); line.textContent="🔊 "+msg;
+    box.appendChild(line);
+  }catch(e){}
+}
+try{ window.dhVoiceDebug = dhVoiceDebug; }catch(e){}
 function avatarVoicePrefs(){
   try{ return JSON.parse(localStorage.getItem(avatarVoiceKey())||"null") || {}; }catch(e){ return {}; }
 }
