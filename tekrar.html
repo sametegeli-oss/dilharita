@@ -40,11 +40,9 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 .ai-settings-panel{background:#071120; border:1px solid var(--line); border-radius:10px; padding:10px; margin-top:8px; display:none;}
 .ai-settings-panel textarea{width:100%; height:90px; background:#0a1628; color:#fff; border:1px solid var(--line); border-radius:6px; padding:8px; font-size:12px; resize:vertical; font-family:system-ui;}
 
-/* Görsel Alanı Kuralları */
 .img-box{margin-top:4px; margin-bottom:12px; text-align:center; width:100%; display:none; min-height:150px;}
 .img-box img{max-width:100%; max-height:240px; border-radius:12px; border:1px solid var(--line); object-fit:cover; box-shadow:0 4px 12px rgba(0,0,0,0.3); background:#071120;}
 
-/* Diff stilleri */
 .diff-box{margin-top:6px; background:#071120; padding:8px; border-radius:8px; font-weight:normal; display:inline-block; width:100%; word-break:break-word; white-space:normal;}
 .diff-box span{cursor:pointer; margin-right:4px; display:inline-block;}
 .diff-box span:hover{opacity:0.8;}
@@ -64,7 +62,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <div class="q no-wordpop" id="q"></div>
   <div class="a hid no-wordpop" id="a"></div>
   
-  <!-- Resim Eklentisi Yuvası -->
   <div class="img-box" id="imgContainer"></div>
 
   <div id="prodBox" style="display:none">
@@ -72,7 +69,8 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
       <textarea id="inp" placeholder="İngilizcesini yaz…"></textarea>
       <button class="b-retry" id="bMicReset" style="display:none;padding:11px 13px;max-width:50px;min-width:50px;background:#dc2626" title="Kaydı sil ve yeniden başlat">🗑️</button>
       <button class="b-retry" id="bListenRetry" style="display:none;padding:11px 13px;max-width:50px;min-width:50px" title="Kendi sesini tekrar dinle">👂</button>
-      <button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button>
+      <button class="b-mic" id="bMic" title="Canlı Mikrofon">🎤</button>
+      <button class="b-mic" id="bFileTranscribe" style="background:#059669;min-width:50px" title="Kayıttan Çöz (Yavaş Konuşma İçin)">🎙️</button>
     </div>
     <div class="score" id="score"></div>
     
@@ -197,16 +195,18 @@ try{
 
   var mediaRecorder = null, audioChunks = [], audioUrl = null, audioStream = null, activeAudioObj = null;
   var recognitionInstance = null, isRecording = false, accumulatedTranscript = "";
+  var isFileRecording = false;
 
   if (window.DHCloudSync) {
     window.DHCloudSync.autoPush = false; 
     console.log("Firebase anlık tetikleyicileri bu sayfa için tamamen susturuldu.");
   }
 
-  /* ---- Mikrofon Tam Sıfırlama Fonksiyonu ---- */
   function stopMic() {
     isRecording = false;
+    isFileRecording = false;
     $("bMic").textContent = "🎤";
+    $("bFileTranscribe").textContent = "🎙️";
     $("bMicReset").style.display = "none";
     
     if (recognitionInstance) {
@@ -858,7 +858,6 @@ try{
     }
   });
 
-  /* 🗑️ Mikrofon Sıfırlama ve Yeniden Başlatma Düğmesi */
   $("bMicReset").onclick = function() {
     accumulatedTranscript = "";
     $("inp").value = "";
@@ -929,14 +928,14 @@ try{
     }
   };
 
-  /* 🎤 Mikrofon Kontrolü */
+  /* 🎤 Canlı Mikrofon Kontrolü */
   $("bMic").onclick=function(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
     var SGL=window.SpeechGrammarList||window.webkitSpeechGrammarList;
     if (!isRecording) {
       isRecording = true; 
       $("bMic").textContent="🔴"; 
-      $("bMicReset").style.display = ""; // Sıfırlama düğmesini göster
+      $("bMicReset").style.display = "";
       stopActiveAudio(); 
       $("bListenRetry").style.display = "none";
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
@@ -982,6 +981,96 @@ try{
     } else {
       stopMic();
       setTimeout(function() { reveal(); }, 400);
+    }
+  };
+
+  /* 🎙️ YÖNTEM 1: Ses Kaydından Sanal Stream ile Kesintisiz Çözümleme Düğmesi */
+  $("bFileTranscribe").onclick = function() {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return alert("Bu tarayıcıda ses tanıma özelliği yok.");
+
+    if (!isFileRecording) {
+      // 1. Kaydı Başlat
+      isFileRecording = true;
+      $("bFileTranscribe").textContent = "⏹️";
+      $("inp").value = "🔴 Sesiniz kaydediliyor, istediğiniz kadar yavaş konuşabilirsiniz...";
+      audioChunks = [];
+
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+        audioStream = stream;
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = function(e) { if (e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.start();
+      }).catch(function(err) {
+        console.error(err);
+        stopMic();
+        $("inp").value = "";
+      });
+
+    } else {
+      // 2. Kaydı Bitir ve Çözümlemeyi Başlat
+      isFileRecording = false;
+      $("bFileTranscribe").textContent = "⏳";
+      $("inp").value = "⏳ Ses kaydınız tek parça olarak işleniyor...";
+
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.onstop = function() {
+          var blob = new Blob(audioChunks, { type: 'audio/wav' });
+          audioUrl = URL.createObjectURL(blob);
+          $("bListenRetry").style.display = "";
+
+          // Ses Akışını Sanal AudioContext İle Tarayıcı STT Engine'e Ver
+          try {
+            var audioEl = new Audio(audioUrl);
+            var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            var source = audioCtx.createMediaElementSource(audioEl);
+            var destination = audioCtx.createMediaStreamDestination();
+            source.connect(destination);
+            source.connect(audioCtx.destination); // Kullanıcı kendi sesini de duysun
+
+            var fileSR = new SR();
+            fileSR.lang = "en-US";
+            fileSR.continuous = true;
+            fileSR.interimResults = false;
+
+            var finalTxt = "";
+            fileSR.onresult = function(e) {
+              for (var idx = e.resultIndex; idx < e.results.length; ++idx) {
+                if (e.results[idx].isFinal) {
+                  finalTxt += e.results[idx][0].transcript + " ";
+                }
+              }
+              $("inp").value = finalTxt.trim();
+            };
+
+            fileSR.onend = function() {
+              $("bFileTranscribe").textContent = "🎙️";
+              viaMic = true;
+              if(!$("inp").value || $("inp").value.startsWith("⏳")) {
+                $("inp").value = finalTxt.trim();
+              }
+              setTimeout(function() { reveal(); }, 400);
+            };
+
+            fileSR.onerror = function(err) {
+              console.error(err);
+              $("bFileTranscribe").textContent = "🎙️";
+            };
+
+            fileSR.start();
+            audioEl.play();
+
+          } catch(e) {
+            console.error("AudioContext dönüştürme hatası:", e);
+            $("bFileTranscribe").textContent = "🎙️";
+          }
+        };
+        mediaRecorder.stop();
+      }
+      if (audioStream) {
+        audioStream.getTracks().forEach(function(track) { track.stop(); });
+        audioStream = null;
+      }
     }
   };
 
