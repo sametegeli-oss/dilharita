@@ -563,17 +563,30 @@ try{
     waitEl.style.color = "#9fb3d9";
     waitEl.textContent = "🤖 Cümleniz anlamca kontrol ediliyor…";
 
-    var activeCriteriaPrompt = $("aiPromptInput").value.trim() || defaultAiPrompt;
+    /* Otomatik hakem, sayfadaki genel kritere DEĞİL, eşdeğer yapıları doğru değerlendiren
+       kendi net prompt'una dayanır. "work" ↔ "have been working" gibi farklı ama geçerli
+       zaman/ifadeleri KABUL eder; sadece anlam gerçekten bozulduysa reddeder. */
+    var refereePrompt =
+      "Sen adil bir İngilizce sınav değerlendiricisisin. Öğrencinin cümlesi, referans cümleyle "
+      + "AYNI ANLAMI taşıyorsa (farklı ama geçerli bir zaman, kip veya eşanlamlı ifade kullanmış olsa bile) GEÇERLİdir. "
+      + "Örnek: 'I work from home' ile 'I have been working from home' aynı süregelen durumu anlatır → GEÇERLİ. "
+      + "'car'↔'automobile', 'begin'↔'start', geniş zaman↔present perfect gibi farklar KABUL edilir. "
+      + "Büyük/küçük harf ve noktalama farkını YOK say. Sadece anlam gerçekten değiştiyse, bir ana öge "
+      + "(özne/fiil/nesne) tamamen eksikse ya da yanlış kelime anlamı bozduysa GEÇERSİZ de. "
+      + "Cevabın TEK KELİME olsun: GEÇERLİ ya da GEÇERSİZ.";
 
     var semMsgs = [
-      {role:"system",content: activeCriteriaPrompt},
-      {role:"user",content:"Referans: " + targetValue + "\nÖğrenci: " + userInputValue}
+      {role:"system",content: refereePrompt},
+      {role:"user",content:"Referans: " + targetValue + "\nÖğrenci: " + userInputValue + "\nKarar (GEÇERLİ/GEÇERSİZ):"}
     ];
 
     function runCheck(tokBudget, isRetry) {
       DHProviders.chat(semMsgs, {temperature:0, max_tokens:tokBudget}).then(function(out){
         var t = String(out||"").trim();
-        if(/evet|yes/i.test(t)){
+        var lo = t.toLocaleLowerCase("tr");
+        var ok = /geçerli|gecerli|\bevet\b|\byes\b|\bvalid\b/.test(lo) && !/geçersiz|gecersiz/.test(lo.slice(0,12));
+        var bad = /geçersiz|gecersiz|\bhay[ıi]r\b|\bno\b|invalid/.test(lo);
+        if(ok && !bad){
           lastSemanticOk = true;
           waitEl.style.color = "#4ade80";
           waitEl.textContent = "🤖 ✓ Anlamca doğru (farklı ama geçerli bir ifade) — Bildim'e hazır";
@@ -588,27 +601,27 @@ try{
             }
           } catch(e){}
           try{ window.dhCoachSay && window.dhCoachSay("Farklı ama GEÇERLİ bir yapı kurmuşsun ✓ Yapay zekâ hakem onayladı — Bildim'e hazır.","praise"); }catch(e){}
-        } else if(/hayır|hayir|no/i.test(t)){
+        } else if(bad){
           semanticNo = true;
           waitEl.style.color = "#f87171";
           waitEl.textContent = "🤖 Belirttiğin kriterlere göre anlam veya yapı farklı çıktı — açıklamalara bak.";
           showExplain(curT, false);
           try{ window.dhCoachSay && window.dhCoachSay("Yapay zekâ hakem farkı gerçek buldu — anlam/yapı değişmiş. Doğrusu: "+curT.en,"warn"); }catch(e){}
         } else if(!isRetry){
-          runCheck(220, true);
+          runCheck(60, true);
         } else {
           waitEl.style.color = "#f87171";
           waitEl.textContent = "🤖 Model net bir yanıt üretemedi.";
         }
       }).catch(function(err){
         console.warn("[tekrar] semantik kontrol hatası:", err);
-        if(!isRetry && err && err.code === "empty") return runCheck(220, true);
+        if(!isRetry && err && err.code === "empty") return runCheck(60, true);
         var code = err && err.code;
         waitEl.style.color = "#f87171";
         waitEl.textContent = code === "no-key" ? "🤖 Kontrol başarısız: API anahtarı bulunamadı." : "🤖 Kontrol başarısız: Sağlayıcı şu an yanıt vermiyor.";
       });
     }
-    runCheck(120, false);
+    runCheck(40, false);
   };
 
   /* 💎 Gemini hakemliği: kopyala→sor→yapıştır turu. Cevap EVET ise
