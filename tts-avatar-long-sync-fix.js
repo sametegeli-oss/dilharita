@@ -74,9 +74,11 @@ function dhPickVoice(lang){
   // İngilizce sesler için önce karakter-özel, sonra global ayarı oku.
   if(!tr){
     try{
-      var dir=(window.Scenario&&Scenario.avatarDir)||(window.CHAT_SCENARIO&&CHAT_SCENARIO.avatarDir)||"default";
-      var slug="dh-voice:"+String(dir).replace(/[^a-z0-9]+/gi,"-");
-      var perChar=JSON.parse(localStorage.getItem(slug)||"null");
+      // chat-core ile AYNI anahtarı üret: mümkünse onun fonksiyonunu kullan.
+      var perCharKey = (typeof window.avatarVoiceKey==="function")
+        ? window.avatarVoiceKey()
+        : "dh-voice:" + String((window.Scenario&&Scenario.avatarDir)||(window.CHAT_SCENARIO&&CHAT_SCENARIO.avatarDir)||"default").replace(/[^a-z0-9]+/gi,"-");
+      var perChar=JSON.parse(localStorage.getItem(perCharKey)||"null");
       if(perChar&&perChar.name){ var pc=voices.filter(function(v){return v.name===perChar.name;})[0]; if(pc) return pc; }
       var glob=JSON.parse(localStorage.getItem("dh-voice:__global__")||"null");
       if(glob&&glob.name){ var gm=voices.filter(function(v){return v.name===glob.name;})[0]; if(gm) return gm; }
@@ -385,12 +387,14 @@ function stopMouthLoop(){
 
 /* ================= SAĞLAM SESLENDİRME MOTORU (v3) ================= */
 let currentQueueSession = 0;
+let dhWaitedForVoices = false;
 // GC koruması: Chrome, JS referansı kalmayan utterance'ı konuşma bitmeden
 // çöp toplayıp sesi kesebiliyor. Son birkaç nesneyi elde tutuyoruz.
 let __keepAliveRefs = [];
 
 function speakChunkList(chunks){
   if(!nativeSpeak) return false;
+  dhWaitedForVoices = false;   // yeni konuşma: sesler yüklenmediyse yeniden bekle
   chunks=(chunks||[]).filter(c=>c&&clean(c.text)&&clean(c.text).length>1)
                      .map(c=>({text:clean(c.text), lang:c.lang, el:c.el||null}));
   if(!chunks.length) return false;
@@ -427,6 +431,22 @@ function speakChunkList(chunks){
   function speakCurrent(){
     if(session !== currentQueueSession){ stopWatchdog(); return; }
     if(idx >= chunks.length){ finishAll(); return; }
+
+    // MOBİL: sesler henüz yüklenmediyse (getVoices boş), kayıtlı ses bulunamayıp
+    // varsayılana düşer. Sesleri tazele; hâlâ boşsa kısa bekleyip tekrar dene.
+    if(!dhAllVoices().length && !dhWaitedForVoices){
+      dhWaitedForVoices = true;
+      try{ speechSynthesis.getVoices(); }catch(e){}
+      var _retry=0;
+      var _iv=setInterval(function(){
+        _retry++;
+        if(dhAllVoices().length || _retry>=8){   // ~1.6sn'ye kadar bekle
+          clearInterval(_iv);
+          if(session===currentQueueSession) speakCurrent();
+        }
+      }, 200);
+      return;
+    }
 
     const item = chunks[idx];
     const u = new SpeechSynthesisUtterance(item.text);

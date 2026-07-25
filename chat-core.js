@@ -367,6 +367,7 @@ if(typeof speechSynthesis !== "undefined"){
   };
 }
 function avatarVoiceKey(){ return "dh-voice:" + (activeAvatarDir()||"default").replace(/[^a-z0-9]+/gi,"-"); }
+try{ window.avatarVoiceKey = avatarVoiceKey; }catch(e){}
 function pickVoice(){
   refreshVoices();
   const voices = cachedVoices.filter(v => /^en/i.test(v.lang || ""));
