@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ses Teşhis</title>
+<style>
+  body{background:#0a1628;color:#fff;font:16px/1.5 system-ui,sans-serif;padding:18px;margin:0}
+  h1{font-size:18px}
+  button{background:#2563eb;color:#fff;border:0;border-radius:10px;padding:14px 18px;font:800 15px system-ui;margin:8px 0;width:100%}
+  pre{background:#071226;border:1px solid #1e3a5f;border-radius:10px;padding:12px;white-space:pre-wrap;word-break:break-word;font-size:13px}
+  .row{margin:14px 0}
+  select{width:100%;padding:10px;border-radius:8px;font-size:14px;margin-top:6px}
+</style>
+</head>
+<body>
+<h1>🔊 Ses Teşhis</h1>
+<p>Bu sayfa, seçtiğin seslerin mobilde neden gelmediğini bulmak için. Sırayla:</p>
+
+<div class="row">
+  <b>1) Cihazdaki sesleri göster</b>
+  <button onclick="showVoices()">Sesleri Listele</button>
+</div>
+
+<div class="row">
+  <b>2) Kayıtlı ses seçimlerini göster</b>
+  <button onclick="showSaved()">Kayıtları Göster</button>
+</div>
+
+<div class="row">
+  <b>3) Bir sesi test et</b>
+  <select id="voiceSel"></select>
+  <button onclick="testVoice()">▶ Seçili sesle konuş</button>
+</div>
+
+<pre id="out">Sonuçlar burada görünecek…</pre>
+
+<script>
+var out=document.getElementById("out");
+function log(t){ out.textContent = t; }
+
+function allVoices(){ try{ return speechSynthesis.getVoices()||[]; }catch(e){ return []; } }
+
+function fillSel(){
+  var sel=document.getElementById("voiceSel"); sel.innerHTML="";
+  allVoices().forEach(function(v){
+    var o=document.createElement("option"); o.value=v.name; o.textContent=v.name+" ("+v.lang+")"; sel.appendChild(o);
+  });
+}
+if(typeof speechSynthesis!=="undefined"){ speechSynthesis.onvoiceschanged=fillSel; setTimeout(fillSel,300); }
+
+function showVoices(){
+  var v=allVoices();
+  if(!v.length){ log("Cihazda HİÇ ses görünmüyor.\nBu sayfaya bir kez dokunup 1-2 saniye bekleyip tekrar bas."); fillSel(); return; }
+  var lines = v.map(function(x,i){ return (i+1)+". "+x.name+"  ["+x.lang+"]"; });
+  log("Cihazdaki ses sayısı: "+v.length+"\n\n"+lines.join("\n"));
+  fillSel();
+}
+
+function showSaved(){
+  var keys=[];
+  for(var i=0;i<localStorage.length;i++){
+    var k=localStorage.key(i);
+    if(k && k.indexOf("dh-voice:")===0) keys.push(k);
+  }
+  if(!keys.length){ log("Hiç ses kaydı YOK.\n\nBu, ses ayar sayfasında yaptığın seçimlerin KAYDEDİLMEDİĞİ anlamına gelir. Ayar sayfasında ses seçip 'Dene ve Kaydet'e bastın mı?"); return; }
+  var txt="Kayıtlı ses seçimleri:\n\n";
+  var voices=allVoices().map(function(v){return v.name;});
+  keys.forEach(function(k){
+    var val=localStorage.getItem(k);
+    var name=""; try{ name=(JSON.parse(val)||{}).name||""; }catch(e){}
+    var mevcut = name ? (voices.indexOf(name)>=0 ? "✅ cihazda VAR" : "❌ cihazda YOK") : "(isim boş)";
+    txt += k+"\n   → "+val+"\n   → "+mevcut+"\n\n";
+  });
+  log(txt);
+}
+
+function testVoice(){
+  var name=document.getElementById("voiceSel").value;
+  var v=allVoices().find(function(x){return x.name===name;});
+  try{
+    speechSynthesis.cancel();
+    var u=new SpeechSynthesisUtterance("Hello, this is a test of my voice.");
+    if(v){ u.voice=v; u.lang=v.lang; } else u.lang="en-US";
+    speechSynthesis.speak(u);
+    log("Konuşuyor: "+name+"\n\nDuyduğun ses bu isimle eşleşiyor mu? Kadın/erkek doğru mu?");
+  }catch(e){ log("Hata: "+e); }
+}
+</script>
+</body>
+</html>
