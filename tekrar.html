@@ -950,11 +950,17 @@ try{
 
     rec.onstart = function(){ if(isRecording) $("bMic").textContent="🔴"; };
 
+    // Bu oturumda (restart'a kadar) duyulan metin. onend'de accumulatedTranscript'e eklenir.
+    var sessionText = "";
+
     rec.onresult = function(e) {
-      var rawText = "";
       if (isMobile) {
-        // Mobil: tüm sonuçları baştan oku (accumulate yok, interim yok → stabil)
-        for (var i=0; i<e.results.length; i++){ rawText += e.results[i][0].transcript + " "; }
+        // Mobil: bu oturumun tüm sonuçlarını oku → sessionText. Kutuya BİRİKİM + bu oturum yaz.
+        var s = "";
+        for (var i=0; i<e.results.length; i++){ s += e.results[i][0].transcript + " "; }
+        sessionText = s.trim();
+        var combinedM = (accumulatedTranscript + " " + sessionText).trim();
+        $("inp").value = dedupeAdjacent(combinedM);
       } else {
         // Masaüstü: final'i global birikime ekle, interim'i geçici göster
         var finalTranscript = "", interimTranscript = "";
@@ -962,14 +968,10 @@ try{
           var transcript = e.results[k][0].transcript;
           if (e.results[k].isFinal) finalTranscript += transcript + " "; else interimTranscript += transcript;
         }
-        accumulatedTranscript += finalTranscript;
-        rawText = accumulatedTranscript + interimTranscript;
+        accumulatedTranscript = (accumulatedTranscript + " " + finalTranscript).trim();
+        var combinedD = (accumulatedTranscript + " " + interimTranscript).trim();
+        $("inp").value = dedupeAdjacent(combinedD);
       }
-      // Ardışık tekrar filtresi ("shirt shirt shirt" → "shirt")
-      var cleanText = rawText.trim().split(/\s+/)
-        .filter(function(word, index, arr){ return index===0 || word.toLowerCase()!==arr[index-1].toLowerCase(); })
-        .join(" ");
-      $("inp").value = cleanText;
     };
 
     rec.onerror = function(e) {
@@ -984,6 +986,12 @@ try{
     };
 
     rec.onend = function(){
+      // Bu oturumda mobilde duyulanı kalıcı birikime kilitle (restart'ta e.results sıfırlanır).
+      if (isMobile && sessionText) {
+        accumulatedTranscript = dedupeAdjacent((accumulatedTranscript + " " + sessionText).trim());
+        sessionText = "";
+        $("inp").value = accumulatedTranscript;
+      }
       if (manualStop || !isRecording) { return; }
       // tarayıcı kendiliğinden durdurdu ama kullanıcı hâlâ dinliyor → yeniden başlat
       setTimeout(function(){
@@ -992,6 +1000,22 @@ try{
     };
 
     setTimeout(function(){ try{ rec.start(); }catch(e){} }, 150);
+  }
+
+  /* Ardışık aynı kelimeleri siler ("shirt shirt shirt" → "shirt"); mobil tanıma
+     motorunun ürettiği tekrarları temizler. Meşru tek tekrarları korumak için
+     yalnızca ÜÇ+ ardışık tekrarı teke indirir, ikili tekrarlara dokunmaz. */
+  function dedupeAdjacent(text){
+    var w = String(text||"").trim().split(/\s+/).filter(Boolean);
+    var out = [];
+    for (var i=0;i<w.length;i++){
+      var n=1;
+      while(i+n<w.length && w[i+n].toLowerCase()===w[i].toLowerCase()) n++;
+      out.push(w[i]);
+      if(n>=3){ i+=n-1; }          // 3+ tekrar → teke indir
+      else if(n===2){ out.push(w[i]); i++; }  // 2 tekrar → koru
+    }
+    return out.join(" ");
   }
 
   $("bListenRetry").onclick = function() {
