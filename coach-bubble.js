@@ -617,6 +617,8 @@
 
   var hideT=null, lastMsg="", lastAt=0, lastKind="tip", lastFocus="", lastAction=null, lastDayClose=false, lastReopen=false;
   var lastRefText="";
+  /* Balonu hemen gizle — yeni cümleye geçince eski mesaj asılı kalmasın. */
+  window.dhCoachHide=function(){ try{ if(box) box.classList.remove("show"); lastMsg=""; }catch(e){} };
   /* Görsel diff şeridi: eksik kelimeyi kırmızı boş yuva, fazlayı üstü çizili gösterir.
      Metnin yanına küçük, renkli bir "ne eksik/ne fazla" görseli koyar. */
   function coachVisualDiff(wd, refText){
@@ -764,12 +766,16 @@
   window.dhCoachEvaluate=async function(opts){
     try{
       opts=opts||{};
-      bumpDailyTracker(opts.trackKind||"sentence");
-      window.dhCoachMarkStepDone && window.dhCoachMarkStepDone(__dhPage);
-      try{ window.dhCoachChainBump && window.dhCoachChainBump(); }catch(e){}
-      if(opts.ok) __dhSession.correct++; else __dhSession.wrong++;
-      try{ window.dhLogActivity((opts.ok?"✅ Doğru: ":"❌ Yanlış: ")+(opts.en||opts.sentenceId||""), opts.ok?"correct":"wrong"); }catch(e){}
-      logSessionRate(false);
+      /* silentTrack: "Kontrol et" anında çağrılır — geri bildirim ver ama istatistik SAYMA
+         (asıl sayım Bildim/Zor anında yapılır, yoksa seri ve doğruluk iki kez artar). */
+      if(!opts.silentTrack){
+        bumpDailyTracker(opts.trackKind||"sentence");
+        window.dhCoachMarkStepDone && window.dhCoachMarkStepDone(__dhPage);
+        try{ window.dhCoachChainBump && window.dhCoachChainBump(); }catch(e){}
+        if(opts.ok) __dhSession.correct++; else __dhSession.wrong++;
+        try{ window.dhLogActivity((opts.ok?"✅ Doğru: ":"❌ Yanlış: ")+(opts.en||opts.sentenceId||""), opts.ok?"correct":"wrong"); }catch(e){}
+        logSessionRate(false);
+      }
       /* Eşdeğer yazım (didn't=did not, he=she=it): aslında DOĞRU cevap */
       if(!opts.ok && opts.en && opts.answer && window.LearningErrorDB && LearningErrorDB.eqNorm
          && LearningErrorDB.eqNorm(opts.en)===LearningErrorDB.eqNorm(opts.answer)){
@@ -799,12 +805,40 @@
                   : (opts.ok && (_sc==null || _sc>=99.9));
       var partial = opts.ok && !perfect;
 
-      if(perfect) state.correctStreak++; else state.correctStreak=0;
+      if(!opts.silentTrack){ if(perfect) state.correctStreak++; else state.correctStreak=0; }
 
       if(perfect && state.correctStreak>=3 && state.correctStreak%3===0){
         dhCoachSay("HARİKASIN! Art arda "+state.correctStreak+" cümleyi TAM doğru yaptın, bu ritmi koru!","praise");
         return;
       }
+      /* SOMUT KELİME GERİ BİLDİRİMİ önce gelir: diff varsa hangi kelimeyi atladığını söyle.
+         Genel "YAKLAŞTIN, kırmızıya bak" mesajı ancak somut diff yoksa devreye girer. */
+      var wd = opts.wordDiff;
+      if(wd && (wd.missing.length || wd.extra.length)){
+        var repeatNote = "";
+        try{
+          if(wd.missing.length){
+            var dropKey = "dh-coach-dropped-words";
+            var dropped = JSON.parse(localStorage.getItem(dropKey)||"{}")||{};
+            var w0 = wd.missing[0];
+            var seenBefore = dropped[w0]||0;
+            if(!opts.silentTrack){
+              wd.missing.forEach(function(w){ dropped[w]=(dropped[w]||0)+1; });
+              localStorage.setItem(dropKey, JSON.stringify(dropped));
+              seenBefore = dropped[w0];
+            }
+            if(seenBefore >= 2) repeatNote = " Bu kelimeyi daha önce de atladın ("+seenBefore+". kez) — bilinçli olarak ekle.";
+          }
+        }catch(e){}
+        var parts=[];
+        if(wd.missing.length) parts.push("“"+wd.missing.slice(0,3).join(", ")+"” "+(wd.missing.length>1?"kelimelerini":"kelimesini")+" atladın");
+        if(wd.extra.length) parts.push("“"+wd.extra.slice(0,3).join(", ")+"” fazladan yazdın");
+        var kindD = perfect ? "praise" : (partial ? "tip" : "warn");
+        var leadD = perfect ? "Neredeyse tam! Yalnızca " : (partial ? "Çok yaklaştın — " : "Eksik var: ");
+        dhCoachSay(leadD + parts.join(" ve ") + "." + repeatNote + " Doğrusu: " + opts.en, kindD, null, {wordDiff:wd, refText:opts.en});
+        return;
+      }
+
       if(perfect && sameSentencePast.length){
         dhCoachSay("MÜKEMMEL! Daha önce bu cümlede zorlanmıştın, şimdi tam doğru yaptın. Aynı dikkatle devam et!","praise");
         return;
@@ -818,10 +852,6 @@
         return;
       }
       if(!opts.ok && sameSentencePast.length){
-        /* commonMistake ÖRNEK CÜMLE içerir ve o cümlede cevabın kelimeleri geçer
-           ("He has twenty years" → "twenty" sızar). Hata defterinde cümleyi YENİDEN
-           çözerken bu mesaj çıkarsa cevabı söylemiş oluruz. Bu yüzden stripAnswer ile
-           yalnız güvenli açıklama kısmı gösterilir; güvenli değilse genel uyarı verilir. */
         var _safe = stripAnswer(opts.commonMistake, opts.en);
         dhCoachSay("DİKKAT: Bu cümlede daha önce de hata yapmıştın. "
           + (_safe ? (_safe+".") : "Kelime sırasına ve yardımcı fiile dikkat et.")
@@ -836,31 +866,8 @@
           return;
         }
       }
-      /* SOMUT KELİME GERİ BİLDİRİMİ: diff varsa hangi kelimeyi atladığını/fazla yazdığını söyle,
-         ve o kelimeyi daha önce de atlamışsa geçmişe atıfla uyar. */
-      var wd = opts.wordDiff;
-      if(wd && (wd.missing.length || wd.extra.length)){
-        var repeatNote = "";
-        try{
-          if(wd.missing.length){
-            var dropKey = "dh-coach-dropped-words";
-            var dropped = JSON.parse(localStorage.getItem(dropKey)||"{}")||{};
-            wd.missing.forEach(function(w){ dropped[w]=(dropped[w]||0)+1; });
-            localStorage.setItem(dropKey, JSON.stringify(dropped));
-            var w0 = wd.missing[0];
-            if(dropped[w0] >= 2) repeatNote = " Bu kelimeyi daha önce de atladın ("+dropped[w0]+". kez) — bilinçli olarak ekle.";
-          }
-        }catch(e){}
-        var parts=[];
-        if(wd.missing.length) parts.push("“"+wd.missing.slice(0,3).join(", ")+"” "+(wd.missing.length>1?"kelimelerini":"kelimesini")+" atladın");
-        if(wd.extra.length) parts.push("“"+wd.extra.slice(0,3).join(", ")+"” fazladan yazdın");
-        var kind = perfect ? "praise" : (partial ? "tip" : "warn");
-        var lead = perfect ? "Neredeyse tam! Yalnızca " : (partial ? "Çok yaklaştın — " : "Eksik var: ");
-        dhCoachSay(lead + parts.join(" ve ") + "." + repeatNote + " Doğrusu: " + opts.en, kind, null, {wordDiff:wd, refText:opts.en});
-        return;
-      }
 
-      state.evalCount++;
+      if(!opts.silentTrack) state.evalCount++;
       if(state.evalCount%5===0){
         var tally={};
         hist.forEach(function(r){ if(r.grade==="hard" && Array.isArray(r.types)) r.types.forEach(function(t){ tally[t]=(tally[t]||0)+1; }); });

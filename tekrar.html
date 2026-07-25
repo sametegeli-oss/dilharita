@@ -491,6 +491,7 @@ try{
   }
 
   function render(){
+    try{ window.dhCoachHide && window.dhCoachHide(); }catch(e){}
     if(i>=session.length){
       $("card").style.display="none";
       $("doneTitle").textContent="🎉 Oturum bitti!";
@@ -687,6 +688,17 @@ try{
       }
       if(sc<80 && !viaMic) showExplain(curT,false);
       speak(curT.en);
+
+      /* Kontrol et anında koç KONUŞSUN — Bildim/Zor beklemeden somut geri bildirim ver.
+         Tam doğruda kısa övgü, eksik/fazla varsa hangi kelime olduğunu söyler. */
+      try{
+        var _cd = (typeof computeWordDiff==="function") ? computeWordDiff(curT.en, userInputValue) : null;
+        window.dhCoachEvaluate && window.dhCoachEvaluate({
+          trackKind:"check", sentenceId:curT.id, en:curT.en, answer:userInputValue,
+          ok:(sc>=80), commonMistake:curT.cm||"", grammar:curT.grammar||"", topic:curT.topic||"",
+          layer:mode, wordDiff:_cd, score:sc, silentTrack:true
+        });
+      }catch(e){}
       
       var bandLo = viaMic ? 10 : 25, bandHi = viaMic ? 95 : 80;
       if(sc>=bandLo && sc<bandHi && userInputValue.trim().length>2){
