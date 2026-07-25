@@ -202,6 +202,12 @@ try{
     console.log("Firebase anlık tetikleyicileri bu sayfa için tamamen susturuldu.");
   }
 
+  // Ardışık tekrarlayan kelimeleri temizleyen filtre
+  function removeDuplicateWords(str) {
+    if (!str) return "";
+    return str.replace(/\b(\w+)(?:\s+\1\b)+/gi, "$1");
+  }
+
   function stopMic() {
     isRecording = false;
     isFileRecording = false;
@@ -898,13 +904,14 @@ try{
           var text = e.results[idx][0].transcript;
           if (e.results[idx].isFinal) finalTranscript += text + " "; else interimTranscript += text;
         }
-        if (finalTranscript) { if (!accumulatedTranscript.includes(finalTranscript.trim())) accumulatedTranscript += finalTranscript; }
-        var currentRaw = (accumulatedTranscript + interimTranscript).trim();
-        var words = currentRaw.split(/\s+/); var cleanWordsArr = [];
-        for (var wIdx = 0; wIdx < words.length; wIdx++) {
-          if (wIdx === 0 || words[wIdx].toLowerCase() !== words[wIdx - 1].toLowerCase()) cleanWordsArr.push(words[wIdx]);
+        if (finalTranscript.trim()) {
+          var cleanFinal = finalTranscript.trim();
+          if (!accumulatedTranscript.includes(cleanFinal)) {
+            accumulatedTranscript += (accumulatedTranscript ? " " : "") + cleanFinal;
+          }
         }
-        $("inp").value = cleanWordsArr.join(" ");
+        var combined = (accumulatedTranscript + " " + interimTranscript).trim();
+        $("inp").value = removeDuplicateWords(combined);
       };
 
       recognitionInstance.onend = function() {
@@ -950,13 +957,14 @@ try{
           var text = e.results[idx][0].transcript;
           if (e.results[idx].isFinal) finalTranscript += text + " "; else interimTranscript += text;
         }
-        if (finalTranscript) { if (!accumulatedTranscript.includes(finalTranscript.trim())) accumulatedTranscript += finalTranscript; }
-        var currentRaw = (accumulatedTranscript + interimTranscript).trim();
-        var words = currentRaw.split(/\s+/); var cleanWordsArr = [];
-        for (var wIdx = 0; wIdx < words.length; wIdx++) {
-          if (wIdx === 0 || words[wIdx].toLowerCase() !== words[wIdx - 1].toLowerCase()) cleanWordsArr.push(words[wIdx]);
+        if (finalTranscript.trim()) {
+          var cleanFinal = finalTranscript.trim();
+          if (!accumulatedTranscript.includes(cleanFinal)) {
+            accumulatedTranscript += (accumulatedTranscript ? " " : "") + cleanFinal;
+          }
         }
-        $("inp").value = cleanWordsArr.join(" ");
+        var combined = (accumulatedTranscript + " " + interimTranscript).trim();
+        $("inp").value = removeDuplicateWords(combined);
       };
       
       recognitionInstance.onend = function() {
@@ -973,13 +981,12 @@ try{
     }
   };
 
-  /* 🎙️ YÖNTEM 1 (GÜNCELLENDİ): Güvenilir Yavaş Konuşma Modu */
+  /* 🎙️ YÖNTEM 1: Yavaş Konuşma Modu (Çiftleme Filtreli) */
   $("bFileTranscribe").onclick = function() {
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return alert("Bu tarayıcıda ses tanıma özelliği yok.");
 
     if (!isFileRecording) {
-      // 1. Kaydı Başlat
       isFileRecording = true;
       viaMic = true;
       $("bFileTranscribe").textContent = "⏹️";
@@ -989,7 +996,6 @@ try{
       stopActiveAudio();
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
 
-      // Medya kaydı (kendi sesini dinleyebilmen için)
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
         audioStream = stream;
         mediaRecorder = new MediaRecorder(stream);
@@ -1003,7 +1009,6 @@ try{
         mediaRecorder.start();
       }).catch(function(err) { console.error(err); });
 
-      // Kesintisiz STT Engine Başlat
       recognitionInstance = new SR();
       recognitionInstance.lang = "en-US";
       recognitionInstance.continuous = true;
@@ -1015,16 +1020,16 @@ try{
           var text = e.results[idx][0].transcript;
           if (e.results[idx].isFinal) finalTranscript += text + " "; else interimTranscript += text;
         }
-        if (finalTranscript) { if (!accumulatedTranscript.includes(finalTranscript.trim())) accumulatedTranscript += finalTranscript; }
-        var currentRaw = (accumulatedTranscript + interimTranscript).trim();
-        var words = currentRaw.split(/\s+/); var cleanWordsArr = [];
-        for (var wIdx = 0; wIdx < words.length; wIdx++) {
-          if (wIdx === 0 || words[wIdx].toLowerCase() !== words[wIdx - 1].toLowerCase()) cleanWordsArr.push(words[wIdx]);
+        if (finalTranscript.trim()) {
+          var cleanFinal = finalTranscript.trim();
+          if (!accumulatedTranscript.includes(cleanFinal)) {
+            accumulatedTranscript += (accumulatedTranscript ? " " : "") + cleanFinal;
+          }
         }
-        $("inp").value = cleanWordsArr.join(" ");
+        var combined = (accumulatedTranscript + " " + interimTranscript).trim();
+        $("inp").value = removeDuplicateWords(combined);
       };
 
-      // Yavaş konuşmada tarayıcı pes edip onend yaparsa anında canlı tut
       recognitionInstance.onend = function() {
         if (isFileRecording) {
           try { recognitionInstance.start(); } catch(e) {}
@@ -1035,7 +1040,6 @@ try{
       recognitionInstance.start();
 
     } else {
-      // 2. Kaydı Bitir
       stopMic();
       setTimeout(function() { reveal(); }, 400);
     }
