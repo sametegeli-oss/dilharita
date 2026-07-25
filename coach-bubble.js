@@ -616,6 +616,30 @@
   }
 
   var hideT=null, lastMsg="", lastAt=0, lastKind="tip", lastFocus="", lastAction=null, lastDayClose=false, lastReopen=false;
+  var lastRefText="";
+  /* Görsel diff şeridi: eksik kelimeyi kırmızı boş yuva, fazlayı üstü çizili gösterir.
+     Metnin yanına küçük, renkli bir "ne eksik/ne fazla" görseli koyar. */
+  function coachVisualDiff(wd, refText){
+    if(!wd || (!wd.missing.length && !wd.extra.length)) return "";
+    var esc=function(s){ return String(s).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];}); };
+    var chips="";
+    wd.missing.slice(0,4).forEach(function(w){
+      chips+='<span style="display:inline-block;margin:2px 3px;padding:2px 8px;border-radius:6px;background:#7f1d1d;color:#fecaca;font-weight:700;border:1px dashed #f87171;">＋ '+esc(w)+'</span>';
+    });
+    wd.extra.slice(0,4).forEach(function(w){
+      chips+='<span style="display:inline-block;margin:2px 3px;padding:2px 8px;border-radius:6px;background:#334155;color:#94a3b8;text-decoration:line-through;">'+esc(w)+'</span>';
+    });
+    var legend="";
+    if(wd.missing.length) legend+='<span style="color:#fca5a5;">＋ eksik: ekle</span>';
+    if(wd.missing.length && wd.extra.length) legend+=' · ';
+    if(wd.extra.length) legend+='<span style="color:#94a3b8;">üstü çizili: fazla</span>';
+    return '<div style="margin-top:8px;padding:8px 10px;background:#0b1830;border:1px solid #1e3a5f;border-radius:10px;">'
+         + '<div style="font-size:10px;color:#64748b;margin-bottom:4px;letter-spacing:.3px;">GÖRSEL FARK</div>'
+         + '<div style="line-height:1.9;">'+chips+'</div>'
+         + '<div style="font-size:10px;margin-top:4px;">'+legend+'</div>'
+         + '</div>';
+  }
+
   window.dhCoachSay=function(msg, kind, faceOverride, opts){
     __dhLastSayAt=Date.now();
     if(!msg || !document.body) return;
@@ -629,7 +653,8 @@
     box.classList.remove("show");
     void box.offsetWidth;
     box.className="dh-coach "+(kind||"tip");
-    box.innerHTML='<span class="face">'+(faceOverride||coachFace(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
+    var _visual = (opts && opts.wordDiff) ? coachVisualDiff(opts.wordDiff, (opts.refText||lastRefText||"")) : "";
+    box.innerHTML='<span class="face">'+(faceOverride||coachFace(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+_visual+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
     requestAnimationFrame(function(){ box.classList.add("show"); });
     clearTimeout(hideT);
     // otomatik kapanma KALDIRILDI — kullanıcı isteği: balon yalnız ✕ ile veya elle kapatılır
@@ -811,6 +836,30 @@
           return;
         }
       }
+      /* SOMUT KELİME GERİ BİLDİRİMİ: diff varsa hangi kelimeyi atladığını/fazla yazdığını söyle,
+         ve o kelimeyi daha önce de atlamışsa geçmişe atıfla uyar. */
+      var wd = opts.wordDiff;
+      if(wd && (wd.missing.length || wd.extra.length)){
+        var repeatNote = "";
+        try{
+          if(wd.missing.length){
+            var dropKey = "dh-coach-dropped-words";
+            var dropped = JSON.parse(localStorage.getItem(dropKey)||"{}")||{};
+            wd.missing.forEach(function(w){ dropped[w]=(dropped[w]||0)+1; });
+            localStorage.setItem(dropKey, JSON.stringify(dropped));
+            var w0 = wd.missing[0];
+            if(dropped[w0] >= 2) repeatNote = " Bu kelimeyi daha önce de atladın ("+dropped[w0]+". kez) — bilinçli olarak ekle.";
+          }
+        }catch(e){}
+        var parts=[];
+        if(wd.missing.length) parts.push("“"+wd.missing.slice(0,3).join(", ")+"” "+(wd.missing.length>1?"kelimelerini":"kelimesini")+" atladın");
+        if(wd.extra.length) parts.push("“"+wd.extra.slice(0,3).join(", ")+"” fazladan yazdın");
+        var kind = perfect ? "praise" : (partial ? "tip" : "warn");
+        var lead = perfect ? "Neredeyse tam! Yalnızca " : (partial ? "Çok yaklaştın — " : "Eksik var: ");
+        dhCoachSay(lead + parts.join(" ve ") + "." + repeatNote + " Doğrusu: " + opts.en, kind, null, {wordDiff:wd, refText:opts.en});
+        return;
+      }
+
       state.evalCount++;
       if(state.evalCount%5===0){
         var tally={};

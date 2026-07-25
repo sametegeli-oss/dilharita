@@ -824,6 +824,24 @@ try{
     }
   };
 
+  /* Referans ile öğrenci cevabı arasında SOMUT kelime farkı:
+     hangi kelimeler atlandı (missing), hangileri fazladan yazıldı (extra). */
+  function computeWordDiff(refEn, userEn){
+    var norm=function(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9'\s]/g," ").replace(/\s+/g," ").trim(); };
+    var ref=norm(refEn).split(" ").filter(Boolean);
+    var usr=norm(userEn).split(" ").filter(Boolean);
+    if(!ref.length) return null;
+    var usrCount={}; usr.forEach(function(w){ usrCount[w]=(usrCount[w]||0)+1; });
+    var refCount={}; ref.forEach(function(w){ refCount[w]=(refCount[w]||0)+1; });
+    var missing=[]; ref.forEach(function(w){ if((usrCount[w]||0)<(refCount[w]||0)){ if(missing.indexOf(w)<0) missing.push(w); usrCount[w]=(usrCount[w]||0)+1; } });
+    var extra=[]; usr.forEach(function(w){ if((refCount[w]||0)<((extra._seen&&extra._seen[w])||0)+1){ } });
+    // fazladan: öğrencide olup referansta (sayıca) olmayanlar
+    var uc2={}; usr.forEach(function(w){ uc2[w]=(uc2[w]||0)+1; });
+    var rc2={}; ref.forEach(function(w){ rc2[w]=(rc2[w]||0)+1; });
+    Object.keys(uc2).forEach(function(w){ if(uc2[w]>(rc2[w]||0) && extra.indexOf(w)<0) extra.push(w); });
+    return { missing:missing, extra:extra, refLen:ref.length };
+  }
+
   async function grade(hard){
     /* 📊 GÜNÜN KARNESİ bu sayaca bakar: her notlanan kalem 1 TEKRAR.
        (Eskiden hiç yazılmıyordu → karne 0/10'da kilitli kalıyor, kutlama ve
@@ -833,7 +851,12 @@ try{
     var __prev=(it.kind==="s"?srs[it.id]:wsrs[it.id])||{};        // 🔬 eski kayıt (srsStep ezmeden)
     try{ dhRecallLog(it.kind, it.id, __prev.last||0, __prev.rep||0, !hard); }catch(e){}
     var rec=srsStep(it.kind==="s"?srs[it.id]:wsrs[it.id], hard);
-    try{ window.dhCoachEvaluate && window.dhCoachEvaluate({trackKind:"skip", sentenceId:it.id, en:curT.en, answer:(mode==="prod"?($("inp")&&$("inp").value||""):""), ok:!hard, commonMistake:curT.cm||"", layer:mode}); }catch(e){}
+    try{
+      var _coachDiff = (typeof computeWordDiff==="function")
+        ? computeWordDiff(curT.en, (mode==="prod"?($("inp")&&$("inp").value||""):""))
+        : null;
+      window.dhCoachEvaluate && window.dhCoachEvaluate({trackKind:"skip", sentenceId:it.id, en:curT.en, answer:(mode==="prod"?($("inp")&&$("inp").value||""):""), ok:!hard, commonMistake:curT.cm||"", layer:mode, wordDiff:_coachDiff, score:lastSc});
+    }catch(e){}
     if(!hard && mode==="prod" && !lastSemanticOk && !(viaMic && !semanticNo) && lastSc>=0 && lastSc<50){
       rec.interval=Math.max(1,Math.round(rec.interval/2)); rec.due=Date.now()+rec.interval*DAY;
     }
