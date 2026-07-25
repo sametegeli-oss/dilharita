@@ -942,21 +942,38 @@ try{
       }catch(e){}
     }
 
+    rec.maxAlternatives = 10;
     rec.onstart = function(){ if(isRecording) $("bMic").textContent="🔴"; };
 
+    /* Metin işleme — videopractice'in sağlam mantığı:
+       Her tanıma parçasında birden çok alternatif gelir; hedef cümleye en YAKIN olanı
+       seçilir (bu, "sesim doğru ama metin bozuk" sorununu çözer). Interim biriktirilmez;
+       yalnızca final metin oturum-güvenli biçimde birleştirilir. */
     rec.onresult = function(e) {
-      var finalTranscript = "", interimTranscript = "";
-      for (var idx = e.resultIndex; idx < e.results.length; ++idx) {
-        var text = e.results[idx][0].transcript;
-        if (e.results[idx].isFinal) finalTranscript += text + " "; else interimTranscript += text;
-      }
-      if (finalTranscript) { if (!accumulatedTranscript.includes(finalTranscript.trim())) accumulatedTranscript += finalTranscript; }
-      var currentRaw = (accumulatedTranscript + interimTranscript).trim();
-      var words = currentRaw.split(/\s+/); var cleanWordsArr = [];
-      for (var wIdx = 0; wIdx < words.length; wIdx++) {
-        if (wIdx === 0 || words[wIdx].toLowerCase() !== words[wIdx - 1].toLowerCase()) cleanWordsArr.push(words[wIdx]);
-      }
-      $("inp").value = cleanWordsArr.join(" ");
+      var interim = "";
+      try{
+        for (var i=e.resultIndex; i<e.results.length; i++){
+          var res = e.results[i];
+          var bestAlt="", bestScore=-1, bestConf=0;
+          for (var j=0; j<res.length; j++){
+            var transcript = String(res[j].transcript||"").replace(/\s+/g," ").trim();
+            var score = similarity(transcript, curT.en);
+            var conf = res[j].confidence||0;
+            if (score>bestScore || (score===bestScore && conf>bestConf)) { bestAlt=transcript; bestScore=score; bestConf=conf; }
+          }
+          if (bestAlt) {
+            if (res.isFinal) {
+              if (!accumulatedTranscript.includes(bestAlt.trim())) {
+                accumulatedTranscript = (accumulatedTranscript + " " + bestAlt).replace(/\s+/g," ").trim();
+              }
+            } else {
+              interim = (interim + " " + bestAlt).replace(/\s+/g," ").trim();
+            }
+          }
+        }
+      }catch(err){}
+      var currentRaw = (accumulatedTranscript + " " + interim).replace(/\s+/g," ").trim();
+      $("inp").value = currentRaw;
     };
 
     rec.onerror = function(e) {
