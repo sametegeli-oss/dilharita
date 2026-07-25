@@ -349,30 +349,49 @@ function estimateDuration(text){ const n=Array.from(String(text||"")).length; re
 
 let cachedVoices = [];
 function refreshVoices(){ cachedVoices = speechSynthesis.getVoices ? speechSynthesis.getVoices() : []; }
+/* Mobilde getVoices() ilk çağrıda boş döner; sesler asenkron yüklenir.
+   voicesReady, sesler gelene kadar bekleyip callback çağırır. */
+let __voicesReadyCbs = [];
+function whenVoicesReady(cb){
+  refreshVoices();
+  if(cachedVoices.length){ cb(); return; }
+  __voicesReadyCbs.push(cb);
+  // güvence: 1.2sn sonra yine de dene (bazı tarayıcılar olayı geç/hiç atmaz)
+  setTimeout(function(){ refreshVoices(); if(cachedVoices.length){ var q=__voicesReadyCbs; __voicesReadyCbs=[]; q.forEach(function(f){ try{f();}catch(e){} }); } }, 1200);
+}
 if(typeof speechSynthesis !== "undefined"){
   refreshVoices();
-  speechSynthesis.onvoiceschanged = refreshVoices;
+  speechSynthesis.onvoiceschanged = function(){
+    refreshVoices();
+    if(__voicesReadyCbs.length){ var q=__voicesReadyCbs; __voicesReadyCbs=[]; q.forEach(function(f){ try{f();}catch(e){} }); }
+  };
 }
 function avatarVoiceKey(){ return "dh-voice:" + (activeAvatarDir()||"default").replace(/[^a-z0-9]+/gi,"-"); }
 function pickVoice(){
   refreshVoices();
   const voices = cachedVoices.filter(v => /^en/i.test(v.lang || ""));
-  if(!voices.length) return null;
-  // 1) Bu karakter için CİHAZDA kayıtlı seçim varsa onu kullan
+  const allVoices = cachedVoices.slice();
+  if(!allVoices.length) return null;
+  // TEK DOĞRU KAYNAK: ses ayar sayfası (ses-secim.html).
+  // 1) Bu karakter için kayıtlı seçim
   try{
     const saved = JSON.parse(localStorage.getItem(avatarVoiceKey())||"null");
     if(saved && saved.name){
-      const f = voices.find(v => v.name===saved.name);
+      const f = allVoices.find(v => v.name===saved.name);
       if(f) return f;
     }
   }catch(e){}
-  // 2) Yoksa: karakter adına göre sabit bir sese düş (aynı karakter her zaman aynı varsayılan sesle konuşsun)
-  const maleRe = /(male|david|mark|george|daniel|james|john|alex|fred|thomas|guy|brian|ryan|matthew|arthur|oliver)/i;
-  let preferred = voices.filter(v => /en-US|en_GB|en-GB|en_US/i.test(v.lang || ""));
-  if(!preferred.length) preferred = voices;
-  const pool = preferred.filter(v => maleRe.test(v.name||"")).length ? preferred.filter(v => maleRe.test(v.name||"")) : preferred;
-  let h=0; const dir=activeAvatarDir()||""; for(let i=0;i<dir.length;i++) h=(h*31+dir.charCodeAt(i))>>>0;
-  return pool[h % pool.length] || preferred[0] || voices[0];
+  // 2) Karakter-özel yoksa: GLOBAL ayar (tüm karakterler için)
+  try{
+    const gv = JSON.parse(localStorage.getItem("dh-voice:__global__")||"null");
+    if(gv && gv.name){
+      const f2 = allVoices.find(v => v.name===gv.name);
+      if(f2) return f2;
+    }
+  }catch(e){}
+  // 3) Hiç ayar yoksa: nötr İngilizce ses (cinsiyet önyargısı YOK — ayar sayfası tek karar mercii)
+  const pool = voices.length ? voices : allVoices;
+  return pool[0] || null;
 }
 function avatarVoicePrefs(){
   try{ return JSON.parse(localStorage.getItem(avatarVoiceKey())||"null") || {}; }catch(e){ return {}; }
@@ -448,7 +467,8 @@ function speakText(text){
       speechSynthesis.speak(u);
     }catch(e){ speakNext(); }
   }
-  try{ speakNext(); }catch(e){ setTimeout(function(){ if(run===speechRun) avatar.stop(); }, duration); }
+  try{ whenVoicesReady(function(){ try{ speakNext(); }catch(e){ setTimeout(function(){ if(run===speechRun) avatar.stop(); }, duration); } }); }
+  catch(e){ setTimeout(function(){ if(run===speechRun) avatar.stop(); }, duration); }
 }
 async function explainText(text){
   $("explainSheet").classList.add("open");

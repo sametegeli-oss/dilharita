@@ -35,6 +35,9 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
     {slug:"assets/avatars_v3/teacher2/",name:"🎓 Öğretmen 2",            img:"assets/avatars_v3/teacher2/idle.webp",    sample:"Hello! I'm excited to practice English with you today."}
   ];
   function key(slug){ return "dh-voice:"+slug.replace(/[^a-z0-9]+/gi,"-"); }
+  var GLOBAL_KEY="dh-voice:__global__";
+  function loadGlobal(){ try{ return JSON.parse(localStorage.getItem(GLOBAL_KEY)||"null")||{}; }catch(e){ return {}; } }
+  function saveGlobal(p){ try{ localStorage.setItem(GLOBAL_KEY,JSON.stringify(p)); }catch(e){} }
   function loadPref(slug){ try{ return JSON.parse(localStorage.getItem(key(slug))||"null")||{}; }catch(e){ return {}; } }
   function savePref(slug,p){ try{ localStorage.setItem(key(slug),JSON.stringify(p)); }catch(e){} }
 
@@ -61,6 +64,34 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
       grid.innerHTML='<div class="note">Ses listesi yükleniyor… (mobilde birkaç saniye sürebilir; sayfaya bir kez dokun). Sistemdeki tüm sesler burada listelenir — hangisinin kadın/erkek olduğunu ▶ ile dinleyerek anlayabilirsin.</div>';
       return;
     }
+    var femRe=/(female|zira|susan|samantha|karen|serena|tessa|fiona|moira|veena|kadın|kadin|woman|girl|hazel|catherine|linda|heera|google uk english female|google us english)/i;
+    var malRe=/(male|david|mark|george|daniel|james|john|alex|fred|thomas|guy|brian|ryan|matthew|arthur|oliver|erkek|man)/i;
+
+    /* GLOBAL AYAR: tek merkezi ses seçimi. Karakter-özel seçim yapılmadıysa
+       tüm karakterler (chatdoctor dahil) bu sesi kullanır. Tek doğru kaynak burasıdır. */
+    var g=loadGlobal();
+    var gWrap=document.createElement("div"); gWrap.className="row"; gWrap.style.borderBottom="2px solid #2563eb";
+    var gRight=document.createElement("div"); gRight.style.flex="1";
+    gRight.innerHTML='<div class="name">🌐 Tüm karakterler için ses<span class="saved" style="display:'+(g.name?"inline":"none")+'">✓ kayıtlı</span></div><div class="sub">Bu, uygulamadaki tüm sohbet karakterlerinin varsayılan sesidir. Aşağıda tek tek değiştirmezsen hepsi bunu kullanır.</div>';
+    var gSel=document.createElement("select"); gSel.style.cssText="width:100%;margin-top:6px;padding:8px;border-radius:8px";
+    var gO0=document.createElement("option"); gO0.value=""; gO0.textContent="— Sistem varsayılanı —"; gSel.appendChild(gO0);
+    voices.forEach(function(v){
+      var mark=femRe.test(v.name||"")?"👩 ":(malRe.test(v.name||"")?"👨 ":"");
+      var o=document.createElement("option"); o.value=v.name; o.textContent=mark+v.name+" ("+v.lang+")";
+      if(g.name===v.name) o.selected=true; gSel.appendChild(o);
+    });
+    gSel.onchange=function(){
+      var v=voices.find(function(x){return x.name===gSel.value;});
+      if(v){ saveGlobal({name:v.name,lang:v.lang}); } else { try{ localStorage.removeItem(GLOBAL_KEY); }catch(e){} }
+      paint();
+    };
+    var gBtns=document.createElement("div"); gBtns.style.marginTop="6px";
+    var gPlay=document.createElement("button"); gPlay.textContent="▶ Dinle"; gPlay.style.cssText="margin-right:6px;padding:6px 12px;border-radius:8px;cursor:pointer";
+    gPlay.onclick=function(){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance("Hello, this is my voice."); var v=voices.find(function(x){return x.name===gSel.value;}); if(v){u.voice=v;u.lang=v.lang;} else u.lang="en-US"; speechSynthesis.speak(u); }catch(e){} };
+    gBtns.appendChild(gPlay);
+    gRight.appendChild(gSel); gRight.appendChild(gBtns);
+    gWrap.appendChild(gRight); grid.appendChild(gWrap);
+
     CHARS.forEach(function(ch){
       var pref=loadPref(ch.slug);
       var row=document.createElement("div"); row.className="row";
