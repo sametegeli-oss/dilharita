@@ -492,7 +492,17 @@ try{
     $("bListenRetry").textContent = "👂";
   }
 
+  function stopMicIfActive(){
+    if(!isRecording && !recognitionInstance) return;
+    isRecording = false; manualStop = true;
+    try{ if(recognitionInstance){ recognitionInstance.stop(); recognitionInstance=null; } }catch(e){}
+    try{ if(mediaRecorder && mediaRecorder.state!=="inactive") mediaRecorder.stop(); }catch(e){}
+    try{ if(audioStream){ audioStream.getTracks().forEach(function(t){ t.stop(); }); audioStream=null; } }catch(e){}
+    try{ $("bMic").textContent="🎤"; }catch(e){}
+  }
+
   function render(){
+    stopMicIfActive();
     try{ window.dhCoachHide && window.dhCoachHide(); }catch(e){}
     if(i>=session.length){
       $("card").style.display="none";
@@ -885,11 +895,13 @@ try{
   });
 
   /* 🎤 Mikrofon Kontrolü */
+  var manualStop = false;
   $("bMic").onclick=function(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
     var SGL=window.SpeechGrammarList||window.webkitSpeechGrammarList;
     if (!isRecording) {
-      isRecording = true; $("bMic").textContent="🔴"; stopActiveAudio(); $("bListenRetry").style.display = "none";
+      // ---- BAŞLAT ----
+      isRecording = true; manualStop = false; $("bMic").textContent="🔴"; stopActiveAudio(); $("bListenRetry").style.display = "none";
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
       accumulatedTranscript = ""; $("inp").value = ""; viaMic = true;
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
@@ -900,37 +912,76 @@ try{
         };
         mediaRecorder.start();
       }).catch(function(err) { console.error(err); isRecording = false; $("bMic").textContent="🎤"; });
-      recognitionInstance = new SR(); recognitionInstance.lang = "en-US";
-      var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      recognitionInstance.continuous = !isMobile; recognitionInstance.interimResults = true;
-      if (SGL && curT.en) {
-        var grammarListInstance = new SGL(); var cleanWords = curT.en.toLowerCase().replace(/[^a-z0-9 ]+/g, "");
-        var grammarPattern = '#JSGF V1.0; grammar targetWords; public <word> = ' + cleanWords.split(" ").join(" | ") + ' ;';
-        grammarListInstance.addFromString(grammarPattern, 1.5); recognitionInstance.grammars = grammarListInstance;
-      }
-      recognitionInstance.onresult = function(e) {
-        var finalTranscript = ""; var interimTranscript = "";
-        for (var idx = e.resultIndex; idx < e.results.length; ++idx) {
-          var text = e.results[idx][0].transcript;
-          if (e.results[idx].isFinal) finalTranscript += text + " "; else interimTranscript += text;
-        }
-        if (finalTranscript) { if (!accumulatedTranscript.includes(finalTranscript.trim())) accumulatedTranscript += finalTranscript; }
-        var currentRaw = (accumulatedTranscript + interimTranscript).trim();
-        var words = currentRaw.split(/\s+/); var cleanWordsArr = [];
-        for (var wIdx = 0; wIdx < words.length; wIdx++) {
-          if (wIdx === 0 || words[wIdx].toLowerCase() !== words[wIdx - 1].toLowerCase()) cleanWordsArr.push(words[wIdx]);
-        }
-        $("inp").value = cleanWordsArr.join(" ");
-      };
-      recognitionInstance.onerror = function(err) { console.error(err); }; recognitionInstance.start();
+
+      startRecognitionLoop(SR, SGL);
     } else {
-      isRecording = false; $("bMic").textContent="🎤";
-      if (recognitionInstance) { recognitionInstance.stop(); recognitionInstance = null; }
+      // ---- KULLANICI DURDURDU ----
+      isRecording = false; manualStop = true; $("bMic").textContent="🎤";
+      if (recognitionInstance) { try{ recognitionInstance.stop(); }catch(e){} }
       if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
       if (audioStream) { audioStream.getTracks().forEach(function(track) { track.stop(); }); audioStream = null; }
       setTimeout(function() { reveal(); }, 400);
     }
   };
+
+  /* Ses tanıma döngüsü — videopractice'teki sağlam mantık:
+     Mobil tarayıcı tanımayı kendiliğinden durdurunca (onend), kullanıcı hâlâ
+     kayıttaysa OTOMATİK yeniden başlatır. Böylece mikrofon canlı kalır ve
+     konuşma kaydı düşmez. manualStop, kullanıcı durdurmasını ayırt eder. */
+  function startRecognitionLoop(SR, SGL){
+    var rec; try{ rec = new SR(); }catch(e){ return; }
+    recognitionInstance = rec;
+    rec.lang = "en-US"; rec.interimResults = true;
+    var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    rec.continuous = !isMobile;
+    if (SGL && curT.en) {
+      try{
+        var gl = new SGL(); var cw = curT.en.toLowerCase().replace(/[^a-z0-9 ]+/g, "");
+        gl.addFromString('#JSGF V1.0; grammar targetWords; public <word> = ' + cw.split(" ").join(" | ") + ' ;', 1.5);
+        rec.grammars = gl;
+      }catch(e){}
+    }
+
+    rec.onstart = function(){ if(isRecording) $("bMic").textContent="🔴"; };
+
+    rec.onresult = function(e) {
+      var finalTranscript = "", interimTranscript = "";
+      for (var idx = e.resultIndex; idx < e.results.length; ++idx) {
+        var text = e.results[idx][0].transcript;
+        if (e.results[idx].isFinal) finalTranscript += text + " "; else interimTranscript += text;
+      }
+      if (finalTranscript) { if (!accumulatedTranscript.includes(finalTranscript.trim())) accumulatedTranscript += finalTranscript; }
+      var currentRaw = (accumulatedTranscript + interimTranscript).trim();
+      var words = currentRaw.split(/\s+/); var cleanWordsArr = [];
+      for (var wIdx = 0; wIdx < words.length; wIdx++) {
+        if (wIdx === 0 || words[wIdx].toLowerCase() !== words[wIdx - 1].toLowerCase()) cleanWordsArr.push(words[wIdx]);
+      }
+      $("inp").value = cleanWordsArr.join(" ");
+    };
+
+    rec.onerror = function(e) {
+      var code = (e && e.error) || "";
+      if (code === "not-allowed" || code === "service-not-allowed") {
+        // izin yok → tamamen durdur, butonu sıfırla
+        isRecording = false; manualStop = true; $("bMic").textContent="🎤";
+        if (audioStream) { audioStream.getTracks().forEach(function(t){ t.stop(); }); audioStream = null; }
+        alert("Mikrofon izni verilmedi.");
+        return;
+      }
+      // no-speech / aborted gibi geçici hatalar: onend zaten restart edecek
+      console.warn("[mic]", code);
+    };
+
+    rec.onend = function(){
+      if (manualStop || !isRecording) { return; }
+      // tarayıcı kendiliğinden durdurdu ama kullanıcı hâlâ dinliyor → yeniden başlat
+      setTimeout(function(){
+        if (isRecording && !manualStop) { try{ rec.start(); }catch(err){ try{ startRecognitionLoop(SR, SGL); }catch(e2){} } }
+      }, 260);
+    };
+
+    setTimeout(function(){ try{ rec.start(); }catch(e){} }, 160);
+  }
 
   $("bListenRetry").onclick = function() {
     if (activeAudioObj) { stopActiveAudio(); } 
