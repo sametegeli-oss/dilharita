@@ -19,8 +19,10 @@ h1{font-size:17px;margin:0;flex:1}.cnt{color:var(--mut);font-size:12px;text-alig
 .q span:hover, .a span:hover {color:#38bdf8;}
 .a{font-size:17px;color:#a7f3d0;min-height:26px;margin:8px 0;line-height:1.4}
 .a.hid{visibility:hidden}
-.inrow{display:flex;gap:8px;margin:10px 0 2px;align-items:stretch}
-.inrow textarea{flex:1;background:#0a1628;border:1px solid var(--line);border-radius:11px;color:#fff;font:600 16px system-ui;padding:11px 13px;resize:none;height:50px;line-height:1.4;word-wrap:break-word}
+.inrow{display:flex;flex-direction:column;gap:8px;margin:10px 0 2px}
+.inrow textarea{width:100%;box-sizing:border-box;background:#0a1628;border:1px solid var(--line);border-radius:11px;color:#fff;font:600 16px system-ui;padding:11px 13px;resize:vertical;min-height:70px;line-height:1.4;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word}
+.inrow-btns{display:flex;gap:8px;justify-content:flex-end}
+.inrow-btns button{padding:11px 15px}
 .inrow textarea:focus{outline:none;border-color:#2563eb}
 .score{font-size:13px;font-weight:800;min-height:20px;margin:4px 0;line-height:1.7}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
@@ -68,7 +70,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <div class="img-box" id="imgContainer"></div>
 
   <div id="prodBox" style="display:none">
-    <div class="inrow"><textarea id="inp" placeholder="İngilizcesini yaz…"></textarea><button class="b-retry" id="bListenRetry" style="display:none;padding:11px 13px;max-width:50px;min-width:50px" title="Kendi sesini tekrar dinle">👂</button><button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button></div>
+    <div class="inrow"><textarea id="inp" placeholder="İngilizcesini yaz…"></textarea><div class="inrow-btns"><button class="b-retry" id="bListenRetry" style="display:none" title="Kendi sesini tekrar dinle">👂</button><button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button></div></div>
     <div class="score" id="score"></div>
     
     <span class="ai-settings-toggle" id="toggleAiSettings">⚙️ Yapay Zeka Kriter Ayarları</span>
