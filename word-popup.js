@@ -31,6 +31,71 @@
     return sentLoading;
   }
 
+  /* ============ IndexedDB: öğrenilen (sözlükte olmayan) kelimeler önbelleği ============
+     Sözlükte bulunmayan bir kelime AI'ya sorulunca sonucu buraya kaydederiz.
+     Aynı kelime tekrar sorulunca AI'ya gitmeden buradan gelir.
+     exportLearnedWords() ile hepsi toplu JSON olarak alınıp GitHub sözlüğüne eklenebilir. */
+  var IDB = {
+    _db: null,
+    DB_NAME: "dh_word_cache",
+    STORE: "learned",
+    open: function(){
+      if(this._db) return Promise.resolve(this._db);
+      var self=this;
+      return new Promise(function(res){
+        if(!global.indexedDB){ res(null); return; }
+        var req = indexedDB.open(self.DB_NAME, 1);
+        req.onupgradeneeded = function(e){
+          var db=e.target.result;
+          if(!db.objectStoreNames.contains(self.STORE)){
+            db.createObjectStore(self.STORE, { keyPath:"word" });
+          }
+        };
+        req.onsuccess=function(e){ self._db=e.target.result; res(self._db); };
+        req.onerror=function(){ res(null); };
+      });
+    },
+    get: function(word){
+      var self=this;
+      return this.open().then(function(db){
+        if(!db) return null;
+        return new Promise(function(res){
+          try{
+            var tx=db.transaction(self.STORE,"readonly").objectStore(self.STORE).get(word);
+            tx.onsuccess=function(){ res(tx.result||null); };
+            tx.onerror=function(){ res(null); };
+          }catch(e){ res(null); }
+        });
+      });
+    },
+    put: function(rec){
+      var self=this;
+      return this.open().then(function(db){
+        if(!db) return false;
+        return new Promise(function(res){
+          try{
+            var tx=db.transaction(self.STORE,"readwrite").objectStore(self.STORE).put(rec);
+            tx.onsuccess=function(){ res(true); };
+            tx.onerror=function(){ res(false); };
+          }catch(e){ res(false); }
+        });
+      });
+    },
+    all: function(){
+      var self=this;
+      return this.open().then(function(db){
+        if(!db) return [];
+        return new Promise(function(res){
+          try{
+            var out=[], cur=db.transaction(self.STORE,"readonly").objectStore(self.STORE).openCursor();
+            cur.onsuccess=function(e){ var c=e.target.result; if(c){ out.push(c.value); c.continue(); } else res(out); };
+            cur.onerror=function(){ res(out); };
+          }catch(e){ res([]); }
+        });
+      });
+    }
+  };
+
   function cleanWord(w){ return String(w||"").toLowerCase().replace(/[^a-z'-]/g,"").replace(/^'+|'+$/g,""); }
   function variants(w){
     var v=[w];
@@ -210,7 +275,7 @@
        +'<button class="dh-wp-btn dh-wp-b1" id="dhWpListen">🔊 Dinle</button>'
        +'<button class="dh-wp-btn dh-wp-video" id="dhWpVideo">🎬 Videolarda Dinle</button>'
        +'<button class="dh-wp-btn dh-wp-ai" id="dhWpAI">🎓 Açıklama (AI)</button>'
-       +'<button class="dh-wp-btn dh-wp-mnemonic" id="dhWpMnemonic">💡 Şifre Oluştur (AI)</button>'
+       +'<button class="dh-wp-btn dh-wp-mnemonic" id="dhWpMnemonic">💡 Hafıza İpucu Üret (AI)</button>'
      +'</div>'
      +'<div id="dhWpAIOut"></div>'
      +'<div id="dhWpMnemonicOut"></div>'
@@ -265,32 +330,41 @@
 
   function aiMnemonic(word, anlamlar){
     var out=document.getElementById("dhWpMnemonicOut"), btn=document.getElementById("dhWpMnemonic");
+    anlamlar = Array.isArray(anlamlar) ? anlamlar : (anlamlar ? [String(anlamlar)] : []);
     if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
-      out.innerHTML='<div class="dh-wp-mnemonic-out">API anahtarı bulunamadı.</div>';
+      out.innerHTML='<div class="dh-wp-mnemonic-out">🔑 Yapay zekâ anahtarı tanımlı değil. Ayarlardan bir API anahtarı ekleyince hafıza ipucu üretebilirim.</div>';
       return;
     }
-    btn.textContent="⏳ Şifre & Görsel Hazırlanıyor…"; btn.disabled=true;
+    btn.textContent="⏳ Hafıza ipucu hazırlanıyor…"; btn.disabled=true;
     
-    var sys = "Sen İngilizce kelimeleri Türkçe ses benzeşimi (mnemonic) yöntemiyle ezberleten, yaratıcı ve komik bir İngilizce öğretmenisin.\n\n"
-            + "ÇALIŞMA SİSTEMİ:\n"
-            + "1. Kelimenin anlamını analiz et.\n"
-            + "2. Kelimenin okunuşunu Türkçe kulağa göre parçalara ayır.\n"
-            + "3. Zihninde en az 5-10 farklı Türkçe ses benzeşimi üret.\n"
-            + "4. Adayları doğallık ve akılda kalıcılık açısından değerlendirip EN İYİ BENZEŞİMİ seç.\n"
-            + "5. Seçilen benzeşimle 2-3 cümlelik komik hikaye yaz.\n\n"
-            + "SONUÇ FORMATI:\n"
+    var sys = "Sen İngilizce kelimeleri Türkçe ses benzeşimi (keyword mnemonic) yöntemiyle ezberleten uzman bir hafıza koçusun. Yüzeysel benzerlikle yetinmez, kelimenin GERÇEK OKUNUŞUNDAN yola çıkarsın.\n\n"
+            + "ZORUNLU ÇALIŞMA ADIMLARI (sırayla uygula):\n"
+            + "1. OKUNUŞ: Kelimenin İngilizce okunuşunu yaz (IPA veya Türkçe harflerle: ör. 'cumbersome' → KAM-bır-sım).\n"
+            + "2. HECELE: Okunuşu 2-3 vurgulu heceye böl. YAZILIŞA değil, SESE göre böl (ör. 'knight' → NAYT, 'nait' değil).\n"
+            + "3. HECE EŞLE: Her heceyi, o sese benzeyen GERÇEK bir Türkçe kelimeyle eşle (uydurma hece değil, sözlükte olan kelime). Ör. KAM→kam(bur), bır→bir, sım→sım(sıkı).\n"
+            + "4. ADAYLAR: En az 3 farklı benzeşim adayı kur. Her adayı iki ölçüte göre puanla: (a) sese ne kadar yakın, (b) canlı bir sahne kurmaya ne kadar uygun.\n"
+            + "5. SEÇ: En doğal ve en görselleştirilebilir adayı seç. Zorlama/anlamsız olanı ele.\n"
+            + "6. HİKÂYE: Seçilen benzeşimle 2 cümlelik SOMUT ve absürt bir sahne yaz. Sahne, kelimenin TÜRKÇE ANLAMINI eylem olarak MUTLAKA içersin (ör. anlam 'hantal' ise sahnede biri hantalca hareket etsin). Böylece ses+anlam tek imgede birleşir.\n\n"
+            + "KURALLAR: Benzeşim Türkçe sese gerçekten yakın olmalı; uzaksa 'yaklaşık' deyip geç. Anlamı hikâyeye gömmeden asla bitirme. Klişe değil, akılda kalıcı ol.\n\n"
+            + "SONUÇ FORMATI (bu başlıkları aynen kullan):\n"
             + "İNGİLİZCE KELİME: " + word + "\n"
-            + "ANLAMI: " + (anlamlar?anlamlar.join(", "):"") + "\n"
-            + "EN İYİ BENZEŞİM: [seçilen Türkçe ifade]\n"
-            + "HİKÂYE: [2-3 cümlelik hikaye]\n"
+            + "ANLAMI: " + (anlamlar.length?anlamlar.join(", "):"(sen belirle)") + "\n"
+            + "OKUNUŞ: [Türkçe harflerle okunuş]\n"
+            + "HECELER: [hece1 - hece2 - hece3]\n"
+            + "EN İYİ BENZEŞİM: [seçilen Türkçe ifade + neden seçildiği tek cümle]\n"
+            + "HİKÂYE: [2 cümlelik, anlamı içeren absürt sahne]\n"
             + "HAFIZA BAĞLANTISI: [Türkçe anlam] → [Türkçe ses benzeşimi] → [İngilizce kelime]\n"
             + "GÖRSEL_ARAMA: [Hikayedeki absürt sahneyi anlatan 3-4 İngilizce kelimelik görsel prompt]";
 
-    var usr = "Şu kelime için bu sistemi uygula:\nKelime: \"" + word + "\"\nAnlamı: " + anlamlar.join(", ");
+    var usr = "Şu kelime için bu sistemi uygula:\nKelime: \"" + word + "\"\nAnlamı: " + (anlamlar.length?anlamlar.join(", "):"(anlam verilmedi, sen belirle)");
 
     DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.8,max_tokens:500})
       .then(function(txt){
         var rawText = String(txt||"").trim();
+        if(!rawText){
+          out.innerHTML='<div class="dh-wp-mnemonic-out">Yapay zekâ boş yanıt döndü. Lütfen tekrar deneyin.</div>';
+          return;
+        }
         var searchTerms = word;
 
         var match = rawText.match(/GÖRSEL_ARAMA:\s*\[?(.*?)\]?$/i);
@@ -298,11 +372,58 @@
           searchTerms = match[1].trim().replace(/[^a-zA-Z0-9\s]/g, "");
           rawText = rawText.replace(/(?:GÖRSEL_ARAMA:.*)$/i, "").trim();
         }
+        // Format başlığı/parantez kalıntılarını sadeleştir
+        rawText = rawText
+          .replace(/^İNGİLİZCE KELİME:\s*.*$/im, "")
+          .replace(/\[|\]/g, "")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+
+        // Kalıcılık için: üretilen ipucunu tekrar/kelime defterine kaydet (varsa)
+        try {
+          if (typeof saveMnemonicToReview === "function") {
+            saveMnemonicToReview(word, anlamlar, rawText);
+          }
+        } catch(e){}
 
         renderMnemonicBox(word, rawText, searchTerms, anlamlar);
       })
-      .catch(function(){ out.innerHTML='<div class="dh-wp-mnemonic-out">Şifre üretilemedi.</div>'; })
-      .then(function(){ btn.textContent="💡 Şifre Oluştur (AI)"; btn.disabled=false; });
+      .catch(function(err){
+        var m = String((err && err.message) || err || "");
+        var msg = /network|fetch|failed|load/i.test(m)
+          ? "🌐 Bağlantı hatası — internete veya yapay zekâ servisine ulaşılamadı."
+          : "⚠️ Hafıza ipucu üretilemedi. Bir süre sonra tekrar deneyin.";
+        out.innerHTML='<div class="dh-wp-mnemonic-out">'+msg+'</div>';
+      })
+      .then(function(){ btn.textContent="💡 Hafıza İpucu Üret (AI)"; btn.disabled=false; });
+  }
+
+  /* Üretilen hafıza ipucunu localStorage'daki tekrar listesine ekler (aralıklı tekrar için).
+     akilli-tekrar.html bu listeyi okuyabilir. Zaten varsa mnemonic alanını günceller. */
+  function saveMnemonicToReview(word, anlamlar, mnemonicText){
+    if(!word) return;
+    var KEY = "dh_mnemonic_review";
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch(e){ list = []; }
+    if(!Array.isArray(list)) list = [];
+    var now = Date.now();
+    var existing = null;
+    for(var i=0;i<list.length;i++){ if(list[i] && list[i].word === word){ existing = list[i]; break; } }
+    if(existing){
+      existing.mnemonic = mnemonicText;
+      existing.updatedAt = now;
+    } else {
+      list.push({
+        word: word,
+        anlamlar: anlamlar || [],
+        mnemonic: mnemonicText,
+        createdAt: now,
+        updatedAt: now,
+        nextReview: now + 24*60*60*1000, // ilk tekrar: 1 gün sonra
+        box: 1                             // Leitner kutu no (aralıklı tekrar için)
+      });
+    }
+    try { localStorage.setItem(KEY, JSON.stringify(list)); } catch(e){}
   }
 
   function renderMnemonicBox(word, text, searchTerms, anlamlar){
@@ -331,7 +452,7 @@
                       + '</div>';
 
     out.innerHTML = '<div class="dh-wp-mnemonic-out" style="position:relative;">'
-                  + '<button class="dh-wp-blur-btn" id="dhWpRevealBtn">👁️ Şifreyi & Hikayeyi Göster</button>'
+                  + '<button class="dh-wp-blur-btn" id="dhWpRevealBtn">👁️ İpucunu & Hikayeyi Göster</button>'
                   + '<div class="dh-wp-blur" id="dhWpBlurContent">' + cleanTxt + imgContainerHtml + customBoxHtml + '</div>'
                   + '</div>';
 
@@ -453,19 +574,71 @@
   }
 
   function defineWithAI(word){
-    open({ word: word, data: { anlamlar: ["⏳ Sözlükte yok — AI ile anlam aranıyor…"], oku:"", frekans:"", seviye:"" } });
-    if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
-      updateMeanings(["📕 Bu kelime yerel sözlükte yok. API anahtarı ekleyin."]);
-      return;
-    }
-    var sys="Sen İngilizce-Türkçe sözlüksün. Kelimenin kökünü bul, 1-3 kısa Türkçe karşılığını virgülle ayrılmış ver.";
-    var usr="Kelime: \""+word+"\"";
-    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.3,max_tokens:60})
-      .then(function(txt){
-        var list=String(txt||"").split(",").map(function(s){ return s.trim(); }).filter(Boolean);
-        updateMeanings(list.length?list:["Anlam bulunamadı."]);
-      })
-      .catch(function(){ updateMeanings(["Anlam alınamadı."]); });
+    word = cleanWord(word);
+    open({ word: word, data: { anlamlar: ["⏳ Sözlükte yok — önbellek ve AI kontrol ediliyor…"], oku:"", frekans:"", seviye:"" } });
+
+    // 1) Önce IndexedDB önbelleği: daha önce öğrenildiyse AI'ya hiç gitme
+    IDB.get(word).then(function(cached){
+      if(cached && Array.isArray(cached.anlamlar) && cached.anlamlar.length){
+        updateMeanings(cached.anlamlar);
+        return; // önbellekten geldi, bitti
+      }
+
+      // 2) Önbellekte yok → AI'ya sor
+      if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
+        updateMeanings(["📕 Bu kelime yerel sözlükte yok. Anlamı öğrenmek için Ayarlardan bir API anahtarı ekleyin."]);
+        return;
+      }
+      var sys="Sen İngilizce-Türkçe sözlüksün. Kelimenin kökünü bul, 1-3 kısa Türkçe karşılığını SADECE virgülle ayrılmış ver. Açıklama, cümle, ek metin yazma.";
+      var usr="Kelime: \""+word+"\"";
+      DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.3,max_tokens:60})
+        .then(function(txt){
+          var list=String(txt||"").split(",").map(function(s){ return s.trim(); }).filter(Boolean);
+          if(!list.length){ updateMeanings(["Anlam bulunamadı, tekrar deneyin."]); return; }
+          updateMeanings(list);
+          // 3) Öğrenileni IndexedDB'ye kaydet → bir daha sorulunca oradan gelir
+          IDB.put({
+            word: word,
+            anlamlar: list,
+            source: "ai",
+            createdAt: Date.now(),
+            exported: false      // GitHub sözlüğüne henüz eklenmedi
+          });
+        })
+        .catch(function(){ updateMeanings(["Anlam alınamadı — bağlantıyı kontrol edip tekrar deneyin."]); });
+    });
+  }
+
+  /* Biriken (AI'dan öğrenilmiş) kelimeleri toplu JSON olarak indir.
+     Çıktı, data/dictionary.json ile aynı biçimde { kelime: {anlamlar:[...]} } —
+     GitHub'daki sözlüğe doğrudan birleştirilebilir.
+     Konsoldan:  DHWordPop.exportLearnedWords()  */
+  function exportLearnedWords(opts){
+    opts = opts || {};
+    return IDB.all().then(function(list){
+      list = list || [];
+      var pending = opts.onlyNew ? list.filter(function(r){ return !r.exported; }) : list;
+      if(!pending.length){ alert("Dışa aktarılacak yeni öğrenilmiş kelime yok."); return null; }
+
+      // dictionary.json biçimi
+      var merged = {};
+      pending.forEach(function(r){
+        merged[r.word] = { anlamlar: r.anlamlar, source:"ai-learned", addedAt: r.createdAt };
+      });
+
+      var blob = new Blob([JSON.stringify(merged, null, 2)], {type:"application/json"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href=url; a.download="ogrenilen-kelimeler-"+new Date().toISOString().slice(0,10)+".json";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+
+      // isteğe bağlı: dışa aktarılanları işaretle
+      if(opts.markExported){
+        pending.forEach(function(r){ r.exported=true; IDB.put(r); });
+      }
+      return merged;
+    });
   }
 
   /* ================= 🌊 SES DALGASI ANALİZİ (Canvas Grafiği) ================= */
@@ -755,7 +928,9 @@
   global.DHWordPop = {
     __v5:true,
     lookup:function(w){ loadDict().then(function(){ var e=findEntry(cleanWord(w)); if(e) open(e); else defineWithAI(cleanWord(w)); }); },
-    enable:function(){ enabled=true; }, disable:function(){ enabled=false; }, close:close
+    enable:function(){ enabled=true; }, disable:function(){ enabled=false; }, close:close,
+    exportLearnedWords: exportLearnedWords,                       // öğrenilenleri toplu JSON indir
+    learnedCount: function(){ return IDB.all().then(function(l){ return (l||[]).length; }); }
   };
   if(document.readyState!=="loading") document.addEventListener("click", function(e){
     if(!enabled || popEl) return;
