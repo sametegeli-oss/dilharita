@@ -811,10 +811,36 @@
         dhCoachSay("HARİKASIN! Art arda "+state.correctStreak+" cümleyi TAM doğru yaptın, bu ritmi koru!","praise");
         return;
       }
-      /* SOMUT KELİME GERİ BİLDİRİMİ önce gelir: diff varsa hangi kelimeyi atladığını söyle.
-         Genel "YAKLAŞTIN, kırmızıya bak" mesajı ancak somut diff yoksa devreye girer. */
+      /* SOMUT KELİME GERİ BİLDİRİMİ — ama körlemesine değil.
+         Öğrenci "work" yerine "have been working" yazınca bu bir EŞDEĞER YAPI olabilir,
+         "work'ü atladın" demek yanlış olur. Bu yüzden:
+           - Yüksek benzerlik (≥%85) VE tek yönlü küçük fark → gerçek eksik/fazla, somut söyle.
+           - Aksi halde (orta bant veya hem eksik hem fazla bir arada) → yapı farkı olabilir,
+             kesin dil KULLANMA, öğrenciyi anlam hakemine (Gemini) yönlendir. */
       var wd = opts.wordDiff;
       if(wd && (wd.missing.length || wd.extra.length)){
+        var scNow = (_sc==null? 100 : _sc);
+        var bothSides = wd.missing.length>0 && wd.extra.length>0;   // kelime değiştirilmiş olabilir
+        var smallOneSided = !bothSides && (wd.missing.length + wd.extra.length) <= 2 && scNow >= 85;
+
+        if(!smallOneSided){
+          /* Hakem (Gemini/AI) zaten onayladıysa: yargılama yok, tebrik et. */
+          if(opts.semanticOk){
+            dhCoachSay("Farklı ama GEÇERLİ bir yapı kurmuşsun ✓ Anlam doğru — böyle esneklik iyidir. Referans: " + opts.en, "praise");
+            return;
+          }
+          /* Otomatik hakem çalışıyor: koç henüz yargılamasın, sonucu beklesin. */
+          if(opts.refereePending){
+            dhCoachSay("Farklı bir yapı kurmuşsun — anlamı doğru mu diye yapay zekâ hakem kontrol ediyor… 🤖", "tip");
+            return;
+          }
+          /* Eşdeğer yapı ihtimali (anahtar yok): koç yargılamaz, kontrol etmeye yönlendirir. */
+          dhCoachSay("Referanstan farklı bir yapı kurmuşsun (ör. farklı zaman/kelime). Anlam doğru olabilir — "
+            + "“Gemini’ye Sor” ile doğrula. Referans: " + opts.en,
+            partial?"tip":"warn");
+          return;
+        }
+
         var repeatNote = "";
         try{
           if(wd.missing.length){
@@ -834,7 +860,7 @@
         if(wd.missing.length) parts.push("“"+wd.missing.slice(0,3).join(", ")+"” "+(wd.missing.length>1?"kelimelerini":"kelimesini")+" atladın");
         if(wd.extra.length) parts.push("“"+wd.extra.slice(0,3).join(", ")+"” fazladan yazdın");
         var kindD = perfect ? "praise" : (partial ? "tip" : "warn");
-        var leadD = perfect ? "Neredeyse tam! Yalnızca " : (partial ? "Çok yaklaştın — " : "Eksik var: ");
+        var leadD = perfect ? "Neredeyse tam! Yalnızca " : "Çok yaklaştın — ";
         dhCoachSay(leadD + parts.join(" ve ") + "." + repeatNote + " Doğrusu: " + opts.en, kindD, null, {wordDiff:wd, refText:opts.en});
         return;
       }

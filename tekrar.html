@@ -587,11 +587,13 @@ try{
               dbox.insertAdjacentElement("afterend", hint);
             }
           } catch(e){}
+          try{ window.dhCoachSay && window.dhCoachSay("Farklı ama GEÇERLİ bir yapı kurmuşsun ✓ Yapay zekâ hakem onayladı — Bildim'e hazır.","praise"); }catch(e){}
         } else if(/hayır|hayir|no/i.test(t)){
           semanticNo = true;
           waitEl.style.color = "#f87171";
           waitEl.textContent = "🤖 Belirttiğin kriterlere göre anlam veya yapı farklı çıktı — açıklamalara bak.";
           showExplain(curT, false);
+          try{ window.dhCoachSay && window.dhCoachSay("Yapay zekâ hakem farkı gerçek buldu — anlam/yapı değişmiş. Doğrusu: "+curT.en,"warn"); }catch(e){}
         } else if(!isRetry){
           runCheck(220, true);
         } else {
@@ -690,13 +692,18 @@ try{
       speak(curT.en);
 
       /* Kontrol et anında koç KONUŞSUN — Bildim/Zor beklemeden somut geri bildirim ver.
-         Tam doğruda kısa övgü, eksik/fazla varsa hangi kelime olduğunu söyler. */
+         Otomatik AI hakem çalışacaksa (anahtar var + orta bant), koç eşdeğer-yapı
+         kararını ERTELER; AI dönünce koç yeniden, nihai kararla konuşur. */
+      var _bandLo0 = viaMic ? 10 : 25, _bandHi0 = viaMic ? 95 : 80;
+      var _refereePending = (sc>=_bandLo0 && sc<_bandHi0 && userInputValue.trim().length>2 &&
+                             window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey());
       try{
         var _cd = (typeof computeWordDiff==="function") ? computeWordDiff(curT.en, userInputValue) : null;
         window.dhCoachEvaluate && window.dhCoachEvaluate({
           trackKind:"check", sentenceId:curT.id, en:curT.en, answer:userInputValue,
           ok:(sc>=80), commonMistake:curT.cm||"", grammar:curT.grammar||"", topic:curT.topic||"",
-          layer:mode, wordDiff:_cd, score:sc, silentTrack:true
+          layer:mode, wordDiff:_cd, score:sc, silentTrack:true, semanticOk:lastSemanticOk,
+          refereePending:_refereePending
         });
       }catch(e){}
       
@@ -704,18 +711,12 @@ try{
       if(sc>=bandLo && sc<bandHi && userInputValue.trim().length>2){
         var hasKey = window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey();
         if(hasKey) {
-          var btnSem = document.createElement("button");
-          btnSem.id = "btnTriggerSem";
-          btnSem.className = "b-sem-chk";
-          btnSem.innerHTML = "🤖 Farklı Yazdım, Anlamı Kontrol Et";
-          btnSem.onclick = function() {
-            window.triggerAiSemanticCheck(userInputValue, curT.en);
-          };
-          $("score").appendChild(btnSem);
-        }
-        /* 💎 GEMINI HAKEM: anahtar gerekmez. Prompt kopyalanır, Gemini'de sorulur,
-           cevabı yapıştırınca karar burada uygulanır (kopyala→yapıştır köprüsü). */
-        if(window.DHGemini){
+          /* API anahtarı var → SİSTEM otomatik hakemlik yapar, kullanıcı tıklamaz.
+             Öğrenci "work" yerine "have been working" yazınca arka planda anlam kontrolü
+             kendiliğinden çalışır; sonuç Bildim kilidini açar veya açıklamayı gösterir. */
+          window.triggerAiSemanticCheck(userInputValue, curT.en);
+        } else if(window.DHGemini){
+          /* Anahtar YOK → yedek: kopyala-yapıştır hakem düğmesi (kullanıcı Gemini'de sorar). */
           var btnGem = document.createElement("button");
           btnGem.id = "btnGeminiRef";
           btnGem.className = "b-sem-chk";
@@ -867,7 +868,7 @@ try{
       var _coachDiff = (typeof computeWordDiff==="function")
         ? computeWordDiff(curT.en, (mode==="prod"?($("inp")&&$("inp").value||""):""))
         : null;
-      window.dhCoachEvaluate && window.dhCoachEvaluate({trackKind:"skip", sentenceId:it.id, en:curT.en, answer:(mode==="prod"?($("inp")&&$("inp").value||""):""), ok:!hard, commonMistake:curT.cm||"", layer:mode, wordDiff:_coachDiff, score:lastSc});
+      window.dhCoachEvaluate && window.dhCoachEvaluate({trackKind:"skip", sentenceId:it.id, en:curT.en, answer:(mode==="prod"?($("inp")&&$("inp").value||""):""), ok:!hard, commonMistake:curT.cm||"", layer:mode, wordDiff:_coachDiff, score:lastSc, semanticOk:lastSemanticOk});
     }catch(e){}
     if(!hard && mode==="prod" && !lastSemanticOk && !(viaMic && !semanticNo) && lastSc>=0 && lastSc<50){
       rec.interval=Math.max(1,Math.round(rec.interval/2)); rec.due=Date.now()+rec.interval*DAY;
