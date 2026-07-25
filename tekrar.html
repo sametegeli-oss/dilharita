@@ -202,10 +202,17 @@ try{
     console.log("Firebase anlık tetikleyicileri bu sayfa için tamamen susturuldu.");
   }
 
-  // Ardışık tekrarlayan kelimeleri temizleyen filtre
-  function removeDuplicateWords(str) {
-    if (!str) return "";
-    return str.replace(/\b(\w+)(?:\s+\1\b)+/gi, "$1");
+  // Ardışık tekrarlayan kelimeleri temizleme
+  function cleanDuplicates(text) {
+    if(!text) return "";
+    var words = text.split(/\s+/);
+    var result = [];
+    for(var idx = 0; idx < words.length; idx++) {
+      if(idx === 0 || words[idx].toLowerCase() !== words[idx-1].toLowerCase()) {
+        result.push(words[idx]);
+      }
+    }
+    return result.join(" ");
   }
 
   function stopMic() {
@@ -911,7 +918,7 @@ try{
           }
         }
         var combined = (accumulatedTranscript + " " + interimTranscript).trim();
-        $("inp").value = removeDuplicateWords(combined);
+        $("inp").value = cleanDuplicates(combined);
       };
 
       recognitionInstance.onend = function() {
@@ -964,7 +971,7 @@ try{
           }
         }
         var combined = (accumulatedTranscript + " " + interimTranscript).trim();
-        $("inp").value = removeDuplicateWords(combined);
+        $("inp").value = cleanDuplicates(combined);
       };
       
       recognitionInstance.onend = function() {
@@ -981,12 +988,13 @@ try{
     }
   };
 
-  /* 🎙️ YÖNTEM 1: Yavaş Konuşma Modu (Çiftleme Filtreli) */
+  /* 🎙️ YENİ / DÜZELTİLMİŞ: Yavaş Konuşma Modu (Kum Saati Görünümlü & Kararlı) */
   $("bFileTranscribe").onclick = function() {
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return alert("Bu tarayıcıda ses tanıma özelliği yok.");
 
     if (!isFileRecording) {
+      // 1. Kaydı Başlat
       isFileRecording = true;
       viaMic = true;
       $("bFileTranscribe").textContent = "⏹️";
@@ -1027,7 +1035,7 @@ try{
           }
         }
         var combined = (accumulatedTranscript + " " + interimTranscript).trim();
-        $("inp").value = removeDuplicateWords(combined);
+        $("inp").value = cleanDuplicates(combined);
       };
 
       recognitionInstance.onend = function() {
@@ -1040,8 +1048,13 @@ try{
       recognitionInstance.start();
 
     } else {
-      stopMic();
-      setTimeout(function() { reveal(); }, 400);
+      // 2. Kaydı Bitir (Görsel Kum Saati ⏳ Tetiği)
+      $("bFileTranscribe").textContent = "⏳";
+      
+      setTimeout(function() {
+        stopMic();
+        reveal();
+      }, 300);
     }
   };
 
