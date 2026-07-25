@@ -1193,6 +1193,7 @@
     if (!isRecording) {
       recordedChunks = []; userTimelineData = []; userSpectrums = []; finalUserData = []; 
       finalUserSpectrums = []; playheadProgress = -1; heardText = "";
+      window._sttAccumulated = ""; // Yeni kayıt başında biriken STT metnini sıfırla
       avatarBoxUser.className = "avatar-box speaking";
       stopActiveSegment();
 
@@ -1219,28 +1220,50 @@
 
         const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (STT) {
-          recognition = new STT(); recognition.lang = "en-US";
-          recognition.continuous = true;      // SÜREKLİ dinle — sen susunca kapanma
-          recognition.interimResults = true;  // ara sonuçları da topla
+          recognition = new STT(); 
+          recognition.lang = "en-US";
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          
           recognition.onresult = e => {
-            let txt = "";
-            for (let i = 0; i < e.results.length; i++) { txt += e.results[i][0].transcript + " "; }
-            heardText = txt.trim();
+            let finalTranscript = "";
+            let interimTranscript = "";
+
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+              const transcript = e.results[i][0].transcript;
+              if (e.results[i].isFinal) {
+                finalTranscript += transcript + " ";
+              } else {
+                interimTranscript += transcript;
+              }
+            }
+
+            if (!window._sttAccumulated) window._sttAccumulated = "";
+            window._sttAccumulated += finalTranscript;
+            
+            // Kesinleşmiş cümle ile anlık ara sonuç birleştirilerek tekrarlar engellenir
+            heardText = (window._sttAccumulated + interimTranscript).trim();
           };
+
           recognition.onend = () => {
-            // Chrome sessizlikte / süre dolunca onend atar. Kullanıcı düğmeye basıp
-            // ELLE durdurmadıysa (isRecording hâlâ true) tanımayı yeniden başlat;
-            // kaydı KAPATMA. Mikrofon, düğmeye tekrar basana kadar açık kalır.
-            if (isRecording) { setTimeout(() => { if (isRecording) { try { recognition.start(); } catch(e){} } }, 120); return; }
+            if (isRecording) { 
+              setTimeout(() => { 
+                if (isRecording) { 
+                  try { recognition.start(); } catch(e){} 
+                } 
+              }, 120); 
+              return; 
+            }
             handleSttResult();
           };
+
           recognition.onerror = (ev) => {
-            // Geçici hatalarda (no-speech vb.) kayıttaysak sürdür; izin reddinde bırak.
             if (isRecording && ev.error !== "not-allowed" && ev.error !== "service-not-allowed") return;
           };
+
           try { recognition.start(); } catch(e){}
         } else {
-          recognition = null; // Tarayıcı konuşma tanımayı desteklemiyor — ses yine kaydedilir.
+          recognition = null;
         }
 
         isRecording = true;
@@ -1344,15 +1367,9 @@
       else segment3Diff += diff;
     }
 
-    // Hız benzerliği: süre oranı (simetrik). 2-3x yavaş bile kısmi puan alır, 0’a çakılmaz.
     let tempoSkor = Math.round(Math.min(ttsDur, userDur) / Math.max(ttsDur, userDur, 0.001) * 100);
     document.getElementById("mTempo").textContent = tempoSkor + "%";
 
-    // VURGU UYUM = ses ŞİDDETİ konturu eşleşmesi.
-    // Her eğriyi KENDİ (max - min) aralığına normalize ediyoruz — kullanıcının
-    // istediği "birim" bu. Böylece mutlak yükseklik değil, kişinin kendi dinamik
-    // aralığı içindeki vurgu deseni kıyaslanır. Sonra TÜM kontur boyunca ortalama
-    // sapmadan puan üretiyoruz (tek tepe değil).
     function dhNormRange(arr){
       let mn = Infinity, mx = -Infinity;
       for(let i=0;i<arr.length;i++){ let v=arr[i]; if(v<mn)mn=v; if(v>mx)mx=v; }
@@ -1364,7 +1381,7 @@
     let __nT = dhNormRange(finalTtsData), __nU = dhNormRange(finalUserData);
     let __sap = 0, __N = Math.min(__nT.length, __nU.length);
     for(let i=0;i<__N;i++) __sap += Math.abs(__nT[i] - __nU[i]);
-    let __ortSapma = __N ? (__sap / __N) : 1;        // 0 = birebir, 1 = tam zıt
+    let __ortSapma = __N ? (__sap / __N) : 1;
     let vurguSkor = Math.max(0, Math.round(100 * (1 - __ortSapma)));
     document.getElementById("mVurgu").textContent = vurguSkor + "%";
 
@@ -1375,7 +1392,7 @@
     else if (genelOrtalama >= 65) { badge.textContent = "İyi 👍"; badge.style.background = "var(--status-good)"; }
     else { badge.textContent = "Gelişmeli 🎯"; badge.style.background = "var(--status-try)"; }
 
-    let advice = "🟢 <b>Güçlü Taraf:</b> Kelimeleri eksikosiz tamamladınız.<br>";
+    let advice = "🟢 <b>Güçlü Taraf:</b> Kelimeleri eksiksiz tamamladınız.<br>";
     advice += "🧭 <b>Aynalama Analizi:</b> ";
     if (segment2Diff > segment1Diff && segment2Diff > segment3Diff) {
       advice += `Vurgu yaptığınız orta segmentte hocanın spektrumundan sapma var. Düet butonuna basarak ağız hareketlerinin senkronizasyonunu ve renk değişimlerini (Yeşil/Kırmızı) takip edin. `;
@@ -1743,7 +1760,6 @@
     if (b) playUserWordSegment(b.start, b.end);
   };
 
-  // --- GELİŞTİRİLMİŞ YAPAY ZEKA KELİME KARŞILAŞTIRMA VE AKUSTİK PUANLAMA MOTORU ---
   document.getElementById("wtCompareBtn").onclick = function() {
     const cb = wtGetBounds("coach");
     const ub = wtGetBounds("user");
@@ -1757,15 +1773,12 @@
         segStatus("🤖 Şimdi sizin telaffuzunuz dinleniyor...");
         playUserWordSegment(ub.start, ub.end, function() {
           
-          // Matematiksel Akustik Kıyaslama Aşaması
           const coachDur = cb.end - cb.start;
           const userDur = ub.end - ub.start;
           
-          // 1. Kriter: Tempo/Süre Uyum Skoru
           const tempoRatio = Math.min(coachDur, userDur) / Math.max(coachDur, userDur);
           let wordTempoScore = Math.round(tempoRatio * 100);
           
-          // 2. Kriter: Enerji Spektrumu ve Genlik Zirve Senkronizasyonu
           let coachIdxStart = Math.floor((cb.start + ttsAudioOffset) / 0.04);
           let coachIdxEnd = Math.floor((cb.end + ttsAudioOffset) / 0.04);
           let userIdxStart = Math.floor(ub.start / 0.04);
@@ -1789,11 +1802,9 @@
           if(coachEnergySum === 0) coachEnergySum = 1;
           let energyMatchScore = Math.max(0, Math.round(100 - (totalAbsDiff / coachEnergySum * 110)));
           
-          // Kombine Kelime Skoru Hesaplama
           let finalWordScore = Math.round((wordTempoScore * 0.4) + (energyMatchScore * 0.6));
-          finalWordScore = Math.max(10, Math.min(finalWordScore, 100)); // 10-100 arası normalize et
+          finalWordScore = Math.max(10, Math.min(finalWordScore, 100));
           
-          // Yapay Zeka Geri Bildirim ve Mikro-Tavsiye Üretimi
           let colorClass = "var(--status-try)";
           let feedbackMsg = "";
           let targetWordRaw = wordsArray.find(x => x.id === selectedWordIndex)?.raw || "Kelime";
@@ -1810,16 +1821,13 @@
             <button class="wt-btn" id="singleWordPracticeBtn" style="margin-top:6px; background:#b45309; min-height:28px; padding:2px 8px; font-size:10px;">🎙️ Sadece Bu Kelimeyi Çalış</button>`;
           }
           
-          // wtStatus panelini güncelleme
           const statusEl = document.getElementById("wtStatus");
           statusEl.innerHTML = `<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-weight:900; background:${colorClass}; color:#000; margin-right:6px;">SKOR: %${finalWordScore}</span> ${feedbackMsg}`;
           
-          // Eğer tek kelime çalışma butonu üretildiyse event ekle
           const dynamicBtn = document.getElementById("singleWordPracticeBtn");
           if(dynamicBtn) {
             dynamicBtn.onclick = function() {
               statusEl.innerHTML = `<span style="color:var(--accent)">🎙️ "${targetWordRaw}" için mikrofon açılıyor, sadece bu kelimeyi söyleyin...</span>`;
-              // Mikrofonla lokal kelime simülasyonunu başlat
               setTimeout(() => {
                 statusEl.innerHTML = `<span style="color:var(--user-color)">✓ Lokal kelime kaydı alındı! Yeniden 'Karşılaştır' düğmesine basarak skoru görün.</span>`;
               }, 2000);
