@@ -180,6 +180,23 @@ var parsers={
     if(!yes && !no) throw new Error("Cevapta EVET/HAYIR bulunamadı. Gemini'nin tüm cevabını yapıştır.");
     return { ok: yes, note: t };
   },
+  /* EVET / YAZIM / HAYIR + gerekçe → {ok, typo, note}
+     YAZIM = anlam doğru ama yazım hatası var → kabul edilir ama uyarılır. */
+  yesNoTypo: function(text){
+    var t=String(text||"").trim();
+    var head=t.slice(0,400).toLowerCase();
+    var typo=/\b(yaz[ıi]m|typo)\b/.test(head);
+    var yes =/\b(evet|yes|do[ğg]ru|kabul|ge[çc]erli)\b/.test(head);
+    var no  =/\b(hay[ıi]r|no|yanl[ıi][şs]|kabul edilemez|ge[çc]ersiz)\b/.test(head);
+    if(typo) return { ok:true, typo:true, note:t };   // yazım hatası: geçerli say, uyar
+    if(yes&&no){
+      var iy=head.search(/\b(evet|yes|do[ğg]ru|kabul|ge[çc]erli)\b/);
+      var inn=head.search(/\b(hay[ıi]r|no|yanl[ıi][şs]|kabul edilemez|ge[çc]ersiz)\b/);
+      yes = iy<inn; no = !yes;
+    }
+    if(!yes && !no) throw new Error("Cevapta EVET/YAZIM/HAYIR bulunamadı. Gemini'nin tüm cevabını yapıştır.");
+    return { ok: yes, typo:false, note: t };
+  },
   /* JSON (```json bloğu olsa da) → nesne */
   json: function(text){
     var t=String(text||"").replace(/```json|```/g,"").trim();

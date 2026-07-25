@@ -185,7 +185,7 @@ try{
   var mode=localStorage.getItem("dh-tekrar-mode")||"prod";
   var showOnlyErrors = false; 
   
-  var defaultAiPrompt = "Sen bir İngilizce öğretmenisin. Öğrencinin yazdığı cümlenin, referans cümleyle ANLAMSAL OLARAK TAMAMEN EŞİT olup olmadığını denetliyorsun. Sadece kelime dizilimi veya birebir eş anlamlı kelime alternatifleri (Örn: 'car' yerine 'automobile', 'start' yerine 'begin' veya 'I think' yerine 'In my opinion') gibi kesin ve geçerli dil bilgisi varyasyonlarını kabul et. Eğer öğrencinin cümlesinde zaman (tense) uyumsuzluğu varsa, cümlenin ana ögelerinden biri eksikse, anlam çok uzaklaşmışsa veya sadece felsefi/uzak bir benzerlik varsa kesinlikle reddet. SADECE tek kelime cevap ver: EVET ya da HAYIR. Başka hiçbir açıklama yapma.";
+  var defaultAiPrompt = "Sen adil bir İngilizce öğretmenisin. Öğrencinin cümlesini referans cümleyle karşılaştırıp ANLAM ve DİLBİLGİSİ açısından doğru olup olmadığını denetliyorsun. ÖNEMLİ: Yazım hatası (typo) ile anlam/yapı hatasını AYIR. Bir kelime yanlış yazılmış ama hangi kelime olduğu bariz belliyse (ör. 'roundabot' → 'roundabout', 'recieve' → 'receive'), bu bir YAZIM hatasıdır, anlam hatası DEĞİLDİR. Kelime dizilimi farkı, birebir eş anlamlı alternatifler ('car'→'automobile', 'start'→'begin', 'I think'→'In my opinion') ve büyük harf/noktalama farkları kabul edilir; bunlar için reddetme. Sadece şu durumlarda anlam bozulur: zaman (tense) uyumsuzluğu, ana ögelerden birinin eksikliği, anlamın gerçekten uzaklaşması veya yanlış kelime seçimi (typo değil, farklı anlamlı kelime). SADECE tek kelimeyle cevap ver: anlam ve yapı doğruysa EVET; sadece yazım hatası varsa ama anlam doğruysa YAZIM; anlam veya yapı bozuksa HAYIR. Başka hiçbir açıklama yapma.";
   
   var savedPrompt = localStorage.getItem("dh-custom-ai-prompt") || defaultAiPrompt;
   $("aiPromptInput").value = savedPrompt;
@@ -617,7 +617,7 @@ try{
       criteria + "\n\n" +
       "Referans cümle: " + targetValue + "\n" +
       "Öğrencinin cümlesi: " + userInputValue + "\n\n" +
-      "Cevabına MUTLAKA tek kelimeyle başla: EVET ya da HAYIR.\n" +
+      "Cevabına MUTLAKA tek kelimeyle başla: EVET (anlam ve yapı doğru), YAZIM (anlam doğru ama yazım hatası var) ya da HAYIR (anlam/yapı bozuk).\n" +
       "Sonra 1-2 cümleyle Türkçe gerekçe yaz; hata varsa doğrusunu göster.";
     var waitEl = document.getElementById("semWait");
     if(!waitEl){
@@ -630,14 +630,16 @@ try{
       title: "💎 Gemini hakem kararı",
       hint: "Gemini'nin cevabını buraya yapıştır ve Enter'a bas…",
       prompt: prompt,
-      parse: DHGemini.parsers.yesNo,
+      parse: DHGemini.parsers.yesNoTypo,
       onResult: function(res){
-        var note = String(res.note||"").replace(/^\s*(evet|hay[ıi]r|yes|no)\s*[.,:!—-]*\s*/i,"").trim();
+        var note = String(res.note||"").replace(/^\s*(evet|yaz[ıi]m|hay[ıi]r|yes|no|typo)\s*[.,:!—-]*\s*/i,"").trim();
         var btnG = document.getElementById("btnGeminiRef"); if(btnG) btnG.style.display="none";
         if(res.ok){
           lastSemanticOk = true; semanticNo = false;
-          waitEl.style.color = "#4ade80";
-          waitEl.textContent = "💎 ✓ Gemini onayladı — farklı ama geçerli bir ifade. Bildim'e hazır.";
+          waitEl.style.color = res.typo ? "#fbbf24" : "#4ade80";
+          waitEl.textContent = res.typo
+            ? "💎 ✓ Anlam doğru — sadece yazım hatası var. Düzeltip devam edebilirsin. Bildim'e hazır."
+            : "💎 ✓ Gemini onayladı — farklı ama geçerli bir ifade. Bildim'e hazır.";
           if(note){
             var d=document.createElement("div");
             d.style.cssText="margin-top:5px;font-size:11.5px;font-weight:600;color:#9fb3d9";
@@ -863,19 +865,16 @@ try{
     window.open(translateUrl, "_blank");
   };
 
+  /* Tutarlılık: "✨ Gemini" düğmesi de aynı kontrollü hakem ölçütünü kullanır.
+     Böylece iki AI yolu (bu düğme + "Gemini'ye Sor") aynı adil kararı verir,
+     farklı sonuçlar çıkmaz. Detaylı geri bildirim için hakemin altına
+     nüans/alternatif de istenir. */
   $("bGemini").onclick = function() {
-    var trSentence = curT.tr || ""; var correctEn = curT.en; var userEn = $("inp").value.trim() || "[Kullanıcı boş bıraktı]";
-    var systemNotes = ""; if (curT.cm) systemNotes += "\n⚠️ Bu cümle için bilinen tipik hata: " + curT.cm;
-    if (curT.exp) systemNotes += "\n💡 Sistem açıklaması: " + curT.exp;
-    var promptText = "Bir İngilizce öğrenme uygulamasında TR->EN üretimi çalışıyorum. Aşağıdaki eşleşmeyi analiz et:\n\n" +
-                     "🇹🇷 Türkçe Kaynak: " + trSentence + "\n" +
-                     "✅ Altın Standart Çeviri: " + correctEn + "\n" +
-                     "✍️ Benim Yazdığım Çeviri: " + userEn + "\n" +
-                     systemNotes + "\n\n" +
-                     "Senden ricam:\n1) Dil bilgisi incelemesi yap.\n2) Farklıysa nüansları açıkla.\n3) 10 üzerinden puan ver.\n4) 1 konuşma dili alternatifi ekle.";
-    var geminiUrl = "https://gemini.google.com/app?prompt=" + encodeURIComponent(promptText);
-    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(promptText); } catch (e) {}
-    window.open(geminiUrl, "_blank");
+    var userEn = $("inp").value.trim();
+    if(!userEn){ alert("Önce çevirini yaz, sonra Gemini'ye sor."); return; }
+    if(window.askGeminiReferee){
+      window.askGeminiReferee(userEn, curT.en);
+    }
   };
 
   $("bMore").onclick=function(){ location.reload(); };
