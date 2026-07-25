@@ -120,11 +120,12 @@ try{
 
 <script src="./auth-guard.js?v=2"></script>
 <script src="./progress-engine.js?v=2"></script>
-<script src="./coach-bubble.js?v=3"></script>
+<script src="./coach-bubble.js?v=10"></script>
+<script src="./learning-error-system.js?v=10"></script>
 <script src="./cloud-sync.js?v=9"></script>
 <script src="./ai-providers.js?v=2"></script>
-<script src="./gemini-bridge.js?v=1"></script>
-<script src="./word-popup.js?v=2"></script>
+<script src="./gemini-bridge.js?v=10"></script>
+<script src="./word-popup.js?v=10"></script>
 <script src="./image-addon.js?v=restore1"></script>
 
 <script>
@@ -688,12 +689,28 @@ try{
     if(mode==="prod"){
       var userInputValue = $("inp").value;
       var sc=similarity(userInputValue, curT.en); lastSc=sc; lastSemanticOk=false; semanticNo=false;
-      
+
+      /* TEK HARF YAZIM SÜRÇMESİ (roundabout→roundabot): AI'ya gitmeden yerel kabul.
+         Anlam doğru, sadece parmak kayması → Bildim'e hazır, kırmızı uyarı yok. */
+      var isTypo = window.LearningErrorDB && LearningErrorDB.isTypoOnly
+                   && LearningErrorDB.isTypoOnly(curT.en, userInputValue);
+      if(isTypo){ lastSemanticOk = true; if(sc<80) sc=80; lastSc=sc; }
+
       var diffResult = getDiffHtml(userInputValue, curT.en);
-      var diffStyle = viaMic ? " style='opacity:.55'" : "";
+      var diffStyle = (viaMic||isTypo) ? " style='opacity:.55'" : "";
       var micTag = viaMic ? "🎤 " : "";
       $("score").innerHTML="Benzerlik: <span style='color:"+(sc>=80?"#4ade80":(sc>=50?"#fbbf24":"#f87171"))+"'>%"+sc+"</span>"+(sc>=80?" — Bildim'e hazır ✓":"") + 
                            "<br><div class='diff-box no-wordpop'"+diffStyle+">"+micTag+diffResult+"</div>";
+
+      if(isTypo){
+        var typoNote=document.createElement("div");
+        typoNote.style.cssText="margin-top:6px;font-size:11.5px;color:#fbbf24";
+        typoNote.textContent="✍️ Sadece yazım sürçmesi — anlam doğru, Bildim'e hazır. Doğrusu: "+curT.en;
+        $("score").appendChild(typoNote);
+        try{ window.dhCoachSay && window.dhCoachSay("Sadece bir harf sürçmesi 🙂 Anlam doğru — Bildim'e hazır. Doğrusu: "+curT.en,"tip"); }catch(e){}
+        speak(curT.en);
+        return; /* AI hakeme ve orta-bant kontrolüne HİÇ gitme */
+      }
       
       if(viaMic && sc<80){
         var micNote=document.createElement("div");
