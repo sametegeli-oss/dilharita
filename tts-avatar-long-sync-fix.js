@@ -69,7 +69,21 @@ function dhAllVoices(){ try{ return speechSynthesis.getVoices()||[]; }catch(e){ 
 function dhPickVoice(lang){
   var voices=dhAllVoices();
   if(!voices.length) return null;
-  var c=dhTtsCfg(), tr=/^tr/i.test(lang);
+  var tr=/^tr/i.test(lang);
+  // TEK DOĞRU KAYNAK: ses ayar sayfası (ses-secim.html).
+  // İngilizce sesler için önce karakter-özel, sonra global ayarı oku.
+  if(!tr){
+    try{
+      var dir=(window.Scenario&&Scenario.avatarDir)||(window.CHAT_SCENARIO&&CHAT_SCENARIO.avatarDir)||"default";
+      var slug="dh-voice:"+String(dir).replace(/[^a-z0-9]+/gi,"-");
+      var perChar=JSON.parse(localStorage.getItem(slug)||"null");
+      if(perChar&&perChar.name){ var pc=voices.filter(function(v){return v.name===perChar.name;})[0]; if(pc) return pc; }
+      var glob=JSON.parse(localStorage.getItem("dh-voice:__global__")||"null");
+      if(glob&&glob.name){ var gm=voices.filter(function(v){return v.name===glob.name;})[0]; if(gm) return gm; }
+    }catch(e){}
+  }
+  // Ayar yoksa: eski dh-tts-voice-v1 tercihine, sonra dil filtresine düş
+  var c=dhTtsCfg();
   var want=tr?c.trVoice:c.enVoice;
   if(want){ var m=voices.filter(function(v){ return v.voiceURI===want||v.name===want; })[0]; if(m) return m; }
   var pref=voices.filter(function(v){ return tr ? /^tr/i.test(v.lang||"") : /^en/i.test(v.lang||""); });
@@ -638,7 +652,10 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden){ try{ spe
       '</div>' +
       '<button id="mouthSpeedClose" type="button" style="margin-top:8px">Tamam</button>';
 
-    document.body.appendChild(btn);
+    // Ses ayarı artık yalnızca ses-secim.html'den yapılır → bu yüzen çark düğmesi kaldırıldı.
+    // Panel yine de DOM'da (gizli) kalır; aşağıdaki ağız-senkron kodu ona erişebilsin.
+    // document.body.appendChild(btn);   // <- çark düğmesi eklenmiyor
+    panel.style.display = "none";
     document.body.appendChild(panel);
 
     var range = panel.querySelector("#mouthSpeedRange");
