@@ -68,7 +68,12 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <div class="img-box" id="imgContainer"></div>
 
   <div id="prodBox" style="display:none">
-    <div class="inrow"><textarea id="inp" placeholder="İngilizcesini yaz…"></textarea><button class="b-retry" id="bListenRetry" style="display:none;padding:11px 13px;max-width:50px;min-width:50px" title="Kendi sesini tekrar dinle">👂</button><button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button></div>
+    <div class="inrow">
+      <textarea id="inp" placeholder="İngilizcesini yaz…"></textarea>
+      <button class="b-retry" id="bMicReset" style="display:none;padding:11px 13px;max-width:50px;min-width:50px;background:#dc2626" title="Kaydı sil ve yeniden başlat">🗑️</button>
+      <button class="b-retry" id="bListenRetry" style="display:none;padding:11px 13px;max-width:50px;min-width:50px" title="Kendi sesini tekrar dinle">👂</button>
+      <button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button>
+    </div>
     <div class="score" id="score"></div>
     
     <span class="ai-settings-toggle" id="toggleAiSettings">⚙️ Yapay Zeka Kriter Ayarları</span>
@@ -202,6 +207,7 @@ try{
   function stopMic() {
     isRecording = false;
     $("bMic").textContent = "🎤";
+    $("bMicReset").style.display = "none";
     
     if (recognitionInstance) {
       try { recognitionInstance.stop(); } catch(e){}
@@ -417,7 +423,6 @@ try{
 
   var i=0, doneCount=0, cur=null, curT=null, revealed=false, lastSc=-1, lastSemanticOk=false, viaMic=false, semanticNo=false;
   
-  /* 🔊 TTS Speak Güncellemesi */
   function speak(t){ 
     try{ 
       speechSynthesis.cancel(); 
@@ -802,9 +807,8 @@ try{
   $("bShow").onclick=function(){ reveal(); };
   $("bChk").onclick=function(){ reveal(); };
   
-  /* 🔄 Tekrar Butonu Güncellemesi */
   $("bRetry").onclick = function() {
-    stopMic(); // 🌟 Mikrofon kaydını ve tanımayı tamamen kapatır
+    stopMic();
 
     revealed = false;
     $("a").classList.add("hid");
@@ -854,12 +858,87 @@ try{
     }
   });
 
-  /* 🎤 Mikrofon Kontrolü Güncellemesi */
+  /* 🗑️ Mikrofon Sıfırlama ve Yeniden Başlatma Düğmesi */
+  $("bMicReset").onclick = function() {
+    accumulatedTranscript = "";
+    $("inp").value = "";
+    audioChunks = [];
+    if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
+    $("bListenRetry").style.display = "none";
+
+    if (recognitionInstance) {
+      try { recognitionInstance.stop(); } catch(e){}
+    }
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      try { mediaRecorder.stop(); } catch(e){}
+    }
+
+    if (audioStream) {
+      try {
+        mediaRecorder = new MediaRecorder(audioStream);
+        mediaRecorder.ondataavailable = function(e) { if (e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.onstop = function() {
+          var audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+          audioUrl = URL.createObjectURL(audioBlob);
+          $("bListenRetry").style.display = "";
+        };
+        mediaRecorder.start();
+      } catch(e) { console.error(e); }
+    }
+
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SR) {
+      recognitionInstance = new SR();
+      recognitionInstance.lang = "en-US";
+      var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      recognitionInstance.continuous = !isMobile;
+      recognitionInstance.interimResults = true;
+      
+      var SGL = window.SpeechGrammarList || window.webkitSpeechGrammarList;
+      if (SGL && curT.en) {
+        var grammarListInstance = new SGL();
+        var cleanWords = curT.en.toLowerCase().replace(/[^a-z0-9 ]+/g, "");
+        var grammarPattern = '#JSGF V1.0; grammar targetWords; public <word> = ' + cleanWords.split(" ").join(" | ") + ' ;';
+        grammarListInstance.addFromString(grammarPattern, 1.5);
+        recognitionInstance.grammars = grammarListInstance;
+      }
+
+      recognitionInstance.onresult = function(e) {
+        var finalTranscript = ""; var interimTranscript = "";
+        for (var idx = e.resultIndex; idx < e.results.length; ++idx) {
+          var text = e.results[idx][0].transcript;
+          if (e.results[idx].isFinal) finalTranscript += text + " "; else interimTranscript += text;
+        }
+        if (finalTranscript) { if (!accumulatedTranscript.includes(finalTranscript.trim())) accumulatedTranscript += finalTranscript; }
+        var currentRaw = (accumulatedTranscript + interimTranscript).trim();
+        var words = currentRaw.split(/\s+/); var cleanWordsArr = [];
+        for (var wIdx = 0; wIdx < words.length; wIdx++) {
+          if (wIdx === 0 || words[wIdx].toLowerCase() !== words[wIdx - 1].toLowerCase()) cleanWordsArr.push(words[wIdx]);
+        }
+        $("inp").value = cleanWordsArr.join(" ");
+      };
+
+      recognitionInstance.onend = function() {
+        if (isRecording) {
+          try { recognitionInstance.start(); } catch(e) {}
+        }
+      };
+
+      recognitionInstance.onerror = function(err) { console.error(err); };
+      recognitionInstance.start();
+    }
+  };
+
+  /* 🎤 Mikrofon Kontrolü */
   $("bMic").onclick=function(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
     var SGL=window.SpeechGrammarList||window.webkitSpeechGrammarList;
     if (!isRecording) {
-      isRecording = true; $("bMic").textContent="🔴"; stopActiveAudio(); $("bListenRetry").style.display = "none";
+      isRecording = true; 
+      $("bMic").textContent="🔴"; 
+      $("bMicReset").style.display = ""; // Sıfırlama düğmesini göster
+      stopActiveAudio(); 
+      $("bListenRetry").style.display = "none";
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
       accumulatedTranscript = ""; $("inp").value = ""; viaMic = true;
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
@@ -893,7 +972,6 @@ try{
         $("inp").value = cleanWordsArr.join(" ");
       };
       
-      // 🌟 Seslendirme sonrası/otomatik kesintilerde mikrofon butonunun açık kalmasını düzeltir
       recognitionInstance.onend = function() {
         if (isRecording) {
           try { recognitionInstance.start(); } catch(e) {}
