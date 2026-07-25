@@ -393,5 +393,5 @@ setTimeout(async function dedupeOnce(){
     localStorage.setItem("dh-errdb-deduped-v1","1");
   }catch(e){}
 }, 2500);
-window.LearningErrorDB={ isTypoOnly:isTypoOnly, eqNorm:eqNorm, add,all,deleteMany,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed};
+window.LearningErrorDB={ isTypoOnly:isTypoOnly, __isCommon:function(w){ return __COMMON_EN.has(String(w||"").toLowerCase()); }, eqNorm:eqNorm, add,all,deleteMany,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed};
 })();

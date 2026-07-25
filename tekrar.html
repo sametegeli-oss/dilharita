@@ -680,6 +680,44 @@ try{
     });
   };
 
+  /* Cümledeki TÜM tek-harf yazım sürçmelerini düzeltir (birden fazla olsa bile).
+     Kelimeleri hizalar; öğrencinin kelimesi referanstakinden 1 harf farklıysa VE
+     yanlış yazılan gerçek bir kelime değilse (from→fgom evet, was→has hayır) düzeltir.
+     Dönüş: { fixed: düzeltilmiş cümle, typoCount: kaç typo, onlyTypos: typo dışında fark yok mu } */
+  function correctTypos(refEn, userEn){
+    var lev1 = function(a,b){
+      if(a===b) return false;
+      var la=a.length, lb=b.length;
+      if(Math.abs(la-lb)>1) return false;
+      var i=0,j=0,edits=0;
+      while(i<la && j<lb){
+        if(a[i]===b[j]){ i++; j++; continue; }
+        if(++edits>1) return false;
+        if(la>lb) i++; else if(lb>la) j++; else { i++; j++; }
+      }
+      if(i<la || j<lb) edits++;
+      return edits<=1;
+    };
+    var isRealWord = function(w){
+      return window.LearningErrorDB && LearningErrorDB.__isCommon ? LearningErrorDB.__isCommon(w) : false;
+    };
+    var norm=function(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9' ]+/g," ").replace(/\s+/g," ").trim(); };
+    var R=norm(refEn).split(" ").filter(Boolean);
+    var U=norm(userEn).split(" ").filter(Boolean);
+    if(!R.length || R.length!==U.length) return { fixed:userEn, typoCount:0, onlyTypos:false };
+    var typoCount=0, otherDiff=false, out=U.slice();
+    for(var k=0;k<R.length;k++){
+      if(R[k]===U[k]) continue;
+      // tek harf farkı + yanlış yazılan gerçek kelime değil + referans kelime ≥3 harf → typo
+      if(R[k].length>=3 && lev1(R[k],U[k]) && !isRealWord(U[k])){
+        out[k]=R[k]; typoCount++;
+      } else {
+        otherDiff=true;   // typo değil, gerçek fark
+      }
+    }
+    return { fixed: out.join(" "), typoCount:typoCount, onlyTypos: (typoCount>0 && !otherDiff) };
+  }
+
   function reveal(auto){
     if(revealed) return; revealed=true;
     $("a").classList.remove("hid");
@@ -688,29 +726,36 @@ try{
 
     if(mode==="prod"){
       var userInputValue = $("inp").value;
-      var sc=similarity(userInputValue, curT.en); lastSc=sc; lastSemanticOk=false; semanticNo=false;
 
-      /* TEK HARF YAZIM SÜRÇMESİ (roundabout→roundabot): AI'ya gitmeden yerel kabul.
-         Anlam doğru, sadece parmak kayması → Bildim'e hazır, kırmızı uyarı yok. */
-      var isTypo = window.LearningErrorDB && LearningErrorDB.isTypoOnly
-                   && LearningErrorDB.isTypoOnly(curT.en, userInputValue);
-      if(isTypo){ lastSemanticOk = true; if(sc<80) sc=80; lastSc=sc; }
+      /* 1) Önce TÜM tek-harf yazım sürçmelerini düzelt (fgom→from, roundabot→roundabout).
+         Typo dışında gerçek fark kalmadıysa → yerel kabul, AI'ya gitme.
+         Fark kaldıysa → typo'lar düzeltilmiş cümleyle devam et (skor typo yüzünden düşmesin). */
+      var typoInfo = correctTypos(curT.en, userInputValue);
+      var evalInput = (typoInfo.typoCount>0) ? typoInfo.fixed : userInputValue;
 
-      var diffResult = getDiffHtml(userInputValue, curT.en);
-      var diffStyle = (viaMic||isTypo) ? " style='opacity:.55'" : "";
-      var micTag = viaMic ? "🎤 " : "";
-      $("score").innerHTML="Benzerlik: <span style='color:"+(sc>=80?"#4ade80":(sc>=50?"#fbbf24":"#f87171"))+"'>%"+sc+"</span>"+(sc>=80?" — Bildim'e hazır ✓":"") + 
-                           "<br><div class='diff-box no-wordpop'"+diffStyle+">"+micTag+diffResult+"</div>";
+      var sc=similarity(evalInput, curT.en); lastSc=sc; lastSemanticOk=false; semanticNo=false;
 
-      if(isTypo){
+      if(typoInfo.onlyTypos){
+        /* Sadece yazım sürçmesi vardı, düzeltince cümle referansla eşleşiyor → kabul. */
+        lastSemanticOk = true; if(sc<80) sc=80; lastSc=sc;
+        var diffResultT = getDiffHtml(userInputValue, curT.en);
+        $("score").innerHTML="Benzerlik: <span style='color:#4ade80'>%"+sc+"</span> — Bildim'e hazır ✓"
+                             + "<br><div class='diff-box no-wordpop' style='opacity:.55'>"+diffResultT+"</div>";
         var typoNote=document.createElement("div");
         typoNote.style.cssText="margin-top:6px;font-size:11.5px;color:#fbbf24";
-        typoNote.textContent="✍️ Sadece yazım sürçmesi — anlam doğru, Bildim'e hazır. Doğrusu: "+curT.en;
+        typoNote.textContent="✍️ "+(typoInfo.typoCount>1?typoInfo.typoCount+" yazım sürçmesi":"Yazım sürçmesi")+" düzeltildi — anlam doğru, Bildim'e hazır. Doğrusu: "+curT.en;
         $("score").appendChild(typoNote);
-        try{ window.dhCoachSay && window.dhCoachSay("Sadece bir harf sürçmesi 🙂 Anlam doğru — Bildim'e hazır. Doğrusu: "+curT.en,"tip"); }catch(e){}
+        try{ window.dhCoachSay && window.dhCoachSay("Sadece harf sürçmesi 🙂 Düzeltince cümlen doğru — Bildim'e hazır. Doğrusu: "+curT.en,"tip"); }catch(e){}
         speak(curT.en);
-        return; /* AI hakeme ve orta-bant kontrolüne HİÇ gitme */
+        return; /* AI'ya HİÇ gitme */
       }
+
+      var diffResult = getDiffHtml(userInputValue, curT.en);
+      var diffStyle = viaMic ? " style='opacity:.55'" : "";
+      var micTag = viaMic ? "🎤 " : "";
+      var typoHint = (typoInfo.typoCount>0) ? " <span style='color:#fbbf24;font-size:11px'>(✍️ "+typoInfo.typoCount+" yazım düzeltildi)</span>" : "";
+      $("score").innerHTML="Benzerlik: <span style='color:"+(sc>=80?"#4ade80":(sc>=50?"#fbbf24":"#f87171"))+"'>%"+sc+"</span>"+(sc>=80?" — Bildim'e hazır ✓":"")+typoHint + 
+                           "<br><div class='diff-box no-wordpop'"+diffStyle+">"+micTag+diffResult+"</div>";
       
       if(viaMic && sc<80){
         var micNote=document.createElement("div");
@@ -725,12 +770,12 @@ try{
          Otomatik AI hakem çalışacaksa (anahtar var + orta bant), koç eşdeğer-yapı
          kararını ERTELER; AI dönünce koç yeniden, nihai kararla konuşur. */
       var _bandLo0 = viaMic ? 10 : 25, _bandHi0 = viaMic ? 95 : 80;
-      var _refereePending = (sc>=_bandLo0 && sc<_bandHi0 && userInputValue.trim().length>2 &&
+      var _refereePending = (sc>=_bandLo0 && sc<_bandHi0 && evalInput.trim().length>2 &&
                              window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey());
       try{
-        var _cd = (typeof computeWordDiff==="function") ? computeWordDiff(curT.en, userInputValue) : null;
+        var _cd = (typeof computeWordDiff==="function") ? computeWordDiff(curT.en, evalInput) : null;
         window.dhCoachEvaluate && window.dhCoachEvaluate({
-          trackKind:"check", sentenceId:curT.id, en:curT.en, answer:userInputValue,
+          trackKind:"check", sentenceId:curT.id, en:curT.en, answer:evalInput,
           ok:(sc>=80), commonMistake:curT.cm||"", grammar:curT.grammar||"", topic:curT.topic||"",
           layer:mode, wordDiff:_cd, score:sc, silentTrack:true, semanticOk:lastSemanticOk,
           refereePending:_refereePending
@@ -738,13 +783,11 @@ try{
       }catch(e){}
       
       var bandLo = viaMic ? 10 : 25, bandHi = viaMic ? 95 : 80;
-      if(sc>=bandLo && sc<bandHi && userInputValue.trim().length>2){
+      if(sc>=bandLo && sc<bandHi && evalInput.trim().length>2){
         var hasKey = window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey();
         if(hasKey) {
-          /* API anahtarı var → SİSTEM otomatik hakemlik yapar, kullanıcı tıklamaz.
-             Öğrenci "work" yerine "have been working" yazınca arka planda anlam kontrolü
-             kendiliğinden çalışır; sonuç Bildim kilidini açar veya açıklamayı gösterir. */
-          window.triggerAiSemanticCheck(userInputValue, curT.en);
+          /* API anahtarı var → SİSTEM otomatik hakemlik yapar (typo'lar düzeltilmiş cümleyle). */
+          window.triggerAiSemanticCheck(evalInput, curT.en);
         } else if(window.DHGemini){
           /* Anahtar YOK → yedek: kopyala-yapıştır hakem düğmesi (kullanıcı Gemini'de sorar). */
           var btnGem = document.createElement("button");
@@ -752,7 +795,7 @@ try{
           btnGem.className = "b-sem-chk";
           btnGem.style.background = "#8b5cf6";
           btnGem.innerHTML = "💎 Gemini'ye Sor (hakem)";
-          btnGem.onclick = function(){ window.askGeminiReferee(userInputValue, curT.en); };
+          btnGem.onclick = function(){ window.askGeminiReferee(evalInput, curT.en); };
           $("score").appendChild(btnGem);
         }
       }
