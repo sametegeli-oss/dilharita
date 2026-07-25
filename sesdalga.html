@@ -982,13 +982,13 @@
     return "mouth rest";
   }
 
-  // Gerçek avatar kareleri (deploy'da assets/avatars_v3/... yolundan yüklenir)
+  // Gerçek avatar kareleri
   var AV_HOCA = { idle:"assets/avatars_v3/teacher/idle.webp", small:"assets/avatars_v3/teacher/mouth-small.webp", medium:"assets/avatars_v3/teacher/mouth-medium.webp", open:"assets/avatars_v3/teacher/mouth-open.webp" };
   var AV_USER = { idle:"assets/avatars_v3/doctor/idle.webp",  small:"assets/avatars_v3/doctor/mouth-small.webp",  medium:"assets/avatars_v3/doctor/mouth-medium.webp",  open:"assets/avatars_v3/doctor/mouth-open.webp" };
   [AV_HOCA, AV_USER].forEach(function(set){ Object.keys(set).forEach(function(k){ var im=new Image(); im.src=set[k]; }); });
   function frameForVol(set, vol){ if(vol<6) return set.idle; if(vol<22) return set.small; if(vol<50) return set.medium; return set.open; }
 
-  // Hoca ağzı: TTS sesini yakalamaya GÜVENMEZ; TTS süresince zamanla oynar (kesilmez).
+  // Hoca ağzı animasyon mantığı
   var __hocaTalk = null;
   function hocaTalkStart(){ var img=document.getElementById("imgHoca"); if(!img) return; img.dataset.lock="1"; clearInterval(__hocaTalk); var seq=[AV_HOCA.small,AV_HOCA.medium,AV_HOCA.open,AV_HOCA.medium], k=0; __hocaTalk=setInterval(function(){ img.src=seq[k%seq.length]; k++; },110); }
   function hocaTalkStop(){ clearInterval(__hocaTalk); __hocaTalk=null; var img=document.getElementById("imgHoca"); if(img){ img.dataset.lock=""; img.src=AV_HOCA.idle; } }
@@ -997,7 +997,6 @@
     if (!mouthElement) return "mouth rest";
     const className = getVisemeClassName(freqData, volume);
     mouthElement.className = className;
-    // Gerçek kareli ağız: ses şiddetine göre aç/kapat (zaman-kilitli değilse).
     try {
       var img = (mouthElement.id === "mouthHoca") ? document.getElementById("imgHoca")
               : (mouthElement.id === "mouthUser") ? document.getElementById("imgUser") : null;
@@ -1193,7 +1192,7 @@
     if (!isRecording) {
       recordedChunks = []; userTimelineData = []; userSpectrums = []; finalUserData = []; 
       finalUserSpectrums = []; playheadProgress = -1; heardText = "";
-      window._sttAccumulated = ""; // Yeni kayıt başında biriken STT metnini sıfırla
+      window._sttAccumulated = "";
       avatarBoxUser.className = "avatar-box speaking";
       stopActiveSegment();
 
@@ -1222,27 +1221,46 @@
         if (STT) {
           recognition = new STT(); 
           recognition.lang = "en-US";
-          recognition.continuous = true;
-          recognition.interimResults = true;
           
-          recognition.onresult = e => {
-            let finalTranscript = "";
-            let interimTranscript = "";
+          // MOBİL UYUM HASSAS AYARI:
+          // Mobil cihazlarda varsayılan ara sonuçlar kopyalama yaptığı için
+          // mobil cihazlarda interimResults kapatılır ve stabil sonuç alınır.
+          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          recognition.continuous = !isMobile;
+          recognition.interimResults = !isMobile;
 
-            for (let i = e.resultIndex; i < e.results.length; i++) {
-              const transcript = e.results[i][0].transcript;
-              if (e.results[i].isFinal) {
-                finalTranscript += transcript + " ";
-              } else {
-                interimTranscript += transcript;
+          recognition.onresult = e => {
+            let rawText = "";
+
+            if (isMobile) {
+              for (let i = 0; i < e.results.length; i++) {
+                rawText += e.results[i][0].transcript + " ";
               }
+            } else {
+              let finalTranscript = "";
+              let interimTranscript = "";
+              for (let i = e.resultIndex; i < e.results.length; i++) {
+                const transcript = e.results[i][0].transcript;
+                if (e.results[i].isFinal) {
+                  finalTranscript += transcript + " ";
+                } else {
+                  interimTranscript += transcript;
+                }
+              }
+              if (!window._sttAccumulated) window._sttAccumulated = "";
+              window._sttAccumulated += finalTranscript;
+              rawText = window._sttAccumulated + interimTranscript;
             }
 
-            if (!window._sttAccumulated) window._sttAccumulated = "";
-            window._sttAccumulated += finalTranscript;
-            
-            // Kesinleşmiş cümle ile anlık ara sonuç birleştirilerek tekrarlar engellenir
-            heardText = (window._sttAccumulated + interimTranscript).trim();
+            // KRONİK MOBİL KELİME TEKRARI FİLTRESİ (Consecutive Duplicate Remover):
+            // Mobil cihazın enjekte ettiği "shirt shirt shirt" gibi ardışık aynı kelimeleri siler.
+            let cleanText = rawText
+              .trim()
+              .split(/\s+/)
+              .filter((word, index, arr) => index === 0 || word.toLowerCase() !== arr[index - 1].toLowerCase())
+              .join(" ");
+
+            heardText = cleanText;
           };
 
           recognition.onend = () => {
@@ -1251,7 +1269,7 @@
                 if (isRecording) { 
                   try { recognition.start(); } catch(e){} 
                 } 
-              }, 120); 
+              }, 150); 
               return; 
             }
             handleSttResult();
