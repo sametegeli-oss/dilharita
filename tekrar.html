@@ -103,9 +103,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <div style="margin-top:10px"><a href="./index.html" style="color:#38bdf8">Ana menu</a></div>
 </div>
 <script>
-/* ☀️ "Günün sıradaki adımı" düğmeleri statikti — plandaki GERÇEK hedefe bağla.
-   Örn. "Yeni cümleler" artık index-app.html değil, koçun seçtiği modüle
-   (index-app.html?mod=...) gider; mod-autopen oradan devralır. */
 try{
   var __p=JSON.parse(localStorage.getItem("dh-koc-plan-"+new Date().toISOString().slice(0,10))||"null");
   if(__p&&__p.steps){
@@ -134,26 +131,19 @@ try{
   var $=function(id){return document.getElementById(id)};
   var DAY=86400000, SESSION=(/[?&]plan=1/.test(location.search)?15:25), now=Date.now();
 
-  /* 🔬 HATIRLAMA OLAY GÜNLÜĞÜ: kişisel unutma eğrisinin ham verisi.
-     Her notlama bir deneydir: "son görüşten X gün sonra hatırlandı mı?"
-     rapor.html bu veriden Ebbinghaus eğrini çizer. */
   function dhRecallLog(kind, id, prevLast, prevRep, ok){
     try{
-      if(!prevLast) return;                       // ilk görüş: eğriye girmez
+      if(!prevLast) return;
       var gapD = Math.round((Date.now()-prevLast)/DAY*10)/10;
-      if(gapD < 0.02) return;                     // aynı dakikadaki tekrar: gürültü
+      if(gapD < 0.02) return;
       var K="dh-recall-log";
       var log=[]; try{ log=JSON.parse(localStorage.getItem(K)||"[]")||[]; }catch(e){}
       log.push({t:Date.now(), k:kind, id:String(id).slice(0,40), g:gapD, r:prevRep||0, ok:ok?1:0});
-      if(log.length>3000) log=log.slice(log.length-3000); // ~3000 olay ≈ 150KB tavan
+      if(log.length>3000) log=log.slice(log.length-3000);
       localStorage.setItem(K, JSON.stringify(log));
     }catch(e){}
   }
 
-  /* 💛 TEKRAR AFFI (günde 1 kez): 2 haftadan eski birikmiş tekrar dağı,
-     kullanıcıyı kaçırtan en büyük etken. 30+ eski öğe birikmişse en kritik
-     %30'u (çok takılanlar + en eskiler) bugünde kalır; gerisi SİLİNMEZ,
-     önümüzdeki 1-14 güne eşit porsiyonlanır. */
   async function srsAmnesty(){
     try{
       var K="dh-srs-amnesty-"+new Date().toISOString().slice(0,10);
@@ -165,8 +155,8 @@ try{
         var o=groups[g].o, pre=groups[g].pre, old=[];
         for(var id in o){ if(!o.hasOwnProperty(id)) continue;
           var r=o[id]||{}; if((r.due||0)>0 && r.due<=CUT) old.push(id); }
-        if(old.length<30) continue;             // küçük birikim: dokunma
-        old.sort(function(a,b){                 // kritiklik: çok takılan önce, sonra en eski
+        if(old.length<30) continue;
+        old.sort(function(a,b){
           var la=(o[a].lapses||0), lb=(o[b].lapses||0);
           if(lb!==la) return lb-la;
           return (o[a].due||0)-(o[b].due||0);
@@ -206,6 +196,24 @@ try{
   if (window.DHCloudSync) {
     window.DHCloudSync.autoPush = false; 
     console.log("Firebase anlık tetikleyicileri bu sayfa için tamamen susturuldu.");
+  }
+
+  /* ---- Mikrofon Tam Sıfırlama Fonksiyonu ---- */
+  function stopMic() {
+    isRecording = false;
+    $("bMic").textContent = "🎤";
+    
+    if (recognitionInstance) {
+      try { recognitionInstance.stop(); } catch(e){}
+      recognitionInstance = null;
+    }
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      try { mediaRecorder.stop(); } catch(e){}
+    }
+    if (audioStream) {
+      try { audioStream.getTracks().forEach(function(track) { track.stop(); }); } catch(e){}
+      audioStream = null;
+    }
   }
 
   /* ---- kv ---- */
@@ -288,14 +296,10 @@ try{
       .replace(/-/g, " ") 
       .replace(/['\u2019\u2018]/g, "")   
       .replace(/[^a-z0-9 ]+/g," ")
-      /* TR kaynak cinsiyet/canlılık taşımaz: 3. tekil zamirler TEK sınıf */
       .replace(/\b(he|she|it|him|her|his|hers|its)\b/g,"o3")
       .replace(/\s+/g," ")
       .trim(); 
   }
-  /* Fark çizimi için: karşılaştırma anahtarı + görünen kelime AYRI tutulur.
-     (Eski kod kelime-kelime norm çağırıyordu; "didn't"→"did not" 2 kelimeye
-     açılınca tek kelimeyle asla eşleşemiyordu — kısaltmalar hep kırmızıydı.) */
   function eqTokens(text){
     return expandContractions(text)
       .replace(/-/g," ").replace(/['\u2019\u2018]/g,"")
@@ -360,8 +364,6 @@ try{
         i--; j--;
       } else if (i > 0 && j > 0
                  && getLevenshteinSimilarity(norm(uArr[i - 1].d), norm(cArr[j - 1].d)) >= 75) {
-        /* Yazım sürçmesi (bak→back): missing/wrong'a bölünmeden ÖNCE yakala —
-           eski sırada bu dala hiç girilemiyordu. */
         htmlArr.unshift('<span class="diff-typo" title="Yazım Hatası! (Doğrusu: ' + cArr[j - 1].d + ')" onclick="handleWordClick(\''+cArr[j - 1].d+'\')">' + uArr[i - 1].d + '</span>');
         i--; j--;
       } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
@@ -414,7 +416,25 @@ try{
   }
 
   var i=0, doneCount=0, cur=null, curT=null, revealed=false, lastSc=-1, lastSemanticOk=false, viaMic=false, semanticNo=false;
-  function speak(t){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.lang="en-US"; u.__dhMixed=true; u.__longTTSAvatarSync=true; speechSynthesis.speak(u); }catch(e){} }
+  
+  /* 🔊 TTS Speak Güncellemesi */
+  function speak(t){ 
+    try{ 
+      speechSynthesis.cancel(); 
+      var u=new SpeechSynthesisUtterance(t); 
+      u.lang="en-US"; 
+      u.__dhMixed=true; 
+      u.__longTTSAvatarSync=true; 
+      
+      u.onend = function() {
+        if (isRecording && recognitionInstance) {
+          try { recognitionInstance.stop(); } catch(e) {}
+        }
+      };
+
+      speechSynthesis.speak(u); 
+    }catch(e){} 
+  }
 
   function triggerCloudSync() {
     try {
@@ -435,7 +455,7 @@ try{
     try {
       srs = await kvPrefix("srs:");
       wsrs = await kvPrefix("wsrs:");
-      await srsAmnesty();   // 💛 eski birikmişleri porsiyonla (günde 1 kez)
+      await srsAmnesty();
       await initApp();
     } catch(e) { console.error("Lokal DB okuma hatası:", e); await initApp(); }
   }
@@ -522,7 +542,6 @@ try{
     
     $("a").classList.add("hid");
     
-    // 📸 Resim: yalnız gerçek eşleşen kaynak varsa göster; alakasız rastgele resim ARTIK ÇEKİLMİYOR
     $("imgContainer").style.display = "none"; 
     $("imgContainer").innerHTML = "";
     if(curT.img && curT.img.trim() !== "") {
@@ -531,8 +550,7 @@ try{
     } else if (window.DHImageAddon && window.DHImageAddon.renderFor) {
       window.DHImageAddon.renderFor(cur.id, $("imgContainer"));
     }
-    // Not: eskiden buraya cümledeki kelimelerden rastgele stok fotoğraf (loremflickr) çekiliyordu —
-    // anahtar kelime eşleşmesi çok gevşek olduğundan tamamen alakasız görseller geliyordu (kaldırıldı).
+    
     $("prodBox").style.display=prod?"block":"none";
     $("inp").value=""; $("score").textContent="";
     $("bShow").style.display=prod?"none":"";
@@ -548,7 +566,6 @@ try{
     if(prod) setTimeout(function(){ try{$("inp").focus();}catch(e){} },50);
   }
 
-  /* ---- YAPAY ZEKA KULLANICI PROMPTU DENETLEME MOTORU ---- */
   window.triggerAiSemanticCheck = function(userInputValue, targetValue) {
     var waitEl = document.getElementById("semCheckNote");
     if(!waitEl) {
@@ -564,9 +581,6 @@ try{
     waitEl.style.color = "#9fb3d9";
     waitEl.textContent = "🤖 Cümleniz anlamca kontrol ediliyor…";
 
-    /* Otomatik hakem, sayfadaki genel kritere DEĞİL, eşdeğer yapıları doğru değerlendiren
-       kendi net prompt'una dayanır. "work" ↔ "have been working" gibi farklı ama geçerli
-       zaman/ifadeleri KABUL eder; sadece anlam gerçekten bozulduysa reddeder. */
     var refereePrompt =
       "Sen adil bir İngilizce sınav değerlendiricisisin. Öğrencinin cümlesi, referans cümleyle "
       + "AYNI ANLAMI taşıyorsa (farklı ama geçerli bir zaman, kip veya eşanlamlı ifade kullanmış olsa bile) GEÇERLİdir. "
@@ -625,8 +639,6 @@ try{
     runCheck(40, false);
   };
 
-  /* 💎 Gemini hakemliği: kopyala→sor→yapıştır turu. Cevap EVET ise
-     "Bildim" kilidini açar, HAYIR ise açıklamayı gösterir. */
   window.askGeminiReferee = function(userInputValue, targetValue){
     if(!window.DHGemini) return;
     var criteria = ($("aiPromptInput") && $("aiPromptInput").value.trim()) || defaultAiPrompt;
@@ -680,10 +692,6 @@ try{
     });
   };
 
-  /* Cümledeki TÜM tek-harf yazım sürçmelerini düzeltir (birden fazla olsa bile).
-     Kelimeleri hizalar; öğrencinin kelimesi referanstakinden 1 harf farklıysa VE
-     yanlış yazılan gerçek bir kelime değilse (from→fgom evet, was→has hayır) düzeltir.
-     Dönüş: { fixed: düzeltilmiş cümle, typoCount: kaç typo, onlyTypos: typo dışında fark yok mu } */
   function correctTypos(refEn, userEn){
     var lev1 = function(a,b){
       if(a===b) return false;
@@ -708,11 +716,10 @@ try{
     var typoCount=0, otherDiff=false, out=U.slice();
     for(var k=0;k<R.length;k++){
       if(R[k]===U[k]) continue;
-      // tek harf farkı + yanlış yazılan gerçek kelime değil + referans kelime ≥3 harf → typo
       if(R[k].length>=3 && lev1(R[k],U[k]) && !isRealWord(U[k])){
         out[k]=R[k]; typoCount++;
       } else {
-        otherDiff=true;   // typo değil, gerçek fark
+        otherDiff=true;
       }
     }
     return { fixed: out.join(" "), typoCount:typoCount, onlyTypos: (typoCount>0 && !otherDiff) };
@@ -727,16 +734,12 @@ try{
     if(mode==="prod"){
       var userInputValue = $("inp").value;
 
-      /* 1) Önce TÜM tek-harf yazım sürçmelerini düzelt (fgom→from, roundabot→roundabout).
-         Typo dışında gerçek fark kalmadıysa → yerel kabul, AI'ya gitme.
-         Fark kaldıysa → typo'lar düzeltilmiş cümleyle devam et (skor typo yüzünden düşmesin). */
       var typoInfo = correctTypos(curT.en, userInputValue);
       var evalInput = (typoInfo.typoCount>0) ? typoInfo.fixed : userInputValue;
 
       var sc=similarity(evalInput, curT.en); lastSc=sc; lastSemanticOk=false; semanticNo=false;
 
       if(typoInfo.onlyTypos){
-        /* Sadece yazım sürçmesi vardı, düzeltince cümle referansla eşleşiyor → kabul. */
         lastSemanticOk = true; if(sc<80) sc=80; lastSc=sc;
         var diffResultT = getDiffHtml(userInputValue, curT.en);
         $("score").innerHTML="Benzerlik: <span style='color:#4ade80'>%"+sc+"</span> — Bildim'e hazır ✓"
@@ -747,7 +750,7 @@ try{
         $("score").appendChild(typoNote);
         try{ window.dhCoachSay && window.dhCoachSay("Sadece harf sürçmesi 🙂 Düzeltince cümlen doğru — Bildim'e hazır. Doğrusu: "+curT.en,"tip"); }catch(e){}
         speak(curT.en);
-        return; /* AI'ya HİÇ gitme */
+        return;
       }
 
       var diffResult = getDiffHtml(userInputValue, curT.en);
@@ -766,9 +769,6 @@ try{
       if(sc<80 && !viaMic) showExplain(curT,false);
       speak(curT.en);
 
-      /* Kontrol et anında koç KONUŞSUN — Bildim/Zor beklemeden somut geri bildirim ver.
-         Otomatik AI hakem çalışacaksa (anahtar var + orta bant), koç eşdeğer-yapı
-         kararını ERTELER; AI dönünce koç yeniden, nihai kararla konuşur. */
       var _bandLo0 = viaMic ? 10 : 25, _bandHi0 = viaMic ? 95 : 80;
       var _refereePending = (sc>=_bandLo0 && sc<_bandHi0 && evalInput.trim().length>2 &&
                              window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey());
@@ -786,10 +786,8 @@ try{
       if(sc>=bandLo && sc<bandHi && evalInput.trim().length>2){
         var hasKey = window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey();
         if(hasKey) {
-          /* API anahtarı var → SİSTEM otomatik hakemlik yapar (typo'lar düzeltilmiş cümleyle). */
           window.triggerAiSemanticCheck(evalInput, curT.en);
         } else if(window.DHGemini){
-          /* Anahtar YOK → yedek: kopyala-yapıştır hakem düğmesi (kullanıcı Gemini'de sorar). */
           var btnGem = document.createElement("button");
           btnGem.id = "btnGeminiRef";
           btnGem.className = "b-sem-chk";
@@ -804,7 +802,10 @@ try{
   $("bShow").onclick=function(){ reveal(); };
   $("bChk").onclick=function(){ reveal(); };
   
+  /* 🔄 Tekrar Butonu Güncellemesi */
   $("bRetry").onclick = function() {
+    stopMic(); // 🌟 Mikrofon kaydını ve tanımayı tamamen kapatır
+
     revealed = false;
     $("a").classList.add("hid");
     $("grade").style.display = "none";
@@ -853,7 +854,7 @@ try{
     }
   });
 
-  /* 🎤 Mikrofon Kontrolü */
+  /* 🎤 Mikrofon Kontrolü Güncellemesi */
   $("bMic").onclick=function(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
     var SGL=window.SpeechGrammarList||window.webkitSpeechGrammarList;
@@ -868,7 +869,7 @@ try{
           var audioBlob = new Blob(audioChunks, { type: 'audio/mp3' }); audioUrl = URL.createObjectURL(audioBlob); $("bListenRetry").style.display = "";
         };
         mediaRecorder.start();
-      }).catch(function(err) { console.error(err); isRecording = false; $("bMic").textContent="🎤"; });
+      }).catch(function(err) { console.error(err); stopMic(); });
       recognitionInstance = new SR(); recognitionInstance.lang = "en-US";
       var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       recognitionInstance.continuous = !isMobile; recognitionInstance.interimResults = true;
@@ -891,12 +892,17 @@ try{
         }
         $("inp").value = cleanWordsArr.join(" ");
       };
+      
+      // 🌟 Seslendirme sonrası/otomatik kesintilerde mikrofon butonunun açık kalmasını düzeltir
+      recognitionInstance.onend = function() {
+        if (isRecording) {
+          try { recognitionInstance.start(); } catch(e) {}
+        }
+      };
+
       recognitionInstance.onerror = function(err) { console.error(err); }; recognitionInstance.start();
     } else {
-      isRecording = false; $("bMic").textContent="🎤";
-      if (recognitionInstance) { recognitionInstance.stop(); recognitionInstance = null; }
-      if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
-      if (audioStream) { audioStream.getTracks().forEach(function(track) { track.stop(); }); audioStream = null; }
+      stopMic();
       setTimeout(function() { reveal(); }, 400);
     }
   };
@@ -910,8 +916,6 @@ try{
     }
   };
 
-  /* Referans ile öğrenci cevabı arasında SOMUT kelime farkı:
-     hangi kelimeler atlandı (missing), hangileri fazladan yazıldı (extra). */
   function computeWordDiff(refEn, userEn){
     var norm=function(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9'\s]/g," ").replace(/\s+/g," ").trim(); };
     var ref=norm(refEn).split(" ").filter(Boolean);
@@ -921,7 +925,6 @@ try{
     var refCount={}; ref.forEach(function(w){ refCount[w]=(refCount[w]||0)+1; });
     var missing=[]; ref.forEach(function(w){ if((usrCount[w]||0)<(refCount[w]||0)){ if(missing.indexOf(w)<0) missing.push(w); usrCount[w]=(usrCount[w]||0)+1; } });
     var extra=[]; usr.forEach(function(w){ if((refCount[w]||0)<((extra._seen&&extra._seen[w])||0)+1){ } });
-    // fazladan: öğrencide olup referansta (sayıca) olmayanlar
     var uc2={}; usr.forEach(function(w){ uc2[w]=(uc2[w]||0)+1; });
     var rc2={}; ref.forEach(function(w){ rc2[w]=(rc2[w]||0)+1; });
     Object.keys(uc2).forEach(function(w){ if(uc2[w]>(rc2[w]||0) && extra.indexOf(w)<0) extra.push(w); });
@@ -929,12 +932,9 @@ try{
   }
 
   async function grade(hard){
-    /* 📊 GÜNÜN KARNESİ bu sayaca bakar: her notlanan kalem 1 TEKRAR.
-       (Eskiden hiç yazılmıyordu → karne 0/10'da kilitli kalıyor, kutlama ve
-       gün-sonu paneli asla gelmiyordu.) */
     try{ window.dhBumpDailyTracker && window.dhBumpDailyTracker("review"); }catch(e){}
     var it=cur; var key=(it.kind==="s"?"srs:":"wsrs:")+it.id;
-    var __prev=(it.kind==="s"?srs[it.id]:wsrs[it.id])||{};        // 🔬 eski kayıt (srsStep ezmeden)
+    var __prev=(it.kind==="s"?srs[it.id]:wsrs[it.id])||{};
     try{ dhRecallLog(it.kind, it.id, __prev.last||0, __prev.rep||0, !hard); }catch(e){}
     var rec=srsStep(it.kind==="s"?srs[it.id]:wsrs[it.id], hard);
     try{
@@ -951,7 +951,6 @@ try{
     if(it.kind==="s") srs[it.id]=rec; else wsrs[it.id]=rec;
     try { await kvPut(key, rec); } catch(e) {}
     if(hard){
-      /* 🌙 gün sonu antrenmanı için: bugün "Zor" denen kalemleri kaydet (tekilleştirilmiş) */
       try{
         var __hk="dh-hard-reviews-"+new Date().toISOString().slice(0,10);
         var __hl=JSON.parse(localStorage.getItem(__hk)||"[]")||[];
@@ -974,10 +973,6 @@ try{
     window.open(translateUrl, "_blank");
   };
 
-  /* Tutarlılık: "✨ Gemini" düğmesi de aynı kontrollü hakem ölçütünü kullanır.
-     Böylece iki AI yolu (bu düğme + "Gemini'ye Sor") aynı adil kararı verir,
-     farklı sonuçlar çıkmaz. Detaylı geri bildirim için hakemin altına
-     nüans/alternatif de istenir. */
   $("bGemini").onclick = function() {
     var userEn = $("inp").value.trim();
     if(!userEn){ alert("Önce çevirini yaz, sonra Gemini'ye sor."); return; }
