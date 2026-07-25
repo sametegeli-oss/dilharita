@@ -194,25 +194,11 @@ try{
   };
 
   var mediaRecorder = null, audioChunks = [], audioUrl = null, audioStream = null, activeAudioObj = null;
-  var recognitionInstance = null, isRecording = false, accumulatedTranscript = "";
-  var isFileRecording = false;
+  var recognitionInstance = null, isRecording = false, isFileRecording = false;
 
   if (window.DHCloudSync) {
     window.DHCloudSync.autoPush = false; 
     console.log("Firebase anlık tetikleyicileri bu sayfa için tamamen susturuldu.");
-  }
-
-  // Ardışık tekrarlayan kelimeleri temizleme
-  function cleanDuplicates(text) {
-    if(!text) return "";
-    var words = text.split(/\s+/);
-    var result = [];
-    for(var idx = 0; idx < words.length; idx++) {
-      if(idx === 0 || words[idx].toLowerCase() !== words[idx-1].toLowerCase()) {
-        result.push(words[idx]);
-      }
-    }
-    return result.join(" ");
   }
 
   function stopMic() {
@@ -872,7 +858,6 @@ try{
   });
 
   $("bMicReset").onclick = function() {
-    accumulatedTranscript = "";
     $("inp").value = "";
     audioChunks = [];
     if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
@@ -906,19 +891,11 @@ try{
       recognitionInstance.interimResults = true;
 
       recognitionInstance.onresult = function(e) {
-        var finalTranscript = ""; var interimTranscript = "";
-        for (var idx = e.resultIndex; idx < e.results.length; ++idx) {
-          var text = e.results[idx][0].transcript;
-          if (e.results[idx].isFinal) finalTranscript += text + " "; else interimTranscript += text;
+        var str = "";
+        for (var idx = 0; idx < e.results.length; ++idx) {
+          str += e.results[idx][0].transcript + " ";
         }
-        if (finalTranscript.trim()) {
-          var cleanFinal = finalTranscript.trim();
-          if (!accumulatedTranscript.includes(cleanFinal)) {
-            accumulatedTranscript += (accumulatedTranscript ? " " : "") + cleanFinal;
-          }
-        }
-        var combined = (accumulatedTranscript + " " + interimTranscript).trim();
-        $("inp").value = cleanDuplicates(combined);
+        $("inp").value = str.trim();
       };
 
       recognitionInstance.onend = function() {
@@ -932,7 +909,7 @@ try{
     }
   };
 
-  /* 🎤 Canlı Mikrofon Kontrolü */
+  /* 🎤 Canlı Mikrofon Kontrolü (Temiz ve Doğrudan Çözüm) */
   $("bMic").onclick=function(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
     if (!isRecording) {
@@ -942,7 +919,7 @@ try{
       stopActiveAudio(); 
       $("bListenRetry").style.display = "none";
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
-      accumulatedTranscript = ""; $("inp").value = ""; viaMic = true;
+      $("inp").value = ""; viaMic = true;
       
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
         audioStream = stream; mediaRecorder = new MediaRecorder(stream); audioChunks = [];
@@ -959,19 +936,11 @@ try{
       recognitionInstance.interimResults = true;
 
       recognitionInstance.onresult = function(e) {
-        var finalTranscript = ""; var interimTranscript = "";
-        for (var idx = e.resultIndex; idx < e.results.length; ++idx) {
-          var text = e.results[idx][0].transcript;
-          if (e.results[idx].isFinal) finalTranscript += text + " "; else interimTranscript += text;
+        var fullText = "";
+        for (var idx = 0; idx < e.results.length; ++idx) {
+          fullText += e.results[idx][0].transcript + " ";
         }
-        if (finalTranscript.trim()) {
-          var cleanFinal = finalTranscript.trim();
-          if (!accumulatedTranscript.includes(cleanFinal)) {
-            accumulatedTranscript += (accumulatedTranscript ? " " : "") + cleanFinal;
-          }
-        }
-        var combined = (accumulatedTranscript + " " + interimTranscript).trim();
-        $("inp").value = cleanDuplicates(combined);
+        $("inp").value = fullText.trim();
       };
       
       recognitionInstance.onend = function() {
@@ -988,19 +957,17 @@ try{
     }
   };
 
-  /* 🎙️ YENİ / DÜZELTİLMİŞ: Yavaş Konuşma Modu (Kum Saati Görünümlü & Kararlı) */
+  /* 🎙️ Yavaş Konuşma Modu (Sadece Kesinleşmiş Cümleleri Alır) */
   $("bFileTranscribe").onclick = function() {
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return alert("Bu tarayıcıda ses tanıma özelliği yok.");
 
     if (!isFileRecording) {
-      // 1. Kaydı Başlat
       isFileRecording = true;
       viaMic = true;
       $("bFileTranscribe").textContent = "⏹️";
       $("bMicReset").style.display = "";
       $("inp").value = "";
-      accumulatedTranscript = "";
       stopActiveAudio();
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
 
@@ -1020,22 +987,18 @@ try{
       recognitionInstance = new SR();
       recognitionInstance.lang = "en-US";
       recognitionInstance.continuous = true;
-      recognitionInstance.interimResults = true;
+      recognitionInstance.interimResults = false; // Yavaş konuşmada kararsız kelimeleri eler
 
       recognitionInstance.onresult = function(e) {
-        var finalTranscript = ""; var interimTranscript = "";
-        for (var idx = e.resultIndex; idx < e.results.length; ++idx) {
-          var text = e.results[idx][0].transcript;
-          if (e.results[idx].isFinal) finalTranscript += text + " "; else interimTranscript += text;
-        }
-        if (finalTranscript.trim()) {
-          var cleanFinal = finalTranscript.trim();
-          if (!accumulatedTranscript.includes(cleanFinal)) {
-            accumulatedTranscript += (accumulatedTranscript ? " " : "") + cleanFinal;
+        var fullText = "";
+        for (var idx = 0; idx < e.results.length; ++idx) {
+          if (e.results[idx].isFinal) {
+            fullText += e.results[idx][0].transcript + " ";
           }
         }
-        var combined = (accumulatedTranscript + " " + interimTranscript).trim();
-        $("inp").value = cleanDuplicates(combined);
+        if (fullText.trim()) {
+          $("inp").value = fullText.trim();
+        }
       };
 
       recognitionInstance.onend = function() {
@@ -1048,9 +1011,7 @@ try{
       recognitionInstance.start();
 
     } else {
-      // 2. Kaydı Bitir (Görsel Kum Saati ⏳ Tetiği)
       $("bFileTranscribe").textContent = "⏳";
-      
       setTimeout(function() {
         stopMic();
         reveal();
