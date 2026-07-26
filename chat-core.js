@@ -453,6 +453,7 @@ function pickTrVoice(){
 function speakText(text){
   text=String(text||"").trim();
   if(!text) return;
+  try{ if(typeof dhVoiceDebug==="function") dhVoiceDebug("speakText çağrıldı → ses seçiliyor…"); }catch(e){}
   const run=++speechRun;
   try{speechSynthesis.cancel();}catch(e){}
   const duration=estimateDuration(text);
