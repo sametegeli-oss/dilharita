@@ -480,8 +480,8 @@ function speakText(text){
         u.pitch=1;                            // TR seslerinde düşük pitch doğal durmuyor
       } else {
         const voice=pickVoice();
-        if(voice) u.voice=voice;
-        u.lang="en-US";
+        if(voice){ u.voice=voice; u.lang=voice.lang || "en-US"; }
+        else { u.lang="en-US"; }
         u.rate=vp.rate || .96;
         u.pitch=vp.pitch != null ? vp.pitch : .78;
       }
