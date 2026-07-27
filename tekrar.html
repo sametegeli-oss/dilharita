@@ -910,7 +910,11 @@ try{
   $("inp").onkeydown = function(e) {
     if(e.key!=="Enter" && e.key!=="Tab") viaMic=false;  
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault(); 
+      e.preventDefault();
+      /* İlk Enter: kontrol et. İkinci Enter: Bildim'e bas, sonraki cümleye geç.
+         Eskiden imleç metin kutusunda kaldığı için ikinci Enter hiçbir şey
+         yapmıyordu ve b/boşluk kısayolları da metin kutusundayken devre dışıydı. */
+      if (revealed && $("grade").style.display === "flex") { $("bEasy").click(); return; }
       reveal();
     }
   };
