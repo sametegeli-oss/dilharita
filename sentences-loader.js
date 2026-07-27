@@ -6,6 +6,7 @@
      data/sentences/index.json         modül listesi + id'ler   (gzip ~27 KB)
      data/sentences/mod/<slug>.json    modül başına kayıtlar    (gzip ~5 KB)
      data/sentences/test-pool.json     seviye sınavı havuzu     (gzip ~94 KB)
+     data/sentences/examples.json      tüm cümleler id/en/tr    (gzip ~294 KB)
      data/sentences/img-queries.json   cümle -> imgQuery        (gzip ~172 KB)
 
    API (window.DHSent):
@@ -15,6 +16,7 @@
      await DHSent.byIds([id,...])  -> {id: kayıt}  (yalnız gereken modüller iner)
      await DHSent.findById(id)     -> kayıt | null
      await DHSent.testPool()       -> [{id,level,en,tr,grammar}, ...]
+     await DHSent.examples()       -> [{id,en,tr}, ...]  TÜM cümleler (kelime araması)
      await DHSent.imgQueries()     -> {normalizeEn: imgQuery}
      await DHSent.all()            -> tüm kayıtlar (yalnız zorunlu hâllerde!)
      DHSent.moduleIds(mod)         -> [id,...]  (index yüklendikten sonra, senkron)
@@ -152,6 +154,21 @@
     return _pool;
   }
 
+  /* TÜM cümlelerin id/en/tr hâli — kelime baloncuğu "bu kelime hangi cümlelerde
+     geçiyor" diye ararken kapsamın %100 olması için gerekiyor. Modül parçalarıyla
+     yapılamaz: kullanıcının açmadığı modüldeki kelime bulunamazdı. */
+  var _ex = null;
+  function examples() {
+    if (_ex) return _ex;
+    _ex = getJSON(BASE + "examples.json").catch(function () {
+      return legacyAll().then(function (arr) {
+        return arr.filter(function (s) { return s && s.en; })
+                  .map(function (s) { return { id: s.id, en: s.en, tr: s.tr || "" }; });
+      });
+    });
+    return _ex;
+  }
+
   function imgQueries() {
     if (_img) return _img;
     _img = getJSON(BASE + "img-queries.json").catch(function () {
@@ -189,6 +206,7 @@
     byIds: byIds,
     findById: findById,
     testPool: testPool,
+    examples: examples,
     imgQueries: imgQueries,
     all: all
   };

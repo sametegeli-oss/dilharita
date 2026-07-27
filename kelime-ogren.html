@@ -277,7 +277,11 @@
   function loadSentences(){
     if(__sentCache) return Promise.resolve(__sentCache);
     if(__sentLoading) return __sentLoading;
-    __sentLoading=fetch("./data/sentences.json").then(function(r){ return r.json(); })
+    /* Kelimeye örnek cümle bulmak için tüm cümleler gerekiyor ama yalnız
+       id/en/tr yetiyor: gzip ~294 KB yerine 1716 KB indirmiyoruz, kapsam aynı. */
+    __sentLoading=fetch("./data/sentences/examples.json")
+      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .catch(function(){ return fetch("./data/sentences.json").then(function(r){ return r.json(); }); })
       .then(function(d){ __sentCache=Array.isArray(d)?d:[]; return __sentCache; })
       .catch(function(){ __sentCache=[]; return __sentCache; });
     return __sentLoading;
@@ -673,5 +677,6 @@
 })();
 </script>
 <script src="./word-popup.js?v=1"></script>
+<script src="./ux-boost.js?v=1"></script>
 </body>
 </html>

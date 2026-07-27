@@ -1008,6 +1008,10 @@ async function loadData(){
       State.byLevel.get("OCR").push(OCR_MODULE);
     }
   }catch(e){}
+  /* Örnek cümle havuzunu arka planda yükle — açılışı bloklamaz, gelince
+     baloncuk tüm cümlelerde arayabilir hâle gelir. */
+  State.examples = [];
+  DHSent.examples().then(function(ex){ State.examples = ex || []; }).catch(function(){});
   // sözlüğü arka planda yükle (popup için); başarısız olsa da uygulama çalışır
   try{ State.dictionary = await fetchFirst(DATA_PATHS.dictionary); }
   catch{ State.dictionary = {}; }
@@ -1042,7 +1046,14 @@ async function sentencesByIds(ids){
 function examplesFor(word){
   const n = word.toLowerCase().replace(/[.,!?;:"()]/g,"");
   const out = [];
-  for (const s of State.sentences){
+  /* KAPSAM: tüm 9417 cümlede aranır. Bir ara yalnız yüklenmiş modüllerde
+     arıyordu; o zaman kullanıcının açmadığı modüldeki kelimeler için örnek
+     çıkmıyordu. State.examples arka planda inen tam havuz (gzip ~294 KB);
+     State.sentences ise OCR gibi havuzda olmayan yerel cümleleri taşıyor. */
+  const havuz = (State.examples && State.examples.length)
+    ? State.examples.concat(State.sentences.filter(s => String(s.id).indexOf("ocr-") === 0))
+    : State.sentences;
+  for (const s of havuz){
     if (tokenize(s.en).some(t => norm(t) === n)){ out.push(s); if (out.length >= 4) break; }
   }
   return out;

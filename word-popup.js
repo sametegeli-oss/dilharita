@@ -6,7 +6,11 @@
   if(global.DHWordPop && global.DHWordPop.__v5) return;
 
   var DICT_PATHS = ["./data/dictionary.json","data/dictionary.json","./dictionary.json"];
-  var SENT_PATHS = ["./data/sentences.json","data/sentences.json","./sentences.json"];
+  /* Örnek cümleler için tam havuz: id/en/tr (gzip ~294 KB). Eskiden 8,5 MB'lık
+     data/sentences.json indiriliyordu; kapsam aynı, boyut beşte bir.
+     DHSent varsa onun üzerinden, yoksa doğrudan dosyadan. */
+  var SENT_PATHS = ["./data/sentences/examples.json","data/sentences/examples.json",
+                    "./data/sentences.json","data/sentences.json","./sentences.json"];
   var dict=null, dictLoading=null, sentences=null, sentLoading=null;
   var enabled=true, popEl=null;
 

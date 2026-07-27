@@ -605,3 +605,55 @@ bakıyor, o yüzden OCR cümleleri için ağa hiç gidilmiyor. Test ediyor.
 node test-prompt.mjs     # 15 test — prompt hem ayrıştırılabilir hem öğretici
 node test-practice.mjs   # 13 test — vadesi gelenler eskiyle birebir aynı
 ```
+
+---
+
+# 9. AŞAMA: kelime baloncuğunda tam kapsam
+
+İstek: baloncuk mümkün olduğu kadar çok kelimeye cevap verebilsin, boyut sorun değil.
+
+## Ölçüm kararı değiştirdi
+
+Önce "kelime → en fazla 3 örnek" diye küçük bir dizin önermiştim. Ölçünce
+seçeneklerin gerçek boyutları şöyle çıktı:
+
+| yaklaşım | boyut | gzip |
+|---|---|---|
+| kelime→cümle, cümleler gömülü, sınırsız | 9,5 MB | 2,3 MB |
+| kelime→cümle, en fazla 6 örnek | 2,6 MB | 0,6 MB |
+| **tüm cümleler, yalnız id/en/tr** | **1,17 MB** | **294 KB** |
+| (karşılaştırma) tam `data/sentences.json` | 8,26 MB | 1716 KB |
+
+Gömülü cümle tutmak mevcut dosyadan bile kötü çıktı — aynı cümle onlarca kelimenin
+altında tekrarlanıyor. Kazanan seçenek en basiti oldu: **tüm cümleleri taşı, ama
+yalnız örnek göstermek için gereken alanları.** `ipa`, `aiExplain`, `collocations`,
+`commonMistake` gibi ağır alanlar dışarıda kalınca 8,26 MB → 1,17 MB'a iniyor.
+
+Sonuç: kapsam **%100**, boyut mevcudun beşte biri, ve arama senkron yapılabildiği
+için baloncukta hiç gecikme yok.
+
+## Yapılanlar
+
+`veri-bol.mjs` artık `data/sentences/examples.json` üretiyor (9417 cümle, id/en/tr).
+`sentences-loader.js`'e `DHSent.examples()` eklendi.
+
+**`practice.html`: verdiğim taviz geri alındı.** 8. aşamada baloncuğun yalnız
+yüklenmiş modüllerde aradığını yazmıştım — o kısıtlama kalktı. Havuz açılışta
+arka planda iniyor (bloklamıyor), `examplesFor` tüm cümlelerde arıyor. OCR
+cümleleri de aramaya dahil, çünkü onlar havuzda değil yerelde duruyor.
+
+**`word-popup.js`** ve **`kelime-ogren.html`** de bu havuza geçti: 1716 KB
+yerine 294 KB, kapsam aynı. İkisinde de eski dosya güvenlik ağı olarak duruyor.
+
+Service worker v7 — havuz kabuk listesine eklendi, ilk açılıştan sonra
+önbellekten geliyor.
+
+## Test
+
+```
+node test-ornek.mjs    # 16 test
+```
+
+Test kapsamı iddiasını kanıtlıyor: havuzdaki cümle sayısı kaynakla aynı, tek bir
+cümle atlanmamış, **5494 farklı kelimenin hepsi** için örnek bulunuyor, ve yalnız
+tek cümlede geçen 2021 nadir kelime de dahil — hiçbiri kapsam dışı değil.

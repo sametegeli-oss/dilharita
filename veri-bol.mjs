@@ -105,6 +105,17 @@ for (const lv of levels) {
 }
 fs.writeFileSync(path.join(OUT, "test-pool.json"), JSON.stringify(pool));
 
+/* ---- ÖRNEK CÜMLE HAVUZU ----
+   Kelime baloncuğu "şu kelime hangi cümlelerde geçiyor" diye arıyor; bunun için
+   TÜM cümlelere bakması gerekiyor. Ama örnek göstermek için yalnız id/en/tr
+   yetiyor — ipa, aiExplain, collocations, commonMistake gibi ağır alanlar gerekmiyor.
+   Sonuç: 9417 cümlenin tamamı gzip ~300 KB (tam dosya 1716 KB).
+   Böylece kapsam %100 kalıyor, arama senkron yapılabiliyor (baloncukta gecikme yok)
+   ve hiçbir kelime kapsam dışında kalmıyor. */
+const examples = all.map(s => ({ id: s.id, en: s.en || "", tr: s.tr || "" }))
+                    .filter(s => s.en);
+fs.writeFileSync(path.join(OUT, "examples.json"), JSON.stringify(examples));
+
 /* ---- imgQuery eşlemesi: image-addon.js yalnız bunu kullanıyor ---- */
 const normEn = s => String(s || "").toLowerCase().replace(/\s+/g, " ").replace(/[^a-z0-9' ]/g, "").trim();
 const img = {};
@@ -119,5 +130,6 @@ console.log(`
   mod/*.json         ${modules.length} dosya, toplam ${(shardBytes / 1048576).toFixed(2)} MB
                      ortalama ${(shardBytes / modules.length / 1024).toFixed(0)} KB/modül
   test-pool.json     ${kb(path.join(OUT, "test-pool.json"))} KB   (${pool.length} cümle)
+  examples.json      ${kb(path.join(OUT, "examples.json"))} KB   (${examples.length} cümle, kelime araması için)
   img-queries.json   ${kb(path.join(OUT, "img-queries.json"))} KB   (${Object.keys(img).length} eşleme)
 `);
