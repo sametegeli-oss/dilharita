@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#0a1424">
+<title>Dil Harita — Başlangıç</title>
+<link rel="preload" as="image" href="./assets/avatars_v3/teacher/idle.webp" fetchpriority="high">
+<script src="./sentences-loader.js?v=1"></script>
+<script src="./profile.js?v=1"></script>
+<style>
+  :root{ --bg:#0a1424; --panel:#10264a; --panel2:#0b172d; --line:#1e3a5f; --txt:#e8eef7;
+         --dim:#9fb3d9; --gold:#f59e0b; --grn:#059669; --grn2:#10b981; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:radial-gradient(1200px 600px at 50% -10%,#12315e 0%,var(--bg) 55%);
+       color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+       display:flex;justify-content:center}
+  .wrap{width:100%;max-width:520px;padding:18px 16px 32px;display:flex;flex-direction:column;min-height:100%}
+
+  .steps{display:flex;gap:6px;margin-bottom:20px}
+  .steps i{flex:1;height:3px;border-radius:2px;background:#16294a;transition:background .3s}
+  .steps i.on{background:var(--grn2)}
+
+  .coach{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .coach img{width:56px;height:56px;border-radius:50%;object-fit:cover;background:#0f1f3a;
+             border:2px solid var(--line)}
+  .coach b{display:block;font-size:14px}
+  .coach span{font-size:12.5px;color:var(--dim)}
+
+  h1{font-size:21px;line-height:1.3;margin:0 0 6px}
+  .sub{color:var(--dim);font-size:14px;line-height:1.5;margin:0 0 18px}
+
+  .opts{display:flex;flex-direction:column;gap:10px}
+  .opt{appearance:none;width:100%;text-align:left;cursor:pointer;color:var(--txt);
+       background:linear-gradient(180deg,var(--panel),var(--panel2));
+       border:1px solid var(--line);border-radius:14px;padding:14px 15px;
+       font-size:15px;font-weight:700;display:flex;align-items:center;gap:12px;
+       transition:border-color .15s,transform .06s}
+  .opt:hover{border-color:#2c568f}
+  .opt.sel{border-color:var(--grn2);box-shadow:0 0 0 3px #10b98122}
+  .opt:active{transform:scale(.985)}
+  .opt em{font-style:normal;font-size:22px;line-height:1}
+  .opt small{display:block;color:var(--dim);font-weight:500;font-size:12.5px;margin-top:2px}
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .grid .opt{justify-content:center;text-align:center;flex-direction:column;gap:3px;padding:15px 8px}
+
+  .foot{margin-top:auto;padding-top:22px;display:flex;flex-direction:column;gap:9px}
+  .go{appearance:none;border:0;cursor:pointer;border-radius:14px;padding:15px;
+      font-size:15.5px;font-weight:800;color:#fff;
+      background:linear-gradient(135deg,var(--grn),var(--grn2))}
+  .go[disabled]{opacity:.4;cursor:default}
+  .skip{appearance:none;background:none;border:0;color:var(--dim);font-size:13px;
+        cursor:pointer;padding:8px;text-decoration:underline}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="steps"><i id="s1"></i><i id="s2"></i><i id="s3"></i></div>
+
+  <div class="coach">
+    <img src="./assets/avatars_v3/teacher/idle.webp" alt="" width="56" height="56">
+    <div><b>Öğretmenin</b><span id="coachLine">Seni tanıyalım, üç kısa soru.</span></div>
+  </div>
+
+  <div id="screen"></div>
+
+  <div class="foot">
+    <button class="go" id="go" disabled>Devam</button>
+    <button class="skip" id="skip">Bunu şimdilik atla</button>
+  </div>
+</div>
+
+<script src="./ux-boost.js?v=1"></script>
+<script>
+(function(){
+  "use strict";
+  var screen=document.getElementById("screen"), go=document.getElementById("go"),
+      skip=document.getElementById("skip"), coachLine=document.getElementById("coachLine");
+
+  var state={ amac:"", seviye:"", hedef:5 };
+  var step=1;
+
+  function paintSteps(){
+    ["s1","s2","s3"].forEach(function(id,i){
+      document.getElementById(id).classList.toggle("on", i < step);
+    });
+  }
+
+  function opts(list, key, cols){
+    var cls = cols ? "grid" : "opts";
+    return '<div class="'+cls+'">'+list.map(function(o){
+      return '<button class="opt'+(state[key]===o.v?" sel":"")+'" data-v="'+o.v+'">'
+        + (o.ico?'<em>'+o.ico+'</em>':'')
+        + '<span>'+o.b+(o.s?'<small>'+o.s+'</small>':'')+'</span></button>';
+    }).join("")+'</div>';
+  }
+
+  function bind(key, onPick){
+    screen.querySelectorAll(".opt").forEach(function(b){
+      b.onclick=function(){
+        state[key]=b.dataset.v;
+        screen.querySelectorAll(".opt").forEach(function(x){ x.classList.remove("sel"); });
+        b.classList.add("sel");
+        go.disabled=false;
+        if(onPick) onPick(b.dataset.v);
+      };
+    });
+  }
+
+  /* ---- 1) amaç ---- */
+  function step1(){
+    step=1; paintSteps();
+    coachLine.textContent="Seni tanıyalım, üç kısa soru.";
+    screen.innerHTML='<h1>İngilizceyi ne için öğreniyorsun?</h1>'
+      +'<p class="sub">Buna göre hangi konuları öne çıkaracağımı seçeceğim.</p>'
+      +opts([
+        {v:"gunluk",  ico:"💬", b:"Günlük konuşma", s:"Sohbet, arkadaşlar"},
+        {v:"seyahat", ico:"✈️", b:"Seyahat",        s:"Havalimanı, otel, yol tarifi"},
+        {v:"is",      ico:"💼", b:"İş",             s:"Toplantı, e-posta, sunum"},
+        {v:"akademik",ico:"🎓", b:"Sınav / akademik",s:"IELTS, okul, akademik metin"}
+      ],"amac");
+    bind("amac");
+    go.disabled=!state.amac;
+    go.textContent="Devam";
+    go.onclick=step2;
+  }
+
+  /* ---- 2) seviye ---- */
+  function step2(){
+    step=2; paintSteps();
+    coachLine.textContent="Nereden başlayacağımızı bulalım.";
+    var mevcut=null;
+    try{ mevcut=DHProfile.level(); }catch(e){}
+    screen.innerHTML='<h1>Seviyeni biliyor musun?</h1>'
+      +'<p class="sub">'+(mevcut
+          ? 'Daha önce <b>'+mevcut+'</b> çıkmıştı. İstersen değiştir.'
+          : 'Bilmiyorsan üç dakikalık kısa bir test var; sonucu kaydedip başlangıç modülünü ona göre seçiyorum.')+'</p>'
+      +opts([
+        {v:"A1",b:"A1"},{v:"A2",b:"A2"},{v:"B1",b:"B1"},
+        {v:"B2",b:"B2"},{v:"C1",b:"C1"},{v:"test",b:"Test et",s:"3 dk"}
+      ],"seviye",true);
+    if(mevcut && !state.seviye) state.seviye=mevcut;
+    bind("seviye");
+    go.disabled=!state.seviye;
+    go.textContent="Devam";
+    go.onclick=function(){
+      if(state.seviye==="test"){
+        // amaç ve hedefi şimdiden sakla; test dönüşünde kurulum kaldığı yerden sürer
+        try{
+          DHProfile.set({ amac:state.amac, gunlukHedef:state.hedef, kurulumAdim:3 });
+          if(window.DHTeacherPolicy) DHTeacherPolicy.set("amac", state.amac);
+        }catch(e){}
+        location.href="./seviye-testi.html?from=basla";
+        return;
+      }
+      step3();
+    };
+  }
+
+  /* ---- 3) günlük hedef ---- */
+  function step3(){
+    step=3; paintSteps();
+    coachLine.textContent="Son adım.";
+    screen.innerHTML='<h1>Günde kaç cümle?</h1>'
+      +'<p class="sub">Küçük başlamak seriyi korumanın en kolay yolu. Sonradan değiştirebilirsin.</p>'
+      +opts([
+        {v:"3", b:"3",  s:"~3 dk"},
+        {v:"5", b:"5",  s:"~5 dk"},
+        {v:"10",b:"10", s:"~10 dk"},
+        {v:"20",b:"20", s:"~20 dk"}
+      ],"hedefStr",true);
+    state.hedefStr=String(state.hedef);
+    screen.querySelectorAll(".opt").forEach(function(b){
+      if(b.dataset.v===state.hedefStr) b.classList.add("sel");
+    });
+    bind("hedefStr");
+    go.disabled=false;
+    go.textContent="Başla";
+    go.onclick=finish;
+  }
+
+  /* ---- bitiş ---- */
+  function finish(){
+    go.disabled=true; go.textContent="Hazırlanıyor…";
+    var hedef=parseInt(state.hedefStr||state.hedef,10)||5;
+    try{
+      DHProfile.set({
+        amac:state.amac, gunlukHedef:hedef,
+        kurulumBitti:true, kurulumTarih:Date.now(), kurulumAdim:0
+      });
+      if(state.seviye && state.seviye!=="test") DHProfile.setLevel(state.seviye);
+      if(window.DHTeacherPolicy){
+        DHTeacherPolicy.set("amac", state.amac);
+        DHTeacherPolicy.set("gunlukHedef", hedef);
+      }
+    }catch(e){}
+
+    // seviyeye uygun ilk modüle götür; bulunamazsa ana ekrana
+    var git=function(u){ location.replace(u); };
+    var zaman=setTimeout(function(){ git("./index.html"); }, 4000);
+    try{
+      DHProfile.nextModule().then(function(mod){
+        clearTimeout(zaman);
+        git(mod ? "./ogren.html?from=ders&module="+encodeURIComponent(mod) : "./index.html");
+      }).catch(function(){ clearTimeout(zaman); git("./index.html"); });
+    }catch(e){ clearTimeout(zaman); git("./index.html"); }
+  }
+
+  /* atla: kurulumu bitmiş say, bir daha sorma */
+  skip.onclick=function(){
+    try{ DHProfile.set({ kurulumBitti:true, kurulumAtlandi:true }); }catch(e){}
+    location.replace("./index.html");
+  };
+
+  /* seviye testinden dönüş: 3. adımdan devam */
+  var p={};
+  try{ p=DHProfile.get()||{}; }catch(e){}
+  if(p.amac) state.amac=p.amac;
+  if(p.gunlukHedef) state.hedef=p.gunlukHedef;
+  if(p.kurulumAdim===3){ state.seviye=(function(){ try{ return DHProfile.level()||""; }catch(e){ return ""; } })(); step3(); }
+  else step1();
+})();
+</script>
+</body>
+</html>

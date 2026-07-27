@@ -96,6 +96,7 @@
   @media(max-width:560px){ .q-tr{font-size:20px} .result-level{font-size:54px} }
 </style>
 <script src="./sentences-loader.js?v=1"></script>
+<script src="./profile.js?v=1"></script>
 </head>
 <body>
 <div class="wrap">
@@ -462,6 +463,17 @@
   function renderResult(){
     var res = test.result();
     var lvl = res.level;
+    /* SONUCU KAYDET.
+       Eskiden sonuç yalnızca öğretmen anayasasına yazılıyordu; öğrenme akışı
+       (modül seçici, koç, ders motoru) orayı hiç okumuyordu. Ayrıca
+       gemini-lesson.js'in okuduğu "dh-level" anahtarını hiçbir kod yazmıyordu.
+       DHProgress.setLevel her iki yere birden yazar. */
+    try{
+      DHProfile.setLevel(lvl, { level:lvl, confidence:res.confidence, tarih:Date.now(),
+                                soruSayisi:res.questionCount, beceriler:res.skills });
+      DHProfile.set({ amac: chosenGoal || DHProfile.get().amac || "" });
+    }catch(e){}
+
     // anayasaya yaz
     try{
       if(window.DHTeacherPolicy){
@@ -506,6 +518,15 @@
       +'</div>';
     $("goLesson").onclick = function(){ goAfterSave("./ders.html"); };
     $("goHome").onclick = function(){ goAfterSave("./index.html"); };
+
+    /* İlk kurulumdan gelindiyse akış yarım kalmasın: son adıma (günlük hedef) dön. */
+    try{
+      if(/[?&]from=basla/.test(location.search)){
+        $("goLesson").textContent = "Kuruluma devam et";
+        $("goLesson").onclick = function(){ goAfterSave("./basla.html"); };
+        $("goHome").style.display = "none";
+      }
+    }catch(e){}
   }
 
   // Yönlendirmeden önce, anayasa yazımının IndexedDB'ye işlenmesini bekle.

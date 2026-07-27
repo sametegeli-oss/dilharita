@@ -12,6 +12,9 @@
 <title>Dil Harita — Koç Modu</title>
 <!-- GERÇEK VERİ + GİRİŞ: uygulamanın kendi modülleri -->
 <script src="./auth-guard.js?v=1"></script>
+<script src="./sentences-loader.js?v=1"></script>
+<script src="./profile.js?v=1"></script>
+<script src="./onboarding-guard.js?v=1"></script>
 <script src="./study-tracker.js?v=1"></script>
 <script src="./learning-error-system.js?v=2"></script>
 <style>
@@ -146,7 +149,9 @@ function computeDue(){ return new Promise(function(res){ try{
   r.onerror=function(){ res(null); };
 }catch(e){ res(null); } }); }
 var WEAK={ "missing-word":"eksik kelime","word-order":"kelime sırası","tense":"fiil zamanı","preposition":"edat (in/on/at)","article":"artikel (a/the)","spelling":"yazım","plural":"çoğul","auxiliary":"yardımcı fiil","general":"genel hatalar" };
-var GOAL=5;
+/* Günlük hedef artık kullanıcının kurulumda seçtiği değer.
+   Eskiden 5 olarak sabit kodluydu ve hiçbir yerden değiştirilemiyordu. */
+var GOAL=(function(){ try{ return DHProfile.hedef(); }catch(e){ return 5; } })();
 async function loadReal(){
   var R={streak:null,sentences:0,reviews:0,lessons:0,due:null,weakType:null,weakCount:0};
   try{ var t=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; var d=(t.days||{})[isoToday()]||{}; R.sentences=d.sentences||0; R.reviews=d.reviews||0; R.lessons=d.lessons||0; }catch(e){}

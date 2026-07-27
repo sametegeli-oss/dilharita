@@ -180,3 +180,92 @@ bulunamazsa otomatik olarak eski dosyaya düşer.
 3. **`app.js` (218 KB) ve `assets/app.js` (299 KB)** — ikisi de minified bundle, içerikleri
    farklı, kaynak kod repoda yok. Hangisinin canlı olduğunu netleştirip diğerini silmek gerek.
 4. **`teacher.html` / `teacher1.html`, `chatteacher{,1,2}.html`** ailelerinin birleştirilmesi.
+
+---
+
+# 3. AŞAMA: kullanıcı deneyimi
+
+## Önce iki düzeltme
+
+**1) "Seviye testi sonucu hiçbir yere kaydedilmiyor" demiştim — yanlıştı.**
+Sonuç kaydediliyor: `DHTeacherPolicy.set("seviye", lvl)` ile
+`dh-teacher-policy-v1` içine yazılıyor ve bulut yedeğine de giriyor. İlk
+taramamda `setItem` aradığım için kaçırdım. Doğru olan tespit daha dar:
+sonucu **yalnızca AI öğretmen** okuyor (`lesson-engine.js`, `teacher-bubble.js`).
+Modül seçici, koç ve ders akışı seviyeyi hiç sormuyordu. Ayrıca
+`gemini-lesson.js`'in okuduğu `dh-level` anahtarını gerçekten hiçbir kod
+yazmıyordu; o kontrol her zaman boş dönüyordu.
+
+**2) "İlerleme 11 ayrı yerde, birleştiren yok" demiştim — bu da eksikti.**
+`progress-engine.js` zaten `window.DHProgress`'i tanımlıyor
+(NEW/LEARNING/LEARNED, `recordResult`, `getStatus`, `summaryAll`, bulut aynası)
+ve ilgili 15 sayfada yüklü. Aynayı da o dolduruyor.
+İlk yazdığım `progress.js` bunu **ezip** `basla.html`'i bozacaktı; fark edip
+sildim. Yerine çakışmayan `profile.js` var — `window.DHProgress`'e dokunmuyor.
+Gerçek boşluk şuydu: başlangıç sayfası `index.html` ve `koc.js` bu katmanı
+hiç yüklemiyor, ve katman seviye/hedef kavramını içermiyor.
+
+## Eklenenler
+
+**`profile.js` (yeni)** — `window.DHProfile`. Seviye, amaç, günlük hedef ve
+sıradaki modül. `setLevel()` üç yere birden yazıyor: profil, `dh-level`
+(gemini-lesson.js nihayet çalışıyor), öğretmen anayasası. `nextModule()`
+üç ilerleme deposunu da (`prog:`, `sentence:`, `srs:`) okuyor ve kullanıcının
+seviyesinden başlıyor — koç mantığı yalnız ikisini okuyordu.
+
+**`basla.html` + `onboarding-guard.js` (yeni)** — üç adımlı ilk kurulum:
+amaç → seviye (bilmiyorsan teste yönlendirir, dönüşte kaldığı yerden devam eder)
+→ günlük hedef. Bitince seviyeye uygun ilk modüle götürür. Kapı yalnızca
+`index.html`'de; kullanıcıyı uygulama içinde kilitlemiyor. Eski kullanıcıyı
+(seviyesi veya çalışma geçmişi olan) hiç rahatsız etmiyor. "Atla" kalıcı.
+
+**`seviye-testi.html`** — sonuç artık `DHProfile.setLevel()` ile de kaydediliyor,
+yani öğrenme akışı da görüyor. Kurulumdan gelindiyse kuruluma dönüyor.
+
+**`index.html`** — günlük hedef sabit kodlu `var GOAL=5` değil, kullanıcının
+seçtiği değer.
+
+**`speech-fallback.js` (yeni)** — iOS Safari'de `SpeechRecognition` yok.
+Eskiden "Tarayıcı ses tanımayı desteklemiyor" uyarısı çıkıp bir **yazı kutusu**
+açılıyordu; telaffuz alıştırmasını yazıya çevirmek alıştırmanın amacını bitiriyor.
+Artık gölgeleme paneli açılıyor: dinle → kendini kaydet (MediaRecorder, iOS 14.3+)
+→ ikisini arka arkaya dinle → kendini değerlendir. Puan SRS'e ve
+`DHProgress.recordResult`'a işleniyor. Alıştırma iPhone'da da sesli kalıyor.
+Safari `audio/webm` desteklemediği için mime türü otomatik seçiliyor.
+
+## Yapmadığım birleştirme ve nedeni
+
+`ogren.html` ile `videopractice.html` %99 aynı (77 KB'lık motor iki kez).
+Tek fark: videopractice `mode-toggle.js` yüklüyor. Onu okudum — bu dosya
+video ekranı ile React foto uygulaması (`index-app`) arasında `postMessage`
+ile cümle senkronu yapıyor ve davranışını `location.pathname`'e göre
+değiştiriyor. Yani fark kozmetik değil, kaynak kodu repoda olmayan bir
+bundle'la konuşan bir protokol.
+
+Tarayıcı olmadan bunu test edemem. İki büyük etkileşimli sayfayı, test
+edemediğim bir senkron protokolü üzerinden birleştirmek makul görünen ama
+sessizce bozan türden bir değişiklik olurdu. Doğru yol: ortak motoru
+`practice-engine.js`'e çıkarıp iki sayfayı ince kabuklara indirmek — ayrı bir
+tur, tarayıcıda elle test ederek.
+
+Diğer "kopya" sandıklarım kopya değilmiş:
+`teacher.html`/`teacher1.html` yalnız %50 benziyor (farklı sayfalar),
+`chatteacher1/2.html` 1 KB'lık avatar seçici kabuklar — kasıtlı, borç değil.
+
+## Testler
+
+```
+node test-veri.mjs     # veri parçalama (17 test)
+node test-profil.mjs   # seviye/profil/sıradaki modül (17 test)
+```
+
+`test-profil.mjs` iki gerçek hata yakaladı: kodda `window.X` ile kontrol edip
+çıplak `X` ile çağırmıştım (tarayıcıda çalışır, kırılgan), ve `window.DHProgress`
+çakışmasını test olarak sabitledim — bir daha ezilirse test kırılır.
+
+## Kurulumdan sonra ek kontrol
+
+- Tarayıcı verisini temizleyip ana sayfayı aç: `basla.html` açılmalı.
+- Kurulumu bitir: seviyene uygun bir modüle düşmelisin (A1-M01'e değil).
+- Mevcut kullanıcıyla aç: kurulum ekranı **çıkmamalı**.
+- iPhone/Safari'de bir cümlede mikrofona bas: yazı kutusu değil, kayıt paneli açılmalı.

@@ -377,6 +377,7 @@ window.DilAvatar = {
 </script>
 <script src="./learning-error-system.js"></script>
 <script src="./sentences-loader.js?v=1"></script>
+<script src="./speech-fallback.js?v=1"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -1013,7 +1014,27 @@ function startEnglishCheck(){
   const s=currentSentence(); try{ speechSynthesis.cancel(); }catch{}
   if(!State.listening){try{clearTeachTimers();clearVisemeTimers();setAvatarSpeaking(false);setTeachBtnPlaying(false);}catch{}}
   if(!STT){
-    showFeedback("Mikrofon desteklenmiyor",`Tarayıcı ses tanımayı desteklemiyor.`,0,false);
+    /* iOS Safari'de SpeechRecognition yok. Eskiden burada "desteklenmiyor" uyarısı
+       çıkıp YAZI kutusu açılıyordu — telaffuz alıştırmasını yazıya çevirmek
+       alıştırmanın amacını bitiriyor. Artık gölgeleme paneli açılıyor:
+       dinle → kendini kaydet → karşılaştır → kendini değerlendir. */
+    if(window.DHSpeech && DHSpeech.canRecord()){
+      DHSpeech.shadow(s && s.en, async function(r){
+        if(!r) return;                       // kullanıcı kapattı
+        const grade = r.puan>=80 ? "good" : (r.puan>=50 ? "good" : "hard");
+        try{
+          const next=srsGrade(await srsGet(s.id), r.puan>=80?"easy":grade);
+          await srsSet(s.id,next); State.srs[s.id]=next;
+          if(window.DHProgress && s.id) DHProgress.recordResult("sentence:"+s.id, r.puan>=50);
+        }catch(e){}
+        showFeedback(r.puan>=80?"Kaydedildi 👏":(r.puan>=50?"Kaydedildi":"Tekrar deneyelim"),
+          "Kendi değerlendirmen işlendi. Bu tarayıcı otomatik puanlama yapamıyor.",
+          r.puan, r.puan>=50);
+      });
+      return;
+    }
+    showFeedback("Sesli okuma bu tarayıcıda yok",
+      "Cümleyi yazarak da ilerleyebilirsin.",0,false);
     document.getElementById("fallbackInput").classList.remove("hidden"); return;
   }
   if(State.listening){
