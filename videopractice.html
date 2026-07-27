@@ -579,6 +579,22 @@ async function findIdByText(q){
   }catch(e){}
   return null;
 }
+/* Cümleyi metninden bul ve HANGİ MODÜLDE olduğunu da döndür.
+   examples.json yalnız id/en/tr taşıyor; modül adı index'ten geliyor
+   (index zaten yüklü, ek indirme yok). Çağıran kod {id, module} bekliyor. */
+async function findHitByText(q){
+  var id = await findIdByText(q);
+  if(!id) return null;
+  var modAdi = "";
+  try{
+    var ix = await DHSent.index();
+    for(var i=0;i<ix.modules.length;i++){
+      var ids = ix.modules[i].ids || [];
+      if(ids.indexOf(id) >= 0){ modAdi = ix.modules[i].mod; break; }
+    }
+  }catch(e){}
+  return { id: id, module: modAdi };
+}
 
 /* SON ÇARE: tüm cümleler gerekiyorsa (cümle metniyle derin link gibi nadir yollar) */
 async function ensureAll(){
@@ -1142,9 +1158,9 @@ async function boot(){
                   .replace(/\s+/g, " ")
                   .replace(/[^a-z0-9' ]/g, "")
                   .trim();
-        var hitId = await findIdByText(q);
-        if (hitId) {
-          sid = hitId;
+        var hit = await findHitByText(q);
+        if (hit) {
+          sid = hit.id;
           if (!mod) mod = hit.module;
         } else {
           // FALLBACK: eşleşme yoksa bu cümleyle devam et (SRS olmadan, sadece pratik)
@@ -1216,9 +1232,9 @@ async function bootsil(){
                   .replace(/\s+/g, " ")
                   .replace(/[^a-z0-9' ]/g, "")
                   .trim();
-        var hitId = await findIdByText(q);
-        if (hitId) {
-          sid = hitId;
+        var hit = await findHitByText(q);
+        if (hit) {
+          sid = hit.id;
           if (!mod) mod = hit.module;
         } else {
           console.warn("videopractice: ?q= ile eşleşen cümle bulunamadı:", q);
