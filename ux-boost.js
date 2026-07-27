@@ -89,32 +89,20 @@
       var url = (typeof input === "string") ? input : (input && input.url) || "";
       if(!isBig(url)) return origFetch.apply(this, arguments);
 
+      /* SADECE İLERLEME ÇUBUĞU — gövdeye DOKUNULMAZ.
+         Önceki sürüm indirilen MB'ı göstermek için yanıt gövdesini okuyup
+         yeniden paketliyordu. İki ciddi sorunu vardı:
+           1) res.body.getReader() gövdeyi KİLİTLİYOR. new Response(stream)
+              desteklenmeyen tarayıcıda (eski Safari) yedek yola düşünce
+              gövde okunamaz hâle geliyor ve veri yüklemesi tamamen çöküyordu.
+           2) Bildirim her veri parçasında yeniden çiziliyordu; 8,5 MB'lık
+              dosyada binlerce DOM güncellemesi demek. React foto uygulaması
+              bu yüzden takılıyor, gezinme düğmeleri geç/hiç oluşmuyor ve
+              foto<->video geçiş düğmesi takılacak yeri bulamıyordu.
+         MB sayacı bu riske değmez; çubuk ve "hazır" bildirimi kalıyor. */
       mount(); start();
       var t0 = Date.now();
-      return origFetch.apply(this, arguments).then(function(res){
-        // indirilen miktarı say ve büyük dosyada bilgi ver (gövdeyi bozmadan)
-        try{
-          if(res && res.body && res.ok && typeof ReadableStream !== "undefined"){
-            var got = 0, name = url.split("/").pop().split("?")[0];
-            var reader = res.body.getReader();
-            var stream = new ReadableStream({
-              start: function(ctrl){
-                (function pump(){
-                  reader.read().then(function(r){
-                    if(r.done){ ctrl.close(); return; }
-                    got += r.value.byteLength;
-                    if(got > 400*1024) toast("📚 " + name + " yükleniyor · " + (got/1048576).toFixed(1) + " MB", "", 1400);
-                    ctrl.enqueue(r.value); pump();
-                  }).catch(function(e){ ctrl.error(e); });
-                })();
-              }
-            });
-            var out = new Response(stream, { status:res.status, statusText:res.statusText, headers:res.headers });
-            return out;
-          }
-        }catch(e){}
-        return res;
-      }).finally(function(){
+      return origFetch.apply(this, arguments).finally(function(){
         done();
         if(Date.now() - t0 > 2500) toast("✅ Veriler hazır", "ok", 1600);
       });
@@ -163,7 +151,7 @@
      sayfası index.html olduğu için doğrudan ana sayfadan girenlerde önbellek ve
      çevrimdışı hiç devreye girmiyordu. Artık her sayfa kaydı garantiliyor. */
   if("serviceWorker" in navigator){
-    navigator.serviceWorker.register("./sw.js?v=7", { scope:"./" }).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=8", { scope:"./" }).then(function(reg){
       if(!reg) return;
       function watch(sw){
         if(!sw) return;

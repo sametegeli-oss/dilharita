@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v7";
+var SW_VERSION = "dh-sw-v8";
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
