@@ -202,12 +202,33 @@ class PhotoAvatar{
       this.talkSeq = [this.frames.i, this.frames.e, this.frames.a, this.frames.o, this.frames.u, this.frames.mbp, this.frames.idle];
     }
     this.talkIndex=0;
+    /* SENKRON DÜZELTMESİ.
+       Eskiden kare aralığı sabit 105 ms'ydi ve dizi bitince "% length" ile
+       BAŞA DÖNÜYORDU. Dizi her harf için bir kare üretiyor; 105 ms sabit adımla
+       konuşmanın gerçek hızıyla hiçbir bağı yoktu. Sonuç: ağız ya geride
+       kalıyor ya da cümleyi bitirip baştan "söylemeye" başlıyordu.
+       Artık kare süresi konuşmanın tahmini süresine bölünüyor ve döngü yok. */
+    const _total = Math.max(1000, duration||1800);
+    this.talkTotal = _total;
+    const _step = Math.max(40, Math.min(170, Math.round(_total / Math.max(1, this.talkSeq.length))));
     this.talkTimer=setInterval(()=>{
       if(this.isBlinking) return;
-      this.show(this.talkSeq[this.talkIndex % this.talkSeq.length]);
-      this.talkIndex++;
-    }, 105);
-    this.endTimer=setTimeout(()=>this.stop(), Math.max(1000,duration||1800));
+      if(this.talkIndex >= this.talkSeq.length){
+        this.show(this.frames.idle);     // bitti: başa dönme, dinlenme karesinde kal
+        return;
+      }
+      this.show(this.talkSeq[this.talkIndex++]);
+    }, _step);
+    this.endTimer=setTimeout(()=>this.stop(), _total);
+  }
+  /* Konuşmanın gerçek konumuna hizala (0..1). Tarayıcı her kelimede
+     onboundary olayı veriyor; ağız birikmiş gecikmeyi orada kapatıyor. */
+  alignTo(ratio){
+    if(!this.talkSeq || !this.talkSeq.length) return;
+    if(typeof ratio!=="number" || ratio<0) return;
+    const hedef = Math.round(Math.min(1, ratio) * this.talkSeq.length);
+    /* küçük sapmaları düzeltmeye çalışmayalım — titremeye yol açar */
+    if(Math.abs(hedef - this.talkIndex) > 2) this.talkIndex = hedef;
   }
   stop(){
     clearInterval(this.talkTimer);
@@ -523,6 +544,8 @@ function speakText(text){
   const vp=avatarVoicePrefs();
   const chunks=splitMixedSpeech(text);
   let ci=0;
+  let spokenChars=0;                                   // bu parçadan önce söylenen karakterler
+  const totalChars=chunks.reduce((a,c)=>a+c.text.length,0) || text.length;
   function finishAll(){
     if(run!==speechRun) return;
     avatar.stop();
@@ -549,6 +572,16 @@ function speakText(text){
       }
       u.__dhMixed=true;                       // global karma-dil patch'i atla (biz zaten böldük)
       u.__longTTSAvatarSync=true;             // long-avatar patch'ini de atla
+      /* Ağzı sesin gerçek konumuna hizala: bu parçadan önce söylenmiş karakter
+         sayısı + parça içindeki konum, tüm metne oranlanıyor. */
+      const _base = spokenChars;
+      u.onboundary = function(ev){
+        if(run!==speechRun) return;
+        if(!ev || (ev.name && ev.name!=="word")) return;
+        const ci2 = (typeof ev.charIndex==="number") ? ev.charIndex : 0;
+        if(totalChars>0) avatar.alignTo((_base + ci2) / totalChars);
+      };
+      spokenChars += c.text.length;
       let done=false;
       function go(){ if(done) return; done=true; clearTimeout(wd); setTimeout(speakNext,60); }
       var wd=setTimeout(go, Math.max(4000, c.text.length*80)+1500);  // onend gelmezse takılma

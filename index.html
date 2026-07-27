@@ -142,17 +142,39 @@ function mouthSeqFor(text){
   }catch(e){}
   return [FR.small,FR.medium,FR.open,FR.medium];
 }
-function startMouth(text){ ring.classList.add("speaking"); stopBlink(); clearInterval(mouthT);
+/* SENKRON: kare aralığı sabit 120 ms değil, konuşmanın süresine bölünmüş adım.
+   Ayrıca dizi bitince başa DÖNMÜYOR — eskiden "% seq.length" ile başa dönüp
+   ses cümlenin ortasındayken ağız cümleyi baştan söylüyor gibi görünüyordu. */
+function startMouth(text, durMs){ ring.classList.add("speaking"); stopBlink(); clearInterval(mouthT);
   seq=mouthSeqFor(text); si=0;
-  mouthT=setInterval(function(){ face.src=seq[si%seq.length]; si++; },120); }
+  var _total=Math.max(800, durMs || (String(text||"").length*70));
+  var _step=Math.max(40, Math.min(170, Math.round(_total/Math.max(1,seq.length))));
+  mouthT=setInterval(function(){
+    if(si>=seq.length){ face.src=FR.idle; return; }
+    face.src=seq[si++];
+  }, _step); }
+/* Tarayıcı her kelimede onboundary veriyor; birikmiş gecikmeyi orada kapat. */
+function alignMouth(ratio){
+  if(!seq.length || typeof ratio!=="number") return;
+  var h=Math.round(Math.min(1,Math.max(0,ratio))*seq.length);
+  if(Math.abs(h-si)>2) si=h;
+}
 function stopMouth(){ clearInterval(mouthT); mouthT=null; face.src=FR.idle; ring.classList.remove("speaking"); startBlink(); }
 function startBlink(){ stopBlink(); blinkT=setInterval(function(){ if(mouthT) return; face.src=FR.blink; setTimeout(function(){ if(!mouthT) face.src=FR.idle; },140); }, 3800); }
 function stopBlink(){ clearInterval(blinkT); blinkT=null; }
 function speak(text, done){
   var el=document.getElementById("say"), c=document.getElementById("caret");
-  clearTimeout(typeT); el.textContent=""; c.style.display="inline-block"; startMouth(text);
+  clearTimeout(typeT); el.textContent=""; c.style.display="inline-block";
+  /* Seslendirilecek metin (emoji ayıklanmış) — ağzın süresi ve hizalaması
+     bu metne göre hesaplanmalı, ekrandaki metne göre değil. */
+  var sesMetni=text.replace(/[\u{1F000}-\u{1FFFF}☀-➿✓]/gu,"");
+  startMouth(text, Math.max(800, sesMetni.length*70));
   var spoke=false;
-  try{ if(soundOn()){ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(text.replace(/[\u{1F000}-\u{1FFFF}☀-➿✓]/gu,"")); u.lang="tr-TR"; u.rate=1;
+  try{ if(soundOn()){ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(sesMetni); u.lang="tr-TR"; u.rate=1;
+        u.onboundary=function(ev){
+          if(!ev || (ev.name && ev.name!=="word")) return;
+          if(sesMetni.length) alignMouth((ev.charIndex||0)/sesMetni.length);
+        };
         u.onend=function(){ stopMouth(); }; u.onerror=function(){ stopMouth(); };
         speechSynthesis.speak(u); spoke=true; } }catch(e){}
   // Ağız, ses açıkken TTS bitene kadar (u.onend), sessizken yazı bitince durur —
