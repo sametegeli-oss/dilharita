@@ -133,11 +133,13 @@ paintSound();
 /* ---- konuşma: ağız + yazı + (tercihe göre) TTS ---- */
 var mouthT=null, blinkT=null, typeT=null, seq=[FR.small,FR.medium,FR.open,FR.medium], si=0;
 /* Koç Türkçe anlatır, İngilizce malzeme [[ ]] içinde gelir; bağlam dili "tr". */
+var seqCharAt=null;
 function mouthSeqFor(text){
+  seqCharAt=null;
   try{
-    if(window.DHViseme){
-      var q=window.DHViseme.sequence(text, VIS, "tr");
-      if(q && q.length) return q;
+    if(window.DHViseme && window.DHViseme.timeline){
+      var tl=window.DHViseme.timeline(text, VIS, "tr");
+      if(tl && tl.frames.length){ seqCharAt=tl.charAt; return tl.frames; }
     }
   }catch(e){}
   return [FR.small,FR.medium,FR.open,FR.medium];
@@ -154,9 +156,12 @@ function startMouth(text, durMs){ ring.classList.add("speaking"); stopBlink(); c
     face.src=seq[si++];
   }, _step); }
 /* Tarayıcı her kelimede onboundary veriyor; birikmiş gecikmeyi orada kapat. */
-function alignMouth(ratio){
-  if(!seq.length || typeof ratio!=="number") return;
-  var h=Math.round(Math.min(1,Math.max(0,ratio))*seq.length);
+/* charIndex: okunan metindeki harf konumu. Noktalama duraklamaları yüzünden
+   kare sayısı harf sayısıyla doğrusal olmadığı için oran değil konum kullanılır. */
+function alignMouth(charIndex){
+  if(!seq.length || typeof charIndex!=="number") return;
+  if(!seqCharAt || !window.DHViseme || !window.DHViseme.indexForChar) return;
+  var h=window.DHViseme.indexForChar(seqCharAt, charIndex);
   if(Math.abs(h-si)>2) si=h;
 }
 function stopMouth(){ clearInterval(mouthT); mouthT=null; face.src=FR.idle; ring.classList.remove("speaking"); startBlink(); }
@@ -173,7 +178,7 @@ function speak(text, done){
   try{ if(soundOn()){ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(sesMetni); u.lang="tr-TR"; u.rate=1;
         u.onboundary=function(ev){
           if(!ev || (ev.name && ev.name!=="word")) return;
-          if(sesMetni.length) alignMouth((ev.charIndex||0)/sesMetni.length);
+          alignMouth(ev.charIndex||0);
         };
         u.onend=function(){ stopMouth(); }; u.onerror=function(){ stopMouth(); };
         speechSynthesis.speak(u); spoke=true; } }catch(e){}

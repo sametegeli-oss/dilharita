@@ -24,8 +24,8 @@ ok(/_total\/Math\.max\(1,seq\.length\)/.test(ix), "index.html: süre / kare say�
 console.log("\n--- onboundary hizalaması ---");
 ok(/u\.onboundary/.test(cc), "chat-core: onboundary bağlandı");
 ok(/u\.onboundary/.test(ix), "index.html: onboundary bağlandı");
-ok(/alignTo\(ratio\)/.test(cc), "chat-core: alignTo() var");
-ok(/function alignMouth\(ratio\)/.test(ix), "index.html: alignMouth() var");
+ok(/alignToChar\(charIndex\)/.test(cc), "chat-core: alignToChar() var");
+ok(/function alignMouth\(charIndex\)/.test(ix), "index.html: alignMouth() var");
 ok(/Math\.abs\(hedef - this\.talkIndex\) > 2/.test(cc), "küçük sapmalar düzeltilmiyor (titreme olmasın)");
 
 console.log("\n--- adım süresi hesabı makul mü ---");
@@ -38,6 +38,39 @@ ok(step(1000,0)>=40, "sıfır kare çökertmiyor");
 console.log("\n--- emoji ayıklanmış metin ---");
 ok(/var sesMetni=text\.replace/.test(ix), "index.html: süre/hizalama seslendirilen metne göre");
 ok(/sesMetni\.length\*70/.test(ix), "ekrandaki metne değil, okunan metne göre");
+
+console.log("\n--- noktalamada ağız duruyor mu ---");
+global.window={};
+eval(fs.readFileSync("viseme-lang.js","utf8"));
+const V=global.window.DHViseme;
+const MAP={a:"A",e:"E",i:"I",o:"O",u:"U",mbp:"M",fv:"F",l:"L",th:"T",idle:"-"};
+const kuyruk = t => V.timeline(t, MAP, "tr").frames.join("");
+const noktasiz=kuyruk("aba aba"), nokta=kuyruk("aba. aba");
+ok(nokta.length > noktasiz.length + 4,
+   `nokta ~6 dinlenme karesi ekliyor (${noktasiz.length} -> ${nokta.length})`);
+const virgul=kuyruk("aba, aba");
+ok(virgul.length > noktasiz.length + 1 && virgul.length < nokta.length,
+   `virgül noktadan kısa duruyor (${virgul.length} vs ${nokta.length})`);
+ok(kuyruk("aba? aba").length === nokta.length, "soru işareti nokta kadar duruyor");
+ok(kuyruk("aba! aba").length === nokta.length, "ünlem de nokta kadar");
+ok(/-{5,}/.test(nokta), "duraklama gerçekten ARDIŞIK dinlenme karesi (ağız kapalı kalıyor)");
+
+console.log("\n--- kare/harf eşlemesi hizalama için doğru mu ---");
+const tl=V.timeline("aba. xyz", MAP, "tr");
+ok(tl.frames.length===tl.charAt.length, "her kare bir harf konumu taşıyor");
+ok(tl.charAt.every((c,i)=>i===0||c>=tl.charAt[i-1]), "harf konumları azalmıyor");
+const iX=V.indexForChar(tl.charAt, tl.charAt[tl.charAt.length-1]);
+ok(iX>0, "indexForChar son harfi bulabiliyor");
+ok(V.indexForChar([],5)===0, "boş eşleme çökertmiyor");
+ok(V.indexForChar(tl.charAt, 99999)===tl.frames.length-1, "metin sonu son kareye düşüyor");
+
+console.log("\n--- oynatıcılar konum tabanlı hizalamaya geçti mi ---");
+ok(/alignToChar/.test(cc), "chat-core: alignToChar kullanıyor");
+ok(/talkCharAt/.test(cc), "chat-core: kare/harf eşlemesini saklıyor");
+ok(/indexForChar/.test(ix), "index.html: indexForChar kullanıyor");
+ok(/gercekToplam/.test(cc), "chat-core: gerçek konuşma hızını ölçüp adımı düzeltiyor");
+ok(/ci>=chunks\.length && run===speechRun\) avatar\.stop\(\)/.test(cc),
+   "son parça bitince ağız ANINDA duruyor");
 
 console.log(fail===0?"\nSONUÇ: tüm testler geçti ✓\n":`\nSONUÇ: ${fail} başarısız ✗\n`);
 process.exit(fail?1:0);

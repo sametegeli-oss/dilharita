@@ -30,6 +30,14 @@
   "use strict";
   if (window.DHViseme) return;
 
+  /* NOKTALAMA DURAKLAMASI.
+     Seslendirme virgülde ~200 ms, noktada ~400 ms susuyor. Ağız dizisinde
+     noktalama tek bir dinlenme karesiydi; ses susarken ağız oynamaya devam
+     ediyordu. Duraklama boyunca ağzın kapalı kalması için o kadar kare koyuyoruz.
+     (Kare süresi toplam/kare sayısı olarak hesaplandığı için bu, zamanı
+     otomatik olarak doğru yere dağıtır.) */
+  var HOLD_SOFT = 3;   // , ; :  -> kısa duraklama
+  var HOLD_HARD = 6;   // . ! ? … ve satır sonu -> cümle sonu duraklaması
   var TR_CHARS = /[ğüşöçıİĞÜŞÖÇ]/;
   /* İngilizce'ye güçlü işaret eden desenler (Türkçe'de bulunmaz veya çok nadir) */
   var EN_HINT = /(^|[^a-z])(the|a|an|is|are|was|were|and|or|but|to|of|in|on|at|it|he|she|they|you|we|i|my|your|this|that|with|for|have|has|had|do|does|did|not|can|will|would|there|what|when|where|which|who|how)([^a-z]|$)/i;
@@ -130,40 +138,65 @@
   /* ---------- şekil listesi ---------- */
   function shapes(text, def) {
     var segs = segment(text, def), out = [];
+    var mutlak = 0;                     // metnin başından itibaren harf sayacı
     for (var s = 0; s < segs.length; s++) {
       var t = segs[s].text.toLowerCase(), lang = segs[s].lang;
       for (var idx = 0; idx < t.length; idx++) {
         var ch = t[idx], next = t[idx + 1] || "";
         var wordEnd = !next || /[\s.,!?;:…]/.test(next);
+        var ci = mutlak + idx;          // bu karenin karşılık geldiği harf
+        var sert = /[.!?…]/.test(ch);
+        var yumusak = /[,;:]/.test(ch);
         if (lang === "tr") {
           var sh = trShape(ch, next);
-          if (sh) out.push({ shape: sh, lang: "tr" });
+          if (sh) out.push({ shape: sh, lang: "tr", ci: ci });
         } else {
           var r = enShape(ch, next, t[idx - 1] || "", wordEnd);
-          if (r.shape) out.push({ shape: r.shape, lang: "en" });
+          if (r.shape) out.push({ shape: r.shape, lang: "en", ci: ci });
           idx += r.skip;
         }
+        /* duraklama: ses susuyor, ağız da dursun */
+        var tut = sert ? HOLD_HARD : (yumusak ? HOLD_SOFT : 0);
+        for (var h = 0; h < tut; h++) out.push({ shape: "idle", lang: lang, ci: ci, hold: true });
       }
+      mutlak += t.length;
     }
     return out;
   }
 
   /* ---------- kare listesi ----------
      map: {a,e,i,o,u,mbp,fv,l,th,idle} — eksik anahtar varsa en yakınına düşer */
+  var FB = { th: ["th", "i"], fv: ["fv", "mbp"], l: ["l", "e"], u: ["u", "o"],
+             o: ["o", "u"], mbp: ["mbp", "idle"], a: ["a", "e"], e: ["e", "a"],
+             i: ["i", "e"], idle: ["idle"] };
+  function fallback(shape) { return FB[shape] || [shape]; }
+
   function sequence(text, map, def) {
-    var m = map || {}, out = [];
-    var fb = { th: ["th", "i"], fv: ["fv", "mbp"], l: ["l", "e"], u: ["u", "o"],
-               o: ["o", "u"], mbp: ["mbp", "idle"], a: ["a", "e"], e: ["e", "a"],
-               i: ["i", "e"], idle: ["idle"] };
-    var list = shapes(text, def);
-    for (var k = 0; k < list.length; k++) {
-      var chain = fb[list[k].shape] || [list[k].shape];
-      for (var c = 0; c < chain.length; c++) {
-        if (m[chain[c]]) { out.push(m[chain[c]]); break; }
-      }
-    }
-    return out;
+    return timeline(text, map, def).frames;
   }
 
-  window.DHViseme = { langOf: langOf, segment: segment, shapes: shapes, sequence: sequence };
+  /* Kareler ve her karenin metindeki harf konumu.
+     onboundary hizalamasının doğru çalışması için gerekli: noktalama
+     duraklamaları yüzünden kare sayısı harf sayısıyla artık doğrusal değil,
+     bu yüzden oran hesabı yerine gerçek harf konumu kullanılmalı. */
+  function timeline(text, map, def) {
+    var m = map || {}, list = shapes(text, def);
+    var frames = [], charAt = [];
+    for (var k = 0; k < list.length; k++) {
+      var chain = fallback(list[k].shape);
+      for (var c = 0; c < chain.length; c++) {
+        if (m[chain[c]]) { frames.push(m[chain[c]]); charAt.push(list[k].ci || 0); break; }
+      }
+    }
+    return { frames: frames, charAt: charAt };
+  }
+  /* Bir harf konumuna karşılık gelen kare indeksi */
+  function indexForChar(charAt, ci) {
+    if (!charAt || !charAt.length) return 0;
+    for (var i = 0; i < charAt.length; i++) if (charAt[i] >= ci) return i;
+    return charAt.length - 1;
+  }
+
+  window.DHViseme = { langOf: langOf, segment: segment, shapes: shapes,
+                      sequence: sequence, timeline: timeline, indexForChar: indexForChar };
 })();

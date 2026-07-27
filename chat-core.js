@@ -197,7 +197,20 @@ class PhotoAvatar{
     clearInterval(this.talkTimer);
     clearTimeout(this.endTimer);
     State.speaking=true;
-    this.talkSeq = this.buildSequenceFromText(text);
+    /* timeline: kareler + her karenin metindeki harf konumu. Harf konumu
+       gerekiyor çünkü noktalama duraklamaları yüzünden kare sayısı harf
+       sayısıyla doğrusal değil. */
+    this.talkCharAt = null;
+    if(window.DHViseme && window.DHViseme.timeline){
+      const _def = (typeof __dhIsTeacher !== "undefined" && __dhIsTeacher) ? "tr" : "en";
+      const tl = window.DHViseme.timeline(text, {
+        a:this.frames.a, e:this.frames.e, i:this.frames.i, o:this.frames.o,
+        u:this.frames.u, mbp:this.frames.mbp, fv:this.frames.fv,
+        l:this.frames.l, th:this.frames.th, idle:this.frames.idle
+      }, _def);
+      if(tl && tl.frames.length){ this.talkSeq = tl.frames; this.talkCharAt = tl.charAt; }
+    }
+    if(!this.talkSeq || !this.talkSeq.length) this.talkSeq = this.buildSequenceFromText(text);
     if(!this.talkSeq.length){
       this.talkSeq = [this.frames.i, this.frames.e, this.frames.a, this.frames.o, this.frames.u, this.frames.mbp, this.frames.idle];
     }
@@ -210,7 +223,9 @@ class PhotoAvatar{
        Artık kare süresi konuşmanın tahmini süresine bölünüyor ve döngü yok. */
     const _total = Math.max(1000, duration||1800);
     this.talkTotal = _total;
+    this.talkStart = Date.now();
     const _step = Math.max(40, Math.min(170, Math.round(_total / Math.max(1, this.talkSeq.length))));
+    this.talkStep = _step;
     this.talkTimer=setInterval(()=>{
       if(this.isBlinking) return;
       if(this.talkIndex >= this.talkSeq.length){
@@ -223,12 +238,43 @@ class PhotoAvatar{
   }
   /* Konuşmanın gerçek konumuna hizala (0..1). Tarayıcı her kelimede
      onboundary olayı veriyor; ağız birikmiş gecikmeyi orada kapatıyor. */
-  alignTo(ratio){
+  /* charIndex: metnin başından itibaren harf konumu (onboundary'den gelir) */
+  alignToChar(charIndex){
     if(!this.talkSeq || !this.talkSeq.length) return;
-    if(typeof ratio!=="number" || ratio<0) return;
-    const hedef = Math.round(Math.min(1, ratio) * this.talkSeq.length);
+    if(typeof charIndex!=="number" || charIndex<0) return;
+    let hedef;
+    if(this.talkCharAt && window.DHViseme && window.DHViseme.indexForChar){
+      hedef = window.DHViseme.indexForChar(this.talkCharAt, charIndex);
+    } else {
+      return;                            // eşleme yoksa hizalamayı zorlamayalım
+    }
+    const ratio = hedef / this.talkSeq.length;
     /* küçük sapmaları düzeltmeye çalışmayalım — titremeye yol açar */
     if(Math.abs(hedef - this.talkIndex) > 2) this.talkIndex = hedef;
+
+    /* KENDİNİ AYARLAMA.
+       estimateDuration karakter başına 82 ms varsayıyor; gerçek sesler genelde
+       daha hızlı konuşuyor. Bu yüzden ağzın bütçesi sesten uzun kalıyor ve
+       ses bittikten sonra birkaç hece daha oynuyordu.
+       Burada gerçek hızı ölçüyoruz: bu noktaya kadar geçen süre / kat edilen oran
+       = konuşmanın gerçek toplam süresi. Kalan kareleri ona göre yayıyoruz. */
+    if(ratio > 0.15 && this.talkStart){
+      const gecen = Date.now() - this.talkStart;
+      const gercekToplam = gecen / ratio;
+      const yeniAdim = Math.max(40, Math.min(170,
+        Math.round(gercekToplam / Math.max(1, this.talkSeq.length))));
+      if(Math.abs(yeniAdim - (this.talkStep||0)) > Math.max(8, this.talkStep*0.15)){
+        this.talkStep = yeniAdim;
+        clearInterval(this.talkTimer);
+        this.talkTimer = setInterval(()=>{
+          if(this.isBlinking) return;
+          if(this.talkIndex >= this.talkSeq.length){ this.show(this.frames.idle); return; }
+          this.show(this.talkSeq[this.talkIndex++]);
+        }, yeniAdim);
+        clearTimeout(this.endTimer);
+        this.endTimer = setTimeout(()=>this.stop(), Math.max(300, gercekToplam - gecen + 150));
+      }
+    }
   }
   stop(){
     clearInterval(this.talkTimer);
@@ -579,11 +625,16 @@ function speakText(text){
         if(run!==speechRun) return;
         if(!ev || (ev.name && ev.name!=="word")) return;
         const ci2 = (typeof ev.charIndex==="number") ? ev.charIndex : 0;
-        if(totalChars>0) avatar.alignTo((_base + ci2) / totalChars);
+        avatar.alignToChar(_base + ci2);
       };
       spokenChars += c.text.length;
       let done=false;
-      function go(){ if(done) return; done=true; clearTimeout(wd); setTimeout(speakNext,60); }
+      function go(){ if(done) return; done=true; clearTimeout(wd);
+        /* Son parça bittiyse ağzı beklemeden durdur. Eskiden finishAll'a
+           60 ms'lik bir setTimeout zinciriyle gidiliyordu ve o arada ağız
+           oynamaya devam ediyordu. */
+        if(ci>=chunks.length && run===speechRun) avatar.stop();
+        setTimeout(speakNext,60); }
       var wd=setTimeout(go, Math.max(4000, c.text.length*80)+1500);  // onend gelmezse takılma
       u.onend=go; u.onerror=go;
       speechSynthesis.speak(u);
