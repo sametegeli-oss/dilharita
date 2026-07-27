@@ -10,12 +10,13 @@
 <body>
 <div id="chatApp"></div>
 <script>localStorage.setItem("selectedTeacherAvatar","teacher2");</script>
-<script>window.CHAT_SCENARIO = {"title": "AI Öğretmen", "subtitle": "İngilizce öğretmeni · Opsiyon 2", "level": "A2", "role": "a friendly male English teacher", "voiceGender": "male", "opener": "Hi, I am your English teacher. Shall we practice speaking together?", "systemExtra": "You are role-playing as a warm and modern male English teacher. Help the learner practice spoken English with short prompts and encouraging corrections.", "avatarDir": "assets/avatars_v3/teacher2/", "frames": {"idle": "idle.webp", "blink": "blink.webp", "listen": "listen.webp", "mouthA": "mouth-a.webp", "mouthE": "mouth-e.webp", "mouthI": "mouth-i.webp", "mouthO": "mouth-o.webp", "mouthU": "mouth-u.webp", "mouthMBP": "mouth-mbp.webp", "mouthFV": "mouth-fv.webp", "mouthL": "mouth-l.webp", "mouthTH": "mouth-th.webp", "mouthSmall": "mouth-i.webp", "mouthMedium": "mouth-e.webp", "mouthOpen": "mouth-a.webp"}, "backHref": "chatteacher.html", "noKeyReply": "I can continue when you add a Groq API key. Would you like to practice introductions, travel, or daily life?"};</script>
+<script>window.CHAT_SCENARIO = {"title": "AI Öğretmen", "subtitle": "İngilizce öğretmeni · Opsiyon 2", "level": "A2", "role": "a friendly male English teacher", "voiceGender": "male", "opener": "Selam, ben İngilizce öğretmeninim. Konuşma pratiği yapalım mı? Nereden başlamak istersin?", "systemExtra": "You are a warm, modern male English teacher for a Turkish native speaker. You SPEAK TURKISH with the student: explanations, corrections, encouragement and questions are all in Turkish. Keep in English only the material being taught — target sentences, examples and vocabulary. Use short Turkish prompts, ask the student to say one English sentence at a time, then correct in Turkish with a single-line reason. Never explain grammar in English.", "avatarDir": "assets/avatars_v3/teacher2/", "frames": {"idle": "idle.webp", "blink": "blink.webp", "listen": "listen.webp", "mouthA": "mouth-a.webp", "mouthE": "mouth-e.webp", "mouthI": "mouth-i.webp", "mouthO": "mouth-o.webp", "mouthU": "mouth-u.webp", "mouthMBP": "mouth-mbp.webp", "mouthFV": "mouth-fv.webp", "mouthL": "mouth-l.webp", "mouthTH": "mouth-th.webp", "mouthSmall": "mouth-i.webp", "mouthMedium": "mouth-e.webp", "mouthOpen": "mouth-a.webp"}, "backHref": "chatteacher.html", "noKeyReply": "Groq API anahtarını ekleyince devam edebilirim. İstersen tanışma, seyahat veya günlük hayat konularından birini seç."};</script>
 <script src="./chat-core.js?v=22"></script>
 <script src="./gemini-bridge.js?v=10"></script>
 <script src="./gemini-lesson.js?v=1"></script>
 <script src="./ai-teacher-prompt-tts.js?v=1"></script>
 <script src="./tts-avatar-long-sync-fix.js?v=4"></script>
 <script src="./avatar-blink-sync.js?v=1"></script>
+<script src="./ux-boost.js?v=1"></script>
 </body>
 </html>

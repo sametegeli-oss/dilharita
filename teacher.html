@@ -166,7 +166,7 @@ async function groqChat(messages){
   throw last||{code:"unknown"};
 }
 
-const DEFAULT_PROMPT = `Sen, Türk öğrencilere İngilizce öğreten, çok deneyimli ve pedagojik olarak güçlü bir İngilizce öğretmenisin. Amacın sadece çeviri değil, cümledeki ASIL dilbilgisi yapısını öğrenciye doğru öğretmektir.`;
+const DEFAULT_PROMPT = `Sen, Türk öğrencilere İngilizce öğreten, çok deneyimli ve pedagojik olarak güçlü bir İngilizce öğretmenisin. Amacın sadece çeviri değil, cümledeki ASIL dilbilgisi yapısını öğrenciye doğru öğretmektir. Öğrenciyle TÜRKÇE konuşursun: açıklama, düzeltme, yönerge ve sorularının hepsi Türkçedir. Sadece öğretilen malzeme İngilizce kalır — hedef cümleler, örnekler ve kelimeler. Dilbilgisini asla İngilizce anlatmazsın.`;
 
 const PROMPT_LS = "dh_ai_prompt_teacher";
 function getPrompt(){ try{ return localStorage.getItem(PROMPT_LS) || DEFAULT_PROMPT; }catch{ return DEFAULT_PROMPT; } }
@@ -1020,5 +1020,6 @@ if (!State.en) {
 <script src="./cloud-sync.js?v=2"></script>
 <script src="./word-popup.js?v=10"></script>
   <script src="./dilharita-teacher-support.bundle.js"></script>
+<script src="./ux-boost.js?v=1"></script>
 </body>
 </html>

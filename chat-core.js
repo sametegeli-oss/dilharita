@@ -331,8 +331,29 @@ function dhStripTasks(reply){
     return "";
   }).trim();
 }
+/* DİL KURALI — rol-yapma ile öğretmeni ayırır.
+   Havaalanı/otel/doktor gibi senaryolarda amaç İngilizce konuşma pratiği, orada
+   İngilizce kalır. AI Öğretmen'de amaç ÖĞRETMEK: açıklama, düzeltme ve yönerge
+   Türkçe olmalı, öğretilen malzeme İngilizce kalmalı — index.html'in koçu
+   tarif ederken dediği gibi: "Türkçe anlatan İngilizce koçun".
+   Eskiye dönmek isteyen: localStorage["dh-teacher-dili"] = "en" */
+function dhLanguageRule(){
+  var pref="";
+  try{ pref=localStorage.getItem("dh-teacher-dili")||""; }catch(e){}
+  if(__dhIsTeacher && pref!=="en"){
+    return "LANGUAGE RULE (strict): You are a Turkish-speaking English teacher and the "
+      + "student is a Turkish native speaker. Write EVERYTHING you say in TURKISH: "
+      + "explanations, grammar, corrections, instructions, praise, and your questions. "
+      + "Keep in English ONLY the language material itself — target sentences, example "
+      + "sentences, vocabulary, and the phrases you ask the student to say. "
+      + "Never explain grammar in English. Never repeat your own Turkish sentence in "
+      + "English. When you want the student to speak, ask in Turkish and then give the "
+      + "English sentence to produce. Short Turkish sentences, no lecturing.";
+  }
+  return "Always reply in English unless the user explicitly asks for Turkish.";
+}
 function systemPrompt(){
-  return [Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."), levelGuide(), "Always reply in English unless the user explicitly asks for Turkish.", "Keep replies short: 1 to 3 sentences.", "Ask a follow-up question to keep the conversation going.", "If the user makes a clear mistake, gently model the correct version without lecturing.", "No emojis.",
+  return [Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."), levelGuide(), dhLanguageRule(), "Keep replies short: 1 to 3 sentences.", "Ask a follow-up question to keep the conversation going.", "If the user makes a clear mistake, gently model the correct version without lecturing.", "No emojis.",
     (__dhProfile?("\n[STUDENT PROFILE — use this to personalize, in Turkish data]\n"+__dhProfile+"\nWhen the student repeats one of their known error patterns, gently correct it and briefly note it is a frequent mistake of theirs. Naturally create situations that make the student use the patterns they struggle with."):""),
     (__dhIsTeacher?"\n[COACH ROLE] You are not only a conversation partner but also the student's personal coach. The profile above includes their daily coach plan (BUGÜNÜN KOÇ PLANI) and weekly goal (HAFTALIK HEDEF). In your FIRST reply, acknowledge their streak, plan or goal in ONE short friendly sentence, then continue teaching. Steer the practice toward the weekly goal and the unfinished (⬜) plan steps. If they completed steps (✅), congratulate briefly.":""),
     (__dhTeach&&__dhTeach.target?("\n[EXACT ERROR CONTEXT] The student's own mistake: wrong=\""+(__dhTeach.answer||"")+"\" correct=\""+__dhTeach.target+"\" (TR: \""+(__dhTeach.tr||"")+"\"). Rule: "+(__dhTeach.tip||"")+". Start THIS session by teaching exactly this, then create 2-3 similar practice prompts."):""),

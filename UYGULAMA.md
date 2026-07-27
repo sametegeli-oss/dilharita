@@ -269,3 +269,63 @@ node test-profil.mjs   # seviye/profil/sıradaki modül (17 test)
 - Kurulumu bitir: seviyene uygun bir modüle düşmelisin (A1-M01'e değil).
 - Mevcut kullanıcıyla aç: kurulum ekranı **çıkmamalı**.
 - iPhone/Safari'de bir cümlede mikrofona bas: yazı kutusu değil, kayıt paneli açılmalı.
+
+---
+
+# 4. AŞAMA: öğretmen Türkçe anlatıyor
+
+## Sorun nerede değildi
+
+`gemini-lesson.js` (yapılandırılmış ders motoru) zaten Türkçe anlatıyordu:
+*"Sen benim İngilizce öğretmenimsin. Ben Türkçe konuşuyorum…"*.
+`teacher.html`'in varsayılan promptu da Türkçeydi. Seslendirme tarafı da
+sorunsuz: `tts-avatar-long-sync-fix.js` metni parçalara ayırıp Türkçe ve
+İngilizce bölümleri ayrı seslerle okuyor — dokunmaya gerek yoktu.
+
+## Sorun neredeydi
+
+**AI Öğretmen sohbeti** (`chatteacher1/2.html`). İki yerden birden İngilizce
+dayatılıyordu:
+
+1. `chat-core.js` her sohbete şu kuralı ekliyordu:
+   *"Always reply in English unless the user explicitly asks for Turkish."*
+2. Öğretmen senaryolarının kendi `systemExtra`, `opener` ve `noKeyReply`
+   metinleri de İngilizceydi (*"Hello, I am your English teacher…"*).
+
+## Yapılan
+
+`chat-core.js` içine `dhLanguageRule()` eklendi. Dil kuralı artık sabit değil,
+sohbetin türüne göre seçiliyor:
+
+- **AI Öğretmen** → açıklama, düzeltme, yönerge, soru ve övgünün **hepsi Türkçe**.
+  İngilizce kalan tek şey öğretilen malzeme: hedef cümleler, örnekler, kelimeler.
+  Dilbilgisi asla İngilizce anlatılmıyor.
+- **Rol yapma senaryoları** (havaalanı, otel, doktor, restoran) → **İngilizce
+  kalıyor.** Oradaki amaç İngilizce konuşma pratiği; Türkçeye çevirmek
+  alıştırmanın kendisini yok ederdi.
+
+Ayrımı `__dhIsTeacher` bayrağı yapıyor; o zaten kodda vardı
+(senaryo başlığında "teacher/öğretmen" geçiyor mu diye bakıyor).
+
+Öğretmen senaryolarının açılış cümlesi, sistem talimatı ve anahtar-yok mesajı
+Türkçeye çevrildi. `teacher.html`'in varsayılan promptuna da açık dil kuralı
+eklendi (kullanıcı promptu düzenlemişse kendi metni korunur).
+
+**Geri dönüş:** İngilizce anlatım isteyen için
+`localStorage["dh-teacher-dili"] = "en"` yeterli.
+
+## Doğrulama
+
+```
+node test-dil.mjs      # 7 test
+```
+
+Testler hem öğretmenin Türkçeye geçtiğini hem de **rol yapma senaryolarına
+Türkçe kuralının sızmadığını** sabitliyor. Ayrıca `git diff` ile doğrulandı:
+`chatairport`, `chathotel`, `chatdoctor`, `chatrestaurant` ve `chat.html`
+dosyalarında değişen tek satır 1. aşamadaki `ux-boost.js` eklemesi — dil
+metinlerine dokunulmadı.
+
+> Bu turda az kalsın olmayan bir hata bildiriyordum: `chat-core.js`'in 335.
+> satırını `cut` ile kısaltarak okuyunca sonundaki virgül görünmedi ve
+> kodu bozuk sandım. Satırın tamamına bakınca sorun olmadığı görüldü.
