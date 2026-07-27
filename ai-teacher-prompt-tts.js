@@ -187,8 +187,22 @@ if(nativeFetch && !window.fetch.__dhPromptPatched){
     try{
       const url = typeof input==="string" ? input : (input && input.url) || "";
       const body = init && init.body;
-      const isAI = /groq|openai|anthropic|gemini|openrouter|chat\/completions|generateContent/i.test(url) || (typeof body==="string" && /"messages"|"contents"/.test(body));
-      if(isAI && typeof body==="string"){
+      /* SADECE ÖĞRETMEN BAĞLAMINDA ENJEKTE ET.
+     Bu yama eskiden koşulsuz çalışıyordu: doktor, otel, havaalanı ve restoran
+     sohbetlerine de tam öğretmen promptunu ekliyordu. Sonuç: kullanıcı doktorla
+     konuşurken karşısına doktor değil, gramer anlatan öğretmen çıkıyordu.
+     Rol-yapma senaryolarında (CHAT_SCENARIO var ve başlığı/rolü "teacher"
+     içermiyor) artık hiç eklenmiyor. */
+  function teacherContext(){
+    try{
+      var sc = window.CHAT_SCENARIO;
+      if(!sc) return true;                    // teacher.html, ocr, phrasal-verbs, index-app
+      var t = String(sc.title||"") + " " + String(sc.role||"");
+      return /teacher|öğretmen|ogretmen/i.test(t);
+    }catch(e){ return true; }
+  }
+  const isAI = /groq|openai|anthropic|gemini|openrouter|chat\/completions|generateContent/i.test(url) || (typeof body==="string" && /"messages"|"contents"/.test(body));
+      if(isAI && teacherContext() && typeof body==="string"){
         const data=JSON.parse(body);
         const add = getPrompt() + mustRules();
         if(Array.isArray(data.messages)){

@@ -8,12 +8,22 @@
 <link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-medium.webp">
 <link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-open.webp">
 <link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/blink.webp">
+<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-a.webp">
+<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-e.webp">
+<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-i.webp">
+<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-o.webp">
+<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-u.webp">
+<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-mbp.webp">
+<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-fv.webp">
+<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-l.webp">
+<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-th.webp">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Dil Harita — Koç Modu</title>
 <!-- GERÇEK VERİ + GİRİŞ: uygulamanın kendi modülleri -->
 <script src="./auth-guard.js?v=1"></script>
 <script src="./sentences-loader.js?v=1"></script>
 <script src="./profile.js?v=1"></script>
+<script src="./viseme-lang.js?v=1"></script>
 <script src="./onboarding-guard.js?v=1"></script>
 <script src="./study-tracker.js?v=1"></script>
 <script src="./learning-error-system.js?v=2"></script>
@@ -104,6 +114,13 @@
 var AV="./assets/avatars_v3/teacher/";
 var FR={ idle:AV+"idle.webp", small:AV+"mouth-small.webp", medium:AV+"mouth-medium.webp",
          open:AV+"mouth-open.webp", blink:AV+"blink.webp" };
+/* Sesbirim kareleri: dosyalar zaten assets/avatars_v3/teacher/ altında duruyordu
+   ama koç ekranı bunları hiç kullanmıyordu — metinden bağımsız 4 karelik sabit
+   bir döngü oynatıyordu. Artık ağız gerçekten söylenen sese göre şekilleniyor. */
+var VIS={ a:AV+"mouth-a.webp", e:AV+"mouth-e.webp", i:AV+"mouth-i.webp",
+          o:AV+"mouth-o.webp", u:AV+"mouth-u.webp", mbp:AV+"mouth-mbp.webp",
+          fv:AV+"mouth-fv.webp", l:AV+"mouth-l.webp", th:AV+"mouth-th.webp",
+          idle:FR.idle };
 var face=document.getElementById("face"), ring=document.getElementById("ring");
 face.src=FR.idle; Object.keys(FR).forEach(function(k){var i=new Image();i.src=FR[k];});
 
@@ -115,13 +132,25 @@ paintSound();
 
 /* ---- konuşma: ağız + yazı + (tercihe göre) TTS ---- */
 var mouthT=null, blinkT=null, typeT=null, seq=[FR.small,FR.medium,FR.open,FR.medium], si=0;
-function startMouth(){ ring.classList.add("speaking"); stopBlink(); clearInterval(mouthT); si=0; mouthT=setInterval(function(){ face.src=seq[si%seq.length]; si++; },120); }
+/* Koç Türkçe anlatır, İngilizce malzeme [[ ]] içinde gelir; bağlam dili "tr". */
+function mouthSeqFor(text){
+  try{
+    if(window.DHViseme){
+      var q=window.DHViseme.sequence(text, VIS, "tr");
+      if(q && q.length) return q;
+    }
+  }catch(e){}
+  return [FR.small,FR.medium,FR.open,FR.medium];
+}
+function startMouth(text){ ring.classList.add("speaking"); stopBlink(); clearInterval(mouthT);
+  seq=mouthSeqFor(text); si=0;
+  mouthT=setInterval(function(){ face.src=seq[si%seq.length]; si++; },120); }
 function stopMouth(){ clearInterval(mouthT); mouthT=null; face.src=FR.idle; ring.classList.remove("speaking"); startBlink(); }
 function startBlink(){ stopBlink(); blinkT=setInterval(function(){ if(mouthT) return; face.src=FR.blink; setTimeout(function(){ if(!mouthT) face.src=FR.idle; },140); }, 3800); }
 function stopBlink(){ clearInterval(blinkT); blinkT=null; }
 function speak(text, done){
   var el=document.getElementById("say"), c=document.getElementById("caret");
-  clearTimeout(typeT); el.textContent=""; c.style.display="inline-block"; startMouth();
+  clearTimeout(typeT); el.textContent=""; c.style.display="inline-block"; startMouth(text);
   var spoke=false;
   try{ if(soundOn()){ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(text.replace(/[\u{1F000}-\u{1FFFF}☀-➿✓]/gu,"")); u.lang="tr-TR"; u.rate=1;
         u.onend=function(){ stopMouth(); }; u.onerror=function(){ stopMouth(); };

@@ -163,7 +163,7 @@
      sayfası index.html olduğu için doğrudan ana sayfadan girenlerde önbellek ve
      çevrimdışı hiç devreye girmiyordu. Artık her sayfa kaydı garantiliyor. */
   if("serviceWorker" in navigator){
-    navigator.serviceWorker.register("./sw.js?v=4", { scope:"./" }).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=6", { scope:"./" }).then(function(reg){
       if(!reg) return;
       function watch(sw){
         if(!sw) return;

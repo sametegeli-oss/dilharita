@@ -168,6 +168,20 @@ class PhotoAvatar{
     return this.frames.i;
   }
   buildSequenceFromText(text){
+    /* DİLE DUYARLI AĞIZ: eskiden tek karma harita vardı — Türkçe c/ç/ş/ğ/j
+       hiç tanınmıyor, İngilizce'de th dışında ayrım yapılmıyordu.
+       viseme-lang.js metni dile göre parçalayıp her parçaya kendi haritasını
+       uyguluyor. Bağlam dili: öğretmen ekranında Türkçe (İngilizce [[ ]] ile
+       gelir), rol-yapma senaryolarında İngilizce (cevabın tamamı İngilizce). */
+    if(window.DHViseme){
+      const def = (typeof __dhIsTeacher !== "undefined" && __dhIsTeacher) ? "tr" : "en";
+      const seq = window.DHViseme.sequence(text, {
+        a:this.frames.a, e:this.frames.e, i:this.frames.i, o:this.frames.o,
+        u:this.frames.u, mbp:this.frames.mbp, fv:this.frames.fv,
+        l:this.frames.l, th:this.frames.th, idle:this.frames.idle
+      }, def);
+      if(seq.length) return seq;
+    }
     const s = String(text || "");
     const seq = [];
     for(let idx=0; idx<s.length; idx++){

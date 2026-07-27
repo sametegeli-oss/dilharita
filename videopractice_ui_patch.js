@@ -109,7 +109,23 @@
     };
     return paths[shape]||paths.rest;
   }
+  /* viseme-lang.js'in şekil adlarını bu sayfanın adlarına çevirir.
+     Eski eşleme dilden bağımsızdı: ö/ü'yü "wide" sayıyordu (oysa yuvarlak),
+     ş/ç/c/j'yi hiç tanımıyordu, İngilizce th/sh/sessiz-e ayrımı yoktu. */
+  var SHAPE2LOCAL={a:'open',e:'open',o:'round',u:'round',i:'wide',
+                   mbp:'closed',fv:'teeth',l:'wide',th:'teeth',idle:'rest'};
+  function visemeSeq(text, def){
+    if(!window.DHViseme) return null;
+    return window.DHViseme.shapes(text, def||'en').map(function(x){
+      return SHAPE2LOCAL[x.shape] || 'rest';
+    });
+  }
   function viseme(ch){
+    if(window.DHViseme){
+      var l=window.DHViseme.shapes(String(ch||''), 'en');
+      if(l.length) return SHAPE2LOCAL[l[0].shape] || 'rest';
+      return 'rest';
+    }
     ch=String(ch||'').toLowerCase();
     if('aeâ'.indexOf(ch)>=0) return 'open';
     if('ou'.indexOf(ch)>=0) return 'round';

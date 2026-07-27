@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v4";
+var SW_VERSION = "dh-sw-v6";
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -30,6 +30,7 @@ var SHELL = [
   "./sentences-loader.js",
   "./profile.js",
   "./speech-fallback.js",
+  "./viseme-lang.js",
   "./onboarding-guard.js",
   "./basla.html",
   "./data/sentences/index.json",

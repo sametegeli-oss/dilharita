@@ -382,3 +382,73 @@ konuşma.
 ```
 node test-bubble.mjs    # 8 test — parantez temizleme, metin bütünlüğü
 ```
+
+---
+
+# 6. AŞAMA: doktor personası + dile duyarlı ağız
+
+## 1) Doktorla konuşurken karşına öğretmen çıkıyordu
+
+`ai-teacher-prompt-tts.js` `window.fetch`'i yamalıyor ve tam öğretmen promptunu
+her AI çağrısının **başına** ekliyordu — koşulsuz. Bu dosya `chatdoctor.html`,
+`chathotel.html`, `chatairport.html` ve `chatrestaurant.html` sayfalarına da
+yükleniyor. Sonuç: doktor sohbetinde sistem mesajı şöyle oluyordu:
+
+```
+[9 bölümlü gramer analizi öğretmen promptu]  ← önce, uzun ve "EN ÖNEMLİ KURAL" diyor
+[mustRules: konu anlatımı Türkçe yapılır]
+[chat-core: "You are role-playing as a calm male doctor..."]  ← sonra, kısa
+```
+
+Öğretmen promptu doktoru eziyordu.
+
+`teacherContext()` eklendi: `CHAT_SCENARIO` varsa ve başlığı/rolü
+"teacher/öğretmen" içermiyorsa prompt **hiç eklenmiyor**. Senaryosuz sayfalar
+(`teacher.html`, `ocr-sentence.html`, `phrasal-verbs.html`, `index-app.html`)
+eskisi gibi alıyor.
+
+> Bunu geçen tur ben biraz büyütmüşüm: `mustRules()`'a eklediğim ayrıntılı
+> düzeltme kuralları da aynı yoldan doktora gidiyordu. Kapı kapanınca o da bitti.
+
+## 2) Ağız hareketleri artık dile göre
+
+Uygulamada **dört ayrı** ağız eşlemesi vardı, hepsi tek karma harita:
+Türkçe'ye özgü `c ç ş ğ j` hiçbirinde yoktu (varsayılan şekle düşüyorlardı),
+İngilizce'de `th` dışında ayrım yoktu. Koç ana ekranında ise eşleme hiç yoktu —
+metinden bağımsız dört karelik sabit bir döngü oynuyordu.
+
+`viseme-lang.js` iki ayrı harita tutuyor, çünkü iki dilin ağzı gerçekten farklı:
+
+| | Türkçe | İngilizce |
+|---|---|---|
+| `r` | nötr dudak | **yuvarlak** |
+| `ö ü` | öne yuvarlak ünlü | yok |
+| `ş ç c j` | dudak ileri | `sh`/`ch` ikilisiyle |
+| `ğ` | ağız değişmez, ünlüyü uzatır | yok |
+| `th` | yok | ayrı şekil |
+| sondaki `e` | okunur | **sessiz**, ağız açılmaz |
+
+Metin dile göre parçalanıyor: `[[ ]]` blokları İngilizce, gerisi bağlam diline
+göre. Bağlam dili koç/öğretmen ekranlarında Türkçe, rol-yapma sohbetlerinde
+İngilizce.
+
+**Kelime bazlı dil tahminine güvenilmedi.** `red`, `like`, `kalem` hepsi sade
+ASCII; kısa kelimede tahmin çalışmaz. Bu yüzden tahmin yalnız güçlü işaretlerde
+(Türkçe harf, `q/w/x`, `th/sh/oo` ikilileri, İngilizce fonksiyon kelimeleri)
+konuşuyor; işaret yoksa bağlam dili kullanılıyor. Testler bunu sabitliyor.
+
+**Bağlanan ekranlar:** `chat-core.js` (tüm sohbetler — öğretmen, doktor, otel,
+havaalanı, restoran), `videopractice_ui_patch.js`, ve koç ana ekranı
+(`index.html`). Ana ekran artık gerçek sesbirim karelerini kullanıyor —
+dosyalar (`mouth-a/e/i/o/u/mbp/fv/l/th.webp`) zaten repoda duruyordu, sadece
+kullanılmıyordu.
+
+`avatar.js` ve `assets/avatars_v3/teacher_inline.js` de aynı işi yapıyor ama
+**hiçbir sayfadan yüklenmiyorlar** — ölü kod, dokunulmadı.
+
+## Testler
+
+```
+node test-viseme.mjs    # 24 test — dil tespiti, iki harita, kare eşleme
+node test-persona.mjs   # 9 test  — öğretmen promptu doktora sızmıyor
+```
