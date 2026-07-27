@@ -190,9 +190,17 @@ try{
   var mode=localStorage.getItem("dh-tekrar-mode")||"prod";
   var showOnlyErrors = false; 
   
-  var defaultAiPrompt = "Sen adil bir İngilizce öğretmenisin. Öğrencinin cümlesini referans cümleyle karşılaştırıp ANLAM ve DİLBİLGİSİ açısından doğru olup olmadığını denetliyorsun. ÖNEMLİ: Yazım hatası (typo) ile anlam/yapı hatasını AYIR. Bir kelime yanlış yazılmış ama hangi kelime olduğu bariz belliyse (ör. 'roundabot' → 'roundabout', 'recieve' → 'receive'), bu bir YAZIM hatasıdır, anlam hatası DEĞİLDİR. Kelime dizilimi farkı, birebir eş anlamlı alternatifler ('car'→'automobile', 'start'→'begin', 'I think'→'In my opinion') ve büyük harf/noktalama farkları kabul edilir; bunlar için reddetme. Sadece şu durumlarda anlam bozulur: zaman (tense) uyumsuzluğu, ana ögelerden birinin eksikliği, anlamın gerçekten uzaklaşması veya yanlış kelime seçimi (typo değil, farklı anlamlı kelime). SADECE tek kelimeyle cevap ver: anlam ve yapı doğruysa EVET; sadece yazım hatası varsa ama anlam doğruysa YAZIM; anlam veya yapı bozuksa HAYIR. Başka hiçbir açıklama yapma.";
+  var defaultAiPrompt = "Sen deneyimli bir İngilizce öğretmenisin. Öğrencinin cümlesini referans cümleyle karşılaştırıp ANLAM ve DİLBİLGİSİ açısından değerlendiriyorsun.\n\nADİL OL: Yazım hatası (typo) ile anlam/yapı hatasını AYIR. Bir kelime yanlış yazılmış ama hangi kelime olduğu bariz belliyse (ör. 'roundabot' → 'roundabout', 'recieve' → 'receive') bu bir YAZIM hatasıdır, anlam hatası değildir. Kelime dizilimi farkı, birebir eş anlamlı alternatifler ('car'→'automobile', 'start'→'begin', 'I think'→'In my opinion') ve büyük harf/noktalama farkları KABUL EDİLİR; bunlar için reddetme. Anlam yalnızca şu durumlarda bozulur: zaman (tense) uyumsuzluğu, ana ögelerden birinin eksikliği, anlamın gerçekten uzaklaşması veya farklı anlamlı kelime seçimi.\n\nCEVAP BİÇİMİ — sırayla:\n1) İlk kelime SADECE şu üçünden biri: EVET / YAZIM / HAYIR\n2) Sonra TÜRKÇE olarak öğret. Tek satırla geçiştirme:\n   • Doğru yaptığın şey varsa tek cümleyle söyle.\n   • Hata varsa tam olarak NE yanlış ve NEDEN yanlış. Kuralı 2-3 cümleyle anlat — \"böyle olmalı\" deme, \"neden böyle\" anlat.\n   • Doğru cümleyi yaz.\n   • Aynı kuralı kullanan BİR örnek daha ver, altına Türkçesini yaz.\n   • Cümlen kabul edilebilir ama daha doğal bir söyleyiş varsa onu da göster.\nSadece Türkçe ve İngilizce kullan, başka dil kullanma.";
   
-  var savedPrompt = localStorage.getItem("dh-custom-ai-prompt") || defaultAiPrompt;
+  /* Prompt localStorage'a kaydediliyor. Kullanıcı hiç düzenlemese bile eski
+     VARSAYILAN metin orada kalmış olabilir; o zaman buradaki güncelleme ona hiç
+     ulaşmaz. Eski varsayılanın imzası olan ifadeyi taşıyan kayıtlar yenileniyor.
+     Kullanıcının kendi yazdığı özel prompt'a DOKUNULMUYOR. */
+  var savedPrompt = localStorage.getItem("dh-custom-ai-prompt") || "";
+  if(!savedPrompt || /Başka hiçbir açıklama yapma|SADECE tek kelimeyle cevap ver/i.test(savedPrompt)){
+    savedPrompt = defaultAiPrompt;
+    try{ localStorage.setItem("dh-custom-ai-prompt", defaultAiPrompt); }catch(e){}
+  }
   $("aiPromptInput").value = savedPrompt;
 
   $("toggleAiSettings").onclick = function() {
@@ -669,7 +677,8 @@ try{
       "Referans cümle: " + targetValue + "\n" +
       "Öğrencinin cümlesi: " + userInputValue + "\n\n" +
       "Cevabına MUTLAKA tek kelimeyle başla: EVET (anlam ve yapı doğru), YAZIM (anlam doğru ama yazım hatası var) ya da HAYIR (anlam/yapı bozuk).\n" +
-      "Sonra 1-2 cümleyle Türkçe gerekçe yaz; hata varsa doğrusunu göster.";
+      "Sonra TÜRKÇE ayrıntılı açıkla: ne yanlış, NEDEN yanlış (kuralı anlat), doğru cümle, " +
+      "aynı kuralla bir örnek daha (altına Türkçesi). Tek satırla geçiştirme.";
     var waitEl = document.getElementById("semWait");
     if(!waitEl){
       waitEl = document.createElement("div");
@@ -693,8 +702,13 @@ try{
             : "💎 ✓ Gemini onayladı — farklı ama geçerli bir ifade. Bildim'e hazır.";
           if(note){
             var d=document.createElement("div");
-            d.style.cssText="margin-top:5px;font-size:11.5px;font-weight:600;color:#9fb3d9";
-            d.textContent="ℹ️ "+note.slice(0,400);
+            /* Açıklama 400 karakterde kesiliyor ve 11.5px gri yazıyla gösteriliyordu —
+               ayrıntılı bir ders oraya sığmıyordu. Artık okunacak boyutta ve
+               satır sonları korunuyor (pre-wrap), çünkü açıklama madde madde geliyor. */
+            d.style.cssText="margin-top:8px;font-size:13.5px;font-weight:500;line-height:1.55;"
+              +"color:#cbd5e1;white-space:pre-wrap;background:#0f1f3a;border:1px solid #1e3a5f;"
+              +"border-radius:10px;padding:10px 12px";
+            d.textContent="ℹ️ "+note.slice(0,2000);
             waitEl.appendChild(d);
           }
           try{ var dbox=document.querySelector(".diff-box"); if(dbox) dbox.style.opacity="0.55"; }catch(e){}
@@ -704,8 +718,12 @@ try{
           waitEl.textContent = "💎 Gemini kabul etmedi.";
           if(note){
             var d2=document.createElement("div");
-            d2.style.cssText="margin-top:5px;font-size:11.5px;font-weight:600;color:#fbbf24";
-            d2.textContent=note.slice(0,400);
+            /* Hatanın açıklandığı yer burası — en çok okunması gereken metin
+               en küçük puntoyla ve kesilerek gösteriliyordu. */
+            d2.style.cssText="margin-top:8px;font-size:13.5px;font-weight:500;line-height:1.55;"
+              +"color:#fde68a;white-space:pre-wrap;background:#2a1206;border:1px solid #7c3f0a;"
+              +"border-radius:10px;padding:10px 12px";
+            d2.textContent=note.slice(0,2000);
             waitEl.appendChild(d2);
           }
           showExplain(curT,false);
