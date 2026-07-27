@@ -246,13 +246,24 @@
       // practice.html kendi SRS kaydını (srs:<id>) tutar, mirror'a hiç yazmaz — bu yüzden koç
       // practice'te çalışılan modülleri de "ilerleme var" saysın diye SRS kaydına da bakıyor.
       var srs=await kvReadPrefix("srs:");
-      var all=await (await fetch("./data/sentences.json")).json();
+      /* Aşağıdaki stOf/touched/unfinished fonksiyonları cümlenin YALNIZCA id'sini
+         okuyor. Bu yüzden 8,5 MB'lık dosya yerine index (gzip ~28 KB) yetiyor. */
       var order=[], seen={}, byMod={};
-      all.forEach(function(s){
-        if(!s.module) return;
-        if(!seen[s.module]){ seen[s.module]=1; order.push(s.module); byMod[s.module]=[]; }
-        byMod[s.module].push(s);
-      });
+      if(window.DHSent){
+        var ix=await DHSent.index();
+        ix.modules.forEach(function(m){
+          if(!m.mod || seen[m.mod]) return;
+          seen[m.mod]=1; order.push(m.mod);
+          byMod[m.mod]=(m.ids||[]).map(function(id){ return {id:id}; });
+        });
+      } else {
+        var all=await (await fetch("./data/sentences.json")).json();
+        all.forEach(function(s){
+          if(!s.module) return;
+          if(!seen[s.module]){ seen[s.module]=1; order.push(s.module); byMod[s.module]=[]; }
+          byMod[s.module].push(s);
+        });
+      }
       /* "Yeni cümleler" GERÇEKTEN yeni olmalı. Eski kural "tam öğrenilmemiş İLK modül"dü;
          SRS gereği cümleler günlerce status 2 olmadığı için dün bitirdiğin modüle
          ertesi gün YİNE yönlendiriyordu. Yeni öncelik sırası:

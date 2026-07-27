@@ -368,6 +368,7 @@ window.DilAvatar = {
 })();
 </script>
 <script src="./learning-error-system.js"></script>
+<script src="./sentences-loader.js?v=1"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -534,13 +535,45 @@ function bestVoiceTranscriptEN(results,target){
   return best;
 }
 async function fetchFirst(paths){for(const p of paths){try{const r=await fetch(p);if(r.ok)return await r.json()}catch{}}throw new Error("data/sentences.json bulunamadı")}
-async function loadData(){const sentences=await fetchFirst(DATA_PATHS);State.sentences=sentences;State.byModule=new Map();State.byLevel=new Map();for(const s of sentences){if(!State.byModule.has(s.module))State.byModule.set(s.module,[]);State.byModule.get(s.module).push(s)}for(const [mod,arr] of State.byModule){arr.sort((a,b)=>(a.order||0)-(b.order||0));const lv=arr[0]?.level||"A1";if(!State.byLevel.has(lv))State.byLevel.set(lv,[]);State.byLevel.get(lv).push(mod)}State.srs=await srsAll()}
+async function loadData(){
+  /* PARÇALI VERİ: eskiden data/sentences.json (8,5 MB / gzip 1,7 MB) tamamen inip
+     bellekte gruplanıyordu. Artık yalnızca index (gzip ~27 KB) iniyor; modülün
+     kendi cümleleri ancak o modüle girildiğinde (gzip ~5 KB) iniyor. */
+  const ix=await DHSent.index();
+  State.index=ix;
+  State.sentences=[];                 // dolduruluyorsa ensureAll() ile dolar
+  State.byModule=new Map();           // yalnızca açılmış modüller (önbellek)
+  State.modMeta=new Map();            // modül adı -> {lvl,mod,f,n,ids}
+  State.byLevel=new Map();
+  for(const m of ix.modules){
+    State.modMeta.set(m.mod,m);
+    if(!State.byLevel.has(m.lvl)) State.byLevel.set(m.lvl,[]);
+    State.byLevel.get(m.lvl).push(m.mod);
+  }
+  State.srs=await srsAll();
+}
+/* bir modülün cümlelerini getir (indirilmişse önbellekten) */
+async function ensureModule(mod){
+  if(State.byModule.has(mod)) return State.byModule.get(mod);
+  const arr=await DHSent.module(mod);
+  State.byModule.set(mod,arr);
+  return arr;
+}
+/* SON ÇARE: tüm cümleler gerekiyorsa (cümle metniyle derin link gibi nadir yollar) */
+async function ensureAll(){
+  if(State.sentences && State.sentences.length) return State.sentences;
+  State.sentences=await DHSent.all();
+  for(const s of State.sentences){
+    if(!State.byModule.has(s.module)) State.byModule.set(s.module,[]);
+  }
+  return State.sentences;
+}
 function posKey(mod){return POS_PREFIX+mod}async function savePos(){if(!State.activeModule)return;await kvSet(posKey(State.activeModule),JSON.stringify({idx:State.idx,total:State.queue.length,at:Date.now()}))}async function loadPos(mod){try{return JSON.parse(await kvGet(posKey(mod))||"null")}catch{return null}}async function clearPos(mod){await kvDel(posKey(mod))}
-function moduleProgress(mod){const arr=State.byModule.get(mod)||[];let learned=0;for(const s of arr){const r=State.srs[s.id];if(r&&r.rep>0)learned++}return{learned,total:arr.length,pct:arr.length?Math.round(learned/arr.length*100):0}}
+function moduleProgress(mod){const meta=State.modMeta&&State.modMeta.get(mod);const ids=(meta&&meta.ids)||[];let learned=0;for(const id of ids){const r=State.srs[id];if(r&&r.rep>0)learned++}return{learned,total:ids.length,pct:ids.length?Math.round(learned/ids.length*100):0}}
 function renderLoading(){root.innerHTML=`<div class="state"><div class="spinner"></div><p>Video practice hazırlanıyor…</p></div>`}
 function renderError(msg){root.innerHTML=`<div class="state"><h2>Veri yüklenemedi</h2><p>${esc(msg)}</p><button class="btn primary" onclick="location.reload()">Yeniden dene</button></div>`}
 async function renderPicker(){clearUiTimers();State.srs=await srsAll();const levels=LEVEL_ORDER.filter(l=>State.byLevel.has(l));let html=`<div class="picker"><div class="picker-top"><a href="./index.html" class="home-link">← Ana uygulama</a><button class="btn api-mini" id="apiBtn">🔑 Pexels API</button></div><div class="pick-intro"><h1>Video Practice</h1><p>Bu ekranda kelime sıralama yok. Video otomatik gelir; ortada İngilizce cümle görünür. Sen ekrandaki <b>İngilizce cümleyi</b> mikrofona okuyorsun; sistem bunu <b>SentenceEN</b> ile practice.html mantığından karşılaştırıyor. Türkçe sadece anlam/yardım olarak görünür.</p></div>`;for(const lv of levels){const mods=State.byLevel.get(lv);html+=`<div class="lv-group"><div class="lv-head"><span class="lv-badge">${esc(lv)}</span><span>${mods.length} modül</span></div><div class="mod-grid">`;for(const mod of mods){const p=moduleProgress(mod);const name=mod.replace(/^[A-C]\d-M\d+\s*/,"");const pos=await loadPos(mod);html+=`<button class="mod-tile" data-mod="${esc(mod)}"><span class="mod-name">${esc(name)}</span><span class="mod-count">${p.total} cümle${pos?` · ${pos.idx+1}. cümlede kaldın`:""}</span><span class="mod-prog"><span style="width:${p.pct}%"></span></span></button>`}html+=`</div></div>`}html+=`</div>`;root.innerHTML=html;document.getElementById("apiBtn").onclick=()=>openApiSheet(false);root.querySelectorAll(".mod-tile").forEach(b=>b.onclick=async()=>{const mod=b.dataset.mod;const pos=await loadPos(mod);startModule(mod,pos?.idx||0)})}
-async function startModule(mod,idx){State.srs=await srsAll();const arr=(State.byModule.get(mod)||[]).slice();const now=Date.now();function bucket(s){const r=State.srs[s.id];if(!r||!r.rep)return 1;if((r.due||0)<=now)return 0;return 2}arr.sort((a,b)=>{const ba=bucket(a),bb=bucket(b);if(ba!==bb)return ba-bb;if(ba===0)return(State.srs[a.id].due||0)-(State.srs[b.id].due||0);if(ba===1)return(a.order||0)-(b.order||0);return(State.srs[a.id].due||0)-(State.srs[b.id].due||0)});State.queue=arr;State.idx=Math.min(Math.max(0,idx||0),Math.max(0,arr.length-1));State.activeModule=mod;State.sessionTitle=mod.replace(/^[A-C]\d-M\d+\s*/,"");renderVideoCard()}
+async function startModule(mod,idx){State.srs=await srsAll();const arr=(await ensureModule(mod)).slice();const now=Date.now();function bucket(s){const r=State.srs[s.id];if(!r||!r.rep)return 1;if((r.due||0)<=now)return 0;return 2}arr.sort((a,b)=>{const ba=bucket(a),bb=bucket(b);if(ba!==bb)return ba-bb;if(ba===0)return(State.srs[a.id].due||0)-(State.srs[b.id].due||0);if(ba===1)return(a.order||0)-(b.order||0);return(State.srs[a.id].due||0)-(State.srs[b.id].due||0)});State.queue=arr;State.idx=Math.min(Math.max(0,idx||0),Math.max(0,arr.length-1));State.activeModule=mod;State.sessionTitle=mod.replace(/^[A-C]\d-M\d+\s*/,"");renderVideoCard()}
 function currentSentence(){return State.queue[State.idx]}
 let _nextTapLock=false;
 let _feedbackTimer=null;
@@ -1069,6 +1102,7 @@ async function boot(){
                   .replace(/[^a-z0-9' ]/g, "")
                   .trim();
         var hit = null;
+        await ensureAll();   // metinle arama tüm havuzu gerektirir (nadir yol)
         for (var i = 0; i < State.sentences.length; i++) {
           var s = State.sentences[i];
           var enClean = String(s.en || "")
@@ -1109,20 +1143,13 @@ async function boot(){
         window.__dhFromDers = true;
         if (!mod && sid) {
           var found = null;
-          State.byModule.forEach(function(arr, mname){
-            if (!found) {
-              for (var i = 0; i < arr.length; i++) {
-                if (String(arr[i].id) === String(sid)) {
-                  found = mname;
-                  break;
-                }
-              }
-            }
+          State.modMeta.forEach(function(meta, mname){
+            if (!found && meta.ids && meta.ids.indexOf(String(sid)) >= 0) found = mname;
           });
           if (found) mod = found;
         }
-        if (mod && State.byModule.has(mod)) {
-          var arr = State.byModule.get(mod) || [];
+        if (mod && State.modMeta.has(mod)) {
+          var arr = await ensureModule(mod) || [];
           var startIdx = 0;
           if (sid) {
             for (var i = 0; i < arr.length; i++) {
@@ -1162,6 +1189,7 @@ async function bootsil(){
                   .replace(/[^a-z0-9' ]/g, "")
                   .trim();
         var hit = null;
+        await ensureAll();   // metinle arama tüm havuzu gerektirir (nadir yol)
         for (var i = 0; i < State.sentences.length; i++) {
           var s = State.sentences[i];
           var enClean = String(s.en || "")
@@ -1189,20 +1217,13 @@ async function bootsil(){
         window.__dhFromDers = true;
         if (!mod && sid) {
           var found = null;
-          State.byModule.forEach(function(arr, mname){
-            if (!found) {
-              for (var i = 0; i < arr.length; i++) {
-                if (String(arr[i].id) === String(sid)) {
-                  found = mname;
-                  break;
-                }
-              }
-            }
+          State.modMeta.forEach(function(meta, mname){
+            if (!found && meta.ids && meta.ids.indexOf(String(sid)) >= 0) found = mname;
           });
           if (found) mod = found;
         }
-        if (mod && State.byModule.has(mod)) {
-          var arr = State.byModule.get(mod) || [];
+        if (mod && State.modMeta.has(mod)) {
+          var arr = await ensureModule(mod) || [];
           var startIdx = 0;
           if (sid) {
             for (var i = 0; i < arr.length; i++) {
@@ -1235,5 +1256,6 @@ boot();
 
 <!-- RESİM / VİDEO SEÇİCİ: foto ekranına dönüş toggle'ı (photoBackBtn'in yerini alır) -->
 <script src="./mode-toggle.js?v=5"></script>
+<script src="./ux-boost.js?v=1"></script>
 </body>
 </html>

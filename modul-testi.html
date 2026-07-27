@@ -45,6 +45,7 @@
   .fade{animation:fade .3s ease} @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   @media(max-width:560px){ .q-tr{font-size:19px} .result-score{font-size:54px} }
 </style>
+<script src="./sentences-loader.js?v=1"></script>
 </head>
 <body>
 <div class="wrap">
@@ -75,9 +76,13 @@
   function qs(k){ try{ return new URLSearchParams(location.search).get(k)||""; }catch(e){ return ""; } }
 
   function loadSentences(){
-    return fetch("./data/sentences.json").then(function(r){ return r.json(); }).then(function(d){
-      sentences = Array.isArray(d)?d:(d.sentences||[]);
-    });
+    // Test edilecek modül URL'den geliyor; 8,5 MB yerine yalnız o modül iniyor.
+    var wanted=qs("module");
+    if(wanted){
+      return DHSent.module(wanted).then(function(arr){ sentences=arr||[]; })
+        .catch(function(){ return DHSent.all().then(function(a){ sentences=a||[]; }); });
+    }
+    return DHSent.all().then(function(a){ sentences=a||[]; });
   }
 
   function startTest(){
@@ -297,5 +302,6 @@
 })();
 </script>
 <script src="./word-popup.js?v=1"></script>
+<script src="./ux-boost.js?v=1"></script>
 </body>
 </html>

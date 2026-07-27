@@ -47,6 +47,13 @@ function loadMap(){
   if (_imgMap) return Promise.resolve(_imgMap);
   if (_loadingMap) return _loadingMap;
   _loadingMap = (async () => {
+    // Eskiden 8,5 MB'lık data/sentences.json inip sadece imgQuery alanı
+    // çıkarılıyordu. Artık hazır eşleme dosyası iniyor (gzip ~172 KB).
+    try{
+      const r = await fetch("data/sentences/img-queries.json");
+      if (r.ok){ _imgMap = await r.json(); return _imgMap; }
+    }catch{}
+    // güvenlik ağı: parçalar henüz üretilmediyse eski dosyaya dön
     const paths = ["data/sentences.json","sentences.json","./data/sentences.json"];
     for (const p of paths){
       try{

@@ -87,6 +87,7 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
 @media(max-width:760px){.drill{padding:16px;border-radius:16px}.drill-tr{font-size:19px}}
 @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.actions{width:100%}.btn{flex:1}.top{align-items:flex-start}.title h1{font-size:23px}}
 </style>
+<script src="./sentences-loader.js?v=1"></script>
 </head>
 <body>
 <div class="wrap">
@@ -372,6 +373,11 @@ var Img=(function(){
     if(map) return Promise.resolve(map);
     if(loading) return loading;
     loading=(async function(){
+      // hazır eşleme dosyası (gzip ~172 KB); yoksa eski dosyaya düşer
+      try{
+        var rq=await fetch("data/sentences/img-queries.json");
+        if(rq.ok){ map=await rq.json(); return map; }
+      }catch(e){}
       var paths=["data/sentences.json","./data/sentences.json","sentences.json"];
       for(var i=0;i<paths.length;i++){
         try{
@@ -699,5 +705,6 @@ document.getElementById("drillBtn").onclick=function(){
 load();
 </script>
 <script src="./cloud-sync.js?v=4"></script>
+<script src="./ux-boost.js?v=1"></script>
 </body>
 </html>

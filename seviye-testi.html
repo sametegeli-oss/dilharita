@@ -95,6 +95,7 @@
 
   @media(max-width:560px){ .q-tr{font-size:20px} .result-level{font-size:54px} }
 </style>
+<script src="./sentences-loader.js?v=1"></script>
 </head>
 <body>
 <div class="wrap">
@@ -128,7 +129,9 @@
 
   // -------- veri yükle --------
   function loadSentences(){
-    return fetch("./data/sentences.json").then(function(r){ return r.json(); }).then(function(d){
+    // level-test.js yalnızca en/tr/level/grammar okuyor; tüm 8,5 MB'lık dosya
+    // yerine seviye başına dengeli seçilmiş hafif havuz iniyor (gzip ~94 KB).
+    return DHSent.testPool().then(function(d){
       sentences = Array.isArray(d) ? d : (d.sentences||[]);
     });
   }
@@ -533,5 +536,6 @@
   else{ window.addEventListener("dh-storage-ready", boot, {once:true}); setTimeout(boot, 1500); }
 })();
 </script>
+<script src="./ux-boost.js?v=1"></script>
 </body>
 </html>
