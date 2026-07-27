@@ -72,6 +72,7 @@ details.dh-group>.dh-settings-body{padding:0 14px 14px}
   .dh-mentor-grid-container { grid-template-columns: 1fr; }
 }
 </style>
+<script src="./sentences-loader.js?v=1"></script>
 </head>
 <body>
 <div class="wrap">
@@ -473,7 +474,7 @@ details.dh-group>.dh-settings-body{padding:0 14px 14px}
 /* ---- Service Worker (çevrimdışı çalışma / PWA) ---- */
 if("serviceWorker" in navigator){
   window.addEventListener("load", function(){
-    try{ navigator.serviceWorker.register("./sw.js?v=2", {scope:"./"}); }catch(e){}
+    try{ navigator.serviceWorker.register("./sw.js?v=4", {scope:"./"}); }catch(e){}
   });
 }
 </script>
@@ -578,5 +579,6 @@ if("serviceWorker" in navigator){
   }catch(e){}
 })();
 </script>
+<script src="./ux-boost.js?v=1"></script>
 </body>
 </html>
