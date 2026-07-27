@@ -952,6 +952,15 @@
     try{ window.speechSynthesis.cancel(); }catch(e){}
     var u = new SpeechSynthesisUtterance(TARGET_TEXT);
     try{ dhApplyVoice(u); }catch(e){}
+    /* Bu yolda hoca konuşuyor ama ağzı hiç oynamıyordu. Diğer yollarla aynı
+       mantığa bağlandı: metinden üretilmiş kareler + onboundary hizalaması. */
+    u.onstart    = function(){ hocaTalkStart(TARGET_TEXT, TARGET_TEXT.length*100); };
+    u.onboundary = function(ev){
+      if (ev && ev.name && ev.name !== "word") return;
+      hocaTalkAlign(ev && typeof ev.charIndex === "number" ? ev.charIndex : 0);
+    };
+    u.onend      = function(){ hocaTalkStop(); };
+    u.onerror    = function(){ hocaTalkStop(); };
     window.speechSynthesis.speak(u);
   };
   const analyzeTtsBtn = document.getElementById("analyzeTtsBtn");
@@ -988,10 +997,56 @@
   [AV_HOCA, AV_USER].forEach(function(set){ Object.keys(set).forEach(function(k){ var im=new Image(); im.src=set[k]; }); });
   function frameForVol(set, vol){ if(vol<6) return set.idle; if(vol<22) return set.small; if(vol<50) return set.medium; return set.open; }
 
+  /* Sesbirim kareleri — dosyalar zaten repoda duruyordu, bu sayfa kullanmıyordu.
+     Hoca konuşurken ağız artık ses şiddetine değil, söylenen SESE göre şekilleniyor. */
+  var VIS_HOCA = { a:"assets/avatars_v3/teacher/mouth-a.webp", e:"assets/avatars_v3/teacher/mouth-e.webp",
+                   i:"assets/avatars_v3/teacher/mouth-i.webp", o:"assets/avatars_v3/teacher/mouth-o.webp",
+                   u:"assets/avatars_v3/teacher/mouth-u.webp", mbp:"assets/avatars_v3/teacher/mouth-mbp.webp",
+                   fv:"assets/avatars_v3/teacher/mouth-fv.webp", l:"assets/avatars_v3/teacher/mouth-l.webp",
+                   th:"assets/avatars_v3/teacher/mouth-th.webp", idle:AV_HOCA.idle };
+  Object.keys(VIS_HOCA).forEach(function(k){ var im=new Image(); im.src=VIS_HOCA[k]; });
+
   // Hoca ağzı animasyon mantığı
   var __hocaTalk = null;
-  function hocaTalkStart(){ var img=document.getElementById("imgHoca"); if(!img) return; img.dataset.lock="1"; clearInterval(__hocaTalk); var seq=[AV_HOCA.small,AV_HOCA.medium,AV_HOCA.open,AV_HOCA.medium], k=0; __hocaTalk=setInterval(function(){ img.src=seq[k%seq.length]; k++; },110); }
-  function hocaTalkStop(){ clearInterval(__hocaTalk); __hocaTalk=null; var img=document.getElementById("imgHoca"); if(img){ img.dataset.lock=""; img.src=AV_HOCA.idle; } }
+  /* AĞIZ SENKRONU — chat-core.js ve index.html ile aynı mantık.
+   Eskiden: sabit 4 kare, sabit 110 ms, sonsuz döngü, metinden bağımsız.
+   Ses bittiğinde ağız devam ediyor, noktalamada susan sese rağmen oynuyordu.
+   Şimdi: kareler METİNDEN üretiliyor (noktalamada duraklama kareleriyle),
+   kare süresi konuşmanın süresine bölünüyor, dizi bitince başa dönmüyor,
+   ve onboundary ile sesin gerçek konumuna hizalanıyor. */
+var __hocaSeq=null, __hocaCharAt=null, __hocaIdx=0, __hocaStart=0, __hocaStep=110;
+function hocaTalkStart(text, durMs){
+  var img=document.getElementById("imgHoca"); if(!img) return;
+  img.dataset.lock="1"; clearInterval(__hocaTalk);
+  __hocaSeq=null; __hocaCharAt=null; __hocaIdx=0; __hocaStart=Date.now();
+  var t=String(text||"");
+  try{
+    if(window.DHViseme && window.DHViseme.timeline && t){
+      var tl=window.DHViseme.timeline(t, VIS_HOCA, "en");   // hedef cümle İngilizce
+      if(tl && tl.frames.length){ __hocaSeq=tl.frames; __hocaCharAt=tl.charAt; }
+    }
+  }catch(e){}
+  if(!__hocaSeq){ __hocaSeq=[AV_HOCA.small,AV_HOCA.medium,AV_HOCA.open,AV_HOCA.medium]; __hocaCharAt=null; }
+  var total=Math.max(800, durMs || (t.length*82));
+  __hocaStep=Math.max(40, Math.min(170, Math.round(total/Math.max(1,__hocaSeq.length))));
+  __hocaTalk=setInterval(function(){
+    if(__hocaIdx>=__hocaSeq.length){
+      if(__hocaCharAt){ img.src=AV_HOCA.idle; return; }   // metin biletli: başa dönme
+      __hocaIdx=0;                                        // yedek döngü (metin yoksa)
+    }
+    img.src=__hocaSeq[__hocaIdx++];
+  }, __hocaStep);
+}
+/* onboundary'den gelen harf konumuyla hizala */
+function hocaTalkAlign(charIndex){
+  if(!__hocaSeq || !__hocaCharAt || typeof charIndex!=="number") return;
+  if(!window.DHViseme || !window.DHViseme.indexForChar) return;
+  var h=window.DHViseme.indexForChar(__hocaCharAt, charIndex);
+  if(Math.abs(h-__hocaIdx)>2) __hocaIdx=h;
+}
+  function hocaTalkStop(){ clearInterval(__hocaTalk); __hocaTalk=null;
+  __hocaSeq=null; __hocaCharAt=null; __hocaIdx=0;
+  var img=document.getElementById("imgHoca"); if(img){ img.dataset.lock=""; img.src=AV_HOCA.idle; } }
 
   function updateSingleAvatarViseme(mouthElement, freqData, volume) {
     if (!mouthElement) return "mouth rest";
@@ -1113,7 +1168,7 @@
     try { window.speechSynthesis.cancel(); } catch(e){}
     const u = new SpeechSynthesisUtterance(TARGET_TEXT); dhApplyVoice(u);
     u.lang = "en-US"; u.rate = 0.82;
-    u.onstart = function(){ hocaTalkStart(); };
+    u.onstart = function(){ hocaTalkStart(TARGET_TEXT, TARGET_TEXT.length*100); };
 
     const boundaryStarts = {};
     boundarySupported = false;
@@ -1128,6 +1183,7 @@
         boundaryStarts[hit.id] = tRel;
         boundarySupported = true;
       }
+      hocaTalkAlign(ci);          // ağzı sesin gerçek konumuna çek
     };
 
     samplingIntervalId = setInterval(() => {
@@ -1884,6 +1940,8 @@
   });
 </script>
 
-<script src="./coach-bubble.js" defer></script>
+<script src="./viseme-lang.js?v=1"></script>
+  <script src="./coach-bubble.js" defer></script>
+<script src="./ux-boost.js?v=1"></script>
 </body>
 </html>

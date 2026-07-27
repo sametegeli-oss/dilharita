@@ -560,6 +560,26 @@ async function ensureModule(mod){
   State.byModule.set(mod,arr);
   return arr;
 }
+/* Cümleyi İNGİLİZCE METNİNDEN bul.
+   Foto <-> video geçişi (mode-toggle.js) cümleyi "?q=<ingilizce metin>" ile
+   taşıyor. Burası eskiden ensureAll() çağırıyordu; o da 506 modül dosyasını
+   AYNI ANDA indirmeye kalkıyordu. Tarayıcı aynı sunucuya 6 eşzamanlı istek
+   yaptığı için geçiş kilitleniyordu.
+   Artık tek dosya yetiyor: examples.json (tüm cümleler, id/en/tr, gzip ~294 KB). */
+function __normEn(t){
+  return String(t||"").toLowerCase().replace(/\s+/g," ").replace(/[^a-z0-9' ]/g,"").trim();
+}
+async function findIdByText(q){
+  var qn=__normEn(q);
+  if(!qn) return null;
+  try{
+    var ex=await DHSent.examples();
+    for(var i=0;i<ex.length;i++) if(__normEn(ex[i].en)===qn) return String(ex[i].id);
+    for(var j=0;j<ex.length;j++) if(__normEn(ex[j].en).indexOf(qn)>=0) return String(ex[j].id);
+  }catch(e){}
+  return null;
+}
+
 /* SON ÇARE: tüm cümleler gerekiyorsa (cümle metniyle derin link gibi nadir yollar) */
 async function ensureAll(){
   if(State.sentences && State.sentences.length) return State.sentences;
@@ -1122,22 +1142,9 @@ async function boot(){
                   .replace(/\s+/g, " ")
                   .replace(/[^a-z0-9' ]/g, "")
                   .trim();
-        var hit = null;
-        await ensureAll();   // metinle arama tüm havuzu gerektirir (nadir yol)
-        for (var i = 0; i < State.sentences.length; i++) {
-          var s = State.sentences[i];
-          var enClean = String(s.en || "")
-                        .toLowerCase()
-                        .replace(/\s+/g, " ")
-                        .replace(/[^a-z0-9' ]/g, "")
-                        .trim();
-          if (enClean === qn) {
-            hit = s;
-            break;
-          }
-        }
-        if (hit) {
-          sid = String(hit.id);
+        var hitId = await findIdByText(q);
+        if (hitId) {
+          sid = hitId;
           if (!mod) mod = hit.module;
         } else {
           // FALLBACK: eşleşme yoksa bu cümleyle devam et (SRS olmadan, sadece pratik)
@@ -1209,22 +1216,9 @@ async function bootsil(){
                   .replace(/\s+/g, " ")
                   .replace(/[^a-z0-9' ]/g, "")
                   .trim();
-        var hit = null;
-        await ensureAll();   // metinle arama tüm havuzu gerektirir (nadir yol)
-        for (var i = 0; i < State.sentences.length; i++) {
-          var s = State.sentences[i];
-          var enClean = String(s.en || "")
-                        .toLowerCase()
-                        .replace(/\s+/g, " ")
-                        .replace(/[^a-z0-9' ]/g, "")
-                        .trim();
-          if (enClean === qn) {
-            hit = s;
-            break;
-          }
-        }
-        if (hit) {
-          sid = String(hit.id);
+        var hitId = await findIdByText(q);
+        if (hitId) {
+          sid = hitId;
           if (!mod) mod = hit.module;
         } else {
           console.warn("videopractice: ?q= ile eşleşen cümle bulunamadı:", q);
