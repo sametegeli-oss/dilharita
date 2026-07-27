@@ -36,8 +36,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 .done b{color:#a7f3d0;font-size:20px;display:block;margin-bottom:8px}
 .b-more{background:#2563eb;margin-top:12px}.b-next{background:#0e7490;margin:6px 4px 0}
 
-.b-sem-chk{background:#1e1b4b; color:#a5b4fc; border:1px solid #4338ca; padding:8px 12px; font-size:12.5px; font-weight:700; border-radius:10px; margin-top:8px; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; cursor:pointer;}
-.b-sem-chk:hover{background:#312e81; color:#fff;}
 .ai-settings-toggle{color:var(--mut); font-size:11.5px; text-decoration:underline; cursor:pointer; display:block; margin-top:10px; text-align:right;}
 .ai-settings-panel{background:#071120; border:1px solid var(--line); border-radius:10px; padding:10px; margin-top:8px; display:none;}
 .ai-settings-panel textarea{width:100%; height:90px; background:#0a1628; color:#fff; border:1px solid var(--line); border-radius:6px; padding:8px; font-size:12px; resize:vertical; font-family:system-ui;}
@@ -74,14 +72,14 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     <div class="inrow"><textarea id="inp" placeholder="İngilizcesini yaz…"></textarea><div class="inrow-btns"><button class="b-retry" id="bListenRetry" style="display:none" title="Kendi sesini tekrar dinle">👂</button><button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button></div></div>
     <div class="score" id="score"></div>
     
-    <!-- YENİ: GÖMÜLÜ GEMİNİ PANELİ (Otomatik Veri Hazırlama) -->
+    <!-- GÖMÜLÜ GEMİNİ PANELİ -->
     <div id="embeddedGeminiPanel" style="display:none; margin-top:12px; background:#071120; border:1px solid #4f46e5; border-radius:12px; padding:15px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
         <b style="color:#818cf8; font-size:13px;">✨ Gömülü Gemini Paneli</b>
         <button id="closeGeminiPanel" style="background:transparent; color:var(--mut); cursor:pointer; font-size:13px; padding:0;">✕ Kapat</button>
       </div>
       <div style="font-size:11.5px; color:var(--mut); margin-bottom:6px;">
-        Cümleniz yapay zeka hakem için otomatik hazırlandı. Tek tıkla kopyalayıp Gemini'ye gönderebilirsiniz:
+        Cümleniz yapay zeka hakem için otomatik hazırlandı. Tek tıkla kopyalayıp Gemini'ye gönderebilirsiniz[cite: 1]:
       </div>
       <textarea id="embeddedPromptBox" style="width:100%; height:80px; background:#0a1628; color:#fff; border:1px solid var(--line); border-radius:8px; padding:8px; font-size:11.5px; resize:vertical; font-family:system-ui;"></textarea>
       <div style="display:flex; gap:8px; margin-top:8px;">
@@ -512,7 +510,6 @@ try{
   function render(){
     stopMicIfActive();
     try{ window.dhCoachHide && window.dhCoachHide(); }catch(e){}
-    // Otomatik kapanır: yeni soruya geçince gömülü Gemini panelini kapat
     var gPanel = $("embeddedGeminiPanel");
     if(gPanel) gPanel.style.display = "none";
 
@@ -664,7 +661,6 @@ try{
     $("bListenRetry").style.display = "none";
     if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
     
-    // Retry basınca da gömülü paneli kapat
     var gPanel = $("embeddedGeminiPanel");
     if(gPanel) gPanel.style.display = "none";
 
@@ -858,14 +854,11 @@ try{
     window.open(translateUrl, "_blank");
   };
 
-  /* ========================================================
-     ✨ YENİ GÖMÜLÜ GEMİNİ DÜĞMESİ MANTIĞI (Kopyala-Yapıştır Yerine)
-     ======================================================== */
+  /* GÖMÜLÜ PANEL TETİKLEYİCİSİ */
   $("bGemini").onclick = function() {
     var userEn = $("inp").value.trim();
     if(!userEn){ alert("Önce çevirini yaz, sonra Gemini'ye sor."); return; }
     
-    // Kriter promptunu otomatik oluştur
     var criteria = ($("aiPromptInput") && $("aiPromptInput").value.trim()) || defaultAiPrompt;
     var fullPrompt =
       criteria + "\n\n" +
@@ -873,7 +866,6 @@ try{
       "Öğrencinin cümlesi: " + userEn + "\n\n" +
       "Cevabına MUTLAKA tek kelimeyle başla: EVET, YAZIM ya da HAYIR.";
 
-    // Gömülü paneli aç ve metni içine yerleştir
     var panel = $("embeddedGeminiPanel");
     var box = $("embeddedPromptBox");
     if(panel && box) {
@@ -883,7 +875,6 @@ try{
     }
   };
 
-  // Paneli kapatma düğmesi
   var closeBtn = $("closeGeminiPanel");
   if(closeBtn) {
     closeBtn.onclick = function() {
@@ -891,13 +882,12 @@ try{
     };
   }
 
-  // Tek tıkla metni panoya alıp Gemini sekmesini açan köprü düğmesi
   var sendBtn = $("btnAutoSendGemini");
   if(sendBtn) {
     sendBtn.onclick = function() {
       var text = $("embeddedPromptBox").value;
       navigator.clipboard.writeText(text).then(function() {
-        alert("✨ Hazır prompt panoya kopyalandı!\n\nŞimdi açılacak olan Gemini sekmesinde Ctrl+V yaparak sorabilir ve cevabı hızlıca alabilirsiniz.");
+        alert("✨ Hazır prompt panoya kopyalandı!\n\nŞimdi açılacak olan Gemini sekmesinde Ctrl+V yaparak sorabilir ve cevabı hızlıca alabilirsiniz[cite: 1].");
         window.open("https://gemini.google.com/", "_blank");
       }).catch(function(){
         alert("Metin kopyalanamadı, lütfen kutudaki metni manuel seçip kopyalayın.");
