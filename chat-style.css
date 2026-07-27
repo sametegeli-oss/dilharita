@@ -260,3 +260,16 @@ button,input,textarea{font:inherit}
   /* buton grubunu sağa yasla: ilk buton öncesi boşluk esner */
   .input-row .icon-fab:nth-of-type(1){margin-left:auto}
 }
+
+/* Öğretmenin cevabındaki İngilizce malzeme — [[ ]] işaretlerinin yerine.
+   Öğrenci hangi kısmın çalışılacak İngilizce olduğunu bir bakışta görsün. */
+.bubble-text .en-chunk{
+  display:inline;
+  font-weight:800;
+  color:#7dd3fc;
+  background:rgba(56,189,248,.10);
+  border-bottom:1px solid rgba(56,189,248,.35);
+  border-radius:4px;
+  padding:1px 4px;
+  font-style:normal;
+}

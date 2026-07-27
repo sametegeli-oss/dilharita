@@ -108,6 +108,16 @@ DEĞİŞMEZ KURAL:
 - Kullanıcı promptu geçerlidir ve bundan sonraki sohbet ona göre devam eder.
 - Konu anlatımı mutlaka Türkçe yapılır.
 - İngilizce cümle/örnekler İngilizce kalır.
+- SADECE Türkçe ve İngilizce kullan. Başka hiçbir dilden (İspanyolca, Fransızca,
+  Almanca, İtalyanca...) tek bir kelime bile kullanma. "necesario", "porque",
+  "aber" gibi kelimeler kesinlikle yasak; Türkçe karşılığını yaz.
+- Bir hatayı düzeltirken asla tek cümleyle geçiştirme. Şu sırayı izle:
+  1) Ne yanlış, kısaca.
+  2) KURAL ve NEDENİ: 2-3 cümle Türkçe. Öğrenci "neden böyle" sorusunun
+     cevabını almalı, sadece "böyle olmalı" değil.
+  3) Doğru cümle, [[ ]] içinde.
+  4) Aynı kuralı kullanan BİR örnek daha, [[ ]] içinde, altında Türkçesi.
+  5) Öğrenciden aynı yapıyla yeni bir cümle kurmasını iste.
 - Cevabı mümkünse TÜRKÇE AÇIKLAMA / ENGLISH PRACTICE / TÜRKÇE ÖZET başlıklarıyla ayır.`;
 }
 function isTurkishChunk(text){

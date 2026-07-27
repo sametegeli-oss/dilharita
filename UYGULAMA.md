@@ -329,3 +329,56 @@ metinlerine dokunulmadı.
 > Bu turda az kalsın olmayan bir hata bildiriyordum: `chat-core.js`'in 335.
 > satırını `cut` ile kısaltarak okuyunca sonundaki virgül görünmedi ve
 > kodu bozuk sandım. Satırın tamamına bakınca sorun olmadığı görüldü.
+
+---
+
+# 5. AŞAMA: öğretmenin cevap kalitesi
+
+Ekran görüntüsündeki tek cevapta üç ayrı sorun vardı.
+
+## 1) `[[...]]` işaretleri ekranda görünüyordu
+
+Bunlar hata değil, kasıt: `ai-teacher-prompt-tts.js` İngilizce cümleleri
+`[[ ]]` ile işaretliyor ki `tts-avatar-long-sync-fix.js` onları İngilizce
+sesle okusun. Ama işaretler yalnızca **seslendirme** tarafında ayrıştırılıyordu;
+sohbet balonuna ham basılıyordu.
+
+`chat-core.js`'e `renderBubbleText()` eklendi: parantezler ekrandan kalkıyor,
+içindeki İngilizce ayrı bir `.en-chunk` span'ına giriyor (mavi vurgu), böylece
+öğrenci hangi kısmın çalışılacak İngilizce olduğunu bir bakışta görüyor.
+**"Dinle" butonuna HAM metin gitmeye devam ediyor** — çift dilli okuma bozulmadı.
+`test-bubble.mjs` bunu sabitliyor.
+
+## 2) Türkçe metne İspanyolca kelime sızmış ("necesario")
+
+Prompt "Türkçe yaz" diyordu ama başka dilleri **yasaklamıyordu**; çok dilli
+model arada kayıyor. `mustRules()` — kullanıcı kendi promptunu düzenlese bile
+her AI çağrısına eklenen bölüm — artık açıkça yasaklıyor: sadece Türkçe ve
+İngilizce, üçüncü dilden tek kelime bile yok. Aynı kural `chat-core.js`'in
+dil kuralına da eklendi.
+
+## 3) Açıklama fazla yüzeyseldi — bu benim hatamdı
+
+Geçen turda `dhLanguageRule()` içine *"Short Turkish sentences, no lecturing"*,
+senaryolara da *"correct in Turkish with a one-line reason"* yazmıştım.
+`ai-teacher-prompt-tts.js`'in ayrıntılı öğretmen promptu sistem mesajının
+**başına**, benim kısalık talimatım **sonuna** ekleniyor — model de sondakine
+uyup tek satırlık düzeltmeler üretiyordu. Yani derinliği ben kısmışım.
+
+Kaldırıldı; yerine düzeltme yapısı kondu:
+
+1. Ne yanlış, kısaca
+2. **Kural ve nedeni: 2-3 cümle Türkçe** — "böyle olmalı" değil, "neden böyle"
+3. Doğru cümle
+4. Aynı kuralla bir örnek daha, altında Türkçesi
+5. Öğrenciden aynı yapıyla yeni bir cümle
+
+Sohbete uygun bir derinlik bu. `teacher.html`'in 9 bölümlü analiz formatını
+sohbete taşımak yanlış olurdu — orası tek cümle analizi için, burası karşılıklı
+konuşma.
+
+## Doğrulama
+
+```
+node test-bubble.mjs    # 8 test — parantez temizleme, metin bütünlüğü
+```
