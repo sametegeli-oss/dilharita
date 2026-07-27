@@ -452,3 +452,156 @@ kullanılmıyordu.
 node test-viseme.mjs    # 24 test — dil tespiti, iki harita, kare eşleme
 node test-persona.mjs   # 9 test  — öğretmen promptu doktora sızmıyor
 ```
+
+---
+
+# 7. AŞAMA: tekrar ekranı ve veri onarımı
+
+## 1) "Frustrated" — arayüz hatası değil, veri bozuk
+
+Ekranda görünen `Açıklama: Frustrated"So many...that"...` metni `aiExplain`
+alanında **aynen böyle kayıtlıydı**. Veri hazırlanırken ayrı bir "ton" sütunu
+açıklamaya boşluksuz yapışmış. Tarama sonucu: **273 kayıt**.
+
+En sık yapışanlar: Curious (119), Informative (44), Descriptive (30),
+Polite (20), Comparative (13).
+
+`veri-onar.mjs` ton kelimesini ayırıp yeni `tone` alanına taşıyor — bilgi
+silinmiyor, yerine konuyor. Kaynak dosyanın yedeği alınıyor
+(`data/sentences.json.yedek`), parçalar yeniden üretildi, zip güncellendi.
+
+**Bilerek dokunulmayan 26 kayıt var.** Ton kelimesinden sonra BOŞLUK varsa
+metin gerçek içerik oluyor:
+
+```
+"Formal ifade."                        → cümlenin kendisi hakkında
+"Excited den sonra "about" gelir."     → öğretilen kelimenin ta kendisi
+```
+
+Bu ayrımı yapmasaydım 26 doğru kaydı bozacaktım.
+
+## 2) SRS'te ef katsayısı hiç artmıyordu
+
+`srsStep()` içinde kalite puanı `q` sabit **4** yazılıydı. SM-2 formülünde
+q=4 iken düzeltme terimi tam olarak sıfır çıkıyor:
+
+```
+0.1 - (5-4) × (0.08 + (5-4) × 0.02)  =  0.1 - 0.10  =  0
+```
+
+Yani "kolaylık katsayısı" başarıda hiç artmıyor, yalnız "Zor"da 0.2 düşüyordu —
+tek yönlü bir cırcır. Uzun vadede her kalemin ef'i 1.3 tabanına kayıyor ve
+**iyi bildiğin cümleler bile giderek daha sık** karşına çıkıyordu.
+
+Oysa uygulama benzerlik yüzdesini zaten hesaplıyor (ekran görüntüsündeki %67).
+Artık `q` o sinyalden türüyor: %90+ veya anlamca onaylı %80+ → q=5 (ef artar),
+%70+ → q=4, altı → q=3. Puan yoksa (tanıma modu) eski davranış korunuyor.
+ef'e 3.0 üst sınırı da eklendi.
+
+## 3) Tekrar ilerlemesi ortak katmana yazılmıyordu
+
+`ogren.html` her cevaptan sonra `DHProgress.recordResult()` çağırıyor,
+`tekrar.html` hiç çağırmıyordu. Sonuç: tekrar ederek pekiştirdiğin cümleler
+modül ilerleme çubuklarına ve koçun "öğrenildi" sayısına yansımıyordu.
+Eklendi.
+
+## Testler
+
+```
+node test-srs.mjs      # 16 test — kalite puanı, ef davranışı, aralıklar
+node veri-onar.mjs --rapor   # veriyi değiştirmeden tarama raporu
+```
+
+`test-srs.mjs` eski hatayı da sabitliyor: q=4 formülünün tam olarak 0 verdiğini
+ayrı bir testle kanıtlıyor, biri sabit değere geri dönerse test kırılır.
+
+## Açık kalan: koç balonu içeriği kapatıyor
+
+Balon `position:fixed; top:22px` ile ekranın üstüne sabit ve tıklanana kadar
+kapanmıyor; tekrar ekranında çalışılan cümlenin üstüne oturuyor. Kendiliğinden
+kapanma eklemiştim, kullanıcı istemedi — geri alındı, dosya birebir orijinal.
+
+Otomatik kapanmadan çözmenin yolları: balon açıkken sayfa içeriğini aşağı
+kaydırmak, balonu alt tarafa taşımak, ya da sayfa başlığının altına
+konumlandırmak. Karar verilmediği için dokunulmadı.
+
+---
+
+# 8. AŞAMA: Gemini hakem prompt'u + practice.html
+
+## 1) Gemini düğmesi öğretmiyordu
+
+İki prompt parçası birleşiyor ve **birbirini iptal ediyordu**:
+
+- satır 193 (taban): *"SADECE tek kelimeyle cevap ver... **Başka hiçbir açıklama yapma.**"*
+- satır 671 (kodda eklenen): *"Sonra 1-2 cümleyle Türkçe gerekçe yaz"*
+
+Model doğal olarak ilk, daha kesin emre uyuyordu.
+
+Ayrıca bu düğme **öğretmek için tasarlanmamıştı**. Koddaki yorum: *"Gemini
+hakemliği: kopyala→sor→yapıştır turu."* İşi, farklı yazılan cümlenin geçerli
+olup olmadığına karar verip "Bildim" kilidini açmak. Kod cevabın **ilk
+kelimesini** ayrıştırıyor (`DHGemini.parsers.yesNoTypo`), kısalık bilinçliydi.
+
+Hakemliği bozmadan öğretme eklendi — ilk kelime kuralı duruyor, arkasına yapı geldi:
+ne yanlış, **neden** yanlış (kuralı anlat), doğru cümle, aynı kuralla ikinci örnek,
+varsa daha doğal söyleyiş.
+
+İki gizli engel daha vardı:
+
+- Açıklama `note.slice(0,400)` ile kesiliyor ve 11.5px gri yazıyla gösteriliyordu.
+  2000 karaktere çıkarıldı, okunur boyuta getirildi, `white-space:pre-wrap` ile
+  madde madde metnin satırları korunuyor.
+- Prompt `localStorage["dh-custom-ai-prompt"]`'a kaydediliyor. Eski metin orada
+  duruyorsa bu düzeltme kullanıcıya **hiç ulaşmayacaktı**. Eski varsayılanın
+  imzasını taşıyan kayıtlar otomatik yenileniyor; kullanıcının kendi yazdığı
+  özel prompt korunuyor.
+
+> "Daha önce detaylıydı" gözlemini doğrulayamadım: repoyu sığ klonladığım için
+> geçmiş yok. `akilli-tekrar.html`'i de kontrol ettim, onun hiç Gemini prompt'u
+> yok — yani o da sebep değil.
+
+## 2) practice.html parçalı veriye geçti
+
+8,5 MB'lık dosyayı hâlâ tümüyle indiren en önemli sayfaydı. Altı çağrı noktası
+vardı, hepsi dönüştürüldü:
+
+| yer | eskiden | şimdi |
+|---|---|---|
+| `loadData` | tüm dosya + bellekte gruplama | yalnız index (gzip ~27 KB) |
+| `moduleProgress` | modülün cümleleri | index'teki id listesi, **sıfır indirme** |
+| `startModuleSession` | bellekten | `ensureModule()` ile o modül (gzip ~5 KB) |
+| `startDueSession` | 9417 cümleyi tara | **SRS anahtarlarından** + `byIds` |
+| oturum geri yükleme | tüm cümlelerden id haritası | `sentencesByIds()` |
+| `examplesFor` | tüm cümlelerde ara | bellekteki (çalışılmış) cümlelerde ara |
+
+`startDueSession` değişikliği aynı zamanda mantıksal bir düzeltme: vadesi gelmiş
+olabilecek tek şey **SRS kaydı olan** cümlelerdir, tüm külliyatı taramak
+gereksizdi. `test-practice.mjs` eski tam-tarama ile yeni yolun **aynı listeyi
+aynı sırada** verdiğini kanıtlıyor.
+
+**Bilinçli davranış değişikliği:** kelime popup'ındaki örnek cümleler artık tüm
+9417 cümle yerine bellekteki (çalışılmış) modüllerden geliyor. `openWordPopup`
+senkron çalıştığı için async arama yapamıyor. Pratikte sorun olmuyor: kullanıcı
+zaten çalıştığı cümledeki bir kelimeye dokunuyor, o modül yüklü. Yine de bu bir
+kısıtlama — kelime→cümle indeksi üretilirse tamamen çözülür.
+
+**OCR modülü korundu:** index'te olmayan yerel cümleler (`dh-ocr-sentences-v1`)
+hem `byModule`'de hem bellek havuzunda tutuluyor; `sentencesByIds` önce yerele
+bakıyor, o yüzden OCR cümleleri için ağa hiç gidilmiyor. Test ediyor.
+
+## Kalan 5 tüketici
+
+`kelime-ogren.html`, `word-popup.js` (ikisi de kelime→örnek cümle arıyor),
+`index-app-ogretmen-analiz-buttons.js` (`byIds` yeterli),
+`lesson-engine.js` ve `harita.html` (veri yolu yapılandırmadan geliyor).
+
+İlk ikisi için doğru çözüm `veri-bol.mjs`'e **kelime→cümle id indeksi** eklemek
+(tahmini gzip ~90 KB); bu hem onları hem yukarıdaki popup kısıtlamasını çözer.
+
+## Testler
+
+```
+node test-prompt.mjs     # 15 test — prompt hem ayrıştırılabilir hem öğretici
+node test-practice.mjs   # 13 test — vadesi gelenler eskiyle birebir aynı
+```

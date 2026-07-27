@@ -503,6 +503,7 @@ body{
 
 </style>
 <script src="./learning-error-system.js?v=2"></script>
+<script src="./sentences-loader.js?v=1"></script>
 </head>
 <body>
 <div class="wrap" id="root"></div>
@@ -970,22 +971,24 @@ async function fetchFirst(paths){
   throw new Error("Veri dosyaları bulunamadı: " + paths[0]);
 }
 async function loadData(){
-  const sentences = await fetchFirst(DATA_PATHS.sentences);
-  State.sentences = sentences;
-  // indeksle
-  const byModule = new Map(), byLevel = new Map();
-  for (const s of sentences){
-    if (!byModule.has(s.module)) byModule.set(s.module, []);
-    byModule.get(s.module).push(s);
+  /* PARÇALI VERİ: eskiden data/sentences.json (8,5 MB / gzip 1,7 MB) tamamen
+     inip bellekte gruplanıyordu. Artık yalnız index (gzip ~27 KB) iniyor;
+     bir modülün cümleleri ancak o modüle girilince (gzip ~5 KB) yükleniyor.
+       State.modMeta  : modül adı -> {lvl,mod,f,n,ids}   (index'ten)
+       State.byModule : YALNIZCA yüklenmiş modüller + OCR (tembel önbellek)
+       State.sentences: bellekteki tüm cümleler (örnek arama için) */
+  const ix = await DHSent.index();
+  State.index = ix;
+  const byModule = new Map(), byLevel = new Map(), modMeta = new Map();
+  for (const m of ix.modules){
+    modMeta.set(m.mod, m);
+    if (!byLevel.has(m.lvl)) byLevel.set(m.lvl, []);
+    byLevel.get(m.lvl).push(m.mod);
   }
-  for (const [mod, arr] of byModule){
-    arr.sort((a,b)=>(a.order||0)-(b.order||0));
-    const lv = arr[0].level;
-    if (!byLevel.has(lv)) byLevel.set(lv, []);
-    byLevel.get(lv).push(mod);
-  }
+  State.modMeta = modMeta;
   State.byModule = byModule;
   State.byLevel = byLevel;
+  State.sentences = [];
   State.srs = await srsAll();
   // OCR ile fotoğraftan eklenen cümleleri özel modül olarak ekle
   try{
@@ -998,6 +1001,9 @@ async function loadData(){
       }));
       arr.sort((a,b)=>(a.order||0)-(b.order||0));
       State.byModule.set(OCR_MODULE, arr);
+      /* OCR cümleleri index'te yok (yerel kayıtlar). Örnek arama ve id ile
+         bulma bellekteki havuzdan yapıldığı için oraya da eklenmeleri gerekiyor. */
+      for (const x of arr) State.sentences.push(x);
       if(!State.byLevel.has("OCR")) State.byLevel.set("OCR", []);
       State.byLevel.get("OCR").push(OCR_MODULE);
     }
@@ -1005,6 +1011,31 @@ async function loadData(){
   // sözlüğü arka planda yükle (popup için); başarısız olsa da uygulama çalışır
   try{ State.dictionary = await fetchFirst(DATA_PATHS.dictionary); }
   catch{ State.dictionary = {}; }
+}
+
+/* Bir modülün cümlelerini getirir; indirilmişse önbellekten verir.
+   OCR gibi yerel (index'te olmayan) modüller doğrudan byModule'de durur. */
+async function ensureModule(mod){
+  if (State.byModule.has(mod)) return State.byModule.get(mod);
+  const arr = await DHSent.module(mod);
+  State.byModule.set(mod, arr);
+  /* örnek arama bellekteki cümlelerden yapıldığı için havuza da ekle */
+  for (const x of arr) State.sentences.push(x);
+  return arr;
+}
+/* Bellekte olmayan id'leri parçalardan çeker (OCR gibi yerel kayıtlar dahil). */
+async function sentencesByIds(ids){
+  const yerel = new Map();
+  for (const arr of State.byModule.values())
+    for (const x of arr) yerel.set(String(x.id), x);
+  const eksik = ids.filter(id => !yerel.has(String(id)));
+  if (eksik.length){
+    try{
+      const m = await DHSent.byIds(eksik);
+      for (const k in m) yerel.set(String(k), m[k]);
+    }catch(e){}
+  }
+  return ids.map(id => yerel.get(String(id))).filter(Boolean);
 }
 
 /* bir kelimeyi içeren örnek cümleler (popup için) */
@@ -1081,10 +1112,14 @@ function dueCount(){
   return Object.values(State.srs).filter(s => (s.due||0) <= now && (s.rep||0) > 0).length;
 }
 function moduleProgress(mod){
-  const arr = State.byModule.get(mod) || [];
+  /* Cümleleri indirmeden say: index her modülün id listesini taşıyor.
+     OCR gibi yerel modüller için bellekteki diziye düşer. */
+  const meta = State.modMeta && State.modMeta.get(mod);
+  const ids = meta ? (meta.ids || [])
+                   : (State.byModule.get(mod) || []).map(s => s.id);
   let learned = 0;
-  for (const s of arr){ const r = State.srs[s.id]; if (r && r.rep > 0) learned++; }
-  return { learned, total: arr.length };
+  for (const id of ids){ const r = State.srs[id]; if (r && r.rep > 0) learned++; }
+  return { learned, total: ids.length };
 }
 async function renderPicker(){
   State.srs = await mAll();   // aktif modun ilerlemesini yükle (sayımlar doğru olsun)
@@ -1454,7 +1489,7 @@ async function openBackupSheet(){
    ============================================================ */
 async function startModuleSession(mod, resumeIdx){
   State.srs = await mAll();   // aktif moda ait SRS'i yükle (üretim ya da dinleme)
-  const arr = (State.byModule.get(mod) || []).slice();
+  const arr = (await ensureModule(mod) || []).slice();
   const now = Date.now();
   // Öncelik: (1) vadesi gelmiş tekrarlar [en geciken önce], (2) hiç çalışılmamış yeni
   // cümleler [modül sırasıyla], (3) ileride vadesi gelecek olgunlar [en yakın önce].
@@ -1481,9 +1516,13 @@ async function startModuleSession(mod, resumeIdx){
 async function startDueSession(){
   State.srs = await mAll();
   const now = Date.now();
-  const due = State.sentences
-    .filter(s => { const r = State.srs[s.id]; return r && (r.due||0) <= now && r.rep > 0; })
-    .sort((a,b) => (State.srs[a.id].due||0) - (State.srs[b.id].due||0));
+  /* Eskiden 9417 cümlenin tamamı taranıyordu. Vadesi gelmiş olabilecek tek şey
+     SRS kaydı OLAN cümleler; o yüzden doğrudan SRS anahtarlarından gidiyoruz —
+     hem doğru hem çok daha az veri. */
+  const dueIds = Object.keys(State.srs)
+    .filter(id => { const r = State.srs[id]; return r && (r.due||0) <= now && r.rep > 0; })
+    .sort((a,b) => (State.srs[a].due||0) - (State.srs[b].due||0));
+  const due = await sentencesByIds(dueIds);
   // interleaving: farklı modüllerden karışsın
   State.queue = due;
   State.idx = 0;
@@ -1544,9 +1583,8 @@ async function restoreTeacherReturnIfNeeded(){
   State.activeModule = saved.activeModule || null;
   State.sessionTitle = saved.sessionTitle || (State.activeModule ? State.activeModule.replace(/^[A-C]\d-M\d+\s*/, "") : "Tekrar oturumu");
 
-  const byId = new Map((State.sentences || []).map(s => [String(s.id), s]));
   const ids = Array.isArray(saved.queueIds) ? saved.queueIds : [];
-  const restoredQueue = ids.map(id => byId.get(String(id))).filter(Boolean);
+  const restoredQueue = await sentencesByIds(ids);
 
   if (restoredQueue.length){
     State.queue = restoredQueue;
@@ -1556,7 +1594,7 @@ async function restoreTeacherReturnIfNeeded(){
     return true;
   }
 
-  if (State.activeModule && State.byModule && State.byModule.has(State.activeModule)){
+  if (State.activeModule && ((State.modMeta && State.modMeta.has(State.activeModule)) || (State.byModule && State.byModule.has(State.activeModule)))){
     await startModuleSession(State.activeModule, State.idx);
     try{ history.replaceState(null, "", "./practice.html"); }catch{}
     return true;
@@ -2267,7 +2305,7 @@ async function boot(){
       var qp = new URLSearchParams(location.search);
       var wantMod = qp.get("mod");
       var wantAuto = qp.get("auto")==="due";
-      if(wantMod && State.byModule && State.byModule.has(wantMod)) await startModuleSession(wantMod);
+      if(wantMod && ((State.modMeta && State.modMeta.has(wantMod)) || (State.byModule && State.byModule.has(wantMod)))) await startModuleSession(wantMod);
       else if(wantAuto) await startDueSession();
       else renderPicker();
     }
@@ -2318,5 +2356,6 @@ boot();
 <script src="./cloud-sync.js?v=4"></script>
 <script src="./word-popup.js?v=1"></script>
   <script src="./dilharita-teacher-support.bundle.js"></script>
+<script src="./ux-boost.js?v=1"></script>
 </body>
 </html>
