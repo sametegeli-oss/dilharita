@@ -233,12 +233,26 @@ try{
   }
 
   /* ---- SM-2 ---- */
-  function srsStep(n, hard){
+  /* Cevap kalitesini (q) gerçek sinyalden türetir.
+     ÖNEMLİ: q eskiden sabit 4 yazılıydı ve SM-2 formülünde q=4 iken düzeltme
+     terimi TAM OLARAK 0 çıkıyor:  0.1-(5-4)*(0.08+(5-4)*0.02) = 0.1-0.10 = 0
+     Yani "kolaylık katsayısı" (ef) başarıda hiç artmıyor, yalnız "Zor"da
+     0.2 düşüyordu — tek yönlü bir cırcır. Zamanla her kalemin ef'i 1.3 tabanına
+     kayıyor ve iyi bilinen cümleler bile giderek daha sık soruluyordu.
+     Uygulama benzerlik yüzdesini zaten hesaplıyor; artık o kullanılıyor. */
+  function qualityOf(sc, semanticOk){
+    if(typeof sc!=="number" || sc < 0) return 4;      // puan yoksa eski davranış
+    if(sc>=90 || (semanticOk && sc>=80)) return 5;     // ef artar
+    if(sc>=70) return 4;                               // ef sabit
+    return 3;                                          // ef bir miktar düşer
+  }
+  function srsStep(n, hard, q){
     n=n&&typeof n==="object"?n:{rep:0,ef:2.5,interval:0,due:0,last:0};
     var r=Date.now();
     if(hard){ n.rep=0; n.interval=0; n.ef=Math.max(1.3,(n.ef||2.5)-0.2); n.lapses=(n.lapses||0)+1; }
     else{ n.rep=(n.rep||0)+1;
-      var q=4; n.ef=Math.max(1.3,(n.ef||2.5)+(0.1-(5-q)*(0.08+(5-q)*0.02)));
+      if(typeof q!=="number") q=4;
+      n.ef=Math.max(1.3,Math.min(3.0,(n.ef||2.5)+(0.1-(5-q)*(0.08+(5-q)*0.02))));
       if(n.rep===1) n.interval=1; else if(n.rep===2) n.interval=4;
       else n.interval=Math.round((n.interval||4)*n.ef);
     }
@@ -1060,7 +1074,17 @@ try{
     var it=cur; var key=(it.kind==="s"?"srs:":"wsrs:")+it.id;
     var __prev=(it.kind==="s"?srs[it.id]:wsrs[it.id])||{};        // 🔬 eski kayıt (srsStep ezmeden)
     try{ dhRecallLog(it.kind, it.id, __prev.last||0, __prev.rep||0, !hard); }catch(e){}
-    var rec=srsStep(it.kind==="s"?srs[it.id]:wsrs[it.id], hard);
+    var __q = qualityOf(lastSc, lastSemanticOk);
+    var rec=srsStep(it.kind==="s"?srs[it.id]:wsrs[it.id], hard, __q);
+    /* Tekrar aktivitesi ortak ilerleme katmanına da işlensin.
+       ogren.html bunu yapıyordu, tekrar.html hiç yapmıyordu: tekrar ederek
+       pekiştirdiğin cümleler modül ilerleme çubuklarına ve koçun "öğrenildi"
+       sayısına yansımıyordu. */
+    try{
+      if(window.DHProgress && window.DHProgress.recordResult){
+        window.DHProgress.recordResult((it.kind==="s"?"sentence:":"word:")+it.id, !hard);
+      }
+    }catch(e){}
     try{
       var _coachDiff = (typeof computeWordDiff==="function")
         ? computeWordDiff(curT.en, (mode==="prod"?($("inp")&&$("inp").value||""):""))
