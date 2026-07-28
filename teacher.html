@@ -345,7 +345,7 @@ try{
 let TeacherAvatar = null;
 class PhotoTeacherAvatar{
   constructor(){
-    this.imgs=[]; this.frames={}; this.blinkTimer=null; this.talkTimer=null;
+    this.imgs=[]; this.frames={}; this.isTr=false; this.blinkTimer=null; this.talkTimer=null;
     this.endTimer=null; this.seq=[]; this.idx=0; this.speaking=false;
   }
   mount(){
@@ -355,7 +355,17 @@ class PhotoTeacherAvatar{
     this.preload(); this.show(this.frames.idle); this.scheduleBlink(1200);
   }
   preload(){ Object.values(this.frames).forEach(src=>{ const im=new Image(); im.src=src; }); }
-  show(src){ this.imgs.forEach(img=>{ img.src=src; }); }
+  /* TÜRKÇE KİLİDİ: bu sayfanın kendi ağız motorunda da kare buradan basılıyor.
+     Türkçe okurken mouth-th ancak ses eşleme sayfasında bir harfe seçilmişse
+     geçebilir; aksi halde varsayılan TR karesine (mouth-i) çevrilir. */
+  show(src){
+    if(this.isTr && /mouth-th\.webp/i.test(String(src||""))){
+      const um=trVisemeMap();
+      const secildi=Object.keys(um).some(k=>um[k]==="mouth-th");
+      if(!secildi) src=String(src).replace(/mouth-th\.webp/i,"mouth-i.webp");
+    }
+    this.imgs.forEach(img=>{ img.src=src; });
+  }
   scheduleBlink(delay){
     clearTimeout(this.blinkTimer);
     this.blinkTimer=setTimeout(()=>this.blink(), delay || (2400 + Math.random()*2200));
@@ -400,6 +410,7 @@ class PhotoTeacherAvatar{
   }
   speakText(text,duration,isTr){
     clearInterval(this.talkTimer); clearTimeout(this.endTimer);
+    this.isTr=!!isTr;
     this.speaking=true; this.seq=this.buildSeq(text,isTr);
     if(!this.seq.length) this.seq=[this.frames.i,this.frames.e,this.frames.a,this.frames.o,this.frames.u,this.frames.mbp,this.frames.idle];
     this.idx=0;

@@ -377,7 +377,24 @@ let currentLang="tr-TR";
 let mouthPos=0;
 let perCharMs=75;
 
+/* TÜRKÇE KİLİDİ — TEK ÇIKIŞ NOKTASI.
+   Kare hangi yoldan gelirse gelsin ekrana burada basılıyor. Türkçe okunurken
+   geçerli tek kaynak ses eşleme sayfasıdır (dh-viseme-tr-v1): kullanıcı o harfe
+   ne seçtiyse o basılır — mouth-th seçtiyse mouth-th de basılır. Seçim yoksa
+   varsayılan TR tablosu kullanılır. İngilizce tablodan sızan kare (t/d/s/z -> th)
+   Türkçe okumada buradan geçemez. */
+function trLockFile(file){
+  if(currentLang!=="tr-TR" || !file) return file;
+  var ch="";
+  try{ ch = currentText.charAt(mouthPos).toLocaleLowerCase("tr-TR"); }catch(e){}
+  var um=trUserMap();
+  if(ch && um[ch]) return um[ch];
+  if(ch && DH_VISEME_TR[ch]) return DH_VISEME_TR[ch];
+  if(file==="mouth-th") return DH_VISEME_TR["t"] || "mouth-i";
+  return file;
+}
 function applyVisemeToAvatars(file){
+  file = trLockFile(file);
   avatarImgs().forEach(img=>{
     const current=srcOf(img);
     if(!savedSrc.has(img)) savedSrc.set(img, idleSrc(current));
