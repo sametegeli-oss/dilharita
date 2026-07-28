@@ -176,6 +176,26 @@ function isTurkish(text){
   return false;
 }
 
+/* DİL KARARI.
+   Eskiden tek kural vardı: isTurkish() değilse "en-US". Türkçe cümlelerin çoğunda
+   ğüşöçı bulunur ama "Bu bir kalem.", "Hadi tekrar edelim." gibi cümlelerde yoktur;
+   bunlar İngilizce sayılıp hem İngilizce sesle okunuyor hem de ağız için İngilizce
+   tablo (t/d/s/z -> mouth-th) kullanılıyordu. Artık İngilizce için de KANIT aranır;
+   iki taraf da kanıtsızsa sayfanın varsayılan dili (window.DH_DEFAULT_LANG) seçilir. */
+var EN_WORDS=/\b(the|a|an|is|are|was|were|am|be|been|and|or|but|to|of|in|on|at|it|its|he|she|they|you|we|i|my|your|his|her|this|that|these|those|with|for|from|have|has|had|do|does|did|not|don't|can|could|will|would|should|there|what|when|where|which|who|how|because|about|very|more|than|then|so|if|as|by|up|out|no|yes|please|thank|thanks)\b/i;
+function looksEnglish(text){
+  var s=String(text||"");
+  if(/[ğüşöçıİĞÜŞÖÇ]/.test(s)) return false;
+  var hits=(s.match(new RegExp(EN_WORDS.source,"gi"))||[]).length;
+  return hits >= 2 || (hits === 1 && s.trim().split(/\s+/).length <= 4);
+}
+function detectLang(text){
+  if(isTurkish(text)) return "tr-TR";
+  if(looksEnglish(text)) return "en-US";
+  try{ if(window.DH_DEFAULT_LANG) return window.DH_DEFAULT_LANG; }catch(e){}
+  return "en-US";
+}
+
 function splitLongLine(line, maxLen){
   maxLen = maxLen || 90;
   line=clean(line);
@@ -204,7 +224,7 @@ function splitForSpeech(text){
     while((m=re.exec(line))!==null){
       if(m.index > last){
         const before=line.slice(last, m.index).trim();
-        if(before) segs.push({text:before, lang: isTurkish(before) ? "tr-TR" : "en-US"});
+        if(before) segs.push({text:before, lang: detectLang(before)});
       }
       const inner=((m[1]!=null?m[1]:(m[2]!=null?m[2]:m[3]))||"").trim();
       if(inner) segs.push({text:inner, lang:"en-US"});
@@ -212,11 +232,11 @@ function splitForSpeech(text){
     }
     if(last < line.length){
       const after=line.slice(last).trim();
-      if(after) segs.push({text:after, lang: isTurkish(after) ? "tr-TR" : "en-US"});
+      if(after) segs.push({text:after, lang: detectLang(after)});
     }
     if(!segs.length){
       const t=line.trim();
-      if(t) segs.push({text:t, lang: isTurkish(t) ? "tr-TR" : "en-US"});
+      if(t) segs.push({text:t, lang: detectLang(t)});
     }
     return segs;
   }
@@ -241,7 +261,7 @@ function splitForSpeech(text){
       }
     });
   });
-  return chunks.length ? chunks : [{text:clean(raw.replace(/\[\[|\]\]/g," ")), lang: isTurkish(raw) ? "tr-TR" : "en-US"}];
+  return chunks.length ? chunks : [{text:clean(raw.replace(/\[\[|\]\]/g," ")), lang: detectLang(raw)}];
 }
 
 /* ---------------- Avatar ağız animasyonu ---------------- */
@@ -551,7 +571,7 @@ function speakSegments(segments){
   const out=[];
   segments.forEach(function(seg){
     if(!seg) return;
-    var lang = seg.lang ? seg.lang : (isTurkish(seg.text) ? "tr-TR" : "en-US");
+    var lang = seg.lang ? seg.lang : detectLang(seg.text);
     var text = clean(htmlToVisibleText(seg.text||""));
     if(!text) return;
     var el = seg.el || null;

@@ -113,6 +113,11 @@ body{
 (function(){
 "use strict";
 
+/* Bu sayfanın anlatım dili Türkçedir; İngilizce olanlar [[ ]] ile işaretli gelir.
+   Dil kanıtsız kalırsa seslendirme motoru Türkçeye düşsün (yanlışlıkla İngilizce
+   sayılan Türkçe cümleler hem İngilizce sesle okunuyor hem mouth-th kullanıyordu). */
+window.DH_DEFAULT_LANG = "tr-TR";
+
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 const KEYS_LS = "groqApiKeys";
