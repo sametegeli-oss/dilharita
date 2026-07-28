@@ -574,8 +574,14 @@ async function findIdByText(q){
   if(!qn) return null;
   try{
     var ex=await DHSent.examples();
+    /* YALNIZCA TAM EŞİTLİK — orijinal davranış budur.
+       Bir ara "bulamazsa metni içeren ilk cümleyi al" diye yaklaşık eşleşme
+       yedeği eklemiştim. Sessiz ve kötü bir hataya yol açıyor: eşleşme tutmazsa
+       video BAŞKA bir cümlede açılıyor, foto tarafı kendi cümlesinde kalıyor.
+       Üstelik iki mod arasındaki senkron delta tabanlı ve "başlangıçta eşitiz"
+       varsayımına dayanıyor; yanlış başlangıç kalıcı kaymaya dönüşüyor.
+       Eşleşme yoksa doğrusu modül listesini göstermek (çağıran kod öyle yapıyor). */
     for(var i=0;i<ex.length;i++) if(__normEn(ex[i].en)===qn) return String(ex[i].id);
-    for(var j=0;j<ex.length;j++) if(__normEn(ex[j].en).indexOf(qn)>=0) return String(ex[j].id);
   }catch(e){}
   return null;
 }
