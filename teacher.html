@@ -332,9 +332,21 @@ class PhotoTeacherAvatar{
   }
   mount(){
     this.imgs = ["teacherAvaImg","teacherHeroImg"].map(id=>document.getElementById(id)).filter(Boolean);
+    this.teacherName = getSelectedTeacher();
     const dir=teacherDir();
     for(const [k,v] of Object.entries(TEACHER_FRAMES)) this.frames[k]=dir+v;
     this.preload(); this.show(this.frames.idle); this.scheduleBlink(1200);
+  }
+  /* Dile göre avatar: Türkçe anlatım -> teacher1 (Türk), İngilizce cümle -> teacher2.
+     Konuşurken çağrılır; kareler yeni klasöre bağlanır, boştaysa hemen idle'a döner. */
+  setTeacher(name){
+    if(name!=="teacher1" && name!=="teacher2") return;
+    if(this.teacherName===name) return;
+    this.teacherName=name;
+    const dir="./assets/avatars_v3/"+name+"/";
+    for(const [k,v] of Object.entries(TEACHER_FRAMES)) this.frames[k]=dir+v;
+    this.preload();
+    if(!this.speaking) this.show(this.frames.idle);
   }
   preload(){ Object.values(this.frames).forEach(src=>{ const im=new Image(); im.src=src; }); }
   show(src){ this.imgs.forEach(img=>{ img.src=src; }); }
@@ -470,6 +482,8 @@ function speak(text, lang){
        sesin önüne/arkasına kayıyordu. */
     u.__longTTSAvatarSync = true;
     speechSynthesis.cancel();
+    /* Dile göre avatar seç: Türkçe -> teacher1, İngilizce -> teacher2. */
+    if(TeacherAvatar) TeacherAvatar.setTeacher(/^tr/i.test(lang) ? "teacher1" : "teacher2");
     if(TeacherAvatar) TeacherAvatar.speakText(spoken, estimateSpeechDuration(spoken));
     /* onboundary: tarayıcı her kelimede okunan harf konumunu verir; ağzı sesin
        gerçek konumuna hizala (sabit süre tahmini yanılınca kayma birikmesin). */
