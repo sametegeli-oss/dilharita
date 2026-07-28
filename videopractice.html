@@ -666,6 +666,32 @@ async function uiNextCard(ev){
         dinlemiyorsa (modalı açan kod değiştiyse) yine hiçbir şey olmuyordu.
    Çözüm: fonksiyon global, buton olay delegasyonuyla da yakalanıyor, ve
    mesaj sonuç vermezse üst pencere doğrudan foto ekranına götürülüyor. */
+/* Foto ekranına dönerken index-app.html'i YENİDEN YÜKLEMEK yanlış:
+   React uygulamasının derin link desteği yok, her taze yükleme kullanıcıyı
+   modül listesine düşürüyor — çalıştığı modülü kaybediyor.
+   Foto -> video geçişi location.href ile yapıldığı için tarayıcı geçmişinde
+   bir adım geride duruyor; history.back() önceki sayfayı (çoğu tarayıcıda
+   bfcache'ten) TAM KALDIĞI YERDEN açar. Geri gitmek işe yaramazsa
+   yeniden yükleme son çare olarak kalıyor. */
+function dhLeaveVideo(){
+  var ref = "";
+  try{ ref = document.referrer || ""; }catch(e){}
+  var geriGidilebilir = (history.length > 1) && /index-app\.html/i.test(ref);
+  if (geriGidilebilir){
+    var kalkti = false;
+    try{
+      window.addEventListener("pagehide", function(){ kalkti = true; }, { once:true });
+      history.back();
+    }catch(e){}
+    /* Geri gitme bir şey yapmadıysa (geçmiş beklediğimiz gibi değilse) yükle */
+    setTimeout(function(){
+      if (!kalkti) location.href = "./index-app.html";
+    }, 800);
+    return;
+  }
+  location.href = "./index-app.html";
+}
+
 var __dhGoPhotoAt = 0;
 function dhGoPhoto(){
   var now = Date.now();
@@ -678,19 +704,27 @@ function dhGoPhoto(){
       JSON.stringify({ en: s.en, module: s.module, at: Date.now() }));
   }catch(e){}
 
+  /* A) MODAL (iframe) durumu: ebeveyne kapat mesajı gönder. */
   if (window.parent !== window){
     try{ parent.postMessage({ type: "closeVideoModal" }, "*"); }catch(e){}
-    /* Ebeveyn modalı kapatmazsa kendimiz çıkalım. Modal kapanırsa bu iframe
-       zaten yok olacağı için aşağıdaki zamanlayıcı hiç çalışmaz. */
     setTimeout(function(){
-      try{
-        if (window.top && window.top !== window) window.top.location.href = "./index-app.html";
-        else location.href = "./index-app.html";
-      }catch(e){ location.href = "./index-app.html"; }
-    }, 700);
-  } else {
-    location.href = "./index-app.html";
+      /* Modal kapandıysa bu iframe DOM'dan çıkmıştır — sakın yönlendirme yapma,
+         yoksa foto uygulaması baştan yüklenir ve modül listesine düşer. */
+      var fe = null;
+      try{ fe = window.frameElement; }catch(e){}
+      if (fe && !fe.isConnected) return;
+      try{ parent.postMessage({ type: "closeVideoModal" }, "*"); }catch(e){}
+      setTimeout(function(){
+        var f2 = null;
+        try{ f2 = window.frameElement; }catch(e){}
+        if (f2 && !f2.isConnected) return;
+        dhLeaveVideo();
+      }, 500);
+    }, 600);
+    return;
   }
+  /* B) TAM SAYFA durumu (foto ekranından location.href ile gelindiyse). */
+  dhLeaveVideo();
 }
 /* Buton renderVideoCard dışında da (yeniden çizim, farklı ekran) çalışsın */
 document.addEventListener("click", function(e){
