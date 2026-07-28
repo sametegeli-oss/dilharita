@@ -1551,11 +1551,40 @@ function hocaTalkAlign(charIndex){
     let totalSamples = Math.max(finalTtsData.length, finalUserData.length);
     let currentSample = 0;
 
+    /* KIRMIZI ÇUBUK ARTIK GERÇEK ZAMANA BAĞLI.
+       Eskiden çubuk 40 ms'lik bir SAYAÇLA ilerliyordu ve toplam örnek sayısı
+       KAYDEDİLMİŞ veriden geliyordu. Hoca ise canlı seslendirmeyle okuyor;
+       süresi kayıtla hiç ilgili değil. Uzun cümlelerde sayaç bitip çubuk sona
+       varıyor, konuşma devam ediyordu.
+       Şimdi: geçen gerçek süre ölçülüyor, hocanın onboundary olayıyla toplam
+       süre kalibre ediliyor, ve oynatma gerçekten bitmeden çubuk %98'i geçmiyor. */
+    let t0 = 0, beklenenSure = Math.max(0.4, totalSamples * 0.04), bittiSayisi = 0;
+    const parcaSayisi = (tAudio ? 2 : 2);          // hoca + kullanıcı
+
+    if (tUtter){
+      tUtter.onboundary = (ev) => {
+        try{
+          if (ev && ev.name && ev.name !== "word") return;
+          const ci = (typeof ev.charIndex === "number") ? ev.charIndex : 0;
+          const oran = ci / Math.max(1, TARGET_TEXT.length);
+          if (oran > 0.15 && t0){
+            const gecen = (performance.now() - t0) / 1000;
+            beklenenSure = Math.max(beklenenSure, gecen / oran);   // kendini ayarla
+          }
+        }catch(e){}
+      };
+    }
+
     const startSync = () => {
       if (samplingIntervalId) clearInterval(samplingIntervalId);
+      t0 = performance.now();
       samplingIntervalId = setInterval(() => {
-        if (currentSample >= totalSamples) { clearInterval(samplingIntervalId); return; }
-        playheadProgress = (currentSample / totalSamples) * 100;
+        const gecen = (performance.now() - t0) / 1000;
+        /* Örnek indeksi gerçek zamandan türüyor; veri bitse de son karede bekler */
+        currentSample = Math.min(totalSamples - 1, Math.max(0, Math.floor(gecen / 0.04)));
+        const oran = Math.min(1, gecen / beklenenSure);
+        /* Oynatma bitmeden çubuk sona dayanmasın */
+        playheadProgress = Math.min(98, oran * 100);
         drawStudioGraphs();
         
         let volHoca = finalTtsData[currentSample] || 0;
@@ -1579,12 +1608,12 @@ function hocaTalkAlign(charIndex){
           avatarBoxUser.className = "avatar-box";
         }
 
-        currentSample++;
       }, 40);
     };
 
     const endDuet = () => {
       clearInterval(samplingIntervalId);
+      playheadProgress = 100; drawStudioGraphs();   // gerçek bitişte sona gelsin
       try { window.speechSynthesis.cancel(); uAudio.pause(); if(tAudio) tAudio.pause(); } catch(e){}
       avatarBoxHoca.className = "avatar-box"; avatarBoxUser.className = "avatar-box";
       mouthHoca.className = "mouth rest"; mouthUser.className = "mouth rest";
@@ -1592,9 +1621,17 @@ function hocaTalkAlign(charIndex){
       statusField.textContent = "Düet bitti.";
     };
 
-    uAudio.onended = endDuet;
-    if (tUtter) tUtter.onend = endDuet;
-    if (tAudio) tAudio.onended = endDuet;
+    /* Eskiden HANGİSİ ÖNCE biterse düet kapanıyordu: kısa parça bitince
+       hocanın konuşması kesiliyor ya da çubuk erken sonlanıyordu.
+       Artık ikisi de bitince kapanıyor; takılırsa güvenlik zamanlayıcısı var. */
+    const parcaBitti = () => {
+      bittiSayisi++;
+      if (bittiSayisi >= parcaSayisi) endDuet();
+    };
+    uAudio.onended = parcaBitti;
+    uAudio.onerror  = parcaBitti;
+    if (tUtter){ tUtter.onend = parcaBitti; tUtter.onerror = parcaBitti; }
+    if (tAudio){ tAudio.onended = parcaBitti; tAudio.onerror = parcaBitti; }
 
     let tStart = (cachedTtsBounds && typeof cachedTtsBounds.start === 'number') ? cachedTtsBounds.start * 0.04 : 0;
     let uStart = (cachedUserBounds && typeof cachedUserBounds.start === 'number') ? cachedUserBounds.start * 0.04 : 0;
@@ -1618,14 +1655,24 @@ function hocaTalkAlign(charIndex){
     audio.onplay = () => {
       avatarBoxUser.className = "avatar-box speaking";
       if (samplingIntervalId) clearInterval(samplingIntervalId);
+      /* Burada çalınan ses kullanıcının KENDİ kaydı, yani sesin kendi zamanı
+         en kesin ölçüm. Eskiden 40 ms'lik sayaç kullanılıyordu; sayaç ile
+         gerçek ses arasındaki kayma çubuğu erken ya da geç bitiriyordu. */
       samplingIntervalId = setInterval(() => {
-        if (cur >= total) { clearInterval(samplingIntervalId); return; }
-        playheadProgress = (cur / total) * 100;
+        let oran;
+        if (isFinite(audio.duration) && audio.duration > 0){
+          oran = audio.currentTime / audio.duration;
+        } else {
+          oran = total ? (cur / total) : 0;          // süre henüz bilinmiyorsa
+          cur++;
+        }
+        oran = Math.min(1, Math.max(0, oran));
+        playheadProgress = oran * 100;
         drawStudioGraphs();
-        let vol = finalUserData[cur] || 0;
-        let spec = finalUserSpectrums[cur] || new Uint8Array(32);
+        let idx = Math.min(total - 1, Math.max(0, Math.floor(oran * total)));
+        let vol = finalUserData[idx] || 0;
+        let spec = finalUserSpectrums[idx] || new Uint8Array(32);
         updateSingleAvatarViseme(mouthUser, spec, vol);
-        cur++;
       }, 40);
     };
     audio.onended = () => { clearInterval(samplingIntervalId); avatarBoxUser.className = "avatar-box"; mouthUser.className = "mouth rest"; playheadProgress = -1; drawStudioGraphs(); };
