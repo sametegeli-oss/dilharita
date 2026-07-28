@@ -316,53 +316,89 @@ const DEFAULT_PROMPT = `Sen, Türk öğrencilere İngilizce öğreten, çok dene
 const PROMPT_LS = "dh_ai_prompt_teacher";
 function getPrompt(){ try{ return localStorage.getItem(PROMPT_LS) || DEFAULT_PROMPT; }catch{ return DEFAULT_PROMPT; } }
 
-const FRAME_FILES = {
+/* EN avatari (teacher2): eski webp seti (degismedi). */
+const EN_FRAMES = {
   idle:"idle.webp", blink:"blink.webp", listen:"listen.webp",
   a:"mouth-a.webp", e:"mouth-e.webp", i:"mouth-i.webp",
   o:"mouth-o.webp", u:"mouth-u.webp", mbp:"mouth-mbp.webp",
   fv:"mouth-fv.webp", l:"mouth-l.webp", th:"mouth-th.webp"
 };
-/* Iki sabit avatar: teacher1 Turkce konusur, teacher2 Ingilizce konusur. */
+/* TR avatari (teacher1): kullanicinin verdigi ince kareli Turkce set (mouth_NN.png).
+   Set kendi rest'i (mouth_00) ve blink'i (mouth_23) ile gelir; TR avatari tumuyle bu sete gecer. */
+const TR_FRAMES = {
+  idle:"mouth_00.png", listen:"mouth_00.png", blink:"mouth_23.png",
+  a:"mouth_01.png", e:"mouth_02.png", ii:"mouth_03.png", i:"mouth_04.png",
+  o:"mouth_05.png", oo:"mouth_06.png", u:"mouth_07.png", uu:"mouth_08.png",
+  fv:"mouth_09.png", mbp:"mouth_10.png", l:"mouth_11.png", r:"mouth_12.png",
+  n:"mouth_13.png", kg:"mouth_14.png", ch:"mouth_15.png", y:"mouth_16.png",
+  h:"mouth_17.png", th:"mouth_18.png", open:"mouth_19.png", medium:"mouth_20.png",
+  small:"mouth_21.png", narrow:"mouth_22.png"
+};
 const TR_DIR = "./assets/avatars_v3/teacher1/";
 const EN_DIR = "./assets/avatars_v3/teacher2/";
 
-/* ses-esleme.html'de secilen Turkce harf->agiz karesi eslemesi (yalniz TR avatari). */
-let _trViseme=null;
-function trVisemeMap(){
-  if(_trViseme) return _trViseme;
-  try{ _trViseme = JSON.parse(localStorage.getItem("dh-viseme-tr-v1")||"null") || {}; }
-  catch(e){ _trViseme = {}; }
-  return _trViseme;
+/* --- Viseme haritalari: F = tam yol sozlugu (this.frames) --- */
+/* TURKCE: harf ~ ses. Ekrandaki etiketli sete gore ince eslesme.
+   Etiketsiz harfler icin secim: s,z -> narrow ; t,d -> small (deger degistirebilir). */
+function trViseme(F, ch, next){
+  ch=(ch||"").toLocaleLowerCase("tr-TR");
+  switch(ch){
+    case "a": case "â": return F.a;
+    case "e":           return F.e;
+    case "ı":           return F.ii;
+    case "i": case "î": return F.i;
+    case "o":           return F.o;
+    case "ö":           return F.oo;
+    case "u": case "û": return F.u;
+    case "ü":           return F.uu;
+    case "f": case "v": return F.fv;
+    case "m": case "b": case "p": return F.mbp;
+    case "l":           return F.l;
+    case "r":           return F.r;
+    case "n":           return F.n;
+    case "k": case "g": case "ğ": return F.kg;
+    case "c": case "ç": case "ş": case "j": return F.ch;
+    case "s": case "z": return F.narrow;
+    case "t": case "d": return F.small;
+    case "y":           return F.y;
+    case "h":           return F.h;
+    case "w":           return F.u;
+    case "x": case "q": return F.kg;
+  }
+  if(/[.,!?;:\s]/.test(ch)) return F.idle;
+  return F.small;
 }
-try{
-  window.addEventListener("dh-viseme-tr-changed", function(){ _trViseme=null; });
-  window.addEventListener("storage", function(e){ if(!e || e.key==="dh-viseme-tr-v1") _trViseme=null; });
-}catch(e){}
+/* INGILIZCE (teacher2): eski davranis birebir korunur. */
+function enViseme(F, ch, next){
+  ch=(ch||"").toLowerCase(); next=(next||"").toLowerCase();
+  if(ch==="t" && next==="h") return F.th;
+  if(/[oö0]/.test(ch)) return F.o;
+  if(/[uüwq]/.test(ch)) return F.u;
+  if(/[a]/.test(ch)) return F.a;
+  if(/[e]/.test(ch)) return F.e;
+  if(/[iıy]/.test(ch)) return F.i;
+  if(/[mnbp]/.test(ch)) return F.mbp;
+  if(/[fv]/.test(ch)) return F.fv;
+  if(/[l]/.test(ch)) return F.l;
+  if(/[.,!?;:\s]/.test(ch)) return F.idle;
+  return F.i;
+}
 
 let TeacherAvatar = null;
 
-/* Tek bir dili suren yuz (TR ve EN icin ayri kurulur). Bu sayfanin KENDI agiz
-   motoru; img'lere data-dh-selfdrive="1" konur, boylece tts-avatar-long-sync-fix.js
-   bu kareleri ezmez (Turkcede mouth-th kaymasi olmaz). */
+/* Tek bir dili suren yuz. Kareler data-dh-selfdrive="1"; global tts motoru dokunmaz. */
 class AvatarFace{
-  constructor(imgIds, dir, isTr){
+  constructor(imgIds, dir, frameMap, visemeFn, digraphTh){
     this.imgs = imgIds.map(id=>document.getElementById(id)).filter(Boolean);
-    this.dir = dir; this.isTr = !!isTr; this.frames = {};
-    for(const [k,v] of Object.entries(FRAME_FILES)) this.frames[k]=dir+v;
+    this.dir = dir; this.frames = {}; this.viseme = visemeFn; this.digraphTh = !!digraphTh;
+    for(const [k,v] of Object.entries(frameMap)) this.frames[k]=dir+v;
     this.blinkTimer=null; this.talkTimer=null; this.endTimer=null;
     this.seq=[]; this.idx=0; this.speaking=false;
     this.imgs.forEach(im=>{ try{ im.dataset.dhSelfdrive="1"; }catch(e){} });
     this.preload(); this.show(this.frames.idle); this.scheduleBlink(1200);
   }
   preload(){ Object.values(this.frames).forEach(src=>{ const im=new Image(); im.src=src; }); }
-  show(src){
-    if(this.isTr && /mouth-th\.webp/i.test(String(src||""))){
-      const um=trVisemeMap();
-      const secildi=Object.keys(um).some(k=>um[k]==="mouth-th");
-      if(!secildi) src=String(src).replace(/mouth-th\.webp/i,"mouth-i.webp");
-    }
-    this.imgs.forEach(img=>{ img.src=src; });
-  }
+  show(src){ this.imgs.forEach(img=>{ img.src=src; }); }
   scheduleBlink(delay){
     clearTimeout(this.blinkTimer);
     this.blinkTimer=setTimeout(()=>this.blink(), delay || (2400 + Math.random()*2200));
@@ -372,40 +408,19 @@ class AvatarFace{
     this.show(this.frames.blink);
     setTimeout(()=>{ if(!this.speaking) this.show(this.frames.idle); this.scheduleBlink(); }, 330);
   }
-  frameForChar(ch,next){
-    const isTr=this.isTr;
-    ch=(ch||"").toLocaleLowerCase(isTr?"tr-TR":"en-US"); next=(next||"").toLowerCase();
-    if(isTr){
-      const um=trVisemeMap(), f=um[ch];
-      if(f) return this.dir+f+".webp";
-    }
-    if(ch==="t" && next==="h") return isTr ? this.frames.i : this.frames.th;
-    if(isTr && /[tdszscj]/.test(ch)) return this.frames.i;
-    if(isTr && /[şç]/.test(ch)) return this.frames.i;
-    if(/[oö0]/.test(ch)) return this.frames.o;
-    if(/[uüwq]/.test(ch)) return this.frames.u;
-    if(/[a]/.test(ch)) return this.frames.a;
-    if(/[e]/.test(ch)) return this.frames.e;
-    if(/[iıy]/.test(ch)) return this.frames.i;
-    if(/[mnbp]/.test(ch)) return this.frames.mbp;
-    if(/[fv]/.test(ch)) return this.frames.fv;
-    if(/[l]/.test(ch)) return this.frames.l;
-    if(/[.,!?;:\s]/.test(ch)) return this.frames.idle;
-    return this.frames.i;
-  }
   buildSeq(text){
-    const s=String(text||""); const seq=[]; const isTr=this.isTr;
+    const s=String(text||""); const seq=[];
     for(let i=0;i<s.length;i++){
       const ch=s[i], next=s[i+1]||"";
-      seq.push(this.frameForChar(ch,next));
-      if(!isTr && ch.toLowerCase()==="t" && next.toLowerCase()==="h") i++;
+      seq.push(this.viseme(this.frames, ch, next));
+      if(this.digraphTh && ch.toLowerCase()==="t" && next.toLowerCase()==="h") i++;
     }
     return seq.filter(Boolean);
   }
   speak(text,duration){
     clearInterval(this.talkTimer); clearTimeout(this.endTimer);
     this.speaking=true; this.seq=this.buildSeq(text);
-    if(!this.seq.length) this.seq=[this.frames.i,this.frames.e,this.frames.a,this.frames.o,this.frames.u,this.frames.mbp,this.frames.idle];
+    if(!this.seq.length) this.seq=[this.frames.idle];
     this.idx=0;
     this.talkTimer=setInterval(()=>{ this.show(this.seq[this.idx % this.seq.length]); this.idx++; },105);
     this.endTimer=setTimeout(()=>this.stop(), Math.max(900,duration||1800));
@@ -423,12 +438,11 @@ class AvatarFace{
   }
 }
 
-/* Iki yuzu yoneten cephe: dile gore dogru avatari oynatir, digerini dinlendirir. */
+/* Iki yuzu yoneten cephe: dile gore dogru avatari oynatir, digerini dinlendirir+gizler. */
 class DualTeacherAvatar{
   constructor(){
-    this.tr = new AvatarFace(["teacherAvaImg","teacherHeroImgTr"], TR_DIR, true);
-    this.en = new AvatarFace(["teacherHeroImgEn"], EN_DIR, false);
-    /* Konusmayan dilin hero avatari gizlenir: TR konusurken teacher2, EN konusurken teacher1. */
+    this.tr = new AvatarFace(["teacherAvaImg","teacherHeroImgTr"], TR_DIR, TR_FRAMES, trViseme, false);
+    this.en = new AvatarFace(["teacherHeroImgEn"], EN_DIR, EN_FRAMES, enViseme, true);
     var trImg=document.getElementById("teacherHeroImgTr"), enImg=document.getElementById("teacherHeroImgEn");
     this.trFig = trImg ? (trImg.closest("figure")||trImg) : null;
     this.enFig = enImg ? (enImg.closest("figure")||enImg) : null;
