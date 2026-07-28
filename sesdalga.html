@@ -572,7 +572,7 @@
       if (isWord) {
         const clean = token.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
         const span = document.createElement("span");
-        span.className = "clickable-word";
+        span.className = "clickable-word no-wordpop";
         span.textContent = token;
         span.setAttribute("data-word-id", idCounter);
         
@@ -592,7 +592,7 @@
         const capturedId = idCounter;
         span.onclick = function(e) {
           e.stopPropagation();
-          onWordSelected(capturedId);
+          onWordSelected(capturedId, { fromClick: true });
         };
 
         targetElement.appendChild(span);
@@ -726,7 +726,36 @@
     return userAudioBuffer;
   }
 
-  function onWordSelected(wordId) {
+  function speakWordText(text) {
+    var word = String(text || "").replace(/[^A-Za-z0-9'\- ]/g, "").trim();
+    if (!word) return;
+    try { window.speechSynthesis.cancel(); } catch(e){}
+    try {
+      const u = new SpeechSynthesisUtterance(word);
+      dhApplyVoice(u);
+      if (!u.voice) u.lang = "en-US";
+      u.rate = 0.85;
+      window.speechSynthesis.speak(u);
+    } catch(e){}
+  }
+
+  /* Popup açılışı word-popup.js icinde close() cagirir, o da speechSynthesis.cancel()
+     yapar. Bu yuzden once popup acilir, DOM'da gorundukten sonra seslendirilir. */
+  function openWordPopup(clean, raw) {
+    if (!clean) return;
+    if (!(window.DHWordPop && window.DHWordPop.lookup)) { speakWordText(raw); return; }
+    window.DHWordPop.lookup(clean);
+    const t0 = Date.now();
+    const iv = setInterval(function() {
+      if (document.querySelector(".dh-wp-ov") || Date.now() - t0 > 2000) {
+        clearInterval(iv);
+        speakWordText(raw);
+      }
+    }, 50);
+  }
+
+  function onWordSelected(wordId, opts) {
+    opts = opts || {};
     selectedWordIndex = wordId;
     wordsArray.forEach(w => w.dom.classList.remove("selected-word"));
     
@@ -734,7 +763,9 @@
     if (!targetWord) return;
     
     targetWord.dom.classList.add("selected-word");
-    
+
+    if (opts.fromClick) openWordPopup(targetWord.clean, targetWord.raw);
+
     const bounds = wordTimestamps[wordId];
     if (!bounds) return;
 
@@ -754,7 +785,7 @@
     document.getElementById("startVal").textContent = `${bounds.start.toFixed(2)}s`;
     document.getElementById("endVal").textContent = `${bounds.end.toFixed(2)}s`;
 
-    playRealWordSegment(bounds.start, bounds.end);
+    if (!opts.fromClick) playRealWordSegment(bounds.start, bounds.end);
   }
 
   function segStatus(msg) {
@@ -1987,6 +2018,8 @@ function hocaTalkAlign(charIndex){
   });
 </script>
 
+<script src="./ai-providers.js?v=2"></script>
+<script src="./word-popup.js?v=2"></script>
 <script src="./viseme-lang.js?v=1"></script>
   <script src="./coach-bubble.js" defer></script>
 <script src="./ux-boost.js?v=1"></script>
