@@ -428,13 +428,21 @@ class DualTeacherAvatar{
   constructor(){
     this.tr = new AvatarFace(["teacherAvaImg","teacherHeroImgTr"], TR_DIR, true);
     this.en = new AvatarFace(["teacherHeroImgEn"], EN_DIR, false);
+    /* Konusmayan dilin hero avatari gizlenir: TR konusurken teacher2, EN konusurken teacher1. */
+    var trImg=document.getElementById("teacherHeroImgTr"), enImg=document.getElementById("teacherHeroImgEn");
+    this.trFig = trImg ? (trImg.closest("figure")||trImg) : null;
+    this.enFig = enImg ? (enImg.closest("figure")||enImg) : null;
   }
+  vis(el,on){ if(el) el.style.display = on ? "" : "none"; }
+  showOnly(isTr){ this.vis(this.trFig, !!isTr); this.vis(this.enFig, !isTr); }
+  showBoth(){ this.vis(this.trFig, true); this.vis(this.enFig, true); }
   speakText(text,duration,isTr){
     const active = isTr ? this.tr : this.en;
     const other  = isTr ? this.en : this.tr;
     other.rest(); active.speak(text,duration);
+    this.showOnly(!!isTr);
   }
-  stop(){ this.tr.stop(); this.en.stop(); }
+  stop(){ this.tr.stop(); this.en.stop(); this.showBoth(); }
 }
 function mountTeacherAvatar(){ TeacherAvatar = new DualTeacherAvatar(); }
 function estimateSpeechDuration(text){ return Math.max(900, Math.min(18000, Array.from(String(text||"")).length * 92)); }
