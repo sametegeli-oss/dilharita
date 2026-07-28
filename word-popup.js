@@ -936,18 +936,46 @@
     exportLearnedWords: exportLearnedWords,                       // öğrenilenleri toplu JSON indir
     learnedCount: function(){ return IDB.all().then(function(l){ return (l||[]).length; }); }
   };
-  if(document.readyState!=="loading") document.addEventListener("click", function(e){
+  /* GLOBAL KELİME TIKLAMASI.
+     Buradaki koşul eskiden şöyleydi:
+         if(document.readyState!=="loading") document.addEventListener(...)
+     ve else dalı YOKTU. Bu dosya sayfalarda </body> hemen üstünde yükleniyor;
+     klasik bir <script> etiketi belge ayrıştırılırken çalıştığı için o anda
+     readyState "loading" oluyor. Sonuç: dinleyici hiçbir sayfada bağlanmıyordu
+     ve kelimeye tıklayınca hiçbir şey olmuyordu.
+     Artık koşulsuz bağlanıyor; belge hâlâ yükleniyorsa DOMContentLoaded beklenir. */
+  function onDocClick(e){
     if(!enabled || popEl) return;
     var t=e.target; if(!t) return;
     if(t.closest && t.closest("input,textarea,button,a,select,.no-wordpop")) return;
     var sel=(global.getSelection && global.getSelection().toString())||"";
     if(sel && sel.length>2) return;
-    var range=document.caretRangeFromPoint?document.caretRangeFromPoint(e.clientX,e.clientY):null;
-    if(!range || !range.startContainer || range.startContainer.nodeType!==3) return;
-    var text=range.startContainer.textContent||"", off=range.startOffset, s=off, en=off;
+    /* Tıklanan noktadaki metin düğümünü bul.
+       caretRangeFromPoint Chrome/Safari'de var; Firefox caretPositionFromPoint
+       kullanıyor. Eskiden yalnız ilki deneniyordu, Firefox'ta hiç çalışmıyordu. */
+    var dugum=null, off=0;
+    if(document.caretRangeFromPoint){
+      var range=document.caretRangeFromPoint(e.clientX,e.clientY);
+      if(range){ dugum=range.startContainer; off=range.startOffset; }
+    } else if(document.caretPositionFromPoint){
+      var pos=document.caretPositionFromPoint(e.clientX,e.clientY);
+      if(pos){ dugum=pos.offsetNode; off=pos.offset; }
+    }
+    if(!dugum || dugum.nodeType!==3) return;
+    var text=dugum.textContent||"", s=off, en=off;
     while(s>0 && /[a-zA-Z'-]/.test(text[s-1])) s--;
     while(en<text.length && /[a-zA-Z'-]/.test(text[en])) en++;
     var word=cleanWord(text.slice(s,en));
-    if(word && word.length>=2) loadDict().then(function(){ var entry=findEntry(word); if(entry) open(entry); else defineWithAI(word); });
-  }, true);
+    if(word && word.length>=2) loadDict().then(function(){ var entry=findEntry(word); if(entry) open(entry); else defineWithAI(word); });  }
+
+  function baglaTiklama(){
+    if(global.__dhWpBound) return;
+    global.__dhWpBound = true;
+    document.addEventListener("click", onDocClick, true);
+  }
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", baglaTiklama, { once:true });
+  } else {
+    baglaTiklama();
+  }
 })(window);
