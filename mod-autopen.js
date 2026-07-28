@@ -62,14 +62,67 @@
     if(b && !b.disabled){ b.click(); return true; }
     return false;
   }
+  /* Modülün cümle listesini getirir (sırayla). Modül adı -> index -> parça. */
+  function moduleList(modName){
+    return fetch("data/sentences/index.json")
+      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(ix){
+        var m=null, arr=(ix&&ix.modules)||[];
+        for(var i=0;i<arr.length;i++) if(arr[i].mod===modName){ m=arr[i]; break; }
+        if(!m) return null;
+        return fetch("data/sentences/mod/"+m.f+".json")
+          .then(function(r){ if(!r.ok) throw 0; return r.json(); });
+      })
+      .catch(function(){ return null; });
+  }
+
+  /* SIRA GÜDÜMLÜ YÜRÜYÜŞ.
+     Eski sürüm metni bulmak için KÖR dolaşıyordu: 30 kez ileri, sonra 65 kez
+     geri. Metin herhangi bir sebeple tutmazsa (React kartı cümleyi renkli
+     parçalara böldüğü için textContent farklı gelebiliyor) uygulama rastgele
+     bir cümlede kalıyordu — foto ve video ayrı cümleleri gösteriyordu.
+     Veride modül adı ve sıra zaten var. Artık modülün listesi okunuyor,
+     mevcut kartın ve hedefin SIRA NUMARASI bulunuyor, hedefe doğru TEK YÖNDE
+     gidiliyor ve varınca duruluyor. Liste okunamazsa eski davranışa düşülür. */
   function walkToSentence(sentence){
+    moduleList(target).then(function(list){
+      if(!list || !list.length){ walkBlind(sentence); return; }
+      var want=-1, wn=normS(sentence);
+      for(var i=0;i<list.length;i++) if(normS(list[i].en)===wn){ want=i; break; }
+      if(want<0) return;                       // hedef bu modülde yok: dokunma
+
+      var t1=Date.now(), miss=0, sonYon=0, ayniKonum=0, oncekiKonum=-1;
+      var wv=setInterval(function(){
+        if(Date.now()-t1>30000){ clearInterval(wv); return; }
+        var en=cardEn();
+        if(!en) return;                        // kart henüz yüklenmedi
+        var cur=-1, cn=normS(en);
+        for(var j=0;j<list.length;j++) if(normS(list[j].en)===cn){ cur=j; break; }
+        if(cur<0){                             // kart bu modülden değil
+          if(++miss>12) clearInterval(wv);      // zorla dolaşmıyoruz
+          return;
+        }
+        if(cur===want){ clearInterval(wv); return; }   // 🎯 vardık
+        /* ilerleme yoksa (buton devre dışı vb.) ısrar etme */
+        if(cur===oncekiKonum){ if(++ayniKonum>4){ clearInterval(wv); return; } }
+        else { ayniKonum=0; oncekiKonum=cur; }
+        var yon = cur<want ? 1 : -1;
+        if(sonYon && yon!==sonYon){ clearInterval(wv); return; }  // salınım koruması
+        sonYon=yon;
+        if(!navClick(yon)) clearInterval(wv);
+      }, 300);
+    });
+  }
+
+  /* Eski kör yürüyüş — yalnızca modül listesi okunamazsa yedek olarak. */
+  function walkBlind(sentence){
     var want=normS(sentence), t1=Date.now();
-    var phase=0, steps=0;            // phase 0: kart bekleniyor · 1: ileri · 2: geri
+    var phase=0, steps=0;
     var wv=setInterval(function(){
       if(Date.now()-t1>30000){ clearInterval(wv); return; }
       var en=cardEn();
-      if(!en) return;                          // kart görünümü henüz yüklenmedi
-      if(normS(en)===want){ clearInterval(wv); return; }   // 🎯 bulundu
+      if(!en) return;
+      if(normS(en)===want){ clearInterval(wv); return; }
       if(phase===0){ phase=1; steps=0; }
       if(phase===1){
         if(steps++>=30 || !navClick(1)){ phase=2; steps=0; }
