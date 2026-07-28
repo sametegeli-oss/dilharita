@@ -130,6 +130,70 @@ function getKeysFor(store){ try{ return (JSON.parse(localStorage.getItem(store)|
 function saveKeyFor(store,k){ const ks=getKeysFor(store); if(!ks.includes(k)) ks.push(k); try{ localStorage.setItem(store, JSON.stringify(ks)); }catch{} }
 function removeKeyFor(store,k){ const ks=getKeysFor(store).filter(x=>x!==k); try{ localStorage.setItem(store, JSON.stringify(ks)); }catch{} }
 
+/* OKUMA SESLERİ: Türkçe anlatım ve İngilizce cümle için ayrı ses seçimi.
+   Tercih zaten var olan "dh-tts-voice-v1" (DH_TTS) deposuna yazılır; yeni anahtar açılmadı. */
+function openVoiceSheet(){
+  if(document.querySelector(".sheet-overlay.dh-voicesheet")) return;
+  const sheet = document.createElement("div");
+  sheet.className = "sheet-overlay dh-voicesheet";
+  sheet.innerHTML = `
+    <div class="sheet">
+      <h3>Okuma sesleri</h3>
+      <p>Türkçe anlatım ile İngilizce cümle farklı seslerle okunabilir. Seçim yalnızca bu cihazda saklanır; telefon ve bilgisayarın ses listeleri farklıdır.</p>
+      <label class="note" style="display:block;font-weight:800">🇹🇷 Türkçe anlatım sesi</label>
+      <div class="row2" style="margin-bottom:10px">
+        <select id="vsTr" style="flex:1;min-width:0;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font:600 13px Nunito,sans-serif"></select>
+        <button class="btn" id="vsTrTest" style="flex:0 0 auto;padding:11px 14px">▶</button>
+      </div>
+      <label class="note" style="display:block;font-weight:800">🇬🇧 İngilizce cümle sesi</label>
+      <div class="row2" style="margin-bottom:10px">
+        <select id="vsEn" style="flex:1;min-width:0;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px;font:600 13px Nunito,sans-serif"></select>
+        <button class="btn" id="vsEnTest" style="flex:0 0 auto;padding:11px 14px">▶</button>
+      </div>
+      <div class="note" id="vsNote"></div>
+      <div class="row2"><button class="btn btn-primary" id="vsClose">Tamam</button></div>
+    </div>`;
+  document.body.appendChild(sheet);
+  const q = id => sheet.querySelector("#"+id);
+
+  function listFor(lang){
+    refreshVoices();
+    const all = _voiceCache || [];
+    const re = /^tr/i.test(lang) ? /^tr/i : /^en/i;
+    const hit = all.filter(v => re.test(v.lang||""));
+    return hit.length ? hit : all;      /* o dilde ses yoksa tümünü göster */
+  }
+  function fill(selId, lang, cfgKey){
+    const el = q(selId), cur = ttsCfg()[cfgKey] || "";
+    const list = listFor(lang);
+    el.innerHTML = '<option value="">— Sistem varsayılanı —</option>'
+      + list.map(v => `<option value="${esc(v.voiceURI||v.name)}">${esc(v.name)} (${esc(v.lang||"")})</option>`).join("");
+    el.value = list.some(v => (v.voiceURI||v.name)===cur) ? cur : "";
+    el.onchange = function(){
+      const patch = {}; patch[cfgKey] = this.value;
+      if(window.DH_TTS && DH_TTS.set) DH_TTS.set(patch);
+      else { const c = ttsCfg(); c[cfgKey] = this.value; try{ localStorage.setItem("dh-tts-voice-v1", JSON.stringify(c)); }catch(e){} }
+      q("vsNote").textContent = "Kaydedildi.";
+      q("vsNote").className = "note ok";
+    };
+  }
+  function paint(){ fill("vsTr","tr-TR","trVoice"); fill("vsEn","en-US","enVoice"); }
+  paint();
+  /* onvoiceschanged'i EZME: sayfanin kendi refreshVoices baglantisi orada duruyor. */
+  const onVoices = function(){ refreshVoices(); paint(); };
+  try{ speechSynthesis.addEventListener("voiceschanged", onVoices); }catch(e){}
+  if(!(_voiceCache||[]).length) q("vsNote").textContent = "Ses listesi yükleniyor… (mobilde birkaç saniye sürebilir)";
+
+  q("vsTrTest").onclick = () => speak(State.tr || "Bu cümlenin Türkçe anlatımı böyle okunur.", "tr-TR");
+  q("vsEnTest").onclick = () => speak(State.en || "This is how the English sentence is read.", "en-US");
+  const close = () => {
+    try{ speechSynthesis.removeEventListener("voiceschanged", onVoices); }catch(e){}
+    sheet.remove(); try{ speechSynthesis.cancel(); }catch(e){}
+  };
+  q("vsClose").onclick = close;
+  sheet.onclick = e => { if(e.target===sheet) close(); };
+}
+
 /* API ANAHTAR PANELİ.
    Bu fonksiyon 🔑 düğmesinden, anahtarsız açılıştan ve hata dalından çağrılıyordu
    ama HİÇBİR YERDE TANIMLI DEĞİLDİ → düğmeye basınca ReferenceError, panel açılmıyordu.
@@ -329,7 +393,26 @@ function estimateSpeechDuration(text){ return Math.max(900, Math.min(18000, Arra
 let _voiceCache=[];
 function refreshVoices(){ try{ _voiceCache = speechSynthesis.getVoices ? speechSynthesis.getVoices() : []; }catch{ _voiceCache=[]; } }
 try{ refreshVoices(); speechSynthesis.onvoiceschanged = refreshVoices; }catch{}
+function ttsCfg(){
+  try{
+    if(window.DH_TTS && DH_TTS.get) return DH_TTS.get();
+    return JSON.parse(localStorage.getItem("dh-tts-voice-v1")||"null") || {};
+  }catch(e){ return {}; }
+}
+/* Bu sayfada seçilen ses, DH_TTS.pickVoice'tan ÖNCE gelir: pickVoice İngilizce için
+   önce "dh-voice:__global__" (ses-secim.html) ayarına bakıyor, o yüzden buradan
+   seçilen İngilizce ses aksi halde yok sayılırdı. */
+function savedVoiceFor(lang){
+  try{
+    const c = ttsCfg();
+    const want = /^tr/i.test(lang||"") ? c.trVoice : c.enVoice;
+    if(!want) return null;
+    refreshVoices();
+    return (_voiceCache||[]).find(v => v.voiceURI===want || v.name===want) || null;
+  }catch(e){ return null; }
+}
 function pickVoiceForLang(lang){
+  const own = savedVoiceFor(lang); if(own) return own;
   if(window.DH_TTS && DH_TTS.pickVoice){ var v=DH_TTS.pickVoice(lang); if(v) return v; }
   refreshVoices(); const voices = _voiceCache || [];
   const wantTr = /^tr/i.test(lang || "");
@@ -723,6 +806,7 @@ function render(){
     <a href="./index.html" class="back" id="teacherBack" title="Geri">←</a>
     <div class="ava" title="Fotoğraflı öğretmen"><img id="teacherAvaImg" alt="Öğretmen avatarı"></div>
     <div class="tinfo"><h1>İngilizce Öğretmeni</h1><p>Türkçe anlatımlı İngilizce öğretmeni</p></div>
+    <button class="keybtn" id="teacherVoiceBtn" title="Okuma sesleri" style="margin-right:6px">🔊</button>
     <button class="keybtn" id="teacherPromptBtn" title="AI Prompt ayarı" style="margin-right:6px">⚙️</button>
     <button class="keybtn" id="teacherKeyBtn" title="API anahtarları">🔑</button>
   </div>
@@ -739,6 +823,8 @@ function render(){
   
   var keyBtn = document.getElementById("teacherKeyBtn");
   if (keyBtn) keyBtn.onclick = () => openKeySheet();
+  var voiceBtn = document.getElementById("teacherVoiceBtn");
+  if (voiceBtn) voiceBtn.onclick = () => openVoiceSheet();
   var promptBtn = document.getElementById("teacherPromptBtn");
   if (promptBtn) promptBtn.onclick = () => { if(window.DHOpenAIPrompt) window.DHOpenAIPrompt(); };
   var backEl = document.getElementById("teacherBack");
