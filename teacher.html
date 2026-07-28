@@ -40,6 +40,11 @@ body{
 .teacher-hero{display:flex;align-items:center;justify-content:center;padding:18px 0 14px}
 .teacher-photo{width:min(58vw,230px);height:min(58vw,230px);max-width:230px;max-height:230px;border-radius:22px;border:2px solid #34d399aa;background:#050b16;object-fit:contain;box-shadow:0 18px 45px #0008}
 @media(max-width:520px){.teacher-hero{padding:14px 0 10px}.teacher-photo{width:170px;height:170px;border-radius:18px}}
+.teacher-hero--dual{gap:16px}
+.teacher-hero--dual .thero{display:flex;flex-direction:column;align-items:center;gap:7px;margin:0}
+.teacher-hero--dual .teacher-photo{width:min(40vw,168px);height:min(40vw,168px)}
+.teacher-hero--dual figcaption{font:800 12px Nunito,sans-serif;color:var(--muted);letter-spacing:.02em}
+@media(max-width:520px){.teacher-hero--dual .teacher-photo{width:min(42vw,138px);height:min(42vw,138px)}}
 .tinfo{flex:1;min-width:0}
 .tinfo h1{margin:0;font-family:Fraunces,serif;font-weight:600;font-size:17px}
 .tinfo p{margin:1px 0 0;font-size:12px;color:var(--muted)}
@@ -311,25 +316,17 @@ const DEFAULT_PROMPT = `Sen, Türk öğrencilere İngilizce öğreten, çok dene
 const PROMPT_LS = "dh_ai_prompt_teacher";
 function getPrompt(){ try{ return localStorage.getItem(PROMPT_LS) || DEFAULT_PROMPT; }catch{ return DEFAULT_PROMPT; } }
 
-const TEACHER_FRAMES = {
+const FRAME_FILES = {
   idle:"idle.webp", blink:"blink.webp", listen:"listen.webp",
   a:"mouth-a.webp", e:"mouth-e.webp", i:"mouth-i.webp",
   o:"mouth-o.webp", u:"mouth-u.webp", mbp:"mouth-mbp.webp",
   fv:"mouth-fv.webp", l:"mouth-l.webp", th:"mouth-th.webp"
 };
-function getSelectedTeacher(){
-  const p = new URLSearchParams(location.search);
-  const fromUrl = (p.get("teacher") || p.get("avatar") || "").trim();
-  if (fromUrl === "teacher1" || fromUrl === "teacher2") {
-    try { localStorage.setItem("selectedTeacherAvatar", fromUrl); } catch {}
-    return fromUrl;
-  }
-  return localStorage.getItem("selectedTeacherAvatar") || "teacher1";
-}
-function teacherDir(){
-  return "./assets/avatars_v3/" + getSelectedTeacher() + "/";
-}
-/* ses-esleme.html'de seçilen Türkçe harf→ağız karesi eşlemesi. */
+/* Iki sabit avatar: teacher1 Turkce konusur, teacher2 Ingilizce konusur. */
+const TR_DIR = "./assets/avatars_v3/teacher1/";
+const EN_DIR = "./assets/avatars_v3/teacher2/";
+
+/* ses-esleme.html'de secilen Turkce harf->agiz karesi eslemesi (yalniz TR avatari). */
 let _trViseme=null;
 function trVisemeMap(){
   if(_trViseme) return _trViseme;
@@ -343,21 +340,21 @@ try{
 }catch(e){}
 
 let TeacherAvatar = null;
-class PhotoTeacherAvatar{
-  constructor(){
-    this.imgs=[]; this.frames={}; this.isTr=false; this.blinkTimer=null; this.talkTimer=null;
-    this.endTimer=null; this.seq=[]; this.idx=0; this.speaking=false;
-  }
-  mount(){
-    this.imgs = ["teacherAvaImg","teacherHeroImg"].map(id=>document.getElementById(id)).filter(Boolean);
-    const dir=teacherDir();
-    for(const [k,v] of Object.entries(TEACHER_FRAMES)) this.frames[k]=dir+v;
+
+/* Tek bir dili suren yuz (TR ve EN icin ayri kurulur). Bu sayfanin KENDI agiz
+   motoru; img'lere data-dh-selfdrive="1" konur, boylece tts-avatar-long-sync-fix.js
+   bu kareleri ezmez (Turkcede mouth-th kaymasi olmaz). */
+class AvatarFace{
+  constructor(imgIds, dir, isTr){
+    this.imgs = imgIds.map(id=>document.getElementById(id)).filter(Boolean);
+    this.dir = dir; this.isTr = !!isTr; this.frames = {};
+    for(const [k,v] of Object.entries(FRAME_FILES)) this.frames[k]=dir+v;
+    this.blinkTimer=null; this.talkTimer=null; this.endTimer=null;
+    this.seq=[]; this.idx=0; this.speaking=false;
+    this.imgs.forEach(im=>{ try{ im.dataset.dhSelfdrive="1"; }catch(e){} });
     this.preload(); this.show(this.frames.idle); this.scheduleBlink(1200);
   }
   preload(){ Object.values(this.frames).forEach(src=>{ const im=new Image(); im.src=src; }); }
-  /* TÜRKÇE KİLİDİ: bu sayfanın kendi ağız motorunda da kare buradan basılıyor.
-     Türkçe okurken mouth-th ancak ses eşleme sayfasında bir harfe seçilmişse
-     geçebilir; aksi halde varsayılan TR karesine (mouth-i) çevrilir. */
   show(src){
     if(this.isTr && /mouth-th\.webp/i.test(String(src||""))){
       const um=trVisemeMap();
@@ -375,47 +372,48 @@ class PhotoTeacherAvatar{
     this.show(this.frames.blink);
     setTimeout(()=>{ if(!this.speaking) this.show(this.frames.idle); this.scheduleBlink(); }, 330);
   }
-  frameForChar(ch,next,isTr){
-    ch=(ch||"").toLocaleLowerCase("tr-TR"); next=(next||"").toLowerCase();
-    /* Türkçede kullanıcının ses-esleme.html'de seçtiği kare önce gelir. */
+  frameForChar(ch,next){
+    const isTr=this.isTr;
+    ch=(ch||"").toLocaleLowerCase(isTr?"tr-TR":"en-US"); next=(next||"").toLowerCase();
     if(isTr){
       const um=trVisemeMap(), f=um[ch];
-      if(f) return teacherDir()+f+".webp";
+      if(f) return this.dir+f+".webp";
     }
-    /* mouth-th SADECE İngilizce th sesi içindir; Türkçede böyle bir ses yok.
-       Türkçe okurken "th" harf ikilisi görülse bile bu kare kullanılmaz. */
     if(ch==="t" && next==="h") return isTr ? this.frames.i : this.frames.th;
-    /* Türkçe: t d s z ş ç c j -> küçük açıklık (mouth-i) */
-    if(isTr && /[tdszşçcj]/.test(ch)) return this.frames.i;
+    if(isTr && /[tdszscj]/.test(ch)) return this.frames.i;
+    if(isTr && /[şç]/.test(ch)) return this.frames.i;
     if(/[oö0]/.test(ch)) return this.frames.o;
     if(/[uüwq]/.test(ch)) return this.frames.u;
     if(/[a]/.test(ch)) return this.frames.a;
     if(/[e]/.test(ch)) return this.frames.e;
-    if(/[iııy]/.test(ch)) return this.frames.i;
+    if(/[iıy]/.test(ch)) return this.frames.i;
     if(/[mnbp]/.test(ch)) return this.frames.mbp;
     if(/[fv]/.test(ch)) return this.frames.fv;
     if(/[l]/.test(ch)) return this.frames.l;
     if(/[.,!?;:\s]/.test(ch)) return this.frames.idle;
     return this.frames.i;
   }
-  buildSeq(text,isTr){
-    const s=String(text||""); const seq=[];
+  buildSeq(text){
+    const s=String(text||""); const seq=[]; const isTr=this.isTr;
     for(let i=0;i<s.length;i++){
       const ch=s[i], next=s[i+1]||"";
-      seq.push(this.frameForChar(ch,next,isTr));
-      /* Türkçede t ve h ayrı seslerdir; birleştirip atlama yapma. */
+      seq.push(this.frameForChar(ch,next));
       if(!isTr && ch.toLowerCase()==="t" && next.toLowerCase()==="h") i++;
     }
     return seq.filter(Boolean);
   }
-  speakText(text,duration,isTr){
+  speak(text,duration){
     clearInterval(this.talkTimer); clearTimeout(this.endTimer);
-    this.isTr=!!isTr;
-    this.speaking=true; this.seq=this.buildSeq(text,isTr);
+    this.speaking=true; this.seq=this.buildSeq(text);
     if(!this.seq.length) this.seq=[this.frames.i,this.frames.e,this.frames.a,this.frames.o,this.frames.u,this.frames.mbp,this.frames.idle];
     this.idx=0;
     this.talkTimer=setInterval(()=>{ this.show(this.seq[this.idx % this.seq.length]); this.idx++; },105);
     this.endTimer=setTimeout(()=>this.stop(), Math.max(900,duration||1800));
+  }
+  rest(){
+    clearInterval(this.talkTimer); clearTimeout(this.endTimer);
+    if(this.speaking){ this.speaking=false; this.show(this.frames.idle); }
+    this.scheduleBlink(1200);
   }
   stop(){
     clearInterval(this.talkTimer); clearTimeout(this.endTimer);
@@ -424,8 +422,36 @@ class PhotoTeacherAvatar{
     this.scheduleBlink(1200);
   }
 }
-function mountTeacherAvatar(){ TeacherAvatar = new PhotoTeacherAvatar(); TeacherAvatar.mount(); }
+
+/* Iki yuzu yoneten cephe: dile gore dogru avatari oynatir, digerini dinlendirir. */
+class DualTeacherAvatar{
+  constructor(){
+    this.tr = new AvatarFace(["teacherAvaImg","teacherHeroImgTr"], TR_DIR, true);
+    this.en = new AvatarFace(["teacherHeroImgEn"], EN_DIR, false);
+  }
+  speakText(text,duration,isTr){
+    const active = isTr ? this.tr : this.en;
+    const other  = isTr ? this.en : this.tr;
+    other.rest(); active.speak(text,duration);
+  }
+  stop(){ this.tr.stop(); this.en.stop(); }
+}
+function mountTeacherAvatar(){ TeacherAvatar = new DualTeacherAvatar(); }
 function estimateSpeechDuration(text){ return Math.max(900, Math.min(18000, Array.from(String(text||"")).length * 92)); }
+
+/* Uzun/karisik AI cevabi tts-avatar-long-sync-fix.js ile seslenir; o motor artik
+   her cumle basinda {text,lang} bildirir (dh-tts-chunk). Dogru avatari biz oynatiriz;
+   o motorun kendi agiz animasyonu bu sayfada devre disi (data-dh-selfdrive). */
+window.addEventListener("dh-tts-chunk", function(ev){
+  try{
+    var d=(ev&&ev.detail)||{};
+    if(!TeacherAvatar) return;
+    TeacherAvatar.speakText(String(d.text||""), estimateSpeechDuration(d.text), /^tr/i.test(d.lang||""));
+  }catch(e){}
+});
+window.addEventListener("dh-tts-end", function(){
+  try{ if(TeacherAvatar) TeacherAvatar.stop(); }catch(e){}
+});
 let _voiceCache=[];
 function refreshVoices(){ try{ _voiceCache = speechSynthesis.getVoices ? speechSynthesis.getVoices() : []; }catch{ _voiceCache=[]; } }
 try{ refreshVoices(); speechSynthesis.onvoiceschanged = refreshVoices; }catch{}
@@ -468,6 +494,7 @@ function speak(text, lang){
     if(TeacherAvatar) TeacherAvatar.speakText(spoken, estimateSpeechDuration(spoken), /^tr/i.test(lang));
     u.onend=()=>{ if(TeacherAvatar) TeacherAvatar.stop(); };
     u.onerror=()=>{ if(TeacherAvatar) TeacherAvatar.stop(); };
+    u.__longTTSAvatarSync = true;
     speechSynthesis.speak(u);
   }catch{ if(TeacherAvatar) TeacherAvatar.stop(); }
 }
@@ -889,7 +916,10 @@ function render(){
     <button class="keybtn" id="teacherKeyBtn" title="API anahtarları">🔑</button>
   </div>
   <div class="body">
-    <div class="teacher-hero"><img class="teacher-photo" id="teacherHeroImg" alt="Fotoğraflı öğretmen avatarı"></div>
+    <div class="teacher-hero teacher-hero--dual">
+      <figure class="thero"><img class="teacher-photo" id="teacherHeroImgTr" alt="Türkçe konuşan öğretmen (teacher1)"><figcaption>🇹🇷 Türkçe</figcaption></figure>
+      <figure class="thero"><img class="teacher-photo" id="teacherHeroImgEn" alt="İngilizce konuşan öğretmen (teacher2)"><figcaption>🇬🇧 English</figcaption></figure>
+    </div>
     <div class="subject">
       <div class="subject-en" id="subEn">${renderRich('[['+esc(State.en)+']]')}</div>
       ${State.tr ? `<div class="subject-tr">${esc(State.tr)}</div>` : ""}
@@ -1248,7 +1278,7 @@ if (!State.en) {
 })();
 </script>
 <script src="./ai-teacher-prompt-tts.js?v=2"></script>
-<script src="./tts-avatar-long-sync-fix.js?v=4"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=5"></script>
 <script src="./avatar-blink-sync.js?v=2"></script>
 <script src="./study-tracker.js?v=2"></script>
 <script src="./cloud-sync.js?v=2"></script>

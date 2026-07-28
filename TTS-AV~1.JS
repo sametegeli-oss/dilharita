@@ -176,26 +176,6 @@ function isTurkish(text){
   return false;
 }
 
-/* DİL KARARI.
-   Eskiden tek kural vardı: isTurkish() değilse "en-US". Türkçe cümlelerin çoğunda
-   ğüşöçı bulunur ama "Bu bir kalem.", "Hadi tekrar edelim." gibi cümlelerde yoktur;
-   bunlar İngilizce sayılıp hem İngilizce sesle okunuyor hem de ağız için İngilizce
-   tablo (t/d/s/z -> mouth-th) kullanılıyordu. Artık İngilizce için de KANIT aranır;
-   iki taraf da kanıtsızsa sayfanın varsayılan dili (window.DH_DEFAULT_LANG) seçilir. */
-var EN_WORDS=/\b(the|a|an|is|are|was|were|am|be|been|and|or|but|to|of|in|on|at|it|its|he|she|they|you|we|i|my|your|his|her|this|that|these|those|with|for|from|have|has|had|do|does|did|not|don't|can|could|will|would|should|there|what|when|where|which|who|how|because|about|very|more|than|then|so|if|as|by|up|out|no|yes|please|thank|thanks)\b/i;
-function looksEnglish(text){
-  var s=String(text||"");
-  if(/[ğüşöçıİĞÜŞÖÇ]/.test(s)) return false;
-  var hits=(s.match(new RegExp(EN_WORDS.source,"gi"))||[]).length;
-  return hits >= 2 || (hits === 1 && s.trim().split(/\s+/).length <= 4);
-}
-function detectLang(text){
-  if(isTurkish(text)) return "tr-TR";
-  if(looksEnglish(text)) return "en-US";
-  try{ if(window.DH_DEFAULT_LANG) return window.DH_DEFAULT_LANG; }catch(e){}
-  return "en-US";
-}
-
 function splitLongLine(line, maxLen){
   maxLen = maxLen || 90;
   line=clean(line);
@@ -224,7 +204,7 @@ function splitForSpeech(text){
     while((m=re.exec(line))!==null){
       if(m.index > last){
         const before=line.slice(last, m.index).trim();
-        if(before) segs.push({text:before, lang: detectLang(before)});
+        if(before) segs.push({text:before, lang: isTurkish(before) ? "tr-TR" : "en-US"});
       }
       const inner=((m[1]!=null?m[1]:(m[2]!=null?m[2]:m[3]))||"").trim();
       if(inner) segs.push({text:inner, lang:"en-US"});
@@ -232,11 +212,11 @@ function splitForSpeech(text){
     }
     if(last < line.length){
       const after=line.slice(last).trim();
-      if(after) segs.push({text:after, lang: detectLang(after)});
+      if(after) segs.push({text:after, lang: isTurkish(after) ? "tr-TR" : "en-US"});
     }
     if(!segs.length){
       const t=line.trim();
-      if(t) segs.push({text:t, lang: detectLang(t)});
+      if(t) segs.push({text:t, lang: isTurkish(t) ? "tr-TR" : "en-US"});
     }
     return segs;
   }
@@ -261,7 +241,7 @@ function splitForSpeech(text){
       }
     });
   });
-  return chunks.length ? chunks : [{text:clean(raw.replace(/\[\[|\]\]/g," ")), lang: detectLang(raw)}];
+  return chunks.length ? chunks : [{text:clean(raw.replace(/\[\[|\]\]/g," ")), lang: isTurkish(raw) ? "tr-TR" : "en-US"}];
 }
 
 /* ---------------- Avatar ağız animasyonu ---------------- */
@@ -290,10 +270,7 @@ var DH_VISEME_TR = {
   "o":"mouth-o","u":"mouth-o","ö":"mouth-o","ü":"mouth-o",
   "m":"mouth-mbp","b":"mouth-mbp","p":"mouth-mbp",
   "f":"mouth-fv","v":"mouth-fv","l":"mouth-l",
-  /* TÜRKÇEDE "th" KARESİ KULLANILMAZ: o kare dilin dişler arasına çıktığı
-     İngilizce th sesi içindir, Türkçede böyle bir ses yok. En yakın kareler:
-     t d s z ş ç c j -> hepsi küçük açıklık (mouth-i). Kullanıcı kararı. */
-  "t":"mouth-i","d":"mouth-i","s":"mouth-i","z":"mouth-i","ş":"mouth-i","c":"mouth-i","ç":"mouth-i","j":"mouth-i",
+  "t":"mouth-th","d":"mouth-th","s":"mouth-th","z":"mouth-th","ş":"mouth-th","c":"mouth-th","ç":"mouth-th","j":"mouth-th",
   "g":"mouth-e","ğ":"mouth-e","k":"mouth-e","h":"mouth-e","n":"mouth-e","r":"mouth-e"
 };
 // İngilizce'de yazım != telaffuz. Yaygın çift-harfleri (digraph) önce yakala.
@@ -311,22 +288,6 @@ var DH_VISEME_EN = {
   "n":"mouth-e","h":"mouth-e","q":"mouth-o"
 };
 
-/* KULLANICI EŞLEMESİ (ses-esleme.html → "dh-viseme-tr-v1").
-   Sayfada seçilen harf→dosya eşlemesi Türkçe tarafında tabloyu ezer.
-   visemeAt her karakterde çağrıldığı için sonuç önbelleklenir; sayfa
-   değişiklik yayınladığında (veya başka sekmede kaydedildiğinde) tazelenir. */
-var _trUserMap=null;
-function trUserMap(){
-  if(_trUserMap) return _trUserMap;
-  try{ _trUserMap = JSON.parse(localStorage.getItem("dh-viseme-tr-v1")||"null") || {}; }
-  catch(e){ _trUserMap = {}; }
-  return _trUserMap;
-}
-try{
-  window.addEventListener("dh-viseme-tr-changed", function(){ _trUserMap=null; });
-  window.addEventListener("storage", function(e){ if(!e || e.key==="dh-viseme-tr-v1") _trUserMap=null; });
-}catch(e){}
-
 // Verilen konumdaki ağız şeklini ve kaç karakter ilerleyeceğini döndürür.
 function visemeAt(text, pos, lang){
   var s = String(text||"");
@@ -339,8 +300,6 @@ function visemeAt(text, pos, lang){
     if(DH_VISEME_EN[ch]) return {file:DH_VISEME_EN[ch], advance:1};
     return {file:null, advance:1}; // boşluk/noktalama -> idle (kapalı ağız)
   }
-  var um=trUserMap();
-  if(um[ch]) return {file:um[ch], advance:1};
   if(DH_VISEME_TR[ch]) return {file:DH_VISEME_TR[ch], advance:1};
   return {file:null, advance:1};
 }
@@ -377,25 +336,9 @@ let currentLang="tr-TR";
 let mouthPos=0;
 let perCharMs=75;
 
-/* TÜRKÇE KİLİDİ — TEK ÇIKIŞ NOKTASI.
-   Kare hangi yoldan gelirse gelsin ekrana burada basılıyor. Türkçe okunurken
-   geçerli tek kaynak ses eşleme sayfasıdır (dh-viseme-tr-v1): kullanıcı o harfe
-   ne seçtiyse o basılır — mouth-th seçtiyse mouth-th de basılır. Seçim yoksa
-   varsayılan TR tablosu kullanılır. İngilizce tablodan sızan kare (t/d/s/z -> th)
-   Türkçe okumada buradan geçemez. */
-function trLockFile(file){
-  if(currentLang!=="tr-TR" || !file) return file;
-  var ch="";
-  try{ ch = currentText.charAt(mouthPos).toLocaleLowerCase("tr-TR"); }catch(e){}
-  var um=trUserMap();
-  if(ch && um[ch]) return um[ch];
-  if(ch && DH_VISEME_TR[ch]) return DH_VISEME_TR[ch];
-  if(file==="mouth-th") return DH_VISEME_TR["t"] || "mouth-i";
-  return file;
-}
 function applyVisemeToAvatars(file){
-  file = trLockFile(file);
   avatarImgs().forEach(img=>{
+    if(img.dataset && img.dataset.dhSelfdrive==="1") return;
     const current=srcOf(img);
     if(!savedSrc.has(img)) savedSrc.set(img, idleSrc(current));
     if(img.dataset.avatarBlinking==="1") return;
@@ -531,6 +474,7 @@ function speakChunkList(chunks){
       curStartAt = Date.now();
       setSpeakingState(true);
       startMouthForText(item.text, item.lang);
+      try{ window.dispatchEvent(new CustomEvent("dh-tts-chunk",{detail:{text:item.text,lang:item.lang}})); }catch(e){}
       try{ if(window.__dhHighlight) window.__dhHighlight(item.el||null); }catch(e){}
     };
     u.onboundary = function(ev){
@@ -588,7 +532,7 @@ function speakSegments(segments){
   const out=[];
   segments.forEach(function(seg){
     if(!seg) return;
-    var lang = seg.lang ? seg.lang : detectLang(seg.text);
+    var lang = seg.lang ? seg.lang : (isTurkish(seg.text) ? "tr-TR" : "en-US");
     var text = clean(htmlToVisibleText(seg.text||""));
     if(!text) return;
     var el = seg.el || null;
