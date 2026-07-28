@@ -272,9 +272,8 @@ var DH_VISEME_TR = {
   "f":"mouth-fv","v":"mouth-fv","l":"mouth-l",
   /* TÜRKÇEDE "th" KARESİ KULLANILMAZ: o kare dilin dişler arasına çıktığı
      İngilizce th sesi içindir, Türkçede böyle bir ses yok. En yakın kareler:
-     t d s z -> küçük açıklık (mouth-i), ş ç c j -> dudak ileri/yuvarlak (mouth-u).
-     Bu, viseme-lang.js trShape ile aynı eşlemedir. */
-  "t":"mouth-i","d":"mouth-i","s":"mouth-i","z":"mouth-i","ş":"mouth-u","c":"mouth-u","ç":"mouth-u","j":"mouth-u",
+     t d s z ş ç c j -> hepsi küçük açıklık (mouth-i). Kullanıcı kararı. */
+  "t":"mouth-i","d":"mouth-i","s":"mouth-i","z":"mouth-i","ş":"mouth-i","c":"mouth-i","ç":"mouth-i","j":"mouth-i",
   "g":"mouth-e","ğ":"mouth-e","k":"mouth-e","h":"mouth-e","n":"mouth-e","r":"mouth-e"
 };
 // İngilizce'de yazım != telaffuz. Yaygın çift-harfleri (digraph) önce yakala.
@@ -292,6 +291,22 @@ var DH_VISEME_EN = {
   "n":"mouth-e","h":"mouth-e","q":"mouth-o"
 };
 
+/* KULLANICI EŞLEMESİ (ses-esleme.html → "dh-viseme-tr-v1").
+   Sayfada seçilen harf→dosya eşlemesi Türkçe tarafında tabloyu ezer.
+   visemeAt her karakterde çağrıldığı için sonuç önbelleklenir; sayfa
+   değişiklik yayınladığında (veya başka sekmede kaydedildiğinde) tazelenir. */
+var _trUserMap=null;
+function trUserMap(){
+  if(_trUserMap) return _trUserMap;
+  try{ _trUserMap = JSON.parse(localStorage.getItem("dh-viseme-tr-v1")||"null") || {}; }
+  catch(e){ _trUserMap = {}; }
+  return _trUserMap;
+}
+try{
+  window.addEventListener("dh-viseme-tr-changed", function(){ _trUserMap=null; });
+  window.addEventListener("storage", function(e){ if(!e || e.key==="dh-viseme-tr-v1") _trUserMap=null; });
+}catch(e){}
+
 // Verilen konumdaki ağız şeklini ve kaç karakter ilerleyeceğini döndürür.
 function visemeAt(text, pos, lang){
   var s = String(text||"");
@@ -304,6 +319,8 @@ function visemeAt(text, pos, lang){
     if(DH_VISEME_EN[ch]) return {file:DH_VISEME_EN[ch], advance:1};
     return {file:null, advance:1}; // boşluk/noktalama -> idle (kapalı ağız)
   }
+  var um=trUserMap();
+  if(um[ch]) return {file:um[ch], advance:1};
   if(DH_VISEME_TR[ch]) return {file:DH_VISEME_TR[ch], advance:1};
   return {file:null, advance:1};
 }

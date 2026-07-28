@@ -324,6 +324,19 @@ function getSelectedTeacher(){
 function teacherDir(){
   return "./assets/avatars_v3/" + getSelectedTeacher() + "/";
 }
+/* ses-esleme.html'de seçilen Türkçe harf→ağız karesi eşlemesi. */
+let _trViseme=null;
+function trVisemeMap(){
+  if(_trViseme) return _trViseme;
+  try{ _trViseme = JSON.parse(localStorage.getItem("dh-viseme-tr-v1")||"null") || {}; }
+  catch(e){ _trViseme = {}; }
+  return _trViseme;
+}
+try{
+  window.addEventListener("dh-viseme-tr-changed", function(){ _trViseme=null; });
+  window.addEventListener("storage", function(e){ if(!e || e.key==="dh-viseme-tr-v1") _trViseme=null; });
+}catch(e){}
+
 let TeacherAvatar = null;
 class PhotoTeacherAvatar{
   constructor(){
@@ -347,9 +360,18 @@ class PhotoTeacherAvatar{
     this.show(this.frames.blink);
     setTimeout(()=>{ if(!this.speaking) this.show(this.frames.idle); this.scheduleBlink(); }, 330);
   }
-  frameForChar(ch,next){
-    ch=(ch||"").toLowerCase(); next=(next||"").toLowerCase();
-    if(ch==="t" && next==="h") return this.frames.th;
+  frameForChar(ch,next,isTr){
+    ch=(ch||"").toLocaleLowerCase("tr-TR"); next=(next||"").toLowerCase();
+    /* Türkçede kullanıcının ses-esleme.html'de seçtiği kare önce gelir. */
+    if(isTr){
+      const um=trVisemeMap(), f=um[ch];
+      if(f) return teacherDir()+f+".webp";
+    }
+    /* mouth-th SADECE İngilizce th sesi içindir; Türkçede böyle bir ses yok.
+       Türkçe okurken "th" harf ikilisi görülse bile bu kare kullanılmaz. */
+    if(ch==="t" && next==="h") return isTr ? this.frames.i : this.frames.th;
+    /* Türkçe: t d s z ş ç c j -> küçük açıklık (mouth-i) */
+    if(isTr && /[tdszşçcj]/.test(ch)) return this.frames.i;
     if(/[oö0]/.test(ch)) return this.frames.o;
     if(/[uüwq]/.test(ch)) return this.frames.u;
     if(/[a]/.test(ch)) return this.frames.a;
@@ -361,18 +383,19 @@ class PhotoTeacherAvatar{
     if(/[.,!?;:\s]/.test(ch)) return this.frames.idle;
     return this.frames.i;
   }
-  buildSeq(text){
+  buildSeq(text,isTr){
     const s=String(text||""); const seq=[];
     for(let i=0;i<s.length;i++){
       const ch=s[i], next=s[i+1]||"";
-      seq.push(this.frameForChar(ch,next));
-      if(ch.toLowerCase()==="t" && next.toLowerCase()==="h") i++;
+      seq.push(this.frameForChar(ch,next,isTr));
+      /* Türkçede t ve h ayrı seslerdir; birleştirip atlama yapma. */
+      if(!isTr && ch.toLowerCase()==="t" && next.toLowerCase()==="h") i++;
     }
     return seq.filter(Boolean);
   }
-  speakText(text,duration){
+  speakText(text,duration,isTr){
     clearInterval(this.talkTimer); clearTimeout(this.endTimer);
-    this.speaking=true; this.seq=this.buildSeq(text);
+    this.speaking=true; this.seq=this.buildSeq(text,isTr);
     if(!this.seq.length) this.seq=[this.frames.i,this.frames.e,this.frames.a,this.frames.o,this.frames.u,this.frames.mbp,this.frames.idle];
     this.idx=0;
     this.talkTimer=setInterval(()=>{ this.show(this.seq[this.idx % this.seq.length]); this.idx++; },105);
@@ -426,7 +449,7 @@ function speak(text, lang){
     if(window.DH_TTS&&DH_TTS.apply) DH_TTS.apply(u, /^tr/i.test(lang)?"tr-TR":"en-US");
     else { u.rate = /^tr/i.test(lang) ? 0.92 : 0.95; u.pitch = 0.86; }
     speechSynthesis.cancel();
-    if(TeacherAvatar) TeacherAvatar.speakText(spoken, estimateSpeechDuration(spoken));
+    if(TeacherAvatar) TeacherAvatar.speakText(spoken, estimateSpeechDuration(spoken), /^tr/i.test(lang));
     u.onend=()=>{ if(TeacherAvatar) TeacherAvatar.stop(); };
     u.onerror=()=>{ if(TeacherAvatar) TeacherAvatar.stop(); };
     speechSynthesis.speak(u);

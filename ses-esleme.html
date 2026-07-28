@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="tr"><head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Türkçe Ses Eşlemesi</title>
+<style>
+:root{--bg:#070f1f;--surface:#0d1a30;--border:#24365c;--text:#e5edff;--mut:#9fb3d9;--ok:#34d399;--accent:#38bdf8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:600 15px/1.5 Nunito,system-ui,sans-serif;padding-bottom:40px}
+.top{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:5}
+.top a{color:var(--text);text-decoration:none;font-size:22px}
+.top h1{font-size:17px;margin:0}
+.note{margin:14px 16px;color:var(--mut);font-size:13px;line-height:1.6;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 16px 12px}
+select,button{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:9px 11px;font:700 13px Nunito,system-ui,sans-serif;cursor:pointer}
+select option{color:#111}
+button.primary{background:#1d4ed8;border-color:transparent;color:#fff}
+input[type=text]{flex:1;min-width:180px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font:600 14px Nunito,system-ui,sans-serif}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin:0 16px}
+.cell{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center}
+.cell img{width:56px;height:56px;border-radius:10px;object-fit:cover;object-position:top;background:#000;flex:0 0 auto}
+.cell .r{flex:1;min-width:0}
+.harf{font-size:19px;font-weight:900;margin-bottom:2px}
+.harf small{font-size:11px;font-weight:700;color:var(--mut);margin-left:6px}
+.cell select{width:100%;padding:7px;font-size:12px}
+.preview{display:flex;align-items:center;gap:12px;margin:0 16px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px}
+.preview img{width:110px;height:110px;border-radius:12px;object-fit:cover;object-position:top;background:#000}
+.saved{color:var(--ok);font-size:12px;margin-left:8px}
+h2{font-size:14px;margin:18px 16px 8px;color:var(--accent)}
+</style></head><body>
+
+<div class="top"><a href="./menu.html">←</a><h1>👄 Türkçe Ses Eşlemesi</h1><span class="saved" id="savedTag"></span></div>
+
+<div class="note">
+Türkçe seslendirmede her harf için hangi ağız resminin kullanılacağını burada sen seçersin.
+Seçim bu cihazda saklanır ve Türkçe konuşan tüm avatarlarda geçerli olur. İngilizce seslendirme bundan etkilenmez.
+</div>
+
+<div class="bar">
+  <label style="color:var(--mut);font-size:13px">Önizleme avatarı</label>
+  <select id="avaSel"></select>
+  <button id="resetBtn">↺ Varsayılana dön</button>
+</div>
+
+<div class="preview">
+  <img id="bigImg" alt="Ağız önizleme">
+  <div style="flex:1;min-width:0">
+    <div style="font-size:13px;color:var(--mut);margin-bottom:6px">Bir Türkçe cümle yaz, eşlemeyi çalışırken gör.</div>
+    <div class="bar" style="margin:0">
+      <input type="text" id="testIn" value="Şu cümleyi doğru okuyalım." />
+      <button class="primary" id="testBtn">▶ Dene</button>
+      <button id="stopBtn">■ Dur</button>
+    </div>
+  </div>
+</div>
+
+<h2>Ünlüler</h2>
+<div class="grid" id="gridV"></div>
+<h2>Ünsüzler</h2>
+<div class="grid" id="gridC"></div>
+<h2>Boşluk ve noktalama</h2>
+<div class="grid" id="gridP"></div>
+
+<script>
+(function(){
+"use strict";
+
+var LS_KEY = "dh-viseme-tr-v1";          /* tts-avatar-long-sync-fix.js bu anahtarı okur */
+var AVATARS = ["teacher1","teacher2","teacher","doctor","hotel","restaurant","airport"];
+var FILES = ["mouth-a","mouth-e","mouth-i","mouth-o","mouth-u","mouth-mbp","mouth-fv",
+             "mouth-l","mouth-small","mouth-medium","mouth-open","mouth-th","idle"];
+
+/* Motor varsayılanları — DH_VISEME_TR ile birebir aynı olmalı */
+var DEFAULTS = {
+  "a":"mouth-a","â":"mouth-a","e":"mouth-e",
+  "ı":"mouth-i","i":"mouth-i","y":"mouth-i",
+  "o":"mouth-o","u":"mouth-o","ö":"mouth-o","ü":"mouth-o",
+  "m":"mouth-mbp","b":"mouth-mbp","p":"mouth-mbp",
+  "f":"mouth-fv","v":"mouth-fv","l":"mouth-l",
+  "t":"mouth-i","d":"mouth-i","s":"mouth-i","z":"mouth-i",
+  "ş":"mouth-i","c":"mouth-i","ç":"mouth-i","j":"mouth-i",
+  "g":"mouth-e","ğ":"mouth-e","k":"mouth-e","h":"mouth-e","n":"mouth-e","r":"mouth-e",
+  " ":"idle"
+};
+var VOWELS = ["a","â","e","ı","i","o","ö","u","ü"];
+var CONS   = ["b","c","ç","d","f","g","ğ","h","j","k","l","m","n","p","r","s","ş","t","v","y","z"];
+var PUNCT  = [" "];
+var LABEL  = { " ":"boşluk / . , ! ?" };
+
+function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||"null") || {}; }catch(e){ return {}; } }
+function save(map){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(map)); }catch(e){}
+  try{ window.dispatchEvent(new CustomEvent("dh-viseme-tr-changed")); }catch(e){}
+  var t=document.getElementById("savedTag"); t.textContent="✓ kaydedildi";
+  clearTimeout(save._t); save._t=setTimeout(function(){ t.textContent=""; }, 1500);
+}
+var MAP = load();
+function fileFor(ch){ return MAP[ch] || DEFAULTS[ch] || "mouth-i"; }
+
+function avatar(){
+  var v=document.getElementById("avaSel").value;
+  try{ localStorage.setItem("dh-viseme-preview-avatar", v); }catch(e){}
+  return v;
+}
+function src(file){ return "./assets/avatars_v3/"+avatar()+"/"+file+".webp"; }
+
+function cellHtml(ch){
+  var lab = LABEL[ch] || ch.toLocaleUpperCase("tr-TR");
+  return '<div class="cell" data-ch="'+ch+'">'
+    + '<img alt="">'
+    + '<div class="r"><div class="harf">'+lab+'<small>'+(MAP[ch]?"özel":"varsayılan")+'</small></div>'
+    + '<select>'+FILES.map(function(f){ return '<option value="'+f+'">'+f+'</option>'; }).join("")+'</select></div>'
+    + '</div>';
+}
+function paint(){
+  document.getElementById("gridV").innerHTML = VOWELS.map(cellHtml).join("");
+  document.getElementById("gridC").innerHTML = CONS.map(cellHtml).join("");
+  document.getElementById("gridP").innerHTML = PUNCT.map(cellHtml).join("");
+  Array.prototype.forEach.call(document.querySelectorAll(".cell"), function(cell){
+    var ch = cell.getAttribute("data-ch");
+    var sel = cell.querySelector("select"), img = cell.querySelector("img");
+    sel.value = fileFor(ch);
+    img.src = src(sel.value);
+    sel.onchange = function(){
+      if(this.value === (DEFAULTS[ch]||"")) delete MAP[ch]; else MAP[ch] = this.value;
+      save(MAP);
+      img.src = src(this.value);
+      cell.querySelector(".harf small").textContent = MAP[ch] ? "özel" : "varsayılan";
+      document.getElementById("bigImg").src = img.src;
+    };
+  });
+  document.getElementById("bigImg").src = src("idle");
+}
+
+(function(){
+  var sel=document.getElementById("avaSel");
+  sel.innerHTML = AVATARS.map(function(a){ return '<option value="'+a+'">'+a+'</option>'; }).join("");
+  var saved="";
+  try{ saved = localStorage.getItem("dh-viseme-preview-avatar") || localStorage.getItem("selectedTeacherAvatar") || ""; }catch(e){}
+  if(AVATARS.indexOf(saved)>=0) sel.value=saved;
+  sel.onchange=function(){ paint(); };
+})();
+
+document.getElementById("resetBtn").onclick = function(){ MAP = {}; save(MAP); paint(); };
+
+/* Deneme: Türkçe oku + eşlemeye göre ağzı oynat */
+var timer=null;
+function stopTest(){
+  clearInterval(timer); timer=null;
+  try{ speechSynthesis.cancel(); }catch(e){}
+  document.getElementById("bigImg").src = src("idle");
+}
+document.getElementById("stopBtn").onclick = stopTest;
+document.getElementById("testBtn").onclick = function(){
+  stopTest();
+  var text = (document.getElementById("testIn").value||"").trim();
+  if(!text) return;
+  var seq = [];
+  for(var i=0;i<text.length;i++){
+    var ch = text.charAt(i).toLocaleLowerCase("tr-TR");
+    seq.push(/[.,!?;:\s]/.test(ch) ? "idle" : fileFor(ch));
+  }
+  var big = document.getElementById("bigImg"), idx = 0;
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = "tr-TR";
+  try{
+    var v=(speechSynthesis.getVoices()||[]).filter(function(x){ return /^tr/i.test(x.lang||""); })[0];
+    if(v) u.voice=v;
+  }catch(e){}
+  /* onboundary varsa kare, sesin bulunduğu harfe hizalanır */
+  u.onboundary = function(ev){ if(ev && typeof ev.charIndex==="number") idx = Math.min(seq.length-1, ev.charIndex); };
+  u.onend = stopTest; u.onerror = stopTest;
+  timer = setInterval(function(){ big.src = src(seq[idx % seq.length]); idx++; }, 105);
+  try{ speechSynthesis.speak(u); }catch(e){}
+};
+
+paint();
+})();
+</script>
+</body></html>
