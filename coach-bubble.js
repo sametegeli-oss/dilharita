@@ -343,11 +343,24 @@
     var timer=setTimeout(function(){ timer=null; go(null); },1500); /* defter yavaşsa bekletme */
     stashTeachFromDB(focus).then(function(res){ if(timer){ clearTimeout(timer); go(res); } });
   };
+  /* Koç artık sohbet öğretmenine (chatteacher1/2) değil, cümle inceleyen
+     teacher.html'e gönderiyor. teacher.html ?s= (cümle) / ?t= (Türkçesi) okur;
+     malzeme zaten dh-teach-focus'a yazılıyor, oradan alınıp URL'ye konuyor. */
+  function teachStash(){
+    try{
+      var o=JSON.parse(sessionStorage.getItem("dh-teach-focus")||"null");
+      if(o && Date.now()-(o.t||0) < 2*3600000) return o;
+    }catch(e){}
+    return null;
+  }
   function teacherHref(focus){
-    var sel="teacher1";
-    try{ sel=localStorage.getItem("selectedTeacherAvatar")||"teacher1"; }catch(e){}
-    var page = sel==="teacher2" ? "chatteacher2.html" : "chatteacher1.html";
-    return "./"+page+(focus?("?focus="+encodeURIComponent(focus)):"");
+    var q=[], st=teachStash();
+    if(st && st.target){
+      q.push("s="+encodeURIComponent(st.target));
+      if(st.tr) q.push("t="+encodeURIComponent(st.tr));
+    }
+    if(focus) q.push("focus="+encodeURIComponent(focus));
+    return "./teacher.html"+(q.length?("?"+q.join("&")):"");
   }
   function focusBtnHtml(t){
     if(!t) return "";
