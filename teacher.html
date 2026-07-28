@@ -473,6 +473,48 @@ function speakFromScreen(boxEl){
   speakTurkish(boxEl.textContent||""); return true;
 }
 
+/* SESLENDİRMEDE DURAKLAT / DEVAM.
+   Duraklatma mantığı zaten vardı ama görünür düğmesi yoktu: speakFromScreen
+   ikinci tıklamada gizlice duraklatıyordu ve tts-avatar-long-sync-fix.js
+   watchdog'u window.__dhUserPaused bayrağını okuyor. Düğme aynı bayrağı kullanır,
+   yoksa watchdog duraklatmayı "takılma" sanıp resume ederdi. */
+let _pauseBtn=null, _pauseTimer=null, _idlePolls=0;
+function ttsState(){
+  try{ return { active: !!(speechSynthesis.speaking||speechSynthesis.pending), paused: !!speechSynthesis.paused }; }
+  catch(e){ return { active:false, paused:false }; }
+}
+function ensurePauseBtn(){
+  if(_pauseBtn) return _pauseBtn;
+  const b=document.createElement("button");
+  b.id="dhTtsPauseBtn"; b.type="button";
+  b.style.cssText="position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:9999;display:none;"
+    +"background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:999px;"
+    +"padding:11px 16px;font:800 14px Nunito,sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.45)";
+  b.onclick=function(){
+    const st=ttsState();
+    try{
+      if(st.paused || window.__dhUserPaused){ window.__dhUserPaused=false; speechSynthesis.resume(); }
+      else { window.__dhUserPaused=true; speechSynthesis.pause(); }
+    }catch(e){}
+    syncPauseBtn();
+  };
+  document.body.appendChild(b); _pauseBtn=b; return b;
+}
+function syncPauseBtn(){
+  const b=ensurePauseBtn(), st=ttsState();
+  /* Sıradaki cümleye geçerken motor kısa süre "konuşmuyor" görünüyor;
+     tek ölçümle gizlersek düğme yanıp söner. İki ölçüm bekle. */
+  if(!st.active){
+    if(++_idlePolls < 2) return;
+    if(window.__dhUserPaused) window.__dhUserPaused=false;
+    b.style.display="none"; return;
+  }
+  _idlePolls=0;
+  b.style.display="block";
+  b.textContent = (st.paused || window.__dhUserPaused) ? "▶ Devam" : "⏸ Duraklat";
+}
+function startPauseWatch(){ if(_pauseTimer) return; _pauseTimer=setInterval(syncPauseBtn,400); }
+
 window.__dhHighlight = function(el){
   try{
     document.querySelectorAll(".dh-reading").forEach(function(n){ n.classList.remove("dh-reading"); });
@@ -1176,6 +1218,7 @@ function handleError(e, silent){
 
 // BAŞLATMA MANTIĞI: URL'den parametre gelmişse onu al, gelmemişse data/excelveri.json'ın 0. elemanını otomatik aç
 parseParams();
+startPauseWatch();
 if (!State.en) {
   loadExcelVeri(0);
 } else {
