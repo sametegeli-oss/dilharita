@@ -8,9 +8,6 @@
 <script src="./ai-providers.js?v=1"></script>
 <script src="./gemini-bridge.js?v=10"></script>
 
-<!-- 📘 Betty Azar & Çeviri Kılavuzu Entegrasyon Dosyaları -->
-<script src="./azar-topic-map.js?v=1"></script>
-<script src="./azar-remedial.js?v=1"></script>
 
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -949,13 +946,11 @@ async function explain(){
         <p>Cümlen: <b>${esc(State.en)}</b></p>
         <div class="manual-entry" style="flex-direction:column;gap:10px">
           <button id="dhTeachGemini" style="width:100%;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0;border-radius:11px;padding:13px;font:800 15px Nunito,sans-serif;cursor:pointer">💎 Gemini'ye sor (anahtar gerekmez)</button>
-          <button id="dhTeachAzar" style="width:100%;background:linear-gradient(135deg,#4f46e5,#3b82f6);color:#fff;border:0;border-radius:11px;padding:13px;font:800 15px Nunito,sans-serif;cursor:pointer">📘 Bu Cümlenin Konusunu Azar Kitabından Çalış</button>
           <button id="dhTeachGuide" style="width:100%;background:linear-gradient(135deg,#059669,#34d399);color:#0f172a;border:0;border-radius:11px;padding:13px;font:800 15px Nunito,sans-serif;cursor:pointer">📖 Türkçe Çeviri Kılavuzunda Ara</button>
           <button id="dhTeachAddKey" style="width:100%;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:11px;padding:12px;font:700 14px Nunito,sans-serif;cursor:pointer">🔑 Kendi API anahtarımı ekle</button>
         </div>
       </div>`);
       var gb2=document.getElementById("dhTeachGemini"); if(gb2) gb2.onclick=function(){ askTeacherViaGemini(); };
-      var az=document.getElementById("dhTeachAzar"); if(az) az.onclick=function(){ runAzarForTeacherSentence(); };
       var tg=document.getElementById("dhTeachGuide"); if(tg) tg.onclick=function(){ runTranslationGuideSearch(State.en); };
       var ak=document.getElementById("dhTeachAddKey"); if(ak) ak.onclick=function(){ openKeySheet(); };
       return;
@@ -1008,9 +1003,6 @@ function renderExplanation(reply){
     <button class="regen" id="regenBtn">↻ Yeniden açıkla</button>
     <button class="regen" id="dhGeminiAskBtn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0">💎 Gemini'ye sor</button>
     
-    <!-- 📘 BETTY AZAR KİTAP DÜĞMESİ -->
-    <button class="regen" id="dhAzarAskBtn" style="background:linear-gradient(135deg,#4f46e5,#3b82f6);color:#fff;border:0">📘 Bu Cümlenin Konusunu Azar Kitabından Çalış</button>
-    
     <!-- 📖 ÇEVİRİ KILAVUZU DÜĞMESİ (translation_guide.json) -->
     <button class="regen" id="dhGuideAskBtn" style="background:linear-gradient(135deg,#059669,#34d399);color:#0f172a;border:0">📖 Türkçe Çeviri Kılavuzunda Ara</button>
     
@@ -1031,9 +1023,6 @@ function renderExplanation(reply){
   var gAsk=document.getElementById("dhGeminiAskBtn");
   if(gAsk){ if(window.DHGemini){ gAsk.onclick=function(){ askTeacherViaGemini(); }; } else { gAsk.style.display="none"; } }
 
-  var azAsk=document.getElementById("dhAzarAskBtn");
-  if(azAsk){ azAsk.onclick=function(){ runAzarForTeacherSentence(); }; }
-
   var guideAsk=document.getElementById("dhGuideAskBtn");
   if(guideAsk){ guideAsk.onclick=function(){ runTranslationGuideSearch(State.en); }; }
 
@@ -1041,14 +1030,6 @@ function renderExplanation(reply){
   document.getElementById("sentenceListenBtn").onclick = () => speakEnglish(State.en);
   if(quiz) bindQuiz(quiz);
 }
-
-// 📘 AZAR ÇAĞIRMA FONKSİYONU
-function runAzarForTeacherSentence() {
-  if (!State.en) { alert("İncelenecek aktif bir cümle bulunamadı."); return; }
-  if (!window.DHAzarEngine) { alert("Azar motoru yüklenemedi."); return; }
-  window.DHAzarEngine.startRemedialLesson(State.en, "azar-result-container");
-}
-window.runAzarForTeacherSentence = runAzarForTeacherSentence;
 
 // 📖 ÇEVİRİ KILAVUZU (translation_guide.json) ÇAĞIRMA FONKSİYONU
 function runTranslationGuideSearch(queryText) {
@@ -1233,7 +1214,6 @@ if (!State.en) {
 <script src="./study-tracker.js?v=2"></script>
 <script src="./cloud-sync.js?v=2"></script>
 <script src="./word-popup.js?v=10"></script>
-  <script src="./dilharita-teacher-support.bundle.js"></script>
 <script src="./ux-boost.js?v=1"></script>
 </body>
 </html>
