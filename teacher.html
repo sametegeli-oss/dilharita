@@ -447,19 +447,9 @@ class DualTeacherAvatar{
 function mountTeacherAvatar(){ TeacherAvatar = new DualTeacherAvatar(); }
 function estimateSpeechDuration(text){ return Math.max(900, Math.min(18000, Array.from(String(text||"")).length * 92)); }
 
-/* Uzun/karisik AI cevabi tts-avatar-long-sync-fix.js ile seslenir; o motor artik
-   her cumle basinda {text,lang} bildirir (dh-tts-chunk). Dogru avatari biz oynatiriz;
-   o motorun kendi agiz animasyonu bu sayfada devre disi (data-dh-selfdrive). */
-window.addEventListener("dh-tts-chunk", function(ev){
-  try{
-    var d=(ev&&ev.detail)||{};
-    if(!TeacherAvatar) return;
-    TeacherAvatar.speakText(String(d.text||""), estimateSpeechDuration(d.text), /^tr/i.test(d.lang||""));
-  }catch(e){}
-});
-window.addEventListener("dh-tts-end", function(){
-  try{ if(TeacherAvatar) TeacherAvatar.stop(); }catch(e){}
-});
+/* AI aciklamasini bu sayfa KENDISI seslendirir (speakSegmentsSelf): her parca
+   __longTTSAvatarSync ile isaretlenir, boylece global tts motoru (eski/yeni fark etmez)
+   devreye girmez, avatarlari ezmez. Dogru dilin avatari oynar+gorunur, oteki gizlenir. */
 let _voiceCache=[];
 function refreshVoices(){ try{ _voiceCache = speechSynthesis.getVoices ? speechSynthesis.getVoices() : []; }catch{ _voiceCache=[]; } }
 try{ refreshVoices(); speechSynthesis.onvoiceschanged = refreshVoices; }catch{}
@@ -509,6 +499,70 @@ function speak(text, lang){
 function speakEnglish(text){ speak(text, "en-US"); }
 function speakTurkish(text){ speak(text, "tr-TR"); }
 
+/* AI aciklamasini cumle cumle, SIRAYLA seslendirir. Her parca native sese gider
+   (__longTTSAvatarSync) -> global motor karismaz. Dogru dilin avatari oynar+gorunur,
+   oteki gizlenir. onend guvenilmez oldugundan sure tabanli yedek ilerletme var. */
+var _selfSpeakSession = 0, _selfKeep = null;
+function _splitForAvatar(text, isTr){
+  var max = isTr ? 180 : 150;
+  var t = String(text||"").replace(/\s+/g," ").trim();
+  if(!t) return [];
+  var sentences = t.match(/[^.!?…]*[.!?…]+|[^.!?…]+$/g) || [t];
+  var out=[];
+  sentences.forEach(function(sn){
+    sn=sn.trim(); if(!sn) return;
+    if(sn.length<=max){ out.push(sn); return; }
+    var rest=sn;
+    while(rest.length>max){
+      var cut=Math.max(rest.lastIndexOf(", ",max), rest.lastIndexOf("; ",max), rest.lastIndexOf(" ",max));
+      if(cut<40) cut=max;
+      out.push(rest.slice(0,cut+1).trim()); rest=rest.slice(cut+1).trim();
+    }
+    if(rest) out.push(rest);
+  });
+  return out;
+}
+function speakSegmentsSelf(segs){
+  var pieces=[];
+  (segs||[]).forEach(function(seg){
+    if(!seg) return;
+    var isTr=/^tr/i.test(seg.lang||"");
+    var cl=(window.DH_TTS&&DH_TTS.clean)?DH_TTS.clean(seg.text):seg.text;
+    _splitForAvatar(cl, isTr).forEach(function(p){
+      if(p && p.length>1) pieces.push({text:p, lang:isTr?"tr-TR":"en-US", isTr:isTr, el:seg.el||null});
+    });
+  });
+  if(!pieces.length) return false;
+  var session=++_selfSpeakSession;
+  try{ speechSynthesis.cancel(); }catch(e){}
+  var i=0;
+  function step(){
+    if(session!==_selfSpeakSession) return;
+    if(i>=pieces.length){ if(TeacherAvatar) TeacherAvatar.stop(); try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){} return; }
+    var pc=pieces[i++];
+    var u=new SpeechSynthesisUtterance(pc.text);
+    var voice=pickVoiceForLang(pc.lang);
+    if(voice){ u.voice=voice; u.lang=voice.lang; } else { u.lang=pc.lang; }
+    if(window.DH_TTS&&DH_TTS.apply) DH_TTS.apply(u, pc.lang);
+    else { u.rate = pc.isTr?0.92:0.95; u.pitch=0.86; }
+    u.__longTTSAvatarSync = true;
+    _selfKeep = u;
+    if(TeacherAvatar) TeacherAvatar.speakText(pc.text, estimateSpeechDuration(pc.text), pc.isTr);
+    try{ if(window.__dhHighlight) window.__dhHighlight(pc.el); }catch(e){}
+    var done=false, timer=null;
+    function adv(){
+      if(done || session!==_selfSpeakSession) return;
+      if(window.__dhUserPaused){ if(timer) clearTimeout(timer); timer=setTimeout(adv, 700); return; }
+      done=true; if(timer) clearTimeout(timer); setTimeout(step, 60);
+    }
+    u.onend=adv; u.onerror=adv;
+    timer=setTimeout(adv, estimateSpeechDuration(pc.text)+1600);
+    try{ speechSynthesis.speak(u); }catch(e){ adv(); }
+  }
+  step();
+  return true;
+}
+
 function speakFromScreen(boxEl){
   if(!boxEl) return false;
   try{
@@ -539,8 +593,7 @@ function speakFromScreen(boxEl){
       }
     });
   })(boxEl);
-  if(segs.length && window.DH_speakSegments){ window.DH_speakSegments(segs); return true; }
-  if(window.DH_speakMixed){ window.DH_speakMixed(boxEl.textContent||""); return true; }
+  if(segs.length){ return speakSegmentsSelf(segs); }
   speakTurkish(boxEl.textContent||""); return true;
 }
 
