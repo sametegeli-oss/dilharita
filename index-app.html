@@ -1,60 +1,129 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<meta name="theme-color" content="#0b1120" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-<title>Fotoğraflı Cümle Öğren · Dil Harita</title>
-<script type="module" crossorigin src="./assets/app.js"></script>
-<link rel="stylesheet" crossorigin href="./assets/app.css">
+<meta charset="utf-8">
+<meta name="theme-color" content="#0a1424">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Dil Harita — Cümle Çalışması</title>
+<script src="./auth-guard.js?v=1"></script>
+<script src="./sentences-loader.js?v=1"></script>
+<script src="./profile.js?v=1"></script>
+<script src="./study-tracker.js?v=1"></script>
+<style>
+  :root{ --bg:#0a1424; --panel:#10264a; --panel2:#0b172d; --line:#1e3a5f; --txt:#e8eef7; --dim:#9fb3d9; --gold:#f59e0b; --grn:#059669; --grn2:#10b981; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:radial-gradient(1200px 600px at 50% -10%,#12315e 0%,var(--bg) 55%);color:var(--txt);font-family:system-ui,-apple-system,sans-serif;min-height:100%;display:flex;flex-direction:column;align-items:center}
+  .wrap{width:100%;max-width:520px;padding:14px 16px 96px;flex:1;display:flex;flex-direction:column}
+  
+  /* Tuğla Duvarı Stili (Animasyonlu) */
+  .sharedBrickWrap{background:#0b172d; border:1px solid #1e3a5f; border-radius:12px; padding:10px 14px; margin-bottom:14px; display:flex; flex-direction:column; gap:5px;}
+  .sharedBrickHeader{font-size:12px; color:#9fb3d9; font-weight:700; display:flex; justify-content:space-between;}
+  .sharedBricksGrid{display:flex; gap:4px; flex-wrap:wrap; perspective: 1000px;}
+  .s-brick{flex:1; min-width:16px; height:22px; background:#f59e0b; border-radius:3px; transition:all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); position:relative;}
+  .s-brick.done{transform: translateY(25px) rotateX(45deg) scale(0.4); opacity:0;}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:20px; margin-top:10px;}
+  .btn{background:var(--grn); color:#fff; border:none; padding:12px 20px; border-radius:10px; font-weight:bold; cursor:pointer; width:100%; margin-top:15px;}
+  .menuBtn{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#16294a99;backdrop-filter:blur(6px);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;z-index:5}
+</style>
 </head>
 <body>
-<div id="root"></div>
+  <div class="wrap">
+    
+    <!-- 🏗️ TUĞLA DUVARI ENJEKSİYONU -->
+    <div class="sharedBrickWrap" id="topBrickContainer">
+      <div class="sharedBrickHeader">
+        <span>🏗️ Günlük Hedef Duvarı</span>
+        <span id="sbTxt">0/5</span>
+      </div>
+      <div class="sharedBricksGrid" id="sbGrid"></div>
+    </div>
+
+    <div class="top" style="display:flex; justify-content:space-between; align-items:center;">
+      <button class="btn" style="width:auto; margin:0;" onclick="location.href='index.html'">🏠 Koç Moduna Dön</button>
+      <span id="progressLbl" style="font-size:13px; color:var(--dim);">Cüme 1/5</span>
+    </div>
+
+    <!-- Ana Çalışma Kartı -->
+    <div class="card">
+      <div style="font-size:12px; color:var(--gold); margin-bottom:8px;">A1 • Present Simple</div>
+      <h2 id="sentenceEn" style="font-size:20px; margin:0 0 10px 0;">The project will start tomorrow morning.</h2>
+      <p id="sentenceTr" style="color:var(--dim); font-size:15px;">Proje yarın sabah başlayacak.</p>
+      
+      <button class="btn" onclick="completeSentence()">Doğru Bildim / İlerle</button>
+    </div>
+
+  </div>
+
+  <button class="menuBtn" onclick="location.href='menu.html'">≡ Tüm modüller</button>
+
 <script>
-window.addEventListener('error', function(e){
-  var box=document.getElementById('appErrorBox');
-  if(!box){
-    box=document.createElement('pre');
-    box.id='appErrorBox';
-    box.style.cssText='position:fixed;left:10px;right:10px;bottom:10px;z-index:99999;background:#220b0b;color:#fecaca;padding:12px;border:1px solid #ef4444;border-radius:10px;white-space:pre-wrap;font:12px monospace';
-    document.body.appendChild(box);
-  }
-  box.textContent += '\n' + (e.message||'error') + '\n' + (e.filename||'') + ':' + (e.lineno||'');
-});
+/* Saf JS Ses Sentezleyici (Tuğla Yıkılma Sesi) */
+function playBrickSound() {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(500, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.12);
+  } catch(e){}
+}
+
+var lastCompletedCount = -1;
+
+function updateSharedBricks(){
+  try{
+    var t = JSON.parse(localStorage.getItem("dh-study-tracker-v1") || "{}");
+    var todayStr = new Date().toISOString().slice(0,10);
+    var d = (t.days || {})[todayStr] || {};
+    var completed = d.sentences || 0;
+    var goal = 5; 
+    try { if(window.DHProfile) goal = DHProfile.hedef(); } catch(e){}
+
+    var grid = document.getElementById("sbGrid");
+    if(!grid) return;
+    
+    // Tuğla sayısı arttığında animasyonlu ses çal
+    if(lastCompletedCount !== -1 && completed > lastCompletedCount) {
+        playBrickSound();
+    }
+    lastCompletedCount = completed;
+
+    grid.innerHTML = "";
+    document.getElementById("sbTxt").textContent = completed + " / " + goal + " Yıkıldı";
+
+    for(var i = 0; i < goal; i++){
+      var b = document.createElement("div");
+      b.className = "s-brick" + (i < completed ? " done" : "");
+      grid.appendChild(b);
+    }
+  }catch(e){}
+}
+
+// Simülasyon / Test amaçlı cümle tamamlama fonksiyonu
+function completeSentence() {
+    var t = JSON.parse(localStorage.getItem("dh-study-tracker-v1") || "{}");
+    var todayStr = new Date().toISOString().slice(0,10);
+    if(!t.days) t.days = {};
+    if(!t.days[todayStr]) t.days[todayStr] = {sentences: 0};
+    
+    // Cümle sayısını artır ve kaydet
+    t.days[todayStr].sentences += 1;
+    localStorage.setItem("dh-study-tracker-v1", JSON.stringify(t));
+    
+    updateSharedBricks();
+}
+
+setInterval(updateSharedBricks, 800);
+window.onload = updateSharedBricks;
 </script>
-
-<!-- RESİM: cümlenin imgQuery'siyle görsel bulur (alakasız foto koymaz) -->
-<script src="./image-addon.js?v=restore3"></script>
-<script src="./teacher-addon.js?v=restore3"></script>
-<script src="./index-app-ogretmen-analiz-buttons.js?v=3"></script>
-<script src="./word-direct-tools.js?v=1"></script>
-
-<!-- 🌊 SES DALGASI: sesdalga.html mantığını kelime popup'ına ekler
-     (Hoca Çizdir → Sen Oku → Kıyasla → Düet) -->
-<script src="./word-wave-addon.js?v=1"></script>
-<script src="./ai-teacher-prompt-tts.js?v=1"></script>
-<script src="./tts-avatar-long-sync-fix.js?v=4"></script>
-<script src="./avatar-blink-sync.js?v=1"></script>
-<script src="./study-tracker.js?v=1"></script>
-
-<!-- YATAY / 2 SÜTUN DÜZEN — bunu eklemeyi ATLAMIŞTIM, düzenin dikey gelmesinin sebebi buydu.
-     React kartını sol (resim + cümle) / sağ (butonlar + notlama) diye bölen dosya budur. -->
-<script src="./index-app-layout.js?v=12"></script>
-
-<!-- AI KOÇ OTOMATİK MODÜL BAŞLATICI: koçun ?mod= linkiyle gelen modülü
-     doğrudan açar (eski startPractice tabanlı kod React'te çalışmıyordu). -->
-<script src="./mod-autopen.js?v=2"></script>
-<script src="./coach-bubble.js?v=10"></script>
-
-<!-- FOTO <-> VİDEO GEÇİŞ KÖPRÜSÜ: React'e dokunmadan "🎬 Video" düğmesi ekler
-     ve videopractice.html'e cümleyi TAM senkronize gönderir. -->
-<script src="./nav-bridge.js?v=2"></script>
-
-<!-- RESİM / VİDEO SEÇİCİ: iki ekran arasında geçiş toggle'ı.
-     nav-bridge'den SONRA yüklenmeli (modal açmayı ona devreder). -->
-<script src="./mode-toggle.js?v=5"></script>
 </body>
 </html>
