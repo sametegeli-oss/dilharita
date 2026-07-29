@@ -30,7 +30,6 @@
   .brickWallTitle{font-size:11.5px;color:var(--dim);font-weight:700;display:flex;justify-content:space-between}
   .bricksGrid{display:flex;gap:5px;flex-wrap:wrap;align-items:center; perspective: 1000px;}
   .brick{flex:1;min-width:18px;height:24px;background:var(--brick-todo);border-radius:4px;border:1px solid rgba(255,255,255,0.2); transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); position:relative;}
-  /* Tamamlanan tuğla aşağı düşer ve kaybolur */
   .brick.done{transform: translateY(30px) rotateX(45deg) scale(0.5); opacity: 0; pointer-events: none;}
 
   .coachWrap{display:flex;flex-direction:column;align-items:center;margin-top:2px}
@@ -89,8 +88,8 @@
   <div id="geminiModal">
     <div class="gm-content">
       <h3 style="margin-top:0">Gemini'den Plan Yapıştır</h3>
-      <p style="font-size:13px; color:var(--dim)">Koçun hazırladığı promptu Gemini'ye sorduktan sonra, verdiği JSON planını buraya yapıştır:</p>
-      <textarea id="gmInput" placeholder='Örn: {"hedef": 8, "odak": "kelime"}'></textarea>
+      <p style="font-size:13px; color:var(--dim)">Kişisel verilerini içeren prompt Gemini'ye kopyalandı. Gemini'den dönen JSON planını buraya yapıştır:</p>
+      <textarea id="gmInput" placeholder='Örn: {"hedef": 8, "sure_dakika": 25, "odak": "kelime"}'></textarea>
       <button onclick="applyGeminiPlan()">Planı Uygula ve Başla</button>
       <button style="background:var(--panel2); border:1px solid var(--line)" onclick="document.getElementById('geminiModal').style.display='none'">İptal</button>
     </div>
@@ -104,7 +103,6 @@ var face=document.getElementById("face"), ring=document.getElementById("ring");
 function soundOn(){ return localStorage.getItem("dh-koc-sesli")!=="0"; }
 function toggleSound(){ localStorage.setItem("dh-koc-sesli", soundOn()?"0":"1"); location.reload(); }
 
-/* Saf JS Ses Sentezleyici (Tuğla Yıkılma Sesi - Tok ve Tatmin Edici) */
 function playBrickSound() {
   if(!soundOn()) return;
   try {
@@ -150,33 +148,61 @@ function renderBricks(doneCount, totalGoal){
   }
 }
 
-// Global durum
 var GOAL = 5; 
 try { if(window.DHProfile) GOAL = DHProfile.hedef(); } catch(e){}
 
+function isoToday(){ return new Date().toISOString().slice(0,10); }
+
+async function computeDue(){ return new Promise(function(res){ try{
+  var r=indexedDB.open("sentence-mode",1);
+  r.onsuccess=function(){ var db=r.result;
+    if(!db.objectStoreNames.contains("kv")){ try{db.close();}catch(e){} return res(null); }
+    var due=0, now=Date.now();
+    try{ var q=db.transaction("kv","readonly").objectStore("kv").openCursor();
+      q.onsuccess=function(e){ var c=e.target.result;
+        if(c){ var kk=String(c.key), v=c.value||{}; if(kk.indexOf("srs:")===0 && (v.due||0)<=now) due++; c.continue(); }
+        else { try{db.close();}catch(_){} res(due); } };
+      q.onerror=function(){ try{db.close();}catch(_){} res(null); };
+    }catch(e2){ try{db.close();}catch(_){} res(null); } };
+  r.onerror=function(){ res(null); };
+}catch(e){ res(null); } }); }
+
+var WEAK={ "missing-word":"eksik kelime","word-order":"kelime sırası","tense":"fiil zamanı","preposition":"edat (in/on/at)","article":"artikel (a/the)","spelling":"yazım","plural":"çoğul","auxiliary":"yardımcı fiil","general":"genel hatalar" };
+
+async function loadReal(){
+  var R={streak:null,sentences:0,reviews:0,due:null,weakType:null,weakCount:0};
+  try{ var t=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}"); var d=(t.days||{})[isoToday()]||{}; R.sentences=d.sentences||0; R.reviews=d.reviews||0; }catch(e){}
+  try{ var st=JSON.parse(localStorage.getItem("study_tracker_data")||"{}"); if(st.streakData&&typeof st.streakData.current==="number") R.streak=st.streakData.current; }catch(e){}
+  try{ var dc=await computeDue(); if(typeof dc==="number") R.due=dc; }catch(e){}
+  try{ if(window.LearningErrorDB&&LearningErrorDB.all){ var all=await LearningErrorDB.all(); var sum=LearningErrorDB.summarize(all||[]); R.weakCount=(sum&&sum.high)||0; if(sum&&sum.byType&&sum.byType[0]) R.weakType=sum.byType[0][0]; } }catch(e){}
+  return R;
+}
+
+async function buildDailyProposal(R){
+  var strongText = R.streak && R.streak > 1 ? (R.streak + " günlük istikrarlı bir serin var") : "çalışmalarında düzenli bir tempon var";
+  var weakDesc = R.weakType ? (WEAK[R.weakType] || R.weakType) : "kelime dizilimi ve temel yapılar";
+  return { strong: strongText, weak: weakDesc, todayTarget: GOAL };
+}
+
 async function boot(){
   var box=document.getElementById("acts"); box.innerHTML="";
+  var R = await loadReal();
+  var plan = await buildDailyProposal(R);
   
-  // Dünkü verileri al
   var t = JSON.parse(localStorage.getItem("dh-study-tracker-v1") || "{}");
-  var today = new Date().toISOString().slice(0,10);
-  var dData = (t.days || {})[today] || {sentences:0};
-  
+  var dData = (t.days || {})[isoToday()] || {sentences:0};
   renderBricks(dData.sentences, GOAL);
   
-  // KALINDIĞI YERDEN DEVAM ETME MANTIĞI:
-  // Tekrardan dönüldüğünde koç baştan başlamasın.
   if(localStorage.getItem("dh_coach_state") === "tekrar_done") {
       speak("Tekrarlarını başarıyla tamamladın, harika! Şimdi günlük tuğlalarımızı yıkmak için cümle modülüne geçelim.", function(){
           var b = mkBtn("🚀 Cümle Çalışmasına Geç", "primary", function(){ location.href="index-app.html"; });
           box.appendChild(b); b.classList.add("in");
-          localStorage.removeItem("dh_coach_state"); // Durumu temizle
+          localStorage.removeItem("dh_coach_state");
       });
       return;
   }
 
-  // Normal Sabah Açılışı ve Müzakere
-  var intro = "Günaydın! Dün gayet iyiydik. Bugün önümüzde yıkılmayı bekleyen " + GOAL + " tuğla var. Bugün zamanın nasıl? Ayrıca istersen planlamayı Gemini'ye de bırakabiliriz.";
+  var intro = "Günaydın Samet! Kuvvetli yönlerin: " + plan.strong + ". Zayıf kalan yönlerin için " + plan.weak + " çalışacağız. Bugün önümüzde " + GOAL + " tuğla var. Zamanına göre plan yapalım mı?";
   
   speak(intro, function(){
     var actionsHTML = [
@@ -189,7 +215,7 @@ async function boot(){
              box.lastChild.classList.add("in");
           });
       }},
-      { t: "🤖 Gemini'den Günlük Plan Al", cls: "gemini", action: openGeminiPrompt }
+      { t: "🤖 Gemini'den Detaylı Plan Al", cls: "gemini", action: openGeminiPrompt }
     ];
 
     actionsHTML.forEach(function(act, idx){
@@ -202,11 +228,28 @@ async function boot(){
 
 function mkBtn(t,cls,fn){ var b=document.createElement("button"); b.className="act "+cls; b.textContent=t; b.onclick=fn; return b; }
 
-function openGeminiPrompt() {
-    // Prompt'u kopyala ve yönlendir
-    var prompt = "Benim İngilizce öğrenme profilime göre bugün ne çalışmalıyım? Lütfen sadece şu JSON formatında cevap ver: {\"hedef\": SAYI, \"odak\": \"kelime/hata/cümle\"}";
-    navigator.clipboard.writeText(prompt);
-    document.getElementById("say").innerHTML = "İstek panoya kopyalandı! Yeni sekmede Gemini'ye yapıştır, dönen JSON'ı buraya gir.<br><a href='https://gemini.google.com' target='_blank' style='color:#1a73e8'>Gemini'yi Aç</a>";
+async function openGeminiPrompt() {
+    var R = await loadReal();
+    var plan = await buildDailyProposal(R);
+    
+    // Güçlü/zayıf yönlerini, serini ve süre beklentisini içeren akıllı prompt
+    var smartPrompt = 
+      "Sen benim Türkçe anlatan İngilizce koçumsun. Bugün benimle süre (dakika) ve çalışma adımları dahil detaylı bir günlük plan üzerine müzakere edeceksin.\n" +
+      "Güncel İstatistiklerim ve Verilerim:\n" +
+      "- Günlük Serim (Streak): " + (R.streak || 0) + " gün\n" +
+      "- Vadesi Gelen Tekrar (SRS): " + (R.due || 0) + " adet\n" +
+      "- Hedef Cümle Sayım: " + plan.todayTarget + "\n" +
+      "- Kuvvetli Yönlerim: " + plan.strong + "\n" +
+      "- En Sık Yaptığım Hatalar (Zayıf Yönler): " + plan.weak + "\n\n" +
+      "Lütfen bu verilere dayanarak bana özel, tahmini çalışma süresini de içeren (örn: 20 dakika normal tempo) profesyonel bir günlük plan hazırla. " +
+      "Açıklamayı Türkçe yap ve en sonda mutlaka şu formatta JSON ver:\n" +
+      "{\"hedef\": SAYI, \"sure_dakika\": SAYI, \"odak\": \"açıklama\"}";
+
+    navigator.clipboard.writeText(smartPrompt);
+    document.getElementById("say").innerHTML = 
+      "Kişisel performansın, zayıf noktaların (" + plan.weak + ") ve süre beklentin prompt içine eklenip panoya kopyalandı!<br>" +
+      "<a href='https://gemini.google.com' target='_blank' style='color:#1a73e8'>Gemini'yi Aç (Yeni Sekme)</a> ve yapıştır.";
+      
     document.getElementById("geminiModal").style.display = "flex";
 }
 
@@ -218,12 +261,12 @@ function applyGeminiPlan() {
         document.getElementById("geminiModal").style.display = "none";
         renderBricks(0, GOAL);
         var box=document.getElementById("acts"); box.innerHTML="";
-        speak("Gemini planı uygulandı: " + GOAL + " hedef ve " + plan.odak + " odaklı çalışacağız. Başlayalım!", function(){
+        speak("Gemini planı onaylandı: " + GOAL + " hedef, öngörülen süre " + plan.sure_dakika + " dakika (" + plan.odak + "). Başlayalım!", function(){
             box.appendChild(mkBtn("🚀 Plana Başla", "primary", function(){ location.href="index-app.html"; }));
             box.lastChild.classList.add("in");
         });
     } catch(e) {
-        alert("Geçersiz JSON formatı! Lütfen Gemini'den gelen veriyi kontrol et.");
+        alert("Geçersiz JSON formatı! Lütfen Gemini'den dönen JSON metnini doğru kopyaladığından emin ol.");
     }
 }
 
