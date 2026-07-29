@@ -1,158 +1,42 @@
-<!doctype html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#071226">
-<title>Fotoğraflı Sohbet Senaryoları</title>
-<link rel="stylesheet" href="./chat-style.css?v=17">[cite: 1]
+<!-- CHAT.HTML İÇİN GÜNCELLEMELER -->
+
 <style>
-    .ai-selector-container {
-        background: #111e36;
-        border: 1px solid #23395b;
-        padding: 12px;
-        border-radius: 10px;
-        margin: 15px auto 20px auto;
-        max-width: 400px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-    }
-    .ai-selector-container label {
-        font-size: 13px;
-        font-weight: bold;
-        color: #4fa3ff;
-    }
-    .ai-select {
-        width: 100%;
-        max-width: 250px;
-        background: #1c2e4a;
-        color: #fff;
-        border: 1px solid #344e75;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 13px;
-        font-weight: bold;
-        cursor: pointer;
-        outline: none;
-    }
-    .card {
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: space-between;
-        padding-bottom: 12px !important;
-        height: auto !important;
-    }
-    .external-ai-btn {
-        display: block;
-        margin: 10px 12px 0 12px;
-        background: linear-gradient(135deg, #6366f1, #a855f7);
-        color: white;
-        text-align: center;
-        padding: 8px 10px;
-        border-radius: 6px;
-        text-decoration: none;
-        font-size: 12px;
-        font-weight: bold;
-        transition: opacity 0.2s;
-        border: none;
-        cursor: pointer;
-    }
-    .external-ai-btn:hover { opacity: 0.9; }
+  .gemini-btn { background: linear-gradient(135deg, #1a73e8, #8ab4f8); border:none; color:white; padding:10px 15px; border-radius:8px; font-weight:bold; cursor:pointer; margin-top:10px; width:100%;}
 </style>
-</head>
-<body>
-<div class="menu">
-<div class="menu-actions"><a class="menu-btn" href="index.html">🏠 Ana menüye dön</a></div>[cite: 1]
-<h1>Erkek konuşan avatarlar</h1><a href="./ses-secim.html" style="display:inline-block;margin:8px 0;background:#0e7490;color:#fff;text-decoration:none;padding:8px 14px;border-radius:10px;font:800 13px system-ui">🔊 Avatar Seslerini Ayarla</a>[cite: 1]
-<p>Tüm senaryolar erkek karakterdir. Her karakter aynı grid içinde tam set olarak üretildi; sesler tam fotoğraf kareleriyle çalışır.</p>[cite: 1]
 
-<div class="ai-selector-container">
-    <label for="aiEngineSelect">🧠 Dışarıda Açılacak AI Motoru:</label>
-    <select id="aiEngineSelect" class="ai-select" onchange="saveAIEngine(this.value)">
-        <option value="gemini">Google Gemini</option>
-        <option value="openai">OpenAI ChatGPT</option>
-        <option value="claude">Anthropic Claude</option>
-        <option value="deepseek">DeepSeek V3</option>
-    </select>
-</div>
-
-<div class="grid">[cite: 1]
-    <div class="card">
-        <a href="#" onclick="navigateToInternalChat(event, 'chathotel.html', 0)">
-            <img src="assets/avatars_v3/hotel/idle.webp"><b>Otel</b><span>Erkek resepsiyonist · A2</span>[cite: 1]
-        </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Otel Resepsiyonisti (A2)')">Sohbete Başla ✨</button>
-    </div>
-    <div class="card">
-        <a href="#" onclick="navigateToInternalChat(event, 'chatrestaurant.html', 1)">
-            <img src="assets/avatars_v3/restaurant/idle.webp"><b>Restoran</b><span>Erkek garson · A2</span>[cite: 1]
-        </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Restoran Garsonu (A2)')">Sohbete Başla ✨</button>
-    </div>
-    <div class="card">
-        <a href="#" onclick="navigateToInternalChat(event, 'chatdoctor.html', 2)">
-            <img src="assets/avatars_v3/doctor/idle.webp"><b>Doktor</b><span>Erkek doktor · B1</span>[cite: 1]
-        </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Erkek Doktor (B1)')">Sohbete Başla ✨</button>
-    </div>
-    <div class="card">
-        <a href="#" onclick="navigateToInternalChat(event, 'chatairport.html', 3)">
-            <img src="assets/avatars_v3/airport/idle.webp"><b>Havaalanı</b><span>Erkek check-in görevlisi · A2</span>[cite: 1]
-        </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Havaalanı Check-in Görevlisi (A2)')">Sohbete Başla ✨</button>
-    </div>
-    <div class="card">
-        <a href="#" onclick="navigateToInternalChat(event, 'chatteacher.html', 4)">
-            <img src="assets/avatars_v3/teacher1/idle.webp"><b>AI Öğretmen</b><span>2 erkek öğretmen opsiyonu</span>[cite: 1]
-        </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'İngilizce Öğretmeni')">Sohbete Başla ✨</button>
-    </div>
-</div>[cite: 1]
-
-<div class="note-block"><b>V15:</b> Tüm karakterler erkek. Her avatar setinde idle, blink, listen, A, E, I, O, U, MBP, FV, L, TH kareleri vardır. Kodda yüz parçası kesme yoktur; her ses tam fotoğraf karesiyle gösterilir.</div>[cite: 1]
-</div>
+<!-- Sohbet arayüzünün bir köşesine bu butonu ekle -->
+<button class="gemini-btn" onclick="continueInGemini()">Sohbeti Gemini'de Devam Et</button>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const savedAI = localStorage.getItem('external_ai_target') || 'gemini';
-        document.getElementById('aiEngineSelect').value = savedAI;
+// Sohbeti Gemini'ye Taşıma
+function continueInGemini() {
+    // Sohbet geçmişini DOM'dan okuyarak birleştir (Chat mesajlarının sınıfına göre ayarla)
+    var messages = document.querySelectorAll('.chat-message');
+    var historyText = "Aşağıdaki İngilizce sohbet geçmişine göre benimle konuşmaya devam et:\n\n";
+    messages.forEach(function(msg) {
+        historyText += msg.innerText + "\n";
     });
+    
+    navigator.clipboard.writeText(historyText);
+    alert("Sohbet panoya kopyalandı! Şimdi Gemini sekmesi açılıyor, doğrudan yapıştırıp devam edebilirsin.");
+    window.open("https://gemini.google.com", "_blank");
+}
 
-    function saveAIEngine(val) {
-        localStorage.setItem('external_ai_target', val);
-    }
+// Dinamik Sohbet Konusu Üretici (Sohbeti başlatan fonksiyona entegre et)
+function generateDynamicTopic() {
+    var topics = ["technology and future", "travel memories", "food and culture", "daily hobbies", "movies and books", "childhood memories"];
+    // Her gün sırayla bir konuyu seçmek için LocalStorage kullan
+    var topicIndex = parseInt(localStorage.getItem("dh_chat_topic_idx") || "0");
+    
+    var selectedTopic = topics[topicIndex];
+    
+    // Endeksi bir artırıp kaydet ki yarın başka konu açılsın
+    topicIndex = (topicIndex + 1) % topics.length;
+    localStorage.setItem("dh_chat_topic_idx", topicIndex);
+    
+    return "Let's talk about " + selectedTopic + " today. Can you start the conversation?";
+}
 
-    function navigateToInternalChat(event, targetPage, voiceIndex) {
-        event.preventDefault();
-        // Index bilgisini alt sayfaların okuyabileceği şekilde kalıcı hafızaya alıyoruz
-        localStorage.setItem('forced_voice_index', voiceIndex);
-        window.location.href = targetPage;
-    }
-
-    function handleExternalAIClick(event, roleName) {
-        event.stopPropagation();
-        event.preventDefault();
-        const selectedAI = document.getElementById('aiEngineSelect').value;
-        const promptText = `You are a professional English conversation partner. Act as a ${roleName}. Keep your sentences suitable for this level. Let's start the conversation.`;
-
-        if (selectedAI === 'gemini') {
-            openWithClipboardFallback('https://gemini.google.com/', promptText);
-        } else if (selectedAI === 'openai') {
-            window.open(`https://chatgpt.com/?q=${encodeURIComponent(promptText)}`, '_blank');
-        } else {
-            const aiUrls = { 'claude': 'https://claude.ai/', 'deepseek': 'https://chat.deepseek.com/' };
-            openWithClipboardFallback(aiUrls[selectedAI] || 'https://chatgpt.com/', promptText);
-        }
-    }
-
-    function openWithClipboardFallback(url, text) {
-        navigator.clipboard.writeText(text).then(() => {
-            alert("Sohbet promptu kopyalandı! (CTRL+V) yapıp başlayabilirsiniz.");
-            window.open(url, '_blank');
-        }).catch(() => { window.open(url, '_blank'); });
-    }
+// Orijinal sohbet başlatan fonksiyonun ilk prompt kısmını şununla değiştir:
+// var initialPrompt = generateDynamicTopic();
 </script>
-</body>
-</html>
