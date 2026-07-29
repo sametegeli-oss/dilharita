@@ -28,7 +28,7 @@
 <script src="./study-tracker.js?v=1"></script>
 <script src="./learning-error-system.js?v=2"></script>
 <style>
-  :root{ --bg:#0a1424; --panel:#10264a; --panel2:#0b172d; --line:#1e3a5f; --txt:#e8eef7; --dim:#9fb3d9; --gold:#f59e0b; --grn:#059669; --grn2:#10b981; --pur:#7c3aed; }
+  :root{ --bg:#0a1424; --panel:#10264a; --panel2:#0b172d; --line:#1e3a5f; --txt:#e8eef7; --dim:#9fb3d9; --gold:#f59e0b; --grn:#059669; --grn2:#10b981; --pur:#7c3aed; --brick-done:#059669; --brick-todo:#1e3a5f; }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{background:radial-gradient(1200px 600px at 50% -10%,#12315e 0%,var(--bg) 55%);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100%;display:flex;flex-direction:column;align-items:center}
@@ -41,10 +41,12 @@
   .sndBtn{display:flex;align-items:center;gap:6px;background:#16294a;border:1px solid var(--line);color:var(--txt);padding:7px 13px;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap}
   .sndBtn.off{color:var(--dim)}
   
-  /* Görsel İlerleme Çubuğu Ek Alanı */
-  .progressWrap{width:100%;margin-bottom:14px}
-  .progressContainer{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:999px;height:8px;overflow:hidden}
-  .progressBarFill{background:linear-gradient(90deg,var(--grn),var(--grn2));height:100%;width:0%;transition:width 0.4s ease}
+  /* Tuğla Görselleştirme Duvarı Alanı */
+  .brickWallWrap{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:14px;display:flex;flex-direction:column;gap:6px}
+  .brickWallTitle{font-size:11.5px;color:var(--dim);font-weight:700;display:flex;justify-content:space-between;align-items:center}
+  .bricksGrid{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+  .brick{flex:1;min-width:18px;height:24px;background:var(--brick-todo);border-radius:4px;border:1px solid rgba(255,255,255,0.08);transition:all 0.3s ease;position:relative;overflow:hidden}
+  .brick.done{background:var(--brick-done);box-shadow:0 0 8px rgba(16,185,129,0.4);transform:translateY(-2px);opacity:0.85}
 
   .coachWrap{display:flex;flex-direction:column;align-items:center;margin-top:2px}
   .avatarRing{position:relative;width:188px;height:188px;border-radius:50%;padding:5px;background:conic-gradient(from 180deg,var(--gold),var(--grn2),var(--pur),var(--gold));transition:box-shadow .3s}
@@ -87,10 +89,14 @@
       <button class="sndBtn" id="sndBtn" onclick="toggleSound()">🔊 Sesli</button>
     </div>
 
-    <!-- Görsel İlerleme Çubuğu -->
-    <div class="progressWrap">
-      <div class="progressContainer">
-        <div class="progressBarFill" id="progressBarFill"></div>
+    <!-- Tuğla Duvarı Görselleştirme Alanı -->
+    <div class="brickWallWrap">
+      <div class="brickWallTitle">
+        <span>🏗️ Günlük Hedef Duvarı</span>
+        <span id="brickStatusText">0 / 5 Tamamlandı</span>
+      </div>
+      <div class="bricksGrid" id="bricksGrid">
+        <!-- Dinamik olarak üretilecek tuğlalar -->
       </div>
     </div>
 
@@ -117,7 +123,7 @@
 
 <script>
 /* ============================================================
-   KOÇ MODU — Dinamik Müzakere, Günlük Plan Uzlaşısı ve Görsel İlerleme
+   KOÇ MODU — Tuğla Duvarı Görselleştirmeli Günlük Plan ve Müzakere
    ============================================================ */
 var AV="./assets/avatars_v3/teacher/";
 var FR={ idle:AV+"idle.webp", small:AV+"mouth-small.webp", medium:AV+"mouth-medium.webp",
@@ -212,13 +218,34 @@ async function loadReal(){
 }
 
 function paintHeader(R){
-  document.getElementById("goalN").textContent=Math.min(R.sentences,GOAL)+"/"+GOAL;
-  if(R.streak!=null && R.streak>0){ document.getElementById("streakN").textContent=R.streak; document.getElementById("streakPill").style.display="flex"; }
+  var currentDone = Math.min(R.sentences, GOAL);
+  document.getElementById("goalN").textContent = currentDone + "/" + GOAL;
+  if(R.streak!=null && R.streak>0){ document.getElementById("streakN").textContent = R.streak; document.getElementById("streakPill").style.display="flex"; }
   
-  // Canlı Görsel İlerleme Çubuğu Güncellemesi
-  var pct = Math.min(100, Math.round((R.sentences / GOAL) * 100));
-  var fill = document.getElementById("progressBarFill");
-  if(fill) fill.style.width = pct + "%";
+  // Tuğla Duvarını Oluştur ve Güncelle
+  renderBricks(currentDone, GOAL);
+}
+
+/* ---- TUĞLA DUVARI RENDER ETMEK VE KALDIRMAK ---- */
+function renderBricks(doneCount, totalGoal){
+  var grid = document.getElementById("bricksGrid");
+  var statusTxt = document.getElementById("brickStatusText");
+  if(!grid) return;
+  grid.innerHTML = "";
+  
+  // Eğer hedef 0 ise varsayılan 5 yap
+  var total = Math.max(1, totalGoal);
+  var done = Math.min(doneCount, total);
+
+  statusTxt.textContent = done + " / " + total + " Cümle";
+
+  for(var i = 0; i < total; i++){
+    var brick = document.createElement("div");
+    brick.className = "brick" + (i < done ? " done" : "");
+    // Tuğla kalktığında/tamamlandığında ipucu başlığı
+    brick.title = (i < done) ? "Tuğla kaldırıldı (Tamamlandı)" : "Kalan tuğla (Hedef)";
+    grid.appendChild(brick);
+  }
 }
 
 /* ---- DÜNÜN İSTATİSTİKLERİNİ AL ---- */
@@ -258,11 +285,11 @@ async function renderNegotiationFlow(R){
                  "Genel olarak kuvvetli olduğun yönler: " + plan.strong + ". " +
                  "Zayıf kalan hususlar için koçla çalışma yapacaksın: özellikle " + plan.weak + " üzerine odaklanacağız. " +
                  "Bugün şunları çalışacağız: " + plan.todayTarget + " cümle hedefi ve vadesi gelen " + plan.dueCount + " tekrar. " +
-                 "Bugün zamanın nasıl? Az mı, normal mi, yoksa bol mu?";
+                 "Duvarımızda " + plan.todayTarget + " tuğlamız var. Zamanın bugün nasıl? Az mı, normal mi, yoksa bol mu?";
 
   speak(introMsg, function(){
     var actionsHTML = [
-      { t: "✅ Planı Onayla ve Başla", cls: "primary", action: function(){ executePlan(plan); } },
+      { t: "✅ Planı Onayla ve Duvarı Ör", cls: "primary", action: function(){ executePlan(plan); } },
       { t: "⏱️ Bugün Zamanım Az (Hafiflet)", cls: "ghost", action: function(){ adjustPlan(plan, "az"); } },
       { t: "⚡ Bugün Vaktim Bol (Yoğunlaştır)", cls: "ghost", action: function(){ adjustPlan(plan, "bol"); } }
     ];
@@ -283,12 +310,14 @@ function adjustPlan(plan, type){
   box.innerHTML = "";
   if(type === "az"){
     plan.todayTarget = Math.max(2, Math.floor(plan.todayTarget / 2));
-    speak("Anladım, bugün senin için hedefi hafifletip sadece en kritik tekrarları bırakıyorum. Bu planı onaylıyor musun?", function(){
+    renderBricks(0, plan.todayTarget); // Tuğlaları güncelle
+    speak("Anladım, bugün senin için hedefi hafifletip duvarı küçültüyoruz. Bu planı onaylıyor musun?", function(){
       renderFinalAgreement(plan);
     });
   } else if(type === "bol"){
     plan.todayTarget += 3;
-    speak("Harika! Enerjin yüksek görünüyor. Hedefi artırıp ekstra hata antrenmanı ekliyorum. Uzlaştık mı?", function(){
+    renderBricks(0, plan.todayTarget); // Tuğlaları güncelle
+    speak("Harika! Hedef duvarına ek tuğlalar ekledim. Uzlaştık mı?", function(){
       renderFinalAgreement(plan);
     });
   }
@@ -297,8 +326,8 @@ function adjustPlan(plan, type){
 function renderFinalAgreement(plan){
   var box = document.getElementById("acts");
   box.innerHTML = "";
-  speak("Güzel, bugünkü planımız üzerinde uzlaştık[cite: 1]. Şimdi çalışma zamanı!", function(){
-    var b = mkBtn("🚀 Planı Uygula ve Başla", "primary", function(){ executePlan(plan); });
+  speak("Güzel, bugünkü planımız ve tuğla duvarımız üzerinde uzlaştık[cite: 1]. Çalıştıkça tuğlalar tek tek kalkacak!", function(){
+    var b = mkBtn("🚀 Duvarı Yıkmaya Başla", "primary", function(){ executePlan(plan); });
     box.appendChild(b);
     b.classList.add("in");
   });
@@ -319,7 +348,7 @@ function askCoach(){
   var v=(document.getElementById("askIn").value||"").trim(); if(!v) return; document.getElementById("askIn").value="";
   var box=document.getElementById("acts"); box.innerHTML=""; var hit=ROUTE.find(function(r){ return r[0].test(v); });
   if(hit){ speak("Olur, "+hit[2]+" açıyorum.", function(){ var b=mkBtn("👉 "+hit[2]+" — aç","primary",function(){ location.href="./"+hit[1]; }); box.appendChild(b); b.classList.add("in"); var b2=mkBtn("Koçun önerisine dön","ghost",function(){ boot(); }); box.appendChild(b2); b2.classList.add("in"); }); }
-  else { speak("İtirazını aldım ancak bugünkü önceliğimiz senin zayıf yönlerini kapatmak. Menüden dilediğin yere geçebilirsin.", function(){ var b=mkBtn("≡ Tüm modüller","primary",function(){ openSheet(); }); box.appendChild(b); b.classList.add("in"); var b2=mkBtn("Koçun planına dön","ghost",function(){ boot(); }); box.appendChild(b2); b2.classList.add("in"); }); }
+  else { speak("İtirazını aldım ancak bugünkü önceliğimiz senin zayıf yönlerini kapatıp duvarı bitirmek. Menüden dilediğin yere geçebilirsin.", function(){ var b=mkBtn("≡ Tüm modüller","primary",function(){ openSheet(); }); box.appendChild(b); b.classList.add("in"); var b2=mkBtn("Koçun planına dön","ghost",function(){ boot(); }); box.appendChild(b2); b2.classList.add("in"); }); }
 }
 function mkBtn(t,cls,fn){ var b=document.createElement("button"); b.className="act "+cls; b.textContent=t; b.onclick=fn; return b; }
 
@@ -333,7 +362,7 @@ function closeSheet(){ document.getElementById("sheet").classList.remove("open")
 startBlink();
 async function boot(){
   var box=document.getElementById("acts"); box.innerHTML="";
-  document.getElementById("say").textContent="Bugünkü planını hazırlıyorum…";
+  document.getElementById("say").textContent="Bugünkü planını ve tuğlaları hazırlıyorum…";
   var R=await loadReal(); 
   paintHeader(R); 
   renderNegotiationFlow(R);
@@ -342,7 +371,7 @@ async function boot(){
   var box=document.getElementById("acts");
   var b=mkBtn("👉 Günlük Planı Başlat","primary",function(){ boot(); });
   box.appendChild(b); setTimeout(function(){b.classList.add("in");},120);
-  document.getElementById("say").innerHTML="Merhaba 👋 Ben koçun. Dünkü çalışmalarını analiz ettim, seninle ortak bir günlük plan hazırlamak için hazırım.";
+  document.getElementById("say").innerHTML="Merhaba 👋 Ben koçun. Dünkü çalışmalarını analiz ettim, hedeflerini tuğlalara dönüştürüp ortak bir plan yapmaya hazırım.";
 })();
 </script>
 <script src="./ux-boost.js?v=1"></script>
