@@ -165,6 +165,11 @@ function openVoiceSheet(){
 
   function listFor(lang){
     refreshVoices();
+    return _voiceCache || [];   // filtre yok: tüm sesler
+  }
+  
+  function listFor1(lang){
+    refreshVoices();
     const all = _voiceCache || [];
     const re = /^tr/i.test(lang) ? /^tr/i : /^en/i;
     const hit = all.filter(v => re.test(v.lang||""));
