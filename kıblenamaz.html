@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Namaz Vakitleri & Kıble (Pusulasız – Kuzey Göstergeli)</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background: #f1f5f9; padding: 10px; color: #0f172a; }  /* touch-action kaldırıldı */
+        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); overflow: hidden; padding: 16px; }
+        header { text-align: center; padding: 10px 0 16px; border-bottom: 2px solid #e2e8f0; }
+        header h1 { font-size: 1.6rem; color: #0b2b5c; }
+        header p { font-size: 0.9rem; color: #475569; }
+        .section { margin-top: 18px; }
+        .section h2 { font-size: 1.1rem; font-weight: 600; color: #1e293b; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px; margin-bottom: 12px; }
+        .form-group { display: flex; flex-direction: column; margin-bottom: 10px; }
+        .form-group label { font-weight: 500; font-size: 0.85rem; color: #334155; margin-bottom: 3px; }
+        .form-group input, .form-group select { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; background: white; width: 100%; }
+        .inline-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .inline-group .form-group { flex: 1; min-width: 70px; }
+        .btn { background: #0b2b5c; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.95rem; }
+        .btn:hover { background: #1e3a8a; }
+        .btn-success { background: #059669; }
+        .btn-success:hover { background: #047857; }
+        .btn-primary { background: #0b2b5c; color: white; border: none; padding: 14px; font-size: 1rem; font-weight: 600; border-radius: 10px; cursor: pointer; width: 100%; transition: 0.2s; margin-top: 8px; }
+        .btn-primary:hover { background: #1e3a8a; }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 6px 0 10px; }
+        .checkbox-group input { width: 18px; height: 18px; accent-color: #2563eb; }
+        .rakim-info { font-size: 0.75rem; color: #2563eb; margin-top: 2px; }
+
+        .results { margin-top: 12px; }
+        .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        @media (max-width: 500px) { .result-grid { grid-template-columns: 1fr 1fr; } }
+        .result-item { background: #f8fafc; padding: 10px 8px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; }
+        .result-item .label { font-size: 0.65rem; text-transform: uppercase; color: #64748b; }
+        .result-item .value { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin-top: 2px; }
+        .result-item.highlight { background: #dbeafe; border-color: #93c5fd; grid-column: span 3; }
+        .result-item.highlight .value { font-size: 1.6rem; color: #1e40af; }
+        .error-msg { color: #b91c1c; background: #fee2e2; padding: 8px 12px; border-radius: 6px; margin-top: 8px; font-weight: 500; font-size: 0.85rem; display: none; }
+        .note { font-size: 0.75rem; color: #475569; background: #f1f5f9; padding: 8px 12px; border-radius: 6px; margin-top: 10px; }
+
+        .qibla-guide { margin-top: 20px; padding: 16px; background: #f0f9ff; border-radius: 12px; border: 2px solid #0b2b5c; text-align: center; }
+        .qibla-guide .title { font-weight: 700; font-size: 1.1rem; color: #0b2b5c; }
+        .qibla-guide .sub { font-size: 0.85rem; color: #475569; margin: 4px 0 10px; }
+        .qibla-canvas-wrap { 
+            position: relative; 
+            width: 100%; 
+            max-width: 300px; 
+            height: 300px; 
+            margin: 0 auto; 
+            background: #1e293b; 
+            border-radius: 50%; 
+            overflow: hidden; 
+            touch-action: none;  /* Sadece burada engelle */
+            user-select: none; 
+            -webkit-user-select: none; 
+        }
+        .qibla-canvas-wrap canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+        .qibla-guide .instruction { margin-top: 10px; font-weight: 600; font-size: 1rem; color: #0b2b5c; min-height: 2em; }
+        .qibla-guide .btn { margin-top: 8px; background: #0b2b5c; }
+
+        .tts-controls { background: #e2e8f0; padding: 12px; border-radius: 8px; margin-top: 12px; }
+        .tts-status { font-weight: 600; margin-left: 6px; font-size: 0.85rem; }
+        .tts-status.active { color: #059669; }
+        .tts-status.inactive { color: #dc2626; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <header>
+        <h1>🕌 Namaz Vakitleri & Kıble</h1>
+        <p>Astronomik hesaplama – Kuzey gösteren pusulasız Kıble</p>
+    </header>
+
+    <!-- AYARLAR -->
+    <div class="section">
+        <h2>📍 Konum & Zaman</h2>
+        <div class="form-group">
+            <label>Hazır şehir</label>
+            <select id="citySelect" onchange="loadCity()">
+                <option value="">-- Seçiniz --</option>
+                <option value="37.7765,29.0864,3,0">Denizli (37.78°N, 29.09°E, UTC+3)</option>
+                <option value="39.9334,32.8597,3,938">Ankara (39.93°N, 32.86°E, UTC+3, 938m)</option>
+                <option value="41.0082,28.9784,3,39">İstanbul (41.01°N, 28.98°E, UTC+3, 39m)</option>
+                <option value="36.2048,36.1576,3,100">Antakya (36.20°N, 36.16°E, UTC+3, 100m)</option>
+                <option value="39.8385,34.8100,3,1250">Yozgat (39.84°N, 34.81°E, UTC+3, 1250m)</option>
+            </select>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-success" onclick="getLocation()">📍 Konumu al</button>
+        </div>
+        <div class="inline-group">
+            <div class="form-group"><label>Enlem (°)</label><input type="number" id="latitude" step="any" value="37.7765"></div>
+            <div class="form-group"><label>Boylam (°)</label><input type="number" id="longitude" step="any" value="29.0864"></div>
+            <div class="form-group"><label>UTC</label><input type="number" id="timezone" step="0.5" value="3"></div>
+        </div>
+        <div class="inline-group">
+            <div class="form-group" style="flex:2;"><label>Rakım (m)</label><input type="number" id="altitude" step="any" value="0"></div>
+        </div>
+        <div class="form-group">
+            <label>Tarih (GG.AA.YYYY)</label>
+            <input type="text" id="dateInput" value="30.07.2026">
+        </div>
+
+        <h2>🌞 Açılar (derece)</h2>
+        <div class="inline-group">
+            <div class="form-group"><label>İmsak</label><input type="number" id="angleImsak" step="any" value="-18"></div>
+            <div class="form-group"><label>Yatsı</label><input type="number" id="angleYatsi" step="any" value="-17"></div>
+        </div>
+        <div class="inline-group">
+            <div class="form-group"><label>Güneş</label><input type="number" id="angleSun" step="any" value="-0.833"></div>
+            <div class="form-group"><label>İşrak</label><input type="number" id="angleIsfirar" step="any" value="5"></div>
+        </div>
+        <div class="rakim-info">⚠️ Rakım, İmsak/Güneş/Akşam/Yatsı'yı düzeltir.</div>
+
+        <h2>🕌 İkindi</h2>
+        <div class="form-group">
+            <select id="asrOption">
+                <option value="1">Asr-ı Evvel (katsayı 1)</option>
+                <option value="2">Asr-ı Sani (katsayı 2)</option>
+            </select>
+        </div>
+
+        <h2>⏳ Temkin (dk)</h2>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <div class="form-group"><label>İmsak</label><input type="number" id="temkinImsak" value="-1"></div>
+            <div class="form-group"><label>Güneş</label><input type="number" id="temkinGunes" value="-7"></div>
+            <div class="form-group"><label>Öğle</label><input type="number" id="temkinOgle" value="7"></div>
+            <div class="form-group"><label>İkindi</label><input type="number" id="temkinIkindi" value="4"></div>
+            <div class="form-group"><label>Akşam</label><input type="number" id="temkinAksam" value="9"></div>
+            <div class="form-group"><label>Yatsı</label><input type="number" id="temkinYatsi" value="1"></div>
+            <div class="form-group" style="grid-column:span2;"><label>İşrak/İsfirar</label><input type="number" id="temkinIsfirar" value="10"></div>
+        </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="temkinCheckbox" checked>
+            <label for="temkinCheckbox" style="font-size:0.9rem;">Temkin uygula</label>
+        </div>
+
+        <button class="btn-primary" onclick="hesapla()">🔄 Vakitleri Hesapla</button>
+
+        <!-- Sesli Saat -->
+        <div class="tts-controls">
+            <h2 style="font-size:0.95rem; margin-bottom:6px;">🔊 Sesli Saat</h2>
+            <div class="checkbox-group">
+                <input type="checkbox" id="ttsEnabled" onchange="toggleTTS()">
+                <label for="ttsEnabled" style="font-size:0.9rem;">Aktif</label>
+                <span id="ttsStatus" class="tts-status inactive">Kapalı</span>
+            </div>
+            <div class="inline-group">
+                <div class="form-group" style="flex:2;"><label>Aralık (dk)</label><input type="number" id="ttsInterval" value="30" min="1"></div>
+                <div class="form-group" style="flex:1;"><label> </label><button class="btn" onclick="speakNow()">⏵ Oku</button></div>
+            </div>
+            <div style="font-size:0.8rem;color:#475569;"><span id="ttsNextAnnounce">Sonraki: --:--</span></div>
+        </div>
+    </div>
+
+    <!-- SONUÇLAR -->
+    <div class="section results" id="resultsContainer">
+        <h2>📊 Vakitler (yerel saat)</h2>
+        <div class="result-grid">
+            <div class="result-item"><div class="label">İmsak</div><div class="value" id="rImsak">--:--</div></div>
+            <div class="result-item"><div class="label">Güneş</div><div class="value" id="rGunes">--:--</div></div>
+            <div class="result-item"><div class="label">Öğle</div><div class="value" id="rOgle">--:--</div></div>
+            <div class="result-item"><div class="label">İkindi</div><div class="value" id="rIkindi">--:--</div></div>
+            <div class="result-item"><div class="label">Akşam</div><div class="value" id="rAksam">--:--</div></div>
+            <div class="result-item"><div class="label">Yatsı</div><div class="value" id="rYatsi">--:--</div></div>
+            <div class="result-item"><div class="label">İşrak</div><div class="value" id="rIsrak">--:--</div></div>
+            <div class="result-item"><div class="label">İsfirar</div><div class="value" id="rIsfirar">--:--</div></div>
+            <div class="result-item highlight"><div class="label">🕋 Kıble Saati</div><div class="value" id="rQibla">--:--</div></div>
+        </div>
+        <div id="errorBox" class="error-msg"></div>
+        <div class="note">
+            ⚡ Astronomik hesaplama. Temkin uygulanabilir.
+            <span id="rakimNote" style="display:block;margin-top:4px;color:#2563eb;"></span>
+        </div>
+    </div>
+
+    <!-- KIBLE REHBERİ -->
+    <div class="qibla-guide" id="qiblaGuide">
+        <div class="title">☀️ Güneş'i Referans Alarak Kıble Bulun</div>
+        <div class="sub">Sarı daireyi sürükleyerek gerçek güneşin olduğu yöne getirin.</div>
+        <div class="qibla-canvas-wrap">
+            <canvas id="qiblaCanvas" width="300" height="300"></canvas>
+        </div>
+        <div class="instruction" id="qiblaInstruction">Sarı daireyi güneşe sürükleyin</div>
+        <div>
+            <button class="btn" onclick="speakGuide()">🔊 Sesli Anons</button>
+            <button class="btn" style="background:#475569; margin-left:8px;" onclick="resetSun()">⟲ Sıfırla</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ========== YARDIMCI FONKSİYONLAR ==========
+function toRad(deg) { return deg * Math.PI / 180; }
+function toDeg(rad) { return rad * 180 / Math.PI; }
+
+function formatTime(decimalHours) {
+    if (isNaN(decimalHours) || !isFinite(decimalHours)) return "--:--";
+    let h = Math.floor(decimalHours);
+    let m = Math.round((decimalHours - h) * 60);
+    if (m === 60) { h += 1; m = 0; }
+    h = (h + 24) % 24;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function equationOfTime(dayOfYear) {
+    const g = (2 * Math.PI / 365) * (dayOfYear - 1);
+    return 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2*g) - 0.040849 * Math.sin(2*g));
+}
+function solarDeclination(dayOfYear) {
+    const g = (2 * Math.PI / 365) * (dayOfYear - 1);
+    return toDeg(0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2*g) + 0.000907 * Math.sin(2*g) - 0.002697 * Math.cos(3*g) + 0.00148 * Math.sin(3*g));
+}
+function hourAngleDeg(latDeg, declDeg, altDeg) {
+    const phi = toRad(latDeg), delta = toRad(declDeg), alt = toRad(altDeg);
+    const cosH = (Math.sin(alt) - Math.sin(phi) * Math.sin(delta)) / (Math.cos(phi) * Math.cos(delta));
+    if (cosH < -1 || cosH > 1) return null;
+    return toDeg(Math.acos(cosH));
+}
+
+// ========== ŞEHİR YÜKLEME ==========
+function loadCity() {
+    const val = document.getElementById('citySelect').value;
+    if (!val) return;
+    const parts = val.split(',');
+    document.getElementById('latitude').value = parts[0];
+    document.getElementById('longitude').value = parts[1];
+    document.getElementById('timezone').value = parts[2];
+    document.getElementById('altitude').value = parts.length > 3 ? parts[3] : 0;
+    hesapla();
+}
+
+// ========== KONUM AL ==========
+function getLocation() {
+    if (!navigator.geolocation) { alert("Tarayıcı desteklemiyor."); return; }
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            document.getElementById('latitude').value = pos.coords.latitude.toFixed(6);
+            document.getElementById('longitude').value = pos.coords.longitude.toFixed(6);
+            document.getElementById('timezone').value = Math.round(pos.coords.longitude / 15);
+            document.getElementById('altitude').value = pos.coords.altitude ? Math.round(pos.coords.altitude) : 0;
+            hesapla();
+        },
+        err => alert("Konum alınamadı: " + err.message)
+    );
+}
+
+// ========== ANA HESAPLAMA ==========
+let cachedData = {};
+
+function hesapla() {
+    const lat = parseFloat(document.getElementById('latitude').value);
+    const lon = parseFloat(document.getElementById('longitude').value);
+    const tz = parseFloat(document.getElementById('timezone').value);
+    const altitude = parseFloat(document.getElementById('altitude').value) || 0;
+    const dateStr = document.getElementById('dateInput').value.trim();
+    const parts = dateStr.split('.');
+    if (parts.length !== 3) { alert('Tarih GG.AA.YYYY olmalı.'); return; }
+    const day = parseInt(parts[0]), month = parseInt(parts[1]), year = parseInt(parts[2]);
+    const dateObj = new Date(year, month-1, day);
+    const start = new Date(year, 0, 0);
+    const doy = Math.floor((dateObj - start) / (1000*60*60*24));
+
+    const angleImsak = parseFloat(document.getElementById('angleImsak').value);
+    const angleYatsi = parseFloat(document.getElementById('angleYatsi').value);
+    const angleSun = parseFloat(document.getElementById('angleSun').value);
+    const angleIsfirar = parseFloat(document.getElementById('angleIsfirar').value);
+    const asrOption = parseInt(document.getElementById('asrOption').value);
+
+    const tImsak = parseFloat(document.getElementById('temkinImsak').value) || 0;
+    const tGunes = parseFloat(document.getElementById('temkinGunes').value) || 0;
+    const tOgle = parseFloat(document.getElementById('temkinOgle').value) || 0;
+    const tIkindi = parseFloat(document.getElementById('temkinIkindi').value) || 0;
+    const tAksam = parseFloat(document.getElementById('temkinAksam').value) || 0;
+    const tYatsi = parseFloat(document.getElementById('temkinYatsi').value) || 0;
+    const tIsfirar = parseFloat(document.getElementById('temkinIsfirar').value) || 0;
+    const temkinEnabled = document.getElementById('temkinCheckbox').checked;
+
+    const R = 6371000;
+    let horizonDipDeg = 0;
+    if (altitude > 0) horizonDipDeg = toDeg(Math.acos(R / (R + altitude)));
+    const imsakAlt = angleImsak - horizonDipDeg;
+    const gunesAlt = angleSun - horizonDipDeg;
+    const yatsiAlt = angleYatsi - horizonDipDeg;
+
+    const eotMin = equationOfTime(doy);
+    const declDeg = solarDeclination(doy);
+    const solarNoon = 12 + tz - (lon/15) - (eotMin/60);
+
+    function getSunrise(alt) { const h = hourAngleDeg(lat, declDeg, alt); return h !== null ? solarNoon - h/15 : null; }
+    function getSunset(alt) { const h = hourAngleDeg(lat, declDeg, alt); return h !== null ? solarNoon + h/15 : null; }
+
+    const imsakRaw = getSunrise(imsakAlt);
+    const gunesRaw = getSunrise(gunesAlt);
+    const aksamRaw = getSunset(gunesAlt);
+    const yatsiRaw = getSunset(yatsiAlt);
+    const israkRaw = getSunrise(angleIsfirar);
+    const isfirarRaw = getSunset(angleIsfirar);
+
+    const zda = 90 - Math.abs(lat - declDeg);
+    const cotZDA = 1 / Math.tan(toRad(zda));
+    const ikindiAltDeg = toDeg(Math.atan(1 / (cotZDA + asrOption)));
+    const ikindiRaw = getSunset(ikindiAltDeg);
+
+    function applyTemkin(v, t) { return (!temkinEnabled || v === null) ? v : v + t/60; }
+    const imsak = applyTemkin(imsakRaw, tImsak);
+    const gunes = applyTemkin(gunesRaw, tGunes);
+    const ogle = applyTemkin(solarNoon, tOgle);
+    const ikindi = applyTemkin(ikindiRaw, tIkindi);
+    const aksam = applyTemkin(aksamRaw, tAksam);
+    const yatsi = applyTemkin(yatsiRaw, tYatsi);
+    const israk = applyTemkin(israkRaw, tIsfirar);
+    const isfirar = applyTemkin(isfirarRaw, tIsfirar);
+
+    // Kıble
+    const kaabaLat = 21.4225, kaabaLon = 39.8262;
+    const dLon = toRad(kaabaLon - lon);
+    const phi = toRad(lat);
+    const kaabaPhi = toRad(kaabaLat);
+    const y = Math.sin(dLon);
+    const x = Math.cos(phi) * Math.tan(kaabaPhi) - Math.sin(phi) * Math.cos(dLon);
+    let qiblaAz = toDeg(Math.atan2(y, x));
+    if (qiblaAz < 0) qiblaAz += 360;
+
+    // Kıble saati
+    function solarAzimuth(hourAngleDeg) {
+        const H = toRad(hourAngleDeg);
+        const alt = Math.asin(Math.sin(phi) * Math.sin(toRad(declDeg)) + Math.cos(phi) * Math.cos(toRad(declDeg)) * Math.cos(H));
+        const cosAz = (Math.sin(toRad(declDeg)) - Math.sin(phi) * Math.sin(alt)) / (Math.cos(phi) * Math.cos(alt));
+        let az = toDeg(Math.acos(Math.max(-1, Math.min(1, cosAz))));
+        if (H > 0) az = 360 - az;
+        return az;
+    }
+    let bestMin = 0, minDiff = 999;
+    for (let off = -360; off <= 360; off += 0.5) {
+        const az = solarAzimuth(off * 0.25);
+        const diff = Math.abs(az - qiblaAz);
+        if (diff < minDiff) { minDiff = diff; bestMin = off; }
+    }
+    const qiblaTimeMin = solarNoon * 60 + bestMin;
+    const qH = Math.floor((qiblaTimeMin / 60) % 24);
+    const qM = Math.round(qiblaTimeMin % 60);
+    const qiblaStr = `${String(qH).padStart(2,'0')}:${String(qM).padStart(2,'0')}`;
+
+    document.getElementById('rImsak').textContent = formatTime(imsak);
+    document.getElementById('rGunes').textContent = formatTime(gunes);
+    document.getElementById('rOgle').textContent = formatTime(ogle);
+    document.getElementById('rIkindi').textContent = formatTime(ikindi);
+    document.getElementById('rAksam').textContent = formatTime(aksam);
+    document.getElementById('rYatsi').textContent = formatTime(yatsi);
+    document.getElementById('rIsrak').textContent = formatTime(israk);
+    document.getElementById('rIsfirar').textContent = formatTime(isfirar);
+    document.getElementById('rQibla').textContent = qiblaStr;
+
+    const rakimNote = document.getElementById('rakimNote');
+    if (altitude > 0) rakimNote.textContent = `📍 Rakım: ${altitude}m – Ufuk alçalma: ${horizonDipDeg.toFixed(2)}° (${(horizonDipDeg * 4 / 15).toFixed(1)} dk)`;
+    else rakimNote.textContent = '📍 Deniz seviyesi';
+
+    const errBox = document.getElementById('errorBox');
+    let errors = [];
+    if (imsak === null) errors.push('İmsak');
+    if (gunes === null) errors.push('Güneş');
+    if (yatsi === null) errors.push('Yatsı');
+    if (ikindi === null) errors.push('İkindi');
+    if (aksam === null) errors.push('Akşam');
+    if (israk === null) errors.push('İşrak');
+    if (isfirar === null) errors.push('İsfirar');
+    if (errors.length) { errBox.style.display = 'block'; errBox.textContent = '⚠️ ' + errors.join(', ') + ' vakti oluşmuyor.'; }
+    else errBox.style.display = 'none';
+
+    document.getElementById('resultsContainer').style.display = 'block';
+
+    // Güneş azimutunu hesapla
+    const now = new Date();
+    const hours = now.getHours() + now.getMinutes()/60 + now.getSeconds()/3600;
+    const nowDate = new Date();
+    const start2 = new Date(nowDate.getFullYear(), 0, 0);
+    const doyNow = Math.floor((nowDate - start2) / (1000*60*60*24));
+    const declNow = solarDeclination(doyNow);
+    const eotNow = equationOfTime(doyNow);
+    const solarNoonNow = 12 + tz - (lon/15) - (eotNow/60);
+    const hourAngleNow = (hours - solarNoonNow) * 15;
+    const phiNow = phi;
+    const declRadNow = toRad(declNow);
+    const HNow = toRad(hourAngleNow);
+    const altNow = Math.asin(Math.sin(phiNow) * Math.sin(declRadNow) + Math.cos(phiNow) * Math.cos(declRadNow) * Math.cos(HNow));
+    const cosAzNow = (Math.sin(declRadNow) - Math.sin(phiNow) * Math.sin(altNow)) / (Math.cos(phiNow) * Math.cos(altNow));
+    let sunAz = toDeg(Math.acos(Math.max(-1, Math.min(1, cosAzNow))));
+    if (HNow > 0) sunAz = 360 - sunAz;
+
+    cachedData = { lat, lon, tz, altitude, doy, declDeg, solarNoon, qiblaAz, phi, sunAz };
+    
+    initQiblaGuide();
+    if (window.qiblaInterval) clearInterval(window.qiblaInterval);
+    window.qiblaInterval = setInterval(updateQiblaGuide, 500);
+}
+
+// ========== PUSULASIZ KIBLE REHBERİ ==========
+let sunRel = 0;
+let isDragging = false;
+
+function initQiblaGuide() {
+    const canvas = document.getElementById('qiblaCanvas');
+    canvas.width = 300;
+    canvas.height = 300;
+    
+    // Olayları temizle (tekrar eklenmesini önlemek için)
+    canvas.removeEventListener('mousedown', startDrag);
+    canvas.removeEventListener('mousemove', onDrag);
+    canvas.removeEventListener('mouseup', endDrag);
+    canvas.removeEventListener('mouseleave', endDrag);
+    canvas.removeEventListener('touchstart', startDragTouch);
+    canvas.removeEventListener('touchmove', onDragTouch);
+    canvas.removeEventListener('touchend', endDrag);
+    canvas.removeEventListener('touchcancel', endDrag);
+    
+    canvas.addEventListener('mousedown', startDrag);
+    canvas.addEventListener('mousemove', onDrag);
+    canvas.addEventListener('mouseup', endDrag);
+    canvas.addEventListener('mouseleave', endDrag);
+    canvas.addEventListener('touchstart', startDragTouch, { passive: false });
+    canvas.addEventListener('touchmove', onDragTouch, { passive: false });
+    canvas.addEventListener('touchend', endDrag);
+    canvas.addEventListener('touchcancel', endDrag);
+    
+    sunRel = 90;
+    updateQiblaGuide();
+}
+
+function getAngleFromEvent(e, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    let clientX, clientY;
+    if (e.touches) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+    const cx = canvas.width/2, cy = canvas.height/2;
+    const dx = x - cx;
+    const dy = y - cy;
+    let angle = toDeg(Math.atan2(dx, -dy));
+    if (angle < 0) angle += 360;
+    return angle;
+}
+
+function startDrag(e) {
+    isDragging = true;
+    const canvas = document.getElementById('qiblaCanvas');
+    const angle = getAngleFromEvent(e, canvas);
+    sunRel = angle;
+    updateQiblaGuide();
+    e.preventDefault();
+}
+
+function startDragTouch(e) {
+    e.preventDefault();
+    startDrag(e);
+}
+
+function onDrag(e) {
+    if (!isDragging) return;
+    const canvas = document.getElementById('qiblaCanvas');
+    const angle = getAngleFromEvent(e, canvas);
+    sunRel = angle;
+    updateQiblaGuide();
+    e.preventDefault();
+}
+
+function onDragTouch(e) {
+    e.preventDefault();
+    onDrag(e);
+}
+
+function endDrag(e) {
+    isDragging = false;
+}
+
+function resetSun() {
+    sunRel = 90;
+    updateQiblaGuide();
+}
+
+function updateQiblaGuide() {
+    const d = cachedData;
+    if (!d || !d.lat) {
+        const canvas = document.getElementById('qiblaCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, 300, 300);
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, 0, 300, 300);
+        ctx.fillStyle = 'white';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Veri bekleniyor...', 150, 150);
+        return;
+    }
+
+    const canvas = document.getElementById('qiblaCanvas');
+    const ctx = canvas.getContext('2d');
+    const w = 300, h = 300;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, w, h);
+
+    const cx = w/2, cy = h/2;
+    const radius = 120;
+
+    // Cihaz yönünü hesapla
+    const sunAz = d.sunAz;
+    let deviceHeading = (sunRel - sunAz + 360) % 360;
+
+    // Yön etiketleri
+    const yonler = [
+        { label: 'N', angle: 0 },
+        { label: 'E', angle: 90 },
+        { label: 'S', angle: 180 },
+        { label: 'W', angle: 270 }
+    ];
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let y of yonler) {
+        const angleDeg = (y.angle + deviceHeading) % 360;
+        const angleRad = toRad(angleDeg);
+        const x = cx + (radius + 15) * Math.sin(angleRad);
+        const yPos = cy - (radius + 15) * Math.cos(angleRad);
+        ctx.fillText(y.label, x, yPos);
+    }
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, 2*Math.PI);
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Güneş
+    const sunAngleRad = toRad(sunRel);
+    const sunX = cx + radius * 0.8 * Math.sin(sunAngleRad);
+    const sunY = cy - radius * 0.8 * Math.cos(sunAngleRad);
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, 20, 0, 2*Math.PI);
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
+    ctx.fill();
+    ctx.strokeStyle = '#ffcc00';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = 'white';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('☀️', sunX, sunY - 35);
+
+    // Kıble
+    const qiblaAz = d.qiblaAz;
+    let diff = (qiblaAz - sunAz + 360) % 360;
+    let qiblaRel = (sunRel + diff) % 360;
+    const qiblaAngleRad = toRad(qiblaRel);
+    const qiblaX = cx + radius * 0.7 * Math.sin(qiblaAngleRad);
+    const qiblaY = cy - radius * 0.7 * Math.cos(qiblaAngleRad);
+    ctx.beginPath();
+    ctx.moveTo(qiblaX, qiblaY - 20);
+    ctx.lineTo(qiblaX - 15, qiblaY + 10);
+    ctx.lineTo(qiblaX + 15, qiblaY + 10);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
+    ctx.fill();
+    ctx.fillStyle = 'lime';
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🕋', qiblaX, qiblaY + 35);
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, 2*Math.PI);
+    ctx.fillStyle = 'white';
+    ctx.fill();
+
+    let diffUser = (sunRel - qiblaRel + 360) % 360;
+    if (diffUser > 180) diffUser -= 360;
+    const absDiff = Math.abs(diffUser);
+    const yon = diffUser > 0 ? 'sağa' : 'sola';
+    const instruction = document.getElementById('qiblaInstruction');
+    if (absDiff < 2) {
+        instruction.textContent = '✅ Güneş tam Kıble yönünde!';
+    } else {
+        instruction.textContent = `Sarı daireyi güneşe sürükleyin. (${absDiff.toFixed(0)}° ${yon} dönün)`;
+    }
+    window.guideSpeech = `${absDiff.toFixed(0)} derece ${yon}. Güneş'i referans alarak Kıble'ye yönelin.`;
+}
+
+function speakGuide() {
+    if (window.guideSpeech && window.speechSynthesis) {
+        const u = new SpeechSynthesisUtterance(window.guideSpeech);
+        u.lang = 'tr-TR';
+        u.rate = 0.85;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+    }
+}
+
+// ========== TTS ==========
+let ttsTimer = null;
+function speakText(t) { if (!window.speechSynthesis) return; const u = new SpeechSynthesisUtterance(t); u.lang='tr-TR'; u.rate=0.9; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); }
+function speakNow() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    speakText(`${h}:${m}`);
+}
+function toggleTTS() {
+    const en = document.getElementById('ttsEnabled').checked;
+    const st = document.getElementById('ttsStatus');
+    if (en) { st.textContent='Aktif'; st.className='tts-status active'; startTTS(); }
+    else { st.textContent='Kapalı'; st.className='tts-status inactive'; stopTTS(); }
+}
+function startTTS() {
+    stopTTS();
+    const interval = parseInt(document.getElementById('ttsInterval').value) || 30;
+    if (interval < 1) return;
+    speakNow();
+    ttsTimer = setInterval(() => { speakNow(); updateNextAnnounce(); }, interval*60*1000);
+    updateNextAnnounce();
+}
+function stopTTS() { if (ttsTimer) { clearInterval(ttsTimer); ttsTimer=null; } }
+function updateNextAnnounce() {
+    const en = document.getElementById('ttsEnabled').checked;
+    if (!en) { document.getElementById('ttsNextAnnounce').textContent='Sonraki: --:--'; return; }
+    const interval = parseInt(document.getElementById('ttsInterval').value) || 30;
+    if (interval < 1) return;
+    const now = new Date();
+    const cur = now.getHours()*60 + now.getMinutes();
+    let next = Math.ceil(cur / interval) * interval;
+    if (cur % interval === 0 && now.getSeconds() > 0) next += interval;
+    const nd = new Date(now); nd.setHours(0,0,0,0); nd.setMinutes(next);
+    document.getElementById('ttsNextAnnounce').textContent = `Sonraki: ${String(nd.getHours()).padStart(2,'0')}:${String(nd.getMinutes()).padStart(2,'0')}`;
+}
+document.getElementById('ttsInterval').addEventListener('change', function() { if (document.getElementById('ttsEnabled').checked) startTTS(); });
+
+window.onload = function() {
+    hesapla();
+    document.getElementById('ttsEnabled').checked = false;
+    document.getElementById('ttsStatus').textContent = 'Kapalí';
+    document.getElementById('ttsStatus').className = 'tts-status inactive';
+    updateNextAnnounce();
+};
+</script>
+</body>
+</html>
