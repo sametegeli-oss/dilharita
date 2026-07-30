@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Namaz Vakitleri & Kıble – Alarmlı</title>
+    <title>Namaz Vakitleri & Kıble – Yıllık Hesaplama</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { background: #f1f5f9; padding: 10px; color: #0f172a; }
-        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); overflow: hidden; padding: 16px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); overflow: hidden; padding: 16px; }
         header { text-align: center; padding: 10px 0 16px; border-bottom: 2px solid #e2e8f0; }
         header h1 { font-size: 1.6rem; color: #0b2b5c; }
         header p { font-size: 0.9rem; color: #475569; }
@@ -59,6 +59,17 @@
         .alarm-status.on { color: #059669; }
         .alarm-status.off { color: #dc2626; }
         #alarmMessage { background: #fef08a; padding: 8px 12px; border-radius: 6px; margin-top: 6px; font-weight: 600; display: none; }
+
+        /* Yıllık Tablo */
+        .yearly-table-wrap { margin-top: 20px; overflow-x: auto; display: none; }
+        .yearly-table-wrap table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        .yearly-table-wrap th, .yearly-table-wrap td { border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center; white-space: nowrap; }
+        .yearly-table-wrap th { background: #0b2b5c; color: white; position: sticky; top: 0; }
+        .yearly-table-wrap tr:nth-child(even) { background: #f8fafc; }
+        .yearly-table-wrap .btn-group { margin-top: 10px; }
+        .yearly-table-wrap .btn { font-size: 0.8rem; padding: 6px 12px; }
+        .tablo-baslik { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .tablo-baslik h2 { margin: 0; }
     </style>
 </head>
 <body>
@@ -67,7 +78,7 @@
 
     <header>
         <h1>🕌 Namaz Vakitleri & Kıble</h1>
-        <p>Astronomik hesaplama – Alarmlı, Kuzey gösteren pusulasız Kıble</p>
+        <p>Astronomik hesaplama – Yıllık vakitler, alarm, canlı kıble</p>
     </header>
 
     <!-- AYARLAR -->
@@ -97,8 +108,8 @@
             <div class="form-group" style="flex:2;"><label>Rakım (m)</label><input type="number" id="altitude" step="any" value="0"></div>
         </div>
         <div class="form-group">
-            <label>Tarih (GG.AA.YYYY)</label>
-            <input type="text" id="dateInput" value="30.07.2026">
+            <label>Tarih (GG.AA.YYYY) – Başlangıç tarihi</label>
+            <input type="text" id="dateInput" value="30.07.2026" placeholder="30.07.2026">
         </div>
 
         <h2>🌞 Açılar (derece)</h2>
@@ -135,7 +146,10 @@
             <label for="temkinCheckbox" style="font-size:0.9rem;">Temkin uygula</label>
         </div>
 
-        <button class="btn-primary" onclick="hesapla()">🔄 Vakitleri Hesapla</button>
+        <div class="btn-group" style="margin-top:10px;">
+            <button class="btn btn-primary" onclick="hesapla()" style="flex:1;">🔄 Günlük Hesapla</button>
+            <button class="btn btn-success" onclick="hesaplaYillik()" style="flex:1;">📅 1 Yıllık Hesapla</button>
+        </div>
 
         <!-- Sesli Saat -->
         <div class="tts-controls">
@@ -173,9 +187,9 @@
         </div>
     </div>
 
-    <!-- SONUÇLAR -->
+    <!-- GÜNLÜK SONUÇLAR -->
     <div class="section results" id="resultsContainer">
-        <h2>📊 Vakitler (yerel saat)</h2>
+        <h2>📊 Günlük Vakitler (yerel saat)</h2>
         <div class="result-grid">
             <div class="result-item"><div class="label">İmsak</div><div class="value" id="rImsak">--:--</div></div>
             <div class="result-item"><div class="label">Güneş</div><div class="value" id="rGunes">--:--</div></div>
@@ -194,7 +208,32 @@
         </div>
     </div>
 
-    <!-- KIBLE -->
+    <!-- YILLIK TABLO -->
+    <div class="yearly-table-wrap" id="yearlyTableWrap">
+        <div class="tablo-baslik">
+            <h2>📅 1 Yıllık Vakitler</h2>
+            <button class="btn" onclick="csvIndir()">⬇️ CSV İndir</button>
+        </div>
+        <div style="max-height:500px; overflow-y:auto; margin-top:10px;">
+            <table id="yearlyTable">
+                <thead>
+                    <tr>
+                        <th>Tarih</th>
+                        <th>İmsak</th>
+                        <th>Güneş</th>
+                        <th>Öğle</th>
+                        <th>İkindi</th>
+                        <th>Akşam</th>
+                        <th>Yatsı</th>
+                        <th>Kıble Saati</th>
+                    </tr>
+                </thead>
+                <tbody id="yearlyTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- KIBLE REHBERİ -->
     <div class="qibla-guide" id="qiblaGuide">
         <div class="title">☀️ Güneş'i Referans Alarak Kıble Bulun</div>
         <div class="sub">Sarı daireyi sürükleyerek gerçek güneşin olduğu yöne getirin.</div>
@@ -263,7 +302,6 @@ function getLocation() {
         return;
     }
 
-    // Kullanıcıya bilgi ver
     errorDiv.style.display = 'block';
     errorDiv.style.background = '#e0f2fe';
     errorDiv.style.color = '#0369a1';
@@ -271,23 +309,17 @@ function getLocation() {
 
     navigator.geolocation.getCurrentPosition(
         function(pos) {
-            // Başarılı
             document.getElementById('latitude').value = pos.coords.latitude.toFixed(6);
             document.getElementById('longitude').value = pos.coords.longitude.toFixed(6);
-            // UTC saat dilimini tahmin et (boylam / 15)
             let tz = Math.round(pos.coords.longitude / 15);
             document.getElementById('timezone').value = tz;
-            // Rakım varsa doldur
             if (pos.coords.altitude !== null && pos.coords.altitude !== undefined) {
                 document.getElementById('altitude').value = Math.round(pos.coords.altitude);
             }
-            // Hata mesajını temizle
             errorDiv.style.display = 'none';
-            // Hesaplamayı tetikle
             hesapla();
         },
         function(err) {
-            // Hata durumu
             let msg = '';
             switch(err.code) {
                 case err.PERMISSION_DENIED:
@@ -307,27 +339,102 @@ function getLocation() {
             errorDiv.style.color = '#b91c1c';
             errorDiv.textContent = msg;
         },
-        {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 60000
-        }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
 }
 
-// ========== ANA HESAPLAMA ==========
+// ========== HESAPLAMA (TEK GÜN) ==========
 let cachedData = {};
 let alarmVakitleri = {};
 
 function hesapla() {
+    const sonuc = gunlukHesapla(new Date(document.getElementById('dateInput').value.split('.').reverse().join('-')));
+    if (!sonuc) return;
+
+    // Günlük sonuçları göster
+    document.getElementById('rImsak').textContent = formatTime(sonuc.imsak);
+    document.getElementById('rGunes').textContent = formatTime(sonuc.gunes);
+    document.getElementById('rOgle').textContent = formatTime(sonuc.ogle);
+    document.getElementById('rIkindi').textContent = formatTime(sonuc.ikindi);
+    document.getElementById('rAksam').textContent = formatTime(sonuc.aksam);
+    document.getElementById('rYatsi').textContent = formatTime(sonuc.yatsi);
+    document.getElementById('rIsrak').textContent = formatTime(sonuc.israk);
+    document.getElementById('rIsfirar').textContent = formatTime(sonuc.isfirar);
+    document.getElementById('rQibla').textContent = formatTime(sonuc.kibleSaati);
+
+    alarmVakitleri = {
+        imsak: sonuc.imsak,
+        gunes: sonuc.gunes,
+        ogle: sonuc.ogle,
+        ikindi: sonuc.ikindi,
+        aksam: sonuc.aksam,
+        yatsi: sonuc.yatsi
+    };
+    window.alarmFired = {};
+
+    const rakimNote = document.getElementById('rakimNote');
+    const altitude = parseFloat(document.getElementById('altitude').value) || 0;
+    if (altitude > 0) {
+        const R = 6371000;
+        const horizonDipDeg = toDeg(Math.acos(R / (R + altitude)));
+        rakimNote.textContent = `📍 Rakım: ${altitude}m – Ufuk alçalma: ${horizonDipDeg.toFixed(2)}° (${(horizonDipDeg * 4 / 15).toFixed(1)} dk)`;
+    } else {
+        rakimNote.textContent = '📍 Deniz seviyesi';
+    }
+
+    const errBox = document.getElementById('errorBox');
+    let errors = [];
+    if (sonuc.imsak === null) errors.push('İmsak');
+    if (sonuc.gunes === null) errors.push('Güneş');
+    if (sonuc.yatsi === null) errors.push('Yatsı');
+    if (sonuc.ikindi === null) errors.push('İkindi');
+    if (sonuc.aksam === null) errors.push('Akşam');
+    if (sonuc.israk === null) errors.push('İşrak');
+    if (sonuc.isfirar === null) errors.push('İsfirar');
+    if (errors.length) { errBox.style.display = 'block'; errBox.textContent = '⚠️ ' + errors.join(', ') + ' vakti oluşmuyor.'; }
+    else errBox.style.display = 'none';
+
+    document.getElementById('resultsContainer').style.display = 'block';
+
+    // Güneş azimutunu hesapla (canlı kıble için)
+    const now = new Date();
+    const hours = now.getHours() + now.getMinutes()/60 + now.getSeconds()/3600;
+    const nowDate = new Date();
+    const start2 = new Date(nowDate.getFullYear(), 0, 0);
+    const doyNow = Math.floor((nowDate - start2) / (1000*60*60*24));
+    const declNow = solarDeclination(doyNow);
+    const eotNow = equationOfTime(doyNow);
+    const tz = parseFloat(document.getElementById('timezone').value);
+    const lon = parseFloat(document.getElementById('longitude').value);
+    const solarNoonNow = 12 + tz - (lon/15) - (eotNow/60);
+    const hourAngleNow = (hours - solarNoonNow) * 15;
+    const lat = parseFloat(document.getElementById('latitude').value);
+    const phi = toRad(lat);
+    const declRadNow = toRad(declNow);
+    const HNow = toRad(hourAngleNow);
+    const altNow = Math.asin(Math.sin(phi) * Math.sin(declRadNow) + Math.cos(phi) * Math.cos(declRadNow) * Math.cos(HNow));
+    const cosAzNow = (Math.sin(declRadNow) - Math.sin(phi) * Math.sin(altNow)) / (Math.cos(phi) * Math.cos(altNow));
+    let sunAz = toDeg(Math.acos(Math.max(-1, Math.min(1, cosAzNow))));
+    if (HNow > 0) sunAz = 360 - sunAz;
+
+    const qiblaAz = sonuc.qiblaAz;
+    cachedData = { lat, lon, tz, qiblaAz, phi, sunAz };
+    initQiblaGuide();
+    if (window.qiblaInterval) clearInterval(window.qiblaInterval);
+    window.qiblaInterval = setInterval(updateQiblaGuide, 500);
+    if (window.alarmInterval) clearInterval(window.alarmInterval);
+    window.alarmInterval = setInterval(checkAlarms, 10000);
+}
+
+// ========== GÜNLÜK HESAPLAMA FONKSİYONU (TEKRAR KULLANILABİLİR) ==========
+function gunlukHesapla(tarihObj) {
     const lat = parseFloat(document.getElementById('latitude').value);
     const lon = parseFloat(document.getElementById('longitude').value);
     const tz = parseFloat(document.getElementById('timezone').value);
     const altitude = parseFloat(document.getElementById('altitude').value) || 0;
-    const dateStr = document.getElementById('dateInput').value.trim();
-    const parts = dateStr.split('.');
-    if (parts.length !== 3) { alert('Tarih GG.AA.YYYY olmalı.'); return; }
-    const day = parseInt(parts[0]), month = parseInt(parts[1]), year = parseInt(parts[2]);
+    const year = tarihObj.getFullYear();
+    const month = tarihObj.getMonth() + 1;
+    const day = tarihObj.getDate();
     const dateObj = new Date(year, month-1, day);
     const start = new Date(year, 0, 0);
     const doy = Math.floor((dateObj - start) / (1000*60*60*24));
@@ -408,74 +515,72 @@ function hesapla() {
         if (diff < minDiff) { minDiff = diff; bestMin = off; }
     }
     const qiblaTimeMin = solarNoon * 60 + bestMin;
-    const qH = Math.floor((qiblaTimeMin / 60) % 24);
-    const qM = Math.round(qiblaTimeMin % 60);
-    const qiblaStr = `${String(qH).padStart(2,'0')}:${String(qM).padStart(2,'0')}`;
+    const kibleSaati = qiblaTimeMin / 60;
 
-    alarmVakitleri = {
-        imsak: imsak,
-        gunes: gunes,
-        ogle: ogle,
-        ikindi: ikindi,
-        aksam: aksam,
-        yatsi: yatsi
+    // Tarihi formatla
+    const tarihStr = `${String(day).padStart(2,'0')}.${String(month).padStart(2,'0')}.${year}`;
+
+    return {
+        tarih: tarihStr,
+        imsak, gunes, ogle, ikindi, aksam, yatsi, israk, isfirar,
+        kibleSaati, qiblaAz
     };
-    window.alarmFired = {};
+}
 
-    document.getElementById('rImsak').textContent = formatTime(imsak);
-    document.getElementById('rGunes').textContent = formatTime(gunes);
-    document.getElementById('rOgle').textContent = formatTime(ogle);
-    document.getElementById('rIkindi').textContent = formatTime(ikindi);
-    document.getElementById('rAksam').textContent = formatTime(aksam);
-    document.getElementById('rYatsi').textContent = formatTime(yatsi);
-    document.getElementById('rIsrak').textContent = formatTime(israk);
-    document.getElementById('rIsfirar').textContent = formatTime(isfirar);
-    document.getElementById('rQibla').textContent = qiblaStr;
+// ========== 1 YILLIK HESAPLAMA ==========
+function hesaplaYillik() {
+    const dateStr = document.getElementById('dateInput').value.trim();
+    const parts = dateStr.split('.');
+    if (parts.length !== 3) { alert('Başlangıç tarihi GG.AA.YYYY formatında olmalı.'); return; }
+    const day = parseInt(parts[0]), month = parseInt(parts[1]), year = parseInt(parts[2]);
+    const baslangic = new Date(year, month-1, day);
 
-    const rakimNote = document.getElementById('rakimNote');
-    if (altitude > 0) rakimNote.textContent = `📍 Rakım: ${altitude}m – Ufuk alçalma: ${horizonDipDeg.toFixed(2)}° (${(horizonDipDeg * 4 / 15).toFixed(1)} dk)`;
-    else rakimNote.textContent = '📍 Deniz seviyesi';
+    // 365 gün boyunca döngü
+    const sonuclar = [];
+    for (let i = 0; i < 365; i++) {
+        const tarih = new Date(baslangic);
+        tarih.setDate(tarih.getDate() + i);
+        const sonuc = gunlukHesapla(tarih);
+        if (sonuc) sonuclar.push(sonuc);
+    }
 
-    const errBox = document.getElementById('errorBox');
-    let errors = [];
-    if (imsak === null) errors.push('İmsak');
-    if (gunes === null) errors.push('Güneş');
-    if (yatsi === null) errors.push('Yatsı');
-    if (ikindi === null) errors.push('İkindi');
-    if (aksam === null) errors.push('Akşam');
-    if (israk === null) errors.push('İşrak');
-    if (isfirar === null) errors.push('İsfirar');
-    if (errors.length) { errBox.style.display = 'block'; errBox.textContent = '⚠️ ' + errors.join(', ') + ' vakti oluşmuyor.'; }
-    else errBox.style.display = 'none';
+    // Tabloyu göster
+    const wrap = document.getElementById('yearlyTableWrap');
+    wrap.style.display = 'block';
+    const tbody = document.getElementById('yearlyTableBody');
+    tbody.innerHTML = '';
+    sonuclar.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${s.tarih}</td>
+            <td>${formatTime(s.imsak)}</td>
+            <td>${formatTime(s.gunes)}</td>
+            <td>${formatTime(s.ogle)}</td>
+            <td>${formatTime(s.ikindi)}</td>
+            <td>${formatTime(s.aksam)}</td>
+            <td>${formatTime(s.yatsi)}</td>
+            <td>${formatTime(s.kibleSaati)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
 
-    document.getElementById('resultsContainer').style.display = 'block';
+    // CSV indirme için veriyi sakla
+    window._yillikVeri = sonuclar;
+}
 
-    // Güneş azimutunu hesapla
-    const now = new Date();
-    const hours = now.getHours() + now.getMinutes()/60 + now.getSeconds()/3600;
-    const nowDate = new Date();
-    const start2 = new Date(nowDate.getFullYear(), 0, 0);
-    const doyNow = Math.floor((nowDate - start2) / (1000*60*60*24));
-    const declNow = solarDeclination(doyNow);
-    const eotNow = equationOfTime(doyNow);
-    const solarNoonNow = 12 + tz - (lon/15) - (eotNow/60);
-    const hourAngleNow = (hours - solarNoonNow) * 15;
-    const phiNow = phi;
-    const declRadNow = toRad(declNow);
-    const HNow = toRad(hourAngleNow);
-    const altNow = Math.asin(Math.sin(phiNow) * Math.sin(declRadNow) + Math.cos(phiNow) * Math.cos(declRadNow) * Math.cos(HNow));
-    const cosAzNow = (Math.sin(declRadNow) - Math.sin(phiNow) * Math.sin(altNow)) / (Math.cos(phiNow) * Math.cos(altNow));
-    let sunAz = toDeg(Math.acos(Math.max(-1, Math.min(1, cosAzNow))));
-    if (HNow > 0) sunAz = 360 - sunAz;
-
-    cachedData = { lat, lon, tz, altitude, doy, declDeg, solarNoon, qiblaAz, phi, sunAz };
-    
-    initQiblaGuide();
-    if (window.qiblaInterval) clearInterval(window.qiblaInterval);
-    window.qiblaInterval = setInterval(updateQiblaGuide, 500);
-
-    if (window.alarmInterval) clearInterval(window.alarmInterval);
-    window.alarmInterval = setInterval(checkAlarms, 10000);
+// ========== CSV İNDİR ==========
+function csvIndir() {
+    const veri = window._yillikVeri;
+    if (!veri || veri.length === 0) { alert('Önce 1 yıllık hesaplama yapın.'); return; }
+    let csv = 'Tarih;İmsak;Güneş;Öğle;İkindi;Akşam;Yatsı;Kıble Saati\n';
+    veri.forEach(s => {
+        csv += `${s.tarih};${formatTime(s.imsak)};${formatTime(s.gunes)};${formatTime(s.ogle)};${formatTime(s.ikindi)};${formatTime(s.aksam)};${formatTime(s.yatsi)};${formatTime(s.kibleSaati)}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `namaz_vakitleri_${veri[0].tarih.split('.')[2]}.csv`;
+    link.click();
 }
 
 // ========== ALARM ==========
