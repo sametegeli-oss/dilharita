@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Namaz Vakitleri & Kıble (Pusulasız – Kuzey Göstergeli)</title>
+    <title>Namaz Vakitleri & Kıble – Alarmlı</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
-        body { background: #f1f5f9; padding: 10px; color: #0f172a; }  /* touch-action kaldırıldı */
+        body { background: #f1f5f9; padding: 10px; color: #0f172a; }
         .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); overflow: hidden; padding: 16px; }
         header { text-align: center; padding: 10px 0 16px; border-bottom: 2px solid #e2e8f0; }
         header h1 { font-size: 1.6rem; color: #0b2b5c; }
@@ -25,7 +25,7 @@
         .btn-primary { background: #0b2b5c; color: white; border: none; padding: 14px; font-size: 1rem; font-weight: 600; border-radius: 10px; cursor: pointer; width: 100%; transition: 0.2s; margin-top: 8px; }
         .btn-primary:hover { background: #1e3a8a; }
         .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
-        .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 6px 0 10px; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 6px 0 10px; flex-wrap: wrap; }
         .checkbox-group input { width: 18px; height: 18px; accent-color: #2563eb; }
         .rakim-info { font-size: 0.75rem; color: #2563eb; margin-top: 2px; }
 
@@ -39,31 +39,26 @@
         .result-item.highlight .value { font-size: 1.6rem; color: #1e40af; }
         .error-msg { color: #b91c1c; background: #fee2e2; padding: 8px 12px; border-radius: 6px; margin-top: 8px; font-weight: 500; font-size: 0.85rem; display: none; }
         .note { font-size: 0.75rem; color: #475569; background: #f1f5f9; padding: 8px 12px; border-radius: 6px; margin-top: 10px; }
+        #locationError { color: #b91c1c; background: #fee2e2; padding: 8px 12px; border-radius: 6px; margin-top: 6px; font-size: 0.85rem; display: none; }
 
         .qibla-guide { margin-top: 20px; padding: 16px; background: #f0f9ff; border-radius: 12px; border: 2px solid #0b2b5c; text-align: center; }
         .qibla-guide .title { font-weight: 700; font-size: 1.1rem; color: #0b2b5c; }
         .qibla-guide .sub { font-size: 0.85rem; color: #475569; margin: 4px 0 10px; }
-        .qibla-canvas-wrap { 
-            position: relative; 
-            width: 100%; 
-            max-width: 300px; 
-            height: 300px; 
-            margin: 0 auto; 
-            background: #1e293b; 
-            border-radius: 50%; 
-            overflow: hidden; 
-            touch-action: none;  /* Sadece burada engelle */
-            user-select: none; 
-            -webkit-user-select: none; 
-        }
+        .qibla-canvas-wrap { position: relative; width: 100%; max-width: 300px; height: 300px; margin: 0 auto; background: #1e293b; border-radius: 50%; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
         .qibla-canvas-wrap canvas { width: 100%; height: 100%; display: block; touch-action: none; }
         .qibla-guide .instruction { margin-top: 10px; font-weight: 600; font-size: 1rem; color: #0b2b5c; min-height: 2em; }
         .qibla-guide .btn { margin-top: 8px; background: #0b2b5c; }
 
-        .tts-controls { background: #e2e8f0; padding: 12px; border-radius: 8px; margin-top: 12px; }
+        .tts-controls, .alarm-controls { background: #e2e8f0; padding: 12px; border-radius: 8px; margin-top: 12px; }
         .tts-status { font-weight: 600; margin-left: 6px; font-size: 0.85rem; }
         .tts-status.active { color: #059669; }
         .tts-status.inactive { color: #dc2626; }
+        .alarm-checkboxes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin: 6px 0; }
+        .alarm-checkboxes label { font-size: 0.85rem; display: flex; align-items: center; gap: 4px; }
+        .alarm-status { font-weight: 600; }
+        .alarm-status.on { color: #059669; }
+        .alarm-status.off { color: #dc2626; }
+        #alarmMessage { background: #fef08a; padding: 8px 12px; border-radius: 6px; margin-top: 6px; font-weight: 600; display: none; }
     </style>
 </head>
 <body>
@@ -72,7 +67,7 @@
 
     <header>
         <h1>🕌 Namaz Vakitleri & Kıble</h1>
-        <p>Astronomik hesaplama – Kuzey gösteren pusulasız Kıble</p>
+        <p>Astronomik hesaplama – Alarmlı, Kuzey gösteren pusulasız Kıble</p>
     </header>
 
     <!-- AYARLAR -->
@@ -92,6 +87,7 @@
         <div class="btn-group">
             <button class="btn btn-success" onclick="getLocation()">📍 Konumu al</button>
         </div>
+        <div id="locationError"></div>
         <div class="inline-group">
             <div class="form-group"><label>Enlem (°)</label><input type="number" id="latitude" step="any" value="37.7765"></div>
             <div class="form-group"><label>Boylam (°)</label><input type="number" id="longitude" step="any" value="29.0864"></div>
@@ -155,6 +151,26 @@
             </div>
             <div style="font-size:0.8rem;color:#475569;"><span id="ttsNextAnnounce">Sonraki: --:--</span></div>
         </div>
+
+        <!-- ALARM -->
+        <div class="alarm-controls">
+            <h2 style="font-size:0.95rem; margin-bottom:6px;">🔔 Namaz Vakti Alarmları</h2>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <span style="font-weight:500; font-size:0.9rem;">Alarm:</span>
+                <span id="alarmStatus" class="alarm-status off">Kapalı</span>
+                <button class="btn" onclick="toggleAlarm()" id="alarmToggleBtn">Başlat</button>
+            </div>
+            <div class="alarm-checkboxes">
+                <label><input type="checkbox" class="alarm-check" value="imsak" checked> İmsak</label>
+                <label><input type="checkbox" class="alarm-check" value="gunes"> Güneş</label>
+                <label><input type="checkbox" class="alarm-check" value="ogle" checked> Öğle</label>
+                <label><input type="checkbox" class="alarm-check" value="ikindi" checked> İkindi</label>
+                <label><input type="checkbox" class="alarm-check" value="aksam" checked> Akşam</label>
+                <label><input type="checkbox" class="alarm-check" value="yatsi" checked> Yatsı</label>
+            </div>
+            <div id="alarmMessage">🔔 Alarm çaldı!</div>
+            <button class="btn" onclick="snoozeAlarm()" style="margin-top:4px; background:#dc2626; display:none;" id="snoozeBtn">🔇 Sessize al</button>
+        </div>
     </div>
 
     <!-- SONUÇLAR -->
@@ -178,7 +194,7 @@
         </div>
     </div>
 
-    <!-- KIBLE REHBERİ -->
+    <!-- KIBLE -->
     <div class="qibla-guide" id="qiblaGuide">
         <div class="title">☀️ Güneş'i Referans Alarak Kıble Bulun</div>
         <div class="sub">Sarı daireyi sürükleyerek gerçek güneşin olduğu yöne getirin.</div>
@@ -235,23 +251,73 @@ function loadCity() {
     hesapla();
 }
 
-// ========== KONUM AL ==========
+// ========== KONUM AL – GELİŞTİRİLMİŞ ==========
 function getLocation() {
-    if (!navigator.geolocation) { alert("Tarayıcı desteklemiyor."); return; }
+    const errorDiv = document.getElementById('locationError');
+    errorDiv.style.display = 'none';
+    errorDiv.textContent = '';
+
+    if (!navigator.geolocation) {
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = '❌ Tarayıcınız konum özelliğini desteklemiyor. Lütfen koordinatları manuel girin.';
+        return;
+    }
+
+    // Kullanıcıya bilgi ver
+    errorDiv.style.display = 'block';
+    errorDiv.style.background = '#e0f2fe';
+    errorDiv.style.color = '#0369a1';
+    errorDiv.textContent = '⏳ Konum alınıyor, lütfen bekleyin...';
+
     navigator.geolocation.getCurrentPosition(
-        pos => {
+        function(pos) {
+            // Başarılı
             document.getElementById('latitude').value = pos.coords.latitude.toFixed(6);
             document.getElementById('longitude').value = pos.coords.longitude.toFixed(6);
-            document.getElementById('timezone').value = Math.round(pos.coords.longitude / 15);
-            document.getElementById('altitude').value = pos.coords.altitude ? Math.round(pos.coords.altitude) : 0;
+            // UTC saat dilimini tahmin et (boylam / 15)
+            let tz = Math.round(pos.coords.longitude / 15);
+            document.getElementById('timezone').value = tz;
+            // Rakım varsa doldur
+            if (pos.coords.altitude !== null && pos.coords.altitude !== undefined) {
+                document.getElementById('altitude').value = Math.round(pos.coords.altitude);
+            }
+            // Hata mesajını temizle
+            errorDiv.style.display = 'none';
+            // Hesaplamayı tetikle
             hesapla();
         },
-        err => alert("Konum alınamadı: " + err.message)
+        function(err) {
+            // Hata durumu
+            let msg = '';
+            switch(err.code) {
+                case err.PERMISSION_DENIED:
+                    msg = '❌ Konum izni reddedildi. Lütfen tarayıcı ayarlarından izin verin veya koordinatları manuel girin.';
+                    break;
+                case err.POSITION_UNAVAILABLE:
+                    msg = '❌ Konum bilgisi alınamıyor. GPS sinyali zayıf olabilir. Koordinatları manuel girin.';
+                    break;
+                case err.TIMEOUT:
+                    msg = '⏰ Konum alma zaman aşımına uğradı. Tekrar deneyin veya manuel girin.';
+                    break;
+                default:
+                    msg = '❌ Bilinmeyen hata: ' + err.message;
+            }
+            errorDiv.style.display = 'block';
+            errorDiv.style.background = '#fee2e2';
+            errorDiv.style.color = '#b91c1c';
+            errorDiv.textContent = msg;
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000
+        }
     );
 }
 
 // ========== ANA HESAPLAMA ==========
 let cachedData = {};
+let alarmVakitleri = {};
 
 function hesapla() {
     const lat = parseFloat(document.getElementById('latitude').value);
@@ -327,7 +393,6 @@ function hesapla() {
     let qiblaAz = toDeg(Math.atan2(y, x));
     if (qiblaAz < 0) qiblaAz += 360;
 
-    // Kıble saati
     function solarAzimuth(hourAngleDeg) {
         const H = toRad(hourAngleDeg);
         const alt = Math.asin(Math.sin(phi) * Math.sin(toRad(declDeg)) + Math.cos(phi) * Math.cos(toRad(declDeg)) * Math.cos(H));
@@ -346,6 +411,16 @@ function hesapla() {
     const qH = Math.floor((qiblaTimeMin / 60) % 24);
     const qM = Math.round(qiblaTimeMin % 60);
     const qiblaStr = `${String(qH).padStart(2,'0')}:${String(qM).padStart(2,'0')}`;
+
+    alarmVakitleri = {
+        imsak: imsak,
+        gunes: gunes,
+        ogle: ogle,
+        ikindi: ikindi,
+        aksam: aksam,
+        yatsi: yatsi
+    };
+    window.alarmFired = {};
 
     document.getElementById('rImsak').textContent = formatTime(imsak);
     document.getElementById('rGunes').textContent = formatTime(gunes);
@@ -398,9 +473,118 @@ function hesapla() {
     initQiblaGuide();
     if (window.qiblaInterval) clearInterval(window.qiblaInterval);
     window.qiblaInterval = setInterval(updateQiblaGuide, 500);
+
+    if (window.alarmInterval) clearInterval(window.alarmInterval);
+    window.alarmInterval = setInterval(checkAlarms, 10000);
 }
 
-// ========== PUSULASIZ KIBLE REHBERİ ==========
+// ========== ALARM ==========
+let alarmActive = false;
+let alarmSnoozed = false;
+
+function toggleAlarm() {
+    alarmActive = !alarmActive;
+    const btn = document.getElementById('alarmToggleBtn');
+    const status = document.getElementById('alarmStatus');
+    if (alarmActive) {
+        btn.textContent = 'Durdur';
+        status.textContent = 'Aktif';
+        status.className = 'alarm-status on';
+        document.getElementById('alarmMessage').style.display = 'none';
+        document.getElementById('snoozeBtn').style.display = 'none';
+        alarmSnoozed = false;
+        window.alarmFired = {};
+    } else {
+        btn.textContent = 'Başlat';
+        status.textContent = 'Kapalı';
+        status.className = 'alarm-status off';
+        document.getElementById('alarmMessage').style.display = 'none';
+        document.getElementById('snoozeBtn').style.display = 'none';
+    }
+}
+
+function checkAlarms() {
+    if (!alarmActive || alarmSnoozed) return;
+    const now = new Date();
+    const currentMinute = now.getHours() * 60 + now.getMinutes();
+
+    const vakitIsimleri = {
+        imsak: 'İmsak',
+        gunes: 'Güneş',
+        ogle: 'Öğle',
+        ikindi: 'İkindi',
+        aksam: 'Akşam',
+        yatsi: 'Yatsı'
+    };
+
+    const checkboxes = document.querySelectorAll('.alarm-check:checked');
+    const aktifVakitler = Array.from(checkboxes).map(cb => cb.value);
+
+    for (let key of aktifVakitler) {
+        const vakit = alarmVakitleri[key];
+        if (vakit === null || vakit === undefined) continue;
+        const vakitMin = Math.floor(vakit) * 60 + Math.round((vakit - Math.floor(vakit)) * 60);
+        let diff = vakitMin - currentMinute;
+        if (diff < 0) diff += 1440;
+        if (diff >= 0 && diff <= 2) {
+            if (!window.alarmFired[key]) {
+                window.alarmFired[key] = true;
+                fireAlarm(vakitIsimleri[key]);
+                break;
+            }
+        } else if (diff < -5 && window.alarmFired[key]) {
+            window.alarmFired[key] = false;
+        }
+    }
+}
+
+function fireAlarm(vakitAdi) {
+    const msg = `${vakitAdi} vakti girdi!`;
+    if (window.speechSynthesis) {
+        const u = new SpeechSynthesisUtterance(msg);
+        u.lang = 'tr-TR';
+        u.rate = 0.9;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+    }
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        gainNode.gain.value = 0.3;
+        oscillator.start();
+        setTimeout(() => { oscillator.stop(); }, 500);
+        setTimeout(() => {
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            osc2.frequency.value = 1000;
+            osc2.type = 'sine';
+            gain2.gain.value = 0.3;
+            osc2.start();
+            setTimeout(() => { osc2.stop(); }, 400);
+        }, 600);
+    } catch(e) { /* sessiz */ }
+
+    const msgDiv = document.getElementById('alarmMessage');
+    msgDiv.textContent = `🔔 ${vakitAdi} vakti geldi!`;
+    msgDiv.style.display = 'block';
+    document.getElementById('snoozeBtn').style.display = 'inline-block';
+}
+
+function snoozeAlarm() {
+    alarmSnoozed = true;
+    document.getElementById('alarmMessage').style.display = 'none';
+    document.getElementById('snoozeBtn').style.display = 'none';
+    setTimeout(() => { alarmSnoozed = false; }, 600000);
+}
+
+// ========== KIBLE REHBERİ ==========
 let sunRel = 0;
 let isDragging = false;
 
@@ -408,8 +592,6 @@ function initQiblaGuide() {
     const canvas = document.getElementById('qiblaCanvas');
     canvas.width = 300;
     canvas.height = 300;
-    
-    // Olayları temizle (tekrar eklenmesini önlemek için)
     canvas.removeEventListener('mousedown', startDrag);
     canvas.removeEventListener('mousemove', onDrag);
     canvas.removeEventListener('mouseup', endDrag);
@@ -418,7 +600,6 @@ function initQiblaGuide() {
     canvas.removeEventListener('touchmove', onDragTouch);
     canvas.removeEventListener('touchend', endDrag);
     canvas.removeEventListener('touchcancel', endDrag);
-    
     canvas.addEventListener('mousedown', startDrag);
     canvas.addEventListener('mousemove', onDrag);
     canvas.addEventListener('mouseup', endDrag);
@@ -427,7 +608,6 @@ function initQiblaGuide() {
     canvas.addEventListener('touchmove', onDragTouch, { passive: false });
     canvas.addEventListener('touchend', endDrag);
     canvas.addEventListener('touchcancel', endDrag);
-    
     sunRel = 90;
     updateQiblaGuide();
 }
@@ -516,11 +696,9 @@ function updateQiblaGuide() {
     const cx = w/2, cy = h/2;
     const radius = 120;
 
-    // Cihaz yönünü hesapla
     const sunAz = d.sunAz;
     let deviceHeading = (sunRel - sunAz + 360) % 360;
 
-    // Yön etiketleri
     const yonler = [
         { label: 'N', angle: 0 },
         { label: 'E', angle: 90 },
@@ -545,7 +723,6 @@ function updateQiblaGuide() {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Güneş
     const sunAngleRad = toRad(sunRel);
     const sunX = cx + radius * 0.8 * Math.sin(sunAngleRad);
     const sunY = cy - radius * 0.8 * Math.cos(sunAngleRad);
@@ -562,7 +739,6 @@ function updateQiblaGuide() {
     ctx.textBaseline = 'middle';
     ctx.fillText('☀️', sunX, sunY - 35);
 
-    // Kıble
     const qiblaAz = d.qiblaAz;
     let diff = (qiblaAz - sunAz + 360) % 360;
     let qiblaRel = (sunRel + diff) % 360;
@@ -651,9 +827,12 @@ document.getElementById('ttsInterval').addEventListener('change', function() { i
 window.onload = function() {
     hesapla();
     document.getElementById('ttsEnabled').checked = false;
-    document.getElementById('ttsStatus').textContent = 'Kapalí';
+    document.getElementById('ttsStatus').textContent = 'Kapalı';
     document.getElementById('ttsStatus').className = 'tts-status inactive';
     updateNextAnnounce();
+    document.getElementById('alarmStatus').textContent = 'Kapalı';
+    document.getElementById('alarmStatus').className = 'alarm-status off';
+    document.getElementById('alarmToggleBtn').textContent = 'Başlat';
 };
 </script>
 </body>
