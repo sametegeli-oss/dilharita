@@ -41,6 +41,8 @@ var __dhTeach=null; try{
    "practice review" gibi boş bir açılış kurulmamalı. */
 var __dhJunkFocus=/^(review|tekrar|practice|pratik|study|genel|general|plan|devam)$/i;
 if(__dhFocus && __dhJunkFocus.test(__dhFocus)) __dhFocus="";
+/* Koc odagi (dh-teach-focus / ?focus) YALNIZ ogretmen senaryosunda kullanilir; doktor/otel gibi role senaryolarinda rolu bozmasin diye temizlenir. */
+if(!__dhIsTeacher){ __dhTeach=null; __dhFocus=""; }
 function __dhOpener(){
   if(__dhTeach&&__dhTeach.target){
     var head = __dhTeach.from==="coach"
