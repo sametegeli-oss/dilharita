@@ -54,6 +54,11 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 .diff-typo{color:#f59e0b;font-weight:bold;border-bottom:2px dashed #f59e0b;}
 .diff-wrong{color:#f87171;text-decoration:line-through;}
 .diff-missing{color:#6b7280;border-bottom:1px dashed #6b7280;}
+  .rev-bricks{max-width:720px;margin:0 auto 10px;display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:0}
+  .rev-brick{width:22px;height:14px;border-radius:3px;background:linear-gradient(180deg,#f59e0b,#b45309);box-shadow:inset 0 -2px 0 #7c2d12,0 2px 5px #0005}
+  .rev-brick.fallen{opacity:.16;transform:translateY(11px) rotate(9deg);background:linear-gradient(180deg,#3b5170,#22344f);box-shadow:none}
+  .rev-brick.dropping{animation:revDrop .55s cubic-bezier(.35,1.4,.55,1) both}
+  @keyframes revDrop{0%{opacity:1;transform:translateY(-5px) rotate(0)}55%{opacity:.95}100%{opacity:.16;transform:translateY(11px) rotate(9deg)}}
 </style><script src="./sentences-loader.js?v=1"></script>
 </head><body>
 <div class="top"><a href="./index.html" id="btnHome">←</a><h1>🔁 Tekrar</h1><div class="cnt" id="cnt"></div></div>
@@ -62,6 +67,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <button id="mClas">👁 Klasik (EN→TR)</button>
   <button id="mOnlyErrs">🚨 Sadece Hatalılar</button>
 </div>
+<div id="revBricks" class="rev-bricks"></div>
 <div class="card" id="card" style="display:none">
   <div class="kind" id="kind"></div>
   <div class="q no-wordpop" id="q"></div>
@@ -495,7 +501,7 @@ try{
     }
 
     items.sort(function(a,b){ return (a.due||0)-(b.due||0); });
-    total=items.length; session=items.slice(0,SESSION); remaining=total-session.length;
+    total=items.length; session=items.slice(0,SESSION); remaining=total-session.length; buildRevBricks(session.length, doneCount);
     $("cnt").innerHTML = total ? (total>30
       ? ("bu oturum: <b style='color:#e8eef7'>"+session.length+"</b> · gerisi yarınlara porsiyonlandı 💛")
       : ("bugün: <b style='color:#e8eef7'>"+total+"</b>"+(remaining?(" · oturum: "+session.length):""))) : "";
@@ -1117,6 +1123,24 @@ try{
     return { missing:missing, extra:extra, refLen:ref.length };
   }
 
+  function _revBrickSound(){
+    try{ var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+      var ctx=window.__dhAC||(window.__dhAC=new AC()); if(ctx.state==="suspended"){try{ctx.resume();}catch(e){}}
+      var t=ctx.currentTime, o=ctx.createOscillator(), g=ctx.createGain();
+      o.type="triangle"; o.frequency.value=659.25; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.2,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.32);
+      o.start(t); o.stop(t+0.34);
+    }catch(e){}
+  }
+  function buildRevBricks(total, done){
+    var el=document.getElementById("revBricks"); if(!el) return;
+    el.innerHTML=""; el.__total=total;
+    for(var k=0;k<total;k++){ var b=document.createElement("div"); b.className="rev-brick"+(k<done?" fallen":""); el.appendChild(b); }
+  }
+  function dropRevBrick(idx){
+    var el=document.getElementById("revBricks"); if(!el) return;
+    var b=el.children[idx]; if(!b) return; b.className="rev-brick dropping"; _revBrickSound();
+  }
   async function grade(hard){
     /* 📊 GÜNÜN KARNESİ bu sayaca bakar: her notlanan kalem 1 TEKRAR.
        (Eskiden hiç yazılmıyordu → karne 0/10'da kilitli kalıyor, kutlama ve
@@ -1164,7 +1188,7 @@ try{
       go.onclick=function(){ go.remove(); doneOrNext(); }; $("exp").appendChild(go);
       function doneOrNext(){ i++; render(); } return;
     }
-    doneCount++; i++; render();
+    dropRevBrick(doneCount); doneCount++; i++; render();
   }
   $("bHard").onclick=function(){ grade(true); }; $("bEasy").onclick=function(){ grade(false); };
 
