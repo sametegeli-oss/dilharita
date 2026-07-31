@@ -28,7 +28,7 @@
 <script src="./study-tracker.js?v=1"></script>
 <script src="./learning-error-system.js?v=2"></script>
 <style>
-  :root{ --bg:#0a1424; --panel:#10264a; --panel2:#0b172d; --line:#1e3a5f; --txt:#e8eef7; --dim:#9fb3d9; --gold:#f59e0b; --grn:#059669; --grn2:#10b981; --pur:#7c3aed; --brick-done:#059669; --brick-todo:#1e3a5f; }
+  :root{ --bg:#0a1424; --panel:#10264a; --panel2:#0b172d; --line:#1e3a5f; --txt:#e8eef7; --dim:#9fb3d9; --gold:#f59e0b; --grn:#059669; --grn2:#10b981; --pur:#7c3aed; }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{background:radial-gradient(1200px 600px at 50% -10%,#12315e 0%,var(--bg) 55%);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100%;display:flex;flex-direction:column;align-items:center}
@@ -40,15 +40,7 @@
   .goal b{color:#fff}
   .sndBtn{display:flex;align-items:center;gap:6px;background:#16294a;border:1px solid var(--line);color:var(--txt);padding:7px 13px;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap}
   .sndBtn.off{color:var(--dim)}
-  
-  /* Tuğla Görselleştirme Duvarı Alanı */
-  .brickWallWrap{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:14px;display:flex;flex-direction:column;gap:6px}
-  .brickWallTitle{font-size:11.5px;color:var(--dim);font-weight:700;display:flex;justify-content:space-between;align-items:center}
-  .bricksGrid{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
-  .brick{flex:1;min-width:18px;height:24px;background:var(--brick-todo);border-radius:4px;border:1px solid rgba(255,255,255,0.08);transition:all 0.3s ease;position:relative;overflow:hidden}
-  .brick.done{background:var(--brick-done);box-shadow:0 0 8px rgba(16,185,129,0.4);transform:translateY(-2px);opacity:0.85}
-
-  .coachWrap{display:flex;flex-direction:column;align-items:center;margin-top:2px}
+  .coachWrap{display:flex;flex-direction:column;align-items:center;margin-top:6px}
   .avatarRing{position:relative;width:188px;height:188px;border-radius:50%;padding:5px;background:conic-gradient(from 180deg,var(--gold),var(--grn2),var(--pur),var(--gold));transition:box-shadow .3s}
   .avatarRing.speaking{box-shadow:0 0 0 6px #10b98122,0 0 42px #10b98155}
   .avatar{width:100%;height:100%;border-radius:50%;object-fit:cover;background:#0f1f3a;display:block}
@@ -89,17 +81,6 @@
       <button class="sndBtn" id="sndBtn" onclick="toggleSound()">🔊 Sesli</button>
     </div>
 
-    <!-- Tuğla Duvarı Görselleştirme Alanı -->
-    <div class="brickWallWrap">
-      <div class="brickWallTitle">
-        <span>🏗️ Günlük Hedef Duvarı</span>
-        <span id="brickStatusText">0 / 5 Tamamlandı</span>
-      </div>
-      <div class="bricksGrid" id="bricksGrid">
-        <!-- Dinamik olarak üretilecek tuğlalar -->
-      </div>
-    </div>
-
     <div class="coachWrap">
       <div class="avatarRing" id="ring"><img class="avatar" id="face" alt="Koç" width="188" height="188" decoding="async" fetchpriority="high"></div>
       <div class="coachName">Öğretmenin</div>
@@ -113,7 +94,7 @@
       <input id="askIn" placeholder="Koça yaz: bugün ne çalışmak istersin?" autocomplete="off" onkeydown="if(event.key==='Enter')askCoach()">
       <button onclick="askCoach()">Sor</button>
     </div>
-    <div class="hint">Koç ile plan üzerinde anlaşabilir veya dilediğin zaman modüllere geçebilirsin 👇</div>
+    <div class="hint">Bugün ne çalışacağına koçun karar verir — sen sadece onu dinle 👇</div>
   </div>
 
   <button class="menuBtn" onclick="openSheet()">≡ Tüm modüller</button>
@@ -123,11 +104,19 @@
 
 <script>
 /* ============================================================
-   KOÇ MODU — Tuğla Duvarı Görselleştirmeli Günlük Plan ve Müzakere
+   KOÇ MODU — tek ekran, koç GERÇEK verine göre yönlendirir.
+   Yüz: seçili teacher avatarı (assets/avatars_v3/teacher/), kareler gömülü.
+   Ses: kalıcı tercih -> localStorage "dh-koc-sesli".
+   Veri: dh-study-tracker-v1 (bugünkü cümle/tekrar), window.studyTracker (streak),
+         dh-koc-plan-<gün>.dueCount (vadesi gelen tekrar), LearningErrorDB (zayıf analiz).
+   Navigasyon: butonlar GERÇEK sayfaları açar (location.href).
    ============================================================ */
 var AV="./assets/avatars_v3/teacher/";
 var FR={ idle:AV+"idle.webp", small:AV+"mouth-small.webp", medium:AV+"mouth-medium.webp",
          open:AV+"mouth-open.webp", blink:AV+"blink.webp" };
+/* Sesbirim kareleri: dosyalar zaten assets/avatars_v3/teacher/ altında duruyordu
+   ama koç ekranı bunları hiç kullanmıyordu — metinden bağımsız 4 karelik sabit
+   bir döngü oynatıyordu. Artık ağız gerçekten söylenen sese göre şekilleniyor. */
 var VIS={ a:AV+"mouth-a.webp", e:AV+"mouth-e.webp", i:AV+"mouth-i.webp",
           o:AV+"mouth-o.webp", u:AV+"mouth-u.webp", mbp:AV+"mouth-mbp.webp",
           fv:AV+"mouth-fv.webp", l:AV+"mouth-l.webp", th:AV+"mouth-th.webp",
@@ -141,8 +130,9 @@ function paintSound(){ var b=document.getElementById("sndBtn"); if(soundOn()){ b
 function toggleSound(){ try{ localStorage.setItem("dh-koc-sesli", soundOn()?"0":"1"); }catch(e){} if(!soundOn()){ try{speechSynthesis.cancel();}catch(e){} } paintSound(); }
 paintSound();
 
-/* ---- konuşma: ağız + yazı + TTS ---- */
+/* ---- konuşma: ağız + yazı + (tercihe göre) TTS ---- */
 var mouthT=null, blinkT=null, typeT=null, seq=[FR.small,FR.medium,FR.open,FR.medium], si=0;
+/* Koç Türkçe anlatır, İngilizce malzeme [[ ]] içinde gelir; bağlam dili "tr". */
 var seqCharAt=null;
 function mouthSeqFor(text){
   seqCharAt=null;
@@ -154,6 +144,9 @@ function mouthSeqFor(text){
   }catch(e){}
   return [FR.small,FR.medium,FR.open,FR.medium];
 }
+/* SENKRON: kare aralığı sabit 120 ms değil, konuşmanın süresine bölünmüş adım.
+   Ayrıca dizi bitince başa DÖNMÜYOR — eskiden "% seq.length" ile başa dönüp
+   ses cümlenin ortasındayken ağız cümleyi baştan söylüyor gibi görünüyordu. */
 function startMouth(text, durMs){ ring.classList.add("speaking"); stopBlink(); clearInterval(mouthT);
   seq=mouthSeqFor(text); si=0;
   var _total=Math.max(800, durMs || (String(text||"").length*70));
@@ -162,6 +155,9 @@ function startMouth(text, durMs){ ring.classList.add("speaking"); stopBlink(); c
     if(si>=seq.length){ face.src=FR.idle; return; }
     face.src=seq[si++];
   }, _step); }
+/* Tarayıcı her kelimede onboundary veriyor; birikmiş gecikmeyi orada kapat. */
+/* charIndex: okunan metindeki harf konumu. Noktalama duraklamaları yüzünden
+   kare sayısı harf sayısıyla doğrusal olmadığı için oran değil konum kullanılır. */
 function alignMouth(charIndex){
   if(!seq.length || typeof charIndex!=="number") return;
   if(!seqCharAt || !window.DHViseme || !window.DHViseme.indexForChar) return;
@@ -174,6 +170,8 @@ function stopBlink(){ clearInterval(blinkT); blinkT=null; }
 function speak(text, done){
   var el=document.getElementById("say"), c=document.getElementById("caret");
   clearTimeout(typeT); el.textContent=""; c.style.display="inline-block";
+  /* Seslendirilecek metin (emoji ayıklanmış) — ağzın süresi ve hizalaması
+     bu metne göre hesaplanmalı, ekrandaki metne göre değil. */
   var sesMetni=text.replace(/[\u{1F000}-\u{1FFFF}☀-➿✓]/gu,"");
   startMouth(text, Math.max(800, sesMetni.length*70));
   var spoke=false;
@@ -184,11 +182,15 @@ function speak(text, done){
         };
         u.onend=function(){ stopMouth(); }; u.onerror=function(){ stopMouth(); };
         speechSynthesis.speak(u); spoke=true; } }catch(e){}
+  // Ağız, ses açıkken TTS bitene kadar (u.onend), sessizken yazı bitince durur —
+  // böylece konuşurken ağız yarıda kesilmez.
   var i=0; (function tick(){ if(i<=text.length){ el.textContent=text.slice(0,i); i++; typeT=setTimeout(tick,18); } else { c.style.display="none"; if(!spoke) stopMouth(); done&&done(); } })();
 }
 
 /* ---- GERÇEK VERİ ---- */
 function isoToday(){ return new Date().toISOString().slice(0,10); }
+/* Vadesi gelen tekrar: uygulamanın SRS deposundan (sentence-mode > kv > srs:*)
+   due<=now olanları say. Klasik ana sayfa açılmasa da doğru çalışır. */
 function computeDue(){ return new Promise(function(res){ try{
   var r=indexedDB.open("sentence-mode",1);
   r.onsuccess=function(){ var db=r.result;
@@ -202,154 +204,115 @@ function computeDue(){ return new Promise(function(res){ try{
     }catch(e2){ try{db.close();}catch(_){} res(null); } };
   r.onerror=function(){ res(null); };
 }catch(e){ res(null); } }); }
-
 var WEAK={ "missing-word":"eksik kelime","word-order":"kelime sırası","tense":"fiil zamanı","preposition":"edat (in/on/at)","article":"artikel (a/the)","spelling":"yazım","plural":"çoğul","auxiliary":"yardımcı fiil","general":"genel hatalar" };
+/* Günlük hedef artık kullanıcının kurulumda seçtiği değer.
+   Eskiden 5 olarak sabit kodluydu ve hiçbir yerden değiştirilemiyordu. */
 var GOAL=(function(){ try{ return DHProfile.hedef(); }catch(e){ return 5; } })();
-
 async function loadReal(){
-  var R={streak:null,sentences:0,reviews:0,lessons:0,due:null,weakType:null,weakCount:0};
+  var R={streak:null,sentences:0,reviews:0,lessons:0,due:null,weakType:null,weakCount:0,ySentences:0,yReviews:0,yLessons:0,weakList:[],strongList:[]};
   try{ var t=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; var d=(t.days||{})[isoToday()]||{}; R.sentences=d.sentences||0; R.reviews=d.reviews||0; R.lessons=d.lessons||0; }catch(e){}
   try{ if(window.studyTracker){ var s=(window.studyTracker.getTodayStats&&window.studyTracker.getTodayStats().streak); if(s==null && window.studyTracker.streakData) s=window.studyTracker.streakData.current; if(typeof s==="number") R.streak=s; } }catch(e){}
   if(R.streak==null){ try{ var st=JSON.parse(localStorage.getItem("study_tracker_data")||"{}"); if(st.streakData&&typeof st.streakData.current==="number") R.streak=st.streakData.current; }catch(e){} }
   try{ var dc=await computeDue(); if(typeof dc==="number") R.due=dc; }catch(e){}
   if(R.due==null){ try{ var pl=JSON.parse(localStorage.getItem("dh-koc-plan-"+isoToday())||"null"); if(pl&&typeof pl.dueCount==="number") R.due=pl.dueCount; }catch(e){} }
-  try{ if(window.LearningErrorDB&&LearningErrorDB.all){ var all=await LearningErrorDB.all(); var sum=LearningErrorDB.summarize(all||[]); R.weakCount=(sum&&sum.high)||0; if(sum&&sum.byType&&sum.byType[0]) R.weakType=sum.byType[0][0]; } }catch(e){}
+  try{ if(window.LearningErrorDB&&LearningErrorDB.all){ var all=await LearningErrorDB.all(); var sum=LearningErrorDB.summarize(all||[]); R.weakCount=(sum&&sum.high)||0;
+    if(sum&&sum.byType&&sum.byType[0]){ R.weakType=sum.byType[0][0]; R.weakList=sum.byType.slice(0,2).map(function(x){return WEAK[x[0]]||x[0];});
+      var wk=sum.byType.map(function(x){return x[0];}); R.strongList=Object.keys(WEAK).filter(function(k){return k!=="general" && wk.indexOf(k)<0;}).slice(0,2).map(function(k){return WEAK[k];}); } } }catch(e){}
+  try{ var _t=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; var _yd=new Date(Date.now()-86400000).toISOString().slice(0,10); var _dy=(_t.days||{})[_yd]||{}; R.ySentences=_dy.sentences||0; R.yReviews=_dy.reviews||0; R.yLessons=_dy.lessons||0; }catch(e){}
   return R;
 }
-
 function paintHeader(R){
-  var currentDone = Math.min(R.sentences, GOAL);
-  document.getElementById("goalN").textContent = currentDone + "/" + GOAL;
-  if(R.streak!=null && R.streak>0){ document.getElementById("streakN").textContent = R.streak; document.getElementById("streakPill").style.display="flex"; }
-  
-  // Tuğla Duvarını Oluştur ve Güncelle
-  renderBricks(currentDone, GOAL);
+  document.getElementById("goalN").textContent=Math.min(R.sentences,GOAL)+"/"+GOAL;
+  if(R.streak!=null && R.streak>0){ document.getElementById("streakN").textContent=R.streak; document.getElementById("streakPill").style.display="flex"; }
 }
 
-/* ---- TUĞLA DUVARI RENDER ETMEK VE KALDIRMAK ---- */
-function renderBricks(doneCount, totalGoal){
-  var grid = document.getElementById("bricksGrid");
-  var statusTxt = document.getElementById("brickStatusText");
-  if(!grid) return;
-  grid.innerHTML = "";
-  
-  // Eğer hedef 0 ise varsayılan 5 yap
-  var total = Math.max(1, totalGoal);
-  var done = Math.min(doneCount, total);
+/* ============ GÜNLÜK PLAN KOÇU (konuşmalı, AI'lı, pazarlıklı) ============ */
+var MODULES={ tekrar:["tekrar.html","Tekrar"], cumle:["index-app.html","Cümle"], kelime:["kelime-ogren.html","Kelime"],
+  video:["videopractice.html","Video"], phrasal:["phrasal-verbs.html","Phrasal"], sohbet:["chat.html","Sohbet"],
+  hata:["hata-defteri.html","Hata antrenmanı"], ders:["ders.html","Hazır ders"], seviye:["seviye-testi.html","Seviye"], foto:["foto-ekle.html","Fotoğraftan ekle"] };
+var CTX=null, CONV=[], PLAN=[], COACH_MINS=25;
 
-  statusTxt.textContent = done + " / " + total + " Cümle";
-
-  for(var i = 0; i < total; i++){
-    var brick = document.createElement("div");
-    brick.className = "brick" + (i < done ? " done" : "");
-    // Tuğla kalktığında/tamamlandığında ipucu başlığı
-    brick.title = (i < done) ? "Tuğla kaldırıldı (Tamamlandı)" : "Kalan tuğla (Hedef)";
-    grid.appendChild(brick);
+function _briefText(R){
+  var dun=(R.ySentences||R.yReviews||R.yLessons)
+    ? ("Dün "+[(R.ySentences?R.ySentences+" cümle":""),(R.yReviews?R.yReviews+" tekrar":""),(R.yLessons?R.yLessons+" ders":"")].filter(Boolean).join(", ")+" yaptın.")
+    : "Dün kayıt yok, bugün taze başlıyoruz.";
+  var g=(R.strongList&&R.strongList.length)?(" Güçlü olduğun: "+R.strongList.join(", ")+"."):"";
+  var z=(R.weakList&&R.weakList.length)?(" En çok zorlandığın: "+R.weakList.join(", ")+"."):"";
+  var se=(R.streak&&R.streak>0)?(" 🔥 "+R.streak+" günlük serin sürüyor."):"";
+  return dun+g+z+se;
+}
+function renderBriefAndTime(R){
+  CTX=R; CONV=[]; PLAN=[];
+  var box=document.getElementById("acts"); box.innerHTML="";
+  speak("Merhaba Samet 👋 "+_briefText(R)+" Bugünün planını birlikte kuralım — önce söyle, bugün ne kadar vaktin var?", function(){
+    [["⏱️ Kısa ~10dk",10],["🕐 Normal ~25dk",25],["💪 Bol ~45dk+",50]].forEach(function(o,idx){
+      var b=mkBtn(o[0], idx===1?"primary":"ghost", function(){ proposePlan(o[1]); });
+      box.appendChild(b); setTimeout(function(){b.classList.add("in");},60+idx*80);
+    });
+    var inp=document.getElementById("askIn"); if(inp) inp.placeholder="…ya da dakika yaz (ör. 30)";
+  });
+}
+function _fallbackPlan(R,mins){
+  var p=[], left=mins;
+  if(R.due>0){ var d=Math.min(left,R.due>10?12:8); p.push({t:"Vadesi gelen tekrar",mod:"tekrar",dk:d,not:R.due+" birikmiş"}); left-=d; }
+  var kalan=Math.max(0,(GOAL||5)-(R.sentences||0));
+  if(kalan>0&&left>=5){ var d2=Math.min(left,Math.max(8,kalan*2)); p.push({t:kalan+" cümle (günlük hedef)",mod:"cumle",dk:d2,not:"hedefi tamamla"}); left-=d2; }
+  if(R.weakList&&R.weakList.length&&left>=5){ var d3=Math.min(left,7); p.push({t:R.weakList[0]+" antrenmanı",mod:"hata",dk:d3,not:"en zayıf konun"}); left-=d3; }
+  if(left>=6){ p.push({t:"Kelime çalışması",mod:"kelime",dk:Math.min(left,10),not:"kalan süre"}); }
+  if(!p.length) p.push({t:"Serbest cümle çalışması",mod:"cumle",dk:mins,not:""});
+  return p;
+}
+function _parsePlan(txt){ try{ var m=String(txt).match(/#PLAN#\s*(\[[\s\S]*\])/); if(m){ var a=JSON.parse(m[1]); if(Array.isArray(a)&&a.length) return a; } }catch(e){} return null; }
+function _stripPlan(txt){ return String(txt).replace(/#PLAN#[\s\S]*$/,"").replace(/```[a-z]*|```/g,"").trim(); }
+function _coachSystem(R,mins){
+  return "Sen Dil Harita uygulamasinin Turkce konusan Ingilizce calisma kocusun. Ogrenci Samet. Gorevin: bugune uygun gercekci bir gunluk calisma plani onermek ve ogrenciyle konusarak uzlasmak. "
+   +"VERI => gunluk hedef "+(GOAL||5)+" cumle; bugun "+(R.sentences||0)+" cumle "+(R.reviews||0)+" tekrar yapildi; dun "+(R.ySentences||0)+" cumle "+(R.yReviews||0)+" tekrar; vadesi gelen tekrar "+(R.due||0)+"; zayif konular: "+((R.weakList||[]).join(", ")||"belirgin degil")+"; guclu yonler: "+((R.strongList||[]).join(", ")||"duzenlilik")+"; seri "+(R.streak||0)+" gun; bugunku sure "+mins+" dakika. "
+   +"KURALLAR: Plani sureye gore boyutla, toplam sure "+mins+" dk'yi asmasin. Oncelik: once vadesi gelen tekrar, sonra gunluk hedef cumleler, sonra en zayif konuya kisa antrenman, zaman kalirsa kelime/video. Ogrenci degisiklik isterse mantikliysa kabul et ve plani guncelle; mantiksiz/zararliysa (or. tekrari tamamen atlamak) KIBARCA ITIRAZ ET, nedenini kisa acikla, bir orta yol oner. Kisa ve sicak Turkce konus, uzun paragraf yok. Moduller yalnizca: tekrar, cumle, kelime, video, phrasal, sohbet, hata, ders, seviye. "
+   +"HER cevabinin EN SONUNA guncel plani tam su formatta ekle (baska JSON verme, ekstra sey yazma): #PLAN#[{\"t\":\"kisa baslik\",\"mod\":\"tekrar\",\"dk\":10,\"not\":\"kisa neden\"}]";
+}
+async function _coachTurn(userMsg){
+  if(!(window.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())){
+    PLAN=_fallbackPlan(CTX,COACH_MINS);
+    renderPlan("Planını hazırladım. (AI anahtarı yok; 🔑 ekleyince planı konuşarak değiştirebiliriz.)", PLAN);
+    return;
   }
-}
-
-/* ---- DÜNÜN İSTATİSTİKLERİNİ AL ---- */
-function getYesterdayStats(){
+  CONV.push({role:"user",content:userMsg});
+  document.getElementById("acts").innerHTML=""; document.getElementById("say").textContent="Koç düşünüyor…";
   try{
-    var t = JSON.parse(localStorage.getItem("dh-study-tracker-v1") || "{}") || {};
-    var dKeys = Object.keys(t.days || {}).sort();
-    if(dKeys.length < 2) return { sentences: 0, reviews: 0 };
-    var yKey = dKeys[dKeys.length - 2];
-    return (t.days || {})[yKey] || { sentences: 0, reviews: 0 };
-  }catch(e){ return { sentences: 0, reviews: 0 }; }
+    var reply=await DHProviders.chat([{role:"system",content:_coachSystem(CTX,COACH_MINS)}].concat(CONV),{temperature:0.6,max_tokens:500});
+    CONV.push({role:"assistant",content:reply});
+    var np=_parsePlan(reply); if(np) PLAN=np;
+    renderPlan(_stripPlan(reply)||"Planı güncelledim.", PLAN);
+  }catch(e){ PLAN=_fallbackPlan(CTX,COACH_MINS); renderPlan("Bağlantı kurulamadı, otomatik plana geçtim.", PLAN); }
 }
-
-/* ---- DİNAMİK PLAN VE MÜZAKERE SİSTEMİ ---- */
-async function buildDailyProposal(R){
-  var yData = getYesterdayStats();
-  var strongText = R.streak && R.streak > 1 ? (R.streak + " günlük istikrarlı bir serin var") : "çalışmalarında düzenli bir tempon var";
-  var weakDesc = R.weakType ? (WEAK[R.weakType] || R.weakType) : "kelime dizilimi ve temel yapılar";
-
-  return {
-    yesterdaySentences: yData.sentences || 0,
-    yesterdayReviews: yData.reviews || 0,
-    strong: strongText,
-    weak: weakDesc,
-    todayTarget: GOAL,
-    dueCount: R.due || 0,
-    weakCount: R.weakCount || 0
-  };
-}
-
-async function renderNegotiationFlow(R){
-  var plan = await buildDailyProposal(R);
-  var box = document.getElementById("acts");
-  box.innerHTML = "";
-
-  var introMsg = "Dün " + plan.yesterdaySentences + " cümle ve " + plan.yesterdayReviews + " tekrar yaptık. " +
-                 "Genel olarak kuvvetli olduğun yönler: " + plan.strong + ". " +
-                 "Zayıf kalan hususlar için koçla çalışma yapacaksın: özellikle " + plan.weak + " üzerine odaklanacağız. " +
-                 "Bugün şunları çalışacağız: " + plan.todayTarget + " cümle hedefi ve vadesi gelen " + plan.dueCount + " tekrar. " +
-                 "Duvarımızda " + plan.todayTarget + " tuğlamız var. Zamanın bugün nasıl? Az mı, normal mi, yoksa bol mu?";
-
-  speak(introMsg, function(){
-    var actionsHTML = [
-      { t: "✅ Planı Onayla ve Duvarı Ör", cls: "primary", action: function(){ executePlan(plan); } },
-      { t: "⏱️ Bugün Zamanım Az (Hafiflet)", cls: "ghost", action: function(){ adjustPlan(plan, "az"); } },
-      { t: "⚡ Bugün Vaktim Bol (Yoğunlaştır)", cls: "ghost", action: function(){ adjustPlan(plan, "bol"); } }
-    ];
-
-    actionsHTML.forEach(function(act, idx){
-      var b = document.createElement("button");
-      b.className = "act " + act.cls;
-      b.textContent = act.t;
-      b.onclick = act.action;
-      box.appendChild(b);
-      setTimeout(function(){ b.classList.add("in"); }, 60 + idx * 90);
-    });
+function proposePlan(mins){ COACH_MINS=Math.max(5,Math.min(180,mins)); CONV=[]; _coachTurn("Bugün "+COACH_MINS+" dakikam var. Bu süreye uygun bir günlük plan öner."); }
+function renderPlan(msg, plan){
+  var box=document.getElementById("acts"); box.innerHTML="";
+  speak(msg||"Planı hazırladım.", function(){
+    var tot=(plan||[]).reduce(function(a,p){return a+(+p.dk||0);},0);
+    var head=document.createElement("div"); head.textContent="📋 Bugünkü plan (~"+tot+" dk)"; head.style.cssText="font-weight:900;margin:8px 0 4px;font-size:14px"; box.appendChild(head);
+    (plan||[]).forEach(function(p,i){ var row=document.createElement("div"); row.textContent=(i+1)+") "+p.t+" · "+(p.dk||"?")+"dk"+(p.not?" — "+p.not:""); row.style.cssText="font-size:13px;color:var(--dim,#9fb3d1);margin:2px 0;text-align:left;max-width:440px"; box.appendChild(row); });
+    var b1=mkBtn("✅ Bu planla başla","primary",function(){ savePlanAndRun(plan); }); box.appendChild(b1); b1.classList.add("in");
+    var inp=document.getElementById("askIn"); if(inp) inp.placeholder="Değiştir: ör. 'tekrar istemiyorum, kelimeye ağırlık ver'";
   });
 }
-
-function adjustPlan(plan, type){
-  var box = document.getElementById("acts");
-  box.innerHTML = "";
-  if(type === "az"){
-    plan.todayTarget = Math.max(2, Math.floor(plan.todayTarget / 2));
-    renderBricks(0, plan.todayTarget); // Tuğlaları güncelle
-    speak("Anladım, bugün senin için hedefi hafifletip duvarı küçültüyoruz. Bu planı onaylıyor musun?", function(){
-      renderFinalAgreement(plan);
-    });
-  } else if(type === "bol"){
-    plan.todayTarget += 3;
-    renderBricks(0, plan.todayTarget); // Tuğlaları güncelle
-    speak("Harika! Hedef duvarına ek tuğlalar ekledim. Uzlaştık mı?", function(){
-      renderFinalAgreement(plan);
-    });
-  }
-}
-
-function renderFinalAgreement(plan){
-  var box = document.getElementById("acts");
-  box.innerHTML = "";
-  speak("Güzel, bugünkü planımız ve tuğla duvarımız üzerinde uzlaştık[cite: 1]. Çalıştıkça tuğlalar tek tek kalkacak!", function(){
-    var b = mkBtn("🚀 Duvarı Yıkmaya Başla", "primary", function(){ executePlan(plan); });
-    box.appendChild(b);
-    b.classList.add("in");
+function savePlanAndRun(plan){
+  try{ var k="dh-koc-plan-"+isoToday(); var c=JSON.parse(localStorage.getItem(k)||"{}")||{}; c.plan=plan; c.mins=COACH_MINS; c.agreedAt=Date.now(); localStorage.setItem(k,JSON.stringify(c)); }catch(e){}
+  var box=document.getElementById("acts"); box.innerHTML="";
+  speak("Anlaştık 👊 Plan hazır. Adım adım gidelim — her adımı bitirince bir sonrakine geç.", function(){
+    (plan||[]).forEach(function(p,idx){ var mod=MODULES[p.mod]||MODULES.cumle; var b=mkBtn("▶ "+(idx+1)+") "+p.t+"  ·  "+(p.dk||"")+"dk", idx===0?"primary":"ghost", function(){ location.href="./"+mod[0]; }); box.appendChild(b); setTimeout(function(){b.classList.add("in");},60+idx*70); });
+    var bm=mkBtn("≡ Tüm modüller","ghost",function(){ openSheet(); }); box.appendChild(bm); bm.classList.add("in");
   });
 }
-
-function executePlan(plan){
-  if(plan.dueCount > 0){
-    location.href = "./tekrar.html";
-  } else {
-    location.href = "./index-app.html";
-  }
-}
-
-/* ---- kullanıcı koça yazınca: akıllı yönlendirme ---- */
-var ROUTE=[ [/kelime|word/i,"kelime-ogren.html","kelime çalışması"], [/video|telaffuz/i,"videopractice.html","video pratiği"], [/phrasal|öbek/i,"phrasal-verbs.html","phrasal verbs"], [/sohbet|konuş|chat/i,"chat.html","sohbet"], [/tekrar|review/i,"tekrar.html","tekrar"], [/hata|defter/i,"hata-defteri.html","hata defteri"], [/seviye|test/i,"seviye-testi.html","seviye testi"], [/cümle|pratik|çalış|öğren/i,"index-app.html","cümle çalışması"], [/foto|resim|tara/i,"foto-ekle.html","fotoğraftan ekleme"] ];
-
+/* kullanıcı yazınca: sadece dakika ise süre, değilse plan pazarlığı */
 function askCoach(){
   var v=(document.getElementById("askIn").value||"").trim(); if(!v) return; document.getElementById("askIn").value="";
-  var box=document.getElementById("acts"); box.innerHTML=""; var hit=ROUTE.find(function(r){ return r[0].test(v); });
-  if(hit){ speak("Olur, "+hit[2]+" açıyorum.", function(){ var b=mkBtn("👉 "+hit[2]+" — aç","primary",function(){ location.href="./"+hit[1]; }); box.appendChild(b); b.classList.add("in"); var b2=mkBtn("Koçun önerisine dön","ghost",function(){ boot(); }); box.appendChild(b2); b2.classList.add("in"); }); }
-  else { speak("İtirazını aldım ancak bugünkü önceliğimiz senin zayıf yönlerini kapatıp duvarı bitirmek. Menüden dilediğin yere geçebilirsin.", function(){ var b=mkBtn("≡ Tüm modüller","primary",function(){ openSheet(); }); box.appendChild(b); b.classList.add("in"); var b2=mkBtn("Koçun planına dön","ghost",function(){ boot(); }); box.appendChild(b2); b2.classList.add("in"); }); }
+  var mm=v.match(/^(\d{1,3})\s*(dk|dakika|min)?$/i);
+  if(mm && !PLAN.length){ proposePlan(parseInt(mm[1],10)); return; }
+  if(!CTX){ boot(); return; }
+  _coachTurn(v);
 }
+
 function mkBtn(t,cls,fn){ var b=document.createElement("button"); b.className="act "+cls; b.textContent=t; b.onclick=fn; return b; }
 
 /* ---- tüm modüller (gerçek linkler) ---- */
@@ -362,16 +325,14 @@ function closeSheet(){ document.getElementById("sheet").classList.remove("open")
 startBlink();
 async function boot(){
   var box=document.getElementById("acts"); box.innerHTML="";
-  document.getElementById("say").textContent="Bugünkü planını ve tuğlaları hazırlıyorum…";
-  var R=await loadReal(); 
-  paintHeader(R); 
-  renderNegotiationFlow(R);
+  document.getElementById("say").textContent="Bugünü hazırlıyorum…";
+  var R=await loadReal(); paintHeader(R); renderBriefAndTime(R);
 }
 (function firstScreen(){
   var box=document.getElementById("acts");
-  var b=mkBtn("👉 Günlük Planı Başlat","primary",function(){ boot(); });
+  var b=mkBtn("👉 Başla — koç seni yönlendirsin","primary",function(){ boot(); });
   box.appendChild(b); setTimeout(function(){b.classList.add("in");},120);
-  document.getElementById("say").innerHTML="Merhaba 👋 Ben koçun. Dünkü çalışmalarını analiz ettim, hedeflerini tuğlalara dönüştürüp ortak bir plan yapmaya hazırım.";
+  document.getElementById("say").innerHTML="Merhaba 👋 Ben koçun. Bugünü <b>birlikte</b> planlayalım — dünü, güçlü ve zayıf yönlerini konuşup bugünkü planında uzlaşalım.";
 })();
 </script>
 <script src="./ux-boost.js?v=1"></script>

@@ -947,9 +947,9 @@
   function onDocClick(e){
     if(!enabled || popEl) return;
     var t=e.target; if(!t) return;
-    if(t.closest && t.closest("input,textarea,button,a,select,label,summary,option,[onclick],[role=button],.no-wordpop")) return;
-    var sel=(global.getSelection && global.getSelection().toString())||"";
-    if(sel && sel.length>2) return;
+    if(t.closest && t.closest("input,textarea,button,a,select,.no-wordpop")) return;
+    var sel=((global.getSelection && global.getSelection().toString())||"").trim();
+    if(sel && sel.indexOf(" ")<0){ var sw=cleanWord(sel); if(sw && sw.length>=2){ loadDict().then(function(){ var entry=findEntry(sw); if(entry) open(entry); else defineWithAI(sw); }); } return; }
     /* Tıklanan noktadaki metin düğümünü bul.
        caretRangeFromPoint Chrome/Safari'de var; Firefox caretPositionFromPoint
        kullanıyor. Eskiden yalnız ilki deneniyordu, Firefox'ta hiç çalışmıyordu. */
@@ -971,7 +971,7 @@
   function baglaTiklama(){
     if(global.__dhWpBound) return;
     global.__dhWpBound = true;
-    document.addEventListener("click", onDocClick, true);
+    document.addEventListener("dblclick", onDocClick, true);
   }
   if(document.readyState === "loading"){
     document.addEventListener("DOMContentLoaded", baglaTiklama, { once:true });
