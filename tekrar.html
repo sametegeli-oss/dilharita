@@ -85,6 +85,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     <button class="b-chk" id="bChk" style="display:none">Kontrol et</button>
     <button class="b-say" id="bSay">🔊</button>
     <button class="b-say" id="bStudio" title="Telaffuz Stüdyosu">🎙️</button>
+    <button class="b-say" id="bAsk" title="Bu cümleyi koça sor">❓</button>
   </div>
   <div class="row" id="grade" style="display:none">
     <button class="b-hard" id="bHard">Zor</button>
@@ -586,6 +587,34 @@ try{
     $("exp").style.display="none";
     $("card").style.display="block";
     $("bSay").onclick=function(){ speak(curT.en); };
+    try{ window.dhCurrentSentence={en:curT.en,tr:curT.tr}; }catch(e){}
+    if(!window.dhAskCoach){ window.dhAskCoach=function(t){
+      if(!t) return;
+      function _esc(x){ var d=document.createElement("div"); d.textContent=String(x==null?"":x); return d.innerHTML; }
+      var old=document.getElementById("dhAskPanel"); if(old) old.remove();
+      var ov=document.createElement("div"); ov.id="dhAskPanel";
+      ov.style.cssText="position:fixed;inset:0;z-index:2147483400;background:rgba(2,8,20,.72);display:flex;align-items:flex-end;justify-content:center;padding:14px";
+      ov.innerHTML='<div style="background:#0f1f3a;border:1px solid #1e3a5f;border-radius:16px;width:min(560px,96vw);padding:16px;max-height:86vh;overflow:auto">'
+        +'<div style="font-weight:900;margin-bottom:4px">Bu cümleyi koça sor</div>'
+        +'<div style="font-size:13px;color:#9fb3d9;margin-bottom:10px">'+_esc(t.en)+(t.tr?(" — "+_esc(t.tr)):"")+'</div>'
+        +'<textarea id="dhAskInp" placeholder="Sorunu yaz: ör. neden the kullanildi? / bu zaman neden? / baska nasil denir?" style="width:100%;min-height:70px;background:#0a1628;border:1px solid #1e3a5f;color:#e8eef7;border-radius:10px;padding:10px;font-size:14px"></textarea>'
+        +'<div style="display:flex;gap:8px;margin-top:10px"><button id="dhAskSend" style="flex:1;background:#2563eb;border:0;color:#fff;font-weight:800;padding:11px;border-radius:10px;cursor:pointer">Sor</button><button id="dhAskClose" style="background:#16294a;border:1px solid #1e3a5f;color:#9fb3d9;padding:11px 14px;border-radius:10px;cursor:pointer">Kapat</button></div>'
+        +'<div id="dhAskOut" style="margin-top:12px;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#e8eef7"></div></div>';
+      document.body.appendChild(ov);
+      ov.addEventListener("click",function(e){ if(e.target===ov) ov.remove(); });
+      document.getElementById("dhAskClose").onclick=function(){ ov.remove(); };
+      var inp=document.getElementById("dhAskInp"); inp.focus();
+      function send(){
+        var q=(inp.value||"").trim(); if(!q) return;
+        var out=document.getElementById("dhAskOut"); out.textContent="Koç düşünüyor…";
+        if(!(window.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())){ out.textContent="Bunun için bir AI anahtarı gerekli (kilit düğmesi)."; return; }
+        var sys="Sen Turkce konusan bir Ingilizce calisma kocusun. Ogrenci su cumle uzerinde calisiyor -> Ingilizce: \""+t.en+"\""+(t.tr?(" / Turkce: \""+t.tr+"\""):"")+". Ogrencinin sorusunu Turkce, kisa ve net yanitla; gramer/kelime/kullanim icin 1-2 ornek ver. Uzun paragraf yok.";
+        DHProviders.chat([{role:"system",content:sys},{role:"user",content:q}],{temperature:0.4,max_tokens:400}).then(function(r){ out.textContent=String(r||"").trim()||"—"; }).catch(function(){ out.textContent="Baglanti olmadi, tekrar dene."; });
+      }
+      document.getElementById("dhAskSend").onclick=send;
+      inp.onkeydown=function(e){ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)) send(); };
+    }; }
+    if($("bAsk")) $("bAsk").onclick=function(){ window.dhAskCoach(curT); };
     $("bStudio").onclick=function(){ location.href='./sesdalga.html?en='+encodeURIComponent(curT.en)+'&tr='+encodeURIComponent(curT.tr||''); };
     if(prod) setTimeout(function(){ try{$("inp").focus();}catch(e){} },50);
   }

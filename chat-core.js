@@ -63,6 +63,7 @@ const State = {
   speaking:false,
   history:[]
 };
+State.firstMsg=State.currentPartner;
 function safeId(s){ return String(s||"scenario").toLowerCase().replace(/[^a-z0-9]+/g,"-"); }
 function $(id){ return document.getElementById(id); }
 function activeAvatarDir(){
@@ -288,7 +289,7 @@ class PhotoAvatar{
 
 function buildUI(){
   const root=document.getElementById("chatApp") || document.body.appendChild(document.createElement("div"));
-  root.innerHTML=`<div class="chat-shell"><div class="chat-top"><a class="back-btn" href="${Scenario.backHref||'chat.html'}">←</a><div class="chat-title-wrap"><div class="chat-title">${esc(Scenario.title)}</div><div class="chat-sub" id="subtitle">${esc(Scenario.subtitle)} · ${State.level}</div></div><button class="level-pill" id="levelBtn" type="button">${State.level}</button></div><div class="avatar-stage"><img id="avatarImg" alt="Fotoğraflı konuşan avatar"></div><div class="panel"><div class="chat-history" id="chatHistory"></div><div id="taskBar" style="font-size:11.5px;color:#9fb3d9;padding:4px 8px;border-top:1px dashed #ffffff18"></div><div class="input-row"><div class="input-wrap"><textarea id="textIn" class="text-in" rows="1" placeholder="Yaz ya da 🎙 ile konuş..."></textarea></div><button class="icon-fab suggest-btn" id="suggestBtn" type="button" title="Sen öner">💡</button><button class="icon-fab suggest-btn" id="errSaveBtn" type="button" title="Bu konuşmadaki hatalarımı deftere kaydet" style="background:#b45309">📝</button><button class="icon-fab suggest-btn" id="autoBtn" type="button" title="Eller serbest: avatar susunca mikrofon otomatik açılır" style="background:#334155">🔁</button><button class="icon-fab mic-btn" id="micBtn" type="button">🎙</button><button class="icon-fab send-btn" id="sendBtn" type="button">➤</button></div></div></div><div class="sheet" id="explainSheet"><div class="sheet-card"><h3>TR Açıkla</h3><p id="explainText">Yükleniyor...</p><div class="sheet-btns"><button class="sheet-btn primary" id="closeExplain">Kapat</button></div></div></div><div class="sheet" id="levelSheet"><div class="sheet-card"><h3>Seviye seç</h3><div class="sheet-btns"><button class="sheet-btn levelOpt" data-level="A1">A1</button><button class="sheet-btn levelOpt" data-level="A2">A2</button><button class="sheet-btn levelOpt" data-level="B1">B1</button><button class="sheet-btn levelOpt" data-level="B2">B2</button><button class="sheet-btn levelOpt" data-level="C1">C1</button></div><div class="sheet-btns"><button class="sheet-btn primary" id="closeLevel">Kapat</button></div></div></div><div class="sheet" id="keySheet"><div class="sheet-card"><h3>Groq API anahtarı</h3><p>Konuşma için Groq API anahtarını ekle. Birden fazla anahtar saklanabilir.</p><input id="keyInput" type="text" placeholder="gsk_..." autocomplete="off"><div class="sheet-btns"><button class="sheet-btn primary" id="saveKey">Kaydet</button><button class="sheet-btn" id="closeKey">Kapat</button></div><div class="note" id="keyNote">Anahtar bu tarayıcıda saklanır.</div></div></div>`;
+  root.innerHTML=`<div class="chat-shell"><div class="chat-top"><a class="back-btn" href="${Scenario.backHref||'chat.html'}">←</a><div class="chat-title-wrap"><div class="chat-title">${esc(Scenario.title)}</div><div class="chat-sub" id="subtitle">${esc(Scenario.subtitle)} · ${State.level}</div></div><button class="level-pill" id="levelBtn" type="button">${State.level}</button></div><div class="avatar-stage"><img id="avatarImg" alt="Fotoğraflı konuşan avatar"></div><div class="panel"><div class="chat-history" id="chatHistory"></div><div id="taskBar" style="font-size:11.5px;color:#9fb3d9;padding:4px 8px;border-top:1px dashed #ffffff18"></div><div class="input-row"><div class="input-wrap"><textarea id="textIn" class="text-in" rows="1" placeholder="Yaz ya da 🎙 ile konuş..."></textarea></div><button class="icon-fab suggest-btn" id="suggestBtn" type="button" title="Sen öner">💡</button><button class="icon-fab suggest-btn" id="errSaveBtn" type="button" title="Bu konuşmadaki hatalarımı deftere kaydet" style="background:#b45309">📝</button><button class="icon-fab suggest-btn" id="autoBtn" type="button" title="Eller serbest: avatar susunca mikrofon otomatik açılır" style="background:#334155">🔁</button><button class="icon-fab suggest-btn" id="gemBtn" type="button" title="Sohbeti Gemini de surdur (panoya kopyalanir)" style="background:#7c3aed">💎</button><button class="icon-fab mic-btn" id="micBtn" type="button">🎙</button><button class="icon-fab send-btn" id="sendBtn" type="button">➤</button></div></div></div><div class="sheet" id="explainSheet"><div class="sheet-card"><h3>TR Açıkla</h3><p id="explainText">Yükleniyor...</p><div class="sheet-btns"><button class="sheet-btn primary" id="closeExplain">Kapat</button></div></div></div><div class="sheet" id="levelSheet"><div class="sheet-card"><h3>Seviye seç</h3><div class="sheet-btns"><button class="sheet-btn levelOpt" data-level="A1">A1</button><button class="sheet-btn levelOpt" data-level="A2">A2</button><button class="sheet-btn levelOpt" data-level="B1">B1</button><button class="sheet-btn levelOpt" data-level="B2">B2</button><button class="sheet-btn levelOpt" data-level="C1">C1</button></div><div class="sheet-btns"><button class="sheet-btn primary" id="closeLevel">Kapat</button></div></div></div><div class="sheet" id="keySheet"><div class="sheet-card"><h3>Groq API anahtarı</h3><p>Konuşma için Groq API anahtarını ekle. Birden fazla anahtar saklanabilir.</p><input id="keyInput" type="text" placeholder="gsk_..." autocomplete="off"><div class="sheet-btns"><button class="sheet-btn primary" id="saveKey">Kaydet</button><button class="sheet-btn" id="closeKey">Kapat</button></div><div class="note" id="keyNote">Anahtar bu tarayıcıda saklanır.</div></div></div>`;
 }
 /* Metni ekrana basarken [[İngilizce]] bloklarını işaretli span'a çevirir.
    Ham metne dokunmaz — seslendirme onu kullanmaya devam eder. */
@@ -758,7 +759,7 @@ async function sendUser(){
         });
       }
     }catch(e){}
-    const messages=[{role:"system",content:systemPrompt()},{role:"assistant",content:__dhOpener()},...State.history.slice(-10)];
+    const messages=[{role:"system",content:systemPrompt()},{role:"assistant",content:State.firstMsg},...State.history.slice(-10)];
     const reply=await groqChat(messages);
     removeTyping();
     State.currentPartner=dhStripTasks(reply) || "Could you please say that again?";
@@ -812,6 +813,7 @@ function setupEvents(){
   $("sendBtn").onclick=sendUser;
   const sBtn=$("suggestBtn");
   if(sBtn) sBtn.onclick=suggestReply;
+  var gB=$("gemBtn"); if(gB) gB.onclick=continueInGemini;
   if(STT){
     let rec=null,listening=false;
     $("micBtn").onclick=()=>{
@@ -841,13 +843,54 @@ function setupEvents(){
     $("keySheet").classList.remove("open");
   };
 }
+/* #4: her sohbet TAZE bir konuyla baslasin; son konular saklanip tekrarlanmasin. */
+function genFreshOpener(cb){
+  try{
+    var idKey="chat:recent:"+safeId(Scenario.title+":"+(Scenario.avatarDir||""));
+    var recent=[]; try{ recent=JSON.parse(localStorage.getItem(idKey)||"[]")||[]; }catch(e){}
+    var sys="You are "+(Scenario.role||Scenario.title||"a friendly English conversation partner")
+      +". Start a BRAND NEW English conversation with a Turkish learner at level "+State.level
+      +". Pick a FRESH everyday topic that is NOT one of these recent topics: "+(recent.join(", ")||"(none)")
+      +". Greet very briefly and ask ONE natural opening question to get them talking. 1-2 short level-appropriate sentences. "
+      +"Return ONLY the opener line, then a new line: TOPIC: <two-word topic>.";
+    groqChat([{role:"system",content:sys},{role:"user",content:"Start now."}]).then(function(out){
+      var txt=String(out||"").trim();
+      var tm=txt.match(/TOPIC:\s*(.+)$/im); var topic=tm?tm[1].trim():"";
+      var opener=txt.replace(/TOPIC:.*$/im,"").trim();
+      if(topic){ recent.unshift(topic); recent=recent.slice(0,6); try{ localStorage.setItem(idKey, JSON.stringify(recent)); }catch(e){} }
+      cb(opener||null);
+    }).catch(function(){ cb(null); });
+  }catch(e){ cb(null); }
+}
+/* #5: sohbeti Gemini'de surdur — konusmayi prompt olarak panoya kopyala, Gemini'yi ac. */
+function continueInGemini(){
+  try{
+    var lines=(State.history||[]).map(function(m){ return (m.role==="user"?"Student: ":"Partner: ")+m.content; });
+    var convo=(State.firstMsg?("Partner: "+State.firstMsg+"\n"):"")+lines.join("\n");
+    var prompt="Sen \""+(Scenario.role||Scenario.title||"a friendly English conversation partner")+"\" rolundesin. Bir Turk ogrenciyle Ingilizce konusma pratigi yapiyoruz (seviye "+State.level+"). Su ana kadarki konusmamiz:\n\n"+convo+"\n\nBu sohbeti AYNI rolde, Ingilizce, seviyeme uygun sekilde kaldigimiz yerden SURDUR; gerektiginde kisa Turkce ipucu ver.";
+    try{ if(navigator.clipboard) navigator.clipboard.writeText(prompt); }catch(e){}
+    try{ window.open("https://gemini.google.com/app","_blank"); }catch(e){}
+    try{ addBubble("assistant","💎 Sohbet panoya kopyalandi ve Gemini acildi — oraya yapistirip devam edebilirsin."); }catch(e){}
+  }catch(e){}
+}
 function boot(){
   buildUI();
   avatar=new PhotoAvatar($("avatarImg"));
   avatar.init();
   setupEvents();
-  addBubble("assistant", State.currentPartner);
-  setTimeout(()=>speakText(State.currentPartner), 450);
+  var generic = !(__dhTeach&&__dhTeach.target) && !__dhFocus;
+  if(generic && getKeys().length){
+    addBubble("assistant", "", {typing:true});
+    genFreshOpener(function(op){
+      removeTyping();
+      if(op){ State.currentPartner=op; State.firstMsg=op; }
+      addBubble("assistant", State.currentPartner);
+      setTimeout(function(){ speakText(State.currentPartner); }, 250);
+    });
+  } else {
+    addBubble("assistant", State.currentPartner);
+    setTimeout(function(){ speakText(State.currentPartner); }, 450);
+  }
 }
 document.addEventListener("DOMContentLoaded", boot);
 })();
