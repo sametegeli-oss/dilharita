@@ -262,13 +262,15 @@ function renderBriefAndTime(R){
   });
 }
 function _fallbackPlan(R,mins){
-  var p=[], left=mins;
-  if(R.due>0){ var d=Math.min(left,R.due>10?12:8); p.push({t:"Vadesi gelen tekrar",mod:"tekrar",dk:d,not:R.due+" birikmiş"}); left-=d; }
+  var p=[], left=mins, PACE=2; /* ~2 kalem/dk (kalem başına ~30 sn) — gerçekçi */
+  if(R.due>0 && left>=2){ var dk=Math.min(left, R.due>=15?Math.min(6,left):Math.min(4,left)); var adet=Math.min(R.due, Math.max(2, Math.round(dk*PACE)));
+    p.push({t:"En kritik "+adet+" tekrar",mod:"tekrar",dk:dk,not:(R.due>adet?(R.due+" birikti, gerisi sonraki günlere porsiyonlanır"):"vadesi gelenler")}); left-=dk; }
   var kalan=Math.max(0,(GOAL||5)-(R.sentences||0));
-  if(kalan>0&&left>=5){ var d2=Math.min(left,Math.max(8,kalan*2)); p.push({t:kalan+" cümle (günlük hedef)",mod:"cumle",dk:d2,not:"hedefi tamamla"}); left-=d2; }
-  if(R.weakList&&R.weakList.length&&left>=5){ var d3=Math.min(left,7); p.push({t:R.weakList[0]+" antrenmanı",mod:"hata",dk:d3,not:"en zayıf konun"}); left-=d3; }
-  if(left>=6){ p.push({t:"Kelime çalışması",mod:"kelime",dk:Math.min(left,10),not:"kalan süre"}); }
-  if(!p.length) p.push({t:"Serbest cümle çalışması",mod:"cumle",dk:mins,not:""});
+  if(kalan>0&&left>=2){ var adet2=Math.min(kalan, Math.max(1,Math.round(left*PACE)), 6); var dk2=Math.min(left, Math.max(2,Math.ceil(adet2/PACE)+1));
+    p.push({t:adet2+" yeni cümle (günlük hedef)",mod:"cumle",dk:dk2,not:(kalan>adet2?("hedeften "+kalan+" kaldı"):"hedefi tamamla")}); left-=dk2; }
+  if(R.weakList&&R.weakList.length&&left>=2){ var dk3=Math.min(left,3); p.push({t:R.weakList[0]+" — kısa antrenman",mod:"hata",dk:dk3,not:"en zayıf konun"}); left-=dk3; }
+  if(left>=3){ var adet4=Math.max(2,Math.round(Math.min(left,5)*PACE)); p.push({t:adet4+" kelime",mod:"kelime",dk:Math.min(left,5),not:"kalan süre"}); }
+  if(!p.length) p.push({t:Math.max(2,Math.round(mins*PACE))+" cümle çalışması",mod:"cumle",dk:mins,not:""});
   return p;
 }
 function _parsePlan(txt){ try{ var m=String(txt).match(/#PLAN#\s*(\[[\s\S]*\])/); if(m){ var a=JSON.parse(m[1]); if(Array.isArray(a)&&a.length) return a; } }catch(e){} return null; }
@@ -276,7 +278,7 @@ function _stripPlan(txt){ return String(txt).replace(/#PLAN#[\s\S]*$/,"").replac
 function _coachSystem(R,mins){
   return "Sen Dil Harita uygulamasinin Turkce konusan Ingilizce calisma kocusun. Ogrenci Samet. Gorevin: bugune uygun gercekci bir gunluk calisma plani onermek ve ogrenciyle konusarak uzlasmak. "
    +"VERI => gunluk hedef "+(GOAL||5)+" cumle; bugun "+(R.sentences||0)+" cumle "+(R.reviews||0)+" tekrar yapildi; dun "+(R.ySentences||0)+" cumle "+(R.yReviews||0)+" tekrar; vadesi gelen tekrar "+(R.due||0)+"; zayif konular: "+((R.weakList||[]).join(", ")||"belirgin degil")+"; guclu yonler: "+((R.strongList||[]).join(", ")||"duzenlilik")+"; seri "+(R.streak||0)+" gun; bugunku sure "+mins+" dakika. "
-   +"KURALLAR: Plani sureye gore boyutla, toplam sure "+mins+" dk'yi asmasin. Oncelik: once vadesi gelen tekrar, sonra gunluk hedef cumleler, sonra en zayif konuya kisa antrenman, zaman kalirsa kelime/video. Ogrenci degisiklik isterse mantikliysa kabul et ve plani guncelle; mantiksiz/zararliysa (or. tekrari tamamen atlamak) KIBARCA ITIRAZ ET, nedenini kisa acikla, bir orta yol oner. Kisa ve sicak Turkce konus, uzun paragraf yok. Moduller yalnizca: tekrar, cumle, kelime, video, phrasal, sohbet, hata, ders, seviye. "
+   +"KURALLAR: Plani sureye gore boyutla, toplam sure "+mins+" dk'yi asmasin. GERCEKCILIK: bir kalem (cumle/tekrar) ~30-45 saniye surer, yani dakikada EN FAZLA ~2 kalem; adimlari sureye SIGACAK kadar planla. Vadesi gelen tekrar cok olsa bile hepsini kisa sureye SIKISTIRMA -> bugun sadece sureye sigan EN KRITIK kismini yap, gerisi sonraki gunlere porsiyonlanir. 'X tekrar/cumle' derken sureye uygun GERCEKCI sayi ver (or. 5 dk ~ 8-10 kalem). Oncelik: once vadesi gelen tekrar, sonra gunluk hedef cumleler, sonra en zayif konuya kisa antrenman, zaman kalirsa kelime/video. Ogrenci degisiklik isterse mantikliysa kabul et ve plani guncelle; mantiksiz/zararliysa (or. tekrari tamamen atlamak) KIBARCA ITIRAZ ET, nedenini kisa acikla, bir orta yol oner. Kisa ve sicak Turkce konus, uzun paragraf yok. Moduller yalnizca: tekrar, cumle, kelime, video, phrasal, sohbet, hata, ders, seviye. "
    +"HER cevabinin EN SONUNA guncel plani tam su formatta ekle (baska JSON verme, ekstra sey yazma): #PLAN#[{\"t\":\"kisa baslik\",\"mod\":\"tekrar\",\"dk\":10,\"not\":\"kisa neden\"}]";
 }
 async function _coachTurn(userMsg){
