@@ -290,7 +290,7 @@ async function _coachTurn(userMsg){
   try{
     var reply=await DHProviders.chat([{role:"system",content:_coachSystem(CTX,COACH_MINS)}].concat(CONV),{temperature:0.6,max_tokens:500});
     CONV.push({role:"assistant",content:reply});
-    var np=_parsePlan(reply); if(np) PLAN=np;
+    var np=_parsePlan(reply); if(np) PLAN=np; else if(!PLAN||!PLAN.length) PLAN=_fallbackPlan(CTX,COACH_MINS);
     renderPlan(_stripPlan(reply)||"Planı güncelledim.", PLAN);
   }catch(e){ PLAN=_fallbackPlan(CTX,COACH_MINS); renderPlan("Bağlantı kurulamadı, otomatik plana geçtim.", PLAN); }
 }
