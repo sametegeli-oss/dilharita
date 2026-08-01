@@ -142,6 +142,7 @@
         history.replaceState(null,"",location.pathname+location.search);
         dhLoadDrill(function(){ window.dhErrorDrill&&window.dhErrorDrill.resume&&window.dhErrorDrill.resume(); });
       } else dhMountDrillChip();
+      dhMountPlanPill();
     }catch(e){}
   }, 900);
 
@@ -158,6 +159,61 @@
   };
   function dhPlanSteps(){ try{ var p=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); return (p&&p.steps)||[]; }catch(e){ return []; } }
   function dhStepsDone(){ try{ return JSON.parse(localStorage.getItem("dh-koc-steps-done-"+dhToday())||"{}")||{}; }catch(e){ return {}; } }
+
+  /* 📋 PLAN HAPI — her sayfada "ne çalışacağım / ne çalıştım / ne kaldı".
+     Adım seviyesi + GERÇEK sayılar (uydurma yok). Yeni bar/overlay değil: tek küçük
+     hap, dokununca adım listesi açılır. Sınav sayfalarında gösterilmez. */
+  function dhEscLite(s){ return String(s||"").replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c]; }); }
+  function dhTrackToday(){ try{ var t=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; return (t.days||{})[dhToday()]||{}; }catch(e){ return {}; } }
+  function dhSentGoal(){ try{ if(window.DHProfile&&DHProfile.hedef){ var h=DHProfile.hedef()|0; if(h) return h; } }catch(e){} return 5; }
+  function dhReviewTarget(){
+    try{ var g=JSON.parse(localStorage.getItem("dh-tekrar-gun-"+dhToday())||"null"); if(g&&g.hedef) return g.hedef|0; }catch(e){}
+    try{ var p=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); if(p&&typeof p.dueCount==="number") return Math.min(p.dueCount,15); }catch(e){}
+    return 0;
+  }
+  function dhPlanProgress(){
+    var steps=dhPlanSteps(); if(!steps.length) return null;
+    var done=dhStepsDone(), rec=dhTrackToday(), out=[];
+    steps.forEach(function(s){
+      var page=String(s.href||"").split("?")[0], got=null, need=null, ok=false;
+      if(page==="tekrar.html"){ need=dhReviewTarget(); got=need?Math.min(rec.reviews||0,need):(rec.reviews||0); ok=need?((rec.reviews||0)>=need):!!done[page]; }
+      else if(page==="index-app.html"||page==="practice.html"){ need=dhSentGoal(); got=Math.min(rec.sentences||0,need); ok=(rec.sentences||0)>=need; }
+      else if(/^chat/.test(page)){ ok=!!done[page]||Object.keys(done).some(function(k){return /^chat/.test(k);}); got=ok?1:0; need=1; }
+      else { ok=!!done[page]; got=ok?1:0; need=1; }
+      out.push({label:s.label||page, page:page, href:s.href||page, got:got, need:need, ok:ok});
+    });
+    var doneCount=out.filter(function(x){return x.ok;}).length;
+    return { steps:out, doneCount:doneCount, total:out.length, current:out.filter(function(x){return !x.ok;})[0]||null };
+  }
+  function dhShortLabel(l){ l=String(l||""); return l.length>22 ? l.slice(0,21)+"…" : l; }
+  function dhTogglePlanPanel(pr){
+    var ex=document.getElementById("dhPlanPanel"); if(ex){ ex.remove(); return; }
+    var box=document.createElement("div"); box.id="dhPlanPanel";
+    box.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:56px;z-index:2147482801;width:min(92vw,380px);background:#0b172d;border:1px solid #24487a;border-radius:14px;padding:12px;box-shadow:0 18px 50px rgba(0,0,0,.6);color:#e8eef7;font:700 13px system-ui";
+    var rows=pr.steps.map(function(s,i){
+      var mark=s.ok?'<span style="color:#22c55e">✓</span>':'<span style="color:#64748b">○</span>';
+      var cnt=s.need?('<span style="color:#9fb3d9;font-weight:700">'+s.got+'/'+s.need+'</span>'):'';
+      var cur=(!s.ok && pr.current && pr.current.page===s.page)?';border-color:#2563eb;background:#0d1f3a':'';
+      return '<a href="./'+s.href+'" style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin-top:7px;border:1px solid #1e3a5f;border-radius:10px;text-decoration:none;color:#e8eef7'+cur+'">'
+        +mark+'<span style="flex:1;'+(s.ok?'text-decoration:line-through;opacity:.7':'')+'">'+(i+1)+') '+dhEscLite(s.label)+'</span>'+cnt+'</a>';
+    }).join("");
+    box.innerHTML='<div style="font-weight:900;font-size:13.5px;margin-bottom:2px;display:flex;justify-content:space-between;align-items:center">Bugünkü planım <span id="dhPlanPanelX" style="cursor:pointer;color:#94a3b8;font-weight:400">✕</span></div>'
+      +rows+'<div style="text-align:center;margin-top:9px;font-size:11.5px;color:#64748b">✓ ne çalıştım · ○ ne kaldı · ▸ şu an buradayım</div>';
+    document.body.appendChild(box);
+    document.getElementById("dhPlanPanelX").onclick=function(){ box.remove(); };
+  }
+  function dhMountPlanPill(){
+    if(/seviye-testi\.html|modul-testi\.html|module-test/.test(location.pathname)) return;
+    var old=document.getElementById("dhPlanPill"); if(old) old.remove();
+    var pr=dhPlanProgress(); if(!pr) return;
+    var pill=document.createElement("button"); pill.id="dhPlanPill";
+    pill.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:2147482800;max-width:min(90vw,380px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(135deg,#0f2540,#13294d);color:#e8eef7;border:1px solid #24487a;border-radius:999px;padding:9px 15px;font:800 12.5px system-ui;box-shadow:0 8px 22px rgba(0,0,0,.4);cursor:pointer";
+    var c=pr.current;
+    pill.textContent="📋 Plan "+pr.doneCount+"/"+pr.total+(c?(" · ▸ "+dhShortLabel(c.label)+(c.need?(" "+c.got+"/"+c.need):"")):" · tamam 🎉");
+    pill.onclick=function(){ dhTogglePlanPanel(pr); };
+    document.body.appendChild(pill);
+  }
+  document.addEventListener("visibilitychange", function(){ if(!document.hidden){ try{ var pn=document.getElementById("dhPlanPanel"); if(pn) pn.remove(); dhMountPlanPill(); }catch(e){} } });
   var __chainN=0;
   window.dhCoachChainBump=function(){
     __chainN++;
