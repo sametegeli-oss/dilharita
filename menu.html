@@ -157,8 +157,7 @@ details.dh-group>.dh-settings-body{padding:0 14px 14px}
   <details class="dh-group" id="grpSettings">
     <summary>⚙️ Ayarlar &amp; veri <small>bildirim · yedek · senkron</small></summary>
     <div class="dh-settings-body">
-      <a class="card" href="./ses-esleme.html" style="margin-top:14px"><b>👄 Türkçe Ses Eşlemesi</b><span>Avatar ağız kareleri — Türkçe harflere göre ağız eşlemesi</span></a>
-      <a class="card" href="./pwa-hard-reset.html"><b>🧹 Önbellek Temizle</b><span>Gerekirse Service Worker ve cache temizliği</span></a>
+      <a class="card" href="./pwa-hard-reset.html" style="margin-top:14px"><b>🧹 Önbellek Temizle</b><span>Gerekirse Service Worker ve cache temizliği</span></a>
   
 
   <!-- ==== Bildirim Ayarları ==== -->
@@ -475,7 +474,7 @@ details.dh-group>.dh-settings-body{padding:0 14px 14px}
 /* ---- Service Worker (çevrimdışı çalışma / PWA) ---- */
 if("serviceWorker" in navigator){
   window.addEventListener("load", function(){
-    try{ navigator.serviceWorker.register("./sw.js?v=9", {scope:"./"}); }catch(e){}
+    try{ navigator.serviceWorker.register("./sw.js?v=10", {scope:"./"}); }catch(e){}
   });
 }
 </script>

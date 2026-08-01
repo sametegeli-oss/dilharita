@@ -54,11 +54,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 .diff-typo{color:#f59e0b;font-weight:bold;border-bottom:2px dashed #f59e0b;}
 .diff-wrong{color:#f87171;text-decoration:line-through;}
 .diff-missing{color:#6b7280;border-bottom:1px dashed #6b7280;}
-  .rev-bricks{max-width:720px;margin:0 auto 10px;display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:0}
-  .rev-brick{width:22px;height:14px;border-radius:3px;background:linear-gradient(180deg,#f59e0b,#b45309);box-shadow:inset 0 -2px 0 #7c2d12,0 2px 5px #0005}
-  .rev-brick.fallen{opacity:.16;transform:translateY(11px) rotate(9deg);background:linear-gradient(180deg,#3b5170,#22344f);box-shadow:none}
-  .rev-brick.dropping{animation:revDrop .55s cubic-bezier(.35,1.4,.55,1) both}
-  @keyframes revDrop{0%{opacity:1;transform:translateY(-5px) rotate(0)}55%{opacity:.95}100%{opacity:.16;transform:translateY(11px) rotate(9deg)}}
 </style><script src="./sentences-loader.js?v=1"></script>
 </head><body>
 <div class="top"><a href="./index.html" id="btnHome">←</a><h1>🔁 Tekrar</h1><div class="cnt" id="cnt"></div></div>
@@ -67,7 +62,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <button id="mClas">👁 Klasik (EN→TR)</button>
   <button id="mOnlyErrs">🚨 Sadece Hatalılar</button>
 </div>
-<div id="revBricks" class="rev-bricks"></div>
+<div id="brickMeter" style="max-width:720px;margin:8px auto 2px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center"></div>
 <div class="card" id="card" style="display:none">
   <div class="kind" id="kind"></div>
   <div class="q no-wordpop" id="q"></div>
@@ -91,7 +86,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     <button class="b-chk" id="bChk" style="display:none">Kontrol et</button>
     <button class="b-say" id="bSay">🔊</button>
     <button class="b-say" id="bStudio" title="Telaffuz Stüdyosu">🎙️</button>
-    <button class="b-say" id="bAsk" title="Bu cümleyi koça sor">❓</button>
   </div>
   <div class="row" id="grade" style="display:none">
     <button class="b-hard" id="bHard">Zor</button>
@@ -144,6 +138,26 @@ try{
   "use strict";
   var $=function(id){return document.getElementById(id)};
   var DAY=86400000, SESSION=(/[?&]plan=1/.test(location.search)?15:25), now=Date.now();
+  /* GÜNLÜK TEKRAR HEDEFİ — donuk ve devam eden.
+     hedef: gün içinde SABİT (ilk girişte min(bekleyen, SESSION)); sayfaya dönünce
+     sıfırlanıp yeniden 25 olmuyor. yapilan: bugün tamamlanan tekrar sayısı; tuğlaları
+     doldurur ve oturumu KALDIĞIN YERDEN sürdürür. */
+  var __ISO=new Date().toISOString().slice(0,10);
+  var __GUNK="dh-tekrar-gun-"+__ISO;
+  function loadGun(){ try{ return JSON.parse(localStorage.getItem(__GUNK)||"null"); }catch(e){ return null; } }
+  function saveGun(){ try{ localStorage.setItem(__GUNK, JSON.stringify(__gun)); }catch(e){} }
+  var __gun=loadGun();
+  function paintBricks(){
+    try{
+      var box=document.getElementById("brickMeter"); if(!box||!__gun) return;
+      var h=__gun.hedef|0, y=Math.min(__gun.yapilan|0, h), html="";
+      for(var b=0;b<h;b++){
+        var on=b<y;
+        html+='<span style="width:32px;height:20px;border-radius:5px;display:inline-block;background:'+(on?"#f59e0b":"#0d1f3a")+';border:1px solid '+(on?"#f59e0b":"#1e3a5f")+'"></span>';
+      }
+      box.innerHTML=html+'<div style="width:100%;text-align:center;color:#9fb3d9;font-size:12.5px;font-weight:800;margin-top:5px">'+y+'/'+h+' tekrar · '+Math.max(0,h-y)+' kaldı</div>';
+    }catch(e){}
+  }
 
   /* 🔬 HATIRLAMA OLAY GÜNLÜĞÜ: kişisel unutma eğrisinin ham verisi.
      Her notlama bir deneydir: "son görüşten X gün sonra hatırlandı mı?"
@@ -501,11 +515,19 @@ try{
     }
 
     items.sort(function(a,b){ return (a.due||0)-(b.due||0); });
-    total=items.length; session=items.slice(0,SESSION); remaining=total-session.length; buildRevBricks(session.length, doneCount);
-    $("cnt").innerHTML = total ? (total>30
-      ? ("bu oturum: <b style='color:#e8eef7'>"+session.length+"</b> · gerisi yarınlara porsiyonlandı 💛")
-      : ("bugün: <b style='color:#e8eef7'>"+total+"</b>"+(remaining?(" · oturum: "+session.length):""))) : "";
+    total=items.length;
     if(!total){ $("doneTitle").textContent="🎉 Bugünlük tekrar yok!"; $("doneSub").textContent="Vadesi gelen öğe bulunmuyor.";
+      if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; return; }
+    // Günün hedefini İLK girişte dondur; sonraki girişlerde aynı kalır (25'e sıfırlanmaz).
+    if(!__gun){ __gun={ hedef: Math.max(1, Math.min(total, SESSION)), yapilan:0 }; saveGun(); }
+    var __kalanHedef=Math.max(0, __gun.hedef - __gun.yapilan);
+    session=items.slice(0, __kalanHedef); remaining=Math.max(0, total-session.length);
+    paintBricks();
+    $("cnt").innerHTML = "bugünkü tekrar: <b style='color:#e8eef7'>"+Math.min(__gun.yapilan,__gun.hedef)+"/"+__gun.hedef+"</b>"+(remaining?(" · bekleyen "+remaining+" 💛"):"");
+    if(__kalanHedef<=0){
+      $("doneTitle").textContent="🎉 Bugünkü tekrar tamam!";
+      $("doneSub").textContent=__gun.yapilan+" tekrar yaptın."+(remaining?(" Bekleyen "+remaining+" yarına porsiyonlandı."):"");
+      if(remaining) $("bMore").style.display="inline-block";
       if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; return; }
 
     if(session.some(function(x){return x.kind==="s"})){
@@ -593,34 +615,6 @@ try{
     $("exp").style.display="none";
     $("card").style.display="block";
     $("bSay").onclick=function(){ speak(curT.en); };
-    try{ window.dhCurrentSentence={en:curT.en,tr:curT.tr}; }catch(e){}
-    if(!window.dhAskCoach){ window.dhAskCoach=function(t){
-      if(!t) return;
-      function _esc(x){ var d=document.createElement("div"); d.textContent=String(x==null?"":x); return d.innerHTML; }
-      var old=document.getElementById("dhAskPanel"); if(old) old.remove();
-      var ov=document.createElement("div"); ov.id="dhAskPanel";
-      ov.style.cssText="position:fixed;inset:0;z-index:2147483400;background:rgba(2,8,20,.72);display:flex;align-items:flex-end;justify-content:center;padding:14px";
-      ov.innerHTML='<div style="background:#0f1f3a;border:1px solid #1e3a5f;border-radius:16px;width:min(560px,96vw);padding:16px;max-height:86vh;overflow:auto">'
-        +'<div style="font-weight:900;margin-bottom:4px">Bu cümleyi koça sor</div>'
-        +'<div style="font-size:13px;color:#9fb3d9;margin-bottom:10px">'+_esc(t.en)+(t.tr?(" — "+_esc(t.tr)):"")+'</div>'
-        +'<textarea id="dhAskInp" placeholder="Sorunu yaz: ör. neden the kullanildi? / bu zaman neden? / baska nasil denir?" style="width:100%;min-height:70px;background:#0a1628;border:1px solid #1e3a5f;color:#e8eef7;border-radius:10px;padding:10px;font-size:14px"></textarea>'
-        +'<div style="display:flex;gap:8px;margin-top:10px"><button id="dhAskSend" style="flex:1;background:#2563eb;border:0;color:#fff;font-weight:800;padding:11px;border-radius:10px;cursor:pointer">Sor</button><button id="dhAskClose" style="background:#16294a;border:1px solid #1e3a5f;color:#9fb3d9;padding:11px 14px;border-radius:10px;cursor:pointer">Kapat</button></div>'
-        +'<div id="dhAskOut" style="margin-top:12px;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#e8eef7"></div></div>';
-      document.body.appendChild(ov);
-      ov.addEventListener("click",function(e){ if(e.target===ov) ov.remove(); });
-      document.getElementById("dhAskClose").onclick=function(){ ov.remove(); };
-      var inp=document.getElementById("dhAskInp"); inp.focus();
-      function send(){
-        var q=(inp.value||"").trim(); if(!q) return;
-        var out=document.getElementById("dhAskOut"); out.textContent="Koç düşünüyor…";
-        if(!(window.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())){ out.textContent="Bunun için bir AI anahtarı gerekli (kilit düğmesi)."; return; }
-        var sys="Sen Turkce konusan bir Ingilizce calisma kocusun. Ogrenci su cumle uzerinde calisiyor -> Ingilizce: \""+t.en+"\""+(t.tr?(" / Turkce: \""+t.tr+"\""):"")+". Ogrencinin sorusunu Turkce, kisa ve net yanitla; gramer/kelime/kullanim icin 1-2 ornek ver. Uzun paragraf yok.";
-        DHProviders.chat([{role:"system",content:sys},{role:"user",content:q}],{temperature:0.4,max_tokens:400}).then(function(r){ out.textContent=String(r||"").trim()||"—"; }).catch(function(){ out.textContent="Baglanti olmadi, tekrar dene."; });
-      }
-      document.getElementById("dhAskSend").onclick=send;
-      inp.onkeydown=function(e){ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)) send(); };
-    }; }
-    if($("bAsk")) $("bAsk").onclick=function(){ window.dhAskCoach(curT); };
     $("bStudio").onclick=function(){ location.href='./sesdalga.html?en='+encodeURIComponent(curT.en)+'&tr='+encodeURIComponent(curT.tr||''); };
     if(prod) setTimeout(function(){ try{$("inp").focus();}catch(e){} },50);
   }
@@ -1123,24 +1117,6 @@ try{
     return { missing:missing, extra:extra, refLen:ref.length };
   }
 
-  function _revBrickSound(){
-    try{ var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
-      var ctx=window.__dhAC||(window.__dhAC=new AC()); if(ctx.state==="suspended"){try{ctx.resume();}catch(e){}}
-      var t=ctx.currentTime, o=ctx.createOscillator(), g=ctx.createGain();
-      o.type="triangle"; o.frequency.value=659.25; o.connect(g); g.connect(ctx.destination);
-      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.2,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.32);
-      o.start(t); o.stop(t+0.34);
-    }catch(e){}
-  }
-  function buildRevBricks(total, done){
-    var el=document.getElementById("revBricks"); if(!el) return;
-    el.innerHTML=""; el.__total=total;
-    for(var k=0;k<total;k++){ var b=document.createElement("div"); b.className="rev-brick"+(k<done?" fallen":""); el.appendChild(b); }
-  }
-  function dropRevBrick(idx){
-    var el=document.getElementById("revBricks"); if(!el) return;
-    var b=el.children[idx]; if(!b) return; b.className="rev-brick dropping"; _revBrickSound();
-  }
   async function grade(hard){
     /* 📊 GÜNÜN KARNESİ bu sayaca bakar: her notlanan kalem 1 TEKRAR.
        (Eskiden hiç yazılmıyordu → karne 0/10'da kilitli kalıyor, kutlama ve
@@ -1188,7 +1164,9 @@ try{
       go.onclick=function(){ go.remove(); doneOrNext(); }; $("exp").appendChild(go);
       function doneOrNext(){ i++; render(); } return;
     }
-    dropRevBrick(doneCount); doneCount++; i++; render();
+    doneCount++;
+    if(__gun){ __gun.yapilan=(__gun.yapilan|0)+1; saveGun(); paintBricks(); }
+    i++; render();
   }
   $("bHard").onclick=function(){ grade(true); }; $("bEasy").onclick=function(){ grade(false); };
 
@@ -1209,7 +1187,7 @@ try{
     }
   };
 
-  $("bMore").onclick=function(){ location.reload(); };
+  $("bMore").onclick=function(){ if(__gun){ __gun.hedef=(__gun.hedef|0)+SESSION; saveGun(); } location.reload(); };
   await loadData();
 })();
 </script>
