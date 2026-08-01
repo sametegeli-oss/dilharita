@@ -72,7 +72,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <div class="img-box" id="imgContainer"></div>
 
   <div id="prodBox" style="display:none">
-    <div class="inrow"><textarea id="inp" placeholder="İngilizcesini yaz…"></textarea><div class="inrow-btns"><button class="b-retry" id="bListenRetry" style="display:none" title="Kendi sesini tekrar dinle">👂</button><button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button></div></div>
+    <div class="inrow"><textarea id="inp" placeholder="İngilizcesini yaz…"></textarea><div class="inrow-btns"><button class="b-retry" id="bListenRetry" style="display:none" title="Kendi sesini tekrar dinle">👂</button><button class="b-mic" id="bMicRestart" style="display:none" title="Kaydı yeniden başlat">🔄</button><button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button></div></div>
     <div class="score" id="score"></div>
     
     <span class="ai-settings-toggle" id="toggleAiSettings">⚙️ Yapay Zeka Kriter Ayarları</span>
@@ -559,6 +559,7 @@ try{
     try{ if(mediaRecorder && mediaRecorder.state!=="inactive") mediaRecorder.stop(); }catch(e){}
     try{ if(audioStream){ audioStream.getTracks().forEach(function(t){ t.stop(); }); audioStream=null; } }catch(e){}
     try{ $("bMic").textContent="🎤"; }catch(e){}
+    try{ $("bMicRestart").style.display="none"; }catch(e){}
   }
 
   function render(){
@@ -970,32 +971,51 @@ try{
 
   /* 🎤 Mikrofon Kontrolü */
   var manualStop = false;
+  /* Ham kayıt başlatma (getUserMedia + MediaRecorder + tanıma döngüsü).
+     Hem ilk başlatma hem "yeniden başlat" bunu çağırır. */
+  function micBeginCapture(){
+    var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    var SGL=window.SpeechGrammarList||window.webkitSpeechGrammarList;
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+      audioStream = stream; mediaRecorder = new MediaRecorder(stream); audioChunks = [];
+      mediaRecorder.ondataavailable = function(e) { if (e.data.size > 0) audioChunks.push(e.data); };
+      mediaRecorder.onstop = function() {
+        var audioBlob = new Blob(audioChunks, { type: 'audio/mp3' }); audioUrl = URL.createObjectURL(audioBlob); $("bListenRetry").style.display = "";
+      };
+      mediaRecorder.start();
+    }).catch(function(err) { console.error(err); isRecording = false; $("bMic").textContent="🎤"; try{$("bMicRestart").style.display="none";}catch(e){} });
+    startRecognitionLoop(SR, SGL);
+  }
   $("bMic").onclick=function(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
-    var SGL=window.SpeechGrammarList||window.webkitSpeechGrammarList;
     if (!isRecording) {
       // ---- BAŞLAT ----
       isRecording = true; manualStop = false; $("bMic").textContent="🔴"; stopActiveAudio(); $("bListenRetry").style.display = "none";
+      $("bMicRestart").style.display = "";                       // kayıt sırasında görünür
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
       accumulatedTranscript = ""; $("inp").value = ""; viaMic = true;
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
-        audioStream = stream; mediaRecorder = new MediaRecorder(stream); audioChunks = [];
-        mediaRecorder.ondataavailable = function(e) { if (e.data.size > 0) audioChunks.push(e.data); };
-        mediaRecorder.onstop = function() {
-          var audioBlob = new Blob(audioChunks, { type: 'audio/mp3' }); audioUrl = URL.createObjectURL(audioBlob); $("bListenRetry").style.display = "";
-        };
-        mediaRecorder.start();
-      }).catch(function(err) { console.error(err); isRecording = false; $("bMic").textContent="🎤"; });
-
-      startRecognitionLoop(SR, SGL);
+      micBeginCapture();
     } else {
       // ---- KULLANICI DURDURDU ----
-      isRecording = false; manualStop = true; $("bMic").textContent="🎤";
+      isRecording = false; manualStop = true; $("bMic").textContent="🎤"; $("bMicRestart").style.display="none";
       if (recognitionInstance) { try{ recognitionInstance.stop(); }catch(e){} }
       if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
       if (audioStream) { audioStream.getTracks().forEach(function(track) { track.stop(); }); audioStream = null; }
       setTimeout(function() { reveal(); }, 400);
     }
+  };
+  /* 🔄 KAYDI YENİDEN BAŞLAT: mevcut kaydı SESSİZCE bırakır (reveal/notlama YOK),
+     transkript + ses + yazıyı sıfırlar, taze kayda başlar. */
+  $("bMicRestart").onclick=function(){
+    if(!isRecording) return;
+    manualStop = true;                                          // tanıma döngüsü kendini yeniden kurmasın
+    try{ if(recognitionInstance){ recognitionInstance.onend=null; recognitionInstance.stop(); recognitionInstance=null; } }catch(e){}
+    try{ if(mediaRecorder && mediaRecorder.state!=="inactive"){ mediaRecorder.onstop=null; mediaRecorder.stop(); } }catch(e){}
+    try{ if(audioStream){ audioStream.getTracks().forEach(function(t){ t.stop(); }); audioStream=null; } }catch(e){}
+    if(audioUrl){ try{ URL.revokeObjectURL(audioUrl); }catch(e){} audioUrl=null; }
+    audioChunks=[]; accumulatedTranscript=""; $("inp").value=""; $("bListenRetry").style.display="none";
+    isRecording=true; manualStop=false; viaMic=true; $("bMic").textContent="🔴";
+    setTimeout(micBeginCapture, 150);                           // eski akış tam kapansın, sonra taze başla
   };
 
   /* Ses tanıma döngüsü — videopractice'teki sağlam mantık:
