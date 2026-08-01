@@ -178,16 +178,19 @@
       var page=String(s.href||"").split("?")[0], got=null, need=null, ok=false;
       if(page==="tekrar.html"){ need=dhReviewTarget(); got=need?Math.min(rec.reviews||0,need):(rec.reviews||0); ok=need?((rec.reviews||0)>=need):!!done[page]; }
       else if(page==="index-app.html"||page==="practice.html"){ need=dhSentGoal(); got=Math.min(rec.sentences||0,need); ok=(rec.sentences||0)>=need; }
-      else if(/^chat/.test(page)){ ok=!!done[page]||Object.keys(done).some(function(k){return /^chat/.test(k);}); got=ok?1:0; need=1; }
+      else if(/^chat/.test(page)){ var konus=(rec.lessons||0)>0||(rec.speaking||0)>0; ok=konus||!!done[page]||Object.keys(done).some(function(k){return /^chat/.test(k);}); got=ok?1:0; need=1; }
       else { ok=!!done[page]; got=ok?1:0; need=1; }
       out.push({label:s.label||page, page:page, href:s.href||page, got:got, need:need, ok:ok});
     });
     var doneCount=out.filter(function(x){return x.ok;}).length;
     return { steps:out, doneCount:doneCount, total:out.length, current:out.filter(function(x){return !x.ok;})[0]||null };
   }
+  window.dhPlanProgress = dhPlanProgress;
+  window.dhPlanAllDone = function(){ var p=dhPlanProgress(); return !!(p && p.total>0 && p.doneCount>=p.total); };
   function dhShortLabel(l){ l=String(l||""); return l.length>22 ? l.slice(0,21)+"…" : l; }
   function dhTogglePlanPanel(pr){
     var ex=document.getElementById("dhPlanPanel"); if(ex){ ex.remove(); return; }
+    var bitti = pr.doneCount>=pr.total;
     var box=document.createElement("div"); box.id="dhPlanPanel";
     box.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:56px;z-index:2147482801;width:min(92vw,380px);background:#0b172d;border:1px solid #24487a;border-radius:14px;padding:12px;box-shadow:0 18px 50px rgba(0,0,0,.6);color:#e8eef7;font:700 13px system-ui";
     var rows=pr.steps.map(function(s,i){
@@ -197,19 +200,29 @@
       return '<a href="./'+s.href+'" style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin-top:7px;border:1px solid #1e3a5f;border-radius:10px;text-decoration:none;color:#e8eef7'+cur+'">'
         +mark+'<span style="flex:1;'+(s.ok?'text-decoration:line-through;opacity:.7':'')+'">'+(i+1)+') '+dhEscLite(s.label)+'</span>'+cnt+'</a>';
     }).join("");
+    var banner = bitti
+      ? '<div style="background:#0a2818;border:1px solid #14532d;border-radius:11px;padding:11px;margin:6px 0 2px;text-align:center;color:#a7f3d0;font-weight:900">🎉 Günün planı tamam! Gün bitti.</div>'
+      : '';
+    var kapatBtn = bitti
+      ? '<button id="dhPlanClose" style="display:block;width:100%;margin-top:9px;background:linear-gradient(135deg,#059669,#0d9488);color:#fff;border:0;border-radius:11px;padding:11px;font:900 13.5px system-ui;cursor:pointer">🌙 Günü kapat</button>'
+      : '';
     box.innerHTML='<div style="font-weight:900;font-size:13.5px;margin-bottom:2px;display:flex;justify-content:space-between;align-items:center">Bugünkü planım <span id="dhPlanPanelX" style="cursor:pointer;color:#94a3b8;font-weight:400">✕</span></div>'
-      +rows+'<div style="text-align:center;margin-top:9px;font-size:11.5px;color:#64748b">✓ ne çalıştım · ○ ne kaldı · ▸ şu an buradayım</div>';
+      +banner+rows
+      +'<div style="text-align:center;margin-top:9px;font-size:11.5px;color:#64748b">✓ ne yaptım · ○ ne kaldı · ▸ şu an buradayım</div>'
+      +kapatBtn;
     document.body.appendChild(box);
     document.getElementById("dhPlanPanelX").onclick=function(){ box.remove(); };
+    var kb=document.getElementById("dhPlanClose"); if(kb) kb.onclick=function(){ box.remove(); try{ if(window.dhCoachDayClose) window.dhCoachDayClose(); }catch(e){} };
   }
   function dhMountPlanPill(){
     if(/seviye-testi\.html|modul-testi\.html|module-test/.test(location.pathname)) return;
     var old=document.getElementById("dhPlanPill"); if(old) old.remove();
     var pr=dhPlanProgress(); if(!pr) return;
     var pill=document.createElement("button"); pill.id="dhPlanPill";
-    pill.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:2147482800;max-width:min(90vw,380px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(135deg,#0f2540,#13294d);color:#e8eef7;border:1px solid #24487a;border-radius:999px;padding:9px 15px;font:800 12.5px system-ui;box-shadow:0 8px 22px rgba(0,0,0,.4);cursor:pointer";
-    var c=pr.current;
-    pill.textContent="📋 Plan "+pr.doneCount+"/"+pr.total+(c?(" · ▸ "+dhShortLabel(c.label)+(c.need?(" "+c.got+"/"+c.need):"")):" · tamam 🎉");
+    var bitti = pr.doneCount>=pr.total, c=pr.current;
+    var base="position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:2147482800;max-width:min(90vw,380px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:999px;padding:9px 15px;font:800 12.5px system-ui;box-shadow:0 8px 22px rgba(0,0,0,.4);cursor:pointer;color:#fff;border:1px solid ";
+    if(bitti){ pill.style.cssText=base+"#34d399;background:linear-gradient(135deg,#059669,#0d9488)"; pill.textContent="🎉 Gün bitti — planın tamam!"; }
+    else { pill.style.cssText=base+"#24487a;background:linear-gradient(135deg,#0f2540,#13294d);color:#e8eef7"; pill.textContent="📋 Plan "+pr.doneCount+"/"+pr.total+(c?(" · ▸ "+dhShortLabel(c.label)+(c.need?(" "+c.got+"/"+c.need):"")):""); }
     pill.onclick=function(){ dhTogglePlanPanel(pr); };
     document.body.appendChild(pill);
   }

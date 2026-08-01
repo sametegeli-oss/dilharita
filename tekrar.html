@@ -517,7 +517,7 @@ try{
     items.sort(function(a,b){ return (a.due||0)-(b.due||0); });
     total=items.length;
     if(!total){ $("doneTitle").textContent="🎉 Bugünlük tekrar yok!"; $("doneSub").textContent="Vadesi gelen öğe bulunmuyor.";
-      if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; return; }
+      if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; dhTekrarDoneExtras(); return; }
     // Günün hedefini İLK girişte dondur; sonraki girişlerde aynı kalır (25'e sıfırlanmaz).
     if(!__gun){ __gun={ hedef: Math.max(1, Math.min(total, SESSION)), yapilan:0 }; saveGun(); }
     var __kalanHedef=Math.max(0, __gun.hedef - __gun.yapilan);
@@ -528,7 +528,7 @@ try{
       $("doneTitle").textContent="🎉 Bugünkü tekrar tamam!";
       $("doneSub").textContent=__gun.yapilan+" tekrar yaptın."+(remaining?(" Bekleyen "+remaining+" yarına porsiyonlandı."):"");
       if(remaining) $("bMore").style.display="inline-block";
-      if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; return; }
+      if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; dhTekrarDoneExtras(); return; }
 
     if(session.some(function(x){return x.kind==="s"})){
       // eskiden 8,5 MB'lık dosyanın tamamı inip tek tek haritaya yazılıyordu.
@@ -562,6 +562,17 @@ try{
     try{ $("bMicRestart").style.display="none"; }catch(e){}
   }
 
+  function dhTekrarDoneExtras(){
+    try{
+      if(!(window.dhPlanAllDone && window.dhPlanAllDone())) return;   // tüm plan bitmediyse dokunma
+      var pn=$("planNext"); if(pn) pn.style.display="none";           // "sıradaki adım" gizle
+      if(document.getElementById("dhTekrarDayDone")) return;
+      var dc=document.createElement("div"); dc.id="dhTekrarDayDone"; dc.style.cssText="margin-top:14px";
+      dc.innerHTML='<div style="font-size:15px;color:#a7f3d0;font-weight:900;margin-bottom:8px">🎉 Günün planı tamam! Gün bitti.</div><button class="b-next" id="dhTekrarClose">🌙 Günü kapat</button>';
+      $("done").appendChild(dc);
+      var cb=document.getElementById("dhTekrarClose"); if(cb) cb.onclick=function(){ try{ if(window.dhCoachDayClose) window.dhCoachDayClose(); }catch(e){} };
+    }catch(e){}
+  }
   function render(){
     stopMicIfActive();
     try{ window.dhCoachHide && window.dhCoachHide(); }catch(e){}
@@ -572,6 +583,7 @@ try{
       if(remaining) $("bMore").style.display="inline-block";
       if(PLAN) $("planNext").style.display="block";
       $("done").style.display="block";
+      dhTekrarDoneExtras();
       triggerCloudSync();
       return;
     }
