@@ -7,6 +7,7 @@
 <script src="./mastery-engine.js?v=1"></script>
 <script src="./teacher-policy.js?v=3"></script>
 <script src="./level-badge.js?v=1"></script>
+<script src="./dh-ders-oturum.js?v=1"></script>
 <script src="./lesson-engine.js?v=4"></script>
 <script src="./ai-providers.js?v=2"></script>
 <script src="./ai-status.js?v=1"></script>
@@ -69,6 +70,9 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 .heard.bad{border-color:var(--bad);color:var(--bad)}
 .score-big{font-size:34px;font-weight:950;text-align:center;margin:6px 0}
 .prog{height:6px;background:var(--surface);border-radius:99px;overflow:hidden;margin:8px 0 18px}
+.prog-yazi{font-size:12px;color:var(--muted);margin:-12px 0 16px;text-align:right}
+.phase-pill.done{opacity:.5}
+.phase-pill b{font-weight:900;opacity:.75}
 .prog>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#2563eb,#34d399);transition:width .3s}
 
 /* ders kartı */
@@ -232,13 +236,33 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
   var PHASE_ORDER=["gramer","isinma","tekrar","yeni","pekistirme","video","telaffuz"];
 
   function renderPhaseStrip(){
-    var counts=lesson.intro.breakdown||{};
+    /* counts lesson-engine.js buildIntro() icinde ZATEN hesaplaniyordu
+       ama yalnizca "bu evre var mi" filtresi olarak kullaniliyor, sayilar
+       hic ekrana basilmiyordu. Artik evre basina adet gorunur. */
+    var counts = (window.DHDers ? DHDers.evreSayilari(lesson) : (lesson.intro.breakdown||{}));
     var cur = lesson.steps[idx] ? lesson.steps[idx].phase : "pekistirme";
+
+    /* Her evrenin kacinci adima kadar surdugunu bul ki bitmis evreler
+       soluklasin — kullanici dersin neresinde oldugunu gorsun. */
+    var gecildi={}, sayac=0;
+    PHASE_ORDER.forEach(function(p){
+      if(!counts[p]) return;
+      sayac += counts[p];
+      gecildi[p] = idx >= sayac;
+    });
+
+    var o = window.DHDers
+      ? DHDers.ozet(idx, lesson.steps.length)
+      : { yapilan:idx, kalan:lesson.steps.length-idx, yuzde:Math.round(100*idx/lesson.steps.length) };
+
     return '<div class="phases">'+PHASE_ORDER.map(function(p){
       if(!counts[p]) return "";
-      return '<div class="phase-pill '+p+(p===cur?" active":"")+'">'+PHASE_LABEL[p]+'</div>';
+      return '<div class="phase-pill '+p+(p===cur?" active":"")+(gecildi[p]?" done":"")+'">'
+        + PHASE_LABEL[p] + ' <b>' + counts[p] + '</b></div>';
     }).join("")+'</div>'
-    +'<div class="prog"><span style="width:'+(100*idx/lesson.steps.length)+'%"></span></div>';
+    +'<div class="prog"><span style="width:'+o.yuzde+'%"></span></div>'
+    +'<div class="prog-yazi">'+o.yapilan+'/'+lesson.steps.length+' adım · '
+      +(o.kalan>0 ? (o.kalan+' kaldı') : 'bitti')+'</div>';
   }
 
   function teacherSays(text){
@@ -581,7 +605,23 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
     };
   }
 
-  function next(){ idx++; recordMinute(); renderStep(); }
+  function next(){
+    /* Biten adimin evresini gun planina isle (varsa). */
+    try{
+      var biten = lesson && lesson.steps[idx];
+      if(biten && window.DHPlan && DHPlan.varMi()){
+        if(biten.phase==="yeni") DHPlan.ilerlet("yeni",1);
+        else if(biten.phase==="telaffuz") DHPlan.ilerlet("telaffuz",1);
+        else if(biten.phase==="tekrar") DHPlan.ilerlet("tekrar",1);
+      }
+    }catch(e){}
+    idx++;
+    recordMinute();
+    /* KALICILIK: adim ilerlemesi diske yazilir. Sayfa kapanip acilinca
+       ders bastan uretilmez, buradan devam eder. */
+    try{ if(window.DHDers) DHDers.ilerlet(idx); }catch(e){}
+    renderStep();
+  }
 
   // --- Mastery Engine'e kanıt yaz: adımın evresine göre doğru beceriyi seç ---
   function phaseToSkill(phase, exercise){
@@ -604,6 +644,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 
   function renderDone(){
     try{ if(window.StudyTracker) StudyTracker.recordActivity("lesson",1,{source:"ders"}); }catch(e){}
+    /* Oturum bitti: depodan dus ki "yeni ders" gercekten yeni gelsin. */
+    try{ if(window.DHDers) DHDers.temizle(); }catch(e){}
     // Önce öğrenme çizgisi (streak) ekranını göster, sonra bitiş ekranı.
     if(window.DHStreak && DHStreak.show){
       DHStreak.show({ onContinue: showDoneScreen });
@@ -634,7 +676,10 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       +'<a class="btn b-blue" href="./harita.html">🗺️ İlerlememe bak</a>'
       +'<button class="btn b-green" id="againBtn">🔁 Yeni ders</button>'
       +'</div></div>';
-    $("againBtn").onclick=function(){ start(); };
+    $("againBtn").onclick=function(){
+      try{ if(window.DHDers) DHDers.temizle(); }catch(e){}
+      start(true);
+    };
   }
 
   function shuffle(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; } return a; }
@@ -679,8 +724,40 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
     };
   }
 
-  function start(){
+  /* zorla=true: kullanici acikca "yeni ders" istedi ya da anayasa degisti.
+     Aksi halde bugunun dersi DEPODAN geri yuklenir, yeniden URETILMEZ. */
+  function start(zorla){
     idx=0;
+
+    /* ── GERI YUKLEME ─────────────────────────────────────────────
+       Ders gun icinde donar. Yeniden uretilirse pickLearned() diziyi
+       karistirdigi icin icerik degisir ve kullanici bastan baslar. */
+    if(!zorla && window.DHDers){
+      var kayit=null;
+      try{ kayit=DHDers.yukle(); }catch(e){}
+      if(kayit && kayit.ders && kayit.ders.steps && kayit.ders.steps.length){
+        lesson=kayit.ders; idx=kayit.idx;
+        $("content").innerHTML='<div class="loading">Kaldığın yerden devam…</div>';
+        /* havuz derse degil onbellege ait; her acilista yeniden yuklenir */
+        Promise.all([DHLesson._loadData("sentence"),DHLesson._loadData("pv"),DHLesson._loadData("word")])
+          .then(function(r){
+            lesson._pool={sentence:r[0],pv:r[1],word:r[2]};
+            /* videopractice sapmasindan donus, geri yuklemeden SONRA da gecerli */
+            var rIdx=null;
+            try{ var rr=sessionStorage.getItem("dh-ders-return");
+              if(rr!==null){ rIdx=parseInt(rr,10); sessionStorage.removeItem("dh-ders-return"); } }catch(e){}
+            if(rIdx!==null && !isNaN(rIdx)){
+              try{ var rs=lesson.steps[rIdx]; if(rs&&rs.itemId) recordMastery(rs.itemId,rs.phase,true,false); }catch(e){}
+              idx=Math.min(rIdx+1, lesson.steps.length);
+              try{ if(window.DHDers) DHDers.ilerlet(idx); }catch(e){}
+            }
+            renderStep();
+          })
+          .catch(function(){ lesson._pool={}; renderStep(); });
+        return;
+      }
+    }
+
     // Seviye sınavı hiç yapılmamışsa, derse başlamadan önce nazikçe öner (bir kez).
     if(shouldSuggestLevelTest()){
       renderLevelTestSuggestion();
@@ -708,9 +785,12 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
             if(rs && rs.itemId) recordMastery(rs.itemId, rs.phase, true, false);
           }catch(e){}
           idx = Math.min(returnIdx+1, lesson.steps.length);
+          try{ if(window.DHDers) DHDers.kaydet(lesson, idx); }catch(e){}
           renderStep();
           return;
         }
+        /* DONDUR: uretilen ders diske yazilir; gun icinde bir daha uretilmez. */
+        try{ if(window.DHDers) DHDers.kaydet(lesson, idx); }catch(e){}
         $("content").innerHTML=teacherSays(lesson.intro.greeting);
         setTimeout(renderStep, 700);
       });
@@ -735,7 +815,12 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       DHTeacherPolicy.fromText($("policyText").value);
       $("policyMsg").style.color="#34d399";
       $("policyMsg").textContent="✓ Kaydedildi. Yeni ders bu kurallara göre hazırlanacak.";
-      setTimeout(function(){ closePolicy(); start(); }, 800);
+      /* Anayasa degisti: mevcut oturum artik gecersiz, yeni kurallarla uretilir. */
+      setTimeout(function(){
+        closePolicy();
+        try{ if(window.DHDers) DHDers.temizle(); }catch(e){}
+        start(true);
+      }, 800);
     }catch(e){
       $("policyMsg").style.color="#f87171";
       $("policyMsg").textContent="Geçersiz JSON: "+(e.message||"biçim hatası");
