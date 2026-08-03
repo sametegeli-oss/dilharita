@@ -2,10 +2,32 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#071226">
 <title>Doktor · Fotoğraflı Sohbet</title>
 <link rel="stylesheet" href="./chat-style.css?v=17">
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   AVATAR ZEMINI — teacher1.html ile ayni
+   ------------------------------------------------------------------
+   chat-style.css tum sohbet ekranlarina duz #050b16 veriyor.
+   teacher1.html'in zemini ise #0b1120 uzerine yesil radyal parilti:
+     radial-gradient(1200px 600px at 50% -10%, #14302a 0%, transparent 60%)
+   Bu kural YALNIZCA bu sayfaya kapsanmistir; chatairport, chathotel,
+   chatrestaurant, chatteacher ve chat.html etkilenmez.
+
+   !important gerekli: chat-style.css icindeki V17 blogu ayni secicilere
+   zaten !important ile #050b16 yaziyor.
+   ══════════════════════════════════════════════════════════════════ */
+.avatar-stage{
+  background:radial-gradient(1200px 600px at 50% -10%, #14302a 0%, transparent 60%), #0b1120 !important;
+}
+.avatar-box,
+.avatar-stage > img,
+#avatarImg{
+  background:transparent !important;
+}
+</style>
 </head>
 <body>
 <div id="chatApp"></div>

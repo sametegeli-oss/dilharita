@@ -28,8 +28,8 @@ h1{font-size:17px;margin:0;flex:1}.cnt{color:var(--mut);font-size:12px;text-alig
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cursor:pointer;color:#fff}
 .b-show{background:#334155;flex:1}.b-say{background:#0e7490}.b-mic{background:#7c3aed;min-width:50px}.b-chk{background:#2563eb;flex:1}
-.b-again{background:#b45309;flex:1}
-.again-note{margin-top:10px;font-size:13px;color:#fbbf24;display:none}
+.b-never{background:#334155;flex:1;border:1px solid #64748b}
+.never-note{margin-top:10px;font-size:13px;color:#94a3b8;display:none}
 .b-hard{background:#dc2626;flex:1}.b-easy{background:#16a34a;flex:1}.b-gemini{background:#4f46e5;flex:1}.b-retry{background:#64748b;flex:1}.b-trans{background:#0284c7;flex:1}
 .exp{margin-top:12px;background:#101c33;border:1px solid #274468;border-radius:12px;padding:12px;font-size:13.5px;display:none}
 .exp b{color:#93c5fd}.exp .cm{color:#fbbf24;display:block;margin-top:6px}.exp .co{color:#86efac;display:block;margin-top:6px}
@@ -92,12 +92,12 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <div class="row" id="grade" style="display:none">
     <button class="b-hard" id="bHard">Zor</button>
     <button class="b-retry" id="bRetry">🔄 Tekrar</button>
-    <button class="b-again" id="bAgain" title="Bu kalemi bu oturumun sonunda yeniden sor (not verilmez)">↻ Bunu tekrar sor</button>
+    <button class="b-never" id="bNever" title="Bu kaydı tamamen çıkar — bir daha sorulmaz">🚫 Bunu tekrar sorma</button>
     <button class="b-trans" id="bTrans">🌐 Çeviri</button>
     <button class="b-gemini" id="bGemini">✨ Gemini</button>
     <button class="b-easy" id="bEasy">Bildim ✓</button>
   </div>
-  <div class="again-note" id="againNote" aria-live="polite"></div>
+  <div class="never-note" id="neverNote" aria-live="polite"></div>
   <div class="exp" id="exp"></div>
 </div>
 <div class="done" id="done" style="display:none">
@@ -154,12 +154,16 @@ try{
   function paintBricks(){
     try{
       var box=document.getElementById("brickMeter"); if(!box||!__gun) return;
-      var h=__gun.hedef|0, y=Math.min(__gun.yapilan|0, h), html="";
+      /* TUGLALAR AZALIR. Eskiden yapilan tekrar sayisi kadar tugla YANIYORDU
+         (on = b<y), yani calistikca tugla ARTIYORDU. Oysa tugla sayaci
+         "daha ne kadar var" sorusunun cevabi: her tamamlanan tekrarda bir
+         tugla SONMELI. Artik yanan tugla sayisi = KALAN. */
+      var h=__gun.hedef|0, y=Math.min(__gun.yapilan|0, h), kalan=Math.max(0,h-y), html="";
       for(var b=0;b<h;b++){
-        var on=b<y;
-        html+='<span style="width:32px;height:20px;border-radius:5px;display:inline-block;background:'+(on?"#f59e0b":"#0d1f3a")+';border:1px solid '+(on?"#f59e0b":"#1e3a5f")+'"></span>';
+        var on=b<kalan;
+        html+='<span style="width:32px;height:20px;border-radius:5px;display:inline-block;transition:background .25s,border-color .25s;background:'+(on?"#f59e0b":"#0d1f3a")+';border:1px solid '+(on?"#f59e0b":"#1e3a5f")+'"></span>';
       }
-      box.innerHTML=html+'<div style="width:100%;text-align:center;color:#9fb3d9;font-size:12.5px;font-weight:800;margin-top:5px">'+y+'/'+h+' tekrar · '+Math.max(0,h-y)+' kaldı</div>';
+      box.innerHTML=html+'<div style="width:100%;text-align:center;color:#9fb3d9;font-size:12.5px;font-weight:800;margin-top:5px">'+kalan+' kaldı · '+y+'/'+h+' yapıldı</div>';
     }catch(e){}
   }
 
@@ -265,6 +269,14 @@ try{
       }catch(e){ try{db.close()}catch(_){ } res(); } });
   }
 
+  async function kvDel(key){
+    var db=await kvOpen(); if(!db) return;
+    return new Promise(function(res){
+      try{ var tx=db.transaction("kv","readwrite"); tx.objectStore("kv").delete(key);
+        tx.oncomplete=function(){db.close();res()}; tx.onerror=function(){db.close();res()};
+      }catch(e){ try{db.close()}catch(_){ } res(); } });
+  }
+
   /* ---- SM-2 ---- */
   /* Cevap kalitesini (q) gerçek sinyalden türetir.
      ÖNEMLİ: q eskiden sabit 4 yazılıydı ve SM-2 formülünde q=4 iken düzeltme
@@ -314,7 +326,25 @@ try{
   var mirror={}; try{ mirror=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; }catch(e){}
   var errs=[]; try{ if(window.LearningErrorDB&&LearningErrorDB.all) errs=await LearningErrorDB.all(); }catch(e){}
   var items=[], seen={};
-  function push(kind,id,due,tag){ if(seen[kind+id]) return; seen[kind+id]=1; items.push({kind:kind,id:id,due:due||0,tag:tag||"",tries:0}); }
+  /* ══ "BUNU TEKRAR SORMA" LISTESI ══════════════════════════════════
+     Kullanicinin bir daha gormek istemedigi kalemler. Kalici ve
+     kaynaktan bagimsiz: SRS kaydi silinse bile kalem "yeni" olarak
+     geri gelmesin diye burada tutulur. */
+  var __YOKSAYK="dh-tekrar-yoksay-v1";
+  function yoksayListesi(){
+    try{ return JSON.parse(localStorage.getItem(__YOKSAYK)||"{}")||{}; }catch(e){ return {}; }
+  }
+  function yoksayKaydet(m){
+    try{ localStorage.setItem(__YOKSAYK, JSON.stringify(m)); }catch(e){}
+  }
+  var __yoksay=yoksayListesi();
+  function yoksayiliMi(kind,id){ return !!__yoksay[kind+":"+id]; }
+
+  function push(kind,id,due,tag){
+    if(seen[kind+id]) return;
+    if(yoksayiliMi(kind,id)) return;      // kullanici bunu bir daha sormamizi istedi
+    seen[kind+id]=1; items.push({kind:kind,id:id,due:due||0,tag:tag||"",tries:0});
+  }
   
   var CONTRACTIONS = {
     "i'm":"i am","i'll":"i will","i've":"i have","i'd":"i would",
@@ -600,10 +630,8 @@ try{
     $("kind").innerHTML=lbl
       +(cur.tag==="hata"?' <span class="err">⚠ hata defterinden</span>':"")
       +(cur.tag==="leech"?' <span class="leech">🧲 inatçı</span>':"")
-      +(cur.tag==="yeni"?" · yeni":"")
-      +(cur.tag==="yine"?' <span class="leech">↻ yeniden soruldu</span>':"");
-    /* "Bunu tekrar sor" notu her yeni kalemde sifirlanir */
-    var __an=document.getElementById("againNote"); if(__an){ __an.style.display="none"; __an.textContent=""; }
+      +(cur.tag==="yeni"?" · yeni":"");
+    var __nn=document.getElementById("neverNote"); if(__nn){ __nn.style.display="none"; __nn.textContent=""; }
     
     var rawQuestion = prod ? (curT.tr||curT.en) : curT.en;
     $("q").innerHTML = makeTextClickable(rawQuestion);
@@ -981,8 +1009,8 @@ try{
         $("bTrans").click();
       } else if (key === "r") {
         $("bRetry").click();
-      } else if (key === "s") {
-        $("bAgain").click();
+      } else if (key === "x") {
+        $("bNever").click();
       } else if (key === "b" || e.key === " ") {
         e.preventDefault();
         $("bEasy").click();
@@ -1212,47 +1240,54 @@ try{
   $("bHard").onclick=function(){ grade(true); }; $("bEasy").onclick=function(){ grade(false); };
 
   /* ══════════════════════════════════════════════════════════════════
-     ↻ BUNU TEKRAR SOR
+     🚫 BUNU TEKRAR SORMA
      ------------------------------------------------------------------
-     Var olan iki dugmenin arasindaki bosluk:
-       "🔄 Tekrar" (bRetry) cevabi siler, AYNI kalemi hemen yeniden
-         sordurur — not verilmez ama kuyruga da eklenmez.
-       "Zor" (bHard) kuyruga ekler AMA SRS'i cezalandirir: aralik kisalir,
-         lapses artar, hatirlama gunlugune basarisiz olarak yazilir,
-         aciklama paneli acilir.
-     Arada kalan ihtiyac: "bunu bugun bir daha gormek istiyorum ama
-     yanlis yapmadim, cezalandirma."
+     Kayit YOKMUS GIBI davranilir. Kullanici bu kalemi bir daha gormek
+     istemiyor (yanlis eslesme, bozuk cumle, zaten bilinen kalip...).
 
-     BU DUGME SRS'E HIC DOKUNMAZ:
-       · srsStep cagrilmaz, aralik/ease/lapses degismez
-       · dhRecallLog yazilmaz (unutma egrisi bozulmaz)
+     Yapilanlar:
+       1. Kalici yoksay listesine eklenir (dh-tekrar-yoksay-v1).
+          push() bu listeyi filtreledigi icin kalem bir daha HIC toplanmaz.
+       2. SRS kaydi IndexedDB'den SILINIR (srs:<id> / wsrs:<id>).
+       3. Bellekteki srs/wsrs haritasindan da dusurulur.
+       4. Oturumda kalan TUM kopyalari kuyruktan cikarilir.
+
+     Yapilmayanlar (kayit yok sayildigi icin):
+       · not verilmez, srsStep cagrilmaz
+       · dhRecallLog yazilmaz — unutma egrisi bozulmaz
        · dhBumpDailyTracker("review") cagrilmaz
-       · __gun.yapilan artmaz — gunun hedefi dondurulmus kalir
-     Yalnizca kalem oturumun SONUNA eklenir.
-
-     Kalem basina en fazla 2 kez (grade(true) ile ayni "tries" tavani),
-     boylece kullanici kendini sonsuz donguye sokamaz.
+       · __gun.yapilan ARTMAZ — yok sayilan kalem "yapilmis is" degildir
+     Gunun hedefi dondurulmus oldugu icin hedef de kucultulmez; kalem
+     yalnizca kuyruktan dusurulur, yerine sirada bekleyen gelir.
      ══════════════════════════════════════════════════════════════════ */
-  function tekrarSor(){
-    var it=cur, not=document.getElementById("againNote");
+  async function tekrarSorma(){
+    var it=cur, not=document.getElementById("neverNote");
     if(!it) return;
     stopActiveAudio(); stopMicIfActive();
 
-    if((it.tries|0) >= 2){
-      if(not){ not.textContent="Bu kalem bu oturumda yeterince soruldu. \"Zor\" dersen aralığı kısaltırım."; not.style.display="block"; }
-      return;
+    var kind=it.kind, id=it.id;
+
+    /* 1) kalici yoksay listesi */
+    __yoksay[kind+":"+id]=1; yoksayKaydet(__yoksay);
+
+    /* 2+3) SRS kaydini tamamen kaldir */
+    try{ await kvDel((kind==="s"?"srs:":"wsrs:")+id); }catch(e){}
+    try{ if(kind==="s") delete srs[id]; else delete wsrs[id]; }catch(e){}
+
+    /* 4) oturumda kalan tum kopyalarini cikar */
+    for(var n=session.length-1; n>i; n--){
+      if(session[n] && session[n].kind===kind && session[n].id===id) session.splice(n,1);
     }
-    it.tries=(it.tries|0)+1;
-    it.tag="yine";
-    session.push(it);
+
     if(not){
-      not.textContent="Tamam, bunu oturumun sonunda tekrar soracağım. Not verilmedi.";
+      not.textContent="Bu kayıt çıkarıldı. Bir daha sorulmayacak.";
       not.style.display="block";
     }
-    /* Kullanici notu gorsun diye kisa gecikme, sonra sonraki kaleme gec. */
-    setTimeout(function(){ i++; render(); }, 650);
+    setTimeout(function(){ i++; render(); }, 550);
   }
-  $("bAgain").onclick=tekrarSor;
+  $("bNever").onclick=tekrarSorma;
+
+
 
   $("bTrans").onclick = function() {
     var translateUrl = "https://translate.google.com/?sl=en&tl=tr&text=" + encodeURIComponent(curT.en) + "&op=translate";
