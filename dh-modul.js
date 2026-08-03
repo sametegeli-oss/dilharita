@@ -27,8 +27,12 @@
   "use strict";
   if (global.DHModul) return;
 
-  var DIZIN = "dh-modul-dizin";
-  var ONEK  = "dh-modul-";
+  var DIZIN   = "dh-modul-dizin";
+  var ONEK    = "dh-modul-";
+  /* Silinen modul kimlikleri -> silinme zamani. Bulut birlesiminin
+     silineni geri diriltmesini engeller. Kimlikler "USR-..." biciminde
+     uretildigi icin "dh-modul-silinen" bir kayit blogyla cakisamaz. */
+  var SILINEN = "dh-modul-silinen";
 
   /* Gercek modul dosyasindaki 23 alan. Sira da ayni tutulur. */
   var ALANLAR = [
@@ -498,6 +502,18 @@
   function sil(id) {
     try { localStorage.removeItem(ONEK + id); } catch (e) {}
     yaz(DIZIN, liste().filter(function (x) { return x.id !== id; }));
+
+    /* MEZAR TASI
+       Bulut dizini artik EZMEK yerine BIRLESTIRIYOR (cloud-sync.js).
+       Birlesim tek basina silmeyi geri alirdi: modul baska bir cihazin
+       anlik goruntusunde durdugu icin ilk senkronda geri dogardi.
+       Silinme zamani kaydedilir; birlesim `tarih`i bundan eski olan
+       kaydi elemez, atar. */
+    try {
+      var t = oku(SILINEN, {}) || {};
+      t[id] = Date.now();
+      yaz(SILINEN, t);
+    } catch (e) {}
   }
 
   /* Tum kullanici cumleleri: id -> kayit.

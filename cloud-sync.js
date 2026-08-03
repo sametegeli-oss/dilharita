@@ -71,6 +71,66 @@
        • epoch-<gün>      → GEÇ olan kazanır ("sonraki günü başlat" en son nerede
                             basıldıysa sıfır noktası odur)
        • goal             → YENİ olan kazanır (setAt)                          */
+  /* ── KULLANICI MODULLERI: dizin EZILMEZ, BIRLESTIRILIR ──────
+     Neden: "dh-modul-" oneki LS_PREFIXES'te oldugu icin asagidaki
+     genel dal `localStorage.setItem(rk, rv)` ile buluttaki dizini
+     oldugu gibi yerelin uzerine yaziyordu. Bulut bir onceki
+     anlik goruntuyu tasidigi surece YENI olusturulan modul, ilk
+     otomatik senkronda dizinden dusuyordu — kayit blogu diskte
+     kaliyor ama iki sayfa da dizini okudugu icin modul KAYBOLUYORDU.
+     Cozum: dizin kimlik bazinda birlesir, catismada `tarih` yeni
+     olan kazanir. Silme icin mezar tasi kullanilir; yoksa birlesim
+     silinen modulu geri diriltirdi. */
+  function mergeModulMezar(localStr, remoteStr){
+    var L={},R={},out={},k;
+    try{ L=JSON.parse(localStr||"{}")||{}; }catch(e){}
+    try{ R=JSON.parse(remoteStr||"{}")||{}; }catch(e){}
+    for(k in R){ if(R.hasOwnProperty(k)) out[k]=+R[k]||0; }
+    for(k in L){ if(L.hasOwnProperty(k) && (+L[k]||0)>(+out[k]||0)) out[k]=+L[k]||0; }
+    return JSON.stringify(out);
+  }
+  function mergeModulDizin(localStr, remoteStr, mezarStr){
+    var L=[],R=[],T={};
+    try{ L=JSON.parse(localStr||"[]")||[]; }catch(e){}
+    try{ R=JSON.parse(remoteStr||"[]")||[]; }catch(e){}
+    try{ T=JSON.parse(mezarStr||"{}")||{}; }catch(e){}
+    if(!Array.isArray(L)) L=[];
+    if(!Array.isArray(R)) R=[];
+    var map={};
+    /* esitlik: beraberlikte bu kaynak kazanir. Yerel kopya goc ile
+       onarilmis olabilecegi icin (bozuk ad -> duzgun ad) esitlikte
+       yereli tercih ediyoruz. */
+    function ekle(a, esitlik){
+      for(var i=0;i<a.length;i++){
+        var e=a[i]; if(!e||!e.id) continue;
+        var v=map[e.id];
+        var yt=+e.tarih||0, vt=v?(+v.tarih||0):-1;
+        if(!v || yt>vt || (esitlik && yt===vt)) map[e.id]=e;
+      }
+    }
+    ekle(R, false); ekle(L, true);
+    var out=[];
+    for(var k in map){
+      if(!map.hasOwnProperty(k)) continue;
+      var st=+T[k]||0;
+      if(st && st >= (+map[k].tarih||0)) continue;   /* silinmis */
+      out.push(map[k]);
+    }
+    out.sort(function(a,b){ return (+b.tarih||0)-(+a.tarih||0); });
+    return JSON.stringify(out);
+  }
+  function mergeModul(key, localStr, remoteStr, uzakMezar){
+    if(key==="dh-modul-silinen") return mergeModulMezar(localStr, remoteStr);
+    if(key==="dh-modul-dizin"){
+      var mezar=mergeModulMezar(localStorage.getItem("dh-modul-silinen"), uzakMezar);
+      return mergeModulDizin(localStr, remoteStr, mezar);
+    }
+    /* Kayit blogu: yereldeki varsa o kazanir — goc modul adlarini
+       duzeltmis olabilir, buluttaki eski ad geri gelmesin. */
+    if(localStr!=null && localStr!=="") return localStr;
+    return remoteStr;
+  }
+
   function mergeKoc(key, localStr, remoteStr){
     if(localStr==null || localStr==="") return remoteStr;
     if(remoteStr==null || remoteStr==="") return localStr;
@@ -370,6 +430,7 @@
           else if(rk===MIRROR){ localStorage.setItem(rk, mergeMirror(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk===ACTLOG){ localStorage.setItem(rk, mergeActivityLog(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk.indexOf("dh-koc-")===0){ localStorage.setItem(rk, mergeKoc(rk, localStorage.getItem(rk), rv)); pulled++; }
+          else if(rk.indexOf("dh-modul-")===0){ localStorage.setItem(rk, mergeModul(rk, localStorage.getItem(rk), rv, rd.ls["dh-modul-silinen"])); pulled++; }
           else { localStorage.setItem(rk, rv); pulled++; }
         }catch(e){}
       }
