@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="theme-color" content="#0b1120" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -47,6 +47,15 @@ window.addEventListener('error', function(e){
 <!-- AI KOÇ OTOMATİK MODÜL BAŞLATICI: koçun ?mod= linkiyle gelen modülü
      doğrudan açar (eski startPractice tabanlı kod React'te çalışmıyordu). -->
 <script src="./mod-autopen.js?v=2"></script>
+
+<!-- GUN PLANI KOPRUSU: React uygulamasi DHPlan'i bilmiyor. Bu dosya
+     ?mod= modulunde bugun calisilan cumleleri sayip gun planindaki
+     ILGILI adimi ilerletir. Olmadan, ayni sayfaya giden ikinci adim
+     (telafi modulu) hic ilerlemiyordu. sentences-loader modul
+     kimlikleri icin, dh-plan defter icin gerekli. -->
+<script src="./sentences-loader.js?v=1"></script>
+<script src="./dh-plan.js?v=2"></script>
+<script src="./dh-plan-kopru.js?v=1"></script>
 <script src="./coach-bubble.js?v=10"></script>
 
 <!-- FOTO <-> VİDEO GEÇİŞ KÖPRÜSÜ: React'e dokunmadan "🎬 Video" düğmesi ekler

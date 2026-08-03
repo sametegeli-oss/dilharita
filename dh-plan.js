@@ -171,6 +171,35 @@
     return p;
   }
 
+  /* Mutlak deger atar (ilerlet gibi artirmaz).
+     index-app.html koprusu her olcumde GERCEK sayiyi yazar; artirsaydi
+     sayfa her tazelendiginde birikirdi. */
+  function ayarla(id, n) {
+    var p = bugun();
+    if (!p) return null;
+    var v = Math.max(0, sayi(n, 0));
+    for (var i = 0; i < p.adimlar.length; i++) {
+      var a = p.adimlar[i];
+      if (a.id !== id) continue;
+      var yeniDeger = Math.min(a.hedef, v);
+      if (a.yapilan === yeniDeger) return p;      /* degisiklik yoksa yazma */
+      a.yapilan = yeniDeger;
+      return kaydet(p);
+    }
+    return p;
+  }
+
+  /* href'e gore adim bul — koprude adim kimligi degil URL biliniyor. */
+  function adimHref(href) {
+    var p = bugun();
+    if (!p || !href) return null;
+    var h = String(href);
+    for (var i = 0; i < p.adimlar.length; i++) {
+      if (String(p.adimlar[i].href || "") === h) return p.adimlar[i];
+    }
+    return null;
+  }
+
   function tamamla(id) {
     var p = bugun();
     if (!p) return null;
@@ -301,6 +330,8 @@
     kur: kur,
     adim: adim,
     ilerlet: ilerlet,
+    ayarla: ayarla,
+    adimHref: adimHref,
     tamamla: tamamla,
     aktif: aktif,
     ozet: ozet,
