@@ -423,7 +423,14 @@
     var k = String(kaynak || "").trim();
     var a = String(alan || "").trim();
     if (!k) return a || "Modül";
-    if (!a) return k;
+
+    /* ALAN EKI ZORUNLU — ad asla kaynagin AYNISI olamaz.
+       Cunku index-app modulleri `module` alanina gore grupluyor.
+       Ad kaynakla birebir ayni olsaydi uretilen cumleler RESMI modulun
+       icine karisir, kullanici modulu ayri bir kart olarak ORTADAN
+       KAYBOLURDU. Alan bos gelirse yerine "Özel" konur. */
+    if (!a) a = "Özel";
+
     /* Ayni alan iki kez eklenmesin (yeniden adlandirma tekrar calisirsa) */
     if (k.toLocaleLowerCase("tr").indexOf(a.toLocaleLowerCase("tr")) === k.length - a.length &&
         k.length > a.length) return k;
