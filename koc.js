@@ -108,6 +108,24 @@
   }
 
   function paint(plan){
+    /* ── RENDER KANCASI (yalnizca sunum) ──────────────────────────────
+       Sayfa kendi cizimini yapmak isterse window.DHKocRender tanimlar.
+       HESAPLAMA KATMANINA DOKUNULMAZ: activityTrend30, errorTrend30,
+       profile, checkAndSetGoal, pickNextModule, valid, liveStats,
+       freshenPlan ve run aynen calisir; buraya yalnizca SONUC gelir.
+       Kanca yoksa ya da hata verirse asagidaki eski cizim devreye girer. */
+    if (typeof window.DHKocRender === "function"){
+      try{
+        window.DHKocRender(plan, {
+          gun: DAY,
+          seviyeOner: window.__dhLevelSuggest,
+          seviyeNeden: window.__dhLevelReason,
+          hedef: window.__dhGoal,
+          hataSayisi: window.__dhErrCount
+        });
+        return;
+      }catch(e){}
+    }
     try{
       // Öncelik: yeni "AI Mentor" konteyneri (#dhKocContainer). Yoksa eski basit banner'a düş.
       var box=document.getElementById("dhKocContainer");

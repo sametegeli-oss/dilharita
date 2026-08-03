@@ -2,380 +2,454 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="theme-color" content="#0a1424">
+<!-- maximum-scale YAZILMAZ: yakinlastirma kapatilmaz (erisilebilirlik) -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F7A5A">
+<title>Dil Harita</title>
+
+<link rel="stylesheet" href="./dh-tokens.css">
+<link rel="stylesheet" href="./dh-ui.css">
+
 <link rel="preload" as="image" href="./assets/avatars_v3/teacher/idle.webp" fetchpriority="high">
+<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/blink.webp">
 <link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-small.webp">
 <link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-medium.webp">
 <link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-open.webp">
-<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/blink.webp">
-<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-a.webp">
-<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-e.webp">
-<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-i.webp">
-<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-o.webp">
-<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-u.webp">
-<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-mbp.webp">
-<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-fv.webp">
-<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-l.webp">
-<link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-th.webp">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Dil Harita — Koç Modu</title>
-<!-- GERÇEK VERİ + GİRİŞ: uygulamanın kendi modülleri -->
+
+<!-- KOC ZINCIRININ BAGIMLILIKLARI — sira onemli, koc.js en sonda.
+     study-tracker  -> dh-study-tracker-v1 (activityTrend30 bunu okur)
+     learning-error -> LearningErrorDB     (errorTrend30 + checkAndSetGoal)
+     sentences-loader -> DHSent.index()    (pickNextModule)
+     ai-providers   -> DHProviders         (plan uretimi; yoksa sessiz duser) -->
 <script src="./auth-guard.js?v=1"></script>
+<script src="./storage-bridge.js?v=3"></script>
 <script src="./sentences-loader.js?v=1"></script>
 <script src="./profile.js?v=1"></script>
-<script src="./viseme-lang.js?v=1"></script>
 <script src="./onboarding-guard.js?v=1"></script>
 <script src="./study-tracker.js?v=1"></script>
 <script src="./learning-error-system.js?v=2"></script>
-<style>
-  :root{ --bg:#0a1424; --panel:#10264a; --panel2:#0b172d; --line:#1e3a5f; --txt:#e8eef7; --dim:#9fb3d9; --gold:#f59e0b; --grn:#059669; --grn2:#10b981; --pur:#7c3aed; --brick-done:#059669; --brick-todo:#1e3a5f; }
-  *{box-sizing:border-box}
-  html,body{margin:0;height:100%}
-  body{background:radial-gradient(1200px 600px at 50% -10%,#12315e 0%,var(--bg) 55%);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100%;display:flex;flex-direction:column;align-items:center}
-  .wrap{width:100%;max-width:520px;padding:14px 16px 96px;flex:1;display:flex;flex-direction:column}
-  .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
-  .pills{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .streak{display:flex;align-items:center;gap:6px;background:#2a1206;border:1px solid #7c3f0a;color:#fdba74;padding:6px 11px;border-radius:999px;font-weight:800;font-size:13px}
-  .goal{background:#0f1f3a;border:1px solid var(--line);color:var(--dim);padding:6px 11px;border-radius:999px;font-size:12px}
-  .goal b{color:#fff}
-  .sndBtn{display:flex;align-items:center;gap:6px;background:#16294a;border:1px solid var(--line);color:var(--txt);padding:7px 13px;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap}
-  .sndBtn.off{color:var(--dim)}
-  
-  /* Tuğla Görselleştirme Duvarı Alanı */
-  .brickWallWrap{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:14px;display:flex;flex-direction:column;gap:6px}
-  .brickWallTitle{font-size:11.5px;color:var(--dim);font-weight:700;display:flex;justify-content:space-between;align-items:center}
-  .bricksGrid{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
-  .brick{flex:1;min-width:18px;height:24px;background:var(--brick-todo);border-radius:4px;border:1px solid rgba(255,255,255,0.08);transition:all 0.3s ease;position:relative;overflow:hidden}
-  .brick.done{background:var(--brick-done);box-shadow:0 0 8px rgba(16,185,129,0.4);transform:translateY(-2px);opacity:0.85}
-
-  .coachWrap{display:flex;flex-direction:column;align-items:center;margin-top:2px}
-  .avatarRing{position:relative;width:188px;height:188px;border-radius:50%;padding:5px;background:conic-gradient(from 180deg,var(--gold),var(--grn2),var(--pur),var(--gold));transition:box-shadow .3s}
-  .avatarRing.speaking{box-shadow:0 0 0 6px #10b98122,0 0 42px #10b98155}
-  .avatar{width:100%;height:100%;border-radius:50%;object-fit:cover;background:#0f1f3a;display:block}
-  .coachName{margin-top:12px;font-weight:900;font-size:17px}
-  .coachRole{font-size:12px;color:var(--dim);margin-top:2px}
-  .bubble{margin-top:16px;background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:18px;padding:16px 18px;font-size:15.5px;line-height:1.55;min-height:72px;position:relative;width:100%}
-  .bubble:after{content:"";position:absolute;top:-9px;left:50%;transform:translateX(-50%) rotate(45deg);width:16px;height:16px;background:var(--panel);border-left:1px solid var(--line);border-top:1px solid var(--line)}
-  .caret{display:inline-block;width:8px;height:18px;background:var(--grn2);vertical-align:-3px;margin-left:2px;animation:bl .8s steps(1) infinite}
-  @keyframes bl{50%{opacity:0}}
-  .actions{margin-top:16px;display:flex;flex-direction:column;gap:10px;width:100%}
-  .act{appearance:none;border:0;cursor:pointer;border-radius:14px;padding:15px 16px;font-size:15.5px;font-weight:800;color:#fff;text-align:left;display:flex;align-items:center;gap:10px;transition:.15s;opacity:0;transform:translateY(6px)}
-  .act.in{opacity:1;transform:none}
-  .act.primary{background:linear-gradient(135deg,var(--grn),var(--grn2))}
-  .act.ghost{background:#16294a;border:1px solid var(--line);color:var(--txt)}
-  .act:active{transform:scale(.98)}
-  .ask{display:flex;gap:8px;margin-top:18px;width:100%}
-  .ask input{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:12px;padding:12px 14px;font-size:14px}
-  .ask button{background:var(--pur);border:0;color:#fff;border-radius:12px;padding:0 15px;font-weight:800;cursor:pointer}
-  .menuBtn{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#16294a99;backdrop-filter:blur(6px);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;z-index:5}
-  .sheet{position:fixed;inset:0;background:#000a;display:none;align-items:flex-end;justify-content:center;z-index:20}
-  .sheet.open{display:flex}
-  .sheetC{background:var(--bg);border-top-left-radius:22px;border-top-right-radius:22px;border:1px solid var(--line);width:100%;max-width:520px;max-height:78vh;overflow:auto;padding:16px 16px 26px;animation:up .25s ease}
-  @keyframes up{from{transform:translateY(30px);opacity:.6}}
-  .sheetC h3{margin:4px 0 12px;font-size:15px}
-  .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-  .mitem{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;color:var(--txt);text-decoration:none;display:block}
-  .mitem small{display:block;color:var(--dim);font-weight:500;font-size:11.5px;margin-top:3px}
-  .hint{text-align:center;color:var(--dim);font-size:13px;margin-top:14px}
-</style>
+<script src="./ai-providers.js?v=1"></script>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div class="pills">
-        <div class="streak" id="streakPill" style="display:none">🔥 <span id="streakN">0</span> gün</div>
-        <div class="goal">🎯 <b id="goalN">0/5</b> cümle</div>
-      </div>
-      <button class="sndBtn" id="sndBtn" onclick="toggleSound()">🔊 Sesli</button>
-    </div>
 
-    <!-- Tuğla Duvarı Görselleştirme Alanı -->
-    <div class="brickWallWrap">
-      <div class="brickWallTitle">
-        <span>🏗️ Günlük Hedef Duvarı</span>
-        <span id="brickStatusText">0 / 5 Tamamlandı</span>
-      </div>
-      <div class="bricksGrid" id="bricksGrid">
-        <!-- Dinamik olarak üretilecek tuğlalar -->
-      </div>
-    </div>
+<main class="dh-sayfa">
 
-    <div class="coachWrap">
-      <div class="avatarRing" id="ring"><img class="avatar" id="face" alt="Koç" width="188" height="188" decoding="async" fetchpriority="high"></div>
-      <div class="coachName">Öğretmenin</div>
-      <div class="coachRole">Türkçe anlatan İngilizce koçun</div>
+  <header class="dh-ust">
+    <div class="dh-ust__sol">
+      <span class="dh-seri" id="seriRozet" hidden>
+        <span aria-hidden="true">▲</span><span id="seriN">0</span> gün
+      </span>
     </div>
-
-    <div class="bubble"><span id="say"></span><span class="caret" id="caret" style="display:none"></span></div>
-    <div class="actions" id="acts"></div>
-
-    <div class="ask">
-      <input id="askIn" placeholder="Koça yaz: bugün ne çalışmak istersin?" autocomplete="off" onkeydown="if(event.key==='Enter')askCoach()">
-      <button onclick="askCoach()">Sor</button>
+    <div class="dh-ust__sag">
+      <button class="dh-ikon-btn" id="sesBtn" aria-label="Sesi aç veya kapat">◍</button>
+      <a class="dh-ikon-btn" href="./rapor.html" aria-label="30 günlük rapor">◔</a>
+      <a class="dh-ikon-btn" href="./menu.html" aria-label="Tüm modüller">☰</a>
     </div>
-    <div class="hint">Koç ile plan üzerinde anlaşabilir veya dilediğin zaman modüllere geçebilirsin 👇</div>
+  </header>
+
+  <!-- KOC: avatar kucuk, sahneyi kaplamaz -->
+  <div class="dh-koc">
+    <div class="dh-avatar" id="kocAvatar"></div>
+    <p class="dh-koc__soz" id="kocSoz">Bugünü hazırlıyorum…</p>
   </div>
 
-  <button class="menuBtn" onclick="openSheet()">≡ Tüm modüller</button>
-  <div class="sheet" id="sheet" onclick="if(event.target===this)closeSheet()">
-    <div class="sheetC"><h3>Tüm modüller <small style="color:#9fb3d9;font-weight:400">(istersen doğrudan gir)</small></h3><div class="mgrid" id="mgrid"></div></div>
+  <!-- Kocun gerekcesi: sari kutu degil, ikincil satir -->
+  <p class="dh-etiket" id="kocNeden" style="margin:-8px 0 20px 60px" hidden></p>
+
+  <!-- 30 GUNLUK ZINCIRDEN GELEN ONERILER -->
+  <a class="dh-kart dh-kart--vurgu dh-gir" id="seviyeKart" href="./seviye-testi.html"
+     style="display:none;margin-bottom:12px;text-decoration:none;color:inherit">
+    <div class="dh-cip dh-cip--marka" style="margin-bottom:8px">Seviye</div>
+    <div style="font-size:var(--dh-fs-kontrol);font-weight:var(--dh-fw-orta)">Seviye yükseltme zamanı olabilir</div>
+    <div class="dh-etiket" id="seviyeNeden" style="margin-top:4px"></div>
+  </a>
+
+  <div class="dh-kart dh-kart--sessiz" id="hedefKart" style="display:none;margin-bottom:12px">
+    <div class="dh-bolum-basligi">Bu haftanın hedefi</div>
+    <div id="hedefMetin" style="font-size:var(--dh-fs-kontrol)"></div>
+    <div class="dh-etiket" id="hedefSonuc" style="margin-top:6px"></div>
   </div>
 
+  <!-- GUNUN PLANI -->
+  <div class="dh-bolum-basligi" id="planBaslik">Bugünün planı</div>
+  <div class="dh-plan" id="plan"></div>
+
+  <!-- HAFTALIK RITIM: koc.js ile ayni kaynak (dh-study-tracker-v1) -->
+  <section style="margin-top:28px" aria-labelledby="haftaB">
+    <h2 id="haftaB" class="dh-bolum-basligi">Son 7 gün</h2>
+    <div class="dh-hafta" id="hafta"></div>
+    <p class="dh-etiket" id="haftaOzet" style="margin:10px 0 0"></p>
+  </section>
+
+  <!-- ILERLEME: ham "tekrar bekleyen" toplami GOSTERILMEZ.
+       koc.js profile() icindeki kendi kurali: bu toplami kullaniciya asla soyleme. -->
+  <section class="dh-izgara dh-izgara--2" style="margin-top:20px" aria-label="İlerleme">
+    <div class="dh-metrik">
+      <div class="dh-metrik__etiket">Öğrenilmiş</div>
+      <div class="dh-metrik__deger" id="mOgrenilmis">0</div>
+    </div>
+    <div class="dh-metrik">
+      <div class="dh-metrik__etiket">Çalışılıyor</div>
+      <div class="dh-metrik__deger" id="mCalisiliyor">0</div>
+    </div>
+  </section>
+
+  <div class="dh-alt">
+    <a class="dh-btn dh-btn--birincil dh-btn--tam" id="devam" href="./ders.html">Başla</a>
+    <button class="dh-btn dh-btn--sade dh-btn--tam" id="sonrakiGun" style="margin-top:8px">
+      Sonraki günü başlat
+    </button>
+  </div>
+
+  <!-- koc.js kanca hata verirse eski cizime dusebilsin diye korunur -->
+  <div id="dhKocContainer" hidden></div>
+  <span id="dhDaySub" hidden></span>
+
+</main>
+
+<script src="./dh-avatar.js"></script>
 <script>
-/* ============================================================
-   KOÇ MODU — Tuğla Duvarı Görselleştirmeli Günlük Plan ve Müzakere
-   ============================================================ */
-var AV="./assets/avatars_v3/teacher/";
-var FR={ idle:AV+"idle.webp", small:AV+"mouth-small.webp", medium:AV+"mouth-medium.webp",
-         open:AV+"mouth-open.webp", blink:AV+"blink.webp" };
-var VIS={ a:AV+"mouth-a.webp", e:AV+"mouth-e.webp", i:AV+"mouth-i.webp",
-          o:AV+"mouth-o.webp", u:AV+"mouth-u.webp", mbp:AV+"mouth-mbp.webp",
-          fv:AV+"mouth-fv.webp", l:AV+"mouth-l.webp", th:AV+"mouth-th.webp",
-          idle:FR.idle };
-var face=document.getElementById("face"), ring=document.getElementById("ring");
-face.src=FR.idle; Object.keys(FR).forEach(function(k){var i=new Image();i.src=FR[k];});
+/* index.html — KOC EKRANI
+   ================================================================
+   BU DOSYA HESAPLAMA YAPMAZ. koc.js'in 30 gunluk zinciri aynen calisir:
 
-/* ---- SESLİ / SESSİZ ---- */
-function soundOn(){ try{ return localStorage.getItem("dh-koc-sesli")!=="0"; }catch(e){ return true; } }
-function paintSound(){ var b=document.getElementById("sndBtn"); if(soundOn()){ b.textContent="🔊 Sesli"; b.classList.remove("off"); } else { b.textContent="🔇 Sessiz"; b.classList.add("off"); } }
-function toggleSound(){ try{ localStorage.setItem("dh-koc-sesli", soundOn()?"0":"1"); }catch(e){} if(!soundOn()){ try{speechSynthesis.cancel();}catch(e){} } paintSound(); }
-paintSound();
+     activityTrend30()  30 gun aktif/ders/cumle/tekrar + ilk15↔son15 trend
+     errorTrend30()     30 gun hata kayitlari, tur bazinda older↔recent
+     profile()          ikisini + seri + mirror + SRS due/leech birlestirir
+     __dhLevelSuggest   active>=20 && iyilesen>=2 && kotulesen==0
+     checkAndSetGoal()  haftalik hata hedefi, 7 gun sonra kendi kontrolu
+     pickNextModule()   3 kademeli deterministik modul secimi
+     valid()            AI ciktisini garantili iskelete indirger
+     liveStats()        her acilista canli sayilar (onbelleklenmez)
+     freshenPlan()      why/note'u AI'siz tazeler
 
-/* ---- konuşma: ağız + yazı + TTS ---- */
-var mouthT=null, blinkT=null, typeT=null, seq=[FR.small,FR.medium,FR.open,FR.medium], si=0;
-var seqCharAt=null;
-function mouthSeqFor(text){
-  seqCharAt=null;
-  try{
-    if(window.DHViseme && window.DHViseme.timeline){
-      var tl=window.DHViseme.timeline(text, VIS, "tr");
-      if(tl && tl.frames.length){ seqCharAt=tl.charAt; return tl.frames; }
-    }
-  }catch(e){}
-  return [FR.small,FR.medium,FR.open,FR.medium];
-}
-function startMouth(text, durMs){ ring.classList.add("speaking"); stopBlink(); clearInterval(mouthT);
-  seq=mouthSeqFor(text); si=0;
-  var _total=Math.max(800, durMs || (String(text||"").length*70));
-  var _step=Math.max(40, Math.min(170, Math.round(_total/Math.max(1,seq.length))));
-  mouthT=setInterval(function(){
-    if(si>=seq.length){ face.src=FR.idle; return; }
-    face.src=seq[si++];
-  }, _step); }
-function alignMouth(charIndex){
-  if(!seq.length || typeof charIndex!=="number") return;
-  if(!seqCharAt || !window.DHViseme || !window.DHViseme.indexForChar) return;
-  var h=window.DHViseme.indexForChar(seqCharAt, charIndex);
-  if(Math.abs(h-si)>2) si=h;
-}
-function stopMouth(){ clearInterval(mouthT); mouthT=null; face.src=FR.idle; ring.classList.remove("speaking"); startBlink(); }
-function startBlink(){ stopBlink(); blinkT=setInterval(function(){ if(mouthT) return; face.src=FR.blink; setTimeout(function(){ if(!mouthT) face.src=FR.idle; },140); }, 3800); }
-function stopBlink(){ clearInterval(blinkT); blinkT=null; }
-function speak(text, done){
-  var el=document.getElementById("say"), c=document.getElementById("caret");
-  clearTimeout(typeT); el.textContent=""; c.style.display="inline-block";
-  var sesMetni=text.replace(/[\u{1F000}-\u{1FFFF}☀-➿✓]/gu,"");
-  startMouth(text, Math.max(800, sesMetni.length*70));
-  var spoke=false;
-  try{ if(soundOn()){ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(sesMetni); u.lang="tr-TR"; u.rate=1;
-        u.onboundary=function(ev){
-          if(!ev || (ev.name && ev.name!=="word")) return;
-          alignMouth(ev.charIndex||0);
-        };
-        u.onend=function(){ stopMouth(); }; u.onerror=function(){ stopMouth(); };
-        speechSynthesis.speak(u); spoke=true; } }catch(e){}
-  var i=0; (function tick(){ if(i<=text.length){ el.textContent=text.slice(0,i); i++; typeT=setTimeout(tick,18); } else { c.style.display="none"; if(!spoke) stopMouth(); done&&done(); } })();
-}
+   Buraya yalnizca SONUC gelir (window.DHKocRender kancasi).
+   Kanca koc.js'e 18 satirlik tek bir blok olarak eklendi; geri kalan
+   dosya bayt bayt ayni.
 
-/* ---- GERÇEK VERİ ---- */
-function isoToday(){ return new Date().toISOString().slice(0,10); }
-function computeDue(){ return new Promise(function(res){ try{
-  var r=indexedDB.open("sentence-mode",1);
-  r.onsuccess=function(){ var db=r.result;
-    if(!db.objectStoreNames.contains("kv")){ try{db.close();}catch(e){} return res(null); }
-    var due=0, now=Date.now();
-    try{ var q=db.transaction("kv","readonly").objectStore("kv").openCursor();
-      q.onsuccess=function(e){ var c=e.target.result;
-        if(c){ var kk=String(c.key), v=c.value||{}; if(kk.indexOf("srs:")===0 && (v.due||0)<=now) due++; c.continue(); }
-        else { try{db.close();}catch(_){} res(due); } };
-      q.onerror=function(){ try{db.close();}catch(_){} res(null); };
-    }catch(e2){ try{db.close();}catch(_){} res(null); } };
-  r.onerror=function(){ res(null); };
-}catch(e){ res(null); } }); }
+   DEGISENLER (davranis degil, sunum ve iki hata):
+     - "Samet" sabit kodluydu -> profilden okunur
+     - ham "tekrar bekleyen" toplami gosterilmez (koc.js'in kendi kurali)
+     - emoji ikon degil, cizgi isaret
+     - maximum-scale kaldirildi
+*/
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var GUN = new Date().toISOString().slice(0,10);
+  var cizildi = false;
 
-var WEAK={ "missing-word":"eksik kelime","word-order":"kelime sırası","tense":"fiil zamanı","preposition":"edat (in/on/at)","article":"artikel (a/the)","spelling":"yazım","plural":"çoğul","auxiliary":"yardımcı fiil","general":"genel hatalar" };
-var GOAL=(function(){ try{ return DHProfile.hedef(); }catch(e){ return 5; } })();
-
-async function loadReal(){
-  var R={streak:null,sentences:0,reviews:0,lessons:0,due:null,weakType:null,weakCount:0};
-  try{ var t=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; var d=(t.days||{})[isoToday()]||{}; R.sentences=d.sentences||0; R.reviews=d.reviews||0; R.lessons=d.lessons||0; }catch(e){}
-  try{ if(window.studyTracker){ var s=(window.studyTracker.getTodayStats&&window.studyTracker.getTodayStats().streak); if(s==null && window.studyTracker.streakData) s=window.studyTracker.streakData.current; if(typeof s==="number") R.streak=s; } }catch(e){}
-  if(R.streak==null){ try{ var st=JSON.parse(localStorage.getItem("study_tracker_data")||"{}"); if(st.streakData&&typeof st.streakData.current==="number") R.streak=st.streakData.current; }catch(e){} }
-  try{ var dc=await computeDue(); if(typeof dc==="number") R.due=dc; }catch(e){}
-  if(R.due==null){ try{ var pl=JSON.parse(localStorage.getItem("dh-koc-plan-"+isoToday())||"null"); if(pl&&typeof pl.dueCount==="number") R.due=pl.dueCount; }catch(e){} }
-  try{ if(window.LearningErrorDB&&LearningErrorDB.all){ var all=await LearningErrorDB.all(); var sum=LearningErrorDB.summarize(all||[]); R.weakCount=(sum&&sum.high)||0; if(sum&&sum.byType&&sum.byType[0]) R.weakType=sum.byType[0][0]; } }catch(e){}
-  return R;
-}
-
-function paintHeader(R){
-  var currentDone = Math.min(R.sentences, GOAL);
-  document.getElementById("goalN").textContent = currentDone + "/" + GOAL;
-  if(R.streak!=null && R.streak>0){ document.getElementById("streakN").textContent = R.streak; document.getElementById("streakPill").style.display="flex"; }
-  
-  // Tuğla Duvarını Oluştur ve Güncelle
-  renderBricks(currentDone, GOAL);
-}
-
-/* ---- TUĞLA DUVARI RENDER ETMEK VE KALDIRMAK ---- */
-function renderBricks(doneCount, totalGoal){
-  var grid = document.getElementById("bricksGrid");
-  var statusTxt = document.getElementById("brickStatusText");
-  if(!grid) return;
-  grid.innerHTML = "";
-  
-  // Eğer hedef 0 ise varsayılan 5 yap
-  var total = Math.max(1, totalGoal);
-  var done = Math.min(doneCount, total);
-
-  statusTxt.textContent = done + " / " + total + " Cümle";
-
-  for(var i = 0; i < total; i++){
-    var brick = document.createElement("div");
-    brick.className = "brick" + (i < done ? " done" : "");
-    // Tuğla kalktığında/tamamlandığında ipucu başlığı
-    brick.title = (i < done) ? "Tuğla kaldırıldı (Tamamlandı)" : "Kalan tuğla (Hedef)";
-    grid.appendChild(brick);
+  function kacir(s){
+    return String(s==null?"":s).replace(/[&<>"]/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c];
+    });
   }
-}
+  function oku(k, vars){
+    try{ var r = localStorage.getItem(k); return r ? JSON.parse(r) : vars; }
+    catch(e){ return vars; }
+  }
 
-/* ---- DÜNÜN İSTATİSTİKLERİNİ AL ---- */
-function getYesterdayStats(){
-  try{
-    var t = JSON.parse(localStorage.getItem("dh-study-tracker-v1") || "{}") || {};
-    var dKeys = Object.keys(t.days || {}).sort();
-    if(dKeys.length < 2) return { sentences: 0, reviews: 0 };
-    var yKey = dKeys[dKeys.length - 2];
-    return (t.days || {})[yKey] || { sentences: 0, reviews: 0 };
-  }catch(e){ return { sentences: 0, reviews: 0 }; }
-}
+  /* ---------- kullanicinin adi: ARTIK SABIT KODLU DEGIL ---------- */
+  function ad(){
+    try{
+      if (window.DHProfile && DHProfile.get){
+        var p = DHProfile.get() || {};
+        if (p.ad) return String(p.ad).trim();
+      }
+    }catch(e){}
+    var pr = oku("dh-profile-v1", {}) || {};
+    if (pr.ad) return String(pr.ad).trim();
+    try{
+      var mail = localStorage.getItem("dh_logged_email") || "";
+      if (mail){
+        var n = mail.split("@")[0].replace(/[._-]+/g," ").trim();
+        if (n) return n.charAt(0).toLocaleUpperCase("tr") + n.slice(1);
+      }
+    }catch(e){}
+    return null;
+  }
+  function selam(){
+    var a = ad();
+    return a ? ("Merhaba " + a + ". ") : "Merhaba. ";
+  }
 
-/* ---- DİNAMİK PLAN VE MÜZAKERE SİSTEMİ ---- */
-async function buildDailyProposal(R){
-  var yData = getYesterdayStats();
-  var strongText = R.streak && R.streak > 1 ? (R.streak + " günlük istikrarlı bir serin var") : "çalışmalarında düzenli bir tempon var";
-  var weakDesc = R.weakType ? (WEAK[R.weakType] || R.weakType) : "kelime dizilimi ve temel yapılar";
-
-  return {
-    yesterdaySentences: yData.sentences || 0,
-    yesterdayReviews: yData.reviews || 0,
-    strong: strongText,
-    weak: weakDesc,
-    todayTarget: GOAL,
-    dueCount: R.due || 0,
-    weakCount: R.weakCount || 0
+  /* ---------- ses tercihi ---------- */
+  function sesAcik(){
+    try{ return localStorage.getItem("dh-koc-sesli") !== "0"; }catch(e){ return true; }
+  }
+  function sesBoya(){
+    $("sesBtn").textContent = sesAcik() ? "◍" : "◌";
+    $("sesBtn").setAttribute("aria-pressed", sesAcik() ? "true" : "false");
+  }
+  $("sesBtn").onclick = function(){
+    try{ localStorage.setItem("dh-koc-sesli", sesAcik() ? "0" : "1"); }catch(e){}
+    if (!sesAcik()){ try{ speechSynthesis.cancel(); }catch(e){} }
+    sesBoya();
   };
-}
+  sesBoya();
 
-async function renderNegotiationFlow(R){
-  var plan = await buildDailyProposal(R);
-  var box = document.getElementById("acts");
-  box.innerHTML = "";
-
-  var introMsg = "Dün " + plan.yesterdaySentences + " cümle ve " + plan.yesterdayReviews + " tekrar yaptık. " +
-                 "Genel olarak kuvvetli olduğun yönler: " + plan.strong + ". " +
-                 "Zayıf kalan hususlar için koçla çalışma yapacaksın: özellikle " + plan.weak + " üzerine odaklanacağız. " +
-                 "Bugün şunları çalışacağız: " + plan.todayTarget + " cümle hedefi ve vadesi gelen " + plan.dueCount + " tekrar. " +
-                 "Duvarımızda " + plan.todayTarget + " tuğlamız var. Zamanın bugün nasıl? Az mı, normal mi, yoksa bol mu?";
-
-  speak(introMsg, function(){
-    var actionsHTML = [
-      { t: "✅ Planı Onayla ve Duvarı Ör", cls: "primary", action: function(){ executePlan(plan); } },
-      { t: "⏱️ Bugün Zamanım Az (Hafiflet)", cls: "ghost", action: function(){ adjustPlan(plan, "az"); } },
-      { t: "⚡ Bugün Vaktim Bol (Yoğunlaştır)", cls: "ghost", action: function(){ adjustPlan(plan, "bol"); } }
-    ];
-
-    actionsHTML.forEach(function(act, idx){
-      var b = document.createElement("button");
-      b.className = "act " + act.cls;
-      b.textContent = act.t;
-      b.onclick = act.action;
-      box.appendChild(b);
-      setTimeout(function(){ b.classList.add("in"); }, 60 + idx * 90);
+  /* ---------- adim tamamlanma: koc.js paint() ile AYNI mantik ----------
+     Kaynak: dh-koc-steps-done-<gun>. Guvenlik denetimi de ayni —
+     bugun gercek aktivite yoksa hicbir adim "tamamlandi" gosterilmez. */
+  function bitenAdimlar(){
+    var set = oku("dh-koc-steps-done-" + GUN, {}) || {};
+    var gercekAktivite = false;
+    try{
+      var tr = oku("dh-study-tracker-v1", {}) || {};
+      var bugun = (tr.days || {})[GUN];
+      gercekAktivite = !!(bugun && ((bugun.sentences||0) + (bugun.reviews||0) +
+                                    (bugun.lessons||0) + (bugun.videos||0) > 0));
+    }catch(e){}
+    if (!gercekAktivite) set = {};
+    var sohbetVar = Object.keys(set).some(function(k){
+      return /^chat[a-z]*\.html$/.test(k);
     });
-  });
-}
+    return { set:set, sohbetVar:sohbetVar };
+  }
 
-function adjustPlan(plan, type){
-  var box = document.getElementById("acts");
-  box.innerHTML = "";
-  if(type === "az"){
-    plan.todayTarget = Math.max(2, Math.floor(plan.todayTarget / 2));
-    renderBricks(0, plan.todayTarget); // Tuğlaları güncelle
-    speak("Anladım, bugün senin için hedefi hafifletip duvarı küçültüyoruz. Bu planı onaylıyor musun?", function(){
-      renderFinalAgreement(plan);
+  /* ---------- adim tipini href'ten cikar (ikon icin) ---------- */
+  function tipOf(href){
+    var h = String(href||"");
+    if (h.indexOf("tekrar") === 0) return "tekrar";
+    if (h.indexOf("chat") === 0) return "sohbet";
+    if (h.indexOf("hata-defteri") === 0) return "hata";
+    if (h.indexOf("kelime") === 0) return "kelime";
+    return "yeni";
+  }
+  var ISARET = { tekrar:"↻", yeni:"+", sohbet:"◇", hata:"!", kelime:"▪" };
+
+  /* ================= ANA CIZIM (koc.js kancasi) ================= */
+  window.DHKocRender = function(plan, ctx){
+    cizildi = true;
+    ctx = ctx || {};
+
+    /* --- kocun sozu: focus + note. Ad artik profilden. --- */
+    var soz = selam() + String(plan.focus || "Bugüne başlayalım.");
+    if (plan.note) soz += " " + plan.note;
+    $("kocSoz").textContent = soz;
+    konustur(soz);
+
+    if (plan.why){
+      $("kocNeden").textContent = plan.why;
+      $("kocNeden").hidden = false;
+    }
+
+    /* --- seviye onerisi: 30 gunluk zincirden, AI'dan degil --- */
+    if (ctx.seviyeOner){
+      $("seviyeNeden").textContent = ctx.seviyeNeden || "";
+      $("seviyeKart").style.display = "block";
+    }
+
+    /* --- haftalik hata hedefi --- */
+    var g = ctx.hedef;
+    if (g && (g.goal || g.result)){
+      if (g.goal){
+        $("hedefMetin").textContent =
+          g.goal.type + " hatasını " + g.goal.baseline + "'ten " +
+          g.goal.targetCount + "'e indir";
+      }
+      if (g.result){
+        $("hedefSonuc").textContent =
+          (g.result.achieved ? "Geçen haftaki hedefini tuttun. " : "Geçen haftaki hedefe tam ulaşamadın. ") +
+          g.result.type + ": " + g.result.before + " → " + g.result.now;
+      }
+      $("hedefKart").style.display = "block";
+    }
+
+    /* --- adimlar --- */
+    var b = bitenAdimlar();
+    var kap = $("plan");
+    kap.innerHTML = "";
+    var aktifVar = false;
+
+    (plan.steps || []).forEach(function(s){
+      var sayfa = String(s.href||"").split("?")[0];
+      var bitti = !!b.set[sayfa] || (sayfa === "chat.html" && b.sohbetVar);
+      var aktif = !bitti && !aktifVar;
+      if (aktif) aktifVar = true;
+
+      var a = document.createElement("a");
+      a.href = "./" + s.href;
+      a.className = "dh-plan-satir" +
+        (aktif ? " dh-plan-satir--aktif" : "") +
+        (bitti ? " dh-plan-satir--bitti" : "");
+      a.innerHTML =
+        '<div class="dh-plan-satir__ust">' +
+          '<span class="dh-plan-satir__ikon" aria-hidden="true">' +
+            (bitti ? "✓" : (ISARET[tipOf(s.href)] || "·")) +
+          '</span>' +
+          '<span class="dh-plan-satir__ad">' + kacir(s.label) + '</span>' +
+        '</div>';
+      kap.appendChild(a);
+
+      if (aktif) $("devam").href = "./" + s.href;
     });
-  } else if(type === "bol"){
-    plan.todayTarget += 3;
-    renderBricks(0, plan.todayTarget); // Tuğlaları güncelle
-    speak("Harika! Hedef duvarına ek tuğlalar ekledim. Uzlaştık mı?", function(){
-      renderFinalAgreement(plan);
+
+    $("planBaslik").textContent = "Bugünün planı · " + (plan.steps||[]).length + " adım";
+    $("devam").textContent = aktifVar
+      ? (Object.keys(b.set).length ? "Kaldığın yerden devam" : "Başla")
+      : "Bugünlük tamam";
+    if (!aktifVar) $("devam").href = "./rapor.html";
+
+    /* --- canli sayilar: liveStats() sonucu. due GOSTERILMEZ. --- */
+    var st = plan.stats || {};
+    $("mOgrenilmis").textContent  = (st.s2||0) + (st.w2||0);
+    $("mCalisiliyor").textContent = (st.s1||0) + (st.w1||0);
+
+    haftaCiz();
+    seriCiz();
+  };
+
+  /* ================= HAFTALIK RITIM =================
+     koc.js'in 7 gunluk mini grafigi ile AYNI kaynak ve ayni formul:
+     deger = ders + cumle/5 + tekrar/3 */
+  function haftaCiz(){
+    var tr = oku("dh-study-tracker-v1", {}) || {};
+    var gunler = tr.days || {};
+    var kap = $("hafta");
+    kap.innerHTML = "";
+    var aktif = 0;
+
+    for (var i=6; i>=0; i--){
+      var d = new Date(); d.setDate(d.getDate()-i);
+      var k = d.toISOString().slice(0,10);
+      var r = gunler[k];
+      var v = r ? ((r.lessons||0) + (r.sentences||0)/5 + (r.reviews||0)/3) : 0;
+
+      var el = document.createElement("span");
+      el.className = "dh-hafta__gun" +
+        (v > 0 ? " dh-hafta__gun--tuttu" : (i === 0 ? " dh-hafta__gun--bugun" : ""));
+      el.title = k;
+      kap.appendChild(el);
+      if (v > 0) aktif++;
+    }
+    $("haftaOzet").textContent = aktif + "/7 gün çalıştın";
+  }
+
+  /* ================= SERI =================
+     koc.js profile() icindeki seri sayimiyla ayni mantik. */
+  function seriCiz(){
+    try{
+      var tr = oku("dh-study-tracker-v1", {}) || {};
+      var gunler = tr.days || {};
+      var d = new Date(), n = 0;
+      if (!gunler[d.toISOString().slice(0,10)]) d.setDate(d.getDate()-1);
+      while (gunler[d.toISOString().slice(0,10)]){ n++; d.setDate(d.getDate()-1); }
+      if (n > 0){
+        $("seriN").textContent = n;
+        $("seriRozet").hidden = false;
+      }
+    }catch(e){}
+  }
+
+  /* ================= AVATAR ================= */
+  var avatar = null;
+  function avatarKur(){
+    if (!window.DHAvatar) return;
+    try{
+      avatar = DHAvatar.olustur($("kocAvatar"), { yol:"./assets/avatars_v3/teacher/" });
+    }catch(e){}
+  }
+  function konustur(metin){
+    if (!avatar) return;
+    avatar.hazir.then(function(){
+      avatar.konus(metin, { ses: sesAcik(), dil:"tr-TR" });
     });
   }
-}
+  avatarKur();
 
-function renderFinalAgreement(plan){
-  var box = document.getElementById("acts");
-  box.innerHTML = "";
-  speak("Güzel, bugünkü planımız ve tuğla duvarımız üzerinde uzlaştık[cite: 1]. Çalıştıkça tuğlalar tek tek kalkacak!", function(){
-    var b = mkBtn("🚀 Duvarı Yıkmaya Başla", "primary", function(){ executePlan(plan); });
-    box.appendChild(b);
-    b.classList.add("in");
-  });
-}
+  /* ================= YEDEK CIZIM =================
+     koc.js AI anahtari yoksa run() paint()'e HIC gelmez ve kanca
+     tetiklenmez. Eski davranista kart "API anahtari ekleyince plan
+     gorunecek" diyordu — oysa iskelet zaten deterministik.
+     Burada ayni deterministik iskelet AI'siz cizilir. */
+  function yedekCiz(){
+    if (cizildi) return;
 
-function executePlan(plan){
-  if(plan.dueCount > 0){
-    location.href = "./tekrar.html";
-  } else {
-    location.href = "./index-app.html";
+    var tr = oku("dh-study-tracker-v1", {}) || {};
+    var bugun = (tr.days || {})[GUN] || {};
+    var yapilanCumle = bugun.sentences || 0;
+
+    var hedef = 5;
+    try{ if (window.DHProfile && DHProfile.hedef) hedef = DHProfile.hedef() || 5; }catch(e){}
+
+    var adimlar = [];
+    /* Ham due sayisi okunur ama EKRANA CIKMAZ; yalnizca adimin
+       gosterilip gosterilmeyecegine karar verir. */
+    bekleyenSay(function(due){
+      if (due > 0){
+        adimlar.push({ label:"Vadesi gelen kelime/cümleleri tekrarla", href:"tekrar.html?plan=1" });
+      }
+      if (yapilanCumle < 25){
+        adimlar.push({ label:"Yeni cümleler öğren", href:"index-app.html" });
+      }
+      adimlar.push({ label:"1 dakika konuş", href:"chat.html" });
+
+      DHKocRender(
+        { focus:"Bugün planına başlayalım.", steps:adimlar, stats:{} },
+        {}
+      );
+      $("kocNeden").hidden = true;
+    });
   }
-}
 
-/* ---- kullanıcı koça yazınca: akıllı yönlendirme ---- */
-var ROUTE=[ [/kelime|word/i,"kelime-ogren.html","kelime çalışması"], [/video|telaffuz/i,"videopractice.html","video pratiği"], [/phrasal|öbek/i,"phrasal-verbs.html","phrasal verbs"], [/sohbet|konuş|chat/i,"chat.html","sohbet"], [/tekrar|review/i,"tekrar.html","tekrar"], [/hata|defter/i,"hata-defteri.html","hata defteri"], [/seviye|test/i,"seviye-testi.html","seviye testi"], [/cümle|pratik|çalış|öğren/i,"index-app.html","cümle çalışması"], [/foto|resim|tara/i,"foto-ekle.html","fotoğraftan ekleme"] ];
+  function bekleyenSay(gel){
+    try{
+      var r = indexedDB.open("sentence-mode", 1);
+      r.onsuccess = function(){
+        var db = r.result, n = 0, now = Date.now();
+        if (!db.objectStoreNames.contains("kv")){ try{db.close();}catch(e){} return gel(0); }
+        try{
+          var q = db.transaction("kv","readonly").objectStore("kv").openCursor();
+          q.onsuccess = function(e){
+            var c = e.target.result;
+            if (c){
+              var k = String(c.key), v = c.value || {};
+              if (k.indexOf("srs:") === 0 && (v.due||0) <= now) n++;
+              c.continue();
+            } else { try{db.close();}catch(_){}
+              try{ localStorage.setItem("dh-son-bekleyen", String(n)); }catch(_){}
+              gel(n);
+            }
+          };
+          q.onerror = function(){ try{db.close();}catch(_){} gel(0); };
+        }catch(e2){ try{db.close();}catch(_){} gel(0); }
+      };
+      r.onerror = function(){ gel(0); };
+    }catch(e){ gel(0); }
+  }
 
-function askCoach(){
-  var v=(document.getElementById("askIn").value||"").trim(); if(!v) return; document.getElementById("askIn").value="";
-  var box=document.getElementById("acts"); box.innerHTML=""; var hit=ROUTE.find(function(r){ return r[0].test(v); });
-  if(hit){ speak("Olur, "+hit[2]+" açıyorum.", function(){ var b=mkBtn("👉 "+hit[2]+" — aç","primary",function(){ location.href="./"+hit[1]; }); box.appendChild(b); b.classList.add("in"); var b2=mkBtn("Koçun önerisine dön","ghost",function(){ boot(); }); box.appendChild(b2); b2.classList.add("in"); }); }
-  else { speak("İtirazını aldım ancak bugünkü önceliğimiz senin zayıf yönlerini kapatıp duvarı bitirmek. Menüden dilediğin yere geçebilirsin.", function(){ var b=mkBtn("≡ Tüm modüller","primary",function(){ openSheet(); }); box.appendChild(b); b.classList.add("in"); var b2=mkBtn("Koçun planına dön","ghost",function(){ boot(); }); box.appendChild(b2); b2.classList.add("in"); }); }
-}
-function mkBtn(t,cls,fn){ var b=document.createElement("button"); b.className="act "+cls; b.textContent=t; b.onclick=fn; return b; }
+  /* koc.js run() 1200ms gecikmeyle basliyor; ona sure taniyip yedege dusuyoruz. */
+  setTimeout(yedekCiz, 2600);
 
-/* ---- tüm modüller (gerçek linkler) ---- */
-var MODS=[ ["🏠 Klasik menü","menu.html","tüm panel & ayarlar"], ["🎓 Bugünkü Dersim","ders.html","öğretmen ders hazırlar"],["🔁 Tekrar","tekrar.html","aralıklı tekrar"],["💬 Sohbet","chat.html","konuşan avatar"],["🎬 Video","videopractice.html","telaffuz"],["📖 Kelime","kelime-ogren.html","kart & quiz"],["🔗 Phrasal","phrasal-verbs.html","öbek fiiller"],["📷 Fotoğraftan ekle","foto-ekle.html","tara & çevir"],["🗺️ İlerleme","harita.html","modül haritası"],["📌 Hata Defteri","hata-defteri.html","hata analizi"],["🎯 Seviye","seviye-testi.html","seviyeni ölç"],["📘 Kılavuz","kilavuz.html","kullanım rehberi"],["📊 Rapor","rapor.html","30 günlük trend"] ];
-(function(){ var g=document.getElementById("mgrid"); MODS.forEach(function(m){ var a=document.createElement("a"); a.className="mitem"; a.href="./"+m[1]; a.innerHTML=m[0]+"<small>"+m[2]+"</small>"; g.appendChild(a); }); })();
-function openSheet(){ document.getElementById("sheet").classList.add("open"); }
-function closeSheet(){ document.getElementById("sheet").classList.remove("open"); }
+  /* ================= SONRAKI GUNU BASLAT =================
+     koc.js'teki #dhResetToday ile AYNI islem — hicbir ogrenme verisi
+     silinmez, yalnizca gunun plani ve isaretleri sifirlanir. */
+  $("sonrakiGun").onclick = function(){
+    try{
+      localStorage.removeItem("dh-koc-plan-" + GUN);
+      localStorage.removeItem("dh-koc-steps-done-" + GUN);
+      localStorage.removeItem("dh-day-closed-" + GUN);
+      localStorage.removeItem("dh-coach-last-generic-tip");
+      var tr = oku("dh-study-tracker-v1", {}) || {};
+      var d = (tr.days || {})[GUN] || {};
+      localStorage.setItem("dh-koc-epoch-" + GUN, JSON.stringify({
+        sentences:d.sentences||0, reviews:d.reviews||0,
+        lessons:d.lessons||0, videos:d.videos||0
+      }));
+    }catch(e){}
+    location.reload();
+  };
 
-/* ---- başlangıç ---- */
-startBlink();
-async function boot(){
-  var box=document.getElementById("acts"); box.innerHTML="";
-  document.getElementById("say").textContent="Bugünkü planını ve tuğlaları hazırlıyorum…";
-  var R=await loadReal(); 
-  paintHeader(R); 
-  renderNegotiationFlow(R);
-}
-(function firstScreen(){
-  var box=document.getElementById("acts");
-  var b=mkBtn("👉 Günlük Planı Başlat","primary",function(){ boot(); });
-  box.appendChild(b); setTimeout(function(){b.classList.add("in");},120);
-  document.getElementById("say").innerHTML="Merhaba 👋 Ben koçun. Dünkü çalışmalarını analiz ettim, hedeflerini tuğlalara dönüştürüp ortak bir plan yapmaya hazırım.";
+  /* ilk boyama — plan gelmeden once de ritim ve seri gorunsun */
+  haftaCiz();
+  seriCiz();
 })();
 </script>
+
+<!-- koc.js EN SONDA: kanca (window.DHKocRender) tanimli olmali -->
+<script src="./koc.js?v=3"></script>
 <script src="./ux-boost.js?v=1"></script>
-<script src="./ai-providers.js?v=1"></script>
 <script src="./word-popup.js?v=2"></script>
 </body>
 </html>
