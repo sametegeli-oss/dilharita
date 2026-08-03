@@ -403,6 +403,69 @@
     return "USR-" + kod + "-" + Date.now().toString(36).slice(-5).toUpperCase();
   }
 
+  /* ============================================================
+     MODUL ADI
+     ============================================================
+     Ad, KAYNAK MODULUN TAM ADIYLA baslar ve ilgi alaniyla biter:
+
+       "B2-M05 Comparatives · P1"  +  "Finans ve muhasebe"
+       -> "B2-M05 Comparatives · P1 · Finans ve muhasebe"
+
+     Kaynak adi oldugu gibi korundugu icin seviye kodu ("B2-M05")
+     adin basinda kalir. Koc, telafi motoru ve modul kisaltmasi
+     seviyeyi hep adin basindan okuyor:
+        dh-telafi.js   /^([ABC][12])\b|^([ABC][12])-/
+        mod-autopen.js /^([ABC][12])/i
+        kisaltma       "^[A-C][12]-M<sayi>" onekini atar
+     Bu yuzden seviye tespiti icin ek bir kural gerekmiyor.
+  */
+  function adUret(kaynak, alan) {
+    var k = String(kaynak || "").trim();
+    var a = String(alan || "").trim();
+    if (!k) return a || "Modül";
+    if (!a) return k;
+    /* Ayni alan iki kez eklenmesin (yeniden adlandirma tekrar calisirsa) */
+    if (k.toLocaleLowerCase("tr").indexOf(a.toLocaleLowerCase("tr")) === k.length - a.length &&
+        k.length > a.length) return k;
+    return k + " · " + a;
+  }
+
+  /* Eski kayitlari yeni ada tasir.
+     Once kaynak modulun adi atiliyordu ("Comparatives · P1 · Finans"),
+     dolayisiyla seviye kodu adin basinda yoktu ve koc modulun hangi
+     seviyeye ait oldugunu ADdan cikaramiyordu.
+
+     Kaynak adi biliniyorsa ad yeniden kurulur. Bilinmiyorsa (cok eski
+     kayitlar) ada en azindan seviye kodu eklenir; M90 kullanilir cunku
+     resmi moduller her seviyede en fazla M25'e cikiyor — cakisamaz.
+
+     Sadece degisiklik varsa yazar; her acilista depo dovulmez. */
+  function gocEt() {
+    var d = liste(), degisti = false;
+    for (var i = 0; i < d.length; i++) {
+      var e = d[i], eski = String(e.ad || "");
+      var yeni;
+      if (e.kaynakModul) {
+        yeni = adUret(e.kaynakModul, e.alan);
+      } else if (!/^[A-C][12]\b|^[A-C][12]-/.test(eski) && e.level) {
+        yeni = e.level + "-M90 " + eski;
+      } else {
+        continue;
+      }
+      if (!yeni || yeni === eski) continue;
+
+      var kayitlar = getir(e.id);
+      if (kayitlar && kayitlar.length) {
+        for (var j = 0; j < kayitlar.length; j++) kayitlar[j].module = yeni;
+        if (!yaz(ONEK + e.id, kayitlar)) continue;   /* depo doluysa adi da degistirme */
+      }
+      e.ad = yeni;
+      degisti = true;
+    }
+    if (degisti) yaz(DIZIN, d);
+    return degisti;
+  }
+
   function kaydet(kayitlar, meta) {
     meta = meta || {};
     var id = meta.id || kimlikUret(meta.alan);
@@ -455,9 +518,16 @@
     liste: liste,
     getir: getir,
     kaydet: kaydet,
+    adUret: adUret,
+    gocEt: gocEt,
     sil: sil,
     cumleMap: cumleMap,
     kimlikUret: kimlikUret,
     _ONEK: ONEK
   };
+
+  /* Goc yuklenirken calisir. dh-modul.js her zaman dh-modul-enjekte.js'ten
+     ONCE yuklendigi icin, index-app verisine eklenen cumleler daima
+     guncel modul adini tasir. */
+  try { gocEt(); } catch (e) {}
 })(typeof window !== "undefined" ? window : globalThis);

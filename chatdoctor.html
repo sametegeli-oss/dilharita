@@ -8,11 +8,14 @@
 <link rel="stylesheet" href="./chat-style.css?v=17">
 <style>
 /* ══════════════════════════════════════════════════════════════════
-   AVATAR ZEMINI — teacher1.html ile ayni
+   AVATAR ZEMINI — BEYAZ (practice.html'deki ogretmen kartlari gibi)
    ------------------------------------------------------------------
    chat-style.css tum sohbet ekranlarina duz #050b16 veriyor.
-   teacher1.html'in zemini ise #0b1120 uzerine yesil radyal parilti:
-     radial-gradient(1200px 600px at 50% -10%, #14302a 0%, transparent 60%)
+   practice.html'deki ogretmen/ses kartlari ise duz #fff zemin uzerinde
+   ince yesil kenarlikli (dilharita-teacher-support.bundle.js).
+   Doktor avatarinin arka plani zaten acik tonlu oldugu icin koyu
+   zeminde kesik gorunuyordu; beyaz zemin kartla butunlestiriyor.
+
    Bu kural YALNIZCA bu sayfaya kapsanmistir; chatairport, chathotel,
    chatrestaurant, chatteacher ve chat.html etkilenmez.
 
@@ -20,12 +23,13 @@
    zaten !important ile #050b16 yaziyor.
    ══════════════════════════════════════════════════════════════════ */
 .avatar-stage{
-  background:radial-gradient(1200px 600px at 50% -10%, #14302a 0%, transparent 60%), #0b1120 !important;
+  background:#fff !important;
+  border-bottom:1px solid #34d39955 !important;
 }
 .avatar-box,
 .avatar-stage > img,
 #avatarImg{
-  background:transparent !important;
+  background:#fff !important;
 }
 </style>
 </head>

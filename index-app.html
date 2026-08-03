@@ -53,6 +53,11 @@ window.addEventListener('error', function(e){
 
 <!-- AI KOÇ OTOMATİK MODÜL BAŞLATICI: koçun ?mod= linkiyle gelen modülü
      doğrudan açar (eski startPractice tabanlı kod React'te çalışmıyordu). -->
+<!-- MODULLERIM VITRINI: kullanici modullerini listenin en ustune,
+     kendi bolumune tasir. app.js'ten SONRA yuklenir cunku cizilmis
+     DOM'u bekler. Uygulamanin kendi siniflarini kullandigi icin
+     bolum yerli gorunur. -->
+<script src="./dh-modul-vitrin.js?v=1"></script>
 <script src="./mod-autopen.js?v=2"></script>
 
 <!-- GUN PLANI KOPRUSU: React uygulamasi DHPlan'i bilmiyor. Bu dosya
