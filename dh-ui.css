@@ -1,0 +1,410 @@
+/* dh-ui.css — Dil Harita bilesen katmani
+   ---------------------------------------------------------------
+   dh-tokens.css'ten SONRA baglanir. Hicbir ham renk degeri icermez;
+   yalnizca token takma adlarini kullanir. Boylece koyu mod bedava gelir.
+
+   Bilesenler:
+     .dh-sayfa .dh-ust                    kabuk
+     .dh-btn                              buton (birincil/ikincil/sade)
+     .dh-kart .dh-metrik                  yuzeyler
+     .dh-cip                              etiket
+     .dh-tugla                            tugla sayaci (planlanan/yapilan/kalan)
+     .dh-plan .dh-plan-satir              gun plani listesi
+     .dh-evre                             ders evre seridi
+     .dh-hafta                            haftalik ritim
+     .dh-egri                             unutma egrisi
+     .dh-seri                             seri rozeti
+     .dh-cumle .dh-ceviri                 calisma tipografisi
+*/
+
+/* ================= KABUK ================= */
+.dh-sayfa{
+  max-width:var(--dh-kolon);
+  margin:0 auto;
+  padding:var(--dh-b-4) var(--dh-b-4) var(--dh-b-7);
+  min-height:100dvh;
+  display:flex;
+  flex-direction:column;
+}
+
+.dh-ust{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:var(--dh-b-3);
+  min-height:40px;
+  margin-bottom:var(--dh-b-4);
+}
+
+.dh-ust__sol,.dh-ust__sag{ display:flex; align-items:center; gap:var(--dh-b-2); }
+
+.dh-ikon-btn{
+  width:40px; height:40px;
+  display:grid; place-items:center;
+  background:transparent;
+  border:0; border-radius:var(--dh-r-kontrol);
+  color:var(--dh-text-2);
+  cursor:pointer;
+  transition:background var(--dh-sure-geri) var(--dh-egri),
+             color var(--dh-sure-geri) var(--dh-egri);
+}
+.dh-ikon-btn:hover{ background:var(--dh-yuzey-2); color:var(--dh-text); }
+.dh-ikon-btn:active{ transform:scale(.96); }
+
+.dh-alt{ margin-top:auto; padding-top:var(--dh-b-4); }
+
+/* ================= TIPOGRAFI YARDIMCILARI ================= */
+.dh-cumle{
+  font-size:var(--dh-fs-cumle);
+  font-weight:var(--dh-fw-orta);
+  line-height:var(--dh-lh-siki);
+  color:var(--dh-text);
+  margin:0 0 var(--dh-b-2);
+}
+.dh-ceviri{
+  font-size:var(--dh-fs-govde);
+  color:var(--dh-text-2);
+  margin:0 0 var(--dh-b-4);
+}
+.dh-etiket{ font-size:var(--dh-fs-etiket); color:var(--dh-text-2); }
+.dh-ipucu{ font-size:var(--dh-fs-ipucu); color:var(--dh-text-3); }
+.dh-bolum-basligi{
+  font-size:var(--dh-fs-ipucu);
+  color:var(--dh-text-3);
+  margin:0 0 var(--dh-b-2);
+}
+
+/* ================= BUTON ================= */
+.dh-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:var(--dh-b-2);
+  min-height:48px;
+  padding:0 var(--dh-b-5);
+  font-size:var(--dh-fs-kontrol);
+  font-weight:var(--dh-fw-orta);
+  border-radius:var(--dh-r-kontrol);
+  border:0.5px solid transparent;
+  background:transparent;
+  color:var(--dh-text);
+  cursor:pointer;
+  text-decoration:none;
+  transition:background var(--dh-sure-geri) var(--dh-egri),
+             border-color var(--dh-sure-geri) var(--dh-egri),
+             transform var(--dh-sure-geri) var(--dh-egri);
+}
+.dh-btn:active{ transform:scale(.98); }
+.dh-btn[disabled],.dh-btn[aria-disabled="true"]{
+  opacity:.45; pointer-events:none;
+}
+.dh-btn--tam{ width:100%; }
+
+.dh-btn--birincil{
+  background:var(--dh-marka);
+  color:var(--dh-text-ters);
+}
+.dh-btn--birincil:hover{ background:var(--dh-marka-koyu); }
+
+.dh-btn--ikincil{
+  border-color:var(--dh-cizgi-kuvvet);
+  color:var(--dh-text);
+}
+.dh-btn--ikincil:hover{ background:var(--dh-yuzey-2); }
+
+.dh-btn--sade{ color:var(--dh-text-2); min-height:40px; padding:0 var(--dh-b-3); }
+.dh-btn--sade:hover{ color:var(--dh-text); }
+
+/* secenek butonu — ilk acilis ekranlari icin buyuk dokunma hedefi */
+.dh-secenek{
+  display:flex;
+  align-items:center;
+  gap:var(--dh-b-3);
+  width:100%;
+  min-height:var(--dh-dokunma);
+  padding:var(--dh-b-3) var(--dh-b-4);
+  text-align:left;
+  background:var(--dh-yuzey);
+  border:var(--dh-bd);
+  border-radius:var(--dh-r-kontrol);
+  color:var(--dh-text);
+  font-size:var(--dh-fs-govde);
+  cursor:pointer;
+  transition:border-color var(--dh-sure-geri) var(--dh-egri),
+             background var(--dh-sure-geri) var(--dh-egri);
+}
+.dh-secenek:hover{ border-color:var(--dh-cizgi-kuvvet); }
+.dh-secenek[aria-pressed="true"]{
+  border:1px solid var(--dh-marka);
+  background:var(--dh-marka-zemin);
+}
+.dh-secenek__alt{
+  display:block;
+  font-size:var(--dh-fs-etiket);
+  color:var(--dh-text-2);
+  margin-top:2px;
+}
+
+/* ================= YUZEYLER ================= */
+.dh-kart{
+  background:var(--dh-yuzey);
+  border:var(--dh-bd);
+  border-radius:var(--dh-r-kart);
+  padding:var(--dh-b-4);
+}
+.dh-kart--sessiz{ background:var(--dh-yuzey-2); border-color:transparent; }
+.dh-kart--vurgu{ border:1px solid var(--dh-marka); }
+
+.dh-metrik{
+  background:var(--dh-yuzey-2);
+  border-radius:var(--dh-r-kontrol);
+  padding:var(--dh-b-3) var(--dh-b-4);
+}
+.dh-metrik__etiket{ font-size:var(--dh-fs-ipucu); color:var(--dh-text-3); }
+.dh-metrik__deger{
+  font-size:var(--dh-fs-baslik);
+  font-weight:var(--dh-fw-orta);
+  margin-top:2px;
+}
+
+.dh-izgara{ display:grid; gap:var(--dh-b-3); }
+.dh-izgara--2{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+.dh-izgara--3{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+
+/* ================= CIP ================= */
+.dh-cip{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--dh-b-1);
+  padding:4px var(--dh-b-3);
+  font-size:var(--dh-fs-etiket);
+  border-radius:var(--dh-r-cip);
+  background:var(--dh-yuzey-2);
+  color:var(--dh-text-2);
+  white-space:nowrap;
+}
+.dh-cip--marka{ background:var(--dh-marka-zemin); color:var(--dh-marka-metin); }
+.dh-cip--ok{ background:var(--dh-ok-zemin); color:var(--dh-ok); }
+.dh-cip--err{ background:var(--dh-err-zemin); color:var(--dh-err); }
+
+/* seri — tek ayricalikli renk, tek yerde */
+.dh-seri{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--dh-b-1);
+  font-size:var(--dh-fs-etiket);
+  font-weight:var(--dh-fw-orta);
+  color:var(--dh-seri);
+}
+
+/* ================= TUGLA SAYACI =================
+   Planlanan / yapilan / kalan ucluisunun gorsel karsiligi.
+   tekrar.html'deki dogru kurulmus davranisin genellestirilmisi. */
+.dh-tugla{ margin:var(--dh-b-2) 0; }
+.dh-tugla__sira{
+  display:flex;
+  gap:3px;
+  margin-bottom:var(--dh-b-2);
+}
+.dh-tugla__bir{
+  flex:1;
+  min-width:3px;
+  height:6px;
+  border-radius:var(--dh-r-mini);
+  background:var(--dh-bos);
+  transition:background var(--dh-sure-gecis) var(--dh-egri);
+}
+.dh-tugla__bir--dolu{ background:var(--dh-marka); }
+.dh-tugla__yazi{ font-size:var(--dh-fs-etiket); color:var(--dh-text-2); }
+
+/* ================= GUN PLANI ================= */
+.dh-plan{ display:flex; flex-direction:column; gap:var(--dh-b-2); }
+
+.dh-plan-satir{
+  display:block;
+  padding:var(--dh-b-3);
+  background:var(--dh-yuzey);
+  border:var(--dh-bd);
+  border-radius:var(--dh-r-kontrol);
+  color:inherit;
+  text-decoration:none;
+  transition:border-color var(--dh-sure-geri) var(--dh-egri);
+}
+.dh-plan-satir:hover{ border-color:var(--dh-cizgi-kuvvet); }
+
+.dh-plan-satir__ust{
+  display:flex;
+  align-items:center;
+  gap:var(--dh-b-3);
+}
+.dh-plan-satir__ikon{
+  width:20px; height:20px;
+  flex:0 0 auto;
+  display:grid; place-items:center;
+  color:var(--dh-text-3);
+}
+.dh-plan-satir__ad{
+  font-size:var(--dh-fs-kontrol);
+  color:var(--dh-text-2);
+  flex:1;
+  min-width:0;
+}
+
+/* aktif adim: tek vurgulu satir */
+.dh-plan-satir--aktif{ border:1px solid var(--dh-marka); }
+.dh-plan-satir--aktif .dh-plan-satir__ikon{ color:var(--dh-marka); }
+.dh-plan-satir--aktif .dh-plan-satir__ad{
+  color:var(--dh-text);
+  font-weight:var(--dh-fw-orta);
+}
+
+/* tamamlanmis adim: geri cekilir, silinmez */
+.dh-plan-satir--bitti{ opacity:.55; }
+.dh-plan-satir--bitti .dh-plan-satir__ikon{ color:var(--dh-ok); }
+.dh-plan-satir--bitti .dh-plan-satir__ad{ text-decoration:line-through; }
+
+/* ================= EVRE SERIDI =================
+   7 evre rengi yerine notr cip; yalnizca aktif olan marka rengini alir. */
+.dh-evre{
+  display:flex;
+  gap:var(--dh-b-1);
+  margin-bottom:var(--dh-b-3);
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.dh-evre::-webkit-scrollbar{ display:none; }
+.dh-evre__bir{
+  flex:1 0 auto;
+  padding:6px var(--dh-b-3);
+  font-size:var(--dh-fs-ipucu);
+  text-align:center;
+  border-radius:var(--dh-r-cip);
+  background:var(--dh-yuzey-2);
+  color:var(--dh-text-3);
+  white-space:nowrap;
+  transition:background var(--dh-sure-gecis) var(--dh-egri),
+             color var(--dh-sure-gecis) var(--dh-egri);
+}
+.dh-evre__bir--aktif{ background:var(--dh-marka-zemin); color:var(--dh-marka-metin); }
+.dh-evre__bir--bitti{ color:var(--dh-text-2); }
+
+/* ================= HAFTALIK RITIM =================
+   Gunluk mukemmellik degil haftalik ritim. Dinlenme gunu plana dahildir. */
+.dh-hafta{ display:flex; gap:var(--dh-b-1); }
+.dh-hafta__gun{
+  flex:1;
+  height:28px;
+  border-radius:var(--dh-r-kontrol);
+  background:var(--dh-bos);
+}
+.dh-hafta__gun--tuttu{ background:var(--dh-marka); }
+.dh-hafta__gun--dinlenme{ background:var(--dh-yuzey-2); }
+.dh-hafta__gun--bugun{
+  background:transparent;
+  border:1px dashed var(--dh-cizgi-kuvvet);
+}
+
+/* ================= UNUTMA EGRISI =================
+   Urunun imza ogesi. Rapor sayfasinin dibinde degil, ilerlemenin merkezinde. */
+.dh-egri{
+  display:flex;
+  align-items:flex-end;
+  gap:var(--dh-b-1);
+  height:64px;
+}
+.dh-egri__sutun{
+  flex:1;
+  background:var(--dh-bos);
+  border-radius:var(--dh-r-mini) var(--dh-r-mini) 0 0;
+  min-height:4px;
+}
+.dh-egri__sutun--simdi{ background:var(--dh-marka); }
+
+/* ================= ARK (ufuk gostergesi) ================= */
+.dh-ark{ display:block; margin:0 auto; }
+.dh-ark__yuva{ fill:none; stroke:var(--dh-bos); stroke-width:9; stroke-linecap:round; }
+.dh-ark__dolu{ fill:none; stroke:var(--dh-marka); stroke-width:9; stroke-linecap:round;
+  transition:stroke-dashoffset var(--dh-sure-giris) var(--dh-egri); }
+
+.dh-ufuk{ text-align:center; }
+.dh-ufuk__deger{
+  font-size:var(--dh-fs-cumle);
+  font-weight:var(--dh-fw-orta);
+  line-height:1.1;
+}
+.dh-ufuk__alt{ font-size:var(--dh-fs-ipucu); color:var(--dh-text-3); margin-top:var(--dh-b-1); }
+
+/* ================= GERI BILDIRIM ================= */
+.dh-geri{
+  padding:var(--dh-b-3);
+  border-radius:var(--dh-r-kontrol);
+  border:0.5px solid transparent;
+}
+.dh-geri--ok{ background:var(--dh-ok-zemin); border-color:var(--dh-ok); color:var(--dh-ok); }
+.dh-geri--err{ background:var(--dh-err-zemin); border-color:var(--dh-err); color:var(--dh-err); }
+.dh-geri__baslik{
+  display:flex; align-items:center; gap:var(--dh-b-2);
+  font-size:var(--dh-fs-kontrol); font-weight:var(--dh-fw-orta);
+}
+.dh-geri__aciklama{ font-size:var(--dh-fs-ipucu); color:var(--dh-text-2); margin-top:var(--dh-b-1); }
+
+/* ================= KOC ================= */
+/* Avatar dekorasyon degil; sahneyi kaplamaz. */
+.dh-koc{
+  display:flex;
+  align-items:flex-start;
+  gap:var(--dh-b-3);
+  margin-bottom:var(--dh-b-4);
+}
+.dh-koc__soz{
+  font-size:var(--dh-fs-kontrol);
+  color:var(--dh-text);
+  line-height:var(--dh-lh-normal);
+  padding-top:var(--dh-b-2);
+}
+
+/* avatar sahnesi — dh-avatar.js bunun icine iki katman koyar */
+.dh-avatar{
+  position:relative;
+  width:48px; height:48px;
+  flex:0 0 auto;
+  border-radius:50%;
+  overflow:hidden;
+  background:var(--dh-yuzey-2);
+}
+.dh-avatar--dev{ width:96px; height:96px; }
+.dh-avatar__kat{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit:cover;
+  opacity:0;
+  transition:opacity var(--dh-avatar-capraz) linear;
+}
+.dh-avatar__kat--on{ opacity:1; }
+
+/* nefes: olcek degil transform — layout tetiklemez */
+.dh-avatar__nefes{
+  width:100%; height:100%;
+  will-change:transform;
+  animation:dh-nefes var(--dh-avatar-nefes) ease-in-out infinite;
+}
+@keyframes dh-nefes{
+  0%,100%{ transform:scale(1) translateY(0); }
+  50%    { transform:scale(1.015) translateY(-0.5px); }
+}
+
+/* ================= ILERLEME NOKTALARI ================= */
+.dh-noktalar{ display:flex; gap:var(--dh-b-1); margin-bottom:var(--dh-b-5); }
+.dh-noktalar__bir{
+  flex:1; height:3px;
+  border-radius:var(--dh-r-mini);
+  background:var(--dh-bos);
+}
+.dh-noktalar__bir--dolu{ background:var(--dh-marka); }
+
+/* ================= GIRIS ANIMASYONU ================= */
+.dh-gir{ animation:dh-gir var(--dh-sure-giris) var(--dh-egri) both; }
+@keyframes dh-gir{
+  from{ opacity:0; transform:translateY(6px); }
+  to  { opacity:1; transform:none; }
+}

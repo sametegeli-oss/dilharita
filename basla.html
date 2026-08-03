@@ -2,226 +2,323 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="theme-color" content="#0a1424">
-<title>Dil Harita — Başlangıç</title>
-<link rel="preload" as="image" href="./assets/avatars_v3/teacher/idle.webp" fetchpriority="high">
-<script src="./sentences-loader.js?v=1"></script>
-<script src="./profile.js?v=1"></script>
+<!-- maximum-scale YOK: yakinlastirma kapatilmaz (erisilebilirlik) -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F7A5A">
+<title>Başlangıç · Dil Harita</title>
+<link rel="stylesheet" href="./dh-tokens.css">
+<link rel="stylesheet" href="./dh-ui.css">
 <style>
-  :root{ --bg:#0a1424; --panel:#10264a; --panel2:#0b172d; --line:#1e3a5f; --txt:#e8eef7;
-         --dim:#9fb3d9; --gold:#f59e0b; --grn:#059669; --grn2:#10b981; }
-  *{box-sizing:border-box}
-  html,body{margin:0;height:100%}
-  body{background:radial-gradient(1200px 600px at 50% -10%,#12315e 0%,var(--bg) 55%);
-       color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-       display:flex;justify-content:center}
-  .wrap{width:100%;max-width:520px;padding:18px 16px 32px;display:flex;flex-direction:column;min-height:100%}
-
-  .steps{display:flex;gap:6px;margin-bottom:20px}
-  .steps i{flex:1;height:3px;border-radius:2px;background:#16294a;transition:background .3s}
-  .steps i.on{background:var(--grn2)}
-
-  .coach{display:flex;align-items:center;gap:12px;margin-bottom:18px}
-  .coach img{width:56px;height:56px;border-radius:50%;object-fit:cover;background:#0f1f3a;
-             border:2px solid var(--line)}
-  .coach b{display:block;font-size:14px}
-  .coach span{font-size:12.5px;color:var(--dim)}
-
-  h1{font-size:21px;line-height:1.3;margin:0 0 6px}
-  .sub{color:var(--dim);font-size:14px;line-height:1.5;margin:0 0 18px}
-
-  .opts{display:flex;flex-direction:column;gap:10px}
-  .opt{appearance:none;width:100%;text-align:left;cursor:pointer;color:var(--txt);
-       background:linear-gradient(180deg,var(--panel),var(--panel2));
-       border:1px solid var(--line);border-radius:14px;padding:14px 15px;
-       font-size:15px;font-weight:700;display:flex;align-items:center;gap:12px;
-       transition:border-color .15s,transform .06s}
-  .opt:hover{border-color:#2c568f}
-  .opt.sel{border-color:var(--grn2);box-shadow:0 0 0 3px #10b98122}
-  .opt:active{transform:scale(.985)}
-  .opt em{font-style:normal;font-size:22px;line-height:1}
-  .opt small{display:block;color:var(--dim);font-weight:500;font-size:12.5px;margin-top:2px}
-
-  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
-  .grid .opt{justify-content:center;text-align:center;flex-direction:column;gap:3px;padding:15px 8px}
-
-  .foot{margin-top:auto;padding-top:22px;display:flex;flex-direction:column;gap:9px}
-  .go{appearance:none;border:0;cursor:pointer;border-radius:14px;padding:15px;
-      font-size:15.5px;font-weight:800;color:#fff;
-      background:linear-gradient(135deg,var(--grn),var(--grn2))}
-  .go[disabled]{opacity:.4;cursor:default}
-  .skip{appearance:none;background:none;border:0;color:var(--dim);font-size:13px;
-        cursor:pointer;padding:8px;text-decoration:underline}
-  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  /* Bu ekrana ozgu tek kural: adimlar yatay kaymaz, ust uste gelir. */
+  .adim{ display:none; }
+  .adim--acik{ display:block; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="steps"><i id="s1"></i><i id="s2"></i><i id="s3"></i></div>
 
-  <div class="coach">
-    <img src="./assets/avatars_v3/teacher/idle.webp" alt="" width="56" height="56">
-    <div><b>Öğretmenin</b><span id="coachLine">Seni tanıyalım, üç kısa soru.</span></div>
+<main class="dh-sayfa" id="sayfa">
+
+  <div class="dh-noktalar" id="noktalar" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1" aria-label="Kurulum ilerlemesi">
+    <span class="dh-noktalar__bir dh-noktalar__bir--dolu"></span>
+    <span class="dh-noktalar__bir"></span>
+    <span class="dh-noktalar__bir"></span>
+    <span class="dh-noktalar__bir"></span>
   </div>
 
-  <div id="screen"></div>
+  <!-- ADIM 1 — amac -->
+  <section class="adim adim--acik dh-gir" id="adim1" aria-labelledby="b1">
+    <h1 id="b1">İngilizceyi ne için öğreniyorsun?</h1>
+    <p class="dh-etiket" style="margin:8px 0 24px">Buna göre hangi cümlelerden başlayacağımı seçeceğim.</p>
+    <div class="dh-plan" id="amacListe"></div>
+  </section>
 
-  <div class="foot">
-    <button class="go" id="go" disabled>Devam</button>
-    <button class="skip" id="skip">Bunu şimdilik atla</button>
+  <!-- ADIM 2 — gunluk hedef -->
+  <section class="adim" id="adim2" aria-labelledby="b2">
+    <h1 id="b2">Günde ne kadar vakit?</h1>
+    <p class="dh-etiket" style="margin:8px 0 24px">Küçük başlamak seriyi korumanın en kolay yolu. Sonradan değişir.</p>
+    <div class="dh-plan" id="hedefListe"></div>
+  </section>
+
+  <!-- ADIM 3 — ilk cumle (DEGER ONCE) -->
+  <section class="adim" id="adim3" aria-labelledby="b3">
+    <h1 id="b3" class="dh-gizli">İlk cümlen</h1>
+    <div class="dh-bolum-basligi">İlk cümlen</div>
+    <p class="dh-cumle" id="cumleEn">I work from home</p>
+    <p class="dh-ceviri" id="cumleTr">Evden çalışıyorum</p>
+
+    <div class="dh-bolum-basligi">Türkçesine bakarak İngilizcesini seç</div>
+    <div class="dh-plan" id="secimListe" style="margin-bottom:16px"></div>
+    <div id="geriBildirim" aria-live="polite"></div>
+  </section>
+
+  <!-- ADIM 4 — bitis -->
+  <section class="adim" id="adim4" aria-labelledby="b4">
+    <div class="dh-avatar dh-avatar--dev" id="kocAvatar" style="margin:0 auto 20px"></div>
+    <h1 id="b4" style="text-align:center">Hazırız</h1>
+    <p class="dh-etiket" id="bitisOzet" style="text-align:center;margin:8px 0 24px"></p>
+    <div class="dh-kart dh-kart--sessiz">
+      <div class="dh-bolum-basligi">Bugünün planı</div>
+      <div class="dh-plan" id="ilkPlan"></div>
+    </div>
+  </section>
+
+  <div class="dh-alt">
+    <button class="dh-btn dh-btn--birincil dh-btn--tam" id="devam" hidden>Devam et</button>
+    <p class="dh-ipucu" style="text-align:center;margin:12px 0 0" id="altNot">
+      Hesap açmadan devam ediyorsun
+    </p>
   </div>
-</div>
 
-<script src="./ux-boost.js?v=1"></script>
+</main>
+
+<script src="./dh-plan.js"></script>
+<script src="./dh-avatar.js"></script>
 <script>
+/* basla.html — ILK ACILIS
+   ---------------------------------------------------------------
+   ILKE: deger once, yapilandirma sonra.
+
+   Eski akista uc sorunun ardindan kullanici dogrudan koc ekranina
+   dusuyor ve ilk gordugu sey "0/5 cumle" oluyordu — yani kurulum bir
+   AYAR OZETIYLE bitiyordu. Burada kurulum bir KAZANIMLA biter:
+   3. adimda kullanici gercek bir cumleyi dogru yapar.
+
+   Seviye testi bu akistan CIKARILDI. "Seviyeni biliyor musun?" yeni
+   kullanicinin cevabi olmayan bir sorudur; test 3. gunde koc onerdiginde
+   yapilir, o zaman elde veri vardir ve oneri anlamlidir.
+
+   Giris duvari da yok: anonim baslanir, hesap ilk senkron ihtiyacinda
+   istenir.
+*/
 (function(){
   "use strict";
-  var screen=document.getElementById("screen"), go=document.getElementById("go"),
-      skip=document.getElementById("skip"), coachLine=document.getElementById("coachLine");
+  var $ = function(id){ return document.getElementById(id); };
 
-  var state={ amac:"", seviye:"", hedef:5 };
-  var step=1;
+  var durum = { amac:null, hedef:null, ilkDogru:false };
+  var adimNo = 1;
 
-  function paintSteps(){
-    ["s1","s2","s3"].forEach(function(id,i){
-      document.getElementById(id).classList.toggle("on", i < step);
+  /* Amaca gore ilk cumle — kullanici sectigi baglamdan bir cumleyle
+     karsilasir, jenerik "Hello, how are you?" ile degil. */
+  var AMACLAR = [
+    { id:"is",       ad:"İş",         alt:"Toplantı, e-posta, iş görüşmesi",
+      cumle:{ en:"I work from home", tr:"Evden çalışıyorum",
+              yanlis:["I working from home","I work at home the"] } },
+    { id:"seyahat",  ad:"Seyahat",    alt:"Havalimanı, otel, restoran",
+      cumle:{ en:"I have a reservation", tr:"Rezervasyonum var",
+              yanlis:["I have reservation","I am reservation"] } },
+    { id:"gunluk",   ad:"Günlük hayat", alt:"Sohbet, alışveriş, arkadaşlık",
+      cumle:{ en:"I live near the park", tr:"Parkın yanında oturuyorum",
+              yanlis:["I live near park","I am live near the park"] } },
+    { id:"akademik", ad:"Sınav / akademik", alt:"IELTS, TOEFL, YDS",
+      cumle:{ en:"The results were significant", tr:"Sonuçlar anlamlıydı",
+              yanlis:["The results was significant","The result were significant"] } }
+  ];
+
+  var HEDEFLER = [
+    { id:5,  ad:"5 dakika",  alt:"Günde 5 cümle" },
+    { id:10, ad:"10 dakika", alt:"Günde 10 cümle — çoğu kişi bunu seçiyor" },
+    { id:20, ad:"20 dakika", alt:"Günde 20 cümle" }
+  ];
+
+  /* ---------- yardimci: secenek butonu ---------- */
+  function secenekBtn(ad, alt, tikla){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "dh-secenek";
+    b.innerHTML = '<span>' + kacir(ad) +
+      '<span class="dh-secenek__alt">' + kacir(alt) + '</span></span>';
+    b.onclick = tikla;
+    return b;
+  }
+  function kacir(s){
+    return String(s).replace(/[&<>"]/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c];
     });
   }
 
-  function opts(list, key, cols){
-    var cls = cols ? "grid" : "opts";
-    return '<div class="'+cls+'">'+list.map(function(o){
-      return '<button class="opt'+(state[key]===o.v?" sel":"")+'" data-v="'+o.v+'">'
-        + (o.ico?'<em>'+o.ico+'</em>':'')
-        + '<span>'+o.b+(o.s?'<small>'+o.s+'</small>':'')+'</span></button>';
-    }).join("")+'</div>';
+  /* ---------- adim gecisi ---------- */
+  function adimGoster(n){
+    adimNo = n;
+    for (var i=1; i<=4; i++){
+      var el = $("adim"+i);
+      el.classList.toggle("adim--acik", i===n);
+    }
+    var noktalar = $("noktalar").children;
+    for (var j=0; j<noktalar.length; j++){
+      noktalar[j].classList.toggle("dh-noktalar__bir--dolu", j < n);
+    }
+    $("noktalar").setAttribute("aria-valuenow", String(n));
+    $("adim"+n).classList.remove("dh-gir");
+    void $("adim"+n).offsetWidth;
+    $("adim"+n).classList.add("dh-gir");
   }
 
-  function bind(key, onPick){
-    screen.querySelectorAll(".opt").forEach(function(b){
-      b.onclick=function(){
-        state[key]=b.dataset.v;
-        screen.querySelectorAll(".opt").forEach(function(x){ x.classList.remove("sel"); });
-        b.classList.add("sel");
-        go.disabled=false;
-        if(onPick) onPick(b.dataset.v);
+  /* ---------- ADIM 1 ---------- */
+  (function kurAmac(){
+    var kap = $("amacListe");
+    AMACLAR.forEach(function(a){
+      kap.appendChild(secenekBtn(a.ad, a.alt, function(){
+        durum.amac = a;
+        adimGoster(2);
+      }));
+    });
+  })();
+
+  /* ---------- ADIM 2 ---------- */
+  (function kurHedef(){
+    var kap = $("hedefListe");
+    HEDEFLER.forEach(function(h){
+      kap.appendChild(secenekBtn(h.ad, h.alt, function(){
+        durum.hedef = h.id;
+        kurIlkCumle();
+        adimGoster(3);
+      }));
+    });
+  })();
+
+  /* ---------- ADIM 3: ilk kazanim ---------- */
+  function kurIlkCumle(){
+    var c = (durum.amac || AMACLAR[0]).cumle;
+    $("cumleEn").textContent = c.en;
+    $("cumleEn").style.visibility = "hidden";   // once soru, sonra cevap
+    $("cumleTr").textContent = c.tr;
+
+    var secenekler = [c.en].concat(c.yanlis);
+    // karistir
+    for (var i=secenekler.length-1; i>0; i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var t = secenekler[i]; secenekler[i] = secenekler[j]; secenekler[j] = t;
+    }
+
+    var kap = $("secimListe");
+    kap.innerHTML = "";
+    secenekler.forEach(function(metin){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "dh-secenek";
+      b.textContent = metin;
+      b.onclick = function(){
+        if (durum.ilkDogru) return;
+        var dogru = (metin === c.en);
+        b.setAttribute("aria-pressed", "true");
+        if (dogru){
+          durum.ilkDogru = true;
+          $("cumleEn").style.visibility = "visible";
+          $("geriBildirim").innerHTML =
+            '<div class="dh-geri dh-geri--ok">' +
+              '<div class="dh-geri__baslik">Doğru</div>' +
+              '<div class="dh-geri__aciklama">' +
+                kacir((durum.amac||AMACLAR[0]).ad.toLowerCase()) +
+                ' cümlelerinden başlıyoruz — amacın buydu.</div>' +
+            '</div>';
+          $("devam").hidden = false;
+          $("devam").textContent = "Devam et";
+          $("altNot").textContent = "Hesap açmadan devam ediyorsun";
+        } else {
+          b.style.borderColor = "var(--dh-err)";
+          $("geriBildirim").innerHTML =
+            '<div class="dh-geri dh-geri--err">' +
+              '<div class="dh-geri__baslik">Bu değil</div>' +
+              '<div class="dh-geri__aciklama">Bir daha dene — ilk seferde tutturmak şart değil.</div>' +
+            '</div>';
+        }
       };
+      kap.appendChild(b);
     });
+
+    $("devam").hidden = true;
+    $("geriBildirim").innerHTML = "";
   }
 
-  /* ---- 1) amaç ---- */
-  function step1(){
-    step=1; paintSteps();
-    coachLine.textContent="Seni tanıyalım, üç kısa soru.";
-    screen.innerHTML='<h1>İngilizceyi ne için öğreniyorsun?</h1>'
-      +'<p class="sub">Buna göre hangi konuları öne çıkaracağımı seçeceğim.</p>'
-      +opts([
-        {v:"gunluk",  ico:"💬", b:"Günlük konuşma", s:"Sohbet, arkadaşlar"},
-        {v:"seyahat", ico:"✈️", b:"Seyahat",        s:"Havalimanı, otel, yol tarifi"},
-        {v:"is",      ico:"💼", b:"İş",             s:"Toplantı, e-posta, sunum"},
-        {v:"akademik",ico:"🎓", b:"Sınav / akademik",s:"IELTS, okul, akademik metin"}
-      ],"amac");
-    bind("amac");
-    go.disabled=!state.amac;
-    go.textContent="Devam";
-    go.onclick=step2;
-  }
+  /* ---------- ADIM 4: kurulum bitisi + ilk plan ---------- */
+  function kurBitis(){
+    var hedef = durum.hedef || 10;
+    var amacAd = (durum.amac || AMACLAR[0]).ad;
 
-  /* ---- 2) seviye ---- */
-  function step2(){
-    step=2; paintSteps();
-    coachLine.textContent="Nereden başlayacağımızı bulalım.";
-    var mevcut=null;
-    try{ mevcut=DHProfile.level(); }catch(e){}
-    screen.innerHTML='<h1>Seviyeni biliyor musun?</h1>'
-      +'<p class="sub">'+(mevcut
-          ? 'Daha önce <b>'+mevcut+'</b> çıkmıştı. İstersen değiştir.'
-          : 'Bilmiyorsan üç dakikalık kısa bir test var; sonucu kaydedip başlangıç modülünü ona göre seçiyorum.')+'</p>'
-      +opts([
-        {v:"A1",b:"A1"},{v:"A2",b:"A2"},{v:"B1",b:"B1"},
-        {v:"B2",b:"B2"},{v:"C1",b:"C1"},{v:"test",b:"Test et",s:"3 dk"}
-      ],"seviye",true);
-    if(mevcut && !state.seviye) state.seviye=mevcut;
-    bind("seviye");
-    go.disabled=!state.seviye;
-    go.textContent="Devam";
-    go.onclick=function(){
-      if(state.seviye==="test"){
-        // amaç ve hedefi şimdiden sakla; test dönüşünde kurulum kaldığı yerden sürer
-        try{
-          DHProfile.set({ amac:state.amac, gunlukHedef:state.hedef, kurulumAdim:3 });
-          if(window.DHTeacherPolicy) DHTeacherPolicy.set("amac", state.amac);
-        }catch(e){}
-        location.href="./seviye-testi.html?from=basla";
-        return;
-      }
-      step3();
-    };
-  }
+    $("bitisOzet").textContent =
+      amacAd + " · günde " + hedef + " cümle. İstediğin zaman değiştirebilirsin.";
 
-  /* ---- 3) günlük hedef ---- */
-  function step3(){
-    step=3; paintSteps();
-    coachLine.textContent="Son adım.";
-    screen.innerHTML='<h1>Günde kaç cümle?</h1>'
-      +'<p class="sub">Küçük başlamak seriyi korumanın en kolay yolu. Sonradan değiştirebilirsin.</p>'
-      +opts([
-        {v:"3", b:"3",  s:"~3 dk"},
-        {v:"5", b:"5",  s:"~5 dk"},
-        {v:"10",b:"10", s:"~10 dk"},
-        {v:"20",b:"20", s:"~20 dk"}
-      ],"hedefStr",true);
-    state.hedefStr=String(state.hedef);
-    screen.querySelectorAll(".opt").forEach(function(b){
-      if(b.dataset.v===state.hedefStr) b.classList.add("sel");
+    /* Gunun plani BURADA dondurulur — kullanici ilk ekranda
+       "planlanan / yapilan / kalan" uclusunu gorur. */
+    var adimlar = [
+      { id:"yeni",     tip:"yeni",     etiket:"Yeni cümleler", href:"./ders.html",
+        hedef:hedef },
+      { id:"telaffuz", tip:"telaffuz", etiket:"Telaffuz",       href:"./ders.html?evre=telaffuz",
+        hedef:2 }
+    ];
+    if (window.DHPlan){
+      DHPlan.kur(adimlar);
+      // ilk cumle zaten dogru yapildi: bir birim islenmis sayilir
+      if (durum.ilkDogru) DHPlan.ilerlet("yeni", 1);
+    }
+
+    var kap = $("ilkPlan");
+    kap.innerHTML = "";
+    var ozet = window.DHPlan ? DHPlan.bugun() : { adimlar: adimlar };
+    (ozet.adimlar || adimlar).forEach(function(a, i){
+      var d = document.createElement("div");
+      d.className = "dh-plan-satir" + (i===0 ? " dh-plan-satir--aktif" : "");
+      d.innerHTML =
+        '<div class="dh-plan-satir__ust">' +
+          '<span class="dh-plan-satir__ikon" aria-hidden="true">' +
+            (i===0 ? "▸" : "·") +
+          '</span>' +
+          '<span class="dh-plan-satir__ad">' + kacir(a.etiket) + '</span>' +
+        '</div>' +
+        '<div class="dh-tugla"><div class="dh-tugla__sira">' +
+          tuglalar(a.hedef, a.yapilan || 0) +
+        '</div><div class="dh-tugla__yazi">' +
+          (a.yapilan || 0) + "/" + a.hedef + " · " +
+          Math.max(0, a.hedef - (a.yapilan||0)) + " kaldı" +
+        '</div></div>';
+      kap.appendChild(d);
     });
-    bind("hedefStr");
-    go.disabled=false;
-    go.textContent="Başla";
-    go.onclick=finish;
+
+    $("devam").hidden = false;
+    $("devam").textContent = "Bugüne başla";
+    $("altNot").textContent = "Verilerin bu cihazda. Senkron istersen sonra hesap açarsın.";
+
+    /* Koc avatari yalnizca bu ekranda buyuk — bir kez tanisma ani. */
+    if (window.DHAvatar){
+      try{
+        var av = DHAvatar.olustur($("kocAvatar"), { yol:"./assets/avatars_v3/teacher/" });
+        av.hazir.then(function(){
+          av.konus("Hazırız. Bugün " + hedef + " cümle var, birlikte bitiririz.");
+        });
+      }catch(e){}
+    }
   }
 
-  /* ---- bitiş ---- */
-  function finish(){
-    go.disabled=true; go.textContent="Hazırlanıyor…";
-    var hedef=parseInt(state.hedefStr||state.hedef,10)||5;
-    try{
-      DHProfile.set({
-        amac:state.amac, gunlukHedef:hedef,
-        kurulumBitti:true, kurulumTarih:Date.now(), kurulumAdim:0
-      });
-      if(state.seviye && state.seviye!=="test") DHProfile.setLevel(state.seviye);
-      if(window.DHTeacherPolicy){
-        DHTeacherPolicy.set("amac", state.amac);
-        DHTeacherPolicy.set("gunlukHedef", hedef);
-      }
-    }catch(e){}
-
-    // seviyeye uygun ilk modüle götür; bulunamazsa ana ekrana
-    var git=function(u){ location.replace(u); };
-    var zaman=setTimeout(function(){ git("./index.html"); }, 4000);
-    try{
-      DHProfile.nextModule().then(function(mod){
-        clearTimeout(zaman);
-        git(mod ? "./ogren.html?from=ders&module="+encodeURIComponent(mod) : "./index.html");
-      }).catch(function(){ clearTimeout(zaman); git("./index.html"); });
-    }catch(e){ clearTimeout(zaman); git("./index.html"); }
+  function tuglalar(hedef, yapilan){
+    var out = "";
+    var n = Math.min(hedef, 24); // 24'ten fazlasi gorsel gurultu
+    for (var i=0; i<n; i++){
+      var oran = Math.round((i / n) * hedef);
+      out += '<span class="dh-tugla__bir' +
+        (oran < yapilan ? " dh-tugla__bir--dolu" : "") + '"></span>';
+    }
+    return out;
   }
 
-  /* atla: kurulumu bitmiş say, bir daha sorma */
-  skip.onclick=function(){
-    try{ DHProfile.set({ kurulumBitti:true, kurulumAtlandi:true }); }catch(e){}
-    location.replace("./index.html");
+  /* ---------- devam butonu ---------- */
+  $("devam").onclick = function(){
+    if (adimNo === 3){
+      kurBitis();
+      adimGoster(4);
+      return;
+    }
+    if (adimNo === 4){
+      try{
+        var p = JSON.parse(localStorage.getItem("dh-profile-v1") || "{}") || {};
+        p.amac = (durum.amac||AMACLAR[0]).id;
+        p.gunlukHedef = durum.hedef || 10;
+        p.kurulumBitti = true;
+        p.kurulumTarih = Date.now();
+        localStorage.setItem("dh-profile-v1", JSON.stringify(p));
+      }catch(e){}
+      location.href = "./bugun.html";
+    }
   };
-
-  /* seviye testinden dönüş: 3. adımdan devam */
-  var p={};
-  try{ p=DHProfile.get()||{}; }catch(e){}
-  if(p.amac) state.amac=p.amac;
-  if(p.gunlukHedef) state.hedef=p.gunlukHedef;
-  if(p.kurulumAdim===3){ state.seviye=(function(){ try{ return DHProfile.level()||""; }catch(e){ return ""; } })(); step3(); }
-  else step1();
 })();
 </script>
 </body>

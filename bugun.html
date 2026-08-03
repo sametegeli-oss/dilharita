@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F7A5A">
+<title>Bugün · Dil Harita</title>
+<link rel="stylesheet" href="./dh-tokens.css">
+<link rel="stylesheet" href="./dh-ui.css">
+</head>
+<body>
+
+<main class="dh-sayfa">
+
+  <header class="dh-ust">
+    <div class="dh-ust__sol">
+      <span class="dh-seri" id="seriRozet" hidden>
+        <span aria-hidden="true">▲</span><span id="seriN">0</span>
+      </span>
+    </div>
+    <div class="dh-ust__sag">
+      <a class="dh-ikon-btn" href="./ilerleme.html" aria-label="İlerleme">◔</a>
+      <a class="dh-ikon-btn" href="./kitaplik.html" aria-label="Kitaplık">☰</a>
+    </div>
+  </header>
+
+  <div class="dh-koc">
+    <div class="dh-avatar" id="kocAvatar"></div>
+    <p class="dh-koc__soz" id="kocSoz">Bugünü hazırlıyorum…</p>
+  </div>
+
+  <div class="dh-bolum-basligi" id="planBaslik">Bugünün planı</div>
+  <div class="dh-plan" id="plan"></div>
+
+  <div class="dh-alt">
+    <a class="dh-btn dh-btn--birincil dh-btn--tam" id="devam" href="./ders.html">
+      Başla
+    </a>
+    <button class="dh-btn dh-btn--sade dh-btn--tam" id="dinlenme" style="margin-top:8px">
+      Bugün dinleniyorum
+    </button>
+  </div>
+
+</main>
+
+<script src="./dh-plan.js"></script>
+<script src="./dh-avatar.js"></script>
+<script>
+/* bugun.html — ANA EKRAN
+   ---------------------------------------------------------------
+   ILKE: ana ekranda tek sey var — bugunun plani.
+
+   Eskiden menu.html ~25 giris noktasini ayni anda gosteriyordu ve koc
+   ekrani ayrica hedef pill + ses dugmesi + soru kutusu + iki eylem
+   butonu + "tum moduller" tasiyordu. Burada tek birincil eylem var;
+   geri kalan her sey "Kitaplik" yuzeyinde.
+
+   ILKE: borc degil emek. "324 tekrar bekleyen" yazmayiz. Gunun
+   porsiyonunu yazariz; artan yarina devredilir (DHPlan.devret).
+
+   Ozellik kesfi menuden degil koctan olur: bir modul ilgili hale
+   geldiginde koc onu tanitir.
+*/
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+
+  function kacir(s){
+    return String(s).replace(/[&<>"]/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c];
+    });
+  }
+
+  /* ---------- plan yoksa kur ----------
+     Gercek uygulamada adimlar lesson-engine.js + SRS'ten gelir.
+     Burada kaynak ne olursa olsun DHPlan tek dondurma noktasi. */
+  function planiSagla(){
+    if (window.DHPlan && DHPlan.varMi()) return DHPlan.bugun();
+
+    var hedef = 10;
+    try{
+      var p = JSON.parse(localStorage.getItem("dh-profile-v1")||"{}")||{};
+      if (p.gunlukHedef) hedef = parseInt(p.gunlukHedef,10) || 10;
+    }catch(e){}
+
+    /* Vadesi gelen tekrar sayisi SRS'ten okunur ama EKRANA HAM
+       HALIYLE CIKMAZ. Gunun porsiyonu tavanla sinirlanir. */
+    var bekleyen = okuBekleyenTahmini();
+    var porsiyon = Math.min(bekleyen, 12);
+
+    var adimlar = [];
+    if (porsiyon > 0){
+      adimlar.push({ id:"tekrar", tip:"tekrar", etiket:"Tekrar",
+                     href:"./tekrar.html?plan=1", hedef:porsiyon });
+    }
+    adimlar.push({ id:"yeni", tip:"yeni", etiket:"Yeni cümleler",
+                   href:"./ders.html", hedef:hedef });
+    adimlar.push({ id:"telaffuz", tip:"telaffuz", etiket:"Telaffuz",
+                   href:"./ders.html?evre=telaffuz", hedef:2 });
+
+    return DHPlan.kur(adimlar);
+  }
+
+  /* SRS deposu IndexedDB'de; ilk boyamayi bekletmemek icin
+     senkron bir tahminle basliyoruz, gercegi sonra gelirse guncelleriz. */
+  function okuBekleyenTahmini(){
+    try{
+      var n = parseInt(localStorage.getItem("dh-son-bekleyen")||"0",10);
+      return isNaN(n) ? 0 : n;
+    }catch(e){ return 0; }
+  }
+
+  /* ---------- cizim ---------- */
+  var IKON = { tekrar:"↻", yeni:"+", telaffuz:"◉", genel:"·" };
+
+  function tuglalar(hedef, yapilan){
+    var n = Math.min(hedef, 24);
+    var out = "";
+    for (var i=0; i<n; i++){
+      var esik = Math.round((i / n) * hedef);
+      out += '<span class="dh-tugla__bir' +
+        (esik < yapilan ? " dh-tugla__bir--dolu" : "") + '"></span>';
+    }
+    return out;
+  }
+
+  function ciz(){
+    var plan = window.DHPlan ? DHPlan.bugun() : null;
+    var kap = $("plan");
+    kap.innerHTML = "";
+
+    if (!plan || plan.dinlenme){
+      $("planBaslik").textContent = "Bugün dinlenme günü";
+      kap.innerHTML =
+        '<div class="dh-kart dh-kart--sessiz">' +
+          '<p class="dh-etiket" style="margin:0">Dinlenme günü planın parçası — serin bozulmadı. ' +
+          'Fikrini değiştirirsen aşağıdan başlayabilirsin.</p>' +
+        '</div>';
+      $("devam").textContent = "Yine de çalış";
+      $("dinlenme").hidden = true;
+      return;
+    }
+
+    var aktifBulundu = false;
+    plan.adimlar.forEach(function(a){
+      var bitti = a.yapilan >= a.hedef;
+      var aktif = !bitti && !aktifBulundu;
+      if (aktif) aktifBulundu = true;
+
+      var el = document.createElement(a.href ? "a" : "div");
+      if (a.href) el.href = a.href;
+      el.className = "dh-plan-satir" +
+        (aktif ? " dh-plan-satir--aktif" : "") +
+        (bitti ? " dh-plan-satir--bitti" : "");
+
+      var govde =
+        '<div class="dh-plan-satir__ust">' +
+          '<span class="dh-plan-satir__ikon" aria-hidden="true">' +
+            (bitti ? "✓" : (IKON[a.tip] || IKON.genel)) +
+          '</span>' +
+          '<span class="dh-plan-satir__ad">' + kacir(a.etiket) + '</span>' +
+        '</div>';
+
+      /* Tugla sayaci yalnizca aktif adimda — bitmis ve bekleyen
+         adimlarda gorsel gurultu yaratir. */
+      if (aktif){
+        govde +=
+          '<div class="dh-tugla" style="margin-bottom:0">' +
+            '<div class="dh-tugla__sira">' + tuglalar(a.hedef, a.yapilan) + '</div>' +
+            '<div class="dh-tugla__yazi">' +
+              a.yapilan + "/" + a.hedef + " · " + (a.hedef - a.yapilan) + " kaldı" +
+            '</div>' +
+          '</div>';
+      }
+      el.innerHTML = govde;
+      kap.appendChild(el);
+    });
+
+    var o = DHPlan.ozet();
+    $("planBaslik").textContent =
+      "Bugünün planı · " + plan.adimlar.length + " adım";
+
+    if (o.bittiMi){
+      $("devam").textContent = "Bugünlük tamam";
+      $("devam").href = "./ilerleme.html";
+      $("dinlenme").hidden = true;
+    } else {
+      var akt = DHPlan.aktif();
+      $("devam").textContent = o.yapilan > 0 ? "Kaldığın yerden devam" : "Başla";
+      if (akt && akt.href) $("devam").href = akt.href;
+    }
+
+    var seriN = DHPlan.seri();
+    if (seriN > 0){
+      $("seriN").textContent = seriN;
+      $("seriRozet").hidden = false;
+    }
+  }
+
+  /* ---------- kocun sozu ----------
+     Tek cumle. Borc dili yok; ne yapilacagi ve nedeni. */
+  function kocSozu(){
+    var plan = DHPlan.bugun();
+    if (!plan) return "Bugünü hazırlıyorum…";
+    if (plan.dinlenme) return "Dinlenme günü. Yarın aynı yerdeyim.";
+
+    var o = DHPlan.ozet();
+    if (o.bittiMi) return "Bugünün planını bitirdin. Yarın görüşürüz.";
+
+    var akt = DHPlan.aktif();
+    if (!akt) return "Hazırız.";
+    if (akt.tip === "tekrar")
+      return "Tekrarların birikmiş. Önce onları eritelim — " + akt.hedef + " tanesi bugüne düşüyor.";
+    if (akt.tip === "telaffuz")
+      return "Son adım telaffuz. İki cümle, sesli okuyacaksın.";
+    if (o.yapilan > 0)
+      return "Kaldığın yerden devam edelim, " + o.kalan + " birim kaldı.";
+    return "Bugün " + akt.hedef + " yeni cümle var. Başlayalım.";
+  }
+
+  /* ---------- baslat ---------- */
+  planiSagla();
+  ciz();
+
+  var soz = kocSozu();
+  $("kocSoz").textContent = soz;
+
+  if (window.DHAvatar){
+    try{
+      var av = DHAvatar.olustur($("kocAvatar"), { yol:"./assets/avatars_v3/teacher/" });
+      var sesli = true;
+      try{ sesli = localStorage.getItem("dh-koc-sesli") !== "0"; }catch(e){}
+      av.hazir.then(function(){ av.konus(soz, { ses: sesli }); });
+    }catch(e){}
+  }
+
+  $("dinlenme").onclick = function(){
+    DHPlan.dinlenmeyeAl();
+    ciz();
+    $("kocSoz").textContent = kocSozu();
+  };
+
+  DHPlan.dinle(function(){ ciz(); });
+})();
+</script>
+</body>
+</html>

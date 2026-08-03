@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F7A5A">
+<title>İlerleme · Dil Harita</title>
+<link rel="stylesheet" href="./dh-tokens.css">
+<link rel="stylesheet" href="./dh-ui.css">
+</head>
+<body>
+
+<main class="dh-sayfa">
+
+  <header class="dh-ust">
+    <div class="dh-ust__sol">
+      <a class="dh-ikon-btn" href="./bugun.html" aria-label="Geri">←</a>
+      <h1>İlerleme</h1>
+    </div>
+  </header>
+
+  <!-- KAHRAMAN: ufuk. Sayi degil varis noktasi. -->
+  <section class="dh-ufuk" style="margin:8px 0 32px" aria-labelledby="ufukB">
+    <h2 id="ufukB" class="dh-gizli">Seviye ufku</h2>
+    <svg class="dh-ark" viewBox="0 0 140 78" width="180" height="100" role="img" id="arkSvg">
+      <title id="arkT">Seviye ilerlemesi</title>
+      <path class="dh-ark__yuva" d="M12 70 A 58 58 0 0 1 128 70"></path>
+      <path class="dh-ark__dolu" id="arkDolu" d="M12 70 A 58 58 0 0 1 128 70"></path>
+    </svg>
+    <div class="dh-ufuk__deger" id="ufukDeger">—</div>
+    <div class="dh-ufuk__alt" id="ufukAlt">bu tempoyla</div>
+  </section>
+
+  <!-- HAFTALIK RITIM: gunluk mukemmellik degil -->
+  <section style="margin-bottom:32px" aria-labelledby="haftaB">
+    <h2 id="haftaB" class="dh-bolum-basligi">Bu hafta</h2>
+    <div class="dh-hafta" id="hafta"></div>
+    <p class="dh-etiket" id="haftaOzet" style="margin:12px 0 0"></p>
+  </section>
+
+  <!-- IMZA OGE: kisisel unutma egrisi -->
+  <section style="margin-bottom:32px" aria-labelledby="egriB">
+    <h2 id="egriB" class="dh-bolum-basligi">Unutma eğrin</h2>
+    <div class="dh-egri" id="egri" role="img" aria-labelledby="egriAciklama"></div>
+    <p class="dh-etiket" id="egriAciklama" style="margin:12px 0 0"></p>
+  </section>
+
+  <!-- Ikincil metrikler: kahraman degil -->
+  <section class="dh-izgara dh-izgara--3" aria-label="Özet sayılar">
+    <div class="dh-metrik">
+      <div class="dh-metrik__etiket">Öğrenilen</div>
+      <div class="dh-metrik__deger" id="mOgrenilen">0</div>
+    </div>
+    <div class="dh-metrik">
+      <div class="dh-metrik__etiket">Çalışılıyor</div>
+      <div class="dh-metrik__deger" id="mCalisiliyor">0</div>
+    </div>
+    <div class="dh-metrik">
+      <div class="dh-metrik__etiket">Aktif gün</div>
+      <div class="dh-metrik__deger" id="mAktif">0</div>
+    </div>
+  </section>
+
+</main>
+
+<script src="./dh-plan.js"></script>
+<script>
+/* ilerleme.html — ILERLEME VE MOTIVASYON
+   ---------------------------------------------------------------
+   UC ILKE
+
+   1) BORC DEGIL EMEK. Hicbir yerde "324 tekrar bekleyen" yazmaz.
+      Birikmis is toplam olarak disari verilmez.
+
+   2) UFUK VER. Gunde 5 cumle hedefi ile 9417 cumlelik havuz arasinda
+      varis noktasi yoktu. "A2'ye 9 hafta" mevcut tempodan hesaplanir
+      ve tek basina en guclu motivasyon ogesidir.
+
+   3) HAFTALIK RITIM, GUNLUK MUKEMMELLIK DEGIL. Seri kirilmasi en buyuk
+      terk sebebi. Dinlenme gunu plana dahildir, basarisizlik degil.
+
+   IMZA OGE: kisisel unutma egrisi. rapor.html'de sayfanin dibinde
+   duruyordu; rakiplerde olmayan tek sey oldugu icin merkeze alindi ve
+   tekrar araliklariyla iliskisi acikca soylenir.
+*/
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* ---------- ufuk hesabi ----------
+     Mevcut tempodan varis tahmini. Veri yoksa uydurmayiz — tempo
+     olusana kadar durustce "birkaç gün daha" deriz. */
+  var SEVIYE_ESIK = { A1:900, A2:1800, B1:3200, B2:5200, C1:7600 };
+  var SEVIYE_SIRA = ["A1","A2","B1","B2","C1"];
+
+  function ilerlemeVerisi(){
+    var ogrenilen = 0, calisiliyor = 0;
+    try{
+      for (var i=0; i<localStorage.length; i++){
+        var k = localStorage.key(i);
+        if (!k || k.indexOf("mas:") !== 0) continue;
+        var v = JSON.parse(localStorage.getItem(k) || "null");
+        if (!v) continue;
+        var g = v.genel || 0;
+        if (g >= 80) ogrenilen++;
+        else if (g > 0) calisiliyor++;
+      }
+    }catch(e){}
+    return { ogrenilen: ogrenilen, calisiliyor: calisiliyor };
+  }
+
+  /* Son 14 gunun gunluk ortalama tamamlanan birimi. */
+  function tempo(){
+    var toplam = 0, gunSayisi = 0;
+    for (var i=0; i<14; i++){
+      var d = new Date(); d.setDate(d.getDate()-i);
+      var anahtar = "dh-gun-plan-" + DHPlan._iso(d);
+      var p = null;
+      try{ p = JSON.parse(localStorage.getItem(anahtar) || "null"); }catch(e){}
+      if (!p || p.dinlenme) continue;
+      var y = 0;
+      (p.adimlar||[]).forEach(function(a){
+        y += Math.min(a.yapilan||0, a.hedef||0);
+      });
+      toplam += y; gunSayisi++;
+    }
+    return gunSayisi >= 3 ? (toplam / gunSayisi) : null;
+  }
+
+  function ufukCiz(){
+    var v = ilerlemeVerisi();
+    var t = tempo();
+    var toplamOgrenilen = v.ogrenilen;
+
+    // su anki seviye
+    var seviye = "A1", sonraki = "A2";
+    for (var i=0; i<SEVIYE_SIRA.length; i++){
+      if (toplamOgrenilen >= SEVIYE_ESIK[SEVIYE_SIRA[i]]){
+        seviye = SEVIYE_SIRA[i];
+        sonraki = SEVIYE_SIRA[i+1] || null;
+      }
+    }
+    if (toplamOgrenilen < SEVIYE_ESIK.A1){ seviye = null; sonraki = "A1"; }
+
+    var hedefEsik = sonraki ? SEVIYE_ESIK[sonraki] : null;
+    var altEsik = seviye ? SEVIYE_ESIK[seviye] : 0;
+
+    var oran = 0;
+    if (hedefEsik){
+      oran = Math.max(0, Math.min(1,
+        (toplamOgrenilen - altEsik) / (hedefEsik - altEsik)));
+    } else {
+      oran = 1;
+    }
+
+    // ark doldurma
+    var yol = $("arkDolu");
+    var uzunluk = yol.getTotalLength();
+    yol.style.strokeDasharray = uzunluk;
+    yol.style.strokeDashoffset = uzunluk * (1 - oran);
+    $("arkSvg").setAttribute("aria-label",
+      (sonraki || seviye) + " seviyesine yüzde " + Math.round(oran*100) + " ilerleme");
+
+    if (!hedefEsik){
+      $("ufukDeger").textContent = "C1 tamam";
+      $("ufukAlt").textContent = "havuzu bitirdin";
+      return;
+    }
+    if (t === null || t <= 0){
+      $("ufukDeger").textContent = sonraki + "'ye giden yol";
+      $("ufukAlt").textContent = "birkaç gün daha çalış, tempon oturunca süre yazacağım";
+      return;
+    }
+
+    var kalanBirim = hedefEsik - toplamOgrenilen;
+    var kalanGun = Math.ceil(kalanBirim / t);
+    var kalanHafta = Math.max(1, Math.round(kalanGun / 7));
+
+    $("ufukDeger").textContent = sonraki + "'ye " + kalanHafta + " hafta";
+    $("ufukAlt").textContent = "bu tempoyla · günde ~" + Math.round(t) + " birim";
+  }
+
+  /* ---------- haftalik ritim ---------- */
+  function haftaCiz(){
+    var g = DHPlan.hafta();
+    var kap = $("hafta");
+    kap.innerHTML = "";
+    var tuttu = 0, dinlenme = 0;
+
+    g.forEach(function(d){
+      var el = document.createElement("span");
+      var sinif = "dh-hafta__gun";
+      if (d.durum === "tuttu"){ sinif += " dh-hafta__gun--tuttu"; tuttu++; }
+      else if (d.durum === "dinlenme"){ sinif += " dh-hafta__gun--dinlenme"; dinlenme++; }
+      else if (d.durum === "bugun"){ sinif += " dh-hafta__gun--bugun"; }
+      el.className = sinif;
+      el.title = d.gun;
+      kap.appendChild(el);
+    });
+
+    var calisilanGun = 7 - dinlenme;
+    var parcalar = [tuttu + "/" + calisilanGun + " hedef tuttu"];
+    if (dinlenme) parcalar.push(dinlenme + " dinlenme günü");
+    $("haftaOzet").textContent = parcalar.join(" · ");
+  }
+
+  /* ---------- unutma egrisi ----------
+     rapor.html'in dhRecallLog verisini okur: her kayit
+     "son gorusten X gun sonra hatirlandi mi" deneyidir. */
+  function egriCiz(){
+    var kovalar = [
+      {ad:"1g", min:0, max:1, top:0, ok:0},
+      {ad:"2g", min:1, max:2, top:0, ok:0},
+      {ad:"3g", min:2, max:3, top:0, ok:0},
+      {ad:"4-5g", min:3, max:5, top:0, ok:0},
+      {ad:"6-9g", min:5, max:9, top:0, ok:0},
+      {ad:"10g+", min:9, max:9999, top:0, ok:0}
+    ];
+
+    var kayitlar = [];
+    try{
+      kayitlar = JSON.parse(localStorage.getItem("dh-recall-log") || "[]") || [];
+    }catch(e){}
+
+    kayitlar.forEach(function(r){
+      var gun = r.gun != null ? r.gun : r.d;
+      var ok = r.ok != null ? r.ok : r.dogru;
+      if (typeof gun !== "number") return;
+      for (var i=0; i<kovalar.length; i++){
+        if (gun > kovalar[i].min && gun <= kovalar[i].max){
+          kovalar[i].top++;
+          if (ok) kovalar[i].ok++;
+          break;
+        }
+      }
+    });
+
+    var kap = $("egri");
+    kap.innerHTML = "";
+    var veriVar = kovalar.some(function(k){ return k.top >= 3; });
+
+    if (!veriVar){
+      kap.style.display = "none";
+      $("egriAciklama").textContent =
+        "Birkaç gün tekrar yaptıktan sonra burada kendi unutma eğrin çıkacak — " +
+        "tekrar aralıkların ona göre ayarlanacak.";
+      return;
+    }
+    kap.style.display = "";
+
+    var enDusukKova = null;
+    kovalar.forEach(function(k){
+      var oran = k.top ? (k.ok / k.top) : 0;
+      var el = document.createElement("span");
+      el.className = "dh-egri__sutun";
+      el.style.height = Math.max(6, Math.round(oran * 100)) + "%";
+      el.title = k.ad + ": %" + Math.round(oran*100);
+      kap.appendChild(el);
+      if (k.top >= 3 && oran < 0.6 && !enDusukKova){
+        enDusukKova = { ad:k.ad, oran:Math.round(oran*100), el:el };
+      }
+    });
+
+    if (enDusukKova){
+      enDusukKova.el.classList.add("dh-egri__sutun--simdi");
+      $("egriAciklama").textContent =
+        enDusukKova.ad + " sonra hatırlaman %" + enDusukKova.oran +
+        "'e düşüyor — tekrar aralığın buna göre ayarlandı.";
+    } else {
+      $("egriAciklama").textContent =
+        "Hatırlama oranın her aralıkta iyi. Tekrar aralıkların açılıyor.";
+    }
+  }
+
+  /* ---------- ikincil metrikler ---------- */
+  function metrikCiz(){
+    var v = ilerlemeVerisi();
+    $("mOgrenilen").textContent = v.ogrenilen;
+    $("mCalisiliyor").textContent = v.calisiliyor;
+    var aktif = DHPlan.hafta().filter(function(d){
+      return d.durum === "tuttu" || d.durum === "kismi";
+    }).length;
+    $("mAktif").textContent = aktif;
+  }
+
+  ufukCiz();
+  haftaCiz();
+  egriCiz();
+  metrikCiz();
+})();
+</script>
+</body>
+</html>

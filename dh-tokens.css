@@ -1,0 +1,235 @@
+/* dh-tokens.css — Dil Harita tasarim token katmani
+   ---------------------------------------------------------------
+   TEK KAYNAK. Her sayfa bunu <head> icinde ILK sira baglar:
+     <link rel="stylesheet" href="./dh-tokens.css">
+     <link rel="stylesheet" href="./dh-ui.css">
+
+   Kural: bilesenler ham rampa degerine (--dh-ink-500 gibi) DOGRUDAN
+   erismez; anlamli takma adlari (--dh-text-2 gibi) kullanir. Boylece
+   tema degisimi tek yerden yapilir.
+
+   Mod: varsayilan acik. Koyu mod iki yoldan gelir —
+     1) sistem tercihi (prefers-color-scheme)
+     2) <html data-dh-tema="koyu"> (kullanici secimi, sistemi ezer)
+   Kullanici acik modu zorlamak isterse: <html data-dh-tema="acik">
+*/
+
+:root{
+  /* ---- ham notr rampa (dogrudan kullanma) ---- */
+  --dh-ink-900:#0F1417;
+  --dh-ink-700:#2A3138;
+  --dh-ink-500:#5A646D;
+  --dh-ink-400:#99A2AA;
+  --dh-ink-200:#D6DCE1;
+  --dh-ink-100:#EDF0F2;
+  --dh-ink-050:#F7F9FA;
+  --dh-ink-000:#FFFFFF;
+
+  /* ---- ham anlamli renkler ---- */
+  --dh-brand-700:#0B5C43;
+  --dh-brand-600:#0F7A5A;
+  --dh-brand-100:#E4F1EB;
+  --dh-ok-600:#127A4B;
+  --dh-ok-100:#E3F2E9;
+  --dh-err-600:#B3392E;
+  --dh-err-100:#FAE8E6;
+  --dh-streak-600:#C2760C;
+  --dh-streak-100:#FBEFDC;
+
+  /* ================= ANLAMLI TAKMA ADLAR (acik mod) ================= */
+  --dh-bg:            var(--dh-ink-050);
+  --dh-yuzey:         var(--dh-ink-000);
+  --dh-yuzey-2:       var(--dh-ink-100);
+  --dh-cizgi:         var(--dh-ink-200);
+  --dh-cizgi-kuvvet:  var(--dh-ink-400);
+
+  --dh-text:          var(--dh-ink-900);
+  --dh-text-2:        var(--dh-ink-500);
+  --dh-text-3:        var(--dh-ink-400);
+  --dh-text-ters:     var(--dh-ink-000);
+
+  --dh-marka:         var(--dh-brand-600);
+  --dh-marka-koyu:    var(--dh-brand-700);
+  --dh-marka-zemin:   var(--dh-brand-100);
+  --dh-marka-metin:   var(--dh-brand-700);
+
+  --dh-ok:            var(--dh-ok-600);
+  --dh-ok-zemin:      var(--dh-ok-100);
+  --dh-err:           var(--dh-err-600);
+  --dh-err-zemin:     var(--dh-err-100);
+  --dh-seri:          var(--dh-streak-600);
+  --dh-seri-zemin:    var(--dh-streak-100);
+
+  /* dolu olmayan ilerleme yuvasi */
+  --dh-bos:           var(--dh-ink-200);
+
+  /* ================= TIPOGRAFI ================= */
+  /* Turkce aksanli karakterler (i s g c o u I) tam kapsanmali. */
+  --dh-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --dh-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* tek olcek — baska punto kullanilmaz */
+  --dh-fs-ipucu:  12px;
+  --dh-fs-etiket: 13px;
+  --dh-fs-kontrol:14px;   /* buton, plan satiri, koc sozu */
+  --dh-fs-govde:  16px;
+  --dh-fs-baslik: 20px;
+  --dh-fs-cumle:  28px;
+  --dh-fs-dev:    36px;
+
+  /* iki agirlik — 600/700 kullanilmaz */
+  --dh-fw-normal: 400;
+  --dh-fw-orta:   500;
+
+  --dh-lh-siki:  1.25;
+  --dh-lh-normal:1.5;
+  --dh-lh-genis: 1.7;
+
+  /* ================= BICIM ================= */
+  /* dort deger — baska yaricap yok */
+  --dh-r-mini:    3px;    /* tugla, ilerleme cubugu, egri sutunu */
+  --dh-r-kontrol: 8px;
+  --dh-r-kart:    12px;
+  --dh-r-cip:     999px;
+
+  --dh-bd: 0.5px solid var(--dh-cizgi);
+  --dh-bd-kuvvet: 0.5px solid var(--dh-cizgi-kuvvet);
+
+  /* ================= BOSLUK ================= */
+  --dh-b-1: 4px;
+  --dh-b-2: 8px;
+  --dh-b-3: 12px;
+  --dh-b-4: 16px;
+  --dh-b-5: 24px;
+  --dh-b-6: 32px;
+  --dh-b-7: 48px;
+
+  /* ================= HAREKET ================= */
+  /* tek egri, uc sure */
+  --dh-egri: cubic-bezier(0.2, 0, 0, 1);
+  --dh-sure-geri:  120ms;   /* dokunma geri bildirimi */
+  --dh-sure-gecis: 200ms;   /* durum gecisi */
+  --dh-sure-giris: 320ms;   /* ekrana giris */
+
+  /* avatar motoru bunlari okur */
+  --dh-avatar-capraz: 60ms; /* viseme kareleri arasi capraz gecis */
+  --dh-avatar-nefes:  3200ms;
+
+  /* ================= OLCU ================= */
+  --dh-kolon: 480px;        /* tek kolon icerik genisligi */
+  --dh-dokunma: 56px;       /* asgari dokunma hedefi */
+}
+
+/* ---- koyu mod: sistem tercihi ---- */
+@media (prefers-color-scheme: dark){
+  :root:not([data-dh-tema="acik"]){
+    --dh-bg:            #0C1013;
+    --dh-yuzey:         #14191D;
+    --dh-yuzey-2:       #1D2429;
+    --dh-cizgi:         #2B333A;
+    --dh-cizgi-kuvvet:  #47525A;
+
+    --dh-text:          #EEF2F4;
+    --dh-text-2:        #A6B0B8;
+    --dh-text-3:        #6F7A82;
+    --dh-text-ters:     #0C1013;
+
+    --dh-marka:         #2E9E77;
+    --dh-marka-koyu:    #46B98F;
+    --dh-marka-zemin:   #122A22;
+    --dh-marka-metin:   #6FCFA8;
+
+    --dh-ok:            #3FA96F;
+    --dh-ok-zemin:      #12281C;
+    --dh-err:           #E0685A;
+    --dh-err-zemin:     #2C1614;
+    --dh-seri:          #E0A040;
+    --dh-seri-zemin:    #2C2113;
+
+    --dh-bos:           #2B333A;
+  }
+}
+
+/* ---- koyu mod: kullanici secimi (sistemi ezer) ---- */
+:root[data-dh-tema="koyu"]{
+  --dh-bg:            #0C1013;
+  --dh-yuzey:         #14191D;
+  --dh-yuzey-2:       #1D2429;
+  --dh-cizgi:         #2B333A;
+  --dh-cizgi-kuvvet:  #47525A;
+
+  --dh-text:          #EEF2F4;
+  --dh-text-2:        #A6B0B8;
+  --dh-text-3:        #6F7A82;
+  --dh-text-ters:     #0C1013;
+
+  --dh-marka:         #2E9E77;
+  --dh-marka-koyu:    #46B98F;
+  --dh-marka-zemin:   #122A22;
+  --dh-marka-metin:   #6FCFA8;
+
+  --dh-ok:            #3FA96F;
+  --dh-ok-zemin:      #12281C;
+  --dh-err:           #E0685A;
+  --dh-err-zemin:     #2C1614;
+  --dh-seri:          #E0A040;
+  --dh-seri-zemin:    #2C2113;
+
+  --dh-bos:           #2B333A;
+}
+
+/* ================= TABAN ================= */
+*,*::before,*::after{ box-sizing:border-box; }
+
+html{
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+
+body{
+  margin:0;
+  background:var(--dh-bg);
+  color:var(--dh-text);
+  font-family:var(--dh-font);
+  font-size:var(--dh-fs-govde);
+  font-weight:var(--dh-fw-normal);
+  line-height:var(--dh-lh-normal);
+  -webkit-font-smoothing:antialiased;
+}
+
+/* Erisilebilirlik: eski sayfalardaki maximum-scale=1 yakinlastirmayi
+   kapatiyordu. Yeni sayfalarda viewport meta'si
+   "width=device-width, initial-scale=1" olmali; maximum-scale YAZILMAZ. */
+
+h1,h2,h3{ margin:0; font-weight:var(--dh-fw-orta); line-height:var(--dh-lh-siki); }
+h1{ font-size:var(--dh-fs-baslik); }
+h2{ font-size:var(--dh-fs-govde); }
+h3{ font-size:var(--dh-fs-etiket); }
+p{ margin:0 0 var(--dh-b-3); }
+
+a{ color:var(--dh-marka-metin); text-decoration:none; }
+
+button,input,select,textarea{ font:inherit; color:inherit; }
+
+:focus-visible{
+  outline:2px solid var(--dh-marka);
+  outline-offset:2px;
+  border-radius:var(--dh-r-kontrol);
+}
+
+/* ekran okuyucu */
+.dh-gizli{
+  position:absolute; width:1px; height:1px;
+  padding:0; margin:-1px; overflow:hidden;
+  clip:rect(0 0 0 0); white-space:nowrap; border:0;
+}
+
+/* hareket azaltma — tum animasyon ve gecisler kisilir */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
+    scroll-behavior:auto !important;
+  }
+}
