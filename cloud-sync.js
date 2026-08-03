@@ -35,7 +35,8 @@
   /* "dh-koc-" → günlük koç planı, tamamlanan adımlar, gün epoch'u ve hedef.
      Bunlar cihaza özeldi; telefonda yapılan çalışma bilgisayarda görünmüyordu.
      Artık senkrona dahil (birleştirme kuralları için mergeKoc'a bak). */
-  var LS_PREFIXES = ["sm:", "mas:", "ev:", "modscore:", "gramprof:", "story:", "dh-koc-"];
+  var LS_PREFIXES = ["sm:", "mas:", "ev:", "modscore:", "gramprof:", "story:", "dh-koc-",
+                      "dh-modul-"];   /* kullanici uretimi moduller tum cihazlara gitsin */
   var MAX_VAL = 200000;      // alan başına üst sınır (Firestore alan limiti 1MB)
   var TRACKER = "dh-study-tracker-v1";
   var MIRROR  = "dh-progress-mirror-v1";

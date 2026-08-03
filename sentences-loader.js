@@ -138,6 +138,16 @@
         chunks.forEach(function (arr) {
           arr.forEach(function (s) { if (want[String(s.id)]) out[String(s.id)] = s; });
         });
+        /* KULLANICI MODULLERI (dh-modul.js) — resmi veride bulunmayan
+           uretilmis cumleler de cozulsun. Olmadan tekrar.html bu
+           cumlelerin metnini bulamayip ekranda kimlik gosteriyordu.
+           Resmi kayit varsa o kazanir; uretilen yalnizca bosluk doldurur. */
+        try{
+          if (window.DHModul && DHModul.cumleMap){
+            var kul = DHModul.cumleMap();
+            for (var kid in kul){ if (want[kid] && !out[kid]) out[kid] = kul[kid]; }
+          }
+        }catch(e){}
         return out;
       });
     });
