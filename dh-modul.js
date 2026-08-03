@@ -384,20 +384,178 @@
   }
 
   /* ============================================================
-     4) DEPO
-     ============================================================ */
+     4) DEPO — IndexedDB (sentence-mode / kv)
+     ============================================================
+     NEDEN INDEXEDDB
+     Moduller onceden localStorage'daydi. Iki sorunu vardi:
+       1. KAPASITE. localStorage kaynak basina ~5MB ve bu sinir TUM
+          uygulamayla paylasiliyor (ilerleme, koc plani, hata defteri...).
+          Bir modul ~20KB; birkac dusuye modul sinira dayanir.
+       2. SESSIZ KAYIP. Sinir asilinca setItem exception atar; eski
+          yaz() bunu yutup false donuyordu, kullanici hicbir sey
+          gormeden modulunu kaybedebilirdi.
+     IndexedDB'de pratik sinir yuzlerce MB ve uygulama zaten bu
+     veritabanini kullaniyor (ilerleme orada). Bulut senkronu da
+     kv deposunu "smv:" onekiyle tasiyor, yani moduller senkronda kalir.
+
+     OKUMA NEDEN HALA SENKRON
+     liste()/getir()/cumleMap() cagiranlarin hepsi senkron. IndexedDB
+     asenkron oldugu icin acilista tum "dh-modul-" anahtarlari BELLEGE
+     okunur; okumalar bu aynadan yapilir, yazmalar hem aynayi hem
+     IDB'yi gunceller. Cagiranin tek yapmasi gereken ilk okumadan once
+     DHModul.hazir() sozunu beklemek.
+
+     Anahtar isimleri localStorage donemiyle AYNI birakildi
+     ("dh-modul-dizin", "dh-modul-<id>"); boylece bulut senkronundaki
+     birlestirme kurallari ve tum cagiranlar aynen calisiyor.
+  */
+  var DB_AD = "sentence-mode", DEPO = "kv";
+
+  var _ayna = null;      /* {anahtar: deger} — bellekteki kopya */
+  var _hazir = null;     /* yukleme sozu */
+  var _kuyruk = Promise.resolve();   /* yazmalar sirayla */
+
+  function idbAc() {
+    return new Promise(function (res) {
+      try {
+        if (typeof indexedDB === "undefined") return res(null);
+        var r = indexedDB.open(DB_AD);
+        r.onerror = function () { res(null); };
+        r.onsuccess = function () {
+          var db = r.result;
+          if (db.objectStoreNames.contains(DEPO)) return res(db);
+          /* Depo yoksa surum yukselterek olustur. Uygulama veritabanini
+             acik tutuyorsa onblocked gelir; o durumda sessizce vazgecip
+             null doneriz, cagiran bellek aynasiyla calismaya devam eder. */
+          var v = db.version + 1;
+          db.close();
+          var r2 = indexedDB.open(DB_AD, v);
+          r2.onupgradeneeded = function () {
+            try { r2.result.createObjectStore(DEPO); } catch (e) {}
+          };
+          r2.onsuccess = function () { res(r2.result); };
+          r2.onerror = function () { res(null); };
+          r2.onblocked = function () { res(null); };
+        };
+      } catch (e) { res(null); }
+    });
+  }
+
+  /* "dh-modul-" ile baslayan her anahtari okur */
+  function idbHepsi() {
+    return idbAc().then(function (db) {
+      if (!db) return {};
+      return new Promise(function (res) {
+        var out = {};
+        try {
+          var st = db.transaction(DEPO, "readonly").objectStore(DEPO);
+          var req = st.openCursor();
+          req.onsuccess = function (e) {
+            var c = e.target.result;
+            if (c) {
+              var k = String(c.key);
+              if (k.indexOf(ONEK) === 0) out[k] = c.value;
+              c.continue();
+            } else { db.close(); res(out); }
+          };
+          req.onerror = function () { try { db.close(); } catch (_) {} res({}); };
+        } catch (e) { try { db.close(); } catch (_) {} res({}); }
+      });
+    });
+  }
+
+  function idbYaz(k, v) {
+    return idbAc().then(function (db) {
+      if (!db) return false;
+      return new Promise(function (res) {
+        try {
+          var tx = db.transaction(DEPO, "readwrite");
+          if (v === null) tx.objectStore(DEPO)["delete"](k);
+          else tx.objectStore(DEPO).put(v, k);
+          tx.oncomplete = function () { db.close(); res(true); };
+          tx.onerror = function () { try { db.close(); } catch (_) {} res(false); };
+          tx.onabort = function () { try { db.close(); } catch (_) {} res(false); };
+        } catch (e) { try { db.close(); } catch (_) {} res(false); }
+      });
+    });
+  }
+
+  /* Eski localStorage kayitlarini IDB'ye tasir, sonra temizler.
+     Tasima BASARILI olmadan localStorage silinmez. */
+  function lsGoc(ayna) {
+    var tasinacak = [], i, k;
+    try {
+      for (i = 0; i < localStorage.length; i++) {
+        k = localStorage.key(i);
+        if (k && k.indexOf(ONEK) === 0) tasinacak.push(k);
+      }
+    } catch (e) { return Promise.resolve(0); }
+    if (!tasinacak.length) return Promise.resolve(0);
+
+    var isler = [];
+    tasinacak.forEach(function (anahtar) {
+      var deger;
+      try { deger = JSON.parse(localStorage.getItem(anahtar)); } catch (e) { return; }
+      if (deger == null) return;
+      /* IDB'de zaten varsa oradaki daha guncel sayilir */
+      if (ayna[anahtar] !== undefined) {
+        try { localStorage.removeItem(anahtar); } catch (e) {}
+        return;
+      }
+      ayna[anahtar] = deger;
+      isler.push(idbYaz(anahtar, deger).then(function (ok) {
+        if (ok) { try { localStorage.removeItem(anahtar); } catch (e) {} }
+        return ok;
+      }));
+    });
+    return Promise.all(isler).then(function (r) {
+      var n = r.filter(Boolean).length;
+      if (n) { try { console.log("[dh] " + n + " modül anahtarı IndexedDB'ye taşındı"); } catch (e) {} }
+      return n;
+    });
+  }
+
+  function hazir() {
+    if (_hazir) return _hazir;
+    _hazir = idbHepsi().then(function (m) {
+      _ayna = m || {};
+      return lsGoc(_ayna);
+    }).then(function () {
+      try { gocEt(); } catch (e) {}       /* ad onarimi */
+      return true;
+    }).catch(function () {
+      _ayna = _ayna || {};
+      return false;
+    });
+    return _hazir;
+  }
+
   function oku(k, vars) {
+    if (_ayna && _ayna[k] !== undefined) return _ayna[k];
+    /* Ayna daha yuklenmediyse localStorage'a dus — goc sirasindaki
+       ilk okumalar ve cok eski cihazlar icin guvenlik agi. */
     try { var r = localStorage.getItem(k); return r ? JSON.parse(r) : vars; }
     catch (e) { return vars; }
   }
   function yaz(k, v) {
-    try { localStorage.setItem(k, JSON.stringify(v)); return true; }
-    catch (e) { return false; }
+    if (!_ayna) _ayna = {};
+    _ayna[k] = v;                                   /* okuma hemen dogru */
+    _kuyruk = _kuyruk.then(function () { return idbYaz(k, v); });
+    return true;
   }
+  function silAnahtar(k) {
+    if (_ayna) delete _ayna[k];
+    _kuyruk = _kuyruk.then(function () { return idbYaz(k, null); });
+  }
+  /* Yazmalarin diske indigini beklemek isteyen cagiranlar icin */
+  function yazmaBitti() { return _kuyruk; }
 
   function liste() { return oku(DIZIN, []) || []; }
 
   function getir(id) { return oku(ONEK + id, null); }
+
+  /* Silinen modul kimlikleri -> silinme zamani */
+  function mezarlar() { return oku(SILINEN, {}) || {}; }
 
   function kimlikUret(alan) {
     var kod = String(alan || "USR").toLocaleUpperCase("tr")
@@ -500,7 +658,7 @@
   }
 
   function sil(id) {
-    try { localStorage.removeItem(ONEK + id); } catch (e) {}
+    silAnahtar(ONEK + id);
     yaz(DIZIN, liste().filter(function (x) { return x.id !== id; }));
 
     /* MEZAR TASI
@@ -540,17 +698,19 @@
     sadeceTekrarMi: sadeceTekrarMi,
     liste: liste,
     getir: getir,
+    mezarlar: mezarlar,
     kaydet: kaydet,
     adUret: adUret,
     gocEt: gocEt,
     sil: sil,
     cumleMap: cumleMap,
     kimlikUret: kimlikUret,
+    hazir: hazir,
+    yazmaBitti: yazmaBitti,
     _ONEK: ONEK
   };
 
-  /* Goc yuklenirken calisir. dh-modul.js her zaman dh-modul-enjekte.js'ten
-     ONCE yuklendigi icin, index-app verisine eklenen cumleler daima
-     guncel modul adini tasir. */
-  try { gocEt(); } catch (e) {}
+  /* Yukleme hemen baslar; cagiranlar DHModul.hazir() sozunu bekler.
+     Ad onarimi (gocEt) yukleme bitince otomatik calisir. */
+  hazir();
 })(typeof window !== "undefined" ? window : globalThis);

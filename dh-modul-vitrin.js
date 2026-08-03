@@ -157,6 +157,10 @@
   }
 
   function baslat() {
+    /* Moduller IndexedDB'den geliyor: ilk cizimi ayna yuklenince yap. */
+    try {
+      if (global.DHModul && global.DHModul.hazir) global.DHModul.hazir().then(planla);
+    } catch (e) {}
     planla();
     try {
       var g = new MutationObserver(planla);

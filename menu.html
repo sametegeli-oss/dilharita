@@ -173,12 +173,12 @@
 <script src="./progress-engine.js?v=2"></script>
 <script src="./teacher-policy.js?v=3"></script>
 <script src="./mastery-engine.js?v=1"></script>
-<script src="./sentences-loader.js?v=1"></script>
+<script src="./sentences-loader.js?v=20"></script>
 <script src="./pwa-install.js"></script>
 <script src="./learning-error-system.js?v=2"></script>
 <script src="./study-tracker.js?v=1"></script>
 <script src="./streak-screen.js?v=1"></script>
-<script src="./cloud-sync.js?v=9"></script>
+<script src="./cloud-sync.js?v=20"></script>
 <script src="./notifications.js?v=1"></script>
 <script>
 /* ---- Bulutla senkronize et + Çıkış yap ---- */
@@ -531,7 +531,7 @@
 /* ================= SERVICE WORKER ================= */
 if("serviceWorker" in navigator){
   window.addEventListener("load", function(){
-    try{ navigator.serviceWorker.register("./sw.js?v=13", {scope:"./"}); }catch(e){}
+    try{ navigator.serviceWorker.register("./sw.js?v=16", {scope:"./"}); }catch(e){}
   });
 }
 </script>

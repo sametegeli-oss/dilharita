@@ -60,7 +60,15 @@
 
     if (!HEDEF.test(url)) return orijinalFetch(girdi, secenek);
 
-    return orijinalFetch(girdi, secenek).then(function (yanit) {
+    /* Moduller artik IndexedDB'de; okumadan once bellek aynasinin
+       yuklenmesini bekleriz. Istek ile yukleme paralel gider,
+       yani ek gecikme yok. */
+    var sozler = [
+      orijinalFetch(girdi, secenek),
+      (global.DHModul && global.DHModul.hazir) ? global.DHModul.hazir() : Promise.resolve()
+    ];
+    return Promise.all(sozler).then(function (ikili) {
+      var yanit = ikili[0];
       if (!yanit || !yanit.ok) return yanit;
 
       var ek = kullaniciCumleleri();

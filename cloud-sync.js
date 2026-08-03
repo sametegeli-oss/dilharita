@@ -119,10 +119,11 @@
     out.sort(function(a,b){ return (+b.tarih||0)-(+a.tarih||0); });
     return JSON.stringify(out);
   }
-  function mergeModul(key, localStr, remoteStr, uzakMezar){
+  function mergeModul(key, localStr, remoteStr, uzakMezar, yerelMezar){
     if(key==="dh-modul-silinen") return mergeModulMezar(localStr, remoteStr);
     if(key==="dh-modul-dizin"){
-      var mezar=mergeModulMezar(localStorage.getItem("dh-modul-silinen"), uzakMezar);
+      var ym=(yerelMezar!==undefined)?yerelMezar:localStorage.getItem("dh-modul-silinen");
+      var mezar=mergeModulMezar(ym, uzakMezar);
       return mergeModulDizin(localStr, remoteStr, mezar);
     }
     /* Kayit blogu: yereldeki varsa o kazanir — goc modul adlarini
@@ -435,10 +436,39 @@
         }catch(e){}
       }
 
+      /* KULLANICI MODULLERI — IndexedDB tarafi.
+         Moduller artik localStorage'da degil kv deposunda ("dh-modul-..."),
+         yani buraya "smv:dh-modul-..." olarak geliyorlar. Asagidaki
+         cloudNewer daligi bu anahtarlar icin YANLIS olurdu:
+           - bulut tazeyse dizini EZER  -> yeni modul kaybolur
+           - yerel tazeyse dizini ATAR  -> obur cihazin modulu gelmez
+         Ikisi de veri kaybi. Bu yuzden modul anahtarlari once
+         birlestirilir, sonra cloudNewer eleginin DISINDA tutulur. */
+      var kvVar=await kvReadAll();
+      var modulAnahtar={};
+      for(var mk in kvIncoming){
+        if(!kvIncoming.hasOwnProperty(mk)) continue;
+        if(mk.indexOf("smv:dh-modul-")!==0) continue;
+        modulAnahtar[mk]=1;
+        try{
+          kvIncoming[mk]=mergeModul(
+            mk.slice(4),
+            (kvVar[mk]!==undefined)?kvVar[mk]:null,
+            kvIncoming[mk],
+            kvIncoming["smv:dh-modul-silinen"],
+            (kvVar["smv:dh-modul-silinen"]!==undefined)?kvVar["smv:dh-modul-silinen"]:null
+          );
+        }catch(e){}
+      }
+
       if(!cloudNewer){
         // yerel daha taze: mevcut yerel kayıtların üzerine yazma, sadece eksikleri al
-        var have=await kvReadAll();
-        for(var hk in kvIncoming){ if(kvIncoming.hasOwnProperty(hk) && have[hk]!==undefined) delete kvIncoming[hk]; }
+        var have=kvVar;
+        for(var hk in kvIncoming){
+          if(!kvIncoming.hasOwnProperty(hk)) continue;
+          if(modulAnahtar[hk]) continue;                 /* moduller birlestirildi */
+          if(have[hk]!==undefined) delete kvIncoming[hk];
+        }
       }
       await kvWriteAll(kvIncoming);                 // modül ilerlemesi → IndexedDB (React okur)
       var addedErr=await errMerge(rd.errors||[]);   // hata defteri birleşir

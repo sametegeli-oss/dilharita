@@ -202,9 +202,9 @@
 </main>
 
 <script src="./auth-guard.js?v=1"></script>
-<script src="./sentences-loader.js?v=1"></script>
+<script src="./sentences-loader.js?v=20"></script>
 <script src="./profile.js?v=1"></script>
-<script src="./dh-modul.js?v=1"></script>
+<script src="./dh-modul.js?v=4"></script>
 <script>
 /* modullerim.html — KULLANICI MODÜLLERİ
    ================================================================
@@ -334,9 +334,9 @@
      turetilir. Kullanicidan istenen her alan bir karar yuku; bu ad
      zaten deterministik olarak uretilebiliyor. */
   function modulAdiUret(){
-    var kaynak = $("kaynak").value || "";
-    var kisa = kaynak.replace(/^[A-C][12]-M\d+\s*/, "").trim();
-    return (kisa ? kisa + " · " : "") + alanDegeri();
+    /* Ad, KAYNAK MODULUN TAM ADIYLA baslar (seviye kodu dahil) ve
+       ilgi alaniyla biter. Boylece koc seviyeyi adin basindan okur. */
+    return DHModul.adUret($("kaynak").value || "", alanDegeri());
   }
   function adGuncelle(){
     var o = $("adOnizle");
@@ -528,6 +528,8 @@
     durum.acikId = null;
     listeCiz();
     goster("ekranListe");
+    /* Silme diske insin — kullanici hemen sekmeyi kapatabilir */
+    if (M.yazmaBitti) M.yazmaBitti();
   };
 
   /* ══════════ GEZİNME ══════════ */
@@ -543,8 +545,9 @@
 
   /* ══════════ BAŞLAT ══════════ */
   seceneklerKur();
-  listeCiz();
   goster("ekranListe");
+  /* Moduller IndexedDB'de: listeyi ayna yuklenince ciz. */
+  if (M.hazir) M.hazir().then(listeCiz); else listeCiz();
 })();
 </script>
 <script src="./ux-boost.js?v=1"></script>

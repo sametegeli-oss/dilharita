@@ -19,21 +19,23 @@
      modulun adina cevrilip index-app.html'e yonlendirilir.
      ══════════════════════════════════════════════════════════════════ -->
 <link rel="stylesheet" href="./dh-tokens.css">
-<script src="./dh-modul.js?v=1"></script>
+<script src="./dh-modul.js?v=4"></script>
 <script>
 (function(){
-  var hedef = "./index.html";
-  try{
-    var id = new URLSearchParams(location.search).get("m") || "";
-    if (id && window.DHModul){
-      var m = DHModul.liste().filter(function(x){ return x.id === id; })[0];
-      if (m && m.ad) hedef = "./index-app.html?mod=" + encodeURIComponent(m.ad);
-      else hedef = "./modullerim.html";
-    } else {
-      hedef = "./modullerim.html";
-    }
-  }catch(e){ hedef = "./modullerim.html"; }
-  location.replace(hedef);
+  /* Moduller IndexedDB'de: kimlik->ad cevrimi icin ayna yuklenmeli. */
+  function git(){
+    var hedef = "./modullerim.html";
+    try{
+      var id = new URLSearchParams(location.search).get("m") || "";
+      if (id && window.DHModul){
+        var m = DHModul.liste().filter(function(x){ return x.id === id; })[0];
+        if (m && m.ad) hedef = "./index-app.html?mod=" + encodeURIComponent(m.ad);
+      }
+    }catch(e){}
+    location.replace(hedef);
+  }
+  if (window.DHModul && DHModul.hazir) DHModul.hazir().then(git, git);
+  else git();
 })();
 </script>
 </head>
