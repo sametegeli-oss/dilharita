@@ -217,6 +217,14 @@ button,input,select,textarea{ font:inherit; color:inherit; }
   border-radius:var(--dh-r-kontrol);
 }
 
+/* [hidden] ONCELIGI
+   Tarayicinin varsayilan [hidden]{display:none} kurali YAZAR duzeyindeki
+   her display kuralina yenilir. .dh-btn{display:inline-flex} gibi bir kural
+   varsa <button hidden> GORUNMEYE devam eder — "kaydedilemez" yazarken
+   kaydet dugmesinin gorunmesi tam olarak buydu. Bu yuzden [hidden] burada
+   yazar duzeyinde ve !important ile sabitlenir. */
+[hidden]{ display:none !important; }
+
 /* ekran okuyucu */
 .dh-gizli{
   position:absolute; width:1px; height:1px;

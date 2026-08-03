@@ -116,10 +116,7 @@
       </label>
     </div>
 
-    <label class="etiketli">
-      <span>Modül adı</span>
-      <input type="text" id="modulAd" placeholder="otomatik">
-    </label>
+    <p class="dh-ipucu" id="adOnizle" style="margin:0 0 4px"></p>
 
     <div class="dh-alt">
       <button class="dh-btn dh-btn--birincil dh-btn--tam" id="promptaGec">Promptu hazırla</button>
@@ -333,10 +330,17 @@
     return v;
   }
 
-  function adGuncelle(){
+  /* Modul adi KULLANICIYA SORULMAZ — kaynak modul ve ilgi alanindan
+     turetilir. Kullanicidan istenen her alan bir karar yuku; bu ad
+     zaten deterministik olarak uretilebiliyor. */
+  function modulAdiUret(){
     var kaynak = $("kaynak").value || "";
     var kisa = kaynak.replace(/^[A-C][12]-M\d+\s*/, "").trim();
-    $("modulAd").placeholder = (kisa ? kisa + " · " : "") + alanDegeri();
+    return (kisa ? kisa + " · " : "") + alanDegeri();
+  }
+  function adGuncelle(){
+    var o = $("adOnizle");
+    if (o) o.textContent = "Modül adı: " + modulAdiUret();
   }
   $("alanOzel").addEventListener("input", adGuncelle);
 
@@ -346,7 +350,7 @@
     var alan   = alanDegeri();
     var seviye = $("seviye").value;
     var adet   = Math.max(5, Math.min(30, parseInt($("adet").value,10) || 25));
-    var ad     = ($("modulAd").value || "").trim() || $("modulAd").placeholder;
+    var ad     = modulAdiUret();
     var onek   = M.kimlikUret(alan);
 
     durum.meta = {
@@ -397,21 +401,29 @@
 
   /* ══════════ ADIM 3: DOĞRULA ══════════ */
   $("dogrulaBtn").onclick = function(){
-    var ham = $("cevapKutu").value;
-    var kap = $("sonuc");
-    $("kaydetBtn").hidden = true;
-    durum.kayitlar = null;
-
-    var a = M.ayristir(ham);
+    var a = M.ayristir($("cevapKutu").value);
     if (!a.ok){
-      kap.innerHTML = '<div class="dh-geri dh-geri--err">' +
+      $("kaydetBtn").hidden = true;
+      durum.kayitlar = null;
+      $("sonuc").innerHTML = '<div class="dh-geri dh-geri--err">' +
         '<div class="dh-geri__baslik">Okunamadı</div>' +
         '<div class="dh-geri__aciklama">' + kacir(a.hata) + '</div></div>';
       return;
     }
+    raporCiz(a.kayitlar);
+  };
 
-    var r = M.dogrula(a.kayitlar, { adet: durum.meta && durum.meta.adet, seviye: durum.meta && durum.meta.seviye });
+  /* Dogrulama raporunu cizer. Otomatik duzeltmeden sonra da cagrilir. */
+  function raporCiz(kayitlar, not){
+    var kap = $("sonuc");
+    $("kaydetBtn").hidden = true;
+    durum.kayitlar = null;
+
+    var r = M.dogrula(kayitlar, { adet: durum.meta && durum.meta.adet, seviye: durum.meta && durum.meta.seviye });
+
     var h = "";
+    if (not) h += '<div class="dh-geri dh-geri--ok" style="margin-bottom:10px">' +
+                  '<div class="dh-geri__baslik">' + kacir(not) + '</div></div>';
 
     if (r.hatalar.length){
       h += '<div class="dh-geri dh-geri--err">' +
@@ -419,9 +431,15 @@
                 '<ul class="dh-geri__aciklama rapor">' +
                 r.hatalar.slice(0,20).map(function(x){ return "<li>" + kacir(x) + "</li>"; }).join("") +
                 '</ul></div>';
+      /* Tek sorun tekrar eden cumlelerse kullaniciyi Gemini'ye geri
+         gondermeye gerek yok — burada duzeltilebilir. */
+      if (M.sadeceTekrarMi(r.hatalar)){
+        h += '<button class="dh-btn dh-btn--ikincil dh-btn--tam" id="tekrarDuzelt" style="margin-top:10px">' +
+             'Tekrar edenleri çıkar ve yeniden dene</button>';
+      }
     } else {
       h += '<div class="dh-geri dh-geri--ok">' +
-                '<div class="dh-geri__baslik">' + a.kayitlar.length + ' cümle doğrulandı</div>' +
+                '<div class="dh-geri__baslik">' + kayitlar.length + ' cümle doğrulandı</div>' +
                 '<div class="dh-geri__aciklama">Zorunlu alanların hepsi dolu, tekrar eden cümle yok.</div></div>';
     }
 
@@ -435,12 +453,18 @@
 
     if (!r.hatalar.length){
       h += '<div class="dh-bolum-basligi" style="margin-top:16px">Önizleme</div>' +
-                '<div class="dh-kart onizle">' + onizleHtml(a.kayitlar) + '</div>';
-      durum.kayitlar = a.kayitlar;
+                '<div class="dh-kart onizle">' + onizleHtml(kayitlar) + '</div>';
+      durum.kayitlar = kayitlar;
       $("kaydetBtn").hidden = false;
     }
     kap.innerHTML = h;
-  };
+
+    var dz = $("tekrarDuzelt");
+    if (dz) dz.onclick = function(){
+      var s2 = M.tekrarlariAyikla(kayitlar);
+      raporCiz(s2.kayitlar, s2.atilan + " tekrar eden cümle çıkarıldı.");
+    };
+  }
 
   function onizleHtml(kayitlar){
     return kayitlar.slice(0,50).map(function(k){

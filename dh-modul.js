@@ -285,8 +285,18 @@
         var enAnahtar = String(k.en).toLowerCase().replace(/[^a-z ]/g, "").trim();
         if (gorulenEn[enAnahtar]) hatalar.push(n + "cümle tekrar ediyor: " + k.en);
         gorulenEn[enAnahtar] = 1;
-        /* Turkce harf iceren "ingilizce" cumle -> yanlis alan */
-        if (/[çğıöşüÇĞİÖŞÜ]/.test(k.en)) uyarilar.push(n + "en alanında Türkçe harf var: " + k.en);
+        /* Turkce harf iceren "ingilizce" cumle -> yanlis alan.
+           AMA ozel isimler mesru: "She is İpek." dogru bir cumledir.
+           Bu yuzden yalnizca KUCUK harfle baslayan kelimelerde Turkce
+           harf ararız; bir ozel isim buyuk harfle baslar. */
+        var kucukTr = String(k.en).split(/\s+/).some(function(kel){
+          var temiz = kel.replace(/[.,!?;:]/g, "");
+          if (!temiz) return false;
+          var ilk = temiz.charAt(0);
+          if (ilk === ilk.toLocaleUpperCase("tr") && ilk !== ilk.toLocaleLowerCase("tr")) return false;
+          return /[çğıöşüÇĞİÖŞÜ]/.test(temiz);
+        });
+        if (kucukTr) uyarilar.push(n + "en alanında Türkçe harf var: " + k.en);
       }
       if (k.id) {
         if (gorulenId[k.id]) hatalar.push(n + "id tekrar ediyor: " + k.id);
@@ -322,6 +332,35 @@
     });
 
     return { hatalar: hatalar, uyarilar: uyarilar };
+  }
+
+  /* TEKRAR AYIKLAMA
+     Uretimde ayni cumle iki kez cikabiliyor. Bu bir engelleyici hatadir
+     ama kullaniciyi Gemini'ye geri gondermek gereksiz: ilk gecen kalir,
+     sonrakiler atilir, order ve id yeniden numaralanir.
+     Doner: {kayitlar, atilan} */
+  function tekrarlariAyikla(kayitlar) {
+    var gorulen = {}, out = [], atilan = 0;
+    (kayitlar || []).forEach(function (k) {
+      var anahtar = String((k && k.en) || "").toLowerCase().replace(/[^a-z ]/g, "").trim();
+      if (!anahtar || gorulen[anahtar]) { atilan++; return; }
+      gorulen[anahtar] = 1;
+      out.push(k);
+    });
+    /* id onekini koru, sirayi yeniden kur */
+    out.forEach(function (k, i) {
+      k.order = i + 1;
+      var m = String(k.id || "").match(/^(.*-)(\d{3})$/);
+      if (m) k.id = m[1] + ("00" + (i + 1)).slice(-3);
+    });
+    return { kayitlar: out, atilan: atilan };
+  }
+
+  /* Yalnizca tekrar hatasi mi var? (otomatik duzeltme teklif etmek icin) */
+  function sadeceTekrarMi(hatalar) {
+    return hatalar.length > 0 && hatalar.every(function (h) {
+      return h.indexOf("tekrar ediyor") >= 0;
+    });
   }
 
   /* Eksik alanlari tamamlar, order'i sayiya cevirir, alan sirasini duzenler. */
@@ -411,6 +450,8 @@
     ayristir: ayristir,
     dogrula: dogrula,
     normalize: normalize,
+    tekrarlariAyikla: tekrarlariAyikla,
+    sadeceTekrarMi: sadeceTekrarMi,
     liste: liste,
     getir: getir,
     kaydet: kaydet,
