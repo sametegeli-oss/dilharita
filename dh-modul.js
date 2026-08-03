@@ -77,8 +77,12 @@
 
     var L = [];
 
-    L.push("Sen bir İngilizce öğretim materyali üreticisisin. Türkçe konuşan bir öğrenci için");
-    L.push("JSON biçiminde bir çalışma modülü hazırlayacaksın.");
+    L.push("Sen CEFR uzmanı, İngilizce öğretmeni ve corpus linguistisin. Türkçe konuşan bir");
+    L.push("öğrenci için GOLD STANDARD kalitede bir İngilizce çalışma modülü üreteceksin.");
+    L.push("");
+    L.push("Modül şunları desteklemeli: gerçek hayatta kullanılan İngilizce, Türk öğrencinin");
+    L.push("yaptığı hataların düzeltilmesi, telaffuz sistemi, aralıklı tekrar (SRS) ve");
+    L.push("senaryo tabanlı öğrenme.");
     L.push("");
     L.push("════════ GÖREV ════════");
     L.push("Aşağıdaki gramer yapısını KORUYARAK, konu bağlamını \"" + alan + "\" alanına taşı.");
@@ -133,6 +137,39 @@
     L.push("              İyi: \"person coding on computer\" · Kötü: \"knowledge\", \"being\"");
     L.push("");
 
+    L.push("════════ CEFR KELİME KURALI ════════");
+    var cefr = {
+      "A1": "Kelimelerin %95'i A1 olmalı. Zorunlu durumda az miktarda A2. B1 ve üstü YASAK.",
+      "A2": "A1+A2 ağırlıklı. Az miktarda B1 olabilir. B2 ve üstü yasak.",
+      "B1": "A1+A2+B1 ağırlıklı. Az miktarda B2 olabilir.",
+      "B2": "B1+B2 ağırlıklı. Doğal, akıcı yapılar.",
+      "C1": "Doğal ileri seviye İngilizce. Deyimsel kullanım serbest.",
+      "C2": "Ana dili düzeyinde, nüanslı İngilizce."
+    };
+    L.push(seviye + ": " + (cefr[seviye] || cefr.B1));
+    L.push("\"" + alan + "\" alanının teknik terimleri kullanılabilir — ama cümlenin KURULUŞU");
+    L.push(seviye + " seviyesinde kalmalı. Terim zor olabilir, dil bilgisi olmamalı.");
+    L.push("");
+
+    L.push("════════ PEDAGOJİK KURALLAR ════════");
+    L.push("Her cümle: tek hedef öğretmeli · tek ana yapı içermeli · doğal olmalı ·");
+    L.push("konuşma diline uygun olmalı · gerçek hayatta kullanılabilir olmalı.");
+    L.push("");
+    L.push("YASAK: yapay ders kitabı dili · robotik cümleler · gereksiz uzunluk ·");
+    L.push("aynı yapının anlamsız tekrarı · uydurma kelime · uydurma eşdizim.");
+    L.push("");
+
+    L.push("════════ TÜRK ÖĞRENCİ HATALARI ════════");
+    L.push("commonMistake alanını doldururken Türkçe dil bilgisinden kaynaklanan gerçek");
+    L.push("hataları hedefle. Türk öğrencinin sık yaptığı hatalar şunlardır:");
+    L.push("  I am agree · I am understand · discuss about · married with · listen music");
+    L.push("  depend to · good in · interested to · different than · explain me");
+    L.push("  enter to · return back · make sport · open the TV · close the light");
+    L.push("Bu modülün gramerine UYAN hataları seç; alakasız hata yazma.");
+    L.push("Tipik hata kaynakları: eksik be fiili, eksik artikel, yanlış edat,");
+    L.push("Türkçedeki karşılığın birebir çevrilmesi.");
+    L.push("");
+
     L.push("════════ KALİTE ŞARTLARI (uyulması zorunlu) ════════");
     L.push("1. Her cümle belirtilen gramer yapısını kullanmalı. Yapıyı değiştiren cümle YAZMA.");
     L.push("2. Kelime seviyesi " + seviye + " sınırında kalmalı. " + alan + " alanının teknik terimleri");
@@ -144,6 +181,9 @@
     L.push("6. imgQuery soyut kavram OLMAMALI; bir fotoğraf arama motorunda sonuç verecek somut sahne.");
     L.push("7. Uydurma kelime, uydurma deyim, var olmayan eşdizim YAZMA.");
     L.push("8. Cümleler birbirini takip eden bir bağlam oluşturmalı, rastgele dağılmamalı.");
+    L.push("9. ZORLUK ARTMALI: 1. cümle en kolay, son cümle en zor olacak şekilde sırala.");
+    L.push("   Basitten karmaşığa: önce çekirdek kalıp, sonra ek öğeler, sonra gerçek");
+    L.push("   hayat kullanımı. order alanı bu sıralamayı yansıtmalı.");
     L.push("");
 
     L.push("════════ GÖNDERMEDEN ÖNCE KENDİ KENDİNİ DENETLE ════════");
@@ -159,6 +199,9 @@
     L.push("  ☐ Her trPron Türk harfleriyle mi yazılmış (IPA sembolü içermiyor)?");
     L.push("  ☐ Her commonMistake ❌ ile mi bitiyor?");
     L.push("  ☐ Her aiExplain ve highlights TÜRKÇE mi?");
+    L.push("  ☐ Cümleler kolaydan zora doğru sıralanmış mı?");
+    L.push("  ☐ " + seviye + " seviyesinin üstünde kelime kaçmış mı?");
+    L.push("  ☐ commonMistake'ler gerçekten Türk öğrenci hatası mı (uydurma değil)?");
     L.push("  ☐ JSON geçerli mi? (tek tırnak yok, sondaki virgül yok, kaçış karakterleri doğru)");
     L.push("");
 

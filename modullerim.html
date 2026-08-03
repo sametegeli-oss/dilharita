@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F7A5A">
+<title>Modüllerim · Dil Harita</title>
+<link rel="stylesheet" href="./dh-tokens.css">
+<link rel="stylesheet" href="./dh-ui.css">
+<style>
+  .adim{ display:none; }
+  .adim--acik{ display:block; }
+  .kutu{
+    width:100%; min-height:150px; resize:vertical;
+    background:var(--dh-yuzey-2); color:var(--dh-text);
+    border:var(--dh-bd); border-radius:var(--dh-r-kontrol);
+    padding:var(--dh-b-3);
+    font:400 13px/1.5 var(--dh-font-mono);
+  }
+  .kutu--prompt{ min-height:220px; }
+  .rapor{ max-height:260px; overflow:auto; }
+  .rapor li{ margin-bottom:4px; }
+  .onizle{ max-height:340px; overflow:auto; }
+  .onizle__satir{
+    padding:var(--dh-b-3) 0; border-bottom:var(--dh-bd);
+  }
+  .onizle__satir:last-child{ border-bottom:0; }
+  .onizle__en{ font-size:var(--dh-fs-govde); font-weight:var(--dh-fw-orta); }
+  .onizle__tr{ font-size:var(--dh-fs-etiket); color:var(--dh-text-2); margin-top:2px; }
+  .onizle__meta{ font-size:var(--dh-fs-ipucu); color:var(--dh-text-3); margin-top:4px; }
+  .satir{ display:flex; gap:var(--dh-b-2); flex-wrap:wrap; }
+  .satir > *{ flex:1 1 150px; }
+  select, input[type=text], input[type=number]{
+    width:100%; background:var(--dh-yuzey-2); color:var(--dh-text);
+    border:var(--dh-bd); border-radius:var(--dh-r-kontrol);
+    padding:11px var(--dh-b-3); font-size:var(--dh-fs-kontrol);
+  }
+  .etiketli{ display:block; margin-bottom:var(--dh-b-3); }
+  .etiketli > span{
+    display:block; font-size:var(--dh-fs-ipucu);
+    color:var(--dh-text-3); margin-bottom:4px;
+  }
+</style>
+</head>
+<body>
+
+<main class="dh-sayfa">
+
+  <header class="dh-ust">
+    <div class="dh-ust__sol">
+      <a class="dh-ikon-btn" href="./menu.html" aria-label="Geri">←</a>
+      <h1>Modüllerim</h1>
+    </div>
+    <div class="dh-ust__sag">
+      <button class="dh-ikon-btn" id="yeniBtn" aria-label="Yeni modül üret">+</button>
+    </div>
+  </header>
+
+  <!-- ══════════ LİSTE ══════════ -->
+  <section id="ekranListe">
+    <p class="dh-etiket" style="margin:0 0 16px">
+      Çalıştığın gramerleri kendi ilgi alanında çalış. Modülü Gemini'ye ürettirir,
+      cevabı buraya yapıştırırsın.
+    </p>
+
+    <div class="dh-plan" id="liste"></div>
+
+    <div class="dh-kart dh-kart--sessiz" id="bosMesaj" hidden style="margin-top:12px">
+      <p class="dh-etiket" style="margin:0">
+        Henüz modülün yok. Sağ üstteki <b>+</b> ile ilk modülünü üret.
+      </p>
+    </div>
+
+    <div class="dh-alt">
+      <button class="dh-btn dh-btn--birincil dh-btn--tam" id="yeniBtn2">Yeni modül üret</button>
+    </div>
+  </section>
+
+  <!-- ══════════ ADIM 1: AYARLAR ══════════ -->
+  <section class="adim" id="adim1">
+    <div class="dh-noktalar" id="noktalar" role="progressbar"
+         aria-valuemin="1" aria-valuemax="3" aria-valuenow="1" aria-label="Üretim adımı">
+      <span class="dh-noktalar__bir dh-noktalar__bir--dolu"></span>
+      <span class="dh-noktalar__bir"></span>
+      <span class="dh-noktalar__bir"></span>
+    </div>
+
+    <h2 style="margin-bottom:4px">Neyi, hangi alanda çalışacaksın?</h2>
+    <p class="dh-etiket" style="margin:0 0 20px">
+      Gramer aynı kalır, kelime dünyası senin alanına taşınır.
+    </p>
+
+    <label class="etiketli">
+      <span>Kaynak modül — grameri buradan alınır</span>
+      <select id="kaynak"></select>
+    </label>
+
+    <label class="etiketli">
+      <span>İlgi alanı</span>
+      <select id="alanSec"></select>
+    </label>
+
+    <label class="etiketli" id="alanOzelSar" hidden>
+      <span>Kendi alanını yaz</span>
+      <input type="text" id="alanOzel" placeholder="örn. Diş hekimliği">
+    </label>
+
+    <div class="satir">
+      <label class="etiketli">
+        <span>Seviye</span>
+        <select id="seviye"></select>
+      </label>
+      <label class="etiketli">
+        <span>Cümle sayısı</span>
+        <input type="number" id="adet" value="25" min="5" max="30">
+      </label>
+    </div>
+
+    <label class="etiketli">
+      <span>Modül adı</span>
+      <input type="text" id="modulAd" placeholder="otomatik">
+    </label>
+
+    <div class="dh-alt">
+      <button class="dh-btn dh-btn--birincil dh-btn--tam" id="promptaGec">Promptu hazırla</button>
+      <button class="dh-btn dh-btn--sade dh-btn--tam" id="iptal1" style="margin-top:8px">Vazgeç</button>
+    </div>
+  </section>
+
+  <!-- ══════════ ADIM 2: PROMPT ══════════ -->
+  <section class="adim" id="adim2">
+    <div class="dh-noktalar" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="2">
+      <span class="dh-noktalar__bir dh-noktalar__bir--dolu"></span>
+      <span class="dh-noktalar__bir dh-noktalar__bir--dolu"></span>
+      <span class="dh-noktalar__bir"></span>
+    </div>
+
+    <h2 style="margin-bottom:4px">Promptu Gemini'ye yapıştır</h2>
+    <p class="dh-etiket" style="margin:0 0 16px">
+      Kopyala, Gemini'yi aç, yapıştır. Cevabın tamamını kopyalayıp bir sonraki adımda
+      buraya yapıştıracaksın.
+    </p>
+
+    <textarea class="kutu kutu--prompt" id="promptKutu" readonly aria-label="Üretim promptu"></textarea>
+
+    <div class="satir" style="margin-top:12px">
+      <button class="dh-btn dh-btn--birincil" id="kopyala">Promptu kopyala</button>
+      <a class="dh-btn dh-btn--ikincil" id="geminiAc" href="https://gemini.google.com/app" target="_blank" rel="noopener">
+        Gemini'yi aç
+      </a>
+    </div>
+    <p class="dh-ipucu" id="kopyaNot" style="margin:8px 0 0" aria-live="polite"></p>
+
+    <div class="dh-alt">
+      <button class="dh-btn dh-btn--birincil dh-btn--tam" id="yapistiraGec">Cevabı yapıştıracağım</button>
+      <button class="dh-btn dh-btn--sade dh-btn--tam" id="geri1" style="margin-top:8px">Geri</button>
+    </div>
+  </section>
+
+  <!-- ══════════ ADIM 3: YAPIŞTIR + DOĞRULA ══════════ -->
+  <section class="adim" id="adim3">
+    <div class="dh-noktalar" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="3">
+      <span class="dh-noktalar__bir dh-noktalar__bir--dolu"></span>
+      <span class="dh-noktalar__bir dh-noktalar__bir--dolu"></span>
+      <span class="dh-noktalar__bir dh-noktalar__bir--dolu"></span>
+    </div>
+
+    <h2 style="margin-bottom:4px">Gemini'nin cevabını yapıştır</h2>
+    <p class="dh-etiket" style="margin:0 0 16px">
+      Kod bloğuyla ya da açıklamayla gelmiş olması sorun değil, ayıklarım.
+    </p>
+
+    <textarea class="kutu" id="cevapKutu" placeholder="[ { &quot;id&quot;: ... } ]"
+              aria-label="Gemini cevabı"></textarea>
+
+    <div class="satir" style="margin-top:12px">
+      <button class="dh-btn dh-btn--birincil" id="dogrulaBtn">Doğrula</button>
+      <button class="dh-btn dh-btn--sade" id="temizle">Temizle</button>
+    </div>
+
+    <div id="sonuc" style="margin-top:16px" aria-live="polite"></div>
+
+    <div class="dh-alt">
+      <button class="dh-btn dh-btn--birincil dh-btn--tam" id="kaydetBtn" hidden>Modülü kaydet</button>
+      <button class="dh-btn dh-btn--sade dh-btn--tam" id="geri2" style="margin-top:8px">Geri</button>
+    </div>
+  </section>
+
+  <!-- ══════════ MODÜL DETAYI ══════════ -->
+  <section class="adim" id="adimDetay">
+    <h2 id="detayAd" style="margin-bottom:4px"></h2>
+    <p class="dh-etiket" id="detayAlt" style="margin:0 0 16px"></p>
+
+    <div class="dh-kart onizle" id="detayListe"></div>
+
+    <div class="dh-alt">
+      <a class="dh-btn dh-btn--birincil dh-btn--tam" id="calisBtn" href="#">Bu modülü çalış</a>
+      <button class="dh-btn dh-btn--sade dh-btn--tam" id="silBtn" style="margin-top:8px;color:var(--dh-err)">
+        Modülü sil
+      </button>
+      <button class="dh-btn dh-btn--sade dh-btn--tam" id="geriDetay" style="margin-top:4px">Listeye dön</button>
+    </div>
+  </section>
+
+</main>
+
+<script src="./auth-guard.js?v=1"></script>
+<script src="./sentences-loader.js?v=1"></script>
+<script src="./profile.js?v=1"></script>
+<script src="./dh-modul.js?v=1"></script>
+<script>
+/* modullerim.html — KULLANICI MODÜLLERİ
+   ================================================================
+   AKIŞ (API anahtarı YOK, tamamen elle)
+     1. Kaynak modül + ilgi alanı seç
+     2. Prompt üret -> kopyala -> Gemini'ye yapıştır
+     3. Gemini'nin cevabını buraya yapıştır -> doğrula -> önizle -> kaydet
+
+   Doğrulama dh-modul.js'te. İkinci bir yapay zeka geçişi olmadığı için
+   denetim bu tarafta yapılır: hatalar kaydı engeller, uyarılar engellemez
+   ama kullanıcıya gösterilir.
+
+   Kaydedilen modüller "dh-modul-" önekiyle saklanır; cloud-sync.js'in
+   LS_PREFIXES listesinde bu önek olduğu için tüm cihazlara senkronlanır.
+*/
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var M = window.DHModul;
+
+  var durum = { kayitlar:null, meta:null, acikId:null };
+  var MODULLER = [];   /* DHSent.index() modul listesi */
+
+  function kacir(s){
+    return String(s==null?"":s).replace(/[&<>"]/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c];
+    });
+  }
+
+  /* ---------- ekran gecisi ---------- */
+  var EKRANLAR = ["ekranListe","adim1","adim2","adim3","adimDetay"];
+  function goster(hangi){
+    EKRANLAR.forEach(function(e){
+      var el = $(e);
+      if (e === "ekranListe") el.hidden = (hangi !== e);
+      else el.classList.toggle("adim--acik", hangi === e);
+    });
+    window.scrollTo(0,0);
+  }
+
+  /* ══════════ LİSTE ══════════ */
+  function listeCiz(){
+    var d = M.liste();
+    var kap = $("liste");
+    kap.innerHTML = "";
+    $("bosMesaj").hidden = d.length > 0;
+
+    d.forEach(function(x){
+      var a = document.createElement("a");
+      a.href = "#";
+      a.className = "dh-plan-satir";
+      a.innerHTML =
+        '<div class="dh-plan-satir__ust">' +
+          '<span class="dh-plan-satir__ikon" aria-hidden="true">▤</span>' +
+          '<span class="dh-plan-satir__ad">' + kacir(x.ad) + '</span>' +
+          '<span class="dh-cip">' + kacir(x.level || "") + '</span>' +
+        '</div>' +
+        '<div class="dh-tugla__yazi" style="margin-top:6px">' +
+          x.n + ' cümle · ' + kacir(x.alan || "") +
+        '</div>';
+      a.onclick = function(e){ e.preventDefault(); detayAc(x.id); };
+      kap.appendChild(a);
+    });
+  }
+
+  /* ══════════ ADIM 1: AYARLAR ══════════ */
+  function seceneklerKur(){
+    /* seviye */
+    var sv = $("seviye");
+    M.SEVIYELER.forEach(function(s){
+      var o = document.createElement("option"); o.value = s; o.textContent = s; sv.appendChild(o);
+    });
+    try{
+      var lv = window.DHProfile && DHProfile.level && DHProfile.level();
+      if (lv) sv.value = lv;
+    }catch(e){}
+
+    /* ilgi alani */
+    var al = $("alanSec");
+    M.ALANLAR_HAZIR.forEach(function(s){
+      var o = document.createElement("option"); o.value = s; o.textContent = s; al.appendChild(o);
+    });
+    var ozel = document.createElement("option");
+    ozel.value = "__ozel"; ozel.textContent = "Başka bir alan…";
+    al.appendChild(ozel);
+    al.onchange = function(){
+      $("alanOzelSar").hidden = (al.value !== "__ozel");
+      adGuncelle();
+    };
+
+    /* kaynak modul */
+    var ks = $("kaynak");
+    var bekle = document.createElement("option");
+    bekle.textContent = "Modüller yükleniyor…"; ks.appendChild(bekle);
+
+    if (window.DHSent && DHSent.index){
+      DHSent.index().then(function(ix){
+        ks.innerHTML = "";
+        MODULLER = (ix && ix.modules) || [];
+        MODULLER.forEach(function(m){
+          var o = document.createElement("option");
+          o.value = m.mod;
+          o.textContent = m.mod;
+          ks.appendChild(o);
+        });
+        ks.onchange = function(){ seviyeyiEsle(); adGuncelle(); };
+        seviyeyiEsle(); adGuncelle();
+      }).catch(function(){
+        ks.innerHTML = '<option value="">(modül listesi yüklenemedi)</option>';
+      });
+    }
+  }
+
+  /* Kaynak modulun seviyesi secili seviyeyi belirlesin */
+  function seviyeyiEsle(){
+    var m = MODULLER.filter(function(x){ return x.mod === $("kaynak").value; })[0];
+    if (m && m.lvl) $("seviye").value = m.lvl;
+  }
+
+  function alanDegeri(){
+    var v = $("alanSec").value;
+    if (v === "__ozel") return ($("alanOzel").value || "").trim() || "Genel";
+    return v;
+  }
+
+  function adGuncelle(){
+    var kaynak = $("kaynak").value || "";
+    var kisa = kaynak.replace(/^[A-C][12]-M\d+\s*/, "").trim();
+    $("modulAd").placeholder = (kisa ? kisa + " · " : "") + alanDegeri();
+  }
+  $("alanOzel").addEventListener("input", adGuncelle);
+
+  /* ══════════ ADIM 2: PROMPT ══════════ */
+  function promptHazirla(){
+    var kaynak = $("kaynak").value || "";
+    var alan   = alanDegeri();
+    var seviye = $("seviye").value;
+    var adet   = Math.max(5, Math.min(30, parseInt($("adet").value,10) || 25));
+    var ad     = ($("modulAd").value || "").trim() || $("modulAd").placeholder;
+    var onek   = M.kimlikUret(alan);
+
+    durum.meta = {
+      id: onek, modulAd: ad, alan: alan, seviye: seviye,
+      kaynakModul: kaynak, adet: adet
+    };
+
+    /* Kaynak modulden 2 gercek kayit -> prompta bicim ornegi olarak girer.
+       Boylece Gemini semayi tarif okuyarak degil, GORREK. */
+    var ornekAl = (window.DHSent && DHSent.byIds && kaynak)
+      ? (function(){
+          var m = MODULLER.filter(function(x){ return x.mod === kaynak; })[0];
+          var ids = (m && m.ids) ? m.ids.slice(0,2) : [];
+          if (!ids.length) return Promise.resolve([]);
+          return DHSent.byIds(ids).then(function(h){
+            return ids.map(function(i){ return h[i]; }).filter(Boolean);
+          }).catch(function(){ return []; });
+        })()
+      : Promise.resolve([]);
+
+    ornekAl.then(function(ornekler){
+      var ilk = ornekler[0] || {};
+      var metin = M.promptUret({
+        alan: alan, seviye: seviye, kaynakModul: kaynak,
+        grammar: ilk.grammar || "", tense: ilk.tense || "Present Simple",
+        adet: adet, modulAd: ad, kimlikOnek: onek, ornekler: ornekler
+      });
+      $("promptKutu").value = metin;
+      goster("adim2");
+    });
+  }
+
+  $("kopyala").onclick = function(){
+    var k = $("promptKutu");
+    k.select(); k.setSelectionRange(0, 999999);
+    var ok = false;
+    try{ ok = document.execCommand("copy"); }catch(e){}
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(k.value).then(function(){
+        $("kopyaNot").textContent = "Kopyalandı. Gemini'ye yapıştır.";
+      }).catch(function(){
+        $("kopyaNot").textContent = ok ? "Kopyalandı." : "Kopyalanamadı — elle seçip kopyala.";
+      });
+    } else {
+      $("kopyaNot").textContent = ok ? "Kopyalandı." : "Kopyalanamadı — elle seçip kopyala.";
+    }
+  };
+
+  /* ══════════ ADIM 3: DOĞRULA ══════════ */
+  $("dogrulaBtn").onclick = function(){
+    var ham = $("cevapKutu").value;
+    var kap = $("sonuc");
+    $("kaydetBtn").hidden = true;
+    durum.kayitlar = null;
+
+    var a = M.ayristir(ham);
+    if (!a.ok){
+      kap.innerHTML = '<div class="dh-geri dh-geri--err">' +
+        '<div class="dh-geri__baslik">Okunamadı</div>' +
+        '<div class="dh-geri__aciklama">' + kacir(a.hata) + '</div></div>';
+      return;
+    }
+
+    var r = M.dogrula(a.kayitlar, { adet: durum.meta && durum.meta.adet, seviye: durum.meta && durum.meta.seviye });
+    var h = "";
+
+    if (r.hatalar.length){
+      h += '<div class="dh-geri dh-geri--err">' +
+                '<div class="dh-geri__baslik">' + r.hatalar.length + ' hata — kaydedilemez</div>' +
+                '<ul class="dh-geri__aciklama rapor">' +
+                r.hatalar.slice(0,20).map(function(x){ return "<li>" + kacir(x) + "</li>"; }).join("") +
+                '</ul></div>';
+    } else {
+      h += '<div class="dh-geri dh-geri--ok">' +
+                '<div class="dh-geri__baslik">' + a.kayitlar.length + ' cümle doğrulandı</div>' +
+                '<div class="dh-geri__aciklama">Zorunlu alanların hepsi dolu, tekrar eden cümle yok.</div></div>';
+    }
+
+    if (r.uyarilar.length){
+      h += '<div class="dh-kart dh-kart--sessiz" style="margin-top:10px">' +
+                '<div class="dh-bolum-basligi">' + r.uyarilar.length + ' uyarı — kaydı engellemez</div>' +
+                '<ul class="dh-etiket rapor" style="margin:0;padding-left:18px">' +
+                r.uyarilar.slice(0,20).map(function(x){ return "<li>" + kacir(x) + "</li>"; }).join("") +
+                '</ul></div>';
+    }
+
+    if (!r.hatalar.length){
+      h += '<div class="dh-bolum-basligi" style="margin-top:16px">Önizleme</div>' +
+                '<div class="dh-kart onizle">' + onizleHtml(a.kayitlar) + '</div>';
+      durum.kayitlar = a.kayitlar;
+      $("kaydetBtn").hidden = false;
+    }
+    kap.innerHTML = h;
+  };
+
+  function onizleHtml(kayitlar){
+    return kayitlar.slice(0,50).map(function(k){
+      return '<div class="onizle__satir">' +
+        '<div class="onizle__en">' + kacir(k.en) + '</div>' +
+        '<div class="onizle__tr">' + kacir(k.tr) + '</div>' +
+        '<div class="onizle__meta">' + kacir(k.ipa) + " · " + kacir(k.trPron) + '</div>' +
+        '<div class="onizle__meta">' + kacir(k.commonMistake) + '</div>' +
+        '<div class="onizle__meta">resim: ' + kacir(k.imgQuery) + '</div>' +
+      '</div>';
+    }).join("");
+  }
+
+  $("temizle").onclick = function(){
+    $("cevapKutu").value = "";
+    $("sonuc").innerHTML = "";
+    $("kaydetBtn").hidden = true;
+    durum.kayitlar = null;
+  };
+
+  $("kaydetBtn").onclick = function(){
+    if (!durum.kayitlar) return;
+    var r = M.kaydet(durum.kayitlar, durum.meta);
+    if (!r.ok){
+      $("sonuc").innerHTML = '<div class="dh-geri dh-geri--err">' +
+        '<div class="dh-geri__baslik">Kaydedilemedi</div>' +
+        '<div class="dh-geri__aciklama">' + kacir(r.hata) + '</div></div>';
+      return;
+    }
+    durum.kayitlar = null;
+    $("cevapKutu").value = "";
+    $("sonuc").innerHTML = "";
+    listeCiz();
+    detayAc(r.id);
+  };
+
+  /* ══════════ DETAY ══════════ */
+  function detayAc(id){
+    var kayitlar = M.getir(id) || [];
+    var meta = M.liste().filter(function(x){ return x.id === id; })[0] || {};
+    durum.acikId = id;
+
+    $("detayAd").textContent = meta.ad || "Modül";
+    $("detayAlt").textContent =
+      kayitlar.length + " cümle · " + (meta.level || "") +
+      (meta.alan ? " · " + meta.alan : "") +
+      (meta.kaynakModul ? " · kaynak: " + meta.kaynakModul : "");
+    $("detayListe").innerHTML = onizleHtml(kayitlar);
+    $("calisBtn").href = "./modul-calis.html?m=" + encodeURIComponent(id);
+    goster("adimDetay");
+  }
+
+  $("silBtn").onclick = function(){
+    if (!durum.acikId) return;
+    if (!confirm("Bu modül silinsin mi? Cümleler ve ilerlemesi kaybolur.")) return;
+    M.sil(durum.acikId);
+    durum.acikId = null;
+    listeCiz();
+    goster("ekranListe");
+  };
+
+  /* ══════════ GEZİNME ══════════ */
+  function yeniAc(){ goster("adim1"); adGuncelle(); }
+  $("yeniBtn").onclick  = yeniAc;
+  $("yeniBtn2").onclick = yeniAc;
+  $("iptal1").onclick   = function(){ goster("ekranListe"); };
+  $("promptaGec").onclick   = promptHazirla;
+  $("geri1").onclick        = function(){ goster("adim1"); };
+  $("yapistiraGec").onclick = function(){ goster("adim3"); };
+  $("geri2").onclick        = function(){ goster("adim2"); };
+  $("geriDetay").onclick    = function(){ goster("ekranListe"); };
+
+  /* ══════════ BAŞLAT ══════════ */
+  seceneklerKur();
+  listeCiz();
+  goster("ekranListe");
+})();
+</script>
+<script src="./ux-boost.js?v=1"></script>
+</body>
+</html>
