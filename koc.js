@@ -58,6 +58,11 @@
       for(;;){ if((tr.days||{})[d.toISOString().slice(0,10)]){st++;d.setDate(d.getDate()-1);} else break; }
       if(st) p.push("Seri:"+st+" gün.");
     }catch(e){}
+    /* SEVIYE: AI'ya da soylenir ki onerdigi metin seviyeyle celismesin. */
+    try{
+      var __lv = (window.DHProfile && DHProfile.level) ? DHProfile.level() : null;
+      if(__lv) p.push("Seviye:"+__lv+".");
+    }catch(e){}
     var act=activityTrend30(); if(act.text) p.push(act.text);
     try{ var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, s1=0,w1=0,s2=0,w2=0;
       for(var k in m){ if(!m[k]) continue; var st0=m[k][0];
@@ -80,6 +85,11 @@
     }}catch(e){}
     window.__dhErrCount=errCount;
     var errT=await errorTrend30(); if(errT.text) p.push(errT.text);
+    try{
+      var __tp = window.__dhTelafi;
+      if(__tp) p.push("Alt seviye boslugu: "+__tp.seviye+" seviyesinde son 30 gunde "
+        +__tp.hataSayisi+" hata var; plana o seviyeden bir modul eklendi.");
+    }catch(e){}
 
     // ── SEVİYE ÖNERİSİ: AI'nin insafına değil, GERÇEK KANIT'a dayalı (kod-tabanlı) ──
     try{
@@ -121,7 +131,8 @@
           seviyeOner: window.__dhLevelSuggest,
           seviyeNeden: window.__dhLevelReason,
           hedef: window.__dhGoal,
-          hataSayisi: window.__dhErrCount
+          hataSayisi: window.__dhErrCount,
+          telafi: window.__dhTelafi
         });
         return;
       }catch(e){}
@@ -259,6 +270,18 @@
     });
   }
   async function pickNextModule(){
+    /* ── SEVIYE ──────────────────────────────────────────────────────
+       Bu fonksiyonun govdesi seviyeyi HIC okumuyordu: yeni kullanici
+       seviye testinde B1 cikmis olsa bile A1-M01'e yonlendiriliyordu.
+       DHProfile.nextModule() ayni oncelik sirasini kullanir ama
+       (a) kullanicinin seviyesinden baslar, (b) uc ilerleme deposunu
+       birden okur. Once ona sorulur; yoksa asagidaki eski govde calisir. */
+    try{
+      if(window.DHProfile && DHProfile.nextModule){
+        var __m = await DHProfile.nextModule();
+        if(__m) return __m;
+      }
+    }catch(e){}
     try{
       var mirror={}; try{ mirror=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; }catch(e){}
       // practice.html kendi SRS kaydını (srs:<id>) tutar, mirror'a hiç yazmaz — bu yüzden koç
@@ -352,6 +375,22 @@
       spine.push({label: __nextModule ? ("Yeni cümleler: "+__nextModule.replace(/^[A-C]\d-M\d+\s*/,"")) : "Yeni cümleler öğren",
                   href: __nextModule ? ("index-app.html?mod="+encodeURIComponent(__nextModule)) : "index-app.html"});
     }
+    /* ── TELAFI ADIMI ────────────────────────────────────────────────
+       Hata defteri kullanicinin seviyesinin ALTINDA yigilmissa, o
+       seviyeden bir modul plana eklenir. Yeni cumlelerden SONRA,
+       konusmadan ONCE gelir: gunun ana isi bozulmaz ama bosluk da
+       ertelenmez. Kullaniciya nedeni index.html'de soylenir. */
+    var __t = window.__dhTelafi;
+    /* Telafi modulu, "Yeni cumleler" adiminin modulu ile AYNI ise iki
+       ozdes adim olusur. O durumda telafi adimi eklenmez; zaten oraya
+       gidiliyor demektir. */
+    if(__t && __t.modul && __t.modul !== __nextModule){
+      spine.push({
+        label: "Eksik kalan " + __t.seviye + ": " + (__t.modulKisa || __t.modul),
+        href: "index-app.html?mod=" + encodeURIComponent(__t.modul),
+        telafi: true
+      });
+    }
     spine.push({label:"1 dakika konuş", href:"chat.html"});
     var hrefs=spine.map(function(s){return s.href;});
     var bonus=aiSteps.find(function(s){ return hrefs.indexOf(s.href)<0; });
@@ -360,6 +399,7 @@
     p.steps = bonus ? spine.concat([bonus]) : spine;
 
     if(!p.steps.length) return null;
+    p.telafi = window.__dhTelafi || null;   /* index.html kullaniciya bunu anlatir */
     p.focus=String(p.focus||"").slice(0,120); p.note=String(p.note||"").slice(0,140);
     p.why=String(p.why||"").slice(0,180);
     // stats artık burada değil — run() içinde HER açılışta canlı hesaplanır (bkz. liveStats)
@@ -468,6 +508,9 @@
     try{
       try{ window.__dhErrCount = window.LearningErrorDB&&LearningErrorDB.all ? (await LearningErrorDB.all()||[]).length : 0; }catch(e){ window.__dhErrCount=0; }
       __nextModule = await pickNextModule();
+      /* Geri kalmis seviyede hata yigilmasi var mi (dh-telafi.js) */
+      try{ window.__dhTelafi = (window.DHTelafi && DHTelafi.bul) ? await DHTelafi.bul() : null; }
+      catch(e){ window.__dhTelafi = null; }
       // seviye önerisi HER açılışta canlı hesaplanır (cache-hit dahil, profile() cache-hit'te çalışmaz)
       try{
         var _act=activityTrend30(), _errT=await errorTrend30();

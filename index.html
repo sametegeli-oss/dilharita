@@ -69,6 +69,13 @@
     </div>
   </a>
 
+  <!-- TELAFI: alt seviyede biriken hatalar icin eklenen adimin GEREKCESI -->
+  <div class="dh-kart dh-gir" id="telafiKart" hidden style="margin-bottom:12px">
+    <div class="dh-cip dh-cip--err" style="margin-bottom:8px" id="telafiRozet">Eksik kalan konu</div>
+    <div style="font-size:var(--dh-fs-kontrol);font-weight:var(--dh-fw-orta)" id="telafiBaslik"></div>
+    <div class="dh-etiket" id="telafiNeden" style="margin-top:4px"></div>
+  </div>
+
   <a class="dh-kart dh-kart--vurgu dh-gir" id="seviyeKart" href="./seviye-testi.html"
      style="display:none;margin-bottom:12px;text-decoration:none;color:inherit">
     <div class="dh-cip dh-cip--marka" style="margin-bottom:8px">Seviye</div>
@@ -118,6 +125,7 @@
 </main>
 
 <script src="./dh-plan.js?v=1"></script>
+<script src="./dh-telafi.js?v=1"></script>
 <script src="./dh-avatar.js"></script>
 <script>
 /* index.html — KOC EKRANI
@@ -237,18 +245,32 @@
     try{ if (window.DHPlan) d.defter = DHPlan.bugun(); }catch(e){}
     if (d.defter && d.defter.dinlenme) d.dinlenme = true;
 
-    d.adimToplam = 0; d.adimBiten = 0;
+    d.adimToplam = 0; d.adimBiten = 0; d.bitenler = [];
     if (d.plan && d.plan.steps){
       d.adimToplam = d.plan.steps.length;
+
+      /* dh-koc-steps-done SAYFA bazli, adim bazli degil. Plan ayni sayfaya
+         giden iki adim icerebilir ("Yeni cumleler" ve telafi adimi ikisi de
+         index-app.html). O durumda sayfa isareti yalnizca ILK adima sayilir;
+         sonraki adim gercek ilerlemeye (DHPlan defteri) bakmak zorunda.
+         Yoksa telafi adimi hic yapilmadan bitmis gorunuyordu. */
+      var sayfaKullanildi = {};
+
       d.plan.steps.forEach(function(s){
         var sayfa = String(s.href||"").split("?")[0];
-        /* Bir adim iki yoldan bitmis sayilir:
-             a) DHPlan defterinde yapilan >= hedef  (gercek ilerleme)
-             b) dh-koc-steps-done isaretli           (sayfa ziyareti, eski yol)
-           Ikisinin BIRLESIMI alinir ki eski davranis kaybolmasin. */
-        if (set[sayfa] || (sayfa === "chat.html" && d.sohbetVar)) { d.adimBiten++; return; }
-        var a = d.defter ? defterAdimi(d.defter, s.href) : null;
-        if (a && a.yapilan >= a.hedef) d.adimBiten++;
+        var bitti = false;
+
+        var isaret = !!set[sayfa] || (sayfa === "chat.html" && d.sohbetVar);
+        if (isaret && !sayfaKullanildi[sayfa]){
+          sayfaKullanildi[sayfa] = true;
+          bitti = true;
+        } else {
+          var a = d.defter ? defterAdimi(d.defter, s.href) : null;
+          if (a && a.hedef && a.yapilan >= a.hedef) bitti = true;
+        }
+
+        d.bitenler.push(bitti);
+        if (bitti) d.adimBiten++;
       });
     }
     return d;
@@ -326,10 +348,7 @@
   function kalanAdim(d){
     if (!d.plan || !d.plan.steps) return null;
     for (var i=0; i<d.plan.steps.length; i++){
-      var s = d.plan.steps[i];
-      var sayfa = String(s.href||"").split("?")[0];
-      var bitti = d.bitenSet[sayfa] || (sayfa === "chat.html" && d.sohbetVar);
-      if (!bitti) return s;
+      if (!(d.bitenler && d.bitenler[i])) return d.plan.steps[i];
     }
     return null;
   }
@@ -342,6 +361,12 @@
     var selam = a ? ("Merhaba " + a + ". ") : "";
 
     if (!d.calisti){
+      var t0 = plan && plan.telafi;
+      if (t0 && t0.modul){
+        return selam + t0.seviye + " seviyesinde " + t0.hataSayisi +
+          " hata birikmiş; bugün onu da kapatacağız. " +
+          String((plan && plan.focus) || "Başlayalım.");
+      }
       return selam + String((plan && plan.focus) || "Bugüne başlayalım.")
         + (plan && plan.note ? " " + plan.note : "");
     }
@@ -367,6 +392,14 @@
         (d.tekrarGun.hedef - d.tekrarGun.yapilan) + " tane kaldı.";
     }
     if (k){
+      /* Telafi adimi sirada ise SEBEBINI de soyle — sadece adini degil.
+         "Bunu da kullaniciya belirtsin" gereksinimi burada karsilaniyor. */
+      var tel = plan && plan.telafi;
+      if (k.telafi && tel){
+        return "Bugün " + y + " yaptın. Sırada " + tel.seviye + " eksiğin var — " +
+          "o seviyede " + tel.hataSayisi + " hata yapmışsın, " +
+          (tel.modulKisa || tel.modul) + " modülüyle kapatalım.";
+      }
       return "Bugün " + y + " yaptın. Sırada " +
         String(k.label||"").toLocaleLowerCase("tr") + " var.";
     }
@@ -414,7 +447,7 @@
   }
 
   /* ================= ADIM LISTESI ================= */
-  var ISARET = { tekrar:"↻", yeni:"+", sohbet:"◇", hata:"!", kelime:"▪" };
+  var ISARET = { tekrar:"↻", yeni:"+", sohbet:"◇", hata:"!", kelime:"▪", telafi:"↧" };
   function tipOf(href){
     var h = String(href||"");
     if (h.indexOf("tekrar") === 0) return "tekrar";
@@ -435,9 +468,10 @@
     kap.innerHTML = "";
     var aktifVar = false;
 
-    plan.steps.forEach(function(s){
-      var sayfa = String(s.href||"").split("?")[0];
-      var bitti = !!d.bitenSet[sayfa] || (sayfa === "chat.html" && d.sohbetVar);
+    plan.steps.forEach(function(s, si){
+      /* durum() adim bazli hesapladi; burada yeniden hesaplamiyoruz ki
+         ayni sayfaya giden iki adim ayni sonucu versin. */
+      var bitti = d.bitenler ? !!d.bitenler[si] : false;
       var aktif = !bitti && !aktifVar;
       if (aktif) aktifVar = true;
 
@@ -449,7 +483,7 @@
 
       var ic = '<div class="dh-plan-satir__ust">' +
           '<span class="dh-plan-satir__ikon" aria-hidden="true">' +
-            (bitti ? "✓" : (ISARET[tipOf(s.href)] || "·")) +
+            (bitti ? "✓" : (ISARET[s.telafi ? "telafi" : tipOf(s.href)] || "·")) +
           '</span>' +
           '<span class="dh-plan-satir__ad">' + kacir(s.label) + '</span>' +
         '</div>';
@@ -619,6 +653,22 @@
       $("kocNeden").hidden = false;
     } else {
       $("kocNeden").hidden = true;
+    }
+
+    /* TELAFI BILDIRIMI — kullaniciya NEDEN o adimin eklendigi soylenir */
+    var tel = (ctx && ctx.telafi) || (plan && plan.telafi) || null;
+    if (tel && tel.modul){
+      $("telafiRozet").textContent = tel.seviye + " eksiği";
+      $("telafiBaslik").textContent = "Plana " + tel.seviye + " modülü eklendi: " + (tel.modulKisa || tel.modul);
+      var turMetni = (tel.turler && tel.turler.length)
+        ? " En sık: " + tel.turler.join(", ") + "."
+        : "";
+      $("telafiNeden").textContent =
+        tel.seviye + " seviyesinde son 30 günde " + tel.hataSayisi +
+        " hata yaptın." + turMetni + " Üst seviyeye geçmeden bu boşluğu kapatalım.";
+      $("telafiKart").hidden = false;
+    } else {
+      $("telafiKart").hidden = true;
     }
 
     if (ctx && ctx.seviyeOner){
