@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v12";
+var SW_VERSION = "dh-sw-v13";
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -36,6 +36,7 @@ var SHELL = [
   "./onboarding-guard.js",
   "./dh-modul.js",
   "./dh-modul-enjekte.js",
+  "./dh-modul-vitrin.js",
   "./basla.html",
   "./data/sentences/index.json",
   "./data/sentences/examples.json",
