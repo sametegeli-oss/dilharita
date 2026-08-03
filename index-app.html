@@ -8,6 +8,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
 <title>Fotoğraflı Cümle Öğren · Dil Harita</title>
+<!-- KULLANICI MODULLERI: app.js'ten ONCE calismali.
+     app.js type="module" oldugu icin defer'lidir; asagidaki klasik
+     scriptler ondan once calisir ve fetch yamasini yerlestirir.
+     Yama, data/sentences.json yanitina kullanici cumlelerini ekler;
+     React uygulamasi onlari normal modul gibi listeler. -->
+<script src="./dh-modul.js?v=1"></script>
+<script src="./dh-modul-enjekte.js?v=1"></script>
 <script type="module" crossorigin src="./assets/app.js"></script>
 <link rel="stylesheet" crossorigin href="./assets/app.css">
 </head>

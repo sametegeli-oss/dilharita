@@ -3,373 +3,43 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0F7A5A">
 <title>Modül çalış · Dil Harita</title>
+<!-- ══════════════════════════════════════════════════════════════════
+     modul-calis.html EMEKLIYE AYRILDI
+     ------------------------------------------------------------------
+     Kullanici modulleri artik RESMI calisma ekraninda calisiliyor:
+     index-app.html. dh-modul-enjekte.js uretilen cumleleri o ekranin
+     verisine ekledigi icin modul orada normal bir modul gibi gorunur —
+     gorsel, kelime araclari, ogretmen, telaffuz hepsi calisir.
+
+     Iki ayri calisma ekrani tutmak, daha once bugun.html/index.html'de
+     yasadigimiz ikilige yol acardi.
+
+     Dosya SILINMEDI: ?m=<modul id> ile gelen eski baglantilar
+     modulun adina cevrilip index-app.html'e yonlendirilir.
+     ══════════════════════════════════════════════════════════════════ -->
 <link rel="stylesheet" href="./dh-tokens.css">
-<link rel="stylesheet" href="./dh-ui.css">
-<style>
-  .gorsel{
-    width:100%; aspect-ratio:16/10; object-fit:cover;
-    border-radius:var(--dh-r-kart); background:var(--dh-yuzey-2);
-    display:block; margin-bottom:var(--dh-b-4);
-  }
-  .gizli-cevap{ visibility:hidden; }
-  .kart-alt{ display:flex; flex-direction:column; gap:var(--dh-b-3); }
-  .satir3{ display:grid; grid-template-columns:repeat(3,1fr); gap:var(--dh-b-2); }
-  .satir2{ display:grid; grid-template-columns:repeat(2,1fr); gap:var(--dh-b-2); }
-  .detay dt{ font-size:var(--dh-fs-ipucu); color:var(--dh-text-3); margin-top:var(--dh-b-3); }
-  .detay dd{ margin:2px 0 0; font-size:var(--dh-fs-etiket); }
-  .detay{ margin:0; }
-</style>
-</head>
-<body>
-
-<main class="dh-sayfa">
-
-  <header class="dh-ust">
-    <div class="dh-ust__sol">
-      <a class="dh-ikon-btn" href="./modullerim.html" aria-label="Geri">←</a>
-      <h1 id="baslik">Modül</h1>
-    </div>
-    <div class="dh-ust__sag">
-      <button class="dh-ikon-btn" id="sesBtn" aria-label="Cümleyi dinle">◍</button>
-    </div>
-  </header>
-
-  <!-- ilerleme -->
-  <div class="dh-tugla">
-    <div class="dh-tugla__sira" id="tugla"></div>
-    <div class="dh-tugla__yazi" id="tuglaYazi"></div>
-  </div>
-
-  <!-- ══════════ ÇALIŞMA ══════════ -->
-  <section id="calisma">
-    <img class="gorsel" id="gorsel" alt="" hidden>
-
-    <div class="dh-bolum-basligi" id="ustEtiket">Türkçesi</div>
-    <p class="dh-ceviri" id="trMetin" style="font-size:var(--dh-fs-baslik);color:var(--dh-text)"></p>
-
-    <div id="cevapAlan" class="gizli-cevap">
-      <div class="dh-bolum-basligi" style="margin-top:var(--dh-b-4)">İngilizcesi</div>
-      <p class="dh-cumle" id="enMetin"></p>
-      <p class="dh-etiket" id="ipaMetin" style="margin:0"></p>
-      <p class="dh-etiket" id="pronMetin" style="margin:2px 0 0;color:var(--dh-seri)"></p>
-    </div>
-
-    <div class="dh-alt" id="altAlan">
-      <button class="dh-btn dh-btn--birincil dh-btn--tam" id="gosterBtn">Göster</button>
-
-      <div class="satir3" id="notlaAlan" hidden>
-        <button class="dh-btn dh-btn--ikincil" id="zorBtn">Zor</button>
-        <button class="dh-btn dh-btn--ikincil" id="ortaBtn">Normal</button>
-        <button class="dh-btn dh-btn--birincil" id="kolayBtn">Kolay</button>
-      </div>
-
-      <button class="dh-btn dh-btn--sade dh-btn--tam" id="detayBtn" style="margin-top:8px" hidden>
-        Ayrıntıyı göster
-      </button>
-    </div>
-
-    <!-- ayrıntı: modülün geri kalan alanları -->
-    <div class="dh-kart dh-kart--sessiz" id="detayKart" hidden style="margin-top:var(--dh-b-4)">
-      <dl class="detay">
-        <dt>Dikkat et</dt><dd id="dHigh"></dd>
-        <dt>Tipik hata</dt><dd id="dHata" style="color:var(--dh-err)"></dd>
-        <dt>Açıklama</dt><dd id="dAcik"></dd>
-        <dt>Eşdizimler</dt><dd id="dEsdiz"></dd>
-        <dt>Eş / zıt anlam</dt><dd id="dEsZit"></dd>
-        <dt>Gramer</dt><dd id="dGramer"></dd>
-        <dt>Bağlam</dt><dd id="dBaglam"></dd>
-      </dl>
-    </div>
-  </section>
-
-  <!-- ══════════ BİTİŞ ══════════ -->
-  <section id="bitis" hidden>
-    <div class="dh-kart" style="text-align:center">
-      <div class="dh-ufuk__deger" id="bitisSayi"></div>
-      <p class="dh-etiket" id="bitisNot" style="margin:8px 0 0"></p>
-    </div>
-    <div class="dh-alt">
-      <a class="dh-btn dh-btn--birincil dh-btn--tam" href="./index.html">Ana ekrana dön</a>
-      <button class="dh-btn dh-btn--sade dh-btn--tam" id="tekrarBtn" style="margin-top:8px">
-        Baştan çalış
-      </button>
-    </div>
-  </section>
-
-</main>
-
-<script src="./auth-guard.js?v=1"></script>
-<script src="./study-tracker.js?v=1"></script>
 <script src="./dh-modul.js?v=1"></script>
-<script src="./dh-plan.js?v=1"></script>
 <script>
-/* modul-calis.html — KULLANICI MODÜLÜNÜ ÇALIŞ
-   ================================================================
-   modullerim.html'de üretilip kaydedilen bir modülü çalıştırır.
-
-   ÖNEMLİ: notlama sonucu resmî modüllerle AYNI yere yazılır —
-   IndexedDB "sentence-mode" > kv > "srs:<id>". Böylece üretilen
-   cümleler tekrar.html'in aralıklı tekrar döngüsüne KENDİLİĞİNDEN
-   girer; ayrı bir tekrar sistemi kurmak gerekmez.
-
-   SM-2 adımı tekrar.html'deki srsStep ile birebir aynı biçimde
-   kayıt üretir (rep, ef, interval, due, last, lapses).
-
-   Görsel: kaydın imgQuery alanı Openverse → Wikipedia sırasıyla
-   çözülür. Her ikisi de anahtarsız ve ücretsiz.
-*/
 (function(){
-  "use strict";
-  var $ = function(id){ return document.getElementById(id); };
-  var GUN = 86400000;
-
-  var modulId = "";
-  try{ modulId = new URLSearchParams(location.search).get("m") || ""; }catch(e){}
-
-  var kayitlar = window.DHModul ? (DHModul.getir(modulId) || []) : [];
-  var meta = window.DHModul
-    ? (DHModul.liste().filter(function(x){ return x.id === modulId; })[0] || {})
-    : {};
-
-  var i = 0, acik = false, yapilan = 0;
-
-
-  /* ---------- IndexedDB (resmî modüllerle aynı depo) ---------- */
-  function kvAc(){
-    return new Promise(function(res){
-      try{
-        var r = indexedDB.open("sentence-mode", 1);
-        r.onupgradeneeded = function(){
-          try{ if(!r.result.objectStoreNames.contains("kv")) r.result.createObjectStore("kv"); }catch(e){}
-        };
-        r.onsuccess = function(){ res(r.result); };
-        r.onerror = function(){ res(null); };
-      }catch(e){ res(null); }
-    });
-  }
-  function kvGet(anahtar){
-    return kvAc().then(function(db){
-      if(!db) return null;
-      return new Promise(function(res){
-        try{
-          var q = db.transaction("kv","readonly").objectStore("kv").get(anahtar);
-          q.onsuccess = function(){ try{db.close();}catch(e){} res(q.result||null); };
-          q.onerror  = function(){ try{db.close();}catch(e){} res(null); };
-        }catch(e){ try{db.close();}catch(_){}
-          res(null); }
-      });
-    });
-  }
-  function kvPut(anahtar, deger){
-    return kvAc().then(function(db){
-      if(!db) return;
-      return new Promise(function(res){
-        try{
-          var tx = db.transaction("kv","readwrite");
-          tx.objectStore("kv").put(deger, anahtar);
-          tx.oncomplete = function(){ try{db.close();}catch(e){} res(); };
-          tx.onerror    = function(){ try{db.close();}catch(e){} res(); };
-        }catch(e){ try{db.close();}catch(_){}
-          res(); }
-      });
-    });
-  }
-
-  /* SM-2 — tekrar.html'deki srsStep ile aynı kayıt biçimi */
-  function srsAdim(n, zorMu, q){
-    n = (n && typeof n === "object") ? n : { rep:0, ef:2.5, interval:0, due:0, last:0 };
-    var t = Date.now();
-    if (zorMu){
-      n.rep = 0; n.interval = 0;
-      n.ef = Math.max(1.3, (n.ef||2.5) - 0.2);
-      n.lapses = (n.lapses||0) + 1;
+  var hedef = "./index.html";
+  try{
+    var id = new URLSearchParams(location.search).get("m") || "";
+    if (id && window.DHModul){
+      var m = DHModul.liste().filter(function(x){ return x.id === id; })[0];
+      if (m && m.ad) hedef = "./index-app.html?mod=" + encodeURIComponent(m.ad);
+      else hedef = "./modullerim.html";
     } else {
-      n.rep = (n.rep||0) + 1;
-      if (typeof q !== "number") q = 4;
-      n.ef = Math.max(1.3, Math.min(3.0, (n.ef||2.5) + (0.1 - (5-q)*(0.08 + (5-q)*0.02))));
-      if (n.rep === 1) n.interval = 1;
-      else if (n.rep === 2) n.interval = 4;
-      else n.interval = Math.round((n.interval||4) * n.ef);
+      hedef = "./modullerim.html";
     }
-    n.last = t;
-    n.due = t + n.interval * GUN;
-    return n;
-  }
-
-  /* ---------- görsel: anahtarsız kaynaklar ---------- */
-  var gorselOnbellek = {};
-  function gorselBul(sorgu){
-    if (!sorgu) return Promise.resolve(null);
-    if (gorselOnbellek[sorgu] !== undefined) return Promise.resolve(gorselOnbellek[sorgu]);
-
-    function openverse(){
-      return fetch("https://api.openverse.org/v1/images/?q=" + encodeURIComponent(sorgu) +
-                   "&page_size=1&mature=false", { headers:{ "Accept":"application/json" } })
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(j){ var h = j && j.results && j.results[0]; return h ? (h.thumbnail || h.url) : null; })
-        .catch(function(){ return null; });
-    }
-    function wikipedia(){
-      return fetch("https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*" +
-                   "&list=search&srsearch=" + encodeURIComponent(sorgu) + "&srlimit=1")
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(j){
-          var h = j && j.query && j.query.search && j.query.search[0];
-          if (!h) return null;
-          return fetch("https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*" +
-                       "&prop=pageimages&piprop=thumbnail&pithumbsize=600&pageids=" + h.pageid)
-            .then(function(r2){ return r2.ok ? r2.json() : null; })
-            .then(function(j2){
-              var p = j2 && j2.query && j2.query.pages && j2.query.pages[h.pageid];
-              return (p && p.thumbnail && p.thumbnail.source) || null;
-            });
-        })
-        .catch(function(){ return null; });
-    }
-
-    return openverse().then(function(u){ return u || wikipedia(); })
-      .then(function(u){ gorselOnbellek[sorgu] = u; return u; })
-      .catch(function(){ gorselOnbellek[sorgu] = null; return null; });
-  }
-
-  /* ---------- çizim ---------- */
-  function tuglaCiz(){
-    var t = "", n = kayitlar.length;
-    for (var x=0; x<n; x++){
-      t += '<span class="dh-tugla__bir' + (x < i ? " dh-tugla__bir--dolu" : "") + '"></span>';
-    }
-    $("tugla").innerHTML = t;
-    $("tuglaYazi").textContent = i + "/" + n + " · " + (n - i) + " kaldı";
-  }
-
-  function ciz(){
-    if (i >= kayitlar.length) return bitir();
-    var k = kayitlar[i];
-    acik = false;
-
-    tuglaCiz();
-    $("trMetin").textContent = k.tr || "";
-    $("enMetin").textContent = k.en || "";
-    $("ipaMetin").textContent = k.ipa || "";
-    $("pronMetin").textContent = k.trPron || "";
-
-    $("cevapAlan").className = "gizli-cevap";
-    $("gosterBtn").hidden = false;
-    $("notlaAlan").hidden = true;
-    $("detayBtn").hidden = true;
-    $("detayKart").hidden = true;
-
-    /* ayrıntı alanları */
-    $("dHigh").textContent   = k.highlights || "—";
-    $("dHata").textContent   = k.commonMistake || "—";
-    $("dAcik").textContent   = k.aiExplain || "—";
-    $("dEsdiz").textContent  = k.collocations || "—";
-    $("dEsZit").textContent  = (k.synonyms || "—") + "  ·  " + (k.antonyms || "—");
-    $("dGramer").textContent = (k.grammar || "") + (k.tense ? " · " + k.tense : "");
-    $("dBaglam").textContent = (k.topic || "") + (k.scenario ? " · " + k.scenario : "");
-
-    /* görsel */
-    var g = $("gorsel");
-    g.hidden = true; g.removeAttribute("src");
-    gorselBul(k.imgQuery).then(function(u){
-      if (!u || kayitlar[i] !== k) return;     /* kart değiştiyse boşver */
-      g.src = u; g.alt = k.imgQuery || ""; g.hidden = false;
-    });
-  }
-
-  function goster(){
-    acik = true;
-    $("cevapAlan").className = "";
-    $("gosterBtn").hidden = true;
-    $("notlaAlan").hidden = false;
-    $("detayBtn").hidden = false;
-    seslendir();
-  }
-
-  function seslendir(){
-    var k = kayitlar[i];
-    if (!k || !window.speechSynthesis) return;
-    try{
-      speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(k.en || "");
-      u.lang = "en-US"; u.rate = 0.95;
-      speechSynthesis.speak(u);
-    }catch(e){}
-  }
-
-  function notla(zorMu, kalite){
-    var k = kayitlar[i];
-    if (!k || !k.id) return;
-    var anahtar = "srs:" + k.id;
-
-    kvGet(anahtar).then(function(eski){
-      return kvPut(anahtar, srsAdim(eski, zorMu, kalite));
-    }).then(function(){
-      /* günlük sayaç — resmî ekranlarla aynı kanal */
-      try{ if (window.dhBumpDailyTracker) window.dhBumpDailyTracker("sentence"); }catch(e){}
-      try{
-        if (window.StudyTracker && StudyTracker.recordActivity)
-          StudyTracker.recordActivity("sentence", 1, { source:"modul-calis" });
-      }catch(e){}
-      /* gün planındaki "yeni" adımı da ilerlesin */
-      try{ if (window.DHPlan && DHPlan.varMi()) DHPlan.ilerlet("yeni", 1); }catch(e){}
-
-      if (!zorMu) yapilan++;
-      i++;
-      ciz();
-    });
-  }
-
-  function bitir(){
-    $("calisma").hidden = true;
-    $("bitis").hidden = false;
-    tuglaCiz();
-    $("bitisSayi").textContent = yapilan + "/" + kayitlar.length;
-    $("bitisNot").textContent =
-      "Bu cümleler artık tekrar döngünde. Vadesi geldiğinde Tekrar ekranında karşına çıkacak.";
-  }
-
-  /* ---------- olaylar ---------- */
-  $("gosterBtn").onclick = goster;
-  $("detayBtn").onclick  = function(){ $("detayKart").hidden = !$("detayKart").hidden; };
-  $("sesBtn").onclick    = seslendir;
-  $("zorBtn").onclick    = function(){ notla(true,  0); };
-  $("ortaBtn").onclick   = function(){ notla(false, 3); };
-  $("kolayBtn").onclick  = function(){ notla(false, 5); };
-  $("tekrarBtn").onclick = function(){
-    i = 0; yapilan = 0;
-    $("bitis").hidden = true;
-    $("calisma").hidden = false;
-    ciz();
-  };
-
-  /* ---------- BASLAT ----------
-     Bu blok EN SONDA durmali: ciz() icindeki gorselBul, gorselOnbellek
-     degiskenini kullaniyor. Baslatma yukarida olsaydi var hoisting
-     yuzunden gorselOnbellek henuz undefined olurdu ve sayfa acilista
-     patlardi. */
-  if (!kayitlar.length){
-    $("calisma").innerHTML =
-      '<div class="dh-kart dh-kart--sessiz"><p class="dh-etiket" style="margin:0">' +
-      'Modül bulunamadı. <a href="./modullerim.html">Modüllerim</a> sayfasına dön.</p></div>';
-    $("altAlan").hidden = true;
-  } else {
-    $("baslik").textContent = meta.ad || "Modül";
-    ciz();
-  }
-
-  document.addEventListener("keydown", function(e){
-    if (e.target && /input|textarea/i.test(e.target.tagName)) return;
-    if (!acik && (e.key === " " || e.key === "Enter")){ e.preventDefault(); goster(); return; }
-    if (!acik) return;
-    if (e.key === "1" || e.key.toLowerCase() === "z") $("zorBtn").click();
-    else if (e.key === "2") $("ortaBtn").click();
-    else if (e.key === "3" || e.key === " " || e.key === "Enter"){ e.preventDefault(); $("kolayBtn").click(); }
-  });
+  }catch(e){ hedef = "./modullerim.html"; }
+  location.replace(hedef);
 })();
 </script>
-<script src="./ux-boost.js?v=1"></script>
+</head>
+<body>
+<p style="font-family:system-ui;padding:24px">
+Çalışma ekranına yönlendiriliyorsun… <a href="./modullerim.html">Modüllerim</a>
+</p>
 </body>
 </html>

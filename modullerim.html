@@ -513,7 +513,11 @@
       (meta.alan ? " · " + meta.alan : "") +
       (meta.kaynakModul ? " · kaynak: " + meta.kaynakModul : "");
     $("detayListe").innerHTML = onizleHtml(kayitlar);
-    $("calisBtn").href = "./modul-calis.html?m=" + encodeURIComponent(id);
+    /* Calisma resmi ekranda yapilir: index-app.html. dh-modul-enjekte.js
+       kullanici cumlelerini o ekranin verisine ekledigi icin modul orada
+       normal bir modul gibi gorunur — gorsel, kelime araclari, ogretmen
+       hepsi calisir. mod-autopen.js modulu adiyla acar. */
+    $("calisBtn").href = "./index-app.html?mod=" + encodeURIComponent(meta.ad || "");
     goster("adimDetay");
   }
 
