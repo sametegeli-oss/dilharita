@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v10";
+var SW_VERSION = "dh-sw-v11";
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -42,7 +42,20 @@ var SHELL = [
   "./assets/avatars_v3/teacher/blink.webp",
   "./assets/avatars_v3/teacher/mouth-small.webp",
   "./assets/avatars_v3/teacher/mouth-medium.webp",
-  "./assets/avatars_v3/teacher/mouth-open.webp"
+  "./assets/avatars_v3/teacher/mouth-open.webp",
+  /* Sesbirim (viseme) kareleri — dh-avatar.js bunlari agiz senkronu icin
+     kullanir. Onbellekte YOKKEN cevrimdisi acilirsa KOMSU haritasi en
+     yakin kareye duser: cokme olmaz ama agiz kaba oynar. Toplam ~580 KB (9 x ~65 KB);
+     kurulum bir kez agir, sonrasi tamamen cevrimdisi. */
+  "./assets/avatars_v3/teacher/mouth-a.webp",
+  "./assets/avatars_v3/teacher/mouth-e.webp",
+  "./assets/avatars_v3/teacher/mouth-i.webp",
+  "./assets/avatars_v3/teacher/mouth-o.webp",
+  "./assets/avatars_v3/teacher/mouth-u.webp",
+  "./assets/avatars_v3/teacher/mouth-mbp.webp",
+  "./assets/avatars_v3/teacher/mouth-fv.webp",
+  "./assets/avatars_v3/teacher/mouth-l.webp",
+  "./assets/avatars_v3/teacher/mouth-th.webp"
 ];
 
 self.addEventListener("install", function(event){

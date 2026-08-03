@@ -104,7 +104,10 @@
 
   <div class="dh-alt">
     <a class="dh-btn dh-btn--birincil dh-btn--tam" id="devam" href="./ders.html">Başla</a>
-    <button class="dh-btn dh-btn--sade dh-btn--tam" id="sonrakiGun" style="margin-top:8px">
+    <button class="dh-btn dh-btn--sade dh-btn--tam" id="dinlenme" style="margin-top:8px">
+      Bugün dinleniyorum
+    </button>
+    <button class="dh-btn dh-btn--sade dh-btn--tam" id="sonrakiGun" style="margin-top:4px">
       Sonraki günü başlat
     </button>
   </div>
@@ -114,6 +117,7 @@
 
 </main>
 
+<script src="./dh-plan.js?v=1"></script>
 <script src="./dh-avatar.js"></script>
 <script>
 /* index.html — KOC EKRANI
@@ -183,6 +187,16 @@
     return null;
   }
 
+  /* DHPlan defterinden bir adimi href ile bul */
+  function defterAdimi(defter, href){
+    if (!defter || !defter.adimlar) return null;
+    var id = adimKimligi(href);
+    for (var i=0; i<defter.adimlar.length; i++){
+      if (defter.adimlar[i].id === id) return defter.adimlar[i];
+    }
+    return null;
+  }
+
   /* ================= BUGUNUN DURUMU (SENKRON) ================= */
   function durum(){
     var tr = oku("dh-study-tracker-v1", {}) || {};
@@ -218,15 +232,82 @@
     d.bitenSet = set;
     d.sohbetVar = Object.keys(set).some(function(k){ return /^chat[a-z]*\.html$/.test(k); });
 
+    /* DHPlan defteri — adim basina hedef/yapilan burada */
+    d.defter = null;
+    try{ if (window.DHPlan) d.defter = DHPlan.bugun(); }catch(e){}
+    if (d.defter && d.defter.dinlenme) d.dinlenme = true;
+
     d.adimToplam = 0; d.adimBiten = 0;
     if (d.plan && d.plan.steps){
       d.adimToplam = d.plan.steps.length;
       d.plan.steps.forEach(function(s){
         var sayfa = String(s.href||"").split("?")[0];
-        if (set[sayfa] || (sayfa === "chat.html" && d.sohbetVar)) d.adimBiten++;
+        /* Bir adim iki yoldan bitmis sayilir:
+             a) DHPlan defterinde yapilan >= hedef  (gercek ilerleme)
+             b) dh-koc-steps-done isaretli           (sayfa ziyareti, eski yol)
+           Ikisinin BIRLESIMI alinir ki eski davranis kaybolmasin. */
+        if (set[sayfa] || (sayfa === "chat.html" && d.sohbetVar)) { d.adimBiten++; return; }
+        var a = d.defter ? defterAdimi(d.defter, s.href) : null;
+        if (a && a.yapilan >= a.hedef) d.adimBiten++;
       });
     }
     return d;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     KOC PLANI  →  DHPlan ADIMLARI
+     ------------------------------------------------------------------
+     koc.js'in urettigi adimlarin BIRIM SAYISI YOK: {label, href}'ten
+     ibaretler. Bu yuzden "7/12 · 5 kaldi" denemiyordu.
+
+     Burada her adima bir hedef TURETILIR ve DHPlan'a yazilir. DHPlan
+     gun icinde hedefi dondurur; ders.html ve tekrar.html ilerlemeyi
+     oraya isler, boylece ilerleme TUM ekranlarda ayni anda gorunur.
+
+     koc.js'in hesaplama katmanina dokunulmaz — yalnizca ciktisi
+     ceviriliyor.
+     ══════════════════════════════════════════════════════════════════ */
+  /* Adim kimligi ANLAMSAL olmali, dosya adi degil.
+     Cunku ders.html ve tekrar.html ilerlemeyi bu kimliklerle isliyor:
+       ders.html  ->  DHPlan.ilerlet("yeni") / ("tekrar") / ("telaffuz")
+     Dosya adindan (index-app) turetilseydi eslesme tutmazdi ve ders
+     ilerlemesi ana ekrana hic yansimazdi. tipOf() ile ayni sozluk. */
+  function adimKimligi(href){
+    return tipOf(href);
+  }
+  function hedefTuret(href, due){
+    var h = String(href||"").split("?")[0];
+    /* tekrar.html?plan=1 zaten 15'lik oturum aliyor; ham bekleyen
+       toplami degil, gunun porsiyonu hedeftir. */
+    if (h.indexOf("tekrar") === 0) return Math.max(1, Math.min(due || 15, 15));
+    if (h.indexOf("index-app") === 0){
+      var g = 5;
+      try{ if (window.DHProfile && DHProfile.hedef) g = DHProfile.hedef() || 5; }catch(e){}
+      return Math.max(1, g);
+    }
+    return 1;   /* konusma, hata defteri, kelime, bonus adim */
+  }
+  function planiKur(kocPlan){
+    if (!window.DHPlan || !kocPlan || !kocPlan.steps || !kocPlan.steps.length) return;
+    if (DHPlan.varMi()) return;                 /* gun icinde bir kez */
+    var due = 0;
+    try{ due = (kocPlan.stats && kocPlan.stats.due) || kocPlan.dueCount || 0; }catch(e){}
+    if (!due){ try{ due = parseInt(localStorage.getItem("dh-son-bekleyen")||"0",10)||0; }catch(e){} }
+
+    var gorulen = {};
+    DHPlan.kur(kocPlan.steps.map(function(st){
+      var kimlik = adimKimligi(st.href);
+      /* Ayni tipte iki adim gelirse kimlik cakisir; tekillestir. */
+      if (gorulen[kimlik]) kimlik = kimlik + "-" + (++gorulen[kimlik]);
+      else gorulen[kimlik] = 1;
+      return {
+        id: kimlik,
+        tip: tipOf(st.href),
+        etiket: st.label,
+        href: st.href,
+        hedef: hedefTuret(st.href, due)
+      };
+    }));
   }
 
   /* ---------- "sunu calistin" ---------- */
@@ -373,17 +454,31 @@
           '<span class="dh-plan-satir__ad">' + kacir(s.label) + '</span>' +
         '</div>';
 
-      /* Aktif adim tekrarsa, tekrar.html'in dondurulmus gun hedefinden
-         gercek ilerleme gosterilir. Ham bekleyen TOPLAMI degil. */
-      if (aktif && tipOf(s.href) === "tekrar" && d.tekrarGun){
-        var tg = d.tekrarGun, t = "";
-        for (var i=0; i<tg.hedef; i++){
-          t += '<span class="dh-tugla__bir' + (i < tg.yapilan ? " dh-tugla__bir--dolu" : "") + '"></span>';
+      /* HER adimda tugla sayaci (bugun.html'den tasindi).
+         Kaynak onceligi:
+           1) tekrar adimi ise tekrar.html'in dondurulmus gun hedefi
+           2) yoksa DHPlan defteri
+         Ham bekleyen TOPLAMI hicbir kosulda gosterilmez. */
+      var hedef = 0, yapilan = 0;
+      if (tipOf(s.href) === "tekrar" && d.tekrarGun){
+        hedef = d.tekrarGun.hedef; yapilan = d.tekrarGun.yapilan;
+      } else {
+        var da = d.defter ? defterAdimi(d.defter, s.href) : null;
+        if (da){ hedef = da.hedef; yapilan = Math.min(da.yapilan, da.hedef); }
+      }
+      if (bitti && hedef) yapilan = hedef;
+
+      /* Tek birimlik adimda (konusma gibi) tugla gurultu yaratir */
+      if (hedef > 1){
+        var t = "", n = Math.min(hedef, 24);
+        for (var i=0; i<n; i++){
+          var esik = Math.round((i / n) * hedef);
+          t += '<span class="dh-tugla__bir' + (esik < yapilan ? " dh-tugla__bir--dolu" : "") + '"></span>';
         }
         ic += '<div class="dh-tugla" style="margin-bottom:0">' +
               '<div class="dh-tugla__sira">' + t + '</div>' +
-              '<div class="dh-tugla__yazi">' + tg.yapilan + "/" + tg.hedef +
-              " · " + (tg.hedef - tg.yapilan) + ' kaldı</div></div>';
+              '<div class="dh-tugla__yazi">' + yapilan + "/" + hedef +
+              " · " + Math.max(0, hedef - yapilan) + ' kaldı</div></div>';
       }
       a.innerHTML = ic;
       kap.appendChild(a);
@@ -483,6 +578,27 @@
   function ciz(plan, ctx){
     var d = durum();
     plan = plan || d.plan;
+
+    /* koc plani geldiyse DHPlan defterini bir kez kur */
+    if (plan && plan.steps) planiKur(plan);
+    d = durum();                              /* defter yeni kurulduysa tazele */
+
+    /* DINLENME GUNU (bugun.html'den tasindi) */
+    if (d.dinlenme){
+      $("kocSoz").textContent = "Dinlenme günü. Serin bozulmadı, yarın aynı yerdeyim.";
+      $("durumKart").hidden = true;
+      $("dersDevam").hidden = true;
+      $("plan").innerHTML = '<div class="dh-kart dh-kart--sessiz">' +
+        '<p class="dh-etiket" style="margin:0">Dinlenme günü planın parçası — ' +
+        'seriyi kırmaz. Fikrini değiştirirsen aşağıdan başlayabilirsin.</p></div>';
+      $("planBaslik").textContent = "Bugün dinlenme günü";
+      $("devam").textContent = "Yine de çalış";
+      $("devam").href = "./ders.html";
+      $("dinlenme").hidden = true;
+      haftaCiz(); seriCiz();
+      konustur($("kocSoz").textContent);
+      return;
+    }
 
     $("kocSoz").textContent = soz(d, plan);
     durumCiz(d);
@@ -597,6 +713,12 @@
   });
   window.addEventListener("dh-cloud-synced", function(){ ciz(sonPlan, sonCtx); });
 
+  $("dinlenme").onclick = function(){
+    try{ if (window.DHPlan) DHPlan.dinlenmeyeAl(); }catch(e){}
+    try{ sessionStorage.removeItem("dh-koc-son-soz"); }catch(e){}
+    ciz(sonPlan, sonCtx);
+  };
+
   /* ================= SONRAKI GUNU BASLAT =================
      koc.js'teki #dhResetToday ile ayni islem. Ogrenme verisi silinmez. */
   $("sonrakiGun").onclick = function(){
@@ -606,6 +728,7 @@
       localStorage.removeItem("dh-day-closed-" + GUN);
       localStorage.removeItem("dh-coach-last-generic-tip");
       localStorage.removeItem("dh-ders-oturum-" + GUN);
+      localStorage.removeItem("dh-gun-plan-" + GUN);
       var tr = oku("dh-study-tracker-v1", {}) || {};
       var d = (tr.days || {})[GUN] || {};
       localStorage.setItem("dh-koc-epoch-" + GUN, JSON.stringify({

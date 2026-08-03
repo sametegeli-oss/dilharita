@@ -426,12 +426,36 @@
   if(!gercekAktivite) set={};
   var sohbetVar=Object.keys(set).some(function(k){ return /^chat[a-z]*\.html$/.test(k); });
 
+  /* Adim durumu iki kaynaktan gelir; DHPlan defteri onceliklidir cunku
+     ders.html ve tekrar.html ilerlemeyi oraya isliyor. dh-koc-steps-done
+     (sayfa ziyareti) yalnizca yedek. Ikisinin BIRLESIMI alinir. */
+  var defter=null;
+  try{ defter=JSON.parse(localStorage.getItem("dh-gun-plan-"+GUN)||"null"); }catch(e){}
+  function defterAdimi(href){
+    if(!defter||!defter.adimlar) return null;
+    var h=String(href||"").split("?")[0];
+    var id = h.indexOf("tekrar")===0 ? "tekrar"
+           : h.indexOf("chat")===0 ? "sohbet"
+           : h.indexOf("hata-defteri")===0 ? "hata"
+           : h.indexOf("kelime")===0 ? "kelime" : "yeni";
+    for(var i=0;i<defter.adimlar.length;i++){ if(defter.adimlar[i].id===id) return defter.adimlar[i]; }
+    return null;
+  }
+
   var toplam=plan.steps.length, biten=0;
   plan.steps.forEach(function(s){
     var sayfa=String(s.href||"").split("?")[0];
-    if(set[sayfa]||(sayfa==="chat.html"&&sohbetVar)) biten++;
+    if(set[sayfa]||(sayfa==="chat.html"&&sohbetVar)){ biten++; return; }
+    var a=defterAdimi(s.href);
+    if(a && a.yapilan>=a.hedef) biten++;
   });
 
+  if(defter && defter.dinlenme){
+    document.getElementById("planOdak").textContent="Bugün dinlenme günü";
+    document.getElementById("planYazi").textContent="Serin bozulmadı";
+    document.getElementById("planOzet").style.display="block";
+    return;
+  }
   document.getElementById("planOdak").textContent=String(plan.focus||"Bugünün planı");
   var t=document.getElementById("planTugla"), html="";
   for(var i=0;i<toplam;i++){
@@ -506,7 +530,7 @@
 /* ================= SERVICE WORKER ================= */
 if("serviceWorker" in navigator){
   window.addEventListener("load", function(){
-    try{ navigator.serviceWorker.register("./sw.js?v=10", {scope:"./"}); }catch(e){}
+    try{ navigator.serviceWorker.register("./sw.js?v=11", {scope:"./"}); }catch(e){}
   });
 }
 </script>
