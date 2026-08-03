@@ -62,7 +62,6 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <button id="mClas">👁 Klasik (EN→TR)</button>
   <button id="mOnlyErrs">🚨 Sadece Hatalılar</button>
 </div>
-<div id="brickMeter" style="max-width:720px;margin:8px auto 2px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center"></div>
 <div class="card" id="card" style="display:none">
   <div class="kind" id="kind"></div>
   <div class="q no-wordpop" id="q"></div>
@@ -72,7 +71,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <div class="img-box" id="imgContainer"></div>
 
   <div id="prodBox" style="display:none">
-    <div class="inrow"><textarea id="inp" placeholder="İngilizcesini yaz…"></textarea><div class="inrow-btns"><button class="b-retry" id="bListenRetry" style="display:none" title="Kendi sesini tekrar dinle">👂</button><button class="b-mic" id="bMicRestart" style="display:none" title="Kaydı yeniden başlat">🔄</button><button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button></div></div>
+    <div class="inrow"><textarea id="inp" placeholder="İngilizcesini yaz…"></textarea><div class="inrow-btns"><button class="b-retry" id="bListenRetry" style="display:none" title="Kendi sesini tekrar dinle">👂</button><button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button></div></div>
     <div class="score" id="score"></div>
     
     <span class="ai-settings-toggle" id="toggleAiSettings">⚙️ Yapay Zeka Kriter Ayarları</span>
@@ -138,26 +137,6 @@ try{
   "use strict";
   var $=function(id){return document.getElementById(id)};
   var DAY=86400000, SESSION=(/[?&]plan=1/.test(location.search)?15:25), now=Date.now();
-  /* GÜNLÜK TEKRAR HEDEFİ — donuk ve devam eden.
-     hedef: gün içinde SABİT (ilk girişte min(bekleyen, SESSION)); sayfaya dönünce
-     sıfırlanıp yeniden 25 olmuyor. yapilan: bugün tamamlanan tekrar sayısı; tuğlaları
-     doldurur ve oturumu KALDIĞIN YERDEN sürdürür. */
-  var __ISO=new Date().toISOString().slice(0,10);
-  var __GUNK="dh-tekrar-gun-"+__ISO;
-  function loadGun(){ try{ return JSON.parse(localStorage.getItem(__GUNK)||"null"); }catch(e){ return null; } }
-  function saveGun(){ try{ localStorage.setItem(__GUNK, JSON.stringify(__gun)); }catch(e){} }
-  var __gun=loadGun();
-  function paintBricks(){
-    try{
-      var box=document.getElementById("brickMeter"); if(!box||!__gun) return;
-      var h=__gun.hedef|0, y=Math.min(__gun.yapilan|0, h), html="";
-      for(var b=0;b<h;b++){
-        var on=b<y;
-        html+='<span style="width:32px;height:20px;border-radius:5px;display:inline-block;background:'+(on?"#f59e0b":"#0d1f3a")+';border:1px solid '+(on?"#f59e0b":"#1e3a5f")+'"></span>';
-      }
-      box.innerHTML=html+'<div style="width:100%;text-align:center;color:#9fb3d9;font-size:12.5px;font-weight:800;margin-top:5px">'+y+'/'+h+' tekrar · '+Math.max(0,h-y)+' kaldı</div>';
-    }catch(e){}
-  }
 
   /* 🔬 HATIRLAMA OLAY GÜNLÜĞÜ: kişisel unutma eğrisinin ham verisi.
      Her notlama bir deneydir: "son görüşten X gün sonra hatırlandı mı?"
@@ -515,20 +494,12 @@ try{
     }
 
     items.sort(function(a,b){ return (a.due||0)-(b.due||0); });
-    total=items.length;
+    total=items.length; session=items.slice(0,SESSION); remaining=total-session.length;
+    $("cnt").innerHTML = total ? (total>30
+      ? ("bu oturum: <b style='color:#e8eef7'>"+session.length+"</b> · gerisi yarınlara porsiyonlandı 💛")
+      : ("bugün: <b style='color:#e8eef7'>"+total+"</b>"+(remaining?(" · oturum: "+session.length):""))) : "";
     if(!total){ $("doneTitle").textContent="🎉 Bugünlük tekrar yok!"; $("doneSub").textContent="Vadesi gelen öğe bulunmuyor.";
-      if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; dhTekrarDoneExtras(); return; }
-    // Günün hedefini İLK girişte dondur; sonraki girişlerde aynı kalır (25'e sıfırlanmaz).
-    if(!__gun){ __gun={ hedef: Math.max(1, Math.min(total, SESSION)), yapilan:0 }; saveGun(); }
-    var __kalanHedef=Math.max(0, __gun.hedef - __gun.yapilan);
-    session=items.slice(0, __kalanHedef); remaining=Math.max(0, total-session.length);
-    paintBricks();
-    $("cnt").innerHTML = "bugünkü tekrar: <b style='color:#e8eef7'>"+Math.min(__gun.yapilan,__gun.hedef)+"/"+__gun.hedef+"</b>"+(remaining?(" · bekleyen "+remaining+" 💛"):"");
-    if(__kalanHedef<=0){
-      $("doneTitle").textContent="🎉 Bugünkü tekrar tamam!";
-      $("doneSub").textContent=__gun.yapilan+" tekrar yaptın."+(remaining?(" Bekleyen "+remaining+" yarına porsiyonlandı."):"");
-      if(remaining) $("bMore").style.display="inline-block";
-      if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; dhTekrarDoneExtras(); return; }
+      if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; return; }
 
     if(session.some(function(x){return x.kind==="s"})){
       // eskiden 8,5 MB'lık dosyanın tamamı inip tek tek haritaya yazılıyordu.
@@ -559,20 +530,8 @@ try{
     try{ if(mediaRecorder && mediaRecorder.state!=="inactive") mediaRecorder.stop(); }catch(e){}
     try{ if(audioStream){ audioStream.getTracks().forEach(function(t){ t.stop(); }); audioStream=null; } }catch(e){}
     try{ $("bMic").textContent="🎤"; }catch(e){}
-    try{ $("bMicRestart").style.display="none"; }catch(e){}
   }
 
-  function dhTekrarDoneExtras(){
-    try{
-      if(!(window.dhPlanAllDone && window.dhPlanAllDone())) return;   // tüm plan bitmediyse dokunma
-      var pn=$("planNext"); if(pn) pn.style.display="none";           // "sıradaki adım" gizle
-      if(document.getElementById("dhTekrarDayDone")) return;
-      var dc=document.createElement("div"); dc.id="dhTekrarDayDone"; dc.style.cssText="margin-top:14px";
-      dc.innerHTML='<div style="font-size:15px;color:#a7f3d0;font-weight:900;margin-bottom:8px">🎉 Günün planı tamam! Gün bitti.</div><button class="b-next" id="dhTekrarClose">🌙 Günü kapat</button>';
-      $("done").appendChild(dc);
-      var cb=document.getElementById("dhTekrarClose"); if(cb) cb.onclick=function(){ try{ if(window.dhCoachDayClose) window.dhCoachDayClose(); }catch(e){} };
-    }catch(e){}
-  }
   function render(){
     stopMicIfActive();
     try{ window.dhCoachHide && window.dhCoachHide(); }catch(e){}
@@ -583,7 +542,6 @@ try{
       if(remaining) $("bMore").style.display="inline-block";
       if(PLAN) $("planNext").style.display="block";
       $("done").style.display="block";
-      dhTekrarDoneExtras();
       triggerCloudSync();
       return;
     }
@@ -983,51 +941,32 @@ try{
 
   /* 🎤 Mikrofon Kontrolü */
   var manualStop = false;
-  /* Ham kayıt başlatma (getUserMedia + MediaRecorder + tanıma döngüsü).
-     Hem ilk başlatma hem "yeniden başlat" bunu çağırır. */
-  function micBeginCapture(){
-    var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    var SGL=window.SpeechGrammarList||window.webkitSpeechGrammarList;
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
-      audioStream = stream; mediaRecorder = new MediaRecorder(stream); audioChunks = [];
-      mediaRecorder.ondataavailable = function(e) { if (e.data.size > 0) audioChunks.push(e.data); };
-      mediaRecorder.onstop = function() {
-        var audioBlob = new Blob(audioChunks, { type: 'audio/mp3' }); audioUrl = URL.createObjectURL(audioBlob); $("bListenRetry").style.display = "";
-      };
-      mediaRecorder.start();
-    }).catch(function(err) { console.error(err); isRecording = false; $("bMic").textContent="🎤"; try{$("bMicRestart").style.display="none";}catch(e){} });
-    startRecognitionLoop(SR, SGL);
-  }
   $("bMic").onclick=function(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return alert("Bu tarayıcıda mikrofon tanıma yok.");
+    var SGL=window.SpeechGrammarList||window.webkitSpeechGrammarList;
     if (!isRecording) {
       // ---- BAŞLAT ----
       isRecording = true; manualStop = false; $("bMic").textContent="🔴"; stopActiveAudio(); $("bListenRetry").style.display = "none";
-      $("bMicRestart").style.display = "";                       // kayıt sırasında görünür
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
       accumulatedTranscript = ""; $("inp").value = ""; viaMic = true;
-      micBeginCapture();
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+        audioStream = stream; mediaRecorder = new MediaRecorder(stream); audioChunks = [];
+        mediaRecorder.ondataavailable = function(e) { if (e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.onstop = function() {
+          var audioBlob = new Blob(audioChunks, { type: 'audio/mp3' }); audioUrl = URL.createObjectURL(audioBlob); $("bListenRetry").style.display = "";
+        };
+        mediaRecorder.start();
+      }).catch(function(err) { console.error(err); isRecording = false; $("bMic").textContent="🎤"; });
+
+      startRecognitionLoop(SR, SGL);
     } else {
       // ---- KULLANICI DURDURDU ----
-      isRecording = false; manualStop = true; $("bMic").textContent="🎤"; $("bMicRestart").style.display="none";
+      isRecording = false; manualStop = true; $("bMic").textContent="🎤";
       if (recognitionInstance) { try{ recognitionInstance.stop(); }catch(e){} }
       if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
       if (audioStream) { audioStream.getTracks().forEach(function(track) { track.stop(); }); audioStream = null; }
       setTimeout(function() { reveal(); }, 400);
     }
-  };
-  /* 🔄 KAYDI YENİDEN BAŞLAT: mevcut kaydı SESSİZCE bırakır (reveal/notlama YOK),
-     transkript + ses + yazıyı sıfırlar, taze kayda başlar. */
-  $("bMicRestart").onclick=function(){
-    if(!isRecording) return;
-    manualStop = true;                                          // tanıma döngüsü kendini yeniden kurmasın
-    try{ if(recognitionInstance){ recognitionInstance.onend=null; recognitionInstance.stop(); recognitionInstance=null; } }catch(e){}
-    try{ if(mediaRecorder && mediaRecorder.state!=="inactive"){ mediaRecorder.onstop=null; mediaRecorder.stop(); } }catch(e){}
-    try{ if(audioStream){ audioStream.getTracks().forEach(function(t){ t.stop(); }); audioStream=null; } }catch(e){}
-    if(audioUrl){ try{ URL.revokeObjectURL(audioUrl); }catch(e){} audioUrl=null; }
-    audioChunks=[]; accumulatedTranscript=""; $("inp").value=""; $("bListenRetry").style.display="none";
-    isRecording=true; manualStop=false; viaMic=true; $("bMic").textContent="🔴";
-    setTimeout(micBeginCapture, 150);                           // eski akış tam kapansın, sonra taze başla
   };
 
   /* Ses tanıma döngüsü — videopractice'teki sağlam mantık:
@@ -1196,9 +1135,7 @@ try{
       go.onclick=function(){ go.remove(); doneOrNext(); }; $("exp").appendChild(go);
       function doneOrNext(){ i++; render(); } return;
     }
-    doneCount++;
-    if(__gun){ __gun.yapilan=(__gun.yapilan|0)+1; saveGun(); paintBricks(); }
-    i++; render();
+    doneCount++; i++; render();
   }
   $("bHard").onclick=function(){ grade(true); }; $("bEasy").onclick=function(){ grade(false); };
 
@@ -1219,7 +1156,7 @@ try{
     }
   };
 
-  $("bMore").onclick=function(){ if(__gun){ __gun.hedef=(__gun.hedef|0)+SESSION; saveGun(); } location.reload(); };
+  $("bMore").onclick=function(){ location.reload(); };
   await loadData();
 })();
 </script>
