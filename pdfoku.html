@@ -349,9 +349,9 @@
             if(!activePageContent) return;
 
             const targetPromptPayload = `
-Sen, Betty Azar'ın "Understanding and Using English Grammar" (3rd Edition) kitabının öğretim metodolojisine ve müfredatına tamamen hakim uzman bir yapay zeka İngilizce öğretmenisin[cite: 1].
+Sen, Betty Azar'ın "Understanding and Using English Grammar" (3rd Edition) kitabının öğretim metodolojisine ve müfredatına tamamen hakim uzman bir yapay zeka İngilizce öğretmenisin.
 
-Aşağıda, kitabın ${activePageNum}. sayfasından OCR ile taranarak elde edilmiş ham bir metin bulunuyor. Bu metindeki tarama/harf hatalarını bağlamdan yola çıkarak onar[cite: 1].
+Aşağıda, kitabın ${activePageNum}. sayfasından OCR ile taranarak elde edilmiş ham bir metin bulunuyor. Bu metindeki tarama/harf hatalarını bağlamdan yola çıkarak onar.
 
 KİTAP SAYFASI HAM VERİSİ (PAGE: ${activePageNum}):
 --------------------------------------------------
@@ -359,20 +359,20 @@ ${activePageContent}
 --------------------------------------------------
 
 TÜRK ÖĞRENCİ İÇİN EĞİTİM MATERYALİ HAZIRLAMA TALİMATLARI:
-1. Yukarıdaki metni analiz et, bunun Betty Azar müfredatındaki hangi konuya ait olduğunu süz[cite: 1].
-2. Bu sayfa içeriğinden yola çıkarak, ana dili Türkçe olan bir öğrencinin dil mantığına uygun harika bir interaktif ders tasarla. Türk öğrencilerin en çok düştüğü kontrast hatalarını özellikle vurgula[cite: 1].
+1. Yukarıdaki metni analiz et, bunun Betty Azar müfredatındaki hangi konuya ait olduğunu süz.
+2. Bu sayfa içeriğinden yola çıkarak, ana dili Türkçe olan bir öğrencinin dil mantığına uygun harika bir interaktif ders tasarla. Türk öğrencilerin en çok düştüğü kontrast hatalarını özellikle vurgula.
 
 LÜTFEN BANA AŞAĞIDAKİ ŞABLONA GÖRE ÇIKTI ÜRET (Doğrudan Türkçe anlatım kullan):
 
-# 📘 [İlgili Azar Ünitesi Başlığı] - Sayfa ${activePageNum} Ders Özeti[cite: 1]
-- **Gramer Odağı:** Bu sayfadaki kuralın mantığını, formülünü Türk öğrencilerin anlayacağı şekilde net örneklerle açıkla[cite: 1].
+# 📘 [İlgili Azar Ünitesi Başlığı] - Sayfa ${activePageNum} Ders Özeti
+- **Gramer Odağı:** Bu sayfadaki kuralın mantığını, formülünü Türk öğrencilerin anlayacağı şekilde net örneklerle açıkla.
 - **Türk Öğrenciler İçin Kritik İpucu:** Türkçeden İngilizceye düşünürken bu konuda yapılan en yaygın hatayı ve çözümünü yaz.
 
 # 📝 Örnek Cümle Analizleri (Book Sentences)
-Sayfada geçen en önemli 2-3 örnek cümleyi veya diyalog satırını ayıkla, İngilizce orijinal hallerini ve hemen altına en doğru Türkçe akademik çevirilerini yaz[cite: 1].
+Sayfada geçen en önemli 2-3 örnek cümleyi veya diyalog satırını ayıkla, İngilizce orijinal hallerini ve hemen altına en doğru Türkçe akademik çevirilerini yaz.
 
 # 🧠 İnteraktif Alıştırma Paneli (Interactive Quiz)
-Sayfadaki egzersizlerden yola çıkarak 3 adet boşluk doldurma sorusu üret. Boşlukları "[ _____ ]" şeklinde bırak[cite: 1]. Soruların altına şıkları (A, B, C, D) koy. 
+Sayfadaki egzersizlerden yola çıkarak 3 adet boşluk doldurma sorusu üret. Boşlukları "[ _____ ]" şeklinde bırak. Soruların altına şıkları (A, B, C, D) koy. 
 *En alta ise "Cevap Anahtarı ve Detaylı Dil Bilgisi Açıklaması" ekleyerek öğrencinin neden o şıkkı seçmesi gerektiğini gerekçelendir.*
             `.trim();
 
