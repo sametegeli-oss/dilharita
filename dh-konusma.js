@@ -54,6 +54,11 @@
   var DB = "sentence-mode", STORE = "kv";
   var GUN_ONEK = "dh-konusma-gun-";
   var GECMIS = "dh-konusma-gecmis-v1";
+  /* SURUM: donmus kaydin uretildigi kod surumu. Kod degisince (or. cumleye
+     imgQuery eklendi) eski kayit GECERSIZ sayilip yeniden hesaplanir.
+     Bu damga yokken kullanici duzeltmeyi ancak ERTESI GUN gorebiliyordu:
+     gunun karari sabah donuyor, gun icinde yayinlanan duzeltme okunmuyordu. */
+  var SURUM = 2;
   var ENCOK = 6;                    /* konusmaya girecek cumle sayisi */
   var ENAZ_KONU = 3;                /* konu butunlugu icin alt sinir */
   var HAFTA = 7 * 86400000;
@@ -337,6 +342,7 @@
       var ham = localStorage.getItem(GUN_ONEK + dunISO());
       if (!ham) return null;
       var o = JSON.parse(ham);
+      if (o && typeof o === "object" && o.s) o = o.v;   /* {s,v} sarmali */
       if (!o || !o.modul) return null;
       return { konu: o.konu || "", modul: o.modul };
     } catch (e) { return null; }
@@ -347,12 +353,16 @@
     try {
       var ham = localStorage.getItem(bugunKey());
       if (ham === null) return undefined;          /* henuz donmadi */
-      return JSON.parse(ham);                      /* null da gecerli sonuc */
+      var o = JSON.parse(ham);
+      /* Kayit bicimi {s:<surum>, v:<sonuc|null>}. Damgasiz ya da eski
+         surumlu kayit BAYAT sayilir -> yeniden hesaplanir. */
+      if (!o || typeof o !== "object" || o.s !== SURUM) return undefined;
+      return o.v;                                  /* null da gecerli sonuc */
     } catch (e) { return undefined; }
   }
   function dondur(v) {
     try {
-      localStorage.setItem(bugunKey(), JSON.stringify(v === undefined ? null : v));
+      localStorage.setItem(bugunKey(), JSON.stringify({ s: SURUM, v: (v === undefined ? null : v) }));
       /* dunku KALIR (sureklilik icin okunuyor), daha eskiler silinir */
       var tut = { }; tut[bugunKey()] = 1; tut[GUN_ONEK + dunISO()] = 1;
       for (var i = localStorage.length - 1; i >= 0; i--) {

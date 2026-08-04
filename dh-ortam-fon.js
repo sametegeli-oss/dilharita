@@ -40,6 +40,10 @@
   var VIDEO_ONEK = "video-practice-video:";
   var IMG_ONEK = "img:";
   var PEXELS_ANAHTAR = "pexels-api-key";
+  /* SURUM: bkz. dh-konusma.js. Video onceligi ve imgQuery sorgulari
+     eklendiginde artirildi; boylece gun icinde donmus ESKI secim
+     (or. video yerine resim) bayat sayilip yeniden hesaplanir. */
+  var SURUM = 2;
 
   function gunISO() { return new Date().toISOString().slice(0, 10); }
   function fonKey() { return FON_ONEK + gunISO(); }
@@ -245,12 +249,14 @@
     try {
       var ham = localStorage.getItem(fonKey());
       if (ham === null) return undefined;
-      return JSON.parse(ham);
+      var o = JSON.parse(ham);
+      if (!o || typeof o !== "object" || o.s !== SURUM) return undefined;  /* bayat */
+      return o.v;
     } catch (e) { return undefined; }
   }
   function dondur(v) {
     try {
-      localStorage.setItem(fonKey(), JSON.stringify(v || null));
+      localStorage.setItem(fonKey(), JSON.stringify({ s: SURUM, v: (v || null) }));
       for (var i = localStorage.length - 1; i >= 0; i--) {
         var k = localStorage.key(i);
         if (k && k.indexOf(FON_ONEK) === 0 && k !== fonKey()) localStorage.removeItem(k);
