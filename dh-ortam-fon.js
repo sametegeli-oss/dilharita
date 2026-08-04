@@ -176,9 +176,13 @@
     var m = malzeme();
     if (!m) return Promise.resolve(null);
     var sorgu = m.ortam || m.konu || m.modul;
+    /* ONCE VIDEO, SONRA RESIM. Once onbellekteki video, o yoksa Pexels'ten
+       video; video hicbir sekilde bulunamazsa resme dusulur. (Eski sira
+       onbellekteki resmi Pexels videosunun ONUNE koyuyordu ve ekranda
+       hareketsiz bir kare kaliyordu.) */
     return onbellekVideo(m)
-      .then(function (r) { return r || onbellekResim(m); })
       .then(function (r) { return r || pexelsVideo(sorgu); })
+      .then(function (r) { return r || onbellekResim(m); })
       .then(function (r) { return r || openverseResim(sorgu); })
       .catch(function () { return null; });
   }
@@ -204,12 +208,26 @@
     if (document.getElementById("dh-fon-css")) return;
     var s = document.createElement("style");
     s.id = "dh-fon-css";
+    /* KRITIK (olculdu): chat-style.css'te
+         .avatar-stage > img,#avatarImg{position:relative!important;width:auto!important;
+                                        height:100%!important;object-fit:contain!important}
+       kurali var. Arka plani DOGRUDAN <img> olarak koyunca bu kural onu da
+       yakaliyor, mutlak konumlandirma eziliyor ve resim avatarin ARKASINA
+       degil YANINA diziliyordu (flex ogesi olarak). Cozum: medya bir
+       SARMALAYICI div icine konur — ".avatar-stage > img" artik eslesmez —
+       ve kendi kurallarimiz !important ile yazilir. */
     s.textContent =
-      ".dh-fon{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
-      + "z-index:0;opacity:0;transition:opacity .8s ease;pointer-events:none;border:0}"
-      + ".dh-fon.dh-fon--acik{opacity:.5}"
+      ".dh-fon-kap{position:absolute!important;inset:0!important;width:100%!important;"
+      + "height:100%!important;z-index:0!important;overflow:hidden!important;"
+      + "pointer-events:none!important;margin:0!important;padding:0!important;flex:none!important}"
+      + ".dh-fon-kap > .dh-fon{position:absolute!important;inset:0!important;"
+      + "width:100%!important;height:100%!important;object-fit:cover!important;"
+      + "object-position:center center!important;max-width:none!important;"
+      + "max-height:none!important;margin:0!important;border:0!important;display:block!important;"
+      + "opacity:0;transition:opacity .8s ease;background:transparent!important}"
+      + ".dh-fon-kap > .dh-fon.dh-fon--acik{opacity:.5}"
       /* Perde: avatar ve yazi okunur kalsin diye ustte koyu bir gecis */
-      + ".dh-fon-perde{position:absolute;inset:0;z-index:1;pointer-events:none;"
+      + ".dh-fon-perde{position:absolute!important;inset:0;z-index:1;pointer-events:none;flex:none!important;"
       + "background:radial-gradient(ellipse at 50% 45%,rgba(5,11,22,.25) 0%,rgba(5,11,22,.72) 70%,rgba(5,11,22,.92) 100%)}"
       /* Avatar her halukarda perdenin USTUNDE */
       + ".avatar-stage > #avatarImg,.avatar-stage > .avatar-box,.avatar-stage > img,"
@@ -249,14 +267,20 @@
     perde.className = "dh-fon-perde";
     perde.setAttribute("aria-hidden", "true");
 
+    /* medya sarmalayici icinde: ".avatar-stage > img" kurali eslesmesin */
+    var kap = document.createElement("div");
+    kap.className = "dh-fon-kap";
+    kap.setAttribute("aria-hidden", "true");
+    kap.appendChild(el);
+
     sahne.insertBefore(perde, sahne.firstChild);
-    sahne.insertBefore(el, sahne.firstChild);
+    sahne.insertBefore(kap, sahne.firstChild);
     /* yuklenince yumusak ac; yuklenemezse hic gosterme */
     var ac = function () { el.classList.add("dh-fon--acik"); };
     if (f.tur === "video") el.addEventListener("loadeddata", ac, { once: true });
     else el.addEventListener("load", ac, { once: true });
     el.addEventListener("error", function () {
-      try { el.remove(); perde.remove(); } catch (e) {}
+      try { kap.remove(); perde.remove(); } catch (e) {}
     }, { once: true });
     return el;
   }

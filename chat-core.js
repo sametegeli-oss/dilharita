@@ -646,6 +646,13 @@ function splitMixedSpeech(text){
   });
   return chunks.length?chunks:[{text:String(text||""), lang:"en-US"}];
 }
+/* Cihazdaki ilk INGILIZCE ses (pickVoice'un dil-bagimsiz secimine yedek) */
+function pickEnVoice(){
+  refreshVoices();
+  var en=cachedVoices.filter(function(v){ return /^en/i.test(v.lang||""); });
+  var iyi=en.find(function(v){ return /^en-US/i.test(v.lang||""); });
+  return iyi || en[0] || null;
+}
 function pickTrVoice(){
   refreshVoices();
   var tr=cachedVoices.filter(function(v){ return /^tr/i.test(v.lang||""); });
@@ -682,7 +689,14 @@ function speakText(text){
         u.rate=vp.rate || .96;
         u.pitch=1;                            // TR seslerinde düşük pitch doğal durmuyor
       } else {
-        const voice=pickVoice();
+        /* OLCULDU: pickVoice() kayitli ses adini TUM diller icinde ariyor
+           (allVoices). Ses ayarlarinda Turkce bir ses secilmisse Ingilizce
+           parcaya da o ses atanip u.lang="tr-TR" oluyor ve her sey Turkce
+           okunuyordu. Ingilizce parca ancak INGILIZCE bir sesle okunur;
+           kayitli ses Ingilizce degilse cihazdaki ilk Ingilizce sese
+           dusulur, o da yoksa ses atanmadan u.lang="en-US" birakilir. */
+        let voice=pickVoice();
+        if(voice && !/^en/i.test(voice.lang||"")) voice=pickEnVoice();
         if(voice){ u.voice=voice; u.lang=voice.lang || "en-US"; }
         else { u.lang="en-US"; }
         u.rate=vp.rate || .96;
