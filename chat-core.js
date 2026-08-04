@@ -635,16 +635,40 @@ function isTrChunk(s){
   if(/[ğüşöçıİĞÜŞÖÇ]/.test(s)) return true;
   return /\b(şimdi|şöyle|çünkü|doğru|yanlış|anlam|cümle|örnek|kural|yani|ipucu|harika|aferin|dene|deneyelim|hadi|tekrar|söyle|güzel|evet|hayır|bakalım|Türkçe)\b/i.test(s);
 }
-function splitMixedSpeech(text){
+/* Sezgisel bolme: cumle cumle bakip Turkce isareti arar. YALNIZCA [[ ]]
+   disinda kalan metin icin kullanilir. */
+function splitHeuristic(text, chunks){
   var parts=String(text||"").replace(/\*\*/g,"").split(/\n+|(?<=[.!?…])\s+|(?<=:)\s+/).map(function(x){return x.trim();}).filter(Boolean);
-  var chunks=[];
   parts.forEach(function(p){
     var lang=isTrChunk(p)?"tr-TR":"en-US";
     var last=chunks[chunks.length-1];
     if(last && last.lang===lang) last.text+=" "+p;   // ardışık aynı dilde: birleştir (akıcılık)
     else chunks.push({text:p, lang:lang});
   });
-  return chunks.length?chunks:[{text:String(text||""), lang:"en-US"}];
+}
+/* ── [[ ]] KESIN SINYALDIR ──────────────────────────────────────────
+   OLCULDU: AI Ingilizce bolumleri [[...]] ile isaretliyor (ekranda mavi
+   .en-chunk span'i olarak gorunuyor) ama bu fonksiyon o isareti HIC
+   kullanmiyordu; sadece cumle sinirina gore tahmin yuruyordu. Turkce bir
+   cumlenin ICINE gomulu Ingilizce ("...icin [[Is this item from…]] kalibi
+   kullanilir") ayri bir cumle olmadigi icin TR sayilip Turkce okunuyordu.
+   Artik once [[ ]] bloklari ayrilir: ICI kesinlikle en-US, DISI eski
+   sezgisel yolla degerlendirilir. */
+function splitMixedSpeech(text){
+  var s=String(text||"");
+  var chunks=[], re=/\[\[([\s\S]*?)\]\]/g, i=0, m;
+  while((m=re.exec(s))){
+    if(m.index>i) splitHeuristic(s.slice(i,m.index), chunks);
+    var en=String(m[1]||"").trim();
+    if(en){
+      var last=chunks[chunks.length-1];
+      if(last && last.lang==="en-US") last.text+=" "+en;
+      else chunks.push({text:en, lang:"en-US"});
+    }
+    i=m.index+m[0].length;
+  }
+  if(i<s.length) splitHeuristic(s.slice(i), chunks);
+  return chunks.length?chunks:[{text:s, lang:"en-US"}];
 }
 /* Cihazdaki ilk INGILIZCE ses (pickVoice'un dil-bagimsiz secimine yedek) */
 function pickEnVoice(){
