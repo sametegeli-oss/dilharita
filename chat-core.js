@@ -43,6 +43,56 @@ var __dhJunkFocus=/^(review|tekrar|practice|pratik|study|genel|general|plan|deva
 if(__dhFocus && __dhJunkFocus.test(__dhFocus)) __dhFocus="";
 /* Koc odagi (dh-teach-focus / ?focus) YALNIZ ogretmen senaryosunda kullanilir; doktor/otel gibi role senaryolarinda rolu bozmasin diye temizlenir. */
 if(!__dhIsTeacher){ __dhTeach=null; __dhFocus=""; }
+
+/* ── GUNUN MALZEMESI (dh-konusma.js) ────────────────────────────────
+   COZULEN SIKAYET: "1 dakika konus hergun ayni yere sifirdan basliyor;
+   kendisi ogrenilen cumlelere gore konusma baslatmali."
+   Sebep asagidaki genFreshOpener(): her acilista AI'dan BILEREK rastgele
+   ve "taze" bir gunluk konu istiyor. Uygulamada calisilan cumlelerin
+   konusmaya hicbir etkisi yoktu.
+
+   Malzeme UCUNCU kaynak olarak eklenir; oncelik sirasi degismez:
+     1) dh-teach-focus  (hata defterinden gelen SOMUT hata)
+     2) ?focus=         (koc bir hata turu yolladi)
+     3) gunun malzemesi (bugun calisilan cumleler)   <-- YENI
+     4) hicbiri yoksa   eski davranis (genFreshOpener)
+
+   NEDEN localStorage: bu dosya SENKRON aciliyor (State.currentPartner
+   yuklenirken __dhOpener() cagriliyor), IndexedDB'yi burada beklemek
+   mumkun degil. Hesabi dh-konusma.js onceden yapip donduruyor. */
+var __dhMalzeme=null; try{
+  var __mRaw=localStorage.getItem("dh-konusma-gun-"+new Date().toISOString().slice(0,10));
+  if(__mRaw){ var __m=JSON.parse(__mRaw); if(__m && __m.cumleler && __m.cumleler.length) __dhMalzeme=__m; }
+}catch(e){}
+/* Somut hata her zaman onceliklidir: ikisi birden varsa malzeme beklemeye alinir. */
+if(__dhTeach && __dhTeach.target) __dhMalzeme=null;
+if(__dhFocus) __dhMalzeme=null;
+
+/* Acilis metni: dunku konuyu anar (sureklilik), bugunun ilk cumlesini
+   ortaya koyar. DIL senaryoya gore degisir:
+     ogretmen  -> Turkce cerceve (dh-teach-focus acilisiyla ayni uslup)
+     rol       -> Ingilizce ve ROL ICINDE; resepsiyonistin Turkce konusmasi
+                  rolu bozar (chat-core zaten bu yuzden koc odagini rol
+                  senaryolarindan temizliyor). */
+function __dhMalzemeOpener(){
+  var m=__dhMalzeme, ilk=m.cumleler[0], kac=m.cumleler.length;
+  var konu = m.konu || m.modul;
+  var dunVar = !!(m.dun && m.dun.konu && m.dun.konu!==m.konu);
+
+  if(__dhIsTeacher){
+    var neKadar = (m.kaynak==="bugun") ? ("bugün " + kac + " cümle notladın")
+                : (m.kaynak==="hafta") ? ("bu hafta " + kac + " cümle çalıştın")
+                : ("daha önce " + kac + " cümle öğrendin");
+    return (dunVar ? ("Dün " + m.dun.konu + " çalışmıştık. ") : "")
+      + "Bugün " + konu + " üzerine konuşalım — " + neKadar + ".\n"
+      + "Şu cümleyle başlıyoruz:\n" + ilk.en + (ilk.tr ? ("\n(" + ilk.tr + ")") : "")
+      + "\nSen söylesen nasıl söylersin?";
+  }
+  return (dunVar ? ("Last time we worked on " + m.dun.konu + ". ") : "")
+    + "Today let's practise " + konu + " — you studied " + kac + " sentences for it.\n"
+    + "Let's start with this one: \"" + ilk.en + "\"\n"
+    + "Your turn — how would you say it?";
+}
 function __dhOpener(){
   if(__dhTeach&&__dhTeach.target){
     var head = __dhTeach.from==="coach"
@@ -56,6 +106,7 @@ function __dhOpener(){
       +(__dhTeach.tr?("translate this into English — \""+__dhTeach.tr+"\""):"write the correct sentence yourself.");
   }
   if(__dhFocus) return "Your coach sent you to practice \""+__dhFocus+"\" with me. Let's work on it together! I'll give you short prompts — first, write any sentence using this pattern.";
+  if(__dhMalzeme) return __dhMalzemeOpener();
   return Scenario.opener;
 }
 const State = {
@@ -473,6 +524,15 @@ function systemPrompt(){
     (__dhTeach&&__dhTeach.items&&__dhTeach.items.length>1?("\n[SESSION MATERIAL — the student's real mistakes from their error notebook"+(__dhTeach.label?(", topic: "+__dhTeach.label):"")+"]\n"
       +__dhTeach.items.map(function(it,i){ return (i+1)+") wrong=\""+(it.answer||"")+"\" correct=\""+it.target+"\""+(it.tr?(" (TR: \""+it.tr+"\")"):""); }).join("\n")
       +"\nWork through these one by one: for each, make the student produce the correct sentence themselves, correct them, give ONE short Turkish tip, then move to the next. Do NOT ask generic questions while this list is unfinished."):""),
+    /* Ogrenciye BUGUN calistigi cumleleri konusturur. Cumleyi tekrar
+       ettirmek degil, KALIBI urettirmek hedef — yoksa papagan olur. */
+    (__dhMalzeme?("\n[TODAY'S MATERIAL — the student studied these in module \""+__dhMalzeme.modul+"\""
+      +(__dhMalzeme.konu?(", topic: "+__dhMalzeme.konu):"")+"]\n"
+      +__dhMalzeme.cumleler.map(function(c,i){
+          return (i+1)+') "'+c.en+'"'+(c.kalip?('   pattern: '+c.kalip):"");
+        }).join("\n")
+      +"\nBuild this session around these. Create real situations that force the student to PRODUCE these patterns themselves — do not quote the sentences at them and do not ask them to repeat. Work through them one at a time. When they use a pattern correctly, acknowledge it in a few words and move to the next. Keep the role you are playing."
+      +(__dhMalzeme.dun&&__dhMalzeme.dun.konu?("\nYesterday they practiced \""+__dhMalzeme.dun.konu+"\" with you; you may refer back to it once, briefly."):"")):""),
     (__dhFocus?("\n[FOCUS DRILL] The coach sent the student to you specifically to work on this error type: \""+__dhFocus+"\". Build most of this session around it: create short prompts that force the student to produce this pattern, correct their attempts, and give ONE short Turkish tip when they slip. Mention at the start, in one sentence, that you two will practice this together."):""),
     "\n[TASKS] The student must complete these in-scenario tasks: "+__dhTasks.map(function(t,i){return (i+1)+") "+t;}).join(" ")+" Weave them naturally into the conversation. When the user GENUINELY completes task N, append the marker [TASK_DONE:N] at the very end of your reply. Never mention the markers or tasks mechanically."
   ].join("\n");
@@ -880,7 +940,9 @@ function boot(){
   avatar=new PhotoAvatar($("avatarImg"));
   avatar.init();
   setupEvents();
-  var generic = !(__dhTeach&&__dhTeach.target) && !__dhFocus;
+  /* Malzeme varsa genFreshOpener CAGRILMAZ: rastgele "taze konu" uretimi
+     malzeme acilisini ezer ve sikayet aynen geri gelir. */
+  var generic = !(__dhTeach&&__dhTeach.target) && !__dhFocus && !__dhMalzeme;
   if(generic && getKeys().length){
     addBubble("assistant", "", {typing:true});
     genFreshOpener(function(op){
