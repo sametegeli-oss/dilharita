@@ -318,6 +318,62 @@
     return kart;
   }
 
+  /* ══════════════ CANLI ŞERİT ══════════════════════════════════════
+     "O gün öğrendiğim cümleleri burada nasıl kullanacağım?" sorusunun
+     gorunur cevabi. Gunun kaliplarini sohbet ekraninda listeler ve sen
+     o kalibi URETTIKCE isaretler. Eslestirme, puanlamanin AYNI mantigi
+     (kalipKullanildi) — ayri bir kural yok, sonda cikan puanla birebir
+     tutarli. Boylece "model konuyu dagitti mi" gozle gorulur; prompt'a
+     guvenmek yerine OLCULEN bir sey olur. */
+  function seritStil() {
+    if (document.getElementById("dh-serit-css")) return;
+    var st = document.createElement("style"); st.id = "dh-serit-css";
+    st.textContent =
+      "#dhSerit{display:flex;gap:6px;flex-wrap:wrap;align-items:center;"
+      + "padding:6px 10px;border-top:1px dashed #ffffff18;font:700 11.5px Nunito,system-ui}"
+      + "#dhSerit .dh-serit__bas{color:#7cc4ff;flex:0 0 auto}"
+      + "#dhSerit .dh-serit__oge{display:inline-flex;align-items:center;gap:4px;"
+      + "padding:3px 8px;border-radius:999px;background:#101f38;border:1px solid #23395b;"
+      + "color:#9fb3d9;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+      + "transition:background .3s,color .3s,border-color .3s;cursor:default}"
+      + "#dhSerit .dh-serit__oge--ok{background:#052e16;border-color:#22c55e88;color:#86efac}"
+      + "#dhSerit .dh-serit__sayi{margin-left:auto;color:#cfe0ff;flex:0 0 auto}";
+    document.head.appendChild(st);
+  }
+  var _seritDurum = "";
+  function seritCiz() {
+    var m = malzeme();
+    if (!m) return;
+    var kap = document.getElementById("taskBar");
+    if (!kap || !kap.parentNode) return;
+    seritStil();
+    var el = document.getElementById("dhSerit");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "dhSerit";
+      kap.parentNode.insertBefore(el, kap);      /* gorev cubugunun hemen ustune */
+    }
+    var cevaplar = balonlar().kullanici;
+    var yapilan = 0;
+    var parcalar = m.cumleler.map(function (c) {
+      var cek = kalipCekirdegi(c.kalip);
+      if (!cek.length) cek = kalipCekirdegi(c.en);
+      var ok = kalipKullanildi(cek, cevaplar);
+      if (ok) yapilan++;
+      return { en: c.en, ok: ok };
+    });
+    /* degismediyse DOM'a dokunma (her 4 sn'de bir yeniden cizim yapilmasin) */
+    var imza = yapilan + "/" + parcalar.length + ":" + parcalar.map(function (p) { return p.ok ? 1 : 0; }).join("");
+    if (imza === _seritDurum) return;
+    _seritDurum = imza;
+    el.innerHTML = '<span class="dh-serit__bas">🎯 Bugünün cümleleri</span>'
+      + parcalar.map(function (p) {
+          return '<span class="dh-serit__oge' + (p.ok ? " dh-serit__oge--ok" : "") + '" title="'
+            + esc(p.en) + '">' + (p.ok ? "✅" : "○") + " " + esc(p.en) + '</span>';
+        }).join("")
+      + '<span class="dh-serit__sayi">' + yapilan + "/" + parcalar.length + '</span>';
+  }
+
   var mesgul = false;
   function calistir() {
     if (mesgul) return Promise.resolve(null);
@@ -371,6 +427,7 @@
 
   function baslat() {
     butonEkle();
+    seritCiz();
     /* Acilista da bir kez bak: kullanici gorevleri bitirmis bir sohbete geri
        donduyse MutationObserver hic tetiklenmiyor ve 4 sn'lik tarama
        beklenmesi gerekiyordu (testte yakalandi). */
@@ -378,10 +435,11 @@
     try {
       new MutationObserver(function () {
         butonEkle();
+        seritCiz();
         otoDenetle();
       }).observe(document.body, { childList: true, subtree: true });
     } catch (e) {}
-    setInterval(function () { butonEkle(); otoDenetle(); }, 4000);
+    setInterval(function () { butonEkle(); seritCiz(); otoDenetle(); }, 4000);
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", baslat, { once: true });
@@ -389,6 +447,7 @@
 
   global.DHSohbetPuan = {
     calistir: calistir, degerlendir: degerlendir, kartiGoster: kartiGoster,
+    seritCiz: seritCiz,
     _balonlar: balonlar, _cumlePuani: cumlePuani, _gorevPuani: gorevPuani,
     _kalipCekirdegi: kalipCekirdegi, _kalipKullanildi: kalipKullanildi
   };

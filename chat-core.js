@@ -564,43 +564,24 @@ function dhLanguageRule(){
   /* Senaryo sayfasi: AYNI ogretmen kurali + rol oyunu katmani.
      Ogretmen once ogretir, ogrenci hazir olunca kisa bir canlandirma
      yapar, sonra ogretmene doner. Rol, asistanin kimligi DEGILDIR. */
+  /* SIKISTIRILDI: her tur bu metin gonderiliyor ve ucretsiz Groq kotasi
+     doluyordu ("API limiti doldu"). Kurallarin HICBIRI atilmadi — hepsi
+     ekranda gorulen somut bir kusuru kapatiyor — yalnizca kisa yazildi. */
   return dhOgretmenKurali()
-    + "\n[ROLEPLAY] You are their Turkish English teacher, and this lesson happens in a "
-    + "specific setting. When it helps, you can ACT OUT the other person in that setting "
-    + "(" + (__dhRol || "the person they would talk to") + ") for a few turns.\n"
-    + "How a lesson turn goes:\n"
-    + "1) Teach in TURKISH: react to what they wrote, correct it properly if it was wrong "
-    + "(what is wrong, the rule, why), and give the pattern they need next.\n"
-    + "2) Then either ask them to build a sentence, or start a SHORT roleplay: say in Turkish "
-    + "\"Şimdi ben " + __dhRolTr + " olayım\" — use EXACTLY this Turkish label, never the "
-    + "English role description — and give your line as "
-    + "[[English line]]. Keep the roleplay to 1-2 turns, then step back out and teach again.\n"
-    + "HARD RULES:\n"
-    + "· You are ALWAYS the teacher first. Never disappear into the character.\n"
-    + "· NEVER narrate or summarise what just happened (\"sana şunu sordum, sen şunu dedin\"). "
-    + "That is not teaching.\n"
-    + "· NEVER translate your own English line into Turkish; teach the PATTERN instead.\n"
-    + "· EVERY English phrase must be inside [[ ]].\n"
-    + "· Always end your message by making the student produce an English sentence.\n"
-    /* ── Ekranda gorulen uc kusur, olculdu ──
-       (a) Ogrenci "I am going to order this" dedi — sorunun DOGRU cevabi —
-           ama model "yanlis, sen de soru sormalisin" dedi. Cunku [TASKS]
-           icinde "karsindakine soru sor" gorevi var ve model onu HER TURA
-           uyguluyordu. Sahnede cevap vermek de dogrudur.
-       (b) "do you have any dessert" icin "soru isareti koymayi unutma"
-           denip HATA uyduruldu. Konusma pratiginde noktalama/buyuk harf
-           hata degildir (puanlama prompt'unda bu kural zaten vardi).
-       (c) "Simdi sana tekrar soru sorayim" — sahne ayni yerde donuyordu. */
-    + "· If their sentence is correct and natural for their level, SAY SO in one short "
-    + "Turkish sentence and MOVE THE SCENE FORWARD. NEVER invent a mistake.\n"
-    + "· Ignore punctuation, capitalisation and typing slips — this is speaking practice, "
-    + "not dictation. Never correct a missing question mark or a lowercase letter.\n"
-    + "· Do NOT force the student to ask a question. Answering you is often the correct "
-    + "move in a scene. Ask for whatever that moment naturally needs.\n"
-    + "· Every turn must advance the scene one step (greeting → order → drinks → dessert "
-    + "→ bill). Never repeat the same request or ask them to redo a step they did right.\n"
-    + "· Your Turkish teaching is at most 3 short sentences. The student should be "
-    + "speaking more than you.";
+    + "\n[ROLEPLAY] You teach in this scene and may act out " + __dhRolTr
+    + " for 1-2 turns, then step back out. Each turn: (1) Turkish teaching — react, "
+    + "correct properly if wrong, give the pattern needed now; (2) either ask for a "
+    + "sentence or start a short roleplay with \"Şimdi ben " + __dhRolTr + " olayım\" "
+    + "(use exactly this Turkish label, never the English role description) and your "
+    + "line as [[English]].\nRULES: teacher first, never disappear into the character · "
+    + "never narrate what just happened · never translate your own English line · all "
+    + "English inside [[ ]] · if their sentence is correct for their level, say so "
+    + "briefly and MOVE THE SCENE FORWARD — never invent a mistake · ignore punctuation, "
+    + "capitalisation and typing slips, this is speaking not dictation · never force a "
+    + "question out of them, answering is often correct · each turn advances the scene "
+    + "one step, never repeat a step they did right · Turkish teaching max 3 short "
+    + "sentences, the student speaks more than you · end by making them produce an "
+    + "English sentence.";
 }
 /* Ogretme modu acik mi (ogretmen senaryosu ya da rol senaryosunda ders) */
 function dhOgretmeModu(){
@@ -930,7 +911,7 @@ async function suggestReply(){
       + "\n\nNOW: The USER is stuck and wants a suggested reply. Based on the conversation so far and the partner's last message, write ONE natural English sentence that the USER (the learner) could say next. "
       + "Match the learner's level ("+State.level+"): keep it simple and appropriate. "
       + "Reply with ONLY that single English sentence — no quotes, no Turkish, no explanation.";
-    const messages=[{role:"system",content:sys},{role:"assistant",content:__dhOpener()},...State.history.slice(-10),
+    const messages=[{role:"system",content:sys},{role:"assistant",content:__dhOpener()},...State.history.slice(-6),
       {role:"user",content:"(Suggest what I could say next — English only, one sentence.)"}];
     let reply=await groqChat(messages);
     reply=String(reply||"").trim().replace(/^["'“”]+|["'“”]+$/g,"").split("\n")[0].trim();
@@ -981,7 +962,7 @@ async function sendUser(){
         });
       }
     }catch(e){}
-    const messages=[{role:"system",content:systemPrompt()},{role:"assistant",content:State.firstMsg},...State.history.slice(-10)];
+    const messages=[{role:"system",content:systemPrompt()},{role:"assistant",content:State.firstMsg},...State.history.slice(-6)];
     const reply=await groqChat(messages);
     removeTyping();
     State.currentPartner=dhStripTasks(reply) || "Could you please say that again?";
