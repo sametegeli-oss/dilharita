@@ -195,12 +195,24 @@
     return null;
   }
 
-  /* DHPlan defterinden bir adimi href ile bul */
+  /* DHPlan defterinden bir adimi bul.
+     ONCE TAM HREF ile eslestirilir. Sebep olculdu: adimKimligi() tip
+     donduruyor (tipOf), ve index-app.html'e giden IKI adim ("Yeni cumleler"
+     ile telafi adimi) ayni "yeni" kimligini aliyor. planiKur yazarken
+     tekillestiriyor ("yeni", "yeni-2") ama okuma tarafi tekillestirmiyordu:
+     telafi adimi hep BIRINCI adimin kaydini okuyor, kendi sayaci
+     (kopru "yeni-2"ye yaziyor) ekrana hic gelmiyordu. Href tekildir.
+     Kimlik eslestirmesi yalnizca yedek olarak kalir (eski defterler,
+     basla.html gibi href'siz kurulmus planlar). */
   function defterAdimi(defter, href){
     if (!defter || !defter.adimlar) return null;
-    var id = adimKimligi(href);
+    var h = String(href||"");
     for (var i=0; i<defter.adimlar.length; i++){
-      if (defter.adimlar[i].id === id) return defter.adimlar[i];
+      if (String(defter.adimlar[i].href||"") === h) return defter.adimlar[i];
+    }
+    var id = adimKimligi(href);
+    for (var j=0; j<defter.adimlar.length; j++){
+      if (defter.adimlar[j].id === id) return defter.adimlar[j];
     }
     return null;
   }
@@ -249,25 +261,39 @@
     if (d.plan && d.plan.steps){
       d.adimToplam = d.plan.steps.length;
 
-      /* dh-koc-steps-done SAYFA bazli, adim bazli degil. Plan ayni sayfaya
-         giden iki adim icerebilir ("Yeni cumleler" ve telafi adimi ikisi de
-         index-app.html). O durumda sayfa isareti yalnizca ILK adima sayilir;
-         sonraki adim gercek ilerlemeye (DHPlan defteri) bakmak zorunda.
-         Yoksa telafi adimi hic yapilmadan bitmis gorunuyordu. */
-      var sayfaKullanildi = {};
+      /* ── ADIM BITTI MI ──────────────────────────────────────────
+         dh-koc-steps-done SAYFA bazlidir ve coach-bubble.js onu sayfadaki
+         ILK gercek etkilesimde yazar. Yani isaretin anlami "BASLADI"dir,
+         "BITTI" degil. Eski kod isareti bitis sayiyordu: 1 cumle notlayan
+         kullanicinin "Yeni cumleler" adimi aninda 5/5 ve ustu cizili
+         goruruyordu (olculdu).
+
+         Yeni kural:
+           birim sayaci olan adim (hedef>1)  -> yalnizca GERCEK sayac karar verir
+           tek birimlik adim (hedef<=1)      -> sayfa isareti yeterli
+                                                (konusma, hata defteri, kelime)
+         Sayaclar burada BIR KEZ hesaplanir ve d.sayaclar'da tasinir;
+         adimlarCiz ayni sayilari kullanir (iki yerde ayri hesap = sapma). */
+      d.sayaclar = [];
 
       d.plan.steps.forEach(function(s){
         var sayfa = String(s.href||"").split("?")[0];
-        var bitti = false;
-
         var isaret = !!set[sayfa] || (sayfa === "chat.html" && d.sohbetVar);
-        if (isaret && !sayfaKullanildi[sayfa]){
-          sayfaKullanildi[sayfa] = true;
-          bitti = true;
+
+        /* Kaynak onceligi: tekrar adimi -> tekrar.html'in dondurulmus gun
+           hedefi; digerleri -> DHPlan defteri (href ile eslesen adim). */
+        var hedef = 0, yapilan = 0;
+        if (tipOf(s.href) === "tekrar" && d.tekrarGun){
+          hedef = d.tekrarGun.hedef; yapilan = d.tekrarGun.yapilan;
         } else {
           var a = d.defter ? defterAdimi(d.defter, s.href) : null;
-          if (a && a.hedef && a.yapilan >= a.hedef) bitti = true;
+          if (a){ hedef = a.hedef|0; yapilan = Math.min(a.yapilan|0, hedef); }
         }
+        d.sayaclar.push({ hedef: hedef, yapilan: yapilan, isaret: isaret });
+
+        var bitti = (hedef > 1)
+          ? (yapilan >= hedef)
+          : (isaret || (hedef > 0 && yapilan >= hedef));
 
         d.bitenler.push(bitti);
         if (bitti) d.adimBiten++;
@@ -493,13 +519,8 @@
            1) tekrar adimi ise tekrar.html'in dondurulmus gun hedefi
            2) yoksa DHPlan defteri
          Ham bekleyen TOPLAMI hicbir kosulda gosterilmez. */
-      var hedef = 0, yapilan = 0;
-      if (tipOf(s.href) === "tekrar" && d.tekrarGun){
-        hedef = d.tekrarGun.hedef; yapilan = d.tekrarGun.yapilan;
-      } else {
-        var da = d.defter ? defterAdimi(d.defter, s.href) : null;
-        if (da){ hedef = da.hedef; yapilan = Math.min(da.yapilan, da.hedef); }
-      }
+      var sc = (d.sayaclar && d.sayaclar[si]) || null;
+      var hedef = sc ? sc.hedef : 0, yapilan = sc ? sc.yapilan : 0;
       if (bitti && hedef) yapilan = hedef;
 
       /* Tek birimlik adimda (konusma gibi) tugla gurultu yaratir */
