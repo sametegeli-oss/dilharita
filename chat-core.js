@@ -89,11 +89,15 @@ function __dhMalzemeOpener(){
       + "Şu cümleyle başlıyoruz:\n" + ilk.en + (ilk.tr ? ("\n(" + ilk.tr + ")") : "")
       + "\nSen söylesen nasıl söylersin?";
   }
-  return (dunVar ? ("Last time we worked on " + m.dun.konu + ". ") : "")
-    + "Today let's practise " + konu + " — you studied " + kac + " sentences for it.\n"
-    + (m.ortam ? ("We're in this situation: " + m.ortam + ".\n") : "")
-    + "Let's start with this one: \"" + ilk.en + "\"\n"
-    + "Your turn — how would you say it?";
+  /* Rol senaryosu: Ingilizce sahne repligi [[ ]] icinde, ardindan Turkce
+     kocluk notu (bkz. dhLanguageRule rol kurali). */
+  return "[[" + ilk.en + "]]\n"
+    + (dunVar ? ("Dün " + m.dun.konu + " çalışmıştık. ") : "")
+    + "Bugün " + konu + " üzerine konuşuyoruz"
+    + (m.ortam ? (" — ortam: " + m.ortam) : "")
+    + "; " + kac + " cümle çalışmıştın.\n"
+    + (ilk.tr ? ("Yukarıdaki cümle: " + ilk.tr + "\n") : "")
+    + "Sen olsan nasıl söylerdin? Cevabını İngilizce yaz.";
 }
 function __dhOpener(){
   if(__dhTeach&&__dhTeach.target){
@@ -514,7 +518,31 @@ function dhLanguageRule(){
       + "sentence, add one more example using the same rule, and ask the student to "
       + "build a new sentence with it.";
   }
-  return "Always reply in English unless the user explicitly asks for Turkish.";
+  /* ── ROL SENARYOLARI (garson, resepsiyonist, doktor...) ──────────
+     Eski kural tek satirdi: "Always reply in English". Sonuc: garson
+     bastan sona Ingilizce konusuyordu ve ogrenci ne dedigini anlamadan
+     takiliyordu — ogretme hic yoktu.
+     Yeni kural IKI KATMANLI: rol repligi INGILIZCE kalir (rol bozulmaz,
+     ogrenilecek malzeme budur) ama arkasindan KISA bir TURKCE kocluk
+     notu gelir. Ingilizce kisimlar [[ ]] ile isaretlenir; bu isaret
+     zaten ekranda vurgulu span'a ve seslendirmede Ingilizce sese
+     donusuyor (bkz. renderBubbleText / splitMixedSpeech).
+     Eski davranisa donmek isteyen: localStorage["dh-rol-dili"] = "en" */
+  var rolPref = "";
+  try { rolPref = localStorage.getItem("dh-rol-dili") || ""; } catch(e){}
+  if (rolPref === "en") return "Always reply in English unless the user explicitly asks for Turkish.";
+  return "LANGUAGE RULE (strict): The student is a Turkish native speaker. "
+    + "Answer in TWO layers, always in this order:\n"
+    + "1) Your in-character line in ENGLISH, wrapped in double brackets: "
+    + "[[Good evening, do you have a reservation?]]\n"
+    + "2) Then ONE or TWO short sentences in TURKISH as their coach: what they should "
+    + "say or do next, or a correction of their last message. Keep it under 25 Turkish words.\n"
+    + "Explanations, corrections, hints and instructions are ALWAYS in Turkish. "
+    + "Every English phrase — your line, examples, and anything you ask the student to "
+    + "say — MUST be inside [[ ]]. Never explain grammar in English. Never translate your "
+    + "own Turkish sentence into English. Stay in your role while doing this: you are the "
+    + "character in the English layer and their Turkish coach in the second layer. "
+    + "Use ONLY Turkish and English, never a third language.";
 }
 function systemPrompt(){
   return [Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."), levelGuide(), dhLanguageRule(), "Keep replies short: 1 to 3 sentences.", "Ask a follow-up question to keep the conversation going.", "If the user makes a clear mistake, gently model the correct version without lecturing.", "No emojis.",
