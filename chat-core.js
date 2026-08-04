@@ -541,17 +541,42 @@ function dhLanguageRule(){
 
   return dhOgretmenKurali()
     + "\n[SCENE LAYER] You are ALSO playing the character described above, inside a "
-    + "real scene. Every reply has two parts, in this order: "
-    + "(1) your in-character line in ENGLISH, wrapped in double brackets, e.g. "
-    + "[[Good evening, do you have a reservation?]] — this is the material the student "
-    + "is learning; (2) then your TURKISH teaching, following the rule above: react to "
-    + "what they said, correct it properly if it was wrong, teach the pattern they need "
-    + "for this moment of the scene, and tell them in Turkish what to say next. "
-    + "EVERY English phrase must be inside [[ ]]. Stay in character in part (1) and be "
-    + "their Turkish teacher in part (2); never break the scene, never switch the order.";
+    + "real scene. Answer in EXACTLY this shape, nothing else:\n"
+    + "[[<your in-character English line, 1-2 sentences>]]\n"
+    + "<Turkish: if their last message had a mistake, say what was wrong and give the "
+    + "correct version>\n"
+    + "<Turkish: the PATTERN they need right now and WHY, in 1-2 sentences>\n"
+    + "<Turkish: what they should say next> [[<the English sentence you want them to produce>]]\n"
+    + "HARD RULES:\n"
+    + "· NEVER narrate or summarise what just happened in the conversation. Sentences like "
+    + "\"I asked you X and you said Y, now I am saying Z\" are FORBIDDEN — that is not teaching.\n"
+    + "· NEVER translate your own English line into Turkish. The student must work it out; "
+    + "you teach the PATTERN, not the translation.\n"
+    + "· EVERY English phrase, in every line, must be inside [[ ]].\n"
+    + "· Always end by making the student produce an English sentence themselves.\n"
+    + "· Stay in character in the first line and be their Turkish teacher in the rest. "
+    + "Never break the scene, never change the order of the lines.";
+}
+/* Ogretme modu acik mi (ogretmen senaryosu ya da rol senaryosunda ders) */
+function dhOgretmeModu(){
+  try{
+    if(__dhIsTeacher) return localStorage.getItem("dh-teacher-dili")!=="en";
+    return localStorage.getItem("dh-rol-dili")!=="en";
+  }catch(e){ return true; }
 }
 function systemPrompt(){
-  return [Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."), levelGuide(), dhLanguageRule(), "Keep replies short: 1 to 3 sentences.", "Ask a follow-up question to keep the conversation going.", "If the user makes a clear mistake, gently model the correct version without lecturing.", "No emojis.",
+  return [Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."), levelGuide(), dhLanguageRule(),     /* CELISKI GIDERILDI: "1-3 cumle" ve "ders verme" kurallari, ogretme
+       kuralinin istedigi (kural + neden + ornek + yeni cumle kurdur)
+       yapiyi eziyordu. Model her seyi tek cumleye sikistirip ogretmek
+       yerine olan biteni ANLATIYORDU ("...diye sordum, siz de
+       soylediniz, simdi size sunu diyorum"). Ogretme modunda uzunluk
+       serbest ama YAPI zorunlu; eski kisa/ders-verme kurallari yalnizca
+       ogretme kapaliyken gecerli. */
+    (dhOgretmeModu()
+      ? "Length: your English line is 1-2 sentences; the Turkish teaching part is 2-4 sentences. Never longer."
+      : "Keep replies short: 1 to 3 sentences."),
+    (dhOgretmeModu() ? "" : "If the user makes a clear mistake, gently model the correct version without lecturing."),
+    "Ask a follow-up question to keep the conversation going.", "No emojis.",
     (__dhProfile?("\n[STUDENT PROFILE — use this to personalize, in Turkish data]\n"+__dhProfile+"\nWhen the student repeats one of their known error patterns, gently correct it and briefly note it is a frequent mistake of theirs. Naturally create situations that make the student use the patterns they struggle with."):""),
     (__dhIsTeacher?"\n[COACH ROLE] You are not only a conversation partner but also the student's personal coach. The profile above includes their daily coach plan (BUGÜNÜN KOÇ PLANI) and weekly goal (HAFTALIK HEDEF). In your FIRST reply, acknowledge their streak, plan or goal in ONE short friendly sentence, then continue teaching. Steer the practice toward the weekly goal and the unfinished (⬜) plan steps. If they completed steps (✅), congratulate briefly.":""),
     (__dhTeach&&__dhTeach.target?("\n[EXACT ERROR CONTEXT] The student's own mistake: wrong=\""+(__dhTeach.answer||"")+"\" correct=\""+__dhTeach.target+"\" (TR: \""+(__dhTeach.tr||"")+"\"). Rule: "+(__dhTeach.tip||"")+". Start THIS session by teaching exactly this, then create 2-3 similar practice prompts."):""),
