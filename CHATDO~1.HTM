@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#071226">
+<title>Doktor · Fotoğraflı Sohbet</title>
+<link rel="stylesheet" href="./chat-style.css?v=19">
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   AVATAR ZEMINI — BEYAZ (practice.html'deki ogretmen kartlari gibi)
+   ------------------------------------------------------------------
+   chat-style.css tum sohbet ekranlarina duz #050b16 veriyor.
+   practice.html'deki ogretmen/ses kartlari ise duz #fff zemin uzerinde
+   ince yesil kenarlikli (dilharita-teacher-support.bundle.js).
+   Doktor avatarinin arka plani zaten acik tonlu oldugu icin koyu
+   zeminde kesik gorunuyordu; beyaz zemin kartla butunlestiriyor.
+
+   Bu kural YALNIZCA bu sayfaya kapsanmistir; chatairport, chathotel,
+   chatrestaurant, chatteacher ve chat.html etkilenmez.
+
+   !important gerekli: chat-style.css icindeki V17 blogu ayni secicilere
+   zaten !important ile #050b16 yaziyor.
+   ══════════════════════════════════════════════════════════════════ */
+.avatar-stage{
+  background:#fff !important;
+  border-bottom:1px solid #34d39955 !important;
+}
+.avatar-box,
+.avatar-stage > img,
+#avatarImg{
+  background:#fff !important;
+}
+</style>
+</head>
+<body>
+<div id="chatApp"></div>
+<script>window.CHAT_SCENARIO = {"title": "Doktor", 
+                                  "voiceGender": "female", // Kadın seslerine öncelik verilir
+  "voiceIndex": 4,       // İngilizce ses listesindeki 3. sesi seçer (Eski sistemindeki indeks)
+                                "subtitle": "İngilizce konuşma", "level": "B1", "role": "a calm female doctor in a clinic", "voiceGender": "female", "opener": "Hello. How can I help you today?", "systemExtra": "You are role-playing as a calm female doctor in a clinic. Ask simple medical questions, but do not diagnose. Encourage the user to seek real medical help for urgent symptoms.", "avatarDir": "assets/avatars_v3/doctor/", "frames": {"idle": "idle.webp", "blink": "blink.webp", "listen": "listen.webp", "mouthA": "mouth-a.webp", "mouthE": "mouth-e.webp", "mouthI": "mouth-i.webp", "mouthO": "mouth-o.webp", "mouthU": "mouth-u.webp", "mouthMBP": "mouth-mbp.webp", "mouthFV": "mouth-fv.webp", "mouthL": "mouth-l.webp", "mouthTH": "mouth-th.webp", "mouthSmall": "mouth-i.webp", "mouthMedium": "mouth-e.webp", "mouthOpen": "mouth-a.webp"}, "backHref": "chat.html", "noKeyReply": "I can continue when you add a Groq API key. Can you tell me what symptoms you have?"};</script>
+<script src="./viseme-lang.js?v=1"></script>
+<script src="./ai-providers.js?v=2"></script>
+<script src="./chat-core.js?v=32"></script>
+<script src="./dh-ortam-fon.js?v=3"></script>
+<script src="./dh-sohbet-puan.js?v=2"></script>
+<script src="./coach-bubble.js?v=10"></script>
+<script src="./ai-teacher-prompt-tts.js?v=1"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=4"></script>
+<script src="./avatar-blink-sync.js?v=1"></script>
+<script src="./ux-boost.js?v=1"></script>
+</body>
+</html>

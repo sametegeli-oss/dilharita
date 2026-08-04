@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#071226">
+<title>Havaalanı · Fotoğraflı Sohbet</title>
+<link rel="stylesheet" href="./chat-style.css?v=19">
+</head>
+<body>
+<div id="chatApp"></div>
+// --- <script>window.CHAT_SCENARIO = {"title": "Havaalanı", "subtitle": "İngilizce konuşma", "level": "A2", "role": "a male airport check-in agent", "voiceGender": "male", "opener": "Good morning. How can I help you at the airport today?", "systemExtra": "You are role-playing as a male airport check-in agent. Help with check-in, baggage, boarding gate, and flight questions.", "avatarDir": "assets/avatars_v3/airport/", "frames": {"idle": "idle.webp", "blink": "blink.webp", "listen": "listen.webp", "mouthA": "mouth-a.webp", "mouthE": "mouth-e.webp", "mouthI": "mouth-i.webp", "mouthO": "mouth-o.webp", "mouthU": "mouth-u.webp", "mouthMBP": "mouth-mbp.webp", "mouthFV": "mouth-fv.webp", "mouthL": "mouth-l.webp", "mouthTH": "mouth-th.webp", "mouthSmall": "mouth-i.webp", "mouthMedium": "mouth-e.webp", "mouthOpen": "mouth-a.webp"}, "backHref": "chat.html", "noKeyReply": "Devam edebilmem için bir Groq API anahtarı eklemelisiniz. Pasaportunuzu ve biletinizi görebilir miyim?"};</script>
+<script>
+window.CHAT_SCENARIO = {
+  "title": "Havaalanı", 
+  "subtitle": "İngilizce konuşma", 
+  "level": "A2", 
+  "role": "a male airport check-in agent", 
+  "voiceGender": "male", // Erkek seslerine öncelik verilir
+  "voiceIndex": 3,       // İngilizce ses listesindeki 3. sesi seçer (Eski sistemindeki indeks)
+  "opener": "Good morning. How can I help you at the airport today?",
+  "systemExtra": "You are role-playing as a male airport check-in agent. Help with check-in, baggage, boarding gate, and flight questions.", 
+  "avatarDir": "assets/avatars_v3/airport/", 
+  "frames": {
+    "idle": "idle.webp", "blink": "blink.webp", "listen": "listen.webp",
+    "mouthA": "mouth-a.webp", "mouthE": "mouth-e.webp", "mouthI": "mouth-i.webp",
+    "mouthO": "mouth-o.webp", "mouthU": "mouth-u.webp", "mouthMBP": "mouth-mbp.webp",
+    "mouthFV": "mouth-fv.webp", "mouthL": "mouth-l.webp", "mouthTH": "mouth-th.webp",
+    "mouthSmall": "mouth-i.webp", "mouthMedium": "mouth-e.webp", "mouthOpen": "mouth-a.webp"
+  }, 
+  "backHref": "chat.html", 
+  "noKeyReply": "Devam edebilmem için bir Groq API anahtarı eklemelisiniz. Pasaportunuzu ve biletinizi görebilir miyim?"
+};
+</script>
+
+<!-- Altındaki o uzun applyUniqueVoice() script kodlarını tamamen sildik -->
+
+<script src="./viseme-lang.js?v=1"></script>
+<script src="./ai-providers.js?v=2"></script>
+<script src="./chat-core.js?v=32"></script>
+<script src="./dh-ortam-fon.js?v=3"></script>
+<script src="./dh-sohbet-puan.js?v=2"></script>
+<script src="./coach-bubble.js?v=10"></script>
+<script>
+// --- HAVAALANI İÇİN ÖZEL SES ENJEKSİYONU (Havaalanı Sıra No: 3) ---
+function applyUniqueVoice() {
+    if ('speechSynthesis' in window) {
+        try {
+            const voices = window.speechSynthesis.getVoices();
+            const englishVoices = voices.filter(v => v.lang.startsWith('en') || v.lang.startsWith('EN'));
+            
+            if (englishVoices.length > 0) {
+                // 3. sesi al (indeks 2)
+                const selectedVoice = englishVoices[2 % englishVoices.length];
+                window.CHAT_SCENARIO.voiceName = selectedVoice.name;
+                window.CHAT_SCENARIO.lang = selectedVoice.lang;
+            } else {
+                console.warn('Havaalanı: İngilizce ses bulunamadı.');
+            }
+        } catch(e) {
+            console.warn('Ses seçimi sırasında hata:', e);
+        }
+    }
+}
+
+if ('speechSynthesis' in window) {
+    // Sesler zaten yüklüyse hemen uygula, değilse olayı bekle
+    if (window.speechSynthesis.getVoices().length > 0) {
+        applyUniqueVoice();
+    } else {
+        window.speechSynthesis.onvoiceschanged = function() {
+            applyUniqueVoice();
+            window.speechSynthesis.onvoiceschanged = null; // tekrar tetiklenmesin
+        };
+    }
+}
+// -----------------------------------------------------------------
+</script>
+  
+<script src="./ai-providers.js?v=2"></script>
+<script src="./chat-core.js?v=32"></script>
+<script src="./ai-teacher-prompt-tts.js?v=1"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=4"></script>
+<script src="./avatar-blink-sync.js?v=1"></script>
+<script src="./ux-boost.js?v=1"></script>
+</body>
+</html>

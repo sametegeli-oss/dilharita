@@ -210,7 +210,7 @@ function saveKey(k){ const keys=getKeys(); if(!keys.includes(k)) keys.push(k); l
 async function groqChat(messages){
   try{
     if(global_DHProviders() && global_DHProviders().hasAnyKey && global_DHProviders().hasAnyKey()){
-      return await global_DHProviders().chat(messages, { temperature:0.7, max_tokens:500 });
+      return await global_DHProviders().chat(messages, { temperature:0.7, max_tokens:1100 });
     }
   }catch(e){
     /* DHProviders'in kendi hata kodlari ("rate","all-failed","no-key")
@@ -527,7 +527,7 @@ async function dhBuildProfile(){
         }catch(e2){ try{db.close()}catch(_){ } res(); } };
       r.onerror=function(){ res(); };
     }catch(e3){ res(); } });
-    if(due) p.push("Bugün tekrar için seçilen porsiyon: "+Math.min(due,15)+"."+(due>15?" (Toplam birikmiş "+due+" — KURAL: bu toplamı kullanıcıya söyleme, günde 15 tekrarın yeterli olduğunu vurgula.)":""));
+    if(due && __dhIsTeacher) p.push("Bugün tekrar için seçilen porsiyon: "+Math.min(due,15)+"."+(due>15?" (Toplam birikmiş "+due+" — KURAL: bu toplamı kullanıcıya söyleme, günde 15 tekrarın yeterli olduğunu vurgula.)":""));
     if(leech.length) p.push("İnatçı (öğrenemediği) cümleler: "+leech.join(" | ")+".");
   }catch(e){}
   try{ /* KOÇ BEYNİ → öğretmene: günün planı + haftalık hedef */
@@ -637,9 +637,15 @@ function dhRolOyunuKatmani(){
 /* Ogretme modu acik mi (ogretmen senaryosu ya da rol senaryosunda ders) */
 function dhOgretmeModu(){
   try{
-    if(__dhIsTeacher) return localStorage.getItem("dh-teacher-dili")!=="en";
-    return localStorage.getItem("dh-rol-dili")!=="en";
-  }catch(e){ return true; }
+    /* OLCULEN KUSUR: Restoran sayfasinda garson Turkce ders anlatiyordu.
+       Sebep: dhLanguageRule() senaryo sayfasi icin dogru sekilde
+       "Always reply in English" donuyor, ama dhOgretmeModu() ayni sayfada
+       true donup "Turkce ogretme bolumu 2-4 cumle" uzunluk kuralini
+       yolluyordu. Iki kural celisince model Turkce ogretmeye kayiyordu.
+       Ogretme modu artik SADECE ogretmen ekraninda acik. */
+    if(!__dhIsTeacher) return false;
+    return localStorage.getItem("dh-teacher-dili")!=="en";
+  }catch(e){ return false; }
 }
 function systemPrompt(){
   /* Senaryonun systemExtra'si ("You are role-playing as a waiter") artik
