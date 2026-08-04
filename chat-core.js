@@ -425,18 +425,39 @@ function buildUI(){
 }
 /* Metni ekrana basarken [[İngilizce]] bloklarını işaretli span'a çevirir.
    Ham metne dokunmaz — seslendirme onu kullanmaya devam eder. */
+/* Modeller basligi **boyle** kalinlastiriyor; chat-core'da hic markdown
+   islenmedigi icin ekrana "**TURKCE ACIKLAMA**" diye yildizlariyla
+   dusuyordu. Sadece **kalin** destekleniyor — baska markdown yok, cunku
+   ogretmen cevabinda baska bir sey kullanilmiyor. */
+function dhKalinParcala(metin, hedef){
+  var re = /\*\*([^*\n][^*]*?)\*\*/g, i = 0, m;
+  while((m = re.exec(metin))){
+    if(m.index > i) hedef.appendChild(document.createTextNode(metin.slice(i, m.index)));
+    var b = document.createElement("strong");
+    b.textContent = m[1];
+    hedef.appendChild(b);
+    i = re.lastIndex;
+  }
+  if(i < metin.length) hedef.appendChild(document.createTextNode(metin.slice(i)));
+}
 function renderBubbleText(node, raw){
   var s = String(raw == null ? "" : raw);
   var re = /\[\[([\s\S]*?)\]\]/g, i = 0, m;
   while((m = re.exec(s))){
-    if(m.index > i) node.appendChild(document.createTextNode(s.slice(i, m.index)));
-    var sp = document.createElement("span");
-    sp.className = "en-chunk";
-    sp.textContent = m[1];
-    node.appendChild(sp);
+    if(m.index > i) dhKalinParcala(s.slice(i, m.index), node);
+    /* BOS BLOK: model bazen "... : [[…]]" gibi yer tutucu birakiyordu,
+       ekranda bos yesil kutucuk olarak ciziliyordu. Icinde harf/rakam
+       yoksa blok hic cizilmez. */
+    var ic = m[1];
+    if(/[A-Za-z0-9]/.test(ic)){
+      var sp = document.createElement("span");
+      sp.className = "en-chunk";
+      sp.textContent = ic;
+      node.appendChild(sp);
+    }
     i = re.lastIndex;
   }
-  if(i < s.length) node.appendChild(document.createTextNode(s.slice(i)));
+  if(i < s.length) dhKalinParcala(s.slice(i), node);
   if(i === 0 && !s) node.textContent = "";
 }
 function addBubble(role, text, options){
@@ -593,7 +614,21 @@ function dhOgretmenKurali(){
     + "When you correct a mistake, do not settle for one line: say what is wrong, "
     + "then explain the RULE and WHY in 2-3 Turkish sentences, give the correct "
     + "sentence, add one more example using the same rule, and ask the student to "
-    + "build a new sentence with it.";
+    + "build a new sentence with it. "
+    /* OLCULEN HATA: ogrenci "siparis verirken going to yerine will
+       kullanmam gerekmez mi" diye sordu, ogretmen "menuden secerken going
+       to daha dogal" dedi. Ders kitaplarindaki ayrim tam tersi: konusma
+       aninda verilen karar → will. Ogrenci hakliydi. */
+    + "GRAMMAR ACCURACY — will vs going to: a decision made AT THE MOMENT OF "
+    + "SPEAKING takes 'will' (ordering from a menu at the table: \"I'll have the "
+    + "chocolate cake.\"); a plan or intention formed BEFORE speaking takes 'going "
+    + "to' (\"I'm going to order the steak, I decided on the way here.\"). Asking "
+    + "about someone's already-formed intention also takes 'going to' (\"Are you "
+    + "going to order this or that?\"). Never tell the student that 'going to' is "
+    + "the natural choice for an on-the-spot restaurant order. "
+    + "Formatting: write plain sentences. Do NOT use markdown headings, bullets or "
+    + "**bold**. Put every English sentence inside [[ ]] and never leave a [[ ]] "
+    + "block empty — if you want the student to fill a blank, write it in Turkish.";
 }
 function dhLanguageRule(){
   var pref="";
@@ -835,8 +870,17 @@ function pickTrVoice(){
   var tr=cachedVoices.filter(function(v){ return /^tr/i.test(v.lang||""); });
   return tr[0] || cachedVoices.find(function(v){ return /turkish|türk/i.test(v.name||""); }) || null;
 }
+/* Seslendirmeye giden metin: markdown yildizlari ve bos [[ ]] bloklari
+   temizlenir. Ayni temiz metin hem TTS'e hem agiz zaman cizelgesine
+   gider — karakter hizalamasi bozulmasin diye tek yerde temizleniyor. */
+function dhSesMetni(s){
+  return String(s == null ? "" : s)
+    .replace(/\[\[\s*([^A-Za-z0-9\]]*)\s*\]\]/g, "")   // icinde harf yok → at
+    .replace(/\*\*([^*\n][^*]*?)\*\*/g, "$1")            // **kalin** → kalin
+    .replace(/[ \t]{2,}/g, " ");
+}
 function speakText(text){
-  text=String(text||"").trim();
+  text=dhSesMetni(text).trim();
   if(!text) return;
   try{ if(typeof dhVoiceDebug==="function") dhVoiceDebug("speakText çağrıldı → ses seçiliyor…"); }catch(e){}
   const run=++speechRun;
@@ -851,12 +895,16 @@ function speakText(text){
   function finishAll(){
     if(run!==speechRun) return;
     avatar.stop();
+    try{ window.dispatchEvent(new CustomEvent("dh-konusma-bitti")); }catch(e){}
     if(window.__dhAuto){ setTimeout(function(){ try{ var mb=document.getElementById("micBtn"); if(mb&&!mb.classList.contains("listening")) mb.click(); }catch(e){} }, 400); }
   }
   function speakNext(){
     if(run!==speechRun) return;              // yeni konuşma başladı: bu kuyruk iptal
     if(ci>=chunks.length){ finishAll(); return; }
     const c=chunks[ci++];
+    /* Avatar katmani bu olayi dinleyip Ingilizce parcada teacher2'ye
+       geciyor. chat-core agiz/zamanlama zincirine hic dokunulmadi. */
+    try{ window.dispatchEvent(new CustomEvent("dh-konusma-dili",{detail:{lang:c.lang}})); }catch(e){}
     try{
       const u=new SpeechSynthesisUtterance(c.text);
       if(c.lang==="tr-TR"){
