@@ -581,7 +581,26 @@ function dhLanguageRule(){
     + "That is not teaching.\n"
     + "· NEVER translate your own English line into Turkish; teach the PATTERN instead.\n"
     + "· EVERY English phrase must be inside [[ ]].\n"
-    + "· Always end your message by making the student produce an English sentence.";
+    + "· Always end your message by making the student produce an English sentence.\n"
+    /* ── Ekranda gorulen uc kusur, olculdu ──
+       (a) Ogrenci "I am going to order this" dedi — sorunun DOGRU cevabi —
+           ama model "yanlis, sen de soru sormalisin" dedi. Cunku [TASKS]
+           icinde "karsindakine soru sor" gorevi var ve model onu HER TURA
+           uyguluyordu. Sahnede cevap vermek de dogrudur.
+       (b) "do you have any dessert" icin "soru isareti koymayi unutma"
+           denip HATA uyduruldu. Konusma pratiginde noktalama/buyuk harf
+           hata degildir (puanlama prompt'unda bu kural zaten vardi).
+       (c) "Simdi sana tekrar soru sorayim" — sahne ayni yerde donuyordu. */
+    + "· If their sentence is correct and natural for their level, SAY SO in one short "
+    + "Turkish sentence and MOVE THE SCENE FORWARD. NEVER invent a mistake.\n"
+    + "· Ignore punctuation, capitalisation and typing slips — this is speaking practice, "
+    + "not dictation. Never correct a missing question mark or a lowercase letter.\n"
+    + "· Do NOT force the student to ask a question. Answering you is often the correct "
+    + "move in a scene. Ask for whatever that moment naturally needs.\n"
+    + "· Every turn must advance the scene one step (greeting → order → drinks → dessert "
+    + "→ bill). Never repeat the same request or ask them to redo a step they did right.\n"
+    + "· Your Turkish teaching is at most 3 short sentences. The student should be "
+    + "speaking more than you.";
 }
 /* Ogretme modu acik mi (ogretmen senaryosu ya da rol senaryosunda ders) */
 function dhOgretmeModu(){
@@ -637,7 +656,7 @@ function systemPrompt(){
       +"\nBuild this session around these. Create real situations that force the student to PRODUCE these patterns themselves — do not quote the sentences at them and do not ask them to repeat. Work through them one at a time. When they use a pattern correctly, acknowledge it in a few words and move to the next. Keep the role you are playing."
       +(__dhMalzeme.dun&&__dhMalzeme.dun.konu?("\nYesterday they practiced \""+__dhMalzeme.dun.konu+"\" with you; you may refer back to it once, briefly."):"")):""),
     (__dhFocus?("\n[FOCUS DRILL] The coach sent the student to you specifically to work on this error type: \""+__dhFocus+"\". Build most of this session around it: create short prompts that force the student to produce this pattern, correct their attempts, and give ONE short Turkish tip when they slip. Mention at the start, in one sentence, that you two will practice this together."):""),
-    "\n[TASKS] The student must complete these in-scenario tasks: "+__dhTasks.map(function(t,i){return (i+1)+") "+t;}).join(" ")+" Weave them naturally into the conversation. When the user GENUINELY completes task N, append the marker [TASK_DONE:N] at the very end of your reply. Never mention the markers or tasks mechanically."
+    "\n[TASKS] Over the WHOLE conversation the student should eventually do these: "+__dhTasks.map(function(t,i){return (i+1)+") "+t;}).join(" ")+" These are goals for the whole session, NOT for every turn. Never force a question out of them just to tick a task. Weave them naturally into the conversation. When the user GENUINELY completes task N, append the marker [TASK_DONE:N] at the very end of your reply. Never mention the markers or tasks mechanically."
   ].join("\n");
 }
 function estimateDuration(text){ const n=Array.from(String(text||"")).length; return Math.max(1100, Math.min(12000, n * 82)); }
