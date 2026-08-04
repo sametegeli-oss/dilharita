@@ -41,8 +41,19 @@ var __dhTeach=null; try{
    "practice review" gibi boş bir açılış kurulmamalı. */
 var __dhJunkFocus=/^(review|tekrar|practice|pratik|study|genel|general|plan|devam)$/i;
 if(__dhFocus && __dhJunkFocus.test(__dhFocus)) __dhFocus="";
-/* Koc odagi (dh-teach-focus / ?focus) YALNIZ ogretmen senaryosunda kullanilir; doktor/otel gibi role senaryolarinda rolu bozmasin diye temizlenir. */
-if(!__dhIsTeacher){ __dhTeach=null; __dhFocus=""; }
+/* ── TEK PERSONA: OGRETMEN ──────────────────────────────────────────
+   Eskiden burada su vardi:
+       if(!__dhIsTeacher){ __dhTeach=null; __dhFocus=""; }
+   Yani hata defterinden gelen SOMUT hata ve kocun gonderdigi odak, rol
+   senaryolarinda (garson, resepsiyonist, doktor) BILEREK siliniyordu —
+   "rol bozulmasin" diye. Sonuc: en degerli ogretme malzemesi o
+   sayfalara hic ulasmiyordu ve garson ogretemiyordu; iki tur prompt
+   sikistirmasina ragmen anlatmaya devam etti.
+   YENI YAPI: konusmayi HER SAYFADA ogretmen yurutur. Senaryo artik
+   asistanin KIMLIGI degil, ogretmenin gerektiginde CANLANDIRDIGI rol
+   ve dersin gectigi ortamdir. Boylece malzeme her yerde kullanilabilir. */
+var __dhRol = (Scenario.role || "").trim();      /* ogretmenin canlandiracagi karakter */
+var __dhRolluMu = !__dhIsTeacher && !!__dhRol;   /* senaryo sayfasinda miyiz */
 
 /* ── GUNUN MALZEMESI (dh-konusma.js) ────────────────────────────────
    COZULEN SIKAYET: "1 dakika konus hergun ayni yere sifirdan basliyor;
@@ -89,15 +100,16 @@ function __dhMalzemeOpener(){
       + "Şu cümleyle başlıyoruz:\n" + ilk.en + (ilk.tr ? ("\n(" + ilk.tr + ")") : "")
       + "\nSen söylesen nasıl söylersin?";
   }
-  /* Rol senaryosu: Ingilizce sahne repligi [[ ]] icinde, ardindan Turkce
-     kocluk notu (bkz. dhLanguageRule rol kurali). */
-  return "[[" + ilk.en + "]]\n"
-    + (dunVar ? ("Dün " + m.dun.konu + " çalışmıştık. ") : "")
-    + "Bugün " + konu + " üzerine konuşuyoruz"
+  /* Senaryo sayfasi da OGRETMEN acilisiyla baslar; sahne yalnizca dersin
+     gectigi ortamdir. Once ne calisacagimizi soyler, sonra ilk cumleyi verir. */
+  return (dunVar ? ("Dün " + m.dun.konu + " çalışmıştık. ") : "")
+    + "Bugün " + konu + " çalışıyoruz"
     + (m.ortam ? (" — ortam: " + m.ortam) : "")
-    + "; " + kac + " cümle çalışmıştın.\n"
-    + (ilk.tr ? ("Yukarıdaki cümle: " + ilk.tr + "\n") : "")
-    + "Sen olsan nasıl söylerdin? Cevabını İngilizce yaz.";
+    + "; " + kac + " cümle notlamıştın.\n"
+    + "İlk kalıbımız şu:\n" + "[[" + ilk.en + "]]"
+    + (ilk.tr ? ("\n(" + ilk.tr + ")") : "")
+    + "\nSen söylesen nasıl söylerdin? İngilizce yaz, sonra "
+    + (__dhRol ? ("ben " + __dhRol + " olup") : "sahneyi kurup") + " deneriz.";
 }
 function __dhOpener(){
   if(__dhTeach&&__dhTeach.target){
@@ -527,35 +539,30 @@ function dhLanguageRule(){
   try{ pref=localStorage.getItem("dh-teacher-dili")||""; }catch(e){}
   if(__dhIsTeacher && pref!=="en") return dhOgretmenKurali();
 
-  /* ── ROL SENARYOLARI ──────────────────────────────────────────────
-     Eski kural tek satirdi: "Always reply in English". Sonuc: garson
-     bastan sona Ingilizce konusuyordu, ogretme hic yoktu.
-     Artik AYNI ogretmen kurali gecerli — ustune sahne katmani eklenir:
-     rol repligi Ingilizce ve [[ ]] icinde, ogretme Turkce.
-     [[ ]] isareti zaten ekranda vurgulu span'a, seslendirmede Ingilizce
-     sese donusuyor (renderBubbleText / splitMixedSpeech).
-     Eski davranisa donmek isteyen: localStorage["dh-rol-dili"] = "en" */
   var rolPref="";
   try{ rolPref=localStorage.getItem("dh-rol-dili")||""; }catch(e){}
   if(rolPref==="en") return "Always reply in English unless the user explicitly asks for Turkish.";
 
+  /* Senaryo sayfasi: AYNI ogretmen kurali + rol oyunu katmani.
+     Ogretmen once ogretir, ogrenci hazir olunca kisa bir canlandirma
+     yapar, sonra ogretmene doner. Rol, asistanin kimligi DEGILDIR. */
   return dhOgretmenKurali()
-    + "\n[SCENE LAYER] You are ALSO playing the character described above, inside a "
-    + "real scene. Answer in EXACTLY this shape, nothing else:\n"
-    + "[[<your in-character English line, 1-2 sentences>]]\n"
-    + "<Turkish: if their last message had a mistake, say what was wrong and give the "
-    + "correct version>\n"
-    + "<Turkish: the PATTERN they need right now and WHY, in 1-2 sentences>\n"
-    + "<Turkish: what they should say next> [[<the English sentence you want them to produce>]]\n"
+    + "\n[ROLEPLAY] You are their Turkish English teacher, and this lesson happens in a "
+    + "specific setting. When it helps, you can ACT OUT the other person in that setting "
+    + "(" + (__dhRol || "the person they would talk to") + ") for a few turns.\n"
+    + "How a lesson turn goes:\n"
+    + "1) Teach in TURKISH: react to what they wrote, correct it properly if it was wrong "
+    + "(what is wrong, the rule, why), and give the pattern they need next.\n"
+    + "2) Then either ask them to build a sentence, or start a SHORT roleplay: say in Turkish "
+    + "\"Şimdi ben " + (__dhRol || "karşındaki kişi") + " olayım\" and give your line as "
+    + "[[English line]]. Keep the roleplay to 1-2 turns, then step back out and teach again.\n"
     + "HARD RULES:\n"
-    + "· NEVER narrate or summarise what just happened in the conversation. Sentences like "
-    + "\"I asked you X and you said Y, now I am saying Z\" are FORBIDDEN — that is not teaching.\n"
-    + "· NEVER translate your own English line into Turkish. The student must work it out; "
-    + "you teach the PATTERN, not the translation.\n"
-    + "· EVERY English phrase, in every line, must be inside [[ ]].\n"
-    + "· Always end by making the student produce an English sentence themselves.\n"
-    + "· Stay in character in the first line and be their Turkish teacher in the rest. "
-    + "Never break the scene, never change the order of the lines.";
+    + "· You are ALWAYS the teacher first. Never disappear into the character.\n"
+    + "· NEVER narrate or summarise what just happened (\"sana şunu sordum, sen şunu dedin\"). "
+    + "That is not teaching.\n"
+    + "· NEVER translate your own English line into Turkish; teach the PATTERN instead.\n"
+    + "· EVERY English phrase must be inside [[ ]].\n"
+    + "· Always end your message by making the student produce an English sentence.";
 }
 /* Ogretme modu acik mi (ogretmen senaryosu ya da rol senaryosunda ders) */
 function dhOgretmeModu(){
@@ -565,7 +572,16 @@ function dhOgretmeModu(){
   }catch(e){ return true; }
 }
 function systemPrompt(){
-  return [Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."), levelGuide(), dhLanguageRule(),     /* CELISKI GIDERILDI: "1-3 cumle" ve "ders verme" kurallari, ogretme
+  /* Senaryonun systemExtra'si ("You are role-playing as a waiter") artik
+     asistanin kimligi olarak VERILMEZ; verilirse model ogretmenligi birakip
+     garsona donusuyor. Rol, [ROLEPLAY] katmaninda canlandirilacak karakter
+     olarak geciyor. */
+  var __kimlik = __dhRolluMu
+    ? ("You are a Turkish-speaking English teacher. The lesson is set in this scene: "
+       + (Scenario.systemExtra || ("a scene with " + __dhRol)) + " You may act out that "
+       + "character during short roleplay moments, but you remain the teacher.")
+    : (Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."));
+  return [__kimlik, levelGuide(), dhLanguageRule(),     /* CELISKI GIDERILDI: "1-3 cumle" ve "ders verme" kurallari, ogretme
        kuralinin istedigi (kural + neden + ornek + yeni cumle kurdur)
        yapiyi eziyordu. Model her seyi tek cumleye sikistirip ogretmek
        yerine olan biteni ANLATIYORDU ("...diye sordum, siz de
