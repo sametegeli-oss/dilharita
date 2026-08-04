@@ -194,8 +194,31 @@ function ensureStorageReady(){
     setTimeout(go, 1500);
   });
 }
+/* ai-providers.js sayfada yuklu degilse undefined doner — cagrilar
+   sessizce eski Groq yoluna duser. */
+function global_DHProviders(){ try{ return window.DHProviders || null; }catch(e){ return null; } }
 function saveKey(k){ const keys=getKeys(); if(!keys.includes(k)) keys.push(k); localStorage.setItem(KEYS_LS, JSON.stringify(keys)); }
+/* ── COK SAGLAYICILI CAGRI ──────────────────────────────────────────
+   OLCULDU: bu dosya dogrudan GROQ_URL'e gidiyordu ve yalnizca birden
+   fazla GROQ anahtari arasinda donuyordu. Groq kotasi bitince sohbet
+   tamamen duruyordu ("API limiti doldu"), oysa uygulamada Cerebras ve
+   Gemini API anahtarlari da olabiliyor.
+   ai-providers.js (DHProviders) tam bu isi yapiyor: anahtari olan
+   saglayicilari sirayla dener, 429 alani atlayip sonrakine geçer. Yazilmis
+   ama chat sayfalarina HIC baglanmamisti. Artik varsa o kullanilir;
+   yoksa asagidaki eski dogrudan-Groq yolu aynen calisir (geri uyum). */
 async function groqChat(messages){
+  try{
+    if(global_DHProviders() && global_DHProviders().hasAnyKey && global_DHProviders().hasAnyKey()){
+      return await global_DHProviders().chat(messages, { temperature:0.7, max_tokens:500 });
+    }
+  }catch(e){
+    /* DHProviders'in kendi hata kodlari ("rate","all-failed","no-key")
+       cagiranin bekledigi bicimle ayni; oldugu gibi yukari verilir. */
+    if(e && (e.code==="rate" || e.code==="all-failed")) throw {code:"rate"};
+    if(e && e.code==="no-key") throw {code:"no-key"};
+    throw e;
+  }
   const keys=getKeys();
   if(!keys.length) throw {code:"no-key"};
   let lastErr=null;
@@ -1020,7 +1043,7 @@ async function sendUser(){
   }catch(e){
     removeTyping();
     let msg="Bir sorun oldu. Tekrar deneyelim.";
-    if(e.code==="rate") msg="API limiti doldu. Biraz sonra tekrar dene.";
+    if(e.code==="rate") msg="Tüm AI sağlayıcıların limiti doldu. 💎 ile Gemini'de devam edebilir ya da Ayarlar'dan Cerebras/Gemini anahtarı ekleyebilirsin.";
     else if(e.code==="bad-key") msg="API anahtarı geçersiz görünüyor.";
     else if(e.code==="network") msg="İnternet bağlantısı kontrol edilmeli.";
     State.currentPartner=msg;
