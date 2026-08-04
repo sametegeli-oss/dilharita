@@ -10,8 +10,9 @@
 
    BU DOSYANIN ISI
    Yalnizca MALZEME uretir: bugun hangi cumleler calisildi, hangi
-   kaliplar, hangi konu, hangi senaryoya uyar. Konusma YAPMAZ, AI
-   CAGIRMAZ, DOM'a DOKUNMAZ. chat-core.js bu malzemeyi okur.
+   kaliplar, hangi konu, konusma hangi ORTAMDA gecmeli, hangi senaryo
+   sayfasi uyar. Konusma YAPMAZ, AI CAGIRMAZ, DOM'a DOKUNMAZ.
+   chat-core.js bu malzemeyi okur.
 
    ── VERI KAYNAKLARI (olculdu, varsayilmadi) ──
      srs:<cumleId>     {rep, ef, interval, due, last}
@@ -79,6 +80,38 @@
       kelimeler: ["airport", "flight", "travel", "luggage", "baggage", "ticket", "directions", "transport", "train", "bus", "taxi", "trip", "holiday", "vacation"] }
   ];
   var VARSAYILAN = { sayfa: "chatteacher.html", ad: "Öğretmen" };
+
+  /* ── ORTAM (konusmanin gectigi somut durum) ────────────────────
+     Bes sabit senaryoya sikismak gereksiz: verinin kendisinde cumle
+     basina "scenario" alani var ve 1922 farkli deger tasiyor
+     ("Meeting someone new", "Ordering starter", "Executive Boardroom",
+     "Being at home"...). Konusmanin ORTAMI buradan alinir; senaryo
+     SAYFASI yalnizca hangi avatarin/rolun kullanilacagini secer.
+     Boylece otel resepsiyonisti olmayan bir konu da kendi dogal
+     ortaminda gecebilir.
+
+     META degerler ayiklanir: bazi kayitlarda scenario bir ortam degil,
+     ogretim notudur ("Correcting mistake of saying 'interested to'
+     instead of 'interested in'"). Bunlar ortam olarak kullanilamaz. */
+  var META = /correct|mistake|learner|hata|yanlis/i;
+  function ortamSec(kayitlar) {
+    var say = {};
+    (kayitlar || []).forEach(function (r) {
+      var s = String(r.scenario || "").trim();
+      if (!s || META.test(s)) return;
+      if (s.split(/\s+/).length > 9) return;      /* cumle gibi uzunsa ortam degil */
+      say[s] = (say[s] || 0) + 1;
+    });
+    var sirali = Object.keys(say).sort(function (a, b) { return say[b] - say[a]; });
+    return { ortam: sirali[0] || "", ortamlar: sirali.slice(0, 4) };
+  }
+  /* Tek kelimelik ortam muglak olabilir ("Arrival"). Konuyla nitelenir:
+     "Restaurant — Arrival". Zaten uzunsa dokunulmaz. */
+  function ortamNitele(ortam, konu) {
+    if (!ortam) return konu || "";
+    if (!konu || ortam.toLowerCase().indexOf(konu.toLowerCase()) >= 0) return ortam;
+    return (ortam.split(/\s+/).length <= 2) ? (konu + " — " + ortam) : ortam;
+  }
 
   function senaryoSec(kayitlar, modul) {
     var metin = (String(modul || "") + " " + (kayitlar || []).map(function (r) {
@@ -240,8 +273,13 @@
         if (!hepsiKayit.length) return null;
 
         /* baskin konu; en az ENAZ_KONU cumle veriyorsa ona sadik kalinir */
+        /* META konular baskin sayilmaz: bazi modullerde en sik "topic"
+           degeri "Turkish Learner Mistakes Target" gibi bir OGRETIM
+           etiketi. Ona odaklanmak konusmayi ortamsiz birakiyordu. */
         var sayac = {};
-        hepsiKayit.forEach(function (r) { if (r.topic) sayac[r.topic] = (sayac[r.topic] || 0) + 1; });
+        hepsiKayit.forEach(function (r) {
+          if (r.topic && !META.test(r.topic)) sayac[r.topic] = (sayac[r.topic] || 0) + 1;
+        });
         var baskin = Object.keys(sayac).sort(function (x, y) { return sayac[y] - sayac[x]; })[0] || "";
         var odakli = hepsiKayit.filter(function (r) { return r.topic === baskin; });
         var butunluk = odakli.length >= ENAZ_KONU;      /* konu butunlugu kuruldu mu */
@@ -261,13 +299,15 @@
            OGRETMEN senaryosu dogru yer: her konuyu kaldirir ve kalip
            calistirmaya uygundur. */
         var sen = butunluk ? senaryoSec(kayitlar, modul) : VARSAYILAN;
+        var o = ortamSec(kayitlar);
 
         return {
           kaynak: kaynak,
           modul: modul,
           seviye: (kayitlar[0] && kayitlar[0].level) || "",
           konu: enSik("topic"),
-          durum: enSik("scenario"),
+          ortam: ortamNitele(o.ortam, enSik("topic")),   /* somut durum */
+          ortamlar: o.ortamlar,        /* birden fazlaysa AI arasinda gezebilir */
           butunluk: butunluk,          /* false: karisik/tekrar modulu */
           cumleler: kayitlar.map(function (r) {
             return {

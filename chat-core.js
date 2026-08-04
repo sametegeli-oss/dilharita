@@ -85,11 +85,13 @@ function __dhMalzemeOpener(){
                 : ("daha önce " + kac + " cümle öğrendin");
     return (dunVar ? ("Dün " + m.dun.konu + " çalışmıştık. ") : "")
       + "Bugün " + konu + " üzerine konuşalım — " + neKadar + ".\n"
+      + (m.ortam ? ("Ortam: " + m.ortam + ".\n") : "")
       + "Şu cümleyle başlıyoruz:\n" + ilk.en + (ilk.tr ? ("\n(" + ilk.tr + ")") : "")
       + "\nSen söylesen nasıl söylersin?";
   }
   return (dunVar ? ("Last time we worked on " + m.dun.konu + ". ") : "")
     + "Today let's practise " + konu + " — you studied " + kac + " sentences for it.\n"
+    + (m.ortam ? ("We're in this situation: " + m.ortam + ".\n") : "")
     + "Let's start with this one: \"" + ilk.en + "\"\n"
     + "Your turn — how would you say it?";
 }
@@ -526,6 +528,13 @@ function systemPrompt(){
       +"\nWork through these one by one: for each, make the student produce the correct sentence themselves, correct them, give ONE short Turkish tip, then move to the next. Do NOT ask generic questions while this list is unfinished."):""),
     /* Ogrenciye BUGUN calistigi cumleleri konusturur. Cumleyi tekrar
        ettirmek degil, KALIBI urettirmek hedef — yoksa papagan olur. */
+    /* Konusmanin ORTAMI verinin kendisinden gelir (cumlelerin "scenario"
+       alani). Sabit bes senaryodan birine zorlanmaz: "Executive Boardroom"
+       da olabilir "Being at home" de. Rol senaryosundaysak rol korunur,
+       ortam onun icinde kurulur. */
+    (__dhMalzeme&&__dhMalzeme.ortam?("\n[SETTING] Set this conversation in a concrete situation: \""+__dhMalzeme.ortam+"\"."
+      +((__dhMalzeme.ortamlar&&__dhMalzeme.ortamlar.length>1)?(" Related situations you may move through: "+__dhMalzeme.ortamlar.slice(1).join("; ")+"."):"")
+      +" Open the scene there and keep it concrete — a real moment, not a lesson about the topic."):""),
     (__dhMalzeme?("\n[TODAY'S MATERIAL — the student studied these in module \""+__dhMalzeme.modul+"\""
       +(__dhMalzeme.konu?(", topic: "+__dhMalzeme.konu):"")+"]\n"
       +__dhMalzeme.cumleler.map(function(c,i){
