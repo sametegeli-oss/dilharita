@@ -60,6 +60,22 @@
         cursor: pointer;
     }
     .external-ai-btn:hover { opacity: 0.9; }
+    /* ── GÜNÜN KONUŞMASI KARTI ── */
+    .dh-gunun{display:none;margin:10px auto 16px;max-width:640px;text-align:left;
+      background:linear-gradient(135deg,#0d2a4a,#10203a);border:1px solid #2563eb;
+      border-radius:16px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .dh-gunun.dh-acik{display:block}
+    .dh-gunun__ust{color:#7cc4ff;font:900 12px system-ui;letter-spacing:.4px;
+      text-transform:uppercase;margin-bottom:6px}
+    .dh-gunun__bas{font:800 17px system-ui;color:#eaf2ff;margin-bottom:4px}
+    .dh-gunun__alt{color:#a8c3e6;font-size:13px;margin-bottom:4px}
+    .dh-gunun__ort{color:#cfe0ff;font-size:12.5px;margin-bottom:10px}
+    .dh-gunun__btn{display:block;width:100%;text-align:center;background:#2563eb;color:#fff;
+      text-decoration:none;padding:11px;border-radius:11px;font:800 14px system-ui}
+    .dh-gunun__btn:hover{background:#2f6fe0}
+    .dh-onerilen{outline:2px solid #2563eb;outline-offset:2px;position:relative}
+    .dh-onerilen::after{content:"önerilen";position:absolute;top:6px;right:6px;z-index:3;
+      background:#2563eb;color:#fff;font:800 10px system-ui;padding:3px 7px;border-radius:999px}
 </style>
 </head>
 <body>
@@ -67,6 +83,14 @@
 <div class="menu-actions"><a class="menu-btn" href="index.html">🏠 Ana menüye dön</a></div>
 <h1>Erkek konuşan avatarlar</h1><a href="./ses-secim.html" style="display:inline-block;margin:8px 0;background:#0e7490;color:#fff;text-decoration:none;padding:8px 14px;border-radius:10px;font:800 13px system-ui">🔊 Avatar Seslerini Ayarla</a>
 <p>Tüm senaryolar erkek karakterdir. Her karakter aynı grid içinde tam set olarak üretildi; sesler tam fotoğraf kareleriyle çalışır.</p>
+
+<div class="dh-gunun" id="dhGununKart" hidden>
+  <div class="dh-gunun__ust">🗣️ Bugünün konuşması</div>
+  <div class="dh-gunun__bas" id="dhGununBas"></div>
+  <div class="dh-gunun__alt" id="dhGununAlt"></div>
+  <div class="dh-gunun__ort" id="dhGununOrt"></div>
+  <a class="dh-gunun__btn" id="dhGununBtn" href="#">Başla</a>
+</div>
 
 <div class="ai-selector-container">
     <label for="aiEngineSelect">🧠 Dışarıda Açılacak AI Motoru:</label>
@@ -153,6 +177,54 @@
             window.open(url, '_blank');
         }).catch(() => { window.open(url, '_blank'); });
     }
+</script>
+<script src="./sentences-loader.js?v=20"></script>
+<script src="./dh-konusma.js?v=1"></script>
+<script>
+/* ── GÜNÜN KONUŞMASI KARTI ──────────────────────────────────────────
+   Koc adimi bu sayfaya geliyor ve kullanici her gun ayni 5'li menuyle
+   karsilasiyordu. Kart, gunun malzemesini (dh-konusma.js) gosterir ve
+   uygun senaryoya tek tusla gonderir. Malzeme yoksa kart CIZILMEZ;
+   sayfa bugunku haliyle kalir. Diger 4 senaryo aynen secilebilir —
+   hangisine girilirse girilsin malzeme chat-core.js tarafindan tasinir. */
+(function(){
+  "use strict";
+  function ciz(m){
+    if(!m || !m.cumleler || !m.cumleler.length) return;
+    var kart=document.getElementById("dhGununKart"); if(!kart) return;
+    var kac=m.cumleler.length;
+    var neKadar = m.kaynak==="bugun" ? ("bugün notladığın "+kac+" cümle")
+                : m.kaynak==="hafta" ? ("bu hafta çalıştığın "+kac+" cümle")
+                : ("daha önce öğrendiğin "+kac+" cümle");
+    document.getElementById("dhGununBas").textContent = m.konu || m.modul;
+    document.getElementById("dhGununAlt").textContent = neKadar + " · " + m.modul;
+    document.getElementById("dhGununOrt").textContent =
+      (m.ortam ? ("Ortam: " + m.ortam) : "") +
+      (m.senaryoAd ? ((m.ortam?" · ":"") + m.senaryoAd + " senaryosunda") : "");
+    var btn=document.getElementById("dhGununBtn");
+    btn.href = "./" + (m.senaryo || "chatteacher.html");
+    kart.hidden=false; kart.classList.add("dh-acik");
+
+    /* onerilen senaryo kartini isaretle */
+    try{
+      var baglar=document.querySelectorAll(".grid a[onclick]");
+      for(var i=0;i<baglar.length;i++){
+        if(String(baglar[i].getAttribute("onclick")||"").indexOf(m.senaryo)>=0){
+          var k=baglar[i].closest(".card")||baglar[i];
+          k.classList.add("dh-onerilen");
+          break;
+        }
+      }
+    }catch(e){}
+  }
+  function basla(){
+    try{
+      if(window.DHKonusma && DHKonusma.bugun) DHKonusma.bugun().then(ciz).catch(function(){});
+    }catch(e){}
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",basla,{once:true});
+  else basla();
+})();
 </script>
 </body>
 </html>

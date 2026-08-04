@@ -361,6 +361,10 @@
   function bugunMalzeme() {
     var d = donmusOku();
     if (d !== undefined) return Promise.resolve(d);
+    /* KRITIK: cumle indeksi olmadan hesap yapilamaz. Boyle bir sayfada
+       (sentences-loader.js yuklu degilse) SONUC DONDURULMAZ — yoksa o sayfa
+       gunu "malzeme yok" diye kilitler ve ana ekran sonradan hesaplayamaz. */
+    if (!(global.DHSent && global.DHSent.index)) return Promise.resolve(null);
     if (_ucus) return _ucus;
     _ucus = hesapla().then(function (r) {
       var son = donmusOku();
@@ -375,6 +379,16 @@
   function sifirla() {
     try { localStorage.removeItem(bugunKey()); } catch (e) {}
     _ucus = null;
+  }
+
+  /* Sayfa acilisinda bir kez hesapla ve dondur. Boylece chat-core.js
+     (senkron acilan) ve dh-ortam-fon.js hazir malzemeyi bulur.
+     DHSent yoksa yukaridaki guard sayesinde sessizce hicbir sey yapmaz. */
+  function otoDondur() { try { bugunMalzeme(); } catch (e) {} }
+  if (global.document) {
+    if (global.document.readyState === "loading") {
+      global.document.addEventListener("DOMContentLoaded", otoDondur, { once: true });
+    } else { otoDondur(); }
   }
 
   global.DHKonusma = {
