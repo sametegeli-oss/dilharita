@@ -98,6 +98,9 @@
       var ham = localStorage.getItem("dh-konusma-gun-" + gunISO());
       if (!ham) return null;
       var m = JSON.parse(ham);
+      /* Kayit bicimi dh-konusma.js tarafindan {s:<surum>, v:<malzeme>}
+         olarak sarmalandi. Sarmali ac; eski duz kayitlar da calissin. */
+      if (m && typeof m === "object" && m.s && m.v !== undefined) m = m.v;
       return (m && m.cumleler && m.cumleler.length) ? m : null;
     } catch (e) { return null; }
   }

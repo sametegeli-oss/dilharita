@@ -52,7 +52,20 @@ if(__dhFocus && __dhJunkFocus.test(__dhFocus)) __dhFocus="";
    YENI YAPI: konusmayi HER SAYFADA ogretmen yurutur. Senaryo artik
    asistanin KIMLIGI degil, ogretmenin gerektiginde CANLANDIRDIGI rol
    ve dersin gectigi ortamdir. Boylece malzeme her yerde kullanilabilir. */
-var __dhRol = (Scenario.role || "").trim();      /* ogretmenin canlandiracagi karakter */
+var __dhRol = (Scenario.role || "").trim();      /* ogretmenin canlandiracagi karakter (EN) */
+/* Rolun TURKCE adi. Prompt'ta Turkce cumlenin icine Ingilizce rol tanimi
+   konunca model onu aynen kopyaliyor: "Şimdi ben a friendly male waiter in
+   a restaurant olayım" (ekranda gorulen kusur). Turkce etiket senaryonun
+   basligindan turetilir. */
+var __dhRolTr = (function(){
+  var t = ((Scenario.title||"") + " " + (Scenario.role||"")).toLocaleLowerCase("tr");
+  if(/otel|hotel|resepsiyon|reception/.test(t)) return "otel resepsiyonisti";
+  if(/restoran|restaurant|garson|waiter/.test(t)) return "garson";
+  if(/doktor|doctor|sağlık|saglik/.test(t))      return "doktor";
+  if(/havaalan|airport|check-in|ucus|uçuş/.test(t)) return "havaalanı görevlisi";
+  if(/mağaza|magaza|shop|store|satıcı|satici/.test(t)) return "satıcı";
+  return "karşındaki kişi";
+})();
 var __dhRolluMu = !__dhIsTeacher && !!__dhRol;   /* senaryo sayfasinda miyiz */
 
 /* ── GUNUN MALZEMESI (dh-konusma.js) ────────────────────────────────
@@ -73,7 +86,12 @@ var __dhRolluMu = !__dhIsTeacher && !!__dhRol;   /* senaryo sayfasinda miyiz */
    mumkun degil. Hesabi dh-konusma.js onceden yapip donduruyor. */
 var __dhMalzeme=null; try{
   var __mRaw=localStorage.getItem("dh-konusma-gun-"+new Date().toISOString().slice(0,10));
-  if(__mRaw){ var __m=JSON.parse(__mRaw); if(__m && __m.cumleler && __m.cumleler.length) __dhMalzeme=__m; }
+  if(__mRaw){
+    var __m=JSON.parse(__mRaw);
+    /* dh-konusma.js kaydi {s:<surum>, v:<malzeme>} olarak sarmalar; ac. */
+    if(__m && typeof __m==="object" && __m.s && __m.v!==undefined) __m=__m.v;
+    if(__m && __m.cumleler && __m.cumleler.length) __dhMalzeme=__m;
+  }
 }catch(e){}
 /* Somut hata her zaman onceliklidir: ikisi birden varsa malzeme beklemeye alinir. */
 if(__dhTeach && __dhTeach.target) __dhMalzeme=null;
@@ -109,7 +127,7 @@ function __dhMalzemeOpener(){
     + "İlk kalıbımız şu:\n" + "[[" + ilk.en + "]]"
     + (ilk.tr ? ("\n(" + ilk.tr + ")") : "")
     + "\nSen söylesen nasıl söylerdin? İngilizce yaz, sonra "
-    + (__dhRol ? ("ben " + __dhRol + " olup") : "sahneyi kurup") + " deneriz.";
+    + "ben " + __dhRolTr + " olup deneriz.";
 }
 function __dhOpener(){
   if(__dhTeach&&__dhTeach.target){
@@ -554,7 +572,8 @@ function dhLanguageRule(){
     + "1) Teach in TURKISH: react to what they wrote, correct it properly if it was wrong "
     + "(what is wrong, the rule, why), and give the pattern they need next.\n"
     + "2) Then either ask them to build a sentence, or start a SHORT roleplay: say in Turkish "
-    + "\"Şimdi ben " + (__dhRol || "karşındaki kişi") + " olayım\" and give your line as "
+    + "\"Şimdi ben " + __dhRolTr + " olayım\" — use EXACTLY this Turkish label, never the "
+    + "English role description — and give your line as "
     + "[[English line]]. Keep the roleplay to 1-2 turns, then step back out and teach again.\n"
     + "HARD RULES:\n"
     + "· You are ALWAYS the teacher first. Never disappear into the character.\n"
