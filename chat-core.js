@@ -499,50 +499,56 @@ function dhStripTasks(reply){
    Türkçe olmalı, öğretilen malzeme İngilizce kalmalı — index.html'in koçu
    tarif ederken dediği gibi: "Türkçe anlatan İngilizce koçun".
    Eskiye dönmek isteyen: localStorage["dh-teacher-dili"] = "en" */
+/* ── OGRETMEN KURALI: TEK KAYNAK ────────────────────────────────────
+   Bu metin AI Ogretmen icin yazilmis ve oturmus durumda: Turkce ogret,
+   Ingilizce malzemeyi Ingilizce birak, hatayi tek satirla gecistirme.
+   Rol senaryolari (garson, resepsiyonist, doktor) icin AYRI bir kural
+   yazmak yerine AYNI metin kullanilir; uzerine yalnizca "rolunu koru"
+   katmani eklenir. Boylece ogretme davranisi iki yerde ayrisip
+   birbirinden kopmaz. */
+function dhOgretmenKurali(){
+  return "LANGUAGE RULE (strict): You are a Turkish-speaking English teacher and the "
+    + "student is a Turkish native speaker. Write EVERYTHING you say in TURKISH: "
+    + "explanations, grammar, corrections, instructions, praise, and your questions. "
+    + "Keep in English ONLY the language material itself — target sentences, example "
+    + "sentences, vocabulary, and the phrases you ask the student to say. "
+    + "Never explain grammar in English. Never repeat your own Turkish sentence in "
+    + "English. When you want the student to speak, ask in Turkish and then give the "
+    + "English sentence to produce. "
+    + "Use ONLY Turkish and English — never a word from any third language "
+    + "(Spanish, French, German...). "
+    + "When you correct a mistake, do not settle for one line: say what is wrong, "
+    + "then explain the RULE and WHY in 2-3 Turkish sentences, give the correct "
+    + "sentence, add one more example using the same rule, and ask the student to "
+    + "build a new sentence with it.";
+}
 function dhLanguageRule(){
   var pref="";
   try{ pref=localStorage.getItem("dh-teacher-dili")||""; }catch(e){}
-  if(__dhIsTeacher && pref!=="en"){
-    return "LANGUAGE RULE (strict): You are a Turkish-speaking English teacher and the "
-      + "student is a Turkish native speaker. Write EVERYTHING you say in TURKISH: "
-      + "explanations, grammar, corrections, instructions, praise, and your questions. "
-      + "Keep in English ONLY the language material itself — target sentences, example "
-      + "sentences, vocabulary, and the phrases you ask the student to say. "
-      + "Never explain grammar in English. Never repeat your own Turkish sentence in "
-      + "English. When you want the student to speak, ask in Turkish and then give the "
-      + "English sentence to produce. "
-      + "Use ONLY Turkish and English — never a word from any third language "
-      + "(Spanish, French, German...). "
-      + "When you correct a mistake, do not settle for one line: say what is wrong, "
-      + "then explain the RULE and WHY in 2-3 Turkish sentences, give the correct "
-      + "sentence, add one more example using the same rule, and ask the student to "
-      + "build a new sentence with it.";
-  }
-  /* ── ROL SENARYOLARI (garson, resepsiyonist, doktor...) ──────────
+  if(__dhIsTeacher && pref!=="en") return dhOgretmenKurali();
+
+  /* ── ROL SENARYOLARI ──────────────────────────────────────────────
      Eski kural tek satirdi: "Always reply in English". Sonuc: garson
-     bastan sona Ingilizce konusuyordu ve ogrenci ne dedigini anlamadan
-     takiliyordu — ogretme hic yoktu.
-     Yeni kural IKI KATMANLI: rol repligi INGILIZCE kalir (rol bozulmaz,
-     ogrenilecek malzeme budur) ama arkasindan KISA bir TURKCE kocluk
-     notu gelir. Ingilizce kisimlar [[ ]] ile isaretlenir; bu isaret
-     zaten ekranda vurgulu span'a ve seslendirmede Ingilizce sese
-     donusuyor (bkz. renderBubbleText / splitMixedSpeech).
+     bastan sona Ingilizce konusuyordu, ogretme hic yoktu.
+     Artik AYNI ogretmen kurali gecerli — ustune sahne katmani eklenir:
+     rol repligi Ingilizce ve [[ ]] icinde, ogretme Turkce.
+     [[ ]] isareti zaten ekranda vurgulu span'a, seslendirmede Ingilizce
+     sese donusuyor (renderBubbleText / splitMixedSpeech).
      Eski davranisa donmek isteyen: localStorage["dh-rol-dili"] = "en" */
-  var rolPref = "";
-  try { rolPref = localStorage.getItem("dh-rol-dili") || ""; } catch(e){}
-  if (rolPref === "en") return "Always reply in English unless the user explicitly asks for Turkish.";
-  return "LANGUAGE RULE (strict): The student is a Turkish native speaker. "
-    + "Answer in TWO layers, always in this order:\n"
-    + "1) Your in-character line in ENGLISH, wrapped in double brackets: "
-    + "[[Good evening, do you have a reservation?]]\n"
-    + "2) Then ONE or TWO short sentences in TURKISH as their coach: what they should "
-    + "say or do next, or a correction of their last message. Keep it under 25 Turkish words.\n"
-    + "Explanations, corrections, hints and instructions are ALWAYS in Turkish. "
-    + "Every English phrase — your line, examples, and anything you ask the student to "
-    + "say — MUST be inside [[ ]]. Never explain grammar in English. Never translate your "
-    + "own Turkish sentence into English. Stay in your role while doing this: you are the "
-    + "character in the English layer and their Turkish coach in the second layer. "
-    + "Use ONLY Turkish and English, never a third language.";
+  var rolPref="";
+  try{ rolPref=localStorage.getItem("dh-rol-dili")||""; }catch(e){}
+  if(rolPref==="en") return "Always reply in English unless the user explicitly asks for Turkish.";
+
+  return dhOgretmenKurali()
+    + "\n[SCENE LAYER] You are ALSO playing the character described above, inside a "
+    + "real scene. Every reply has two parts, in this order: "
+    + "(1) your in-character line in ENGLISH, wrapped in double brackets, e.g. "
+    + "[[Good evening, do you have a reservation?]] — this is the material the student "
+    + "is learning; (2) then your TURKISH teaching, following the rule above: react to "
+    + "what they said, correct it properly if it was wrong, teach the pattern they need "
+    + "for this moment of the scene, and tell them in Turkish what to say next. "
+    + "EVERY English phrase must be inside [[ ]]. Stay in character in part (1) and be "
+    + "their Turkish teacher in part (2); never break the scene, never switch the order.";
 }
 function systemPrompt(){
   return [Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."), levelGuide(), dhLanguageRule(), "Keep replies short: 1 to 3 sentences.", "Ask a follow-up question to keep the conversation going.", "If the user makes a clear mistake, gently model the correct version without lecturing.", "No emojis.",
