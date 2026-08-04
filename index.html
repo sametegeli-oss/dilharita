@@ -371,6 +371,23 @@
     return p.slice(0,-1).join(", ") + " ve " + p[p.length-1];
   }
 
+  /* ── KONUŞMA ADIMI DOĞRUDAN ÖĞRETMENE ───────────────────────────
+     koc.js "1 dakika konuş" adımını chat.html'e (5 senaryoluk MENÜ)
+     yolluyor. Ama konuşma dersi ÖĞRETMEN ekranında yapılıyor: günün
+     cümleleri, ortam ve rol oyunu orada yaşıyor. Menüden geçmek hem
+     fazladan bir adım, hem de kullanıcıyı öğretmen olmayan bir
+     senaryoya düşürüyordu.
+     koc.js'e DOKUNULMUYOR (sert kısıt) — adımın hedefi yalnızca
+     çizim/yönlendirme anında çevriliyor. Kullanıcının seçtiği öğretmen
+     avatarı (teacher1/teacher2) korunur. */
+  function hedefHref(href){
+    var h = String(href||"");
+    if (h.split("?")[0] !== "chat.html") return h;
+    var sec = "teacher1";
+    try{ sec = localStorage.getItem("selectedTeacherAvatar") || "teacher1"; }catch(e){}
+    return (sec === "teacher2") ? "chatteacher2.html" : "chatteacher1.html";
+  }
+
   /* ---------- "su kaldi" ---------- */
   function kalanAdim(d){
     if (!d.plan || !d.plan.steps) return null;
@@ -503,7 +520,7 @@
       if (aktif) aktifVar = true;
 
       var a = document.createElement("a");
-      a.href = "./" + s.href;
+      a.href = "./" + hedefHref(s.href);
       a.className = "dh-plan-satir" +
         (aktif ? " dh-plan-satir--aktif" : "") +
         (bitti ? " dh-plan-satir--bitti" : "");
@@ -555,7 +572,7 @@
     var k = kalanAdim(d);
     if (k){
       b.textContent = d.calisti ? "Kaldığın yerden devam" : "Başla";
-      b.href = "./" + k.href;
+      b.href = "./" + hedefHref(k.href);
       return;
     }
     if (d.adimToplam && d.adimBiten >= d.adimToplam){

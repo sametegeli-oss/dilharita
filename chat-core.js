@@ -57,16 +57,33 @@ var __dhRol = (Scenario.role || "").trim();      /* ogretmenin canlandiracagi ka
    konunca model onu aynen kopyaliyor: "Şimdi ben a friendly male waiter in
    a restaurant olayım" (ekranda gorulen kusur). Turkce etiket senaryonun
    basligindan turetilir. */
-var __dhRolTr = (function(){
-  var t = ((Scenario.title||"") + " " + (Scenario.role||"")).toLocaleLowerCase("tr");
-  if(/otel|hotel|resepsiyon|reception/.test(t)) return "otel resepsiyonisti";
-  if(/restoran|restaurant|garson|waiter/.test(t)) return "garson";
-  if(/doktor|doctor|sağlık|saglik/.test(t))      return "doktor";
-  if(/havaalan|airport|check-in|ucus|uçuş/.test(t)) return "havaalanı görevlisi";
-  if(/mağaza|magaza|shop|store|satıcı|satici/.test(t)) return "satıcı";
-  return "karşındaki kişi";
-})();
-var __dhRolluMu = !__dhIsTeacher && !!__dhRol;   /* senaryo sayfasinda miyiz */
+/* TEMBEL: __dhMalzeme bu satirdan SONRA tanimlaniyor; erken hesaplanirsa
+   ortam bilgisi henuz yok ve rol hep "karsindaki kisi" cikiyordu (olculdu). */
+var __dhRolTrOnbellek = null;
+function dhRolTr(){
+  if (__dhRolTrOnbellek) return __dhRolTrOnbellek;
+  var t = ((Scenario.title||"") + " " + (Scenario.role||"")
+         + " " + ((__dhMalzeme&&__dhMalzeme.senaryoAd)||"")
+         + " " + ((__dhMalzeme&&__dhMalzeme.ortam)||"")
+         + " " + ((__dhMalzeme&&__dhMalzeme.konu)||"")).toLocaleLowerCase("tr");
+  var r = "karşındaki kişi";
+  if(/otel|hotel|resepsiyon|reception/.test(t)) r = "otel resepsiyonisti";
+  else if(/restoran|restaurant|garson|waiter/.test(t)) r = "garson";
+  else if(/doktor|doctor|sağlık|saglik|health/.test(t)) r = "doktor";
+  else if(/havaalan|airport|check-in|ucus|uçuş/.test(t)) r = "havaalanı görevlisi";
+  else if(/mağaza|magaza|shop|store|satıcı|satici|shopping/.test(t)) r = "satıcı";
+  __dhRolTrOnbellek = r;
+  return r;
+}
+/* ── DERS yalnizca OGRETMEN sayfasinda ──────────────────────────────
+   Koc adimi artik chat.html'e hic ugramadan dogrudan ogretmen ekranina
+   gidiyor (bkz. index.html). Dolayisiyla senaryo sayfalarinin (Otel,
+   Restoran, Doktor, Havaalani) ogretmene donusmesine gerek YOK: onlar
+   ESKI hallerinde kalir — karakter kendisidir, bastan sona Ingilizce.
+   "Diger avatarlarla chatler bozulmamali" sarti boyle korunuyor.
+   Ders, ortam ve gunun cumleleri OGRETMEN ekraninda yasar. */
+var __dhDersModu = __dhIsTeacher;
+var __dhRolluMu = false;                          /* senaryo sayfasi rol oynatmaz */
 
 /* ── GUNUN MALZEMESI (dh-konusma.js) ────────────────────────────────
    COZULEN SIKAYET: "1 dakika konus hergun ayni yere sifirdan basliyor;
@@ -93,6 +110,9 @@ var __dhMalzeme=null; try{
     if(__m && __m.cumleler && __m.cumleler.length) __dhMalzeme=__m;
   }
 }catch(e){}
+/* Serbest senaryo sohbetinde ne gunun malzemesi ne de kocun odagi
+   kullanilir — senaryo eski haliyle, rol bozulmadan calisir. */
+if(!__dhDersModu){ __dhMalzeme=null; __dhTeach=null; __dhFocus=""; }
 /* Somut hata her zaman onceliklidir: ikisi birden varsa malzeme beklemeye alinir. */
 if(__dhTeach && __dhTeach.target) __dhMalzeme=null;
 if(__dhFocus) __dhMalzeme=null;
@@ -127,7 +147,7 @@ function __dhMalzemeOpener(){
     + "İlk kalıbımız şu:\n" + "[[" + ilk.en + "]]"
     + (ilk.tr ? ("\n(" + ilk.tr + ")") : "")
     + "\nSen söylesen nasıl söylerdin? İngilizce yaz, sonra "
-    + "ben " + __dhRolTr + " olup deneriz.";
+    + "ben " + dhRolTr() + " olup deneriz.";
 }
 function __dhOpener(){
   if(__dhTeach&&__dhTeach.target){
@@ -555,7 +575,12 @@ function dhOgretmenKurali(){
 function dhLanguageRule(){
   var pref="";
   try{ pref=localStorage.getItem("dh-teacher-dili")||""; }catch(e){}
-  if(__dhIsTeacher && pref!=="en") return dhOgretmenKurali();
+  if(__dhIsTeacher && pref!=="en"){
+    /* Gunun malzemesi bir ORTAM tasiyorsa ogretmen o ortamda ders yapar ve
+       gerektiginde karsi tarafi canlandirir. Ortam yoksa duz ders. */
+    if(!(__dhMalzeme && __dhMalzeme.ortam)) return dhOgretmenKurali();
+    return dhOgretmenKurali() + "\n" + dhRolOyunuKatmani();
+  }
 
   var rolPref="";
   try{ rolPref=localStorage.getItem("dh-rol-dili")||""; }catch(e){}
@@ -564,24 +589,27 @@ function dhLanguageRule(){
   /* Senaryo sayfasi: AYNI ogretmen kurali + rol oyunu katmani.
      Ogretmen once ogretir, ogrenci hazir olunca kisa bir canlandirma
      yapar, sonra ogretmene doner. Rol, asistanin kimligi DEGILDIR. */
-  /* SIKISTIRILDI: her tur bu metin gonderiliyor ve ucretsiz Groq kotasi
-     doluyordu ("API limiti doldu"). Kurallarin HICBIRI atilmadi — hepsi
-     ekranda gorulen somut bir kusuru kapatiyor — yalnizca kisa yazildi. */
-  return dhOgretmenKurali()
-    + "\n[ROLEPLAY] You teach in this scene and may act out " + __dhRolTr
-    + " for 1-2 turns, then step back out. Each turn: (1) Turkish teaching — react, "
-    + "correct properly if wrong, give the pattern needed now; (2) either ask for a "
-    + "sentence or start a short roleplay with \"Şimdi ben " + __dhRolTr + " olayım\" "
-    + "(use exactly this Turkish label, never the English role description) and your "
-    + "line as [[English]].\nRULES: teacher first, never disappear into the character · "
-    + "never narrate what just happened · never translate your own English line · all "
-    + "English inside [[ ]] · if their sentence is correct for their level, say so "
-    + "briefly and MOVE THE SCENE FORWARD — never invent a mistake · ignore punctuation, "
-    + "capitalisation and typing slips, this is speaking not dictation · never force a "
-    + "question out of them, answering is often correct · each turn advances the scene "
-    + "one step, never repeat a step they did right · Turkish teaching max 3 short "
-    + "sentences, the student speaks more than you · end by making them produce an "
-    + "English sentence.";
+  /* Senaryo sayfalari artik ders yapmaz — eski davranis. */
+  return "Always reply in English unless the user explicitly asks for Turkish.";
+}
+/* ── ROL OYUNU KATMANI (ogretmen ekraninda, ortam varsa) ─────────────
+   Her tur gonderildigi icin kisa tutuldu; kurallarin hicbiri atilmadi,
+   her biri ekranda gorulen somut bir kusuru kapatiyor. */
+function dhRolOyunuKatmani(){
+  var ortam = (__dhMalzeme && __dhMalzeme.ortam) || "";
+  return "[ROLEPLAY] Today's lesson happens in this setting: \"" + ortam + "\". You may act "
+    + "out " + dhRolTr() + " there for 1-2 turns, then step back out. Each turn: (1) Turkish "
+    + "teaching — react, correct properly if wrong, give the pattern needed now; (2) either "
+    + "ask for a sentence or start a short roleplay with \"Şimdi ben " + dhRolTr() + " olayım\" "
+    + "(use exactly this Turkish label, never an English role description) and your line as "
+    + "[[English]].\nRULES: teacher first, never disappear into the character · never narrate "
+    + "what just happened · never translate your own English line · all English inside [[ ]] · "
+    + "if their sentence is correct for their level, say so briefly and MOVE THE SCENE FORWARD "
+    + "— never invent a mistake · ignore punctuation, capitalisation and typing slips, this is "
+    + "speaking not dictation · never force a question out of them, answering is often correct · "
+    + "each turn advances the scene one step, never repeat a step they did right · Turkish "
+    + "teaching max 3 short sentences, the student speaks more than you · end by making them "
+    + "produce an English sentence.";
 }
 /* Ogretme modu acik mi (ogretmen senaryosu ya da rol senaryosunda ders) */
 function dhOgretmeModu(){
@@ -595,10 +623,12 @@ function systemPrompt(){
      asistanin kimligi olarak VERILMEZ; verilirse model ogretmenligi birakip
      garsona donusuyor. Rol, [ROLEPLAY] katmaninda canlandirilacak karakter
      olarak geciyor. */
-  var __kimlik = __dhRolluMu
-    ? ("You are a Turkish-speaking English teacher. The lesson is set in this scene: "
-       + (Scenario.systemExtra || ("a scene with " + __dhRol)) + " You may act out that "
-       + "character during short roleplay moments, but you remain the teacher.")
+  /* Ogretmen ekraninda ortam varsa kimlige sahne bilgisi eklenir; senaryo
+     sayfalarinda Scenario.systemExtra AYNEN gecer (eski davranis). */
+  var __kimlik = (__dhIsTeacher && __dhMalzeme && __dhMalzeme.ortam)
+    ? ("You are a Turkish-speaking English teacher. Today's lesson is set in: "
+       + __dhMalzeme.ortam + ". You may act out " + dhRolTr()
+       + " during short roleplay moments, but you remain the teacher.")
     : (Scenario.systemExtra || ("You are role-playing as " + Scenario.role + "."));
   return [__kimlik, levelGuide(), dhLanguageRule(),     /* CELISKI GIDERILDI: "1-3 cumle" ve "ders verme" kurallari, ogretme
        kuralinin istedigi (kural + neden + ornek + yeni cumle kurdur)
@@ -1070,7 +1100,39 @@ function continueInGemini(){
   try{
     var lines=(State.history||[]).map(function(m){ return (m.role==="user"?"Student: ":"Partner: ")+m.content; });
     var convo=(State.firstMsg?("Partner: "+State.firstMsg+"\n"):"")+lines.join("\n");
-    var prompt="Sen \""+(Scenario.role||Scenario.title||"a friendly English conversation partner")+"\" rolundesin. Bir Turk ogrenciyle Ingilizce konusma pratigi yapiyoruz (seviye "+State.level+"). Su ana kadarki konusmamiz:\n\n"+convo+"\n\nBu sohbeti AYNI rolde, Ingilizce, seviyeme uygun sekilde kaldigimiz yerden SURDUR; gerektiginde kisa Turkce ipucu ver.";
+    var prompt;
+    if(__dhDersModu){
+      /* DERS: Gemini'de de AYNI kurulumla devam edilsin — ogretmen kimligi,
+         Turkce ogretme kurali, ortam, gunun cumleleri ve [[ ]] sozlesmesi.
+         Yoksa Gemini'ye gecince ders bitiyor, duz sohbete donuyordu. */
+      var mm = __dhMalzeme;
+      prompt = "Sen Türkçe konuşan bir İngilizce öğretmenisin. Bir Türk öğrenciyle "
+        + "çalışıyorsun (seviye " + State.level + ").\n\n"
+        + "KURALLAR:\n"
+        + "· Açıklama, düzeltme, yönerge ve övgü HER ZAMAN Türkçe. Sadece öğretilen "
+        + "malzeme (hedef cümleler, örnekler, öğrenciden istediğin ifadeler) İngilizce.\n"
+        + "· Her İngilizce ifadeyi [[çift köşeli parantez]] içine al.\n"
+        + "· Hata düzeltirken tek satırla geçiştirme: neyin yanlış olduğunu söyle, "
+        + "kuralı ve nedenini 2-3 Türkçe cümleyle anlat, doğrusunu ver, aynı kuralla "
+        + "bir örnek daha ekle ve öğrenciden yeni bir cümle kurmasını iste.\n"
+        + "· Cümlesi seviyesine göre doğruysa onayla ve ilerle; hata UYDURMA. "
+        + "Noktalama ve büyük harf hatası sayılmaz.\n"
+        + "· Olan biteni anlatma; öğret.\n"
+        + (mm && mm.ortam ? ("· Ders şu ortamda geçiyor: " + mm.ortam + ". Gerektiğinde "
+            + "\"Şimdi ben " + dhRolTr() + " olayım\" deyip 1-2 tur canlandır, sonra "
+            + "öğretmene dön.\n") : "")
+        + (mm && mm.cumleler && mm.cumleler.length
+            ? ("\nBUGÜNÜN ÇALIŞILAN CÜMLELERİ (öğrenciye bu kalıpları ÜRETTİR, "
+               + "cümleleri okuma):\n"
+               + mm.cumleler.map(function(c,i){
+                   return (i+1)+") [[" + c.en + "]]" + (c.kalip?("  kalıp: "+c.kalip):"");
+                 }).join("\n") + "\n")
+            : "")
+        + "\nŞu ana kadarki konuşmamız:\n\n" + convo
+        + "\n\nBu dersi yukarıdaki kurallarla, kaldığımız yerden SÜRDÜR.";
+    } else {
+      prompt = "Sen \""+(Scenario.role||Scenario.title||"a friendly English conversation partner")+"\" rolundesin. Bir Turk ogrenciyle Ingilizce konusma pratigi yapiyoruz (seviye "+State.level+"). Su ana kadarki konusmamiz:\n\n"+convo+"\n\nBu sohbeti AYNI rolde, Ingilizce, seviyeme uygun sekilde kaldigimiz yerden SURDUR; gerektiginde kisa Turkce ipucu ver.";
+    }
     try{ if(navigator.clipboard) navigator.clipboard.writeText(prompt); }catch(e){}
     try{ window.open("https://gemini.google.com/app","_blank"); }catch(e){}
     try{ addBubble("assistant","💎 Sohbet panoya kopyalandi ve Gemini acildi — oraya yapistirip devam edebilirsin."); }catch(e){}

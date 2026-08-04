@@ -202,7 +202,12 @@
       (m.ortam ? ("Ortam: " + m.ortam) : "") +
       (m.senaryoAd ? ((m.ortam?" · ":"") + m.senaryoAd + " senaryosunda") : "");
     var btn=document.getElementById("dhGununBtn");
-    btn.href = "./" + (m.senaryo || "chatteacher.html");
+    /* Ders ÖĞRETMEN ekranında yapılır; senaryo yalnızca ortamı belirler
+       (dh-konusma.js -> ortam/senaryoAd). Aşağıdaki senaryo kartları
+       serbest sohbet olarak ESKİ hallerinde kalır. */
+    var sec = "teacher1";
+    try{ sec = localStorage.getItem("selectedTeacherAvatar") || "teacher1"; }catch(e){}
+    btn.href = "./" + (sec === "teacher2" ? "chatteacher2.html" : "chatteacher1.html");
     kart.hidden=false; kart.classList.add("dh-acik");
 
     /* onerilen senaryo kartini isaretle */
