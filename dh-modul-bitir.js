@@ -45,7 +45,10 @@
   var DB = "sentence-mode", STORE = "kv";
   var GERI_SAYIM = 5;                 /* saniye */
   var PERIYOT = 3000;                 /* guvenlik agi taramasi */
-  var ISARET = "dh-modul-bitti-v1";   /* {<modul>: "YYYY-MM-DD"} — gunde bir kez */
+  /* {<modul>: "YYYY-MM-DD"} — gunde bir kez. ONEK "dh-mod-" (dh-modul- DEGIL):
+     cloud-sync.js "dh-modul-" onekli her anahtari KULLANICI MODULU sanip
+     mergeModul'e sokuyor. Bu cihaz-yerel isaret oraya karismamali. */
+  var ISARET = "dh-mod-bitti-v1";
 
   /* koc.js ve index.html ile AYNI gun anahtari (toISOString) — plan
      anahtarlari onlarla eslesmek zorunda. */

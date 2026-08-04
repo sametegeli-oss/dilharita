@@ -25,11 +25,27 @@
      3. cumle kimliginin oneki             ("A2-M03-P1-014")
    Boylece eski kayitlarda level bos olsa da seviye cikarilabiliyor.
 
+   ── GUN ICINDE DONAR (dh-telafi-gun-<YYYY-MM-DD>) ──
+   Secim her cagrida yeniden HESAPLANMIYOR. Sebep olculdu: modul secimi
+   "en dusuk tamamlanma yuzdesi"ne dayaniyor ve bu yuzde gun icinde
+   calistikca degisiyordu. Sonuc: sabah "Demonstratives · P4" diyen adim
+   ogleden sonra "· P2" oluyordu. Iki ayri zarar:
+     1) Kullaniciya gun icinde baska bir modul gosteriliyordu.
+     2) DHPlan defteri gunun basinda DONUYOR. Plandaki href degisince
+        defterdeki href ile eslesme kalmiyor, dh-plan-kopru.js hicbir
+        adimi bulamiyor ve ilerleme sayimi TAMAMEN susuyordu
+        ("5 cumle calistim, hala 0/5" sikayetinin ucuncu yolu).
+   Artik gunun ilk hesabi donduruluyor; sonuc null olsa bile donuyor
+   (plan gun icinde buyumesin — dh-plan.js'in "hedef gun icinde donar"
+   ilkesiyle ayni disiplin). Yarin yeniden hesaplanir.
+
    API
      DHTelafi.bul()      -> Promise<null | {
                               seviye, hataSayisi, modul, modulKisa,
                               turler:[...], yuzde
                             }>
+     DHTelafi.hesapla()  -> dondurmadan HESAPLAR (tani/test icin)
+     DHTelafi.sifirla()  -> bugunun dondurulmus secimini siler
      DHTelafi.ESIK       varsayilan esik (3 hata)
 */
 (function (global) {
@@ -39,6 +55,9 @@
   var SIRA = ["A1", "A2", "B1", "B2", "C1", "C2"];
   var ESIK = 3;                 /* bir seviyede en az kac hata "bosluk" sayilir */
   var PENCERE = 30 * 86400000;  /* son 30 gun */
+  var GUN_ONEK = "dh-telafi-gun-";
+  /* koc.js ve index.html ile AYNI gun anahtari (toISOString) */
+  function bugunKey() { return GUN_ONEK + new Date().toISOString().slice(0, 10); }
 
   function idx(lvl) {
     var i = SIRA.indexOf(String(lvl || "").toUpperCase());
@@ -141,8 +160,8 @@
     }).catch(function () { return null; });
   }
 
-  /* ---------- ANA ---------- */
-  function bul() {
+  /* ---------- HESAP (dondurmasiz) ---------- */
+  function hesapla() {
     var seviye = null;
     try { if (global.DHProfile && global.DHProfile.level) seviye = global.DHProfile.level(); }
     catch (e) {}
@@ -167,8 +186,50 @@
     }).catch(function () { return null; });
   }
 
+  /* ---------- ANA: gun icinde DONMUS secim ---------- */
+  function donmusOku() {
+    try {
+      var ham = localStorage.getItem(bugunKey());
+      if (ham === null) return undefined;          /* henuz donmadi */
+      return JSON.parse(ham);                      /* null da gecerli bir sonuctur */
+    } catch (e) { return undefined; }
+  }
+  function dondur(v) {
+    try {
+      localStorage.setItem(bugunKey(), JSON.stringify(v === undefined ? null : v));
+      /* onceki gunlerin anahtarlari birikmesin */
+      var bu = bugunKey();
+      for (var i = localStorage.length - 1; i >= 0; i--) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(GUN_ONEK) === 0 && k !== bu) localStorage.removeItem(k);
+      }
+    } catch (e) {}
+  }
+
+  var _ucus = null;     /* ayni anda iki cagri (koc.js + index.html) iki farkli
+                           sonuc dondurmesin: ilk hesap paylasilir */
+  function bul() {
+    var d = donmusOku();
+    if (d !== undefined) return Promise.resolve(d);
+    if (_ucus) return _ucus;
+    _ucus = hesapla().then(function (r) {
+      var son = donmusOku();                       /* baska sekme donduduysa ona uy */
+      if (son !== undefined) { _ucus = null; return son; }
+      dondur(r || null);
+      _ucus = null;
+      return r || null;
+    }).catch(function () { _ucus = null; return null; });
+    return _ucus;
+  }
+  function sifirla() {
+    try { localStorage.removeItem(bugunKey()); } catch (e) {}
+    _ucus = null;
+  }
+
   global.DHTelafi = {
     bul: bul,
+    hesapla: hesapla,
+    sifirla: sifirla,
     ESIK: ESIK,
     _kayitSeviyesi: kayitSeviyesi,
     _bosluklar: bosluklar,

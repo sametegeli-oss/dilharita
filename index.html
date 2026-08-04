@@ -800,6 +800,7 @@
       localStorage.removeItem("dh-coach-last-generic-tip");
       localStorage.removeItem("dh-ders-oturum-" + GUN);
       localStorage.removeItem("dh-gun-plan-" + GUN);
+      localStorage.removeItem("dh-telafi-gun-" + GUN);   /* telafi secimi de yeniden hesaplansin */
       var tr = oku("dh-study-tracker-v1", {}) || {};
       var d = (tr.days || {})[GUN] || {};
       localStorage.setItem("dh-koc-epoch-" + GUN, JSON.stringify({
