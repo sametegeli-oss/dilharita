@@ -314,6 +314,11 @@
               id: r.id, en: r.en, tr: r.tr || "",
               /* kalip: pattern seyrek dolu, grammar/tense yedek (bkz. bas not) */
               kalip: r.pattern || r.grammar || r.tense || "",
+              /* Stok medya aramasi icin ELLE YAZILMIS terim
+                 ("restaurant entrance, host stand, couple waiting").
+                 Kayitlarin %96'sinda dolu; videopractice.html de Pexels'i
+                 tam bununla ariyor. dh-ortam-fon.js buradan besleniyor. */
+              imgQuery: r.imgQuery || r.imageQuery || "",
               grammar: r.grammar || "",
               commonMistake: r.commonMistake || ""
             };

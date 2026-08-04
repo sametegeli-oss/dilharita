@@ -68,6 +68,26 @@
     });
   }
 
+  function kvYaz(anahtar, deger) {
+    return new Promise(function (res) {
+      try {
+        if (!global.indexedDB) return res(false);
+        var r = global.indexedDB.open(DB, 1);
+        r.onerror = function () { res(false); };
+        r.onsuccess = function () {
+          var db = r.result;
+          if (!db.objectStoreNames.contains(STORE)) { try { db.close(); } catch (e) {} return res(false); }
+          try {
+            var t = db.transaction(STORE, "readwrite");
+            t.objectStore(STORE).put(deger, anahtar);
+            t.oncomplete = function () { try { db.close(); } catch (e) {} res(true); };
+            t.onerror = function () { try { db.close(); } catch (e) {} res(false); };
+          } catch (e) { try { db.close(); } catch (e2) {} res(false); }
+        };
+      } catch (e) { res(false); }
+    });
+  }
+
   /* ───────────────────── gunun malzemesi ────────────────────── */
   function malzeme() {
     try {
@@ -113,28 +133,94 @@
     return sonraki();
   }
 
+  /* ── SORGU ADAYLARI ────────────────────────────────────────────
+     Stok video aramasi ORTAM metniyle iyi sonuc vermiyor
+     ("Restaurant — Arrival" diye bir stok video yok). Veride her cumlenin
+     ELLE YAZILMIS imgQuery'si var ve tam bu is icin: "restaurant entrance,
+     host stand, couple waiting". videopractice.html de Pexels'i bununla
+     ariyor. Kayitlarin %96.1'i kullanilabilir; kalanini eliyoruz (olculdu):
+       · %3.8'i Turkce ("resmî hasta yatağı, doktor steteskoplu")
+       · %0.2'si sozluk listesi ("fill in (v), form (n), filler (n)")
+     Ayrica uzun virgullu terimden ILK IKI parca alinir; Pexels kisa
+     sorgularda belirgin sekilde daha isabetli. */
+  function sorguTemiz(q) {
+    q = String(q || "").trim();
+    if (!q) return "";
+    if (/[ğüşöçıİĞÜŞÖÇ]/.test(q)) return "";           /* Turkce: stokta aranmaz */
+    if (/\((v|n|adj|adv)\)/i.test(q)) return "";       /* sozluk listesi */
+    var p = q.split(",").map(function (x) { return x.trim(); }).filter(Boolean);
+    return p.slice(0, 2).join(" ").replace(/\s+/g, " ").trim();
+  }
+  function sorguAdaylari(m) {
+    var out = [], gorulen = {};
+    function ekle(q) {
+      q = sorguTemiz(q);
+      if (q && !gorulen[q.toLowerCase()]) { gorulen[q.toLowerCase()] = 1; out.push(q); }
+    }
+    (m.cumleler || []).forEach(function (c) { ekle(c.imgQuery); });
+    ekle(m.ortam);
+    ekle(m.konu);
+    return out;
+  }
+
   /* ── 3) PEXELS (yalnizca anahtar varsa) ── */
-  function pexelsVideo(sorgu) {
-    return kvGet(PEXELS_ANAHTAR).then(function (key) {
-      if (!key) return null;                     /* anahtar yok: hic istek atma */
-      var u = "https://api.pexels.com/videos/search?per_page=5&orientation=landscape&query="
-            + encodeURIComponent(sorgu);
-      return fetch(u, { headers: { Authorization: key } }).then(function (r) {
-        if (!r.ok) return null;
-        return r.json();
-      }).then(function (d) {
-        var vs = (d && d.videos) || [];
-        for (var i = 0; i < vs.length; i++) {
-          var fl = (vs[i].video_files || []).filter(function (f) {
-            return f.file_type === "video/mp4" && f.link;
-          }).sort(function (a, b) {   /* videopractice ile ayni tercih: 1280'e yakin */
-            return Math.abs(1280 - (a.width || 0)) - Math.abs(1280 - (b.width || 0));
-          });
-          if (fl[0]) return { tur: "video", url: fl[0].link, poster: vs[i].image || "", kaynak: "pexels" };
+  /* Anahtar videopractice.html tarafindan kv'ye yaziliyor; bazi eski
+     kurulumlarda localStorage'da kalmis olabilir — ikisine de bakilir. */
+  function pexelsAnahtari() {
+    return kvGet(PEXELS_ANAHTAR).then(function (k) {
+      if (k) return k;
+      try { return localStorage.getItem(PEXELS_ANAHTAR) || null; } catch (e) { return null; }
+    }).catch(function () {
+      try { return localStorage.getItem(PEXELS_ANAHTAR) || null; } catch (e) { return null; }
+    });
+  }
+  function pexelsAra(sorgu, key) {
+    var u = "https://api.pexels.com/videos/search?per_page=5&orientation=landscape&query="
+          + encodeURIComponent(sorgu);
+    return fetch(u, { headers: { Authorization: key } }).then(function (r) {
+      if (!r.ok) return null;
+      return r.json();
+    }).then(function (d) {
+      var vs = (d && d.videos) || [];
+      for (var i = 0; i < vs.length; i++) {
+        var fl = (vs[i].video_files || []).filter(function (f) {
+          return f.file_type === "video/mp4" && f.link;
+        }).sort(function (a, b) {   /* videopractice ile ayni tercih: 1280'e yakin */
+          return Math.abs(1280 - (a.width || 0)) - Math.abs(1280 - (b.width || 0));
+        });
+        if (fl[0]) {
+          return { tur: "video", url: fl[0].link, poster: vs[i].image || "",
+                   kaynak: "pexels", sorgu: sorgu, pexelsId: vs[i].id || "" };
         }
-        return null;
-      }).catch(function () { return null; });
+      }
+      return null;
     }).catch(function () { return null; });
+  }
+  function pexelsVideo(m) {
+    return pexelsAnahtari().then(function (key) {
+      if (!key) return null;                     /* anahtar yok: hic istek atma */
+      var adaylar = sorguAdaylari(m), i = 0;
+      function sonraki() {
+        if (i >= adaylar.length) return Promise.resolve(null);
+        var q = adaylar[i++];
+        return pexelsAra(q, key).then(function (r) { return r || sonraki(); });
+      }
+      return sonraki();
+    }).catch(function () { return null; });
+  }
+
+  /* Bulunan videoyu videopractice.html ile AYNI anahtara yazar: bir kez
+     indirilen video iki ekranda da kullanilir, ikinci kez aranmaz. */
+  function videoyuPaylas(m, f) {
+    try {
+      if (!f || f.tur !== "video" || f.kaynak !== "pexels") return Promise.resolve();
+      var c = (m.cumleler || [])[0];
+      if (!c || !c.id) return Promise.resolve();
+      return kvYaz(VIDEO_ONEK + c.id, JSON.stringify({
+        source: "pexels", id: f.pexelsId || "", videoUrl: f.url, posterUrl: f.poster || "",
+        query: f.sorgu || "", sentence: c.en || "", savedAt: new Date().toISOString()
+      }));
+    } catch (e) { return Promise.resolve(); }
   }
 
   /* ── 4) OPENVERSE (anahtarsiz, image-addon ile ayni kaynak) ── */
@@ -175,13 +261,14 @@
   function sec() {
     var m = malzeme();
     if (!m) return Promise.resolve(null);
-    var sorgu = m.ortam || m.konu || m.modul;
+    var sorgu = sorguTemiz(m.ortam) || sorguTemiz(m.konu) || m.modul;
     /* ONCE VIDEO, SONRA RESIM. Once onbellekteki video, o yoksa Pexels'ten
        video; video hicbir sekilde bulunamazsa resme dusulur. (Eski sira
        onbellekteki resmi Pexels videosunun ONUNE koyuyordu ve ekranda
        hareketsiz bir kare kaliyordu.) */
     return onbellekVideo(m)
-      .then(function (r) { return r || pexelsVideo(sorgu); })
+      .then(function (r) { return r || pexelsVideo(m); })
+      .then(function (r) { return videoyuPaylas(m, r).then(function () { return r; }); })
       .then(function (r) { return r || onbellekResim(m); })
       .then(function (r) { return r || openverseResim(sorgu); })
       .catch(function () { return null; });
@@ -225,10 +312,14 @@
       + "object-position:center center!important;max-width:none!important;"
       + "max-height:none!important;margin:0!important;border:0!important;display:block!important;"
       + "opacity:0;transition:opacity .8s ease;background:transparent!important}"
-      + ".dh-fon-kap > .dh-fon.dh-fon--acik{opacity:.5}"
+      /* KARARTMA YOK: ortam hissi asil deger, %50 saydamlik goruntuyu
+         oldurüyordu. Tam opak gosterilir. */
+      + ".dh-fon-kap > .dh-fon.dh-fon--acik{opacity:1}"
       /* Perde: avatar ve yazi okunur kalsin diye ustte koyu bir gecis */
+      /* Perde yalnizca avatarin oldugu SAG kenarda ve alt seritte hafif bir
+         gecis birakir; ortamin ustune tam ekran koyu katman KOYULMAZ. */
       + ".dh-fon-perde{position:absolute!important;inset:0;z-index:1;pointer-events:none;flex:none!important;"
-      + "background:radial-gradient(ellipse at 50% 45%,rgba(5,11,22,.25) 0%,rgba(5,11,22,.72) 70%,rgba(5,11,22,.92) 100%)}"
+      + "background:linear-gradient(90deg,rgba(5,11,22,0) 0%,rgba(5,11,22,0) 55%,rgba(5,11,22,.35) 100%)}"
       /* Avatar her halukarda perdenin USTUNDE */
       + ".avatar-stage > #avatarImg,.avatar-stage > .avatar-box,.avatar-stage > img,"
       + ".avatar-stage > .avatar-base{position:relative;z-index:2}";
@@ -294,6 +385,7 @@
 
   global.DHOrtamFon = {
     bul: bul, sec: sec, ciz: ciz, sifirla: sifirla,
-    _normEn: normEn, _anahtar: fonKey
+    _normEn: normEn, _anahtar: fonKey,
+    _sorguTemiz: sorguTemiz, _sorguAdaylari: sorguAdaylari
   };
 })(typeof window !== "undefined" ? window : globalThis);

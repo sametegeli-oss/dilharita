@@ -303,9 +303,11 @@ button,input,textarea{font:inherit}
   background:transparent!important;   /* eski #050b16 ortami kapatiyordu */
   filter:drop-shadow(0 6px 18px rgba(0,0,0,.55));
 }
-/* Ortam gorunur kalsin: perde avatarin oldugu tarafta biraz daha koyu */
+/* ORTAM KARARTILMAZ. Onceki surumde tum sahneye koyu bir katman
+   koyuluyordu ve video "olu" gorunuyordu. Artik yalnizca avatarin
+   bulundugu SAG kenarda hafif bir gecis var; solda ortam net. */
 .dh-fon-perde{
-  background:linear-gradient(90deg,rgba(5,11,22,.30) 0%,rgba(5,11,22,.45) 55%,rgba(5,11,22,.80) 100%)!important;
+  background:linear-gradient(90deg,rgba(5,11,22,0) 0%,rgba(5,11,22,0) 55%,rgba(5,11,22,.35) 100%)!important;
 }
 
 /* ── konusma satiri: metin ustte tam genislik, dugmeler altta ── */
