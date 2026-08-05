@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v36";   /* v36: es anlamli+Ngram popup, Gemini sohbet raporu, koc sayaci */
+var SW_VERSION = "dh-sw-v37";   /* v37: es anlamli+Ngram popup, Gemini analiz, koc sayaci, bulut senkron onarimi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

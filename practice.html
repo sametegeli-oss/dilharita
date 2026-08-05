@@ -670,21 +670,71 @@ function mergeSrs(a, b){
   return out;
 }
 
-// cihazdaki tüm ilerlemeyi (üretim + dinleme SRS + pozisyonlar) buluta yaz (debounce'lu)
+// cihazdaki tüm ilerlemeyi (üretim + dinleme SRS + pozisyonlar) buluta yaz
+/* ══════════════════════════════════════════════════════════════════
+   ÇÖZÜLEN HATA
+     FirebaseError [resource-exhausted]:
+       "Write stream exhausted maximum allowed queued writes"
+
+   SEBEP
+     cloudSaveSoon() her kart cevaplandığında çağrılıyordu (bkz. srsGrade
+     sonrası) ve her çağrıda TÜM SRS haritasını yazıyordu — ölçüldü:
+     progress belgesi 485 KB, 1712 alan. Debounce 1,2 sn idi ama UÇUŞ
+     KİLİDİ YOKTU: önceki yazma sürerken 1,2 sn sonra yenisi yola
+     çıkıyordu. 485 KB'lık bir yazma mobil bağlantıda saniyeler sürer;
+     kuyruk hiç boşalmadan büyüyüp Firestore'un 500 bekleyen yazma
+     sınırına dayanıyordu. (Cloud.syncing vardı ama yalnızca rozeti
+     boyuyordu, kimse ona bakmıyordu.)
+
+   ÇÖZÜM
+     1) Uçuş kilidi: yazma sürerken yeni yazma başlamaz; bu sırada gelen
+        istekler tek bir bekleyen isteğe indirgenir (coalescing).
+     2) Debounce 1,2 sn → 6 sn, ayrıca iki yazma arası en az 15 sn.
+     3) Sayfadan ayrılırken (pagehide) bekleyen değişiklik varsa bir kez
+        zorla yazılır — gecikmeyi artırmak veri kaybına yol açmasın.
+   ══════════════════════════════════════════════════════════════════ */
+const CLOUD_DEBOUNCE = 6000;      // son değişiklikten sonra beklenen süre
+const CLOUD_MIN_ARA  = 15000;     // iki yazma arasındaki asgari süre
 let _saveTimer = null;
+let _saveBusy = false;            // uçuş kilidi
+let _savePending = false;         // uçuş sırasında gelen istek
+let _saveLastTs = 0;              // son BAŞARILI yazma zamanı
+let _saveDirty = false;           // yazılmayı bekleyen değişiklik var mı
+
+async function cloudSaveRun(){
+  if (!Cloud.user || !fb()) return;
+  if (_saveBusy){ _savePending = true; return; }
+  _saveBusy = true;
+  try{
+    Cloud.syncing = true; updateCloudBadge();
+    const srs  = await srsAll();                  // üretim
+    const lsrs = await srsAll(LISTEN_PREFIX);     // dinleme
+    await fb().saveProgress(Cloud.user.uid, { srs, lsrs, positions: allPositions() });
+    _saveLastTs = Date.now();
+    _saveDirty = false;
+  }catch(e){ /* sessizce geç; bir sonraki değişiklikte tekrar dener */ }
+  finally{
+    _saveBusy = false;
+    Cloud.syncing = false; updateCloudBadge();
+    if (_savePending){ _savePending = false; cloudSaveSoon(); }
+  }
+}
+
 function cloudSaveSoon(){
   if (!Cloud.user || !fb()) return;
+  _saveDirty = true;
+  if (_saveBusy){ _savePending = true; return; }
   clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(async () => {
-    try{
-      Cloud.syncing = true; updateCloudBadge();
-      const srs = await srsAll();                  // üretim
-      const lsrs = await srsAll(LISTEN_PREFIX);    // dinleme
-      await fb().saveProgress(Cloud.user.uid, { srs, lsrs, positions: allPositions() });
-    }catch(e){ /* sessizce geç; bir sonraki değişiklikte tekrar dener */ }
-    finally{ Cloud.syncing = false; updateCloudBadge(); }
-  }, 1200);
+  const kalan = Math.max(0, CLOUD_MIN_ARA - (Date.now() - _saveLastTs));
+  _saveTimer = setTimeout(cloudSaveRun, Math.max(CLOUD_DEBOUNCE, kalan));
 }
+
+/* Ayrılırken bekleyen değişikliği kaçırma */
+window.addEventListener("pagehide", function(){
+  if (!_saveDirty || _saveBusy) return;
+  clearTimeout(_saveTimer);
+  cloudSaveRun();
+});
 
 // girişten sonra: buluttan çek, cihazdakiyle birleştir, ikisini de güncelle
 async function cloudInitialSync(){

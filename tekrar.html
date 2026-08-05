@@ -244,9 +244,16 @@ try{
   var mediaRecorder = null, audioChunks = [], audioUrl = null, audioStream = null, activeAudioObj = null;
   var recognitionInstance = null, isRecording = false, accumulatedTranscript = "";
 
+  /* Bu sayfada otomatik bulut yazması kapalı: tekrar oturumunda her kart
+     tracker'ı güncelliyor ve her güncelleme bir push tetikliyordu.
+     NOT: Bu satır zaten vardı ama cloud-sync.js `autoPush` alanını HİÇ
+     OKUMUYORDU — konsola "susturuldu" yazılıyor, hiçbir şey susmuyordu.
+     cloud-sync v8 ile bayrak gerçekten uygulanıyor.
+     Kapalıyken de şunlar çalışır: btnHome'daki elle push, fullSync ve
+     sayfadan ayrılırken yapılan son yazma (veri kaybı olmaz). */
   if (window.DHCloudSync) {
-    window.DHCloudSync.autoPush = false; 
-    console.log("Firebase anlık tetikleyicileri bu sayfa için tamamen susturuldu.");
+    window.DHCloudSync.autoPush = false;
+    console.log("[tekrar] Otomatik bulut yazması kapatıldı — çıkışta ve elle senkronda yazılacak.");
   }
 
   /* ---- kv ---- */

@@ -367,30 +367,128 @@
     try{ size=JSON.stringify(ls).length; }catch(e){}
     return {size:size,dropped:dropped};
   }
+  /* ══════════════════════════════════════════════════════════════════
+     YAZMA DENETİMİ  (v8)
+     ------------------------------------------------------------------
+     ÇÖZÜLEN HATA
+       FirebaseError [resource-exhausted]:
+         "Write stream exhausted maximum allowed queued writes"
+       + "Using maximum backoff delay to prevent overloading the backend"
+
+     SEBEP (ölçüldü)
+       Her push ~787 KB yazıyordu (settings 302 KB + progress 485 KB) ve
+       push'lar bu boyuttaki bir yazmanın tamamlanabileceğinden çok daha
+       sık tetikleniyordu:
+         · hookLocalStorage — beyaz listedeki her setItem push tetikler.
+           coach-bubble.js HER sayfa açılışında dh-activity-log-v1'e
+           yazdığı için, uygulamada gezinmek tek başına yetiyordu.
+         · pagehide VE visibilitychange ikisi birden flushOnLeave çağırıyor
+           — tek sayfa geçişinde iki yazma denemesi.
+         · practice/tekrar'da her kart tracker'ı güncelliyor.
+       Firestore'un bekleyen yazma kuyruğu 500'dür. Kuyruk hiç boşalmadan
+       büyüyünce önce backoff tavana çıkıyor, sonra kuyruk taşıyordu.
+       Belgeler boyut/alan sınırlarının ALTINDA — sunucu reddetmiyor,
+       yalnızca yetişemiyordu.
+
+     ÜÇ KATMANLI ÇÖZÜM
+       1) FARK YAZMA  — son push'tan beri değişmeyen anahtar gönderilmez.
+          Tipik push 787 KB yerine birkaç KB. Asıl çözüm budur.
+       2) TEK UÇUŞ    — bir yazma sürerken ikincisi başlamaz; istek gelirse
+          bayrağa yazılır ve bitince BİR KEZ çalışır (coalescing).
+       3) ASGARİ ARALIK — otomatik push'lar arasında en az MIN_ARALIK.
+          Elle tetiklenen push (çıkış, "şimdi senkronla") bu sınıra takılmaz.
+     ══════════════════════════════════════════════════════════════════ */
+  var MIN_ARALIK = 20000;          /* otomatik push'lar arası en az süre */
+  var SIG_KEY    = "dh-push-sig-v1";   /* beyaz listede DEĞİL — kendini tetiklemesin */
+
   var __pushBusy=false, __failStreak=0, __cooldownUntil=0;
-  async function pushNow(){
+  var __sonPushTs=0, __bekleyen=false, __sonFlush=0;
+
+  /* Otomatik tetikleyiciler bu bayrakla susturulabilir.
+     NOT: tekrar.html satır 248 zaten "DHCloudSync.autoPush = false" yazıyordu
+     ama cloud-sync.js bu alanı HİÇ OKUMUYORDU — konsola "susturuldu"
+     yazılıyor, hiçbir şey susmuyordu. Artık gerçekten uygulanıyor. */
+  function otoAcikMi(){
+    try{ return !(global.DHCloudSync && global.DHCloudSync.autoPush === false); }
+    catch(e){ return true; }
+  }
+
+  /* ---------- anahtar imzası (fark yazma için) ---------- */
+  function sigOf(v){
+    var s=String(v==null?"":v), h=5381, i=s.length;
+    while(i) h=((h*33) ^ s.charCodeAt(--i))>>>0;
+    return s.length.toString(36)+":"+h.toString(36);
+  }
+  function sigOku(){
+    try{ return JSON.parse(localStorage.getItem(SIG_KEY)||"{}")||{}; }catch(e){ return {}; }
+  }
+  function sigYaz(m){
+    try{ localStorage.setItem(SIG_KEY, JSON.stringify(m)); }catch(e){}
+  }
+  function sigSifirla(){ try{ localStorage.removeItem(SIG_KEY); }catch(e){} }
+
+  /* tam=true → imzalara bakma, her şeyi yaz (fullSync geri-yazması gibi) */
+  async function pushNow(tam){
+    tam = (tam === true);      /* push(event) gibi kazara argümanlar tam gönderim saymasın */
     if(!ready||!user||!fb) return { ok:false, error:"hazır değil" };
-    if(__pushBusy) return { ok:false, error:"zaten yazılıyor" };
     if(Date.now()<__cooldownUntil) return { ok:false, error:"bekleme modunda (art arda hata)" };  // devre kesici
+    if(__pushBusy){ __bekleyen=true; return { ok:false, error:"zaten yazılıyor (sıraya alındı)" }; }
     __pushBusy=true;
     try{
       var data=await collectAll();
       var g=shrinkToLimit(data.ls);
-      await fb.saveSettings(user.uid, data);
-      try{ localStorage.setItem("dh-last-push-ts", String(Date.now())); }catch(e){}
+
+      /* ---- FARK: yalnızca değişen anahtarlar ---- */
+      var eski = tam ? {} : sigOku();
+      var yeniSig = {}, degisen = {}, degisenSayi = 0;
+      for(var k in data.ls){
+        if(!data.ls.hasOwnProperty(k)) continue;
+        var sg = sigOf(data.ls[k]);
+        yeniSig[k] = sg;
+        if(eski[k] !== sg){ degisen[k] = data.ls[k]; degisenSayi++; }
+      }
+      var errSig = sigOf(JSON.stringify(data.errors||[]));
+      var errDegisti = (eski.__errors !== errSig);
+      yeniSig.__errors = errSig;
+
+      if(!degisenSayi && !errDegisti){
+        __sonPushTs = Date.now();
+        return { ok:true, skipped:true, size:0, dropped:g.dropped };
+      }
+
+      await fb.saveSettings(user.uid, {
+        ls: degisen,
+        errors: errDegisti ? data.errors : null
+      });
+
+      /* İmzalar YALNIZCA yazma başarılıysa saklanır. Yoksa başarısız bir
+         yazmadan sonra o değişiklik bir daha hiç gönderilmezdi. */
+      sigYaz(yeniSig);
+      __sonPushTs = Date.now();
+      try{ localStorage.setItem("dh-last-push-ts", String(__sonPushTs)); }catch(e){}
       __failStreak=0;
-      return { ok:true, size:g.size, dropped:g.dropped };
+      return { ok:true, size:JSON.stringify(degisen).length, alan:degisenSayi, dropped:g.dropped };
     }catch(e){
       console.warn("cloud-sync yazma hata:", e);
       __failStreak++;
       if(__failStreak>=2){ __cooldownUntil=Date.now()+90000; console.warn("[cloud-sync] art arda hata — 90sn otomatik yazma durduruldu"); }
       return { ok:false, error:(e&&e.message?e.message:"bilinmeyen").slice(0,120) };
-    }finally{ __pushBusy=false; }
+    }finally{
+      __pushBusy=false;
+      /* uçuş sırasında gelen istekleri TEK seferde topla */
+      if(__bekleyen){ __bekleyen=false; pushSoon(); }
+    }
   }
+
   function pushSoon(){
     if(!ready||!user) return;
+    if(!otoAcikMi()) return;
+    if(__pushBusy){ __bekleyen=true; return; }
     clearTimeout(saveTimer);
-    saveTimer=setTimeout(function(){ pushNow(); },1500+Math.floor(Math.random()*1200));  // rastgele gecikme: çoklu sekme çakışmasını azaltır
+    /* asgari aralığı bekle; üstüne rastgele pay (çoklu sekme çakışması) */
+    var kalan = Math.max(0, MIN_ARALIK - (Date.now()-__sonPushTs));
+    var gecikme = Math.max(1500, kalan) + Math.floor(Math.random()*1200);
+    saveTimer=setTimeout(function(){ pushNow(); }, gecikme);
   }
 
   /* ── 8) FULL SYNC: çek → birleştir → uygula → geri yaz ───── */
@@ -473,7 +571,10 @@
       await kvWriteAll(kvIncoming);                 // modül ilerlemesi → IndexedDB (React okur)
       var addedErr=await errMerge(rd.errors||[]);   // hata defteri birleşir
       var addedProg=await applyMirror();            // kelime aynası → DHProgress IDB
-      var pres=await pushNow();                     // GERİ YAZ: bulut = birleşim
+      /* GERİ YAZ: bulut = birleşim. Burada FARK yazma kullanılmaz —
+         birleştirme sonrası bulut ile cihazın aynı olduğundan emin olmak
+         için tam gönderim yapılır ve imzalar sıfırdan kurulur. */
+      var pres=await pushNow(true);
 
       // teşhis sayacı
       var kvNow=await kvReadAll();
@@ -574,11 +675,22 @@
           if(Object.keys(sBulk).length) sDoc.__bulk=sBulk;
           if(Object.keys(pBulk).length) pDoc.__bulk=pBulk;
           if(data&&data.errors) sDoc.__errors=data.errors;
-          var now2=Date.now(); sDoc.updated_at=now2; pDoc.updated_at=now2;
-          return Promise.all([
-            fsMod.setDoc(fsMod.doc(db,"settings",uid), sDoc, { merge:true }),
-            fsMod.setDoc(fsMod.doc(db,"progress",uid), pDoc, { merge:true })
-          ]);
+
+          /* BOŞ BELGE YAZMA. Fark yazmayla birlikte çoğu push'ta iki
+             belgeden yalnızca biri değişiyor; ötekine sadece updated_at
+             yazmak bedava değil — Firestore'da o da bir mutation ve
+             kuyruğu doldurur. Alanı olmayan belge hiç gönderilmez. */
+          var sVar = Object.keys(sDoc).length > 0;
+          var pVar = Object.keys(pDoc).length > 0;
+          if(!sVar && !pVar) return Promise.resolve([]);
+
+          var now2=Date.now();
+          var isler=[];
+          if(sVar){ sDoc.updated_at=now2;
+            isler.push(fsMod.setDoc(fsMod.doc(db,"settings",uid), sDoc, { merge:true })); }
+          if(pVar){ pDoc.updated_at=now2;
+            isler.push(fsMod.setDoc(fsMod.doc(db,"progress",uid), pDoc, { merge:true })); }
+          return Promise.all(isler);
         }
       };
       ready=true;
@@ -603,7 +715,7 @@
   }
   async function signOutAndPush(){
     await waitForAuth(3000);
-    if(ready&&user&&fb){ try{ await pushNow(); }catch(e){} }
+    if(ready&&user&&fb){ try{ await pushNow(true); }catch(e){} }
     await new Promise(function(r){ setTimeout(r,400); });
     try{ if(fb&&fb.signOut) await fb.signOut(); }catch(e){}
     try{
@@ -626,7 +738,16 @@
       };
     }catch(e){}
   }
+  /* Sayfadan ayrılırken son bir yazma.
+     pagehide VE visibilitychange'in ikisi de bu fonksiyonu çağırıyor;
+     tek bir sayfa geçişinde ikisi birden tetiklenip iki yazma
+     başlatıyordu. 3 saniyelik pencerede yalnızca biri geçer.
+     autoPush kapalı olsa bile burası çalışır: ayrılırken veri kaybını
+     önlemek, gürültüyü azaltmaktan önemlidir. */
   function flushOnLeave(){
+    var now=Date.now();
+    if(now-__sonFlush < 3000) return;
+    __sonFlush=now;
     try{ clearTimeout(saveTimer); }catch(e){}
     pushNow();
   }
@@ -654,33 +775,142 @@
     }catch(e){}
   }
 
-  /* ── 11c) GÜNLÜK ANLIK GÖRÜNTÜ: "dünü geri al" güvenlik ağı ── */
+  /* ── 11c) GÜNLÜK ANLIK GÖRÜNTÜ: "dünü geri al" güvenlik ağı ──
+     ------------------------------------------------------------------
+     ÇÖZÜLEN SORUN
+       Yedekler localStorage'da tutuluyordu ve her biri aynanın + tracker'ın
+       + TÜM kv deposunun kopyasıydı. Ölçüldü: üç günlük yedek 1.391 KB
+       (534 + 313 + 544), toplam localStorage 2.473 KB. Tarayıcı tavanı
+       ~5 MB ve o tavana çarpıldığında setItem SESSİZCE başarısız olur —
+       yani ilerleme kaydedilmez, kullanıcı hiçbir uyarı görmez.
+       Güvenlik ağı olarak eklenen şey, korumaya çalıştığı veriyi riske
+       atıyordu.
+
+     ÇÖZÜM
+       Yedekler IndexedDB'ye taşındı (dh-snap veritabanı). Orada pratikte
+       boyut sorunu yok. localStorage'daki eski yedekler açılışta bir kez
+       taşınıp siliniyor. Saklama 3 günden 2 güne indirildi; "dünü geri al"
+       için iki gün fazlasıyla yeter.                                    */
+  var SNAP_DB="dh-snap", SNAP_STORE="gunler", snapDbP=null;
+
+  function snapOpen(){
+    if(snapDbP) return snapDbP;
+    snapDbP=new Promise(function(res){
+      try{
+        if(!window.indexedDB) return res(null);
+        var r=window.indexedDB.open(SNAP_DB,1);
+        r.onupgradeneeded=function(){
+          var db=r.result;
+          if(!db.objectStoreNames.contains(SNAP_STORE))
+            db.createObjectStore(SNAP_STORE,{keyPath:"gun"});
+        };
+        r.onsuccess=function(){ res(r.result); };
+        r.onerror=function(){ res(null); };
+      }catch(e){ res(null); }
+    });
+    return snapDbP;
+  }
+  function snapPut(gun,str){
+    return snapOpen().then(function(db){
+      if(!db) return false;
+      return new Promise(function(res){
+        try{
+          var t=db.transaction(SNAP_STORE,"readwrite");
+          t.objectStore(SNAP_STORE).put({gun:gun, at:Date.now(), veri:str});
+          t.oncomplete=function(){ res(true); };
+          t.onerror=function(){ res(false); };
+        }catch(e){ res(false); }
+      });
+    });
+  }
+  function snapGet(gun){
+    return snapOpen().then(function(db){
+      if(!db) return null;
+      return new Promise(function(res){
+        try{
+          var q=db.transaction(SNAP_STORE,"readonly").objectStore(SNAP_STORE).get(gun);
+          q.onsuccess=function(){ res(q.result?q.result.veri:null); };
+          q.onerror=function(){ res(null); };
+        }catch(e){ res(null); }
+      });
+    });
+  }
+  function snapKeys(){
+    return snapOpen().then(function(db){
+      if(!db) return [];
+      return new Promise(function(res){
+        try{
+          var q=db.transaction(SNAP_STORE,"readonly").objectStore(SNAP_STORE).getAllKeys();
+          q.onsuccess=function(){ res((q.result||[]).map(String).sort()); };
+          q.onerror=function(){ res([]); };
+        }catch(e){ res([]); }
+      });
+    });
+  }
+  function snapDel(gun){
+    return snapOpen().then(function(db){
+      if(!db) return;
+      try{ db.transaction(SNAP_STORE,"readwrite").objectStore(SNAP_STORE).delete(gun); }catch(e){}
+    });
+  }
+
+  /* localStorage'da kalmış eski yedekleri IndexedDB'ye taşı ve yeri boşalt.
+     Bir kez çalışır; taşıma başarısız olsa bile localStorage temizlenir,
+     çünkü asıl risk yerin dolu olması. */
+  async function snapTasi(){
+    var eskiler=[];
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(k && k.indexOf("dh-snap-")===0) eskiler.push(k);
+      }
+    }catch(e){ return; }
+    if(!eskiler.length) return;
+    eskiler.sort();
+    /* yalnızca en yeni 2 tanesi taşınır, gerisi doğrudan silinir */
+    var tasinacak=eskiler.slice(-2);
+    for(var j=0;j<tasinacak.length;j++){
+      try{
+        var v=localStorage.getItem(tasinacak[j]);
+        if(v) await snapPut(tasinacak[j].slice(8), v);
+      }catch(e){}
+    }
+    var kb=0;
+    for(var m=0;m<eskiler.length;m++){
+      try{ kb+=(localStorage.getItem(eskiler[m])||"").length; localStorage.removeItem(eskiler[m]); }catch(e){}
+    }
+    if(kb) console.log("[cloud-sync] günlük yedekler IndexedDB'ye taşındı, localStorage'da "
+                       + Math.round(kb/1024) + " KB yer açıldı");
+  }
+
   async function takeSnapshot(){
     try{
-      var day=new Date().toISOString().slice(0,10), key="dh-snap-"+day;
-      if(localStorage.getItem(key)) return;
+      await snapTasi();
+      var day=new Date().toISOString().slice(0,10);
+      var varMi=await snapGet(day);
+      if(varMi) return;
       var snap={ m:localStorage.getItem(MIRROR)||"", t:localStorage.getItem(TRACKER)||"", kv:await kvReadAll() };
       var str=JSON.stringify(snap);
-      if(str.length>1500000) { snap.kv={}; str=JSON.stringify(snap); }  // taşarsa kv'siz sakla
-      localStorage.setItem(key,str);
-      // en fazla 3 gün tut
-      var snaps=[]; for(var i2=0;i2<localStorage.length;i2++){ var k2=localStorage.key(i2); if(k2&&k2.indexOf("dh-snap-")===0) snaps.push(k2); }
-      snaps.sort(); while(snaps.length>3){ localStorage.removeItem(snaps.shift()); }
+      await snapPut(day, str);
+      /* en fazla 2 gün tut */
+      var hepsi=await snapKeys();
+      while(hepsi.length>2){ await snapDel(hepsi.shift()); }
     }catch(e){}
   }
-  function snapList(){
-    var out=[]; try{ for(var i3=0;i3<localStorage.length;i3++){ var k3=localStorage.key(i3); if(k3&&k3.indexOf("dh-snap-")===0) out.push(k3.slice(8)); } }catch(e){}
-    return out.sort();
-  }
+  function snapList(){ return snapKeys(); }
   async function restoreSnap(day){
     try{
-      var raw=localStorage.getItem("dh-snap-"+day); if(!raw) return {ok:false,message:"Anlık görüntü yok"};
+      var raw=await snapGet(day);
+      if(!raw){ /* eski kurulumlardan kalma localStorage yedeği olabilir */
+        try{ raw=localStorage.getItem("dh-snap-"+day); }catch(e){}
+      }
+      if(!raw) return {ok:false,message:"Anlık görüntü yok"};
       var s2=JSON.parse(raw);
       if(s2.m) localStorage.setItem(MIRROR,s2.m);
       if(s2.t) localStorage.setItem(TRACKER,s2.t);
       if(s2.kv) await kvWriteAll(s2.kv);
       await applyMirror();
-      await pushNow();
+      await pushNow(true);
       return {ok:true,message:"✓ "+day+" durumuna dönüldü ve buluta yazıldı."};
     }catch(e){ return {ok:false,message:"Geri dönüş hatası: "+(e&&e.message||"?")}; }
   }
@@ -696,6 +926,12 @@
 
   window.DHCloudSync = {
     push: pushNow, sync: initialSync, pull: fullSync, fullSync: fullSync,
+    /* Otomatik tetikleyiciler. false yapılırsa yalnızca elle çağrılan
+       push/fullSync ve sayfadan ayrılırken yapılan son yazma çalışır. */
+    autoPush: true,
+    /* Fark yazma imzalarını sıfırla → bir sonraki push tam gönderim olur.
+       (Bulutta veri kaybı şüphesi varsa elle çalıştırılır.) */
+    resetDiff: sigSifirla,
     signOut: signOutAndPush,
     snapList: snapList, restoreSnap: restoreSnap,
     /* Yedekleme ekranı kendi kopya listesini tutmasın diye TEK KAYNAK burada.

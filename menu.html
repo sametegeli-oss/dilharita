@@ -326,7 +326,9 @@
     var cs=window.DHCloudSync;
     var msg=document.getElementById("dhBackupMsg");
     if(!cs || !cs.snapList){ if(msg){ msg.style.color="var(--dh-seri)"; msg.textContent="Bulut bağlantısı hazır değil."; } return; }
-    var list=cs.snapList()||[];
+    /* snapList artık Promise döndürüyor: günlük yedekler localStorage'dan
+       IndexedDB'ye taşındı (localStorage ~5 MB tavanına dayanıyordu). */
+    var list=(await cs.snapList())||[];
     if(!list.length){ if(msg){ msg.style.color="var(--dh-seri)"; msg.textContent="Henüz geri dönülecek bir gün kaydı yok."; } return; }
     var day=prompt("Hangi güne dönülsün?\n"+list.join("\n"));
     if(!day) return;
