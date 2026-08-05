@@ -433,7 +433,14 @@
 
     loadSyn().then(function(sz){
       var liste=(sz && sz[word]) || [];
-      if(!liste.length){ synAI(word); return; }
+      if(!liste.length){
+        /* Anahtar VAR ama liste boşsa: bu kelimenin eş anlamlısı olmadığı
+           daha önce belirlenmiş demektir (Gemini toplu üretimi boş döndü).
+           Her açılışta AI'a yeniden sormanın anlamı yok. */
+        if(sz && Object.prototype.hasOwnProperty.call(sz, word)) return;
+        synAI(word);
+        return;
+      }
 
       var hepsi=[word].concat(liste.filter(function(k){ return k!==word; }));
       box.style.display="";
