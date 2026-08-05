@@ -1,18 +1,75 @@
-/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v5.2 - Fixed Syntax & Reliable Image Engine)
+/* word-popup.js — ZENGİN KELİME AÇIKLAMA POPUP (v2)
    Dil Harita — Her sayfada İngilizce kelimeye tıkla, tam donanımlı panel aç.
+
+   Özellikler: anlamlar + okunuş + seviye/frekans, EŞ ANLAMLILAR (kullanım
+   sıklığına göre sıralı), heceler, Dinle/Yavaş/Hızlı, Kelime Açıklama (AI),
+   Telaffuzunu dene, geçtiği cümleler.
+
+   Sözlük:      data/dictionary.json
+   Cümleler:    data/sentences.json
+   Eş anlamlı:  data/synonyms.json      (tools/synonyms-uret.py üretir)
+   Yedek frekans: data/ngram-yedek.json (tools/ngram-yedek-uret.py üretir)
+
+   ── EŞ ANLAMLI SIRALAMASI (v3) ───────────────────────────────────────
+   Liste, kelimelerin GERÇEK kullanım sıklığına göre çoktan aza sıralanır.
+   Sıklık kaynağı önceliği:
+     1) Google Books Ngram — CANLI. Google bu uç noktada CORS başlığı
+        döndürmediği için tarayıcıdan doğrudan çağrılamaz; araya kendi
+        proxy'miz girer. Proxy adresi:
+             window.DH_NGRAM_PROXY   ya da   localStorage["dh-ngram-proxy"]
+        Kurulum: tools/ngram-proxy.gs (Google Apps Script, 5 dakika).
+        Alınan değerler localStorage'da 30 gün önbelleklenir — aynı
+        kelimeye ikinci tıklamada ağa hiç çıkılmaz. Google arka arkaya
+        isteklerde engelliyor, önbellek bunun için şart.
+     2) data/ngram-yedek.json — proxy yoksa/çevrimdışıysa. Değerler Ngram
+        ile aynı birimde ama yaklaşıktır; arayüzde "~" ile işaretlenir.
+   Ayrıca her kelimenin yanında sözlükteki `frekans` alanı gösterilir:
+   bu, kelimenin BU UYGULAMANIN kendi cümle korpusunda kaç kez geçtiği.
+   Genel İngilizce sıklığı değildir, o yüzden sıralamada kullanılmaz —
+   "yaygın ama ben hiç görmedim" ayrımını göstermek için durur.
+
+   API: DHWordPop.lookup("running") / enable() / disable()
 */
 (function(global){
   "use strict";
-  if(global.DHWordPop && global.DHWordPop.__v5) return;
+  if(global.DHWordPop && global.DHWordPop.__v2) return;
 
   var DICT_PATHS = ["./data/dictionary.json","data/dictionary.json","./dictionary.json"];
-  /* Örnek cümleler için tam havuz: id/en/tr (gzip ~294 KB). Eskiden 8,5 MB'lık
-     data/sentences.json indiriliyordu; kapsam aynı, boyut beşte bir.
-     DHSent varsa onun üzerinden, yoksa doğrudan dosyadan. */
-  var SENT_PATHS = ["./data/sentences/examples.json","data/sentences/examples.json",
-                    "./data/sentences.json","data/sentences.json","./sentences.json"];
+  var SENT_PATHS = ["./data/sentences.json","data/sentences.json","./sentences.json"];
+  var SYN_PATHS  = ["./data/synonyms.json","data/synonyms.json","./synonyms.json"];
+  var NGY_PATHS  = ["./data/ngram-yedek.json","data/ngram-yedek.json","./ngram-yedek.json"];
   var dict=null, dictLoading=null, sentences=null, sentLoading=null;
+  var syn=null, synLoading=null, ngYedek=null, ngYedekLoading=null;
   var enabled=true, popEl=null;
+
+  /* ---------- Ngram: proxy adresi + önbellek ---------- */
+  var NG_CACHE_KEY = "dh-ngram-v1";
+  var NG_TTL = 30*24*60*60*1000;              /* 30 gün */
+  var NG_MAX = 4000;                          /* önbellekte en fazla kelime */
+
+  function ngProxy(){
+    try{
+      if(global.DH_NGRAM_PROXY) return String(global.DH_NGRAM_PROXY);
+      var v=localStorage.getItem("dh-ngram-proxy");
+      if(v) return v;
+    }catch(e){}
+    return "";
+  }
+  function ngCacheOku(){
+    try{ return JSON.parse(localStorage.getItem(NG_CACHE_KEY)||"{}")||{}; }
+    catch(e){ return {}; }
+  }
+  function ngCacheYaz(obj){
+    try{
+      var ks=Object.keys(obj);
+      if(ks.length>NG_MAX){
+        /* en eski kayıtları at */
+        ks.sort(function(a,b){ return (obj[a].t||0)-(obj[b].t||0); });
+        for(var i=0;i<ks.length-NG_MAX;i++) delete obj[ks[i]];
+      }
+      localStorage.setItem(NG_CACHE_KEY, JSON.stringify(obj));
+    }catch(e){}
+  }
 
   function loadDict(){
     if(dict) return Promise.resolve(dict);
@@ -35,70 +92,26 @@
     return sentLoading;
   }
 
-  /* ============ IndexedDB: öğrenilen (sözlükte olmayan) kelimeler önbelleği ============
-     Sözlükte bulunmayan bir kelime AI'ya sorulunca sonucu buraya kaydederiz.
-     Aynı kelime tekrar sorulunca AI'ya gitmeden buradan gelir.
-     exportLearnedWords() ile hepsi toplu JSON olarak alınıp GitHub sözlüğüne eklenebilir. */
-  var IDB = {
-    _db: null,
-    DB_NAME: "dh_word_cache",
-    STORE: "learned",
-    open: function(){
-      if(this._db) return Promise.resolve(this._db);
-      var self=this;
-      return new Promise(function(res){
-        if(!global.indexedDB){ res(null); return; }
-        var req = indexedDB.open(self.DB_NAME, 1);
-        req.onupgradeneeded = function(e){
-          var db=e.target.result;
-          if(!db.objectStoreNames.contains(self.STORE)){
-            db.createObjectStore(self.STORE, { keyPath:"word" });
-          }
-        };
-        req.onsuccess=function(e){ self._db=e.target.result; res(self._db); };
-        req.onerror=function(){ res(null); };
-      });
-    },
-    get: function(word){
-      var self=this;
-      return this.open().then(function(db){
-        if(!db) return null;
-        return new Promise(function(res){
-          try{
-            var tx=db.transaction(self.STORE,"readonly").objectStore(self.STORE).get(word);
-            tx.onsuccess=function(){ res(tx.result||null); };
-            tx.onerror=function(){ res(null); };
-          }catch(e){ res(null); }
-        });
-      });
-    },
-    put: function(rec){
-      var self=this;
-      return this.open().then(function(db){
-        if(!db) return false;
-        return new Promise(function(res){
-          try{
-            var tx=db.transaction(self.STORE,"readwrite").objectStore(self.STORE).put(rec);
-            tx.onsuccess=function(){ res(true); };
-            tx.onerror=function(){ res(false); };
-          }catch(e){ res(false); }
-        });
-      });
-    },
-    all: function(){
-      var self=this;
-      return this.open().then(function(db){
-        if(!db) return [];
-        return new Promise(function(res){
-          try{
-            var out=[], cur=db.transaction(self.STORE,"readonly").objectStore(self.STORE).openCursor();
-            cur.onsuccess=function(e){ var c=e.target.result; if(c){ out.push(c.value); c.continue(); } else res(out); };
-            cur.onerror=function(){ res(out); };
-          }catch(e){ res([]); }
-        });
-      });
-    }
-  };
+  function loadSyn(){
+    if(syn) return Promise.resolve(syn);
+    if(synLoading) return synLoading;
+    synLoading=(function tryPath(i){
+      if(i>=SYN_PATHS.length) return Promise.resolve({});
+      return fetch(SYN_PATHS[i]).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+        .then(function(d){ syn=d||{}; return syn; }).catch(function(){ return tryPath(i+1); });
+    })(0);
+    return synLoading;
+  }
+  function loadNgYedek(){
+    if(ngYedek) return Promise.resolve(ngYedek);
+    if(ngYedekLoading) return ngYedekLoading;
+    ngYedekLoading=(function tryPath(i){
+      if(i>=NGY_PATHS.length) return Promise.resolve({});
+      return fetch(NGY_PATHS[i]).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+        .then(function(d){ ngYedek=d||{}; return ngYedek; }).catch(function(){ return tryPath(i+1); });
+    })(0);
+    return ngYedekLoading;
+  }
 
   function cleanWord(w){ return String(w||"").toLowerCase().replace(/[^a-z'-]/g,"").replace(/^'+|'+$/g,""); }
   function variants(w){
@@ -133,6 +146,7 @@
       while(i<w.length && isV(w[i])){ seg+=w[i]; i++; }
       parts.push(seg);
     }
+    // sesli harf içermeyen parçaları (sadece ünsüz) bir öncekine yapıştır
     var merged=[];
     for(var j=0;j<parts.length;j++){
       var p=parts[j];
@@ -143,34 +157,20 @@
     return merged.join(" · ")||w;
   }
 
-  function toggleFav(word){
-    try{
-      var favs = JSON.parse(localStorage.getItem("dh_fav_words") || "{}");
-      var btn = document.getElementById("dhWpFavBtn");
-      if(favs[word]){
-        delete favs[word];
-        if(btn) btn.textContent = "☆";
-      } else {
-        favs[word] = { date: Date.now(), level: 1 };
-        if(btn) btn.textContent = "⭐";
-      }
-      localStorage.setItem("dh_fav_words", JSON.stringify(favs));
-    }catch(e){}
-  }
-
-  function isFav(word){
-    try{
-      var favs = JSON.parse(localStorage.getItem("dh_fav_words") || "{}");
-      return !!favs[word];
-    }catch(e){ return false; }
-  }
-
+  // Cümleyi PANOYA KOPYALA (garanti) + Google Translate'i aç. Açılınca yapıştırılır.
   function openGoogleTranslate(text){
     text=String(text||"").trim(); if(!text) return;
     function fallbackCopy(t){
       try{ var ta=document.createElement("textarea"); ta.value=t; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }catch(e){}
     }
     try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).catch(function(){ fallbackCopy(text); }); } else { fallbackCopy(text); } }catch(e){ fallbackCopy(text); }
+    try{
+      var n=document.createElement("div");
+      n.textContent="📋 Cümle kopyalandı — Translate'te yapıştır";
+      n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #2563eb;padding:12px 18px;border-radius:12px;font:700 13px system-ui;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:90vw;text-align:center";
+      document.body.appendChild(n);
+      setTimeout(function(){ n.style.transition="opacity .4s"; n.style.opacity="0"; setTimeout(function(){ n.remove(); },400); },3000);
+    }catch(e){}
     window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(text), "_blank");
   }
 
@@ -181,17 +181,6 @@
       u.lang="en-US"; u.rate=rate||0.9;
       u.__dhMixed=true; u.__longTTSAvatarSync=true;
       speechSynthesis.speak(u);
-    }catch(e){}
-  }
-
-  function copyToClipboard(text, alertMsg){
-    try{
-      if(navigator.clipboard && navigator.clipboard.writeText){
-        navigator.clipboard.writeText(text);
-      } else {
-        var ta=document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
-      }
-      if(alertMsg) alert(alertMsg);
     }catch(e){}
   }
 
@@ -207,18 +196,23 @@
     +".dh-wp-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}"
     +".dh-wp-word{font-size:26px;font-weight:900;color:#818cf8}"
     +".dh-wp-read{font-size:15px;color:#fbbf24;font-weight:700;font-style:italic}"
-    +".dh-wp-fav{background:none;border:0;color:#f59e0b;font-size:22px;cursor:pointer;padding:0 5px}"
     +".dh-wp-x{margin-left:auto;background:#13294d;border:1px solid #1e3a5f;color:#e8eef7;width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;flex:0 0 auto}"
     +".dh-wp-box{background:#0b1830;border:1px solid #1e3a5f;border-radius:14px;padding:12px 14px;margin-bottom:10px}"
     +".dh-wp-boxhead{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:#9fb3d9;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}"
+    +".dh-wp-tags{margin-left:auto;display:flex;gap:6px}"
+    +".dh-wp-tag{font-size:10px;font-weight:800;padding:3px 8px;border-radius:99px}"
+    +".dh-wp-tag.f{background:#065f46;color:#6ee7b7}"
+    +".dh-wp-tag.l{background:#1e3a8a;color:#93c5fd}"
     +".dh-wp-mean{color:#e8eef7;font-size:15px;padding:5px 0;line-height:1.4}"
     +".dh-wp-syl{font-size:16px;color:#e8eef7;font-weight:700;letter-spacing:1px}"
-    +".dh-wp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}"
-    +".dh-wp-btn{border:0;border-radius:12px;padding:12px 8px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-align:center;line-height:1.2}"
+    +".dh-wp-row{display:flex;gap:8px;margin-bottom:10px}"
+    +".dh-wp-row button{flex:1;border:0;border-radius:11px;padding:11px 6px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}"
     +".dh-wp-b1{background:#2563eb;color:#fff}"
+    +".dh-wp-b2{background:#13294d;color:#e8eef7;border:1px solid #1e3a5f}"
+    +".dh-wp-full{width:100%;border:0;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:7px}"
     +".dh-wp-video{background:#dc2626;color:#fff}"
     +".dh-wp-ai{background:linear-gradient(180deg,#10b981,#059669);color:#fff}"
-    +".dh-wp-mnemonic{background:linear-gradient(180deg,#f59e0b,#d97706);color:#fff}"
+    +".dh-wp-rec{background:#dc2626;color:#fff}"
     +".dh-wp-sec-title{font-size:13px;font-weight:800;color:#9fb3d9;margin:6px 0 8px}"
     +".dh-wp-sent{background:#0b1830;border:1px solid #1e3a5f;border-radius:12px;padding:11px 12px;margin-bottom:8px;position:relative}"
     +".dh-wp-sent .en{color:#e8eef7;font-size:14px;line-height:1.4;padding-right:56px}"
@@ -226,15 +220,7 @@
     +".dh-wp-sent .play{position:absolute;top:10px;right:10px;background:none;border:0;color:#38bdf8;font-size:16px;cursor:pointer}"
     +".dh-wp-sent .gtr{position:absolute;top:10px;right:38px;background:none;border:0;font-size:15px;cursor:pointer}"
     +".dh-wp-ai-out{background:#0b1830;border:1px solid #10b98155;border-radius:12px;padding:12px;margin-bottom:10px;color:#d1fae5;font-size:14px;line-height:1.5;white-space:pre-wrap}"
-    +".dh-wp-mnemonic-out{background:#0b1830;border:1px solid #f59e0b55;border-radius:12px;padding:12px;margin-bottom:10px;color:#fef3c7;font-size:14px;line-height:1.5;white-space:pre-wrap;position:relative}"
-    +".dh-wp-blur{filter:blur(6px);user-select:none;pointer-events:none;transition:filter .3s}"
-    +".dh-wp-blur-btn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;background:#f59e0b;color:#03131c;border:0;padding:10px 18px;border-radius:20px;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.5)}"
-    +".dh-wp-custom-box{margin-top:10px;border-top:1px dashed #1e3a5f;padding-top:10px}"
-    +".dh-wp-textarea{width:100%;box-sizing:border-box;background:#020617;border:1px solid #1e3a5f;border-radius:8px;color:#e8eef7;padding:8px 10px;font-size:13px;resize:vertical;min-height:60px;outline:none;margin-bottom:6px}"
-    +".dh-wp-btn-row{display:flex;gap:6px;margin-bottom:6px}"
-    +".dh-wp-gen-btn{flex:1;background:#38bdf8;color:#03131c;border:0;border-radius:8px;padding:9px;font-size:12px;font-weight:800;cursor:pointer}"
-    +".dh-wp-gemini-btn{flex:1;background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;border:0;border-radius:8px;padding:9px;font-size:12px;font-weight:800;cursor:pointer}"
-    +".dh-wp-mnemonic-img{width:100%;height:180px;object-fit:cover;border-radius:10px;margin-top:10px;border:1px solid #1e3a5f;display:block}"
+    +".dh-wp-rec-out{font-size:13px;font-weight:700;margin:4px 0 10px;min-height:18px}"
     +".dh-wp-muted{color:#64748b;font-size:13px;padding:6px 0}"
     +".dh-wp-wave-wrap{position:relative;width:100%;height:110px;background:#020617;border:1px solid #1e3a5f;border-radius:10px;overflow:hidden;margin-bottom:8px}"
     +".dh-wp-wave-wrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}"
@@ -250,7 +236,22 @@
     +"@keyframes dhWvPulse{50%{opacity:.6}}"
     +".dh-wp-wv-cmp{background:linear-gradient(180deg,#10b981,#059669);color:#fff}"
     +".dh-wp-wv-play{background:#13294d;color:#e8eef7;border:1px solid #1e3a5f!important}"
-    +".dh-wp-wv-status{font-size:12px;font-weight:700;color:#9fb3d9;min-height:16px;line-height:1.4}";
+    +".dh-wp-wv-status{font-size:12px;font-weight:700;color:#9fb3d9;min-height:16px;line-height:1.4}"
+    /* ---- eş anlamlılar ---- */
+    +".dh-wp-syn{display:block;position:relative;background:#0b1830;border:1px solid #1e3a5f;border-radius:11px;padding:9px 11px;margin-bottom:6px;cursor:pointer;text-align:left;width:100%}"
+    +".dh-wp-syn:disabled{cursor:default}"
+    +".dh-wp-syn.self{border-color:#818cf8;background:#141c3d}"
+    +".dh-wp-syn-ust{display:flex;align-items:baseline;gap:8px}"
+    +".dh-wp-syn-k{font-size:15px;font-weight:800;color:#e8eef7}"
+    +".dh-wp-syn.self .dh-wp-syn-k{color:#a5b4fc}"
+    +".dh-wp-syn-tr{font-size:12px;color:#9fb3d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}"
+    +".dh-wp-syn-yuzde{margin-left:auto;font-size:11.5px;font-weight:900;color:#6ee7b7;font-family:monospace;flex:0 0 auto}"
+    +".dh-wp-syn-cubuk{height:4px;border-radius:99px;background:#13294d;margin-top:6px;overflow:hidden}"
+    +".dh-wp-syn-cubuk i{display:block;height:100%;background:linear-gradient(90deg,#38bdf8,#818cf8);border-radius:99px}"
+    +".dh-wp-syn-alt{font-size:10.5px;color:#64748b;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap}"
+    +".dh-wp-syn-alt b{color:#94a3b8;font-weight:800}"
+    +".dh-wp-syn-not{font-size:11px;color:#64748b;line-height:1.45;margin-top:2px}"
+    +".dh-wp-syn-not a{color:#60a5fa}";
     document.head.appendChild(st);
   }
 
@@ -266,23 +267,36 @@
      '<div class="dh-wp no-wordpop">'
      +'<div class="dh-wp-head">'
        +'<span class="dh-wp-word">'+esc(w)+'</span>'
-       +'<button class="dh-wp-fav" id="dhWpFavBtn" title="Favorilere Ekle / Aralıklı Tekrar">'+(isFav(w)?"⭐":"☆")+'</button>'
        +(d.oku?'<span class="dh-wp-read">'+esc(d.oku)+'</span>':'')
        +'<button class="dh-wp-x" id="dhWpX">✕</button>'
      +'</div>'
      +'<div class="dh-wp-box">'
-       +'<div class="dh-wp-boxhead">📖 Anlamlar</div>'
+       +'<div class="dh-wp-boxhead">📖 Anlamlar<span class="dh-wp-tags">'
+         +(d.frekans?'<span class="dh-wp-tag f">frekans '+d.frekans+'</span>':'')
+         +(d.seviye?'<span class="dh-wp-tag l">'+esc(d.seviye)+'</span>':'')
+       +'</span></div>'
        + anlamlar.map(function(m,i){ return '<div class="dh-wp-mean">'+(i+1)+'. '+esc(m)+'</div>'; }).join("")
      +'</div>'
-     +'<div class="dh-wp-box"><div class="dh-wp-boxhead">🔤 Heceler</div><div class="dh-wp-syl">'+esc(syllabify(w))+'</div></div>'
-     +'<div class="dh-wp-grid">'
-       +'<button class="dh-wp-btn dh-wp-b1" id="dhWpListen">🔊 Dinle</button>'
-       +'<button class="dh-wp-btn dh-wp-video" id="dhWpVideo">🎬 Videolarda Dinle</button>'
-       +'<button class="dh-wp-btn dh-wp-ai" id="dhWpAI">🎓 Açıklama (AI)</button>'
-       +'<button class="dh-wp-btn dh-wp-mnemonic" id="dhWpMnemonic">💡 Hafıza İpucu Üret (AI)</button>'
+     +'<div class="dh-wp-box" id="dhWpSynBox" style="display:none">'
+       +'<div class="dh-wp-boxhead">🔁 Aynı anlama gelen kelimeler'
+         +'<span class="dh-wp-tags"><span class="dh-wp-tag l" id="dhWpSynKaynak">…</span></span>'
+       +'</div>'
+       +'<div id="dhWpSynList"></div>'
+       +'<div class="dh-wp-syn-not" id="dhWpSynNot"></div>'
      +'</div>'
+     +'<div class="dh-wp-box"><div class="dh-wp-boxhead">🔤 Heceler</div><div class="dh-wp-syl">'+esc(syllabify(w))+'</div></div>'
+     +'<div class="dh-wp-row">'
+       +'<button class="dh-wp-b1" id="dhWpListen">🔊 Dinle</button>'
+       +'<button class="dh-wp-b2" id="dhWpSlow">🐢 Yavaş</button>'
+       +'<button class="dh-wp-b2" id="dhWpFast">⚡ Hızlı</button>'
+     +'</div>'
+     +'<button class="dh-wp-full dh-wp-video" id="dhWpVideo">🎬 Gerçek videolarda dinle</button>'
+     +'<button class="dh-wp-full dh-wp-ai" id="dhWpAI">🎓 Kelime Açıklama (AI)</button>'
      +'<div id="dhWpAIOut"></div>'
-     +'<div id="dhWpMnemonicOut"></div>'
+     +'<div class="dh-wp-box"><div class="dh-wp-boxhead">🎙 Telaffuzunu dene</div>'
+       +'<div class="dh-wp-rec-out" id="dhWpRecOut"></div>'
+       +'<button class="dh-wp-full dh-wp-rec" id="dhWpRec">🎙 Kaydı başlat</button>'
+     +'</div>'
      +'<div class="dh-wp-box"><div class="dh-wp-boxhead">🌊 Ses Dalgası Analizi</div>'
        +'<div class="dh-wp-wave-wrap"><canvas id="dhWpWvCanvas"></canvas></div>'
        +'<div class="dh-wp-wave-meta">'
@@ -308,242 +322,227 @@
     document.body.appendChild(ov); popEl=ov;
     ov.addEventListener("click", function(e){ if(e.target===ov) close(); });
     document.getElementById("dhWpX").onclick=close;
-    document.getElementById("dhWpFavBtn").onclick=function(){ toggleFav(w); };
     document.getElementById("dhWpListen").onclick=function(){ speak(w,0.9); };
+    document.getElementById("dhWpSlow").onclick=function(){ speak(w,0.55); };
+    document.getElementById("dhWpFast").onclick=function(){ speak(w,1.25); };
     document.getElementById("dhWpVideo").onclick=function(){ window.open("https://youglish.com/pronounce/"+encodeURIComponent(w)+"/english","_blank"); };
     document.getElementById("dhWpAI").onclick=function(){ aiExplain(w, anlamlar); };
-    document.getElementById("dhWpMnemonic").onclick=function(){ aiMnemonic(w, anlamlar); };
+    document.getElementById("dhWpRec").onclick=function(){ tryPronounce(w); };
     wvInit(w);
+    fillSynonyms(w);
     fillSentences(w);
+  }
+
+  /* ================= 🔁 EŞ ANLAMLILAR =================
+     Akış: adayları topla → sıklıkları getir (önbellek → proxy → yedek)
+     → çoktan aza sırala → çiz. Ağ beklenmez: liste önce yedek/önbellek
+     değerleriyle ANINDA çizilir, canlı Ngram gelince yeniden sıralanır. */
+
+  /* Ngram değerlerini getir. Dönüş: {kelime: oran}
+     kaynak: "canli" | "yedek" | "karma" */
+  function ngramGetir(kelimeler){
+    var cache=ngCacheOku(), simdi=Date.now();
+    var sonuc={}, eksik=[];
+    kelimeler.forEach(function(k){
+      var c=cache[k];
+      if(c && (simdi-(c.t||0))<NG_TTL){ if(typeof c.v==="number") sonuc[k]=c.v; }
+      else eksik.push(k);
+    });
+
+    var proxy=ngProxy();
+    if(!eksik.length) return Promise.resolve({deger:sonuc, kaynak:"canli"});
+    if(!proxy){
+      return loadNgYedek().then(function(y){
+        eksik.forEach(function(k){ if(typeof y[k]==="number") sonuc[k]=y[k]; });
+        return {deger:sonuc, kaynak: Object.keys(cache).length?"karma":"yedek"};
+      });
+    }
+
+    /* Ngram uç noktası virgülle birden çok kelime kabul eder — tek istek. */
+    var url = proxy + (proxy.indexOf("?")<0?"?":"&") + "content=" +
+      encodeURIComponent(eksik.join(",")) +
+      "&year_start=2015&year_end=2019&corpus=en-2019&smoothing=3";
+
+    return fetch(url).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(arr){
+        if(!Array.isArray(arr)) throw 0;
+        var yeni=ngCacheOku();
+        arr.forEach(function(it){
+          var ad=String((it&&it.ngram)||"").replace(/_[A-Z]+$/,"").toLowerCase();
+          var ts=it&&it.timeseries;
+          if(!ad || !Array.isArray(ts) || !ts.length) return;
+          var v=Number(ts[ts.length-1])||0;
+          sonuc[ad]=v; yeni[ad]={v:v,t:simdi};
+        });
+        /* Ngram'da hiç geçmeyen kelime cevapta gelmez; 0 olarak
+           önbelleğe yaz ki her açılışta tekrar sorulmasın. */
+        eksik.forEach(function(k){
+          if(!(k in sonuc)){ sonuc[k]=0; yeni[k]={v:0,t:simdi}; }
+        });
+        ngCacheYaz(yeni);
+        return {deger:sonuc, kaynak:"canli"};
+      })
+      .catch(function(){
+        return loadNgYedek().then(function(y){
+          eksik.forEach(function(k){ if(typeof y[k]==="number") sonuc[k]=y[k]; });
+          return {deger:sonuc, kaynak:"yedek"};
+        });
+      });
+  }
+
+  function ngramYazi(v){
+    if(!(v>0)) return "—";
+    var yuzde=v*100;
+    if(yuzde>=0.01) return yuzde.toFixed(3)+"%";
+    if(yuzde>=0.0001) return yuzde.toFixed(5)+"%";
+    return yuzde.toExponential(1)+"%";
+  }
+
+  function synCiz(host, liste, enBuyuk, kendisi){
+    host.innerHTML = liste.map(function(r){
+      var oran = enBuyuk>0 ? Math.max(2, Math.round(100*r.v/enBuyuk)) : 0;
+      var alt=[];
+      alt.push("<b>"+ngramYazi(r.v)+"</b> Ngram");
+      if(typeof r.korpus==="number") alt.push("bu uygulamada <b>"+r.korpus+"</b> kez");
+      if(r.seviye) alt.push(esc(r.seviye));
+      return '<button type="button" class="dh-wp-syn'+(r.k===kendisi?" self":"")+'" data-w="'+esc(r.k)+'"'+(r.k===kendisi?" disabled":"")+'>'
+        +'<div class="dh-wp-syn-ust">'
+          +'<span class="dh-wp-syn-k">'+esc(r.k)+(r.k===kendisi?" ←":"")+'</span>'
+          +'<span class="dh-wp-syn-tr">'+esc(r.tr||"")+'</span>'
+          +'<span class="dh-wp-syn-yuzde">'+ngramYazi(r.v)+'</span>'
+        +'</div>'
+        +'<div class="dh-wp-syn-cubuk"><i style="width:'+oran+'%"></i></div>'
+        +'<div class="dh-wp-syn-alt">'+alt.join(" · ")+'</div>'
+      +'</button>';
+    }).join("");
+    host.querySelectorAll(".dh-wp-syn:not(.self)").forEach(function(b){
+      b.onclick=function(){
+        var w=b.getAttribute("data-w");
+        close();
+        setTimeout(function(){ global.DHWordPop.lookup(w); }, 60);
+      };
+    });
+  }
+
+  function fillSynonyms(word){
+    var box=document.getElementById("dhWpSynBox");
+    var host=document.getElementById("dhWpSynList");
+    var etiket=document.getElementById("dhWpSynKaynak");
+    var not=document.getElementById("dhWpSynNot");
+    if(!box||!host) return;
+
+    loadSyn().then(function(sz){
+      var liste=(sz && sz[word]) || [];
+      if(!liste.length){ synAI(word); return; }
+
+      var hepsi=[word].concat(liste.filter(function(k){ return k!==word; }));
+      box.style.display="";
+      host.innerHTML='<div class="dh-wp-muted">Sıklık değerleri alınıyor…</div>';
+      etiket.textContent="…";
+
+      /* satır iskeleti — sözlükten Türkçe anlam, seviye, korpus sayısı */
+      var satirlar=hepsi.map(function(k){
+        var d=(dict&&dict[k])||{};
+        var anl=(d.anlamlar&&d.anlamlar[0])||"";
+        return { k:k, v:0, tr:String(anl).replace(/\s*\[[^\]]*\]/g,"").trim(),
+                 korpus: typeof d.frekans==="number"?d.frekans:null, seviye:d.seviye||"" };
+      });
+
+      ngramGetir(hepsi).then(function(res){
+        satirlar.forEach(function(r){ r.v=res.deger[r.k]||0; });
+        satirlar.sort(function(a,b){
+          if(b.v!==a.v) return b.v-a.v;
+          return a.k<b.k?-1:1;
+        });
+        var enBuyuk=satirlar.length?satirlar[0].v:0;
+        synCiz(host, satirlar, enBuyuk, word);
+
+        if(res.kaynak==="canli"){
+          etiket.textContent="Google Ngram";
+          not.innerHTML="Değerler Google Books Ngram (en-2019) kaynaklıdır — "
+            +"bir kelimenin tüm kitaplardaki kelimelere oranı.";
+        } else {
+          etiket.textContent="~ çevrimdışı";
+          not.innerHTML="Canlı Ngram alınamadı, yaklaşık değerler gösteriliyor. "
+            +"Canlı değerler için Ngram proxy adresini tanımlayın "
+            +"(bkz. tools/ngram-proxy.gs).";
+        }
+      });
+    });
+  }
+
+  /* Statik dosyada yoksa AI'dan iste; sonuç kalıcı önbelleğe yazılır ki
+     aynı kelime için bir daha sorulmasın. */
+  function synAI(word){
+    var box=document.getElementById("dhWpSynBox");
+    if(!box) return;
+    var AK="dh-syn-ai-v1", depo={};
+    try{ depo=JSON.parse(localStorage.getItem(AK)||"{}")||{}; }catch(e){}
+    if(Array.isArray(depo[word])){
+      if(!depo[word].length) return;
+      if(!syn) syn={};
+      syn[word]=depo[word];
+      fillSynonyms(word);
+      return;
+    }
+    if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())) return;
+
+    box.style.display="";
+    document.getElementById("dhWpSynList").innerHTML=
+      '<div class="dh-wp-muted">Eş anlamlılar aranıyor…</div>';
+    document.getElementById("dhWpSynKaynak").textContent="AI";
+
+    var sys="Sen bir İngilizce eşanlamlılar sözlüğüsün. Verilen İngilizce kelimeyle "
+      +"AYNI ANLAMA GELEN en çok 6 İngilizce kelimeyi SADECE virgülle ayrılmış "
+      +"liste olarak yaz. Sadece sözlük kökü (çekim eki yok). Kelimenin kendisini "
+      +"yazma. Eş anlamlısı yoksa boş bırak. Başka hiçbir metin yazma.";
+    DHProviders.chat([{role:"system",content:sys},{role:"user",content:"Kelime: \""+word+"\""}],
+                     {temperature:0.2,max_tokens:60})
+      .then(function(txt){
+        var list=String(txt||"").toLowerCase().split(",")
+          .map(function(x){ return x.trim().replace(/[^a-z'-]/g,""); })
+          .filter(function(x){ return x && x!==word && x.length>1; })
+          .slice(0,6);
+        depo[word]=list;
+        try{ localStorage.setItem(AK, JSON.stringify(depo)); }catch(e){}
+        if(!list.length){ box.style.display="none"; return; }
+        if(!syn) syn={};
+        syn[word]=list;
+        fillSynonyms(word);
+      })
+      .catch(function(){ box.style.display="none"; });
   }
 
   function aiExplain(word, anlamlar){
     var out=document.getElementById("dhWpAIOut"), btn=document.getElementById("dhWpAI");
     if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
-      out.innerHTML='<div class="dh-wp-ai-out">API anahtarı bulunamadı.</div>';
+      out.innerHTML='<div class="dh-wp-ai-out">AI açıklaması için öğretmen sayfasından bir API anahtarı ekle (Groq, Cerebras veya Gemini).</div>';
       return;
     }
-    btn.textContent="⏳ Açıklanıyor…"; btn.disabled=true;
-    var sys="Sen İngilizce öğretmenisin. Kelimeyi Türkçe açıkla: tanım, kullanım alanı, birlikte sık kullanıldığı 2-3 kelime (collocations) ve 1-2 örnek cümle.";
-    var usr="Kelime: \""+word+"\"\nAnlamı: "+anlamlar.join(", ");
+    btn.textContent="⏳ Açıklama hazırlanıyor…"; btn.disabled=true;
+    var sys="Sen İngilizce öğreten bir öğretmensin. Verilen İngilizce kelimeyi Türkçe açıkla: kısa tanım, ne zaman/nasıl kullanılır, 1-2 örnek cümle (İngilizce + Türkçe çeviri). Kısa ve öğretici, akıcı yaz.";
+    var usr="Kelime: \""+word+"\"\nTürkçe anlamları: "+anlamlar.join(", ")+"\nBu kelimeyi öğrenciye açıkla.";
     DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.5,max_tokens:400})
       .then(function(txt){ out.innerHTML='<div class="dh-wp-ai-out">'+esc(String(txt||"").trim())+'</div>'; })
-      .catch(function(){ out.innerHTML='<div class="dh-wp-ai-out">Açıklama alınamadı.</div>'; })
-      .then(function(){ btn.textContent="🎓 Açıklama (AI)"; btn.disabled=false; });
+      .catch(function(){ out.innerHTML='<div class="dh-wp-ai-out">Açıklama alınamadı. Anahtar/limit kontrol et.</div>'; })
+      .then(function(){ btn.textContent="🎓 Kelime Açıklama (AI)"; btn.disabled=false; });
   }
 
-  function aiMnemonic(word, anlamlar){
-    var out=document.getElementById("dhWpMnemonicOut"), btn=document.getElementById("dhWpMnemonic");
-    anlamlar = Array.isArray(anlamlar) ? anlamlar : (anlamlar ? [String(anlamlar)] : []);
-    if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
-      out.innerHTML='<div class="dh-wp-mnemonic-out">🔑 Yapay zekâ anahtarı tanımlı değil. Ayarlardan bir API anahtarı ekleyince hafıza ipucu üretebilirim.</div>';
-      return;
-    }
-    btn.textContent="⏳ Hafıza ipucu hazırlanıyor…"; btn.disabled=true;
-    
-    var sys = "Sen İngilizce kelimeleri Türkçe ses benzeşimi (keyword mnemonic) yöntemiyle ezberleten uzman bir hafıza koçusun. Yüzeysel benzerlikle yetinmez, kelimenin GERÇEK OKUNUŞUNDAN yola çıkarsın.\n\n"
-            + "ZORUNLU ÇALIŞMA ADIMLARI (sırayla uygula):\n"
-            + "1. OKUNUŞ: Kelimenin İngilizce okunuşunu yaz (IPA veya Türkçe harflerle: ör. 'cumbersome' → KAM-bır-sım).\n"
-            + "2. HECELE: Okunuşu 2-3 vurgulu heceye böl. YAZILIŞA değil, SESE göre böl (ör. 'knight' → NAYT, 'nait' değil).\n"
-            + "3. HECE EŞLE: Her heceyi, o sese benzeyen GERÇEK bir Türkçe kelimeyle eşle (uydurma hece değil, sözlükte olan kelime). Ör. KAM→kam(bur), bır→bir, sım→sım(sıkı).\n"
-            + "4. ADAYLAR: En az 3 farklı benzeşim adayı kur. Her adayı iki ölçüte göre puanla: (a) sese ne kadar yakın, (b) canlı bir sahne kurmaya ne kadar uygun.\n"
-            + "5. SEÇ: En doğal ve en görselleştirilebilir adayı seç. Zorlama/anlamsız olanı ele.\n"
-            + "6. HİKÂYE: Seçilen benzeşimle 2 cümlelik SOMUT ve absürt bir sahne yaz. Sahne, kelimenin TÜRKÇE ANLAMINI eylem olarak MUTLAKA içersin (ör. anlam 'hantal' ise sahnede biri hantalca hareket etsin). Böylece ses+anlam tek imgede birleşir.\n\n"
-            + "KURALLAR: Benzeşim Türkçe sese gerçekten yakın olmalı; uzaksa 'yaklaşık' deyip geç. Anlamı hikâyeye gömmeden asla bitirme. Klişe değil, akılda kalıcı ol.\n\n"
-            + "SONUÇ FORMATI (bu başlıkları aynen kullan):\n"
-            + "İNGİLİZCE KELİME: " + word + "\n"
-            + "ANLAMI: " + (anlamlar.length?anlamlar.join(", "):"(sen belirle)") + "\n"
-            + "OKUNUŞ: [Türkçe harflerle okunuş]\n"
-            + "HECELER: [hece1 - hece2 - hece3]\n"
-            + "EN İYİ BENZEŞİM: [seçilen Türkçe ifade + neden seçildiği tek cümle]\n"
-            + "HİKÂYE: [2 cümlelik, anlamı içeren absürt sahne]\n"
-            + "HAFIZA BAĞLANTISI: [Türkçe anlam] → [Türkçe ses benzeşimi] → [İngilizce kelime]\n"
-            + "GÖRSEL_ARAMA: [Hikayedeki absürt sahneyi anlatan 3-4 İngilizce kelimelik görsel prompt]";
-
-    var usr = "Şu kelime için bu sistemi uygula:\nKelime: \"" + word + "\"\nAnlamı: " + (anlamlar.length?anlamlar.join(", "):"(anlam verilmedi, sen belirle)");
-
-    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.8,max_tokens:500})
-      .then(function(txt){
-        var rawText = String(txt||"").trim();
-        if(!rawText){
-          out.innerHTML='<div class="dh-wp-mnemonic-out">Yapay zekâ boş yanıt döndü. Lütfen tekrar deneyin.</div>';
-          return;
-        }
-        var searchTerms = word;
-
-        var match = rawText.match(/GÖRSEL_ARAMA:\s*\[?(.*?)\]?$/i);
-        if(match && match[1]){
-          searchTerms = match[1].trim().replace(/[^a-zA-Z0-9\s]/g, "");
-          rawText = rawText.replace(/(?:GÖRSEL_ARAMA:.*)$/i, "").trim();
-        }
-        // Format başlığı/parantez kalıntılarını sadeleştir
-        rawText = rawText
-          .replace(/^İNGİLİZCE KELİME:\s*.*$/im, "")
-          .replace(/\[|\]/g, "")
-          .replace(/\n{3,}/g, "\n\n")
-          .trim();
-
-        // Kalıcılık için: üretilen ipucunu tekrar/kelime defterine kaydet (varsa)
-        try {
-          if (typeof saveMnemonicToReview === "function") {
-            saveMnemonicToReview(word, anlamlar, rawText);
-          }
-        } catch(e){}
-
-        renderMnemonicBox(word, rawText, searchTerms, anlamlar);
-      })
-      .catch(function(err){
-        var m = String((err && err.message) || err || "");
-        var msg = /network|fetch|failed|load/i.test(m)
-          ? "🌐 Bağlantı hatası — internete veya yapay zekâ servisine ulaşılamadı."
-          : "⚠️ Hafıza ipucu üretilemedi. Bir süre sonra tekrar deneyin.";
-        out.innerHTML='<div class="dh-wp-mnemonic-out">'+msg+'</div>';
-      })
-      .then(function(){ btn.textContent="💡 Hafıza İpucu Üret (AI)"; btn.disabled=false; });
-  }
-
-  /* Üretilen hafıza ipucunu localStorage'daki tekrar listesine ekler (aralıklı tekrar için).
-     akilli-tekrar.html bu listeyi okuyabilir. Zaten varsa mnemonic alanını günceller. */
-  function saveMnemonicToReview(word, anlamlar, mnemonicText){
-    if(!word) return;
-    var KEY = "dh_mnemonic_review";
-    var list = [];
-    try { list = JSON.parse(localStorage.getItem(KEY) || "[]"); } catch(e){ list = []; }
-    if(!Array.isArray(list)) list = [];
-    var now = Date.now();
-    var existing = null;
-    for(var i=0;i<list.length;i++){ if(list[i] && list[i].word === word){ existing = list[i]; break; } }
-    if(existing){
-      existing.mnemonic = mnemonicText;
-      existing.updatedAt = now;
-    } else {
-      list.push({
-        word: word,
-        anlamlar: anlamlar || [],
-        mnemonic: mnemonicText,
-        createdAt: now,
-        updatedAt: now,
-        nextReview: now + 24*60*60*1000, // ilk tekrar: 1 gün sonra
-        box: 1                             // Leitner kutu no (aralıklı tekrar için)
-      });
-    }
-    try { localStorage.setItem(KEY, JSON.stringify(list)); } catch(e){}
-  }
-
-  function renderMnemonicBox(word, text, searchTerms, anlamlar){
-    var out = document.getElementById("dhWpMnemonicOut");
-    var cleanTxt = esc(text);
-    var cleanPrompt = encodeURIComponent(searchTerms.trim() || word);
-
-    var imgUrl = "https://image.pollinations.ai/prompt/" + cleanPrompt + "%20funny%20digital%20art%20illustration?width=600&height=300&nologo=true";
-    var fallbackSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' viewBox='0 0 600 300'><rect width='100%' height='100%' fill='%2313294d'/><text x='50%' y='45%' font-family='sans-serif' font-size='22' font-weight='bold' fill='%2338bdf8' text-anchor='middle'>💡 " + esc(word).toUpperCase() + "</text><text x='50%' y='62%' font-family='sans-serif' font-size='15' fill='%239fb3d9' text-anchor='middle'>" + esc(searchTerms) + "</text></svg>";
-
-    var imgContainerHtml = '<div id="dhWpImgWrapper" style="position:relative;margin-top:10px;min-height:180px;background:#020617;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid #1e3a5f;">'
-                         + '<div id="dhWpImgLoader" style="position:absolute;color:#9fb3d9;font-size:13px;font-weight:700;">🖼️ Görsel Çiziliyor...</div>'
-                         + '<img class="dh-wp-mnemonic-img" id="dhWpMnemonicImg" src="' + imgUrl + '" alt="' + esc(searchTerms) + '" '
-                         + 'style="width:100%;height:180px;object-fit:cover;display:block;position:relative;z-index:2;" '
-                         + 'onload="var l=document.getElementById(\'dhWpImgLoader\'); if(l) l.style.display=\'none\';" '
-                         + 'onerror="this.onerror=null;this.src=\'' + fallbackSvg + '\';var l=document.getElementById(\'dhWpImgLoader\'); if(l) l.style.display=\'none\';">'
-                         + '</div>';
-
-    var customBoxHtml = '<div class="dh-wp-custom-box">'
-                      + '<div style="font-size:12px;font-weight:800;color:#9fb3d9;margin-bottom:4px;">✍️ Hatırlama Senaryosu & Hikaye:</div>'
-                      + '<textarea class="dh-wp-textarea" id="dhWpCustomScenario" placeholder="Kendi hikayeni yapıştır veya Gemini\'ye ürettir..."></textarea>'
-                      + '<div class="dh-wp-btn-row">'
-                      + '<button class="dh-wp-gen-btn" id="dhWpGenCustomImg">🎨 Resim Üret</button>'
-                      + '<button class="dh-wp-gemini-btn" id="dhWpGeminiGenStory">✨ Gemini İle Hikaye Üret</button>'
-                      + '</div>'
-                      + '</div>';
-
-    out.innerHTML = '<div class="dh-wp-mnemonic-out" style="position:relative;">'
-                  + '<button class="dh-wp-blur-btn" id="dhWpRevealBtn">👁️ İpucunu & Hikayeyi Göster</button>'
-                  + '<div class="dh-wp-blur" id="dhWpBlurContent">' + cleanTxt + imgContainerHtml + customBoxHtml + '</div>'
-                  + '</div>';
-
-    document.getElementById("dhWpRevealBtn").onclick = function(){
-      document.getElementById("dhWpBlurContent").classList.remove("dh-wp-blur");
-      this.style.display = "none";
+  function tryPronounce(word){
+    var out=document.getElementById("dhWpRecOut");
+    var SR=global.SpeechRecognition||global.webkitSpeechRecognition;
+    if(!SR){ out.style.color="#f87171"; out.textContent="Bu cihaz/tarayıcı ses tanımayı desteklemiyor."; return; }
+    var rec=new SR(); rec.lang="en-US"; rec.interimResults=false; rec.maxAlternatives=3;
+    out.style.color="#38bdf8"; out.textContent="🎙 Dinliyorum… kelimeyi söyle.";
+    rec.onresult=function(e){
+      var heard="";
+      for(var i=0;i<e.results[0].length;i++){ heard=(e.results[0][i].transcript||"").toLowerCase().trim(); if(heard.indexOf(word.toLowerCase())>=0) break; }
+      var ok=heard.indexOf(word.toLowerCase())>=0;
+      out.style.color= ok?"#34d399":"#f59e0b";
+      out.textContent= ok?"✓ Harika! Doğru telaffuz ("+heard+")":"Duyduğum: \""+heard+"\" — tekrar dene.";
     };
-
-    // 1. Kutuya Yazılan Hikayeden Resim Üretme
-    document.getElementById("dhWpGenCustomImg").onclick = function(){
-      var userText = document.getElementById("dhWpCustomScenario").value.trim();
-      if(!userText) return;
-      var btn = this;
-      btn.textContent = "⏳ Görsel Çiziliyor…"; btn.disabled = true;
-      generateImageFromText(userText, word, function(){
-        btn.textContent = "🎨 Resim Üret"; btn.disabled = false;
-      });
-    };
-
-    // 2. ✨ Gemini İle Hikaye Üret
-    document.getElementById("dhWpGeminiGenStory").onclick = function(){
-      var fullMasterPrompt = "Sen İngilizce kelimeleri Türkçe ses benzeşimi (mnemonic) yöntemiyle ezberleten, yaratıcı ve komik bir İngilizce öğretmenisin.\n\n"
-                           + "Görevin, verilen İngilizce kelimeyi doğrudan İngilizceden Türkçeye çevirmek değil; önce kelimenin TÜRKÇE ANLAMINDAN hareket ederek, o anlama uygun Türkçe ses benzeşimleri üretmektir.\n\n"
-                           + "ÇALIŞMA SİSTEMİ:\n"
-                           + "1. Önce İngilizce kelimenin anlamını analiz et.\n"
-                           + "2. İngilizce kelimenin telaffuzunu Türkçe kulağa göre parçalara ayır.\n"
-                           + "3. En az 5-10 farklı Türkçe ses benzeşimi üret.\n"
-                           + "4. Adayların ses benzerliğini, Türkçedeki doğallığını ve akılda kalıcılığını değerlendir.\n"
-                           + "5. En güçlü 1-3 Türkçe ses benzeşimini seç.\n"
-                           + "6. Seçilen benzeşimlerden biriyle 2-3 cümlelik kısa, komik hikâye yaz.\n\n"
-                           + "SONUÇ FORMATI:\n"
-                           + "İNGİLİZCE KELİME:\n[kelime]\n\n"
-                           + "ANLAMI:\n[Türkçe anlam]\n\n"
-                           + "EN İYİ BENZEŞİM:\n[seçilen Türkçe ifade]\n\n"
-                           + "HİKÂYE:\n[2-3 cümlelik hikâye]\n\n"
-                           + "ŞİMDİ ŞU KELİME İÇİN BU SİSTEMİ UYGULA:\n"
-                           + "Kelime: \"" + word + "\"\n"
-                           + "Anlamı: " + (anlamlar ? anlamlar.join(", ") : "");
-
-      copyToClipboard(fullMasterPrompt, "📋 Master Prompt panoya kopyalandı!\n\nAçılan Gemini web sayfasına yapıştırın (Ctrl+V). Üretilen yanıtı kopyalayıp buradaki kutuya koyun ve 'Resim Üret'e basın.");
-      window.open("https://gemini.google.com/app", "_blank");
-    };
-  }
-
-  // Güvenli Resim Üretim Motoru
-  function generateImageFromText(text, fallbackWord, callback){
-    if(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
-      var sys = "Sen bir AI görsel prompt üreticisisin. Verilen Türkçe hikayeyi görsel çizen AI için 3-4 kelimelik İngilizce anahtar terime çevir (Örn: parachute falling into factory funny). SADECE İngilizce kelimeleri ver.";
-      DHProviders.chat([{role:"system",content:sys},{role:"user",content:text}],{temperature:0.3,max_tokens:30})
-        .then(function(translatedTerms){
-          var cleanTerms = String(translatedTerms||"").trim().replace(/[^a-zA-Z0-9\s]/g, "");
-          updateMnemonicImage(cleanTerms || fallbackWord);
-        })
-        .catch(function(){
-          updateMnemonicImage(fallbackWord);
-        })
-        .then(function(){ if(callback) callback(); });
-    } else {
-      // API Key yoksa Türkçe karakterleri dönüştürüp arama yap
-      var cleanTurkishText = text.replace(/[ıİğĞüÜşŞöÖçÇ]/g, function(c){
-        return { 'ı':'i','İ':'I','ğ':'g','Ğ':'G','ü':'u','Ü':'U','ş':'s','Ş':'S','ö':'o','Ö':'O','ç':'c','Ç':'C' }[c] || c;
-      }).replace(/[^a-zA-Z0-9\s]/g, "");
-      
-      updateMnemonicImage(cleanTurkishText.trim() || fallbackWord);
-      if(callback) callback();
-    }
-  }
-
-  function updateMnemonicImage(rawPromptText){
-    var imgEl = document.getElementById("dhWpMnemonicImg");
-    var loaderEl = document.getElementById("dhWpImgLoader");
-    if(!imgEl) return;
-    if(loaderEl) loaderEl.style.display = "block";
-
-    var safePrompt = encodeURIComponent(String(rawPromptText||"").trim());
-    imgEl.alt = rawPromptText;
-    
-    // Hata durumunda (kırılma) gösterilecek yedek görsel
-    var fallbackSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' viewBox='0 0 600 300'><rect width='100%' height='100%' fill='%2313294d'/><text x='50%' y='50%' font-family='sans-serif' font-size='18' font-weight='bold' fill='%2338bdf8' text-anchor='middle'>🖼️ " + esc(rawPromptText) + "</text></svg>";
-
-    imgEl.onerror = function(){
-      this.onerror = null;
-      this.src = fallbackSvg;
-      if(loaderEl) loaderEl.style.display = 'none';
-    };
-
-    imgEl.src = "https://image.pollinations.ai/prompt/" + safePrompt + "%20funny%20illustration?width=600&height=300&nologo=true&seed=" + Math.floor(Math.random()*1000);
+    rec.onerror=function(){ out.style.color="#f87171"; out.textContent="Ses alınamadı, tekrar dene."; };
+    try{ rec.start(); }catch(e){ out.textContent="Başlatılamadı."; }
   }
 
   function fillSentences(word){
@@ -577,75 +576,37 @@
     });
   }
 
+  /* Kelime yerel sözlükte (variants dahil) bulunamazsa: büyük ekranı yine de
+     aç, ve AI (Groq/Cerebras/Gemini) ile anlık Türkçe anlam üretmeyi dene. */
   function defineWithAI(word){
-    word = cleanWord(word);
-    open({ word: word, data: { anlamlar: ["⏳ Sözlükte yok — önbellek ve AI kontrol ediliyor…"], oku:"", frekans:"", seviye:"" } });
-
-    // 1) Önce IndexedDB önbelleği: daha önce öğrenildiyse AI'ya hiç gitme
-    IDB.get(word).then(function(cached){
-      if(cached && Array.isArray(cached.anlamlar) && cached.anlamlar.length){
-        updateMeanings(cached.anlamlar);
-        return; // önbellekten geldi, bitti
-      }
-
-      // 2) Önbellekte yok → AI'ya sor
-      if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
-        updateMeanings(["📕 Bu kelime yerel sözlükte yok. Anlamı öğrenmek için Ayarlardan bir API anahtarı ekleyin."]);
-        return;
-      }
-      var sys="Sen İngilizce-Türkçe sözlüksün. Kelimenin kökünü bul, 1-3 kısa Türkçe karşılığını SADECE virgülle ayrılmış ver. Açıklama, cümle, ek metin yazma.";
-      var usr="Kelime: \""+word+"\"";
-      DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.3,max_tokens:60})
-        .then(function(txt){
-          var list=String(txt||"").split(",").map(function(s){ return s.trim(); }).filter(Boolean);
-          if(!list.length){ updateMeanings(["Anlam bulunamadı, tekrar deneyin."]); return; }
-          updateMeanings(list);
-          // 3) Öğrenileni IndexedDB'ye kaydet → bir daha sorulunca oradan gelir
-          IDB.put({
-            word: word,
-            anlamlar: list,
-            source: "ai",
-            createdAt: Date.now(),
-            exported: false      // GitHub sözlüğüne henüz eklenmedi
-          });
-        })
-        .catch(function(){ updateMeanings(["Anlam alınamadı — bağlantıyı kontrol edip tekrar deneyin."]); });
-    });
-  }
-
-  /* Biriken (AI'dan öğrenilmiş) kelimeleri toplu JSON olarak indir.
-     Çıktı, data/dictionary.json ile aynı biçimde { kelime: {anlamlar:[...]} } —
-     GitHub'daki sözlüğe doğrudan birleştirilebilir.
-     Konsoldan:  DHWordPop.exportLearnedWords()  */
-  function exportLearnedWords(opts){
-    opts = opts || {};
-    return IDB.all().then(function(list){
-      list = list || [];
-      var pending = opts.onlyNew ? list.filter(function(r){ return !r.exported; }) : list;
-      if(!pending.length){ alert("Dışa aktarılacak yeni öğrenilmiş kelime yok."); return null; }
-
-      // dictionary.json biçimi
-      var merged = {};
-      pending.forEach(function(r){
-        merged[r.word] = { anlamlar: r.anlamlar, source:"ai-learned", addedAt: r.createdAt };
+    open({ word: word, data: { anlamlar: ["⏳ Sözlükte yok — AI ile anlam aranıyor…"], oku:"", frekans:"", seviye:"" } });
+    if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
+      updateMeanings(["📕 Bu kelime yerel sözlükte yok. AI açıklaması için öğretmen sayfasından bir API anahtarı ekle (Groq, Cerebras veya Gemini)."]);
+      return;
+    }
+    var sys="Sen İngilizce-Türkçe sözlük gibi çalışıyorsun. Verilen İngilizce kelime bir çekim ekiyle gelmiş olabilir (örn. çoğul, geçmiş zaman, -ing) — önce sözlük kökünü bul, sonra o kökün 1-3 kısa Türkçe karşılığını SADECE virgülle ayrılmış liste halinde ver. Başka hiçbir açıklama, cümle veya noktalama ekleme.";
+    var usr="Kelime: \""+word+"\"";
+    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.3,max_tokens:60})
+      .then(function(txt){
+        var list=String(txt||"").split(",").map(function(s){ return s.trim(); }).filter(Boolean);
+        updateMeanings(list.length?list:["Anlam bulunamadı."]);
+      })
+      .catch(function(err){
+        var code = err && err.code;
+        var msg =
+          code==="no-key" ? "📕 Bu kelime yerel sözlükte yok ve AI anahtarı bulunamadı. Öğretmen sayfasından bir API anahtarı ekle (Groq, Cerebras veya Gemini)." :
+          code==="rate" || code==="all-failed" ? "⏳ Tüm AI sağlayıcıları şu an limitte/başarısız. Biraz sonra tekrar dene." :
+          code==="bad-key" ? "🔑 API anahtarı geçersiz görünüyor. Öğretmen sayfasından anahtarını kontrol et." :
+          code==="network" ? "📡 Ağ/CORS hatası — internet bağlantını kontrol et." :
+          "Anlam alınamadı. Bağlantı/anahtar kontrol et.";
+        updateMeanings([msg]);
       });
-
-      var blob = new Blob([JSON.stringify(merged, null, 2)], {type:"application/json"});
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href=url; a.download="ogrenilen-kelimeler-"+new Date().toISOString().slice(0,10)+".json";
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-
-      // isteğe bağlı: dışa aktarılanları işaretle
-      if(opts.markExported){
-        pending.forEach(function(r){ r.exported=true; IDB.put(r); });
-      }
-      return merged;
-    });
   }
 
-  /* ================= 🌊 SES DALGASI ANALİZİ (Canvas Grafiği) ================= */
+  /* ================= 🌊 SES DALGASI (sesdalga.html mantığı — kelime bazlı) =================
+     Aynı ölçüm hattı: analyser fftSize=64, 40ms örnekleme, ortalama genlik.
+     Hoca: TTS hoparlörden konuşurken mikrofon (yankı bastırma KAPALI) gerçek sesi kaydeder.
+     Kıyas: sessizlik kırpma (eşik 8) → süre (tempo), zirve konumu (vurgu), STT (söz). */
   var WV = null;
   function wvCleanup(){
     if(!WV) return;
@@ -742,9 +703,9 @@
         var mx=0; for(var i=0;i<me.coach.length;i++) if(me.coach[i]>mx) mx=me.coach[i];
         if(micFail||!me.coach.length||mx<20){
           me.coach=wvTemplate(word); me.coachUrl=null;
-          wvStatus(micFail?"⚠️ Mikrofon izni yok — ritim şablonu kullanıldı.":"⚠️ Mikrofon hocayı duyamadı — ritim şablonu kullanıldı.","#f59e0b");
+          wvStatus(micFail?"⚠️ Mikrofon izni yok — ritim şablonu kullanıldı. Yine de kaydını kıyaslayabilirsin.":"⚠️ Mikrofon hocayı duyamadı (kulaklık takılı olabilir) — ritim şablonu kullanıldı.","#f59e0b");
         }else{
-          wvStatus("🎓 Hoca hazır (gerçek kayıt). Şimdi '2. Sen Oku' ile dene.","#4ade80");
+          wvStatus("🎓 Hoca hazır (gerçek kayıt). Şimdi '2. Sen Oku' ile aynı kelimeyi söyle.","#4ade80");
         }
         me.coachDur=me.coach.length*0.04;
         me.viewC=me.coach.slice();
@@ -790,7 +751,7 @@
       u.onend=finish;
       u.onerror=finish;
       speechSynthesis.speak(u);
-      setTimeout(function(){ if(me.timer) finish(); },6000);
+      setTimeout(function(){ if(me.timer) finish(); },6000); /* emniyet */
     });
   }
   function wvRecord(word){
@@ -825,7 +786,7 @@
         me.viewU=me.user;
         wvEl("dhWpWvDurU").textContent=(me.user.length*0.04).toFixed(1)+"s";
         wvDraw();
-        if(me.user.length*0.04>=6) wvStopRec();
+        if(me.user.length*0.04>=6) wvStopRec(); /* tek kelime için emniyet tavanı */
       },40);
     }).catch(function(){ wvStatus("Mikrofon izni verilmedi.","#f87171"); });
   }
@@ -889,10 +850,13 @@
     me.viewC=nC; me.viewU=rU; wvDraw();
     wvEl("dhWpWvDurC").textContent=dC.toFixed(1)+"s Net";
     wvEl("dhWpWvDurU").textContent=dU.toFixed(1)+"s Net";
+    /* Tempo: tek kelimede ±0.15s serbest, sonrası yumuşak ceza */
     var excess=Math.max(0,Math.abs(dC-dU)-0.15);
     var tempo=Math.max(0,Math.round(100-excess/Math.max(dC,0.2)*80));
+    /* Şekil: normalize zarfların korelasyonu; r=1→100, r=0→50 */
     var r=Math.max(-1,Math.min(1,wvPearson(nC,rU)));
     var shape=Math.round(((r+1)/2)*100);
+    /* Vurgu: zirve konumu, %12 kayma serbest */
     var mC=0,iC=0,mU=0,iU=0;
     for(var i=0;i<nC.length;i++){
       if(nC[i]>mC){mC=nC[i];iC=i;}
@@ -926,56 +890,39 @@
     }
     if(mode==="coach") coachAudio();
     else if(mode==="user") userAudio();
-    else{ coachAudio(); userAudio(); }
+    else{ coachAudio(); userAudio(); } /* düet: birebir senkron */
   }
+  /* ================= /SES DALGASI ================= */
 
-  global.DHWordPop = {
-    __v5:true,
-    lookup:function(w){ loadDict().then(function(){ var e=findEntry(cleanWord(w)); if(e) open(e); else defineWithAI(cleanWord(w)); }); },
-    enable:function(){ enabled=true; }, disable:function(){ enabled=false; }, close:close,
-    exportLearnedWords: exportLearnedWords,                       // öğrenilenleri toplu JSON indir
-    learnedCount: function(){ return IDB.all().then(function(l){ return (l||[]).length; }); }
-  };
-  /* GLOBAL KELİME TIKLAMASI.
-     Buradaki koşul eskiden şöyleydi:
-         if(document.readyState!=="loading") document.addEventListener(...)
-     ve else dalı YOKTU. Bu dosya sayfalarda </body> hemen üstünde yükleniyor;
-     klasik bir <script> etiketi belge ayrıştırılırken çalıştığı için o anda
-     readyState "loading" oluyor. Sonuç: dinleyici hiçbir sayfada bağlanmıyordu
-     ve kelimeye tıklayınca hiçbir şey olmuyordu.
-     Artık koşulsuz bağlanıyor; belge hâlâ yükleniyorsa DOMContentLoaded beklenir. */
-  function onDocClick(e){
+  function onClick(e){
     if(!enabled || popEl) return;
     var t=e.target; if(!t) return;
     if(t.closest && t.closest("input,textarea,button,a,select,.no-wordpop")) return;
-    var sel=((global.getSelection && global.getSelection().toString())||"").trim();
-    if(sel && sel.indexOf(" ")<0){ var sw=cleanWord(sel); if(sw && sw.length>=2){ loadDict().then(function(){ var entry=findEntry(sw); if(entry) open(entry); else defineWithAI(sw); }); } return; }
-    /* Tıklanan noktadaki metin düğümünü bul.
-       caretRangeFromPoint Chrome/Safari'de var; Firefox caretPositionFromPoint
-       kullanıyor. Eskiden yalnız ilki deneniyordu, Firefox'ta hiç çalışmıyordu. */
-    var dugum=null, off=0;
-    if(document.caretRangeFromPoint){
-      var range=document.caretRangeFromPoint(e.clientX,e.clientY);
-      if(range){ dugum=range.startContainer; off=range.startOffset; }
-    } else if(document.caretPositionFromPoint){
-      var pos=document.caretPositionFromPoint(e.clientX,e.clientY);
-      if(pos){ dugum=pos.offsetNode; off=pos.offset; }
-    }
-    if(!dugum || dugum.nodeType!==3) return;
-    var text=dugum.textContent||"", s=off, en=off;
-    while(s>0 && /[a-zA-Z'-]/.test(text[s-1])) s--;
-    while(en<text.length && /[a-zA-Z'-]/.test(text[en])) en++;
-    var word=cleanWord(text.slice(s,en));
-    if(word && word.length>=2) loadDict().then(function(){ var entry=findEntry(word); if(entry) open(entry); else defineWithAI(word); });  }
+    var sel=(global.getSelection && global.getSelection().toString())||"";
+    if(sel && sel.length>2) return;
+    var word=wordAtPoint(e); if(!word) return;
+    var cleaned=cleanWord(word);
+    if(!cleaned || cleaned.length<2 || !/^[a-z'-]+$/.test(cleaned)) return;
+    loadDict().then(function(){ var entry=findEntry(cleaned); if(entry) open(entry); else defineWithAI(cleaned); });
+  }
+  function wordAtPoint(e){
+    try{
+      var range=null;
+      if(document.caretRangeFromPoint) range=document.caretRangeFromPoint(e.clientX,e.clientY);
+      else if(document.caretPositionFromPoint){ var p=document.caretPositionFromPoint(e.clientX,e.clientY); if(p){ range=document.createRange(); range.setStart(p.offsetNode,p.offset); } }
+      if(!range || !range.startContainer || range.startContainer.nodeType!==3) return "";
+      var text=range.startContainer.textContent||"", off=range.startOffset, s=off, en=off;
+      while(s>0 && /[a-zA-Z'-]/.test(text[s-1])) s--;
+      while(en<text.length && /[a-zA-Z'-]/.test(text[en])) en++;
+      return text.slice(s,en);
+    }catch(err){ return ""; }
+  }
 
-  function baglaTiklama(){
-    if(global.__dhWpBound) return;
-    global.__dhWpBound = true;
-    document.addEventListener("dblclick", onDocClick, true);
-  }
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", baglaTiklama, { once:true });
-  } else {
-    baglaTiklama();
-  }
+  global.DHWordPop = {
+    __v2:true,
+    lookup:function(w){ loadDict().then(function(){ var e=findEntry(cleanWord(w)); if(e) open(e); else defineWithAI(cleanWord(w)); }); },
+    enable:function(){ enabled=true; }, disable:function(){ enabled=false; }, close:close
+  };
+  if(document.readyState!=="loading") document.addEventListener("click", onClick, true);
+  else document.addEventListener("DOMContentLoaded", function(){ document.addEventListener("click", onClick, true); });
 })(window);
