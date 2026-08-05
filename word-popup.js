@@ -533,44 +533,76 @@
      göre yeniden sıralanır (canlı proxy → önbellek → yedek dosya). Model
      sıklık konusunda yanılabilir, ölçülen değer yanılmaz. */
 
+  /* ── PROMPT ──────────────────────────────────────────────────────
+     ÇÖZÜLEN HATA: Gemini sürekli boş cevap veriyordu —
+       {"kelime":"global","anlamlar":[]}   ya da   ..."es":[] ...
+
+     SEBEP: Promptun SON satırı, hedef kelimenin adıyla ve "es":[] boş
+     dizileriyle kurulmuş bir JSON şablonuydu. Modelin gördüğü son şey
+     tam da doldurması istenen cevabın boş hali olunca onu aynen geri
+     yazıyordu. Üstüne "eş anlamlısı yoksa boş bırak" kuralı listenin
+     başındaydı ve bu davranışı pekiştiriyordu.
+
+     ÇÖZÜM: Örnek artık BAŞKA bir kelime için ve DOLU. Hedef kelimenin
+     adı örnekte hiç geçmiyor, yani kopyalanacak bir kalıp yok. Boş
+     bırakma kuralı geri plana alındı ve "hepsini boş döndürmek yanlış
+     cevaptır" uyarısı eklendi.                                       */
   function gemPrompt(word, anlamlar){
-    var liste=(anlamlar||[]).map(function(m,i){
-      return (i+1)+". "+String(m).replace(/\s*\[[^\]]*\]/g,"").trim();
-    }).join("\n");
-    var ornek='{"kelime":"'+word+'","anlamlar":['
-      + (anlamlar||[]).map(function(m){
-          return '{"tr":"'+String(m).replace(/\s*\[[^\]]*\]/g,"").trim().replace(/"/g,"")+'","es":[]}';
-        }).join(",")
-      + ']}';
+    var temiz=(anlamlar||[]).map(function(m){
+      return String(m).replace(/\s*\[[^\]]*\]/g,"").trim();
+    }).filter(Boolean);
+
+    var bas, gorev;
+    if(temiz.length){
+      bas = 'Bu kelimenin uygulamamızdaki Türkçe karşılıkları:\n'
+          + temiz.map(function(m,i){ return (i+1)+". "+m; }).join("\n");
+      gorev = "GÖREV: Yukarıdaki HER Türkçe anlam için, o anlamda kullanılan "
+            + "İngilizce eş anlamlıları yaz. \"tr\" alanına o Türkçe anlamı "
+            + "aynen yaz, \"es\" alanına o anlamın eş anlamlılarını.";
+    } else {
+      bas = "(Bu kelimenin Türkçe karşılıkları elimde yok.)";
+      gorev = "GÖREV: Önce bu kelimenin belirgin biçimde farklı 2-4 anlamını "
+            + "belirle ve her birini kısa bir Türkçe karşılıkla \"tr\" alanına yaz. "
+            + "Sonra her anlam için o anlamda kullanılan İngilizce eş anlamlıları "
+            + "\"es\" alanına yaz.";
+    }
+
     return [
       'İngilizce "'+word+'" kelimesini analiz et.',
       "",
-      "Bu kelimenin uygulamamızdaki Türkçe karşılıkları:",
-      liste,
+      bas,
       "",
-      "GÖREV: Yukarıdaki HER Türkçe anlam için, o anlamda kullanılan İngilizce",
-      "eş anlamlıları yaz. Her listeyi EN ÇOK KULLANILANDAN EN AZ KULLANILANA",
-      "doğru sırala (Google Books Ngram sıklığını esas al).",
+      gorev,
+      "Her listeyi EN ÇOK KULLANILANDAN EN AZ KULLANILANA doğru sırala",
+      "(Google Books Ngram sıklığını esas al).",
       "",
       "KURALLAR",
       "1. Eş anlamlıları o anlama göre ver. Kelimenin başka anlamının eş",
       "   anlamlılarını o gruba KARIŞTIRMA.",
-      "2. Bir anlamın gerçek eş anlamlısı yoksa \"es\" listesini boş bırak.",
-      "   UYDURMA. Yanlış eş anlamlı, hiç vermemekten çok daha kötü —",
-      "   bu liste dil öğrenen bir öğrenciye gösterilecek.",
-      "3. Yalnızca cümlede yerine konabilecek kelimeler yaz. \"Yakın anlamlı\",",
+      "2. Yalnızca cümlede yerine konabilecek kelimeler yaz. \"Yakın anlamlı\",",
       "   \"ilgili kavram\", \"üst kavram\" yazma.",
-      "4. Sadece sözlük kökü yaz: çoğul, -ed, -ing, -er/-est biçimleri yok.",
-      "5. Tek kelimelik eş anlamlılar yaz; deyim/fiil öbeği yazma (\"give up\").",
-      "6. Kelimenin kendisini ve farklı yazımını (color/colour) yazma.",
-      "7. Öğrencinin gerçekten kullanabileceği yaygın kelimeler yaz; nadir,",
+      "3. Sadece sözlük kökü yaz: çoğul, -ed, -ing, -er/-est biçimleri yok.",
+      "4. Tek kelimelik eş anlamlılar yaz; deyim/fiil öbeği yazma (\"give up\").",
+      "5. Kelimenin kendisini ve farklı yazımını (color/colour) yazma.",
+      "6. Öğrencinin gerçekten kullanabileceği yaygın kelimeler yaz; nadir,",
       "   kitabi kelimeler yazma.",
-      "8. Her anlam için en fazla 6 kelime.",
-      "9. Sözlükteki anlam sırasını KORU, anlamları birleştirme veya atlama.",
+      "7. Her anlam için en fazla 6 kelime.",
+      temiz.length ? "8. Anlam sırasını KORU, anlamları birleştirme veya atlama." : "8. Anlamları en yaygından en az yaygına doğru sırala.",
+      "9. Bir anlamın gerçekten hiç eş anlamlısı yoksa o anlamın \"es\" listesini",
+      "   boş bırak — ama bu bir İSTİSNADIR. Çoğu kelimenin en az bir eş",
+      "   anlamlısı vardır; zorlama, uydurma, ama kolayca da pes etme.",
       "",
-      "SADECE aşağıdaki biçimde JSON döndür. Öncesinde/sonrasında tek kelime",
-      "bile yazma, markdown kod bloğu kullanma:",
-      ornek
+      "ÇIKTI BİÇİMİ — aşağıdaki örnek BAŞKA bir kelime içindir, yalnızca",
+      "biçimi göstermek amaçlıdır:",
+      '{"kelime":"book","anlamlar":[{"tr":"ayırtmak","es":["reserve","arrange"]},'
+        + '{"tr":"kitap","es":["volume","publication","tome"]},'
+        + '{"tr":"deftere işlemek","es":["record","register","log"]}]}',
+      "",
+      'Şimdi AYNI biçimde, yalnızca "'+word+'" kelimesi için JSON üret.',
+      "Örnekteki kelimeleri kopyalama. \"es\" listelerini GERÇEKTEN doldur;",
+      "hepsini boş döndürmek yanlış cevaptır.",
+      "SADECE JSON yaz — öncesinde ya da sonrasında tek kelime bile olmasın,",
+      "markdown kod bloğu kullanma."
     ].join("\n");
   }
 
@@ -674,7 +706,12 @@
       });
       temiz.push({ tr:tr, es:out.slice(0,6) });
     });
-    if(!temiz.length) throw new Error("Cevapta hiç anlam bulunamadı.");
+    if(!temiz.length) throw new Error("Cevapta hiç anlam bulunamadı — JSON'un tamamını yapıştırdığından emin ol.");
+    /* Hepsi boş gelirse KAYDETME. Boş kayıt "bu kelimenin eş anlamlısı yok"
+       demek olur ve popup bir daha hiç sormaz; modelin tembel bir cevabı
+       kalıcı bir yanlışa dönüşürdü. */
+    var doluVar = temiz.some(function(g){ return g.es && g.es.length; });
+    if(!doluVar) throw new Error("Gemini tüm listeleri boş döndürdü. Sohbette \"listeleri doldur, boş bırakma\" deyip tekrar sor, sonra yeni cevabı yapıştır.");
     return { w:word, at:Date.now(), anlamlar:temiz };
   }
 
