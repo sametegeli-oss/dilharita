@@ -862,16 +862,55 @@
 
   /* Statik dosyada yoksa AI'dan iste; sonuç kalıcı önbelleğe yazılır ki
      aynı kelime için bir daha sorulmasın. */
+  /* ── AI YEDEĞİ ───────────────────────────────────────────────────
+     Statik synonyms.json'da olmayan kelimeler için DHProviders'a sorar.
+
+     ÇÖZÜLEN HATA: Listede TÜRKÇE ve harfleri eksik kelimeler çıkıyordu —
+       allocation → atama, ayrma, dalm, datm, paylatrma, tahsis
+     İki ayrı kusur üst üste binmişti:
+       1) Model Türkçe cevap veriyordu (prompt Türkçe yazılmıştı ve
+          "İngilizce yaz" talimatı yeterince baskın değildi):
+          ayırma, dağılım, dağıtım, paylaştırma...
+       2) Temizleyici geçersiz karakteri ELEMEK yerine SİLİYORDU:
+             x.replace(/[^a-z'-]/g,"")
+          "ayırma" → "ayrma", "dağılım" → "dalm". Yani hatalı kelime
+          atılmıyor, tanınmaz hale getirilip listeye konuyordu.
+
+     ÇÖZÜM
+       · Kelime ASCII a-z kalıbına uymuyorsa ATILIR (kırpılmaz).
+       · Sonuç, uygulamanın kendi İngilizce sözlüğüyle doğrulanır: sözlükte
+         olmayan aday kabul edilmez. "atama"/"tahsis" gibi ASCII yazılan
+         Türkçe kelimeleri de bu eler. Yan faydası: gösterilen her eş
+         anlamlının Türkçe karşılığı ve seviyesi de vardır.
+       · Prompt İngilizce yazıldı ve örneklendi.                        */
   function synAI(word){
     var box=document.getElementById("dhWpSynBox");
     if(!box) return;
     var AK="dh-syn-ai-v1", depo={};
     try{ depo=JSON.parse(localStorage.getItem(AK)||"{}")||{}; }catch(e){}
-    if(Array.isArray(depo[word])){
-      if(!depo[word].length) return;
+
+    function goster(list){
+      if(!list.length){ box.style.display="none"; return; }
       if(!syn) syn={};
-      syn[word]=depo[word];
+      syn[word]=list;
       synDuzCiz(word);
+      /* synDuzCiz etiketi Ngram kaynağıyla eziyor; AI olduğunu kaybetme */
+      setTimeout(function(){
+        var e=document.getElementById("dhWpSynKaynak");
+        if(e) e.textContent="AI";
+      },0);
+    }
+
+    if(Array.isArray(depo[word])){
+      /* Eski sürümün ürettiği bozuk kayıtlar önbellekte kalmış olabilir;
+         doğrulamadan geçmeyenleri at ve önbelleği tazele. */
+      var suzulmus=depo[word].filter(gecerliEsAnlamli(word));
+      if(suzulmus.length!==depo[word].length){
+        depo[word]=suzulmus;
+        try{ localStorage.setItem(AK, JSON.stringify(depo)); }catch(e){}
+      }
+      if(!suzulmus.length) return;
+      goster(suzulmus);
       return;
     }
     if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())) return;
@@ -881,25 +920,39 @@
       '<div class="dh-wp-muted">Eş anlamlılar aranıyor…</div>';
     document.getElementById("dhWpSynKaynak").textContent="AI";
 
-    var sys="Sen bir İngilizce eşanlamlılar sözlüğüsün. Verilen İngilizce kelimeyle "
-      +"AYNI ANLAMA GELEN en çok 6 İngilizce kelimeyi SADECE virgülle ayrılmış "
-      +"liste olarak yaz. Sadece sözlük kökü (çekim eki yok). Kelimenin kendisini "
-      +"yazma. Eş anlamlısı yoksa boş bırak. Başka hiçbir metin yazma.";
-    DHProviders.chat([{role:"system",content:sys},{role:"user",content:"Kelime: \""+word+"\""}],
+    var sys="You are an English thesaurus. Reply with ENGLISH WORDS ONLY, "
+      +"as a comma-separated list, at most 6 items. Never answer in Turkish "
+      +"or any other language. Never translate the word. Give dictionary base "
+      +"forms only (no plurals, no -ed/-ing). Do not repeat the given word. "
+      +"Do not write phrases or explanations. If there is no true synonym, "
+      +"reply with nothing.\n"
+      +"Example — input: allocation → output: distribution, assignment, quota\n"
+      +"Example — input: abbreviation → output:";
+    DHProviders.chat([{role:"system",content:sys},{role:"user",content:word}],
                      {temperature:0.2,max_tokens:60})
       .then(function(txt){
-        var list=String(txt||"").toLowerCase().split(",")
-          .map(function(x){ return x.trim().replace(/[^a-z'-]/g,""); })
-          .filter(function(x){ return x && x!==word && x.length>1; })
+        var list=String(txt||"").toLowerCase().split(/[,\n]/)
+          .map(function(x){ return x.trim(); })
+          .filter(gecerliEsAnlamli(word))
           .slice(0,6);
-        depo[word]=list;
+        /* tekrarları at */
+        var tekil=[]; list.forEach(function(x){ if(tekil.indexOf(x)<0) tekil.push(x); });
+        depo[word]=tekil;
         try{ localStorage.setItem(AK, JSON.stringify(depo)); }catch(e){}
-        if(!list.length){ box.style.display="none"; return; }
-        if(!syn) syn={};
-        syn[word]=list;
-        synDuzCiz(word);
+        goster(tekil);
       })
       .catch(function(){ box.style.display="none"; });
+  }
+
+  /* Aday gerçekten İngilizce bir kelime mi? Sözlükte varsa evet.
+     (dict bu noktada yüklüdür; popup açılışı loadDict'ten sonra olur.) */
+  function gecerliEsAnlamli(word){
+    return function(k){
+      if(!k || k===word) return false;
+      if(!/^[a-z][a-z-]{1,}$/.test(k)) return false;   // ASCII değilse AT, kırpma
+      if(dict && !dict[k]) return false;               // sözlükte yoksa İngilizce sayma
+      return true;
+    };
   }
 
   function aiExplain(word, anlamlar){
