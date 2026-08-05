@@ -61,7 +61,42 @@
   }
 
   /* ─────────────────── 1) gunun cumleleri ──────────────────────── */
+  /* DERS MODU MU?
+     ────────────────────────────────────────────────────────────────
+     COZULEN HATA: Doktor/otel/restoran/havaalani sohbetlerinde ekranin
+     altinda "🎯 Bugünün cümleleri" seridi cikiyor ve puanin 50'si oradan
+     hesaplaniyordu. Oysa chat-core.js gunun malzemesini rol
+     senaryolarindan BILEREK cikariyor (satir 115):
+
+       if(!__dhDersModu){ __dhMalzeme=null; __dhTeach=null; __dhFocus=""; }
+
+     gerekcesi de orada yazili: "otel resepsiyonisti ogrencinin calisma
+     planini bilirse rol bozulur". Yani AI'in promptunda o cumleler HIC
+     YOK; doktor ogrenciye "There is a book on the table" dedirtmeye
+     calismiyor, calisamaz da. Ama bu dosya malzemeyi localStorage'dan
+     dogrudan okuyup her sohbet sayfasinda serit ciziyor ve puanliyordu.
+     Sonuc: ulasilmasi imkansiz bir hedef ve haksiz dusuk puan.
+
+     Cozum: malzeme YALNIZCA ders modunda (ogretmen senaryosu) kullanilir.
+     Puanlama zaten eksik bileseni orantiliyor (bkz. degerlendir), yani
+     100'luk olcek dilbilgisi + gorevler uzerinden korunur.
+
+     Tespit: chat-core.js bayragi disari aciyor; acamadiysa sayfa adindan
+     anlasilir (ogretmen senaryolari chatteacher*.html). */
+  function dersModuMu() {
+    try {
+      if (typeof global.__dhDersModuAktif === "boolean") return global.__dhDersModuAktif;
+    } catch (e) {}
+    /* yedek: senaryo basligi/rolu ya da sayfa adi */
+    try {
+      var sc = global.CHAT_SCENARIO || {};
+      if (/teacher|öğretmen|ogretmen/i.test((sc.title || "") + " " + (sc.role || ""))) return true;
+    } catch (e) {}
+    return /chatteacher/i.test(sayfa());
+  }
+
   function malzeme() {
+    if (!dersModuMu()) return null;
     try {
       var ham = localStorage.getItem("dh-konusma-gun-" + gunISO());
       if (!ham) return null;
@@ -343,7 +378,13 @@
   var _seritDurum = "";
   function seritCiz() {
     var m = malzeme();
-    if (!m) return;
+    if (!m) {
+      /* Rol senaryosuna gecildiyse (ya da malzeme bittiyse) eskiden
+         cizilmis serit ekranda kalmasin. */
+      var eski = document.getElementById("dhSerit");
+      if (eski) { eski.remove(); _seritDurum = null; }
+      return;
+    }
     var kap = document.getElementById("taskBar");
     if (!kap || !kap.parentNode) return;
     seritStil();

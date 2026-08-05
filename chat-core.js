@@ -83,6 +83,11 @@ function dhRolTr(){
    "Diger avatarlarla chatler bozulmamali" sarti boyle korunuyor.
    Ders, ortam ve gunun cumleleri OGRETMEN ekraninda yasar. */
 var __dhDersModu = __dhIsTeacher;
+/* Disari ac: dh-sohbet-puan.js "gunun cumleleri" seridini ve puan
+   bilesenini yalnizca ders modunda gostersin. Rol senaryolarinda
+   malzeme zaten asagida temizleniyor (satir ~115); serit de o yuzden
+   cikmamali, yoksa ulasilmasi imkansiz bir hedef gosterilmis olur. */
+try{ window.__dhDersModuAktif = __dhDersModu; }catch(e){}
 var __dhRolluMu = false;                          /* senaryo sayfasi rol oynatmaz */
 
 /* ── GUNUN MALZEMESI (dh-konusma.js) ────────────────────────────────
