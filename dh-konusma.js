@@ -53,6 +53,7 @@
 
   var DB = "sentence-mode", STORE = "kv";
   var GUN_ONEK = "dh-konusma-gun-";
+  var ILERLEME_ONEK = "dh-konusma-ilerleme-";
   var GECMIS = "dh-konusma-gecmis-v1";
   /* SURUM: donmus kaydin uretildigi kod surumu. Kod degisince (or. cumleye
      imgQuery eklendi) eski kayit GECERSIZ sayilip yeniden hesaplanir.
@@ -199,6 +200,70 @@
       localStorage.setItem(GECMIS, JSON.stringify(g));
     } catch (e) {}
   }
+
+  /* ─────────────────── GUNUN ILERLEMESI / TAMAMLAMA ───────────────
+     COZULEN SIKAYET
+     "Ogretmenle calismami bitirmeme ragmen cikip tekrar girdigimde ayni
+      konuya tekrar basliyor."
+
+     SEBEP: Bu dosya gunun malzemesini BILEREK donduruyor (gun icinde konu
+     atlamasin diye) ama "bitirdim" diye bir kavram yoktu. chat-core.js'in
+     acilisi da her seferinde cumleler[0]'dan basliyordu. Kac kez girip
+     ciktigin, kacini urettigin hicbir yerde tutulmuyordu.
+
+     COZUM: gun basina kucuk bir ilerleme defteri.
+       dh-konusma-ilerleme-<YYYY-MM-DD> = { yapilan:[id...], bitti:bool, at }
+     Iki kaynaktan beslenir (dh-sohbet-puan.js yazar):
+       · kalip eslesmesi — serit bir cumleyi ✅ yaptikca
+       · "Bitir ve degerlendir" dugmesi — oturumu tamamlanmis sayar
+     Ikisi birlikte gerekli: eslestirici katidir (kalip kelimelerinin
+     %60'ini ayni cumlede arar), tek basina birakilirsa 6/6'ya hic
+     ulasilamayabilir ve tamamlama asla tetiklenmez.
+
+     Tamamlanan gunde bugunMalzeme() donmus kaydi TAZELER: kullanilan
+     cumleler gecmise yazilir (bir daha ust uste gelmesinler) ve YENI
+     malzeme hesaplanir. Gun ici dondurma korunur — yalnizca TAMAMLAMA
+     yeni malzeme acar.                                                */
+  function ilerlemeKey(d) { return ILERLEME_ONEK + gunISO(d); }
+  function ilerlemeOku() {
+    try {
+      var o = JSON.parse(localStorage.getItem(ilerlemeKey()) || "null");
+      if (!o || typeof o !== "object") return { yapilan: [], bitti: false };
+      return { yapilan: Array.isArray(o.yapilan) ? o.yapilan : [], bitti: !!o.bitti, at: o.at || 0 };
+    } catch (e) { return { yapilan: [], bitti: false }; }
+  }
+  function ilerlemeYaz(o) {
+    try {
+      localStorage.setItem(ilerlemeKey(), JSON.stringify({
+        yapilan: o.yapilan || [], bitti: !!o.bitti, at: Date.now()
+      }));
+      /* eski gunlerin defterlerini temizle */
+      var tut = {}; tut[ilerlemeKey()] = 1; tut[ILERLEME_ONEK + dunISO()] = 1;
+      for (var i = localStorage.length - 1; i >= 0; i--) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(ILERLEME_ONEK) === 0 && !tut[k]) localStorage.removeItem(k);
+      }
+    } catch (e) {}
+  }
+  /* ids: bugun URETILDIGI tespit edilen cumle kimlikleri (birikimli) */
+  function isaretle(ids) {
+    if (!ids || !ids.length) return ilerlemeOku();
+    var o = ilerlemeOku(), degisti = false;
+    ids.forEach(function (id) {
+      id = String(id);
+      if (o.yapilan.indexOf(id) < 0) { o.yapilan.push(id); degisti = true; }
+    });
+    if (degisti) ilerlemeYaz(o);
+    return o;
+  }
+  function bitir() {
+    var o = ilerlemeOku();
+    if (o.bitti) return o;
+    o.bitti = true;
+    ilerlemeYaz(o);
+    return o;
+  }
+  function bittiMi() { return ilerlemeOku().bitti; }
 
   /* ───────────────────────── ana hesap ───────────────────────── */
   function hesapla() {
@@ -375,11 +440,32 @@
   var _ucus = null;      /* index.html ve chat.html ayni anda cagirirsa tek hesap */
   function bugunMalzeme() {
     var d = donmusOku();
-    if (d !== undefined) return Promise.resolve(d);
+    /* Gun tamamlandi mi? Tamamlandiysa donmus kayit BAYAT sayilir ve
+       yerine yeni malzeme hesaplanir. */
+    var yenile = (d !== undefined && d && bittiMi());
+
+    if (d !== undefined && !yenile) return Promise.resolve(d);
+
     /* KRITIK: cumle indeksi olmadan hesap yapilamaz. Boyle bir sayfada
        (sentences-loader.js yuklu degilse) SONUC DONDURULMAZ — yoksa o sayfa
-       gunu "malzeme yok" diye kilitler ve ana ekran sonradan hesaplayamaz. */
-    if (!(global.DHSent && global.DHSent.index)) return Promise.resolve(null);
+       gunu "malzeme yok" diye kilitler ve ana ekran sonradan hesaplayamaz.
+       DIKKAT: bu denetim tamamlama temizliginden ONCE gelmeli. Aksi halde
+       hesaplayamayan bir sayfa donmus kaydi siler ve malzeme, DHSent'i olan
+       bir sayfa acilana kadar tamamen kaybolur — chat-core o arada rastgele
+       konuya duser, yani duzeltmeye calistigimiz sikayet geri gelir. */
+    if (!(global.DHSent && global.DHSent.index)) {
+      return Promise.resolve(d === undefined ? null : d);
+    }
+
+    /* Buradan sonrasi hesaplayabilir: tamamlanan gunun kaydini simdi bosalt.
+       Kullanilan cumleler gecmise yazilir ki yeni secimde tekrar gelmesinler. */
+    if (yenile) {
+      try {
+        if (d.cumleler) gecmisYaz(d.cumleler.map(function (c) { return c.id; }));
+        localStorage.removeItem(bugunKey());
+        ilerlemeYaz({ yapilan: [], bitti: false });
+      } catch (e) {}
+    }
     if (_ucus) return _ucus;
     _ucus = hesapla().then(function (r) {
       var son = donmusOku();
@@ -410,6 +496,11 @@
     bugun: bugunMalzeme,
     hesapla: hesapla,
     sifirla: sifirla,
+    /* gunun ilerlemesi — dh-sohbet-puan.js yazar, chat-core.js okur */
+    ilerleme: ilerlemeOku,
+    isaretle: isaretle,
+    bitir: bitir,
+    bittiMi: bittiMi,
     SENARYOLAR: SENARYOLAR,
     _senaryoSec: senaryoSec,
     _anahtar: bugunKey

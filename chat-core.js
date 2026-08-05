@@ -129,7 +129,27 @@ if(__dhFocus) __dhMalzeme=null;
                   rolu bozar (chat-core zaten bu yuzden koc odagini rol
                   senaryolarindan temizliyor). */
 function __dhMalzemeOpener(){
-  var m=__dhMalzeme, ilk=m.cumleler[0], kac=m.cumleler.length;
+  var m=__dhMalzeme, kac=m.cumleler.length;
+
+  /* KALDIGIN YERDEN — COZULEN SIKAYET:
+     "Bitirmeme ragmen cikip tekrar girdigimde ayni konuya tekrar
+      basliyor." Sebep: burasi her acilista cumleler[0]'dan basliyordu.
+     Artik gunun ilerleme defteri okunur (dh-konusma.js) ve henuz
+     URETILMEMIS ilk cumleden devam edilir. Hepsi uretildiyse defter
+     gunu "bitti" isaretler; bir sonraki giriste dh-konusma YENI
+     malzeme hesaplar, yani buraya zaten taze cumleler gelir. */
+  var yapilan = [];
+  try{
+    if(window.DHKonusma && window.DHKonusma.ilerleme)
+      yapilan = window.DHKonusma.ilerleme().yapilan || [];
+  }catch(e){}
+  var kalanlar = m.cumleler.filter(function(c){
+    return c.id==null || yapilan.indexOf(String(c.id))<0;
+  });
+  var devamMi  = kalanlar.length>0 && kalanlar.length<kac;
+  var hepsiOk  = kac>0 && kalanlar.length===0;
+  var ilk = kalanlar.length ? kalanlar[0] : m.cumleler[0];
+
   var konu = m.konu || m.modul;
   var dunVar = !!(m.dun && m.dun.konu && m.dun.konu!==m.konu);
 
@@ -137,6 +157,21 @@ function __dhMalzemeOpener(){
     var neKadar = (m.kaynak==="bugun") ? ("bugün " + kac + " cümle notladın")
                 : (m.kaynak==="hafta") ? ("bu hafta " + kac + " cümle çalıştın")
                 : ("daha önce " + kac + " cümle öğrendin");
+    if(hepsiOk){
+      /* Malzeme tamamlandi ama henuz tazelenmedi (bu sayfada DHSent yok,
+         yeni secim ana ekranda yapiliyor). Ayni acilisi tekrar okumak
+         yerine durumu soyle. */
+      return "Bugünün " + kac + " cümlesini bitirdik, " + konu + " tamam. 👏\n"
+        + "Menüye dönüp tekrar gelirsen yeni cümlelerle devam ederiz.\n"
+        + "İstersen şimdi serbest pratik yapalım — bugün öğrendiklerinle "
+        + "bir şey anlat, ben düzelteyim.";
+    }
+    if(devamMi){
+      return "Kaldığımız yerden devam ediyoruz — " + konu + ", "
+        + (kac - kalanlar.length) + "/" + kac + " tamam.\n"
+        + "Sıradaki cümle:\n" + ilk.en + (ilk.tr ? ("\n(" + ilk.tr + ")") : "")
+        + "\nSen söylesen nasıl söylersin?";
+    }
     return (dunVar ? ("Dün " + m.dun.konu + " çalışmıştık. ") : "")
       + "Bugün " + konu + " üzerine konuşalım — " + neKadar + ".\n"
       + (m.ortam ? ("Ortam: " + m.ortam + ".\n") : "")
@@ -145,6 +180,20 @@ function __dhMalzemeOpener(){
   }
   /* Senaryo sayfasi da OGRETMEN acilisiyla baslar; sahne yalnizca dersin
      gectigi ortamdir. Once ne calisacagimizi soyler, sonra ilk cumleyi verir. */
+  if(hepsiOk){
+    return "Bugünün " + kac + " kalıbını bitirdik. 👏 Menüye dönüp tekrar "
+      + "gelirsen yeni cümlelerle devam ederiz. İstersen şimdi serbest "
+      + "pratik yapalım — " + (m.ortam ? ("ortam: " + m.ortam + "; ") : "")
+      + "İngilizce bir şey anlat, ben " + dhRolTr() + " olup karşılık vereyim.";
+  }
+  if(devamMi){
+    return "Kaldığımız yerden devam — " + konu + ", "
+      + (kac - kalanlar.length) + "/" + kac + " tamam.\n"
+      + "Sıradaki kalıp:\n" + "[[" + ilk.en + "]]"
+      + (ilk.tr ? ("\n(" + ilk.tr + ")") : "")
+      + "\nSen söylesen nasıl söylerdin? İngilizce yaz, sonra "
+      + "ben " + dhRolTr() + " olup deneriz.";
+  }
   return (dunVar ? ("Dün " + m.dun.konu + " çalışmıştık. ") : "")
     + "Bugün " + konu + " çalışıyoruz"
     + (m.ortam ? (" — ortam: " + m.ortam) : "")

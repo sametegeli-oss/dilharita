@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v42";   /* v42: rol senaryolarinda gunun cumleleri seridi kaldirildi */
+var SW_VERSION = "dh-sw-v43";   /* v43: konusma malzemesi tamamlama + kaldigin yerden */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

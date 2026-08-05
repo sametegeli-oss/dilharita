@@ -37,6 +37,11 @@ window.CHAT_SCENARIO = {
 
 <script src="./viseme-lang.js?v=1"></script>
 <script src="./ai-providers.js?v=1"></script>
+<!-- Günün konuşma malzemesi + ilerleme defteri. chat-core.js malzemeyi
+     SENKRON olarak localStorage'dan okur; DHKonusma burada yüklü olmadığı
+     için "bitirdim" bilgisi hiçbir yere yazılamıyordu ve her girişte aynı
+     konu baştan başlıyordu. chat-core'dan ÖNCE yüklenmeli. -->
+<script src="./dh-konusma.js?v=2"></script>
 <script src="./chat-core.js?v=31"></script>
 <script src="./dh-ortam-fon.js?v=2"></script>
 <script src="./dh-sohbet-puan.js?v=3"></script>

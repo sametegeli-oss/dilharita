@@ -395,14 +395,27 @@
       kap.parentNode.insertBefore(el, kap);      /* gorev cubugunun hemen ustune */
     }
     var cevaplar = balonlar().kullanici;
-    var yapilan = 0;
+    var yapilan = 0, uretilen = [];
     var parcalar = m.cumleler.map(function (c) {
       var cek = kalipCekirdegi(c.kalip);
       if (!cek.length) cek = kalipCekirdegi(c.en);
       var ok = kalipKullanildi(cek, cevaplar);
-      if (ok) yapilan++;
+      if (ok) { yapilan++; if (c.id != null) uretilen.push(c.id); }
       return { en: c.en, ok: ok };
     });
+    /* ILERLEME DEFTERI: uretilen cumleler gun defterine islenir.
+       Boylece cikip tekrar girildiginde acilis bastan degil, henuz
+       uretilmemis ilk cumleden basliyor (bkz. chat-core __dhMalzemeOpener).
+       Hepsi uretildiyse gun tamamlanmis sayilir ve bir sonraki girise
+       YENI malzeme hesaplanir (bkz. dh-konusma bugunMalzeme). */
+    try {
+      if (global.DHKonusma && global.DHKonusma.isaretle) {
+        if (uretilen.length) global.DHKonusma.isaretle(uretilen);
+        if (yapilan === parcalar.length && parcalar.length && global.DHKonusma.bitir) {
+          global.DHKonusma.bitir();
+        }
+      }
+    } catch (e) {}
     /* degismediyse DOM'a dokunma (her 4 sn'de bir yeniden cizim yapilmasin) */
     var imza = yapilan + "/" + parcalar.length + ":" + parcalar.map(function (p) { return p.ok ? 1 : 0; }).join("");
     if (imza === _seritDurum) return;
@@ -423,6 +436,13 @@
     if (btn) { btn.disabled = true; btn.textContent = "⏳"; }
     return degerlendir().then(function (s) {
       if (!s.yetersiz) kaydet(s);
+      /* "Bitir ve degerlendir" = oturum tamamlandi. Kalip eslestirici
+         katidir (kalip kelimelerinin %60'ini ayni cumlede arar); tek
+         basina birakilirsa 6/6'ya hic ulasilamayabilir ve kullanici
+         her girisinde ayni konuyla karsilasir. Bu dugme kesin isarettir. */
+      try {
+        if (!s.yetersiz && global.DHKonusma && global.DHKonusma.bitir) global.DHKonusma.bitir();
+      } catch (e) {}
       kartiGoster(s);
       return s;
     }).catch(function () { return null; }).then(function (s) {
