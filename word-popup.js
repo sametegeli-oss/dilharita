@@ -591,7 +591,10 @@
   /* Kendi yapıştırma kutusu — gemini-bridge.js her sayfada yüklü değil
      (word-popup 16 sayfada var, köprü 6'sında). Bağımlılık kurmak yerine
      küçük kutuyu burada tutmak daha güvenli. */
-  function gemKutu(word, prompt, tamam){
+  /* bitince(rec): kayıt başarıyla yazıldıktan sonra çağrılır.
+     index-app.html'deki React popup'ına enjekte eden addon bunu kullanır
+     (bkz. word-gemini-addon.js) — o sayfada dhWpSynBox yoktur. */
+  function gemKutu(word, prompt, bitince){
     injectCSS();
     var ov=document.createElement("div"); ov.className="dh-wp-gk no-wordpop";
     ov.innerHTML=
@@ -635,6 +638,7 @@
       kaPut(rec).then(function(ok){
         ov.remove();
         if(!ok) return;
+        if(typeof bitince==="function"){ try{ bitince(rec); }catch(e){} return; }
         if(popEl) fillSynonyms(word);      /* popup hâlâ açıksa anında çiz */
       });
     };
@@ -681,22 +685,19 @@
   /* Gruplu çizim: her anlam kendi başlığı altında, kendi içinde sıklığa
      göre sıralı. Kelimenin kendisi her grupta yer alır ki öğrenci "bu
      anlamda hangisi daha yaygın" sorusunun cevabını görsün. */
-  function synGrupCiz(word, rec){
-    var box=document.getElementById("dhWpSynBox");
-    var host=document.getElementById("dhWpSynList");
-    var etiket=document.getElementById("dhWpSynKaynak");
-    var not=document.getElementById("dhWpSynNot");
-    if(!box||!host) return;
-    box.style.display="";
-    etiket.textContent="💎 Gemini";
+  /* GENEL ÇİZİCİ — hem bu dosyanın popup'ı hem de index-app.html'deki
+     React popup'ı (word-gemini-addon.js) aynı kodu kullanır. Tek kaynak:
+     iki yerde ayrı çizim = iki ayrı davranış demekti. */
+  function analizCiz(host, word, rec, bilgiEl){
+    if(!host) return Promise.resolve();
     host.innerHTML='<div class="dh-wp-muted">Sıklık değerleri alınıyor…</div>';
 
     var hepsi=[word];
-    rec.anlamlar.forEach(function(g){
+    (rec.anlamlar||[]).forEach(function(g){
       (g.es||[]).forEach(function(k){ if(hepsi.indexOf(k)<0) hepsi.push(k); });
     });
 
-    ngramGetir(hepsi).then(function(res){
+    return loadDict().then(function(){ return ngramGetir(hepsi); }).then(function(res){
       function satir(k){
         var d=(dict&&dict[k])||{};
         var anl=(d.anlamlar&&d.anlamlar[0])||"";
@@ -705,37 +706,48 @@
                  korpus: typeof d.frekans==="number"?d.frekans:null,
                  seviye:d.seviye||"" };
       }
-      var html="";
-      rec.anlamlar.forEach(function(g,i){
+      var html="", gruplar=[];
+      (rec.anlamlar||[]).forEach(function(g,i){
         var kelimeler=[word].concat((g.es||[]).filter(function(k){ return k!==word; }));
         var satirlar=kelimeler.map(satir);
         satirlar.sort(function(a,b){ return b.v!==a.v ? b.v-a.v : (a.k<b.k?-1:1); });
-        var enBuyuk=satirlar.length?satirlar[0].v:0;
+        gruplar.push({ satirlar:satirlar, enBuyuk:satirlar.length?satirlar[0].v:0, bos:!(g.es||[]).length });
 
         html+='<div class="dh-wp-syn-grup">'
             +'<div class="dh-wp-syn-gbas"><span class="dh-wp-syn-gno">'+(i+1)+'</span>'
             +esc(g.tr||"")+'</div>';
-        if(!(g.es||[]).length){
-          html+='<div class="dh-wp-syn-gbos">Bu anlam için eş anlamlı bulunamadı.</div>';
-        } else {
-          html+='<div class="dh-wp-syn-govde" data-grup="'+i+'"></div>';
-        }
+        html+= gruplar[i].bos
+             ? '<div class="dh-wp-syn-gbos">Bu anlam için eş anlamlı bulunamadı.</div>'
+             : '<div class="dh-wp-syn-govde" data-grup="'+i+'"></div>';
         html+='</div>';
-        g.__satirlar=satirlar; g.__enBuyuk=enBuyuk;
       });
       host.innerHTML=html;
-      rec.anlamlar.forEach(function(g,i){
-        if(!(g.es||[]).length) return;
+      gruplar.forEach(function(g,i){
+        if(g.bos) return;
         var kap=host.querySelector('.dh-wp-syn-govde[data-grup="'+i+'"]');
-        if(kap) synCiz(kap, g.__satirlar, g.__enBuyuk, word);
+        if(kap) synCiz(kap, g.satirlar, g.enBuyuk, word);
       });
 
-      var tarih="";
-      try{ tarih=new Date(rec.at||Date.now()).toLocaleDateString("tr-TR"); }catch(e){}
-      not.innerHTML="Anlam anlam Gemini analizi ("+esc(tarih)+"). Sıralama "
-        + (res.kaynak==="canli" ? "Google Books Ngram değerlerine" : "yaklaşık (çevrimdışı) sıklık değerlerine")
-        + " göre yapıldı. Yenilemek için 💎 düğmesine tekrar bas.";
+      if(bilgiEl){
+        var tarih="";
+        try{ tarih=new Date(rec.at||Date.now()).toLocaleDateString("tr-TR"); }catch(e){}
+        bilgiEl.innerHTML="Anlam anlam Gemini analizi ("+esc(tarih)+"). Sıralama "
+          + (res.kaynak==="canli" ? "Google Books Ngram değerlerine" : "yaklaşık (çevrimdışı) sıklık değerlerine")
+          + " göre yapıldı. Yenilemek için 💎 düğmesine tekrar bas.";
+      }
+      return res;
     });
+  }
+
+  function synGrupCiz(word, rec){
+    var box=document.getElementById("dhWpSynBox");
+    var host=document.getElementById("dhWpSynList");
+    var etiket=document.getElementById("dhWpSynKaynak");
+    var not=document.getElementById("dhWpSynNot");
+    if(!box||!host) return;
+    box.style.display="";
+    etiket.textContent="💎 Gemini";
+    analizCiz(host, word, rec, not);
   }
 
   function fillSynonyms(word){
@@ -1261,7 +1273,19 @@
   global.DHWordPop = {
     __v2:true,
     /* 💎 kelime analizi deposu — yedekleme/aktarma için */
-    analiz:{ oku:kaGet, yaz:kaPut, tumu:kaAll, prompt:gemPrompt, ayristir:gemAyristir },
+    /* 💎 kelime analizi — hem bu popup hem de index-app.html'deki React
+       popup'ı (word-gemini-addon.js) bu API'yi kullanır. */
+    analiz:{
+      oku:kaGet, yaz:kaPut, tumu:kaAll,
+      prompt:gemPrompt, ayristir:gemAyristir,
+      /* Kutuyu aç: kopyala → Gemini'yi aç → JSON yapıştır → kaydet.
+         bitince(rec) kayıttan sonra çağrılır. */
+      iste:function(word, anlamlar, bitince){ gemKutu(word, gemPrompt(word, anlamlar), bitince); },
+      ciz:analizCiz,          /* (host, kelime, kayit, bilgiEl) */
+      ngram:ngramGetir,
+      sozluk:loadDict,
+      stil:injectCSS
+    },
     lookup:function(w){ loadDict().then(function(){ var e=findEntry(cleanWord(w)); if(e) open(e); else defineWithAI(cleanWord(w)); }); },
     enable:function(){ enabled=true; }, disable:function(){ enabled=false; }, close:close
   };
