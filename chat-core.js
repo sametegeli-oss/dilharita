@@ -1210,9 +1210,20 @@ function continueInGemini(){
     } else {
       prompt = "Sen \""+(Scenario.role||Scenario.title||"a friendly English conversation partner")+"\" rolundesin. Bir Turk ogrenciyle Ingilizce konusma pratigi yapiyoruz (seviye "+State.level+"). Su ana kadarki konusmamiz:\n\n"+convo+"\n\nBu sohbeti AYNI rolde, Ingilizce, seviyeme uygun sekilde kaldigimiz yerden SURDUR; gerektiginde kisa Turkce ipucu ver.";
     }
+    /* RAPOR SOZLESMESI — Gemini'de yapilan calisma uygulamaya geri donsun.
+       Prompt'un sonuna "RAPOR yazinca sadece su JSON'u dondur" sartini
+       ekler. Ogrenci Gemini'de bitirince RAPOR yazar, cikan JSON'u 📊
+       dugmesiyle uygulamaya yapistirir; puan/hata/sayac oraya islenir.
+       Bkz. gemini-sohbet-rapor.js */
+    try{ if(window.DHGeminiRapor && DHGeminiRapor.sozlesme) prompt += DHGeminiRapor.sozlesme(); }catch(e){}
+
     try{ if(navigator.clipboard) navigator.clipboard.writeText(prompt); }catch(e){}
     try{ window.open("https://gemini.google.com/app","_blank"); }catch(e){}
-    try{ addBubble("assistant","💎 Sohbet panoya kopyalandi ve Gemini acildi — oraya yapistirip devam edebilirsin."); }catch(e){}
+    try{
+      addBubble("assistant", window.DHGeminiRapor
+        ? "💎 Sohbet panoya kopyalandı ve Gemini açıldı — oraya yapıştırıp devam et. Bitirince Gemini'ye tek başına RAPOR yaz, çıkan JSON'u kopyala ve buradaki 📊 düğmesine yapıştır: puanın, hataların ve günlük sayacın buna göre güncellenir."
+        : "💎 Sohbet panoya kopyalandi ve Gemini acildi — oraya yapistirip devam edebilirsin.");
+    }catch(e){}
   }catch(e){}
 }
 function boot(){

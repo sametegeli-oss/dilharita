@@ -277,19 +277,59 @@
          adimlarCiz ayni sayilari kullanir (iki yerde ayri hesap = sapma). */
       d.sayaclar = [];
 
+      /* ── CANLI SAYAC HAVUZU ────────────────────────────────────────
+         COZULEN HATA: "Modulde 2 kelime calistim, ustteki kartta
+         'Cumle 2' yaziyor ama plan adimi hala 0/5."
+
+         Sebep: iki AYRI kaynak vardi ve biri otekini beslemiyordu.
+           ustteki kart  -> dh-study-tracker-v1 (coach-bubble.js her
+                            notlamada aninda yazar)
+           plan adimi    -> DHPlan defteri `yapilan` alani
+
+         DHPlan.ilerlet() yalnizca ders.html, basla.html ve
+         dh-plan-kopru.js tarafindan cagriliyor. Kopru ise plan
+         adiminin href'inde mod=XXX aramak zorunda; koc.js'in urettigi
+         adimlar duz "index-app.html" (mod yok). Yani eslesecek adim
+         bulunamiyor, `yapilan` hic yazilmiyor, saya  sonsuza kadar 0/5.
+
+         COZUM: gunluk sayac TEK KAYNAK. Defterdeki deger korunur ama
+         gunluk sayac ondan buyukse o gecerlidir. Boylece ustteki kart
+         ile plan adimi HER ZAMAN ayni sayiyi gosterir.
+
+         Ayni tipte birden fazla adim varsa sayac SIRAYLA dagitilir:
+         ilk adim hedefi kadarini alir, artan bir sonrakine gecer.
+         (Yoksa 7 cumle calisan kullanici iki adimda da 5/5 gorurdu.) */
+      var havuzCumle  = d.cumle;
+      var havuzTekrar = d.tekrar;
+
       d.plan.steps.forEach(function(s){
         var sayfa = String(s.href||"").split("?")[0];
         var isaret = !!set[sayfa] || (sayfa === "chat.html" && d.sohbetVar);
+        var tip = tipOf(s.href);
 
         /* Kaynak onceligi: tekrar adimi -> tekrar.html'in dondurulmus gun
            hedefi; digerleri -> DHPlan defteri (href ile eslesen adim). */
         var hedef = 0, yapilan = 0;
-        if (tipOf(s.href) === "tekrar" && d.tekrarGun){
+        if (tip === "tekrar" && d.tekrarGun){
           hedef = d.tekrarGun.hedef; yapilan = d.tekrarGun.yapilan;
         } else {
           var a = d.defter ? defterAdimi(d.defter, s.href) : null;
           if (a){ hedef = a.hedef|0; yapilan = Math.min(a.yapilan|0, hedef); }
         }
+
+        /* gunluk sayactan besleme (yalnizca birim sayaci olan adimlarda) */
+        if (hedef > 1){
+          var canli = 0;
+          if (tip === "yeni"){
+            canli = Math.min(hedef, havuzCumle);
+            havuzCumle -= canli;
+          } else if (tip === "tekrar"){
+            canli = Math.min(hedef, havuzTekrar);
+            havuzTekrar -= canli;
+          }
+          if (canli > yapilan) yapilan = canli;
+        }
+
         d.sayaclar.push({ hedef: hedef, yapilan: yapilan, isaret: isaret });
 
         var bitti = (hedef > 1)
