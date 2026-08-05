@@ -904,7 +904,12 @@
 
   function aiExplain(word, anlamlar){
     var out=document.getElementById("dhWpAIOut"), btn=document.getElementById("dhWpAI");
-    if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
+    if(!global.DHProviders){
+      out.innerHTML='<div class="dh-wp-ai-out">⚠ Bu sayfada AI sağlayıcı betiği (ai-providers.js) yüklü değil. '
+        +'Anahtarın kayıtlı olsa bile buradan kullanılamaz.</div>';
+      return;
+    }
+    if(!(DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
       out.innerHTML='<div class="dh-wp-ai-out">AI açıklaması için öğretmen sayfasından bir API anahtarı ekle (Groq, Cerebras veya Gemini).</div>';
       return;
     }
@@ -969,7 +974,16 @@
      aç, ve AI (Groq/Cerebras/Gemini) ile anlık Türkçe anlam üretmeyi dene. */
   function defineWithAI(word){
     open({ word: word, data: { anlamlar: ["⏳ Sözlükte yok — AI ile anlam aranıyor…"], oku:"", frekans:"", seviye:"" } });
-    if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
+    /* İKİ AYRI DURUM — eskiden ikisi de "anahtar ekle" diyordu ve
+       anahtarı olan kullanıcı neden çalışmadığını anlayamıyordu.
+       word-popup.js 16 sayfada yüklüyken ai-providers.js bunların
+       yalnızca 11'inde yüklüydü. */
+    if(!global.DHProviders){
+      updateMeanings(["📕 Bu kelime yerel sözlükte yok.",
+        "⚠ Bu sayfada AI sağlayıcı betiği (ai-providers.js) yüklü değil — anahtarın kayıtlı olsa bile buradan kullanılamaz. 💎 Gemini Kelime Analizi düğmesi yine de çalışır."]);
+      return;
+    }
+    if(!(DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
       updateMeanings(["📕 Bu kelime yerel sözlükte yok. AI açıklaması için öğretmen sayfasından bir API anahtarı ekle (Groq, Cerebras veya Gemini)."]);
       return;
     }

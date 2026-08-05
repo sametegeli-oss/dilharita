@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v39";   /* v39: Gemini kelime analizi prompt duzeltmesi */
+var SW_VERSION = "dh-sw-v40";   /* v40: eksik sayfalara ai-providers.js */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

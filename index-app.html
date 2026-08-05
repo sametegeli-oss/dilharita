@@ -46,6 +46,10 @@ window.addEventListener('error', function(e){
      yüklenir (kendi tıklama dinleyicisi kapatılır, yoksa React popup'ıyla
      aynı anda iki popup açılırdı). Prompt/ayrıştırma/IndexedDB kaydı orada,
      React popup'ına enjeksiyon word-gemini-addon.js'de. -->
+<!-- word-popup.js'in AI özellikleri (kelime açıklama, eş anlamlı yedeği)
+     DHProviders'a bağlı; bu sayfada yüklü değildi, o yüzden anahtar
+     kayıtlı olduğu halde "API anahtarı ekle" uyarısı çıkıyordu. -->
+<script src="./ai-providers.js?v=2"></script>
 <script src="./word-popup.js?v=11"></script>
 <script>try{ window.DHWordPop && DHWordPop.disable(); }catch(e){}</script>
 <script src="./word-gemini-addon.js?v=1"></script>
