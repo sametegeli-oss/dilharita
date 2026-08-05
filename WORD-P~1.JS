@@ -113,6 +113,75 @@
     return ngYedekLoading;
   }
 
+  /* ================= 💎 KELİME ANALİZİ DEPOSU (IndexedDB) =================
+     Neden localStorage değil: analiz kaydı kelime başına birkaç yüz bayt ve
+     zamanla binlerce kelimeye çıkar; localStorage'ın ~5 MB sınırına dayanır
+     ve o sınıra çarptığında SESSİZCE yazamaz (bu projede daha önce yaşandı).
+     IndexedDB'nin böyle bir sorunu yok.
+     Ayrı bir veritabanı kullanılıyor ("sentence-mode" değil) — cümle
+     ilerlemesiyle aynı depoya yazmak dh-plan-kopru.js'in taramasını
+     kirletirdi. */
+  var KA_DB="dh-kelime-analiz", KA_STORE="kelimeler", kaDbP=null;
+
+  function kaOpen(){
+    if(kaDbP) return kaDbP;
+    kaDbP=new Promise(function(res,rej){
+      if(!global.indexedDB) return rej(0);
+      var r=global.indexedDB.open(KA_DB,1);
+      r.onupgradeneeded=function(){
+        var db=r.result;
+        if(!db.objectStoreNames.contains(KA_STORE))
+          db.createObjectStore(KA_STORE,{keyPath:"w"});
+      };
+      r.onsuccess=function(){ res(r.result); };
+      r.onerror=function(){ rej(r.error); };
+    }).catch(function(){ return null; });
+    return kaDbP;
+  }
+  function kaGet(w){
+    return kaOpen().then(function(db){
+      if(!db) return null;
+      return new Promise(function(res){
+        try{
+          var q=db.transaction(KA_STORE,"readonly").objectStore(KA_STORE).get(w);
+          q.onsuccess=function(){ res(q.result||null); };
+          q.onerror=function(){ res(null); };
+        }catch(e){ res(null); }
+      });
+    }).catch(function(){ return null; });
+  }
+  function kaPut(rec){
+    return kaOpen().then(function(db){
+      if(!db) return false;
+      return new Promise(function(res){
+        try{
+          var t=db.transaction(KA_STORE,"readwrite");
+          t.objectStore(KA_STORE).put(rec);
+          t.oncomplete=function(){ res(true); };
+          t.onerror=function(){ res(false); };
+        }catch(e){ res(false); }
+      });
+    }).catch(function(){ return false; });
+  }
+  /* Dışarıdan erişim: yedekleme/aktarma için (DHWordPop.analiz.*) */
+  function kaAll(){
+    return kaOpen().then(function(db){
+      if(!db) return [];
+      return new Promise(function(res){
+        var out=[];
+        try{
+          var q=db.transaction(KA_STORE,"readonly").objectStore(KA_STORE).openCursor();
+          q.onsuccess=function(e){
+            var c=e.target.result;
+            if(!c) return res(out);
+            out.push(c.value); c.continue();
+          };
+          q.onerror=function(){ res(out); };
+        }catch(e){ res(out); }
+      });
+    }).catch(function(){ return []; });
+  }
+
   function cleanWord(w){ return String(w||"").toLowerCase().replace(/[^a-z'-]/g,"").replace(/^'+|'+$/g,""); }
   function variants(w){
     var v=[w];
@@ -251,7 +320,29 @@
     +".dh-wp-syn-alt{font-size:10.5px;color:#64748b;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap}"
     +".dh-wp-syn-alt b{color:#94a3b8;font-weight:800}"
     +".dh-wp-syn-not{font-size:11px;color:#64748b;line-height:1.45;margin-top:2px}"
-    +".dh-wp-syn-not a{color:#60a5fa}";
+    +".dh-wp-syn-not a{color:#60a5fa}"
+    /* ---- Gemini kelime analizi ---- */
+    +".dh-wp-gem{background:linear-gradient(180deg,#8b5cf6,#6d28d9);color:#fff}"
+    +".dh-wp-syn-grup{margin-bottom:12px}"
+    +".dh-wp-syn-grup:last-child{margin-bottom:0}"
+    +".dh-wp-syn-gbas{display:flex;align-items:baseline;gap:7px;font-size:12.5px;font-weight:900;color:#c4b5fd;margin:0 0 7px;padding-bottom:5px;border-bottom:1px solid #1e3a5f}"
+    +".dh-wp-syn-gno{background:#4c1d95;color:#ddd6fe;border-radius:6px;padding:1px 7px;font-size:11px;flex:0 0 auto}"
+    +".dh-wp-syn-gbos{font-size:12px;color:#64748b;padding:2px 0 4px}"
+    /* ---- yapıştırma kutusu ---- */
+    +".dh-wp-gk{position:fixed;inset:0;z-index:10060;background:rgba(2,6,23,.82);display:flex;align-items:center;justify-content:center;padding:14px}"
+    +".dh-wp-gk-card{width:100%;max-width:480px;max-height:92vh;overflow:auto;background:#0d1b32;border:1px solid #7c3aed;border-radius:16px;padding:16px;color:#e8eef7}"
+    +".dh-wp-gk-card h4{margin:0 0 4px;font-size:16px;font-weight:900}"
+    +".dh-wp-gk-ad{font-size:12px;color:#9fb3d9;line-height:1.55;margin:0 0 11px}"
+    +".dh-wp-gk-ad b{color:#c4b5fd}"
+    +".dh-wp-gk-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}"
+    +".dh-wp-gk-row button{flex:1;min-width:126px;border:0;border-radius:10px;padding:11px 8px;font-size:13px;font-weight:800;cursor:pointer}"
+    +".dh-wp-gk-copy{background:#1d4ed8;color:#fff}"
+    +".dh-wp-gk-open{background:#8b5cf6;color:#fff}"
+    +".dh-wp-gk-ta{width:100%;box-sizing:border-box;min-height:110px;background:#071120;color:#e8eef7;border:1px solid #1e3a5f;border-radius:11px;padding:11px;font-size:13px;line-height:1.5;resize:vertical;font-family:monospace}"
+    +".dh-wp-gk-ta:focus{outline:2px solid #8b5cf6;outline-offset:1px}"
+    +".dh-wp-gk-msg{font-size:12.5px;font-weight:700;min-height:17px;margin:7px 0;line-height:1.45}"
+    +".dh-wp-gk-send{background:linear-gradient(180deg,#10b981,#059669);color:#fff}"
+    +".dh-wp-gk-close{background:#334155;color:#e8eef7}";
     document.head.appendChild(st);
   }
 
@@ -293,6 +384,7 @@
      +'<button class="dh-wp-full dh-wp-video" id="dhWpVideo">🎬 Gerçek videolarda dinle</button>'
      +'<button class="dh-wp-full dh-wp-ai" id="dhWpAI">🎓 Kelime Açıklama (AI)</button>'
      +'<div id="dhWpAIOut"></div>'
+     +'<button class="dh-wp-full dh-wp-gem" id="dhWpGem">💎 Gemini Kelime Analizi</button>'
      +'<div class="dh-wp-box"><div class="dh-wp-boxhead">🎙 Telaffuzunu dene</div>'
        +'<div class="dh-wp-rec-out" id="dhWpRecOut"></div>'
        +'<button class="dh-wp-full dh-wp-rec" id="dhWpRec">🎙 Kaydı başlat</button>'
@@ -327,6 +419,7 @@
     document.getElementById("dhWpFast").onclick=function(){ speak(w,1.25); };
     document.getElementById("dhWpVideo").onclick=function(){ window.open("https://youglish.com/pronounce/"+encodeURIComponent(w)+"/english","_blank"); };
     document.getElementById("dhWpAI").onclick=function(){ aiExplain(w, anlamlar); };
+    document.getElementById("dhWpGem").onclick=function(){ gemAnaliz(w, anlamlar); };
     document.getElementById("dhWpRec").onclick=function(){ tryPronounce(w); };
     wvInit(w);
     fillSynonyms(w);
@@ -424,7 +517,247 @@
     });
   }
 
+  /* ================= 💎 GEMINI KELİME ANALİZİ =================
+     Sözlükte bir kelimenin BİRDEN FAZLA anlamı var ("book" → ayırtmak /
+     kitap / deftere işlemek) ve bunlar çoğu zaman bambaşka anlamlar.
+     Tek bir eş anlamlı listesi bu durumda yanıltıcı: ekranda "ayırtmak"
+     yazarken "volume, publication" göstermek öğrencinin kafasını karıştırır.
+
+     Bu düğme, kelimeyi Gemini'ye HER ANLAMI AYRI AYRI analiz ettirir.
+     Akış: prompt panoya kopyalanır → Gemini açılır → dönen JSON buradaki
+     kutuya yapıştırılır → IndexedDB'ye yazılır → popup anlam anlam gruplu
+     liste çizer. Kayıt kalıcı: aynı kelimeye bir daha tıklandığında
+     Gemini'ye gitmeye gerek kalmaz, analiz anında gelir.
+
+     Sıralama Gemini'ye bırakılmaz: her grup, elimizdeki Ngram değerlerine
+     göre yeniden sıralanır (canlı proxy → önbellek → yedek dosya). Model
+     sıklık konusunda yanılabilir, ölçülen değer yanılmaz. */
+
+  function gemPrompt(word, anlamlar){
+    var liste=(anlamlar||[]).map(function(m,i){
+      return (i+1)+". "+String(m).replace(/\s*\[[^\]]*\]/g,"").trim();
+    }).join("\n");
+    var ornek='{"kelime":"'+word+'","anlamlar":['
+      + (anlamlar||[]).map(function(m){
+          return '{"tr":"'+String(m).replace(/\s*\[[^\]]*\]/g,"").trim().replace(/"/g,"")+'","es":[]}';
+        }).join(",")
+      + ']}';
+    return [
+      'İngilizce "'+word+'" kelimesini analiz et.',
+      "",
+      "Bu kelimenin uygulamamızdaki Türkçe karşılıkları:",
+      liste,
+      "",
+      "GÖREV: Yukarıdaki HER Türkçe anlam için, o anlamda kullanılan İngilizce",
+      "eş anlamlıları yaz. Her listeyi EN ÇOK KULLANILANDAN EN AZ KULLANILANA",
+      "doğru sırala (Google Books Ngram sıklığını esas al).",
+      "",
+      "KURALLAR",
+      "1. Eş anlamlıları o anlama göre ver. Kelimenin başka anlamının eş",
+      "   anlamlılarını o gruba KARIŞTIRMA.",
+      "2. Bir anlamın gerçek eş anlamlısı yoksa \"es\" listesini boş bırak.",
+      "   UYDURMA. Yanlış eş anlamlı, hiç vermemekten çok daha kötü —",
+      "   bu liste dil öğrenen bir öğrenciye gösterilecek.",
+      "3. Yalnızca cümlede yerine konabilecek kelimeler yaz. \"Yakın anlamlı\",",
+      "   \"ilgili kavram\", \"üst kavram\" yazma.",
+      "4. Sadece sözlük kökü yaz: çoğul, -ed, -ing, -er/-est biçimleri yok.",
+      "5. Tek kelimelik eş anlamlılar yaz; deyim/fiil öbeği yazma (\"give up\").",
+      "6. Kelimenin kendisini ve farklı yazımını (color/colour) yazma.",
+      "7. Öğrencinin gerçekten kullanabileceği yaygın kelimeler yaz; nadir,",
+      "   kitabi kelimeler yazma.",
+      "8. Her anlam için en fazla 6 kelime.",
+      "9. Sözlükteki anlam sırasını KORU, anlamları birleştirme veya atlama.",
+      "",
+      "SADECE aşağıdaki biçimde JSON döndür. Öncesinde/sonrasında tek kelime",
+      "bile yazma, markdown kod bloğu kullanma:",
+      ornek
+    ].join("\n");
+  }
+
+  function gemKopyala(t){
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(t); return true;
+      }
+    }catch(e){}
+    try{
+      var ta=document.createElement("textarea");
+      ta.value=t; ta.style.cssText="position:fixed;opacity:0;left:-9999px";
+      document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); ta.remove(); return true;
+    }catch(e){ return false; }
+  }
+
+  /* Kendi yapıştırma kutusu — gemini-bridge.js her sayfada yüklü değil
+     (word-popup 16 sayfada var, köprü 6'sında). Bağımlılık kurmak yerine
+     küçük kutuyu burada tutmak daha güvenli. */
+  function gemKutu(word, prompt, tamam){
+    injectCSS();
+    var ov=document.createElement("div"); ov.className="dh-wp-gk no-wordpop";
+    ov.innerHTML=
+      '<div class="dh-wp-gk-card">'
+      +'<h4>💎 '+esc(word)+' — Gemini analizi</h4>'
+      +'<p class="dh-wp-gk-ad">1) <b>Kopyala</b> → 2) <b>Gemini\'yi aç</b>, yapıştır ve gönder → '
+      +'3) Gemini\'nin JSON cevabını buraya yapıştırıp <b>Kaydet</b>\'e bas.</p>'
+      +'<div class="dh-wp-gk-row">'
+        +'<button type="button" class="dh-wp-gk-copy" id="dhWpGkCopy">📋 Promptu kopyala</button>'
+        +'<button type="button" class="dh-wp-gk-open" id="dhWpGkOpen">💎 Gemini\'yi aç</button>'
+      +'</div>'
+      +'<textarea class="dh-wp-gk-ta" id="dhWpGkTa" placeholder=\'{"kelime":"...","anlamlar":[...]}\' spellcheck="false"></textarea>'
+      +'<div class="dh-wp-gk-msg" id="dhWpGkMsg"></div>'
+      +'<div class="dh-wp-gk-row">'
+        +'<button type="button" class="dh-wp-gk-send" id="dhWpGkSend">Kaydet</button>'
+        +'<button type="button" class="dh-wp-gk-close" id="dhWpGkClose">Kapat</button>'
+      +'</div></div>';
+    document.body.appendChild(ov);
+
+    var msg=ov.querySelector("#dhWpGkMsg");
+    function bilgi(t,renk){ msg.style.color=renk||"#9fb3d9"; msg.textContent=t; }
+
+    if(gemKopyala(prompt)) bilgi("📋 Prompt panoya kopyalandı.","#4ade80");
+
+    ov.querySelector("#dhWpGkCopy").onclick=function(){
+      bilgi(gemKopyala(prompt) ? "📋 Kopyalandı." : "Kopyalanamadı, metni elle seç.",
+            gemKopyala(prompt) ? "#4ade80" : "#f59e0b");
+    };
+    ov.querySelector("#dhWpGkOpen").onclick=function(){
+      gemKopyala(prompt);
+      try{ global.open("https://gemini.google.com/app","_blank","noopener"); }catch(e){}
+    };
+    ov.querySelector("#dhWpGkClose").onclick=function(){ ov.remove(); };
+    ov.addEventListener("click",function(e){ if(e.target===ov) ov.remove(); });
+    ov.querySelector("#dhWpGkSend").onclick=function(){
+      var ham=ov.querySelector("#dhWpGkTa").value||"";
+      var rec;
+      try{ rec=gemAyristir(word, ham); }
+      catch(err){ bilgi("✗ "+err.message,"#f87171"); return; }
+      bilgi("⏳ Kaydediliyor…","#38bdf8");
+      kaPut(rec).then(function(ok){
+        ov.remove();
+        if(!ok) return;
+        if(popEl) fillSynonyms(word);      /* popup hâlâ açıksa anında çiz */
+      });
+    };
+    setTimeout(function(){ try{ ov.querySelector("#dhWpGkTa").focus(); }catch(e){} }, 80);
+  }
+
+  function gemAyristir(word, ham){
+    var t=String(ham||"").trim();
+    if(!t) throw new Error("Önce Gemini'nin cevabını yapıştır.");
+    t=t.replace(/^```[a-z]*\s*/i,"").replace(/```\s*$/,"").trim();
+    var d=null;
+    try{ d=JSON.parse(t); }
+    catch(e){
+      var m=t.match(/\{[\s\S]*\}/);
+      if(m){ try{ d=JSON.parse(m[0]); }catch(e2){} }
+    }
+    if(!d || typeof d!=="object") throw new Error("JSON okunamadı. Cevabın tamamını yapıştırdığından emin ol.");
+    var ham2=Array.isArray(d.anlamlar)?d.anlamlar:null;
+    if(!ham2) throw new Error("Cevapta \"anlamlar\" listesi yok.");
+
+    var temiz=[];
+    ham2.forEach(function(g){
+      if(!g) return;
+      var tr=String(g.tr||"").trim();
+      var es=Array.isArray(g.es)?g.es:[];
+      var out=[];
+      es.forEach(function(x){
+        var k=String(x||"").toLowerCase().trim();
+        k=k.replace(/\([^)]*\)/g,"").trim();
+        if(!/^[a-z][a-z-]*$/.test(k)) return;      /* öbek/işaretli: at */
+        if(k===word) return;                        /* kelimenin kendisi */
+        if(out.indexOf(k)<0) out.push(k);
+      });
+      temiz.push({ tr:tr, es:out.slice(0,6) });
+    });
+    if(!temiz.length) throw new Error("Cevapta hiç anlam bulunamadı.");
+    return { w:word, at:Date.now(), anlamlar:temiz };
+  }
+
+  function gemAnaliz(word, anlamlar){
+    gemKutu(word, gemPrompt(word, anlamlar));
+  }
+
+  /* Gruplu çizim: her anlam kendi başlığı altında, kendi içinde sıklığa
+     göre sıralı. Kelimenin kendisi her grupta yer alır ki öğrenci "bu
+     anlamda hangisi daha yaygın" sorusunun cevabını görsün. */
+  function synGrupCiz(word, rec){
+    var box=document.getElementById("dhWpSynBox");
+    var host=document.getElementById("dhWpSynList");
+    var etiket=document.getElementById("dhWpSynKaynak");
+    var not=document.getElementById("dhWpSynNot");
+    if(!box||!host) return;
+    box.style.display="";
+    etiket.textContent="💎 Gemini";
+    host.innerHTML='<div class="dh-wp-muted">Sıklık değerleri alınıyor…</div>';
+
+    var hepsi=[word];
+    rec.anlamlar.forEach(function(g){
+      (g.es||[]).forEach(function(k){ if(hepsi.indexOf(k)<0) hepsi.push(k); });
+    });
+
+    ngramGetir(hepsi).then(function(res){
+      function satir(k){
+        var d=(dict&&dict[k])||{};
+        var anl=(d.anlamlar&&d.anlamlar[0])||"";
+        return { k:k, v:res.deger[k]||0,
+                 tr:String(anl).replace(/\s*\[[^\]]*\]/g,"").trim(),
+                 korpus: typeof d.frekans==="number"?d.frekans:null,
+                 seviye:d.seviye||"" };
+      }
+      var html="";
+      rec.anlamlar.forEach(function(g,i){
+        var kelimeler=[word].concat((g.es||[]).filter(function(k){ return k!==word; }));
+        var satirlar=kelimeler.map(satir);
+        satirlar.sort(function(a,b){ return b.v!==a.v ? b.v-a.v : (a.k<b.k?-1:1); });
+        var enBuyuk=satirlar.length?satirlar[0].v:0;
+
+        html+='<div class="dh-wp-syn-grup">'
+            +'<div class="dh-wp-syn-gbas"><span class="dh-wp-syn-gno">'+(i+1)+'</span>'
+            +esc(g.tr||"")+'</div>';
+        if(!(g.es||[]).length){
+          html+='<div class="dh-wp-syn-gbos">Bu anlam için eş anlamlı bulunamadı.</div>';
+        } else {
+          html+='<div class="dh-wp-syn-govde" data-grup="'+i+'"></div>';
+        }
+        html+='</div>';
+        g.__satirlar=satirlar; g.__enBuyuk=enBuyuk;
+      });
+      host.innerHTML=html;
+      rec.anlamlar.forEach(function(g,i){
+        if(!(g.es||[]).length) return;
+        var kap=host.querySelector('.dh-wp-syn-govde[data-grup="'+i+'"]');
+        if(kap) synCiz(kap, g.__satirlar, g.__enBuyuk, word);
+      });
+
+      var tarih="";
+      try{ tarih=new Date(rec.at||Date.now()).toLocaleDateString("tr-TR"); }catch(e){}
+      not.innerHTML="Anlam anlam Gemini analizi ("+esc(tarih)+"). Sıralama "
+        + (res.kaynak==="canli" ? "Google Books Ngram değerlerine" : "yaklaşık (çevrimdışı) sıklık değerlerine")
+        + " göre yapıldı. Yenilemek için 💎 düğmesine tekrar bas.";
+    });
+  }
+
   function fillSynonyms(word){
+    var box=document.getElementById("dhWpSynBox");
+    var host=document.getElementById("dhWpSynList");
+    var etiket=document.getElementById("dhWpSynKaynak");
+    var not=document.getElementById("dhWpSynNot");
+    if(!box||!host) return;
+
+    /* ÖNCELİK: Gemini'nin anlam anlam analizi varsa o çizilir. Statik
+       synonyms.json tek düz liste verir; analiz daha zengin ve o kelimeye
+       özel olduğu için onun önüne geçer. */
+    kaGet(word).then(function(rec){
+      if(rec && Array.isArray(rec.anlamlar) && rec.anlamlar.length){
+        synGrupCiz(word, rec);
+        return;
+      }
+      synDuzCiz(word);
+    });
+  }
+
+  function synDuzCiz(word){
     var box=document.getElementById("dhWpSynBox");
     var host=document.getElementById("dhWpSynList");
     var etiket=document.getElementById("dhWpSynKaynak");
@@ -489,7 +822,7 @@
       if(!depo[word].length) return;
       if(!syn) syn={};
       syn[word]=depo[word];
-      fillSynonyms(word);
+      synDuzCiz(word);
       return;
     }
     if(!(global.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey())) return;
@@ -515,7 +848,7 @@
         if(!list.length){ box.style.display="none"; return; }
         if(!syn) syn={};
         syn[word]=list;
-        fillSynonyms(word);
+        synDuzCiz(word);
       })
       .catch(function(){ box.style.display="none"; });
   }
@@ -927,6 +1260,8 @@
 
   global.DHWordPop = {
     __v2:true,
+    /* 💎 kelime analizi deposu — yedekleme/aktarma için */
+    analiz:{ oku:kaGet, yaz:kaPut, tumu:kaAll, prompt:gemPrompt, ayristir:gemAyristir },
     lookup:function(w){ loadDict().then(function(){ var e=findEntry(cleanWord(w)); if(e) open(e); else defineWithAI(cleanWord(w)); }); },
     enable:function(){ enabled=true; }, disable:function(){ enabled=false; }, close:close
   };
