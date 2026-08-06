@@ -2,7 +2,7 @@ import {jsx as _jsx, jsxs as _jsxs} from"react/jsx-runtime";
 import*as l from"react";
 
 // ==========================================
-// DILHARITA - APP.JS (Otomatik Panodan Okuyan Tam Sürüm)
+// DILHARITA - APP.JS (Tam ve Eksiksiz Sürüm)
 // ==========================================
 
 let db;
@@ -10,7 +10,7 @@ let db;
 function initDB() {
     if (db) return Promise.resolve(db);
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open("DilHaritaAI_DB", 3);
+        const request = indexedDB.open("DilHaritaAI_DB", 4);
         request.onerror = (event) => reject(event.target.error);
         request.onsuccess = (event) => {
             db = event.target.result;
@@ -67,22 +67,24 @@ function Me(){return Ae.length||je(),Ae.find(e=>/en[-_]US/i.test(e.lang))||Ae.fi
 function Ne(e,{rate:t=.95}={}){if(!window.speechSynthesis||!e)return;window.speechSynthesis.cancel();let n=new SpeechSynthesisUtterance(String(e)),r=Me();r&&(n.voice=r),n.lang=r?r.lang:`en-US`,n.rate=t,window.speechSynthesis.speak(n)}
 function Pe(e){Ne(e,{rate:.6})}
 
-// --- AI'ye Sor ve Otomatik IndexedDB Entegrasyonlu Kart Bileşeni ---
 function Fe({item:e,onWordClick:t,onGrade:n,graded:r}){
     let[i,a]=l.useState(!1);
-    const [aiLoading, setAiLoading] = l.useState(!1);
     const [aiExplanation, setAiExplanation] = l.useState(``);
     const [aiSourceTag, setAiSourceTag] = l.useState(``);
+    const [showPasteBox, setShowPasteBox] = l.useState(!1);
+    const [manualText, setManualText] = l.useState(``);
 
     l.useEffect(() => {
         if (!e || !e.en) return;
         getAIExplanationFromDB(e.en).then(cached => {
             if (cached) {
                 setAiExplanation(cached);
-                setAiSourceTag(`🤖 AI Açıklaması (IndexedDB'den yüklendi)[cite: 1]`);
+                setAiSourceTag(`🤖 AI Açıklaması (IndexedDB'den yüklendi)`);
+                setShowPasteBox(!1);
             } else {
                 setAiExplanation(``);
                 setAiSourceTag(``);
+                setShowPasteBox(!1);
             }
         });
     }, [e?.id]);
@@ -91,42 +93,34 @@ function Fe({item:e,onWordClick:t,onGrade:n,graded:r}){
         if (!e || !e.en) return;
         const currentSentence = e.en;
         
-        // 1. Önce IndexedDB'den kontrol et (İnternetsiz otomatik çekme)
         const cached = await getAIExplanationFromDB(currentSentence);
         if (cached) {
             setAiExplanation(cached);
-            setAiSourceTag(`🤖 AI Açıklaması (IndexedDB'den yüklendi)[cite: 1]`);
+            setAiSourceTag(`🤖 AI Açıklaması (IndexedDB'den yüklendi)`);
+            setShowPasteBox(!1);
             return;
         }
 
-        // 2. Kayıt yoksa Gemini'yi aç
         const prompt = `Lütfen şu İngilizce cümleyi detaylıca açıkla ve Türkçeye çevir: "${currentSentence}"`;
-        window.open(`https://gemini.google.com/app?q=${encodeURIComponent(prompt)}`, "_blank");
-        
-        setAiLoading(!0);
-        setAiSourceTag(`⏳ Gemini'den yanıt bekleniyor (Panodan okunuyor)...`);
-
-        // 3. Panodan (Clipboard) otomatik okuyup DB'ye kaydetme denemesi
-        let attempts = 0;
-        const interval = setInterval(async () => {
-            attempts++;
-            try {
-                const clipboardText = await navigator.clipboard.readText();
-                if (clipboardText && clipboardText.length > 15 && clipboardText !== aiExplanation) {
-                    clearInterval(interval);
-                    await saveAIExplanationToDB(currentSentence, clipboardText);
-                    setAiExplanation(clipboardText);
-                    setAiSourceTag(`🤖 AI Açıklaması (IndexedDB'ye kaydedildi)[cite: 1]`);
-                    setAiLoading(!1);
-                }
-            } catch (err) {}
-
-            if (attempts > 20) { // 10 saniye sonra zaman aşımı
-                clearInterval(interval);
-                setAiLoading(!1);
-                setAiSourceTag(`⚠️ Panodan otomatik okunamadı. Lütfen Gemini cevabını kopyalayın.`);
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(prompt);
             }
-        }, 500);
+        } catch (err) {}
+
+        window.open(`https://gemini.google.com/app`, "_blank");
+        
+        setShowPasteBox(!0);
+        setAiSourceTag(`⏳ Gemini'den aldığınız cevabı aşağıdaki kutuya yapıştırın:`);
+    }
+
+    async function handleSaveManual() {
+        if (!manualText.trim() || !e || !e.en) return;
+        await saveAIExplanationToDB(e.en, manualText);
+        setAiExplanation(manualText);
+        setAiSourceTag(`🤖 AI Açıklaması (IndexedDB'ye kaydedildi)`);
+        setShowPasteBox(!1);
+        setManualText(``);
     }
 
     return e ? _jsxs(`div`,{className:`card`,children:[
@@ -136,16 +130,23 @@ function Fe({item:e,onWordClick:t,onGrade:n,graded:r}){
         e.trPron&&_jsxs(`div`,{className:`card-pron`,children:[`🗣️ `,e.trPron]}),
         e.ipa&&_jsx(`div`,{className:`card-ipa`,children:e.ipa}),
         
-        // Butonlar
         _jsxs(`div`,{className:`card-actions`,children:[
             _jsx(`button`,{className:`btn btn-primary`,onClick:()=>Ne(e.en),children:`▶ Dinle`}),
             _jsx(`button`,{className:`btn`,onClick:()=>Pe(e.en),children:`🐢 Yavaş`}),
-            _jsx(`button`,{className:`btn dh-aiask-btn`,style:{background:`linear-gradient(135deg,#7c3aed,#4338ca)`,color:`#fff`,fontWeight:800},onClick:handleAISor,disabled:aiLoading,children:aiLoading?`🤖 Yanıt Bekleniyor...`:`🤖 AI'ye Sor`}),
+            _jsx(`button`,{className:`btn dh-aiask-btn`,style:{background:`linear-gradient(135deg,#7c3aed,#4338ca)`,color:`#fff`,fontWeight:800},onClick:handleAISor,children:`🤖 AI'ye Sor`}),
             _jsx(`button`,{className:`btn btn-ghost`,onClick:()=>a(e=>!e),children:i?`Detayı gizle`:`Detay`})
         ]}),
 
-        // Kaydedilmiş AI Açıklaması ve Etiket Alanı
-        (aiExplanation || aiSourceTag) && _jsxs(`div`,{className:`ai-result-box`,style:{marginTop:`12px`,padding:`12px`,background:`rgba(15,23,42,0.8)`,borderRadius:`10px`,border:`1px solid rgba(255,255,255,0.1)`},children:[
+        showPasteBox && _jsxs(`div`,{className:`ai-paste-box`,style:{marginTop:`12px`,padding:`14px`,background:`#0f172a`,borderRadius:`12px`,border:`2px solid #7c3aed`},children:[
+            _jsx(`div`,{style:{fontSize:`13px`,color:`#c4b5fd`,marginBottom:`8px`,fontWeight:700},children:`📋 Gemini'den kopyaladığınız açıklamayı buraya yapıştırın:`}),
+            _jsx(`textarea`,{value:manualText,onChange:ev=>setManualText(ev.target.value),placeholder:`Cevabı buraya yapıştırın...`,style:{width:`100%`,height:`90px`,background:`#1e293b`,color:`#fff`,border:`1px solid rgba(255,255,255,0.2)`,borderRadius:`8px`,padding:`10px`,fontSize:`13px`,resize:`vertical`}}),
+            _jsxs(`div`,{style:{display:`flex`,gap:`8px`,marginTop:`8px`,justifyContent:`flex-end`},children:[
+                _jsx(`button`,{className:`btn`,style:{padding:`6px 12px`,fontSize:`12px`,background:`#334155`,color:`#fff`,borderRadius:`6px`},onClick:()=>setShowPasteBox(!1),children:`İptal`}),
+                _jsx(`button`,{className:`btn btn-primary`,style:{padding:`6px 14px`,fontSize:`12px`,background:`#7c3aed`,color:`#fff`,borderRadius:`6px`,fontWeight:800},onClick:handleSaveManual,children:`Kaydet ve IndexedDB'ye Ekle`})
+            ]})
+        ]}),
+
+        (aiExplanation || aiSourceTag) && !showPasteBox && _jsxs(`div`,{className:`ai-result-box`,style:{marginTop:`12px`,padding:`12px`,background:`rgba(15,23,42,0.8)`,borderRadius:`10px`,border:`1px solid rgba(255,255,255,0.1)`},children:[
             aiSourceTag && _jsx(`div`,{style:{marginBottom:`6px`,children:_jsx(`span`,{style:{background:`#10b981`,color:`#fff`,padding:`3px 8px`,borderRadius:`4px`,fontSize:`11px`,fontWeight:700},children:aiSourceTag})}}),
             aiExplanation && _jsx(`div`,{style:{fontSize:`13px`,color:`#e2e8f0`,whiteSpace:`pre-wrap`,lineHeight:`1.4`},children:aiExplanation})
         ]}),
@@ -171,7 +172,7 @@ function _t({word:e,sentence:t,onClose:n,onWordClick:r,onNeedSettings:i}){let[a,
 
 var vt=[`subject`,`be`,`verb`,`noun`,`adj`,`adv`,`prep`,`article`,`conn`];function yt(){return _jsx(`div`,{className:`legend`,children:vt.map(e=>_jsxs(`span`,{className:`legend-item`,children:[_jsx(`span`,{className:`legend-dot`,style:{background:he[e]}}),ge[e]]},e))})}
 
-function bt({onClose:e}){let t=Qe(),[n,r]=l.useState(t[0]||``),[i,a]=l.useState(t[1]||``),[o,s]=l.useState(t[2]||``),[c,u]=l.useState(!1);function d(){Ze([n,i,o]),u(!0),setTimeout(()=>u(!1),1500)}let f=[n,i,o].filter(e=>e.trim()).length;return _jsx(`div`,{className:`wp-overlay`,onClick:e,children:_jsxs(`div`,{className:`wp-box`,onClick:e=>e.stopPropagation(),children:[_jsxs(`div`,{className:`wp-head`,children:[_jsx(`h3`,{className:`set-title`,children:`⚙️ Ayarlar — Groq AI Anahtarları`}),_jsx(`button`,{className:`wp-close`,onClick:e,"aria-label":`Kapat`,children:`✕`})]}),_jsx(`p`,{className:`set-desc`,children:`3 farklı Groq anahtarı girebilirsin. Biri günlük limite takılınca otomatik diğerine geçer, böylece gün boyu kesintisiz çalışır. Anahtarlar yalnızca هذا cihazda saklanır, kimseyle paylaşılmaz.`}),_jsx(`a`,{className:`set-link`,href:`https://console.groq.com/keys`,target:`_blank`,rel:`noopener`,children:`→ Ücretsiz Groq anahtarı al (console.groq.com/keys)`}),_jsxs(`div`,{className:`set-fields`,children:[_jsxs(`label`,{className:`set-field`,children:[_jsx(`span`,{children:`Anahtar 1`}),_jsx(`input`,{type:`password`,value:n,onChange:e=>r(e.target.value),placeholder:`gsk_...`})]}),_jsxs(`label`,{className:`set-field`,children:[_jsx(`span`,{children:`Anahtar 2`}),_jsx(`input`,{type:`password`,value:i,onChange:e=>a(e.target.value),placeholder:`gsk_... (opsiyonel)`})]}),_jsxs(`label`,{className:`set-field`,children:[_jsx(`span`,{children:`Anahtar 3`}),_jsx(`input`,{type:`password`,value:o,onChange:e=>s(e.target.value),placeholder:`gsk_... (opsiyonel)`})]})]}),_jsx(`button`,{className:`btn btn-primary set-save`,onClick:d,children:c?`✓ Kaydedildi`:`Kaydet (${f} anahtar)`})]})})}
+function bt({onClose:e}){let t=Qe(),[n,r]=l.useState(t[0]||``),[i,a]=l.useState(t[1]||``),[o,s]=l.useState(t[2]||``),[c,u]=l.useState(!1);function d(){Ze([n,i,o]),u(!0),setTimeout(()=>u(!1),1500)}let f=[n,i,o].filter(e=>e.trim()).length;return _jsx(`div`,{className:`wp-overlay`,onClick:e,children:_jsxs(`div`,{className:`wp-box`,onClick:e=>e.stopPropagation(),children:[_jsxs(`div`,{className:`wp-head`,children:[_jsx(`h3`,{className:`set-title`,children:`⚙️ Ayarlar — Groq AI Anahtarları`}),_jsx(`button`,{className:`wp-close`,onClick:e,"aria-label":`Kapat`,children:`✕`})]}),_jsx(`p`,{className:`set-desc`,children:`3 farklı Groq anahtarı girebilirsin. Biri günlük limite takılınca otomatik diğerine geçer, böylece gün boyu kesintisiz çalışır. Anahtarlar yalnızca bu cihazda saklanır, kimseyle paylaşılmaz.`}),_jsx(`a`,{className:`set-link`,href:`https://console.groq.com/keys`,target:`_blank`,rel:`noopener`,children:`→ Ücretsiz Groq anahtarı al (console.groq.com/keys)`}),_jsxs(`div`,{className:`set-fields`,children:[_jsxs(`label`,{className:`set-field`,children:[_jsx(`span`,{children:`Anahtar 1`}),_jsx(`input`,{type:`password`,value:n,onChange:e=>r(e.target.value),placeholder:`gsk_...`})]}),_jsxs(`label`,{className:`set-field`,children:[_jsx(`span`,{children:`Anahtar 2`}),_jsx(`input`,{type:`password`,value:i,onChange:e=>a(e.target.value),placeholder:`gsk_... (opsiyonel)`})]}),_jsxs(`label`,{className:`set-field`,children:[_jsx(`span`,{children:`Anahtar 3`}),_jsx(`input`,{type:`password`,value:o,onChange:e=>s(e.target.value),placeholder:`gsk_... (opsiyonel)`})]})]}),_jsx(`button`,{className:`btn btn-primary set-save`,onClick:d,children:c?`✓ Kaydedildi`:`Kaydet (${f} anahtar)`})]})})}
 
 function xt(){let[e,t]=l.useState(!1),[n,r]=l.useState(null),[i,a]=l.useState({}),[o,s]=l.useState({}),[c,u]=l.useState({studied:0,due:0,learned:0}),[d,f]=l.useState(null),[h,g]=l.useState(0),[v,b]=l.useState(null),[x,S]=l.useState(null),[C,w]=l.useState(``),[ee,te]=l.useState(!1);l.useEffect(()=>{p().then(async()=>{a(_()),s(await me()),u(await fe()),t(!0)}).catch(e=>r(e.message))},[]);let ne=l.useCallback(async()=>{s(await me()),u(await fe())},[]);async function T(e){let t=await O(e.id);f(e),g(Math.min(t.idx||0,e.items.length-1)),b(null)}async function re(){let e=await de();if(!e.length)return;let t=m(),n=new Map(t.map(e=>[e.id,e])),r=e.map(e=>n.get(e)).filter(Boolean);r.length&&(f({id:`__review__`,title:`Bugün tekrar`,items:r,review:!0}),g(0),b(null))}async function ie(){f(null),await ne()}async function ae(e){let t=d.items[h];await D(t.id,e),d.review||await k(d.id,h,t.id),b(e)}async function oe(){let e=d.items.length,t=Math.min(e-1,h+1);g(t),b(null),d.review||await k(d.id,t)}function se(){g(e=>Math.max(0,e-1)),b(null)}if(n)return _jsx(`div`,{className:`app`,children:_jsxs(`div`,{className:`state-msg`,children:[`⚠️ `,n]})});if(!e)return _jsx(`div`,{className:`app`,children:_jsxs(`div`,{className:`state-msg`,children:[_jsx(`div`,{className:`spinner`}),`Veriler yükleniyor…`]})});if(d){let e=d.items[h],t=d.items.length;return _jsxs(`div`,{className:`app`,children:[_jsxs(`header`,{className:`study-header`,children:[_jsxs(`button`,{className:`btn btn-ghost`,onClick:ie,children:[`← `,d.review?`Ana ekran`:`Modüller`]}),_jsx(`div`,{className:`study-title`,children:d.title}),_jsxs(`div`,{className:`study-progress`,children:[h+1,` / `,t]})]}),_jsx(`div`,{className:`progress-bar`,children:_jsx(`div`,{className:`progress-fill`,style:{width:`${(h+1)/t*100}%`}})}),_jsx(`main`,{className:`study-main`,children:_jsx(Fe,{item:e,onWordClick:t=>{S(t),w(e.en||``)},onGrade:ae,graded:v})}),_jsxs(`footer`,{className:`study-nav`,children:[_jsx(`button`,{className:`btn`,disabled:h===0,onClick:se,children:`← Önceki`}),_jsx(yt,{}),_jsx(`button`,{className:`btn btn-primary`,disabled:h>=t-1,onClick:oe,children:`Sonraki →`})]}),x&&_jsx(_t,{word:x,sentence:C,onClose:()=>S(null),onWordClick:e=>S(e),onNeedSettings:()=>{S(null),te(!0)}})]})}return _jsxs(`div`,{className:`app`,children:[_jsxs(`header`,{className:`home-header`,children:[_jsx(`button`,{className:`settings-btn`,onClick:()=>te(!0),"aria-label":`Ayarlar`,children:`⚙️`}),_jsx(`h1`,{className:`brand`,children:`Sentence Mode`}),_jsx(`p`,{className:`tagline`,children:`Cümle tabanlı İngilizce — gramer renkleriyle`})]}),_jsxs(`div`,{className:`stats-row`,children:[_jsx(St,{n:c.studied,label:`çalışılan`}),_jsx(St,{n:c.learned,label:`öğrenilen`}),_jsx(St,{n:c.due,label:`tekrar bekliyor`,highlight:c.due>0})]}),c.due>0&&_jsxs(`button`,{className:`review-cta`,onClick:re,children:[`🔁 Bugün `,c.due,` cümleyi tekrar et`]}),_jsx(`main`,{className:`home-main`,children:y.filter(e=>i[e]).map(e=>_jsxs(`section`,{className:`level-section`,children:[_jsxs(`h2`,{className:`level-title`,children:[_jsx(`span`,{className:`level-badge`,children:e}),_jsxs(`span`,{className:`level-count`,children:[i[e].length,` modül`]})]}),_jsx(`div`,{className:`module-grid`,children:i[e].map(e=>{let t=o[e.id],n=t?t.doneCount:0,r=Math.round(n/e.count*100);return _jsxs(`button`,{className:`module-tile`,onClick:()=>T(e),children:[_jsx(`span`,{className:`module-name`,children:e.title}),_jsxs(`span`,{className:`module-count`,children:[e.count,` cümle`]}),n>0&&_jsxs(`span`,{className:`module-prog`,children:[_jsx(`span`,{className:`module-prog-bar`,children:_jsx(`span`,{style:{width:r+`%`}})}),_jsxs(`span`,{className:`module-prog-txt`,children:[n,`/`,e.count]})]})]},e.id)})})]},e))}),ee&&_jsx(bt,{onClose:()=>te(!1)})]})}
 
