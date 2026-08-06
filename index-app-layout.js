@@ -1,6 +1,7 @@
-/* index-app-layout.js — v13 TAŞIMASIZ / ÇÖKMESİZ / TEMİZLEMELİ SÜRÜM
+/* index-app-layout.js — v15 TAM SÜRÜM
    İLKE: React'in DOM düğümleri ASLA taşınmaz/silinmez.
-   AI Açıklama kutusu cümle değiştiğinde otomatik temizlenir ve gizlenir.
+   - "📄 Modülü PDF İndir" butonu her zaman ekran üstündeki buton grubunda görünür.
+   - AI Açıklama kutusu cümle değiştiğinde otomatik temizlenir.
 */
 (function(){
   "use strict";
@@ -20,13 +21,15 @@
     +".grade-bar{display:flex !important;gap:6px;align-items:stretch}"
     +".grade-bar .grade-label{display:none !important}"
     +".grade-bar .grade-btn{flex:1;min-height:38px;border-radius:10px;font-weight:800;font-size:13px}"
-    /* GTR + AI'ye Sor */
-    +".dh-ai-row{display:flex;gap:8px;margin:0 0 14px}"
-    +".dh-ai-row .dh-gtr-btn{flex:1;margin:0;justify-content:center}"
-    +".dh-gtr-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid rgba(255,255,255,.16);border-radius:11px;background:#1a2942;color:#cfe0ff;font:800 13px Nunito,system-ui,sans-serif;cursor:pointer}"
+    /* GTR + AI'ye Sor + PDF İndir Buton Satırı */
+    +".dh-ai-row{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap}"
+    +".dh-ai-row .dh-gtr-btn{flex:1;margin:0;justify-content:center;min-width:110px}"
+    +".dh-gtr-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid rgba(255,255,255,.16);border-radius:11px;background:#1a2942;color:#cfe0ff;font:800 12px Nunito,system-ui,sans-serif;cursor:pointer}"
     +".dh-gtr-btn:hover{background:#22344f}"
     +".dh-aiask-btn{background:linear-gradient(135deg,#7c3aed,#4338ca);border-color:#8b5cf6;color:#fff}"
     +".dh-aiask-btn:hover{background:linear-gradient(135deg,#8b4cf7,#4f46e0)}"
+    +".dh-pdf-btn{background:linear-gradient(135deg,#059669,#10b981);border-color:#34d399;color:#fff}"
+    +".dh-pdf-btn:hover{background:linear-gradient(135deg,#047857,#059669)}"
     /* nav */
     +".study-nav{display:none !important}"
     +".dh-nav-trio{display:flex;gap:8px;align-items:center;margin:0 0 14px}"
@@ -55,7 +58,7 @@
     +".card.dh-split>.dh-nav-trio .dh-nav-btn{min-height:31px;padding:5px 9px !important;font-size:12px !important;border-radius:9px !important}"
     +".card.dh-split>.dh-nav-trio .dh-tools-toggle{min-height:31px !important;padding:0 9px !important}"
     +".card.dh-split>.dh-ai-row{grid-column:2;grid-row:3}"
-    +".card.dh-split>.dh-ai-row .dh-gtr-btn{font-size:11px !important;padding:5px 9px !important;min-height:31px}"
+    +".card.dh-split>.dh-ai-row .dh-gtr-btn{font-size:11px !important;padding:5px 7px !important;min-height:31px}"
     +".card.dh-split>.card-actions{grid-column:2;grid-row:4;display:flex;flex-wrap:wrap;gap:6px;align-content:start}"
     +".card.dh-split>.card-actions button{min-height:31px;padding:5px 9px !important;font-size:12px !important;border-radius:9px !important}"
     +"}"
@@ -70,7 +73,7 @@
     +".card.dh-split>.card-en{grid-row:1;grid-column:1;align-self:end;z-index:2;margin:0 !important;padding:7px 11px !important;background:rgba(4,10,24,.62);backdrop-filter:blur(3px);border-radius:0 0 12px 12px;font-size:17px !important;line-height:1.3 !important}"
     +".card.dh-split>.card-tr{margin:2px 0 !important;font-size:14px !important}"
     +".card.dh-split>.card-pron,.card.dh-split>.card-ipa{font-size:11px !important;margin:0 !important}"
-    +".card.dh-split .dh-gtr-btn{margin:2px 0 !important;padding:4px 9px !important;font-size:11px !important}"
+    +".card.dh-split .dh-gtr-btn{margin:2px 0 !important;padding:4px 7px !important;font-size:11px !important}"
     +".dh-nav-trio .dh-nav-btn{min-height:34px;font-size:13px}"
     +".dh-tools-toggle{min-height:34px}"
     +"}";
@@ -90,6 +93,7 @@
     return null;
   }
 
+  /* 🌐 Translate + 🤖 AI'ye Sor + 📄 PDF İndir Buton Satırı */
   function ensureAiRow(c, trio){
     var en=c.querySelector(".card-en");
     if(!en) return;
@@ -101,7 +105,7 @@
       row.id="dhAiRow"; row.className="dh-ai-row";
 
       var gtr=document.createElement("button");
-      gtr.type="button"; gtr.className="dh-gtr-btn"; gtr.textContent="🌐 Google Translate";
+      gtr.type="button"; gtr.className="dh-gtr-btn"; gtr.textContent="🌐 Translate";
       gtr.onclick=function(){
         var t=(en.textContent||"").trim(); if(!t) return;
         try{
@@ -126,9 +130,15 @@
         }catch(e){}
         location.href="./sesdalga.html?en="+encodeURIComponent(t)+"&tr="+encodeURIComponent(tr)+(back?("&back="+encodeURIComponent(back)):"");
       };
+
+      var pdf=document.createElement("button");
+      pdf.type="button"; pdf.className="dh-gtr-btn dh-pdf-btn"; pdf.textContent="📄 PDF İndir";
+      pdf.onclick=function(){ exportModuleToPDF(); };
+
       row.appendChild(stu);
       row.appendChild(gtr);
       row.appendChild(ai);
+      row.appendChild(pdf);
     }
     if(row.previousElementSibling!==anchor || row.parentElement!==anchor.parentElement){
       anchor.insertAdjacentElement("afterend", row);
@@ -187,6 +197,7 @@
       };
       box.appendChild(mk("🎓 Öğretmen",function(){ var c=card(); return c&&(c.querySelector(".teacher-btn")||byText(c,"öğretmen")); }));
       box.appendChild(mk("📉 Zayıf Analiz",function(){ var c=card(); return c&&(c.querySelector(".extra-weak")||byText(c,"zayıf")); }));
+      box.appendChild(mk("📄 Modülü PDF İndir",function(){ exportModuleToPDF(); }));
       box.appendChild(mk("🔍 Detay",function(){ return byText(card(),"detay"); }));
       document.body.appendChild(box);
     }
@@ -223,8 +234,6 @@
         ensureNavTrio(c);
         var trio=document.getElementById("dhNavTrio");
         ensureAiRow(c, trio);
-        
-        // Cümle değiştiyse eski AI açıklama kutusunu güncelle/temizle
         checkAndSyncAiBox(c);
       }
       ensureTools();
@@ -277,6 +286,29 @@ function saveAIToDB(sentence, explanation) {
   });
 }
 
+function getAllAIExplanationsFromDB() {
+  return new Promise(function(resolve) {
+    let req = indexedDB.open("DilHaritaAI_DB", 1);
+    req.onsuccess = function(e) {
+      let db = e.target.result;
+      if (!db.objectStoreNames.contains("ai_explanations")) return resolve({});
+      let tx = db.transaction(["ai_explanations"], "readonly");
+      let store = tx.objectStore("ai_explanations");
+      let cursorReq = store.openCursor();
+      let map = {};
+      cursorReq.onsuccess = function() {
+        let cursor = cursorReq.result;
+        if (cursor) {
+          map[cursor.key] = cursor.value.explanation;
+          cursor.continue();
+        } else resolve(map);
+      };
+      cursorReq.onerror = function() { resolve({}); };
+    };
+    req.onerror = function() { resolve({}); };
+  });
+}
+
 function renderResultBox(sentence, text, tag) {
   let old = document.getElementById("dhAiResultBox");
   if (old) old.remove();
@@ -293,7 +325,6 @@ function renderResultBox(sentence, text, tag) {
   card.appendChild(box);
 }
 
-// Cümle değiştiğinde eski AI kutusunu temizler veya bu cümle için önbellek varsa getirir
 async function checkAndSyncAiBox(card) {
   let sentenceEl = card.querySelector(".card-en");
   let sentence = sentenceEl ? sentenceEl.innerText.trim() : "";
@@ -342,6 +373,67 @@ function showPasteModal(sentence) {
       renderResultBox(sentence, text, "🤖 AI Açıklaması (IndexedDB'ye kaydedildi)");
     }
   };
+}
+
+/* --- PDF DIŞA AKTARMA FONKSİYONU --- */
+async function exportModuleToPDF() {
+  var modName = document.querySelector(".study-title")?.textContent || "Modul";
+  var aiMap = await getAllAIExplanationsFromDB();
+  
+  var sentences = [];
+  try {
+    if (window._sentencesCache) {
+      var key = modName.toLowerCase().replace(/\s+/g," ").trim();
+      sentences = window._sentencesCache.filter(function(s){
+        var m = (s.module||"").toLowerCase().replace(/\s+/g," ").trim();
+        return m === key || (key && m.indexOf(key)===0) || (m && key.indexOf(m)===0);
+      });
+    }
+  } catch(e){}
+
+  if (!sentences.length) {
+    var cards = document.querySelectorAll(".card");
+    cards.forEach(c => {
+      var en = c.querySelector(".card-en")?.innerText.trim();
+      var tr = c.querySelector(".card-tr")?.innerText.trim();
+      if (en) sentences.push({ en: en, tr: tr });
+    });
+  }
+
+  var win = window.open("", "_blank");
+  var html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${modName} - Ders Özeti</title>
+      <style>
+        body { font-family: system-ui, sans-serif; padding: 20px; color: #1e293b; line-height: 1.5; }
+        h1 { color: #4338ca; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+        .item { margin-bottom: 20px; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; page-break-inside: avoid; }
+        .en { font-size: 16px; font-weight: bold; color: #0f172a; }
+        .tr { font-size: 14px; color: #475569; margin-top: 4px; }
+        .ai { margin-top: 8px; padding: 8px; background: #f8fafc; border-left: 3px solid #8b5cf6; font-size: 12px; color: #334155; white-space: pre-wrap; }
+        .ai-tag { font-weight: bold; color: #7c3aed; margin-bottom: 4px; }
+      </style>
+    </head>
+    <body>
+      <h1>${modName} - Cümle ve AI Çalışma Notları</h1>
+      ${sentences.map((s, i) => `
+        <div class="item">
+          <div class="en">${i + 1}. ${s.en}</div>
+          ${s.tr ? `<div class="tr"><b>TR:</b> ${s.tr}</div>` : ''}
+          ${aiMap[s.en] ? `<div class="ai"><div class="ai-tag">🤖 AI Açıklaması:</div>${aiMap[s.en]}</div>` : ''}
+        </div>
+      `).join('')}
+      <script>
+        window.onload = function() { window.print(); };
+      </script>
+    </body>
+    </html>
+  `;
+
+  win.document.write(html);
+  win.document.close();
 }
 
 document.addEventListener("click", async function(e) {
