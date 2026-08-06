@@ -1,6 +1,5 @@
-/* index-app-layout.js — v15 TAM SÜRÜM
-   İLKE: React'in DOM düğümleri ASLA taşınmaz/silinmez.
-   - "📄 Modülü PDF İndir" butonu her zaman ekran üstündeki buton grubunda görünür.
+/* index-app-layout.js — v16 TAM SÜRÜM
+   - Modüldeki TÜM cümleleri, TR karşılıklarını ve IndexedDB'deki AI açıklamalarını derleyip PDF yapar.
    - AI Açıklama kutusu cümle değiştiğinde otomatik temizlenir.
 */
 (function(){
@@ -375,12 +374,14 @@ function showPasteModal(sentence) {
   };
 }
 
-/* --- PDF DIŞA AKTARMA FONKSİYONU --- */
+/* --- TÜM MODÜL CÜMLELERİNİ + TR + AI NOTLARINI DÖKEN PDF DIŞA AKTARMA --- */
 async function exportModuleToPDF() {
-  var modName = document.querySelector(".study-title")?.textContent || "Modul";
+  var modName = document.querySelector(".study-title")?.textContent || "Modül Cümleleri";
   var aiMap = await getAllAIExplanationsFromDB();
   
   var sentences = [];
+  
+  // 1. Yöntem: Cümle veritabanından çekme
   try {
     if (window._sentencesCache) {
       var key = modName.toLowerCase().replace(/\s+/g," ").trim();
@@ -391,13 +392,34 @@ async function exportModuleToPDF() {
     }
   } catch(e){}
 
+  // 2. Yöntem: Cümle veritabanı eşleşmezse veya dinamik yüklendiyse JSON/DOM taraması
+  if (!sentences.length) {
+    try {
+      var res = await fetch("./data/sentences.json");
+      if (res.ok) {
+        var allData = await res.json();
+        var keyMod = modName.toLowerCase().replace(/\s+/g," ").trim();
+        sentences = allData.filter(function(s){
+          var m = (s.module||"").toLowerCase().replace(/\s+/g," ").trim();
+          return m === keyMod || (keyMod && m.indexOf(keyMod)===0) || (m && keyMod.indexOf(m)===0);
+        });
+      }
+    } catch(e){}
+  }
+
+  // 3. Yedek Yöntem: Yine de bulunamazsa ekrandaki karttan alma
   if (!sentences.length) {
     var cards = document.querySelectorAll(".card");
-    cards.forEach(c => {
+    cards.forEach(function(c) {
       var en = c.querySelector(".card-en")?.innerText.trim();
       var tr = c.querySelector(".card-tr")?.innerText.trim();
       if (en) sentences.push({ en: en, tr: tr });
     });
+  }
+
+  if (!sentences.length) {
+    alert("Dışa aktarılacak cümle bulunamadı.");
+    return;
   }
 
   var win = window.open("", "_blank");
@@ -407,22 +429,22 @@ async function exportModuleToPDF() {
     <head>
       <title>${modName} - Ders Özeti</title>
       <style>
-        body { font-family: system-ui, sans-serif; padding: 20px; color: #1e293b; line-height: 1.5; }
-        h1 { color: #4338ca; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
-        .item { margin-bottom: 20px; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; page-break-inside: avoid; }
-        .en { font-size: 16px; font-weight: bold; color: #0f172a; }
+        body { font-family: system-ui, -apple-system, sans-serif; padding: 24px; color: #0f172a; line-height: 1.6; }
+        h1 { color: #4338ca; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; font-size: 22px; margin-bottom: 20px; }
+        .item { margin-bottom: 18px; padding: 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; page-break-inside: avoid; }
+        .en { font-size: 16px; font-weight: 700; color: #1e293b; }
         .tr { font-size: 14px; color: #475569; margin-top: 4px; }
-        .ai { margin-top: 8px; padding: 8px; background: #f8fafc; border-left: 3px solid #8b5cf6; font-size: 12px; color: #334155; white-space: pre-wrap; }
-        .ai-tag { font-weight: bold; color: #7c3aed; margin-bottom: 4px; }
+        .ai { margin-top: 10px; padding: 10px 12px; background: #f8fafc; border-left: 4px solid #8b5cf6; font-size: 12.5px; color: #334155; white-space: pre-wrap; border-radius: 0 6px 6px 0; }
+        .ai-tag { font-weight: 800; color: #6d28d9; margin-bottom: 4px; font-size: 11px; text-transform: uppercase; }
       </style>
     </head>
     <body>
-      <h1>${modName} - Cümle ve AI Çalışma Notları</h1>
+      <h1>${modName} — Çalışma Notları (${sentences.length} Cümle)</h1>
       ${sentences.map((s, i) => `
         <div class="item">
           <div class="en">${i + 1}. ${s.en}</div>
           ${s.tr ? `<div class="tr"><b>TR:</b> ${s.tr}</div>` : ''}
-          ${aiMap[s.en] ? `<div class="ai"><div class="ai-tag">🤖 AI Açıklaması:</div>${aiMap[s.en]}</div>` : ''}
+          ${aiMap[s.en] ? `<div class="ai"><div class="ai-tag">🤖 AI Açıklaması</div>${aiMap[s.en]}</div>` : ''}
         </div>
       `).join('')}
       <script>
