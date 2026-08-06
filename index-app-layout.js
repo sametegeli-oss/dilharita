@@ -1,8 +1,5 @@
-/* index-app-layout.js — v17 GEMINI MARKDOWN DİZAYN SÜRÜMÜ
-   - Gemini'den gelen Markdown (**, ###, *, ---, vb.) metinlerini 
-     tam olarak Gemini arayüzündeki gibi şık HTML biçimine dönüştürür.
-   - AI Açıklama kutusu cümle değiştiğinde otomatik temizlenir.
-   - Modüldeki TÜM cümleleri, TR karşılıklarını ve AI notlarını PDF olarak indirir.
+/* index-app-layout.js — v18 TAM MARKDOWN DÖNÜŞTÜRÜCÜ SÜRÜM
+   - `code` blokları, `####` başlıklar, `*` ve `-` alt listelerini tam Gemini dizaynında derler.
 */
 (function(){
   "use strict";
@@ -22,7 +19,7 @@
     +".grade-bar{display:flex !important;gap:6px;align-items:stretch}"
     +".grade-bar .grade-label{display:none !important}"
     +".grade-bar .grade-btn{flex:1;min-height:38px;border-radius:10px;font-weight:800;font-size:13px}"
-    /* GTR + AI'ye Sor + PDF İndir Buton Satırı */
+    /* GTR + AI'ye Sor + PDF İndir Satırı */
     +".dh-ai-row{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap}"
     +".dh-ai-row .dh-gtr-btn{flex:1;margin:0;justify-content:center;min-width:110px}"
     +".dh-gtr-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid rgba(255,255,255,.16);border-radius:11px;background:#1a2942;color:#cfe0ff;font:800 12px Nunito,system-ui,sans-serif;cursor:pointer}"
@@ -50,16 +47,16 @@
     +".dh-tools-box .dh-pbtn:hover{background:#334155}"
     +".dh-tools-box .wd-tools-row{margin:0 !important}"
     
-    /* GEMINI MODELİİLE BİREBİR ŞIK DİZAYN VE STİLLER */
+    /* GEMINI MODELİİLE BİREBİR STİLLER */
     +"#dhAiResultBox { font-family: 'Nunito', system-ui, -apple-system, sans-serif !important; color: #f1f5f9 !important; font-size: 14px !important; line-height: 1.65 !important; }"
-    +"#dhAiResultBox h3 { font-size: 16px !important; font-weight: 800 !important; color: #f8fafc !important; margin: 16px 0 8px 0 !important; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px; }"
-    +"#dhAiResultBox h4 { font-size: 14px !important; font-weight: 700 !important; color: #cbd5e1 !important; margin: 12px 0 6px 0 !important; }"
+    +"#dhAiResultBox h3, #dhAiResultBox h4 { font-size: 15px !important; font-weight: 800 !important; color: #f8fafc !important; margin: 16px 0 8px 0 !important; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px; }"
     +"#dhAiResultBox p { margin: 6px 0 !important; }"
     +"#dhAiResultBox strong { color: #ffffff !important; font-weight: 700 !important; }"
-    +"#dhAiResultBox em { color: #e2e8f0 !important; font-style: italic !important; }"
+    +"#dhAiResultBox em { color: #cbd5e1 !important; font-style: italic !important; }"
+    +"#dhAiResultBox code { background: rgba(255, 255, 255, 0.1) !important; color: #e2e8f0 !important; padding: 3px 7px !important; border-radius: 6px !important; font-family: monospace, sans-serif !important; font-size: 13px !important; display: inline-block !important; margin: 2px 0 !important; border: 1px solid rgba(255,255,255,0.05); }"
     +"#dhAiResultBox blockquote { margin: 8px 0 !important; padding: 6px 12px !important; background: rgba(255,255,255,0.03) !important; border-left: 3px solid #8b5cf6 !important; border-radius: 0 6px 6px 0 !important; color: #e2e8f0 !important; font-style: italic !important; }"
     +"#dhAiResultBox ul, #dhAiResultBox ol { margin: 6px 0 10px 20px !important; padding: 0 !important; }"
-    +"#dhAiResultBox li { margin-bottom: 4px !important; list-style-type: disc !important; }"
+    +"#dhAiResultBox li { margin-bottom: 6px !important; list-style-type: disc !important; }"
     +"#dhAiResultBox hr { border: 0 !important; height: 1px !important; background: rgba(255,255,255,0.1) !important; margin: 16px 0 !important; }"
 
     /* 2 SÜTUN */
@@ -107,7 +104,6 @@
     return null;
   }
 
-  /* 🌐 Translate + 🤖 AI'ye Sor + 📄 PDF İndir Satırı */
   function ensureAiRow(c, trio){
     var en=c.querySelector(".card-en");
     if(!en) return;
@@ -263,31 +259,31 @@
   if(document.readyState!=="loading") boot(); else document.addEventListener("DOMContentLoaded",boot);
 })();
 
-/* --- MARKDOWN PARSER (Gemini Tarzı HTML Dönüştürücü) --- */
+/* --- MARKDOWN PARSER (Gemini Kod Blokları ve Başlık Düzeltici) --- */
 function parseMarkdownToHTML(markdown) {
   if (!markdown) return "";
   let html = markdown
-    // XSS ve karakter koruma
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    // Başlıklar
+    // Başlıklar (#### dahil hepsini destekler)
+    .replace(/^#### (.*$)/gim, "<h4>$1</h4>")
     .replace(/^### (.*$)/gim, "<h3>$1</h3>")
     .replace(/^## (.*$)/gim, "<h3>$1</h3>")
     .replace(/^# (.*$)/gim, "<h3>$1</h3>")
-    // Çizgi
+    // Çizgiler
     .replace(/^---$/gim, "<hr/>")
-    // Kalın ve İtalik metinler
+    // Inline Code (Ters tırnaklar `` `No sooner...` ``)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    // Kalın ve İtalik Metinler
     .replace(/\*\*\*(.*?)\*\*\*/g, "<strong><em>$1</em></strong>")
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    // Alıntı / Blockquote
+    // Blockquote
     .replace(/^&gt; (.*$)/gim, "blockquote>$1</blockquote>")
-    // Liste öğeleri (bullet points)
-    .replace(/^\* (.*$)/gim, "<li>$1</li>")
-    .replace(/^- (.*$)/gim, "<li>$1</li>")
-    // Numaralı liste öğeleri
+    // Liste Öğeleri (* veya -)
+    .replace(/^\s*\* (.*$)/gim, "<li>$1</li>")
+    .replace(/^\s*- (.*$)/gim, "<li>$1</li>")
     .replace(/^\d+\.\s+(.*$)/gim, "<li>$1</li>");
 
-  // Paragraf ve liste yapılandırmaları
   let lines = html.split("\n");
   let inList = false;
   let result = [];
@@ -299,7 +295,7 @@ function parseMarkdownToHTML(markdown) {
       result.push(trimmed);
     } else {
       if (inList) { result.push("</ul>"); inList = false; }
-      if (trimmed.startsWith("<h3>") || trimmed.startsWith("<hr/>") || trimmed.startsWith("<blockquote>")) {
+      if (trimmed.startsWith("<h3>") || trimmed.startsWith("<h4>") || trimmed.startsWith("<hr/>") || trimmed.startsWith("<blockquote>")) {
         result.push(trimmed);
       } else if (trimmed.length > 0) {
         result.push("<p>" + trimmed + "</p>");
@@ -378,7 +374,6 @@ function renderResultBox(sentence, rawMarkdownText, tag) {
   let card = document.querySelector(".card");
   if (!card) return;
 
-  // Markdown işaretlerini şık Gemini HTML formatına çeviriyoruz
   let formattedHTML = parseMarkdownToHTML(rawMarkdownText);
 
   let box = document.createElement("div");
@@ -419,7 +414,7 @@ function showPasteModal(sentence) {
     <div style="width:100%;max-width:500px;background:#0f172a;border:2px solid #8b5cf6;border-radius:16px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.8);color:#fff;font-family:sans-serif;">
       <div style="font-size:15px;color:#a78bfa;font-weight:800;margin-bottom:8px;">📋 Gemini Cevabını Yapıştırın</div>
       <p style="font-size:12px;color:#94a3b8;margin-bottom:12px;">Gemini'den kopyaladığınız açıklamayı aşağıdaki kutuya yapıştırıp kaydedin.</p>
-      <textarea id="dhAiTextarea" placeholder="Cevabı buraya yapıştırın (Ctrl+V)..." style="width:100%;height:130px;background:#1e293b;color:#fff;border:1px solid #475569;border-radius:8px;padding:10px;font-size:13px;resize:none;outline:none;box-sizing:border-box;"></textarea>
+      <textarea id="dhAiTextarea" placeholder="Cevabı buraya yapıştırın (Ctrl+V)..." style="width:100%;height:120px;background:#1e293b;color:#fff;border:1px solid #475569;border-radius:8px;padding:10px;font-size:13px;resize:none;outline:none;box-sizing:border-box;"></textarea>
       <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end;">
         <button id="dhAiCancel" style="padding:8px 16px;font-size:13px;background:#334155;color:#fff;border:none;border-radius:8px;cursor:pointer;">İptal</button>
         <button id="dhAiSave" style="padding:8px 18px;font-size:13px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-weight:800;cursor:pointer;">Kaydet ve IndexedDB'ye Ekle</button>
@@ -440,7 +435,7 @@ function showPasteModal(sentence) {
   };
 }
 
-/* --- TÜM MODÜL CÜMLELERİNİ + TR + AI NOTLARINI DÖKEN PDF DIŞA AKTARMA --- */
+/* --- PDF DIŞA AKTARMA --- */
 async function exportModuleToPDF() {
   var modName = document.querySelector(".study-title")?.textContent || "Modül Cümleleri";
   var aiMap = await getAllAIExplanationsFromDB();
@@ -498,7 +493,8 @@ async function exportModuleToPDF() {
         .tr { font-size: 14px; color: #475569; margin-top: 4px; }
         .ai { margin-top: 10px; padding: 10px 12px; background: #f8fafc; border-left: 4px solid #8b5cf6; font-size: 12.5px; color: #334155; border-radius: 0 6px 6px 0; }
         .ai-tag { font-weight: 800; color: #6d28d9; margin-bottom: 4px; font-size: 11px; text-transform: uppercase; }
-        .ai h3 { font-size: 14px; font-weight: bold; margin: 8px 0 4px 0; color: #1e293b; }
+        .ai h3, .ai h4 { font-size: 14px; font-weight: bold; margin: 8px 0 4px 0; color: #1e293b; }
+        .ai code { background: #e2e8f0; padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 12px; }
         .ai p { margin: 4px 0; }
         .ai ul { margin: 4px 0 8px 20px; padding: 0; }
       </style>
