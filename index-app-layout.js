@@ -126,22 +126,6 @@
 
       var ai=document.createElement("button");
       ai.type="button"; ai.className="dh-gtr-btn dh-aiask-btn"; ai.textContent="🤖 AI'ye Sor";
-      ai.onclick=function(){
-        var t=(en.textContent||"").trim(); if(!t) return;
-        var prompt=t+" cümlesindeki yapıları öğret";
-        try{
-          if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(prompt);
-          else{ var ta=document.createElement("textarea"); ta.value=prompt; ta.style.cssText="position:fixed;opacity:0"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
-        }catch(e){}
-        try{
-          var n=document.createElement("div");
-          n.textContent="📋 Prompt kopyalandı — Gemini'de yapıştır (Ctrl/Cmd+V) ve Enter'a bas";
-          n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #7c3aed;padding:11px 16px;border-radius:12px;font:700 13px system-ui;max-width:90vw;text-align:center";
-          document.body.appendChild(n);
-          setTimeout(function(){ n.remove(); },3600);
-        }catch(e){}
-        window.open("https://gemini.google.com/app","_blank");
-      };
 
       /* 🎙️ Telaffuz Stüdyosu: karttaki cümleyi sesdalga'ya taşır; geri dönüş
          mod-autopen'in ?q= yürüyüşüyle AYNI karta gelir */
@@ -273,4 +257,123 @@
     var n=0,t=setInterval(function(){ apply(); if(++n>10) clearInterval(t); },400);
   }
   if(document.readyState!=="loading") boot(); else document.addEventListener("DOMContentLoaded",boot);
+})();
+
+/* --- AI'YE SOR & MANUEL YAPIŞTIRMA KUTUSU KÖPRÜSÜ (EKLENEN KISIM) --- */
+(function() {
+  "use strict";
+
+  // IndexedDB İşlemleri
+  function getAIFromDB(sentence) {
+    return new Promise(function(resolve) {
+      let req = indexedDB.open("DilHaritaAI_DB", 1);
+      req.onupgradeneeded = function(e) {
+        let db = e.target.result;
+        if (!db.objectStoreNames.contains("ai_explanations")) {
+          db.createObjectStore("ai_explanations", { keyPath: "sentence" });
+        }
+      };
+      req.onsuccess = function(e) {
+        let db = e.target.result;
+        let tx = db.transaction(["ai_explanations"], "readonly");
+        let store = tx.objectStore("ai_explanations");
+        let getReq = store.get(sentence);
+        getReq.onsuccess = function() { resolve(getReq.result ? getReq.result.explanation : null); };
+        getReq.onerror = function() { resolve(null); };
+      };
+      req.onerror = function() { resolve(null); };
+    });
+  }
+
+  function saveAIToDB(sentence, explanation) {
+    return new Promise(function(resolve) {
+      let req = indexedDB.open("DilHaritaAI_DB", 1);
+      req.onsuccess = function(e) {
+        let db = e.target.result;
+        let tx = db.transaction(["ai_explanations"], "readwrite");
+        let store = tx.objectStore("ai_explanations");
+        store.put({ sentence: sentence, explanation: explanation, timestamp: new Date().toISOString() });
+        tx.oncomplete = function() { resolve(true); };
+      };
+    });
+  }
+
+  // Ekrana Bağımsız Yapıştırma Modalı Ekleme
+  function showPasteModal(sentence) {
+    let old = document.getElementById("dhAiModal");
+    if (old) old.remove();
+
+    let modal = document.createElement("div");
+    modal.id = "dhAiModal";
+    modal.style.cssText = "position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:16px;";
+    modal.innerHTML = `
+      <div style="width:100%;max-width:500px;background:#0f172a;border:2px solid #8b5cf6;border-radius:16px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.8);color:#fff;font-family:sans-serif;">
+        <div style="font-size:15px;color:#a78bfa;font-weight:800;margin-bottom:8px;">📋 Gemini Cevabını Yapıştırın</div>
+        <p style="font-size:12px;color:#94a3b8;margin-bottom:12px;">Gemini'den kopyaladığınız açıklamayı aşağıdaki kutuya yapıştırıp kaydedin.</p>
+        <textarea id="dhAiTextarea" placeholder="Cevabı buraya yapıştırın (Ctrl+V)..." style="width:100%;height:120px;background:#1e293b;color:#fff;border:1px solid #475569;border-radius:8px;padding:10px;font-size:13px;resize:none;outline:none;box-sizing:border-box;"></textarea>
+        <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end;">
+          <button id="dhAiCancel" style="padding:8px 16px;font-size:13px;background:#334155;color:#fff;border:none;border-radius:8px;cursor:pointer;">İptal</button>
+          <button id="dhAiSave" style="padding:8px 18px;font-size:13px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-weight:800;cursor:pointer;">Kaydet ve IndexedDB'ye Ekle</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById("dhAiCancel").onclick = function() { modal.remove(); };
+    document.getElementById("dhAiSave").onclick = async function() {
+      let text = document.getElementById("dhAiTextarea").value.trim();
+      if (text) {
+        await saveAIToDB(sentence, text);
+        modal.remove();
+        renderResultBox(sentence, text, "🤖 AI Açıklaması (IndexedDB'ye kaydedildi)");
+      }
+    };
+  }
+
+  // Sonuç Alanını Ekrana Çizme
+  function renderResultBox(sentence, text, tag) {
+    let old = document.getElementById("dhAiResultBox");
+    if (old) old.remove();
+
+    let card = document.querySelector(".card");
+    if (!card) return;
+
+    let box = document.createElement("div");
+    box.id = "dhAiResultBox";
+    box.style.cssText = "margin-top:14px;padding:14px;background:rgba(15,23,42,0.9);border-radius:12px;border:1px solid #3b82f6;color:#e2e8f0;font-size:13px;line-height:1.5;white-space:pre-wrap;";
+    box.innerHTML = `<div style="margin-bottom:8px;"><span style="background:#10b981;color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:800;">${tag}</span></div>${text}`;
+    
+    card.appendChild(box);
+  }
+
+  // "AI'ye Sor" Butonlarının Tıklamasını Dinleme ve Yönlendirme
+  document.addEventListener("click", async function(e) {
+    let btn = e.target.closest(".dh-aiask-btn, .ai-sor-btn, button");
+    if (!btn || !btn.textContent.includes("AI'ye Sor")) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    let card = document.querySelector(".card");
+    let sentenceEl = card ? card.querySelector(".card-en") : null;
+    let sentence = sentenceEl ? sentenceEl.innerText.trim() : "";
+
+    if (!sentence) return;
+
+    // 1. Önce IndexedDB'ye bak
+    let cached = await getAIFromDB(sentence);
+    if (cached) {
+      renderResultBox(sentence, cached, "🤖 AI Açıklaması (IndexedDB'den yüklendi)");
+      return;
+    }
+
+    // 2. Yoksa Gemini'yi aç ve Yapıştırma Kutusu (Modal) Göster
+    let prompt = `Lütfen şu İngilizce cümleyi detaylıca açıkla ve Türkçeye çevir: "${sentence}"`;
+    try { navigator.clipboard.writeText(prompt); } catch(err) {}
+
+    window.open(`https://gemini.google.com/app`, "_blank");
+    showPasteModal(sentence);
+  }, true);
+
 })();
