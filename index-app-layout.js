@@ -1,6 +1,8 @@
-/* index-app-layout.js — v16 TAM SÜRÜM
-   - Modüldeki TÜM cümleleri, TR karşılıklarını ve IndexedDB'deki AI açıklamalarını derleyip PDF yapar.
+/* index-app-layout.js — v17 GEMINI MARKDOWN DİZAYN SÜRÜMÜ
+   - Gemini'den gelen Markdown (**, ###, *, ---, vb.) metinlerini 
+     tam olarak Gemini arayüzündeki gibi şık HTML biçimine dönüştürür.
    - AI Açıklama kutusu cümle değiştiğinde otomatik temizlenir.
+   - Modüldeki TÜM cümleleri, TR karşılıklarını ve AI notlarını PDF olarak indirir.
 */
 (function(){
   "use strict";
@@ -13,7 +15,7 @@
     /* genel */
      ".legend,.legend-item,.legend-dot{display:none !important}"
     +"@media (orientation:landscape){.study-header,.study-progress{display:none !important}}"
-    /* React'in Öğretmen/Zayıf butonları ana ekranda gizli — panelde proxy'leri var */
+    /* React'in Öğretmen/Zayıf butonları ana ekranda gizli */
     +".card-actions .teacher-btn,.card-actions .extra-weak,button.teacher-btn,button.extra-weak{display:none !important}"
     +".extra-weak-btn,.sm-teacher-btn{display:none !important}"
     /* grade-bar her modda kompakt yatay */
@@ -47,6 +49,19 @@
     +".dh-tools-box .dh-pbtn{width:100%;min-height:42px;border-radius:10px;border:1px solid rgba(255,255,255,.15);font:800 13px Nunito,system-ui;cursor:pointer;background:#1e293b;color:#f8fafc}"
     +".dh-tools-box .dh-pbtn:hover{background:#334155}"
     +".dh-tools-box .wd-tools-row{margin:0 !important}"
+    
+    /* GEMINI MODELİİLE BİREBİR ŞIK DİZAYN VE STİLLER */
+    +"#dhAiResultBox { font-family: 'Nunito', system-ui, -apple-system, sans-serif !important; color: #f1f5f9 !important; font-size: 14px !important; line-height: 1.65 !important; }"
+    +"#dhAiResultBox h3 { font-size: 16px !important; font-weight: 800 !important; color: #f8fafc !important; margin: 16px 0 8px 0 !important; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px; }"
+    +"#dhAiResultBox h4 { font-size: 14px !important; font-weight: 700 !important; color: #cbd5e1 !important; margin: 12px 0 6px 0 !important; }"
+    +"#dhAiResultBox p { margin: 6px 0 !important; }"
+    +"#dhAiResultBox strong { color: #ffffff !important; font-weight: 700 !important; }"
+    +"#dhAiResultBox em { color: #e2e8f0 !important; font-style: italic !important; }"
+    +"#dhAiResultBox blockquote { margin: 8px 0 !important; padding: 6px 12px !important; background: rgba(255,255,255,0.03) !important; border-left: 3px solid #8b5cf6 !important; border-radius: 0 6px 6px 0 !important; color: #e2e8f0 !important; font-style: italic !important; }"
+    +"#dhAiResultBox ul, #dhAiResultBox ol { margin: 6px 0 10px 20px !important; padding: 0 !important; }"
+    +"#dhAiResultBox li { margin-bottom: 4px !important; list-style-type: disc !important; }"
+    +"#dhAiResultBox hr { border: 0 !important; height: 1px !important; background: rgba(255,255,255,0.1) !important; margin: 16px 0 !important; }"
+
     /* 2 SÜTUN */
     +"@media (orientation:landscape),(min-width:680px){"
     +".card.dh-split{display:grid !important;grid-template-columns:1.55fr .85fr;gap:10px 16px;align-items:start}"
@@ -92,7 +107,7 @@
     return null;
   }
 
-  /* 🌐 Translate + 🤖 AI'ye Sor + 📄 PDF İndir Buton Satırı */
+  /* 🌐 Translate + 🤖 AI'ye Sor + 📄 PDF İndir Satırı */
   function ensureAiRow(c, trio){
     var en=c.querySelector(".card-en");
     if(!en) return;
@@ -248,7 +263,55 @@
   if(document.readyState!=="loading") boot(); else document.addEventListener("DOMContentLoaded",boot);
 })();
 
-/* --- AI'YE SOR, DİNAMİK TEMİZLEME & INDEXEDDB KÖPRÜSÜ --- */
+/* --- MARKDOWN PARSER (Gemini Tarzı HTML Dönüştürücü) --- */
+function parseMarkdownToHTML(markdown) {
+  if (!markdown) return "";
+  let html = markdown
+    // XSS ve karakter koruma
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    // Başlıklar
+    .replace(/^### (.*$)/gim, "<h3>$1</h3>")
+    .replace(/^## (.*$)/gim, "<h3>$1</h3>")
+    .replace(/^# (.*$)/gim, "<h3>$1</h3>")
+    // Çizgi
+    .replace(/^---$/gim, "<hr/>")
+    // Kalın ve İtalik metinler
+    .replace(/\*\*\*(.*?)\*\*\*/g, "<strong><em>$1</em></strong>")
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    // Alıntı / Blockquote
+    .replace(/^&gt; (.*$)/gim, "blockquote>$1</blockquote>")
+    // Liste öğeleri (bullet points)
+    .replace(/^\* (.*$)/gim, "<li>$1</li>")
+    .replace(/^- (.*$)/gim, "<li>$1</li>")
+    // Numaralı liste öğeleri
+    .replace(/^\d+\.\s+(.*$)/gim, "<li>$1</li>");
+
+  // Paragraf ve liste yapılandırmaları
+  let lines = html.split("\n");
+  let inList = false;
+  let result = [];
+
+  lines.forEach(line => {
+    let trimmed = line.trim();
+    if (trimmed.startsWith("<li>")) {
+      if (!inList) { result.push("<ul>"); inList = true; }
+      result.push(trimmed);
+    } else {
+      if (inList) { result.push("</ul>"); inList = false; }
+      if (trimmed.startsWith("<h3>") || trimmed.startsWith("<hr/>") || trimmed.startsWith("<blockquote>")) {
+        result.push(trimmed);
+      } else if (trimmed.length > 0) {
+        result.push("<p>" + trimmed + "</p>");
+      }
+    }
+  });
+
+  if (inList) result.push("</ul>");
+  return result.join("");
+}
+
+/* --- AI'YE SOR & INDEXEDDB KÖPRÜSÜ --- */
 var currentLoadedSentence = "";
 
 function getAIFromDB(sentence) {
@@ -308,18 +371,21 @@ function getAllAIExplanationsFromDB() {
   });
 }
 
-function renderResultBox(sentence, text, tag) {
+function renderResultBox(sentence, rawMarkdownText, tag) {
   let old = document.getElementById("dhAiResultBox");
   if (old) old.remove();
 
   let card = document.querySelector(".card");
   if (!card) return;
 
+  // Markdown işaretlerini şık Gemini HTML formatına çeviriyoruz
+  let formattedHTML = parseMarkdownToHTML(rawMarkdownText);
+
   let box = document.createElement("div");
   box.id = "dhAiResultBox";
   box.dataset.sentence = sentence;
-  box.style.cssText = "margin-top:14px;padding:14px;background:rgba(15,23,42,0.9);border-radius:12px;border:1px solid #3b82f6;color:#e2e8f0;font-size:13px;line-height:1.5;white-space:pre-wrap;grid-column:1 / -1;";
-  box.innerHTML = `<div style="margin-bottom:8px;"><span style="background:#10b981;color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:800;">${tag}</span></div>${text}`;
+  box.style.cssText = "margin-top:16px;padding:16px;background:rgba(15,23,42,0.95);border-radius:14px;border:1px solid #3b82f6;color:#f1f5f9;grid-column:1 / -1;";
+  box.innerHTML = `<div style="margin-bottom:12px;"><span style="background:#10b981;color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:800;">${tag}</span></div>` + formattedHTML;
   
   card.appendChild(box);
 }
@@ -353,7 +419,7 @@ function showPasteModal(sentence) {
     <div style="width:100%;max-width:500px;background:#0f172a;border:2px solid #8b5cf6;border-radius:16px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.8);color:#fff;font-family:sans-serif;">
       <div style="font-size:15px;color:#a78bfa;font-weight:800;margin-bottom:8px;">📋 Gemini Cevabını Yapıştırın</div>
       <p style="font-size:12px;color:#94a3b8;margin-bottom:12px;">Gemini'den kopyaladığınız açıklamayı aşağıdaki kutuya yapıştırıp kaydedin.</p>
-      <textarea id="dhAiTextarea" placeholder="Cevabı buraya yapıştırın (Ctrl+V)..." style="width:100%;height:120px;background:#1e293b;color:#fff;border:1px solid #475569;border-radius:8px;padding:10px;font-size:13px;resize:none;outline:none;box-sizing:border-box;"></textarea>
+      <textarea id="dhAiTextarea" placeholder="Cevabı buraya yapıştırın (Ctrl+V)..." style="width:100%;height:130px;background:#1e293b;color:#fff;border:1px solid #475569;border-radius:8px;padding:10px;font-size:13px;resize:none;outline:none;box-sizing:border-box;"></textarea>
       <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end;">
         <button id="dhAiCancel" style="padding:8px 16px;font-size:13px;background:#334155;color:#fff;border:none;border-radius:8px;cursor:pointer;">İptal</button>
         <button id="dhAiSave" style="padding:8px 18px;font-size:13px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-weight:800;cursor:pointer;">Kaydet ve IndexedDB'ye Ekle</button>
@@ -380,8 +446,6 @@ async function exportModuleToPDF() {
   var aiMap = await getAllAIExplanationsFromDB();
   
   var sentences = [];
-  
-  // 1. Yöntem: Cümle veritabanından çekme
   try {
     if (window._sentencesCache) {
       var key = modName.toLowerCase().replace(/\s+/g," ").trim();
@@ -392,7 +456,6 @@ async function exportModuleToPDF() {
     }
   } catch(e){}
 
-  // 2. Yöntem: Cümle veritabanı eşleşmezse veya dinamik yüklendiyse JSON/DOM taraması
   if (!sentences.length) {
     try {
       var res = await fetch("./data/sentences.json");
@@ -407,7 +470,6 @@ async function exportModuleToPDF() {
     } catch(e){}
   }
 
-  // 3. Yedek Yöntem: Yine de bulunamazsa ekrandaki karttan alma
   if (!sentences.length) {
     var cards = document.querySelectorAll(".card");
     cards.forEach(function(c) {
@@ -434,8 +496,11 @@ async function exportModuleToPDF() {
         .item { margin-bottom: 18px; padding: 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; page-break-inside: avoid; }
         .en { font-size: 16px; font-weight: 700; color: #1e293b; }
         .tr { font-size: 14px; color: #475569; margin-top: 4px; }
-        .ai { margin-top: 10px; padding: 10px 12px; background: #f8fafc; border-left: 4px solid #8b5cf6; font-size: 12.5px; color: #334155; white-space: pre-wrap; border-radius: 0 6px 6px 0; }
+        .ai { margin-top: 10px; padding: 10px 12px; background: #f8fafc; border-left: 4px solid #8b5cf6; font-size: 12.5px; color: #334155; border-radius: 0 6px 6px 0; }
         .ai-tag { font-weight: 800; color: #6d28d9; margin-bottom: 4px; font-size: 11px; text-transform: uppercase; }
+        .ai h3 { font-size: 14px; font-weight: bold; margin: 8px 0 4px 0; color: #1e293b; }
+        .ai p { margin: 4px 0; }
+        .ai ul { margin: 4px 0 8px 20px; padding: 0; }
       </style>
     </head>
     <body>
@@ -444,7 +509,7 @@ async function exportModuleToPDF() {
         <div class="item">
           <div class="en">${i + 1}. ${s.en}</div>
           ${s.tr ? `<div class="tr"><b>TR:</b> ${s.tr}</div>` : ''}
-          ${aiMap[s.en] ? `<div class="ai"><div class="ai-tag">🤖 AI Açıklaması</div>${aiMap[s.en]}</div>` : ''}
+          ${aiMap[s.en] ? `<div class="ai"><div class="ai-tag">🤖 AI Açıklaması</div>${parseMarkdownToHTML(aiMap[s.en])}</div>` : ''}
         </div>
       `).join('')}
       <script>
