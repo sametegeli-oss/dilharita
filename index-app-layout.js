@@ -1,5 +1,7 @@
-/* index-app-layout.js — v18 TAM MARKDOWN DÖNÜŞTÜRÜCÜ SÜRÜM
-   - `code` blokları, `####` başlıklar, `*` ve `-` alt listelerini tam Gemini dizaynında derler.
+/* index-app-layout.js — v19 TÜM MODÜLLERİ PDF İNDİRME SÜRÜMÜ
+   - Ekranda veya Araçlar panelinde "Tüm Modülleri PDF İndir" seçeneği içerir.
+   - Bütün modüllerdeki cümleleri, TR karşılıklarını ve IndexedDB'deki AI açıklamalarını derler.
+   - Markdown işaretlerini Gemini dizaynında şık HTML'e dönüştürür.
 */
 (function(){
   "use strict";
@@ -21,13 +23,15 @@
     +".grade-bar .grade-btn{flex:1;min-height:38px;border-radius:10px;font-weight:800;font-size:13px}"
     /* GTR + AI'ye Sor + PDF İndir Satırı */
     +".dh-ai-row{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap}"
-    +".dh-ai-row .dh-gtr-btn{flex:1;margin:0;justify-content:center;min-width:110px}"
+    +".dh-ai-row .dh-gtr-btn{flex:1;margin:0;justify-content:center;min-width:100px}"
     +".dh-gtr-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid rgba(255,255,255,.16);border-radius:11px;background:#1a2942;color:#cfe0ff;font:800 12px Nunito,system-ui,sans-serif;cursor:pointer}"
     +".dh-gtr-btn:hover{background:#22344f}"
     +".dh-aiask-btn{background:linear-gradient(135deg,#7c3aed,#4338ca);border-color:#8b5cf6;color:#fff}"
     +".dh-aiask-btn:hover{background:linear-gradient(135deg,#8b4cf7,#4f46e0)}"
     +".dh-pdf-btn{background:linear-gradient(135deg,#059669,#10b981);border-color:#34d399;color:#fff}"
     +".dh-pdf-btn:hover{background:linear-gradient(135deg,#047857,#059669)}"
+    +".dh-pdf-all-btn{background:linear-gradient(135deg,#d97706,#f59e0b);border-color:#fbbf24;color:#fff}"
+    +".dh-pdf-all-btn:hover{background:linear-gradient(135deg,#b45309,#d97706)}"
     /* nav */
     +".study-nav{display:none !important}"
     +".dh-nav-trio{display:flex;gap:8px;align-items:center;margin:0 0 14px}"
@@ -69,7 +73,7 @@
     +".card.dh-split>.dh-nav-trio .dh-nav-btn{min-height:31px;padding:5px 9px !important;font-size:12px !important;border-radius:9px !important}"
     +".card.dh-split>.dh-nav-trio .dh-tools-toggle{min-height:31px !important;padding:0 9px !important}"
     +".card.dh-split>.dh-ai-row{grid-column:2;grid-row:3}"
-    +".card.dh-split>.dh-ai-row .dh-gtr-btn{font-size:11px !important;padding:5px 7px !important;min-height:31px}"
+    +".card.dh-split>.dh-ai-row .dh-gtr-btn{font-size:11px !important;padding:5px 6px !important;min-height:31px}"
     +".card.dh-split>.card-actions{grid-column:2;grid-row:4;display:flex;flex-wrap:wrap;gap:6px;align-content:start}"
     +".card.dh-split>.card-actions button{min-height:31px;padding:5px 9px !important;font-size:12px !important;border-radius:9px !important}"
     +"}"
@@ -84,7 +88,7 @@
     +".card.dh-split>.card-en{grid-row:1;grid-column:1;align-self:end;z-index:2;margin:0 !important;padding:7px 11px !important;background:rgba(4,10,24,.62);backdrop-filter:blur(3px);border-radius:0 0 12px 12px;font-size:17px !important;line-height:1.3 !important}"
     +".card.dh-split>.card-tr{margin:2px 0 !important;font-size:14px !important}"
     +".card.dh-split>.card-pron,.card.dh-split>.card-ipa{font-size:11px !important;margin:0 !important}"
-    +".card.dh-split .dh-gtr-btn{margin:2px 0 !important;padding:4px 7px !important;font-size:11px !important}"
+    +".card.dh-split .dh-gtr-btn{margin:2px 0 !important;padding:4px 6px !important;font-size:11px !important}"
     +".dh-nav-trio .dh-nav-btn{min-height:34px;font-size:13px}"
     +".dh-tools-toggle{min-height:34px}"
     +"}";
@@ -104,6 +108,7 @@
     return null;
   }
 
+  /* 🌐 Translate + 🤖 AI'ye Sor + 📄 PDF İndir + 📚 Tümünü İndir Satırı */
   function ensureAiRow(c, trio){
     var en=c.querySelector(".card-en");
     if(!en) return;
@@ -143,12 +148,17 @@
 
       var pdf=document.createElement("button");
       pdf.type="button"; pdf.className="dh-gtr-btn dh-pdf-btn"; pdf.textContent="📄 PDF İndir";
-      pdf.onclick=function(){ exportModuleToPDF(); };
+      pdf.onclick=function(){ exportModuleToPDF(false); };
+
+      var pdfAll=document.createElement("button");
+      pdfAll.type="button"; pdfAll.className="dh-gtr-btn dh-pdf-all-btn"; pdfAll.textContent="📚 Tümünü PDF İndir";
+      pdfAll.onclick=function(){ exportModuleToPDF(true); };
 
       row.appendChild(stu);
       row.appendChild(gtr);
       row.appendChild(ai);
       row.appendChild(pdf);
+      row.appendChild(pdfAll);
     }
     if(row.previousElementSibling!==anchor || row.parentElement!==anchor.parentElement){
       anchor.insertAdjacentElement("afterend", row);
@@ -207,7 +217,8 @@
       };
       box.appendChild(mk("🎓 Öğretmen",function(){ var c=card(); return c&&(c.querySelector(".teacher-btn")||byText(c,"öğretmen")); }));
       box.appendChild(mk("📉 Zayıf Analiz",function(){ var c=card(); return c&&(c.querySelector(".extra-weak")||byText(c,"zayıf")); }));
-      box.appendChild(mk("📄 Modülü PDF İndir",function(){ exportModuleToPDF(); }));
+      box.appendChild(mk("📄 Aktif Modülü PDF İndir",function(){ exportModuleToPDF(false); }));
+      box.appendChild(mk("📚 TÜM Modülleri PDF İndir",function(){ exportModuleToPDF(true); }));
       box.appendChild(mk("🔍 Detay",function(){ return byText(card(),"detay"); }));
       document.body.appendChild(box);
     }
@@ -264,22 +275,16 @@ function parseMarkdownToHTML(markdown) {
   if (!markdown) return "";
   let html = markdown
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    // Başlıklar (#### dahil hepsini destekler)
     .replace(/^#### (.*$)/gim, "<h4>$1</h4>")
     .replace(/^### (.*$)/gim, "<h3>$1</h3>")
     .replace(/^## (.*$)/gim, "<h3>$1</h3>")
     .replace(/^# (.*$)/gim, "<h3>$1</h3>")
-    // Çizgiler
     .replace(/^---$/gim, "<hr/>")
-    // Inline Code (Ters tırnaklar `` `No sooner...` ``)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
-    // Kalın ve İtalik Metinler
     .replace(/\*\*\*(.*?)\*\*\*/g, "<strong><em>$1</em></strong>")
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    // Blockquote
     .replace(/^&gt; (.*$)/gim, "blockquote>$1</blockquote>")
-    // Liste Öğeleri (* veya -)
     .replace(/^\s*\* (.*$)/gim, "<li>$1</li>")
     .replace(/^\s*- (.*$)/gim, "<li>$1</li>")
     .replace(/^\d+\.\s+(.*$)/gim, "<li>$1</li>");
@@ -435,43 +440,42 @@ function showPasteModal(sentence) {
   };
 }
 
-/* --- PDF DIŞA AKTARMA --- */
-async function exportModuleToPDF() {
+/* --- TÜM VEYA TEK MODÜL CÜMLELERİNİ PDF OLARAK DIŞA AKTARMA --- */
+async function exportModuleToPDF(exportAllModules) {
   var modName = document.querySelector(".study-title")?.textContent || "Modül Cümleleri";
-  var aiMap = await getAllAIExplanationsFromDB();
-  
-  var sentences = [];
-  try {
-    if (window._sentencesCache) {
-      var key = modName.toLowerCase().replace(/\s+/g," ").trim();
-      sentences = window._sentencesCache.filter(function(s){
-        var m = (s.module||"").toLowerCase().replace(/\s+/g," ").trim();
-        return m === key || (key && m.indexOf(key)===0) || (m && key.indexOf(m)===0);
-      });
-    }
-  } catch(e){}
+  if (exportAllModules) modName = "Tüm Modüller";
 
-  if (!sentences.length) {
-    try {
-      var res = await fetch("./data/sentences.json");
-      if (res.ok) {
-        var allData = await res.json();
+  var aiMap = await getAllAIExplanationsFromDB();
+  var sentences = [];
+
+  // Tüm cümleleri fetch et
+  try {
+    var res = await fetch("./data/sentences.json");
+    if (res.ok) {
+      var allData = await res.json();
+      
+      if (exportAllModules) {
+        sentences = allData;
+      } else {
         var keyMod = modName.toLowerCase().replace(/\s+/g," ").trim();
         sentences = allData.filter(function(s){
           var m = (s.module||"").toLowerCase().replace(/\s+/g," ").trim();
           return m === keyMod || (keyMod && m.indexOf(keyMod)===0) || (m && keyMod.indexOf(m)===0);
         });
       }
-    } catch(e){}
-  }
+    }
+  } catch(e){}
 
-  if (!sentences.length) {
-    var cards = document.querySelectorAll(".card");
-    cards.forEach(function(c) {
-      var en = c.querySelector(".card-en")?.innerText.trim();
-      var tr = c.querySelector(".card-tr")?.innerText.trim();
-      if (en) sentences.push({ en: en, tr: tr });
-    });
+  if (!sentences.length && window._sentencesCache) {
+    if (exportAllModules) {
+      sentences = window._sentencesCache;
+    } else {
+      var key = modName.toLowerCase().replace(/\s+/g," ").trim();
+      sentences = window._sentencesCache.filter(function(s){
+        var m = (s.module||"").toLowerCase().replace(/\s+/g," ").trim();
+        return m === key || (key && m.indexOf(key)===0) || (m && key.indexOf(m)===0);
+      });
+    }
   }
 
   if (!sentences.length) {
@@ -479,34 +483,46 @@ async function exportModuleToPDF() {
     return;
   }
 
+  // Cümleleri Modüllerine Göre Grupla
+  var grouped = {};
+  sentences.forEach(s => {
+    var mName = s.module || "Genel";
+    if (!grouped[mName]) grouped[mName] = [];
+    grouped[mName].push(s);
+  });
+
   var win = window.open("", "_blank");
   var html = `
     <!DOCTYPE html>
     <html>
     <head>
-      <title>${modName} - Ders Özeti</title>
+      <title>${modName} - Çalışma Notları</title>
       <style>
         body { font-family: system-ui, -apple-system, sans-serif; padding: 24px; color: #0f172a; line-height: 1.6; }
-        h1 { color: #4338ca; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; font-size: 22px; margin-bottom: 20px; }
-        .item { margin-bottom: 18px; padding: 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; page-break-inside: avoid; }
-        .en { font-size: 16px; font-weight: 700; color: #1e293b; }
-        .tr { font-size: 14px; color: #475569; margin-top: 4px; }
+        h1 { color: #4338ca; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; font-size: 22px; margin-bottom: 24px; }
+        h2.mod-title { color: #1e1b4b; background: #e0e7ff; padding: 8px 14px; border-radius: 6px; font-size: 16px; margin-top: 28px; margin-bottom: 14px; page-break-after: avoid; }
+        .item { margin-bottom: 16px; padding: 12px 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; page-break-inside: avoid; }
+        .en { font-size: 15px; font-weight: 700; color: #1e293b; }
+        .tr { font-size: 13.5px; color: #475569; margin-top: 4px; }
         .ai { margin-top: 10px; padding: 10px 12px; background: #f8fafc; border-left: 4px solid #8b5cf6; font-size: 12.5px; color: #334155; border-radius: 0 6px 6px 0; }
         .ai-tag { font-weight: 800; color: #6d28d9; margin-bottom: 4px; font-size: 11px; text-transform: uppercase; }
-        .ai h3, .ai h4 { font-size: 14px; font-weight: bold; margin: 8px 0 4px 0; color: #1e293b; }
+        .ai h3, .ai h4 { font-size: 13.5px; font-weight: bold; margin: 8px 0 4px 0; color: #1e293b; }
         .ai code { background: #e2e8f0; padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 12px; }
         .ai p { margin: 4px 0; }
         .ai ul { margin: 4px 0 8px 20px; padding: 0; }
       </style>
     </head>
     <body>
-      <h1>${modName} — Çalışma Notları (${sentences.length} Cümle)</h1>
-      ${sentences.map((s, i) => `
-        <div class="item">
-          <div class="en">${i + 1}. ${s.en}</div>
-          ${s.tr ? `<div class="tr"><b>TR:</b> ${s.tr}</div>` : ''}
-          ${aiMap[s.en] ? `<div class="ai"><div class="ai-tag">🤖 AI Açıklaması</div>${parseMarkdownToHTML(aiMap[s.en])}</div>` : ''}
-        </div>
+      <h1>${modName} — Ders ve AI Çalışma Notları (${sentences.length} Cümle)</h1>
+      ${Object.keys(grouped).map(m => `
+        <h2 class="mod-title">📌 ${m} (${grouped[m].length} Cümle)</h2>
+        ${grouped[m].map((s, i) => `
+          <div class="item">
+            <div class="en">${i + 1}. ${s.en}</div>
+            ${s.tr ? `<div class="tr"><b>TR:</b> ${s.tr}</div>` : ''}
+            ${aiMap[s.en] ? `<div class="ai"><div class="ai-tag">🤖 AI Açıklaması</div>${parseMarkdownToHTML(aiMap[s.en])}</div>` : ''}
+          </div>
+        `).join('')}
       `).join('')}
       <script>
         window.onload = function() { window.print(); };
