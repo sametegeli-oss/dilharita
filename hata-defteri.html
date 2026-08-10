@@ -1,12 +1,6 @@
 <!doctype html>
 <html lang="tr">
 <head>
-<!-- iOS: ses tanıma yok (Safari motoru), ses de ilk dokunuşa kadar kilitli.
-     Bu üçlü sayfa mantığına dokunmadan ikisini de çözer. Sıra önemli:
-     speech-fallback (panel) → shim (API taklidi) → kilit. -->
-<script src="./speech-fallback.js?v=1"></script>
-<script src="./dh-ses-shim.js?v=1"></script>
-<script src="./dh-ses-kilit.js?v=1"></script>
 <script src="./storage-bridge.js?v=1"></script>
 <script src="./progress-engine.js?v=2"></script>
 <meta charset="UTF-8">
@@ -136,6 +130,9 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
 <script>
 let RECORDS=[];
 const $=id=>document.getElementById(id);
+const PARAMS=new URLSearchParams(location.search);
+const ODAK=PARAMS.get("odak")||"";
+let ODAK_BASLADI=false;
 function fmt(d){try{return new Date(d).toLocaleString("tr-TR")}catch{return d||""}}
 function renderTags(el,arr){el.innerHTML=arr.length?arr.map(([k,v])=>`<div class="tag"><span>${LearningErrorDB.esc(k)}</span><b>${v}</b></div>`).join(""):`<div class="empty">Kayıt yok</div>`}
 async function load(){
@@ -144,10 +141,19 @@ async function load(){
   $("total").textContent=s.total;$("high").textContent=s.high;$("typeCount").textContent=s.byType.length;$("repeatCount").textContent=s.repeated.length;
   renderTags($("types"),s.byType);renderTags($("modules"),s.byModule);
   renderRecords();
+  if(ODAK && !ODAK_BASLADI){
+    const ad=ODAK.replace(/[_-]/g," ");
+    document.querySelector(".title p").textContent="Kişisel telafi odağın: "+ad+". Yalnızca bu konudaki kayıtların gösteriliyor.";
+    const pool=RECORDS.filter(r=>(r.primaryType===ODAK||(r.types||[]).includes(ODAK))&&(r.target||r.sentenceEN));
+    if(PARAMS.get("baslat")==="1" && pool.length){
+      ODAK_BASLADI=true;
+      setTimeout(()=>Drill.start(pool.slice(0,10)),120);
+    }
+  }
 }
 function renderRecords(){
   const q=$("search").value.toLowerCase().trim(), source=$("source").value, pri=$("priority").value;
-  let arr=RECORDS.filter(r=>(!source||r.source===source)&&(!pri||r.reviewPriority===pri));
+  let arr=RECORDS.filter(r=>(!source||r.source===source)&&(!pri||r.reviewPriority===pri)&&(!ODAK||r.primaryType===ODAK||(r.types||[]).includes(ODAK)));
   if(q)arr=arr.filter(r=>[r.target,r.answer,r.sentenceTR,r.module,r.grammar,(r.types||[]).join(" ")].join(" ").toLowerCase().includes(q));
   $("records").innerHTML=arr.length?arr.map(r=>`
     <div class="record ${r.reviewPriority||""}">

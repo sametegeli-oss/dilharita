@@ -63,7 +63,7 @@
 
   <div class="card hidden" id="card">
     <div class="brand"><span class="logo">🗺️</span><h1>Dil Haritası</h1></div>
-    <p class="sub">Devam etmek için giriş yap. İlerlemen tüm cihazlarında eşitlenir. Hesabın yoksa aşağıdan oluşturabilirsin.</p>
+    <p class="sub">Hesap açarsan ilerlemen tüm cihazlarında eşitlenir. İstersen önce uygulamayı deneyebilirsin.</p>
 
     <label for="email">E-posta</label>
     <input id="email" type="email" placeholder="ornek@eposta.com" autocomplete="email" />
@@ -80,8 +80,19 @@
 
     <button class="btn-primary" id="loginBtn">Giriş yap</button>
     <button class="btn-ghost" id="signupBtn">Yeni hesap oluştur</button>
+    <button class="btn-ghost" id="guestBtn">Hesap açmadan devam et</button>
     <button class="link" id="resetBtn">Şifremi unuttum</button>
   </div>
+
+<script>
+  /* Firebase/CDN yüklenemese bile misafir girişi çalışır. */
+  document.getElementById("guestBtn").addEventListener("click", function(){
+    try{ localStorage.setItem("dh_guest_mode","1"); }catch(e){}
+    var next="./index.html";
+    try{ var n=new URLSearchParams(location.search).get("next"); if(n&&/^[a-zA-Z0-9._\-]+\.html/.test(n)) next=n; }catch(e){}
+    location.replace(next);
+  });
+</script>
 
 <script type="module">
   import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
@@ -127,6 +138,9 @@
       redirected = true;
       // Yerel işaret bırak: internet olmasa bile auth-guard bu kişiyi içeri alsın.
       try{
+        if(localStorage.getItem("dh_guest_mode")==="1"){
+          localStorage.setItem("dh-account-migration-pending",JSON.stringify({at:Date.now(),uid:user.uid||""}));
+        }
         localStorage.setItem("dh_logged_in", "1");
         localStorage.setItem("dh_logged_uid", user.uid || "");
         if(user.email) localStorage.setItem("dh_logged_email", user.email);

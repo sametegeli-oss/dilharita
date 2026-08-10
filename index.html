@@ -92,6 +92,8 @@
     <div class="dh-etiket" id="hedefSonuc" style="margin-top:6px"></div>
   </div>
 
+  <section class="dh-insight" id="kisiselIcGoru" hidden aria-live="polite"></section>
+
   <div class="dh-bolum-basligi" id="planBaslik">Bugünün planı</div>
   <div class="dh-plan" id="plan"></div>
 
@@ -128,6 +130,9 @@
 </main>
 
 <script src="./dh-plan.js?v=1"></script>
+<script src="./dh-insights.js?v=1"></script>
+<script src="./dh-app-shell.js?v=1"></script>
+<script src="./cloud-sync.js?v=21"></script>
 <script src="./dh-telafi.js?v=1"></script>
 <script src="./dh-konusma.js?v=1"></script>
 <script src="./dh-avatar.js"></script>
@@ -791,6 +796,7 @@
      koc.js beklenmez. Depodaki gercek durum ANINDA basilir; boylece
      calismis kullanici "Bugunu hazirliyorum..." gormez. */
   ciz(null, {});
+  if (window.DHInsights) DHInsights.render("#kisiselIcGoru");
 
   /* ================= YEDEK PLAN =================
      AI anahtari yoksa koc.js run() paint()'e hic gelmez. Iskelet zaten
