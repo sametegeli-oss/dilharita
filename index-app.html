@@ -61,6 +61,10 @@ window.addEventListener('error', function(e){
 <!-- YATAY / 2 SÜTUN DÜZEN — bunu eklemeyi ATLAMIŞTIM, düzenin dikey gelmesinin sebebi buydu.
      React kartını sol (resim + cümle) / sağ (butonlar + notlama) diye bölen dosya budur. -->
 <script src="./index-app-layout.js?v=12"></script>
+<!-- Zengin PDF: cümle görseli + sistemdeki tüm cümle verisi.
+     index-app-layout.js'teki global exportModuleToPDF'in üzerine yazar,
+     o dosyaya dokunmaz. SONRA yüklenmeli. -->
+<script src="./dh-pdf.js?v=1"></script>
 
 <!-- AI KOÇ OTOMATİK MODÜL BAŞLATICI: koçun ?mod= linkiyle gelen modülü
      doğrudan açar (eski startPractice tabanlı kod React'te çalışmıyordu). -->
