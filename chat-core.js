@@ -118,6 +118,36 @@ var __dhMalzeme=null; try{
 /* Serbest senaryo sohbetinde ne gunun malzemesi ne de kocun odagi
    kullanilir — senaryo eski haliyle, rol bozulmadan calisir. */
 if(!__dhDersModu){ __dhMalzeme=null; __dhTeach=null; __dhFocus=""; }
+
+/* ── KARMA GUN SONU PRATIGI (dh-gun-sonu.js) ────────────────────────
+   Gunu Kapat panelindeki "Ogretmenle karma pratik yap" dugmesi bu
+   sayfayi ?gunsonu=1 ile aciyor ve harmani localStorage'a birakiyor.
+   O harman gunun normal malzemesini EZER: kapanista amac tek bir
+   modulun cumleleri degil, gun icinde calisilan HER SEYI (cumle +
+   kalip + kelime) tek konusmada urettirmek. */
+var __dhGunSonu=false;
+try{
+  var __gs = new URLSearchParams(location.search).get("gunsonu");
+  if(__gs==="1" && __dhDersModu){
+    var __gsRaw=localStorage.getItem("dh-gunsonu-"+new Date().toISOString().slice(0,10));
+    if(__gsRaw){
+      var __h=JSON.parse(__gsRaw);
+      if(__h && ((__h.cumleler&&__h.cumleler.length) || (__h.kelimeler&&__h.kelimeler.length))){
+        __dhMalzeme = {
+          modul:  "gün sonu",
+          konu:   "bugün çalıştıkların",
+          ortam:  (__h.cumleler&&__h.cumleler[0]&&__h.cumleler[0].ortam) || "",
+          cumleler: __h.cumleler||[],
+          kelimeler: __h.kelimeler||[],
+          kaliplar: __h.kaliplar||[],
+          kaynak: "bugun",
+          gunSonu: true
+        };
+        __dhGunSonu=true;
+      }
+    }
+  }
+}catch(e){}
 /* Somut hata her zaman onceliklidir: ikisi birden varsa malzeme beklemeye alinir. */
 if(__dhTeach && __dhTeach.target) __dhMalzeme=null;
 if(__dhFocus) __dhMalzeme=null;
@@ -130,6 +160,20 @@ if(__dhFocus) __dhMalzeme=null;
                   senaryolarindan temizliyor). */
 function __dhMalzemeOpener(){
   var m=__dhMalzeme, kac=m.cumleler.length;
+
+  /* KARMA GUN SONU: ilerleme defteri gunun NORMAL malzemesine ait,
+     buradaki cumleler baska bir kume. Defteri uygulamak yanlis olur. */
+  if(m.gunSonu){
+    var kw=(m.kelimeler||[]).slice(0,8);
+    return "Günü kapatıyoruz 🌙 Bugün " + kac + " cümle"
+      + (kw.length ? (" ve " + (m.kelimeler||[]).length + " kelime") : "")
+      + " çalışmışsın. Şimdi hepsini tek konuşmada harmanlayalım.\n"
+      + (kw.length ? ("Bugünün kelimeleri: " + kw.join(", ") + "\n") : "")
+      + "İlk kalıbımız şu:\n"
+      + (kac ? (m.cumleler[0].en + (m.cumleler[0].tr ? ("\n(" + m.cumleler[0].tr + ")") : ""))
+             : "Bugün öğrendiğin kelimelerden biriyle bir cümle kur.")
+      + "\nSen söylesen nasıl söylersin?";
+  }
 
   /* KALDIGIN YERDEN — COZULEN SIKAYET:
      "Bitirmeme ragmen cikip tekrar girdigimde ayni konuya tekrar
@@ -148,6 +192,14 @@ function __dhMalzemeOpener(){
   });
   var devamMi  = kalanlar.length>0 && kalanlar.length<kac;
   var hepsiOk  = kac>0 && kalanlar.length===0;
+
+  /* Hepsi uretilmisse gunu BURADA da tamamlanmis isaretle. dh-sohbet-puan.js
+     seridi cizerken de isaretliyor ama o dosya her sayfada yuklu olmayabilir
+     ve serit yalnizca 4 sn'de bir calisiyor. Bayrak kurulmazsa dh-konusma
+     yeni malzeme hesaplamaz ve kullanici ayni konuyla karsilasir. */
+  if(hepsiOk){
+    try{ if(window.DHKonusma && window.DHKonusma.bitir) window.DHKonusma.bitir(); }catch(e){}
+  }
   var ilk = kalanlar.length ? kalanlar[0] : m.cumleler[0];
 
   var konu = m.konu || m.modul;
@@ -783,6 +835,13 @@ function systemPrompt(){
           return (i+1)+') "'+c.en+'"'+(c.kalip?('   pattern: '+c.kalip):"");
         }).join("\n")
       +"\nBuild this session around these. Create real situations that force the student to PRODUCE these patterns themselves — do not quote the sentences at them and do not ask them to repeat. Work through them one at a time. When they use a pattern correctly, acknowledge it in a few words and move to the next. Keep the role you are playing."
+      +((__dhMalzeme.kelimeler&&__dhMalzeme.kelimeler.length)
+          ? ("\n[TODAY'S WORDS] "+__dhMalzeme.kelimeler.join(", ")
+             +"\nWeave these words into the same conversation. Create moments where the student needs them; do not list them or ask for definitions.")
+          : "")
+      +(__dhMalzeme.gunSonu
+          ? "\n[END-OF-DAY MIX] This is the student's closing session for the day. Mix the sentences, the patterns and the words above in ONE flowing conversation instead of drilling them separately. Start easy, get harder. At the end, give a two-sentence Turkish summary of what they handled well and what still needs work."
+          : "")
       +(__dhMalzeme.dun&&__dhMalzeme.dun.konu?("\nYesterday they practiced \""+__dhMalzeme.dun.konu+"\" with you; you may refer back to it once, briefly."):"")):""),
     (__dhFocus?("\n[FOCUS DRILL] The coach sent the student to you specifically to work on this error type: \""+__dhFocus+"\". Build most of this session around it: create short prompts that force the student to produce this pattern, correct their attempts, and give ONE short Turkish tip when they slip. Mention at the start, in one sentence, that you two will practice this together."):""),
     "\n[TASKS] Over the WHOLE conversation the student should eventually do these: "+__dhTasks.map(function(t,i){return (i+1)+") "+t;}).join(" ")+" These are goals for the whole session, NOT for every turn. Never force a question out of them just to tick a task. Weave them naturally into the conversation. When the user GENUINELY completes task N, append the marker [TASK_DONE:N] at the very end of your reply. Never mention the markers or tasks mechanically."

@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v43";   /* v43: konusma malzemesi tamamlama + kaldigin yerden */
+var SW_VERSION = "dh-sw-v44";   /* v44: mobil kaydirma, tam IndexedDB yedegi, gun sonu karma pratik */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -32,6 +32,8 @@ var SHELL = [
   "./speech-fallback.js",
   "./viseme-lang.js",
   "./word-popup.js",
+  "./dh-yedek.js",
+  "./dh-gun-sonu.js",
   "./ai-providers.js",
   "./onboarding-guard.js",
   "./dh-modul.js",

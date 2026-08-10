@@ -174,10 +174,18 @@
 <script src="./teacher-policy.js?v=3"></script>
 <script src="./mastery-engine.js?v=1"></script>
 <script src="./sentences-loader.js?v=20"></script>
+<!-- Karma gün sonu pratiği: o gün çalışılan cümle + kalıp + kelimeleri
+     harmanlayıp öğretmen sohbetine devreder. -->
+<script src="./dh-gun-sonu.js?v=1"></script>
 <script src="./pwa-install.js"></script>
 <script src="./learning-error-system.js?v=2"></script>
 <script src="./study-tracker.js?v=1"></script>
 <script src="./streak-screen.js?v=1"></script>
+<!-- Tam yedek: TÜM IndexedDB veritabanlarını tek JSON'a alır.
+     Öncesinde yalnızca sentence-mode/kv alınıyordu; gramer çalışmaları,
+     hata defterinin ham deposu ve Gemini kelime analizleri yedeğe hiç
+     girmiyordu. -->
+<script src="./dh-yedek.js?v=1"></script>
 <script src="./cloud-sync.js?v=20"></script>
 <script src="./notifications.js?v=1"></script>
 <script>
@@ -284,14 +292,35 @@
         }
       }catch(e){}
       var errors=[]; try{ if(window.LearningErrorDB && LearningErrorDB.all) errors=await LearningErrorDB.all(); }catch(e){}
+
+      /* TÜM IndexedDB. kv/errors alanları eski sürümlerle uyum için
+         korunuyor; asıl kapsam artık burada. */
+      var idb=null;
+      try{
+        if(window.DHYedek){
+          if(msg) msg.textContent="Tüm veritabanları okunuyor…";
+          idb=await DHYedek.olustur();
+        }
+      }catch(e){}
+
       var at=new Date().toISOString();
-      var payload={ app:"dilharita-full", version:4, exportedAt:at, kv:allKV, ls:ls, errors:errors };
+      var payload={ app:"dilharita-full", version:5, exportedAt:at,
+                    kv:allKV, ls:ls, errors:errors,
+                    dbs: idb ? idb.dbs : undefined,
+                    ozet: idb ? idb.ozet : undefined };
       var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
       var url=URL.createObjectURL(blob);
       var a=document.createElement("a"); a.href=url; a.download="dilharita-yedek-"+at.slice(0,10)+".json";
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function(){ URL.revokeObjectURL(url); },1000);
-      if(msg){ msg.style.color="var(--dh-ok)"; msg.textContent="✓ Tam yedek indirildi."; }
+      if(msg){
+        msg.style.color="var(--dh-ok)";
+        var kb=Math.round(blob.size/1024);
+        var dbSay=idb?Object.keys(idb.ozet).length:0;
+        var kayit=0; if(idb) Object.keys(idb.ozet).forEach(function(x){ kayit+=idb.ozet[x]; });
+        msg.textContent="✓ Tam yedek indirildi — "+dbSay+" veritabanı, "
+          +kayit+" kayıt, "+kb+" KB.";
+      }
     }catch(e){ if(msg){ msg.style.color="var(--dh-err)"; msg.textContent="Yedek alınamadı."; } }
   };
 
@@ -305,6 +334,13 @@
       if(data.lsrsKV){ for(var lk2 in data.lsrsKV){ if(data.lsrsKV.hasOwnProperty(lk2)) kvAll[lk2]=data.lsrsKV[lk2]; } }
       if(!confirm("Yedek yüklensin mi? (Bu cihazdaki mevcut ilerleme buluttaki en güncel haliyle birleşecek.)")){ ev.target.value=""; return; }
       try{
+        /* Yeni biçim: tüm veritabanları. Eski biçimdeki kv de aşağıda
+           ayrıca yazılır (v4 ve öncesi yedekler çalışmaya devam etsin). */
+        if(data.dbs && window.DHYedek){
+          if(msg){ msg.style.color="var(--dh-text-2)"; msg.textContent="Veritabanları geri yükleniyor…"; }
+          var rap=await DHYedek.uygula(data);
+          try{ console.log("[yedek] geri yüklendi:", rap); }catch(e){}
+        }
         for(var k in kvAll){ if(kvAll.hasOwnProperty(k)) await writeKV(k, kvAll[k]); }
         if(data.ls){ for(var lk in data.ls){ if(data.ls.hasOwnProperty(lk)) localStorage.setItem(lk, data.ls[lk]); } }
         try{ if(window.DHProgress && DHProgress.applyMirror) await DHProgress.applyMirror(); }catch(e){}

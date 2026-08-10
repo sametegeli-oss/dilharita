@@ -317,13 +317,31 @@
         var sonY = Math.max.apply(null, byMod[y].map(function (i) { return (D.srs[i] || {}).last || 0; }));
         return sonY - sonX;
       });
-      var modul = modAdlari[0];
-
       /* Ust uste iki gun ayni cumle konusulmasin. Eleme listeyi
          2'nin altina dusuruyorsa uygulanmaz (malzemesiz kalmayalim). */
       var gecmis = gecmisOku(), dun = dunISO();
+      function tazeler(mod) {
+        return byMod[mod].filter(function (id) {
+          return gecmis[id] !== bugun && gecmis[id] !== dun;
+        });
+      }
+
+      /* MODUL SECIMI — once TAZE cumlesi olan modul.
+         COZULEN SIKAYET: "Bitirip menuye donup tekrar geliyorum, yine ayni
+         cumleler." Tamamlanan gunde kullanilan cumleler gecmise yaziliyor
+         ve eleniyor; ama eleme ayni modul icinde yapiliyordu. O modulde
+         baska calisilmis cumle kalmadiysa `taze` bosaliyor, guvenlik agi
+         devreye girip ayni listeyi geri veriyordu. Artik once EN AZ 2 taze
+         cumlesi olan bir modul aranir; boyle bir modul yoksa eski davranis
+         (en buyuk modul + guvenlik agi) surer. */
+      var modul = null;
+      for (var mi = 0; mi < modAdlari.length; mi++) {
+        if (tazeler(modAdlari[mi]).length >= 2) { modul = modAdlari[mi]; break; }
+      }
+      if (!modul) modul = modAdlari[0];
+
       var hepsi = byMod[modul].slice();
-      var taze = hepsi.filter(function (id) { return gecmis[id] !== bugun && gecmis[id] !== dun; });
+      var taze = tazeler(modul);
       var secilen = (taze.length >= 2 ? taze : hepsi);
 
       /* modul sirasini koru (mufredat sirasi) */

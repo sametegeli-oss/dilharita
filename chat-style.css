@@ -336,3 +336,82 @@ button,input,textarea{font:inherit}
   .avatar-stage > img:not(.dh-fon){ height:82%!important; max-width:52%!important; }
   .input-row > .icon-fab{ width:44px!important; height:44px!important; font-size:20px!important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   V18 — MOBİLDE SOHBET KAYDIRILAMIYORDU
+   ------------------------------------------------------------------
+   ŞİKAYET: "Öğretmenle chat mobilde sürüklenmiyor, kullanılamıyor."
+
+   SEBEP (dikey alan bütçesi):
+     .chat-top          ~56px
+     .avatar-stage      220-310px   (clamp)
+     #dhSerit           ~90px       (flex-wrap:wrap → 6 rozet 3 satır)
+     #taskBar           ~40px       (3 görev, sarıyor)
+     .input-row         ~110px      (giriş kutusu tam satır + 6 düğme)
+     .chat-history      min-height:88px!important   ← ZORUNLU
+   Toplam 600px'i aşıyor. .chat-shell{max-height:100dvh;overflow:hidden}
+   olduğu için taşan kısım KIRPILIYOR ve sayfa kaydırılamadığı için
+   kırpılan yere hiç erişilemiyordu.
+
+   ÇÖZÜM:
+     1) .chat-history'nin min-height'i 0 → esneyen tek öğe o olsun.
+        Böylece giriş satırı ve şerit asla kırpılmaz; dar ekranda
+        sohbet alanı küçülür ama KENDİ İÇİNDE kaydırılır.
+     2) Şerit ve görev çubuğu sarmak yerine YATAY kaydırılır (~80px kazanç).
+     3) Avatar kısa ekranlarda daha da küçülür.
+     4) Dokunmatik kaydırma açıkça bildirilir (touch-action / -webkit-*).
+   ══════════════════════════════════════════════════════════════════ */
+@media (max-width:640px){
+  .chat-shell{
+    height:100dvh!important; max-height:100dvh!important;
+    min-height:0!important; overflow:hidden!important;
+  }
+  .avatar-stage{
+    flex:0 0 auto!important;
+    height:clamp(150px,24dvh,240px)!important;
+    min-height:0!important; max-height:240px!important;
+  }
+  .panel{
+    flex:1 1 auto!important; min-height:0!important;
+    display:flex!important; flex-direction:column!important;
+  }
+  /* ESNEYEN TEK ÖĞE — min-height:0 olmadan flex kutusu küçülemez */
+  .chat-history{
+    flex:1 1 auto!important;
+    min-height:0!important; height:auto!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    touch-action:pan-y!important;
+    overscroll-behavior:contain!important;
+  }
+  /* Şerit + görev çubuğu: sarma yerine yatay kaydırma */
+  #dhSerit,
+  #taskBar{
+    flex:0 0 auto!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    white-space:nowrap!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    touch-action:pan-x!important;
+    scrollbar-width:none;
+  }
+  #dhSerit::-webkit-scrollbar,
+  #taskBar::-webkit-scrollbar{display:none}
+  /* nowrap satırda margin-left:auto sayacı görünmez uzağa itiyordu */
+  #dhSerit .dh-serit__sayi{margin-left:10px!important}
+  #dhSerit .dh-serit__oge{max-width:none!important;flex:0 0 auto!important}
+  .input-row{flex:0 0 auto!important}
+}
+
+/* Kısa ekran (küçük telefonlar, klavye açıkken): avatarı daha da kıs */
+@media (max-width:640px) and (max-height:720px){
+  .avatar-stage{
+    height:clamp(110px,17dvh,165px)!important;
+    max-height:165px!important;
+  }
+  .input-row > .icon-fab{width:40px!important;height:40px!important;font-size:18px!important}
+  .input-row > .input-wrap{min-height:46px!important}
+  .panel{padding:8px 12px calc(8px + env(safe-area-inset-bottom))!important;gap:6px!important}
+}

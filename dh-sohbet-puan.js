@@ -395,23 +395,47 @@
       kap.parentNode.insertBefore(el, kap);      /* gorev cubugunun hemen ustune */
     }
     var cevaplar = balonlar().kullanici;
+
+    /* ÖNCEKİ OTURUMLARIN İLERLEMESİ
+       ───────────────────────────────────────────────────────────────
+       ÇÖZÜLEN HATA: "Menüye gidip tekrar öğretmen sohbete geliyorum ama
+       yeni cümleler gelmiyor." Öğretmen açılışta "bugünün 6 cümlesini
+       bitirdik" diyor ama şerit 0/6 gösteriyor ve malzeme tazelenmiyor.
+
+       SEBEP: Burada `yapilan` YALNIZCA bu konuşmadaki kalıp eşleşmelerini
+       sayıyordu. İlerleme defteri (DHKonusma.ilerleme) oturumlar arası
+       birikiyor, ama tamamlama denetimi ondan habersizdi:
+           yapilan === parcalar.length
+       İki oturumda 3+3 cümle üreten kullanıcıda bu koşul HİÇBİR oturumda
+       sağlanmaz; `bitir()` çağrılmaz, `bitti` bayrağı hiç kurulmaz ve
+       dh-konusma yeni malzeme hesaplamaz. Açılış metni deftere baktığı
+       için "bitirdik" diyor — iki taraf farklı kaynağa bakıyordu.
+
+       ÇÖZÜM: Şerit ve tamamlama artık DEFTER ∪ BU OTURUM birleşimine
+       bakıyor. Şerit de böylece geçmiş oturumların ✅'lerini gösteriyor. */
+    var defter = [];
+    try {
+      if (global.DHKonusma && global.DHKonusma.ilerleme)
+        defter = global.DHKonusma.ilerleme().yapilan || [];
+    } catch (e) {}
+
     var yapilan = 0, uretilen = [];
     var parcalar = m.cumleler.map(function (c) {
       var cek = kalipCekirdegi(c.kalip);
       if (!cek.length) cek = kalipCekirdegi(c.en);
-      var ok = kalipKullanildi(cek, cevaplar);
-      if (ok) { yapilan++; if (c.id != null) uretilen.push(c.id); }
-      return { en: c.en, ok: ok };
+      var buOturum = kalipKullanildi(cek, cevaplar);
+      var oncedenTamam = (c.id != null && defter.indexOf(String(c.id)) >= 0);
+      var ok = buOturum || oncedenTamam;
+      if (ok) yapilan++;
+      if (buOturum && c.id != null && !oncedenTamam) uretilen.push(c.id);
+      return { en: c.en, ok: ok, yeni: buOturum && !oncedenTamam };
     });
-    /* ILERLEME DEFTERI: uretilen cumleler gun defterine islenir.
-       Boylece cikip tekrar girildiginde acilis bastan degil, henuz
-       uretilmemis ilk cumleden basliyor (bkz. chat-core __dhMalzemeOpener).
-       Hepsi uretildiyse gun tamamlanmis sayilir ve bir sonraki girise
-       YENI malzeme hesaplanir (bkz. dh-konusma bugunMalzeme). */
+
     try {
       if (global.DHKonusma && global.DHKonusma.isaretle) {
         if (uretilen.length) global.DHKonusma.isaretle(uretilen);
-        if (yapilan === parcalar.length && parcalar.length && global.DHKonusma.bitir) {
+        /* Tamamlama artık BİRLEŞİME göre: bugün üretilenler + defter. */
+        if (parcalar.length && yapilan === parcalar.length && global.DHKonusma.bitir) {
           global.DHKonusma.bitir();
         }
       }
