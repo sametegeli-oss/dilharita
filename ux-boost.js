@@ -17,6 +17,22 @@
   if (window.DHUx) return;
   var DHUx = window.DHUx = {};
 
+  /* Bütün eski ekranları aynı kabuğa kademeli olarak taşır. Sayfanın kendi
+     stillerini bozmaz; yalnız ortak tokenlar ve alt gezinme eklenir. */
+  if (!document.querySelector('link[href*="dh-ui.css"]')) {
+    var tokens = document.createElement("link");
+    tokens.rel = "stylesheet"; tokens.href = "./dh-tokens.css";
+    document.head.appendChild(tokens);
+    var ui = document.createElement("link");
+    ui.rel = "stylesheet"; ui.href = "./dh-ui.css";
+    document.head.appendChild(ui);
+  }
+  if (!document.querySelector('script[src*="dh-app-shell.js"]')) {
+    var shell = document.createElement("script");
+    shell.src = "./dh-app-shell.js?v=1";
+    document.head.appendChild(shell);
+  }
+
   /* ---------------- stiller ---------------- */
   var css = document.createElement("style");
   css.textContent = [

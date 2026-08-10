@@ -2,8 +2,11 @@
 import fs from "node:fs";
 let fail=0; const ok=(c,m)=>{console.log(`  ${c?"✓":"✗ BAŞARISIZ"}  ${m}`); if(!c)fail++;};
 const src=fs.readFileSync("chat-core.js","utf8");
-const i=src.indexOf("function renderBubbleText");
-const fn=src.slice(i, src.indexOf("\n}", i)+2);
+/* renderBubbleText kalın yazı ayrıştırıcısını kullanır; gerçek tarayıcıdaki
+   fonksiyon grubunu birlikte yükle. Tek fonksiyonu koparmak sahte hata üretiyordu. */
+const i=src.indexOf("function dhKalinParcala");
+const end=src.indexOf("function addBubble", i);
+const fn=src.slice(i, end);
 
 /* minik DOM taklidi */
 class N{constructor(t=""){this.nodeText=t;this.children=[];this.className="";}

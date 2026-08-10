@@ -35,7 +35,9 @@
   if(global.DHWordPop && global.DHWordPop.__v2) return;
 
   var DICT_PATHS = ["./data/dictionary.json","data/dictionary.json","./dictionary.json"];
-  var SENT_PATHS = ["./data/sentences.json","data/sentences.json","./sentences.json"];
+  /* Hafif örnek havuzu önce: 8.26 MB tam veri yerine 1.16 MB id/en/tr.
+     Eski dosya, eski dağıtımlar ve üretim hataları için güvenlik ağıdır. */
+  var SENT_PATHS = ["./data/sentences/examples.json","data/sentences/examples.json","./data/sentences.json","data/sentences.json","./sentences.json"];
   var SYN_PATHS  = ["./data/synonyms.json","data/synonyms.json","./synonyms.json"];
   var NGY_PATHS  = ["./data/ngram-yedek.json","data/ngram-yedek.json","./ngram-yedek.json"];
   var dict=null, dictLoading=null, sentences=null, sentLoading=null;
@@ -1027,6 +1029,14 @@
      aç, ve AI (Groq/Cerebras/Gemini) ile anlık Türkçe anlam üretmeyi dene. */
   function defineWithAI(word){
     open({ word: word, data: { anlamlar: ["⏳ Sözlükte yok — AI ile anlam aranıyor…"], oku:"", frekans:"", seviye:"" } });
+    /* AI tanımlarını 30 gün cihazda tut: aynı nadir kelime için yeniden
+       sağlayıcı çağrısı yapılmaz. Anahtar veya içerik buluta gönderilmez. */
+    var aiCacheKey="dh-word-ai-cache-v1", aiCache={};
+    try{ aiCache=JSON.parse(localStorage.getItem(aiCacheKey)||"{}")||{}; }catch(e){}
+    var cached=aiCache[String(word||"").toLowerCase()];
+    if(cached && cached.t>Date.now()-30*86400000 && Array.isArray(cached.v)){
+      updateMeanings(cached.v); return;
+    }
     /* İKİ AYRI DURUM — eskiden ikisi de "anahtar ekle" diyordu ve
        anahtarı olan kullanıcı neden çalışmadığını anlayamıyordu.
        word-popup.js 16 sayfada yüklüyken ai-providers.js bunların
@@ -1045,7 +1055,13 @@
     DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.3,max_tokens:60})
       .then(function(txt){
         var list=String(txt||"").split(",").map(function(s){ return s.trim(); }).filter(Boolean);
-        updateMeanings(list.length?list:["Anlam bulunamadı."]);
+        list=list.length?list:["Anlam bulunamadı."];
+        updateMeanings(list);
+        try{
+          aiCache[String(word||"").toLowerCase()]={t:Date.now(),v:list};
+          var keys=Object.keys(aiCache); if(keys.length>500) keys.sort(function(a,b){return aiCache[b].t-aiCache[a].t;}).slice(500).forEach(function(k){delete aiCache[k];});
+          localStorage.setItem(aiCacheKey,JSON.stringify(aiCache));
+        }catch(e){}
       })
       .catch(function(err){
         var code = err && err.code;
@@ -1393,6 +1409,11 @@
     lookup:function(w){ loadDict().then(function(){ var e=findEntry(cleanWord(w)); if(e) open(e); else defineWithAI(cleanWord(w)); }); },
     enable:function(){ enabled=true; }, disable:function(){ enabled=false; }, close:close
   };
-  if(document.readyState!=="loading") document.addEventListener("click", onClick, true);
-  else document.addEventListener("DOMContentLoaded", function(){ document.addEventListener("click", onClick, true); });
+  function baglaTiklama(){
+    if(document.__dhWpBound) return;
+    document.__dhWpBound=true;
+    document.addEventListener("click",onClick,true);
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",baglaTiklama,{once:true});
+  else baglaTiklama();
 })(window);

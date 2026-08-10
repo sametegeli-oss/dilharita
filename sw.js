@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v46";   /* v46: iOS ses tanima shim + ses kilidi + gun secici */
+var SW_VERSION = "dh-sw-v49";   /* v49: guvenli hesap aktarimi ve tekrar deneme */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -30,11 +30,14 @@ var SHELL = [
   "./sentences-loader.js",
   "./profile.js",
   "./speech-fallback.js",
-  "./dh-ses-shim.js",
-  "./dh-ses-kilit.js",
   "./viseme-lang.js",
   "./word-popup.js",
   "./dh-yedek.js",
+  "./dh-app-shell.js",
+  "./dh-insights.js",
+  "./cloud-sync.js",
+  "./dh-tokens.css",
+  "./dh-ui.css",
   "./dh-gun-sonu.js",
   "./dh-pdf.js",
   "./ai-providers.js",

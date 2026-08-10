@@ -2,14 +2,16 @@
 import fs from "node:fs";
 let fail=0; const ok=(c,m)=>{console.log(`  ${c?"✓":"✗ BAŞARISIZ"}  ${m}`); if(!c)fail++;};
 const src=fs.readFileSync("chat-core.js","utf8");
-const fn=src.slice(src.indexOf("function dhLanguageRule()"), src.indexOf("function systemPrompt()"));
+/* Dil kuralı ortak öğretmen kuralını ve ortam bağlamını kullanır. Bağımlılıkları
+   dahil etmeden yalnız gövdeyi eval etmek gerçek uygulamayı test etmiyordu. */
+const fn=src.slice(src.indexOf("function dhOgretmenKurali()"), src.indexOf("function systemPrompt()"));
 
 const store={};
 global.localStorage={getItem:k=>k in store?store[k]:null,setItem:(k,v)=>{store[k]=v}};
 
 function kural(isTeacher, pref){
   if(pref) store["dh-teacher-dili"]=pref; else delete store["dh-teacher-dili"];
-  return eval(`var __dhIsTeacher=${isTeacher}; ${fn} dhLanguageRule();`);
+  return eval(`var __dhIsTeacher=${isTeacher}; var __dhMalzeme=null; var Scenario={}; ${fn} dhLanguageRule();`);
 }
 
 console.log("\n--- AI Öğretmen ---");

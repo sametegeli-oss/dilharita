@@ -2,7 +2,9 @@
 import fs from "node:fs";
 let fail=0; const ok=(c,m)=>{console.log(`  ${c?"✓":"✗ BAŞARISIZ"}  ${m}`); if(!c)fail++;};
 const cc=fs.readFileSync("chat-core.js","utf8");
-const ix=fs.readFileSync("index.html","utf8");
+/* Ana ekran ağız oynatıcısı artık index.html içine gömülü değil; ortak ve
+   requestAnimationFrame tabanlı dh-avatar.js kullanılıyor. */
+const ix=fs.readFileSync("dh-avatar.js","utf8");
 
 console.log("\n--- döngü kaldırıldı (asıl hata) ---");
 ok(!/talkSeq\[this\.talkIndex % this\.talkSeq\.length\]/.test(cc),
@@ -10,22 +12,21 @@ ok(!/talkSeq\[this\.talkIndex % this\.talkSeq\.length\]/.test(cc),
 ok(!/seq\[si%seq\.length\]/.test(ix),
    "index.html: '% seq.length' başa dönüşü kaldırıldı");
 ok(/talkIndex >= this\.talkSeq\.length/.test(cc), "chat-core: dizi bitince duruyor");
-ok(/si>=seq\.length/.test(ix), "index.html: dizi bitince duruyor");
+ok(/if \(oran >= 1\)/.test(ix), "ana ekran avatarı: zaman çizgisi bitince duruyor");
 
 console.log("\n--- kare süresi artık sabit değil ---");
 ok(!/\}, 105\);/.test(cc), "chat-core: sabit 105 ms gitti");
-const sm=ix.slice(ix.indexOf("function startMouth"), ix.indexOf("function alignMouth"));
-ok(!/,\s*\d+\s*\);?\s*\}?$/m.test(sm.split("setInterval")[1]||""),
-   "index.html: ağız zamanlayıcısında sabit sayı yok");
-ok(/_step\)/.test(sm), "index.html: hesaplanan adım kullanılıyor");
+const sm=ix.slice(ix.indexOf("function konus("), ix.indexOf("function sustur("));
+ok(!/setInterval/.test(sm), "ana ekran avatarı: sürüklenen setInterval yok");
+ok(/requestAnimationFrame\(adim\)/.test(sm), "ana ekran avatarı: rAF zaman çizgisi kullanılıyor");
 ok(/_total \/ Math\.max\(1, this\.talkSeq\.length\)/.test(cc), "chat-core: süre / kare sayısı");
-ok(/_total\/Math\.max\(1,seq\.length\)/.test(ix), "index.html: süre / kare sayısı");
+ok(/gecen \/ toplam/.test(ix), "ana ekran avatarı: gerçek geçen süre/toplam süre oranı");
 
 console.log("\n--- onboundary hizalaması ---");
 ok(/u\.onboundary/.test(cc), "chat-core: onboundary bağlandı");
-ok(/u\.onboundary/.test(ix), "index.html: onboundary bağlandı");
+ok(/utter\.onboundary/.test(ix), "ana ekran avatarı: onboundary bağlandı");
 ok(/alignToChar\(charIndex\)/.test(cc), "chat-core: alignToChar() var");
-ok(/function alignMouth\(charIndex\)/.test(ix), "index.html: alignMouth() var");
+ok(/cizgi\[k\]\.ci <= ci/.test(ix), "ana ekran avatarı: harf konumuna göre hizalanıyor");
 ok(/Math\.abs\(hedef - this\.talkIndex\) > 2/.test(cc), "küçük sapmalar düzeltilmiyor (titreme olmasın)");
 
 console.log("\n--- adım süresi hesabı makul mü ---");
@@ -36,8 +37,8 @@ ok(step(9000,20)===170, `20 karelik 9 sn tavanda kalıyor -> ${step(9000,20)} ms
 ok(step(1000,0)>=40, "sıfır kare çökertmiyor");
 
 console.log("\n--- emoji ayıklanmış metin ---");
-ok(/var sesMetni=text\.replace/.test(ix), "index.html: süre/hizalama seslendirilen metne göre");
-ok(/sesMetni\.length\*70/.test(ix), "ekrandaki metne değil, okunan metne göre");
+ok(/var sesMetni = String\(metin \|\| ""\)\.replace/.test(ix), "ana ekran avatarı: emoji ayıklanmış ses metni var");
+ok(/sesMetni\.length \* 62/.test(ix), "süre ekrandaki metne değil, okunan metne göre");
 
 console.log("\n--- noktalamada ağız duruyor mu ---");
 global.window={};
@@ -67,7 +68,7 @@ ok(V.indexForChar(tl.charAt, 99999)===tl.frames.length-1, "metin sonu son kareye
 console.log("\n--- oynatıcılar konum tabanlı hizalamaya geçti mi ---");
 ok(/alignToChar/.test(cc), "chat-core: alignToChar kullanıyor");
 ok(/talkCharAt/.test(cc), "chat-core: kare/harf eşlemesini saklıyor");
-ok(/indexForChar/.test(ix), "index.html: indexForChar kullanıyor");
+ok(/cizgi\[k\]\.ci <= ci/.test(ix), "ana ekran avatarı: kare/harf konumunu kullanıyor");
 ok(/gercekToplam/.test(cc), "chat-core: gerçek konuşma hızını ölçüp adımı düzeltiyor");
 ok(/ci>=chunks\.length && run===speechRun\) avatar\.stop\(\)/.test(cc),
    "son parça bitince ağız ANINDA duruyor");
