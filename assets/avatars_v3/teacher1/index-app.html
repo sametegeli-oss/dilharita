@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0b1120" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+<title>Fotoğraflı Cümle Öğren · Dil Harita</title>
+<!-- KULLANICI MODULLERI: app.js'ten ONCE calismali.
+     app.js type="module" oldugu icin defer'lidir; asagidaki klasik
+     scriptler ondan once calisir ve fetch yamasini yerlestirir.
+     Yama, data/sentences.json yanitina kullanici cumlelerini ekler;
+     React uygulamasi onlari normal modul gibi listeler. -->
+<!-- iOS: ses tanıma yok (Safari motoru), ses de ilk dokunuşa kadar kilitli.
+     Bu üçlü sayfa mantığına dokunmadan ikisini de çözer. Sıra önemli:
+     speech-fallback (panel) → shim (API taklidi) → kilit. -->
+<script src="./speech-fallback.js?v=1"></script>
+<script src="./dh-ses-shim.js?v=1"></script>
+<script src="./dh-ses-kilit.js?v=1"></script>
+<script src="./dh-modul.js?v=4"></script>
+<script src="./dh-modul-enjekte.js?v=20"></script>
+<script type="module" crossorigin src="./assets/app.js"></script>
+<link rel="stylesheet" crossorigin href="./assets/app.css">
+</head>
+<body>
+<div id="root"></div>
+<script>
+window.addEventListener('error', function(e){
+  var box=document.getElementById('appErrorBox');
+  if(!box){
+    box=document.createElement('pre');
+    box.id='appErrorBox';
+    box.style.cssText='position:fixed;left:10px;right:10px;bottom:10px;z-index:99999;background:#220b0b;color:#fecaca;padding:12px;border:1px solid #ef4444;border-radius:10px;white-space:pre-wrap;font:12px monospace';
+    document.body.appendChild(box);
+  }
+  box.textContent += '\n' + (e.message||'error') + '\n' + (e.filename||'') + ':' + (e.lineno||'');
+});
+</script>
+
+<!-- RESİM: cümlenin imgQuery'siyle görsel bulur (alakasız foto koymaz) -->
+<script src="./image-addon.js?v=restore3"></script>
+<script src="./teacher-addon.js?v=restore3"></script>
+<script src="./index-app-ogretmen-analiz-buttons.js?v=3"></script>
+<script src="./word-direct-tools.js?v=1"></script>
+
+<!-- 🌊 SES DALGASI: sesdalga.html mantığını kelime popup'ına ekler
+     (Hoca Çizdir → Sen Oku → Kıyasla → Düet) -->
+<script src="./word-wave-addon.js?v=1"></script>
+<!-- 💎 Gemini Kelime Analizi: word-popup.js burada YALNIZCA kütüphane olarak
+     yüklenir (kendi tıklama dinleyicisi kapatılır, yoksa React popup'ıyla
+     aynı anda iki popup açılırdı). Prompt/ayrıştırma/IndexedDB kaydı orada,
+     React popup'ına enjeksiyon word-gemini-addon.js'de. -->
+<!-- word-popup.js'in AI özellikleri (kelime açıklama, eş anlamlı yedeği)
+     DHProviders'a bağlı; bu sayfada yüklü değildi, o yüzden anahtar
+     kayıtlı olduğu halde "API anahtarı ekle" uyarısı çıkıyordu. -->
+<script src="./ai-providers.js?v=2"></script>
+<script src="./word-popup.js?v=11"></script>
+<script>try{ window.DHWordPop && DHWordPop.disable(); }catch(e){}</script>
+<script src="./word-gemini-addon.js?v=1"></script>
+<script src="./ai-teacher-prompt-tts.js?v=1"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=4"></script>
+<script src="./avatar-blink-sync.js?v=1"></script>
+<script src="./study-tracker.js?v=1"></script>
+
+<!-- YATAY / 2 SÜTUN DÜZEN — bunu eklemeyi ATLAMIŞTIM, düzenin dikey gelmesinin sebebi buydu.
+     React kartını sol (resim + cümle) / sağ (butonlar + notlama) diye bölen dosya budur. -->
+<script src="./index-app-layout.js?v=12"></script>
+<!-- Zengin PDF: cümle görseli + sistemdeki tüm cümle verisi.
+     index-app-layout.js'teki global exportModuleToPDF'in üzerine yazar,
+     o dosyaya dokunmaz. SONRA yüklenmeli. -->
+<script src="./dh-pdf.js?v=1"></script>
+
+<!-- AI KOÇ OTOMATİK MODÜL BAŞLATICI: koçun ?mod= linkiyle gelen modülü
+     doğrudan açar (eski startPractice tabanlı kod React'te çalışmıyordu). -->
+<!-- MODULLERIM VITRINI: kullanici modullerini listenin en ustune,
+     kendi bolumune tasir. app.js'ten SONRA yuklenir cunku cizilmis
+     DOM'u bekler. Uygulamanin kendi siniflarini kullandigi icin
+     bolum yerli gorunur. -->
+<script src="./dh-modul-vitrin.js?v=20"></script>
+<script src="./mod-autopen.js?v=2"></script>
+
+<!-- GUN PLANI KOPRUSU: React uygulamasi DHPlan'i bilmiyor. Bu dosya
+     ?mod= modulunde bugun calisilan cumleleri sayip gun planindaki
+     ILGILI adimi ilerletir. Olmadan, ayni sayfaya giden ikinci adim
+     (telafi modulu) hic ilerlemiyordu. sentences-loader modul
+     kimlikleri icin, dh-plan defter icin gerekli. -->
+<script src="./sentences-loader.js?v=20"></script>
+<script src="./dh-plan.js?v=2"></script>
+<script src="./dh-plan-kopru.js?v=1"></script>
+<script src="./dh-modul-bitir.js?v=1"></script>
+<script src="./coach-bubble.js?v=10"></script>
+<!-- Karma gün sonu pratiği: o gün çalışılan cümle + kalıp + kelimeleri
+     harmanlayıp öğretmen sohbetine devreder (Günü Kapat paneline eklenir). -->
+<script src="./dh-gun-sonu.js?v=1"></script>
+
+<!-- FOTO <-> VİDEO GEÇİŞ KÖPRÜSÜ: React'e dokunmadan "🎬 Video" düğmesi ekler
+     ve videopractice.html'e cümleyi TAM senkronize gönderir. -->
+<script src="./nav-bridge.js?v=2"></script>
+
+<!-- RESİM / VİDEO SEÇİCİ: iki ekran arasında geçiş toggle'ı.
+     nav-bridge'den SONRA yüklenmeli (modal açmayı ona devreder). -->
+<script src="./mode-toggle.js?v=5"></script>
+</body>
+</html>

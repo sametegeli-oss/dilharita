@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<!-- iOS: ses tanıma yok (Safari motoru), ses de ilk dokunuşa kadar kilitli.
+     Bu üçlü sayfa mantığına dokunmadan ikisini de çözer. Sıra önemli:
+     speech-fallback (panel) → shim (API taklidi) → kilit. -->
+<script src="./speech-fallback.js?v=1"></script>
+<script src="./dh-ses-shim.js?v=1"></script>
+<script src="./dh-ses-kilit.js?v=1"></script>
+<script src="./storage-bridge.js?v=1"></script>
+<script src="./progress-engine.js?v=2"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hata Defteri · Dil Haritası</title>
+<script src="./learning-error-system.js"></script>
+<script src="./ai-providers.js?v=1"></script>
+<script src="./gemini-bridge.js?v=1"></script>
+<script src="./gemini-report.js?v=1"></script>
+<script src="./coach-bubble.js?v=2"></script>
+<!-- Karma gün sonu pratiği: o gün çalışılan cümle + kalıp + kelimeleri
+     harmanlayıp öğretmen sohbetine devreder (Günü Kapat paneline eklenir). -->
+<script src="./dh-gun-sonu.js?v=1"></script>
+<style>
+:root{--bg:#071226;--panel:#0d1c34;--panel2:#132647;--line:#ffffff16;--text:#edf4ff;--muted:#9fb1d0;--blue:#3b82f6;--green:#22c55e;--red:#ef4444;--orange:#f59e0b}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--text);font-family:Nunito,system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:18px}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.back{width:44px;height:44px;border-radius:14px;background:#12213b;border:1px solid var(--line);color:#fff;text-decoration:none;font-size:26px;display:flex;align-items:center;justify-content:center}
+.title{flex:1}.title h1{margin:0;font-size:28px}.title p{margin:4px 0 0;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);border-radius:12px;background:#132647;color:#fff;padding:10px 14px;font-weight:900;cursor:pointer}.btn.red{background:#7f1d1d}.btn.purple{background:#4c1d95}.btn.green{background:#166534}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px}.num{font-size:32px;font-weight:950}.lab{color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:330px 1fr;gap:14px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px}
+.box h2{font-size:18px;margin:0 0 12px}
+.tag{display:flex;justify-content:space-between;gap:10px;background:#0a172c;border:1px solid var(--line);border-radius:12px;margin:7px 0;padding:9px 11px;color:#dbeafe}
+.filter{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.filter input,.filter select{background:#0a172c;border:1px solid var(--line);border-radius:12px;color:#fff;padding:10px;min-width:160px}
+.record{background:#0a172c;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
+.record.high{border-color:#ef444466}.record.medium{border-color:#f59e0b66}
+.meta{display:flex;gap:8px;flex-wrap:wrap;color:#a9bbd8;font-size:12px;margin-bottom:8px}
+.pill{border-radius:999px;background:#132647;padding:4px 8px}.pill.high{background:#7f1d1d;color:#fecaca}.pill.medium{background:#78350f;color:#fde68a}
+.en{font-size:18px;font-weight:900;margin-bottom:4px}.tr{color:#cbd5e1;margin-bottom:8px}.ans{color:#fca5a5}.target{color:#86efac}
+.types{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.type{font-size:12px;border:1px solid #3b82f666;color:#bfdbfe;border-radius:999px;padding:3px 8px}
+.empty{text-align:center;color:var(--muted);padding:40px}
+
+/* ---- 🎯 ALIŞTIRMA MODU (hatalarını yeniden çöz) ---- */
+.drill-ov{position:fixed;inset:0;z-index:999;background:#040b18e6;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px}
+.drill{background:var(--panel);border:1px solid var(--line);border-radius:22px;width:100%;max-width:620px;max-height:92vh;overflow-y:auto;padding:22px}
+.drill-top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.drill-top h3{margin:0;font-size:20px;flex:1}
+.drill-x{background:#132647;border:1px solid var(--line);color:#fff;border-radius:10px;width:36px;height:36px;font-size:18px;cursor:pointer}
+.drill-prog{color:var(--muted);font-size:13px;margin-bottom:14px}
+.drill-bar{height:6px;background:#0a172c;border-radius:99px;overflow:hidden;margin-bottom:16px}
+.drill-bar span{display:block;height:100%;background:linear-gradient(90deg,#3b82f6,#22c55e);transition:width .3s}
+.drill-tr{font-size:22px;font-weight:900;line-height:1.4;margin-bottom:6px}
+
+/* ---- görsel ipucu (yalnız ALAKALI olduğunda gösterilir) ---- */
+.drill-img{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;
+  background:linear-gradient(135deg,#13294d,#0d1e3a);margin-bottom:12px;display:none}
+.drill-img.show{display:block}
+.drill-img img{width:100%;height:100%;object-fit:cover;display:block}
+.drill-img .cap{position:absolute;bottom:6px;right:8px;font-size:10px;color:#e2e8f0;
+  background:#000000a8;padding:3px 8px;border-radius:99px}
+.drill-img .kw{position:absolute;top:8px;left:8px;font-size:11px;font-weight:900;color:#fff;
+  background:#3b82f6cc;padding:4px 10px;border-radius:99px}
+
+/* ---- mikrofon ---- */
+.mic-b{background:#4c1d95;border-color:#7c3aed}
+.mic-b.rec{background:#7f1d1d;border-color:#ef4444;animation:micPulse 1s infinite}
+@keyframes micPulse{0%,100%{opacity:1}50%{opacity:.55}}
+.mic-live{color:#c4b5fd;font-size:13px;margin-top:8px;min-height:18px}
+.drill-hint{color:var(--muted);font-size:13px;margin-bottom:12px}
+.drill-was{background:#2a0f14;border:1px solid #ef444455;border-radius:12px;padding:9px 12px;margin-bottom:12px;font-size:13px;color:#fca5a5}
+.drill-in{width:100%;background:#0a172c;border:2px dashed #3b82f666;border-radius:14px;color:#fff;padding:14px;font:800 18px Nunito,sans-serif;resize:vertical;min-height:64px}
+.drill-in:focus{outline:none;border-color:var(--blue);border-style:solid}
+.drill-btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.drill-btns .btn{flex:1;min-width:120px}
+.drill-res{margin-top:14px;border-radius:14px;padding:14px;display:none}
+.drill-res.show{display:block}
+.drill-res.ok{background:#052e1a;border:1px solid #22c55e66}
+.drill-res.no{background:#2a0f14;border:1px solid #ef444466}
+.drill-verdict{font-weight:950;font-size:17px;margin-bottom:8px}
+.drill-res.ok .drill-verdict{color:#4ade80}
+.drill-res.no .drill-verdict{color:#f87171}
+.drill-diff{font-size:19px;font-weight:800;line-height:1.7;margin-bottom:8px}
+.drill-diff .w-ok{color:#4ade80}
+.drill-diff .w-bad{color:#f87171;text-decoration:underline wavy #f87171}
+.drill-diff .w-missing{color:#f87171;opacity:.55;text-decoration:line-through}
+.drill-diff .w-extra{color:#fbbf24;font-style:italic;opacity:.75}
+.drill-correct{color:#86efac;font-weight:900;font-size:17px}
+.drill-note{color:var(--muted);font-size:13px;margin-top:8px;line-height:1.5}
+.drill-done{text-align:center;padding:26px 10px}
+.drill-done .big{font-size:46px;margin-bottom:8px}
+@media(max-width:760px){.drill{padding:16px;border-radius:16px}.drill-tr{font-size:19px}}
+@media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.actions{width:100%}.btn{flex:1}.top{align-items:flex-start}.title h1{font-size:23px}}
+</style>
+<script src="./sentences-loader.js?v=1"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="./index.html">←</a>
+    <div class="title"><h1>Hata Defteri</h1><p>Kullanıcının yanlışlarından öğrenen sistem: hangi konuda, hangi kelimede, hangi cümlede hata yapıldığını toplar.</p></div>
+    <div class="actions">
+      <button class="btn" id="drillBtn" style="background:#b45309;border-color:#f59e0b">🎯 Hatalarını Çöz</button>
+      <a class="btn purple" href="./akilli-tekrar.html">🧠 Akıllı Tekrar</a>
+      <button class="btn green" id="exportBtn">JSON dışa aktar</button>
+      <button class="btn" id="revalBtn" style="background:#0e7490">🧹 Kabul Edilenleri Temizle</button>
+      <button class="btn" id="aiCleanBtn" style="background:#7c3aed">🤖 AI ile Temizle</button>
+      <button class="btn red" id="clearBtn">Temizle</button>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="num" id="total">0</div><div class="lab">Toplam hata</div></div>
+    <div class="stat"><div class="num" id="high">0</div><div class="lab">Yüksek öncelik</div></div>
+    <div class="stat"><div class="num" id="typeCount">0</div><div class="lab">Hata tipi</div></div>
+    <div class="stat"><div class="num" id="repeatCount">0</div><div class="lab">Tekrarlayan cümle</div></div>
+  </div>
+  <div class="grid">
+    <aside class="box">
+      <h2>En çok hata tipi</h2><div id="types"></div>
+      <h2 style="margin-top:18px">En çok hata yapılan modül</h2><div id="modules"></div>
+    </aside>
+    <main class="box">
+      <div class="filter">
+        <input id="search" placeholder="Cümle, cevap, modül ara">
+        <select id="source"><option value="">Tümü</option><option value="practice">Practice</option><option value="video">Video</option></select>
+        <select id="priority"><option value="">Öncelik</option><option value="high">Yüksek</option><option value="medium">Orta</option><option value="low">Düşük</option></select>
+      </div>
+      <div id="records"></div>
+    </main>
+  </div>
+</div>
+<script>
+let RECORDS=[];
+const $=id=>document.getElementById(id);
+function fmt(d){try{return new Date(d).toLocaleString("tr-TR")}catch{return d||""}}
+function renderTags(el,arr){el.innerHTML=arr.length?arr.map(([k,v])=>`<div class="tag"><span>${LearningErrorDB.esc(k)}</span><b>${v}</b></div>`).join(""):`<div class="empty">Kayıt yok</div>`}
+async function load(){
+  RECORDS=await LearningErrorDB.all();
+  const s=LearningErrorDB.summarize(RECORDS);
+  $("total").textContent=s.total;$("high").textContent=s.high;$("typeCount").textContent=s.byType.length;$("repeatCount").textContent=s.repeated.length;
+  renderTags($("types"),s.byType);renderTags($("modules"),s.byModule);
+  renderRecords();
+}
+function renderRecords(){
+  const q=$("search").value.toLowerCase().trim(), source=$("source").value, pri=$("priority").value;
+  let arr=RECORDS.filter(r=>(!source||r.source===source)&&(!pri||r.reviewPriority===pri));
+  if(q)arr=arr.filter(r=>[r.target,r.answer,r.sentenceTR,r.module,r.grammar,(r.types||[]).join(" ")].join(" ").toLowerCase().includes(q));
+  $("records").innerHTML=arr.length?arr.map(r=>`
+    <div class="record ${r.reviewPriority||""}">
+      <div class="meta">
+        <span class="pill ${r.reviewPriority||""}">${r.reviewPriority==="high"?"Yüksek":r.reviewPriority==="medium"?"Orta":"Düşük"}</span>
+        <span class="pill">${LearningErrorDB.esc(r.source||"")}</span>
+        <span class="pill">${LearningErrorDB.esc(r.level||"")}</span>
+        <span class="pill">${LearningErrorDB.esc(r.module||"")}</span>
+        <span>${fmt(r.createdAt)}</span>
+      </div>
+      <div class="en">${LearningErrorDB.esc(r.target||"")}</div>
+      ${r.sentenceTR?`<div class="tr">${LearningErrorDB.esc(r.sentenceTR)}</div>`:""}
+      <div>Senin cevap: <span class="ans">${LearningErrorDB.esc(r.answer||"")}</span></div>
+      <div>Doğrusu: <span class="target">${LearningErrorDB.esc(r.target||"")}</span></div>
+      <div class="meta" style="margin-top:8px"><span>Skor: <b>${Math.round(r.score||0)}%</b></span><span>Not: <b>${LearningErrorDB.esc(r.grade||"")}</b></span><span>Gramer: ${LearningErrorDB.esc(r.grammar||"")}</span></div>
+      <div class="types">${(r.types||[]).map(t=>`<span class="type">${LearningErrorDB.esc(t)}</span>`).join("")}</div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn" data-drill="${LearningErrorDB.esc(r.id)}" style="background:#b45309;border-color:#f59e0b;padding:6px 12px;font-size:12px">🎯 Bunu çöz</button>
+        <button class="btn red" data-del="${LearningErrorDB.esc(r.id)}" style="padding:6px 12px;font-size:12px">🗑 Bu kaydı sil</button>
+      </div>
+    </div>`).join(""):`<div class="empty">Bu filtrede kayıt yok.</div>`;
+  $("records").querySelectorAll("[data-drill]").forEach(function(b){
+    b.onclick=function(){
+      var rec=RECORDS.find(function(r){ return String(r.id)===b.getAttribute("data-drill"); });
+      if(rec) Drill.start([rec]);
+    };
+  });
+  $("records").querySelectorAll("[data-del]").forEach(function(b){
+    b.onclick=async function(){
+      if(!confirm("Bu tek kayıt silinsin mi? (Anlamsız/kabul edilebilir bir hata olduğunu düşünüyorsan silebilirsin.)")) return;
+      await LearningErrorDB.deleteMany([b.getAttribute("data-del")]);
+      try{ window.dhCoachMarkStepDone && window.dhCoachMarkStepDone("hata-defteri.html"); }catch(e){}
+      try{ window.dhLogActivity && window.dhLogActivity("🗑 Hata kaydı silindi (tekil)", "cleanup"); }catch(e){}
+      load();
+    };
+  });
+}
+$("search").oninput=renderRecords;$("source").onchange=renderRecords;$("priority").onchange=renderRecords;
+$("clearBtn").onclick=async()=>{if(confirm("Tüm hata defteri silinsin mi?")){await LearningErrorDB.clearAll();load();}};
+$("exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(RECORDS,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hata-defteri.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+
+/* ---- ORTAK METİN KURALLARI ----
+   Kısaltma (isn't = is not) ve zamir (he/she/it) toleransı. Hem "Kabul Edilenleri
+   Temizle" hem 🎯 Alıştırma modu AYNI kuralları kullanır ki bir yerde "doğru" sayılan
+   cevap öbür yerde "yanlış" sayılmasın. */
+var DH=(function(){
+  var CONTRACTIONS={"isn't":["is","not"],"aren't":["are","not"],"wasn't":["was","not"],"weren't":["were","not"],
+    "don't":["do","not"],"doesn't":["does","not"],"didn't":["did","not"],"can't":["can","not"],"won't":["will","not"],
+    "i'm":["i","am"],"you're":["you","are"],"he's":["he","is"],"she's":["she","is"],"it's":["it","is"],
+    "we're":["we","are"],"they're":["they","are"],"i've":["i","have"],"i'll":["i","will"],"i'd":["i","would"]};
+  var PRONOUN_GROUPS=[["he","she","it"],["him","her","it"],["his","her","its"]];
+
+  /* SAYI ↔ KELİME: "20" ile "twenty" aynı cevaptır. Rakamla yazmak hata değildir,
+     ama sistem eskiden bunu yanlış sayıyordu (metin karşılaştırması yaptığı için). */
+  var NUM_WORDS={
+    "0":"zero","1":"one","2":"two","3":"three","4":"four","5":"five","6":"six","7":"seven",
+    "8":"eight","9":"nine","10":"ten","11":"eleven","12":"twelve","13":"thirteen","14":"fourteen",
+    "15":"fifteen","16":"sixteen","17":"seventeen","18":"eighteen","19":"nineteen","20":"twenty",
+    "30":"thirty","40":"forty","50":"fifty","60":"sixty","70":"seventy","80":"eighty","90":"ninety",
+    "100":"hundred","1000":"thousand","1000000":"million"
+  };
+  var ORDINALS={
+    "1st":"first","2nd":"second","3rd":"third","4th":"fourth","5th":"fifth","6th":"sixth",
+    "7th":"seventh","8th":"eighth","9th":"ninth","10th":"tenth","11th":"eleventh","12th":"twelfth",
+    "13th":"thirteenth","20th":"twentieth","21st":"twentyfirst","30th":"thirtieth"
+  };
+  /* Rakamı İngilizce kelimeye çevir (21-99 arası bileşikler dahil: 21 -> twentyone) */
+  function numToWord(n){
+    if(NUM_WORDS[n]) return NUM_WORDS[n];
+    var v=parseInt(n,10);
+    if(isNaN(v) || v<21 || v>99) return null;
+    var tens=Math.floor(v/10)*10, ones=v%10;
+    if(!ones) return NUM_WORDS[String(tens)]||null;
+    var t=NUM_WORDS[String(tens)], o=NUM_WORDS[String(ones)];
+    return (t&&o) ? (t+o) : null;   // "twentyone" — birleşik yazılır, tire/boşluk farkı önemsiz
+  }
+  /* Her kelimeyi karşılaştırılabilir tek bir biçime indir: rakamsa kelimeye çevir */
+  function canon(w){
+    w=String(w||"").toLowerCase();
+    if(ORDINALS[w]) return ORDINALS[w];
+    if(/^\d+$/.test(w)){ var t=numToWord(w); if(t) return t; }
+    return w.replace(/-/g,"");      // "twenty-one" == "twentyone"
+  }
+
+  function tok(s){ return (String(s||"").match(/[A-Za-z']+(?:-[A-Za-z']+)*|\d+(?:st|nd|rd|th)?/g) || []); }
+  function norm(w){ return String(w||"").toLowerCase().replace(/[\u2019\u2018]/g,"'").replace(/[.,!?;:"()]/g,"").trim(); }
+  function normSeq(text){
+    var out=[];
+    tok(text).forEach(function(raw){
+      var n=norm(raw);
+      if(CONTRACTIONS[n]) CONTRACTIONS[n].forEach(function(x){ out.push(canon(x)); });
+      else out.push(canon(n));
+    });
+    return out;
+  }
+  function pronounEq(a,b){
+    return PRONOUN_GROUPS.some(function(g){ return g.indexOf(a)>=0 && g.indexOf(b)>=0; });
+  }
+
+  /* Bileşik sayı düzleştirme: "one hundred" (2 kelime) ile "100" (1 kelime) eşit sayılsın.
+     Dizideki ardışık sayı kelimelerini tek bir sayısal değere indirir.
+     Örn: [one,hundred] -> [100] · [twenty,one] -> [21] · [a,hundred] -> [100] */
+  var W2N={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,
+    eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,
+    nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
+  var MULT={hundred:100,thousand:1000,million:1000000};
+  function collapseNums(seq){
+    var out=[], i=0;
+    while(i<seq.length){
+      var w=seq[i];
+      // "a hundred" = "one hundred"
+      var isA = (w==="a" && MULT[seq[i+1]]);
+      if(W2N[w]===undefined && !MULT[w] && !isA && !/^\d+$/.test(w)){ out.push(w); i++; continue; }
+
+      var total=0, cur=0, used=0;
+      while(i<seq.length){
+        var t=seq[i];
+        if(t==="a" && MULT[seq[i+1]]){ cur=1; i++; used++; continue; }
+        if(/^\d+$/.test(t)){ cur = cur ? cur : 0; cur += parseInt(t,10); i++; used++; continue; }
+        if(W2N[t]!==undefined){ cur += W2N[t]; i++; used++; continue; }
+        if(MULT[t]){
+          cur = (cur||1) * MULT[t];
+          if(MULT[t]>=1000){ total += cur; cur=0; }
+          i++; used++; continue;
+        }
+        break;
+      }
+      if(!used){ out.push(seq[i]); i++; continue; }
+      out.push(String(total+cur));
+    }
+    return out;
+  }
+  return { tok:tok, norm:norm, normSeq:normSeq, pronounEq:pronounEq, canon:canon, collapseNums:collapseNums };
+})();
+
+/* 🧹 Kabul Edilenleri Temizle — kesin/deterministik kurallar (zamir eşdeğerliği, kısaltma
+   esnekliği). AI çağrısı YOK, anlık ve ücretsiz. */
+(function(){
+  function stillWrong(rec){
+    var target=rec.target||rec.sentenceEN||"", answer=rec.answer||"";
+    if(!target || !answer) return true;
+    var a=DH.normSeq(answer), b=DH.normSeq(target);
+    if(a.length!==b.length) return true;
+    for(var i=0;i<a.length;i++){
+      if(a[i]===b[i]) continue;
+      if(!DH.pronounEq(a[i],b[i])) return true;
+    }
+    return false;
+  }
+  document.getElementById("revalBtn").onclick=async function(){
+    if(!confirm("Tüm hata kayıtların kesin kurallarla (zamir eşdeğerliği, kısaltma esnekliği) yeniden değerlendirilecek. Artık gerçek hata sayılmayanlar silinecek. Devam?")) return;
+    var btn=this; btn.disabled=true; btn.textContent="⏳ Değerlendiriliyor...";
+    try{
+      var all=await LearningErrorDB.all();
+      var toDelete=all.filter(function(r){ return !stillWrong(r); }).map(function(r){ return r.id; });
+      if(!toDelete.length){ alert("Temizlenecek kayıt bulunamadı — hepsi hâlâ geçerli hatalar."); }
+      else{ await LearningErrorDB.deleteMany(toDelete); try{ window.dhCoachMarkStepDone && window.dhCoachMarkStepDone("hata-defteri.html"); window.dhLogActivity && window.dhLogActivity("🧹 Kesin kurallarla "+toDelete.length+" kayıt temizlendi", "cleanup"); }catch(e){} alert("✓ "+toDelete.length+" kayıt temizlendi (kesin kurallarla)."); load(); }
+    }catch(e){ alert("Hata: "+(e&&e.message||e)); }
+    btn.disabled=false; btn.textContent="🧹 Kabul Edilenleri Temizle";
+  };
+})();
+
+/* 🤖 AI ile Temizle — kesin kuralların yakalayamadığı daha İNCE gramer alternatiflerini
+   (örn. "there is not any towel" vs "there aren't any towels") AI tek tek kontrol eder.
+   Tek kelime EVET/HAYIR cevabı istenir (JSON formatı istenmez — daha güvenilir). */
+(function(){
+  document.getElementById("aiCleanBtn").onclick=async function(){
+    if(!(window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
+      alert("AI ile temizlemek için önce Ayarlar'dan bir API anahtarı ekle."); return;
+    }
+    var all=await LearningErrorDB.all();
+    var candidates=all.filter(function(r){ return (r.target||r.sentenceEN) && r.answer; });
+    if(!candidates.length){ alert("Kontrol edilecek uygun kayıt yok (hedef/cevap metni eksik)."); return; }
+    if(!confirm(candidates.length+" kayıt AI ile tek tek kontrol edilecek. Bu biraz zaman alabilir ve API kotanı kullanır. Devam?")) return;
+    var btn=this; btn.disabled=true;
+    var toDelete=[], checked=0, deleted=0;
+    async function checkOne(rec, tries){
+      var target=rec.target||rec.sentenceEN, msgs=[
+        {role:"system",content:"Bir İngilizce öğrenme uygulamasında öğrencinin cevabının referans cümleyle AYNI ANLAMA gelip gelmediğini değerlendiriyorsun (farklı kelimeler/yapı olabilir, önemli olan anlam VE dilbilgisi doğruluğu). SADECE tek kelime cevap ver: EVET ya da HAYIR."},
+        {role:"user",content:"Referans: "+target+"\nÖğrenci cevabı: "+rec.answer}
+      ];
+      try{
+        var out=await DHProviders.chat(msgs,{temperature:0,max_tokens:(tries?220:120)});
+        var t=String(out||"").trim();
+        if(/evet|yes/i.test(t)) return true;
+        if(/hayır|hayir|no/i.test(t)) return false;
+        if(!tries) return await checkOne(rec, true);   // boş/anlaşılmaz cevap → bir kez daha, geniş bütçeyle
+        return false;
+      }catch(e){
+        if(!tries && e && e.code==="empty") return await checkOne(rec, true);
+        return false;   // hata durumunda güvenli taraf: silme
+      }
+    }
+    for(var i=0;i<candidates.length;i++){
+      btn.textContent="⏳ "+(i+1)+"/"+candidates.length+" kontrol ediliyor... ("+deleted+" temizlendi)";
+      var isEquivalent=await checkOne(candidates[i], false);
+      checked++;
+      if(isEquivalent){ toDelete.push(candidates[i].id); deleted++; }
+    }
+    if(toDelete.length) await LearningErrorDB.deleteMany(toDelete);
+    try{ window.dhCoachMarkStepDone && window.dhCoachMarkStepDone("hata-defteri.html"); window.dhLogActivity && window.dhLogActivity("🤖 AI ile "+checked+" kayıt kontrol edildi, "+toDelete.length+" temizlendi", "cleanup"); }catch(e){}
+    btn.disabled=false; btn.textContent="🤖 AI ile Temizle";
+    alert("✓ "+checked+" kayıt AI ile kontrol edildi, "+toDelete.length+" tanesi anlamca doğru bulunup temizlendi.");
+    load();
+  };
+})();
+
+/* ============================================================
+   🎯 ALIŞTIRMA MODU — hata defterini PASİF ARŞİV olmaktan çıkarır.
+   Hatalarını tek tek yeniden çözersin; doğru yaparsan kayıt SRS ile
+   "öğrenildi"ye doğru ilerler (markReviewed), yanlış yaparsan önceliği
+   yükselir ve tekrar karşına çıkar.
+   SİLME = "bu hata sayılmasın" · ÇÖZME = "bunu gerçekten öğrendim".
+   İkisi farklı şeylerdir; eskiden yalnız silme vardı.
+   ============================================================ */
+/* ============================================================
+   GÖRSEL İPUCU — index-app'teki image-addon.js ile AYNI MANTIK.
+   Resim cümleden TAHMİN EDİLMEZ: data/sentences.json içinde her cümlenin
+   elle yazılmış kendi "imgQuery" terimi vardır (9417 cümlenin 8934'ünde).
+   O terimle Openverse → Wikimedia Commons → Wikipedia sırasıyla aranır.
+   Terim yoksa ya da resim bulunamazsa HİÇBİR ŞEY GÖSTERİLMEZ — rastgele/
+   alakasız stok fotoğraf konmaz (tekrar.html'de düzeltilen hata tekrarlanmasın).
+   ============================================================ */
+var Img=(function(){
+  var map=null, loading=null, cache={};
+  function normEn(s){ return String(s||"").toLowerCase().replace(/\s+/g," ").replace(/[^a-z0-9' ]/g,"").trim(); }
+
+  function loadMap(){
+    if(map) return Promise.resolve(map);
+    if(loading) return loading;
+    loading=(async function(){
+      // hazır eşleme dosyası (gzip ~172 KB); yoksa eski dosyaya düşer
+      try{
+        var rq=await fetch("data/sentences/img-queries.json");
+        if(rq.ok){ map=await rq.json(); return map; }
+      }catch(e){}
+      var paths=["data/sentences.json","./data/sentences.json","sentences.json"];
+      for(var i=0;i<paths.length;i++){
+        try{
+          var r=await fetch(paths[i]); if(!r.ok) continue;
+          var arr=await r.json(), m={};
+          for(var k=0;k<arr.length;k++){
+            var s=arr[k];
+            if(s && s.en && s.imgQuery) m[normEn(s.en)]=s.imgQuery;
+          }
+          map=m; return m;
+        }catch(e){}
+      }
+      map={}; return map;
+    })();
+    return loading;
+  }
+
+  async function fromOpenverse(q){
+    try{
+      var r=await fetch("https://api.openverse.org/v1/images/?q="+encodeURIComponent(q)+"&page_size=1&mature=false",{headers:{Accept:"application/json"}});
+      if(!r.ok) return null;
+      var j=await r.json(), f=(j.results||[])[0];
+      return f ? (f.thumbnail||f.url) : null;
+    }catch(e){ return null; }
+  }
+  async function fromCommons(q){
+    try{
+      var r=await fetch("https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch="+encodeURIComponent("filetype:bitmap "+q)+"&gsrlimit=1&prop=imageinfo&iiprop=url&iiurlwidth=600");
+      var j=await r.json(), pages=(j.query&&j.query.pages)||{};
+      for(var p in pages){ var ii=pages[p].imageinfo&&pages[p].imageinfo[0]; if(ii&&ii.thumburl) return ii.thumburl; }
+      return null;
+    }catch(e){ return null; }
+  }
+  async function fromWikipedia(q){
+    try{
+      var s=await fetch("https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&list=search&srsearch="+encodeURIComponent(q)+"&srlimit=1");
+      var sj=await s.json(), hit=((sj.query&&sj.query.search)||[])[0];
+      if(!hit) return null;
+      var r=await fetch("https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=pageimages&piprop=thumbnail&pithumbsize=600&pageids="+hit.pageid);
+      var rj=await r.json(), pages=(rj.query&&rj.query.pages)||{};
+      for(var p in pages){ if(pages[p].thumbnail) return pages[p].thumbnail.source; }
+      return null;
+    }catch(e){ return null; }
+  }
+
+  /* Cümlenin görselini getirir. imgQuery YOKSA null döner (zorlama arama YAPILMAZ). */
+  async function find(en){
+    var key=normEn(en);
+    if(!key) return null;
+    if(cache[key]!==undefined) return cache[key];
+
+    var m=await loadMap();
+    var q=m[key];
+    if(!q){ cache[key]=null; return null; }   // ← ALAKASIZLIĞI ÖNLEYEN SATIR: terim yoksa arama yok
+
+    var url=null;
+    var fns=[fromOpenverse, fromCommons, fromWikipedia];
+    for(var i=0;i<fns.length && !url;i++) url=await fns[i](q);
+    cache[key]=url||null;
+    return cache[key];
+  }
+
+  /* Kutuya yerleştir. Bulamazsa kutu gizli kalır. */
+  async function paint(boxId, en){
+    var box=document.getElementById(boxId);
+    if(!box) return;
+    box.classList.remove("show");
+    box.innerHTML="";
+    var m=await loadMap();
+    var q=m[normEn(en)];
+    var url=await find(en);
+    if(!url) return;                          // resim yok -> hiçbir şey gösterme
+    var cur=document.getElementById(boxId);   // kullanıcı bu arada geçmiş olabilir
+    if(!cur || cur!==box) return;
+    box.innerHTML='<img src="'+LearningErrorDB.esc(url)+'" alt="" loading="lazy">'
+      + (q?'<span class="kw">'+LearningErrorDB.esc(q)+'</span>':'')
+      + '<span class="cap">açık kaynak görsel</span>';
+    box.querySelector("img").onerror=function(){ box.classList.remove("show"); box.innerHTML=""; };
+    box.classList.add("show");
+  }
+
+  return { paint:paint };
+})();
+
+var Drill=(function(){
+  var queue=[], i=0, done=0, fixed=0, answered=false;
+
+  function isCorrect(answer, target){
+    if(!answer || !target) return false;
+    /* Sayılar düzleştirilir: "20"=="twenty", "one hundred"=="100", "twenty-one"=="21" */
+    var a=DH.collapseNums(DH.normSeq(answer)), b=DH.collapseNums(DH.normSeq(target));
+    if(a.length!==b.length) return false;
+    for(var k=0;k<a.length;k++){
+      if(a[k]===b[k]) continue;
+      if(!DH.pronounEq(a[k],b[k])) return false;   // he/she/it farkı hata sayılmaz
+    }
+    return true;
+  }
+
+  /* Kelime kelime fark (LCS). Karşılaştırma canon() ile yapılır (20 == twenty),
+     ama ekranda kullanıcının/hedefin GERÇEK yazımı gösterilir. */
+  function eqw(a,b){ return DH.canon(DH.norm(a))===DH.canon(DH.norm(b)); }
+  function diff(answer, target){
+    var A=DH.tok(answer), B=DH.tok(target), n=A.length, m=B.length, dp=[];
+    for(var x=0;x<=n;x++){ dp[x]=[]; for(var y=0;y<=m;y++) dp[x][y]=0; }
+    for(var x=1;x<=n;x++) for(var y=1;y<=m;y++)
+      dp[x][y]=eqw(A[x-1],B[y-1]) ? dp[x-1][y-1]+1
+              : Math.max(dp[x-1][y], dp[x][y-1]);
+    var out=[], p=n, q=m;
+    while(p>0 && q>0){
+      if(eqw(A[p-1],B[q-1])){ out.unshift({t:"ok",w:B[q-1]}); p--; q--; }
+      else if(dp[p-1][q] >= dp[p][q-1]){ out.unshift({t:"extra",w:A[p-1]}); p--; }
+      else { out.unshift({t:"missing",w:B[q-1]}); q--; }
+    }
+    while(p>0){ out.unshift({t:"extra",w:A[--p]}); }
+    while(q>0){ out.unshift({t:"missing",w:B[--q]}); }
+    return out;
+  }
+
+  function close(){ stopMic(); var o=document.getElementById("drillOv"); if(o) o.remove(); load(); }
+
+  function start(list){
+    queue=(list||[]).filter(function(r){ return (r.target||r.sentenceEN); });
+    if(!queue.length){ alert("Çözülecek uygun kayıt yok (cümle metni eksik kayıtlar atlanır)."); return; }
+    i=0; done=0; fixed=0;
+    var o=document.createElement("div");
+    o.className="drill-ov"; o.id="drillOv";
+    o.innerHTML='<div class="drill" id="drillBox"></div>';
+    document.body.appendChild(o);
+    o.addEventListener("click",function(e){ if(e.target===o && confirm("Alıştırmadan çıkılsın mı?")) close(); });
+    render();
+  }
+
+  function render(){
+    var box=document.getElementById("drillBox"); if(!box) return;
+    if(i>=queue.length) return renderDone(box);
+    answered=false;
+    var r=queue[i], target=r.target||r.sentenceEN||"", pct=Math.round(i/queue.length*100);
+
+    box.innerHTML=
+      '<div class="drill-top"><h3>🎯 Hatanı Düzelt</h3><button class="drill-x" id="dX" title="Kapat">✕</button></div>'
+      +'<div class="drill-prog">'+(i+1)+' / '+queue.length+' · Düzeltilen: <b>'+fixed+'</b></div>'
+      +'<div class="drill-bar"><span style="width:'+pct+'%"></span></div>'
+      +'<div class="drill-img" id="dImg"></div>'
+      +(r.sentenceTR
+          ? '<div class="drill-tr">'+LearningErrorDB.esc(r.sentenceTR)+'</div>'
+            +'<div class="drill-hint">Bu cümlenin İngilizcesini baştan yaz. Daha önce burada hata yapmıştın.</div>'
+          : '<div class="drill-tr">Cümleyi hatırla ve yeniden yaz</div>'
+            +'<div class="drill-hint">Bu kayıtta Türkçe karşılık yok. 🔊 Dinle ile ipucu alabilirsin.</div>')
+      +(r.answer?'<div class="drill-was">Önceki yanlış cevabın: '+LearningErrorDB.esc(r.answer)+'</div>':'')
+      +'<textarea class="drill-in" id="dIn" placeholder="İngilizce cümleyi buraya yaz…" autocomplete="off" autocapitalize="sentences" spellcheck="false"></textarea>'
+      +'<div class="drill-btns">'
+      +  '<button class="btn" id="dHear" style="background:#132647">🔊 Dinle</button>'
+      +  '<button class="btn mic-b" id="dMic">🎙️ Söyle</button>'
+      +  '<button class="btn" id="dSkip" style="background:#334155">Atla</button>'
+      +  '<button class="btn green" id="dChk">Kontrol et</button>'
+      +'</div>'
+      +'<div class="mic-live" id="dLive"></div>'
+      +'<div class="drill-res" id="dRes"></div>';
+
+    /* Görsel ipucu: cümlenin imgQuery'si varsa gelir, yoksa kutu hiç görünmez */
+    try{ Img.paint("dImg", target); }catch(e){}
+
+    document.getElementById("dX").onclick=function(){ if(confirm("Alıştırmadan çıkılsın mı?")) close(); };
+    document.getElementById("dHear").onclick=function(){ say(target); };
+    document.getElementById("dSkip").onclick=function(){ stopMic(); i++; render(); };
+    document.getElementById("dChk").onclick=check;
+    document.getElementById("dMic").onclick=toggleMic;
+
+    var inp=document.getElementById("dIn");
+    inp.focus();
+    inp.onkeydown=function(e){
+      if(e.key==="Enter" && !e.shiftKey && !e.isComposing){
+        e.preventDefault();
+        if(answered) next(); else check();
+      }
+    };
+  }
+
+  function say(t){
+    try{ var u=new SpeechSynthesisUtterance(String(t||"")); u.lang="en-US"; u.rate=0.9;
+         speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
+  }
+
+  /* ---- 🎙️ MİKROFON: cümleyi yazmak yerine söyleyebilirsin ---- */
+  var rec=null, recording=false;
+  function stopMic(){
+    recording=false;
+    try{ if(rec) rec.stop(); }catch(e){}
+    rec=null;
+    var b=document.getElementById("dMic");
+    if(b){ b.classList.remove("rec"); b.textContent="🎙️ Söyle"; }
+  }
+  function toggleMic(){
+    var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){ alert("Bu tarayıcı mikrofonla yazmayı desteklemiyor (Chrome öneriyoruz)."); return; }
+    if(recording){ stopMic(); return; }
+
+    var btn=document.getElementById("dMic");
+    var live=document.getElementById("dLive");
+    var inp=document.getElementById("dIn");
+
+    rec=new SR();
+    rec.lang="en-US";               // cevap İngilizce olacak
+    rec.interimResults=true;
+    rec.continuous=false;
+    recording=true;
+    btn.classList.add("rec");
+    btn.textContent="🔴 Dinliyorum…";
+    if(live) live.textContent="Konuş… (bitince düğmeye tekrar bas)";
+
+    var finalTxt="";
+    rec.onresult=function(e){
+      var interim="";
+      for(var k=e.resultIndex;k<e.results.length;k++){
+        var t=e.results[k][0].transcript;
+        if(e.results[k].isFinal) finalTxt+=t;
+        else interim+=t;
+      }
+      if(inp) inp.value=(finalTxt+interim).trim();
+      if(live) live.textContent=interim?("… "+interim):"";
+    };
+    rec.onerror=function(ev){
+      if(live) live.textContent = (ev&&ev.error==="not-allowed")
+        ? "Mikrofon izni verilmedi." : "Mikrofon hatası, tekrar dene.";
+      stopMic();
+    };
+    rec.onend=function(){
+      stopMic();
+      if(live) live.textContent = (inp&&inp.value.trim()) ? "✓ Yazıldı — kontrol edebilirsin." : "";
+    };
+    try{ rec.start(); }catch(e){ stopMic(); }
+  }
+
+  function next(){ stopMic(); i++; render(); }
+
+  async function check(){
+    if(answered) return next();
+    var r=queue[i], target=r.target||r.sentenceEN||"";
+    var ans=(document.getElementById("dIn").value||"").trim();
+    if(!ans){ document.getElementById("dIn").focus(); return; }
+    stopMic();
+    answered=true; done++;
+
+    var ok=isCorrect(ans,target);
+    if(ok) fixed++;
+
+    var res=document.getElementById("dRes");
+    res.className="drill-res show "+(ok?"ok":"no");
+    var dh=diff(ans,target).map(function(p){
+      var c=p.t==="ok"?"w-ok":p.t==="extra"?"w-extra":"w-missing";
+      return '<span class="'+c+'">'+LearningErrorDB.esc(p.w)+'</span>';
+    }).join(" ");
+
+    res.innerHTML=
+      '<div class="drill-verdict">'+(ok?"✅ Doğru! Bu hatayı düzelttin.":"❌ Hâlâ tam değil.")+'</div>'
+      +'<div class="drill-diff">'+dh+'</div>'
+      +'<div class="drill-correct">Doğrusu: '+LearningErrorDB.esc(target)+'</div>'
+      +'<div class="drill-note">'+(ok
+          ? "Kaydın önceliği düştü. Birkaç kez daha doğru yaparsan defterden tamamen çıkacak."
+          : "Kayıt defterde kalıyor ve önceliği yükseldi — yakında tekrar karşına çıkacak.")+'</div>'
+      +'<div class="drill-btns" style="margin-top:12px">'
+      +  '<button class="btn green" id="dNext">'+((i+1)>=queue.length?"Bitir":"Sonraki ›")+'</button>'
+      +'</div>';
+
+    document.getElementById("dNext").onclick=next;
+    say(target);
+
+    /* SRS: markReviewed learning-error-system.js'te ZATEN VARDI ama hiçbir yerde
+       kullanılmıyordu. Doğruysa öncelik düşer/vade uzar, yanlışsa öncelik yükselir. */
+    try{
+      if(LearningErrorDB.markReviewed)
+        await LearningErrorDB.markReviewed(r.id, { grade: ok?"easy":"hard", score: ok?100:0 });
+    }catch(e){}
+
+    /* Koça GERÇEK çalışma olarak bildir (kayıt silmek değil, hatayı düzeltmek) */
+    try{
+      window.dhCoachEvaluate && window.dhCoachEvaluate({
+        ok:ok, grade: ok?"easy":"hard", score: ok?100:0,
+        en:target, answer:ans, sentenceId:r.sentenceId||("err:"+r.id),
+        trackKind:"review", module:r.module||"", grammar:r.grammar||"",
+        commonMistake:r.commonMistake||""
+      });
+    }catch(e){}
+  }
+
+  function renderDone(box){
+    var pct=done?Math.round(100*fixed/done):0;
+    box.innerHTML=
+      '<div class="drill-done">'
+      +'<div class="big">'+(pct>=80?"🎉":pct>=50?"👍":"💪")+'</div>'
+      +'<h3 style="margin:0 0 8px">Alıştırma bitti</h3>'
+      +'<p style="color:#9fb1d0;margin:0 0 6px">'+done+' hata çözdün, <b style="color:#4ade80">'+fixed+'</b> tanesini düzelttin.</p>'
+      +'<p style="color:#9fb1d0;margin:0 0 18px;font-size:13px">Doğru çözdüklerinin önceliği düştü. Birkaç tekrar daha yaparsan defterden çıkacaklar.</p>'
+      +'<button class="btn green" id="dClose" style="padding:12px 24px">Deftere dön</button>'
+      +'</div>';
+    document.getElementById("dClose").onclick=close;
+    try{
+      window.dhCoachMarkStepDone && window.dhCoachMarkStepDone("hata-defteri.html");
+      window.dhLogActivity && window.dhLogActivity("🎯 Hata alıştırması: "+done+" çözüldü, "+fixed+" düzeltildi","drill");
+    }catch(e){}
+  }
+
+  return { start:start };
+})();
+
+/* Toplu alıştırma: vadesi gelenler ve yüksek öncelikliler önce */
+document.getElementById("drillBtn").onclick=function(){
+  var now=Date.now();
+  var pool=RECORDS.filter(function(r){ return (r.target||r.sentenceEN); });
+  if(!pool.length){ alert("Defterde çözülecek hata yok."); return; }
+  var PRI={high:0,medium:1,low:2};
+  pool.sort(function(a,b){
+    var da=new Date(a.dueAt||0).getTime()||0, db=new Date(b.dueAt||0).getTime()||0;
+    var ua=(da<=now)?0:1, ub=(db<=now)?0:1;
+    if(ua!==ub) return ua-ub;                                   // vadesi gelen önce
+    var pa=PRI[a.reviewPriority]!=null?PRI[a.reviewPriority]:3;
+    var pb=PRI[b.reviewPriority]!=null?PRI[b.reviewPriority]:3;
+    if(pa!==pb) return pa-pb;                                   // yüksek öncelik önce
+    return (a.score||0)-(b.score||0);                           // düşük skor önce
+  });
+  Drill.start(pool.slice(0,20));                                // oturum başına en fazla 20
+};
+
+load();
+</script>
+<script src="./cloud-sync.js?v=4"></script>
+<script src="./ux-boost.js?v=1"></script>
+</body>
+</html>

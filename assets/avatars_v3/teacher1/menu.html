@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<!-- maximum-scale YAZILMAZ: yakinlastirma kapatilmaz -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F7A5A">
+<title>Kitaplık · Dil Harita</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+<link rel="stylesheet" href="./dh-tokens.css">
+<link rel="stylesheet" href="./dh-ui.css">
+<style>
+  /* Kitapliga ozgu: niyet gruplari */
+  .grup{ border:var(--dh-bd); border-radius:var(--dh-r-kart);
+         background:var(--dh-yuzey); margin-bottom:var(--dh-b-3); overflow:hidden; }
+  .grup > summary{
+    list-style:none; cursor:pointer; padding:var(--dh-b-4);
+    display:flex; align-items:center; gap:var(--dh-b-3);
+    font-size:var(--dh-fs-govde); font-weight:var(--dh-fw-orta);
+  }
+  .grup > summary::-webkit-details-marker{ display:none; }
+  .grup > summary::after{ content:"+"; margin-left:auto; color:var(--dh-text-3); }
+  .grup[open] > summary::after{ content:"–"; }
+  .grup__alt{ font-size:var(--dh-fs-etiket); color:var(--dh-text-3); font-weight:var(--dh-fw-normal); }
+  .grup__ic{ padding:0 var(--dh-b-4) var(--dh-b-4); display:flex; flex-direction:column; gap:var(--dh-b-2); }
+  .oge{
+    display:block; padding:var(--dh-b-3); border:var(--dh-bd);
+    border-radius:var(--dh-r-kontrol); text-decoration:none; color:inherit;
+    transition:border-color var(--dh-sure-geri) var(--dh-egri);
+  }
+  .oge:hover{ border-color:var(--dh-cizgi-kuvvet); }
+  .oge__ad{ font-size:var(--dh-fs-kontrol); font-weight:var(--dh-fw-orta); }
+  .oge__alt{ font-size:var(--dh-fs-ipucu); color:var(--dh-text-2); margin-top:2px; }
+  .satir{ display:flex; gap:var(--dh-b-2); flex-wrap:wrap; }
+  .satir > *{ flex:1 1 140px; }
+  .anahtar{ position:relative; width:52px; height:30px; border-radius:var(--dh-r-cip);
+            background:var(--dh-bos); flex:0 0 auto; transition:background var(--dh-sure-gecis) var(--dh-egri); }
+  .gizliGiris{ position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; }
+  input[type=time]{ background:var(--dh-yuzey-2); border:var(--dh-bd); color:var(--dh-text);
+                    border-radius:var(--dh-r-kontrol); padding:8px 10px; }
+</style>
+</head>
+<body>
+
+<main class="dh-sayfa">
+
+  <header class="dh-ust">
+    <div class="dh-ust__sol">
+      <a class="dh-ikon-btn" href="./index.html" aria-label="Geri">←</a>
+      <h1>Kitaplık</h1>
+    </div>
+    <div class="dh-ust__sag">
+      <a class="dh-ikon-btn" href="./rapor.html" aria-label="Rapor">◔</a>
+    </div>
+  </header>
+
+  <!-- BUGUNUN PLANI: ozet. Hesaplama index.html'de, burada yalnizca ozet.
+       Ham "tekrar bekleyen" toplami BURADA DA gosterilmez. -->
+  <a class="dh-kart dh-gir" id="planOzet" href="./index.html"
+     style="display:none;margin-bottom:var(--dh-b-5);text-decoration:none;color:inherit">
+    <div class="dh-bolum-basligi">Bugünün planı</div>
+    <div id="planOdak" style="font-size:var(--dh-fs-kontrol);font-weight:var(--dh-fw-orta)"></div>
+    <div class="dh-tugla" style="margin-bottom:0">
+      <div class="dh-tugla__sira" id="planTugla"></div>
+      <div class="dh-tugla__yazi" id="planYazi"></div>
+    </div>
+  </a>
+
+  <div id="dhStreakSlot" style="margin-bottom:var(--dh-b-4)"></div>
+  <div id="dhBadges" class="satir" style="margin-bottom:var(--dh-b-5)"></div>
+
+  <!-- ÖĞREN -->
+  <details class="grup dh-group" id="grpLearn" open>
+    <summary>Öğren <span class="grup__alt">ders · cümle · kelime</span></summary>
+    <div class="grup__ic">
+      <a class="oge" href="./ders.html"><div class="oge__ad">Bugünkü dersim</div><div class="oge__alt">Öğretmen ders hazırlar</div></a>
+      <a class="oge" href="./index-app.html"><div class="oge__ad">Cümle çalış</div><div class="oge__alt">Modül modül ilerle</div></a>
+      <a class="oge" href="./kelime-ogren.html"><div class="oge__ad">Kelime öğren</div><div class="oge__alt">En sık kelimeler — kart ve quiz</div></a>
+      <a class="oge" href="./phrasal-verbs.html"><div class="oge__ad">Phrasal verbs</div><div class="oge__alt">881 öbek fiil</div></a>
+      <a class="oge" href="./teacher.html"><div class="oge__ad">Öğretmen</div><div class="oge__alt">Türkçe anlatımlı İngilizce öğretmeni</div></a>
+      <a class="oge" href="./library.html"><div class="oge__ad">Kütüphane</div><div class="oge__alt">Kitap ve metin okuma</div></a>
+      <a class="oge" href="./modullerim.html"><div class="oge__ad">Modüllerim</div><div class="oge__alt">Kendi ilgi alanında modül üret ve çalış</div></a>
+    </div>
+  </details>
+
+  <!-- PRATİK -->
+  <details class="grup dh-group" id="grpPractice">
+    <summary>Pratik <span class="grup__alt">tekrar · konuşma · telaffuz</span></summary>
+    <div class="grup__ic">
+      <a class="oge" href="./tekrar.html"><div class="oge__ad">Tekrar</div><div class="oge__alt">Vadesi gelen kelime ve cümleler</div></a>
+      <a class="oge" href="./chat.html"><div class="oge__ad">Sohbet</div><div class="oge__alt">Konuşan avatarla senaryolar</div></a>
+      <a class="oge" href="./videopractice.html"><div class="oge__ad">Video</div><div class="oge__alt">Telaffuz çalışması</div></a>
+      <a class="oge" href="./pv-practice.html"><div class="oge__ad">Phrasal verb pratiği</div><div class="oge__alt">Çoktan seçmeli, boşluk doldurma, dinle-yaz</div></a>
+      <a class="oge" href="./practice.html"><div class="oge__ad">Çalışma ekranı</div><div class="oge__alt">Serbest cümle çalışması</div></a>
+    </div>
+  </details>
+
+  <!-- FOTOĞRAFTAN -->
+  <details class="grup dh-group" id="grpPhoto">
+    <summary>Fotoğraftan ekle <span class="grup__alt">tara · çevir · çalış</span></summary>
+    <div class="grup__ic">
+      <a class="oge" href="./foto-ekle.html"><div class="oge__ad">Fotoğraftan ekle</div><div class="oge__alt">Fotoğraftaki cümleleri tara ve çevir</div></a>
+      <a class="oge" href="./ocr-sentence.html"><div class="oge__ad">OCR cümle modu</div><div class="oge__alt">Eklediğin cümleleri zengin modda çalış</div></a>
+    </div>
+  </details>
+
+  <!-- ANALİZ -->
+  <details class="grup dh-group" id="grpStats">
+    <summary>İlerleme ve analiz <span class="grup__alt">harita · rapor · hatalar</span></summary>
+    <div class="grup__ic">
+      <a class="oge" href="./harita.html"><div class="oge__ad">İlerleme haritası</div><div class="oge__alt">Tüm modüllerde ne kadar yol aldın</div></a>
+      <a class="oge" href="./rapor.html"><div class="oge__ad">30 günlük rapor</div><div class="oge__alt">Aktivite, hata eğilimi, unutma eğrisi</div></a>
+      <a class="oge" href="./aktivite.html"><div class="oge__ad">Bugünkü aktivitem</div><div class="oge__alt">Saat saat ne yaptın</div></a>
+      <a class="oge" href="./hata-defteri.html"><div class="oge__ad">Hata defteri</div><div class="oge__alt">Yanlış yapılan cümleler ve analiz</div></a>
+      <a class="oge" href="./seviye-testi.html"><div class="oge__ad">Seviye belirleme</div><div class="oge__alt">Kısa bir testle seviyeni ölç</div></a>
+    </div>
+  </details>
+
+  <!-- AYARLAR -->
+  <details class="grup dh-group" id="grpSettings">
+    <summary>Ayarlar ve veri <span class="grup__alt">bildirim · yedek · senkron</span></summary>
+    <div class="grup__ic">
+
+      <div class="dh-kart dh-kart--sessiz" id="dhNotifCard">
+        <div style="display:flex;align-items:center;gap:var(--dh-b-3)">
+          <div style="flex:1">
+            <div class="oge__ad">Günlük hatırlatma</div>
+            <div class="oge__alt">Her gün seçtiğin saatte çalışma hatırlatması</div>
+          </div>
+          <label class="anahtar" id="dhNotifSlider">
+            <input type="checkbox" id="dhNotifToggle" class="gizliGiris" aria-label="Günlük hatırlatmayı aç veya kapat">
+          </label>
+        </div>
+        <div id="dhNotifBody" style="display:none;margin-top:var(--dh-b-3)">
+          <div style="display:flex;align-items:center;gap:var(--dh-b-3)">
+            <label class="dh-etiket" for="dhNotifTime">Saat</label>
+            <input type="time" id="dhNotifTime" value="20:00">
+            <button class="dh-btn dh-btn--ikincil" id="dhNotifTest" style="min-height:40px">Test et</button>
+          </div>
+          <div class="dh-ipucu" id="dhNotifMsg" style="margin-top:var(--dh-b-2);min-height:16px" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <button class="dh-btn dh-btn--ikincil dh-btn--tam" id="dhCloudSyncBtn">Bulutla senkronize et</button>
+      <div class="dh-ipucu" id="dhCloudSyncMsg" style="min-height:16px" aria-live="polite"></div>
+
+      <div class="satir">
+        <button class="dh-btn dh-btn--ikincil" id="dhBackupBtn">Yedeği indir</button>
+        <label class="dh-btn dh-btn--ikincil" style="cursor:pointer">
+          Yedekten yükle
+          <input type="file" id="dhRestoreFile" accept="application/json" style="display:none">
+        </label>
+      </div>
+      <div class="dh-ipucu" id="dhBackupMsg" style="min-height:16px" aria-live="polite"></div>
+
+      <div class="satir">
+        <button class="dh-btn dh-btn--sade" id="dhSnapBtn">Geri dön</button>
+        <a class="dh-btn dh-btn--sade" href="./pwa-hard-reset.html">Önbelleği temizle</a>
+        <button class="dh-btn dh-btn--sade" id="dhLegacyCleanBtn">Eski verileri temizle</button>
+      </div>
+
+      <button class="dh-btn dh-btn--sade dh-btn--tam" id="dhLogoutBtn"
+              style="color:var(--dh-err)">Çıkış yap</button>
+    </div>
+  </details>
+
+</main>
+
+<script src="./auth-guard.js?v=1"></script>
+<script src="./storage-bridge.js?v=3"></script>
+<script src="./progress-engine.js?v=2"></script>
+<script src="./teacher-policy.js?v=3"></script>
+<script src="./mastery-engine.js?v=1"></script>
+<script src="./sentences-loader.js?v=20"></script>
+<!-- Karma gün sonu pratiği: o gün çalışılan cümle + kalıp + kelimeleri
+     harmanlayıp öğretmen sohbetine devreder. -->
+<script src="./dh-gun-sonu.js?v=1"></script>
+<script src="./pwa-install.js"></script>
+<script src="./learning-error-system.js?v=2"></script>
+<script src="./study-tracker.js?v=1"></script>
+<script src="./streak-screen.js?v=1"></script>
+<!-- Tam yedek: TÜM IndexedDB veritabanlarını tek JSON'a alır.
+     Öncesinde yalnızca sentence-mode/kv alınıyordu; gramer çalışmaları,
+     hata defterinin ham deposu ve Gemini kelime analizleri yedeğe hiç
+     girmiyordu. -->
+<script src="./dh-yedek.js?v=1"></script>
+<script src="./cloud-sync.js?v=20"></script>
+<script src="./notifications.js?v=1"></script>
+<script>
+/* ---- Bulutla senkronize et + Çıkış yap ---- */
+(function(){
+  var btn=document.getElementById("dhCloudSyncBtn");
+  var msg=document.getElementById("dhCloudSyncMsg");
+  if(!btn) return;
+  btn.onclick=async function(){
+    if(!(window.DHCloudSync && window.DHCloudSync.fullSync)){
+      if(msg){ msg.style.color="var(--dh-seri)"; msg.textContent="Bulut bağlantısı hazır değil, birkaç saniye sonra tekrar dene."; }
+      return;
+    }
+    var old=btn.textContent;
+    btn.disabled=true; btn.textContent="⏳ Senkronize ediliyor...";
+    if(msg) msg.textContent="";
+    var u=window.DHCloudSync.user, rdy=window.DHCloudSync.ready;
+    try{
+      var res=await window.DHCloudSync.fullSync();
+      if(msg){
+        msg.innerHTML=(res.message||"")
+          +"<br><small style='color:var(--dh-text-2)'>giriş:"+(u?("var ("+String(u.uid).slice(0,6)+")"):"YOK")
+          +" · hazır:"+(rdy?"evet":"hayır")+"</small>";
+        msg.style.color=res.ok?"var(--dh-ok)":"var(--dh-err)";
+      }
+      if(!res.ok && /giriş/i.test(res.message||"")){
+        if(msg) msg.innerHTML+="<br><small style='color:var(--dh-marka-metin)'>Giriş sayfasına yönlendiriliyorsun…</small>";
+        setTimeout(function(){ location.href="./login.html"; },1200);
+      }
+      if(res.ok){
+        try{ if(window.__dhStorageFlush) window.__dhStorageFlush(); }catch(e){}
+        if(msg) msg.innerHTML+="<br><small style='color:var(--dh-marka-metin)'>Sayfa yenileniyor…</small>";
+        setTimeout(function(){ location.reload(); },1400);
+      }
+    }catch(e){
+      if(msg){ msg.textContent="Senkron sırasında hata: "+(e&&e.message?e.message:"bilinmeyen"); msg.style.color="var(--dh-err)"; }
+    }finally{ btn.disabled=false; btn.textContent=old; }
+  };
+
+  var logoutBtn=document.getElementById("dhLogoutBtn");
+  if(logoutBtn) logoutBtn.onclick=async function(){
+    if(!confirm("Çıkış yapılsın mı? Verilerin buluta kaydedilecek.")) return;
+    var old=logoutBtn.textContent;
+    logoutBtn.disabled=true; logoutBtn.textContent="⏳ Kaydediliyor...";
+    if(msg){ msg.textContent="Veriler buluta yükleniyor..."; msg.style.color="var(--dh-text-2)"; }
+    try{
+      if(window.DHCloudSync && window.DHCloudSync.signOut) await window.DHCloudSync.signOut();
+      else { try{ localStorage.removeItem("dh_logged_in"); localStorage.removeItem("dh_logged_uid"); localStorage.removeItem("dh_logged_email"); }catch(e){} }
+    }catch(e){}
+    location.href="./login.html";
+  };
+})();
+
+/* ---- Yedeği indir / Yedekten geri yükle ---- */
+(function(){
+  var backupBtn=document.getElementById("dhBackupBtn");
+  var restoreInput=document.getElementById("dhRestoreFile");
+  var msg=document.getElementById("dhBackupMsg");
+  if(!backupBtn) return;
+
+  /* Anahtar listesi cloud-sync.js'ten alınır — burada KOPYA tutulmaz,
+     yoksa yeni anahtarlar eklendiğinde yedeğe girmez. */
+  function keySets(){
+    try{ if(window.DHCloudSync && DHCloudSync.keys) return DHCloudSync.keys(); }catch(e){}
+    return { list:["dh_ai_prompt_teacher","dh-study-tracker-v1","dh-ocr-sentences-v1","dh-teacher-policy-v1",
+      "dh-notif-settings-v1","dh-progress-mirror-v1","groqApiKeys","cerebrasApiKeys","geminiApiKeys",
+      "dh-model-groq","dh-model-cerebras","dh-model-gemini","dh-disabled-keys","selectedTeacherAvatar",
+      "dh-teacher-mem","dh-activity-log-v1"],
+      prefixes:["sm:","mas:","ev:","modscore:","gramprof:","story:","dh-koc-"] };
+  }
+  function openSrsDB(){
+    return new Promise(function(res,rej){
+      var r=indexedDB.open("sentence-mode",1);
+      r.onupgradeneeded=function(){ var db=r.result; if(!db.objectStoreNames.contains("kv")) db.createObjectStore("kv"); };
+      r.onsuccess=function(){ res(r.result); }; r.onerror=function(){ rej(r.error); };
+    });
+  }
+  function readAllKV(){   /* img: hariç tüm modül/kelime verisi */
+    return openSrsDB().then(function(db){ return new Promise(function(res,rej){
+      var out={}, rq=db.transaction("kv","readonly").objectStore("kv").openCursor();
+      rq.onsuccess=function(){ var c=rq.result;
+        if(c){ if(typeof c.key==="string" && c.key.indexOf("img:")!==0) out[c.key]=c.value; c.continue(); } else res(out); };
+      rq.onerror=function(){ rej(rq.error); };
+    });}).catch(function(){ return {}; });
+  }
+  function writeKV(key,val){
+    return openSrsDB().then(function(db){ return new Promise(function(res,rej){
+      var tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(val,key);
+      tx.oncomplete=function(){ res(true); }; tx.onerror=function(){ rej(tx.error); };
+    });}).catch(function(){ return false; });
+  }
+
+  backupBtn.onclick=async function(){
+    if(msg){ msg.style.color="var(--dh-text-2)"; msg.textContent="Yedek hazırlanıyor…"; }
+    try{
+      var K=keySets(), allKV=await readAllKV(), ls={};
+      K.list.forEach(function(k){ try{ var v=localStorage.getItem(k); if(v!=null) ls[k]=v; }catch(e){} });
+      try{
+        for(var i=0;i<localStorage.length;i++){
+          var kk=localStorage.key(i); if(!kk) continue;
+          for(var p=0;p<K.prefixes.length;p++){
+            if(kk.indexOf(K.prefixes[p])===0){ var vv=localStorage.getItem(kk); if(vv!=null) ls[kk]=vv; break; }
+          }
+        }
+      }catch(e){}
+      var errors=[]; try{ if(window.LearningErrorDB && LearningErrorDB.all) errors=await LearningErrorDB.all(); }catch(e){}
+
+      /* TÜM IndexedDB. kv/errors alanları eski sürümlerle uyum için
+         korunuyor; asıl kapsam artık burada. */
+      var idb=null;
+      try{
+        if(window.DHYedek){
+          if(msg) msg.textContent="Tüm veritabanları okunuyor…";
+          idb=await DHYedek.olustur();
+        }
+      }catch(e){}
+
+      var at=new Date().toISOString();
+      var payload={ app:"dilharita-full", version:5, exportedAt:at,
+                    kv:allKV, ls:ls, errors:errors,
+                    dbs: idb ? idb.dbs : undefined,
+                    ozet: idb ? idb.ozet : undefined };
+      var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement("a"); a.href=url; a.download="dilharita-yedek-"+at.slice(0,10)+".json";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+      if(msg){
+        msg.style.color="var(--dh-ok)";
+        var kb=Math.round(blob.size/1024);
+        var dbSay=idb?Object.keys(idb.ozet).length:0;
+        var kayit=0; if(idb) Object.keys(idb.ozet).forEach(function(x){ kayit+=idb.ozet[x]; });
+        msg.textContent="✓ Tam yedek indirildi — "+dbSay+" veritabanı, "
+          +kayit+" kayıt, "+kb+" KB.";
+      }
+    }catch(e){ if(msg){ msg.style.color="var(--dh-err)"; msg.textContent="Yedek alınamadı."; } }
+  };
+
+  if(restoreInput) restoreInput.onchange=function(ev){
+    var file=ev.target.files && ev.target.files[0]; if(!file) return;
+    var reader=new FileReader();
+    reader.onload=async function(){
+      var data; try{ data=JSON.parse(reader.result); }
+      catch(e){ if(msg){ msg.style.color="var(--dh-err)"; msg.textContent="Dosya okunamadı (geçerli bir yedek değil)."; } ev.target.value=""; return; }
+      var kvAll=data.kv||data.srsKV||{};
+      if(data.lsrsKV){ for(var lk2 in data.lsrsKV){ if(data.lsrsKV.hasOwnProperty(lk2)) kvAll[lk2]=data.lsrsKV[lk2]; } }
+      if(!confirm("Yedek yüklensin mi? (Bu cihazdaki mevcut ilerleme buluttaki en güncel haliyle birleşecek.)")){ ev.target.value=""; return; }
+      try{
+        /* Yeni biçim: tüm veritabanları. Eski biçimdeki kv de aşağıda
+           ayrıca yazılır (v4 ve öncesi yedekler çalışmaya devam etsin). */
+        if(data.dbs && window.DHYedek){
+          if(msg){ msg.style.color="var(--dh-text-2)"; msg.textContent="Veritabanları geri yükleniyor…"; }
+          var rap=await DHYedek.uygula(data);
+          try{ console.log("[yedek] geri yüklendi:", rap); }catch(e){}
+        }
+        for(var k in kvAll){ if(kvAll.hasOwnProperty(k)) await writeKV(k, kvAll[k]); }
+        if(data.ls){ for(var lk in data.ls){ if(data.ls.hasOwnProperty(lk)) localStorage.setItem(lk, data.ls[lk]); } }
+        try{ if(window.DHProgress && DHProgress.applyMirror) await DHProgress.applyMirror(); }catch(e){}
+        try{ if(window.DHCloudSync && DHCloudSync.push) await DHCloudSync.push(); }catch(e){}
+        if(data.errors && data.errors.length){ try{ if(window.LearningErrorDB && LearningErrorDB.bulkMerge) await LearningErrorDB.bulkMerge(data.errors); }catch(e){} }
+        if(msg){ msg.style.color="var(--dh-ok)"; msg.textContent="✓ Tam geri yüklendi ve buluta yazıldı. Sayfayı yenile."; }
+      }catch(e){ if(msg){ msg.style.color="var(--dh-err)"; msg.textContent="Geri yükleme hatası."; } }
+      ev.target.value="";
+    };
+    reader.readAsText(file);
+  };
+})();
+
+/* ---- Geri Dön (bulut anlık görüntüsü) ---- */
+(function(){
+  var b=document.getElementById("dhSnapBtn");
+  if(!b) return;
+
+  /* Dokunulabilir gün seçici (prompt() yerine) */
+  function gunSec(list){
+    return new Promise(function(sec){
+      var ov=document.createElement("div");
+      ov.style.cssText="position:fixed;inset:0;z-index:2147483400;background:rgba(2,8,20,.75);"
+        +"display:flex;align-items:center;justify-content:center;padding:16px";
+      var ic='<div style="background:#0f1f3a;border:1px solid #1e3a5f;border-radius:16px;'
+        +'width:min(420px,96vw);max-height:80vh;overflow:auto;padding:16px;color:#e8eef7">'
+        +'<b style="font-size:16px;display:block;margin-bottom:4px">🌙 Hangi güne dönülsün?</b>'
+        +'<div style="font-size:12px;color:#9fb3d9;line-height:1.5;margin-bottom:12px">'
+        +'Seçtiğin günün sonundaki ilerlemeye dönülür ve buluta yazılır.</div>';
+      list.slice().reverse().forEach(function(g){
+        ic+='<button data-g="'+g+'" style="display:block;width:100%;margin-bottom:8px;'
+          +'background:#13294d;border:1px solid #1e3a5f;color:#e8eef7;border-radius:11px;'
+          +'padding:13px;font:800 14px system-ui;cursor:pointer;text-align:left">📅 '+g+'</button>';
+      });
+      ic+='<button id="dhSnapIptal" style="display:block;width:100%;margin-top:4px;'
+        +'background:#334155;border:0;color:#cbd5e1;border-radius:11px;padding:12px;'
+        +'font:700 14px system-ui;cursor:pointer">Vazgeç</button></div>';
+      ov.innerHTML=ic;
+      document.body.appendChild(ov);
+      function kapat(v){ ov.remove(); sec(v); }
+      ov.addEventListener("click",function(e){
+        if(e.target===ov) return kapat(null);
+        if(e.target.id==="dhSnapIptal") return kapat(null);
+        var g=e.target.getAttribute && e.target.getAttribute("data-g");
+        if(g) kapat(g);
+      });
+    });
+  }
+
+  b.onclick=async function(){
+    var cs=window.DHCloudSync;
+    var msg=document.getElementById("dhBackupMsg");
+    if(!cs || !cs.snapList){ if(msg){ msg.style.color="var(--dh-seri)"; msg.textContent="Bulut bağlantısı hazır değil."; } return; }
+    /* snapList artık Promise döndürüyor: günlük yedekler localStorage'dan
+       IndexedDB'ye taşındı (localStorage ~5 MB tavanına dayanıyordu). */
+    var list=(await cs.snapList())||[];
+    if(!list.length){ if(msg){ msg.style.color="var(--dh-seri)"; msg.textContent="Henüz geri dönülecek bir gün kaydı yok."; } return; }
+
+    /* ESKİDEN prompt() KULLANILIYORDU — iki sorunu vardı:
+       1) Instagram/Facebook gibi uygulama içi tarayıcılarda prompt()
+          engelli; düğme hiçbir şey yapmıyor gibi görünüyordu.
+       2) Telefonda kullanıcıdan tarihi ELLE yazmasını istiyordu; bir
+          harf şaşınca "Listede olmayan bir gün yazdın" diyordu.
+       Yerine dokunulabilir liste geldi. */
+    var day=await gunSec(list);
+    if(!day) return;
+    if(msg){ msg.style.color="var(--dh-text-2)"; msg.textContent="Geri yükleniyor…"; }
+    await cs.restoreSnap(day);
+    location.reload();
+  };
+})();
+
+/* ---- Eski Verileri Temizle (yalnız bu uygulamanın kullanılmayan veritabanları) ---- */
+(function(){
+  var LEGACY_DBS=["DilHaritasiDB_v1","dil_haritasi_pro_indexeddb_v3","dil_haritasi_pro_indexeddb_v4","sentenceLibraryCacheV2"];
+  var b=document.getElementById("dhLegacyCleanBtn");
+  if(!b) return;
+  b.onclick=function(){
+    if(!confirm("Şu ESKİ veritabanları silinecek (mevcut ilerlemen ETKİLENMEZ):\n\n• "+LEGACY_DBS.join("\n• ")+"\n\nDevam?")) return;
+    LEGACY_DBS.forEach(function(name){ try{ indexedDB.deleteDatabase(name); }catch(e){} });
+    var old="🗑 Eski Verileri Temizle";
+    b.textContent="✓ Temizlendi";
+    setTimeout(function(){ b.textContent=old; },3000);
+  };
+})();
+
+/* ---- Bildirim kartı (aç/kapa, saat, test) ---- */
+(function(){
+  var toggle=document.getElementById("dhNotifToggle");
+  var slider=document.getElementById("dhNotifSlider");
+  var body  =document.getElementById("dhNotifBody");
+  var timeEl=document.getElementById("dhNotifTime");
+  var testBtn=document.getElementById("dhNotifTest");
+  var card  =document.getElementById("dhNotifCard");
+  var nmsg  =document.getElementById("dhNotifMsg");
+  if(!toggle||!card) return;
+  function setSliderOn(on){
+    if(window.__dhAnahtarBoya) window.__dhAnahtarBoya(on);
+  }
+  function refreshUI(){
+    var N=window.DHNotifications; if(!N||!N.supported()) return;
+    var s=N.load()||{}, on=!!s.enabled && N.permission()==="granted";
+    toggle.checked=on; setSliderOn(on);
+    if(body) body.style.display=on?"block":"none";
+    if(timeEl && s.hour!=null) timeEl.value=String(s.hour).padStart(2,"0")+":"+String(s.minute||0).padStart(2,"0");
+  }
+  toggle.onchange=function(){
+    var N=window.DHNotifications; if(!N) return;
+    if(toggle.checked){ N.enable(20,0).then(refreshUI); }
+    else { N.disable(); setSliderOn(false); if(body) body.style.display="none"; }
+  };
+  if(timeEl) timeEl.onchange=function(){
+    var N=window.DHNotifications; if(!N||!N.setTime) return;
+    var p=String(timeEl.value||"20:00").split(":");
+    N.setTime(parseInt(p[0],10)||20, parseInt(p[1],10)||0);
+    if(nmsg){ nmsg.style.color="var(--dh-ok)"; nmsg.textContent="✓ Saat kaydedildi: "+timeEl.value; }
+  };
+  if(testBtn) testBtn.onclick=function(){
+    var N=window.DHNotifications;
+    if(!N||!N.test){ if(nmsg){ nmsg.style.color="var(--dh-seri)"; nmsg.textContent="Bildirim sistemi hazır değil."; } return; }
+    N.test();
+    if(nmsg){ nmsg.style.color="var(--dh-text-2)"; nmsg.textContent="Test bildirimi gönderildi."; }
+  };
+  if(window.__dhStorageReady) refreshUI();
+  else window.addEventListener("dh-storage-ready", refreshUI, {once:true});
+})();
+
+/* ---- Seri (streak) kartı ---- */
+(function(){
+  function fillStreak(){
+    var slot=document.getElementById("dhStreakSlot");
+    if(!slot||!window.DHStreak) return;
+    try{ slot.innerHTML=DHStreak.card(); slot.onclick=function(){ DHStreak.show(); }; }catch(e){}
+  }
+  if(window.__dhStorageReady) setTimeout(fillStreak,300);
+  else window.addEventListener("dh-storage-ready", fillStreak, {once:true});
+})();
+
+/* ================= PLAN OZETI =================
+   HESAPLAMA YOK. koc.js'in gun icinde localStorage'a yazdigi plani
+   (dh-koc-plan-<gun>) yalnizca OKUR ve ozetler. AI cagrisi yapilmaz,
+   koc zinciri burada calismaz — tek koc ekrani index.html'dir.
+
+   Ham "tekrar bekleyen" toplami burada da gosterilmez; koc.js'in
+   profile() icindeki kendi kurali budur. */
+(function(){
+  var GUN=new Date().toISOString().slice(0,10);
+  var plan=null;
+  try{ plan=JSON.parse(localStorage.getItem("dh-koc-plan-"+GUN)||"null"); }catch(e){}
+  if(!plan||!plan.steps||!plan.steps.length) return;
+
+  /* adim tamamlanma: koc.js paint() ile ayni mantik + ayni guvenlik denetimi */
+  var set={};
+  try{ set=JSON.parse(localStorage.getItem("dh-koc-steps-done-"+GUN)||"{}")||{}; }catch(e){}
+  var gercekAktivite=false;
+  try{
+    var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{};
+    var b=(tr.days||{})[GUN];
+    gercekAktivite=!!(b&&((b.sentences||0)+(b.reviews||0)+(b.lessons||0)+(b.videos||0)>0));
+  }catch(e){}
+  if(!gercekAktivite) set={};
+  var sohbetVar=Object.keys(set).some(function(k){ return /^chat[a-z]*\.html$/.test(k); });
+
+  /* Adim durumu iki kaynaktan gelir; DHPlan defteri onceliklidir cunku
+     ders.html ve tekrar.html ilerlemeyi oraya isliyor. dh-koc-steps-done
+     (sayfa ziyareti) yalnizca yedek. Ikisinin BIRLESIMI alinir. */
+  var defter=null;
+  try{ defter=JSON.parse(localStorage.getItem("dh-gun-plan-"+GUN)||"null"); }catch(e){}
+  function defterAdimi(href){
+    if(!defter||!defter.adimlar) return null;
+    var h=String(href||"").split("?")[0];
+    var id = h.indexOf("tekrar")===0 ? "tekrar"
+           : h.indexOf("chat")===0 ? "sohbet"
+           : h.indexOf("hata-defteri")===0 ? "hata"
+           : h.indexOf("kelime")===0 ? "kelime" : "yeni";
+    for(var i=0;i<defter.adimlar.length;i++){ if(defter.adimlar[i].id===id) return defter.adimlar[i]; }
+    return null;
+  }
+
+  var toplam=plan.steps.length, biten=0;
+  plan.steps.forEach(function(s){
+    var sayfa=String(s.href||"").split("?")[0];
+    if(set[sayfa]||(sayfa==="chat.html"&&sohbetVar)){ biten++; return; }
+    var a=defterAdimi(s.href);
+    if(a && a.yapilan>=a.hedef) biten++;
+  });
+
+  if(defter && defter.dinlenme){
+    document.getElementById("planOdak").textContent="Bugün dinlenme günü";
+    document.getElementById("planYazi").textContent="Serin bozulmadı";
+    document.getElementById("planOzet").style.display="block";
+    return;
+  }
+  document.getElementById("planOdak").textContent=String(plan.focus||"Bugünün planı");
+  var t=document.getElementById("planTugla"), html="";
+  for(var i=0;i<toplam;i++){
+    html+='<span class="dh-tugla__bir'+(i<biten?" dh-tugla__bir--dolu":"")+'"></span>';
+  }
+  t.innerHTML=html;
+  document.getElementById("planYazi").textContent=
+    biten+"/"+toplam+" adım · "+(toplam-biten)+" kaldı";
+  document.getElementById("planOzet").style.display="block";
+})();
+
+/* ================= ROZETLER =================
+   Kaynak ve esikler orijinaliyle ayni; yalnizca cizim token'lara bagli. */
+(async function(){
+  var out=document.getElementById("dhBadges"); if(!out) return;
+  var b=[];
+  function cip(metin){ return '<span class="dh-cip">'+metin+'</span>'; }
+  try{
+    var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=tr.days||{}, d=new Date(), seri=0;
+    if(!days[d.toISOString().slice(0,10)]) d.setDate(d.getDate()-1);
+    for(;;){ var k=d.toISOString().slice(0,10); if(days[k]){seri++; d.setDate(d.getDate()-1);} else break; }
+    if(seri>=30) b.push('<span class="dh-cip dh-cip--marka">30 gün kesintisiz</span>');
+    else if(seri>=3) b.push(cip(seri+" gün seri"));
+  }catch(e){}
+  try{
+    var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, s2=0,w2=0;
+    for(var k2 in m){ if(m[k2]&&m[k2][0]===2){ if(k2.indexOf("sentence:")===0)s2++; else if(k2.indexOf("word:")===0)w2++; } }
+    if(s2>=500) b.push(cip("500+ cümle"));
+    else if(s2>=100) b.push(cip("100+ cümle"));
+    if(w2>=200) b.push(cip("200+ kelime"));
+  }catch(e){}
+  try{
+    if(window.LearningErrorDB&&LearningErrorDB.all){
+      var errs=await LearningErrorDB.all();
+      var now=Date.now(), c15=now-15*86400000, c30=now-30*86400000, o={}, r={};
+      errs.forEach(function(e){ var ts=e.ts||0; if(ts<c30) return;
+        var ty=Array.isArray(e.types)&&e.types.length?e.types:(e.type?[e.type]:[]);
+        ty.forEach(function(t){ if(ts>=c15) r[t]=(r[t]||0)+1; else o[t]=(o[t]||0)+1; }); });
+      Object.keys(o).forEach(function(t){
+        if(o[t]>0 && (r[t]||0)===0) b.push('<span class="dh-cip dh-cip--ok">'+t+' hatasını sıfırladın</span>');
+      });
+    }
+  }catch(e){}
+  out.innerHTML=b.join("");
+})();
+
+/* ================= BILDIRIM ANAHTARI (gorsel) ================= */
+(function(){
+  var s=document.getElementById("dhNotifSlider");
+  if(!s) return;
+  var topuz=document.createElement("span");
+  topuz.style.cssText="position:absolute;top:3px;left:3px;width:24px;height:24px;"+
+    "background:var(--dh-yuzey);border-radius:50%;transition:left var(--dh-sure-gecis) var(--dh-egri)";
+  s.appendChild(topuz);
+  window.__dhAnahtarBoya=function(on){
+    s.style.background = on ? "var(--dh-marka)" : "var(--dh-bos)";
+    topuz.style.left = on ? "25px" : "3px";
+  };
+})();
+
+/* ================= GRUP AC/KAPA HAFIZASI ================= */
+(function(){
+  try{
+    document.querySelectorAll("details.dh-group").forEach(function(d){
+      var k="dh-grp-"+d.id;
+      if(localStorage.getItem(k)==="1") d.open=true;
+      d.addEventListener("toggle",function(){ localStorage.setItem(k, d.open?"1":"0"); });
+    });
+  }catch(e){}
+})();
+
+/* ================= SERVICE WORKER ================= */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", function(){
+    try{ navigator.serviceWorker.register("./sw.js?v=16", {scope:"./"}); }catch(e){}
+  });
+}
+</script>
+<script src="./ux-boost.js?v=1"></script>
+<!-- word-popup.js'in AI özellikleri (kelime açıklama, eş anlamlı yedeği)
+     DHProviders'a bağlı; bu sayfada yüklü değildi, o yüzden anahtar
+     kayıtlı olduğu halde "API anahtarı ekle" uyarısı çıkıyordu. -->
+<script src="./ai-providers.js?v=2"></script>
+<script src="./word-popup.js?v=2"></script>
+</body>
+</html>

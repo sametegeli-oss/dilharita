@@ -1,0 +1,852 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<!-- iOS: ses tanıma yok (Safari motoru), ses de ilk dokunuşa kadar kilitli.
+     Bu üçlü sayfa mantığına dokunmadan ikisini de çözer. Sıra önemli:
+     speech-fallback (panel) → shim (API taklidi) → kilit. -->
+<script src="./speech-fallback.js?v=1"></script>
+<script src="./dh-ses-shim.js?v=1"></script>
+<script src="./dh-ses-kilit.js?v=1"></script>
+<script src="./auth-guard.js?v=1"></script>
+<script src="./storage-bridge.js?v=3"></script>
+<script src="./progress-engine.js?v=2"></script>
+<script src="./mastery-engine.js?v=1"></script>
+<script src="./teacher-policy.js?v=3"></script>
+<script src="./level-badge.js?v=1"></script>
+<script src="./dh-ders-oturum.js?v=1"></script>
+<script src="./lesson-engine.js?v=4"></script>
+<script src="./ai-providers.js?v=2"></script>
+<script src="./ai-status.js?v=1"></script>
+<script src="./study-tracker.js?v=1"></script>
+<script src="./streak-screen.js?v=1"></script>
+<script src="./teacher-bubble.js?v=5"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1120">
+<title>🎓 Bugünkü Dersim — Dil Harita</title>
+<style>
+:root{
+  --bg:#0b1120; --surface:#0f1f3a; --surface-2:#13294d; --border:#1e3a5f;
+  --text:#e8eef7; --muted:#9fb3d9; --accent:#2563eb;
+  --isinma:#60a5fa; --tekrar:#f59e0b; --yeni:#34d399; --pekistirme:#a78bfa; --telaffuz:#f472b6; --gramer:#38bdf8; --video:#fb7185;
+  --ok:#34d399; --bad:#f87171;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+.wrap{max-width:680px;margin:0 auto;padding:14px 14px 80px}
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.back{width:42px;height:42px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;font-size:20px;font-weight:900;text-decoration:none;flex:0 0 auto}
+.title h1{font-size:19px;margin:0}
+.title p{font-size:12px;color:var(--muted);margin:1px 0 0}
+.gear{margin-left:auto;width:42px;height:42px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;font-size:18px;cursor:pointer;text-decoration:none}
+
+/* öğretmen baloncuğu */
+.teacher{display:flex;gap:12px;align-items:flex-start;margin:16px 0}
+.teacher .ava{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#1d4ed8);display:grid;place-items:center;font-size:24px;flex:0 0 auto}
+.teacher .bubble{background:var(--surface);border:1px solid var(--border);border-radius:16px 16px 16px 4px;padding:14px 16px;font-size:15px}
+
+/* ilerleme şeridi */
+.phases{display:flex;gap:6px;margin:16px 0}
+.phase-pill{flex:1;text-align:center;font-size:11px;font-weight:900;padding:7px 4px;border-radius:9px;background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+.phase-pill.active{color:#fff}
+.phase-pill.isinma.active{background:var(--isinma);border-color:var(--isinma)}
+.phase-pill.tekrar.active{background:var(--tekrar);border-color:var(--tekrar)}
+.phase-pill.yeni.active{background:var(--yeni);border-color:var(--yeni);color:#06281b}
+.phase-pill.pekistirme.active{background:var(--pekistirme);border-color:var(--pekistirme)}
+.phase-pill.telaffuz.active{background:var(--telaffuz);border-color:var(--telaffuz)}
+.phase-pill.gramer.active{background:var(--gramer);border-color:var(--gramer);color:#06283b}
+.phase-pill.video.active{background:var(--video);border-color:var(--video)}
+.pt-gramer{background:#38bdf822;color:var(--gramer)}
+.pt-video{background:#fb718522;color:var(--video)}
+.gram-pattern{font-size:18px;font-weight:900;color:var(--gramer);background:#38bdf812;border:1px solid #38bdf833;border-radius:10px;padding:10px 14px;margin:10px 0;text-align:center;font-family:ui-monospace,monospace}
+.gram-ex{font-size:15px;padding:8px 0;border-bottom:1px solid var(--border)}
+.gram-ex:last-child{border:none}
+.gram-ex .en{color:var(--text);font-weight:700}
+.gram-ex .tr{color:var(--muted);font-size:13px;margin-top:2px}
+.gram-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.gram-tag{background:var(--surface-2);border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:3px 9px;font-size:12px}
+.pt-telaffuz{background:#f472b622;color:var(--telaffuz)}
+.mic-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;margin:18px 0 6px}
+.mic-btn{width:88px;height:88px;border-radius:50%;border:4px solid var(--telaffuz);background:#fff;color:#db2777;font-size:34px;cursor:pointer;display:grid;place-items:center}
+.mic-btn.rec{background:#ef4444;color:#fff;border-color:#fff;animation:pulseMic 1s infinite}
+@keyframes pulseMic{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+.mic-cap{font-size:13px;color:var(--muted);text-align:center}
+.heard{font-size:15px;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border)}
+.heard.good{border-color:var(--ok);color:var(--ok)}
+.heard.bad{border-color:var(--bad);color:var(--bad)}
+.score-big{font-size:34px;font-weight:950;text-align:center;margin:6px 0}
+.prog{height:6px;background:var(--surface);border-radius:99px;overflow:hidden;margin:8px 0 18px}
+.prog-yazi{font-size:12px;color:var(--muted);margin:-12px 0 16px;text-align:right}
+.phase-pill.done{opacity:.5}
+.phase-pill b{font-weight:900;opacity:.75}
+.prog>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#2563eb,#34d399);transition:width .3s}
+
+/* ders kartı */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px;margin-bottom:14px}
+.phase-tag{display:inline-block;font-size:11px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;padding:3px 10px;border-radius:8px;margin-bottom:12px}
+.pt-isinma{background:#60a5fa22;color:var(--isinma)}
+.pt-tekrar{background:#f59e0b22;color:var(--tekrar)}
+.pt-yeni{background:#34d39922;color:var(--yeni)}
+.pt-pekistirme{background:#a78bfa22;color:var(--pekistirme)}
+.item-main{font-size:24px;font-weight:900;margin-bottom:6px}
+.item-tr{font-size:16px;color:var(--yeni);margin-bottom:12px}
+.item-detail{font-size:14px;color:var(--muted);line-height:1.55;border-top:1px solid var(--border);padding-top:12px;margin-top:12px}
+.item-detail b{color:var(--text)}
+.item-detail-tr{font-size:14px;color:var(--yeni,#38bdf8);line-height:1.55;margin-top:4px}
+.item-ex{font-size:14px;font-style:italic;color:var(--text);margin-top:8px}
+.item-ex-tr{font-size:13px;color:var(--muted);margin-top:3px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.btn{border:0;border-radius:12px;padding:13px 18px;font:900 15px system-ui;cursor:pointer}
+.b-blue{background:var(--accent);color:#fff}
+.b-green{background:linear-gradient(135deg,#27ce6d,#14aa55);color:#fff}
+.b-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+.b-amber{background:#d97706;color:#fff}
+
+/* mini alıştırma (pekiştirme) */
+.opts{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.opt{background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:13px 15px;font:800 15px system-ui;cursor:pointer;text-align:left}
+.opt.correct{background:#34d39922;border-color:var(--ok);color:var(--ok)}
+.opt.wrong{background:#f8717122;border-color:var(--bad);color:var(--bad)}
+
+/* bitiş */
+.done{text-align:center;padding:36px 16px}
+.done .big{font-size:52px;margin-bottom:8px}
+.done h2{margin:0 0 6px;font-size:24px}
+.done p{color:var(--muted);margin:0 0 18px}
+
+/* anayasa düzenleyici (modal) */
+.modal{position:fixed;inset:0;background:rgba(2,6,23,.8);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px}
+.modal.show{display:flex}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:18px;width:min(640px,100%);max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
+.modal-head h3{margin:0;font-size:16px}
+.modal-head button{background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:8px;width:34px;height:34px;cursor:pointer}
+.modal-body{padding:16px;overflow-y:auto}
+.modal-body p.hint{font-size:13px;color:var(--muted);margin:0 0 12px;line-height:1.5}
+#policyText{width:100%;min-height:300px;background:#08172d;border:1px solid var(--border);color:#cfe;border-radius:12px;padding:12px;font:13px ui-monospace,monospace;line-height:1.5;resize:vertical}
+.modal-foot{display:flex;gap:10px;padding:14px 16px;border-top:1px solid var(--border);flex-wrap:wrap}
+.policy-msg{font-size:13px;margin-top:8px;min-height:18px}
+.loading{text-align:center;color:var(--muted);padding:50px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="./index.html" title="Ana menü">←</a>
+    <div class="title">
+      <h1>🎓 Bugünkü Dersim</h1>
+      <p>Öğretmenin senin için hazırladığı ders</p>
+    </div>
+    <a class="gear" id="policyBtn" title="Öğretmen ayarları">⚙️</a>
+  </div>
+
+  <div id="content"><div class="loading">Öğretmen dersini hazırlıyor…</div></div>
+</div>
+
+<!-- Anayasa düzenleyici -->
+<div class="modal" id="policyModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>⚙️ Öğretmen Anayasası</h3>
+      <button id="policyClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint">Bu, öğretmenin uyduğu kuralların tamamıdır — bir nevi öğretmene verdiğin talimat. Düzenleyip kaydedebilirsin; dersler bu kurallara göre üretilir. İstediğin an varsayılana dönebilirsin.</p>
+      <textarea id="policyText" spellcheck="false"></textarea>
+      <div class="policy-msg" id="policyMsg"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn b-green" id="policySave">Kaydet</button>
+      <button class="btn b-amber" id="policyReset">↺ Varsayılana dön</button>
+      <button class="btn b-ghost" id="policyCancel">İptal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+
+  var lesson=null, idx=0;
+
+  // ---- TTS ----
+  var _voices=[];
+  function rv(){ try{_voices=speechSynthesis.getVoices()||[];}catch(e){_voices=[];} }
+  rv(); try{ speechSynthesis.onvoiceschanged=rv; }catch(e){}
+  // sesleri garanti et: masaüstü Chrome'da getVoices ilk başta boş döner
+  function ensureVoices(cb){
+    rv();
+    if(_voices && _voices.length){ cb(); return; }
+    var tries=0;
+    var t=setInterval(function(){
+      rv(); tries++;
+      if((_voices && _voices.length) || tries>10){ clearInterval(t); cb(); }
+    },120);
+  }
+  function pickEnVoice(){
+    // Chrome masaüstü bug'ı: "Google" sesleri sunucudan yüklenemeyince sessiz kalır.
+    // Öncelik: yerel (localService) İngilizce > Microsoft > Google olmayan > herhangi İngilizce
+    var en=_voices.filter(function(x){ return /^en/i.test(x.lang); });
+    if(!en.length) return null;
+    return en.find(function(x){ return x.localService && /^en[-_]?US/i.test(x.lang); })
+        || en.find(function(x){ return x.localService; })
+        || en.find(function(x){ return /microsoft/i.test(x.name); })
+        || en.find(function(x){ return !/google/i.test(x.name); })
+        || en[0];
+  }
+  function gtranslate(t){
+    t=String(t||"").trim(); if(!t) return;
+    function fallbackCopy(x){ try{ var ta=document.createElement("textarea"); ta.value=x; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }catch(e){} }
+    try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).catch(function(){ fallbackCopy(t); }); } else { fallbackCopy(t); } }catch(e){ fallbackCopy(t); }
+    try{
+      var n=document.createElement("div");
+      n.textContent="📋 Cümle kopyalandı — Translate'te yapıştır";
+      n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #2563eb;padding:12px 18px;border-radius:12px;font:700 13px system-ui;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:90vw;text-align:center";
+      document.body.appendChild(n);
+      setTimeout(function(){ n.style.transition="opacity .4s"; n.style.opacity="0"; setTimeout(function(){ n.remove(); },400); },3000);
+    }catch(e){}
+    window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(t), "_blank");
+  }
+  function speak(t){
+    t=String(t||"").trim(); if(!t) return;
+    try{
+      speechSynthesis.cancel();
+      ensureVoices(function(){
+        try{
+          var u=new SpeechSynthesisUtterance(t);
+          u.lang="en-US";
+          var v=pickEnVoice();
+          if(v) u.voice=v;
+          u.rate=.95; u.pitch=1;
+          u.__dhMixed=true; u.__longTTSAvatarSync=true;
+          var keepAlive=setInterval(function(){
+            if(speechSynthesis.speaking){ try{ speechSynthesis.pause(); speechSynthesis.resume(); }catch(e){} }
+            else clearInterval(keepAlive);
+          }, 8000);
+          u.onend=function(){ clearInterval(keepAlive); };
+          u.onerror=function(){ clearInterval(keepAlive); };
+          setTimeout(function(){
+            try{
+              speechSynthesis.speak(u);
+              if(speechSynthesis.paused){ try{ speechSynthesis.resume(); }catch(e){} }
+            }catch(e){}
+          }, 60);
+        }catch(e){}
+      });
+    }catch(e){}
+  }
+
+  var PHASE_LABEL={ gramer:"Gramer", isinma:"Isınma", tekrar:"Tekrar", yeni:"Yeni", pekistirme:"Pekiştirme", video:"Video", telaffuz:"Telaffuz" };
+  var PHASE_ORDER=["gramer","isinma","tekrar","yeni","pekistirme","video","telaffuz"];
+
+  function renderPhaseStrip(){
+    /* counts lesson-engine.js buildIntro() icinde ZATEN hesaplaniyordu
+       ama yalnizca "bu evre var mi" filtresi olarak kullaniliyor, sayilar
+       hic ekrana basilmiyordu. Artik evre basina adet gorunur. */
+    var counts = (window.DHDers ? DHDers.evreSayilari(lesson) : (lesson.intro.breakdown||{}));
+    var cur = lesson.steps[idx] ? lesson.steps[idx].phase : "pekistirme";
+
+    /* Her evrenin kacinci adima kadar surdugunu bul ki bitmis evreler
+       soluklasin — kullanici dersin neresinde oldugunu gorsun. */
+    var gecildi={}, sayac=0;
+    PHASE_ORDER.forEach(function(p){
+      if(!counts[p]) return;
+      sayac += counts[p];
+      gecildi[p] = idx >= sayac;
+    });
+
+    var o = window.DHDers
+      ? DHDers.ozet(idx, lesson.steps.length)
+      : { yapilan:idx, kalan:lesson.steps.length-idx, yuzde:Math.round(100*idx/lesson.steps.length) };
+
+    return '<div class="phases">'+PHASE_ORDER.map(function(p){
+      if(!counts[p]) return "";
+      return '<div class="phase-pill '+p+(p===cur?" active":"")+(gecildi[p]?" done":"")+'">'
+        + PHASE_LABEL[p] + ' <b>' + counts[p] + '</b></div>';
+    }).join("")+'</div>'
+    +'<div class="prog"><span style="width:'+o.yuzde+'%"></span></div>'
+    +'<div class="prog-yazi">'+o.yapilan+'/'+lesson.steps.length+' adım · '
+      +(o.kalan>0 ? (o.kalan+' kaldı') : 'bitti')+'</div>';
+  }
+
+  function teacherSays(text){
+    return '<div class="teacher"><div class="ava">🎓</div><div class="bubble">'+esc(text)+'</div></div>';
+  }
+
+  // ---- Öğretmene Sor artık kayan öğretmen (teacher-bubble.js) ile ----
+  // Her adımda dhSetTopic(topicForStep(s)) çağrılır; kullanıcı köşedeki
+  // öğretmen avatarına tıklayınca o konuyu sorabilir.
+
+  function renderStep(){
+    if(idx>=lesson.steps.length) return renderDone();
+    var s=lesson.steps[idx];
+    var m=lesson.policy.mesajlar||{};
+    var teacherMsg="";
+    // evre değişiminde öğretmen konuşur
+    var prevPhase = idx>0 ? lesson.steps[idx-1].phase : null;
+    if(s.phase!==prevPhase){
+      if(s.phase==="gramer") teacherMsg=m.gramerGiris||"Önce gramer konusunu öğrenelim.";
+      else if(s.phase==="tekrar") teacherMsg=m.tekrarGiris||"Önce tekrar edelim.";
+      else if(s.phase==="yeni") teacherMsg=m.yeniGiris||"Şimdi yeni bir şey öğrenelim.";
+      else if(s.phase==="isinma") teacherMsg="Hadi ısınmayla başlayalım.";
+      else if(s.phase==="pekistirme") teacherMsg="Öğrendiklerini bir deneyelim.";
+      else if(s.phase==="video") teacherMsg=m.videoGiris||"Şimdi bunu video ile pekiştirelim.";
+      else if(s.phase==="telaffuz") teacherMsg="Şimdi telaffuz çalışalım. Cümleyi sesli oku.";
+    }
+
+    var html=renderPhaseStrip();
+    if(teacherMsg) html+=teacherSays(teacherMsg);
+
+    if(s.phase==="gramer"){
+      html+=renderGrammar(s);
+    }else if(s.phase==="video"){
+      html+=renderVideoStep(s);
+    }else if(s.phase==="telaffuz"){
+      html+=renderPron(s);
+    }else if(s.exercise){
+      html+=renderExercise(s);
+    }else{
+      html+=renderTeachCard(s);
+    }
+    $("content").innerHTML=html;
+    bindStep(s);
+    // kayan öğretmene aktif konuyu bildir
+    try{ if(window.dhSetTopic) dhSetTopic(topicForStep(s)); }catch(e){}
+  }
+
+  function topicForStep(s){
+    var it=s.item||{};
+    if(s.phase==="gramer"){
+      return { baslik:"Gramer: "+(it.label||""), soru:(it.label||"")+(it.pattern?" — "+it.pattern:""), ceviri:it.aiExplain||"", baglam:"Gramer konusu" };
+    }
+    if(s.type==="pv"){
+      return { baslik:it.label||"", soru:(it.label||"")+(it.examples&&it.examples[0]?" — "+it.examples[0]:""), ceviri:it.tr||"", baglam:"Phrasal verb" };
+    }
+    if(s.type==="word"){
+      return { baslik:it.label||"", soru:it.label||"", ceviri:it.tr||"", baglam:"Kelime" };
+    }
+    // cümle
+    return { baslik:it.label||"", soru:it.label||"", ceviri:it.tr||"", baglam:(s.phase==="telaffuz"?"Telaffuz cümlesi":s.phase==="video"?"Video cümlesi":"Cümle") };
+  }
+
+  function renderTeachCard(s){
+    var it=s.item;
+    var detail="";
+    if(s.type==="sentence"){
+      if(it.grammar) detail+='<div class="item-detail"><b>Yapı:</b> '+esc(it.grammar)+'</div>';
+      if(it.aiExplain) detail+='<div class="item-detail">'+esc(it.aiExplain)+'</div>';
+      if(it.commonMistake) detail+='<div class="item-detail"><b>Dikkat:</b> '+esc(it.commonMistake)+'</div>';
+    }else if(s.type==="pv"){
+      // İngilizce tanım + Türkçe tanım
+      if(it.meanings&&it.meanings[0]) detail+='<div class="item-detail">'+esc(it.meanings[0])+'</div>';
+      if(it.meanings_tr&&it.meanings_tr[0]) detail+='<div class="item-detail-tr">'+esc(it.meanings_tr[0])+'</div>';
+      // İngilizce örnek + Türkçe örnek
+      if(it.examples&&it.examples[0]) detail+='<div class="item-ex">"'+esc(it.examples[0])+'"</div>';
+      if(it.examples_tr&&it.examples_tr[0]) detail+='<div class="item-ex-tr">'+esc(it.examples_tr[0])+'</div>';
+    }else if(s.type==="word"){
+      if(it.meanings&&it.meanings.length) detail+='<div class="item-detail">'+esc(it.meanings.slice(0,2).join("; "))+'</div>';
+    }
+    return '<div class="card">'
+      +'<span class="phase-tag pt-'+s.phase+'">'+PHASE_LABEL[s.phase]+'</span>'
+      +'<div class="item-main">'+esc(it.label)+'</div>'
+      +(it.tr?'<div class="item-tr">'+esc(it.tr)+'</div>':'')
+      +detail
+      +'<div class="actions">'
+      +'<button class="btn b-blue" id="sSpeak">🔊 Dinle</button>'
+      +'<button class="btn b-ghost" id="sGtr">🌐 Çeviri</button>'
+      +(s.phase==="yeni"||s.phase==="isinma"?'<button class="btn b-green" id="sGot">Anladım ✓</button>':'<button class="btn b-green" id="sGot">Hatırladım ✓</button>')
+      +'<button class="btn b-ghost" id="sHard">Zor geldi</button>'
+      +'</div>'
+      +'</div>';
+  }
+
+  function renderGrammar(s){
+    var it=s.item;
+    var ex=(it.examples||[]).map(function(e){
+      return '<div class="gram-ex"><div class="en">'+esc(e.en||e.label||"")+'</div>'+(e.tr?'<div class="tr">'+esc(e.tr)+'</div>':'')+'</div>';
+    }).join("");
+    var tags="";
+    if(it.grammarTags){
+      tags='<div class="gram-tags">'+String(it.grammarTags).split(",").map(function(t){ return '<span class="gram-tag">'+esc(t.trim())+'</span>'; }).join("")+'</div>';
+    }
+    return '<div class="card">'
+      +'<span class="phase-tag pt-gramer">Gramer'+(it.level?" · "+esc(it.level):"")+'</span>'
+      +'<div class="item-main" style="font-size:21px">'+esc(it.label)+'</div>'
+      +(it.pattern?'<div class="gram-pattern">'+esc(it.pattern)+'</div>':'')
+      +(it.aiExplain?'<div class="item-detail">'+esc(it.aiExplain)+'</div>':'')
+      +(ex?'<div style="margin-top:12px"><div class="sec-label" style="font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:800">ÖRNEKLER</div>'+ex+'</div>':'')
+      +tags
+      +'<div class="actions">'
+      +'<button class="btn b-blue" id="gSpeak">🔊 Örnekleri dinle</button>'
+      +'<button class="btn b-green" id="gGot">Anladım ✓</button>'      +'</div></div>';
+  }
+
+  function renderVideoStep(s){
+    var it=s.item;
+    return '<div class="card">'
+      +'<span class="phase-tag pt-video">Video ile Öğren</span>'
+      +'<div class="item-main" style="font-size:20px">'+esc(it.label)+'</div>'
+      +(it.tr?'<div class="item-tr">'+esc(it.tr)+'</div>':'')
+      +'<div class="item-detail">Bu cümleyi video, ses ve mikrofonla çalış. Telaffuzunu da puanlar.</div>'
+      +'<div class="actions">'
+      +'<button class="btn b-blue" id="vSpeak">🔊 Dinle</button>'
+      +'<button class="btn b-green" id="vGo">🎬 Video eğitime git</button>'
+      +'<button class="btn b-ghost" id="vSkip">Atla</button>'      +'</div></div>';
+  }
+
+  function renderPron(s){
+    var it=s.item;
+    if(s.yontem==="videopractice"){
+      // köprü: videopractice'e o cümlenin seviyesi/modülüyle git, derse dönecek işaret bırak
+      return '<div class="card">'
+        +'<span class="phase-tag pt-telaffuz">Telaffuz</span>'
+        +'<div class="item-main" style="font-size:20px">'+esc(it.label)+'</div>'
+        +(it.tr?'<div class="item-tr">'+esc(it.tr)+'</div>':'')
+        +'<div class="item-detail">Bu cümleyi tam ekran telaffuz pratiğinde çalış. Videolu, mikrofonlu, puanlı.</div>'
+        +'<div class="actions">'
+        +'<button class="btn b-blue" id="pSpeak">🔊 Dinle</button>'
+        +'<button class="btn b-green" id="pGo">🎬 Telaffuz pratiğine git</button>'
+        +'<button class="btn b-ghost" id="pSkip">Atla</button>'
+        +'</div></div>';
+    }
+    // ders-içi hafif telaffuz: TTS + mikrofon (SpeechRecognition)
+    return '<div class="card">'
+      +'<span class="phase-tag pt-telaffuz">Telaffuz</span>'
+      +'<div class="item-main" style="font-size:20px">'+esc(it.label)+'</div>'
+      +(it.tr?'<div class="item-tr">'+esc(it.tr)+'</div>':'')
+      +'<div class="mic-wrap">'
+      +'<button class="mic-btn" id="micBtn">🎤</button>'
+      +'<div class="mic-cap" id="micCap">Önce dinle, sonra mikrofona bas ve cümleyi söyle.</div>'
+      +'</div>'
+      +'<div id="pronResult"></div>'
+      +'<div class="actions">'
+      +'<button class="btn b-blue" id="pSpeak">🔊 Dinle</button>'
+      +'<button class="btn b-ghost" id="pSkip">Atla</button>'
+      +'</div></div>';
+  }
+
+  function renderExercise(s){
+    // çoktan seçmeli: doğru anlam + 3 AKILLI çeldirici (benzer uzunluk + konu/gramer yakınlığı)
+    var it=s.item;
+    var pool = (DHLesson && lesson._pool && lesson._pool[s.type]) || [];
+    var distract = pickSmartDistractors(it, pool, 3);
+    var opts = shuffle([it].concat(distract));
+    var html='<div class="card">'
+      +'<span class="phase-tag pt-pekistirme">Pekiştirme</span>'
+      +'<div class="item-main" style="font-size:18px">"'+esc(it.label)+'" ne demek?</div>'
+      +'<div class="opts" id="exOpts">'
+      + opts.map(function(o){ return '<button class="opt" data-id="'+esc(String(o.id))+'">'+esc(o.tr||o.label)+'</button>'; }).join("")
+      +'</div></div>';
+    return html;
+  }
+
+  // Akıllı çeldirici seçimi: doğru cevaba benzer uzunlukta + aynı gramer/modülden öncelikli.
+  // Amaç: öğrenci uzunluğa veya konuya bakarak doğruyu eleyemesin.
+  function pickSmartDistractors(correct, pool, n){
+    var corTr = String(correct.tr||"");
+    var corLen = corTr.split(/\s+/).filter(Boolean).length;
+    var corGram = correct.grammar || (correct.item && correct.item.grammar) || "";
+    var corMod = correct.module || "";
+    var cands = pool.filter(function(x){ return x.id!==correct.id && x.tr && x.tr!==corTr; });
+    if(!cands.length) return [];
+
+    // her aday için puan: uzunluk yakınlığı (en önemli) + aynı gramer + aynı modül
+    cands.forEach(function(x){
+      var xLen = String(x.tr).split(/\s+/).filter(Boolean).length;
+      var lenDiff = Math.abs(xLen - corLen);
+      var lenScore = Math.max(0, 6 - lenDiff*1.5);     // uzunluk çok farklıysa ağır ceza
+      var gramScore = (corGram && (x.grammar||"")===corGram) ? 3 : 0;
+      var modScore = (corMod && (x.module||"")===corMod) ? 2 : 0;
+      x._score = lenScore + gramScore + modScore + Math.random()*0.8; // küçük rastgelelik
+    });
+    cands.sort(function(a,b){ return b._score - a._score; });
+
+    // uzunluk bandı sıkı: doğru uzunsa (≥5 kelime) çok kısa şık (≤2) alma
+    var filtered = cands;
+    if(corLen >= 5){
+      var strict = cands.filter(function(x){ return String(x.tr).split(/\s+/).filter(Boolean).length >= corLen-3; });
+      if(strict.length >= n) filtered = strict;
+    }
+    return filtered.slice(0, n);
+  }
+
+  function bindStep(s){
+    if(s.phase==="gramer"){ return bindGrammar(s); }
+    if(s.phase==="video"){ return bindVideoStep(s); }
+    if(s.phase==="telaffuz"){ return bindPron(s); }
+    if(s.exercise){
+      var opts=$("exOpts");
+      if(opts){
+        opts.querySelectorAll(".opt").forEach(function(btn){
+          btn.onclick=function(){
+            var correct = btn.getAttribute("data-id")===String(s.item.id);
+            opts.querySelectorAll(".opt").forEach(function(b){
+              b.disabled=true;
+              if(b.getAttribute("data-id")===String(s.item.id)) b.classList.add("correct");
+              else if(b===btn) b.classList.add("wrong");
+            });
+            try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, correct); }catch(e){}
+            recordMastery(s.itemId, s.phase, correct, true);
+            setTimeout(next, 900);
+          };
+        });
+      }
+      return;
+    }
+    var sp=$("sSpeak"); if(sp) sp.onclick=function(){ speak(s.item.label); };
+    var sgt=$("sGtr"); if(sgt) sgt.onclick=function(){ gtranslate(s.item.label); };
+    var got=$("sGot"); if(got) got.onclick=function(){
+      // anladım/hatırladım → ilerleme: yeni ise learning, tekrar/ısınma ise pekiştir
+      try{
+        if(window.DHProgress){
+          if(s.phase==="yeni") DHProgress.setStatus(s.itemId, DHProgress.LEARNING);
+          else DHProgress.recordResult(s.itemId, true);
+        }
+      }catch(e){}
+      recordMastery(s.itemId, s.phase, true, false);
+      next();
+    };
+    var hard=$("sHard"); if(hard) hard.onclick=function(){
+      try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, false); }catch(e){}
+      recordMastery(s.itemId, s.phase, false, false);
+      next();
+    };
+  }
+
+  // ---- Gramer adımı davranışı ----
+  function bindGrammar(s){
+    var it=s.item;
+    var sp=$("gSpeak"); if(sp) sp.onclick=function(){
+      var exs=(it.examples||[]).map(function(e){ return e.en||e.label||""; }).filter(Boolean);
+      if(!exs.length) return;
+      var i=0; (function sayNext(){ if(i>=exs.length) return; speak(exs[i]); i++; setTimeout(sayNext, 2200); })();
+    };
+    var got=$("gGot"); if(got) got.onclick=function(){ next(); };
+  }
+
+  // ---- Video adımı davranışı ----
+  function bindVideoStep(s){
+    var it=s.item;
+    var sp=$("vSpeak"); if(sp) sp.onclick=function(){ speak(it.label); };
+    var skip=$("vSkip"); if(skip) skip.onclick=function(){ next(); };
+    var go=$("vGo"); if(go) go.onclick=function(){
+      try{ sessionStorage.setItem("dh-ders-return", String(idx)); }catch(e){}
+      location.href="./videopractice.html?from=ders&sid="+encodeURIComponent(it.id)
+        +"&level="+encodeURIComponent(it.level||"")+"&module="+encodeURIComponent(it.module||"")
+        +"&return="+encodeURIComponent("ders.html");
+    };
+    setTimeout(function(){ speak(it.label); }, 400);
+  }
+
+  // ---- Telaffuz adımı davranışı ----
+  function normSpeech(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9'\s]/g," ").replace(/\s+/g," ").trim(); }
+  function pronScore(target, heard){
+    var a=normSpeech(target).split(" ").filter(Boolean);
+    var b=normSpeech(heard).split(" ").filter(Boolean);
+    if(!a.length) return 0;
+    var bSet={}; b.forEach(function(w){ bSet[w]=(bSet[w]||0)+1; });
+    var hit=0;
+    a.forEach(function(w){ if(bSet[w]>0){ hit++; bSet[w]--; } });
+    return Math.round(100*hit/a.length);
+  }
+  function bindPron(s){
+    var it=s.item;
+    var sp=$("pSpeak"); if(sp) sp.onclick=function(){ speak(it.label); };
+    var skip=$("pSkip"); if(skip) skip.onclick=function(){ next(); };
+
+    if(s.yontem==="videopractice"){
+      var go=$("pGo");
+      if(go) go.onclick=function(){
+        // derse dönüş işareti bırak, videopractice'e git
+        try{ sessionStorage.setItem("dh-ders-return", String(idx)); }catch(e){}
+        var lvl = it.level||"";
+        var mod = it.module||"";
+        location.href="./videopractice.html?from=ders&sid="+encodeURIComponent(it.id)
+          +"&level="+encodeURIComponent(lvl)+"&module="+encodeURIComponent(mod)
+          +"&return="+encodeURIComponent("ders.html");
+      };
+      // ilk açılışta cümleyi bir kez seslendir
+      setTimeout(function(){ speak(it.label); }, 400);
+      return;
+    }
+
+    // ders-içi: mikrofon + ses tanıma
+    setTimeout(function(){ speak(it.label); }, 400);
+    var micBtn=$("micBtn"), micCap=$("micCap"), result=$("pronResult");
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){
+      // ses tanıma yoksa: dinle + "söyledim" ile geç
+      if(micCap) micCap.textContent="Bu tarayıcı mikrofonla değerlendirmeyi desteklemiyor. Dinleyip sesli tekrarla, hazırsan devam et.";
+      if(micBtn){ micBtn.textContent="✓"; micBtn.onclick=function(){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId,true); }catch(e){} recordMastery(s.itemId,s.phase,true,false); next(); }; }
+      return;
+    }
+    var rec=null, listening=false;
+    if(micBtn) micBtn.onclick=function(){
+      if(listening){ try{ rec && rec.stop(); }catch(e){} return; }
+      try{
+        rec=new SR(); rec.lang="en-US"; rec.interimResults=false; rec.maxAlternatives=3;
+        listening=true; micBtn.classList.add("rec"); micBtn.textContent="■";
+        if(micCap) micCap.textContent="Dinliyorum… cümleyi söyle.";
+        rec.onresult=function(ev){
+          var best="";
+          try{ best=ev.results[0][0].transcript||""; }catch(e){}
+          var score=pronScore(it.label, best);
+          var ok=score>=70;
+          if(result){
+            result.innerHTML='<div class="score-big" style="color:'+(ok?"var(--ok)":"var(--bad)")+'">%'+score+'</div>'
+              +'<div class="heard '+(ok?"good":"bad")+'">Duyduğum: '+esc(best||"(boş)")+'</div>'
+              +'<div class="actions"><button class="btn b-green" id="pNext">'+(ok?"Devam et →":"Tekrar dene")+'</button>'
+              +'<button class="btn b-ghost" id="pNext2">Sonraki →</button></div>';
+            var pn=$("pNext"), pn2=$("pNext2");
+            if(pn) pn.onclick=function(){ if(ok){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId,true); }catch(e){} recordMastery(s.itemId,s.phase,true,false); next(); } else { result.innerHTML=""; if(micCap) micCap.textContent="Tekrar mikrofona bas ve söyle."; } };
+            if(pn2) pn2.onclick=function(){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, ok); }catch(e){} recordMastery(s.itemId,s.phase,ok,false); next(); };
+          }
+        };
+        rec.onerror=function(){ if(micCap) micCap.textContent="Mikrofon hatası. Tekrar dene veya atla."; };
+        rec.onend=function(){ listening=false; micBtn.classList.remove("rec"); micBtn.textContent="🎤"; };
+        rec.start();
+      }catch(e){ listening=false; if(micCap) micCap.textContent="Mikrofon başlatılamadı."; }
+    };
+  }
+
+  function next(){
+    /* Biten adimin evresini gun planina isle (varsa). */
+    try{
+      var biten = lesson && lesson.steps[idx];
+      if(biten && window.DHPlan && DHPlan.varMi()){
+        if(biten.phase==="yeni") DHPlan.ilerlet("yeni",1);
+        else if(biten.phase==="telaffuz") DHPlan.ilerlet("telaffuz",1);
+        else if(biten.phase==="tekrar") DHPlan.ilerlet("tekrar",1);
+      }
+    }catch(e){}
+    idx++;
+    recordMinute();
+    /* KALICILIK: adim ilerlemesi diske yazilir. Sayfa kapanip acilinca
+       ders bastan uretilmez, buradan devam eder. */
+    try{ if(window.DHDers) DHDers.ilerlet(idx); }catch(e){}
+    renderStep();
+  }
+
+  // --- Mastery Engine'e kanıt yaz: adımın evresine göre doğru beceriyi seç ---
+  function phaseToSkill(phase, exercise){
+    if(phase==="telaffuz") return "akicilik";
+    if(phase==="video") return "dinleme";
+    if(phase==="gramer") return "tanima";
+    if(exercise) return "hatirlama";   // pekiştirme alıştırması = hatırlama
+    if(phase==="yeni") return "tanima";
+    if(phase==="tekrar") return "hatirlama";
+    if(phase==="isinma") return "tanima";
+    return "tanima";
+  }
+  function recordMastery(itemId, phase, correct, exercise){
+    try{
+      if(window.DHMastery && itemId){
+        DHMastery.record(itemId, phaseToSkill(phase, exercise), correct, {kaynak:"ders"});
+      }
+    }catch(e){}
+  }
+
+  function renderDone(){
+    try{ if(window.StudyTracker) StudyTracker.recordActivity("lesson",1,{source:"ders"}); }catch(e){}
+    /* Oturum bitti: depodan dus ki "yeni ders" gercekten yeni gelsin. */
+    try{ if(window.DHDers) DHDers.temizle(); }catch(e){}
+    // Önce öğrenme çizgisi (streak) ekranını göster, sonra bitiş ekranı.
+    if(window.DHStreak && DHStreak.show){
+      DHStreak.show({ onContinue: showDoneScreen });
+    } else {
+      showDoneScreen();
+    }
+  }
+
+  function showDoneScreen(){
+    var m=lesson.policy.mesajlar||{};
+    // Bu derste en çok çalışılan cümle modülünü bul (modül sınavı önerisi için)
+    var modCount={};
+    try{
+      (lesson.steps||[]).forEach(function(s){ if(s.type==="sentence" && s.item && s.item.module){ modCount[s.item.module]=(modCount[s.item.module]||0)+1; } });
+    }catch(e){}
+    var topMod="", topN=0;
+    Object.keys(modCount).forEach(function(k){ if(modCount[k]>topN){ topN=modCount[k]; topMod=k; } });
+    var modBtn = topMod
+      ? '<a class="btn b-blue" href="./modul-testi.html?module='+encodeURIComponent(topMod)+'">📝 Bu modülü sına</a>'
+      : '';
+
+    $("content").innerHTML='<div class="done">'
+      +'<div class="big">🎉</div>'
+      +'<h2>Ders tamamlandı!</h2>'
+      +'<p>'+esc(m.tamamlandi||"Eline sağlık, yarın devam edelim.")+'</p>'
+      +'<div class="actions" style="justify-content:center;flex-wrap:wrap">'
+      + modBtn
+      +'<a class="btn b-blue" href="./harita.html">🗺️ İlerlememe bak</a>'
+      +'<button class="btn b-green" id="againBtn">🔁 Yeni ders</button>'
+      +'</div></div>';
+    $("againBtn").onclick=function(){
+      try{ if(window.DHDers) DHDers.temizle(); }catch(e){}
+      start(true);
+    };
+  }
+
+  function shuffle(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; } return a; }
+
+  // dakika kaydı (kaba)
+  var _lastMin=Date.now();
+  function recordMinute(){
+    var now=Date.now();
+    if(now-_lastMin>=60000){
+      try{ if(window.StudyTracker) StudyTracker.recordActivity("minute",1,{source:"ders"}); }catch(e){}
+      _lastMin=now;
+    }
+  }
+
+  // ---- Ders üret ----
+  // Seviye sınavı hiç yapılmamış mı + bu oturumda atlanmamış mı?
+  function shouldSuggestLevelTest(){
+    try{
+      if(window.DHTeacherPolicy){
+        var p = DHTeacherPolicy.load();
+        if(p && p.seviyeTesti) return false;          // sınav yapılmış
+      }
+      if(sessionStorage.getItem("dh-skip-leveltest")==="1") return false; // bu oturumda atladı
+    }catch(e){}
+    return true;
+  }
+
+  function renderLevelTestSuggestion(){
+    $("content").innerHTML =
+      '<div class="card" style="text-align:center">'
+      +'<div style="font-size:46px;margin-bottom:6px">🎯</div>'
+      +'<div class="item-main" style="font-size:21px">Önce seviyeni belirleyelim</div>'
+      +'<div class="item-detail" style="margin:10px 0 4px">Sana en uygun dersi hazırlayabilmem için kısa bir seviye testi yapalım. Sadece birkaç dakika — 10 soru. İstersen sonra da yapabilirsin.</div>'
+      +'<div class="actions" style="justify-content:center;margin-top:18px">'
+      +'<button class="btn b-green" id="ltGo">🎓 Seviye testine başla</button>'
+      +'<button class="btn b-ghost" id="ltSkip">Şimdilik atla</button>'
+      +'</div></div>';
+    $("ltGo").onclick=function(){ location.href="./seviye-testi.html"; };
+    $("ltSkip").onclick=function(){
+      try{ sessionStorage.setItem("dh-skip-leveltest","1"); }catch(e){}
+      start();
+    };
+  }
+
+  /* zorla=true: kullanici acikca "yeni ders" istedi ya da anayasa degisti.
+     Aksi halde bugunun dersi DEPODAN geri yuklenir, yeniden URETILMEZ. */
+  function start(zorla){
+    idx=0;
+
+    /* ── GERI YUKLEME ─────────────────────────────────────────────
+       Ders gun icinde donar. Yeniden uretilirse pickLearned() diziyi
+       karistirdigi icin icerik degisir ve kullanici bastan baslar. */
+    if(!zorla && window.DHDers){
+      var kayit=null;
+      try{ kayit=DHDers.yukle(); }catch(e){}
+      if(kayit && kayit.ders && kayit.ders.steps && kayit.ders.steps.length){
+        lesson=kayit.ders; idx=kayit.idx;
+        $("content").innerHTML='<div class="loading">Kaldığın yerden devam…</div>';
+        /* havuz derse degil onbellege ait; her acilista yeniden yuklenir */
+        Promise.all([DHLesson._loadData("sentence"),DHLesson._loadData("pv"),DHLesson._loadData("word")])
+          .then(function(r){
+            lesson._pool={sentence:r[0],pv:r[1],word:r[2]};
+            /* videopractice sapmasindan donus, geri yuklemeden SONRA da gecerli */
+            var rIdx=null;
+            try{ var rr=sessionStorage.getItem("dh-ders-return");
+              if(rr!==null){ rIdx=parseInt(rr,10); sessionStorage.removeItem("dh-ders-return"); } }catch(e){}
+            if(rIdx!==null && !isNaN(rIdx)){
+              try{ var rs=lesson.steps[rIdx]; if(rs&&rs.itemId) recordMastery(rs.itemId,rs.phase,true,false); }catch(e){}
+              idx=Math.min(rIdx+1, lesson.steps.length);
+              try{ if(window.DHDers) DHDers.ilerlet(idx); }catch(e){}
+            }
+            renderStep();
+          })
+          .catch(function(){ lesson._pool={}; renderStep(); });
+        return;
+      }
+    }
+
+    // Seviye sınavı hiç yapılmamışsa, derse başlamadan önce nazikçe öner (bir kez).
+    if(shouldSuggestLevelTest()){
+      renderLevelTestSuggestion();
+      return;
+    }
+    $("content").innerHTML='<div class="loading">Öğretmen dersini hazırlıyor…</div>';
+    if(!window.DHLesson){ $("content").innerHTML='<div class="loading">Ders motoru yüklenemedi.</div>'; return; }
+    DHLesson.build().then(function(L){
+      lesson=L;
+      // pekiştirme alıştırması için havuzu sakla
+      lesson._pool={};
+      Promise.all([DHLesson._loadData("sentence"),DHLesson._loadData("pv"),DHLesson._loadData("word")]).then(function(r){
+        lesson._pool={sentence:r[0],pv:r[1],word:r[2]};
+        if(!lesson.steps.length){
+          $("content").innerHTML=teacherSays("Şu an çalışılacak içerik bulamadım. Biraz pratik yapıp tekrar gel.");
+          return;
+        }
+        // açılış selamı + ilk adım
+        var returnIdx=null;
+        try{ var r=sessionStorage.getItem("dh-ders-return"); if(r!==null){ returnIdx=parseInt(r,10); sessionStorage.removeItem("dh-ders-return"); } }catch(e){}
+        if(returnIdx!==null && !isNaN(returnIdx)){
+          // videopractice'ten döndük: o adımı tamamlanmış say, mastery kanıtı yaz, sonrakine geç
+          try{
+            var rs = lesson.steps[returnIdx];
+            if(rs && rs.itemId) recordMastery(rs.itemId, rs.phase, true, false);
+          }catch(e){}
+          idx = Math.min(returnIdx+1, lesson.steps.length);
+          try{ if(window.DHDers) DHDers.kaydet(lesson, idx); }catch(e){}
+          renderStep();
+          return;
+        }
+        /* DONDUR: uretilen ders diske yazilir; gun icinde bir daha uretilmez. */
+        try{ if(window.DHDers) DHDers.kaydet(lesson, idx); }catch(e){}
+        $("content").innerHTML=teacherSays(lesson.intro.greeting);
+        setTimeout(renderStep, 700);
+      });
+    }).catch(function(e){
+      $("content").innerHTML='<div class="loading">Hata: '+esc(e&&e.message||e)+'</div>';
+    });
+  }
+
+  // ---- Anayasa düzenleyici ----
+  function openPolicy(){
+    $("policyText").value = DHTeacherPolicy.toText();
+    $("policyMsg").textContent="";
+    $("policyModal").classList.add("show");
+  }
+  function closePolicy(){ $("policyModal").classList.remove("show"); }
+  $("policyBtn").onclick=openPolicy;
+  $("policyClose").onclick=closePolicy;
+  $("policyCancel").onclick=closePolicy;
+  $("policyModal").onclick=function(e){ if(e.target===$("policyModal")) closePolicy(); };
+  $("policySave").onclick=function(){
+    try{
+      DHTeacherPolicy.fromText($("policyText").value);
+      $("policyMsg").style.color="#34d399";
+      $("policyMsg").textContent="✓ Kaydedildi. Yeni ders bu kurallara göre hazırlanacak.";
+      /* Anayasa degisti: mevcut oturum artik gecersiz, yeni kurallarla uretilir. */
+      setTimeout(function(){
+        closePolicy();
+        try{ if(window.DHDers) DHDers.temizle(); }catch(e){}
+        start(true);
+      }, 800);
+    }catch(e){
+      $("policyMsg").style.color="#f87171";
+      $("policyMsg").textContent="Geçersiz JSON: "+(e.message||"biçim hatası");
+    }
+  };
+  $("policyReset").onclick=function(){
+    DHTeacherPolicy.reset();
+    $("policyText").value=DHTeacherPolicy.toText();
+    $("policyMsg").style.color="#f59e0b";
+    $("policyMsg").textContent="↺ Varsayılana dönüldü.";
+  };
+
+  // başlat
+  var _started=false;
+  function startOnce(){ if(_started) return; _started=true; start(); }
+  if(window.__dhStorageReady) startOnce();
+  else { window.addEventListener("dh-storage-ready", startOnce, {once:true}); setTimeout(startOnce, 1500); }
+})();
+</script>
+<script src="./cloud-sync.js?v=4"></script>
+<script src="./word-popup.js?v=1"></script>
+</body>
+</html>
