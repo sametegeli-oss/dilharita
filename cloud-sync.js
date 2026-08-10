@@ -509,6 +509,9 @@
     if(syncing) return { ok:false, message:"Senkron zaten sürüyor…" };
     syncing=true;
     try{
+      var migration=false;
+      try{ migration=!!localStorage.getItem("dh-account-migration-pending"); }catch(e){}
+      try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"syncing",migration:migration}})); }catch(e){}
       var remote=await fb.loadSettings(user.uid);
       var rd=parseRemote(remote);
       // MODÜL ÇAKIŞMA YÖNÜ: bulut, bu cihazın son yazmasından YENİYSE bulut kazanır;
@@ -530,7 +533,13 @@
           else if(rk===ACTLOG){ localStorage.setItem(rk, mergeActivityLog(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk.indexOf("dh-koc-")===0){ localStorage.setItem(rk, mergeKoc(rk, localStorage.getItem(rk), rv)); pulled++; }
           else if(rk.indexOf("dh-modul-")===0){ localStorage.setItem(rk, mergeModul(rk, localStorage.getItem(rk), rv, rd.ls["dh-modul-silinen"])); pulled++; }
-          else { localStorage.setItem(rk, rv); pulled++; }
+          else {
+            /* Misafir → hesap geçişinde bu cihazdaki profil ve tercihler
+               korunur. Birleşebilen ilerleme kayıtları üstteki özel
+               kurallarla zaten iki taraflı birleştirilir. */
+            if(!(migration && localStorage.getItem(rk)!=null)) localStorage.setItem(rk, rv);
+            pulled++;
+          }
         }catch(e){}
       }
 
@@ -587,12 +596,26 @@
       var pmsg = pres&&pres.ok
         ? ("buluta yazıldı "+Math.round((pres.size||0)/1024)+"KB"+(pres.dropped?(" ("+pres.dropped+" büyük kayıt atlandı)"):""))
         : ("buluta YAZILAMADI: "+(pres&&pres.error||"?"));
+      if(!pres || !pres.ok){
+        updateBadge(false);
+        try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"error",message:pmsg,migration:migration}})); }catch(e){}
+        return {ok:false,message:"Cihazdaki verilerin korundu; "+pmsg+". Daha sonra yeniden deneyebilirsin."};
+      }
       try{ localStorage.setItem("dh-last-sync-ts", String(Date.now())); }catch(e){}
+      if(migration && pres && pres.ok){
+        try{
+          localStorage.removeItem("dh-account-migration-pending");
+          localStorage.removeItem("dh_guest_mode");
+          localStorage.setItem("dh-account-migrated-at",String(Date.now()));
+        }catch(e){}
+      }
       /* Ekrandaki kartlar (koç planı, sayaçlar) taze veriyle yeniden çizilsin */
       try{ window.dispatchEvent(new CustomEvent("dh-cloud-synced",{detail:{pulled:pulled}})); }catch(e){}
       updateBadge(true);
+      try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"success",migration:migration,message:parts.join(", ")}})); }catch(e){}
       return { ok:true, message:"✓ "+parts.join(", ")+" · "+pmsg+". [cihazda modül:"+Object.keys(kvNow).length+" · kelime:"+mirCount+"]" };
     }catch(e){
+      try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"error",message:(e&&e.message)||"Senkron başarısız"}})); }catch(_){}
       return { ok:false, message:"Senkron başarısız: "+(e&&e.message?e.message:"bilinmeyen") };
     }finally{
       syncing=false;
@@ -697,6 +720,7 @@
       fb.onAuth(function(u){
         user=u?{uid:u.uid}:null;
         authResolved=true;
+        updateBadge();
         if(user) initialSync();
       });
     }).catch(function(e){ console.warn("cloud-sync: firebase yüklenemedi", e); });
@@ -707,7 +731,10 @@
     waitForAuth(5000).then(function(){
       if(!ready||!user||!fb) return;
       // KISIT: son tam senkron 5 dk içindeyse sayfa gezinmelerinde tekrar etme
-      try{ if(Date.now()-(+localStorage.getItem("dh-last-sync-ts")||0) < 300000) return; }catch(e){}
+      try{
+        var gecis=!!localStorage.getItem("dh-account-migration-pending");
+        if(!gecis && Date.now()-(+localStorage.getItem("dh-last-sync-ts")||0) < 300000) return;
+      }catch(e){}
       fullSync().then(function(res){
         try{ if(window.__dhAutoSyncDone) window.__dhAutoSyncDone(res); }catch(e){}
       }).catch(function(){});
@@ -769,7 +796,19 @@
         if(document.body) mount(); else document.addEventListener("DOMContentLoaded",mount);
       }
       var ts=+localStorage.getItem("dh-last-sync-ts")||0;
+      if(authResolved && !user){
+        b.textContent="Bu cihazda";
+        b.title="İlerlemen bu cihazda korunuyor · hesapla eşitlemek için dokun";
+        b.onclick=function(){ location.href="./login.html?next="+encodeURIComponent(location.pathname.split("/").pop()||"index.html"); };
+        b.style.color="#9fb3d9";
+        return;
+      }
       var hhmm=ts?new Date(ts).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):"—";
+      b.title="Son senkron · şimdi senkronlamak için dokun";
+      b.onclick=function(){
+        b.textContent="☁ …";
+        fullSync().then(function(r){ if(!r.ok){ b.textContent="☁ ⚠"; b.style.color="#f87171"; } });
+      };
       b.textContent="☁ "+hhmm;
       b.style.color=(ok===false)?"#f87171":"#9fb3d9";
     }catch(e){}

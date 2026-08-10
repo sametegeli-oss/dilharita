@@ -10,12 +10,6 @@
 <body>
 <div id="chatApp"></div>
 <script>window.CHAT_SCENARIO = {"title": "Restoran", "subtitle": "İngilizce konuşma", "level": "A2", "role": "a friendly male waiter in a restaurant", "voiceGender": "male", "opener": "Good evening. What would you like to order?", "systemExtra": "You are role-playing as a friendly male waiter in a restaurant.", "avatarDir": "assets/avatars_v3/restaurant/", "frames": {"idle": "idle.webp", "blink": "blink.webp", "listen": "listen.webp", "mouthA": "mouth-a.webp", "mouthE": "mouth-e.webp", "mouthI": "mouth-i.webp", "mouthO": "mouth-o.webp", "mouthU": "mouth-u.webp", "mouthMBP": "mouth-mbp.webp", "mouthFV": "mouth-fv.webp", "mouthL": "mouth-l.webp", "mouthTH": "mouth-th.webp", "mouthSmall": "mouth-i.webp", "mouthMedium": "mouth-e.webp", "mouthOpen": "mouth-a.webp"}, "backHref": "chat.html", "noKeyReply": "I can continue when you add a Groq API key. Would you like to see the menu?"};</script>
-<!-- iOS: ses tanıma yok (Safari motoru), ses de ilk dokunuşa kadar kilitli.
-     Bu üçlü sayfa mantığına dokunmadan ikisini de çözer. Sıra önemli:
-     speech-fallback (panel) → shim (API taklidi) → kilit. -->
-<script src="./speech-fallback.js?v=1"></script>
-<script src="./dh-ses-shim.js?v=1"></script>
-<script src="./dh-ses-kilit.js?v=1"></script>
 <script src="./viseme-lang.js?v=1"></script>
 <script src="./ai-providers.js?v=1"></script>
 <!-- Günün konuşma malzemesi + ilerleme defteri. chat-core.js malzemeyi
@@ -33,5 +27,6 @@
 <script src="./tts-avatar-long-sync-fix.js?v=4"></script>
 <script src="./avatar-blink-sync.js?v=1"></script>
 <script src="./ux-boost.js?v=1"></script>
+<script src="./word-popup.js?v=2"></script>
 </body>
 </html>

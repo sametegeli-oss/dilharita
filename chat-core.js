@@ -527,7 +527,7 @@ class PhotoAvatar{
 
 function buildUI(){
   const root=document.getElementById("chatApp") || document.body.appendChild(document.createElement("div"));
-  root.innerHTML=`<div class="chat-shell"><div class="chat-top"><a class="back-btn" href="${Scenario.backHref||'chat.html'}">←</a><div class="chat-title-wrap"><div class="chat-title">${esc(Scenario.title)}</div><div class="chat-sub" id="subtitle">${esc(Scenario.subtitle)} · ${State.level}</div></div><button class="level-pill" id="levelBtn" type="button">${State.level}</button></div><div class="avatar-stage"><img id="avatarImg" alt="Fotoğraflı konuşan avatar"></div><div class="panel"><div class="chat-history" id="chatHistory"></div><div id="taskBar" style="font-size:11.5px;color:#9fb3d9;padding:4px 8px;border-top:1px dashed #ffffff18"></div><div class="input-row"><div class="input-wrap"><textarea id="textIn" class="text-in" rows="1" placeholder="Yaz ya da 🎙 ile konuş..."></textarea></div><button class="icon-fab suggest-btn" id="suggestBtn" type="button" title="Sen öner">💡</button><button class="icon-fab suggest-btn" id="errSaveBtn" type="button" title="Bu konuşmadaki hatalarımı deftere kaydet" style="background:#b45309">📝</button><button class="icon-fab suggest-btn" id="autoBtn" type="button" title="Eller serbest: avatar susunca mikrofon otomatik açılır" style="background:#334155">🔁</button><button class="icon-fab suggest-btn" id="gemBtn" type="button" title="Sohbeti Gemini de surdur (panoya kopyalanir)" style="background:#7c3aed">💎</button><button class="icon-fab mic-btn" id="micBtn" type="button">🎙</button><button class="icon-fab send-btn" id="sendBtn" type="button">➤</button></div></div></div><div class="sheet" id="explainSheet"><div class="sheet-card"><h3>TR Açıkla</h3><p id="explainText">Yükleniyor...</p><div class="sheet-btns"><button class="sheet-btn primary" id="closeExplain">Kapat</button></div></div></div><div class="sheet" id="levelSheet"><div class="sheet-card"><h3>Seviye seç</h3><div class="sheet-btns"><button class="sheet-btn levelOpt" data-level="A1">A1</button><button class="sheet-btn levelOpt" data-level="A2">A2</button><button class="sheet-btn levelOpt" data-level="B1">B1</button><button class="sheet-btn levelOpt" data-level="B2">B2</button><button class="sheet-btn levelOpt" data-level="C1">C1</button></div><div class="sheet-btns"><button class="sheet-btn primary" id="closeLevel">Kapat</button></div></div></div><div class="sheet" id="keySheet"><div class="sheet-card"><h3>Groq API anahtarı</h3><p>Konuşma için Groq API anahtarını ekle. Birden fazla anahtar saklanabilir.</p><input id="keyInput" type="text" placeholder="gsk_..." autocomplete="off"><div class="sheet-btns"><button class="sheet-btn primary" id="saveKey">Kaydet</button><button class="sheet-btn" id="closeKey">Kapat</button></div><div class="note" id="keyNote">Anahtar bu tarayıcıda saklanır.</div></div></div>`;
+  root.innerHTML=`<div class="chat-shell"><div class="chat-top"><a class="back-btn" href="${Scenario.backHref||'chat.html'}">←</a><div class="chat-title-wrap"><div class="chat-title">${esc(Scenario.title)}</div><div class="chat-sub" id="subtitle">${esc(Scenario.subtitle)} · ${State.level}</div></div><button class="level-pill" id="levelBtn" type="button">${State.level}</button></div><div class="avatar-stage"><img id="avatarImg" alt="Fotoğraflı konuşan avatar"></div><div class="panel"><div class="chat-history" id="chatHistory"></div><div id="taskBar" style="font-size:11.5px;color:#9fb3d9;padding:4px 8px;border-top:1px dashed #ffffff18"></div><div class="input-row"><div class="input-wrap"><textarea id="textIn" class="text-in" rows="1" placeholder="Yaz ya da 🎙 ile konuş..."></textarea></div><button class="icon-fab suggest-btn" id="suggestBtn" type="button" title="Sen öner">💡</button><button class="icon-fab suggest-btn" id="errSaveBtn" type="button" title="Bu konuşmadaki hatalarımı deftere kaydet" style="background:#b45309">📝</button><button class="icon-fab suggest-btn" id="autoBtn" type="button" title="Eller serbest: avatar susunca mikrofon otomatik açılır" style="background:#334155">🔁</button><button class="icon-fab suggest-btn" id="finishBtn" type="button" title="Oturumu bitir ve özetle" style="background:#0f7a5a">✓</button><button class="icon-fab suggest-btn" id="gemBtn" type="button" title="Sohbeti Gemini de surdur (panoya kopyalanir)" style="background:#7c3aed">💎</button><button class="icon-fab mic-btn" id="micBtn" type="button">🎙</button><button class="icon-fab send-btn" id="sendBtn" type="button">➤</button></div></div></div><div class="sheet" id="explainSheet"><div class="sheet-card"><h3>TR Açıkla</h3><p id="explainText">Yükleniyor...</p><div class="sheet-btns"><button class="sheet-btn primary" id="closeExplain">Kapat</button></div></div></div><div class="sheet" id="summarySheet"><div class="sheet-card"><h3>Konuşma özeti</h3><div id="summaryText"></div><div class="sheet-btns"><a class="sheet-btn primary" id="summaryPractice" href="./hata-defteri.html">Hataları çalış</a><a class="sheet-btn" href="./index.html">Bugüne dön</a><button class="sheet-btn" id="closeSummary">Sohbete devam et</button></div></div></div><div class="sheet" id="levelSheet"><div class="sheet-card"><h3>Seviye seç</h3><div class="sheet-btns"><button class="sheet-btn levelOpt" data-level="A1">A1</button><button class="sheet-btn levelOpt" data-level="A2">A2</button><button class="sheet-btn levelOpt" data-level="B1">B1</button><button class="sheet-btn levelOpt" data-level="B2">B2</button><button class="sheet-btn levelOpt" data-level="C1">C1</button></div><div class="sheet-btns"><button class="sheet-btn primary" id="closeLevel">Kapat</button></div></div></div><div class="sheet" id="keySheet"><div class="sheet-card"><h3>AI bağlantısı</h3><p>Konuşma sağlayıcısı için API anahtarını ekle. Anahtar yalnızca bu tarayıcıda saklanır.</p><input id="keyInput" type="password" placeholder="gsk_..." autocomplete="off"><div class="sheet-btns"><button class="sheet-btn primary" id="saveKey">Kaydet</button><button class="sheet-btn" id="closeKey">Kapat</button></div><div class="note" id="keyNote">Anahtar bu cihazda saklanır; hesabına gönderilmez.</div></div></div>`;
 }
 /* Metni ekrana basarken [[İngilizce]] bloklarını işaretli span'a çevirir.
    Ham metne dokunmaz — seslendirme onu kullanmaya devam eder. */
@@ -1082,8 +1082,8 @@ async function explainText(text){
 async function analyzeChatErrors(){
   const b=$("errSaveBtn"); if(!b) return;
   const userMsgs=State.history.filter(m=>m.role==="user").map(m=>m.content).slice(-12);
-  if(!userMsgs.length){ b.textContent="—"; setTimeout(()=>b.textContent="📝",1200); return; }
-  if(!(window.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())){ alert("API anahtarı yok."); return; }
+  if(!userMsgs.length){ b.textContent="—"; setTimeout(()=>b.textContent="📝",1200); return []; }
+  if(!(window.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())) return null;
   b.textContent="⏳";
   try{
     const sys="You are an English error analyzer for a Turkish learner. Given the learner's chat messages, list ONLY real grammar/vocabulary errors as JSON array: [{\"wrong\":\"...\",\"correct\":\"...\",\"tr\":\"kısa Türkçe açıklama\"}]. Max 5. If no errors return []. JSON only, no prose.";
@@ -1108,8 +1108,26 @@ async function analyzeChatErrors(){
         var ob=document.querySelector('.levelOpt[data-level="'+nx+'"]'); if(ob) ob.click();
       }
     }
-  }catch(e){ b.textContent="⚠"; }
-  setTimeout(()=>{ b.textContent="📝"; },2000);
+    setTimeout(()=>{ b.textContent="📝"; },2000);
+    return arr;
+  }catch(e){ b.textContent="⚠"; setTimeout(()=>{ b.textContent="📝"; },2000); return null; }
+}
+
+async function finishSession(){
+  var userMsgs=State.history.filter(function(m){return m.role==="user";});
+  var words=userMsgs.reduce(function(n,m){return n+String(m.content||"").trim().split(/\s+/).filter(Boolean).length;},0);
+  var done=__dhTasks.filter(function(_,i){return __dhTaskDone[i];}).length;
+  var total=__dhTasks.length;
+  var result=null;
+  if(userMsgs.length) result=await analyzeChatErrors();
+  var errorCount=Array.isArray(result)?result.length:null;
+  var headline=!userMsgs.length?"Henüz konuşma başlamadı":errorCount===0?"Temiz ve akıcı bir oturumdu":errorCount>0?"İyi ilerledin; şimdi hataları pekiştirelim":"Oturumun cihazına kaydedildi";
+  var detail=userMsgs.length+" mesaj · "+words+" İngilizce kelime"+(total?" · "+done+"/"+total+" hedef":"");
+  var next=errorCount>0?"Bir sonraki en iyi adım: konuşmada yakalanan "+errorCount+" hatayı kısa telafi oturumunda yeniden kurmak.":errorCount===0?"Bir sonraki en iyi adım: aynı seviyede yeni bir senaryoya geçmek.":"AI analizi olmadan da konuşma süren ve tamamlanan hedeflerin kaydedildi.";
+  $("summaryText").innerHTML='<p style="font-size:18px;font-weight:800;margin:0 0 8px">'+esc(headline)+'</p><p style="color:#9fb3d9;margin:0 0 12px">'+esc(detail)+'</p><p style="line-height:1.55">'+esc(next)+'</p>';
+  $("summaryPractice").style.display=errorCount>0?"inline-flex":"none";
+  $("summarySheet").classList.add("open");
+  try{window.dhLogActivity&&window.dhLogActivity("✓ Konuşma oturumu tamamlandı: "+userMsgs.length+" mesaj","chat-summary",{score:errorCount===0?100:null,module:(Scenario&&Scenario.title)||""});}catch(e){}
 }
 
 document.addEventListener("click",function(e){
@@ -1237,6 +1255,8 @@ function setupEvents(){
   const sBtn=$("suggestBtn");
   if(sBtn) sBtn.onclick=suggestReply;
   var gB=$("gemBtn"); if(gB) gB.onclick=continueInGemini;
+  var fB=$("finishBtn"); if(fB) fB.onclick=finishSession;
+  $("closeSummary").onclick=()=>$("summarySheet").classList.remove("open");
   if(STT){
     let rec=null,listening=false;
     $("micBtn").onclick=()=>{

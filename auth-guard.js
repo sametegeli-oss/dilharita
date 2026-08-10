@@ -4,8 +4,8 @@
    Mantık:
    1) Önce yerel işarete bak (localStorage "dh_logged_in"). Varsa sayfayı HEMEN aç
       (internet beklemeden). Bu, çevrimdışı kullanımı ve hızlı açılışı sağlar.
-   2) Yerel işaret YOKSA login.html'e yönlendir.
-   3) İnternet varsa Firebase oturumu arka planda yine de doğrular. Oturum gerçekten
+   2) Yerel işaret YOKSA misafir kullanımına izin verir. Veriler cihazda tutulur.
+   3) Hesap varsa ve internet açıksa Firebase oturumu arka planda yine de doğrular. Oturum gerçekten
       geçersizse (örn. başka cihazda çıkış yapılmış) yerel işareti temizleyip login'e atar.
 
    login.html'in kendisinde çalışmaz (sonsuz döngü olmasın).
@@ -31,9 +31,10 @@
     location.replace("./login.html?next=" + encodeURIComponent(here));
   }
 
-  // --- 1) Yerel işaret yoksa: hemen login'e (Firebase'e hiç gitmeden) ---
+  // --- 1) Yerel işaret yoksa: ürünü misafir olarak aç. Hesap, yalnızca
+  // bulut eşitleme istendiğinde gerekir; ilk değeri görmeden giriş duvarı yoktur. ---
   if (!hasLocalLogin()){
-    goLogin();
+    try{ localStorage.setItem("dh_guest_mode", "1"); }catch(e){}
     return;
   }
 

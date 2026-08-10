@@ -6,6 +6,8 @@
 <meta name="theme-color" content="#071226">
 <title>Fotoğraflı Sohbet Senaryoları</title>
 <link rel="stylesheet" href="./chat-style.css?v=19">
+<link rel="stylesheet" href="./dh-tokens.css">
+<link rel="stylesheet" href="./dh-ui.css">
 <style>
     .ai-selector-container {
         background: #111e36;
@@ -19,6 +21,9 @@
         align-items: center;
         gap: 6px;
     }
+    .ai-selector-container summary{cursor:pointer;color:#9fb3d9;font:700 13px system-ui;list-style:none}
+    .ai-selector-container summary::-webkit-details-marker{display:none}
+    .ai-selector-container:not([open]) label,.ai-selector-container:not([open]) select{display:none}
     .ai-selector-container label {
         font-size: 13px;
         font-weight: bold;
@@ -81,8 +86,8 @@
 <body>
 <div class="menu">
 <div class="menu-actions"><a class="menu-btn" href="index.html">🏠 Ana menüye dön</a></div>
-<h1>Erkek konuşan avatarlar</h1><a href="./ses-secim.html" style="display:inline-block;margin:8px 0;background:#0e7490;color:#fff;text-decoration:none;padding:8px 14px;border-radius:10px;font:800 13px system-ui">🔊 Avatar Seslerini Ayarla</a>
-<p>Tüm senaryolar erkek karakterdir. Her karakter aynı grid içinde tam set olarak üretildi; sesler tam fotoğraf kareleriyle çalışır.</p>
+<h1>Konuşma pratiği</h1><a href="./ses-secim.html" style="display:inline-block;margin:8px 0;background:#0e7490;color:#fff;text-decoration:none;padding:8px 14px;border-radius:10px;font:800 13px system-ui">Sesi ayarla</a>
+<p>Bugünün çalışmasını öğretmeninle yap veya gerçek yaşam senaryolarından birini seç.</p>
 
 <div class="dh-gunun" id="dhGununKart" hidden>
   <div class="dh-gunun__ust">🗣️ Bugünün konuşması</div>
@@ -92,7 +97,8 @@
   <a class="dh-gunun__btn" id="dhGununBtn" href="#">Başla</a>
 </div>
 
-<div class="ai-selector-container">
+<details class="ai-selector-container">
+    <summary>İleri seçenekler · Haricî AI ile aç</summary>
     <label for="aiEngineSelect">🧠 Dışarıda Açılacak AI Motoru:</label>
     <select id="aiEngineSelect" class="ai-select" onchange="saveAIEngine(this.value)">
         <option value="gemini">Google Gemini</option>
@@ -100,42 +106,41 @@
         <option value="claude">Anthropic Claude</option>
         <option value="deepseek">DeepSeek V3</option>
     </select>
-</div>
+</details>
 
 <div class="grid">
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chathotel.html', 0)">
             <img src="assets/avatars_v3/hotel/idle.webp"><b>Otel</b><span>Erkek resepsiyonist · A2</span>
         </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Otel Resepsiyonisti (A2)')">Sohbete Başla ✨</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Otel Resepsiyonisti (A2)')">Haricî AI'da aç</button>
     </div>
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chatrestaurant.html', 1)">
             <img src="assets/avatars_v3/restaurant/idle.webp"><b>Restoran</b><span>Erkek garson · A2</span>
         </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Restoran Garsonu (A2)')">Sohbete Başla ✨</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Restoran Garsonu (A2)')">Haricî AI'da aç</button>
     </div>
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chatdoctor.html', 2)">
             <img src="assets/avatars_v3/doctor/idle.webp"><b>Doktor</b><span>Erkek doktor · B1</span>
         </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Erkek Doktor (B1)')">Sohbete Başla ✨</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Erkek Doktor (B1)')">Haricî AI'da aç</button>
     </div>
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chatairport.html', 3)">
             <img src="assets/avatars_v3/airport/idle.webp"><b>Havaalanı</b><span>Erkek check-in görevlisi · A2</span>
         </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Havaalanı Check-in Görevlisi (A2)')">Sohbete Başla ✨</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Havaalanı Check-in Görevlisi (A2)')">Haricî AI'da aç</button>
     </div>
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chatteacher.html', 4)">
-            <img src="assets/avatars_v3/teacher1/idle.webp"><b>AI Öğretmen</b><span>2 erkek öğretmen opsiyonu</span>
+            <img src="assets/avatars_v3/teacher1/idle.webp"><b>Öğretmenle konuş</b><span>Seviyene ve bugünkü çalışmana göre</span>
         </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'İngilizce Öğretmeni')">Sohbete Başla ✨</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'İngilizce Öğretmeni')">Haricî AI'da aç</button>
     </div>
 </div>
 
-<div class="note-block"><b>V15:</b> Tüm karakterler erkek. Her avatar setinde idle, blink, listen, A, E, I, O, U, MBP, FV, L, TH kareleri vardır. Kodda yüz parçası kesme yoktur; her ses tam fotoğraf karesiyle gösterilir.</div>
 </div>
 
 <script>
@@ -180,6 +185,7 @@
 </script>
 <script src="./sentences-loader.js?v=20"></script>
 <script src="./dh-konusma.js?v=1"></script>
+<script src="./dh-app-shell.js?v=1"></script>
 <script>
 /* ── GÜNÜN KONUŞMASI KARTI ──────────────────────────────────────────
    Koc adimi bu sayfaya geliyor ve kullanici her gun ayni 5'li menuyle
