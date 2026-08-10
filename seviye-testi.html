@@ -95,6 +95,12 @@
 
   @media(max-width:560px){ .q-tr{font-size:20px} .result-level{font-size:54px} }
 </style>
+<!-- iOS: ses tanıma yok (Safari motoru), ses de ilk dokunuşa kadar kilitli.
+     Bu üçlü sayfa mantığına dokunmadan ikisini de çözer. Sıra önemli:
+     speech-fallback (panel) → shim (API taklidi) → kilit. -->
+<script src="./speech-fallback.js?v=1"></script>
+<script src="./dh-ses-shim.js?v=1"></script>
+<script src="./dh-ses-kilit.js?v=1"></script>
 <script src="./sentences-loader.js?v=1"></script>
 <script src="./profile.js?v=1"></script>
 </head>

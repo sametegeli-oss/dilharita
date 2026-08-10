@@ -1,6 +1,12 @@
 <!doctype html>
 <html lang="tr">
 <head>
+<!-- iOS: ses tanıma yok (Safari motoru), ses de ilk dokunuşa kadar kilitli.
+     Bu üçlü sayfa mantığına dokunmadan ikisini de çözer. Sıra önemli:
+     speech-fallback (panel) → shim (API taklidi) → kilit. -->
+<script src="./speech-fallback.js?v=1"></script>
+<script src="./dh-ses-shim.js?v=1"></script>
+<script src="./dh-ses-kilit.js?v=1"></script>
 <script src="./auth-guard.js?v=1"></script>
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./ai-providers.js?v=1"></script>

@@ -358,6 +358,38 @@
 (function(){
   var b=document.getElementById("dhSnapBtn");
   if(!b) return;
+
+  /* Dokunulabilir gün seçici (prompt() yerine) */
+  function gunSec(list){
+    return new Promise(function(sec){
+      var ov=document.createElement("div");
+      ov.style.cssText="position:fixed;inset:0;z-index:2147483400;background:rgba(2,8,20,.75);"
+        +"display:flex;align-items:center;justify-content:center;padding:16px";
+      var ic='<div style="background:#0f1f3a;border:1px solid #1e3a5f;border-radius:16px;'
+        +'width:min(420px,96vw);max-height:80vh;overflow:auto;padding:16px;color:#e8eef7">'
+        +'<b style="font-size:16px;display:block;margin-bottom:4px">🌙 Hangi güne dönülsün?</b>'
+        +'<div style="font-size:12px;color:#9fb3d9;line-height:1.5;margin-bottom:12px">'
+        +'Seçtiğin günün sonundaki ilerlemeye dönülür ve buluta yazılır.</div>';
+      list.slice().reverse().forEach(function(g){
+        ic+='<button data-g="'+g+'" style="display:block;width:100%;margin-bottom:8px;'
+          +'background:#13294d;border:1px solid #1e3a5f;color:#e8eef7;border-radius:11px;'
+          +'padding:13px;font:800 14px system-ui;cursor:pointer;text-align:left">📅 '+g+'</button>';
+      });
+      ic+='<button id="dhSnapIptal" style="display:block;width:100%;margin-top:4px;'
+        +'background:#334155;border:0;color:#cbd5e1;border-radius:11px;padding:12px;'
+        +'font:700 14px system-ui;cursor:pointer">Vazgeç</button></div>';
+      ov.innerHTML=ic;
+      document.body.appendChild(ov);
+      function kapat(v){ ov.remove(); sec(v); }
+      ov.addEventListener("click",function(e){
+        if(e.target===ov) return kapat(null);
+        if(e.target.id==="dhSnapIptal") return kapat(null);
+        var g=e.target.getAttribute && e.target.getAttribute("data-g");
+        if(g) kapat(g);
+      });
+    });
+  }
+
   b.onclick=async function(){
     var cs=window.DHCloudSync;
     var msg=document.getElementById("dhBackupMsg");
@@ -366,9 +398,16 @@
        IndexedDB'ye taşındı (localStorage ~5 MB tavanına dayanıyordu). */
     var list=(await cs.snapList())||[];
     if(!list.length){ if(msg){ msg.style.color="var(--dh-seri)"; msg.textContent="Henüz geri dönülecek bir gün kaydı yok."; } return; }
-    var day=prompt("Hangi güne dönülsün?\n"+list.join("\n"));
+
+    /* ESKİDEN prompt() KULLANILIYORDU — iki sorunu vardı:
+       1) Instagram/Facebook gibi uygulama içi tarayıcılarda prompt()
+          engelli; düğme hiçbir şey yapmıyor gibi görünüyordu.
+       2) Telefonda kullanıcıdan tarihi ELLE yazmasını istiyordu; bir
+          harf şaşınca "Listede olmayan bir gün yazdın" diyordu.
+       Yerine dokunulabilir liste geldi. */
+    var day=await gunSec(list);
     if(!day) return;
-    if(list.indexOf(day)<0){ if(msg){ msg.style.color="var(--dh-seri)"; msg.textContent="Listede olmayan bir gün yazdın."; } return; }
+    if(msg){ msg.style.color="var(--dh-text-2)"; msg.textContent="Geri yükleniyor…"; }
     await cs.restoreSnap(day);
     location.reload();
   };

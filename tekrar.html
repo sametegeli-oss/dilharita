@@ -56,7 +56,13 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 .diff-typo{color:#f59e0b;font-weight:bold;border-bottom:2px dashed #f59e0b;}
 .diff-wrong{color:#f87171;text-decoration:line-through;}
 .diff-missing{color:#6b7280;border-bottom:1px dashed #6b7280;}
-</style><script src="./sentences-loader.js?v=1"></script>
+</style><!-- iOS: ses tanıma yok (Safari motoru), ses de ilk dokunuşa kadar kilitli.
+     Bu üçlü sayfa mantığına dokunmadan ikisini de çözer. Sıra önemli:
+     speech-fallback (panel) → shim (API taklidi) → kilit. -->
+<script src="./speech-fallback.js?v=1"></script>
+<script src="./dh-ses-shim.js?v=1"></script>
+<script src="./dh-ses-kilit.js?v=1"></script>
+<script src="./sentences-loader.js?v=1"></script>
 </head><body>
 <div class="top"><a href="./index.html" id="btnHome">←</a><h1>🔁 Tekrar</h1><div class="cnt" id="cnt"></div></div>
 <div class="mode">Mod:

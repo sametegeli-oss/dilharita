@@ -2018,6 +2018,12 @@ function hocaTalkAlign(charIndex){
   });
 </script>
 
+<!-- iOS: ses tanıma yok (Safari motoru), ses de ilk dokunuşa kadar kilitli.
+     Bu üçlü sayfa mantığına dokunmadan ikisini de çözer. Sıra önemli:
+     speech-fallback (panel) → shim (API taklidi) → kilit. -->
+<script src="./speech-fallback.js?v=1"></script>
+<script src="./dh-ses-shim.js?v=1"></script>
+<script src="./dh-ses-kilit.js?v=1"></script>
 <script src="./ai-providers.js?v=2"></script>
 <script src="./word-popup.js?v=2"></script>
 <script src="./viseme-lang.js?v=1"></script>
