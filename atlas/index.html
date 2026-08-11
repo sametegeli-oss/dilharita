@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="tr" data-tema="gece">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=5">
+<title>Dil Harita · Atlas</title>
+<meta name="description" content="Cümle cümle İngilizce. Aralıklı tekrar, telaffuz, konuşma pratiği ve ilerleme haritası — tek sayfada, çevrimdışı çalışır.">
+<meta name="theme-color" content="#05060d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dil Harita">
+<meta name="color-scheme" content="dark light">
+
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap">
+<link rel="stylesheet" href="./css/atlas.css">
+
+<link rel="preload" as="fetch" href="./data/sentences/index.json" crossorigin>
+<link rel="prefetch" as="image" href="./assets/avatar/idle.webp">
+
+<style>
+  /* ilk boyama — JS gelmeden önce ekran boş kalmasın */
+  #acilis{position:fixed;inset:0;display:grid;place-items:center;z-index:400;
+    background:#05060d;transition:opacity .5s ease,visibility .5s}
+  #acilis.gitti{opacity:0;visibility:hidden;pointer-events:none}
+  #acilis .amblem{width:82px;height:82px;border-radius:26px;display:grid;place-items:center;font-size:40px;
+    background:linear-gradient(135deg,#7c5cff,#22d3ee);
+    box-shadow:0 20px 60px rgba(124,92,255,.45);
+    animation:acilisZipla 1.5s cubic-bezier(.34,1.56,.64,1) infinite alternate}
+  @keyframes acilisZipla{to{transform:translateY(-12px) scale(1.05)}}
+  #acilis p{margin-top:18px;color:#6b7396;font-family:'Outfit',system-ui,sans-serif;
+    font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<div id="acilis">
+  <div style="text-align:center">
+    <div class="amblem">🗺️</div>
+    <p>Dil Harita</p>
+  </div>
+</div>
+
+<noscript>
+  <div style="padding:40px;font-family:system-ui;color:#eef1ff;background:#05060d;min-height:100vh">
+    <h1>JavaScript kapalı</h1>
+    <p>Bu uygulama tamamen tarayıcıda çalışır ve JavaScript olmadan açılamaz.</p>
+  </div>
+</noscript>
+
+<script defer src="./js/core.js"></script>
+<script defer src="./js/mastery.js"></script>
+<script defer src="./js/veri.js"></script>
+<script defer src="./js/gorsel.js"></script>
+<script defer src="./js/ses.js"></script>
+<script defer src="./js/ai.js"></script>
+<script defer src="./js/bulut.js"></script>
+<script defer src="./js/ui.js"></script>
+<script defer src="./js/kelime-balonu.js"></script>
+<script defer src="./js/eklenti.js"></script>
+<script defer src="./js/app.js"></script>
+<script defer src="./js/koc.js"></script>
+<script defer src="./js/ekran-ogren.js"></script>
+<script defer src="./js/ekran-kelime.js"></script>
+<script defer src="./js/ekran-analiz.js"></script>
+<script defer src="./js/ekran-sohbet.js"></script>
+<script defer src="./js/ekran-drill.js"></script>
+<script defer src="./js/ekran-ders.js"></script>
+<script defer src="./js/ekran-metin.js"></script>
+<script defer src="./js/ekran-ses.js"></script>
+<script defer src="./js/ekran-studyo.js"></script>
+<script defer src="./js/ekran-kible.js"></script>
+<script defer src="./js/ekran-ayar.js"></script>
+
+<script>
+  addEventListener('load', function () {
+    setTimeout(function () {
+      var a = document.getElementById('acilis');
+      if (a) { a.classList.add('gitti'); setTimeout(function(){ a.remove(); }, 600); }
+    }, 260);
+  });
+</script>
+</body>
+</html>

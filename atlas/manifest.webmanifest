@@ -1,0 +1,24 @@
+{
+  "name": "Dil Harita · Atlas",
+  "short_name": "Dil Harita",
+  "description": "Cümle cümle İngilizce. Aralıklı tekrar, telaffuz, konuşma pratiği ve ilerleme haritası.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#05060d",
+  "theme_color": "#05060d",
+  "lang": "tr",
+  "dir": "ltr",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Tekrar", "short_name": "Tekrar", "url": "./index.html#/tekrar", "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Modül haritası", "short_name": "Öğren", "url": "./index.html#/ogren", "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Konuşma", "short_name": "Konuş", "url": "./index.html#/sohbet", "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
