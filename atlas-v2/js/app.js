@@ -490,7 +490,7 @@
       },
       {
         ad: 'Başlangıç ve bakım', oge: [
-          ['../index.html', '🏠', 'Eski ana sayfa', 'Uygulamanın önceki ana ekranı', 'sayfa'],
+          ['../index.html?atlas-old=1', '🏠', 'Eski ana sayfa', 'Uygulamanın önceki ana ekranı', 'sayfa'],
           ['../index-app.html', '🧰', 'Eski cümle uygulaması', 'Gelişmiş çalışma ekranının doğrudan girişi', 'sayfa'],
           ['../menu.html', '📚', 'Eski kitaplık menüsü', 'Önceki sürümün tüm araç menüsü', 'sayfa'],
           ['../bugun.html', '☀️', 'Bugün yönlendirmesi', 'Günlük çalışma başlangıcı', 'sayfa'],
@@ -513,7 +513,12 @@
           style: 'cursor:pointer;text-align:left;width:100%',
           onclick: function () {
             if (o[4] === 'dis') window.open(o[0], '_blank', 'noopener,noreferrer');
-            else if (o[4] === 'sayfa') location.href = o[0];
+            else if (o[4] === 'sayfa') {
+              /* Eski ekranların kendi “çıkış” düğmeleri ../index.html'e gider.
+                 Bu işaret kök ana sayfanın kullanıcıyı V2 menüsüne döndürmesini sağlar. */
+              try { sessionStorage.setItem('atlas-v2-donus', '#/menu'); } catch (err) {}
+              location.href = o[0];
+            }
             else Uygulama.git(o[0]);
           }
         }, [

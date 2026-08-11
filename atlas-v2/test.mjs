@@ -365,6 +365,7 @@ const aiKaynak = fs.readFileSync(path.join(KOK, 'js/ai.js'), 'utf8');
 const coreKaynak = fs.readFileSync(path.join(KOK, 'js/core.js'), 'utf8');
 const sohbetKaynak = fs.readFileSync(path.join(KOK, 'js/ekran-sohbet.js'), 'utf8');
 const sonucKaynak = fs.readFileSync(path.join(KOK, 'js/result-effects.js'), 'utf8');
+const eskiEfektKaynak = fs.readFileSync(path.join(KOK, '..', 'atlas-effects.js'), 'utf8');
 t('AI çağrısı 25 saniye zaman aşımı ve iptal sinyali kullanıyor', () => /AbortController/.test(aiKaynak) && /25000/.test(aiKaynak) && /secenek\.sinyal/.test(aiKaynak));
 t('API anahtarı yedekten çıkarılıyor', () => /delete v\.aiAnahtar/.test(coreKaynak));
 t('eski çalışma günleri days deposundan taşınıyor', () => /tr = tr\.days \|\| tr/.test(coreKaynak));
@@ -373,10 +374,13 @@ t('sohbet geçmişi varsayılan kapalı ve kullanıcı tercihine bağlı', () =>
 t('doğru ve yanlış cevap animasyonları tek cevap girişine bağlı', () => /atlas-result/.test(coreKaynak) && /yildizYagmuru/.test(sonucKaynak) && /function hata/.test(sonucKaynak));
 const uiKaynak = fs.readFileSync(path.join(KOK, 'js/ui.js'), 'utf8');
 const appKaynak = fs.readFileSync(path.join(KOK, 'js/app.js'), 'utf8');
+const eskiIndexKaynak = fs.readFileSync(path.join(KOK, '..', 'index.html'), 'utf8');
 t('kelime balonu bütün ekranlardaki düz metin tıklamalarını dinliyor', () => /genelKelimeTiklama/.test(uiKaynak) && /caretRangeFromPoint/.test(uiKaynak));
 t('kelime verisi yüklenemezse balon açıklayıcı hata gösteriyor', () => /Sözlük yerel dosya kipinde yüklenemiyor/.test(uiKaynak) && /\.catch\(function \(\)/.test(uiKaynak));
 t('Ses Dalgası ve YouGlish menüde bağlı', () => /\.\.\/sesdalga\.html/.test(appKaynak) && /https:\/\/youglish\.com\//.test(appKaynak));
 t('gelişmiş index-app cümle ekranı menüde bağlı', () => /\.\.\/index-app\.html/.test(appKaynak));
+t('eski ekran çıkışı V2 menüsüne geri dönüyor', () => /sessionStorage\.setItem\('atlas-v2-donus'/.test(appKaynak) && /location\.replace\('\.\/atlas-v2\/' \+ donus\)/.test(eskiIndexKaynak));
+t('bütün eski ekranlarda ortak Atlas V2 dönüş düğmesi var', () => /function v2ReturnBridge/.test(eskiEfektKaynak) && /Atlas V2 menüsüne dön/.test(eskiEfektKaynak) && /file==="index\.html"\|\|file==="menu\.html"/.test(eskiEfektKaynak));
 t('kelime balonunda sözcüğe özel YouGlish bağlantısı var', () => uiKaynak.includes('youglish.com/pronounce/') && /encodeURIComponent\(w\)/.test(uiKaynak));
 t('menüdeki bütün klasik HTML araçları diskte var', () => {
   const hedefler = [...appKaynak.matchAll(/\['\.\.\/([^']+\.html)'[^\]]+'sayfa'\]/g)].map(m => m[1]);
