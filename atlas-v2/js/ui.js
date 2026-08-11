@@ -384,7 +384,7 @@
           ]));
         });
       }
-      var alt = e('div', { style: 'display:flex;gap:6px;margin-top:12px' }, [
+      var alt = e('div', { style: 'display:flex;gap:6px;margin-top:12px;flex-wrap:wrap' }, [
         e('button', {
           class: 'dg kucuk', style: 'flex:1',
           onclick: function () {
@@ -396,9 +396,24 @@
             balonKapat();
           }
         }, '➕ Listeme ekle'),
+        e('button', {
+          class: 'dg kucuk', title: 'YouGlish’te gerçek videolarda dinle',
+          onclick: function () {
+            var w = bilgi ? bilgi.kelime : kelime;
+            window.open('https://youglish.com/pronounce/' + encodeURIComponent(w) + '/english', '_blank', 'noopener,noreferrer');
+          }
+        }, '🎬 YouGlish'),
         e('button', { class: 'dg kucuk sade', onclick: balonKapat }, 'Kapat')
       ]);
       b.appendChild(alt);
+      yerlestir(b, ev);
+    }).catch(function () {
+      bosalt(b);
+      b.appendChild(e('b', { style: 'display:block;margin-bottom:7px' }, kelime));
+      b.appendChild(e('p', 'kucuk-yazi', location.protocol === 'file:'
+        ? 'Sözlük yerel dosya kipinde yüklenemiyor. Uygulamayı küçük bir yerel sunucuyla aç.'
+        : 'Kelime bilgisi şu anda yüklenemedi. Bağlantını kontrol edip tekrar dene.'));
+      b.appendChild(e('button', { class: 'dg kucuk sade tam', onclick: balonKapat }, 'Kapat'));
       yerlestir(b, ev);
     });
 
@@ -413,6 +428,31 @@
     b.style.left = x + 'px'; b.style.top = y + 'px';
   }
   function balonKapat() { if (acikBalon) { acikBalon.remove(); acikBalon = null; } }
+
+  /* Bütün ekranlarda düz İngilizce metin de tıklanabilir. Ders motorunun
+     oluşturduğu .kelime düğümleri kendi işleyicisini kullanmaya devam eder. */
+  function genelKelimeTiklama() {
+    document.addEventListener('click', function (ev) {
+      if (ev.defaultPrevented || ev.target.closest('#balon-kelime,.kelime,button,a,input,textarea,select,[contenteditable="true"]')) return;
+      var range = null;
+      if (document.caretRangeFromPoint) range = document.caretRangeFromPoint(ev.clientX, ev.clientY);
+      else if (document.caretPositionFromPoint) {
+        var pos = document.caretPositionFromPoint(ev.clientX, ev.clientY);
+        if (pos) { range = document.createRange(); range.setStart(pos.offsetNode, pos.offset); }
+      }
+      if (!range || !range.startContainer || range.startContainer.nodeType !== 3) return;
+      var metin = range.startContainer.nodeValue || '', i = Math.min(range.startOffset, metin.length - 1);
+      if (/\s/.test(metin.charAt(i)) && i > 0) i--;
+      var sol=i, sag=i+1;
+      while (sol>0 && /[A-Za-z'’-]/.test(metin.charAt(sol-1))) sol--;
+      while (sag<metin.length && /[A-Za-z'’-]/.test(metin.charAt(sag))) sag++;
+      var kelime = metin.slice(sol,sag).replace(/^[^A-Za-z]+|[^A-Za-z]+$/g,'');
+      if (kelime.length < 2 || !/[A-Za-z]/.test(kelime)) return;
+      kelimeBalonu(kelime, ev);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', genelKelimeTiklama, { once: true });
+  else genelKelimeTiklama();
 
   /* ───── avatar ─────────────────────────────────────────────── */
   function avatar(boy) {

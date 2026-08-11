@@ -410,7 +410,9 @@
           ['#/tekrar', '🔁', 'Tekrar', 'Vadesi gelen cümle ve kelimeler'],
           ['#/sohbet', '💬', 'Konuşma senaryoları', 'Havaalanı, otel, doktor, mülakat'],
           ['#/telaffuz', '🎙️', 'Telaffuz stüdyosu', 'Dinle · söyle · karşılaştır'],
-          ['#/dinleme', '🎧', 'Dinleme', 'Duyduğunu yaz']
+          ['#/dinleme', '🎧', 'Dinleme', 'Duyduğunu yaz'],
+          ['../sesdalga.html', '🌊', 'Ses Dalgası', 'Akustik analiz · ağız ve ses eşleme', 'sayfa'],
+          ['https://youglish.com/', '🎬', 'YouGlish', 'Gerçek videolarda İngilizce telaffuz', 'dis']
         ]
       },
       {
@@ -428,6 +430,26 @@
           ['#/veri', '💾', 'Veri ve yedek', 'Yedek al, geri yükle, aktar'],
           ['#/hakkinda', 'ℹ️', 'Nasıl çalışır', 'Aralıklı tekrar ve tasarım notları']
         ]
+      },
+      {
+        ad: 'Klasik araçlar', oge: [
+          ['../ders.html', '🎓', 'Bugünkü dersim', 'Öğretmenin hazırladığı günlük ders', 'sayfa'],
+          ['../library.html', '📚', 'Kütüphane', 'Kitap ve metin okuma', 'sayfa'],
+          ['../foto-ekle.html', '📷', 'Fotoğraftan ekle', 'Fotoğraftaki cümleleri tara ve çevir', 'sayfa'],
+          ['../ocr-sentence.html', '🔎', 'OCR cümle modu', 'Taranan cümleleri zengin modda çalış', 'sayfa'],
+          ['../videopractice.html', '🎞️', 'Video pratiği', 'Video ile dinleme ve telaffuz çalış', 'sayfa'],
+          ['../practice.html', '🗣️', 'Serbest cümle pratiği', 'Kendi cümlelerinle üretim çalışması', 'sayfa'],
+          ['../akilli-tekrar.html', '🧠', 'Akıllı tekrar', 'Ayrıntılı eski tekrar ekranı', 'sayfa'],
+          ['../ses-secim.html', '🔊', 'Avatar sesi', 'Avatar sesini seç ve dene', 'sayfa'],
+          ['../ses-esleme.html', '🎚️', 'Ses eşleme', 'Türkçe sesleri karşılaştır ve eşle', 'sayfa'],
+          ['../ses-teshis.html', '🩺', 'Ses teşhisi', 'Tarayıcı ses özelliklerini kontrol et', 'sayfa'],
+          ['../modullerim.html', '🧱', 'Eski modüllerim', 'Özel modül üretme ve çalışma araçları', 'sayfa'],
+          ['../ogrenme-yolu.html', '🛤️', 'Öğrenme yolu', 'Kişisel çalışma yolunu görüntüle', 'sayfa'],
+          ['../gunluk-takip.html', '📅', 'Günlük takip', 'Günlük çalışma geçmişini incele', 'sayfa'],
+          ['../koc-modu.html', '🧭', 'Koç modu', 'Çalışma koçunu aç', 'sayfa'],
+          ['../kilavuz.html', '📖', 'Kullanım kılavuzu', 'Uygulamanın ayrıntılı rehberi', 'sayfa'],
+          ['../veri-gizlilik.html', '🔒', 'Gizlilik ve veri', 'Veri kontrollerini yönet', 'sayfa']
+        ]
       }
     ];
     gruplar.forEach(function (gr, gi) {
@@ -437,7 +459,11 @@
         liste.appendChild(e('button', {
           class: 'satir-kart gir gir-' + Math.min(6, i + 1),
           style: 'cursor:pointer;text-align:left;width:100%',
-          onclick: function () { Uygulama.git(o[0]); }
+          onclick: function () {
+            if (o[4] === 'dis') window.open(o[0], '_blank', 'noopener,noreferrer');
+            else if (o[4] === 'sayfa') location.href = o[0];
+            else Uygulama.git(o[0]);
+          }
         }, [
           e('span', { style: 'font-size:21px;width:32px;text-align:center;flex:0 0 32px' }, o[1]),
           e('span', { style: 'flex:1;min-width:0' }, [

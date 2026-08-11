@@ -371,6 +371,18 @@ t('eski çalışma günleri days deposundan taşınıyor', () => /tr = tr\.days 
 t('göç öncesi durum geri alınabiliyor', () => /gocuGeriAl/.test(coreKaynak));
 t('sohbet geçmişi varsayılan kapalı ve kullanıcı tercihine bağlı', () => /sohbetSakla: false/.test(coreKaynak) && /sohbetSakla \?/.test(sohbetKaynak));
 t('doğru ve yanlış cevap animasyonları tek cevap girişine bağlı', () => /atlas-result/.test(coreKaynak) && /yildizYagmuru/.test(sonucKaynak) && /function hata/.test(sonucKaynak));
+const uiKaynak = fs.readFileSync(path.join(KOK, 'js/ui.js'), 'utf8');
+const appKaynak = fs.readFileSync(path.join(KOK, 'js/app.js'), 'utf8');
+t('kelime balonu bütün ekranlardaki düz metin tıklamalarını dinliyor', () => /genelKelimeTiklama/.test(uiKaynak) && /caretRangeFromPoint/.test(uiKaynak));
+t('kelime verisi yüklenemezse balon açıklayıcı hata gösteriyor', () => /Sözlük yerel dosya kipinde yüklenemiyor/.test(uiKaynak) && /\.catch\(function \(\)/.test(uiKaynak));
+t('Ses Dalgası ve YouGlish menüde bağlı', () => /\.\.\/sesdalga\.html/.test(appKaynak) && /https:\/\/youglish\.com\//.test(appKaynak));
+t('kelime balonunda sözcüğe özel YouGlish bağlantısı var', () => uiKaynak.includes('youglish.com/pronounce/') && /encodeURIComponent\(w\)/.test(uiKaynak));
+t('menüdeki bütün klasik HTML araçları diskte var', () => {
+  const hedefler = [...appKaynak.matchAll(/\['\.\.\/([^']+\.html)'[^\]]+'sayfa'\]/g)].map(m => m[1]);
+  if (hedefler.length < 15) throw new Error('yalnızca ' + hedefler.length + ' klasik araç bağlı');
+  const eksik = hedefler.filter(f => !fs.existsSync(path.join(KOK, '..', f)));
+  if (eksik.length) throw new Error('eksik hedef: ' + eksik.join(', '));
+});
 
 /* ═══ rapor ═══ */
 console.log('\n' + '═'.repeat(58));

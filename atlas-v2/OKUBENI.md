@@ -4,9 +4,10 @@ Mevcut Dil Harita projesinin **verisiyle**, ama **sıfırdan yazılmış** aray�
 tek sayfalık bir uygulama. 50 ayrı HTML sayfası yerine tek kabuk, hash yönlendirme,
 6 çekirdek + 5 ekran dosyası.
 
-Açmak için: `index.html` — kurulum yok, derleme yok, sunucu yok.
-(Yerelde `file://` yerine küçük bir sunucu tercih et: `python3 -m http.server` — service
-worker ve `fetch` bunu ister.)
+Açmak için Windows'ta `BASLAT.cmd` dosyasına çift tıkla. Açılan komut penceresi
+açık kaldığı sürece uygulama `http://127.0.0.1:8765/` adresinde çalışır.
+`index.html` dosyasını doğrudan `file://` ile açma; sözlük, ders verileri ve service
+worker tarayıcı güvenliği nedeniyle bu kipte yüklenmez.
 
 ---
 
