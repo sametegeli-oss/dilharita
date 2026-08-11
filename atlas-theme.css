@@ -1,0 +1,72 @@
+/* Dil Harita Atlas visual layer — existing engines and markup stay intact. */
+:root{
+  --atlas-bg:#05060d;--atlas-bg2:#0a0c18;--atlas-panel:rgba(255,255,255,.055);
+  --atlas-panel2:rgba(255,255,255,.09);--atlas-line:rgba(255,255,255,.11);
+  --atlas-line2:rgba(255,255,255,.19);--atlas-text:#eef1ff;--atlas-muted:#a8b0d0;
+  --atlas-dim:#6b7396;--atlas-purple:#7c5cff;--atlas-cyan:#22d3ee;
+  --atlas-pink:#ff5ca8;--atlas-green:#34e2a0;--atlas-yellow:#ffc857;
+  --atlas-shadow:0 18px 55px rgba(0,0,0,.42);--atlas-ease:cubic-bezier(.22,.61,.36,1);
+  --dh-bg:var(--atlas-bg);--dh-yuzey:var(--atlas-panel);--dh-yuzey-2:var(--atlas-panel2);
+  --dh-cizgi:var(--atlas-line);--dh-cizgi-kuvvet:var(--atlas-line2);
+  --dh-text:var(--atlas-text);--dh-text-2:var(--atlas-muted);--dh-text-3:var(--atlas-dim);
+  --dh-marka:var(--atlas-purple);--dh-marka-koyu:#9a7cff;--dh-marka-zemin:rgba(124,92,255,.16);
+  --dh-marka-metin:#c4b5fd;--dh-ok:var(--atlas-green);--dh-err:#ff5f7e;
+  --dh-seri:var(--atlas-yellow);--dh-bos:rgba(255,255,255,.12);
+  --dh-r-kontrol:14px;--dh-r-kart:22px;--dh-font:"Outfit","Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+html{color-scheme:dark;background:var(--atlas-bg)}
+body{
+  color:var(--atlas-text);font-family:var(--dh-font);background:
+    radial-gradient(circle at -8% -12%,rgba(124,92,255,.38),transparent 35rem),
+    radial-gradient(circle at 105% 45%,rgba(34,211,238,.28),transparent 34rem),
+    radial-gradient(circle at 42% 108%,rgba(255,92,168,.17),transparent 30rem),var(--atlas-bg)!important;
+  background-attachment:fixed;min-height:100vh;-webkit-font-smoothing:antialiased;
+}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.55;background-image:linear-gradient(rgba(255,255,255,.026) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.026) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(ellipse at 50% 10%,#000 15%,transparent 78%)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(circle at 12% 24%,#fff 0 1px,transparent 1.5px),radial-gradient(circle at 83% 18%,#fff 0 1px,transparent 1.5px),radial-gradient(circle at 72% 70%,#fff 0 1px,transparent 1.5px);background-size:290px 240px,380px 330px,470px 390px;opacity:.22}
+*{scrollbar-color:var(--atlas-line2) transparent}
+::selection{background:var(--atlas-purple);color:#fff}
+h1,h2,h3,.title,.baslik{color:var(--atlas-text);letter-spacing:-.025em}
+p,.sub,.muted,.hint,.oge__alt{color:var(--atlas-muted)}
+a{transition:color .2s ease,transform .2s ease}
+
+/* Glass surfaces across old and new screens */
+.card,.kart,.panel,.box,.section,.sheet-card,.modal-card,.dh-kart,.grup,.oge,.state,
+.lesson-card,.module-card,.stat-card,.report-card,.word-card,.practice-card,details{
+  border-color:var(--atlas-line)!important;background:var(--atlas-panel)!important;
+  box-shadow:var(--atlas-shadow);backdrop-filter:blur(18px) saturate(1.25);-webkit-backdrop-filter:blur(18px) saturate(1.25);
+}
+.card,.kart,.dh-kart,.module-card,.lesson-card,.stat-card,.report-card,.word-card,.practice-card{border-radius:22px!important}
+.oge{border-radius:17px!important;transition:transform .25s cubic-bezier(.34,1.56,.64,1),border-color .25s,background .25s}
+.oge:hover,.card[href]:hover,.module-card:hover{transform:translateY(-3px);border-color:var(--atlas-line2)!important;background:var(--atlas-panel2)!important}
+
+button,.btn,.dh-btn,[role="button"],input[type="submit"],input[type="button"]{border-radius:15px!important;transition:transform .18s cubic-bezier(.34,1.56,.64,1),filter .2s,box-shadow .2s,border-color .2s}
+button:active,.btn:active,.dh-btn:active,[role="button"]:active{transform:scale(.96)}
+.primary,.btn.primary,.dh-btn--birincil,.btn-primary,button[type="submit"]{color:#fff!important;border-color:transparent!important;background:linear-gradient(135deg,var(--atlas-purple),#a05cff 55%,var(--atlas-cyan))!important;box-shadow:0 0 0 1px rgba(124,92,255,.28),0 13px 38px rgba(124,92,255,.28)!important}
+.primary:hover,.btn.primary:hover,.dh-btn--birincil:hover{filter:brightness(1.12)}
+input,textarea,select,.input,.text-in{color:var(--atlas-text)!important;background:rgba(0,0,0,.27)!important;border-color:var(--atlas-line)!important;border-radius:15px!important}
+input:focus,textarea:focus,select:focus{border-color:var(--atlas-purple)!important;box-shadow:0 0 0 4px rgba(124,92,255,.16)!important;outline:0}
+input::placeholder,textarea::placeholder{color:var(--atlas-dim)!important}
+.progress,.progress-bar,.cubuk{background:var(--atlas-line)!important;border-radius:999px!important;overflow:hidden}
+.progress>*,.progress-bar>*,.cubuk>*{background:linear-gradient(90deg,var(--atlas-purple),var(--atlas-cyan))!important}
+.badge,.chip,.pill,.dh-rozet,.level-pill{background:var(--atlas-panel2)!important;border-color:var(--atlas-line)!important;box-shadow:none!important}
+
+/* Shared floating navigation, mirroring Atlas. */
+.dh-has-app-nav{padding-bottom:112px!important}
+.dh-app-nav{left:50%!important;right:auto!important;bottom:calc(14px + env(safe-area-inset-bottom))!important;width:auto!important;max-width:calc(100vw - 20px)!important;transform:translateX(-50%);gap:4px!important;padding:7px!important;border:1px solid var(--atlas-line2)!important;border-radius:24px!important;background:rgba(10,12,24,.76)!important;box-shadow:0 24px 70px rgba(0,0,0,.58)!important;backdrop-filter:blur(26px) saturate(1.6)!important;-webkit-backdrop-filter:blur(26px) saturate(1.6)!important}
+.dh-app-nav a{min-width:66px!important;min-height:58px!important;padding:8px 10px 6px!important;border-radius:18px!important;color:var(--atlas-dim)!important;gap:3px!important}
+.dh-app-nav a svg{width:20px!important;height:20px!important}
+.dh-app-nav a.is-active{color:var(--atlas-text)!important;background:linear-gradient(135deg,rgba(124,92,255,.30),rgba(34,211,238,.18))!important;border:1px solid rgba(124,92,255,.35)!important}
+.dh-app-nav a.is-active svg{transform:translateY(-2px) scale(1.08)}
+.dh-connection{background:rgba(10,12,24,.9)!important;border-color:var(--atlas-line2)!important;color:var(--atlas-text)!important;backdrop-filter:blur(18px)}
+
+header,.topbar,.top,.app-header{border-color:var(--atlas-line)!important;background:linear-gradient(180deg,rgba(5,6,13,.88),rgba(5,6,13,.42))!important;backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5)}
+.dh-session-summary{border-color:var(--atlas-line)!important;background:var(--atlas-panel)!important;box-shadow:var(--atlas-shadow)!important;backdrop-filter:blur(18px)}
+.dh-session-summary .dh-ss-next{background:linear-gradient(135deg,var(--atlas-purple),var(--atlas-cyan))!important}
+
+@media(max-width:560px){
+  body{background-position:center top!important}.dh-app-nav{width:calc(100vw - 18px)!important;justify-content:space-around!important}
+  .dh-app-nav a{min-width:0!important;flex:1!important;padding-inline:5px!important}.dh-app-nav span{font-size:10px!important}
+  .card,.kart,.dh-kart,.module-card,.lesson-card{border-radius:18px!important}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}

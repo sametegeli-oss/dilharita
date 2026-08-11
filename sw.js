@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v59";   /* v59: gizlilik ve veri kontrolleri */
+var SW_VERSION = "dh-sw-v60";   /* v60: Atlas gorsel sistemi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -23,6 +23,7 @@ var SHELL = [
   "./menu.html",
   "./veri-gizlilik.html",
   "./manifest.webmanifest",
+  "./atlas-theme.css",
   "./favicon.svg",
   "./auth-guard.js",
   "./study-tracker.js",
