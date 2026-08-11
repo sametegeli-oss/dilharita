@@ -1,0 +1,7 @@
+{
+  "name": "dil-harita-atlas-v2",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node test.mjs" },
+  "devDependencies": { "jsdom": "^26.1.0" }
+}
