@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v61";   /* v61: Atlas hareketli bilesenleri */
+var SW_VERSION = "dh-sw-v62";   /* v62: tum ekranlarda sonuc animasyonlari */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
