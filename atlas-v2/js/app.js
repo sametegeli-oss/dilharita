@@ -433,6 +433,7 @@
       },
       {
         ad: 'Klasik araçlar', oge: [
+          ['../index-app.html', '🧰', 'Gelişmiş cümle çalışma', 'Öğretmen, analiz, PDF ve çalışma araçları', 'sayfa'],
           ['../ders.html', '🎓', 'Bugünkü dersim', 'Öğretmenin hazırladığı günlük ders', 'sayfa'],
           ['../library.html', '📚', 'Kütüphane', 'Kitap ve metin okuma', 'sayfa'],
           ['../foto-ekle.html', '📷', 'Fotoğraftan ekle', 'Fotoğraftaki cümleleri tara ve çevir', 'sayfa'],
@@ -449,6 +450,57 @@
           ['../koc-modu.html', '🧭', 'Koç modu', 'Çalışma koçunu aç', 'sayfa'],
           ['../kilavuz.html', '📖', 'Kullanım kılavuzu', 'Uygulamanın ayrıntılı rehberi', 'sayfa'],
           ['../veri-gizlilik.html', '🔒', 'Gizlilik ve veri', 'Veri kontrollerini yönet', 'sayfa']
+        ]
+      },
+      {
+        ad: 'Diğer çalışma ekranları', oge: [
+          ['../chat.html', '🖼️', 'Fotoğraflı sohbet', 'Avatarlarla görsel konuşma senaryoları', 'sayfa'],
+          ['../ogren.html', '🌄', 'Görselle öğren', 'Görsellerle cümle çalışması', 'sayfa'],
+          ['../modul-testi.html', '📝', 'Modül sınavı', 'Seçili modülü sınavla tamamla', 'sayfa'],
+          ['../pv.html', '🗂️', 'YDS phrasal verb kartları', 'Phrasal verb kart koleksiyonu', 'sayfa'],
+          ['../pv-practice.html', '🎯', 'Phrasal verb pratiği', 'Test, boşluk doldurma ve dinleme', 'sayfa'],
+          ['../pdfoku.html', '📄', 'PDF ve AI çalışma', 'Belge üzerinde yapay zekâ destekli çalışma', 'sayfa'],
+          ['../teacher1.html', '🧑‍🏫', 'Öğretmen Sentence Mode', 'Gelişmiş cümle öğretmeni', 'sayfa'],
+          ['../kelime-ogren.html', '🔠', 'Ayrıntılı kelime öğren', 'Eski kart ve quiz ekranı', 'sayfa']
+        ]
+      },
+      {
+        ad: 'Sohbet senaryoları', oge: [
+          ['../chatairport.html', '✈️', 'Havaalanı sohbeti', 'Havaalanında İngilizce konuş', 'sayfa'],
+          ['../chatdoctor.html', '🩺', 'Doktor sohbeti', 'Doktor görüşmesini canlandır', 'sayfa'],
+          ['../chathotel.html', '🏨', 'Otel sohbeti', 'Otel senaryosunda konuş', 'sayfa'],
+          ['../chatrestaurant.html', '🍽️', 'Restoran sohbeti', 'Restoranda İngilizce konuş', 'sayfa'],
+          ['../chatteacher.html', '🎓', 'AI öğretmen seçimi', 'Sohbet öğretmenini seç', 'sayfa'],
+          ['../chatteacher1.html', '👩‍🏫', 'AI öğretmen 1', 'Birinci öğretmen sohbet ekranı', 'sayfa'],
+          ['../chatteacher2.html', '👨‍🏫', 'AI öğretmen 2', 'İkinci öğretmen sohbet ekranı', 'sayfa']
+        ]
+      },
+      {
+        ad: 'Eski sürüm ekranları', oge: [
+          ['../aktivite.html', '📋', 'Eski aktivite', 'Bugünkü ayrıntılı aktivite ekranı', 'sayfa'],
+          ['../harita.html', '🗺️', 'Eski ilerleme haritası', 'Klasik modül ilerleme görünümü', 'sayfa'],
+          ['../hata-defteri.html', '🧯', 'Eski hata defteri', 'Ayrıntılı yanlış ve analiz ekranı', 'sayfa'],
+          ['../ilerleme.html', '📈', 'Eski ilerleme', 'Klasik ilerleme özeti', 'sayfa'],
+          ['../phrasal-verbs.html', '🔗', 'Eski phrasal verbs', '881 öbek fiilin klasik ekranı', 'sayfa'],
+          ['../rapor.html', '📊', 'Eski 30 günlük rapor', 'Klasik raporlama ekranı', 'sayfa'],
+          ['../seviye-testi.html', '📐', 'Eski seviye testi', 'Klasik seviye belirleme', 'sayfa'],
+          ['../teacher.html', '💡', 'Eski öğretmen', 'Türkçe anlatımlı öğretmen ekranı', 'sayfa'],
+          ['../tekrar.html', '🔁', 'Eski tekrar', 'Klasik tekrar çalışma ekranı', 'sayfa']
+        ]
+      },
+      {
+        ad: 'Başlangıç ve bakım', oge: [
+          ['../index.html', '🏠', 'Eski ana sayfa', 'Uygulamanın önceki ana ekranı', 'sayfa'],
+          ['../index-app.html', '🧰', 'Eski cümle uygulaması', 'Gelişmiş çalışma ekranının doğrudan girişi', 'sayfa'],
+          ['../menu.html', '📚', 'Eski kitaplık menüsü', 'Önceki sürümün tüm araç menüsü', 'sayfa'],
+          ['../bugun.html', '☀️', 'Bugün yönlendirmesi', 'Günlük çalışma başlangıcı', 'sayfa'],
+          ['../basla.html', '🚀', 'Başlangıç ekranı', 'İlk kurulum ve başlangıç', 'sayfa'],
+          ['../login.html', '🔑', 'Giriş ekranı', 'Eski hesap giriş sayfası', 'sayfa'],
+          ['../modul-calis.html', '▶️', 'Modül çalış yönlendirmesi', 'Seçili modülü çalışma ekranına aktarır', 'sayfa'],
+          ['../teacher-chat.html', '↗️', 'Öğretmen yönlendirmesi', 'Öğretmen sohbetini açar', 'sayfa'],
+          ['../pwa-hard-reset.html', '🧹', 'Tam önbellek temizleme', 'PWA önbelleğini sıfırlama aracı', 'sayfa'],
+          ['../pwa-reset.html', '♻️', 'PWA temizleme', 'Standart önbellek temizleme aracı', 'sayfa'],
+          ['../kıblenamaz.html', '🧭', 'Namaz ve kıble aracı', 'Kök klasördeki bağımsız yardımcı ekran', 'sayfa']
         ]
       }
     ];

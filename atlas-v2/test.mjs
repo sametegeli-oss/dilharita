@@ -376,12 +376,19 @@ const appKaynak = fs.readFileSync(path.join(KOK, 'js/app.js'), 'utf8');
 t('kelime balonu bütün ekranlardaki düz metin tıklamalarını dinliyor', () => /genelKelimeTiklama/.test(uiKaynak) && /caretRangeFromPoint/.test(uiKaynak));
 t('kelime verisi yüklenemezse balon açıklayıcı hata gösteriyor', () => /Sözlük yerel dosya kipinde yüklenemiyor/.test(uiKaynak) && /\.catch\(function \(\)/.test(uiKaynak));
 t('Ses Dalgası ve YouGlish menüde bağlı', () => /\.\.\/sesdalga\.html/.test(appKaynak) && /https:\/\/youglish\.com\//.test(appKaynak));
+t('gelişmiş index-app cümle ekranı menüde bağlı', () => /\.\.\/index-app\.html/.test(appKaynak));
 t('kelime balonunda sözcüğe özel YouGlish bağlantısı var', () => uiKaynak.includes('youglish.com/pronounce/') && /encodeURIComponent\(w\)/.test(uiKaynak));
 t('menüdeki bütün klasik HTML araçları diskte var', () => {
   const hedefler = [...appKaynak.matchAll(/\['\.\.\/([^']+\.html)'[^\]]+'sayfa'\]/g)].map(m => m[1]);
   if (hedefler.length < 15) throw new Error('yalnızca ' + hedefler.length + ' klasik araç bağlı');
   const eksik = hedefler.filter(f => !fs.existsSync(path.join(KOK, '..', f)));
   if (eksik.length) throw new Error('eksik hedef: ' + eksik.join(', '));
+});
+t('kök klasördeki bütün HTML dosyaları V2 menüsüne bağlı', () => {
+  const html = fs.readdirSync(path.join(KOK, '..')).filter(f => f.toLowerCase().endsWith('.html'));
+  const bagli = new Set([...appKaynak.matchAll(/\.\.\/([^'\"]+\.html)/g)].map(m => m[1]));
+  const baglanmayan = html.filter(f => !bagli.has(f));
+  if (baglanmayan.length) throw new Error('bağlanmayan: ' + baglanmayan.join(', '));
 });
 
 /* ═══ rapor ═══ */

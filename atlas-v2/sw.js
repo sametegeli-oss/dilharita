@@ -6,7 +6,7 @@
      önbellekten açılır, yeni sürüm arka planda iner.
    · Dış origin (fonts, AI sağlayıcıları) → hiç karışılmaz.
    ═══════════════════════════════════════════════════════════════ */
-var SURUM = 'atlas-v4';
+var SURUM = 'atlas-v6';
 var KABUK = SURUM + '-kabuk';
 var VARLIK = SURUM + '-varlik';
 
