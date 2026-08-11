@@ -1017,6 +1017,7 @@ function speakText(text){
   try{speechSynthesis.cancel();}catch(e){}
   const duration=estimateDuration(text);
   avatar.speakText(text, duration+300);
+  try{ window.dispatchEvent(new CustomEvent("dh-speech-start",{detail:{text:text}})); }catch(e){}
   const vp=avatarVoicePrefs();
   const chunks=splitMixedSpeech(text);
   let ci=0;
@@ -1025,6 +1026,7 @@ function speakText(text){
   function finishAll(){
     if(run!==speechRun) return;
     avatar.stop();
+    try{ window.dispatchEvent(new CustomEvent("dh-speech-end")); }catch(e){}
     try{ window.dispatchEvent(new CustomEvent("dh-konusma-bitti")); }catch(e){}
     if(window.__dhAuto){ setTimeout(function(){ try{ var mb=document.getElementById("micBtn"); if(mb&&!mb.classList.contains("listening")) mb.click(); }catch(e){} }, 400); }
   }
