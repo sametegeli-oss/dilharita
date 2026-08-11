@@ -4,7 +4,9 @@
   if (global.__dhAppShellInstalled) return;
   global.__dhAppShellInstalled = true;
   var page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
-  var excluded = /^(login|basla|pwa-reset|pwa-hard-reset)\.html?$/.test(page);
+  /* Tam ekran sohbetlerde mikrofon/gonder cubugu zaten alt kenari kullanir.
+     Ortak alt menuyu burada gostermek iki tiklanabilir katmani ust uste bindirir. */
+  var excluded = /^(login|basla|pwa-reset|pwa-hard-reset|chat|chatteacher|chatteacher1|chatteacher2|chatdoctor|chathotel|chatairport|chatrestaurant|teacher-chat|teacher1|ogren|practice|videopractice|sesdalga)\.html?$/.test(page);
   function activeFor(href) {
     if (href === "./index.html") return page === "index.html";
     if (href === "./library.html") return /^(library|menu|modullerim|kelime-ogren|phrasal-verbs|pdfoku|ocr-sentence)\.html?$/.test(page);
@@ -36,6 +38,27 @@
       else if(d.state==="error") show("Eşitleme tamamlanamadı · cihazdaki verilerin korunuyor",true);
     });
   }
-  function start(){try{if(global.matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("dh-reduced-motion");}catch(e){} installNav();installConnectionStatus();}
+  function installA11y(){
+    if(document.getElementById("dhSkipLink"))return;
+    var target=document.querySelector("main,[role=main]");
+    if(!target){
+      target=document.querySelector(".app,.wrap,.container,.menu");
+      if(target)target.setAttribute("role","main");
+    }
+    if(!target)return;
+    if(!target.id)target.id="dhMainContent";
+    if(!target.hasAttribute("tabindex"))target.setAttribute("tabindex","-1");
+    var skip=document.createElement("a");skip.id="dhSkipLink";skip.className="dh-skip-link";
+    skip.href="#"+target.id;skip.textContent="Ana içeriğe geç";
+    document.body.insertBefore(skip,document.body.firstChild);
+    document.addEventListener("keydown",function(e){
+      if(e.key!=="Escape")return;
+      var dialog=document.querySelector('[role="dialog"]:not([hidden]),dialog[open],.modal:not(.hidden),.wp-overlay');
+      if(!dialog)return;
+      var close=dialog.querySelector('[aria-label*="Kapat"],.close,.wp-close,[data-close]');
+      if(close&&typeof close.click==="function")close.click();
+    });
+  }
+  function start(){try{if(global.matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("dh-reduced-motion");}catch(e){} installA11y();installNav();installConnectionStatus();}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })(window);

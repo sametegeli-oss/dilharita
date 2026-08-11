@@ -16,6 +16,7 @@ select,button{background:var(--surface);color:var(--text);border:1px solid var(-
 select option{color:#111}
 button.primary{background:#1d4ed8;border-color:transparent;color:#fff}
 input[type=text]{flex:1;min-width:180px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font:600 14px Nunito,system-ui,sans-serif}
+@media(max-width:480px){.bar input[type=text]{min-width:0;width:100%;flex:1 0 100%}.bar>*{max-width:100%}}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin:0 16px}
 .cell{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center}
 .cell img{width:56px;height:56px;border-radius:10px;object-fit:cover;object-position:top;background:#000;flex:0 0 auto}

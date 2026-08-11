@@ -149,6 +149,30 @@
   }
   DHUx.toast = toast;
 
+  /* Merkezi, sir sizdirmaz istemci hata gunlugu. Son 20 kayit yalniz bu
+     cihazda tutulur; API anahtari bicimleri kaydedilmeden maskelenir. */
+  function safeError(value){
+    var text=String(value&&value.message||value||"Bilinmeyen hata");
+    return text
+      .replace(/(?:gsk_|AIza)[A-Za-z0-9_-]{8,}/g,"[gizli]")
+      .replace(/Bearer\s+[A-Za-z0-9._-]+/gi,"Bearer [gizli]")
+      .slice(0,500);
+  }
+  function recordError(kind,value){
+    var message=safeError(value);
+    if(/AbortError|Load failed|Failed to fetch|NetworkError/i.test(message)) return;
+    try{
+      var key="dh-client-errors-v1", rows=JSON.parse(localStorage.getItem(key)||"[]");
+      if(!Array.isArray(rows)) rows=[];
+      rows.push({at:Date.now(),page:location.pathname.split("/").pop()||"index.html",kind:kind,message:message});
+      localStorage.setItem(key,JSON.stringify(rows.slice(-20)));
+    }catch(e){}
+    toast("Bir sorun oluştu · çalışman cihazda korunuyor", "warn", 4500);
+  }
+  window.addEventListener("error",function(e){ recordError("error",e.error||e.message); });
+  window.addEventListener("unhandledrejection",function(e){ recordError("promise",e.reason); });
+  DHUx.errors={list:function(){try{return JSON.parse(localStorage.getItem("dh-client-errors-v1")||"[]");}catch(e){return[];}},clear:function(){try{localStorage.removeItem("dh-client-errors-v1");}catch(e){}}};
+
   /* ---------------- 3) çevrimdışı / çevrimiçi ---------------- */
   window.addEventListener("offline", function(){
     toast("📴 Çevrimdışısın — çalışmaların cihazda saklanıyor", "warn", 0);
@@ -167,6 +191,12 @@
      sayfası index.html olduğu için doğrudan ana sayfadan girenlerde önbellek ve
      çevrimdışı hiç devreye girmiyordu. Artık her sayfa kaydı garantiliyor. */
   if("serviceWorker" in navigator){
+    var reloadingForUpdate=false;
+    navigator.serviceWorker.addEventListener("controllerchange",function(){
+      if(reloadingForUpdate) return;
+      reloadingForUpdate=true;
+      location.reload();
+    });
     navigator.serviceWorker.register("./sw.js?v=16", { scope:"./" }).then(function(reg){
       if(!reg) return;
       function watch(sw){

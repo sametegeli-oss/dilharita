@@ -39,6 +39,12 @@ h1{font-size:17px;margin:0}
 </div>
 
 <div class="card">
+  <div id="reportInsight" hidden></div>
+  <h2>Önerilen sonraki çalışma</h2>
+  <div id="reportInsightFallback" class="empty">Kişisel öneri hazırlanıyor…</div>
+</div>
+
+<div class="card">
   <h2>Hata Türü Eğilimleri — hata ORANI, önceki 15 gün → son 15 gün</h2>
   <div id="trendList"><div class="empty">Yükleniyor…</div></div>
 
@@ -48,6 +54,15 @@ h1{font-size:17px;margin:0}
 </div>
 
 <script src="./learning-error-system.js"></script>
+<script src="./dh-insights.js?v=2"></script>
+<script>
+(async function(){
+  var fallback=document.getElementById("reportInsightFallback");
+  if(!window.DHInsights){ if(fallback)fallback.textContent="Kişisel öneri şu anda hazırlanamadı."; return; }
+  var result=await DHInsights.render("#reportInsight");
+  if(fallback) fallback.hidden=!!result;
+})();
+</script>
 <script>
 (function(){
   var tr={}; try{ tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}
@@ -168,4 +183,5 @@ h1{font-size:17px;margin:0}
   el.innerHTML=html+tip;
 })();
 </script>
+<script src="./ux-boost.js?v=2"></script>
 </body></html>

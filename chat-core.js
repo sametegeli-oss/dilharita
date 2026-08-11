@@ -313,31 +313,48 @@ function saveKey(k){ const keys=getKeys(); if(!keys.includes(k)) keys.push(k); l
    saglayicilari sirayla dener, 429 alani atlayip sonrakine geçer. Yazilmis
    ama chat sayfalarina HIC baglanmamisti. Artik varsa o kullanilir;
    yoksa asagidaki eski dogrudan-Groq yolu aynen calisir (geri uyum). */
-async function groqChat(messages){
+async function groqChat(messages, requestOpts){
+  requestOpts=requestOpts||{};
+  const controller=new AbortController();
+  let timedOut=false;
+  const timer=setTimeout(function(){timedOut=true;controller.abort();},requestOpts.timeoutMs||25000);
+  const external=requestOpts.signal;
+  const abortFromOutside=function(){controller.abort();};
+  const cleanupRequest=function(){clearTimeout(timer);if(external)external.removeEventListener("abort",abortFromOutside);};
+  if(external){if(external.aborted)controller.abort();else external.addEventListener("abort",abortFromOutside,{once:true});}
   try{
     if(global_DHProviders() && global_DHProviders().hasAnyKey && global_DHProviders().hasAnyKey()){
-      return await global_DHProviders().chat(messages, { temperature:0.7, max_tokens:1100 });
+      return await global_DHProviders().chat(messages, { temperature:0.7, max_tokens:1100, signal:controller.signal });
     }
   }catch(e){
     /* DHProviders'in kendi hata kodlari ("rate","all-failed","no-key")
        cagiranin bekledigi bicimle ayni; oldugu gibi yukari verilir. */
     if(e && (e.code==="rate" || e.code==="all-failed")) throw {code:"rate"};
     if(e && e.code==="no-key") throw {code:"no-key"};
+    if((e&&e.code==="abort") || controller.signal.aborted) throw {code:timedOut?"timeout":"cancelled"};
     throw e;
+  }finally{
+    /* Sağlayıcı yolu burada biter. Doğrudan Groq yedeğine düşülecekse
+       zamanlayıcı aşağıdaki ikinci blokta yeniden kurulur. */
+    if(global_DHProviders() && global_DHProviders().hasAnyKey && global_DHProviders().hasAnyKey()){
+      cleanupRequest();
+    }
   }
   const keys=getKeys();
-  if(!keys.length) throw {code:"no-key"};
+  if(!keys.length){cleanupRequest();throw {code:"no-key"};}
   let lastErr=null;
   for(const key of keys){
     try{
-      const res=await fetch(GROQ_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model:GROQ_MODEL,messages,temperature:.7,max_tokens:320})});
+      const res=await fetch(GROQ_URL,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model:GROQ_MODEL,messages,temperature:.7,max_tokens:320})});
       if(res.status===401){lastErr={code:"bad-key"};continue;}
       if(res.status===429){lastErr={code:"rate"};continue;}
       if(!res.ok){lastErr={code:"http",status:res.status};continue;}
       const data=await res.json();
-      return data.choices?.[0]?.message?.content?.trim() || "";
-    }catch(e){ lastErr={code:"network"}; }
+      const answer=data.choices?.[0]?.message?.content?.trim() || "";
+      cleanupRequest();return answer;
+    }catch(e){ if(controller.signal.aborted){lastErr={code:timedOut?"timeout":"cancelled"};break;} lastErr={code:"network"}; }
   }
+  cleanupRequest();
   throw lastErr || {code:"unknown"};
 }
 
@@ -1127,6 +1144,13 @@ async function finishSession(){
   $("summaryText").innerHTML='<p style="font-size:18px;font-weight:800;margin:0 0 8px">'+esc(headline)+'</p><p style="color:#9fb3d9;margin:0 0 12px">'+esc(detail)+'</p><p style="line-height:1.55">'+esc(next)+'</p>';
   $("summaryPractice").style.display=errorCount>0?"inline-flex":"none";
   $("summarySheet").classList.add("open");
+  try{
+    if(localStorage.getItem("dh-chat-history-enabled")==="1" && userMsgs.length){
+      var archive=JSON.parse(localStorage.getItem("dh-chat-history-v1")||"[]")||[];
+      archive.unshift({id:Date.now(),at:new Date().toISOString(),scenario:(Scenario&&Scenario.title)||"Sohbet",level:State.level,messages:State.history.slice(-40)});
+      localStorage.setItem("dh-chat-history-v1",JSON.stringify(archive.slice(0,30)));
+    }
+  }catch(e){}
   try{window.dhLogActivity&&window.dhLogActivity("✓ Konuşma oturumu tamamlandı: "+userMsgs.length+" mesaj","chat-summary",{score:errorCount===0?100:null,module:(Scenario&&Scenario.title)||""});}catch(e){}
 }
 
@@ -1172,7 +1196,10 @@ async function sendUser(){
   const text=input.value.trim();
   if(!text || State.busy) return;
   State.busy=true;
-  $("sendBtn").disabled=true;
+  State.abortController=new AbortController();
+  $("sendBtn").disabled=false;
+  $("sendBtn").textContent="■";
+  $("sendBtn").title="AI isteğini iptal et";
   addBubble("user", text);
   input.value="";
   input.style.height="auto";
@@ -1186,7 +1213,10 @@ async function sendUser(){
     addBubble("assistant", State.currentPartner);
     speakText(State.currentPartner);
     State.busy=false;
+    State.abortController=null;
     $("sendBtn").disabled=false;
+    $("sendBtn").textContent="➤";
+    $("sendBtn").title="Gönder";
     return;
   }
   try{
@@ -1201,7 +1231,7 @@ async function sendUser(){
       }
     }catch(e){}
     const messages=[{role:"system",content:systemPrompt()},{role:"assistant",content:State.firstMsg},...State.history.slice(-6)];
-    const reply=await groqChat(messages);
+    const reply=await groqChat(messages,{signal:State.abortController.signal,timeoutMs:25000});
     removeTyping();
     State.currentPartner=dhStripTasks(reply) || "Could you please say that again?";
     try{
@@ -1231,11 +1261,17 @@ async function sendUser(){
     if(e.code==="rate") msg="Tüm AI sağlayıcıların limiti doldu. 💎 ile Gemini'de devam edebilir ya da Ayarlar'dan Cerebras/Gemini anahtarı ekleyebilirsin.";
     else if(e.code==="bad-key") msg="API anahtarı geçersiz görünüyor.";
     else if(e.code==="network") msg="İnternet bağlantısı kontrol edilmeli.";
+    else if(e.code==="timeout") msg="AI yanıtı 25 saniyede gelmedi. Mesajın kutuya geri kondu; tekrar deneyebilirsin.";
+    else if(e.code==="cancelled") msg="İstek iptal edildi. Mesajın kutuya geri kondu.";
+    if((e.code==="timeout"||e.code==="cancelled")&&!input.value){input.value=text;input.dispatchEvent(new Event("input"));}
     State.currentPartner=msg;
     addBubble("assistant", msg);
   }finally{
     State.busy=false;
+    State.abortController=null;
     $("sendBtn").disabled=false;
+    $("sendBtn").textContent="➤";
+    $("sendBtn").title="Gönder";
   }
 }
 function setupEvents(){
@@ -1251,7 +1287,7 @@ function setupEvents(){
   });
   $("textIn").addEventListener("input",e=>{ e.target.style.height="auto"; e.target.style.height=Math.min(120,e.target.scrollHeight)+"px"; });
   $("textIn").addEventListener("keydown",e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); sendUser(); } });
-  $("sendBtn").onclick=sendUser;
+  $("sendBtn").onclick=function(){if(State.busy&&State.abortController){State.abortController.abort();return;}sendUser();};
   const sBtn=$("suggestBtn");
   if(sBtn) sBtn.onclick=suggestReply;
   var gB=$("gemBtn"); if(gB) gB.onclick=continueInGemini;

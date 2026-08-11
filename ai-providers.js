@@ -97,6 +97,7 @@
     return fetch(p.url, {
       method:"POST",
       headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+key },
+      signal:opts.signal,
       body: JSON.stringify(body)
     }).then(function(res){
       if(res.status===429) throw {code:"rate", provider:p.id};
@@ -110,6 +111,7 @@
       }
       return res.json();
     }, function(networkErr){
+      if(networkErr && networkErr.name==="AbortError") throw {code:"abort", provider:p.id};
       // fetch reddedildi → CORS veya ağ hatası
       try{ console.warn("["+p.id+"] ağ/CORS hatası:", networkErr && networkErr.message); }catch(e){}
       throw {code:"network", provider:p.id};
@@ -143,12 +145,16 @@
     return fetch(url, {
       method:"POST",
       headers:{ "Content-Type":"application/json" },
+      signal:opts.signal,
       body: JSON.stringify(bodyObj)
     }).then(function(res){
       if(res.status===429) throw {code:"rate", provider:p.id};
       if(res.status===400||res.status===403) throw {code:"bad-key", provider:p.id};
       if(!res.ok) throw {code:"http", provider:p.id, status:res.status};
       return res.json();
+    },function(networkErr){
+      if(networkErr && networkErr.name==="AbortError") throw {code:"abort",provider:p.id};
+      throw {code:"network",provider:p.id};
     }).then(function(d){
       var txt = d && d.candidates && d.candidates[0] && d.candidates[0].content
         && d.candidates[0].content.parts && d.candidates[0].content.parts[0] && d.candidates[0].content.parts[0].text;
@@ -167,6 +173,7 @@
       var key = keys[i++];
       var fn = (p.kind==="gemini") ? callGemini : callOpenAI;
       return fn(p, key, messages, opts).catch(function(err){
+        if(err && err.code==="abort") throw err;
         // bu anahtar bozuk/limitse sıradaki anahtarı dene
         if(err && (err.code==="bad-key" || err.code==="rate")) return tryKey();
         throw err;
@@ -189,6 +196,7 @@
         try{ if(global.DHAI && DHAI.noteSuccess) DHAI.noteSuccess(); }catch(e){}
         return txt;
       }).catch(function(err){
+        if(err && err.code==="abort") throw err;
         // bu sağlayıcı tükendi → sıradakine geç
         if(err && err.code==="rate"){ try{ if(global.DHAI && DHAI.noteRateLimit) DHAI.noteRateLimit(); }catch(e){} }
         if(idx<avail.length) return tryProvider();

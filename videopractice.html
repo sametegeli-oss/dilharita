@@ -7,6 +7,7 @@
      harmanlayıp öğretmen sohbetine devreder (Günü Kapat paneline eklenir). -->
 <script src="./dh-gun-sonu.js?v=1"></script>
 <script src="./progress-engine.js?v=2"></script>
+<script src="./dh-session-summary.js?v=1"></script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0b1120" />
@@ -745,7 +746,7 @@ function renderVideoCard(){clearUiTimers();if(State.idx>=State.queue.length)retu
                            
   bindTap(document.getElementById("nextBtn"),uiNextCard);document.getElementById("replayBtn").onclick=()=>replayCurrent(true);document.getElementById("translateBtn").onclick=toggleTranslation;bindTap(document.getElementById("micBtn"),startEnglishCheck);document.getElementById("typedCheck").onclick=()=>checkEnglish(document.getElementById("typedTR").value,"typed");if(!STT)document.getElementById("fallbackInput").classList.remove("hidden");document.getElementById("teachListenBtn").onclick=()=>playTeaching(s);renderKaraoke(s.en);try{if(window.DilAvatar)DilAvatar.mount("teachAvatar");}catch(e){}autoLoadVideo(s);setTimeout(()=>playTeaching(s),800)}
 async function nextCard(){await savePos();State.idx++;if(State.idx>=State.queue.length){if(State.activeModule)await clearPos(State.activeModule);renderDone()}else{await savePos();renderVideoCard()}}
-function renderDone(){clearUiTimers();root.innerHTML=`<div class="state"><div style="font-size:56px">✅</div><h2>Video oturumu tamam</h2><p>${State.queue.length} cümleyi video ile çalıştın.</p><button class="btn primary" id="homeBtn">Ana sayfa</button></div>`;document.getElementById("homeBtn").onclick=renderPicker}
+function renderDone(){clearUiTimers();root.innerHTML=`<div class="state"><div style="font-size:56px">✅</div><h2>Video oturumu tamam</h2><p>${State.queue.length} cümleyi video ile çalıştın.</p><button class="btn primary" id="homeBtn">Ana sayfa</button></div>`;document.getElementById("homeBtn").onclick=renderPicker;if(window.DHSessionSummary)DHSessionSummary.enhance(root.querySelector(".state"),{title:"Video oturumu tamam",total:State.queue.length})}
 function showStatus(msg){if(_statusTimer){clearTimeout(_statusTimer);_statusTimer=null;}const el=document.getElementById("videoStatus");if(!el)return;el.textContent=msg||"";el.classList.toggle("hidden",!msg)}
 function setLoading(on,msg){const el=document.getElementById("videoLoading");if(!el)return;el.classList.toggle("hidden",!on);if(msg)el.querySelector("div:last-child").textContent=msg}
 function videoKey(s){return VIDEO_PREFIX+(s.id||hash(s.en||s.tr))}

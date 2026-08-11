@@ -5,6 +5,7 @@
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./ai-providers.js?v=1"></script>
 <script src="./progress-engine.js?v=2"></script>
+<script src="./dh-session-summary.js?v=1"></script>
 <script src="./coach-bubble.js?v=1"></script>
 <!-- Karma gün sonu pratiği: o gün çalışılan cümle + kalıp + kelimeleri
      harmanlayıp öğretmen sohbetine devreder (Günü Kapat paneline eklenir). -->
@@ -2352,6 +2353,7 @@ function renderSessionDone(){
     <button class="btn btn-primary" id="homeBtn">Ana sayfaya dön</button>
   </div>`;
   document.getElementById("homeBtn").onclick = () => renderPicker();
+  if(window.DHSessionSummary) DHSessionSummary.enhance(root.querySelector(".state"),{title:State.sessionTitle||"Cümle oturumu tamam",total:State.queue.length});
 }
 
 /* ============================================================

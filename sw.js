@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v49";   /* v49: guvenli hesap aktarimi ve tekrar deneme */
+var SW_VERSION = "dh-sw-v59";   /* v59: gizlilik ve veri kontrolleri */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -21,6 +21,7 @@ var CACHE = SW_VERSION;
 var SHELL = [
   "./index.html",
   "./menu.html",
+  "./veri-gizlilik.html",
   "./manifest.webmanifest",
   "./favicon.svg",
   "./auth-guard.js",
@@ -35,6 +36,8 @@ var SHELL = [
   "./dh-yedek.js",
   "./dh-app-shell.js",
   "./dh-insights.js",
+  "./dh-learning-coach.js",
+  "./dh-session-summary.js",
   "./cloud-sync.js",
   "./dh-tokens.css",
   "./dh-ui.css",

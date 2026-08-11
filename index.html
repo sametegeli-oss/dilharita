@@ -93,6 +93,7 @@
   </div>
 
   <section class="dh-insight" id="kisiselIcGoru" hidden aria-live="polite"></section>
+  <section class="dh-kart dh-kart--sessiz" id="dhLearningCoach" hidden aria-live="polite" style="margin-bottom:12px"></section>
 
   <div class="dh-bolum-basligi" id="planBaslik">Bugünün planı</div>
   <div class="dh-plan" id="plan"></div>
@@ -131,6 +132,7 @@
 
 <script src="./dh-plan.js?v=1"></script>
 <script src="./dh-insights.js?v=1"></script>
+<script src="./dh-learning-coach.js?v=1"></script>
 <script src="./dh-app-shell.js?v=1"></script>
 <script src="./cloud-sync.js?v=21"></script>
 <script src="./dh-telafi.js?v=1"></script>
@@ -797,6 +799,8 @@
      calismis kullanici "Bugunu hazirliyorum..." gormez. */
   ciz(null, {});
   if (window.DHInsights) DHInsights.render("#kisiselIcGoru");
+  if (window.DHLearningCoach) DHLearningCoach.render("#dhLearningCoach");
+  window.addEventListener("dh-cloud-synced",function(){ if(window.DHLearningCoach)DHLearningCoach.render("#dhLearningCoach"); });
 
   /* ================= YEDEK PLAN =================
      AI anahtari yoksa koc.js run() paint()'e hic gelmez. Iskelet zaten

@@ -421,3 +421,23 @@
 .dh-insight h2{margin:10px 0 6px;font-size:20px;font-weight:500;line-height:1.3}.dh-insight p{margin:0 0 14px;color:var(--dh-metin-ikincil,#5a646d);line-height:1.55}
 .dh-reduced-motion *,.dh-reduced-motion *::before,.dh-reduced-motion *::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 @media(min-width:720px){.dh-app-nav{bottom:14px;border:1px solid var(--dh-kenar,#d6dce1);border-radius:14px;box-shadow:0 8px 30px #0f14171a}.dh-connection{bottom:98px}}
+/* Klavye kullanıcıları için görünür odak ve ana içeriğe atlama bağlantısı. */
+.dh-skip-link{position:fixed;top:8px;left:8px;z-index:100001;padding:10px 14px;border-radius:10px;background:#fff;color:#071226;font:700 14px/1 system-ui;transform:translateY(-160%);transition:transform .16s}
+.dh-skip-link:focus{transform:translateY(0);outline:3px solid #10b981;outline-offset:2px}
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:3px solid #34d399;outline-offset:3px}
+
+/* Mobil güvenlik ağı: etkileşimli öğeler kendi kapsayıcısını aşamaz. */
+:where(button,input,select,textarea,label){max-width:100%;box-sizing:border-box}
+:where(.dh-kart,.dh-plan,.dh-plan-satir,.dh-izgara,.dh-alt,.menu,.wrap,.container)>*{min-width:0}
+
+/* Ortak alt gezinme varken eski sabit rozet/FAB'ları menünün üstüne taşı. */
+.dh-has-app-nav #dhSyncBadge{bottom:calc(82px + env(safe-area-inset-bottom))!important}
+.dh-has-app-nav .dh-tb-fab{bottom:calc(88px + env(safe-area-inset-bottom))!important}
+
+@media (max-width:480px){
+  /* Tailwind tabanlı PDF ekranının masaüstü araç çubuğu mobilde satır kırar. */
+  .flex.items-center{flex-wrap:wrap;row-gap:6px}
+  .flex.items-center>label,.flex.items-center>button,.flex.items-center>a{white-space:normal;text-align:center}
+  /* Seviye ve benzeri yatay seçim şeritleri kenarda kırpılmaz. */
+  .levels,.level-grid,.lvl-grid{max-width:100%;overflow-x:auto;scrollbar-width:thin}
+}

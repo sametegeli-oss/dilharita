@@ -13,6 +13,12 @@
 (function(){
   "use strict";
 
+  /* Kimlik doğrulama kullanan eski sayfalarda ortak erişilebilirlik, çevrimdışı
+     durum, hata günlüğü ve PWA güncelleme katmanını da garanti et. */
+  if(!document.querySelector('script[src*="ux-boost.js"]')){
+    var ux=document.createElement("script"); ux.src="./ux-boost.js?v=2"; document.head.appendChild(ux);
+  }
+
   var path = (location.pathname || "").toLowerCase();
   if (path.indexOf("login.html") !== -1) return;
 

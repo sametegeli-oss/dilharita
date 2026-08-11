@@ -56,6 +56,7 @@
   function set(patch) {
     var p = get();
     for (var k in patch) if (Object.prototype.hasOwnProperty.call(patch, k)) p[k] = patch[k];
+    p.guncellendi = Date.now();
     lsSet(K_PROFILE, p);
     return p;
   }

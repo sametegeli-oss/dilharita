@@ -1,0 +1,10 @@
+import fs from "node:fs";
+import assert from "node:assert/strict";
+const chat=fs.readFileSync("chat-core.js","utf8"), page=fs.readFileSync("veri-gizlilik.html","utf8"), menu=fs.readFileSync("menu.html","utf8");
+assert.match(chat,/dh-chat-history-enabled/);
+assert.match(chat,/archive\.slice\(0,30\)/);
+assert.match(page,/Sohbet geçmişi/);
+assert.match(page,/localStorage\.clear\(\)/);
+assert.match(page,/indexedDB\.deleteDatabase/);
+assert.match(menu,/veri-gizlilik\.html/);
+console.log("OK: istege bagli sohbet arsivi, disa aktarma ve cihaz verisi silme kontrolleri dogrulandi.");

@@ -26,10 +26,9 @@
 
   /* ── 1) SABİTLER ─────────────────────────────────────────── */
   var LS_KEYS = [
-    "dh_ai_prompt_teacher", "dh-study-tracker-v1", "dh-ocr-sentences-v1",
+    "dh_ai_prompt_teacher", "dh-study-tracker-v1", "dh-ocr-sentences-v1", "dh-profile-v1",
     "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1",
-    "groqApiKeys", "cerebrasApiKeys", "geminiApiKeys",
-    "dh-model-groq", "dh-model-cerebras", "dh-model-gemini", "dh-disabled-keys",
+    "dh-model-groq", "dh-model-cerebras", "dh-model-gemini",
     "selectedTeacherAvatar", "dh-teacher-mem", "dh-activity-log-v1"
   ];
   /* "dh-koc-" → günlük koç planı, tamamlanan adımlar, gün epoch'u ve hedef.
@@ -41,6 +40,10 @@
   var TRACKER = "dh-study-tracker-v1";
   var MIRROR  = "dh-progress-mirror-v1";
   var ACTLOG  = "dh-activity-log-v1";
+  /* API anahtarlari cihaz sirridir. Yerelde kalir; Firestore'a asla
+     gonderilmez ve eski surumlerin yukledigi kopyalar ilk senkronda silinir. */
+  var SECRET_KEYS = ["groqApiKeys", "cerebrasApiKeys", "geminiApiKeys", "dh-disabled-keys", "apiKeys"];
+  function isSecretKey(key){ return SECRET_KEYS.indexOf(key)>=0; }
 
   var firebaseConfig = {
     apiKey: "AIzaSyBZTHvP8xX94UMtKRt7hIYN7qpbO2gz0Zg",
@@ -210,6 +213,17 @@
     }
     out.days=days;
     return JSON.stringify(out);
+  }
+  function mergeProfile(localStr, remoteStr, preferLocal){
+    var L={},R={};
+    try{ L=JSON.parse(localStr||"{}")||{}; }catch(e){}
+    try{ R=JSON.parse(remoteStr||"{}")||{}; }catch(e){}
+    if(preferLocal && Object.keys(L).length) return JSON.stringify(L);
+    if(!Object.keys(L).length) return remoteStr;
+    if(!Object.keys(R).length) return localStr;
+    var lt=+L.guncellendi||+L.seviyeTarih||0;
+    var rt=+R.guncellendi||+R.seviyeTarih||0;
+    return rt>lt ? remoteStr : localStr;
   }
   function mergeMirror(localStr, remoteStr){
     var L={},R={};
@@ -513,6 +527,7 @@
       try{ migration=!!localStorage.getItem("dh-account-migration-pending"); }catch(e){}
       try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"syncing",migration:migration}})); }catch(e){}
       var remote=await fb.loadSettings(user.uid);
+      try{ await fb.purgeSecrets(user.uid); }catch(e){}
       var rd=parseRemote(remote);
       // MODÜL ÇAKIŞMA YÖNÜ: bulut, bu cihazın son yazmasından YENİYSE bulut kazanır;
       // değilse (bu cihaz daha taze) yalnız yerelde OLMAYAN modül kayıtları alınır.
@@ -525,9 +540,10 @@
         if(rv==null||rv==="") continue;
         var ok=(LS_KEYS.indexOf(rk)>=0) || rk.indexOf("smv:")===0;
         if(!ok){ for(var p=0;p<LS_PREFIXES.length;p++){ if(rk.indexOf(LS_PREFIXES[p])===0){ ok=true; break; } } }
-        if(!ok) continue;
+        if(!ok || isSecretKey(rk)) continue;
         try{
           if(rk.indexOf("smv:")===0){ kvIncoming[rk]=rv; pulled++; }
+          else if(rk==="dh-profile-v1"){ localStorage.setItem(rk,mergeProfile(localStorage.getItem(rk),rv,migration)); pulled++; }
           else if(rk===TRACKER){ localStorage.setItem(rk, mergeTracker(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk===MIRROR){ localStorage.setItem(rk, mergeMirror(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk===ACTLOG){ localStorage.setItem(rk, mergeActivityLog(localStorage.getItem(rk), rv)); pulled++; }
@@ -632,10 +648,10 @@
     for(var rk in remote){
       if(!Object.prototype.hasOwnProperty.call(remote,rk)) continue;
       if(rk==="data"||rk==="__ts"||rk==="__errors"||rk==="__bulk"||rk==="updated_at") continue;
-      if(remote[rk]!=null && typeof remote[rk]==="string") out.ls[rk]=remote[rk];
+      if(!isSecretKey(rk) && remote[rk]!=null && typeof remote[rk]==="string") out.ls[rk]=remote[rk];
     }
     if(remote.__bulk&&typeof remote.__bulk==="object"){
-      for(var bk in remote.__bulk){ if(remote.__bulk.hasOwnProperty(bk)&&remote.__bulk[bk]!=null) out.ls[bk]=remote.__bulk[bk]; }
+      for(var bk in remote.__bulk){ if(remote.__bulk.hasOwnProperty(bk)&&!isSecretKey(bk)&&remote.__bulk[bk]!=null) out.ls[bk]=remote.__bulk[bk]; }
     }
     if(Array.isArray(remote.__errors)) out.errors=out.errors.concat(remote.__errors);
     return out;
@@ -664,6 +680,20 @@
         auth:auth, db:db,
         onAuth:function(cb){ return authMod.onAuthStateChanged(auth,cb); },
         signOut:function(){ try{ return authMod.signOut(auth); }catch(e){ return Promise.resolve(); } },
+        purgeSecrets:function(uid){
+          var del=fsMod.deleteField(), patch={};
+          for(var i=0;i<SECRET_KEYS.length;i++) patch[SECRET_KEYS[i]]=del;
+          /* Yeni belgelerde kok alanlari temizle. Eski `data.ls` bicimi icin
+             FieldPath kullan; nokta birlestirme yanlis alani silebilir. */
+          var ref=fsMod.doc(db,"settings",uid);
+          var jobs=[fsMod.setDoc(ref,patch,{merge:true})];
+          var args=[];
+          for(var j=0;j<SECRET_KEYS.length;j++){
+            args.push(new fsMod.FieldPath("data","ls",SECRET_KEYS[j]),del);
+          }
+          try{ jobs.push(fsMod.updateDoc.apply(null,[ref].concat(args)).catch(function(){})); }catch(e){}
+          return Promise.all(jobs);
+        },
         loadSettings:function(uid){
           // İKİ BELGE: settings (ayarlar) + progress (srs/ayna/günler) — birleşik döndür.
           // Eski tek-belge kurulumları da kapsar (progress boşsa settings'teki her şey okunur).
@@ -686,7 +716,7 @@
           var doc2={}, bulk={};
           if(data&&data.ls){
             for(var k in data.ls){
-              if(!data.ls.hasOwnProperty(k)) continue;
+              if(!data.ls.hasOwnProperty(k) || isSecretKey(k)) continue;
               if(/[.\/~\[\]*]/.test(k)) bulk[k]=data.ls[k];
               else doc2[k]=data.ls[k];
             }
@@ -977,6 +1007,7 @@
        (Eskiden index sayfası listeyi elle kopyalıyordu ve yeni anahtarlar
         eklendiğinde yedeğe girmiyordu.) */
     keys: function(){ return { list: LS_KEYS.slice(), prefixes: LS_PREFIXES.slice() }; },
+    _mergeProfile: mergeProfile,
     get ready(){ return ready; }, get user(){ return user; }
   };
 })();
