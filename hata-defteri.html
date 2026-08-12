@@ -159,10 +159,15 @@ async function load(){
     }
   }
 }
+function scopedRecords(records){
+  const q=$("search").value.toLowerCase().trim(), source=$("source").value, pri=$("priority").value;
+  let arr=(records||[]).filter(r=>(!source||r.source===source)&&(!pri||r.reviewPriority===pri)&&(!ODAK||r.primaryType===ODAK||(r.types||[]).includes(ODAK)));
+  if(q)arr=arr.filter(r=>[r.target,r.answer,r.sentenceTR,r.module,r.grammar,(r.types||[]).join(" ")].join(" ").toLowerCase().includes(q));
+  return arr;
+}
 function renderRecords(){
   const q=$("search").value.toLowerCase().trim(), source=$("source").value, pri=$("priority").value;
-  let arr=RECORDS.filter(r=>(!source||r.source===source)&&(!pri||r.reviewPriority===pri)&&(!ODAK||r.primaryType===ODAK||(r.types||[]).includes(ODAK)));
-  if(q)arr=arr.filter(r=>[r.target,r.answer,r.sentenceTR,r.module,r.grammar,(r.types||[]).join(" ")].join(" ").toLowerCase().includes(q));
+  let arr=scopedRecords(RECORDS);
   /* ?st saya?lar t?m veritaban?n? de?il, ekranda ger?ekten g?sterilen kapsam? sayar.
      B?ylece ?odak=pronoun ekran?nda 10 kay?t varken eski toplam olan 64 g?r?nmez. */
   const summary=LearningErrorDB.summarize(arr);
@@ -325,7 +330,7 @@ var DH=(function(){
     if(!confirm("Tüm hata kayıtların kesin kurallarla (zamir eşdeğerliği, kısaltma esnekliği) yeniden değerlendirilecek. Artık gerçek hata sayılmayanlar silinecek. Devam?")) return;
     var btn=this; btn.disabled=true; btn.textContent="⏳ Değerlendiriliyor...";
     try{
-      var all=await LearningErrorDB.all();
+      var all=scopedRecords(await LearningErrorDB.all());
       var toDelete=all.filter(function(r){ return !stillWrong(r); }).map(function(r){ return r.id; });
       if(!toDelete.length){ alert("Temizlenecek kayıt bulunamadı — hepsi hâlâ geçerli hatalar."); }
       else{ await LearningErrorDB.deleteMany(toDelete); try{ window.dhCoachMarkStepDone && window.dhCoachMarkStepDone("hata-defteri.html"); window.dhLogActivity && window.dhLogActivity("🧹 Kesin kurallarla "+toDelete.length+" kayıt temizlendi", "cleanup"); }catch(e){} alert("✓ "+toDelete.length+" kayıt temizlendi (kesin kurallarla)."); load(); }
@@ -342,8 +347,10 @@ var DH=(function(){
     if(!(window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
       alert("AI ile temizlemek için önce Ayarlar'dan bir API anahtarı ekle."); return;
     }
+    /* Yaln?zca kullan?c?n?n ?u anda ekranda g?rd??? odak/arama/kaynak/?ncelik
+       kapsam?n? i?le. Gizli 54 kay?t API kotas? t?ketmez ve yanl??l?kla silinmez. */
     var all=await LearningErrorDB.all();
-    var candidates=all.filter(function(r){ return (r.target||r.sentenceEN) && r.answer; });
+    var candidates=scopedRecords(all).filter(function(r){ return (r.target||r.sentenceEN) && r.answer; });
     if(!candidates.length){ alert("Kontrol edilecek uygun kayıt yok (hedef/cevap metni eksik)."); return; }
     if(!confirm(candidates.length+" kayıt AI ile tek tek kontrol edilecek. Bu biraz zaman alabilir ve API kotanı kullanır. Devam?")) return;
     var btn=this; btn.disabled=true;
