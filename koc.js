@@ -374,6 +374,7 @@
     if(todayCount<25){
       spine.push({label: __nextModule ? ("Yeni cümleler: "+__nextModule.replace(/^[A-C]\d-M\d+\s*/,"")) : "Yeni cümleler öğren",
                   href: __nextModule ? ("index-app.html?mod="+encodeURIComponent(__nextModule)) : "index-app.html"});
+      spine.push({label:"Öğrendiklerini üret · 3 cümle",href:"practice.html?auto=today&limit=3",uretim:true});
     }
     /* ── TELAFI ADIMI ────────────────────────────────────────────────
        Hata defteri kullanicinin seviyesinin ALTINDA yigilmissa, o

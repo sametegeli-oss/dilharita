@@ -395,6 +395,7 @@
     /* tekrar.html?plan=1 zaten 15'lik oturum aliyor; ham bekleyen
        toplami degil, gunun porsiyonu hedeftir. */
     if (h.indexOf("tekrar") === 0) return Math.max(1, Math.min(due || 15, 15));
+    if (h.indexOf("practice") === 0) return 3;
     if (h.indexOf("hata-defteri") === 0 && String(href||"").indexOf("gemini=gunluk") >= 0) return 3;
     if (h.indexOf("index-app") === 0){
       var g = 5;
@@ -613,6 +614,7 @@
   function tipOf(href){
     var h = String(href||"");
     if (h.indexOf("tekrar") === 0) return "tekrar";
+    if (h.indexOf("practice") === 0) return "uretim";
     if (h.indexOf("chat") === 0) return "sohbet";
     if (h.indexOf("hata-defteri") === 0) return "hata";
     if (h.indexOf("kelime") === 0) return "kelime";

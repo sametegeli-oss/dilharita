@@ -191,7 +191,7 @@
     var frozen=null; try{ frozen=JSON.parse(localStorage.getItem("dh-gun-plan-"+dhToday())||"null"); }catch(e){}
     var frozenSteps=(frozen&&frozen.adimlar)||[];
     function frozenFor(page){
-      var t=/^tekrar/.test(page)?"tekrar":(/^chat/.test(page)?"sohbet":((page==="index-app.html"||page==="practice.html")?"yeni":(/^hata-defteri/.test(page)?"hata":"")));
+      var t=/^tekrar/.test(page)?"tekrar":(/^chat/.test(page)?"sohbet":(page==="practice.html"?"uretim":(page==="index-app.html"?"yeni":(/^hata-defteri/.test(page)?"hata":""))));
       for(var q=0;q<frozenSteps.length;q++) if(String(frozenSteps[q].tip||frozenSteps[q].id)===t) return frozenSteps[q];
       return null;
     }

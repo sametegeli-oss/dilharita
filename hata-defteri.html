@@ -761,6 +761,7 @@ var Drill=(function(){
 
 /* Toplu alıştırma: vadesi gelenler ve yüksek öncelikliler önce */
 document.getElementById("drillBtn").onclick=function(){
+  location.href="./practice.html?auto=errors&limit=5"; return;
   var now=Date.now();
   /* Geleceğe ertelenmiş kayıtlar bu oturuma alınmaz. Sıralamak tek başına
      yetmiyordu: vadesi gelmeyen kayıtlar listenin sonunda yine seçiliyordu. */
