@@ -174,7 +174,7 @@ async function add(record){
         __dup.count=(__dup.count||1)+1;
         __dup.types=Array.from(new Set((__dup.types||[]).concat(record.types||[])));
         __dup.primaryType=__dup.types[0]||__dup.primaryType||"general";
-        __dup.reviewPriority=(__dup.reviewPriority||0)+1;
+        __dup.reviewPriority=priority(record);
         try{ await idbAdd(__dup); }catch(e){ const a2=fbAll().filter(function(r){return r.id!==__dup.id;}); a2.unshift(__dup); fbSave(a2.slice(0,2000)); }
         window.dispatchEvent(new CustomEvent("learning-error-added",{detail:__dup}));
         return __dup;
@@ -186,10 +186,27 @@ async function add(record){
   window.dispatchEvent(new CustomEvent("learning-error-added",{detail:record}));
   return record;
 }
+function duplicateKey(r){
+  /* Ayn? c?mlenin farkl? id/kaynak/cevapla yeniden kaydedilmesi yeni kay?t de?ildir. */
+  return eqNorm((r&&r.target)||(r&&r.sentenceEN)||"");
+}
+function uniqueRecords(arr){
+  var keep=[], byKey={};
+  (arr||[]).slice().sort((a,b)=>String(b.updatedAt||b.createdAt||"").localeCompare(String(a.updatedAt||a.createdAt||""))).forEach(function(r){
+    var k=duplicateKey(r);
+    if(!k){ keep.push(r); return; }
+    if(!byKey[k]){ byKey[k]=r; keep.push(r); return; }
+    var dst=byKey[k];
+    dst.count=Math.max(Number(dst.count||1),1)+Math.max(Number(r.count||1),1);
+    dst.types=Array.from(new Set((dst.types||[]).concat(r.types||[])));
+    if(!dst.sentenceTR)dst.sentenceTR=r.sentenceTR||"";
+  });
+  return keep;
+}
 async function all(){
   let arr=[];
   try{arr=await idbAll();}catch{arr=fbAll();}
-  return arr.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+  return uniqueRecords(arr);
 }
 async function deleteMany(ids){
   var idSet={}; (ids||[]).forEach(function(id){ idSet[id]=1; });
@@ -338,13 +355,15 @@ async function bulkMerge(records){
   let existing=[];
   try{ existing=await idbAll(); }catch(e){ existing=fbAll(); }
   const haveIds=new Set(existing.map(r=>r&&r.id).filter(Boolean));
+  const haveKeys=new Set(existing.map(duplicateKey).filter(Boolean));
   let added=0;
   for(const rec of records){
     if(!rec || !rec.id) continue;
-    if(haveIds.has(rec.id)) continue;
+    var dk=duplicateKey(rec);
+    if(haveIds.has(rec.id) || (dk&&haveKeys.has(dk))) continue;
     try{ await idbAdd(rec); }
     catch(e){ const arr=fbAll(); arr.unshift(rec); fbSave(arr.slice(0,2000)); }
-    haveIds.add(rec.id); added++;
+    haveIds.add(rec.id); if(dk)haveKeys.add(dk); added++;
   }
   if(added) window.dispatchEvent(new CustomEvent("learning-errors-merged",{detail:{added}}));
   return added;
@@ -423,5 +442,5 @@ setTimeout(async function dedupeOnce(){
     localStorage.setItem("dh-errdb-deduped-v1","1");
   }catch(e){}
 }, 2500);
-window.LearningErrorDB={ isTypoOnly:isTypoOnly, __isCommon:function(w){ return __COMMON_EN.has(String(w||"").toLowerCase()); }, eqNorm:eqNorm, add,all,deleteMany,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed};
+window.LearningErrorDB={ isTypoOnly:isTypoOnly, __isCommon:function(w){ return __COMMON_EN.has(String(w||"").toLowerCase()); }, eqNorm:eqNorm, duplicateKey:duplicateKey, uniqueRecords:uniqueRecords, add,all,deleteMany,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed};
 })();
