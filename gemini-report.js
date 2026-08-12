@@ -104,16 +104,35 @@ function buildPrompt(records, summary){
 }
 
 /* ---------- karne gösterimi ---------- */
-function render(data){
+function today(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function dailyMode(){ return /[?&]gemini=gunluk(?:&|$)/.test(location.search); }
+function dailyRootIndex(roots){ return roots.length ? Math.floor(new Date(today()+"T12:00:00").getTime()/86400000)%roots.length : 0; }
+function dailyState(){ try{return JSON.parse(localStorage.getItem("dh-gemini-gunluk-"+today())||"null")||{correct:{}};}catch(e){return {correct:{}};} }
+function saveDaily(st){ try{localStorage.setItem("dh-gemini-gunluk-"+today(),JSON.stringify(st));}catch(e){} }
+function syncDailyPlan(count){
+  try{
+    var k="dh-gun-plan-"+today(), p=JSON.parse(localStorage.getItem(k)||"null");
+    if(!p||!p.adimlar)return;
+    for(var i=0;i<p.adimlar.length;i++) if(String(p.adimlar[i].tip||p.adimlar[i].id)==="hata"){
+      p.adimlar[i].yapilan=Math.min(p.adimlar[i].hedef|0,count|0); break;
+    }
+    localStorage.setItem(k,JSON.stringify(p));
+  }catch(e){}
+}
+function render(data, options){
   css();
+  options=options||{};
+  var isDaily=options.daily===true||dailyMode();
   var ov=document.createElement("div"); ov.className="dhgr-ov";
   var roots=Array.isArray(data&&data.kokNedenler)?data.kokNedenler:[];
+  var rootOffset=0;
+  if(isDaily&&roots.length){ rootOffset=dailyRootIndex(roots); roots=[roots[rootOffset]]; }
   var html=''
    +'<div class="dhgr-card">'
-   +'<h3>💎 Gemini Hata Karnen</h3>'
-   +'<p class="dhgr-sub">Kök nedenler ve sana özel alıştırmalar — cevabını yazıp "Kontrol et" diyebilirsin.</p>';
+   +'<h3>'+(isDaily?'🎯 Karnenden bugünün 3 sorusu':'💎 Gemini Hata Karnen')+'</h3>'
+   +'<p class="dhgr-sub">'+(isDaily?'Bugün tek bir kök nedene odaklan. Üç doğru cevap günlük planındaki bu adımı tamamlar.':'Kök nedenler ve sana özel alıştırmalar — cevabını yazıp "Kontrol et" diyebilirsin.')+'</p>';
 
-  if(data&&data.ozet){
+  if(!isDaily&&data&&data.ozet){
     html+='<div class="dhgr-sec"><h4>📋 Genel değerlendirme</h4><p>'+esc(data.ozet)+'</p></div>';
   }
   roots.forEach(function(rt,ri){
@@ -121,10 +140,11 @@ function render(data){
     if(rt.aciklama) html+='<p>'+esc(rt.aciklama)+'</p>';
     if(rt.ornek) html+='<p style="color:#fbbf24;font-size:12.5px">↳ Örnek: '+esc(rt.ornek)+'</p>';
     var ex=Array.isArray(rt.alistirmalar)?rt.alistirmalar:[];
+    if(isDaily) ex=ex.slice(0,3);
     ex.forEach(function(q,qi){
       if(!q||!q.tr) return;
-      var id="dhgr-"+ri+"-"+qi;
-      html+='<div class="dhgr-ex" data-en="'+esc(q.en||"")+'">'
+      var realRi=isDaily?rootOffset:ri, id="dhgr-"+realRi+"-"+qi;
+      html+='<div class="dhgr-ex" data-key="'+realRi+'-'+qi+'" data-en="'+esc(q.en||"")+'">'
         +'<div class="dhgr-q">'+(qi+1)+'. '+esc(q.tr)+'</div>'
         +'<input class="dhgr-in" id="'+id+'" placeholder="İngilizce çevirini yaz…" autocomplete="off" spellcheck="false">'
         +'<div class="dhgr-exrow">'
@@ -139,13 +159,13 @@ function render(data){
   if(!roots.length){
     html+='<div class="dhgr-sec"><p>Cevapta kök neden bulunamadı. Gemini\'nin tüm JSON çıktısını yapıştırdığından emin ol.</p></div>';
   }
-  var plan=Array.isArray(data&&data.calismaPlani)?data.calismaPlani:[];
+  var plan=!isDaily&&Array.isArray(data&&data.calismaPlani)?data.calismaPlani:[];
   if(plan.length){
     html+='<div class="dhgr-sec"><h4>🎯 Bu haftaki çalışma planın</h4><ul class="dhgr-plan">'
       +plan.map(function(p){ return '<li>'+esc(p)+'</li>'; }).join("")+'</ul></div>';
   }
   html+='<div class="dhgr-row">'
-      +'<button class="dhgr-again" type="button">🔄 Yeni karne al</button>'
+      +(isDaily?'':'<button class="dhgr-again" type="button">🔄 Yeni karne al</button>')
       +'<button class="dhgr-close" type="button">Kapat</button>'
     +'</div></div>';
   ov.innerHTML=html;
@@ -161,7 +181,14 @@ function render(data){
       var got=box.querySelector(".dhgr-in").value||"";
       var fb=box.querySelector(".dhgr-fb");
       if(!got.trim()){ fb.style.color="#f59e0b"; fb.textContent="Önce cevabını yaz."; return; }
-      if(norm(got)===norm(want)){ fb.style.color="#4ade80"; fb.textContent="✓ Doğru!"; }
+      if(norm(got)===norm(want)){
+        fb.style.color="#4ade80"; fb.textContent="✓ Doğru!";
+        if(isDaily){
+          var st=dailyState(), key=box.getAttribute("data-key")||""; st.correct[key]=1; saveDaily(st);
+          var n=Object.keys(st.correct).length; syncDailyPlan(n);
+          if(n>=3){ fb.textContent="✓ Doğru! Bugünkü karne çalışman tamamlandı."; try{window.dhCoachSay&&dhCoachSay("Karnendeki kök nedeni 3 doğru cevapla pekiştirdin ✅","praise");}catch(_){} }
+        }
+      }
       else{ fb.style.color="#f87171"; fb.textContent="✗ Beklenen: "+want; }
       return;
     }
@@ -246,8 +273,9 @@ function mountRetry(){
     if(document.getElementById("geminiReportBtn") || ++n>10) clearInterval(iv);
   },400);
 }
-if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",mountRetry);
-else mountRetry();
+function autoDaily(){ if(!dailyMode())return; var p=last(); if(p&&p.data)render(p.data,{daily:true}); }
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",function(){mountRetry();autoDaily();});
+else { mountRetry(); autoDaily(); }
 mount();
 
 global.DHGeminiReport={ run:run, render:render, buildPrompt:buildPrompt, last:last, mount:mount };

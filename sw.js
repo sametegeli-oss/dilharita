@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v66";   /* v66: gün kapatma ve tekrar sayaçları tek günlük planla eşlendi */
+var SW_VERSION = "dh-sw-v68";   /* v68: Gemini Hata Karnesi günlük plana 3 soruluk mikro çalışma olarak eklendi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

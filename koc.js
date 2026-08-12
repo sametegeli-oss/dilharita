@@ -4,7 +4,7 @@
 (function(){
   "use strict";
   var DAY=new Date().toISOString().slice(0,10), KEY="dh-koc-plan-"+DAY;
-  var ALLOWED=["tekrar.html?plan=1","index-app.html","chat.html","practice.html?auto=due","kelime-ogren.html","hata-defteri.html"];
+  var ALLOWED=["tekrar.html?plan=1","index-app.html","chat.html","practice.html?auto=due","kelime-ogren.html","hata-defteri.html","hata-defteri.html?gemini=gunluk"];
 
   // ── 30 GÜNLÜK DERİN ANALİZ: koç kullanıcıyı gerçekten tanısın ──
   function activityTrend30(){
@@ -391,6 +391,19 @@
         telafi: true
       });
     }
+    /* Gemini Hata Karnesi varsa her gün tamamını yeniden okutmak yerine
+       sıradaki kök nedenden 3 soruluk mikro telafi ekle. Karne 30 günden
+       eskiyse bayat kabul edilir; yeni karne alınana kadar plana girmez. */
+    try{
+      var gr=JSON.parse(localStorage.getItem("dh-gemini-report-v1")||"null");
+      var roots=gr&&gr.data&&Array.isArray(gr.data.kokNedenler)?gr.data.kokNedenler:[];
+      var age=gr&&gr.at ? Date.now()-new Date(gr.at).getTime() : Infinity;
+      if(roots.length && age<30*86400000){
+        var dayNo=Math.floor(new Date(DAY+"T12:00:00").getTime()/86400000);
+        var root=roots[dayNo%roots.length]||roots[0];
+        spine.push({label:"Karnenden 3 soru: "+String(root.baslik||"Kök neden çalışması").slice(0,55), href:"hata-defteri.html?gemini=gunluk", geminiKarne:true});
+      }
+    }catch(e){}
     spine.push({label:"1 dakika konuş", href:"chat.html"});
     var hrefs=spine.map(function(s){return s.href;});
     var bonus=aiSteps.find(function(s){ return hrefs.indexOf(s.href)<0; });
