@@ -20,6 +20,7 @@
       <h1>İlerleme</h1>
     </div>
   </header>
+  <a href="./practice.html?auto=weekly&limit=12" class="dh-buton dh-buton--birincil" style="display:block;text-align:center;margin:12px 0 24px">?? Haftal?k karma s?namay? ba?lat</a>
 
   <!-- KAHRAMAN: ufuk. Sayi degil varis noktasi. -->
   <section class="dh-ufuk" style="margin:8px 0 32px" aria-labelledby="ufukB">
@@ -66,6 +67,7 @@
 </main>
 
 <script src="./dh-plan.js"></script>
+<script src="./profile.js"></script>
 <script>
 /* ilerleme.html — ILERLEME VE MOTIVASYON
    ---------------------------------------------------------------
@@ -134,15 +136,29 @@
     var t = tempo();
     var toplamOgrenilen = v.ogrenilen;
 
-    // su anki seviye
-    var seviye = "A1", sonraki = "A2";
-    for (var i=0; i<SEVIYE_SIRA.length; i++){
-      if (toplamOgrenilen >= SEVIYE_ESIK[SEVIYE_SIRA[i]]){
-        seviye = SEVIYE_SIRA[i];
-        sonraki = SEVIYE_SIRA[i+1] || null;
+    /* Seviye testiyle belirlenen kullanıcı seviyesi birincil kaynaktır.
+       Eski kod yalnız bu cihazda öğrenilen kart sayısına baktığı için B1/B2
+       kullanıcıyı dahi sıfırdan A1'e yönlendiriyordu. Kart sayısından seviye
+       çıkarımı yalnız profil seviyesi hiç yoksa yedek olarak kullanılır. */
+    var seviye = null, sonraki = null, profilSeviyesi = null;
+    try{ profilSeviyesi = window.DHProfile && DHProfile.level ? DHProfile.level() : null; }catch(e){}
+    if (profilSeviyesi && SEVIYE_SIRA.indexOf(profilSeviyesi) >= 0){
+      seviye = profilSeviyesi;
+      sonraki = SEVIYE_SIRA[SEVIYE_SIRA.indexOf(seviye)+1] || null;
+      /* Yerleştirme seviyesi, o seviyenin alt eşiğinin kazanılmış olduğunu
+         gösterir; uygulamadaki yeni öğrenmeler bunun üzerine eklenir. */
+      toplamOgrenilen = Math.max(SEVIYE_ESIK[seviye] || 0,
+                                 (SEVIYE_ESIK[seviye] || 0) + v.ogrenilen);
+    } else {
+      seviye = "A1"; sonraki = "A2";
+      for (var i=0; i<SEVIYE_SIRA.length; i++){
+        if (toplamOgrenilen >= SEVIYE_ESIK[SEVIYE_SIRA[i]]){
+          seviye = SEVIYE_SIRA[i];
+          sonraki = SEVIYE_SIRA[i+1] || null;
+        }
       }
+      if (toplamOgrenilen < SEVIYE_ESIK.A1){ seviye = null; sonraki = "A1"; }
     }
-    if (toplamOgrenilen < SEVIYE_ESIK.A1){ seviye = null; sonraki = "A1"; }
 
     var hedefEsik = sonraki ? SEVIYE_ESIK[sonraki] : null;
     var altEsik = seviye ? SEVIYE_ESIK[seviye] : 0;
@@ -164,8 +180,8 @@
       (sonraki || seviye) + " seviyesine yüzde " + Math.round(oran*100) + " ilerleme");
 
     if (!hedefEsik){
-      $("ufukDeger").textContent = "C1 tamam";
-      $("ufukAlt").textContent = "havuzu bitirdin";
+      $("ufukDeger").textContent = seviye ? (seviye + " gelişimi") : "İlerleme";
+      $("ufukAlt").textContent = "ileri seviye becerilerini pekiştiriyorsun";
       return;
     }
     if (t === null || t <= 0){

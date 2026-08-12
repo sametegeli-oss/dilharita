@@ -5,6 +5,7 @@
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./ai-providers.js?v=1"></script>
 <script src="./progress-engine.js?v=2"></script>
+<script src="./dh-plan.js?v=3"></script>
 <script src="./dh-session-summary.js?v=1"></script>
 <script src="./coach-bubble.js?v=1"></script>
 <!-- Karma gün sonu pratiği: o gün çalışılan cümle + kalıp + kelimeleri
@@ -1014,6 +1015,7 @@ const State = {
   idx: 0,
   sessionTitle: "",
   answered: false,
+  source: "free",       // today|errors|gemini|hard-reviews|chat-errors|speaking-prep|pronunciation|level-gap|weekly
 };
 const root = document.getElementById("root");
 
@@ -1215,7 +1217,10 @@ async function renderPicker(){
     </div>
     <button class="due-cta" id="dueBtn" ${due ? "" : "disabled"}>
       ${due ? `🔥 Tekrar zamanı gelen ${due} cümleyi çalış` : "Şu an tekrar bekleyen cümle yok"}
-    </button>`;
+    </button>
+    <div class="lv-group"><div class="lv-head"><span class="lv-badge">Ak?ll? pratik</span><span>?htiyac?na g?re ?al??</span></div><div class="mod-grid source-grid">
+      ${Object.keys(SOURCE_TITLE).map(k=>`<button class="mod-tile source-tile" data-source="${k}"><span class="mod-name">${esc(SOURCE_TITLE[k])}</span><span class="mod-count">Ki?isel kay?tlar?ndan haz?rlan?r</span></button>`).join("")}
+    </div></div>`;
   for (const lv of levels){
     const mods = State.byLevel.get(lv);
     html += `<div class="lv-group">
@@ -1251,6 +1256,7 @@ async function renderPicker(){
   const dueBtn = document.getElementById("dueBtn");
   if (due) dueBtn.onclick = () => startDueSession();
   root.querySelectorAll(".mod-tile").forEach(t => {
+    if(t.dataset.source){ t.onclick=()=>startSourceSession(t.dataset.source); return; }
     t.onclick = () => {
       const mod = t.dataset.mod;
       const pos = loadPos(mod);
@@ -1596,6 +1602,72 @@ async function startDueSession(){
   State.activeModule = null;           // due oturumu pozisyon kaydı tutmaz
   State.sessionTitle = "Tekrar oturumu";
   renderCard();
+}
+
+/* ============================================================
+   ORTAK ÜRETİM MOTORU — KAYNAK ADAPTÖRLERİ
+   Aynı güçlü kart/değerlendirme arayüzü farklı öğrenme kaynaklarını çalıştırır.
+   Her kaynak kendi başlığını ve sayacını taşır; hata telafisi yeni cümle
+   hedefini şişirmez.
+   ============================================================ */
+function isoDay(d){ var x=d||new Date(); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); }
+function asSentence(x,prefix,i){
+  if(!x)return null;
+  if(typeof x==="string")x={en:x};
+  var en=String(x.en||x.target||x.sentenceEN||x.correctEnglish||"").trim(), tr=String(x.tr||x.sentenceTR||"").trim();
+  if(!en)return null;
+  return {id:String(x.id||prefix+"-"+i),en:en,tr:tr,module:x.module||"Kişisel çalışma",level:x.level||"",topic:x.topic||"",grammarStructure:x.grammar||x.grammarStructure||"",commonMistake:x.commonMistake||"",_errorId:x._errorId||"",_source:prefix};
+}
+async function idsToSentences(ids){ return (await sentencesByIds(Array.from(new Set(ids.filter(Boolean))))||[]); }
+async function sourceItems(kind){
+  var day=isoDay(), now=Date.now(), out=[], i=0;
+  if(kind==="today"||kind==="pronunciation"||kind==="weekly"){
+    var mir={}; try{mir=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{};}catch(e){}
+    var since=kind==="weekly"?now-7*86400000:new Date(day+"T00:00:00").getTime();
+    var ids=Object.keys(mir).filter(function(k){return k.indexOf("sentence:")===0&&Number(mir[k]&&mir[k][1]||0)>=since;}).map(function(k){return k.slice(9);});
+    out=await idsToSentences(ids);
+  }
+  if(kind==="errors"||kind==="chat-errors"||kind==="level-gap"||kind==="weekly"){
+    var er=[]; try{er=await LearningErrorDB.all();}catch(e){}
+    er=er.filter(function(r){
+      var due=new Date(r.dueAt||0).getTime()||0; if(due>now)return false;
+      if(kind==="chat-errors")return /chat|teacher|conversation|speaking/i.test(String(r.source||""));
+      if(kind==="level-gap"){ var order=["A1","A2","B1","B2","C1","C2"], me=String(localStorage.getItem("dh-level")||""), a=order.indexOf(String(r.level||"")), b=order.indexOf(me); return a>=0&&b>0&&a<b; }
+      return true;
+    });
+    out=out.concat(er.map(function(r){var s=asSentence(r,"error",i++);if(s)s._errorId=r.id;return s;}).filter(Boolean));
+  }
+  if(kind==="gemini"||kind==="weekly"){
+    try{var gr=JSON.parse(localStorage.getItem("dh-gemini-report-v1")||"null"), roots=gr&&gr.data&&gr.data.kokNedenler||[];
+      if(roots.length){var ri=Math.floor(new Date(day+"T12:00:00").getTime()/86400000)%roots.length;
+        (roots[ri].alistirmalar||[]).forEach(function(q){out.push(asSentence(q,"gemini-"+ri,i++));});}}
+    catch(e){}
+  }
+  if(kind==="hard-reviews"||kind==="weekly"){
+    try{var hard=JSON.parse(localStorage.getItem("dh-hard-reviews-"+day)||"[]")||[];out=out.concat(hard.map(function(x){return asSentence(x,"hard",i++);}).filter(Boolean));}catch(e){}
+  }
+  if(kind==="speaking-prep"){
+    try{var km=JSON.parse(localStorage.getItem("dh-konusma-gun-"+day)||"null");out=(km&&km.cumleler||[]).map(function(x){return asSentence(x,"speak",i++);}).filter(Boolean);}catch(e){}
+  }
+  /* aynı İngilizce cümleyi tek oturumda iki kez sorma */
+  var seen={}; return out.filter(function(s){var k=s.en.toLowerCase().replace(/[^a-z0-9']+/g," ").trim();if(seen[k])return false;seen[k]=1;return true;});
+}
+var SOURCE_TITLE={today:"Bugünün üretim çalışması",errors:"Hata Defteri telafisi",gemini:"Gemini kök neden çalışması","hard-reviews":"Zor tekrarları üret", "chat-errors":"Konuşma hatalarını düzelt","speaking-prep":"Konuşma öncesi hazırlık",pronunciation:"Telaffuz ve dinleme", "level-gap":"Seviye boşluğu telafisi",weekly:"Haftalık karma sınama"};
+async function startSourceSession(kind,limit){
+  State.source=kind; if(kind==="pronunciation")State.mode="listen";
+  State.srs=await mAll(); var arr=await sourceItems(kind), n=Math.max(1,Number(limit)||((kind==="weekly")?12:kind==="speaking-prep"?6:3));
+  State.queue=arr.slice(0,n); State.idx=0; State.activeModule=null; State.sessionTitle=SOURCE_TITLE[kind]||"Üretim çalışması";
+  if(!State.queue.length){root.innerHTML='<div class="state"><div style="font-size:44px">✅</div><h2>Şu anda çalışma yok</h2><p>Bu kaynakta vadesi gelen veya hazırlanmış cümle bulunmuyor.</p><a class="btn btn-primary" href="./index.html">Bugüne dön</a></div>';return;}
+  renderCard();
+}
+function recordSourceProgress(s){
+  if(State.source==="free"||State.source==="due")return;
+  try{
+    var day=isoDay(), key="dh-practice-evidence-"+day, ev=JSON.parse(localStorage.getItem(key)||"{}")||{}, ek=State.source+":"+s.id;
+    if(ev[ek])return; ev[ek]=Date.now(); localStorage.setItem(key,JSON.stringify(ev));
+    var p=window.DHPlan&&DHPlan.bugun?DHPlan.bugun():null;
+    if(p&&p.adimlar){for(var j=0;j<p.adimlar.length;j++){var a=p.adimlar[j];if(String(a.tip||a.id)==="uretim"){DHPlan.ilerlet(a.id,1);break;}}}
+  }catch(e){}
 }
 
 /* ============================================================
@@ -2124,6 +2196,12 @@ async function evaluate(s, answer, layer){
   const next = srsGrade(State._gradeBase[s.id], grade);
   await mSet(s.id, next);
   State.srs[s.id] = next;   // yereli güncelle
+  recordSourceProgress(s);
+  /* Hata Defteri kaynağından gelen kayıt da kendi SRS durumunu ilerletsin.
+     Üç doğru çözümde ana kayıt mezun edilir; practice SRS'si ayrı kalmaz. */
+  if(s._errorId&&window.LearningErrorDB&&LearningErrorDB.markReviewed){
+    try{var rr=await LearningErrorDB.markReviewed(s._errorId,{grade:grade,score:d.ratio});if(grade==="easy"&&rr&&Number(rr.reviewCount||0)>=3)await LearningErrorDB.deleteMany([s._errorId]);}catch(e){}
+  }
   cloudSaveSoon();
   // Hata defterine yaz (yanlış/eksik cevapları). easy+yüksek skor kendi filtrelenir.
   try{
@@ -2352,9 +2430,11 @@ function renderSessionDone(){
     <div style="font-size:48px">✅</div>
     <h2>Oturum tamam</h2>
     <p>${State.queue.length} cümleyi çalıştın. İlerlemen kaydedildi — tekrar zamanı geldiğinde bu cümleler yeniden karşına çıkacak.</p>
+    ${new URLSearchParams(location.search).get("next")?'<button class="btn btn-primary" id="nextBtn">Sonraki ad?ma ge?</button>':''}
     <button class="btn btn-primary" id="homeBtn">Ana sayfaya dön</button>
   </div>`;
   document.getElementById("homeBtn").onclick = () => renderPicker();
+  var nb=document.getElementById("nextBtn"); if(nb)nb.onclick=function(){ location.href=new URLSearchParams(location.search).get("next")||"./index.html"; };
   if(window.DHSessionSummary) DHSessionSummary.enhance(root.querySelector(".state"),{title:State.sessionTitle||"Cümle oturumu tamam",total:State.queue.length});
 }
 
@@ -2372,9 +2452,10 @@ async function boot(){
     if (!restored){
       var qp = new URLSearchParams(location.search);
       var wantMod = qp.get("mod");
-      var wantAuto = qp.get("auto")==="due";
+      var autoKind=qp.get("auto")||"", wantAuto = autoKind==="due";
       if(wantMod && ((State.modMeta && State.modMeta.has(wantMod)) || (State.byModule && State.byModule.has(wantMod)))) await startModuleSession(wantMod);
       else if(wantAuto) await startDueSession();
+      else if(["today","errors","gemini","hard-reviews","chat-errors","speaking-prep","pronunciation","level-gap","weekly"].indexOf(autoKind)>=0) await startSourceSession(autoKind,qp.get("limit"));
       else renderPicker();
     }
     setupCloud();
