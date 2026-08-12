@@ -1370,8 +1370,7 @@
     if(!enabled || popEl) return;
     var t=e.target; if(!t) return;
     if(t.closest && t.closest("input,textarea,button,a,select,.no-wordpop")) return;
-    var sel=(global.getSelection && global.getSelection().toString())||"";
-    if(sel && sel.length>2) return;
+    /* ?ift t?klama taray?c?da kelimeyi se?er; bu se?im a??lmay? engellememeli. */
     var word=wordAtPoint(e); if(!word) return;
     var cleaned=cleanWord(word);
     if(!cleaned || cleaned.length<2 || !/^[a-z'-]+$/.test(cleaned)) return;
@@ -1412,7 +1411,7 @@
   function baglaTiklama(){
     if(document.__dhWpBound) return;
     document.__dhWpBound=true;
-    document.addEventListener("click",onClick,true);
+    document.addEventListener("dblclick",onClick,true);
   }
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",baglaTiklama,{once:true});
   else baglaTiklama();
