@@ -72,6 +72,7 @@
         .tablo-baslik h2 { margin: 0; }
     </style>
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
+  <link rel="stylesheet" href="product-improvements.css">
 </head>
 <body>
 
@@ -216,17 +217,17 @@
             <button class="btn" onclick="csvIndir()">⬇️ CSV İndir</button>
         </div>
         <div style="max-height:500px; overflow-y:auto; margin-top:10px;">
-            <table id="yearlyTable">
-                <thead>
+            <table id="yearlyTable"><caption class="sr-only">Yıllık namaz ve kıble saatleri</caption>
+                <th scope="col"ead>
                     <tr>
-                        <th>Tarih</th>
-                        <th>İmsak</th>
-                        <th>Güneş</th>
-                        <th>Öğle</th>
-                        <th>İkindi</th>
-                        <th>Akşam</th>
-                        <th>Yatsı</th>
-                        <th>Kıble Saati</th>
+                        <th scope="col">Tarih</th>
+                        <th scope="col">İmsak</th>
+                        <th scope="col">Güneş</th>
+                        <th scope="col">Öğle</th>
+                        <th scope="col">İkindi</th>
+                        <th scope="col">Akşam</th>
+                        <th scope="col">Yatsı</th>
+                        <th scope="col">Kıble Saati</th>
                     </tr>
                 </thead>
                 <tbody id="yearlyTableBody"></tbody>
@@ -942,5 +943,6 @@ window.onload = function() {
 };
 </script>
 <script src="./atlas-effects.js?v=1"></script>
+  <script src="product-improvements.js" defer></script>
 </body>
 </html>

@@ -1,0 +1,16 @@
+{
+  "generated": "2026-08-12",
+  "dictionary": {
+    "total": 10679,
+    "unknownLevel": 5724,
+    "missingMeaning": 14,
+    "missingPronunciation": 19
+  },
+  "phrasalVerbs": {
+    "total": 881,
+    "unknownFrequency": 401,
+    "missingExamples": 100,
+    "missingForms": 75,
+    "missingSynonyms": 501
+  }
+}

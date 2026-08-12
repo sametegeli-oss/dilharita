@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v62";   /* v62: tum ekranlarda sonuc animasyonlari */
+var SW_VERSION = "dh-sw-v63";   /* v63: veri bütünlüğü, erişilebilirlik ve ana navigasyon */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -25,6 +25,8 @@ var SHELL = [
   "./manifest.webmanifest",
   "./atlas-theme.css",
   "./atlas-effects.js",
+  "./product-improvements.css",
+  "./product-improvements.js",
   "./favicon.svg",
   "./auth-guard.js",
   "./study-tracker.js",
