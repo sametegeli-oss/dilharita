@@ -35,8 +35,27 @@
     nav.innerHTML = items.map(([ic,tx,href,routes]) => `<a href="${href}"${routes.includes(route) ? ' aria-current="page"' : ""}><span aria-hidden="true">${ic}</span>${tx}</a>`).join("");
     document.body.append(nav);
 
-    const net = document.createElement("div"); net.className = "dh-net-status"; net.setAttribute("role","status"); net.setAttribute("aria-live","polite");
-    const updateNet = () => { const on = navigator.onLine; net.textContent = on ? "● Çevrimiçi" : "● Çevrimdışı — yerel özellikler açık"; net.classList.toggle("offline", !on); };
+    /* Bağlantı rozeti artık salt yazı değil: hesap/senkron erişim düğmesi.
+       Uzun "Çevrimiçi" etiketi sayfa kontrollerini kapatıyordu; ekranda yalnız
+       kompakt durum noktası kalır, açıklama title/aria-label içindedir. */
+    const net = document.createElement("button"); net.type="button"; net.className = "dh-net-status"; net.setAttribute("aria-live","polite");
+    const updateNet = () => {
+      const on = navigator.onLine;
+      const signed = !!(window.DHCloudSync && DHCloudSync.user);
+      net.textContent = on ? "●" : "●";
+      net.classList.toggle("offline", !on);
+      net.setAttribute("aria-label",on?(signed?"Çevrimiçi. Şimdi senkronla":"Çevrimiçi. Hesap aç veya giriş yap"):"Çevrimdışı. Yerel özellikler açık");
+      net.title=net.getAttribute("aria-label");
+    };
+    net.addEventListener("click",()=>{
+      if(navigator.onLine===false) return;
+      if(window.DHCloudSync&&DHCloudSync.user&&DHCloudSync.fullSync){
+        net.classList.add("syncing"); Promise.resolve(DHCloudSync.fullSync()).finally(()=>{net.classList.remove("syncing");updateNet();});
+      }else{
+        location.href="./login.html?next="+encodeURIComponent(location.pathname.split("/").pop()||"index.html");
+      }
+    });
+    addEventListener("dh-cloud-sync-state",updateNet);
     addEventListener("online", updateNet); addEventListener("offline", updateNet); updateNet(); document.body.append(net);
   });
 })();
