@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v70";   /* v70: giriş ekranında Gemini genel karne yorumu ve tarihi */
+var SW_VERSION = "dh-sw-v71";   /* v71: tamamlanan giriş kartları yeşil durum ve doğru tamamlanma dili */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

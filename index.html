@@ -564,6 +564,41 @@
   }
   window.addEventListener("dh-cloud-synced",geminiKarneCiz);
 
+  /* ================= TAMAMLANAN ÖZETLERİN GÖRSEL DURUMU =================
+     Bilgi kartını sırf ekranda bulunduğu için yeşile boyamayız. DHPlan'daki
+     gerçek hedef/yapılan kanıtı esas alınır. Böylece tamamlanan telafi hâlâ
+     "A1 eksiği" gibi kırmızı görünmez; yapılmamış öneri de yanlışlıkla yeşil olmaz. */
+  function tamamlananOzetleriBoya(){
+    var p=oku("dh-gun-plan-"+GUN,null), ad=(p&&p.adimlar)||[];
+    function tamam(a){ return !!(a&&(a.yapilan|0)>=(a.hedef|0)); }
+    function tipTamam(t){ for(var i=0;i<ad.length;i++) if(String(ad[i].tip||ad[i].id)===t&&tamam(ad[i]))return true; return false; }
+    var hepsi=ad.length>0&&ad.every(tamam);
+    var durum=$("durumKart"); if(durum) durum.classList.toggle("dh-tamamlandi-zemin",hepsi);
+
+    var tel=$("telafiKart"), telAdim=null;
+    if(tel&&!tel.hidden){
+      var plan=sonPlan||oku("dh-koc-plan-"+GUN,null), th=plan&&plan.telafi&&plan.telafi.modul;
+      for(var j=0;j<ad.length;j++) if(th&&String(ad[j].href||"").indexOf(encodeURIComponent(th))>=0){telAdim=ad[j];break;}
+      var telBitti=tamam(telAdim);
+      tel.classList.toggle("dh-tamamlandi-zemin",telBitti);
+      if(telBitti){
+        $("telafiRozet").textContent="✓ Eksik giderildi";
+        $("telafiNeden").textContent="Bugünkü telafi modülünü tamamladın. Bu çalışma günlük planına işlendi.";
+      }
+    }
+
+    var insight=$("kisiselIcGoru");
+    if(insight){
+      var hataBitti=tipTamam("hata"); insight.classList.toggle("dh-tamamlandi-zemin",hataBitti);
+      if(hataBitti){
+        var h=insight.querySelector("h2"), q=insight.querySelector("p"), a=insight.querySelector("a");
+        if(h) h.textContent="✓ Bugünkü hata çalışmasını tamamladın";
+        if(q) q.textContent="Kişisel telafi görevin günlük planına işlendi.";
+        if(a) a.style.display="none";
+      }
+    }
+  }
+
   /* ================= YARIM KALAN DERS ================= */
   function dersDevamCiz(d){
     if (!d.dersOturum){ $("dersDevam").hidden = true; return; }
@@ -766,6 +801,7 @@
     dersDevamCiz(d);
     adimlarCiz(d, plan);
     devamCiz(d, plan);
+    tamamlananOzetleriBoya();
     haftaCiz();
     seriCiz();
 
@@ -814,6 +850,7 @@
           g.result.type + ": " + g.result.before + " → " + g.result.now;
       }
       $("hedefKart").style.display = "block";
+      $("hedefKart").classList.toggle("dh-tamamlandi-zemin",!!(g.result&&g.result.achieved));
     }
 
     /* canli sayilar — yalnizca koc.js'ten gelir; ham due GOSTERILMEZ */
@@ -836,9 +873,12 @@
      koc.js beklenmez. Depodaki gercek durum ANINDA basilir; boylece
      calismis kullanici "Bugunu hazirliyorum..." gormez. */
   ciz(null, {});
-  if (window.DHInsights) DHInsights.render("#kisiselIcGoru");
-  if (window.DHLearningCoach) DHLearningCoach.render("#dhLearningCoach");
-  window.addEventListener("dh-cloud-synced",function(){ if(window.DHLearningCoach)DHLearningCoach.render("#dhLearningCoach"); });
+  if (window.DHInsights) DHInsights.render("#kisiselIcGoru").then(tamamlananOzetleriBoya);
+  if (window.DHLearningCoach) DHLearningCoach.render("#dhLearningCoach").then(tamamlananOzetleriBoya);
+  window.addEventListener("dh-cloud-synced",function(){
+    if(window.DHInsights)DHInsights.render("#kisiselIcGoru").then(tamamlananOzetleriBoya);
+    if(window.DHLearningCoach)DHLearningCoach.render("#dhLearningCoach").then(tamamlananOzetleriBoya);
+  });
 
   /* ================= YEDEK PLAN =================
      AI anahtari yoksa koc.js run() paint()'e hic gelmez. Iskelet zaten
