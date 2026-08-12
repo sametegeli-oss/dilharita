@@ -1,0 +1,10 @@
+import fs from "node:fs";
+import assert from "node:assert/strict";
+const src=fs.readFileSync("cloud-sync.js","utf8");
+assert.match(src,/"dh-gemini-report-v1"/,"Gemini karnesi bulut beyaz listesinde olmalı");
+assert.match(src,/"dh-gemini-gunluk-"/,"Günlük karne ilerlemesi senkron kapsamına alınmalı");
+assert.match(src,/function mergeGeminiReport/,"İki cihazdaki karneler tarihine göre birleşmeli");
+assert.match(src,/function mergeGeminiDaily/,"İki cihazdaki doğru cevaplar birleşmeli");
+assert.match(src,/rk==="dh-gemini-report-v1"/,"Buluttan çekilen karne özel kuralla uygulanmalı");
+assert.match(src,/rk\.indexOf\("dh-gemini-gunluk-"\)===0/,"Günlük ilerleme özel kuralla uygulanmalı");
+console.log("PASS gemini-cloud-sync");

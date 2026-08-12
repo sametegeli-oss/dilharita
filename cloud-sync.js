@@ -29,13 +29,14 @@
     "dh_ai_prompt_teacher", "dh-study-tracker-v1", "dh-ocr-sentences-v1", "dh-profile-v1",
     "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1",
     "dh-model-groq", "dh-model-cerebras", "dh-model-gemini",
-    "selectedTeacherAvatar", "dh-teacher-mem", "dh-activity-log-v1"
+    "selectedTeacherAvatar", "dh-teacher-mem", "dh-activity-log-v1",
+    "dh-gemini-report-v1"
   ];
   /* "dh-koc-" → günlük koç planı, tamamlanan adımlar, gün epoch'u ve hedef.
      Bunlar cihaza özeldi; telefonda yapılan çalışma bilgisayarda görünmüyordu.
      Artık senkrona dahil (birleştirme kuralları için mergeKoc'a bak). */
   var LS_PREFIXES = ["sm:", "mas:", "ev:", "modscore:", "gramprof:", "story:", "dh-koc-",
-                      "dh-modul-"];   /* kullanici uretimi moduller tum cihazlara gitsin */
+                      "dh-modul-", "dh-gemini-gunluk-"];   /* karne ve gunluk karne ilerlemesi de cihazlar arasi */
   var MAX_VAL = 200000;      // alan başına üst sınır (Firestore alan limiti 1MB)
   var TRACKER = "dh-study-tracker-v1";
   var MIRROR  = "dh-progress-mirror-v1";
@@ -224,6 +225,28 @@
     var lt=+L.guncellendi||+L.seviyeTarih||0;
     var rt=+R.guncellendi||+R.seviyeTarih||0;
     return rt>lt ? remoteStr : localStr;
+  }
+  /* Gemini karnesi: iki cihaz farklı tarihte karne aldıysa en yeni karne
+     kazanır. Boş/bozuk uzak kayıt geçerli yerel karneyi silemez. */
+  function mergeGeminiReport(localStr, remoteStr){
+    var L=null,R=null;
+    try{ L=JSON.parse(localStr||"null"); }catch(e){}
+    try{ R=JSON.parse(remoteStr||"null"); }catch(e){}
+    if(!L||!L.data) return remoteStr;
+    if(!R||!R.data) return localStr;
+    var lt=L.at?new Date(L.at).getTime():0, rt=R.at?new Date(R.at).getTime():0;
+    return rt>lt ? remoteStr : localStr;
+  }
+  /* Aynı gün iki cihazda çözülen karne sorularının doğru cevap kanıtlarını
+     birleştir; bir cihazın ilerlemesi diğerini geriye götürmesin. */
+  function mergeGeminiDaily(localStr, remoteStr){
+    var L={},R={}; try{L=JSON.parse(localStr||"{}")||{};}catch(e){}
+    try{R=JSON.parse(remoteStr||"{}")||{};}catch(e){}
+    var out={correct:{}};
+    var lc=L.correct||{}, rc=R.correct||{}, k;
+    for(k in lc) if(lc.hasOwnProperty(k)&&lc[k]) out.correct[k]=1;
+    for(k in rc) if(rc.hasOwnProperty(k)&&rc[k]) out.correct[k]=1;
+    return JSON.stringify(out);
   }
   function mergeMirror(localStr, remoteStr){
     var L={},R={};
@@ -545,6 +568,8 @@
           if(rk.indexOf("smv:")===0){ kvIncoming[rk]=rv; pulled++; }
           else if(rk==="dh-profile-v1"){ localStorage.setItem(rk,mergeProfile(localStorage.getItem(rk),rv,migration)); pulled++; }
           else if(rk===TRACKER){ localStorage.setItem(rk, mergeTracker(localStorage.getItem(rk), rv)); pulled++; }
+          else if(rk==="dh-gemini-report-v1"){ localStorage.setItem(rk, mergeGeminiReport(localStorage.getItem(rk),rv)); pulled++; }
+          else if(rk.indexOf("dh-gemini-gunluk-")===0){ localStorage.setItem(rk, mergeGeminiDaily(localStorage.getItem(rk),rv)); pulled++; }
           else if(rk===MIRROR){ localStorage.setItem(rk, mergeMirror(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk===ACTLOG){ localStorage.setItem(rk, mergeActivityLog(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk.indexOf("dh-koc-")===0){ localStorage.setItem(rk, mergeKoc(rk, localStorage.getItem(rk), rv)); pulled++; }
