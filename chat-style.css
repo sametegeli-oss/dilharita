@@ -415,3 +415,41 @@ button,input,textarea{font:inherit}
   .input-row > .input-wrap{min-height:46px!important}
   .panel{padding:8px 12px calc(8px + env(safe-area-inset-bottom))!important;gap:6px!important}
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   V20 — AI ÖĞRETMEN BAŞLIĞI VİDEONUN ÜZERİNDE
+   Başlık daha önce flex akışında ayrı bir satır tüketiyordu. Özellikle
+   tarayıcı araç çubukları açıkken sohbet metni ve giriş düğmeleri aşağıda
+   kırpılıyordu. Yalnız öğretmen ekranlarında başlık artık video/sahnenin
+   üstünde transparan bir katmandır; diğer rol senaryoları değişmez.
+   ══════════════════════════════════════════════════════════════════ */
+body.dh-teacher-focus .chat-shell{position:relative!important}
+body.dh-teacher-focus .chat-top{
+  position:absolute!important;
+  inset:0 0 auto 0!important;
+  z-index:40!important;
+  min-height:76px!important;
+  border-bottom:1px solid rgba(255,255,255,.14)!important;
+  background:linear-gradient(180deg,rgba(4,10,24,.82) 0%,rgba(4,10,24,.48) 68%,rgba(4,10,24,0) 100%)!important;
+  -webkit-backdrop-filter:blur(8px) saturate(1.15)!important;
+  backdrop-filter:blur(8px) saturate(1.15)!important;
+}
+body.dh-teacher-focus .chat-title,
+body.dh-teacher-focus .chat-sub{text-shadow:0 2px 8px rgba(0,0,0,.9)}
+body.dh-teacher-focus .back-btn,
+body.dh-teacher-focus .level-pill{
+  background:rgba(10,25,51,.64)!important;
+  border:1px solid rgba(255,255,255,.22)!important;
+  -webkit-backdrop-filter:blur(10px)!important;
+  backdrop-filter:blur(10px)!important;
+}
+body.dh-teacher-focus .avatar-stage{
+  /* Başlık artık ayrı yükseklik tüketmediği için sahne aynı görsel gücü
+     korurken panel yaklaşık bir başlık satırı kadar yukarı çıkar. */
+  flex:0 0 auto!important;
+}
+@media(max-width:640px){
+  body.dh-teacher-focus .chat-top{min-height:62px!important;padding:8px 10px!important}
+  body.dh-teacher-focus .back-btn{width:38px!important;height:38px!important;border-radius:12px!important}
+  body.dh-teacher-focus .level-pill{padding:7px 11px!important}
+}
