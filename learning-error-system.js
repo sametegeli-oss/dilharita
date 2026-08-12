@@ -36,6 +36,12 @@ function uid(){
 }
 function nowISO(){ return new Date().toISOString(); }
 function clean(s){ return String(s||"").replace(/\s+/g," ").trim(); }
+function cleanAnswer(s){
+  var t=clean(s);
+  /* Birlesme/AI hatasi ayni cumleyi yuzlerce kez eklemisse hata defterini
+     kirletme. Normal bir ogrenci cevabi icin 600 karakter fazlasiyla yeterli. */
+  return t.length>600 ? t.slice(0,600) : t;
+}
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}
 function normEN(s){
   return String(s||"")
@@ -143,7 +149,7 @@ async function add(record){
   record.createdAt=record.createdAt||nowISO();
   record.updatedAt=nowISO();
   record.target=clean(record.target);
-  record.answer=clean(record.answer);
+  record.answer=cleanAnswer(record.answer);
   record.sentenceTR=clean(record.sentenceTR);
   record.module=clean(record.module);
   record.level=clean(record.level);
@@ -162,7 +168,7 @@ async function add(record){
       var __arr=await all();
       var __dup=__arr.find(function(r){ return String(r.target||"").toLowerCase().replace(/[^a-z0-9']+/g," ").trim()===__nt; });
       if(__dup){
-        __dup.answer=record.answer||__dup.answer;
+        __dup.answer=cleanAnswer(record.answer||__dup.answer);
         __dup.sentenceTR=__dup.sentenceTR||record.sentenceTR;
         __dup.updatedAt=nowISO();
         __dup.count=(__dup.count||1)+1;

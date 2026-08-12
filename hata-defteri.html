@@ -7,6 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hata Defteri · Dil Haritası</title>
 <script src="./learning-error-system.js"></script>
+<script src="./sentence-analyzer.js?v=2"></script>
 <script src="./ai-providers.js?v=1"></script>
 <script src="./gemini-bridge.js?v=1"></script>
 <script src="./gemini-report.js?v=1"></script>
@@ -482,6 +483,48 @@ var Img=(function(){
 var Drill=(function(){
   var queue=[], i=0, done=0, fixed=0, answered=false;
 
+  function editDistance(a,b){
+    a=String(a||""); b=String(b||""); var prev=[], cur=[];
+    for(var j=0;j<=b.length;j++) prev[j]=j;
+    for(var x=1;x<=a.length;x++){ cur=[x]; for(var y=1;y<=b.length;y++) cur[y]=Math.min(cur[y-1]+1,prev[y]+1,prev[y-1]+(a[x-1]===b[y-1]?0:1)); prev=cur; }
+    return prev[b.length];
+  }
+  function counts(a){ var o={}; a.forEach(function(w){o[w]=(o[w]||0)+1;}); return o; }
+  var RISK={not:1,no:1,never:1,without:1,is:1,are:1,was:1,were:1,have:1,has:1,had:1,do:1,does:1,did:1,will:1,would:1,can:1,could:1,should:1,must:1,may:1,might:1};
+  /* Referans tek dogru yazim degildir. Cumlecik sirasi degisebilir; bir
+     aciklayici sifat eklenebilir. Once bariz yazim surcmelerini hedef
+     sozlugune gore duzeltir, sonra kelime coklugunu karsilastirir. */
+  function evaluateAnswer(answer,target){
+    var A=DH.collapseNums(DH.normSeq(answer)), B=DH.collapseNums(DH.normSeq(target));
+    var typo=0, used={};
+    A=A.map(function(w,idx){
+      if(B.indexOf(w)>=0) return w;
+      var best="", dist=99;
+      B.forEach(function(t){ var d=editDistance(w,t); if(d<dist){dist=d;best=t;} });
+      var limit=Math.max(w.length,best.length)>=7?2:1;
+      if(best && w.length>=3 && dist<=limit && !RISK[w]){ typo++; used[idx]=w; return best; }
+      return w;
+    });
+    var ac=counts(A), bc=counts(B), missing=[];
+    Object.keys(bc).forEach(function(w){ if((ac[w]||0)<bc[w]) missing.push(w); });
+    var extra=[]; Object.keys(ac).forEach(function(w){ for(var n=(bc[w]||0);n<ac[w];n++) extra.push(w); });
+    var exactBag=!missing.length&&!extra.length;
+    var safeExtra=!missing.length&&extra.length<=2&&extra.every(function(w){return !RISK[w];});
+    if(exactBag || safeExtra) return {ok:true,typo:typo>0,alternative:true,extra:extra};
+    try{
+      var an=window.SentenceAnalyzer&&SentenceAnalyzer.analyze(target,answer);
+      if(an&&(an.verdict==="correct"||an.verdict==="typo-only")) return {ok:true,typo:an.verdict==="typo-only",alternative:false,extra:[]};
+    }catch(e){}
+    return {ok:false,typo:false,alternative:false,extra:extra};
+  }
+
+  function previousAnswer(r){
+    var a=String(r&&r.answer||"").replace(/\s+/g," ").trim();
+    if(!a) return "";
+    if(a.split(" ").length>60 || a.length>500) return '<div class="drill-was">Önceki yanıt kaydı bozulduğu için gizlendi.</div>';
+    return '<div class="drill-was">Önceki yanlış cevabın: '+LearningErrorDB.esc(a)+'</div>';
+  }
+
   function isCorrect(answer, target){
     if(!answer || !target) return false;
     /* Sayılar düzleştirilir: "20"=="twenty", "one hundred"=="100", "twenty-one"=="21" */
@@ -544,7 +587,7 @@ var Drill=(function(){
             +'<div class="drill-hint">Bu cümlenin İngilizcesini baştan yaz. Daha önce burada hata yapmıştın.</div>'
           : '<div class="drill-tr">Cümleyi hatırla ve yeniden yaz</div>'
             +'<div class="drill-hint">Bu kayıtta Türkçe karşılık yok. 🔊 Dinle ile ipucu alabilirsin.</div>')
-      +(r.answer?'<div class="drill-was">Önceki yanlış cevabın: '+LearningErrorDB.esc(r.answer)+'</div>':'')
+      +previousAnswer(r)
       +'<textarea class="drill-in" id="dIn" placeholder="İngilizce cümleyi buraya yaz…" autocomplete="off" autocapitalize="sentences" spellcheck="false"></textarea>'
       +'<div class="drill-btns">'
       +  '<button class="btn" id="dHear" style="background:#132647">🔊 Dinle</button>'
@@ -639,7 +682,7 @@ var Drill=(function(){
     stopMic();
     answered=true; done++;
 
-    var ok=isCorrect(ans,target);
+    var verdict=evaluateAnswer(ans,target), ok=verdict.ok;
     if(ok) fixed++;
 
     var res=document.getElementById("dRes");
@@ -650,11 +693,11 @@ var Drill=(function(){
     }).join(" ");
 
     res.innerHTML=
-      '<div class="drill-verdict">'+(ok?"✅ Doğru! Bu hatayı düzelttin.":"❌ Hâlâ tam değil.")+'</div>'
+      '<div class="drill-verdict">'+(ok?(verdict.typo?"✅ Anlam ve gramer doğru — yalnızca küçük bir yazım hatası var.":"✅ Doğru! Bu hatayı düzelttin."):"❌ Hâlâ tam değil.")+'</div>'
       +'<div class="drill-diff">'+dh+'</div>'
       +'<div class="drill-correct">Doğrusu: '+LearningErrorDB.esc(target)+'</div>'
       +'<div class="drill-note">'+(ok
-          ? "Kaydın önceliği düştü. Birkaç kez daha doğru yaparsan defterden tamamen çıkacak."
+          ? ((verdict.alternative?"Referanstan farklı ama anlamı koruyan kabul edilebilir bir cümle kurdun. ":"")+"Kaydın önceliği düştü. Birkaç kez daha doğru yaparsan defterden tamamen çıkacak.")
           : "Kayıt defterde kalıyor ve önceliği yükseldi — yakında tekrar karşına çıkacak.")+'</div>'
       +'<div class="drill-btns" style="margin-top:12px">'
       +  '<button class="btn green" id="dNext">'+((i+1)>=queue.length?"Bitir":"Sonraki ›")+'</button>'

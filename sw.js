@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v64";   /* v64: merkezi görev kaydı ve tamamlanan kart görünümü */
+var SW_VERSION = "dh-sw-v65";   /* v65: Hata Defteri alternatif doğru ve yazım sürçmesi ayrımı */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
