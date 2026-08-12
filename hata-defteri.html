@@ -110,7 +110,7 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
     </div>
   </div>
   <div class="stats">
-    <div class="stat"><div class="num" id="total">0</div><div class="lab">Toplam hata</div></div>
+    <div class="stat"><div class="num" id="total">0</div><div class="lab" id="totalLabel">Toplam kayıt</div></div>
     <div class="stat"><div class="num" id="high">0</div><div class="lab">Yüksek öncelik</div></div>
     <div class="stat"><div class="num" id="typeCount">0</div><div class="lab">Hata tipi</div></div>
     <div class="stat"><div class="num" id="repeatCount">0</div><div class="lab">Tekrarlayan cümle</div></div>
@@ -140,9 +140,6 @@ function fmt(d){try{return new Date(d).toLocaleString("tr-TR")}catch{return d||"
 function renderTags(el,arr){el.innerHTML=arr.length?arr.map(([k,v])=>`<div class="tag"><span>${LearningErrorDB.esc(k)}</span><b>${v}</b></div>`).join(""):`<div class="empty">Kayıt yok</div>`}
 async function load(){
   RECORDS=await LearningErrorDB.all();
-  const s=LearningErrorDB.summarize(RECORDS);
-  $("total").textContent=s.total;$("high").textContent=s.high;$("typeCount").textContent=s.byType.length;$("repeatCount").textContent=s.repeated.length;
-  renderTags($("types"),s.byType);renderTags($("modules"),s.byModule);
   renderRecords();
   if(ODAK && !ODAK_BASLADI){
     const ad=ODAK.replace(/[_-]/g," ");
@@ -166,6 +163,13 @@ function renderRecords(){
   const q=$("search").value.toLowerCase().trim(), source=$("source").value, pri=$("priority").value;
   let arr=RECORDS.filter(r=>(!source||r.source===source)&&(!pri||r.reviewPriority===pri)&&(!ODAK||r.primaryType===ODAK||(r.types||[]).includes(ODAK)));
   if(q)arr=arr.filter(r=>[r.target,r.answer,r.sentenceTR,r.module,r.grammar,(r.types||[]).join(" ")].join(" ").toLowerCase().includes(q));
+  /* ?st saya?lar t?m veritaban?n? de?il, ekranda ger?ekten g?sterilen kapsam? sayar.
+     B?ylece ?odak=pronoun ekran?nda 10 kay?t varken eski toplam olan 64 g?r?nmez. */
+  const summary=LearningErrorDB.summarize(arr);
+  $("total").textContent=summary.total; $("high").textContent=summary.high;
+  $("typeCount").textContent=summary.byType.length; $("repeatCount").textContent=summary.repeated.length;
+  $("totalLabel").textContent=(ODAK||q||source||pri)?"Gösterilen kayıt":"Toplam kayıt";
+  renderTags($("types"),summary.byType); renderTags($("modules"),summary.byModule);
   $("records").innerHTML=arr.length?arr.map(r=>`
     <div class="record ${r.reviewPriority||""}">
       <div class="meta">
