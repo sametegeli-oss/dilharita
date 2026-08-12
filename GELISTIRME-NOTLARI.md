@@ -21,6 +21,18 @@ Bu klasör, kaynak projenin özelliklerini koruyan ve kapsamlı ürün incelemes
 - PWA sürümü yükseltildi ve yeni ortak dosyalar çevrimdışı kabuğa eklendi.
 - Yeni regresyon testi `test-product-improvements.mjs` eklendi.
 
+## Günlük kullanıcı yolculuğu düzeltmeleri (v2)
+
+- Öğretmen konuşması değerlendirilince `1 dakika konuş` görevi merkezi planda tamamlanır.
+- Konuşma kanıtı hem merkezi plana hem günlük sayaca tek sefer yazılır; aynı görev yeniden önerilmez.
+- Tamamlanan ders günlük `Ders` sayacına yinelenmeden yazılır ve sonuç ekranında kayıt teyidi görünür.
+- Tamamlanan görev kartları yeşil zemin, yeşil çerçeve ve `✓ Tamamlandı` etiketi alır.
+- Kullanıcı çalışmaya başladıktan sonra anlamı “hiç çalışmayacağım” olan `Bugün dinleniyorum` seçeneği gizlenir.
+- Tam ekran öğretmen/senaryo sayfalarında ortak alt menü gizlenir; yazma, mikrofon ve gönder düğmeleri artık panelin arkasında kalmaz.
+- Masaüstü öğretmen panelinin kullanılabilir genişliği artırıldı.
+- PWA önbellek sürümü `v64` olarak yenilendi.
+- Bu akış için `test-daily-journey-fixes.mjs` regresyon testi eklendi.
+
 ## Bilinçli olarak otomatik doldurulmayan içerikler
 
 Sözlükteki eksik CEFR seviyeleri ile phrasal verb örnek/çekim/eş anlam boşlukları,

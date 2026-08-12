@@ -212,6 +212,35 @@
     return p;
   }
 
+  function tamamlaTip(tip) {
+    var p = bugun();
+    if (!p) return null;
+    var t = String(tip || "");
+    for (var i = 0; i < p.adimlar.length; i++) {
+      if (String(p.adimlar[i].tip || "") === t || String(p.adimlar[i].id || "") === t) {
+        p.adimlar[i].yapilan = p.adimlar[i].hedef;
+        return kaydet(p);
+      }
+    }
+    return p;
+  }
+
+  function etkinlikKaydet(tur, uniqueId) {
+    var map = { lesson:"lessons", speaking:"speaking", sentence:"sentences", review:"reviews", video:"videos" };
+    var alan = map[tur] || tur;
+    var gun = iso(), k = "dh-study-tracker-v1", t = oku(k) || { days:{} };
+    if (!t.days) t.days = {};
+    if (!t.days[gun]) t.days[gun] = { date:gun, lessons:0, minutes:0, sentences:0, videos:0, reviews:0, errors:0, speaking:0 };
+    var d = t.days[gun], kanit = "dh-etkinlik-kanit-" + gun;
+    var set = oku(kanit) || {}, uid = String(uniqueId || (tur + "-" + Date.now()));
+    if (!set[uid]) {
+      d[alan] = (parseInt(d[alan],10) || 0) + 1;
+      set[uid] = Date.now();
+      yaz(kanit, set); yaz(k, t);
+    }
+    return d;
+  }
+
   function aktif() {
     var p = bugun();
     if (!p) return null;
@@ -333,6 +362,8 @@
     ayarla: ayarla,
     adimHref: adimHref,
     tamamla: tamamla,
+    tamamlaTip: tamamlaTip,
+    etkinlikKaydet: etkinlikKaydet,
     aktif: aktif,
     ozet: ozet,
     dinlenmeyeAl: dinlenmeyeAl,

@@ -29,10 +29,7 @@
 <script src="./learning-error-system.js?v=2"></script>
 <script src="./ai-providers.js?v=1"></script>
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
-<<<<<<< Updated upstream
-=======
   <link rel="stylesheet" href="product-improvements.css">
->>>>>>> Stashed changes
 </head>
 <body>
 
@@ -241,7 +238,8 @@
       cumle:  b.sentences || 0,
       tekrar: b.reviews   || 0,
       ders:   b.lessons   || 0,
-      video:  b.videos    || 0
+      video:  b.videos    || 0,
+      konusma:b.speaking  || 0
     };
     d.toplamIs = d.cumle + d.tekrar + d.ders + d.video;
     d.calisti  = d.toplamIs > 0;
@@ -266,7 +264,7 @@
     var set = oku("dh-koc-steps-done-" + GUN, {}) || {};
     if (!d.calisti) set = {};                       // guvenlik denetimi (koc.js ile ayni)
     d.bitenSet = set;
-    d.sohbetVar = Object.keys(set).some(function(k){ return /^chat[a-z]*\.html$/.test(k); });
+    d.sohbetVar = !!d.konusma || !!oku("dh-speaking-complete-"+GUN,0) || Object.keys(set).some(function(k){ return /^chat[a-z]*\.html$/.test(k); });
 
     /* DHPlan defteri — adim basina hedef/yapilan burada */
     d.defter = null;
@@ -584,7 +582,7 @@
           '<span class="dh-plan-satir__ikon" aria-hidden="true">' +
             (bitti ? "✓" : (ISARET[s.telafi ? "telafi" : tipOf(s.href)] || "·")) +
           '</span>' +
-          '<span class="dh-plan-satir__ad">' + kacir(s.label) + '</span>' +
+          '<span class="dh-plan-satir__ad">' + kacir(s.label) + (bitti?' <strong class="dh-plan-tamam">✓ Tamamlandı</strong>':'') + '</span>' +
         '</div>';
 
       /* HER adimda tugla sayaci (bugun.html'den tasindi).
@@ -710,6 +708,10 @@
     /* koc plani geldiyse DHPlan defterini bir kez kur */
     if (plan && plan.steps) planiKur(plan);
     d = durum();                              /* defter yeni kurulduysa tazele */
+
+    /* Dinlenme, henuz hic calisma yapmamis kullanicinin bilincli secimidir.
+       Gun basladiktan sonra gosterilmesi "bugunku emegi yok say" gibi algilaniyordu. */
+    $("dinlenme").hidden = !!d.calisti;
 
     /* DINLENME GUNU (bugun.html'den tasindi) */
     if (d.dinlenme){
@@ -895,9 +897,6 @@
 <script src="./ux-boost.js?v=1"></script>
 <script src="./word-popup.js?v=2"></script>
 <script src="./atlas-effects.js?v=1"></script>
-<<<<<<< Updated upstream
-=======
   <script src="product-improvements.js" defer></script>
->>>>>>> Stashed changes
 </body>
 </html>

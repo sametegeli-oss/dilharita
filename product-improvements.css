@@ -10,3 +10,7 @@ table caption{font-weight:800;text-align:left;padding:.7rem}th[scope=col]{positi
 @media(max-width:520px){.dh-primary-nav a{font-size:9px}.dh-primary-nav a span{font-size:16px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
 @media print{.dh-primary-nav,.dh-net-status,.dh-skip{display:none!important}body{padding-bottom:0}}
+body.dh-chat-focus{padding-bottom:0!important}
+body.dh-chat-focus .dh-primary-nav{display:none!important}
+body.dh-chat-focus .chat-shell{padding-bottom:env(safe-area-inset-bottom)!important}
+@media(min-width:900px){body.dh-chat-focus .chat-shell{width:min(980px,94vw)!important;max-width:980px!important}}

@@ -23,6 +23,7 @@
     });
 
     const route = location.pathname.split("/").pop().toLowerCase();
+    if (/^(chatteacher[12]?|chatairport|chatdoctor|chathotel|chatrestaurant)\.html$/.test(route)) document.body.classList.add("dh-chat-focus");
     const items = [
       ["🏠","Bugün","index.html",["index.html","bugun.html"]],
       ["📘","Öğren","ders.html",["ders.html","practice.html","index-app.html","ogren.html","kelime-ogren.html","phrasal-verbs.html"]],

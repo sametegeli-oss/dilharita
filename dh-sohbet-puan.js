@@ -467,6 +467,20 @@
       try {
         if (!s.yetersiz && global.DHKonusma && global.DHKonusma.bitir) global.DHKonusma.bitir();
       } catch (e) {}
+      try {
+        if (!s.yetersiz) {
+          var g = new Date(), gun = g.getFullYear()+"-"+String(g.getMonth()+1).padStart(2,"0")+"-"+String(g.getDate()).padStart(2,"0");
+          var kanit = "sohbet-" + gun + "-" + sayfa();
+          if (global.DHPlan) {
+            if (DHPlan.tamamlaTip) DHPlan.tamamlaTip("sohbet");
+            if (DHPlan.etkinlikKaydet) DHPlan.etkinlikKaydet("speaking", kanit);
+          }
+          var k="dh-koc-steps-done-"+gun, set=JSON.parse(localStorage.getItem(k)||"{}")||{};
+          set["chat.html"]=1; set[sayfa()]=1; localStorage.setItem(k,JSON.stringify(set));
+          localStorage.setItem("dh-speaking-complete-"+gun,"1");
+          global.dispatchEvent(new CustomEvent("dh:task-complete",{detail:{type:"sohbet"}}));
+        }
+      } catch (e) {}
       kartiGoster(s);
       return s;
     }).catch(function () { return null; }).then(function (s) {

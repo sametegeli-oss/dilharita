@@ -259,9 +259,16 @@
 }
 
 /* tamamlanmis adim: geri cekilir, silinmez */
-.dh-plan-satir--bitti{ opacity:.55; }
-.dh-plan-satir--bitti .dh-plan-satir__ikon{ color:var(--dh-ok); }
-.dh-plan-satir--bitti .dh-plan-satir__ad{ text-decoration:line-through; }
+.dh-plan-satir--bitti{
+  opacity:1;
+  background:linear-gradient(135deg,rgba(22,163,74,.26),rgba(5,46,22,.72));
+  border:1px solid rgba(74,222,128,.72);
+  box-shadow:inset 0 0 0 1px rgba(134,239,172,.08);
+  pointer-events:none;
+}
+.dh-plan-satir--bitti .dh-plan-satir__ikon{ color:#86efac; font-weight:900; }
+.dh-plan-satir--bitti .dh-plan-satir__ad{ color:#dcfce7; text-decoration:none; font-weight:800; }
+.dh-plan-tamam{float:right;color:#86efac;font-size:.78em;margin-left:10px;white-space:nowrap}
 
 /* ================= EVRE SERIDI =================
    7 evre rengi yerine notr cip; yalnizca aktif olan marka rengini alir. */

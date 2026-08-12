@@ -13,6 +13,7 @@
 <script src="./ai-providers.js?v=2"></script>
 <script src="./ai-status.js?v=1"></script>
 <script src="./study-tracker.js?v=1"></script>
+<script src="./dh-plan.js?v=3"></script>
 <script src="./streak-screen.js?v=1"></script>
 <script src="./teacher-bubble.js?v=5"></script>
 <meta charset="UTF-8">
@@ -647,6 +648,12 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 
   function renderDone(){
     try{ if(window.StudyTracker) StudyTracker.recordActivity("lesson",1,{source:"ders"}); }catch(e){}
+    try{
+      if(window.DHPlan && DHPlan.etkinlikKaydet){
+        var kimlik="ders-"+(lesson && (lesson.createdAt||lesson.id) ? (lesson.createdAt||lesson.id) : new Date().toDateString());
+        DHPlan.etkinlikKaydet("lesson",kimlik);
+      }
+    }catch(e){}
     /* Oturum bitti: depodan dus ki "yeni ders" gercekten yeni gelsin. */
     try{ if(window.DHDers) DHDers.temizle(); }catch(e){}
     // Önce öğrenme çizgisi (streak) ekranını göster, sonra bitiş ekranı.
@@ -674,6 +681,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       +'<div class="big">🎉</div>'
       +'<h2>Ders tamamlandı!</h2>'
       +'<p>'+esc(m.tamamlandi||"Eline sağlık, yarın devam edelim.")+'</p>'
+      +'<p style="color:#86efac;font-weight:800">✓ Ders günlük ilerlemene kaydedildi.</p>'
       +'<div class="actions" style="justify-content:center;flex-wrap:wrap">'
       + modBtn
       +'<a class="btn b-blue" href="./harita.html">🗺️ İlerlememe bak</a>'

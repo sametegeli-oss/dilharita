@@ -197,8 +197,9 @@
       var mark=s.ok?'<span style="color:#22c55e">✓</span>':'<span style="color:#64748b">○</span>';
       var cnt=s.need?('<span style="color:#9fb3d9;font-weight:700">'+s.got+'/'+s.need+'</span>'):'';
       var cur=(!s.ok && pr.current && pr.current.page===s.page)?';border-color:#2563eb;background:#0d1f3a':'';
-      return '<a href="./'+s.href+'" style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin-top:7px;border:1px solid #1e3a5f;border-radius:10px;text-decoration:none;color:#e8eef7'+cur+'">'
-        +mark+'<span style="flex:1;'+(s.ok?'text-decoration:line-through;opacity:.7':'')+'">'+(i+1)+') '+dhEscLite(s.label)+'</span>'+cnt+'</a>';
+      var doneStyle=s.ok?';background:linear-gradient(135deg,#14532d,#052e16);border-color:#4ade80;color:#dcfce7;pointer-events:none':'';
+      return '<a href="./'+s.href+'" style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin-top:7px;border:1px solid #1e3a5f;border-radius:10px;text-decoration:none;color:#e8eef7'+cur+doneStyle+'">'
+        +mark+'<span style="flex:1;'+(s.ok?'font-weight:900':'')+'">'+(i+1)+') '+dhEscLite(s.label)+(s.ok?' · Tamamlandı':'')+'</span>'+cnt+'</a>';
     }).join("");
     var banner = bitti
       ? '<div style="background:#0a2818;border:1px solid #14532d;border-radius:11px;padding:11px;margin:6px 0 2px;text-align:center;color:#a7f3d0;font-weight:900">🎉 Günün planı tamam! Gün bitti.</div>'
