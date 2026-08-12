@@ -97,6 +97,19 @@
   <section class="dh-insight" id="kisiselIcGoru" hidden aria-live="polite"></section>
   <section class="dh-kart dh-kart--sessiz" id="dhLearningCoach" hidden aria-live="polite" style="margin-bottom:12px"></section>
 
+  <!-- Buluttan da gelen son Gemini karnesi girişte görünür. Genel yorum
+       burada özetlenir; alıştırmalar Hata Defteri'nde kalır. -->
+  <section class="dh-kart" id="geminiKarneOzet" hidden aria-labelledby="geminiKarneBaslik" style="margin-bottom:12px;border-color:#7c3aed;background:linear-gradient(145deg,#111827,#15132c)">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div>
+        <div class="dh-bolum-basligi" id="geminiKarneBaslik" style="color:#c4b5fd;margin-bottom:3px">💎 Gemini genel karnen</div>
+        <div class="dh-etiket" id="geminiKarneTarih"></div>
+      </div>
+      <a class="dh-btn dh-btn--sade" href="./hata-defteri.html?gemini=son" style="padding:7px 10px;white-space:nowrap">Karneyi aç</a>
+    </div>
+    <p id="geminiKarneYorum" style="margin:12px 0 0;line-height:1.55;color:#dbeafe"></p>
+  </section>
+
   <div class="dh-bolum-basligi" id="planBaslik">Bugünün planı</div>
   <div class="dh-plan" id="plan"></div>
 
@@ -535,6 +548,22 @@
     }
   }
 
+  /* ================= GEMINI GENEL KARNE =================
+     Giriş ekranı son karneyi ve tarihini gösterir. Bulut senkronu girişten
+     birkaç saniye sonra tamamlanırsa dh-cloud-synced olayı kartı tazeler. */
+  function geminiKarneCiz(){
+    var box=$("geminiKarneOzet"), o=null;
+    try{ o=JSON.parse(localStorage.getItem("dh-gemini-report-v1")||"null"); }catch(e){}
+    if(!box || !o || !o.data || !String(o.data.ozet||"").trim()){ if(box) box.hidden=true; return; }
+    var tarih=null; try{ tarih=new Date(o.at); }catch(e){}
+    $("geminiKarneYorum").textContent=String(o.data.ozet).trim();
+    $("geminiKarneTarih").textContent=(tarih&&!isNaN(tarih.getTime()))
+      ? ("Karne tarihi: "+tarih.toLocaleDateString("tr-TR",{day:"2-digit",month:"long",year:"numeric"})+" · "+tarih.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}))
+      : "Karne tarihi belirtilmemiş";
+    box.hidden=false;
+  }
+  window.addEventListener("dh-cloud-synced",geminiKarneCiz);
+
   /* ================= YARIM KALAN DERS ================= */
   function dersDevamCiz(d){
     if (!d.dersOturum){ $("dersDevam").hidden = true; return; }
@@ -705,6 +734,7 @@
   function ciz(plan, ctx){
     var d = durum();
     plan = plan || d.plan;
+    geminiKarneCiz();
 
     /* koc plani geldiyse DHPlan defterini bir kez kur */
     if (plan && plan.steps) planiKur(plan);

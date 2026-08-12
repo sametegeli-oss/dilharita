@@ -106,6 +106,7 @@ function buildPrompt(records, summary){
 /* ---------- karne gösterimi ---------- */
 function today(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function dailyMode(){ return /[?&]gemini=gunluk(?:&|$)/.test(location.search); }
+function lastMode(){ return /[?&]gemini=son(?:&|$)/.test(location.search); }
 function dailyRootIndex(roots){ return roots.length ? Math.floor(new Date(today()+"T12:00:00").getTime()/86400000)%roots.length : 0; }
 function dailyState(){ try{return JSON.parse(localStorage.getItem("dh-gemini-gunluk-"+today())||"null")||{correct:{}};}catch(e){return {correct:{}};} }
 function saveDaily(st){ try{localStorage.setItem("dh-gemini-gunluk-"+today(),JSON.stringify(st));}catch(e){} }
@@ -274,8 +275,9 @@ function mountRetry(){
   },400);
 }
 function autoDaily(){ if(!dailyMode())return; var p=last(); if(p&&p.data)render(p.data,{daily:true}); }
-if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",function(){mountRetry();autoDaily();});
-else { mountRetry(); autoDaily(); }
+function autoLast(){ if(!lastMode())return; var p=last(); if(p&&p.data)render(p.data); }
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",function(){mountRetry();autoDaily();autoLast();});
+else { mountRetry(); autoDaily(); autoLast(); }
 mount();
 
 global.DHGeminiReport={ run:run, render:render, buildPrompt:buildPrompt, last:last, mount:mount };
