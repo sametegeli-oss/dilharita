@@ -155,6 +155,16 @@ try{
   var __GUNK="dh-tekrar-gun-"+__ISO;
   function loadGun(){ try{ return JSON.parse(localStorage.getItem(__GUNK)||"null"); }catch(e){ return null; } }
   function saveGun(){ try{ localStorage.setItem(__GUNK, JSON.stringify(__gun)); }catch(e){} }
+  function syncGunPlan(){
+    try{
+      var k="dh-gun-plan-"+__ISO, p=JSON.parse(localStorage.getItem(k)||"null");
+      if(!p||!p.adimlar||!__gun) return;
+      for(var a=0;a<p.adimlar.length;a++) if(String(p.adimlar[a].tip||p.adimlar[a].id)==="tekrar"){
+        p.adimlar[a].yapilan=Math.min(p.adimlar[a].hedef|0,__gun.yapilan|0); break;
+      }
+      localStorage.setItem(k,JSON.stringify(p));
+    }catch(e){}
+  }
   var __gun=loadGun();
   function paintBricks(){
     try{
@@ -562,6 +572,7 @@ try{
 
     items.sort(function(a,b){ return (a.due||0)-(b.due||0); });
     total=items.length;
+    try{ localStorage.setItem("dh-son-bekleyen",String(total)); }catch(e){}
     if(!total){ $("doneTitle").textContent="🎉 Bugünlük tekrar yok!"; $("doneSub").textContent="Vadesi gelen öğe bulunmuyor.";
       if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; dhTekrarDoneExtras(); return; }
     // Günün hedefini İLK girişte dondur; sonraki girişlerde aynı kalır (25'e sıfırlanmaz).
@@ -623,9 +634,12 @@ try{
     stopMicIfActive();
     try{ window.dhCoachHide && window.dhCoachHide(); }catch(e){}
     if(i>=session.length){
+      try{ localStorage.setItem("dh-son-bekleyen",String(remaining)); }catch(e){}
       $("card").style.display="none";
-      $("doneTitle").textContent="🎉 Oturum bitti!";
-      $("doneSub").textContent=doneCount+" öğe tekrar edildi."+(remaining?(" Bekleyen: "+remaining):"");
+      var gunYapilan=__gun?Math.min(__gun.yapilan|0,__gun.hedef|0):doneCount;
+      $("doneTitle").textContent=(__gun&&gunYapilan>=__gun.hedef)?"🎉 Bugünkü tekrar tamam!":"🎉 Oturum bitti!";
+      $("doneSub").textContent="Bugünkü tekrar: "+gunYapilan+"/"+(__gun?__gun.hedef:session.length)+". Bu oturumda: "+doneCount+"."+(remaining?(" Toplam bekleyen: "+remaining+"."):"");
+      if(__gun) $("cnt").innerHTML="bugünkü tekrar: <b style='color:#e8eef7'>"+gunYapilan+"/"+__gun.hedef+"</b>"+(remaining?(" · bekleyen "+remaining+" 💛"):"");
       if(remaining) $("bMore").style.display="inline-block";
       if(PLAN) $("planNext").style.display="block";
       $("done").style.display="block";
@@ -1246,7 +1260,8 @@ try{
       function doneOrNext(){ i++; render(); } return;
     }
     doneCount++;
-    if(__gun){ __gun.yapilan=(__gun.yapilan|0)+1; saveGun(); paintBricks(); }
+    if(__gun){ __gun.yapilan=(__gun.yapilan|0)+1; saveGun(); syncGunPlan(); paintBricks(); }
+    try{ localStorage.setItem("dh-son-bekleyen",String(Math.max(0,remaining+session.length-i-1))); }catch(e){}
     i++; render();
   }
   $("bHard").onclick=function(){ grade(true); }; $("bEasy").onclick=function(){ grade(false); };

@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v65";   /* v65: Hata Defteri alternatif doğru ve yazım sürçmesi ayrımı */
+var SW_VERSION = "dh-sw-v66";   /* v66: gün kapatma ve tekrar sayaçları tek günlük planla eşlendi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

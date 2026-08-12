@@ -89,13 +89,28 @@
        DB okunamazsa plandaki dueCount'a düşer. Plandaki sayı üretim anında
        0 kalabildiği için tek başına GÜVENİLMEZ — karnenin çökme nedeni buydu. */
     var due=null; try{ due=await dhCountDueSRS(); }catch(e){}
+    /* Tekrar ekranının gösterdiği bekleyen sayı varsa aynı etikette aynı sayıyı
+       kullan. Canlı IndexedDB taraması kelime SRS'sini de kapsayabildiği için
+       kullanıcıya görünen cümle kuyruğundan farklı çıkabiliyordu. */
+    try{ var shown=parseInt(localStorage.getItem("dh-son-bekleyen"),10); if(!isNaN(shown)) due=shown; }catch(e){}
     if(due==null){ try{ var pl=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); due=(pl&&pl.dueCount)||0; }catch(e){ due=0; } }
     var items=[];
-    var needRev=Math.min(10, due);
-    items.push({key:"rev", label:"Tekrar (SRS)", got:rec.reviews||0, need:needRev,
-                ok:(rec.reviews||0)>=needRev, href:"./tekrar.html?plan=1", cta:"⚡ Tekrarları yap"});
-    items.push({key:"prod", label:"Cümle çalışması", got:rec.sentences||0, need:5,
-                ok:(rec.sentences||0)>=5, href:"./index-app.html", cta:"📖 Cümle çalış"});
+    /* Kapanış penceresi artık ayrı bir 10/5 karnesi üretmez. Ana ekranda
+       dondurulan DHPlan ve tekrar sayfasının günlük porsiyonu tek kaynaktır.
+       Böylece ana ekran 4/4 tamam derken pencere 3/10, 0/5 diyemez. */
+    var fp=null, fa=[];
+    try{ fp=JSON.parse(localStorage.getItem("dh-gun-plan-"+dhToday())||"null"); fa=(fp&&fp.adimlar)||[]; }catch(e){ fp=null; fa=[]; }
+    function tip(t){ for(var z=0;z<fa.length;z++) if(String(fa[z].tip||fa[z].id)===t) return fa[z]; return null; }
+    var ra=tip("tekrar"), pa=tip("yeni"), tg=null;
+    try{ tg=JSON.parse(localStorage.getItem("dh-tekrar-gun-"+dhToday())||"null"); }catch(e){}
+    var needRev=ra ? (ra.hedef|0) : (tg&&tg.hedef ? tg.hedef|0 : Math.min(10,due));
+    var gotRev=Math.max(rec.reviews||0, ra?(ra.yapilan|0):0, tg?(tg.yapilan|0):0);
+    var needProd=pa ? (pa.hedef|0) : 5;
+    var gotProd=Math.max(rec.sentences||0, pa?(pa.yapilan|0):0);
+    items.push({key:"rev", label:"Tekrar (SRS)", got:Math.min(gotRev,needRev), need:needRev,
+                ok:gotRev>=needRev, href:"./tekrar.html?plan=1", cta:"⚡ Tekrarları yap"});
+    items.push({key:"prod", label:"Cümle çalışması", got:Math.min(gotProd,needProd), need:needProd,
+                ok:gotProd>=needProd, href:"./index-app.html", cta:"📖 Cümle çalış"});
     return { ok: items.every(function(i){return i.ok;}), items:items, rec:rec, due:due };
   }
   /* Kapanış turu: kullanıcıyı tekrar sayfasına gönderdiysek koç SUSAR.
@@ -173,10 +188,18 @@
   }
   function dhPlanProgress(){
     var steps=dhPlanSteps(); if(!steps.length) return null;
+    var frozen=null; try{ frozen=JSON.parse(localStorage.getItem("dh-gun-plan-"+dhToday())||"null"); }catch(e){}
+    var frozenSteps=(frozen&&frozen.adimlar)||[];
+    function frozenFor(page){
+      var t=/^tekrar/.test(page)?"tekrar":(/^chat/.test(page)?"sohbet":((page==="index-app.html"||page==="practice.html")?"yeni":(/^hata-defteri/.test(page)?"hata":"")));
+      for(var q=0;q<frozenSteps.length;q++) if(String(frozenSteps[q].tip||frozenSteps[q].id)===t) return frozenSteps[q];
+      return null;
+    }
     var done=dhStepsDone(), rec=dhTrackToday(), out=[];
     steps.forEach(function(s){
-      var page=String(s.href||"").split("?")[0], got=null, need=null, ok=false;
-      if(page==="tekrar.html"){ need=dhReviewTarget(); got=need?Math.min(rec.reviews||0,need):(rec.reviews||0); ok=need?((rec.reviews||0)>=need):!!done[page]; }
+      var page=String(s.href||"").split("?")[0], got=null, need=null, ok=false, fs=frozenFor(page);
+      if(fs){ need=fs.hedef|0; got=Math.min(fs.yapilan|0,need); ok=got>=need; }
+      else if(page==="tekrar.html"){ need=dhReviewTarget(); got=need?Math.min(rec.reviews||0,need):(rec.reviews||0); ok=need?((rec.reviews||0)>=need):!!done[page]; }
       else if(page==="index-app.html"||page==="practice.html"){ need=dhSentGoal(); got=Math.min(rec.sentences||0,need); ok=(rec.sentences||0)>=need; }
       else if(/^chat/.test(page)){ var konus=(rec.lessons||0)>0||(rec.speaking||0)>0; ok=konus||!!done[page]||Object.keys(done).some(function(k){return /^chat/.test(k);}); got=ok?1:0; need=1; }
       else { ok=!!done[page]; got=ok?1:0; need=1; }
