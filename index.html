@@ -2,21 +2,6 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<script>
-/* V2 kataloğundan açılan eski bir ekranda “çıkış” denince eski ana sayfada
-   kalmak yerine V2'nin Tümü ekranına dön. ?atlas-old=1 eski ana sayfayı
-   özellikle açmak isteyen kullanıcı için bu köprüyü bir kez devre dışı bırakır. */
-(function () {
-  try {
-    var donus = sessionStorage.getItem('atlas-v2-donus');
-    var eskiAnaSayfaIstendi = new URLSearchParams(location.search).has('atlas-old');
-    if (donus && !eskiAnaSayfaIstendi) {
-      sessionStorage.removeItem('atlas-v2-donus');
-      location.replace('./atlas-v2/' + donus);
-    }
-  } catch (err) {}
-}());
-</script>
 <!-- maximum-scale YAZILMAZ: yakinlastirma kapatilmaz (erisilebilirlik) -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0F7A5A">
