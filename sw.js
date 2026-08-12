@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v79";   /* v79: Hata Defteri ayn? c?mleyi tek kay?t olarak tutuyor */
+var SW_VERSION = "dh-sw-v80";   /* v80: tamamlanan hata i?g?r?s? g?nl?k olarak ye?ile d?n?yor */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

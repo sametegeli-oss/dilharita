@@ -2422,7 +2422,12 @@ function gradeTR(g){ return g==="hard"?"Zor":g==="easy"?"Kolay":"Normal"; }
 /* ============================================================
    EKRAN: oturum bitti
    ============================================================ */
+function markInsightDone(){
+  if(State.source!=="errors"&&State.source!=="chat-errors"&&State.source!=="level-gap")return;
+  try{var q=new URLSearchParams(location.search),type=q.get("odak")||"all";localStorage.setItem("dh-insight-done-"+isoDay()+"-"+type,JSON.stringify({at:Date.now(),source:State.source,total:State.queue.length}));}catch(e){}
+}
 function renderSessionDone(){
+  markInsightDone();
   // oturum tamamlandı: bu modülün "devam et" pozisyonunu sil
   if (State.activeModule){ clearPos(State.activeModule); cloudSaveSoon(); }
   root.innerHTML = `

@@ -132,6 +132,7 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
 </div>
 <script>
 let RECORDS=[];
+let VISIBLE_RECORDS=[]; // ekranda fiilen ?izilen kay?tlar?n tek do?ruluk kayna??
 const $=id=>document.getElementById(id);
 const PARAMS=new URLSearchParams(location.search);
 const ODAK=PARAMS.get("odak")||"";
@@ -168,6 +169,7 @@ function scopedRecords(records){
 function renderRecords(){
   const q=$("search").value.toLowerCase().trim(), source=$("source").value, pri=$("priority").value;
   let arr=scopedRecords(RECORDS);
+  VISIBLE_RECORDS=arr.slice();
   /* ?st saya?lar t?m veritaban?n? de?il, ekranda ger?ekten g?sterilen kapsam? sayar.
      B?ylece ?odak=pronoun ekran?nda 10 kay?t varken eski toplam olan 64 g?r?nmez. */
   const summary=LearningErrorDB.summarize(arr);
@@ -205,7 +207,9 @@ function renderRecords(){
     b.onclick=async function(){
       if(!confirm("Bu tek kayıt silinsin mi? (Anlamsız/kabul edilebilir bir hata olduğunu düşünüyorsan silebilirsin.)")) return;
       await LearningErrorDB.deleteMany([b.getAttribute("data-del")]);
-      try{ window.dhCoachMarkStepDone && window.dhCoachMarkStepDone("hata-defteri.html"); }catch(e){}
+      try{ var dd=new Date(), day=dd.getFullYear()+"-"+String(dd.getMonth()+1).padStart(2,"0")+"-"+String(dd.getDate()).padStart(2,"0");
+      localStorage.setItem("dh-insight-done-"+day+"-"+(ODAK||"all"),JSON.stringify({at:Date.now(),total:done,fixed:fixed}));
+      window.dhCoachMarkStepDone && window.dhCoachMarkStepDone("hata-defteri.html"); }catch(e){}
       try{ window.dhLogActivity && window.dhLogActivity("🗑 Hata kaydı silindi (tekil)", "cleanup"); }catch(e){}
       load();
     };
@@ -330,7 +334,7 @@ var DH=(function(){
     if(!confirm("Tüm hata kayıtların kesin kurallarla (zamir eşdeğerliği, kısaltma esnekliği) yeniden değerlendirilecek. Artık gerçek hata sayılmayanlar silinecek. Devam?")) return;
     var btn=this; btn.disabled=true; btn.textContent="⏳ Değerlendiriliyor...";
     try{
-      var all=scopedRecords(await LearningErrorDB.all());
+      var all=VISIBLE_RECORDS.slice();
       var toDelete=all.filter(function(r){ return !stillWrong(r); }).map(function(r){ return r.id; });
       if(!toDelete.length){ alert("Temizlenecek kayıt bulunamadı — hepsi hâlâ geçerli hatalar."); }
       else{ await LearningErrorDB.deleteMany(toDelete); try{ window.dhCoachMarkStepDone && window.dhCoachMarkStepDone("hata-defteri.html"); window.dhLogActivity && window.dhLogActivity("🧹 Kesin kurallarla "+toDelete.length+" kayıt temizlendi", "cleanup"); }catch(e){} alert("✓ "+toDelete.length+" kayıt temizlendi (kesin kurallarla)."); load(); }
@@ -349,8 +353,9 @@ var DH=(function(){
     }
     /* Yaln?zca kullan?c?n?n ?u anda ekranda g?rd??? odak/arama/kaynak/?ncelik
        kapsam?n? i?le. Gizli 54 kay?t API kotas? t?ketmez ve yanl??l?kla silinmez. */
-    var all=await LearningErrorDB.all();
-    var candidates=scopedRecords(all).filter(function(r){ return (r.target||r.sentenceEN) && r.answer; });
+    /* Saya?ta ka? kay?t g?r?n?yorsa AI tam olarak ayn? dondurulmu? listeyi i?ler.
+       Veritaban?n? yeniden okuyup filtre kapsam?ndan ??kmak m?mk?n de?ildir. */
+    var candidates=VISIBLE_RECORDS.slice().filter(function(r){ return (r.target||r.sentenceEN) && r.answer; });
     if(!candidates.length){ alert("Kontrol edilecek uygun kayıt yok (hedef/cevap metni eksik)."); return; }
     if(!confirm(candidates.length+" kayıt AI ile tek tek kontrol edilecek. Bu biraz zaman alabilir ve API kotanı kullanır. Devam?")) return;
     var btn=this; btn.disabled=true;
