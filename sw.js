@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v73";   /* v73: öğretmen başlığı video üstünde transparan; sohbet alanı genişledi */
+var SW_VERSION = "dh-sw-v74";   /* v74: Hata Defteri vade filtresi ve üç doğruda gerçek mezuniyet */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

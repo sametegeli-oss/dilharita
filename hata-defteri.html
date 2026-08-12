@@ -147,7 +147,15 @@ async function load(){
   if(ODAK && !ODAK_BASLADI){
     const ad=ODAK.replace(/[_-]/g," ");
     document.querySelector(".title p").textContent="Kişisel telafi odağın: "+ad+". Yalnızca bu konudaki kayıtların gösteriliyor.";
-    const pool=RECORDS.filter(r=>(r.primaryType===ODAK||(r.types||[]).includes(ODAK))&&(r.target||r.sentenceEN));
+    /* Odaklı çalışma da SRS vadesine uyar. Eski kod tüm konu kayıtlarını
+       koşulsuz aldığı için doğru cevaplanıp 3 gün ertelenen aynı kayıt sayfa
+       her açıldığında yeniden geliyordu. */
+    const now=Date.now();
+    const pool=RECORDS.filter(function(r){
+      if(!((r.primaryType===ODAK||(r.types||[]).includes(ODAK))&&(r.target||r.sentenceEN))) return false;
+      var due=new Date(r.dueAt||0).getTime()||0;
+      return due<=now;
+    });
     if(PARAMS.get("baslat")==="1" && pool.length){
       ODAK_BASLADI=true;
       setTimeout(()=>Drill.start(pool.slice(0,10)),120);
@@ -685,6 +693,18 @@ var Drill=(function(){
     var verdict=evaluateAnswer(ans,target), ok=verdict.ok;
     if(ok) fixed++;
 
+    /* Önce kalıcı SRS kaydını güncelle; geri bildirim güncel tekrar sayısını
+       söylesin. Üç ayrı doğru çözümden sonra kayıt gerçekten öğrenilmiş
+       sayılır ve Hata Defteri'nden çıkar. */
+    var reviewed=null, mastered=false;
+    try{
+      if(LearningErrorDB.markReviewed)
+        reviewed=await LearningErrorDB.markReviewed(r.id, { grade: ok?"easy":"hard", score: ok?100:0 });
+      if(ok && reviewed && Number(reviewed.reviewCount||0)>=3){
+        await LearningErrorDB.deleteMany([r.id]); mastered=true;
+      }
+    }catch(e){}
+
     var res=document.getElementById("dRes");
     res.className="drill-res show "+(ok?"ok":"no");
     var dh=diff(ans,target).map(function(p){
@@ -697,7 +717,9 @@ var Drill=(function(){
       +'<div class="drill-diff">'+dh+'</div>'
       +'<div class="drill-correct">Doğrusu: '+LearningErrorDB.esc(target)+'</div>'
       +'<div class="drill-note">'+(ok
-          ? ((verdict.alternative?"Referanstan farklı ama anlamı koruyan kabul edilebilir bir cümle kurdun. ":"")+"Kaydın önceliği düştü. Birkaç kez daha doğru yaparsan defterden tamamen çıkacak.")
+          ? ((verdict.alternative?"Referanstan farklı ama anlamı koruyan kabul edilebilir bir cümle kurdun. ":"")+(mastered
+              ? "Bu kaydı üç kez doğru çözdün; Hata Defteri'nden çıkarıldı."
+              : "Kaydın önceliği düştü ve sonraki çalışma tarihine ertelendi. Defterden çıkmasına "+Math.max(1,3-Number(reviewed&&reviewed.reviewCount||1))+" doğru çözüm kaldı."))
           : "Kayıt defterde kalıyor ve önceliği yükseldi — yakında tekrar karşına çıkacak.")+'</div>'
       +'<div class="drill-btns" style="margin-top:12px">'
       +  '<button class="btn green" id="dNext">'+((i+1)>=queue.length?"Bitir":"Sonraki ›")+'</button>'
@@ -705,13 +727,6 @@ var Drill=(function(){
 
     document.getElementById("dNext").onclick=next;
     say(target);
-
-    /* SRS: markReviewed learning-error-system.js'te ZATEN VARDI ama hiçbir yerde
-       kullanılmıyordu. Doğruysa öncelik düşer/vade uzar, yanlışsa öncelik yükselir. */
-    try{
-      if(LearningErrorDB.markReviewed)
-        await LearningErrorDB.markReviewed(r.id, { grade: ok?"easy":"hard", score: ok?100:0 });
-    }catch(e){}
 
     /* Koça GERÇEK çalışma olarak bildir (kayıt silmek değil, hatayı düzeltmek) */
     try{
@@ -747,8 +762,14 @@ var Drill=(function(){
 /* Toplu alıştırma: vadesi gelenler ve yüksek öncelikliler önce */
 document.getElementById("drillBtn").onclick=function(){
   var now=Date.now();
-  var pool=RECORDS.filter(function(r){ return (r.target||r.sentenceEN); });
-  if(!pool.length){ alert("Defterde çözülecek hata yok."); return; }
+  /* Geleceğe ertelenmiş kayıtlar bu oturuma alınmaz. Sıralamak tek başına
+     yetmiyordu: vadesi gelmeyen kayıtlar listenin sonunda yine seçiliyordu. */
+  var pool=RECORDS.filter(function(r){
+    if(!(r.target||r.sentenceEN)) return false;
+    var due=new Date(r.dueAt||0).getTime()||0;
+    return due<=now;
+  });
+  if(!pool.length){ alert("Şu anda vadesi gelen hata yok. Doğru çözdüklerin sonraki çalışma tarihine ertelendi."); return; }
   var PRI={high:0,medium:1,low:2};
   pool.sort(function(a,b){
     var da=new Date(a.dueAt||0).getTime()||0, db=new Date(b.dueAt||0).getTime()||0;
