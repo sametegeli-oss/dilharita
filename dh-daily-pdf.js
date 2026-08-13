@@ -1,106 +1,33 @@
-/* dh-daily-pdf.js - Bugunun ve yarinin istege bagli calisma PDF'leri */
-(function (global) {
-  "use strict";
-  if (global.DHDailyPdf) return;
-
-  function iso(d) {
-    var x=d||new Date();
-    return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");
-  }
-  function esc(s) {
-    return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});
-  }
-  function read(key, fallback) {
-    try { var v=JSON.parse(localStorage.getItem(key)||"null"); return v==null?fallback:v; } catch(e){ return fallback; }
-  }
-  function dayData(day) {
-    var tracker=read("dh-study-tracker-v1",{})||{};
-    return (tracker.days&&tracker.days[day])||{};
-  }
-  function plan(day) {
-    return read("dh-gun-plan-"+day,null)||{adimlar:[]};
-  }
-  function openDb() {
-    return new Promise(function(resolve){
-      try { var r=indexedDB.open("sentence-mode",1); r.onsuccess=function(){resolve(r.result);}; r.onerror=function(){resolve(null);}; }
-      catch(e){resolve(null);}
-    });
-  }
-  function dueUntil(end) {
-    return openDb().then(function(db){
-      if(!db||!db.objectStoreNames.contains("kv"))return [];
-      return new Promise(function(resolve){
-        var out=[];
-        try{
-          var q=db.transaction("kv","readonly").objectStore("kv").openCursor();
-          q.onsuccess=function(e){var c=e.target.result;if(!c){try{db.close();}catch(_){}return resolve(out);}
-            var k=String(c.key),v=c.value||{};
-            if((k.indexOf("srs:")===0||k.indexOf("wsrs:")===0)&&Number(v.due||0)<=end)out.push({key:k,due:Number(v.due||0)});
-            c.continue();};
-          q.onerror=function(){try{db.close();}catch(_){}resolve(out);};
-        }catch(e){try{db.close();}catch(_){}resolve(out);}
-      });
-    });
-  }
-  function li(text, meta) {
-    return '<li><span>'+esc(text)+'</span>'+(meta?'<b>'+esc(meta)+'</b>':'')+'</li>';
-  }
-  function planRows(items) {
-    if(!items||!items.length)return '<p class="empty">Henüz günlük plan oluşturulmadı.</p>';
-    return '<ul class="tasks">'+items.map(function(a){
-      var hedef=Math.max(1,Number(a.hedef)||1),yap=Math.min(hedef,Number(a.yapilan)||0);
-      return li(a.etiket||a.label||a.tip||"Çalışma",yap+" / "+hedef);
-    }).join('')+'</ul>';
-  }
-  function chips(arr) {
-    return arr&&arr.length?'<div class="chips">'+arr.map(function(x){return '<span>'+esc(x)+'</span>';}).join('')+'</div>':'<p class="empty">Kayıt yok.</p>';
-  }
-  function shell(title,date,body,note) {
-    return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>'+esc(title)+'</title><style>'
-      +'@page{size:A4;margin:14mm}*{box-sizing:border-box}body{margin:0;color:#14213d;font:14px/1.48 Arial,"Segoe UI",sans-serif;background:#fff}'
-      +'.head{padding:20px 22px;border-radius:16px;background:linear-gradient(135deg,#0f766e,#2563eb);color:#fff;margin-bottom:16px}.head h1{margin:0 0 4px;font-size:25px}.head p{margin:0;opacity:.88}'
-      +'.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:12px 0}.metric,.box{border:1px solid #cbd5e1;border-radius:12px;padding:12px;break-inside:avoid}.metric b{display:block;font-size:22px;color:#0f766e}.metric span{font-size:11px;color:#64748b}'
-      +'h2{font-size:16px;color:#1d4ed8;margin:18px 0 8px}.tasks{list-style:none;padding:0;margin:0}.tasks li{display:flex;justify-content:space-between;gap:12px;padding:8px 4px;border-bottom:1px solid #e2e8f0}.tasks b{white-space:nowrap;color:#0f766e}'
-      +'.chips{display:flex;flex-wrap:wrap;gap:6px}.chips span{padding:5px 9px;border-radius:99px;background:#e0f2fe;border:1px solid #7dd3fc;font-size:11px}.empty{color:#64748b;font-style:italic}'
-      +'.note{margin-top:18px;padding:10px 12px;border-radius:10px;background:#f1f5f9;color:#475569;font-size:11px}.foot{text-align:center;color:#94a3b8;font-size:10px;margin-top:18px}'
-      +'@media print{button{display:none!important}.box{break-inside:avoid}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>'
-      +'<header class="head"><h1>'+esc(title)+'</h1><p>'+esc(date)+' · Dil Harita kişisel çalışma dosyası</p></header>'+body
-      +'<div class="note">'+esc(note)+'</div><div class="foot">Oluşturulma: '+esc(new Date().toLocaleString("tr-TR"))+'</div>'
-      +'<script>setTimeout(function(){window.print()},350)<\/script></body></html>';
-  }
-  function show(html) {
-    var w=global.open("","_blank");
-    if(!w){alert("PDF önizlemesi için açılır pencereye izin verin.");return false;}
-    w.document.open();w.document.write(html);w.document.close();return true;
-  }
-  async function todayPdf() {
-    var day=iso(),d=dayData(day),p=plan(day),h=null;
-    try{if(global.DHGunSonu&&DHGunSonu.topla)h=await DHGunSonu.topla();}catch(e){}
-    h=h||{cumleler:[],kaliplar:[],kelimeler:[]};
-    var body='<div class="grid"><div class="metric"><b>'+(d.sentences||0)+'</b><span>CÜMLE</span></div><div class="metric"><b>'+(d.reviews||0)+'</b><span>TEKRAR</span></div><div class="metric"><b>'+(d.lessons||0)+'</b><span>DERS</span></div></div>'
-      +'<section class="box"><h2>Bugünün planı ve gerçekleşenler</h2>'+planRows(p.adimlar)+'</section>'
-      +'<section class="box"><h2>Çalışılan cümleler</h2>'+chips((h.cumleler||[]).map(function(c){return c.en;}))+'</section>'
-      +'<section class="box"><h2>Kalıplar</h2>'+chips(h.kaliplar||[])+'</section>'
-      +'<section class="box"><h2>Kelimeler</h2>'+chips(h.kelimeler||[])+'</section>';
-    show(shell("Bugünün Çalışma PDF'i",day,body,"Bu belge mevcut cihazdaki gerçek günlük plan ve tarihli çalışma kayıtlarından hazırlanmıştır."));
-  }
-  async function tomorrowPdf() {
-    var t=new Date();t.setDate(t.getDate()+1);var day=iso(t),end=new Date(t);end.setHours(23,59,59,999);
-    var due=await dueUntil(end.getTime()),review=Math.min(15,due.length);
-    var current=plan(iso()).adimlar||[], unfinished=current.filter(function(a){return Number(a.yapilan||0)<Math.max(1,Number(a.hedef)||1);});
-    var suggested=[
-      {etiket:"Vadesi gelen tekrarlar (SRS)",hedef:review||10,yapilan:0},
-      {etiket:"Yeni cümle çalışması",hedef:5,yapilan:0},
-      {etiket:"Öğrendiklerini üret",hedef:3,yapilan:0},
-      {etiket:"1 dakika konuş",hedef:1,yapilan:0},
-      {etiket:"Hata defterini çalış",hedef:1,yapilan:0}
-    ];
-    var carry=unfinished.map(function(a){return (a.etiket||a.label||a.tip||"Çalışma")+" - "+Math.max(0,(Number(a.hedef)||1)-(Number(a.yapilan)||0))+" kaldı";});
-    var body='<div class="grid"><div class="metric"><b>'+due.length+'</b><span>YARINA KADAR VADESİ GELEN</span></div><div class="metric"><b>'+review+'</b><span>ÖNERİLEN TEKRAR</span></div><div class="metric"><b>10-20</b><span>DAKİKA</span></div></div>'
-      +'<section class="box"><h2>Yarının önerilen çalışma planı</h2>'+planRows(suggested)+'</section>'
-      +'<section class="box"><h2>Bugünden kalan odaklar</h2>'+chips(carry)+'</section>'
-      +'<section class="box"><h2>Uygulama sırası</h2><ul class="tasks">'+li("Önce vadesi gelen tekrarları tamamla","1")+li("Yeni cümleleri öğren ve sesli oku","2")+li("Üç cümleyi kendin üret","3")+li("Konuşma ve hata telafisiyle bitir","4")+'</ul></section>';
-    show(shell("Yarının Çalışma PDF'i",day,body,"Bu bir ön plandır. Yarının kesin SRS kuyruğu ve kişisel planı uygulama açıldığında güncel verilere göre yeniden hesaplanır."));
-  }
-  global.DHDailyPdf={today:todayPdf,tomorrow:tomorrowPdf,_shell:shell,_dueUntil:dueUntil};
+/* dh-daily-pdf.js - Koçun gerçek veri hattından eksiksiz günlük PDF'ler */
+(function(global){
+"use strict";
+if(global.DHDailyPdf)return;
+function iso(d){var x=d||new Date();return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function read(k,f){try{var v=JSON.parse(localStorage.getItem(k)||"null");return v==null?f:v;}catch(e){return f;}}
+function dayData(day){var t=read("dh-study-tracker-v1",{})||{};return(t.days&&t.days[day])||{};}
+function plan(day){return read("dh-gun-plan-"+day,null)||{adimlar:[]};}
+function openDb(){return new Promise(function(res){try{var r=indexedDB.open("sentence-mode",1);r.onsuccess=function(){res(r.result);};r.onerror=function(){res(null);};}catch(e){res(null);}});}
+/* Koçla aynı sentence-mode/kv deposu: hiçbir limit veya slice uygulanmaz. */
+function srsRecords(test){return openDb().then(function(db){if(!db||!db.objectStoreNames.contains("kv"))return[];return new Promise(function(res){var out=[];try{var q=db.transaction("kv","readonly").objectStore("kv").openCursor();q.onsuccess=function(e){var c=e.target.result;if(!c){try{db.close();}catch(_){}return res(out);}var k=String(c.key),v=c.value||{};if((k.indexOf("srs:")===0||k.indexOf("wsrs:")===0)&&test(k,v))out.push({key:k,value:v});c.continue();};q.onerror=function(){try{db.close();}catch(_){}res(out);};}catch(e){try{db.close();}catch(_){}res(out);}});});}
+function recordsToday(day){return srsRecords(function(k,v){return Number(v.last||0)>0&&iso(new Date(Number(v.last)))===day;});}
+function recordsDue(end){return srsRecords(function(k,v){return Number(v.due||0)<=end;});}
+function unique(arr){var seen={};return(arr||[]).filter(function(x){var k=String(x||"").trim().toLocaleLowerCase("tr");if(!k||seen[k])return false;seen[k]=1;return true;});}
+async function sentenceDetails(ids){ids=unique(ids);if(!ids.length)return[];try{if(global.DHSent&&DHSent.byIds){var map=await DHSent.byIds(ids);return ids.map(function(id){var s=(map||{})[id];return s&&s.en?s:{id:id,en:id,tr:""};});}}catch(e){}return ids.map(function(id){return{id:id,en:id,tr:""};});}
+function split(records){var sentenceIds=[],words=[];(records||[]).forEach(function(r){if(r.key.indexOf("srs:")===0)sentenceIds.push(r.key.slice(4));else if(r.key.indexOf("wsrs:")===0)words.push(r.key.slice(5));});return{sentenceIds:unique(sentenceIds),words:unique(words)};}
+function moduleFromCoach(){var p=read("dh-koc-plan-"+iso(),null),steps=(p&&p.steps)||[];for(var i=0;i<steps.length;i++){var m=String(steps[i].href||"").match(/[?&]mod=([^&]+)/);if(m)try{return decodeURIComponent(m[1]);}catch(e){return m[1];}}return"";}
+async function nextModule(){var m=moduleFromCoach();if(m)return m;try{if(global.DHProfile&&DHProfile.nextModule)return await DHProfile.nextModule()||"";}catch(e){}return"";}
+async function moduleSentences(mod){if(!mod)return[];try{if(global.DHSent&&DHSent.module)return await DHSent.module(mod)||[];}catch(e){}return[];}
+function patterns(sentences){return unique((sentences||[]).map(function(s){return s.pattern||s.grammar||s.tense||"";}));}
+function planRows(items){if(!items||!items.length)return'<p class="empty">Henüz günlük plan oluşturulmadı.</p>';return'<ul class="tasks">'+items.map(function(a){var h=Math.max(1,Number(a.hedef)||1),y=Math.min(h,Number(a.yapilan)||0);return'<li><span>'+esc(a.etiket||a.label||a.tip||"Çalışma")+'</span><b>'+y+' / '+h+'</b></li>';}).join('')+'</ul>';}
+function sentenceTable(rows,title){if(!rows.length)return'<section><h2>'+esc(title)+' (0)</h2><p class="empty">Cümle yok.</p></section>';return'<section><h2>'+esc(title)+' ('+rows.length+')</h2><table class="sent"><thead><tr><th>#</th><th>İngilizce</th><th>Türkçe</th></tr></thead><tbody>'+rows.map(function(s,i){return'<tr><td>'+(i+1)+'</td><td><b>'+esc(s.en||s.id)+'</b></td><td>'+esc(s.tr||"")+'</td></tr>';}).join('')+'</tbody></table></section>';}
+function wordTable(words,title){words=unique(words);if(!words.length)return'<section><h2>'+esc(title)+' (0)</h2><p class="empty">Kelime yok.</p></section>';return'<section><h2>'+esc(title)+' ('+words.length+')</h2><div class="words">'+words.map(function(w,i){return'<span><small>'+(i+1)+'</small>'+esc(w)+'</span>';}).join('')+'</div></section>';}
+function shell(title,date,body,note){return'<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>'+esc(title)+'</title><style>'
++'@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#14213d;font:12px/1.4 Arial,"Segoe UI",sans-serif}.head{padding:16px 18px;background:linear-gradient(135deg,#0f766e,#2563eb);color:#fff;border-radius:12px}.head h1{margin:0;font-size:23px}.head p{margin:3px 0 0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0}.metric,.box{border:1px solid #cbd5e1;border-radius:9px;padding:9px}.metric b{display:block;font-size:19px;color:#0f766e}.metric span{font-size:9px;color:#64748b}h2{font-size:15px;color:#1d4ed8;margin:16px 0 6px;break-after:avoid}.tasks{list-style:none;padding:0;margin:0}.tasks li{display:flex;justify-content:space-between;padding:6px 2px;border-bottom:1px solid #e2e8f0}.tasks b{color:#0f766e}.sent{width:100%;border-collapse:collapse;table-layout:fixed}.sent th,.sent td{border:1px solid #cbd5e1;padding:5px;vertical-align:top;overflow-wrap:anywhere}.sent th{background:#e0f2fe;text-align:left}.sent th:first-child,.sent td:first-child{width:8mm;text-align:center}.sent th:nth-child(2){width:46%}.sent tr{break-inside:avoid}.words{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.words span{border:1px solid #7dd3fc;background:#e0f2fe;padding:5px 7px;border-radius:6px;break-inside:avoid;overflow-wrap:anywhere}.words small{color:#64748b;margin-right:5px}.empty{color:#64748b;font-style:italic}.note{margin-top:14px;padding:8px;background:#f1f5f9;color:#475569}.foot{text-align:center;color:#94a3b8;font-size:9px;margin-top:10px}'
++'@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.box{break-inside:avoid}thead{display:table-header-group}}</style></head><body><header class="head"><h1>'+esc(title)+'</h1><p>'+esc(date)+' · Dil Harita eksiksiz çalışma dosyası</p></header>'+body+'<div class="note">'+esc(note)+'</div><div class="foot">Oluşturulma: '+esc(new Date().toLocaleString("tr-TR"))+'</div><script>setTimeout(function(){window.print()},400)<\/script></body></html>';}
+function preview(){var w=global.open("","_blank");if(!w){alert("PDF önizlemesi için açılır pencereye izin verin.");return null;}w.document.write('<meta charset="utf-8"><p style="font:16px Arial;padding:30px">PDF verileri hazırlanıyor…</p>');return w;}
+function show(w,html){if(!w)return;w.document.open();w.document.write(html);w.document.close();}
+async function todayPdf(){var w=preview();if(!w)return;var day=iso(),d=dayData(day),p=plan(day),rec=await recordsToday(day),parts=split(rec),sent=await sentenceDetails(parts.sentenceIds),pats=patterns(sent);var body='<div class="grid"><div class="metric"><b>'+sent.length+'</b><span>ÇALIŞILAN CÜMLE</span></div><div class="metric"><b>'+parts.words.length+'</b><span>ÇALIŞILAN KELİME</span></div><div class="metric"><b>'+(d.reviews||0)+'</b><span>TEKRAR İŞLEMİ</span></div></div><section class="box"><h2>Bugünün planı ve gerçekleşenler</h2>'+planRows(p.adimlar)+'</section>'+sentenceTable(sent,"Bugün çalışılan bütün cümleler")+wordTable(parts.words,"Bugün çalışılan bütün kelimeler")+wordTable(pats,"Bugün çalışılan bütün kalıplar");show(w,shell("Bugünün Çalışma PDF'i",day,body,"Listeler koçun kullandığı sentence-mode IndexedDB kayıtlarından alınmıştır; hiçbir cümle veya kelime sınırlandırılmamıştır."));}
+async function tomorrowPdf(){var w=preview();if(!w)return;var t=new Date();t.setDate(t.getDate()+1);var day=iso(t),end=new Date(t);end.setHours(23,59,59,999);var rec=await recordsDue(end.getTime()),parts=split(rec),dueSent=await sentenceDetails(parts.sentenceIds),mod=await nextModule(),newSent=await moduleSentences(mod),seen={};dueSent.forEach(function(s){seen[s.id]=1;});var allSent=dueSent.concat(newSent.filter(function(s){return!seen[s.id];}));var suggested=[{etiket:"Vadesi gelen bütün SRS cümle ve kelimeleri",hedef:rec.length||1,yapilan:0},{etiket:"Koçun yeni modülü: "+(mod||"modül seçilecek"),hedef:newSent.length||1,yapilan:0},{etiket:"Öğrendiklerini üret",hedef:3,yapilan:0},{etiket:"1 dakika konuş",hedef:1,yapilan:0},{etiket:"Hata defterini çalış",hedef:1,yapilan:0}];var body='<div class="grid"><div class="metric"><b>'+dueSent.length+'</b><span>VADESİ GELEN CÜMLE</span></div><div class="metric"><b>'+parts.words.length+'</b><span>VADESİ GELEN KELİME</span></div><div class="metric"><b>'+newSent.length+'</b><span>YENİ MODÜL CÜMLESİ</span></div></div><section class="box"><h2>Koçun yarın için çalışma planı</h2>'+planRows(suggested)+'</section>'+sentenceTable(dueSent,"Yarın çalışılacak bütün SRS cümleleri")+wordTable(parts.words,"Yarın çalışılacak bütün SRS kelimeleri")+sentenceTable(newSent,"Koçun seçtiği yeni modülün bütün cümleleri")+wordTable(patterns(allSent),"Yarın çalışılacak bütün kalıplar");show(w,shell("Yarının Çalışma PDF'i",day,body,"Yarına kadar vadesi gelecek tüm SRS kayıtları ve koçun seçtiği modül eksiksizdir. Plan, PDF'nin oluşturulduğu andaki verilere dayanır."));}
+global.DHDailyPdf={today:todayPdf,tomorrow:tomorrowPdf,_recordsToday:recordsToday,_recordsDue:recordsDue,_sentenceDetails:sentenceDetails,_moduleFromCoach:moduleFromCoach,_shell:shell};
 })(window);

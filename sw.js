@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v85";   /* v85: bugun ve yarin istege bagli calisma PDF'leri */
+var SW_VERSION = "dh-sw-v86";   /* v86: PDF'lerde tum calisilan ve calisilacak cumle/kelimeler */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
