@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v81";   /* v81: word-popup yaln?z ?ift t?klamayla a??l?yor */
+var SW_VERSION = "dh-sw-v82";   /* v82: bugunun uretim kuyrugu ortak SRS kanitini okuyor */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

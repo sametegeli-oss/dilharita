@@ -1624,7 +1624,21 @@ async function sourceItems(kind){
   if(kind==="today"||kind==="pronunciation"||kind==="weekly"){
     var mir={}; try{mir=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{};}catch(e){}
     var since=kind==="weekly"?now-7*86400000:new Date(day+"T00:00:00").getTime();
+    /* Yeni cümle ekranı ilerlemeyi doğrudan ortak sentence-mode IndexedDB'sindeki
+       srs:<id>.last alanına yazar. DHProgress aynası o ekranda yüklenmediği için
+       yalnızca aynaya bakmak, ana sayfada 5/5 görünen bir günde boş kuyruk
+       üretip "Bugüne dön" döngüsüne sokuyordu. İki kanıtı birleştiriyoruz. */
     var ids=Object.keys(mir).filter(function(k){return k.indexOf("sentence:")===0&&Number(mir[k]&&mir[k][1]||0)>=since;}).map(function(k){return k.slice(9);});
+    Object.keys(State.srs||{}).forEach(function(id){
+      var r=State.srs[id]||{};
+      if(Number(r.last||0)>=since)ids.push(id);
+    });
+    /* Aynı gün üretimde cevaplanan cümleleri yeniden sorma; böylece 1/3'ten
+       dönüldüğünde gerçekten kalan 2 cümleyle devam edilir. */
+    if(kind==="today"){
+      var done={}; try{done=JSON.parse(localStorage.getItem("dh-practice-evidence-"+day)||"{}")||{};}catch(e){}
+      ids=ids.filter(function(id){return !done["today:"+id];});
+    }
     out=await idsToSentences(ids);
   }
   if(kind==="errors"||kind==="chat-errors"||kind==="level-gap"||kind==="weekly"){
