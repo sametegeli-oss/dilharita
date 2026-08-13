@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v82";   /* v82: bugunun uretim kuyrugu ortak SRS kanitini okuyor */
+var SW_VERSION = "dh-sw-v83";   /* v83: index-app kelime penceresi yalniz cift tiklamayla aciliyor */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
