@@ -54,6 +54,18 @@ function norm(t){
   return String(t||"").toLowerCase().replace(/[\u2019\u2018]/g,"'")
     .replace(/[^a-z0-9' ]+/g," ").replace(/\s+/g," ").trim();
 }
+function answerCorrect(got,want){
+  if(norm(got)===norm(want)) return true;
+  /* Günlük karne, Hata Defteri'nin geri kalanıyla aynı cümle motorunu
+     kullanmalı. Motor isn't/is not, aren't/are not gibi kısaltmaları açar;
+     böylece doğru cevap yalnız yazım biçimi farklı diye reddedilmez. */
+  try{
+    if(global.SentenceAnalyzer&&typeof global.SentenceAnalyzer.analyze==="function"){
+      return global.SentenceAnalyzer.analyze(want,got).verdict==="correct";
+    }
+  }catch(e){}
+  return false;
+}
 
 /* ---------- prompt kurulumu ---------- */
 function buildPrompt(records, summary){
@@ -182,7 +194,7 @@ function render(data, options){
       var got=box.querySelector(".dhgr-in").value||"";
       var fb=box.querySelector(".dhgr-fb");
       if(!got.trim()){ fb.style.color="#f59e0b"; fb.textContent="Önce cevabını yaz."; return; }
-      if(norm(got)===norm(want)){
+      if(answerCorrect(got,want)){
         fb.style.color="#4ade80"; fb.textContent="✓ Doğru!";
         if(isDaily){
           var st=dailyState(), key=box.getAttribute("data-key")||""; st.correct[key]=1; saveDaily(st);
@@ -280,5 +292,5 @@ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded"
 else { mountRetry(); autoDaily(); autoLast(); }
 mount();
 
-global.DHGeminiReport={ run:run, render:render, buildPrompt:buildPrompt, last:last, mount:mount };
+global.DHGeminiReport={ run:run, render:render, buildPrompt:buildPrompt, last:last, mount:mount, answerCorrect:answerCorrect };
 })(window);
