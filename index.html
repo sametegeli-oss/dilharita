@@ -113,6 +113,15 @@
   <div class="dh-bolum-basligi" id="planBaslik">Bugünün planı</div>
   <div class="dh-plan" id="plan"></div>
 
+  <section class="dh-kart" id="pdfIndirKart" style="margin-top:16px" aria-labelledby="pdfIndirBaslik">
+    <div class="dh-bolum-basligi" id="pdfIndirBaslik" style="margin-bottom:5px">Çalışma PDF'leri</div>
+    <p class="dh-etiket" style="margin:0 0 10px">İstersen bugünün gerçekleşen çalışmasını veya yarının ön planını PDF olarak kaydet.</p>
+    <div class="dh-izgara dh-izgara--2">
+      <button class="dh-btn dh-btn--sade" id="bugunPdf" type="button">📄 Bugünün çalışma PDF'i</button>
+      <button class="dh-btn dh-btn--sade" id="yarinPdf" type="button">🌅 Yarının çalışma PDF'i</button>
+    </div>
+  </section>
+
   <section style="margin-top:28px" aria-labelledby="haftaB">
     <h2 id="haftaB" class="dh-bolum-basligi">Son 7 gün</h2>
     <div class="dh-hafta" id="hafta"></div>
@@ -153,6 +162,7 @@
 <script src="./dh-telafi.js?v=1"></script>
 <script src="./dh-konusma.js?v=1"></script>
 <script src="./dh-avatar.js"></script>
+<script src="./dh-daily-pdf.js?v=1"></script>
 <script>
 /* index.html — KOC EKRANI
    ================================================================
@@ -940,6 +950,9 @@
     try{ sessionStorage.removeItem("dh-koc-son-soz"); }catch(e){}
     ciz(sonPlan, sonCtx);
   };
+
+  $("bugunPdf").onclick = function(){ if(window.DHDailyPdf) DHDailyPdf.today(); };
+  $("yarinPdf").onclick = function(){ if(window.DHDailyPdf) DHDailyPdf.tomorrow(); };
 
   /* ================= SONRAKI GUNU BASLAT =================
      koc.js'teki #dhResetToday ile ayni islem. Ogrenme verisi silinmez. */
