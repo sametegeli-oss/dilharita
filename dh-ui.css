@@ -51,6 +51,22 @@
 .dh-ikon-btn:hover{ background:var(--dh-yuzey-2); color:var(--dh-text); }
 .dh-ikon-btn:active{ transform:scale(.96); }
 
+/* Dar ekranlarda sağdaki Kitaplık düğmesi flex tarafından küçültülmesin. */
+@media (max-width:520px){
+  .dh-ust{ gap:var(--dh-b-2); }
+  .dh-ust__sol{ flex:1 1 auto; min-width:0; }
+  .dh-ust__sag{ flex:0 0 auto; min-width:max-content; gap:4px; }
+  .dh-ust__sag .dh-ikon-btn{
+    display:grid !important;
+    visibility:visible !important;
+    flex:0 0 44px;
+    width:44px;
+    height:44px;
+    position:relative;
+    z-index:2;
+  }
+}
+
 .dh-alt{ margin-top:auto; padding-top:var(--dh-b-4); }
 
 /* ================= TIPOGRAFI YARDIMCILARI ================= */
