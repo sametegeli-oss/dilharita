@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v94";   /* v94: ogretmen ve sabit AI ekranlari ortak cevap hafizasinda */
+var SW_VERSION = "dh-sw-v95";   /* v95: index-app aktif modulu tek Gemini isteginde toplu aciklar */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
