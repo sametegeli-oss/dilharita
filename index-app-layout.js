@@ -136,6 +136,10 @@
       aiModule.type="button"; aiModule.className="dh-gtr-btn dh-ai-module-btn"; aiModule.textContent="💎 Tüm Modülü Gemini’ye Sor";
       aiModule.onclick=function(){ explainActiveModuleWithAI(); };
 
+      var aiModuleRefresh=document.createElement("button");
+      aiModuleRefresh.type="button"; aiModuleRefresh.className="dh-gtr-btn dh-ai-module-refresh-btn"; aiModuleRefresh.textContent="♻️ Modülü Baştan Açıkla";
+      aiModuleRefresh.onclick=function(){ if(confirm("Aktif modülün tüm cümleleri kayıtlı olsalar bile tek toplu istekte yeniden hazırlansın mı? Eski açıklamalar yalnız ayrıntılı yeni cevap geldiğinde değiştirilecektir."))explainActiveModuleWithAI(true); };
+
       var stu=document.createElement("button");
       stu.type="button"; stu.className="dh-gtr-btn"; stu.textContent="🎙️ Stüdyo";
       stu.onclick=function(){
@@ -162,6 +166,7 @@
       row.appendChild(gtr);
       row.appendChild(ai);
       row.appendChild(aiModule);
+      row.appendChild(aiModuleRefresh);
       row.appendChild(pdf);
       row.appendChild(pdfAll);
     }
@@ -225,6 +230,7 @@
       box.appendChild(mk("📄 Aktif Modülü PDF İndir",function(){ exportModuleToPDF(false); }));
       box.appendChild(mk("📚 TÜM Modülleri PDF İndir",function(){ exportModuleToPDF(true); }));
       var bulk=document.createElement("button");bulk.className="dh-pbtn";bulk.textContent="💎 Tüm Modülü Gemini’ye Sor";bulk.onclick=function(){box.classList.add("dh-hidden");explainActiveModuleWithAI();};box.appendChild(bulk);
+      var refresh=document.createElement("button");refresh.className="dh-pbtn";refresh.textContent="♻️ Tüm Modülü Ayrıntılı Yenile";refresh.onclick=function(){box.classList.add("dh-hidden");if(confirm("Kayıtlı olanlar dahil tüm aktif modül tek istekte yeniden hazırlansın mı?"))explainActiveModuleWithAI(true);};box.appendChild(refresh);
       box.appendChild(mk("🔍 Detay",function(){ return byText(card(),"detay"); }));
       document.body.appendChild(box);
     }
@@ -403,21 +409,22 @@ function bulkModal(title,body,busy){
   o.innerHTML='<div style="width:min(520px,100%);max-height:88vh;overflow:auto;background:#0d1b32;color:#e8eef7;border:1px solid #8b5cf6;border-radius:17px;padding:18px;box-shadow:0 20px 60px #0009"><h2 style="margin:0 0 10px;font-size:18px;color:#fff">'+title+'</h2><div style="line-height:1.6;color:#bfd0ea">'+body+'</div>'+(busy?'':'<button type="button" style="width:100%;margin-top:16px;padding:12px;border:0;border-radius:10px;background:#334155;color:#fff;font-weight:900">Kapat</button>')+'</div>';
   var b=o.querySelector("button");if(b)b.onclick=function(){o.remove();};document.body.appendChild(o);return o;
 }
-async function explainActiveModuleWithAI(){
+function isDetailedModuleExplanation(text){var t=String(text||""),low=t.toLocaleLowerCase("tr-TR");return t.length>=1000&&low.indexOf("türkçe çeviri")>=0&&low.indexOf("dilbilgisi")>=0&&low.indexOf("önemli kelimeler")>=0&&low.indexOf("anlam nüansı")>=0&&low.indexOf("örnek")>=0;}
+async function explainActiveModuleWithAI(forceAll){
   var sentences=await activeModuleSentences();if(!sentences.length){alert("Aktif modülün cümleleri bulunamadı.");return;}
-  var cached=await getAllAIExplanationsFromDB(),missing=sentences.filter(function(s){return !cached[s.en];});
+  var cached=await getAllAIExplanationsFromDB(),missing=forceAll?sentences.slice():sentences.filter(function(s){return !cached[s.en];});
   if(!missing.length){bulkModal("♻️ Modül açıklamaları hazır","Bu modüldeki <b>"+sentences.length+" cümlenin tamamı</b> daha önce açıklanmış. Gemini’ye yeniden gönderilmedi.",false);var cur=document.querySelector(".card-en");if(cur&&cached[cur.textContent.trim()])renderResultBox(cur.textContent.trim(),cached[cur.textContent.trim()],"🤖 Modülün kayıtlı AI açıklaması");return;}
   if(!(window.DHProviders&&DHProviders.chat&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())){alert("Profilde Gemini/AI yöntemini etkinleştirin.");return;}
-  var waitingModal=bulkModal("💎 Modül AI’ye hazırlanıyor","Toplam "+sentences.length+" cümlenin "+cachedCount(sentences,cached)+" tanesi kayıtlı. Açıklaması bulunmayan <b>"+missing.length+" cümlenin tamamı tek istekte</b> gönderilecek. Yanıt bazı cümleleri atlarsa kaydedilenler korunur; sonraki çalıştırmada yalnız kalanlar gönderilir.",true);
+  var waitingModal=bulkModal("💎 Modül AI’ye hazırlanıyor",forceAll?("Aktif modüldeki <b>"+sentences.length+" cümlenin tamamı</b>, kayıt durumuna bakılmadan tek ayrıntılı istekte yeniden gönderilecek. Kısa yanıtlar eski kayıtların üzerine yazılmayacak."):("Toplam "+sentences.length+" cümlenin "+cachedCount(sentences,cached)+" tanesi kayıtlı. Açıklaması bulunmayan <b>"+missing.length+" cümlenin tamamı tek istekte</b> gönderilecek. Yanıt bazı cümleleri atlarsa kaydedilenler korunur; sonraki çalıştırmada yalnız kalanlar gönderilir."),true);
   var payload=missing.map(function(s,i){return{n:i+1,en:s.en,tr:s.tr||""};});
-  var sys="Türk öğrenci için verilen İngilizce cümlelerin HER BİRİNİ AYRINTILI ve ayrı ayrı açıkla. Her explanation alanında şu Markdown başlıkları zorunludur: **Türkçe çeviri**, **Dilbilgisi**, **Önemli kelimeler ve kalıplar**, **Anlam nüansı**, **Örnek**. Dilbilgisinde yapıyı ve neden kullanıldığını açıkla; önemli kelime/kalıpların Türkçe anlamlarını ver; anlam nüansını yüzeysel geçme; yeni ve doğru İngilizce örneğin Türkçe çevirisini de yaz. Her açıklama öğretici ve kapsamlı olmalı; tek paragraf veya birkaç kısa cümleyle geçiştirme. Hiçbir cümleyi atlama. Yalnız geçerli JSON dizi döndür: [{\"n\":1,\"explanation\":\"Markdown açıklama\"}]. explanation metnindeki bütün çift tırnakları JSON kuralına uygun olarak ters eğik çizgiyle kaçır (örnek: \\\"was\\\"). n değerini aynen koru.";
+  var sys="Türk öğrenci için verilen İngilizce cümlelerin HER BİRİNİ, tek cümle sorulmuş kadar AYRINTILI ve ayrı ayrı açıkla. Listedeki ilk ve son cümleye aynı açıklama derinliğini ayır; sonraki maddeleri kesinlikle kısaltma. Her explanation yaklaşık 220-350 Türkçe kelime olmalı ve şu Markdown başlıklarının tamamını içermelidir: **Türkçe çeviri**, **Dilbilgisi**, **Önemli kelimeler ve kalıplar**, **Anlam nüansı**, **Örnek**. Dilbilgisi bölümünde ana ve yan cümlecikleri, özne/fiil/nesneyi, zaman formülünü, yapının neden seçildiğini ve varsa bağlaç/edat kullanımını tek tek açıkla. Kelime ve kalıpları ayrı maddelerle Türkçeleştir. Anlam nüansında cümlenin bağlamını ve yakın yapılardan farkını öğret. Örnekte yeni İngilizce cümle ve Türkçe çevirisi bulunmalı. Tek paragrafla, özetle veya birkaç kısa cümleyle geçiştirme. Çıktı sınırına yaklaşırsan yarım nesne üretme; yalnız eksiksiz tamamladığın nesneleri döndür. Yalnız geçerli JSON dizi döndür: [{\"n\":1,\"explanation\":\"Markdown açıklama\"}]. explanation içindeki bütün çift tırnakları JSON kuralına uygun biçimde \\\" ile kaçır. n değerini aynen koru.";
   try{
     /* Kopyala-yapıştır köprüsünün cevap alanını bekleme katmanı kapatmasın. */
     if(waitingModal&&waitingModal.parentNode)waitingModal.remove();
-    var raw=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:JSON.stringify(payload)}],{temperature:.25,max_tokens:Math.max(4000,missing.length*900),json:true,title:"💎 "+missing.length+" modül cümlesini tek seferde ayrıntılı açıkla",cacheType:"index-module-explanations-detailed-v2",cacheInput:payload});
-    var rows=(window.DHAIBulkJSON&&DHAIBulkJSON.parse)?DHAIBulkJSON.parse(raw):JSON.parse(String(raw||"")),saved=0;
-    for(var i=0;i<rows.length;i++){var n=Number(rows[i]&&rows[i].n),text=String(rows[i]&&rows[i].explanation||"").trim();if(n>=1&&n<=missing.length&&text){await saveAIToDB(missing[n-1].en,text);saved++;}}
-    var left=missing.length-saved;bulkModal("✅ Modül açıklamaları kaydedildi","<b>"+saved+" yeni cümle açıklaması</b> kaydedildi."+(left?" Yanıtta bulunmayan <b>"+left+" cümle</b> eksik bırakıldı. Aynı düğmeye yeniden bastığınızda kayıtlı olanlar gönderilmeden yalnız bu kalanlar tek istekte hazırlanır.":" Modülün bütün açıklamaları hazır."),false);
+    var raw=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:JSON.stringify(payload)}],{temperature:.25,max_tokens:Math.max(6000,missing.length*1300),json:true,title:"💎 "+missing.length+" modül cümlesini tek seferde tam ayrıntılı açıkla",cacheType:forceAll?"index-module-explanations-full-refresh-v3":"index-module-explanations-detailed-v3",cacheInput:{refresh:!!forceAll,items:payload},forceRefresh:!!forceAll});
+    var rows=(window.DHAIBulkJSON&&DHAIBulkJSON.parse)?DHAIBulkJSON.parse(raw):JSON.parse(String(raw||"")),saved=0,rejected=0;
+    for(var i=0;i<rows.length;i++){var n=Number(rows[i]&&rows[i].n),text=String(rows[i]&&rows[i].explanation||"").trim();if(n>=1&&n<=missing.length&&text){if(!isDetailedModuleExplanation(text)){rejected++;continue;}await saveAIToDB(missing[n-1].en,text);saved++;}}
+    var left=missing.length-saved;bulkModal("✅ Ayrıntılı modül açıklamaları işlendi","<b>"+saved+" ayrıntılı açıklama</b> kaydedildi."+(rejected?" <b>"+rejected+" kısa veya bölümleri eksik açıklama</b> kalite kontrolünden geçmedi ve eski kaydın üzerine yazılmadı.":"")+(left&&!forceAll?" Kalan <b>"+left+" cümle</b> sonraki çalıştırmada yeniden gönderilir.":left&&forceAll?" Baştan yenilemede tamamlanmayan "+left+" cümlenin eski açıklaması korundu.":" Modülün bütün açıklamaları hazır."),false);
     var current=document.querySelector(".card-en");if(current){var now=await getAIFromDB(current.textContent.trim());if(now)renderResultBox(current.textContent.trim(),now,"🤖 Toplu modül AI açıklaması");}
   }catch(e){bulkModal("⚠️ Toplu açıklama tamamlanamadı","Yanıt beklenen JSON biçiminde değildi veya işlem iptal edildi. Hiçbir mevcut kayıt silinmedi; tekrar denediğinizde yalnız eksik cümleler gönderilir.",false);}
 }
