@@ -651,6 +651,20 @@ function modePrefix(){ return State.mode === "listen" ? LISTEN_PREFIX : PREFIX; 
 function mGet(id){ return srsGet(id, modePrefix()); }
 function mSet(id, v){ return srsSet(id, v, modePrefix()); }
 function mAll(){ return srsAll(modePrefix()); }
+function practiceIgnoreMap(){ try{return JSON.parse(localStorage.getItem("dh-tekrar-yoksay-v1")||"{}")||{};}catch(e){return {};} }
+function practiceIgnored(id){ return !!practiceIgnoreMap()["s:"+id]; }
+async function practiceNeverAsk(s){
+  if(!s||!s.id)return;
+  var map=practiceIgnoreMap(); map["s:"+s.id]=1;
+  try{localStorage.setItem("dh-tekrar-yoksay-v1",JSON.stringify(map));}catch(e){}
+  try{
+    var db=await openDB();
+    await new Promise(function(resolve){var tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).delete(modePrefix()+s.id);tx.oncomplete=resolve;tx.onerror=resolve;});
+  }catch(e){}
+  try{delete State.srs[s.id];}catch(e){}
+  for(var n=State.queue.length-1;n>State.idx;n--) if(State.queue[n]&&State.queue[n].id===s.id)State.queue.splice(n,1);
+  State.idx++; renderCard();
+}
 
 /* default SRS kaydı — ana uygulamayla aynı şekil */
 function srsDefault(){ return { rep:0, ef:2.5, interval:0, due:0, last:0 }; }
@@ -1579,6 +1593,7 @@ async function startModuleSession(mod, resumeIdx){
     if (ba === 1) return (a.order||0) - (b.order||0);                          // modül sırası
     return (State.srs[a.id].due||0) - (State.srs[b.id].due||0);                // en yakın vade
   });
+  arr=arr.filter(function(s){return !practiceIgnored(s.id);});
   State.queue = arr;
   // kaldığın yerden devam: kuyruk yeniden kurulduğu için idx'i sınırla
   State.idx = resumeIdx ? Math.min(Math.max(0, resumeIdx), arr.length - 1) : 0;
@@ -1597,7 +1612,7 @@ async function startDueSession(){
     .sort((a,b) => (State.srs[a].due||0) - (State.srs[b].due||0));
   const due = await sentencesByIds(dueIds);
   // interleaving: farklı modüllerden karışsın
-  State.queue = due;
+  State.queue = due.filter(function(s){return !practiceIgnored(s.id);});
   State.idx = 0;
   State.activeModule = null;           // due oturumu pozisyon kaydı tutmaz
   State.sessionTitle = "Tekrar oturumu";
@@ -1664,7 +1679,7 @@ async function sourceItems(kind){
     try{var km=JSON.parse(localStorage.getItem("dh-konusma-gun-"+day)||"null");out=(km&&km.cumleler||[]).map(function(x){return asSentence(x,"speak",i++);}).filter(Boolean);}catch(e){}
   }
   /* aynı İngilizce cümleyi tek oturumda iki kez sorma */
-  var seen={}; return out.filter(function(s){var k=s.en.toLowerCase().replace(/[^a-z0-9']+/g," ").trim();if(seen[k])return false;seen[k]=1;return true;});
+  var seen={}; return out.filter(function(s){if(typeof practiceIgnored==="function"&&practiceIgnored(s.id))return false;var k=s.en.toLowerCase().replace(/[^a-z0-9']+/g," ").trim();if(seen[k])return false;seen[k]=1;return true;});
 }
 var SOURCE_TITLE={today:"Bugünün üretim çalışması",errors:"Hata Defteri telafisi",gemini:"Gemini kök neden çalışması","hard-reviews":"Zor tekrarları üret", "chat-errors":"Konuşma hatalarını düzelt","speaking-prep":"Konuşma öncesi hazırlık",pronunciation:"Telaffuz ve dinleme", "level-gap":"Seviye boşluğu telafisi",weekly:"Haftalık karma sınama"};
 async function startSourceSession(kind,limit){
@@ -2207,6 +2222,9 @@ async function evaluate(s, answer, layer){
   } else {
     grade = autoGrade(d.ratio, hadExtra);
   }
+  /* Esdeger/alternatif kelime dizilimi sonucunda karar dogruysa fark satiri
+     kirmizi "hata" gostermemeli. Ekrandaki karar ile renklendirme ayni olsun. */
+  if(grade==="easy") d.parts=tokenize(answer).map(function(w){return {type:"ok",word:w};});
   const next = srsGrade(State._gradeBase[s.id], grade);
   await mSet(s.id, next);
   State.srs[s.id] = next;   // yereli güncelle
@@ -2396,7 +2414,8 @@ function renderFeedback(s, d, grade, layer){
           <button class="gbtn g-easy ${grade==="easy"?"sel":""}" data-g="easy">Kolay</button>
         </div>
       </div>
-      <button class="next-btn" id="nextBtn">İleri ›</button>`;
+      <button class="next-btn" id="nextBtn">İleri ›</button>
+      <button class="btn btn-ghost" id="neverAskBtn" type="button" style="width:100%;margin-top:10px;color:#fca5a5;border-color:#7f1d1d">🚫 Bunu tekrar sorma</button>`;
   if (dock) dock.innerHTML = gradeHtml;
   else fb.querySelector(".feedback").insertAdjacentHTML("beforeend", gradeHtml);
 
@@ -2430,6 +2449,8 @@ function renderFeedback(s, d, grade, layer){
       renderCard();
     };
   }
+  const neverAskBtn=document.getElementById("neverAskBtn");
+  if(neverAskBtn) neverAskBtn.onclick=function(){ practiceNeverAsk(s); };
 }
 function gradeTR(g){ return g==="hard"?"Zor":g==="easy"?"Kolay":"Normal"; }
 

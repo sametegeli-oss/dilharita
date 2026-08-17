@@ -164,6 +164,26 @@
     } catch (e) {}
   }
 
+  function sohbetiTamamla(d) {
+    /* "hedefUlasildi" Gemini'nin acik onayidir. Bu durumda rapor yalniz
+       puan olmakla kalmaz; ekrandaki tum gorevleri ve koçun sohbet adimini
+       uygulama ici Bitir akisi ile ayni kanitlarla kapatir. */
+    if (!d || d.hedefUlasildi !== true) return false;
+    try { if (global.DHChatTasks && DHChatTasks.completeAll) DHChatTasks.completeAll(); } catch (e) {}
+    try {
+      var g=new Date(), gun=g.getFullYear()+"-"+String(g.getMonth()+1).padStart(2,"0")+"-"+String(g.getDate()).padStart(2,"0");
+      if(global.DHPlan){
+        if(DHPlan.tamamlaTip) DHPlan.tamamlaTip("sohbet");
+        if(DHPlan.etkinlikKaydet) DHPlan.etkinlikKaydet("speaking","gemini-"+gun+"-"+sayfa());
+      }
+      var k="dh-koc-steps-done-"+gun, set=JSON.parse(localStorage.getItem(k)||"{}")||{};
+      set["chat.html"]=1; set[sayfa()]=1; localStorage.setItem(k,JSON.stringify(set));
+      localStorage.setItem("dh-speaking-complete-"+gun,"1");
+      global.dispatchEvent(new CustomEvent("dh:task-complete",{detail:{type:"sohbet",source:"gemini-report"}}));
+    } catch (e) {}
+    return true;
+  }
+
   /* ═══════════════ GÖSTERİM ═══════════════ */
   function stil() {
     if (document.getElementById("dhgsr-css")) return;
@@ -266,6 +286,7 @@
         puaniKaydet(d);
         raporuKaydet(d);
         sayacaYaz();
+        sohbetiTamamla(d);
         var n = hatalariIsle(d);
         goster(d, n);
       }
@@ -309,6 +330,6 @@
 
   global.DHGeminiRapor = {
     iste: iste, son: son, goster: goster, ayristir: ayristir,
-    sozlesme: sozlesme, SEMA: SEMA
+    sozlesme: sozlesme, SEMA: SEMA, sohbetiTamamla: sohbetiTamamla
   };
 })(window);

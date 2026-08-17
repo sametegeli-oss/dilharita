@@ -704,6 +704,16 @@ function dhRenderTasks(){
   el.innerHTML="🎯 "+__dhTasks.map(function(t,i){ return '<span style="opacity:'+(__dhTaskDone[i]?1:.6)+'">'+(__dhTaskDone[i]?"✅":"⬜")+" "+t+"</span>"; }).join("  ·  ");
   if(__dhTaskDone.every(Boolean)) el.innerHTML+=' <b style="color:#4ade80">— 🎉 Görevler tamam!</b>';
 }
+/* Gemini'de devam eden sohbetin onayli raporu da ayni gorev seridini
+   kapatabilsin. Dizi bu dosyada kapsullu oldugu icin guvenli bir API acilir. */
+globalThis.DHChatTasks={
+  completeAll:function(){
+    for(var i=0;i<__dhTaskDone.length;i++) __dhTaskDone[i]=true;
+    dhRenderTasks();
+    return {done:__dhTaskDone.length,total:__dhTasks.length};
+  },
+  state:function(){return __dhTaskDone.slice();}
+};
 function dhStripTasks(reply){
   return String(reply||"").replace(/\[TASK_DONE:(\d)\]/g, function(_,n){
     var i=(+n)-1; if(__dhTaskDone[i]===false){ __dhTaskDone[i]=true; setTimeout(dhRenderTasks,50); }

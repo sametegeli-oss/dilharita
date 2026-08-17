@@ -56,6 +56,12 @@ function norm(t){
 }
 function answerCorrect(got,want){
   if(norm(got)===norm(want)) return true;
+  /* Mobilde SentenceAnalyzer gec/yuklenmemis olsa bile en temel yazim
+     bicimleri yanlis sayilmasin. Bu yedek iki tarafi da ayni acik bicime
+     cevirir; are not/aren't dahil butun yaygin daraltmalar esdegerdir. */
+  var contractions={"don't":"do not","doesn't":"does not","didn't":"did not","isn't":"is not","aren't":"are not","wasn't":"was not","weren't":"were not","can't":"can not","cannot":"can not","couldn't":"could not","won't":"will not","wouldn't":"would not","shouldn't":"should not","mustn't":"must not","haven't":"have not","hasn't":"has not","hadn't":"had not","i'm":"i am","you're":"you are","we're":"we are","they're":"they are","he's":"he is","she's":"she is","it's":"it is","that's":"that is","there's":"there is","i've":"i have","you've":"you have","we've":"we have","they've":"they have"};
+  function expanded(s){ return norm(s).split(" ").map(function(w){return contractions[w]||w;}).join(" "); }
+  if(expanded(got)===expanded(want)) return true;
   /* Günlük karne, Hata Defteri'nin geri kalanıyla aynı cümle motorunu
      kullanmalı. Motor isn't/is not, aren't/are not gibi kısaltmaları açar;
      böylece doğru cevap yalnız yazım biçimi farklı diye reddedilmez. */
@@ -130,6 +136,16 @@ function syncDailyPlan(count){
       p.adimlar[i].yapilan=Math.min(p.adimlar[i].hedef|0,count|0); break;
     }
     localStorage.setItem(k,JSON.stringify(p));
+    if((count|0)>=3){
+      /* Koç ayrı bir tamamlanma kanıtı okur. Yalnız DHPlan'i ilerletmek,
+         özellikle mobilde kullanıcıyı yeniden karneye gönderen döngüydü. */
+      var dk="dh-koc-steps-done-"+today(), ds=JSON.parse(localStorage.getItem(dk)||"{}")||{};
+      ds["hata-defteri.html?gemini=gunluk"]=1;
+      ds["hata-defteri.html"]=1;
+      localStorage.setItem(dk,JSON.stringify(ds));
+      localStorage.setItem("dh-gemini-daily-complete-"+today(),"1");
+      try{ global.dispatchEvent(new CustomEvent("dh:task-complete",{detail:{type:"hata",source:"gemini-daily"}})); }catch(e){}
+    }
   }catch(e){}
 }
 function render(data, options){
