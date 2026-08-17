@@ -12,6 +12,7 @@
      3) DHProgress (kendi IDB'si)  : kelime/cümle durumu — AYNA üzerinden
                               (mirrorNow: IDB→localStorage, applyMirror: localStorage→IDB)
      4) LearningErrorDB     : hata defteri (all / bulkMerge)
+     5) DilHaritaAI_DB      : cümle AI açıklamaları (zaman damgalı, silme mezar taşlı)
 
    BİRLEŞTİRME KURALLARI:
      dh-study-tracker-v1    → günler birleşir (union), sayaçlarda büyük kazanır,
@@ -352,6 +353,12 @@
     });
   }
 
+  /* ── 4b) AI açıklamaları: DilHaritaAI_DB/ai_explanations ── */
+  function aiOpen(){return new Promise(function(res){try{var r=indexedDB.open("DilHaritaAI_DB",1);r.onupgradeneeded=function(e){var db=e.target.result;if(!db.objectStoreNames.contains("ai_explanations"))db.createObjectStore("ai_explanations",{keyPath:"sentence"});};r.onsuccess=function(){res(r.result);};r.onerror=function(){res(null);};}catch(e){res(null);}});}
+  async function aiReadAll(){var db=await aiOpen();if(!db)return [];return new Promise(function(res){try{var out=[],tx=db.transaction("ai_explanations","readonly"),req=tx.objectStore("ai_explanations").openCursor();req.onsuccess=function(e){var c=e.target.result;if(c){var v=c.value||{};if(v.sentence)out.push({sentence:String(v.sentence),explanation:String(v.explanation||""),deleted:!!v.deleted,timestamp:v.timestamp||""});c.continue();}else{db.close();out.sort(function(a,b){return a.sentence.localeCompare(b.sentence);});res(out);}};req.onerror=function(){db.close();res([]);};}catch(e){try{db.close();}catch(_){}res([]);}});}
+  function aiTime(v){var n=Date.parse(v&&v.timestamp||"");return isFinite(n)?n:0;}
+  async function aiMergeRemote(remote){if(!Array.isArray(remote)||!remote.length)return 0;var local=await aiReadAll(),map={};local.forEach(function(x){map[x.sentence]=x;});var incoming=[];remote.forEach(function(x){if(!x||!x.sentence)return;var old=map[String(x.sentence)];if(!old||aiTime(x)>aiTime(old))incoming.push({sentence:String(x.sentence),explanation:String(x.explanation||""),deleted:!!x.deleted,timestamp:x.timestamp||new Date().toISOString()});});if(!incoming.length)return 0;var db=await aiOpen();if(!db)return 0;return new Promise(function(res){try{var tx=db.transaction("ai_explanations","readwrite"),st=tx.objectStore("ai_explanations");incoming.forEach(function(x){st.put(x);});tx.oncomplete=function(){db.close();res(incoming.length);};tx.onerror=function(){db.close();res(0);};}catch(e){try{db.close();}catch(_){}res(0);}});}
+
   /* ── 5) Diğer yerel kaynaklar ─────────────────────────────── */
   function mirrorNow(){ try{ if(window.DHProgress&&DHProgress.mirrorNow) return Promise.resolve(DHProgress.mirrorNow()).catch(function(){}); }catch(e){} return Promise.resolve(); }
   function applyMirror(){ try{ if(window.DHProgress&&DHProgress.applyMirror) return Promise.resolve(DHProgress.applyMirror()).catch(function(){return 0;}); }catch(e){} return Promise.resolve(0); }
@@ -385,7 +392,8 @@
     var kv=await kvReadAll();                // modül ilerlemesi (smv:*)
     for(var k in kv){ if(kv.hasOwnProperty(k)) ls[k]=kv[k]; }
     var errors=await errAll().catch(function(){ return []; });
-    return { ls:ls, errors:Array.isArray(errors)?errors.slice(0,3000):[] };
+    var ai=await aiReadAll().catch(function(){ return []; });
+    return { ls:ls, errors:Array.isArray(errors)?errors.slice(0,3000):[], ai:ai };
   }
 
   /* ── 7) PUSH: yereli buluta yaz ──────────────────────────── */
@@ -487,8 +495,11 @@
       var errSig = sigOf(JSON.stringify(data.errors||[]));
       var errDegisti = (eski.__errors !== errSig);
       yeniSig.__errors = errSig;
+      var aiChanged=[];
+      (data.ai||[]).forEach(function(rec){var ak="__aix:"+sigOf(rec.sentence||""),av=sigOf(JSON.stringify(rec));yeniSig[ak]=av;if(tam||eski[ak]!==av)aiChanged.push(rec);});
+      var aiDegisti = aiChanged.length>0;
 
-      if(!degisenSayi && !errDegisti){
+      if(!degisenSayi && !errDegisti && !aiDegisti){
         __sonPushTs = Date.now();
         return { ok:true, skipped:true, size:0, dropped:g.dropped };
       }
@@ -497,6 +508,7 @@
         ls: degisen,
         errors: errDegisti ? data.errors : null
       });
+      if(aiDegisti) await fb.saveAIExplanations(user.uid,aiChanged);
 
       /* İmzalar YALNIZCA yazma başarılıysa saklanır. Yoksa başarısız bir
          yazmadan sonra o değişiklik bir daha hiç gönderilmezdi. */
@@ -550,6 +562,7 @@
       try{ migration=!!localStorage.getItem("dh-account-migration-pending"); }catch(e){}
       try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"syncing",migration:migration}})); }catch(e){}
       var remote=await fb.loadSettings(user.uid);
+      var remoteAI=await fb.loadAIExplanations(user.uid).catch(function(){return [];});
       try{ await fb.purgeSecrets(user.uid); }catch(e){}
       var rd=parseRemote(remote);
       // MODÜL ÇAKIŞMA YÖNÜ: bulut, bu cihazın son yazmasından YENİYSE bulut kazanır;
@@ -619,6 +632,7 @@
         }
       }
       await kvWriteAll(kvIncoming);                 // modül ilerlemesi → IndexedDB (React okur)
+      var addedAI=await aiMergeRemote(remoteAI);    // AI açıklaması: en yeni kayıt/silme kazanır
       var addedErr=await errMerge(rd.errors||[]);   // hata defteri birleşir
       var addedProg=await applyMirror();            // kelime aynası → DHProgress IDB
       /* GERİ YAZ: bulut = birleşim. Burada FARK yazma kullanılmaz —
@@ -633,6 +647,7 @@
       if(pulled) parts.push(pulled+" kayıt buluttan alındı");
       if(addedErr) parts.push(addedErr+" hata kaydı eklendi");
       if(addedProg) parts.push(addedProg+" ilerleme uygulandı");
+      if(addedAI) parts.push(addedAI+" AI açıklaması birleştirildi");
       if(!parts.length) parts.push("her şey zaten güncel");
       var pmsg = pres&&pres.ok
         ? ("buluta yazıldı "+Math.round((pres.size||0)/1024)+"KB"+(pres.dropped?(" ("+pres.dropped+" büyük kayıt atlandı)"):""))
@@ -733,6 +748,16 @@
             out.updated_at=Math.max(st.updated_at||0, pg.updated_at||0);
             return out;
           });
+        },
+        loadAIExplanations:function(uid){
+          return fsMod.getDocs(fsMod.collection(db,"users",uid,"ai_explanations")).then(function(snap){var out=[];snap.forEach(function(d){var v=d.data()||{};if(v.sentence)out.push({sentence:String(v.sentence),explanation:String(v.explanation||""),deleted:!!v.deleted,timestamp:v.timestamp||""});});return out;});
+        },
+        saveAIExplanations:function(uid,records){
+          records=Array.isArray(records)?records:[];if(!records.length)return Promise.resolve([]);
+          function docId(sentence){var id=encodeURIComponent(String(sentence||""));if(id.length<=1200)return id;var h=5381,s=String(sentence||""),i=s.length;while(i)h=((h*33)^s.charCodeAt(--i))>>>0;return "long_"+s.length+"_"+h.toString(36);}
+          var jobs=[];
+          for(var start=0;start<records.length;start+=400){var batch=fsMod.writeBatch(db),part=records.slice(start,start+400);part.forEach(function(x){batch.set(fsMod.doc(db,"users",uid,"ai_explanations",docId(x.sentence)),{sentence:String(x.sentence),explanation:String(x.explanation||""),deleted:!!x.deleted,timestamp:x.timestamp||new Date().toISOString()});});jobs.push(batch.commit());}
+          return Promise.all(jobs);
         },
         saveSettings:function(uid,data){
           // BÖL: ilerleme (smv:*, wsrs, ayna, günler) → progress/{uid}; kalan ayarlar → settings/{uid}.
@@ -1014,6 +1039,7 @@
   /* ── 12) BAŞLAT + DIŞ API ────────────────────────────────── */
   hookLocalStorage();
   window.addEventListener("learning-errors-cleared", pushSoon);
+  window.addEventListener("dh-ai-explanation-changed", pushSoon);
   window.addEventListener("pagehide", flushOnLeave);
   document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="hidden") flushOnLeave(); });
   initFirebase();

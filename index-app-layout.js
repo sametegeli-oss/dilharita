@@ -389,8 +389,8 @@ function saveAIToDB(sentence, explanation) {
       let db = e.target.result;
       let tx = db.transaction(["ai_explanations"], "readwrite");
       let store = tx.objectStore("ai_explanations");
-      store.put({ sentence: sentence, explanation: explanation, timestamp: new Date().toISOString() });
-      tx.oncomplete = function() { resolve(true); };
+      store.put({ sentence: sentence, explanation: explanation, deleted:false, timestamp: new Date().toISOString() });
+      tx.oncomplete = function() { try{window.dispatchEvent(new CustomEvent("dh-ai-explanation-changed"));}catch(e){} resolve(true); };
     };
     });
   });
@@ -400,7 +400,7 @@ var AI_BACKUP_KEY="dh-ai-explanation-backups-v1";
 function readAIBackups(){try{return JSON.parse(localStorage.getItem(AI_BACKUP_KEY)||"{}")||{};}catch(e){return {};}}
 function pushAIBackup(sentence,text){if(!text)return;var all=readAIBackups(),list=all[sentence]||[];if(list[list.length-1]!==text)list.push(text);all[sentence]=list.slice(-5);try{localStorage.setItem(AI_BACKUP_KEY,JSON.stringify(all));}catch(e){}}
 function popAIBackup(sentence){var all=readAIBackups(),list=all[sentence]||[],text=list.pop()||null;if(list.length)all[sentence]=list;else delete all[sentence];try{localStorage.setItem(AI_BACKUP_KEY,JSON.stringify(all));}catch(e){}return text;}
-function deleteAIFromDB(sentence){return getAIFromDB(sentence).then(function(oldText){if(oldText)pushAIBackup(sentence,oldText);return new Promise(function(resolve){var req=indexedDB.open("DilHaritaAI_DB",1);req.onsuccess=function(e){var tx=e.target.result.transaction(["ai_explanations"],"readwrite");tx.objectStore("ai_explanations").delete(sentence);tx.oncomplete=function(){resolve(true);};};req.onerror=function(){resolve(false);};});});}
+function deleteAIFromDB(sentence){return getAIFromDB(sentence).then(function(oldText){if(oldText)pushAIBackup(sentence,oldText);return new Promise(function(resolve){var req=indexedDB.open("DilHaritaAI_DB",1);req.onsuccess=function(e){var tx=e.target.result.transaction(["ai_explanations"],"readwrite");tx.objectStore("ai_explanations").put({sentence:sentence,explanation:"",deleted:true,timestamp:new Date().toISOString()});tx.oncomplete=function(){try{window.dispatchEvent(new CustomEvent("dh-ai-explanation-changed"));}catch(e){}resolve(true);};};req.onerror=function(){resolve(false);};});});}
 async function restorePreviousAI(sentence){var old=popAIBackup(sentence);if(!old)return null;await saveAIToDB(sentence,old);return old;}
 
 function getAllAIExplanationsFromDB() {
