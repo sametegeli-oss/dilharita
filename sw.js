@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v97";   /* v97: kesin aktif modül seçimi ve erişilebilir Gemini yapıştırma */
+var SW_VERSION = "dh-sw-v98";   /* v98: ayrıntılı tek-paket açıklama ve güvenli yenileme geçmişi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

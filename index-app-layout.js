@@ -343,7 +343,9 @@ function getAIFromDB(sentence) {
 }
 
 function saveAIToDB(sentence, explanation) {
-  return new Promise(function(resolve) {
+  return getAIFromDB(sentence).then(function(oldText){
+    if(oldText&&oldText!==explanation)pushAIBackup(sentence,oldText);
+    return new Promise(function(resolve) {
     let req = indexedDB.open("DilHaritaAI_DB", 1);
     req.onsuccess = function(e) {
       let db = e.target.result;
@@ -352,8 +354,16 @@ function saveAIToDB(sentence, explanation) {
       store.put({ sentence: sentence, explanation: explanation, timestamp: new Date().toISOString() });
       tx.oncomplete = function() { resolve(true); };
     };
+    });
   });
 }
+
+var AI_BACKUP_KEY="dh-ai-explanation-backups-v1";
+function readAIBackups(){try{return JSON.parse(localStorage.getItem(AI_BACKUP_KEY)||"{}")||{};}catch(e){return {};}}
+function pushAIBackup(sentence,text){if(!text)return;var all=readAIBackups(),list=all[sentence]||[];if(list[list.length-1]!==text)list.push(text);all[sentence]=list.slice(-5);try{localStorage.setItem(AI_BACKUP_KEY,JSON.stringify(all));}catch(e){}}
+function popAIBackup(sentence){var all=readAIBackups(),list=all[sentence]||[],text=list.pop()||null;if(list.length)all[sentence]=list;else delete all[sentence];try{localStorage.setItem(AI_BACKUP_KEY,JSON.stringify(all));}catch(e){}return text;}
+function deleteAIFromDB(sentence){return getAIFromDB(sentence).then(function(oldText){if(oldText)pushAIBackup(sentence,oldText);return new Promise(function(resolve){var req=indexedDB.open("DilHaritaAI_DB",1);req.onsuccess=function(e){var tx=e.target.result.transaction(["ai_explanations"],"readwrite");tx.objectStore("ai_explanations").delete(sentence);tx.oncomplete=function(){resolve(true);};};req.onerror=function(){resolve(false);};});});}
+async function restorePreviousAI(sentence){var old=popAIBackup(sentence);if(!old)return null;await saveAIToDB(sentence,old);return old;}
 
 function getAllAIExplanationsFromDB() {
   return new Promise(function(resolve) {
@@ -398,16 +408,16 @@ async function explainActiveModuleWithAI(){
   var cached=await getAllAIExplanationsFromDB(),missing=sentences.filter(function(s){return !cached[s.en];});
   if(!missing.length){bulkModal("♻️ Modül açıklamaları hazır","Bu modüldeki <b>"+sentences.length+" cümlenin tamamı</b> daha önce açıklanmış. Gemini’ye yeniden gönderilmedi.",false);var cur=document.querySelector(".card-en");if(cur&&cached[cur.textContent.trim()])renderResultBox(cur.textContent.trim(),cached[cur.textContent.trim()],"🤖 Modülün kayıtlı AI açıklaması");return;}
   if(!(window.DHProviders&&DHProviders.chat&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())){alert("Profilde Gemini/AI yöntemini etkinleştirin.");return;}
-  var waitingModal=bulkModal("💎 Modül Gemini’ye hazırlanıyor","Toplam "+sentences.length+" cümlenin "+cachedCount(sentences,cached)+" tanesi kayıtlı. Yalnız eksik olan <b>"+missing.length+" cümle</b> tek istekte gönderilecek…",true);
+  var waitingModal=bulkModal("💎 Modül AI’ye hazırlanıyor","Toplam "+sentences.length+" cümlenin "+cachedCount(sentences,cached)+" tanesi kayıtlı. Açıklaması bulunmayan <b>"+missing.length+" cümlenin tamamı tek istekte</b> gönderilecek. Yanıt bazı cümleleri atlarsa kaydedilenler korunur; sonraki çalıştırmada yalnız kalanlar gönderilir.",true);
   var payload=missing.map(function(s,i){return{n:i+1,en:s.en,tr:s.tr||""};});
-  var sys="Türk öğrenci için verilen İngilizce cümlelerin HER BİRİNİ ayrı ayrı açıkla. Türkçe çeviri, temel dilbilgisi yapısı, önemli kelime/kalıp, anlam nüansı ve bir kısa doğru örnek ver. Hiçbir cümleyi atlama. Yalnız geçerli JSON dizi döndür: [{\"n\":1,\"explanation\":\"Markdown açıklama\"}]. n değerini aynen koru.";
+  var sys="Türk öğrenci için verilen İngilizce cümlelerin HER BİRİNİ AYRINTILI ve ayrı ayrı açıkla. Her explanation alanında şu Markdown başlıkları zorunludur: **Türkçe çeviri**, **Dilbilgisi**, **Önemli kelimeler ve kalıplar**, **Anlam nüansı**, **Örnek**. Dilbilgisinde yapıyı ve neden kullanıldığını açıkla; önemli kelime/kalıpların Türkçe anlamlarını ver; anlam nüansını yüzeysel geçme; yeni ve doğru İngilizce örneğin Türkçe çevirisini de yaz. Her açıklama öğretici ve kapsamlı olmalı; tek paragraf veya birkaç kısa cümleyle geçiştirme. Hiçbir cümleyi atlama. Yalnız geçerli JSON dizi döndür: [{\"n\":1,\"explanation\":\"Markdown açıklama\"}]. n değerini aynen koru.";
   try{
     /* Kopyala-yapıştır köprüsünün cevap alanını bekleme katmanı kapatmasın. */
     if(waitingModal&&waitingModal.parentNode)waitingModal.remove();
-    var raw=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:JSON.stringify(payload)}],{temperature:.25,max_tokens:Math.max(1800,missing.length*350),json:true,title:"💎 "+missing.length+" modül cümlesini toplu açıkla",cacheType:"index-module-explanations",cacheInput:payload});
+    var raw=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:JSON.stringify(payload)}],{temperature:.25,max_tokens:Math.max(4000,missing.length*900),json:true,title:"💎 "+missing.length+" modül cümlesini tek seferde ayrıntılı açıkla",cacheType:"index-module-explanations-detailed-v2",cacheInput:payload});
     var clean=String(raw||"").replace(/```json|```/gi,"").trim(),a=clean.indexOf("["),z=clean.lastIndexOf("]");if(a<0||z<a)throw new Error("JSON dizi bulunamadı");var rows=JSON.parse(clean.slice(a,z+1)),saved=0;
     for(var i=0;i<rows.length;i++){var n=Number(rows[i]&&rows[i].n),text=String(rows[i]&&rows[i].explanation||"").trim();if(n>=1&&n<=missing.length&&text){await saveAIToDB(missing[n-1].en,text);saved++;}}
-    var left=missing.length-saved;bulkModal("✅ Modül açıklamaları kaydedildi","<b>"+saved+" cümle açıklaması</b> IndexedDB’ye kaydedildi."+(left?" Gemini "+left+" cümleyi eksik bıraktı; düğmeye yeniden basınca yalnız eksikler gönderilecek.":" Modülün bütün açıklamaları hazır."),false);
+    var left=missing.length-saved;bulkModal("✅ Modül açıklamaları kaydedildi","<b>"+saved+" yeni cümle açıklaması</b> kaydedildi."+(left?" Yanıtta bulunmayan <b>"+left+" cümle</b> eksik bırakıldı. Aynı düğmeye yeniden bastığınızda kayıtlı olanlar gönderilmeden yalnız bu kalanlar tek istekte hazırlanır.":" Modülün bütün açıklamaları hazır."),false);
     var current=document.querySelector(".card-en");if(current){var now=await getAIFromDB(current.textContent.trim());if(now)renderResultBox(current.textContent.trim(),now,"🤖 Toplu modül AI açıklaması");}
   }catch(e){bulkModal("⚠️ Toplu açıklama tamamlanamadı","Yanıt beklenen JSON biçiminde değildi veya işlem iptal edildi. Hiçbir mevcut kayıt silinmedi; tekrar denediğinizde yalnız eksik cümleler gönderilir.",false);}
 }
@@ -427,10 +437,19 @@ function renderResultBox(sentence, rawMarkdownText, tag) {
   box.id = "dhAiResultBox";
   box.dataset.sentence = sentence;
   box.style.cssText = "margin-top:16px;padding:16px;background:rgba(15,23,42,0.95);border-radius:14px;border:1px solid #3b82f6;color:#f1f5f9;grid-column:1 / -1;";
-  box.innerHTML = `<div style="margin-bottom:12px;"><span style="background:#10b981;color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:800;">${tag}</span></div>` + formattedHTML;
+  box.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;"><span style="background:#10b981;color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:800;">${tag}</span><button type="button" data-ai-action="renew">🔄 Yeniden hazırla</button><button type="button" data-ai-action="edit">✏️ Düzenle</button><button type="button" data-ai-action="delete">🗑️ Sil</button><button type="button" data-ai-action="restore">↩ Önceki</button></div><div class="dh-ai-result-content">` + formattedHTML + `</div>`;
+  box.querySelectorAll("button[data-ai-action]").forEach(function(b){b.style.cssText="border:1px solid #475569;border-radius:7px;background:#17243a;color:#e5edf8;padding:5px 8px;font-size:11px;font-weight:800;cursor:pointer";});
+  box.querySelector('[data-ai-action="edit"]').onclick=function(){showExplanationEditor(sentence,rawMarkdownText,"Açıklamayı düzenle");};
+  box.querySelector('[data-ai-action="renew"]').onclick=function(){renewSingleExplanation(sentence,rawMarkdownText);};
+  box.querySelector('[data-ai-action="delete"]').onclick=async function(){if(!confirm("Bu açıklama silinsin mi? Modül toplu işleminde yeniden eksik sayılacaktır."))return;await deleteAIFromDB(sentence);box.innerHTML='<div style="color:#fbbf24">Açıklama silindi. Bir sonraki toplu işlemde yalnız eksiklerle birlikte yeniden hazırlanacak.</div><button type="button" id="dhRestoreDeleted" style="margin-top:10px;padding:8px;border:0;border-radius:8px;background:#334155;color:white;font-weight:800">↩ Silmeyi geri al</button>';box.querySelector("#dhRestoreDeleted").onclick=async function(){var old=await restorePreviousAI(sentence);if(old)renderResultBox(sentence,old,"🤖 Önceki açıklama geri yüklendi");};};
+  box.querySelector('[data-ai-action="restore"]').onclick=async function(){var old=popAIBackup(sentence);if(!old){alert("Bu cümle için önceki açıklama bulunmuyor.");return;}var current=await getAIFromDB(sentence);if(current)pushAIBackup(sentence,current);await saveAIToDB(sentence,old);renderResultBox(sentence,old,"🤖 Önceki açıklama geri yüklendi");};
   
   card.appendChild(box);
 }
+
+function showExplanationEditor(sentence,text,title){var old=document.getElementById("dhAiEditModal");if(old)old.remove();var m=document.createElement("div");m.id="dhAiEditModal";m.style.cssText="position:fixed;inset:0;z-index:1000002;background:#020617e8;display:flex;align-items:center;justify-content:center;padding:14px";m.innerHTML='<div style="width:min(720px,100%);background:#0f172a;border:1px solid #8b5cf6;border-radius:16px;padding:16px;color:white"><h3 style="margin:0 0 10px">'+title+'</h3><p style="font-size:12px;color:#94a3b8">Yeni metin kaydedilene kadar mevcut açıklama korunur.</p><textarea style="width:100%;height:50vh;box-sizing:border-box;background:#071225;color:white;border:1px solid #475569;border-radius:10px;padding:12px"></textarea><div style="display:flex;gap:8px;margin-top:10px"><button data-x="cancel">İptal</button><button data-x="save">Onayla ve değiştir</button></div></div>';document.body.appendChild(m);var ta=m.querySelector("textarea");ta.value=text||"";m.querySelectorAll("button").forEach(function(b){b.style.cssText="flex:1;padding:10px;border:0;border-radius:8px;background:#334155;color:white;font-weight:800";});m.querySelector('[data-x="save"]').style.background="#10b981";m.querySelector('[data-x="cancel"]').onclick=function(){m.remove();};m.querySelector('[data-x="save"]').onclick=async function(){var v=ta.value.trim();if(!v)return;await saveAIToDB(sentence,v);m.remove();renderResultBox(sentence,v,"🤖 Düzenlenmiş AI açıklaması");};ta.focus();}
+
+async function renewSingleExplanation(sentence,current){if(!(window.DHProviders&&DHProviders.chat))return;var prompt="Aşağıdaki İngilizce cümleyi Türk öğrenci için ayrıntılı açıkla. Şu Markdown başlıklarının tamamını kullan: **Türkçe çeviri**, **Dilbilgisi**, **Önemli kelimeler ve kalıplar**, **Anlam nüansı**, **Örnek**. Yapının nedenini anlat, örneğin Türkçe çevirisini ekle ve kısa geçme. Cümle: "+sentence;try{var fresh=await DHProviders.chat([{role:"user",content:prompt}],{title:"🔄 Açıklamayı ayrıntılı yeniden hazırla",cacheType:"index-single-explanation-detailed-v2",cacheInput:{sentence:sentence},forceRefresh:true,max_tokens:2200});if(fresh)showExplanationEditor(sentence,String(fresh).trim(),"Yeni açıklamayı önizle");}catch(e){alert("Yeni açıklama alınamadı; mevcut kayıt korunuyor.");}}
 
 async function checkAndSyncAiBox(card) {
   let sentenceEl = card.querySelector(".card-en");
