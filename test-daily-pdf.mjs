@@ -10,5 +10,5 @@ ok(/Yarın çalışılacak bütün SRS cümleleri/.test(js)&&/Yarın çalışıl
 ok(/window\.print\(\)/.test(js)&&/@page\{size:A4/.test(js),"çıktı A4 PDF yazdırma düzeninde açılıyor");
 ok(home.includes('id="bugunPdf"')&&home.includes('id="yarinPdf"'),"iki PDF isteğe bağlı ana ekran düğmesi olarak sunuluyor");
 ok(/DHDailyPdf\.today\(\)/.test(home)&&/DHDailyPdf\.tomorrow\(\)/.test(home),"düğmeler ayrı PDF akışlarını başlatıyor");
-ok(/dh-sw-v8[6-9]/.test(sw),"Service Worker sürümü yükseltildi");
+ok(/dh-sw-v(?:8[6-9]|9\d+)/.test(sw),"Service Worker sürümü yükseltildi");
 process.exit(fail?1:0);

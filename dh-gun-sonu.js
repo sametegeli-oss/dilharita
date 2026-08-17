@@ -182,6 +182,7 @@
         + 'background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;font-weight:900;'
         + 'font-size:14px;padding:13px;border-radius:12px;cursor:pointer">'
         + '🎓 Öğretmenle karma pratik yap</button>'
+        + '<button id="dhGsGemini" style="display:block;width:100%;margin-top:8px;border:0;background:#8b5cf6;color:#fff;font-weight:900;font-size:14px;padding:13px;border-radius:12px;cursor:pointer">💎 Bugünün tamamını Gemini ile değerlendir</button>'
         + '<div style="font-size:11.5px;color:#64748b;margin-top:7px;line-height:1.5">'
         + 'Öğretmen bu cümleleri, kalıpları ve kelimeleri tek bir konuşmada '
         + 'harmanlayıp sana ÜRETTİRİR — okutmaz.</div>';
@@ -190,6 +191,8 @@
     body.appendChild(kutu);
     var b = document.getElementById("dhGsGit");
     if (b) b.onclick = function () { ogretmeneGonder(h); };
+    var g = document.getElementById("dhGsGemini");
+    if (g) g.onclick = function () { if(global.DHGeminiQuality) DHGeminiQuality.todayReview(); else alert("Gemini değerlendirme aracı bu ekranda yüklenmedi."); };
   }
 
   /* Panel coach-bubble.js tarafindan aciliyor; DOM'a girmesini bekle. */

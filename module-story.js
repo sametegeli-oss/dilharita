@@ -48,9 +48,9 @@
     var sys = "Sen bir İngilizce öğretmenisin. Öğrenci için KISA, akıcı ve eğlenceli bir hikaye yaz. "
       + "Hikaye, verilen gramer konusunu BOL BOL kullanmalı (öğrenci o yapıyı bağlamda görsün). "
       + "Seviye: "+(prof.level||"B1")+" — kelimeler ve cümleler bu seviyeye uygun olsun, fazla zorlaştırma. "
-      + "5-8 cümlelik tek paragraf. Sonra AYNI hikayenin doğal Türkçe çevirisini ver. "
+      + "5-8 cümlelik tek paragraf, iki kişilik kısa diyalog, 3 anlama sorusu ve 1 konuşma görevi üret. Sonra hikayenin doğal Türkçe çevirisini ver. "
       + "SADECE şu JSON formatında yanıt ver, başka hiçbir şey yazma: "
-      + '{"title":"kısa İngilizce başlık","en":"İngilizce hikaye","tr":"Türkçe çeviri"}';
+      + '{"title":"kısa İngilizce başlık","en":"İngilizce hikaye","tr":"Türkçe çeviri","dialogue":["A: ...","B: ..."],"questions":["..."],"speakingTask":"..."}';
     var usr = "Gramer konusu: "+prof.topic+"\n"
       + (prof.grammars.length? "Alt konular: "+prof.grammars.join(", ")+"\n" : "")
       + "Bu yapıları kullanan örnek cümleler:\n- " + prof.samples.slice(0,6).join("\n- ")
@@ -62,7 +62,7 @@
       if(m){
         try{
           var o=JSON.parse(m[0]);
-          if(o.en){ return { title:o.title||prof.topic, en:o.en, tr:o.tr||"", ai:true }; }
+          if(o.en){ return { title:o.title||prof.topic, en:o.en, tr:o.tr||"", dialogue:Array.isArray(o.dialogue)?o.dialogue:[], questions:Array.isArray(o.questions)?o.questions:[], speakingTask:o.speakingTask||"", ai:true }; }
         }catch(e){}
       }
       throw {code:"parse"};

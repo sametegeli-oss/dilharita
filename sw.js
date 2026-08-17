@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v90";   /* v90: hata defterinde tum gorunur kayitlari tek Gemini paketinde degerlendir */
+var SW_VERSION = "dh-sw-v91";   /* v91: konusma haric toplu Gemini kalite paketleri */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -50,6 +50,7 @@ var SHELL = [
   "./ai-providers.js",
   "./ai-choice.js",
   "./gemini-bridge.js",
+  "./gemini-quality-tools.js",
   "./onboarding-guard.js",
   "./dh-modul.js",
   "./dh-modul-enjekte.js",

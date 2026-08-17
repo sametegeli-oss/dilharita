@@ -968,13 +968,39 @@
       out.innerHTML='<div class="dh-wp-ai-out">AI açıklaması için öğretmen sayfasından bir API anahtarı ekle (Groq, Cerebras veya Gemini).</div>';
       return;
     }
-    btn.textContent="⏳ Açıklama hazırlanıyor…"; btn.disabled=true;
-    var sys="Sen İngilizce öğreten bir öğretmensin. Verilen İngilizce kelimeyi Türkçe açıkla: kısa tanım, ne zaman/nasıl kullanılır, 1-2 örnek cümle (İngilizce + Türkçe çeviri). Kısa ve öğretici, akıcı yaz.";
-    var usr="Kelime: \""+word+"\"\nTürkçe anlamları: "+anlamlar.join(", ")+"\nBu kelimeyi öğrenciye açıkla.";
-    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.5,max_tokens:400})
-      .then(function(txt){ out.innerHTML='<div class="dh-wp-ai-out">'+esc(String(txt||"").trim())+'</div>'; })
+    var cacheKey="dh-word-package-v2", cache={};
+    try{ cache=JSON.parse(localStorage.getItem(cacheKey)||"{}")||{}; }catch(e){}
+    var ck=String(word||"").toLowerCase(), old=cache[ck];
+    function draw(p){
+      var lines=[];
+      if(p.tanim) lines.push("📖 "+p.tanim);
+      if(p.kullanim) lines.push("🧭 "+p.kullanim);
+      if(p.telaffuz) lines.push("🔊 "+p.telaffuz);
+      if(Array.isArray(p.kaliplar)&&p.kaliplar.length) lines.push("🧩 Kalıplar: "+p.kaliplar.join(", "));
+      if(Array.isArray(p.esAnlamlilar)&&p.esAnlamlilar.length) lines.push("🔁 Eş anlamlılar: "+p.esAnlamlilar.join(", "));
+      if(Array.isArray(p.ornekler)) p.ornekler.forEach(function(x){ if(x&&x.en) lines.push("• "+x.en+(x.tr?" — "+x.tr:"")); });
+      if(p.ipucu) lines.push("💡 "+p.ipucu);
+      out.innerHTML='<div class="dh-wp-ai-out" style="white-space:pre-line">'+esc(lines.join("\n"))+'</div>';
+    }
+    if(old&&old.at>Date.now()-30*86400000&&old.data){ draw(old.data); return; }
+    btn.textContent="⏳ Kelime paketi hazırlanıyor…"; btn.disabled=true;
+    var sys="Sen Türk öğrenciye İngilizce öğreten bir öğretmensin. Kelimeyi tek pakette analiz et. Yalnız geçerli JSON döndür: {\"tanim\":\"kısa Türkçe tanım\",\"kullanim\":\"ne zaman/nasıl kullanılır\",\"telaffuz\":\"Türkçe telaffuz ipucu\",\"esAnlamlilar\":[\"English word\"],\"kaliplar\":[\"English collocation\"],\"ornekler\":[{\"en\":\"English sentence\",\"tr\":\"Türkçesi\"}],\"ipucu\":\"akılda tutma ipucu\"}. En fazla 6 eş anlamlı, 5 kalıp ve A1/B1/B2 düzeylerinde 3 örnek ver. Eş anlamlılar yalnız İngilizce temel biçimde olsun.";
+    var usr="Kelime: \""+word+"\"\nYerel sözlük anlamları: "+anlamlar.join(", ");
+    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.4,max_tokens:900,json:true,title:"💎 "+word+" kelime paketini hazırla"})
+      .then(function(txt){
+        var t=String(txt||"").replace(/```json|```/gi,"").trim(), m=t.match(/\{[\s\S]*\}/), p=m?JSON.parse(m[0]):null;
+        if(!p||!p.tanim) throw new Error("Kelime paketi okunamadı");
+        cache[ck]={at:Date.now(),data:p};
+        try{ localStorage.setItem(cacheKey,JSON.stringify(cache)); }catch(e){}
+        if(Array.isArray(p.esAnlamlilar)){
+          var synCache={}; try{synCache=JSON.parse(localStorage.getItem("dh-syn-ai-v1")||"{}")||{};}catch(e){}
+          synCache[ck]=p.esAnlamlilar.map(function(x){return String(x).toLowerCase();}).filter(gecerliEsAnlamli(ck)).slice(0,6);
+          try{localStorage.setItem("dh-syn-ai-v1",JSON.stringify(synCache));}catch(e){}
+        }
+        draw(p);
+      })
       .catch(function(){ out.innerHTML='<div class="dh-wp-ai-out">Açıklama alınamadı. Anahtar/limit kontrol et.</div>'; })
-      .then(function(){ btn.textContent="🎓 Kelime Açıklama (AI)"; btn.disabled=false; });
+      .then(function(){ btn.textContent="🎓 Kelime Paketi (AI)"; btn.disabled=false; });
   }
 
   function tryPronounce(word){

@@ -120,6 +120,8 @@
     <div class="dh-izgara dh-izgara--2">
       <button class="dh-btn dh-btn--sade" id="bugunPdf" type="button">📄 Bugünün çalışma PDF'i</button>
       <button class="dh-btn dh-btn--sade" id="yarinPdf" type="button">🌅 Yarının çalışma PDF'i</button>
+      <button class="dh-btn dh-btn--sade" id="gunGemini" type="button">💎 Bugünü Gemini ile değerlendir</button>
+      <button class="dh-btn dh-btn--sade" id="yarinGemini" type="button">💎 Yarını Gemini ile planla</button>
     </div>
   </section>
 
@@ -164,6 +166,7 @@
 <script src="./dh-konusma.js?v=1"></script>
 <script src="./dh-avatar.js"></script>
 <script src="./dh-daily-pdf.js?v=2"></script>
+<script src="./gemini-quality-tools.js?v=1"></script>
 <script>
 /* index.html — KOC EKRANI
    ================================================================
@@ -954,6 +957,8 @@
 
   $("bugunPdf").onclick = function(){ if(window.DHDailyPdf) DHDailyPdf.today(); };
   $("yarinPdf").onclick = function(){ if(window.DHDailyPdf) DHDailyPdf.tomorrow(); };
+  $("gunGemini").onclick = function(){ if(window.DHGeminiQuality) DHGeminiQuality.todayReview().catch(function(e){if(!(e&&e.code==="abort"))alert("Gün değerlendirmesi hazırlanamadı.");}); };
+  $("yarinGemini").onclick = function(){ if(window.DHGeminiQuality) DHGeminiQuality.tomorrowPlan().catch(function(e){if(!(e&&e.code==="abort"))alert("Yarın planı hazırlanamadı.");}); };
 
   /* ================= SONRAKI GUNU BASLAT =================
      koc.js'teki #dhResetToday ile ayni islem. Ogrenme verisi silinmez. */

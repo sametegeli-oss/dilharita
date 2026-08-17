@@ -4,6 +4,7 @@
 <script src="./auth-guard.js?v=1"></script>
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./ai-providers.js?v=1"></script>
+<script src="./gemini-quality-tools.js?v=1"></script>
 <script src="./progress-engine.js?v=2"></script>
 <script src="./dh-plan.js?v=3"></script>
 <script src="./dh-session-summary.js?v=1"></script>
@@ -1029,6 +1030,7 @@ const State = {
   idx: 0,
   sessionTitle: "",
   answered: false,
+  aiHistory: [],
   source: "free",       // today|errors|gemini|hard-reviews|chat-errors|speaking-prep|pronunciation|level-gap|weekly
 };
 const root = document.getElementById("root");
@@ -2206,6 +2208,7 @@ function renderListenLayer(s){
 async function evaluate(s, answer, layer){
   if (State.answered) return;
   State.answered = true;
+  State.aiHistory.push({reference:s.en,studentAnswer:answer,turkish:s.tr||"",layer:layer,module:s.module||""});
   // grade-override doğru hesaplansın diye notlamadan ÖNCEKİ durumu sakla
   State._gradeBase = State._gradeBase || {};
   State._gradeBase[s.id] = await mGet(s.id);   // null olabilir (ilk kez)
@@ -2471,8 +2474,10 @@ function renderSessionDone(){
     <p>${State.queue.length} cümleyi çalıştın. İlerlemen kaydedildi — tekrar zamanı geldiğinde bu cümleler yeniden karşına çıkacak.</p>
     ${new URLSearchParams(location.search).get("next")?'<button class="btn btn-primary" id="nextBtn">Sonraki ad?ma ge?</button>':''}
     <button class="btn btn-primary" id="homeBtn">Ana sayfaya dön</button>
+    <button class="btn btn-ghost" id="sessionGeminiBtn">💎 Tüm oturumu Gemini'ye değerlendir</button>
   </div>`;
   document.getElementById("homeBtn").onclick = () => renderPicker();
+  document.getElementById("sessionGeminiBtn").onclick = function(){ if(window.DHGeminiQuality) DHGeminiQuality.sessionReport(State.aiHistory,State.sessionTitle||"Cümle oturumu"); };
   var nb=document.getElementById("nextBtn"); if(nb)nb.onclick=function(){ location.href=new URLSearchParams(location.search).get("next")||"./index.html"; };
   if(window.DHSessionSummary) DHSessionSummary.enhance(root.querySelector(".state"),{title:State.sessionTitle||"Cümle oturumu tamam",total:State.queue.length});
 }

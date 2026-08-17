@@ -119,6 +119,7 @@
 <script src="./cloud-sync.js?v=5"></script>
 <script src="./teacher-policy.js?v=3"></script>
 <script src="./ai-providers.js?v=1"></script>
+<script src="./gemini-quality-tools.js?v=1"></script>
 <script src="./ai-status.js?v=1"></script>
 <script src="./level-test.js?v=6"></script>
 <script>
@@ -516,9 +517,11 @@
       +(skillsHtml?'<div class="result-bars"><div class="q-label" style="margin-bottom:8px">Beceri kırılımı</div>'+skillsHtml+'</div>':'')
       +'<div class="q-hint" style="text-align:center;margin:16px 0">Öğretmenin artık dersleri bu seviyeye göre hazırlayacak. Zamanla ilerledikçe seviyen güncellenecek.</div>'
       +'<button class="btn btn-primary" id="goLesson">🎓 Derse başla</button>'
+      +'<button class="btn btn-ghost" id="levelGemini" style="margin-top:10px">💎 Gemini gelişim raporu</button>'
       +'<button class="btn btn-ghost" id="goHome" style="margin-top:10px">Ana sayfa</button>'
       +'</div>';
     $("goLesson").onclick = function(){ goAfterSave("./ders.html"); };
+    $("levelGemini").onclick = function(){ if(window.DHGeminiQuality) DHGeminiQuality.levelReport(res,chosenGoal); };
     $("goHome").onclick = function(){ goAfterSave("./index.html"); };
 
     /* İlk kurulumdan gelindiyse akış yarım kalmasın: son adıma (günlük hedef) dön. */

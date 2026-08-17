@@ -140,6 +140,7 @@ try{
 <script src="./cloud-sync.js?v=9"></script>
 <script src="./ai-providers.js?v=2"></script>
 <script src="./gemini-bridge.js?v=10"></script>
+<script src="./gemini-quality-tools.js?v=1"></script>
 <script src="./word-popup.js?v=10"></script>
 <script src="./image-addon.js?v=restore1"></script>
 
@@ -517,7 +518,7 @@ try{
     };
   }
 
-  var i=0, doneCount=0, cur=null, curT=null, revealed=false, lastSc=-1, lastSemanticOk=false, viaMic=false, semanticNo=false;
+  var i=0, doneCount=0, cur=null, curT=null, revealed=false, lastSc=-1, lastSemanticOk=false, viaMic=false, semanticNo=false, aiSession=[];
   function speak(t){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.lang="en-US"; u.__dhMixed=true; u.__longTTSAvatarSync=true; speechSynthesis.speak(u); }catch(e){} }
 
   function triggerCloudSync() {
@@ -644,6 +645,10 @@ try{
       if(remaining) $("bMore").style.display="inline-block";
       if(PLAN) $("planNext").style.display="block";
       $("done").style.display="block";
+      if(!document.getElementById("dhTekrarGemini")){
+        var gb=document.createElement("button");gb.id="dhTekrarGemini";gb.className="b-next";gb.style.marginTop="10px";gb.textContent="💎 Tüm oturumu Gemini'ye değerlendir";
+        gb.onclick=function(){if(window.DHGeminiQuality)DHGeminiQuality.sessionReport(aiSession,"Tekrar oturumu raporu");};$("done").appendChild(gb);
+      }
       dhTekrarDoneExtras();
       triggerCloudSync();
       return;
@@ -882,6 +887,7 @@ try{
 
     if(mode==="prod"){
       var userInputValue = $("inp").value;
+      aiSession.push({reference:curT.en,studentAnswer:userInputValue,turkish:curT.tr||"",kind:cur.kind});
 
       /* GERÇEK ANALİZ: sentence-analyzer cümleyi hizalayıp farkı sınıflar.
          - correct / typo-only → yerel kabul, AI'ya gitme.

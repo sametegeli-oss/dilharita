@@ -291,19 +291,18 @@
     $("translateBtn").disabled=true;
     try{
       var englishList=rows.map(function(r,i){ return (i+1)+". "+r.en; }).join("\n");
-      var prompt="Aşağıdaki numaralı İngilizce cümleleri Türkçeye çevir. "
-        + "SADECE çevirileri, her satırda numara ve çeviri olacak şekilde döndür (örn: '1. ...'). "
-        + "Açıklama ekleme.\n\n"+englishList;
+      var prompt="Aşağıdaki numaralı OCR cümlelerinin TÜMÜNÜ tek pakette işle. OCR/yazım hatasını düzelt ve Türkçeye çevir. "
+        + "Her satırı tam olarak 'numara. düzeltilmiş İngilizce || Türkçe çeviri' biçiminde döndür. Hiçbir cümleyi atlama, yeni cümle ekleme, açıklama yazma.\n\n"+englishList;
       var translated=await groqChat([{role:"user",content:prompt}]);
       // numaralı satırları ayrıştır
       var map={};
       translated.split(/\n+/).forEach(function(line){
         var m=line.match(/^\s*(\d+)[\.\)]\s*(.+)$/);
-        if(m) map[parseInt(m[1],10)]=m[2].trim();
+        if(m){ var pair=m[2].split("||"); map[parseInt(m[1],10)]={en:(pair[0]||"").trim(),tr:(pair[1]||pair[0]||"").trim()}; }
       });
       rows.forEach(function(r,i){
-        var tr=map[i+1];
-        if(tr) r.el.querySelector(".tr").value=tr;
+        var fixed=map[i+1];
+        if(fixed){ if(fixed.en)r.el.querySelector(".en").value=fixed.en; if(fixed.tr)r.el.querySelector(".tr").value=fixed.tr; }
       });
       trStatus.className="status ok"; trStatus.textContent="✓ Çeviri tamam. Gerekirse düzelt, sonra kaydet.";
       $("saveCard").classList.remove("hidden");

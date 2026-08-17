@@ -11,7 +11,7 @@
 "use strict";
 if(global.DHGeminiReport) return;
 
-var MAX_ERRORS = 40;   /* prompt şişmesin */
+var MAX_ERRORS = Number.MAX_SAFE_INTEGER;   /* hata defterindeki gerçek kayıtların tamamı */
 var LS_KEY = "dh-gemini-report-v1";
 
 /* ---------- stil ---------- */

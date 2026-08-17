@@ -15,4 +15,4 @@ ok(report.includes('dh-gemini-daily-complete-')&&report.includes('hata-defteri.h
 ok(core.includes("DHChatTasks")&&core.includes("completeAll"),"sohbet görevleri rapor tarafından tamamlanabilir");
 ok(teacher.includes("sohbetiTamamla(d)")&&teacher.includes('d.hedefUlasildi !== true'),"yalnız olumlu Gemini raporu sohbeti tamamlıyor");
 ok(teacher.includes('DHPlan.tamamlaTip("sohbet")')&&teacher.includes('dh-speaking-complete-'),"olumlu rapor koç ve günlük plan kanıtlarını kapatıyor");
-ok(page.includes("gemini-report.js?v=3")&&/dh-sw-v8[7-9]/.test(sw),"mobil önbellek yeni düzeltmelere yükseltildi");
+ok(page.includes("gemini-report.js?v=3")&&/dh-sw-v(?:8[7-9]|9\d+)/.test(sw),"mobil önbellek yeni düzeltmelere yükseltildi");
