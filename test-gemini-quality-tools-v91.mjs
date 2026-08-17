@@ -1,0 +1,15 @@
+import fs from "node:fs";
+const read=n=>fs.readFileSync(new URL("./"+n,import.meta.url),"utf8");
+const q=read("gemini-quality-tools.js"),idx=read("index.html"),wp=read("word-popup.js"),err=read("gemini-report.js"),ocr=read("foto-ekle.html"),story=read("module-story.js"),level=read("seviye-testi.html"),practice=read("practice.html"),review=read("tekrar.html"),sw=read("sw.js");
+let f=0;const ok=(v,m)=>{console.log((v?"✓ ":"✗ ")+m);if(!v)f++;};
+ok(wp.includes("dh-word-package-v2")&&wp.includes("esAnlamlilar")&&wp.includes("kaliplar")&&wp.includes("ornekler"),"kelime açıklaması tek kapsamlı paket ve 30 günlük önbellek kullanıyor");
+ok(err.includes("Number.MAX_SAFE_INTEGER"),"Hata Karnesi hata defterindeki bütün kayıtları paketliyor");
+ok(idx.includes("gunGemini")&&idx.includes("yarinGemini")&&q.includes("todayReview")&&q.includes("tomorrowPlan"),"gün sonu ve yarın planı gerçek koç verisiyle kullanıcı tarafından başlatılıyor");
+ok(ocr.includes("OCR/yazım hatasını düzelt")&&ocr.includes('split("||")'),"fotoğraf cümlelerinin tamamı tek pakette düzeltilip çevriliyor");
+ok(story.includes("dialogue")&&story.includes("questions")&&story.includes("speakingTask")&&story.includes("cacheGet(moduleId)"),"modül hikâyesi diyalog, soru ve konuşma görevi üretip saklıyor");
+ok(level.includes("levelGemini")&&level.includes("levelReport(res,chosenGoal)"),"seviye testi bittikten sonra Gemini gelişim raporu sunuluyor");
+ok(practice.includes("State.aiHistory.push")&&practice.includes("sessionGeminiBtn"),"Practice gerçek oturum cevaplarını tek raporda gönderiyor");
+ok(review.includes("aiSession.push")&&review.includes("dhTekrarGemini"),"Tekrar gerçek oturum cevaplarını tek raporda gönderiyor");
+ok(!q.includes("chat-core")&&!q.includes("dh-sohbet"),"istenmeyen konuşma ekranı değişikliği yapılmadı");
+ok(/dh-sw-v9[1-9]/.test(sw)&&sw.includes('"./gemini-quality-tools.js"'),"yeni araçlar mobil çevrimdışı önbellekte");
+process.exit(f?1:0);

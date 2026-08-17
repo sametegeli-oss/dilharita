@@ -1144,7 +1144,7 @@ function renderExplanation(reply){
     </div>` : "";
 
   setOut(`
-    <div class="explain">${renderRich(mainText)}</div>
+    <div class="explain" style="white-space:normal">${(window.DHGemini&&DHGemini.markdown)?DHGemini.markdown(mainText):renderRich(mainText)}</div>
     ${quizHTML}
     <div class="explain-actions">
       <button class="explain-play" id="explainListenBtn">🔊 Oku</button>

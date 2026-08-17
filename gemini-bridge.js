@@ -64,6 +64,7 @@ function css(){
   +".dhgb-msg{font-size:12.5px;font-weight:700;min-height:17px;margin-bottom:8px;line-height:1.45}"
   +".dhgb-job{font-size:11px;color:#7dd3fc;margin:0 0 8px;font-weight:800}"
   +".dhgb-preview{display:none;background:#071120;border:1px solid #10b981;border-radius:10px;padding:10px;margin:0 0 10px;font-size:12px;line-height:1.45;white-space:pre-wrap;max-height:150px;overflow:auto}"
+  +".dh-md{line-height:1.68;color:#dbe7f7}.dh-md h1,.dh-md h2,.dh-md h3,.dh-md h4{color:#fff;margin:18px 0 8px;line-height:1.3}.dh-md h1{font-size:21px}.dh-md h2{font-size:18px;border-bottom:1px solid #274060;padding-bottom:7px}.dh-md h3{font-size:15px;color:#7dd3fc}.dh-md p{margin:7px 0}.dh-md ul,.dh-md ol{margin:7px 0 12px;padding-left:23px}.dh-md li{margin:5px 0}.dh-md strong{color:#fff}.dh-md em{color:#c4b5fd}.dh-md code{background:#26344c;color:#e2e8f0;padding:2px 6px;border-radius:6px;font:12px ui-monospace,monospace}.dh-md pre{background:#06101e;border:1px solid #243b5a;border-radius:10px;padding:10px;overflow:auto}.dh-md blockquote{border-left:3px solid #8b5cf6;margin:10px 0;padding:7px 11px;background:#111d35;color:#cbd5e1}"
   +".dhgb-paste.dhgb-ready{outline:3px solid #fbbf24;animation:dhgbPulse 1s infinite alternate}@keyframes dhgbPulse{to{outline-color:transparent}}"
   +".dhgb-tog{background:none;border:0;color:#60a5fa;font-size:11.5px;font-weight:800;cursor:pointer;padding:0 0 8px;text-decoration:underline}";
   document.head.appendChild(s);
@@ -205,7 +206,8 @@ function ask(opt){
     }
     parsedResult=result; parsedRaw=raw; awaitingConfirm=true;
     preview.style.display="block";
-    preview.textContent="Uygulanacak Gemini yanıtı:\n"+compact(raw,900);
+    preview.style.whiteSpace="normal";
+    preview.innerHTML='<b style="color:#4ade80">Uygulanacak Gemini yanıtı</b><div class="dh-md">'+markdown(compact(raw,2400))+'</div>';
     sendBtn.textContent="✅ Onayla ve uygula";
     say("Yanıt anlaşıldı. Uygulamaya aktarmadan önce önizlemeyi kontrol et.","#4ade80");
   }
@@ -241,6 +243,31 @@ function esc(s){
   return String(s==null?"":s).replace(/[&<>"']/g,function(c){
     return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
   });
+}
+
+/* Gemini'nin Markdown çıktısını index-app benzeri okunabilir karta çevirir.
+   Önce bütün HTML kaçırıldığı için model cevabı kod çalıştıramaz. */
+function markdown(input){
+  var src=String(input==null?"":input).replace(/\r/g,"").split("\n"), out=[], list="", code=false, codeLines=[];
+  function inline(s){
+    s=esc(s).replace(/`([^`]+)`/g,"<code>$1</code>");
+    s=s.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/__([^_]+)__/g,"<strong>$1</strong>");
+    s=s.replace(/(^|[^*])\*([^*\n]+)\*/g,"$1<em>$2</em>").replace(/(^|[^_])_([^_\n]+)_/g,"$1<em>$2</em>");
+    return s;
+  }
+  function closeList(){if(list){out.push("</"+list+">");list="";}}
+  src.forEach(function(line){
+    if(/^\s*```/.test(line)){if(code){out.push("<pre><code>"+esc(codeLines.join("\n"))+"</code></pre>");code=false;codeLines=[];}else{closeList();code=true;}return;}
+    if(code){codeLines.push(line);return;}
+    var m=line.match(/^\s*(#{1,4})\s+(.+)$/);if(m){closeList();out.push("<h"+m[1].length+">"+inline(m[2])+"</h"+m[1].length+">");return;}
+    m=line.match(/^\s*[-*•]\s+(.+)$/);if(m){if(list!=="ul"){closeList();list="ul";out.push("<ul>");}out.push("<li>"+inline(m[1])+"</li>");return;}
+    m=line.match(/^\s*\d+[.)]\s+(.+)$/);if(m){if(list!=="ol"){closeList();list="ol";out.push("<ol>");}out.push("<li>"+inline(m[1])+"</li>");return;}
+    m=line.match(/^\s*>\s?(.*)$/);if(m){closeList();out.push("<blockquote>"+inline(m[1])+"</blockquote>");return;}
+    if(/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)){closeList();out.push("<hr>");return;}
+    if(!line.trim()){closeList();return;}
+    closeList();out.push("<p>"+inline(line.trim())+"</p>");
+  });
+  if(code)out.push("<pre><code>"+esc(codeLines.join("\n"))+"</code></pre>");closeList();return out.join("");
 }
 
 /* ---------- hazır ayrıştırıcılar ---------- */
@@ -302,5 +329,5 @@ var parsers={
 
 function pending(){ return loadPending(); }
 function discardPending(){ clearPending(); }
-global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending };
+global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending, markdown:markdown };
 })(window);

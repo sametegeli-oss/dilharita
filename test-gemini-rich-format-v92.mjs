@@ -1,0 +1,11 @@
+import fs from "node:fs";
+const read=n=>fs.readFileSync(new URL("./"+n,import.meta.url),"utf8");
+const bridge=read("gemini-bridge.js"),quality=read("gemini-quality-tools.js"),teacher=read("teacher.html"),review=read("tekrar.html"),sw=read("sw.js");
+let f=0;const ok=(v,m)=>{console.log((v?"✓ ":"✗ ")+m);if(!v)f++;};
+ok(bridge.includes("function markdown(input)")&&bridge.includes("<strong>")&&bridge.includes("<ul>")&&bridge.includes("<h"),"merkezi Gemini köprüsü başlık, vurgu ve listeleri biçimlendiriyor");
+ok(bridge.includes("s=esc(s)")&&bridge.includes("markdown:markdown"),"Markdown önce HTML kaçırılarak güvenli işleniyor ve ortak API olarak sunuluyor");
+ok(quality.includes("dhq-body")&&quality.includes("formatted(text)")&&quality.includes("AI değerlendirmesi · cihazına kaydedildi"),"gün sonu, yarın, seviye ve oturum raporları düzenli kart kullanıyor");
+ok(teacher.includes("DHGemini.markdown(mainText)"),"Gemini öğretmen açıklaması zengin biçimde gösteriliyor");
+ok((review.match(/DHGemini\.markdown/g)||[]).length>=2,"Tekrar ekranındaki olumlu ve olumsuz Gemini açıklamaları biçimlendiriliyor");
+ok(sw.includes("dh-sw-v92"),"mobil önbellek biçimlendirme sürümüne yükseltildi");
+process.exit(f?1:0);

@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v91";   /* v91: konusma haric toplu Gemini kalite paketleri */
+var SW_VERSION = "dh-sw-v92";   /* v92: tum Gemini metin donuslerinde guvenli zengin Markdown kartlari */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

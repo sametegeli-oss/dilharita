@@ -817,7 +817,10 @@ try{
             d.style.cssText="margin-top:8px;font-size:13.5px;font-weight:500;line-height:1.55;"
               +"color:#cbd5e1;white-space:pre-wrap;background:#0f1f3a;border:1px solid #1e3a5f;"
               +"border-radius:10px;padding:10px 12px";
-            d.textContent="ℹ️ "+note.slice(0,2000);
+            d.style.whiteSpace="normal";
+            d.innerHTML="<b>ℹ️ Gemini açıklaması</b>";
+            var shownNote=note.slice(0,2000);
+            if(window.DHGemini&&DHGemini.markdown)d.insertAdjacentHTML("beforeend",DHGemini.markdown(shownNote));else d.appendChild(document.createTextNode(shownNote));
             waitEl.appendChild(d);
           }
           try{ var dbox=document.querySelector(".diff-box"); if(dbox) dbox.style.opacity="0.55"; }catch(e){}
@@ -832,7 +835,9 @@ try{
             d2.style.cssText="margin-top:8px;font-size:13.5px;font-weight:500;line-height:1.55;"
               +"color:#fde68a;white-space:pre-wrap;background:#2a1206;border:1px solid #7c3f0a;"
               +"border-radius:10px;padding:10px 12px";
-            d2.textContent=note.slice(0,2000);
+            d2.style.whiteSpace="normal";
+            var shownError=note.slice(0,2000);
+            if(window.DHGemini&&DHGemini.markdown)d2.innerHTML=DHGemini.markdown(shownError);else d2.textContent=shownError;
             waitEl.appendChild(d2);
           }
           showExplain(curT,false);
