@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v88";   /* v88: merkezi API/Gemini web tercihi ve anahtarsiz tum AI islevleri */
+var SW_VERSION = "dh-sw-v89";   /* v89: kalici, kimlikli ve pano destekli Gemini gidis-donus koprusu */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -49,6 +49,7 @@ var SHELL = [
   "./dh-pdf.js",
   "./ai-providers.js",
   "./ai-choice.js",
+  "./gemini-bridge.js",
   "./onboarding-guard.js",
   "./dh-modul.js",
   "./dh-modul-enjekte.js",

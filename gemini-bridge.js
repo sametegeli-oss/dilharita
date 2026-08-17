@@ -24,6 +24,23 @@
 if(global.DHGemini) return;
 
 var GEMINI_URL = "https://gemini.google.com/app";
+var PENDING_KEY = "dh-gemini-pending-v2";
+var activeOverlay = null;
+
+function jobId(){ return "DH-"+Date.now().toString(36).toUpperCase()+"-"+Math.random().toString(36).slice(2,7).toUpperCase(); }
+function savePending(job){ try{ localStorage.setItem(PENDING_KEY,JSON.stringify(job)); }catch(e){} }
+function loadPending(){ try{ return JSON.parse(localStorage.getItem(PENDING_KEY)||"null"); }catch(e){ return null; } }
+function clearPending(id){
+  var p=loadPending();
+  if(!id || !p || p.id===id) try{ localStorage.removeItem(PENDING_KEY); }catch(e){}
+}
+function compact(s,n){ s=String(s==null?"":s).replace(/\s+/g," ").trim(); return s.length>n?s.slice(0,n-1)+"…":s; }
+function redactSensitive(s){
+  return String(s||"")
+    .replace(/\bAIza[0-9A-Za-z_-]{20,}\b/g,"[GİZLİ-GEMINI-ANAHTARI]")
+    .replace(/\b(?:gsk_|csk-|sk-)[0-9A-Za-z_-]{16,}\b/g,"[GİZLİ-API-ANAHTARI]")
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,"[GİZLİ-EPOSTA]");
+}
 
 /* ---------- stil ---------- */
 function css(){
@@ -45,6 +62,9 @@ function css(){
   +".dhgb-ta:focus{outline:2px solid #38bdf8;outline-offset:1px}"
   +".dhgb-prompt{max-height:120px;overflow:auto;background:#071120;border:1px dashed #1e3a5f;border-radius:10px;padding:9px;font-size:11.5px;color:#9fb3d9;white-space:pre-wrap;margin-bottom:10px}"
   +".dhgb-msg{font-size:12.5px;font-weight:700;min-height:17px;margin-bottom:8px;line-height:1.45}"
+  +".dhgb-job{font-size:11px;color:#7dd3fc;margin:0 0 8px;font-weight:800}"
+  +".dhgb-preview{display:none;background:#071120;border:1px solid #10b981;border-radius:10px;padding:10px;margin:0 0 10px;font-size:12px;line-height:1.45;white-space:pre-wrap;max-height:150px;overflow:auto}"
+  +".dhgb-paste.dhgb-ready{outline:3px solid #fbbf24;animation:dhgbPulse 1s infinite alternate}@keyframes dhgbPulse{to{outline-color:transparent}}"
   +".dhgb-tog{background:none;border:0;color:#60a5fa;font-size:11.5px;font-weight:800;cursor:pointer;padding:0 0 8px;text-decoration:underline}";
   document.head.appendChild(s);
 }
@@ -75,11 +95,22 @@ function readClip(){
 function ask(opt){
   opt=opt||{};
   css();
-  var prompt=String(opt.prompt||"");
+  var originalPrompt=String(opt.prompt||"");
+  var basePrompt=redactSensitive(originalPrompt);
+  var wasRedacted=basePrompt!==originalPrompt;
+  var old=loadPending();
+  var sameOld=old && old.prompt===basePrompt && old.page===location.pathname;
+  var id=sameOld?old.id:jobId();
+  var prompt=basePrompt+"\n\nGÖREV KİMLİĞİ: "+id+"\nYanıtının ilk satırına tam olarak \"DH-ID: "+id+"\" yaz. Sonraki satırlarda istenen yanıtı ver.";
+  var job={id:id,title:String(opt.title||"Gemini'ye sor"),prompt:basePrompt,page:location.pathname,createdAt:sameOld?old.createdAt:Date.now(),state:"waiting"};
+  savePending(job);
+  if(activeOverlay && activeOverlay.parentNode) activeOverlay.parentNode.removeChild(activeOverlay);
   var ov=document.createElement("div"); ov.className="dhgb-ov";
+  activeOverlay=ov;
   ov.innerHTML =
     '<div class="dhgb-card">'
    +'<h3>'+esc(opt.title||"Gemini'ye sor")+'</h3>'
+   +'<div class="dhgb-job">Bekleyen görev: '+esc(id)+'</div>'
    +'<p class="dhgb-step">1️⃣ Promptu kopyala → 2️⃣ Gemini\'de sor → 3️⃣ Cevabı aşağıya yapıştır, <b>Enter</b>. Program oradan devam eder.</p>'
    +'<button class="dhgb-tog" type="button">Promptu göster / gizle</button>'
    +'<div class="dhgb-prompt" style="display:none"></div>'
@@ -89,6 +120,7 @@ function ask(opt){
    +'</div>'
    +'<textarea class="dhgb-ta" placeholder="'+esc(opt.hint||"Gemini'nin cevabını buraya yapıştır ve Enter'a bas…")+'"></textarea>'
    +'<div class="dhgb-msg"></div>'
+   +'<div class="dhgb-preview"></div>'
    +'<div class="dhgb-row">'
      +'<button class="dhgb-paste" type="button">📋 Panodan al</button>'
      +'<button class="dhgb-send" type="button">✅ 3. Devam et (Enter)</button>'
@@ -100,11 +132,22 @@ function ask(opt){
   var card=ov.querySelector(".dhgb-card"),
       ta=ov.querySelector(".dhgb-ta"),
       msg=ov.querySelector(".dhgb-msg"),
-      pv=ov.querySelector(".dhgb-prompt");
+      pv=ov.querySelector(".dhgb-prompt"),
+      preview=ov.querySelector(".dhgb-preview"),
+      sendBtn=ov.querySelector(".dhgb-send"),
+      pasteBtn=ov.querySelector(".dhgb-paste");
   pv.textContent=prompt;
+  if(sameOld && old.draft) ta.value=old.draft;
 
   function say(t,c){ msg.textContent=t||""; msg.style.color=c||"#9fb3d9"; }
-  function close(){ if(ov.parentNode) ov.parentNode.removeChild(ov); }
+  function close(){
+    if(ov.parentNode) ov.parentNode.removeChild(ov);
+    if(activeOverlay===ov) activeOverlay=null;
+    global.removeEventListener("focus",returned);
+    document.removeEventListener("visibilitychange",returned);
+  }
+  function rememberDraft(){ job.draft=ta.value||""; job.state="answer-ready"; savePending(job); }
+  ta.addEventListener("input",rememberDraft);
 
   ov.querySelector(".dhgb-tog").onclick=function(){
     pv.style.display = pv.style.display==="none" ? "block" : "none";
@@ -124,7 +167,7 @@ function ask(opt){
   };
   ov.querySelector(".dhgb-paste").onclick=function(){
     readClip().then(function(t){
-      if(t && t.trim()){ ta.value=t; say("Panodan alındı. Enter ya da ✅ ile devam et.","#4ade80"); ta.focus(); }
+      if(t && t.trim()){ ta.value=t; rememberDraft(); pasteBtn.classList.remove("dhgb-ready"); say("Panodan alındı. Enter ya da ✅ ile kontrol et.","#4ade80"); ta.focus(); }
       else say("Pano boş görünüyor.","#f59e0b");
     }).catch(function(){
       say("Tarayıcı panoyu okumaya izin vermedi — kutuya uzun basıp Yapıştır de.","#f59e0b");
@@ -136,9 +179,22 @@ function ask(opt){
   };
   ov.addEventListener("click",function(e){ if(e.target===ov) ov.querySelector(".dhgb-close").click(); });
 
+  var parsedResult, parsedRaw, awaitingConfirm=false;
+  function normalizeAnswer(raw){
+    var m=raw.match(/^\s*DH-ID:\s*([^\s]+)\s*\r?\n/i);
+    if(m && m[1]!==id) throw new Error("Bu cevap başka göreve ait ("+m[1]+"). Doğru Gemini cevabını yapıştır.");
+    return m?raw.slice(m[0].length).trim():raw;
+  }
+  function applyResult(){
+    clearPending(id); close();
+    if(typeof opt.onResult==="function") opt.onResult(parsedResult, parsedRaw);
+  }
   function submit(){
+    if(awaitingConfirm){ applyResult(); return; }
     var raw=(ta.value||"").trim();
     if(!raw){ say("Önce Gemini'nin cevabını yapıştır.","#f59e0b"); ta.focus(); return; }
+    try{ raw=normalizeAnswer(raw); }
+    catch(idErr){ say("⚠️ "+idErr.message,"#f59e0b"); return; }
     var result=raw;
     if(typeof opt.parse==="function"){
       try{ result=opt.parse(raw); }
@@ -147,14 +203,37 @@ function ask(opt){
         return;
       }
     }
-    close();
-    if(typeof opt.onResult==="function") opt.onResult(result, raw);
+    parsedResult=result; parsedRaw=raw; awaitingConfirm=true;
+    preview.style.display="block";
+    preview.textContent="Uygulanacak Gemini yanıtı:\n"+compact(raw,900);
+    sendBtn.textContent="✅ Onayla ve uygula";
+    say("Yanıt anlaşıldı. Uygulamaya aktarmadan önce önizlemeyi kontrol et.","#4ade80");
   }
   ov.querySelector(".dhgb-send").onclick=submit;
   ta.addEventListener("keydown",function(e){
     if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); submit(); }
   });
   setTimeout(function(){ ta.focus(); },80);
+  copy(prompt).then(function(ok){
+    var privacy=wasRedacted?" Kişisel/API bilgileri maskelendi.":"";
+    say(ok?"Prompt kopyalandı; Gemini yeni sekmede açıldı."+privacy:"Gemini açıldı. Promptu elle kopyalaman gerekebilir.",ok?"#4ade80":"#f59e0b");
+  });
+  try{ global.open(GEMINI_URL,"_blank","noopener"); }catch(e){}
+
+  function returned(){
+    if(document.hidden || !ov.parentNode) return;
+    function check(granted){
+      if(!granted){ pasteBtn.classList.add("dhgb-ready"); say("Gemini'den döndün. Cevabı kopyaladıysan 📋 Panodan al'a dokun.","#fbbf24"); return; }
+      readClip().then(function(t){
+        if(t && t.trim() && t.trim()!==prompt.trim()){ ta.value=t; rememberDraft(); say("Gemini cevabı panodan alındı. Kontrol etmek için ✅ düğmesine bas.","#4ade80"); }
+      }).catch(function(){ pasteBtn.classList.add("dhgb-ready"); });
+    }
+    if(navigator.permissions&&navigator.permissions.query){
+      navigator.permissions.query({name:"clipboard-read"}).then(function(p){check(p.state==="granted");},function(){check(false);});
+    }else check(false);
+  }
+  global.addEventListener("focus",returned);
+  document.addEventListener("visibilitychange",returned);
   return { close:close, setMessage:say };
 }
 
@@ -199,14 +278,19 @@ var parsers={
   },
   /* JSON (```json bloğu olsa da) → nesne */
   json: function(text){
-    var t=String(text||"").replace(/```json|```/g,"").trim();
+    var t=String(text||"").replace(/```json|```/gi,"").trim();
     var s=t.indexOf("{"), a=t.indexOf("[");
     if(a>=0 && (s<0||a<s)) s=a;
     if(s<0) throw new Error("Cevapta JSON bulunamadı.");
     var e=Math.max(t.lastIndexOf("}"), t.lastIndexOf("]"));
     if(e<s) throw new Error("JSON tamamlanmamış görünüyor.");
-    try{ return JSON.parse(t.slice(s,e+1)); }
-    catch(err){ throw new Error("JSON okunamadı — cevabın tamamını yapıştırdığından emin ol."); }
+    var candidate=t.slice(s,e+1);
+    try{ return JSON.parse(candidate); }
+    catch(err){
+      candidate=candidate.replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/,\s*([}\]])/g,"$1");
+      try{ return JSON.parse(candidate); }
+      catch(err2){ throw new Error("JSON okunamadı — cevabın tamamını yapıştırdığından emin ol."); }
+    }
   },
   /* düz metin */
   text: function(text){
@@ -216,5 +300,7 @@ var parsers={
   }
 };
 
-global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL };
+function pending(){ return loadPending(); }
+function discardPending(){ clearPending(); }
+global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending };
 })(window);
