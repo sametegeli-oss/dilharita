@@ -248,7 +248,7 @@ function esc(s){
 /* Gemini'nin Markdown çıktısını index-app benzeri okunabilir karta çevirir.
    Önce bütün HTML kaçırıldığı için model cevabı kod çalıştıramaz. */
 function markdown(input){
-  var src=String(input==null?"":input).replace(/\r/g,"").split("\n"), out=[], list="", code=false, codeLines=[];
+  var src=String(input==null?"":input).replace(/\[\[\s*([\s\S]*?)\s*\]\]/g,"`$1`").replace(/\r/g,"").split("\n"), out=[], list="", code=false, codeLines=[];
   function inline(s){
     s=esc(s).replace(/`([^`]+)`/g,"<code>$1</code>");
     s=s.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>").replace(/__([^_]+)__/g,"<strong>$1</strong>");

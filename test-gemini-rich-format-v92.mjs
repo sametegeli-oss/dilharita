@@ -7,5 +7,5 @@ ok(bridge.includes("s=esc(s)")&&bridge.includes("markdown:markdown"),"Markdown �
 ok(quality.includes("dhq-body")&&quality.includes("formatted(text)")&&quality.includes("AI değerlendirmesi · cihazına kaydedildi"),"gün sonu, yarın, seviye ve oturum raporları düzenli kart kullanıyor");
 ok(teacher.includes("DHGemini.markdown(mainText)"),"Gemini öğretmen açıklaması zengin biçimde gösteriliyor");
 ok((review.match(/DHGemini\.markdown/g)||[]).length>=2,"Tekrar ekranındaki olumlu ve olumsuz Gemini açıklamaları biçimlendiriliyor");
-ok(sw.includes("dh-sw-v92"),"mobil önbellek biçimlendirme sürümüne yükseltildi");
+ok(/dh-sw-v(?:9[2-9]|[1-9][0-9]{2,})/.test(sw),"mobil önbellek biçimlendirme sürümüne veya daha yenisine yükseltildi");
 process.exit(f?1:0);

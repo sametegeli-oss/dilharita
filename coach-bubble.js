@@ -574,7 +574,7 @@
         try{
           var sys="Türkçe konuşan sıcak bir İngilizce öğretmenisin. Öğrencinin BUGÜN yaptığı hatalar verilecek. Görevin: (1) hataları KÖK NEDENE göre en fazla 3 grupta topla, (2) her grup için 2-3 cümlelik Türkçe mini ders yaz ve öğrencinin KENDİ yanlış cümlesini yanlış→doğru olarak örnek göster, (3) her gruba tek satırlık küçük bir alıştırma sorusu ekle. Kısa ve samimi tut; başlıklara emoji koy.";
           var usr=errs.map(function(r){ return "Yanlış: "+(r.answer||"")+" | Doğru: "+(r.target||"")+" | Tür: "+(r.primaryType||""); }).join("\n");
-          var ai=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.4,max_tokens:900});
+          var ai=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.4,max_tokens:900,cacheType:"coach-topic-explanation",cacheInput:usr});
           if(ai && ai.trim()){
             lessonHtml='<div style="white-space:pre-wrap;background:#13294d;border:1px solid #1e3a5f;border-radius:12px;padding:12px">'+dcEsc(ai.trim())+'</div>';
           }

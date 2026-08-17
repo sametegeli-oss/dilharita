@@ -211,7 +211,7 @@
       +"Kurallar: aynı özneyle başla, benzer uzunlukta olsun, "+(level||"B1")+" seviyesinde olsun, gramer/kelime hatası içersin ama mantıklı görünsün. "
       +"Doğru cümleyle AYNI olmasınlar. SADECE JSON dizi döndür: [\"yanlış1\",\"yanlış2\",\"yanlış3\"]";
     var usr="Doğru cümle: \""+correctEn+"\"\n3 inandırıcı yanlış şık üret.";
-    return DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}], {temperature:0.6, max_tokens:200}).then(function(txt){
+    return DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}], {temperature:0.6, max_tokens:200,cacheType:"level-test-question",cacheInput:usr}).then(function(txt){
       txt=(txt||"").trim();
       var m=txt.match(/\[[\s\S]*\]/);
       if(m){ try{ var arr=JSON.parse(m[0]); if(Array.isArray(arr)) return arr.map(String).slice(0,3); }catch(e){} }
@@ -417,7 +417,7 @@
       + "Küçük yazım hatalarını (ör. 'budged'→'budget') hoş gör ama not et. "
       + "SADECE şu JSON formatında yanıt ver, başka hiçbir şey yazma: {\"correct\": true veya false, \"feedback\": \"çok kısa Türkçe not (en fazla 8 kelime)\"}";
     var usr = "Türkçe cümle: \""+turkce+"\"\nÖrnek doğru çeviri: \""+ornek+"\"\nÖğrencinin çevirisi: \""+ogrenci+"\"\nDeğerlendir.";
-    return DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}], {temperature:0.1, max_tokens:120}).then(function(txt){
+    return DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}], {temperature:0.1, max_tokens:120,cacheType:"level-test-evaluation",cacheInput:usr}).then(function(txt){
       txt=(txt||"").trim();
       var m=txt.match(/\{[\s\S]*\}/);
       if(m){

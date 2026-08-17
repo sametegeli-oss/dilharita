@@ -315,7 +315,7 @@
   };
 
   async function groqChat(messages){
-    if(window.DHProviders&&DHProviders.chat) return DHProviders.chat(messages,{temperature:.3,max_tokens:1500,title:"💎 Cümleleri işle"});
+    if(window.DHProviders&&DHProviders.chat) return DHProviders.chat(messages,{temperature:.3,max_tokens:1500,title:"💎 Cümleleri işle",cacheType:"photo-sentences",cacheInput:messages.filter(function(m){return m.role!=="system";})});
     var keys=getKeys();
     if(!keys.length) throw {code:"no-key"};
     var lastErr=null;

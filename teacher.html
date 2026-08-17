@@ -306,9 +306,9 @@ function nextUsableKey(keys){
   return { idx:-1, key:null, waitMs: soonest ? Math.max(0, soonest[1]-now) : 0 };
 }
 
-async function groqChat(messages){
+async function groqChat(messages, cacheOpts){
   if(window.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
-    try{ return await DHProviders.chat(messages, {temperature:0.3, max_tokens:2500}); }
+    try{ return await DHProviders.chat(messages, Object.assign({temperature:0.3, max_tokens:2500},cacheOpts||{})); }
     catch(e){ throw (e&&e.code?e:{code:"network"}); }
   }
   const keys=getKeys();
@@ -1065,9 +1065,19 @@ function askTeacherViaGemini(){
 }
 window.askTeacherViaGemini = askTeacherViaGemini;
 
+function legacyTeacherExplanation(sentence){
+  return new Promise(function(resolve){
+    if(!window.indexedDB)return resolve(null);var req=indexedDB.open("DilHaritaAI_DB",1);
+    req.onsuccess=function(){var db=req.result;if(!db.objectStoreNames.contains("ai_explanations")){db.close();return resolve(null);}var tx=db.transaction("ai_explanations","readonly"),g=tx.objectStore("ai_explanations").get(sentence);g.onsuccess=function(){resolve(g.result&&g.result.explanation||null);};g.onerror=function(){resolve(null);};};req.onerror=function(){resolve(null);};
+  });
+}
+function normalizeTeacherMarkdown(text){
+  return String(text||"").replace(/\[\[\s*([\s\S]*?)\s*\]\]/g,"`$1`").replace(/^\s*[•·]\s+/gm,"- ");
+}
+
 function setOut(html){ document.getElementById("out").innerHTML = html; }
 
-async function explain(){
+async function explain(forceRefresh){
   if (!State.en){
     setOut(`<div class="state">
       <h2>Bir cümle yaz veya Veritabanından Seç</h2>
@@ -1122,7 +1132,10 @@ async function explain(){
   try{ var _mem=JSON.parse(localStorage.getItem("dh-teacher-mem")||"[]"); _mem.push({q:String(State.en||"").slice(0,90),ts:Date.now()}); localStorage.setItem("dh-teacher-mem",JSON.stringify(_mem.slice(-3))); }catch(e){}
   State.history = [{ role:"system", content:getPrompt()+(window.__dhProfileBlock||"") }, { role:"user", content:userMsg }];
   try{
-    const reply = await groqChat(State.history);
+    var legacy=forceRefresh?null:await legacyTeacherExplanation(State.en);
+    if(legacy && window.DHAIResponseCache) DHAIResponseCache.put("teacher-explanation",{en:State.en,tr:State.tr},getPrompt(),legacy,"Öğretmen açıklaması");
+    const reply = legacy || await groqChat(State.history,{cacheType:"teacher-explanation",cacheInput:{en:State.en,tr:State.tr},forceRefresh:!!forceRefresh});
+    State.aiCacheInfo=legacy?{hit:true,promptChanged:false,legacy:true}:(window.DHProviders&&DHProviders.lastCacheInfo)||null;
     State.history.push({ role:"assistant", content:reply });
     renderExplanation(reply);
   }catch(e){ handleError(e); }
@@ -1130,8 +1143,9 @@ async function explain(){
 
 function renderExplanation(reply){
   State.explanation = reply || "";
+  reply = normalizeTeacherMarkdown(reply);
   const quiz = parseQuiz(reply);
-  const mainText = quiz ? quiz.before : reply;
+  const mainText = normalizeTeacherMarkdown(quiz ? quiz.before : reply);
 
   const quizHTML = quiz ? `
     <div class="quiz" id="quizBox">
@@ -1143,7 +1157,9 @@ function renderExplanation(reply){
       <div class="quiz-exp" id="quizExp"></div>
     </div>` : "";
 
+  var cacheNote=State.aiCacheInfo&&State.aiCacheInfo.hit?`<div class="ai-cache-note" style="margin:0 0 12px;padding:10px 12px;border-radius:10px;background:#123b32;border:1px solid #10b981;color:#b7f7df;font-size:13px"><b>♻️ Kayıtlı AI cevabı gösteriliyor.</b> Yeniden AI'ye gönderilmedi.${State.aiCacheInfo.promptChanged?' Prompt değişti; istersen aşağıdaki “Yeniden açıkla” düğmesiyle güncelleyebilirsin.':''}</div>`:"";
   setOut(`
+    ${cacheNote}
     <div class="explain" style="white-space:normal">${(window.DHGemini&&DHGemini.markdown)?DHGemini.markdown(mainText):renderRich(mainText)}</div>
     ${quizHTML}
     <div class="explain-actions">
@@ -1159,7 +1175,7 @@ function renderExplanation(reply){
     <button class="regen" id="dhSimilarBtn" style="background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;border:0">✨ Bu Cümleye Benzer Cümle Üret</button>
     <button class="regen" id="dhExcelBtn" style="background:linear-gradient(135deg,#0d9488,#14b8a6);color:#fff;border:0">🎲 Excel'den Başka Cümle Getir</button>
 
-    <button class="regen" id="regenBtn">↻ Yeniden açıkla</button>
+    <button class="regen" id="regenBtn">↻ Yeniden AI’ye gönder ve açıkla</button>
     <button class="regen" id="dhGeminiAskBtn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0">💎 Gemini'ye sor</button>
     
     <!-- 📖 ÇEVİRİ KILAVUZU DÜĞMESİ (translation_guide.json) -->
@@ -1171,7 +1187,7 @@ function renderExplanation(reply){
   const fu = document.getElementById("fuInput");
   fu.onkeydown = e => { if (e.key==="Enter") askFollowup(fu.value); };
   document.getElementById("fuSend").onclick = () => askFollowup(fu.value);
-  document.getElementById("regenBtn").onclick = () => explain();
+  document.getElementById("regenBtn").onclick = () => explain(true);
   
   var simBtn = document.getElementById("dhSimilarBtn");
   if(simBtn) simBtn.onclick = function(){ generateSimilarSentencesList(); };

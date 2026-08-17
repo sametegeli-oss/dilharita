@@ -2,7 +2,7 @@
 (function(global){
 "use strict";
 if(global.DHAIResponseCache)return;
-var STORE="dh-ai-response-cache-v1",LIMIT=80;
+var STORE="dh-ai-response-cache-v1",LIMIT=250;
 function stable(v){if(v===null||typeof v!=="object")return JSON.stringify(v);if(Array.isArray(v))return "["+v.map(stable).join(",")+"]";return "{"+Object.keys(v).sort().map(function(k){return JSON.stringify(k)+":"+stable(v[k]);}).join(",")+"}";}
 function hash(s){s=String(s||"");var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36)+"-"+s.length;}
 function all(){try{return JSON.parse(localStorage.getItem(STORE)||"{}")||{};}catch(e){return{};}}

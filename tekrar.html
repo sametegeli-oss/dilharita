@@ -733,7 +733,7 @@ try{
     ];
 
     function runCheck(tokBudget, isRetry) {
-      DHProviders.chat(semMsgs, {temperature:0, max_tokens:tokBudget}).then(function(out){
+      DHProviders.chat(semMsgs, {temperature:0, max_tokens:tokBudget,cacheType:"review-answer-evaluation",cacheInput:semMsgs.filter(function(m){return m.role!=="system";})}).then(function(out){
         var t = String(out||"").trim();
         var lo = t.toLocaleLowerCase("tr");
         var ok = /geçerli|gecerli|\bevet\b|\byes\b|\bvalid\b/.test(lo) && !/geçersiz|gecersiz/.test(lo.slice(0,12));

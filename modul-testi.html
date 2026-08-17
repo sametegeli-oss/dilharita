@@ -190,7 +190,7 @@
     if(!(window.DHProviders && DHProviders.hasAnyKey())) return Promise.reject("no-key");
     var sys="Sen bir İngilizce sınav değerlendiricisisin. Öğrencinin Türkçe cümle çevirisini değerlendir. Anlam doğruysa DOĞRU say, birebir kelime gerekmez, küçük yazım hatalarını hoş gör. SADECE şu JSON: {\"correct\": true/false, \"feedback\": \"kısa Türkçe not (en fazla 8 kelime)\"}";
     var usr="Türkçe: \""+turkce+"\"\nÖrnek çeviri: \""+ornek+"\"\nÖğrenci: \""+ogrenci+"\"";
-    return DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}], {temperature:0.1, max_tokens:120}).then(function(txt){
+    return DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}], {temperature:0.1, max_tokens:120,cacheType:"module-test-evaluation",cacheInput:usr}).then(function(txt){
       txt=(txt||"").trim();
       var m=txt.match(/\{[\s\S]*\}/);
       if(m){ try{ var o=JSON.parse(m[0]); return {correct:!!o.correct,feedback:o.feedback||""}; }catch(e){} }

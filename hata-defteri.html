@@ -387,7 +387,7 @@ var DH=(function(){
       return decisions;
     }
     try{
-      var out=await DHProviders.chat(msgs,{temperature:0,max_tokens:Math.max(900,candidates.length*35),json:true,title:"💎 "+candidates.length+" hata kaydını toplu değerlendir"});
+      var out=await DHProviders.chat(msgs,{temperature:0,max_tokens:Math.max(900,candidates.length*35),json:true,title:"💎 "+candidates.length+" hata kaydını toplu değerlendir",cacheType:"error-book-batch",cacheInput:candidates});
       var decisions=parseBatch(out), toDelete=[];
       candidates.forEach(function(rec,i){ if(decisions[i+1]===true) toDelete.push(rec.id); });
       if(toDelete.length) await LearningErrorDB.deleteMany(toDelete);

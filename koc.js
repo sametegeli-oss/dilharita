@@ -575,7 +575,7 @@
         +'(3) Tekrar bekleyen 0 ise tekrar.html adımını ekleme. '
         +'(4) TON: cılız/nötr cümleler kurma. "note" ve "why" alanları KOMUT NİTELİĞİNDE ve YÖNLENDİRİCİ olsun — sadece gözlem değil, ne yapması gerektiğini AÇIKÇA söyle (örn. "Bugün mutlaka past-simple çalış, 3 gündür ihmal ediyorsun" gibi net bir yönerge; "iyi gidiyorsun" gibi genel geçer laf etme). '
         +'SADECE JSON döndür, açıklama yok: {"focus":"günün odağı tek cümle (Türkçe, buyurgan/yönlendirici üslupla)","note":"NET bir yönerge/komut (Türkçe, en çok 15 kelime)","why":"bu planı NEDEN önerdiğini profildeki sayılara dayanarak açıklayan, yönlendirici 1 cümle (Türkçe, en çok 20 kelime)","steps":[{"label":"somut, sayıya dayalı adım (Türkçe, kısa)","href":"..."}]} steps 2-3 adet olacak ve href YALNIZ şunlardan biri: '+ALLOWED.join(", ");
-      var out=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:prof}],{temperature:0.4,max_tokens:400});
+      var out=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:prof}],{temperature:0.4,max_tokens:400,cacheType:"coach-profile-analysis",cacheInput:prof});
       var plan=null; try{ plan=valid(JSON.parse(String(out).replace(/```json|```/g,"").trim())); }catch(e){}
       if(!plan) return;                      // sessiz düşüş: banner statik kalır
       var st=await liveStats();

@@ -2317,7 +2317,7 @@ function dhSemanticCheck(s, answer, row){
     {role:"user",   content: "Referans: "+s.en+"\nÖğrenci: "+answer}
   ];
   function runCheck(tok, isRetry){
-    DHProviders.chat(semMsgs,{temperature:0,max_tokens:tok}).then(function(out){
+    DHProviders.chat(semMsgs,{temperature:0,max_tokens:tok,cacheType:"practice-answer-evaluation",cacheInput:semMsgs.filter(function(m){return m.role!=="system";})}).then(function(out){
       var t=String(out||"").trim();
       if(/evet|yes/i.test(t)){
         note.style.color="#4ade80";

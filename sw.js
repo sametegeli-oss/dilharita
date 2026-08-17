@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v93";   /* v93: girdi-temelli kalici AI cevap hafizasi ve prompt degisikligi uyarisi */
+var SW_VERSION = "dh-sw-v94";   /* v94: ogretmen ve sabit AI ekranlari ortak cevap hafizasinda */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

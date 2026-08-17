@@ -188,7 +188,7 @@
 
   // ---- Groq ----
   async function groqChat(messages, maxTokens){
-    if(window.DHProviders&&DHProviders.chat) return DHProviders.chat(messages,{temperature:.6,max_tokens:maxTokens||500,title:"💎 Cümleyi kontrol et"});
+    if(window.DHProviders&&DHProviders.chat) return DHProviders.chat(messages,{temperature:.6,max_tokens:maxTokens||500,title:"💎 Cümleyi kontrol et",cacheType:"ocr-sentence-check",cacheInput:messages.filter(function(m){return m.role!=="system";})});
     var keys=getKeys();
     if(!keys.length) throw {code:"no-key"};
     var lastErr=null;

@@ -48,7 +48,7 @@
     // Çok sağlayıcılı katman varsa onu kullan (Groq→Cerebras→Gemini).
     // provider verilirse ("gemini") SADECE o sağlayıcıya sorulur.
     if(window.DHProviders && (provider || DHProviders.hasAnyKey())){
-      return DHProviders.chat(messages, {temperature:0.3, max_tokens:1500, provider:provider||undefined});
+      return DHProviders.chat(messages, {temperature:0.3, max_tokens:1500, provider:provider||undefined,cacheType:"teacher-bubble-explanation",cacheInput:messages.filter(function(m){return m.role!=="system";})});
     }
     // yedek: doğrudan Groq
     var keys=getKeys();

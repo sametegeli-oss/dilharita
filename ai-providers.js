@@ -117,6 +117,15 @@
       s.onload=function(){global.DHGemini?resolve(global.DHGemini):reject({code:"bridge"});};s.onerror=function(){reject({code:"bridge"});};document.head.appendChild(s);
     });
   }
+  function ensureResponseCache(){
+    if(global.DHAIResponseCache) return Promise.resolve(global.DHAIResponseCache);
+    return new Promise(function(resolve,reject){
+      var old=document.querySelector('script[data-dh-ai-cache]');
+      if(old){old.addEventListener("load",function(){resolve(global.DHAIResponseCache);},{once:true});old.addEventListener("error",reject,{once:true});return;}
+      var s=document.createElement("script");s.src="./ai-response-cache.js?v=2";s.dataset.dhAiCache="1";
+      s.onload=function(){resolve(global.DHAIResponseCache);};s.onerror=reject;document.head.appendChild(s);
+    });
+  }
   function chatViaGemini(messages,opts){
     if(opts&&opts.signal&&opts.signal.aborted) return Promise.reject({code:"abort"});
     return ensureGeminiBridge().then(function(g){
@@ -234,6 +243,16 @@
   // --- ANA FONKSİYON: aşamalı dene ---
   function chat(messages, opts){
     opts = opts || {};
+    if(opts.cacheType && !opts.__cacheBypass){
+      return ensureResponseCache().then(function(cache){
+        var input=opts.cacheInput!=null?opts.cacheInput:(messages||[]).filter(function(m){return m&&m.role!=="system";});
+        var prompt=(messages||[]).filter(function(m){return m&&m.role==="system";}).map(function(m){return m.content;}).join("\n");
+        var hit=!opts.forceRefresh&&cache.get(opts.cacheType,input,prompt);
+        if(hit){global.DHProviders.lastCacheInfo={hit:true,promptChanged:hit.promptChanged,type:opts.cacheType,input:input};return hit.record.text;}
+        var next={};Object.keys(opts).forEach(function(k){next[k]=opts[k];});next.__cacheBypass=true;
+        return chat(messages,next).then(function(txt){cache.put(opts.cacheType,input,prompt,txt,opts.title||opts.cacheType);global.DHProviders.lastCacheInfo={hit:false,promptChanged:false,type:opts.cacheType,input:input};return txt;});
+      });
+    }
     if(aiMode()==="gemini") return chatViaGemini(messages,opts);
     var avail = PROVIDERS.filter(function(p){ return keysOf(p.keyStore).length>0; });
     if(!avail.length) return Promise.reject({code:"no-key"});
