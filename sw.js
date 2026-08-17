@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v92";   /* v92: tum Gemini metin donuslerinde guvenli zengin Markdown kartlari */
+var SW_VERSION = "dh-sw-v93";   /* v93: girdi-temelli kalici AI cevap hafizasi ve prompt degisikligi uyarisi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -48,6 +48,7 @@ var SHELL = [
   "./dh-gun-sonu.js",
   "./dh-pdf.js",
   "./ai-providers.js",
+  "./ai-response-cache.js",
   "./ai-choice.js",
   "./gemini-bridge.js",
   "./gemini-quality-tools.js",
