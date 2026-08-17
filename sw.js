@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v95";   /* v95: index-app aktif modulu tek Gemini isteginde toplu aciklar */
+var SW_VERSION = "dh-sw-v96";   /* v96: modül kelime/rapor/PDF, hata dersi ve birleşik gün paketi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -52,6 +52,7 @@ var SHELL = [
   "./ai-choice.js",
   "./gemini-bridge.js",
   "./gemini-quality-tools.js",
+  "./bulk-ai-v33.js",
   "./onboarding-guard.js",
   "./dh-modul.js",
   "./dh-modul-enjekte.js",
