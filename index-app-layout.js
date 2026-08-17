@@ -378,13 +378,15 @@ function getAllAIExplanationsFromDB() {
   });
 }
 
+function normalizeModuleName(value){return String(value||"").toLowerCase().replace(/\s+/g," ").trim();}
+function requestedModuleName(){try{return new URLSearchParams(location.search).get("mod")||"";}catch(e){return "";}}
 async function activeModuleSentences(){
-  var modName=(document.querySelector(".study-title")&&document.querySelector(".study-title").textContent||"").trim();
+  var modName=requestedModuleName()||(document.querySelector(".study-title")&&document.querySelector(".study-title").textContent||"").trim();
   if(!modName)return [];
   var all=[];try{var res=await fetch("./data/sentences.json");if(res.ok)all=await res.json();}catch(e){}
   if(!all.length&&window._sentencesCache)all=window._sentencesCache;
-  var key=modName.toLowerCase().replace(/\s+/g," ").trim();
-  return (all||[]).filter(function(s){var m=String(s.module||"").toLowerCase().replace(/\s+/g," ").trim();return m===key||(key&&m.indexOf(key)===0)||(m&&key.indexOf(m)===0);});
+  var key=normalizeModuleName(modName);
+  return (all||[]).filter(function(s){return normalizeModuleName(s.module)===key;});
 }
 function bulkModal(title,body,busy){
   var old=document.getElementById("dhAiBulkModal");if(old)old.remove();var o=document.createElement("div");o.id="dhAiBulkModal";o.style.cssText="position:fixed;inset:0;z-index:1000001;background:#020617df;display:flex;align-items:center;justify-content:center;padding:16px";
@@ -396,10 +398,12 @@ async function explainActiveModuleWithAI(){
   var cached=await getAllAIExplanationsFromDB(),missing=sentences.filter(function(s){return !cached[s.en];});
   if(!missing.length){bulkModal("♻️ Modül açıklamaları hazır","Bu modüldeki <b>"+sentences.length+" cümlenin tamamı</b> daha önce açıklanmış. Gemini’ye yeniden gönderilmedi.",false);var cur=document.querySelector(".card-en");if(cur&&cached[cur.textContent.trim()])renderResultBox(cur.textContent.trim(),cached[cur.textContent.trim()],"🤖 Modülün kayıtlı AI açıklaması");return;}
   if(!(window.DHProviders&&DHProviders.chat&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())){alert("Profilde Gemini/AI yöntemini etkinleştirin.");return;}
-  bulkModal("💎 Modül Gemini’ye hazırlanıyor","Toplam "+sentences.length+" cümlenin "+cachedCount(sentences,cached)+" tanesi kayıtlı. Yalnız eksik olan <b>"+missing.length+" cümle</b> tek istekte gönderilecek…",true);
+  var waitingModal=bulkModal("💎 Modül Gemini’ye hazırlanıyor","Toplam "+sentences.length+" cümlenin "+cachedCount(sentences,cached)+" tanesi kayıtlı. Yalnız eksik olan <b>"+missing.length+" cümle</b> tek istekte gönderilecek…",true);
   var payload=missing.map(function(s,i){return{n:i+1,en:s.en,tr:s.tr||""};});
   var sys="Türk öğrenci için verilen İngilizce cümlelerin HER BİRİNİ ayrı ayrı açıkla. Türkçe çeviri, temel dilbilgisi yapısı, önemli kelime/kalıp, anlam nüansı ve bir kısa doğru örnek ver. Hiçbir cümleyi atlama. Yalnız geçerli JSON dizi döndür: [{\"n\":1,\"explanation\":\"Markdown açıklama\"}]. n değerini aynen koru.";
   try{
+    /* Kopyala-yapıştır köprüsünün cevap alanını bekleme katmanı kapatmasın. */
+    if(waitingModal&&waitingModal.parentNode)waitingModal.remove();
     var raw=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:JSON.stringify(payload)}],{temperature:.25,max_tokens:Math.max(1800,missing.length*350),json:true,title:"💎 "+missing.length+" modül cümlesini toplu açıkla",cacheType:"index-module-explanations",cacheInput:payload});
     var clean=String(raw||"").replace(/```json|```/gi,"").trim(),a=clean.indexOf("["),z=clean.lastIndexOf("]");if(a<0||z<a)throw new Error("JSON dizi bulunamadı");var rows=JSON.parse(clean.slice(a,z+1)),saved=0;
     for(var i=0;i<rows.length;i++){var n=Number(rows[i]&&rows[i].n),text=String(rows[i]&&rows[i].explanation||"").trim();if(n>=1&&n<=missing.length&&text){await saveAIToDB(missing[n-1].en,text);saved++;}}
@@ -495,10 +499,9 @@ async function exportModuleToPDF(exportAllModules) {
       if (exportAllModules) {
         sentences = allData;
       } else {
-        var keyMod = modName.toLowerCase().replace(/\s+/g," ").trim();
+        var keyMod = normalizeModuleName(requestedModuleName() || modName);
         sentences = allData.filter(function(s){
-          var m = (s.module||"").toLowerCase().replace(/\s+/g," ").trim();
-          return m === keyMod || (keyMod && m.indexOf(keyMod)===0) || (m && keyMod.indexOf(m)===0);
+          return normalizeModuleName(s.module) === keyMod;
         });
       }
     }
@@ -508,10 +511,9 @@ async function exportModuleToPDF(exportAllModules) {
     if (exportAllModules) {
       sentences = window._sentencesCache;
     } else {
-      var key = modName.toLowerCase().replace(/\s+/g," ").trim();
+      var key = normalizeModuleName(requestedModuleName() || modName);
       sentences = window._sentencesCache.filter(function(s){
-        var m = (s.module||"").toLowerCase().replace(/\s+/g," ").trim();
-        return m === key || (key && m.indexOf(key)===0) || (m && key.indexOf(m)===0);
+        return normalizeModuleName(s.module) === key;
       });
     }
   }

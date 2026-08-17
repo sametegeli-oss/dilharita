@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v96";   /* v96: modül kelime/rapor/PDF, hata dersi ve birleşik gün paketi */
+var SW_VERSION = "dh-sw-v97";   /* v97: kesin aktif modül seçimi ve erişilebilir Gemini yapıştırma */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

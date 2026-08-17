@@ -209,6 +209,7 @@ function loadAllSentences(){
   }).catch(function(){ return []; });
 }
 function currentModuleName(){
+  try{var requested=new URLSearchParams(location.search).get("mod");if(requested)return requested.trim();}catch(e){}
   var el = document.querySelector(".study-title");
   return el ? (el.textContent||"").trim() : "";
 }
@@ -232,14 +233,8 @@ function openModuleList(){
     var key = modName.toLowerCase().replace(/\s+/g," ").trim();
     var rows = all.filter(function(s){
       var m = (s.module||"").toLowerCase().replace(/\s+/g," ").trim();
-      return m === key || (key && m.indexOf(key)===0) || (m && key.indexOf(m)===0);
+      return m === key;
     });
-    if(!rows.length){
-      var codeMatch = (modName.match(/[A-C][12]-M\d+/)||[])[0];
-      if(codeMatch){
-        rows = all.filter(function(s){ return (s.module||"").indexOf(codeMatch)!==-1; });
-      }
-    }
     rows.sort(function(a,b){ return (a.order||0)-(b.order||0); });
     if(!rows.length){
       body.innerHTML = '<div class="dh-list-loading">Bu modülün cümleleri bulunamadı.</div>';
