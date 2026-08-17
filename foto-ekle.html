@@ -98,6 +98,7 @@
 </div>
 
 <script src="./learning-error-system.js?v=2"></script>
+<script src="./ai-providers.js?v=3"></script>
 <script>
 (function(){
   "use strict";
@@ -210,8 +211,6 @@
 
   // Ham OCR metnini AI'a gönderip düzgün, doğru İngilizce cümleler üret.
   async function aiExtractSentences(rawText){
-    var keys=getKeys();
-    if(!keys.length) throw {code:"no-key"};
     var clipped=String(rawText||"").slice(0, 4000);  // çok uzun metni kırp
     var prompt=
       "Below is raw OCR text scanned from a page. It may contain noise, broken line breaks, "
@@ -288,8 +287,6 @@
   $("translateBtn").onclick=async function(){
     var rows=collectRows();
     if(!rows.length){ trStatus.className="status bad"; trStatus.textContent="Çevrilecek cümle yok."; return; }
-    var keys=getKeys();
-    if(!keys.length){ trStatus.className="status bad"; trStatus.textContent="Çeviri için Groq API anahtarı gerekli (öğretmen ekranından ekleyebilirsin)."; return; }
     trStatus.className="status"; trStatus.textContent="Çevriliyor…";
     $("translateBtn").disabled=true;
     try{
@@ -319,6 +316,7 @@
   };
 
   async function groqChat(messages){
+    if(window.DHProviders&&DHProviders.chat) return DHProviders.chat(messages,{temperature:.3,max_tokens:1500,title:"💎 Cümleleri işle"});
     var keys=getKeys();
     if(!keys.length) throw {code:"no-key"};
     var lastErr=null;

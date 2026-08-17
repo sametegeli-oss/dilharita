@@ -224,7 +224,7 @@ function openVoiceSheet(){
    PROVIDER_META/getKeysFor/saveKeyFor/removeKeyFor zaten burada duruyordu, panel onları kullanır. */
 function openKeySheet(invalid){
   if(document.querySelector(".sheet-overlay.dh-keysheet")) return;
-  const hadKey = !!((window.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()) || getKeys().length);
+  const hadKey = !!((window.DHProviders && DHProviders.realHasAnyKey && DHProviders.realHasAnyKey()) || getKeys().length);
   const ids = Object.keys(PROVIDER_META);
   const sheet = document.createElement("div");
   sheet.className = "sheet-overlay dh-keysheet";
@@ -272,7 +272,7 @@ function openKeySheet(invalid){
 
   function close(){
     sheet.remove();
-    const hasKey = !!((window.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()) || getKeys().length);
+    const hasKey = !!((window.DHProviders && DHProviders.realHasAnyKey && DHProviders.realHasAnyKey()) || getKeys().length);
     if(!hadKey && hasKey && State.en) explain();
   }
   $$("keyClose").onclick = close;
@@ -284,6 +284,7 @@ function openKeySheet(invalid){
     if(!k){ note("Anahtar boş.","bad"); return; }
     if(!k.startsWith(p.prefix)){ note(p.label+" anahtarı '"+p.prefix+"' ile başlamalı.","bad"); return; }
     saveKeyFor(p.store, k);
+    try{ if(window.DHProviders&&DHProviders.setMode) DHProviders.setMode("api"); }catch(e){}
     $$("keyInput").value = "";
     note(p.label+" anahtarı kaydedildi.","ok");
     renderList();
@@ -1088,7 +1089,7 @@ async function explain(){
     return;
   }
 
-  if (typeof window.__dhStorageReady !== "undefined" && !window.__dhStorageReady && !getKeys().length){
+  if (typeof window.__dhStorageReady !== "undefined" && !window.__dhStorageReady && !(window.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey()) && !getKeys().length){
     setOut(`<div class="loading"><div class="spinner"></div> Hazırlanıyor…</div>`);
     await new Promise(function(resolve){
       var done=false; function go(){ if(done) return; done=true; resolve(); }
@@ -1097,7 +1098,7 @@ async function explain(){
     });
   }
 
-  if (!getKeys().length){
+  if (!(window.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey()) && !getKeys().length){
     if(window.DHGemini && State.en){
       setOut(`<div class="state">
         <h2>Bu cümleyi nasıl inceleyelim?</h2>

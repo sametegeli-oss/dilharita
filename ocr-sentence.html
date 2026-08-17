@@ -112,6 +112,7 @@
 <script src="./ai-teacher-prompt-tts.js?v=2"></script>
 <script src="./tts-avatar-long-sync-fix.js?v=4"></script>
 <script src="./learning-error-system.js?v=10"></script>
+<script src="./ai-providers.js?v=3"></script>
 <script>
 (function(){
   "use strict";
@@ -187,6 +188,7 @@
 
   // ---- Groq ----
   async function groqChat(messages, maxTokens){
+    if(window.DHProviders&&DHProviders.chat) return DHProviders.chat(messages,{temperature:.6,max_tokens:maxTokens||500,title:"💎 Cümleyi kontrol et"});
     var keys=getKeys();
     if(!keys.length) throw {code:"no-key"};
     var lastErr=null;

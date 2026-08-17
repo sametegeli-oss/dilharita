@@ -952,12 +952,10 @@ try{
       if(sc<80 && !viaMic) showExplain(curT,false);
       speak(curT.en);
 
-      /* Kontrol et anında koç KONUŞSUN — Bildim/Zor beklemeden somut geri bildirim ver.
-         Otomatik AI hakem çalışacaksa (anahtar var + orta bant), koç eşdeğer-yapı
-         kararını ERTELER; AI dönünce koç yeniden, nihai kararla konuşur. */
+      /* AI hakem ASLA otomatik calismaz. Kullanici asagidaki dugmeye basarsa
+         profil tercihine gore API veya Gemini web koprusu devreye girer. */
       var _bandLo0 = viaMic ? 10 : 25, _bandHi0 = viaMic ? 95 : 80;
-      var _refereePending = (sc>=_bandLo0 && sc<_bandHi0 && evalInput.trim().length>2 &&
-                             window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey());
+      var _refereePending = false;
       try{
         var _cd = (typeof computeWordDiff==="function") ? computeWordDiff(curT.en, evalInput) : null;
         window.dhCoachEvaluate && window.dhCoachEvaluate({
@@ -970,18 +968,13 @@ try{
       
       var bandLo = viaMic ? 10 : 25, bandHi = viaMic ? 95 : 80;
       if(sc>=bandLo && sc<bandHi && evalInput.trim().length>2){
-        var hasKey = window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey();
-        if(hasKey) {
-          /* API anahtarı var → SİSTEM otomatik hakemlik yapar (typo'lar düzeltilmiş cümleyle). */
-          window.triggerAiSemanticCheck(evalInput, curT.en);
-        } else if(window.DHGemini){
-          /* Anahtar YOK → yedek: kopyala-yapıştır hakem düğmesi (kullanıcı Gemini'de sorar). */
-          var btnGem = document.createElement("button");
-          btnGem.id = "btnGeminiRef";
-          btnGem.className = "b-sem-chk";
-          btnGem.style.background = "#8b5cf6";
-          btnGem.innerHTML = "💎 Gemini'ye Sor (hakem)";
-          btnGem.onclick = function(){ window.askGeminiReferee(evalInput, curT.en); };
+        var available=window.DHProviders&&DHProviders.chat&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey();
+        if(available){
+          var webMode=DHProviders.mode&&DHProviders.mode()==="gemini";
+          var btnGem=document.createElement("button");btnGem.id="btnGeminiRef";btnGem.className="b-sem-chk";
+          btnGem.style.background=webMode?"#8b5cf6":"#2563eb";
+          btnGem.innerHTML=webMode?"💎 Gemini ile kontrol et":"🤖 AI ile kontrol et";
+          btnGem.onclick=function(){btnGem.disabled=true;window.triggerAiSemanticCheck(evalInput,curT.en);};
           $("score").appendChild(btnGem);
         }
       }

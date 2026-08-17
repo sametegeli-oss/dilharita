@@ -175,6 +175,7 @@
     catch (e) { return []; }
   }
   function groq(mesajlar) {
+    if(global.DHProviders&&DHProviders.chat) return DHProviders.chat(mesajlar,{temperature:.2,max_tokens:400,title:"💎 Sohbet dilbilgisini değerlendir"});
     var keys = anahtarlar();
     if (!keys.length) return Promise.reject(new Error("anahtar yok"));
     var i = 0;
@@ -195,7 +196,7 @@
     return dene();
   }
   function dilbilgisiPuani(cevaplar, seviye) {
-    if (!anahtarlar().length) return Promise.resolve(null);   /* anahtar yok: bilesen atlanir */
+    if (!(global.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey()) && !anahtarlar().length) return Promise.resolve(null);
     var sys = "You are an English teacher grading a Turkish learner's chat replies at level "
       + (seviye || "A2") + ". Judge ONLY grammar, word choice and word order of THEIR sentences. "
       + "Be fair for their level; ignore punctuation, capitalisation and typos. "

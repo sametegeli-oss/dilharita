@@ -64,7 +64,7 @@
   // Neden kullanılamıyor — kullanıcıya kısa mesaj için
   function reason(){
     if (!policyAiOpen()) return "AI öğretmen ayarlardan kapalı.";
-    if (!hasKeys())      return "AI için bir anahtar gerekiyor (Groq, Cerebras veya Gemini — öğretmen sayfasından ekle).";
+    if (!hasKeys())      return "AI erişim tercihini profilden seç: API anahtarı veya Gemini kopyala-yapıştır.";
     if (!online())       return "İnternet yok — öğretmen şu an çevrimdışı modda.";
     if (rateLimited()){
       var sec = Math.max(1, Math.ceil((_rateUntil - Date.now())/1000));

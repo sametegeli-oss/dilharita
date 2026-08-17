@@ -2272,12 +2272,12 @@ function renderSemRow(s, answer){
   var fbEl=document.getElementById("feedbackArea");
   if(!fbEl) return;
   var hasKey = window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey();
+  var webMode = hasKey && DHProviders.mode && DHProviders.mode()==="gemini";
 
   var row=document.createElement("div");
   row.className="sem-row";
   row.innerHTML =
-    (hasKey ? '<button class="b-sem-chk" id="btnTriggerSem" type="button">🤖 Farklı Yazdım, Anlamı Kontrol Et</button>' : '')
-    + '<button class="b-gemini" id="btnGemini" type="button">✨ Gemini</button>';
+    (hasKey ? '<button class="b-sem-chk" id="btnTriggerSem" type="button">'+(webMode?'💎 Gemini ile kontrol et':'🤖 AI ile kontrol et')+'</button>' : '');
   fbEl.appendChild(row);
 
   // Kriter ayar paneli (tekrar.html'deki ⚙️ ile aynı, prompt aynı anahtarda saklanır)
@@ -2297,7 +2297,6 @@ function renderSemRow(s, answer){
     document.getElementById("btnTriggerSem").onclick=function(){ dhSemanticCheck(s, answer, row); };
   }
 
-  document.getElementById("btnGemini").onclick=function(){ dhOpenGemini(s, answer); };
 }
 
 /* AI'ya EVET/HAYIR sorar. NOT: notu (SRS) DEĞİŞTİRMEZ — sadece bilgi verir.

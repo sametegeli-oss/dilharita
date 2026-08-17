@@ -88,6 +88,7 @@ body{
 </head>
 <body>
 <div class="wrap" id="root"></div>
+<script src="./ai-providers.js?v=3"></script>
 <script>/* ============================================================
    teacher.html — Türkçe konuşan İngilizce öğretmeni paneli
    Cümleyi URL'den (?s=...&t=...) alır, Groq'a düzenlenebilir
@@ -105,6 +106,7 @@ function getKeys(){ try{ return (JSON.parse(localStorage.getItem(KEYS_LS)||"[]")
 function saveKey(k){ const ks=getKeys(); if(!ks.includes(k)) ks.push(k); try{ localStorage.setItem(KEYS_LS, JSON.stringify(ks)); }catch{} }
 let _ki=0;
 async function groqChat(messages){
+  if(window.DHProviders&&DHProviders.chat) return DHProviders.chat(messages,{temperature:.5,max_tokens:1100,title:"💎 Öğretmene sor"});
   const keys=getKeys();
   if(!keys.length) throw {code:"no-key"};
   let last=null;
@@ -198,7 +200,7 @@ function setOut(html){ document.getElementById("out").innerHTML = html; }
 
 async function explain(){
   if (!State.en){ setOut(`<div class="state"><h2>Cümle yok</h2><p>Bu panel bir cümleyle açılır. Çalışma ekranındaki 🎓 Öğretmen düğmesini kullan.</p></div>`); return; }
-  if (!getKeys().length){ openKeySheet(); setOut(""); return; }
+  if (!(window.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey()) && !getKeys().length){ openKeySheet(); setOut(""); return; }
   setOut(`<div class="loading"><div class="spinner"></div> Öğretmen cümleyi inceliyor…</div>`);
   const userMsg = `İngilizce cümle: "${State.en}"` + (State.tr ? `\nTürkçe çevirisi: ${State.tr}` : "");
   State.history = [{ role:"system", content:getPrompt() }, { role:"user", content:userMsg }];

@@ -79,11 +79,60 @@
       var m={}; arr.forEach(function(k){ m[k]=1; }); return m;
     }catch(e){ return {}; }
   }
-  function hasAnyKey(){
+  function realHasAnyKey(){
     return PROVIDERS.some(function(p){ return keysOf(p.keyStore).length>0; });
   }
+  function aiMode(){
+    try{
+      var p=JSON.parse(localStorage.getItem("dh-profile-v1")||"{}")||{};
+      if(p.aiYontemi==="api"||p.aiYontemi==="gemini") return p.aiYontemi;
+    }catch(e){}
+    /* Eski kullaniciyi bozma: kayitli anahtari varsa API, yoksa anahtarsiz
+       Gemini web koprusu. Profil secimi yapilinca bu yedek devreden cikar. */
+    return realHasAnyKey()?"api":"gemini";
+  }
+  function hasAnyKey(){
+    return aiMode()==="gemini" || realHasAnyKey();
+  }
   function activeProviders(){
+    if(aiMode()==="gemini") return ["gemini-web"];
     return PROVIDERS.filter(function(p){ return keysOf(p.keyStore).length>0; }).map(function(p){ return p.id; });
+  }
+
+  function promptOf(messages,opts){
+    var lines=["Aşağıdaki görevi eksiksiz uygula. Yalnız istenen yanıt biçimini döndür."];
+    (messages||[]).forEach(function(m){
+      var role=m&&m.role==="system"?"SİSTEM":m&&m.role==="assistant"?"ÖNCEKİ ASİSTAN":"KULLANICI";
+      lines.push("\n["+role+"]\n"+String(m&&m.content||""));
+    });
+    if(opts&&opts.json) lines.push("\nYanıtı geçerli JSON olarak ver; markdown kod bloğu kullanma.");
+    return lines.join("\n");
+  }
+  function ensureGeminiBridge(){
+    if(global.DHGemini&&DHGemini.ask) return Promise.resolve(global.DHGemini);
+    return new Promise(function(resolve,reject){
+      var old=document.querySelector('script[data-dh-gemini-bridge]');
+      if(old){old.addEventListener("load",function(){resolve(global.DHGemini);},{once:true});old.addEventListener("error",reject,{once:true});return;}
+      var s=document.createElement("script");s.src="./gemini-bridge.js?v=2";s.dataset.dhGeminiBridge="1";
+      s.onload=function(){global.DHGemini?resolve(global.DHGemini):reject({code:"bridge"});};s.onerror=function(){reject({code:"bridge"});};document.head.appendChild(s);
+    });
+  }
+  function chatViaGemini(messages,opts){
+    if(opts&&opts.signal&&opts.signal.aborted) return Promise.reject({code:"abort"});
+    return ensureGeminiBridge().then(function(g){
+      return new Promise(function(resolve,reject){
+        var settled=false;
+        var handle=g.ask({
+          title:(opts&&opts.title)||"💎 Gemini ile devam et",
+          hint:"Gemini yanıtının tamamını buraya yapıştır…",
+          prompt:promptOf(messages,opts),
+          parse:g.parsers.text,
+          onResult:function(value){settled=true;resolve(String(value||""));},
+          onCancel:function(){if(!settled)reject({code:"abort"});}
+        });
+        if(opts&&opts.signal) opts.signal.addEventListener("abort",function(){try{handle&&handle.close&&handle.close();}catch(e){}if(!settled)reject({code:"abort"});},{once:true});
+      });
+    });
   }
 
   // --- OpenAI-uyumlu çağrı (Groq, Cerebras) ---
@@ -185,6 +234,7 @@
   // --- ANA FONKSİYON: aşamalı dene ---
   function chat(messages, opts){
     opts = opts || {};
+    if(aiMode()==="gemini") return chatViaGemini(messages,opts);
     var avail = PROVIDERS.filter(function(p){ return keysOf(p.keyStore).length>0; });
     if(!avail.length) return Promise.reject({code:"no-key"});
 
@@ -252,6 +302,12 @@
   global.DHProviders = {
     chat: chat,
     hasAnyKey: hasAnyKey,
+    realHasAnyKey: realHasAnyKey,
+    mode: aiMode,
+    setMode: function(mode){
+      if(mode!=="api"&&mode!=="gemini") return false;
+      try{var p=JSON.parse(localStorage.getItem("dh-profile-v1")||"{}")||{};p.aiYontemi=mode;p.aiYontemiTarih=Date.now();localStorage.setItem("dh-profile-v1",JSON.stringify(p));return true;}catch(e){return false;}
+    },
     activeProviders: activeProviders,
     listModels: listModels,
     setModel: setModel,

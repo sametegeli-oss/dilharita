@@ -1,0 +1,14 @@
+import fs from "node:fs";
+let fail=0;const ok=(v,m)=>{console.log(`${v?"✓":"✗"} ${m}`);if(!v)fail++;};
+const js=fs.readFileSync("dh-daily-pdf.js","utf8"),home=fs.readFileSync("index.html","utf8"),sw=fs.readFileSync("sw.js","utf8");
+ok(/async function todayPdf/.test(js)&&/recordsToday\(day\)/.test(js),"bugün PDF'i koçun tarihli SRS kayıtlarını doğrudan kullanıyor");
+ok(/async function tomorrowPdf/.test(js)&&/recordsDue\(end\.getTime\(\)\)/.test(js),"yarın PDF'i bütün SRS vadelerini hesaplıyor");
+ok(/moduleSentences\(mod\)/.test(js)&&/nextModule\(\)/.test(js),"yarın PDF'i koçun seçtiği modülün bütün cümlelerini alıyor");
+ok(!/\.slice\(0\s*,/.test(js)&&!/ENFAZLA_|MAX_(?:SENTENCE|WORD)/.test(js),"PDF veri listelerinde kırpma veya üst sınır yok");
+ok(/Bugün çalışılan bütün cümleler/.test(js)&&/Bugün çalışılan bütün kelimeler/.test(js),"bugün PDF'i bütün cümle ve kelimeleri listeliyor");
+ok(/Yarın çalışılacak bütün SRS cümleleri/.test(js)&&/Yarın çalışılacak bütün SRS kelimeleri/.test(js),"yarın PDF'i bütün cümle ve kelimeleri listeliyor");
+ok(/window\.print\(\)/.test(js)&&/@page\{size:A4/.test(js),"çıktı A4 PDF yazdırma düzeninde açılıyor");
+ok(home.includes('id="bugunPdf"')&&home.includes('id="yarinPdf"'),"iki PDF isteğe bağlı ana ekran düğmesi olarak sunuluyor");
+ok(/DHDailyPdf\.today\(\)/.test(home)&&/DHDailyPdf\.tomorrow\(\)/.test(home),"düğmeler ayrı PDF akışlarını başlatıyor");
+ok(/dh-sw-v8[6-9]/.test(sw),"Service Worker sürümü yükseltildi");
+process.exit(fail?1:0);

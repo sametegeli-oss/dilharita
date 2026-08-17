@@ -1099,14 +1099,14 @@ function speakText(text){
 async function explainText(text){
   $("explainSheet").classList.add("open");
   $("explainText").textContent="Yükleniyor...";
-  if(!getKeys().length){
-    $("explainText").textContent="API anahtarı eklenmemiş. Bu bölümde normalde İngilizce cümlenin Türkçe anlamı ve kısa dil bilgisi açıklaması gösterilir.";
+  if(!(window.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())&&!getKeys().length){
+    $("explainText").textContent="Profilinden API veya Gemini kullanımını seçmelisin.";
     return;
   }
   try{
     const reply=await groqChat([{role:"system", content:"You are a Turkish-speaking English teacher. Translate the sentence into Turkish and briefly explain key vocabulary or grammar. Maximum 3 short Turkish sentences."},{role:"user", content:text}]);
     $("explainText").textContent=reply || "Açıklama alınamadı.";
-  }catch(e){ $("explainText").textContent="Açıklama alınamadı. API anahtarını kontrol et veya tekrar dene."; }
+  }catch(e){ $("explainText").textContent="Açıklama alınamadı. AI tercihini kontrol et veya tekrar dene."; }
 }
 async function analyzeChatErrors(){
   const b=$("errSaveBtn"); if(!b) return;
@@ -1176,7 +1176,7 @@ async function suggestReply(){
   const input=$("textIn");
   const sBtn=$("suggestBtn");
   await ensureStorageReady();
-  if(!getKeys().length){ $("keySheet").classList.add("open"); return; }
+  if(!(window.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())&&!getKeys().length){ $("keySheet").classList.add("open"); return; }
   const prev=sBtn ? sBtn.textContent : "";
   if(sBtn){ sBtn.disabled=true; sBtn.textContent="⏳"; }
   try{
@@ -1218,7 +1218,7 @@ async function sendUser(){
   addBubble("assistant", "", {typing:true});
 
   await ensureStorageReady();
-  if(!getKeys().length){
+  if(!(window.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())&&!getKeys().length){
     removeTyping();
     $("keySheet").classList.add("open");
     State.currentPartner = Scenario.noKeyReply;
@@ -1415,7 +1415,10 @@ function boot(){
   /* Malzeme varsa genFreshOpener CAGRILMAZ: rastgele "taze konu" uretimi
      malzeme acilisini ezer ve sikayet aynen geri gelir. */
   var generic = !(__dhTeach&&__dhTeach.target) && !__dhFocus && !__dhMalzeme;
-  if(generic && getKeys().length){
+  /* Acilis metni arka planda kendiliginden Gemini penceresi acmasin. Web
+     koprusu yalniz kullanicinin sohbet/dugme eylemiyle baslar. */
+  var directAI=(window.DHProviders&&DHProviders.realHasAnyKey&&DHProviders.realHasAnyKey())||getKeys().length;
+  if(generic && directAI){
     addBubble("assistant", "", {typing:true});
     genFreshOpener(function(op){
       removeTyping();

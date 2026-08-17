@@ -21,7 +21,7 @@
       katmıyordu; yeni kullanıcı hep A1-M01'den başlıyordu.
 
    API:
-     DHProfile.get()                 {amac, seviye, gunlukHedef, kurulumBitti, ...}
+     DHProfile.get()                 {amac, seviye, gunlukHedef, aiYontemi, kurulumBitti, ...}
      DHProfile.set(patch)
      DHProfile.level()               "B1" | null
      DHProfile.setLevel(lvl, meta)
