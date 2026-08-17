@@ -32,6 +32,9 @@
     +".dh-pdf-btn:hover{background:linear-gradient(135deg,#047857,#059669)}"
     +".dh-pdf-all-btn{background:linear-gradient(135deg,#d97706,#f59e0b);border-color:#fbbf24;color:#fff}"
     +".dh-pdf-all-btn:hover{background:linear-gradient(135deg,#b45309,#d97706)}"
+    /* bütün cümle açıklamaları hazır modül kartı */
+    +".dh-ai-ready-module-card{background:linear-gradient(135deg,rgba(6,78,59,.96),rgba(13,60,78,.96)) !important;border-color:#34d399 !important;box-shadow:0 0 0 1px rgba(52,211,153,.25),0 10px 28px rgba(5,150,105,.18) !important;position:relative}"
+    +".dh-ai-ready-module-card:after{content:'✓ AI açıklamaları hazır';display:inline-flex;margin:6px 8px;padding:3px 8px;border-radius:999px;background:#10b981;color:#03261c;font:900 10px Nunito,system-ui,sans-serif}"
     /* nav */
     +".study-nav{display:none !important}"
     +".dh-nav-trio{display:flex;gap:8px;align-items:center;margin:0 0 14px}"
@@ -270,6 +273,7 @@
         checkAndSyncAiBox(c);
       }
       ensureTools();
+      scheduleModuleAIStatusUI();
     }catch(e){}
     applying=false;
   }
@@ -281,6 +285,34 @@
   }
   if(document.readyState!=="loading") boot(); else document.addEventListener("DOMContentLoaded",boot);
 })();
+
+/* --- MODÜL AI DURUMU: açılış uyarısı + tamamlanan kart zemini --- */
+var dhModuleAIStatusTimer=0,dhModuleAIStatusBusy=false,dhModuleSentenceStatusCache=null;
+function scheduleModuleAIStatusUI(){clearTimeout(dhModuleAIStatusTimer);dhModuleAIStatusTimer=setTimeout(refreshModuleAIStatusUI,450);}
+async function moduleStatusSentences(){if(dhModuleSentenceStatusCache)return dhModuleSentenceStatusCache;var all=[];try{var r=await fetch("./data/sentences.json");if(r.ok)all=await r.json();}catch(e){}if(!all.length&&window._sentencesCache)all=window._sentencesCache;dhModuleSentenceStatusCache=all||[];return dhModuleSentenceStatusCache;}
+async function refreshModuleAIStatusUI(){
+  if(dhModuleAIStatusBusy)return;dhModuleAIStatusBusy=true;
+  try{
+    var all=await moduleStatusSentences(),ai=await getAllAIExplanationsFromDB(),groups={};
+    all.forEach(function(s){var k=normalizeModuleName(s.module);if(!k)return;(groups[k]||(groups[k]=[])).push(s);});
+    var ready={};Object.keys(groups).forEach(function(k){ready[k]=groups[k].length>0&&groups[k].every(function(s){return !!ai[s.en];});});
+    document.querySelectorAll(".dh-ai-ready-module-card").forEach(function(el){var marked=el.getAttribute("data-dh-ai-module")||"";if(!ready[marked]){el.classList.remove("dh-ai-ready-module-card");el.removeAttribute("data-dh-ai-module");}});
+    document.querySelectorAll("#root *").forEach(function(el){
+      if(el.classList.contains("study-title")||el.closest(".card")||el.children.length>2)return;
+      var k=normalizeModuleName(el.textContent);if(!ready[k])return;
+      var n=el,hops=0;while(n&&n.id!=="root"&&hops++<7){var clickable=false;try{clickable=getComputedStyle(n).cursor==="pointer";}catch(e){}if(clickable||n.getAttribute("role")==="button"||n.tagName==="BUTTON")break;n=n.parentElement;}
+      if(n&&n.id!=="root"&&!n.classList.contains("dh-ai-ready-module-card")){n.classList.add("dh-ai-ready-module-card");n.setAttribute("data-dh-ai-module",k);}
+    });
+    var title=document.querySelector(".study-title"),sentence=document.querySelector(".card .card-en");
+    if(title&&sentence){var name=(title.textContent||"").trim(),key=normalizeModuleName(name),list=groups[key]||[],missing=list.filter(function(s){return !ai[s.en];});if(list.length&&missing.length)showModuleAIWarningOnce(name,list.length,missing.length);}
+  }catch(e){}finally{dhModuleAIStatusBusy=false;}
+}
+function showModuleAIWarningOnce(name,total,missing){
+  var key="dh-module-ai-warning-v1:"+normalizeModuleName(name);try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,"1");}catch(e){}
+  if(document.getElementById("dhModuleAIWarning"))return;var o=document.createElement("div");o.id="dhModuleAIWarning";o.style.cssText="position:fixed;inset:0;z-index:1000003;background:#020617df;display:flex;align-items:center;justify-content:center;padding:16px";
+  o.innerHTML='<div style="width:min(520px,100%);background:#0d1b32;color:#e8eef7;border:1px solid #f59e0b;border-radius:17px;padding:18px;box-shadow:0 20px 60px #0009"><h2 style="margin:0 0 10px;font-size:19px">💡 Modül açıklamaları eksik</h2><p style="line-height:1.6;color:#bfd0ea"><b>'+name+'</b> modülündeki '+total+' cümlenin <b>'+missing+' tanesi</b> için AI açıklaması bulunmuyor. Çalışmaya başlamadan önce tamamını tek istekte hazırlayabilirsiniz.</p><div style="display:flex;gap:9px;flex-wrap:wrap"><button data-a="later">Daha sonra</button><button data-a="now">💎 Şimdi açıklamaları al</button></div></div>';
+  o.querySelectorAll("button").forEach(function(b){b.style.cssText="flex:1;min-width:150px;padding:11px;border:0;border-radius:9px;background:#334155;color:white;font-weight:900";});o.querySelector('[data-a="now"]').style.background="linear-gradient(135deg,#7c3aed,#2563eb)";o.querySelector('[data-a="later"]').onclick=function(){o.remove();};o.querySelector('[data-a="now"]').onclick=function(){o.remove();explainActiveModuleWithAI();};document.body.appendChild(o);
+}
 
 /* --- MARKDOWN PARSER (Gemini Kod Blokları ve Başlık Düzeltici) --- */
 function parseMarkdownToHTML(markdown) {

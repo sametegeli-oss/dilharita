@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v101";  /* v101: 25 kaydı tek yanıta sığdıran kompakt toplu açıklama */
+var SW_VERSION = "dh-sw-v102";  /* v102: modül açılış AI uyarısı ve tamamlanan kart rengi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
