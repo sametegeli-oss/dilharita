@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v89";   /* v89: kalici, kimlikli ve pano destekli Gemini gidis-donus koprusu */
+var SW_VERSION = "dh-sw-v90";   /* v90: hata defterinde tum gorunur kayitlari tek Gemini paketinde degerlendir */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
