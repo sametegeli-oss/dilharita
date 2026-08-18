@@ -9,7 +9,7 @@
   var excluded = /^(login|basla|pwa-reset|pwa-hard-reset|chat|chatteacher|chatteacher1|chatteacher2|chatdoctor|chathotel|chatairport|chatrestaurant|teacher-chat|teacher1|ogren|practice|videopractice|sesdalga)\.html?$/.test(page);
   function activeFor(href) {
     if (href === "./index.html") return page === "index.html";
-    if (href === "./library.html") return /^(library|menu|modullerim|kelime-ogren|phrasal-verbs|pdfoku|ocr-sentence)\.html?$/.test(page);
+    if (href === "./ders.html") return /^(ders|library|menu|modullerim|kelime-ogren|phrasal-verbs|pdfoku|ocr-sentence|index-app)\.html?$/.test(page);
     if (href === "./chat.html") return /^(chat|chatteacher|chatteacher1|chatteacher2|chatdoctor|chathotel|chatairport|chatrestaurant|teacher|teacher1|teacher3)\.html?$/.test(page);
     return /^(rapor|ilerleme|gunluk-takip|hata-defteri|aktivite)\.html?$/.test(page);
   }
@@ -18,8 +18,12 @@
     return '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+paths[name]+'</svg>';
   }
   function installNav() {
+    /* product-improvements.js bütün ekranlarda sağdan açılan ortak menüyü
+       kuruyorsa ikinci bir alt menü üretme. Özellikle mobilde iki gezinme
+       katmanı ekranı daraltıyor ve "Öğren"i yanlışlıkla Kitaplığa götürüyordu. */
+    if (document.querySelector('script[src*="product-improvements.js"]')) return;
     if (excluded || document.querySelector(".dh-app-nav")) return;
-    var items=[["./index.html","home","Bugün"],["./library.html","learn","Öğren"],["./chat.html","talk","Konuş"],["./rapor.html","chart","İlerleme"]];
+    var items=[["./index.html","home","Bugün"],["./ders.html","learn","Öğren"],["./chat.html","talk","Konuş"],["./rapor.html","chart","İlerleme"]];
     var nav=document.createElement("nav"); nav.className="dh-app-nav"; nav.setAttribute("aria-label","Ana gezinme");
     nav.innerHTML=items.map(function(x){var active=activeFor(x[0]);return '<a href="'+x[0]+'"'+(active?' class="is-active" aria-current="page"':'')+'>'+icon(x[1])+'<span>'+x[2]+'</span></a>';}).join("");
     document.body.appendChild(nav); document.body.classList.add("dh-has-app-nav");

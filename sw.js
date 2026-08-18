@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v108";  /* v108: sorgu sürümlerini koru; eski Gemini köprüsünü kesin yenile */
+var SW_VERSION = "dh-sw-v109";  /* v109: tek sağ yan menü; eski alt Öğren yönlendirmesini kaldır */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
