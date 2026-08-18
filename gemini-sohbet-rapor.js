@@ -203,6 +203,19 @@
     return true;
   }
 
+  /* Rapor yalnizca ozel Gemini penceresinden degil, kullanici tarafindan
+     ana sohbet kutusuna yapistirildiginda da ayni tek akisla islensin. */
+  function uygula(text) {
+    var d = ayristir(text);
+    puaniKaydet(d);
+    raporuKaydet(d);
+    sayacaYaz();
+    var tamam = sohbetiTamamla(d);
+    var n = hatalariIsle(d);
+    goster(d, n);
+    return { rapor: d, tamamlandi: tamam };
+  }
+
   /* ═══════════════ GÖSTERİM ═══════════════ */
   function stil() {
     if (document.getElementById("dhgsr-css")) return;
@@ -273,12 +286,18 @@
     html += '<div class="dhgsr-bilgi">Puan ilerleme raporuna işlendi'
       + (eklenenHata ? (" · " + eklenenHata + " hata deftere eklendi") : "")
       + ' · günlük çalışma sayacına yazıldı.</div>';
-    html += '<button type="button" class="dhgsr-kap">Kapat</button></div>';
+    html += '<button type="button" class="dhgsr-kap">'
+      + (d.hedefUlasildi ? "✓ Sohbet tamamlandı — ana sayfaya dön" : "Kapat")
+      + '</button></div>';
 
     ov.innerHTML = html;
     document.body.appendChild(ov);
     ov.addEventListener("click", function (e) {
-      if (e.target === ov || (e.target.classList && e.target.classList.contains("dhgsr-kap"))) ov.remove();
+      if (e.target === ov) { ov.remove(); return; }
+      if (e.target.classList && e.target.classList.contains("dhgsr-kap")) {
+        ov.remove();
+        if (d.hedefUlasildi) location.href = "./index.html";
+      }
     });
     return ov;
   }
@@ -302,12 +321,7 @@
       ].join("\n"),
       parse: ayristir,
       onResult: function (d) {
-        puaniKaydet(d);
-        raporuKaydet(d);
-        sayacaYaz();
-        sohbetiTamamla(d);
-        var n = hatalariIsle(d);
-        goster(d, n);
+        uygula(JSON.stringify(d));
       }
     });
   }
@@ -349,6 +363,7 @@
 
   global.DHGeminiRapor = {
     iste: iste, son: son, goster: goster, ayristir: ayristir,
-    sozlesme: sozlesme, SEMA: SEMA, sohbetiTamamla: sohbetiTamamla
+    uygula: uygula, sozlesme: sozlesme, SEMA: SEMA,
+    sohbetiTamamla: sohbetiTamamla
   };
 })(window);

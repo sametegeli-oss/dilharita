@@ -1207,6 +1207,21 @@ async function sendUser(){
   const input=$("textIn");
   const text=input.value.trim();
   if(!text || State.busy) return;
+  /* Gemini'nin RAPOR JSON'u yanlislikla/kolaylikla ana mesaj kutusuna
+     yapistirilabilir. Bunu AI'ye yeni mesaj olarak gonderme: yerelde rapor
+     olarak isle, gorevleri tamamla ve kullaniciya bitis ekranini goster. */
+  if(window.DHGeminiRapor && DHGeminiRapor.uygula &&
+     /[\"']?hedefUlasildi[\"']?\s*:/.test(text) &&
+     /[\"']?(basari|ozet)[\"']?\s*:/.test(text)){
+    try{
+      DHGeminiRapor.uygula(text);
+      input.value="";
+      input.style.height="auto";
+    }catch(e){
+      alert("Gemini raporu okunamadı: "+(e&&e.message?e.message:"Geçersiz rapor"));
+    }
+    return;
+  }
   State.busy=true;
   State.abortController=new AbortController();
   $("sendBtn").disabled=false;
