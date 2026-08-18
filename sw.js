@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v105";  /* v105: tüm ekranlarda sabit mobil yan menü */
+var SW_VERSION = "dh-sw-v106";  /* v106: Gemini otomatik açma kaldırıldı, index-app AI bulut senkronu */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

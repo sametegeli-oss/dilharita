@@ -56,7 +56,7 @@
     appId: "1:1048475533632:web:3f719b6da4397ed7c53aa5"
   };
 
-  var fb=null, user=null, ready=false, authResolved=false, saveTimer=null, syncing=false;
+  var fb=null, user=null, ready=false, authResolved=false, saveTimer=null, syncing=false, aiSyncDirty=false;
 
   /* ── 2) BİRLEŞTİRME (saf fonksiyonlar) ───────────────────── */
   function mergeEvents(a,b){
@@ -508,7 +508,7 @@
         ls: degisen,
         errors: errDegisti ? data.errors : null
       });
-      if(aiDegisti) await fb.saveAIExplanations(user.uid,aiChanged);
+      if(aiDegisti){ await fb.saveAIExplanations(user.uid,aiChanged); aiSyncDirty=false; }
 
       /* İmzalar YALNIZCA yazma başarılıysa saklanır. Yoksa başarısız bir
          yazmadan sonra o değişiklik bir daha hiç gönderilmezdi. */
@@ -801,7 +801,13 @@
         user=u?{uid:u.uid}:null;
         authResolved=true;
         updateBadge();
-        if(user) initialSync();
+        if(user){
+          initialSync();
+          /* Açıklamalar Firebase kimliği çözülmeden önce içe aktarılmışsa
+             olay kaybolmaz; oturum hazır olur olmaz yalnız değişen AI
+             kayıtları buluta gönderilir. */
+          if(aiSyncDirty) setTimeout(function(){ pushNow(); },800);
+        }
       });
     }).catch(function(e){ console.warn("cloud-sync: firebase yüklenemedi", e); });
   }
@@ -1039,7 +1045,10 @@
   /* ── 12) BAŞLAT + DIŞ API ────────────────────────────────── */
   hookLocalStorage();
   window.addEventListener("learning-errors-cleared", pushSoon);
-  window.addEventListener("dh-ai-explanation-changed", pushSoon);
+  /* index-app toplu içe aktarmada peş peşe 25 kayıt yazar. Olaylar tek
+     debounce içinde birleşir; kullanıcı ekrandan ayrılırsa pagehide'daki
+     zorunlu push kalan paketi de gönderir. */
+  window.addEventListener("dh-ai-explanation-changed", function(){ aiSyncDirty=true; pushSoon(); });
   window.addEventListener("pagehide", flushOnLeave);
   document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="hidden") flushOnLeave(); });
   initFirebase();

@@ -145,6 +145,7 @@ function ask(opt){
     if(ov.parentNode) ov.parentNode.removeChild(ov);
     if(activeOverlay===ov) activeOverlay=null;
     global.removeEventListener("focus",returned);
+    global.removeEventListener("pagehide",abandoned);
     document.removeEventListener("visibilitychange",returned);
   }
   function rememberDraft(){ job.draft=ta.value||""; job.state="answer-ready"; savePending(job); }
@@ -176,7 +177,7 @@ function ask(opt){
     });
   };
   ov.querySelector(".dhgb-close").onclick=function(){
-    close(); if(typeof opt.onCancel==="function") try{ opt.onCancel(); }catch(e){}
+    clearPending(id); close(); if(typeof opt.onCancel==="function") try{ opt.onCancel(); }catch(e){}
   };
   ov.addEventListener("click",function(e){ if(e.target===ov) ov.querySelector(".dhgb-close").click(); });
 
@@ -216,11 +217,15 @@ function ask(opt){
     if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); submit(); }
   });
   setTimeout(function(){ ta.focus(); },80);
-  copy(prompt).then(function(ok){
-    var privacy=wasRedacted?" Kişisel/API bilgileri maskelendi.":"";
-    say(ok?"Prompt kopyalandı; Gemini yeni sekmede açıldı."+privacy:"Gemini açıldı. Promptu elle kopyalaman gerekebilir.",ok?"#4ade80":"#f59e0b");
-  });
-  try{ global.open(GEMINI_URL,"_blank","noopener"); }catch(e){}
+  /* Gemini sekmesini yalnız kullanıcının mor "Gemini'yi aç" düğmesi açar.
+     Sayfa yüklenirken/menü geçişinde otomatik sekme açmak gezinmeyi döngüye
+     sokuyordu. Prompt yine hazırdır ama kullanıcı karar verene kadar dışarı
+     yönlendirme yapılmaz. */
+  var privacy=wasRedacted?" Kişisel/API bilgileri maskelendi.":"";
+  say("Prompt hazır. Önce kopyala, ardından istersen Gemini'yi aç."+privacy,"#9fb3d9");
+
+  function abandoned(){ clearPending(id); }
+  global.addEventListener("pagehide",abandoned,{once:true});
 
   function returned(){
     if(document.hidden || !ov.parentNode) return;
