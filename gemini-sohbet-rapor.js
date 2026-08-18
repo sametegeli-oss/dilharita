@@ -102,6 +102,17 @@
     if (d.basari == null && !d.ozet) {
       throw new Error("Cevapta \"basari\" ya da \"ozet\" alanı yok — eksik yapıştırılmış olabilir.");
     }
+    /* Gemini bazen JSON içinde boolean yerine "true"/"evet" metni
+       döndürüyor. Anlamı aynı olan bu değerleri gerçek boolean'a çevir;
+       alan hiç yoksa yüksek başarı puanını tamamlanma kanıtı say. */
+    var hu=d.hedefUlasildi;
+    if(typeof hu==="string"){
+      var hs=hu.toLocaleLowerCase("tr").trim();
+      if(/^(true|evet|yes|ok|okey|tamam|tamamlandı)$/.test(hs)) hu=true;
+      else if(/^(false|hayır|hayir|no|tamamlanmadı|tamamlanmadi)$/.test(hs)) hu=false;
+    }else if(typeof hu==="number") hu=hu>0;
+    if(typeof hu!=="boolean") hu=(sayi(d.basari,0,100)||0)>=70;
+    d.hedefUlasildi=hu;
     return d;
   }
 
@@ -179,6 +190,14 @@
       var k="dh-koc-steps-done-"+gun, set=JSON.parse(localStorage.getItem(k)||"{}")||{};
       set["chat.html"]=1; set[sayfa()]=1; localStorage.setItem(k,JSON.stringify(set));
       localStorage.setItem("dh-speaking-complete-"+gun,"1");
+      /* coach-bubble.js chatteacher ekranlarında yüklenmese bile konuşma
+         kanıtını doğrudan günlük sayaca yaz. Tekrar aynı rapor yapıştırılırsa
+         sayaç şişmesin; konuşma tamamlandıysa en az 1 olması yeterlidir. */
+      var tk="dh-study-tracker-v1", tr=JSON.parse(localStorage.getItem(tk)||"{}")||{};
+      if(!tr.days) tr.days={};
+      if(!tr.days[gun]) tr.days[gun]={date:gun,lessons:0,minutes:0,sentences:0,videos:0,reviews:0,errors:0,speaking:0};
+      tr.days[gun].speaking=Math.max(1,parseInt(tr.days[gun].speaking,10)||0);
+      localStorage.setItem(tk,JSON.stringify(tr));
       global.dispatchEvent(new CustomEvent("dh:task-complete",{detail:{type:"sohbet",source:"gemini-report"}}));
     } catch (e) {}
     return true;
