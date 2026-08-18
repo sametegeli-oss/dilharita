@@ -220,12 +220,48 @@
     var L={},R={};
     try{ L=JSON.parse(localStr||"{}")||{}; }catch(e){}
     try{ R=JSON.parse(remoteStr||"{}")||{}; }catch(e){}
-    if(preferLocal && Object.keys(L).length) return JSON.stringify(L);
     if(!Object.keys(L).length) return remoteStr;
     if(!Object.keys(R).length) return localStr;
     var lt=+L.guncellendi||+L.seviyeTarih||0;
     var rt=+R.guncellendi||+R.seviyeTarih||0;
-    return rt>lt ? remoteStr : localStr;
+    /* Profilin tamamını tek tarihle seçmek seviyeyi geriye götürüyordu:
+       örn. mobilde C1 testi yapıldıktan sonra masaüstünde yalnız günlük hedef
+       değiştirilince, masaüstünün yeni `guncellendi` değeri eski B2 seviyesini
+       C1'in üstüne yazıyordu. Genel alanlar en yeni profil kaydından; seviye
+       ailesi ise kendi `seviyeTarih/seviyeTesti.tarih` damgasından seçilir. */
+    var winner=(preferLocal&&Object.keys(L).length)?L:(rt>lt?R:L);
+    var older=winner===L?R:L, out={},k;
+    for(k in older) if(older.hasOwnProperty(k)) out[k]=older[k];
+    for(k in winner) if(winner.hasOwnProperty(k)) out[k]=winner[k];
+    function levelTs(o){return Math.max(+o.seviyeTarih||0,+(o.seviyeTesti&&o.seviyeTesti.tarih)||0);}
+    var levelWinner=levelTs(R)>levelTs(L)?R:L;
+    if(levelWinner.seviye) out.seviye=levelWinner.seviye;
+    if(levelWinner.seviyeTarih) out.seviyeTarih=levelWinner.seviyeTarih;
+    if(levelWinner.seviyeTesti) out.seviyeTesti=levelWinner.seviyeTesti;
+    out.guncellendi=Math.max(lt,rt,+out.guncellendi||0);
+    return JSON.stringify(out);
+  }
+
+  /* Profil, eski `dh-level` aynası ve öğretmen anayasası aynı seviyeyi
+     göstermeli. Seviye testinin en yeni tarihli sonucu üçüne de uygulanır. */
+  function repairProfileLevelAliases(){
+    try{
+      var p=JSON.parse(localStorage.getItem("dh-profile-v1")||"{}")||{};
+      var pol=JSON.parse(localStorage.getItem("dh-teacher-policy-v1")||"{}")||{};
+      var pt=Math.max(+p.seviyeTarih||0,+(p.seviyeTesti&&p.seviyeTesti.tarih)||0);
+      var qt=+(pol.seviyeTesti&&pol.seviyeTesti.tarih)||0;
+      var usePolicy=qt>pt, level=usePolicy&&pol.seviyeTesti?pol.seviyeTesti.level:p.seviye;
+      if(!level && pol.seviye&&pol.seviye!=="auto") level=pol.seviye;
+      if(!/^(A1|A2|B1|B2|C1|C2)$/.test(String(level||""))) return;
+      var chosenTs=Math.max(pt,qt);
+      p.seviye=level; if(chosenTs) p.seviyeTarih=chosenTs;
+      if(usePolicy&&pol.seviyeTesti) p.seviyeTesti=pol.seviyeTesti;
+      pol.seviye=level;
+      if(p.seviyeTesti&&(!pol.seviyeTesti||+(p.seviyeTesti.tarih||0)>=+(pol.seviyeTesti.tarih||0))) pol.seviyeTesti=p.seviyeTesti;
+      localStorage.setItem("dh-profile-v1",JSON.stringify(p));
+      localStorage.setItem("dh-level",level);
+      localStorage.setItem("dh-teacher-policy-v1",JSON.stringify(pol));
+    }catch(e){}
   }
   /* Gemini karnesi: iki cihaz farklı tarihte karne aldıysa en yeni karne
      kazanır. Boş/bozuk uzak kayıt geçerli yerel karneyi silemez. */
@@ -608,6 +644,7 @@
           }
         }catch(e){}
       }
+      repairProfileLevelAliases();
 
       /* KULLANICI MODULLERI — IndexedDB tarafi.
          Moduller artik localStorage'da degil kv deposunda ("dh-modul-..."),

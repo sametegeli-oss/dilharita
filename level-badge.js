@@ -15,6 +15,13 @@
   var SKILL_LABEL = { tanima:"Tanıma", dinleme:"Dinleme", hatirlama:"Hatırlama", uretim:"Üretim", akicilik:"Akıcılık" };
 
   function getLevel(){
+    /* Uygulamanın kanonik kaynağı profildir. Öğretmen anayasası yalnız
+       geriye dönük yedek; aksi halde iki cihaz farklı rozet gösterebilir. */
+    try{
+      var prof=JSON.parse(localStorage.getItem("dh-profile-v1")||"{}")||{};
+      if(prof.seviye&&prof.seviye!=="auto") return prof.seviye;
+      if(prof.seviyeTesti&&prof.seviyeTesti.level) return prof.seviyeTesti.level;
+    }catch(e){}
     try{
       if(global.DHTeacherPolicy){
         var p = DHTeacherPolicy.load();
