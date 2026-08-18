@@ -1,5 +1,33 @@
 (() => {
   "use strict";
+
+  /* Gemini sekmesi yalnız kullanıcının açık Gemini/AI eylemiyle açılabilir.
+     Eski önbellekten kalan bir modül veya sayfa geçişi window.open çağırsa
+     bile normal menü tıklaması dış siteye yönlendirme yapamaz. */
+  let geminiIntentUntil = 0;
+  document.addEventListener("click", event => {
+    const control = event.target && event.target.closest
+      ? event.target.closest("button,a,[role='button']") : null;
+    if (!control) return;
+    const intent = [control.textContent, control.title,
+      control.getAttribute("aria-label"), control.className]
+      .filter(Boolean).join(" ");
+    if (/(gemini|ai\s*['’]?ye\s*sor|yapay\s*zeka|💎)/i.test(intent)) {
+      geminiIntentUntil = Date.now() + 2500;
+    }
+  }, true);
+  const nativeOpen = window.open.bind(window);
+  window.open = function(url, target, features) {
+    const address = String(url == null ? "" : url);
+    if (/^https?:\/\/(?:www\.)?gemini\.google\.com(?:\/|$)/i.test(address) &&
+        Date.now() > geminiIntentUntil) {
+      console.warn("[Dil Harita] İstenmeyen otomatik Gemini açılışı engellendi.", address);
+      window.dispatchEvent(new CustomEvent("dh-gemini-popup-blocked"));
+      return null;
+    }
+    return nativeOpen(url, target, features);
+  };
+
   const ready = fn => document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", fn) : fn();
   ready(() => {
     const main = document.querySelector("main,[role=main],.container,.app") || document.body;

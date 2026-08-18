@@ -197,7 +197,7 @@
       reloadingForUpdate=true;
       location.reload();
     });
-    navigator.serviceWorker.register("./sw.js?v=16", { scope:"./" }).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=17", { scope:"./" }).then(function(reg){
       if(!reg) return;
       function watch(sw){
         if(!sw) return;

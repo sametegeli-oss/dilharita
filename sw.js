@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v107";  /* v107: AI izin hatası yalıtımı, Gemini cache yenileme, masaüstü yan menü */
+var SW_VERSION = "dh-sw-v108";  /* v108: sorgu sürümlerini koru; eski Gemini köprüsünü kesin yenile */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -107,7 +107,9 @@ self.addEventListener("activate", function(event){
 
 /* stale-while-revalidate: önbellekteki varsa hemen dön, arka planda tazele */
 async function swr(event, req){
-  var cached = await caches.match(req, { ignoreSearch:true });
+  /* ?v=... gerçek bir önbellek anahtarıdır. ignoreSearch:true eski
+     gemini-bridge.js'i yeni sürüm istense de döndürüyordu. */
+  var cached = await caches.match(req, { ignoreSearch:false });
   var refresh = fetch(req).then(async function(r){
     if(r && r.ok){
       try{ (await caches.open(CACHE)).put(req, r.clone()); }catch(e){}
