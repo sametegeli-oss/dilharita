@@ -508,7 +508,19 @@
         ls: degisen,
         errors: errDegisti ? data.errors : null
       });
-      if(aiDegisti){ await fb.saveAIExplanations(user.uid,aiChanged); aiSyncDirty=false; }
+      var aiCloudError="";
+      if(aiDegisti){
+        try{ await fb.saveAIExplanations(user.uid,aiChanged); aiSyncDirty=false; }
+        catch(aiErr){
+          /* Sunucudaki yeni alt koleksiyon kuralı henüz yayımlanmamışsa
+             ana ilerleme eşlemesini başarısız sayma. AI kayıtları cihazda
+             kalır ve izin açılınca yeniden gönderilir. */
+          aiSyncDirty=true;
+          aiCloudError=(aiErr&&aiErr.message?aiErr.message:"AI açıklama izni yok").slice(0,140);
+          (data.ai||[]).forEach(function(rec){var ak="__aix:"+sigOf(rec.sentence||"");if(eski[ak]!==undefined)yeniSig[ak]=eski[ak];else delete yeniSig[ak];});
+          console.warn("[cloud-sync] AI açıklamaları cihazda korundu:",aiCloudError);
+        }
+      }
 
       /* İmzalar YALNIZCA yazma başarılıysa saklanır. Yoksa başarısız bir
          yazmadan sonra o değişiklik bir daha hiç gönderilmezdi. */
@@ -516,7 +528,7 @@
       __sonPushTs = Date.now();
       try{ localStorage.setItem("dh-last-push-ts", String(__sonPushTs)); }catch(e){}
       __failStreak=0;
-      return { ok:true, size:JSON.stringify(degisen).length, alan:degisenSayi, dropped:g.dropped };
+      return { ok:true, size:JSON.stringify(degisen).length, alan:degisenSayi, dropped:g.dropped, aiCloudError:aiCloudError };
     }catch(e){
       console.warn("cloud-sync yazma hata:", e);
       __failStreak++;
@@ -652,6 +664,7 @@
       var pmsg = pres&&pres.ok
         ? ("buluta yazıldı "+Math.round((pres.size||0)/1024)+"KB"+(pres.dropped?(" ("+pres.dropped+" büyük kayıt atlandı)"):""))
         : ("buluta YAZILAMADI: "+(pres&&pres.error||"?"));
+      if(pres&&pres.aiCloudError) parts.push("AI açıklamaları cihazda korundu; Firestore izni yayımlanınca yeniden denenecek");
       if(!pres || !pres.ok){
         updateBadge(false);
         try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"error",message:pmsg,migration:migration}})); }catch(e){}

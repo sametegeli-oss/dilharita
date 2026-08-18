@@ -7,5 +7,5 @@ ok(js.includes('e.key==="Escape"')&&js.includes("data-dh-close"),"panel Escape, 
 ok(css.includes("position:fixed!important")&&css.includes("z-index:2147483000")&&css.includes("visibility:visible!important"),"menü düğmesi ekran yerleşiminden bağımsız ve görünür");
 ok(css.includes("width:min(86vw,380px)")&&css.includes("translateX(105%)"),"panel sağdan açılıyor ve mobil genişliğe uyuyor");
 ok(css.includes(".dh-primary-nav{display:none!important}"),"mobilde tekrarlanan alt menü kaldırılıyor");
-ok(sw.includes("dh-sw-v105"),"PWA önbelleği yenilendi");
+ok(/dh-sw-v(?:10[5-9]|1[1-9][0-9]|[2-9][0-9]{2,})/.test(sw),"PWA önbelleği yenilendi");
 process.exit(f?1:0);
