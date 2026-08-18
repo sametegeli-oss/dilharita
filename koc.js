@@ -24,6 +24,34 @@
         +"Toplam: "+lessons+" ders, "+sentences+" cümle, "+reviews+" tekrar.", active:active, first15:first15, last15:last15};
     }catch(e){ return {text:"", active:0, first15:0, last15:0}; }
   }
+  function geminiReportTrend30(){
+    try{
+      var list=JSON.parse(localStorage.getItem("dh-gemini-daily-archive-v1")||"[]")||[], now=Date.now(), scores={}, newest=null, used=0;
+      list.forEach(function(r){
+        if(!r||r.date>=DAY||now-(+r.at||0)>30*86400000)return; /* bugünün raporu bugünün donmuş planını değiştirmez */
+        used++;if(!newest||(+r.at||0)>(+newest.at||0))newest=r;
+        var age=Math.max(0,Math.floor((now-(+r.at||now))/86400000)),w=Math.max(1,30-age);
+        (r.topics||[]).forEach(function(t){scores[t]=(scores[t]||0)+w;});
+      });
+      var top=Object.keys(scores).sort(function(a,b){return scores[b]-scores[a];}).slice(0,3);
+      if(!used||!top.length)return {text:"",topics:[],count:used};
+      var rec=newest&&newest.recommendations&&newest.recommendations[0];
+      return {topics:top,count:used,newest:newest,text:"Son 30 günlük Gemini rapor arşivi: "+used+" rapor. Ağırlıklı çalışma öncelikleri: "+top.join(", ")+"."+(rec?" En yeni öneri: "+rec+".":"")};
+    }catch(e){return {text:"",topics:[],count:0};}
+  }
+  function raporaGoreUyarla(plan){
+    var rt=geminiReportTrend30();if(!plan||!rt.topics.length)return plan;
+    var konu=rt.topics.join(", ");
+    plan.reportPriorities=rt.topics.slice();
+    plan.focus="Gemini raporlarına göre "+rt.topics[0]+" konusunu pekiştir";
+    plan.note=rt.topics[0]+" için doğru cümle üretmeden günü kapatma";
+    plan.why="Son 30 gündeki "+rt.count+" raporda öncelik: "+konu+".";
+    var steps=Array.isArray(plan.steps)?plan.steps.slice():[];
+    var has=steps.some(function(s){return /^(practice|hata-defteri)\.html/.test(String(s.href||""));});
+    if(!has)steps.unshift({label:rt.topics[0]+" odaklı üretim yap",href:"hata-defteri.html?gemini=gunluk"});
+    plan.steps=steps.slice(0,3);
+    return plan;
+  }
   async function errorTrend30(){
     var rows=[];
     try{
@@ -66,6 +94,7 @@
       if(__kp) p.push(__kp);
     }catch(e){}
     var act=activityTrend30(); if(act.text) p.push(act.text);
+    var gr=geminiReportTrend30(); if(gr.text) p.push(gr.text);
     try{ var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, s1=0,w1=0,s2=0,w2=0;
       for(var k in m){ if(!m[k]) continue; var st0=m[k][0];
         if(k.indexOf("sentence:")===0){ if(st0===1)s1++; else if(st0===2)s2++; }
@@ -565,7 +594,7 @@
             localStorage.setItem(KEY, JSON.stringify(cp));
           }catch(e){}
           cp.stats=await liveStats();
-          paint(freshenPlan(cp, cp.stats));   // why/note gün içinde bayatlamasın (AI çağrısı YOK)
+          paint(freshenPlan(raporaGoreUyarla(cp), cp.stats));   // rapor öncelikleri + canlı durum
         }
         return;
       }
@@ -585,6 +614,7 @@
       var out=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:prof}],{temperature:0.4,max_tokens:400,cacheType:"coach-profile-analysis",cacheInput:prof});
       var plan=null; try{ plan=valid(JSON.parse(String(out).replace(/```json|```/g,"").trim())); }catch(e){}
       if(!plan) return;                      // sessiz düşüş: banner statik kalır
+      plan=raporaGoreUyarla(plan);
       var st=await liveStats();
       // ANLIK GÖRÜNTÜ: why/note bu duruma göre yazıldı. Gün içinde durum değişirse
       // freshenPlan() bunu kıyaslayıp metni AI'sız tazeler (bkz. freshenPlan).

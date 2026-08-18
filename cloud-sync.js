@@ -31,7 +31,7 @@
     "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1",
     "dh-model-groq", "dh-model-cerebras", "dh-model-gemini",
     "selectedTeacherAvatar", "dh-teacher-mem", "dh-activity-log-v1",
-    "dh-gemini-report-v1"
+    "dh-gemini-report-v1", "dh-gemini-daily-archive-v1"
   ];
   /* "dh-koc-" → günlük koç planı, tamamlanan adımlar, gün epoch'u ve hedef.
      Bunlar cihaza özeldi; telefonda yapılan çalışma bilgisayarda görünmüyordu.
@@ -168,6 +168,15 @@
       return ((R.setAt||0) > (L.setAt||0)) ? remoteStr : localStr;
     }
     return localStr;
+  }
+  function mergeGeminiArchive(localStr,remoteStr){
+    var L=[],R=[],map={},now=Date.now(),cut=now-30*86400000;
+    try{L=JSON.parse(localStr||"[]")||[];}catch(e){}
+    try{R=JSON.parse(remoteStr||"[]")||[];}catch(e){}
+    if(!Array.isArray(L))L=[];if(!Array.isArray(R))R=[];
+    R.concat(L).forEach(function(x){if(!x||(+x.at||0)<cut)return;var id=String(x.date||"");var old=map[id];if(!old||(+x.at||0)>(+old.at||0))map[id]=x;});
+    var out=Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){return (+a.at||0)-(+b.at||0);});
+    return JSON.stringify(out.slice(-30));
   }
   function mergeTracker(localStr, remoteStr){
     var L={},R={};
@@ -630,6 +639,7 @@
           else if(rk==="dh-profile-v1"){ localStorage.setItem(rk,mergeProfile(localStorage.getItem(rk),rv,migration)); pulled++; }
           else if(rk===TRACKER){ localStorage.setItem(rk, mergeTracker(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk==="dh-gemini-report-v1"){ localStorage.setItem(rk, mergeGeminiReport(localStorage.getItem(rk),rv)); pulled++; }
+          else if(rk==="dh-gemini-daily-archive-v1"){ localStorage.setItem(rk, mergeGeminiArchive(localStorage.getItem(rk),rv)); pulled++; }
           else if(rk.indexOf("dh-gemini-gunluk-")===0){ localStorage.setItem(rk, mergeGeminiDaily(localStorage.getItem(rk),rv)); pulled++; }
           else if(rk===MIRROR){ localStorage.setItem(rk, mergeMirror(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk===ACTLOG){ localStorage.setItem(rk, mergeActivityLog(localStorage.getItem(rk), rv)); pulled++; }

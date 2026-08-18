@@ -114,6 +114,7 @@
     <div class="grup__ic">
       <a class="oge" href="./harita.html"><div class="oge__ad">İlerleme haritası</div><div class="oge__alt">Tüm modüllerde ne kadar yol aldın</div></a>
       <a class="oge" href="./rapor.html"><div class="oge__ad">30 günlük rapor</div><div class="oge__alt">Aktivite, hata eğilimi, unutma eğrisi</div></a>
+      <a class="oge" href="./gemini-rapor-arsivi.html"><div class="oge__ad">Gemini rapor arşivi</div><div class="oge__alt">Son 30 günlük değerlendirmeler ve çalışma öncelikleri</div></a>
       <a class="oge" href="./aktivite.html"><div class="oge__ad">Bugünkü aktivitem</div><div class="oge__alt">Saat saat ne yaptın</div></a>
       <a class="oge" href="./hata-defteri.html"><div class="oge__ad">Hata defteri</div><div class="oge__alt">Yanlış yapılan cümleler ve analiz</div></a>
       <a class="oge" href="./seviye-testi.html"><div class="oge__ad">Seviye belirleme</div><div class="oge__alt">Kısa bir testle seviyeni ölç</div></a>
@@ -575,7 +576,7 @@
 /* ================= SERVICE WORKER ================= */
 if("serviceWorker" in navigator){
   window.addEventListener("load", function(){
-    try{ navigator.serviceWorker.register("./sw.js?v=21", {scope:"./"}); }catch(e){}
+try{ navigator.serviceWorker.register("./sw.js?v=22", {scope:"./"}); }catch(e){}
   });
 }
 </script>
