@@ -73,7 +73,7 @@
       ["📚","Kitaplık","library.html"],
       ["🎯","Hata Defteri","hata-defteri.html"],
       ["🧑‍🏫","AI Öğretmen","teacher.html"],
-      ["⚙️","Profil ve ayarlar","basla.html?edit=1"]
+      ["⚙️","Profil ve ayarlar","profil.html"]
     ];
     const mobileMenuButton=document.createElement("button");
     mobileMenuButton.type="button";mobileMenuButton.className="dh-mobile-menu-button";

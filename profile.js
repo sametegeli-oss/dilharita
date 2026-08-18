@@ -66,6 +66,21 @@
     return (h > 0 && h < 500) ? h : 5;
   }
 
+  /* Yas/egitim bilgisi seviyeyi belirlemez. Yalniz anlatim bicimi, baglam
+     ve gunluk calisma porsiyonunu yonlendiren kisa bir ozet uretir. */
+  function kisisellestirmeOzeti() {
+    var p=get(), out=[];
+    if(p.yasAraligi) out.push("Yaş aralığı: "+p.yasAraligi);
+    if(p.egitimDurumu) out.push("Eğitim: "+p.egitimDurumu);
+    if(p.meslek) out.push("Meslek/alan: "+p.meslek);
+    if(p.ilgiAlanlari) out.push("İlgi alanları: "+p.ilgiAlanlari);
+    if(p.amac) out.push("Öğrenme amacı: "+p.amac);
+    if(p.anlatimTercihi) out.push("Anlatım tercihi: "+p.anlatimTercihi);
+    if(p.gunlukDakika) out.push("Günlük ayırabileceği süre: "+p.gunlukDakika+" dakika");
+    if(!out.length) return "";
+    return "KULLANICI TERCİHLERİ (İngilizce seviyesini bunlardan çıkarma; yalnız anlatım, örnek ve bağlamı uyarla): "+out.join("; ")+".";
+  }
+
   /* ---------- seviye ---------- */
   function level() {
     var p = get();
@@ -199,7 +214,7 @@
   window.DHProfile = {
     get: get, set: set,
     level: level, setLevel: setLevel,
-    hedef: hedef,
+    hedef: hedef, kisisellestirmeOzeti: kisisellestirmeOzeti,
     nextModule: nextModule,
     moduleStat: moduleStat,
     invalidate: invalidate

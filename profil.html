@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071226">
+<title>Kişisel Öğrenme Profili · Dil Harita</title>
+<link rel="stylesheet" href="./dh-tokens.css">
+<link rel="stylesheet" href="./dh-ui.css">
+<link rel="stylesheet" href="./product-improvements.css">
+<style>
+body{background:#050914;color:#e8eef7}.pf{max-width:760px;margin:0 auto;padding:28px 18px 110px}.pf-head{display:flex;gap:14px;align-items:center;margin-bottom:20px}.pf-back{font-size:24px;color:#cbd5e1;text-decoration:none}.pf h1{font-size:27px;margin:0}.pf-note{background:#0d1b31;border:1px solid #274060;border-radius:15px;padding:14px;line-height:1.5;color:#b8c5d9;margin-bottom:18px}.pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.pf-field{display:flex;flex-direction:column;gap:7px}.pf-field.wide{grid-column:1/-1}.pf label{font-weight:800;font-size:14px}.pf select,.pf input{width:100%;box-sizing:border-box;background:#0b1425;border:1px solid #334155;border-radius:12px;padding:13px;color:#e8eef7;font:inherit}.pf small{color:#8da0bb;line-height:1.4}.pf-actions{display:flex;gap:10px;margin-top:20px}.pf button,.pf-actions a{border:0;border-radius:12px;padding:13px 18px;font-weight:900;font:inherit;text-decoration:none;text-align:center;cursor:pointer}.pf-save{background:linear-gradient(135deg,#7c3aed,#22c1dc);color:white;flex:1}.pf-cancel{background:#172236;color:#dbeafe}.pf-msg{min-height:24px;color:#6ee7b7;font-weight:800;margin-top:12px}@media(max-width:620px){.pf-grid{grid-template-columns:1fr}.pf-field.wide{grid-column:auto}.pf h1{font-size:22px}}
+</style>
+</head>
+<body>
+<main class="pf">
+ <header class="pf-head"><a class="pf-back" href="./menu.html" aria-label="Menüye dön">←</a><div><h1>Kişisel öğrenme profili</h1><small>Programın sana nasıl öğretmesi gerektiğini belirler</small></div></header>
+ <div class="pf-note"><b>Bu alanların tamamı isteğe bağlıdır.</b> Yaş veya eğitim durumun İngilizce seviyeni belirlemez. Seviye yalnız test ve gerçek çalışma performansından hesaplanır. Bu bilgiler örnekleri, anlatım biçimini, senaryoları ve günlük çalışma miktarını kişiselleştirir.</div>
+ <form id="pfForm" class="pf-grid">
+  <div class="pf-field"><label for="yas">Yaş aralığı</label><select id="yas"><option value="">Belirtmek istemiyorum</option><option>12 yaş altı</option><option>12-17</option><option>18-24</option><option>25-34</option><option>35-49</option><option>50-64</option><option>65+</option></select></div>
+  <div class="pf-field"><label for="egitim">Eğitim durumu</label><select id="egitim"><option value="">Belirtmek istemiyorum</option><option>İlköğretim</option><option>Lise</option><option>Üniversite öğrencisi</option><option>Üniversite mezunu</option><option>Lisansüstü</option></select></div>
+  <div class="pf-field"><label for="amac">Öğrenme amacı</label><select id="amac"><option value="">Seçmedim</option><option value="gunluk">Günlük hayat</option><option value="seyahat">Seyahat</option><option value="is">İş ve kariyer</option><option value="akademik">Sınav / akademik</option></select></div>
+  <div class="pf-field"><label for="sure">Günlük süre</label><select id="sure"><option value="">Belirlemedim</option><option value="5">5 dakika</option><option value="10">10 dakika</option><option value="20">20 dakika</option><option value="30">30 dakika</option><option value="45">45 dakika</option></select></div>
+  <div class="pf-field wide"><label for="meslek">Meslek veya çalışma alanı</label><input id="meslek" maxlength="100" placeholder="Örn. denizcilik, sağlık, satış, yazılım"><small>Öğretmen örnekleri ve konuşma senaryolarını bu alana yaklaştırabilir.</small></div>
+  <div class="pf-field wide"><label for="ilgi">İlgi alanları</label><input id="ilgi" maxlength="160" placeholder="Örn. seyahat, tarih, teknoloji, spor"><small>Cümlelerin gramer seviyesi değişmeden bağlamları ilgilerine uyarlanır.</small></div>
+  <div class="pf-field wide"><label for="anlatim">Anlatım tercihi</label><select id="anlatim"><option value="">Program karar versin</option><option value="sade ve kısa">Sade ve kısa</option><option value="örnek ağırlıklı">Örnek ağırlıklı</option><option value="ayrıntılı ve kurallı">Ayrıntılı ve kurallı</option><option value="konuşma ağırlıklı">Konuşma ağırlıklı</option></select></div>
+ </form>
+ <div class="pf-actions"><a class="pf-cancel" href="./menu.html">Vazgeç</a><button class="pf-save" id="kaydet" type="button">Profili kaydet</button></div>
+ <div class="pf-msg" id="mesaj" role="status"></div>
+</main>
+<script src="./profile.js?v=2"></script>
+<script>
+(function(){
+ var p=window.DHProfile?DHProfile.get():{};
+ var map={yas:"yasAraligi",egitim:"egitimDurumu",amac:"amac",sure:"gunlukDakika",meslek:"meslek",ilgi:"ilgiAlanlari",anlatim:"anlatimTercihi"};
+ Object.keys(map).forEach(function(id){var el=document.getElementById(id);if(el&&p[map[id]]!=null)el.value=String(p[map[id]]);});
+ document.getElementById("kaydet").onclick=function(){
+  var patch={}; Object.keys(map).forEach(function(id){patch[map[id]]=document.getElementById(id).value.trim();});
+  if(patch.gunlukDakika){var d=parseInt(patch.gunlukDakika,10)||10;patch.gunlukHedef=d<=5?5:d<=10?10:d<=20?20:25;}
+  patch.kisiselProfilTarih=Date.now();
+  DHProfile.set(patch);
+  try{window.dispatchEvent(new CustomEvent("dh-profile-changed",{detail:patch}));}catch(e){}
+  var m=document.getElementById("mesaj");m.textContent="✓ Profil kaydedildi. Koç ve öğretmen bundan sonraki çalışmalarda kullanacak.";
+  setTimeout(function(){location.href="./menu.html";},1200);
+ };
+})();
+</script>
+<script src="./cloud-sync.js?v=5"></script>
+<script src="./product-improvements.js" defer></script>
+</body>
+</html>

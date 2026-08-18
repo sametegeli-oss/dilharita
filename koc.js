@@ -62,6 +62,8 @@
     try{
       var __lv = (window.DHProfile && DHProfile.level) ? DHProfile.level() : null;
       if(__lv) p.push("Seviye:"+__lv+".");
+      var __kp=(window.DHProfile&&DHProfile.kisisellestirmeOzeti)?DHProfile.kisisellestirmeOzeti():"";
+      if(__kp) p.push(__kp);
     }catch(e){}
     var act=activityTrend30(); if(act.text) p.push(act.text);
     try{ var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}, s1=0,w1=0,s2=0,w2=0;
@@ -567,7 +569,12 @@
         }
         return;
       }
-      if(!(window.DHProviders&&DHProviders.chat&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())) return;
+      /* Bu çağrı sayfa açılışında arka planda çalışır. Gemini web köprüsü
+         etkileşimli kopyala-yapıştır akışıdır; kendiliğinden pencere açmamalı.
+         Otomatik koç yalnız gerçek bir API anahtarı varsa çalışır. Anahtarsız
+         kullanıcı deterministik günlük planı görür ve Gemini'yi ancak açıkça
+         ilgili düğmeye bastığında kullanır. */
+      if(!(window.DHProviders&&DHProviders.chat&&DHProviders.realHasAnyKey&&DHProviders.realHasAnyKey())) return;
       var prof=await profile(); if(!prof) return;
       var sys='Türk öğrencinin İngilizce koçusun. Profile göre BUGÜN için kısa, SOMUT bir plan yap. '
         +'KESİN KURALLAR: (1) "Hata defteri: BOŞ" yazıyorsa hata-defteri.html adımını KESİNLİKLE ekleme. '

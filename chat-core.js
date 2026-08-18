@@ -632,6 +632,10 @@ function levelGuide(){
 /* ---- ÖĞRENCİ PROFİLİ: uygulama verisinden AI'ya kısa özet (≤150 kelime) ---- */
 async function dhBuildProfile(){
   var p=[];
+  try{
+    var kp=(window.DHProfile&&DHProfile.kisisellestirmeOzeti)?DHProfile.kisisellestirmeOzeti():"";
+    if(kp) p.push(kp);
+  }catch(e){}
   try{ // streak + bugün
     var tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}, days=Object.keys(tr.days||{}).sort();
     var streak=0, d=new Date();

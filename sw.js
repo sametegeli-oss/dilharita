@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v113";  /* v113: Gemini sohbet raporu ana kutudan da tamamlanır */
+var SW_VERSION = "dh-sw-v114";  /* v114: kişisel öğrenme profili ve AI uyarlaması */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
