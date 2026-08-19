@@ -732,7 +732,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
     $("ltGo").onclick=function(){ location.href="./seviye-testi.html"; };
     $("ltSkip").onclick=function(){
       try{ sessionStorage.setItem("dh-skip-leveltest","1"); }catch(e){}
-      start();
+      $("content").innerHTML='<div class="loading" role="status" aria-live="polite">Öğretmen seviyene uygun dersi hazırlıyor…<br><small>İçerikler yüklenirken birkaç saniye sürebilir.</small></div>';
+      requestAnimationFrame(function(){start();});
     };
   }
 

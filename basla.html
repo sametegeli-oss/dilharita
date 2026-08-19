@@ -203,6 +203,7 @@
       b.onclick = function(){
         if (durum.ilkDogru) return;
         var dogru = (metin === c.en);
+        Array.prototype.forEach.call(kap.querySelectorAll(".dh-secenek"), function(x){x.setAttribute("aria-pressed", "false");});
         b.setAttribute("aria-pressed", "true");
         if (dogru){
           durum.ilkDogru = true;
@@ -254,7 +255,7 @@
     if (window.DHPlan){
       DHPlan.kur(adimlar);
       // ilk cumle zaten dogru yapildi: bir birim islenmis sayilir
-      if (durum.ilkDogru) DHPlan.ilerlet("yeni", 1);
+      if (durum.ilkDogru){DHPlan.ilerlet("yeni", 1);DHPlan.etkinlikKaydet("sentence", "onboarding-first-sentence");}
     }
 
     var kap = $("ilkPlan");
@@ -292,6 +293,7 @@
         });
       }catch(e){}
     }
+    setTimeout(function(){try{if(window.DHAIChoice)DHAIChoice.ensure();}catch(e){}},350);
   }
 
   function tuglalar(hedef, yapilan){
@@ -317,6 +319,7 @@
         var p = JSON.parse(localStorage.getItem("dh-profile-v1") || "{}") || {};
         p.amac = (durum.amac||AMACLAR[0]).id;
         p.gunlukHedef = durum.hedef || 10;
+        p.gunlukDakika = durum.hedef || 10;
         p.kurulumBitti = true;
         p.kurulumTarih = Date.now();
         localStorage.setItem("dh-profile-v1", JSON.stringify(p));

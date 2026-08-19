@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v116";  /* v116: son gün raporu ve yarın önerileri koç promptunda açık */
+var SW_VERSION = "dh-sw-v117";  /* v117: kurulum tutarlılığı, menü ve modül süzgeci */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -53,6 +53,7 @@ var SHELL = [
   "./ai-response-cache.js",
   "./ai-bulk-json-parser.js",
   "./ai-choice.js",
+  "./index-app-module-filter.js",
   "./gemini-bridge.js",
   "./gemini-quality-tools.js",
   "./bulk-ai-v33.js",

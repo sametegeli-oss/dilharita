@@ -18,6 +18,7 @@
     return '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+paths[name]+'</svg>';
   }
   function installNav() {
+    if (!document.body) return;
     /* product-improvements.js bütün ekranlarda sağdan açılan ortak menüyü
        kuruyorsa ikinci bir alt menü üretme. Özellikle mobilde iki gezinme
        katmanı ekranı daraltıyor ve "Öğren"i yanlışlıkla Kitaplığa götürüyordu. */
@@ -29,6 +30,7 @@
     document.body.appendChild(nav); document.body.classList.add("dh-has-app-nav");
   }
   function installConnectionStatus() {
+    if (!document.body) return;
     if (document.getElementById("dhConnectionStatus")) return;
     var el=document.createElement("div"); el.id="dhConnectionStatus"; el.className="dh-connection"; el.setAttribute("role","status"); el.setAttribute("aria-live","polite"); document.body.appendChild(el);
     var hideTimer=null;
@@ -43,7 +45,7 @@
     });
   }
   function installA11y(){
-    if(document.getElementById("dhSkipLink"))return;
+    if(document.getElementById("dhSkipLink")||document.querySelector(".dh-skip,.dh-skip-link"))return;
     var target=document.querySelector("main,[role=main]");
     if(!target){
       target=document.querySelector(".app,.wrap,.container,.menu");
@@ -63,6 +65,6 @@
       if(close&&typeof close.click==="function")close.click();
     });
   }
-  function start(){try{if(global.matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("dh-reduced-motion");}catch(e){} installA11y();installNav();installConnectionStatus();}
+  function start(){if(!document.body){setTimeout(start,0);return;}try{if(global.matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("dh-reduced-motion");}catch(e){} installA11y();installNav();installConnectionStatus();}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })(window);

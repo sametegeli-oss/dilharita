@@ -32,9 +32,11 @@
   ready(() => {
     const main = document.querySelector("main,[role=main],.container,.app") || document.body;
     if (!main.id) main.id = "ana-icerik";
-    const skip = document.createElement("a");
-    skip.className = "dh-skip"; skip.href = `#${main.id}`; skip.textContent = "Ana içeriğe geç";
-    document.body.prepend(skip);
+    if (!document.querySelector(".dh-skip,.dh-skip-link,#dhSkipLink")) {
+      const skip = document.createElement("a");
+      skip.className = "dh-skip"; skip.href = `#${main.id}`; skip.textContent = "Ana içeriğe geç";
+      document.body.prepend(skip);
+    }
 
     if (!document.querySelector("h1")) {
       const h = document.createElement("h1"); h.className = "sr-only";

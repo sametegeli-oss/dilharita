@@ -33,7 +33,7 @@ body{background:#050914;color:#e8eef7}.pf{max-width:760px;margin:0 auto;padding:
 (function(){
  var p=window.DHProfile?DHProfile.get():{};
  var map={yas:"yasAraligi",egitim:"egitimDurumu",amac:"amac",sure:"gunlukDakika",meslek:"meslek",ilgi:"ilgiAlanlari",anlatim:"anlatimTercihi"};
- Object.keys(map).forEach(function(id){var el=document.getElementById(id);if(el&&p[map[id]]!=null)el.value=String(p[map[id]]);});
+ Object.keys(map).forEach(function(id){var el=document.getElementById(id),v=p[map[id]];if(id==="sure"&&(v==null||v===""))v=p.gunlukHedef;if(el&&v!=null)el.value=String(v);});
  document.getElementById("kaydet").onclick=function(){
   var patch={}; Object.keys(map).forEach(function(id){patch[map[id]]=document.getElementById(id).value.trim();});
   if(patch.gunlukDakika){var d=parseInt(patch.gunlukDakika,10)||10;patch.gunlukHedef=d<=5?5:d<=10?10:d<=20?20:25;}

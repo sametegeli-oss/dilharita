@@ -1235,7 +1235,7 @@ async function renderPicker(){
       ${due ? `🔥 Tekrar zamanı gelen ${due} cümleyi çalış` : "Şu an tekrar bekleyen cümle yok"}
     </button>
     <div class="lv-group"><div class="lv-head"><span class="lv-badge">Ak?ll? pratik</span><span>?htiyac?na g?re ?al??</span></div><div class="mod-grid source-grid">
-      ${Object.keys(SOURCE_TITLE).map(k=>`<button class="mod-tile source-tile" data-source="${k}"><span class="mod-name">${esc(SOURCE_TITLE[k])}</span><span class="mod-count">Ki?isel kay?tlar?ndan haz?rlan?r</span></button>`).join("")}
+      ${Object.keys(SOURCE_TITLE).map(k=>`<button class="mod-tile source-tile" data-source="${k}"><span class="mod-name">${esc(SOURCE_TITLE[k])}</span><span class="mod-count">Kişisel kayıtlarından hazırlanır</span></button>`).join("")}
     </div></div>`;
   for (const lv of levels){
     const mods = State.byLevel.get(lv);
