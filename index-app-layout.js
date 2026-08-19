@@ -53,7 +53,9 @@
     +".dh-tools-box .dh-pbtn{width:100%;min-height:42px;border-radius:10px;border:1px solid rgba(255,255,255,.15);font:800 13px Nunito,system-ui;cursor:pointer;background:#1e293b;color:#f8fafc}"
     +".dh-tools-box .dh-pbtn:hover{background:#334155}"
     +".dh-tools-box .wd-tools-row{margin:0 !important}"
-    +".card.dh-split>.dh-listen-after-sentence{display:inline-flex;align-items:center;justify-content:center;justify-self:start;grid-column:1;margin:2px 0 8px;padding:7px 13px !important;border-radius:10px !important;background:#0e7490 !important;color:#fff !important;font-weight:900 !important}"
+    +".card.dh-split>.dh-sentence-listen-row{grid-column:1;display:flex !important;align-items:center;gap:9px;min-width:0;margin:0 0 8px}"
+    +".dh-sentence-listen-row>.card-en{display:block;margin:0 !important;min-width:0}"
+    +".dh-sentence-listen-row>.dh-listen-after-sentence{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;margin:0;padding:7px 13px !important;border-radius:10px !important;background:#0e7490 !important;color:#fff !important;font-weight:900 !important;white-space:nowrap}"
     
     /* GEMINI MODELİİLE BİREBİR STİLLER */
     +"#dhAiResultBox { font-family: 'Nunito', system-ui, -apple-system, sans-serif !important; color: #f1f5f9 !important; font-size: 14px !important; line-height: 1.65 !important; }"
@@ -89,7 +91,8 @@
     +".card.dh-split>.card-meta{display:none !important}"
     +".card.dh-split>.sm-img-wrap{grid-row:1;grid-column:1;margin:0 !important}"
     +".card.dh-split .sm-img{max-height:50vh;width:100%;object-fit:cover;display:block;border-radius:12px}"
-    +".card.dh-split>.card-en{grid-row:1;grid-column:1;align-self:end;z-index:2;margin:0 !important;padding:7px 11px !important;background:rgba(4,10,24,.62);backdrop-filter:blur(3px);border-radius:0 0 12px 12px;font-size:17px !important;line-height:1.3 !important}"
+    +".card.dh-split>.dh-sentence-listen-row{grid-row:1;grid-column:1;align-self:end;z-index:2;margin:0 !important;padding:7px 11px !important;background:rgba(4,10,24,.62);backdrop-filter:blur(3px);border-radius:0 0 12px 12px}"
+    +".card.dh-split>.dh-sentence-listen-row>.card-en{padding:0 !important;background:transparent !important;font-size:17px !important;line-height:1.3 !important}"
     +".card.dh-split>.card-tr{margin:2px 0 !important;font-size:14px !important}"
     +".card.dh-split>.card-pron,.card.dh-split>.card-ipa{font-size:11px !important;margin:0 !important}"
     +".card.dh-split .dh-gtr-btn{margin:2px 0 !important;padding:4px 6px !important;font-size:11px !important}"
@@ -194,9 +197,17 @@
   function ensureListenAfterSentence(c){
     var en=c.querySelector(".card-en");if(!en)return;
     var listen=byText(c.querySelector(".card-actions"),"dinle");
+    if(!listen)listen=c.querySelector(".dh-listen-after-sentence");
     if(!listen)return;
     listen.classList.add("dh-listen-after-sentence");
-    if(listen.previousElementSibling!==en||listen.parentElement!==en.parentElement)en.insertAdjacentElement("afterend",listen);
+    var row=en.closest(".dh-sentence-listen-row");
+    if(!row){
+      row=document.createElement("div");
+      row.className="dh-sentence-listen-row";
+      en.parentElement.insertBefore(row,en);
+      row.appendChild(en);
+    }
+    if(listen.parentElement!==row||listen.previousElementSibling!==en)row.appendChild(listen);
   }
   function ensureNavTrio(c){
     var anchor=gradeAnchor(c);

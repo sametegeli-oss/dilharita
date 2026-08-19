@@ -55,6 +55,14 @@
 
   /* Adres cubugundaki modul */
   function aktifModul() {
+    /* Liste ekranindan acilan modul URL'ye ?mod= yazmaz. Bu nedenle
+       ilerlemeyi ekranda acik olan gercek modul basligiyla eslestir. */
+    try {
+      var el = document.querySelector(".study-title");
+      var t = el ? String(el.textContent || "").trim() : "";
+      if (t === "Bugün tekrar") return "";
+      if (t) return t;
+    } catch (e) {}
     try { return new URLSearchParams(location.search).get("mod") || ""; }
     catch (e) { return ""; }
   }
