@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v119";  /* v119: satir ici Dinle ve modul plan sayaci */
+var SW_VERSION = "dh-sw-v120";  /* v120: resimli Turkce cagrisimli kelime ezberi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
