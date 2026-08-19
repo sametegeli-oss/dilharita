@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v117";  /* v117: kurulum tutarlılığı, menü ve modül süzgeci */
+var SW_VERSION = "dh-sw-v118";  /* v118: Gemini kelime açıklaması ve çalışma listesi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -39,6 +39,7 @@ var SHELL = [
   "./speech-fallback.js",
   "./viseme-lang.js",
   "./word-popup.js",
+  "./word-learning-list.js",
   "./dh-yedek.js",
   "./dh-app-shell.js",
   "./dh-insights.js",

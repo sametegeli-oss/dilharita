@@ -31,7 +31,7 @@
     "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1",
     "dh-model-groq", "dh-model-cerebras", "dh-model-gemini",
     "selectedTeacherAvatar", "dh-teacher-mem", "dh-activity-log-v1",
-    "dh-gemini-report-v1", "dh-gemini-daily-archive-v1"
+    "dh-gemini-report-v1", "dh-gemini-daily-archive-v1", "dh-word-study-list-v1"
   ];
   /* "dh-koc-" → günlük koç planı, tamamlanan adımlar, gün epoch'u ve hedef.
      Bunlar cihaza özeldi; telefonda yapılan çalışma bilgisayarda görünmüyordu.

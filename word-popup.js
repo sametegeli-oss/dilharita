@@ -960,12 +960,13 @@
   function aiExplain(word, anlamlar){
     var out=document.getElementById("dhWpAIOut"), btn=document.getElementById("dhWpAI");
     if(!global.DHProviders){
-      out.innerHTML='<div class="dh-wp-ai-out">⚠ Bu sayfada AI sağlayıcı betiği (ai-providers.js) yüklü değil. '
-        +'Anahtarın kayıtlı olsa bile buradan kullanılamaz.</div>';
-      return;
-    }
-    if(!(DHProviders.hasAnyKey && DHProviders.hasAnyKey())){
-      out.innerHTML='<div class="dh-wp-ai-out">AI açıklaması için öğretmen sayfasından bir API anahtarı ekle (Groq, Cerebras veya Gemini).</div>';
+      out.innerHTML='<div class="dh-wp-ai-out">AI bağlantısı hazırlanıyor…</div>';
+      var old=document.querySelector('script[data-dh-word-ai-provider]');
+      if(old){old.addEventListener("load",function(){aiExplain(word,anlamlar);},{once:true});return;}
+      var ps=document.createElement("script");ps.src="./ai-providers.js?v=3";ps.dataset.dhWordAiProvider="1";
+      ps.onload=function(){aiExplain(word,anlamlar);};
+      ps.onerror=function(){out.innerHTML='<div class="dh-wp-ai-out">AI bağlantısı yüklenemedi. İnternet bağlantını kontrol et.</div>';};
+      document.head.appendChild(ps);
       return;
     }
     var cacheKey="dh-word-package-v2", cache={};
@@ -999,7 +1000,7 @@
         }
         draw(p);
       })
-      .catch(function(){ out.innerHTML='<div class="dh-wp-ai-out">Açıklama alınamadı. Anahtar/limit kontrol et.</div>'; })
+      .catch(function(err){ out.innerHTML='<div class="dh-wp-ai-out">'+((err&&err.code==="abort")?'İşlem kapatıldı. İstersen yeniden deneyebilirsin.':'Açıklama alınamadı. AI tercihini veya bağlantını kontrol et.')+'</div>'; })
       .then(function(){ btn.textContent="🎓 Kelime Paketi (AI)"; btn.disabled=false; });
   }
 
@@ -1441,4 +1442,6 @@
   }
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",baglaTiklama,{once:true});
   else baglaTiklama();
+  /* Klasik ve React word-popup için ortak çalışma listesi. */
+  (function(){if(document.querySelector('script[data-dh-word-study-list]'))return;var s=document.createElement("script");s.src="./word-learning-list.js?v=1";s.dataset.dhWordStudyList="1";document.head.appendChild(s);})();
 })(window);
