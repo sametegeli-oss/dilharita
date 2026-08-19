@@ -24,13 +24,17 @@ function reportMeta(text){
   ["konuşma kalıpları",/konuşma|sipariş|restoran|speaking|conversation/i]
  ], topics=[];
  dict.forEach(function(x){if(x[1].test(s))topics.push(x[0]);});
- var rec=[];s.split(/\n/).forEach(function(line){var q=line.match(/^\s*(?:\d+[.)]|[-*•])\s*\*{0,2}([^\n]{12,220})/);if(q&&/(çalış|tekrar|pratik|odak|dikkat|pekiştir|yaz|kur)/i.test(q[1]))rec.push(q[1].replace(/\*+/g,"").trim());});
- return {score:score,topics:topics.slice(0,8),recommendations:rec.slice(-7)};
+ var summary="",sm=s.match(/(?:\*{0,2}Genel Başarı[^\n]*\*{0,2})\s*\n([\s\S]*?)(?:\n\s*---|\n\s*\*{0,2}(?:Tekrarlanan|Yarın İçin))/i);
+ if(sm)summary=sm[1].replace(/\*+/g,"").replace(/\s+/g," ").trim().slice(0,700);
+ var rec=[],rs=s.match(/(?:\*{0,2}Yarın İçin[^\n]*\*{0,2})([\s\S]*)/i),recSource=rs?rs[1]:"";
+ recSource.split(/\n/).forEach(function(line){var q=line.match(/^\s*(?:\d+[.)]|[-*•])\s*\*{0,2}([^\n]{12,300})/);if(q)rec.push(q[1].replace(/\*+/g,"").trim());});
+ return {score:score,summary:summary,topics:topics.slice(0,8),recommendations:rec.slice(0,7)};
 }
-function archive(type,title,text,date){
- var now=Date.now(),cut=now-30*86400000,list=[];try{list=JSON.parse(localStorage.getItem(ARCHIVE)||"[]")||[];}catch(e){}
- if(!Array.isArray(list))list=[];list=list.filter(function(x){return x&&(+x.at||0)>=cut&&x.date!==date;});
- var meta=reportMeta(text);list.push({date:date,type:type,title:title,at:now,text:String(text||"").slice(0,5500),score:meta.score,topics:meta.topics,recommendations:meta.recommendations});
+function archive(type,title,text,date,sourceAt){
+ var now=+sourceAt||Date.now(),cut=Date.now()-30*86400000,list=[];try{list=JSON.parse(localStorage.getItem(ARCHIVE)||"[]")||[];}catch(e){}
+ if(!Array.isArray(list))list=[];var same=list.filter(function(x){return x&&x.date===date;})[0];if(same&&(+same.at||0)>now)return list;
+ list=list.filter(function(x){return x&&(+x.at||0)>=cut&&x.date!==date;});
+ var meta=reportMeta(text);list.push({date:date,type:type,title:title,at:now,text:String(text||"").slice(0,5500),score:meta.score,summary:meta.summary,topics:meta.topics,recommendations:meta.recommendations});
  list.sort(function(a,b){return (+a.at||0)-(+b.at||0);});try{localStorage.setItem(ARCHIVE,JSON.stringify(list.slice(-30)));}catch(e){}
  return list;
 }
@@ -42,10 +46,10 @@ async function todayReview(){var sent=[],words=[];if(global.DHDailyPdf){var rec=
 async function tomorrowPlan(){if(!global.DHDailyPdf)throw new Error("Günlük veri hattı yüklenmedi");var d=new Date();d.setDate(d.getDate()+1);var end=new Date(d);end.setHours(23,59,59,999);var rec=await DHDailyPdf._recordsDue(end.getTime()),parts=DHDailyPdf._split(rec),due=await DHDailyPdf._sentenceDetails(parts.sentenceIds),mod=await DHDailyPdf._nextModule(),fresh=await DHDailyPdf._moduleSentences(mod),hist=[];try{hist=JSON.parse(localStorage.getItem(ARCHIVE)||"[]")||[];}catch(e){}hist=hist.filter(function(x){return x&&Date.now()-(+x.at||0)<=30*86400000;}).map(function(x){return{date:x.date,score:x.score,topics:x.topics,recommendations:x.recommendations};});var sys="Koçun seçtiği gerçek malzemeyi değiştirmeden yarın için Türkçe çalışma sırası oluştur. Son 30 günlük Gemini raporlarındaki tekrarlanan öncelikleri ısınma ve üretim görevlerinin odağına yerleştir; yeni raporlara daha fazla önem ver. SRS cümlelerini veya kelimelerini ekleme/çıkarma. Isınma, ana çalışma, üretim ve tekrar bölümleri ile tahmini süreleri yaz.";return ask("💎 Yarının Gemini çalışma planı",sys,{date:day(d),dueSentences:due,dueWords:parts.words,module:mod,newModuleSentences:fresh,reportHistory:hist},"dh-gemini-tomorrow-plan-"+day(d));}
 function migrateLegacy(){
  try{
-  var cur=JSON.parse(localStorage.getItem(ARCHIVE)||"[]")||[];
-  if(cur.length)return;
-  var old=JSON.parse(localStorage.getItem("dh-gemini-session-last-v1")||"null");
-  if(old&&old.text)archive("session","💎 Önceki Gemini gün raporu",old.text,day(new Date(+old.at||Date.now())));
+  var rows=[],old=JSON.parse(localStorage.getItem("dh-gemini-session-last-v1")||"null");
+  if(old&&old.text)rows.push({type:"session",title:"💎 Önceki Gemini gün raporu",text:old.text,at:+old.at||Date.now(),date:day(new Date(+old.at||Date.now()))});
+  for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i),m=String(k||"").match(/^dh-gemini-day-review-(\d{4}-\d{2}-\d{2})$/);if(!m)continue;try{var v=JSON.parse(localStorage.getItem(k)||"null");if(v&&v.text)rows.push({type:"day",title:"💎 Gün sonu Gemini değerlendirmesi",text:v.text,at:+v.at||new Date(m[1]+"T12:00:00").getTime(),date:m[1]});}catch(e){}}
+  rows.sort(function(a,b){return a.at-b.at;}).forEach(function(r){if(Date.now()-r.at<=30*86400000)archive(r.type,r.title,r.text,r.date,r.at);});
  }catch(e){}
 }
 migrateLegacy();

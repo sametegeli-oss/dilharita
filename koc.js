@@ -30,13 +30,22 @@
       list.forEach(function(r){
         if(!r||r.date>=DAY||now-(+r.at||0)>30*86400000)return; /* bugünün raporu bugünün donmuş planını değiştirmez */
         used++;if(!newest||(+r.at||0)>(+newest.at||0))newest=r;
-        var age=Math.max(0,Math.floor((now-(+r.at||now))/86400000)),w=Math.max(1,30-age);
+        var reportDay=new Date(String(r.date||"")+"T12:00:00").getTime(),age=Math.max(0,Math.floor((now-(reportDay||(+r.at)||now))/86400000)),w=Math.max(1,30-age);
         (r.topics||[]).forEach(function(t){scores[t]=(scores[t]||0)+w;});
       });
       var top=Object.keys(scores).sort(function(a,b){return scores[b]-scores[a];}).slice(0,3);
       if(!used||!top.length)return {text:"",topics:[],count:used};
-      var rec=newest&&newest.recommendations&&newest.recommendations[0];
-      return {topics:top,count:used,newest:newest,text:"Son 30 günlük Gemini rapor arşivi: "+used+" rapor. Ağırlıklı çalışma öncelikleri: "+top.join(", ")+"."+(rec?" En yeni öneri: "+rec+".":"")};
+      function latestDetails(r){
+        if(!r)return {summary:"",rec:[]};
+        var text=String(r.text||""),summary=String(r.summary||""),rec=Array.isArray(r.recommendations)?r.recommendations.slice():[];
+        if(!summary){var sm=text.match(/(?:\*{0,2}Genel Başarı[^\n]*\*{0,2})\s*\n([\s\S]*?)(?:\n\s*---|\n\s*\*{0,2}(?:Tekrarlanan|Yarın İçin))/i);if(sm)summary=sm[1].replace(/\*+/g,"").replace(/\s+/g," ").trim();}
+        var rs=text.match(/(?:\*{0,2}Yarın İçin[^\n]*\*{0,2})([\s\S]*)/i);if(rs){rec=[];rs[1].split(/\n/).forEach(function(line){var q=line.match(/^\s*(?:\d+[.)]|[-*•])\s*\*{0,2}([^\n]{12,300})/);if(q)rec.push(q[1].replace(/\*+/g,"").trim());});}
+        return {summary:summary.slice(0,700),rec:rec.slice(0,5)};
+      }
+      var det=latestDetails(newest),txt="Son 30 günlük Gemini rapor arşivi: "+used+" rapor. Ağırlıklı çalışma öncelikleri: "+top.join(", ")+".";
+      if(det.summary)txt+=" EN SON GÜN RAPORUNUN DEĞERLENDİRMESİ: "+det.summary+".";
+      if(det.rec.length)txt+=" EN SON GÜN RAPORUNUN YARIN ÖNERİLERİ: "+det.rec.map(function(x,i){return (i+1)+") "+x;}).join(" ");
+      return {topics:top,count:used,newest:newest,text:txt};
     }catch(e){return {text:"",topics:[],count:0};}
   }
   function raporaGoreUyarla(plan){
@@ -610,7 +619,9 @@
         +'(2) Adım etiketlerine SAYI GÖMME (örn. "12 kelimeyi tekrarla" değil "kelimeleri tekrarla" de) — sayılar üstteki çubuklarda zaten CANLI gösteriliyor, etikete gömülen sayı gün içinde bayatlar. Yalnız gerçek duruma uygun, somut ama sayısız bir eylem adımı öner ("pratik yap" gibi aşırı genel de olmasın). '
         +'(3) Tekrar bekleyen 0 ise tekrar.html adımını ekleme. '
         +'(4) TON: cılız/nötr cümleler kurma. "note" ve "why" alanları KOMUT NİTELİĞİNDE ve YÖNLENDİRİCİ olsun — sadece gözlem değil, ne yapması gerektiğini AÇIKÇA söyle (örn. "Bugün mutlaka past-simple çalış, 3 gündür ihmal ediyorsun" gibi net bir yönerge; "iyi gidiyorsun" gibi genel geçer laf etme). '
-        +'SADECE JSON döndür, açıklama yok: {"focus":"günün odağı tek cümle (Türkçe, buyurgan/yönlendirici üslupla)","note":"NET bir yönerge/komut (Türkçe, en çok 15 kelime)","why":"bu planı NEDEN önerdiğini profildeki sayılara dayanarak açıklayan, yönlendirici 1 cümle (Türkçe, en çok 20 kelime)","steps":[{"label":"somut, sayıya dayalı adım (Türkçe, kısa)","href":"..."}]} steps 2-3 adet olacak ve href YALNIZ şunlardan biri: '+ALLOWED.join(", ");
+        +'(5) EN SON GÜN RAPORUNUN değerlendirmesini ve yarın önerilerini planın odağına somut biçimde yansıt. 30 günlük eski raporları eğilim olarak kullan; en yeni rapora daha fazla ağırlık ver. '
+        +'(6) Profilde günlük süre varsa adımların toplamı bu süreyi aşmasın. Genel seviyeyi yaş/eğitimden veya alt seviye telafi hatalarından düşürme; alt seviye boşluğunu yalnız kısa telafi olarak ele al. '
+        +'SADECE JSON döndür, açıklama yok: {"focus":"günün odağı tek cümle (Türkçe, buyurgan/yönlendirici üslupla)","note":"NET bir yönerge/komut (Türkçe, en çok 15 kelime)","why":"bu planı NEDEN önerdiğini profildeki sayılara dayanarak açıklayan, yönlendirici 1 cümle (Türkçe, en çok 20 kelime)","steps":[{"label":"somut, adet içermeyen adım (Türkçe, kısa)","href":"...","minutes":3}]} steps 2-3 adet olacak; toplam minutes profil süresini aşmayacak ve href YALNIZ şunlardan biri: '+ALLOWED.join(", ");
       var out=await DHProviders.chat([{role:"system",content:sys},{role:"user",content:prof}],{temperature:0.4,max_tokens:400,cacheType:"coach-profile-analysis",cacheInput:prof});
       var plan=null; try{ plan=valid(JSON.parse(String(out).replace(/```json|```/g,"").trim())); }catch(e){}
       if(!plan) return;                      // sessiz düşüş: banner statik kalır
