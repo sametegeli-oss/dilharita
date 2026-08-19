@@ -36,6 +36,21 @@
          + "-" + String(t.getDate()).padStart(2, "0");
   }
   function anahtar() { return ONEK + gunISO(); }
+  function pratikTamamKey(){return "dh-gunsonu-pratik-complete-"+gunISO();}
+  function geminiTamamKey(){return "dh-gunsonu-gemini-complete-"+gunISO();}
+  function arsivdeBugunVar(){try{var a=JSON.parse(localStorage.getItem("dh-gemini-daily-archive-v1")||"[]")||[];return a.some(function(x){return x&&x.date===gunISO()&&x.type==="day";});}catch(e){return false;}}
+  function tamamMi(tip){
+    try{
+      if(tip==="pratik")return localStorage.getItem(pratikTamamKey())==="1"||localStorage.getItem("dh-speaking-complete-"+gunISO())==="1";
+      return localStorage.getItem(geminiTamamKey())==="1"||!!localStorage.getItem("dh-gemini-day-review-"+gunISO())||arsivdeBugunVar();
+    }catch(e){return false;}
+  }
+  function dugmeDurumu(kutu){
+    kutu=kutu||document.getElementById("dhGsBolum");if(!kutu)return;
+    var p=kutu.querySelector("#dhGsGit"),g=kutu.querySelector("#dhGsGemini");
+    if(p&&tamamMi("pratik")){p.disabled=true;p.textContent="✓ Öğretmenle karma pratik tamamlandı";p.style.background="#166534";p.style.cursor="default";p.style.opacity=".82";}
+    if(g&&tamamMi("gemini")){g.disabled=true;g.textContent="✓ Bugünün Gemini değerlendirmesi tamamlandı";g.style.background="#166534";g.style.cursor="default";g.style.opacity=".82";}
+  }
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
@@ -192,7 +207,12 @@
     var b = document.getElementById("dhGsGit");
     if (b) b.onclick = function () { ogretmeneGonder(h); };
     var g = document.getElementById("dhGsGemini");
-    if (g) g.onclick = function () { if(global.DHGeminiQuality) DHGeminiQuality.todayReview(); else alert("Gemini değerlendirme aracı bu ekranda yüklenmedi."); };
+    if (g) g.onclick = function () {
+      if(!global.DHGeminiQuality){alert("Gemini değerlendirme aracı bu ekranda yüklenmedi.");return;}
+      g.disabled=true;g.textContent="⏳ Gemini değerlendirmesi hazırlanıyor…";
+      Promise.resolve(DHGeminiQuality.todayReview()).then(function(){try{localStorage.setItem(geminiTamamKey(),"1");}catch(e){}dugmeDurumu(kutu);try{global.dispatchEvent(new CustomEvent("dh-gunsonu-tamamlandi",{detail:{type:"gemini",day:gunISO()}}));}catch(e){}}).catch(function(){g.disabled=false;g.textContent="💎 Bugünün tamamını Gemini ile değerlendir";});
+    };
+    dugmeDurumu(kutu);
   }
 
   /* Panel coach-bubble.js tarafindan aciliyor; DOM'a girmesini bekle. */
@@ -218,6 +238,9 @@
     harman: harmanOku,
     anahtar: anahtar,
     gonder: ogretmeneGonder,
-    _bolumCiz: bolumCiz
+    _bolumCiz: bolumCiz,
+    durumYenile: dugmeDurumu
   };
+  global.addEventListener("storage",function(e){if(e&&(/dh-(?:gunsonu|speaking-complete|gemini)/.test(e.key||"")))dugmeDurumu();});
+  global.addEventListener("dh-gunsonu-tamamlandi",function(){dugmeDurumu();});
 })(window);

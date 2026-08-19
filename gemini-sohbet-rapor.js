@@ -190,6 +190,7 @@
       var k="dh-koc-steps-done-"+gun, set=JSON.parse(localStorage.getItem(k)||"{}")||{};
       set["chat.html"]=1; set[sayfa()]=1; localStorage.setItem(k,JSON.stringify(set));
       localStorage.setItem("dh-speaking-complete-"+gun,"1");
+      try{if(new URLSearchParams(location.search).get("gunsonu")==="1")localStorage.setItem("dh-gunsonu-pratik-complete-"+gun,"1");}catch(e){}
       /* coach-bubble.js chatteacher ekranlarında yüklenmese bile konuşma
          kanıtını doğrudan günlük sayaca yaz. Tekrar aynı rapor yapıştırılırsa
          sayaç şişmesin; konuşma tamamlandıysa en az 1 olması yeterlidir. */
@@ -199,6 +200,7 @@
       tr.days[gun].speaking=Math.max(1,parseInt(tr.days[gun].speaking,10)||0);
       localStorage.setItem(tk,JSON.stringify(tr));
       global.dispatchEvent(new CustomEvent("dh:task-complete",{detail:{type:"sohbet",source:"gemini-report"}}));
+      global.dispatchEvent(new CustomEvent("dh-gunsonu-tamamlandi",{detail:{type:"pratik",day:gun}}));
     } catch (e) {}
     return true;
   }
