@@ -37,7 +37,7 @@
   /* "dh-koc-" → günlük koç planı, tamamlanan adımlar, gün epoch'u ve hedef.
      Bunlar cihaza özeldi; telefonda yapılan çalışma bilgisayarda görünmüyordu.
      Artık senkrona dahil (birleştirme kuralları için mergeKoc'a bak). */
-  var LS_PREFIXES = ["sm:", "mas:", "ev:", "modscore:", "gramprof:", "story:", "dh-koc-",
+  var LS_PREFIXES = ["sm:", "mas:", "ev:", "modscore:", "gramprof:", "story:", "dh-koc-", "dh-day-closed-",
                       "dh-modul-", "dh-gemini-gunluk-", "dh-gemini-day-review-",
                       "dh-speaking-complete-", "dh-gunsonu-pratik-complete-", "dh-gunsonu-gemini-complete-"];   /* karne, Gemini ve konuşma tamamlanması cihazlar arasi */
   var MAX_VAL = 200000;      // alan başına üst sınır (Firestore alan limiti 1MB)

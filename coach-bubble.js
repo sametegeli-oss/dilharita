@@ -43,16 +43,13 @@
   function dhEffortNow(){
     var d=dhRecToday(); return (d.sentences||0)+(d.reviews||0);
   }
-  /* Gün kapalı mı? Bayrak {t,effort} tutar; kapanıştan sonra +5 efor birikirse
-     "demek ki devam ediyorsun" deyip günü OTOMATİK yeniden açar. Eski "1" biçimi
-     de kapalı sayılır (geri uyum). */
+  /* Gün kapalı mı? Kapanış kullanıcının açık kararıdır ve aynı takvim günü içinde
+     yeni etkinlik yapılsa bile kendiliğinden geri alınmaz. Gün yalnız
+     dhCoachReopenDay ile, kullanıcı "Günü yeniden aç" dediğinde yeniden açılır.
+     {t,effort} ve eski "1" biçimleri geri uyum için kapalı sayılır. */
   function dhDayClosed(){
     try{
       var raw=localStorage.getItem("dh-day-closed-"+dhToday()); if(!raw) return false;
-      var o=null; try{ o=JSON.parse(raw); }catch(e){}
-      if(o && typeof o.effort==="number" && dhEffortNow()>=o.effort+5){
-        localStorage.removeItem("dh-day-closed-"+dhToday()); return false;
-      }
       return true;
     }catch(e){ return false; }
   }
@@ -272,7 +269,7 @@
         window.dhCoachSay("Bu adımı hakkıyla çalıştın ✅ Plandaki sıradaki adım: "+(next.label||"devam"),"praise",null,
           {actionHref:"./"+next.href, actionLabel:"▶ Devam et"});
       } else {
-        window.dhCoachSay("GÜNÜN PLANI TAMAM! 🎉 Günü kapatmadan önce bugünün hatalarından kısa bir ders çıkaralım mı?","praise",null,{dayClose:true});
+        if(!dhDayClosed()) window.dhCoachSay("GÜNÜN PLANI TAMAM! 🎉 Günü kapatmadan önce bugünün hatalarından kısa bir ders çıkaralım mı?","praise",null,{dayClose:true});
       }
     }catch(e){}
   };
@@ -489,6 +486,10 @@
   }
   window.dhCoachDayClose=async function(force){
     if(document.getElementById("dhDayClosePanel")) return;
+    /* Arkadaki kapanış teklifini hemen kaldır. İşlem tamamlanınca aynı mesajın
+       yeniden açılabilmesi için bellekteki son dayClose durumunu da temizle. */
+    try{ window.dhCoachHide&&window.dhCoachHide(); }catch(e){}
+    lastDayClose=false;
     var ov=document.createElement("div");
     ov.id="dhDayClosePanel";
     ov.style.cssText="position:fixed;inset:0;z-index:2147483200;background:rgba(2,8,20,.72);display:flex;align-items:center;justify-content:center;padding:14px";
@@ -530,6 +531,8 @@
       return;
     }
     try{ localStorage.setItem("dh-day-closed-"+dhToday(), JSON.stringify({t:Date.now(),effort:dhEffortNow()})); }catch(e){}
+    lastDayClose=false;
+    try{ window.dhCoachHide&&window.dhCoachHide(); }catch(e){}
     try{ localStorage.removeItem("dh-close-tour"); }catch(e){}
 
     /* 1) Bugünün hataları — bugün YOKSA interaktif kapanış defter birikiminden
@@ -751,6 +754,8 @@
   window.dhCoachSay=function(msg, kind, faceOverride, opts){
     __dhLastSayAt=Date.now();
     if(!msg || !document.body) return;
+    /* Günü kapanmış kullanıcıya hiçbir eski/asenkron kapanış çağrısını gösterme. */
+    if(opts && opts.dayClose && dhDayClosed()) return;
     if(msg===lastMsg && Date.now()-lastAt<4000) return;
     lastMsg=msg; lastAt=Date.now(); lastKind=kind||"tip";
     lastFocus=(opts && opts.focusType) || "";
@@ -769,6 +774,7 @@
   };
   box.onclick=function(){ box.classList.remove("show"); };
   avatar.onclick=function(){
+    if(lastDayClose && dhDayClosed()){ lastMsg=""; lastDayClose=false; }
     if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
     else { try{ window.__dhCoachManualStatus && window.__dhCoachManualStatus(); }catch(e){} }
   };

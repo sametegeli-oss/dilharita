@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v122";  /* v122: gun sonu pratik ve Gemini tamamlanma durumu */
+var SW_VERSION = "dh-sw-v123";  /* v123: gun kapandiktan sonra kapanis popup'ini yeniden acma */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
