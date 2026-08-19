@@ -31,7 +31,8 @@
     "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1",
     "dh-model-groq", "dh-model-cerebras", "dh-model-gemini",
     "selectedTeacherAvatar", "dh-teacher-mem", "dh-activity-log-v1",
-    "dh-gemini-report-v1", "dh-gemini-daily-archive-v1", "dh-word-study-list-v1"
+    "dh-gemini-report-v1", "dh-gemini-daily-archive-v1", "dh-word-study-list-v1",
+    "dh-error-tombstones-v1"
   ];
   /* "dh-koc-" → günlük koç planı, tamamlanan adımlar, gün epoch'u ve hedef.
      Bunlar cihaza özeldi; telefonda yapılan çalışma bilgisayarda görünmüyordu.
@@ -92,6 +93,15 @@
     try{ R=JSON.parse(remoteStr||"{}")||{}; }catch(e){}
     for(k in R){ if(R.hasOwnProperty(k)) out[k]=+R[k]||0; }
     for(k in L){ if(L.hasOwnProperty(k) && (+L[k]||0)>(+out[k]||0)) out[k]=+L[k]||0; }
+    return JSON.stringify(out);
+  }
+  function mergeErrorTombstones(localStr,remoteStr){
+    var L={},R={},out={allBefore:0,ids:{},keys:{}},k;
+    try{L=JSON.parse(localStr||"{}")||{};}catch(e){}
+    try{R=JSON.parse(remoteStr||"{}")||{};}catch(e){}
+    out.allBefore=Math.max(+L.allBefore||0,+R.allBefore||0);
+    [R.ids||{},L.ids||{}].forEach(function(src){for(k in src)if(src.hasOwnProperty(k))out.ids[k]=Math.max(+out.ids[k]||0,+src[k]||0);});
+    [R.keys||{},L.keys||{}].forEach(function(src){for(k in src)if(src.hasOwnProperty(k))out.keys[k]=Math.max(+out.keys[k]||0,+src[k]||0);});
     return JSON.stringify(out);
   }
   function mergeModulDizin(localStr, remoteStr, mezarStr){
@@ -640,6 +650,7 @@
           else if(rk===TRACKER){ localStorage.setItem(rk, mergeTracker(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk==="dh-gemini-report-v1"){ localStorage.setItem(rk, mergeGeminiReport(localStorage.getItem(rk),rv)); pulled++; }
           else if(rk==="dh-gemini-daily-archive-v1"){ localStorage.setItem(rk, mergeGeminiArchive(localStorage.getItem(rk),rv)); pulled++; }
+          else if(rk==="dh-error-tombstones-v1"){ localStorage.setItem(rk,mergeErrorTombstones(localStorage.getItem(rk),rv)); pulled++; }
           else if(rk.indexOf("dh-gemini-gunluk-")===0){ localStorage.setItem(rk, mergeGeminiDaily(localStorage.getItem(rk),rv)); pulled++; }
           else if(rk===MIRROR){ localStorage.setItem(rk, mergeMirror(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk===ACTLOG){ localStorage.setItem(rk, mergeActivityLog(localStorage.getItem(rk), rv)); pulled++; }
@@ -1105,6 +1116,7 @@
   /* ── 12) BAŞLAT + DIŞ API ────────────────────────────────── */
   hookLocalStorage();
   window.addEventListener("learning-errors-cleared", pushSoon);
+  window.addEventListener("learning-errors-deleted", pushSoon);
   /* index-app toplu içe aktarmada peş peşe 25 kayıt yazar. Olaylar tek
      debounce içinde birleşir; kullanıcı ekrandan ayrılırsa pagehide'daki
      zorunlu push kalan paketi de gönderir. */

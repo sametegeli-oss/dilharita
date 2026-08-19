@@ -8,6 +8,28 @@ const DB_NAME="sentence-learning-system";
 const DB_VER=1;
 const ERROR_STORE="errors";
 const FALLBACK_KEY="learning-errors-v1";
+const TOMBSTONE_KEY="dh-error-tombstones-v1";
+
+/* Silinen hata kaydı doğrudan yok edilirse başka cihazdaki/buluttaki eski
+   kopya sonraki birleşimde yeniden eklenir. Kimlik ve cümle anahtarı için
+   zaman damgalı mezar taşı tutuyoruz; daha sonra gerçekten yapılmış YENİ
+   bir hata daha yeni updatedAt taşıdığı için yeniden kaydedilebilir. */
+function tombRead(){
+  try{ var x=JSON.parse(localStorage.getItem(TOMBSTONE_KEY)||"{}");return x&&typeof x==="object"?x:{}; }
+  catch(e){ return {}; }
+}
+function tombSave(t){
+  t=t||{};t.ids=t.ids||{};t.keys=t.keys||{};
+  var cut=Date.now()-180*86400000,k;
+  for(k in t.ids)if((+t.ids[k]||0)<cut)delete t.ids[k];
+  for(k in t.keys)if((+t.keys[k]||0)<cut)delete t.keys[k];
+  try{localStorage.setItem(TOMBSTONE_KEY,JSON.stringify(t));}catch(e){}
+}
+function recTime(r){var n=Date.parse(r&&r.updatedAt||r&&r.createdAt||"");return isFinite(n)?n:0;}
+function isTombstoned(r,t){
+  if(!r)return true;t=t||tombRead();var tm=Math.max(+t.allBefore||0,+((t.ids||{})[r.id]||0),+((t.keys||{})[duplicateKey(r)]||0));
+  return !!tm&&recTime(r)<=tm;
+}
 
 /* ── YAZMADAN ÖNCE ELEME: zamir/kısaltma farkından ibaret "sahte hatalar"ın
    hata defterine hiç yazılmasını engelleyen güvenlik katmanı. */
@@ -206,11 +228,19 @@ function uniqueRecords(arr){
 async function all(){
   let arr=[];
   try{arr=await idbAll();}catch{arr=fbAll();}
-  return uniqueRecords(arr);
+  var tomb=tombRead();
+  return uniqueRecords(arr.filter(function(r){return !isTombstoned(r,tomb);}));
 }
 async function deleteMany(ids){
   var idSet={}; (ids||[]).forEach(function(id){ idSet[id]=1; });
   if(!Object.keys(idSet).length) return 0;
+  var now=Date.now(),tomb=tombRead();tomb.ids=tomb.ids||{};tomb.keys=tomb.keys||{};
+  Object.keys(idSet).forEach(function(id){tomb.ids[id]=Math.max(+tomb.ids[id]||0,now);});
+  try{
+    var before=[];try{before=await idbAll();}catch(e){before=fbAll();}
+    before.forEach(function(r){if(r&&idSet[r.id]){var k=duplicateKey(r);if(k)tomb.keys[k]=Math.max(+tomb.keys[k]||0,now);}});
+  }catch(e){}
+  tombSave(tomb);
   var n=0;
   try{
     var db=await openDB();
@@ -221,9 +251,11 @@ async function deleteMany(ids){
     });
   }catch(e){}
   try{ var arr=fbAll(); var kept=arr.filter(function(r){ return !idSet[r.id]; }); fbSave(kept); }catch(e){}
+  window.dispatchEvent(new CustomEvent("learning-errors-deleted",{detail:{ids:Object.keys(idSet),at:now}}));
   return n;
 }
 async function clearAll(){
+  var tomb=tombRead(),now=Date.now();tomb.allBefore=Math.max(+tomb.allBefore||0,now);tombSave(tomb);
   try{await idbClear();}catch{}
   fbSave([]);
   window.dispatchEvent(new CustomEvent("learning-errors-cleared"));
@@ -357,8 +389,10 @@ async function bulkMerge(records){
   const haveIds=new Set(existing.map(r=>r&&r.id).filter(Boolean));
   const haveKeys=new Set(existing.map(duplicateKey).filter(Boolean));
   let added=0;
+  const tomb=tombRead();
   for(const rec of records){
     if(!rec || !rec.id) continue;
+    if(isTombstoned(rec,tomb)) continue;
     var dk=duplicateKey(rec);
     if(haveIds.has(rec.id) || (dk&&haveKeys.has(dk))) continue;
     try{ await idbAdd(rec); }
