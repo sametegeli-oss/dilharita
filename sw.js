@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v144";  /* v144: modul hikayesinde ortak AI saglayicisi */
+var SW_VERSION = "dh-sw-v145";  /* v145: cagrisim AI yanitini toleransli ayristirma */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
