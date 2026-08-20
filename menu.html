@@ -158,6 +158,11 @@
           <input type="file" id="dhRestoreFile" accept="application/json" style="display:none">
         </label>
       </div>
+      <label class="dh-kart dh-kart--sessiz" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px">
+        <input type="checkbox" id="dhBackupSecrets" style="margin-top:3px;accent-color:#38bdf8">
+        <span><b>API anahtarlarını şifreli yedeğe dahil et</b><br>
+        <span class="dh-ipucu">Yalnız belirleyeceğiniz yedek parolasıyla açılır; parola programda saklanmaz.</span></span>
+      </label>
       <div class="dh-ipucu" id="dhBackupMsg" style="min-height:16px" aria-live="polite"></div>
 
       <a class="dh-btn dh-btn--ikincil dh-btn--tam" href="./veri-gizlilik.html">Gizlilik ve veri kontrolleri</a>
@@ -251,15 +256,35 @@
   var backupBtn=document.getElementById("dhBackupBtn");
   var restoreInput=document.getElementById("dhRestoreFile");
   var msg=document.getElementById("dhBackupMsg");
+  var secretToggle=document.getElementById("dhBackupSecrets");
   if(!backupBtn) return;
+
+  var SECRET_NAMES=["nvidiaApiKeys","groqApiKeys","cerebrasApiKeys","geminiApiKeys","dh-disabled-keys","apiKeys"];
+  function bytesToB64(bytes){var s="";for(var i=0;i<bytes.length;i++)s+=String.fromCharCode(bytes[i]);return btoa(s);}
+  function b64ToBytes(s){var b=atob(s),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;}
+  async function cryptoKey(password,salt,uses){
+    var raw=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);
+    return crypto.subtle.deriveKey({name:"PBKDF2",salt:salt,iterations:uses,hash:"SHA-256"},raw,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  }
+  async function encryptSecrets(data,password){
+    var salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),uses=250000;
+    var key=await cryptoKey(password,salt,uses),plain=new TextEncoder().encode(JSON.stringify(data));
+    var cipher=await crypto.subtle.encrypt({name:"AES-GCM",iv:iv},key,plain);
+    return {version:1,algorithm:"AES-256-GCM",kdf:"PBKDF2-SHA256",iterations:uses,salt:bytesToB64(salt),iv:bytesToB64(iv),data:bytesToB64(new Uint8Array(cipher))};
+  }
+  async function decryptSecrets(box,password){
+    var salt=b64ToBytes(box.salt),iv=b64ToBytes(box.iv),uses=Number(box.iterations)||250000;
+    var key=await cryptoKey(password,salt,uses),plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:iv},key,b64ToBytes(box.data));
+    return JSON.parse(new TextDecoder().decode(plain));
+  }
 
   /* Anahtar listesi cloud-sync.js'ten alınır — burada KOPYA tutulmaz,
      yoksa yeni anahtarlar eklendiğinde yedeğe girmez. */
   function keySets(){
     try{ if(window.DHCloudSync && DHCloudSync.keys) return DHCloudSync.keys(); }catch(e){}
     return { list:["dh_ai_prompt_teacher","dh-study-tracker-v1","dh-ocr-sentences-v1","dh-teacher-policy-v1",
-      "dh-notif-settings-v1","dh-progress-mirror-v1","nvidiaApiKeys","groqApiKeys","cerebrasApiKeys","geminiApiKeys",
-      "dh-model-nvidia","dh-model-groq","dh-model-cerebras","dh-model-gemini","dh-disabled-keys","selectedTeacherAvatar",
+      "dh-notif-settings-v1","dh-progress-mirror-v1",
+      "dh-model-nvidia","dh-model-groq","dh-model-cerebras","dh-model-gemini","selectedTeacherAvatar",
       "dh-teacher-mem","dh-activity-log-v1"],
       prefixes:["sm:","mas:","ev:","modscore:","gramprof:","story:","dh-koc-"] };
   }
@@ -300,6 +325,19 @@
       }catch(e){}
       var errors=[]; try{ if(window.LearningErrorDB && LearningErrorDB.all) errors=await LearningErrorDB.all(); }catch(e){}
 
+      var encryptedSecrets;
+      if(secretToggle&&secretToggle.checked){
+        if(!(window.crypto&&crypto.subtle)) throw new Error("Şifreleme bu tarayıcıda desteklenmiyor");
+        var pass=prompt("API anahtarları için en az 8 karakterlik bir yedek parolası belirleyin:");
+        if(pass===null){if(msg)msg.textContent="Yedekleme iptal edildi.";return;}
+        if(pass.length<8){if(msg){msg.style.color="var(--dh-err)";msg.textContent="Yedek parolası en az 8 karakter olmalı.";}return;}
+        var pass2=prompt("Yedek parolasını tekrar yazın:");
+        if(pass!==pass2){if(msg){msg.style.color="var(--dh-err)";msg.textContent="Parolalar eşleşmedi; yedek oluşturulmadı.";}return;}
+        var secrets={};SECRET_NAMES.forEach(function(k){try{var v=localStorage.getItem(k);if(v!=null)secrets[k]=v;}catch(e){}});
+        encryptedSecrets=await encryptSecrets(secrets,pass);
+        pass=pass2="";
+      }
+
       /* TÜM IndexedDB. kv/errors alanları eski sürümlerle uyum için
          korunuyor; asıl kapsam artık burada. */
       var idb=null;
@@ -313,6 +351,7 @@
       var at=new Date().toISOString();
       var payload={ app:"dilharita-full", version:5, exportedAt:at,
                     kv:allKV, ls:ls, errors:errors,
+                    encryptedSecrets: encryptedSecrets,
                     dbs: idb ? idb.dbs : undefined,
                     ozet: idb ? idb.ozet : undefined };
       var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
@@ -326,7 +365,7 @@
         var dbSay=idb?Object.keys(idb.ozet).length:0;
         var kayit=0; if(idb) Object.keys(idb.ozet).forEach(function(x){ kayit+=idb.ozet[x]; });
         msg.textContent="✓ Tam yedek indirildi — "+dbSay+" veritabanı, "
-          +kayit+" kayıt, "+kb+" KB.";
+          +kayit+" kayıt, "+kb+" KB"+(encryptedSecrets?", API anahtarları şifreli":"")+".";
       }
     }catch(e){ if(msg){ msg.style.color="var(--dh-err)"; msg.textContent="Yedek alınamadı."; } }
   };
@@ -341,6 +380,18 @@
       if(data.lsrsKV){ for(var lk2 in data.lsrsKV){ if(data.lsrsKV.hasOwnProperty(lk2)) kvAll[lk2]=data.lsrsKV[lk2]; } }
       if(!confirm("Yedek yüklensin mi? (Bu cihazdaki mevcut ilerleme buluttaki en güncel haliyle birleşecek.)")){ ev.target.value=""; return; }
       try{
+        var restoredSecrets=0,secretNotice="";
+        if(data.encryptedSecrets){
+          var restorePass=prompt("Bu yedekte şifreli API anahtarları var. Yedek parolasını yazın (Atla ile anahtarsız devam edebilirsiniz):");
+          if(restorePass){
+            try{
+              var secretData=await decryptSecrets(data.encryptedSecrets,restorePass);
+              SECRET_NAMES.forEach(function(sk){if(Object.prototype.hasOwnProperty.call(secretData,sk)){localStorage.setItem(sk,String(secretData[sk]));restoredSecrets++;}});
+              secretNotice=" · "+restoredSecrets+" güvenli anahtar ayarı yüklendi";
+            }catch(secErr){secretNotice=" · API anahtarları yüklenmedi (parola yanlış veya veri bozuk)";}
+          }else secretNotice=" · API anahtarları atlandı";
+          restorePass="";
+        }
         /* Yeni biçim: tüm veritabanları. Eski biçimdeki kv de aşağıda
            ayrıca yazılır (v4 ve öncesi yedekler çalışmaya devam etsin). */
         if(data.dbs && window.DHYedek){
@@ -349,11 +400,11 @@
           try{ console.log("[yedek] geri yüklendi:", rap); }catch(e){}
         }
         for(var k in kvAll){ if(kvAll.hasOwnProperty(k)) await writeKV(k, kvAll[k]); }
-        if(data.ls){ for(var lk in data.ls){ if(data.ls.hasOwnProperty(lk)) localStorage.setItem(lk, data.ls[lk]); } }
+        if(data.ls){ for(var lk in data.ls){ if(data.ls.hasOwnProperty(lk) && SECRET_NAMES.indexOf(lk)<0) localStorage.setItem(lk, data.ls[lk]); } }
         try{ if(window.DHProgress && DHProgress.applyMirror) await DHProgress.applyMirror(); }catch(e){}
         try{ if(window.DHCloudSync && DHCloudSync.push) await DHCloudSync.push(); }catch(e){}
         if(data.errors && data.errors.length){ try{ if(window.LearningErrorDB && LearningErrorDB.bulkMerge) await LearningErrorDB.bulkMerge(data.errors); }catch(e){} }
-        if(msg){ msg.style.color="var(--dh-ok)"; msg.textContent="✓ Tam geri yüklendi ve buluta yazıldı. Sayfayı yenile."; }
+        if(msg){ msg.style.color="var(--dh-ok)"; msg.textContent="✓ Tam geri yüklendi ve buluta yazıldı"+secretNotice+". Sayfayı yenile."; }
       }catch(e){ if(msg){ msg.style.color="var(--dh-err)"; msg.textContent="Geri yükleme hatası."; } }
       ev.target.value="";
     };
