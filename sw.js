@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v134";  /* v134: farkli fotograf secimi ve NVIDIA FLUX AI resmi */
+var SW_VERSION = "dh-sw-v135";  /* v135: Cloudflare Worker uzerinden otomatik NVIDIA resmi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
