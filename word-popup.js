@@ -983,13 +983,13 @@
       out.innerHTML='<div class="dh-wp-ai-out">AI bağlantısı hazırlanıyor…</div>';
       var old=document.querySelector('script[data-dh-word-ai-provider]');
       if(old){old.addEventListener("load",function(){aiExplain(word,anlamlar);},{once:true});return;}
-      var ps=document.createElement("script");ps.src="./ai-providers.js?v=3";ps.dataset.dhWordAiProvider="1";
+      var ps=document.createElement("script");ps.src="./ai-providers.js?v=147";ps.dataset.dhWordAiProvider="1";
       ps.onload=function(){aiExplain(word,anlamlar);};
       ps.onerror=function(){out.innerHTML='<div class="dh-wp-ai-out">AI bağlantısı yüklenemedi. İnternet bağlantını kontrol et.</div>';};
       document.head.appendChild(ps);
       return;
     }
-    var cacheKey="dh-word-package-v2", cache={};
+    var cacheKey="dh-word-package-v3", cache={};
     try{ cache=JSON.parse(localStorage.getItem(cacheKey)||"{}")||{}; }catch(e){}
     var ck=String(word||"").toLowerCase(), old=cache[ck];
     function draw(p){
@@ -1005,12 +1005,16 @@
     }
     if(old&&old.at>Date.now()-30*86400000&&old.data){ draw(old.data); return; }
     btn.textContent="⏳ Kelime paketi hazırlanıyor…"; btn.disabled=true;
-    var sys="Sen Türk öğrenciye İngilizce öğreten bir öğretmensin. Kelimeyi tek pakette analiz et. Yalnız geçerli JSON döndür: {\"tanim\":\"kısa Türkçe tanım\",\"kullanim\":\"ne zaman/nasıl kullanılır\",\"telaffuz\":\"Türkçe telaffuz ipucu\",\"esAnlamlilar\":[\"English word\"],\"kaliplar\":[\"English collocation\"],\"ornekler\":[{\"en\":\"English sentence\",\"tr\":\"Türkçesi\"}],\"ipucu\":\"akılda tutma ipucu\"}. En fazla 6 eş anlamlı, 5 kalıp ve A1/B1/B2 düzeylerinde 3 örnek ver. Eş anlamlılar yalnız İngilizce temel biçimde olsun.";
+    var sys="Sen Türk öğrenciye İngilizce öğreten bir öğretmensin. Kelimeyi tek pakette analiz et. Yalnız geçerli JSON döndür: {\"anlamlar\":[\"en uygun kısa Türkçe karşılık\",\"varsa ikinci anlam\"],\"tanim\":\"kısa Türkçe tanım\",\"kullanim\":\"ne zaman/nasıl kullanılır\",\"telaffuz\":\"Türkçe telaffuz ipucu\",\"esAnlamlilar\":[\"English word\"],\"kaliplar\":[\"English collocation\"],\"ornekler\":[{\"en\":\"English sentence\",\"tr\":\"Türkçesi\"}],\"ipucu\":\"akılda tutma ipucu\"}. anlamlar alanını ASLA boş bırakma. En fazla 6 eş anlamlı, 5 kalıp ve A1/B1/B2 düzeylerinde 3 örnek ver. Eş anlamlılar yalnız İngilizce temel biçimde olsun.";
     var usr="Kelime: \""+word+"\"\nYerel sözlük anlamları: "+anlamlar.join(", ");
-    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.4,max_tokens:900,json:true,title:"💎 "+word+" kelime paketini hazırla"})
-      .then(function(txt){
+    var messages=[{role:"system",content:sys},{role:"user",content:usr}];
+    var badge=document.getElementById("dh-ai-source-badge");if(badge)badge.remove();
+    function acceptPackage(txt){
         var t=String(txt||"").replace(/```json|```/gi,"").trim(), m=t.match(/\{[\s\S]*\}/), p=m?JSON.parse(m[0]):null;
         if(!p||!p.tanim) throw new Error("Kelime paketi okunamadı");
+        var meanings=Array.isArray(p.anlamlar)?p.anlamlar.map(function(x){return String(x||"").trim();}).filter(Boolean).slice(0,4):[];
+        if(!meanings.length&&p.tanim)meanings=[String(p.tanim).trim()];
+        if(meanings.length){updateMeanings(meanings);try{var mc=JSON.parse(localStorage.getItem("dh-word-ai-cache-v2")||"{}")||{};mc[ck]={t:Date.now(),v:meanings};localStorage.setItem("dh-word-ai-cache-v2",JSON.stringify(mc));}catch(e){}}
         cache[ck]={at:Date.now(),data:p};
         try{ localStorage.setItem(cacheKey,JSON.stringify(cache)); }catch(e){}
         if(Array.isArray(p.esAnlamlilar)){
@@ -1019,6 +1023,15 @@
           try{localStorage.setItem("dh-syn-ai-v1",JSON.stringify(synCache));}catch(e){}
         }
         draw(p);
+        return p;
+      }
+    DHProviders.chat(messages,{temperature:0.4,max_tokens:1000,json:true,title:"💎 "+word+" kelime paketini hazırla",forceRefresh:true})
+      .then(acceptPackage)
+      .catch(function(err){
+        if(err&&err.code==="abort")throw err;
+        if(!(DHProviders.manualChat))throw err;
+        out.innerHTML='<div class="dh-wp-ai-out">API yanıtı alınamadı. Gemini kopyala-yapıştır ile devam et.</div>';
+        return DHProviders.manualChat(messages,{json:true,title:"💎 "+word+" anlamı ve kelime paketi"}).then(acceptPackage);
       })
       .catch(function(err){ out.innerHTML='<div class="dh-wp-ai-out">'+((err&&err.code==="abort")?'İşlem kapatıldı. İstersen yeniden deneyebilirsin.':'Açıklama alınamadı. AI tercihini veya bağlantını kontrol et.')+'</div>'; })
       .then(function(){ btn.textContent="🎓 Kelime Paketi (AI)"; btn.disabled=false; });
@@ -1078,7 +1091,7 @@
     open({ word: word, data: { anlamlar: ["⏳ Sözlükte yok — AI ile anlam aranıyor…"], oku:"", frekans:"", seviye:"" } });
     /* AI tanımlarını 30 gün cihazda tut: aynı nadir kelime için yeniden
        sağlayıcı çağrısı yapılmaz. Anahtar veya içerik buluta gönderilmez. */
-    var aiCacheKey="dh-word-ai-cache-v1", aiCache={};
+    var aiCacheKey="dh-word-ai-cache-v2", aiCache={};
     try{ aiCache=JSON.parse(localStorage.getItem(aiCacheKey)||"{}")||{}; }catch(e){}
     var cached=aiCache[String(word||"").toLowerCase()];
     if(cached && cached.t>Date.now()-30*86400000 && Array.isArray(cached.v)){
@@ -1097,12 +1110,13 @@
       updateMeanings(["📕 Bu kelime yerel sözlükte yok. AI açıklaması için öğretmen sayfasından bir API anahtarı ekle (Groq, Cerebras veya Gemini)."]);
       return;
     }
-    var sys="Sen İngilizce-Türkçe sözlük gibi çalışıyorsun. Verilen İngilizce kelime bir çekim ekiyle gelmiş olabilir (örn. çoğul, geçmiş zaman, -ing) — önce sözlük kökünü bul, sonra o kökün 1-3 kısa Türkçe karşılığını SADECE virgülle ayrılmış liste halinde ver. Başka hiçbir açıklama, cümle veya noktalama ekleme.";
+    var sys="Sen İngilizce-Türkçe sözlük gibi çalışıyorsun. Verilen İngilizce kelimenin veya kalıbın bağlama uygun 1-3 kısa Türkçe karşılığını bul. Yalnız geçerli JSON döndür: {\"anlamlar\":[\"en uygun Türkçe karşılık\",\"varsa ikinci karşılık\"]}. anlamlar alanını boş bırakma.";
     var usr="Kelime: \""+word+"\"";
-    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.3,max_tokens:60})
+    var badge=document.getElementById("dh-ai-source-badge");if(badge)badge.remove();
+    DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}],{temperature:0.2,max_tokens:140,json:true,forceRefresh:true})
       .then(function(txt){
-        var list=String(txt||"").split(",").map(function(s){ return s.trim(); }).filter(Boolean);
-        list=list.length?list:["Anlam bulunamadı."];
+        var text=String(txt||"").replace(/```(?:json)?|```/gi,"").trim(),match=text.match(/\{[\s\S]*\}/),obj=match?JSON.parse(match[0]):{},list=Array.isArray(obj.anlamlar)?obj.anlamlar.map(function(s){return String(s||"").trim();}).filter(Boolean).slice(0,3):[];
+        if(!list.length)throw new Error("meaning-format");
         updateMeanings(list);
         try{
           aiCache[String(word||"").toLowerCase()]={t:Date.now(),v:list};
@@ -1117,7 +1131,7 @@
           code==="rate" || code==="all-failed" ? "⏳ Tüm AI sağlayıcıları şu an limitte/başarısız. Biraz sonra tekrar dene." :
           code==="bad-key" ? "🔑 API anahtarı geçersiz görünüyor. Öğretmen sayfasından anahtarını kontrol et." :
           code==="network" ? "📡 Ağ/CORS hatası — internet bağlantını kontrol et." :
-          "Anlam alınamadı. Bağlantı/anahtar kontrol et.";
+          "Anlam otomatik alınamadı. Aşağıdaki ‘Kelime Açıklama (AI)’ düğmesine basarak Gemini kopyala-yapıştır ile devam et.";
         updateMeanings([msg]);
       });
   }

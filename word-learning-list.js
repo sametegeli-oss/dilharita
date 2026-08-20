@@ -12,7 +12,7 @@
   function hasApiKey(){try{return["nvidiaApiKeys","groqApiKeys","cerebrasApiKeys","geminiApiKeys"].some(function(k){return(JSON.parse(localStorage.getItem(k)||"[]")||[]).filter(Boolean).length;});}catch(e){return false;}}
   function provider(){
     if(global.DHProviders)return Promise.resolve(global.DHProviders);
-    return new Promise(function(resolve,reject){var old=document.querySelector('script[data-dh-word-ai-provider]');if(old){old.addEventListener("load",function(){resolve(global.DHProviders);},{once:true});old.addEventListener("error",reject,{once:true});return;}var s=document.createElement("script");s.src="./ai-providers.js?v=146";s.dataset.dhWordAiProvider="1";s.onload=function(){resolve(global.DHProviders);};s.onerror=reject;document.head.appendChild(s);});
+    return new Promise(function(resolve,reject){var old=document.querySelector('script[data-dh-word-ai-provider]');if(old){old.addEventListener("load",function(){resolve(global.DHProviders);},{once:true});old.addEventListener("error",reject,{once:true});return;}var s=document.createElement("script");s.src="./ai-providers.js?v=147";s.dataset.dhWordAiProvider="1";s.onload=function(){resolve(global.DHProviders);};s.onerror=reject;document.head.appendChild(s);});
   }
   function popupInfo(box){
     var react=box.classList.contains("wp-box"),w=box.querySelector(react?".wp-word":".dh-wp-word");
