@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v139";  /* v139: mobil Perchance yonlendirmesi */
+var SW_VERSION = "dh-sw-v140";  /* v140: word-popup cok sozcuklu kalip secimi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

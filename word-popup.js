@@ -185,6 +185,12 @@
   }
 
   function cleanWord(w){ return String(w||"").toLowerCase().replace(/[^a-z'-]/g,"").replace(/^'+|'+$/g,""); }
+  /* Çok sözcüklü ifadelerde boşlukları koruyan temizleyici. */
+  function cleanTerm(w){
+    return String(w||"").toLowerCase().replace(/[’]/g,"'")
+      .replace(/[^a-z' -]+/g," ").replace(/\s+/g," ").trim()
+      .replace(/^'+|'+$/g,"");
+  }
   function variants(w){
     var v=[w];
     if(w.length>4){
@@ -201,7 +207,10 @@
   }
   function findEntry(raw){
     if(!dict) return null;
-    var w=cleanWord(raw); if(!w) return null;
+    var term=cleanTerm(raw); if(!term) return null;
+    /* Yerel sözlükte kalıp doğrudan kayıtlıysa önce onu kullan. */
+    if(term.indexOf(" ")>=0){ return dict[term]?{word:term,data:dict[term]}:null; }
+    var w=cleanWord(term); if(!w) return null;
     var vs=variants(w);
     for(var i=0;i<vs.length;i++){ if(dict[vs[i]]) return { word:vs[i], data:dict[vs[i]] }; }
     return null;
@@ -1398,10 +1407,52 @@
     var t=e.target; if(!t) return;
     if(t.closest && t.closest("input,textarea,button,a,select,.no-wordpop")) return;
     /* ?ift t?klama taray?c?da kelimeyi se?er; bu se?im a??lmay? engellememeli. */
-    var word=wordAtPoint(e); if(!word) return;
-    var cleaned=cleanWord(word);
-    if(!cleaned || cleaned.length<2 || !/^[a-z'-]+$/.test(cleaned)) return;
+    var word=termAtPoint(e); if(!word) return;
+    var cleaned=cleanTerm(word);
+    if(!cleaned || cleaned.length<2 || !/^[a-z' -]+$/.test(cleaned)) return;
     loadDict().then(function(){ var entry=findEntry(cleaned); if(entry) open(entry); else defineWithAI(cleaned); });
+  }
+  function selectedTermAtPoint(e){
+    try{
+      var sel=global.getSelection&&global.getSelection();
+      if(!sel || sel.isCollapsed || !sel.rangeCount) return "";
+      var text=cleanTerm(sel.toString());
+      if(!text || text.split(" ").length>8) return "";
+      var rects=sel.getRangeAt(0).getClientRects(),inside=false;
+      for(var i=0;i<rects.length;i++){
+        var x=rects[i];
+        if(e.clientX>=x.left-3&&e.clientX<=x.right+3&&e.clientY>=x.top-3&&e.clientY<=x.bottom+3){inside=true;break;}
+      }
+      return inside?text:"";
+    }catch(err){return "";}
+  }
+  function termAtPoint(e){
+    var selected=selectedTermAtPoint(e);
+    if(selected && selected.indexOf(" ")>0) return selected;
+    var one=wordAtPoint(e); if(!one) return "";
+    /* Tarayıcı çift tıklamada tek sözcük seçse de komşu parçacıkları
+       birleştir: catch/up tıklamalarının ikisi de "catch up" açar. */
+    try{
+      var range=null;
+      if(document.caretRangeFromPoint) range=document.caretRangeFromPoint(e.clientX,e.clientY);
+      else if(document.caretPositionFromPoint){var cp=document.caretPositionFromPoint(e.clientX,e.clientY);if(cp){range=document.createRange();range.setStart(cp.offsetNode,cp.offset);}}
+      if(!range||!range.startContainer||range.startContainer.nodeType!==3)return one;
+      var text=range.startContainer.textContent||"",re=/[A-Za-z][A-Za-z'-]*/g,words=[],m,hit=-1;
+      while((m=re.exec(text))){words.push({w:m[0],s:m.index,e:m.index+m[0].length});if(range.startOffset>=m.index&&range.startOffset<=m.index+m[0].length)hit=words.length-1;}
+      if(hit<0)return one;
+      var particles={up:1,down:1,in:1,out:1,on:1,off:1,over:1,away:1,back:1,around:1,along:1,across:1,through:1,after:1,apart:1,aside:1,forward:1,with:1,into:1,for:1,to:1,from:1};
+      var auxiliaries={am:1,is:1,are:1,was:1,were:1,be:1,been:1,being:1,can:1,could:1,will:1,would:1,shall:1,should:1,may:1,might:1,must:1,do:1,does:1,did:1,have:1,has:1,had:1,i:1,you:1,he:1,she:1,it:1,we:1,they:1};
+      for(var len=3;len>=2;len--){
+        for(var start=Math.max(0,hit-len+1);start<=hit&&start+len<=words.length;start++){
+          var part=words.slice(start,start+len);
+          if(auxiliaries[cleanWord(part[0].w)] || !particles[cleanWord(part[part.length-1].w)])continue;
+          var adjacent=true;
+          for(var j=1;j<part.length;j++){if(!/^\s+$/.test(text.slice(part[j-1].e,part[j].s))){adjacent=false;break;}}
+          if(adjacent)return cleanTerm(part.map(function(x){return x.w;}).join(" "));
+        }
+      }
+    }catch(err){}
+    return one;
   }
   function wordAtPoint(e){
     try{
@@ -1432,7 +1483,7 @@
       sozluk:loadDict,
       stil:injectCSS
     },
-    lookup:function(w){ loadDict().then(function(){ var e=findEntry(cleanWord(w)); if(e) open(e); else defineWithAI(cleanWord(w)); }); },
+    lookup:function(w){ var term=cleanTerm(w); loadDict().then(function(){ var e=findEntry(term); if(e) open(e); else defineWithAI(term); }); },
     enable:function(){ enabled=true; }, disable:function(){ enabled=false; }, close:close
   };
   function baglaTiklama(){
