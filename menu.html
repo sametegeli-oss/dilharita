@@ -161,8 +161,9 @@
       <label class="dh-kart dh-kart--sessiz" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px">
         <input type="checkbox" id="dhBackupSecrets" checked style="margin-top:3px;accent-color:#38bdf8">
         <span><b>API anahtarlarını şifreli yedeğe dahil et</b><br>
-        <span class="dh-ipucu">Yalnız belirleyeceğiniz yedek parolasıyla açılır; parola programda saklanmaz.</span></span>
+        <span class="dh-ipucu">Parolanın kendisi değil, bu cihaza özel dışarı aktarılamayan güvenli anahtar hatırlanır.</span></span>
       </label>
+      <button class="dh-btn dh-btn--sade dh-btn--tam" id="dhForgetBackupPassword" type="button">Yedek parolası hatırlamasını kaldır</button>
       <div class="dh-ipucu">Tam yedek görselleri ve bütün çevrimdışı AI verilerini de içerir; dosya büyük olabilir.</div>
       <div class="dh-ipucu" id="dhBackupMsg" style="min-height:16px" aria-live="polite"></div>
 
@@ -258,13 +259,19 @@
   var restoreInput=document.getElementById("dhRestoreFile");
   var msg=document.getElementById("dhBackupMsg");
   var secretToggle=document.getElementById("dhBackupSecrets");
+  var forgetPasswordBtn=document.getElementById("dhForgetBackupPassword");
   if(!backupBtn) return;
 
   var SECRET_NAMES=["nvidiaApiKeys","groqApiKeys","cerebrasApiKeys","geminiApiKeys","dh-disabled-keys","apiKeys"];
   function bytesToB64(bytes){var s="";for(var i=0;i<bytes.length;i++)s+=String.fromCharCode(bytes[i]);return btoa(s);}
   function b64ToBytes(s){var b=atob(s),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;}
-  async function cryptoKey(password,salt,uses){
-    var raw=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);
+  function vaultDB(){return new Promise(function(res,rej){var r=indexedDB.open("DilHaritaSecureVault",1);r.onupgradeneeded=function(){if(!r.result.objectStoreNames.contains("keys"))r.result.createObjectStore("keys");};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});}
+  async function loadVaultKey(){try{var db=await vaultDB();return await new Promise(function(res){var q=db.transaction("keys","readonly").objectStore("keys").get("backup-pbkdf2");q.onsuccess=function(){res(q.result||null);};q.onerror=function(){res(null);};});}catch(e){return null;}}
+  async function saveVaultKey(key){var db=await vaultDB();return new Promise(function(res,rej){var tx=db.transaction("keys","readwrite");tx.objectStore("keys").put(key,"backup-pbkdf2");tx.oncomplete=function(){res(true);};tx.onerror=function(){rej(tx.error);};});}
+  async function forgetVaultKey(){try{var db=await vaultDB();return await new Promise(function(res){var tx=db.transaction("keys","readwrite");tx.objectStore("keys").delete("backup-pbkdf2");tx.oncomplete=function(){res(true);};tx.onerror=function(){res(false);};});}catch(e){return false;}}
+  function passwordBaseKey(password){return crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);}
+  async function cryptoKey(passwordOrKey,salt,uses){
+    var raw=typeof passwordOrKey==="string"?await passwordBaseKey(passwordOrKey):passwordOrKey;
     return crypto.subtle.deriveKey({name:"PBKDF2",salt:salt,iterations:uses,hash:"SHA-256"},raw,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
   }
   async function encryptSecrets(data,password){
@@ -278,6 +285,10 @@
     var key=await cryptoKey(password,salt,uses),plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:iv},key,b64ToBytes(box.data));
     return JSON.parse(new TextDecoder().decode(plain));
   }
+  if(forgetPasswordBtn)forgetPasswordBtn.onclick=async function(){
+    if(!confirm("Bu cihazın yedek parolası hatırlaması kaldırılsın mı? Sonraki yedekte parola yeniden sorulur."))return;
+    await forgetVaultKey();if(msg){msg.style.color="var(--dh-ok)";msg.textContent="✓ Yedek parolası hatırlaması bu cihazdan kaldırıldı.";}
+  };
 
   /* Anahtar listesi cloud-sync.js'ten alınır — burada KOPYA tutulmaz,
      yoksa yeni anahtarlar eklendiğinde yedeğe girmez. */
@@ -329,14 +340,18 @@
       var encryptedSecrets;
       if(secretToggle&&secretToggle.checked){
         if(!(window.crypto&&crypto.subtle)) throw new Error("Şifreleme bu tarayıcıda desteklenmiyor");
-        var pass=prompt("API anahtarları için en az 8 karakterlik bir yedek parolası belirleyin:");
-        if(pass===null){if(msg)msg.textContent="Yedekleme iptal edildi.";return;}
-        if(pass.length<8){if(msg){msg.style.color="var(--dh-err)";msg.textContent="Yedek parolası en az 8 karakter olmalı.";}return;}
-        var pass2=prompt("Yedek parolasını tekrar yazın:");
-        if(pass!==pass2){if(msg){msg.style.color="var(--dh-err)";msg.textContent="Parolalar eşleşmedi; yedek oluşturulmadı.";}return;}
+        var baseKey=await loadVaultKey(),pass="",pass2="";
+        if(!baseKey){
+          pass=prompt("API anahtarları için en az 8 karakterlik bir yedek parolası belirleyin:");
+          if(pass===null){if(msg)msg.textContent="Yedekleme iptal edildi.";return;}
+          if(pass.length<8){if(msg){msg.style.color="var(--dh-err)";msg.textContent="Yedek parolası en az 8 karakter olmalı.";}return;}
+          pass2=prompt("Yedek parolasını tekrar yazın:");
+          if(pass!==pass2){if(msg){msg.style.color="var(--dh-err)";msg.textContent="Parolalar eşleşmedi; yedek oluşturulmadı.";}return;}
+          baseKey=await passwordBaseKey(pass);await saveVaultKey(baseKey);
+        }
         var secrets={};SECRET_NAMES.forEach(function(k){try{var v=localStorage.getItem(k);if(v!=null)secrets[k]=v;}catch(e){}});
-        encryptedSecrets=await encryptSecrets(secrets,pass);
-        pass=pass2="";
+        encryptedSecrets=await encryptSecrets(secrets,baseKey);
+        pass=pass2="";baseKey=null;
       }
 
       /* TÜM IndexedDB. kv/errors alanları eski sürümlerle uyum için
@@ -383,15 +398,17 @@
       try{
         var restoredSecrets=0,secretNotice="";
         if(data.encryptedSecrets){
-          var restorePass=prompt("Bu yedekte şifreli API anahtarları var. Yedek parolasını yazın (Atla ile anahtarsız devam edebilirsiniz):");
-          if(restorePass){
+          var restorePass="",restoreBase=await loadVaultKey(),secretData=null;
+          if(restoreBase)try{secretData=await decryptSecrets(data.encryptedSecrets,restoreBase);}catch(autoErr){restoreBase=null;}
+          if(!secretData)restorePass=prompt("Bu yedekte şifreli API anahtarları var. Yedek parolasını yazın (Atla ile anahtarsız devam edebilirsiniz):");
+          if(secretData||restorePass){
             try{
-              var secretData=await decryptSecrets(data.encryptedSecrets,restorePass);
+              if(!secretData){restoreBase=await passwordBaseKey(restorePass);secretData=await decryptSecrets(data.encryptedSecrets,restoreBase);await saveVaultKey(restoreBase);}
               SECRET_NAMES.forEach(function(sk){if(Object.prototype.hasOwnProperty.call(secretData,sk)){localStorage.setItem(sk,String(secretData[sk]));restoredSecrets++;}});
               secretNotice=" · "+restoredSecrets+" güvenli anahtar ayarı yüklendi";
             }catch(secErr){secretNotice=" · API anahtarları yüklenmedi (parola yanlış veya veri bozuk)";}
           }else secretNotice=" · API anahtarları atlandı";
-          restorePass="";
+          restorePass="";restoreBase=null;
         }
         /* Yeni biçim: tüm veritabanları. Eski biçimdeki kv de aşağıda
            ayrıca yazılır (v4 ve öncesi yedekler çalışmaya devam etsin). */

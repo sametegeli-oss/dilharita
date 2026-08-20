@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v129";  /* v129: tum LS, IDB, gorsel ve AI verileri tam yedek */
+var SW_VERSION = "dh-sw-v130";  /* v130: yedek parolasini guvenli cihaz anahtariyla hatirla */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

@@ -52,6 +52,8 @@
   ];
   /* Yeniden uretilebilir onbellekler — varsayilan olarak alinmaz */
   var ONBELLEK_DB = { sentenceLibraryCacheV2: 1 };
+  /* Cihaza bağlı, dışarı aktarılamayan Web Crypto anahtarı yedeğe konmaz. */
+  var GIZLI_DB = { DilHaritaSecureVault: 1 };
 
   function dbListesi() {
     if (global.indexedDB && global.indexedDB.databases) {
@@ -117,6 +119,7 @@
   }
 
   function dbOku(ad, gorseller) {
+    if (GIZLI_DB[ad]) return Promise.resolve(null);
     if (ONBELLEK_DB[ad] && !gorseller) return Promise.resolve(null);
     return ac(ad).then(function (db) {
       if (!db) return null;
