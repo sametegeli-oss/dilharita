@@ -360,7 +360,11 @@
       try{
         if(window.DHYedek){
           if(msg) msg.textContent="Tüm veritabanları okunuyor…";
-          idb=await DHYedek.olustur({gorseller:true});
+          /* Kelime kartlarina kullanicinin ekledigi/urettigi resimler
+             dh-word-study-list-v1 icinde base64 olarak zaten ls yedegine girer.
+             Burada img:/video onbelleklerini tekrar almak yuzlerce MB bellek
+             kullanip mobilde yedek olusturmayi durduruyordu. */
+          idb=await DHYedek.olustur({gorseller:false});
         }
       }catch(e){}
 
@@ -370,7 +374,9 @@
                     encryptedSecrets: encryptedSecrets,
                     dbs: idb ? idb.dbs : undefined,
                     ozet: idb ? idb.ozet : undefined };
-      var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+      /* Girintisiz JSON buyuk tam yedeklerde gecici bellek kullanimini ve
+         dosya boyutunu belirgin bicimde azaltir. */
+      var blob=new Blob([JSON.stringify(payload,function(k,v){return typeof v==="bigint"?String(v):v;})],{type:"application/json"});
       var url=URL.createObjectURL(blob);
       var a=document.createElement("a"); a.href=url; a.download="dilharita-yedek-"+at.slice(0,10)+".json";
       document.body.appendChild(a); a.click(); a.remove();
@@ -383,7 +389,10 @@
         msg.textContent="✓ Tam yedek indirildi — "+dbSay+" veritabanı, "
           +kayit+" kayıt, "+kb+" KB"+(encryptedSecrets?", API anahtarları şifreli":"")+".";
       }
-    }catch(e){ if(msg){ msg.style.color="var(--dh-err)"; msg.textContent="Yedek alınamadı."; } }
+    }catch(e){
+      try{console.error("[tam-yedek] oluşturma hatası",e);}catch(x){}
+      if(msg){msg.style.color="var(--dh-err)";msg.textContent="Yedek alınamadı: "+String(e&&e.message||e||"bilinmeyen hata").slice(0,180);}
+    }
   };
 
   if(restoreInput) restoreInput.onchange=function(ev){
