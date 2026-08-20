@@ -119,6 +119,10 @@
       var m={}; arr.forEach(function(k){ m[k]=1; }); return m;
     }catch(e){ return {}; }
   }
+  function disableBrokenKey(key){
+    if(!key)return;
+    try{var arr=JSON.parse(localStorage.getItem("dh-disabled-keys")||"[]")||[];if(arr.indexOf(key)<0){arr.push(key);localStorage.setItem("dh-disabled-keys",JSON.stringify(arr));}}catch(e){}
+  }
   function realHasAnyKey(){
     return PROVIDERS.some(function(p){ return keysOf(p.keyStore).length>0; });
   }
@@ -285,6 +289,7 @@
       var key = keys[i++];
       if(p.kind==="gemini") return callGemini(p,key,messages,opts).then(function(text){return {text:text,model:modelOf(p)};}).catch(function(err){
         if(err && err.code==="abort") throw err;
+        if(err&&err.code==="bad-key")disableBrokenKey(key);
         if(err && (err.code==="bad-key" || err.code==="rate")) return tryKey();
         throw err;
       });
@@ -296,7 +301,7 @@
           if(err&&err.code==="abort") throw err;
           /* Geçersiz anahtar model değiştirerek düzelmez. Limit/model/HTTP
              hatasında ise aynı NVIDIA anahtarıyla yedek modeli dene. */
-          if(err&&err.code==="bad-key") return tryKey();
+          if(err&&err.code==="bad-key"){disableBrokenKey(key);return tryKey();}
           if(mi<models.length && err && (err.code==="rate"||err.code==="http"||err.code==="empty")) return tryModel();
           if(err&&err.code==="rate") return tryKey();
           throw err;
@@ -390,6 +395,7 @@
 
   global.DHProviders = {
     chat: chat,
+    manualChat: chatViaGemini,
     hasAnyKey: hasAnyKey,
     realHasAnyKey: realHasAnyKey,
     mode: aiMode,
