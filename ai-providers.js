@@ -1,5 +1,7 @@
 /* ai-providers.js — ÇOK SAĞLAYICILI AI KATMANI (aşamalı/fallback)
-   Dil Harita — NVIDIA → Groq → Cerebras → Gemini sırasıyla dener.
+   Dil Harita — Gemini → Groq → Cerebras sırasıyla otomatik dener.
+   NVIDIA'nın genel API'si GitHub Pages tarayıcı çağrılarına CORS izni
+   vermediği için NVIDIA güvenli kopyala-yapıştır köprüsüyle kullanılır.
 
    Anahtarlar (localStorage, her biri JSON dizi):
      nvidiaApiKeys    — NVIDIA NIM (build.nvidia.com)
@@ -25,6 +27,14 @@
   // başarısız olursa kullanılır). modelsUrl: canlı model listesi endpoint'i (varsa).
   var PROVIDERS = [
     {
+      id:"gemini", keyStore:"geminiApiKeys",
+      url:"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent",
+      model:"gemini-3.6-flash",
+      models:["gemini-3.6-flash","gemini-3.5-flash","gemini-3.5-flash-lite"],
+      modelsUrl:"https://generativelanguage.googleapis.com/v1beta/models",
+      modelsAuth:"query", kind:"gemini"
+    },
+    {
       id:"nvidia",
       keyStore:"nvidiaApiKeys",
       url:"https://integrate.api.nvidia.com/v1/chat/completions",
@@ -34,14 +44,16 @@
       models:["meta/llama-3.3-70b-instruct","nvidia/llama-3.3-nemotron-super-49b-v1.5","openai/gpt-oss-120b"],
       modelsUrl:"https://integrate.api.nvidia.com/v1/models",
       modelsAuth:true,
-      kind:"openai"
+      kind:"openai",
+      manualOnly:true
     },
     {
       id:"groq",
       keyStore:"groqApiKeys",
       url:"https://api.groq.com/openai/v1/chat/completions",
-      model:"llama-3.3-70b-versatile",
-      models:["llama-3.3-70b-versatile","openai/gpt-oss-120b","openai/gpt-oss-20b","llama-3.1-8b-instant","qwen3-32b","llama-4-scout"],
+      model:"openai/gpt-oss-120b",
+      fallbackModels:["openai/gpt-oss-20b","llama-3.1-8b-instant"],
+      models:["openai/gpt-oss-120b","openai/gpt-oss-20b","llama-3.1-8b-instant","llama-3.3-70b-versatile"],
       modelsUrl:"https://api.groq.com/openai/v1/models",   // anahtar gerekli
       modelsAuth:true,
       kind:"openai"
@@ -55,17 +67,6 @@
       modelsUrl:"https://api.cerebras.ai/public/v1/models",  // anahtarsız, public
       modelsAuth:false,
       kind:"openai"
-    },
-    {
-      id:"gemini",
-      keyStore:"geminiApiKeys",
-      url:"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent",
-      model:"gemini-2.5-flash",
-      // Gemini: SADECE Flash ücretsiz (Pro ücretli — listeye koymuyoruz)
-      models:["gemini-2.5-flash","gemini-2.5-flash-lite"],
-      modelsUrl:"https://generativelanguage.googleapis.com/v1beta/models",  // ?key= ile
-      modelsAuth:"query",
-      kind:"gemini"
     }
   ];
 
@@ -73,6 +74,9 @@
   function modelOf(p){
     try{
       var m = localStorage.getItem("dh-model-"+p.id);
+      /* Eski cihaz ayarlarında kalmış erişilemeyen model adlarını kendiliğinden taşı. */
+      if(p.id==="groq" && m==="llama-3.3-70b-versatile") m="openai/gpt-oss-120b";
+      if(p.id==="gemini" && (m==="gemini-2.5-flash" || m==="gemini-2.5-flash-lite")) m=p.model;
       if(m && m.trim()) return m.trim();
     }catch(e){}
     return p.model;
@@ -152,6 +156,20 @@
           onResult:function(value){settled=true;resolve(String(value||""));},
           onCancel:function(){if(!settled)reject({code:"abort"});}
         });
+        if(opts&&opts.signal) opts.signal.addEventListener("abort",function(){try{handle&&handle.close&&handle.close();}catch(e){}if(!settled)reject({code:"abort"});},{once:true});
+      });
+    });
+  }
+  function chatViaNvidia(messages,opts){
+    if(opts&&opts.signal&&opts.signal.aborted) return Promise.reject({code:"abort"});
+    return ensureGeminiBridge().then(function(g){
+      return new Promise(function(resolve,reject){
+        var settled=false;
+        var handle=g.ask({providerName:"NVIDIA Build",openUrl:"https://build.nvidia.com/models",
+          title:(opts&&opts.title)||"🟢 NVIDIA ile devam et",hint:"NVIDIA yanıtının tamamını buraya yapıştır…",
+          prompt:promptOf(messages,opts),parse:g.parsers.text,
+          onResult:function(value){settled=true;resolve(String(value||""));},
+          onCancel:function(){if(!settled)reject({code:"abort"});}});
         if(opts&&opts.signal) opts.signal.addEventListener("abort",function(){try{handle&&handle.close&&handle.close();}catch(e){}if(!settled)reject({code:"abort"});},{once:true});
       });
     });
@@ -280,12 +298,13 @@
       });
     }
     if(aiMode()==="gemini") return chatViaGemini(messages,opts);
-    var avail = PROVIDERS.filter(function(p){ return keysOf(p.keyStore).length>0; });
-    if(!avail.length) return Promise.reject({code:"no-key"});
+    var avail = PROVIDERS.filter(function(p){ return !p.manualOnly && keysOf(p.keyStore).length>0; });
+    var hasNvidia = PROVIDERS.some(function(p){ return p.id==="nvidia" && keysOf(p.keyStore).length>0; });
+    if(!avail.length) return hasNvidia ? chatViaNvidia(messages,opts) : Promise.reject({code:"no-key"});
 
     var idx = 0;
     function tryProvider(){
-      if(idx>=avail.length) return Promise.reject({code:"all-failed"});
+      if(idx>=avail.length) return hasNvidia ? chatViaNvidia(messages,opts) : Promise.reject({code:"all-failed"});
       var p = avail[idx++];
       return callProvider(p, messages, opts).then(function(txt){
         try{ if(global.DHAI && DHAI.noteSuccess) DHAI.noteSuccess(); }catch(e){}
@@ -294,7 +313,7 @@
         if(err && err.code==="abort") throw err;
         // bu sağlayıcı tükendi → sıradakine geç
         if(err && err.code==="rate"){ try{ if(global.DHAI && DHAI.noteRateLimit) DHAI.noteRateLimit(); }catch(e){} }
-        if(idx<avail.length) return tryProvider();
+        if(idx<avail.length || hasNvidia) return tryProvider();
         throw err;
       });
     }
@@ -306,6 +325,7 @@
     var p = PROVIDERS.filter(function(x){ return x.id===providerId; })[0];
     if(!p) return Promise.resolve([]);
     var fallback = (p.models||[]).slice();
+    if(p.manualOnly) return Promise.resolve(fallback);
     if(!p.modelsUrl) return Promise.resolve(fallback);
 
     var url = p.modelsUrl, headers = {};

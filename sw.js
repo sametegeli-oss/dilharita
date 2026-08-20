@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v124";  /* v124: NVIDIA NIM saglayicisi ve otomatik model yedegi */
+var SW_VERSION = "dh-sw-v125";  /* v125: CORS-guvenli NVIDIA koprusu ve guncel modeller */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

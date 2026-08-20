@@ -39,6 +39,7 @@ function redactSensitive(s){
   return String(s||"")
     .replace(/\bAIza[0-9A-Za-z_-]{20,}\b/g,"[GİZLİ-GEMINI-ANAHTARI]")
     .replace(/\b(?:gsk_|csk-|sk-)[0-9A-Za-z_-]{16,}\b/g,"[GİZLİ-API-ANAHTARI]")
+    .replace(/\bnvapi-[0-9A-Za-z_-]{16,}\b/g,"[GİZLİ-NVIDIA-ANAHTARI]")
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,"[GİZLİ-EPOSTA]");
 }
 
@@ -95,6 +96,8 @@ function readClip(){
 /* ---------- ana giriş ---------- */
 function ask(opt){
   opt=opt||{};
+  var providerName=String(opt.providerName||"Gemini");
+  var providerUrl=String(opt.openUrl||GEMINI_URL);
   css();
   var originalPrompt=String(opt.prompt||"");
   var basePrompt=redactSensitive(originalPrompt);
@@ -112,12 +115,12 @@ function ask(opt){
     '<div class="dhgb-card">'
    +'<h3>'+esc(opt.title||"Gemini'ye sor")+'</h3>'
    +'<div class="dhgb-job">Bekleyen görev: '+esc(id)+'</div>'
-   +'<p class="dhgb-step">1️⃣ Promptu kopyala → 2️⃣ Gemini\'de sor → 3️⃣ Cevabı aşağıya yapıştır, <b>Enter</b>. Program oradan devam eder.</p>'
+   +'<p class="dhgb-step">1️⃣ Promptu kopyala → 2️⃣ '+esc(providerName)+' üzerinde sor → 3️⃣ Cevabı aşağıya yapıştır, <b>Enter</b>. Program oradan devam eder.</p>'
    +'<button class="dhgb-tog" type="button">Promptu göster / gizle</button>'
    +'<div class="dhgb-prompt" style="display:none"></div>'
    +'<div class="dhgb-row">'
      +'<button class="dhgb-copy" type="button">📋 1. Promptu kopyala</button>'
-     +'<button class="dhgb-open" type="button">🚀 2. Gemini\'yi aç</button>'
+     +'<button class="dhgb-open" type="button">🚀 2. '+esc(providerName)+' aç</button>'
    +'</div>'
    +'<textarea class="dhgb-ta" placeholder="'+esc(opt.hint||"Gemini'nin cevabını buraya yapıştır ve Enter'a bas…")+'"></textarea>'
    +'<div class="dhgb-msg"></div>'
@@ -164,8 +167,8 @@ function ask(opt){
     });
   };
   ov.querySelector(".dhgb-open").onclick=function(){
-    try{ global.open(GEMINI_URL,"_blank","noopener"); }
-    catch(e){ say("Gemini açılamadı — tarayıcıda gemini.google.com adresine git.","#f59e0b"); }
+    try{ global.open(providerUrl,"_blank","noopener"); }
+    catch(e){ say(providerName+" açılamadı — sağlayıcı sayfasını tarayıcıda aç.","#f59e0b"); }
   };
   ov.querySelector(".dhgb-paste").onclick=function(){
     readClip().then(function(t){
