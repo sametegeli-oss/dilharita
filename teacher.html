@@ -237,8 +237,9 @@ function openKeySheet(invalid){
         ${ids.map(id=>`<option value="${id}">${esc(PROVIDER_META[id].label)} — ${esc(PROVIDER_META[id].note)}</option>`).join("")}
       </select>
       <select id="keyModel" style="width:100%;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px;font:700 14px Nunito,sans-serif;margin-bottom:10px">
-        <option value="meta/llama-3.3-70b-instruct">Llama 3.3 70B — önerilen ana model</option>
-        <option value="nvidia/llama-3.3-nemotron-super-49b-v1.5">Nemotron 49B — JSON ve planlama</option>
+        <option value="nvidia/nemotron-3-super-120b-a12b">Nemotron 3 Super 120B — önerilen ana model</option>
+        <option value="nvidia/nemotron-3.5-lightning-30b-a3b">Nemotron 3.5 Lightning — hızlı yedek</option>
+        <option value="openai/gpt-oss-120b">GPT-OSS 120B — alternatif</option>
       </select>
       <input id="keyInput" type="text" placeholder="${esc(PROVIDER_META[ids[0]].prefix)}..." autocomplete="off" spellcheck="false" />
       <div class="note ${invalid?"bad":""}" id="keyNote">${invalid?"Önceki anahtar geçersizdi, yenisini gir.":""}</div>
@@ -275,7 +276,7 @@ function openKeySheet(invalid){
     $$("keyGetLink").href = p.url;
     $$("keyModel").style.display = this.value==="nvidia" ? "block" : "none";
   };
-  try{ $$("keyModel").value=(window.DHProviders&&DHProviders.getModel)?DHProviders.getModel("nvidia"):"meta/llama-3.3-70b-instruct"; }catch(e){}
+  try{ $$("keyModel").value=(window.DHProviders&&DHProviders.getModel)?DHProviders.getModel("nvidia"):"nvidia/nemotron-3-super-120b-a12b"; }catch(e){}
 
   function close(){
     sheet.remove();

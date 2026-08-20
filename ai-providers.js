@@ -38,10 +38,9 @@
       id:"nvidia",
       keyStore:"nvidiaApiKeys",
       url:"https://integrate.api.nvidia.com/v1/chat/completions",
-      model:"meta/llama-3.3-70b-instruct",
-      /* Ana model kullanılamazsa aynı NVIDIA anahtarıyla Nemotron denenir. */
-      fallbackModels:["nvidia/llama-3.3-nemotron-super-49b-v1.5"],
-      models:["meta/llama-3.3-70b-instruct","nvidia/llama-3.3-nemotron-super-49b-v1.5","openai/gpt-oss-120b"],
+      model:"nvidia/nemotron-3-super-120b-a12b",
+      fallbackModels:["nvidia/nemotron-3.5-lightning-30b-a3b","openai/gpt-oss-120b"],
+      models:["nvidia/nemotron-3-super-120b-a12b","nvidia/nemotron-3.5-lightning-30b-a3b","openai/gpt-oss-120b"],
       modelsUrl:"https://integrate.api.nvidia.com/v1/models",
       modelsAuth:true,
       kind:"openai",
@@ -75,6 +74,7 @@
     try{
       var m = localStorage.getItem("dh-model-"+p.id);
       /* Eski cihaz ayarlarında kalmış erişilemeyen model adlarını kendiliğinden taşı. */
+      if(p.id==="nvidia" && (m==="meta/llama-3.3-70b-instruct" || /^nvidia\/llama-3\.3-nemotron-super-49b/.test(m||""))) m=p.model;
       if(p.id==="groq" && m==="llama-3.3-70b-versatile") m="openai/gpt-oss-120b";
       if(p.id==="gemini" && (m==="gemini-2.5-flash" || m==="gemini-2.5-flash-lite")) m=p.model;
       if(m && m.trim()) return m.trim();
@@ -165,7 +165,7 @@
     return ensureGeminiBridge().then(function(g){
       return new Promise(function(resolve,reject){
         var settled=false;
-        var handle=g.ask({providerName:"NVIDIA Build",openUrl:"https://build.nvidia.com/models",
+        var handle=g.ask({providerName:"NVIDIA Build",openUrl:"https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b/playground",
           title:(opts&&opts.title)||"🟢 NVIDIA ile devam et",hint:"NVIDIA yanıtının tamamını buraya yapıştır…",
           prompt:promptOf(messages,opts),parse:g.parsers.text,
           onResult:function(value){settled=true;resolve(String(value||""));},
