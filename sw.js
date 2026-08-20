@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v136";  /* v136: ucretsiz Pollinations + NVIDIA alternatif gorseli */
+var SW_VERSION = "dh-sw-v137";  /* v137: Ingilizce prompt ile Perchance manuel gorsel akisi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
