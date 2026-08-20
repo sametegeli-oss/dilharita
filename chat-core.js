@@ -106,13 +106,29 @@ var __dhRolluMu = false;                          /* senaryo sayfasi rol oynatma
    NEDEN localStorage: bu dosya SENKRON aciliyor (State.currentPartner
    yuklenirken __dhOpener() cagriliyor), IndexedDB'yi burada beklemek
    mumkun degil. Hesabi dh-konusma.js onceden yapip donduruyor. */
+function __dhYerelGun(){
+  var d=new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function __dhTekilCumleler(liste){
+  var gorulen={};
+  return (liste||[]).filter(function(c){
+    var k=String(c&&c.en||"").toLocaleLowerCase("en-US")
+      .replace(/[\u2018\u2019]/g,"'").replace(/[^a-z0-9']+/g," ").trim();
+    if(!k||gorulen[k]) return false;
+    gorulen[k]=true; return true;
+  });
+}
 var __dhMalzeme=null; try{
-  var __mRaw=localStorage.getItem("dh-konusma-gun-"+new Date().toISOString().slice(0,10));
+  var __mRaw=localStorage.getItem("dh-konusma-gun-"+__dhYerelGun());
   if(__mRaw){
     var __m=JSON.parse(__mRaw);
     /* dh-konusma.js kaydi {s:<surum>, v:<malzeme>} olarak sarmalar; ac. */
     if(__m && typeof __m==="object" && __m.s && __m.v!==undefined) __m=__m.v;
-    if(__m && __m.cumleler && __m.cumleler.length) __dhMalzeme=__m;
+    if(__m && __m.cumleler && __m.cumleler.length){
+      __m.cumleler=__dhTekilCumleler(__m.cumleler);
+      if(__m.cumleler.length) __dhMalzeme=__m;
+    }
   }
 }catch(e){}
 /* Serbest senaryo sohbetinde ne gunun malzemesi ne de kocun odagi
@@ -129,7 +145,7 @@ var __dhGunSonu=false;
 try{
   var __gs = new URLSearchParams(location.search).get("gunsonu");
   if(__gs==="1" && __dhDersModu){
-    var __gsRaw=localStorage.getItem("dh-gunsonu-"+new Date().toISOString().slice(0,10));
+    var __gsRaw=localStorage.getItem("dh-gunsonu-"+__dhYerelGun());
     if(__gsRaw){
       var __h=JSON.parse(__gsRaw);
       if(__h && ((__h.cumleler&&__h.cumleler.length) || (__h.kelimeler&&__h.kelimeler.length))){
@@ -137,7 +153,7 @@ try{
           modul:  "gün sonu",
           konu:   "bugün çalıştıkların",
           ortam:  (__h.cumleler&&__h.cumleler[0]&&__h.cumleler[0].ortam) || "",
-          cumleler: __h.cumleler||[],
+          cumleler: __dhTekilCumleler(__h.cumleler||[]),
           kelimeler: __h.kelimeler||[],
           kaliplar: __h.kaliplar||[],
           kaynak: "bugun",
@@ -1383,6 +1399,7 @@ function continueInGemini(){
          Turkce ogretme kurali, ortam, gunun cumleleri ve [[ ]] sozlesmesi.
          Yoksa Gemini'ye gecince ders bitiyor, duz sohbete donuyordu. */
       var mm = __dhMalzeme;
+      if(mm && mm.cumleler) mm.cumleler=__dhTekilCumleler(mm.cumleler);
       prompt = "Sen Türkçe konuşan bir İngilizce öğretmenisin. Bir Türk öğrenciyle "
         + "çalışıyorsun (seviye " + State.level + ").\n\n"
         + "KURALLAR:\n"
@@ -1450,5 +1467,21 @@ function boot(){
     setTimeout(function(){ speakText(State.currentPartner); }, 450);
   }
 }
-document.addEventListener("DOMContentLoaded", boot);
+/* Ogretmen sayfasi artik cumle indeksini de yukluyor. Yeni gunun donmus
+   malzemesi henuz yoksa DHKonusma IndexedDB'den hesaplayana kadar bekle;
+   aksi halde ilk acilista eski/generic prompt, ikinci acilista yeni prompt
+   gorunuyordu. Hesap tamamlaninca State acilisini yeni malzemeyle kur. */
+document.addEventListener("DOMContentLoaded", function(){
+  if(__dhDersModu && window.DHKonusma && DHKonusma.bugun){
+    DHKonusma.bugun().then(function(m){
+      if(m && m.cumleler && m.cumleler.length){
+        m.cumleler=__dhTekilCumleler(m.cumleler);
+        __dhMalzeme=m;
+        State.currentPartner=__dhOpener();
+        State.firstMsg=State.currentPartner;
+      }
+      boot();
+    }).catch(boot);
+  }else boot();
+});
 })();

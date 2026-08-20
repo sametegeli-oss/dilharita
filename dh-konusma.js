@@ -54,18 +54,25 @@
   var DB = "sentence-mode", STORE = "kv";
   var GUN_ONEK = "dh-konusma-gun-";
   var ILERLEME_ONEK = "dh-konusma-ilerleme-";
-  var GECMIS = "dh-konusma-gecmis-v1";
+  var GECMIS = "dh-konusma-gecmis-v2";
   /* SURUM: donmus kaydin uretildigi kod surumu. Kod degisince (or. cumleye
      imgQuery eklendi) eski kayit GECERSIZ sayilip yeniden hesaplanir.
      Bu damga yokken kullanici duzeltmeyi ancak ERTESI GUN gorebiliyordu:
      gunun karari sabah donuyor, gun icinde yayinlanan duzeltme okunmuyordu. */
-  var SURUM = 2;
+  var SURUM = 3;
   var ENCOK = 6;                    /* konusmaya girecek cumle sayisi */
   var ENAZ_KONU = 3;                /* konu butunlugu icin alt sinir */
   var HAFTA = 7 * 86400000;
 
   /* koc.js / index.html / dh-telafi.js ile AYNI gun anahtari */
-  function gunISO(d) { return (d || new Date()).toISOString().slice(0, 10); }
+  /* Yerel gun kullanilir. toISOString() UTC oldugu icin Turkiye'de gece
+     00:00-03:00 arasinda hala dunu donduruyor ve koc eski malzemeyi
+     yeniden aciyordu. */
+  function gunISO(d) {
+    d = d || new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0")
+      + "-" + String(d.getDate()).padStart(2, "0");
+  }
   function dunISO() { var d = new Date(); d.setDate(d.getDate() - 1); return gunISO(d); }
   function bugunKey() { return GUN_ONEK + gunISO(); }
 
@@ -187,15 +194,30 @@
     try { return JSON.parse(localStorage.getItem(GECMIS) || "{}") || {}; }
     catch (e) { return {}; }
   }
-  function gecmisYaz(ids) {
+  function metinKey(en) {
+    return "en:" + String(en || "").toLocaleLowerCase("en-US")
+      .replace(/[\u2018\u2019]/g, "'").replace(/[^a-z0-9']+/g, " ").trim();
+  }
+  function gecmisteMi(gecmis, id, en, bugun, dun) {
+    var i = gecmis["id:" + String(id)] || gecmis[String(id)];
+    var t = gecmis[metinKey(en)];
+    return i === bugun || i === dun || t === bugun || t === dun;
+  }
+  function gecmisYaz(kayitlar) {
     try {
       var g = gecmisOku(), bugun = gunISO();
-      ids.forEach(function (id) { g[id] = bugun; });
-      /* sinirsiz buyumesin: 400 kayittan eskiyi at */
+      (kayitlar || []).forEach(function (r) {
+        if (typeof r === "string") g["id:" + r] = bugun;
+        else if (r) {
+          if (r.id != null) g["id:" + String(r.id)] = bugun;
+          if (r.en) g[metinKey(r.en)] = bugun;
+        }
+      });
+      /* Kimlik + metin tutuldugu icin siniri genislet. */
       var anahtarlar = Object.keys(g);
-      if (anahtarlar.length > 400) {
+      if (anahtarlar.length > 800) {
         anahtarlar.sort(function (a, b) { return String(g[a]).localeCompare(String(g[b])); });
-        anahtarlar.slice(0, anahtarlar.length - 400).forEach(function (k) { delete g[k]; });
+        anahtarlar.slice(0, anahtarlar.length - 800).forEach(function (k) { delete g[k]; });
       }
       localStorage.setItem(GECMIS, JSON.stringify(g));
     } catch (e) {}
@@ -322,7 +344,8 @@
       var gecmis = gecmisOku(), dun = dunISO();
       function tazeler(mod) {
         return byMod[mod].filter(function (id) {
-          return gecmis[id] !== bugun && gecmis[id] !== dun;
+          var s = D.srs[id] || {};
+          return !gecmisteMi(gecmis, id, s.en || "", bugun, dun);
         });
       }
 
@@ -356,8 +379,28 @@
          modulunde gomlek, corba, bagaj ve bogaz agrisi ayni anda).
          Boyle bir listeden kurulan konusma dagiliyor. */
       return global.DHSent.byIds(secilen).then(function (map) {
+        var gorulenMetin = {};
         var hepsiKayit = secilen.map(function (id) { return (map || {})[id]; })
-                                .filter(function (r) { return r && r.en; });
+          .filter(function (r) {
+            if (!r || !r.en) return false;
+            var k = metinKey(r.en);
+            if (gorulenMetin[k]) return false;
+            gorulenMetin[k] = true;
+            return !gecmisteMi(gecmis, r.id, r.en, bugun, dun);
+          });
+        /* Filtre az malzeme biraktiysa yine ayni metni iki kez verme; yalniz
+           gecmis kisitini gevsetip benzersiz alternatifleri kullan. */
+        if (hepsiKayit.length < 2) {
+          gorulenMetin = {};
+          hepsiKayit = secilen.map(function (id) { return (map || {})[id]; })
+            .filter(function (r) {
+              if (!r || !r.en) return false;
+              var k = metinKey(r.en);
+              if (gorulenMetin[k]) return false;
+              gorulenMetin[k] = true;
+              return true;
+            });
+        }
         if (!hepsiKayit.length) return null;
 
         /* baskin konu; en az ENAZ_KONU cumle veriyorsa ona sadik kalinir */
@@ -479,7 +522,7 @@
        Kullanilan cumleler gecmise yazilir ki yeni secimde tekrar gelmesinler. */
     if (yenile) {
       try {
-        if (d.cumleler) gecmisYaz(d.cumleler.map(function (c) { return c.id; }));
+        if (d.cumleler) gecmisYaz(d.cumleler);
         localStorage.removeItem(bugunKey());
         ilerlemeYaz({ yapilan: [], bitti: false });
       } catch (e) {}
@@ -489,7 +532,7 @@
       var son = donmusOku();
       if (son !== undefined) { _ucus = null; return son; }   /* baska sekme dondurdu */
       dondur(r || null);
-      if (r && r.cumleler) gecmisYaz(r.cumleler.map(function (c) { return c.id; }));
+      if (r && r.cumleler) gecmisYaz(r.cumleler);
       _ucus = null;
       return r || null;
     }).catch(function () { _ucus = null; return null; });
