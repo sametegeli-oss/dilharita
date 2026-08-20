@@ -54,13 +54,15 @@ export default {
       },
       body: JSON.stringify({
         prompt,
-        height: 1024,
-        width: 1024,
+        // Kelime kartinda 512 px yeterlidir. NVIDIA deneme servisinde
+        // 1024 px / 4 adim yogun kuyrukta 524 zaman asimina dusuyordu.
+        height: 512,
+        width: 512,
         cfg_scale: 0,
         mode: "base",
         samples: 1,
         seed,
-        steps: 4
+        steps: 1
       })
     });
     const text = await upstream.text();
