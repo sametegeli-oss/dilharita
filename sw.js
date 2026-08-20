@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v123";  /* v123: gun kapandiktan sonra kapanis popup'ini yeniden acma */
+var SW_VERSION = "dh-sw-v124";  /* v124: NVIDIA NIM saglayicisi ve otomatik model yedegi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

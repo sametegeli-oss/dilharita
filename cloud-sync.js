@@ -29,7 +29,7 @@
   var LS_KEYS = [
     "dh_ai_prompt_teacher", "dh-study-tracker-v1", "dh-ocr-sentences-v1", "dh-profile-v1",
     "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1",
-    "dh-model-groq", "dh-model-cerebras", "dh-model-gemini",
+    "dh-model-nvidia", "dh-model-groq", "dh-model-cerebras", "dh-model-gemini",
     "selectedTeacherAvatar", "dh-teacher-mem", "dh-activity-log-v1",
     "dh-gemini-report-v1", "dh-gemini-daily-archive-v1", "dh-word-study-list-v1",
     "dh-error-tombstones-v1"
@@ -46,7 +46,7 @@
   var ACTLOG  = "dh-activity-log-v1";
   /* API anahtarlari cihaz sirridir. Yerelde kalir; Firestore'a asla
      gonderilmez ve eski surumlerin yukledigi kopyalar ilk senkronda silinir. */
-  var SECRET_KEYS = ["groqApiKeys", "cerebrasApiKeys", "geminiApiKeys", "dh-disabled-keys", "apiKeys"];
+  var SECRET_KEYS = ["nvidiaApiKeys", "groqApiKeys", "cerebrasApiKeys", "geminiApiKeys", "dh-disabled-keys", "apiKeys"];
   function isSecretKey(key){ return SECRET_KEYS.indexOf(key)>=0; }
 
   var firebaseConfig = {

@@ -1,7 +1,8 @@
 /* ai-providers.js — ÇOK SAĞLAYICILI AI KATMANI (aşamalı/fallback)
-   Dil Harita — Groq → Cerebras → Gemini sırasıyla dener.
+   Dil Harita — NVIDIA → Groq → Cerebras → Gemini sırasıyla dener.
 
    Anahtarlar (localStorage, her biri JSON dizi):
+     nvidiaApiKeys    — NVIDIA NIM (build.nvidia.com)
      groqApiKeys      — Groq (console.groq.com)
      cerebrasApiKeys  — Cerebras (cloud.cerebras.ai)
      geminiApiKeys    — Google Gemini (aistudio.google.com)
@@ -23,6 +24,18 @@
   // model: VARSAYILAN model (kullanıcı seçmezse). models: bilinen güncel liste (canlı çekme
   // başarısız olursa kullanılır). modelsUrl: canlı model listesi endpoint'i (varsa).
   var PROVIDERS = [
+    {
+      id:"nvidia",
+      keyStore:"nvidiaApiKeys",
+      url:"https://integrate.api.nvidia.com/v1/chat/completions",
+      model:"meta/llama-3.3-70b-instruct",
+      /* Ana model kullanılamazsa aynı NVIDIA anahtarıyla Nemotron denenir. */
+      fallbackModels:["nvidia/llama-3.3-nemotron-super-49b-v1.5"],
+      models:["meta/llama-3.3-70b-instruct","nvidia/llama-3.3-nemotron-super-49b-v1.5","openai/gpt-oss-120b"],
+      modelsUrl:"https://integrate.api.nvidia.com/v1/models",
+      modelsAuth:true,
+      kind:"openai"
+    },
     {
       id:"groq",
       keyStore:"groqApiKeys",
@@ -145,9 +158,9 @@
   }
 
   // --- OpenAI-uyumlu çağrı (Groq, Cerebras) ---
-  function callOpenAI(p, key, messages, opts){
+  function callOpenAI(p, key, messages, opts, modelOverride){
     var body = {
-      model: modelOf(p),
+      model: modelOverride || modelOf(p),
       messages: messages,
       temperature: (opts.temperature!=null?opts.temperature:0.3),
       max_tokens: (opts.max_tokens||800)
@@ -229,13 +242,26 @@
     function tryKey(){
       if(i>=keys.length) return Promise.reject({code:"all-keys-failed", provider:p.id});
       var key = keys[i++];
-      var fn = (p.kind==="gemini") ? callGemini : callOpenAI;
-      return fn(p, key, messages, opts).catch(function(err){
+      if(p.kind==="gemini") return callGemini(p,key,messages,opts).catch(function(err){
         if(err && err.code==="abort") throw err;
-        // bu anahtar bozuk/limitse sıradaki anahtarı dene
         if(err && (err.code==="bad-key" || err.code==="rate")) return tryKey();
         throw err;
       });
+      var models=[modelOf(p)].concat(p.fallbackModels||[]).filter(function(m,n,a){return m&&a.indexOf(m)===n;});
+      var mi=0;
+      function tryModel(){
+        var chosen=models[mi++];
+        return callOpenAI(p,key,messages,opts,chosen).catch(function(err){
+          if(err&&err.code==="abort") throw err;
+          /* Geçersiz anahtar model değiştirerek düzelmez. Limit/model/HTTP
+             hatasında ise aynı NVIDIA anahtarıyla yedek modeli dene. */
+          if(err&&err.code==="bad-key") return tryKey();
+          if(mi<models.length && err && (err.code==="rate"||err.code==="http"||err.code==="empty")) return tryModel();
+          if(err&&err.code==="rate") return tryKey();
+          throw err;
+        });
+      }
+      return tryModel();
     }
     return tryKey();
   }

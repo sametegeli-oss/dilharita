@@ -36,7 +36,7 @@
       if(global.DHProviders && DHProviders.hasAnyKey) return DHProviders.hasAnyKey();
       // yedek: doğrudan kontrol (pasif anahtarları atla)
       var off={}; try{ (JSON.parse(localStorage.getItem("dh-disabled-keys")||"[]")||[]).forEach(function(k){ off[k]=1; }); }catch(e){}
-      var stores=["groqApiKeys","cerebrasApiKeys","geminiApiKeys"];
+      var stores=["nvidiaApiKeys","groqApiKeys","cerebrasApiKeys","geminiApiKeys"];
       for(var i=0;i<stores.length;i++){
         var ks=JSON.parse(localStorage.getItem(stores[i])||"[]")||[];
         if(ks.filter(Boolean).filter(function(k){ return !off[k]; }).length>0) return true;
