@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v141";  /* v141: kaliplari ezber listesine ekleme */
+var SW_VERSION = "dh-sw-v142";  /* v142: word-popup secimini elle duzenleme */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

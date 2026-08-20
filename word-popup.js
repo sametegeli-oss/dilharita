@@ -276,7 +276,8 @@
     +".dh-wp-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}"
     +".dh-wp-word{font-size:26px;font-weight:900;color:#818cf8}"
     +".dh-wp-read{font-size:15px;color:#fbbf24;font-weight:700;font-style:italic}"
-    +".dh-wp-x{margin-left:auto;background:#13294d;border:1px solid #1e3a5f;color:#e8eef7;width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;flex:0 0 auto}"
+    +".dh-wp-edit,.dh-wp-x{background:#13294d;border:1px solid #1e3a5f;color:#e8eef7;width:34px;height:34px;border-radius:50%;font-size:15px;cursor:pointer;flex:0 0 auto}"
+    +".dh-wp-edit{margin-left:auto}.dh-wp-x{margin-left:0}"
     +".dh-wp-box{background:#0b1830;border:1px solid #1e3a5f;border-radius:14px;padding:12px 14px;margin-bottom:10px}"
     +".dh-wp-boxhead{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:#9fb3d9;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}"
     +".dh-wp-tags{margin-left:auto;display:flex;gap:6px}"
@@ -370,6 +371,7 @@
      +'<div class="dh-wp-head">'
        +'<span class="dh-wp-word">'+esc(w)+'</span>'
        +(d.oku?'<span class="dh-wp-read">'+esc(d.oku)+'</span>':'')
+       +'<button class="dh-wp-edit" id="dhWpEdit" type="button" aria-label="Seçilen kelimeyi veya kalıbı düzenle" title="Seçimi düzenle">✏️</button>'
        +'<button class="dh-wp-x" id="dhWpX">✕</button>'
      +'</div>'
      +'<div class="dh-wp-box">'
@@ -425,6 +427,15 @@
     document.body.appendChild(ov); popEl=ov;
     ov.addEventListener("click", function(e){ if(e.target===ov) close(); });
     document.getElementById("dhWpX").onclick=close;
+    document.getElementById("dhWpEdit").onclick=function(){
+      var changed=global.prompt("Kelimeyi veya kalıbı düzenleyin:",w);
+      if(changed===null)return;
+      changed=cleanTerm(changed);
+      if(!changed||changed.length<2||changed.split(" ").length>8||!/^[a-z' -]+$/.test(changed)){
+        global.alert("Yalnızca İngilizce bir kelime veya en fazla 8 sözcüklü kalıp yazın.");return;
+      }
+      loadDict().then(function(){var corrected=findEntry(changed);if(corrected)open(corrected);else defineWithAI(changed);});
+    };
     document.getElementById("dhWpListen").onclick=function(){ speak(w,0.9); };
     document.getElementById("dhWpSlow").onclick=function(){ speak(w,0.55); };
     document.getElementById("dhWpFast").onclick=function(){ speak(w,1.25); };
