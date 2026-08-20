@@ -69,6 +69,29 @@
     }
   ];
 
+  var PROVIDER_LABELS={gemini:"Gemini",groq:"Groq",cerebras:"Cerebras",nvidia:"NVIDIA NIM","gemini-web":"Gemini Web"};
+  function sourceInfo(provider,model,extra){
+    var info={provider:provider,label:PROVIDER_LABELS[provider]||provider,model:model||"Model belirtilmedi",at:Date.now(),cached:false};
+    if(extra) Object.keys(extra).forEach(function(k){info[k]=extra[k];});
+    return info;
+  }
+  function showSource(info,cached){
+    info=info||sourceInfo("unknown","Eski kayıtta model bilgisi yok");
+    if(cached) info=Object.assign({},info,{cached:true});
+    global.DHProviders.lastResponseInfo=info;
+    try{localStorage.setItem("dh-last-ai-source-v1",JSON.stringify(info));}catch(e){}
+    try{global.dispatchEvent(new CustomEvent("dh-ai-source",{detail:info}));}catch(e){}
+    if(!global.document||!document.body)return info;
+    var el=document.getElementById("dh-ai-source-badge");
+    if(!el){
+      el=document.createElement("div");el.id="dh-ai-source-badge";
+      el.style.cssText="position:fixed;right:12px;top:12px;z-index:2147483000;max-width:min(88vw,430px);padding:9px 12px;border:1px solid #38bdf8;border-radius:12px;background:#0b1930;color:#e5f3ff;box-shadow:0 8px 28px #0008;font:700 12px/1.35 Nunito,system-ui,sans-serif;cursor:pointer";
+      el.title="Kapatmak için dokun";el.onclick=function(){el.remove();};document.body.appendChild(el);
+    }
+    el.textContent="🤖 AI kaynağı: "+(info.label||info.provider)+" · "+(info.model||"Model belirtilmedi")+(info.cached?" · önbellekten":"");
+    return info;
+  }
+
   // Kullanıcının seçtiği model (yoksa varsayılan)
   function modelOf(p){
     try{
@@ -153,7 +176,7 @@
           hint:"Gemini yanıtının tamamını buraya yapıştır…",
           prompt:promptOf(messages,opts),
           parse:g.parsers.text,
-          onResult:function(value){settled=true;resolve(String(value||""));},
+          onResult:function(value){settled=true;showSource(sourceInfo("gemini-web","Gemini web arayüzünde kullanıcı tarafından seçilen model"));resolve(String(value||""));},
           onCancel:function(){if(!settled)reject({code:"abort"});}
         });
         if(opts&&opts.signal) opts.signal.addEventListener("abort",function(){try{handle&&handle.close&&handle.close();}catch(e){}if(!settled)reject({code:"abort"});},{once:true});
@@ -168,7 +191,7 @@
         var handle=g.ask({providerName:"NVIDIA Build",openUrl:"https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b/playground",
           title:(opts&&opts.title)||"🟢 NVIDIA ile devam et",hint:"NVIDIA yanıtının tamamını buraya yapıştır…",
           prompt:promptOf(messages,opts),parse:g.parsers.text,
-          onResult:function(value){settled=true;resolve(String(value||""));},
+          onResult:function(value){settled=true;showSource(sourceInfo("nvidia","nvidia/nemotron-3-super-120b-a12b",{manual:true}));resolve(String(value||""));},
           onCancel:function(){if(!settled)reject({code:"abort"});}});
         if(opts&&opts.signal) opts.signal.addEventListener("abort",function(){try{handle&&handle.close&&handle.close();}catch(e){}if(!settled)reject({code:"abort"});},{once:true});
       });
@@ -260,7 +283,7 @@
     function tryKey(){
       if(i>=keys.length) return Promise.reject({code:"all-keys-failed", provider:p.id});
       var key = keys[i++];
-      if(p.kind==="gemini") return callGemini(p,key,messages,opts).catch(function(err){
+      if(p.kind==="gemini") return callGemini(p,key,messages,opts).then(function(text){return {text:text,model:modelOf(p)};}).catch(function(err){
         if(err && err.code==="abort") throw err;
         if(err && (err.code==="bad-key" || err.code==="rate")) return tryKey();
         throw err;
@@ -269,7 +292,7 @@
       var mi=0;
       function tryModel(){
         var chosen=models[mi++];
-        return callOpenAI(p,key,messages,opts,chosen).catch(function(err){
+        return callOpenAI(p,key,messages,opts,chosen).then(function(text){return {text:text,model:chosen};}).catch(function(err){
           if(err&&err.code==="abort") throw err;
           /* Geçersiz anahtar model değiştirerek düzelmez. Limit/model/HTTP
              hatasında ise aynı NVIDIA anahtarıyla yedek modeli dene. */
@@ -292,7 +315,7 @@
         var input=opts.cacheInput!=null?opts.cacheInput:(messages||[]).filter(function(m){return m&&m.role!=="system";});
         var prompt=(messages||[]).filter(function(m){return m&&m.role==="system";}).map(function(m){return m.content;}).join("\n");
         var hit=!opts.forceRefresh&&cache.get(opts.cacheType,input,prompt);
-        if(hit){global.DHProviders.lastCacheInfo={hit:true,promptChanged:hit.promptChanged,type:opts.cacheType,input:input};return hit.record.text;}
+        if(hit){global.DHProviders.lastCacheInfo={hit:true,promptChanged:hit.promptChanged,type:opts.cacheType,input:input};showSource(hit.record.source||sourceInfo("unknown","Eski kayıtta model bilgisi yok"),true);return hit.record.text;}
         var next={};Object.keys(opts).forEach(function(k){next[k]=opts[k];});next.__cacheBypass=true;
         return chat(messages,next).then(function(txt){cache.put(opts.cacheType,input,prompt,txt,opts.title||opts.cacheType);global.DHProviders.lastCacheInfo={hit:false,promptChanged:false,type:opts.cacheType,input:input};return txt;});
       });
@@ -306,9 +329,10 @@
     function tryProvider(){
       if(idx>=avail.length) return hasNvidia ? chatViaNvidia(messages,opts) : Promise.reject({code:"all-failed"});
       var p = avail[idx++];
-      return callProvider(p, messages, opts).then(function(txt){
+      return callProvider(p, messages, opts).then(function(result){
+        showSource(sourceInfo(p.id,result.model));
         try{ if(global.DHAI && DHAI.noteSuccess) DHAI.noteSuccess(); }catch(e){}
-        return txt;
+        return result.text;
       }).catch(function(err){
         if(err && err.code==="abort") throw err;
         // bu sağlayıcı tükendi → sıradakine geç
@@ -377,6 +401,8 @@
     listModels: listModels,
     setModel: setModel,
     getModel: getModel,
+    showSource: showSource,
+    sourceInfo: sourceInfo,
     PROVIDERS: PROVIDERS
   };
 })(window);

@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v126";  /* v126: kapanan Llama yerine Nemotron 3 Super */
+var SW_VERSION = "dh-sw-v127";  /* v127: her AI yanitinda saglayici ve model rozeti */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
