@@ -66,8 +66,8 @@
 <script src="./mastery-engine.js?v=1"></script>
 <script src="./module-test.js?v=2"></script>
 <script src="./module-score.js?v=1"></script>
-<script src="./module-story.js?v=1"></script>
-<script src="./ai-providers.js?v=1"></script>
+<script src="./ai-providers.js?v=4"></script>
+<script src="./module-story.js?v=2"></script>
 <script src="./ai-status.js?v=1"></script>
 <script>
 (function(){
@@ -264,7 +264,7 @@
 
   var _spk = { playing:false, parts:[], idx:0 };
   function showStory(story){
-    var aiNote = story.ai ? "" : '<div class="q-hint" style="color:var(--amber);margin-bottom:8px">AI kapalı — modül cümlelerinden basit derleme. Tam hikaye için öğretmen sayfasından Groq anahtarı ekle.</div>';
+    var aiNote = story.ai ? '<div class="q-hint" style="color:#34d399;margin-bottom:8px">🤖 AI aktif'+(story.aiSource?' · '+esc(story.aiSource):'')+(story.aiModel?' · '+esc(story.aiModel):'')+'</div>' : '<div class="q-hint" style="color:var(--amber);margin-bottom:8px">AI yanıtı alınamadı — modül cümlelerinden geçici derleme gösteriliyor. Menüdeki AI ayarını veya bağlantıyı kontrol et.</div>';
     screen.innerHTML='<div class="card fade">'
       +'<div class="q-label">📖 '+esc(story.title||"Modül Hikayesi")+'</div>'
       + aiNote

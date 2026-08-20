@@ -15,7 +15,7 @@
   "use strict";
   if(global.DHModuleStory) return;
 
-  var CACHE_PREFIX = "story:";
+  var CACHE_PREFIX = "story:v2:";
 
   function cacheGet(moduleId){
     try{ var r=localStorage.getItem(CACHE_PREFIX+moduleId); return r?JSON.parse(r):null; }catch(e){ return null; }
@@ -23,8 +23,6 @@
   function cacheSet(moduleId, story){
     try{ localStorage.setItem(CACHE_PREFIX+moduleId, JSON.stringify(story)); }catch(e){}
   }
-
-  function keys(){ try{ return (JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){ return []; } }
 
   // modülden gramer konusu + örnek cümleler topla
   function moduleProfile(moduleId, sentences){
@@ -56,13 +54,13 @@
       + "Bu yapıları kullanan örnek cümleler:\n- " + prof.samples.slice(0,6).join("\n- ")
       + "\n\nBu gramer konusunu bolca kullanan, "+(prof.level||"B1")+" seviyesine uygun kısa bir hikaye yaz.";
 
-    return DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}], {temperature:0.7, max_tokens:700}).then(function(txt){
+    return DHProviders.chat([{role:"system",content:sys},{role:"user",content:usr}], {temperature:0.7, max_tokens:900, json:true, title:"📖 "+prof.topic+" modül hikayesi",cacheType:"module-story-v2",cacheInput:{level:prof.level,topic:prof.topic,samples:prof.samples,grammars:prof.grammars}}).then(function(txt){
       txt=(txt||"").trim();
       var m=txt.match(/\{[\s\S]*\}/);
       if(m){
         try{
           var o=JSON.parse(m[0]);
-          if(o.en){ return { title:o.title||prof.topic, en:o.en, tr:o.tr||"", dialogue:Array.isArray(o.dialogue)?o.dialogue:[], questions:Array.isArray(o.questions)?o.questions:[], speakingTask:o.speakingTask||"", ai:true }; }
+          if(o.en){ var src=DHProviders.lastResponseInfo||{};return { title:o.title||prof.topic, en:o.en, tr:o.tr||"", dialogue:Array.isArray(o.dialogue)?o.dialogue:[], questions:Array.isArray(o.questions)?o.questions:[], speakingTask:o.speakingTask||"", ai:true,aiSource:src.label||src.provider||"AI",aiModel:src.model||"" }; }
         }catch(e){}
       }
       throw {code:"parse"};
@@ -83,8 +81,10 @@
     if(cached) return Promise.resolve(cached);
     var prof = moduleProfile(moduleId, sentences);
 
-    var useAI = false;
-    try{ useAI = !!(global.DHAI && DHAI.available()); }catch(e){ useAI = keys().length>0; }
+    /* Eski DHAI.available yalnız Groq'u gördüğü için NVIDIA/Gemini/Cerebras
+       anahtarı varken hikâyeyi yanlışlıkla kapatıyordu. Ortak sağlayıcı
+       katmanı API ve Gemini kopyala-yapıştır modlarını birlikte yönetir. */
+    var useAI = !!(global.DHProviders && DHProviders.hasAnyKey());
 
     if(useAI){
       return generateAI(prof).then(function(story){
