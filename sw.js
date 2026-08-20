@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v132";  /* v132: kelime listesi anlamli gorsel hafiza semasi */
+var SW_VERSION = "dh-sw-v133";  /* v133: kelime listesine acik kaynak gercek fotograf */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
