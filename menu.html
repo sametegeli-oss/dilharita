@@ -159,10 +159,11 @@
         </label>
       </div>
       <label class="dh-kart dh-kart--sessiz" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px">
-        <input type="checkbox" id="dhBackupSecrets" style="margin-top:3px;accent-color:#38bdf8">
+        <input type="checkbox" id="dhBackupSecrets" checked style="margin-top:3px;accent-color:#38bdf8">
         <span><b>API anahtarlarını şifreli yedeğe dahil et</b><br>
         <span class="dh-ipucu">Yalnız belirleyeceğiniz yedek parolasıyla açılır; parola programda saklanmaz.</span></span>
       </label>
+      <div class="dh-ipucu">Tam yedek görselleri ve bütün çevrimdışı AI verilerini de içerir; dosya büyük olabilir.</div>
       <div class="dh-ipucu" id="dhBackupMsg" style="min-height:16px" aria-live="polite"></div>
 
       <a class="dh-btn dh-btn--ikincil dh-btn--tam" href="./veri-gizlilik.html">Gizlilik ve veri kontrolleri</a>
@@ -314,13 +315,13 @@
     if(msg){ msg.style.color="var(--dh-text-2)"; msg.textContent="Yedek hazırlanıyor…"; }
     try{
       var K=keySets(), allKV=await readAllKV(), ls={};
-      K.list.forEach(function(k){ try{ var v=localStorage.getItem(k); if(v!=null) ls[k]=v; }catch(e){} });
+      /* Beyaz liste kullanma: gelecekte eklenen veriler de otomatik yedeğe girsin.
+         Cihaz sırları yalnız aşağıdaki şifreli kasaya yazılır. */
       try{
         for(var i=0;i<localStorage.length;i++){
           var kk=localStorage.key(i); if(!kk) continue;
-          for(var p=0;p<K.prefixes.length;p++){
-            if(kk.indexOf(K.prefixes[p])===0){ var vv=localStorage.getItem(kk); if(vv!=null) ls[kk]=vv; break; }
-          }
+          if(SECRET_NAMES.indexOf(kk)>=0) continue;
+          var vv=localStorage.getItem(kk); if(vv!=null) ls[kk]=vv;
         }
       }catch(e){}
       var errors=[]; try{ if(window.LearningErrorDB && LearningErrorDB.all) errors=await LearningErrorDB.all(); }catch(e){}
@@ -344,7 +345,7 @@
       try{
         if(window.DHYedek){
           if(msg) msg.textContent="Tüm veritabanları okunuyor…";
-          idb=await DHYedek.olustur();
+          idb=await DHYedek.olustur({gorseller:true});
         }
       }catch(e){}
 

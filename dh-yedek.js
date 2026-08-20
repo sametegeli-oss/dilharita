@@ -141,7 +141,9 @@
 
   function olustur(opt) {
     opt = opt || {};
-    var gorseller = !!opt.gorseller;
+    /* Tam yedek varsayılanı: hiçbir çevrimdışı veri dışarıda kalmasın.
+       Yalnız açıkça {gorseller:false} isteyen teknik çağrılar küçültebilir. */
+    var gorseller = opt.gorseller !== false;
     return dbListesi().then(function (adlar) {
       var dbs = {};
       return adlar.reduce(function (zincir, ad) {
