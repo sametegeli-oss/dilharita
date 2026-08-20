@@ -33,17 +33,29 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
     const url = new URL(request.url);
     if (url.pathname === "/health") return json({ ok: true, service: "dilharita-nvidia-image" }, 200, origin);
-    if (url.pathname !== "/generate" || request.method !== "POST") return json({ error: "not_found" }, 404, origin);
+    if (url.pathname !== "/generate" && url.pathname !== "/pollinations") return json({ error: "not_found" }, 404, origin);
+    if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405, origin);
     if (!ALLOWED_ORIGINS.has(origin)) return json({ error: "origin_not_allowed" }, 403, origin);
-
-    const authorization = request.headers.get("Authorization") || "";
-    if (!/^Bearer\s+nvapi-/i.test(authorization)) return json({ error: "invalid_nvidia_key" }, 401, origin);
 
     let body;
     try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
     const prompt = String(body.prompt || "").trim();
     if (!prompt || prompt.length > 4000) return json({ error: "invalid_prompt" }, 400, origin);
     const seed = Math.max(1, Math.min(2147483646, Number(body.seed) || Math.floor(Math.random() * 2147483646) + 1));
+
+    if (url.pathname === "/pollinations") {
+      const imageUrl = "https://gen.pollinations.ai/image/" + encodeURIComponent(prompt)
+        + "?model=flux&width=512&height=512&seed=" + seed + "&nologo=true&private=true";
+      const generated = await fetch(imageUrl, { headers: { "Accept": "image/*" } });
+      if (!generated.ok) return json({ error: "pollinations_upstream", status: generated.status }, generated.status, origin);
+      return new Response(generated.body, {
+        status: 200,
+        headers: { ...cors(origin), "Content-Type": generated.headers.get("Content-Type") || "image/jpeg" }
+      });
+    }
+
+    const authorization = request.headers.get("Authorization") || "";
+    if (!/^Bearer\s+nvapi-/i.test(authorization)) return json({ error: "invalid_nvidia_key" }, 401, origin);
 
     const upstream = await fetch("https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell", {
       method: "POST",
