@@ -132,6 +132,7 @@ const KEYS_LS = "groqApiKeys";
 function getKeys(){ try{ return (JSON.parse(localStorage.getItem(KEYS_LS)||"[]")||[]).filter(Boolean); }catch{ return []; } }
 
 const PROVIDER_META = {
+  nvidia:   { store:"nvidiaApiKeys",   label:"NVIDIA NIM",prefix:"nvapi-",url:"https://build.nvidia.com/models", note:"Llama 3.3 70B + otomatik Nemotron yedeği." },
   groq:     { store:"groqApiKeys",     label:"Groq",     prefix:"gsk_", url:"https://console.groq.com/keys",        note:"En hızlısı, ücretsiz." },
   cerebras: { store:"cerebrasApiKeys", label:"Cerebras", prefix:"csk-", url:"https://cloud.cerebras.ai",            note:"Yüksek hacim, ücretsiz." },
   gemini:   { store:"geminiApiKeys",   label:"Gemini",   prefix:"AIza", url:"https://aistudio.google.com/apikey",  note:"En cömert (Google), ücretsiz." }
@@ -235,6 +236,10 @@ function openKeySheet(invalid){
       <select id="keyProv" style="width:100%;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px;font:700 14px Nunito,sans-serif;margin-bottom:10px">
         ${ids.map(id=>`<option value="${id}">${esc(PROVIDER_META[id].label)} — ${esc(PROVIDER_META[id].note)}</option>`).join("")}
       </select>
+      <select id="keyModel" style="width:100%;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px;font:700 14px Nunito,sans-serif;margin-bottom:10px">
+        <option value="meta/llama-3.3-70b-instruct">Llama 3.3 70B — önerilen ana model</option>
+        <option value="nvidia/llama-3.3-nemotron-super-49b-v1.5">Nemotron 49B — JSON ve planlama</option>
+      </select>
       <input id="keyInput" type="text" placeholder="${esc(PROVIDER_META[ids[0]].prefix)}..." autocomplete="off" spellcheck="false" />
       <div class="note ${invalid?"bad":""}" id="keyNote">${invalid?"Önceki anahtar geçersizdi, yenisini gir.":""}</div>
       <div class="row2"><button class="btn btn-primary" id="keySave">Kaydet</button><button class="btn" id="keyClose">Kapat</button></div>
@@ -268,7 +273,9 @@ function openKeySheet(invalid){
     const p = PROVIDER_META[this.value];
     $$("keyInput").placeholder = p.prefix + "...";
     $$("keyGetLink").href = p.url;
+    $$("keyModel").style.display = this.value==="nvidia" ? "block" : "none";
   };
+  try{ $$("keyModel").value=(window.DHProviders&&DHProviders.getModel)?DHProviders.getModel("nvidia"):"meta/llama-3.3-70b-instruct"; }catch(e){}
 
   function close(){
     sheet.remove();
@@ -285,6 +292,7 @@ function openKeySheet(invalid){
     if(!k.startsWith(p.prefix)){ note(p.label+" anahtarı '"+p.prefix+"' ile başlamalı.","bad"); return; }
     saveKeyFor(p.store, k);
     try{ if(window.DHProviders&&DHProviders.setMode) DHProviders.setMode("api"); }catch(e){}
+    try{ if(id==="nvidia"&&window.DHProviders&&DHProviders.setModel) DHProviders.setModel("nvidia",$$("keyModel").value); }catch(e){}
     $$("keyInput").value = "";
     note(p.label+" anahtarı kaydedildi.","ok");
     renderList();
