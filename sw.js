@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v130";  /* v130: yedek parolasini guvenli cihaz anahtariyla hatirla */
+var SW_VERSION = "dh-sw-v131";  /* v131: word-popup AI anlam ve aciklama merkezi saglayici duzeltmesi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
