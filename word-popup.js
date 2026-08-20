@@ -1494,5 +1494,5 @@
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",baglaTiklama,{once:true});
   else baglaTiklama();
   /* Klasik ve React word-popup için ortak çalışma listesi. */
-  (function(){if(document.querySelector('script[data-dh-word-study-list]'))return;var s=document.createElement("script");s.src="./word-learning-list.js?v=139";s.dataset.dhWordStudyList="1";document.head.appendChild(s);})();
+  (function(){if(document.querySelector('script[data-dh-word-study-list]'))return;var s=document.createElement("script");s.src="./word-learning-list.js?v=141";s.dataset.dhWordStudyList="1";document.head.appendChild(s);})();
 })(window);

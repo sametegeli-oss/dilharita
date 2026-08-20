@@ -15,7 +15,10 @@
   }
   function popupInfo(box){
     var react=box.classList.contains("wp-box"),w=box.querySelector(react?".wp-word":".dh-wp-word");
-    var word=clean(w&&w.textContent).toLowerCase();if(!/^[a-z][a-z'-]*$/.test(word))return null;
+    /* Tek kelimenin yanında catch up / look forward to gibi İngilizce
+       kalıpları da çalışma listesine kabul et. */
+    var word=clean(w&&w.textContent).toLowerCase().replace(/\s+/g," ");
+    if(!/^[a-z][a-z' -]*$/.test(word)||word.split(" ").length>8)return null;
     var means=[].slice.call(box.querySelectorAll(react?".wp-meanings li":".dh-wp-mean")).map(function(x){return clean(x.textContent).replace(/^\d+\.\s*/,"");}).filter(Boolean);
     var sentence="";
     var active=document.querySelector(".card-en");if(active)sentence=clean(active.textContent);
