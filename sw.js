@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v158";  /* v158: koç ana düğmesi ilk kalan plan adımına gider */
+var SW_VERSION = "dh-sw-v159";  /* v159: deterministik plan da canlı yönlendirme hesabına katılır */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

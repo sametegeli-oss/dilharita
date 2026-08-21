@@ -284,7 +284,7 @@
   }
 
   /* ================= BUGUNUN DURUMU (SENKRON) ================= */
-  function durum(){
+  function durum(planOverride){
     var tr = oku("dh-study-tracker-v1", {}) || {};
     var b  = (tr.days || {})[GUN] || {};
     var d = {
@@ -313,7 +313,10 @@
     }
 
     /* plan + biten adimlar — koc.js paint() ile AYNI mantik */
-    d.plan = oku("dh-koc-plan-" + GUN, null);
+    /* AI anahtarı yokken oluşturulan deterministik plan önce bellekte çizilir.
+       Henüz localStorage'a yazılmamış olsa bile aynı bitiş/yönlendirme hesabına
+       girmelidir; aksi halde liste doğru görünürken ana düğme ders.html'e düşer. */
+    d.plan = planOverride || oku("dh-koc-plan-" + GUN, null);
     var set = oku("dh-koc-steps-done-" + GUN, {}) || {};
     if (!d.calisti) set = {};                       // guvenlik denetimi (koc.js ile ayni)
     d.bitenSet = set;
@@ -835,7 +838,7 @@
 
     /* koc plani geldiyse DHPlan defterini bir kez kur */
     if (plan && plan.steps) planiKur(plan);
-    d = durum();                              /* defter yeni kurulduysa tazele */
+    d = durum(plan);                          /* yedek planı da canlı hesaba kat */
 
     /* Dinlenme, henuz hic calisma yapmamis kullanicinin bilincli secimidir.
        Gun basladiktan sonra gosterilmesi "bugunku emegi yok say" gibi algilaniyordu. */
@@ -956,7 +959,10 @@
       if (due > 0) adimlar.push({ label:"Vadesi gelen kelime/cümleleri tekrarla", href:"tekrar.html?plan=1" });
       if (d.cumle < 25) adimlar.push({ label:"Yeni cümleler öğren", href:"index-app.html" });
       adimlar.push({ label:"1 dakika konuş", href:"chat.html" });
-      ciz({ focus:"Bugün planına başlayalım.", steps:adimlar }, {});
+      var yedekPlan = { focus:"Bugün planına başlayalım.", steps:adimlar };
+      /* Sayfa görünürlük/bulut olaylarında da aynı etkin plan korunsun. */
+      sonPlan = yedekPlan;
+      ciz(yedekPlan, {});
     });
   }, 2600);
 
