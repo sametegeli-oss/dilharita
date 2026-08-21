@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v154";  /* v154: yaşam sahnesi canlı ortam videosu */
+var SW_VERSION = "dh-sw-v155";  /* v155: bozuk ve iç talimat biçimli sahne yanıtlarını engelle */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
