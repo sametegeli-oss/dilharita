@@ -31,3 +31,34 @@
 @media (prefers-reduced-motion: reduce) {
   .imm-video-bg video { display: none !important; }
 }
+
+.imm-msg-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.imm-msg-play {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 50%;
+  background: rgba(255,255,255,.06);
+  color: #b8d6e7;
+  font-size: 11px;
+  line-height: 1;
+}
+.imm-msg-play:hover,
+.imm-msg-play:focus-visible,
+.imm-msg-play.is-playing {
+  color: #fff;
+  border-color: #5be6c9;
+  background: rgba(24,174,145,.22);
+}
+.imm-msg-play.is-playing { animation: immReplayPulse 1s ease-in-out infinite; }
+@keyframes immReplayPulse { 50% { transform: scale(.9); opacity: .65; } }
+@media (prefers-reduced-motion: reduce) {
+  .imm-msg-play.is-playing { animation: none; }
+}
