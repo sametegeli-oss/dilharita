@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v153";  /* v153: yaşam sahnesi anlam ve JSON dayanıklılığı */
+var SW_VERSION = "dh-sw-v154";  /* v154: yaşam sahnesi canlı ortam videosu */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -54,6 +54,8 @@ var SHELL = [
   "./ai-providers.js",
   "./immersive.js",
   "./immersive.css",
+  "./immersive-video.css",
+  "./dh-ortam-fon.js",
   "./ai-response-cache.js",
   "./ai-bulk-json-parser.js",
   "./ai-choice.js",

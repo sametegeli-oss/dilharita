@@ -34,6 +34,7 @@
   "use strict";
   if (global.__dhOrtamFon) return;
   global.__dhOrtamFon = true;
+  var MANUEL = !!(document.currentScript && document.currentScript.hasAttribute("data-manual"));
 
   var DB = "sentence-mode", STORE = "kv";
   var FON_ONEK = "dh-ortam-fon-";
@@ -299,6 +300,23 @@
   }
   function sifirla() { try { localStorage.removeItem(fonKey()); } catch (e) {} _ucus = null; }
 
+  /* İngilizceyi Yaşa gibi bağımsız sahneler için aynı Video Practice
+     önbelleğini ve aynı Pexels anahtarını kullanan genel giriş noktası. */
+  function sahneVideosu(secenek) {
+    secenek = secenek || {};
+    var id = String(secenek.id || "ortam").replace(/[^a-z0-9_-]/gi, "-");
+    var sorgular = Array.isArray(secenek.sorgular) ? secenek.sorgular : [secenek.sorgu];
+    var cumleler = sorgular.filter(Boolean).map(function (q, i) {
+      return { id: "immersive-" + id + (i ? "-" + i : ""), en: String(q), imgQuery: String(q) };
+    });
+    if (!cumleler.length) return Promise.resolve(null);
+    var m = { modul: "immersive", ortam: String(sorgular[0] || ""), konu: String(sorgular[1] || ""), cumleler: cumleler };
+    return onbellekVideo(m)
+      .then(function (r) { return r || pexelsVideo(m); })
+      .then(function (r) { return videoyuPaylas(m, r).then(function () { return r || null; }); })
+      .catch(function () { return null; });
+  }
+
   /* ───────────────────────── cizim ──────────────────────────── */
   function stil() {
     if (document.getElementById("dh-fon-css")) return;
@@ -388,12 +406,14 @@
   function baslat() {
     bul().then(function (f) { if (f) ciz(f); }).catch(function () {});
   }
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", baslat, { once: true });
-  } else { baslat(); }
+  if (!MANUEL) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", baslat, { once: true });
+    } else { baslat(); }
+  }
 
   global.DHOrtamFon = {
-    bul: bul, sec: sec, ciz: ciz, sifirla: sifirla,
+    bul: bul, sec: sec, ciz: ciz, sifirla: sifirla, sahneVideosu: sahneVideosu,
     _normEn: normEn, _anahtar: fonKey,
     _sorguTemiz: sorguTemiz, _sorguAdaylari: sorguAdaylari
   };
