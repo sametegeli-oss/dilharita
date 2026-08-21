@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v150";  /* v150: İngilizceyi Yaşa modülü */
+var SW_VERSION = "dh-sw-v151";  /* v151: yaşam sahnesi AI yanıt biçimi onarımı */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
