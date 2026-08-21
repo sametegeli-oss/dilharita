@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v156";  /* v156: balon bazlı sesli tekrar ve gerçek zamanlı dudak hizası */
+var SW_VERSION = "dh-sw-v157";  /* v157: günlük planın canlı planlanan/yapılan/kalan özeti */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

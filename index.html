@@ -8,7 +8,7 @@
 <title>Dil Harita</title>
 
 <link rel="stylesheet" href="./dh-tokens.css">
-<link rel="stylesheet" href="./dh-ui.css">
+<link rel="stylesheet" href="./dh-ui.css?v=2">
 
 <link rel="preload" as="image" href="./assets/avatars_v3/teacher/idle.webp" fetchpriority="high">
 <link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/blink.webp">
@@ -64,6 +64,28 @@
       <div class="dh-tugla__sira" id="gunTugla"></div>
       <div class="dh-tugla__yazi" id="gunYazi"></div>
     </div>
+  </section>
+
+  <!-- Günlük programın canlı özeti. Plan kurulur kurulmaz görünür; çalışma
+       yapılmasını beklemez ve DHPlan değişikliklerinde aynı anda yenilenir. -->
+  <section class="dh-plan-ozet" id="planOzet" hidden aria-live="polite" aria-label="Bugünkü plan durumu">
+    <div class="dh-plan-ozet__hucre">
+      <span class="dh-plan-ozet__etiket">Planlanan</span>
+      <strong class="dh-plan-ozet__deger" id="planlananN">0</strong>
+      <span class="dh-plan-ozet__birim">adım</span>
+    </div>
+    <div class="dh-plan-ozet__hucre dh-plan-ozet__hucre--yapilan">
+      <span class="dh-plan-ozet__etiket">Yapılan</span>
+      <strong class="dh-plan-ozet__deger" id="yapilanN">0</strong>
+      <span class="dh-plan-ozet__birim">adım</span>
+    </div>
+    <div class="dh-plan-ozet__hucre dh-plan-ozet__hucre--kalan">
+      <span class="dh-plan-ozet__etiket">Kalan</span>
+      <strong class="dh-plan-ozet__deger" id="kalanN">0</strong>
+      <span class="dh-plan-ozet__birim">adım</span>
+    </div>
+    <div class="dh-plan-ozet__ilerleme" aria-hidden="true"><span id="planOzetCubuk"></span></div>
+    <p class="dh-plan-ozet__mesaj" id="planOzetMesaj"></p>
   </section>
 
   <!-- YARIM KALAN DERS: kaldigin adimdan devam -->
@@ -564,6 +586,26 @@
     }
   }
 
+  /* ================= PLANLANAN / YAPILAN / KALAN =================
+     Adım özeti her zaman durum() tarafından hesaplanan aynı bitiş kanıtını
+     kullanır. Böylece kart listesi ile özet birbirinden kopamaz. */
+  function planOzetCiz(d){
+    var box = $("planOzet");
+    var toplam = d.adimToplam || 0;
+    var yapilan = Math.max(0, Math.min(toplam, d.adimBiten || 0));
+    var kalan = Math.max(0, toplam - yapilan);
+    if (!toplam){ box.hidden = true; return; }
+    $("planlananN").textContent = toplam;
+    $("yapilanN").textContent = yapilan;
+    $("kalanN").textContent = kalan;
+    $("planOzetCubuk").style.width = Math.round((yapilan / toplam) * 100) + "%";
+    $("planOzetMesaj").textContent = kalan
+      ? (yapilan ? "Program ilerliyor; sıradaki adımdan devam et." : "Programın hazır; ilk adımdan başla.")
+      : "Bugünkü programın tamamlandı.";
+    box.classList.toggle("dh-plan-ozet--tamam", kalan === 0);
+    box.hidden = false;
+  }
+
   /* ================= GEMINI GENEL KARNE =================
      Giriş ekranı son karneyi ve tarihini gösterir. Bulut senkronu girişten
      birkaç saniye sonra tamamlanırsa dh-cloud-synced olayı kartı tazeler. */
@@ -815,6 +857,7 @@
 
     $("kocSoz").textContent = soz(d, plan);
     durumCiz(d);
+    planOzetCiz(d);
     dersDevamCiz(d);
     adimlarCiz(d, plan);
     devamCiz(d, plan);
@@ -949,6 +992,13 @@
     if (document.visibilityState === "visible") ciz(sonPlan, sonCtx);
   });
   window.addEventListener("dh-cloud-synced", function(){ ciz(sonPlan, sonCtx); });
+  window.addEventListener("dh-progress-changed", function(){ ciz(sonPlan, sonCtx); });
+  window.addEventListener("storage", function(e){
+    if (e && e.key && (/^(dh-gun-plan-|dh-koc-plan-|dh-koc-steps-done-|dh-study-tracker-v1|dh-tekrar-gun-)/).test(e.key)) {
+      ciz(sonPlan, sonCtx);
+    }
+  });
+  if (window.DHPlan && DHPlan.dinle) DHPlan.dinle(function(){ ciz(sonPlan, sonCtx); });
 
   $("dinlenme").onclick = function(){
     try{ if (window.DHPlan) DHPlan.dinlenmeyeAl(); }catch(e){}

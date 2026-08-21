@@ -236,6 +236,29 @@
 /* ================= GUN PLANI ================= */
 .dh-plan{ display:flex; flex-direction:column; gap:var(--dh-b-2); }
 
+/* Günlük planın tek bakışta görülen, canlı planlanan/yapılan/kalan özeti. */
+.dh-plan-ozet{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1px;
+  margin:0 0 var(--dh-b-4);
+  overflow:hidden;
+  border:1px solid var(--dh-cizgi);
+  border-radius:var(--dh-r-kart);
+  background:var(--dh-cizgi);
+}
+.dh-plan-ozet[hidden]{display:none}
+.dh-plan-ozet__hucre{display:grid;justify-items:center;gap:2px;padding:12px 8px 10px;background:var(--dh-yuzey);text-align:center}
+.dh-plan-ozet__etiket,.dh-plan-ozet__birim{font-size:var(--dh-fs-ipucu);color:var(--dh-text-3)}
+.dh-plan-ozet__deger{font-size:clamp(1.35rem,6vw,1.8rem);line-height:1;color:var(--dh-text)}
+.dh-plan-ozet__hucre--yapilan .dh-plan-ozet__deger{color:var(--dh-ok)}
+.dh-plan-ozet__hucre--kalan .dh-plan-ozet__deger{color:var(--dh-seri)}
+.dh-plan-ozet__ilerleme{grid-column:1/-1;height:5px;background:var(--dh-yuzey-2)}
+.dh-plan-ozet__ilerleme span{display:block;width:0;height:100%;background:var(--dh-marka);transition:width .25s ease}
+.dh-plan-ozet__mesaj{grid-column:1/-1;margin:0;padding:9px 12px;background:var(--dh-yuzey);color:var(--dh-text-2);font-size:var(--dh-fs-ipucu);text-align:center}
+.dh-plan-ozet--tamam{border-color:var(--dh-ok)}
+.dh-plan-ozet--tamam .dh-plan-ozet__mesaj{color:var(--dh-ok);font-weight:800}
+
 .dh-plan-satir{
   display:block;
   padding:var(--dh-b-3);
