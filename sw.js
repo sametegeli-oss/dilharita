@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v151";  /* v151: yaşam sahnesi AI yanıt biçimi onarımı */
+var SW_VERSION = "dh-sw-v152";  /* v152: yaşam sahnesi dudak senkronu */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -88,9 +88,53 @@ var SHELL = [
   "./assets/avatars_v3/teacher/mouth-l.webp",
   "./assets/avatars_v3/teacher/mouth-th.webp",
   "./assets/avatars_v3/hotel/idle.webp",
+  "./assets/avatars_v3/hotel/blink.webp",
+  "./assets/avatars_v3/hotel/listen.webp",
+  "./assets/avatars_v3/hotel/mouth-a.webp",
+  "./assets/avatars_v3/hotel/mouth-e.webp",
+  "./assets/avatars_v3/hotel/mouth-i.webp",
+  "./assets/avatars_v3/hotel/mouth-o.webp",
+  "./assets/avatars_v3/hotel/mouth-u.webp",
+  "./assets/avatars_v3/hotel/mouth-mbp.webp",
+  "./assets/avatars_v3/hotel/mouth-fv.webp",
+  "./assets/avatars_v3/hotel/mouth-l.webp",
+  "./assets/avatars_v3/hotel/mouth-th.webp",
   "./assets/avatars_v3/restaurant/idle.webp",
+  "./assets/avatars_v3/restaurant/blink.webp",
+  "./assets/avatars_v3/restaurant/listen.webp",
+  "./assets/avatars_v3/restaurant/mouth-a.webp",
+  "./assets/avatars_v3/restaurant/mouth-e.webp",
+  "./assets/avatars_v3/restaurant/mouth-i.webp",
+  "./assets/avatars_v3/restaurant/mouth-o.webp",
+  "./assets/avatars_v3/restaurant/mouth-u.webp",
+  "./assets/avatars_v3/restaurant/mouth-mbp.webp",
+  "./assets/avatars_v3/restaurant/mouth-fv.webp",
+  "./assets/avatars_v3/restaurant/mouth-l.webp",
+  "./assets/avatars_v3/restaurant/mouth-th.webp",
   "./assets/avatars_v3/airport/idle.webp",
-  "./assets/avatars_v3/doctor/idle.webp"
+  "./assets/avatars_v3/airport/blink.webp",
+  "./assets/avatars_v3/airport/listen.webp",
+  "./assets/avatars_v3/airport/mouth-a.webp",
+  "./assets/avatars_v3/airport/mouth-e.webp",
+  "./assets/avatars_v3/airport/mouth-i.webp",
+  "./assets/avatars_v3/airport/mouth-o.webp",
+  "./assets/avatars_v3/airport/mouth-u.webp",
+  "./assets/avatars_v3/airport/mouth-mbp.webp",
+  "./assets/avatars_v3/airport/mouth-fv.webp",
+  "./assets/avatars_v3/airport/mouth-l.webp",
+  "./assets/avatars_v3/airport/mouth-th.webp",
+  "./assets/avatars_v3/doctor/idle.webp",
+  "./assets/avatars_v3/doctor/blink.webp",
+  "./assets/avatars_v3/doctor/listen.webp",
+  "./assets/avatars_v3/doctor/mouth-a.webp",
+  "./assets/avatars_v3/doctor/mouth-e.webp",
+  "./assets/avatars_v3/doctor/mouth-i.webp",
+  "./assets/avatars_v3/doctor/mouth-o.webp",
+  "./assets/avatars_v3/doctor/mouth-u.webp",
+  "./assets/avatars_v3/doctor/mouth-mbp.webp",
+  "./assets/avatars_v3/doctor/mouth-fv.webp",
+  "./assets/avatars_v3/doctor/mouth-l.webp",
+  "./assets/avatars_v3/doctor/mouth-th.webp"
 ];
 
 self.addEventListener("install", function(event){
