@@ -37,7 +37,7 @@
   /* "dh-koc-" → günlük koç planı, tamamlanan adımlar, gün epoch'u ve hedef.
      Bunlar cihaza özeldi; telefonda yapılan çalışma bilgisayarda görünmüyordu.
      Artık senkrona dahil (birleştirme kuralları için mergeKoc'a bak). */
-  var LS_PREFIXES = ["sm:", "mas:", "ev:", "modscore:", "gramprof:", "story:", "dh-koc-", "dh-day-closed-",
+  var LS_PREFIXES = ["sm:", "mas:", "ev:", "modscore:", "gramprof:", "story:", "dh-koc-", "dh-day-closed-", "dh-immersive-",
                       "dh-modul-", "dh-gemini-gunluk-", "dh-gemini-day-review-",
                       "dh-speaking-complete-", "dh-gunsonu-pratik-complete-", "dh-gunsonu-gemini-complete-"];   /* karne, Gemini ve konuşma tamamlanması cihazlar arasi */
   var MAX_VAL = 200000;      // alan başına üst sınır (Firestore alan limiti 1MB)
@@ -179,6 +179,14 @@
       return ((R.setAt||0) > (L.setAt||0)) ? remoteStr : localStr;
     }
     return localStr;
+  }
+
+  /* Yaşam sahnesinde iki cihazdan en son güncellenen hikâye devam eder. */
+  function mergeImmersive(localStr, remoteStr){
+    var L={},R={};
+    try{L=JSON.parse(localStr||"{}")||{};}catch(e){}
+    try{R=JSON.parse(remoteStr||"{}")||{};}catch(e){}
+    return JSON.stringify((+R.updatedAt||0)>(+L.updatedAt||0)?R:L);
   }
   function mergeGeminiArchive(localStr,remoteStr){
     var L=[],R=[],map={},now=Date.now(),cut=now-30*86400000;
@@ -656,6 +664,7 @@
           else if(rk===MIRROR){ localStorage.setItem(rk, mergeMirror(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk===ACTLOG){ localStorage.setItem(rk, mergeActivityLog(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk.indexOf("dh-koc-")===0){ localStorage.setItem(rk, mergeKoc(rk, localStorage.getItem(rk), rv)); pulled++; }
+          else if(rk==="dh-immersive-state-v1"){ localStorage.setItem(rk, mergeImmersive(localStorage.getItem(rk),rv)); pulled++; }
           else if(rk.indexOf("dh-modul-")===0){ localStorage.setItem(rk, mergeModul(rk, localStorage.getItem(rk), rv, rd.ls["dh-modul-silinen"])); pulled++; }
           else {
             /* Misafir → hesap geçişinde bu cihazdaki profil ve tercihler

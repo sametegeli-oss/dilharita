@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v149";  /* v149: ders kelime/cumlelerini gunler arasinda dondur */
+var SW_VERSION = "dh-sw-v150";  /* v150: İngilizceyi Yaşa modülü */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -21,6 +21,7 @@ var CACHE = SW_VERSION;
 var SHELL = [
   "./index.html",
   "./menu.html",
+  "./immersive.html",
   "./profil.html",
   "./gemini-rapor-arsivi.html",
   "./veri-gizlilik.html",
@@ -51,6 +52,8 @@ var SHELL = [
   "./dh-gun-sonu.js",
   "./dh-pdf.js",
   "./ai-providers.js",
+  "./immersive.js",
+  "./immersive.css",
   "./ai-response-cache.js",
   "./ai-bulk-json-parser.js",
   "./ai-choice.js",
@@ -83,7 +86,11 @@ var SHELL = [
   "./assets/avatars_v3/teacher/mouth-mbp.webp",
   "./assets/avatars_v3/teacher/mouth-fv.webp",
   "./assets/avatars_v3/teacher/mouth-l.webp",
-  "./assets/avatars_v3/teacher/mouth-th.webp"
+  "./assets/avatars_v3/teacher/mouth-th.webp",
+  "./assets/avatars_v3/hotel/idle.webp",
+  "./assets/avatars_v3/restaurant/idle.webp",
+  "./assets/avatars_v3/airport/idle.webp",
+  "./assets/avatars_v3/doctor/idle.webp"
 ];
 
 self.addEventListener("install", function(event){
