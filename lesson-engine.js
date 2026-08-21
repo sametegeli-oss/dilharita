@@ -21,6 +21,40 @@
 
   // ---- içerik önbelleği ----
   var cache = { sentence:null, pv:null, word:null };
+  var HISTORY_KEY = "dh-lesson-item-history-v1";
+
+  /* Ders adaylari eskiden her gun dizinin basindan slice(0,n) ile
+     aliniyordu. Bu nedenle status=LEARNING olan ilk kelime/obekler uc
+     dogruya ulasana kadar HER GUN aynen geliyordu. Gecmis yalnizca
+     secim sirasi icindir; ogrenme durumunu degistirmez. */
+  function lessonHistory(){
+    try{ return JSON.parse(localStorage.getItem(HISTORY_KEY)||"{}")||{}; }
+    catch(e){ return {}; }
+  }
+  function historyAt(history, type, id){
+    return +(history[type+":"+String(id)]||0);
+  }
+  function leastRecent(arr, type, history){
+    return arr.slice().sort(function(a,b){
+      var d=historyAt(history,type,a.id)-historyAt(history,type,b.id);
+      if(d) return d;
+      return String(a.id||a.label||"").localeCompare(String(b.id||b.label||""));
+    });
+  }
+  function rememberLesson(steps){
+    try{
+      var h=lessonHistory(), now=Date.now();
+      (steps||[]).forEach(function(s){
+        if(s&&s.itemId) h[s.itemId]=now;
+      });
+      var keys=Object.keys(h);
+      if(keys.length>1500){
+        keys.sort(function(a,b){return (+h[a]||0)-(+h[b]||0);});
+        keys.slice(0,keys.length-1500).forEach(function(k){delete h[k];});
+      }
+      localStorage.setItem(HISTORY_KEY,JSON.stringify(h));
+    }catch(e){}
+  }
 
   function loadData(type){
     if(cache[type]) return Promise.resolve(cache[type]);
@@ -122,38 +156,40 @@
   }
 
   // bir türde "yeni" (hiç dokunulmamış) öğeleri frekans/sıra ile getir
-  function pickNew(list, state, type, n, frekansOnce, studentLevel, allowAbove, belowLimit){
+  function pickNew(list, state, type, n, frekansOnce, studentLevel, allowAbove, belowLimit, history){
     var arr = list.filter(function(it){
       if(statusOf(state,type,it.id)!==0) return false;
       if(studentLevel && !levelOk(it.level, studentLevel, allowAbove, belowLimit)) return false;
       return true;
     });
     if(frekansOnce && (type==="pv"||type==="word")){
-      arr = arr.slice().sort(function(a,b){ return (b.freq||0)-(a.freq||0); });
+      arr = arr.slice().sort(function(a,b){
+        var f=(b.freq||0)-(a.freq||0);
+        return f || (historyAt(history,type,a.id)-historyAt(history,type,b.id));
+      });
+    }else{
+      arr = leastRecent(arr,type,history);
     }
     return arr.slice(0, n);
   }
 
   // "öğreniliyor" (1) durumundaki öğeler — tekrar adayları
-  function pickLearning(list, state, type, n){
+  function pickLearning(list, state, type, n, history){
     var arr = list.filter(function(it){ return statusOf(state,type,it.id)===1; });
-    return arr.slice(0, n);
+    return leastRecent(arr,type,history).slice(0, n);
   }
 
   // "öğrenildi" (2) — ısınma adayları
-  function pickLearned(list, state, type, n){
+  function pickLearned(list, state, type, n, history){
     var arr = list.filter(function(it){ return statusOf(state,type,it.id)===2; });
-    // karıştır (hep aynı olmasın)
-    for(var i=arr.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=arr[i];arr[i]=arr[j];arr[j]=t; }
-    return arr.slice(0, n);
+    return leastRecent(arr,type,history).slice(0, n);
   }
 
   // hata defterinden zayıf öğeleri çöz (target/sentenceId üzerinden eşle)
-  function pickWeak(state, lists, n){
+  function pickWeak(state, lists, n, history){
     var out=[];
     var seen={};
     (state.errors||[]).forEach(function(e){
-      if(out.length>=n) return;
       var sid = e.sentenceId||"";
       var p = parseItemId(sid);
       if(!p) return;
@@ -163,7 +199,9 @@
       var item=list.find(function(x){ return String(x.id)===String(p.id); });
       if(item){ out.push({ type:p.type, item:item }); }
     });
-    return out;
+    return out.sort(function(a,b){
+      return historyAt(history,a.type,a.item.id)-historyAt(history,b.type,b.item.id);
+    }).slice(0,n);
   }
   function parseItemId(sid){
     if(!sid) return null;
@@ -183,7 +221,7 @@
   }
 
   // ---- Gramer konusu seç (öğrencinin seviyesinden, henüz iyi bilinmeyen) ----
-  function pickGrammar(lists, state, studentLevel, allowAbove, n, belowLimit){
+  function pickGrammar(lists, state, studentLevel, allowAbove, n, belowLimit, history){
     var sentences = lists.sentence||[];
     var groups={};
     sentences.forEach(function(it){
@@ -200,7 +238,8 @@
     var arr=Object.keys(groups).map(function(g){ return groups[g]; });
     arr.sort(function(a,b){
       var ar=a.total? a.learned/a.total:0, br=b.total? b.learned/b.total:0;
-      return ar-br;
+      var d=ar-br;
+      return d || (historyAt(history,"grammar",a.grammar)-historyAt(history,"grammar",b.grammar));
     });
     return arr.slice(0, n);
   }
@@ -214,6 +253,7 @@
       .then(function(res){
         var lists = { sentence:res[0], pv:res[1], word:res[2] };
         var state = res[3];
+        var history = lessonHistory();
 
         // öğrenci seviyesi
         var studentLevel = resolveLevel(policy, state, lists);
@@ -248,7 +288,7 @@
         // 0) GRAMER — dersin başında konu anlatımı
         var gram = policy.gramer||{};
         if(gram.acik){
-          var gtopics = pickGrammar(lists, state, studentLevel, allowAbove, Math.max(0,gram.konuSayisi||0), belowLimit);
+          var gtopics = pickGrammar(lists, state, studentLevel, allowAbove, Math.max(0,gram.konuSayisi||0), belowLimit, history);
           gtopics.forEach(function(gt){
             steps.push({
               phase:"gramer",
@@ -263,15 +303,15 @@
         // 1) ISINMA — öğrenilmiş öğelerle
         var warm = [];
         ["pv","sentence","word"].forEach(function(t){
-          if(warm.length<nIsinma) warm = warm.concat(pickLearned(lists[t], state, t, nIsinma-warm.length).map(function(it){ return {type:t,item:it}; }));
+          if(warm.length<nIsinma) warm = warm.concat(pickLearned(lists[t], state, t, nIsinma-warm.length, history).map(function(it){ return {type:t,item:it}; }));
         });
         warm.slice(0,nIsinma).forEach(function(w){ steps.push(mkStep("isinma", w.type, w.item, policy)); });
 
         // 2) TEKRAR — önce zayıf (hata defteri), sonra "öğreniliyor"
-        var rev = pickWeak(state, lists, nTekrar);
+        var rev = pickWeak(state, lists, nTekrar, history);
         if(rev.length<nTekrar){
           ["pv","sentence","word"].forEach(function(t){
-            if(rev.length<nTekrar) rev = rev.concat(pickLearning(lists[t], state, t, nTekrar-rev.length).map(function(it){ return {type:t,item:it}; }));
+            if(rev.length<nTekrar) rev = rev.concat(pickLearning(lists[t], state, t, nTekrar-rev.length, history).map(function(it){ return {type:t,item:it}; }));
           });
         }
         rev.slice(0,nTekrar).forEach(function(w){ steps.push(mkStep("tekrar", w.type, w.item, policy)); });
@@ -282,7 +322,7 @@
         var newPicks={ sentence:[], pv:[], word:[] };
         // her tür için yeni aday havuzunu hazırla
         ["sentence","pv","word"].forEach(function(t){
-          newPicks[t] = pickNew(lists[t], state, t, nYeni, policy.frekansOnce, studentLevel, allowAbove, belowLimit);
+          newPicks[t] = pickNew(lists[t], state, t, nYeni, policy.frekansOnce, studentLevel, allowAbove, belowLimit, history);
         });
         var newIdx={ sentence:0, pv:0, word:0 };
         types.forEach(function(t){
@@ -358,6 +398,9 @@
         }
 
         var intro = buildIntro(policy, state, steps);
+        /* Secim dondurulmadan hemen once kaydet. Ertesi gun ayni durumdaki
+           baska adaylar one gelir; havuz dolasildiktan sonra geri doner. */
+        rememberLesson(steps);
         return {
           intro: intro,
           steps: steps,

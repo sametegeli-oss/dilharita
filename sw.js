@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v148";  /* v148: gunluk sohbet cumlelerini tekillestir ve dondur */
+var SW_VERSION = "dh-sw-v149";  /* v149: ders kelime/cumlelerini gunler arasinda dondur */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

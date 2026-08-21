@@ -41,6 +41,23 @@
   if (global.DHDers) return;
 
   var ONEK = "dh-ders-oturum-";
+  var OTURUM_SURUMU = 2;
+  var ICERIK_GECMISI = "dh-lesson-item-history-v1";
+
+  /* Bu surumden once hazirlanmis bugunku ders de yeni secimde tekrar
+     gelmesin. Eski oturumun ogelerini bir kez secim gecmisine aktaririz. */
+  function eskiDersiGecmiseYaz(kayit) {
+    try {
+      var adimlar = kayit && kayit.ders && kayit.ders.steps;
+      if (!adimlar || !adimlar.length) return;
+      var gecmis = JSON.parse(localStorage.getItem(ICERIK_GECMISI) || "{}") || {};
+      var simdi = Date.now();
+      adimlar.forEach(function (adim) {
+        if (adim && adim.itemId) gecmis[adim.itemId] = simdi;
+      });
+      localStorage.setItem(ICERIK_GECMISI, JSON.stringify(gecmis));
+    } catch (e) {}
+  }
 
   /* Yerel gune gore ISO. toISOString UTC'ye kayar ve gece yarisi
      civarinda gunu bir gun geri alabilir. */
@@ -69,6 +86,7 @@
     try {
       localStorage.setItem(anahtar(), JSON.stringify({
         olusturuldu: Date.now(),
+        surum: OTURUM_SURUMU,
         gun: iso(),
         idx: Math.max(0, idx | 0),
         ders: temizKopya(ders)
@@ -89,6 +107,10 @@
       kayit = ham ? JSON.parse(ham) : null;
     } catch (e) { return null; }
 
+    if (kayit && kayit.surum !== OTURUM_SURUMU) {
+      eskiDersiGecmiseYaz(kayit);
+      return null;
+    }
     if (!kayit || !kayit.ders || !kayit.ders.steps || !kayit.ders.steps.length) {
       return null;
     }
