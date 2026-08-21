@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v152";  /* v152: yaşam sahnesi dudak senkronu */
+var SW_VERSION = "dh-sw-v153";  /* v153: yaşam sahnesi anlam ve JSON dayanıklılığı */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

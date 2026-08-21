@@ -255,6 +255,9 @@
         maxOutputTokens: (opts.max_tokens||800)
       }
     };
+    /* JSON isteyen ekranlarda Gemini'nin Markdown çiti veya yarım biçimli
+       nesne döndürmesini önle. Bu ayar yalnız opts.json çağrılarını etkiler. */
+    if(opts.json) bodyObj.generationConfig.responseMimeType = "application/json";
     if(sys) bodyObj.systemInstruction = { parts:[{text:sys}] };
     var endpoint = p.url.replace("{MODEL}", modelOf(p));
     var url = endpoint + "?key=" + encodeURIComponent(key);
