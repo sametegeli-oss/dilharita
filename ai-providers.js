@@ -282,6 +282,64 @@
     });
   }
 
+  /* Herkese açık bir YouTube videosunu Gemini'nin ses + görüntü anlayışına
+     doğrudan verir. Normal chat sağlayıcılarına düşmez; video girdisini
+     yalnız Gemini desteklediği için Gemini anahtarlarını sırayla dener. */
+  function callGeminiVideo(p,key,videoUrl,prompt,opts){
+    opts=opts||{};
+    var bodyObj={
+      contents:[{role:"user",parts:[
+        {fileData:{fileUri:videoUrl,mimeType:"video/*"}},
+        {text:String(prompt||"")}
+      ]}],
+      generationConfig:{
+        temperature:(opts.temperature!=null?opts.temperature:.25),
+        maxOutputTokens:(opts.max_tokens||3200),
+        responseMimeType:"application/json"
+      }
+    };
+    var endpoint=p.url.replace("{MODEL}",modelOf(p));
+    return fetch(endpoint+"?key="+encodeURIComponent(key),{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      signal:opts.signal,
+      body:JSON.stringify(bodyObj)
+    }).then(function(res){
+      if(res.status===429) throw {code:"rate",provider:p.id};
+      if(res.status===401||res.status===403) throw {code:"bad-key",provider:p.id};
+      if(!res.ok)return res.text().then(function(t){throw {code:"http",provider:p.id,status:res.status,detail:t};});
+      return res.json();
+    },function(err){
+      if(err&&err.name==="AbortError")throw {code:"abort",provider:p.id};
+      throw {code:"network",provider:p.id};
+    }).then(function(d){
+      var parts=d&&d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts;
+      var txt=Array.isArray(parts)?parts.map(function(x){return x&&x.text||"";}).join(""):"";
+      if(!txt)throw {code:"empty",provider:p.id};
+      return txt;
+    });
+  }
+
+  function youtubeStudy(videoUrl,prompt,opts){
+    var p=PROVIDERS.filter(function(x){return x.id==="gemini";})[0];
+    var keys=p?keysOf(p.keyStore):[],i=0;
+    if(!p||!keys.length)return Promise.reject({code:"no-gemini-key",provider:"gemini"});
+    function next(){
+      if(i>=keys.length)return Promise.reject({code:"all-keys-failed",provider:"gemini"});
+      var key=keys[i++];
+      return callGeminiVideo(p,key,videoUrl,prompt,opts).then(function(text){
+        showSource(sourceInfo("gemini",modelOf(p)));
+        return text;
+      }).catch(function(err){
+        if(err&&err.code==="abort")throw err;
+        if(err&&err.code==="bad-key")disableBrokenKey(key);
+        if(err&&(err.code==="bad-key"||err.code==="rate"))return next();
+        throw err;
+      });
+    }
+    return next();
+  }
+
   function callProvider(p, messages, opts){
     var keys = keysOf(p.keyStore);
     if(!keys.length) return Promise.reject({code:"no-key", provider:p.id});
@@ -398,6 +456,7 @@
 
   global.DHProviders = {
     chat: chat,
+    youtubeStudy: youtubeStudy,
     manualChat: chatViaGemini,
     hasAnyKey: hasAnyKey,
     realHasAnyKey: realHasAnyKey,

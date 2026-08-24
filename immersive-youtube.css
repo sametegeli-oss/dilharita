@@ -1,7 +1,7 @@
 .imm-world{position:relative}
 .imm-youtube-warmup{position:absolute;inset:0;z-index:30;display:grid;place-items:center;padding:clamp(14px,4vw,38px);background:radial-gradient(circle at 50% 15%,#6d152ccc,transparent 38%),#050a13f2;backdrop-filter:blur(12px)}
 .imm-youtube-warmup[hidden]{display:none}
-.imm-youtube-card{width:min(620px,100%);max-height:calc(100vh - 150px);overflow-y:auto;padding:clamp(22px,5vw,40px);border:1px solid #ff718057;border-radius:26px;background:linear-gradient(145deg,#171421,#0a1524 68%);box-shadow:0 30px 90px #000b}
+.imm-youtube-card{width:min(760px,100%);max-height:calc(100vh - 100px);overflow-y:auto;padding:clamp(22px,5vw,40px);border:1px solid #ff718057;border-radius:26px;background:linear-gradient(145deg,#171421,#0a1524 68%);box-shadow:0 30px 90px #000b}
 .imm-youtube-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:#e4212b24;color:#ff8b92;font-size:10px;font-weight:900;letter-spacing:1.2px}
 .imm-youtube-badge span{display:grid;place-items:center;width:22px;height:16px;border-radius:5px;background:#e6212a;color:#fff;font-size:9px}
 .imm-youtube-card h2{margin:15px 0 8px;font-size:clamp(25px,5vw,38px);line-height:1.08;letter-spacing:-.8px}
@@ -15,8 +15,29 @@
 .imm-youtube-open{display:flex;align-items:center;justify-content:center;width:100%;min-height:49px;padding:11px 15px;border-radius:14px;background:linear-gradient(135deg,#f13b43,#bd1019);box-shadow:0 12px 30px #b70d1b32;color:#fff;text-decoration:none;text-align:center;font-weight:900}
 .imm-youtube-open:hover,.imm-youtube-open:focus-visible{filter:brightness(1.12);outline:2px solid #ff8f95;outline-offset:3px}
 .imm-youtube-status{min-height:18px;margin:9px 0;color:#8db7d1;text-align:center;font-size:11px}
+.imm-youtube-status[data-kind="error"]{color:#ff9ca3}.imm-youtube-status[data-kind="ok"]{color:#73e5c9}.imm-youtube-status[data-kind="loading"]{color:#f7ca78}
+.imm-youtube-pick{margin:13px 0;padding:14px;border:1px solid #ffffff17;border-radius:14px;background:#071321b8}
+.imm-youtube-pick label{display:block;margin-bottom:7px;color:#dfeaf5;font-size:12px;font-weight:900}
+.imm-youtube-pick form{display:flex;gap:7px}
+.imm-youtube-pick input{min-width:0;flex:1;border:1px solid #ffffff25;border-radius:11px;background:#030a13;color:#fff;padding:11px 12px;outline:0}
+.imm-youtube-pick input:focus{border-color:#67e7cd;box-shadow:0 0 0 3px #38d8bb1f}
+.imm-youtube-pick form button{border:0;border-radius:11px;background:#168b76;color:#fff;padding:10px 13px;font-weight:900;white-space:nowrap}
+.imm-youtube-pick form button:disabled{opacity:.6;cursor:wait}
+.imm-youtube-pick small{display:block;margin-top:7px;color:#71899d;font-size:10px;line-height:1.4}
+.imm-youtube-study{margin:15px 0;border-top:1px solid #ffffff18;padding-top:15px}
+.imm-youtube-study[hidden]{display:none}
+.imm-youtube-player{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:16px;background:#000;box-shadow:0 16px 40px #0007}
+.imm-youtube-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+#youtubeStudyContent section{margin-top:18px;padding-top:2px}#youtubeStudyContent h4{margin:0 0 10px;color:#e9f4ff;font-size:14px}
+.imm-yt-result-head{padding:16px 2px 3px}.imm-yt-result-head span{display:inline-block;padding:4px 8px;border-radius:99px;background:#0c765f;color:#dffff8;font-size:10px;font-weight:900}.imm-yt-result-head h3{margin:7px 0 4px;font-size:22px}.imm-yt-result-head p{margin:0;color:#a8bbcc;font-size:12px;line-height:1.55}
+.imm-yt-segment{display:grid;grid-template-columns:auto 1fr;gap:10px;margin:8px 0;padding:11px;border:1px solid #ffffff13;border-radius:13px;background:#081727}
+.imm-yt-segment>button,.imm-yt-phrase button{align-self:start;border:1px solid #55dbc253;border-radius:9px;background:#12372f;color:#8df1dc;padding:7px 8px;font-size:10px;font-weight:900}
+.imm-yt-segment strong{display:block;color:#e8f2fc;font-size:12px;line-height:1.4}.imm-yt-segment p{margin:5px 0;color:#88bfe3;font-size:12px}.imm-yt-segment details{color:#9fb2c4;font-size:11px}.imm-yt-segment summary{cursor:pointer;color:#f0c77d;font-weight:800}
+.imm-yt-phrase-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.imm-yt-phrase{display:flex;align-items:center;gap:6px;padding:10px;border:1px solid #ffffff13;border-radius:12px;background:#081727}.imm-yt-phrase>div{min-width:0;flex:1}.imm-yt-phrase strong,.imm-yt-phrase span,.imm-yt-phrase small{display:block}.imm-yt-phrase strong{color:#fff;font-size:12px}.imm-yt-phrase span{color:#71dec9;font-size:10px;margin:2px 0}.imm-yt-phrase small{color:#849aad;font-size:10px}
+.imm-yt-quiz{margin:8px 0;padding:12px;border:1px solid #ffffff13;border-radius:13px;background:#081727}.imm-yt-quiz>strong{font-size:12px;line-height:1.4}.imm-yt-quiz>div{display:grid;gap:6px;margin-top:9px}.imm-yt-quiz button{border:1px solid #ffffff18;border-radius:9px;background:#ffffff08;color:#dce8f3;padding:8px;text-align:left;font-size:11px}.imm-yt-quiz button.is-correct{border-color:#32d59a;background:#0c523c;color:#dffff2}.imm-yt-quiz button.is-picked-wrong{border-color:#ec6470;background:#64232a}.imm-yt-quiz p{margin:8px 0 0;color:#e8c984;font-size:11px}
+.imm-yt-role{padding:15px!important;border:1px solid #754bc4;border-radius:15px;background:linear-gradient(135deg,#251942,#10182a)}.imm-yt-role p{color:#bfc9dc;font-size:12px;line-height:1.5}.imm-yt-role button{width:100%;border:0;border-radius:11px;padding:11px;font-weight:900}
 .imm-youtube-actions{display:grid;grid-template-columns:1.35fr 1fr;gap:9px}
 .imm-youtube-actions button{min-height:44px;border:0;border-radius:13px;padding:10px 13px;font-weight:900}
 #youtubeButton{border-color:#e7465266;background:#e4212b17;color:#ffadb2}
-@media(max-width:600px){.imm-youtube-warmup{position:fixed;padding:10px}.imm-youtube-card{max-height:calc(100dvh - 20px);border-radius:20px;padding:22px 18px}.imm-youtube-actions{grid-template-columns:1fr}.imm-youtube-open{font-size:13px}}
+@media(max-width:600px){.imm-youtube-warmup{position:fixed;padding:10px}.imm-youtube-card{max-height:calc(100dvh - 20px);border-radius:20px;padding:22px 18px}.imm-youtube-actions{grid-template-columns:1fr}.imm-youtube-open{font-size:13px}.imm-youtube-pick form{flex-direction:column}.imm-youtube-pick form button{width:100%}.imm-yt-phrase-grid{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.imm-youtube-warmup{backdrop-filter:none}}
