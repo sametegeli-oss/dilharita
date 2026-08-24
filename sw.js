@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v160";  /* v160: kelime düzenleme, cümleyi Gemini'ye sor ve tamamlanan hedef */
+var SW_VERSION = "dh-sw-v161";  /* v161: İngilizceyi Yaşa için sahneye özel YouTube ısınması */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -54,6 +54,7 @@ var SHELL = [
   "./ai-providers.js",
   "./immersive.js",
   "./immersive.css",
+  "./immersive-youtube.css",
   "./immersive-video.css",
   "./dh-ortam-fon.js",
   "./ai-response-cache.js",
