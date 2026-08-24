@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v164";  /* v164: gerçek süreli tam video, tüm cümleler ve video-bazlı bulut kayıtları */
+var SW_VERSION = "dh-sw-v165";  /* v165: Gemini'nin kaçırılmamış metin tırnaklarını güvenli onarır */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
