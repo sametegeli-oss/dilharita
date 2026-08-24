@@ -439,7 +439,7 @@
         var key=localStorage.key(j); if(!key) continue;
         for(var p=0;p<LS_PREFIXES.length;p++){
           if(key.indexOf(LS_PREFIXES[p])===0){
-            try{ var vv=localStorage.getItem(key); if(vv!=null&&vv.length<=MAX_VAL) out[key]=vv; }catch(e){}
+              try{ var vv=localStorage.getItem(key),ytFull=key.indexOf("dh-immersive-youtube-study-")===0; if(vv!=null&&vv.length<=(ytFull?900000:MAX_VAL)) out[key]=vv; }catch(e){}
             break;
           }
         }
@@ -820,11 +820,13 @@
           // Eski tek-belge kurulumları da kapsar (progress boşsa settings'teki her şey okunur).
           return Promise.all([
             fsMod.getDoc(fsMod.doc(db,"settings",uid)).then(function(s){return s.exists()?s.data():null;}),
-            fsMod.getDoc(fsMod.doc(db,"progress",uid)).then(function(s){return s.exists()?s.data():null;}).catch(function(){return null;})
+            fsMod.getDoc(fsMod.doc(db,"progress",uid)).then(function(s){return s.exists()?s.data():null;}).catch(function(){return null;}),
+            fsMod.getDocs(fsMod.collection(db,"users",uid,"youtube_studies")).then(function(snap){var rows=[];snap.forEach(function(d){var v=d.data()||{};if(v.key&&typeof v.payload==="string")rows.push(v)});return rows;}).catch(function(){return[];})
           ]).then(function(a){
             var st=a[0]||{}, pg=a[1]||{}, out={};
             for(var k in st){ if(st.hasOwnProperty(k)) out[k]=st[k]; }
             for(var k2 in pg){ if(pg.hasOwnProperty(k2)&&k2!=="updated_at") out[k2]=pg[k2]; }  // progress daha taze → üstüne
+            (a[2]||[]).forEach(function(v){out[v.key]=v.payload;});
             if(pg.__bulk){ out.__bulk=Object.assign({},st.__bulk||{},pg.__bulk); }
             out.updated_at=Math.max(st.updated_at||0, pg.updated_at||0);
             return out;
@@ -844,10 +846,15 @@
           // BÖL: ilerleme (smv:*, wsrs, ayna, günler) → progress/{uid}; kalan ayarlar → settings/{uid}.
           // İki belge = 2×1MB tavan; ayar değişimi koca ilerlemeyi yeniden yazmaz.
           // nokta/özel karakterli anahtarlar Firestore alan adı olamaz → __bulk
-          var doc2={}, bulk={};
+          var doc2={}, bulk={}, ytDocs=[];
           if(data&&data.ls){
             for(var k in data.ls){
               if(!data.ls.hasOwnProperty(k) || isSecretKey(k)) continue;
+              if(k.indexOf("dh-immersive-youtube-study-")===0){
+                var vid=k.slice("dh-immersive-youtube-study-".length);
+                if(/^[\w-]{11}$/.test(vid)) ytDocs.push({id:vid,key:k,payload:data.ls[k]});
+                continue;
+              }
               if(/[.\/~\[\]*]/.test(k)) bulk[k]=data.ls[k];
               else doc2[k]=data.ls[k];
             }
@@ -866,7 +873,7 @@
              kuyruğu doldurur. Alanı olmayan belge hiç gönderilmez. */
           var sVar = Object.keys(sDoc).length > 0;
           var pVar = Object.keys(pDoc).length > 0;
-          if(!sVar && !pVar) return Promise.resolve([]);
+          if(!sVar && !pVar && !ytDocs.length) return Promise.resolve([]);
 
           var now2=Date.now();
           var isler=[];
@@ -874,6 +881,9 @@
             isler.push(fsMod.setDoc(fsMod.doc(db,"settings",uid), sDoc, { merge:true })); }
           if(pVar){ pDoc.updated_at=now2;
             isler.push(fsMod.setDoc(fsMod.doc(db,"progress",uid), pDoc, { merge:true })); }
+          ytDocs.forEach(function(v){
+            isler.push(fsMod.setDoc(fsMod.doc(db,"users",uid,"youtube_studies",v.id),{key:v.key,payload:v.payload,updated_at:now2},{merge:true}));
+          });
           return Promise.all(isler);
         }
       };
