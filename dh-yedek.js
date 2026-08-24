@@ -48,6 +48,7 @@
     "DilHaritaAI_DB",
     "DilharitaDB",
     "dh-kelime-analiz",           /* Gemini kelime analizleri */
+    "DilHaritaYouTube_DB",       /* YouTube video çalışmaları ve çevrimdışı içerik */
     "dh-snap"                     /* gunluk anlik goruntuler */
   ];
   /* Yeniden uretilebilir onbellekler — varsayilan olarak alinmaz */

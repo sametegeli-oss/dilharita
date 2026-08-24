@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v162";  /* v162: seçilen YouTube videosundan Gemini çalışma üretimi */
+var SW_VERSION = "dh-sw-v163";  /* v163: döngülü kesit, çift dil, IndexedDB kitaplığı ve bulut aynası */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
