@@ -29,7 +29,7 @@
   if (global.__dhWordGem) return;
   global.__dhWordGem = true;
 
-  var BTN_ID = "dhWgBtn", SEC_ID = "dhWgSec";
+  var BTN_ID = "dhWgBtn", SEC_ID = "dhWgSec", EDIT_ID = "dhWgEdit";
 
   function api(){
     return (global.DHWordPop && global.DHWordPop.analiz) || null;
@@ -49,7 +49,113 @@
       + "#" + SEC_ID + " .dhwg-kaynak{margin-left:auto;background:#1e3a8a;color:#93c5fd;"
       + "border-radius:99px;padding:3px 8px;font-size:10px;font-weight:800;text-transform:none;letter-spacing:0}"
       + "#" + SEC_ID + " .dhwg-not{font-size:11px;color:#64748b;line-height:1.45;margin-top:6px}";
+    st.textContent +=
+      ".wp-head{justify-content:flex-start!important;gap:8px}.wp-head .wp-word{margin-right:auto!important}"
+      + "#" + EDIT_ID + "{background:var(--surface-2,#1a2540);color:var(--text,#e8eef7);"
+      + "border:1px solid rgba(255,255,255,.10);border-radius:10px;width:36px;height:36px;"
+      + "font-size:16px;cursor:pointer;flex:0 0 auto}"
+      + ".wp-ex-en{padding-right:64px}.dhwg-sentence{position:absolute;top:10px;right:42px;"
+      + "width:26px;height:26px;border:0;border-radius:8px;background:#4c1d95;color:#ddd6fe;"
+      + "font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}"
+      + ".dhwg-sentence:hover{background:#6d28d9;color:#fff}.dhwg-sentence:disabled{opacity:.55;cursor:wait}"
+      + ".dhwg-sentence-answer{margin-top:9px;padding:10px 11px;border:1px solid #7c3aed66;"
+      + "border-radius:10px;background:#11152b;color:#e8eef7;font-size:13px;line-height:1.55;white-space:pre-wrap}"
+      + ".dhwg-sentence-source{display:block;margin-top:7px;color:#c4b5fd;font-size:10.5px;font-weight:800}";
     document.head.appendChild(st);
+  }
+
+  function temizTerim(value) {
+    return String(value || "").toLowerCase().replace(/[^a-z' -]/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  /* Derlenmiş React popup'ında bulunmayan klasik word-popup düzenleme
+     davranışını aynı başlığa ekler. Düzeltilen seçim ortak sözlük popup'ında
+     açılır; öğrenme ve tekrar kayıtlarına dokunulmaz. */
+  function duzenlemeEkle(box, kelime) {
+    var head = box.querySelector(".wp-head"), close = box.querySelector(".wp-close");
+    if (!head || !close) return;
+    var old = box.querySelector("#" + EDIT_ID);
+    if (old && old.getAttribute("data-w") === kelime) return;
+    if (old) old.remove();
+    var btn = document.createElement("button");
+    btn.id = EDIT_ID; btn.type = "button"; btn.className = "no-wordpop";
+    btn.setAttribute("data-w", kelime);
+    btn.setAttribute("aria-label", "Seçilen kelimeyi veya kalıbı düzenle");
+    btn.title = "Seçimi düzenle"; btn.textContent = "✏️";
+    btn.onclick = function (ev) {
+      ev.preventDefault(); ev.stopPropagation();
+      var changed = global.prompt("Kelimeyi veya kalıbı düzenleyin:", kelime);
+      if (changed === null) return;
+      changed = temizTerim(changed);
+      if (!changed || changed.length < 2 || changed.split(" ").length > 8 || !/^[a-z' -]+$/.test(changed)) {
+        global.alert("Yalnızca İngilizce bir kelime veya en fazla 8 sözcüklü kalıp yazın."); return;
+      }
+      try { close.click(); } catch (e) {}
+      setTimeout(function () {
+        if (global.DHWordPop && DHWordPop.lookup) DHWordPop.lookup(changed);
+      }, 30);
+    };
+    head.insertBefore(btn, close);
+  }
+
+  function cumlePrompt(en, tr) {
+    return [
+      { role:"system", content:"İngilizce öğretmenisin. Verilen cümleyi Türk öğrenciye kısa ve anlaşılır biçimde açıkla. Türkçe anlamını, gramer yapısını, önemli kalıpları, yaygın bir hatayı ve aynı yapıyla iki yeni örneği ver. Bilgi uydurma." },
+      { role:"user", content:"İngilizce cümle: " + en + (tr ? "\nMevcut Türkçe çeviri: " + tr : "") }
+    ];
+  }
+
+  function kaynakYazisi() {
+    var info = global.DHProviders && DHProviders.lastResponseInfo;
+    if (!info) return "AI · model bilgisi alınamadı";
+    return (info.label || info.provider || "AI") + " · " + (info.model || "Model belirtilmedi") + (info.cached ? " · önbellekten" : "");
+  }
+
+  function cumleyiSor(btn, card, en, tr) {
+    if (!global.DHProviders || !DHProviders.chat) {
+      global.alert("AI bağlantısı yüklenemedi. Sayfayı yenileyip tekrar deneyin."); return;
+    }
+    var messages = cumlePrompt(en, tr), system = messages[0].content;
+    var opts = { temperature:0.25, max_tokens:900, title:"💎 Cümleyi Gemini'ye sor",
+      cacheType:"dh-word-sentence-question-v1", cacheInput:{ sentence:en, translation:tr || "" } };
+    var original = btn.textContent; btn.disabled = true; btn.textContent = "…";
+    DHProviders.lastCacheInfo = null;
+    DHProviders.chat(messages, opts).catch(function (err) {
+      if (err && err.code === "abort") throw err;
+      if (!DHProviders.manualChat) throw err;
+      return DHProviders.manualChat(messages, { temperature:0.25, max_tokens:900, title:opts.title })
+        .then(function (text) {
+          try { if (global.DHAIResponseCache) DHAIResponseCache.put(opts.cacheType, opts.cacheInput, system, text, opts.title); } catch (e) {}
+          return text;
+        });
+    }).then(function (text) {
+      var out = card.querySelector(".dhwg-sentence-answer");
+      if (!out) { out = document.createElement("div"); out.className = "dhwg-sentence-answer"; card.appendChild(out); }
+      out.textContent = String(text || "").trim();
+      var source = document.createElement("span"); source.className = "dhwg-sentence-source";
+      source.textContent = "🤖 AI kaynağı: " + kaynakYazisi(); out.appendChild(source);
+      var cache = DHProviders.lastCacheInfo;
+      if (cache && cache.promptChanged) {
+        var warning = document.createElement("span"); warning.className = "dhwg-sentence-source";
+        warning.textContent = "Prompt değişti; kayıt korunuyor. İstersen yeniden gönderebilirsin."; out.appendChild(warning);
+      }
+    }).catch(function (err) {
+      if (!(err && err.code === "abort")) global.alert("Cümle açıklaması alınamadı. AI tercihini veya bağlantını kontrol et.");
+    }).then(function () { btn.disabled = false; btn.textContent = original; });
+  }
+
+  function cumleButonlariEkle(box) {
+    box.querySelectorAll(".wp-ex").forEach(function (card) {
+      if (card.querySelector(".dhwg-sentence")) return;
+      var enEl = card.querySelector(".wp-ex-en"); if (!enEl) return;
+      var en = String(enEl.textContent || "").trim(); if (!en) return;
+      var trEl = card.querySelector(".wp-ex-tr"), tr = trEl ? String(trEl.textContent || "").trim() : "";
+      var btn = document.createElement("button"); btn.type = "button";
+      btn.className = "dhwg-sentence no-wordpop"; btn.textContent = "💎";
+      btn.title = "Bu cümleyi Gemini'ye sor"; btn.setAttribute("aria-label", "Bu cümleyi Gemini'ye sor");
+      btn.onclick = function (ev) { ev.preventDefault(); ev.stopPropagation(); cumleyiSor(btn, card, en, tr); };
+      card.appendChild(btn);
+    });
   }
 
   /* React popup'ından kelimeyi ve Türkçe anlamları oku.
@@ -99,12 +205,15 @@
     var v = popupVerisi(box);
     if (!v) return;
 
+    stil();
+    duzenlemeEkle(box, v.kelime);
+    cumleButonlariEkle(box);
+
     var mevcut = box.querySelector("#" + BTN_ID);
     /* Popup başka bir kelimeye geçmiş olabilir: React aynı .wp-box'ı
        yeniden kullanıyor, o yüzden düğmenin üstündeki kelimeyi kontrol et. */
     if (mevcut && mevcut.getAttribute("data-w") === v.kelime) return;
 
-    stil();
     if (mevcut) { mevcut.remove(); }
     var eskiSec = box.querySelector("#" + SEC_ID);
     if (eskiSec) eskiSec.remove();

@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v159";  /* v159: deterministik plan da canlı yönlendirme hesabına katılır */
+var SW_VERSION = "dh-sw-v160";  /* v160: kelime düzenleme, cümleyi Gemini'ye sor ve tamamlanan hedef */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
