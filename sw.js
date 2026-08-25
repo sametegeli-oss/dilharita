@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v170";  /* v170: Kayıtsız cümlede orijinal ses ve canlı Shadowing ton göstergesi */
+var SW_VERSION = "dh-sw-v171";  /* v171: Otomatik Shadowing başla/bitir ışıkları ve hedef süre */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
