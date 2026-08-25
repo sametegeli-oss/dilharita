@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=8">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=9">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -35,7 +35,8 @@
     <form class="yt-url-form" id="videoForm">
      <label class="sr-only" for="videoUrl">YouTube video adresi</label>
      <span aria-hidden="true">▶</span>
-     <input id="videoUrl" type="url" inputmode="url" maxlength="500" placeholder="YouTube video adresini yapıştır…" autocomplete="off">
+    <input id="videoUrl" type="url" inputmode="url" maxlength="500" placeholder="YouTube video adresini yapıştır…" autocomplete="off">
+     <label class="yt-language-picker" for="videoLanguage"><span>Video dili</span><select id="videoLanguage"><option value="auto">Otomatik algıla</option><option value="en">İngilizce</option><option value="tr">Türkçe · ters shadowing</option></select></label>
      <button type="submit">Dersi hazırla <b>→</b></button>
     </form>
     <div class="yt-home-status" id="homeStatus" role="status"></div>
@@ -63,6 +64,7 @@
     <div class="yt-mode-tools">
      <div class="yt-audio-source" role="group" aria-label="Video ses kaynağı">
       <button class="is-active" id="originalAudioMode" type="button" aria-pressed="true">🔊 <span>Orijinal ses</span></button>
+      <button id="guideAudioMode" type="button" aria-pressed="false" hidden>🗣 <span>İngilizce rehber</span></button>
       <button id="ownAudioMode" type="button" aria-pressed="false" disabled>🎤 <span>Kendi sesim</span> <b id="ownAudioCount">0</b></button>
      </div>
      <button id="autoPauseToggle" type="button" aria-pressed="false" title="Her cümlenin sonunda otomatik duraklat">⏸ <span>Otomatik dur</span></button>
@@ -95,7 +97,7 @@
      </div>
 
      <section class="yt-learning-card" id="learningCard">
-      <div class="yt-learning-head"><span id="activeIndex">CÜMLE 1</span><div><button id="favoriteSentence" type="button" aria-label="Favoriye ekle">♡</button><button id="editSentence" type="button">✎ Düzenle</button><button id="askGemini" type="button">✦ Gemini’ye sor</button></div></div>
+      <div class="yt-learning-head"><span id="activeIndex">CÜMLE 1</span><div><button id="syncSentence" type="button" title="Videonun şu anki karesini bu cümlenin başlangıcı yap">⏱ Senkronla</button><button id="favoriteSentence" type="button" aria-label="Favoriye ekle">♡</button><button id="editSentence" type="button">✎ Düzenle</button><button id="askGemini" type="button">✦ Gemini’ye sor</button></div></div>
       <p class="yt-learning-en" id="learningEN" lang="en">Bir cümle seç.</p>
       <p class="yt-learning-tr" id="learningTR" lang="tr"></p>
       <div class="yt-word-action" id="wordActionBar" hidden><span>Seçilen kelime: <b id="selectedWord"></b></span><button id="saveSelectedWord" type="button">＋ Kelime defterine ekle</button><button id="explainSelectedWord" type="button">✦ Bağlamda açıkla</button></div>
@@ -162,7 +164,7 @@
   <form class="yt-modal" id="editForm"><header><div><span>CÜMLE DÜZENLEYİCİ</span><h2>Metni ve zamanı düzelt</h2></div><button type="button" data-close-modal>×</button></header>
    <label>İngilizce cümle<textarea id="editEN" rows="3" required></textarea></label>
    <label>Türkçe karşılığı<textarea id="editTR" rows="3" required></textarea></label>
-   <div class="yt-time-fields"><label>Başlangıç (sn)<input id="editStart" type="number" min="0" step="1"></label><label>Bitiş (sn)<input id="editEnd" type="number" min="1" step="1"></label></div>
+   <div class="yt-time-fields"><label>Başlangıç (sn)<input id="editStart" type="number" min="0" step="0.1"></label><label>Bitiş (sn)<input id="editEnd" type="number" min="0.2" step="0.1"></label></div>
    <footer><button type="button" data-close-modal>Vazgeç</button><button class="yt-primary" type="submit">Değişiklikleri kaydet</button></footer>
   </form>
  </div>
@@ -181,8 +183,8 @@
  <script src="./gemini-bridge.js?v=12"></script>
  <script src="./cloud-sync.js?v=23"></script>
  <script src="./word-popup.js?v=11"></script>
- <script src="./immersive-youtube-study.js?v=7"></script>
+ <script src="./immersive-youtube-study.js?v=8"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./youtube-egitim.js?v=8"></script>
+ <script src="./youtube-egitim.js?v=10"></script>
 </body>
 </html>
