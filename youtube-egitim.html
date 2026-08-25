@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=2">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=4">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -51,8 +51,21 @@
    <header class="yt-video-head">
     <button class="yt-round" id="closeStudy" type="button" aria-label="Ana ekrana dön">←</button>
     <div class="yt-video-heading"><span id="videoLevel">YOUTUBE DERSİ</span><h1 id="videoTitle">Video hazırlanıyor…</h1><small id="videoMeta"></small></div>
-    <div class="yt-head-progress"><span id="masteryLabel">0 / 0 öğrenildi</span><div><i id="masteryBar"></i></div></div>
+   <div class="yt-head-progress"><span id="masteryLabel">0 / 0 öğrenildi</span><div><i id="masteryBar"></i></div></div>
    </header>
+
+   <nav class="yt-modebar" aria-label="Çalışma biçimi">
+    <div class="yt-mode-switch" role="tablist">
+     <button class="is-active" data-study-mode="watch" type="button" role="tab" aria-selected="true"><span>▶</span><b>İzle &amp; Dinle</b><small>Çift altyazıyla keşfet</small></button>
+     <button data-study-mode="shadow" type="button" role="tab" aria-selected="false"><span>🎙</span><b>Shadowing</b><small>Dinle, kaydet, karşılaştır</small></button>
+     <button data-study-mode="dictation" type="button" role="tab" aria-selected="false"><span>⌨</span><b>Dikte</b><small>Dinle ve duyduğunu yaz</small></button>
+    </div>
+    <div class="yt-mode-tools">
+     <button id="autoPauseToggle" type="button" aria-pressed="false" title="Her cümlenin sonunda otomatik duraklat">⏸ <span>Otomatik dur</span></button>
+     <button id="karaokeToggle" class="is-active" type="button" aria-pressed="true" title="Konuşulan kelimeyi takip et">✦ <span>Kelime takibi</span></button>
+     <button id="exportOpen" type="button">⇩ <span>Dışa aktar</span></button>
+    </div>
+   </nav>
 
    <div class="yt-workspace">
     <section class="yt-stage-column">
@@ -81,6 +94,7 @@
       <div class="yt-learning-head"><span id="activeIndex">CÜMLE 1</span><div><button id="favoriteSentence" type="button" aria-label="Favoriye ekle">♡</button><button id="editSentence" type="button">✎ Düzenle</button><button id="askGemini" type="button">✦ Gemini’ye sor</button></div></div>
       <p class="yt-learning-en" id="learningEN" lang="en">Bir cümle seç.</p>
       <p class="yt-learning-tr" id="learningTR" lang="tr"></p>
+      <div class="yt-word-action" id="wordActionBar" hidden><span>Seçilen kelime: <b id="selectedWord"></b></span><button id="saveSelectedWord" type="button">＋ Kelime defterine ekle</button><button id="explainSelectedWord" type="button">✦ Bağlamda açıkla</button></div>
       <div class="yt-learning-actions">
        <button id="markLearned" type="button">✓ Öğrendim</button>
        <button id="markHard" type="button">↺ Tekrar listeme ekle</button>
@@ -96,6 +110,8 @@
       <button class="is-active" data-panel="transcript" type="button" role="tab">文 <span>Altyazılar</span><b id="sentenceCount">0</b></button>
       <button data-panel="phrases" type="button" role="tab">✦ <span>İfadeler</span></button>
       <button data-panel="quiz" type="button" role="tab">◆ <span>Test</span></button>
+      <button data-panel="wordbook" type="button" role="tab">▣ <span>Defter</span><b id="wordCount">0</b></button>
+      <button data-panel="grammar" type="button" role="tab">Aa <span>Dilbilgisi</span></button>
      </div>
      <div class="yt-transcript-toolbar">
       <label><span>⌕</span><input id="transcriptSearch" type="search" placeholder="Cümlelerde ara…"></label>
@@ -106,6 +122,8 @@
       <div class="yt-transcript-list" id="transcriptList"></div>
       <div class="yt-phrases-panel" id="phrasesPanel" hidden></div>
       <div class="yt-quiz-panel" id="quizPanel" hidden></div>
+      <div class="yt-wordbook-panel" id="wordbookPanel" hidden></div>
+      <div class="yt-grammar-panel" id="grammarPanel" hidden></div>
      </div>
      <footer class="yt-transcript-footer"><span><i></i> Aktif cümle video ile eşleşir</span><button id="scrollActive" type="button">Aktif cümleye git</button></footer>
     </aside>
@@ -118,6 +136,22 @@
    <header><div><span>KİŞİSEL ARŞİV</span><h2 id="drawerTitle">Video kitaplığım</h2></div><button id="closeLibrary" type="button" aria-label="Kapat">×</button></header>
    <div class="yt-drawer-list" id="drawerList"></div>
   </aside>
+ </div>
+
+ <div class="yt-modal-overlay" id="exportModal" hidden>
+  <section class="yt-modal yt-export-modal"><header><div><span>DERS ARŞİVİ</span><h2>Altyazıları dışa aktar</h2></div><button type="button" data-close-export>×</button></header>
+   <div class="yt-export-options">
+    <fieldset><legend>Biçim</legend><label><input type="radio" name="exportFormat" value="pdf" checked><span><b>PDF</b><small>Yazdırılabilir çalışma föyü</small></span></label><label><input type="radio" name="exportFormat" value="srt"><span><b>SRT</b><small>Zaman kodlu altyazı</small></span></label><label><input type="radio" name="exportFormat" value="md"><span><b>MD</b><small>Düzenlenebilir ders notu</small></span></label></fieldset>
+    <fieldset><legend>İçerik</legend><label><input type="radio" name="exportLanguage" value="bilingual" checked><span><b>İki dilli</b><small>İngilizce ve Türkçe</small></span></label><label><input type="radio" name="exportLanguage" value="original"><span><b>İngilizce</b><small>Yalnızca özgün metin</small></span></label><label><input type="radio" name="exportLanguage" value="translation"><span><b>Türkçe</b><small>Yalnızca çeviri</small></span></label></fieldset>
+    <label class="yt-export-check"><input id="exportWordbook" type="checkbox" checked><span><b>Video kelime defterini ekle</b><small>Kaydettiğiniz kelimeler ve kaynak cümleleri</small></span></label>
+   </div>
+   <footer><button type="button" data-close-export>Vazgeç</button><button class="yt-primary" id="exportDownload" type="button">Dosyayı hazırla</button></footer>
+  </section>
+ </div>
+
+ <div class="yt-audio-lab" id="audioLabModal" hidden>
+  <header><div><span>SES DALGA MOTORU</span><b>Akustik Artikülasyon Stüdyosu</b><small id="audioLabSentence"></small></div><button id="closeAudioLab" type="button">× Kapat</button></header>
+  <iframe id="audioLabFrame" title="Akustik artikülasyon stüdyosu" allow="microphone"></iframe>
  </div>
 
  <div class="yt-modal-overlay" id="editModal" hidden>
@@ -145,6 +179,6 @@
  <script src="./word-popup.js?v=11"></script>
  <script src="./immersive-youtube-study.js?v=6"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./youtube-egitim.js?v=2"></script>
+ <script src="./youtube-egitim.js?v=4"></script>
 </body>
 </html>

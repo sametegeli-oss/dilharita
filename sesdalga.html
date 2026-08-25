@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DilHarita - Akustik Artikülasyon v4</title>
+  <script>try{if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("dh-embedded")}catch(e){}</script>
   <style>
     :root {
       --bg: #030712;
@@ -354,6 +355,7 @@
     .btn-trainer.duet-btn, .btn-trainer.solo-btn { display: none; background: #b45309; }
 
     .status-bar { font-size: 8px; color: var(--muted); text-align: center; min-height: 12px; flex: 0 0 auto; margin-top: 2px; padding-bottom: 4px; }
+    html.dh-embedded .btn-back,html.dh-embedded .dh-primary-nav,html.dh-embedded .dh-mobile-menu-button,html.dh-embedded .dh-mobile-menu,html.dh-embedded .dh-net-status,html.dh-embedded .atlas-controls,html.dh-embedded .dh-coach,html.dh-embedded .dh-avatar,html.dh-embedded .dh-connection,html.dh-embedded #dhSyncBadge,html.dh-embedded #dhux-note,html.dh-embedded #dhux-bar{display:none!important}
   </style>
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">

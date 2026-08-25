@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v166";  /* v166: ayrı YouTube Eğitim Stüdyosu ve tek oturum kilidi */
+var SW_VERSION = "dh-sw-v167";  /* v167: YouTube çalışma modları ve Ses Dalga stüdyosu */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -23,6 +23,7 @@ var SHELL = [
   "./menu.html",
   "./immersive.html",
   "./youtube-egitim.html",
+  "./sesdalga.html",
   "./profil.html",
   "./gemini-rapor-arsivi.html",
   "./veri-gizlilik.html",
@@ -57,6 +58,7 @@ var SHELL = [
   "./immersive-youtube-study.js",
   "./youtube-egitim.js",
   "./youtube-session-lock.js",
+  "./coach-bubble.js",
   "./immersive.css",
   "./immersive-youtube.css",
   "./youtube-egitim.css",
