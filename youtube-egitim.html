@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=5">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=6">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -61,6 +61,10 @@
      <button data-study-mode="dictation" type="button" role="tab" aria-selected="false"><span>⌨</span><b>Dikte</b><small>Dinle ve duyduğunu yaz</small></button>
     </div>
     <div class="yt-mode-tools">
+     <div class="yt-audio-source" role="group" aria-label="Video ses kaynağı">
+      <button class="is-active" id="originalAudioMode" type="button" aria-pressed="true">🔊 <span>Orijinal ses</span></button>
+      <button id="ownAudioMode" type="button" aria-pressed="false" disabled>🎤 <span>Kendi sesim</span> <b id="ownAudioCount">0</b></button>
+     </div>
      <button id="autoPauseToggle" type="button" aria-pressed="false" title="Her cümlenin sonunda otomatik duraklat">⏸ <span>Otomatik dur</span></button>
      <button id="karaokeToggle" class="is-active" type="button" aria-pressed="true" title="Konuşulan kelimeyi takip et">✦ <span>Kelime takibi</span></button>
      <button id="exportOpen" type="button">⇩ <span>Dışa aktar</span></button>
@@ -177,8 +181,8 @@
  <script src="./gemini-bridge.js?v=12"></script>
  <script src="./cloud-sync.js?v=23"></script>
  <script src="./word-popup.js?v=11"></script>
- <script src="./immersive-youtube-study.js?v=6"></script>
+ <script src="./immersive-youtube-study.js?v=7"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./youtube-egitim.js?v=5"></script>
+ <script src="./youtube-egitim.js?v=6"></script>
 </body>
 </html>
