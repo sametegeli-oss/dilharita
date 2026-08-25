@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v165";  /* v165: Gemini'nin kaçırılmamış metin tırnaklarını güvenli onarır */
+var SW_VERSION = "dh-sw-v166";  /* v166: ayrı YouTube Eğitim Stüdyosu ve tek oturum kilidi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -22,6 +22,7 @@ var SHELL = [
   "./index.html",
   "./menu.html",
   "./immersive.html",
+  "./youtube-egitim.html",
   "./profil.html",
   "./gemini-rapor-arsivi.html",
   "./veri-gizlilik.html",
@@ -54,8 +55,11 @@ var SHELL = [
   "./ai-providers.js",
   "./immersive.js",
   "./immersive-youtube-study.js",
+  "./youtube-egitim.js",
+  "./youtube-session-lock.js",
   "./immersive.css",
   "./immersive-youtube.css",
+  "./youtube-egitim.css",
   "./immersive-video.css",
   "./dh-ortam-fon.js",
   "./ai-response-cache.js",
