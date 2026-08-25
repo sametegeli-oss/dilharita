@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=10">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=11">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -51,7 +51,7 @@
   <section class="yt-study" id="studyView" hidden>
    <header class="yt-video-head">
     <button class="yt-round" id="closeStudy" type="button" aria-label="Ana ekrana dön">←</button>
-    <div class="yt-video-heading"><span id="videoLevel">YOUTUBE DERSİ</span><h1 id="videoTitle">Video hazırlanıyor…</h1><small id="videoMeta"></small></div>
+    <div class="yt-video-heading"><span id="videoLevel">YOUTUBE DERSİ</span><h1 id="videoTitle">Video hazırlanıyor…</h1><small id="videoMeta"></small><div class="yt-timing-state" id="timingState" data-state="checking"><i></i><span>Zaman kaynağı kontrol ediliyor…</span></div></div>
    <div class="yt-head-progress"><span id="masteryLabel">0 / 0 öğrenildi</span><div><i id="masteryBar"></i></div></div>
    </header>
 
@@ -69,7 +69,9 @@
      </div>
      <button id="autoPauseToggle" type="button" aria-pressed="false" title="Her cümlenin sonunda otomatik duraklat">⏸ <span>Otomatik dur</span></button>
      <button id="karaokeToggle" class="is-active" type="button" aria-pressed="true" title="Konuşulan kelimeyi takip et">✦ <span>Kelime takibi</span></button>
-     <button id="refreshTiming" type="button" title="YouTube altyazı zamanlarını yeniden eşleştir">⟳ <span>Zamanları düzelt</span></button>
+     <button id="refreshTiming" type="button" title="Doğrulanmış altyazı zaman çizelgesini kur">⟳ <span>Kesin senkron kur</span></button>
+     <button id="importSubtitles" type="button" title="Zaman kodlu SRT veya VTT altyazısı yükle">CC <span>SRT/VTT yükle</span></button>
+     <input id="subtitleFile" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip" hidden>
      <button id="exportOpen" type="button">⇩ <span>Dışa aktar</span></button>
     </div>
    </nav>
@@ -184,8 +186,8 @@
  <script src="./gemini-bridge.js?v=12"></script>
  <script src="./cloud-sync.js?v=23"></script>
  <script src="./word-popup.js?v=11"></script>
- <script src="./immersive-youtube-study.js?v=9"></script>
+ <script src="./immersive-youtube-study.js?v=10"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./youtube-egitim.js?v=11"></script>
+ <script src="./youtube-egitim.js?v=12"></script>
 </body>
 </html>

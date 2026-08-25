@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v174";  /* v174: Altyazı zaman eşleme, karaoke aralığı ve TTS tekrar kilidi */
+var SW_VERSION = "dh-sw-v175";  /* v175: Kesin altyazı zaman çizelgesi ve katı senkron doğrulaması */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
