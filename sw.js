@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v167";  /* v167: YouTube çalışma modları ve Ses Dalga stüdyosu */
+var SW_VERSION = "dh-sw-v168";  /* v168: Kararlı cümle döngüsü ve sessiz Shadowing eşleştirmesi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
