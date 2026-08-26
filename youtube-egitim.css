@@ -76,6 +76,8 @@ body.yt-mode-shadow .yt-learning-card{border-color:rgba(255,202,99,.28)}body.yt-
 .yt-align-handle{width:24px;height:100%;background:var(--yt-cyan);color:#04121a;font-size:10px;font-weight:900;display:grid;place-items:center;cursor:ew-resize;border-radius:5px;touch-action:none;box-shadow:0 0 8px rgba(0,0,0,.3)}
 .yt-align-handle:hover{background:#fff}
 
+/* YouTube sahibi gömmeyi kapattığında kullanılan yerel TTS yedeği. */
+.yt-player-loading .yt-tts-fallback{max-width:390px;padding:22px 26px;border:1px solid rgba(67,225,207,.45);border-radius:18px;background:linear-gradient(145deg,rgba(7,37,52,.96),rgba(17,19,54,.96));box-shadow:0 18px 58px rgba(0,0,0,.34);display:grid;gap:8px;text-align:center;color:#dcecff}.yt-player-loading .yt-tts-fallback b{font-size:18px;color:#5bf3dc}.yt-player-loading .yt-tts-fallback span{font-weight:750;font-size:14px}.yt-player-loading .yt-tts-fallback small{color:#a7b9d1;line-height:1.45}
 @media(max-width:768px){
  .yt-align-controls-grid{grid-template-columns:1fr}
 }
