@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=15">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=16">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -104,25 +104,52 @@
      <section class="yt-learning-card" id="learningCard">
       <div class="yt-learning-head"><span id="activeIndex">CÜMLE 1</span><div><button id="syncSentence" type="button" title="Bu cümleyi YouTube transkript zamanında aç">▶ YouTube zamanı</button><button id="favoriteSentence" type="button" aria-label="Favoriye ekle">♡</button><button id="editSentence" type="button">✎ Düzenle</button><button id="askGemini" type="button">✦ Gemini’ye sor</button></div></div>
       
-      <!-- Kontrollü, Önizlemeli ve Otomatik Zincirleme Kaydıran Zaman Ayarlama Paneli -->
+      <!-- Cümle Uzunluğu ve Kolay Uzatma/Kısaltma Butonları İçeren Zaman Paneli -->
       <div class="yt-timeline-aligner" id="timelineAligner">
        <div class="yt-align-target-box">
         <div class="yt-align-badge-row">
          <span class="yt-align-badge">DÜZENLENEN CÜMLE</span>
-         <label class="yt-align-ripple-toggle" title="İşaretliyse, yapılan zaman farkı arkadan gelen TÜM cümlelere otomatik eklenir/çıkarılır">
-          <input type="checkbox" id="alignRippleAll" checked>
-          <span>⚡ Sonraki tüm cümleleri de birlikte kaydır</span>
-         </label>
+         <div class="yt-align-stats">
+          <span class="yt-align-len-badge">Süre: <b id="alignDurationText">0.0 sn</b></span>
+          <label class="yt-align-ripple-toggle" title="İşaretliyse, yapılan zaman farkı arkadan gelen TÜM cümlelere otomatik eklenir/çıkarılır">
+           <input type="checkbox" id="alignRippleAll" checked>
+           <span>⚡ Sonrakileri de kaydır</span>
+          </label>
+         </div>
         </div>
         <strong id="alignTargetText">Bir cümle seçin</strong>
        </div>
+
+       <!-- Başlangıç & Bitiş İçin Özel Uzatma/Kısaltma Kontrolleri -->
+       <div class="yt-align-controls-grid">
+        <div class="yt-align-trim-col">
+         <small>Başlangıç (Ön Kısım)</small>
+         <div class="yt-align-btn-group">
+          <button type="button" id="alignStartEarlier" title="Başlangıcı 0.2 sn geriye çek (Cümleyi baştan uzat)">◀ Uzat (-0.2s)</button>
+          <button type="button" id="alignStartLater" title="Başlangıcı 0.2 sn ileri al (Cümleyi baştan kırp)">Kısalt (+0.2s) ▶</button>
+         </div>
+        </div>
+
+        <div class="yt-align-trim-col">
+         <small>Bitiş (Arka Kısım)</small>
+         <div class="yt-align-btn-group">
+          <button type="button" id="alignEndEarlier" title="Bitişi 0.2 sn geriye çek (Cümleyi sondan kısalt)">◀ Kısalt (-0.2s)</button>
+          <button type="button" id="alignEndLater" title="Bitişi 0.2 sn ileriye uzat (Cümleyi sondan uzat)">Uzat (+0.2s) ▶</button>
+         </div>
+        </div>
+
+        <div class="yt-align-trim-col yt-align-shift-col">
+         <small>Konumu Kaydır (Blok)</small>
+         <div class="yt-align-btn-group">
+          <button type="button" id="alignNudgeLeft" title="Tüm cümleyi 0.5 sn geriye kaydır">◀ -0.5s</button>
+          <button type="button" id="alignNudgeRight" title="Tüm cümleyi 0.5 sn ileriye kaydır">+0.5s ▶</button>
+         </div>
+        </div>
+       </div>
+
        <div class="yt-aligner-info">
         <div class="yt-align-actions-left">
          <button type="button" class="yt-align-btn" id="alignSetCurrentStart" title="Başlangıcı şu anki video saniyesine getir">📍 Başlangıcı Şu An Yap</button>
-         <div class="yt-align-nudge">
-          <button type="button" id="alignNudgeLeft" title="0.5 saniye geri al">◀ -0.5s</button>
-          <button type="button" id="alignNudgeRight" title="0.5 saniye ileri al">+0.5s ▶</button>
-         </div>
          <button type="button" class="yt-align-btn yt-align-test" id="alignTestPlay">▶ Dinle</button>
         </div>
         <div class="yt-align-actions-right">
@@ -131,6 +158,7 @@
          <button type="button" class="yt-align-btn yt-align-save" id="alignSaveBtn">✓ Zamanı Kaydet</button>
         </div>
        </div>
+
        <div class="yt-align-track" id="alignTrack" title="Tıklayarak videoyu taşıyın">
         <div class="yt-align-cursor" id="alignCursor"></div>
         <div class="yt-align-segment-block" id="alignSegmentBlock">
@@ -237,6 +265,6 @@
  <script src="./word-popup.js?v=11"></script>
  <script src="./immersive-youtube-study.js?v=15"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./youtube-egitim.js?v=21"></script>
+ <script src="./youtube-egitim.js?v=22"></script>
 </body>
 </html>

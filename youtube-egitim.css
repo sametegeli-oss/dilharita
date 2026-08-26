@@ -37,28 +37,45 @@ body.yt-mode-shadow .yt-learning-card{border-color:rgba(255,202,99,.28)}body.yt-
 @media(max-width:680px){.yt-transcript-paste-modal footer{flex-wrap:wrap}.yt-transcript-paste-modal footer .yt-transcript-save{order:-1;flex:1 0 100%;min-height:46px}.yt-transcript-paste-modal footer [data-close-transcript-paste]{flex:1}}
 
 /* Kontrollü Cümle Zaman Hizalama Paneli */
-.yt-timeline-aligner{margin:14px 0 12px;padding:14px;border:1px solid rgba(85,230,209,.25);border-radius:15px;background:rgba(6,16,29,.9);display:grid;gap:11px}
-.yt-align-target-box{padding:9px 12px;border:1px solid rgba(255,202,99,.2);border-radius:10px;background:rgba(255,202,99,.06);display:grid;gap:4px}
+.yt-timeline-aligner{margin:14px 0 12px;padding:14px;border:1px solid rgba(85,230,209,.25);border-radius:15px;background:rgba(6,16,29,.92);display:grid;gap:12px}
+.yt-align-target-box{padding:10px 13px;border:1px solid rgba(255,202,99,.22);border-radius:11px;background:rgba(255,202,99,.06);display:grid;gap:5px}
 .yt-align-badge-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .yt-align-badge{font-size:9px;font-weight:900;letter-spacing:.12em;color:var(--yt-gold)}
+.yt-align-stats{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.yt-align-len-badge{font-size:11px;color:#a6c5eb;background:rgba(105,166,255,.14);padding:2px 7px;border-radius:6px;border:1px solid rgba(105,166,255,.25)}
+.yt-align-len-badge b{color:#fff}
 .yt-align-ripple-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;font-weight:800;color:var(--yt-cyan)}
 .yt-align-ripple-toggle input{accent-color:var(--yt-cyan);cursor:pointer}
 .yt-align-target-box strong{font-size:13px;color:#f0f5ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.yt-align-controls-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:8px;border:1px solid rgba(148,175,214,.14);border-radius:11px;background:rgba(3,9,18,.6)}
+.yt-align-trim-col{display:grid;gap:5px}
+.yt-align-trim-col small{font-size:10px;font-weight:850;color:#7e94b0}
+.yt-align-btn-group{display:flex;gap:4px}
+.yt-align-btn-group button{flex:1;padding:6px 4px;font-size:10.5px;font-weight:850;border:1px solid var(--yt-line);border-radius:7px;background:rgba(255,255,255,.05);color:#d8e5f7;cursor:pointer;transition:.15s;white-space:nowrap}
+.yt-align-btn-group button:hover{border-color:var(--yt-cyan);background:rgba(85,230,209,.12);color:var(--yt-cyan)}
+.yt-align-shift-col button{background:rgba(255,202,99,.06);color:#ffdf9e;border-color:rgba(255,202,99,.2)}
+.yt-align-shift-col button:hover{background:rgba(255,202,99,.15);border-color:var(--yt-gold);color:#fff}
+
 .yt-aligner-info{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--yt-muted)}
 .yt-align-actions-left,.yt-align-actions-right{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
-.yt-align-btn,.yt-align-nudge button{border:1px solid var(--yt-line);border-radius:8px;background:rgba(255,255,255,.06);color:#dce7f6;padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer;transition:.15s}
-.yt-align-btn:hover,.yt-align-nudge button:hover{border-color:var(--yt-cyan);background:rgba(85,230,209,.12);color:var(--yt-cyan)}
-.yt-align-nudge{display:inline-flex;gap:4px}
-.yt-align-test{background:rgba(105,166,255,.12);border-color:rgba(105,166,255,.3);color:#8ec0ff}
+.yt-align-btn{border:1px solid var(--yt-line);border-radius:8px;background:rgba(255,255,255,.06);color:#dce7f6;padding:6px 11px;font-size:11px;font-weight:800;cursor:pointer;transition:.15s}
+.yt-align-btn:hover{border-color:var(--yt-cyan);background:rgba(85,230,209,.12);color:var(--yt-cyan)}
+.yt-align-test{background:rgba(105,166,255,.14);border-color:rgba(105,166,255,.35);color:#9ec8ff}
 .yt-align-save{background:linear-gradient(135deg,#34d399,#059669);color:#041410!important;border:0;font-weight:900}
-.yt-align-save.has-changes{box-shadow:0 0 14px rgba(52,211,153,.5);animation:ytPulseSave 1.2s infinite alternate}
+.yt-align-save.has-changes{box-shadow:0 0 16px rgba(52,211,153,.6);animation:ytPulseSave 1.2s infinite alternate}
 @keyframes ytPulseSave{to{transform:scale(1.04)}}
 .yt-align-reset{color:#ff9da7}
 .yt-align-times{font-variant-numeric:tabular-nums;color:var(--yt-gold);font-weight:800;padding:0 4px}
-.yt-align-track{position:relative;height:38px;border-radius:10px;background:#030812;border:1px solid rgba(148,175,214,.22);overflow:hidden;user-select:none;cursor:pointer}
+
+.yt-align-track{position:relative;height:42px;border-radius:10px;background:#030812;border:1px solid rgba(148,175,214,.24);overflow:hidden;user-select:none;cursor:pointer}
 .yt-align-cursor{position:absolute;top:0;bottom:0;width:2px;background:#ff5267;z-index:5;pointer-events:none}
-.yt-align-segment-block{position:absolute;top:3px;bottom:3px;background:linear-gradient(135deg,rgba(85,230,209,.32),rgba(105,166,255,.32));border:1px solid var(--yt-cyan);border-radius:8px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:3}
-.yt-align-drag-body{flex:1;height:100%;display:grid;place-items:center;font-size:10px;font-weight:850;color:#fff;cursor:grab;text-shadow:0 1px 3px #000;touch-action:none}
+.yt-align-segment-block{position:absolute;top:3px;bottom:3px;min-width:44px;background:linear-gradient(135deg,rgba(85,230,209,.36),rgba(105,166,255,.36));border:1px solid var(--yt-cyan);border-radius:8px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:3}
+.yt-align-drag-body{flex:1;height:100%;display:grid;place-items:center;font-size:10px;font-weight:850;color:#fff;cursor:grab;text-shadow:0 1px 3px #000;touch-action:none;padding:0 4px}
 .yt-align-drag-body:active{cursor:grabbing}
-.yt-align-handle{width:22px;height:100%;background:var(--yt-cyan);color:#04121a;font-size:9px;font-weight:900;display:grid;place-items:center;cursor:ew-resize;border-radius:5px;touch-action:none}
+.yt-align-handle{width:24px;height:100%;background:var(--yt-cyan);color:#04121a;font-size:10px;font-weight:900;display:grid;place-items:center;cursor:ew-resize;border-radius:5px;touch-action:none;box-shadow:0 0 8px rgba(0,0,0,.3)}
 .yt-align-handle:hover{background:#fff}
+
+@media(max-width:768px){
+ .yt-align-controls-grid{grid-template-columns:1fr}
+}

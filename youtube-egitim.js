@@ -122,14 +122,16 @@ function updateTimelineAlignerUi(){
   return;
  }
 
- var targetEl=$("alignTargetText"),block=$("alignSegmentBlock"),times=$("alignTimesText"),saveBtn=$("alignSaveBtn");
+ var targetEl=$("alignTargetText"),block=$("alignSegmentBlock"),times=$("alignTimesText"),durEl=$("alignDurationText"),saveBtn=$("alignSaveBtn");
  if(targetEl){
   targetEl.textContent=(active+1)+". "+(x.transcriptEN||"—")+" ("+(x.translationTR||"")+")";
  }
 
  var st=alignDraft.start,en=alignDraft.end;
+ var lengthSec=Math.max(0.2,en-st);
+
  var startPct=Math.max(0,Math.min(100,(st/dur)*100));
- var endPct=Math.max(startPct+.4,Math.min(100,(en/dur)*100));
+ var endPct=Math.max(startPct+0.3,Math.min(100,(en/dur)*100));
 
  if(block){
   block.style.left=startPct+"%";
@@ -137,6 +139,9 @@ function updateTimelineAlignerUi(){
  }
  if(times){
   times.textContent=st.toFixed(1)+"s → "+en.toFixed(1)+"s";
+ }
+ if(durEl){
+  durEl.textContent=lengthSec.toFixed(1)+" sn";
  }
  if(saveBtn){
   saveBtn.classList.toggle("has-changes",alignDraft.dirty);
@@ -294,6 +299,48 @@ function bindTimelineAligner(){
    var dur=player&&player.getDuration?+player.getDuration()||0:0;
    if(!dur&&study.source)dur=+study.source.durationSeconds||0;
    seek(dur*pct,true);
+  };
+ }
+
+ if($("alignStartEarlier")){
+  $("alignStartEarlier").onclick=function(){
+   if(active<0||!study)return;
+   alignDraft.start=Math.max(0,Math.round((alignDraft.start-0.2)*100)/100);
+   alignDraft.dirty=true;
+   updateTimelineAlignerUi();
+   seek(alignDraft.start,true);
+  };
+ }
+
+ if($("alignStartLater")){
+  $("alignStartLater").onclick=function(){
+   if(active<0||!study)return;
+   alignDraft.start=Math.min(alignDraft.end-0.3,Math.round((alignDraft.start+0.2)*100)/100);
+   alignDraft.dirty=true;
+   updateTimelineAlignerUi();
+   seek(alignDraft.start,true);
+  };
+ }
+
+ if($("alignEndEarlier")){
+  $("alignEndEarlier").onclick=function(){
+   if(active<0||!study)return;
+   alignDraft.end=Math.max(alignDraft.start+0.3,Math.round((alignDraft.end-0.2)*100)/100);
+   alignDraft.dirty=true;
+   updateTimelineAlignerUi();
+   seek(Math.max(alignDraft.start,alignDraft.end-1),true);
+  };
+ }
+
+ if($("alignEndLater")){
+  $("alignEndLater").onclick=function(){
+   if(active<0||!study)return;
+   var dur=player&&player.getDuration?+player.getDuration()||0:0;
+   if(!dur&&study.source)dur=+study.source.durationSeconds||9999;
+   alignDraft.end=Math.min(dur,Math.round((alignDraft.end+0.2)*100)/100);
+   alignDraft.dirty=true;
+   updateTimelineAlignerUi();
+   seek(Math.max(alignDraft.start,alignDraft.end-1),true);
   };
  }
 
