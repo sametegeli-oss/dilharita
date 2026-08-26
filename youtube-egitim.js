@@ -90,8 +90,9 @@ function normalizeStudyTimelines(){
  for(var i=0;i<study.segments.length-1;i++){
   var cur=study.segments[i],next=study.segments[i+1];
   if(cur.endSeconds>next.startSeconds){
+   var span=next.endSeconds-next.startSeconds;
    next.startSeconds=Math.round((cur.endSeconds+0.05)*100)/100;
-   next.endSeconds=Math.max(next.startSeconds+0.2,next.endSeconds);
+   next.endSeconds=Math.round((next.startSeconds+Math.max(0.2,span))*100)/100;
   }
  }
  if(study.source){
@@ -400,29 +401,30 @@ function bindTimelineAligner(){
    var curIdx=active;
    var x=study.segments[curIdx];
    var rippleAll=$("alignRippleAll")&&$("alignRippleAll").checked;
-   var deltaShift=Math.round((alignDraft.start-alignDraft.origStart)*100)/100;
    var newStart=alignDraft.start;
    var newEnd=alignDraft.end;
 
    x.startSeconds=newStart;
    x.endSeconds=newEnd;
 
-   if(rippleAll&&Math.abs(deltaShift)>=0.01){
+   // Sonraki cümleleri kendi sürelerini (uzunluklarını) koruyarak ardışık ötele
+   if(rippleAll){
     for(var j=curIdx+1;j<study.segments.length;j++){
-     var nextSeg=study.segments[j];
-     nextSeg.startSeconds=Math.max(0,Math.round((nextSeg.startSeconds+deltaShift)*100)/100);
-     nextSeg.endSeconds=Math.max(nextSeg.startSeconds+0.2,Math.round((nextSeg.endSeconds+deltaShift)*100)/100);
-    }
-   }
-
-   // Sonraki cümle çakışıyorsa ileri it
-   for(var k=curIdx+1;k<study.segments.length;k++){
-    var prevSeg=study.segments[k-1];
-    var thisSeg=study.segments[k];
-    if(thisSeg.startSeconds<=prevSeg.endSeconds){
-     var pushSpan=thisSeg.endSeconds-thisSeg.startSeconds;
+     var prevSeg=study.segments[j-1];
+     var thisSeg=study.segments[j];
+     var thisLength=Math.max(0.3,Math.round(((+thisSeg.endSeconds||thisSeg.startSeconds+2)-(+thisSeg.startSeconds||0))*100)/100);
      thisSeg.startSeconds=Math.round((prevSeg.endSeconds+0.05)*100)/100;
-     thisSeg.endSeconds=Math.round((thisSeg.startSeconds+Math.max(0.2,pushSpan))*100)/100;
+     thisSeg.endSeconds=Math.round((thisSeg.startSeconds+thisLength)*100)/100;
+    }
+   }else{
+    for(var k=curIdx+1;k<study.segments.length;k++){
+     var pSeg=study.segments[k-1];
+     var tSeg=study.segments[k];
+     if(tSeg.startSeconds<pSeg.endSeconds){
+      var tLen=Math.max(0.3,Math.round(((+tSeg.endSeconds||tSeg.startSeconds+2)-(+tSeg.startSeconds||0))*100)/100);
+      tSeg.startSeconds=Math.round((pSeg.endSeconds+0.05)*100)/100;
+      tSeg.endSeconds=Math.round((tSeg.startSeconds+tLen)*100)/100;
+     }
     }
    }
 
@@ -432,7 +434,6 @@ function bindTimelineAligner(){
    renderTranscript();
    setActive(active,false);
    
-   // IndexedDB ve bulut depolamaya anında yaz
    if(studyApi&&studyApi.save&&videoId){
     record=await studyApi.save(videoId,videoUrl,study);
     if(global.DHCloudSync&&DHCloudSync.push)DHCloudSync.push().catch(function(){});
