@@ -58,9 +58,19 @@ function parseYouTubeTranscriptText(raw,duration){
  var lines=String(raw||"").replace(/\r/g,"").split("\n"),source=[],current=null,order=0;
  var timePattern="(?:\\d{1,2}:)?\\d{1,2}:\\d{2}(?:[.,]\\d{1,3})?";
  var whole=new RegExp("^\\[?("+timePattern+")\\]?\\s*$"),inline=new RegExp("^\\[?("+timePattern+")\\]?\\s+(.+)$");
+ var localizedInline=new RegExp("^\\[?("+timePattern+")\\]?(?:(\\d+)\\s*dakika(?:\\s+(\\d+)\\s*saniye)?|(\\d+)\\s*saniye)\\s*(.*)$","i");
  function cleanPastedText(value){return captionText(value).replace(/\[[^\]]+\]/g," ").replace(/\s+/g," ").trim()}
+ function normalizePastedLine(value){
+  var line=String(value||"").trim(),m=line.match(localizedInline);
+  if(!m)return line;
+  var clock=captionClock(m[1]),localized=m[2]!=null?(+m[2]*60+(+m[3]||0)):(+m[4]||0);
+  /* Yalnız iki gösterim aynı zamanı söylüyorsa tekrar bölümünü kaldır.
+     Örnek: 10:0810 dakika 8 saniyeHello → 10:08 Hello */
+  return Math.abs(clock-localized)<=.001?m[1]+" "+String(m[5]||"").trim():line;
+ }
+ function isPastedUiNoise(value){return /^(?:Videoda bahsedilen ana git|Tümü|İzlenenler)$/i.test(String(value||"").trim())}
  function push(){if(!current)return;var text=cleanPastedText(current.parts.join(" "));if(text)source.push({start:current.start,text:text,order:current.order});current=null}
- lines.forEach(function(value){var line=String(value||"").trim(),m;if(!line)return;if((m=line.match(whole))){push();current={start:captionClock(m[1]),parts:[],order:order++};return}if((m=line.match(inline))){if(current&&!current.parts.length){current.parts.push(line);return}push();current={start:captionClock(m[1]),parts:[m[2]],order:order++};return}if(current)current.parts.push(line)});
+ lines.forEach(function(value){var line=normalizePastedLine(value),m;if(!line||isPastedUiNoise(line))return;if((m=line.match(whole))){push();current={start:captionClock(m[1]),parts:[],order:order++};return}if((m=line.match(inline))){if(current&&!current.parts.length){current.parts.push(line);return}push();current={start:captionClock(m[1]),parts:[m[2]],order:order++};return}if(current)current.parts.push(line)});
  push();
  source.sort(function(a,b){return a.start-b.start||a.order-b.order});
  var sentences=[],buffer="",bufferStart=0,bufferLastCue=-1;
