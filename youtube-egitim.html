@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=13">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=15">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -104,21 +104,38 @@
      <section class="yt-learning-card" id="learningCard">
       <div class="yt-learning-head"><span id="activeIndex">CÜMLE 1</span><div><button id="syncSentence" type="button" title="Bu cümleyi YouTube transkript zamanında aç">▶ YouTube zamanı</button><button id="favoriteSentence" type="button" aria-label="Favoriye ekle">♡</button><button id="editSentence" type="button">✎ Düzenle</button><button id="askGemini" type="button">✦ Gemini’ye sor</button></div></div>
       
+      <!-- Kontrollü, Önizlemeli ve Otomatik Zincirleme Kaydıran Zaman Ayarlama Paneli -->
       <div class="yt-timeline-aligner" id="timelineAligner">
-       <div class="yt-aligner-info">
-        <span>⏱ <b>Zaman Ayarı</b>:</span>
-        <button type="button" class="yt-align-btn" id="alignSetCurrentStart" title="Cümle başlangıcını videonun durduğu ana ayarla">📍 Başlangıcı Şu An Yap</button>
-        <div class="yt-align-nudge">
-         <button type="button" id="alignNudgeLeft" title="0.5 saniye geri al">◀ -0.5s</button>
-         <button type="button" id="alignNudgeRight" title="0.5 saniye ileri al">+0.5s ▶</button>
+       <div class="yt-align-target-box">
+        <div class="yt-align-badge-row">
+         <span class="yt-align-badge">DÜZENLENEN CÜMLE</span>
+         <label class="yt-align-ripple-toggle" title="İşaretliyse, yapılan zaman farkı arkadan gelen TÜM cümlelere otomatik eklenir/çıkarılır">
+          <input type="checkbox" id="alignRippleAll" checked>
+          <span>⚡ Sonraki tüm cümleleri de birlikte kaydır</span>
+         </label>
         </div>
-        <span class="yt-align-times" id="alignTimesText">00:00.0 → 00:00.0</span>
+        <strong id="alignTargetText">Bir cümle seçin</strong>
        </div>
-       <div class="yt-align-track" id="alignTrack" title="Tıklayarak oynatıcıyı taşıyın">
+       <div class="yt-aligner-info">
+        <div class="yt-align-actions-left">
+         <button type="button" class="yt-align-btn" id="alignSetCurrentStart" title="Başlangıcı şu anki video saniyesine getir">📍 Başlangıcı Şu An Yap</button>
+         <div class="yt-align-nudge">
+          <button type="button" id="alignNudgeLeft" title="0.5 saniye geri al">◀ -0.5s</button>
+          <button type="button" id="alignNudgeRight" title="0.5 saniye ileri al">+0.5s ▶</button>
+         </div>
+         <button type="button" class="yt-align-btn yt-align-test" id="alignTestPlay">▶ Dinle</button>
+        </div>
+        <div class="yt-align-actions-right">
+         <span class="yt-align-times" id="alignTimesText">00:00.0 → 00:00.0</span>
+         <button type="button" class="yt-align-btn yt-align-reset" id="alignResetBtn">↺ Sıfırla</button>
+         <button type="button" class="yt-align-btn yt-align-save" id="alignSaveBtn">✓ Zamanı Kaydet</button>
+        </div>
+       </div>
+       <div class="yt-align-track" id="alignTrack" title="Tıklayarak videoyu taşıyın">
         <div class="yt-align-cursor" id="alignCursor"></div>
         <div class="yt-align-segment-block" id="alignSegmentBlock">
          <div class="yt-align-handle yt-handle-left" id="alignHandleLeft" title="Başlangıcı sürükle">│◀</div>
-         <div class="yt-align-drag-body" id="alignDragBody" title="Cümleyi komple sürükle">↔ Sürükle</div>
+         <div class="yt-align-drag-body" id="alignDragBody" title="Cümleyi komple sürükle">↔ Konumu Sürükle</div>
          <div class="yt-align-handle yt-handle-right" id="alignHandleRight" title="Bitişi sürükle">▶│</div>
         </div>
        </div>
@@ -220,6 +237,6 @@
  <script src="./word-popup.js?v=11"></script>
  <script src="./immersive-youtube-study.js?v=15"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./youtube-egitim.js?v=19"></script>
+ <script src="./youtube-egitim.js?v=21"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 (function(global){
 "use strict";
 var studyApi=null,study=null,record=null,videoId="",videoUrl="",player=null,playerReady=null,ytApiReady=null,tick=null,active=-1,loopOn=false,loopIndex=-1,seekNonce=0,showEN=true,showTR=true,captionOn=true,muted=false,searchText="",saving=null,recognition=null,shadowTimer=null,studyMode="watch",autoPause=false,karaokeOn=true,autoPausedIndex=-1,selectedWord="",mediaRecorder=null,mediaStream=null,recordedChunks=[],recordedAudioUrl="",recordedAudioBlob=null,shadowStartedAt=0,shadowPlaybackAudio=null,shadowSyncTimer=null,shadowSyncOn=false,ownVoiceOn=false,ownVoiceRecords={},ownVoiceAudio=null,ownVoiceUrl="",ownVoiceKey="",ownVoiceLastTime=-1,guideVoiceOn=false,guideVoiceKey="",guideVoiceLastTime=-1,guideUtterance=null,guideLastStartedAt=0,guideLastStartedKey="",micAudioContext=null,micSource=null,micAnalyser=null,micMeterFrame=0,micMeterData=null,shadowSignalTimer=null,shadowEndTimer=null,shadowDurationTimer=null,shadowStopHandler=null,shadowTargetSeconds=0;
+var alignDraft={index:-1,start:0,end:0,dirty:false,origStart:0,origEnd:0};
 var pendingTranscriptMeta=null;
 var $=function(id){return document.getElementById(id)};
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
@@ -98,24 +99,52 @@ function normalizeStudyTimelines(){
  }
 }
 
+function initAlignDraft(idx){
+ if(!study||idx<0||!study.segments[idx])return;
+ var x=study.segments[idx];
+ alignDraft.index=idx;
+ alignDraft.start=+x.startSeconds||0;
+ alignDraft.end=segmentEnd(idx);
+ alignDraft.origStart=+x.startSeconds||0;
+ alignDraft.origEnd=segmentEnd(idx);
+ alignDraft.dirty=false;
+ updateTimelineAlignerUi();
+}
+
 function updateTimelineAlignerUi(){
  if(!study||active<0||!study.segments[active])return;
  var x=study.segments[active],dur=player&&player.getDuration?+player.getDuration()||0:0;
  if(!dur&&study.source)dur=+study.source.durationSeconds||0;
  if(dur<=0)return;
- var block=$("alignSegmentBlock"),times=$("alignTimesText");
- var startPct=Math.max(0,Math.min(100,(x.startSeconds/dur)*100));
- var endPct=Math.max(startPct+.4,Math.min(100,(segmentEnd(active)/dur)*100));
+
+ if(alignDraft.index!==active){
+  initAlignDraft(active);
+  return;
+ }
+
+ var targetEl=$("alignTargetText"),block=$("alignSegmentBlock"),times=$("alignTimesText"),saveBtn=$("alignSaveBtn");
+ if(targetEl){
+  targetEl.textContent=(active+1)+". "+(x.transcriptEN||"—")+" ("+(x.translationTR||"")+")";
+ }
+
+ var st=alignDraft.start,en=alignDraft.end;
+ var startPct=Math.max(0,Math.min(100,(st/dur)*100));
+ var endPct=Math.max(startPct+.4,Math.min(100,(en/dur)*100));
+
  if(block){
   block.style.left=startPct+"%";
   block.style.width=Math.max(0.6,endPct-startPct)+"%";
  }
  if(times){
-  times.textContent=x.startSeconds.toFixed(1)+"s → "+segmentEnd(active).toFixed(1)+"s";
+  times.textContent=st.toFixed(1)+"s → "+en.toFixed(1)+"s";
+ }
+ if(saveBtn){
+  saveBtn.classList.toggle("has-changes",alignDraft.dirty);
+  saveBtn.textContent=alignDraft.dirty?"✓ Zamanı Kaydet *":"✓ Zamanı Kaydet";
  }
 }
 
-function setActive(i,follow){if(!study||!study.segments.length)return;i=Math.max(0,Math.min(study.segments.length-1,+i||0));var changed=i!==active;active=i;var x=study.segments[i],s=state(),k=keyOf(x);$("activeIndex").textContent="CÜMLE "+(i+1)+" / "+study.segments.length;$("learningEN").innerHTML=sentenceWords(x.transcriptEN);$("learningTR").textContent=x.translationTR||"";$("captionEN").innerHTML=showEN&&captionOn?(karaokeOn?karaokeHtml(x.transcriptEN,0):esc(x.transcriptEN)):"";$("captionTR").textContent=showTR&&captionOn?x.translationTR:"";$("favoriteSentence").classList.toggle("is-favorite",!!s.favorites[k]);$("favoriteSentence").textContent=s.favorites[k]?"♥":"♡";$("markLearned").classList.toggle("is-active",!!s.learned[k]);$("markHard").classList.toggle("is-active",!!s.hard[k]);var sync=$("syncSentence");if(sync){sync.classList.add("is-synced");sync.textContent="▶ YouTube zamanı"}Array.prototype.forEach.call(document.querySelectorAll(".yt-segment.is-active"),function(n){n.classList.remove("is-active")});var row=document.querySelector('.yt-segment[data-index="'+i+'"]');if(row){row.classList.add("is-active");if(follow&&changed)row.scrollIntoView({block:"center",behavior:"smooth"})}if(changed){s.lastIndex=i;s.lastTime=+x.startSeconds||0;s.lastOpenedAt=Date.now();$("wordActionBar").hidden=true;selectedWord="";scheduleSave()}bindWordButtons();updateTimelineAlignerUi();if(studyMode==="shadow"&&changed)renderShadowReady();if(studyMode==="dictation"&&changed)renderDictationReady();if(!$("grammarPanel").hidden)renderGrammar()}
+function setActive(i,follow){if(!study||!study.segments.length)return;i=Math.max(0,Math.min(study.segments.length-1,+i||0));var changed=i!==active;active=i;var x=study.segments[i],s=state(),k=keyOf(x);$("activeIndex").textContent="CÜMLE "+(i+1)+" / "+study.segments.length;$("learningEN").innerHTML=sentenceWords(x.transcriptEN);$("learningTR").textContent=x.translationTR||"";$("captionEN").innerHTML=showEN&&captionOn?(karaokeOn?karaokeHtml(x.transcriptEN,0):esc(x.transcriptEN)):"";$("captionTR").textContent=showTR&&captionOn?x.translationTR:"";$("favoriteSentence").classList.toggle("is-favorite",!!s.favorites[k]);$("favoriteSentence").textContent=s.favorites[k]?"♥":"♡";$("markLearned").classList.toggle("is-active",!!s.learned[k]);$("markHard").classList.toggle("is-active",!!s.hard[k]);var sync=$("syncSentence");if(sync){sync.classList.add("is-synced");sync.textContent="▶ YouTube zamanı"}Array.prototype.forEach.call(document.querySelectorAll(".yt-segment.is-active"),function(n){n.classList.remove("is-active")});var row=document.querySelector('.yt-segment[data-index="'+i+'"]');if(row){row.classList.add("is-active");if(follow&&changed)row.scrollIntoView({block:"center",behavior:"smooth"})}if(changed){s.lastIndex=i;s.lastTime=+x.startSeconds||0;s.lastOpenedAt=Date.now();$("wordActionBar").hidden=true;selectedWord="";initAlignDraft(i);scheduleSave()}bindWordButtons();updateTimelineAlignerUi();if(studyMode==="shadow"&&changed)renderShadowReady();if(studyMode==="dictation"&&changed)renderDictationReady();if(!$("grammarPanel").hidden)renderGrammar()}
 function bindWordButtons(){Array.prototype.forEach.call(document.querySelectorAll(".yt-word"),function(b){b.onclick=function(){selectedWord=String(b.getAttribute("data-word")||"").toLowerCase().replace(/[^a-z'-]/g,"");$("selectedWord").textContent=selectedWord;$("wordActionBar").hidden=!selectedWord;if(global.DHWordPop&&DHWordPop.lookup)DHWordPop.lookup(selectedWord)}})}
 function highlight(text,q){if(!q)return esc(text);var safe=esc(text),needle=esc(q).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");try{return safe.replace(new RegExp("("+needle+")","ig"),"<mark>$1</mark>")}catch(e){return safe}}
 function renderTranscript(){var box=$("transcriptList");if(!study){box.innerHTML="";return}var s=state(),q=searchText.trim().toLowerCase(),html=[],exact=hasExactTiming();study.segments.forEach(function(x,i){if(q&&(String(x.transcriptEN||"")+" "+String(x.translationTR||"")).toLowerCase().indexOf(q)<0)return;var k=keyOf(x);html.push('<button class="yt-segment'+(i===active?' is-active':'')+(s.learned[k]?' is-learned':'')+(ownVoiceRecords[k]?' has-shadow-audio':'')+'" data-index="'+i+'" type="button"><time>'+time(x.startSeconds)+'</time><span class="yt-segment-main"><span class="yt-segment-en" lang="en">'+highlight(x.transcriptEN,searchText)+'</span><span class="yt-segment-tr" lang="tr">'+highlight(x.translationTR,searchText)+'</span>'+(ownVoiceRecords[k]?'<small class="yt-shadow-audio-badge">🎤 Shadow kaydı</small>':'')+'</span></button>')});box.innerHTML=html.join("")||'<div class="yt-empty-mini">Aramayla eşleşen cümle yok.</div>';Array.prototype.forEach.call(box.querySelectorAll(".yt-segment"),function(b){b.onclick=function(){var idx=+b.getAttribute("data-index");setActive(idx,true);if(exact){seek(study.segments[idx].startSeconds,true);if(loopOn)setLoop(true)}else showTimingRequired()}});$("sentenceCount").textContent=String(study.segments.length)}
@@ -204,15 +233,14 @@ function startShadowing(){if(active<0)return;if(!hasExactTiming()){showTimingReq
 
 function bindTimelineAligner(){
  var track=$("alignTrack"),handleL=$("alignHandleLeft"),handleR=$("alignHandleRight"),dragBody=$("alignDragBody");
- var dragMode=null,startX=0,origStart=0,origEnd=0;
+ var dragMode=null,startX=0,initialStart=0,initialEnd=0;
 
  function onPointerDown(e,mode){
-  if(!study||active<0)return;
+  if(!study||active<0||alignDraft.index!==active)return;
   dragMode=mode;
   startX=e.clientX||(e.touches&&e.touches[0].clientX)||0;
-  var x=study.segments[active];
-  origStart=+x.startSeconds||0;
-  origEnd=segmentEnd(active);
+  initialStart=alignDraft.start;
+  initialEnd=alignDraft.end;
   window.addEventListener("pointermove",onPointerMove);
   window.addEventListener("pointerup",onPointerUp);
   e.preventDefault();
@@ -228,22 +256,22 @@ function bindTimelineAligner(){
   var dx=curX-startX;
   var trackW=track.getBoundingClientRect().width||1;
   var dSec=(dx/trackW)*dur;
-  var x=study.segments[active];
 
   if(dragMode==="move"){
-   var span=origEnd-origStart;
-   var newS=Math.max(0,Math.min(dur-span,origStart+dSec));
-   x.startSeconds=Math.round(newS*100)/100;
-   x.endSeconds=Math.round((newS+span)*100)/100;
+   var span=initialEnd-initialStart;
+   var newS=Math.max(0,Math.min(dur-span,initialStart+dSec));
+   alignDraft.start=Math.round(newS*100)/100;
+   alignDraft.end=Math.round((newS+span)*100)/100;
   }else if(dragMode==="left"){
-   var newSL=Math.max(0,Math.min(origEnd-0.3,origStart+dSec));
-   x.startSeconds=Math.round(newSL*100)/100;
+   var newSL=Math.max(0,Math.min(alignDraft.end-0.3,initialStart+dSec));
+   alignDraft.start=Math.round(newSL*100)/100;
   }else if(dragMode==="right"){
-   var newER=Math.max(x.startSeconds+0.3,Math.min(dur,origEnd+dSec));
-   x.endSeconds=Math.round(newER*100)/100;
+   var newER=Math.max(alignDraft.start+0.3,Math.min(dur,initialEnd+dSec));
+   alignDraft.end=Math.round(newER*100)/100;
   }
+  alignDraft.dirty=true;
   updateTimelineAlignerUi();
-  seek(x.startSeconds,false);
+  seek(alignDraft.start,false);
  }
 
  function onPointerUp(){
@@ -251,10 +279,6 @@ function bindTimelineAligner(){
    dragMode=null;
    window.removeEventListener("pointermove",onPointerMove);
    window.removeEventListener("pointerup",onPointerUp);
-   normalizeStudyTimelines();
-   renderTranscript();
-   updateTimelineAlignerUi();
-   scheduleSave();
   }
  }
 
@@ -276,28 +300,22 @@ function bindTimelineAligner(){
  if($("alignNudgeLeft")){
   $("alignNudgeLeft").onclick=function(){
    if(active<0||!study)return;
-   var x=study.segments[active];
-   x.startSeconds=Math.max(0,Math.round((x.startSeconds-0.5)*100)/100);
-   x.endSeconds=Math.max(x.startSeconds+0.3,Math.round((x.endSeconds-0.5)*100)/100);
-   normalizeStudyTimelines();
+   alignDraft.start=Math.max(0,Math.round((alignDraft.start-0.5)*100)/100);
+   alignDraft.end=Math.max(alignDraft.start+0.3,Math.round((alignDraft.end-0.5)*100)/100);
+   alignDraft.dirty=true;
    updateTimelineAlignerUi();
-   renderTranscript();
-   seek(x.startSeconds,true);
-   scheduleSave();
+   seek(alignDraft.start,true);
   };
  }
 
  if($("alignNudgeRight")){
   $("alignNudgeRight").onclick=function(){
    if(active<0||!study)return;
-   var x=study.segments[active];
-   x.startSeconds=Math.round((x.startSeconds+0.5)*100)/100;
-   x.endSeconds=Math.round((x.endSeconds+0.5)*100)/100;
-   normalizeStudyTimelines();
+   alignDraft.start=Math.round((alignDraft.start+0.5)*100)/100;
+   alignDraft.end=Math.round((alignDraft.end+0.5)*100)/100;
+   alignDraft.dirty=true;
    updateTimelineAlignerUi();
-   renderTranscript();
-   seek(x.startSeconds,true);
-   scheduleSave();
+   seek(alignDraft.start,true);
   };
  }
 
@@ -305,15 +323,60 @@ function bindTimelineAligner(){
   $("alignSetCurrentStart").onclick=function(){
    if(active<0||!study||!player)return;
    var now=+player.getCurrentTime()||0;
-   var x=study.segments[active];
-   var span=segmentEnd(active)-x.startSeconds;
-   x.startSeconds=Math.round(now*100)/100;
-   x.endSeconds=Math.round((now+Math.max(0.8,span))*100)/100;
-   normalizeStudyTimelines();
+   var span=Math.max(0.8,alignDraft.end-alignDraft.start);
+   alignDraft.start=Math.round(now*100)/100;
+   alignDraft.end=Math.round((now+span)*100)/100;
+   alignDraft.dirty=true;
    updateTimelineAlignerUi();
+   seek(alignDraft.start,true);
+  };
+ }
+
+ if($("alignTestPlay")){
+  $("alignTestPlay").onclick=function(){
+   seek(alignDraft.start,true);
+  };
+ }
+
+ if($("alignResetBtn")){
+  $("alignResetBtn").onclick=function(){
+   if(active<0||!study)return;
+   initAlignDraft(active);
+   seek(alignDraft.start,false);
+  };
+ }
+
+ if($("alignSaveBtn")){
+  $("alignSaveBtn").onclick=function(){
+   if(active<0||!study||!study.segments[active])return;
+   var curIdx=active;
+   var x=study.segments[curIdx];
+   var rippleAll=$("alignRippleAll")&&$("alignRippleAll").checked;
+   var deltaShift=Math.round((alignDraft.start-alignDraft.origStart)*100)/100;
+
+   x.startSeconds=alignDraft.start;
+   x.endSeconds=alignDraft.end;
+
+   if(rippleAll&&Math.abs(deltaShift)>=0.01){
+    for(var j=curIdx+1;j<study.segments.length;j++){
+     var nextSeg=study.segments[j];
+     nextSeg.startSeconds=Math.max(0,Math.round((nextSeg.startSeconds+deltaShift)*100)/100);
+     nextSeg.endSeconds=Math.max(nextSeg.startSeconds+0.2,Math.round((nextSeg.endSeconds+deltaShift)*100)/100);
+    }
+   }
+
+   normalizeStudyTimelines();
+   active=study.segments.indexOf(x);
+   initAlignDraft(active);
    renderTranscript();
-   seek(x.startSeconds,true);
+   setActive(active,false);
    scheduleSave();
+
+   var btn=$("alignSaveBtn");
+   if(btn){
+    btn.textContent=rippleAll?"✓ Tüm Cümleler Revize Edildi!":"✓ Kaydedildi!";
+    setTimeout(function(){updateTimelineAlignerUi()},1600);
+   }
   };
  }
 }
