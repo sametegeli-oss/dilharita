@@ -187,6 +187,31 @@
       });
     });
   }
+  /* Yalnız Gemini kullanan metin görevi. Gemini API anahtarı varsa doğrudan
+     onu dener; yoksa veya bütün Gemini anahtarları başarısızsa güvenli
+     Gemini Web kopyala-yapıştır köprüsüne geçer. Başka AI sağlayıcısına
+     düşmez. YouTube cümle çevirilerinde kaynak değişmemesi için kullanılır. */
+  function geminiText(messages,opts){
+    opts=opts||{};
+    if(opts.signal&&opts.signal.aborted)return Promise.reject({code:"abort"});
+    var p=PROVIDERS.filter(function(x){return x.id==="gemini";})[0],keys=p?keysOf(p.keyStore):[],i=0;
+    function manual(){return chatViaGemini(messages,opts);}
+    function next(){
+      if(!p||i>=keys.length)return manual();
+      var key=keys[i++];
+      return callGemini(p,key,messages,opts).then(function(text){
+        showSource(sourceInfo("gemini",modelOf(p)));
+        try{if(global.DHAI&&DHAI.noteSuccess)DHAI.noteSuccess();}catch(e){}
+        return text;
+      }).catch(function(err){
+        if(err&&err.code==="abort")throw err;
+        if(err&&err.code==="bad-key")disableBrokenKey(key);
+        if(err&&(err.code==="bad-key"||err.code==="rate"||err.code==="network"||err.code==="http"||err.code==="empty"))return next();
+        return manual();
+      });
+    }
+    return next();
+  }
   function chatViaNvidia(messages,opts){
     if(opts&&opts.signal&&opts.signal.aborted) return Promise.reject({code:"abort"});
     return ensureGeminiBridge().then(function(g){
@@ -457,6 +482,7 @@
   global.DHProviders = {
     chat: chat,
     youtubeStudy: youtubeStudy,
+    geminiText: geminiText,
     manualChat: chatViaGemini,
     hasAnyKey: hasAnyKey,
     realHasAnyKey: realHasAnyKey,

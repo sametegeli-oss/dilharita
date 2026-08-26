@@ -70,6 +70,7 @@
      </div>
      <button id="autoPauseToggle" type="button" aria-pressed="false" title="Her cümlenin sonunda otomatik duraklat">⏸ <span>Otomatik dur</span></button>
      <button id="karaokeToggle" class="is-active" type="button" aria-pressed="true" title="Konuşulan kelimeyi takip et">✦ <span>Kelime takibi</span></button>
+     <button id="translateTranscript" type="button" title="Sabit transkript cümlelerinin yalnız çevirilerini Gemini'den al">✦ <span>Gemini ile çevir</span></button>
      <button id="refreshTiming" type="button" title="Zamanlı YouTube konuşma metnini yeniden yapıştır">⟳ <span>Transkripti yenile</span></button>
      <button id="importSubtitles" type="button" title="Zaman kodlu SRT veya VTT altyazısı yükle">CC <span>SRT/VTT yükle</span></button>
      <input id="subtitleFile" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip" hidden>
@@ -150,7 +151,7 @@
 
  <div class="yt-modal-overlay" id="transcriptPasteModal" hidden>
   <form class="yt-modal yt-transcript-paste-modal" id="transcriptPasteForm"><header><div><span>YOUTUBE ORİJİNALİ</span><h2>Zamanlı konuşma metnini ekle</h2></div><button type="button" data-close-transcript-paste>×</button></header>
-   <p>YouTube’da <b>Konuşma metnini göster</b> bölümünü açın, zamanlarla birlikte tamamını kopyalayıp buraya yapıştırın. Bölünmüş altyazılar cümle tamamlanana kadar birleştirilir; aynı başlangıç zamanındaki cümleler tek satırda tutulur. Gemini kullanılmaz.</p>
+   <p>YouTube’da <b>Konuşma metnini göster</b> bölümünü açın, zamanlarla birlikte tamamını kopyalayıp buraya yapıştırın. Önce Dil Harita metni temizleyip cümleleri ve zamanları sabitler; ardından Gemini yalnızca bu sabit cümlelerin çevirilerini üretir.</p>
    <label for="transcriptPasteText">YouTube konuşma metni<textarea id="transcriptPasteText" rows="13" placeholder="0:00&#10;First transcript line&#10;0:03&#10;Second transcript line" required></textarea></label>
    <small id="transcriptPasteHint">Her satırın önünde veya üstünde YouTube zamanı bulunmalıdır.</small>
    <footer><button type="button" data-close-transcript-paste>Vazgeç</button><button class="yt-primary yt-transcript-save" id="transcriptPasteSave" type="submit">Transkripti kaydet</button></footer>
@@ -192,12 +193,12 @@
  <script src="./profile.js?v=2"></script>
  <script src="./learning-error-system.js?v=2"></script>
  <script src="./ai-choice.js?v=1"></script>
- <script src="./ai-providers.js?v=149"></script>
+ <script src="./ai-providers.js?v=150"></script>
  <script src="./gemini-bridge.js?v=12"></script>
  <script src="./cloud-sync.js?v=24"></script>
  <script src="./word-popup.js?v=11"></script>
  <script src="./immersive-youtube-study.js?v=15"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./youtube-egitim.js?v=17"></script>
+ <script src="./youtube-egitim.js?v=18"></script>
 </body>
 </html>
