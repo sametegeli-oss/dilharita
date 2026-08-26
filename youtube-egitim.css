@@ -81,3 +81,38 @@ body.yt-mode-shadow .yt-learning-card{border-color:rgba(255,202,99,.28)}body.yt-
 @media(max-width:768px){
  .yt-align-controls-grid{grid-template-columns:1fr}
 }
+
+/* Mobil ders düzeni: video görünür kalır, transkript kendi alanında kayar. */
+@media (max-width:680px) and (orientation:portrait){
+ .yt-study{padding:8px 8px 20px}
+ .yt-workspace{display:flex;flex-direction:column;gap:8px}
+ .yt-stage-column{display:contents}
+ .yt-player-card{order:1;position:sticky;top:64px;z-index:35;width:100%;border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.62)}
+ .yt-timeline{order:2;margin-top:3px}
+ .yt-controls{order:3;margin:0;min-height:48px}
+ .yt-transcript-panel{order:4;position:relative;top:auto;width:100%;height:50dvh;max-height:50dvh;min-height:0;border-radius:14px}
+ .yt-learning-card{order:5}
+ .yt-transcript-tabs{height:48px;min-height:48px}
+ .yt-transcript-toolbar{padding:7px 8px}
+ .yt-transcript-toolbar input{height:32px}
+ .yt-transcript-footer{min-height:38px;padding:7px 10px}
+}
+
+/* Telefon yana çevrildiğinde video solda sabit, transkript sağda akar. */
+@media (orientation:landscape) and (max-width:1050px) and (max-height:600px){
+ .yt-topbar{height:52px;padding:0 8px}
+ .yt-video-head,.yt-modebar{display:none}
+ .yt-study{height:calc(100dvh - 52px);padding:5px 6px;overflow:hidden}
+ .yt-workspace{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.9fr);gap:8px;height:100%;max-width:none;overflow:hidden}
+ .yt-stage-column{display:block;height:100%;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+ .yt-player-card{position:sticky;top:0;z-index:25;width:100%;border-radius:12px}
+ .yt-transcript-panel{position:relative;top:auto;height:100%;max-height:100%;min-height:0;border-radius:12px}
+ .yt-transcript-tabs{height:44px;min-height:44px;padding:0 5px}
+ .yt-transcript-toolbar{padding:6px}
+ .yt-transcript-toolbar input{height:30px}
+ .yt-segment{grid-template-columns:42px 1fr;padding:10px 8px;gap:7px}
+ .yt-segment-en{font-size:13px}.yt-segment-tr{font-size:11px;margin-top:3px}
+ .yt-controls{padding-bottom:5px;gap:4px;overflow-x:auto}
+ .yt-control{height:36px;min-width:36px;padding:0 8px}
+ .yt-learning-card{padding:12px;border-radius:12px}
+}
