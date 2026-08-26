@@ -1,4 +1,4 @@
-/* cloud-sync.js — v7 (SIFIRDAN TEMİZ TASARIM)
+/* cloud-sync.js — v24 (YouTube çalışma kitaplığı cihazlar arası senkron)
    ═══════════════════════════════════════════════════════════════
    MİMARİ (tek akış):
      AÇILIŞ  → fullSync: buluttan ÇEK → BİRLEŞTİR → cihaza UYGULA → buluta GERİ YAZ
@@ -424,8 +424,23 @@
   async function aiMergeRemote(remote){if(!Array.isArray(remote)||!remote.length)return 0;var local=await aiReadAll(),map={};local.forEach(function(x){map[x.sentence]=x;});var incoming=[];remote.forEach(function(x){if(!x||!x.sentence)return;var old=map[String(x.sentence)];if(!old||aiTime(x)>aiTime(old))incoming.push({sentence:String(x.sentence),explanation:String(x.explanation||""),deleted:!!x.deleted,timestamp:x.timestamp||new Date().toISOString()});});if(!incoming.length)return 0;var db=await aiOpen();if(!db)return 0;return new Promise(function(res){try{var tx=db.transaction("ai_explanations","readwrite"),st=tx.objectStore("ai_explanations");incoming.forEach(function(x){st.put(x);});tx.oncomplete=function(){db.close();res(incoming.length);};tx.onerror=function(){db.close();res(0);};}catch(e){try{db.close();}catch(_){}res(0);}});}
 
   /* ── 5) Diğer yerel kaynaklar ─────────────────────────────── */
-  function mirrorNow(){ try{ if(window.DHProgress&&DHProgress.mirrorNow) return Promise.resolve(DHProgress.mirrorNow()).catch(function(){}); }catch(e){} return Promise.resolve(); }
-  function applyMirror(){ try{ if(window.DHProgress&&DHProgress.applyMirror) return Promise.resolve(DHProgress.applyMirror()).catch(function(){return 0;}); }catch(e){} return Promise.resolve(0); }
+  async function mirrorNow(){
+    var jobs=[];
+    try{ if(window.DHProgress&&DHProgress.mirrorNow) jobs.push(Promise.resolve(DHProgress.mirrorNow()).catch(function(){})); }catch(e){}
+    /* YouTube dersleri IndexedDB'de tutulur. Her bulut yazmasından önce
+       güncel kitaplığı localStorage aynasına çıkar; böylece senkron başka
+       bir sayfadaki düğmeden başlatılsa bile son transkript kaybolmaz. */
+    try{ if(window.DHYouTubeStudy&&DHYouTubeStudy.mirrorNow) jobs.push(Promise.resolve(DHYouTubeStudy.mirrorNow()).catch(function(){})); }catch(e){}
+    await Promise.all(jobs);
+  }
+  async function applyMirror(){
+    var added=0;
+    try{ if(window.DHProgress&&DHProgress.applyMirror) added+=(+await Promise.resolve(DHProgress.applyMirror()).catch(function(){return 0;})||0); }catch(e){}
+    /* Buluttan gelen video belgelerini diğer cihazın IndexedDB kitaplığına
+       fullSync tamamlanmadan uygula. */
+    try{ if(window.DHYouTubeStudy&&DHYouTubeStudy.applyMirror) added+=(+await Promise.resolve(DHYouTubeStudy.applyMirror()).catch(function(){return 0;})||0); }catch(e){}
+    return added;
+  }
   function errAll(){ try{ if(window.LearningErrorDB&&LearningErrorDB.all) return LearningErrorDB.all(); }catch(e){} return Promise.resolve([]); }
   function errMerge(list){ try{ if(window.LearningErrorDB&&LearningErrorDB.bulkMerge&&Array.isArray(list)) return LearningErrorDB.bulkMerge(list); }catch(e){} return Promise.resolve(0); }
 
@@ -462,9 +477,19 @@
 
   /* ── 7) PUSH: yereli buluta yaz ──────────────────────────── */
   var DOC_LIMIT = 950000;   // Firestore belge limiti ~1MB; güvenli tavan
+  function mainCloudPayloadSize(ls){
+    /* Her YouTube videosu users/{uid}/youtube_studies altında ayrı belgeye
+       yazılır. Bunları ana settings/progress 1MB hesabına katmak, video
+       sayısı arttığında ilgisiz ilerleme kayıtlarını gereksiz yere atardı. */
+    var main={};
+    for(var k in ls){
+      if(!ls.hasOwnProperty(k)||k.indexOf("dh-immersive-youtube-study-")===0) continue;
+      main[k]=ls[k];
+    }
+    try{ return JSON.stringify(main).length; }catch(e){ return 0; }
+  }
   function shrinkToLimit(ls){
-    var size=0, dropped=0;
-    try{ size=JSON.stringify(ls).length; }catch(e){ return {size:0,dropped:0}; }
+    var size=mainCloudPayloadSize(ls), dropped=0;
     if(size<=DOC_LIMIT) return {size:size,dropped:0};
     // sınır aşıldı: en BÜYÜK smv: değerlerinden başlayarak at (küçük not kayıtları kalsın)
     var smv=[];
@@ -473,7 +498,7 @@
     for(var i=0;i<smv.length && size>DOC_LIMIT;i++){
       size-=smv[i][1]; delete ls[smv[i][0]]; dropped++;
     }
-    try{ size=JSON.stringify(ls).length; }catch(e){}
+    size=mainCloudPayloadSize(ls);
     return {size:size,dropped:dropped};
   }
   /* ══════════════════════════════════════════════════════════════════
@@ -714,7 +739,7 @@
       await kvWriteAll(kvIncoming);                 // modül ilerlemesi → IndexedDB (React okur)
       var addedAI=await aiMergeRemote(remoteAI);    // AI açıklaması: en yeni kayıt/silme kazanır
       var addedErr=await errMerge(rd.errors||[]);   // hata defteri birleşir
-      var addedProg=await applyMirror();            // kelime aynası → DHProgress IDB
+      var addedProg=await applyMirror();            // kelime + YouTube aynaları → ilgili IDB'ler
       /* GERİ YAZ: bulut = birleşim. Burada FARK yazma kullanılmaz —
          birleştirme sonrası bulut ile cihazın aynı olduğundan emin olmak
          için tam gönderim yapılır ve imzalar sıfırdan kurulur. */
@@ -726,7 +751,7 @@
       var parts=[];
       if(pulled) parts.push(pulled+" kayıt buluttan alındı");
       if(addedErr) parts.push(addedErr+" hata kaydı eklendi");
-      if(addedProg) parts.push(addedProg+" ilerleme uygulandı");
+      if(addedProg) parts.push(addedProg+" yerel kayıt uygulandı");
       if(addedAI) parts.push(addedAI+" AI açıklaması birleştirildi");
       if(!parts.length) parts.push("her şey zaten güncel");
       var pmsg = pres&&pres.ok
