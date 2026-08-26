@@ -481,7 +481,9 @@ function bindTimelineAligner(){
  }
 }
 
+function initThreeColumnLayout(){var rail=$("controlRail"),mode=document.querySelector(".yt-modebar"),card=$("learningCard");if(!rail)return;if(mode&&mode.parentNode!==rail)rail.appendChild(mode);if(card&&card.parentNode!==rail)rail.appendChild(card)}
 function bind(){
+ initThreeColumnLayout();
  $("translateTranscript").onclick=function(){if(!study)return;var force=translationRows(study,false).length===0;translateStudyWithGemini(study,force).then(function(){return backupYouTubeNow()}).catch(function(e){setTranslationMessage(e&&e.code==="abort"?"Çeviri bekliyor":"Çeviri hatası · yeniden dene",false)})};
  $("pasteTranscriptOpen").onclick=function(){openTranscriptPaste()};$("transcriptPasteForm").onsubmit=function(e){e.preventDefault();usePastedTranscript()};Array.prototype.forEach.call(document.querySelectorAll("[data-close-transcript-paste]"),function(b){b.onclick=closeTranscriptPaste});$("transcriptPasteModal").onclick=function(e){if(e.target===this)closeTranscriptPaste()};
  Array.prototype.forEach.call(document.querySelectorAll("[data-study-mode]"),function(b){b.onclick=function(){setStudyMode(b.getAttribute("data-study-mode"))}});
