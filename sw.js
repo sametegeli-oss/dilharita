@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v178";  /* v178: YouTube transkript paragraflarını ayrı konuşma cümlelerine böler */
+var SW_VERSION = "dh-sw-v179";  /* v179: YouTube transkriptini Gemini olmadan doğrudan zamanlı yükler */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

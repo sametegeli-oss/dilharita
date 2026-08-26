@@ -31,7 +31,7 @@
    <div class="yt-home-copy">
     <span class="yt-eyebrow">GERÇEK İNGİLİZCE · AKILLI ÇALIŞMA</span>
     <h1>Videoyu izleme.<br><em>Her cümleyi öğren.</em></h1>
-    <p>YouTube adresini ekle; Dil Harita videonun tamamını iki dilli, zaman damgalı ve tekrar edilebilir bir derse dönüştürsün.</p>
+    <p>YouTube adresini ekle, ardından YouTube konuşma metnini zamanlarıyla yapıştır; Dil Harita özgün metni tekrar edilebilir bir derse dönüştürsün.</p>
     <form class="yt-url-form" id="videoForm">
      <label class="sr-only" for="videoUrl">YouTube video adresi</label>
      <span aria-hidden="true">▶</span>
@@ -39,8 +39,9 @@
      <label class="yt-language-picker" for="videoLanguage"><span>Video dili</span><select id="videoLanguage"><option value="auto">Otomatik algıla</option><option value="en">İngilizce</option><option value="tr">Türkçe · ters shadowing</option></select></label>
      <button type="submit">Dersi hazırla <b>→</b></button>
     </form>
+    <button class="yt-transcript-paste-open" id="pasteTranscriptOpen" type="button">▤ YouTube konuşma metnini zamanlarıyla yapıştır</button>
     <div class="yt-home-status" id="homeStatus" role="status"></div>
-    <div class="yt-home-pills"><span>✓ Tüm cümleler</span><span>✓ İngilizce–Türkçe</span><span>✓ Akıllı tekrar</span><span>✓ Çevrimdışı metin</span></div>
+    <div class="yt-home-pills"><span>✓ YouTube özgün metni</span><span>✓ YouTube zamanları</span><span>✓ Akıllı tekrar</span><span>✓ Çevrimdışı metin</span></div>
    </div>
    <div class="yt-recent" aria-labelledby="recentTitle">
     <div class="yt-section-title"><div><span>ÇALIŞMAYA DEVAM ET</span><h2 id="recentTitle">Son videoların</h2></div><button id="showAllLibrary" type="button">Tümünü gör</button></div>
@@ -69,7 +70,7 @@
      </div>
      <button id="autoPauseToggle" type="button" aria-pressed="false" title="Her cümlenin sonunda otomatik duraklat">⏸ <span>Otomatik dur</span></button>
      <button id="karaokeToggle" class="is-active" type="button" aria-pressed="true" title="Konuşulan kelimeyi takip et">✦ <span>Kelime takibi</span></button>
-     <button id="refreshTiming" type="button" title="YouTube transkript zamanlarını yeniden uygula">⟳ <span>YouTube zamanını uygula</span></button>
+     <button id="refreshTiming" type="button" title="Zamanlı YouTube konuşma metnini yeniden yapıştır">⟳ <span>Transkripti yenile</span></button>
      <button id="importSubtitles" type="button" title="Zaman kodlu SRT veya VTT altyazısı yükle">CC <span>SRT/VTT yükle</span></button>
      <input id="subtitleFile" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip" hidden>
      <button id="exportOpen" type="button">⇩ <span>Dışa aktar</span></button>
@@ -147,6 +148,15 @@
   </aside>
  </div>
 
+ <div class="yt-modal-overlay" id="transcriptPasteModal" hidden>
+  <form class="yt-modal yt-transcript-paste-modal" id="transcriptPasteForm"><header><div><span>YOUTUBE ORİJİNALİ</span><h2>Zamanlı konuşma metnini ekle</h2></div><button type="button" data-close-transcript-paste>×</button></header>
+   <p>YouTube’da <b>Konuşma metnini göster</b> bölümünü açın, zamanlarla birlikte tamamını kopyalayıp buraya yapıştırın. Metin değiştirilmez ve Gemini kullanılmaz.</p>
+   <label for="transcriptPasteText">YouTube konuşma metni<textarea id="transcriptPasteText" rows="13" placeholder="0:00&#10;First transcript line&#10;0:03&#10;Second transcript line" required></textarea></label>
+   <small id="transcriptPasteHint">Her satırın önünde veya üstünde YouTube zamanı bulunmalıdır.</small>
+   <footer><button type="button" data-close-transcript-paste>Vazgeç</button><button class="yt-primary" type="submit">YouTube transkriptini kullan</button></footer>
+  </form>
+ </div>
+
  <div class="yt-modal-overlay" id="exportModal" hidden>
   <section class="yt-modal yt-export-modal"><header><div><span>DERS ARŞİVİ</span><h2>Altyazıları dışa aktar</h2></div><button type="button" data-close-export>×</button></header>
    <div class="yt-export-options">
@@ -186,8 +196,8 @@
  <script src="./gemini-bridge.js?v=12"></script>
  <script src="./cloud-sync.js?v=23"></script>
  <script src="./word-popup.js?v=11"></script>
- <script src="./immersive-youtube-study.js?v=12"></script>
+ <script src="./immersive-youtube-study.js?v=13"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./youtube-egitim.js?v=15"></script>
+ <script src="./youtube-egitim.js?v=16"></script>
 </body>
 </html>
