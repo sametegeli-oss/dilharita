@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=12">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=13">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -103,6 +103,27 @@
 
      <section class="yt-learning-card" id="learningCard">
       <div class="yt-learning-head"><span id="activeIndex">CÜMLE 1</span><div><button id="syncSentence" type="button" title="Bu cümleyi YouTube transkript zamanında aç">▶ YouTube zamanı</button><button id="favoriteSentence" type="button" aria-label="Favoriye ekle">♡</button><button id="editSentence" type="button">✎ Düzenle</button><button id="askGemini" type="button">✦ Gemini’ye sor</button></div></div>
+      
+      <div class="yt-timeline-aligner" id="timelineAligner">
+       <div class="yt-aligner-info">
+        <span>⏱ <b>Zaman Ayarı</b>:</span>
+        <button type="button" class="yt-align-btn" id="alignSetCurrentStart" title="Cümle başlangıcını videonun durduğu ana ayarla">📍 Başlangıcı Şu An Yap</button>
+        <div class="yt-align-nudge">
+         <button type="button" id="alignNudgeLeft" title="0.5 saniye geri al">◀ -0.5s</button>
+         <button type="button" id="alignNudgeRight" title="0.5 saniye ileri al">+0.5s ▶</button>
+        </div>
+        <span class="yt-align-times" id="alignTimesText">00:00.0 → 00:00.0</span>
+       </div>
+       <div class="yt-align-track" id="alignTrack" title="Tıklayarak oynatıcıyı taşıyın">
+        <div class="yt-align-cursor" id="alignCursor"></div>
+        <div class="yt-align-segment-block" id="alignSegmentBlock">
+         <div class="yt-align-handle yt-handle-left" id="alignHandleLeft" title="Başlangıcı sürükle">│◀</div>
+         <div class="yt-align-drag-body" id="alignDragBody" title="Cümleyi komple sürükle">↔ Sürükle</div>
+         <div class="yt-align-handle yt-handle-right" id="alignHandleRight" title="Bitişi sürükle">▶│</div>
+        </div>
+       </div>
+      </div>
+
       <p class="yt-learning-en" id="learningEN" lang="en">Bir cümle seç.</p>
       <p class="yt-learning-tr" id="learningTR" lang="tr"></p>
       <div class="yt-word-action" id="wordActionBar" hidden><span>Seçilen kelime: <b id="selectedWord"></b></span><button id="saveSelectedWord" type="button">＋ Kelime defterine ekle</button><button id="explainSelectedWord" type="button">✦ Bağlamda açıkla</button></div>
@@ -178,7 +199,7 @@
   <form class="yt-modal" id="editForm"><header><div><span>CÜMLE DÜZENLEYİCİ</span><h2>Metni düzenle</h2></div><button type="button" data-close-modal>×</button></header>
    <label>İngilizce cümle<textarea id="editEN" rows="3" required></textarea></label>
    <label>Türkçe karşılığı<textarea id="editTR" rows="3" required></textarea></label>
-   <div class="yt-time-fields"><label>YouTube başlangıcı (sn)<input id="editStart" type="number" min="0" step="0.001" readonly></label><label>Sonraki transkript zamanı (sn)<input id="editEnd" type="number" min="0.2" step="0.001" readonly></label></div>
+   <div class="yt-time-fields"><label>YouTube başlangıcı (sn)<input id="editStart" type="number" min="0" step="0.001"></label><label>Sonraki transkript zamanı (sn)<input id="editEnd" type="number" min="0.2" step="0.001"></label></div>
    <footer><button type="button" data-close-modal>Vazgeç</button><button class="yt-primary" type="submit">Değişiklikleri kaydet</button></footer>
   </form>
  </div>
@@ -199,6 +220,6 @@
  <script src="./word-popup.js?v=11"></script>
  <script src="./immersive-youtube-study.js?v=15"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./youtube-egitim.js?v=18"></script>
+ <script src="./youtube-egitim.js?v=19"></script>
 </body>
 </html>
