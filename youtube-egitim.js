@@ -77,6 +77,12 @@ function karaokeHtml(text,current){var words=String(text||"").trim().split(/\s+/
 function updateKaraoke(now,x){if(!captionOn||!showEN||!karaokeOn||!x)return;var words=String(x.transcriptEN||"").trim().split(/\s+/),span=Math.max(.3,(+x.endSeconds||+x.startSeconds+2)-+x.startSeconds),idx=Math.min(words.length-1,Math.max(0,Math.floor(((now-+x.startSeconds)/span)*words.length)));$("captionEN").innerHTML=karaokeHtml(x.transcriptEN,idx)}
 function sentenceWords(text){return String(text||"").split(/(\s+|[^A-Za-z'-]+)/).map(function(part){if(/^[A-Za-z][A-Za-z'-]*$/.test(part))return'<button type="button" class="yt-word" data-word="'+esc(part)+'">'+esc(part)+'</button>';return esc(part)}).join("")}
 
+function minAllowedStart(idx){
+ if(!study||!study.segments||idx<=0)return 0;
+ var prev=study.segments[idx-1];
+ return Math.round(((+prev.endSeconds||prev.startSeconds+0.2)+0.05)*100)/100;
+}
+
 function normalizeStudyTimelines(){
  if(!study||!study.segments)return;
  study.segments.forEach(function(x){
@@ -263,14 +269,15 @@ function bindTimelineAligner(){
   var dx=curX-startX;
   var trackW=track.getBoundingClientRect().width||1;
   var dSec=(dx/trackW)*dur;
+  var minStart=minAllowedStart(active);
 
   if(dragMode==="move"){
    var span=initialEnd-initialStart;
-   var newS=Math.max(0,Math.min(dur-span,initialStart+dSec));
+   var newS=Math.max(minStart,Math.min(dur-span,initialStart+dSec));
    alignDraft.start=Math.round(newS*100)/100;
    alignDraft.end=Math.round((newS+span)*100)/100;
   }else if(dragMode==="left"){
-   var newSL=Math.max(0,Math.min(alignDraft.end-0.3,initialStart+dSec));
+   var newSL=Math.max(minStart,Math.min(alignDraft.end-0.3,initialStart+dSec));
    alignDraft.start=Math.round(newSL*100)/100;
   }else if(dragMode==="right"){
    var newER=Math.max(alignDraft.start+0.3,Math.min(dur,initialEnd+dSec));
@@ -307,7 +314,8 @@ function bindTimelineAligner(){
  if($("alignStartEarlier")){
   $("alignStartEarlier").onclick=function(){
    if(active<0||!study)return;
-   alignDraft.start=Math.max(0,Math.round((alignDraft.start-0.2)*100)/100);
+   var minStart=minAllowedStart(active);
+   alignDraft.start=Math.max(minStart,Math.round((alignDraft.start-0.2)*100)/100);
    alignDraft.dirty=true;
    updateTimelineAlignerUi();
    seek(alignDraft.start,true);
@@ -349,8 +357,10 @@ function bindTimelineAligner(){
  if($("alignNudgeLeft")){
   $("alignNudgeLeft").onclick=function(){
    if(active<0||!study)return;
-   alignDraft.start=Math.max(0,Math.round((alignDraft.start-0.5)*100)/100);
-   alignDraft.end=Math.max(alignDraft.start+0.3,Math.round((alignDraft.end-0.5)*100)/100);
+   var span=alignDraft.end-alignDraft.start;
+   var minStart=minAllowedStart(active);
+   alignDraft.start=Math.max(minStart,Math.round((alignDraft.start-0.5)*100)/100);
+   alignDraft.end=Math.round((alignDraft.start+span)*100)/100;
    alignDraft.dirty=true;
    updateTimelineAlignerUi();
    seek(alignDraft.start,true);
@@ -360,8 +370,9 @@ function bindTimelineAligner(){
  if($("alignNudgeRight")){
   $("alignNudgeRight").onclick=function(){
    if(active<0||!study)return;
+   var span=alignDraft.end-alignDraft.start;
    alignDraft.start=Math.round((alignDraft.start+0.5)*100)/100;
-   alignDraft.end=Math.round((alignDraft.end+0.5)*100)/100;
+   alignDraft.end=Math.round((alignDraft.start+span)*100)/100;
    alignDraft.dirty=true;
    updateTimelineAlignerUi();
    seek(alignDraft.start,true);
@@ -373,8 +384,9 @@ function bindTimelineAligner(){
    if(active<0||!study||!player)return;
    var now=+player.getCurrentTime()||0;
    var span=Math.max(0.8,alignDraft.end-alignDraft.start);
-   alignDraft.start=Math.round(now*100)/100;
-   alignDraft.end=Math.round((now+span)*100)/100;
+   var minStart=minAllowedStart(active);
+   alignDraft.start=Math.max(minStart,Math.round(now*100)/100);
+   alignDraft.end=Math.round((alignDraft.start+span)*100)/100;
    alignDraft.dirty=true;
    updateTimelineAlignerUi();
    seek(alignDraft.start,true);
@@ -401,8 +413,9 @@ function bindTimelineAligner(){
    var curIdx=active;
    var x=study.segments[curIdx];
    var rippleAll=$("alignRippleAll")&&$("alignRippleAll").checked;
-   var newStart=alignDraft.start;
-   var newEnd=alignDraft.end;
+   var minStart=minAllowedStart(curIdx);
+   var newStart=Math.max(minStart,alignDraft.start);
+   var newEnd=Math.max(newStart+0.2,alignDraft.end);
 
    x.startSeconds=newStart;
    x.endSeconds=newEnd;
@@ -460,7 +473,7 @@ function bind(){
  $("exportOpen").onclick=function(){if(study)$("exportModal").hidden=false};$("exportDownload").onclick=exportNow;Array.prototype.forEach.call(document.querySelectorAll("[data-close-export]"),function(b){b.onclick=function(){$("exportModal").hidden=true}});$("exportModal").onclick=function(e){if(e.target===this)this.hidden=true};
  $("saveSelectedWord").onclick=saveWord;$("explainSelectedWord").onclick=function(){if(!selectedWord)return;$("aiModal").hidden=false;askQuestion("Bu cümledeki ‘"+selectedWord+"’ kelimesini; anlamı, kelime türü, telaffuz ipucu ve doğal kalıbıyla açıkla.")};
  $("closeAudioLab").onclick=closeAudioLab;
- $("videoForm").onsubmit=function(e){e.preventDefault();openOrAnalyze($("videoUrl").value)};$("openLibrary").onclick=openLibrary;$("showAllLibrary").onclick=openLibrary;$("closeLibrary").onclick=closeLibrary;$("libraryDrawer").onclick=function(e){if(e.target===$("libraryDrawer"))closeLibrary()};$("closeStudy").onclick=showHome;$("playToggle").onclick=playPause;$("prevSentence").onclick=function(){if(active>0){setActive(active-1,true);if(loopOn)setLoop(true);else seek(study.segments[active].startSeconds,true)}};$("nextSentence").onclick=function(){if(study&&active<study.segments.length-1){setActive(active+1,true);if(loopOn)setLoop(true);else seek(study.segments[active].startSeconds,true)}};$("loopToggle").onclick=function(){setLoop(!loopOn)};$("speedToggle").onclick=function(){var rates=[.5,.75,1,1.25,1.5],cur=1;try{cur=player.getPlaybackRate()}catch(e){}var next=rates[(rates.indexOf(cur)+1)%rates.length];try{player.setPlaybackRate(next)}catch(e){}this.textContent=next+"×"};$("captionToggle").onclick=function(){captionOn=!captionOn;this.classList.toggle("is-active",captionOn);this.setAttribute("aria-pressed",String(captionOn));$("captionLayer").hidden=!captionOn;if(captionOn)setActive(active,false)};$("soundToggle").onclick=function(){if(studyMode==="shadow"||ownVoiceOn||guideVoiceOn)return;muted=!muted;try{muted?player.mute():player.unMute()}catch(e){}this.textContent=muted?"🔇":"🔊"};$("timelineThumb").parentNode.onclick=function(e){if(!player)return;var r=this.getBoundingClientRect(),pct=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),dur=0;try{dur=player.getDuration()}catch(x){}seek(dur*pct,true)};$("scrollActive").onclick=function(){var r=document.querySelector(".yt-segment.is-active");if(r)r.scrollIntoView({block:"center",behavior:"smooth"})};$("toggleEN").onclick=function(){showEN=!showEN;this.classList.toggle("is-active",showEN);this.setAttribute("aria-pressed",String(showEN));document.querySelector(".yt-transcript-panel").classList.toggle("hide-en",!showEN);setActive(active,false)};$("toggleTR").onclick=function(){showTR=!showTR;this.classList.toggle("is-active",showTR);this.setAttribute("aria-pressed",String(showTR));document.querySelector(".yt-transcript-panel").classList.toggle("hide-tr",!showTR);setActive(active,false)};$("transcriptSearch").oninput=function(){searchText=this.value;renderTranscript()};Array.prototype.forEach.call(document.querySelectorAll("[data-panel]"),function(b){b.onclick=function(){switchPanel(b.getAttribute("data-panel"))}});$("favoriteSentence").onclick=function(){toggleMark("favorites")};$("markLearned").onclick=function(){toggleMark("learned")};$("markHard").onclick=markHard;$("syncSentence").onclick=syncSentenceToCurrent;$("editSentence").onclick=editOpen;$("askGemini").onclick=askOpen;$("startDictation").onclick=function(){setStudyMode("dictation");startDictation()};$("startShadowing").onclick=function(){setStudyMode("shadow");startShadowing()};Array.prototype.forEach.call(document.querySelectorAll("[data-close-modal]"),function(b){b.onclick=editClose});Array.prototype.forEach.call(document.querySelectorAll("[data-close-ai]"),function(b){b.onclick=function(){$("aiModal").hidden=true}});$("editModal").onclick=function(e){if(e.target===this)editClose()};$("aiModal").onclick=function(e){if(e.target===this)this.hidden=true};$("editForm").onsubmit=function(e){e.preventDefault();var x=study.segments[active],old=keyOf(x);x.transcriptEN=$("editEN").value.trim();x.translationTR=$("editTR").value.trim();x.startSeconds=Math.max(0,+$("editStart").value||0);x.endSeconds=Math.max(x.startSeconds+.2,+$("editEnd").value||x.startSeconds+.2);var s=state(),fresh=keyOf(x);["learned","hard","favorites"].forEach(function(k){if(s[k][old]){s[k][fresh]=s[k][old];delete s[k][old]}});normalizeStudyTimelines();active=study.segments.indexOf(x);renderTranscript();setActive(active,false);editClose();scheduleSave()};$("focusMode").onclick=function(){document.body.classList.toggle("yt-focus")};$("originalAudioMode").onclick=function(){setAudioSource("original")};$("guideAudioMode").onclick=function(){setAudioSource("guide")};$("ownAudioMode").onclick=function(){setAudioSource("own")};
+ $("videoForm").onsubmit=function(e){e.preventDefault();openOrAnalyze($("videoUrl").value)};$("openLibrary").onclick=openLibrary;$("showAllLibrary").onclick=openLibrary;$("closeLibrary").onclick=closeLibrary;$("libraryDrawer").onclick=function(e){if(e.target===$("libraryDrawer"))closeLibrary()};$("closeStudy").onclick=showHome;$("playToggle").onclick=playPause;$("prevSentence").onclick=function(){if(active>0){setActive(active-1,true);if(loopOn)setLoop(true);else seek(study.segments[active].startSeconds,true)}};$("nextSentence").onclick=function(){if(study&&active<study.segments.length-1){setActive(active+1,true);if(loopOn)setLoop(true);else seek(study.segments[active].startSeconds,true)}};$("loopToggle").onclick=function(){setLoop(!loopOn)};$("speedToggle").onclick=function(){var rates=[.5,.75,1,1.25,1.5],cur=1;try{cur=player.getPlaybackRate()}catch(e){}var next=rates[(rates.indexOf(cur)+1)%rates.length];try{player.setPlaybackRate(next)}catch(e){}this.textContent=next+"×"};$("captionToggle").onclick=function(){captionOn=!captionOn;this.classList.toggle("is-active",captionOn);this.setAttribute("aria-pressed",String(captionOn));$("captionLayer").hidden=!captionOn;if(captionOn)setActive(active,false)};$("soundToggle").onclick=function(){if(studyMode==="shadow"||ownVoiceOn||guideVoiceOn)return;muted=!muted;try{muted?player.mute():player.unMute()}catch(e){}this.textContent=muted?"🔇":"🔊"};$("timelineThumb").parentNode.onclick=function(e){if(!player)return;var r=this.getBoundingClientRect(),pct=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),dur=0;try{dur=player.getDuration()}catch(x){}seek(dur*pct,true)};$("scrollActive").onclick=function(){var r=document.querySelector(".yt-segment.is-active");if(r)r.scrollIntoView({block:"center",behavior:"smooth"})};$("toggleEN").onclick=function(){showEN=!showEN;this.classList.toggle("is-active",showEN);this.setAttribute("aria-pressed",String(showEN));document.querySelector(".yt-transcript-panel").classList.toggle("hide-en",!showEN);setActive(active,false)};$("toggleTR").onclick=function(){showTR=!showTR;this.classList.toggle("is-active",showTR);this.setAttribute("aria-pressed",String(showTR));document.querySelector(".yt-transcript-panel").classList.toggle("hide-tr",!showTR);setActive(active,false)};$("transcriptSearch").oninput=function(){searchText=this.value;renderTranscript()};Array.prototype.forEach.call(document.querySelectorAll("[data-panel]"),function(b){b.onclick=function(){switchPanel(b.getAttribute("data-panel"))}});$("favoriteSentence").onclick=function(){toggleMark("favorites")};$("markLearned").onclick=function(){toggleMark("learned")};$("markHard").onclick=markHard;$("syncSentence").onclick=syncSentenceToCurrent;$("editSentence").onclick=editOpen;$("askGemini").onclick=askOpen;$("startDictation").onclick=function(){setStudyMode("dictation");startDictation()};$("startShadowing").onclick=function(){setStudyMode("shadow");startShadowing()};Array.prototype.querySelectorAll("[data-close-modal]").forEach(function(b){b.onclick=editClose});Array.prototype.querySelectorAll("[data-close-ai]").forEach(function(b){b.onclick=function(){$("aiModal").hidden=true}});$("editModal").onclick=function(e){if(e.target===this)editClose()};$("aiModal").onclick=function(e){if(e.target===this)this.hidden=true};$("editForm").onsubmit=function(e){e.preventDefault();var x=study.segments[active],old=keyOf(x);x.transcriptEN=$("editEN").value.trim();x.translationTR=$("editTR").value.trim();x.startSeconds=Math.max(0,+$("editStart").value||0);x.endSeconds=Math.max(x.startSeconds+.2,+$("editEnd").value||x.startSeconds+.2);var s=state(),fresh=keyOf(x);["learned","hard","favorites"].forEach(function(k){if(s[k][old]){s[k][fresh]=s[k][old];delete s[k][old]}});normalizeStudyTimelines();active=study.segments.indexOf(x);renderTranscript();setActive(active,false);editClose();scheduleSave()};$("focusMode").onclick=function(){document.body.classList.toggle("yt-focus")};$("originalAudioMode").onclick=function(){setAudioSource("original")};$("guideAudioMode").onclick=function(){setAudioSource("guide")};$("ownAudioMode").onclick=function(){setAudioSource("own")};
  bindTimelineAligner();
  global.addEventListener("online",syncBadge);global.addEventListener("offline",syncBadge);global.addEventListener("dh-cloud-synced",syncBadge);document.addEventListener("keydown",function(e){if(e.target&&/input|textarea|select/i.test(e.target.tagName))return;if(e.code==="Space"){e.preventDefault();playPause()}else if(e.key==="ArrowLeft")$("prevSentence").click();else if(e.key==="ArrowRight")$("nextSentence").click();else if(e.key.toLowerCase()==="l")$("loopToggle").click();else if(e.key.toLowerCase()==="a")$("autoPauseToggle").click();else if(e.key.toLowerCase()==="s")setStudyMode("shadow");else if(e.key.toLowerCase()==="d")setStudyMode("dictation")})
 }
