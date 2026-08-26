@@ -150,10 +150,10 @@
 
  <div class="yt-modal-overlay" id="transcriptPasteModal" hidden>
   <form class="yt-modal yt-transcript-paste-modal" id="transcriptPasteForm"><header><div><span>YOUTUBE ORİJİNALİ</span><h2>Zamanlı konuşma metnini ekle</h2></div><button type="button" data-close-transcript-paste>×</button></header>
-   <p>YouTube’da <b>Konuşma metnini göster</b> bölümünü açın, zamanlarla birlikte tamamını kopyalayıp buraya yapıştırın. Metin değiştirilmez ve Gemini kullanılmaz.</p>
+   <p>YouTube’da <b>Konuşma metnini göster</b> bölümünü açın, zamanlarla birlikte tamamını kopyalayıp buraya yapıştırın. Bölünmüş altyazılar cümle tamamlanana kadar birleştirilir; aynı başlangıç zamanındaki cümleler tek satırda tutulur. Gemini kullanılmaz.</p>
    <label for="transcriptPasteText">YouTube konuşma metni<textarea id="transcriptPasteText" rows="13" placeholder="0:00&#10;First transcript line&#10;0:03&#10;Second transcript line" required></textarea></label>
    <small id="transcriptPasteHint">Her satırın önünde veya üstünde YouTube zamanı bulunmalıdır.</small>
-   <footer><button type="button" data-close-transcript-paste>Vazgeç</button><button class="yt-primary" type="submit">YouTube transkriptini kullan</button></footer>
+   <footer><button type="button" data-close-transcript-paste>Vazgeç</button><button class="yt-primary yt-transcript-save" id="transcriptPasteSave" type="submit">Transkripti kaydet</button></footer>
   </form>
  </div>
 
