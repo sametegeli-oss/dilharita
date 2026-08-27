@@ -564,8 +564,12 @@ try{
       if(mirror[mid]&&mirror[mid][0]===1){
         if(mid.indexOf("sentence:")===0){ var s1=mid.slice(9); if(!srs[s1]) push("s",s1,0,"yeni"); }
       } }
-    errs.forEach(function(r){ var id=r&&(r.sentenceId||r.id); if(!id) return;
-      if(!errText[id]) errText[id]={en:r.sentenceEN||r.sentence||r.en||"",tr:r.sentenceTR||r.tr||""};
+    errs.forEach(function(r){
+      /* YouTube cümleleri ayrı youtube-pratik.html modülünde çalışılır.
+         videoId:satır biçimindeki teknik kimlik genel tekrar cevabı olamaz. */
+      if(r&&r.source==="video") return;
+      var id=r&&(r.sentenceId||r.id); if(!id) return;
+      if(!errText[id]) errText[id]={en:r.target||r.sentenceEN||r.sentence||r.en||"",tr:r.sentenceTR||r.tr||""};
       if(!srs[id]) push("s",id,0,"hata"); });
 
     if (showOnlyErrors) {

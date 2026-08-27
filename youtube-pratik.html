@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="tr">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <meta name="theme-color" content="#07111f">
+ <title>YouTube Video Pratiği · Dil Harita</title>
+ <link rel="manifest" href="./manifest.webmanifest">
+ <link rel="stylesheet" href="./youtube-pratik.css?v=1">
+ <style>[hidden]{display:none!important}</style>
+</head>
+<body>
+ <header class="yp-topbar">
+  <a href="./menu.html" class="yp-back" aria-label="Kitaplığa dön">←</a>
+  <div><span>DİL HARİTA</span><h1>YouTube Video Pratiği</h1></div>
+  <a href="./youtube-egitim.html" class="yp-studio">Eğitim Stüdyosu</a>
+ </header>
+
+ <main class="yp-shell">
+  <section class="yp-library" id="libraryView">
+   <header><span>VİDEO GÖRÜNÜRLÜKLÜ ÇALIŞMA</span><h2>Bir video seç ve gerçek bağlamıyla çalış</h2><p>Kaydettiğin YouTube derslerindeki cümleleri görüntü, ses, dikte ve shadowing ile tekrar et.</p></header>
+   <div class="yp-library-grid" id="videoLibrary"><div class="yp-empty">Kayıtlı videolar yükleniyor…</div></div>
+  </section>
+
+  <section class="yp-practice" id="practiceView" hidden>
+   <aside class="yp-side">
+    <button class="yp-change" id="changeVideo" type="button">← Video değiştir</button>
+    <div class="yp-video-meta"><span id="videoLevel">YOUTUBE</span><h2 id="videoTitle"></h2><small id="videoStats"></small></div>
+    <nav class="yp-modes" aria-label="Çalışma biçimi">
+     <button class="is-active" data-mode="production" type="button"><b>TR → EN</b><span>İngilizcesini yaz</span></button>
+     <button data-mode="dictation" type="button"><b>Dikte</b><span>Videoyu dinle ve yaz</span></button>
+     <button data-mode="context" type="button"><b>Bağlam</b><span>Doğru anlamı seç</span></button>
+     <button data-mode="shadow" type="button"><b>Shadowing</b><span>Görüntüyle birlikte konuş</span></button>
+    </nav>
+    <div class="yp-filters">
+     <label>Cümle kaynağı<select id="sentenceFilter"><option value="continue">Kaldığım yerden</option><option value="unlearned">Öğrenilmemişler</option><option value="hard">Tekrar listemdekiler</option><option value="favorites">Favoriler</option><option value="all">Tüm cümleler</option></select></label>
+     <label>Oturum<select id="sessionSize"><option value="10">10 cümle</option><option value="15" selected>15 cümle</option><option value="25">25 cümle</option></select></label>
+     <button id="startSession" type="button">Oturumu hazırla</button>
+    </div>
+   </aside>
+
+   <section class="yp-stage">
+    <div class="yp-player-card">
+     <div id="ytPracticePlayer" class="yp-player" aria-label="YouTube video oynatıcı"></div>
+     <div class="yp-player-fallback" id="playerFallback" hidden><b>Video uygulama içinde oynatılamıyor.</b><a id="openYouTube" target="_blank" rel="noopener">YouTube’da aç</a></div>
+    </div>
+    <div class="yp-player-controls">
+     <button id="replayClip" type="button">▶ Kesiti oynat</button>
+     <button id="loopClip" type="button" aria-pressed="false">↻ Döngü</button>
+     <button id="muteClip" type="button" aria-pressed="false">🔊 Ses</button>
+     <span id="clipTime">00:00–00:00</span>
+    </div>
+
+    <article class="yp-card" id="questionCard">
+     <header><span id="questionNumber">CÜMLE 0 / 0</span><b id="modeLabel">TR → EN</b></header>
+     <div id="questionArea"><div class="yp-empty">Soldan bir çalışma oturumu başlat.</div></div>
+     <div class="yp-feedback" id="feedback" hidden></div>
+     <footer id="gradeActions" hidden>
+      <button data-grade="hard" type="button">↺ Tekrar listeme ekle</button>
+      <button data-grade="learned" type="button">✓ Öğrendim</button>
+      <button id="nextQuestion" type="button">Sonraki →</button>
+     </footer>
+    </article>
+   </section>
+  </section>
+ </main>
+
+ <script src="https://www.youtube.com/iframe_api"></script>
+ <script src="./immersive-youtube-study.js?v=16"></script>
+ <script src="./learning-error-system.js"></script>
+ <script src="./youtube-pratik.js?v=1"></script>
+</body>
+</html>
