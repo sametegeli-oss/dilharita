@@ -6,7 +6,8 @@
  <meta name="theme-color" content="#07111f">
  <title>YouTube Video Pratiği · Dil Harita</title>
  <link rel="manifest" href="./manifest.webmanifest">
- <link rel="stylesheet" href="./youtube-pratik.css?v=1">
+ <link rel="stylesheet" href="./youtube-pratik.css?v=3">
+ <link rel="stylesheet" href="./youtube-pratik-youglish.css?v=1">
  <style>[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -48,8 +49,24 @@
      <button id="replayClip" type="button">▶ Kesiti oynat</button>
      <button id="loopClip" type="button" aria-pressed="false">↻ Döngü</button>
      <button id="muteClip" type="button" aria-pressed="false">🔊 Ses</button>
+     <button id="youglishScenes" class="yp-youglish-trigger" type="button" aria-expanded="false">◎ Gerçek kullanımlarda gör</button>
      <span id="clipTime">00:00–00:00</span>
     </div>
+
+    <section class="yp-youglish" id="youglishPanel" hidden aria-label="YouGlish gerçek kullanım örnekleri">
+     <header>
+      <div><span>GERÇEK HAYAT DESTEĞİ · YOUGLISH</span><h3>Aynı kalıbı farklı konuşmacılardan dinle</h3></div>
+      <button id="closeYouglish" type="button" aria-label="YouGlish örneklerini kapat">×</button>
+     </header>
+     <p>Arama, YouGlish’in resmî bileşeninde yapılır. Sonuçlar Dil Harita transkriptlerine veya ilerleme kayıtlarına eklenmez.</p>
+     <form id="youglishSearch" class="yp-youglish-search">
+      <label for="youglishQuery">Aranacak doğal kalıp</label>
+      <div><input id="youglishQuery" type="text" maxlength="90" autocomplete="off" placeholder="Örn. Could you wait"><button type="submit">Örnekleri getir</button></div>
+     </form>
+     <div class="yp-youglish-status" id="youglishStatus">Hazır olduğunda örnekleri getir.</div>
+     <div class="yp-youglish-widget" id="youglishWidget"></div>
+     <footer><a id="openYouglish" href="https://youglish.com/" target="_blank" rel="noopener">YouGlish’te aç ↗</a><button id="backToPractice" type="button">← Ana cümleye dön</button></footer>
+    </section>
 
     <article class="yp-card" id="questionCard">
      <header><span id="questionNumber">CÜMLE 0 / 0</span><b id="modeLabel">TR → EN</b></header>
@@ -68,6 +85,6 @@
  <script src="https://www.youtube.com/iframe_api"></script>
  <script src="./immersive-youtube-study.js?v=16"></script>
  <script src="./learning-error-system.js"></script>
- <script src="./youtube-pratik.js?v=1"></script>
+ <script src="./youtube-pratik.js?v=3"></script>
 </body>
 </html>

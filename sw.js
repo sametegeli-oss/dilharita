@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v179";  /* v179: YouTube transkriptini Gemini olmadan doğrudan zamanlı yükler */
+var SW_VERSION = "dh-sw-v180";  /* v180: YouTube pratiğine resmî YouGlish gerçek kullanım katmanı eklendi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -23,6 +23,7 @@ var SHELL = [
   "./menu.html",
   "./immersive.html",
   "./youtube-egitim.html",
+  "./youtube-pratik.html",
   "./sesdalga.html",
   "./profil.html",
   "./gemini-rapor-arsivi.html",
@@ -57,11 +58,14 @@ var SHELL = [
   "./immersive.js",
   "./immersive-youtube-study.js",
   "./youtube-egitim.js",
+  "./youtube-pratik.js",
   "./youtube-session-lock.js",
   "./coach-bubble.js",
   "./immersive.css",
   "./immersive-youtube.css",
   "./youtube-egitim.css",
+  "./youtube-pratik.css",
+  "./youtube-pratik-youglish.css",
   "./immersive-video.css",
   "./dh-ortam-fon.js",
   "./ai-response-cache.js",
