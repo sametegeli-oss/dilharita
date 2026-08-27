@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=26">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=27">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -65,9 +65,9 @@
 
    <nav class="yt-modebar" aria-label="Çalışma biçimi">
     <div class="yt-mode-switch" role="tablist">
-     <button class="is-active yt-pro-button" data-study-mode="watch" type="button" role="tab" aria-selected="true" data-tooltip="Videoyu çift altyazıyla izleyip cümleleri çalışın"><span>▶</span><b>İzle &amp; Dinle</b><small>Çift altyazıyla keşfet</small></button>
-     <button class="yt-pro-button" data-study-mode="shadow" type="button" role="tab" aria-selected="false" data-tooltip="Videoyu sessiz döndürüp sesinizi kaydedin ve karşılaştırın"><span>🎙</span><b>Shadowing</b><small>Dinle, kaydet, karşılaştır</small></button>
-     <button class="yt-pro-button" data-study-mode="dictation" type="button" role="tab" aria-selected="false" data-tooltip="Cümleyi dinleyip duyduğunuz İngilizceyi yazın"><span>⌨</span><b>Dikte</b><small>Dinle ve duyduğunu yaz</small></button>
+     <button class="is-active yt-pro-button yt-mode-icon" data-study-mode="watch" type="button" role="tab" aria-selected="true" aria-label="İzle ve Dinle" data-tooltip="İzle ve Dinle · Videoyu çift altyazıyla çalış"><span aria-hidden="true">▶</span><b>İzle &amp; Dinle</b><small>Çift altyazıyla keşfet</small></button>
+     <button class="yt-pro-button yt-mode-icon" data-study-mode="shadow" type="button" role="tab" aria-selected="false" aria-label="Shadowing" data-tooltip="Shadowing · Sessiz görüntüyle sesini kaydet ve karşılaştır"><span aria-hidden="true">♬</span><b>Shadowing</b><small>Dinle, kaydet, karşılaştır</small></button>
+     <button class="yt-pro-button yt-mode-icon" data-study-mode="dictation" type="button" role="tab" aria-selected="false" aria-label="Dikte" data-tooltip="Dikte · Cümleyi dinle ve duyduğun İngilizceyi yaz"><span aria-hidden="true">⌨</span><b>Dikte</b><small>Dinle ve duyduğunu yaz</small></button>
     </div>
     <div class="yt-mode-tools">
      <div class="yt-audio-source" role="group" aria-label="Video ses kaynağı">
@@ -184,8 +184,8 @@
       <p class="yt-learning-tr" id="learningTR" lang="tr"></p>
       <div class="yt-word-action" id="wordActionBar" hidden><span>Seçilen kelime: <b id="selectedWord"></b></span><button id="saveSelectedWord" type="button">＋ Kelime defterine ekle</button><button id="explainSelectedWord" type="button">✦ Bağlamda açıkla</button></div>
       <div class="yt-learning-actions">
-       <button id="markLearned" class="yt-pro-button" type="button" data-tooltip="Cümleyi öğrenildi olarak işaretle veya işareti kaldır">✓ Öğrendim</button>
-       <button id="markHard" class="yt-pro-button" type="button" data-tooltip="Cümleyi daha sonra yeniden çalışmak üzere tekrar listesine ekle">↺ Tekrar listeme ekle</button>
+       <button id="markLearned" class="yt-pro-button yt-status-icon" type="button" aria-label="Öğrendim" data-tooltip="Öğrendim · Cümleyi öğrenildi olarak işaretle veya kaldır"><span aria-hidden="true">✓</span><b>Öğrendim</b></button>
+       <button id="markHard" class="yt-pro-button yt-status-icon" type="button" aria-label="Tekrar listeme ekle" data-tooltip="Tekrar listesi · Cümleyi daha sonra yeniden çalış"><span aria-hidden="true">↺</span><b>Tekrar listeme ekle</b></button>
       </div>
       <div class="yt-practice-box" id="practiceBox" hidden></div>
      </section>
@@ -286,6 +286,6 @@
  <script src="./word-popup.js?v=11"></script>
  <script src="./immersive-youtube-study.js?v=16"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./youtube-egitim.js?v=34"></script>
+ <script src="./youtube-egitim.js?v=35"></script>
 </body>
 </html>
