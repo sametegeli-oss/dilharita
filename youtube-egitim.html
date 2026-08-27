@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=23">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=25">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -111,7 +111,7 @@
      </div>
 
      <section class="yt-learning-card" id="learningCard">
-      <div class="yt-learning-head"><span id="activeIndex">CÜMLE 1</span><div><button id="syncSentence" class="yt-icon-action" type="button" aria-label="YouTube zamanına git" title="Bu cümleyi YouTube transkript zamanında aç"><span aria-hidden="true">▶⏱</span></button><button id="favoriteSentence" class="yt-icon-action" type="button" aria-label="Favoriye ekle" title="Favoriye ekle"><span aria-hidden="true">♡</span></button><button id="editSentence" class="yt-icon-action" type="button" aria-label="Cümleyi düzenle" title="Cümleyi düzenle"><span aria-hidden="true">✎</span></button><button id="splitSentence" class="yt-icon-action" type="button" aria-label="Cümleyi ikiye böl" title="Cümleyi ikiye böl"><span aria-hidden="true">✂</span></button><button id="undoSplit" class="yt-icon-action" type="button" aria-label="Bölmeyi geri al" title="Bölmeyi geri al" hidden><span aria-hidden="true">↶</span></button><button id="askGemini" class="yt-icon-action" type="button" aria-label="Gemini’ye sor" title="Gemini’ye sor"><span aria-hidden="true">✦</span></button></div></div>
+      <div class="yt-learning-head"><span id="activeIndex">CÜMLE 1</span><button class="yt-practice-menu-toggle" id="practiceActionsToggle" type="button" aria-expanded="false" aria-label="Cümle işlemlerini göster" title="Cümle işlemleri">⋯</button><div class="yt-sentence-actions"><button id="syncSentence" class="yt-icon-action" type="button" aria-label="YouTube zamanına git" title="Bu cümleyi YouTube transkript zamanında aç"><span aria-hidden="true">▶⏱</span></button><button id="favoriteSentence" class="yt-icon-action" type="button" aria-label="Favoriye ekle" title="Favoriye ekle"><span aria-hidden="true">♡</span></button><button id="editSentence" class="yt-icon-action" type="button" aria-label="Cümleyi düzenle" title="Cümleyi düzenle"><span aria-hidden="true">✎</span></button><button id="splitSentence" class="yt-icon-action" type="button" aria-label="Cümleyi ikiye böl" title="Cümleyi ikiye böl"><span aria-hidden="true">✂</span></button><button id="undoSplit" class="yt-icon-action" type="button" aria-label="Bölmeyi geri al" title="Bölmeyi geri al" hidden><span aria-hidden="true">↶</span></button><button id="askGemini" class="yt-icon-action" type="button" aria-label="Gemini’ye sor" title="Gemini’ye sor"><span aria-hidden="true">✦</span></button></div></div>
 
       <button class="yt-advanced-toggle" id="advancedToolsToggle" type="button" aria-expanded="false"><span aria-hidden="true">⏱</span><b>Cümleyi düzenle</b><i aria-hidden="true">⌄</i></button>
       
@@ -186,8 +186,6 @@
       <div class="yt-learning-actions">
        <button id="markLearned" type="button">✓ Öğrendim</button>
        <button id="markHard" type="button">↺ Tekrar listeme ekle</button>
-       <button id="startShadowing" type="button">🎙 Shadowing yap</button>
-       <button id="startDictation" type="button">⌨ Duyduğunu yaz</button>
       </div>
       <div class="yt-practice-box" id="practiceBox" hidden></div>
      </section>
@@ -288,6 +286,6 @@
  <script src="./word-popup.js?v=11"></script>
  <script src="./immersive-youtube-study.js?v=16"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./youtube-egitim.js?v=31"></script>
+ <script src="./youtube-egitim.js?v=33"></script>
 </body>
 </html>
