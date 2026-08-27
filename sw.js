@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v180";  /* v180: YouTube pratiğine resmî YouGlish gerçek kullanım katmanı eklendi */
+var SW_VERSION = "dh-sw-v181";  /* v181: YouGlish aramaları tam cümle yerine üretken konuşma kalıbını kullanır */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
