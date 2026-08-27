@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=28">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=29">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -96,7 +96,15 @@
        <p class="yt-caption-en" id="captionEN" lang="en"></p>
        <p class="yt-caption-tr" id="captionTR" lang="tr"></p>
       </div>
-      <div class="yt-player-loading" id="playerLoading"><span class="yt-spinner"></span><b>Video hazırlanıyor…</b></div>
+     <div class="yt-player-loading" id="playerLoading"><span class="yt-spinner"></span><b>Video hazırlanıyor…</b></div>
+      <section class="yt-youglish-stage" id="sentenceYouglish" hidden aria-label="YouGlish gerçek kullanım örnekleri">
+       <header><div><span>GERÇEK KULLANIM · YOUGLISH</span><b id="sentenceYouglishTitle">Aktif cümle için kalıp seç</b></div><button id="closeSentenceYouglish" type="button" aria-label="YouGlish'i kapat">×</button></header>
+       <form id="sentenceYouglishSearch"><input id="sentenceYouglishQuery" type="text" maxlength="90" autocomplete="off"><button type="submit">Ara</button></form>
+       <div class="yt-youglish-chips" id="sentenceYouglishChips"></div>
+       <div class="yt-youglish-status" id="sentenceYouglishStatus">Bir kalıp seçin.</div>
+       <div class="yt-youglish-widget" id="sentenceYouglishWidget"></div>
+       <footer><button id="sentenceYouglishPrevious" type="button" disabled>← Önceki örnek</button><span id="sentenceYouglishPosition">0 / 0</span><button id="sentenceYouglishNext" type="button" disabled>Sonraki örnek →</button><a id="sentenceYouglishExternal" href="https://youglish.com/" target="_blank" rel="noopener">YouGlish'te aç ↗</a></footer>
+      </section>
      </div>
 
      <div class="yt-timeline"><div id="timelineFill"></div><button id="timelineThumb" type="button" aria-label="Video ilerlemesi"></button></div>
@@ -112,7 +120,7 @@
      </div>
 
      <section class="yt-learning-card" id="learningCard">
-      <div class="yt-learning-head"><span id="activeIndex">CÜMLE 1</span><button class="yt-practice-menu-toggle yt-pro-button" id="practiceActionsToggle" type="button" aria-expanded="false" aria-label="Cümle işlemlerini göster" data-tooltip="Cümle işlemlerini göster veya gizle">⋯</button><div class="yt-sentence-actions"><button id="syncSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="YouTube zamanına git" data-tooltip="Cümleyi YouTube’daki başlangıç zamanında oynat"><span aria-hidden="true">▶⏱</span></button><button id="favoriteSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Favoriye ekle" data-tooltip="Cümleyi favorilere ekle veya çıkar"><span aria-hidden="true">♡</span></button><button id="editSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Cümleyi düzenle" data-tooltip="Cümle metnini ve zamanlarını düzenle"><span aria-hidden="true">✎</span></button><button id="splitSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Cümleyi ikiye böl" data-tooltip="Cümleyi seçtiğiniz noktadan ikiye böl"><span aria-hidden="true">✂</span></button><button id="undoSplit" class="yt-icon-action yt-pro-button" type="button" aria-label="Bölmeyi geri al" data-tooltip="Son cümle bölme işlemini geri al" hidden><span aria-hidden="true">↶</span></button><button id="askGemini" class="yt-icon-action yt-pro-button" type="button" aria-label="Gemini’ye sor" data-tooltip="Aktif cümle hakkında Gemini’ye soru sor"><span aria-hidden="true">✦</span></button></div></div>
+      <div class="yt-learning-head"><span id="activeIndex">CÜMLE 1</span><button class="yt-practice-menu-toggle yt-pro-button" id="practiceActionsToggle" type="button" aria-expanded="false" aria-label="Cümle işlemlerini göster" data-tooltip="Cümle işlemlerini göster veya gizle">⋯</button><div class="yt-sentence-actions"><button id="syncSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="YouTube zamanına git" data-tooltip="Cümleyi YouTube’daki başlangıç zamanında oynat"><span aria-hidden="true">▶⏱</span></button><button id="favoriteSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Favoriye ekle" data-tooltip="Cümleyi favorilere ekle veya çıkar"><span aria-hidden="true">♡</span></button><button id="editSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Cümleyi düzenle" data-tooltip="Cümle metnini ve zamanlarını düzenle"><span aria-hidden="true">✎</span></button><button id="splitSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Cümleyi ikiye böl" data-tooltip="Cümleyi seçtiğiniz noktadan ikiye böl"><span aria-hidden="true">✂</span></button><button id="undoSplit" class="yt-icon-action yt-pro-button" type="button" aria-label="Bölmeyi geri al" data-tooltip="Son cümle bölme işlemini geri al" hidden><span aria-hidden="true">↶</span></button><button id="askGemini" class="yt-icon-action yt-pro-button" type="button" aria-label="Gemini’ye sor" data-tooltip="Aktif cümle hakkında Gemini’ye soru sor"><span aria-hidden="true">✦</span></button><button id="openSentenceYouglish" class="yt-icon-action yt-pro-button" type="button" aria-label="YouGlish gerçek kullanımları" data-tooltip="Aktif cümleyi farklı gerçek videolarda dinle"><span aria-hidden="true">Y</span></button><button id="createPracticeModule" class="yt-icon-action yt-pro-button" type="button" aria-label="Çalışma modülü oluştur" data-tooltip="Bu cümleden görüntü temelli çalışma modülü oluştur"><span aria-hidden="true">◈</span></button></div></div>
 
       <button class="yt-advanced-toggle" id="advancedToolsToggle" type="button" aria-expanded="false"><span aria-hidden="true">⏱</span><b>Cümleyi düzenle</b><i aria-hidden="true">⌄</i></button>
       
@@ -287,6 +295,6 @@
  <script src="./word-popup.js?v=11"></script>
  <script src="./immersive-youtube-study.js?v=16"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./youtube-egitim.js?v=36"></script>
+ <script src="./youtube-egitim.js?v=37"></script>
 </body>
 </html>
