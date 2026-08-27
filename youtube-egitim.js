@@ -482,8 +482,26 @@ function bindTimelineAligner(){
 }
 
 function initThreeColumnLayout(){var rail=$("controlRail"),mode=document.querySelector(".yt-modebar"),card=$("learningCard");if(!rail)return;if(mode&&mode.parentNode!==rail)rail.appendChild(mode);if(card&&card.parentNode!==rail)rail.appendChild(card)}
+function initCompactWorkspace(){
+ var workspace=document.querySelector(".yt-workspace"),mode=document.querySelector(".yt-modebar"),card=$("learningCard");if(!workspace)return;
+ var key="dh-youtube-workspace-v1",state={control:true,video:true,transcript:true,tools:true,advanced:false};
+ try{var saved=JSON.parse(localStorage.getItem(key)||"null");if(saved)Object.keys(state).forEach(function(k){if(typeof saved[k]==="boolean")state[k]=saved[k]})}catch(e){}
+ function save(){try{localStorage.setItem(key,JSON.stringify(state))}catch(e){}}
+ function render(){
+  workspace.classList.toggle("is-control-closed",!state.control);workspace.classList.toggle("is-video-closed",!state.video);workspace.classList.toggle("is-transcript-closed",!state.transcript);
+  [["toggleControlPanel","control"],["toggleVideoPanel","video"],["toggleTranscriptPanel","transcript"]].forEach(function(pair){var b=$(pair[0]),on=state[pair[1]];if(b){b.classList.toggle("is-active",on);b.setAttribute("aria-pressed",String(on))}});
+  if(mode){mode.classList.toggle("is-tools-collapsed",!state.tools);var mt=$("modeToolsToggle");if(mt)mt.setAttribute("aria-expanded",String(state.tools))}
+  if(card){card.classList.toggle("is-advanced-open",state.advanced);var at=$("advancedToolsToggle");if(at)at.setAttribute("aria-expanded",String(state.advanced))}
+ }
+ function toggle(name){var openCount=[state.control,state.video,state.transcript].filter(Boolean).length;if(state[name]&&openCount===1)return;state[name]=!state[name];save();render()}
+ if($("toggleControlPanel"))$("toggleControlPanel").onclick=function(){toggle("control")};if($("toggleVideoPanel"))$("toggleVideoPanel").onclick=function(){toggle("video")};if($("toggleTranscriptPanel"))$("toggleTranscriptPanel").onclick=function(){toggle("transcript")};
+ if($("resetPanelLayout"))$("resetPanelLayout").onclick=function(){state.control=state.video=state.transcript=true;save();render()};
+ if($("modeToolsToggle"))$("modeToolsToggle").onclick=function(){state.tools=!state.tools;save();render()};if($("advancedToolsToggle"))$("advancedToolsToggle").onclick=function(){state.advanced=!state.advanced;save();render()};
+ render();
+}
 function bind(){
  initThreeColumnLayout();
+ initCompactWorkspace();
  $("translateTranscript").onclick=function(){if(!study)return;var force=translationRows(study,false).length===0;translateStudyWithGemini(study,force).then(function(){return backupYouTubeNow()}).catch(function(e){setTranslationMessage(e&&e.code==="abort"?"Çeviri bekliyor":"Çeviri hatası · yeniden dene",false)})};
  $("pasteTranscriptOpen").onclick=function(){openTranscriptPaste()};$("transcriptPasteForm").onsubmit=function(e){e.preventDefault();usePastedTranscript()};Array.prototype.forEach.call(document.querySelectorAll("[data-close-transcript-paste]"),function(b){b.onclick=closeTranscriptPaste});$("transcriptPasteModal").onclick=function(e){if(e.target===this)closeTranscriptPaste()};
  Array.prototype.forEach.call(document.querySelectorAll("[data-study-mode]"),function(b){b.onclick=function(){setStudyMode(b.getAttribute("data-study-mode"))}});

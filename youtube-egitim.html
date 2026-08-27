@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=21">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=22">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -56,6 +56,13 @@
    <div class="yt-head-progress"><span id="masteryLabel">0 / 0 öğrenildi</span><div><i id="masteryBar"></i></div></div>
    </header>
 
+   <div class="yt-layout-dock" role="toolbar" aria-label="Çalışma alanlarını göster veya gizle">
+    <button id="toggleControlPanel" class="is-active" type="button" aria-pressed="true" title="Çalışma panelini göster veya gizle"><span aria-hidden="true">☰</span><b>Çalışma</b></button>
+    <button id="toggleVideoPanel" class="is-active" type="button" aria-pressed="true" title="Video panelini göster veya gizle"><span aria-hidden="true">▶</span><b>Video</b></button>
+    <button id="toggleTranscriptPanel" class="is-active" type="button" aria-pressed="true" title="Transkript panelini göster veya gizle"><span aria-hidden="true">文</span><b>Transkript</b></button>
+    <button id="resetPanelLayout" type="button" title="Üç paneli de aç"><span aria-hidden="true">↺</span><b>Standart</b></button>
+   </div>
+
    <nav class="yt-modebar" aria-label="Çalışma biçimi">
     <div class="yt-mode-switch" role="tablist">
      <button class="is-active" data-study-mode="watch" type="button" role="tab" aria-selected="true"><span>▶</span><b>İzle &amp; Dinle</b><small>Çift altyazıyla keşfet</small></button>
@@ -76,6 +83,7 @@
      <input id="subtitleFile" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip" hidden>
      <button id="exportOpen" type="button">⇩ <span>Dışa aktar</span></button>
     </div>
+    <button class="yt-tools-toggle" id="modeToolsToggle" type="button" aria-expanded="true" title="Çalışma araçlarını aç veya kapat"><span aria-hidden="true">⚙</span><b>Araçlar</b><i aria-hidden="true">⌃</i></button>
    </nav>
 
    <div class="yt-workspace">
@@ -103,7 +111,9 @@
      </div>
 
      <section class="yt-learning-card" id="learningCard">
-      <div class="yt-learning-head"><span id="activeIndex">CÜMLE 1</span><div><button id="syncSentence" type="button" title="Bu cümleyi YouTube transkript zamanında aç">▶ YouTube zamanı</button><button id="favoriteSentence" type="button" aria-label="Favoriye ekle">♡</button><button id="editSentence" type="button">✎ Düzenle</button><button id="splitSentence" type="button">✂ İkiye böl</button><button id="undoSplit" type="button" hidden>↶ Bölmeyi geri al</button><button id="askGemini" type="button">✦ Gemini’ye sor</button></div></div>
+      <div class="yt-learning-head"><span id="activeIndex">CÜMLE 1</span><div><button id="syncSentence" class="yt-icon-action" type="button" aria-label="YouTube zamanına git" title="Bu cümleyi YouTube transkript zamanında aç"><span aria-hidden="true">▶⏱</span></button><button id="favoriteSentence" class="yt-icon-action" type="button" aria-label="Favoriye ekle" title="Favoriye ekle"><span aria-hidden="true">♡</span></button><button id="editSentence" class="yt-icon-action" type="button" aria-label="Cümleyi düzenle" title="Cümleyi düzenle"><span aria-hidden="true">✎</span></button><button id="splitSentence" class="yt-icon-action" type="button" aria-label="Cümleyi ikiye böl" title="Cümleyi ikiye böl"><span aria-hidden="true">✂</span></button><button id="undoSplit" class="yt-icon-action" type="button" aria-label="Bölmeyi geri al" title="Bölmeyi geri al" hidden><span aria-hidden="true">↶</span></button><button id="askGemini" class="yt-icon-action" type="button" aria-label="Gemini’ye sor" title="Gemini’ye sor"><span aria-hidden="true">✦</span></button></div></div>
+
+      <button class="yt-advanced-toggle" id="advancedToolsToggle" type="button" aria-expanded="false"><span aria-hidden="true">⏱</span><b>Cümleyi düzenle</b><i aria-hidden="true">⌄</i></button>
       
       <!-- Cümle Uzunluğu ve Kolay Uzatma/Kısaltma Butonları İçeren Zaman Paneli -->
       <div class="yt-timeline-aligner" id="timelineAligner">
@@ -126,37 +136,37 @@
         <div class="yt-align-trim-col">
          <small>Başlangıç (Ön Kısım)</small>
          <div class="yt-align-btn-group">
-          <button type="button" id="alignStartEarlier" title="Başlangıcı 0.2 sn geriye çek (Cümleyi baştan uzat)">◀ Uzat (-0.2s)</button>
-          <button type="button" id="alignStartLater" title="Başlangıcı 0.2 sn ileri al (Cümleyi baştan kırp)">Kısalt (+0.2s) ▶</button>
+          <button type="button" id="alignStartEarlier" aria-label="Başlangıcı uzat" title="Başlangıcı 0.2 sn geriye çek (Cümleyi baştan uzat)">−</button>
+          <button type="button" id="alignStartLater" aria-label="Başlangıcı kısalt" title="Başlangıcı 0.2 sn ileri al (Cümleyi baştan kırp)">＋</button>
          </div>
         </div>
 
         <div class="yt-align-trim-col">
          <small>Bitiş (Arka Kısım)</small>
          <div class="yt-align-btn-group">
-          <button type="button" id="alignEndEarlier" title="Bitişi 0.2 sn geriye çek (Cümleyi sondan kısalt)">◀ Kısalt (-0.2s)</button>
-          <button type="button" id="alignEndLater" title="Bitişi 0.2 sn ileriye uzat (Cümleyi sondan uzat)">Uzat (+0.2s) ▶</button>
+          <button type="button" id="alignEndEarlier" aria-label="Bitişi kısalt" title="Bitişi 0.2 sn geriye çek (Cümleyi sondan kısalt)">−</button>
+          <button type="button" id="alignEndLater" aria-label="Bitişi uzat" title="Bitişi 0.2 sn ileriye uzat (Cümleyi sondan uzat)">＋</button>
          </div>
         </div>
 
         <div class="yt-align-trim-col yt-align-shift-col">
          <small>Konumu Kaydır (Blok)</small>
          <div class="yt-align-btn-group">
-          <button type="button" id="alignNudgeLeft" title="Tüm cümleyi 0.5 sn geriye kaydır">◀ -0.5s</button>
-          <button type="button" id="alignNudgeRight" title="Tüm cümleyi 0.5 sn ileriye kaydır">+0.5s ▶</button>
+          <button type="button" id="alignNudgeLeft" aria-label="Cümleyi sola kaydır" title="Tüm cümleyi 0.5 sn geriye kaydır">←</button>
+          <button type="button" id="alignNudgeRight" aria-label="Cümleyi sağa kaydır" title="Tüm cümleyi 0.5 sn ileriye kaydır">→</button>
          </div>
         </div>
        </div>
 
        <div class="yt-aligner-info">
         <div class="yt-align-actions-left">
-         <button type="button" class="yt-align-btn" id="alignSetCurrentStart" title="Başlangıcı şu anki video saniyesine getir">📍 Başlangıcı Şu An Yap</button>
-         <button type="button" class="yt-align-btn yt-align-test" id="alignTestPlay">▶ Dinle</button>
+         <button type="button" class="yt-align-btn" id="alignSetCurrentStart" title="Başlangıcı şu anki video saniyesine getir">📍 <span>Burayı seç</span></button>
+         <button type="button" class="yt-align-btn yt-align-test" id="alignTestPlay" title="Düzenlenen aralığı dinle">▶ <span>Dinle</span></button>
         </div>
         <div class="yt-align-actions-right">
          <span class="yt-align-times" id="alignTimesText">00:00.0 → 00:00.0</span>
-         <button type="button" class="yt-align-btn yt-align-reset" id="alignResetBtn">↺ Sıfırla</button>
-         <button type="button" class="yt-align-btn yt-align-save" id="alignSaveBtn">✓ Zamanı Kaydet</button>
+         <button type="button" class="yt-align-btn yt-align-reset" id="alignResetBtn" title="Zaman değişikliklerini sıfırla">↺ <span>Sıfırla</span></button>
+         <button type="button" class="yt-align-btn yt-align-save" id="alignSaveBtn" title="Yeni zamanları kaydet">✓ <span>Kaydet</span></button>
         </div>
        </div>
 
@@ -278,6 +288,6 @@
  <script src="./word-popup.js?v=11"></script>
  <script src="./immersive-youtube-study.js?v=16"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./youtube-egitim.js?v=29"></script>
+ <script src="./youtube-egitim.js?v=30"></script>
 </body>
 </html>

@@ -126,6 +126,7 @@ body.yt-mode-shadow .yt-learning-card{border-color:rgba(255,202,99,.28)}body.yt-
 @media(max-width:680px){.yt-split-modal{padding:16px}.yt-split-preview{grid-template-columns:1fr}.yt-split-time>header{align-items:center}.yt-split-time button{flex:1 1 calc(50% - 7px)}.yt-split-modal footer{position:sticky;bottom:-16px;padding:10px 0 0;background:#0c192a}.yt-learning-head #splitSentence:before{content:"✂";font-size:14px}.yt-learning-head #undoSplit:before{content:"↶";font-size:14px}.yt-learning-head #splitSentence,.yt-learning-head #undoSplit{font-size:0}}
 
 /* Onaylı üç sütun: solda çiftli kontrol rayı, ortada video, sağda transkript. */
+.yt-layout-dock{max-width:1760px;margin:0 auto 8px;display:flex;justify-content:flex-end;gap:6px}.yt-layout-dock button,.yt-tools-toggle,.yt-advanced-toggle{min-height:34px;border:1px solid var(--yt-line);border-radius:10px;background:rgba(9,20,34,.9);color:#9eb0c7;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 10px;font:800 10px/1 inherit;cursor:pointer}.yt-layout-dock button:hover,.yt-layout-dock button.is-active,.yt-tools-toggle:hover,.yt-advanced-toggle:hover{border-color:rgba(85,230,209,.42);color:var(--yt-cyan);background:rgba(85,230,209,.08)}.yt-layout-dock button:focus-visible,.yt-icon-action:focus-visible,.yt-tools-toggle:focus-visible,.yt-advanced-toggle:focus-visible{outline:2px solid var(--yt-gold);outline-offset:2px}.yt-layout-dock button span{font-size:13px}.yt-layout-dock button:last-child{margin-left:4px}.yt-tools-toggle{width:100%;margin-top:7px}.yt-tools-toggle i,.yt-advanced-toggle i{margin-left:auto;font-style:normal}.yt-modebar.is-tools-collapsed .yt-mode-tools{display:none}.yt-modebar.is-tools-collapsed .yt-tools-toggle i{transform:rotate(180deg)}.yt-icon-action{width:34px!important;min-width:34px!important;height:34px;padding:0!important;font-size:15px!important}.yt-advanced-toggle{width:100%;order:4;margin:2px 0 8px}.yt-learning-card:not(.is-advanced-open) .yt-timeline-aligner{display:none}.yt-learning-card.is-advanced-open .yt-advanced-toggle i{transform:rotate(180deg)}
 .yt-control-rail{min-width:0}.yt-control-rail .yt-modebar{margin:0}.yt-control-rail .yt-learning-card{margin-top:10px}
 @media(min-width:1051px){
  .yt-workspace{grid-template-columns:minmax(270px,.82fr) minmax(480px,1.65fr) minmax(340px,.95fr);gap:12px;align-items:start}
@@ -136,24 +137,25 @@ body.yt-mode-shadow .yt-learning-card{border-color:rgba(255,202,99,.28)}body.yt-
  .yt-control-rail .yt-mode-switch button:last-child:nth-child(odd){grid-column:1/-1}
  .yt-control-rail .yt-mode-tools{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:6px;overflow:visible}
  .yt-control-rail .yt-mode-tools>button{width:100%;min-width:0;height:38px;padding:0 7px}
+ .yt-control-rail .yt-mode-tools>button span{display:none}.yt-control-rail .yt-mode-tools>button{font-size:14px}.yt-control-rail .yt-mode-tools>button:hover span,.yt-control-rail .yt-mode-tools>button:focus-visible span{display:inline;font-size:10px}
  .yt-control-rail .yt-audio-source{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr)}
  .yt-control-rail .yt-audio-source button{min-width:0;padding:0 5px}
  .yt-control-rail .yt-learning-card{display:flex;flex-direction:column;padding:14px;border-radius:16px}
  .yt-control-rail .yt-learning-head{order:1;display:grid;gap:8px;align-items:stretch}
- .yt-control-rail .yt-learning-head>div{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+ .yt-control-rail .yt-learning-head>div{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-start}
  .yt-control-rail .yt-learning-head button{width:100%;min-width:0;padding:8px 6px}
  .yt-control-rail .yt-learning-en{order:2;margin:12px 0 5px;font-size:20px}
  .yt-control-rail .yt-learning-tr{order:3;margin:0 0 12px;font-size:13px}
- .yt-control-rail .yt-timeline-aligner{order:4;margin:0}
+ .yt-control-rail .yt-timeline-aligner{order:5;margin:0}
  .yt-control-rail .yt-align-controls-grid{grid-template-columns:1fr;gap:8px}
  .yt-control-rail .yt-align-btn-group{display:grid;grid-template-columns:1fr 1fr;gap:5px}
  .yt-control-rail .yt-align-btn-group button{min-width:0;padding:7px 4px;font-size:10px}
  .yt-control-rail .yt-aligner-info{display:grid;grid-template-columns:1fr;gap:7px}
  .yt-control-rail .yt-align-actions-left,.yt-control-rail .yt-align-actions-right{display:grid;grid-template-columns:1fr 1fr;gap:5px}
  .yt-control-rail .yt-align-times{grid-column:1/-1;text-align:center}
- .yt-control-rail .yt-word-action{order:5}.yt-control-rail .yt-learning-actions{order:6;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+ .yt-control-rail .yt-word-action{order:6}.yt-control-rail .yt-learning-actions{order:7;display:grid;grid-template-columns:1fr 1fr;gap:6px}
  .yt-control-rail .yt-learning-actions button{min-width:0;padding:8px 5px}
- .yt-control-rail .yt-practice-box{order:7}
+ .yt-control-rail .yt-practice-box{order:8}
  .yt-stage-column{min-width:0}
  .yt-stage-column .yt-player-card{position:sticky;top:94px;z-index:20;width:100%}
  .yt-transcript-panel{height:calc(100dvh - 112px);min-height:0;top:94px}
@@ -162,7 +164,9 @@ body.yt-mode-shadow .yt-learning-card{border-color:rgba(255,202,99,.28)}body.yt-
  body.yt-focus .yt-control-rail .yt-learning-card{display:flex}
  body.yt-focus .yt-stage-column .yt-player-card{top:14px}
  body.yt-focus .yt-transcript-panel{top:14px;height:calc(100dvh - 28px)}
+ .yt-workspace.is-control-closed{grid-template-columns:minmax(480px,1.65fr) minmax(340px,.95fr)}.yt-workspace.is-video-closed{grid-template-columns:minmax(300px,.9fr) minmax(420px,1.3fr)}.yt-workspace.is-transcript-closed{grid-template-columns:minmax(300px,.75fr) minmax(520px,2fr)}.yt-workspace.is-control-closed.is-video-closed,.yt-workspace.is-control-closed.is-transcript-closed,.yt-workspace.is-video-closed.is-transcript-closed{grid-template-columns:minmax(0,1fr)}
 }
+.yt-workspace.is-control-closed .yt-control-rail,.yt-workspace.is-video-closed .yt-stage-column,.yt-workspace.is-transcript-closed .yt-transcript-panel{display:none!important}
 
 @media(max-width:1050px) and (orientation:portrait){
  .yt-workspace{display:flex;flex-direction:column;gap:8px}
@@ -173,6 +177,8 @@ body.yt-mode-shadow .yt-learning-card{border-color:rgba(255,202,99,.28)}body.yt-
  .yt-control-rail .yt-modebar{margin:0 0 8px}
  .yt-control-rail .yt-learning-card{margin:0}
 }
+
+@media(max-width:680px){.yt-layout-dock{position:sticky;top:6px;z-index:60;justify-content:center;padding:4px;border-radius:12px;background:rgba(5,14,25,.92);backdrop-filter:blur(10px)}.yt-layout-dock button{min-width:42px;min-height:42px;padding:0 9px}.yt-layout-dock button b{display:none}.yt-layout-dock button:last-child{margin-left:0}.yt-icon-action{width:42px!important;height:42px}.yt-control-rail .yt-mode-switch small{display:none}}
 
 @media(max-width:1050px) and (orientation:landscape){
  .yt-workspace{display:grid;grid-template-columns:minmax(150px,.66fr) minmax(260px,1.55fr) minmax(190px,.9fr);gap:7px;height:100%;overflow:hidden}
