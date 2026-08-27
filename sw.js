@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v190";  /* v190: Eğitim stüdyosundan seçili cümleyle çalışma modülü açma */
+var SW_VERSION = "dh-sw-v192";  /* v192: Kaynak YouTube düğmesini Resim/Video seçicisinin yanına yerleştirme */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

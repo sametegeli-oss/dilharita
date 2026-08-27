@@ -32,6 +32,11 @@
     +".dh-pdf-btn:hover{background:linear-gradient(135deg,#047857,#059669)}"
     +".dh-pdf-all-btn{background:linear-gradient(135deg,#d97706,#f59e0b);border-color:#fbbf24;color:#fff}"
     +".dh-pdf-all-btn:hover{background:linear-gradient(135deg,#b45309,#d97706)}"
+    +".dh-youtube-source-btn{background:linear-gradient(135deg,#dc2626,#b91c1c)!important;border-color:#f87171!important;color:#fff!important}"
+    +".dh-youtube-source-btn:hover{background:linear-gradient(135deg,#ef4444,#dc2626)!important}"
+    +".dh-source-media-row{display:flex;align-items:stretch;gap:8px;min-width:0}"
+    +".dh-source-media-row #dhModeToggle{flex:1;min-width:0;margin:0!important}"
+    +".dh-source-media-row .dh-youtube-source-btn{flex:0 0 auto;padding:7px 13px;border-radius:11px;font:900 12px Nunito,system-ui,sans-serif;cursor:pointer}"
     /* bütün cümle açıklamaları hazır modül kartı */
     +".dh-ai-ready-module-card{background:linear-gradient(135deg,rgba(6,78,59,.96),rgba(13,60,78,.96)) !important;border-color:#34d399 !important;box-shadow:0 0 0 1px rgba(52,211,153,.25),0 10px 28px rgba(5,150,105,.18) !important;position:relative}"
     +".dh-ai-ready-badge{display:inline-flex;align-items:center;align-self:flex-start;margin-top:5px;padding:3px 8px;border-radius:999px;background:#10b981;color:#03261c;font:900 10px Nunito,system-ui,sans-serif;line-height:1.35;pointer-events:none}"
@@ -113,6 +118,33 @@
     var bs=root.querySelectorAll("button,a");
     for(var i=0;i<bs.length;i++) if((bs[i].textContent||"").toLocaleLowerCase("tr").indexOf(t)>=0) return bs[i];
     return null;
+  }
+
+  function youtubeSourceForCard(c){
+    if(!c||!window.DHModul)return null;
+    var en=c.querySelector(".card-en"),text=(en&&en.textContent||"").trim().toLocaleLowerCase("en");
+    if(!text)return null;
+    try{
+      var list=DHModul.liste();
+      for(var i=0;i<list.length;i++){
+        var rows=DHModul.getir(list[i].id)||[];
+        for(var j=0;j<rows.length;j++){
+          var r=rows[j];
+          if(r&&r.videoId&&String(r.en||"").trim().toLocaleLowerCase("en")===text)return r;
+        }
+      }
+    }catch(e){}
+    return null;
+  }
+
+  function ensureYoutubeSourceButton(c){
+    var toggle=c&&c.querySelector("#dhModeToggle");
+    if(!toggle)return;
+    var wrap=c.querySelector(".dh-source-media-row");
+    if(!wrap){wrap=document.createElement("div");wrap.className="dh-source-media-row";toggle.parentElement.insertBefore(wrap,toggle);wrap.appendChild(toggle);}
+    var button=wrap.querySelector(".dh-youtube-source-btn");
+    if(!button){button=document.createElement("button");button.type="button";button.className="dh-youtube-source-btn";button.textContent="▶ YouTube video";button.onclick=function(){var source=youtubeSourceForCard(card());if(!source)return;location.href="./youtube-egitim.html?video="+encodeURIComponent(source.videoId)+"&sentence="+encodeURIComponent(source.videoSentenceIndex||0)+"&t="+encodeURIComponent(source.videoStartSeconds||0);};wrap.appendChild(button);}
+    var source=youtubeSourceForCard(c);button.hidden=!source;button.title=source?"Bu cümleyi kaynak YouTube videosunda aç":"";
   }
 
   /* 🌐 Translate + 🤖 AI'ye Sor + 📄 PDF İndir + 📚 Tümünü İndir Satırı */
@@ -290,6 +322,7 @@
         ensureNavTrio(c);
         var trio=document.getElementById("dhNavTrio");
         ensureAiRow(c, trio);
+        ensureYoutubeSourceButton(c);
         checkAndSyncAiBox(c);
       }
       ensureTools();
