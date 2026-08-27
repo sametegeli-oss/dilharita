@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v182";  /* v182: Kod tabanlı YouGlish kalıp alternatifleri kullanıcı seçimine sunulur */
+var SW_VERSION = "dh-sw-v187";  /* v187: Transkript erişilebilir details/summary seçicisine taşındı */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

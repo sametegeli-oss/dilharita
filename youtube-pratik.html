@@ -41,33 +41,42 @@
    </aside>
 
    <section class="yp-stage">
+    <nav class="yp-media-switch" aria-label="Medya kaynağı">
+     <button id="showVideo" class="is-active" type="button">▶ Video</button>
+     <button id="showYouglish" type="button">◎ YouGlish</button>
+    </nav>
     <div class="yp-player-card">
-     <div id="ytPracticePlayer" class="yp-player" aria-label="YouTube video oynatıcı"></div>
-     <div class="yp-player-fallback" id="playerFallback" hidden><b>Video uygulama içinde oynatılamıyor.</b><a id="openYouTube" target="_blank" rel="noopener">YouTube’da aç</a></div>
+     <div class="yp-media-view" id="videoView">
+      <div id="ytPracticePlayer" class="yp-player" aria-label="YouTube video oynatıcı"></div>
+      <div class="yp-player-fallback" id="playerFallback" hidden><b>Video uygulama içinde oynatılamıyor.</b><a id="openYouTube" target="_blank" rel="noopener">YouTube’da aç</a></div>
+     </div>
+     <section class="yp-media-view yp-youglish-player" id="youglishPanel" hidden aria-label="YouGlish gerçek kullanım örnekleri">
+      <div class="yp-youglish-setup">
+       <form id="youglishSearch" class="yp-youglish-search">
+        <label for="youglishQuery">Gerçek konuşmalarda aranacak kalıp</label>
+        <div><input id="youglishQuery" type="text" maxlength="90" autocomplete="off" placeholder="Örn. Could you wait"><button type="submit">Ara</button></div>
+       </form>
+       <div class="yp-youglish-suggestions" id="youglishSuggestions" aria-label="Önerilen arama kalıpları"></div>
+       <div class="yp-youglish-status" id="youglishStatus">Bir kalıp seçerek gerçek örnekleri aç.</div>
+      </div>
+      <div class="yp-youglish-widget" id="youglishWidget"></div>
+      <footer><a id="openYouglish" href="https://youglish.com/" target="_blank" rel="noopener">YouGlish’te aç ↗</a><button id="backToPractice" type="button">← Videoya dön</button></footer>
+      <button id="closeYouglish" type="button" hidden aria-label="YouGlish örneklerini kapat">×</button>
+     </section>
     </div>
     <div class="yp-player-controls">
+     <button id="previousSentence" type="button" title="Önceki cümle">← Önceki</button>
      <button id="replayClip" type="button">▶ Kesiti oynat</button>
      <button id="loopClip" type="button" aria-pressed="false">↻ Döngü</button>
      <button id="muteClip" type="button" aria-pressed="false">🔊 Ses</button>
-     <button id="youglishScenes" class="yp-youglish-trigger" type="button" aria-expanded="false">◎ Gerçek kullanımlarda gör</button>
+     <button id="nextSentenceSkip" type="button" title="Sonraki cümle">Sonraki →</button>
+     <button id="youglishScenes" type="button" hidden aria-expanded="false">YouGlish</button>
      <span id="clipTime">00:00–00:00</span>
     </div>
-
-    <section class="yp-youglish" id="youglishPanel" hidden aria-label="YouGlish gerçek kullanım örnekleri">
-     <header>
-      <div><span>GERÇEK HAYAT DESTEĞİ · YOUGLISH</span><h3>Aynı kalıbı farklı konuşmacılardan dinle</h3></div>
-      <button id="closeYouglish" type="button" aria-label="YouGlish örneklerini kapat">×</button>
-     </header>
-     <p>Arama, YouGlish’in resmî bileşeninde yapılır. Sonuçlar Dil Harita transkriptlerine veya ilerleme kayıtlarına eklenmez.</p>
-     <form id="youglishSearch" class="yp-youglish-search">
-      <label for="youglishQuery">Aranacak doğal kalıp</label>
-      <div><input id="youglishQuery" type="text" maxlength="90" autocomplete="off" placeholder="Örn. Could you wait"><button type="submit">Örnekleri getir</button></div>
-     </form>
-     <div class="yp-youglish-suggestions" id="youglishSuggestions" aria-label="Önerilen arama kalıpları"></div>
-     <div class="yp-youglish-status" id="youglishStatus">Hazır olduğunda örnekleri getir.</div>
-     <div class="yp-youglish-widget" id="youglishWidget"></div>
-     <footer><a id="openYouglish" href="https://youglish.com/" target="_blank" rel="noopener">YouGlish’te aç ↗</a><button id="backToPractice" type="button">← Ana cümleye dön</button></footer>
-    </section>
+    <details class="yp-transcript-picker" id="transcriptPicker">
+     <summary id="transcriptToggle">☷ Transkript <small>Cümle seç</small></summary>
+     <div id="transcriptList"></div>
+    </details>
 
     <article class="yp-card" id="questionCard">
      <header><span id="questionNumber">CÜMLE 0 / 0</span><b id="modeLabel">TR → EN</b></header>
@@ -86,6 +95,6 @@
  <script src="https://www.youtube.com/iframe_api"></script>
  <script src="./immersive-youtube-study.js?v=16"></script>
  <script src="./learning-error-system.js"></script>
- <script src="./youtube-pratik.js?v=5"></script>
+ <script src="./youtube-pratik.js?v=9"></script>
 </body>
 </html>
