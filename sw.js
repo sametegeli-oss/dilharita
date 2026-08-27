@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v187";  /* v187: Transkript erişilebilir details/summary seçicisine taşındı */
+var SW_VERSION = "dh-sw-v189";  /* v189: YouTube iframe tam alan ölçüsü ve YouGlish ok kontrol yerleşimi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -66,6 +66,7 @@ var SHELL = [
   "./youtube-egitim.css",
   "./youtube-pratik.css",
   "./youtube-pratik-youglish.css",
+  "./youtube-pratik-player-fix.css",
   "./immersive-video.css",
   "./dh-ortam-fon.js",
   "./ai-response-cache.js",

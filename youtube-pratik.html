@@ -8,6 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./youtube-pratik.css?v=3">
  <link rel="stylesheet" href="./youtube-pratik-youglish.css?v=1">
+ <link rel="stylesheet" href="./youtube-pratik-player-fix.css?v=1">
  <style>[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -60,7 +61,7 @@
        <div class="yp-youglish-status" id="youglishStatus">Bir kalıp seçerek gerçek örnekleri aç.</div>
       </div>
       <div class="yp-youglish-widget" id="youglishWidget"></div>
-      <footer><a id="openYouglish" href="https://youglish.com/" target="_blank" rel="noopener">YouGlish’te aç ↗</a><button id="backToPractice" type="button">← Videoya dön</button></footer>
+      <footer><button id="youglishPrevious" type="button" disabled>← Önceki örnek</button><span id="youglishPosition">0 / 0</span><button id="youglishNext" type="button" disabled>Sonraki örnek →</button><a id="openYouglish" href="https://youglish.com/" target="_blank" rel="noopener">YouGlish’te aç ↗</a><button id="backToPractice" type="button">Videoya dön</button></footer>
       <button id="closeYouglish" type="button" hidden aria-label="YouGlish örneklerini kapat">×</button>
      </section>
     </div>
@@ -95,6 +96,6 @@
  <script src="https://www.youtube.com/iframe_api"></script>
  <script src="./immersive-youtube-study.js?v=16"></script>
  <script src="./learning-error-system.js"></script>
- <script src="./youtube-pratik.js?v=9"></script>
+ <script src="./youtube-pratik.js?v=10"></script>
 </body>
 </html>
