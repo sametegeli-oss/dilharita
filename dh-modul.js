@@ -379,6 +379,12 @@
       if (!o.part) o.part = "P1 Foundation";
       if (!o.stage) o.stage = "Foundation";
       o.uretilmis = true;                      /* ekranlarda rozet icin */
+      /* Video kaynakli moduller, temel 23 alanli cumle semasini bozmadan
+         kaynak kareye geri donebilmek icin istege bagli baglam tasir. */
+      ["sourceType", "videoId", "videoTitle", "videoStartSeconds",
+       "videoEndSeconds", "videoSentenceIndex", "videoSentenceKey"].forEach(function (a) {
+        if (k && k[a] != null) o[a] = k[a];
+      });
       return o;
     });
   }
