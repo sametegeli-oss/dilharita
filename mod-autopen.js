@@ -19,10 +19,10 @@
   }catch(e){}
 
   "use strict";
-  var mod="", q="";
+  var mod="", q="", targetId="";
   try{
     var sp=new URLSearchParams(location.search);
-    mod=sp.get("mod")||""; q=sp.get("q")||"";   // q: modül açıldıktan sonra gidilecek CÜMLE
+    mod=sp.get("mod")||""; q=sp.get("q")||""; targetId=sp.get("target")||"";   // target: benzersiz cümle kimliği
   }catch(e){}
   if(!mod) return;
   var target=mod.trim();
@@ -133,6 +133,28 @@
     });
   }
 
+  function walkToTargetId(id){
+    moduleList(target).then(function(list){
+      if(!list||!list.length)return;
+      var want=-1;
+      for(var i=0;i<list.length;i++)if(String(list[i].id||"")===String(id)){want=i;break;}
+      if(want<0)return;
+      var t1=Date.now(),navWait=0,stall=0,last=-1;
+      var timer=setInterval(function(){
+        if(Date.now()-t1>30000){clearInterval(timer);return;}
+        var en=cardEn();if(!en)return;
+        var cur=-1,cn=normS(en);
+        for(var j=0;j<list.length;j++)if(normS(list[j].en)===cn){cur=j;break;}
+        if(cur<0)return;
+        if(cur===want){clearInterval(timer);return;}
+        var direction=cur<want?1:-1;
+        if(!navClick(direction)){if(++navWait>40)clearInterval(timer);return;}
+        navWait=0;
+        if(cur===last){if(++stall>12)clearInterval(timer);}else{last=cur;stall=0;}
+      },300);
+    });
+  }
+
   /* Eski kör yürüyüş — yalnızca modül listesi okunamazsa yedek olarak. */
   function walkBlind(sentence){
     var want=normS(sentence), t1=Date.now();
@@ -160,7 +182,8 @@
       var card=clickableAncestor(hit);
       try{ card.scrollIntoView({block:"center"}); }catch(e){}
       try{ card.click(); }catch(e){}
-      if(q) walkToSentence(q);          // 🚶 2. faz: modül içinde cümleye yürü
+      if(targetId) walkToTargetId(targetId); // benzersiz kayıt kimliği önceliklidir
+      else if(q) walkToSentence(q);          // eski bağlantılar için metin yedeği
       return;
     }
     /* Kart görünmüyorsa hedef seviyenin sekmesine geçmeyi bir kez dene

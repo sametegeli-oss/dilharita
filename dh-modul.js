@@ -486,6 +486,20 @@
     });
   }
 
+  function idbOku(k) {
+    return idbAc().then(function (db) {
+      if (!db) return null;
+      return new Promise(function (res) {
+        try {
+          var tx = db.transaction(DEPO, "readonly");
+          var req = tx.objectStore(DEPO).get(k);
+          req.onsuccess = function () { try { db.close(); } catch (_) {} res(req.result == null ? null : req.result); };
+          req.onerror = function () { try { db.close(); } catch (_) {} res(null); };
+        } catch (e) { try { db.close(); } catch (_) {} res(null); }
+      });
+    });
+  }
+
   /* Eski localStorage kayitlarini IDB'ye tasir, sonra temizler.
      Tasima BASARILI olmadan localStorage silinmez. */
   function lsGoc(ayna) {
@@ -563,16 +577,21 @@
   /* Sentence Mode React uygulamasinin modul icindeki son konumu
      "prog:<modul adi>" anahtarinda tutulur. Dis ekrandan belirli bir
      cumle acilacagi zaman ayni kaydi onceden hedef siraya getiririz. */
-  function konumAyarla(modulAd, index) {
+  async function konumAyarla(modulAd, index) {
     var ad = String(modulAd || "").trim();
     if (!ad) return false;
     var anahtar = "prog:" + ad;
-    var onceki = oku(anahtar, null) || { idx: 0, seen: {} };
+    var onceki = await idbOku(anahtar);
+    if (!onceki) {
+      try { onceki = JSON.parse(localStorage.getItem("sm:" + anahtar) || "null"); } catch (e) {}
+    }
+    onceki = onceki || { idx: 0, seen: {} };
     onceki.idx = Math.max(0, parseInt(index, 10) || 0);
     onceki.seen = onceki.seen && typeof onceki.seen === "object" ? onceki.seen : {};
     yaz(anahtar, onceki);
     /* IndexedDB olmayan eski tarayicida React'in sm: yedegiyle ayni kal. */
     try { localStorage.setItem("sm:" + anahtar, JSON.stringify(onceki)); } catch (e) {}
+    await yazmaBitti();
     return true;
   }
 
