@@ -64,6 +64,13 @@
   }
   /* Modülün cümle listesini getirir (sırayla). Modül adı -> index -> parça. */
   function moduleList(modName){
+    try{
+      if(window.DHModul){
+        var mine=DHModul.liste(),found=null;
+        for(var u=0;u<mine.length;u++) if(mine[u].ad===modName){found=mine[u];break;}
+        if(found)return Promise.resolve(DHModul.getir(found.id)||[]);
+      }
+    }catch(e){}
     return fetch("data/sentences/index.json")
       .then(function(r){ if(!r.ok) throw 0; return r.json(); })
       .then(function(ix){
