@@ -560,6 +560,22 @@
 
   function getir(id) { return oku(ONEK + id, null); }
 
+  /* Sentence Mode React uygulamasinin modul icindeki son konumu
+     "prog:<modul adi>" anahtarinda tutulur. Dis ekrandan belirli bir
+     cumle acilacagi zaman ayni kaydi onceden hedef siraya getiririz. */
+  function konumAyarla(modulAd, index) {
+    var ad = String(modulAd || "").trim();
+    if (!ad) return false;
+    var anahtar = "prog:" + ad;
+    var onceki = oku(anahtar, null) || { idx: 0, seen: {} };
+    onceki.idx = Math.max(0, parseInt(index, 10) || 0);
+    onceki.seen = onceki.seen && typeof onceki.seen === "object" ? onceki.seen : {};
+    yaz(anahtar, onceki);
+    /* IndexedDB olmayan eski tarayicida React'in sm: yedegiyle ayni kal. */
+    try { localStorage.setItem("sm:" + anahtar, JSON.stringify(onceki)); } catch (e) {}
+    return true;
+  }
+
   /* Silinen modul kimlikleri -> silinme zamani */
   function mezarlar() { return oku(SILINEN, {}) || {}; }
 
@@ -704,6 +720,7 @@
     sadeceTekrarMi: sadeceTekrarMi,
     liste: liste,
     getir: getir,
+    konumAyarla: konumAyarla,
     mezarlar: mezarlar,
     kaydet: kaydet,
     adUret: adUret,

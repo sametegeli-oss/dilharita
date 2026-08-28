@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v195";  /* v195: Modül açıldıktan sonra hedef cümle kontrollerini bekleme */
+var SW_VERSION = "dh-sw-v196";  /* v196: Hedef cümleyi React ilerleme kaydına doğrudan yazma */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
