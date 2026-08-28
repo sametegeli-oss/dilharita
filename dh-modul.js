@@ -650,10 +650,43 @@
      resmi moduller her seviyede en fazla M25'e cikiyor — cakisamaz.
 
      Sadece degisiklik varsa yazar; her acilista depo dovulmez. */
+  function youtubeParcaOnar(e) {
+    var kayitlar = getir(e.id) || [], m = String(e.id || "").match(/-P0*(\d+)$/i);
+    if (!kayitlar.length || (!m && String(e.alan || "") !== "YouTube")) return false;
+    var ilk = kayitlar[0] || {}, videoId = String(ilk.videoId || "").trim();
+    if (!videoId && String(e.kaynakModul || "").indexOf("YouTube:") !== 0) return false;
+    var partMatch = String(ilk.part || "").match(/P(\d+)/i);
+    var parca = m ? Math.max(1, parseInt(m[1], 10) || 1) : Math.max(1, parseInt(partMatch && partMatch[1], 10) || 1);
+    var baslik = String(ilk.videoTitle || "").trim() || "YouTube " + videoId;
+    var yeniAd = baslik + " · P" + parca, yeniKaynak = "YouTube:" + videoId + ":P" + parca;
+    var oncekiSira = {};
+    kayitlar.forEach(function (k, i) { oncekiSira[String(k.id || i)] = i; });
+    kayitlar.sort(function (a, b) {
+      var ai = +a.videoSentenceIndex, bi = +b.videoSentenceIndex;
+      if (isFinite(ai) && isFinite(bi) && ai !== bi) return ai - bi;
+      var at = +a.videoStartSeconds || 0, bt = +b.videoStartSeconds || 0;
+      if (at !== bt) return at - bt;
+      return (oncekiSira[String(a.id)] || 0) - (oncekiSira[String(b.id)] || 0);
+    });
+    var degisti = e.ad !== yeniAd || e.kaynakModul !== yeniKaynak;
+    kayitlar.forEach(function (k, i) {
+      if (k.module !== yeniAd || +k.order !== i + 1 || k.part !== "P" + parca + " Video Transcript") degisti = true;
+      k.module = yeniAd; k.order = i + 1; k.part = "P" + parca + " Video Transcript";
+    });
+    if (!degisti) return false;
+    yaz(ONEK + e.id, kayitlar);
+    e.ad = yeniAd; e.kaynakModul = yeniKaynak; e.alan = "YouTube"; e.n = kayitlar.length;
+    return true;
+  }
+
   function gocEt() {
     var d = liste(), degisti = false;
     for (var i = 0; i < d.length; i++) {
       var e = d[i], eski = String(e.ad || "");
+      if ((String(e.alan || "") === "YouTube" || String(e.kaynakModul || "").indexOf("YouTube:") === 0) && /-P0*\d+$/i.test(String(e.id || ""))) {
+        if (youtubeParcaOnar(e)) degisti = true;
+        continue; /* YouTube parca adi dogruysa genel adlandirma tekrar bozamaz. */
+      }
       var yeni;
       if (e.kaynakModul) {
         yeni = adUret(e.kaynakModul, e.alan);

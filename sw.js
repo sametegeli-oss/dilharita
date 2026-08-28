@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v198";  /* v198: Benzersiz cümle kimliği doğrulaması ve kaynak video döngüsü */
+var SW_VERSION = "dh-sw-v199";  /* v199: YouTube P1/P2/P3 ayrımı ve eski modül sıra onarımı */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
