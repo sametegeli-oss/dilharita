@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v194";  /* v194: Var olan video modülünü aktif cümlede açma */
+var SW_VERSION = "dh-sw-v195";  /* v195: Modül açıldıktan sonra hedef cümle kontrollerini bekleme */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

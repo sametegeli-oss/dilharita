@@ -59,18 +59,14 @@
   function cardEn(){ var el=document.querySelector(".card .card-en"); return el?el.textContent.trim():""; }
   function navClick(dir){
     var b=document.querySelector("#dhNavTrio "+(dir>0?".dh-nav-next":".dh-nav-prev"));
+    if(!b){
+      var nav=document.querySelector(".study-nav"),buttons=nav&&nav.querySelectorAll("button.btn");
+      if(buttons&&buttons.length)b=dir>0?buttons[buttons.length-1]:buttons[0];
+    }
     if(b && !b.disabled){ b.click(); return true; }
     return false;
   }
-  /* Modülün cümle listesini getirir (sırayla). Modül adı -> index -> parça. */
-  function moduleList(modName){
-    try{
-      if(window.DHModul){
-        var mine=DHModul.liste(),found=null;
-        for(var u=0;u<mine.length;u++) if(mine[u].ad===modName){found=mine[u];break;}
-        if(found)return Promise.resolve(DHModul.getir(found.id)||[]);
-      }
-    }catch(e){}
+  function staticModuleList(modName){
     return fetch("data/sentences/index.json")
       .then(function(r){ if(!r.ok) throw 0; return r.json(); })
       .then(function(ix){
@@ -81,6 +77,20 @@
           .then(function(r){ if(!r.ok) throw 0; return r.json(); });
       })
       .catch(function(){ return null; });
+  }
+  /* Modülün cümle listesini getirir (sırayla). Modül adı -> index -> parça. */
+  function moduleList(modName){
+    if(!window.DHModul)return staticModuleList(modName);
+    var ready;
+    try{ready=DHModul.hazir?DHModul.hazir():Promise.resolve();}catch(e){ready=Promise.resolve();}
+    return ready.then(function(){
+      try{
+        var mine=DHModul.liste(),found=null;
+        for(var u=0;u<mine.length;u++) if(mine[u].ad===modName){found=mine[u];break;}
+        if(found)return DHModul.getir(found.id)||[];
+      }catch(e){}
+      return staticModuleList(modName);
+    });
   }
 
   /* SIRA GÜDÜMLÜ YÜRÜYÜŞ.
@@ -98,7 +108,7 @@
       for(var i=0;i<list.length;i++) if(normS(list[i].en)===wn){ want=i; break; }
       if(want<0) return;                       // hedef bu modülde yok: dokunma
 
-      var t1=Date.now(), miss=0, sonYon=0, ayniKonum=0, oncekiKonum=-1;
+      var t1=Date.now(), miss=0, navWait=0, sonYon=0, ayniKonum=0, oncekiKonum=-1;
       var wv=setInterval(function(){
         if(Date.now()-t1>30000){ clearInterval(wv); return; }
         var en=cardEn();
@@ -110,13 +120,15 @@
           return;
         }
         if(cur===want){ clearInterval(wv); return; }   // 🎯 vardık
-        /* ilerleme yoksa (buton devre dışı vb.) ısrar etme */
-        if(cur===oncekiKonum){ if(++ayniKonum>4){ clearInterval(wv); return; } }
-        else { ayniKonum=0; oncekiKonum=cur; }
         var yon = cur<want ? 1 : -1;
         if(sonYon && yon!==sonYon){ clearInterval(wv); return; }  // salınım koruması
         sonYon=yon;
-        if(!navClick(yon)) clearInterval(wv);
+        if(!navClick(yon)){ if(++navWait>40)clearInterval(wv); return; }
+        navWait=0;
+        /* Yalnız gerçek bir gezinme tıklamasından sonra ilerlemeyi ölç.
+           Kontroller henüz oluşmadıysa aynı kartta beklemek hata değildir. */
+        if(cur===oncekiKonum){ if(++ayniKonum>12){ clearInterval(wv); return; } }
+        else { ayniKonum=0; oncekiKonum=cur; }
       }, 300);
     });
   }
