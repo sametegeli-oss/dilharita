@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=30">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=31">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -116,6 +116,11 @@
       <button class="yt-control" id="prevSentence" type="button" aria-label="Önceki cümle">│◀</button>
       <button class="yt-control" id="nextSentence" type="button" aria-label="Sonraki cümle">▶│</button>
       <button class="yt-control" id="loopToggle" type="button" aria-pressed="false">↻ <span>Cümleyi döndür</span></button>
+      <button class="yt-control yt-study-action" id="controlModule" type="button" data-tooltip="Aktif cümlenin çalışma modülünü aç; yoksa videodan modülleri oluştur"><span aria-hidden="true">◈</span><span>Modüle git</span></button>
+      <button class="yt-control yt-study-action" id="controlYouglish" type="button" data-tooltip="Aktif kalıbı farklı gerçek videolarda dinle"><span aria-hidden="true">Y</span><span>YouGlish</span></button>
+      <button class="yt-control yt-study-action" id="controlShadow" type="button" data-tooltip="Aktif cümleyi görüntüyle birlikte seslendir ve kaydet"><span aria-hidden="true">♬</span><span>Shadowing</span></button>
+      <button class="yt-control yt-study-action" id="controlDictation" type="button" data-tooltip="Aktif cümleyi dinle ve duyduğunu yaz"><span aria-hidden="true">⌨</span><span>Dikte</span></button>
+      <button class="yt-control yt-study-action yt-gemini-explain" id="explainSentenceGemini" type="button" data-tooltip="Aktif cümle için kayıtlı ayrıntılı Gemini açıklamasını aç veya oluştur"><span aria-hidden="true">✦</span><span>Gemini ile açıkla</span></button>
       <div class="yt-time"><b id="currentTime">00:00</b><span>/</span><span id="durationTime">00:00</span></div>
       <button class="yt-control" id="speedToggle" type="button">1×</button>
       <button class="yt-control" id="captionToggle" type="button" aria-pressed="true">CC</button>
@@ -123,6 +128,14 @@
       <button class="yt-control yt-fullscreen-control" id="fullscreenToggle" type="button" aria-label="Videoyu tam ekran yap" aria-pressed="false">⛶</button>
      </div>
      </div>
+     <div class="yt-fullscreen-workbar" id="fullscreenWorkbar" aria-label="Tam ekran çalışma panelleri">
+      <button id="fullscreenStudyPanel" type="button" aria-expanded="false"><span aria-hidden="true">☰</span> Çalışma</button>
+      <button id="fullscreenTranscriptPanel" type="button" aria-expanded="false"><span aria-hidden="true">文</span> Transkript</button>
+     </div>
+     <aside class="yt-fullscreen-drawer" id="fullscreenDrawer" hidden aria-label="Tam ekran çalışma çekmecesi">
+      <header><strong id="fullscreenDrawerTitle">Çalışma</strong><button id="fullscreenDrawerClose" type="button" aria-label="Paneli kapat">×</button></header>
+      <div id="fullscreenDrawerBody"></div>
+     </aside>
      </div>
 
      <section class="yt-learning-card" id="learningCard">
@@ -288,6 +301,7 @@
  <div class="yt-modal-overlay" id="aiModal" hidden>
   <section class="yt-modal yt-ai-modal"><header><div><span>GEMINI BAĞLAMI</span><h2>Bu cümleyi birlikte inceleyelim</h2></div><button type="button" data-close-ai>×</button></header>
    <div class="yt-ai-quick" id="aiQuick"></div><div class="yt-ai-answer" id="aiAnswer">Bir soru seçin.</div>
+   <footer class="yt-ai-footer" id="aiFooter" hidden><span>Bu açıklama cümleye kaydedildi.</span><button id="regenerateExplanation" type="button">↻ Yeniden oluştur</button></footer>
   </section>
  </div>
 
@@ -308,13 +322,13 @@
  <script src="./learning-error-system.js?v=2"></script>
  <script src="./ai-choice.js?v=1"></script>
  <script src="./ai-providers.js?v=150"></script>
- <script src="./gemini-bridge.js?v=13"></script>
+ <script src="./gemini-bridge.js?v=14"></script>
  <script src="./cloud-sync.js?v=24"></script>
  <script src="./word-popup.js?v=11"></script>
  <script src="./immersive-youtube-study.js?v=16"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=39"></script>
+ <script src="./youtube-egitim.js?v=40"></script>
 </body>
 </html>
 
