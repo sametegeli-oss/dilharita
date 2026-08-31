@@ -55,7 +55,7 @@ function css(){
   if(document.getElementById("dhgb-css")) return;
   var s=document.createElement("style"); s.id="dhgb-css";
   s.textContent =
-   ".dhgb-ov{position:fixed;inset:0;z-index:1000000;background:rgba(2,6,23,.72);display:flex;align-items:center;justify-content:center;padding:14px}"
+   ".dhgb-ov{position:fixed;inset:0;z-index:1000010;background:rgba(2,6,23,.72);display:flex;align-items:center;justify-content:center;padding:14px}"
   +".dhgb-card{width:100%;max-width:520px;max-height:92vh;overflow:auto;background:#0d1b32;color:#e8eef7;border:1px solid #1e3a5f;border-radius:16px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.5);font-family:Nunito,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}"
   +".dhgb-card h3{margin:0 0 4px;font-size:16px;font-weight:900}"
   +".dhgb-step{font-size:12px;color:#9fb3d9;line-height:1.5;margin:0 0 10px}"
@@ -138,7 +138,8 @@ function ask(opt){
      +'<button class="dhgb-close" type="button">Kapat</button>'
    +'</div>'
    +'</div>';
-  document.body.appendChild(ov);
+  var fullscreenHost=document.fullscreenElement||document.webkitFullscreenElement||document.querySelector(".yt-video-shell.is-pseudo-fullscreen");
+  (fullscreenHost||document.body).appendChild(ov);
 
   var card=ov.querySelector(".dhgb-card"),
       ta=ov.querySelector(".dhgb-ta"),

@@ -143,7 +143,7 @@
     var wrap=c.querySelector(".dh-source-media-row");
     if(!wrap){wrap=document.createElement("div");wrap.className="dh-source-media-row";toggle.parentElement.insertBefore(wrap,toggle);wrap.appendChild(toggle);}
     var button=wrap.querySelector(".dh-youtube-source-btn");
-    if(!button){button=document.createElement("button");button.type="button";button.className="dh-youtube-source-btn";button.textContent="▶ YouTube video";button.onclick=function(){var source=youtubeSourceForCard(card());if(!source)return;location.href="./youtube-egitim.html?video="+encodeURIComponent(source.videoId)+"&sentence="+encodeURIComponent(source.videoSentenceIndex||0)+"&t="+encodeURIComponent(source.videoStartSeconds||0)+"&loop=1&fullscreen=1";};wrap.appendChild(button);}
+    if(!button){button=document.createElement("button");button.type="button";button.className="dh-youtube-source-btn";button.textContent="▶ YouTube video";button.onclick=function(){var source=youtubeSourceForCard(card());if(!source)return;location.href="./youtube-egitim.html?video="+encodeURIComponent(source.videoId)+"&sentence="+encodeURIComponent(source.videoSentenceIndex||0)+"&sentenceKey="+encodeURIComponent(source.videoSentenceKey||"")+"&text="+encodeURIComponent(source.en||"")+"&t="+encodeURIComponent(source.videoStartSeconds||0)+"&loop=1&fullscreen=1";};wrap.appendChild(button);}
     var source=youtubeSourceForCard(c);button.hidden=!source;button.title=source?"Bu cümleyi kaynak YouTube videosunda aç":"";
   }
 
