@@ -22,7 +22,7 @@
    <div class="yt-top-actions">
     <span class="yt-sync" id="syncState"><i></i><span>Cihazda kayıtlı</span></span>
     <button class="yt-top-button" id="openLibrary" type="button">▤ <span>Kitaplığım</span><b id="libraryCount">0</b></button>
-    <button class="yt-round" id="focusMode" type="button" aria-label="Odak modu">⛶</button>
+    <button class="yt-round" id="focusMode" type="button" aria-label="Videoyu tam ekran yap" title="Videoyu tam ekran yap">⛶</button>
    </div>
   </header>
 
@@ -90,9 +90,10 @@
    <div class="yt-workspace">
     <aside class="yt-control-rail" id="controlRail" aria-label="Cümle çalışma kontrolleri"></aside>
     <section class="yt-stage-column">
-     <div class="yt-player-dock">
+     <div class="yt-video-shell" id="videoShell">
      <div class="yt-player-card">
       <div class="yt-player" id="ytPlayer" aria-label="YouTube video oynatıcı"></div>
+      <button class="yt-fullscreen-tap-layer" id="fullscreenTapLayer" type="button" aria-label="Video kontrollerini göster"></button>
       <div class="yt-caption-layer" id="captionLayer">
        <p class="yt-caption-en" id="captionEN" lang="en"></p>
        <p class="yt-caption-tr" id="captionTR" lang="tr"></p>
@@ -108,6 +109,7 @@
       </section>
      </div>
 
+     <div class="yt-video-chrome" id="videoChrome">
      <div class="yt-timeline"><div id="timelineFill"></div><button id="timelineThumb" type="button" aria-label="Video ilerlemesi"></button></div>
      <div class="yt-controls" aria-label="Video kontrolleri">
       <button class="yt-control yt-play" id="playToggle" type="button" aria-label="Oynat veya durdur">▶</button>
@@ -118,6 +120,8 @@
       <button class="yt-control" id="speedToggle" type="button">1×</button>
       <button class="yt-control" id="captionToggle" type="button" aria-pressed="true">CC</button>
       <button class="yt-control" id="soundToggle" type="button" aria-label="Sesi aç veya kapat">🔊</button>
+      <button class="yt-control yt-fullscreen-control" id="fullscreenToggle" type="button" aria-label="Videoyu tam ekran yap" aria-pressed="false">⛶</button>
+     </div>
      </div>
      </div>
 
@@ -304,13 +308,13 @@
  <script src="./learning-error-system.js?v=2"></script>
  <script src="./ai-choice.js?v=1"></script>
  <script src="./ai-providers.js?v=150"></script>
- <script src="./gemini-bridge.js?v=12"></script>
+ <script src="./gemini-bridge.js?v=13"></script>
  <script src="./cloud-sync.js?v=24"></script>
  <script src="./word-popup.js?v=11"></script>
  <script src="./immersive-youtube-study.js?v=16"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
- <script src="./dh-modul.js?v=8"></script>
- <script src="./youtube-egitim.js?v=44"></script>
+ <script src="./dh-modul.js?v=5"></script>
+ <script src="./youtube-egitim.js?v=39"></script>
 </body>
 </html>
 

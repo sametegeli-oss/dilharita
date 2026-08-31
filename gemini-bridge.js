@@ -25,11 +25,18 @@ if(global.DHGemini) return;
 
 var GEMINI_URL = "https://gemini.google.com/app";
 var PENDING_KEY = "dh-gemini-pending-v2";
+var PENDING_TTL = 24*60*60*1000;
 var activeOverlay = null;
 
 function jobId(){ return "DH-"+Date.now().toString(36).toUpperCase()+"-"+Math.random().toString(36).slice(2,7).toUpperCase(); }
 function savePending(job){ try{ localStorage.setItem(PENDING_KEY,JSON.stringify(job)); }catch(e){} }
-function loadPending(){ try{ return JSON.parse(localStorage.getItem(PENDING_KEY)||"null"); }catch(e){ return null; } }
+function loadPending(){
+  try{
+    var value=JSON.parse(localStorage.getItem(PENDING_KEY)||"null");
+    if(value&&value.createdAt&&Date.now()-value.createdAt>PENDING_TTL){localStorage.removeItem(PENDING_KEY);return null;}
+    return value;
+  }catch(e){ return null; }
+}
 function clearPending(id){
   var p=loadPending();
   if(!id || !p || p.id===id) try{ localStorage.removeItem(PENDING_KEY); }catch(e){}
@@ -106,7 +113,7 @@ function ask(opt){
   var sameOld=old && old.prompt===basePrompt && old.page===location.pathname;
   var id=sameOld?old.id:jobId();
   var prompt=basePrompt+"\n\nGÖREV KİMLİĞİ: "+id+"\nYanıtının ilk satırına tam olarak \"DH-ID: "+id+"\" yaz. Sonraki satırlarda istenen yanıtı ver.";
-  var job={id:id,title:String(opt.title||"Gemini'ye sor"),prompt:basePrompt,page:location.pathname,createdAt:sameOld?old.createdAt:Date.now(),state:"waiting"};
+  var job={id:id,title:String(opt.title||"Gemini'ye sor"),prompt:basePrompt,page:location.pathname,createdAt:sameOld?old.createdAt:Date.now(),state:sameOld&&old.state||"waiting",draft:sameOld&&old.draft||"",resume:opt.resume||(sameOld&&old.resume)||null,hint:String(opt.hint||""),providerName:providerName,providerUrl:providerUrl};
   savePending(job);
   if(activeOverlay && activeOverlay.parentNode) activeOverlay.parentNode.removeChild(activeOverlay);
   var ov=document.createElement("div"); ov.className="dhgb-ov";
@@ -148,7 +155,7 @@ function ask(opt){
     if(ov.parentNode) ov.parentNode.removeChild(ov);
     if(activeOverlay===ov) activeOverlay=null;
     global.removeEventListener("focus",returned);
-    global.removeEventListener("pagehide",abandoned);
+    global.removeEventListener("pagehide",backgrounded);
     document.removeEventListener("visibilitychange",returned);
   }
   function rememberDraft(){ job.draft=ta.value||""; job.state="answer-ready"; savePending(job); }
@@ -227,8 +234,12 @@ function ask(opt){
   var privacy=wasRedacted?" Kişisel/API bilgileri maskelendi.":"";
   say("Prompt hazır. Önce kopyala, ardından istersen Gemini'yi aç."+privacy,"#9fb3d9");
 
-  function abandoned(){ clearPending(id); }
-  global.addEventListener("pagehide",abandoned,{once:true});
+  /* Mobil tarayıcı Gemini sekmesine geçerken pagehide üretebilir veya bu
+     sayfayı bellekten atabilir. Görevi burada silmek dönüş ekranını yok
+     ediyordu. Yalnız taslağı sakla; görev Kapat/Uygula ile ya da 24 saat
+     sonunda temizlenir. */
+  function backgrounded(){ rememberDraft(); }
+  global.addEventListener("pagehide",backgrounded,{once:true});
 
   function returned(){
     if(document.hidden || !ov.parentNode) return;
@@ -337,5 +348,6 @@ var parsers={
 
 function pending(){ return loadPending(); }
 function discardPending(){ clearPending(); }
-global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending, markdown:markdown };
+function hasOverlay(){return!!(activeOverlay&&activeOverlay.parentNode)}
+global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending, hasOverlay:hasOverlay, markdown:markdown };
 })(window);
