@@ -350,5 +350,23 @@ var parsers={
 function pending(){ return loadPending(); }
 function discardPending(){ clearPending(); }
 function hasOverlay(){return!!(activeOverlay&&activeOverlay.parentNode)}
-global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending, hasOverlay:hasOverlay, markdown:markdown };
+/* Video ve modül ekranları aynı açıklama istemini kullanır. Bağlam alanı
+   bulunmayan ekranda "yok" yazılır; böylece görev yapısı ve cevap başlıkları
+   iki tarafta da değişmez. */
+function explanationPrompt(context){
+  context=context||{};
+  return[
+    "Sen Dil Harita'da Türk öğrencilere doğal İngilizce öğreten deneyimli bir öğretmensin.",
+    "Bu cümleyi detaylı açıkla.",
+    "Öğrenci seviyesi: "+(context.level||"belirtilmedi"),
+    "Video: "+(context.videoTitle||"belirtilmedi"),
+    "Zaman: "+(context.time||"belirtilmedi"),
+    "Önceki cümle: "+(context.previous||"yok"),
+    "AKTİF İNGİLİZCE CÜMLE: "+String(context.sentence||"").trim(),
+    "Mevcut Türkçe karşılık: "+(context.translation||"yok"),
+    "Sonraki cümle: "+(context.next||"yok"),
+    "Türkçe yanıt ver. Şu başlıkların tamamını kullan: 1) Bağlamdaki doğal anlam 2) Cümle yapısı ve dilbilgisi 3) Önemli kelimeler, phrasal verb ve collocation'lar 4) Telaffuz, vurgu ve konuşma dilindeki yutulmalar/bağlantılar 5) Türk öğrencilerin yapabileceği hatalar 6) Aynı yapıyla iki doğal örnek ve Türkçeleri. Cümleyi ezberletmeye yardımcı olacak kadar ayrıntılı fakat tekrarsız ol. Markdown kullanabilirsin."
+  ].join("\n");
+}
+global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending, hasOverlay:hasOverlay, markdown:markdown, explanationPrompt:explanationPrompt };
 })(window);

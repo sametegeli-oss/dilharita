@@ -542,9 +542,34 @@ function renderResultBox(sentence, rawMarkdownText, tag) {
   card.appendChild(box);
 }
 
-function showExplanationEditor(sentence,text,title){var old=document.getElementById("dhAiEditModal");if(old)old.remove();var m=document.createElement("div");m.id="dhAiEditModal";m.style.cssText="position:fixed;inset:0;z-index:1000002;background:#020617e8;display:flex;align-items:center;justify-content:center;padding:14px";m.innerHTML='<div style="width:min(720px,100%);background:#0f172a;border:1px solid #8b5cf6;border-radius:16px;padding:16px;color:white"><h3 style="margin:0 0 10px">'+title+'</h3><p style="font-size:12px;color:#94a3b8">Yeni metin kaydedilene kadar mevcut açıklama korunur.</p><textarea style="width:100%;height:50vh;box-sizing:border-box;background:#071225;color:white;border:1px solid #475569;border-radius:10px;padding:12px"></textarea><div style="display:flex;gap:8px;margin-top:10px"><button data-x="cancel">İptal</button><button data-x="save">Onayla ve değiştir</button></div></div>';document.body.appendChild(m);var ta=m.querySelector("textarea");ta.value=text||"";m.querySelectorAll("button").forEach(function(b){b.style.cssText="flex:1;padding:10px;border:0;border-radius:8px;background:#334155;color:white;font-weight:800";});m.querySelector('[data-x="save"]').style.background="#10b981";m.querySelector('[data-x="cancel"]').onclick=function(){m.remove();};m.querySelector('[data-x="save"]').onclick=async function(){var v=ta.value.trim();if(!v)return;await saveAIToDB(sentence,v);m.remove();renderResultBox(sentence,v,"🤖 Düzenlenmiş AI açıklaması");};ta.focus();}
+function showExplanationEditor(sentence,text,title){var old=document.getElementById("dhAiEditModal");if(old)old.remove();var m=document.createElement("div");m.id="dhAiEditModal";m.style.cssText="position:fixed;inset:0;z-index:1000002;background:#020617e8;display:flex;align-items:center;justify-content:center;padding:14px";m.innerHTML='<div style="width:min(720px,100%);background:#0f172a;border:1px solid #8b5cf6;border-radius:16px;padding:16px;color:white"><h3 style="margin:0 0 10px">'+title+'</h3><p style="font-size:12px;color:#94a3b8">Yeni metin kaydedilene kadar mevcut açıklama korunur.</p><textarea style="width:100%;height:50vh;box-sizing:border-box;background:#071225;color:white;border:1px solid #475569;border-radius:10px;padding:12px"></textarea><div style="display:flex;gap:8px;margin-top:10px"><button data-x="cancel">İptal</button><button data-x="save">Onayla ve değiştir</button></div></div>';document.body.appendChild(m);var ta=m.querySelector("textarea");ta.value=text||"";m.querySelectorAll("button").forEach(function(b){b.style.cssText="flex:1;padding:10px;border:0;border-radius:8px;background:#334155;color:white;font-weight:800";});m.querySelector('[data-x="save"]').style.background="#10b981";m.querySelector('[data-x="cancel"]').onclick=function(){m.remove();};m.querySelector('[data-x="save"]').onclick=async function(){var v=ta.value.trim();if(!v)return;await saveAIToDB(sentence,v);m.remove();renderResultBox(sentence,v,"🤖 Ortak AI açıklaması düzenlendi");};ta.focus();}
 
-async function renewSingleExplanation(sentence,current){if(!(window.DHProviders&&DHProviders.chat))return;var prompt="Aşağıdaki İngilizce cümleyi Türk öğrenci için 250-400 Türkçe kelimeyle çok ayrıntılı açıkla. Şu Markdown başlıklarının tamamını kullan: **Türkçe çeviri**, **Dilbilgisi**, **Önemli kelimeler ve kalıplar**, **Anlam nüansı**, **Örnek**. Ana/yan cümlecikleri, özne-fiil-nesneyi, formülü, kullanım nedenini ve yakın yapılardan farkını anlat. Yeni örneğin Türkçe çevirisini ekle. Cümle: "+sentence;try{var fresh=await DHProviders.chat([{role:"user",content:prompt}],{title:"🔄 Bu kaydı çok ayrıntılı yeniden hazırla",cacheType:"index-single-explanation-detailed-v3",cacheInput:{sentence:sentence},forceRefresh:true,max_tokens:2600});if(fresh)showExplanationEditor(sentence,String(fresh).trim(),"Yeni ayrıntılı açıklamayı önizle");}catch(e){alert("Yeni açıklama alınamadı; mevcut kayıt korunuyor.");}}
+function activeCardTranslation(){var card=document.querySelector(".card"),tr=card&&card.querySelector(".card-tr");return tr?tr.innerText.trim():"";}
+function moduleExplanationPrompt(sentence){
+  var context={sentence:sentence,translation:activeCardTranslation()};
+  if(window.DHGemini&&DHGemini.explanationPrompt)return DHGemini.explanationPrompt(context);
+  return "Bu cümleyi detaylı açıkla.\nAKTİF İNGİLİZCE CÜMLE: "+sentence+"\nMevcut Türkçe karşılık: "+(context.translation||"yok");
+}
+async function requestModuleExplanation(sentence,force){
+  sentence=String(sentence||"").trim();if(!sentence)return;
+  var cached=await getAIFromDB(sentence);
+  if(cached&&!force){renderResultBox(sentence,cached,"🤖 Video ve modülün ortak AI açıklaması");return;}
+  var prompt=moduleExplanationPrompt(sentence);
+  if(!(window.DHGemini&&DHGemini.ask)){
+    try{await navigator.clipboard.writeText(prompt);}catch(e){}
+    window.open("https://gemini.google.com/app","_blank");showPasteModal(sentence);return;
+  }
+  DHGemini.ask({
+    title:force?"Cümle açıklamasını Gemini ile yenile · Kopyala ve yapıştır":"Cümleyi Gemini ile açıkla · Kopyala ve yapıştır",
+    providerName:"Gemini",openUrl:DHGemini.url,prompt:prompt,
+    hint:"Gemini cevabını kopyalayıp buraya yapıştır…",
+    resume:{type:"module-explanation",sentence:sentence,force:!!force,module:requestedModuleName()},
+    parse:function(t){return String(t||"").replace(/^\s*DH-ID:[^\n]*\n/i,"").trim();},
+    onResult:async function(t){var value=String(t||"").trim();if(!value)return;await saveAIToDB(sentence,value);renderResultBox(sentence,value,"🤖 Video ve modülün ortak AI açıklaması");},
+    onCancel:function(){if(cached)renderResultBox(sentence,cached,"🤖 Video ve modülün ortak AI açıklaması");}
+  });
+}
+async function renewSingleExplanation(sentence,current){return requestModuleExplanation(sentence,true);}
 
 async function checkAndSyncAiBox(card) {
   let sentenceEl = card.querySelector(".card-en");
@@ -560,9 +585,13 @@ async function checkAndSyncAiBox(card) {
 
   let cached = await getAIFromDB(sentence);
   if (cached) {
-    renderResultBox(sentence, cached, "🤖 AI Açıklaması (IndexedDB'den yüklendi)");
+    renderResultBox(sentence, cached, "🤖 Video ve modülün ortak AI açıklaması");
   }
+  var pending=window.DHGemini&&DHGemini.pending&&DHGemini.pending(),resume=pending&&pending.resume;
+  if(resume&&resume.type==="module-explanation"&&String(resume.sentence||"").trim()===sentence&&!(DHGemini.hasOverlay&&DHGemini.hasOverlay()))setTimeout(function(){requestModuleExplanation(sentence,!!resume.force);},0);
 }
+
+window.addEventListener("dh-ai-explanation-changed",function(){var card=document.querySelector(".card");if(!card)return;currentLoadedSentence="";checkAndSyncAiBox(card);});
 
 function showPasteModal(sentence) {
   let old = document.getElementById("dhAiModal");
@@ -708,9 +737,5 @@ document.addEventListener("click", async function(e) {
     return;
   }
 
-  let prompt = `Lütfen şu İngilizce cümleyi detaylıca açıkla ve Türkçeye çevir: "${sentence}"`;
-  try { navigator.clipboard.writeText(prompt); } catch(err) {}
-
-  window.open(`https://gemini.google.com/app`, "_blank");
-  showPasteModal(sentence);
+  requestModuleExplanation(sentence, false);
 }, true);
