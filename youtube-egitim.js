@@ -28,6 +28,30 @@ function moduleImageQuery(v){return ygNorm(v).split(" ").filter(function(w){retu
 function updateVideoModuleSummary(){if(!study)return;var size=+$('videoModuleSize').value||25,n=study.segments.length,count=Math.ceil(n/size);$('videoModuleSummary').innerHTML='<strong>'+n+' cümle</strong><span>→</span><strong>'+count+' modül</strong><small>Her cümle kaynak videodaki zamanını korur.</small>'}
 function closeVideoModuleModal(){$('videoModuleModal').hidden=true}
 function createPracticeModule(){if(!study||!study.segments.length)return;try{player.pauseVideo()}catch(e){}$('videoModuleName').value=String(study.title||'YouTube çalışması').slice(0,90);$('videoModuleLevel').value=/^(A1|A2|B1|B2|C1)$/.test(study.level)?study.level:'A2';$('videoModuleStatus').textContent='';updateVideoModuleSummary();$('videoModuleModal').hidden=false}
+async function openExistingModuleOrCreate(){
+ if(!study||active<0)return;
+ if(!global.DHModul){createPracticeModule();return}
+ var x=study.segments[active],wantedKey=keyOf(x),wantedText=ygNorm(x.transcriptEN),wantedTime=+x.startSeconds||0,best=null;
+ try{
+  if(DHModul.hazir)await DHModul.hazir();
+  var modules=DHModul.liste()||[];
+  for(var i=0;i<modules.length;i++){
+   var rows=DHModul.getir(modules[i].id)||[];
+   for(var j=0;j<rows.length;j++){
+    var row=rows[j];if(!row||String(row.videoId||"")!==String(videoId))continue;
+    var score=0;
+    if(String(row.videoSentenceKey||"")===wantedKey)score=300;
+    else if(ygNorm(row.en)===wantedText)score=200;
+    else if(Math.abs((+row.videoStartSeconds||0)-wantedTime)<=.35)score=100;
+    if(score&&(!best||score>best.score))best={score:score,module:modules[i],row:row,index:j};
+   }
+  }
+  if(!best){createPracticeModule();return}
+  var moduleName=String(best.module.ad||best.row.module||"").trim();
+  if(DHModul.konumAyarla)await DHModul.konumAyarla(moduleName,best.index);
+  location.href="./index-app.html?mod="+encodeURIComponent(moduleName)+"&target="+encodeURIComponent(best.row.id||"")+"&q="+encodeURIComponent(x.transcriptEN||"");
+ }catch(e){createPracticeModule()}
+}
 function videoModuleRecord(x,i,moduleName,partNo,level){var key=keyOf(x);return{id:'YT-'+cleanModuleId(videoId)+'-P'+String(partNo).padStart(2,'0')+'-'+String(i+1).padStart(3,'0'),module:moduleName,part:'P'+partNo+' Video Transcript',stage:'Video',order:i+1,level:level,topic:'Doğal konuşma',scenario:study.title||'YouTube videosu',grammar:'Natural spoken English',highlights:'Videodaki doğal kullanım, vurgu ve bağlama dikkat edin.',pattern:'',en:String(x.transcriptEN||'').trim(),tr:String(x.translationTR||'').trim(),ipa:'',trPron:'',tense:'Mixed',collocations:'',synonyms:'',antonyms:'',commonMistake:'Cümleyi bağlamdan koparıp kelime kelime çevirmek. ❌',aiExplain:'Bu cümle kaynak videodaki doğal konuşmadan alınmıştır.',grammarTags:'video, transcript, natural speech',imgQuery:moduleImageQuery(x.transcriptEN),sourceType:'youtube-transcript',videoId:videoId,videoTitle:study.title||'',videoStartSeconds:+x.startSeconds||0,videoEndSeconds:+x.endSeconds||(+x.startSeconds||0)+2,videoSentenceIndex:study.segments.indexOf(x),videoSentenceKey:key}}
 async function saveVideoModules(){var status=$('videoModuleStatus'),submit=$('videoModuleForm').querySelector('[type="submit"]');if(!global.DHModul){status.textContent='Modül kayıt sistemi yüklenemedi.';return}var base=$('videoModuleName').value.trim(),level=$('videoModuleLevel').value,size=+$('videoModuleSize').value||25;if(!base)return;submit.disabled=true;status.textContent='Modüller hazırlanıyor…';try{await DHModul.hazir();var total=Math.ceil(study.segments.length/size);for(var p=0;p<total;p++){var rows=study.segments.slice(p*size,(p+1)*size),name=base+' · P'+(p+1),id='YT-'+cleanModuleId(videoId)+'-P'+String(p+1).padStart(2,'0');DHModul.kaydet(rows.map(function(x,i){return videoModuleRecord(x,i,name,p+1,level)}),{id:id,modulAd:name,alan:'YouTube',seviye:level,kaynakModul:'YouTube:'+videoId})}await DHModul.yazmaBitti();status.textContent='✓ '+total+' modül oluşturuldu. Menü açılıyor…';setTimeout(function(){location.href='./index-app.html'},650)}catch(e){status.textContent='Modüller kaydedilemedi: '+(e&&e.message||'Bilinmeyen hata');submit.disabled=false}}
 function previewParam(){if(!/^(127\.0\.0\.1|localhost)$/.test(location.hostname))return"";var p=new URLSearchParams(location.search).get("preview");return p?"&preview="+encodeURIComponent(p):""}
@@ -571,7 +595,7 @@ function bind(){
  $("sentenceYouglishNext").onclick=function(){moveSentenceYg(1)};
  $("sentenceYouglishSearch").onsubmit=function(e){e.preventDefault();searchSentenceYg($("sentenceYouglishQuery").value)};
  $("createPracticeModule").onclick=createPracticeModule;
- $("controlModule").onclick=function(){$("createPracticeModule").click()};
+ $("controlModule").onclick=openExistingModuleOrCreate;
  $("controlShadow").onclick=function(){setStudyMode("shadow");if(isVideoFullscreen())openFullscreenDrawer("study")};
  $("controlDictation").onclick=function(){setStudyMode("dictation");if(isVideoFullscreen())openFullscreenDrawer("study")};
  $("explainSentenceGemini").onclick=function(){openSentenceExplanation(false)};

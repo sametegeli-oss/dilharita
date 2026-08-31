@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v202";  /* v202: Tam ekran çalışma stüdyosu + kalıcı cümle açıklaması */
+var SW_VERSION = "dh-sw-v203";  /* v203: Mevcut video modülüne doğrudan geçiş düzeltmesi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
