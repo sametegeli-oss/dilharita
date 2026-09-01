@@ -37,3 +37,9 @@ SÜRÜMLER
 - index-app-layout.js v31
 - gemini-bridge.js v21
 - Service Worker dh-sw-v211
+v63 DÜZELTMELERİ
+=================
+- Araç paneli başlığına “← Çalışmaya dön” eylemi eklendi.
+- Araçlar Cümle, Modül ve Analiz adlı gerçek sekmelere ayrıldı.
+- Gemini açıklamasındaki okuma düğmesine doğrudan ve güvenilir olay bağlantısı eklendi.
+- Okuma görünümü tüm ekranı kaplayan, kendi içinde kaydırılabilen belge/editör düzenine geçirildi.

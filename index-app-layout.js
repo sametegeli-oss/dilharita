@@ -51,10 +51,11 @@
     +".dh-tools-toggle:hover,.dh-tools-toggle[aria-expanded='true']{border-color:rgba(83,229,210,.55);background:linear-gradient(145deg,rgba(25,66,70,.94),rgba(8,30,41,.98));color:#6cebdd}"
     +".dh-tools-overlay{position:fixed;inset:0;z-index:1000000;background:rgba(1,7,15,.7);backdrop-filter:blur(10px);opacity:1;transition:opacity .2s ease}"
     +".dh-tools-overlay.dh-hidden{display:none!important}"
-    +".dh-tools-box{position:absolute;top:0;right:0;display:grid;grid-template-rows:auto minmax(0,1fr);width:min(438px,94vw);height:100dvh;overflow:hidden;border-left:1px solid rgba(118,154,198,.25);background:linear-gradient(160deg,#0d1b2e,#07111f 70%);box-shadow:-28px 0 80px rgba(0,0,0,.52);animation:dhToolsSlide .22s cubic-bezier(.2,.75,.2,1)}"
+    +".dh-tools-box{position:absolute;top:0;right:0;display:grid;grid-template-rows:auto auto minmax(0,1fr);width:min(438px,94vw);height:100dvh;overflow:hidden;border-left:1px solid rgba(118,154,198,.25);background:linear-gradient(160deg,#0d1b2e,#07111f 70%);box-shadow:-28px 0 80px rgba(0,0,0,.52);animation:dhToolsSlide .22s cubic-bezier(.2,.75,.2,1)}"
     +".dh-tools-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:max(17px,env(safe-area-inset-top)) 18px 15px;border-bottom:1px solid rgba(123,157,197,.17);background:rgba(16,32,53,.86)}"
     +".dh-tools-title{display:grid;gap:3px}.dh-tools-title strong{color:#f4f8fd;font-size:16px;letter-spacing:-.01em}.dh-tools-title span{color:#8195ad;font-size:11px}"
     +".dh-tools-close{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:1px solid rgba(132,163,199,.24);border-radius:11px;background:#14243a;color:#dbe6f3;cursor:pointer}.dh-tools-close:hover{border-color:#60e6d7;color:#72ecde}.dh-tools-close svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9}"
+    +".dh-tools-back{display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;color:#7ceadd;font:900 12px Nunito,system-ui,sans-serif;cursor:pointer;padding:7px 0}.dh-tools-back:hover{color:#fff}.dh-tools-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 15px;border-bottom:1px solid rgba(123,157,197,.17);background:rgba(8,20,35,.88)}.dh-tools-tab{min-height:38px;border:1px solid rgba(126,158,197,.22);border-radius:10px;background:#0d1e33;color:#91a5be;font:900 12px Nunito,system-ui,sans-serif;cursor:pointer}.dh-tools-tab[aria-selected='true']{border-color:#55e6d1;background:rgba(48,196,178,.14);color:#79eee0}.dh-tool-panel[hidden]{display:none!important}"
     +".dh-tools-scroll{overflow:auto;overscroll-behavior:contain;padding:15px 15px max(28px,env(safe-area-inset-bottom));scrollbar-gutter:stable}"
     +".dh-tool-section{display:grid;gap:8px;margin-bottom:19px}.dh-tool-section>header{display:flex;align-items:center;justify-content:space-between;padding:0 3px}.dh-tool-section>header strong{color:#89a0ba;font-size:10px;font-weight:950;letter-spacing:.11em;text-transform:uppercase}.dh-tool-section>header span{color:#60758d;font-size:10px}"
     +".dh-tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}"
@@ -263,29 +264,30 @@
     if(!overlay){
       overlay=document.createElement("div");overlay.id="dhToolsOverlay";overlay.className="dh-tools-overlay dh-hidden";overlay.setAttribute("role","presentation");
       box=document.createElement("aside");box.id="dhToolsBox";box.className="dh-tools-box";box.setAttribute("role","dialog");box.setAttribute("aria-modal","true");box.setAttribute("aria-label","Modül araçları");
-      box.innerHTML='<header class="dh-tools-head"><div class="dh-tools-title"><strong>Modül araçları</strong><span>İhtiyacınız olduğunda açın</span></div><button class="dh-tools-close" type="button" aria-label="Araçları kapat">'+moduleToolIcon("detail")+'</button></header><div class="dh-tools-scroll"></div>';
+      box.innerHTML='<header class="dh-tools-head"><div><button class="dh-tools-back" type="button">← Çalışmaya dön</button><div class="dh-tools-title"><strong>Modül araçları</strong><span>İhtiyacınız olduğunda açın</span></div></div><button class="dh-tools-close" type="button" aria-label="Araçları kapat">'+moduleToolIcon("detail")+'</button></header><div class="dh-tools-tabs" role="tablist" aria-label="Araç kategorileri"><button class="dh-tools-tab" type="button" role="tab" data-tool-tab="sentence" aria-selected="true">Cümle</button><button class="dh-tools-tab" type="button" role="tab" data-tool-tab="module" aria-selected="false">Modül</button><button class="dh-tools-tab" type="button" role="tab" data-tool-tab="analysis" aria-selected="false">Analiz</button></div><div class="dh-tools-scroll"></div>';
       /* Bilgi simgesinin yerine sade kapatma çarpısı kullan. */
       box.querySelector(".dh-tools-close").innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
       scroll=box.querySelector(".dh-tools-scroll");
-      var section=function(title,note){var el=document.createElement("section");el.className="dh-tool-section";el.innerHTML='<header><strong>'+title+'</strong><span>'+note+'</span></header><div class="dh-tool-grid"></div>';scroll.appendChild(el);return el.querySelector(".dh-tool-grid");};
+      var section=function(title,note,tab){var el=document.createElement("section");el.className="dh-tool-section dh-tool-panel";el.dataset.toolPanel=tab;el.hidden=tab!=="sentence";el.innerHTML='<header><strong>'+title+'</strong><span>'+note+'</span></header><div class="dh-tool-grid"></div>';scroll.appendChild(el);return el.querySelector(".dh-tool-grid");};
       var tool=function(grid,icon,title,description,action,tone){var button=document.createElement("button");button.type="button";button.className="dh-tool-card"+(tone?(" is-"+tone):"");button.innerHTML='<span class="dh-tool-icon">'+moduleToolIcon(icon)+'</span><span class="dh-tool-copy"><b>'+title+'</b><small>'+description+'</small></span>';button.onclick=function(){closeModuleTools();action();};grid.appendChild(button);return button;};
-      var sentence=section("Cümle araçları","Aktif cümle");
+      var sentence=section("Cümle araçları","Aktif cümle","sentence");
       tool(sentence,"spark","Gemini ile açıkla","Ayrıntılı ve ortak açıklama",function(){var b=document.querySelector(".dh-aiask-btn");if(b)b.click();},"purple");
       tool(sentence,"translate","Translate","Cümleyi çeviride aç",openActiveTranslate);
       tool(sentence,"mic","Konuşma stüdyosu","Ses ve telaffuz çalış",openActiveStudio);
       tool(sentence,"slow","Yavaş oynat","Telaffuzu yavaş dinle",function(){var t=byText(card(),"yavaş");if(t)t.click();});
       tool(sentence,"detail","Detay görünümü","Cümlenin tüm alanlarını aç",function(){var t=byText(card(),"detay");if(t)t.click();});
-      var module=section("Modül işlemleri","Toplu çalışma");
+      var module=section("Modül işlemleri","Toplu çalışma","module");
       tool(module,"stack","Eksikleri açıkla","Yalnız açıklaması olmayanlar",function(){explainActiveModuleWithAI();},"purple");
       tool(module,"refresh","Modülü yeniden açıkla","Kayıtlı açıklamaları yenile",function(){if(confirm("Kayıtlı olanlar dahil tüm aktif modül tek istekte yeniden hazırlansın mı?"))explainActiveModuleWithAI(true);},"danger");
       tool(module,"file","Aktif modülü indir","Bu modülü PDF olarak kaydet",function(){exportModuleToPDF(false);});
       tool(module,"archive","Tümünü PDF indir","Bütün modülleri arşivle",function(){exportModuleToPDF(true);});
-      var analysis=section("Gelişmiş analiz","İsteğe bağlı");
+      var analysis=section("Gelişmiş analiz","İsteğe bağlı","analysis");
       tool(analysis,"teacher","Öğretmen görünümü","Öğretici ipuçlarını göster",function(){var c=card(),t=c&&(c.querySelector(".teacher-btn")||byText(c,"öğretmen"));if(t)t.click();});
       tool(analysis,"chart","Zayıf analiz","Zorlandığınız alanları incele",function(){var c=card(),t=c&&(c.querySelector(".extra-weak")||byText(c,"zayıf"));if(t)t.click();});
-      var nativeSection=document.createElement("section");nativeSection.id="dhNativeToolsSection";nativeSection.className="dh-tool-section";nativeSection.hidden=true;nativeSection.innerHTML='<header><strong>Ek çalışma</strong><span>Diğer seçenekler</span></header>';scroll.appendChild(nativeSection);
+      var nativeSection=document.createElement("section");nativeSection.id="dhNativeToolsSection";nativeSection.className="dh-tool-section dh-tool-panel";nativeSection.dataset.toolPanel="analysis";nativeSection.hidden=true;nativeSection.innerHTML='<header><strong>Ek çalışma</strong><span>Diğer seçenekler</span></header>';scroll.appendChild(nativeSection);
       overlay.appendChild(box);document.body.appendChild(overlay);
-      overlay.onclick=function(event){if(event.target===overlay)closeModuleTools();};box.onclick=function(event){event.stopPropagation();};box.querySelector(".dh-tools-close").onclick=closeModuleTools;
+      overlay.onclick=function(event){if(event.target===overlay)closeModuleTools();};box.onclick=function(event){event.stopPropagation();};box.querySelector(".dh-tools-close").onclick=closeModuleTools;box.querySelector(".dh-tools-back").onclick=closeModuleTools;
+      Array.prototype.forEach.call(box.querySelectorAll(".dh-tools-tab"),function(tab){tab.onclick=function(){var key=tab.dataset.toolTab;Array.prototype.forEach.call(box.querySelectorAll(".dh-tools-tab"),function(t){t.setAttribute("aria-selected",t===tab?"true":"false");});Array.prototype.forEach.call(box.querySelectorAll(".dh-tool-panel"),function(panel){panel.hidden=panel.dataset.toolPanel!==key;});scroll.scrollTop=0;};});
       if(!document.documentElement.dataset.dhModuleToolsKey){document.documentElement.dataset.dhModuleToolsKey="1";document.addEventListener("keydown",function(event){
         var current=document.getElementById("dhToolsOverlay");if(!current||current.classList.contains("dh-hidden"))return;
         if(event.key==="Escape"){closeModuleTools();return;}
@@ -294,7 +296,7 @@
     }
     scroll=box.querySelector(".dh-tools-scroll");
     var grid=document.querySelector(".wd-tools-row"),nativeSection=box.querySelector("#dhNativeToolsSection");
-    if(grid&&nativeSection){if(grid.parentElement!==nativeSection)nativeSection.appendChild(grid);nativeSection.hidden=false;}
+    if(grid&&nativeSection){if(grid.parentElement!==nativeSection)nativeSection.appendChild(grid);var active=box.querySelector('.dh-tools-tab[aria-selected="true"]');nativeSection.hidden=!(active&&active.dataset.toolTab==="analysis");}
 
     var tg=document.getElementById("dhToolsToggle");
     if(!tg){
@@ -540,6 +542,7 @@ function renderResultBox(sentence, rawMarkdownText, tag) {
   box.style.cssText = "margin-top:16px;padding:16px;background:rgba(15,23,42,0.95);border-radius:14px;border:1px solid #3b82f6;color:#f1f5f9;grid-column:1 / -1;";
   box.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;"><span style="background:#10b981;color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:800;">${tag}</span><button type="button" data-ai-action="renew">🔄 Yeniden hazırla</button><button type="button" data-ai-action="edit">✏️ Düzenle</button><button type="button" data-ai-action="delete">🗑️ Sil</button><button type="button" data-ai-action="restore">↩ Önceki</button></div><div class="dh-ai-result-content">` + formattedHTML + `</div>`;
   box.querySelectorAll("button[data-ai-action]").forEach(function(b){b.style.cssText="border:1px solid #475569;border-radius:7px;background:#17243a;color:#e5edf8;padding:5px 8px;font-size:11px;font-weight:800;cursor:pointer";});
+  var readButton=box.querySelector("[data-dh-exp-reader]");if(readButton)readButton.onclick=function(event){event.preventDefault();event.stopPropagation();if(window.DHGemini&&DHGemini.openExplanationReader)DHGemini.openExplanationReader(readButton.closest(".dh-explanation-shell"));};
   box.querySelector('[data-ai-action="edit"]').onclick=function(){showExplanationEditor(sentence,rawMarkdownText,"Açıklamayı düzenle");};
   box.querySelector('[data-ai-action="renew"]').onclick=function(){renewSingleExplanation(sentence,rawMarkdownText);};
   box.querySelector('[data-ai-action="delete"]').onclick=async function(){if(!confirm("Bu açıklama silinsin mi? Modül toplu işleminde yeniden eksik sayılacaktır."))return;await deleteAIFromDB(sentence);box.innerHTML='<div style="color:#fbbf24">Açıklama silindi. Bir sonraki toplu işlemde yalnız eksiklerle birlikte yeniden hazırlanacak.</div><button type="button" id="dhRestoreDeleted" style="margin-top:10px;padding:8px;border:0;border-radius:8px;background:#334155;color:white;font-weight:800">↩ Silmeyi geri al</button>';box.querySelector("#dhRestoreDeleted").onclick=async function(){var old=await restorePreviousAI(sentence);if(old)renderResultBox(sentence,old,"🤖 Önceki açıklama geri yüklendi");};};
