@@ -91,6 +91,12 @@ body.yt-mode-shadow .yt-learning-card{border-color:rgba(255,202,99,.28)}body.yt-
 .yt-controls #loopToggle.is-active,.yt-controls #loopToggle[aria-pressed="true"]{border-color:#ffd166!important;background:linear-gradient(145deg,#b26a08,#7c4304)!important;color:#fff8df!important;box-shadow:0 0 0 2px rgba(255,209,102,.34),0 0 22px rgba(255,176,46,.38)!important}
 .yt-controls #loopToggle.is-active::after,.yt-controls #loopToggle[aria-pressed="true"]::after{content:"";position:absolute;top:5px;right:5px;width:7px;height:7px;border:1px solid #5b3200;border-radius:50%;background:#fff2a8;box-shadow:0 0 8px #ffe28a}
 
+/* v68 · Türkçe çeviri her video boyutunda rahat okunur */
+.yt-caption-tr{font-size:clamp(16px,1.75vw,24px)!important;font-weight:750!important;line-height:1.45!important;color:#f2f6fc!important;background:rgba(2,6,12,.9)!important;padding:6px 13px!important;text-shadow:0 2px 5px #000,0 0 2px #000!important}
+.yt-video-shell:fullscreen .yt-caption-tr,.yt-video-shell:-webkit-full-screen .yt-caption-tr,.yt-video-shell.is-pseudo-fullscreen .yt-caption-tr{font-size:clamp(20px,2.35vw,34px)!important;font-weight:800!important;line-height:1.42!important;padding:7px 15px!important;max-width:min(1100px,94vw)!important}
+@media(max-width:680px){.yt-caption-tr{font-size:clamp(15px,4.2vw,20px)!important}.yt-video-shell:fullscreen .yt-caption-tr,.yt-video-shell:-webkit-full-screen .yt-caption-tr,.yt-video-shell.is-pseudo-fullscreen .yt-caption-tr{font-size:clamp(18px,5vw,24px)!important;padding:6px 10px!important}}
+@media(orientation:landscape) and (max-height:520px){.yt-video-shell:fullscreen .yt-caption-tr,.yt-video-shell:-webkit-full-screen .yt-caption-tr,.yt-video-shell.is-pseudo-fullscreen .yt-caption-tr{font-size:clamp(18px,2.25vw,25px)!important;line-height:1.35!important}}
+
 /* Mobil ders düzeni: video görünür kalır, transkript kendi alanında kayar. */
 .yt-panel-scroll{overscroll-behavior-y:contain;touch-action:pan-y;scrollbar-gutter:stable}
 @media (min-width:681px){

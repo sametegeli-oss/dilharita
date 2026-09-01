@@ -1,3 +1,9 @@
+v68 DÜZELTMELERİ
+=================
+- Türkçe video çevirisinin normal, mobil ve tam ekran yazı boyutları yükseltildi.
+- Türkçe satırın ağırlığı, arka plan kontrastı ve metin gölgesi güçlendirildi.
+- Yatay ve kısa ekranlarda taşmadan okunabilir kalan ayrı bir ölçek eklendi.
+
 v67 DÜZELTMELERİ
 =================
 - Alt video kontrol çubuğundaki metin açıklamaları kaldırıldı; düğmeler yalnız simge gösteriyor.
