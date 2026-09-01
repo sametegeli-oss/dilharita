@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=32">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=33">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -128,13 +128,28 @@
       <button class="yt-control yt-fullscreen-control" id="fullscreenToggle" type="button" aria-label="Videoyu tam ekran yap" aria-pressed="false">⛶</button>
      </div>
      </div>
-     <div class="yt-fullscreen-workbar" id="fullscreenWorkbar" aria-label="Tam ekran çalışma panelleri">
-      <button id="fullscreenStudyPanel" type="button" aria-expanded="false"><span aria-hidden="true">☰</span> Çalışma</button>
-      <button id="fullscreenTranscriptPanel" type="button" aria-expanded="false"><span aria-hidden="true">文</span> Transkript</button>
+     <div class="yt-fullscreen-workbar" id="fullscreenWorkbar" aria-label="Tam ekran araçları">
+      <button class="yt-fullscreen-tools-toggle" id="fullscreenToolsToggle" type="button" aria-expanded="false" aria-controls="fullscreenDrawer" aria-label="Tam ekran araçlarını aç">
+       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6"/></svg><span>Araçlar</span>
+      </button>
      </div>
      <aside class="yt-fullscreen-drawer" id="fullscreenDrawer" hidden aria-label="Tam ekran çalışma çekmecesi">
       <header><strong id="fullscreenDrawerTitle">Çalışma</strong><button id="fullscreenDrawerClose" type="button" aria-label="Paneli kapat">×</button></header>
-      <div id="fullscreenDrawerBody"></div>
+      <div id="fullscreenDrawerBody">
+       <nav class="yt-fullscreen-tool-menu" id="fullscreenToolMenu" aria-label="Tam ekran çalışma araçları">
+        <button id="fsActionModule" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 17h6M17 14v6"/></svg><span><b>Modüle git</b><small>Aktif cümlenin çalışma modülü</small></span></button>
+        <button id="fsActionYouglish" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 7 4 6 4-6M12 13v5"/></svg><span><b>YouGlish</b><small>Gerçek videolarda kullanımı</small></span></button>
+        <button id="fsActionGemini" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c.8 5 4 8.2 9 9-5 .8-8.2 4-9 9-.8-5-4-8.2-9-9 5-.8 8.2-4 9-9Z"/></svg><span><b>Gemini ile açıkla</b><small>Cümleyi ayrıntılı incele</small></span></button>
+        <button id="fsActionShadow" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg><span><b>Shadowing</b><small>Dinle, kaydet ve karşılaştır</small></span></button>
+        <button id="fsActionDictation" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M6 9h2M10 9h2M14 9h2M18 9h0M6 13h2M10 13h2M14 13h4M7 16h10"/></svg><span><b>Dikte</b><small>Duyduğun cümleyi yaz</small></span></button>
+        <button id="fullscreenStudyPanel" type="button" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="2"/></svg><span><b>Çalışma paneli</b><small>Cümle ve kayıt araçları</small></span></button>
+        <button id="fullscreenTranscriptPanel" type="button" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7"/></svg><span><b>Transkript</b><small>Cümle seç ve videoda aç</small></span></button>
+        <button id="fsActionCaptions" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 10a3 3 0 1 0 0 4M18 10a3 3 0 1 0 0 4"/></svg><span><b>Altyazı</b><small id="fsCaptionState">Açık</small></span></button>
+        <button id="fsActionSpeed" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16a8 8 0 1 1 14 0M12 12l5-3"/><circle cx="12" cy="12" r="1"/></svg><span><b>Oynatma hızı</b><small id="fsSpeedState">1×</small></span></button>
+        <button id="fsActionSound" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6L8 10zM17 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg><span><b>Ses</b><small id="fsSoundState">Açık</small></span></button>
+        <button class="yt-fullscreen-exit-action" id="fsActionExit" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/><path d="m4 9 5-5M20 9l-5-5M4 15l5 5M20 15l-5 5"/></svg><span><b>Tam ekrandan çık</b><small>Normal çalışma görünümüne dön</small></span></button>
+       </nav>
+      </div>
      </aside>
      </div>
 
@@ -332,13 +347,13 @@
  <script src="./learning-error-system.js?v=2"></script>
  <script src="./ai-choice.js?v=1"></script>
  <script src="./ai-providers.js?v=150"></script>
- <script src="./gemini-bridge.js?v=18"></script>
+ <script src="./gemini-bridge.js?v=19"></script>
  <script src="./cloud-sync.js?v=24"></script>
  <script src="./word-popup.js?v=11"></script>
  <script src="./immersive-youtube-study.js?v=16"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=46"></script>
+ <script src="./youtube-egitim.js?v=47"></script>
 </body>
 </html>
 

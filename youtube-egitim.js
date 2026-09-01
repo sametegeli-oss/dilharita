@@ -126,14 +126,17 @@ function nativeFullscreenElement(){return document.fullscreenElement||document.w
 function isVideoFullscreen(){var shell=$("videoShell"),node=nativeFullscreenElement();return!!(shell&&(pseudoFullscreen||node===shell||shell.classList.contains("is-pseudo-fullscreen")))}
 function clearFullscreenHide(){clearTimeout(fullscreenHideTimer);fullscreenHideTimer=null}
 function updateFullscreenButtons(){var on=isVideoFullscreen(),buttons=[$("fullscreenToggle"),$("focusMode")];buttons.forEach(function(b){if(!b)return;b.setAttribute("aria-pressed",String(on));b.setAttribute("aria-label",on?"Tam ekrandan çık":"Videoyu tam ekran yap");b.title=on?"Tam ekrandan çık":"Videoyu tam ekran yap";b.textContent=on?"⤢":"⛶"})}
-function scheduleFullscreenHide(){var shell=$("videoShell");if(!shell||!isVideoFullscreen()||!isPlayerPlaying()){clearFullscreenHide();if(shell)shell.classList.remove("is-controls-hidden");return}if(fullscreenHideTimer)return;fullscreenHideTimer=setTimeout(function(){fullscreenHideTimer=null;if(isVideoFullscreen()&&isPlayerPlaying())shell.classList.add("is-controls-hidden")},2400)}
+function scheduleFullscreenHide(){var shell=$("videoShell");if(!shell||!isVideoFullscreen()||!isPlayerPlaying()||shell.classList.contains("is-drawer-open")){clearFullscreenHide();if(shell)shell.classList.remove("is-controls-hidden");return}if(fullscreenHideTimer)return;fullscreenHideTimer=setTimeout(function(){fullscreenHideTimer=null;if(isVideoFullscreen()&&isPlayerPlaying()&&!shell.classList.contains("is-drawer-open"))shell.classList.add("is-controls-hidden")},2400)}
 function revealFullscreenControls(){var shell=$("videoShell");if(!shell||!isVideoFullscreen())return;shell.classList.remove("is-controls-hidden");scheduleFullscreenHide()}
+function syncFullscreenViewportGap(){var shell=$("videoShell");if(!shell)return;var gap=0,v=global.visualViewport;if(isVideoFullscreen()&&v){gap=Math.max(0,Math.round(global.innerHeight-v.height-v.offsetTop));if(gap>180)gap=0}shell.style.setProperty("--yt-mobile-ui-bottom",gap+"px")}
+function syncFullscreenToolStates(){var caption=$("fsCaptionState"),speed=$("fsSpeedState"),sound=$("fsSoundState");if(caption)caption.textContent=captionOn?"Açık":"Kapalı";if(speed)speed.textContent=$("speedToggle")?$("speedToggle").textContent:"1×";if(sound)sound.textContent=muted?"Kapalı":"Açık"}
 function restoreFullscreenDrawerNode(){if(!fullscreenDrawerNode||!fullscreenDrawerOrigin)return;var o=fullscreenDrawerOrigin;try{o.parent.insertBefore(fullscreenDrawerNode,o.next&&o.next.parentNode===o.parent?o.next:null)}catch(e){}fullscreenDrawerNode=null;fullscreenDrawerOrigin=null}
 function portalFullscreenModal(modal){if(!modal||modal.hidden||!isVideoFullscreen()||modal.parentNode===$("videoShell"))return;fullscreenModalOrigins.push({node:modal,parent:modal.parentNode,next:modal.nextSibling});$("videoShell").appendChild(modal);revealFullscreenControls()}
 function restoreFullscreenModals(){fullscreenModalOrigins.splice(0).forEach(function(o){try{o.parent.insertBefore(o.node,o.next&&o.next.parentNode===o.parent?o.next:null)}catch(e){}})}
-function closeFullscreenDrawer(){var shell=$("videoShell"),drawer=$("fullscreenDrawer");restoreFullscreenDrawerNode();if(drawer)drawer.hidden=true;if(shell)shell.classList.remove("is-drawer-open");["fullscreenStudyPanel","fullscreenTranscriptPanel"].forEach(function(id){var b=$(id);if(b){b.classList.remove("is-active");b.setAttribute("aria-expanded","false")}})}
-function openFullscreenDrawer(kind){if(!isVideoFullscreen())enterPseudoFullscreen();var node=kind==="transcript"?document.querySelector(".yt-transcript-panel"):$("controlRail"),drawer=$("fullscreenDrawer"),body=$("fullscreenDrawerBody"),shell=$("videoShell");if(!node||!drawer||!body)return;if(fullscreenDrawerNode===node&&!drawer.hidden){closeFullscreenDrawer();return}closeFullscreenDrawer();fullscreenDrawerOrigin={parent:node.parentNode,next:node.nextSibling};fullscreenDrawerNode=node;body.appendChild(node);$("fullscreenDrawerTitle").textContent=kind==="transcript"?"Transkript · cümle seç":"Çalışma araçları";drawer.hidden=false;shell.classList.add("is-drawer-open");var b=$(kind==="transcript"?"fullscreenTranscriptPanel":"fullscreenStudyPanel");if(b){b.classList.add("is-active");b.setAttribute("aria-expanded","true")}revealFullscreenControls()}
-function syncFullscreenUi(){var shell=$("videoShell");if(!shell)return;if(!isVideoFullscreen()){closeFullscreenDrawer();restoreFullscreenModals();clearFullscreenHide();shell.classList.remove("is-controls-hidden")}else revealFullscreenControls();updateFullscreenButtons()}
+function closeFullscreenDrawer(){var shell=$("videoShell"),drawer=$("fullscreenDrawer"),menu=$("fullscreenToolMenu");restoreFullscreenDrawerNode();if(drawer)drawer.hidden=true;if(menu)menu.hidden=false;if(shell)shell.classList.remove("is-drawer-open");["fullscreenToolsToggle","fullscreenStudyPanel","fullscreenTranscriptPanel"].forEach(function(id){var b=$(id);if(b){b.classList.remove("is-active");b.setAttribute("aria-expanded","false")}})}
+function openFullscreenTools(){if(!isVideoFullscreen())enterPseudoFullscreen();var drawer=$("fullscreenDrawer"),menu=$("fullscreenToolMenu"),shell=$("videoShell"),toggle=$("fullscreenToolsToggle");if(!drawer||!menu||!shell)return;if(!drawer.hidden&&!fullscreenDrawerNode){closeFullscreenDrawer();return}closeFullscreenDrawer();syncFullscreenToolStates();menu.hidden=false;$("fullscreenDrawerTitle").textContent="Tam ekran araçları";drawer.hidden=false;shell.classList.add("is-drawer-open");if(toggle){toggle.classList.add("is-active");toggle.setAttribute("aria-expanded","true")}revealFullscreenControls()}
+function openFullscreenDrawer(kind){if(!isVideoFullscreen())enterPseudoFullscreen();var node=kind==="transcript"?document.querySelector(".yt-transcript-panel"):$("controlRail"),drawer=$("fullscreenDrawer"),body=$("fullscreenDrawerBody"),menu=$("fullscreenToolMenu"),shell=$("videoShell");if(!node||!drawer||!body)return;if(fullscreenDrawerNode===node&&!drawer.hidden){closeFullscreenDrawer();return}closeFullscreenDrawer();if(menu)menu.hidden=true;fullscreenDrawerOrigin={parent:node.parentNode,next:node.nextSibling};fullscreenDrawerNode=node;body.appendChild(node);$("fullscreenDrawerTitle").textContent=kind==="transcript"?"Transkript · cümle seç":"Çalışma araçları";drawer.hidden=false;shell.classList.add("is-drawer-open");var b=$(kind==="transcript"?"fullscreenTranscriptPanel":"fullscreenStudyPanel");if(b){b.classList.add("is-active");b.setAttribute("aria-expanded","true")}revealFullscreenControls()}
+function syncFullscreenUi(){var shell=$("videoShell");if(!shell)return;syncFullscreenViewportGap();if(!isVideoFullscreen()){closeFullscreenDrawer();restoreFullscreenModals();clearFullscreenHide();shell.classList.remove("is-controls-hidden")}else revealFullscreenControls();updateFullscreenButtons();syncFullscreenToolStates()}
 function enterPseudoFullscreen(){var shell=$("videoShell");if(!shell)return;pseudoFullscreen=true;document.body.classList.add("yt-video-pseudo-fullscreen");shell.classList.add("is-pseudo-fullscreen");syncFullscreenUi()}
 function exitPseudoFullscreen(){var shell=$("videoShell");closeFullscreenDrawer();pseudoFullscreen=false;document.body.classList.remove("yt-video-pseudo-fullscreen");if(shell)shell.classList.remove("is-pseudo-fullscreen","is-controls-hidden","is-drawer-open");syncFullscreenUi()}
 function enterVideoFullscreen(){var shell=$("videoShell");if(!shell)return;var request=shell.requestFullscreen||shell.webkitRequestFullscreen;if(!request){enterPseudoFullscreen();return}try{var result=request.call(shell);if(result&&typeof result.catch==="function")result.catch(enterPseudoFullscreen)}catch(e){enterPseudoFullscreen()}}
@@ -626,11 +629,22 @@ function bind(){
  $("controlModule").onclick=openExistingModuleOrCreate;
  $("controlShadow").onclick=function(){setStudyMode("shadow");if(isVideoFullscreen())openFullscreenDrawer("study")};
  $("controlDictation").onclick=function(){setStudyMode("dictation");if(isVideoFullscreen())openFullscreenDrawer("study")};
- $("explainSentenceGemini").onclick=function(){openSentenceExplanation(false)};
- $("regenerateExplanation").onclick=function(){openSentenceExplanation(true)};
- $("fullscreenStudyPanel").onclick=function(){openFullscreenDrawer("study")};
- $("fullscreenTranscriptPanel").onclick=function(){openFullscreenDrawer("transcript")};
- $("fullscreenDrawerClose").onclick=closeFullscreenDrawer;
+  $("explainSentenceGemini").onclick=function(){openSentenceExplanation(false)};
+  $("regenerateExplanation").onclick=function(){openSentenceExplanation(true)};
+  $("fullscreenToolsToggle").onclick=openFullscreenTools;
+  $("fullscreenStudyPanel").onclick=function(){openFullscreenDrawer("study")};
+  $("fullscreenTranscriptPanel").onclick=function(){openFullscreenDrawer("transcript")};
+  $("fullscreenDrawerClose").onclick=closeFullscreenDrawer;
+  function runFullscreenTool(target){closeFullscreenDrawer();var b=$(target);if(b)b.click();syncFullscreenToolStates()}
+  $("fsActionModule").onclick=function(){runFullscreenTool("controlModule")};
+  $("fsActionYouglish").onclick=function(){runFullscreenTool("controlYouglish")};
+  $("fsActionGemini").onclick=function(){runFullscreenTool("explainSentenceGemini")};
+  $("fsActionShadow").onclick=function(){runFullscreenTool("controlShadow")};
+  $("fsActionDictation").onclick=function(){runFullscreenTool("controlDictation")};
+  $("fsActionCaptions").onclick=function(){runFullscreenTool("captionToggle")};
+  $("fsActionSpeed").onclick=function(){runFullscreenTool("speedToggle")};
+  $("fsActionSound").onclick=function(){runFullscreenTool("soundToggle")};
+  $("fsActionExit").onclick=function(){closeFullscreenDrawer();exitVideoFullscreen()};
  if(global.MutationObserver){var modalObserver=new MutationObserver(function(rows){rows.forEach(function(row){var modal=row.target;if(row.attributeName==="hidden"&&!modal.hidden)portalFullscreenModal(modal)})});Array.prototype.forEach.call(document.querySelectorAll(".yt-modal-overlay"),function(modal){modalObserver.observe(modal,{attributes:true,attributeFilter:["hidden"]})})}
  $("videoModuleSize").onchange=updateVideoModuleSummary;
  $("videoModuleForm").onsubmit=function(e){e.preventDefault();saveVideoModules()};
@@ -658,7 +672,8 @@ function bind(){
  if(tapLayer)tapLayer.onclick=function(e){e.preventDefault();e.stopPropagation();revealFullscreenControls()};
  if(videoShell){videoShell.addEventListener("pointermove",revealFullscreenControls,{passive:true});videoShell.addEventListener("pointerdown",revealFullscreenControls,{passive:true})}
  if(videoChrome)videoChrome.addEventListener("click",revealFullscreenControls);
- document.addEventListener("fullscreenchange",syncFullscreenUi);document.addEventListener("webkitfullscreenchange",syncFullscreenUi);
+  document.addEventListener("fullscreenchange",syncFullscreenUi);document.addEventListener("webkitfullscreenchange",syncFullscreenUi);
+  global.addEventListener("resize",syncFullscreenViewportGap,{passive:true});if(global.visualViewport){global.visualViewport.addEventListener("resize",syncFullscreenViewportGap,{passive:true});global.visualViewport.addEventListener("scroll",syncFullscreenViewportGap,{passive:true})}
  document.addEventListener("keydown",function(e){if(e.key==="Escape"&&pseudoFullscreen){e.preventDefault();exitPseudoFullscreen()}});
  updateFullscreenButtons();
  }

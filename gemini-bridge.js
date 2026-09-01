@@ -122,7 +122,7 @@ function ask(opt){
     '<div class="dhgb-card">'
    +'<h3>'+esc(opt.title||"Gemini'ye sor")+'</h3>'
    +'<div class="dhgb-job">Bekleyen görev: '+esc(id)+'</div>'
-   +'<p class="dhgb-step">Tek düğmeyle prompt kopyalanır ve '+esc(providerName)+' açılır. Orada promptu yapıştırıp gönderin, cevabı kopyalayın ve programa dönün. İzin varsa cevap otomatik alınır.</p>'
+   +'<p class="dhgb-step">Tek düğmeyle prompt kopyalanır ve '+esc(providerName)+' açılır. Orada promptu yapıştırıp gönderin ve cevabı kopyalayın. Programa dönünce aşağıdaki pano düğmesine siz basın.</p>'
    +'<button class="dhgb-tog" type="button">Promptu göster / gizle</button>'
    +'<div class="dhgb-prompt" style="display:none"></div>'
    +'<div class="dhgb-row">'
@@ -132,7 +132,7 @@ function ask(opt){
    +'<div class="dhgb-msg"></div>'
    +'<div class="dhgb-preview"></div>'
    +'<div class="dhgb-row">'
-     +'<button class="dhgb-paste" type="button">📋 Cevabı panodan getir</button>'
+     +'<button class="dhgb-paste" type="button">📋 Gemini cevabını panodan al</button>'
      +'<button class="dhgb-send" type="button">✅ Cevabı kullan (Enter)</button>'
      +'<button class="dhgb-close" type="button">Kapat</button>'
    +'</div>'
@@ -154,9 +154,7 @@ function ask(opt){
   function close(){
     if(ov.parentNode) ov.parentNode.removeChild(ov);
     if(activeOverlay===ov) activeOverlay=null;
-    global.removeEventListener("focus",returned);
     global.removeEventListener("pagehide",backgrounded);
-    document.removeEventListener("visibilitychange",returned);
   }
   function rememberDraft(){ job.draft=ta.value||""; job.state="answer-ready"; savePending(job); }
   ta.addEventListener("input",rememberDraft);
@@ -170,7 +168,7 @@ function ask(opt){
     catch(e){ openFailed=true; }
     copy(prompt).then(function(ok){
       b.textContent=ok?"✅ Prompt kopyalandı · "+providerName+" açıldı":"⚠️ Promptu elle kopyala";
-      say(ok?("Prompt panoda. "+providerName+"’de yapıştırıp gönder; cevabı kopyalayıp buraya dön.")
+      say(ok?("Prompt panoda. "+providerName+"’de yapıştırıp gönder; cevabı kopyalayıp buraya dön ve pano düğmesine bas.")
              :"Prompt otomatik kopyalanamadı. ‘Promptu göster’ ile açıp elle kopyalayın.",ok?"#4ade80":"#f59e0b");
       if(openFailed)say("Prompt "+(ok?"kopyalandı; ":"")+providerName+" yeni sekmede açılamadı. Sağlayıcıyı elle açın.","#f59e0b");
       setTimeout(function(){b.textContent="✦ Promptu kopyala ve "+providerName+"’ye git";},2600);
@@ -178,7 +176,7 @@ function ask(opt){
   };
   ov.querySelector(".dhgb-paste").onclick=function(){
     readClip().then(function(t){
-      if(t && t.trim()){ ta.value=t; rememberDraft(); pasteBtn.classList.remove("dhgb-ready"); say("Gemini cevabı panodan alındı.","#4ade80"); submit(false); }
+      if(t && t.trim()){ ta.value=t; rememberDraft(); say("Gemini cevabı panodan alındı.","#4ade80"); submit(false); }
       else say("Pano boş görünüyor.","#f59e0b");
     }).catch(function(){
       say("Tarayıcı panoyu okumaya izin vermedi — kutuya uzun basıp Yapıştır de.","#f59e0b");
@@ -231,7 +229,7 @@ function ask(opt){
   /* Gemini yalnız kullanıcının ana mor düğmeye dokunmasıyla açılır. Böylece
      tarayıcının açılır pencere koruması aşılmaz ve istemsiz sekme oluşmaz. */
   var privacy=wasRedacted?" Kişisel/API bilgileri maskelendi.":"";
-  say("Hazır: mor düğme promptu kopyalayıp Gemini’yi açar."+privacy,"#9fb3d9");
+  say("Hazır: mor düğme Gemini’yi açar. Dönüşte pano yalnız sizin düğmeye basmanızla okunur."+privacy,"#9fb3d9");
 
   /* Mobil tarayıcı Gemini sekmesine geçerken pagehide üretebilir veya bu
      sayfayı bellekten atabilir. Görevi burada silmek dönüş ekranını yok
@@ -240,22 +238,6 @@ function ask(opt){
   function backgrounded(){ rememberDraft(); }
   global.addEventListener("pagehide",backgrounded,{once:true});
 
-  function returned(){
-    if(document.hidden || !ov.parentNode || awaitingConfirm) return;
-    function check(granted){
-      if(!granted){ pasteBtn.classList.add("dhgb-ready"); say("Gemini’den döndünüz. Cevabı kopyaladıysanız ‘Cevabı panodan getir’e dokunun.","#fbbf24"); return; }
-      readClip().then(function(t){
-        var value=String(t||"").trim(),match=value.match(/^\s*DH-ID:\s*([^\s]+)\s*\r?\n/i);
-        if(value&&value!==prompt.trim()&&match&&match[1]===id){ta.value=value;rememberDraft();say("Doğru Gemini cevabı bulundu; otomatik aktarılıyor…","#4ade80");submit(true)}
-        else if(value&&value!==prompt.trim()){pasteBtn.classList.add("dhgb-ready");say("Panoda bu görevin kimliği bulunamadı. Doğru cevabı kopyalayıp ‘Cevabı panodan getir’e dokunun.","#fbbf24")}
-      }).catch(function(){ pasteBtn.classList.add("dhgb-ready"); });
-    }
-    if(navigator.permissions&&navigator.permissions.query){
-      navigator.permissions.query({name:"clipboard-read"}).then(function(p){check(p.state==="granted");},function(){check(false);});
-    }else check(false);
-  }
-  global.addEventListener("focus",returned);
-  document.addEventListener("visibilitychange",returned);
   return { close:close, setMessage:say };
 }
 

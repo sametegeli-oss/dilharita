@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v207";  /* v207: Tek düğmeli Gemini geçişi ve otomatik cevap alma */
+var SW_VERSION = "dh-sw-v208";  /* v208: Mobil tam ekran araç çekmecesi ve manuel Gemini pano alımı */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
