@@ -37,6 +37,13 @@ SÜRÜMLER
 - index-app-layout.js v31
 - gemini-bridge.js v21
 - Service Worker dh-sw-v211
+v65 DÜZELTMELERİ
+=================
+- Tam okuma moduna sağ üstte sürekli görünen kırmızı “Okumadan çık” düğmesi eklendi.
+- Kayıtlı Gemini açıklamalarının cümle değişiminde otomatik açılması kaldırıldı.
+- Gemini düğmesi açıklama yokken mor, kayıtlı açıklama varken yeşil gösteriliyor.
+- Kayıtlı açıklama yalnız düğmeye basılınca açılıyor; aynı düğmeyle yeniden kapatılabiliyor.
+
 v64 DÜZELTMELERİ
 =================
 - Gereksiz modül arama/seviye süzgeci ve koç seviyesi şeridi kaldırıldı.

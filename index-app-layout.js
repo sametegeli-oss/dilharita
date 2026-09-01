@@ -28,6 +28,7 @@
     +".dh-gtr-btn:hover{background:#22344f}"
     +".dh-aiask-btn{background:linear-gradient(135deg,#7c3aed,#4338ca);border-color:#8b5cf6;color:#fff}"
     +".dh-aiask-btn:hover{background:linear-gradient(135deg,#8b4cf7,#4f46e0)}"
+    +".dh-aiask-btn.has-explanation{background:linear-gradient(135deg,#059669,#047857)!important;border-color:#34d399!important;color:#fff!important;box-shadow:0 0 0 1px rgba(52,211,153,.2),0 8px 22px rgba(5,150,105,.2)}.dh-aiask-btn.has-explanation:hover{background:linear-gradient(135deg,#10b981,#059669)!important}.dh-aiask-btn[aria-expanded='true']{box-shadow:0 0 0 2px rgba(255,255,255,.2),0 8px 24px rgba(5,150,105,.28)}"
     +".dh-youtube-source-btn{background:linear-gradient(135deg,#dc2626,#b91c1c)!important;border-color:#f87171!important;color:#fff!important}"
     +".dh-youtube-source-btn:hover{background:linear-gradient(135deg,#ef4444,#dc2626)!important}"
     +".dh-source-media-row{display:flex;align-items:stretch;gap:8px;min-width:0}"
@@ -519,7 +520,7 @@ function isDetailedModuleExplanation(text){var t=String(text||""),low=t.toLocale
 async function explainActiveModuleWithAI(forceAll){
   var sentences=await activeModuleSentences();if(!sentences.length){alert("Aktif modülün cümleleri bulunamadı.");return;}
   var cached=await getAllAIExplanationsFromDB(),missing=forceAll?sentences.slice():sentences.filter(function(s){return !cached[s.en];});
-  if(!missing.length){bulkModal("♻️ Modül açıklamaları hazır","Bu modüldeki <b>"+sentences.length+" cümlenin tamamı</b> daha önce açıklanmış. Gemini’ye yeniden gönderilmedi.",false);var cur=document.querySelector(".card-en");if(cur&&cached[cur.textContent.trim()])renderResultBox(cur.textContent.trim(),cached[cur.textContent.trim()],"🤖 Modülün kayıtlı AI açıklaması");return;}
+  if(!missing.length){bulkModal("♻️ Modül açıklamaları hazır","Bu modüldeki <b>"+sentences.length+" cümlenin tamamı</b> daha önce açıklanmış. Gemini’ye yeniden gönderilmedi.",false);var cur=document.querySelector(".card-en");if(cur)updateGeminiButtonState(cur.textContent.trim(),!!cached[cur.textContent.trim()],false);return;}
   if(!(window.DHProviders&&DHProviders.chat&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())){alert("Profilde Gemini/AI yöntemini etkinleştirin.");return;}
   var waitingModal=bulkModal("💎 Modül AI’ye hazırlanıyor",forceAll?("Aktif modüldeki <b>"+sentences.length+" cümlenin tamamı</b>, kayıt durumuna bakılmadan tek ayrıntılı istekte yeniden gönderilecek. Kısa yanıtlar eski kayıtların üzerine yazılmayacak."):("Toplam "+sentences.length+" cümlenin "+cachedCount(sentences,cached)+" tanesi kayıtlı. Açıklaması bulunmayan <b>"+missing.length+" cümlenin tamamı tek istekte</b> gönderilecek. Yanıt bazı cümleleri atlarsa kaydedilenler korunur; sonraki çalıştırmada yalnız kalanlar gönderilir."),true);
   var payload=missing.map(function(s,i){return{n:i+1,en:s.en,tr:s.tr||""};});
@@ -531,7 +532,7 @@ async function explainActiveModuleWithAI(forceAll){
     var rows=(window.DHAIBulkJSON&&DHAIBulkJSON.parse)?DHAIBulkJSON.parse(raw):JSON.parse(String(raw||"")),saved=0,rejected=0;
     for(var i=0;i<rows.length;i++){var n=Number(rows[i]&&rows[i].n),text=String(rows[i]&&rows[i].explanation||"").trim();if(n>=1&&n<=missing.length&&text){if(!isDetailedModuleExplanation(text)){rejected++;continue;}await saveAIToDB(missing[n-1].en,text);saved++;}}
     var left=missing.length-saved;bulkModal("✅ Ayrıntılı modül açıklamaları işlendi","<b>"+saved+" ayrıntılı açıklama</b> kaydedildi."+(rejected?" <b>"+rejected+" kısa veya bölümleri eksik açıklama</b> kalite kontrolünden geçmedi ve eski kaydın üzerine yazılmadı.":"")+(left&&!forceAll?" Kalan <b>"+left+" cümle</b> sonraki çalıştırmada yeniden gönderilir.":left&&forceAll?" Baştan yenilemede tamamlanmayan "+left+" cümlenin eski açıklaması korundu.":" Modülün bütün açıklamaları hazır."),false);
-    var current=document.querySelector(".card-en");if(current){var now=await getAIFromDB(current.textContent.trim());if(now)renderResultBox(current.textContent.trim(),now,"🤖 Toplu modül AI açıklaması");}
+    var current=document.querySelector(".card-en");if(current){var now=await getAIFromDB(current.textContent.trim());updateGeminiButtonState(current.textContent.trim(),!!now,false);}
   }catch(e){bulkModal("⚠️ Toplu açıklama tamamlanamadı","Yanıt beklenen JSON biçiminde değildi veya işlem iptal edildi. Hiçbir mevcut kayıt silinmedi; tekrar denediğinizde yalnız eksik cümleler gönderilir.",false);}
 }
 function cachedCount(sentences,map){return sentences.filter(function(s){return !!map[s.en];}).length;}
@@ -561,7 +562,10 @@ function renderResultBox(sentence, rawMarkdownText, tag) {
   box.querySelector('[data-ai-action="restore"]').onclick=async function(){var old=popAIBackup(sentence);if(!old){alert("Bu cümle için önceki açıklama bulunmuyor.");return;}var current=await getAIFromDB(sentence);if(current)pushAIBackup(sentence,current);await saveAIToDB(sentence,old);renderResultBox(sentence,old,"🤖 Önceki açıklama geri yüklendi");};
   
   card.appendChild(box);
+  updateGeminiButtonState(sentence,true,true);
 }
+
+function updateGeminiButtonState(sentence,hasExplanation,isOpen){var button=document.querySelector(".dh-aiask-btn");if(!button)return;var sentenceEl=document.querySelector(".card .card-en"),activeSentence=(sentenceEl&&sentenceEl.textContent||"").trim();if(sentence&&activeSentence&&sentence!==activeSentence)return;button.classList.toggle("has-explanation",!!hasExplanation);button.setAttribute("aria-expanded",isOpen?"true":"false");button.textContent=hasExplanation?"✓ Gemini açıklaması":"✦ Gemini ile açıkla";button.title=hasExplanation?(isOpen?"Açıklamayı kapat":"Kayıtlı açıklamayı aç"):"Bu cümle için Gemini açıklaması hazırla";}
 
 function showExplanationEditor(sentence,text,title){var old=document.getElementById("dhAiEditModal");if(old)old.remove();var m=document.createElement("div");m.id="dhAiEditModal";m.style.cssText="position:fixed;inset:0;z-index:1000002;background:#020617e8;display:flex;align-items:center;justify-content:center;padding:14px";m.innerHTML='<div style="width:min(720px,100%);background:#0f172a;border:1px solid #8b5cf6;border-radius:16px;padding:16px;color:white"><h3 style="margin:0 0 10px">'+title+'</h3><p style="font-size:12px;color:#94a3b8">Yeni metin kaydedilene kadar mevcut açıklama korunur.</p><textarea style="width:100%;height:50vh;box-sizing:border-box;background:#071225;color:white;border:1px solid #475569;border-radius:10px;padding:12px"></textarea><div style="display:flex;gap:8px;margin-top:10px"><button data-x="cancel">İptal</button><button data-x="save">Onayla ve değiştir</button></div></div>';document.body.appendChild(m);var ta=m.querySelector("textarea");ta.value=text||"";m.querySelectorAll("button").forEach(function(b){b.style.cssText="flex:1;padding:10px;border:0;border-radius:8px;background:#334155;color:white;font-weight:800";});m.querySelector('[data-x="save"]').style.background="#10b981";m.querySelector('[data-x="cancel"]').onclick=function(){m.remove();};m.querySelector('[data-x="save"]').onclick=async function(){var v=ta.value.trim();if(!v)return;await saveAIToDB(sentence,v);m.remove();renderResultBox(sentence,v,"🤖 Ortak AI açıklaması düzenlendi");};ta.focus();}
 
@@ -596,20 +600,18 @@ async function checkAndSyncAiBox(card) {
   let sentenceEl = card.querySelector(".card-en");
   let sentence = sentenceEl ? sentenceEl.innerText.trim() : "";
   
-  if (sentence === currentLoadedSentence) return;
+  var sentenceChanged=sentence!==currentLoadedSentence;
   currentLoadedSentence = sentence;
 
   let oldBox = document.getElementById("dhAiResultBox");
-  if (oldBox) oldBox.remove();
+  if (sentenceChanged&&oldBox) oldBox.remove();
 
   if (!sentence) return;
 
   let cached = await getAIFromDB(sentence);
-  if (cached) {
-    renderResultBox(sentence, cached, "🤖 Video ve modülün ortak AI açıklaması");
-  }
+  var visibleBox=document.getElementById("dhAiResultBox");updateGeminiButtonState(sentence,!!cached,!!(visibleBox&&visibleBox.dataset.sentence===sentence));
   var pending=window.DHGemini&&DHGemini.pending&&DHGemini.pending(),resume=pending&&pending.resume;
-  if(resume&&resume.type==="module-explanation"&&String(resume.sentence||"").trim()===sentence&&!(DHGemini.hasOverlay&&DHGemini.hasOverlay()))setTimeout(function(){requestModuleExplanation(sentence,!!resume.force);},0);
+  if(sentenceChanged&&resume&&resume.type==="module-explanation"&&String(resume.sentence||"").trim()===sentence&&!(DHGemini.hasOverlay&&DHGemini.hasOverlay()))setTimeout(function(){requestModuleExplanation(sentence,!!resume.force);},0);
 }
 
 window.addEventListener("dh-ai-explanation-changed",function(){var card=document.querySelector(".card");if(!card)return;currentLoadedSentence="";checkAndSyncAiBox(card);});
@@ -754,6 +756,8 @@ document.addEventListener("click", async function(e) {
 
   let cached = await getAIFromDB(sentence);
   if (cached) {
+    var openBox=document.getElementById("dhAiResultBox");
+    if(openBox&&openBox.dataset.sentence===sentence){openBox.remove();updateGeminiButtonState(sentence,true,false);return;}
     renderResultBox(sentence, cached, "🤖 AI Açıklaması (IndexedDB'den yüklendi)");
     return;
   }
