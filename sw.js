@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v206";  /* v206: Sonraki transkript cümlesiyle güvenli birleştirme */
+var SW_VERSION = "dh-sw-v207";  /* v207: Tek düğmeli Gemini geçişi ve otomatik cevap alma */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

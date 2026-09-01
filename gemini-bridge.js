@@ -61,8 +61,8 @@ function css(){
   +".dhgb-step{font-size:12px;color:#9fb3d9;line-height:1.5;margin:0 0 10px}"
   +".dhgb-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}"
   +".dhgb-row button{flex:1;min-width:130px;border:0;border-radius:10px;padding:11px 8px;font-size:13px;font-weight:800;cursor:pointer}"
-  +".dhgb-copy{background:#1d4ed8;color:#fff}"
-  +".dhgb-open{background:#8b5cf6;color:#fff}"
+  +".dhgb-go{min-height:46px!important;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;box-shadow:0 10px 28px rgba(79,70,229,.3)}"
+  +".dhgb-go:hover{filter:brightness(1.08);transform:translateY(-1px)}"
   +".dhgb-paste{background:#13294d;color:#e8eef7;border:1px solid #1e3a5f!important}"
   +".dhgb-send{background:linear-gradient(180deg,#10b981,#059669);color:#fff}"
   +".dhgb-close{background:#334155;color:#e8eef7}"
@@ -122,19 +122,18 @@ function ask(opt){
     '<div class="dhgb-card">'
    +'<h3>'+esc(opt.title||"Gemini'ye sor")+'</h3>'
    +'<div class="dhgb-job">Bekleyen görev: '+esc(id)+'</div>'
-   +'<p class="dhgb-step">1️⃣ Promptu kopyala → 2️⃣ '+esc(providerName)+' üzerinde sor → 3️⃣ Cevabı aşağıya yapıştır, <b>Enter</b>. Program oradan devam eder.</p>'
+   +'<p class="dhgb-step">Tek düğmeyle prompt kopyalanır ve '+esc(providerName)+' açılır. Orada promptu yapıştırıp gönderin, cevabı kopyalayın ve programa dönün. İzin varsa cevap otomatik alınır.</p>'
    +'<button class="dhgb-tog" type="button">Promptu göster / gizle</button>'
    +'<div class="dhgb-prompt" style="display:none"></div>'
    +'<div class="dhgb-row">'
-     +'<button class="dhgb-copy" type="button">📋 1. Promptu kopyala</button>'
-     +'<button class="dhgb-open" type="button">🚀 2. '+esc(providerName)+' aç</button>'
+     +'<button class="dhgb-go" type="button">✦ Promptu kopyala ve '+esc(providerName)+'’ye git</button>'
    +'</div>'
    +'<textarea class="dhgb-ta" placeholder="'+esc(opt.hint||"Gemini'nin cevabını buraya yapıştır ve Enter'a bas…")+'"></textarea>'
    +'<div class="dhgb-msg"></div>'
    +'<div class="dhgb-preview"></div>'
    +'<div class="dhgb-row">'
-     +'<button class="dhgb-paste" type="button">📋 Panodan al</button>'
-     +'<button class="dhgb-send" type="button">✅ 3. Devam et (Enter)</button>'
+     +'<button class="dhgb-paste" type="button">📋 Cevabı panodan getir</button>'
+     +'<button class="dhgb-send" type="button">✅ Cevabı kullan (Enter)</button>'
      +'<button class="dhgb-close" type="button">Kapat</button>'
    +'</div>'
    +'</div>';
@@ -165,22 +164,21 @@ function ask(opt){
   ov.querySelector(".dhgb-tog").onclick=function(){
     pv.style.display = pv.style.display==="none" ? "block" : "none";
   };
-  ov.querySelector(".dhgb-copy").onclick=function(){
-    var b=this;
-    copy(prompt).then(function(ok){
-      b.textContent = ok ? "✅ Kopyalandı" : "⚠️ Kopyalanamadı";
-      say(ok?"Prompt panoda. Şimdi Gemini'yi aç, yapıştır (uzun bas → Yapıştır) ve gönder."
-             :"Kopyalanamadı — promptu göster/gizle ile açıp elle seçebilirsin.", ok?"#4ade80":"#f59e0b");
-      setTimeout(function(){ b.textContent="📋 1. Promptu kopyala"; },2200);
-    });
-  };
-  ov.querySelector(".dhgb-open").onclick=function(){
+  ov.querySelector(".dhgb-go").onclick=function(){
+    var b=this,openFailed=false;
     try{ global.open(providerUrl,"_blank","noopener"); }
-    catch(e){ say(providerName+" açılamadı — sağlayıcı sayfasını tarayıcıda aç.","#f59e0b"); }
+    catch(e){ openFailed=true; }
+    copy(prompt).then(function(ok){
+      b.textContent=ok?"✅ Prompt kopyalandı · "+providerName+" açıldı":"⚠️ Promptu elle kopyala";
+      say(ok?("Prompt panoda. "+providerName+"’de yapıştırıp gönder; cevabı kopyalayıp buraya dön.")
+             :"Prompt otomatik kopyalanamadı. ‘Promptu göster’ ile açıp elle kopyalayın.",ok?"#4ade80":"#f59e0b");
+      if(openFailed)say("Prompt "+(ok?"kopyalandı; ":"")+providerName+" yeni sekmede açılamadı. Sağlayıcıyı elle açın.","#f59e0b");
+      setTimeout(function(){b.textContent="✦ Promptu kopyala ve "+providerName+"’ye git";},2600);
+    });
   };
   ov.querySelector(".dhgb-paste").onclick=function(){
     readClip().then(function(t){
-      if(t && t.trim()){ ta.value=t; rememberDraft(); pasteBtn.classList.remove("dhgb-ready"); say("Panodan alındı. Enter ya da ✅ ile kontrol et.","#4ade80"); ta.focus(); }
+      if(t && t.trim()){ ta.value=t; rememberDraft(); pasteBtn.classList.remove("dhgb-ready"); say("Gemini cevabı panodan alındı.","#4ade80"); submit(false); }
       else say("Pano boş görünüyor.","#f59e0b");
     }).catch(function(){
       say("Tarayıcı panoyu okumaya izin vermedi — kutuya uzun basıp Yapıştır de.","#f59e0b");
@@ -202,8 +200,8 @@ function ask(opt){
     clearPending(id); close();
     if(typeof opt.onResult==="function") opt.onResult(parsedResult, parsedRaw);
   }
-  function submit(){
-    if(awaitingConfirm){ applyResult(); return; }
+  function submit(automatic){
+    if(awaitingConfirm){ if(automatic)return;applyResult();return; }
     var raw=(ta.value||"").trim();
     if(!raw){ say("Önce Gemini'nin cevabını yapıştır.","#f59e0b"); ta.focus(); return; }
     try{ raw=normalizeAnswer(raw); }
@@ -216,24 +214,24 @@ function ask(opt){
         return;
       }
     }
-    parsedResult=result; parsedRaw=raw; awaitingConfirm=true;
+    parsedResult=result; parsedRaw=raw;
+    if(opt.autoApply&&!opt.confirmResult){say("Cevap doğrulandı ve doğru göreve aktarılıyor…","#4ade80");applyResult();return;}
+    awaitingConfirm=true;
     preview.style.display="block";
     preview.style.whiteSpace="normal";
     preview.innerHTML='<b style="color:#4ade80">Uygulanacak Gemini yanıtı</b><div class="dh-md">'+markdown(compact(raw,2400))+'</div>';
     sendBtn.textContent="✅ Onayla ve uygula";
     say("Yanıt anlaşıldı. Uygulamaya aktarmadan önce önizlemeyi kontrol et.","#4ade80");
   }
-  ov.querySelector(".dhgb-send").onclick=submit;
+  ov.querySelector(".dhgb-send").onclick=function(){submit(false)};
   ta.addEventListener("keydown",function(e){
-    if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); submit(); }
+    if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); submit(false); }
   });
   setTimeout(function(){ ta.focus(); },80);
-  /* Gemini sekmesini yalnız kullanıcının mor "Gemini'yi aç" düğmesi açar.
-     Sayfa yüklenirken/menü geçişinde otomatik sekme açmak gezinmeyi döngüye
-     sokuyordu. Prompt yine hazırdır ama kullanıcı karar verene kadar dışarı
-     yönlendirme yapılmaz. */
+  /* Gemini yalnız kullanıcının ana mor düğmeye dokunmasıyla açılır. Böylece
+     tarayıcının açılır pencere koruması aşılmaz ve istemsiz sekme oluşmaz. */
   var privacy=wasRedacted?" Kişisel/API bilgileri maskelendi.":"";
-  say("Prompt hazır. Önce kopyala, ardından istersen Gemini'yi aç."+privacy,"#9fb3d9");
+  say("Hazır: mor düğme promptu kopyalayıp Gemini’yi açar."+privacy,"#9fb3d9");
 
   /* Mobil tarayıcı Gemini sekmesine geçerken pagehide üretebilir veya bu
      sayfayı bellekten atabilir. Görevi burada silmek dönüş ekranını yok
@@ -243,11 +241,13 @@ function ask(opt){
   global.addEventListener("pagehide",backgrounded,{once:true});
 
   function returned(){
-    if(document.hidden || !ov.parentNode) return;
+    if(document.hidden || !ov.parentNode || awaitingConfirm) return;
     function check(granted){
-      if(!granted){ pasteBtn.classList.add("dhgb-ready"); say("Gemini'den döndün. Cevabı kopyaladıysan 📋 Panodan al'a dokun.","#fbbf24"); return; }
+      if(!granted){ pasteBtn.classList.add("dhgb-ready"); say("Gemini’den döndünüz. Cevabı kopyaladıysanız ‘Cevabı panodan getir’e dokunun.","#fbbf24"); return; }
       readClip().then(function(t){
-        if(t && t.trim() && t.trim()!==prompt.trim()){ ta.value=t; rememberDraft(); say("Gemini cevabı panodan alındı. Kontrol etmek için ✅ düğmesine bas.","#4ade80"); }
+        var value=String(t||"").trim(),match=value.match(/^\s*DH-ID:\s*([^\s]+)\s*\r?\n/i);
+        if(value&&value!==prompt.trim()&&match&&match[1]===id){ta.value=value;rememberDraft();say("Doğru Gemini cevabı bulundu; otomatik aktarılıyor…","#4ade80");submit(true)}
+        else if(value&&value!==prompt.trim()){pasteBtn.classList.add("dhgb-ready");say("Panoda bu görevin kimliği bulunamadı. Doğru cevabı kopyalayıp ‘Cevabı panodan getir’e dokunun.","#fbbf24")}
       }).catch(function(){ pasteBtn.classList.add("dhgb-ready"); });
     }
     if(navigator.permissions&&navigator.permissions.query){

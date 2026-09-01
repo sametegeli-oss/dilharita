@@ -562,7 +562,7 @@ async function requestModuleExplanation(sentence,force){
   DHGemini.ask({
     title:force?"Cümle açıklamasını Gemini ile yenile · Kopyala ve yapıştır":"Cümleyi Gemini ile açıkla · Kopyala ve yapıştır",
     providerName:"Gemini",openUrl:DHGemini.url,prompt:prompt,
-    hint:"Gemini cevabını kopyalayıp buraya yapıştır…",
+    hint:"Gemini cevabını kopyalayıp buraya yapıştır…",autoApply:true,confirmResult:!!(force&&cached),
     resume:{type:"module-explanation",sentence:sentence,force:!!force,module:requestedModuleName()},
     parse:function(t){return String(t||"").replace(/^\s*DH-ID:[^\n]*\n/i,"").trim();},
     onResult:async function(t){var value=String(t||"").trim();if(!value)return;await saveAIToDB(sentence,value);renderResultBox(sentence,value,"🤖 Video ve modülün ortak AI açıklaması");},
