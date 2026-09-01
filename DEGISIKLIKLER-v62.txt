@@ -1,3 +1,10 @@
+v67 DÜZELTMELERİ
+=================
+- Alt video kontrol çubuğundaki metin açıklamaları kaldırıldı; düğmeler yalnız simge gösteriyor.
+- Açıklamalar erişilebilir ad ve üzerine gelme ipucu olarak korunuyor.
+- Cümleyi döndür aktifken kehribar, diğer aktif durum düğmeleri turkuaz renkle pasiflerden ayrılıyor.
+- Oynatma ve ses düğmeleri gerçek durumlarını aktif renk ve aria-pressed ile gösteriyor.
+
 DİL HARİTA · v62
 PROFESYONEL MODÜL ÇALIŞMA EKRANI VE ARAÇ ÇEKMECESİ
 

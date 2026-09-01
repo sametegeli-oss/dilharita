@@ -83,6 +83,14 @@ body.yt-mode-shadow .yt-learning-card{border-color:rgba(255,202,99,.28)}body.yt-
  .yt-align-controls-grid{grid-template-columns:1fr}
 }
 
+/* v67 · Alt video çubuğu yalnız simge + belirgin aktif/pasif durum */
+.yt-controls #loopToggle>span,.yt-controls .yt-study-action>span:last-child{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;white-space:nowrap!important}
+.yt-controls .yt-study-action,.yt-controls #loopToggle{position:relative;width:44px!important;min-width:44px!important;padding:0!important;justify-content:center!important}
+.yt-controls button.is-active,.yt-controls button[aria-pressed="true"],.yt-modebar button.is-active,.yt-modebar button[aria-pressed="true"],.yt-modebar button[aria-selected="true"],.yt-modebar button[aria-expanded="true"],.yt-layout-dock button.is-active,.yt-layout-dock button[aria-pressed="true"],.yt-transcript-panel button.is-active,.yt-transcript-panel button[aria-pressed="true"],.yt-transcript-panel button[aria-selected="true"],.yt-fullscreen-workbar button.is-active,.yt-fullscreen-workbar button[aria-expanded="true"]{border-color:#38f2d1!important;background:linear-gradient(145deg,#087e73,#07564f)!important;color:#fff!important;box-shadow:0 0 0 2px rgba(56,242,209,.3),0 0 20px rgba(30,224,193,.3),inset 0 1px rgba(255,255,255,.18)!important}
+.yt-controls button[aria-pressed="false"],.yt-modebar button[aria-pressed="false"],.yt-transcript-panel button[aria-pressed="false"]{box-shadow:none}
+.yt-controls #loopToggle.is-active,.yt-controls #loopToggle[aria-pressed="true"]{border-color:#ffd166!important;background:linear-gradient(145deg,#b26a08,#7c4304)!important;color:#fff8df!important;box-shadow:0 0 0 2px rgba(255,209,102,.34),0 0 22px rgba(255,176,46,.38)!important}
+.yt-controls #loopToggle.is-active::after,.yt-controls #loopToggle[aria-pressed="true"]::after{content:"";position:absolute;top:5px;right:5px;width:7px;height:7px;border:1px solid #5b3200;border-radius:50%;background:#fff2a8;box-shadow:0 0 8px #ffe28a}
+
 /* Mobil ders düzeni: video görünür kalır, transkript kendi alanında kayar. */
 .yt-panel-scroll{overscroll-behavior-y:contain;touch-action:pan-y;scrollbar-gutter:stable}
 @media (min-width:681px){
