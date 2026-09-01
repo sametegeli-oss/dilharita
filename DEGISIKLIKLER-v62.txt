@@ -1,3 +1,9 @@
+v69 DÜZELTMELERİ
+=================
+- Mobil Gemini okuma çıkışı sağ altta her zaman görünen sabit metinli düğmeye dönüştürüldü.
+- YouTube Eğitim Stüdyosu doğrudan açıldığında kayıtlı son çalışma otomatik yükleniyor.
+- Son çalışma yüklendikten sonra video ekranı otomatik olarak uygulama içi tam ekrana geçiyor.
+
 v68 DÜZELTMELERİ
 =================
 - Türkçe video çevirisinin normal, mobil ve tam ekran yazı boyutları yükseltildi.
