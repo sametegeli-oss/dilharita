@@ -526,7 +526,9 @@ function renderResultBox(sentence, rawMarkdownText, tag) {
   let card = document.querySelector(".card");
   if (!card) return;
 
-  let formattedHTML = parseMarkdownToHTML(rawMarkdownText);
+  let formattedHTML = window.DHGemini&&DHGemini.formatExplanation
+    ? DHGemini.formatExplanation(rawMarkdownText)
+    : parseMarkdownToHTML(rawMarkdownText);
 
   let box = document.createElement("div");
   box.id = "dhAiResultBox";

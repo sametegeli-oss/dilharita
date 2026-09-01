@@ -283,6 +283,7 @@ body.yt-video-pseudo-fullscreen .yt-video-shell.is-pseudo-fullscreen{position:fi
 
 /* v59 · Mobil tam ekran: güvenli alt kontrol şeridi + sağ araç çekmecesi */
 .yt-video-shell{--yt-mobile-ui-bottom:0px}
+.yt-ai-answer.is-formatted-explanation{white-space:normal;padding:10px;background:#06111f}
 .yt-fullscreen-tools-toggle svg,.yt-fullscreen-tool-menu svg{width:22px;height:22px;flex:0 0 22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .yt-fullscreen-tools-toggle{display:grid!important;place-items:center;width:52px!important;height:52px!important;padding:0!important;border-radius:50%!important;box-shadow:0 12px 34px rgba(0,0,0,.5),inset 0 1px rgba(255,255,255,.1)}
 .yt-fullscreen-tools-toggle>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}

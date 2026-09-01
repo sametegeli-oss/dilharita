@@ -73,6 +73,7 @@ function css(){
   +".dhgb-job{font-size:11px;color:#7dd3fc;margin:0 0 8px;font-weight:800}"
   +".dhgb-preview{display:none;background:#071120;border:1px solid #10b981;border-radius:10px;padding:10px;margin:0 0 10px;font-size:12px;line-height:1.45;white-space:pre-wrap;max-height:150px;overflow:auto}"
   +".dh-md{line-height:1.68;color:#dbe7f7}.dh-md h1,.dh-md h2,.dh-md h3,.dh-md h4{color:#fff;margin:18px 0 8px;line-height:1.3}.dh-md h1{font-size:21px}.dh-md h2{font-size:18px;border-bottom:1px solid #274060;padding-bottom:7px}.dh-md h3{font-size:15px;color:#7dd3fc}.dh-md p{margin:7px 0}.dh-md ul,.dh-md ol{margin:7px 0 12px;padding-left:23px}.dh-md li{margin:5px 0}.dh-md strong{color:#fff}.dh-md em{color:#c4b5fd}.dh-md code{background:#26344c;color:#e2e8f0;padding:2px 6px;border-radius:6px;font:12px ui-monospace,monospace}.dh-md pre{background:#06101e;border:1px solid #243b5a;border-radius:10px;padding:10px;overflow:auto}.dh-md blockquote{border-left:3px solid #8b5cf6;margin:10px 0;padding:7px 11px;background:#111d35;color:#cbd5e1}"
+  +".dh-explanation{display:grid;gap:10px;color:#dbe7f7;white-space:normal}.dh-exp-section{overflow:hidden;border:1px solid rgba(123,157,197,.2);border-radius:14px;background:linear-gradient(145deg,rgba(18,35,55,.92),rgba(7,18,31,.96));box-shadow:inset 0 1px rgba(255,255,255,.035)}.dh-exp-section>header{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(123,157,197,.14);background:rgba(255,255,255,.018)}.dh-exp-section>header span{display:grid;place-items:center;width:25px;height:25px;border-radius:8px;background:rgba(85,230,209,.11);color:#6de9da;font-size:9px;font-weight:950}.dh-exp-section h3{margin:0!important;color:#f1f6fd!important;font-size:13px!important;letter-spacing:.01em}.dh-exp-body{display:grid;gap:8px;padding:11px 12px;color:#bdcce0;font-size:12.5px;line-height:1.62}.dh-exp-body p{margin:0}.dh-exp-list{display:grid;gap:7px;margin:0;padding:0;list-style:none}.dh-exp-list li{position:relative;padding-left:15px}.dh-exp-list li:before{content:'·';position:absolute;left:2px;color:#58dfd0;font-weight:950}.dh-exp-row{display:grid;grid-template-columns:minmax(90px,.8fr) minmax(110px,1fr);gap:4px 10px;padding:9px 10px;border:1px solid rgba(105,166,255,.17);border-radius:10px;background:rgba(5,14,25,.52)}.dh-exp-row strong{color:#8ed9ff;font-size:12px}.dh-exp-row span{color:#dbe7f7}.dh-exp-row small{grid-column:1/-1;color:#8196b0;line-height:1.45}.dh-exp-example{padding:10px 11px;border-left:3px solid #ffc963;border-radius:0 10px 10px 0;background:rgba(255,201,99,.06)}.dh-exp-example b{display:block;color:#f5f8fc;font-size:13px;line-height:1.45}.dh-exp-example span{display:block;margin-top:4px;color:#91a5be}.dh-explanation-legacy{line-height:1.65}@media(max-width:560px){.dh-exp-row{grid-template-columns:1fr}.dh-exp-row small{grid-column:auto}.dh-exp-body{padding:10px;font-size:12px}}"
   +".dhgb-paste.dhgb-ready{outline:3px solid #fbbf24;animation:dhgbPulse 1s infinite alternate}@keyframes dhgbPulse{to{outline-color:transparent}}"
   +".dhgb-tog{background:none;border:0;color:#60a5fa;font-size:11.5px;font-weight:800;cursor:pointer;padding:0 0 8px;text-decoration:underline}";
   document.head.appendChild(s);
@@ -217,7 +218,7 @@ function ask(opt){
     awaitingConfirm=true;
     preview.style.display="block";
     preview.style.whiteSpace="normal";
-    preview.innerHTML='<b style="color:#4ade80">Uygulanacak Gemini yanıtı</b><div class="dh-md">'+markdown(compact(raw,2400))+'</div>';
+    preview.innerHTML='<b style="color:#4ade80">Uygulanacak Gemini yanıtı</b>'+formatExplanation(raw.length>5000?raw.slice(0,5000)+"…":raw);
     sendBtn.textContent="✅ Onayla ve uygula";
     say("Yanıt anlaşıldı. Uygulamaya aktarmadan önce önizlemeyi kontrol et.","#4ade80");
   }
@@ -270,6 +271,49 @@ function markdown(input){
     closeList();out.push("<p>"+inline(line.trim())+"</p>");
   });
   if(code)out.push("<pre><code>"+esc(codeLines.join("\n"))+"</code></pre>");closeList();return out.join("");
+}
+
+/* Gemini'den hızlı kopyalanan etiketli düz metni güvenli, profesyonel
+   kartlara çevirir. Tanınmayan/eski kayıtlar Markdown görünümüne düşer. */
+function explanationSectionKey(label){
+  var key=String(label||"").trim().toLocaleUpperCase("tr-TR").replace(/\s+/g," ");
+  var aliases={"ANLAM":"ANLAM","DOĞAL ANLAM":"ANLAM","YAPI":"YAPI","DİLBİLGİSİ":"YAPI","KALIPLAR":"KALIPLAR","ÖNEMLİ KALIPLAR":"KALIPLAR","TELAFFUZ":"TELAFFUZ","YAYGIN HATALAR":"HATALAR","HATALAR":"HATALAR","ÖRNEKLER":"ORNEKLER","ORNEKLER":"ORNEKLER"};
+  return aliases[key]||"";
+}
+function formatExplanation(input){
+  css();
+  var source=String(input==null?"":input).replace(/^\s*DH-ID:[^\n]*\n/i,"").replace(/\r/g,"").trim();
+  if(!source)return'<div class="dh-explanation"><p>Açıklama bulunamadı.</p></div>';
+  var sections={},current="",recognized=0;
+  source.split("\n").forEach(function(line){
+    var match=line.match(/^\s*\[([^\]]+)\]\s*$/),key=match?explanationSectionKey(match[1]):"";
+    if(key){current=key;recognized++;if(!sections[key])sections[key]=[];return;}
+    if(current)sections[current].push(line);
+  });
+  if(!recognized)return'<div class="dh-explanation dh-explanation-legacy dh-md">'+markdown(source)+'</div>';
+  var order=["ANLAM","YAPI","KALIPLAR","TELAFFUZ","HATALAR","ORNEKLER"],titles={ANLAM:"Bağlamdaki doğal anlam",YAPI:"Cümle yapısı ve dilbilgisi",KALIPLAR:"Önemli kalıplar",TELAFFUZ:"Telaffuz ve akıcı konuşma",HATALAR:"Türk öğrenciler için yaygın hatalar",ORNEKLER:"Doğal örnekler"};
+  function nonempty(lines){return(lines||[]).map(function(x){return String(x||"").trim()}).filter(Boolean)}
+  function prose(lines){
+    var rows=nonempty(lines),list=rows.length>1&&rows.every(function(x){return/^[-•]\s+/.test(x)});
+    if(list)return'<ul class="dh-exp-list">'+rows.map(function(x){return'<li>'+esc(x.replace(/^[-•]\s+/,""))+'</li>'}).join("")+'</ul>';
+    return rows.map(function(x){return'<p>'+esc(x)+'</p>'}).join("");
+  }
+  function pipeRows(lines,examples){
+    var rows=nonempty(lines);
+    return rows.map(function(line){
+      var parts=line.replace(/^\s*\d+[.)]?\s*(?:\|\s*)?/,"").split("|").map(function(x){return x.trim()});
+      if(examples&&parts.length>=2)return'<article class="dh-exp-example"><b lang="en">'+esc(parts[0])+'</b><span lang="tr">'+esc(parts.slice(1).join(" | "))+'</span></article>';
+      if(parts.length>=2)return'<article class="dh-exp-row"><strong lang="en">'+esc(parts[0])+'</strong><span lang="tr">'+esc(parts[1])+'</span>'+(parts[2]?'<small>'+esc(parts.slice(2).join(" | "))+'</small>':"")+'</article>';
+      return'<p>'+esc(line)+'</p>';
+    }).join("");
+  }
+  var html=order.map(function(key,index){
+    if(!sections[key]||!nonempty(sections[key]).length)return"";
+    var body=key==="KALIPLAR"||key==="HATALAR"?pipeRows(sections[key],false):key==="ORNEKLER"?pipeRows(sections[key],true):prose(sections[key]);
+    var number=index+1<10?"0"+(index+1):String(index+1);
+    return'<section class="dh-exp-section" data-exp-section="'+key.toLowerCase()+'"><header><span>'+number+'</span><h3>'+titles[key]+'</h3></header><div class="dh-exp-body">'+body+'</div></section>';
+  }).join("");
+  return'<div class="dh-explanation">'+(html||'<div class="dh-explanation-legacy dh-md">'+markdown(source)+'</div>')+'</div>';
 }
 
 /* ---------- hazır ayrıştırıcılar ---------- */
@@ -347,8 +391,22 @@ function explanationPrompt(context){
     "AKTİF İNGİLİZCE CÜMLE: "+String(context.sentence||"").trim(),
     "Mevcut Türkçe karşılık: "+(context.translation||"yok"),
     "Sonraki cümle: "+(context.next||"yok"),
-    "Türkçe yanıt ver. Şu başlıkların tamamını kullan: 1) Bağlamdaki doğal anlam 2) Cümle yapısı ve dilbilgisi 3) Önemli kelimeler, phrasal verb ve collocation'lar 4) Telaffuz, vurgu ve konuşma dilindeki yutulmalar/bağlantılar 5) Türk öğrencilerin yapabileceği hatalar 6) Aynı yapıyla iki doğal örnek ve Türkçeleri. Cümleyi ezberletmeye yardımcı olacak kadar ayrıntılı fakat tekrarsız ol. Markdown kullanabilirsin."
+    "Türkçe yanıt ver. Yalnızca aşağıdaki etiketli DÜZ METİN şablonunu kullan. Markdown, JSON, HTML, tablo, kod bloğu, bağlantı, emoji, yıldız ve başına # konmuş başlık kullanma.",
+    "Her etiketi ayrı satıra aynen yaz. Etiketlerden önce veya son bölümden sonra ek açıklama yazma.",
+    "[ANLAM]",
+    "Cümlenin bu video bağlamındaki doğal Türkçe anlamını ve anlam nüansını açıkla.",
+    "[YAPI]",
+    "Cümle yapısını, zamanı ve bu yapının neden seçildiğini açıkla.",
+    "[KALIPLAR]",
+    "Her kalıbı ayrı satırda şu biçimde yaz: İngilizce kalıp | Türkçe anlamı | kısa kullanım notu",
+    "[TELAFFUZ]",
+    "Vurgu, ses bağlantısı, kelime yutulması ve doğal söyleyiş ipuçlarını açıkla.",
+    "[YAYGIN HATALAR]",
+    "Her hatayı ayrı satırda şu biçimde yaz: Yanlış kullanım | Doğru kullanım | kısa gerekçe",
+    "[ÖRNEKLER]",
+    "Tam iki örnek ver. Her örneği ayrı satırda şu biçimde yaz: 1 | English sentence | Türkçe karşılığı",
+    "Toplam yanıt yaklaşık 350-550 Türkçe kelime olsun. Ayrıntılı, öğretici, tekrarsız ve mobil panoya uygun düz metin üret."
   ].join("\n");
 }
-global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending, hasOverlay:hasOverlay, markdown:markdown, explanationPrompt:explanationPrompt };
+global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending, hasOverlay:hasOverlay, markdown:markdown, formatExplanation:formatExplanation, explanationPrompt:explanationPrompt };
 })(window);
