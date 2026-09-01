@@ -37,6 +37,12 @@ SÜRÜMLER
 - index-app-layout.js v31
 - gemini-bridge.js v21
 - Service Worker dh-sw-v211
+v64 DÜZELTMELERİ
+=================
+- Gereksiz modül arama/seviye süzgeci ve koç seviyesi şeridi kaldırıldı.
+- Karttaki bütün çalışma düğmeleri içeriğin altında profesyonel bir eylem alanında toplandı.
+- Değerlendirme, Dinle/Gemini, gezinme/Araçlar ve medya eylemleri tutarlı satırlara ayrıldı.
+
 v63 DÜZELTMELERİ
 =================
 - Araç paneli başlığına “← Çalışmaya dön” eylemi eklendi.
