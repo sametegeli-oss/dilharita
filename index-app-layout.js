@@ -1,4 +1,4 @@
-/* index-app-layout.js — v19 TÜM MODÜLLERİ PDF İNDİRME SÜRÜMÜ
+/* index-app-layout.js — v31 PROFESYONEL MODÜL ARAÇ ÇEKMECESİ
    - Ekranda veya Araçlar panelinde "Tüm Modülleri PDF İndir" seçeneği içerir.
    - Bütün modüllerdeki cümleleri, TR karşılıklarını ve IndexedDB'deki AI açıklamalarını derler.
    - Markdown işaretlerini Gemini dizaynında şık HTML'e dönüştürür.
@@ -21,17 +21,13 @@
     +".grade-bar{display:flex !important;gap:6px;align-items:stretch}"
     +".grade-bar .grade-label{display:none !important}"
     +".grade-bar .grade-btn{flex:1;min-height:38px;border-radius:10px;font-weight:800;font-size:13px}"
-    /* GTR + AI'ye Sor + PDF İndir Satırı */
-    +".dh-ai-row{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap}"
-    +".dh-ai-row .dh-gtr-btn{flex:1;margin:0;justify-content:center;min-width:100px}"
+    /* Ana kartta yalnız tek cümleye ait birincil AI eylemi görünür. */
+    +".dh-ai-row{display:flex;margin:0 0 14px}"
+    +".dh-ai-row .dh-gtr-btn{width:100%;margin:0;justify-content:center;min-height:42px}"
     +".dh-gtr-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid rgba(255,255,255,.16);border-radius:11px;background:#1a2942;color:#cfe0ff;font:800 12px Nunito,system-ui,sans-serif;cursor:pointer}"
     +".dh-gtr-btn:hover{background:#22344f}"
     +".dh-aiask-btn{background:linear-gradient(135deg,#7c3aed,#4338ca);border-color:#8b5cf6;color:#fff}"
     +".dh-aiask-btn:hover{background:linear-gradient(135deg,#8b4cf7,#4f46e0)}"
-    +".dh-pdf-btn{background:linear-gradient(135deg,#059669,#10b981);border-color:#34d399;color:#fff}"
-    +".dh-pdf-btn:hover{background:linear-gradient(135deg,#047857,#059669)}"
-    +".dh-pdf-all-btn{background:linear-gradient(135deg,#d97706,#f59e0b);border-color:#fbbf24;color:#fff}"
-    +".dh-pdf-all-btn:hover{background:linear-gradient(135deg,#b45309,#d97706)}"
     +".dh-youtube-source-btn{background:linear-gradient(135deg,#dc2626,#b91c1c)!important;border-color:#f87171!important;color:#fff!important}"
     +".dh-youtube-source-btn:hover{background:linear-gradient(135deg,#ef4444,#dc2626)!important}"
     +".dh-source-media-row{display:flex;align-items:stretch;gap:8px;min-width:0}"
@@ -49,18 +45,31 @@
     +".dh-nav-trio .dh-nav-next{background:#2563eb;color:#fff;border-color:transparent}"
     +".dh-nav-trio .dh-nav-next:hover{background:#2f6fe0}"
     +".dh-nav-trio .dh-tools-toggle{flex:0 0 auto !important;margin:0}"
-    /* 🛠 toggle */
-    +".dh-tools-toggle{flex:0 0 auto !important;min-height:42px;padding:0 13px;border:1px solid rgba(255,255,255,.14);border-radius:11px;background:#17233a;color:#eaf2ff;font:900 14px Nunito,system-ui,sans-serif;cursor:pointer}"
-    +".dh-tools-toggle:hover{background:#22304f}"
-    /* araç paneli */
-    +".dh-tools-box{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:8999;width:92%;max-width:420px;padding:14px;max-height:56vh;overflow-y:auto;border-radius:16px;background:#0d1a30;border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 40px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px}"
-    +".dh-tools-box.dh-hidden{display:none !important}"
-    +".dh-tools-box .dh-pbtn{width:100%;min-height:42px;border-radius:10px;border:1px solid rgba(255,255,255,.15);font:800 13px Nunito,system-ui;cursor:pointer;background:#1e293b;color:#f8fafc}"
-    +".dh-tools-box .dh-pbtn:hover{background:#334155}"
-    +".dh-tools-box .wd-tools-row{margin:0 !important}"
+    /* Sağdan açılan profesyonel modül araçları çekmecesi */
+    +".dh-tools-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto!important;min-height:42px;padding:0 13px;border:1px solid rgba(111,146,190,.28);border-radius:11px;background:linear-gradient(145deg,#1a2a41,#101d31);color:#d9e5f4;font:900 13px Nunito,system-ui,sans-serif;cursor:pointer;box-shadow:inset 0 1px rgba(255,255,255,.04);transition:border-color .18s,background .18s,color .18s}"
+    +".dh-tools-toggle svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8}"
+    +".dh-tools-toggle:hover,.dh-tools-toggle[aria-expanded='true']{border-color:rgba(83,229,210,.55);background:linear-gradient(145deg,rgba(25,66,70,.94),rgba(8,30,41,.98));color:#6cebdd}"
+    +".dh-tools-overlay{position:fixed;inset:0;z-index:1000000;background:rgba(1,7,15,.7);backdrop-filter:blur(10px);opacity:1;transition:opacity .2s ease}"
+    +".dh-tools-overlay.dh-hidden{display:none!important}"
+    +".dh-tools-box{position:absolute;top:0;right:0;display:grid;grid-template-rows:auto minmax(0,1fr);width:min(438px,94vw);height:100dvh;overflow:hidden;border-left:1px solid rgba(118,154,198,.25);background:linear-gradient(160deg,#0d1b2e,#07111f 70%);box-shadow:-28px 0 80px rgba(0,0,0,.52);animation:dhToolsSlide .22s cubic-bezier(.2,.75,.2,1)}"
+    +".dh-tools-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:max(17px,env(safe-area-inset-top)) 18px 15px;border-bottom:1px solid rgba(123,157,197,.17);background:rgba(16,32,53,.86)}"
+    +".dh-tools-title{display:grid;gap:3px}.dh-tools-title strong{color:#f4f8fd;font-size:16px;letter-spacing:-.01em}.dh-tools-title span{color:#8195ad;font-size:11px}"
+    +".dh-tools-close{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:1px solid rgba(132,163,199,.24);border-radius:11px;background:#14243a;color:#dbe6f3;cursor:pointer}.dh-tools-close:hover{border-color:#60e6d7;color:#72ecde}.dh-tools-close svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9}"
+    +".dh-tools-scroll{overflow:auto;overscroll-behavior:contain;padding:15px 15px max(28px,env(safe-area-inset-bottom));scrollbar-gutter:stable}"
+    +".dh-tool-section{display:grid;gap:8px;margin-bottom:19px}.dh-tool-section>header{display:flex;align-items:center;justify-content:space-between;padding:0 3px}.dh-tool-section>header strong{color:#89a0ba;font-size:10px;font-weight:950;letter-spacing:.11em;text-transform:uppercase}.dh-tool-section>header span{color:#60758d;font-size:10px}"
+    +".dh-tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}"
+    +".dh-tool-card{display:grid;grid-template-columns:38px minmax(0,1fr);align-items:center;gap:10px;min-height:67px;padding:10px;border:1px solid rgba(120,153,192,.19);border-radius:14px;background:linear-gradient(145deg,rgba(20,38,59,.96),rgba(8,20,34,.98));color:#dce7f4;text-align:left;cursor:pointer;box-shadow:inset 0 1px rgba(255,255,255,.035);transition:border-color .17s,background .17s,transform .17s}"
+    +".dh-tool-card:hover,.dh-tool-card:focus-visible{border-color:rgba(86,231,213,.48);background:linear-gradient(145deg,rgba(24,61,67,.95),rgba(8,27,39,.98));outline:none;transform:translateY(-1px)}"
+    +".dh-tool-icon{display:grid;place-items:center;width:38px;height:38px;border:1px solid rgba(101,226,211,.17);border-radius:11px;background:rgba(68,202,187,.09);color:#62e5d6}.dh-tool-icon svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}"
+    +".dh-tool-copy{min-width:0;display:grid;gap:3px}.dh-tool-copy b{color:#edf4fc;font-size:12px;line-height:1.25}.dh-tool-copy small{color:#8296ae;font-size:9.5px;line-height:1.35}"
+    +".dh-tool-card.is-danger .dh-tool-icon{border-color:rgba(255,184,92,.2);background:rgba(255,171,64,.08);color:#ffc36a}.dh-tool-card.is-purple .dh-tool-icon{border-color:rgba(171,139,255,.22);background:rgba(130,91,230,.11);color:#b9a0ff}"
+    +".dh-tool-section .wd-tools-row{margin:0!important;display:grid!important;grid-template-columns:1fr 1fr;gap:8px}.dh-tool-section .wd-tools-row button{min-height:42px;border-radius:11px!important}"
+    +"html.dh-tools-open{overflow:hidden}"
+    +"@keyframes dhToolsSlide{from{transform:translateX(24px);opacity:.45}to{transform:translateX(0);opacity:1}}"
     +".card.dh-split>.dh-sentence-listen-row{grid-column:1;display:flex !important;align-items:center;gap:9px;min-width:0;margin:0 0 8px}"
     +".dh-sentence-listen-row>.card-en{display:block;margin:0 !important;min-width:0}"
     +".dh-sentence-listen-row>.dh-listen-after-sentence{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;margin:0;padding:7px 13px !important;border-radius:10px !important;background:#0e7490 !important;color:#fff !important;font-weight:900 !important;white-space:nowrap}"
+    +".card.dh-split>.card-actions{display:none!important}"
     
     /* GEMINI MODELİİLE BİREBİR STİLLER */
     +"#dhAiResultBox { font-family: 'Nunito', system-ui, -apple-system, sans-serif !important; color: #f1f5f9 !important; font-size: 14px !important; line-height: 1.65 !important; }"
@@ -85,8 +94,7 @@
     +".card.dh-split>.dh-nav-trio .dh-tools-toggle{min-height:31px !important;padding:0 9px !important}"
     +".card.dh-split>.dh-ai-row{grid-column:2;grid-row:3}"
     +".card.dh-split>.dh-ai-row .dh-gtr-btn{font-size:11px !important;padding:5px 6px !important;min-height:31px}"
-    +".card.dh-split>.card-actions{grid-column:2;grid-row:4;display:flex;flex-wrap:wrap;gap:6px;align-content:start}"
-    +".card.dh-split>.card-actions button{min-height:31px;padding:5px 9px !important;font-size:12px !important;border-radius:9px !important}"
+    +".card.dh-split>.card-actions{display:none!important}"
     +"}"
     /* YATAY MOBİL */
     +"@media (orientation:landscape) and (max-height:520px){"
@@ -103,7 +111,9 @@
     +".card.dh-split .dh-gtr-btn{margin:2px 0 !important;padding:4px 6px !important;font-size:11px !important}"
     +".dh-nav-trio .dh-nav-btn{min-height:34px;font-size:13px}"
     +".dh-tools-toggle{min-height:34px}"
-    +"}";
+    +".dh-tools-toggle b{display:none}"
+    +"}"
+    +"@media(max-width:360px){.dh-tools-box{width:100vw}.dh-tool-grid{grid-template-columns:1fr}.dh-tools-head{padding-left:14px;padding-right:14px}.dh-tools-scroll{padding-left:12px;padding-right:12px}.dh-tool-card{min-height:62px}.dh-tools-title span{display:none}}";
     document.head.appendChild(s);
   }
 
@@ -147,7 +157,22 @@
     var source=youtubeSourceForCard(c);button.hidden=!source;button.title=source?"Bu cümleyi kaynak YouTube videosunda aç":"";
   }
 
-  /* 🌐 Translate + 🤖 AI'ye Sor + 📄 PDF İndir + 📚 Tümünü İndir Satırı */
+  function activeSentenceContext(){
+    var c=card(),en=c&&c.querySelector(".card-en"),tr=c&&c.querySelector(".card-tr");
+    return{card:c,en:(en&&en.textContent||"").trim(),tr:(tr&&tr.textContent||"").trim()};
+  }
+  function openActiveTranslate(){
+    var context=activeSentenceContext();if(!context.en)return;
+    try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(context.en);}catch(e){}
+    window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(context.en),"_blank");
+  }
+  function openActiveStudio(){
+    var context=activeSentenceContext();if(!context.en)return;var back="";
+    try{var mod=new URLSearchParams(location.search).get("mod");if(mod)back="index-app.html?mod="+encodeURIComponent(mod)+"&q="+encodeURIComponent(context.en);}catch(e){}
+    location.href="./sesdalga.html?en="+encodeURIComponent(context.en)+"&tr="+encodeURIComponent(context.tr)+(back?("&back="+encodeURIComponent(back)):"");
+  }
+
+  /* Ana kartta yalnız aktif cümleyi açıklayan tek bir AI eylemi kalır. */
   function ensureAiRow(c, trio){
     var en=c.querySelector(".card-en");
     if(!en) return;
@@ -158,56 +183,9 @@
       row=document.createElement("div");
       row.id="dhAiRow"; row.className="dh-ai-row";
 
-      var gtr=document.createElement("button");
-      gtr.type="button"; gtr.className="dh-gtr-btn"; gtr.textContent="🌐 Translate";
-      gtr.onclick=function(){
-        var t=(en.textContent||"").trim(); if(!t) return;
-        try{
-          if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t);
-        }catch(e){}
-        window.open("https://translate.google.com/?sl=en&tl=tr&op=translate&text="+encodeURIComponent(t),"_blank");
-      };
-
       var ai=document.createElement("button");
-      ai.type="button"; ai.className="dh-gtr-btn dh-aiask-btn"; ai.textContent="🤖 AI'ye Sor";
-
-      var aiModule=document.createElement("button");
-      aiModule.type="button"; aiModule.className="dh-gtr-btn dh-ai-module-btn"; aiModule.textContent="💎 Tüm Modülü Gemini’ye Sor";
-      aiModule.onclick=function(){ explainActiveModuleWithAI(); };
-
-      var aiModuleRefresh=document.createElement("button");
-      aiModuleRefresh.type="button"; aiModuleRefresh.className="dh-gtr-btn dh-ai-module-refresh-btn"; aiModuleRefresh.textContent="♻️ Modülü Baştan Açıkla";
-      aiModuleRefresh.onclick=function(){ if(confirm("Aktif modülün tüm cümleleri kayıtlı olsalar bile tek toplu istekte yeniden hazırlansın mı? Eski açıklamalar yalnız ayrıntılı yeni cevap geldiğinde değiştirilecektir."))explainActiveModuleWithAI(true); };
-
-      var stu=document.createElement("button");
-      stu.type="button"; stu.className="dh-gtr-btn"; stu.textContent="🎙️ Stüdyo";
-      stu.onclick=function(){
-        var t=(en.textContent||"").trim(); if(!t) return;
-        var trEl=c.querySelector(".card-tr");
-        var tr=trEl?(trEl.textContent||"").trim():"";
-        var back="";
-        try{
-          var mod=new URLSearchParams(location.search).get("mod");
-          if(mod) back="index-app.html?mod="+encodeURIComponent(mod)+"&q="+encodeURIComponent(t);
-        }catch(e){}
-        location.href="./sesdalga.html?en="+encodeURIComponent(t)+"&tr="+encodeURIComponent(tr)+(back?("&back="+encodeURIComponent(back)):"");
-      };
-
-      var pdf=document.createElement("button");
-      pdf.type="button"; pdf.className="dh-gtr-btn dh-pdf-btn"; pdf.textContent="📄 PDF İndir";
-      pdf.onclick=function(){ exportModuleToPDF(false); };
-
-      var pdfAll=document.createElement("button");
-      pdfAll.type="button"; pdfAll.className="dh-gtr-btn dh-pdf-all-btn"; pdfAll.textContent="📚 Tümünü PDF İndir";
-      pdfAll.onclick=function(){ exportModuleToPDF(true); };
-
-      row.appendChild(stu);
-      row.appendChild(gtr);
+      ai.type="button"; ai.className="dh-gtr-btn dh-aiask-btn"; ai.textContent="✦ Gemini ile açıkla";ai.title="Aktif cümleyi ayrıntılı açıkla";
       row.appendChild(ai);
-      row.appendChild(aiModule);
-      row.appendChild(aiModuleRefresh);
-      row.appendChild(pdf);
-      row.appendChild(pdfAll);
     }
     if(row.previousElementSibling!==anchor || row.parentElement!==anchor.parentElement){
       anchor.insertAdjacentElement("afterend", row);
@@ -268,34 +246,60 @@
     return trio;
   }
 
+  function moduleToolIcon(name){
+    var paths={spark:'<path d="m12 3 1.2 4.1L17 9l-3.8 1.9L12 15l-1.2-4.1L7 9l3.8-1.9L12 3Z"/><path d="m18.5 14 .7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7.7-2.3Z"/>',translate:'<circle cx="12" cy="12" r="9"/><path d="M3.5 12h17M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6"/>',slow:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',detail:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',stack:'<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8a7 7 0 0 1 11.5-2L20 8M4 16l2.4 2A7 7 0 0 0 18 16"/>',file:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',archive:'<path d="M4 7h16v14H4zM3 3h18v4H3zM9 11h6"/>',teacher:'<path d="m3 8 9-5 9 5-9 5-9-5Z"/><path d="M7 11v5c3 2 7 2 10 0v-5M21 8v7"/>',chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
+    return'<svg viewBox="0 0 24 24" aria-hidden="true">'+(paths[name]||paths.detail)+'</svg>';
+  }
+  function closeModuleTools(){
+    var overlay=document.getElementById("dhToolsOverlay"),toggle=document.getElementById("dhToolsToggle");if(!overlay)return;
+    overlay.classList.add("dh-hidden");document.documentElement.classList.remove("dh-tools-open");if(toggle){toggle.setAttribute("aria-expanded","false");toggle.focus();}
+  }
+  function openModuleTools(){
+    var overlay=document.getElementById("dhToolsOverlay"),toggle=document.getElementById("dhToolsToggle");if(!overlay)return;
+    overlay.classList.remove("dh-hidden");document.documentElement.classList.add("dh-tools-open");if(toggle)toggle.setAttribute("aria-expanded","true");var close=overlay.querySelector(".dh-tools-close");if(close)close.focus();
+  }
   function ensureTools(){
-    var box=document.getElementById("dhToolsBox");
-    if(!box){
-      box=document.createElement("div");
-      box.id="dhToolsBox"; box.className="dh-tools-box dh-hidden";
-      var mk=function(label,finder){
-        var b=document.createElement("button");
-        b.className="dh-pbtn"; b.textContent=label;
-        b.onclick=function(){ var t=finder(); if(t) t.click(); };
-        return b;
-      };
-      box.appendChild(mk("🎓 Öğretmen",function(){ var c=card(); return c&&(c.querySelector(".teacher-btn")||byText(c,"öğretmen")); }));
-      box.appendChild(mk("📉 Zayıf Analiz",function(){ var c=card(); return c&&(c.querySelector(".extra-weak")||byText(c,"zayıf")); }));
-      box.appendChild(mk("📄 Aktif Modülü PDF İndir",function(){ exportModuleToPDF(false); }));
-      box.appendChild(mk("📚 TÜM Modülleri PDF İndir",function(){ exportModuleToPDF(true); }));
-      var bulk=document.createElement("button");bulk.className="dh-pbtn";bulk.textContent="💎 Tüm Modülü Gemini’ye Sor";bulk.onclick=function(){box.classList.add("dh-hidden");explainActiveModuleWithAI();};box.appendChild(bulk);
-      var refresh=document.createElement("button");refresh.className="dh-pbtn";refresh.textContent="♻️ Tüm Modülü Ayrıntılı Yenile";refresh.onclick=function(){box.classList.add("dh-hidden");if(confirm("Kayıtlı olanlar dahil tüm aktif modül tek istekte yeniden hazırlansın mı?"))explainActiveModuleWithAI(true);};box.appendChild(refresh);
-      box.appendChild(mk("🔍 Detay",function(){ return byText(card(),"detay"); }));
-      document.body.appendChild(box);
+    var overlay=document.getElementById("dhToolsOverlay"),box=document.getElementById("dhToolsBox"),scroll;
+    if(!overlay){
+      overlay=document.createElement("div");overlay.id="dhToolsOverlay";overlay.className="dh-tools-overlay dh-hidden";overlay.setAttribute("role","presentation");
+      box=document.createElement("aside");box.id="dhToolsBox";box.className="dh-tools-box";box.setAttribute("role","dialog");box.setAttribute("aria-modal","true");box.setAttribute("aria-label","Modül araçları");
+      box.innerHTML='<header class="dh-tools-head"><div class="dh-tools-title"><strong>Modül araçları</strong><span>İhtiyacınız olduğunda açın</span></div><button class="dh-tools-close" type="button" aria-label="Araçları kapat">'+moduleToolIcon("detail")+'</button></header><div class="dh-tools-scroll"></div>';
+      /* Bilgi simgesinin yerine sade kapatma çarpısı kullan. */
+      box.querySelector(".dh-tools-close").innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+      scroll=box.querySelector(".dh-tools-scroll");
+      var section=function(title,note){var el=document.createElement("section");el.className="dh-tool-section";el.innerHTML='<header><strong>'+title+'</strong><span>'+note+'</span></header><div class="dh-tool-grid"></div>';scroll.appendChild(el);return el.querySelector(".dh-tool-grid");};
+      var tool=function(grid,icon,title,description,action,tone){var button=document.createElement("button");button.type="button";button.className="dh-tool-card"+(tone?(" is-"+tone):"");button.innerHTML='<span class="dh-tool-icon">'+moduleToolIcon(icon)+'</span><span class="dh-tool-copy"><b>'+title+'</b><small>'+description+'</small></span>';button.onclick=function(){closeModuleTools();action();};grid.appendChild(button);return button;};
+      var sentence=section("Cümle araçları","Aktif cümle");
+      tool(sentence,"spark","Gemini ile açıkla","Ayrıntılı ve ortak açıklama",function(){var b=document.querySelector(".dh-aiask-btn");if(b)b.click();},"purple");
+      tool(sentence,"translate","Translate","Cümleyi çeviride aç",openActiveTranslate);
+      tool(sentence,"mic","Konuşma stüdyosu","Ses ve telaffuz çalış",openActiveStudio);
+      tool(sentence,"slow","Yavaş oynat","Telaffuzu yavaş dinle",function(){var t=byText(card(),"yavaş");if(t)t.click();});
+      tool(sentence,"detail","Detay görünümü","Cümlenin tüm alanlarını aç",function(){var t=byText(card(),"detay");if(t)t.click();});
+      var module=section("Modül işlemleri","Toplu çalışma");
+      tool(module,"stack","Eksikleri açıkla","Yalnız açıklaması olmayanlar",function(){explainActiveModuleWithAI();},"purple");
+      tool(module,"refresh","Modülü yeniden açıkla","Kayıtlı açıklamaları yenile",function(){if(confirm("Kayıtlı olanlar dahil tüm aktif modül tek istekte yeniden hazırlansın mı?"))explainActiveModuleWithAI(true);},"danger");
+      tool(module,"file","Aktif modülü indir","Bu modülü PDF olarak kaydet",function(){exportModuleToPDF(false);});
+      tool(module,"archive","Tümünü PDF indir","Bütün modülleri arşivle",function(){exportModuleToPDF(true);});
+      var analysis=section("Gelişmiş analiz","İsteğe bağlı");
+      tool(analysis,"teacher","Öğretmen görünümü","Öğretici ipuçlarını göster",function(){var c=card(),t=c&&(c.querySelector(".teacher-btn")||byText(c,"öğretmen"));if(t)t.click();});
+      tool(analysis,"chart","Zayıf analiz","Zorlandığınız alanları incele",function(){var c=card(),t=c&&(c.querySelector(".extra-weak")||byText(c,"zayıf"));if(t)t.click();});
+      var nativeSection=document.createElement("section");nativeSection.id="dhNativeToolsSection";nativeSection.className="dh-tool-section";nativeSection.hidden=true;nativeSection.innerHTML='<header><strong>Ek çalışma</strong><span>Diğer seçenekler</span></header>';scroll.appendChild(nativeSection);
+      overlay.appendChild(box);document.body.appendChild(overlay);
+      overlay.onclick=function(event){if(event.target===overlay)closeModuleTools();};box.onclick=function(event){event.stopPropagation();};box.querySelector(".dh-tools-close").onclick=closeModuleTools;
+      if(!document.documentElement.dataset.dhModuleToolsKey){document.documentElement.dataset.dhModuleToolsKey="1";document.addEventListener("keydown",function(event){
+        var current=document.getElementById("dhToolsOverlay");if(!current||current.classList.contains("dh-hidden"))return;
+        if(event.key==="Escape"){closeModuleTools();return;}
+        if(event.key!=="Tab")return;var focusable=current.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])');if(!focusable.length)return;var first=focusable[0],last=focusable[focusable.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+      });}
     }
-    var grid=document.querySelector(".wd-tools-row");
-    if(grid&&grid.parentElement!==box) box.appendChild(grid);
+    scroll=box.querySelector(".dh-tools-scroll");
+    var grid=document.querySelector(".wd-tools-row"),nativeSection=box.querySelector("#dhNativeToolsSection");
+    if(grid&&nativeSection){if(grid.parentElement!==nativeSection)nativeSection.appendChild(grid);nativeSection.hidden=false;}
 
     var tg=document.getElementById("dhToolsToggle");
     if(!tg){
-      tg=document.createElement("button");
-      tg.id="dhToolsToggle"; tg.type="button"; tg.className="dh-tools-toggle"; tg.textContent="🛠";
-      tg.onclick=function(){ box.classList.toggle("dh-hidden"); };
+      tg=document.createElement("button");tg.id="dhToolsToggle";tg.type="button";tg.className="dh-tools-toggle";tg.setAttribute("aria-controls","dhToolsBox");tg.setAttribute("aria-expanded","false");tg.setAttribute("aria-label","Modül araçlarını aç");tg.innerHTML=moduleToolIcon("stack")+'<b>Araçlar</b>';
+      tg.onclick=function(){if(overlay.classList.contains("dh-hidden"))openModuleTools();else closeModuleTools();};
     }
     var trio=document.getElementById("dhNavTrio");
     if(trio&&tg.parentElement!==trio){
@@ -721,8 +725,8 @@ async function exportModuleToPDF(exportAllModules) {
 }
 
 document.addEventListener("click", async function(e) {
-  let btn = e.target.closest(".dh-aiask-btn, .ai-sor-btn, button");
-  if (!btn || !btn.textContent.includes("AI'ye Sor")) return;
+  let btn = e.target.closest(".dh-aiask-btn, .ai-sor-btn");
+  if (!btn) return;
 
   e.preventDefault();
   e.stopPropagation();

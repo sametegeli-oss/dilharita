@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v210";  /* v210: Büyük puntolu Gemini okuma modu ve kalıcı Aa tercihi */
+var SW_VERSION = "dh-sw-v211";  /* v211: Profesyonel, kategorili modül araç çekmecesi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

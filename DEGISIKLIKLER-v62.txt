@@ -1,0 +1,39 @@
+DİL HARİTA · v62
+PROFESYONEL MODÜL ÇALIŞMA EKRANI VE ARAÇ ÇEKMECESİ
+
+1. ANA EKRAN SADELEŞTİRİLDİ
+- Birbirini tekrar eden Stüdyo, Translate, toplu Gemini ve PDF düğmeleri ana karttan kaldırıldı.
+- Ana öğrenme akışında Dinle, değerlendirme, önceki/sonraki, Araçlar, Gemini ile açıkla ve kaynak medya geçişi kaldı.
+- Hiçbir özellik silinmedi; ikincil işlevler araç çekmecesine taşındı.
+
+2. SAĞDAN AÇILAN ARAÇ ÇEKMECESİ
+- Eski, ekranın altında açılan karışık Araçlar kutusu kaldırıldı.
+- Karartılmış ve bulanık arka plan üzerinde sağdan açılan profesyonel çekmece oluşturuldu.
+- Araçlar başlık, açıklama ve çizgi ikonlu kartlarla sunuluyor.
+
+3. ANLAMLI GRUPLANDIRMA
+- Cümle araçları: Gemini ile açıkla, Translate, Konuşma stüdyosu, Yavaş oynat, Detay görünümü.
+- Modül işlemleri: Eksikleri açıkla, Modülü yeniden açıkla, Aktif modülü indir, Tümünü PDF indir.
+- Gelişmiş analiz: Öğretmen görünümü ve Zayıf analiz.
+- Programın kendi ek çalışma düğmeleri ayrı “Ek çalışma” bölümünde korunuyor.
+
+4. MOBİL UYUM
+- Çekmece telefon ekranında yüksekliği tamamen kullanıyor.
+- Alt güvenli alan ve kaydırma davranışı uygulandı.
+- 360 px altındaki çok dar ekranlarda araç kartları otomatik tek sütuna dönüşüyor.
+- Ana ekrandaki Yavaş ve Detay tekrarları mobilde de kaldırıldı.
+
+5. ERİŞİLEBİLİRLİK
+- Araçlar düğmesinde aria-expanded ve aria-controls durumları bulunuyor.
+- Çekmece açıldığında odak kapatma düğmesine taşınıyor, kapandığında Araçlar düğmesine dönüyor.
+- Escape ile kapatma, dış alana dokunarak kapatma ve klavye odağını çekmece içinde tutma eklendi.
+
+6. KORUNAN DAVRANIŞLAR
+- Video/modül cümle eşleşmesi ve tam ekran video geçişleri değiştirilmedi.
+- Gemini ortak açıklama kaydı ve v61 okuma modu aynen korundu.
+- PDF, stüdyo, çeviri, öğretmen ve zayıf analiz işlevleri mevcut düğmelerine güvenli vekil bağlantılarıyla çalışmaya devam ediyor.
+
+SÜRÜMLER
+- index-app-layout.js v31
+- gemini-bridge.js v21
+- Service Worker dh-sw-v211
