@@ -1,0 +1,32 @@
+DİL HARİTA · v61
+GEMİNİ AÇIKLAMASI PROFESYONEL OKUMA DENEYİMİ
+
+1. VARSAYILAN OKUNAKLILIK
+- Açıklama metni 12–12,5 px seviyesinden 16 px seviyesine çıkarıldı.
+- Satır yüksekliği 1,75 yapıldı; uzun Türkçe açıklamalarda göz takibi kolaylaştırıldı.
+- Bölüm başlıkları, İngilizce örnekler, Türkçe karşılıklar ve kullanım notları için ayrı tipografik hiyerarşi kuruldu.
+- Kart iç boşlukları ve bölüm aralıkları artırıldı.
+
+2. DÖRT KADEMELİ YAZI BOYUTU
+- Küçük, Normal, Büyük ve Çok Büyük olmak üzere dört kademe eklendi.
+- Seçim tarayıcıda saklanır ve sonraki girişte otomatik uygulanır.
+- Video ve modül ekranı aynı yazı boyutu tercihini kullanır.
+
+3. ODAKLANMIŞ OKUMA MODU
+- “Okuma modunda aç” düğmesi eklendi.
+- Açıklama, karartılmış arka plan üzerinde geniş ve kaydırılabilir bağımsız bir okuma yüzeyinde açılır.
+- Okuma modunda da yazı boyutu değiştirilebilir.
+- Escape tuşu, kapatma düğmesi veya dış alana dokunma ile kapanır.
+
+4. MOBİL KALİTE
+- Okuma modu mobilde ekranın tamamını kullanır.
+- Güvenli alan boşlukları, alt bildirim/gezinti bölgeleri ve dikey kaydırma dikkate alındı.
+- Dar ekranda kalıp ve hata satırları tek sütuna dönüşür.
+
+5. ORTAK BİLEŞEN
+- Bütün görünüm ve davranış gemini-bridge.js içinde ortaklaştırıldı.
+- youtube-egitim.html ve index-app.html aynı bileşeni kullanır; iki tarafta görünüm farkı oluşmaz.
+
+SÜRÜMLER
+- gemini-bridge.js v21
+- Service Worker dh-sw-v210

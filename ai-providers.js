@@ -157,7 +157,7 @@
     return new Promise(function(resolve,reject){
       var old=document.querySelector('script[data-dh-gemini-bridge]');
       if(old){old.addEventListener("load",function(){resolve(global.DHGemini);},{once:true});old.addEventListener("error",reject,{once:true});return;}
-      var s=document.createElement("script");s.src="./gemini-bridge.js?v=12";s.dataset.dhGeminiBridge="1";
+      var s=document.createElement("script");s.src="./gemini-bridge.js?v=21";s.dataset.dhGeminiBridge="1";
       s.onload=function(){global.DHGemini?resolve(global.DHGemini):reject({code:"bridge"});};s.onerror=function(){reject({code:"bridge"});};document.head.appendChild(s);
     });
   }

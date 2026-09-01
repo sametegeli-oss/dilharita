@@ -73,7 +73,7 @@ function css(){
   +".dhgb-job{font-size:11px;color:#7dd3fc;margin:0 0 8px;font-weight:800}"
   +".dhgb-preview{display:none;background:#071120;border:1px solid #10b981;border-radius:10px;padding:10px;margin:0 0 10px;font-size:12px;line-height:1.45;white-space:pre-wrap;max-height:150px;overflow:auto}"
   +".dh-md{line-height:1.68;color:#dbe7f7}.dh-md h1,.dh-md h2,.dh-md h3,.dh-md h4{color:#fff;margin:18px 0 8px;line-height:1.3}.dh-md h1{font-size:21px}.dh-md h2{font-size:18px;border-bottom:1px solid #274060;padding-bottom:7px}.dh-md h3{font-size:15px;color:#7dd3fc}.dh-md p{margin:7px 0}.dh-md ul,.dh-md ol{margin:7px 0 12px;padding-left:23px}.dh-md li{margin:5px 0}.dh-md strong{color:#fff}.dh-md em{color:#c4b5fd}.dh-md code{background:#26344c;color:#e2e8f0;padding:2px 6px;border-radius:6px;font:12px ui-monospace,monospace}.dh-md pre{background:#06101e;border:1px solid #243b5a;border-radius:10px;padding:10px;overflow:auto}.dh-md blockquote{border-left:3px solid #8b5cf6;margin:10px 0;padding:7px 11px;background:#111d35;color:#cbd5e1}"
-  +".dh-explanation{display:grid;gap:10px;color:#dbe7f7;white-space:normal}.dh-exp-section{overflow:hidden;border:1px solid rgba(123,157,197,.2);border-radius:14px;background:linear-gradient(145deg,rgba(18,35,55,.92),rgba(7,18,31,.96));box-shadow:inset 0 1px rgba(255,255,255,.035)}.dh-exp-section>header{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(123,157,197,.14);background:rgba(255,255,255,.018)}.dh-exp-section>header span{display:grid;place-items:center;width:25px;height:25px;border-radius:8px;background:rgba(85,230,209,.11);color:#6de9da;font-size:9px;font-weight:950}.dh-exp-section h3{margin:0!important;color:#f1f6fd!important;font-size:13px!important;letter-spacing:.01em}.dh-exp-body{display:grid;gap:8px;padding:11px 12px;color:#bdcce0;font-size:12.5px;line-height:1.62}.dh-exp-body p{margin:0}.dh-exp-list{display:grid;gap:7px;margin:0;padding:0;list-style:none}.dh-exp-list li{position:relative;padding-left:15px}.dh-exp-list li:before{content:'·';position:absolute;left:2px;color:#58dfd0;font-weight:950}.dh-exp-row{display:grid;grid-template-columns:minmax(90px,.8fr) minmax(110px,1fr);gap:4px 10px;padding:9px 10px;border:1px solid rgba(105,166,255,.17);border-radius:10px;background:rgba(5,14,25,.52)}.dh-exp-row strong{color:#8ed9ff;font-size:12px}.dh-exp-row span{color:#dbe7f7}.dh-exp-row small{grid-column:1/-1;color:#8196b0;line-height:1.45}.dh-exp-example{padding:10px 11px;border-left:3px solid #ffc963;border-radius:0 10px 10px 0;background:rgba(255,201,99,.06)}.dh-exp-example b{display:block;color:#f5f8fc;font-size:13px;line-height:1.45}.dh-exp-example span{display:block;margin-top:4px;color:#91a5be}.dh-explanation-legacy{line-height:1.65}@media(max-width:560px){.dh-exp-row{grid-template-columns:1fr}.dh-exp-row small{grid-column:auto}.dh-exp-body{padding:10px;font-size:12px}}"
+  +".dh-explanation-shell,.dh-exp-reader-shell{--dh-exp-font:16px;--dh-exp-heading:17.5px;--dh-exp-leading:1.75;color:#dbe7f7}.dh-explanation-shell[data-dh-exp-size='small'],.dh-exp-reader-shell[data-dh-exp-size='small']{--dh-exp-font:14.5px;--dh-exp-heading:16px}.dh-explanation-shell[data-dh-exp-size='large'],.dh-exp-reader-shell[data-dh-exp-size='large']{--dh-exp-font:18px;--dh-exp-heading:19.5px}.dh-explanation-shell[data-dh-exp-size='xlarge'],.dh-exp-reader-shell[data-dh-exp-size='xlarge']{--dh-exp-font:20px;--dh-exp-heading:21.5px}.dh-exp-toolbar{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;padding:9px 10px;border:1px solid rgba(125,164,209,.22);border-radius:13px;background:rgba(8,20,35,.94);box-shadow:0 8px 24px rgba(0,0,0,.16);backdrop-filter:blur(14px)}.dh-exp-toolbar-group{display:flex;align-items:center;gap:5px}.dh-exp-toolbar-label{margin-right:2px;color:#91a5be;font-size:11px;font-weight:850;letter-spacing:.04em;text-transform:uppercase}.dh-exp-tool{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-width:34px;height:34px;padding:0 10px;border:1px solid rgba(126,158,197,.26);border-radius:9px;background:#0d1e33;color:#c8d6e8;font:850 12px/1 Nunito,system-ui,sans-serif;cursor:pointer;transition:border-color .18s,background .18s,color .18s,transform .18s}.dh-exp-tool:hover{border-color:#5ee8d8;color:#fff;transform:translateY(-1px)}.dh-exp-tool.is-active{border-color:#55e6d1;background:rgba(48,196,178,.15);color:#7af1e3;box-shadow:0 0 0 1px rgba(85,230,209,.12)}.dh-exp-read{min-width:auto;padding:0 12px}.dh-exp-read svg,.dh-exp-reader-close svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8}.dh-explanation{display:grid;gap:14px;color:#dbe7f7;white-space:normal}.dh-exp-section{overflow:hidden;border:1px solid rgba(123,157,197,.22);border-radius:16px;background:linear-gradient(145deg,rgba(18,35,55,.95),rgba(7,18,31,.98));box-shadow:inset 0 1px rgba(255,255,255,.045),0 10px 26px rgba(0,0,0,.1)}.dh-exp-section>header{display:flex;align-items:center;gap:11px;padding:13px 15px;border-bottom:1px solid rgba(123,157,197,.15);background:linear-gradient(90deg,rgba(255,255,255,.032),transparent)}.dh-exp-section>header span{display:grid;place-items:center;flex:0 0 29px;width:29px;height:29px;border:1px solid rgba(85,230,209,.17);border-radius:9px;background:rgba(85,230,209,.11);color:#71eadc;font-size:10px;font-weight:950}.dh-exp-section h3{margin:0!important;color:#f4f8fd!important;font-size:var(--dh-exp-heading)!important;line-height:1.28!important;letter-spacing:-.01em}.dh-exp-body{display:grid;gap:12px;padding:16px;color:#c7d4e5;font-size:var(--dh-exp-font);line-height:var(--dh-exp-leading)}.dh-exp-body p{margin:0}.dh-exp-list{display:grid;gap:10px;margin:0;padding:0;list-style:none}.dh-exp-list li{position:relative;padding-left:19px}.dh-exp-list li:before{content:'•';position:absolute;left:3px;color:#58dfd0;font-weight:950}.dh-exp-row{display:grid;grid-template-columns:minmax(120px,.82fr) minmax(150px,1fr);gap:6px 13px;padding:12px 13px;border:1px solid rgba(105,166,255,.18);border-radius:12px;background:rgba(5,14,25,.56)}.dh-exp-row strong{color:#8ed9ff;font-size:1em;line-height:1.55}.dh-exp-row span{color:#e0e9f4}.dh-exp-row small{grid-column:1/-1;color:#91a5bc;font-size:.9em;line-height:1.55}.dh-exp-example{padding:13px 14px;border:1px solid rgba(255,201,99,.15);border-left:4px solid #ffc963;border-radius:0 12px 12px 0;background:rgba(255,201,99,.065)}.dh-exp-example b{display:block;color:#f8fafc;font-size:1.04em;line-height:1.55}.dh-exp-example span{display:block;margin-top:5px;color:#a9bad0}.dh-explanation-legacy{font-size:var(--dh-exp-font);line-height:var(--dh-exp-leading)}.dh-exp-reader{position:fixed;inset:0;z-index:1000090;display:grid;place-items:center;padding:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));background:rgba(1,7,15,.88);backdrop-filter:blur(18px);animation:dhExpFade .18s ease-out}.dh-exp-reader[hidden]{display:none}.dh-exp-reader-panel{display:grid;grid-template-rows:auto minmax(0,1fr);width:min(960px,100%);height:min(92dvh,940px);overflow:hidden;border:1px solid rgba(115,155,204,.3);border-radius:22px;background:linear-gradient(160deg,#0d1b2e,#07111f 66%);box-shadow:0 30px 90px rgba(0,0,0,.62)}.dh-exp-reader-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 17px;border-bottom:1px solid rgba(123,157,197,.18);background:rgba(15,31,52,.94)}.dh-exp-reader-title{display:grid;gap:2px}.dh-exp-reader-title strong{color:#f5f8fc;font-size:16px}.dh-exp-reader-title span{color:#8296ae;font-size:11px}.dh-exp-reader-actions{display:flex;align-items:center;gap:7px}.dh-exp-reader-close{display:grid;place-items:center;width:38px;height:38px;border:1px solid rgba(133,164,200,.25);border-radius:11px;background:#13243a;color:#dce6f3;cursor:pointer}.dh-exp-reader-body{overflow:auto;overscroll-behavior:contain;padding:18px 20px 30px;scrollbar-gutter:stable}.dh-exp-reader-body .dh-explanation{max-width:820px;margin:0 auto}.dh-exp-reader-size{display:flex;align-items:center;gap:4px}.dhgb-preview .dh-exp-toolbar{display:none}@keyframes dhExpFade{from{opacity:0;transform:scale(.992)}to{opacity:1;transform:scale(1)}}@media(max-width:620px){.dh-exp-toolbar{position:relative;top:auto;align-items:stretch;flex-direction:column}.dh-exp-toolbar-group{justify-content:space-between}.dh-exp-read{width:100%;height:39px}.dh-exp-toolbar-label{font-size:10px}.dh-exp-tool{height:36px;flex:1;padding:0 7px}.dh-exp-row{grid-template-columns:1fr}.dh-exp-row small{grid-column:auto}.dh-exp-body{padding:15px}.dh-exp-reader{padding:0}.dh-exp-reader-panel{width:100%;height:100dvh;border:0;border-radius:0}.dh-exp-reader-head{padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 10px max(12px,env(safe-area-inset-left))}.dh-exp-reader-title span{display:none}.dh-exp-reader-size .dh-exp-tool{min-width:31px;width:31px;padding:0}.dh-exp-reader-body{padding:14px max(12px,env(safe-area-inset-right)) max(26px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}}"
   +".dhgb-paste.dhgb-ready{outline:3px solid #fbbf24;animation:dhgbPulse 1s infinite alternate}@keyframes dhgbPulse{to{outline-color:transparent}}"
   +".dhgb-tog{background:none;border:0;color:#60a5fa;font-size:11.5px;font-weight:800;cursor:pointer;padding:0 0 8px;text-decoration:underline}";
   document.head.appendChild(s);
@@ -280,17 +280,60 @@ function explanationSectionKey(label){
   var aliases={"ANLAM":"ANLAM","DOĞAL ANLAM":"ANLAM","YAPI":"YAPI","DİLBİLGİSİ":"YAPI","KALIPLAR":"KALIPLAR","ÖNEMLİ KALIPLAR":"KALIPLAR","TELAFFUZ":"TELAFFUZ","YAYGIN HATALAR":"HATALAR","HATALAR":"HATALAR","ÖRNEKLER":"ORNEKLER","ORNEKLER":"ORNEKLER"};
   return aliases[key]||"";
 }
+var EXP_SIZE_KEY="dh-explanation-font-size-v1",EXP_SIZES=["small","normal","large","xlarge"];
+function explanationSize(){
+  var value="normal";
+  try{value=localStorage.getItem(EXP_SIZE_KEY)||"normal";}catch(e){}
+  return EXP_SIZES.indexOf(value)>=0?value:"normal";
+}
+function explanationSizeButtons(){
+  var current=explanationSize(),labels={small:"Küçük",normal:"Normal",large:"Büyük",xlarge:"Çok büyük"},marks={small:"A",normal:"A",large:"A+",xlarge:"A++"};
+  return EXP_SIZES.map(function(size,index){return'<button type="button" class="dh-exp-tool dh-exp-size'+(size===current?' is-active':'')+'" data-dh-exp-set-size="'+size+'" aria-label="Yazı boyutu: '+labels[size]+'" title="'+labels[size]+'" style="font-size:'+(11+index)+'px">'+marks[size]+'</button>';}).join("");
+}
+function explanationToolbar(){
+  return'<div class="dh-exp-toolbar" role="toolbar" aria-label="Açıklama okuma araçları"><button type="button" class="dh-exp-tool dh-exp-read" data-dh-exp-reader aria-label="Açıklamayı okuma modunda aç"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h6.2A3.8 3.8 0 0 1 14 9.3V20a3.8 3.8 0 0 0-3.8-3.8H4zM20 5.5h-2.2A3.8 3.8 0 0 0 14 9.3V20a3.8 3.8 0 0 1 3.8-3.8H20z"/></svg><span>Okuma modunda aç</span></button><div class="dh-exp-toolbar-group"><span class="dh-exp-toolbar-label">Yazı</span>'+explanationSizeButtons()+"</div></div>";
+}
+function explanationShell(content){return'<div class="dh-explanation-shell" data-dh-exp-size="'+explanationSize()+'">'+explanationToolbar()+content+"</div>";}
+function syncExplanationSize(size){
+  if(EXP_SIZES.indexOf(size)<0)return;
+  try{localStorage.setItem(EXP_SIZE_KEY,size);}catch(e){}
+  Array.prototype.forEach.call(document.querySelectorAll(".dh-explanation-shell,.dh-exp-reader-shell"),function(shell){shell.setAttribute("data-dh-exp-size",size);});
+  Array.prototype.forEach.call(document.querySelectorAll("[data-dh-exp-set-size]"),function(button){var active=button.getAttribute("data-dh-exp-set-size")===size;button.classList.toggle("is-active",active);button.setAttribute("aria-pressed",active?"true":"false");});
+}
+function closeExplanationReader(){
+  var reader=document.querySelector(".dh-exp-reader");if(!reader)return;
+  reader.remove();
+  if(!document.querySelector(".dhgb-ov,.yt-modal-overlay:not([hidden])"))document.documentElement.style.overflow=reader.dataset.oldOverflow||"";
+}
+function openExplanationReader(shell){
+  var source=shell&&shell.querySelector(".dh-explanation");if(!source)return;
+  closeExplanationReader();
+  var reader=document.createElement("div"),size=explanationSize();reader.className="dh-exp-reader";reader.setAttribute("role","dialog");reader.setAttribute("aria-modal","true");reader.setAttribute("aria-label","Gemini açıklaması okuma modu");reader.dataset.oldOverflow=document.documentElement.style.overflow||"";
+  reader.innerHTML='<div class="dh-exp-reader-panel"><header class="dh-exp-reader-head"><div class="dh-exp-reader-title"><strong>Gemini açıklaması</strong><span>Odaklanmış okuma görünümü</span></div><div class="dh-exp-reader-actions"><div class="dh-exp-reader-size" aria-label="Yazı boyutu">'+explanationSizeButtons()+'</div><button type="button" class="dh-exp-reader-close" data-dh-exp-reader-close aria-label="Okuma modunu kapat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div></header><div class="dh-exp-reader-body"><div class="dh-exp-reader-shell" data-dh-exp-size="'+size+'"></div></div></div>';
+  reader.querySelector(".dh-exp-reader-shell").appendChild(source.cloneNode(true));document.body.appendChild(reader);document.documentElement.style.overflow="hidden";syncExplanationSize(size);reader.querySelector(".dh-exp-reader-body").scrollTop=0;reader.querySelector(".dh-exp-reader-close").focus();
+}
+function bindExplanationUI(){
+  if(document.documentElement.dataset.dhExplanationUi)return;document.documentElement.dataset.dhExplanationUi="1";
+  document.addEventListener("click",function(event){
+    var sizeButton=event.target.closest&&event.target.closest("[data-dh-exp-set-size]");if(sizeButton){syncExplanationSize(sizeButton.getAttribute("data-dh-exp-set-size"));return;}
+    var readButton=event.target.closest&&event.target.closest("[data-dh-exp-reader]");if(readButton){openExplanationReader(readButton.closest(".dh-explanation-shell"));return;}
+    if(event.target.closest&&event.target.closest("[data-dh-exp-reader-close]")){closeExplanationReader();return;}
+    if(event.target.classList&&event.target.classList.contains("dh-exp-reader"))closeExplanationReader();
+  });
+  document.addEventListener("keydown",function(event){if(event.key==="Escape"&&document.querySelector(".dh-exp-reader"))closeExplanationReader();});
+}
 function formatExplanation(input){
   css();
+  bindExplanationUI();
   var source=String(input==null?"":input).replace(/^\s*DH-ID:[^\n]*\n/i,"").replace(/\r/g,"").trim();
-  if(!source)return'<div class="dh-explanation"><p>Açıklama bulunamadı.</p></div>';
+  if(!source)return explanationShell('<div class="dh-explanation"><p>Açıklama bulunamadı.</p></div>');
   var sections={},current="",recognized=0;
   source.split("\n").forEach(function(line){
     var match=line.match(/^\s*\[([^\]]+)\]\s*$/),key=match?explanationSectionKey(match[1]):"";
     if(key){current=key;recognized++;if(!sections[key])sections[key]=[];return;}
     if(current)sections[current].push(line);
   });
-  if(!recognized)return'<div class="dh-explanation dh-explanation-legacy dh-md">'+markdown(source)+'</div>';
+  if(!recognized)return explanationShell('<div class="dh-explanation dh-explanation-legacy dh-md">'+markdown(source)+'</div>');
   var order=["ANLAM","YAPI","KALIPLAR","TELAFFUZ","HATALAR","ORNEKLER"],titles={ANLAM:"Bağlamdaki doğal anlam",YAPI:"Cümle yapısı ve dilbilgisi",KALIPLAR:"Önemli kalıplar",TELAFFUZ:"Telaffuz ve akıcı konuşma",HATALAR:"Türk öğrenciler için yaygın hatalar",ORNEKLER:"Doğal örnekler"};
   function nonempty(lines){return(lines||[]).map(function(x){return String(x||"").trim()}).filter(Boolean)}
   function prose(lines){
@@ -313,7 +356,7 @@ function formatExplanation(input){
     var number=index+1<10?"0"+(index+1):String(index+1);
     return'<section class="dh-exp-section" data-exp-section="'+key.toLowerCase()+'"><header><span>'+number+'</span><h3>'+titles[key]+'</h3></header><div class="dh-exp-body">'+body+'</div></section>';
   }).join("");
-  return'<div class="dh-explanation">'+(html||'<div class="dh-explanation-legacy dh-md">'+markdown(source)+'</div>')+'</div>';
+  return explanationShell('<div class="dh-explanation">'+(html||'<div class="dh-explanation-legacy dh-md">'+markdown(source)+'</div>')+'</div>');
 }
 
 /* ---------- hazır ayrıştırıcılar ---------- */
@@ -408,5 +451,5 @@ function explanationPrompt(context){
     "Toplam yanıt yaklaşık 350-550 Türkçe kelime olsun. Ayrıntılı, öğretici, tekrarsız ve mobil panoya uygun düz metin üret."
   ].join("\n");
 }
-global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending, hasOverlay:hasOverlay, markdown:markdown, formatExplanation:formatExplanation, explanationPrompt:explanationPrompt };
+global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending, hasOverlay:hasOverlay, markdown:markdown, formatExplanation:formatExplanation, explanationPrompt:explanationPrompt, setExplanationSize:syncExplanationSize, openExplanationReader:openExplanationReader };
 })(window);
