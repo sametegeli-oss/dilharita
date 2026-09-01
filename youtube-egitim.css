@@ -83,6 +83,11 @@ body.yt-mode-shadow .yt-learning-card{border-color:rgba(255,202,99,.28)}body.yt-
  .yt-align-controls-grid{grid-template-columns:1fr}
 }
 
+/* v70 · Tam ekranda döngü durumu son ve kesin renk kuralı */
+body .yt-video-shell #loopToggle[data-loop-state="passive"],body .yt-video-shell #loopToggle[aria-pressed="false"]{border-color:rgba(143,163,190,.38)!important;background:#0b1727!important;color:#9daec3!important;box-shadow:inset 0 1px rgba(255,255,255,.04)!important;filter:none!important}
+body .yt-video-shell #loopToggle[data-loop-state="active"],body .yt-video-shell #loopToggle.is-active,body .yt-video-shell #loopToggle[aria-pressed="true"],body .yt-video-shell:fullscreen #loopToggle[aria-pressed="true"],body .yt-video-shell:-webkit-full-screen #loopToggle[aria-pressed="true"],body .yt-video-shell.is-pseudo-fullscreen #loopToggle[aria-pressed="true"]{border-color:#fff0a6!important;background:linear-gradient(145deg,#ffad21,#d86b00)!important;color:#241200!important;box-shadow:0 0 0 3px rgba(255,193,76,.38),0 0 28px rgba(255,151,22,.68),inset 0 1px rgba(255,255,255,.5)!important;filter:saturate(1.2) brightness(1.08)!important}
+body .yt-video-shell #loopToggle[data-loop-state="active"]::after,body .yt-video-shell #loopToggle[aria-pressed="true"]::after{background:#fff!important;border-color:#8b4600!important;box-shadow:0 0 10px #fff5ba!important}
+
 /* v67 · Alt video çubuğu yalnız simge + belirgin aktif/pasif durum */
 .yt-controls #loopToggle>span,.yt-controls .yt-study-action>span:last-child{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;white-space:nowrap!important}
 .yt-controls .yt-study-action,.yt-controls #loopToggle{position:relative;width:44px!important;min-width:44px!important;padding:0!important;justify-content:center!important}

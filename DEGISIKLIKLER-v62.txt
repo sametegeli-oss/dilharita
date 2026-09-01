@@ -1,3 +1,10 @@
+v70 DÜZELTMELERİ
+=================
+- Tam ekran cümle tekrarı için ayrı data-loop-state durumu eklendi.
+- Pasif döngü koyu gri, aktif döngü parlak turuncu/kehribar ve ışıklı gösteriliyor.
+- Durum rengi CSS dosyasının sonunda yüksek öncelikli kuralla sabitlendi.
+- Zamanlama engelinde düğme durumu ve erişilebilir etiketi de kesin olarak pasife dönüyor.
+
 v69 DÜZELTMELERİ
 =================
 - Mobil Gemini okuma çıkışı sağ altta her zaman görünen sabit metinli düğmeye dönüştürüldü.
