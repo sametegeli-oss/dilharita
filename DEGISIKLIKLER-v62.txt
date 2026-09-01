@@ -37,6 +37,12 @@ SÜRÜMLER
 - index-app-layout.js v31
 - gemini-bridge.js v21
 - Service Worker dh-sw-v211
+v66 DÜZELTMELERİ
+=================
+- Okuma modu uygulamanın sabit üst menüsünden tamamen ayrılarak en üst katmana taşındı.
+- Yazı boyutu ve çıkış düğmeleri opak, sabit ve çakışmayan tek bir araç çubuğunda düzenlendi.
+- Dar ekranlarda başlık gizlenerek düğmelere yeterli alan ayrıldı; çok dar ekranda çıkış metni simgeye dönüşüyor.
+
 v65 DÜZELTMELERİ
 =================
 - Tam okuma moduna sağ üstte sürekli görünen kırmızı “Okumadan çık” düğmesi eklendi.
