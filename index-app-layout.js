@@ -270,7 +270,7 @@
     if(!bar){
       bar=document.createElement("div");bar.className="dh-card-quickbar";bar.setAttribute("aria-label","Hızlı cümle araçları");
       var listen=document.createElement("button");listen.type="button";listen.className="dh-quick-listen";listen.innerHTML='<span aria-hidden="true">▶</span><b>Dinle</b>';listen.setAttribute("aria-label","Aktif cümleyi dinle");listen.onclick=function(){var real=c.querySelector(".dh-listen-after-sentence");if(real)real.click();};
-      var tools=document.createElement("button");tools.type="button";tools.className="dh-quick-tools";tools.setAttribute("aria-expanded","false");tools.innerHTML=moduleToolIcon("stack")+'<b>Araçlar</b>';tools.onclick=function(){setActionPanel(c,!c.classList.contains("dh-actions-visible"));};bar.appendChild(listen);bar.appendChild(tools);
+      var tools=document.createElement("button");tools.type="button";tools.className="dh-quick-tools";tools.setAttribute("aria-expanded","false");tools.innerHTML=moduleToolIcon("stack")+'<b>Araçlar</b>';tools.onclick=function(){openModuleTools();};bar.appendChild(listen);bar.appendChild(tools);
     }
     var sentenceRow=c.querySelector(".dh-sentence-listen-row");if(sentenceRow&&bar.parentElement!==c)c.insertBefore(bar,sentenceRow);else if(!bar.parentElement)c.insertBefore(bar,c.firstChild);
   }
@@ -511,40 +511,54 @@ function parseMarkdownToHTML(markdown) {
 /* --- AI'YE SOR & INDEXEDDB KÖPRÜSÜ --- */
 var currentLoadedSentence = "";
 
-function getAIFromDB(sentence) {
+/* Eski kurulumlarda aynı veritabanı mağaza oluşturulmadan kalmış olabilir.
+   Önce mevcut sürümü aç, mağaza yoksa sürümü güvenle yükseltip oluştur. */
+function openAIStoreDB() {
   return new Promise(function(resolve) {
-    let req = indexedDB.open("DilHaritaAI_DB", 1);
-    req.onupgradeneeded = function(e) {
-      let db = e.target.result;
-      if (!db.objectStoreNames.contains("ai_explanations")) {
-        db.createObjectStore("ai_explanations", { keyPath: "sentence" });
-      }
+    if (!window.indexedDB) return resolve(null);
+    var first = indexedDB.open("DilHaritaAI_DB");
+    first.onerror = function() { resolve(null); };
+    first.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains("ai_explanations")) db.createObjectStore("ai_explanations", { keyPath: "sentence" });
     };
-    req.onsuccess = function(e) {
-      let db = e.target.result;
-      let tx = db.transaction(["ai_explanations"], "readonly");
-      let store = tx.objectStore("ai_explanations");
-      let getReq = store.get(sentence);
-      getReq.onsuccess = function() { resolve(getReq.result ? getReq.result.explanation : null); };
-      getReq.onerror = function() { resolve(null); };
+    first.onsuccess = function(e) {
+      var db = e.target.result;
+      if (db.objectStoreNames.contains("ai_explanations")) return resolve(db);
+      var nextVersion = Math.max(1, Number(db.version || 1) + 1);
+      db.close();
+      var upgrade = indexedDB.open("DilHaritaAI_DB", nextVersion);
+      upgrade.onupgradeneeded = function(ev) {
+        var upgraded = ev.target.result;
+        if (!upgraded.objectStoreNames.contains("ai_explanations")) upgraded.createObjectStore("ai_explanations", { keyPath: "sentence" });
+      };
+      upgrade.onsuccess = function(ev) { resolve(ev.target.result); };
+      upgrade.onerror = function() { resolve(null); };
+      upgrade.onblocked = function() { resolve(null); };
     };
-    req.onerror = function() { resolve(null); };
+  });
+}
+
+function getAIFromDB(sentence) {
+  return openAIStoreDB().then(function(db) { return new Promise(function(resolve) {
+    if (!db) return resolve(null);
+    try {
+      var tx = db.transaction(["ai_explanations"], "readonly");
+      var getReq = tx.objectStore("ai_explanations").get(sentence);
+      getReq.onsuccess = function() { db.close(); resolve(getReq.result ? getReq.result.explanation : null); };
+      getReq.onerror = function() { db.close(); resolve(null); };
+    } catch(e) { try{db.close();}catch(ignore){} resolve(null); }
+  });
   });
 }
 
 function saveAIToDB(sentence, explanation) {
   return getAIFromDB(sentence).then(function(oldText){
     if(oldText&&oldText!==explanation)pushAIBackup(sentence,oldText);
-    return new Promise(function(resolve) {
-    let req = indexedDB.open("DilHaritaAI_DB", 1);
-    req.onsuccess = function(e) {
-      let db = e.target.result;
-      let tx = db.transaction(["ai_explanations"], "readwrite");
-      let store = tx.objectStore("ai_explanations");
-      store.put({ sentence: sentence, explanation: explanation, deleted:false, timestamp: new Date().toISOString() });
-      tx.oncomplete = function() { try{window.dispatchEvent(new CustomEvent("dh-ai-explanation-changed"));}catch(e){} resolve(true); };
-    };
-    });
+    return openAIStoreDB().then(function(db){return new Promise(function(resolve) {
+      if(!db)return resolve(false);
+      try{var tx=db.transaction(["ai_explanations"],"readwrite");tx.objectStore("ai_explanations").put({sentence:sentence,explanation:explanation,deleted:false,timestamp:new Date().toISOString()});tx.oncomplete=function(){db.close();try{window.dispatchEvent(new CustomEvent("dh-ai-explanation-changed"));}catch(e){}resolve(true);};tx.onerror=function(){db.close();resolve(false);};}catch(e){try{db.close();}catch(ignore){}resolve(false);}
+    });});
   });
 }
 
@@ -552,15 +566,12 @@ var AI_BACKUP_KEY="dh-ai-explanation-backups-v1";
 function readAIBackups(){try{return JSON.parse(localStorage.getItem(AI_BACKUP_KEY)||"{}")||{};}catch(e){return {};}}
 function pushAIBackup(sentence,text){if(!text)return;var all=readAIBackups(),list=all[sentence]||[];if(list[list.length-1]!==text)list.push(text);all[sentence]=list.slice(-5);try{localStorage.setItem(AI_BACKUP_KEY,JSON.stringify(all));}catch(e){}}
 function popAIBackup(sentence){var all=readAIBackups(),list=all[sentence]||[],text=list.pop()||null;if(list.length)all[sentence]=list;else delete all[sentence];try{localStorage.setItem(AI_BACKUP_KEY,JSON.stringify(all));}catch(e){}return text;}
-function deleteAIFromDB(sentence){return getAIFromDB(sentence).then(function(oldText){if(oldText)pushAIBackup(sentence,oldText);return new Promise(function(resolve){var req=indexedDB.open("DilHaritaAI_DB",1);req.onsuccess=function(e){var tx=e.target.result.transaction(["ai_explanations"],"readwrite");tx.objectStore("ai_explanations").put({sentence:sentence,explanation:"",deleted:true,timestamp:new Date().toISOString()});tx.oncomplete=function(){try{window.dispatchEvent(new CustomEvent("dh-ai-explanation-changed"));}catch(e){}resolve(true);};};req.onerror=function(){resolve(false);};});});}
+function deleteAIFromDB(sentence){return getAIFromDB(sentence).then(function(oldText){if(oldText)pushAIBackup(sentence,oldText);return openAIStoreDB().then(function(db){return new Promise(function(resolve){if(!db)return resolve(false);try{var tx=db.transaction(["ai_explanations"],"readwrite");tx.objectStore("ai_explanations").put({sentence:sentence,explanation:"",deleted:true,timestamp:new Date().toISOString()});tx.oncomplete=function(){db.close();try{window.dispatchEvent(new CustomEvent("dh-ai-explanation-changed"));}catch(e){}resolve(true);};tx.onerror=function(){db.close();resolve(false);};}catch(e){try{db.close();}catch(ignore){}resolve(false);}});});});}
 async function restorePreviousAI(sentence){var old=popAIBackup(sentence);if(!old)return null;await saveAIToDB(sentence,old);return old;}
 
 function getAllAIExplanationsFromDB() {
-  return new Promise(function(resolve) {
-    let req = indexedDB.open("DilHaritaAI_DB", 1);
-    req.onsuccess = function(e) {
-      let db = e.target.result;
-      if (!db.objectStoreNames.contains("ai_explanations")) return resolve({});
+  return openAIStoreDB().then(function(db) { return new Promise(function(resolve) {
+      if (!db) return resolve({});
       let tx = db.transaction(["ai_explanations"], "readonly");
       let store = tx.objectStore("ai_explanations");
       let cursorReq = store.openCursor();
@@ -570,12 +581,10 @@ function getAllAIExplanationsFromDB() {
         if (cursor) {
           map[cursor.key] = cursor.value.explanation;
           cursor.continue();
-        } else resolve(map);
+        } else { db.close(); resolve(map); }
       };
-      cursorReq.onerror = function() { resolve({}); };
-    };
-    req.onerror = function() { resolve({}); };
-  });
+      cursorReq.onerror = function() { db.close(); resolve({}); };
+  }); });
 }
 
 function normalizeModuleName(value){return String(value||"").toLowerCase().replace(/\s+/g," ").trim();}
