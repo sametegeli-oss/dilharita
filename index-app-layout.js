@@ -193,31 +193,42 @@
   function closeToolSurfaces(){
     var clickSelectors=[".dh-exp-reader-close",".dhgb-close","#dhAiCancel",'#dhAiEditModal [data-x="cancel"]'];for(var i=0;i<clickSelectors.length;i++){var b=document.querySelector(clickSelectors[i]);if(b)try{b.click();}catch(e){}}
     ["dhAiBulkModal","dhAiModal","dhAiEditModal"].forEach(function(id){var n=document.getElementById(id);if(n)n.remove();});var result=document.getElementById("dhAiResultBox");if(result)result.remove();
+    Array.prototype.forEach.call(document.querySelectorAll("button,a"),function(button){
+      if(button.id==="dhWorkReturn"||button.closest("#dhToolsOverlay"))return;var label=((button.textContent||"")+" "+(button.getAttribute("aria-label")||"")).replace(/\s+/g," ").trim();if(!/(kapat|close|çıkış|geri dön|çalışmaya dön)/i.test(label))return;
+      var surface=button.closest("[role='dialog'],[class*='overlay'],[class*='modal'],[class*='reader'],[class*='fullscreen']");if(!surface)return;var style=getComputedStyle(surface);if(style.display==="none"||style.visibility==="hidden")return;try{button.click();}catch(e){}
+    });
   }
   function placeToolReturnInTopLayer(){
     var b=document.getElementById("dhWorkReturn");if(!b)return;
-    var host=document.fullscreenElement||document.webkitFullscreenElement||document.querySelector(".dhgb-ov,.dh-exp-reader,.dh-ai-reader,[role='dialog']:not(#dhToolsBox)");
-    if(host&&host.appendChild&&b.parentElement!==host)host.appendChild(b);
+    /* Araç içeriğine bağlanmaz: içerik yeniden çizilse bile dönüş düğmesi kaybolmaz. */
+    var host=document.fullscreenElement||document.webkitFullscreenElement||document.body;
+    if(host&&host.appendChild&&(b.parentElement!==host||b!==host.lastElementChild))host.appendChild(b);
   }
+  var dhReturningToSentence=false;
   function returnToWorkingSentence(){
+    if(dhReturningToSentence)return;dhReturningToSentence=true;
     var saved=null;try{saved=JSON.parse(sessionStorage.getItem("dh-module-tool-return-v1")||"null");}catch(e){}
     /* Ana araç çekmecesi mutlaka kapanmalı; yalnız yardımcı modalleri kapatmak yetmez. */
     closeModuleTools();var overlay=document.getElementById("dhToolsOverlay");if(overlay)overlay.classList.add("dh-hidden");document.documentElement.classList.remove("dh-tools-open");
     closeToolSurfaces();try{if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen();else if(document.webkitFullscreenElement&&document.webkitExitFullscreen)document.webkitExitFullscreen();}catch(e){}var c=card(),en=c&&c.querySelector(".card-en"),current=(en&&en.textContent||"").trim();
     if((!c||!en||(saved&&saved.sentence&&current!==saved.sentence))&&saved&&saved.module){var url="./index-app.html?mod="+encodeURIComponent(saved.module)+(saved.target?"&target="+encodeURIComponent(saved.target):"&q="+encodeURIComponent(saved.sentence||""));location.href=url;return;}
-    if(c)setActionPanel(c,false);if(en){try{en.scrollIntoView({block:"center",behavior:"smooth"});}catch(e){}setTimeout(function(){try{en.focus({preventScroll:true});}catch(e){}},250);}var button=document.getElementById("dhWorkReturn");if(button)button.remove();try{sessionStorage.removeItem("dh-module-tool-return-v1");}catch(e){}
+    if(c)setActionPanel(c,false);if(en){try{en.scrollIntoView({block:"center",behavior:"smooth"});}catch(e){}setTimeout(function(){try{en.focus({preventScroll:true});}catch(e){}},250);}var button=document.getElementById("dhWorkReturn");if(button)button.remove();try{sessionStorage.removeItem("dh-module-tool-return-v1");}catch(e){}setTimeout(function(){dhReturningToSentence=false;},250);
   }
   function showToolReturn(title){
     var b=document.getElementById("dhWorkReturn");if(!b){b=document.createElement("button");b.id="dhWorkReturn";b.type="button";b.className="dh-work-return";b.onclick=returnToWorkingSentence;document.body.appendChild(b);}b.textContent="← Çalışılan cümleye dön";b.title=(title||"Araç")+" görünümünü kapat";
     placeToolReturnInTopLayer();setTimeout(placeToolReturnInTopLayer,0);setTimeout(placeToolReturnInTopLayer,250);setTimeout(placeToolReturnInTopLayer,800);
   }
   function ensureMobileGeneratedToolExit(){
+    var active=null;try{active=JSON.parse(sessionStorage.getItem("dh-module-tool-return-v1")||"null");}catch(e){}if(!active)return;
     Array.prototype.forEach.call(document.querySelectorAll("button,a"),function(button){
-      var label=(button.textContent||"").replace(/\s+/g," ").trim();if(!/(^|←\s*)Kapat$/i.test(label))return;
-      var host=button.closest("[role='dialog'],[class*='overlay'],[class*='modal'],[class*='reader']")||button.parentElement;if(!host||!/Benzer Cümleler/i.test(host.textContent||""))return;
+      if(button.id==="dhWorkReturn"||button.closest("#dhToolsOverlay"))return;var label=((button.textContent||"")+" "+(button.getAttribute("aria-label")||"")).replace(/\s+/g," ").trim();if(!/(kapat|close|çıkış)$/i.test(label))return;
+      var host=button.closest("[role='dialog'],[class*='overlay'],[class*='modal'],[class*='reader'],[class*='fullscreen']")||button.parentElement;if(!host)return;
       button.classList.add("dh-mobile-tool-close");if(button.parentElement)button.parentElement.classList.add("dh-mobile-tool-header");
       if(!button.dataset.dhSentenceReturn){button.dataset.dhSentenceReturn="1";button.addEventListener("click",function(){setTimeout(returnToWorkingSentence,0);});}
     });
+  }
+  function restoreStoredToolReturn(){
+    if(document.getElementById("dhWorkReturn"))return;var saved=null;try{saved=JSON.parse(sessionStorage.getItem("dh-module-tool-return-v1")||"null");}catch(e){}if(!saved||!saved.at||Date.now()-saved.at>21600000)return;showToolReturn(saved.title||"Araç");
   }
 
   /* Ana kartta yalnız aktif cümleyi açıklayan tek bir AI eylemi kalır. */
@@ -440,6 +451,7 @@
         checkAndSyncAiBox(c);
       }
       ensureTools();
+      restoreStoredToolReturn();
       if(document.getElementById("dhWorkReturn"))placeToolReturnInTopLayer();
       ensureMobileGeneratedToolExit();
       scheduleModuleAIStatusUI();
@@ -449,6 +461,8 @@
   function schedule(){ if(scheduled) return; scheduled=true; setTimeout(function(){ scheduled=false; apply(); },150); }
   function boot(){
     apply();
+    document.addEventListener("fullscreenchange",function(){setTimeout(function(){restoreStoredToolReturn();placeToolReturnInTopLayer();},0);});
+    document.addEventListener("webkitfullscreenchange",function(){setTimeout(function(){restoreStoredToolReturn();placeToolReturnInTopLayer();},0);});
     try{ new MutationObserver(function(){ if(!applying) schedule(); }).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["class"]}); }catch(e){}
     var n=0,t=setInterval(function(){ apply(); if(++n>10) clearInterval(t); },400);
   }
