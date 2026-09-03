@@ -193,16 +193,22 @@
     var clickSelectors=[".dh-exp-reader-close",".dhgb-close","#dhAiCancel",'#dhAiEditModal [data-x="cancel"]'];for(var i=0;i<clickSelectors.length;i++){var b=document.querySelector(clickSelectors[i]);if(b)try{b.click();}catch(e){}}
     ["dhAiBulkModal","dhAiModal","dhAiEditModal"].forEach(function(id){var n=document.getElementById(id);if(n)n.remove();});var result=document.getElementById("dhAiResultBox");if(result)result.remove();
   }
+  function placeToolReturnInTopLayer(){
+    var b=document.getElementById("dhWorkReturn");if(!b)return;
+    var host=document.fullscreenElement||document.webkitFullscreenElement||document.querySelector(".dhgb-ov,.dh-exp-reader,.dh-ai-reader,[role='dialog']:not(#dhToolsBox)");
+    if(host&&host.appendChild&&b.parentElement!==host)host.appendChild(b);
+  }
   function returnToWorkingSentence(){
     var saved=null;try{saved=JSON.parse(sessionStorage.getItem("dh-module-tool-return-v1")||"null");}catch(e){}
     /* Ana araç çekmecesi mutlaka kapanmalı; yalnız yardımcı modalleri kapatmak yetmez. */
     closeModuleTools();var overlay=document.getElementById("dhToolsOverlay");if(overlay)overlay.classList.add("dh-hidden");document.documentElement.classList.remove("dh-tools-open");
-    closeToolSurfaces();var c=card(),en=c&&c.querySelector(".card-en"),current=(en&&en.textContent||"").trim();
+    closeToolSurfaces();try{if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen();else if(document.webkitFullscreenElement&&document.webkitExitFullscreen)document.webkitExitFullscreen();}catch(e){}var c=card(),en=c&&c.querySelector(".card-en"),current=(en&&en.textContent||"").trim();
     if((!c||!en||(saved&&saved.sentence&&current!==saved.sentence))&&saved&&saved.module){var url="./index-app.html?mod="+encodeURIComponent(saved.module)+(saved.target?"&target="+encodeURIComponent(saved.target):"&q="+encodeURIComponent(saved.sentence||""));location.href=url;return;}
     if(c)setActionPanel(c,false);if(en){try{en.scrollIntoView({block:"center",behavior:"smooth"});}catch(e){}setTimeout(function(){try{en.focus({preventScroll:true});}catch(e){}},250);}var button=document.getElementById("dhWorkReturn");if(button)button.remove();try{sessionStorage.removeItem("dh-module-tool-return-v1");}catch(e){}
   }
   function showToolReturn(title){
     var b=document.getElementById("dhWorkReturn");if(!b){b=document.createElement("button");b.id="dhWorkReturn";b.type="button";b.className="dh-work-return";b.onclick=returnToWorkingSentence;document.body.appendChild(b);}b.textContent="← Çalışılan cümleye dön";b.title=(title||"Araç")+" görünümünü kapat";
+    placeToolReturnInTopLayer();setTimeout(placeToolReturnInTopLayer,0);setTimeout(placeToolReturnInTopLayer,250);setTimeout(placeToolReturnInTopLayer,800);
   }
 
   /* Ana kartta yalnız aktif cümleyi açıklayan tek bir AI eylemi kalır. */
@@ -355,7 +361,7 @@
         try{closeModuleTools();}catch(closeError){var ov=document.getElementById("dhToolsOverlay");if(ov)ov.classList.add("dh-hidden");document.documentElement.classList.remove("dh-tools-open");}
         /* Düğmeyi eylemden ÖNCE kur: eylem hata verse veya beklese bile kaybolmaz. */
         try{showToolReturn(title);}catch(returnError){}
-        try{action();}catch(actionError){console.error("Modül aracı çalıştırılamadı:",title,actionError);alert(title+" şu anda açılamadı. Çalışılan cümleye dön düğmesini kullanabilirsiniz.");}
+        try{action();setTimeout(placeToolReturnInTopLayer,0);setTimeout(placeToolReturnInTopLayer,300);setTimeout(placeToolReturnInTopLayer,900);}catch(actionError){console.error("Modül aracı çalıştırılamadı:",title,actionError);alert(title+" şu anda açılamadı. Çalışılan cümleye dön düğmesini kullanabilirsiniz.");}
       };grid.appendChild(button);return button;};
       var sentence=section("Cümle araçları","Aktif cümle","sentence");
       tool(sentence,"spark","Gemini ile açıkla","Ayrıntılı ve ortak açıklama",function(){var b=document.querySelector(".dh-aiask-btn");if(b)b.click();},"purple");
