@@ -190,6 +190,13 @@
     var x=activeSentenceContext(),target="";try{var mod=requestedModuleName();if(mod&&window.DHModul){var entries=DHModul.liste()||[];for(var i=0;i<entries.length&&!target;i++)if(normalizeModuleName(entries[i].ad)===normalizeModuleName(mod)){var rows=DHModul.getir(entries[i].id)||[];for(var j=0;j<rows.length;j++)if(String(rows[j].en||"").trim()===x.en){target=rows[j].id||"";break;}}}}catch(e){}
     var data={title:title||"Araç",module:requestedModuleName(),target:target,sentence:x.en,url:location.href,scrollY:window.scrollY||0,at:Date.now()};try{sessionStorage.setItem("dh-module-tool-return-v1",JSON.stringify(data));}catch(e){}return data;
   }
+  function exactModuleReturnUrl(saved){
+    saved=saved||saveToolReturnContext("Araç");if(!saved.module)return saved.url||"./index-app.html";return "./index-app.html?mod="+encodeURIComponent(saved.module)+(saved.target?"&target="+encodeURIComponent(saved.target):"&q="+encodeURIComponent(saved.sentence||""));
+  }
+  function openActiveTeacher(){
+    var context=activeSentenceContext();if(!context.en)return;var saved=saveToolReturnContext("Öğretmen görünümü"),back=exactModuleReturnUrl(saved);try{localStorage.setItem("teacherReturnURL",back);}catch(e){}
+    location.href="./teacher.html?s="+encodeURIComponent(context.en)+"&t="+encodeURIComponent(context.tr||"")+"&return="+encodeURIComponent(back);
+  }
   function closeToolSurfaces(){
     var clickSelectors=[".dh-exp-reader-close",".dhgb-close","#dhAiCancel",'#dhAiEditModal [data-x="cancel"]'];for(var i=0;i<clickSelectors.length;i++){var b=document.querySelector(clickSelectors[i]);if(b)try{b.click();}catch(e){}}
     ["dhAiBulkModal","dhAiModal","dhAiEditModal"].forEach(function(id){var n=document.getElementById(id);if(n)n.remove();});var result=document.getElementById("dhAiResultBox");if(result)result.remove();
@@ -229,7 +236,8 @@
     });
   }
   function restoreStoredToolReturn(){
-    if(document.getElementById("dhWorkReturn"))return;var saved=null;try{saved=JSON.parse(sessionStorage.getItem("dh-module-tool-return-v1")||"null");}catch(e){}if(!saved||!saved.at||Date.now()-saved.at>21600000)return;showToolReturn(saved.title||"Araç");
+    if(document.getElementById("dhWorkReturn"))return;var saved=null;try{saved=JSON.parse(sessionStorage.getItem("dh-module-tool-return-v1")||"null");}catch(e){}if(!saved||!saved.at||Date.now()-saved.at>21600000)return;
+    var surface=document.querySelector(".dhgb-ov,.dh-exp-reader,.dh-ai-reader,[role='dialog']:not(#dhToolsBox),[class*='fullscreen']");if(!surface&&card()){try{sessionStorage.removeItem("dh-module-tool-return-v1");}catch(e){}return;}showToolReturn(saved.title||"Araç");
   }
 
   /* Ana kartta yalnız aktif cümleyi açıklayan tek bir AI eylemi kalır. */
@@ -397,7 +405,7 @@
       tool(module,"file","Aktif modülü indir","Bu modülü PDF olarak kaydet",function(){exportModuleToPDF(false);});
       tool(module,"archive","Tümünü PDF indir","Bütün modülleri arşivle",function(){exportModuleToPDF(true);});
       var analysis=section("Gelişmiş analiz","İsteğe bağlı","analysis");
-      tool(analysis,"teacher","Öğretmen görünümü","Öğretici ipuçlarını göster",function(){var c=card(),t=c&&(c.querySelector(".teacher-btn")||byText(c,"öğretmen"));if(t)t.click();else alert("Bu cümlede öğretmen görünümü bulunmuyor.");});
+      tool(analysis,"teacher","Öğretmen görünümü","Öğretici ipuçlarını göster",openActiveTeacher);
       tool(analysis,"chart","Zayıf analiz","Zorlandığınız alanları incele",function(){var c=card(),t=c&&(c.querySelector(".extra-weak")||byText(c,"zayıf"));if(t)t.click();else alert("Bu cümlede zayıf analiz görünümü bulunmuyor.");});
       var nativeSection=document.createElement("section");nativeSection.id="dhNativeToolsSection";nativeSection.className="dh-tool-section dh-tool-panel";nativeSection.dataset.toolPanel="analysis";nativeSection.hidden=true;nativeSection.innerHTML='<header><strong>Ek çalışma</strong><span>Diğer seçenekler</span></header>';scroll.appendChild(nativeSection);
       /* Sonradan içeri taşınan eski araç düğmeleri de çekmeceyi mutlaka kapatsın. */
