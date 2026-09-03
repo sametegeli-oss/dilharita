@@ -123,6 +123,7 @@
     +"@media(max-width:680px){.card.dh-split.dh-actions-visible>.dh-card-actions-deck{grid-template-columns:auto auto!important}.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.dh-source-media-row{grid-column:1/-1}.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.grade-bar,.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.grade-done{grid-column:1/-1}}"
     +"@media(pointer:coarse){.card.dh-split{touch-action:pan-y;transition:transform .16s ease,box-shadow .16s ease}.card.dh-split.dh-swipe-next{transform:translateX(-8px);box-shadow:8px 0 0 rgba(37,99,235,.8)}.card.dh-split.dh-swipe-prev{transform:translateX(8px);box-shadow:-8px 0 0 rgba(52,211,153,.8)}}"
     +".card.dh-split>.dh-sentence-listen-row>.card-en{cursor:default!important}.card.dh-split>.dh-sentence-listen-row>.card-en:hover,.card.dh-split>.dh-sentence-listen-row>.card-en:focus-visible{background:transparent;box-shadow:none}.dh-card-quickbar{display:flex;align-items:center;justify-content:flex-end;gap:7px;width:100%;margin:0 0 2px}.dh-card-quickbar button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid #315071;border-radius:11px;background:#142640;color:#e8f2ff;font:900 12px Nunito,system-ui,sans-serif;cursor:pointer}.dh-card-quickbar button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8}.dh-card-quickbar .dh-quick-listen{background:linear-gradient(135deg,#7c3aed,#2563eb);border-color:#6366f1}.dh-card-quickbar .dh-quick-tools[aria-expanded='true']{background:#0f766e;border-color:#34d399;color:#fff}@media(max-width:520px){.dh-card-quickbar{gap:6px}.dh-card-quickbar button{min-height:36px;padding:0 12px;font-size:11px}}"
+    +".dh-work-return{position:fixed;z-index:2147483646;left:max(12px,env(safe-area-inset-left));bottom:max(14px,env(safe-area-inset-bottom));display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 17px;border:2px solid rgba(255,255,255,.8);border-radius:14px;background:linear-gradient(135deg,#047857,#0f766e);color:#fff;font:900 13px Nunito,system-ui,sans-serif;box-shadow:0 14px 38px rgba(0,0,0,.62),0 0 0 3px rgba(52,211,153,.25);cursor:pointer}.dh-work-return:hover,.dh-work-return:focus-visible{background:linear-gradient(135deg,#059669,#0d9488);outline:3px solid #fff;outline-offset:2px}@media(max-width:520px){.dh-work-return{left:max(8px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));min-height:44px;padding:0 13px;font-size:12px}}"
     +"@media(max-width:360px){.dh-tools-box{width:100vw}.dh-tool-grid{grid-template-columns:1fr}.dh-tools-head{padding-left:14px;padding-right:14px}.dh-tools-scroll{padding-left:12px;padding-right:12px}.dh-tool-card{min-height:62px}.dh-tools-title span{display:none}}";
     document.head.appendChild(s);
   }
@@ -178,8 +179,22 @@
   }
   function openActiveStudio(){
     var context=activeSentenceContext();if(!context.en)return;var back="";
-    try{var mod=new URLSearchParams(location.search).get("mod");if(mod)back="index-app.html?mod="+encodeURIComponent(mod)+"&q="+encodeURIComponent(context.en);}catch(e){}
+    try{var mod=new URLSearchParams(location.search).get("mod"),target="";if(mod&&window.DHModul){var entries=DHModul.liste()||[];for(var i=0;i<entries.length&&!target;i++)if(normalizeModuleName(entries[i].ad)===normalizeModuleName(mod)){var rows=DHModul.getir(entries[i].id)||[];for(var j=0;j<rows.length;j++)if(String(rows[j].en||"").trim()===context.en){target=rows[j].id||"";break;}}}if(mod)back="index-app.html?mod="+encodeURIComponent(mod)+(target?"&target="+encodeURIComponent(target):"")+"&q="+encodeURIComponent(context.en);}catch(e){}
     location.href="./sesdalga.html?en="+encodeURIComponent(context.en)+"&tr="+encodeURIComponent(context.tr)+(back?("&back="+encodeURIComponent(back)):"");
+  }
+
+  function saveToolReturnContext(title){
+    var x=activeSentenceContext(),data={title:title||"Araç",module:requestedModuleName(),sentence:x.en,scrollY:window.scrollY||0,at:Date.now()};try{sessionStorage.setItem("dh-module-tool-return-v1",JSON.stringify(data));}catch(e){}return data;
+  }
+  function closeToolSurfaces(){
+    var clickSelectors=[".dh-exp-reader-close",".dhgb-close","#dhAiCancel",'#dhAiEditModal [data-x="cancel"]'];for(var i=0;i<clickSelectors.length;i++){var b=document.querySelector(clickSelectors[i]);if(b)try{b.click();}catch(e){}}
+    ["dhAiBulkModal","dhAiModal","dhAiEditModal"].forEach(function(id){var n=document.getElementById(id);if(n)n.remove();});var result=document.getElementById("dhAiResultBox");if(result)result.remove();
+  }
+  function returnToWorkingSentence(){
+    closeToolSurfaces();var button=document.getElementById("dhWorkReturn");if(button)button.remove();var c=card(),en=c&&c.querySelector(".card-en");if(c)setActionPanel(c,false);if(en){try{en.scrollIntoView({block:"center",behavior:"smooth"});}catch(e){}setTimeout(function(){try{en.focus({preventScroll:true});}catch(e){}},250);}try{sessionStorage.removeItem("dh-module-tool-return-v1");}catch(e){}
+  }
+  function showToolReturn(title){
+    var b=document.getElementById("dhWorkReturn");if(!b){b=document.createElement("button");b.id="dhWorkReturn";b.type="button";b.className="dh-work-return";b.onclick=returnToWorkingSentence;document.body.appendChild(b);}b.textContent="← Çalışılan cümleye dön";b.title=(title||"Araç")+" görünümünü kapat";
   }
 
   /* Ana kartta yalnız aktif cümleyi açıklayan tek bir AI eylemi kalır. */
@@ -326,7 +341,7 @@
       box.querySelector(".dh-tools-close").innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
       scroll=box.querySelector(".dh-tools-scroll");
       var section=function(title,note,tab){var el=document.createElement("section");el.className="dh-tool-section dh-tool-panel";el.dataset.toolPanel=tab;el.hidden=tab!=="sentence";el.innerHTML='<header><strong>'+title+'</strong><span>'+note+'</span></header><div class="dh-tool-grid"></div>';scroll.appendChild(el);return el.querySelector(".dh-tool-grid");};
-      var tool=function(grid,icon,title,description,action,tone){var button=document.createElement("button");button.type="button";button.className="dh-tool-card"+(tone?(" is-"+tone):"");button.innerHTML='<span class="dh-tool-icon">'+moduleToolIcon(icon)+'</span><span class="dh-tool-copy"><b>'+title+'</b><small>'+description+'</small></span>';button.onclick=function(){closeModuleTools();action();};grid.appendChild(button);return button;};
+      var tool=function(grid,icon,title,description,action,tone){var button=document.createElement("button");button.type="button";button.className="dh-tool-card"+(tone?(" is-"+tone):"");button.innerHTML='<span class="dh-tool-icon">'+moduleToolIcon(icon)+'</span><span class="dh-tool-copy"><b>'+title+'</b><small>'+description+'</small></span>';button.onclick=function(){saveToolReturnContext(title);closeModuleTools();action();setTimeout(function(){if(document.querySelector(".card"))showToolReturn(title);},80);};grid.appendChild(button);return button;};
       var sentence=section("Cümle araçları","Aktif cümle","sentence");
       tool(sentence,"spark","Gemini ile açıkla","Ayrıntılı ve ortak açıklama",function(){var b=document.querySelector(".dh-aiask-btn");if(b)b.click();},"purple");
       tool(sentence,"translate","Translate","Cümleyi çeviride aç",openActiveTranslate);
