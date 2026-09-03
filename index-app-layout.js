@@ -305,7 +305,7 @@
     if(!bar){
       bar=document.createElement("div");bar.className="dh-card-quickbar";bar.setAttribute("aria-label","Hızlı cümle araçları");
       var listen=document.createElement("button");listen.type="button";listen.className="dh-quick-listen";listen.innerHTML='<span aria-hidden="true">▶</span><b>Dinle</b>';listen.setAttribute("aria-label","Aktif cümleyi dinle");listen.onclick=function(){var real=c.querySelector(".dh-listen-after-sentence");if(real)real.click();};
-      var tools=document.createElement("button");tools.type="button";tools.className="dh-quick-tools";tools.setAttribute("aria-expanded","false");tools.innerHTML=moduleToolIcon("stack")+'<b>Araçlar</b>';tools.onclick=function(){openModuleTools();};bar.appendChild(listen);bar.appendChild(tools);
+      var tools=document.createElement("button");tools.type="button";tools.className="dh-quick-tools";tools.setAttribute("aria-expanded","false");tools.innerHTML=moduleToolIcon("stack")+'<b>Araçlar</b>';tools.onclick=function(){setActionPanel(c,!c.classList.contains("dh-actions-visible"));};bar.appendChild(listen);bar.appendChild(tools);
     }
     var sentenceRow=c.querySelector(".dh-sentence-listen-row");if(sentenceRow&&bar.parentElement!==c)c.insertBefore(bar,sentenceRow);else if(!bar.parentElement)c.insertBefore(bar,c.firstChild);
   }
