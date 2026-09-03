@@ -122,6 +122,7 @@
     +".card.dh-split:not(.dh-actions-visible)>.dh-card-actions-deck{display:none!important}.card.dh-split>.dh-sentence-listen-row>.card-en{cursor:pointer;border-radius:9px;transition:background .18s ease,box-shadow .18s ease}.card.dh-split>.dh-sentence-listen-row>.card-en:hover,.card.dh-split>.dh-sentence-listen-row>.card-en:focus-visible{background:rgba(59,130,246,.08);box-shadow:0 0 0 2px rgba(59,130,246,.2);outline:0}.card.dh-split.dh-actions-visible>.dh-card-actions-deck{display:grid!important;grid-template-columns:auto auto minmax(180px,1fr)!important;align-items:center;gap:6px!important;padding-top:8px!important}.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.grade-bar,.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.grade-done{grid-column:1/-1;min-height:34px!important}.card.dh-split.dh-actions-visible .dh-card-actions-primary{display:grid!important;grid-template-columns:42px 42px!important;gap:6px!important}.card.dh-split.dh-actions-visible .dh-card-actions-primary>.dh-listen-after-sentence,.card.dh-split.dh-actions-visible .dh-card-actions-primary>.dh-ai-row,.card.dh-split.dh-actions-visible .dh-card-actions-primary>.dh-ai-row .dh-gtr-btn{width:42px!important;height:36px!important;min-height:36px!important;margin:0!important;padding:0!important}.card.dh-split.dh-actions-visible .dh-card-actions-primary>.dh-listen-after-sentence,.card.dh-split.dh-actions-visible .dh-card-actions-primary>.dh-ai-row .dh-gtr-btn{font-size:0!important}.card.dh-split.dh-actions-visible .dh-card-actions-primary>.dh-listen-after-sentence:after{content:'▶';font-size:14px}.card.dh-split.dh-actions-visible .dh-card-actions-primary>.dh-ai-row .dh-gtr-btn:after{content:'✦';font-size:16px}.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.dh-nav-trio{display:grid!important;grid-template-columns:42px 42px 42px!important;gap:6px!important;width:auto!important}.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.dh-nav-trio .dh-nav-btn,.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.dh-nav-trio .dh-tools-toggle{width:42px!important;height:36px!important;min-height:36px!important;padding:0!important;font-size:0!important}.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.dh-nav-trio .dh-nav-prev:after{content:'←';font-size:17px}.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.dh-nav-trio .dh-nav-next:after{content:'→';font-size:17px}.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.dh-nav-trio .dh-tools-toggle b{display:none!important}.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.dh-source-media-row{min-width:0!important}.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.dh-source-media-row #dhModeToggle,.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.dh-source-media-row .dh-youtube-source-btn{height:36px!important;min-height:36px!important}"
     +"@media(max-width:680px){.card.dh-split.dh-actions-visible>.dh-card-actions-deck{grid-template-columns:auto auto!important}.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.dh-source-media-row{grid-column:1/-1}.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.grade-bar,.card.dh-split.dh-actions-visible>.dh-card-actions-deck>.grade-done{grid-column:1/-1}}"
     +"@media(pointer:coarse){.card.dh-split{touch-action:pan-y;transition:transform .16s ease,box-shadow .16s ease}.card.dh-split.dh-swipe-next{transform:translateX(-8px);box-shadow:8px 0 0 rgba(37,99,235,.8)}.card.dh-split.dh-swipe-prev{transform:translateX(8px);box-shadow:-8px 0 0 rgba(52,211,153,.8)}}"
+    +".card.dh-split>.dh-sentence-listen-row>.card-en{cursor:default!important}.card.dh-split>.dh-sentence-listen-row>.card-en:hover,.card.dh-split>.dh-sentence-listen-row>.card-en:focus-visible{background:transparent;box-shadow:none}.dh-card-quickbar{display:flex;align-items:center;justify-content:flex-end;gap:7px;width:100%;margin:0 0 2px}.dh-card-quickbar button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid #315071;border-radius:11px;background:#142640;color:#e8f2ff;font:900 12px Nunito,system-ui,sans-serif;cursor:pointer}.dh-card-quickbar button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8}.dh-card-quickbar .dh-quick-listen{background:linear-gradient(135deg,#7c3aed,#2563eb);border-color:#6366f1}.dh-card-quickbar .dh-quick-tools[aria-expanded='true']{background:#0f766e;border-color:#34d399;color:#fff}@media(max-width:520px){.dh-card-quickbar{gap:6px}.dh-card-quickbar button{min-height:36px;padding:0 12px;font-size:11px}}"
     +"@media(max-width:360px){.dh-tools-box{width:100vw}.dh-tool-grid{grid-template-columns:1fr}.dh-tools-head{padding-left:14px;padding-right:14px}.dh-tools-scroll{padding-left:12px;padding-right:12px}.dh-tool-card{min-height:62px}.dh-tools-title span{display:none}}";
     document.head.appendChild(s);
   }
@@ -237,6 +238,19 @@
     function toggle(){if(Date.now()<suppressSentenceToggleUntil)return;var visible=c.classList.toggle("dh-actions-visible");en.setAttribute("aria-expanded",visible?"true":"false");}
     en.addEventListener("click",toggle);en.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle();}});
   }
+  function setActionPanel(c,visible){
+    if(!c)return;c.classList.toggle("dh-actions-visible",!!visible);var b=c.querySelector(".dh-quick-tools");if(b)b.setAttribute("aria-expanded",visible?"true":"false");
+  }
+  function ensureTopQuickBar(c){
+    var en=c&&c.querySelector(".card-en");if(!en)return;var sentence=(en.textContent||"").trim(),bar=c.querySelector(".dh-card-quickbar");
+    if(c.dataset.dhQuickSentence!==sentence){c.dataset.dhQuickSentence=sentence;setActionPanel(c,false);}
+    if(!bar){
+      bar=document.createElement("div");bar.className="dh-card-quickbar";bar.setAttribute("aria-label","Hızlı cümle araçları");
+      var listen=document.createElement("button");listen.type="button";listen.className="dh-quick-listen";listen.innerHTML='<span aria-hidden="true">▶</span><b>Dinle</b>';listen.setAttribute("aria-label","Aktif cümleyi dinle");listen.onclick=function(){var real=c.querySelector(".dh-listen-after-sentence");if(real)real.click();};
+      var tools=document.createElement("button");tools.type="button";tools.className="dh-quick-tools";tools.setAttribute("aria-expanded","false");tools.innerHTML=moduleToolIcon("stack")+'<b>Araçlar</b>';tools.onclick=function(){setActionPanel(c,!c.classList.contains("dh-actions-visible"));};bar.appendChild(listen);bar.appendChild(tools);
+    }
+    var sentenceRow=c.querySelector(".dh-sentence-listen-row");if(sentenceRow&&bar.parentElement!==c)c.insertBefore(bar,sentenceRow);else if(!bar.parentElement)c.insertBefore(bar,c.firstChild);
+  }
   function ensureSwipeNavigation(c){
     if(!c||c.dataset.dhSwipeNavigation)return;c.dataset.dhSwipeNavigation="1";
     var sx=0,sy=0,started=0,tracking=false;
@@ -248,7 +262,7 @@
       if(!tracking||!e.changedTouches||e.changedTouches.length!==1)return;tracking=false;
       var dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy,elapsed=Date.now()-started;
       if(elapsed>900||Math.abs(dx)<55||Math.abs(dx)<Math.abs(dy)*1.25)return;
-      suppressSentenceToggleUntil=Date.now()+500;c.classList.remove("dh-actions-visible");
+      suppressSentenceToggleUntil=Date.now()+500;setActionPanel(c,false);
       var direction=dx<0?1:-1,button=direction>0?realNextBtn():realPrevBtn();if(!button||button.disabled)return;
       var cls=direction>0?"dh-swipe-next":"dh-swipe-prev";c.classList.add(cls);setTimeout(function(){c.classList.remove(cls);button.click();},120);
     },{passive:true});
@@ -368,7 +382,7 @@
       if(c){
         if(!c.classList.contains("dh-split")) c.classList.add("dh-split");
         ensureListenAfterSentence(c);
-        ensureSentenceActionToggle(c);
+        ensureTopQuickBar(c);
         ensureSwipeNavigation(c);
         ensureNavTrio(c);
         var trio=document.getElementById("dhNavTrio");

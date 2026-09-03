@@ -638,7 +638,6 @@ function bind(){
   $("fullscreenTranscriptPanel").onclick=function(){openFullscreenDrawer("transcript")};
   $("fullscreenDrawerClose").onclick=closeFullscreenDrawer;
   function runFullscreenTool(target){closeFullscreenDrawer();var b=$(target);if(b)b.click();syncFullscreenToolStates()}
-  $("fsActionModule").onclick=function(){runFullscreenTool("controlModule")};
   $("fsActionYouglish").onclick=function(){runFullscreenTool("controlYouglish")};
   $("fsActionGemini").onclick=function(){runFullscreenTool("explainSentenceGemini")};
   $("fsActionShadow").onclick=function(){runFullscreenTool("controlShadow")};
