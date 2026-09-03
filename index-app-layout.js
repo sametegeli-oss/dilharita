@@ -339,11 +339,11 @@
   }
   function closeModuleTools(){
     var overlay=document.getElementById("dhToolsOverlay"),toggle=document.getElementById("dhToolsToggle");if(!overlay)return;
-    overlay.classList.add("dh-hidden");document.documentElement.classList.remove("dh-tools-open");if(toggle){toggle.setAttribute("aria-expanded","false");toggle.focus();}
+    overlay.classList.add("dh-hidden");overlay.hidden=true;overlay.setAttribute("aria-hidden","true");overlay.style.setProperty("display","none","important");document.documentElement.classList.remove("dh-tools-open");if(toggle){toggle.setAttribute("aria-expanded","false");}
   }
   function openModuleTools(){
     var overlay=document.getElementById("dhToolsOverlay"),toggle=document.getElementById("dhToolsToggle");if(!overlay)return;
-    overlay.classList.remove("dh-hidden");document.documentElement.classList.add("dh-tools-open");if(toggle)toggle.setAttribute("aria-expanded","true");var close=overlay.querySelector(".dh-tools-close");if(close)close.focus();
+    overlay.hidden=false;overlay.removeAttribute("aria-hidden");overlay.style.removeProperty("display");overlay.classList.remove("dh-hidden");document.documentElement.classList.add("dh-tools-open");if(toggle)toggle.setAttribute("aria-expanded","true");var close=overlay.querySelector(".dh-tools-close");if(close)close.focus();
   }
   function ensureTools(){
     var overlay=document.getElementById("dhToolsOverlay"),box=document.getElementById("dhToolsBox"),scroll;
@@ -361,7 +361,8 @@
         try{closeModuleTools();}catch(closeError){var ov=document.getElementById("dhToolsOverlay");if(ov)ov.classList.add("dh-hidden");document.documentElement.classList.remove("dh-tools-open");}
         /* Düğmeyi eylemden ÖNCE kur: eylem hata verse veya beklese bile kaybolmaz. */
         try{showToolReturn(title);}catch(returnError){}
-        try{action();setTimeout(placeToolReturnInTopLayer,0);setTimeout(placeToolReturnInTopLayer,300);setTimeout(placeToolReturnInTopLayer,900);}catch(actionError){console.error("Modül aracı çalıştırılamadı:",title,actionError);alert(title+" şu anda açılamadı. Çalışılan cümleye dön düğmesini kullanabilirsiniz.");}
+        /* Tarayıcıya çekmeceyi boyaması için bir kare ver; yeni araç daima onun üstünde açılır. */
+        setTimeout(function(){try{action();setTimeout(placeToolReturnInTopLayer,0);setTimeout(placeToolReturnInTopLayer,300);setTimeout(placeToolReturnInTopLayer,900);}catch(actionError){console.error("Modül aracı çalıştırılamadı:",title,actionError);alert(title+" şu anda açılamadı. Çalışılan cümleye dön düğmesini kullanabilirsiniz.");}},40);
       };grid.appendChild(button);return button;};
       var sentence=section("Cümle araçları","Aktif cümle","sentence");
       tool(sentence,"spark","Gemini ile açıkla","Ayrıntılı ve ortak açıklama",function(){var b=document.querySelector(".dh-aiask-btn");if(b)b.click();},"purple");
@@ -378,6 +379,8 @@
       tool(analysis,"teacher","Öğretmen görünümü","Öğretici ipuçlarını göster",function(){var c=card(),t=c&&(c.querySelector(".teacher-btn")||byText(c,"öğretmen"));if(t)t.click();else alert("Bu cümlede öğretmen görünümü bulunmuyor.");});
       tool(analysis,"chart","Zayıf analiz","Zorlandığınız alanları incele",function(){var c=card(),t=c&&(c.querySelector(".extra-weak")||byText(c,"zayıf"));if(t)t.click();else alert("Bu cümlede zayıf analiz görünümü bulunmuyor.");});
       var nativeSection=document.createElement("section");nativeSection.id="dhNativeToolsSection";nativeSection.className="dh-tool-section dh-tool-panel";nativeSection.dataset.toolPanel="analysis";nativeSection.hidden=true;nativeSection.innerHTML='<header><strong>Ek çalışma</strong><span>Diğer seçenekler</span></header>';scroll.appendChild(nativeSection);
+      /* Sonradan içeri taşınan eski araç düğmeleri de çekmeceyi mutlaka kapatsın. */
+      nativeSection.addEventListener("click",function(event){var pressed=event.target&&event.target.closest&&event.target.closest("button,a");if(!pressed||!nativeSection.contains(pressed))return;var label=(pressed.textContent||pressed.getAttribute("aria-label")||"Araç").trim();try{saveToolReturnContext(label);}catch(e){}closeModuleTools();showToolReturn(label);setTimeout(placeToolReturnInTopLayer,0);setTimeout(placeToolReturnInTopLayer,300);},false);
       overlay.appendChild(box);document.body.appendChild(overlay);
       overlay.onclick=function(event){if(event.target===overlay)closeModuleTools();};box.onclick=function(event){event.stopPropagation();};box.querySelector(".dh-tools-close").onclick=closeModuleTools;box.querySelector(".dh-tools-back").onclick=closeModuleTools;
       Array.prototype.forEach.call(box.querySelectorAll(".dh-tools-tab"),function(tab){tab.onclick=function(){var key=tab.dataset.toolTab;Array.prototype.forEach.call(box.querySelectorAll(".dh-tools-tab"),function(t){t.setAttribute("aria-selected",t===tab?"true":"false");});Array.prototype.forEach.call(box.querySelectorAll(".dh-tool-panel"),function(panel){panel.hidden=panel.dataset.toolPanel!==key;});scroll.scrollTop=0;};});
