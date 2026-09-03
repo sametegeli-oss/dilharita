@@ -349,21 +349,28 @@
       box.querySelector(".dh-tools-close").innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
       scroll=box.querySelector(".dh-tools-scroll");
       var section=function(title,note,tab){var el=document.createElement("section");el.className="dh-tool-section dh-tool-panel";el.dataset.toolPanel=tab;el.hidden=tab!=="sentence";el.innerHTML='<header><strong>'+title+'</strong><span>'+note+'</span></header><div class="dh-tool-grid"></div>';scroll.appendChild(el);return el.querySelector(".dh-tool-grid");};
-      var tool=function(grid,icon,title,description,action,tone){var button=document.createElement("button");button.type="button";button.className="dh-tool-card"+(tone?(" is-"+tone):"");button.innerHTML='<span class="dh-tool-icon">'+moduleToolIcon(icon)+'</span><span class="dh-tool-copy"><b>'+title+'</b><small>'+description+'</small></span>';button.onclick=function(){saveToolReturnContext(title);closeModuleTools();action();setTimeout(function(){if(document.querySelector(".card"))showToolReturn(title);},80);};grid.appendChild(button);return button;};
+      var tool=function(grid,icon,title,description,action,tone){var button=document.createElement("button");button.type="button";button.className="dh-tool-card"+(tone?(" is-"+tone):"");button.innerHTML='<span class="dh-tool-icon">'+moduleToolIcon(icon)+'</span><span class="dh-tool-copy"><b>'+title+'</b><small>'+description+'</small></span>';button.onclick=function(){
+        /* Bağlam kaydı hata verse bile araç ve dönüş yolu çalışmaya devam eder. */
+        try{saveToolReturnContext(title);}catch(contextError){try{sessionStorage.setItem("dh-module-tool-return-v1",JSON.stringify({title:title,module:"",sentence:(activeSentenceContext().en||""),at:Date.now()}));}catch(ignore){}}
+        try{closeModuleTools();}catch(closeError){var ov=document.getElementById("dhToolsOverlay");if(ov)ov.classList.add("dh-hidden");document.documentElement.classList.remove("dh-tools-open");}
+        /* Düğmeyi eylemden ÖNCE kur: eylem hata verse veya beklese bile kaybolmaz. */
+        try{showToolReturn(title);}catch(returnError){}
+        try{action();}catch(actionError){console.error("Modül aracı çalıştırılamadı:",title,actionError);alert(title+" şu anda açılamadı. Çalışılan cümleye dön düğmesini kullanabilirsiniz.");}
+      };grid.appendChild(button);return button;};
       var sentence=section("Cümle araçları","Aktif cümle","sentence");
       tool(sentence,"spark","Gemini ile açıkla","Ayrıntılı ve ortak açıklama",function(){var b=document.querySelector(".dh-aiask-btn");if(b)b.click();},"purple");
       tool(sentence,"translate","Translate","Cümleyi çeviride aç",openActiveTranslate);
       tool(sentence,"mic","Konuşma stüdyosu","Ses ve telaffuz çalış",openActiveStudio);
-      tool(sentence,"slow","Yavaş oynat","Telaffuzu yavaş dinle",function(){var t=byText(card(),"yavaş");if(t)t.click();});
-      tool(sentence,"detail","Detay görünümü","Cümlenin tüm alanlarını aç",function(){var t=byText(card(),"detay");if(t)t.click();});
+      tool(sentence,"slow","Yavaş oynat","Telaffuzu yavaş dinle",function(){var t=byText(card(),"yavaş");if(t)t.click();else alert("Bu cümlede yavaş oynatma seçeneği bulunmuyor.");});
+      tool(sentence,"detail","Detay görünümü","Cümlenin tüm alanlarını aç",function(){var t=byText(card(),"detay");if(t)t.click();else alert("Bu cümlede detay görünümü bulunmuyor.");});
       var module=section("Modül işlemleri","Toplu çalışma","module");
       tool(module,"stack","Eksikleri açıkla","Yalnız açıklaması olmayanlar",function(){explainActiveModuleWithAI();},"purple");
       tool(module,"refresh","Modülü yeniden açıkla","Kayıtlı açıklamaları yenile",function(){if(confirm("Kayıtlı olanlar dahil tüm aktif modül tek istekte yeniden hazırlansın mı?"))explainActiveModuleWithAI(true);},"danger");
       tool(module,"file","Aktif modülü indir","Bu modülü PDF olarak kaydet",function(){exportModuleToPDF(false);});
       tool(module,"archive","Tümünü PDF indir","Bütün modülleri arşivle",function(){exportModuleToPDF(true);});
       var analysis=section("Gelişmiş analiz","İsteğe bağlı","analysis");
-      tool(analysis,"teacher","Öğretmen görünümü","Öğretici ipuçlarını göster",function(){var c=card(),t=c&&(c.querySelector(".teacher-btn")||byText(c,"öğretmen"));if(t)t.click();});
-      tool(analysis,"chart","Zayıf analiz","Zorlandığınız alanları incele",function(){var c=card(),t=c&&(c.querySelector(".extra-weak")||byText(c,"zayıf"));if(t)t.click();});
+      tool(analysis,"teacher","Öğretmen görünümü","Öğretici ipuçlarını göster",function(){var c=card(),t=c&&(c.querySelector(".teacher-btn")||byText(c,"öğretmen"));if(t)t.click();else alert("Bu cümlede öğretmen görünümü bulunmuyor.");});
+      tool(analysis,"chart","Zayıf analiz","Zorlandığınız alanları incele",function(){var c=card(),t=c&&(c.querySelector(".extra-weak")||byText(c,"zayıf"));if(t)t.click();else alert("Bu cümlede zayıf analiz görünümü bulunmuyor.");});
       var nativeSection=document.createElement("section");nativeSection.id="dhNativeToolsSection";nativeSection.className="dh-tool-section dh-tool-panel";nativeSection.dataset.toolPanel="analysis";nativeSection.hidden=true;nativeSection.innerHTML='<header><strong>Ek çalışma</strong><span>Diğer seçenekler</span></header>';scroll.appendChild(nativeSection);
       overlay.appendChild(box);document.body.appendChild(overlay);
       overlay.onclick=function(event){if(event.target===overlay)closeModuleTools();};box.onclick=function(event){event.stopPropagation();};box.querySelector(".dh-tools-close").onclick=closeModuleTools;box.querySelector(".dh-tools-back").onclick=closeModuleTools;
