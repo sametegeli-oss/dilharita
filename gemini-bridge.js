@@ -457,3 +457,20 @@ function explanationPrompt(context){
 }
 global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending, hasOverlay:hasOverlay, markdown:markdown, formatExplanation:formatExplanation, explanationPrompt:explanationPrompt, setExplanationSize:syncExplanationSize, openExplanationReader:openExplanationReader };
 })(window);
+
+/* teacher.html → modülde çalışılan cümleye kesin dönüş köprüsü.
+   Teacher sayfası kendi içeriğini yeniden çizse bile düğme body üzerinde kalır. */
+(function(global){
+ "use strict";
+ if(!/\/(teacher)\.html$/i.test(location.pathname))return;
+ function savedReturn(){
+  var p=new URLSearchParams(location.search),ret=p.get("return")||"";try{ret=ret||localStorage.getItem("teacherReturnURL")||"";}catch(e){}
+  if(ret)return ret;try{var s=JSON.parse(sessionStorage.getItem("dh-module-tool-return-v1")||"null");if(s&&s.module)return "./index-app.html?mod="+encodeURIComponent(s.module)+(s.target?"&target="+encodeURIComponent(s.target):"&q="+encodeURIComponent(s.sentence||""));}catch(e){}return "";
+ }
+ function mount(){
+  var ret=savedReturn();if(!ret)return;var css=document.getElementById("dh-teacher-return-css");if(!css){css=document.createElement("style");css.id="dh-teacher-return-css";css.textContent="#dhTeacherSentenceReturn{position:fixed!important;z-index:2147483647!important;left:max(14px,env(safe-area-inset-left));bottom:max(14px,env(safe-area-inset-bottom));display:inline-flex!important;visibility:visible!important;opacity:1!important;align-items:center;justify-content:center;min-height:48px;padding:0 18px;border:2px solid rgba(255,255,255,.9);border-radius:14px;background:linear-gradient(135deg,#047857,#0f766e);color:#fff;font:900 14px Nunito,system-ui,sans-serif;text-decoration:none;box-shadow:0 14px 38px rgba(0,0,0,.72);cursor:pointer}@media(max-width:680px){#dhTeacherSentenceReturn{left:max(8px,env(safe-area-inset-left))!important;right:max(8px,env(safe-area-inset-right))!important;bottom:max(10px,env(safe-area-inset-bottom))!important;width:auto!important;min-height:50px!important;font-size:14px!important}}";document.head.appendChild(css);}
+  var b=document.getElementById("dhTeacherSentenceReturn");if(!b){b=document.createElement("a");b.id="dhTeacherSentenceReturn";b.textContent="← Çalışılan cümleye dön";document.body.appendChild(b);}b.href=ret;b.onclick=function(ev){ev.preventDefault();try{localStorage.removeItem("teacherReturnURL");sessionStorage.removeItem("dh-module-tool-return-v1");}catch(e){}location.replace(ret);};
+  var old=document.getElementById("teacherBack");if(old){old.href=ret;old.title="Çalışılan cümleye dön";old.onclick=b.onclick;old.style.setProperty("display","flex","important");old.style.setProperty("visibility","visible","important");}
+ }
+ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",mount);else mount();setTimeout(mount,300);setTimeout(mount,1200);
+})(window);
