@@ -1,3 +1,10 @@
+v94 DÜZELTMELERİ
+=================
+- Canlı testte öğretmen sayfasının üst geri düğmesinin ortak .back yönlendirmesine yakalandığı belirlendi.
+- Öğretmen geri düğmesi genel menü düğmelerinden ayrı, özel bir sınıfa taşındı.
+- Dönüş tıklaması uygulama kabuğundan önce yakalanarak yalnız kayıtlı modül ve cümle adresine yönlendiriliyor.
+- Üst “Cümleye dön” ve alt sabit “Çalışılan cümleye dön” aynı güvenli dönüş işlemini kullanıyor.
+
 v93 DÜZELTMELERİ
 =================
 - Öğretmen görünümünün kendi geri düğmesi artık genel menüye değil, modülde çalışılan kesin cümleye dönüyor.
