@@ -124,6 +124,7 @@
     +"@media(pointer:coarse){.card.dh-split{touch-action:pan-y;transition:transform .16s ease,box-shadow .16s ease}.card.dh-split.dh-swipe-next{transform:translateX(-8px);box-shadow:8px 0 0 rgba(37,99,235,.8)}.card.dh-split.dh-swipe-prev{transform:translateX(8px);box-shadow:-8px 0 0 rgba(52,211,153,.8)}}"
     +".card.dh-split>.dh-sentence-listen-row>.card-en{cursor:default!important}.card.dh-split>.dh-sentence-listen-row>.card-en:hover,.card.dh-split>.dh-sentence-listen-row>.card-en:focus-visible{background:transparent;box-shadow:none}.dh-card-quickbar{display:flex;align-items:center;justify-content:flex-end;gap:7px;width:100%;margin:0 0 2px}.dh-card-quickbar button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid #315071;border-radius:11px;background:#142640;color:#e8f2ff;font:900 12px Nunito,system-ui,sans-serif;cursor:pointer}.dh-card-quickbar button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8}.dh-card-quickbar .dh-quick-listen{background:linear-gradient(135deg,#7c3aed,#2563eb);border-color:#6366f1}.dh-card-quickbar .dh-quick-tools[aria-expanded='true']{background:#0f766e;border-color:#34d399;color:#fff}@media(max-width:520px){.dh-card-quickbar{gap:6px}.dh-card-quickbar button{min-height:36px;padding:0 12px;font-size:11px}}"
     +".dh-work-return{position:fixed!important;z-index:2147483647!important;left:max(12px,env(safe-area-inset-left));bottom:max(14px,env(safe-area-inset-bottom));display:inline-flex!important;visibility:visible!important;opacity:1!important;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 17px;border:2px solid rgba(255,255,255,.9);border-radius:14px;background:linear-gradient(135deg,#047857,#0f766e)!important;color:#fff!important;font:900 13px Nunito,system-ui,sans-serif;box-shadow:0 14px 38px rgba(0,0,0,.72),0 0 0 3px rgba(52,211,153,.32);cursor:pointer}.dh-work-return:hover,.dh-work-return:focus-visible{background:linear-gradient(135deg,#059669,#0d9488)!important;outline:3px solid #fff;outline-offset:2px}@media(max-width:680px){.dh-work-return{left:max(8px,env(safe-area-inset-left))!important;right:max(8px,env(safe-area-inset-right))!important;top:max(8px,env(safe-area-inset-top))!important;bottom:auto!important;width:auto!important;min-height:48px!important;padding:0 13px!important;font-size:13px!important;border-radius:12px!important}.dhgb-close,.dh-exp-reader-close,.dh-ai-reader-close{display:flex!important;visibility:visible!important;opacity:1!important;z-index:2147483647!important}}"
+    +"@media(max-width:680px){.dh-mobile-tool-close{position:fixed!important;display:inline-flex!important;visibility:visible!important;opacity:1!important;z-index:2147483647!important;top:max(10px,env(safe-area-inset-top))!important;left:max(10px,env(safe-area-inset-left))!important;right:auto!important;bottom:auto!important;min-width:96px!important;min-height:48px!important;padding:0 16px!important;border:2px solid rgba(255,255,255,.9)!important;border-radius:13px!important;background:#1e3a5f!important;color:#fff!important;font:900 14px Nunito,system-ui,sans-serif!important;box-shadow:0 10px 30px rgba(0,0,0,.75)!important;transform:none!important}.dh-mobile-tool-header{position:sticky!important;top:0!important;z-index:2147483646!important;padding-top:68px!important;background:linear-gradient(180deg,#111b32 78%,rgba(17,27,50,.92))!important}}"
     +".card.dh-youtube-source-sentence>.sm-img-wrap,.card.dh-youtube-source-sentence .sm-img-wrap,.card.dh-youtube-source-sentence #dhModeToggle{display:none!important}.card.dh-youtube-source-sentence .dh-source-media-row{justify-content:flex-end}.card.dh-youtube-source-sentence .dh-youtube-source-btn{display:inline-flex!important;align-items:center;justify-content:center;min-width:150px}"
     +"@media(max-width:360px){.dh-tools-box{width:100vw}.dh-tool-grid{grid-template-columns:1fr}.dh-tools-head{padding-left:14px;padding-right:14px}.dh-tools-scroll{padding-left:12px;padding-right:12px}.dh-tool-card{min-height:62px}.dh-tools-title span{display:none}}";
     document.head.appendChild(s);
@@ -209,6 +210,14 @@
   function showToolReturn(title){
     var b=document.getElementById("dhWorkReturn");if(!b){b=document.createElement("button");b.id="dhWorkReturn";b.type="button";b.className="dh-work-return";b.onclick=returnToWorkingSentence;document.body.appendChild(b);}b.textContent="← Çalışılan cümleye dön";b.title=(title||"Araç")+" görünümünü kapat";
     placeToolReturnInTopLayer();setTimeout(placeToolReturnInTopLayer,0);setTimeout(placeToolReturnInTopLayer,250);setTimeout(placeToolReturnInTopLayer,800);
+  }
+  function ensureMobileGeneratedToolExit(){
+    Array.prototype.forEach.call(document.querySelectorAll("button,a"),function(button){
+      var label=(button.textContent||"").replace(/\s+/g," ").trim();if(!/(^|←\s*)Kapat$/i.test(label))return;
+      var host=button.closest("[role='dialog'],[class*='overlay'],[class*='modal'],[class*='reader']")||button.parentElement;if(!host||!/Benzer Cümleler/i.test(host.textContent||""))return;
+      button.classList.add("dh-mobile-tool-close");if(button.parentElement)button.parentElement.classList.add("dh-mobile-tool-header");
+      if(!button.dataset.dhSentenceReturn){button.dataset.dhSentenceReturn="1";button.addEventListener("click",function(){setTimeout(returnToWorkingSentence,0);});}
+    });
   }
 
   /* Ana kartta yalnız aktif cümleyi açıklayan tek bir AI eylemi kalır. */
@@ -432,6 +441,7 @@
       }
       ensureTools();
       if(document.getElementById("dhWorkReturn"))placeToolReturnInTopLayer();
+      ensureMobileGeneratedToolExit();
       scheduleModuleAIStatusUI();
     }catch(e){}
     applying=false;
