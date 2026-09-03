@@ -193,10 +193,13 @@
     var data={title:title||"Araç",module:requestedModuleName(),target:target,sentence:x.en,url:location.href,scrollY:window.scrollY||0,at:Date.now()};try{sessionStorage.setItem("dh-module-tool-return-v1",JSON.stringify(data));}catch(e){}return data;
   }
   function exactModuleReturnUrl(saved){
-    saved=saved||saveToolReturnContext("Araç");if(!saved.module)return saved.url||"./index-app.html";return "./index-app.html?mod="+encodeURIComponent(saved.module)+(saved.target?"&target="+encodeURIComponent(saved.target):"&q="+encodeURIComponent(saved.sentence||""));
+    saved=saved||saveToolReturnContext("Araç");
+    var fallback="";try{fallback=new URL("./index-app.html",location.href).href;}catch(e){fallback="./index-app.html";}
+    if(!saved.module)return saved.url||fallback;
+    try{var u=new URL("./index-app.html",location.href);u.searchParams.set("mod",saved.module);if(saved.target)u.searchParams.set("target",saved.target);else u.searchParams.set("q",saved.sentence||"");return u.href;}catch(e){return "./index-app.html?mod="+encodeURIComponent(saved.module)+(saved.target?"&target="+encodeURIComponent(saved.target):"&q="+encodeURIComponent(saved.sentence||""));}
   }
   function openActiveTeacher(){
-    var context=activeSentenceContext();if(!context.en)return;var saved=saveToolReturnContext("Öğretmen görünümü"),back=exactModuleReturnUrl(saved);try{localStorage.setItem("teacherReturnURL",back);}catch(e){}
+    var context=activeSentenceContext();if(!context.en)return;var saved=saveToolReturnContext("Öğretmen görünümü"),back=exactModuleReturnUrl(saved);try{localStorage.setItem("teacherReturnURL",back);sessionStorage.setItem("teacherReturnURL",back);}catch(e){}
     location.href="./teacher.html?s="+encodeURIComponent(context.en)+"&t="+encodeURIComponent(context.tr||"")+"&return="+encodeURIComponent(back);
   }
   function closeToolSurfaces(){

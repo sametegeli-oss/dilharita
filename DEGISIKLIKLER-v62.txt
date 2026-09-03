@@ -1,3 +1,11 @@
+v93 DÜZELTMELERİ
+=================
+- Öğretmen görünümünün kendi geri düğmesi artık genel menüye değil, modülde çalışılan kesin cümleye dönüyor.
+- Modül adı ve kararlı cümle kimliği tam dönüş adresine yazılıyor; göreli adres kaynaklı yön sapması kaldırıldı.
+- URL'deki dönüş adresi eski kayıtların önüne alındı; oturum ve yönlendiren sayfa yedekleri eklendi.
+- Mobilde hem üstteki “Cümleye dön” düğmesi hem alttaki sabit dönüş düğmesi görünür ve dokunulabilir tutuluyor.
+- Öğretmen sayfası pakete eklendi ve eski önbelleği aşmak için ilgili dosya sürümleri yenilendi.
+
 v70 DÜZELTMELERİ
 =================
 - Tam ekran cümle tekrarı için ayrı data-loop-state durumu eklendi.
