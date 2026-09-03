@@ -329,6 +329,8 @@ body.yt-video-pseudo-fullscreen .yt-video-shell.is-pseudo-fullscreen{position:fi
 .yt-fullscreen-tool-menu b{color:#eef5ff;font-size:13px}.yt-fullscreen-tool-menu small{color:#8195ad;font-size:10px;line-height:1.35}
 .yt-fullscreen-tool-menu .yt-fullscreen-exit-action{margin-top:6px;border-color:rgba(255,124,136,.3);color:#ff9aa5;background:rgba(95,25,37,.24)}
 .yt-video-shell.is-drawer-open .yt-fullscreen-tools-toggle{border-color:rgba(85,230,209,.65)!important;color:#55e6d1!important;background:rgba(5,40,43,.9)!important}
+/* Tam ekranda çalışma eylemleri gizlenir; Modüle git daima erişilebilir kalır. */
+.yt-video-shell:fullscreen .yt-controls>#controlModule,.yt-video-shell:-webkit-full-screen .yt-controls>#controlModule,.yt-video-shell.is-pseudo-fullscreen .yt-controls>#controlModule{display:inline-flex!important;border-color:rgba(85,230,209,.5)!important;background:linear-gradient(145deg,rgba(16,86,82,.92),rgba(7,50,54,.96))!important;color:#ecfffb!important;box-shadow:0 0 0 1px rgba(85,230,209,.12),0 8px 22px rgba(0,0,0,.28)!important}
 @media(max-width:680px){
  .yt-control>span[aria-hidden="true"]{display:inline-flex!important;align-items:center;justify-content:center}
  .yt-study-action>span:last-child,#loopToggle>span{display:none!important}
