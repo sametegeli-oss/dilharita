@@ -635,7 +635,14 @@ function getAllAIExplanationsFromDB() {
 }
 
 function normalizeModuleName(value){return String(value||"").toLowerCase().replace(/\s+/g," ").trim();}
-function requestedModuleName(){try{return new URLSearchParams(location.search).get("mod")||"";}catch(e){return "";}}
+function requestedModuleName(){
+  var fromUrl="";try{fromUrl=new URLSearchParams(location.search).get("mod")||"";}catch(e){}
+  if(fromUrl.trim())return fromUrl.trim();
+  /* Kullanıcı modülü ana listeden tıklayarak açtığında React adresi değiştirmez.
+     Bu durumda öğretmen/araç dönüşü için gerçek modül adı çalışma başlığındadır. */
+  var title=document.querySelector(".study-title");
+  return title?String(title.textContent||"").replace(/\s+/g," ").trim():"";
+}
 async function activeModuleSentences(){
   var modName=requestedModuleName()||(document.querySelector(".study-title")&&document.querySelector(".study-title").textContent||"").trim();
   if(!modName)return [];

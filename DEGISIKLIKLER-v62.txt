@@ -1,3 +1,15 @@
+v96 DÜZELTMELERİ
+=================
+- Öğretmen başlığındaki eski geri bağlantısının mobil üst katman tarafından yutulduğu tam akış testinde doğrulandı.
+- Eski bağlantı dönüş sırasında gizleniyor; body seviyesinde, en üst katmanda bağımsız “Cümleye dön” düğmesi oluşturuluyor.
+- Yeni üst düğme, çalışan alt sabit düğmeyle aynı güvenli modül+cümle dönüş işlemini kullanıyor.
+
+v95 DÜZELTMELERİ
+=================
+- Ana listeden tıklanarak açılan modüllerde URL'de mod adı bulunmadığı için öğretmen dönüşünün genel sayfaya düştüğü canlı akışta doğrulandı.
+- Dönüş kaydı artık URL boşsa ekrandaki gerçek .study-title modül başlığını kullanıyor.
+- Öğretmen adresine modül adıyla birlikte aktif cümle metni/kimliği yazılıyor; normal kullanıcı akışında aynı cümle yeniden açılıyor.
+
 v94 DÜZELTMELERİ
 =================
 - Canlı testte öğretmen sayfasının üst geri düğmesinin ortak .back yönlendirmesine yakalandığı belirlendi.
