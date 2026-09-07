@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v215";  /* Türkçe kaynak video ve hedef dil seslendirme */
+var SW_VERSION = "dh-sw-v216";  /* YouTube kitaplığını doğrudan ve parçalı eşitleme */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

@@ -464,10 +464,16 @@
   }
 
   /* ── 6) TÜM YERELİ TOPLA (push yükü) ─────────────────────── */
+  async function youtubeRecords(incoming){
+    var db=await new Promise(function(resolve,reject){var r=indexedDB.open("DilHaritaYouTube_DB",2);r.onupgradeneeded=function(){var d=r.result;if(!d.objectStoreNames.contains("studies")){var s=d.createObjectStore("studies",{keyPath:"videoId"});s.createIndex("updatedAt","updatedAt")}if(!d.objectStoreNames.contains("shadowAudio")){var a=d.createObjectStore("shadowAudio",{keyPath:"id"});a.createIndex("videoId","videoId");a.createIndex("updatedAt","updatedAt")}};r.onsuccess=function(){resolve(r.result)};r.onerror=function(){reject(r.error)};r.onblocked=function(){reject(new Error("YouTube kayıtları meşgul. Diğer sekmeleri kapatıp yeniden deneyin."))}});
+    try{return await new Promise(function(resolve,reject){var tx=db.transaction("studies",incoming?"readwrite":"readonly"),st=tx.objectStore("studies"),q=st.getAll(),rows=[];q.onsuccess=function(){rows=q.result||[];if(incoming){var map={};rows.forEach(function(r){map[r.videoId]=r});incoming.forEach(function(r){var old=map[r.videoId];if(!old||(+r.updatedAt||+r.savedAt||0)>(+old.updatedAt||+old.savedAt||0)){st.put(r);map[r.videoId]=r}});rows=Object.keys(map).map(function(k){return map[k]})}};tx.oncomplete=function(){resolve(rows)};tx.onerror=tx.onabort=function(){reject(tx.error||new Error("YouTube kitaplığı kaydedilemedi."))}})}finally{db.close()}
+  }
   async function collectAll(){
     sanitizeTracker();
     await mirrorNow();                       // kelime ilerlemesi → ayna (localStorage)
     var ls=lsCollect();
+    var videos=await youtubeRecords();
+    videos.forEach(function(r){ls["dh-immersive-youtube-study-"+r.videoId]=JSON.stringify(r)});
     var kv=await kvReadAll();                // modül ilerlemesi (smv:*)
     for(var k in kv){ if(kv.hasOwnProperty(k)) ls[k]=kv[k]; }
     var errors=await errAll().catch(function(){ return []; });
@@ -666,6 +672,9 @@
       var remoteAI=await fb.loadAIExplanations(user.uid).catch(function(){return [];});
       try{ await fb.purgeSecrets(user.uid); }catch(e){}
       var rd=parseRemote(remote);
+      var incomingVideos=[];
+      Object.keys(rd.ls).forEach(function(k){if(k.indexOf("dh-immersive-youtube-study-")===0){var r=JSON.parse(rd.ls[k]);if(r&&r.study&&/^[\w-]{11}$/.test(r.videoId))incomingVideos.push(r);delete rd.ls[k]}});
+      await youtubeRecords(incomingVideos);
       // MODÜL ÇAKIŞMA YÖNÜ: bulut, bu cihazın son yazmasından YENİYSE bulut kazanır;
       // değilse (bu cihaz daha taze) yalnız yerelde OLMAYAN modül kayıtları alınır.
       var cloudNewer = ((remote&&remote.updated_at)||0) > (+localStorage.getItem("dh-last-push-ts")||0);
@@ -846,7 +855,7 @@
           return Promise.all([
             fsMod.getDoc(fsMod.doc(db,"settings",uid)).then(function(s){return s.exists()?s.data():null;}),
             fsMod.getDoc(fsMod.doc(db,"progress",uid)).then(function(s){return s.exists()?s.data():null;}).catch(function(){return null;}),
-            fsMod.getDocs(fsMod.collection(db,"users",uid,"youtube_studies")).then(function(snap){var rows=[];snap.forEach(function(d){var v=d.data()||{};if(v.key&&typeof v.payload==="string")rows.push(v)});return rows;}).catch(function(){return[];})
+            fsMod.getDocs(fsMod.collection(db,"users",uid,"youtube_studies")).then(function(snap){var rows=[],parts={};snap.forEach(function(d){parts[d.id]=d.data()||{}});Object.keys(parts).forEach(function(id){var v=parts[id];if(!v.key)return;if(Array.isArray(v.parts)){v.payload=v.parts.map(function(p){if(!parts[p]||typeof parts[p].payload!=="string")throw new Error("YouTube bulut kaydı eksik: "+id);return parts[p].payload}).join("")}if(typeof v.payload==="string")rows.push(v)});return rows;})
           ]).then(function(a){
             var st=a[0]||{}, pg=a[1]||{}, out={};
             for(var k in st){ if(st.hasOwnProperty(k)) out[k]=st[k]; }
@@ -907,7 +916,12 @@
           if(pVar){ pDoc.updated_at=now2;
             isler.push(fsMod.setDoc(fsMod.doc(db,"progress",uid), pDoc, { merge:true })); }
           ytDocs.forEach(function(v){
-            isler.push(fsMod.setDoc(fsMod.doc(db,"users",uid,"youtube_studies",v.id),{key:v.key,payload:v.payload,updated_at:now2},{merge:true}));
+            isler.push((async function(){
+              if(v.payload.length<=150000){await fsMod.setDoc(fsMod.doc(db,"users",uid,"youtube_studies",v.id),{key:v.key,payload:v.payload,updated_at:now2});return}
+              var ids=[],revision=now2.toString(36)+Math.random().toString(36).slice(2,9);
+              for(var offset=0;offset<v.payload.length;){var end=Math.min(offset+150000,v.payload.length);if(end<v.payload.length&&/[\uD800-\uDBFF]/.test(v.payload.charAt(end-1)))end--;var partId=v.id+"_"+revision+"_"+ids.length;ids.push(partId);await fsMod.setDoc(fsMod.doc(db,"users",uid,"youtube_studies",partId),{payload:v.payload.slice(offset,end),updated_at:now2});offset=end}
+              await fsMod.setDoc(fsMod.doc(db,"users",uid,"youtube_studies",v.id),{key:v.key,parts:ids,updated_at:now2});
+            })());
           });
           return Promise.all(isler);
         }
