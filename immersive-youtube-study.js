@@ -58,15 +58,15 @@ function parseYouTubeTranscriptText(raw,duration){
  var lines=String(raw||"").replace(/\r/g,"").split("\n"),source=[],current=null,order=0;
  var timePattern="(?:\\d{1,2}:)?\\d{1,2}:\\d{2}(?:[.,]\\d{1,3})?";
  var whole=new RegExp("^\\[?("+timePattern+")\\]?\\s*$"),inline=new RegExp("^\\[?("+timePattern+")\\]?\\s+(.+)$");
- var localizedInline=new RegExp("^\\[?("+timePattern+")\\]?(?:(\\d+)\\s*dakika(?:\\s+(\\d+)\\s*saniye)?|(\\d+)\\s*saniye)\\s*(.*)$","i");
+ var localizedInline=new RegExp("^\\[?("+timePattern+")\\]?\\s*((?:(?:\\d+)\\s*saat(?:\\s+(?:\\d+)\\s*dakika)?(?:\\s+(?:\\d+)\\s*saniye)?|(?:\\d+)\\s*dakika(?:\\s+(?:\\d+)\\s*saniye)?|(?:\\d+)\\s*saniye))\\s*(.*)$","i");
  function cleanPastedText(value){return captionText(value).replace(/\[[^\]]+\]/g," ").replace(/\s+/g," ").trim()}
  function normalizePastedLine(value){
   var line=String(value||"").trim(),m=line.match(localizedInline);
   if(!m)return line;
-  var clock=captionClock(m[1]),localized=m[2]!=null?(+m[2]*60+(+m[3]||0)):(+m[4]||0);
+  var clock=captionClock(m[1]),label=String(m[2]||""),hour=(label.match(/(\d+)\s*saat/i)||[])[1]||0,minute=(label.match(/(\d+)\s*dakika/i)||[])[1]||0,second=(label.match(/(\d+)\s*saniye/i)||[])[1]||0,localized=(+hour*3600)+(+minute*60)+(+second);
   /* Yalnız iki gösterim aynı zamanı söylüyorsa tekrar bölümünü kaldır.
      Örnek: 10:0810 dakika 8 saniyeHello → 10:08 Hello */
-  return Math.abs(clock-localized)<=.001?m[1]+" "+String(m[5]||"").trim():line;
+  return Math.abs(clock-localized)<=.001?m[1]+" "+String(m[3]||"").trim():line;
  }
  function isPastedUiNoise(value){return /^(?:Videoda bahsedilen ana git|Tümü|İzlenenler)$/i.test(String(value||"").trim())}
  function push(){if(!current)return;var text=cleanPastedText(current.parts.join(" "));if(text)source.push({start:current.start,text:text,order:current.order});current=null}
@@ -78,12 +78,22 @@ function parseYouTubeTranscriptText(raw,duration){
  function splitSentenceParts(text){var out=[],start=0;for(var i=0;i<text.length;i++){var ch=text.charAt(i);if(ch!=="."&&ch!=="!"&&ch!=="?")continue;if(ch==="."&&isAbbreviation(text,i))continue;while(i+1<text.length&&/[.!?]/.test(text.charAt(i+1)))i++;out.push({text:text.slice(start,i+1).trim(),complete:true});start=i+1}if(start<text.length){var rest=text.slice(start).trim();if(rest)out.push({text:rest,complete:false})}return out}
  function beginsQuestion(text){return /^(?:can|could|would|will|do|does|did|is|are|was|were|have|has|had|should|may|might|must)\s+(?:i|you|we|they|he|she|it|there)\b/i.test(String(text||"").trim())}
  function emit(text,start){text=captionText(text);if(text)sentences.push({start:start,text:text})}
- source.forEach(function(cue){
-  var text=cue.text;
-  if(buffer&&/[,;:]$/.test(buffer)&&Math.abs(bufferLastCue-cue.start)<.001&&beginsQuestion(text)){emit(buffer.replace(/[,;:]+$/,"."),bufferStart);buffer="";text=text.replace(/^([a-z])/,function(letter){return letter.toUpperCase()})}
-  splitSentenceParts(text).forEach(function(part){if(!buffer)bufferStart=cue.start;buffer=captionText(buffer+" "+part.text);bufferLastCue=cue.start;if(part.complete){emit(buffer,bufferStart);buffer=""}})
- });
- if(buffer)emit(buffer,bufferStart);
+ /* Bazı YouTube kopyalarında zaman iki kez ve metne bitişik gelir:
+    0:1313 saniyeGrandma... Bu otomatik transkriptlerde noktalama da
+    bulunmayabilir. Nokta bekleyip yüzlerce satırı tek kayda dönüştürmek
+    yerine gerçek zaman damgalarını güvenilir kayıt sınırı kabul et. */
+ var sentenceMarks=source.reduce(function(total,cue){return total+(String(cue.text||"").match(/[.!?]/g)||[]).length},0);
+ var sparsePunctuation=source.length>1&&sentenceMarks<Math.max(2,Math.ceil(source.length*.04));
+ if(sparsePunctuation){
+  source.forEach(function(cue){emit(cue.text,cue.start)});
+ }else{
+  source.forEach(function(cue){
+   var text=cue.text;
+   if(buffer&&/[,;:]$/.test(buffer)&&Math.abs(bufferLastCue-cue.start)<.001&&beginsQuestion(text)){emit(buffer.replace(/[,;:]+$/,"."),bufferStart);buffer="";text=text.replace(/^([a-z])/,function(letter){return letter.toUpperCase()})}
+   splitSentenceParts(text).forEach(function(part){if(!buffer)bufferStart=cue.start;buffer=captionText(buffer+" "+part.text);bufferLastCue=cue.start;if(part.complete){emit(buffer,bufferStart);buffer=""}})
+  });
+  if(buffer)emit(buffer,bufferStart);
+ }
  var rows=[],byStart={};
  sentences.forEach(function(sentence){var key=String(Math.round(sentence.start*1000));if(byStart[key]){byStart[key].text=captionText(byStart[key].text+" "+sentence.text);return}var row={start:sentence.start,end:sentence.start+4,text:sentence.text};byStart[key]=row;rows.push(row)});
  rows.forEach(function(row,index){var next=rows[index+1];row.end=next?Math.max(row.start+.08,next.start-.03):Math.max(row.start+.08,Math.min(+duration||row.start+4,row.start+4))});

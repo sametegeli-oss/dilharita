@@ -1,3 +1,9 @@
+v97 DÜZELTMELERİ
+=================
+- “0:1313 saniyeMetin” biçimindeki bitişik ve çift zaman gösterimli YouTube transkriptleri desteklendi.
+- Noktalama işareti bulunmayan otomatik transkriptlerde her doğrulanmış zaman satırı ayrı kayıt olarak korunuyor; bütün metnin tek cümlede birleşmesi engellendi.
+- Mobil dikey modülde YouTube kaynaklı cümlenin Dinle, Gemini, Önceki, Araçlar, Sonraki ve YouTube düğmeleri tek satırlık eşit, kompakt simge şeridine dönüştürüldü.
+
 v96 DÜZELTMELERİ
 =================
 - Öğretmen başlığındaki eski geri bağlantısının mobil üst katman tarafından yutulduğu tam akış testinde doğrulandı.
