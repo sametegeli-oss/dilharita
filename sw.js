@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v214";  /* v214: Gemini çeviri görevini geri yükleme ve cevap doğrulama */
+var SW_VERSION = "dh-sw-v215";  /* Türkçe kaynak video ve hedef dil seslendirme */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
