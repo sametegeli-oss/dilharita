@@ -179,7 +179,8 @@
           title:(opts&&opts.title)||"💎 Gemini ile devam et",
           hint:"Gemini yanıtının tamamını buraya yapıştır…",
           prompt:promptOf(messages,opts),
-          parse:g.parsers.text,
+          resume:opts&&opts.resume,
+          parse:function(raw){var value=g.parsers.text(raw);if(opts&&opts.validateReply)opts.validateReply(value);return value;},
           onResult:function(value){settled=true;showSource(sourceInfo("gemini-web","Gemini web arayüzünde kullanıcı tarafından seçilen model"));resolve(String(value||""));},
           onCancel:function(){if(!settled)reject({code:"abort"});}
         });

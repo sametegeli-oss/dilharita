@@ -55,7 +55,7 @@ async function fetchOfficialCaptions(id,language,translatedLanguage){if(typeof g
 async function fetchYouTubeTranscript(id,requestedLanguage){var requested=String(requestedLanguage||"auto"),languages=requested==="auto"?["en","tr"]:[languageCode(requested)];for(var i=0;i<languages.length;i++){var sourceLanguage=languages[i],cues=await fetchOfficialCaptions(id,sourceLanguage);if(cues.length>2){var targetLanguage=sourceLanguage==="tr"?"en":"tr",translatedCues=await fetchOfficialCaptions(id,sourceLanguage,targetLanguage);return{videoId:id,sourceLanguage:sourceLanguage,cues:cleanCaptionCues(cues),translatedLanguage:targetLanguage,translatedCues:cleanCaptionCues(translatedCues),timingSource:"youtube-caption-track"}}}return{videoId:id,sourceLanguage:requested==="tr"?"tr":"en",cues:[],translatedLanguage:requested==="tr"?"en":"tr",translatedCues:[],timingSource:"unavailable"}}
 function nearestTranslatedCue(cue,translated,index){if(!translated.length)return null;var direct=translated[index];if(direct&&Math.abs(direct.start-cue.start)<=1.5)return direct;var best=null,distance=Infinity;translated.forEach(function(x){var d=Math.abs(x.start-cue.start);if(d<distance){distance=d;best=x}});return distance<=2.5?best:null}
 function parseYouTubeTranscriptText(raw,duration){
- var lines=String(raw||"").replace(/\r/g,"").split("\n"),source=[],current=null,order=0;
+ var rawText=String(raw||"").replace(/\r/g,""),lines=rawText.split("\n"),source=[],current=null,order=0;
  var timePattern="(?:\\d{1,2}:)?\\d{1,2}:\\d{2}(?:[.,]\\d{1,3})?";
  var whole=new RegExp("^\\[?("+timePattern+")\\]?\\s*$"),inline=new RegExp("^\\[?("+timePattern+")\\]?\\s+(.+)$");
  var localizedInline=new RegExp("^\\[?("+timePattern+")\\]?\\s*((?:(?:\\d+)\\s*saat(?:\\s+(?:\\d+)\\s*dakika)?(?:\\s+(?:\\d+)\\s*saniye)?|(?:\\d+)\\s*dakika(?:\\s+(?:\\d+)\\s*saniye)?|(?:\\d+)\\s*saniye))\\s*(.*)$","i");
@@ -70,8 +70,24 @@ function parseYouTubeTranscriptText(raw,duration){
  }
  function isPastedUiNoise(value){return /^(?:Videoda bahsedilen ana git|Tümü|İzlenenler)$/i.test(String(value||"").trim())}
  function push(){if(!current)return;var text=cleanPastedText(current.parts.join(" "));if(text)source.push({start:current.start,text:text,order:current.order});current=null}
- lines.forEach(function(value){var line=normalizePastedLine(value),m;if(!line||isPastedUiNoise(line))return;if((m=line.match(whole))){push();current={start:captionClock(m[1]),parts:[],order:order++};return}if((m=line.match(inline))){if(current&&!current.parts.length){current.parts.push(line);return}push();current={start:captionClock(m[1]),parts:[m[2]],order:order++};return}if(current)current.parts.push(line)});
- push();
+ /* Android ve bazı panolar satır sonlarını silebiliyor. Yerelleştirilmiş
+    YouTube kopyasında her zamanın hemen ardından aynı süre yazdığı için
+    bu çift işareti güvenli kayıt sınırı olarak tara. Böylece bütün içerik
+    tek satıra dönüşse bile 0:1313 saniye..., 1:131 dakika 13 saniye...
+    ve 1:00:091 saat 9 saniye... biçimleri eksiksiz okunur. */
+ function localizedSeconds(label){var hour=(String(label||"").match(/(\d+)\s*saat/i)||[])[1]||0,minute=(String(label||"").match(/(\d+)\s*dakika/i)||[])[1]||0,second=(String(label||"").match(/(\d+)\s*saniye/i)||[])[1]||0;return(+hour*3600)+(+minute*60)+(+second)}
+ function scanLocalizedTimeline(value){
+  var rx=new RegExp("(?:^|\\s)(\\[?("+timePattern+")\\]?\\s*((?:(?:\\d+)\\s*saat(?:\\s+(?:\\d+)\\s*dakika)?(?:\\s+(?:\\d+)\\s*saniye)?|(?:\\d+)\\s*dakika(?:\\s+(?:\\d+)\\s*saniye)?|(?:\\d+)\\s*saniye)))","gi"),matches=[],m;
+  while((m=rx.exec(value))){var clock=captionClock(m[2]),localized=localizedSeconds(m[3]);if(Math.abs(clock-localized)<=.001)matches.push({start:clock,at:m.index,contentAt:rx.lastIndex,order:matches.length})}
+  if(matches.length<2)return[];
+  return matches.map(function(hit,index){var next=matches[index+1],text=cleanPastedText(value.slice(hit.contentAt,next?next.at:value.length));return text?{start:hit.start,text:text,order:hit.order}:null}).filter(Boolean)
+ }
+ var scanned=scanLocalizedTimeline(rawText);
+ if(scanned.length>1)source=scanned;
+ else{
+  lines.forEach(function(value){var line=normalizePastedLine(value),m;if(!line||isPastedUiNoise(line))return;if((m=line.match(whole))){push();current={start:captionClock(m[1]),parts:[],order:order++};return}if((m=line.match(inline))){if(current&&!current.parts.length){current.parts.push(line);return}push();current={start:captionClock(m[1]),parts:[m[2]],order:order++};return}if(current)current.parts.push(line)});
+  push();
+ }
  source.sort(function(a,b){return a.start-b.start||a.order-b.order});
  var sentences=[],buffer="",bufferStart=0,bufferLastCue=-1;
  function isAbbreviation(text,index){var before=text.slice(0,index+1),token=(before.match(/(?:^|\s)([^\s]+)$/)||[])[1]||"";if(/^\d+\.\d+$/.test(text.slice(Math.max(0,index-3),index+3)))return true;return /^(?:mr|mrs|ms|dr|prof|sr|jr|st|vs|etc|e\.g|i\.e|a\.m|p\.m)\.$/i.test(token)}
