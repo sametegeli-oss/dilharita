@@ -700,7 +700,7 @@ function bind(){
  $("controlDictation").onclick=function(){setStudyMode("dictation");if(isVideoFullscreen())openFullscreenDrawer("study")};
   $("explainSentenceGemini").onclick=function(){openSentenceExplanation(false)};
   $("regenerateExplanation").onclick=function(){openSentenceExplanation(true)};
-  $("fullscreenToolsToggle").onclick=openFullscreenTools;
+  
   $("fullscreenStudyPanel").onclick=function(){openFullscreenDrawer("study")};
   $("fullscreenTranscriptPanel").onclick=function(){openFullscreenDrawer("transcript")};
   $("fullscreenDrawerClose").onclick=closeFullscreenDrawer;
