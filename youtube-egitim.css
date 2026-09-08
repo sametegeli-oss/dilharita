@@ -342,3 +342,11 @@ body.yt-video-pseudo-fullscreen .yt-video-shell.is-pseudo-fullscreen{position:fi
  .yt-fullscreen-tools-toggle{width:48px!important;height:48px!important}
  .yt-video-shell:fullscreen .yt-fullscreen-drawer,.yt-video-shell:-webkit-full-screen .yt-fullscreen-drawer,.yt-video-shell.is-pseudo-fullscreen .yt-fullscreen-drawer{width:min(350px,88vw)}
 }
+
+/* v103: çıkış ve araç erişimi alt kontrol çubuğunda. */
+.yt-controls>#fsActionExit,.yt-controls>#fullscreenToolsToggle{display:none}
+.yt-video-shell:fullscreen .yt-controls>#fsActionExit,.yt-video-shell:-webkit-full-screen .yt-controls>#fsActionExit,.yt-video-shell.is-pseudo-fullscreen .yt-controls>#fsActionExit,
+.yt-video-shell:fullscreen .yt-controls>#fullscreenToolsToggle,.yt-video-shell:-webkit-full-screen .yt-controls>#fullscreenToolsToggle,.yt-video-shell.is-pseudo-fullscreen .yt-controls>#fullscreenToolsToggle{display:inline-flex}
+.yt-video-chrome>.yt-fullscreen-tool-menu{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);width:min(600px,94vw);max-height:60vh;overflow:auto;grid-template-columns:repeat(3,minmax(0,1fr));padding:10px;border-radius:14px;background:#07121f;pointer-events:auto}
+.yt-video-chrome>.yt-fullscreen-tool-menu svg{width:22px;height:22px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.7}
+@media(max-width:680px){.yt-exit-fullscreen>span:last-child{display:none}.yt-video-chrome>.yt-fullscreen-tool-menu{grid-template-columns:repeat(2,minmax(0,1fr))}.yt-controls>#fullscreenToolsToggle{font-size:10px}}
