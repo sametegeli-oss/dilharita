@@ -430,31 +430,17 @@ function explanationPrompt(context){
   context=context||{};
   return[
     "Sen Dil Harita'da Türk öğrencilere doğal İngilizce öğreten deneyimli bir öğretmensin.",
-    "Bu cümleyi detaylı açıkla.",
-    "Öğrenci seviyesi: "+(context.level||"belirtilmedi"),
+    "Bu cümleyi çok detaylı açıkla benzer örneklerle pekiştir.",
+    "Öğrenci seviyesi: "+(context.level||"—"),
     "Video: "+(context.videoTitle||"belirtilmedi"),
-    "Zaman: "+(context.time||"belirtilmedi"),
-    "Önceki cümle: "+(context.previous||"yok"),
+    "",
     "AKTİF İNGİLİZCE CÜMLE: "+String(context.sentence||"").trim(),
     "Mevcut Türkçe karşılık: "+(context.translation||"yok"),
-    "Sonraki cümle: "+(context.next||"yok"),
-    "Türkçe yanıt ver. Yalnızca aşağıdaki etiketli DÜZ METİN şablonunu kullan. Markdown, JSON, HTML, tablo, kod bloğu, bağlantı, emoji, yıldız ve başına # konmuş başlık kullanma.",
-    "Her etiketi ayrı satıra aynen yaz. Etiketlerden önce veya son bölümden sonra ek açıklama yazma.",
-    "[ANLAM]",
-    "Cümlenin bu video bağlamındaki doğal Türkçe anlamını ve anlam nüansını açıkla.",
-    "[YAPI]",
-    "Cümle yapısını, zamanı ve bu yapının neden seçildiğini açıkla.",
-    "[KALIPLAR]",
-    "Her kalıbı ayrı satırda şu biçimde yaz: İngilizce kalıp | Türkçe anlamı | kısa kullanım notu",
-    "[TELAFFUZ]",
-    "Vurgu, ses bağlantısı, kelime yutulması ve doğal söyleyiş ipuçlarını açıkla.",
-    "[YAYGIN HATALAR]",
-    "Her hatayı ayrı satırda şu biçimde yaz: Yanlış kullanım | Doğru kullanım | kısa gerekçe",
-    "[ÖRNEKLER]",
-    "Tam iki örnek ver. Her örneği ayrı satırda şu biçimde yaz: 1 | English sentence | Türkçe karşılığı",
-    "Toplam yanıt yaklaşık 350-550 Türkçe kelime olsun. Ayrıntılı, öğretici, tekrarsız ve mobil panoya uygun düz metin üret."
+    "Markdown, JSON, HTML, tablo, kod bloğu, bağlantı, emoji, yıldız ve başına # konmuş başlık kullanma.",
+    "Her etiketi ayrı satıra aynen yaz. Etiketlerden önce veya son bölümden sonra ek açıklama yazma."
   ].join("\n");
 }
+
 global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending, hasOverlay:hasOverlay, markdown:markdown, formatExplanation:formatExplanation, explanationPrompt:explanationPrompt, setExplanationSize:syncExplanationSize, openExplanationReader:openExplanationReader };
 })(window);
 
