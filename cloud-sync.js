@@ -27,6 +27,7 @@
 
   /* ── 1) SABİTLER ─────────────────────────────────────────── */
   var LS_KEYS = [
+    "dh-youtube-explanation-prompt-v1",
     "dh_ai_prompt_teacher", "dh-study-tracker-v1", "dh-ocr-sentences-v1", "dh-profile-v1",
     "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1",
     "dh-model-nvidia", "dh-model-groq", "dh-model-cerebras", "dh-model-gemini",
@@ -689,6 +690,7 @@
         if(!ok || isSecretKey(rk)) continue;
         try{
           if(rk.indexOf("smv:")===0){ kvIncoming[rk]=rv; pulled++; }
+          else if(rk==="dh-youtube-explanation-prompt-v1"){var lp=null,rp=JSON.parse(rv);try{lp=JSON.parse(localStorage.getItem(rk)||"null")}catch(e){}if(rp&&typeof rp.text==="string"&&(!lp||(+rp.updatedAt||0)>(+lp.updatedAt||0)))localStorage.setItem(rk,rv);pulled++;}
           else if(rk==="dh-profile-v1"){ localStorage.setItem(rk,mergeProfile(localStorage.getItem(rk),rv,migration)); pulled++; }
           else if(rk===TRACKER){ localStorage.setItem(rk, mergeTracker(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk==="dh-gemini-report-v1"){ localStorage.setItem(rk, mergeGeminiReport(localStorage.getItem(rk),rv)); pulled++; }

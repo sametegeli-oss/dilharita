@@ -132,6 +132,7 @@
       <button class="yt-control yt-study-action" id="controlYouglish" type="button" data-tooltip="Aktif kalıbı farklı gerçek videolarda dinle"><span aria-hidden="true">Y</span><span>YouGlish</span></button>
       <button class="yt-control yt-study-action" id="controlShadow" type="button" data-tooltip="Aktif cümleyi görüntüyle birlikte seslendir ve kaydet"><span aria-hidden="true">♬</span><span>Shadowing</span></button>
       <button class="yt-control yt-study-action" id="controlDictation" type="button" data-tooltip="Aktif cümleyi dinle ve duyduğunu yaz"><span aria-hidden="true">⌨</span><span>Dikte</span></button>
+      <button id="editYoutubePrompt" type="button" class="yt-control" title="Gemini cümle açıklama promptunu düzenle">Promptu düzenle</button>
       <button class="yt-control yt-study-action yt-gemini-explain" id="explainSentenceGemini" type="button" data-tooltip="Aktif cümle için kayıtlı ayrıntılı Gemini açıklamasını aç veya oluştur"><span aria-hidden="true">✦</span><span>Gemini ile açıkla</span></button>
       <div class="yt-time"><b id="currentTime">00:00</b><span>/</span><span id="durationTime">00:00</span></div>
       <button class="yt-control" id="speedToggle" type="button">1×</button>
@@ -343,13 +344,16 @@
  <script src="./ai-choice.js?v=1"></script>
  <script src="./ai-providers.js?v=151"></script>
  <script src="./gemini-bridge.js?v=31"></script>
- <script src="./cloud-sync.js?v=25"></script>
+ <script src="./cloud-sync.js?v=26"></script>
  <script src="./word-popup.js?v=13"></script>
  <script src="./immersive-youtube-study.js?v=18"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=57"></script>
+ <script src="./youtube-egitim.js?v=58"></script>
  <script src="./youtube-swipe-navigation.js?v=1"></script>
+
+<div class="yt-modal-overlay" id="existingModuleModal" hidden><section class="yt-modal"><h2>Bu videonun modülü mevcut</h2><p>Mevcut modülü çalışabilir veya yeniden oluşturabilirsiniz.</p><button id="existingModuleStudy" type="button">Mevcut modülü çalış</button><button id="existingModuleNew" type="button">Yeniden oluştur</button><button id="existingModuleCancel" type="button">Vazgeç</button></section></div>
+<div class="yt-modal-overlay" id="youtubePromptModal" hidden><section class="yt-modal"><h2>Gemini cümle açıklama promptu</h2><p>{seviye}, {video}, {cümle}, {çeviri} otomatik doldurulur. Görev kimliği otomatik eklenir. Yeni prompt, yeni açıklama isteklerinde kullanılır; kayıtlı açıklama için Yeniden oluştur seçeneğini kullanın.</p><textarea id="youtubePromptText" aria-label="Cümle açıklama promptu" maxlength="30000" style="width:100%;min-height:45vh;box-sizing:border-box"></textarea><p id="youtubePromptStatus" role="status"></p><button id="youtubePromptSave" type="button">Kaydet</button><button id="youtubePromptDefault" type="button">Varsayılan metni getir</button><button id="youtubePromptClose" type="button">Kapat</button></section></div>
 </body>
 </html>
 
