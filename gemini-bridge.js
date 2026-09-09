@@ -152,6 +152,18 @@ function ask(opt){
       preview=ov.querySelector(".dhgb-preview"),
       sendBtn=ov.querySelector(".dhgb-send"),
       pasteBtn=ov.querySelector(".dhgb-paste");
+  if(opt.promptEditor){
+    var edit=document.createElement("button");edit.type="button";edit.className="dhgb-tog";edit.textContent="Promptu düzenle";
+    pv.parentNode.insertBefore(edit,pv);
+    var editor=document.createElement("div");editor.hidden=true;
+    var field=document.createElement("textarea");field.className="dhgb-ta";field.setAttribute("aria-label","Cümle açıklama promptu");field.maxLength=30000;
+    var help=document.createElement("p");help.className="dhgb-step";help.textContent="{seviye}, {video}, {cümle}, {çeviri} otomatik doldurulur. Kaydettiğiniz prompt bu istekte de kullanılır.";
+    var save=document.createElement("button");save.type="button";save.className="dhgb-send";save.textContent="Promptu kaydet";
+    var cancel=document.createElement("button");cancel.type="button";cancel.className="dhgb-close";cancel.textContent="Vazgeç";
+    editor.appendChild(help);editor.appendChild(field);editor.appendChild(save);editor.appendChild(cancel);pv.parentNode.insertBefore(editor,pv);
+    edit.onclick=function(){field.value=opt.promptEditor.get();editor.hidden=false};cancel.onclick=function(){editor.hidden=true};
+    save.onclick=async function(){save.disabled=true;try{var text=field.value.trim();if(!text||text.length>30000)throw new Error("1–30000 karakterlik bir prompt girin.");var result=await opt.promptEditor.save(text);basePrompt=redactSensitive(opt.promptEditor.render());id=jobId();prompt=basePrompt+"\n\nGÖREV KİMLİĞİ: "+id+"\nYanıtının ilk satırına tam olarak \"DH-ID: "+id+"\" yaz. Sonraki satırlarda istenen yanıtı ver.";job.id=id;job.prompt=basePrompt;job.createdAt=Date.now();job.draft="";job.state="waiting";ta.value="";preview.innerHTML="";savePending(job);pv.textContent=prompt;ov.querySelector(".dhgb-job").textContent="Bekleyen görev: "+id;editor.hidden=true;say(result,"#4ade80")}catch(e){say(e.message||"Prompt kaydedilemedi.","#f59e0b")}finally{save.disabled=false}};
+  }
   pv.textContent=prompt;
   if(sameOld && old.draft) ta.value=old.draft;
 
