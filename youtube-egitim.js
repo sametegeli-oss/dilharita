@@ -72,8 +72,14 @@ async function sharedExplanationFor(x){if(!x)return"";var sentence=String(x.tran
 function setStatus(text,kind){var el=$("homeStatus");if(!el)return;el.textContent=text||"";el.dataset.kind=kind||""}
 function isYouTubeTranscriptSource(src){return!!(src&&/^youtube-(?:direct|pasted)$/.test(String(src.transcriptMode||"")))}
 function detectedTranscriptLanguage(cues){
- var text=cues.map(function(x){return x.text}).join(" ").toLocaleLowerCase("tr-TR"),tr=(text.match(/\b(ben|sen|bir|bu|ve|için|ama|çok|şimdi|neden|merhaba|evet|hayır|nasıl)\b/g)||[]).length,en=(text.match(/\b(the|you|i|is|are|and|have|this|that|what|hello|with)\b/g)||[]).length;
- if(/[ğışİ]/i.test(text)||tr>=3&&tr>en*1.5)return "tr";
+ /* toLocaleLowerCase("tr-TR") KULLANMA: Türkçe kuralında büyük "I" küçülünce "ı" olur.
+    İngilizce metinlerde "I" (özne zamiri) çok sık geçtiği için bu, saf İngilizce
+    transkriptlerin bile Türkçe karakter içeriyormuş gibi görünüp yanlışlıkla "tr"
+    olarak algılanmasına yol açıyordu. Düz toLowerCase() bu dönüşümü yapmaz;
+    gerçek Türkçe karakterler (ğ ı ş İ) zaten kendi Unicode noktalarında olduğu
+    için tespit gücünden bir şey kaybetmiyoruz.*/
+ var text=cues.map(function(x){return x.text}).join(" ").toLowerCase(),tr=(text.match(/\b(ben|sen|bir|bu|ve|için|ama|çok|şimdi|neden|merhaba|evet|hayır|nasıl)\b/g)||[]).length,en=(text.match(/\b(the|you|i|is|are|and|have|this|that|what|hello|with)\b/g)||[]).length;
+ if(/[ğışİ]/.test(text)||tr>=3&&tr>en*1.5)return "tr";
  if(en>=3&&en>tr*1.5)return "en";
  return "";
 }
