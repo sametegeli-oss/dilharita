@@ -178,7 +178,7 @@
         var handle=g.ask({
           title:(opts&&opts.title)||"💎 Gemini ile devam et",
           hint:"Gemini yanıtının tamamını buraya yapıştır…",
-          prompt:promptOf(messages,opts),
+          prompt:opts&&opts.directPrompt?String(opts.directPrompt):promptOf(messages,opts),
           resume:opts&&opts.resume,
           parse:function(raw){var value=g.parsers.text(raw);if(opts&&opts.validateReply)opts.validateReply(value);return value;},
           onResult:function(value){settled=true;showSource(sourceInfo("gemini-web","Gemini web arayüzünde kullanıcı tarafından seçilen model"));resolve(String(value||""));},
