@@ -27,7 +27,7 @@
 
   /* ── 1) SABİTLER ─────────────────────────────────────────── */
   var LS_KEYS = [
-    "dh-youtube-explanation-prompt-v1",
+    "dh-youtube-explanation-prompt-v1", "dh-youtube-deleted-v1",
     "dh_ai_prompt_teacher", "dh-study-tracker-v1", "dh-ocr-sentences-v1", "dh-profile-v1",
     "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1",
     "dh-model-nvidia", "dh-model-groq", "dh-model-cerebras", "dh-model-gemini",
