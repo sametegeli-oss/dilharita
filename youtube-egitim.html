@@ -79,6 +79,7 @@
      <button id="autoPauseToggle" type="button" aria-pressed="false" title="Her cümlenin sonunda otomatik duraklat">⏸ <span>Otomatik dur</span></button>
      <button id="karaokeToggle" class="is-active" type="button" aria-pressed="true" title="Konuşulan kelimeyi takip et">✦ <span>Kelime takibi</span></button>
      <button id="translateTranscript" type="button" title="Sabit transkript cümlelerinin yalnız çevirilerini Gemini'den al">✦ <span>Gemini ile çevir</span></button>
+     <button id="retranslateTranscript" type="button">↻ <span>Türkçe çevirileri yeniden al</span></button>
      <button id="refreshTiming" type="button" title="Zamanlı YouTube konuşma metnini yeniden yapıştır">⟳ <span>Transkripti yenile</span></button>
      <button id="importSubtitles" type="button" title="Zaman kodlu SRT veya VTT altyazısı yükle">CC <span>SRT/VTT yükle</span></button>
      <input id="subtitleFile" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip" hidden>
@@ -350,7 +351,7 @@
  <script src="./immersive-youtube-study.js?v=18"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=61"></script>
+ <script src="./youtube-egitim.js?v=62"></script>
  <script src="./youtube-swipe-navigation.js?v=1"></script>
 
 <div class="yt-modal-overlay" id="existingModuleModal" hidden><section class="yt-modal"><h2>Bu videonun modülü mevcut</h2><p>Mevcut modülü çalışabilir veya yeniden oluşturabilirsiniz.</p><button id="existingModuleStudy" type="button">Mevcut modülü çalış</button><button id="existingModuleNew" type="button">Yeniden oluştur</button><button id="existingModuleCancel" type="button">Vazgeç</button></section></div>
