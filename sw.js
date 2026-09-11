@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v233";  /* Kitaplık kartı düzeltildi: gerçek renderLibrary(youtube-egitim.js) güncellendi */
+var SW_VERSION = "dh-sw-v234";  /* Kitaplık kartı düzeltildi: gerçek renderLibrary(youtube-egitim.js) güncellendi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
