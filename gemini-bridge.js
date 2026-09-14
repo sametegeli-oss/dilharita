@@ -374,9 +374,9 @@ function formatExplanation(input){
     var rows=nonempty(lines);
     return rows.map(function(line){
       var parts=line.replace(/^\s*\d+[.)]?\s*(?:\|\s*)?/,"").split("|").map(function(x){return x.trim()});
-      if(examples&&parts.length>=2)return'<article class="dh-exp-example"><b lang="en">'+esc(parts[0])+'</b><span lang="tr">'+esc(parts.slice(1).join(" | "))+'</span></article>';
-      if(parts.length>=2)return'<article class="dh-exp-row"><strong lang="en">'+esc(parts[0])+'</strong><span lang="tr">'+esc(parts[1])+'</span>'+(parts[2]?'<small>'+esc(parts.slice(2).join(" | "))+'</small>':"")+'</article>';
-      return'<p>'+esc(line)+'</p>';
+      if(examples&&parts.length>=2)return'<article class="dh-exp-example"><b lang="en">'+highlightEnglish(parts[0])+'</b><span lang="tr">'+highlightEnglish(parts.slice(1).join(" | "))+'</span></article>';
+      if(parts.length>=2)return'<article class="dh-exp-row"><strong lang="en">'+highlightEnglish(parts[0])+'</strong><span lang="tr">'+highlightEnglish(parts[1])+'</span>'+(parts[2]?'<small>'+highlightEnglish(parts.slice(2).join(" | "))+'</small>':"")+'</article>';
+      return'<p>'+highlightEnglish(line)+'</p>';
     }).join("");
   }
   var html=order.map(function(key,index){
