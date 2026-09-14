@@ -67,9 +67,17 @@ export default {
         channelId = idMatch[1];
       }
       const feedRes = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`, {
-        headers: { "Accept": "application/xml", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }
+        headers: {
+          "Accept": "application/xml,text/xml,*/*",
+          "Accept-Language": "en-US,en;q=0.9",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+          "Referer": "https://www.youtube.com/"
+        }
       });
-      if (!feedRes.ok) return json({ error: "feed_fetch_failed", status: feedRes.status }, 502, origin);
+      if (!feedRes.ok) {
+        const errBody = await feedRes.text().catch(() => "");
+        return json({ error: "feed_fetch_failed", status: feedRes.status, channelId, bodySnippet: errBody.slice(0, 200) }, 502, origin);
+      }
       const xml = await feedRes.text();
       const items = [];
       const entryRe = /<entry>([\s\S]*?)<\/entry>/g;
