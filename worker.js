@@ -27,16 +27,10 @@ function json(data, status, origin) {
   });
 }
 
-function decodeXml(s) {
-  return String(s || "")
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&quot;/g, "\"").replace(/&#39;/g, "'")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
-    .replace(/&amp;/g, "&");
-}
+
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
     const url = new URL(request.url);
@@ -44,66 +38,45 @@ export default {
     if (url.pathname === "/channel") {
       if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405, origin);
       if (!ALLOWED_ORIGINS.has(origin)) return json({ error: "origin_not_allowed" }, 403, origin);
+      const key = env && env.YOUTUBE_API_KEY;
+      if (!key) return json({ error: "missing_api_key" }, 500, origin);
       const raw = (url.searchParams.get("handle") || "").trim();
       if (!raw || raw.length > 120) return json({ error: "invalid_handle" }, 400, origin);
-      let path = raw
+      let handle = raw
         .replace(/^https?:\/\/(www\.)?youtube\.com\//i, "")
         .split(/[?&#]/)[0]
         .replace(/\/(videos|streams|shorts|about|featured)\/?$/, "");
-      let channelId = null;
-      const directId = path.replace(/^channel\//, "");
+      const directId = handle.replace(/^channel\//, "");
+      let channelRes;
       if (/^UC[a-zA-Z0-9_-]{20,26}$/.test(directId)) {
-        channelId = directId;
+        channelRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${directId}&key=${key}`);
       } else {
-        if (!path.startsWith("@")) path = "@" + path.replace(/^@/, "");
-        if (!/^@[a-zA-Z0-9._-]{1,100}$/.test(path)) return json({ error: "invalid_handle" }, 400, origin);
-        const pageRes = await fetch(`https://www.youtube.com/${path}`, {
-          headers: { "Accept-Language": "en-US,en;q=0.9", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" }
-        });
-        if (!pageRes.ok) return json({ error: "channel_page_failed", status: pageRes.status }, 502, origin);
-        const pageHtml = await pageRes.text();
-        const idMatch =
-          pageHtml.match(/<link rel="canonical" href="https:\/\/www\.youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{20,26})"/) ||
-          pageHtml.match(/"externalId":"(UC[a-zA-Z0-9_-]{20,26})"/) ||
-          pageHtml.match(/"channelId":"(UC[a-zA-Z0-9_-]{20,26})"/);
-        if (!idMatch) return json({ error: "channel_id_not_found" }, 502, origin);
-        channelId = idMatch[1];
+        if (!handle.startsWith("@")) handle = "@" + handle.replace(/^@/, "");
+        if (!/^@[a-zA-Z0-9._-]{1,100}$/.test(handle)) return json({ error: "invalid_handle" }, 400, origin);
+        channelRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=${encodeURIComponent(handle)}&key=${key}`);
       }
-      const feedRes = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`, {
-        headers: {
-          "Accept": "application/xml,text/xml,*/*",
-          "Accept-Language": "en-US,en;q=0.9",
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-          "Referer": "https://www.youtube.com/"
-        }
-      });
-      if (!feedRes.ok) {
-        const errBody = await feedRes.text().catch(() => "");
-        return json({ error: "feed_fetch_failed", status: feedRes.status, channelId, bodySnippet: errBody.slice(0, 200) }, 502, origin);
-      }
-      const xml = await feedRes.text();
-      const items = [];
-      const entryRe = /<entry>([\s\S]*?)<\/entry>/g;
-      let em;
-      while ((em = entryRe.exec(xml)) && items.length < 30) {
-        const chunk = em[1];
-        const vid = (chunk.match(/<yt:videoId>([^<]+)<\/yt:videoId>/) || [])[1];
-        if (!vid) continue;
-        const title = decodeXml((chunk.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || "");
-        const published = (chunk.match(/<published>([^<]+)<\/published>/) || [])[1] || "";
-        const descRaw = decodeXml((chunk.match(/<media:description>([\s\S]*?)<\/media:description>/) || [])[1] || "");
-        const thumb = (chunk.match(/<media:thumbnail url="([^"]+)"/) || [])[1];
-        items.push({
+      const channelData = await channelRes.json();
+      if (!channelRes.ok) return json({ error: "youtube_api_error", status: channelRes.status, detail: channelData && channelData.error }, 502, origin);
+      const item = channelData.items && channelData.items[0];
+      const uploadsId = item && item.contentDetails && item.contentDetails.relatedPlaylists && item.contentDetails.relatedPlaylists.uploads;
+      if (!uploadsId) return json({ error: "channel_not_found" }, 404, origin);
+      const plRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=30&playlistId=${uploadsId}&key=${key}`);
+      const plData = await plRes.json();
+      if (!plRes.ok) return json({ error: "youtube_api_error", status: plRes.status, detail: plData && plData.error }, 502, origin);
+      const items = (plData.items || []).map(it => {
+        const sn = it.snippet || {};
+        const thumbs = sn.thumbnails || {};
+        const vid = sn.resourceId && sn.resourceId.videoId;
+        return vid ? {
           videoId: vid,
-          title,
-          summary: descRaw.split("\n")[0].slice(0, 180),
+          title: sn.title || "",
+          summary: String(sn.description || "").split("\n")[0].slice(0, 180),
           duration: "",
-          published: published.slice(0, 10),
-          thumb: thumb || `https://i.ytimg.com/vi/${vid}/mqdefault.jpg`
-        });
-      }
-      if (!items.length) return json({ error: "no_videos_found" }, 502, origin);
-      return json({ channel: channelId, videos: items }, 200, origin);
+          published: String(sn.publishedAt || "").slice(0, 10),
+          thumb: (thumbs.medium && thumbs.medium.url) || (thumbs.default && thumbs.default.url) || `https://i.ytimg.com/vi/${vid}/mqdefault.jpg`
+        } : null;
+      }).filter(Boolean);
+      return json({ channel: uploadsId, videos: items }, 200, origin);
     }
     if (url.pathname !== "/generate" && url.pathname !== "/pollinations") return json({ error: "not_found" }, 404, origin);
     if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405, origin);
