@@ -78,6 +78,50 @@ export default {
       }).filter(Boolean);
       return json({ channel: uploadsId, videos: items }, 200, origin);
     }
+    if (url.pathname === "/transcript") {
+      if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405, origin);
+      if (!ALLOWED_ORIGINS.has(origin)) return json({ error: "origin_not_allowed" }, 403, origin);
+      const vid = (url.searchParams.get("id") || "").trim();
+      if (!/^[a-zA-Z0-9_-]{10,15}$/.test(vid)) return json({ error: "invalid_id" }, 400, origin);
+      const wantLang = (url.searchParams.get("lang") || "").trim();
+      const playerRes = await fetch(
+        "https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            videoId: vid,
+            context: { client: { clientName: "WEB", clientVersion: "2.20240101.00.00" } }
+          })
+        }
+      );
+      if (!playerRes.ok) return json({ error: "player_fetch_failed", status: playerRes.status }, 502, origin);
+      const playerData = await playerRes.json();
+      const tracks = playerData && playerData.captions && playerData.captions.playerCaptionsTracklistRenderer && playerData.captions.playerCaptionsTracklistRenderer.captionTracks;
+      if (!tracks || !tracks.length) return json({ error: "no_captions" }, 404, origin);
+      const track = tracks.find(t => t.languageCode === wantLang) ||
+                    tracks.find(t => t.languageCode === "en") ||
+                    tracks.find(t => !t.kind) ||
+                    tracks[0];
+      const capRes = await fetch(track.baseUrl + "&fmt=json3");
+      if (!capRes.ok) return json({ error: "captions_fetch_failed", status: capRes.status }, 502, origin);
+      const capData = await capRes.json();
+      const events = capData.events || [];
+      const clock = (sec) => {
+        sec = Math.max(0, Math.floor(sec));
+        const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+        return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
+      };
+      const lines = [];
+      for (const ev of events) {
+        if (!ev.segs) continue;
+        const text = ev.segs.map(s => s.utf8 || "").join("").replace(/\n/g, " ").trim();
+        if (!text) continue;
+        lines.push(clock((ev.tStartMs || 0) / 1000) + " " + text);
+      }
+      if (!lines.length) return json({ error: "empty_captions" }, 404, origin);
+      return json({ videoId: vid, language: track.languageCode, isAuto: track.kind === "asr", text: lines.join("\n") }, 200, origin);
+    }
     if (url.pathname !== "/generate" && url.pathname !== "/pollinations") return json({ error: "not_found" }, 404, origin);
     if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405, origin);
     if (!ALLOWED_ORIGINS.has(origin)) return json({ error: "origin_not_allowed" }, 403, origin);
