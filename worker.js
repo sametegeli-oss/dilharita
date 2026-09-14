@@ -84,20 +84,29 @@ export default {
       const vid = (url.searchParams.get("id") || "").trim();
       if (!/^[a-zA-Z0-9_-]{10,15}$/.test(vid)) return json({ error: "invalid_id" }, 400, origin);
       const wantLang = (url.searchParams.get("lang") || "").trim();
-      const playerRes = await fetch(
+      const fetchPlayer = (clientName, clientVersion) => fetch(
         "https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             videoId: vid,
-            context: { client: { clientName: "WEB", clientVersion: "2.20240101.00.00" } }
+            context: { client: { clientName, clientVersion, hl: "en", gl: "US" } }
           })
         }
       );
+      let playerRes = await fetchPlayer("WEB", "2.20240101.00.00");
       if (!playerRes.ok) return json({ error: "player_fetch_failed", status: playerRes.status }, 502, origin);
-      const playerData = await playerRes.json();
-      const tracks = playerData && playerData.captions && playerData.captions.playerCaptionsTracklistRenderer && playerData.captions.playerCaptionsTracklistRenderer.captionTracks;
+      let playerData = await playerRes.json();
+      let tracks = playerData && playerData.captions && playerData.captions.playerCaptionsTracklistRenderer && playerData.captions.playerCaptionsTracklistRenderer.captionTracks;
+      if (!tracks || !tracks.length) {
+        const retryRes = await fetchPlayer("ANDROID", "19.09.37");
+        if (retryRes.ok) {
+          const retryData = await retryRes.json();
+          const retryTracks = retryData && retryData.captions && retryData.captions.playerCaptionsTracklistRenderer && retryData.captions.playerCaptionsTracklistRenderer.captionTracks;
+          if (retryTracks && retryTracks.length) { playerData = retryData; tracks = retryTracks; }
+        }
+      }
       if (!tracks || !tracks.length) return json({ error: "no_captions" }, 404, origin);
       const track = tracks.find(t => t.languageCode === wantLang) ||
                     tracks.find(t => t.languageCode === "en") ||
