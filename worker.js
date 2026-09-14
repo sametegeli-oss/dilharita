@@ -62,7 +62,10 @@ export default {
         });
         if (!pageRes.ok) return json({ error: "channel_page_failed", status: pageRes.status }, 502, origin);
         const pageHtml = await pageRes.text();
-        const idMatch = pageHtml.match(/"channelId":"(UC[a-zA-Z0-9_-]{20,26})"/) || pageHtml.match(/youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{20,26})/);
+        const idMatch =
+          pageHtml.match(/<link rel="canonical" href="https:\/\/www\.youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{20,26})"/) ||
+          pageHtml.match(/"externalId":"(UC[a-zA-Z0-9_-]{20,26})"/) ||
+          pageHtml.match(/"channelId":"(UC[a-zA-Z0-9_-]{20,26})"/);
         if (!idMatch) return json({ error: "channel_id_not_found" }, 502, origin);
         channelId = idMatch[1];
       }
