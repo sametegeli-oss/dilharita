@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=43">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=44">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -40,6 +40,13 @@
      <button type="submit">Dersi hazırla <b>→</b></button>
     </form>
     <button class="yt-transcript-paste-open" id="pasteTranscriptOpen" type="button">▤ YouTube konuşma metnini zamanlarıyla yapıştır</button>
+    <form class="yt-channel-form" id="channelForm">
+     <label class="sr-only" for="channelHandle">Kanal adı veya adresi</label>
+     <span aria-hidden="true">🔎</span>
+     <input id="channelHandle" type="text" maxlength="200" placeholder="Kanal adı veya youtube.com/@kanal adresi…" autocomplete="off">
+     <button type="submit">Videoları listele</button>
+    </form>
+    <div class="yt-channel-results" id="channelResults" hidden></div>
     <div class="yt-home-status" id="homeStatus" role="status"></div>
     <div class="yt-home-pills"><span>✓ YouTube özgün metni</span><span>✓ YouTube zamanları</span><span>✓ Akıllı tekrar</span><span>✓ Çevrimdışı metin</span></div>
    </div>
@@ -351,7 +358,7 @@
  <script src="./immersive-youtube-study.js?v=18"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=68"></script>
+ <script src="./youtube-egitim.js?v=69"></script>
  <script src="./youtube-swipe-navigation.js?v=1"></script>
 
 <div class="yt-modal-overlay" id="existingModuleModal" hidden><section class="yt-modal"><h2>Bu videonun modülü mevcut</h2><p>Mevcut modülü çalışabilir veya yeniden oluşturabilirsiniz.</p><button id="existingModuleStudy" type="button">Mevcut modülü çalış</button><button id="existingModuleNew" type="button">Yeniden oluştur</button><button id="existingModuleCancel" type="button">Vazgeç</button></section></div>

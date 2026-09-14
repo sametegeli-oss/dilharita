@@ -11,7 +11,7 @@ function cors(origin) {
   const allowed = ALLOWED_ORIGINS.has(origin) ? origin : "https://sametegeli-oss.github.io";
   return {
     "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Methods": "POST,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "Authorization,Content-Type,Accept",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
@@ -33,6 +33,52 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
     const url = new URL(request.url);
     if (url.pathname === "/health") return json({ ok: true, service: "dilharita-nvidia-image" }, 200, origin);
+    if (url.pathname === "/channel") {
+      if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405, origin);
+      if (!ALLOWED_ORIGINS.has(origin)) return json({ error: "origin_not_allowed" }, 403, origin);
+      const raw = (url.searchParams.get("handle") || "").trim();
+      if (!raw || raw.length > 120) return json({ error: "invalid_handle" }, 400, origin);
+      let path = raw
+        .replace(/^https?:\/\/(www\.)?youtube\.com\//i, "")
+        .replace(/^@?/, "@")
+        .split(/[?&#]/)[0]
+        .replace(/\/videos\/?$/, "");
+      if (!/^@[a-zA-Z0-9._-]{1,100}$/.test(path)) return json({ error: "invalid_handle" }, 400, origin);
+      const upstreamRes = await fetch(`https://www.youtube.com/${path}/videos`, {
+        headers: { "Accept-Language": "tr-TR,tr;q=0.9", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+      });
+      if (!upstreamRes.ok) return json({ error: "channel_fetch_failed", status: upstreamRes.status }, 502, origin);
+      const html = await upstreamRes.text();
+      const m = html.match(/var ytInitialData\s*=\s*(\{.+?\});<\/script>/s);
+      if (!m) return json({ error: "parse_failed" }, 502, origin);
+      let data;
+      try { data = JSON.parse(m[1]); } catch { return json({ error: "json_parse_failed" }, 502, origin); }
+      const items = [];
+      const seen = new Set();
+      const walk = (node) => {
+        if (!node || items.length >= 30) return;
+        if (Array.isArray(node)) { for (const n of node) walk(n); return; }
+        if (typeof node !== "object") return;
+        if (node.videoRenderer && node.videoRenderer.videoId && !seen.has(node.videoRenderer.videoId)) {
+          const v = node.videoRenderer;
+          seen.add(v.videoId);
+          const title = (v.title && v.title.runs && v.title.runs.map(r => r.text).join("")) || (v.title && v.title.simpleText) || "";
+          const summary = (v.descriptionSnippet && v.descriptionSnippet.runs && v.descriptionSnippet.runs.map(r => r.text).join("")) || "";
+          const thumbs = v.thumbnail && v.thumbnail.thumbnails;
+          items.push({
+            videoId: v.videoId,
+            title,
+            summary,
+            duration: (v.lengthText && v.lengthText.simpleText) || "",
+            published: (v.publishedTimeText && v.publishedTimeText.simpleText) || "",
+            thumb: (thumbs && thumbs[thumbs.length - 1] && thumbs[thumbs.length - 1].url) || `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`
+          });
+        }
+        for (const k in node) walk(node[k]);
+      };
+      walk(data);
+      return json({ channel: path, videos: items }, 200, origin);
+    }
     if (url.pathname !== "/generate" && url.pathname !== "/pollinations") return json({ error: "not_found" }, 404, origin);
     if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405, origin);
     if (!ALLOWED_ORIGINS.has(origin)) return json({ error: "origin_not_allowed" }, 403, origin);
