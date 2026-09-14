@@ -27,6 +27,14 @@ function json(data, status, origin) {
   });
 }
 
+function decodeXml(s) {
+  return String(s || "")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"").replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
+    .replace(/&amp;/g, "&");
+}
+
 export default {
   async fetch(request) {
     const origin = request.headers.get("Origin") || "";
@@ -40,44 +48,51 @@ export default {
       if (!raw || raw.length > 120) return json({ error: "invalid_handle" }, 400, origin);
       let path = raw
         .replace(/^https?:\/\/(www\.)?youtube\.com\//i, "")
-        .replace(/^@?/, "@")
         .split(/[?&#]/)[0]
-        .replace(/\/videos\/?$/, "");
-      if (!/^@[a-zA-Z0-9._-]{1,100}$/.test(path)) return json({ error: "invalid_handle" }, 400, origin);
-      const upstreamRes = await fetch(`https://www.youtube.com/${path}/videos`, {
-        headers: { "Accept-Language": "tr-TR,tr;q=0.9", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+        .replace(/\/(videos|streams|shorts|about|featured)\/?$/, "");
+      let channelId = null;
+      const directId = path.replace(/^channel\//, "");
+      if (/^UC[a-zA-Z0-9_-]{20,26}$/.test(directId)) {
+        channelId = directId;
+      } else {
+        if (!path.startsWith("@")) path = "@" + path.replace(/^@/, "");
+        if (!/^@[a-zA-Z0-9._-]{1,100}$/.test(path)) return json({ error: "invalid_handle" }, 400, origin);
+        const pageRes = await fetch(`https://www.youtube.com/${path}`, {
+          headers: { "Accept-Language": "en-US,en;q=0.9", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" }
+        });
+        if (!pageRes.ok) return json({ error: "channel_page_failed", status: pageRes.status }, 502, origin);
+        const pageHtml = await pageRes.text();
+        const idMatch = pageHtml.match(/"channelId":"(UC[a-zA-Z0-9_-]{20,26})"/) || pageHtml.match(/youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{20,26})/);
+        if (!idMatch) return json({ error: "channel_id_not_found" }, 502, origin);
+        channelId = idMatch[1];
+      }
+      const feedRes = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`, {
+        headers: { "Accept": "application/xml", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }
       });
-      if (!upstreamRes.ok) return json({ error: "channel_fetch_failed", status: upstreamRes.status }, 502, origin);
-      const html = await upstreamRes.text();
-      const m = html.match(/var ytInitialData\s*=\s*(\{.+?\});<\/script>/s);
-      if (!m) return json({ error: "parse_failed" }, 502, origin);
-      let data;
-      try { data = JSON.parse(m[1]); } catch { return json({ error: "json_parse_failed" }, 502, origin); }
+      if (!feedRes.ok) return json({ error: "feed_fetch_failed", status: feedRes.status }, 502, origin);
+      const xml = await feedRes.text();
       const items = [];
-      const seen = new Set();
-      const walk = (node) => {
-        if (!node || items.length >= 30) return;
-        if (Array.isArray(node)) { for (const n of node) walk(n); return; }
-        if (typeof node !== "object") return;
-        if (node.videoRenderer && node.videoRenderer.videoId && !seen.has(node.videoRenderer.videoId)) {
-          const v = node.videoRenderer;
-          seen.add(v.videoId);
-          const title = (v.title && v.title.runs && v.title.runs.map(r => r.text).join("")) || (v.title && v.title.simpleText) || "";
-          const summary = (v.descriptionSnippet && v.descriptionSnippet.runs && v.descriptionSnippet.runs.map(r => r.text).join("")) || "";
-          const thumbs = v.thumbnail && v.thumbnail.thumbnails;
-          items.push({
-            videoId: v.videoId,
-            title,
-            summary,
-            duration: (v.lengthText && v.lengthText.simpleText) || "",
-            published: (v.publishedTimeText && v.publishedTimeText.simpleText) || "",
-            thumb: (thumbs && thumbs[thumbs.length - 1] && thumbs[thumbs.length - 1].url) || `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`
-          });
-        }
-        for (const k in node) walk(node[k]);
-      };
-      walk(data);
-      return json({ channel: path, videos: items }, 200, origin);
+      const entryRe = /<entry>([\s\S]*?)<\/entry>/g;
+      let em;
+      while ((em = entryRe.exec(xml)) && items.length < 30) {
+        const chunk = em[1];
+        const vid = (chunk.match(/<yt:videoId>([^<]+)<\/yt:videoId>/) || [])[1];
+        if (!vid) continue;
+        const title = decodeXml((chunk.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || "");
+        const published = (chunk.match(/<published>([^<]+)<\/published>/) || [])[1] || "";
+        const descRaw = decodeXml((chunk.match(/<media:description>([\s\S]*?)<\/media:description>/) || [])[1] || "");
+        const thumb = (chunk.match(/<media:thumbnail url="([^"]+)"/) || [])[1];
+        items.push({
+          videoId: vid,
+          title,
+          summary: descRaw.split("\n")[0].slice(0, 180),
+          duration: "",
+          published: published.slice(0, 10),
+          thumb: thumb || `https://i.ytimg.com/vi/${vid}/mqdefault.jpg`
+        });
+      }
+      if (!items.length) return json({ error: "no_videos_found" }, 502, origin);
+      return json({ channel: channelId, videos: items }, 200, origin);
     }
     if (url.pathname !== "/generate" && url.pathname !== "/pollinations") return json({ error: "not_found" }, 404, origin);
     if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405, origin);
