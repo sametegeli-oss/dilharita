@@ -1009,6 +1009,49 @@
           }
           return loop(null);
         },
+        /* Bir kerelik temizlik: birikmiş öksüz parça belgelerini siler
+           (eski hatalı davranışın geçmişte biriktirdiği kayıtlar için). */
+        cleanupOrphanedYoutubeStudyParts:function(uid,onProgress){
+          var colRef=fsMod.collection(db,"users",uid,"youtube_studies");
+          var PAGE=50, allDocs={}, scanned=0;
+          function fetchPage(cursor){
+            var q=cursor
+              ? fsMod.query(colRef,fsMod.orderBy(fsMod.documentId()),fsMod.startAfter(cursor),fsMod.limit(PAGE))
+              : fsMod.query(colRef,fsMod.orderBy(fsMod.documentId()),fsMod.limit(PAGE));
+            return fsMod.getDocs(q);
+          }
+          function loop(cursor){
+            return fetchPage(cursor).then(function(snap){
+              snap.forEach(function(d){ allDocs[d.id]=d.data()||{}; });
+              scanned+=snap.size;
+              if(onProgress) try{ onProgress(scanned,Object.keys(allDocs).length); }catch(e){}
+              if(snap.size<PAGE || snap.empty){
+                var live={};
+                Object.keys(allDocs).forEach(function(id){
+                  var v=allDocs[id];
+                  if(v.key && Array.isArray(v.parts)) v.parts.forEach(function(p){ live[p]=1; });
+                });
+                var orphans=Object.keys(allDocs).filter(function(id){
+                  var v=allDocs[id];
+                  return !v.key && !live[id]; // ana belge değil ve hiçbir güncel kayıt tarafından referans verilmiyor
+                });
+                var jobs=[];
+                for(var i=0;i<orphans.length;i+=400){
+                  (function(chunk){
+                    jobs.push((async function(){
+                      var batch=fsMod.writeBatch(db);
+                      chunk.forEach(function(id){ batch.delete(fsMod.doc(db,"users",uid,"youtube_studies",id)); });
+                      await batch.commit();
+                    })());
+                  })(orphans.slice(i,i+400));
+                }
+                return Promise.all(jobs).then(function(){ return {scanned:scanned,total:Object.keys(allDocs).length,deleted:orphans.length}; });
+              }
+              return loop(snap.docs[snap.docs.length-1]);
+            });
+          }
+          return loop(null);
+        },
         loadSettings:function(uid){
           // Geriye dönük uyumluluk: eski çağıranlar için ikisini birden döndürür.
           return Promise.all([fb.loadMainSettings(uid),fb.loadYoutubeStudiesRaw(uid)]).then(function(a){
@@ -1084,10 +1127,22 @@
             isler.push(fsMod.setDoc(fsMod.doc(db,"progress",uid), pDoc, { merge:true })); }
           ytDocs.forEach(function(v){
             isler.push((async function(){
-              if(v.payload.length<=150000){await fsMod.setDoc(fsMod.doc(db,"users",uid,"youtube_studies",v.id),{key:v.key,payload:v.payload,updated_at:now2});return}
+              /* Yeni revizyon yazmadan önce eski belgeyi oku; eğer eski
+                 kayıt bölünmüş parçalıysa (parts) ve bu sefer farklı bir
+                 revizyon üretilecekse, eski parçaları sil — aksi halde
+                 her büyük kayıt her kaydedilişinde öksüz parça biriktirir. */
+              var ref=fsMod.doc(db,"users",uid,"youtube_studies",v.id);
+              var oldParts=null;
+              try{ var oldSnap=await fsMod.getDoc(ref); if(oldSnap.exists()){ var od=oldSnap.data()||{}; if(Array.isArray(od.parts)) oldParts=od.parts; } }catch(e){}
+              if(v.payload.length<=150000){
+                await fsMod.setDoc(ref,{key:v.key,payload:v.payload,updated_at:now2});
+                if(oldParts) oldParts.forEach(function(pid){ isler.push(fsMod.deleteDoc(fsMod.doc(db,"users",uid,"youtube_studies",pid)).catch(function(){})); });
+                return;
+              }
               var ids=[],revision=now2.toString(36)+Math.random().toString(36).slice(2,9);
               for(var offset=0;offset<v.payload.length;){var end=Math.min(offset+150000,v.payload.length);if(end<v.payload.length&&/[\uD800-\uDBFF]/.test(v.payload.charAt(end-1)))end--;var partId=v.id+"_"+revision+"_"+ids.length;ids.push(partId);await fsMod.setDoc(fsMod.doc(db,"users",uid,"youtube_studies",partId),{payload:v.payload.slice(offset,end),updated_at:now2});offset=end}
-              await fsMod.setDoc(fsMod.doc(db,"users",uid,"youtube_studies",v.id),{key:v.key,parts:ids,updated_at:now2});
+              await fsMod.setDoc(ref,{key:v.key,parts:ids,updated_at:now2});
+              if(oldParts) oldParts.filter(function(pid){return ids.indexOf(pid)<0}).forEach(function(pid){ isler.push(fsMod.deleteDoc(fsMod.doc(db,"users",uid,"youtube_studies",pid)).catch(function(){})); });
             })());
           });
           return Promise.all(isler);
@@ -1362,6 +1417,13 @@
        (Bulutta veri kaybı şüphesi varsa elle çalıştırılır.) */
     resetDiff: sigSifirla,
     signOut: signOutAndPush,
+    /* Geçmişte biriken öksüz YouTube parça belgelerini bir kez temizler
+       (bkz. saveSettings — artık her kayıtta eski parçaları kendisi siler,
+       ama bu, o düzeltmeden ÖNCE birikmiş kayıtları temizlemez). */
+    cleanupYoutubeOrphans: function(onProgress){
+      if(!ready||!user||!fb||!fb.cleanupOrphanedYoutubeStudyParts) return Promise.resolve({ok:false,error:"hazır değil"});
+      return fb.cleanupOrphanedYoutubeStudyParts(user.uid,onProgress).then(function(r){return Object.assign({ok:true},r)}).catch(function(e){return {ok:false,error:(e&&e.message)||"bilinmeyen hata"}});
+    },
     snapList: snapList, restoreSnap: restoreSnap,
     /* Yedekleme ekranı kendi kopya listesini tutmasın diye TEK KAYNAK burada.
        (Eskiden index sayfası listeyi elle kopyalıyordu ve yeni anahtarlar

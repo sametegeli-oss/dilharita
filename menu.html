@@ -152,6 +152,7 @@
       </div>
 
       <button class="dh-btn dh-btn--ikincil dh-btn--tam" id="dhCloudSyncBtn">Bulutla senkronize et</button>
+      <button class="dh-btn dh-btn--ikincil dh-btn--tam" id="dhCleanupOrphansBtn" style="margin-top:6px">Bulut video kayıtlarını temizle (bir kerelik)</button>
       <div class="dh-sync-progress-wrap" id="dhSyncProgressWrap" hidden style="margin-top:6px">
         <div style="height:6px;border-radius:99px;background:var(--dh-cizgi,#2a3a4a);overflow:hidden">
           <div id="dhSyncProgressBar" style="height:100%;width:0%;border-radius:99px;background:var(--dh-marka-metin,#55e6d1);transition:width .25s ease"></div>
@@ -209,7 +210,7 @@
      hata defterinin ham deposu ve Gemini kelime analizleri yedeğe hiç
      girmiyordu. -->
 <script src="./dh-yedek.js?v=2"></script>
-<script src="./cloud-sync.js?v=28"></script>
+<script src="./cloud-sync.js?v=29"></script>
 <script src="./notifications.js?v=1"></script>
 <script>
 /* ---- Bulutla senkronize et + Çıkış yap ---- */
@@ -239,6 +240,25 @@
     }
   });
   if(!btn) return;
+  var cleanBtn=document.getElementById("dhCleanupOrphansBtn");
+  if(cleanBtn) cleanBtn.onclick=async function(){
+    if(!(window.DHCloudSync && window.DHCloudSync.cleanupYoutubeOrphans)){
+      if(msg){ msg.style.color="var(--dh-seri)"; msg.textContent="Bulut bağlantısı hazır değil."; }
+      return;
+    }
+    var old=cleanBtn.textContent;
+    cleanBtn.disabled=true; cleanBtn.textContent="⏳ Taranıyor...";
+    var res=await window.DHCloudSync.cleanupYoutubeOrphans(function(scanned,total){
+      cleanBtn.textContent="⏳ "+scanned+" belge tarandı...";
+    });
+    cleanBtn.disabled=false; cleanBtn.textContent=old;
+    if(msg){
+      msg.textContent=res.ok
+        ? (res.total+" belge tarandı, "+res.deleted+" öksüz parça silindi.")
+        : ("Temizlik başarısız: "+(res.error||"bilinmeyen hata"));
+      msg.style.color=res.ok?"var(--dh-ok)":"var(--dh-err)";
+    }
+  };
   btn.onclick=async function(){
     if(!(window.DHCloudSync && window.DHCloudSync.fullSync)){
       if(msg){ msg.style.color="var(--dh-seri)"; msg.textContent="Bulut bağlantısı hazır değil, birkaç saniye sonra tekrar dene."; }
