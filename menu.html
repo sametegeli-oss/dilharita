@@ -209,7 +209,7 @@
      hata defterinin ham deposu ve Gemini kelime analizleri yedeğe hiç
      girmiyordu. -->
 <script src="./dh-yedek.js?v=2"></script>
-<script src="./cloud-sync.js?v=22"></script>
+<script src="./cloud-sync.js?v=23"></script>
 <script src="./notifications.js?v=1"></script>
 <script>
 /* ---- Bulutla senkronize et + Çıkış yap ---- */
@@ -228,6 +228,14 @@
     } else if(d.state==="success"||d.state==="error"){
       if(progBar)progBar.style.width="100%";
       setTimeout(function(){ if(progWrap)progWrap.hidden=true; if(progBar)progBar.style.width="0%"; },700);
+      /* Bu tıklamanın kendi isteği "zaten sürüyor" diye erken dönmüş
+         olsa bile, arkada gerçekten çalışan senkron bitince ekrandaki
+         eski mesaj burada güncellenir — sonsuza dek asılı kalmaz. */
+      if(msg){
+        msg.textContent=d.message||(d.state==="success"?"İlerlemen güncel.":"Senkron tamamlanamadı.");
+        msg.style.color=d.state==="success"?"var(--dh-ok)":"var(--dh-err)";
+      }
+      if(btn){ btn.disabled=false; btn.textContent="Bulutla senkronize et"; }
     }
   });
   if(!btn) return;
