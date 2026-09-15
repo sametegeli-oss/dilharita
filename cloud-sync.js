@@ -726,11 +726,21 @@
     try{
       var migration=false;
       try{ migration=!!localStorage.getItem("dh-account-migration-pending"); }catch(e){}
-      var __syncTotal=7;
+      var __syncTotal=8;
       function tick(step,label){ try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"syncing",migration:migration,step:step,total:__syncTotal,label:label}})); }catch(e){} }
       tick(1,"Ayarlar okunuyor…");
-      var remote=await withTimeout(fb.loadSettings(user.uid),15000,"Ayarlar okunamadı");
-      tick(2,"AI açıklamaları okunuyor…");
+      var mainSettings=await withTimeout(fb.loadMainSettings(user.uid),15000,"Ayarlar okunamadı");
+      tick(2,"Video kayıtları okunuyor (kütüphane büyükse uzun sürebilir)…");
+      var videoRows;
+      try{
+        videoRows=await withTimeout(fb.loadYoutubeStudiesRaw(user.uid),60000,"Video kayıtları okunamadı");
+      }catch(firstErr){
+        tick(2,"Video kayıtları tekrar deneniyor…");
+        videoRows=await withTimeout(fb.loadYoutubeStudiesRaw(user.uid),60000,"Video kayıtları okunamadı (2. deneme)");
+      }
+      var remote=Object.assign({},mainSettings);
+      videoRows.forEach(function(v){ remote[v.key]=v.payload; });
+      tick(3,"AI açıklamaları okunuyor…");
       var remoteAI=await withTimeout(fb.loadAIExplanations(user.uid),15000,"AI açıklamaları okunamadı").catch(function(){return [];});
       try{ await fb.purgeSecrets(user.uid); }catch(e){}
       var rd=parseRemote(remote);
@@ -751,14 +761,14 @@
       delete rd.ls["dh-youtube-deleted-v1"]; // aşağıdaki genel döngü üzerine yazmasın, zaten birleştirildi
       var incomingVideos=[];
       Object.keys(rd.ls).forEach(function(k){if(k.indexOf("dh-immersive-youtube-study-")===0){var vid=k.slice("dh-immersive-youtube-study-".length);if(mergedDeleted[vid]){delete rd.ls[k];return}var r=JSON.parse(rd.ls[k]);if(r&&r.study&&/^[\w-]{11}$/.test(r.videoId))incomingVideos.push(r);delete rd.ls[k]}});
-      tick(3,incomingVideos.length?("Video ilerlemesi birleştiriliyor ("+incomingVideos.length+")…"):"Video ilerlemesi kontrol ediliyor…");
+      tick(4,incomingVideos.length?("Video ilerlemesi birleştiriliyor ("+incomingVideos.length+")…"):"Video ilerlemesi kontrol ediliyor…");
       await youtubeRecords(incomingVideos);
       // MODÜL ÇAKIŞMA YÖNÜ: bulut, bu cihazın son yazmasından YENİYSE bulut kazanır;
       // değilse (bu cihaz daha taze) yalnız yerelde OLMAYAN modül kayıtları alınır.
       var cloudNewer = ((remote&&remote.updated_at)||0) > (+localStorage.getItem("dh-last-push-ts")||0);
       var pulled=0, kvIncoming={};
 
-      tick(4,"Yerel veriler uygulanıyor…");
+      tick(5,"Yerel veriler uygulanıyor…");
       for(var rk in rd.ls){
         if(!rd.ls.hasOwnProperty(rk)) continue;
         var rv=rd.ls[rk];
@@ -825,7 +835,7 @@
           if(have[hk]!==undefined) delete kvIncoming[hk];
         }
       }
-      tick(5,"Kelime ve ilerleme aynaları uygulanıyor…");
+      tick(6,"Kelime ve ilerleme aynaları uygulanıyor…");
       await kvWriteAll(kvIncoming);                 // modül ilerlemesi → IndexedDB (React okur)
       var addedAI=await aiMergeRemote(remoteAI);    // AI açıklaması: en yeni kayıt/silme kazanır
       var addedErr=await errMerge(rd.errors||[]);   // hata defteri birleşir
@@ -833,9 +843,9 @@
       /* GERİ YAZ: bulut = birleşim. Burada FARK yazma kullanılmaz —
          birleştirme sonrası bulut ile cihazın aynı olduğundan emin olmak
          için tam gönderim yapılır ve imzalar sıfırdan kurulur. */
-      tick(6,"Buluta yazılıyor…");
+      tick(7,"Buluta yazılıyor…");
       var pres=await pushNow(true);
-      tick(7,"Tamamlanıyor…");
+      tick(8,"Tamamlanıyor…");
 
       // teşhis sayacı
       var kvNow=await kvReadAll();
@@ -933,20 +943,30 @@
           try{ jobs.push(fsMod.updateDoc.apply(null,[ref].concat(args)).catch(function(){})); }catch(e){}
           return Promise.all(jobs);
         },
-        loadSettings:function(uid){
-          // İKİ BELGE: settings (ayarlar) + progress (srs/ayna/günler) — birleşik döndür.
-          // Eski tek-belge kurulumları da kapsar (progress boşsa settings'teki her şey okunur).
+        loadMainSettings:function(uid){
+          // Sadece iki küçük belge (ayarlar + ilerleme); video kayıtları AYRI
+          // (loadYoutubeStudiesRaw) çünkü kalabalık koleksiyon zayıf bağlantıda
+          // her şeyi bloklamasın diye artık birlikte beklenmiyor.
           return Promise.all([
             fsMod.getDoc(fsMod.doc(db,"settings",uid)).then(function(s){return s.exists()?s.data():null;}),
-            fsMod.getDoc(fsMod.doc(db,"progress",uid)).then(function(s){return s.exists()?s.data():null;}).catch(function(){return null;}),
-            fsMod.getDocs(fsMod.collection(db,"users",uid,"youtube_studies")).then(function(snap){var rows=[],parts={};snap.forEach(function(d){parts[d.id]=d.data()||{}});Object.keys(parts).forEach(function(id){var v=parts[id];if(!v.key)return;if(Array.isArray(v.parts)){v.payload=v.parts.map(function(p){if(!parts[p]||typeof parts[p].payload!=="string")throw new Error("YouTube bulut kaydı eksik: "+id);return parts[p].payload}).join("")}if(typeof v.payload==="string")rows.push(v)});return rows;})
+            fsMod.getDoc(fsMod.doc(db,"progress",uid)).then(function(s){return s.exists()?s.data():null;}).catch(function(){return null;})
           ]).then(function(a){
             var st=a[0]||{}, pg=a[1]||{}, out={};
             for(var k in st){ if(st.hasOwnProperty(k)) out[k]=st[k]; }
             for(var k2 in pg){ if(pg.hasOwnProperty(k2)&&k2!=="updated_at") out[k2]=pg[k2]; }  // progress daha taze → üstüne
-            (a[2]||[]).forEach(function(v){out[v.key]=v.payload;});
             if(pg.__bulk){ out.__bulk=Object.assign({},st.__bulk||{},pg.__bulk); }
             out.updated_at=Math.max(st.updated_at||0, pg.updated_at||0);
+            return out;
+          });
+        },
+        loadYoutubeStudiesRaw:function(uid){
+          return fsMod.getDocs(fsMod.collection(db,"users",uid,"youtube_studies")).then(function(snap){var rows=[],parts={};snap.forEach(function(d){parts[d.id]=d.data()||{}});Object.keys(parts).forEach(function(id){var v=parts[id];if(!v.key)return;if(Array.isArray(v.parts)){v.payload=v.parts.map(function(p){if(!parts[p]||typeof parts[p].payload!=="string")throw new Error("YouTube bulut kaydı eksik: "+id);return parts[p].payload}).join("")}if(typeof v.payload==="string")rows.push(v)});return rows;});
+        },
+        loadSettings:function(uid){
+          // Geriye dönük uyumluluk: eski çağıranlar için ikisini birden döndürür.
+          return Promise.all([fb.loadMainSettings(uid),fb.loadYoutubeStudiesRaw(uid)]).then(function(a){
+            var out=a[0]||{};
+            (a[1]||[]).forEach(function(v){out[v.key]=v.payload;});
             return out;
           });
         },
