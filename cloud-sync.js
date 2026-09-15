@@ -691,6 +691,17 @@
   }
 
   /* ── 8) FULL SYNC: çek → birleştir → uygula → geri yaz ───── */
+  /* Bir promise'i verilen sürede tamamlanmazsa etiketli bir hatayla
+     düşürür. Firestore isteği kendi başına sonsuza dek askıda kalabilir
+     (özellikle mobil/hücresel ağda); bu, HANGİ adımın takıldığını net
+     gösterir ve o adımı tek başına 30 saniyelik genel bekçiye bırakmaz. */
+  function withTimeout(promise,ms,label){
+    return new Promise(function(resolve,reject){
+      var done=false;
+      var t=setTimeout(function(){ if(done)return; done=true; reject(new Error(label+" (zaman aşımı, "+Math.round(ms/1000)+"sn)")); },ms);
+      promise.then(function(v){ if(done)return; done=true; clearTimeout(t); resolve(v); },function(e){ if(done)return; done=true; clearTimeout(t); reject(e); });
+    });
+  }
   function waitForAuth(maxMs){
     return new Promise(function(res){
       if(authResolved) return res();
@@ -718,9 +729,9 @@
       var __syncTotal=7;
       function tick(step,label){ try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"syncing",migration:migration,step:step,total:__syncTotal,label:label}})); }catch(e){} }
       tick(1,"Ayarlar okunuyor…");
-      var remote=await fb.loadSettings(user.uid);
+      var remote=await withTimeout(fb.loadSettings(user.uid),15000,"Ayarlar okunamadı");
       tick(2,"AI açıklamaları okunuyor…");
-      var remoteAI=await fb.loadAIExplanations(user.uid).catch(function(){return [];});
+      var remoteAI=await withTimeout(fb.loadAIExplanations(user.uid),15000,"AI açıklamaları okunamadı").catch(function(){return [];});
       try{ await fb.purgeSecrets(user.uid); }catch(e){}
       var rd=parseRemote(remote);
       /* SİLİNEN VİDEOLAR: iki cihazın "silindi" listesini birleştir (union,
