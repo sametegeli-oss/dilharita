@@ -721,8 +721,8 @@
     var watchdog=setTimeout(function(){
       if(!syncing) return;
       syncing=false;
-      try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"error",message:"Senkron 30 saniyede tamamlanamadı (ağ isteği askıda kaldı); tekrar deneyin."}})); }catch(_){}
-    },30000);
+      try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"error",message:"Senkron 180 saniyede tamamlanamadı (ağ isteği askıda kaldı); tekrar deneyin."}})); }catch(_){}
+    },180000);
     try{
       var migration=false;
       try{ migration=!!localStorage.getItem("dh-account-migration-pending"); }catch(e){}
