@@ -467,13 +467,15 @@ function spokenWeight(text){
   return total||1
 }
 function splitSentencesRough(text){
-  var abbr=/\b(mr|mrs|ms|dr|prof|sr|jr|st|vs|etc|e\.g|i\.e)\.$/i,PROTECT="\u0000",s=String(text||"");
+  var abbr=/\b(mr|mrs|ms|dr|prof|sr|jr|st|vs|etc|approx|apt|dept|est|gov|corp|inc|co|ltd|ave|blvd|rd|e\.g|i\.e)$/i,PROTECT="\u0000",s=String(text||"");
   var protectedText=s.replace(/(\d)\.(\d)/g,function(m,a,b){return a+PROTECT+b});
   var tokens=protectedText.split(/([.!?]+(?:["')\]]*)\s+)/),out=[],buf="";
   for(var i=0;i<tokens.length;i+=2){
     buf+=tokens[i]+(tokens[i+1]||"");
     var trimmedEnd=(tokens[i]||"").trim();
-    if(tokens[i+1]&&!abbr.test(trimmedEnd)){out.push(buf.trim());buf=""}
+    var delim=tokens[i+1]||"";
+    var periodOnly=/^\.+["')\]]*$/.test(delim.trim()); // yalnız "." ile bitenlerde kısaltma kontrolü uygula, "?"/"!" hep böl
+    if(delim&&!(periodOnly&&abbr.test(trimmedEnd))){out.push(buf.trim());buf=""}
   }
   if(buf.trim())out.push(buf.trim());
   return out.map(function(x){return x.split(PROTECT).join(".")}).filter(Boolean)
