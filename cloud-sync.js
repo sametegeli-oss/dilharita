@@ -733,10 +733,10 @@
       tick(2,"Video kayıtları okunuyor (kütüphane büyükse uzun sürebilir)…");
       var videoRows;
       try{
-        videoRows=await withTimeout(fb.loadYoutubeStudiesRaw(user.uid),60000,"Video kayıtları okunamadı");
+        videoRows=await withTimeout(fb.loadYoutubeStudiesRaw(user.uid,function(n){tick(2,n+" video kaydı okundu…");}),60000,"Video kayıtları okunamadı");
       }catch(firstErr){
         tick(2,"Video kayıtları tekrar deneniyor…");
-        videoRows=await withTimeout(fb.loadYoutubeStudiesRaw(user.uid),60000,"Video kayıtları okunamadı (2. deneme)");
+        videoRows=await withTimeout(fb.loadYoutubeStudiesRaw(user.uid,function(n){tick(2,"(2. deneme) "+n+" video kaydı okundu…");}),60000,"Video kayıtları okunamadı (2. deneme)");
       }
       var remote=Object.assign({},mainSettings);
       videoRows.forEach(function(v){ remote[v.key]=v.payload; });
@@ -968,8 +968,46 @@
             return out;
           });
         },
-        loadYoutubeStudiesRaw:function(uid){
-          return fsMod.getDocs(fsMod.collection(db,"users",uid,"youtube_studies")).then(function(snap){var rows=[],parts={};snap.forEach(function(d){parts[d.id]=d.data()||{}});Object.keys(parts).forEach(function(id){var v=parts[id];if(!v.key)return;if(Array.isArray(v.parts)){v.payload=v.parts.map(function(p){if(!parts[p]||typeof parts[p].payload!=="string")throw new Error("YouTube bulut kaydı eksik: "+id);return parts[p].payload}).join("")}if(typeof v.payload==="string")rows.push(v)});return rows;});
+        loadYoutubeStudiesRaw:function(uid,onProgress){
+          /* TEK BÜYÜK SORGU YERİNE SAYFA SAYFA: 60+ video tek getDocs()
+             içinde istenince Firestore "datastore operation timed out"
+             ile sunucu tarafında pes edebiliyordu (mobilde gözlendi).
+             Küçük sayfalar hâlinde çekmek her isteği hafifletir; bir
+             sayfa başarısız olursa yalnızca o sayfa yeniden denenir. */
+          var colRef=fsMod.collection(db,"users",uid,"youtube_studies");
+          var PAGE=12, parts={}, fetched=0;
+          function fetchPageWithRetry(cursor,attempt){
+            var q=cursor
+              ? fsMod.query(colRef,fsMod.orderBy(fsMod.documentId()),fsMod.startAfter(cursor),fsMod.limit(PAGE))
+              : fsMod.query(colRef,fsMod.orderBy(fsMod.documentId()),fsMod.limit(PAGE));
+            return fsMod.getDocs(q).catch(function(err){
+              if(attempt>=2) throw err;
+              return new Promise(function(res){setTimeout(res,1200);}).then(function(){return fetchPageWithRetry(cursor,attempt+1);});
+            });
+          }
+          function loop(cursor){
+            return fetchPageWithRetry(cursor,0).then(function(snap){
+              snap.forEach(function(d){ parts[d.id]=d.data()||{}; });
+              fetched+=snap.size;
+              if(onProgress) try{ onProgress(fetched); }catch(e){}
+              if(snap.size<PAGE || snap.empty){
+                var rows=[];
+                Object.keys(parts).forEach(function(id){
+                  var v=parts[id]; if(!v.key) return;
+                  if(Array.isArray(v.parts)){
+                    v.payload=v.parts.map(function(p){
+                      if(!parts[p]||typeof parts[p].payload!=="string") throw new Error("YouTube bulut kaydı eksik: "+id);
+                      return parts[p].payload;
+                    }).join("");
+                  }
+                  if(typeof v.payload==="string") rows.push(v);
+                });
+                return rows;
+              }
+              return loop(snap.docs[snap.docs.length-1]);
+            });
+          }
+          return loop(null);
         },
         loadSettings:function(uid){
           // Geriye dönük uyumluluk: eski çağıranlar için ikisini birden döndürür.
