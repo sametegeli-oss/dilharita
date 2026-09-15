@@ -465,9 +465,41 @@
   }
 
   /* ── 6) TÜM YERELİ TOPLA (push yükü) ─────────────────────── */
+  function unionMap(a,b){var out={};a=a||{};b=b||{};for(var k in a)if(a.hasOwnProperty(k)&&a[k])out[k]=a[k];for(var k2 in b)if(b.hasOwnProperty(k2)&&b[k2])out[k2]=b[k2];return out}
+  function mergeShadowAttempts(a,b){a=a||{};b=b||{};var out={},keys={};for(var k in a)keys[k]=1;for(var k2 in b)keys[k2]=1;Object.keys(keys).forEach(function(k){var av=a[k],bv=b[k];if(av==null){out[k]=bv;return}if(bv==null){out[k]=av;return}out[k]=(Array.isArray(av)?av.length:0)>=(Array.isArray(bv)?bv.length:0)?av:bv});return out}
+  function mergeYoutubeUserState(a,b){
+    a=a||{};b=b||{};
+    return {
+      learned:unionMap(a.learned,b.learned),
+      hard:unionMap(a.hard,b.hard),
+      favorites:unionMap(a.favorites,b.favorites),
+      words:unionMap(a.words,b.words),
+      grammar:unionMap(a.grammar,b.grammar),
+      aiExplanations:Object.assign({},a.aiExplanations||{},b.aiExplanations||{}),
+      shadowAttempts:mergeShadowAttempts(a.shadowAttempts,b.shadowAttempts),
+      quizWrong:unionMap(a.quizWrong,b.quizWrong),
+      lastIndex:Math.max(+a.lastIndex||0,+b.lastIndex||0)
+    };
+  }
   async function youtubeRecords(incoming){
     var db=await new Promise(function(resolve,reject){var r=indexedDB.open("DilHaritaYouTube_DB",2);r.onupgradeneeded=function(){var d=r.result;if(!d.objectStoreNames.contains("studies")){var s=d.createObjectStore("studies",{keyPath:"videoId"});s.createIndex("updatedAt","updatedAt")}if(!d.objectStoreNames.contains("shadowAudio")){var a=d.createObjectStore("shadowAudio",{keyPath:"id"});a.createIndex("videoId","videoId");a.createIndex("updatedAt","updatedAt")}};r.onsuccess=function(){resolve(r.result)};r.onerror=function(){reject(r.error)};r.onblocked=function(){reject(new Error("YouTube kayıtları meşgul. Diğer sekmeleri kapatıp yeniden deneyin."))}});
-    try{return await new Promise(function(resolve,reject){var tx=db.transaction("studies",incoming?"readwrite":"readonly"),st=tx.objectStore("studies"),q=st.getAll(),rows=[];q.onsuccess=function(){rows=q.result||[];if(incoming){var map={};rows.forEach(function(r){map[r.videoId]=r});incoming.forEach(function(r){var old=map[r.videoId];if(!old||(+r.updatedAt||+r.savedAt||0)>(+old.updatedAt||+old.savedAt||0)){st.put(r);map[r.videoId]=r}});rows=Object.keys(map).map(function(k){return map[k]})}};tx.oncomplete=function(){resolve(rows)};tx.onerror=tx.onabort=function(){reject(tx.error||new Error("YouTube kitaplığı kaydedilemedi."))}})}finally{db.close()}
+    try{return await new Promise(function(resolve,reject){var tx=db.transaction("studies",incoming?"readwrite":"readonly"),st=tx.objectStore("studies"),q=st.getAll(),rows=[];q.onsuccess=function(){rows=q.result||[];if(incoming){var map={};rows.forEach(function(r){map[r.videoId]=r});incoming.forEach(function(r){
+      var old=map[r.videoId];
+      if(!old){st.put(r);map[r.videoId]=r;return}
+      /* TOPLA + BİRLEŞTİR: hangisi "yeni" diye tek tarafı seçip diğerini
+         atmak yerine, iki cihazın da öğrendim/zor/kelime/quiz gibi
+         ilerleme verilerini birleştirir (union); içerik (transkript,
+         çeviri, quiz soruları) için en güncel updatedAt'li taraf esas
+         alınır, ama ilerleme her durumda birleşir. */
+      var newer=(+r.updatedAt||+r.savedAt||0)>=(+old.updatedAt||+old.savedAt||0)?r:old;
+      var merged=JSON.parse(JSON.stringify(newer));
+      merged.study=merged.study||{};
+      merged.study.userState=mergeYoutubeUserState((old.study&&old.study.userState)||{},(r.study&&r.study.userState)||{});
+      merged.savedAt=Math.min(+old.savedAt||Date.now(),+r.savedAt||Date.now());
+      merged.updatedAt=Math.max(+old.updatedAt||0,+r.updatedAt||0);
+      merged.lastOpenedAt=Math.max(+old.lastOpenedAt||0,+r.lastOpenedAt||0);
+      st.put(merged);map[r.videoId]=merged;
+    });rows=Object.keys(map).map(function(k){return map[k]})}};tx.oncomplete=function(){resolve(rows)};tx.onerror=tx.onabort=function(){reject(tx.error||new Error("YouTube kitaplığı kaydedilemedi."))}})}finally{db.close()}
   }
   async function collectAll(){
     sanitizeTracker();
@@ -576,6 +608,16 @@
     if(__pushBusy){ __bekleyen=true; return { ok:false, error:"zaten yazılıyor (sıraya alındı)" }; }
     __pushBusy=true;
     try{
+      /* Silinmiş videoları bir kez buluttan da kaldır (aksi halde
+         diğer cihazlar bir sonraki senkronda videoyu geri diriltir). */
+      try{
+        var delMap={}; try{ delMap=JSON.parse(localStorage.getItem("dh-youtube-deleted-v1")||"{}")||{}; }catch(_e){}
+        var toPurge=[]; for(var dvid in delMap){ if(delMap.hasOwnProperty(dvid) && !delMap[dvid].cloudPurged) toPurge.push(dvid); }
+        if(toPurge.length && fb.deleteYoutubeStudy){
+          for(var pi=0;pi<toPurge.length;pi++){ await fb.deleteYoutubeStudy(user.uid,toPurge[pi]); delMap[toPurge[pi]].cloudPurged=true; }
+          localStorage.setItem("dh-youtube-deleted-v1", JSON.stringify(delMap));
+        }
+      }catch(_e){}
       var data=await collectAll();
       var g=shrinkToLimit(data.ls);
 
@@ -678,8 +720,23 @@
       var remoteAI=await fb.loadAIExplanations(user.uid).catch(function(){return [];});
       try{ await fb.purgeSecrets(user.uid); }catch(e){}
       var rd=parseRemote(remote);
+      /* SİLİNEN VİDEOLAR: iki cihazın "silindi" listesini birleştir (union,
+         üzerine yazma değil), sonra bu listedeki videoları buluttan gelen
+         kayıtlardan çıkar — aksi halde bir cihazda silinen video diğer
+         cihazda (veya aynı cihazda yeni senkronda) diriliyordu. */
+      var localDeleted={}; try{ localDeleted=JSON.parse(localStorage.getItem("dh-youtube-deleted-v1")||"{}")||{}; }catch(e){}
+      var remoteDeleted={}; if(rd.ls["dh-youtube-deleted-v1"]){ try{ remoteDeleted=JSON.parse(rd.ls["dh-youtube-deleted-v1"])||{}; }catch(e){} }
+      var mergedDeleted={}, allDelIds={};
+      Object.keys(localDeleted).forEach(function(id){allDelIds[id]=1});
+      Object.keys(remoteDeleted).forEach(function(id){allDelIds[id]=1});
+      Object.keys(allDelIds).forEach(function(id){
+        var a=localDeleted[id]||{}, b=remoteDeleted[id]||{};
+        mergedDeleted[id]={title:a.title||b.title||"Video",deletedAt:Math.min(a.deletedAt||Date.now(),b.deletedAt||Date.now()),cloudPurged:!!(a.cloudPurged||b.cloudPurged)};
+      });
+      try{ localStorage.setItem("dh-youtube-deleted-v1", JSON.stringify(mergedDeleted)); }catch(e){}
+      delete rd.ls["dh-youtube-deleted-v1"]; // aşağıdaki genel döngü üzerine yazmasın, zaten birleştirildi
       var incomingVideos=[];
-      Object.keys(rd.ls).forEach(function(k){if(k.indexOf("dh-immersive-youtube-study-")===0){var r=JSON.parse(rd.ls[k]);if(r&&r.study&&/^[\w-]{11}$/.test(r.videoId))incomingVideos.push(r);delete rd.ls[k]}});
+      Object.keys(rd.ls).forEach(function(k){if(k.indexOf("dh-immersive-youtube-study-")===0){var vid=k.slice("dh-immersive-youtube-study-".length);if(mergedDeleted[vid]){delete rd.ls[k];return}var r=JSON.parse(rd.ls[k]);if(r&&r.study&&/^[\w-]{11}$/.test(r.videoId))incomingVideos.push(r);delete rd.ls[k]}});
       await youtubeRecords(incomingVideos);
       // MODÜL ÇAKIŞMA YÖNÜ: bulut, bu cihazın son yazmasından YENİYSE bulut kazanır;
       // değilse (bu cihaz daha taze) yalnız yerelde OLMAYAN modül kayıtları alınır.
@@ -883,6 +940,22 @@
           var jobs=[];
           for(var start=0;start<records.length;start+=400){var batch=fsMod.writeBatch(db),part=records.slice(start,start+400);part.forEach(function(x){batch.set(fsMod.doc(db,"users",uid,"ai_explanations",docId(x.sentence)),{sentence:String(x.sentence),explanation:String(x.explanation||""),deleted:!!x.deleted,timestamp:x.timestamp||new Date().toISOString()});});jobs.push(batch.commit());}
           return Promise.all(jobs);
+        },
+        /* Video silindiğinde buluttaki belgesini (ve varsa bölünmüş
+           parçalarını) de kaldırır; aksi halde diğer cihazlar bir
+           sonraki senkronda videoyu buluttan geri çeker (diriltir). */
+        deleteYoutubeStudy:function(uid,videoId){
+          var ref=fsMod.doc(db,"users",uid,"youtube_studies",videoId);
+          return fsMod.getDoc(ref).then(function(snap){
+            var jobs=[fsMod.deleteDoc(ref).catch(function(){})];
+            if(snap.exists()){
+              var v=snap.data()||{};
+              if(Array.isArray(v.parts)){
+                v.parts.forEach(function(pid){ jobs.push(fsMod.deleteDoc(fsMod.doc(db,"users",uid,"youtube_studies",pid)).catch(function(){})); });
+              }
+            }
+            return Promise.all(jobs);
+          }).catch(function(){});
         },
         saveSettings:function(uid,data){
           // BÖL: ilerleme (smv:*, wsrs, ayna, günler) → progress/{uid}; kalan ayarlar → settings/{uid}.
