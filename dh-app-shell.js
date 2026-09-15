@@ -41,7 +41,7 @@
       var d=ev.detail||{};
       if(d.state==="syncing") show(d.migration?"Cihazdaki ilerlemen hesabına aktarılıyor…":"İlerlemen eşitleniyor…",false);
       else if(d.state==="success") show(d.migration?"İlerlemen hesabına güvenle aktarıldı":"İlerlemen güncel",false);
-      else if(d.state==="error") show("Eşitleme tamamlanamadı · cihazdaki verilerin korunuyor",true);
+      else if(d.state==="error") show((d.message?d.message:"Eşitleme tamamlanamadı")+" · cihazdaki verilerin korunuyor",true);
     });
   }
   function installA11y(){
