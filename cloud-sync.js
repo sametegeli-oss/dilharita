@@ -715,8 +715,11 @@
     try{
       var migration=false;
       try{ migration=!!localStorage.getItem("dh-account-migration-pending"); }catch(e){}
-      try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"syncing",migration:migration}})); }catch(e){}
+      var __syncTotal=7;
+      function tick(step,label){ try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"syncing",migration:migration,step:step,total:__syncTotal,label:label}})); }catch(e){} }
+      tick(1,"Ayarlar okunuyor…");
       var remote=await fb.loadSettings(user.uid);
+      tick(2,"AI açıklamaları okunuyor…");
       var remoteAI=await fb.loadAIExplanations(user.uid).catch(function(){return [];});
       try{ await fb.purgeSecrets(user.uid); }catch(e){}
       var rd=parseRemote(remote);
@@ -737,12 +740,14 @@
       delete rd.ls["dh-youtube-deleted-v1"]; // aşağıdaki genel döngü üzerine yazmasın, zaten birleştirildi
       var incomingVideos=[];
       Object.keys(rd.ls).forEach(function(k){if(k.indexOf("dh-immersive-youtube-study-")===0){var vid=k.slice("dh-immersive-youtube-study-".length);if(mergedDeleted[vid]){delete rd.ls[k];return}var r=JSON.parse(rd.ls[k]);if(r&&r.study&&/^[\w-]{11}$/.test(r.videoId))incomingVideos.push(r);delete rd.ls[k]}});
+      tick(3,incomingVideos.length?("Video ilerlemesi birleştiriliyor ("+incomingVideos.length+")…"):"Video ilerlemesi kontrol ediliyor…");
       await youtubeRecords(incomingVideos);
       // MODÜL ÇAKIŞMA YÖNÜ: bulut, bu cihazın son yazmasından YENİYSE bulut kazanır;
       // değilse (bu cihaz daha taze) yalnız yerelde OLMAYAN modül kayıtları alınır.
       var cloudNewer = ((remote&&remote.updated_at)||0) > (+localStorage.getItem("dh-last-push-ts")||0);
       var pulled=0, kvIncoming={};
 
+      tick(4,"Yerel veriler uygulanıyor…");
       for(var rk in rd.ls){
         if(!rd.ls.hasOwnProperty(rk)) continue;
         var rv=rd.ls[rk];
@@ -809,6 +814,7 @@
           if(have[hk]!==undefined) delete kvIncoming[hk];
         }
       }
+      tick(5,"Kelime ve ilerleme aynaları uygulanıyor…");
       await kvWriteAll(kvIncoming);                 // modül ilerlemesi → IndexedDB (React okur)
       var addedAI=await aiMergeRemote(remoteAI);    // AI açıklaması: en yeni kayıt/silme kazanır
       var addedErr=await errMerge(rd.errors||[]);   // hata defteri birleşir
@@ -816,7 +822,9 @@
       /* GERİ YAZ: bulut = birleşim. Burada FARK yazma kullanılmaz —
          birleştirme sonrası bulut ile cihazın aynı olduğundan emin olmak
          için tam gönderim yapılır ve imzalar sıfırdan kurulur. */
+      tick(6,"Buluta yazılıyor…");
       var pres=await pushNow(true);
+      tick(7,"Tamamlanıyor…");
 
       // teşhis sayacı
       var kvNow=await kvReadAll();

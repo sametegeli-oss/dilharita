@@ -152,6 +152,12 @@
       </div>
 
       <button class="dh-btn dh-btn--ikincil dh-btn--tam" id="dhCloudSyncBtn">Bulutla senkronize et</button>
+      <div class="dh-sync-progress-wrap" id="dhSyncProgressWrap" hidden style="margin-top:6px">
+        <div style="height:6px;border-radius:99px;background:var(--dh-cizgi,#2a3a4a);overflow:hidden">
+          <div id="dhSyncProgressBar" style="height:100%;width:0%;border-radius:99px;background:var(--dh-marka-metin,#55e6d1);transition:width .25s ease"></div>
+        </div>
+        <div class="dh-ipucu" id="dhSyncProgressLabel" style="margin-top:4px;min-height:14px"></div>
+      </div>
       <div class="dh-ipucu" id="dhCloudSyncMsg" style="min-height:16px" aria-live="polite"></div>
 
       <div class="satir">
@@ -203,13 +209,27 @@
      hata defterinin ham deposu ve Gemini kelime analizleri yedeğe hiç
      girmiyordu. -->
 <script src="./dh-yedek.js?v=2"></script>
-<script src="./cloud-sync.js?v=21"></script>
+<script src="./cloud-sync.js?v=22"></script>
 <script src="./notifications.js?v=1"></script>
 <script>
 /* ---- Bulutla senkronize et + Çıkış yap ---- */
 (function(){
   var btn=document.getElementById("dhCloudSyncBtn");
   var msg=document.getElementById("dhCloudSyncMsg");
+  var progWrap=document.getElementById("dhSyncProgressWrap");
+  var progBar=document.getElementById("dhSyncProgressBar");
+  var progLabel=document.getElementById("dhSyncProgressLabel");
+  window.addEventListener("dh-cloud-sync-state",function(ev){
+    var d=ev.detail||{};
+    if(d.state==="syncing"&&d.step&&d.total){
+      if(progWrap)progWrap.hidden=false;
+      if(progBar)progBar.style.width=Math.round((d.step/d.total)*100)+"%";
+      if(progLabel)progLabel.textContent=d.label?("("+d.step+"/"+d.total+") "+d.label):("Adım "+d.step+"/"+d.total);
+    } else if(d.state==="success"||d.state==="error"){
+      if(progBar)progBar.style.width="100%";
+      setTimeout(function(){ if(progWrap)progWrap.hidden=true; if(progBar)progBar.style.width="0%"; },700);
+    }
+  });
   if(!btn) return;
   btn.onclick=async function(){
     if(!(window.DHCloudSync && window.DHCloudSync.fullSync)){
@@ -218,6 +238,7 @@
     }
     var old=btn.textContent;
     btn.disabled=true; btn.textContent="⏳ Senkronize ediliyor...";
+    if(progWrap){progWrap.hidden=false;progBar.style.width="4%";progLabel.textContent="Başlıyor…"}
     if(msg) msg.textContent="";
     var u=window.DHCloudSync.user, rdy=window.DHCloudSync.ready;
     try{
