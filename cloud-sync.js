@@ -740,6 +740,7 @@
       }
       var remote=Object.assign({},mainSettings);
       videoRows.forEach(function(v){ remote[v.key]=v.payload; });
+      var corruptSkipped=videoRows.__skipped||[];
       tick(3,"AI açıklamaları okunuyor…");
       var remoteAI=await withTimeout(fb.loadAIExplanations(user.uid),15000,"AI açıklamaları okunamadı").catch(function(){return [];});
       try{ await fb.purgeSecrets(user.uid); }catch(e){}
@@ -855,6 +856,7 @@
       if(addedErr) parts.push(addedErr+" hata kaydı eklendi");
       if(addedProg) parts.push(addedProg+" yerel kayıt uygulandı");
       if(addedAI) parts.push(addedAI+" AI açıklaması birleştirildi");
+      if(corruptSkipped.length) parts.push(corruptSkipped.length+" video atlandı (bozuk kayıt: "+corruptSkipped.join(", ")+")");
       if(!parts.length) parts.push("her şey zaten güncel");
       var pmsg = pres&&pres.ok
         ? ("buluta yazıldı "+Math.round((pres.size||0)/1024)+"KB"+(pres.dropped?(" ("+pres.dropped+" büyük kayıt atlandı)"):""))
@@ -991,17 +993,22 @@
               fetched+=snap.size;
               if(onProgress) try{ onProgress(fetched); }catch(e){}
               if(snap.size<PAGE || snap.empty){
-                var rows=[];
+                var rows=[], skipped=[];
                 Object.keys(parts).forEach(function(id){
                   var v=parts[id]; if(!v.key) return;
                   if(Array.isArray(v.parts)){
-                    v.payload=v.parts.map(function(p){
-                      if(!parts[p]||typeof parts[p].payload!=="string") throw new Error("YouTube bulut kaydı eksik: "+id);
-                      return parts[p].payload;
-                    }).join("");
+                    var ok=true, joined="";
+                    for(var i=0;i<v.parts.length;i++){
+                      var p=v.parts[i];
+                      if(!parts[p]||typeof parts[p].payload!=="string"){ ok=false; break; }
+                      joined+=parts[p].payload;
+                    }
+                    if(!ok){ skipped.push(id); console.warn("[cloud-sync] bozuk YouTube kaydı atlandı (parça eksik): "+id); return; }
+                    v.payload=joined;
                   }
                   if(typeof v.payload==="string") rows.push(v);
                 });
+                if(skipped.length) rows.__skipped=skipped;
                 return rows;
               }
               return loop(snap.docs[snap.docs.length-1]);
