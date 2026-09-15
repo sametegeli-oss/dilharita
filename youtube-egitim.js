@@ -449,6 +449,81 @@ function closeSplitModal(){clearInterval(splitPreviewTimer);splitPreviewTimer=nu
 function useCurrentSplitTime(){if(!study||splitDraft.index<0)return;var now=0;try{now=+player.getCurrentTime()||0}catch(e){}var bounds=splitTimeBounds();if(now<bounds.min||now>bounds.max){$("splitStatus").textContent="Video zamanı seçili cümlenin başlangıç ve bitiş aralığında olmalıdır.";return}splitDraft.time=Math.round(now*100)/100;updateSplitModal()}
 function nudgeSplitTime(delta){if(splitDraft.time==null)return;var bounds=splitTimeBounds();splitDraft.time=Math.max(bounds.min,Math.min(bounds.max,Math.round((splitDraft.time+delta)*100)/100));updateSplitModal()}
 function previewSplitRange(which){var x=study&&study.segments[splitDraft.index];if(!x||splitDraft.time==null)return;clearInterval(splitPreviewTimer);var start=which===1?(+x.startSeconds||0):splitDraft.time,end=which===1?splitDraft.time:(+x.endSeconds||splitDraft.time+.2);seek(start,true);splitPreviewTimer=setInterval(function(){var now=0;try{now=+player.getCurrentTime()||0}catch(e){}if(now>=end-.04){clearInterval(splitPreviewTimer);splitPreviewTimer=null;try{player.pauseVideo()}catch(e){}}},80)}
+/* ---- Uzun cumleleri noktadan otomatik bolme ---- */
+function numberWordCount(digits){
+  var s=String(digits||"").replace(/[^\d]/g,"");
+  if(!s)return 1;
+  var n=parseInt(s,10);
+  if(isNaN(n))return Math.max(1,Math.ceil(s.length/2));
+  function under100(x){if(x<20)return 1;return x%10===0?1:2}
+  function under1000(x){var w=0;if(x>=100){w+=2;x%=100;if(x)w+=under100(x);return w}return under100(x)}
+  if(n<1000)return under1000(n);
+  if(n<1000000){var th=Math.floor(n/1000),rest=n%1000;return under1000(th)+1+(rest?under1000(rest):0)}
+  return Math.max(2,Math.ceil(s.length/2))
+}
+function spokenWeight(text){
+  var tokens=String(text||"").trim().split(/\s+/).filter(Boolean),total=0;
+  tokens.forEach(function(tok){var d=tok.replace(/[^\d]/g,"");total+=(d&&/\d/.test(tok))?numberWordCount(d):1});
+  return total||1
+}
+function splitSentencesRough(text){
+  var abbr=/\b(mr|mrs|ms|dr|prof|sr|jr|st|vs|etc|e\.g|i\.e)\.$/i,PROTECT="\u0000",s=String(text||"");
+  var protectedText=s.replace(/(\d)\.(\d)/g,function(m,a,b){return a+PROTECT+b});
+  var tokens=protectedText.split(/([.!?]+(?:["')\]]*)\s+)/),out=[],buf="";
+  for(var i=0;i<tokens.length;i+=2){
+    buf+=tokens[i]+(tokens[i+1]||"");
+    var trimmedEnd=(tokens[i]||"").trim();
+    if(tokens[i+1]&&!abbr.test(trimmedEnd)){out.push(buf.trim());buf=""}
+  }
+  if(buf.trim())out.push(buf.trim());
+  return out.map(function(x){return x.split(PROTECT).join(".")}).filter(Boolean)
+}
+function splitTextProportional(text,ratios){
+  var words=String(text||"").trim().split(/\s+/).filter(Boolean);
+  if(!words.length)return ratios.map(function(){return ""});
+  var weights=words.map(function(w){var d=w.replace(/[^\d]/g,"");return(d&&/\d/.test(w))?numberWordCount(d):1});
+  var total=weights.reduce(function(a,b){return a+b},0)||1,cutsAt=[],acc=0;
+  for(var i=0;i<ratios.length-1;i++){acc+=ratios[i];cutsAt.push(acc)}
+  var out=[],wi=0,cum=0;
+  for(var ci=0;ci<cutsAt.length;ci++){
+    var target=cutsAt[ci]*total,segWords=[];
+    while(wi<words.length&&cum<target){segWords.push(words[wi]);cum+=weights[wi];wi++}
+    out.push(segWords.join(" "))
+  }
+  out.push(words.slice(wi).join(" "));
+  return out
+}
+async function autoSplitLongSegments(){
+  if(!study||!study.segments||!study.segments.length)return;
+  var newSegments=[],splitCount=0;
+  study.segments.forEach(function(x){
+    var enSentences=splitSentencesRough(x.transcriptEN);
+    if(enSentences.length<2){newSegments.push(x);return}
+    var enWeights=enSentences.map(spokenWeight),totalW=enWeights.reduce(function(a,b){return a+b},0)||1;
+    var ratios=enWeights.map(function(w){return w/totalW});
+    var trSentences=splitSentencesRough(x.translationTR);
+    if(trSentences.length!==enSentences.length)trSentences=splitTextProportional(x.translationTR,ratios);
+    var start=+x.startSeconds||0,end=+x.endSeconds||start+2,span=Math.max(.4,end-start),cursor=start;
+    enSentences.forEach(function(enText,i){
+      var dur=span*ratios[i],segStart=cursor,segEnd=(i===enSentences.length-1)?end:cursor+dur;
+      cursor=segEnd;
+      var seg=Object.assign({},x,{transcriptEN:enText,translationTR:trSentences[i]||"",startSeconds:segStart,endSeconds:segEnd,timingVerified:false,timingConfidence:.4,captionAligned:false,sentenceKey:splitStateKey(segStart,enText)});
+      seg.sourceText=isReverse()?seg.translationTR:seg.transcriptEN;
+      seg.targetText=isReverse()?seg.transcriptEN:seg.translationTR;
+      seg.guideDurationSeconds=englishGuideDuration(seg);
+      newSegments.push(seg)
+    });
+    splitCount++
+  });
+  if(!splitCount){setStatus("Bolunecek uzun cumle bulunamadi.","ok");return}
+  study.segments=newSegments;
+  study.source=study.source||{};
+  study.source.autoSplitCount=(+study.source.autoSplitCount||0)+splitCount;
+  active=0;
+  renderTranscript();setActive(0,false);renderWordbook();renderProgress();
+  setStatus(splitCount+" uzun cumle noktadan bolundu. Zamanlar tahmini (kelime/sayi agirligina gore); istersen tek tek dinleyip kesinlestirebilirsin.","ok");
+  await saveNow();await backupYouTubeNow()
+}
 function splitStateKey(start,text){return"split|"+Math.round(start*1000)+"|"+String(text||"").toLowerCase().replace(/[^a-z0-9çğıöşü']+/g," ").trim()}
 async function saveSentenceSplit(){var idx=splitDraft.index,x=study&&study.segments[idx];if(!x||splitDraft.time==null)return;var bounds=splitTimeBounds(),at=Math.max(bounds.min,Math.min(bounds.max,+splitDraft.time)),en=splitParts(x.transcriptEN,splitDraft.enPos),tr=splitParts(x.translationTR,splitDraft.trPos);if(!en[0]||!en[1]||!tr[0]||!tr[1])return;var original=JSON.parse(JSON.stringify(x)),oldKey=keyOf(x),stateBefore=JSON.parse(JSON.stringify(state())),first=Object.assign({},x,{transcriptEN:en[0],translationTR:tr[0],endSeconds:at,sentenceKey:splitStateKey(+x.startSeconds||0,en[0]),timingVerified:true,timingConfidence:1,captionAligned:true}),second=Object.assign({},x,{transcriptEN:en[1],translationTR:tr[1],startSeconds:at,endSeconds:+x.endSeconds||at+.2,sentenceKey:splitStateKey(at,en[1]),timingVerified:true,timingConfidence:1,captionAligned:true});first.sourceText=isReverse()?first.translationTR:first.transcriptEN;first.targetText=isReverse()?first.transcriptEN:first.translationTR;second.sourceText=isReverse()?second.translationTR:second.transcriptEN;second.targetText=isReverse()?second.transcriptEN:second.translationTR;first.guideDurationSeconds=englishGuideDuration(first);second.guideDurationSeconds=englishGuideDuration(second);lastSplitUndo={videoId:videoId,index:idx,original:original,userState:stateBefore};lastMergeUndo=null;var s=state(),k1=keyOf(first),k2=keyOf(second);["learned","hard","favorites"].forEach(function(name){var value=s[name][oldKey];delete s[name][oldKey];if(value){s[name][k1]=value;s[name][k2]=value}});Object.keys(s.words||{}).forEach(function(word){var w=s.words[word];if(+w.index>idx)w.index=+w.index+1;else if(+w.index===idx){var inFirst=first.transcriptEN.toLowerCase().indexOf(word.toLowerCase())>=0,wseg=inFirst?first:second;w.index=inFirst?idx:idx+1;w.startSeconds=wseg.startSeconds;w.sentenceEN=wseg.transcriptEN;w.sentenceTR=wseg.translationTR}});study.segments.splice(idx,1,first,second);study.source=study.source||{};study.source.manualSplitCount=(+study.source.manualSplitCount||0)+1;active=idx;ownVoiceRecords[oldKey]&&delete ownVoiceRecords[oldKey];closeSplitModal();renderTranscript();setActive(idx,false);renderWordbook();renderProgress();$("undoMerge").hidden=true;$("undoSplit").hidden=false;await saveNow();await backupYouTubeNow()}
 async function undoSentenceSplit(){if(!lastSplitUndo||!study||lastSplitUndo.videoId!==videoId)return;var u=lastSplitUndo;if(!study.segments[u.index]||!study.segments[u.index+1])return;study.segments.splice(u.index,2,JSON.parse(JSON.stringify(u.original)));study.userState=JSON.parse(JSON.stringify(u.userState));study.source.manualSplitCount=Math.max(0,(+study.source.manualSplitCount||1)-1);active=u.index;lastSplitUndo=null;$("undoSplit").hidden=true;renderTranscript();setActive(active,false);renderWordbook();renderProgress();await saveNow();await backupYouTubeNow()}
@@ -799,7 +874,7 @@ async function explainAllWorkflow(){if(!study)return;var rows=explanationRows(st
  $("closeAudioLab").onclick=closeAudioLab;
  $("videoForm").onsubmit=function(e){e.preventDefault();openOrAnalyze($("videoUrl").value)};$("openLibrary").onclick=openLibrary;$("showAllLibrary").onclick=openLibrary;$("closeLibrary").onclick=closeLibrary;$("libraryDrawer").onclick=function(e){if(e.target===$("libraryDrawer"))closeLibrary()};$("closeStudy").onclick=showHome;$("playToggle").onclick=playPause;$("prevSentence").onclick=function(){if(active>0){setActive(active-1,true);if(loopOn)setLoop(true);else seek(study.segments[active].startSeconds,true)}};$("nextSentence").onclick=function(){if(study&&active<study.segments.length-1){setActive(active+1,true);if(loopOn)setLoop(true);else seek(study.segments[active].startSeconds,true)}};$("loopToggle").onclick=function(){setLoop(!loopOn)};$("speedToggle").onclick=function(){var rates=[.5,.75,1,1.25,1.5],cur=1;try{cur=player.getPlaybackRate()}catch(e){}var next=rates[(rates.indexOf(cur)+1)%rates.length];try{player.setPlaybackRate(next)}catch(e){}this.textContent=next+"×"};$("captionToggle").onclick=function(){captionOn=!captionOn;this.classList.toggle("is-active",captionOn);this.setAttribute("aria-pressed",String(captionOn));$("captionLayer").hidden=!captionOn;if(captionOn)setActive(active,false)};$("soundToggle").onclick=function(){if(studyMode==="shadow"||ownVoiceOn||guideVoiceOn)return;muted=!muted;try{muted?player.mute():player.unMute()}catch(e){}this.textContent=muted?"🔇":"🔊"};$("timelineThumb").parentNode.onclick=function(e){if(!player)return;var r=this.getBoundingClientRect(),pct=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),dur=0;try{dur=player.getDuration()}catch(x){}seek(dur*pct,true)};$("scrollActive").onclick=function(){var r=document.querySelector(".yt-segment.is-active");if(r)r.scrollIntoView({block:"center",behavior:"smooth"})};$("toggleEN").onclick=function(){showEN=!showEN;this.classList.toggle("is-active",showEN);this.setAttribute("aria-pressed",String(showEN));document.querySelector(".yt-transcript-panel").classList.toggle("hide-en",!showEN);setActive(active,false)};$("toggleTR").onclick=function(){showTR=!showTR;this.classList.toggle("is-active",showTR);this.setAttribute("aria-pressed",String(showTR));document.querySelector(".yt-transcript-panel").classList.toggle("hide-tr",!showTR);setActive(active,false)};$("transcriptSearch").oninput=function(){searchText=this.value;renderTranscript()};Array.prototype.forEach.call(document.querySelectorAll("[data-panel]"),function(b){b.onclick=function(){switchPanel(b.getAttribute("data-panel"))}});$("favoriteSentence").onclick=function(){toggleMark("favorites")};$("markLearned").onclick=function(){var x=study.segments[active];toggleMark("learned");if(x&&state().learned[keyOf(x)])videoSrsGrade(x,"easy")};$("markHard").onclick=markHard;$("syncSentence").onclick=syncSentenceToCurrent;$("editSentence").onclick=editOpen;$("askGemini").onclick=askOpen;Array.prototype.forEach.call(document.querySelectorAll("[data-close-modal]"),function(b){b.onclick=editClose});Array.prototype.forEach.call(document.querySelectorAll("[data-close-ai]"),function(b){b.onclick=function(){$("aiModal").hidden=true}});$("editModal").onclick=function(e){if(e.target===this)editClose()};$("aiModal").onclick=function(e){if(e.target===this)this.hidden=true};$("editForm").onsubmit=function(e){e.preventDefault();var x=study.segments[active],old=keyOf(x);x.transcriptEN=$("editEN").value.trim();x.translationTR=$("editTR").value.trim();x.startSeconds=Math.max(0,+$("editStart").value||0);x.endSeconds=Math.max(x.startSeconds+.2,+$("editEnd").value||x.startSeconds+.2);var s=state(),fresh=keyOf(x);["learned","hard","favorites"].forEach(function(k){if(s[k][old]){s[k][fresh]=s[k][old];delete s[k][old]}});normalizeStudyTimelines();active=study.segments.indexOf(x);renderTranscript();setActive(active,false);editClose();scheduleSave()};$("focusMode").onclick=toggleVideoFullscreen;$("fullscreenToggle").onclick=toggleVideoFullscreen;$("originalAudioMode").onclick=function(){setAudioSource("original")};$("guideAudioMode").onclick=function(){setAudioSource("guide")};$("ownAudioMode").onclick=function(){setAudioSource("own")};
  bindTimelineAligner();
- $("splitSentence").onclick=openSplitModal;$("mergeNextSentence").onclick=openMergeModal;$("undoSplit").onclick=undoSentenceSplit;$("undoMerge").onclick=undoSentenceMerge;Array.prototype.forEach.call(document.querySelectorAll("[data-close-split]"),function(b){b.onclick=closeSplitModal});Array.prototype.forEach.call(document.querySelectorAll("[data-close-merge]"),function(b){b.onclick=closeMergeModal});$("splitModal").onclick=function(e){if(e.target===this)closeSplitModal()};$("mergeModal").onclick=function(e){if(e.target===this)closeMergeModal()};$("mergeForm").onsubmit=function(e){e.preventDefault();mergeNextSentence()};$("splitForm").onsubmit=function(e){e.preventDefault();saveSentenceSplit()};$("splitPlaySource").onclick=function(){var x=study&&study.segments[splitDraft.index];if(x)seek(+x.startSeconds||0,true)};$("splitUseCurrent").onclick=useCurrentSplitTime;$("splitTimeBack").onclick=function(){nudgeSplitTime(-.1)};$("splitTimeForward").onclick=function(){nudgeSplitTime(.1)};$("splitListenFirst").onclick=function(){previewSplitRange(1)};$("splitListenSecond").onclick=function(){previewSplitRange(2)};
+ $("splitSentence").onclick=openSplitModal;$("mergeNextSentence").onclick=openMergeModal;$("undoSplit").onclick=undoSentenceSplit;$("undoMerge").onclick=undoSentenceMerge;Array.prototype.forEach.call(document.querySelectorAll("[data-close-split]"),function(b){b.onclick=closeSplitModal});Array.prototype.forEach.call(document.querySelectorAll("[data-close-merge]"),function(b){b.onclick=closeMergeModal});$("splitModal").onclick=function(e){if(e.target===this)closeSplitModal()};$("mergeModal").onclick=function(e){if(e.target===this)closeMergeModal()};$("mergeForm").onsubmit=function(e){e.preventDefault();mergeNextSentence()};$("splitForm").onsubmit=function(e){e.preventDefault();saveSentenceSplit()};$("splitPlaySource").onclick=function(){var x=study&&study.segments[splitDraft.index];if(x)seek(+x.startSeconds||0,true)};$("splitUseCurrent").onclick=useCurrentSplitTime;$("splitTimeBack").onclick=function(){nudgeSplitTime(-.1)};$("splitTimeForward").onclick=function(){nudgeSplitTime(.1)};$("splitListenFirst").onclick=function(){previewSplitRange(1)};$("splitListenSecond").onclick=function(){previewSplitRange(2)};$("autoSplitAll").onclick=function(){if(confirm("Birden çok cümle içeren tüm uzun satırlar noktadan bölünecek. Zamanlar tahmini olacak. Devam edilsin mi?"))autoSplitLongSegments()};
  $("scrollActive").onclick=function(){var row=document.querySelector(".yt-segment.is-active");if(row)scrollTranscriptRow(row,true)};
  document.addEventListener("click",function(e){if(!e.target||e.target.id!=="ttsTest"||!ttsFallback)return;var index=nextTtsSegment(ttsCurrent);if(index>=0){muted=false;speakFallbackSegment(index,true)}});
  global.addEventListener("online",syncBadge);global.addEventListener("offline",syncBadge);global.addEventListener("dh-cloud-synced",syncBadge);document.addEventListener("keydown",function(e){if(e.target&&/input|textarea|select/i.test(e.target.tagName))return;if(e.code==="Space"){e.preventDefault();playPause()}else if(e.key==="ArrowLeft")$("prevSentence").click();else if(e.key==="ArrowRight")$("nextSentence").click();else if(e.key.toLowerCase()==="l")$("loopToggle").click();else if(e.key.toLowerCase()==="a")$("autoPauseToggle").click();else if(e.key.toLowerCase()==="s")setStudyMode("shadow");else if(e.key.toLowerCase()==="d")setStudyMode("dictation")})
