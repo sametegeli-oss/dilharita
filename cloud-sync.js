@@ -920,7 +920,16 @@
         app=(existing&&existing.length)?existing[0]:appMod.initializeApp(firebaseConfig);
       }catch(e){ app=appMod.initializeApp(firebaseConfig); }
       var auth=authMod.getAuth(app);
-      var db=fsMod.getFirestore(app);
+      /* Bazı mobil operatör/wifi ağları Firestore'un varsayılan akış
+         (WebChannel/gRPC) bağlantısını engelliyor veya bozuyor; istekler
+         hiç yanıt almadan askıda kalıyor (özellikle mobilde, masaüstünde
+         sorun yok). Daha uyumlu "long polling" moduna zorlamak bunu çözer. */
+      var db;
+      try{
+        db=fsMod.initializeFirestore(app,{experimentalAutoDetectLongPolling:true});
+      }catch(e){
+        db=fsMod.getFirestore(app); // zaten başlatılmışsa (örn. sayfa yeniden çalıştı) düşer
+      }
       try{
         if(authMod.setPersistence&&authMod.browserLocalPersistence)
           authMod.setPersistence(auth, authMod.browserLocalPersistence);
