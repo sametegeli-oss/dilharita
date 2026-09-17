@@ -873,13 +873,13 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
 }
 async function pdfExportSubmit(e){e.preventDefault();var startLine=+$("pdfExportStart").value||1,endLine=+$("pdfExportEnd").value||1,includeExplain=$("pdfExportExplain").checked;if(startLine<1||endLine<startLine||endLine>study.segments.length){setStatus("Geçerli bir satır aralığı girin.","error");return}
  var btn=$("pdfExportStart2");btn.disabled=true;$("pdfExportProgressLabel").textContent="Tam ekrana geçiliyor…";
- var layer=$("captionLayer"),wasCaptionHidden=layer.hidden,wasOverlayHidden=layer.classList.contains("is-overlay-hidden"),wasFullscreen=isVideoFullscreen();
+ var layer=$("captionLayer"),wasOverlayHidden=layer.classList.contains("is-overlay-hidden"),wasFullscreen=isVideoFullscreen();
  try{
   $("pdfExportModal").hidden=true;
   $("pdfExportProgressLabel").textContent="Ekran paylaşımı isteniyor…";
   var capture=await startPdfCaptureStream(); // izin diyaloğu tam ekranı otomatik kapatır; bu yüzden önce izin, sonra tam ekran
   if(!wasFullscreen)enterVideoFullscreen();
-  layer.hidden=true;
+  layer.classList.add("is-overlay-hidden"); // updateTimingUi() her setActive()'de .hidden'ı geri açıyor; bu sınıf ondan etkilenmiyor
   await new Promise(function(r){setTimeout(r,500)});
   setStatus("PDF hazırlanıyor, video sarılırken pencereyi değiştirmeyin…","loading");
   await runPdfExport(startLine,endLine,includeExplain,capture);
@@ -887,7 +887,7 @@ async function pdfExportSubmit(e){e.preventDefault();var startLine=+$("pdfExport
   setStatus("PDF hazır ve indirildi.","ok");
  }catch(err){setStatus("PDF oluşturulamadı: "+(err&&err.message||"bilinmeyen hata"),"error")}
  finally{
-  layer.hidden=wasCaptionHidden;if(wasOverlayHidden)layer.classList.add("is-overlay-hidden");
+  if(!wasOverlayHidden)layer.classList.remove("is-overlay-hidden");
   if(!wasFullscreen)exitVideoFullscreen();
   btn.disabled=false;
  }
