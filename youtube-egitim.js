@@ -1,7 +1,7 @@
 /* youtube-egitim.js — Trancy esinli, Dil Harita'ya özgü aktif YouTube çalışma ekranı. */
 (function(global){
 "use strict";
-var studyApi=null,study=null,record=null,videoId="",videoUrl="",player=null,playerVideoId="",playerReady=null,ytApiReady=null,tick=null,active=-1,loopOn=false,loopIndex=-1,seekNonce=0,showEN=true,showTR=true,captionOn=true,muted=false,searchText="",saving=null,recognition=null,shadowTimer=null,studyMode="watch",autoPause=false,karaokeOn=true,autoPausedIndex=-1,selectedWord="",mediaRecorder=null,mediaStream=null,recordedChunks=[],recordedAudioUrl="",recordedAudioBlob=null,shadowStartedAt=0,shadowPlaybackAudio=null,shadowSyncTimer=null,shadowSyncOn=false,ownVoiceOn=false,ownVoiceRecords={},ownVoiceAudio=null,ownVoiceUrl="",ownVoiceKey="",ownVoiceLastTime=-1,guideVoiceOn=false,guideVoiceKey="",guideVoiceLastTime=-1,guideUtterance=null,guideLastStartedAt=0,guideLastStartedKey="",turkishVoiceOn=false,turkishVoiceKey="",turkishVoiceLastTime=-1,turkishUtterance=null,turkishLastStartedAt=0,micAudioContext=null,micSource=null,micAnalyser=null,micMeterFrame=0,micMeterData=null,shadowSignalTimer=null,shadowEndTimer=null,shadowDurationTimer=null,shadowStopHandler=null,shadowTargetSeconds=0,ttsFallback=false,ttsClock=null,ttsCurrent=0,ttsDuration=0,ttsPlaying=false,ttsLastSegment=-1,ttsUtterance=null;
+var studyApi=null,study=null,record=null,videoId="",videoUrl="",player=null,playerVideoId="",playerReady=null,ytApiReady=null,tick=null,active=-1,loopOn=false,loopIndex=-1,seekNonce=0,showEN=true,showTR=true,captionOn=true,muted=false,searchText="",saving=null,recognition=null,shadowTimer=null,studyMode="watch",autoPause=false,karaokeOn=true,autoPausedIndex=-1,selectedWord="",mediaRecorder=null,mediaStream=null,recordedChunks=[],recordedAudioUrl="",recordedAudioBlob=null,shadowStartedAt=0,shadowPlaybackAudio=null,shadowSyncTimer=null,shadowSyncOn=false,ownVoiceOn=false,ownVoiceRecords={},ownVoiceAudio=null,ownVoiceUrl="",ownVoiceKey="",ownVoiceLastTime=-1,guideVoiceOn=false,guideVoiceKey="",guideVoiceLastTime=-1,guideUtterance=null,guideLastStartedAt=0,guideLastStartedKey="",turkishVoiceOn=false,turkishVoiceKey="",turkishVoiceLastTime=-1,turkishUtterance=null,turkishLastStartedAt=0,micAudioContext=null,micSource=null,micAnalyser=null,micMeterFrame=0,micMeterData=null,shadowSignalTimer=null,shadowEndTimer=null,shadowDurationTimer=null,shadowStopHandler=null,shadowTargetSeconds=0,ttsFallback=false,ttsClock=null,ttsCurrent=0,ttsDuration=0,ttsPlaying=false,ttsLastSegment=-1,ttsUtterance=null,jsPdfLoading=null;
 var sentenceYgWidget=null,sentenceYgLoading=false,sentenceYgPending="",sentenceYgTotal=0,sentenceYgIndex=0;
 var alignDraft={index:-1,start:0,end:0,dirty:false,origStart:0,origEnd:0};
 var splitDraft={index:-1,enPos:0,trPos:0,time:null},lastSplitUndo=null,lastMergeUndo=null,splitPreviewTimer=null;
@@ -840,7 +840,52 @@ function explanationBatchPrompt(rows,videoTitle,level){return "Sen Dil Harita’
 function parseExplanationBatchReply(raw,rows){var parsed=studyApi.parseJsonReply(raw),list=parsed&&Array.isArray(parsed.explanations)?parsed.explanations:null;if(!list)throw new Error("Gemini cevabında explanations dizisi bulunamadı.");var byNorm={};rows.forEach(function(r){byNorm[normalizeExplanationId(r.id)]=r});var applied=0;list.forEach(function(item){var rawId=String(item&&item.id||""),text=String(item&&item.text||"").trim(),row=byNorm[normalizeExplanationId(rawId)];if(!row||!text)return;var seg=study.segments[row.index];if(!seg)return;var key=keyOf(seg);state().aiExplanations[key]=text;sharedExplanationSave(seg.transcriptEN,text);applied++});if(!applied)throw new Error("Hiçbir cümle eşleşmedi; JSON içindeki id'leri kontrol edin.");return{applied:applied,total:rows.length}}
 async function explainAllWorkflow(){if(!study)return;var rows=explanationRows(study);if(!rows.length){setStatus("Tüm cümlelerin açıklaması zaten kayıtlı.","ok");return}if(!global.DHGemini||!DHGemini.ask){setStatus("Gemini kopyala-yapıştır köprüsü yüklenmedi.","error");return}DHGemini.ask({title:"Tüm cümle açıklamaları · "+rows.length+" cümle kaldı",providerName:"Gemini",openUrl:DHGemini.url,prompt:explanationBatchPrompt(rows,study.title,study.level),hint:"Gemini cevabı birkaç mesaja bölerse hepsini toplayıp (istersen Claude'a verip birleştirterek) TEK bir JSON hâlinde buraya yapıştırın. Kısmi yapıştırsanız da uygulanan kısmı kaydeder; kalanlar için düğmeye tekrar basabilirsiniz.",resume:{type:"youtube-explanation-all",videoId:videoId},parse:function(t){return parseExplanationBatchReply(String(t||"").replace(/^\s*DH-ID:[^\n]*\n/i,"").trim(),rows)},onResult:function(r){updateExplanationButton();scheduleSave();backupYouTubeNow();var remain=explanationRows(study).length;setStatus(r.applied+"/"+r.total+" cümle açıklaması kaydedildi."+(remain?" "+remain+" cümle kaldı; “Tümünü açıkla”ya tekrar basın.":" Hepsi tamamlandı."),"ok")},onCancel:function(){}})}
   $("explainSentenceGemini").onclick=function(){openSentenceExplanation(false)};
+function loadJsPdf(){if(global.jspdf&&global.jspdf.jsPDF)return Promise.resolve(global.jspdf.jsPDF);if(!jsPdfLoading)jsPdfLoading=new Promise(function(resolve,reject){var s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";s.onload=function(){resolve(global.jspdf.jsPDF)};s.onerror=function(){reject(new Error("PDF kütüphanesi yüklenemedi."))};document.head.appendChild(s)});return jsPdfLoading}
+function stripExplanationTags(raw){return String(raw||"").replace(/\[([^\[\]]+)\]/g,"$1").replace(/^\s*(ANLAM|YAPI VE KALIPLAR|HANGİ DURUMDA DOĞAL|DAHA SADE NASIL SÖYLERİM|HANGİSİNİ KULLANMALIYIM|BENZER ÖRNEKLER|KISA KONUŞMA|TELAFFUZ|YAYGIN HATALAR|SIRA SENDE|ÖRNEK CEVAP)\s*$/gim,"").replace(/\n{2,}/g,"\n").trim()}
+async function startPdfCaptureStream(){var s=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:"browser"},audio:false});var v=document.createElement("video");v.muted=true;v.srcObject=s;await v.play();return{stream:s,el:v}}
+function capturePlayerFrame(capture){var v=capture.el,track=capture.stream.getVideoTracks()[0],settings=track.getSettings()||{},sw=settings.width||v.videoWidth,sh=settings.height||v.videoHeight,scaleX=sw/global.innerWidth,scaleY=sh/global.innerHeight,box=$("ytPlayer").getBoundingClientRect(),c=document.createElement("canvas");c.width=320;c.height=180;var ctx=c.getContext("2d");try{ctx.drawImage(v,box.left*scaleX,box.top*scaleY,box.width*scaleX,box.height*scaleY,0,0,320,180)}catch(e){}return c.toDataURL("image/jpeg",.72)}
+async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFCtor=await loadJsPdf(),doc=new JsPDFCtor({unit:"pt",format:"a4"}),pageW=doc.internal.pageSize.getWidth(),pageH=doc.internal.pageSize.getHeight(),margin=36,y=margin,imgW=110,imgH=62,gap=12;
+ function ensureSpace(h){if(y+h>pageH-margin){doc.addPage();y=margin}}
+ for(var i=startLine-1;i<=endLine-1&&i<study.segments.length;i++){
+  var x=study.segments[i];if(!x)continue;
+  $("pdfExportProgressLabel").textContent=(i-startLine+2)+"/"+(endLine-startLine+1)+" cümle işleniyor…";
+  try{player.seekTo(+x.startSeconds||0,true);player.pauseVideo()}catch(e){}
+  await new Promise(function(r){setTimeout(r,650)});
+  var img=capturePlayerFrame(capture);
+  var en=String(x.transcriptEN||""),tr=String(x.translationTR||""),textW=pageW-margin*2-imgW-gap;
+  var enLines=doc.splitTextToSize(en,textW),trLines=doc.splitTextToSize(tr,textW);
+  var textH=enLines.length*13+trLines.length*12+8,blockH=Math.max(textH,imgH)+18;
+  var expText="",expLines=[];
+  if(includeExplain){var key=keyOf(x),raw=state().aiExplanations&&state().aiExplanations[key];if(raw){expText=stripExplanationTags(raw);expLines=doc.splitTextToSize(expText,pageW-margin*2-16)}}
+  var expH=expLines.length?expLines.length*11+22:0;
+  ensureSpace(blockH+expH+10);
+  doc.setFontSize(9);doc.setTextColor(140,150,165);doc.text("Cümle "+(i+1)+" · "+time(+x.startSeconds||0),margin,y);y+=12;
+  var textX=margin,imgX=pageW-margin-imgW;
+  try{doc.addImage(img,"JPEG",imgX,y,imgW,imgH)}catch(e){}
+  doc.setFontSize(11);doc.setTextColor(20,24,30);doc.setFont(undefined,"bold");doc.text(enLines,textX,y+11);
+  doc.setFont(undefined,"normal");doc.setFontSize(10.5);doc.setTextColor(70,80,95);doc.text(trLines,textX,y+11+enLines.length*13+8);
+  y+=Math.max(textH,imgH)+14;
+  if(expLines.length){doc.setDrawColor(225,229,235);doc.setFillColor(246,247,249);doc.roundedRect(margin,y,pageW-margin*2,expH,4,4,"F");doc.setFontSize(9);doc.setTextColor(120,130,145);doc.text("Açıklama",margin+8,y+13);doc.setFontSize(9.5);doc.setTextColor(60,68,80);doc.text(expLines,margin+8,y+26);y+=expH+10}
+  doc.setDrawColor(235,238,242);doc.line(margin,y,pageW-margin,y);y+=14;
+  $("pdfExportBar").style.width=Math.round((i-startLine+2)/(endLine-startLine+1)*100)+"%";
+ }
+ doc.save((study.title||"video").replace(/[^\w\-]+/g,"_").slice(0,60)+"_"+startLine+"-"+endLine+".pdf");
+}
+async function pdfExportSubmit(e){e.preventDefault();var startLine=+$("pdfExportStart").value||1,endLine=+$("pdfExportEnd").value||1,includeExplain=$("pdfExportExplain").checked;if(startLine<1||endLine<startLine||endLine>study.segments.length){setStatus("Geçerli bir satır aralığı girin.","error");return}
+ var btn=$("pdfExportStart2");btn.disabled=true;$("pdfExportProgress").hidden=false;$("pdfExportBar").style.width="0%";$("pdfExportProgressLabel").textContent="Ekran paylaşımı isteniyor…";
+ try{
+  var capture=await startPdfCaptureStream();
+  var wasPaused=player&&player.getPlayerState&&player.getPlayerState()!==1;
+  await runPdfExport(startLine,endLine,includeExplain,capture);
+  capture.stream.getTracks().forEach(function(t){t.stop()});
+  $("pdfExportProgressLabel").textContent="PDF hazır, indirildi.";
+ }catch(err){setStatus("PDF oluşturulamadı: "+(err&&err.message||"bilinmeyen hata"),"error")}
+ finally{btn.disabled=false}
+}
   $("explainAllGemini").onclick=explainAllWorkflow;
+  $("pdfExportOpen").onclick=function(){if(!study||!study.segments||!study.segments.length)return;$("pdfExportTotal").textContent="Bu videoda toplam "+study.segments.length+" cümle var.";$("pdfExportStart").max=study.segments.length;$("pdfExportEnd").max=study.segments.length;$("pdfExportEnd").value=Math.min(study.segments.length,50);$("pdfExportProgress").hidden=true;$("pdfExportModal").hidden=false};
+  Array.prototype.forEach.call(document.querySelectorAll("[data-close-pdf-export]"),function(b){b.onclick=function(){$("pdfExportModal").hidden=true}});
+  $("pdfExportForm").onsubmit=pdfExportSubmit;
   $("youtubePromptSave").onclick=savePromptEditor;$("youtubePromptClose").onclick=function(){$("youtubePromptModal").hidden=true};$("youtubePromptDefault").onclick=function(){$("youtubePromptText").value=DEFAULT_YOUTUBE_PROMPT};
   $("regenerateExplanation").onclick=function(){openSentenceExplanation(true)};
   
