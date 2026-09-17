@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=45">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=48">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -59,6 +59,7 @@
   <section class="yt-study" id="studyView" hidden>
    <header class="yt-video-head">
     <button class="yt-round" id="closeStudy" type="button" aria-label="Ana ekrana dön">←</button>
+    <button class="yt-round yt-change-video" id="changeVideoBtn" type="button" aria-label="Çalışma videosunu değiştir" data-tooltip="Videoyu değiştir">⇄</button>
     <div class="yt-video-heading"><span id="videoLevel">YOUTUBE DERSİ</span><h1 id="videoTitle">Video hazırlanıyor…</h1><small id="videoMeta"></small><div class="yt-timing-state" id="timingState" data-state="checking"><i></i><span>Zaman kaynağı kontrol ediliyor…</span></div></div>
    <div class="yt-head-progress"><span id="masteryLabel">0 / 0 öğrenildi</span><div><i id="masteryBar"></i></div></div>
    </header>
@@ -106,6 +107,7 @@
        <p class="yt-caption-en" id="captionEN" lang="en"></p>
        <p class="yt-caption-tr" id="captionTR" lang="tr"></p>
       </div>
+      <button class="yt-caption-overlay-toggle" id="captionOverlayToggle" type="button" aria-label="Altyazıyı göster/gizle" aria-pressed="false">CC</button>
      <div class="yt-player-loading" id="playerLoading"><span class="yt-spinner"></span><b>Video hazırlanıyor…</b></div>
       <section class="yt-youglish-stage" id="sentenceYouglish" hidden aria-label="YouGlish gerçek kullanım örnekleri">
        <header><div><span>GERÇEK KULLANIM · YOUGLISH</span><b id="sentenceYouglishTitle">Aktif cümle için kalıp seç</b></div><button id="closeSentenceYouglish" type="button" aria-label="YouGlish'i kapat">×</button></header>
@@ -362,7 +364,7 @@
  <script src="./immersive-youtube-study.js?v=18"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=79"></script>
+ <script src="./youtube-egitim.js?v=81"></script>
  <script src="./youtube-swipe-navigation.js?v=1"></script>
 
 <div class="yt-modal-overlay" id="existingModuleModal" hidden><section class="yt-modal"><h2>Bu videonun modülü mevcut</h2><p>Mevcut modülü çalışabilir veya yeniden oluşturabilirsiniz.</p><button id="existingModuleStudy" type="button">Mevcut modülü çalış</button><button id="existingModuleNew" type="button">Yeniden oluştur</button><button id="existingModuleCancel" type="button">Vazgeç</button></section></div>
