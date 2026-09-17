@@ -848,7 +848,7 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
  function ensureSpace(h){if(y+h>pageH-margin){doc.addPage();y=margin}}
  for(var i=startLine-1;i<=endLine-1&&i<study.segments.length;i++){
   var x=study.segments[i];if(!x)continue;
-  $("pdfExportProgressLabel").textContent=(i-startLine+2)+"/"+(endLine-startLine+1)+" cümle işleniyor…";
+  setStatus((i-startLine+2)+"/"+(endLine-startLine+1)+" cümle işleniyor…","loading");
   try{player.seekTo(+x.startSeconds||0,true);player.pauseVideo()}catch(e){}
   await new Promise(function(r){setTimeout(r,650)});
   var img=capturePlayerFrame(capture);
@@ -872,13 +872,14 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
  doc.save((study.title||"video").replace(/[^\w\-]+/g,"_").slice(0,60)+"_"+startLine+"-"+endLine+".pdf");
 }
 async function pdfExportSubmit(e){e.preventDefault();var startLine=+$("pdfExportStart").value||1,endLine=+$("pdfExportEnd").value||1,includeExplain=$("pdfExportExplain").checked;if(startLine<1||endLine<startLine||endLine>study.segments.length){setStatus("Geçerli bir satır aralığı girin.","error");return}
- var btn=$("pdfExportStart2");btn.disabled=true;$("pdfExportProgress").hidden=false;$("pdfExportBar").style.width="0%";$("pdfExportProgressLabel").textContent="Ekran paylaşımı isteniyor…";
+ var btn=$("pdfExportStart2");btn.disabled=true;$("pdfExportProgressLabel").textContent="Ekran paylaşımı isteniyor…";
  try{
   var capture=await startPdfCaptureStream();
-  var wasPaused=player&&player.getPlayerState&&player.getPlayerState()!==1;
+  $("pdfExportModal").hidden=true; // pencere açık kalırsa her karede kendi ekranımızı yakalarız, videoyu değil
+  setStatus("PDF hazırlanıyor, video sarılırken pencereyi değiştirmeyin…","loading");
   await runPdfExport(startLine,endLine,includeExplain,capture);
   capture.stream.getTracks().forEach(function(t){t.stop()});
-  $("pdfExportProgressLabel").textContent="PDF hazır, indirildi.";
+  setStatus("PDF hazır ve indirildi.","ok");
  }catch(err){setStatus("PDF oluşturulamadı: "+(err&&err.message||"bilinmeyen hata"),"error")}
  finally{btn.disabled=false}
 }
