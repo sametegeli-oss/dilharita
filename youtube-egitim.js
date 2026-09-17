@@ -869,7 +869,7 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
   var expH=expLines.length?expLines.length*12+24:0;
   ensureSpace(blockH+expH+14);
   doc.setFont("NotoSans","normal");doc.setFontSize(9);doc.setTextColor(140,150,165);doc.text("Cümle "+(i+1)+" · "+time(+x.startSeconds||0),margin,y);y+=14;
-  var textX=margin,imgX=pageW-margin-imgW;
+  var imgX=margin,textX=margin+imgW+gap;
   try{doc.addImage(img,"JPEG",imgX,y,imgW,imgH)}catch(e){}
   doc.setFontSize(11);doc.setTextColor(20,24,30);doc.setFont("NotoSans","bold");doc.text(enLines,textX,y+11,{lineHeightFactor:enLH/11});
   doc.setFont("NotoSans","normal");doc.setFontSize(10.5);doc.setTextColor(70,80,95);doc.text(trLines,textX,y+11+enLines.length*enLH+8,{lineHeightFactor:trLH/10.5});
