@@ -843,7 +843,7 @@ async function explainAllWorkflow(){if(!study)return;var rows=explanationRows(st
 function loadJsPdf(){if(global.jspdf&&global.jspdf.jsPDF)return Promise.resolve(global.jspdf.jsPDF);if(!jsPdfLoading)jsPdfLoading=new Promise(function(resolve,reject){var s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";s.onload=function(){resolve(global.jspdf.jsPDF)};s.onerror=function(){reject(new Error("PDF kütüphanesi yüklenemedi."))};document.head.appendChild(s)});return jsPdfLoading}
 function stripExplanationTags(raw){return String(raw||"").replace(/\[([^\[\]]+)\]/g,"$1").replace(/^\s*(ANLAM|YAPI VE KALIPLAR|HANGİ DURUMDA DOĞAL|DAHA SADE NASIL SÖYLERİM|HANGİSİNİ KULLANMALIYIM|BENZER ÖRNEKLER|KISA KONUŞMA|TELAFFUZ|YAYGIN HATALAR|SIRA SENDE|ÖRNEK CEVAP)\s*$/gim,"").replace(/\n{2,}/g,"\n").trim()}
 async function startPdfCaptureStream(){var s=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:"browser"},audio:false});var v=document.createElement("video");v.muted=true;v.srcObject=s;await v.play();return{stream:s,el:v}}
-function capturePlayerFrame(capture){var v=capture.el,track=capture.stream.getVideoTracks()[0],settings=track.getSettings()||{},sw=settings.width||v.videoWidth,sh=settings.height||v.videoHeight,scaleX=sw/global.innerWidth,scaleY=sh/global.innerHeight,box=$("ytPlayer").getBoundingClientRect(),c=document.createElement("canvas");c.width=320;c.height=180;var ctx=c.getContext("2d");try{ctx.drawImage(v,box.left*scaleX,box.top*scaleY,box.width*scaleX,box.height*scaleY,0,0,320,180)}catch(e){}return c.toDataURL("image/jpeg",.72)}
+function capturePlayerFrame(capture){var v=capture.el,c=document.createElement("canvas");c.width=320;c.height=180;var ctx=c.getContext("2d");try{ctx.drawImage(v,0,0,320,180)}catch(e){}return c.toDataURL("image/jpeg",.72)}
 async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFCtor=await loadJsPdf(),doc=new JsPDFCtor({unit:"pt",format:"a4"}),pageW=doc.internal.pageSize.getWidth(),pageH=doc.internal.pageSize.getHeight(),margin=36,y=margin,imgW=110,imgH=62,gap=12;
  function ensureSpace(h){if(y+h>pageH-margin){doc.addPage();y=margin}}
  for(var i=startLine-1;i<=endLine-1&&i<study.segments.length;i++){
@@ -872,16 +872,24 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
  doc.save((study.title||"video").replace(/[^\w\-]+/g,"_").slice(0,60)+"_"+startLine+"-"+endLine+".pdf");
 }
 async function pdfExportSubmit(e){e.preventDefault();var startLine=+$("pdfExportStart").value||1,endLine=+$("pdfExportEnd").value||1,includeExplain=$("pdfExportExplain").checked;if(startLine<1||endLine<startLine||endLine>study.segments.length){setStatus("Geçerli bir satır aralığı girin.","error");return}
- var btn=$("pdfExportStart2");btn.disabled=true;$("pdfExportProgressLabel").textContent="Ekran paylaşımı isteniyor…";
+ var btn=$("pdfExportStart2");btn.disabled=true;$("pdfExportProgressLabel").textContent="Tam ekrana geçiliyor…";
+ var layer=$("captionLayer"),wasCaptionHidden=layer.hidden,wasOverlayHidden=layer.classList.contains("is-overlay-hidden"),wasFullscreen=isVideoFullscreen();
  try{
+  $("pdfExportModal").hidden=true;
+  if(!wasFullscreen)enterVideoFullscreen();
+  layer.hidden=true;
+  await new Promise(function(r){setTimeout(r,400)});
   var capture=await startPdfCaptureStream();
-  $("pdfExportModal").hidden=true; // pencere açık kalırsa her karede kendi ekranımızı yakalarız, videoyu değil
   setStatus("PDF hazırlanıyor, video sarılırken pencereyi değiştirmeyin…","loading");
   await runPdfExport(startLine,endLine,includeExplain,capture);
   capture.stream.getTracks().forEach(function(t){t.stop()});
   setStatus("PDF hazır ve indirildi.","ok");
  }catch(err){setStatus("PDF oluşturulamadı: "+(err&&err.message||"bilinmeyen hata"),"error")}
- finally{btn.disabled=false}
+ finally{
+  layer.hidden=wasCaptionHidden;if(wasOverlayHidden)layer.classList.add("is-overlay-hidden");
+  if(!wasFullscreen)exitVideoFullscreen();
+  btn.disabled=false;
+ }
 }
   $("explainAllGemini").onclick=explainAllWorkflow;
   $("pdfExportOpen").onclick=function(){if(!study||!study.segments||!study.segments.length)return;$("pdfExportTotal").textContent="Bu videoda toplam "+study.segments.length+" cümle var.";$("pdfExportStart").max=study.segments.length;$("pdfExportEnd").max=study.segments.length;$("pdfExportEnd").value=Math.min(study.segments.length,50);$("pdfExportProgress").hidden=true;$("pdfExportModal").hidden=false};
