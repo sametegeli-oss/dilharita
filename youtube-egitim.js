@@ -876,10 +876,11 @@ async function pdfExportSubmit(e){e.preventDefault();var startLine=+$("pdfExport
  var layer=$("captionLayer"),wasCaptionHidden=layer.hidden,wasOverlayHidden=layer.classList.contains("is-overlay-hidden"),wasFullscreen=isVideoFullscreen();
  try{
   $("pdfExportModal").hidden=true;
+  $("pdfExportProgressLabel").textContent="Ekran paylaşımı isteniyor…";
+  var capture=await startPdfCaptureStream(); // izin diyaloğu tam ekranı otomatik kapatır; bu yüzden önce izin, sonra tam ekran
   if(!wasFullscreen)enterVideoFullscreen();
   layer.hidden=true;
-  await new Promise(function(r){setTimeout(r,400)});
-  var capture=await startPdfCaptureStream();
+  await new Promise(function(r){setTimeout(r,500)});
   setStatus("PDF hazırlanıyor, video sarılırken pencereyi değiştirmeyin…","loading");
   await runPdfExport(startLine,endLine,includeExplain,capture);
   capture.stream.getTracks().forEach(function(t){t.stop()});
