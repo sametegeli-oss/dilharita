@@ -884,7 +884,10 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
   var textH=enH+trH+8;
   var expText="",expLines=[];
   if(includeExplain){var key=keyOf(x),raw=state().aiExplanations&&state().aiExplanations[key];if(raw){expText=stripExplanationTags(raw);doc.setFontSize(9.5);expLines=doc.splitTextToSize(expText,pageW-margin*2-16)}}
-  ensureSpace(Math.max(textH,imgH)+14+16);
+  // Görsel ve varsa açıklamayı tek bir yerleşim bloğu olarak önceden sığdır.
+  // Aksi halde görsel sayfanın altında kalıp açıklama tek başına yeni sayfaya geçiyordu.
+  var expH=expLines.length?(blockH(expLines,9.5)+34):0;
+  ensureSpace(Math.max(textH,imgH)+14+8+(expH?expH+10:0)+14);
   doc.setFont("NotoSans","normal");doc.setFontSize(9);doc.setTextColor(140,150,165);doc.text("Cümle "+(i+1)+" · "+time(+x.startSeconds||0),margin,y);y+=14;
   var imgX=margin,textX=margin+imgW+gap;
   try{doc.addImage(img,"JPEG",imgX,y,imgW,imgH)}catch(e){}
@@ -892,8 +895,7 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
   doc.setFont("NotoSans","normal");doc.setFontSize(10.5);doc.setTextColor(70,80,95);doc.text(trLines,textX,y+11+enH+6);
   y+=Math.max(textH,imgH)+8;
   if(expLines.length){
-   doc.setFontSize(9.5);var expH=blockH(expLines,9.5)+34;
-   ensureSpace(expH+10);
+   doc.setFontSize(9.5);
    doc.setDrawColor(225,229,235);doc.setFillColor(246,247,249);doc.roundedRect(margin,y,pageW-margin*2,expH,4,4,"F");
    doc.setFont("NotoSans","normal");doc.setFontSize(9);doc.setTextColor(120,130,145);doc.text("Açıklama",margin+8,y+13);
    doc.setFontSize(9.5);doc.setTextColor(60,68,80);doc.text(expLines,margin+8,y+26);
