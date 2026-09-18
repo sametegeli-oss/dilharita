@@ -144,6 +144,7 @@
       
       <button class="yt-control yt-study-action yt-gemini-explain" id="explainSentenceGemini" type="button" data-tooltip="Aktif cümle için kayıtlı ayrıntılı Gemini açıklamasını aç veya oluştur"><span aria-hidden="true">✦</span><span>Gemini ile açıkla</span></button>
       <button class="yt-control yt-study-action yt-gemini-explain-all" id="explainAllGemini" type="button" data-tooltip="Videodaki tüm cümleler için Gemini ile ayrıntılı açıklama üret (parça parça)"><span aria-hidden="true">✦✦</span><span>Tümünü açıkla</span></button>
+      <button class="yt-control yt-study-action yt-gemini-explain-all" id="generatePracticeExamples" type="button" data-tooltip="Her cümlenin ana İngilizce kalıbı için beş yeni uygulama cümlesi üret"><span aria-hidden="true">5✦</span><span>5 örnek üret</span></button>
       <button class="yt-control yt-study-action yt-pdf-export" id="pdfExportOpen" type="button" data-tooltip="Cümle aralığını EN/TR ve isteğe bağlı açıklamalarla PDF olarak dışa aktar"><span aria-hidden="true">🖨</span><span>PDF'e aktar</span></button>
       <div class="yt-time"><b id="currentTime">00:00</b><span>/</span><span id="durationTime">00:00</span></div>
       <button class="yt-control" id="speedToggle" type="button">1×</button>
@@ -291,7 +292,7 @@
   <form class="yt-modal yt-pdf-export-modal" id="pdfExportForm"><header><div><span>DIŞA AKTAR</span><h2>Cümleleri PDF yap</h2></div><button type="button" data-close-pdf-export>×</button></header>
    <p id="pdfExportTotal">Bu videoda toplam — cümle var.</p>
    <div class="yt-pdf-export-range"><label>Başlangıç satırı<input id="pdfExportStart" type="number" min="1" value="1" required></label><label>Bitiş satırı<input id="pdfExportEnd" type="number" min="1" value="1" required></label></div>
-   <label class="yt-pdf-export-check"><input id="pdfExportExplain" type="checkbox" checked> Gemini açıklamalarını da ekle (kayıtlıysa)</label>
+   <label class="yt-pdf-export-check"><input id="pdfExportExplain" type="checkbox" checked> Gemini açıklamalarını ve 5 uygulama cümlesini ekle (kayıtlıysa)</label>
    <small id="pdfExportHint">Kareler için bir kerelik ekran/sekme paylaşımı izni istenecek. Yalnızca kendi çalışma notların için kullan.</small>
    <div class="yt-pdf-export-progress" id="pdfExportProgress" hidden><div><i id="pdfExportBar"></i></div><span id="pdfExportProgressLabel"></span></div>
    <footer><button type="button" data-close-pdf-export>Vazgeç</button><button class="yt-primary" id="pdfExportStart2" type="submit">PDF oluştur</button></footer>
@@ -376,7 +377,7 @@
  <script src="./immersive-youtube-study.js?v=18"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=96"></script>
+ <script src="./youtube-egitim.js?v=98"></script>
  <script src="./youtube-swipe-navigation.js?v=1"></script>
 
 <div class="yt-modal-overlay" id="existingModuleModal" hidden><section class="yt-modal"><h2>Bu videonun modülü mevcut</h2><p>Mevcut modülü çalışabilir veya yeniden oluşturabilirsiniz.</p><button id="existingModuleStudy" type="button">Mevcut modülü çalış</button><button id="existingModuleNew" type="button">Yeniden oluştur</button><button id="existingModuleCancel" type="button">Vazgeç</button></section></div>
