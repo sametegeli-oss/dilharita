@@ -855,10 +855,23 @@ async function startPdfCaptureStream(){var s=await navigator.mediaDevices.getDis
 function capturePlayerFrame(capture){var v=capture.el,c=document.createElement("canvas");c.width=320;c.height=180;var ctx=c.getContext("2d");try{ctx.drawImage(v,0,0,320,180)}catch(e){}return c.toDataURL("image/jpeg",.72)}
 async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFCtor=await loadJsPdf(),doc=new JsPDFCtor({unit:"pt",format:"a4"});await loadTurkishFont(doc);doc.setFont("NotoSans","normal");var pageW=doc.internal.pageSize.getWidth(),pageH=doc.internal.pageSize.getHeight(),margin=36,y,imgW=110,imgH=62,gap=12;
  function ensureSpace(h){if(y+h>pageH-margin){doc.addPage();y=margin}}
- // KAPAK SAYFASI
- doc.setFont("NotoSans","bold");doc.setFontSize(20);doc.setTextColor(20,24,30);var titleLines=doc.splitTextToSize(study.title||"YouTube video",pageW-margin*2);doc.text(titleLines,pageW/2,220,{align:"center"});
- doc.setFont("NotoSans","normal");doc.setFontSize(12);doc.setTextColor(110,120,135);doc.text("Cümle "+startLine+" – "+endLine,pageW/2,220+titleLines.length*24+18,{align:"center"});
- doc.setFontSize(10);doc.setTextColor(150,158,170);doc.text(new Date().toLocaleDateString("tr-TR"),pageW/2,220+titleLines.length*24+38,{align:"center"});
+ function blockH(lines,size){return lines.length?doc.getTextDimensions(lines,{fontSize:size}).h:0} // gerçek jsPDF ölçüsü, tahmin değil
+ // KAPAK SAYFASI: seçilen aralıktan örnek karelerle tam sayfa ızgara
+ var coverCols=3,coverRows=3,coverCount=coverCols*coverRows,coverIdx=[],coverSpan=Math.max(1,endLine-startLine+1);
+ for(var ci=0;ci<coverCount;ci++){var pick=startLine-1+Math.min(coverSpan-1,Math.floor(ci*coverSpan/coverCount));coverIdx.push(pick)}
+ var cPad=18,cGap=6,cW=(pageW-cPad*2-cGap*(coverCols-1))/coverCols,cH=cW*9/16;
+ for(var ci2=0;ci2<coverIdx.length;ci2++){
+  var cx=study.segments[coverIdx[ci2]];if(!cx)continue;
+  setStatus("Kapak görselleri hazırlanıyor ("+(ci2+1)+"/"+coverIdx.length+")…","loading");
+  try{player.seekTo(+cx.startSeconds||0,true);player.pauseVideo()}catch(e){}
+  await new Promise(function(r){setTimeout(r,500)});
+  var cImg=capturePlayerFrame(capture),col=ci2%coverCols,row=Math.floor(ci2/coverCols);
+  try{doc.addImage(cImg,"JPEG",cPad+col*(cW+cGap),cPad+row*(cH+cGap),cW,cH)}catch(e){}
+ }
+ var coverBottom=cPad+coverRows*cH+(coverRows-1)*cGap;
+ doc.setFont("NotoSans","bold");doc.setFontSize(19);doc.setTextColor(20,24,30);var titleLines=doc.splitTextToSize(study.title||"YouTube video",pageW-margin*2);doc.text(titleLines,pageW/2,coverBottom+40,{align:"center"});
+ doc.setFont("NotoSans","normal");doc.setFontSize(11.5);doc.setTextColor(110,120,135);doc.text("Cümle "+startLine+" – "+endLine,pageW/2,coverBottom+40+titleLines.length*23+16,{align:"center"});
+ doc.setFontSize(9.5);doc.setTextColor(150,158,170);doc.text(new Date().toLocaleDateString("tr-TR"),pageW/2,coverBottom+40+titleLines.length*23+34,{align:"center"});
  doc.addPage();y=margin;
  for(var i=startLine-1;i<=endLine-1&&i<study.segments.length;i++){
   var x=study.segments[i];if(!x)continue;
@@ -867,19 +880,19 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
   await new Promise(function(r){setTimeout(r,650)});
   var img=capturePlayerFrame(capture);
   var en=String(x.transcriptEN||""),tr=String(x.translationTR||""),textW=pageW-margin*2-imgW-gap;
-  var enLines=doc.splitTextToSize(en,textW),trLines=doc.splitTextToSize(tr,textW);
-  var enLH=15,trLH=14,textH=enLines.length*enLH+trLines.length*trLH+10;
-  var expText="",expLines=[];
-  if(includeExplain){var key=keyOf(x),raw=state().aiExplanations&&state().aiExplanations[key];if(raw){expText=stripExplanationTags(raw);expLines=doc.splitTextToSize(expText,pageW-margin*2-16)}}
-  var expH=expLines.length?expLines.length*12+24:0;
-  ensureSpace(Math.max(textH,imgH)+14+16); // yalnız resim+EN/TR bloğu için gerçek ihtiyaç; açıklama ayrı kontrol edilir
+  doc.setFontSize(11);var enLines=doc.splitTextToSize(en,textW),enH=blockH(enLines,11);
+  doc.setFontSize(10.5);var trLines=doc.splitTextToSize(tr,textW),trH=blockH(trLines,10.5);
+  var textH=enH+trH+8;
+  var expText="",expLines=[],expH=0;
+  if(includeExplain){var key=keyOf(x),raw=state().aiExplanations&&state().aiExplanations[key];if(raw){expText=stripExplanationTags(raw);doc.setFontSize(9.5);expLines=doc.splitTextToSize(expText,pageW-margin*2-16);expH=expLines.length?blockH(expLines,9.5)+30:0}}
+  ensureSpace(Math.max(textH,imgH)+14+16);
   doc.setFont("NotoSans","normal");doc.setFontSize(9);doc.setTextColor(140,150,165);doc.text("Cümle "+(i+1)+" · "+time(+x.startSeconds||0),margin,y);y+=14;
   var imgX=margin,textX=margin+imgW+gap;
   try{doc.addImage(img,"JPEG",imgX,y,imgW,imgH)}catch(e){}
-  doc.setFontSize(11);doc.setTextColor(20,24,30);doc.setFont("NotoSans","bold");doc.text(enLines,textX,y+11,{lineHeightFactor:enLH/11});
-  doc.setFont("NotoSans","normal");doc.setFontSize(10.5);doc.setTextColor(70,80,95);doc.text(trLines,textX,y+11+enLines.length*enLH+8,{lineHeightFactor:trLH/10.5});
-  y+=Math.max(textH,imgH)+14;
-  if(expLines.length){ensureSpace(expH+10);doc.setDrawColor(225,229,235);doc.setFillColor(246,247,249);doc.roundedRect(margin,y,pageW-margin*2,expH,4,4,"F");doc.setFont("NotoSans","normal");doc.setFontSize(9);doc.setTextColor(120,130,145);doc.text("Açıklama",margin+8,y+13);doc.setFontSize(9.5);doc.setTextColor(60,68,80);doc.text(expLines,margin+8,y+26,{lineHeightFactor:12/9.5});y+=expH+10}
+  doc.setFontSize(11);doc.setTextColor(20,24,30);doc.setFont("NotoSans","bold");doc.text(enLines,textX,y+11);
+  doc.setFont("NotoSans","normal");doc.setFontSize(10.5);doc.setTextColor(70,80,95);doc.text(trLines,textX,y+11+enH+6);
+  y+=Math.max(textH,imgH)+8;
+  if(expLines.length){ensureSpace(expH+10);doc.setDrawColor(225,229,235);doc.setFillColor(246,247,249);doc.roundedRect(margin,y,pageW-margin*2,expH,4,4,"F");doc.setFont("NotoSans","normal");doc.setFontSize(9);doc.setTextColor(120,130,145);doc.text("Açıklama",margin+8,y+13);doc.setFontSize(9.5);doc.setTextColor(60,68,80);doc.text(expLines,margin+8,y+26);y+=expH+10}
   doc.setDrawColor(235,238,242);doc.line(margin,y,pageW-margin,y);y+=14;
   $("pdfExportBar").style.width=Math.round((i-startLine+2)/(endLine-startLine+1)*100)+"%";
  }
