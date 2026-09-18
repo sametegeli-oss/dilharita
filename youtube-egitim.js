@@ -870,21 +870,27 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
    if(remaining.length){doc.addPage();y=margin}
   }
  }
- // KAPAK SAYFASI: üstte başlık, altta soluk tek bir kare (excel ızgarasındaki gibi silik arka plan hissi)
+ // KAPAK SAYFASI: yayın kapağı hiyerarşisi, belirgin başlık ve bağlam veren video karesi
  var coverMidIdx=Math.min(study.segments.length-1,startLine-1+Math.floor((endLine-startLine)/2)),coverSeg=study.segments[coverMidIdx];
- doc.setFont("NotoSans","bold");doc.setFontSize(22);doc.setTextColor(20,24,30);var titleLines=doc.splitTextToSize(study.title||"YouTube video",pageW-margin*2);doc.text(titleLines,pageW/2,150,{align:"center"});
- doc.setFont("NotoSans","normal");doc.setFontSize(12);doc.setTextColor(110,120,135);doc.text("Cümle "+startLine+" – "+endLine,pageW/2,150+titleLines.length*26+18,{align:"center"});
- doc.setFontSize(10);doc.setTextColor(150,158,170);doc.text(new Date().toLocaleDateString("tr-TR"),pageW/2,150+titleLines.length*26+36,{align:"center"});
+ var title=study.title||"YouTube video",coverX=margin,coverW=pageW-margin*2,coverH=coverW*9/16,coverY=335,metaY=0,dateText=new Date().toLocaleDateString("tr-TR"),levelText=study.level||"Seviye";
+ doc.setFillColor(22,103,125);doc.roundedRect(margin,72,4,20,2,2,"F");
+ doc.setFont("NotoSans","bold");doc.setFontSize(9);doc.setTextColor(22,47,71);doc.text("DİL HARİTA  /  YOUTUBE ÇALIŞMA DOSYASI",margin+14,86);
+ doc.setFontSize(29);doc.setTextColor(17,28,43);var titleLines=doc.splitTextToSize(title,coverW),subtitleY=142+blockH(titleLines,29)+19;doc.text(titleLines,margin,142);
+ doc.setFont("NotoSans","normal");doc.setFontSize(11);doc.setTextColor(92,108,126);doc.text("İngilizce konuşma analizi ve Türkçe açıklamalar",margin,subtitleY);
+ coverY=Math.max(335,subtitleY+62);metaY=coverY+coverH+42;
+ doc.setFillColor(21,43,67);doc.roundedRect(coverX,coverY,coverW,coverH,6,6,"F");
  if(coverSeg){
   setStatus("Kapak görseli hazırlanıyor…","loading");
   try{player.seekTo(+coverSeg.startSeconds||0,true);player.pauseVideo()}catch(e){}
   await new Promise(function(r){setTimeout(r,500)});
-  var coverImg=capturePlayerFrame(capture),coverW=pageW-margin*2,coverH=coverW*9/16,coverY=pageH-margin-coverH-40;
+  var coverImg=capturePlayerFrame(capture);
   try{
-   if(doc.GState){doc.saveGraphicsState();doc.setGState(new doc.GState({opacity:.22}));doc.addImage(coverImg,"JPEG",margin,coverY,coverW,coverH);doc.restoreGraphicsState()}
-   else doc.addImage(coverImg,"JPEG",margin,coverY,coverW,coverH);
+   doc.addImage(coverImg,"JPEG",coverX,coverY,coverW,coverH);
+   if(doc.GState){doc.saveGraphicsState();doc.setGState(new doc.GState({opacity:.28}));doc.setFillColor(12,29,49);doc.rect(coverX,coverY,coverW,coverH,"F");doc.restoreGraphicsState()}
   }catch(e){}
  }
+ doc.setDrawColor(224,229,235);doc.setLineWidth(.6);doc.roundedRect(coverX,coverY,coverW,coverH,6,6,"S");
+ [["SEVİYE",levelText],["CÜMLELER",String(endLine-startLine+1)],["TARİH",dateText]].forEach(function(item,n){var x=margin+n*(coverW+12)/3,w=(coverW-24)/3;doc.setFillColor(245,248,250);doc.roundedRect(x,metaY,w,38,5,5,"F");doc.setFont("NotoSans","bold");doc.setFontSize(7.5);doc.setTextColor(112,128,145);doc.text(item[0],x+10,metaY+13);doc.setFont("NotoSans","normal");doc.setFontSize(10);doc.setTextColor(35,52,70);doc.text(item[1],x+10,metaY+28)});
  doc.addPage();y=margin;
  for(var i=startLine-1;i<=endLine-1&&i<study.segments.length;i++){
   var x=study.segments[i];if(!x)continue;
@@ -895,21 +901,22 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
   var en=String(x.transcriptEN||""),tr=String(x.translationTR||""),textW=pageW-margin*2-imgW-gap;
   doc.setFontSize(11);var enLines=doc.splitTextToSize(en,textW),enH=blockH(enLines,11);
   doc.setFontSize(10.5);var trLines=doc.splitTextToSize(tr,textW),trH=blockH(trLines,10.5);
-  var textH=enH+trH+8;
+  var tagH=16,textTop=tagH+14,textH=textTop+enH+6+trH;
   var expText="",expLines=[];
   if(includeExplain){var key=keyOf(x),raw=state().aiExplanations&&state().aiExplanations[key];if(raw){expText=stripExplanationTags(raw);doc.setFontSize(9.5);expLines=doc.splitTextToSize(expText,pageW-margin*2-16)}}
-  ensureSpace(Math.max(textH,imgH)+14+16);
-  doc.setFont("NotoSans","normal");doc.setFontSize(9);doc.setTextColor(140,150,165);doc.text("Cümle "+(i+1)+" · "+time(+x.startSeconds||0),margin,y);y+=14;
+  ensureSpace(Math.max(textH,imgH)+16);
   var imgX=margin,textX=margin+imgW+gap;
   try{doc.addImage(img,"JPEG",imgX,y,imgW,imgH)}catch(e){}
-  doc.setFontSize(11);doc.setTextColor(20,24,30);doc.setFont("NotoSans","bold");doc.text(enLines,textX,y+11);
-  doc.setFont("NotoSans","normal");doc.setFontSize(10.5);doc.setTextColor(70,80,95);doc.text(trLines,textX,y+11+enH+6);
-  y+=Math.max(textH,imgH)+8;
+  doc.setFont("NotoSans","normal");doc.setFontSize(8.5);var sentenceTag="Cümle "+(i+1)+" · "+time(+x.startSeconds||0),tagW=doc.getTextWidth(sentenceTag)+12;
+  doc.setFillColor(241,245,249);doc.roundedRect(textX,y,tagW,tagH,8,8,"F");doc.setTextColor(112,128,145);doc.text(sentenceTag,textX+6,y+11);
+  doc.setFontSize(11);doc.setTextColor(20,24,30);doc.setFont("NotoSans","bold");doc.text(enLines,textX,y+textTop);
+  doc.setFont("NotoSans","normal");doc.setFontSize(10.5);doc.setTextColor(70,80,95);doc.text(trLines,textX,y+textTop+enH+6);
+  y+=Math.max(textH,imgH)+10;
   if(expLines.length){
    drawExplanation(expLines);y+=10;
   }
   if(y+14>pageH-margin){doc.addPage();y=margin}
-  doc.setDrawColor(235,238,242);doc.line(margin,y,pageW-margin,y);y+=14;
+  doc.setDrawColor(222,227,233);doc.setLineWidth(.6);doc.line(margin,y,pageW-margin,y);y+=12;
   $("pdfExportBar").style.width=Math.round((i-startLine+2)/(endLine-startLine+1)*100)+"%";
  }
  doc.save((study.title||"video").replace(/[^\w\-]+/g,"_").slice(0,60)+"_"+startLine+"-"+endLine+".pdf");
