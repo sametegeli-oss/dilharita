@@ -187,13 +187,15 @@ async function add(record){
   try{
     var __nt=String(record.target||"").toLowerCase().replace(/[^a-z0-9']+/g," ").trim();
     if(__nt){
-      var __arr=await all();
+      var __arr=await allFull();
       var __dup=__arr.find(function(r){ return String(r.target||"").toLowerCase().replace(/[^a-z0-9']+/g," ").trim()===__nt; });
       if(__dup){
         __dup.answer=cleanAnswer(record.answer||__dup.answer);
         __dup.sentenceTR=__dup.sentenceTR||record.sentenceTR;
         __dup.updatedAt=nowISO();
         __dup.count=(__dup.count||1)+1;
+        if(__dup.srsOnly)__dup.srsOnly=false;               /* artık gerçek bir hata */
+        if(record.source==="youtube")__dup.source="youtube";
         __dup.types=Array.from(new Set((__dup.types||[]).concat(record.types||[])));
         __dup.primaryType=__dup.types[0]||__dup.primaryType||"general";
         __dup.reviewPriority=priority(record);
@@ -225,11 +227,17 @@ function uniqueRecords(arr){
   });
   return keep;
 }
-async function all(){
+/* allFull: YouTube SRS'inde tutulan ama hiç hata yapılmamış (srsOnly)
+   cümleler dahil TÜM kayıtlar. all(): yalnızca gerçek hatalar — hata
+   sayaçlarını kullanan eski ekranlar etkilenmesin diye. */
+async function allFull(){
   let arr=[];
   try{arr=await idbAll();}catch{arr=fbAll();}
   var tomb=tombRead();
   return uniqueRecords(arr.filter(function(r){return !isTombstoned(r,tomb);}));
+}
+async function all(){
+  return (await allFull()).filter(function(r){return !(r&&r.srsOnly);});
 }
 async function deleteMany(ids){
   var idSet={}; (ids||[]).forEach(function(id){ idSet[id]=1; });
@@ -335,11 +343,11 @@ function makePracticeRecord({sentence,answer,grade,score,layer,diff}){
     aiExplain:s.aiExplain||""
   };
 }
-function makeVideoRecord({sentence,heard,grade,score,diff,mode}){
+function makeVideoRecord({sentence,heard,grade,score,diff,mode,source}){
   const s=sentence||{};
   const parts=(diff&&Array.isArray(diff.parts)?diff.parts:[]).map(p=>({type:p.type,word:p.word,heard:p.heard||""}));
   return {
-    source:"video",
+    source:source==="youtube"?"youtube":"video",
     mode:mode||"voice",
     sentenceId:s.id||"",
     target:s.en||s.SentenceEN||"",
@@ -386,21 +394,34 @@ async function bulkMerge(records){
   if(!Array.isArray(records) || !records.length) return 0;
   let existing=[];
   try{ existing=await idbAll(); }catch(e){ existing=fbAll(); }
-  const haveIds=new Set(existing.map(r=>r&&r.id).filter(Boolean));
-  const haveKeys=new Set(existing.map(duplicateKey).filter(Boolean));
-  let added=0;
+  /* Aynı kayıt (id veya cümle) iki tarafta da varsa DAHA YENİ updatedAt
+     kazanır. Eskiden mevcut kayıt hiç güncellenmediği için SRS tarihleri
+     (sonraki tekrar) cihazlar arasında taşınmıyordu. */
+  const byId=new Map(), byKey=new Map();
+  existing.forEach(function(r){ if(!r) return; if(r.id) byId.set(r.id,r); var k=duplicateKey(r); if(k&&(!byKey.has(k)||recTime(r)>recTime(byKey.get(k)))) byKey.set(k,r); });
+  let added=0, updated=0;
   const tomb=tombRead();
   for(const rec of records){
     if(!rec || !rec.id) continue;
     if(isTombstoned(rec,tomb)) continue;
-    var dk=duplicateKey(rec);
-    if(haveIds.has(rec.id) || (dk&&haveKeys.has(dk))) continue;
+    var dk=duplicateKey(rec), old=byId.get(rec.id)||(dk&&byKey.get(dk));
+    if(old){
+      if(recTime(rec)<=recTime(old)) continue;
+      var merged=Object.assign({},old,rec,{id:old.id});
+      if(old.history||rec.history) merged.history=mergeHistory(old.history,rec.history);
+      merged.count=Math.max(Number(old.count||1),Number(rec.count||1));
+      if(old.srsOnly===false||rec.srsOnly===false) merged.srsOnly=false;
+      try{ await idbAdd(merged); }
+      catch(e){ const arr=fbAll().filter(function(r){return r.id!==merged.id;}); arr.unshift(merged); fbSave(arr.slice(0,2000)); }
+      byId.set(merged.id,merged); if(dk)byKey.set(dk,merged); updated++;
+      continue;
+    }
     try{ await idbAdd(rec); }
     catch(e){ const arr=fbAll(); arr.unshift(rec); fbSave(arr.slice(0,2000)); }
-    haveIds.add(rec.id); if(dk)haveKeys.add(dk); added++;
+    byId.set(rec.id,rec); if(dk)byKey.set(dk,rec); added++;
   }
-  if(added) window.dispatchEvent(new CustomEvent("learning-errors-merged",{detail:{added}}));
-  return added;
+  if(added||updated) window.dispatchEvent(new CustomEvent("learning-errors-merged",{detail:{added,updated}}));
+  return added+updated;
 }
 const DAY_MS = 86400000;
 function srsDefault(){ return { rep:0, interval:0, ef:2.5, last:0, due:0 }; }
@@ -441,6 +462,8 @@ async function markReviewed(id, opts){
     rec.lastReviewedAt = nowISO();
     rec.reviewCount = Number(rec.reviewCount||0) + (grade !== "hard" ? 1 : 0);
     rec.dueAt = rec.srs.due; // buildQueue'nun düz alan olarak kolayca okuyabilmesi için
+    rec.updatedAt = nowISO(); // bulut birleştirmesinde yeni SRS durumu kazansın
+    if (rec.source === "youtube") rec.history = mergeHistory(rec.history, [{ at: Date.now(), score: rec.score, grade: grade, kind: "akilli-tekrar" }]);
     return rec;
   }
   let rec = null;
@@ -461,6 +484,97 @@ async function markReviewed(id, opts){
   window.dispatchEvent(new CustomEvent("learning-error-updated",{detail:rec}));
   return rec;
 }
+/* ── YOUTUBE SRS ────────────────────────────────────────────────
+   YouTube stüdyosundaki her notlama (Gemini pekiştirme sonucu, dikte,
+   shadowing, zor/öğrendim işareti) aynı SM-2 zamanlamasıyla bu ortak
+   sisteme yazılır; kaynak "youtube" olur. Hata yapılmamış cümleler
+   srsOnly:true taşır: tekrar takviminde vardır, hata sayaçlarında yoktur. */
+function mergeHistory(a,b){
+  var m={};
+  [].concat(Array.isArray(a)?a:[],Array.isArray(b)?b:[]).forEach(function(h){ if(h&&h.at) m[h.at+"|"+(h.kind||"")]=h; });
+  return Object.keys(m).map(function(k){return m[k];}).sort(function(x,y){return x.at-y.at;}).slice(-40);
+}
+async function youtubeGrade(entries){
+  entries=(Array.isArray(entries)?entries:[entries]).filter(function(e){ return e&&clean(e.en); });
+  if(!entries.length) return [];
+  let arr=[];
+  try{ arr=await idbAll(); }catch(e){ arr=fbAll(); }
+  const tomb=tombRead(), byKey={};
+  arr.forEach(function(r){ if(!r||isTombstoned(r,tomb)) return; var k=duplicateKey(r); if(k&&(!byKey[k]||recTime(r)>recTime(byKey[k]))) byKey[k]=r; });
+  const out=[], now=Date.now();
+  for(const e of entries){
+    const grade=(e.grade==="easy"||e.grade==="good")?e.grade:"hard";
+    const rawScore=e.score!=null&&e.score!==""?Number(e.score):(grade==="easy"?95:grade==="good"?75:30);
+    const score=Math.max(0,Math.min(100,Math.round(isFinite(rawScore)?rawScore:0)));
+    const target=clean(e.en), k=eqNorm(target);
+    if(e.srs&&byKey[k]&&byKey[k].srs&&byKey[k].srs.last) continue;   /* taşıma: mevcut SRS'i ezme */
+    const answer=cleanAnswer(e.answer||"");
+    const fakeError=!!answer&&(isFalsePositive(target,answer)||eqNorm(answer)===k||isTypoOnly(target,answer));
+    const isErr=grade==="hard"&&!e.srs&&!fakeError;
+    let rec=byKey[k];
+    if(!rec) rec={id:uid(),createdAt:nowISO(),source:"youtube",srsOnly:true,count:0,answer:"",types:[]};
+    else rec=Object.assign({},rec);
+    if(!rec.source||rec.source==="video"||rec.source==="youtube") rec.source="youtube";
+    rec.mode=e.kind||rec.mode||"youtube";
+    rec.target=target;
+    rec.sentenceTR=clean(e.tr)||rec.sentenceTR||"";
+    rec.level=clean(e.level)||rec.level||"";
+    rec.videoId=String(e.videoId||rec.videoId||"");
+    rec.videoTitle=clean(e.videoTitle)||rec.videoTitle||"";
+    rec.module=rec.videoTitle||rec.module||"";
+    rec.sentenceKey=String(e.sentenceKey||rec.sentenceKey||"");
+    if(e.startSeconds!=null) rec.startSeconds=Number(e.startSeconds)||0;
+    if(rec.videoId) rec.sentenceId=rec.videoId+":"+rec.sentenceKey;
+    rec.srs=e.srs?Object.assign(srsDefault(),e.srs):srsGrade(rec.srs,grade);
+    rec.dueAt=rec.srs.due;
+    rec.score=score; rec.grade=grade;
+    if(isErr){ rec.srsOnly=false; rec.count=Number(rec.count||0)+1; }
+    if(answer&&!fakeError&&grade==="hard") rec.answer=answer;
+    if(Array.isArray(e.mistakes)) rec.mistakes=e.mistakes.map(clean).filter(Boolean).slice(0,8);
+    if(e.weakPoint!=null) rec.weakPoint=clean(e.weakPoint);
+    if(e.note!=null) rec.note=clean(e.note);
+    if(isErr){
+      var t=rec.answer?detectTypes({target:rec.target,answer:rec.answer,score:score,source:"youtube",diffParts:[]}):[];
+      rec.types=Array.from(new Set((rec.types||[]).concat(t.length?t:["sentence-accuracy"])));
+    }
+    rec.types=Array.isArray(rec.types)?rec.types:[];
+    rec.primaryType=rec.types[0]||"general";
+    rec.history=mergeHistory(rec.history,[{at:Number(e.at)||now,score:score,grade:grade,kind:e.kind||"youtube"}]);
+    rec.lastReviewedAt=nowISO();
+    rec.reviewCount=Number(rec.reviewCount||0)+(e.srs?0:1);
+    rec.reviewPriority=priority(rec);
+    rec.updatedAt=nowISO();
+    try{ await idbAdd(rec); }
+    catch(err){ const a2=fbAll().filter(function(r){return r.id!==rec.id;}); a2.unshift(rec); fbSave(a2.slice(0,2000)); }
+    byKey[k]=rec; out.push(rec);
+  }
+  window.dispatchEvent(new CustomEvent("learning-error-updated",{detail:{youtube:true,count:out.length}}));
+  return out;
+}
+async function youtubeRecords(){
+  return (await allFull()).filter(function(r){ return r&&r.source==="youtube"; });
+}
+/* TEK SEFERLİK: YouTube stüdyosu ve YouTube pratikten eskiden "video"
+   kaynağıyla yazılmış kayıtları "youtube" olarak etiketle. */
+setTimeout(async function retagYoutubeOnce(){
+  try{
+    if(localStorage.getItem("dh-errdb-youtube-retag-v1")) return;
+    let arr=[]; try{ arr=await idbAll(); }catch(e){ arr=fbAll(); }
+    let n=0;
+    for(const r of arr){
+      if(!r||r.source!=="video") continue;
+      var sid=String(r.sentenceId||"");
+      if(/^yt:/.test(sid)||r.mode==="youtube-repeat"||/^[A-Za-z0-9_-]{11}:\d+$/.test(sid)){
+        r.source="youtube"; if(!r.videoId) r.videoId=sid.replace(/^yt:/,"").split(":")[0];
+        r.updatedAt=nowISO();
+        try{ await idbAdd(r); }catch(e){ const a2=fbAll().map(function(x){return x.id===r.id?r:x;}); fbSave(a2); }
+        n++;
+      }
+    }
+    localStorage.setItem("dh-errdb-youtube-retag-v1","1");
+    if(n) window.dispatchEvent(new CustomEvent("learning-errors-merged",{detail:{updated:n}}));
+  }catch(e){}
+}, 3000);
 /* GEÇMİŞ TEMİZLİĞİ (tek sefer): aynı hedef cümlenin eski kopyalarını birleştir */
 setTimeout(async function dedupeOnce(){
   try{
@@ -476,5 +590,5 @@ setTimeout(async function dedupeOnce(){
     localStorage.setItem("dh-errdb-deduped-v1","1");
   }catch(e){}
 }, 2500);
-window.LearningErrorDB={ isTypoOnly:isTypoOnly, __isCommon:function(w){ return __COMMON_EN.has(String(w||"").toLowerCase()); }, eqNorm:eqNorm, duplicateKey:duplicateKey, uniqueRecords:uniqueRecords, add,all,deleteMany,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed};
+window.LearningErrorDB={ isTypoOnly:isTypoOnly, __isCommon:function(w){ return __COMMON_EN.has(String(w||"").toLowerCase()); }, eqNorm:eqNorm, duplicateKey:duplicateKey, uniqueRecords:uniqueRecords, add,all,allFull,deleteMany,clearAll,logFromPractice,logFromVideo,summarize,detectTypes,esc,bulkMerge,markReviewed,youtubeGrade,youtubeRecords,mergeHistory};
 })();

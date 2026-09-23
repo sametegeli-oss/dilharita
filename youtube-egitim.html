@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=52">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=53">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -256,6 +256,12 @@
       <button id="toggleEN" class="is-active" type="button" aria-pressed="true">EN</button>
       <button id="toggleTR" class="is-active" type="button" aria-pressed="true">TR</button>
       <button id="autoSplitAll" type="button" data-tooltip="Birden çok cümle içeren uzun satırları noktadan otomatik böl (zamanlar tahmini olur)">✂ Noktadan böl (tümü)</button>
+      <button id="drillToggle" class="yt-drill-toggle" type="button" aria-pressed="false" aria-label="Pekiştirme için cümle seç" data-tooltip="Gemini ile pekiştirme için cümle seç">☑</button>
+     </div>
+     <div class="yt-drill-bar" id="drillBar" hidden>
+      <div class="yt-drill-quick"><button type="button" data-drill-pick="favorites">★ Favoriler</button><button type="button" data-drill-pick="hard">⚠ Zorlar</button><button type="button" data-drill-pick="due">⏰ Tekrar zamanı gelenler</button><button type="button" data-drill-pick="unstudied">○ Hiç çalışılmamış</button><button type="button" data-drill-pick="clear">Temizle</button></div>
+      <form class="yt-drill-range" id="drillRangeForm"><span>Aralık</span><input id="drillFrom" type="number" min="1" inputmode="numeric" placeholder="5" aria-label="Başlangıç satırı"><span>–</span><input id="drillTo" type="number" min="1" inputmode="numeric" placeholder="12" aria-label="Bitiş satırı"><button type="submit">Ekle</button></form>
+      <div class="yt-drill-actions"><b id="drillCount">0 cümle seçildi</b><button type="button" class="yt-primary" id="drillStart" disabled>🎯 Gemini ile pekiştir</button></div>
      </div>
      <div class="yt-panel-scroll" id="panelScroll">
       <div class="yt-transcript-list" id="transcriptList"></div>
@@ -355,6 +361,13 @@
   </section>
  </div>
 
+ <div class="yt-modal-overlay" id="drillResultModal" hidden>
+  <section class="yt-modal yt-drill-result-modal"><header><div><span>GEMİNİ PEKİŞTİRME · YOUTUBE SRS</span><h2 id="drillResultTitle">Sonuç</h2></div><button type="button" data-close-drill>×</button></header>
+   <div class="yt-drill-result-body" id="drillResultBody"></div>
+   <footer><a class="yt-drill-link" href="./akilli-tekrar.html?kaynak=youtube">Akıllı Tekrar'da aç</a><button type="button" class="yt-primary" data-close-drill>Tamam</button></footer>
+  </section>
+ </div>
+
  <div class="yt-modal-overlay" id="videoModuleModal" hidden>
   <form class="yt-modal yt-video-module-modal" id="videoModuleForm">
    <header><div><span>VİDEODAN MODÜL</span><h2>Transkripti çalışma modüllerine dönüştür</h2></div><button type="button" data-close-video-module>×</button></header>
@@ -369,16 +382,16 @@
 
  <script src="./auth-guard.js?v=1"></script>
  <script src="./profile.js?v=2"></script>
- <script src="./learning-error-system.js?v=2"></script>
+ <script src="./learning-error-system.js?v=11"></script>
  <script src="./ai-choice.js?v=1"></script>
  <script src="./ai-providers.js?v=152"></script>
  <script src="./gemini-bridge.js?v=33"></script>
- <script src="./cloud-sync.js?v=38"></script>
+ <script src="./cloud-sync.js?v=39"></script>
  <script src="./word-popup.js?v=13"></script>
  <script src="./immersive-youtube-study.js?v=18"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=102"></script>
+ <script src="./youtube-egitim.js?v=103"></script>
  <script src="./youtube-swipe-navigation.js?v=1"></script>
 
 <div class="yt-modal-overlay" id="existingModuleModal" hidden><section class="yt-modal"><h2>Bu videonun modülü mevcut</h2><p>Mevcut modülü çalışabilir veya yeniden oluşturabilirsiniz.</p><button id="existingModuleStudy" type="button">Mevcut modülü çalış</button><button id="existingModuleNew" type="button">Yeniden oluştur</button><button id="existingModuleCancel" type="button">Vazgeç</button></section></div>

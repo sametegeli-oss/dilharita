@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v280";  /* Açıklamaya "Ek açıklama ekle" (soru-cevap) + PDF + bulut birleştirme */
+var SW_VERSION = "dh-sw-v281";  /* Gemini ile pekiştirme + YouTube SRS (ortak Hata Defteri/Akıllı Tekrar) */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

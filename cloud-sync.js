@@ -442,7 +442,7 @@
     try{ if(window.DHYouTubeStudy&&DHYouTubeStudy.applyMirror) added+=(+await Promise.resolve(DHYouTubeStudy.applyMirror()).catch(function(){return 0;})||0); }catch(e){}
     return added;
   }
-  function errAll(){ try{ if(window.LearningErrorDB&&LearningErrorDB.all) return LearningErrorDB.all(); }catch(e){} return Promise.resolve([]); }
+  function errAll(){ try{ if(window.LearningErrorDB&&LearningErrorDB.allFull) return LearningErrorDB.allFull(); if(window.LearningErrorDB&&LearningErrorDB.all) return LearningErrorDB.all(); }catch(e){} return Promise.resolve([]); }
   function errMerge(list){ try{ if(window.LearningErrorDB&&LearningErrorDB.bulkMerge&&Array.isArray(list)) return LearningErrorDB.bulkMerge(list); }catch(e){} return Promise.resolve(0); }
 
   function lsCollect(){
