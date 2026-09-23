@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v285";  /* Video başlık bloğu ⓘ düğmesiyle açılır, varsayılan kapalı */
+var SW_VERSION = "dh-sw-v286";  /* Ana sayfa koç sesi varsayılan kapalı */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:

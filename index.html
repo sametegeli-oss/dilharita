@@ -770,7 +770,7 @@
   /* ================= AVATAR ================= */
   var avatar = null;
   function sesAcik(){
-    try{ return localStorage.getItem("dh-koc-sesli") !== "0"; }catch(e){ return true; }
+    try{ return localStorage.getItem("dh-koc-sesli") === "1"; }catch(e){ return false; }   /* varsayılan: sessiz (v286) */
   }
   function sesBoya(){
     $("sesBtn").textContent = sesAcik() ? "◍" : "◌";
