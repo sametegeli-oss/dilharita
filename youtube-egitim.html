@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=54">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=55">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -16,17 +16,15 @@
  </div>
 
  <main class="yt-app" id="ytApp" hidden>
-  <header class="yt-topbar">
-   <a class="yt-round yt-back" href="./menu.html" aria-label="Menüye dön">←</a>
-   <a class="yt-brand" href="./menu.html"><span class="yt-brand-mark">DH</span><span><b>DİL HARİTA</b><small>YouTube Eğitim Stüdyosu</small></span></a>
-   <div class="yt-top-actions">
-    <span class="yt-sync" id="syncState"><i></i><span>Cihazda kayıtlı</span></span>
-    <button class="yt-top-button" id="openLibrary" type="button">▤ <span>Kitaplığım</span><b id="libraryCount">0</b></button>
-    <button class="yt-round" id="focusMode" type="button" aria-label="Videoyu tam ekran yap" title="Videoyu tam ekran yap">⛶</button>
-   </div>
-  </header>
+  <!-- Üst çubuk kaldırıldı (v105): bu grup JS ile ana ekrana, video başlığına veya mobil yatayda panel çubuğuna yerleşir -->
+  <div class="yt-top-actions" id="topActions">
+   <span class="yt-sync" id="syncState" tabindex="0"><i></i><span>Cihazda kayıtlı</span></span>
+   <button class="yt-top-button" id="openLibrary" type="button" aria-label="Kitaplığım">▤ <span>Kitaplığım</span><b id="libraryCount">0</b></button>
+   <button class="yt-round" id="focusMode" type="button" aria-label="Videoyu tam ekran yap" title="Videoyu tam ekran yap">⛶</button>
+  </div>
 
   <section class="yt-home" id="homeView">
+   <div class="yt-home-top"><a class="yt-round" href="./menu.html" aria-label="Menüye dön" title="Menüye dön">←</a><div class="yt-actions-slot" id="homeActionsSlot"></div></div>
    <div class="yt-hero-orb yt-orb-one"></div><div class="yt-hero-orb yt-orb-two"></div>
    <div class="yt-home-copy">
     <span class="yt-eyebrow">GERÇEK İNGİLİZCE · AKILLI ÇALIŞMA</span>
@@ -61,10 +59,11 @@
     <button class="yt-round" id="closeStudy" type="button" aria-label="Ana ekrana dön">←</button>
     <button class="yt-round yt-change-video" id="changeVideoBtn" type="button" aria-label="Çalışma videosunu değiştir" data-tooltip="Videoyu değiştir">⇄</button>
     <div class="yt-video-heading"><span id="videoLevel">YOUTUBE DERSİ</span><h1 id="videoTitle">Video hazırlanıyor…</h1><small id="videoMeta"></small><div class="yt-timing-state" id="timingState" data-state="checking"><i></i><span>Zaman kaynağı kontrol ediliyor…</span></div></div>
-   <div class="yt-head-progress"><span id="masteryLabel">0 / 0 öğrenildi</span><div><i id="masteryBar"></i></div></div>
+   <div class="yt-head-side"><div class="yt-actions-slot" id="headActionsSlot"></div><div class="yt-head-progress"><span id="masteryLabel">0 / 0 öğrenildi</span><div><i id="masteryBar"></i></div></div></div>
    </header>
 
    <div class="yt-layout-dock" role="toolbar" aria-label="Çalışma alanlarını göster veya gizle">
+    <div class="yt-actions-slot" id="dockActionsSlot"></div>
     <button id="toggleControlPanel" class="is-active yt-pro-button" type="button" aria-pressed="true" data-tooltip="Sol çalışma panelini gösterir veya gizler"><span aria-hidden="true">☰</span><b>Çalışma</b></button>
     <button id="toggleVideoPanel" class="is-active yt-pro-button" type="button" aria-pressed="true" data-tooltip="Orta video panelini gösterir veya gizler"><span aria-hidden="true">▶</span><b>Video</b></button>
     <button id="toggleTranscriptPanel" class="is-active yt-pro-button" type="button" aria-pressed="true" data-tooltip="Sağ transkript panelini gösterir veya gizler"><span aria-hidden="true">文</span><b>Transkript</b></button>
@@ -396,7 +395,7 @@
  <script src="./immersive-youtube-study.js?v=18"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=104"></script>
+ <script src="./youtube-egitim.js?v=105"></script>
  <script src="./youtube-swipe-navigation.js?v=1"></script>
 
 <div class="yt-modal-overlay" id="existingModuleModal" hidden><section class="yt-modal"><h2>Bu videonun modülü mevcut</h2><p>Mevcut modülü çalışabilir veya yeniden oluşturabilirsiniz.</p><button id="existingModuleStudy" type="button">Mevcut modülü çalış</button><button id="existingModuleNew" type="button">Yeniden oluştur</button><button id="existingModuleCancel" type="button">Vazgeç</button></section></div>
