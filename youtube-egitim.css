@@ -359,3 +359,22 @@ body.yt-video-pseudo-fullscreen .yt-video-shell.is-pseudo-fullscreen{position:fi
 
 /* v104: yalnızca sembollü tam ekran çıkışı. */
 .yt-controls>#fsActionExit{width:44px;min-width:44px;padding:0;justify-content:center}
+
+/* Ek açıklamalar (v52) */
+.yt-ai-footer-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.yt-ai-notes{margin-top:14px;display:grid;gap:10px}.yt-ai-notes[hidden]{display:none}
+.yt-ai-notes h4{margin:0;color:#f3c77a;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+.yt-ai-note{padding:12px 14px;border:1px solid rgba(243,199,122,.28);border-radius:14px;background:rgba(243,199,122,.06)}
+.yt-ai-note-q{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;color:#f4e2bd;font-weight:700;line-height:1.5}
+.yt-ai-note-q span{min-width:0;overflow-wrap:anywhere}
+.yt-ai-note-del{flex:none;border:1px solid rgba(255,120,120,.35);border-radius:9px;background:transparent;color:#ffb4b4;padding:3px 8px;cursor:pointer;font-size:13px}
+.yt-ai-note-del:hover{background:rgba(255,120,120,.12)}
+.yt-ai-note-a{margin-top:8px;color:#b8c7da;white-space:pre-wrap;line-height:1.6;overflow-wrap:anywhere}
+.yt-ai-note-form{margin-top:12px;display:grid;gap:8px}.yt-ai-note-form[hidden]{display:none}
+.yt-ai-note-form label{color:#c9d6e8;font-size:13px;font-weight:700}
+.yt-ai-note-form textarea{width:100%;box-sizing:border-box;resize:vertical;min-height:80px;padding:12px;border:1px solid var(--yt-line);border-radius:12px;background:#07111f;color:#e6eef8;font:inherit;line-height:1.5}
+.yt-ai-note-form textarea:focus{outline:2px solid rgba(73,218,200,.5);outline-offset:1px}
+.yt-ai-note-actions{display:flex;justify-content:flex-end;gap:8px}
+.yt-ai-note-actions button{border:1px solid var(--yt-line);border-radius:11px;background:transparent;color:#b2c1d5;padding:10px 14px;cursor:pointer}
+.yt-ai-note-actions .yt-primary{min-width:0;border:0;color:#06131d;font-weight:900}
+@media (max-width:560px){.yt-ai-footer{flex-wrap:wrap}.yt-ai-footer-actions{width:100%}.yt-ai-footer-actions button{flex:1}}

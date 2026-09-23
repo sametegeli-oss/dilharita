@@ -117,7 +117,8 @@ function ask(opt){
   var old=loadPending();
   var sameOld=old && old.prompt===basePrompt && old.page===location.pathname;
   var id=sameOld?old.id:jobId();
-  var prompt=basePrompt+"\n\nGÖREV KİMLİĞİ: "+id+"\nYanıtının ilk satırına tam olarak \"DH-ID: "+id+"\" yaz. Sonraki satırlarda istenen yanıtı ver.";
+  /* noJobId: prompt Gemini'ye olduğu gibi gider (kimlik satırı eklenmez). */
+  var prompt=opt.noJobId?basePrompt:basePrompt+"\n\nGÖREV KİMLİĞİ: "+id+"\nYanıtının ilk satırına tam olarak \"DH-ID: "+id+"\" yaz. Sonraki satırlarda istenen yanıtı ver.";
   var job={id:id,title:String(opt.title||"Gemini'ye sor"),prompt:basePrompt,page:location.pathname,createdAt:sameOld?old.createdAt:Date.now(),state:sameOld&&old.state||"waiting",draft:sameOld&&old.draft||"",resume:opt.resume||(sameOld&&old.resume)||null,hint:String(opt.hint||""),providerName:providerName,providerUrl:providerUrl};
   savePending(job);
   if(activeOverlay && activeOverlay.parentNode) activeOverlay.parentNode.removeChild(activeOverlay);

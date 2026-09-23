@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=51">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=52">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -349,8 +349,9 @@
  <div class="yt-modal-overlay" id="aiModal" hidden>
   <section class="yt-modal yt-ai-modal"><header><div><span>GEMINI BAĞLAMI</span><h2>Bu cümleyi birlikte inceleyelim</h2></div><button type="button" data-close-ai>×</button></header>
    
-   <div class="yt-ai-quick" id="aiQuick"></div><div class="yt-ai-answer" id="aiAnswer">Bir soru seçin.</div>
-   <footer class="yt-ai-footer" id="aiFooter" hidden><span>Bu açıklama cümleye kaydedildi.</span><button id="regenerateExplanation" type="button">↻ Yeniden oluştur</button></footer>
+   <div class="yt-ai-quick" id="aiQuick"></div><div class="yt-ai-answer" id="aiAnswer">Bir soru seçin.</div><div class="yt-ai-notes" id="aiNotes" hidden></div>
+   <footer class="yt-ai-footer" id="aiFooter" hidden><span>Bu açıklama cümleye kaydedildi.</span><span class="yt-ai-footer-actions"><button id="addExplanationNote" type="button">➕ Ek açıklama ekle</button><button id="regenerateExplanation" type="button">↻ Yeniden oluştur</button></span></footer>
+   <form class="yt-ai-note-form" id="aiNoteForm" hidden><label for="aiNoteQuestion">Bu cümleyle ilgili sorun</label><textarea id="aiNoteQuestion" rows="3" maxlength="4000" placeholder="Örn. Burada neden present perfect kullanılmış?"></textarea><div class="yt-ai-note-actions"><button type="button" id="aiNoteCancel">Vazgeç</button><button type="submit" class="yt-primary">Gemini'ye sor</button></div></form>
   </section>
  </div>
 
@@ -371,13 +372,13 @@
  <script src="./learning-error-system.js?v=2"></script>
  <script src="./ai-choice.js?v=1"></script>
  <script src="./ai-providers.js?v=152"></script>
- <script src="./gemini-bridge.js?v=32"></script>
- <script src="./cloud-sync.js?v=37"></script>
+ <script src="./gemini-bridge.js?v=33"></script>
+ <script src="./cloud-sync.js?v=38"></script>
  <script src="./word-popup.js?v=13"></script>
  <script src="./immersive-youtube-study.js?v=18"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=101"></script>
+ <script src="./youtube-egitim.js?v=102"></script>
  <script src="./youtube-swipe-navigation.js?v=1"></script>
 
 <div class="yt-modal-overlay" id="existingModuleModal" hidden><section class="yt-modal"><h2>Bu videonun modülü mevcut</h2><p>Mevcut modülü çalışabilir veya yeniden oluşturabilirsiniz.</p><button id="existingModuleStudy" type="button">Mevcut modülü çalış</button><button id="existingModuleNew" type="button">Yeniden oluştur</button><button id="existingModuleCancel" type="button">Vazgeç</button></section></div>

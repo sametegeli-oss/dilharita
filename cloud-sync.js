@@ -467,6 +467,9 @@
   /* ── 6) TÜM YERELİ TOPLA (push yükü) ─────────────────────── */
   function unionMap(a,b){var out={};a=a||{};b=b||{};for(var k in a)if(a.hasOwnProperty(k)&&a[k])out[k]=a[k];for(var k2 in b)if(b.hasOwnProperty(k2)&&b[k2])out[k2]=b[k2];return out}
   function mergeShadowAttempts(a,b){a=a||{};b=b||{};var out={},keys={};for(var k in a)keys[k]=1;for(var k2 in b)keys[k2]=1;Object.keys(keys).forEach(function(k){var av=a[k],bv=b[k];if(av==null){out[k]=bv;return}if(bv==null){out[k]=av;return}out[k]=(Array.isArray(av)?av.length:0)>=(Array.isArray(bv)?bv.length:0)?av:bv});return out}
+  /* Ek açıklamalar: "at" kimliğiyle birleşir; bir cihazda silinen (del)
+     kayıt diğer cihazdan geri gelmez. */
+  function mergeExplanationNotes(a,b){a=a||{};b=b||{};var out={},keys={};for(var k in a)keys[k]=1;for(var k2 in b)keys[k2]=1;Object.keys(keys).forEach(function(k){var map={};[].concat(Array.isArray(a[k])?a[k]:[],Array.isArray(b[k])?b[k]:[]).forEach(function(n){if(!n||!n.at)return;var id=String(n.at),old=map[id];if(!old){map[id]=n;return}if(n.del||old.del)map[id]={at:n.at,del:true,q:"",a:""}});var list=Object.keys(map).map(function(id){return map[id]}).sort(function(x,y){return(+x.at||0)-(+y.at||0)});if(list.length)out[k]=list});return out}
   function mergeYoutubeUserState(a,b){
     a=a||{};b=b||{};
     return {
@@ -478,6 +481,7 @@
       aiExplanations:Object.assign({},a.aiExplanations||{},b.aiExplanations||{}),
       shadowAttempts:mergeShadowAttempts(a.shadowAttempts,b.shadowAttempts),
       quizWrong:unionMap(a.quizWrong,b.quizWrong),
+      explanationNotes:mergeExplanationNotes(a.explanationNotes,b.explanationNotes),
       lastIndex:Math.max(+a.lastIndex||0,+b.lastIndex||0)
     };
   }
