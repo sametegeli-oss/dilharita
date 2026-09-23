@@ -512,3 +512,32 @@ body.yt-focus .yt-transcript-panel,body.yt-focus .yt-control-rail{top:14px;heigh
  .yt-layout-dock>.yt-actions-slot{margin-right:auto;padding-left:2px}
 }
 #topActions .yt-top-button>b{display:inline-grid!important;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:99px;font-size:11px}
+
+/* v56 · Cümle düğmeleri açılır panel */
+.yt-actions-collapse{display:inline-flex;align-items:center;gap:8px;padding:6px 10px 6px 0!important;border:0!important;background:transparent!important;cursor:pointer;color:inherit}
+.yt-actions-collapse>span{font-size:11px;font-weight:900;letter-spacing:.17em;color:var(--yt-cyan)}
+.yt-actions-collapse>i{font-style:normal;color:#8fa2bb;font-size:14px;transition:transform .18s}
+.yt-actions-collapse:hover>i{color:var(--yt-cyan)}
+.yt-learning-card.is-actions-open .yt-actions-collapse>i{transform:rotate(180deg)}
+.yt-learning-card .yt-practice-menu-toggle{display:none!important}
+.yt-learning-card:not(.is-actions-open) .yt-learning-head>.yt-sentence-actions{display:none!important}
+.yt-learning-card.is-actions-open .yt-learning-head{flex-wrap:wrap}
+.yt-learning-card.is-actions-open .yt-learning-head>.yt-sentence-actions{display:flex!important;flex-wrap:wrap;gap:7px;width:100%;justify-content:flex-start;padding-top:8px;border-top:1px solid rgba(140,165,193,.12)}
+
+/* Sekmeler + arama ⋯ menüsünde */
+.yt-active-tab{display:inline-flex;align-items:center;gap:6px;margin-left:auto;padding:0 4px;color:var(--yt-gold);font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.yt-active-tab b{padding:2px 7px;border-radius:99px;background:rgba(255,202,99,.13);font-size:10px}
+.yt-toolbar-row .yt-tool-more{margin-left:4px}
+.yt-tool-more-toggle{position:relative}
+.yt-tool-more-toggle.has-active::after{content:"";position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#38f2d1;box-shadow:0 0 8px #38f2d1}
+.yt-tool-menu{min-width:250px;display:grid;gap:4px}
+.yt-tool-menu[hidden]{display:none}
+.yt-menu-search label{display:flex;align-items:center;gap:7px;border:1px solid var(--yt-line);border-radius:10px;background:rgba(255,255,255,.03);padding:0 10px;color:#8fa2bb}
+.yt-menu-search input{flex:1;min-width:0;height:36px;border:0;outline:0;background:transparent;color:#dce7f6;font:inherit}
+.yt-tool-menu .yt-transcript-tabs{height:auto!important;min-height:0!important;padding:4px 0!important;display:grid!important;gap:2px;border:0!important}
+.yt-transcript-toolbar .yt-tool-menu .yt-transcript-tabs button{justify-content:flex-start;gap:9px;min-width:0;border-bottom:0!important;border-left:3px solid transparent!important;border-radius:9px;color:#b2c1d5}
+.yt-transcript-toolbar .yt-tool-menu .yt-transcript-tabs button.is-active{color:var(--yt-gold);border-left-color:var(--yt-gold)!important;background:rgba(255,202,99,.07)}
+.yt-tool-menu .yt-transcript-tabs button span{display:inline!important}
+.yt-tool-menu .yt-transcript-tabs b{display:inline-block!important;margin-left:auto}
+.yt-menu-sep{margin:2px 4px;border:0;border-top:1px solid var(--yt-line)}
+@media(max-width:680px){.yt-tool-menu{min-width:min(280px,calc(100vw - 40px))}}

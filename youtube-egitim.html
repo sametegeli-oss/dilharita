@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=55">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=56">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -20,7 +20,6 @@
   <div class="yt-top-actions" id="topActions">
    <span class="yt-sync" id="syncState" tabindex="0"><i></i><span>Cihazda kayıtlı</span></span>
    <button class="yt-top-button" id="openLibrary" type="button" aria-label="Kitaplığım">▤ <span>Kitaplığım</span><b id="libraryCount">0</b></button>
-   <button class="yt-round" id="focusMode" type="button" aria-label="Videoyu tam ekran yap" title="Videoyu tam ekran yap">⛶</button>
   </div>
 
   <section class="yt-home" id="homeView">
@@ -57,7 +56,6 @@
   <section class="yt-study" id="studyView" hidden>
    <header class="yt-video-head">
     <button class="yt-round" id="closeStudy" type="button" aria-label="Ana ekrana dön">←</button>
-    <button class="yt-round yt-change-video" id="changeVideoBtn" type="button" aria-label="Çalışma videosunu değiştir" data-tooltip="Videoyu değiştir">⇄</button>
     <div class="yt-video-heading"><span id="videoLevel">YOUTUBE DERSİ</span><h1 id="videoTitle">Video hazırlanıyor…</h1><small id="videoMeta"></small><div class="yt-timing-state" id="timingState" data-state="checking"><i></i><span>Zaman kaynağı kontrol ediliyor…</span></div></div>
    <div class="yt-head-side"><div class="yt-actions-slot" id="headActionsSlot"></div><div class="yt-head-progress"><span id="masteryLabel">0 / 0 öğrenildi</span><div><i id="masteryBar"></i></div></div></div>
    </header>
@@ -164,7 +162,7 @@
      </div>
 
      <section class="yt-learning-card" id="learningCard">
-      <div class="yt-learning-head"><span id="activeIndex">CÜMLE 1</span><button class="yt-practice-menu-toggle yt-pro-button" id="practiceActionsToggle" type="button" aria-expanded="false" aria-label="Cümle işlemlerini göster" data-tooltip="Cümle işlemlerini göster veya gizle">⋯</button><div class="yt-sentence-actions"><button id="syncSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="YouTube zamanına git" data-tooltip="Cümleyi YouTube’daki başlangıç zamanında oynat"><span aria-hidden="true">▶⏱</span></button><button id="favoriteSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Favoriye ekle" data-tooltip="Cümleyi favorilere ekle veya çıkar"><span aria-hidden="true">♡</span></button><button id="editSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Cümleyi düzenle" data-tooltip="Cümle metnini ve zamanlarını düzenle"><span aria-hidden="true">✎</span></button><button id="splitSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Cümleyi ikiye böl" data-tooltip="Cümleyi seçtiğiniz noktadan ikiye böl"><span aria-hidden="true">✂</span></button><button id="mergeNextSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Sonraki cümleyle birleştir" data-tooltip="Aktif cümleyi bir sonraki transkript cümlesiyle birleştir"><span aria-hidden="true">⇥</span></button><button id="undoSplit" class="yt-icon-action yt-pro-button" type="button" aria-label="Bölmeyi geri al" data-tooltip="Son cümle bölme işlemini geri al" hidden><span aria-hidden="true">↶</span></button><button id="undoMerge" class="yt-icon-action yt-pro-button" type="button" aria-label="Birleştirmeyi geri al" data-tooltip="Son cümle birleştirme işlemini geri al" hidden><span aria-hidden="true">↶</span></button><button id="askGemini" class="yt-icon-action yt-pro-button" type="button" aria-label="Gemini’ye sor" data-tooltip="Aktif cümle hakkında Gemini’ye soru sor"><span aria-hidden="true">✦</span></button><button id="openSentenceYouglish" class="yt-icon-action yt-pro-button" type="button" aria-label="YouGlish gerçek kullanımları" data-tooltip="Aktif cümleyi farklı gerçek videolarda dinle"><span aria-hidden="true">Y</span></button><button id="createPracticeModule" class="yt-icon-action yt-pro-button" type="button" aria-label="Videodan çalışma modülleri oluştur" data-tooltip="Video ve transkriptten kalıcı çalışma modülleri oluştur"><span aria-hidden="true">◈</span></button></div></div>
+      <div class="yt-learning-head"><button class="yt-actions-collapse" id="sentenceActionsToggle" type="button" aria-expanded="false" aria-controls="learningCard" data-tooltip="Cümle düğmelerini göster veya gizle"><span id="activeIndex">CÜMLE 1</span><i aria-hidden="true">⌄</i></button><button class="yt-practice-menu-toggle yt-pro-button" id="practiceActionsToggle" type="button" aria-expanded="false" aria-label="Cümle işlemlerini göster" data-tooltip="Cümle işlemlerini göster veya gizle">⋯</button><div class="yt-sentence-actions"><button id="syncSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="YouTube zamanına git" data-tooltip="Cümleyi YouTube’daki başlangıç zamanında oynat"><span aria-hidden="true">▶⏱</span></button><button id="favoriteSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Favoriye ekle" data-tooltip="Cümleyi favorilere ekle veya çıkar"><span aria-hidden="true">♡</span></button><button id="editSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Cümleyi düzenle" data-tooltip="Cümle metnini ve zamanlarını düzenle"><span aria-hidden="true">✎</span></button><button id="splitSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Cümleyi ikiye böl" data-tooltip="Cümleyi seçtiğiniz noktadan ikiye böl"><span aria-hidden="true">✂</span></button><button id="mergeNextSentence" class="yt-icon-action yt-pro-button" type="button" aria-label="Sonraki cümleyle birleştir" data-tooltip="Aktif cümleyi bir sonraki transkript cümlesiyle birleştir"><span aria-hidden="true">⇥</span></button><button id="undoSplit" class="yt-icon-action yt-pro-button" type="button" aria-label="Bölmeyi geri al" data-tooltip="Son cümle bölme işlemini geri al" hidden><span aria-hidden="true">↶</span></button><button id="undoMerge" class="yt-icon-action yt-pro-button" type="button" aria-label="Birleştirmeyi geri al" data-tooltip="Son cümle birleştirme işlemini geri al" hidden><span aria-hidden="true">↶</span></button><button id="askGemini" class="yt-icon-action yt-pro-button" type="button" aria-label="Gemini’ye sor" data-tooltip="Aktif cümle hakkında Gemini’ye soru sor"><span aria-hidden="true">✦</span></button><button id="openSentenceYouglish" class="yt-icon-action yt-pro-button" type="button" aria-label="YouGlish gerçek kullanımları" data-tooltip="Aktif cümleyi farklı gerçek videolarda dinle"><span aria-hidden="true">Y</span></button><button id="createPracticeModule" class="yt-icon-action yt-pro-button" type="button" aria-label="Videodan çalışma modülleri oluştur" data-tooltip="Video ve transkriptten kalıcı çalışma modülleri oluştur"><span aria-hidden="true">◈</span></button></div></div>
 
       <button class="yt-advanced-toggle" id="advancedToolsToggle" type="button" aria-expanded="false"><span aria-hidden="true">⏱</span><b>Cümleyi düzenle</b><i aria-hidden="true">⌄</i></button>
       
@@ -245,21 +243,15 @@
     </section>
 
     <aside class="yt-transcript-panel">
-     <div class="yt-transcript-tabs" role="tablist">
-      <button class="is-active" data-panel="transcript" type="button" role="tab">文 <span>Altyazılar</span><b id="sentenceCount">0</b></button>
-      <button data-panel="phrases" type="button" role="tab">✦ <span>İfadeler</span></button>
-      <button data-panel="quiz" type="button" role="tab">◆ <span>Test</span></button>
-      <button data-panel="wordbook" type="button" role="tab">▣ <span>Defter</span><b id="wordCount">0</b></button>
-      <button data-panel="grammar" type="button" role="tab">Aa <span>Dilbilgisi</span></button>
-     </div>
+     
      <div class="yt-transcript-toolbar">
-      <label><span>⌕</span><input id="transcriptSearch" type="search" placeholder="Cümlelerde ara…"></label>
+      
       <div class="yt-toolbar-row">
        <button id="toggleEN" class="is-active" type="button" aria-pressed="true">EN</button>
        <button id="toggleTR" class="is-active" type="button" aria-pressed="true">TR</button>
        <button id="drillToggle" class="yt-drill-toggle" type="button" aria-pressed="false" data-tooltip="Gemini ile pekiştirme için cümle seç">☑ Seç</button>
-       <div class="yt-tool-more"><button id="transcriptMoreToggle" class="yt-tool-more-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="transcriptMoreMenu" aria-label="Diğer transkript araçları">⋯</button>
-        <div class="yt-tool-menu" id="transcriptMoreMenu" role="menu" hidden><button id="autoSplitAll" role="menuitem" type="button" data-tooltip="Birden çok cümle içeren uzun satırları noktadan otomatik böl (zamanlar tahmini olur)">✂ Noktadan böl (tümü)</button></div></div>
+       <span class="yt-active-tab" id="activeTabLabel" aria-live="polite">文 Altyazılar</span><div class="yt-tool-more"><button id="transcriptMoreToggle" class="yt-tool-more-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="transcriptMoreMenu" aria-label="Diğer transkript araçları">⋯</button>
+        <div class="yt-tool-menu" id="transcriptMoreMenu" role="menu" hidden><div class="yt-menu-search"><label><span>⌕</span><input id="transcriptSearch" type="search" placeholder="Cümlelerde ara…"></label></div><div class="yt-transcript-tabs" role="tablist">       <button class="is-active" data-panel="transcript" type="button" role="tab">文 <span>Altyazılar</span><b id="sentenceCount">0</b></button>       <button data-panel="phrases" type="button" role="tab">✦ <span>İfadeler</span></button>       <button data-panel="quiz" type="button" role="tab">◆ <span>Test</span></button>       <button data-panel="wordbook" type="button" role="tab">▣ <span>Defter</span><b id="wordCount">0</b></button>       <button data-panel="grammar" type="button" role="tab">Aa <span>Dilbilgisi</span></button>      </div><hr class="yt-menu-sep"><button id="autoSplitAll" role="menuitem" type="button" data-tooltip="Birden çok cümle içeren uzun satırları noktadan otomatik böl (zamanlar tahmini olur)">✂ Noktadan böl (tümü)</button></div></div>
       </div>
      </div>
      <div class="yt-drill-bar" id="drillBar" hidden>
@@ -395,7 +387,7 @@
  <script src="./immersive-youtube-study.js?v=18"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=105"></script>
+ <script src="./youtube-egitim.js?v=106"></script>
  <script src="./youtube-swipe-navigation.js?v=1"></script>
 
 <div class="yt-modal-overlay" id="existingModuleModal" hidden><section class="yt-modal"><h2>Bu videonun modülü mevcut</h2><p>Mevcut modülü çalışabilir veya yeniden oluşturabilirsiniz.</p><button id="existingModuleStudy" type="button">Mevcut modülü çalış</button><button id="existingModuleNew" type="button">Yeniden oluştur</button><button id="existingModuleCancel" type="button">Vazgeç</button></section></div>
