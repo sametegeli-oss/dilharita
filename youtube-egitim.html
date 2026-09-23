@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=53">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=54">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -136,20 +136,22 @@
       <button class="yt-control" id="prevSentence" type="button" aria-label="Önceki cümle">│◀</button>
       <button class="yt-control" id="nextSentence" type="button" aria-label="Sonraki cümle">▶│</button>
       <button class="yt-control" id="loopToggle" type="button" aria-pressed="false" data-loop-state="passive" aria-label="Cümle tekrarını aç" data-tooltip="Aktif cümleyi sürekli döndür">↻ <span>Cümleyi döndür</span></button>
-      <button class="yt-control yt-study-action" id="controlModule" type="button" data-tooltip="Aktif cümlenin çalışma modülünü aç; yoksa videodan modülleri oluştur"><span aria-hidden="true">◈</span><span>Modüle git</span></button>
-      <button class="yt-control yt-exit-fullscreen" id="fsActionExit" type="button" aria-label="Tam ekrandan çık" title="Tam ekrandan çık"><span aria-hidden="true">⤢</span></button>
-      <button class="yt-control yt-study-action" id="controlYouglish" type="button" data-tooltip="Aktif kalıbı farklı gerçek videolarda dinle"><span aria-hidden="true">Y</span><span>YouGlish</span></button>
-      <button class="yt-control yt-study-action" id="controlShadow" type="button" data-tooltip="Aktif cümleyi görüntüyle birlikte seslendir ve kaydet"><span aria-hidden="true">♬</span><span>Shadowing</span></button>
-      <button class="yt-control yt-study-action" id="controlDictation" type="button" data-tooltip="Aktif cümleyi dinle ve duyduğunu yaz"><span aria-hidden="true">⌨</span><span>Dikte</span></button>
-      
-      <button class="yt-control yt-study-action yt-gemini-explain" id="explainSentenceGemini" type="button" data-tooltip="Aktif cümle için kayıtlı ayrıntılı Gemini açıklamasını aç veya oluştur"><span aria-hidden="true">✦</span><span>Gemini ile açıkla</span></button>
-      <button class="yt-control yt-study-action yt-gemini-explain-all" id="explainAllGemini" type="button" data-tooltip="Videodaki tüm cümleler için Gemini ile ayrıntılı açıklama üret (parça parça)"><span aria-hidden="true">✦✦</span><span>Tümünü açıkla</span></button>
-      <button class="yt-control yt-study-action yt-gemini-explain-all" id="generatePracticeExamples" type="button" data-tooltip="Her cümlenin ana İngilizce kalıbı için beş yeni uygulama cümlesi üret"><span aria-hidden="true">5✦</span><span>5 örnek üret</span></button>
-      <button class="yt-control yt-study-action yt-pdf-export" id="pdfExportOpen" type="button" data-tooltip="Cümle aralığını EN/TR ve isteğe bağlı açıklamalarla PDF olarak dışa aktar"><span aria-hidden="true">🖨</span><span>PDF'e aktar</span></button>
       <div class="yt-time"><b id="currentTime">00:00</b><span>/</span><span id="durationTime">00:00</span></div>
       <button class="yt-control" id="speedToggle" type="button">1×</button>
       <button class="yt-control" id="captionToggle" type="button" aria-pressed="true">CC</button>
       <button class="yt-control" id="soundToggle" type="button" aria-label="Sesi aç veya kapat">🔊</button>
+      <button class="yt-control yt-more-toggle" id="controlMoreToggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="controlMoreMenu" aria-label="Diğer çalışma araçları" data-tooltip="Diğer çalışma araçları">⋯</button>
+      <div class="yt-more-menu" id="controlMoreMenu" hidden>
+       <button class="yt-control yt-study-action" id="controlModule" type="button" data-tooltip="Aktif cümlenin çalışma modülünü aç; yoksa videodan modülleri oluştur"><span aria-hidden="true">◈</span><span>Modüle git</span></button>
+       <button class="yt-control yt-study-action" id="controlYouglish" type="button" data-tooltip="Aktif kalıbı farklı gerçek videolarda dinle"><span aria-hidden="true">Y</span><span>YouGlish</span></button>
+       <button class="yt-control yt-study-action" id="controlShadow" type="button" data-tooltip="Aktif cümleyi görüntüyle birlikte seslendir ve kaydet"><span aria-hidden="true">♬</span><span>Shadowing</span></button>
+       <button class="yt-control yt-study-action" id="controlDictation" type="button" data-tooltip="Aktif cümleyi dinle ve duyduğunu yaz"><span aria-hidden="true">⌨</span><span>Dikte</span></button>
+       <button class="yt-control yt-study-action yt-gemini-explain" id="explainSentenceGemini" type="button" data-tooltip="Aktif cümle için kayıtlı ayrıntılı Gemini açıklamasını aç veya oluştur"><span aria-hidden="true">✦</span><span>Gemini ile açıkla</span></button>
+       <button class="yt-control yt-study-action yt-gemini-explain-all" id="explainAllGemini" type="button" data-tooltip="Videodaki tüm cümleler için Gemini ile ayrıntılı açıklama üret (parça parça)"><span aria-hidden="true">✦✦</span><span>Tümünü açıkla</span></button>
+       <button class="yt-control yt-study-action yt-gemini-explain-all" id="generatePracticeExamples" type="button" data-tooltip="Her cümlenin ana İngilizce kalıbı için beş yeni uygulama cümlesi üret"><span aria-hidden="true">5✦</span><span>5 örnek üret</span></button>
+       <button class="yt-control yt-study-action yt-pdf-export" id="pdfExportOpen" type="button" data-tooltip="Cümle aralığını EN/TR ve isteğe bağlı açıklamalarla PDF olarak dışa aktar"><span aria-hidden="true">🖨</span><span>PDF'e aktar</span></button>
+      </div>
+      <button class="yt-control yt-exit-fullscreen" id="fsActionExit" type="button" aria-label="Tam ekrandan çık" title="Tam ekrandan çık"><span aria-hidden="true">⤢</span></button>
       <button class="yt-control yt-fullscreen-control" id="fullscreenToggle" type="button" aria-label="Videoyu tam ekran yap" aria-pressed="false">⛶</button>
      </div>
      </div>
@@ -253,10 +255,13 @@
      </div>
      <div class="yt-transcript-toolbar">
       <label><span>⌕</span><input id="transcriptSearch" type="search" placeholder="Cümlelerde ara…"></label>
-      <button id="toggleEN" class="is-active" type="button" aria-pressed="true">EN</button>
-      <button id="toggleTR" class="is-active" type="button" aria-pressed="true">TR</button>
-      <button id="autoSplitAll" type="button" data-tooltip="Birden çok cümle içeren uzun satırları noktadan otomatik böl (zamanlar tahmini olur)">✂ Noktadan böl (tümü)</button>
-      <button id="drillToggle" class="yt-drill-toggle" type="button" aria-pressed="false" aria-label="Pekiştirme için cümle seç" data-tooltip="Gemini ile pekiştirme için cümle seç">☑</button>
+      <div class="yt-toolbar-row">
+       <button id="toggleEN" class="is-active" type="button" aria-pressed="true">EN</button>
+       <button id="toggleTR" class="is-active" type="button" aria-pressed="true">TR</button>
+       <button id="drillToggle" class="yt-drill-toggle" type="button" aria-pressed="false" data-tooltip="Gemini ile pekiştirme için cümle seç">☑ Seç</button>
+       <div class="yt-tool-more"><button id="transcriptMoreToggle" class="yt-tool-more-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="transcriptMoreMenu" aria-label="Diğer transkript araçları">⋯</button>
+        <div class="yt-tool-menu" id="transcriptMoreMenu" role="menu" hidden><button id="autoSplitAll" role="menuitem" type="button" data-tooltip="Birden çok cümle içeren uzun satırları noktadan otomatik böl (zamanlar tahmini olur)">✂ Noktadan böl (tümü)</button></div></div>
+      </div>
      </div>
      <div class="yt-drill-bar" id="drillBar" hidden>
       <div class="yt-drill-quick"><button type="button" data-drill-pick="favorites">★ Favoriler</button><button type="button" data-drill-pick="hard">⚠ Zorlar</button><button type="button" data-drill-pick="due">⏰ Tekrar zamanı gelenler</button><button type="button" data-drill-pick="unstudied">○ Hiç çalışılmamış</button><button type="button" data-drill-pick="clear">Temizle</button></div>
@@ -391,7 +396,7 @@
  <script src="./immersive-youtube-study.js?v=18"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=103"></script>
+ <script src="./youtube-egitim.js?v=104"></script>
  <script src="./youtube-swipe-navigation.js?v=1"></script>
 
 <div class="yt-modal-overlay" id="existingModuleModal" hidden><section class="yt-modal"><h2>Bu videonun modülü mevcut</h2><p>Mevcut modülü çalışabilir veya yeniden oluşturabilirsiniz.</p><button id="existingModuleStudy" type="button">Mevcut modülü çalış</button><button id="existingModuleNew" type="button">Yeniden oluştur</button><button id="existingModuleCancel" type="button">Vazgeç</button></section></div>

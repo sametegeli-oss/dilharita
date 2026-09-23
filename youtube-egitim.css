@@ -336,7 +336,7 @@ body.yt-video-pseudo-fullscreen .yt-video-shell.is-pseudo-fullscreen{position:fi
 .yt-fullscreen-tool-menu .yt-fullscreen-exit-action{margin-top:6px;border-color:rgba(255,124,136,.3);color:#ff9aa5;background:rgba(95,25,37,.24)}
 .yt-video-shell.is-drawer-open .yt-fullscreen-tools-toggle{border-color:rgba(85,230,209,.65)!important;color:#55e6d1!important;background:rgba(5,40,43,.9)!important}
 /* Tam ekranda çalışma eylemleri gizlenir; Modüle git daima erişilebilir kalır. */
-.yt-video-shell:fullscreen .yt-controls>#controlModule,.yt-video-shell:-webkit-full-screen .yt-controls>#controlModule,.yt-video-shell.is-pseudo-fullscreen .yt-controls>#controlModule{display:inline-flex!important;border-color:rgba(85,230,209,.5)!important;background:linear-gradient(145deg,rgba(16,86,82,.92),rgba(7,50,54,.96))!important;color:#ecfffb!important;box-shadow:0 0 0 1px rgba(85,230,209,.12),0 8px 22px rgba(0,0,0,.28)!important}
+.yt-video-shell:fullscreen .yt-controls #controlModule,.yt-video-shell:-webkit-full-screen .yt-controls #controlModule,.yt-video-shell.is-pseudo-fullscreen .yt-controls #controlModule{display:inline-flex!important;border-color:rgba(85,230,209,.5)!important;background:linear-gradient(145deg,rgba(16,86,82,.92),rgba(7,50,54,.96))!important;color:#ecfffb!important;box-shadow:0 0 0 1px rgba(85,230,209,.12),0 8px 22px rgba(0,0,0,.28)!important}
 @media(max-width:680px){
  .yt-control>span[aria-hidden="true"]{display:inline-flex!important;align-items:center;justify-content:center}
  .yt-study-action>span:last-child,#loopToggle>span{display:none!important}
@@ -419,3 +419,43 @@ body.yt-video-pseudo-fullscreen .yt-video-shell.is-pseudo-fullscreen{position:fi
 .yt-drill-result-modal footer{align-items:center}
 .yt-drill-link{margin-right:auto;color:#8fdcff;font-weight:800;font-size:13px}
 @media (max-width:560px){.yt-drill-actions{flex-wrap:wrap}.yt-drill-actions .yt-primary{flex:1}}
+
+/* v54 · Kontrol çubuğu ⋯ menüsü + transkript araç çubuğu + modal ana düğme */
+.yt-modal footer .yt-primary,.yt-modal footer button.yt-primary{border:0;background:linear-gradient(135deg,#49dac8,#458ff5);color:#06131d;font-weight:900;box-shadow:0 8px 22px rgba(69,143,245,.28)}
+.yt-modal footer .yt-primary:hover{filter:brightness(1.08)}
+.yt-modal footer .yt-primary:disabled{opacity:.5;cursor:not-allowed}
+
+/* Transkript araç çubuğu: arama tam satır, altında eşit boyda çipler */
+.yt-transcript-toolbar{flex-wrap:wrap;align-items:center;row-gap:8px}
+.yt-transcript-toolbar>label{flex:1 1 100%;min-height:38px}
+.yt-toolbar-row{display:flex;align-items:center;gap:6px;width:100%}
+.yt-toolbar-row>button,.yt-tool-more>button{width:auto;min-width:42px;height:34px;padding:0 12px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:5px;font-size:13px;white-space:nowrap;cursor:pointer}
+.yt-transcript-toolbar .yt-drill-toggle{font-size:13px;color:#b2c1d5}
+.yt-tool-more{position:relative;margin-left:auto}
+.yt-tool-more-toggle{font-size:18px!important;letter-spacing:1px;color:#b2c1d5!important}
+.yt-tool-more-toggle.is-open{border-color:rgba(73,218,200,.6)!important;color:#8ff0e1!important}
+.yt-tool-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:40;min-width:220px;padding:6px;border:1px solid var(--yt-line);border-radius:12px;background:#0c192a;box-shadow:0 14px 34px rgba(0,0,0,.45)}
+.yt-tool-menu[hidden]{display:none}
+.yt-transcript-toolbar .yt-tool-menu button{display:flex;width:100%;height:auto;padding:10px 12px;border:0;border-radius:9px;background:transparent;color:#dce7f6;font-size:13px;font-weight:800;text-align:left;white-space:nowrap;cursor:pointer}
+.yt-transcript-toolbar .yt-tool-menu button:hover{background:rgba(73,218,200,.1)}
+
+/* Video kontrol çubuğu: dar alanda az kullanılanlar ⋯ altında etiketli satır */
+.yt-more-toggle{position:relative;font-size:18px;letter-spacing:1px}
+.yt-more-toggle.has-active::after{content:"";position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:#38f2d1;box-shadow:0 0 8px #38f2d1}
+.yt-more-toggle.is-open{border-color:#38f2d1!important;color:#8ff0e1!important}
+.yt-controls.is-more-open{flex-wrap:wrap;overflow:visible;column-gap:4px}
+.yt-more-menu{order:99;flex:1 0 100%;display:flex;flex-wrap:wrap;gap:6px;padding:8px 2px 0;border-top:1px solid rgba(147,176,210,.18)}
+.yt-more-menu[hidden]{display:none}
+.yt-controls .yt-more-menu .yt-study-action{width:auto!important;min-width:0!important;height:40px;padding:0 12px!important;gap:7px;justify-content:flex-start!important}
+.yt-controls .yt-more-menu .yt-study-action>span:last-child{position:static!important;width:auto!important;height:auto!important;overflow:visible!important;clip:auto!important;display:inline!important;font-size:12px;font-weight:800}
+/* Geniş alan (JS: .is-wide, video sütunu ≥ 960px): hepsi tek satırda, ⋯ gizli */
+.yt-controls.is-wide .yt-more-toggle{display:none!important}
+.yt-controls.is-wide .yt-more-menu,.yt-controls.is-wide .yt-more-menu[hidden]{display:contents!important}
+.yt-controls.is-wide .yt-more-menu .yt-study-action{width:44px!important;min-width:44px!important;padding:0!important;justify-content:center!important}
+.yt-controls.is-wide .yt-more-menu .yt-study-action>span:last-child{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important}
+/* Tam ekran: eski davranış korunur — yalnız "Modüle git" görünür, ⋯ gizli */
+.yt-video-shell:fullscreen .yt-more-toggle,.yt-video-shell:-webkit-full-screen .yt-more-toggle,.yt-video-shell.is-pseudo-fullscreen .yt-more-toggle{display:none!important}
+.yt-video-shell:fullscreen .yt-more-menu,.yt-video-shell:-webkit-full-screen .yt-more-menu,.yt-video-shell.is-pseudo-fullscreen .yt-more-menu,.yt-video-shell:fullscreen .yt-more-menu[hidden],.yt-video-shell:-webkit-full-screen .yt-more-menu[hidden],.yt-video-shell.is-pseudo-fullscreen .yt-more-menu[hidden]{display:contents!important}
+.yt-video-shell:fullscreen .yt-more-menu>.yt-study-action,.yt-video-shell:-webkit-full-screen .yt-more-menu>.yt-study-action,.yt-video-shell.is-pseudo-fullscreen .yt-more-menu>.yt-study-action{display:none!important}
+.yt-video-shell:fullscreen .yt-more-menu>#controlModule,.yt-video-shell:-webkit-full-screen .yt-more-menu>#controlModule,.yt-video-shell.is-pseudo-fullscreen .yt-more-menu>#controlModule{display:inline-flex!important;width:44px!important;min-width:44px!important;padding:0!important;justify-content:center!important}
+.yt-video-shell:fullscreen .yt-more-menu>#controlModule>span:last-child,.yt-video-shell:-webkit-full-screen .yt-more-menu>#controlModule>span:last-child,.yt-video-shell.is-pseudo-fullscreen .yt-more-menu>#controlModule>span:last-child{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important}
