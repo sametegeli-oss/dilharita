@@ -352,6 +352,35 @@ function highlightEnglish(text){
   out+=esc(s.slice(last));
   return out;
 }
+/* Ek açıklama (serbest Gemini cevabı): markdown + açıklamadaki renk kuralları.
+   **kalın** → beyaz kalın · *italik* / `kod` / [köşeli] → yeşil İngilizce ·
+   "tırnak" → mavi · (parantez) → sarı. */
+function noteInline(text){
+  /* Markdown işaretleri önce görünmez işaretçilere çevrilir; böylece tırnak ve
+     parantez renklendirmesi kalın/italik sınırlarında bölünmez. */
+  var s=String(text||"").replace(/[\u0001-\u0004]/g,"")
+    .replace(/\*\*([^*]+)\*\*|__([^_]+)__/g,function(_,a,b){return "\u0001"+(a!==undefined?a:b)+"\u0002";})
+    .replace(/\*([^*\n]+)\*|`([^`]+)`/g,function(_,a,b){return "\u0003"+(a!==undefined?a:b)+"\u0004";});
+  return highlightEnglish(s).replace(/\u0001/g,'<strong class="dh-note-strong">').replace(/\u0002/g,"</strong>").replace(/\u0003/g,'<b class="dh-exp-en">').replace(/\u0004/g,"</b>");
+}
+function formatNote(input){
+  css();
+  var lines=String(input==null?"":input).replace(/\r/g,"").replace(/^\s*DH-ID:[^\n]*\n/i,"").trim().split("\n"),out=[],list="",para=[];
+  function flush(){if(para.length){out.push("<p>"+para.map(noteInline).join("<br>")+"</p>");para=[];}}
+  function close(){if(list){out.push("</"+list+">");list="";}}
+  lines.forEach(function(line){
+    var m;
+    if(!line.trim()){flush();close();return;}
+    if((m=line.match(/^\s*#{1,6}\s+(.+)$/))){flush();close();out.push('<h4 class="dh-note-h">'+noteInline(m[1].replace(/\*\*/g,""))+"</h4>");return;}
+    if(/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)){flush();close();out.push('<hr class="dh-note-hr">');return;}
+    if((m=line.match(/^\s*[-*•]\s+(.+)$/))){flush();if(list!=="ul"){close();list="ul";out.push('<ul class="dh-exp-list">');}out.push("<li>"+noteInline(m[1])+"</li>");return;}
+    if((m=line.match(/^\s*\d+[.)]\s+(.+)$/))){flush();if(list!=="ol"){close();list="ol";out.push('<ol class="dh-note-ol">');}out.push("<li>"+noteInline(m[1])+"</li>");return;}
+    if((m=line.match(/^\s*>\s?(.*)$/))){flush();close();out.push('<blockquote class="dh-note-quote">'+noteInline(m[1])+"</blockquote>");return;}
+    close();para.push(line.trim());
+  });
+  flush();close();
+  return '<div class="dh-explanation-shell dh-note-shell" data-dh-exp-size="'+explanationSize()+'"><div class="dh-explanation dh-note"><div class="dh-exp-body">'+(out.join("")||"<p>"+esc(input)+"</p>")+"</div></div></div>";
+}
 function formatExplanation(input){
   css();
   bindExplanationUI();
@@ -454,7 +483,7 @@ function hasOverlay(){return!!(activeOverlay&&activeOverlay.parentNode)}
    iki tarafta da değişmez. */
 function explanationPrompt(context){context=context||{};return "Sen Dil Harita’da Türk öğrencilere doğal ve anlaşılır İngilizce öğreten deneyimli bir öğretmensin.\n\nAşağıdaki cümleyi Türkçe olarak çok detaylı açıkla, benzer örneklerle pekiştir. Amacın öğrencinin hem duyduğu orijinal ifadeyi anlaması hem de aynı düşünceyi günlük hayatta hangi durumda, nasıl söyleyeceğini öğrenmesidir.\n\nÖğrenci seviyesi: "+(context.level||"belirtilmedi")+"\nVideo: "+(context.videoTitle||"belirtilmedi")+"\nAktif İngilizce cümle: "+(String(context.sentence||"").trim())+"\nMevcut Türkçe karşılık: "+(context.translation||"yok")+"\n\nÖğrencinin seviyesine uygun açıklama yap. Seviye belirtilmemişse kolay Türkçe kullan ve gramer terimlerini ilk kullanıldıkları yerde açıkla. Çok detaylı ol; ancak ayrıntıyı anlam, kullanım ve öğrenmeye katkı sağlayacak noktalara ayır. Aynı bilgiyi tekrarlayarak metni uzatma.\n\nAçıklamanı aşağıdaki etiketlerle düzenle. Her etiketi ayrı satıra aynen yaz.\n\n[ANLAM]\nCümlenin bağlamdaki doğal Türkçe karşılığını ver. Mevcut çeviride hata varsa düzelt ve nedenini açıkla. Bağlam eksikse kesin yorum yapmak yerine belirsizliği belirt. Videonun başlığından hareketle olay veya konuşmacı niyeti uydurma.\n\n[YAPI VE KALIPLAR]\nCümleyi anlamlı parçalara ayır. Kelimeleri, kalıpları, zamanı ve gramer yapısını bu cümle üzerinden çok detaylı açıkla. Kelimesi kelimesine çevirinin neden yanıltabileceğini göster. Kelimelerin bu cümledeki anlamıyla diğer olası anlamlarını birbirinden ayır.\n\n[HANGİ DURUMDA DOĞAL]\nİfadenin günlük konuşmada, hikâye anlatımında, iş ortamında veya başka bir durumda nasıl duyulduğunu açıkla. Samimi, resmi, edebi, dramatik, sert veya yumuşak bir tonu varsa belirt. Bu değerlendirmeyi bağlama göre yap; yerleşik bir ifadeyi her ortamda en uygun seçenek olarak sunma.\n\n[DAHA SADE NASIL SÖYLERİM]\nAynı düşünceyi temel kelimeler ve kolay takip edilen yapılarla ifade eden doğal alternatifler ver. Gereksiz alternatif üretme. Orijinal cümle zaten sade ve doğalsa bunu belirt.\n\nAlternatiflerin doğal Türkçe karşılıklarını yaz. Sadeleştirirken kişi, zaman, olumsuzluk, niyet ve kesinlik derecesini mümkün olduğunca koru.\n\nAnlam, nezaket veya duygusal ton değişiyorsa farkı açıkça anlat. Özellikle istemek, niyet etmek ve gelecekte bir şey yapacağını ya da yapmayacağını söylemek arasındaki farkları koru. Yakın anlamlı cümleleri tamamen aynı diye sunma. Tam eşdeğer sade bir karşılık yoksa bunu belirt.\n\n[HANGİSİNİ KULLANMALIYIM]\nFarklı ana dillere sahip insanlarla günlük iletişim kuracak öğrenciye bir seçenek öner ve nedenini açıkla. Sadelik, doğallık, duruma uygunluk ve amaçlanan anlamı korumayı birlikte değerlendir. Orijinal ifadenin hangi ortamda tercih edilebileceğini de belirt.\n\n“Herkes anlar”, “yanlış anlaşılma riski sıfır” veya kanıtsız biçimde “en yaygın ifade” gibi kesin iddialar kullanma. Anlaşılabilirliğin kişinin dil seviyesine ve bağlama bağlı olduğunu gözet. Doğal İngilizceyi gösterişli konuşmakla özdeşleştirme.\n\n[BENZER ÖRNEKLER]\nÖğrenilen yapıları farklı günlük durumlarda gösteren İngilizce örnekler ve doğal Türkçe karşılıklarını ver. Yararlı olduğunda orijinal yapıyla sade alternatifini karşılaştır. Her örnek yeni bir kullanım veya anlam farkı öğretsin. Yalnızca kişi adını ya da tek bir kelimeyi değiştirerek örnekleri çoğaltma.\n\n[KISA KONUŞMA]\nÖnerdiğin ifadeyi iki veya üç repliklik doğal bir konuşmada göster. Durumu kısaca belirt ve her İngilizce repliğin Türkçe karşılığını ver. Öğrenci ifadeyi ne zaman söyleyeceğini ve karşılığında ne duyabileceğini görsün.\n\n[TELAFFUZ]\nÖnemli vurgu, kısaltma ve ses bağlantılarını açıkla. Türkçe harflerle telaffuz verirsen bunun yaklaşık olduğunu belirt. Açık ve anlaşılır söyleyişi temel al; sesleri azaltmanın veya hızlı konuşmanın zorunlu olduğu izlenimini verme.\n\n[YAYGIN HATALAR]\nTürk öğrencilerin bu cümlede yapabileceği anlam, yapı ve kullanım hatalarını doğru biçimleriyle açıkla. Gramer açısından yanlış olan bir ifadeyle doğru fakat bağlama daha az uygun olan bir ifadeyi birbirinden ayır.\n\n[SIRA SENDE]\nÖğrenciden öğrendiği yapıyla kısa bir cümle kurmasını veya iki ifade arasındaki anlam farkını değerlendirmesini isteyen tek bir alıştırma sorusu sor. Soru, açıklamada öğretilen bir noktayı ölçsün.\n\n[ÖRNEK CEVAP]\nAlıştırmanın örnek cevabını ve kısa gerekçesini ver. Birden fazla doğru cevap mümkünse sunduğun cevabın tek seçenek olmadığını belirt.\n\nMetin içinde geçen her İngilizce kelime, kalıp veya cümleyi köşeli parantez içine al; örnek: [That price is just for the campaign.] Türkçe metni parantez içine alma, yalnızca İngilizce kısımları işaretle.\n\nTürkçe yanıt ver. Bölüm etiketleri ve bu köşeli parantezler dışında Markdown, JSON, HTML, tablo, kod bloğu, bağlantı, emoji, yıldız veya başına # konmuş başlık kullanma. Etiketlerden önce veya son bölümden sonra ek açıklama yazma.";}
 
-global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending, hasOverlay:hasOverlay, markdown:markdown, formatExplanation:formatExplanation, explanationPrompt:explanationPrompt, setExplanationSize:syncExplanationSize, openExplanationReader:openExplanationReader };
+global.DHGemini={ ask:ask, parsers:parsers, copy:copy, url:GEMINI_URL, pending:pending, discardPending:discardPending, hasOverlay:hasOverlay, markdown:markdown, formatExplanation:formatExplanation, formatNote:formatNote, explanationPrompt:explanationPrompt, setExplanationSize:syncExplanationSize, openExplanationReader:openExplanationReader };
 })(window);
 
 /* teacher.html → modülde çalışılan cümleye kesin dönüş köprüsü.

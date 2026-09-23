@@ -562,3 +562,14 @@ body.yt-focus .yt-transcript-panel,body.yt-focus .yt-control-rail{top:14px;heigh
  #topActions .yt-sync{width:18px}
 }
 @media (orientation:landscape) and (max-width:1050px) and (max-height:600px){.yt-layout-dock .yt-head-toggle{display:none}}
+
+/* v58 · Ek açıklama cevabı: açıklama formatı ve renkleri */
+.yt-ai-note-a.is-formatted{white-space:normal}
+.yt-ai-note-a .dh-note-shell .dh-exp-body{padding:4px 0 0;gap:10px}
+.yt-ai-note-a .dh-note-strong{color:#fff;font-weight:900}
+.yt-ai-note-a .dh-note-h{margin:6px 0 0;color:#7dd3fc;font-size:var(--dh-exp-heading)}
+.yt-ai-note-a .dh-note-ol{display:grid;gap:8px;margin:0;padding-left:22px}
+.yt-ai-note-a .dh-note-ol li::marker{color:#58dfd0;font-weight:900}
+.yt-ai-note-a .dh-note-quote{margin:0;padding:8px 12px;border-left:3px solid #8b5cf6;border-radius:0 8px 8px 0;background:rgba(139,92,246,.08)}
+.yt-ai-note-a .dh-note-hr{border:0;border-top:1px solid rgba(147,176,210,.2);margin:4px 0}
+.yt-ai-note-a .dh-note-h{text-transform:none;letter-spacing:0;font-weight:900}
