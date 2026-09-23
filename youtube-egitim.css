@@ -580,3 +580,21 @@ body.yt-focus .yt-transcript-panel,body.yt-focus .yt-control-rail{top:14px;heigh
 .yt-ai-note-actions button:not(.yt-primary),.yt-ai-footer button,.yt-modal footer button:not(.yt-primary){border-color:rgba(160,190,225,.42)!important;color:#dbe6f3!important;background:rgba(148,178,214,.08)!important}
 .yt-ai-note-actions button:not(.yt-primary):hover,.yt-ai-footer button:hover,.yt-modal footer button:not(.yt-primary):hover{border-color:rgba(85,230,209,.6)!important;color:#8ff0e1!important;background:rgba(85,230,209,.1)!important}
 .yt-ai-footer #addExplanationNote{border-color:rgba(73,218,200,.55)!important;color:#8ff0e1!important;background:rgba(73,218,200,.1)!important}
+
+/* v60 · Kalıp vurgusu */
+.yt-pat{color:#5eead4;text-decoration:underline;text-decoration-color:rgba(94,234,212,.55);text-decoration-thickness:2px;text-underline-offset:4px;border-radius:4px;cursor:help}
+.yt-pat[data-pat-type="idiom"]{color:#fbbf24;text-decoration-color:rgba(251,191,36,.55)}
+.yt-pat[data-pat-type="grammar"]{color:#93c5fd;text-decoration-color:rgba(147,197,253,.55)}
+.yt-pat .yt-word{color:inherit!important}
+.yt-segment.is-active .yt-pat{color:#ccfbf1}
+.yt-caption-layer .yt-pat,#captionEN .yt-pat{text-decoration-thickness:3px;text-underline-offset:6px}
+body.yt-patterns-off .yt-pat{color:inherit!important;text-decoration:none!important;cursor:inherit}
+.yt-pat-list{display:grid;gap:6px;margin:0 0 14px;padding:12px;border:1px solid rgba(94,234,212,.25);border-radius:14px;background:rgba(94,234,212,.05)}
+.yt-pat-list h4{margin:0 0 4px;color:#99f6e4;font-size:13px;display:flex;align-items:center;gap:8px}
+.yt-pat-list h4 b{padding:1px 8px;border-radius:99px;background:rgba(94,234,212,.15);font-size:11px}
+.yt-pat-item{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;width:100%;padding:8px 10px;border:1px solid rgba(147,176,210,.18);border-radius:10px;background:rgba(7,17,31,.6);color:#c9d6e8;text-align:left;cursor:pointer}
+.yt-pat-item:hover{border-color:rgba(94,234,212,.5)}
+.yt-pat-item .yt-pat{font-weight:900;cursor:pointer}
+.yt-pat-item small{color:#b8c7da;font-size:12px}
+.yt-pat-item i{margin-left:auto;font-style:normal;color:#8fa2bb;font-size:11px;font-weight:700}
+.yt-pat-item em{font-style:normal;color:#f3c77a;font-size:11px;font-weight:800}
