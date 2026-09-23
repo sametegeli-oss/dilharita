@@ -541,3 +541,24 @@ body.yt-focus .yt-transcript-panel,body.yt-focus .yt-control-rail{top:14px;heigh
 .yt-tool-menu .yt-transcript-tabs b{display:inline-block!important;margin-left:auto}
 .yt-menu-sep{margin:2px 4px;border:0;border-top:1px solid var(--yt-line)}
 @media(max-width:680px){.yt-tool-menu{min-width:min(280px,calc(100vw - 40px))}}
+
+/* v57 · Video başlık bloğu ⓘ ile açılır (varsayılan kapalı) */
+.yt-study:not(.is-head-open) .yt-video-head{display:none!important}
+.yt-dock-left{display:flex;align-items:center;gap:6px;margin-right:auto;min-width:0}
+.yt-dock-left>.yt-actions-slot{margin-right:0!important}
+.yt-dock-left #closeStudy{width:40px;height:40px;min-height:0;padding:0;border-radius:50%;display:inline-grid;place-items:center}
+.yt-layout-dock .yt-head-toggle{min-width:40px;height:40px;padding:0 10px;gap:4px;border:1px solid rgba(147,176,210,.22)!important;background:transparent!important;color:#8296ae!important;font-size:16px;box-shadow:none!important}
+.yt-layout-dock .yt-head-toggle i{font-style:normal;font-size:11px;transition:transform .18s}
+.yt-layout-dock .yt-head-toggle:hover{border-color:rgba(85,230,209,.42)!important;color:var(--yt-cyan)!important}
+.yt-layout-dock .yt-head-toggle[aria-expanded="true"]{border-color:rgba(85,230,209,.5)!important;color:var(--yt-cyan)!important;background:rgba(85,230,209,.08)!important}
+.yt-layout-dock .yt-head-toggle[aria-expanded="true"] i{transform:rotate(180deg)}
+.yt-study.is-head-open .yt-video-head{animation:ytHeadIn .18s ease}
+@keyframes ytHeadIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@media(max-width:680px){
+ .yt-layout-dock{gap:5px}
+ .yt-dock-left{gap:5px}
+ .yt-dock-left #closeStudy,.yt-layout-dock .yt-head-toggle{width:36px;min-width:36px;height:36px;padding:0}
+ .yt-layout-dock .yt-head-toggle i{display:none}
+ #topActions .yt-sync{width:18px}
+}
+@media (orientation:landscape) and (max-width:1050px) and (max-height:600px){.yt-layout-dock .yt-head-toggle{display:none}}
