@@ -573,3 +573,10 @@ body.yt-focus .yt-transcript-panel,body.yt-focus .yt-control-rail{top:14px;heigh
 .yt-ai-note-a .dh-note-quote{margin:0;padding:8px 12px;border-left:3px solid #8b5cf6;border-radius:0 8px 8px 0;background:rgba(139,92,246,.08)}
 .yt-ai-note-a .dh-note-hr{border:0;border-top:1px solid rgba(147,176,210,.2);margin:4px 0}
 .yt-ai-note-a .dh-note-h{text-transform:none;letter-spacing:0;font-weight:900}
+
+/* v59 · Düğme görünürlüğü */
+.yt-ai-note-actions .yt-primary,.yt-ai-note-actions button.yt-primary{border:0!important;background:linear-gradient(135deg,#49dac8,#458ff5)!important;color:#06131d!important;font-weight:900;box-shadow:0 8px 20px rgba(69,143,245,.25)}
+.yt-ai-note-actions .yt-primary:hover{filter:brightness(1.08)}
+.yt-ai-note-actions button:not(.yt-primary),.yt-ai-footer button,.yt-modal footer button:not(.yt-primary){border-color:rgba(160,190,225,.42)!important;color:#dbe6f3!important;background:rgba(148,178,214,.08)!important}
+.yt-ai-note-actions button:not(.yt-primary):hover,.yt-ai-footer button:hover,.yt-modal footer button:not(.yt-primary):hover{border-color:rgba(85,230,209,.6)!important;color:#8ff0e1!important;background:rgba(85,230,209,.1)!important}
+.yt-ai-footer #addExplanationNote{border-color:rgba(73,218,200,.55)!important;color:#8ff0e1!important;background:rgba(73,218,200,.1)!important}

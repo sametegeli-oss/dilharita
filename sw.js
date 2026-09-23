@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v287";  /* Ek açıklamalar açıklama formatında renklendirildi */
+var SW_VERSION = "dh-sw-v288";  /* Düğme görünürlük koruması (dh-button-guard.js) tüm sayfalarda */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
