@@ -598,3 +598,13 @@ body.yt-patterns-off .yt-pat{color:inherit!important;text-decoration:none!import
 .yt-pat-item small{color:#b8c7da;font-size:12px}
 .yt-pat-item i{margin-left:auto;font-style:normal;color:#8fa2bb;font-size:11px;font-weight:700}
 .yt-pat-item em{font-style:normal;color:#f3c77a;font-size:11px;font-weight:800}
+
+/* "Konuşma yok" işareti — kullanıcının kendi eklediği, elle ayarladığı zaman aralığı */
+.yt-gap-row{display:flex;align-items:center;gap:6px;padding:7px 10px;margin:5px 0;border:1px dashed rgba(148,178,214,.4);border-radius:10px;background:rgba(148,178,214,.07);font-size:.82rem;color:#9fb2c9}
+.yt-gap-seek{flex:1;min-width:0;text-align:left;background:none;border:none;color:inherit;font:inherit;cursor:pointer;padding:3px 2px}
+.yt-gap-seek time{color:#c6d6ea}
+.yt-gap-edit,.yt-gap-del{background:none;border:none;cursor:pointer;font-size:.95rem;padding:3px 7px;border-radius:7px;line-height:1}
+.yt-gap-row.is-editing{flex-wrap:wrap;row-gap:8px}
+.yt-gap-row.is-editing label{display:flex;flex-direction:column;gap:2px;font-size:.72rem;color:#9fb2c9}
+.yt-gap-row.is-editing input{width:96px;padding:5px 7px;border-radius:7px;border:1px solid rgba(148,178,214,.4);background:rgba(0,0,0,.18);color:#e6eef8;font:inherit}
+.yt-gap-edit-actions{display:flex;gap:6px;margin-left:auto;align-self:flex-end}
