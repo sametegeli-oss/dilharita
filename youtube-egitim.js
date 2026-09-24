@@ -125,7 +125,7 @@ async function usePastedTranscript(){
   pendingTranscriptMeta=null;
 
   backupYouTubeNow();
-  autoTranslateNewTranscript(study);
+  autoResegmentTranscript(study);
 
  }catch(e){hint.classList.add("is-error");hint.textContent=e&&e.message?e.message:"YouTube transkripti okunamadı."}
  finally{if(saveButton)saveButton.disabled=false}
@@ -195,6 +195,103 @@ async function translateStudyWithGemini(data,force,resume,manual,selectedSource,
   renderStudy(data);await renderLibrary();setTranslationMessage(applied+" çeviri hazır",false);return data;
  }catch(e){updateTranslationButton(study);throw e}
 }
+/* ====================== TRANSKRİPTİ GEMİNİ İLE CÜMLELERE AYIRMA ======================
+   Video ilk eklenirken, otomatik noktalama ile bölünmüş ham parçalar Gemini'ye
+   gönderilir; Gemini SADECE hangi parçaların birleşip/bölüneceğine karar verir,
+   zaman üretmez. Zamanı biz, parçaların ZATEN GERÇEK olan YouTube zamanlarından
+   hesaplarız (birleştirmede uç zamanlar, bölmede kelime ağırlığına göre orantılı
+   paylaştırma — "uzun cümleyi otomatik böl" özelliğiyle aynı yöntem). Gemini'nin
+   döndürdüğü her cümlenin kelimeleri, kaynak parçaların kelimeleriyle birebir
+   eşleşmezse o grup uygulanmaz, ham hâliyle bırakılır. */
+var RESEGMENT_MAX_ROWS=110,RESEGMENT_MAX_CHARS=20000,resegmentBusy=false;
+function resegmentSourceField(data){return(data&&data.source&&data.source.language)==="tr"?"translationTR":"transcriptEN"}
+function resegmentRows(data){var field=resegmentSourceField(data);return(data.segments||[]).map(function(x,i){return{id:"DH-R"+String(i+1).padStart(4,"0"),index:i,text:String(x[field]||"").trim(),start:+x.startSeconds||0,end:Math.max((+x.startSeconds||0)+.2,+x.endSeconds||((+x.startSeconds||0)+2))}}).filter(function(r){return r.text})}
+function resegmentBatches(rows){var batches=[],part=[],chars=0;rows.forEach(function(row){var size=row.text.length+40;if(part.length&&(part.length>=RESEGMENT_MAX_ROWS||chars+size>RESEGMENT_MAX_CHARS)){batches.push(part);part=[];chars=0}part.push(row);chars+=size});if(part.length)batches.push(part);return batches}
+function resegmentFingerprint(data){var field=resegmentSourceField(data);return(data.segments||[]).map(function(x,i){return i+"|"+(+x.startSeconds||0)+"|"+String(x[field]||"")}).join("\n")}
+function resegmentPrompt(batch,videoTitle){
+ var items=batch.map(function(r){return{id:r.id,text:r.text}});
+ return[
+  "Bu, Türkçe konuşan öğrencilere İngilizce öğretmek için hazırlanan bir YouTube video transkriptidir. Video başlığı: "+String(videoTitle||""),
+  "Öğrenciler bu transkripti tek tek cümle kartları hâlinde çalışacak. Aşağıda otomatik noktalama kurallarıyla bölünmüş ham parçalar var; bazıları cümle ortasında yarım kalmış olabilir, bazıları öğrenci için çok uzun veya birden fazla fikir taşıyor olabilir.",
+  "Görevin: bu parçaları öğrenciye en uygun, doğal ve öğretici cümle birimlerine yeniden grupla.",
+  "KURALLAR:",
+  "- Yarım kalmış veya birbirinin devamı olan parçaları birleştirebilirsin.",
+  "- Çok uzun ya da birden fazla fikir taşıyan bir parçayı 2-3 anlamlı noktadan bölebilirsin.",
+  "- KESİNLİKLE kelime ekleme, çıkarma, değiştirme, çevirme veya yeniden yazma yapma; sadece verilen kelimeleri OLDUĞU GİBİ kullanarak yeniden grupla. Büyük/küçük harf ve noktalama düzeltmelerine izin var.",
+  "- Ham parçaların sırasını asla değiştirme, atlama veya tekrarlama; her ham parça tam olarak bir kez, verilen sırayla kullanılmalı.",
+  "- Zaman bilgisi (saniye vb.) ÜRETME; sadece hangi ham parça(lar)ın hangi cümleyi oluşturduğunu kimlikleriyle belirt, zamanı biz hesaplayacağız.",
+  "- Bir ham parçayı bölmüyorsan bile onu listede kendi kimliğiyle (tek başına \"from\") mutlaka döndür.",
+  "ÇIKTI BİÇİMİ: Sadece geçerli JSON döndür; markdown veya kod bloğu kullanma.",
+  'ŞEMA: {"sentences":[{"text":"Birleşmemiş cümle","from":["DH-R0001"]},{"text":"İki parçanın birleşimi","from":["DH-R0002","DH-R0003"]},{"text":"Uzun cümlenin ilk yarısı","from":["DH-R0004"],"part":1,"of":2},{"text":"Uzun cümlenin ikinci yarısı","from":["DH-R0004"],"part":2,"of":2}]}',
+  "\"from\" birden fazla ham parça kimliği içeriyorsa bunlar birleştirilmiş demektir. \"part\"/\"of\" alanları varsa bunlar aynı TEK ham parçanın art arda gelen bölümleridir.",
+  "HAM PARÇALAR:\n"+JSON.stringify(items)
+ ].join("\n\n");
+}
+function proportionalTimeSplit(start,end,texts){var weights=texts.map(spokenWeight),total=weights.reduce(function(a,b){return a+b},0)||1,span=Math.max(.4,end-start),cursor=start,out=[];texts.forEach(function(t,i){var dur=span*weights[i]/total,segEnd=(i===texts.length-1)?end:cursor+dur;out.push({start:cursor,end:segEnd});cursor=segEnd});return out}
+function resegWordsEqual(a,b){if(a.length!==b.length)return false;for(var i=0;i<a.length;i++)if(a[i]!==b[i])return false;return true}
+function applyResegmentBatch(raw,batchRows){
+ var parsed=studyApi.parseJsonReply(raw),list=parsed&&Array.isArray(parsed.sentences)?parsed.sentences:null;
+ if(!list)throw new Error("Gemini cevabında sentences dizisi bulunamadı.");
+ var byId={};batchRows.forEach(function(r){byId[r.id]=r});
+ var out=[],dropped=0,cursor=0,i=0;
+ while(i<list.length){
+  var item=list[i]||{},ids=Array.isArray(item.from)?item.from.map(String):[];
+  if(!ids.length||ids.some(function(id){return!byId[id]}))throw new Error("Gemini bilinmeyen veya boş bir kimlik döndürdü.");
+  if(!batchRows[cursor]||batchRows[cursor].id!==ids[0])throw new Error("Gemini cevabı sırayı bozdu.");
+  for(var k=0;k<ids.length;k++){if(!batchRows[cursor+k]||batchRows[cursor+k].id!==ids[k])throw new Error("Gemini cevabı sırayı bozdu.")}
+  var groupRows=ids.map(function(id){return byId[id]});
+  if(ids.length===1&&(+item.of||0)>1){
+   var of=+item.of,parts=[item],j=i+1;
+   while(j<list.length&&parts.length<of){var nx=list[j];if(!nx||!Array.isArray(nx.from)||nx.from.length!==1||nx.from[0]!==ids[0]||+nx.part!==parts.length+1||+nx.of!==of)break;parts.push(nx);j++}
+   if(parts.length!==of){out.push(groupRows[0]);dropped++;cursor+=1;i++;continue}
+   var srcWords=normWords(groupRows[0].text),flat=[].concat.apply([],parts.map(function(p){return normWords(p.text)}));
+   if(!resegWordsEqual(srcWords,flat)){out.push(groupRows[0]);dropped++;cursor+=1;i=j;continue}
+   var times=proportionalTimeSplit(groupRows[0].start,groupRows[0].end,parts.map(function(p){return p.text}));
+   parts.forEach(function(p,pi){out.push({start:times[pi].start,end:times[pi].end,text:p.text})});
+   cursor+=1;i=j;continue;
+  }
+  var mergedWords=normWords(item.text),srcWords2=[].concat.apply([],groupRows.map(function(r){return normWords(r.text)}));
+  if(!resegWordsEqual(mergedWords,srcWords2)){groupRows.forEach(function(r){out.push(r)});dropped++}
+  else out.push({start:groupRows[0].start,end:groupRows[groupRows.length-1].end,text:item.text});
+  cursor+=ids.length;i++;
+ }
+ if(cursor!==batchRows.length)throw new Error("Bütün cümleler karşılanmadı.");
+ return{rows:out,dropped:dropped};
+}
+async function runResegmentWorkflow(resume){
+ if(!study||resegmentBusy)return;
+ var data=study,id=videoId,rows=resegmentRows(data);
+ if(!resume&&rows.length<2){autoTranslateNewTranscript(data);return}
+ if(!(global.DHProviders&&DHProviders.manualChat)){setTimingState("exact","Gemini bağlantısı yüklenmedi; orijinal bölünmüş cümlelerle devam ediliyor");autoTranslateNewTranscript(data);return}
+ resegmentBusy=true;
+ var field=resegmentSourceField(data),batches=resegmentBatches(rows),fingerprint=resegmentFingerprint(data);
+ var startBatch=resume&&+resume.batchIndex>=0?+resume.batchIndex:0,collected=resume&&Array.isArray(resume.collected)?resume.collected:[],droppedTotal=resume&&+resume.dropped||0;
+ try{
+  for(var i=startBatch;i<batches.length;i++){
+   var batch=batches[i],directPrompt=resegmentPrompt(batch,data.title);
+   var raw=await DHProviders.manualChat.bind(DHProviders)([{role:"user",content:directPrompt}],{title:"Transkripti cümlelere ayır · Bölüm "+(i+1)+"/"+batches.length,directPrompt:directPrompt,resume:{type:"youtube-resegment",videoId:id,batchIndex:i,collected:collected,dropped:droppedTotal},validateReply:function(reply){applyResegmentBatch(reply,batch)}});
+   if(resegmentFingerprint(study)!==fingerprint)throw new Error("Transkript değişti; yeniden bölme uygulanmadı.");
+   var applied=applyResegmentBatch(raw,batch);
+   collected=collected.concat(applied.rows);droppedTotal+=applied.dropped;
+  }
+  if(videoId!==id)throw new Error("Video değişti; yeniden bölme uygulanmadı.");
+  if(resegmentFingerprint(study)!==fingerprint)throw new Error("Transkript değişti; yeniden bölme uygulanmadı.");
+  var otherField=field==="transcriptEN"?"translationTR":"transcriptEN";
+  var newSegments=collected.map(function(r){var seg={};seg[field]=r.text;seg[otherField]="";seg.startSeconds=Math.round(r.start*100)/100;seg.endSeconds=Math.max(seg.startSeconds+.2,Math.round(r.end*100)/100);seg.timingVerified=false;seg.timingConfidence=.5;seg.captionAligned=false;seg.sentenceKey=splitStateKey(seg.startSeconds,r.text);return seg});
+  for(var k=0;k<newSegments.length-1;k++){if(newSegments[k].endSeconds>newSegments[k+1].startSeconds)newSegments[k].endSeconds=newSegments[k+1].startSeconds}
+  var oldSegments=JSON.parse(JSON.stringify(study.segments));
+  study.segments=carryStudyState({segments:oldSegments,userState:study.userState},{segments:newSegments,userState:study.userState}).segments;
+  record=await studyApi.save(id,studyApi.canonical(id),study);
+  renderStudy(study);await renderLibrary();
+  setTimingState("exact","Zaman kaynağı · Gemini ile "+newSegments.length+" cümleye ayrıldı"+(droppedTotal?" ("+droppedTotal+" grup değiştirilmeden bırakıldı)":""));
+  await backupYouTubeNow();
+  autoTranslateNewTranscript(study);
+ }catch(e){
+  if(!(e&&e.code==="abort"))setTimingState("exact","Gemini ile yeniden bölme başarısız oldu ("+(e&&e.message||"hata")+"); orijinal bölünmüş cümleler kullanılıyor");
+  autoTranslateNewTranscript(study);
+ }finally{resegmentBusy=false}
+}
+function autoResegmentTranscript(data){return runResegmentWorkflow(null)}
 function loadYT(){if(global.YT&&YT.Player)return Promise.resolve();if(ytApiReady)return ytApiReady;ytApiReady=new Promise(function(resolve,reject){var old=global.onYouTubeIframeAPIReady;global.onYouTubeIframeAPIReady=function(){if(typeof old==="function")try{old()}catch(e){}resolve()};var s=document.createElement("script");s.src="https://www.youtube.com/iframe_api";s.onerror=function(){reject(new Error("YouTube oynatıcı yüklenemedi"))};document.head.appendChild(s)});return ytApiReady}
 function clearTtsFallback(){if(ttsClock)clearInterval(ttsClock);ttsClock=null;ttsPlaying=false;ttsLastSegment=-1;try{if(global.speechSynthesis)speechSynthesis.cancel()}catch(e){}ttsUtterance=null}
 function nextTtsSegment(at){if(!study||!study.segments||!study.segments.length)return-1;var current=findActive(at);if(current>=0)return current;for(var i=0;i<study.segments.length;i++)if((+study.segments[i].startSeconds||0)>=at-.05)return i;return study.segments.length-1}
@@ -621,6 +718,7 @@ function askQuestion(question){var x=study.segments[active],prev=study.segments[
 function restorePendingGemini(){
  if(!study||!global.DHGemini||!DHGemini.pending||(DHGemini.hasOverlay&&DHGemini.hasOverlay()))return false;
  var job=DHGemini.pending(),resume=job&&job.resume;if(!job||job.page!==location.pathname||!resume||String(resume.videoId||"")!==String(videoId))return false;
+ if(resume.type==="youtube-resegment"){runResegmentWorkflow(resume);return true}
  if(resume.type==="youtube-translation"){translateStudyWithGemini(study,!!resume.force,resume,true,resume.sourceLanguage,resume.targetLanguage).catch(function(e){setTranslationMessage(e&&e.message||"Çeviri bekliyor · yeniden dene",false)});return true}
  if(resume.type==="youtube-patterns"){findPatternsWorkflow();return true}
  if(resume.type==="youtube-drill"){startDrill(Array.isArray(resume.rows)?resume.rows:[]);return true}

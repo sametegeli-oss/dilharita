@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v289";  /* Kalıp vurgusu: Gemini kalıp listesi, metin değişmez */
+var SW_VERSION = "dh-sw-v290";  /* Transkript ilk eklenirken Gemini ile cümlelere ayrılır, zamanı program hesaplar */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
