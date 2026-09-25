@@ -436,14 +436,42 @@ function highlight(text,q){if(!q)return esc(text);var safe=esc(text),needle=esc(
    görünümünde zamanla ilgili bir not olarak gösterilir ve zamanı kullanıcı elle ayarlar. */
 var gapEditingId="";
 function findGap(id){return(study&&study.gapMarkers||[]).filter(function(g){return g.id===id})[0]}
-function addGapMarker(){
+function openGapAddModal(){
+ if(!study||active<0)return;
+ var next=study.segments[active+1],belowRadio=$("gapSourceBelow"),aboveRadio=document.querySelector('#gapAddForm input[name="gapSource"][value="above"]');
+ belowRadio.disabled=!next;
+ if(aboveRadio)aboveRadio.checked=true;
+ $("gapAddSeconds").value="2";
+ $("gapAddStatus").textContent="Seçtiğin taraftaki cümlenin süresi bu kadar kısalır; boşluk tam o süreyi kaplar.";
+ $("gapAddModal").hidden=false;
+}
+function closeGapAddModal(){$("gapAddModal").hidden=true}
+function submitGapAdd(){
  if(!study||active<0)return;
  var x=study.segments[active],next=study.segments[active+1];
- var start=+x.endSeconds||0,end=next?Math.max(start+.5,+next.startSeconds||start+3):start+3;
+ var requested=Math.max(.3,+$("gapAddSeconds").value||0);
+ var source=(document.querySelector('#gapAddForm input[name="gapSource"]:checked')||{}).value||"above";
+ var gap,take;
+ if(source==="below"&&next){
+  var avail=Math.max(0,(+next.endSeconds||0)-(+next.startSeconds||0)-.3);
+  take=Math.min(requested,avail);
+  if(take<.1){$("gapAddStatus").textContent="Alttaki cümlede bu kadar süre yok.";return}
+  var origStart=+next.startSeconds||0;
+  next.startSeconds=Math.round((origStart+take)*100)/100;
+  gap={startSeconds:Math.round(origStart*100)/100,endSeconds:next.startSeconds};
+ }else{
+  var avail2=Math.max(0,(+x.endSeconds||0)-(+x.startSeconds||0)-.3);
+  take=Math.min(requested,avail2);
+  if(take<.1){$("gapAddStatus").textContent="Üstteki cümlede bu kadar süre yok.";return}
+  var origEnd=+x.endSeconds||0;
+  x.endSeconds=Math.round((origEnd-take)*100)/100;
+  gap={startSeconds:x.endSeconds,endSeconds:Math.round(origEnd*100)/100};
+ }
+ gap.id="gap"+Date.now()+Math.random().toString(36).slice(2,6);
  study.gapMarkers=Array.isArray(study.gapMarkers)?study.gapMarkers:[];
- study.gapMarkers.push({id:"gap"+Date.now()+Math.random().toString(36).slice(2,6),startSeconds:Math.round(start*100)/100,endSeconds:Math.round(end*100)/100});
+ study.gapMarkers.push(gap);
  study.gapMarkers.sort(function(a,b){return a.startSeconds-b.startSeconds});
- gapEditingId="";renderTranscript();scheduleSave();backupYouTubeNow();
+ gapEditingId="";closeGapAddModal();renderTranscript();setActive(active,false);scheduleSave();backupYouTubeNow();
 }
 function gapRowHtml(g){
  if(gapEditingId===g.id)return'<div class="yt-gap-row is-editing" data-gap-id="'+esc(g.id)+'"><label>Başlangıç (sn)<input type="number" step="0.1" min="0" id="gapEditStart" value="'+(+g.startSeconds).toFixed(1)+'"></label><label>Bitiş (sn)<input type="number" step="0.1" min="0.1" id="gapEditEnd" value="'+(+g.endSeconds).toFixed(1)+'"></label><div class="yt-gap-edit-actions"><button class="yt-primary" type="button" data-gap-save="'+esc(g.id)+'">Kaydet</button><button type="button" data-gap-cancel="'+esc(g.id)+'">Vazgeç</button></div></div>';
@@ -1229,7 +1257,10 @@ async function pdfExportSubmit(e){e.preventDefault();var startLine=+$("pdfExport
  $("videoForm").onsubmit=function(e){e.preventDefault();openOrAnalyze($("videoUrl").value)};$("openLibrary").onclick=openLibrary;$("showAllLibrary").onclick=openLibrary;$("closeLibrary").onclick=closeLibrary;$("libraryDrawer").onclick=function(e){if(e.target===$("libraryDrawer"))closeLibrary()};$("closeStudy").onclick=showHome;$("playToggle").onclick=playPause;$("prevSentence").onclick=function(){if(active>0){setActive(active-1,true);if(loopOn)setLoop(true);else seek(study.segments[active].startSeconds,true)}};$("nextSentence").onclick=function(){if(study&&active<study.segments.length-1){setActive(active+1,true);if(loopOn)setLoop(true);else seek(study.segments[active].startSeconds,true)}};$("loopToggle").onclick=function(){setLoop(!loopOn)};$("speedToggle").onclick=function(){var rates=[.5,.75,1,1.25,1.5],cur=1;try{cur=player.getPlaybackRate()}catch(e){}var next=rates[(rates.indexOf(cur)+1)%rates.length];try{player.setPlaybackRate(next)}catch(e){}this.textContent=next+"×"};$("captionToggle").onclick=function(){captionOn=!captionOn;this.classList.toggle("is-active",captionOn);this.setAttribute("aria-pressed",String(captionOn));$("captionLayer").hidden=!captionOn;if(captionOn)setActive(active,false)};$("captionOverlayToggle").onclick=toggleCaptionOverlay;function toggleCaptionOverlay(){var layer=$("captionLayer"),btn=$("captionOverlayToggle"),willShow=layer.hidden||layer.classList.contains("is-overlay-hidden");if(willShow){captionOn=true;layer.hidden=false;layer.classList.remove("is-overlay-hidden");setActive(active,false)}else{layer.classList.add("is-overlay-hidden")}if(btn){btn.setAttribute("aria-pressed",String(willShow));btn.classList.toggle("is-active",willShow)}}$("soundToggle").onclick=function(){if(studyMode==="shadow"||ownVoiceOn||guideVoiceOn)return;muted=!muted;try{muted?player.mute():player.unMute()}catch(e){}this.textContent=muted?"🔇":"🔊"};$("timelineThumb").parentNode.onclick=function(e){if(!player)return;var r=this.getBoundingClientRect(),pct=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),dur=0;try{dur=player.getDuration()}catch(x){}seek(dur*pct,true)};$("scrollActive").onclick=function(){var r=document.querySelector(".yt-segment.is-active");if(r)r.scrollIntoView({block:"center",behavior:"smooth"})};$("toggleEN").onclick=function(){showEN=!showEN;this.classList.toggle("is-active",showEN);this.setAttribute("aria-pressed",String(showEN));document.querySelector(".yt-transcript-panel").classList.toggle("hide-en",!showEN);setActive(active,false)};$("toggleTR").onclick=function(){showTR=!showTR;this.classList.toggle("is-active",showTR);this.setAttribute("aria-pressed",String(showTR));document.querySelector(".yt-transcript-panel").classList.toggle("hide-tr",!showTR);setActive(active,false)};$("transcriptSearch").oninput=function(){searchText=this.value;renderTranscript();updateSearchDot()};Array.prototype.forEach.call(document.querySelectorAll("[data-panel]"),function(b){b.onclick=function(){switchPanel(b.getAttribute("data-panel"))}});$("favoriteSentence").onclick=function(){toggleMark("favorites")};$("markLearned").onclick=function(){var x=study.segments[active];toggleMark("learned");if(x&&state().learned[keyOf(x)])videoSrsGrade(x,"easy",{kind:"ogrendim"})};$("markHard").onclick=markHard;$("syncSentence").onclick=syncSentenceToCurrent;$("editSentence").onclick=editOpen;$("askGemini").onclick=askOpen;Array.prototype.forEach.call(document.querySelectorAll("[data-close-modal]"),function(b){b.onclick=editClose});Array.prototype.forEach.call(document.querySelectorAll("[data-close-ai]"),function(b){b.onclick=function(){$("aiModal").hidden=true}});$("editModal").onclick=function(e){if(e.target===this)editClose()};$("aiModal").onclick=function(e){if(e.target===this)this.hidden=true};$("editForm").onsubmit=function(e){e.preventDefault();var x=study.segments[active],old=keyOf(x);x.transcriptEN=$("editEN").value.trim();x.translationTR=$("editTR").value.trim();x.startSeconds=Math.max(0,+$("editStart").value||0);x.endSeconds=Math.max(x.startSeconds+.2,+$("editEnd").value||x.startSeconds+.2);var s=state(),fresh=keyOf(x);["learned","hard","favorites"].forEach(function(k){if(s[k][old]){s[k][fresh]=s[k][old];delete s[k][old]}});normalizeStudyTimelines();active=study.segments.indexOf(x);renderTranscript();setActive(active,false);editClose();scheduleSave()};$("fullscreenToggle").onclick=toggleVideoFullscreen;$("originalAudioMode").onclick=function(){setAudioSource("original")};$("guideAudioMode").onclick=function(){setAudioSource("guide")};$("ownAudioMode").onclick=function(){setAudioSource("own")};
  bindTimelineAligner();
  $("splitSentence").onclick=openSplitModal;$("mergeNextSentence").onclick=openMergeModal;$("undoSplit").onclick=undoSentenceSplit;$("undoMerge").onclick=undoSentenceMerge;Array.prototype.forEach.call(document.querySelectorAll("[data-close-split]"),function(b){b.onclick=closeSplitModal});Array.prototype.forEach.call(document.querySelectorAll("[data-close-merge]"),function(b){b.onclick=closeMergeModal});$("splitModal").onclick=function(e){if(e.target===this)closeSplitModal()};$("mergeModal").onclick=function(e){if(e.target===this)closeMergeModal()};$("mergeForm").onsubmit=function(e){e.preventDefault();mergeNextSentence()};$("splitForm").onsubmit=function(e){e.preventDefault();saveSentenceSplit()};$("splitPlaySource").onclick=function(){var x=study&&study.segments[splitDraft.index];if(x)seek(+x.startSeconds||0,true)};$("splitUseCurrent").onclick=useCurrentSplitTime;$("splitTimeBack").onclick=function(){nudgeSplitTime(-.1)};$("splitTimeForward").onclick=function(){nudgeSplitTime(.1)};$("splitListenFirst").onclick=function(){previewSplitRange(1)};$("splitListenSecond").onclick=function(){previewSplitRange(2)};$("autoSplitAll").onclick=function(){if(confirm("Birden çok cümle içeren tüm uzun satırlar noktadan bölünecek. Zamanlar tahmini olacak. Devam edilsin mi?"))autoSplitLongSegments()};
-$("addGapMarker").onclick=addGapMarker;
+$("addGapMarker").onclick=openGapAddModal;
+Array.prototype.forEach.call(document.querySelectorAll("[data-close-gap-add]"),function(b){b.onclick=closeGapAddModal});
+$("gapAddModal").onclick=function(e){if(e.target===this)closeGapAddModal()};
+$("gapAddForm").onsubmit=function(e){e.preventDefault();submitGapAdd()};
  $("scrollActive").onclick=function(){var row=document.querySelector(".yt-segment.is-active");if(row)scrollTranscriptRow(row,true)};
  document.addEventListener("click",function(e){if(!e.target||e.target.id!=="ttsTest"||!ttsFallback)return;var index=nextTtsSegment(ttsCurrent);if(index>=0){muted=false;speakFallbackSegment(index,true)}});
  global.addEventListener("online",syncBadge);global.addEventListener("offline",syncBadge);global.addEventListener("dh-cloud-synced",syncBadge);document.addEventListener("keydown",function(e){if(e.target&&/input|textarea|select/i.test(e.target.tagName))return;if(e.code==="Space"){e.preventDefault();playPause()}else if(e.key==="ArrowLeft")$("prevSentence").click();else if(e.key==="ArrowRight")$("nextSentence").click();else if(e.key.toLowerCase()==="l")$("loopToggle").click();else if(e.key.toLowerCase()==="a")$("autoPauseToggle").click();else if(e.key.toLowerCase()==="s")setStudyMode("shadow");else if(e.key.toLowerCase()==="d")setStudyMode("dictation")})

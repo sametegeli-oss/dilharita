@@ -8,7 +8,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./dh-tokens.css">
  <link rel="stylesheet" href="./dh-ui.css">
- <link rel="stylesheet" href="./youtube-egitim.css?v=61">
+ <link rel="stylesheet" href="./youtube-egitim.css?v=62">
 </head>
 <body>
  <div class="yt-lock" id="sessionGate" aria-live="polite">
@@ -347,6 +347,18 @@
   </form>
  </div>
 
+ <div class="yt-modal-overlay" id="gapAddModal" hidden>
+  <form class="yt-modal yt-gap-add-modal" id="gapAddForm"><header><div><span>KONUŞMA YOK</span><h2>Boşluk ekle</h2></div><button type="button" data-close-gap-add>×</button></header>
+   <label>Boşluk uzunluğu (saniye)<input id="gapAddSeconds" type="number" min="0.5" step="0.5" value="2" required></label>
+   <fieldset class="yt-gap-source-choice"><legend>Bu süreyi nereden alalım?</legend>
+    <label><input type="radio" name="gapSource" value="above" checked> Üstteki (aktif) cümlenin sonundan al</label>
+    <label><input type="radio" name="gapSource" value="below" id="gapSourceBelow"> Alttaki cümlenin başından al</label>
+   </fieldset>
+   <p class="yt-split-status" id="gapAddStatus">Seçtiğin taraftaki cümlenin süresi bu kadar kısalır; boşluk tam o süreyi kaplar.</p>
+   <footer><button type="button" data-close-gap-add>Vazgeç</button><button class="yt-primary" type="submit">Boşluk ekle</button></footer>
+  </form>
+ </div>
+
  <div class="yt-modal-overlay" id="aiModal" hidden>
   <section class="yt-modal yt-ai-modal"><header><div><span>GEMINI BAĞLAMI</span><h2>Bu cümleyi birlikte inceleyelim</h2></div><button type="button" data-close-ai>×</button></header>
    
@@ -386,7 +398,7 @@
  <script src="./immersive-youtube-study.js?v=18"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=111"></script>
+ <script src="./youtube-egitim.js?v=112"></script>
  <script src="./youtube-swipe-navigation.js?v=1"></script>
 
 <div class="yt-modal-overlay" id="existingModuleModal" hidden><section class="yt-modal"><h2>Bu videonun modülü mevcut</h2><p>Mevcut modülü çalışabilir veya yeniden oluşturabilirsiniz.</p><button id="existingModuleStudy" type="button">Mevcut modülü çalış</button><button id="existingModuleNew" type="button">Yeniden oluştur</button><button id="existingModuleCancel" type="button">Vazgeç</button></section></div>

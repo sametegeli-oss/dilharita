@@ -608,3 +608,9 @@ body.yt-patterns-off .yt-pat{color:inherit!important;text-decoration:none!import
 .yt-gap-row.is-editing label{display:flex;flex-direction:column;gap:2px;font-size:.72rem;color:#9fb2c9}
 .yt-gap-row.is-editing input{width:96px;padding:5px 7px;border-radius:7px;border:1px solid rgba(148,178,214,.4);background:rgba(0,0,0,.18);color:#e6eef8;font:inherit}
 .yt-gap-edit-actions{display:flex;gap:6px;margin-left:auto;align-self:flex-end}
+
+/* Boşluk ekleme penceresi: süre + üstten/alttan al seçimi */
+.yt-gap-add-modal fieldset.yt-gap-source-choice{border:1px solid rgba(148,178,214,.3);border-radius:10px;padding:10px 12px;margin:0 0 10px;display:flex;flex-direction:column;gap:8px}
+.yt-gap-add-modal fieldset.yt-gap-source-choice legend{font-size:.78rem;color:#9fb2c9;padding:0 6px}
+.yt-gap-add-modal fieldset.yt-gap-source-choice label{display:flex;align-items:center;gap:8px;font-size:.9rem;cursor:pointer}
+.yt-gap-add-modal fieldset.yt-gap-source-choice input[type="radio"]:disabled+*{opacity:.5}
