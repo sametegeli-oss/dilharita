@@ -614,3 +614,10 @@ body.yt-patterns-off .yt-pat{color:inherit!important;text-decoration:none!import
 .yt-gap-add-modal fieldset.yt-gap-source-choice legend{font-size:.78rem;color:#9fb2c9;padding:0 6px}
 .yt-gap-add-modal fieldset.yt-gap-source-choice label{display:flex;align-items:center;gap:8px;font-size:.9rem;cursor:pointer}
 .yt-gap-add-modal fieldset.yt-gap-source-choice input[type="radio"]:disabled+*{opacity:.5}
+
+/* Cümle satırında başlangıç/bitiş/uzunluk etiketleri (tek zaman etiketi yerine) */
+.yt-seg-time{display:flex;flex-direction:column;align-items:flex-start;gap:1px}
+.yt-seg-time time{display:block;font-size:11px;color:#71839a;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.35}
+.yt-seg-time .yt-seg-end{color:#5c6f88}
+.yt-seg-time .yt-seg-dur{display:block;font-size:10px;color:#54687f;font-weight:700;margin-top:1px}
+.yt-segment.is-active .yt-seg-time time,.yt-segment.is-active .yt-seg-time .yt-seg-dur{color:var(--yt-gold)}

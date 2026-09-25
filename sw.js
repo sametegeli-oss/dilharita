@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v292";  /* Konuşma yok eklerken süre + üstten/alttan al seçimi */
+var SW_VERSION = "dh-sw-v293";  /* Boşluk düzenlenince komşu cümle zamanı da güncellenir; cümlelerde başlangıç/bitiş/uzunluk */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
