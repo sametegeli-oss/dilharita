@@ -15,7 +15,24 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){retur
 function time(s){s=Math.max(0,Math.floor(+s||0));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
 function fmtEditTime(sec){sec=Math.max(0,+sec||0);var m=Math.floor(sec/60),s=Math.round((sec-m*60)*100)/100;if(s>=60){m+=1;s-=60}var sStr=(Math.round(s*100)%100===0)?String(Math.round(s)):s.toFixed(2).replace(/0$/,"");var whole=sStr.split(".")[0];if(whole.length<2)sStr="0"+sStr;return m+":"+sStr}
 function parseEditTime(str){str=String(str||"").trim().replace(",",".");var m=str.match(/^(\d+):(\d+(?:\.\d+)?)$/);if(m)return(+m[1])*60+(+m[2]);var n=parseFloat(str);return isNaN(n)?0:n}
-function endSyncBelow(x,oldEnd){if(!study)return;var newEnd=+x.endSeconds||0;if(Math.abs(newEnd-oldEnd)<0.005)return;var gap=null,gaps=study.gapMarkers||[];for(var i=0;i<gaps.length;i++){if(Math.abs(gaps[i].startSeconds-oldEnd)<0.15){gap=gaps[i];break}}if(gap){var maxStart=Math.max(0,gap.endSeconds-0.2);gap.startSeconds=Math.round(Math.min(maxStart,Math.max(0,newEnd))*100)/100;if(newEnd>gap.startSeconds)x.endSeconds=gap.startSeconds;return}var idx=study.segments.indexOf(x),next=idx>=0?study.segments[idx+1]:null;if(next&&Math.abs((+next.startSeconds||0)-oldEnd)<0.15){var dur=(+next.endSeconds||0)-(+next.startSeconds||0);next.startSeconds=Math.round(newEnd*100)/100;next.endSeconds=Math.round((next.startSeconds+Math.max(0.2,dur))*100)/100}}
+function endSyncBelow(x,oldEnd){
+ if(!study)return;
+ var idx=study.segments.indexOf(x),next=idx>=0?study.segments[idx+1]:null,nextStart=next?(+next.startSeconds||0):null;
+ var newEnd=+x.endSeconds||0;
+ if(nextStart!=null&&newEnd>nextStart){newEnd=nextStart;x.endSeconds=Math.round(newEnd*100)/100}
+ if(Math.abs(newEnd-oldEnd)<0.005)return;
+ var gaps=study.gapMarkers=Array.isArray(study.gapMarkers)?study.gapMarkers:[],gapIdx=-1;
+ for(var i=0;i<gaps.length;i++){if(Math.abs(gaps[i].startSeconds-oldEnd)<0.15){gapIdx=i;break}}
+ if(gapIdx>=0){
+  if(newEnd>=gaps[gapIdx].endSeconds-0.05){gaps.splice(gapIdx,1)}
+  else{gaps[gapIdx].startSeconds=Math.round(newEnd*100)/100}
+  return;
+ }
+ if(nextStart!=null&&nextStart-newEnd>0.15){
+  gaps.push({id:"gap"+Date.now()+Math.random().toString(36).slice(2,6),startSeconds:Math.round(newEnd*100)/100,endSeconds:Math.round(nextStart*100)/100});
+  gaps.sort(function(a,b){return a.startSeconds-b.startSeconds});
+ }
+}
 function ygNorm(v){return String(v||"").toLowerCase().replace(/[’‘]/g,"'").replace(/[^a-z0-9' ]+/g," ").replace(/\s+/g," ").trim()}
 function sentenceYgCandidates(v){var out=[],seen={},plain=ygNorm(v),parts=plain.split(" ").filter(Boolean),fillers=/^(hello|hi|hey|well|okay|ok|yes|no|so|please)$/;function add(a){var q=ygNorm(Array.isArray(a)?a.join(" "):a),n=q?q.split(" ").length:0;if(n<2||n>6||seen[q])return;seen[q]=1;out.push(q)}while(parts.length&&fillers.test(parts[0]))parts.shift();var modal=/^(can|could|would|will|should|may|might)$/,be=/^(is|are|am|was|were)$/,prep=/^(for|to|with|about|at|in|on|from|by|of)$/;if(parts.length){if(modal.test(parts[0]))add(parts.slice(0,parts[0]==="would"&&parts[2]==="mind"?4:3));else if(be.test(parts[0])){var e=3;for(var i=2;i<Math.min(parts.length,6);i++){e=i+1;if(prep.test(parts[i]))break}add(parts.slice(0,e))}else add(parts.slice(0,Math.min(5,parts.length)))}String(v||"").split(/[.!?;:]+/).forEach(function(raw){var w=ygNorm(raw).split(" ").filter(Boolean),i,end;if(w.length<2)return;while(w.length&&fillers.test(w[0]))w.shift();if(w[0]==="the"&&w.length>2&&(w[2]==="is"||w[2]==="are"))add(w.slice(0,3));for(i=1;i<w.length;i++)if(be.test(w[i])&&i<4){var after=w.slice(i+1);while(after.length&&after[0]==="not")after.shift();end=after.findIndex(function(x,j){return j>=3&&/^(even|but|because|although|while)$/.test(x)});add(after.slice(0,end<0?Math.min(5,after.length):end));break}for(i=1;i<w.length-2;i++)if(/^(that|which|who)$/.test(w[i])){var begin=i>1&&/^(a|an|the|my|your|our|their)$/.test(w[i-2])?i-2:i-1;end=i+3;while(end<w.length&&end-begin<6&&!/^(even|but|because|although|while)$/.test(w[end]))end++;add(w.slice(begin,end));break}if(w.length<=6)add(w)});return out.slice(0,6)}
 function sentenceYgUrl(q){return"https://youglish.com/pronounce/"+encodeURIComponent(q||"")+"/english"}

@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v294";  /* Cümle edit: bitiş değişince süre boşluktan düşülür/eklenir; edit alanları dk:sn */
+var SW_VERSION = "dh-sw-v295";  /* Cümle edit sıradaki cümleyi hiç etkilemez; boşluk kalırsa otomatik boşluk işareti eklenir */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
