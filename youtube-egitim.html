@@ -320,7 +320,7 @@
   <form class="yt-modal" id="editForm"><header><div><span>CÜMLE DÜZENLEYİCİ</span><h2>Metni düzenle</h2></div><button type="button" data-close-modal>×</button></header>
    <label>İngilizce cümle<textarea id="editEN" rows="3" required></textarea></label>
    <label>Türkçe karşılığı<textarea id="editTR" rows="3" required></textarea></label>
-   <div class="yt-time-fields"><label>YouTube başlangıcı (sn)<input id="editStart" type="number" min="0" step="0.001"></label><label>Sonraki transkript zamanı (sn)<input id="editEnd" type="number" min="0.2" step="0.001"></label></div>
+   <div class="yt-time-fields"><label>YouTube başlangıcı (dk:sn)<input id="editStart" type="text" inputmode="decimal" placeholder="0:00" pattern="\d+:\d+(\.\d+)?"></label><label>Sonraki transkript zamanı (dk:sn)<input id="editEnd" type="text" inputmode="decimal" placeholder="0:00" pattern="\d+:\d+(\.\d+)?"></label></div>
    <footer><button type="button" data-close-modal>Vazgeç</button><button class="yt-primary" type="submit">Değişiklikleri kaydet</button></footer>
   </form>
  </div>
@@ -398,7 +398,7 @@
  <script src="./immersive-youtube-study.js?v=18"></script>
  <script src="./youtube-session-lock.js?v=2"></script>
  <script src="./dh-modul.js?v=5"></script>
- <script src="./youtube-egitim.js?v=113"></script>
+ <script src="./youtube-egitim.js?v=114"></script>
  <script src="./youtube-swipe-navigation.js?v=1"></script>
 
 <div class="yt-modal-overlay" id="existingModuleModal" hidden><section class="yt-modal"><h2>Bu videonun modülü mevcut</h2><p>Mevcut modülü çalışabilir veya yeniden oluşturabilirsiniz.</p><button id="existingModuleStudy" type="button">Mevcut modülü çalış</button><button id="existingModuleNew" type="button">Yeniden oluştur</button><button id="existingModuleCancel" type="button">Vazgeç</button></section></div>
