@@ -315,17 +315,19 @@ async function runResegmentWorkflow(resume){
 function autoResegmentTranscript(data){return runResegmentWorkflow(null)}
 function looseNorm(s,keepTr){var re=keepTr?/[^a-z0-9çğıöşü']+/g:/[^a-z0-9']+/g;return String(s||"").toLowerCase().replace(re," ").trim()}
 function recoverOrphanedSentenceData(){
- if(!study)return 0;
+ var report={segments:0,explanations:{total:0,alreadyLinked:0,recovered:0,unmatched:0,samples:[]},practice:{total:0,alreadyLinked:0,recovered:0,unmatched:0,samples:[]}};
+ if(!study)return report;
+ report.segments=study.segments.length;
  var s=state();s.aiExplanations=s.aiExplanations||{};s.practiceExamples=s.practiceExamples||{};
- var stores=[s.aiExplanations,s.practiceExamples];
  var liveKeys={};study.segments.forEach(function(x){liveKeys[keyOf(x)]=true});
- var recovered=0;
- stores.forEach(function(store){
+ [["explanations",s.aiExplanations],["practice",s.practiceExamples]].forEach(function(pair){
+  var name=pair[0],store=pair[1],rep=report[name];
   Object.keys(store).forEach(function(oldKey){
-   if(liveKeys[oldKey])return;
+   rep.total++;
+   if(liveKeys[oldKey]){rep.alreadyLinked++;return}
    var prefixed=/^(?:split|merge)\|\d+\|(.+)$/.exec(oldKey);
    var embedded=prefixed?prefixed[1]:(oldKey.indexOf("|")>=0?oldKey.slice(oldKey.indexOf("|")+1):"");
-   if(!embedded)return;
+   if(!embedded){rep.unmatched++;if(rep.samples.length<3)rep.samples.push(oldKey);return}
    var embeddedLoose=looseNorm(embedded,false),embeddedTr=looseNorm(embedded,true);
    var match=study.segments.filter(function(x){
     var en=looseNorm(x.transcriptEN,false),trLoose=looseNorm(x.translationTR,false),trFull=looseNorm(x.translationTR,true);
@@ -333,12 +335,13 @@ function recoverOrphanedSentenceData(){
    })[0];
    if(match){
     var newKey=keyOf(match);
-    if(newKey!==oldKey&&!store[newKey]){store[newKey]=store[oldKey];recovered++}
-   }
+    if(newKey!==oldKey&&!store[newKey]){store[newKey]=store[oldKey];rep.recovered++}
+    else{rep.alreadyLinked++}
+   }else{rep.unmatched++;if(rep.samples.length<3)rep.samples.push(embedded.slice(0,60))}
   });
  });
- if(recovered){scheduleSave();backupYouTubeNow()}
- return recovered;
+ if(report.explanations.recovered||report.practice.recovered){scheduleSave();backupYouTubeNow()}
+ return report;
 }
 function loadYT(){if(global.YT&&YT.Player)return Promise.resolve();if(ytApiReady)return ytApiReady;ytApiReady=new Promise(function(resolve,reject){var old=global.onYouTubeIframeAPIReady;global.onYouTubeIframeAPIReady=function(){if(typeof old==="function")try{old()}catch(e){}resolve()};var s=document.createElement("script");s.src="https://www.youtube.com/iframe_api";s.onerror=function(){reject(new Error("YouTube oynatıcı yüklenemedi"))};document.head.appendChild(s)});return ytApiReady}
 function clearTtsFallback(){if(ttsClock)clearInterval(ttsClock);ttsClock=null;ttsPlaying=false;ttsLastSegment=-1;try{if(global.speechSynthesis)speechSynthesis.cancel()}catch(e){}ttsUtterance=null}
@@ -1332,7 +1335,13 @@ async function pdfExportSubmit(e){e.preventDefault();var startLine=+$("pdfExport
  bindTimelineAligner();
  $("splitSentence").onclick=openSplitModal;$("mergeNextSentence").onclick=openMergeModal;$("undoSplit").onclick=undoSentenceSplit;$("undoMerge").onclick=undoSentenceMerge;Array.prototype.forEach.call(document.querySelectorAll("[data-close-split]"),function(b){b.onclick=closeSplitModal});Array.prototype.forEach.call(document.querySelectorAll("[data-close-merge]"),function(b){b.onclick=closeMergeModal});$("splitModal").onclick=function(e){if(e.target===this)closeSplitModal()};$("mergeModal").onclick=function(e){if(e.target===this)closeMergeModal()};$("mergeForm").onsubmit=function(e){e.preventDefault();mergeNextSentence()};$("splitForm").onsubmit=function(e){e.preventDefault();saveSentenceSplit()};$("splitPlaySource").onclick=function(){var x=study&&study.segments[splitDraft.index];if(x)seek(+x.startSeconds||0,true)};$("splitUseCurrent").onclick=useCurrentSplitTime;$("splitTimeBack").onclick=function(){nudgeSplitTime(-.1)};$("splitTimeForward").onclick=function(){nudgeSplitTime(.1)};$("splitListenFirst").onclick=function(){previewSplitRange(1)};$("splitListenSecond").onclick=function(){previewSplitRange(2)};$("autoSplitAll").onclick=function(){if(confirm("Birden çok cümle içeren tüm uzun satırlar noktadan bölünecek. Zamanlar tahmini olacak. Devam edilsin mi?"))autoSplitLongSegments()};
 $("addGapMarker").onclick=openGapAddModal;
-$("recoverExplanations").onclick=function(){var n=recoverOrphanedSentenceData();renderStudy(study);setStatus(n?n+" açıklama/örnek cümlesi ilgili cümleye geri bağlandı.":"Kopmuş bağlantı bulunamadı.","ok")};
+$("recoverExplanations").onclick=function(){
+ var r=recoverOrphanedSentenceData();renderStudy(study);
+ var e=r.explanations,p=r.practice,totalRecovered=e.recovered+p.recovered;
+ var msg="Cümle: "+r.segments+" · Açıklama kayıtlı "+e.total+" (bağlı "+e.alreadyLinked+", kurtarılan "+e.recovered+", eşleşmeyen "+e.unmatched+") · 5 örnek kayıtlı "+p.total+" (bağlı "+p.alreadyLinked+", kurtarılan "+p.recovered+", eşleşmeyen "+p.unmatched+")";
+ if(e.samples.length||p.samples.length)msg+=" · eşleşmeyen örnek: "+(e.samples.concat(p.samples)).slice(0,3).join(" | ");
+ setStatus(totalRecovered?totalRecovered+" kayıt geri bağlandı. "+msg:msg,totalRecovered?"ok":"error");
+};
 Array.prototype.forEach.call(document.querySelectorAll("[data-close-gap-add]"),function(b){b.onclick=closeGapAddModal});
 $("gapAddModal").onclick=function(e){if(e.target===this)closeGapAddModal()};
 $("gapAddForm").onsubmit=function(e){e.preventDefault();submitGapAdd()};

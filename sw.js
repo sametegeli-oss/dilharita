@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v297";  /* Yeniden bölme artık çeviriyi kıyaslamıyor (kimlik kopması düzeltildi); kayıp açıklama kurtarma butonu; PDF karanlık mod tam siyah */
+var SW_VERSION = "dh-sw-v299";  /* Mobilde sayfa genelinde yatay taşma (yana kayma) düzeltildi */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
