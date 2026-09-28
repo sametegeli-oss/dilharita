@@ -1132,21 +1132,25 @@ async function loadTurkishFont(doc){
 function stripExplanationTags(raw){return explanationWithoutPractice(raw).replace(/\[([^\[\]]+)\]/g,"$1").replace(/^\s*(ANLAM|YAPI VE KALIPLAR|HANGİ DURUMDA DOĞAL|DAHA SADE NASIL SÖYLERİM|HANGİSİNİ KULLANMALIYIM|BENZER ÖRNEKLER|KISA KONUŞMA|TELAFFUZ|YAYGIN HATALAR|SIRA SENDE|ÖRNEK CEVAP)\s*$/gim,"").replace(/\n{2,}/g,"\n").trim()}
 async function startPdfCaptureStream(){var s=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:"browser"},audio:false});var v=document.createElement("video");v.muted=true;v.srcObject=s;await v.play();return{stream:s,el:v}}
 function capturePlayerFrame(capture){var v=capture.el,c=document.createElement("canvas");c.width=320;c.height=180;var ctx=c.getContext("2d");try{ctx.drawImage(v,0,0,320,180)}catch(e){}return c.toDataURL("image/jpeg",.72)}
-async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFCtor=await loadJsPdf(),doc=new JsPDFCtor({unit:"pt",format:"a4"});await loadTurkishFont(doc);doc.setFont("NotoSans","normal");doc.setLineHeightFactor(1.15);var pageW=doc.internal.pageSize.getWidth(),pageH=doc.internal.pageSize.getHeight(),margin=36,y,imgW=110,imgH=62,gap=12;
- function ensureSpace(h){if(y+h>pageH-margin){doc.addPage();y=margin}}
+async function runPdfExport(startLine,endLine,includeExplain,capture,darkMode){var JsPDFCtor=await loadJsPdf(),doc=new JsPDFCtor({unit:"pt",format:"a4"});await loadTurkishFont(doc);doc.setFont("NotoSans","normal");doc.setLineHeightFactor(1.15);var pageW=doc.internal.pageSize.getWidth(),pageH=doc.internal.pageSize.getHeight(),margin=36,y,imgW=110,imgH=62,gap=12;
+ var PAL={light:{headerAccent:[22,103,125],headerText:[22,47,71],title:[17,28,43],subtitle:[92,108,126],coverBoxBg:[21,43,67],coverOverlay:[12,29,49],coverBorder:[224,229,235],metaBoxBg:[245,248,250],metaLabel:[112,128,145],metaValue:[35,52,70],explainBoxBg:[246,247,249],explainBoxBorder:[225,229,235],explainLabel:[120,130,145],explainText:[60,68,80],practiceBoxBg:[239,248,247],practiceBoxBorder:[202,225,222],practiceLabel:[22,103,125],practiceText:[42,66,78],noteBoxBg:[253,248,236],noteLabel:[150,100,20],noteText:[70,60,40],sentenceTagBg:[241,245,249],sentenceTagText:[112,128,145],enText:[20,24,30],trText:[70,80,95],patternText:[13,128,116],divider:[222,227,233],pageBg:null},dark:{headerAccent:[94,234,212],headerText:[226,232,240],title:[241,245,249],subtitle:[148,163,184],coverBoxBg:[15,26,42],coverOverlay:[8,14,24],coverBorder:[51,65,85],metaBoxBg:[30,41,59],metaLabel:[148,163,184],metaValue:[226,232,240],explainBoxBg:[30,41,59],explainBoxBorder:[51,65,85],explainLabel:[148,163,184],explainText:[203,213,225],practiceBoxBg:[20,40,38],practiceBoxBorder:[34,74,70],practiceLabel:[94,234,212],practiceText:[203,232,228],noteBoxBg:[45,38,20],noteLabel:[250,204,110],noteText:[232,218,180],sentenceTagBg:[30,41,59],sentenceTagText:[148,163,184],enText:[241,245,249],trText:[178,190,208],patternText:[94,234,212],divider:[51,65,85],pageBg:[15,20,32]}};
+ var P=darkMode?PAL.dark:PAL.light;
+ function paintPage(){if(P.pageBg){doc.setFillColor.apply(doc,P.pageBg);doc.rect(0,0,pageW,pageH,"F")}}
+ paintPage();
+ function ensureSpace(h){if(y+h>pageH-margin){doc.addPage();paintPage();y=margin}}
  function blockH(lines,size){return lines.length?doc.getTextDimensions(lines,{fontSize:size}).h:0} // gerçek jsPDF ölçüsü, tahmin değil
  function drawExplanation(lines){
   var remaining=lines.slice(),continuation=false;
   while(remaining.length){
    var available=pageH-margin-y,count=0;
    while(count<remaining.length&&blockH(remaining.slice(0,count+1),9.5)+34<=available)count++;
-   if(!count){doc.addPage();y=margin;continue}
+   if(!count){doc.addPage();paintPage();y=margin;continue}
    var part=remaining.slice(0,count),partH=blockH(part,9.5)+34;
-   doc.setDrawColor(225,229,235);doc.setFillColor(246,247,249);doc.roundedRect(margin,y,pageW-margin*2,partH,4,4,"F");
-   doc.setFont("NotoSans","normal");doc.setFontSize(9);doc.setTextColor(120,130,145);doc.text(continuation?"Açıklama (devam)":"Açıklama",margin+8,y+13);
-   doc.setFontSize(9.5);doc.setTextColor(60,68,80);doc.text(part,margin+8,y+26);
+   doc.setDrawColor.apply(doc,P.explainBoxBorder);doc.setFillColor.apply(doc,P.explainBoxBg);doc.roundedRect(margin,y,pageW-margin*2,partH,4,4,"F");
+   doc.setFont("NotoSans","normal");doc.setFontSize(9);doc.setTextColor.apply(doc,P.explainLabel);doc.text(continuation?"Açıklama (devam)":"Açıklama",margin+8,y+13);
+   doc.setFontSize(9.5);doc.setTextColor.apply(doc,P.explainText);doc.text(part,margin+8,y+26);
    y+=partH;remaining=remaining.slice(count);continuation=true;
-   if(remaining.length){doc.addPage();y=margin}
+   if(remaining.length){doc.addPage();paintPage();y=margin}
   }
  }
  function drawPracticeExamples(lines){
@@ -1154,13 +1158,13 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
   while(remaining.length){
    var available=pageH-margin-y,count=0;
    while(count<remaining.length&&blockH(remaining.slice(0,count+1),9.5)+34<=available)count++;
-   if(!count){doc.addPage();y=margin;continue}
+   if(!count){doc.addPage();paintPage();y=margin;continue}
    var part=remaining.slice(0,count),partH=blockH(part,9.5)+34;
-   doc.setDrawColor(202,225,222);doc.setFillColor(239,248,247);doc.roundedRect(margin,y,pageW-margin*2,partH,4,4,"F");
-   doc.setFont("NotoSans","bold");doc.setFontSize(9);doc.setTextColor(22,103,125);doc.text(continuation?"5 Uygulama Cümlesi (devam)":"5 Uygulama Cümlesi",margin+8,y+13);
-   doc.setFont("NotoSans","normal");doc.setFontSize(9.5);doc.setTextColor(42,66,78);doc.text(part,margin+8,y+26);
+   doc.setDrawColor.apply(doc,P.practiceBoxBorder);doc.setFillColor.apply(doc,P.practiceBoxBg);doc.roundedRect(margin,y,pageW-margin*2,partH,4,4,"F");
+   doc.setFont("NotoSans","bold");doc.setFontSize(9);doc.setTextColor.apply(doc,P.practiceLabel);doc.text(continuation?"5 Uygulama Cümlesi (devam)":"5 Uygulama Cümlesi",margin+8,y+13);
+   doc.setFont("NotoSans","normal");doc.setFontSize(9.5);doc.setTextColor.apply(doc,P.practiceText);doc.text(part,margin+8,y+26);
    y+=partH;remaining=remaining.slice(count);continuation=true;
-   if(remaining.length){doc.addPage();y=margin}
+   if(remaining.length){doc.addPage();paintPage();y=margin}
   }
  }
  function cleanNoteForPdf(text){return String(text||"").replace(/\r/g,"").replace(/\*\*|__/g,"").replace(/^#{1,6}\s*/gm,"").replace(/^\s*[*-]\s+/gm,"• ").replace(/\n{3,}/g,"\n\n").trim()}
@@ -1169,24 +1173,24 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
   while(remaining.length){
    var available=pageH-margin-y,count=0;
    while(count<remaining.length&&blockH(remaining.slice(0,count+1),9.5)+34<=available)count++;
-   if(!count){doc.addPage();y=margin;continue}
+   if(!count){doc.addPage();paintPage();y=margin;continue}
    var part=remaining.slice(0,count),partH=blockH(part,9.5)+34;
-   doc.setFillColor(253,248,236);doc.roundedRect(margin,y,pageW-margin*2,partH,4,4,"F");
-   doc.setFont("NotoSans","bold");doc.setFontSize(9);doc.setTextColor(150,100,20);doc.text(continuation?title+" (devam)":title,margin+8,y+13);
-   doc.setFont("NotoSans","normal");doc.setFontSize(9.5);doc.setTextColor(70,60,40);doc.text(part,margin+8,y+26);
+   doc.setFillColor.apply(doc,P.noteBoxBg);doc.roundedRect(margin,y,pageW-margin*2,partH,4,4,"F");
+   doc.setFont("NotoSans","bold");doc.setFontSize(9);doc.setTextColor.apply(doc,P.noteLabel);doc.text(continuation?title+" (devam)":title,margin+8,y+13);
+   doc.setFont("NotoSans","normal");doc.setFontSize(9.5);doc.setTextColor.apply(doc,P.noteText);doc.text(part,margin+8,y+26);
    y+=partH;remaining=remaining.slice(count);continuation=true;
-   if(remaining.length){doc.addPage();y=margin}
+   if(remaining.length){doc.addPage();paintPage();y=margin}
   }
  }
  // KAPAK SAYFASI: yayın kapağı hiyerarşisi, belirgin başlık ve bağlam veren video karesi
  var coverMidIdx=Math.min(study.segments.length-1,startLine-1+Math.floor((endLine-startLine)/2)),coverSeg=study.segments[coverMidIdx];
  var title=study.title||"YouTube video",coverX=margin,coverW=pageW-margin*2,coverH=coverW*9/16,coverY=335,metaY=0,dateText=new Date().toLocaleDateString("tr-TR"),levelText=study.level||"Seviye";
- doc.setFillColor(22,103,125);doc.roundedRect(margin,72,4,20,2,2,"F");
- doc.setFont("NotoSans","bold");doc.setFontSize(9);doc.setTextColor(22,47,71);doc.text("DİL HARİTA  /  YOUTUBE ÇALIŞMA DOSYASI",margin+14,86);
- doc.setFontSize(29);doc.setTextColor(17,28,43);var titleLines=doc.splitTextToSize(title,coverW),subtitleY=142+blockH(titleLines,29)+19;doc.text(titleLines,margin,142);
- doc.setFont("NotoSans","normal");doc.setFontSize(11);doc.setTextColor(92,108,126);doc.text("İngilizce konuşma analizi ve Türkçe açıklamalar",margin,subtitleY);
+ doc.setFillColor.apply(doc,P.headerAccent);doc.roundedRect(margin,72,4,20,2,2,"F");
+ doc.setFont("NotoSans","bold");doc.setFontSize(9);doc.setTextColor.apply(doc,P.headerText);doc.text("DİL HARİTA  /  YOUTUBE ÇALIŞMA DOSYASI",margin+14,86);
+ doc.setFontSize(29);doc.setTextColor.apply(doc,P.title);var titleLines=doc.splitTextToSize(title,coverW),subtitleY=142+blockH(titleLines,29)+19;doc.text(titleLines,margin,142);
+ doc.setFont("NotoSans","normal");doc.setFontSize(11);doc.setTextColor.apply(doc,P.subtitle);doc.text("İngilizce konuşma analizi ve Türkçe açıklamalar",margin,subtitleY);
  coverY=Math.max(335,subtitleY+62);metaY=coverY+coverH+42;
- doc.setFillColor(21,43,67);doc.roundedRect(coverX,coverY,coverW,coverH,6,6,"F");
+ doc.setFillColor.apply(doc,P.coverBoxBg);doc.roundedRect(coverX,coverY,coverW,coverH,6,6,"F");
  if(coverSeg){
   setStatus("Kapak görseli hazırlanıyor…","loading");
   try{player.seekTo(+coverSeg.startSeconds||0,true);player.pauseVideo()}catch(e){}
@@ -1194,12 +1198,12 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
   var coverImg=capturePlayerFrame(capture);
   try{
    doc.addImage(coverImg,"JPEG",coverX,coverY,coverW,coverH);
-   if(doc.GState){doc.saveGraphicsState();doc.setGState(new doc.GState({opacity:.28}));doc.setFillColor(12,29,49);doc.rect(coverX,coverY,coverW,coverH,"F");doc.restoreGraphicsState()}
+   if(doc.GState){doc.saveGraphicsState();doc.setGState(new doc.GState({opacity:.28}));doc.setFillColor.apply(doc,P.coverOverlay);doc.rect(coverX,coverY,coverW,coverH,"F");doc.restoreGraphicsState()}
   }catch(e){}
  }
- doc.setDrawColor(224,229,235);doc.setLineWidth(.6);doc.roundedRect(coverX,coverY,coverW,coverH,6,6,"S");
- [["SEVİYE",levelText],["CÜMLELER",String(endLine-startLine+1)],["TARİH",dateText]].forEach(function(item,n){var x=margin+n*(coverW+12)/3,w=(coverW-24)/3;doc.setFillColor(245,248,250);doc.roundedRect(x,metaY,w,38,5,5,"F");doc.setFont("NotoSans","bold");doc.setFontSize(7.5);doc.setTextColor(112,128,145);doc.text(item[0],x+10,metaY+13);doc.setFont("NotoSans","normal");doc.setFontSize(10);doc.setTextColor(35,52,70);doc.text(item[1],x+10,metaY+28)});
- doc.addPage();y=margin;
+ doc.setDrawColor.apply(doc,P.coverBorder);doc.setLineWidth(.6);doc.roundedRect(coverX,coverY,coverW,coverH,6,6,"S");
+ [["SEVİYE",levelText],["CÜMLELER",String(endLine-startLine+1)],["TARİH",dateText]].forEach(function(item,n){var x=margin+n*(coverW+12)/3,w=(coverW-24)/3;doc.setFillColor.apply(doc,P.metaBoxBg);doc.roundedRect(x,metaY,w,38,5,5,"F");doc.setFont("NotoSans","bold");doc.setFontSize(7.5);doc.setTextColor.apply(doc,P.metaLabel);doc.text(item[0],x+10,metaY+13);doc.setFont("NotoSans","normal");doc.setFontSize(10);doc.setTextColor.apply(doc,P.metaValue);doc.text(item[1],x+10,metaY+28)});
+ doc.addPage();paintPage();y=margin;
  for(var i=startLine-1;i<=endLine-1&&i<study.segments.length;i++){
   var x=study.segments[i];if(!x)continue;
   setStatus((i-startLine+2)+"/"+(endLine-startLine+1)+" cümle işleniyor…","loading");
@@ -1217,9 +1221,9 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
   var imgX=margin,textX=margin+imgW+gap;
   try{doc.addImage(img,"JPEG",imgX,y,imgW,imgH)}catch(e){}
   doc.setFont("NotoSans","normal");doc.setFontSize(8.5);var sentenceTag="Cümle "+(i+1)+" · "+time(+x.startSeconds||0),tagW=doc.getTextWidth(sentenceTag)+12;
-  doc.setFillColor(241,245,249);doc.roundedRect(textX,y,tagW,tagH,8,8,"F");doc.setTextColor(112,128,145);doc.text(sentenceTag,textX+6,y+11);
-  doc.setFontSize(11);doc.setTextColor(20,24,30);doc.setFont("NotoSans","bold");doc.text(enLines,textX,y+textTop);
-  doc.setFont("NotoSans","normal");doc.setFontSize(10.5);doc.setTextColor(70,80,95);doc.text(trLines,textX,y+textTop+enH+6);if(patLines.length){doc.setFont("NotoSans","bold");doc.setFontSize(9.5);doc.setTextColor(13,128,116);doc.text(patLines,textX,y+textTop+enH+6+trH+6);doc.setFont("NotoSans","normal")}
+  doc.setFillColor.apply(doc,P.sentenceTagBg);doc.roundedRect(textX,y,tagW,tagH,8,8,"F");doc.setTextColor.apply(doc,P.sentenceTagText);doc.text(sentenceTag,textX+6,y+11);
+  doc.setFontSize(11);doc.setTextColor.apply(doc,P.enText);doc.setFont("NotoSans","bold");doc.text(enLines,textX,y+textTop);
+  doc.setFont("NotoSans","normal");doc.setFontSize(10.5);doc.setTextColor.apply(doc,P.trText);doc.text(trLines,textX,y+textTop+enH+6);if(patLines.length){doc.setFont("NotoSans","bold");doc.setFontSize(9.5);doc.setTextColor.apply(doc,P.patternText);doc.text(patLines,textX,y+textTop+enH+6+trH+6);doc.setFont("NotoSans","normal")}
   y+=Math.max(textH,imgH)+10;
   if(expLines.length){
    drawExplanation(expLines);y+=10;
@@ -1228,13 +1232,13 @@ async function runPdfExport(startLine,endLine,includeExplain,capture){var JsPDFC
    drawPracticeExamples(practiceLines);y+=10;
   }
   noteBlocks.forEach(function(lines,ni){drawNote(lines,ni+1);y+=10});
-  if(y+14>pageH-margin){doc.addPage();y=margin}
-  doc.setDrawColor(222,227,233);doc.setLineWidth(.6);doc.line(margin,y,pageW-margin,y);y+=12;
+  if(y+14>pageH-margin){doc.addPage();paintPage();y=margin}
+  doc.setDrawColor.apply(doc,P.divider);doc.setLineWidth(.6);doc.line(margin,y,pageW-margin,y);y+=12;
   $("pdfExportBar").style.width=Math.round((i-startLine+2)/(endLine-startLine+1)*100)+"%";
  }
  doc.save((study.title||"video").replace(/[^\w\-]+/g,"_").slice(0,60)+"_"+startLine+"-"+endLine+".pdf");
 }
-async function pdfExportSubmit(e){e.preventDefault();var startLine=+$("pdfExportStart").value||1,endLine=+$("pdfExportEnd").value||1,includeExplain=$("pdfExportExplain").checked;if(startLine<1||endLine<startLine||endLine>study.segments.length){setStatus("Geçerli bir satır aralığı girin.","error");return}
+async function pdfExportSubmit(e){e.preventDefault();var startLine=+$("pdfExportStart").value||1,endLine=+$("pdfExportEnd").value||1,includeExplain=$("pdfExportExplain").checked,darkMode=$("pdfExportDark").checked;if(startLine<1||endLine<startLine||endLine>study.segments.length){setStatus("Geçerli bir satır aralığı girin.","error");return}
  var btn=$("pdfExportStart2");btn.disabled=true;$("pdfExportProgressLabel").textContent="Tam ekrana geçiliyor…";
  var layer=$("captionLayer"),wasOverlayHidden=layer.classList.contains("is-overlay-hidden"),wasFullscreen=isVideoFullscreen();
  try{
@@ -1245,7 +1249,7 @@ async function pdfExportSubmit(e){e.preventDefault();var startLine=+$("pdfExport
   layer.classList.add("is-overlay-hidden"); // updateTimingUi() her setActive()'de .hidden'ı geri açıyor; bu sınıf ondan etkilenmiyor
   await new Promise(function(r){setTimeout(r,500)});
   setStatus("PDF hazırlanıyor, video sarılırken pencereyi değiştirmeyin…","loading");
-  await runPdfExport(startLine,endLine,includeExplain,capture);
+  await runPdfExport(startLine,endLine,includeExplain,capture,darkMode);
   capture.stream.getTracks().forEach(function(t){t.stop()});
   setStatus("PDF hazır ve indirildi.","ok");
  }catch(err){setStatus("PDF oluşturulamadı: "+(err&&err.message||"bilinmeyen hata"),"error")}
