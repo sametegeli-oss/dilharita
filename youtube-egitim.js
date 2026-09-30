@@ -1253,6 +1253,7 @@ async function runPdfExport(startLine,endLine,includeExplain,capture,darkMode){v
   try{doc.addImage(img,"JPEG",imgX,y,imgW,imgH)}catch(e){}
   doc.setFont("NotoSans","normal");doc.setFontSize(8.5);var sentenceTag="Cümle "+(i+1)+" · "+time(+x.startSeconds||0),tagW=doc.getTextWidth(sentenceTag)+12;
   doc.setFillColor.apply(doc,P.sentenceTagBg);doc.roundedRect(textX,y,tagW,tagH,8,8,"F");doc.setTextColor.apply(doc,P.sentenceTagText);doc.text(sentenceTag,textX+6,y+11);
+  if(videoId){try{doc.link(textX,y,tagW,tagH,{url:"https://youtu.be/"+videoId+"?t="+Math.max(0,Math.round(+x.startSeconds||0))+"s"})}catch(e){}}
   doc.setFontSize(11);doc.setTextColor.apply(doc,P.enText);doc.setFont("NotoSans","bold");doc.text(enLines,textX,y+textTop);
   doc.setFont("NotoSans","normal");doc.setFontSize(10.5);doc.setTextColor.apply(doc,P.trText);doc.text(trLines,textX,y+textTop+enH+6);if(patLines.length){doc.setFont("NotoSans","bold");doc.setFontSize(9.5);doc.setTextColor.apply(doc,P.patternText);doc.text(patLines,textX,y+textTop+enH+6+trH+6);doc.setFont("NotoSans","normal")}
   y+=Math.max(textH,imgH)+10;
