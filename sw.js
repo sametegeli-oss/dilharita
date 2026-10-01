@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v300";  /* PDF'de cümle etiketi artık o saniyeden YouTube'a giden tıklanabilir link */
+var SW_VERSION = "dh-sw-v301";  /* Gemini açıklamalarındaki kelimeler artık tıklanınca kelime popup'ını açıyor */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
