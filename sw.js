@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v303";  /* TR Oku: cümle bitmeden video sonraki cümleye geçip sesi kesmesin diye bekleme eklendi */
+var SW_VERSION = "dh-sw-v304";  /* TR Oku bekleme mantığı: hızlı/boşluklu geçişlerde de garanti çalışsın diye cümle index'ine göre sağlamlaştırıldı */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
