@@ -1,0 +1,23 @@
+{
+  "appId": "com.sametegeli.dilharita",
+  "appName": "Dil Harita",
+  "webDir": "www",
+  "server": {
+    "url": "https://sametegeli-oss.github.io/dilharita/",
+    "androidScheme": "https",
+    "cleartext": false,
+    "allowNavigation": [
+      "sametegeli-oss.github.io",
+      "*.youtube.com",
+      "*.google.com",
+      "*.googleapis.com",
+      "*.gstatic.com",
+      "*.firebaseapp.com",
+      "*.firebaseio.com"
+    ]
+  },
+  "android": {
+    "backgroundColor": "#0b1120",
+    "allowMixedContent": false
+  }
+}
