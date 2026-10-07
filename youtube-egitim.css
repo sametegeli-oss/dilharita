@@ -624,3 +624,20 @@ body.yt-patterns-off .yt-pat{color:inherit!important;text-decoration:none!import
 .yt-segment.is-active .yt-seg-time time,.yt-segment.is-active .yt-seg-time .yt-seg-dur{color:var(--yt-gold)}
 .yt-segment{min-width:0}
 @media(max-width:680px){.yt-seg-time .yt-seg-end,.yt-seg-time .yt-seg-dur{display:none}}
+
+/* ===== Telefon: video ve transkripte en çok yer (v65) =====
+   - Üst çubuk tek sıra, ince ve sabit değil (kaydırınca içeriği örtmez); Kitaplığım/eşitleme yazısı çalışma ekranında gizli (← ile ana ekrandan erişilir)
+   - Alt kontrol sırası kaymadan tek satıra sığar: ▶ / önceki / sonraki hep görünür
+   - Bulut rozeti kalkar, bildirim kutusu içeriğin üstüne binmez */
+@media(max-width:680px){
+  .yt-layout-dock{position:static!important;top:auto!important;margin:0 auto 4px!important;padding:0!important;background:none!important;backdrop-filter:none!important;border-radius:0!important;flex-wrap:nowrap!important;gap:4px!important;justify-content:flex-end!important}
+  .yt-layout-dock #topActions{display:none!important}
+  .yt-layout-dock .yt-pro-button{width:40px!important;min-width:40px!important;height:38px!important;min-height:38px!important}
+  .yt-layout-dock .yt-dock-left{min-width:0;gap:4px!important}
+  .yt-dock-left #closeStudy,.yt-layout-dock .yt-head-toggle{width:36px!important;min-width:36px!important;height:36px!important}
+  .yt-controls{overflow:visible!important;flex-wrap:nowrap!important;gap:3px!important;padding-bottom:0!important}
+  .yt-controls>button,.yt-controls #loopToggle,.yt-controls .yt-study-action{flex:1 1 0!important;width:auto!important;min-width:0!important;height:40px!important;padding:0!important;justify-content:center!important}
+  .yt-controls .yt-time{display:none!important}
+  #dhSyncBadge{display:none!important}
+  .dh-connection{top:max(8px,env(safe-area-inset-top))!important;bottom:auto!important;pointer-events:none!important}
+}

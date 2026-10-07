@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v305";  /* Sag ust sabit dugmelerin (Menu/ag/tema/okuma) cakismasi giderildi */
+var SW_VERSION = "dh-sw-v306";  /* Telefonda YouTube calisma ekrani: ust cubuk ve kontrol sirasi tek satir, rozet/bildirim icerigi ortmez */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
