@@ -635,8 +635,10 @@ body.yt-patterns-off .yt-pat{color:inherit!important;text-decoration:none!import
   .yt-layout-dock .yt-pro-button{width:40px!important;min-width:40px!important;height:38px!important;min-height:38px!important}
   .yt-layout-dock .yt-dock-left{min-width:0;gap:4px!important}
   .yt-dock-left #closeStudy,.yt-layout-dock .yt-head-toggle{width:36px!important;min-width:36px!important;height:36px!important}
-  .yt-controls{overflow:visible!important;flex-wrap:nowrap!important;gap:3px!important;padding-bottom:0!important}
-  .yt-controls>button,.yt-controls #loopToggle,.yt-controls .yt-study-action{flex:1 1 0!important;width:auto!important;min-width:0!important;height:40px!important;padding:0!important;justify-content:center!important}
+  .yt-video-shell:not(.is-pseudo-fullscreen):not(:fullscreen) .yt-controls{overflow:visible!important;flex-wrap:nowrap!important;gap:3px!important;padding-bottom:0!important}
+  /* "…" menüsü açıkken menü kendi satırına insin (üst üste binmesin) */
+  .yt-video-shell:not(.is-pseudo-fullscreen):not(:fullscreen) .yt-controls:has(>.yt-more-menu:not([hidden])){flex-wrap:wrap!important}
+  .yt-video-shell:not(.is-pseudo-fullscreen):not(:fullscreen) .yt-controls>button{flex:1 1 0!important;width:auto!important;min-width:0!important;height:40px!important;padding:0!important;justify-content:center!important}
   .yt-controls .yt-time{display:none!important}
   #dhSyncBadge{display:none!important}
   .dh-connection{top:max(8px,env(safe-area-inset-top))!important;bottom:auto!important;pointer-events:none!important}
