@@ -13,7 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v308";  /* Telefonda gercek tam ekranda kontrol dugmeleri kucuk kalmasin */
+var SW_VERSION = "dh-sw-v309";  /* Kolay Kullanım (50-80 yaş) görünümü */
+/* onceki v308: Telefonda gercek tam ekranda kontrol dugmeleri kucuk kalmasin */
 var CACHE = SW_VERSION;
 
 /* İlk açılışta hazır olması gereken minimum kabuk. Listeyi kısa tutun:
@@ -33,6 +34,8 @@ var SHELL = [
   "./atlas-effects.js",
   "./product-improvements.css",
   "./product-improvements.js",
+  "./kolay-kullanim.css",
+  "./kolay-kullanim.js",
   "./favicon.svg",
   "./auth-guard.js",
   "./study-tracker.js",

@@ -31,6 +31,8 @@
 <script src="./ai-providers.js?v=147"></script>
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
+<link rel="stylesheet" href="./kolay-kullanim.css?v=1">
+<script src="./kolay-kullanim.js?v=1"></script>
 </head>
 <body>
 
@@ -55,6 +57,52 @@
   </div>
 
   <p class="dh-etiket" id="kocNeden" style="margin:-8px 0 20px 60px" hidden></p>
+
+  <!-- KOLAY KULLANIM: en sık 4 iş en üstte, büyük ve yazılı kutularla.
+       Yalnız Kolay görünüm açıkken görünür (kolay-kullanim.css). -->
+  <section class="kk-hizli" data-kk-atla aria-labelledby="kkHizliBaslik">
+    <h2 id="kkHizliBaslik">Ne yapmak istersiniz?</h2>
+    <div class="kk-hizli__izgara">
+      <a class="kk-kutu kk-kutu--ana" id="kkDevam" href="./index-app.html">
+        <span class="kk-i" aria-hidden="true">▶️</span>
+        <span><b id="kkDevamYazi">Bugünkü çalışmaya başla</b><br><small>Size hazırlanan günlük çalışma</small></span>
+      </a>
+      <a class="kk-kutu" href="./ders.html">
+        <span class="kk-i" aria-hidden="true">📘</span><b>Bugünkü Dersim</b><small>Öğretmeninizin dersi</small>
+      </a>
+      <a class="kk-kutu" href="./tekrar.html">
+        <span class="kk-i" aria-hidden="true">🔁</span><b>Tekrar Et</b><small>Öğrendiklerinizi pekiştirin</small>
+      </a>
+      <a class="kk-kutu" href="./kelime-ogren.html">
+        <span class="kk-i" aria-hidden="true">🃏</span><b>Kelime Öğren</b><small>Sık kullanılan kelimeler</small>
+      </a>
+      <a class="kk-kutu" href="./chat.html">
+        <span class="kk-i" aria-hidden="true">🎙️</span><b>Konuşma Pratiği</b><small>Sesli sohbet edin</small>
+      </a>
+    </div>
+  </section>
+  <script>
+  /* Büyük "başla" kutusu, sayfanın kendi "Başla" düğmesiyle aynı yere gider
+     ve aynı yazıyı taşır (kaldığı yerden devam, derse devam vb.). */
+  (function(){
+    function esitle(){
+      var d=document.getElementById("devam"),k=document.getElementById("kkDevam"),y=document.getElementById("kkDevamYazi");
+      if(!d||!k||!y) return;
+      if(d.getAttribute("href")) k.setAttribute("href",d.getAttribute("href"));
+      var t=(d.textContent||"").trim();
+      y.textContent=(!t||t==="Başla")?"Bugünkü çalışmaya başla":t;
+    }
+    document.addEventListener("click",function(e){
+      var k=e.target.closest&&e.target.closest("#kkDevam"),d=document.getElementById("devam");
+      if(k&&d){e.preventDefault();d.click();}
+    });
+    document.addEventListener("DOMContentLoaded",function(){
+      esitle();
+      var d=document.getElementById("devam");
+      if(d) new MutationObserver(esitle).observe(d,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:["href"]});
+    });
+  })();
+  </script>
 
   <!-- BUGUN NE YAPTIN — calisilmis gunde ilk gorunen sey bu olmali -->
   <section class="dh-kart dh-kart--sessiz" id="durumKart" hidden style="margin-bottom:var(--dh-b-4)">

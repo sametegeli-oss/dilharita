@@ -1,0 +1,40 @@
+KOLAY KULLANIM GÖRÜNÜMÜ (50-80 yaş) — 21.10.2026
+=================================================
+
+YENİ DOSYALAR
+  kolay-kullanim.css   Sade, yüksek kontrastlı görünüm + büyük düğmeler
+  kolay-kullanim.js    Yazı büyütme, alt menü çubuğu, sade menü, yazı ayarı
+
+DEĞİŞEN DOSYALAR
+  * Kök klasördeki 58 .html sayfanın <head> bölümüne 2 satır eklendi:
+      <link rel="stylesheet" href="./kolay-kullanim.css?v=1">
+      <script src="./kolay-kullanim.js?v=1"></script>
+  * index.html  — en üste "Ne yapmak istersiniz?" bölümü: 1 büyük
+                  "Bugünkü çalışmaya başla" + 4 büyük kutu
+                  (Bugünkü Dersim, Tekrar Et, Kelime Öğren, Konuşma Pratiği).
+                  Büyük kutu sayfanın kendi "Başla" düğmesiyle aynı yere gider.
+  * sw.js       — önbellek sürümü dh-sw-v309; yeni 2 dosya çevrimdışı listeye eklendi.
+  * practice.html, tekrar.html, ilerleme.html — bozuk Türkçe karakterli
+                  düğme yazıları düzeltildi ("Zorland?klar?n? ?ret" vb.).
+
+KULLANICININ GÖRDÜĞÜ DEĞİŞİKLİKLER
+  1. Yazılar büyük: varsayılan "Büyük". Normal / Büyük / Çok büyük seçilebilir.
+     Sonradan gelen içerik (sohbet mesajı, kart) da otomatik büyür.
+  2. Net renkler: düz koyu zemin, beyaz yazı; soluk gri yazılar açıldı.
+     Hareketli arka plan, yıldızlar, titreme efektleri kapalı.
+  3. Büyük dokunma alanları: düğmeler ve giriş kutuları en az 52 piksel.
+  4. Her sayfanın altında aynı 4 büyük, yazılı düğme:
+       ◀ Geri · 🏠 Ana Sayfa · ☰ Menü · Aa Yazı
+     Sohbet / video gibi tam ekran sayfalarda: sağ üstte büyük "Menü".
+     Giriş ve ilk kurulum ekranlarında gezinme gösterilmez.
+  5. Sade menü: 11 madde, 3 grup (Günlük çalışma · Takip · Diğer),
+     her maddede tek satırlık açıklama. Bütün araçlar "Tüm Bölümler"de duruyor.
+  6. Yalnız simgeden oluşan düğmelerin (◍ ◔ ☰) altında ne işe yaradığı yazıyor
+     (Ses · Rapor · Bölümler).
+  7. Alt kenardaki küçük yüzen düğmeler (öğretmen balonu, 🎓) alt çubuğun
+     üstüne kaydırılır, üst üste binmez.
+
+GERİ DÖNÜŞ
+  "Aa Yazı" > "Kolay görünüm: Kapalı" ile eski görünüme dönülür.
+  Eski görünümde Menü > "Kolay görünümü aç" ile geri açılır.
+  Ayar yalnız o cihazda tutulur (localStorage: dh-kolay-v1).

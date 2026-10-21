@@ -1,0 +1,346 @@
+/* kolay-kullanim.css — 50-80 yaş için "Kolay Kullanım" görünümü
+   ------------------------------------------------------------------
+   Varsayılan olarak AÇIK. html etiketinde "kk-acik" sınıfı varken çalışır;
+   kullanıcı "Yazı ve görünüm" penceresinden klasik görünüme dönebilir.
+
+   İlkeler:
+   - Yüksek kontrast: düz koyu zemin, beyaz yazı, soluk gri metin yok.
+   - Büyük dokunma alanları: düğme ve alanlar en az 52 piksel.
+   - Hareket yok: arka plan ışıkları, yıldızlar ve titreşim efektleri kapalı.
+   - Tek ve kalıcı gezinme: ekranın altında Geri · Ana Sayfa · Menü · Yazı.
+   Yazı boyutu büyütme kolay-kullanim.js tarafından yapılır (sayfalar px
+   kullandığı için CSS ile tek noktadan büyütülemiyor). */
+
+html.kk-acik{
+  --kk-zemin:#0c1222;
+  --kk-panel:#16203a;
+  --kk-panel-2:#1d2a4a;
+  --kk-cizgi:#45557d;
+  --kk-yazi:#ffffff;
+  --kk-yazi-2:#e3e8f6;
+  --kk-vurgu:#ffd23f;
+  --kk-ana:#2f6fed;
+  --kk-ana-koyu:#1f56c8;
+  --kk-alt-h:92px;
+
+  /* Mevcut tema değişkenlerini daha okunur değerlere çek */
+  --atlas-bg:var(--kk-zemin);
+  --atlas-panel:rgba(255,255,255,.075);
+  --atlas-panel2:rgba(255,255,255,.12);
+  --atlas-line:rgba(255,255,255,.26);
+  --atlas-line2:rgba(255,255,255,.38);
+  --atlas-text:#ffffff;
+  --atlas-muted:#e3e8f6;
+  --atlas-dim:#c9d1ea;
+  --dh-text:#ffffff;
+  --dh-text-2:#e3e8f6;
+  --dh-text-3:#c9d1ea;
+  --dh-cizgi:rgba(255,255,255,.26);
+  --dh-cizgi-kuvvet:rgba(255,255,255,.38);
+  --dh-focus:var(--kk-vurgu);
+}
+
+/* ---------- Sakin, düz arka plan ---------- */
+html.kk-acik body{
+  background:var(--kk-zemin)!important;
+  background-image:none!important;
+  line-height:1.55;
+  letter-spacing:.005em;
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+html.kk-acik body::before,
+html.kk-acik body::after{display:none!important}
+html.kk-acik #atlas-aurora,
+html.kk-acik #atlas-stars{display:none!important}
+
+/* Hareket ve titreşim efektlerini kapat (konfeti başarı anında kalabilir) */
+html.kk-acik *,
+html.kk-acik *::before,
+html.kk-acik *::after{
+  animation-duration:.001ms!important;
+  animation-iteration-count:1!important;
+  transition-duration:.08s!important;
+  scroll-behavior:auto!important;
+}
+html.kk-acik .atlas-result-shake{animation:none!important}
+
+/* ---------- Okunabilirlik ---------- */
+html.kk-acik p,
+html.kk-acik li,
+html.kk-acik label,
+html.kk-acik small{color:inherit}
+html.kk-acik ::placeholder{color:#b9c3df!important;opacity:1!important}
+html.kk-acik a{text-underline-offset:3px}
+html.kk-acik :focus-visible{
+  outline:4px solid var(--kk-vurgu)!important;
+  outline-offset:3px!important;
+  border-radius:10px;
+}
+
+/* ---------- Büyük dokunma alanları ---------- */
+html.kk-acik button,
+html.kk-acik [role="button"],
+html.kk-acik input[type="button"],
+html.kk-acik input[type="submit"],
+html.kk-acik select,
+html.kk-acik .btn,
+html.kk-acik .dh-btn{
+  min-height:52px;
+  cursor:pointer;
+}
+html.kk-acik input[type="text"],
+html.kk-acik input[type="email"],
+html.kk-acik input[type="password"],
+html.kk-acik input[type="search"],
+html.kk-acik input[type="number"],
+html.kk-acik input:not([type]),
+html.kk-acik textarea,
+html.kk-acik select{
+  min-height:54px;
+  border-width:2px!important;
+  border-color:var(--kk-cizgi)!important;
+}
+html.kk-acik input[type="checkbox"],
+html.kk-acik input[type="radio"]{width:26px;height:26px;accent-color:var(--kk-ana)}
+html.kk-acik input[type="range"]{min-height:40px}
+html.kk-acik button:disabled,
+html.kk-acik [aria-disabled="true"]{opacity:.55!important}
+
+/* Yazılı düğmeler: uzun metin kesilmesin, satıra sığsın */
+html.kk-acik .kk-yazili{
+  height:auto!important;
+  white-space:normal!important;
+  text-overflow:clip!important;
+  overflow:visible!important;
+}
+
+/* Başlıkta çok düğme olan sayfalar (ör. Hata Defteri): düğmeler alt satıra insin */
+html.kk-acik .top:has(> .actions){flex-wrap:wrap}
+html.kk-acik .top > .actions{flex:1 1 100%}
+
+/* İngilizceyi Yaşa kartları: büyüyen yazı resmin üstüne taşmasın */
+html.kk-acik .imm-card{min-height:340px}
+html.kk-acik .imm-card-content{background:linear-gradient(transparent,rgba(5,10,20,.92) 30%);padding:28px 14px 14px;inset:auto 0 0!important}
+
+/* Kartlar: kenarlar net görünsün */
+html.kk-acik .dh-kart,
+html.kk-acik .card,
+html.kk-acik .kart,
+html.kk-acik .panel{
+  border-color:var(--kk-cizgi)!important;
+}
+
+/* Simge düğmelerinin altına yazı (kolay-kullanim.js ekler) */
+html.kk-acik .dh-ikon-btn{
+  width:auto!important;
+  min-width:64px!important;
+  height:auto!important;
+  min-height:56px!important;
+  padding:6px 10px!important;
+  display:inline-flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:2px!important;
+  border:2px solid var(--kk-cizgi)!important;
+  border-radius:14px!important;
+}
+/* Yalnız simgeden oluşan düğmede eski küçük simge gizlenir, yerine
+   anlaşılır simge + yazı gelir (metin değişse de etiket kalır). */
+html.kk-acik .dh-ikon-btn:not(.kk-ikon-yazili){font-size:0!important;line-height:0!important;color:#fff!important}
+html.kk-acik .dh-ikon-btn.kk-ikon-yazili{font-size:17px!important;color:#fff!important}
+html.kk-acik .kk-ikon-yazi{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  font:700 15px/1.1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  color:#fff;
+  white-space:nowrap;
+}
+html.kk-acik .kk-ikon-yazi i{font-style:normal;font-size:22px;line-height:1}
+
+/* ---------- Eski küçük gezinme öğelerini gizle (yerine alt çubuk geldi) ---------- */
+html.kk-acik .dh-mobile-menu-button,
+html.kk-acik .dh-net-status,
+html.kk-acik .atlas-controls,
+html.kk-acik .dh-primary-nav,
+html.kk-acik .dh-app-nav,
+html.kk-acik #dhSyncBadge{display:none!important}
+html.kk-acik .dh-sayfa .dh-ust{padding-right:0!important}
+html.kk-acik body.dh-has-app-nav{padding-bottom:0}
+
+/* Alt çubuk varken içerik çubuğun altında kalmasın */
+html.kk-acik body.kk-alt-var{
+  padding-bottom:calc(var(--kk-alt-h) + 18px + env(safe-area-inset-bottom))!important;
+}
+
+/* ================================================================
+   Kolay Kullanım arayüz parçaları (.kk-ui) — sabit, büyük ölçüler
+   ================================================================ */
+.kk-ui,.kk-ui *{box-sizing:border-box}
+.kk-ui{
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;
+  -webkit-tap-highlight-color:transparent;
+  letter-spacing:0;
+}
+.kk-ui button{font-family:inherit}
+.kk-ui :focus-visible{outline:4px solid #ffd23f!important;outline-offset:3px!important}
+
+/* ---------- Alt gezinme çubuğu ---------- */
+.kk-alt{
+  position:fixed;left:0;right:0;bottom:0;
+  z-index:2147483000;
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;
+  padding:8px max(8px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
+  background:#070b16;
+  border-top:2px solid #45557d;
+  box-shadow:0 -10px 30px rgba(0,0,0,.45);
+}
+.kk-alt.kk-ev{grid-template-columns:repeat(3,minmax(0,1fr))}
+.kk-alt button{
+  min-height:72px;margin:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  padding:6px 4px;
+  border:2px solid #45557d;border-radius:16px;
+  background:#16203a;color:#fff;
+  font:700 16px/1.1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.kk-alt button:active{background:#2f6fed;border-color:#2f6fed}
+.kk-alt button[aria-expanded="true"]{background:#2f6fed;border-color:#8fb1ff}
+.kk-alt .kk-i{font-size:28px;line-height:1}
+.kk-alt .kk-ana-btn{background:#1f56c8;border-color:#5b8cff}
+@media (min-width:820px){
+  .kk-alt{
+    left:50%;right:auto;transform:translateX(-50%);
+    width:760px;bottom:10px;border:2px solid #45557d;border-radius:22px;
+  }
+  html.kk-acik body.kk-alt-var{padding-bottom:calc(var(--kk-alt-h) + 34px)!important}
+}
+@media (max-width:360px){
+  .kk-alt{gap:5px;padding-left:5px;padding-right:5px}
+  .kk-alt button{font-size:14px}
+}
+
+/* Tam ekran sayfalarda (sohbet, video) alt çubuk yerine sağ üstte büyük Menü */
+.kk-ust-menu{
+  position:fixed!important;z-index:2147483000;
+  top:max(8px,env(safe-area-inset-top))!important;right:max(8px,env(safe-area-inset-right))!important;
+  left:auto!important;bottom:auto!important;
+  width:64px!important;min-width:64px!important;height:60px!important;min-height:60px!important;
+  margin:0!important;padding:4px 2px!important;
+  display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  border:2px solid #8fb1ff!important;border-radius:16px!important;
+  background:#1f56c8!important;color:#fff!important;
+  font:800 15px/1 system-ui,-apple-system,"Segoe UI",sans-serif!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);cursor:pointer;
+}
+.kk-ust-menu .kk-i{font-size:24px;line-height:1}
+
+/* ---------- Açılır pencereler (Menü ve Yazı) ---------- */
+.kk-perde{
+  position:fixed;inset:0;z-index:2147483100;
+  background:rgba(3,6,14,.78);
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.kk-perde[hidden]{display:none!important}
+.kk-pencere{
+  width:min(640px,100%);
+  max-height:calc(100% - 24px);
+  display:flex;flex-direction:column;
+  background:#0f1730;color:#fff;
+  border:2px solid #45557d;border-bottom:0;
+  border-radius:24px 24px 0 0;
+  box-shadow:0 -20px 60px rgba(0,0,0,.6);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+@media (min-width:820px){
+  .kk-perde{align-items:center}
+  .kk-pencere{border-radius:24px;border-bottom:2px solid #45557d;max-height:calc(100% - 48px)}
+}
+.kk-pencere header{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:18px 18px 14px;border-bottom:2px solid #26345a;
+}
+.kk-pencere h2{margin:0;font:800 26px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff}
+.kk-kapat{
+  min-height:56px;padding:0 18px;
+  border:2px solid #45557d;border-radius:14px;
+  background:#1d2a4a;color:#fff;
+  font:800 18px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;
+}
+.kk-kaydir{overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:14px 16px 22px}
+.kk-grup{margin:6px 4px 10px;color:#ffd23f;font:800 17px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif}
+.kk-liste{display:flex;flex-direction:column;gap:10px;margin:0 0 20px;padding:0;list-style:none}
+.kk-oge{
+  display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:12px;
+  min-height:78px;padding:12px 14px;
+  border:2px solid #34446c;border-radius:18px;
+  background:#16203a;color:#fff;text-decoration:none;
+}
+.kk-oge:hover,.kk-oge:focus-visible{background:#1d2a4a;border-color:#8fb1ff}
+.kk-oge[aria-current="page"]{border-color:#ffd23f;background:#222d4f}
+.kk-oge .kk-i{font-size:34px;text-align:center;line-height:1}
+.kk-oge b{display:block;font:800 21px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff}
+.kk-oge small{display:block;margin-top:4px;font:500 17px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;color:#dfe5f5}
+.kk-oge .kk-ok{font:400 34px/1 system-ui;color:#8fb1ff}
+.kk-oge-btn{width:100%;text-align:left;cursor:pointer;font-family:inherit}
+
+/* Yazı boyutu seçenekleri */
+.kk-aciklama{margin:2px 4px 16px;font:500 18px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:#e3e8f6}
+.kk-boyutlar{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.kk-boyut{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  min-height:76px;padding:12px 16px;
+  border:2px solid #34446c;border-radius:18px;
+  background:#16203a;color:#fff;text-align:left;cursor:pointer;
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+.kk-boyut[aria-checked="true"]{border-color:#ffd23f;background:#222d4f}
+.kk-boyut .kk-ornek{font-weight:800;line-height:1.15}
+.kk-boyut .kk-isaret{
+  flex:0 0 34px;width:34px;height:34px;border-radius:50%;
+  border:3px solid #8fb1ff;display:grid;place-items:center;
+  font:900 20px/1 system-ui;color:#0c1222;
+}
+.kk-boyut[aria-checked="true"] .kk-isaret{background:#ffd23f;border-color:#ffd23f}
+.kk-anahtar{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;
+  min-height:76px;padding:12px 16px;margin-bottom:10px;
+  border:2px solid #34446c;border-radius:18px;background:#16203a;color:#fff;
+  text-align:left;cursor:pointer;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+.kk-anahtar b{display:block;font:800 20px/1.2 inherit;font-family:inherit}
+.kk-anahtar small{display:block;margin-top:3px;font:500 16px/1.35 inherit;font-family:inherit;color:#dfe5f5}
+.kk-anahtar .kk-durum{
+  flex:0 0 auto;min-width:78px;padding:10px 12px;border-radius:12px;
+  font:800 17px/1 system-ui;text-align:center;background:#2b3657;color:#fff;
+}
+.kk-anahtar[aria-checked="true"] .kk-durum{background:#18a058}
+
+/* ---------- Ana sayfa: büyük hızlı başlangıç kutuları ---------- */
+.kk-hizli{display:none}
+html.kk-acik .kk-hizli{display:block;margin:4px 0 26px}
+.kk-hizli h2{margin:0 0 12px;font:800 24px/1.25 system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff}
+.kk-hizli__izgara{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:340px){.kk-hizli__izgara{grid-template-columns:1fr}}
+.kk-kutu{
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:6px;
+  min-height:132px;padding:16px;
+  border:2px solid #45557d;border-radius:20px;
+  background:#16203a;color:#fff!important;text-decoration:none!important;
+}
+.kk-kutu:hover,.kk-kutu:focus-visible{background:#1d2a4a;border-color:#8fb1ff}
+.kk-kutu .kk-i{font-size:38px;line-height:1}
+.kk-kutu b{font:800 21px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif}
+.kk-kutu small{font:500 16px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;color:#dfe5f5}
+.kk-kutu--ana{grid-column:1/-1;flex-direction:row;align-items:center;gap:14px;min-height:96px;background:#1f56c8;border-color:#8fb1ff}
+.kk-kutu--ana .kk-i{font-size:42px}
+.kk-kutu--ana b{font-size:24px}
+.kk-kutu--ana small{color:#eef3ff}
+
+/* Klasik görünümde Kolay Kullanım parçalarını gizle */
+html:not(.kk-acik) .kk-alt,
+html:not(.kk-acik) .kk-ust-menu{display:none!important}
+
+@media print{.kk-ui,.kk-hizli{display:none!important}}
