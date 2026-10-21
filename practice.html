@@ -512,8 +512,8 @@ body{
 <script src="./sentences-loader.js?v=1"></script>
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
-<link rel="stylesheet" href="./kolay-kullanim.css?v=1">
-<script src="./kolay-kullanim.js?v=1"></script>
+<link rel="stylesheet" href="./kolay-kullanim.css?v=2">
+<script src="./kolay-kullanim.js?v=2"></script>
 </head>
 <body>
 <div class="wrap" id="root"></div>
@@ -1580,7 +1580,7 @@ async function openBackupSheet(){
    ============================================================ */
 async function startModuleSession(mod, resumeIdx){
   State.srs = await mAll();   // aktif moda ait SRS'i yükle (üretim ya da dinleme)
-  const arr = (await ensureModule(mod) || []).slice();
+  let arr = (await ensureModule(mod) || []).slice();   /* let: asagida filtreyle yeniden ataniyor */
   const now = Date.now();
   // Öncelik: (1) vadesi gelmiş tekrarlar [en geciken önce], (2) hiç çalışılmamış yeni
   // cümleler [modül sırasıyla], (3) ileride vadesi gelecek olgunlar [en yakın önce].

@@ -13,7 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v309";  /* Kolay Kullanım (50-80 yaş) görünümü */
+var SW_VERSION = "dh-sw-v310";  /* Kolay Kullanım v2: tüm ekran denetimi */
+/* onceki v309: Kolay Kullanım (50-80 yaş) görünümü */
 /* onceki v308: Telefonda gercek tam ekranda kontrol dugmeleri kucuk kalmasin */
 var CACHE = SW_VERSION;
 

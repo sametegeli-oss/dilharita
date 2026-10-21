@@ -38,3 +38,53 @@ GERİ DÖNÜŞ
   "Aa Yazı" > "Kolay görünüm: Kapalı" ile eski görünüme dönülür.
   Eski görünümde Menü > "Kolay görünümü aç" ile geri açılır.
   Ayar yalnız o cihazda tutulur (localStorage: dh-kolay-v1).
+
+
+=================================================
+SÜRÜM 2 — TÜM EKRANLARIN DENETİMİ (21.10.2026, öğleden sonra)
+=================================================
+Nasıl denetlendi
+  58 sayfa telefon boyutunda (412 piksel) otomatik tarandı:
+  - her sayfanın açılışı + 1 tıklama sonrası durumlar,
+  - 3 tıklama derinliğe kadar gezinti (~340 ekran durumu),
+  - öğrenme akışları baştan sona oynatıldı (ilk kurulum, seviye testi,
+    modül sınavı, modül pratiği, kelime kartları, öbek fiil pratiği,
+    tekrar, hata defteri, ilerleme sayfaları).
+  Her ekranda ölçülen: 16 pikselden küçük yazı, 48 pikselden küçük düğme,
+  yazı/zemin kontrastı (en az 4.5:1, gri yazıda 7:1), ekrandan taşma,
+  başka bir öğenin altında kalan düğme. Ayrıca tablet (820) ve bilgisayar
+  (1280) genişliğinde de bakıldı.
+
+kolay-kullanim.js / .css — yenilikler
+  - Kontrast düzeltici: soluk/düşük kontrastlı yazılar ve renkli düğmeler
+    otomatik okunur hâle getirilir (ör. mor "Başla", beyaz kart üstünde
+    beyaz yazı). Seçili sekme gibi durum değişikliklerinde yeniden hesaplanır.
+  - Küçük düğmeler (geri okları, ✕ kapat vb.) en az 48 piksele büyütülür.
+  - Yalnız simgeli düğmelerin altına yazı: 💡 Öneri, 📝 Hatalarım,
+    🎙 Konuş, ➤ Gönder, 🏁 Puanla, ✓ Özetle, ⚙️ Ayarlar, 🔑 Anahtar …
+  - Modül çalışma kartı (index-app): dar ekranda yazısı gizlenip üst üste
+    binen düğmeler yazılı, tam genişlik ve alt alta düzenlendi.
+  - Yavaş internette de sayfa yüklenirken yazılar büyür (önceden sayfanın
+    tamamen yüklenmesi bekleniyordu).
+  - Sayfanın en altındaki düğmeler alt çubuğun altında kalmaz.
+  - Sayfanın kendi açılır penceresi açıkken alt çubuk gizlenir.
+  - Koç ipucu balonu başlığın altına alındı (Geri düğmesini ve cevap
+    düğmelerini örtmüyor). Sohbetteki koç yüzü mikrofonu örtmüyor.
+  - Tam ekran sayfalarda Menü düğmesi sayfanın kendi düğmesini örterse
+    başlığa yer açılır.
+  - Kutlama/yıldız yağmuru animasyonları Kolay görünümde kapalı.
+  - kıblenamaz.html sayfasına da Kolay görünüm eklendi.
+
+Mevcut kodda bulunup düzeltilen hatalar (Kolay görünümden bağımsız)
+  - practice.html: modüle basınca alıştırma açılmıyordu
+    ("Assignment to constant variable"). const → let.
+  - study-tracker.js: 2 Temmuz'daki yeni sürümle eski fonksiyonlar
+    kaybolmuştu; gunluk-takip.html ve ogrenme-yolu.html açılmıyor, günlük
+    seri ve çalışma süresi kaydedilmiyordu. Eski fonksiyonlar uyumluluk
+    katmanı olarak dosyanın sonuna geri eklendi (yeni sınıfa dokunulmadı).
+  - teacher3.html: 🔑 düğmesi hata veriyordu (openKeySheet tanımsız);
+    teacher.html'deki düzeltilmiş fonksiyon taşındı.
+
+Sürüm
+  Sayfalardaki bağlantılar ?v=2 yapıldı, sw.js önbellek sürümü dh-sw-v310:
+  telefonlar yeni dosyaları hemen alır.
