@@ -176,6 +176,13 @@ html.kk-acik .kk-bosluk{
   display:block;position:absolute;left:0;width:1px;pointer-events:none;
   height:calc(var(--kk-alt-h) + 22px + env(safe-area-inset-bottom));
 }
+/* Sağ altta yüzen "Öğretmen" düğmesi ve koç resmi son satırı örtüyordu:
+   bu düğmeler varken sayfanın sonunda onların boyu kadar ek boşluk kalsın
+   ki en alttaki içerik kaydırılınca görünür olsun. */
+html.kk-acik body:has(.dh-tb-fab) .kk-bosluk,
+html.kk-acik body:has(.dh-avatar) .kk-bosluk{
+  height:calc(var(--kk-alt-h) + 110px + env(safe-area-inset-bottom));
+}
 
 /* ================================================================
    Kolay Kullanım arayüz parçaları (.kk-ui) — sabit, büyük ölçüler

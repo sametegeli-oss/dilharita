@@ -58,7 +58,7 @@ function css(){
    ".dhgb-ov{position:fixed;inset:0;z-index:1000010;background:rgba(2,6,23,.72);display:flex;align-items:center;justify-content:center;padding:14px}"
   +".dhgb-card{width:100%;max-width:520px;max-height:92vh;overflow:auto;background:#0d1b32;color:#e8eef7;border:1px solid #1e3a5f;border-radius:16px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.5);font-family:Nunito,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}"
   +".dhgb-card h3{margin:0 0 4px;font-size:16px;font-weight:900}"
-  +".dhgb-step{font-size:12px;color:#9fb3d9;line-height:1.5;margin:0 0 10px}"
+  +".dhgb-step{font-size:16px;color:#cbd5e1;line-height:1.6;margin:0 0 12px}"
   +".dhgb-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}"
   +".dhgb-row button{flex:1;min-width:130px;border:0;border-radius:10px;padding:11px 8px;font-size:13px;font-weight:800;cursor:pointer}"
   +".dhgb-go{min-height:46px!important;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;box-shadow:0 10px 28px rgba(79,70,229,.3)}"
@@ -128,19 +128,19 @@ function ask(opt){
   ov.innerHTML =
     '<div class="dhgb-card">'
    +'<h3>'+esc(opt.title||"Gemini'ye sor")+'</h3>'
-   +'<div class="dhgb-job">Bekleyen görev: '+esc(id)+'</div>'
-   +'<p class="dhgb-step">Tek düğmeyle prompt kopyalanır ve '+esc(providerName)+' açılır. Orada promptu yapıştırıp gönderin ve cevabı kopyalayın. Programa dönünce aşağıdaki pano düğmesine siz basın.</p>'
-   +'<button class="dhgb-tog" type="button">Promptu göster / gizle</button>'
+   +'<div class="dhgb-job" hidden>Bekleyen görev: '+esc(id)+'</div>'
+   +'<p class="dhgb-step"><b>1.</b> Mor düğmeye bas: sorun kopyalanır ve '+esc(providerName)+' açılır.<br><b>2.</b> '+esc(providerName)+'’de yazı kutusuna parmağını basılı tut, <b>Yapıştır</b>’a dokun ve gönder.<br><b>3.</b> Gelen cevabı kopyala, buraya dön ve <b>📋 Cevabı yapıştır</b> düğmesine bas.</p>'
+   +'<button class="dhgb-tog" type="button">Gönderilecek soruyu göster / gizle</button>'
    +'<div class="dhgb-prompt" style="display:none"></div>'
    +'<div class="dhgb-row">'
-     +'<button class="dhgb-go" type="button">✦ Promptu kopyala ve '+esc(providerName)+'’ye git</button>'
+     +'<button class="dhgb-go" type="button">✦ Soruyu kopyala ve '+esc(providerName)+'’yi aç</button>'
    +'</div>'
    +'<textarea class="dhgb-ta" placeholder="'+esc(opt.hint||"Gemini'nin cevabını buraya yapıştır ve Enter'a bas…")+'"></textarea>'
    +'<div class="dhgb-msg"></div>'
    +'<div class="dhgb-preview"></div>'
    +'<div class="dhgb-row">'
-     +'<button class="dhgb-paste" type="button">📋 Gemini cevabını panodan al</button>'
-     +'<button class="dhgb-send" type="button">✅ Cevabı kullan (Enter)</button>'
+     +'<button class="dhgb-paste" type="button">📋 Cevabı yapıştır</button>'
+     +'<button class="dhgb-send" type="button">✅ Bu cevabı kullan</button>'
      +'<button class="dhgb-close" type="button">Kapat</button>'
    +'</div>'
    +'</div>';
@@ -186,17 +186,17 @@ function ask(opt){
     try{ global.open(providerUrl,"_blank","noopener"); }
     catch(e){ openFailed=true; }
     copy(prompt).then(function(ok){
-      b.textContent=ok?"✅ Prompt kopyalandı · "+providerName+" açıldı":"⚠️ Promptu elle kopyala";
-      say(ok?("Prompt panoda. "+providerName+"’de yapıştırıp gönder; cevabı kopyalayıp buraya dön ve pano düğmesine bas.")
-             :"Prompt otomatik kopyalanamadı. ‘Promptu göster’ ile açıp elle kopyalayın.",ok?"#4ade80":"#f59e0b");
-      if(openFailed)say("Prompt "+(ok?"kopyalandı; ":"")+providerName+" yeni sekmede açılamadı. Sağlayıcıyı elle açın.","#f59e0b");
-      setTimeout(function(){b.textContent="✦ Promptu kopyala ve "+providerName+"’ye git";},2600);
+      b.textContent=ok?"✅ Soru kopyalandı · "+providerName+" açıldı":"⚠️ Soruyu elle kopyala";
+      say(ok?("Soru kopyalandı. "+providerName+"’de yapıştırıp gönder; cevabı kopyalayıp buraya dön ve 📋 Cevabı yapıştır düğmesine bas.")
+             :"Soru kendiliğinden kopyalanamadı. ‘Gönderilecek soruyu göster’ ile açıp elle kopyala.",ok?"#4ade80":"#f59e0b");
+      if(openFailed)say("Soru "+(ok?"kopyalandı; ":"")+providerName+" yeni sekmede açılamadı. "+providerName+"’yi kendin aç.","#f59e0b");
+      setTimeout(function(){b.textContent="✦ Soruyu kopyala ve "+providerName+"’yi aç";},2600);
     });
   };
   ov.querySelector(".dhgb-paste").onclick=function(){
     readClip().then(function(t){
-      if(t && t.trim()){ ta.value=t; rememberDraft(); say("Gemini cevabı panodan alındı.","#4ade80"); submit(false); }
-      else say("Pano boş görünüyor.","#f59e0b");
+      if(t && t.trim()){ ta.value=t; rememberDraft(); say("Cevap yapıştırıldı.","#4ade80"); submit(false); }
+      else say("Kopyalanmış bir cevap bulunamadı. Önce Gemini’de cevabı kopyala.","#f59e0b");
     }).catch(function(){
       say("Tarayıcı panoyu okumaya izin vermedi — kutuya uzun basıp Yapıştır de.","#f59e0b");
       ta.focus();
@@ -248,7 +248,7 @@ function ask(opt){
   /* Gemini yalnız kullanıcının ana mor düğmeye dokunmasıyla açılır. Böylece
      tarayıcının açılır pencere koruması aşılmaz ve istemsiz sekme oluşmaz. */
   var privacy=wasRedacted?" Kişisel/API bilgileri maskelendi.":"";
-  say("Hazır: mor düğme Gemini’yi açar. Dönüşte pano yalnız sizin düğmeye basmanızla okunur."+privacy,"#9fb3d9");
+  say("Hazır. Mor düğmeye basınca "+providerName+" açılır; dönünce cevabı yapıştır."+privacy,"#9fb3d9");
 
   /* Mobil tarayıcı Gemini sekmesine geçerken pagehide üretebilir veya bu
      sayfayı bellekten atabilir. Görevi burada silmek dönüş ekranını yok
