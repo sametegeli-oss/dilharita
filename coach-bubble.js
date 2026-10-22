@@ -338,8 +338,11 @@
   css.textContent=".dh-coach{position:fixed !important;left:50% !important;top:22px !important;bottom:auto !important;width:min(92vw,400px);"
     +"transform:translateX(-50%) translateY(-40px) scale(.85);opacity:0;"
     +"max-width:min(95vw,640px);background:#111827;border-left:8px solid #38bdf8;border-radius:16px;"
-    +"padding:18px 24px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:2147483000;font:800 19px/1.5 system-ui,sans-serif;color:#f8fafc;"
-    +"display:flex;gap:16px;align-items:center;transition:opacity .3s,transform .3s;pointer-events:none}"
+    +"padding:12px 16px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:2147483000;font:800 17px/1.45 system-ui,sans-serif;color:#f8fafc;"
+    +"display:flex;gap:12px;align-items:center;transition:opacity .3s,transform .3s;pointer-events:none}"
+    /* Düğme metni sıkıştırmasın: metin tam satır, düğme altta */
+    +".dh-coach{flex-wrap:wrap}.dh-coach>span[style*='flex:1']{flex:1 1 calc(100% - 70px)!important;min-width:0}"
+    +".dh-coach .dh-coach-teach{order:5;margin:4px 0 0 58px!important;font-size:16px!important;padding:9px 16px!important}"
     +".dh-coach.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1);pointer-events:auto}"
     +".dh-coach.show.praise{animation:dhClap .6s ease 2}"
     +".dh-coach.show.warn{animation:dhShake .5s ease}"
@@ -1165,13 +1168,23 @@
         q.onerror=function(){ res(); }; }); }
     }catch(e){}
     try{ var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; for(var k in m){ if(m[k]&&m[k][0]===2) learned++; } }catch(e){}
-    var msg=null, kind="tip";
-    if(streak===0 && due>10){ msg="Bugün henüz çalışmadın ama "+due+" tekrar bekliyor — hemen 10 dakikanı ayır, seriye başla!"; kind="warn"; }
+    var msg=null, kind="tip", git=null;
+    var TEKRAR={actionHref:"./tekrar.html?plan=1", actionLabel:"Tekrara git"};
+    if(streak===0 && due>10){ msg="Bugün henüz çalışmadın ama "+due+" tekrar bekliyor — hemen 10 dakikanı ayır, seriye başla!"; kind="warn"; git=TEKRAR; }
     else if(streak>=7){ msg="🔥 "+streak+" günlük serin devam ediyor, harikasın! Bugünü de kaçırma, meşale sönmesin."; kind="praise"; }
     else if(streak>=3){ msg=streak+" günlük serin devam ediyor, iyi gidiyorsun — bugünü de kaçırma!"; kind="praise"; }
-    else if(due>30){ msg="Tekrar bekleyen "+due+" öğe birikmiş — bugün önce tekrarları bitir, sonra yeni cümlelere geç."; kind="warn"; }
-    else { msg="Genel durumun: "+learned+" öğrenilmiş kayıt, "+due+" tekrar bekliyor. İstersen 'Tekrar' ya da 'Yeni Cümleler'den devam et."; kind="tip"; }
-    return {msg:msg, kind:kind};
+    else if(due>30){ msg="Tekrar bekleyen "+due+" öğe birikmiş — bugün önce tekrarları bitir, sonra yeni cümlelere geç."; kind="warn"; git=TEKRAR; }
+    /* Eskiden: "Genel durumun: 0 öğrenilmiş kayıt, 0 tekrar bekliyor. İstersen
+       'Tekrar' ya da 'Yeni Cümleler'den devam et." — yeni kullanıcıya bilgi
+       vermiyor, adı geçen düğmeler de çoğu sayfada yok. Artık hiç
+       çalışmamış kullanıcıya kendiliğinden söylenmez; söylenen her durum
+       mesajı gidilecek yerin düğmesini taşır. */
+    else if(learned===0 && due===0){
+      if(manual){ msg="Bugünkü dersinle başlayalım: öğretmen konuyu anlatacak, sonra birlikte çalışacağız."; git={actionHref:"./ders.html", actionLabel:"Derse git"}; }
+    }
+    else if(due>0){ msg=learned+" cümle öğrendin, "+due+" tanesi tekrar bekliyor."; git=TEKRAR; }
+    else { msg=learned+" cümle öğrendin. Yeni cümlelerle devam edebilirsin."; git={actionHref:"./ders.html", actionLabel:"Derse git"}; }
+    return {msg:msg, kind:kind, actionHref:git&&git.actionHref, actionLabel:git&&git.actionLabel};
   }
   window.__dhCoachManualStatus=async function(){
     try{ var s=await buildStatusMessage(true); if(s.msg) dhCoachSay(s.msg, s.kind, null, {dayClose:!!s.dayClose, reopen:!!s.reopen, actionHref:s.actionHref, actionLabel:s.actionLabel}); }catch(e){}
