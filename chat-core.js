@@ -1557,11 +1557,22 @@ function genFreshOpener(cb){
   try{
     var idKey="chat:recent:"+safeId(Scenario.title+":"+(Scenario.avatarDir||""));
     var recent=[]; try{ recent=JSON.parse(localStorage.getItem(idKey)||"[]")||[]; }catch(e){}
-    var sys="You are "+(Scenario.role||Scenario.title||"a friendly English conversation partner")
-      +". Start a BRAND NEW English conversation with a Turkish learner at level "+State.level
-      +". Pick a FRESH everyday topic that is NOT one of these recent topics: "+(recent.join(", ")||"(none)")
-      +". Greet very briefly and ask ONE natural opening question to get them talking. 1-2 short level-appropriate sentences. "
-      +"Return ONLY the opener line, then a new line: TOPIC: <two-word topic>.";
+    /* Senaryo sayfalarinda (restoran, otel...) acilis SAHNEDE kalmali.
+       Eskiden "fresh everyday topic" deniyordu ve garson "tatil planin var mi?"
+       diye aciliyordu. Ogretmen sayfalari serbest konu secmeye devam eder. */
+    var sahneli = !(typeof __dhIsTeacher!=="undefined" && __dhIsTeacher);
+    var sys = sahneli
+      ? ("You are "+(Scenario.role||"a staff member")+". The setting is: "+(Scenario.title||"")+". "
+        +"Start a BRAND NEW English role-play with a Turkish learner at level "+State.level+". "
+        +"The conversation MUST happen in this setting and fit your role exactly (only things you would really say there, in that job). "
+        +"Pick a FRESH situation inside this setting that is NOT one of these recent ones: "+(recent.join(", ")||"(none)")+". "
+        +"Greet very briefly and ask ONE natural question that a person in your role would ask a customer. 1-2 short level-appropriate sentences. "
+        +"Return ONLY the opener line, then a new line: TOPIC: <two-word situation>.")
+      : ("You are "+(Scenario.role||Scenario.title||"a friendly English conversation partner")
+        +". Start a BRAND NEW English conversation with a Turkish learner at level "+State.level
+        +". Pick a FRESH everyday topic that is NOT one of these recent topics: "+(recent.join(", ")||"(none)")
+        +". Greet very briefly and ask ONE natural opening question to get them talking. 1-2 short level-appropriate sentences. "
+        +"Return ONLY the opener line, then a new line: TOPIC: <two-word topic>.");
     groqChat([{role:"system",content:sys},{role:"user",content:"Start now."}]).then(function(out){
       var txt=String(out||"").trim();
       var tm=txt.match(/TOPIC:\s*(.+)$/im); var topic=tm?tm[1].trim():"";
