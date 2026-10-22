@@ -159,9 +159,22 @@ function addStyle(){
     }
     .index-app-top-actions a,
     .index-app-top-actions button{border-radius:10px;font-size:12px;padding:8px 10px}
-    /* kart içeriği üst şeridin altından başlasın */
+    /* Sayfa üst şeridin ALTINDAN başlasın. Eskiden yalnız ilk karta 52px
+       boşluk veriliyordu; şerit 73px olduğu için modül adı, "← Modüller" ve
+       "1 / 25" sayacı şeridin altında kalıyordu. */
     #root, body > div{ padding-top:2px; }
-    #root [class*="card"]:first-of-type{ margin-top:52px; }
+    body{ padding-top:78px !important; }
+  }
+  /* Telefonda sıra: fotoğraf → cümle → düğmeler → "nasıl geldi?" puanı.
+     Eskiden cümle yedi düğmenin altında kalıyordu. */
+  @media(max-width:700px){
+    .card.dh-split > .dh-card-quickbar{ order:50 !important; margin:6px 0 2px !important; }
+    /* Yüzen koç resmi alttaki "Kolay" düğmesini örtüyordu: üst şeridin boş sağ köşesine */
+    .dh-avatar{ top:12px !important; bottom:auto !important; right:12px !important; width:48px !important; height:48px !important; }
+    .card.dh-split .grade-bar::before{
+      content:"Bu cümle sana nasıl geldi?"; grid-column:1/-1; display:block;
+      color:#cbd5e1; font:800 16px/1.3 Nunito,system-ui,sans-serif; margin:2px 0 2px;
+    }
   }`;
   document.head.appendChild(s);
 }
