@@ -32,7 +32,14 @@
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=2">
-<script src="./kolay-kullanim.js?v=2"></script>
+<script src="./kolay-kullanim.js?v=3"></script>
+<style>
+.dh-dahafazla{margin:22px 0 8px;border:1px solid rgba(148,163,184,.28);border-radius:16px;padding:0 14px;background:rgba(15,23,42,.55)}
+.dh-dahafazla>summary{cursor:pointer;list-style:none;padding:16px 4px;font-weight:800;font-size:18px;color:#e2e8f0;min-height:48px}
+.dh-dahafazla>summary::-webkit-details-marker{display:none}
+.dh-dahafazla>summary::before{content:"▸ ";color:#93c5fd}.dh-dahafazla[open]>summary::before{content:"▾ "}
+.dh-dahafazla[open]{padding-bottom:14px}
+</style>
 </head>
 <body>
 
@@ -114,28 +121,6 @@
     </div>
   </section>
 
-  <!-- Günlük programın canlı özeti. Plan kurulur kurulmaz görünür; çalışma
-       yapılmasını beklemez ve DHPlan değişikliklerinde aynı anda yenilenir. -->
-  <section class="dh-plan-ozet" id="planOzet" hidden aria-live="polite" aria-label="Bugünkü plan durumu">
-    <div class="dh-plan-ozet__hucre">
-      <span class="dh-plan-ozet__etiket">Planlanan</span>
-      <strong class="dh-plan-ozet__deger" id="planlananN">0</strong>
-      <span class="dh-plan-ozet__birim">adım</span>
-    </div>
-    <div class="dh-plan-ozet__hucre dh-plan-ozet__hucre--yapilan">
-      <span class="dh-plan-ozet__etiket">Yapılan</span>
-      <strong class="dh-plan-ozet__deger" id="yapilanN">0</strong>
-      <span class="dh-plan-ozet__birim">adım</span>
-    </div>
-    <div class="dh-plan-ozet__hucre dh-plan-ozet__hucre--kalan">
-      <span class="dh-plan-ozet__etiket">Kalan</span>
-      <strong class="dh-plan-ozet__deger" id="kalanN">0</strong>
-      <span class="dh-plan-ozet__birim">adım</span>
-    </div>
-    <div class="dh-plan-ozet__ilerleme" aria-hidden="true"><span id="planOzetCubuk"></span></div>
-    <p class="dh-plan-ozet__mesaj" id="planOzetMesaj"></p>
-  </section>
-
   <!-- YARIM KALAN DERS: kaldigin adimdan devam -->
   <a class="dh-plan-satir dh-plan-satir--aktif" id="dersDevam" hidden
      href="./ders.html" style="margin-bottom:var(--dh-b-4)">
@@ -165,6 +150,42 @@
     <div class="dh-etiket" id="hedefSonuc" style="margin-top:6px"></div>
   </div>
 
+  <div class="dh-bolum-basligi" id="planBaslik">Bugünün planı</div>
+  <div class="dh-plan" id="plan"></div>
+
+  <div class="dh-alt">
+    <!-- JavaScript planın ilk kalan adımını bağlar. Yükleme tamamlanmadan
+         tıklanırsa kullanıcıyı plansız karma derse sokmamak için güvenli
+         varsayılan da günlük planın temel cümle ekranıdır. -->
+    <a class="dh-btn dh-btn--birincil dh-btn--tam" id="devam" href="./index-app.html">Başla</a>
+  </div>
+
+  <!-- SADE ANA EKRAN: ikincil bölümler tek bir "Daha fazla" altında.
+       Hiçbiri kaldırılmadı; kimlikleri (id) aynı, betikler aynen çalışır. -->
+  <details class="dh-dahafazla" id="dahaFazla">
+    <summary>Daha fazla: hedef, karne, PDF, son 7 gün</summary>
+  <!-- Günlük programın canlı özeti. Plan kurulur kurulmaz görünür; çalışma
+       yapılmasını beklemez ve DHPlan değişikliklerinde aynı anda yenilenir. -->
+  <section class="dh-plan-ozet" id="planOzet" hidden aria-live="polite" aria-label="Bugünkü plan durumu">
+    <div class="dh-plan-ozet__hucre">
+      <span class="dh-plan-ozet__etiket">Planlanan</span>
+      <strong class="dh-plan-ozet__deger" id="planlananN">0</strong>
+      <span class="dh-plan-ozet__birim">adım</span>
+    </div>
+    <div class="dh-plan-ozet__hucre dh-plan-ozet__hucre--yapilan">
+      <span class="dh-plan-ozet__etiket">Yapılan</span>
+      <strong class="dh-plan-ozet__deger" id="yapilanN">0</strong>
+      <span class="dh-plan-ozet__birim">adım</span>
+    </div>
+    <div class="dh-plan-ozet__hucre dh-plan-ozet__hucre--kalan">
+      <span class="dh-plan-ozet__etiket">Kalan</span>
+      <strong class="dh-plan-ozet__deger" id="kalanN">0</strong>
+      <span class="dh-plan-ozet__birim">adım</span>
+    </div>
+    <div class="dh-plan-ozet__ilerleme" aria-hidden="true"><span id="planOzetCubuk"></span></div>
+    <p class="dh-plan-ozet__mesaj" id="planOzetMesaj"></p>
+  </section>
+
   <section class="dh-insight" id="kisiselIcGoru" hidden aria-live="polite"></section>
   <section class="dh-kart dh-kart--sessiz" id="dhLearningCoach" hidden aria-live="polite" style="margin-bottom:12px"></section>
 
@@ -180,9 +201,6 @@
     </div>
     <p id="geminiKarneYorum" style="margin:12px 0 0;line-height:1.55;color:#dbeafe"></p>
   </section>
-
-  <div class="dh-bolum-basligi" id="planBaslik">Bugünün planı</div>
-  <div class="dh-plan" id="plan"></div>
 
   <section class="dh-kart" id="pdfIndirKart" style="margin-top:16px" aria-labelledby="pdfIndirBaslik">
     <div class="dh-bolum-basligi" id="pdfIndirBaslik" style="margin-bottom:5px">Çalışma PDF'leri</div>
@@ -213,10 +231,6 @@
   </section>
 
   <div class="dh-alt">
-    <!-- JavaScript planın ilk kalan adımını bağlar. Yükleme tamamlanmadan
-         tıklanırsa kullanıcıyı plansız karma derse sokmamak için güvenli
-         varsayılan da günlük planın temel cümle ekranıdır. -->
-    <a class="dh-btn dh-btn--birincil dh-btn--tam" id="devam" href="./index-app.html">Başla</a>
     <button class="dh-btn dh-btn--sade dh-btn--tam" id="dinlenme" style="margin-top:8px">
       Bugün dinleniyorum
     </button>
@@ -224,6 +238,7 @@
       Sonraki günü başlat
     </button>
   </div>
+  </details>
 
   <div id="dhKocContainer" hidden></div>
   <span id="dhDaySub" hidden></span>
@@ -232,7 +247,7 @@
 
 <script src="./dh-plan.js?v=1"></script>
 <script src="./dh-insights.js?v=1"></script>
-<script src="./dh-learning-coach.js?v=2"></script>
+<script src="./dh-learning-coach.js?v=3"></script>
 <script src="./dh-app-shell.js?v=2"></script>
 <script src="./cloud-sync.js?v=32"></script>
 <script src="./dh-telafi.js?v=1"></script>

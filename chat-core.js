@@ -1626,8 +1626,34 @@ function continueInGemini(){
     }catch(e){}
   }catch(e){}
 }
+/* SADE ALT ÇUBUK: telefonda 9 düğme iki sıraya diziliyordu (iki ayrı
+   Gemini, "Puan" ve "Puanla" yan yana). Her zaman görünenler: Öneri,
+   Konuş, Gönder. Diğerleri "Daha fazla" ile açılır; hiçbiri kaldırılmadı.
+   Sonradan eklenen düğmeler (📊, 🏁) de kimlikleriyle aynı kurala girer. */
+function dhSadeAltCubuk(){
+  try{
+    if(!document.getElementById("dh-sade-cubuk-css")){
+      const st=document.createElement("style"); st.id="dh-sade-cubuk-css";
+      const ek=["errSaveBtn","autoBtn","finishBtn","gemBtn","dhGemRaporBtn","dhPuanBtn"];
+      st.textContent=ek.map(function(id){ return ".input-row:not(.dh-ek-acik)>#"+id; }).join(",")+"{display:none!important}"
+        +"#dhDahaBtn{background:#334155}.input-row.dh-ek-acik #dhDahaBtn{background:#475569}";
+      document.head.appendChild(st);
+    }
+    const row=document.querySelector(".input-row"), sg=document.getElementById("suggestBtn");
+    if(!row || !sg || document.getElementById("dhDahaBtn")) return;
+    const b=document.createElement("button");
+    b.type="button"; b.id="dhDahaBtn"; b.className="icon-fab suggest-btn";
+    b.title="Daha fazla"; b.setAttribute("aria-expanded","false"); b.textContent="⋯";
+    b.onclick=function(){
+      const acik=row.classList.toggle("dh-ek-acik");
+      b.setAttribute("aria-expanded", acik?"true":"false");
+    };
+    sg.insertAdjacentElement("afterend", b);
+  }catch(e){}
+}
 function boot(){
   buildUI();
+  dhSadeAltCubuk();
   avatar=new PhotoAvatar($("avatarImg"));
   avatar.init();
   setupEvents();

@@ -372,9 +372,10 @@
     "+": "Ekle", "＋": "Ekle", "↻": "Yenile", "🔄": "Yenile", "?": "Yardım", "❓": "Yardım",
     "📷": "Fotoğraf", "🖼️": "Resim", "🎬": "Video", "📚": "Kitaplık", "🏠": "Ana Sayfa", "✏️": "Düzelt"
   };
-  var KIMLIK = { errSaveBtn: "Hatalarım", autoBtn: "Eller serbest", finishBtn: "Özetle", gemBtn: "Gemini",
+  /* "Puan" ile "Puanla" yan yana neyin ne olduğu anlaşılmıyordu. */
+  var KIMLIK = { errSaveBtn: "Hatalarım", autoBtn: "Eller serbest", finishBtn: "Özetle", gemBtn: "Gemini'de sürdür",
                  suggestBtn: "Öneri", micBtn: "Konuş", sendBtn: "Gönder", levelBtn: "Seviye",
-                 dhPuanBtn: "Puanla", finishBtn2: "Bitir" };
+                 dhPuanBtn: "Değerlendir", dhGemRaporBtn: "Gemini raporu", dhDahaBtn: "Daha fazla", finishBtn2: "Bitir" };
   var SADECE_SIMGE = /^[^\p{L}\p{N}]{1,4}$/u;
   function simgeEtiketleri(kok){
     if (!ayar.acik) return;
