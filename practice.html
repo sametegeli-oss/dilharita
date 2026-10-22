@@ -1691,7 +1691,7 @@ async function startSourceSession(kind,limit){
   State.source=kind; if(kind==="pronunciation")State.mode="listen";
   State.srs=await mAll(); var arr=await sourceItems(kind), n=Math.max(1,Number(limit)||((kind==="weekly")?12:kind==="speaking-prep"?6:3));
   State.queue=arr.slice(0,n); State.idx=0; State.activeModule=null; State.sessionTitle=SOURCE_TITLE[kind]||"Üretim çalışması";
-  if(!State.queue.length){root.innerHTML='<div class="state"><div style="font-size:44px">✅</div><h2>Şu anda çalışma yok</h2><p>Bu kaynakta vadesi gelen veya hazırlanmış cümle bulunmuyor.</p><a class="btn btn-primary" href="./index.html">Bugüne dön</a></div>';return;}
+  if(!State.queue.length){root.innerHTML='<div class="state"><div style="font-size:44px">✅</div><h2>Şu anda çalışma yok</h2><p>Burada daha önce öğrendiğin cümleleri kendin kurarsın. Önce bugünkü yeni cümleleri çalış; sonra buraya dön.</p><a class="btn btn-primary" href="./index.html">Bugüne dön</a></div>';return;}
   renderCard();
 }
 function recordSourceProgress(s){

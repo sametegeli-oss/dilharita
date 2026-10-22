@@ -718,6 +718,9 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
         if(p && p.seviyeTesti) return false;          // sınav yapılmış
       }
       if(sessionStorage.getItem("dh-skip-leveltest")==="1") return false; // bu oturumda atladı
+      /* "Şimdilik atla" 3 gün hatırlanır; eskiden her açılışta yeniden soruluyordu */
+      var atlT=+localStorage.getItem("dh-skip-leveltest-t")||0;
+      if(atlT && Date.now()-atlT < 3*86400000) return false;
     }catch(e){}
     return true;
   }
@@ -734,7 +737,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
       +'</div></div>';
     $("ltGo").onclick=function(){ location.href="./seviye-testi.html"; };
     $("ltSkip").onclick=function(){
-      try{ sessionStorage.setItem("dh-skip-leveltest","1"); }catch(e){}
+      try{ sessionStorage.setItem("dh-skip-leveltest","1"); localStorage.setItem("dh-skip-leveltest-t", String(Date.now())); }catch(e){}
       $("content").innerHTML='<div class="loading" role="status" aria-live="polite">Öğretmen seviyene uygun dersi hazırlıyor…<br><small>İçerikler yüklenirken birkaç saniye sürebilir.</small></div>';
       requestAnimationFrame(function(){start();});
     };
