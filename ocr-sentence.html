@@ -114,18 +114,15 @@
 <script src="./ai-teacher-prompt-tts.js?v=2"></script>
 <script src="./tts-avatar-long-sync-fix.js?v=4"></script>
 <script src="./learning-error-system.js?v=11"></script>
-<script src="./ai-providers.js?v=147"></script>
+<script src="./ai-providers.js?v=tm1"></script>
 <script>
 (function(){
   "use strict";
-  var GROQ_URL="https://api.groq.com/openai/v1/chat/completions";
-  var GROQ_MODEL="llama-3.3-70b-versatile";
   var OCR_STORE_KEY="dh-ocr-sentences-v1";
 
   var State={ list:[], i:0 };
 
   function $(id){ return document.getElementById(id); }
-  function getKeys(){ try{ return (JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){ return []; } }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
   function waitForStorage(){
     return new Promise(function(res){
@@ -190,21 +187,9 @@
 
   // ---- Groq ----
   async function groqChat(messages, maxTokens){
-    if(window.DHProviders&&DHProviders.chat) return DHProviders.chat(messages,{temperature:.6,max_tokens:maxTokens||500,title:"💎 Cümleyi kontrol et",cacheType:"ocr-sentence-check",cacheInput:messages.filter(function(m){return m.role!=="system";})});
-    var keys=getKeys();
-    if(!keys.length) throw {code:"no-key"};
-    var lastErr=null;
-    for(var i=0;i<keys.length;i++){
-      try{
-        var res=await fetch(GROQ_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+keys[i]},body:JSON.stringify({model:GROQ_MODEL,messages:messages,temperature:.6,max_tokens:maxTokens||500})});
-        if(res.status===401){lastErr={code:"bad-key"};continue;}
-        if(res.status===429){lastErr={code:"rate"};continue;}
-        if(!res.ok){lastErr={code:"http",status:res.status};continue;}
-        var data=await res.json();
-        return (data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||"").trim();
-      }catch(e){ lastErr={code:"network"}; }
-    }
-    throw lastErr||{code:"unknown"};
+    /* Yapay zeka: tek merkez (ai-providers.js / DHProviders); burada doğrudan bağlantı yok. */
+    if(!(window.DHProviders&&DHProviders.chat)) throw {code:"no-key"};
+    return DHProviders.chat(messages,{temperature:.6,max_tokens:maxTokens||500,title:"💎 Cümleyi kontrol et",cacheType:"ocr-sentence-check",cacheInput:messages.filter(function(m){return m.role!=="system";})});
   }
 
   // ---- SRS (basit, OCR'a özel: localStorage) ----

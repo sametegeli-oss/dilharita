@@ -45,6 +45,7 @@
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=2">
 <script src="./kolay-kullanim.js?v=2"></script>
+<script src="./ai-providers.js?v=tm1"></script>
 </head>
 <body>
 
@@ -146,7 +147,7 @@
 
     <div class="satir" style="margin-top:12px">
       <button class="dh-btn dh-btn--birincil" id="kopyala">Promptu kopyala</button>
-      <a class="dh-btn dh-btn--ikincil" id="geminiAc" href="https://gemini.google.com/app" target="_blank" rel="noopener">
+      <a class="dh-btn dh-btn--ikincil" id="geminiAc" href="#" target="_blank" rel="noopener">
         Gemini'yi aç
       </a>
     </div>
@@ -387,6 +388,15 @@
     });
   }
 
+  /* "Gemini'yi aç" bağlantısı: adres ve açma işi tek merkezden (ai-providers.js) */
+  (function(){
+    var a=$("geminiAc"); if(!a) return;
+    if(window.DHProviders&&DHProviders.webUrl) a.href=DHProviders.webUrl("gemini");
+    a.addEventListener("click",function(ev){
+      if(!(window.DHProviders&&DHProviders.openWeb)) return;
+      ev.preventDefault(); DHProviders.openWeb({site:"gemini"});
+    });
+  })();
   $("kopyala").onclick = function(){
     var k = $("promptKutu");
     k.select(); k.setSelectionRange(0, 999999);

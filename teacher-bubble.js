@@ -33,41 +33,11 @@
   };
   window.dhClearTopic = function(){ topic = null; updateHint(); };
 
-  // ---- Groq (teacher.html ile ortak mantık) ----
-  var GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-  var GROQ_MODEL = "llama-3.3-70b-versatile";
-  function getKeys(){ try{ return (JSON.parse(localStorage.getItem("groqApiKeys")||"[]")||[]).filter(Boolean); }catch(e){ return []; } }
-  var _ki=0, _ban={};
-  function nextKey(keys){
-    var now=Date.now();
-    Object.keys(_ban).forEach(function(k){ if(_ban[k]<now) delete _ban[k]; });
-    for(var e=0;e<keys.length;e++){ var idx=(_ki+e)%keys.length; if(!_ban[idx]){ _ki=idx; return {idx:idx,key:keys[idx]}; } }
-    return {idx:-1,key:null};
-  }
-  function groqChat(messages, provider){
-    // Çok sağlayıcılı katman varsa onu kullan (Groq→Cerebras→Gemini).
-    // provider verilirse ("gemini") SADECE o sağlayıcıya sorulur.
-    if(window.DHProviders && (provider || DHProviders.hasAnyKey())){
-      return DHProviders.chat(messages, {temperature:0.3, max_tokens:1500, provider:provider||undefined,cacheType:"teacher-bubble-explanation",cacheInput:messages.filter(function(m){return m.role!=="system";})});
-    }
-    // yedek: doğrudan Groq
-    var keys=getKeys();
-    if(!keys.length) return Promise.reject({code:"no-key"});
-    var attempt=0;
-    function tryOnce(){
-      var pick=nextKey(keys);
-      if(pick.idx===-1) return Promise.reject({code:"rate"});
-      return fetch(GROQ_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+pick.key},
-        body:JSON.stringify({model:GROQ_MODEL,messages:messages,temperature:0.3,max_tokens:1500})})
-        .then(function(res){
-          if(res.status===401){ _ban[pick.idx]=Date.now()+300000; if(++attempt<keys.length) return tryOnce(); throw {code:"bad-key"}; }
-          if(res.status===429){ _ban[pick.idx]=Date.now()+60000; if(++attempt<keys.length) return tryOnce(); throw {code:"rate"}; }
-          if(!res.ok){ _ban[pick.idx]=Date.now()+10000; if(++attempt<keys.length) return tryOnce(); throw {code:"http"}; }
-          return res.json().then(function(d){ return (d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||"").trim(); });
-        })
-        .catch(function(e){ if(++attempt<keys.length) return tryOnce(); throw (e&&e.code?e:{code:"network"}); });
-    }
-    return tryOnce();
+  // ---- Yapay zeka: tek merkez (ai-providers.js / DHProviders) ----
+  // Sağlayıcı, model ve anahtar sırası merkezde. Burada doğrudan bağlantı yok.
+  function groqChat(messages){
+    if(!(window.DHProviders && DHProviders.chat)) return Promise.reject({code:"no-key"});
+    return DHProviders.chat(messages, {temperature:0.3, max_tokens:1500, cacheType:"teacher-bubble-explanation", cacheInput:messages.filter(function(m){return m.role!=="system";})});
   }
 
   // ---- Öğretmen sistem talimatı (anayasadaki açıklama ile uyumlu) ----
@@ -249,7 +219,7 @@
       document.body.appendChild(n);
       setTimeout(function(){ n.remove(); },3600);
     }catch(e){}
-    window.open("https://gemini.google.com/app","_blank");
+    if(window.DHProviders&&DHProviders.openWeb) DHProviders.openWeb({site:"gemini"});   /* tek merkez */
     inputEl.value="";
   }
 

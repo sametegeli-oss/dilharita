@@ -22,7 +22,7 @@
 
    YUKLEME SIRASI KRITIK
    index-app.html icinde app.js su sekilde:
-       <script type="module" crossorigin src="./assets/app.js">
+       <script type="module" crossorigin src="./assets/app.js?v=tm1">
    type="module" varsayilan olarak DEFER'lidir. Bu dosya klasik bir
    <script> olarak ONUNDE durursa app.js'ten once calisir ve fetch
    yamasi yerine oturur.

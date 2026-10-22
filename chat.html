@@ -86,6 +86,7 @@
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=2">
 <script src="./kolay-kullanim.js?v=2"></script>
+<script src="./ai-providers.js?v=tm1"></script>
 </head>
 <body>
 <div class="menu">
@@ -170,21 +171,14 @@
         const selectedAI = document.getElementById('aiEngineSelect').value;
         const promptText = `You are a professional English conversation partner. Act as a ${roleName}. Keep your sentences suitable for this level. Let's start the conversation.`;
 
-        if (selectedAI === 'gemini') {
-            openWithClipboardFallback('https://gemini.google.com/', promptText);
-        } else if (selectedAI === 'openai') {
-            window.open(`https://chatgpt.com/?q=${encodeURIComponent(promptText)}`, '_blank');
-        } else {
-            const aiUrls = { 'claude': 'https://claude.ai/', 'deepseek': 'https://chat.deepseek.com/' };
-            openWithClipboardFallback(aiUrls[selectedAI] || 'https://chatgpt.com/', promptText);
+        /* Kopyala + seçilen yapay zeka sitesini aç: adresler tek merkezde (ai-providers.js) */
+        const site = selectedAI === 'openai' ? 'chatgpt' : selectedAI;
+        if (window.DHProviders && DHProviders.openWeb) {
+            DHProviders.openWeb({ site: site, prompt: promptText, inUrl: site === 'chatgpt' }).then(function (ok) {
+                const msg = ok ? "Sohbet promptu kopyalandı! Açılan sayfada yapıştırıp (CTRL+V) başlayabilirsiniz." : "Site açıldı. Promptu kopyalayamadım; konuşmayı kendiniz başlatın.";
+                if (window.DHUx && DHUx.toast) DHUx.toast(msg, ok ? "ok" : "warn", 4500);
+            });
         }
-    }
-
-    function openWithClipboardFallback(url, text) {
-        navigator.clipboard.writeText(text).then(() => {
-            alert("Sohbet promptu kopyalandı! (CTRL+V) yapıp başlayabilirsiniz.");
-            window.open(url, '_blank');
-        }).catch(() => { window.open(url, '_blank'); });
     }
 </script>
 <script src="./sentences-loader.js?v=20"></script>

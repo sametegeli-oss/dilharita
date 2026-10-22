@@ -3,7 +3,7 @@
 <head>
 <script src="./auth-guard.js?v=1"></script>
 <script src="./storage-bridge.js?v=3"></script>
-<script src="./ai-providers.js?v=147"></script>
+<script src="./ai-providers.js?v=tm1"></script>
 <script src="./gemini-quality-tools.js?v=4"></script>
 <script src="./progress-engine.js?v=2"></script>
 <script src="./dh-plan.js?v=3"></script>
@@ -2358,8 +2358,8 @@ function dhOpenGemini(s, answer){
     "✍️ Benim Yazdığım Çeviri: " + userEn + "\n" +
     notes + "\n\n" +
     "Senden ricam:\n1) Dil bilgisi incelemesi yap.\n2) Farklıysa nüansları açıkla.\n3) 10 üzerinden puan ver.\n4) 1 konuşma dili alternatifi ekle.";
-  try{ if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(promptText); }catch(e){}
-  window.open("https://gemini.google.com/app?prompt=" + encodeURIComponent(promptText), "_blank");
+  /* Kopyala + Gemini'yi aç: tek merkez (ai-providers.js) */
+  if(window.DHProviders&&DHProviders.openWeb) DHProviders.openWeb({site:"gemini",prompt:promptText});
 }
 
 function verdictMeta(grade){
@@ -2549,7 +2549,7 @@ boot();
     <script src="./teacher-addon.js"></script>
 <script src="./study-tracker.js?v=2"></script>
 <script src="./cloud-sync.js?v=5"></script>
-<script src="./word-popup.js?v=149"></script>
+<script src="./word-popup.js?v=tm1"></script>
 <script src="./ux-boost.js?v=1"></script>
 <script src="./atlas-effects.js?v=1"></script>
   <script src="product-improvements.js" defer></script>

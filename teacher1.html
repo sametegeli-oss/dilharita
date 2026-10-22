@@ -90,7 +90,7 @@ body{
 </head>
 <body>
 <div class="wrap" id="root"></div>
-<script src="./ai-providers.js?v=147"></script>
+<script src="./ai-providers.js?v=tm1"></script>
 <script>/* ============================================================
    teacher.html — Türkçe konuşan İngilizce öğretmeni paneli
    Cümleyi URL'den (?s=...&t=...) alır, Groq'a düzenlenebilir
@@ -100,30 +100,14 @@ body{
 (function(){
 "use strict";
 
-/* ---------- Groq (chat.html ile ortak) ---------- */
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+/* ---------- Anahtar saklama (ayar paneli için) ---------- */
 const KEYS_LS = "groqApiKeys";
 function getKeys(){ try{ return (JSON.parse(localStorage.getItem(KEYS_LS)||"[]")||[]).filter(Boolean); }catch{ return []; } }
 function saveKey(k){ const ks=getKeys(); if(!ks.includes(k)) ks.push(k); try{ localStorage.setItem(KEYS_LS, JSON.stringify(ks)); }catch{} }
-let _ki=0;
+/* Yapay zeka: tek merkez (ai-providers.js / DHProviders); burada doğrudan bağlantı yok. */
 async function groqChat(messages){
-  if(window.DHProviders&&DHProviders.chat) return DHProviders.chat(messages,{temperature:.5,max_tokens:1100,title:"💎 Öğretmene sor"});
-  const keys=getKeys();
-  if(!keys.length) throw {code:"no-key"};
-  let last=null;
-  for(let n=0;n<keys.length;n++){
-    const key=keys[(_ki+n)%keys.length];
-    try{
-      const res=await fetch(GROQ_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model:GROQ_MODEL,messages,temperature:0.5,max_tokens:1100})});
-      if(res.status===401){ last={code:"bad-key"}; continue; }
-      if(res.status===429){ last={code:"rate"}; continue; }
-      if(!res.ok){ last={code:"http"}; continue; }
-      const data=await res.json(); _ki=(_ki+n)%keys.length;
-      return data.choices?.[0]?.message?.content?.trim()||"";
-    }catch(e){ last={code:"network"}; }
-  }
-  throw last||{code:"unknown"};
+  if(!(window.DHProviders&&DHProviders.chat)) throw {code:"no-key"};
+  return DHProviders.chat(messages,{temperature:.5,max_tokens:1100,title:"💎 Öğretmene sor"});
 }
 
 /* ---------- varsayılan prompt (kullanıcı düzenleyebilir) ---------- */

@@ -88,3 +88,65 @@ Mevcut kodda bulunup düzeltilen hatalar (Kolay görünümden bağımsız)
 Sürüm
   Sayfalardaki bağlantılar ?v=2 yapıldı, sw.js önbellek sürümü dh-sw-v310:
   telefonlar yeni dosyaları hemen alır.
+
+
+=================================================
+YAPAY ZEKA TEK MERKEZDE (22.10.2026)
+=================================================
+Merkez: ai-providers.js (DHProviders)
+  Sağlayıcılar (Gemini, NVIDIA, Groq, Cerebras), model adları, anahtar sırası,
+  limit dolunca sonraki sağlayıcıya geçiş, anahtarsız "Gemini Web" yolu,
+  açılan yapay zeka siteleri (Gemini, ChatGPT, Claude, DeepSeek, Perchance)
+  ve resim üretimi (NVIDIA FLUX, Cloudflare Worker) yalnız burada tanımlı.
+  gemini-bridge.js merkezin "Gemini Web" yapıştırma kutusu motorudur; adresi
+  merkezden alır.
+
+  Yeni merkez fonksiyonları:
+    DHProviders.openWeb({site, prompt})  soruyu panoya kopyalar + siteyi açar
+    DHProviders.webUrl(site)             site adresi
+    DHProviders.copyText(metin)          panoya kopyala
+    DHProviders.generateImage({prompt})  resim üretimi
+    DHProviders.imageProxy() / setImageProxy(adres)
+
+Merkeze bağlanan yerler (önceden kendi başına Groq'a bağlanıyor ve kendi
+model adını — çoğunlukla eski "llama-3.3-70b-versatile" — kullanıyordu):
+  chat-core.js (sohbet), dh-sohbet-puan.js (🏁 puanlama), teacher-bubble.js
+  (öğretmen balonu), teacher.html, teacher1.html, teacher3.html,
+  ocr-sentence.html, foto-ekle.html, word-direct-tools.js (kelime araçları),
+  assets/app.js (modül çalışma ekranının ana programı; app.js kopyası da),
+  word-learning-list.js (resim üretimi).
+  teacher.html / teacher3.html anahtar panelindeki NVIDIA model listesi
+  artık merkezden geliyor.
+
+Gemini/ChatGPT/Claude/DeepSeek sitesini açan 11 yer merkeze bağlandı:
+  chat.html (Haricî AI), chat-core.js (💎), teacher-bubble.js, gemini-lesson.js,
+  index-app-layout.js, word-popup.js, practice.html, pdfoku.html,
+  modullerim.html, chat-gemini-continue.js, word-learning-list.js (Perchance).
+
+Bu sırada bulunan hatalar
+  - word-direct-tools.js anahtarları başka adlarla arıyordu ("apiKeys",
+    "groq_api_key"); ayarlardan girilen anahtarla kelime araçlarının
+    (Hikaye, Podcast, Benzer cümleler…) yapay zekası hiç çalışmıyordu.
+    Artık ortak ayarlar geçerli.
+  - chat.html "Haricî AI'da aç" düğmesi Gemini seçiliyken açılmıyordu:
+    product-improvements.js'teki istenmeyen-açılış koruması bu düğmeyi
+    tanımıyordu. Koruma "Haricî AI" yazısını da tanıyacak şekilde genişletildi.
+
+Davranış değişikliği
+  - Kelime araçları ve sohbet puanlaması da "Gemini Web" modunda artık
+    Gemini yapıştırma kutusunu açar (önceden anahtar yoksa çevrimdışı metin
+    verirdi / puanlama atlanırdı).
+
+Kullanılmayan eski dosyalar (hiçbir sayfa yüklemiyor; dokunulmadı)
+  js/ klasörü (silinen atlas uygulamasından), assets/avatars_v3/teacher.html,
+  assets/avatars_v3/teacher_inline.js — içlerinde hâlâ doğrudan çağrı var.
+
+Doğrulama
+  Tarayıcıda bütün yapay zeka adresleri yakalanıp sahte cevap verildi;
+  16 özellik tek tek tetiklendi:
+  - API modu: her istek merkezin seçtiği modelle gitti.
+  - Merkezde model değiştirildi (llama-3.1-8b-instant): 12 özelliğin
+    12'si yeni modeli kullandı.
+  - Gemini Web modu: hiçbir doğrudan istek yok, hepsi merkezin
+    yapıştırma kutusuna gitti.
+  Sürüm: değişen dosyalar ?v=tm1, sw.js önbellek sürümü dh-sw-v311.

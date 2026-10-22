@@ -12,7 +12,8 @@
     const intent = [control.textContent, control.title,
       control.getAttribute("aria-label"), control.className]
       .filter(Boolean).join(" ");
-    if (/(gemini|ai\s*['’]?ye\s*sor|yapay\s*zeka|💎)/i.test(intent)) {
+    /* "Haricî AI'da aç" (sohbet sayfası) da kullanıcının açık isteğidir. */
+    if (/(gemini|ai\s*['’]?ye\s*sor|yapay\s*zeka|💎|haric[iî]\s*ai)/i.test(intent)) {
       geminiIntentUntil = Date.now() + 2500;
     }
   }, true);

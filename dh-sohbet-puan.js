@@ -33,9 +33,6 @@
   if (global.__dhSohbetPuan) return;
   global.__dhSohbetPuan = true;
 
-  var GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-  var GROQ_MODEL = "llama-3.3-70b-versatile";
-  var KEYS_LS = "groqApiKeys";
   var DEPO = "dh-sohbet-puan-v1";
   var AGIRLIK = { cumle: 50, dilbilgisi: 30, gorev: 20 };
   var ENAZ_TUR = 2;                  /* bu kadar cevap vermeden puan verilmez */
@@ -170,33 +167,14 @@
   }
 
   /* ───────────────────── 2) dilbilgisi (AI) ───────────────────── */
-  function anahtarlar() {
-    try { return (JSON.parse(localStorage.getItem(KEYS_LS) || "[]") || []).filter(Boolean); }
-    catch (e) { return []; }
-  }
+  /* Yapay zeka çağrısı tek merkezden: ai-providers.js (DHProviders).
+     Sağlayıcı/model seçimi ve anahtarlar orada; burada model adı yok. */
   function groq(mesajlar) {
-    if(global.DHProviders&&DHProviders.chat) return DHProviders.chat(mesajlar,{temperature:.2,max_tokens:400,title:"💎 Sohbet dilbilgisini değerlendir"});
-    var keys = anahtarlar();
-    if (!keys.length) return Promise.reject(new Error("anahtar yok"));
-    var i = 0;
-    function dene() {
-      if (i >= keys.length) return Promise.reject(new Error("tum anahtarlar basarisiz"));
-      var key = keys[i++];
-      return fetch(GROQ_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-        body: JSON.stringify({ model: GROQ_MODEL, messages: mesajlar, temperature: 0.2, max_tokens: 400 })
-      }).then(function (r) {
-        if (!r.ok) throw new Error("http " + r.status);
-        return r.json();
-      }).then(function (d) {
-        return (d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || "";
-      }).catch(dene);
-    }
-    return dene();
+    if (!(global.DHProviders && DHProviders.chat)) return Promise.reject(new Error("ai-providers.js yüklenmemiş"));
+    return DHProviders.chat(mesajlar,{temperature:.2,max_tokens:400,title:"💎 Sohbet dilbilgisini değerlendir"});
   }
   function dilbilgisiPuani(cevaplar, seviye) {
-    if (!(global.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey()) && !anahtarlar().length) return Promise.resolve(null);
+    if (!(global.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())) return Promise.resolve(null);
     var sys = "You are an English teacher grading a Turkish learner's chat replies at level "
       + (seviye || "A2") + ". Judge ONLY grammar, word choice and word order of THEIR sentences. "
       + "Be fair for their level; ignore punctuation, capitalisation and typos. "

@@ -1,7 +1,5 @@
 (function(){
 "use strict";
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
 const KEYS_LS = "groqApiKeys";
 const STT = window.SpeechRecognition || window.webkitSpeechRecognition;
 const DEFAULT_SCENARIO = {
@@ -320,58 +318,33 @@ function ensureStorageReady(){
    sessizce eski Groq yoluna duser. */
 function global_DHProviders(){ try{ return window.DHProviders || null; }catch(e){ return null; } }
 function saveKey(k){ const keys=getKeys(); if(!keys.includes(k)) keys.push(k); localStorage.setItem(KEYS_LS, JSON.stringify(keys)); }
-/* ── COK SAGLAYICILI CAGRI ──────────────────────────────────────────
-   OLCULDU: bu dosya dogrudan GROQ_URL'e gidiyordu ve yalnizca birden
-   fazla GROQ anahtari arasinda donuyordu. Groq kotasi bitince sohbet
-   tamamen duruyordu ("API limiti doldu"), oysa uygulamada Cerebras ve
-   Gemini API anahtarlari da olabiliyor.
-   ai-providers.js (DHProviders) tam bu isi yapiyor: anahtari olan
-   saglayicilari sirayla dener, 429 alani atlayip sonrakine geçer. Yazilmis
-   ama chat sayfalarina HIC baglanmamisti. Artik varsa o kullanilir;
-   yoksa asagidaki eski dogrudan-Groq yolu aynen calisir (geri uyum). */
+/* ── YAPAY ZEKA: TEK MERKEZ ──────────────────────────────────────────
+   Bütün çağrılar ai-providers.js (DHProviders) üzerinden gider: sağlayıcı
+   ve model seçimi, anahtar sırası, limit dolunca sonrakine geçiş, anahtarsız
+   "Gemini Web" yolu orada. Bu dosya hiçbir sağlayıcıya doğrudan bağlanmaz
+   ve model adı tutmaz. (Eski doğrudan-Groq yedeği kaldırıldı.) */
 async function groqChat(messages, requestOpts){
   requestOpts=requestOpts||{};
+  const P=global_DHProviders();
+  if(!P||!P.chat){ console.error("[Dil Harita] ai-providers.js yüklenmemiş; yapay zeka çağrısı yapılamadı."); throw {code:"no-key"}; }
   const controller=new AbortController();
   let timedOut=false;
   const timer=setTimeout(function(){timedOut=true;controller.abort();},requestOpts.timeoutMs||25000);
   const external=requestOpts.signal;
   const abortFromOutside=function(){controller.abort();};
-  const cleanupRequest=function(){clearTimeout(timer);if(external)external.removeEventListener("abort",abortFromOutside);};
   if(external){if(external.aborted)controller.abort();else external.addEventListener("abort",abortFromOutside,{once:true});}
   try{
-    if(global_DHProviders() && global_DHProviders().hasAnyKey && global_DHProviders().hasAnyKey()){
-      return await global_DHProviders().chat(messages, { temperature:0.7, max_tokens:1100, signal:controller.signal });
-    }
+    return await P.chat(messages, { temperature:0.7, max_tokens:1100, signal:controller.signal });
   }catch(e){
-    /* DHProviders'in kendi hata kodlari ("rate","all-failed","no-key")
-       cagiranin bekledigi bicimle ayni; oldugu gibi yukari verilir. */
+    /* Merkezin hata kodları ("rate","all-failed","no-key") çağıranın beklediği biçime çevrilir. */
     if(e && (e.code==="rate" || e.code==="all-failed")) throw {code:"rate"};
     if(e && e.code==="no-key") throw {code:"no-key"};
     if((e&&e.code==="abort") || controller.signal.aborted) throw {code:timedOut?"timeout":"cancelled"};
     throw e;
   }finally{
-    /* Sağlayıcı yolu burada biter. Doğrudan Groq yedeğine düşülecekse
-       zamanlayıcı aşağıdaki ikinci blokta yeniden kurulur. */
-    if(global_DHProviders() && global_DHProviders().hasAnyKey && global_DHProviders().hasAnyKey()){
-      cleanupRequest();
-    }
+    clearTimeout(timer);
+    if(external) external.removeEventListener("abort",abortFromOutside);
   }
-  const keys=getKeys();
-  if(!keys.length){cleanupRequest();throw {code:"no-key"};}
-  let lastErr=null;
-  for(const key of keys){
-    try{
-      const res=await fetch(GROQ_URL,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model:GROQ_MODEL,messages,temperature:.7,max_tokens:320})});
-      if(res.status===401){lastErr={code:"bad-key"};continue;}
-      if(res.status===429){lastErr={code:"rate"};continue;}
-      if(!res.ok){lastErr={code:"http",status:res.status};continue;}
-      const data=await res.json();
-      const answer=data.choices?.[0]?.message?.content?.trim() || "";
-      cleanupRequest();return answer;
-    }catch(e){ if(controller.signal.aborted){lastErr={code:timedOut?"timeout":"cancelled"};break;} lastErr={code:"network"}; }
-  }
-  cleanupRequest();
-  throw lastErr || {code:"unknown"};
 }
 
 class PhotoAvatar{
@@ -1434,8 +1407,8 @@ function continueInGemini(){
        Bkz. gemini-sohbet-rapor.js */
     try{ if(window.DHGeminiRapor && DHGeminiRapor.sozlesme) prompt += DHGeminiRapor.sozlesme(); }catch(e){}
 
-    try{ if(navigator.clipboard) navigator.clipboard.writeText(prompt); }catch(e){}
-    try{ window.open("https://gemini.google.com/app","_blank"); }catch(e){}
+    /* Kopyala + Gemini'yi aç: tek merkez (ai-providers.js) */
+    try{ if(window.DHProviders&&DHProviders.openWeb) DHProviders.openWeb({site:"gemini",prompt:prompt}); }catch(e){}
     try{
       addBubble("assistant", window.DHGeminiRapor
         ? "💎 Sohbet panoya kopyalandı ve Gemini açıldı — oraya yapıştırıp devam et. Bitirince Gemini'ye tek başına RAPOR yaz, çıkan JSON'u kopyala ve buradaki 📊 düğmesine yapıştır: puanın, hataların ve günlük sayacın buna göre güncellenir."

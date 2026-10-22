@@ -15,7 +15,6 @@
 "use strict";
 if(global.DHGeminiLesson) return;
 
-var GEMINI_URL="https://gemini.google.com/app";
 var LS_PENDING="dh-gemini-lesson-pending";
 
 /* ---------- stil ---------- */
@@ -242,7 +241,7 @@ function open(){
       });
     };
     ov.querySelector(".dhgl-open").onclick=function(){
-      try{ global.open(GEMINI_URL,"_blank","noopener"); }
+      try{ global.DHProviders.openWeb({site:"gemini"}); }   /* tek merkez (ai-providers.js) */
       catch(e){ say("Gemini açılamadı — gemini.google.com adresine git.","#f59e0b"); }
     };
     ov.querySelector(".dhgl-close").onclick=function(){ ov.remove(); };

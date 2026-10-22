@@ -19,7 +19,7 @@
    burada analiz edersen ders.html'de de gruplu liste hazır gelir.
 
    KURULUM (index-app.html):
-     <script src="./word-popup.js?v=11"></script>
+     <script src="./word-popup.js?v=tm1"></script>
      <script>window.DHWordPop && DHWordPop.disable();</script>   ← tıklama
                        dinleyicisini kapat, yalnız kütüphane olarak kullan
      <script src="./word-gemini-addon.js?v=1"></script>

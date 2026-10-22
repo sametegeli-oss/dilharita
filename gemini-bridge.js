@@ -109,7 +109,8 @@ function readClip(){
 function ask(opt){
   opt=opt||{};
   var providerName=String(opt.providerName||"Gemini");
-  var providerUrl=String(opt.openUrl||GEMINI_URL);
+  /* Adres tek merkezden (ai-providers.js); merkez yüklü değilse yedek adres. */
+  var providerUrl=String(opt.openUrl||((global.DHProviders&&DHProviders.webUrl)?DHProviders.webUrl("gemini"):GEMINI_URL));
   css();
   var originalPrompt=String(opt.prompt||"");
   var basePrompt=redactSensitive(originalPrompt);

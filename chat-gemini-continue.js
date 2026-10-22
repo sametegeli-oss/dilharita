@@ -68,9 +68,9 @@ function copyText(t){
 }
 
 function goGemini(prompt){
-  copyText(prompt);
   toast("📋 Prompt kopyalandı — Gemini'de yapıştır (Ctrl/Cmd+V) ve Enter'a bas");
-  window.open("https://gemini.google.com/app","_blank");
+  if(window.DHProviders&&DHProviders.openWeb) DHProviders.openWeb({site:"gemini",prompt:prompt});   /* tek merkez */
+  else copyText(prompt);
 }
 
 function addButton(card, href){

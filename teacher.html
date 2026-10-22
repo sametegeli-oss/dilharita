@@ -5,8 +5,8 @@
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./coach-bubble.js?v=10"></script>
 <script src="./progress-engine.js?v=2"></script>
-<script src="./ai-providers.js?v=147"></script>
-<script src="./gemini-bridge.js?v=32"></script>
+<script src="./ai-providers.js?v=tm1"></script>
+<script src="./gemini-bridge.js?v=tm1"></script>
 
 
 <meta charset="UTF-8" />
@@ -130,8 +130,6 @@ body{
    sayılan Türkçe cümleler hem İngilizce sesle okunuyor hem mouth-th kullanıyordu). */
 window.DH_DEFAULT_LANG = "tr-TR";
 
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "openai/gpt-oss-120b";
 const KEYS_LS = "groqApiKeys";
 function getKeys(){ try{ return (JSON.parse(localStorage.getItem(KEYS_LS)||"[]")||[]).filter(Boolean); }catch{ return []; } }
 
@@ -241,9 +239,7 @@ function openKeySheet(invalid){
         ${ids.map(id=>`<option value="${id}">${esc(PROVIDER_META[id].label)} — ${esc(PROVIDER_META[id].note)}</option>`).join("")}
       </select>
       <select id="keyModel" style="width:100%;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px;font:700 14px Nunito,sans-serif;margin-bottom:10px">
-        <option value="nvidia/nemotron-3-super-120b-a12b">Nemotron 3 Super 120B — önerilen ana model</option>
-        <option value="nvidia/nemotron-3.5-lightning-30b-a3b">Nemotron 3.5 Lightning — hızlı yedek</option>
-        <option value="openai/gpt-oss-120b">GPT-OSS 120B — alternatif</option>
+        ${/* NVIDIA model listesi tek merkezden (ai-providers.js) */((window.DHProviders&&DHProviders.PROVIDERS)||[]).filter(x=>x.id==="nvidia").map(x=>(x.models||[]).map((m,i)=>`<option value="${esc(m)}">${esc(m)}${i===0?" — önerilen ana model":""}</option>`).join("")).join("")}
       </select>
       <input id="keyInput" type="text" placeholder="${esc(PROVIDER_META[ids[0]].prefix)}..." autocomplete="off" spellcheck="false" />
       <div class="note ${invalid?"bad":""}" id="keyNote">${invalid?"Önceki anahtar geçersizdi, yenisini gir.":""}</div>
@@ -280,7 +276,7 @@ function openKeySheet(invalid){
     $$("keyGetLink").href = p.url;
     $$("keyModel").style.display = this.value==="nvidia" ? "block" : "none";
   };
-  try{ $$("keyModel").value=(window.DHProviders&&DHProviders.getModel)?DHProviders.getModel("nvidia"):"nvidia/nemotron-3-super-120b-a12b"; }catch(e){}
+  try{ $$("keyModel").value=(window.DHProviders&&DHProviders.getModel)?DHProviders.getModel("nvidia"):""; }catch(e){}
 
   function close(){
     sheet.remove();
@@ -305,41 +301,12 @@ function openKeySheet(invalid){
   $$("keyInput").onkeydown = e => { if(e.key==="Enter") $$("keySave").onclick(); };
   $$("keyInput").focus();
 }
-let _ki=0;
-let _keyBan={};        
-
-function nextUsableKey(keys){
-  const now=Date.now();
-  Object.keys(_keyBan).forEach(k=>{ if(_keyBan[k]<now) delete _keyBan[k]; });
-  for(let e=0;e<keys.length;e++){
-    const idx=(_ki+e)%keys.length;
-    if(!_keyBan[idx]){ _ki=idx; return {idx, key:keys[idx]}; }
-  }
-  const soonest=Object.entries(_keyBan).sort((a,b)=>a[1]-b[1])[0];
-  return { idx:-1, key:null, waitMs: soonest ? Math.max(0, soonest[1]-now) : 0 };
-}
-
+/* Yapay zeka: tek merkez (ai-providers.js / DHProviders). Sağlayıcı, model,
+   anahtar sırası ve limit dolunca sonrakine geçiş orada; burada doğrudan bağlantı yok. */
 async function groqChat(messages, cacheOpts){
-  if(window.DHProviders && DHProviders.hasAnyKey && DHProviders.hasAnyKey()){
-    try{ return await DHProviders.chat(messages, Object.assign({temperature:0.3, max_tokens:2500},cacheOpts||{})); }
-    catch(e){ throw (e&&e.code?e:{code:"network"}); }
-  }
-  const keys=getKeys();
-  if(!keys.length) throw {code:"no-key"};
-  let last=null;
-  for(let attempt=0; attempt<keys.length; attempt++){
-    const pick=nextUsableKey(keys);
-    if(pick.idx===-1){ throw { code:"rate", tried:keys.length, waitMs:pick.waitMs }; }
-    try{
-      const res=await fetch(GROQ_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+pick.key},body:JSON.stringify({model:GROQ_MODEL,messages,temperature:0.3,max_tokens:2500})});
-      if(res.status===401){ last={code:"bad-key"}; _keyBan[pick.idx]=Date.now()+5*60*1000; continue; }
-      if(res.status===429){ last={code:"rate", tried:keys.length}; _keyBan[pick.idx]=Date.now()+60*1000; continue; }
-      if(!res.ok){ last={code:"http"}; _keyBan[pick.idx]=Date.now()+10*1000; continue; }
-      const data=await res.json();
-      return data.choices?.[0]?.message?.content?.trim()||"";
-    }catch(e){ last={code:"network"}; }
-  }
-  throw last||{code:"unknown"};
+  if(!(window.DHProviders && DHProviders.chat)) throw {code:"no-key"};
+  try{ return await DHProviders.chat(messages, Object.assign({temperature:0.3, max_tokens:2500},cacheOpts||{})); }
+  catch(e){ throw (e&&e.code?e:{code:"network"}); }
 }
 
 const DEFAULT_PROMPT = `Sen, Türk öğrencilere İngilizce öğreten, çok deneyimli ve pedagojik olarak güçlü bir İngilizce öğretmenisin. Amacın sadece çeviri değil, cümledeki ASIL dilbilgisi yapısını öğrenciye doğru öğretmektir. Öğrenciyle TÜRKÇE konuşursun: açıklama, düzeltme, yönerge ve sorularının hepsi Türkçedir. Sadece öğretilen malzeme İngilizce kalır — hedef cümleler, örnekler ve kelimeler. Dilbilgisini asla İngilizce anlatmazsın.`;
@@ -1420,7 +1387,7 @@ if (!State.en) {
 <script src="./avatar-blink-sync.js?v=2"></script>
 <script src="./study-tracker.js?v=2"></script>
 <script src="./cloud-sync.js?v=26"></script>
-<script src="./word-popup.js?v=149"></script>
+<script src="./word-popup.js?v=tm1"></script>
 <script src="./ux-boost.js?v=1"></script>
 <script src="./atlas-effects.js?v=1"></script>
   <script src="product-improvements.js" defer></script>

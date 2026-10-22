@@ -218,31 +218,13 @@ ENGLISH PRACTICE:
 TÜRKÇE ÖZET:
 `;
   system = userEditablePrompt + mustRules + "\n\nEK SİSTEM BAĞLAMI:\n" + (system || "");
-  const keys=[];
+  /* Yapay zeka: tek merkez (ai-providers.js / DHProviders). Önceden burada ayrı
+     anahtar adları ("apiKeys", "groq_api_key") ve sabit model aranıyordu; ayarlardan
+     girilen anahtarlar bu yüzden hiç kullanılmıyordu. Artık uygulamanın ortak
+     sağlayıcı/anahtar/model ayarları geçerli. Yapay zeka yoksa çevrimdışı metin üretilir. */
+  if(!(window.DHProviders && DHProviders.chat && DHProviders.hasAnyKey && DHProviders.hasAnyKey())) return null;
   try{
-    const apiKeys=JSON.parse(localStorage.getItem("apiKeys")||"{}");
-    if(apiKeys.groq) keys.push(apiKeys.groq);
-  }catch(e){}
-  try{
-    const g=localStorage.getItem("groq_api_key");
-    if(g) keys.push(g);
-  }catch(e){}
-  try{
-    const arr=JSON.parse(localStorage.getItem("groq_api_keys")||"[]");
-    if(Array.isArray(arr)) keys.push(...arr);
-  }catch(e){}
-  const key=[...new Set(keys.filter(Boolean))][0];
-  if(!key) return null;
-  try{
-    const model=localStorage.getItem("groq_model")||"llama-3.3-70b-versatile";
-    const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
-      body:JSON.stringify({model,messages:[{role:"system",content:system},{role:"user",content:user}],temperature:.7,max_tokens:900})
-    });
-    if(!res.ok) throw new Error(await res.text());
-    const j=await res.json();
-    return j.choices?.[0]?.message?.content||"";
+    return await DHProviders.chat([{role:"system",content:system},{role:"user",content:user}],{temperature:.7,max_tokens:900,title:"💎 Kelime aracı"}) || "";
   }catch(e){
     console.warn("[wd] AI çalışmadı, offline cevap:",e);
     return null;

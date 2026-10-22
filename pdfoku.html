@@ -47,6 +47,7 @@
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=2">
 <script src="./kolay-kullanim.js?v=2"></script>
+<script src="./ai-providers.js?v=tm1"></script>
 </head>
 <body class="text-slate-100 min-h-screen flex flex-col">
 
@@ -394,7 +395,7 @@ Sayfadaki egzersizlerden yola çıkarak 3 adet boşluk doldurma sorusu üret. Bo
                 const toast = document.getElementById('clipboardToast');
                 toast.classList.remove('hidden');
                 setTimeout(() => { toast.classList.add('hidden'); }, 3000);
-                window.open('https://gemini.google.com', '_blank');
+                if (window.DHProviders && DHProviders.openWeb) DHProviders.openWeb({ site: 'gemini' });   /* tek merkez */
             }).catch(err => {
                 alert("Clipboard allocation failed.");
             });

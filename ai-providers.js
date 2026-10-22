@@ -70,6 +70,82 @@
   ];
 
   var PROVIDER_LABELS={gemini:"Gemini",groq:"Groq",cerebras:"Cerebras",nvidia:"NVIDIA NIM","gemini-web":"Gemini Web"};
+  /* ── WEB YAPAY ZEKA SİTELERİ (anahtarsız kopyala-yapıştır yolu) ──────────
+     Uygulamanın açtığı bütün yapay zeka siteleri yalnız burada tanımlı.
+     Sayfalar adres yazmaz; DHProviders.openWeb({site, prompt}) çağırır:
+     soru panoya kopyalanır ve site yeni sekmede açılır. */
+  var WEB_SITES = {
+    gemini:   { label:"Google Gemini",    url:"https://gemini.google.com/app" },
+    chatgpt:  { label:"ChatGPT",          url:"https://chatgpt.com/", param:"q" },
+    claude:   { label:"Anthropic Claude", url:"https://claude.ai/" },
+    deepseek: { label:"DeepSeek",         url:"https://chat.deepseek.com/" },
+    perchance:{ label:"Perchance (resim)", url:"https://perchance.org/aiimagegenerator" }
+  };
+  function webUrl(site, prompt){
+    var s = WEB_SITES[site] || WEB_SITES.gemini, u = s.url;
+    if(prompt && s.param) u += (u.indexOf("?")<0?"?":"&") + s.param + "=" + encodeURIComponent(prompt);
+    return u;
+  }
+  function copyText(text){
+    text = String(text==null?"":text);
+    function eski(){
+      try{
+        var ta=document.createElement("textarea");
+        ta.value=text; ta.setAttribute("readonly",""); ta.style.cssText="position:fixed;left:-9999px;opacity:0";
+        document.body.appendChild(ta); ta.select();
+        var ok=document.execCommand("copy"); ta.remove(); return !!ok;
+      }catch(e){ return false; }
+    }
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText)
+        return navigator.clipboard.writeText(text).then(function(){return true;},function(){return eski();});
+    }catch(e){}
+    return Promise.resolve(eski());
+  }
+  /* ── RESİM ÜRETİMİ (tek merkez) ───────────────────────────────────────
+     Kelime kartı resimleri kullanıcının Cloudflare Worker'ı (worker.js) üzerinden
+     NVIDIA FLUX.1-schnell ile üretilir. Anahtar (nvidiaApiKeys) ve Worker adresi
+     yalnız burada okunur; sayfalar DHProviders.generateImage({prompt, seed}) çağırır. */
+  var IMAGE = { proxyKey:"dh-nvidia-image-proxy", path:"/generate", model:"NVIDIA FLUX.1-schnell" };
+  function imageProxy(){
+    try{ return String(localStorage.getItem(IMAGE.proxyKey)||"").trim().replace(/\/+$/,""); }catch(e){ return ""; }
+  }
+  function setImageProxy(v){
+    v=String(v||"").trim().replace(/\/+$/,"");
+    if(v && !/^https:\/\/[a-z0-9.-]+(?:workers\.dev|pages\.dev)$/i.test(v)) return false;
+    try{ if(v) localStorage.setItem(IMAGE.proxyKey,v); else localStorage.removeItem(IMAGE.proxyKey); }catch(e){}
+    return true;
+  }
+  function generateImage(opts){
+    opts=opts||{};
+    var nv=PROVIDERS.filter(function(p){return p.id==="nvidia";})[0];
+    var key=nv?keysOf(nv.keyStore)[0]:"", proxy=imageProxy();
+    if(!key) return Promise.reject({code:"no-key", message:"NVIDIA NIM anahtarı bulunamadı. Menü → API anahtarlarından ekleyin."});
+    if(!proxy) return Promise.reject({code:"no-proxy", message:"Önce ‘Görsel bağlantısını ayarla’ ile Cloudflare Worker adresini kaydedin."});
+    var seed=opts.seed||(Math.floor(Math.random()*2147483646)+1);
+    return fetch(proxy+IMAGE.path,{method:"POST",signal:opts.signal,
+      headers:{Authorization:"Bearer "+key,Accept:"application/json","Content-Type":"application/json"},
+      body:JSON.stringify({prompt:String(opts.prompt||""),seed:seed})
+    }).then(function(r){return r.text().then(function(tx){
+      if(!r.ok) throw {code:"http", status:r.status, message:"HTTP "+r.status+" "+tx.slice(0,160)};
+      return JSON.parse(tx);
+    });}).then(function(j){
+      var b64=j&&j.artifacts&&j.artifacts[0]&&j.artifacts[0].base64;
+      if(!b64&&j&&j.data&&j.data[0]) b64=j.data[0].b64_json;
+      if(!b64) throw {code:"image-format", message:"image-format"};
+      showSource(sourceInfo("nvidia",IMAGE.model));
+      return { dataUrl:"data:image/jpeg;base64,"+b64, seed:seed, model:IMAGE.model };
+    });
+  }
+  /* Kopyalama sayfa odaktayken başlar, site hemen (aynı tıklamada) açılır:
+     böylece ne pano izni ne de açılır pencere engelleyicisi sorun çıkarır. */
+  function openWeb(opts){
+    opts = opts || {};
+    var site = WEB_SITES[opts.site] ? opts.site : "gemini";
+    var kopya = (opts.prompt && opts.copy!==false) ? copyText(opts.prompt) : Promise.resolve(false);
+    try{ global.open(webUrl(site, opts.inUrl ? opts.prompt : null), "_blank", "noopener"); }catch(e){}
+    return kopya;
+  }
   function sourceInfo(provider,model,extra){
     var info={provider:provider,label:PROVIDER_LABELS[provider]||provider,model:model||"Model belirtilmedi",at:Date.now(),cached:false};
     if(extra) Object.keys(extra).forEach(function(k){info[k]=extra[k];});
@@ -157,7 +233,7 @@
     return new Promise(function(resolve,reject){
       var old=document.querySelector('script[data-dh-gemini-bridge]');
       if(old){old.addEventListener("load",function(){resolve(global.DHGemini);},{once:true});old.addEventListener("error",reject,{once:true});return;}
-      var s=document.createElement("script");s.src="./gemini-bridge.js?v=24";s.dataset.dhGeminiBridge="1";
+      var s=document.createElement("script");s.src="./gemini-bridge.js?v=tm1";s.dataset.dhGeminiBridge="1";
       s.onload=function(){global.DHGemini?resolve(global.DHGemini):reject({code:"bridge"});};s.onerror=function(){reject({code:"bridge"});};document.head.appendChild(s);
     });
   }
@@ -482,6 +558,14 @@
 
   global.DHProviders = {
     chat: chat,
+    openWeb: openWeb,
+    generateImage: generateImage,
+    imageProxy: imageProxy,
+    setImageProxy: setImageProxy,
+    IMAGE: IMAGE,
+    webUrl: webUrl,
+    copyText: copyText,
+    WEB_SITES: WEB_SITES,
     youtubeStudy: youtubeStudy,
     geminiText: geminiText,
     manualChat: chatViaGemini,

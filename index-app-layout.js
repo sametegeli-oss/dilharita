@@ -722,8 +722,8 @@ async function requestModuleExplanation(sentence,force){
   if(cached&&!force){renderResultBox(sentence,cached,"🤖 Video ve modülün ortak AI açıklaması");return;}
   var prompt=moduleExplanationPrompt(sentence);
   if(!(window.DHGemini&&DHGemini.ask)){
-    try{await navigator.clipboard.writeText(prompt);}catch(e){}
-    window.open("https://gemini.google.com/app","_blank");showPasteModal(sentence);return;
+    if(window.DHProviders&&DHProviders.openWeb) DHProviders.openWeb({site:"gemini",prompt:prompt});   /* tek merkez */
+    showPasteModal(sentence);return;
   }
   DHGemini.ask({
     title:force?"Cümle açıklamasını Gemini ile yenile · Kopyala ve yapıştır":"Cümleyi Gemini ile açıkla · Kopyala ve yapıştır",

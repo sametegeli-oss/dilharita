@@ -678,8 +678,9 @@
             gemKopyala(prompt) ? "#4ade80" : "#f59e0b");
     };
     ov.querySelector("#dhWpGkOpen").onclick=function(){
-      gemKopyala(prompt);
-      try{ global.open("https://gemini.google.com/app","_blank","noopener"); }catch(e){}
+      /* Kopyala + aç: tek merkez (ai-providers.js) */
+      if(global.DHProviders&&DHProviders.openWeb) DHProviders.openWeb({site:"gemini",prompt:prompt});
+      else gemKopyala(prompt);
     };
     ov.querySelector("#dhWpGkClose").onclick=function(){ ov.remove(); };
     ov.addEventListener("click",function(e){ if(e.target===ov) ov.remove(); });
@@ -983,7 +984,7 @@
       out.innerHTML='<div class="dh-wp-ai-out">AI bağlantısı hazırlanıyor…</div>';
       var old=document.querySelector('script[data-dh-word-ai-provider]');
       if(old){old.addEventListener("load",function(){aiExplain(word,anlamlar);},{once:true});return;}
-      var ps=document.createElement("script");ps.src="./ai-providers.js?v=147";ps.dataset.dhWordAiProvider="1";
+      var ps=document.createElement("script");ps.src="./ai-providers.js?v=tm1";ps.dataset.dhWordAiProvider="1";
       ps.onload=function(){aiExplain(word,anlamlar);};
       ps.onerror=function(){out.innerHTML='<div class="dh-wp-ai-out">AI bağlantısı yüklenemedi. İnternet bağlantını kontrol et.</div>';};
       document.head.appendChild(ps);
@@ -1519,5 +1520,5 @@
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",baglaTiklama,{once:true});
   else baglaTiklama();
   /* Klasik ve React word-popup için ortak çalışma listesi. */
-  (function(){if(document.querySelector('script[data-dh-word-study-list]'))return;var s=document.createElement("script");s.src="./word-learning-list.js?v=148";s.dataset.dhWordStudyList="1";document.head.appendChild(s);})();
+  (function(){if(document.querySelector('script[data-dh-word-study-list]'))return;var s=document.createElement("script");s.src="./word-learning-list.js?v=tm1";s.dataset.dhWordStudyList="1";document.head.appendChild(s);})();
 })(window);
