@@ -1220,6 +1220,10 @@ function speakText(text){
       u.onend=go;
       u.onerror=function(ev){
         var hata=ev&&ev.error||"";
+        /* "not-allowed": tarayıcı, kullanıcı sayfaya dokunmadan ses çalmaya
+           izin vermiyor (sayfa açılışındaki ilk karşılama). Bu bir arıza değil:
+           uyarı kutusu gösterme, sessizce bitir; kullanıcı Dinle'ye basınca okunur. */
+        if(hata==="not-allowed"){ if(run===speechRun){ speechRun++; avatar.stop(); if(ogretmenDegisir()) avatar.setDir(activeAvatarDir()); } return; }
         if(hata!=="interrupted"&&hata!=="canceled") sesCalmadiNotu(hata);
         go();
       };
