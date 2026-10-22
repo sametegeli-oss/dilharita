@@ -994,6 +994,29 @@ function splitMixedSpeech(text){
   if(i<s.length) splitHeuristic(s.slice(i), chunks);
   return chunks.length?chunks:[{text:s, lang:"en-US"}];
 }
+/* ── ÇALIŞMAYAN SESLER ───────────────────────────────────────────────
+   ÖLÇÜLDÜ (kullanıcının Windows + Chrome'unda): Windows'un Microsoft sesleri
+   (George, Hazel, Tolga…) Chrome'da hiç ses çıkarmadan 20-50 ms içinde
+   "bitti" diyor; Google sesleri ise çalışıyor. Ses ayarında böyle bir ses
+   seçiliyse "Dinle" hiç ses vermiyordu. Başlamadan biten ses bu oturum için
+   "çalışmıyor" olarak işaretlenir ve aynı dilde çalışan başka bir sese geçilir. */
+const bozukSesler=new Set((function(){ try{ return JSON.parse(sessionStorage.getItem("dh-bozuk-sesler")||"[]")||[]; }catch(e){ return []; } })());
+function sesBozukIsaretle(v){
+  if(!v) return; bozukSesler.add(v.name);
+  try{ sessionStorage.setItem("dh-bozuk-sesler", JSON.stringify(Array.from(bozukSesler))); }catch(e){}
+  try{ if(typeof dhVoiceDebug==="function") dhVoiceDebug("Ses çalışmıyor, başka sese geçiliyor: "+v.name); }catch(e){}
+}
+function sesSaglam(v){ return !!v && !bozukSesler.has(v.name); }
+function yedekSes(lang){
+  refreshVoices();
+  const tr=/^tr/i.test(lang||"");
+  const aday=cachedVoices.filter(function(v){ return (tr?/^tr/i:/^en/i).test(v.lang||"") && sesSaglam(v); });
+  if(!tr){
+    /* İngilizcede önce çevrimiçi (Google) sesler: ölçümde çalışan onlardı. */
+    aday.sort(function(a,b){ return (a.localService?1:0)-(b.localService?1:0) || (/^en-US/i.test(b.lang||"")?1:0)-(/^en-US/i.test(a.lang||"")?1:0); });
+  }
+  return aday[0]||null;
+}
 /* Cihazdaki ilk INGILIZCE ses (pickVoice'un dil-bagimsiz secimine yedek) */
 function pickEnVoice(){
   refreshVoices();
@@ -1091,7 +1114,8 @@ function speakText(text){
     try{
       const u=new SpeechSynthesisUtterance(c.text);
       if(c.lang==="tr-TR"){
-        const tv=pickTrVoice();
+        let tv=pickTrVoice();
+        if(tv && !sesSaglam(tv)) tv=yedekSes("tr-TR");
         if(tv) u.voice=tv;
         else trSesYokUyarisi();   /* cihazda Türkçe ses yok: tarayıcı bu parçayı sessizce atlıyor */
         u.lang="tr-TR";
@@ -1106,6 +1130,7 @@ function speakText(text){
            dusulur, o da yoksa ses atanmadan u.lang="en-US" birakilir. */
         let voice=pickVoice();
         if(voice && !/^en/i.test(voice.lang||"")) voice=pickEnVoice();
+        if(voice && !sesSaglam(voice)) voice=yedekSes("en-US");
         if(voice){ u.voice=voice; u.lang=voice.lang || "en-US"; }
         else { u.lang="en-US"; }
         u.rate=vp.rate || .96;
@@ -1140,14 +1165,14 @@ function speakText(text){
       /* Chrome bazen konuşmayı sessizce yutar (iptal+başlat yarışı ya da "takılı"
          kalmış motor). 2.5 sn içinde başlamazsa motoru sıfırlayıp bir kez daha dener;
          yine başlamazsa kullanıcıya ne yapacağını söyler. */
-      var basladi=false;
+      var basladi=false, sonUtt=u;
       u.onstart=function(){ basladi=true; };
       var tekrar=setTimeout(function(){
         if(basladi||done||run!==speechRun) return;
         try{ speechSynthesis.cancel(); speechSynthesis.resume(); }catch(e){}
-        var u2=new SpeechSynthesisUtterance(u.text);
-        try{ if(u.voice) u2.voice=u.voice; }catch(e){}
-        u2.lang=u.lang; u2.rate=u.rate; u2.pitch=u.pitch;
+        var u2=new SpeechSynthesisUtterance(sonUtt.text);
+        try{ if(sonUtt.voice) u2.voice=sonUtt.voice; }catch(e){}
+        u2.lang=sonUtt.lang; u2.rate=sonUtt.rate; u2.pitch=sonUtt.pitch;
         u2.__dhMixed=true; u2.__longTTSAvatarSync=true;
         u2.onboundary=u.onboundary; u2.onend=go; u2.onerror=u.onerror;
         u2.onstart=function(){ basladi=true; };
@@ -1158,13 +1183,38 @@ function speakText(text){
       }, 2500);
       /* Chrome'un çevrimiçi (Google) sesleri ~15 sn sonra kendiliğinden susar;
          okuma sürerken 10 sn'de bir duraklat/devam ettirmek bunu önler. */
-      var canli=null;
-      try{ if(u.voice && u.voice.localService===false) canli=setInterval(function(){
+      var canli=setInterval(function(){
         if(done||run!==speechRun){ clearInterval(canli); return; }
-        try{ if(speechSynthesis.speaking){ speechSynthesis.pause(); speechSynthesis.resume(); } }catch(e){}
-      }, 10000); }catch(e){}
+        try{ if(sonUtt.voice && sonUtt.voice.localService===false && speechSynthesis.speaking){ speechSynthesis.pause(); speechSynthesis.resume(); } }catch(e){}
+      }, 10000);
       var eskiGo=go; go=function(){ try{ clearInterval(canli); clearTimeout(tekrar); }catch(e){} eskiGo(); };
-      u.onend=go;
+      var t0=Date.now(), sesDeneme=0;
+      function bitince(uu){ return function(){
+        /* Başlamadan 600 ms içinde "bitti": bu ses bu tarayıcıda çalışmıyor. */
+        if(run===speechRun && !done && !basladi && uu.voice && Date.now()-t0<600 && sesDeneme<3){
+          sesBozukIsaretle(uu.voice);
+          var yv=yedekSes(uu.lang);
+          if(yv){
+            sesDeneme++;
+            var n=new SpeechSynthesisUtterance(uu.text);
+            n.voice=yv; n.lang=yv.lang; n.rate=uu.rate; n.pitch=uu.pitch;
+            n.__dhMixed=true; n.__longTTSAvatarSync=true;
+            n.onboundary=uu.onboundary; n.onerror=uu.onerror;
+            n.onstart=function(){ basladi=true; };
+            n.onend=bitince(n);
+            sonUtt=n; t0=Date.now();
+            /* Bazı sesler (ör. Piper) geç başlar: bekleme sürelerini uzat. */
+            clearTimeout(tekrar); clearTimeout(wd);
+            tekrar=setTimeout(function(){ if(!basladi&&!done&&run===speechRun){ sesCalmadiNotu("baslamadi"); go(); } }, 12000);
+            wd=setTimeout(go, 12000+Math.max(4000, n.text.length*80));
+            try{ speechSynthesis.speak(n); }catch(e){ go(); }
+            return;
+          }
+          if(/^tr/i.test(uu.lang||"")) trSesYokUyarisi(); else sesCalmadiNotu("ses-bozuk");
+        }
+        go();
+      }; }
+      u.onend=bitince(u);
       try{ speechSynthesis.resume(); }catch(e){}
       speechSynthesis.speak(u);
     }catch(e){ speakNext(); }
