@@ -385,7 +385,7 @@
       +'<span class="mode-badge">'+badge+'</span>'
       +(listenOnly
         ? '<button class="speak" id="speakBtn" style="font-size:20px;padding:14px 22px;margin:16px 0">🔊 Dinle</button>'
-        : '<h2 class="word" style="font-size:22px">'+esc(item.anlamlar[0])+'</h2><p class="qprompt">Bu anlamın İngilizcesi ne?</p>')
+        : '<h2 class="word" style="font-size:22px">'+anlamYaz(item.anlamlar[0])+'</h2><p class="qprompt">Bu anlamın İngilizcesi ne?</p>')
       +'<input id="typeInp" autocomplete="off" autocapitalize="none" spellcheck="false" '
       +'style="width:100%;margin-top:12px;background:#0a1526;border:1px solid #ffffff26;color:#e8eef7;'
       +'border-radius:14px;padding:14px 16px;font:800 18px system-ui" placeholder="İngilizce kelimeyi yaz...">'
@@ -402,7 +402,7 @@
       $("typeFb").innerHTML = ok
         ? (near?'<span style="color:#f59e0b">≈ Çok yakın! Doğrusu: <b>'+esc(item.word)+'</b></span>'
                :'<span style="color:#4ade80">✓ Doğru: <b>'+esc(item.word)+'</b></span>')
-        : '<span style="color:#f87171">✗ Doğrusu: <b>'+esc(item.word)+'</b> — '+esc(item.anlamlar[0])+'</span>';
+        : '<span style="color:#f87171">✗ Doğrusu: <b>'+esc(item.word)+'</b> — '+anlamYaz(item.anlamlar[0])+'</span>';
       speak(item.word);
       recordResult(item.word, ok, item.anlamlar[0], inp.value);
       statusOf(item.word).then(function(cur){
@@ -508,7 +508,7 @@
       +'<button class="speak" id="speakBtn">🔊 Sesli oku</button>'
       +exampleBtnHtml()
       +'<button class="reveal-btn" id="revealBtn">Anlamı göster</button>'
-      +'<ul class="meanings" id="meanings">'+item.anlamlar.map(function(m){return '<li>'+esc(m)+'</li>';}).join("")+'</ul>'
+      +'<ul class="meanings" id="meanings">'+item.anlamlar.map(function(m){return '<li>'+anlamYaz(m)+'</li>';}).join("")+'</ul>'
       +'<div class="know-row" id="knowRow">'
       +'<button class="btn-no" id="noBtn">Bilmiyordum</button>'
       +'<button class="btn-yes" id="yesBtn">Biliyordum</button>'
@@ -563,7 +563,7 @@
       +(item.oku?'<div class="pron">/'+esc(item.oku)+'/</div>':'')
       +'<button class="speak" id="speakBtn">🔊 Sesli oku</button>'
       +'<p class="qprompt" style="margin-top:14px">Bu kelime ne demek?</p>'
-      +'<div class="opts" id="opts">'+opts.map(function(o,i){return '<button class="opt" data-i="'+i+'">'+esc(o)+'</button>';}).join("")+'</div>'
+      +'<div class="opts" id="opts">'+opts.map(function(o,i){return '<button class="opt" data-i="'+i+'">'+anlamYaz(o)+'</button>';}).join("")+'</div>'
       +'</div></div>';
     $("speakBtn").onclick=function(){ speak(item.word); };
     var optsEl=$("opts");
@@ -663,6 +663,15 @@
   // ---------- yardımcılar ----------
   function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; } return a; }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+  /* Sözlükteki "[zf.]", "[ed.]" kısaltmaları kullanıcıya bir şey söylemiyordu:
+     ekranda açık adıyla, soluk ve küçük yazılır. (Veri değişmez; test
+     seçeneklerindeki sözcük türü eşleştirmesi aynı kısaltmayı okumaya devam eder.) */
+  var TUR={"i":"isim","f":"fiil","s":"sıfat","zf":"zarf","ed":"edat","bağ":"bağlaç","zm":"zamir","ünl":"ünlem","expr":"deyim","interj":"ünlem","abrev":"kısaltma","z":"zamir"};
+  function anlamYaz(m){
+    return esc(m).replace(/\s*\[([a-zçğıöşü]+)\.\]\s*$/i,function(_,k){
+      var ad=TUR[k.toLowerCase()]; return ad?' <small style="opacity:.6;font-weight:600">('+ad+')</small>':'';
+    });
+  }
 
   // ---------- boot ----------
   function boot(){
@@ -684,7 +693,7 @@
      DHProviders'a bağlı; bu sayfada yüklü değildi, o yüzden anahtar
      kayıtlı olduğu halde "API anahtarı ekle" uyarısı çıkıyordu. -->
 <script src="./ai-providers.js?v=tm1"></script>
-<script src="./word-popup.js?v=tm1"></script>
+<script src="./word-popup.js?v=tm2"></script>
 <script src="./ux-boost.js?v=1"></script>
 <script src="./atlas-effects.js?v=1"></script>
   <script src="product-improvements.js" defer></script>

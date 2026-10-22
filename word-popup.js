@@ -379,7 +379,11 @@
          +(d.frekans?'<span class="dh-wp-tag f">frekans '+d.frekans+'</span>':'')
          +(d.seviye?'<span class="dh-wp-tag l">'+esc(d.seviye)+'</span>':'')
        +'</span></div>'
-       + anlamlar.map(function(m,i){ return '<div class="dh-wp-mean">'+(i+1)+'. '+esc(m)+'</div>'; }).join("")
+       + anlamlar.map(function(m,i){
+           /* "[zf.]" gibi kısaltmalar açık adıyla gösterilir */
+           var TUR={"i":"isim","f":"fiil","s":"sıfat","zf":"zarf","ed":"edat","bağ":"bağlaç","zm":"zamir","ünl":"ünlem","expr":"deyim","interj":"ünlem","abrev":"kısaltma","z":"zamir"};
+           var h=esc(m).replace(/\s*\[([a-zçğıöşü]+)\.\]\s*$/i,function(_,k){ var ad=TUR[k.toLowerCase()]; return ad?' <small style="opacity:.6;font-weight:600">('+ad+')</small>':''; });
+           return '<div class="dh-wp-mean">'+(i+1)+'. '+h+'</div>'; }).join("")
      +'</div>'
      +'<div class="dh-wp-box" id="dhWpSynBox" style="display:none">'
        +'<div class="dh-wp-boxhead">🔁 Aynı anlama gelen kelimeler'
