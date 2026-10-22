@@ -42,6 +42,8 @@
     +"border-radius:999px;padding:6px 12px 6px 8px;cursor:pointer;backdrop-filter:blur(8px);"
     +"box-shadow:0 4px 16px rgba(0,0,0,.3);font-family:system-ui,-apple-system,sans-serif;transition:transform .15s}"
     +".dh-lvbadge:hover{transform:scale(1.04)}"
+    /* Telefonda sabit rozet başlığı ve sağ üst düğmeleri örtüyordu: akışa girer */
+    +".dh-lvbadge.dh-lvbadge--akista{position:static;display:inline-flex;width:fit-content;max-width:max-content;align-self:flex-start;justify-self:start;margin:8px 0 6px;box-shadow:none}"
     +".dh-lvbadge .lv{font-size:15px;font-weight:950;color:#fff;background:linear-gradient(135deg,#2563eb,#38bdf8);"
     +"width:30px;height:30px;border-radius:50%;display:grid;place-items:center}"
     +".dh-lvbadge .meta{display:flex;flex-direction:column;line-height:1.1}"
@@ -113,7 +115,12 @@
     b.innerHTML='<div class="lv">'+lvl+'</div>'
       +'<div class="meta"><b>Seviyen</b><span>'+(LEVEL_LABEL[lvl]||"")+'</span></div>';
     b.onclick=function(e){ e.stopPropagation(); if(popEl) closePop(); else openPop(); };
-    document.body.appendChild(b);
+    var dar=false; try{ dar=global.matchMedia("(max-width:700px)").matches; }catch(e){}
+    var ust=dar && document.querySelector(".topbar, header, .top, .hdr, .head, .page-head");
+    if(ust && ust.parentNode && !ust.closest("[hidden]")){
+      b.classList.add("dh-lvbadge--akista");
+      ust.insertAdjacentElement("afterend", b);
+    } else document.body.appendChild(b);
     document.addEventListener("click", function(e){
       if(popEl && !popEl.contains(e.target) && !b.contains(e.target)) closePop();
     });

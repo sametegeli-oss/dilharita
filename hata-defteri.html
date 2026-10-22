@@ -101,14 +101,13 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
 <div class="wrap">
   <div class="top">
     <a class="back" href="./index.html">←</a>
-    <div class="title"><h1>Hata Defteri</h1><p>Kullanıcının yanlışlarından öğrenen sistem: hangi konuda, hangi kelimede, hangi cümlede hata yapıldığını toplar.</p></div>
+    <div class="title"><h1>Hata Defteri</h1><p>Yaptığın hatalar burada toplanır: hangi konuda, hangi kelimede, hangi cümlede zorlandığın.</p></div>
     <div class="actions">
       <button class="btn" id="drillBtn" style="background:#b45309;border-color:#f59e0b">🎯 Hatalarını Çöz</button>
       <a class="btn purple" href="./akilli-tekrar.html">🧠 Akıllı Tekrar</a>
-      <button class="btn green" id="exportBtn">JSON dışa aktar</button>
+      <button class="btn green" id="exportBtn">💾 Yedek dosyası indir</button>
       <button class="btn" id="revalBtn" style="background:#0e7490">🧹 Kabul Edilenleri Temizle</button>
       <button class="btn" id="aiCleanBtn" style="background:#7c3aed">🤖 AI ile Temizle</button>
-      <button class="btn red" id="clearBtn">Temizle</button>
     </div>
   </div>
   <div class="stats">
@@ -131,6 +130,8 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
       <div id="records"></div>
     </main>
   </div>
+  <!-- Geri alınamaz işlem: listenin en altında, onay sorarak -->
+  <div style="margin:28px 0 12px;text-align:center"><button class="btn red" id="clearBtn">🗑 Tüm defteri sil</button></div>
 </div>
 <script>
 let RECORDS=[];
