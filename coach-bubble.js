@@ -341,7 +341,7 @@
     +"padding:12px 16px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:2147483000;font:800 17px/1.45 system-ui,sans-serif;color:#f8fafc;"
     +"display:flex;gap:12px;align-items:center;transition:opacity .3s,transform .3s;pointer-events:none}"
     /* Düğme metni sıkıştırmasın: metin tam satır, düğme altta */
-    +".dh-coach{flex-wrap:wrap}.dh-coach>span[style*='flex:1']{flex:1 1 calc(100% - 70px)!important;min-width:0}"
+    +".dh-coach{flex-wrap:wrap}.dh-coach>span:not(.face):not(.x){flex:1 1 calc(100% - 70px)!important;min-width:0}"
     +".dh-coach .dh-coach-teach{order:5;margin:4px 0 0 58px!important;font-size:16px!important;padding:9px 16px!important}"
     +".dh-coach.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1);pointer-events:auto}"
     +".dh-coach.show.praise{animation:dhClap .6s ease 2}"
