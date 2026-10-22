@@ -465,6 +465,9 @@
   /* Genel eylem düğmesi: plan zinciri vb. için {actionHref, actionLabel} */
   function actionBtnHtml(a){
     if(!a || !a.actionHref) return "";
+    /* Zaten o sayfadaysak "Tekrara git" gibi bir düğme anlamsız */
+    try{ var hedef=String(a.actionHref).replace(/^\.\//,"").split("?")[0];
+      if(hedef && (location.pathname.split("/").pop()||"index.html")===hedef) return ""; }catch(e){}
     var lbl=String(a.actionLabel||"Devam et").replace(/[<>&"]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c];});
     var hrf=String(a.actionHref).replace(/"/g,"&quot;");
     return '<a class="dh-coach-teach" href="'+hrf+'" onclick="event.stopPropagation()" '

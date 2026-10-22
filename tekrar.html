@@ -1,4 +1,5 @@
 <!doctype html><html lang="tr"><head>
+<script src="./idb-uyum.js?v=1"></script>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>🔁 Tekrar — Dil Harita</title>
 <style>
@@ -56,17 +57,17 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
 .diff-typo{color:#f59e0b;font-weight:bold;border-bottom:2px dashed #f59e0b;}
 .diff-wrong{color:#f87171;text-decoration:line-through;}
 .diff-missing{color:#6b7280;border-bottom:1px dashed #6b7280;}
-</style><script src="./sentences-loader.js?v=1"></script>
+</style><script src="./sentences-loader.js?v=1"></script><script src="./profile.js?v=2"></script>
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=2">
 <script src="./kolay-kullanim.js?v=3"></script>
 </head><body>
 <div class="top"><a href="./index.html" id="btnHome">←</a><h1>🔁 Tekrar</h1><div class="cnt" id="cnt"></div></div>
-<div class="mode">Mod:
-  <button id="mProd">✍️ Üretim (TR→EN)</button>
-  <button id="mClas">👁 Klasik (EN→TR)</button>
-  <button id="mOnlyErrs">🚨 Sadece Hatalılar</button>
+<div class="mode">Çalışma şekli:
+  <button id="mProd">✍️ Türkçesini gör, İngilizcesini yaz</button>
+  <button id="mClas">👁 İngilizcesini gör, anlamını hatırla</button>
+  <button id="mOnlyErrs">🚨 Sadece hatalarım</button>
 </div>
 <div id="brickMeter" style="max-width:720px;margin:8px auto 2px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center"></div>
 <div class="card" id="card" style="display:none">
@@ -81,7 +82,7 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
     <div class="inrow"><textarea id="inp" placeholder="İngilizcesini yaz…"></textarea><div class="inrow-btns"><button class="b-retry" id="bListenRetry" style="display:none" title="Kendi sesini tekrar dinle">👂</button><button class="b-mic" id="bMicRestart" style="display:none" title="Kaydı yeniden başlat">🔄</button><button class="b-mic" id="bMic" title="Mikrofonla söyle">🎤</button></div></div>
     <div class="score" id="score"></div>
     
-    <span class="ai-settings-toggle" id="toggleAiSettings">⚙️ Yapay Zeka Kriter Ayarları</span>
+    <span class="ai-settings-toggle" id="toggleAiSettings">⚙️ Cevap kontrol ayarları</span>
     <div class="ai-settings-panel" id="aiSettingsPanel">
       <div style="font-size:11px; color:var(--mut); margin-bottom:4px; font-weight:bold;">Yapay Zekanın Denetleme Promptu (İstediğin gibi düzenle):</div>
       <textarea id="aiPromptInput"></textarea>
@@ -110,10 +111,10 @@ button{border:0;border-radius:12px;padding:12px 15px;font:800 14px system-ui;cur
   <a href="./practice.html?auto=hard-reviews&limit=5"><button class="b-next">💪 Zorlandıklarını üret</button></a>
   <div id="planNext" style="display:none;margin-top:14px">
     <div style="font-size:13px;margin-bottom:4px">☀️ Günün sıradaki adımı:</div>
-    <a href="./index-app.html"><button class="b-next">🆕 Yeni cümleler</button></a>
+    <a href="./index-app.html" id="yeniCumleLink"><button class="b-next">🆕 Yeni cümleler</button></a>
     <a href="./chat.html"><button class="b-next">💬 1 dk konuşma</button></a>
   </div>
-  <div style="margin-top:10px"><a href="./index.html" style="color:#38bdf8">Ana menu</a></div>
+  <div style="margin-top:10px"><a href="./index.html" style="color:#38bdf8">Ana menü</a></div>
 </div>
 <script>
 /* ☀️ "Günün sıradaki adımı" düğmeleri statikti — plandaki GERÇEK hedefe bağla.
@@ -133,7 +134,7 @@ try{
 
 <script src="./auth-guard.js?v=2"></script>
 <script src="./progress-engine.js?v=2"></script>
-<script src="./coach-bubble.js?v=11"></script>
+<script src="./coach-bubble.js?v=12"></script>
 <!-- Karma gün sonu pratiği: o gün çalışılan cümle + kalıp + kelimeleri
      harmanlayıp öğretmen sohbetine devreder (Günü Kapat paneline eklenir). -->
 <script src="./dh-gun-sonu.js?v=1"></script>
@@ -635,6 +636,10 @@ try{
     try{ $("bMicRestart").style.display="none"; }catch(e){}
   }
 
+  /* "Yeni cümleler" modülsüz index-app.html'e gidip 500+ modüllük listeyi açıyordu */
+  (function(){ try{ var a=document.getElementById("yeniCumleLink");
+    if(a && window.DHProfile && DHProfile.nextModule) DHProfile.nextModule().then(function(m){ if(m) a.setAttribute("href","./index-app.html?mod="+encodeURIComponent(m)); }).catch(function(){});
+  }catch(e){} })();
   function dhTekrarDoneExtras(){
     try{
       if(!(window.dhPlanAllDone && window.dhPlanAllDone())) return;   // tüm plan bitmediyse dokunma
@@ -1356,7 +1361,7 @@ try{
   await loadData();
 })();
 </script>
-<script src="./dh-modul.js?v=1"></script>
+<script src="./dh-modul.js?v=9"></script>
 <script src="./ux-boost.js?v=1"></script>
 <script src="./atlas-effects.js?v=1"></script>
   <script src="product-improvements.js" defer></script>

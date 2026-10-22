@@ -426,6 +426,12 @@
       try {
         if (typeof indexedDB === "undefined") return res(null);
         var r = indexedDB.open(DB_AD);
+        /* Veritabanı hiç yoksa sürümsüz açış onu 1. sürümle oluşturur:
+           depoyu BURADA kur. Eskiden kurulmuyordu; aşağıdaki yol sürümü
+           2'ye çıkarıyor ve open(ad, 1) kullanan her yer bozuluyordu. */
+        r.onupgradeneeded = function () {
+          try { if (!r.result.objectStoreNames.contains(DEPO)) r.result.createObjectStore(DEPO); } catch (e) {}
+        };
         r.onerror = function () { res(null); };
         r.onsuccess = function () {
           var db = r.result;
