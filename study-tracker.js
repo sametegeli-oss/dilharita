@@ -432,6 +432,7 @@ function recordActivity(type="study", amount=1, meta={}){
   else if(type==="error") day.errors += amount;
   else day.events.push({type,amount,meta,at:Date.now()});
   day.events.push({type,amount,meta,at:Date.now()});
+  if(day.events.length>40) day.events=day.events.slice(-40);   /* tarayıcı deposu dolmasın */
   data.days[k]=day;
   save(data);
   return day;

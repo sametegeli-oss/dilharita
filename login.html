@@ -100,7 +100,7 @@
 
 <script type="module">
   import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-  import { getAuth, setPersistence, browserLocalPersistence,
+  import { getAuth, setPersistence, browserLocalPersistence, indexedDBLocalPersistence,
            signInWithEmailAndPassword, createUserWithEmailAndPassword,
            sendPasswordResetEmail, onAuthStateChanged }
     from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
@@ -117,7 +117,10 @@
   const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   const auth = getAuth(app);
   // Oturumu kalıcı tut: bir kez giriş yapınca tarayıcı kapansa bile hatırlansın.
-  try{ await setPersistence(auth, browserLocalPersistence); }catch(e){}
+  // Önce IndexedDB: localStorage uygulama verileriyle dolabiliyor (≈5 MB sınırı) ve
+  // dolunca giriş "QuotaExceededError" ile çöküyordu. IndexedDB'nin alanı çok daha geniş.
+  try{ await setPersistence(auth, indexedDBLocalPersistence); }
+  catch(e){ try{ await setPersistence(auth, browserLocalPersistence); }catch(e2){} }
 
   const boot = document.getElementById("boot");
   const card = document.getElementById("card");
@@ -169,14 +172,20 @@
   });
 
   function errText(e){
-    const code = (e && e.code) || "";
+    // Hata kodu her zaman yazı olmayabilir (ör. tarayıcı depolama hatalarında sayı gelir).
+    const code = String((e && e.code) || "");
+    const name = String((e && e.name) || "");
+    const detay = String((e && e.message) || "").slice(0, 140);
+    if (name === "QuotaExceededError" || code === "22" || code === "1014" || /quota/i.test(detay))
+      return "Tarayıcının depolama alanı dolu. Menü → Ayarlar ve veri bölümünden eski verileri temizleyip tekrar dene.";
     if (code.includes("invalid-email")) return "E-posta adresi geçersiz.";
     if (code.includes("missing-password") || code.includes("weak-password")) return "Şifre en az 6 karakter olmalı.";
     if (code.includes("email-already-in-use")) return "Bu e-posta zaten kayıtlı. Giriş yapmayı dene.";
     if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found")) return "E-posta veya şifre hatalı.";
     if (code.includes("too-many-requests")) return "Çok fazla deneme. Biraz bekleyip tekrar dene.";
     if (code.includes("network")) return "İnternet bağlantısı yok gibi görünüyor.";
-    return "Bir sorun oluştu. Tekrar dene.";
+    // Bilinmeyen hata: kullanıcı bize iletebilsin diye kısa teknik bilgiyi de göster.
+    return "Bir sorun oluştu. Tekrar dene." + ((name || code || detay) ? " (" + [name, code, detay].filter(Boolean).join(" · ") + ")" : "");
   }
   function busy(on){ document.querySelectorAll("button").forEach(b=>b.disabled=on); }
   function setMsg(t, cls){ msg.textContent=t||""; msg.className="msg"+(cls?(" "+cls):""); }
