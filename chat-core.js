@@ -1054,10 +1054,17 @@ function splitMixedSpeech(text){
    "bitti" diyor; Google sesleri ise çalışıyor. Ses ayarında böyle bir ses
    seçiliyse "Dinle" hiç ses vermiyordu. Başlamadan biten ses bu oturum için
    "çalışmıyor" olarak işaretlenir ve aynı dilde çalışan başka bir sese geçilir. */
-const bozukSesler=new Set((function(){ try{ return JSON.parse(sessionStorage.getItem("dh-bozuk-sesler")||"[]")||[]; }catch(e){ return []; } })());
+/* Kalıcı liste (dh-bozuk-sesler-kalici) Ses Seçimi sayfasıyla ortak. */
+const BZ_KALICI="dh-bozuk-sesler-kalici";
+const bozukSesler=new Set((function(){ try{ return (JSON.parse(sessionStorage.getItem("dh-bozuk-sesler")||"[]")||[]).concat(JSON.parse(localStorage.getItem(BZ_KALICI)||"[]")||[]); }catch(e){ return []; } })());
+function sesCalisti(v){
+  if(!v || !bozukSesler.has(v.name)) return;
+  bozukSesler.delete(v.name);
+  try{ sessionStorage.setItem("dh-bozuk-sesler", JSON.stringify(Array.from(bozukSesler))); localStorage.setItem(BZ_KALICI, JSON.stringify(Array.from(bozukSesler))); }catch(e){}
+}
 function sesBozukIsaretle(v){
   if(!v) return; bozukSesler.add(v.name);
-  try{ sessionStorage.setItem("dh-bozuk-sesler", JSON.stringify(Array.from(bozukSesler))); }catch(e){}
+  try{ sessionStorage.setItem("dh-bozuk-sesler", JSON.stringify(Array.from(bozukSesler))); localStorage.setItem(BZ_KALICI, JSON.stringify(Array.from(bozukSesler))); }catch(e){}
   try{ if(typeof dhVoiceDebug==="function") dhVoiceDebug("Ses çalışmıyor, başka sese geçiliyor: "+v.name); }catch(e){}
 }
 function sesSaglam(v){ return !!v && !bozukSesler.has(v.name); }
@@ -1235,7 +1242,7 @@ function speakText(text){
          metni ve bu sesin ölçülmüş hızıyla başlat, bekçi süresini yenile. */
       function baslat(uu){ return function(){
         if(basladi || done || run!==speechRun) return;
-        basladi=true; sesBasT=Date.now();
+        basladi=true; sesBasT=Date.now(); sesCalisti(uu.voice);
         ogretmeniSec(uu.lang);
         try{ avatar.speakText(uu.text, parcaSuresi(uu), uu.lang); }catch(e){}
         clearTimeout(wd); wd=setTimeout(go, parcaSuresi(uu)*1.8+4000);

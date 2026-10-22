@@ -46,6 +46,36 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
   function loadPref(slug){ try{ return JSON.parse(localStorage.getItem(key(slug))||"null")||{}; }catch(e){ return {}; } }
   function savePref(slug,p){ try{ localStorage.setItem(key(slug),JSON.stringify(p)); }catch(e){} }
 
+  /* ÇALIŞMAYAN SESLER: Windows'ta Chrome, Microsoft seslerini (George, Hazel,
+     Tolga…) hiç ses çıkarmadan "bitti" diye geçebiliyor (ölçüldü). Dinlerken
+     başlamadan biten ses kalıcı listeye yazılır, listede işaretlenir; sohbetler
+     (chat-core.js) aynı listeyi okuyup çalışan sese geçer. Ses sonradan
+     çalışırsa işareti kalkar. */
+  var BZ_KEY="dh-bozuk-sesler-kalici";
+  function bozuklar(){ try{ return JSON.parse(localStorage.getItem(BZ_KEY)||"[]")||[]; }catch(e){ return []; } }
+  function bozukMu(n){ return !!n && bozuklar().indexOf(n)>=0; }
+  function bozukYaz(n, var_){
+    try{ var b=bozuklar(), i=b.indexOf(n);
+      if(var_ && i<0) b.push(n); else if(!var_ && i>=0) b.splice(i,1); else return;
+      localStorage.setItem(BZ_KEY, JSON.stringify(b)); }catch(e){}
+  }
+  function etiket(v, cins){ return (bozukMu(v.name)?"⚠️ çalışmıyor · ":"")+(cins||"")+v.name+" ("+v.lang+")"; }
+  function izle(u, v, notEl){
+    var t0=Date.now(), basladi=false;
+    u.onstart=function(){ basladi=true; if(v && bozukMu(v.name)){ bozukYaz(v.name,false); } };
+    u.onend=function(){
+      if(!basladi && v && Date.now()-t0<700){
+        bozukYaz(v.name,true);
+        /* Liste yeniden çizileceği için uyarı, listenin üstündeki sabit alana yazılır */
+        var gn=document.getElementById("bozukNot");
+        if(!gn){ gn=document.createElement("div"); gn.id="bozukNot"; gn.setAttribute("role","status");
+          gn.style.cssText="margin:10px 0;padding:12px 14px;border:2px solid #f59e0b;border-radius:12px;background:#2a1d05;color:#fde68a;font-weight:700;line-height:1.5";
+          grid.parentNode.insertBefore(gn, grid); }
+        gn.textContent="⚠️ “"+v.name+"” bu tarayıcıda ses çıkarmıyor. Listede “çalışmıyor” diye işaretlendi; başka bir ses seç (Google sesleri genelde çalışır).";
+        setTimeout(paint,80);
+      } else if(notEl) notEl.textContent="";
+    };
+  }
   var grid=document.getElementById("grid");
   var voices=[];
   function refresh(){
@@ -82,7 +112,7 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
     var gO0=document.createElement("option"); gO0.value=""; gO0.textContent="— Sistem varsayılanı —"; gSel.appendChild(gO0);
     voices.forEach(function(v){
       var mark=femRe.test(v.name||"")?"👩 ":(malRe.test(v.name||"")?"👨 ":"");
-      var o=document.createElement("option"); o.value=v.name; o.textContent=mark+v.name+" ("+v.lang+")";
+      var o=document.createElement("option"); o.value=v.name; o.textContent=etiket(v, mark);
       if(g.name===v.name) o.selected=true; gSel.appendChild(o);
     });
     gSel.onchange=function(){
@@ -92,9 +122,10 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
     };
     var gBtns=document.createElement("div"); gBtns.style.marginTop="6px";
     var gPlay=document.createElement("button"); gPlay.textContent="▶ Dinle"; gPlay.style.cssText="margin-right:6px;padding:6px 12px;border-radius:8px;cursor:pointer";
-    gPlay.onclick=function(){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance("Hello, this is my voice."); var v=voices.find(function(x){return x.name===gSel.value;}); if(v){u.voice=v;u.lang=v.lang;} else u.lang="en-US"; speechSynthesis.speak(u); }catch(e){} };
+    gPlay.onclick=function(){ try{ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance("Hello, this is my voice."); var v=voices.find(function(x){return x.name===gSel.value;}); if(v){u.voice=v;u.lang=v.lang;} else u.lang="en-US"; izle(u,v,gUyari); speechSynthesis.speak(u); }catch(e){} };
     gBtns.appendChild(gPlay);
-    gRight.appendChild(gSel); gRight.appendChild(gBtns);
+    var gUyari=document.createElement("div"); gUyari.className="sub"; gUyari.style.cssText="color:#fbbf24;font-weight:700;margin-top:6px";
+    gRight.appendChild(gSel); gRight.appendChild(gBtns); gRight.appendChild(gUyari);
     gWrap.appendChild(gRight); grid.appendChild(gWrap);
 
     CHARS.forEach(function(ch){
@@ -108,7 +139,7 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
       var malRe=/(male|erkek|david|mark|george|daniel|james|john|alex|fred|thomas|guy|brian|ryan|matthew|arthur|oliver)/i;
       voices.forEach(function(v){
         var g=femRe.test(v.name||"")?"👩 ":(malRe.test(v.name||"")?"👨 ":"");
-        var o=document.createElement("option"); o.value=v.name; o.textContent=g+v.name+" ("+v.lang+")";
+        var o=document.createElement("option"); o.value=v.name; o.textContent=etiket(v, g);
         if(pref.name===v.name) o.selected=true;
         sel.appendChild(o);
       });
@@ -123,12 +154,15 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
           var u=new SpeechSynthesisUtterance(ch.sample);
           var v=voices.find(function(x){return x.name===sel.value;}); if(v){ u.voice=v; u.lang=v.lang; } else u.lang="en-US";
           u.rate=parseFloat(rateInput.value)||0.96; u.pitch=parseFloat(pitchInput.value)||1.0;
+          izle(u,v,uyari);
           speechSynthesis.speak(u);
         }catch(e){}
       }
       bListen.onclick=previewCurrent;
       sel.addEventListener("change", previewCurrent);
       listenWrap.appendChild(bListen);
+      var uyari=document.createElement("div"); uyari.className="sub"; uyari.style.cssText="color:#fbbf24;font-weight:700;margin-top:6px";
+      listenWrap.appendChild(uyari);
 
       var rateWrap=document.createElement("div"); rateWrap.className="rate";
       var rateVal=pref.rate||0.96;
@@ -170,6 +204,7 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
           var u=new SpeechSynthesisUtterance(ch.sample);
           var v=voices.find(function(x){return x.name===name;}); if(v){ u.voice=v; u.lang=v.lang; } else u.lang="en-US";
           u.rate=rate; u.pitch=pitch;
+          izle(u,v,uyari);
           speechSynthesis.speak(u);
         }catch(e){}
       };
