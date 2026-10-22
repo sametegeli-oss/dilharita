@@ -403,7 +403,28 @@
     return el;
   }
 
+  /* SAHNEYE OZEL ARKA PLAN: eskiden gunun malzemesine gore TEK video secilip
+     gun boyu donduruluyordu; restoran, otel, havalimani ve doktor
+     sohbetlerinin hepsinde ayni video donuyordu. Senaryo sayfalarinda
+     arka plan artik o sahneden: once Pexels videosu (anahtar varsa),
+     yoksa sahneye ait fotograf. Ogretmen sayfalari gunun konusunu kullanir. */
+  var SAHNE = {
+    "Restoran": ["restaurant waiter dinner", "restaurant table food"],
+    "Otel": ["hotel reception lobby", "hotel check in"],
+    "Havaalanı": ["airport terminal travelers", "airport check in counter"],
+    "Doktor": ["doctor patient clinic", "doctor office consultation"]
+  };
+  function sahneSorgulari() {
+    try { var sc = global.CHAT_SCENARIO; return (sc && SAHNE[sc.title]) || null; } catch (e) { return null; }
+  }
   function baslat() {
+    var sq = sahneSorgulari();
+    if (sq) {
+      sahneVideosu({ id: "sohbet-" + sq[0].split(" ")[0], sorgular: sq })
+        .then(function (f) { return f || openverseResim(sq[0]); })
+        .then(function (f) { if (f) ciz(f); }).catch(function () {});
+      return;
+    }
     bul().then(function (f) { if (f) ciz(f); }).catch(function () {});
   }
   if (!MANUEL) {
