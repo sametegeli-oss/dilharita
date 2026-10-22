@@ -16,6 +16,7 @@
 */
 (function(){
   "use strict";
+  var TEMEL_PV = {"get up":1,"wake up":1,"sit down":1,"stand up":1,"turn on":1,"turn off":1,"look for":1,"look at":1,"come back":1,"go back":1,"go out":1,"come in":1,"put on":1,"take off":1,"find out":1,"give up":1,"pick up":1,"call back":1,"get on":1,"get off":1,"come on":1,"go on":1,"look after":1,"hurry up":1,"slow down":1,"write down":1,"fill in":1,"turn up":1,"turn down":1,"clean up":1,"get back":1,"go away":1,"come over":1,"grow up":1,"hold on":1,"log in":1,"sign up":1,"try on":1,"eat out":1,"check in":1,"check out":1,"pay back":1,"throw away":1,"look up":1,"set up":1,"get in":1,"get out":1,"lie down":1,"calm down":1,"cheer up":1,"drop off":1,"run out":1,"put down":1,"wait for":1,"listen to":1,"take out":1,"put away":1,"give back":1};
   if(window.__dhLessonInstalled) return;
   window.__dhLessonInstalled = true;
 
@@ -67,7 +68,11 @@
       var list=[];
       if(Array.isArray(d)){
         list = d.map(function(x){
-          if(type==="pv") return { id:x.pv, label:x.pv, tr:x.tr, freq:x.freq||0, meanings:x.meanings, meanings_tr:x.meanings_tr, examples:x.examples, examples_tr:x.examples_tr, level:x.level||"" };
+          /* Öbek fiil verisinde seviye yok; "seviyesiz içerik her zaman uygun"
+             kuralı yüzünden A1 dersine en sık geçen "ask out" (çıkma teklif
+             etmek) gibi öbekler giriyordu. Gündelik temel öbekler A2, diğerleri
+             B1 sayılır; seviye süzgeci böylece öbekler için de işler. */
+          if(type==="pv") return { id:x.pv, label:x.pv, tr:x.tr, freq:x.freq||0, meanings:x.meanings, meanings_tr:x.meanings_tr, examples:x.examples, examples_tr:x.examples_tr, level:x.level||(TEMEL_PV[String(x.pv||"").toLowerCase()]?"A2":"B1") };
           // sentence
           return { id:x.id, label:x.en, tr:x.tr, level:x.level||"", module:x.module||"", topic:x.topic||"", grammar:x.grammar||"", aiExplain:x.aiExplain||"", commonMistake:x.commonMistake||"" };
         });
