@@ -879,7 +879,10 @@ function whenVoicesReady(cb){
   if(cachedVoices.length){ cb(); return; }
   __voicesReadyCbs.push(cb);
   // güvence: 1.2sn sonra yine de dene (bazı tarayıcılar olayı geç/hiç atmaz)
-  setTimeout(function(){ refreshVoices(); if(cachedVoices.length){ var q=__voicesReadyCbs; __voicesReadyCbs=[]; q.forEach(function(f){ try{f();}catch(e){} }); } }, 1200);
+  /* Ses listesi 1.2 sn içinde gelmezse yine de oku: liste hiç gelmeyen tarayıcılarda
+     eskiden "Dinle" sonsuza kadar bekliyor ve hiç ses çıkmıyordu. Ses atanmazsa
+     tarayıcı kendi varsayılan sesini kullanır. */
+  setTimeout(function(){ refreshVoices(); var q=__voicesReadyCbs; __voicesReadyCbs=[]; q.forEach(function(f){ try{f();}catch(e){} }); }, 1200);
 }
 if(typeof speechSynthesis !== "undefined"){
   refreshVoices();
@@ -1016,7 +1019,25 @@ function dhSesMetni(s){
    Türkçe parça "tr-TR" diliyle gönderiliyor ama cihazda Türkçe ses yoksa
    tarayıcı onu sessizce atlıyor; kullanıcı yalnız İngilizceyi duyuyor ve
    nedenini bilmiyor. Sohbete bir kez, kalıcı ve anlaşılır bir not düşülür. */
-let trSesUyarildi=false;
+let trSesUyarildi=false, sesNotuVerildi=false;
+/* Hiç ses çıkmadıysa (motor başlamadı / tarayıcı hata verdi) bir kez not düş. */
+function sesCalmadiNotu(neden){
+  if(sesNotuVerildi) return; sesNotuVerildi=true;
+  try{
+    const hist=$("chatHistory"); if(!hist) return;
+    const not=document.createElement("div");
+    not.className="bubble assistant dh-ses-calmadi";
+    not.setAttribute("role","status");
+    not.style.cssText="border:2px solid #f59e0b;background:#2a1d05;color:#fff;line-height:1.5";
+    not.innerHTML="🔇 <b>Ses çalınamadı.</b> Tarayıcının seslendirmesi yanıt vermedi"+(neden&&neden!=="baslamadi"?" ("+String(neden).replace(/[<>&"]/g,"")+")":"")+"."
+      +"<br><br><b>Sırayla deneyin:</b><br>1) Bilgisayarın / telefonun sesi açık mı, kulaklık takılı mı?"
+      +"<br>2) Sayfayı yenileyip <b>Dinle</b>'ye tekrar basın (Chrome'un seslendirmesi bazen takılı kalır)."
+      +"<br>3) Olmazsa sayfayı <b>Microsoft Edge</b> ile açın."
+      +"<br><br><a href=\"./ses-teshis.html\" style=\"color:#fcd34d;font-weight:800\">Cihazdaki sesleri kontrol et →</a>";
+    hist.appendChild(not);
+    scrollHistory();
+  }catch(e){}
+}
 function trSesYokUyarisi(){
   if(trSesUyarildi) return; trSesUyarildi=true;
   try{
@@ -1110,11 +1131,45 @@ function speakText(text){
         if(ci>=chunks.length && run===speechRun) avatar.stop();
         setTimeout(speakNext,60); }
       var wd=setTimeout(go, Math.max(4000, c.text.length*80)+1500);  // onend gelmezse takılma
-      u.onend=go; u.onerror=go;
+      u.onend=go;
+      u.onerror=function(ev){
+        var hata=ev&&ev.error||"";
+        if(hata!=="interrupted"&&hata!=="canceled") sesCalmadiNotu(hata);
+        go();
+      };
+      /* Chrome bazen konuşmayı sessizce yutar (iptal+başlat yarışı ya da "takılı"
+         kalmış motor). 2.5 sn içinde başlamazsa motoru sıfırlayıp bir kez daha dener;
+         yine başlamazsa kullanıcıya ne yapacağını söyler. */
+      var basladi=false;
+      u.onstart=function(){ basladi=true; };
+      var tekrar=setTimeout(function(){
+        if(basladi||done||run!==speechRun) return;
+        try{ speechSynthesis.cancel(); speechSynthesis.resume(); }catch(e){}
+        var u2=new SpeechSynthesisUtterance(u.text);
+        try{ if(u.voice) u2.voice=u.voice; }catch(e){}
+        u2.lang=u.lang; u2.rate=u.rate; u2.pitch=u.pitch;
+        u2.__dhMixed=true; u2.__longTTSAvatarSync=true;
+        u2.onboundary=u.onboundary; u2.onend=go; u2.onerror=u.onerror;
+        u2.onstart=function(){ basladi=true; };
+        setTimeout(function(){
+          try{ speechSynthesis.speak(u2); }catch(e){}
+          setTimeout(function(){ if(!basladi&&!done&&run===speechRun){ sesCalmadiNotu("baslamadi"); go(); } }, 2500);
+        }, 120);
+      }, 2500);
+      /* Chrome'un çevrimiçi (Google) sesleri ~15 sn sonra kendiliğinden susar;
+         okuma sürerken 10 sn'de bir duraklat/devam ettirmek bunu önler. */
+      var canli=null;
+      try{ if(u.voice && u.voice.localService===false) canli=setInterval(function(){
+        if(done||run!==speechRun){ clearInterval(canli); return; }
+        try{ if(speechSynthesis.speaking){ speechSynthesis.pause(); speechSynthesis.resume(); } }catch(e){}
+      }, 10000); }catch(e){}
+      var eskiGo=go; go=function(){ try{ clearInterval(canli); clearTimeout(tekrar); }catch(e){} eskiGo(); };
+      u.onend=go;
+      try{ speechSynthesis.resume(); }catch(e){}
       speechSynthesis.speak(u);
     }catch(e){ speakNext(); }
   }
-  try{ whenVoicesReady(function(){ try{ speakNext(); }catch(e){ setTimeout(function(){ if(run===speechRun) avatar.stop(); }, duration); } }); }
+  try{ whenVoicesReady(function(){ setTimeout(function(){ try{ speakNext(); }catch(e){ setTimeout(function(){ if(run===speechRun) avatar.stop(); }, duration); } }, 90); }); }
   catch(e){ setTimeout(function(){ if(run===speechRun) avatar.stop(); }, duration); }
 }
 async function explainText(text){
