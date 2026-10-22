@@ -153,7 +153,7 @@
         base.options = opts;
         base.correctIndex = opts.indexOf(s.en);
         base.distractorQuality = dist.quality;  // "good"|"ok"|"weak" — weak ise HTML AI deneyebilir
-        base.prompt = (type==="dinleme") ? "Duydugun cumle hangisi?" : "Bu cumlenin Ingilizcesi hangisi?";
+        base.prompt = (type==="dinleme") ? "Duyduğun cümle hangisi?" : "Bu cümlenin İngilizcesi hangisi?";
         base.speak = (type==="dinleme") ? s.en : null;
         if(type==="dinleme") base.tr = null;
       }
@@ -161,15 +161,15 @@
         var words = s.en.replace(/\s+/g," ").trim().split(" ");
         base.words = shuffle(words);
         base.answer = s.en;
-        base.prompt = "Kelimeleri dogru siraya diz:";
+        base.prompt = "Kelimeleri doğru sıraya diz:";
       }
       else if(type==="yazma"){
-        base.prompt = "Bu cumleyi Ingilizce yaz:";
+        base.prompt = "Bu cümleyi İngilizce yaz:";
         base.answer = s.en;
       }
       else if(type==="konusma"){
         // ekranda İngilizce cümle gösterilir, öğrenci sesli okur; SpeechRecognition ile karşılaştırılır
-        base.prompt = "Bu cumleyi sesli oku:";
+        base.prompt = "Bu cümleyi sesli oku:";
         base.answer = s.en;     // söylenmesi gereken
         base.showEn = s.en;     // ekranda gösterilecek
       }
@@ -193,7 +193,7 @@
         base.options = gopts;
         base.correctIndex = gopts.indexOf(answer);
         base.display = display.join(" ");
-        base.prompt = "Bosluga hangi kelime gelir?";
+        base.prompt = "Boşluğa hangi kelime gelir?";
         base.tr = s.tr;
       }
       return base;

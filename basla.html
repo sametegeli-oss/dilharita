@@ -68,6 +68,7 @@
 
   <div class="dh-alt">
     <button class="dh-btn dh-btn--birincil dh-btn--tam" id="devam" hidden>Devam et</button>
+    <button class="dh-btn dh-btn--sade dh-btn--tam" id="geriAdim" type="button" hidden style="margin-top:10px">← Önceki soruya dön</button>
     <p class="dh-ipucu" style="text-align:center;margin:12px 0 0" id="altNot">
       Hesap açmadan devam ediyorsun
     </p>
@@ -107,16 +108,24 @@
   var AMACLAR = [
     { id:"is",       ad:"İş",         alt:"Toplantı, e-posta, iş görüşmesi",
       cumle:{ en:"I work from home", tr:"Evden çalışıyorum",
-              yanlis:["I working from home","I work at home the"] } },
+              yanlis:["I working from home","I work at home the"],
+              neden:{"I working from home":"Burada fiil eksik kalıyor: “I work” denir.",
+                     "I work at home the":"Sondaki “the” fazla; cümle “from home” ile biter."} } },
     { id:"seyahat",  ad:"Seyahat",    alt:"Havalimanı, otel, restoran",
       cumle:{ en:"I have a reservation", tr:"Rezervasyonum var",
-              yanlis:["I have reservation","I am reservation"] } },
+              yanlis:["I have reservation","I am reservation"],
+              neden:{"I have reservation":"Bir tane rezervasyon olduğu için önüne “a” gelir: “a reservation”.",
+                     "I am reservation":"“Sahip olmak” anlamında “am” değil “have” kullanılır."} } },
     { id:"gunluk",   ad:"Günlük hayat", alt:"Sohbet, alışveriş, arkadaşlık",
       cumle:{ en:"I live near the park", tr:"Parkın yanında oturuyorum",
-              yanlis:["I live near park","I am live near the park"] } },
+              yanlis:["I live near park","I am live near the park"],
+              neden:{"I live near park":"Belli bir park kastedildiği için önüne “the” gelir: “the park”.",
+                     "I am live near the park":"“live” zaten fiil; yanına “am” gelmez."} } },
     { id:"akademik", ad:"Sınav / akademik", alt:"IELTS, TOEFL, YDS",
       cumle:{ en:"The results were significant", tr:"Sonuçlar anlamlıydı",
-              yanlis:["The results was significant","The result were significant"] } }
+              yanlis:["The results was significant","The result were significant"],
+              neden:{"The results was significant":"“results” çoğul olduğu için “was” değil “were” gelir.",
+                     "The result were significant":"Burada çoğul “results” gerekir; tekil “result” ile “were” uyuşmaz."} } }
   ];
 
   var HEDEFLER = [
@@ -153,10 +162,17 @@
       noktalar[j].classList.toggle("dh-noktalar__bir--dolu", j < n);
     }
     $("noktalar").setAttribute("aria-valuenow", String(n));
+    /* Yanlış seçimi düzeltebilmek için: 2. ve 3. adımda bir önceki soruya dönüş */
+    $("geriAdim").hidden = !(n === 2 || n === 3);
     $("adim"+n).classList.remove("dh-gir");
     void $("adim"+n).offsetWidth;
     $("adim"+n).classList.add("dh-gir");
   }
+
+  $("geriAdim").onclick = function(){
+    if (adimNo === 3){ durum.ilkDogru = false; $("devam").hidden = true; $("geriBildirim").innerHTML = ""; }
+    if (adimNo > 1 && adimNo < 4) adimGoster(adimNo - 1);
+  };
 
   /* ---------- ADIM 1 ---------- */
   (function kurAmac(){
@@ -183,6 +199,7 @@
 
   /* ---------- ADIM 3: ilk kazanim ---------- */
   function kurIlkCumle(){
+    durum.ilkDogru = false;
     var c = (durum.amac || AMACLAR[0]).cumle;
     $("cumleEn").textContent = c.en;
     $("cumleEn").style.visibility = "hidden";   // once soru, sonra cevap
@@ -225,7 +242,7 @@
           $("geriBildirim").innerHTML =
             '<div class="dh-geri dh-geri--err">' +
               '<div class="dh-geri__baslik">Bu değil</div>' +
-              '<div class="dh-geri__aciklama">Bir daha dene — ilk seferde tutturmak şart değil.</div>' +
+              '<div class="dh-geri__aciklama">' + kacir((c.neden && c.neden[metin]) ? c.neden[metin] + " Bir daha dene." : "Bir daha dene — ilk seferde tutturmak şart değil.") + '</div>' +
             '</div>';
         }
       };

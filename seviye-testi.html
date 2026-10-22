@@ -123,7 +123,7 @@
 <script src="./ai-providers.js?v=tm1"></script>
 <script src="./gemini-quality-tools.js?v=4"></script>
 <script src="./ai-status.js?v=1"></script>
-<script src="./level-test.js?v=6"></script>
+<script src="./level-test.js?v=7"></script>
 <script>
 (function(){
   "use strict";
@@ -556,7 +556,13 @@
   // başlat — storage hazır olunca (anayasa okuma/yazma için)
   screen.innerHTML = '<div class="card"><div class="q-hint">Yükleniyor…</div></div>';
   function boot(){
-    loadSentences().then(renderGoal).catch(function(){
+    /* Amaç kurulumda zaten soruluyor: kayıtlıysa tekrar sorma, teste geç. */
+    loadSentences().then(function(){
+      var kayitli = "";
+      try{ kayitli = (window.DHProfile && DHProfile.get().amac) || ""; }catch(e){}
+      if (/^(gunluk|seyahat|is|akademik)$/.test(kayitli)){ chosenGoal = kayitli; startTest(); }
+      else renderGoal();
+    }).catch(function(){
       screen.innerHTML = '<div class="card"><div class="q-hint" style="color:var(--bad)">Cümleler yüklenemedi. İnternet bağlantını kontrol et.</div></div>';
     });
   }

@@ -602,6 +602,14 @@ try{
         var ids=session.filter(function(x){return x.kind==="s"}).map(function(x){return x.id});
         var m=await DHSent.byIds(ids);
         Object.keys(m).forEach(function(k){ sentMap[k]=m[k]; });
+        /* Veriden çıkarılmış (bozuk olduğu için silinmiş) bir cümle tekrar
+           listesinde kalmışsa metni yoktur; ekranda kimlik numarası
+           gösterilmesin diye oturumdan çıkarılır. */
+        if (m && typeof m === "object"){
+          session=session.filter(function(x){
+            return x.kind!=="s" || sentMap[x.id] || (errText[x.id] && errText[x.id].en);
+          });
+        }
       } catch(e){}
     }
     if(session.some(function(x){return x.kind==="w"})){
