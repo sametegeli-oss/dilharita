@@ -1012,6 +1012,33 @@ function dhSesMetni(s){
     .replace(/\*\*([^*\n][^*]*?)\*\*/g, "$1")            // **kalin** → kalin
     .replace(/[ \t]{2,}/g, " ");
 }
+/* ── CİHAZDA TÜRKÇE SES YOKSA ─────────────────────────────────────────
+   Türkçe parça "tr-TR" diliyle gönderiliyor ama cihazda Türkçe ses yoksa
+   tarayıcı onu sessizce atlıyor; kullanıcı yalnız İngilizceyi duyuyor ve
+   nedenini bilmiyor. Sohbete bir kez, kalıcı ve anlaşılır bir not düşülür. */
+let trSesUyarildi=false;
+function trSesYokUyarisi(){
+  if(trSesUyarildi) return; trSesUyarildi=true;
+  try{
+    const hist=$("chatHistory"); if(!hist) return;
+    const ua=navigator.userAgent||"";
+    const android=/Android/i.test(ua), ios=/iPhone|iPad|iPod/i.test(ua), edge=/Edg\//.test(ua);
+    let nasil;
+    if(android) nasil="Telefonun <b>Ayarlar</b> → <b>Metin okuma çıkışı</b> (Erişilebilirlik ya da Sistem altında) → <b>Google konuşma hizmetleri</b> → <b>Ses verilerini yükle</b> → <b>Türkçe</b>. Sonra bu sayfayı yenileyin.";
+    else if(ios) nasil="<b>Ayarlar</b> → <b>Erişilebilirlik</b> → <b>Seslendirilen İçerik</b> → <b>Sesler</b> → <b>Türkçe</b> sesini indirin. Sonra bu sayfayı yenileyin.";
+    else nasil="Windows'ta: <b>Ayarlar</b> → <b>Saat ve dil</b> → <b>Konuşma</b> → <b>Ses ekle</b> → <b>Türkçe (Türkiye)</b>. Kurulunca tarayıcıyı kapatıp yeniden açın."
+      + (edge?"":"<br>Daha kolay yol: bu sayfayı <b>Microsoft Edge</b> tarayıcısıyla açın; Edge'de Türkçe ses hazır gelir.");
+    const not=document.createElement("div");
+    not.className="bubble assistant dh-tr-ses-yok";
+    not.setAttribute("role","status");
+    not.style.cssText="border:2px solid #f59e0b;background:#2a1d05;color:#fff;line-height:1.5";
+    not.innerHTML="🔇 <b>Bu cihazda Türkçe ses bulunamadı.</b> Bu yüzden açıklamanın Türkçe kısımları okunamıyor, yalnız İngilizce kısımlar okunuyor."
+      +"<br><br><b>Nasıl düzelir?</b> "+nasil
+      +"<br><br><a href=\"./ses-teshis.html\" style=\"color:#fcd34d;font-weight:800\">Cihazdaki sesleri kontrol et →</a>";
+    hist.appendChild(not);
+    scrollHistory();
+  }catch(e){}
+}
 function speakText(text){
   text=dhSesMetni(text).trim();
   if(!text) return;
@@ -1045,6 +1072,7 @@ function speakText(text){
       if(c.lang==="tr-TR"){
         const tv=pickTrVoice();
         if(tv) u.voice=tv;
+        else trSesYokUyarisi();   /* cihazda Türkçe ses yok: tarayıcı bu parçayı sessizce atlıyor */
         u.lang="tr-TR";
         u.rate=vp.rate || .96;
         u.pitch=1;                            // TR seslerinde düşük pitch doğal durmuyor
