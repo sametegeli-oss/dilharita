@@ -110,6 +110,11 @@
      [[ ]] blokları İngilizce; dışarısı kelime kelime tespit edilir. */
   function segment(text, def) {
     var s = String(text == null ? "" : text);
+    /* "tr!" / "en!": dil zorla — metnin tamamı o dilin ağız haritasıyla
+       (sesin hangi dilde okuduğu biliniyorsa kelime tahmini yapılmaz). */
+    if (typeof def === "string" && def.charAt(2) === "!") {
+      return s ? [{ text: s, lang: def.slice(0, 2) }] : [];
+    }
     var out = [], re = /\[\[([\s\S]*?)\]\]/g, i = 0, m;
     function plain(chunk) {
       if (!chunk) return;

@@ -371,7 +371,26 @@ class PhotoAvatar{
     this.talkSeq=[];
     this.talkIndex=0;
   }
+  /* Kare setini başka bir avatar klasörüne çevirir (ör. Türkçe → teacher1,
+     İngilizce → teacher2). Dosya adları iki öğretmende de aynı. */
+  setDir(dir){
+    if(!dir || dir===this.dir) return;
+    this.dir=dir;
+    const F=Scenario.frames||{}, j=function(f){ return dir+f; };
+    this.frames={ idle:j(F.idle), blink:j(F.blink), listen:j(F.listen), a:j(F.mouthA), e:j(F.mouthE),
+      i:j(F.mouthI), o:j(F.mouthO), u:j(F.mouthU), mbp:j(F.mouthMBP), fv:j(F.mouthFV), l:j(F.mouthL), th:j(F.mouthTH) };
+    this.preload();
+    if(!this.talkTimer) this.show(this.frames.idle);
+  }
+  /* Parçalar arası: ağız kapalı, konuşma durumu sürüyor. */
+  rest(){
+    clearInterval(this.talkTimer); this.talkTimer=null;
+    clearTimeout(this.endTimer);
+    this.talkSeq=[];
+    if(!this.isBlinking) this.show(this.frames.idle);
+  }
   init(){
+    this.dir=activeAvatarDir();
     this.img.onerror=()=>{ this.img.onerror=null; this.img.src=this.frames.idle; };
     this.show(this.frames.idle);
     this.preload();
@@ -438,7 +457,7 @@ class PhotoAvatar{
     }
     return seq.filter(Boolean);
   }
-  speakText(text, duration){
+  speakText(text, duration, lang){
     clearInterval(this.talkTimer);
     clearTimeout(this.endTimer);
     State.speaking=true;
@@ -447,7 +466,9 @@ class PhotoAvatar{
        sayısıyla doğrusal değil. */
     this.talkCharAt = null;
     if(window.DHViseme && window.DHViseme.timeline){
-      const _def = (typeof __dhIsTeacher !== "undefined" && __dhIsTeacher) ? "tr" : "en";
+      let _def = (typeof __dhIsTeacher !== "undefined" && __dhIsTeacher) ? "tr" : "en";
+      /* Parça dili biliniyorsa zorla: Türkçe sesin okuduğu "prefer" de Türkçe ağızla söylenir. */
+      if(lang) _def = (/^tr/i.test(lang) ? "tr" : "en") + "!";
       const tl = window.DHViseme.timeline(text, {
         a:this.frames.a, e:this.frames.e, i:this.frames.i, o:this.frames.o,
         u:this.frames.u, mbp:this.frames.mbp, fv:this.frames.fv,
@@ -471,15 +492,10 @@ class PhotoAvatar{
     this.talkStart = Date.now();
     const _step = Math.max(40, Math.min(170, Math.round(_total / Math.max(1, this.talkSeq.length))));
     this.talkStep = _step;
-    this.talkTimer=setInterval(()=>{
-      if(this.isBlinking) return;
-      if(this.talkIndex >= this.talkSeq.length){
-        this.show(this.frames.idle);     // bitti: başa dönme, dinlenme karesinde kal
-        return;
-      }
-      this.show(this.talkSeq[this.talkIndex++]);
-    }, _step);
-    this.endTimer=setTimeout(()=>this.stop(), _total);
+    this.parcaModu=!!lang;
+    this.talkTimer=setInterval(()=>this.tick(), _step);
+    /* Parça modunda ağzı sesin "bitti" olayı durdurur, tahmin değil. */
+    if(!this.parcaModu) this.endTimer=setTimeout(()=>this.stop(), _total);
   }
   /* Konuşmanın gerçek konumuna hizala (0..1). Tarayıcı her kelimede
      onboundary olayı veriyor; ağız birikmiş gecikmeyi orada kapatıyor. */
@@ -511,18 +527,27 @@ class PhotoAvatar{
       if(Math.abs(yeniAdim - (this.talkStep||0)) > Math.max(8, this.talkStep*0.15)){
         this.talkStep = yeniAdim;
         clearInterval(this.talkTimer);
-        this.talkTimer = setInterval(()=>{
-          if(this.isBlinking) return;
-          if(this.talkIndex >= this.talkSeq.length){ this.show(this.frames.idle); return; }
-          this.show(this.talkSeq[this.talkIndex++]);
-        }, yeniAdim);
+        this.talkTimer = setInterval(()=>this.tick(), yeniAdim);
         clearTimeout(this.endTimer);
-        this.endTimer = setTimeout(()=>this.stop(), Math.max(300, gercekToplam - gecen + 150));
+        if(!this.parcaModu) this.endTimer = setTimeout(()=>this.stop(), Math.max(300, gercekToplam - gecen + 150));
       }
     }
   }
+  tick(){
+    if(this.isBlinking) return;
+    if(this.talkIndex >= this.talkSeq.length){
+      /* Kareler bitti ama ses hâlâ sürüyorsa (tahmin kısa kaldı) ağız
+         kapanıp donmasın: sesin bitmesine kadar hafifçe konuşmaya devam. */
+      if(this.parcaModu){
+        const yumusak=[this.frames.e,this.frames.a,this.frames.i,this.frames.mbp,this.frames.o,this.frames.idle];
+        this.show(yumusak[(this.ekKare=(this.ekKare||0)+1)%yumusak.length]);
+      } else this.show(this.frames.idle);
+      return;
+    }
+    this.show(this.talkSeq[this.talkIndex++]);
+  }
   stop(){
-    clearInterval(this.talkTimer);
+    clearInterval(this.talkTimer); this.talkTimer=null;
     clearTimeout(this.endTimer);
     State.speaking=false;
     if(!this.isBlinking) this.show(this.frames.listen);
@@ -867,6 +892,35 @@ function systemPrompt(){
     "\n[TASKS] Over the WHOLE conversation the student should eventually do these: "+__dhTasks.map(function(t,i){return (i+1)+") "+t;}).join(" ")+" These are goals for the whole session, NOT for every turn. Never force a question out of them just to tick a task. Weave them naturally into the conversation. When the user GENUINELY completes task N, append the marker [TASK_DONE:N] at the very end of your reply. Never mention the markers or tasks mechanically."
   ].join("\n");
 }
+/* Her sesin gerçek konuşma hızı (ms/harf) ölçülüp bu cihazda saklanır.
+   Ağız animasyonu tahmini süreye göre yayıldığı için, ilk parçadan sonra
+   ağız sesin hızına oturur. */
+const SES_HIZ_LS="dh-ses-hiz-v1";
+let sesHizlari=(function(){ try{ return JSON.parse(localStorage.getItem(SES_HIZ_LS)||"{}")||{}; }catch(e){ return {}; } })();
+function sesHizAnahtar(u){ return ((u.voice&&u.voice.name)||u.lang||"?")+"|"+(Math.round((u.rate||1)*100)/100); }
+function parcaSuresi(u){
+  const n=Array.from(String(u.text||"")).length;
+  const k=sesHizlari[sesHizAnahtar(u)];
+  const msHarf = k || ((/^tr/i.test(u.lang||"") ? 68 : 72) / Math.max(.5, u.rate||1));
+  return Math.max(500, n*msHarf);
+}
+function sesHizOgren(u, ms){
+  const n=Array.from(String(u.text||"")).length;
+  if(n<12 || ms<400) return;
+  const olcu=Math.max(35, Math.min(180, ms/n)), key=sesHizAnahtar(u), eski=sesHizlari[key];
+  sesHizlari[key]= eski ? Math.round(eski*.6+olcu*.4) : Math.round(olcu);
+  try{ localStorage.setItem(SES_HIZ_LS, JSON.stringify(sesHizlari)); }catch(e){}
+}
+/* ÖĞRETMEN EKRANI: Türkçe konuşurken Türk öğretmen (teacher1),
+   İngilizce konuşurken İngiliz öğretmen (teacher2) görünür. */
+const OGRETMEN_TR="assets/avatars_v3/teacher1/", OGRETMEN_EN="assets/avatars_v3/teacher2/";
+function ogretmenDegisir(){
+  return (typeof __dhIsTeacher!=="undefined" && __dhIsTeacher) && /^assets\/avatars_v3\/teacher/i.test(activeAvatarDir());
+}
+function ogretmeniSec(lang){
+  if(!ogretmenDegisir()) return;
+  try{ avatar.setDir(/^tr/i.test(lang||"") ? OGRETMEN_TR : OGRETMEN_EN); }catch(e){}
+}
 function estimateDuration(text){ const n=Array.from(String(text||"")).length; return Math.max(1100, Math.min(12000, n * 82)); }
 
 let cachedVoices = [];
@@ -1090,7 +1144,10 @@ function speakText(text){
   const run=++speechRun;
   try{speechSynthesis.cancel();}catch(e){}
   const duration=estimateDuration(text);
-  avatar.speakText(text, duration+300);
+  /* Ağız artık burada başlamıyor: her parça kendi sesi GERÇEKTEN başlayınca
+     (onstart) başlıyor. Eskiden tüm metin için tahmini süreyle hemen
+     başlıyordu; ses 0,4-7 sn geç başladığında ağız sesten önde gidiyordu. */
+  avatar.rest(); State.speaking=true;
   try{ window.dispatchEvent(new CustomEvent("dh-speech-start",{detail:{text:text}})); }catch(e){}
   const vp=avatarVoicePrefs();
   const chunks=splitMixedSpeech(text);
@@ -1100,6 +1157,7 @@ function speakText(text){
   function finishAll(){
     if(run!==speechRun) return;
     avatar.stop();
+    if(ogretmenDegisir()) avatar.setDir(activeAvatarDir());
     try{ window.dispatchEvent(new CustomEvent("dh-speech-end")); }catch(e){}
     try{ window.dispatchEvent(new CustomEvent("dh-konusma-bitti")); }catch(e){}
     if(window.__dhAuto){ setTimeout(function(){ try{ var mb=document.getElementById("micBtn"); if(mb&&!mb.classList.contains("listening")) mb.click(); }catch(e){} }, 400); }
@@ -1145,7 +1203,7 @@ function speakText(text){
         if(run!==speechRun) return;
         if(!ev || (ev.name && ev.name!=="word")) return;
         const ci2 = (typeof ev.charIndex==="number") ? ev.charIndex : 0;
-        avatar.alignToChar(_base + ci2);
+        avatar.alignToChar(ci2);
       };
       spokenChars += c.text.length;
       let done=false;
@@ -1153,9 +1211,12 @@ function speakText(text){
         /* Son parça bittiyse ağzı beklemeden durdur. Eskiden finishAll'a
            60 ms'lik bir setTimeout zinciriyle gidiliyordu ve o arada ağız
            oynamaya devam ediyordu. */
-        if(ci>=chunks.length && run===speechRun) avatar.stop();
+        if(run===speechRun){
+          if(basladi && sesBasT) sesHizOgren(sonUtt, Date.now()-sesBasT);
+          if(ci>=chunks.length) avatar.stop(); else avatar.rest();
+        }
         setTimeout(speakNext,60); }
-      var wd=setTimeout(go, Math.max(4000, c.text.length*80)+1500);  // onend gelmezse takılma
+      var wd=setTimeout(function(){ go(); }, Math.max(4000, c.text.length*80)+1500+(/piper|espeak|mbrola/i.test((u.voice&&u.voice.name)||"")?12000:0));  // onend gelmezse takılma
       u.onend=go;
       u.onerror=function(ev){
         var hata=ev&&ev.error||"";
@@ -1165,17 +1226,29 @@ function speakText(text){
       /* Chrome bazen konuşmayı sessizce yutar (iptal+başlat yarışı ya da "takılı"
          kalmış motor). 2.5 sn içinde başlamazsa motoru sıfırlayıp bir kez daha dener;
          yine başlamazsa kullanıcıya ne yapacağını söyler. */
-      var basladi=false, sonUtt=u;
-      u.onstart=function(){ basladi=true; };
+      var basladi=false, sonUtt=u, sesBasT=0;
+      /* Ses gerçekten başladığında: doğru öğretmeni göster, ağzı bu parçanın
+         metni ve bu sesin ölçülmüş hızıyla başlat, bekçi süresini yenile. */
+      function baslat(uu){ return function(){
+        if(basladi || done || run!==speechRun) return;
+        basladi=true; sesBasT=Date.now();
+        ogretmeniSec(uu.lang);
+        try{ avatar.speakText(uu.text, parcaSuresi(uu), uu.lang); }catch(e){}
+        clearTimeout(wd); wd=setTimeout(go, parcaSuresi(uu)*1.8+4000);
+      }; }
+      u.onstart=baslat(u);
+      /* Yavaş açılan sesler (Piper ~7 sn) için "başlamadı" süresi uzun. */
+      var yavasSes=function(v){ return !!v && /piper|espeak|mbrola/i.test(v.name||""); };
       var tekrar=setTimeout(function(){
         if(basladi||done||run!==speechRun) return;
+        if(yavasSes(sonUtt.voice)){ tekrar=setTimeout(function(){ if(!basladi&&!done&&run===speechRun){ sesCalmadiNotu("baslamadi"); go(); } }, 12000); return; }
         try{ speechSynthesis.cancel(); speechSynthesis.resume(); }catch(e){}
         var u2=new SpeechSynthesisUtterance(sonUtt.text);
         try{ if(sonUtt.voice) u2.voice=sonUtt.voice; }catch(e){}
         u2.lang=sonUtt.lang; u2.rate=sonUtt.rate; u2.pitch=sonUtt.pitch;
         u2.__dhMixed=true; u2.__longTTSAvatarSync=true;
         u2.onboundary=u.onboundary; u2.onend=go; u2.onerror=u.onerror;
-        u2.onstart=function(){ basladi=true; };
+        u2.onstart=baslat(u2); sonUtt=u2;
         setTimeout(function(){
           try{ speechSynthesis.speak(u2); }catch(e){}
           setTimeout(function(){ if(!basladi&&!done&&run===speechRun){ sesCalmadiNotu("baslamadi"); go(); } }, 2500);
@@ -1200,7 +1273,7 @@ function speakText(text){
             n.voice=yv; n.lang=yv.lang; n.rate=uu.rate; n.pitch=uu.pitch;
             n.__dhMixed=true; n.__longTTSAvatarSync=true;
             n.onboundary=uu.onboundary; n.onerror=uu.onerror;
-            n.onstart=function(){ basladi=true; };
+            n.onstart=baslat(n);
             n.onend=bitince(n);
             sonUtt=n; t0=Date.now();
             /* Bazı sesler (ör. Piper) geç başlar: bekleme sürelerini uzat. */
