@@ -24,7 +24,7 @@
      harmanlayıp öğretmen sohbetine devreder. -->
 <script src="./dh-gun-sonu.js?v=1"></script>
 <script src="./profile.js?v=2"></script>
-<script src="./ai-choice.js?v=1"></script>
+<script src="./ai-choice.js?v=2"></script>
 <script src="./onboarding-guard.js?v=1"></script>
 <script src="./study-tracker.js?v=1"></script>
 <script src="./learning-error-system.js?v=11"></script>
@@ -539,6 +539,23 @@
      koc.js'e DOKUNULMUYOR (sert kısıt) — adımın hedefi yalnızca
      çizim/yönlendirme anında çevriliyor. Kullanıcının seçtiği öğretmen
      avatarı (teacher1/teacher2) korunur. */
+  /* "Yeni cümleler" adımı modülsüz ("index-app.html") kalabiliyor: anahtarsız
+     yedek plan bilerek böyle kuruyor, koç planı da cümle listesi yüklenmeden
+     hazırlanırsa öyle kaydediliyor. Sonuç: yeni kullanıcı derse değil
+     500+ modüllük listeye düşüyordu. Bağlantı burada sıradaki modüle çevrilir. */
+  function modulluYap(a){
+    if (!a) return;
+    var h = a.getAttribute("href") || "";
+    if (h !== "./index-app.html") return;
+    try{
+      if (window.DHProfile && DHProfile.nextModule){
+        DHProfile.nextModule().then(function(m){
+          if (m && a.getAttribute("href") === h) a.setAttribute("href", "./index-app.html?mod=" + encodeURIComponent(m));
+        }).catch(function(){});
+      }
+    }catch(e){}
+  }
+
   function hedefHref(href){
     var h = String(href||"");
     if (h.split("?")[0] !== "chat.html") return h;
@@ -752,6 +769,7 @@
 
       var a = document.createElement("a");
       a.href = "./" + hedefHref(s.href);
+      modulluYap(a);
       a.className = "dh-plan-satir" +
         (aktif ? " dh-plan-satir--aktif" : "") +
         (bitti ? " dh-plan-satir--bitti" : "");
@@ -803,7 +821,8 @@
     var k = kalanAdim(d);
     if (k){
       b.textContent = d.calisti ? "Kaldığın yerden devam" : "Başla";
-      b.href = "./" + hedefHref(k.href);
+      b.setAttribute("href", "./" + hedefHref(k.href));
+      modulluYap(b);
       return;
     }
     if (d.adimToplam && d.adimBiten >= d.adimToplam){

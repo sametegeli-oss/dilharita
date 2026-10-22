@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v311";  /* Yapay zeka tek merkezde (ai-providers.js) */
+var SW_VERSION = "dh-sw-v312";  /* Sade yapay zeka seçimi, devam düğmesi modüle gider */
 /* onceki v310: Kolay Kullanım v2: tüm ekran denetimi */
 /* onceki v309: Kolay Kullanım (50-80 yaş) görünümü */
 /* onceki v308: Telefonda gercek tam ekranda kontrol dugmeleri kucuk kalmasin */
