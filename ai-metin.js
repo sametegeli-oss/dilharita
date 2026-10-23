@@ -95,7 +95,7 @@
           var ara = t.slice(toks[j - 1].e, tk.s);
           if (!ARA_IZIN.test(ara) || /\n/.test(ara)) break;
           if (ara.indexOf("/") >= 0 && ara !== "/") break;        /* "have/has" evet, " /hiː/" hayır */
-          if (tk.c === "U" && /[.?!…]/.test(ara)) break;         /* "please. Bu" → Bu yeni (Türkçe) cümle */
+          if (/[.?!…()]/.test(ara)) break;   /* her cümle / parantez ayrı değerlendirilir: "class. (Her zaman…" */
           /* cümle sonu + ardından Türkçe başlıyorsa zaten T ile kırılır */
         }
         if (tk.c === "E") nE++;
@@ -184,7 +184,7 @@
   }
 
   /* ---------------- İngilizceyi maviye boyama ---------------- */
-  var ATLA = /^(SCRIPT|STYLE|TEXTAREA|INPUT|SELECT|OPTION|BUTTON|SVG|CODE|PRE|NOSCRIPT|IFRAME|CANVAS|VIDEO|AUDIO)$/;
+  var ATLA = /^(SCRIPT|STYLE|TEXTAREA|INPUT|SELECT|OPTION|BUTTON|SVG|NOSCRIPT|IFRAME|CANVAS|VIDEO|AUDIO)$/;
   function stil() {
     if (document.getElementById("dhAiMetinStil")) return;
     var st = document.createElement("style"); st.id = "dhAiMetinStil";
