@@ -75,7 +75,7 @@ function wdBindPromptEditor(root){
       const kind=btn.dataset.kind;
       const ta=root.querySelector(`.wdPromptInput[data-kind="${kind}"]`);
       wdSavePrompt(kind, ta ? ta.value : "");
-      try{ alert("Prompt kaydedildi. Bundan sonraki cevaplar buna göre devam edecek."); }catch(e){}
+      try{ alert("Talimat kaydedildi. Bundan sonraki cevaplar buna göre olacak."); }catch(e){}
     };
   });
   root.querySelectorAll(".wdPromptReset").forEach(btn=>{

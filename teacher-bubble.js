@@ -205,7 +205,7 @@
   function openInGemini(userText){
     userText=(userText||"").trim();
     if(!userText && topic) userText="Bunu açıkla";
-    if(!userText){ inputEl.focus(); inputEl.placeholder="Önce sorunu yaz, sonra 💎'a bas"; return; }
+    if(!userText){ bosUyari("💎"); return; }
     var prompt="Türkçe açıklama yapan sabırlı bir İngilizce öğretmeni gibi davran. Kısa, örnekli anlat.\n\n"
       + buildUserMessage(userText);
     try{
@@ -214,7 +214,7 @@
     }catch(e){}
     try{
       var n=document.createElement("div");
-      n.textContent="📋 Prompt kopyalandı — Gemini'de yapıştır (Ctrl/Cmd+V) ve Enter'a bas";
+      n.textContent="📋 Soru kopyalandı — Gemini'de yazı kutusuna yapıştır ve gönder";
       n.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;background:#0f1f3a;color:#fff;border:1px solid #7c3aed;padding:11px 16px;border-radius:12px;font:700 13px system-ui;max-width:90vw;text-align:center";
       document.body.appendChild(n);
       setTimeout(function(){ n.remove(); },3600);
@@ -223,10 +223,18 @@
     inputEl.value="";
   }
 
+  /* Boş kutuyla düğmeye basınca hiçbir şey olmuyormuş gibi görünmesin */
+  function bosUyari(dugme){
+    try{
+      inputEl.focus(); inputEl.placeholder="Sorunu buraya yaz…";
+      var u=panel.querySelector(".dh-tb-bos"); if(!u){ u=document.createElement("div"); u.className="dh-tb-bos"; u.style.cssText="margin:8px 0;padding:10px 12px;border-radius:10px;background:#422006;color:#fde68a;font-size:16px;line-height:1.4"; bodyEl.appendChild(u); }
+      u.textContent="✍️ Önce sorunu aşağıdaki kutuya yaz, sonra "+(dugme==="💎"?"💎 Gemini":"Sor")+" düğmesine bas.";
+    }catch(e){}
+  }
   function ask(userText, provider){
     userText=(userText||"").trim();
     if(!userText && topic) userText="Bunu açıkla";
-    if(!userText) return;
+    if(!userText){ bosUyari("Sor"); return; }
     if(bodyEl) bodyEl.dataset.mode="answer";
     inputEl.value="";
 

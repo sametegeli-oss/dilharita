@@ -68,7 +68,7 @@ function copyText(t){
 }
 
 function goGemini(prompt){
-  toast("📋 Prompt kopyalandı — Gemini'de yapıştır (Ctrl/Cmd+V) ve Enter'a bas");
+  toast("📋 Soru kopyalandı — Gemini'de yapıştır (Ctrl/Cmd+V) ve Enter'a bas");
   if(window.DHProviders&&DHProviders.openWeb) DHProviders.openWeb({site:"gemini",prompt:prompt});   /* tek merkez */
   else copyText(prompt);
 }

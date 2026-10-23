@@ -251,7 +251,7 @@ function createUI(){
     const p=document.createElement("div");
     p.id="dhAiPromptPanel";
     p.innerHTML=`<div class="dhp-box">
-      <h2>⚙️ AI Öğretmen / Sohbet Promptu</h2>
+      <h2>⚙️ Öğretmen / Sohbet Talimatı</h2>
       <p>Bu prompt kaydedilince AI öğretmen ve sohbet cevapları bundan sonraki mesajlarda buna göre devam eder. Öğretmen Türkçe anlatır; İngilizce örnekler İngilizce kalır.</p>
       <textarea id="dhAiPromptText">${esc(getPrompt())}</textarea>
       <div class="dhp-actions">
@@ -262,7 +262,7 @@ function createUI(){
     </div>`;
     document.body.appendChild(p);
     p.onclick=e=>{if(e.target===p)p.classList.remove("active");};
-    p.querySelector("#dhAiPromptSave").onclick=()=>{savePrompt(p.querySelector("#dhAiPromptText").value); alert("Prompt kaydedildi. Sohbet bundan sonra bu prompta göre devam eder.");};
+    p.querySelector("#dhAiPromptSave").onclick=()=>{savePrompt(p.querySelector("#dhAiPromptText").value); alert("Talimat kaydedildi. Sohbet bundan sonra bu talimata göre devam eder.");};
     p.querySelector("#dhAiPromptReset").onclick=()=>{savePrompt(DEFAULT_TEACHER_PROMPT); p.querySelector("#dhAiPromptText").value=getPrompt();};
     p.querySelector("#dhAiPromptClose").onclick=()=>p.classList.remove("active");
   }
