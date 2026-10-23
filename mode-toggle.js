@@ -57,8 +57,7 @@
          - Koç köşe avatarı bu ekranda gizli (mesaj balonları çalışmaya devam eder) */
       "  .dh-mode-toggle.on-video{bottom:auto;left:12px;",
       "    top:calc(env(safe-area-inset-top, 0px) + 92px)}",
-      "  .dh-prev-float{top:auto;right:auto;left:12px;",
-      "    bottom:calc(178px + env(safe-area-inset-bottom))}",
+      "  .dh-prev-float{top:164px;right:auto;left:12px;bottom:auto}",
       (IS_VIDEO?"  .dh-avatar{display:none !important}":""),
       "}",
       "#nbVideoBtn{display:none !important}",

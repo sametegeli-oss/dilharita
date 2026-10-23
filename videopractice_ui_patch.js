@@ -93,6 +93,15 @@
         .ctrl-ico{width:40px!important;height:40px!important;font-size:20px!important}
         .next-float{top:auto!important;bottom:78px!important;right:10px!important;min-width:96px!important;min-height:40px!important;padding:8px 11px!important}
         .api-float{top:auto!important;bottom:78px!important;left:10px!important;padding:8px 11px!important}
+        /* Kolay görünümde düğmeler büyüyünce 4 düğme iki satıra taşıp cümle kartının
+           ALTINA giriyordu (üst üste binme). Tek satır 4 sütun + kart onun üstünde. */
+        .controls{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important;bottom:10px!important;align-items:stretch!important}
+        .controls > *{min-width:0!important}
+        .controls .ctrl{min-height:64px!important;padding:6px 2px!important;font-size:12px!important;justify-content:center!important}
+        .controls .mic-main{margin:0 auto!important}
+        .teach-overlay{bottom:100px!important}
+        .next-float{bottom:auto!important;top:164px!important;right:10px!important}
+        .api-float{bottom:auto!important;top:164px!important;left:auto!important;right:10px!important;margin-top:60px!important}
       }
     `;
     document.head.appendChild(style);
