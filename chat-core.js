@@ -1105,7 +1105,16 @@ function dhSesMetni(s){
    nedenini bilmiyor. Sohbete bir kez, kalıcı ve anlaşılır bir not düşülür. */
 let trSesUyarildi=false, sesNotuVerildi=false;
 /* Hiç ses çıkmadıysa (motor başlamadı / tarayıcı hata verdi) bir kez not düş. */
+/* Ses uyarıları yalnız kullanıcı "Dinle"ye KENDİ bastığında gösterilir.
+   Sayfa açılışındaki ya da yapay zekâ cevabındaki otomatik okumada,
+   kullanıcı hiçbir şeye basmadan iki büyük turuncu kutu çıkıyordu. */
+var __dhDinleT=0;
+document.addEventListener("click",function(e){
+  try{ var b=e.target&&e.target.closest&&e.target.closest("button,a"); if(b && /Dinle/.test(b.textContent||"")) __dhDinleT=Date.now(); }catch(_){}
+},true);
+function kullaniciDinledi(){ return Date.now()-__dhDinleT < 15000; }
 function sesCalmadiNotu(neden){
+  if(!kullaniciDinledi()) return;
   if(sesNotuVerildi) return; sesNotuVerildi=true;
   try{
     const hist=$("chatHistory"); if(!hist) return;
@@ -1123,6 +1132,7 @@ function sesCalmadiNotu(neden){
   }catch(e){}
 }
 function trSesYokUyarisi(){
+  if(!kullaniciDinledi()) return;
   if(trSesUyarildi) return; trSesUyarildi=true;
   try{
     const hist=$("chatHistory"); if(!hist) return;
