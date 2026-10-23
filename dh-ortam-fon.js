@@ -394,7 +394,7 @@
     sahne.insertBefore(perde, sahne.firstChild);
     sahne.insertBefore(kap, sahne.firstChild);
     /* yuklenince yumusak ac; yuklenemezse hic gosterme */
-    var ac = function () { el.classList.add("dh-fon--acik"); };
+    var ac = function () { el.classList.add("dh-fon--acik"); try { var y = document.getElementById("dhFonYedek"); if (y) setTimeout(function(){ y.remove(); }, 900); } catch (e) {} };
     if (f.tur === "video") el.addEventListener("loadeddata", ac, { once: true });
     else el.addEventListener("load", ac, { once: true });
     el.addEventListener("error", function () {
@@ -417,7 +417,24 @@
   function sahneSorgulari() {
     try { var sc = global.CHAT_SCENARIO; return (sc && SAHNE[sc.title]) || null; } catch (e) { return null; }
   }
+  /* İnternet yokken / görsel bulunamazken sahnenin solu simsiyah kalıyordu.
+     Önce avatarın kendi fotoğrafını (zaten ortamı gösterir) bulanık zemin yap. */
+  function yedekZemin() {
+    try {
+      var sahne = document.querySelector(".avatar-stage");
+      var img = sahne && sahne.querySelector("#avatarImg, img");
+      if (!sahne || !img || document.getElementById("dhFonYedek")) return;
+      var src = img.currentSrc || img.src; if (!src) return;
+      stil();
+      var y = document.createElement("div");
+      y.id = "dhFonYedek"; y.className = "dh-fon-kap"; y.setAttribute("aria-hidden", "true");
+      y.innerHTML = '<div style="position:absolute;inset:-30px;background:url(\'' + src.replace(/'/g, "%27") + '\') center/cover no-repeat;filter:blur(18px) brightness(.7)"></div>';
+      sahne.insertBefore(y, sahne.firstChild);
+    } catch (e) {}
+  }
   function baslat() {
+    /* sahne sohbet motoru tarafından sonradan kuruluyor: birkaç kez dene */
+    [0, 600, 1500, 3000].forEach(function (ms) { setTimeout(function () { if (!document.getElementById("dhOrtamFon") || !document.querySelector("#dhOrtamFon.dh-fon--acik")) yedekZemin(); }, ms); });
     var sq = sahneSorgulari();
     if (sq) {
       sahneVideosu({ id: "sohbet-" + sq[0].split(" ")[0], sorgular: sq })

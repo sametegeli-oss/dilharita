@@ -39,7 +39,7 @@ button,input,select{font-family:inherit}.hidden{display:none!important}
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=3">
-<script src="./kolay-kullanim.js?v=3"></script>
+<script src="./kolay-kullanim.js?v=4"></script>
 </head>
 <body>
 <div id="app" class="wrap"></div>
@@ -316,7 +316,7 @@ function renderHome(){
     </div>
     ${continueHtml()}
     <div id="content">${State.books.length ? booksHtml(State.books) : emptyStateHtml()}</div>
-  `, "Seviyene göre Project Gutenberg kitapları");
+  `, "Seviyene göre ücretsiz İngilizce kitaplar");
   bindHome();
 }
 function continueHtml(){

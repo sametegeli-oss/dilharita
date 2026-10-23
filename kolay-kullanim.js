@@ -504,20 +504,20 @@
      ================================================================ */
   var MENU = [
     ["Günlük çalışma", [
-      ["📘", "Bugünkü Dersim", "Öğretmeninizin hazırladığı ders", "ders.html"],
-      ["🔁", "Tekrar Et", "Öğrendiklerinizi pekiştirin", "tekrar.html"],
+      ["📘", "Bugünkü Dersim", "Öğretmeninin hazırladığı ders", "ders.html"],
+      ["🔁", "Tekrar Et", "Öğrendiklerini pekiştir", "tekrar.html"],
       ["🃏", "Kelime Öğren", "En sık kullanılan kelimeler", "kelime-ogren.html"],
-      ["✍️", "Cümle Çalış", "Cümle kurma alıştırmaları", "practice.html"],
-      ["🎙️", "Konuşma Pratiği", "Sesli sohbetle konuşun", "chat.html"],
+      ["✍️", "Cümle Yazma", "Türkçesini gör, İngilizcesini yaz", "practice.html"],
+      ["🎙️", "Konuşma Pratiği", "Sesli sohbet et", "chat.html"],
       ["🧑‍🏫", "Öğretmene Sor", "Türkçe anlatımlı öğretmen", "teacher.html"]
     ]],
     ["Takip", [
-      ["📈", "İlerlemem", "Ne kadar çalıştığınızı görün", "rapor.html"],
-      ["📕", "Hata Defterim", "Yanlış yaptığınız cümleler", "hata-defteri.html"]
+      ["📈", "İlerlemem", "Ne kadar çalıştığını gör", "rapor.html"],
+      ["📕", "Hata Defterim", "Yanlış yaptığın cümleler", "hata-defteri.html"]
     ]],
     ["Diğer", [
       ["🧭", "Tüm Bölümler", "Uygulamadaki bütün araçlar", "menu.html"],
-      ["👤", "Profil ve Ayarlar", "Bilgileriniz ve tercihleriniz", "profil.html"],
+      ["👤", "Profil ve Ayarlar", "Bilgilerin ve tercihlerin", "profil.html"],
       ["❓", "Nasıl Kullanılır?", "Adım adım kullanım kılavuzu", "kilavuz.html"]
     ]]
   ];
@@ -565,7 +565,7 @@
     html += '<h3 class="kk-grup">Görünüm</h3><ul class="kk-liste">'
       + '<li><button type="button" class="kk-oge kk-oge-btn" data-kk-yazi-ac>'
       + '<span class="kk-i" aria-hidden="true">🔠</span>'
-      + '<span><b>Yazı Boyutu</b><small>Yazıları büyütün veya küçültün</small></span>'
+      + '<span><b>Yazı Boyutu</b><small>Yazıları büyüt veya küçült</small></span>'
       + '<span class="kk-ok" aria-hidden="true">›</span></button></li></ul>';
     html += '</div></div>';
     menuPerde = el("div", "kk-ui kk-perde", html);
@@ -577,7 +577,7 @@
     var html = '<div class="kk-pencere" role="dialog" aria-modal="true" aria-labelledby="kkYaziBaslik">'
       + '<header><h2 id="kkYaziBaslik">Yazı ve Görünüm</h2><button type="button" class="kk-kapat" data-kk-kapat>✕ Kapat</button></header>'
       + '<div class="kk-kaydir">'
-      + '<p class="kk-aciklama">Size en rahat gelen yazı boyutunu seçin. Seçiminiz hemen uygulanır ve bu cihazda hatırlanır.</p>'
+      + '<p class="kk-aciklama">Sana en rahat gelen yazı boyutunu seç. Seçimin hemen uygulanır ve bu cihazda hatırlanır.</p>'
       + '<div class="kk-boyutlar" role="radiogroup" aria-label="Yazı boyutu">';
     Object.keys(BOYUTLAR).forEach(function(k){
       var b = BOYUTLAR[k];
@@ -587,7 +587,7 @@
     });
     html += '</div>'
       + '<button type="button" class="kk-anahtar" role="switch" data-kk-mod aria-checked="true">'
-      + '<span><b>Kolay görünüm</b><small>Büyük düğmeler, net renkler, alt menü çubuğu. Kapatırsanız uygulamanın eski görünümüne dönülür.</small></span>'
+      + '<span><b>Kolay görünüm</b><small>Büyük düğmeler, net renkler, alt menü çubuğu. Kapatırsan uygulamanın eski görünümüne dönülür.</small></span>'
       + '<span class="kk-durum"></span></button>'
       + '</div></div>';
     yaziPerde = el("div", "kk-ui kk-perde", html);

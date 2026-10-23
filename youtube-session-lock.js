@@ -13,6 +13,9 @@ function offlineReady(uid){try{if(localStorage.getItem("dh-youtube-last-owner")=
 async function start(){
  if(/^(127\.0\.0\.1|localhost)$/.test(location.hostname)&&new URLSearchParams(location.search).has("preview")){ready({preview:true,offline:true});return}
  var uid=localUid();
+ /* Hesapsız (misafir) kullanıcı: tek-oturum kilidi yalnız hesaplar için anlamlı.
+    Misafiri giriş duvarına takma; ilerleme bu cihazda tutulur. */
+ if(!uid){ready({guest:true,offline:true});return}
  if(!navigator.onLine){if(uid&&offlineReady(uid))return;card("Bağlantı gerekiyor","Bu cihazın ilk tek-oturum yetkisini doğrulamak için bir kez internete bağlanın.","");return}
  try{
   var mods=await Promise.all([import("https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js"),import("https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js"),import("https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js")]);
@@ -31,7 +34,7 @@ async function start(){
   stopWatch=fs.onSnapshot(ref,function(snap){var v=snap.exists()?snap.data():{};if(v.sessionId&&v.sessionId!==sid&&+v.expiresAt>Date.now()){clearInterval(timer);blocked(user.email||"")}},function(){});
   global.addEventListener("online",beat);
   global.addEventListener("pagehide",function(){clearInterval(timer);if(stopWatch)try{stopWatch()}catch(e){};try{fs.setDoc(ref,{sessionId:sid,heartbeatAt:Date.now(),expiresAt:Date.now()-1},{merge:true})}catch(e){}},{once:true});
- }catch(e){if(e&&e.code==="busy"){blocked("");return}if(uid&&offlineReady(uid))return;card("Oturum doğrulanamadı","Tek kullanıcı kilidi şu anda doğrulanamadı. Bağlantınızı kontrol edip yeniden deneyin.",'<button class="yt-top-button" onclick="location.reload()">Yeniden dene</button>')}
+ }catch(e){if(e&&e.code==="busy"){blocked("");return}if(uid&&offlineReady(uid))return;card("Bağlantı kurulamadı","İnternet bağlantını kontrol edip yeniden dene.",'<button class="yt-top-button" onclick="location.reload()">Yeniden dene</button>')}
 }
 global.DHYouTubeSessionReady=new Promise(function(resolve){global.addEventListener("dh-youtube-session-ready",function(e){resolve(e.detail)},{once:true})});
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();

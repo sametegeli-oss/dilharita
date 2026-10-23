@@ -45,7 +45,7 @@
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=3">
-<script src="./kolay-kullanim.js?v=3"></script>
+<script src="./kolay-kullanim.js?v=4"></script>
 </head>
 <body>
 
@@ -96,12 +96,12 @@
     <div class="grup__ic">
       <a class="oge" href="./immersive.html"><div class="oge__ad">🌍 İngilizceyi Yaşa</div><div class="oge__alt">Sanal dünyalarda görev yap, konuş ve hikâyeyi yönlendir</div></a>
       <a class="oge" href="./youtube-egitim.html"><div class="oge__ad">▶ YouTube Eğitim Stüdyosu</div><div class="oge__alt">Gerçek videoları iki dilli cümlelerle dinle, döndür, konuş ve öğren</div></a>
-      <a class="oge" href="./youtube-pratik.html"><div class="oge__ad">🎬 YouTube’dan Çalış</div><div class="oge__alt">İzlediğin videoları görüntü, ses, dikte ve shadowing ile tekrar et</div></a>
+      <a class="oge" href="./youtube-pratik.html"><div class="oge__ad">🎬 YouTube’dan Çalış</div><div class="oge__alt">İzlediğin videoları görüntü, ses, dikte ve duyduğunu taklit ederek tekrar et</div></a>
       <a class="oge" href="./tekrar.html"><div class="oge__ad">Tekrar</div><div class="oge__alt">Vadesi gelen kelime ve cümleler</div></a>
       <a class="oge" href="./chat.html"><div class="oge__ad">Sohbet</div><div class="oge__alt">Konuşan avatarla senaryolar</div></a>
       <a class="oge" href="./videopractice.html"><div class="oge__ad">Video</div><div class="oge__alt">Telaffuz çalışması</div></a>
-      <a class="oge" href="./pv-practice.html"><div class="oge__ad">Phrasal verb pratiği</div><div class="oge__alt">Çoktan seçmeli, boşluk doldurma, dinle-yaz</div></a>
-      <a class="oge" href="./practice.html"><div class="oge__ad">Çalışma ekranı</div><div class="oge__alt">Serbest cümle çalışması</div></a>
+      <a class="oge" href="./pv-practice.html"><div class="oge__ad">Öbek fiil alıştırması</div><div class="oge__alt">Çoktan seçmeli, boşluk doldurma, dinle-yaz</div></a>
+      <a class="oge" href="./practice.html"><div class="oge__ad">Cümle yazma</div><div class="oge__alt">Türkçesini gör, İngilizcesini yaz</div></a>
     </div>
   </details>
 
@@ -110,7 +110,7 @@
     <summary>Fotoğraftan ekle <span class="grup__alt">tara · çevir · çalış</span></summary>
     <div class="grup__ic">
       <a class="oge" href="./foto-ekle.html"><div class="oge__ad">Fotoğraftan ekle</div><div class="oge__alt">Fotoğraftaki cümleleri tara ve çevir</div></a>
-      <a class="oge" href="./ocr-sentence.html"><div class="oge__ad">OCR cümle modu</div><div class="oge__alt">Eklediğin cümleleri zengin modda çalış</div></a>
+      <a class="oge" href="./ocr-sentence.html"><div class="oge__ad">Taranan cümleleri çalış</div><div class="oge__alt">Fotoğraftan eklediğin cümleler</div></a>
     </div>
   </details>
 
@@ -129,7 +129,7 @@
 
   <!-- AYARLAR -->
   <details class="grup dh-group" id="grpSettings">
-    <summary>Ayarlar ve veri <span class="grup__alt">bildirim · yedek · senkron</span></summary>
+    <summary>Ayarlar ve veri <span class="grup__alt">hatırlatma · yedek · hesap</span></summary>
     <div class="grup__ic">
 
       <a class="oge" href="./profil.html"><div class="oge__ad">Kişisel öğrenme profili</div><div class="oge__alt">Yaş, eğitim, amaç, ilgi alanı ve anlatım tercihi</div></a>
@@ -154,8 +154,8 @@
         </div>
       </div>
 
-      <button class="dh-btn dh-btn--ikincil dh-btn--tam" id="dhCloudSyncBtn">Bulutla senkronize et</button>
-      <button class="dh-btn dh-btn--ikincil dh-btn--tam" id="dhCleanupOrphansBtn" style="margin-top:6px">Bulut video kayıtlarını temizle (bir kerelik)</button>
+      <button class="dh-btn dh-btn--ikincil dh-btn--tam" id="dhCloudSyncBtn">İlerlememi buluta kaydet</button>
+      
       <div class="dh-sync-progress-wrap" id="dhSyncProgressWrap" hidden style="margin-top:6px">
         <div style="height:6px;border-radius:99px;background:var(--dh-cizgi,#2a3a4a);overflow:hidden">
           <div id="dhSyncProgressBar" style="height:100%;width:0%;border-radius:99px;background:var(--dh-marka-metin,#55e6d1);transition:width .25s ease"></div>
@@ -171,13 +171,16 @@
           <input type="file" id="dhRestoreFile" accept="application/json" style="display:none">
         </label>
       </div>
-      <label class="dh-kart dh-kart--sessiz" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px">
+      <details class="dh-gelismis" style="margin-top:8px"><summary class="dh-btn dh-btn--sade dh-btn--tam" style="cursor:pointer">⚙️ Gelişmiş ayarlar</summary>
+<label class="dh-kart dh-kart--sessiz" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px">
         <input type="checkbox" id="dhBackupSecrets" checked style="margin-top:3px;accent-color:#38bdf8">
         <span><b>API anahtarlarını şifreli yedeğe dahil et</b><br>
         <span class="dh-ipucu">Parolanın kendisi değil, bu cihaza özel dışarı aktarılamayan güvenli anahtar hatırlanır.</span></span>
       </label>
       <button class="dh-btn dh-btn--sade dh-btn--tam" id="dhForgetBackupPassword" type="button">Yedek parolası hatırlamasını kaldır</button>
-      <div class="dh-ipucu">Tam yedek görselleri ve bütün çevrimdışı AI verilerini de içerir; dosya büyük olabilir.</div>
+      <button class="dh-btn dh-btn--ikincil dh-btn--tam" id="dhCleanupOrphansBtn" style="margin-top:6px">Bulut video kayıtlarını temizle (bir kerelik)</button>
+</details>
+<div class="dh-ipucu">Tam yedek görselleri ve bütün çevrimdışı AI verilerini de içerir; dosya büyük olabilir.</div>
       <div class="dh-ipucu" id="dhBackupMsg" style="min-height:16px" aria-live="polite"></div>
 
       <a class="dh-btn dh-btn--ikincil dh-btn--tam" href="./veri-gizlilik.html">Gizlilik ve veri kontrolleri</a>

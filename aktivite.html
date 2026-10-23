@@ -23,7 +23,7 @@ h1{font-size:17px;margin:0;flex:1}
 </style><link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=3">
-<script src="./kolay-kullanim.js?v=3"></script>
+<script src="./kolay-kullanim.js?v=4"></script>
 </head><body>
 <div class="top"><a href="./index.html">←</a><h1>📋 Bugünkü Aktivitem</h1></div>
 <div id="dhDayReview" style="max-width:720px;margin:0 auto 14px"></div>
@@ -42,8 +42,8 @@ h1{font-size:17px;margin:0;flex:1}
   document.getElementById("stats").innerHTML =
     '<div class="stat"><b style="color:#4ade80">'+correct+'</b><span>doğru cevap</span></div>'
     +'<div class="stat"><b style="color:#f59e0b">'+wrong+'</b><span>yanlış cevap</span></div>'
-    +'<div class="stat"><b style="color:#38bdf8">'+visits+'</b><span>sayfa ziyareti</span></div>'
-    +'<div class="stat"><b>'+log.length+'</b><span>toplam olay</span></div>';
+    +'<div class="stat"><b style="color:#38bdf8">'+visits+'</b><span>açılan ekran</span></div>'
+    +'<div class="stat"><b>'+log.length+'</b><span>toplam işlem</span></div>';
 
   var feed=document.getElementById("feed");
 
@@ -79,7 +79,7 @@ h1{font-size:17px;margin:0;flex:1}
       else lines.push("Son 7 gün ortalaman %"+weekAcc+" — bugün de bu düzeyi koruyorsun.");
     }
     if(chats>0) lines.push(chats+" sohbet mesajı gönderdin — konuşma pratiği harika bir alışkanlık.");
-    if(visits>=8) lines.push("Bugün "+visits+" farklı ekran gezdin, oldukça aktif bir gündü.");
+    if(visits>=8) lines.push("Bugün "+visits+" kez bir ekran açtın, hareketli bir gündü.");
     if(streak>=3) lines.push("🔥 "+streak+" günlük serin sürüyor, bugünü de kaydettiğin için tebrikler.");
     rv.innerHTML='<div style="background:linear-gradient(135deg,#111827,#0a2233);border-left:6px solid #38bdf8;border-radius:14px;padding:16px 20px">'
       +'<div style="color:#60a5fa;font:900 12px system-ui;letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px">🧭 Koçun Bugünkü Değerlendirmesi</div>'
