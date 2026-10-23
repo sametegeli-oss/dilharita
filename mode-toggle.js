@@ -38,6 +38,8 @@
       ".dh-mode-btn:not(.active):hover{color:#e2e8f0;background:#ffffff14}",
       ".dh-mode-toggle.on-photo{vertical-align:middle;margin:0 6px}",
       ".dh-mode-toggle.on-video{position:fixed;left:16px;top:126px;z-index:130}",
+      /* modül seçme ekranında başlığın üstüne biniyordu: orada gizle */
+      "body:has(.picker) .dh-mode-toggle.on-video{display:none!important}",
       ".dh-prev-float{position:fixed;right:140px;top:72px;z-index:60;border:0;",
       "  border-radius:999px;background:#334155;color:#fff;font-weight:950;",
       "  padding:12px 16px;box-shadow:0 22px 70px rgba(0,0,0,.45);cursor:pointer;",

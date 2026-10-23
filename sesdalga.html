@@ -369,9 +369,9 @@
   <div class="header-panel">
     <div style="display: flex; align-items: center; gap: 6px;">
       <a href="javascript:history.back()" class="btn-back">⬅ Geri Dön</a>
-      <h2>🎯 AKUSTİK ARTİKÜLASYON TRAINER v4</h2>
+      <h2>🎯 Telaffuz Çalışması</h2>
     </div>
-    <div class="quick-tip" id="quickTip">Kelimeye dokunun • ⛶ ile tam ekranda hassas ayar yapın.</div>
+    <div class="quick-tip" id="quickTip">Bir kelimeye dokun, sonra aşağıdaki 3 adımı sırayla yap.</div>
   </div>
   
   <div class="left-zone">
@@ -387,7 +387,7 @@
           <div class="eyes" style="display:none"><div class="eye"></div><div class="eye"></div></div>
           <div class="mouth rest" id="mouthHoca" style="display:none"></div>
         </div>
-        <div class="avatar-label" style="color:var(--accent)">🎓 AI COACH</div>
+        <div class="avatar-label" style="color:var(--accent)">🎓 Öğretmen</div>
       </div>
       
       <div class="avatar-wrapper">
@@ -396,13 +396,13 @@
           <div class="eyes" style="display:none"><div class="eye"></div><div class="eye"></div></div>
           <div class="mouth rest" id="mouthUser" style="display:none"></div>
         </div>
-        <div class="avatar-label" id="userLabel">🎙️ YOU</div>
+        <div class="avatar-label" id="userLabel">🎙️ Sen</div>
       </div>
     </div>
 
     <div class="timeline-container">
       <div class="timeline-meta">
-        <div>📊 SEYİR VE DELTA SAPMA SPEKTRUMU</div>
+        <div>📊 Ses çizgileri: öğretmen ve sen</div>
         <div style="display: flex; gap: 4px;">
           <span class="dur-badge">H: <span id="ttsDuration">0s</span></span>
           <span class="dur-badge">S: <span id="userDuration">0s</span></span>
@@ -432,23 +432,23 @@
       <div class="score-badge-display" id="scoreBadge">Ses Bekleniyor</div>
       
       <div class="metric-sub-row">
-        <div class="metric-box">Metin Skoru<div class="metric-val" id="mSöz">--</div></div>
-        <div class="metric-box">Segment Hızı<div class="metric-val" id="mTempo">--</div></div>
-        <div class="metric-box">Vurgu Uyum<div class="metric-val" id="mVurgu">--</div></div>
+        <div class="metric-box">Doğruluk<div class="metric-val" id="mSöz">--</div></div>
+        <div class="metric-box">Hız<div class="metric-val" id="mTempo">--</div></div>
+        <div class="metric-box">Vurgu<div class="metric-val" id="mVurgu">--</div></div>
       </div>
 
       <div class="diff-line" id="diffLine"></div>
       
       <div class="trainer-feedback-card">
-        <div class="feedback-title">🧭 AI TAVSİYELERİ</div>
+        <div class="feedback-title">🧭 Öneriler</div>
         <div class="feedback-text" id="feedbackText">Önce '1. Hoca Sesini Çizdir & Dinle' adımına dokunun.</div>
       </div>
     </div>
 
     <div class="control-buttons">
-      <button class="btn-trainer hoca" id="analyzeTtsBtn">🎓 1. Hoca Çizdir</button>
+      <button class="btn-trainer hoca" id="analyzeTtsBtn">🎓 1. Öğretmeni dinle</button>
       <button class="btn-trainer" id="recordBtn" disabled>🎙️ 2. Mikrofonla Oku</button>
-      <button class="btn-trainer compare" id="analyzeGraphsBtn" disabled>🔍 3. Grafikleri Kıyasla & Analiz Et</button>
+      <button class="btn-trainer compare" id="analyzeGraphsBtn" disabled>🔍 3. Karşılaştır</button>
       <button class="btn-trainer duet-btn" id="duetBtn">▶ Düet Oynat</button>
       <button class="btn-trainer solo-btn" id="playBtn" style="background:#1e293b;">▶ Sadece Sesim</button>
       <button class="btn-trainer" id="origVoiceBtn" style="background:#0e7490;">🔊 Orijinal Sesi Dinle</button>
@@ -876,7 +876,7 @@
 
   async function playUserWordSegment(startTime, endTime, onComplete) {
     if (!voiceUrl) {
-      segStatus("Henüz kendi kaydınız yok. Önce '2. Mikrofonla Oku' adımını yapın.");
+      segStatus("Henüz kendi kaydın yok. Önce '2. Mikrofonla Oku' adımını yap.");
       return;
     }
 
@@ -1827,7 +1827,7 @@ function hocaTalkAlign(charIndex){
   function openWordTuner(wordId) {
     if (wordId === null || wordId === undefined) return;
     if (!wordTimestamps[wordId]) {
-      segStatus("Önce '1. Hoca Çizdir' adımını tamamlayın.");
+      segStatus("Önce '1. Öğretmeni dinle' adımını yap.");
       return;
     }
     selectedWordIndex = wordId;
@@ -1843,7 +1843,7 @@ function hocaTalkAlign(charIndex){
     const ub = userWordTimestamps[wordId];
     document.getElementById("wtStatus").innerHTML = ub
       ? "Hassas mod: kaydırıcılar kelimenin ±0.5s çevresinde çalışır. <b>Karşılaştır</b> düğmesiyle yapay zekayı tetikleyin."
-      : "Kendi kaydınız yok — '2. Mikrofonla Oku' sonrası kelimeniz de burada görünür.";
+      : "Kendi kaydın yok — '2. Mikrofonla Oku' sonrası senin sesin de burada görünür.";
 
     setupTunerZoom();
     refreshTunerControls();

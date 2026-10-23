@@ -629,7 +629,8 @@ function addBubble(role, text, options){
       tr.textContent = "🇹🇷 Türkçesi";
       tr.onclick = () => explainText(text);
       actions.appendChild(listen);
-      actions.appendChild(tr);
+      /* Mesaj zaten Türkçeyse "Türkçesi" düğmesi anlamsız */
+      if(((String(text).match(/[çğıöşüÇĞİÖŞÜ]/g)||[]).length) < 2) actions.appendChild(tr);
       el.appendChild(actions);
     }
   }
@@ -1126,7 +1127,7 @@ function sesCalmadiNotu(neden){
       +"<br><br><b>Sırayla deneyin:</b><br>1) Bilgisayarın / telefonun sesi açık mı, kulaklık takılı mı?"
       +"<br>2) Sayfayı yenileyip <b>Dinle</b>'ye tekrar basın (Chrome'un seslendirmesi bazen takılı kalır)."
       +"<br>3) Olmazsa sayfayı <b>Microsoft Edge</b> ile açın."
-      +"<br><br><a href=\"./ses-teshis.html\" style=\"color:#fcd34d;font-weight:800\">Cihazdaki sesleri kontrol et →</a>";
+      +"<br><br><a href=\"./ses-teshis.html\" style=\"display:inline-block;min-height:44px;padding:10px 14px;border-radius:10px;background:#78350f;color:#fde68a;font-weight:800;text-decoration:none\">Cihazdaki sesleri kontrol et →</a>";
     hist.appendChild(not);
     scrollHistory();
   }catch(e){}
@@ -1149,7 +1150,7 @@ function trSesYokUyarisi(){
     not.style.cssText="border:2px solid #f59e0b;background:#2a1d05;color:#fff;line-height:1.5";
     not.innerHTML="🔇 <b>Bu cihazda Türkçe ses bulunamadı.</b> Bu yüzden açıklamanın Türkçe kısımları okunamıyor, yalnız İngilizce kısımlar okunuyor."
       +"<br><br><b>Nasıl düzelir?</b> "+nasil
-      +"<br><br><a href=\"./ses-teshis.html\" style=\"color:#fcd34d;font-weight:800\">Cihazdaki sesleri kontrol et →</a>";
+      +"<br><br><a href=\"./ses-teshis.html\" style=\"display:inline-block;min-height:44px;padding:10px 14px;border-radius:10px;background:#78350f;color:#fde68a;font-weight:800;text-decoration:none\">Cihazdaki sesleri kontrol et →</a>";
     hist.appendChild(not);
     scrollHistory();
   }catch(e){}
@@ -1331,11 +1332,22 @@ async function explainText(text){
     $("explainText").innerHTML=_e;
   }catch(e){ $("explainText").textContent="Açıklama alınamadı. AI tercihini kontrol et veya tekrar dene."; }
 }
+/* Kısa bilgi notu: düğmeye basınca bir şey olmuyormuş gibi görünmesin */
+function dhNot(msg){
+  try{
+    var n=document.getElementById("dhChatNot");
+    if(!n){ n=document.createElement("div"); n.id="dhChatNot"; n.setAttribute("role","status");
+      n.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:150px;z-index:9999;max-width:min(92vw,520px);background:#0f172a;color:#f8fafc;border:2px solid #38bdf8;border-radius:14px;padding:12px 16px;font:600 17px/1.45 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.45);text-align:center";
+      document.body.appendChild(n); }
+    n.textContent=msg; n.style.display="block";
+    clearTimeout(n._t); n._t=setTimeout(function(){ n.style.display="none"; }, 4200);
+  }catch(e){}
+}
 async function analyzeChatErrors(){
   const b=$("errSaveBtn"); if(!b) return;
   const userMsgs=State.history.filter(m=>m.role==="user").map(m=>m.content).slice(-12);
-  if(!userMsgs.length){ b.textContent="—"; setTimeout(()=>b.textContent="📝",1200); return []; }
-  if(!(window.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())) return null;
+  if(!userMsgs.length){ dhNot("Henüz bir şey yazmadın. Birkaç cümle konuştuktan sonra hatalarını buradan deftere kaydedebilirsin."); return []; }
+  if(!(window.DHProviders&&DHProviders.hasAnyKey&&DHProviders.hasAnyKey())){ dhNot("Hataları bulmak için yapay zekâ anahtarı gerekir. Profil sayfasından ayarlayabilirsin."); return null; }
   b.textContent="⏳";
   try{
     const sys="You are an English error analyzer for a Turkish learner. Given the learner's chat messages, list ONLY real grammar/vocabulary errors as JSON array: [{\"wrong\":\"...\",\"correct\":\"...\",\"tr\":\"kısa Türkçe açıklama\"}]. Max 5. If no errors return []. JSON only, no prose.";
@@ -1391,7 +1403,7 @@ async function finishSession(){
 
 document.addEventListener("click",function(e){
   if(e.target&&e.target.id==="errSaveBtn") analyzeChatErrors();
-  if(e.target&&e.target.id==="autoBtn"){ window.__dhAuto=!window.__dhAuto; e.target.style.background=window.__dhAuto?"#16a34a":"#334155"; }
+  if(e.target&&e.target.id==="autoBtn"){ window.__dhAuto=!window.__dhAuto; e.target.style.background=window.__dhAuto?"#16a34a":"#334155"; dhNot(window.__dhAuto?"Eller serbest AÇIK: karşındaki susunca mikrofon kendiliğinden açılır.":"Eller serbest KAPALI."); }
 });
 setTimeout(dhRenderTasks, 800);
 async function suggestReply(){
@@ -1429,6 +1441,7 @@ async function suggestReply(){
 async function sendUser(){
   const input=$("textIn");
   const text=input.value.trim();
+  if(!text && !State.busy){ dhNot("Önce kutuya bir şey yaz ya da 🎙 ile konuş."); return; }
   if(!text || State.busy) return;
   /* Gemini'nin RAPOR JSON'u yanlislikla/kolaylikla ana mesaj kutusuna
      yapistirilabilir. Bunu AI'ye yeni mesaj olarak gonderme: yerelde rapor
@@ -1552,12 +1565,12 @@ function setupEvents(){
       rec.interimResults=false;
       rec.maxAlternatives=1;
       rec.onstart=()=>{listening=true; $("micBtn").classList.add("listening");};
-      rec.onerror=()=>{};
+      rec.onerror=(ev)=>{ var c=ev&&ev.error; dhNot(c==="not-allowed"||c==="service-not-allowed"?"Mikrofon izni yok. Tarayıcının adres çubuğundaki kilit simgesinden mikrofona izin ver.":c==="no-speech"?"Ses duyulmadı. 🎙 düğmesine basıp biraz daha yüksek sesle konuş.":"Mikrofon şu anda çalışmadı. İstersen cevabını yazabilirsin."); };
       rec.onresult=ev=>{ $("textIn").value=ev.results[0][0].transcript; $("textIn").dispatchEvent(new Event("input")); };
       rec.onend=()=>{ listening=false; $("micBtn").classList.remove("listening"); if($("textIn").value.trim()) sendUser(); };
       try{ rec.start(); }catch(e){}
     };
-  }else{ $("micBtn").disabled=true; }
+  }else{ $("micBtn").onclick=()=>dhNot("Bu tarayıcı sesle yazmayı desteklemiyor. Cevabını yazabilir ya da Chrome kullanabilirsin."); }
   $("closeKey").onclick=()=>$("keySheet").classList.remove("open");
   $("saveKey").onclick=()=>{
     const k=$("keyInput").value.trim();

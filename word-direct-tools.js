@@ -60,7 +60,7 @@ function wdResetPrompt(kind){
 function wdPromptEditor(kind, title){
   const val = wdGetPrompt(kind);
   return `<details class="wd-promptbox">
-    <summary>⚙️ Promptu Düzenle — ${esc(title || kind)}</summary>
+    <summary>⚙️ Öğretmen talimatını düzenle — ${esc(title || kind)}</summary>
     <textarea class="wd-textarea wdPromptInput" data-kind="${esc(kind)}">${esc(val)}</textarea>
     <div class="wd-actions">
       <button class="wd-btn green wdPromptSave" data-kind="${esc(kind)}">💾 Promptu Kaydet</button>

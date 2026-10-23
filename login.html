@@ -97,6 +97,19 @@
     try{ var n=new URLSearchParams(location.search).get("next"); if(n&&/^[a-zA-Z0-9._\-]+\.html/.test(n)) next=n; }catch(e){}
     location.replace(next);
   });
+  /* Giriş servisi hiç yüklenemezse (internet yok) "Oturum kontrol ediliyor…"da sonsuza kadar bekletme */
+  setTimeout(function(){
+    try{
+      var b=document.getElementById("boot"), c=document.getElementById("card");
+      if(b && !b.classList.contains("hidden")){
+        b.classList.add("hidden"); c.classList.remove("hidden");
+        var n=document.createElement("p");
+        n.style.cssText="margin:0 0 12px;padding:10px 12px;border-radius:10px;background:#422006;color:#fde68a;font-size:16px;line-height:1.45";
+        n.textContent="İnternete bağlanılamadı. Giriş için bağlantı gerekir; istersen hesapsız devam edebilirsin.";
+        c.insertBefore(n, c.children[1]||null);
+      }
+    }catch(e){}
+  }, 8000);
 </script>
 
 <script type="module">
