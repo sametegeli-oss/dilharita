@@ -82,6 +82,8 @@
    +".dh-tb-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #1e3a5f;background:#10264a}"
    +".dh-tb-ava{width:46px;height:46px;border-radius:12px;background:#0b1120;overflow:hidden;flex:0 0 auto;display:grid;place-items:center;font-size:24px}"
    +".dh-tb-ava canvas,.dh-tb-ava svg{width:100%;height:100%}"
+   +".dh-tb-ava .dil-avatar-v19,.dh-tb-ava .dil-avatar-v19 *{max-width:46px!important;max-height:46px!important}"
+   +".dh-tb-ava img{width:46px!important;height:46px!important;object-fit:cover}"
    +".dh-tb-title{flex:1;min-width:0}.dh-tb-title b{color:#e8eef7;font-size:15px}.dh-tb-title span{display:block;color:#9fb3d9;font-size:12px}"
    +".dh-tb-x{background:#13294d;border:1px solid #1e3a5f;color:#e8eef7;border-radius:8px;width:32px;height:32px;cursor:pointer}"
    +".dh-tb-body{padding:14px;overflow-y:auto;flex:1;color:#e8eef7;font-size:14px;line-height:1.6}"
@@ -162,7 +164,7 @@
     // avatar yükle + mount (bir kez)
     loadAvatar().then(function(ok){
       if(ok && !avatarMounted && window.DilAvatar){
-        try{ avaHost.innerHTML=""; DilAvatar.mount(avaHost); avatarMounted=true; }catch(e){}
+        try{ avaHost.innerHTML=""; DilAvatar.mount(avaHost,{size:46,borderColor:"transparent"}); avatarMounted=true; }catch(e){}
       }
     });
     // HER açılışta güncel konuyla başla (eski cevap kalmasın)

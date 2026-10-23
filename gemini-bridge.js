@@ -215,6 +215,8 @@ function ask(opt){
   }
   function applyResult(){
     clearPending(id); close();
+    /* yapıştırılan Gemini cevabı da "yapay zekâ metni" olarak tanınsın (biçim + mavi İngilizce) */
+    try{ if(window.DHAiMetin&&parsedRaw) DHAiMetin.izEkle(parsedRaw); }catch(e){}
     if(typeof opt.onResult==="function") opt.onResult(parsedResult, parsedRaw);
   }
   function submit(automatic){
