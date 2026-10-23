@@ -904,12 +904,27 @@ try{
   }
 
   function reveal(auto){
-    if(revealed) return; revealed=true;
+    if(revealed) return;
+    /* Boş cevapla "Kontrol et": %0 ve "farklı yapı kurmuşsun" demek yanlış. Önce yazmasını iste. */
+    if(!auto && mode==="prod" && $("inp") && !$("inp").value.trim() && !reveal._bosUyarildi){
+      reveal._bosUyarildi=true;
+      try{ $("inp").focus(); $("inp").placeholder="Cevabını buraya yaz…"; }catch(e){}
+      try{ $("bChk").textContent="Bilmiyorum, cevabı göster"; }catch(e){}
+      try{ if(window.dhCoachSay) dhCoachSay("Önce kutuya İngilizcesini yaz, sonra “Kontrol et”e bas. Bilmiyorsan aynı düğmeye bir daha bas, cevabı göstereyim.","tip"); }catch(e){}
+      return;
+    }
+    reveal._bosUyarildi=false;
+    try{ $("bChk").textContent="Kontrol et"; }catch(e){}
+    revealed=true;
     $("a").classList.remove("hid");
     $("grade").style.display="flex";
     $("bShow").style.display="none"; $("bChk").style.display="none";
 
-    if(mode==="prod"){
+    if(mode==="prod" && !$("inp").value.trim()){
+      /* boş cevap = "bilmiyorum": analiz/benzerlik gösterme, nazikçe doğrusunu söyle */
+      try{ $("score").textContent=""; }catch(e){}
+      try{ if(window.dhCoachSay) dhCoachSay("Sorun değil. Doğrusu: “"+curT.en+"” — bir kez sesli tekrar et, sonra aşağıdan nasıl geldiğini seç.","tip"); }catch(e){}
+    } else if(mode==="prod"){
       var userInputValue = $("inp").value;
       aiSession.push({reference:curT.en,studentAnswer:userInputValue,turkish:curT.tr||"",kind:cur.kind});
 

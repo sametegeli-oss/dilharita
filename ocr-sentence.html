@@ -211,7 +211,7 @@
   function render(){
     var main=$("main");
     if(!State.list.length){
-      main.innerHTML='<div class="empty">Henüz fotoğraftan eklenmiş cümle yok.<br><br><a href="./foto-ekle.html">📷 Fotoğraftan Ekle</a> sayfasından cümle ekleyebilirsin.</div>';
+      main.innerHTML='<div class="empty">Henüz fotoğraftan eklenmiş cümle yok.<br><br><a href="./foto-ekle.html" style="display:inline-block;min-height:48px;padding:12px 18px;border-radius:12px;background:#1d4ed8;color:#fff;font-weight:800;text-decoration:none">📷 Fotoğraftan cümle ekle</a></div>';
       $("counter").textContent="0/0";
       return;
     }
