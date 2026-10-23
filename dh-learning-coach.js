@@ -29,7 +29,7 @@
     try{var ca=el.querySelector('a[href="./index-app.html"]');if(ca&&global.DHProfile&&DHProfile.nextModule)DHProfile.nextModule().then(function(mod){if(mod)ca.setAttribute("href","./index-app.html?mod="+encodeURIComponent(mod));}).catch(function(){});}catch(e){}
     el.hidden=false;
     var save=el.querySelector("[data-dh-goal-save]"),select=el.querySelector("[data-dh-goal]"),status=el.querySelector("[data-dh-goal-status]");
-    if(save)save.onclick=function(){var value=clamp(select&&select.value,1,499);if(global.DHProfile&&DHProfile.set){DHProfile.set({gunlukHedef:value,hedefDegisti:Date.now()});if(status)status.textContent="Günlük hedef kaydedildi.";try{global.dispatchEvent(new CustomEvent("dh-profile-changed",{detail:{gunlukHedef:value}}));}catch(e){}setTimeout(function(){render(el);},450);}else if(status)status.textContent="Hedef kaydedilemedi.";};
+    if(save)save.onclick=function(){var value=clamp(select&&select.value,1,499);if(global.DHProfile&&DHProfile.set){DHProfile.set({gunlukHedef:value,hedefDegisti:Date.now()});if(status)status.textContent="Günlük hedef kaydedildi.";try{global.dispatchEvent(new CustomEvent("dh-profile-changed",{detail:{gunlukHedef:value}}));}catch(e){}setTimeout(function(){render(el);try{var s2=el.querySelector("[data-dh-goal-status]");if(s2){s2.textContent="✓ Günlük hedefin "+value+" cümle olarak kaydedildi.";s2.style.color="#86efac";}}catch(e){}},450);}else if(status)status.textContent="Hedef kaydedilemedi.";};
     return m;
   }
   global.DHLearningCoach={build:build,snapshot:snapshot,render:render,_topError:topError};

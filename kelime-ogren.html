@@ -641,8 +641,9 @@
       +'<select id="lvSel">'
       +['all','A1','A2','B1','B2','C1'].map(function(l){return '<option value="'+l+'"'+(l===lv?' selected':'')+'>'+(l==="all"?"Tümü":l)+'</option>';}).join("")
       +'</select></div>'
-      +'<p style="margin:14px 0 4px">🖼️ Resimler önce ücretsiz Openverse\'ten gelir. İstersen Pexels anahtarı da ekleyebilirsin (video ekranıyla aynı anahtar).</p>'
-      +'<input id="pxKey" type="password" placeholder="Pexels API anahtarı (opsiyonel)">'
+      +'<p style="margin:14px 0 4px">🖼️ Kelime resimleri internetten kendiliğinden gelir.</p>'
+      +'<details style="margin:6px 0"><summary style="cursor:pointer;min-height:40px">Gelişmiş: resim servisi anahtarı</summary><p style="margin:8px 0 4px;font-size:15px">İstersen Pexels anahtarı ekleyebilirsin (video ekranıyla aynı anahtar). Gerekli değildir.</p>'
+      +'<input id="pxKey" type="password" placeholder="Pexels anahtarı (isteğe bağlı)"></details>'
       +'<div class="sheet-btns"><button class="save" id="cfgSave">Kaydet</button><button class="close" id="cfgClose">Kapat</button></div>'
       +'</div>';
     document.body.appendChild(sheet);
