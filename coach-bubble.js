@@ -1246,6 +1246,8 @@
       /* 🌙 gün kapatıldıysa: periyodik mesaj tamamen susar
          (plan bittiyse buildStatusMessage zaten nag yerine Günü Kapat teklifi döndürür) */
       try{ if(dhDayClosed()) return; }catch(e){}
+      /* sohbet / öğretmen / derste kullanıcı meşgul: genel hatırlatma araya girmesin */
+      try{ if(/^(chat[a-z]*|teacher\d*|ders|basla|seviye-testi)\.html$/i.test((location.pathname.split("/").pop()||""))) return; }catch(e){}
       /* balonda ŞU AN görünen bir mesaj varsa üstüne yazma (örn. az önceki
          değerlendirme/yazım mesajını ezmesin) */
       /* son 15 sn içinde koç bir şey söylediyse genel mesajla ÜSTÜNE YAZMA

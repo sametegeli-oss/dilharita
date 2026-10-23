@@ -1325,7 +1325,10 @@ async function explainText(text){
   }
   try{
     const reply=await groqChat([{role:"system", content:"You are a Turkish-speaking English teacher. Translate the sentence into Turkish and briefly explain key vocabulary or grammar. Maximum 3 short Turkish sentences."},{role:"user", content:text}]);
-    $("explainText").textContent=reply || "Açıklama alınamadı.";
+    /* AI cevabındaki **kalın** / *eğik* işaretleri yıldız olarak görünmesin */
+    var _e=String(reply||"Açıklama alınamadı.").replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];})
+      .replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/\*([^*\n]+)\*/g,"<i>$1</i>").replace(/\*/g,"").replace(/\n/g,"<br>");
+    $("explainText").innerHTML=_e;
   }catch(e){ $("explainText").textContent="Açıklama alınamadı. AI tercihini kontrol et veya tekrar dene."; }
 }
 async function analyzeChatErrors(){
