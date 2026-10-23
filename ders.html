@@ -490,7 +490,15 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
             });
             try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, correct); }catch(e){}
             recordMastery(s.itemId, s.phase, correct, true);
-            setTimeout(next, 900);
+            /* Yanlışta doğru şık eskiden 0,9 sn yanıp ders kendiliğinden
+               geçiyordu; okumaya vakit kalmıyordu. Yanlışta durulur. */
+            if(correct){ setTimeout(next, 1200); return; }
+            var geri=document.createElement("div");
+            geri.className="item-detail"; geri.style.cssText="margin-top:12px;font-size:17px;line-height:1.5";
+            geri.innerHTML='Bu değil. Doğrusu yeşil işaretli olan: <b>'+esc(s.item.tr||s.item.label)+'</b>'
+              +'<div class="actions" style="margin-top:10px"><button class="btn b-green" id="exNext">Devam et</button></div>';
+            opts.parentNode.appendChild(geri);
+            var dn=$("exNext"); if(dn) dn.onclick=next;
           };
         });
       }
@@ -659,6 +667,9 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
     }catch(e){}
     /* Oturum bitti: depodan dus ki "yeni ders" gercekten yeni gelsin. */
     try{ if(window.DHDers) DHDers.temizle(); }catch(e){}
+    /* Bugün bitirildiğini hatırla: ders yeniden açılınca sessizce YENİ bir ders
+       kurulmasın (kullanıcı dersi bitirmediğini sanıp baştan yapıyordu). */
+    try{ localStorage.setItem("dh-ders-bitti-"+bugunYerel(), "1"); }catch(e){}
     // Önce öğrenme çizgisi (streak) ekranını göster, sonra bitiş ekranı.
     if(window.DHStreak && DHStreak.show){
       DHStreak.show({ onContinue: showDoneScreen });
@@ -745,8 +756,25 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 
   /* zorla=true: kullanici acikca "yeni ders" istedi ya da anayasa degisti.
      Aksi halde bugunun dersi DEPODAN geri yuklenir, yeniden URETILMEZ. */
+  function bugunYerel(){ var d=new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+  function renderBugunBitti(){
+    $("content").innerHTML='<div class="card" style="text-align:center">'
+      +'<div style="font-size:46px;margin-bottom:6px">🎉</div>'
+      +'<div class="item-main" style="font-size:21px">Bugünkü dersini bitirdin</div>'
+      +'<div class="item-detail" style="margin:10px 0 4px">Yarın senin için yeni bir ders hazırlanacak. İstersen şimdi bir ders daha yapabilirsin.</div>'
+      +'<div class="actions" style="justify-content:center;margin-top:18px">'
+      +'<a class="btn b-green" href="./index.html">🏠 Ana sayfaya dön</a>'
+      +'<button class="btn b-ghost" id="birDahaDers">Yeni bir ders başlat</button>'
+      +'</div></div>';
+    $("birDahaDers").onclick=function(){
+      try{ localStorage.removeItem("dh-ders-bitti-"+bugunYerel()); }catch(e){}
+      try{ if(window.DHDers) DHDers.temizle(); }catch(e){}
+      start(true);
+    };
+  }
   function start(zorla){
     idx=0;
+    try{ if(!zorla && localStorage.getItem("dh-ders-bitti-"+bugunYerel())==="1"){ renderBugunBitti(); return; } }catch(e){}
 
     /* ── GERI YUKLEME ─────────────────────────────────────────────
        Ders gun icinde donar. Yeniden uretilirse pickLearned() diziyi
