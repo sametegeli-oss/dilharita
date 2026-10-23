@@ -106,9 +106,12 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
     <div class="actions">
       <button class="btn" id="drillBtn" style="background:#b45309;border-color:#f59e0b">🎯 Hatalarını Çöz</button>
       <a class="btn purple" href="./akilli-tekrar.html">🧠 Akıllı Tekrar</a>
+      <details class="hdAraclar" style="width:100%"><summary class="btn" style="background:#334155;cursor:pointer;list-style:none">⚙️ Daha fazla araç</summary>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
       <button class="btn green" id="exportBtn">💾 Yedek dosyası indir</button>
       <button class="btn" id="revalBtn" style="background:#0e7490">🧹 Kabul Edilenleri Temizle</button>
       <button class="btn" id="aiCleanBtn" style="background:#7c3aed">🤖 AI ile Temizle</button>
+      </div></details>
     </div>
   </div>
   <div class="stats">
@@ -125,7 +128,7 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
     <main class="box">
       <div class="filter">
         <input id="search" placeholder="Cümle, cevap, modül ara">
-        <select id="source"><option value="">Tümü</option><option value="practice">Practice</option><option value="video">Video</option><option value="youtube">YouTube</option></select>
+        <select id="source"><option value="">Tümü</option><option value="practice">Cümle çalışma</option><option value="video">Video</option><option value="youtube">YouTube</option></select>
         <select id="priority"><option value="">Öncelik</option><option value="high">Yüksek</option><option value="medium">Orta</option><option value="low">Düşük</option></select>
       </div>
       <div id="records"></div>
@@ -185,7 +188,7 @@ function renderRecords(){
     <div class="record ${r.reviewPriority||""}">
       <div class="meta">
         <span class="pill ${r.reviewPriority||""}">${r.reviewPriority==="high"?"Yüksek":r.reviewPriority==="medium"?"Orta":"Düşük"}</span>
-        <span class="pill">${r.source==="youtube"?"▶ YouTube":LearningErrorDB.esc(r.source||"")}</span>
+        <span class="pill">${r.source==="youtube"?"▶ YouTube":r.source==="practice"?"Cümle çalışma":r.source==="video"?"Video":LearningErrorDB.esc(r.source||"")}</span>
         <span class="pill">${LearningErrorDB.esc(r.level||"")}</span>
         <span class="pill">${LearningErrorDB.esc(r.module||"")}</span>
         <span>${fmt(r.createdAt)}</span>
@@ -200,7 +203,8 @@ function renderRecords(){
         <button class="btn" data-drill="${LearningErrorDB.esc(r.id)}" style="background:#b45309;border-color:#f59e0b;padding:6px 12px;font-size:12px">🎯 Bunu çöz</button>
         <button class="btn red" data-del="${LearningErrorDB.esc(r.id)}" style="padding:6px 12px;font-size:12px">🗑 Bu kaydı sil</button>
       </div>
-    </div>`).join(""):`<div class="empty">Bu filtrede kayıt yok.</div>`;
+    </div>`).join(""):(RECORDS.length?`<div class="empty">Bu filtrede kayıt yok.</div>`:`<div class="empty" style="font-size:18px;line-height:1.6">👍 Henüz hata kaydın yok.<br>Derslerde yanlış yazdığın cümleler buraya gelir; sonra buradan tekrar çalışabilirsin.</div>`);
+  try{ $("drillBtn").style.display=RECORDS.length?"":"none"; $("clearBtn").style.display=RECORDS.length?"":"none"; }catch(_){}
   $("records").querySelectorAll("[data-drill]").forEach(function(b){
     b.onclick=function(){
       var rec=RECORDS.find(function(r){ return String(r.id)===b.getAttribute("data-drill"); });

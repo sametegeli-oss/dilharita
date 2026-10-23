@@ -66,6 +66,8 @@
         cursor: pointer;
     }
     .external-ai-btn:hover { opacity: 0.9; }
+    /* 50-80 yaş: dış AI düğmeleri yalnız "İleri seçenekler" açılınca görünür */
+    .ai-selector-container:not([open]) ~ .grid .external-ai-btn { display: none; }
     /* ── GÜNÜN KONUŞMASI KARTI ── */
     .dh-gunun{display:none;margin:10px auto 16px;max-width:640px;text-align:left;
       background:linear-gradient(135deg,#0d2a4a,#10203a);border:1px solid #2563eb;
@@ -104,7 +106,7 @@
 </div>
 
 <details class="ai-selector-container">
-    <summary>İleri seçenekler · Haricî AI ile aç</summary>
+    <summary>İleri seçenekler · başka bir yapay zekâ sitesinde aç</summary>
     <label for="aiEngineSelect">🧠 Dışarıda Açılacak AI Motoru:</label>
     <select id="aiEngineSelect" class="ai-select" onchange="saveAIEngine(this.value)">
         <option value="gemini">Google Gemini</option>
@@ -119,31 +121,31 @@
         <a href="#" onclick="navigateToInternalChat(event, 'chathotel.html', 0)">
             <img src="assets/avatars_v3/hotel/idle.webp"><b>Otel</b><span>Erkek resepsiyonist · A2</span>
         </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Otel Resepsiyonisti (A2)')">Haricî AI'da aç</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Otel Resepsiyonisti (A2)')">Başka sitede aç</button>
     </div>
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chatrestaurant.html', 1)">
             <img src="assets/avatars_v3/restaurant/idle.webp"><b>Restoran</b><span>Erkek garson · A2</span>
         </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Restoran Garsonu (A2)')">Haricî AI'da aç</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Restoran Garsonu (A2)')">Başka sitede aç</button>
     </div>
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chatdoctor.html', 2)">
             <img src="assets/avatars_v3/doctor/idle.webp"><b>Doktor</b><span>Erkek doktor · B1</span>
         </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Erkek Doktor (B1)')">Haricî AI'da aç</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Erkek Doktor (B1)')">Başka sitede aç</button>
     </div>
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chatairport.html', 3)">
             <img src="assets/avatars_v3/airport/idle.webp"><b>Havaalanı</b><span>Erkek check-in görevlisi · A2</span>
         </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Havaalanı Check-in Görevlisi (A2)')">Haricî AI'da aç</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'Havaalanı Check-in Görevlisi (A2)')">Başka sitede aç</button>
     </div>
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chatteacher.html', 4)">
             <img src="assets/avatars_v3/teacher1/idle.webp"><b>Öğretmenle konuş</b><span>Seviyene ve bugünkü çalışmana göre</span>
         </a>
-        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'İngilizce Öğretmeni')">Haricî AI'da aç</button>
+        <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'İngilizce Öğretmeni')">Başka sitede aç</button>
     </div>
 </div>
 

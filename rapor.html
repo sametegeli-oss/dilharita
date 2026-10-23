@@ -54,7 +54,7 @@ h1{font-size:17px;margin:0}
   <div id="trendList"><div class="empty">Yükleniyor…</div></div>
 
   <h2>🔬 Kişisel Unutma Eğrin</h2>
-  <div style="font-size:12.5px;color:#9fb0c8;margin:-6px 0 10px">Her sütun: "son görüşten X gün sonra hatırlama oranın". Ebbinghaus'un eğrisi — ama senin verinle.</div>
+  <div style="font-size:12.5px;color:#9fb0c8;margin:-6px 0 10px">Her sütun: bir kelimeyi gördükten kaç gün sonra hâlâ hatırladığını gösterir.</div>
   <div id="recallCurve"><div class="empty">Yükleniyor…</div></div>
 </div>
 
@@ -148,7 +148,7 @@ h1{font-size:17px;margin:0}
   var el=document.getElementById("recallCurve"); if(!el) return;
   var log=[]; try{ log=JSON.parse(localStorage.getItem("dh-recall-log")||"[]")||[]; }catch(e){}
   if(log.length<30){
-    el.innerHTML='<div class="empty">Veri birikiyor… ('+log.length+'/30 olay)<br>Tekrar ve kelime oturumları yaptıkça kişisel unutma eğrin burada çizilecek (eski oturumlar sayılmaz — veri bugünden birikir).</div>';
+    el.innerHTML='<div class="empty">Henüz yeterli bilgi yok.<br>Birkaç gün tekrar ve kelime çalıştıkça bu çizelge kendiliğinden oluşacak.</div>';
     return;
   }
   var buckets=[
