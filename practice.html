@@ -1274,6 +1274,16 @@ async function renderPicker(){
 
   const dueBtn = document.getElementById("dueBtn");
   if (due) dueBtn.onclick = () => startDueSession();
+  /* Kayıt olmayan "Akıllı pratik" kartlarını baştan belirt: tıklayınca "çalışma yok"
+     ekranına düşmek 50-80 yaş kullanıcısını şaşırtıyordu. */
+  (async()=>{ try{ if(!State.srs) State.srs=await mAll(); }catch(e){}
+    for(const t of root.querySelectorAll(".source-tile")){
+      try{ const arr=await sourceItems(t.dataset.source);
+        const c=t.querySelector(".mod-count");
+        if(!arr||!arr.length){ t.style.opacity=".55"; if(c) c.textContent="Şu an kayıt yok"; }
+        else if(c) c.textContent="Hazır ✓";
+      }catch(e){}
+    } })();
   root.querySelectorAll(".mod-tile").forEach(t => {
     if(t.dataset.source){ t.onclick=()=>startSourceSession(t.dataset.source); return; }
     t.onclick = () => {
@@ -1687,6 +1697,18 @@ async function sourceItems(kind){
   var seen={}; return out.filter(function(s){if(typeof practiceIgnored==="function"&&practiceIgnored(s.id))return false;var k=s.en.toLowerCase().replace(/[^a-z0-9']+/g," ").trim();if(seen[k])return false;seen[k]=1;return true;});
 }
 var SOURCE_TITLE={today:"Bugünün üretim çalışması",errors:"Hata Defteri telafisi",gemini:"Gemini kök neden çalışması","hard-reviews":"Zor tekrarları üret", "chat-errors":"Konuşma hatalarını düzelt","speaking-prep":"Konuşma öncesi hazırlık",pronunciation:"Telaffuz ve dinleme", "level-gap":"Seviye boşluğu telafisi",weekly:"Haftalık karma sınama"};
+/* Boş cevapla "Kontrol et": hiçbir şey olmuyormuş gibi görünmesin */
+function bosCevapUyar(input){
+  try{ input.focus(); input.placeholder="Cevabını buraya yaz…"; }catch(e){}
+  try{
+    let u=document.getElementById("bosCevapNot");
+    if(!u){ u=document.createElement("div"); u.id="bosCevapNot"; u.setAttribute("role","status");
+      u.style.cssText="margin:8px 0;padding:10px 12px;border-radius:10px;background:#422006;color:#fde68a;font-size:16px;line-height:1.4";
+      input.insertAdjacentElement("afterend",u); }
+    u.textContent="✍️ Önce cevabını yaz (ya da 🎙️ ile söyle), sonra “Kontrol et”e bas.";
+    clearTimeout(u._t); u._t=setTimeout(()=>{ try{u.remove();}catch(e){} },5000);
+  }catch(e){}
+}
 async function startSourceSession(kind,limit){
   State.source=kind; if(kind==="pronunciation")State.mode="listen";
   State.srs=await mAll(); var arr=await sourceItems(kind), n=Math.max(1,Number(limit)||((kind==="weekly")?12:kind==="speaking-prep"?6:3));
@@ -2083,6 +2105,7 @@ function renderClozeLayer(s){
   });
   document.getElementById("hearBtn").onclick = () => speak(s.en);
   document.getElementById("checkBtn").onclick = () => {
+    if (inputs.length && inputs.every(x => !x.value.trim())) { bosCevapUyar(inputs[0]); return; }
     // cevabı tam cümle olarak yeniden kur (gizli yerlere kullanıcının yazdığını koy)
     const answerToks = toks.map((w,i) => {
       if (gapIdx.has(i)){
@@ -2142,7 +2165,7 @@ function renderFullLayer(s){
   document.getElementById("hearBtn").onclick = () => speak(s.en);
   document.getElementById("checkBtn").onclick = () => {
     const answer = input.value.trim();
-    if (!answer) { input.focus(); return; }
+    if (!answer) { bosCevapUyar(input); return; }
     evaluate(s, answer, "full");
   };
   if (sttOK){
@@ -2185,7 +2208,7 @@ function renderListenLayer(s){
   };
   document.getElementById("checkBtn").onclick = () => {
     const answer = input.value.trim();
-    if (!answer) { input.focus(); return; }
+    if (!answer) { bosCevapUyar(input); return; }
     evaluate(s, answer, "listen");
   };
 
