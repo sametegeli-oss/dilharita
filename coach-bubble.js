@@ -851,6 +851,18 @@
       if(!d.by[dev]) d.by[dev]={};
       d.by[dev][field]=(d.by[dev][field]||0)+1;
       localStorage.setItem(K, JSON.stringify(tr));
+      /* GÜNLÜK HEDEF TAMAM: eskiden cümle ekranında hedef dolunca hiçbir şey
+         söylenmiyordu; kullanıcı ne zaman durabileceğini bilmiyordu. Günde bir kez. */
+      if(field==="sentences"){
+        var hedef=5;
+        try{ if(window.DHProfile&&DHProfile.hedef) hedef=DHProfile.hedef()||5;
+             else { var pr=JSON.parse(localStorage.getItem("dh-profile-v1")||"{}")||{}; hedef=+pr.gunlukHedef||5; } }catch(e){}
+        var HK="dh-hedef-kutlandi-"+today;
+        if(d.sentences>=hedef && !localStorage.getItem(HK)){
+          localStorage.setItem(HK,"1");
+          setTimeout(function(){ try{ window.dhCoachSay("🎉 Bugünkü "+hedef+" cümlelik hedefini tamamladın! İstersen devam edebilirsin; ya da ana sayfadan günün sıradaki adımına geç.","praise",null,{actionHref:"./index.html",actionLabel:"Ana sayfaya dön"}); }catch(e){} }, 900);
+        }
+      }
     }catch(e){}
   }
   window.dhDeviceId=deviceId;
