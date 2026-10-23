@@ -1087,11 +1087,11 @@ async function explain(forceRefresh){
         <input id="manualSentence" type="text" placeholder="Örn: She has been working all day." autocomplete="off" />
         <button id="manualGo">Açıkla</button>
       </div>
-      <button class="btn btn-primary" onclick="loadExcelVeri(0)" style="margin-top:12px;width:100%">📂 data/excelveri.json'dan Cümle Yükle</button>
+      <button class="btn btn-primary" onclick="loadExcelVeri(0)" style="margin-top:12px;width:100%">📂 Hazır cümlelerden birini getir</button>
     </div>`);
     var inp = document.getElementById("manualSentence");
     var go = function(){
-      var v = (inp.value||"").trim(); if(!v) return;
+      var v = (inp.value||"").trim(); if(!v){ inp.focus(); inp.placeholder="Önce buraya İngilizce bir cümle yaz…"; inp.style.outline="3px solid #f59e0b"; return; }
       State.en = v; State.tr = ""; explain();
     };
     if(inp){ inp.focus(); inp.onkeydown = function(e){ if(e.key==="Enter") go(); }; }
