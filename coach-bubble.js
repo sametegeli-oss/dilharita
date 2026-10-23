@@ -1077,7 +1077,8 @@
       // NOT: partial (Neredeyse) durumu YUKARIDA yakalanıp döndü — buraya yalnız
       // TAM DOĞRU ya da YANLIŞ düşer. Bu yüzden "tam isabet" demek artık güvenli.
       var DEF_OK=["Doğru! Böyle devam et.","Aferin, tam isabet.","Güzel, ilerliyorsun.","Doğru cevap — bir sonrakine geç."];
-      var DEF_NO=["Olmadı, doğrusuna bak ve devam et.","Bu sefer olmadı — açıklamayı oku, unutma.","Yanlış, ama önemli değil — öğrenmenin parçası."];
+      /* "Bilmiyordum" de bu yola düşüyor; "Yanlış" demek yerine yumuşak dil */
+      var DEF_NO=["Sorun değil, doğrusuna bak ve devam et.","Bu sefer olmadı; bir dahaki sefere hatırlarsın.","Bilmemek öğrenmenin parçası, devam et."];
       var pick = perfect ? DEF_OK[state.evalCount%DEF_OK.length] : DEF_NO[state.evalCount%DEF_NO.length];
       dhCoachSay(pick, perfect?"praise":"warn");
     }catch(e){}
