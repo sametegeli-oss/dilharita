@@ -661,7 +661,7 @@
       +'<p class="dh-wp-gk-ad">1) <b>Kopyala</b> → 2) <b>Gemini\'yi aç</b>, yapıştır ve gönder → '
       +'3) Gemini\'nin JSON cevabını buraya yapıştırıp <b>Kaydet</b>\'e bas.</p>'
       +'<div class="dh-wp-gk-row">'
-        +'<button type="button" class="dh-wp-gk-copy" id="dhWpGkCopy">📋 Promptu kopyala</button>'
+        +'<button type="button" class="dh-wp-gk-copy" id="dhWpGkCopy">📋 Soruyu kopyala</button>'
         +'<button type="button" class="dh-wp-gk-open" id="dhWpGkOpen">💎 Gemini\'yi aç</button>'
       +'</div>'
       +'<textarea class="dh-wp-gk-ta" id="dhWpGkTa" placeholder=\'{"kelime":"...","anlamlar":[...]}\' spellcheck="false"></textarea>'

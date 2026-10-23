@@ -211,13 +211,13 @@ function open(){
      +'<p class="dhgl-sub">Ders Gemini\'de akar — her cümle için kopyala/yapıştır yok. Sadece başlarken bir kez, bitirirken bir kez.</p>'
      +matHtml
      +'<div class="dhgl-steps">'
-       +'<b>1.</b> Promptu kopyala &nbsp;→&nbsp; <b>2.</b> Gemini\'yi aç, yapıştır, gönder<br>'
+       +'<b>1.</b> Soruyu kopyala &nbsp;→&nbsp; <b>2.</b> Gemini\'yi aç, yapıştır, gönder<br>'
        +'<b>3.</b> Dersi orada yap (istediğin kadar konuş)<br>'
        +'<b>4.</b> Bitince Gemini\'ye <b>BİTTİ</b> yaz → özet JSON verir<br>'
        +'<b>5.</b> Buraya dönüp <b>“Dersi bitirdim”</b>e bas, özeti yapıştır'
      +'</div>'
      +'<div class="dhgl-row">'
-       +'<button class="dhgl-copy" type="button">📋 1. Promptu kopyala</button>'
+       +'<button class="dhgl-copy" type="button">📋 1. Soruyu kopyala</button>'
        +'<button class="dhgl-open" type="button">🚀 2. Gemini\'yi aç</button>'
      +'</div>'
      +'<div class="dhgl-msg"></div>'
@@ -236,7 +236,7 @@ function open(){
         b.textContent=ok?"✅ Kopyalandı":"⚠️ Kopyalanamadı";
         say(ok?"Prompt panoda. Gemini'yi açıp yapıştır ve gönder — ders orada başlar."
                :"Kopyalanamadı, tarayıcı izin vermedi.", ok?"#4ade80":"#f59e0b");
-        setTimeout(function(){ b.textContent="📋 1. Promptu kopyala"; },2200);
+        setTimeout(function(){ b.textContent="📋 1. Soruyu kopyala"; },2200);
         try{ localStorage.setItem(LS_PENDING, String(Date.now())); }catch(e){}
       });
     };

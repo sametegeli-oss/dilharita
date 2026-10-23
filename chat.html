@@ -88,7 +88,7 @@
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=3">
-<script src="./kolay-kullanim.js?v=4"></script>
+<script src="./kolay-kullanim.js?v=5"></script>
 <script src="./ai-providers.js?v=tm1"></script>
 </head>
 <body>
@@ -178,7 +178,7 @@
         const site = selectedAI === 'openai' ? 'chatgpt' : selectedAI;
         if (window.DHProviders && DHProviders.openWeb) {
             DHProviders.openWeb({ site: site, prompt: promptText, inUrl: site === 'chatgpt' }).then(function (ok) {
-                const msg = ok ? "Sohbet promptu kopyalandı! Açılan sayfada yapıştırıp (CTRL+V) başlayabilirsiniz." : "Site açıldı. Promptu kopyalayamadım; konuşmayı kendiniz başlatın.";
+                const msg = ok ? "Sohbet sorusu kopyalandı! Açılan sayfada yapıştırıp (CTRL+V) başlayabilirsiniz." : "Site açıldı. Soruyu kopyalayamadım; konuşmayı kendiniz başlatın.";
                 if (window.DHUx && DHUx.toast) DHUx.toast(msg, ok ? "ok" : "warn", 4500);
             });
         }

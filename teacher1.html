@@ -87,7 +87,7 @@ body{
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=3">
-<script src="./kolay-kullanim.js?v=4"></script>
+<script src="./kolay-kullanim.js?v=5"></script>
 </head>
 <body>
 <div class="wrap" id="root"></div>
@@ -245,7 +245,7 @@ function openPromptSheet(){
   const sheet=document.createElement("div"); sheet.className="sheet-overlay";
   sheet.innerHTML=`
     <div class="sheet">
-      <h3>Öğretmen promptu</h3>
+      <h3>Öğretmen talimatı</h3>
       <p>Yapay zekanın nasıl öğreteceğini buradan değiştirebilirsin. Değişiklik cihazında saklanır. İstediğinde varsayılana dönebilirsin.</p>
       <textarea id="promptArea">${esc(getPrompt())}</textarea>
       <div class="note" id="promptNote"></div>

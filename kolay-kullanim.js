@@ -422,6 +422,9 @@
     var c = doc.querySelector(".kk-alt");
     if (!c || !ayar.acik || TAM_EKRAN || NAVSIZ) return 0;
     var r = c.getBoundingClientRect();
+    /* Çubuk gizliyken (perde açık) r.top=0 olur ve bütün ekran yüksekliği kadar
+       kaydırıyordu: Öğretmen paneli ekranın dışına (yukarı) kaçıyordu. */
+    if (r.height < 4 || r.top <= 0 || r.top > innerHeight) return 0;
     return Math.ceil(innerHeight - r.top) + 8;
   }
   function kaydirTek(el, h){

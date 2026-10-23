@@ -60,7 +60,7 @@
     avatarLoading=true;
     return new Promise(function(res){
       var s=document.createElement("script");
-      s.src="./avatar.js?v=1";
+      s.src="./avatar.js?v=2";
       s.onload=function(){ avatarLoaded=true; res(true); };
       s.onerror=function(){ res(false); };
       document.head.appendChild(s);
