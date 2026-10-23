@@ -492,3 +492,6 @@ html.kk-acik select{
 }
 html.kk-acik select option{background:#0b1328;color:#fff}
 html.kk-acik input:disabled,html.kk-acik textarea:disabled,html.kk-acik select:disabled{opacity:.7!important}
+
+/* Cümle çalış: "✓ Kolay olarak kaydedildi" dar sütuna sıkışıyordu */
+.grade-done{grid-column:1/-1;width:100%;text-align:center;flex-basis:100%}

@@ -95,7 +95,7 @@ body{margin:0;background:linear-gradient(180deg,#071226,#08152a);color:var(--tex
 <script src="./sentences-loader.js?v=1"></script>
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
-<link rel="stylesheet" href="./kolay-kullanim.css?v=3">
+<link rel="stylesheet" href="./kolay-kullanim.css?v=4">
 <script src="./kolay-kullanim.js?v=5"></script>
 </head>
 <body>
@@ -721,7 +721,7 @@ var Drill=(function(){
     if(answered) return next();
     var r=queue[i], target=r.target||r.sentenceEN||"";
     var ans=(document.getElementById("dIn").value||"").trim();
-    if(!ans){ document.getElementById("dIn").focus(); return; }
+    if(!ans){ var _i=document.getElementById("dIn"); _i.focus(); _i.placeholder="Önce İngilizcesini buraya yaz… (bilmiyorsan Atla)"; var _r=document.getElementById("dRes"); if(_r){ _r.textContent="✍️ Önce cevabını yaz, sonra Kontrol et’e bas. Bilmiyorsan “Atla”ya basabilirsin."; } return; }
     stopMic();
     answered=true; done++;
 
