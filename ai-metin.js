@@ -189,6 +189,7 @@
     if (document.getElementById("dhAiMetinStil")) return;
     var st = document.createElement("style"); st.id = "dhAiMetinStil";
     st.textContent = ".dh-en{color:#60a5fa!important;font-weight:600}" +
+      ".dh-en.dh-en-acik-zemin{color:#1d4ed8!important}.dh-en.dh-en-mavi-zemin{color:inherit!important}" +
       "@media (prefers-color-scheme: light){body.dh-acik .dh-en{color:#1d4ed8!important}}" +
       ".dh-ai-metin b .dh-en,.dh-ai-metin strong .dh-en{font-weight:800}";
     (document.head || document.documentElement).appendChild(st);
@@ -198,14 +199,29 @@
     while ((m = KELIME.exec(t))) { var c = sinif(m[0]); if (c === "T" || c === "X") return false; if (c === "E") e++; }
     return e >= 1;
   }
+  /* Mavi yazı her zeminde okunmaz: koyu zeminde açık mavi, açık zeminde koyu mavi,
+     mavi zeminde (ör. kullanıcının kendi mesaj balonu) zeminin yazı rengi kalır */
+  function zeminSinifi(el) {
+    try {
+      for (var n = el; n && n.nodeType === 1; n = n.parentElement) {
+        var c = getComputedStyle(n).backgroundColor, m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/.exec(c);
+        if (!m || (m[4] !== undefined && +m[4] < 0.35)) continue;
+        var r = +m[1], g2 = +m[2], b = +m[3], lum = (0.2126 * r + 0.7152 * g2 + 0.0722 * b) / 255;
+        if (b > 120 && b > r + 50 && b > g2 + 20) return "dh-en-mavi-zemin";
+        if (lum > 0.55) return "dh-en-acik-zemin";
+        return "";
+      }
+    } catch (e) {}
+    return "";
+  }
   function metniBoya(tn) {
     var t = tn.data; if (!t || !/[A-Za-z]{2}/.test(t)) return;
     var ar = tamamenIngilizceMi(t) ? [[t.search(/\S/), t.replace(/\s+$/, "").length]] : ingilizceAraliklar(t);
     if (!ar.length) return;
-    var frag = document.createDocumentFragment(), k = 0;
+    var frag = document.createDocumentFragment(), k = 0, zc = zeminSinifi(tn.parentElement);
     ar.forEach(function (r) {
       if (r[0] > k) frag.appendChild(document.createTextNode(t.slice(k, r[0])));
-      var sp = document.createElement("span"); sp.className = "dh-en"; sp.lang = "en"; sp.textContent = t.slice(r[0], r[1]);
+      var sp = document.createElement("span"); sp.className = "dh-en" + (zc ? " " + zc : ""); sp.lang = "en"; sp.textContent = t.slice(r[0], r[1]);
       frag.appendChild(sp); k = r[1];
     });
     if (k < t.length) frag.appendChild(document.createTextNode(t.slice(k)));
