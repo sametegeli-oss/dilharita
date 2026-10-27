@@ -231,6 +231,8 @@
   }
   function uygula(el, base){
     var t = hedef(base);
+    /* yalnız simgeli düğmenin gizli yazısı büyütülmesin (yazı görünür hâle geliyordu) */
+    if (el.hasAttribute && (el.hasAttribute("data-kk-ikon") || el.hasAttribute("data-kk-gorsel"))) { el.style.setProperty("font-size", "0px", "important"); return; }
     el.style.setProperty("font-size", t + "px", "important");
     var lh = el.getAttribute("data-kk-lh");
     if (lh) el.style.setProperty("line-height", lh, "important");
@@ -408,7 +410,7 @@
     practiceActionsToggle: "Bu cümleyle ilgili düğmeleri göster veya gizle"
   };
   function ipucuMetni(b){
-    var t = ACIKLAMA[b.id] || b.getAttribute("data-tooltip") || b.getAttribute("data-ipucu") || b.getAttribute("title") || b.getAttribute("aria-label") || "";
+    var t = ACIKLAMA[b.id] || b.getAttribute("data-kk-sade-ipucu") || b.getAttribute("data-tooltip") || b.getAttribute("data-ipucu") || b.getAttribute("title") || b.getAttribute("aria-label") || "";
     if (!t){
       var yazi = (b.textContent || "").replace(/\s+/g, "");
       t = KIMLIK[b.id] || SIMGE[yazi] || SIMGE[yazi.replace(/\uFE0F/g, "")] || "";
@@ -416,17 +418,65 @@
     t = String(t).replace(/\s+/g, " ").trim();
     /* düğmenin üstünde zaten aynı söz yazıyorsa ipucu gereksiz */
     var gorunen = (b.innerText || b.textContent || "").replace(/\s+/g, " ").trim();
+    if (b.hasAttribute("data-kk-ikon") || b.hasAttribute("data-kk-gorsel")) return t;   /* yazısı gizli: ipucu şart */
     if (!t || t.toLocaleLowerCase("tr-TR") === gorunen.toLocaleLowerCase("tr-TR")) return "";
     return t;
+  }
+  /* İSTEK (kullanıcı): "Programdaki BÜTÜN düğmelerde açıklama yazısı olmasın; yalnız
+     simge görünsün, üzerine gelince ne işe yaradığı açılsın."
+     • Simge + yazı içeren düğmede ("▶ Dinle", "← Önceki", "📷 Resim", svg + "Araçlar")
+       yazı gizlenir, yalnız simge kalır; yazı ipucu balonuna taşınır.
+     • DOM'a dokunulmaz (React'in yönettiği düğmeler bozulmasın): simge bir özniteliğe
+       yazılır, CSS ile yazı gizlenip simge ::before ile gösterilir.
+     • Simgesi olmayan düz yazılı düğmeler (Zor / Normal / Kolay, Kontrol et) ve kart
+       biçimli bağlantılar (başlık + alt satır) olduğu gibi kalır.
+     • İçinde sayı/veri olan düğmeler (ör. "📅 23 Eyl · 95 puan") içeriktir, dokunulmaz. */
+  var IKON_RE = /^(?:[\u{1F1E6}-\u{1F1FF}]{2}|\p{Extended_Pictographic}|[\u2190-\u21FF\u2B05-\u2B07\u27A1\u2794-\u27BF\u25A0-\u25FF\u2600-\u26FF\u2700-\u2775\u23E9-\u23FA\u2B50\u2726\u2713\u2714\u2715\u2716\u21BB\u21BA\u27F2\u27F3\u2318\u2699\u2630\u2302])(?:[\uFE0F\u200D]|\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*/u;
+  function ikonAyir(metin){
+    var s = String(metin || "").replace(/\s+/g, " ").trim(), m, ikon = "", yazi = s;
+    if ((m = IKON_RE.exec(s))) { ikon = m[0]; yazi = s.slice(m[0].length).trim(); }
+    else {
+      /* sondaki simge: "Sonraki →" */
+      var k = s.split(" "), son = k[k.length - 1];
+      if (k.length > 1 && IKON_RE.test(son) && IKON_RE.exec(son)[0] === son) { ikon = son; yazi = k.slice(0, -1).join(" "); }
+    }
+    return { ikon: ikon, yazi: yazi };
+  }
+  function dugmeSadelestir(b){
+    if (b.closest(".kk-ui") && !b.closest(".kk-alt")) return;
+    if (b.matches("input,select") || b.isContentEditable) return;
+    var duz = (b.textContent || "").replace(/\s+/g, " ").trim();
+    var gorsel = b.querySelector("svg,img");
+    var a = ikonAyir(duz);
+    /* alt çubuk: "Aa / Yazı" gibi iki satırlı düğmede üst satır simgedir */
+    if (b.closest(".kk-alt") && !a.ikon) { var sat = (b.innerText || "").trim().split(/\n+/); if (sat.length === 2) a = { ikon: sat[0].trim(), yazi: sat[1].trim() }; }
+    var uygun = a.yazi && /[\p{L}]/u.test(a.yazi) && !/\d/.test(a.yazi) && a.yazi.length <= 40 && a.yazi.split(" ").length <= 5;
+    var kartMi = !b.closest(".kk-alt") && /\n\s*\S/.test((b.innerText || "").trim()) && !(a.ikon && !gorsel && (b.innerText || "").trim().split(/\n+/).length === 2 && a.yazi.split(" ").length <= 3);
+    if (uygun && !kartMi && (a.ikon || gorsel)) {
+      var ipucuYazi = a.yazi;
+      var ek = b.getAttribute("data-tooltip") || b.getAttribute("data-ipucu") || "";
+      if (ek && ek.toLocaleLowerCase("tr-TR").indexOf(a.yazi.toLocaleLowerCase("tr-TR")) < 0) ipucuYazi = a.yazi + " — " + ek;
+      else if (ek) ipucuYazi = ek;
+      if (b.getAttribute("data-kk-sade-ipucu") !== ipucuYazi) b.setAttribute("data-kk-sade-ipucu", ipucuYazi);
+      if (!b.getAttribute("aria-label")) b.setAttribute("aria-label", a.yazi);
+      if (a.ikon) { if (b.getAttribute("data-kk-ikon") !== a.ikon) b.setAttribute("data-kk-ikon", a.ikon); b.removeAttribute("data-kk-gorsel"); }
+      else { b.setAttribute("data-kk-gorsel", ""); b.removeAttribute("data-kk-ikon"); }
+      if (b.style.getPropertyValue("font-size") !== "0px") b.style.setProperty("font-size", "0px", "important");
+    } else if (b.hasAttribute("data-kk-ikon") || b.hasAttribute("data-kk-gorsel")) {
+      /* metni değişti (ör. ▶ Dinle → 12 cümle): artık uygun değilse eski hâline dön */
+      b.removeAttribute("data-kk-ikon"); b.removeAttribute("data-kk-gorsel"); b.removeAttribute("data-kk-sade-ipucu");
+      if (b.style.getPropertyValue("font-size") === "0px") b.style.removeProperty("font-size");
+    }
   }
   function simgeEtiketleri(kok){
     var l = (kok || doc).querySelectorAll("button,a[href],[role=button],summary,input[type=button],input[type=submit]");
     for (var i = 0; i < l.length; i++){
       var b = l[i];
-      if (b.closest(".kk-ui")) continue;
+      if (b.closest(".kk-ui") && !b.closest(".kk-alt")) continue;
       if (b.hasAttribute("data-kk-etiket")) b.removeAttribute("data-kk-etiket");
       /* tarayıcının kendi küçük "title" balonu ile bizimki üst üste çıkmasın */
       if (b.hasAttribute("title")) { if (!b.getAttribute("data-tooltip")) b.setAttribute("data-ipucu", b.getAttribute("title")); if (!b.getAttribute("aria-label") && !(b.textContent||"").trim()) b.setAttribute("aria-label", b.getAttribute("title")); b.removeAttribute("title"); }
+      try { dugmeSadelestir(b); } catch (e) {}
     }
   }
 
