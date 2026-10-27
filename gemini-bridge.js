@@ -155,7 +155,7 @@ function ask(opt){
       sendBtn=ov.querySelector(".dhgb-send"),
       pasteBtn=ov.querySelector(".dhgb-paste");
   if(opt.promptEditor){
-    var edit=document.createElement("button");edit.type="button";edit.className="dhgb-tog";edit.textContent="Promptu düzenle";
+    var edit=document.createElement("button");edit.type="button";edit.className="dhgb-tog";edit.textContent="Talimatı düzenle";
     pv.parentNode.insertBefore(edit,pv);
     var editor=document.createElement("div");editor.hidden=true;
     var field=document.createElement("textarea");field.className="dhgb-ta";field.setAttribute("aria-label","Cümle açıklama promptu");field.maxLength=30000;
