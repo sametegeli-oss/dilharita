@@ -643,3 +643,7 @@ body.yt-patterns-off .yt-pat{color:inherit!important;text-decoration:none!import
   #dhSyncBadge{display:none!important}
   .dh-connection{top:max(8px,env(safe-area-inset-top))!important;bottom:auto!important;pointer-events:none!important}
 }
+
+/* Kolay görünümde etiketli düğmeler büyüyünce video kontrol çubuğu sağdaki transkript sütununa taşıyordu: satıra sığmayan düğmeler alt satıra geçsin */
+html.kk-acik .yt-controls{flex-wrap:wrap!important;row-gap:6px!important;max-width:100%!important;box-sizing:border-box}
+html.kk-acik .yt-controls>*{flex-shrink:1}
