@@ -1134,7 +1134,16 @@ function initCompactWorkspace(){
  if($("modeToolsToggle"))$("modeToolsToggle").onclick=function(){state.tools=!state.tools;save();render()};if($("advancedToolsToggle"))$("advancedToolsToggle").onclick=function(){state.advanced=!state.advanced;save();render()};
  render();
 }
-function initPracticeCompactCard(){var card=$("learningCard"),toggle=$("practiceActionsToggle");if(!card||!toggle)return;toggle.onclick=function(){var open=card.classList.toggle("is-practice-menu-open");toggle.setAttribute("aria-expanded",String(open));toggle.setAttribute("aria-label",open?"Cümle işlemlerini gizle":"Cümle işlemlerini göster")}}
+function initPracticeCompactCard(){var card=$("learningCard"),toggle=$("practiceActionsToggle");if(!card||!toggle)return;
+ /* ⋯ düğmesi eskiden yalnız gölgeleme/dikte modunda çalışıyordu; normal izleme modunda
+    tıklanınca hiçbir şey olmuyordu. Artık her modda cümle düğmelerini (YouTube zamanına git,
+    favori, YouGlish, modül oluştur…) açıp kapatıyor. */
+ function pratikModu(){return document.body.classList.contains("yt-mode-shadow")||document.body.classList.contains("yt-mode-dictation")}
+ function acikMi(){return pratikModu()?card.classList.contains("is-practice-menu-open"):card.classList.contains("is-actions-open")}
+ function etiket(){var o=acikMi();toggle.setAttribute("aria-expanded",String(o));toggle.setAttribute("aria-label",o?"Düğmeleri gizle":"Cümle düğmeleri");toggle.setAttribute("data-tooltip",o?"Cümle düğmelerini gizle":"Cümle düğmelerini göster")}
+ toggle.onclick=function(){if(pratikModu())card.classList.toggle("is-practice-menu-open");else{var s=$("sentenceActionsToggle");if(s&&s.onclick)s.onclick();else card.classList.toggle("is-actions-open")}etiket()};
+ document.addEventListener("click",function(e){if(e.target&&e.target.closest&&e.target.closest("#sentenceActionsToggle"))setTimeout(etiket,0)},true);
+ etiket()}
 function initProfessionalTooltips(){var tip=document.createElement("div"),active=null;tip.className="yt-smart-tooltip";tip.setAttribute("role","tooltip");tip.hidden=true;document.body.appendChild(tip);function place(el){var r=el.getBoundingClientRect(),tr=tip.getBoundingClientRect(),left=Math.max(10,Math.min(innerWidth-tr.width-10,r.left+(r.width-tr.width)/2)),top=r.top-tr.height-10;if(top<10)top=Math.min(innerHeight-tr.height-10,r.bottom+10);tip.style.left=Math.round(left)+"px";tip.style.top=Math.round(top)+"px"}function show(el){var text=el&&el.getAttribute("data-tooltip");if(!text)return;active=el;tip.textContent=text;tip.hidden=false;requestAnimationFrame(function(){if(active===el){tip.classList.add("is-visible");place(el)}})}function hide(el){if(el&&active!==el)return;active=null;tip.classList.remove("is-visible");setTimeout(function(){if(!active)tip.hidden=true},120)}document.addEventListener("pointerover",function(e){var el=e.target.closest&&e.target.closest("[data-tooltip]");if(el)show(el)});document.addEventListener("pointerout",function(e){var el=e.target.closest&&e.target.closest("[data-tooltip]");if(el&&!el.contains(e.relatedTarget))hide(el)});document.addEventListener("focusin",function(e){var el=e.target.closest&&e.target.closest("[data-tooltip]");if(el)show(el)});document.addEventListener("focusout",function(e){var el=e.target.closest&&e.target.closest("[data-tooltip]");if(el)hide(el)});global.addEventListener("scroll",function(){if(active)place(active)},true);global.addEventListener("resize",function(){if(active)place(active)})}
 function bind(){
  initThreeColumnLayout();

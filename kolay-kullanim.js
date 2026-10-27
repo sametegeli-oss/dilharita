@@ -385,6 +385,10 @@
       if (b.closest(".kk-ui,.dh-ikon-btn,svg,.dh-net-status,.dh-mobile-menu-button,.atlas-controls,#dhSyncBadge,.dh-primary-nav,.dh-app-nav")) continue;
       var t = (b.textContent || "").replace(/\s+/g, "");
       if (!t || !SADECE_SIMGE.test(t)) { if (b.hasAttribute("data-kk-etiket") && t && !SADECE_SIMGE.test(t)) b.removeAttribute("data-kk-etiket"); continue; }
+      /* Sayfanın kendi CSS'iyle GİZLENMİŞ düğmeyi görünür yapma (etiket kuralı display'i
+         zorluyordu; ör. YouTube'da tam ekran dışında "Tam ekrandan çık" düğmesi çıkıp taşıyordu) */
+      if (b.hasAttribute("data-kk-etiket")) { var eskiE = b.getAttribute("data-kk-etiket"); b.removeAttribute("data-kk-etiket"); if (getComputedStyle(b).display === "none") continue; b.setAttribute("data-kk-etiket", eskiE); }
+      else if (getComputedStyle(b).display === "none") continue;
       var ad = KIMLIK[b.id] || SIMGE[t] || SIMGE[t.replace(/\uFE0F/g, "")];
       if (!ad){
         var uzun = b.getAttribute("aria-label") || b.title || "";
