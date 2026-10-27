@@ -394,7 +394,7 @@ function segmentEnd(i){if(!study||!study.segments[i])return 0;var x=study.segmen
 function startTicker(){clearInterval(tick);tick=setInterval(function(){if(!player)return;var now=0,dur=0;try{now=+player.getCurrentTime()||0;dur=+player.getDuration()||0}catch(e){}$("currentTime").textContent=time(now);$("durationTime").textContent=time(dur);var pct=dur?Math.min(100,now/dur*100):0;$("timelineFill").style.width=pct+"%";$("timelineThumb").style.left=pct+"%";if($("alignCursor")&&dur)$("alignCursor").style.left=pct+"%";if(study&&study.segments.length){if(loopOn&&loopIndex>=0&&study.segments[loopIndex]){var lx=study.segments[loopIndex],ls=+lx.startSeconds||0,le=segmentEnd(loopIndex);if(active!==loopIndex)setActive(loopIndex,false);updateKaraoke(now,lx);if(ownVoiceOn&&studyMode!=="shadow")syncOwnVoice(loopIndex,now);else if(guideVoiceOn&&studyMode!=="shadow")syncGuideVoice(loopIndex,now);if(shadowOnePass&&studyMode==="shadow"){if(now>=le-.05){try{player.pauseVideo()}catch(e){}}}else if(now>=le-.1||now<ls-.45)seek(ls,true)}else{var i=findActive(now);if(i>=0&&i!==active){setActive(i,true);autoPausedIndex=-1}if(i<0){$("captionEN").textContent="";$("captionTR").textContent=""}else{var x=study.segments[i],end=segmentEnd(i);updateKaraoke(now,x);if(ownVoiceOn&&studyMode!=="shadow")syncOwnVoice(i,now);else if(guideVoiceOn&&studyMode!=="shadow")syncGuideVoice(i,now);if(autoPause&&autoPausedIndex!==i&&now>=end-.08){autoPausedIndex=i;try{player.pauseVideo()}catch(e){}}}}if(turkishVoiceOn&&studyMode!=="shadow"&&turkishHoldIndex<0&&turkishPlayingIndex>=0&&turkishUtterance&&study.segments[turkishPlayingIndex]&&turkishVoiceKey===keyOf(study.segments[turkishPlayingIndex])&&now>=segmentEnd(turkishPlayingIndex)-.08){turkishHoldIndex=turkishPlayingIndex;try{player.pauseVideo()}catch(e){}}}updatePlayButton()},100)}
 function karaokeHtml(text,current){var words=String(text||"").trim().split(/\s+/);return words.map(function(w,i){return'<span class="yt-karaoke-word'+(i<current?' is-spoken':i===current?' is-current':'')+'">'+esc(w)+'</span>'}).join("")}
 function updateKaraoke(now,x){if(!captionOn||!showEN||!karaokeOn||!x)return;var words=String(x.transcriptEN||"").trim().split(/\s+/),span=Math.max(.3,(+x.endSeconds||+x.startSeconds+2)-+x.startSeconds),idx=Math.min(words.length-1,Math.max(0,Math.floor(((now-+x.startSeconds)/span)*words.length)));$("captionEN").innerHTML=karaokeHtml(x.transcriptEN,idx)}
-function sentenceWords(text){return String(text||"").split(/(\s+|[^A-Za-z'-]+)/).map(function(part){if(/^[A-Za-z][A-Za-z'-]*$/.test(part))return'<button type="button" class="yt-word" data-word="'+esc(part)+'">'+esc(part)+'</button>';return esc(part)}).join("")}
+function sentenceWords(text){/* Türkçe harfler (ç ğ ı ö ş ü â î û) kelimenin parçasıdır: eskiden "Cümlesinin" → "C" + "ümlesinin" diye bölünüp araya boşluk giriyordu */return String(text||"").split(/(\s+|[^A-Za-zÇĞİÖŞÜçğıöşüÂâÎîÛû'’-]+)/).map(function(part){if(/^[A-Za-z][A-Za-z'-]*$/.test(part))return'<button type="button" class="yt-word" data-word="'+esc(part)+'">'+esc(part)+'</button>';return esc(part)}).join("")}
 
 function minAllowedStart(idx){
  if(!study||!study.segments||idx<=0)return 0;
@@ -487,8 +487,16 @@ function wrapExplanationWords(root){ // Gemini açıklama metnindeki kelimeleri 
  nodes.forEach(function(node){
   var v=node.nodeValue,p=node.parentNode;
   if(!v||!/[A-Za-z]/.test(v))return;
-  if(p&&p.closest&&p.closest("a,button,.yt-word"))return;
-  try{var frag=document.createRange().createContextualFragment(sentenceWords(v));p.replaceChild(frag,node)}catch(e){}
+  if(p&&p.closest&&p.closest("a,button,.yt-word,.dh-exp-reader-size,[data-dh-exp-set-size]"))return;
+  /* Açıklama Türkçe: yalnız İngilizce bölümler tıklanabilir kelime olur; Türkçe metin olduğu gibi kalır */
+  var html;
+  if(global.DHAiMetin&&DHAiMetin.ingilizceAraliklar){
+   var ar=DHAiMetin.ingilizceAraliklar(v),k=0;html="";
+   if(!ar.length)return;
+   ar.forEach(function(r){html+=esc(v.slice(k,r[0]))+'<span class="dh-en" lang="en">'+sentenceWords(v.slice(r[0],r[1]))+'</span>';k=r[1]});
+   html+=esc(v.slice(k));
+  } else html=sentenceWords(v);
+  try{var frag=document.createRange().createContextualFragment(html);p.replaceChild(frag,node)}catch(e){}
  });
 }
 function highlight(text,q){if(!q)return esc(text);var safe=esc(text),needle=esc(q).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");try{return safe.replace(new RegExp("("+needle+")","ig"),"<mark>$1</mark>")}catch(e){return safe}}
