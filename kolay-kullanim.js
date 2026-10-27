@@ -379,26 +379,54 @@
                  playToggle: "Oynat", fullscreenToggle: "Tam ekran", fsActionExit: "Küçült", practiceActionsToggle: "Cümle düğmeleri",
                  controlMoreToggle: "Diğer", soundToggle: "Ses" };
   var SADECE_SIMGE = /^[^\p{L}\p{N}]{1,4}$/u;
+  /* İSTEK: Düğmelerin altına/üstüne açıklama yazısı EKLENMEZ. Bunun yerine farenin
+     üzerine gelince (dokunmatik ekranda basılı tutunca) düğmenin ne işe yaradığını
+     anlatan bir ipucu balonu açılır. Kaynak sırası: sayfanın kendi data-tooltip'i,
+     title, aria-label, bilinen düğme adları. */
+  /* Sık kullanılan düğmeler için açık, yaşlı kullanıcıya uygun açıklamalar */
+  var ACIKLAMA = {
+    suggestBtn: "Ne diyeceğini bilemiyorsan sana bir cevap önerir",
+    micBtn: "Basıp İngilizce konuş; söylediğin yazıya dönüşür",
+    sendBtn: "Yazdığın cümleyi gönder",
+    dhDahaBtn: "Diğer düğmeleri göster veya gizle",
+    errSaveBtn: "Bu sohbetteki hatalarını hata defterine kaydet",
+    autoBtn: "Eller serbest: karşındaki susunca mikrofon kendiliğinden açılır",
+    finishBtn: "Sohbeti bitir ve özetini göster",
+    gemBtn: "Sohbete Gemini sitesinde devam et",
+    dhGemRaporBtn: "Sohbetini Gemini'ye değerlendirt",
+    dhPuanBtn: "Bu sohbette İngilizcen nasıldı, değerlendir",
+    levelBtn: "Konuşmanın zorluk seviyesini değiştir",
+    playToggle: "Videoyu oynat veya durdur",
+    prevSentence: "Bir önceki cümleye git",
+    nextSentence: "Bir sonraki cümleye git",
+    loopToggle: "Bu cümleyi tekrar tekrar oynat",
+    speedToggle: "Konuşma hızını değiştir",
+    captionToggle: "Altyazıyı aç veya kapat",
+    soundToggle: "Sesi aç veya kapat",
+    controlMoreToggle: "Diğer çalışma araçlarını göster",
+    fullscreenToggle: "Videoyu tam ekran yap",
+    practiceActionsToggle: "Bu cümleyle ilgili düğmeleri göster veya gizle"
+  };
+  function ipucuMetni(b){
+    var t = ACIKLAMA[b.id] || b.getAttribute("data-tooltip") || b.getAttribute("data-ipucu") || b.getAttribute("title") || b.getAttribute("aria-label") || "";
+    if (!t){
+      var yazi = (b.textContent || "").replace(/\s+/g, "");
+      t = KIMLIK[b.id] || SIMGE[yazi] || SIMGE[yazi.replace(/\uFE0F/g, "")] || "";
+    }
+    t = String(t).replace(/\s+/g, " ").trim();
+    /* düğmenin üstünde zaten aynı söz yazıyorsa ipucu gereksiz */
+    var gorunen = (b.innerText || b.textContent || "").replace(/\s+/g, " ").trim();
+    if (!t || t.toLocaleLowerCase("tr-TR") === gorunen.toLocaleLowerCase("tr-TR")) return "";
+    return t;
+  }
   function simgeEtiketleri(kok){
-    if (!ayar.acik) return;
-    var l = (kok || doc).querySelectorAll("button,a[href],[role=button]");
+    var l = (kok || doc).querySelectorAll("button,a[href],[role=button],summary,input[type=button],input[type=submit]");
     for (var i = 0; i < l.length; i++){
       var b = l[i];
-      if (b.closest(".kk-ui,.dh-ikon-btn,svg,.dh-net-status,.dh-mobile-menu-button,.atlas-controls,#dhSyncBadge,.dh-primary-nav,.dh-app-nav")) continue;
-      var t = (b.textContent || "").replace(/\s+/g, "");
-      if (!t || !SADECE_SIMGE.test(t)) { if (b.hasAttribute("data-kk-etiket") && t && !SADECE_SIMGE.test(t)) b.removeAttribute("data-kk-etiket"); continue; }
-      /* Sayfanın kendi CSS'iyle GİZLENMİŞ düğmeyi görünür yapma (etiket kuralı display'i
-         zorluyordu; ör. YouTube'da tam ekran dışında "Tam ekrandan çık" düğmesi çıkıp taşıyordu) */
-      if (b.hasAttribute("data-kk-etiket")) { var eskiE = b.getAttribute("data-kk-etiket"); b.removeAttribute("data-kk-etiket"); if (getComputedStyle(b).display === "none") continue; b.setAttribute("data-kk-etiket", eskiE); }
-      else if (getComputedStyle(b).display === "none") continue;
-      var ad = KIMLIK[b.id] || SIMGE[t] || SIMGE[t.replace(/\uFE0F/g, "")];
-      if (!ad){
-        var uzun = b.getAttribute("aria-label") || b.title || "";
-        if (!uzun) continue;
-        ad = uzun.replace(/[^\p{L}\p{N}\s]/gu, "").trim().split(/\s+/).slice(0, 2).join(" ");
-        if (!ad) continue;
-      }
-      if (b.getAttribute("data-kk-etiket") !== ad) b.setAttribute("data-kk-etiket", ad);
+      if (b.closest(".kk-ui")) continue;
+      if (b.hasAttribute("data-kk-etiket")) b.removeAttribute("data-kk-etiket");
+      /* tarayıcının kendi küçük "title" balonu ile bizimki üst üste çıkmasın */
+      if (b.hasAttribute("title")) { if (!b.getAttribute("data-tooltip")) b.setAttribute("data-ipucu", b.getAttribute("title")); if (!b.getAttribute("aria-label") && !(b.textContent||"").trim()) b.setAttribute("aria-label", b.getAttribute("title")); b.removeAttribute("title"); }
     }
   }
 
@@ -414,11 +442,58 @@
       if (!ad) continue;
       var sec = null;
       for (var k = 0; k < KISA.length; k++) if (KISA[k][0].test(ad)) { sec = KISA[k]; break; }
+      /* yalnız simge; ne işe yaradığı üzerine gelince ipucu olarak çıkar */
       var s = doc.createElement("span");
       s.className = "kk-ikon-yazi"; s.setAttribute("data-kk-atla", ""); s.setAttribute("aria-hidden", "true");
-      s.innerHTML = '<i>' + (sec ? sec[1] : (kendiYazi || "•")) + '</i>' + (sec ? sec[2] : ad.split(/\s+/).slice(0, 2).join(" "));
+      s.innerHTML = '<i>' + (sec ? sec[1] : (kendiYazi || "•")) + '</i>';
       b.appendChild(s);
     }
+  }
+
+  /* ---------- ortak ipucu balonu ---------- */
+  var ipucu = null, ipucuEl = null, basiliT = null;
+  function ipucuGoster(el){
+    var t = ipucuMetni(el); if (!t) return;
+    if (!ipucu){
+      ipucu = doc.createElement("div"); ipucu.className = "kk-ipucu kk-ui"; ipucu.setAttribute("role", "tooltip");
+      doc.body.appendChild(ipucu);
+    }
+    ipucuEl = el; ipucu.textContent = t; ipucu.style.display = "block";
+    var r = el.getBoundingClientRect(), tr = ipucu.getBoundingClientRect();
+    var sol = Math.max(8, Math.min(innerWidth - tr.width - 8, r.left + (r.width - tr.width) / 2));
+    var ust = r.top - tr.height - 10; if (ust < 8) ust = Math.min(innerHeight - tr.height - 8, r.bottom + 10);
+    ipucu.style.left = Math.round(sol) + "px"; ipucu.style.top = Math.round(ust) + "px";
+  }
+  function ipucuGizle(){ ipucuEl = null; if (ipucu) ipucu.style.display = "none"; }
+  function hedefDugme(n){ return n && n.closest && n.closest("button,a[href],[role=button],summary,input[type=button],input[type=submit],select"); }
+  function ipucuKur(){
+    /* YouTube Eğitim sayfasının kendi ipucu sistemi varsa ona bırak (çift balon olmasın) */
+    var sayfaninki = function(){ return !!doc.querySelector(".yt-smart-tooltip"); };
+    doc.addEventListener("pointerover", function(e){
+      if (e.pointerType === "touch") return;
+      var b = hedefDugme(e.target); if (!b || b === ipucuEl) return;
+      if (b.hasAttribute("data-tooltip") && sayfaninki()) return;
+      ipucuGoster(b);
+    }, true);
+    doc.addEventListener("pointerout", function(e){
+      var b = hedefDugme(e.target); if (b && b === ipucuEl && !b.contains(e.relatedTarget)) ipucuGizle();
+    }, true);
+    doc.addEventListener("focusin", function(e){ var b = hedefDugme(e.target); if (b && b.matches(":focus-visible") && !(b.hasAttribute("data-tooltip") && sayfaninki())) ipucuGoster(b); }, true);
+    doc.addEventListener("focusout", ipucuGizle, true);
+    /* dokunmatik: basılı tutunca ipucu, kısa dokunuş normal tıklama */
+    doc.addEventListener("pointerdown", function(e){
+      ipucuGizle();
+      if (e.pointerType !== "touch") return;
+      var b = hedefDugme(e.target); if (!b) return;
+      clearTimeout(basiliT);
+      basiliT = setTimeout(function(){ ipucuGoster(b); setTimeout(ipucuGizle, 2600); }, 550);
+    }, true);
+    ["pointerup", "pointercancel"].forEach(function(ev){ doc.addEventListener(ev, function(){ clearTimeout(basiliT); }, true); });
+    addEventListener("scroll", ipucuGizle, true);
+    var st = doc.createElement("style");
+    st.textContent = ".kk-ipucu{position:fixed;z-index:2147483646;display:none;max-width:min(320px,calc(100vw - 16px));padding:9px 12px;border-radius:10px;" +
+      "background:#0b1220;color:#f8fafc;border:1px solid #38bdf8;box-shadow:0 10px 28px rgba(0,0,0,.45);font:600 15px/1.35 system-ui,-apple-system,'Segoe UI',sans-serif;pointer-events:none;white-space:normal;text-align:center}";
+    doc.head.appendChild(st);
   }
 
   /* ================================================================
@@ -753,7 +828,8 @@
     if (!doc.body || doc.querySelector(".kk-alt,.kk-ust-menu")) return;
     gozlemciKur();
     cubukKur(); menuKur(); yaziKur(); olaylar();
-    if (ayar.acik){ tumunuOlcekle(); ikonYazilari(); simgeEtiketleri(); }
+    ipucuKur(); simgeEtiketleri();
+    if (ayar.acik){ tumunuOlcekle(); ikonYazilari(); }
     klasikMenuyeEkle();
 
     /* Geç yüklenen düğmeler (öğretmen balonu, senkron rozeti) için tarama */
@@ -768,7 +844,8 @@
       boslukAyarla();
       perdeKontrol(tamTarama % 2 === 0);
       /* Sonradan görünür olan (başta gizli) düğmeleri de büyüt */
-      if (ayar.acik){ hedefleriBuyut(doc.querySelectorAll(ETKILESIM)); simgeEtiketleri(); }
+      simgeEtiketleri();
+      if (ayar.acik){ hedefleriBuyut(doc.querySelectorAll(ETKILESIM)); }
     }, 1500);
     addEventListener("resize", function(){ kaydir(true); boslukAyarla(); }, { passive: true });
     addEventListener("scroll", function(){
