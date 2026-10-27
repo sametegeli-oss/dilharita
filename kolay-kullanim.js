@@ -450,9 +450,10 @@
     var a = ikonAyir(duz);
     /* alt çubuk: "Aa / Yazı" gibi iki satırlı düğmede üst satır simgedir */
     if (b.closest(".kk-alt") && !a.ikon) { var sat = (b.innerText || "").trim().split(/\n+/); if (sat.length === 2) a = { ikon: sat[0].trim(), yazi: sat[1].trim() }; }
-    var uygun = a.yazi && /[\p{L}]/u.test(a.yazi) && !/\d/.test(a.yazi) && a.yazi.length <= 40 && a.yazi.split(" ").length <= 5;
-    var kartMi = !b.closest(".kk-alt") && /\n\s*\S/.test((b.innerText || "").trim()) && !(a.ikon && !gorsel && (b.innerText || "").trim().split(/\n+/).length === 2 && a.yazi.split(" ").length <= 3);
-    if (uygun && !kartMi && (a.ikon || gorsel)) {
+    /* veri gösteren düğmeler (tarih, puan, süre, sözlük çipi) içeriktir: dokunma */
+    var veri = /·|\[|\d{1,2}:\d{2}|\bpuan\b|\bsn\b/i.test(a.yazi);
+    var uygun = a.yazi && /[\p{L}]/u.test(a.yazi) && !veri && a.yazi.length <= 140;
+    if (uygun && (a.ikon || gorsel)) {
       var ipucuYazi = a.yazi;
       var ek = b.getAttribute("data-tooltip") || b.getAttribute("data-ipucu") || "";
       if (ek && ek.toLocaleLowerCase("tr-TR").indexOf(a.yazi.toLocaleLowerCase("tr-TR")) < 0) ipucuYazi = a.yazi + " — " + ek;
