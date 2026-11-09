@@ -671,3 +671,14 @@ html.kk-acik.kk-dokunmatik .yt-layout-dock{padding-right:76px!important}
 /* İlerleme çubuğunun küçük yuvarlak tutamacı büyütülmez (Oynat düğmesinin üstüne binmesin) */
 html.kk-acik .yt-timeline>#timelineThumb{min-width:0!important;min-height:0!important;width:15px!important;height:15px!important}
 html.kk-dokunmatik .yt-mode-switch{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:8px!important;width:auto!important;max-width:100%!important;overflow:visible!important}
+/* Ses kaynağı satırı (Orijinal / rehber / mikrofon / Oku) telefonda alt satıra geçer, taşmaz */
+html.kk-dokunmatik .yt-audio-source{display:flex!important;flex-wrap:wrap!important;gap:4px!important;max-width:100%!important;box-sizing:border-box;height:auto!important}
+html.kk-dokunmatik .yt-audio-source>button{flex:1 1 auto!important;height:auto!important;min-height:48px!important}
+/* Büyük yazı açıkken cümle düğmelerinde simge iki kez görünmesin
+   (sayfanın ::before simgesi + düğmenin kendi simgesi) */
+html.kk-acik .yt-learning-head .yt-icon-action::before,
+html.kk-acik .yt-learning-head .yt-sentence-actions button::before{content:none!important;display:none!important}
+/* Cümle düğmeleri kartın tam genişliğini kullanır, sütun gibi daralmaz */
+html.kk-dokunmatik .yt-learning-card.is-actions-open .yt-learning-head{display:flex!important;flex-wrap:wrap!important;width:100%!important;max-width:100%!important}
+html.kk-dokunmatik .yt-learning-card.is-actions-open .yt-learning-head>.yt-sentence-actions{width:100%!important;flex:1 1 100%!important;display:flex!important;flex-wrap:wrap!important;justify-content:flex-start!important}
+html.kk-dokunmatik .yt-learning-head>#sentenceActionsToggle{max-width:100%!important;white-space:nowrap!important}

@@ -382,7 +382,10 @@
                  controlMoreToggle: "Diğer", soundToggle: "Ses",
                  headToggle: "Bilgiler", toggleTranscriptPanel: "Transkript", translateTranscript: "Çevir",
                  retranslateTranscript: "Yeniden çevir", refreshTiming: "Yenile", loopToggle: "Tekrarla",
-                 markHard: "Tekrar listesi", resetPanelLayout: "Düzeni sıfırla", closeStudy: "Geri" };
+                 markHard: "Tekrar listesi", resetPanelLayout: "Düzeni sıfırla", closeStudy: "Geri",
+                 openSentenceYouglish: "YouGlish", createPracticeModule: "Modül", syncSentence: "Zamanına git",
+                 favoriteSentence: "Favori", editSentence: "Düzenle", splitSentence: "Böl", mergeNextSentence: "Birleştir",
+                 askGemini: "Gemini'ye sor", undoSplit: "Geri al", undoMerge: "Geri al" };
   var SADECE_SIMGE_RE = /^[^\p{L}\p{N}]{1,4}$/u;
   /* 文 gibi Çince işaretler de simge sayılır */
   var SADECE_SIMGE = { test: function(t){ return SADECE_SIMGE_RE.test(String(t).replace(/\p{Script=Han}/gu, "•")); } };
@@ -476,6 +479,8 @@
   }
   var DOKUNMATIK = false;
   try { DOKUNMATIK = matchMedia("(hover: none), (pointer: coarse)").matches; } catch (e) {}
+  /* Test için: adreste ?dokunmatik=1 varsa telefon görünümü (bilgisayarda deneme) */
+  try { if (/[?&]dokunmatik=1/.test(location.search) || /[?&]dokunmatik=1/.test(parent.location.search)) DOKUNMATIK = true; } catch (e) {}
   if (DOKUNMATIK) root.classList.add("kk-dokunmatik");
   /* Dokunmatik ekranda yalnız simgeli düğmeye kısa ad (1-2 kelime) */
   function kisaAdVer(b){
@@ -501,7 +506,9 @@
       }
     }
     var t = gor;
-    if (!t || !SADECE_SIMGE.test(t)) { if (b.hasAttribute("data-kk-etiket")) b.removeAttribute("data-kk-etiket"); return; }
+    /* "Y" gibi tek harfli simge düğmeleri: bilinen düğmeyse kısa ad verilir */
+    var tekHarf = KIMLIK[b.id] && t && t.length <= 2;
+    if (!t || (!SADECE_SIMGE.test(t) && !tekHarf)) { if (b.hasAttribute("data-kk-etiket")) b.removeAttribute("data-kk-etiket"); return; }
     /* sayfanın kendi CSS'iyle gizlenmiş düğmeyi görünür yapma */
     if (b.hasAttribute("data-kk-etiket")) { var eski = b.getAttribute("data-kk-etiket"); b.removeAttribute("data-kk-etiket"); if (getComputedStyle(b).display === "none") return; b.setAttribute("data-kk-etiket", eski); }
     else if (getComputedStyle(b).display === "none") return;
