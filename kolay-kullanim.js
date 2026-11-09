@@ -385,7 +385,9 @@
                  markHard: "Tekrar listesi", resetPanelLayout: "Düzeni sıfırla", closeStudy: "Geri",
                  openSentenceYouglish: "YouGlish", createPracticeModule: "Modül", syncSentence: "Zamanına git",
                  favoriteSentence: "Favori", editSentence: "Düzenle", splitSentence: "Böl", mergeNextSentence: "Birleştir",
-                 askGemini: "Gemini'ye sor", undoSplit: "Geri al", undoMerge: "Geri al" };
+                 askGemini: "Gemini'ye sor", undoSplit: "Geri al", undoMerge: "Geri al",
+                 alignStartEarlier: "Erken başla", alignStartLater: "Geç başla", alignEndEarlier: "Erken bitir",
+                 alignEndLater: "Geç bitir", alignNudgeLeft: "Geri kaydır", alignNudgeRight: "İleri kaydır" };
   var SADECE_SIMGE_RE = /^[^\p{L}\p{N}]{1,4}$/u;
   /* 文 gibi Çince işaretler de simge sayılır */
   var SADECE_SIMGE = { test: function(t){ return SADECE_SIMGE_RE.test(String(t).replace(/\p{Script=Han}/gu, "•")); } };
@@ -634,6 +636,13 @@
   }
   /* Tam ekran sayfalarda sağ üstteki Menü düğmesi sayfanın kendi
      düğmesini örtüyorsa, o düğmenin başlığına sağdan boşluk aç. */
+  function sabitAtaVar(e){
+    for (var p = e; p && p !== doc.body; p = p.parentElement){
+      var ps = getComputedStyle(p).position;
+      if (ps === "fixed" || ps === "sticky") return true;
+    }
+    return false;
+  }
   function yerAc(){
     var m = doc.querySelector(".kk-ust-menu");
     if (!m || !ayar.acik) return;
@@ -644,6 +653,9 @@
       if (e.closest(".kk-ui")) continue;
       var r = e.getBoundingClientRect();
       if (r.width < 1 || r.right < mr.left - 6 || r.left > mr.right + 6 || r.bottom < mr.top - 6 || r.top > mr.bottom + 6) continue;
+      /* Yalnız sayfanın en üstündeki ya da ekrana sabitlenmiş (yapışkan) başlık için yer açılır;
+         sayfa kaydırılınca Menü'nün altına denk gelen içerik daraltılmaz. */
+      if (r.top + scrollY > mr.bottom + 6 && !sabitAtaVar(e)) continue;
       var kap = e.closest("header,nav,[class*='head'],[class*='top'],[class*='bar']") || e.parentElement;
       if (!kap || kap === doc.body || kap.hasAttribute("data-kk-yer")) continue;
       var pr = parseFloat(getComputedStyle(kap).paddingRight) || 0;
@@ -665,7 +677,24 @@
   }
   /* Sayfanın kendi büyük açılır penceresi (ayarlar, puan, öğretmen paneli)
      ekranı kaplıyorsa alt çubuğu gizle; kapanınca geri getir. */
+  /* Tam ekran sayfalarda açılan pencere (modal) varken sağ üstteki Menü gizlenir,
+     pencerenin başlığını/kapat düğmesini örtmesin. */
+  function pencereAcikMi(){
+    var l = doc.querySelectorAll('[role=dialog],[aria-modal=true],[class*=modal],[class*=overlay],[id$=Modal],[class*=-ov],.dh-gb-panel,.yt-youglish-stage');
+    var W = innerWidth, H = innerHeight;
+    for (var i = 0; i < l.length; i++){
+      var e = l[i];
+      if (e.closest(".kk-ui") || e.hidden) continue;
+      var cs = getComputedStyle(e);
+      if (cs.display === "none" || cs.visibility === "hidden" || +cs.opacity < 0.2) continue;
+      if (cs.position !== "fixed" && cs.position !== "absolute") continue;
+      var r = e.getBoundingClientRect();
+      if (r.width * r.height > W * H * 0.3) return true;
+    }
+    return false;
+  }
   function perdeKontrol(tam){
+    if (doc.body && TAM_EKRAN && !NAVSIZ) { doc.body.classList.toggle("kk-perde-acik", pencereAcikMi()); return; }
     if (!doc.body || TAM_EKRAN || NAVSIZ) return;
     var var_ = false, W = innerWidth, H = innerHeight;
     var l = tam ? doc.body.getElementsByTagName("*") : doc.body.children;

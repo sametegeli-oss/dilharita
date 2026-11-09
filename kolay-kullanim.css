@@ -516,10 +516,13 @@ html.kk-acik input:disabled,html.kk-acik textarea:disabled,html.kk-acik select:d
   height:auto!important;min-height:54px!important;padding:5px 5px!important;
   flex:0 0 auto!important;overflow:visible!important;
 }
-:root:root:root:root:root:root:root:root.kk-dokunmatik [data-kk-etiket]::after{
+:root:root:root:root:root:root:root:root.kk-dokunmatik [data-kk-etiket]:not(#kk-y1):not(#kk-y2)::after{
+  content:attr(data-kk-etiket)!important;display:block!important;color:#fff;background:none!important;width:auto!important;height:auto!important;border:0!important;box-shadow:none!important;border-radius:0!important;
   font-size:12.5px!important;line-height:1.1!important;white-space:normal!important;
   text-align:center;max-width:82px;overflow-wrap:break-word;
   position:static!important;transform:none!important;
 }
 /* YouTube: beyaz yuvarlak "Oynat" düğmesinde ad koyu renkte okunur */
-:root:root:root:root:root:root:root:root.kk-dokunmatik #playToggle[data-kk-etiket]::after{color:#0b1324!important}
+:root:root:root:root:root:root:root:root.kk-dokunmatik #playToggle[data-kk-etiket]:not(#kk-y1):not(#kk-y2)::after{color:#0b1324!important}
+/* Açılan pencere varken sağ üstteki büyük Menü düğmesi pencereyi örtmesin */
+html.kk-acik body.kk-perde-acik .kk-ust-menu{display:none!important}

@@ -682,3 +682,33 @@ html.kk-acik .yt-learning-head .yt-sentence-actions button::before{content:none!
 html.kk-dokunmatik .yt-learning-card.is-actions-open .yt-learning-head{display:flex!important;flex-wrap:wrap!important;width:100%!important;max-width:100%!important}
 html.kk-dokunmatik .yt-learning-card.is-actions-open .yt-learning-head>.yt-sentence-actions{width:100%!important;flex:1 1 100%!important;display:flex!important;flex-wrap:wrap!important;justify-content:flex-start!important}
 html.kk-dokunmatik .yt-learning-head>#sentenceActionsToggle{max-width:100%!important;white-space:nowrap!important}
+/* "Araçlar" ve "Cümleyi düzenle" açma düğmeleri satırın tamamını kaplasın */
+html.kk-dokunmatik .yt-tools-toggle,html.kk-dokunmatik .yt-advanced-toggle{flex:1 1 100%!important;width:100%!important;max-width:100%!important;box-sizing:border-box}
+#translationLanguageModal h2{font-weight:800}
+/* Büyük yazıda transkript satırındaki zaman (00:05) "00…" diye kesilmesin */
+html.kk-acik .yt-segment{grid-template-columns:auto minmax(0,1fr)!important}
+html.kk-acik .yt-seg-time{min-width:3.2em!important;overflow:visible!important}
+html.kk-acik .yt-seg-time time{overflow:visible!important;text-overflow:clip!important}
+/* Cümledeki kelimeyi listeye ekleme düğmeleri ("+ servants · hizmetçi") */
+.yt-vocab-chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.yt-vocab-chips:empty{display:none}
+.yt-vocab-chip{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:8px 14px;border:1px solid rgba(85,230,209,.45);border-radius:999px;background:rgba(85,230,209,.08);color:#e6fffb;font:700 15px/1.25 inherit;cursor:pointer;text-align:left;max-width:100%;white-space:normal}
+.yt-vocab-chip:hover,.yt-vocab-chip:focus-visible{background:rgba(85,230,209,.18);border-color:#55e6d1;outline:none}
+.yt-vocab-chip.is-added,.yt-vocab-chip:disabled{opacity:.6;border-style:dashed}
+/* Transkript başlığı: etkin sekme adı ("文 Altyazılar 12") kesilmeden kendi satırında */
+html.kk-dokunmatik .yt-transcript-panel .yt-toolbar-row{flex-wrap:wrap!important;row-gap:6px!important;height:auto!important}
+html.kk-dokunmatik #activeTabLabel{order:9;flex:1 1 100%!important;width:auto!important;max-width:none!important;overflow:visible!important;white-space:normal!important;text-overflow:clip!important;font-size:15px}
+/* "Seç" (pekiştirme) çubuğu açıkken transkript kutusu uzar, alttaki düğmeler kesilmez */
+html.kk-dokunmatik .yt-transcript-panel:has(.yt-drill-bar:not([hidden])){height:auto!important;max-height:none!important;overflow:visible!important}
+html.kk-dokunmatik .yt-transcript-panel:has(.yt-drill-bar:not([hidden])) .yt-panel-scroll{max-height:45dvh;overflow:auto}
+/* YouGlish paneli telefonda videonun küçük alanına sıkışmasın: tam ekran pencere olarak açılır */
+html.kk-dokunmatik .yt-youglish-stage:not([hidden]){position:fixed!important;inset:0!important;z-index:2147482000!important;padding:12px!important;overflow:auto!important;display:block}
+html.kk-dokunmatik .yt-youglish-stage>header span{font-size:12px!important}
+html.kk-dokunmatik .yt-youglish-stage>header b{font-size:15px!important;white-space:normal!important}
+html.kk-dokunmatik .yt-youglish-stage>header button{width:48px!important;height:48px!important}
+html.kk-dokunmatik .yt-youglish-stage>footer{position:static!important}
+html.kk-dokunmatik .yt-youglish-stage>footer button,html.kk-dokunmatik .yt-youglish-stage>footer span,html.kk-dokunmatik .yt-youglish-stage>footer a,html.kk-dokunmatik .yt-youglish-status,html.kk-dokunmatik .yt-youglish-chips button{font-size:14px!important}
+html.kk-dokunmatik .yt-youglish-stage>footer button{height:auto!important;min-height:48px}
+/* Pencerelerdeki yazı kutuları pencere dışına taşmasın */
+html.kk-acik .yt-modal input,html.kk-acik .yt-modal select,html.kk-acik .yt-modal textarea{max-width:100%!important;box-sizing:border-box!important;min-width:0!important}
+html.kk-acik .yt-modal label{min-width:0;max-width:100%}
