@@ -189,7 +189,7 @@
     var karar = [];
     for (var i = 0; i < liste.length; i++){
       var el = liste[i];
-      if (el.hasAttribute("data-kk-h") || el.closest(".kk-ui,svg")) continue;
+      if (el.hasAttribute("data-kk-h") || el.closest(".kk-ui,svg,.yt-timeline")) continue;   /* ilerleme çubuğunun tutamacı büyütülmez */
       var r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
       if (r.height >= 48 && r.width >= 48) continue;
@@ -379,8 +379,13 @@
                  suggestBtn: "Öneri", micBtn: "Konuş", sendBtn: "Gönder", levelBtn: "Seviye",
                  dhPuanBtn: "Değerlendir", dhGemRaporBtn: "Gemini raporu", dhDahaBtn: "Daha fazla", finishBtn2: "Bitir",
                  playToggle: "Oynat", fullscreenToggle: "Tam ekran", fsActionExit: "Küçült", practiceActionsToggle: "Cümle düğmeleri",
-                 controlMoreToggle: "Diğer", soundToggle: "Ses" };
-  var SADECE_SIMGE = /^[^\p{L}\p{N}]{1,4}$/u;
+                 controlMoreToggle: "Diğer", soundToggle: "Ses",
+                 headToggle: "Bilgiler", toggleTranscriptPanel: "Transkript", translateTranscript: "Çevir",
+                 retranslateTranscript: "Yeniden çevir", refreshTiming: "Yenile", loopToggle: "Tekrarla",
+                 markHard: "Tekrar listesi", resetPanelLayout: "Düzeni sıfırla", closeStudy: "Geri" };
+  var SADECE_SIMGE_RE = /^[^\p{L}\p{N}]{1,4}$/u;
+  /* 文 gibi Çince işaretler de simge sayılır */
+  var SADECE_SIMGE = { test: function(t){ return SADECE_SIMGE_RE.test(String(t).replace(/\p{Script=Han}/gu, "•")); } };
   /* İSTEK: Düğmelerin altına/üstüne açıklama yazısı EKLENMEZ. Bunun yerine farenin
      üzerine gelince (dokunmatik ekranda basılı tutunca) düğmenin ne işe yaradığını
      anlatan bir ipucu balonu açılır. Kaynak sırası: sayfanın kendi data-tooltip'i,
@@ -471,15 +476,36 @@
   }
   var DOKUNMATIK = false;
   try { DOKUNMATIK = matchMedia("(hover: none), (pointer: coarse)").matches; } catch (e) {}
+  if (DOKUNMATIK) root.classList.add("kk-dokunmatik");
   /* Dokunmatik ekranda yalnız simgeli düğmeye kısa ad (1-2 kelime) */
   function kisaAdVer(b){
-    var t = (b.textContent || "").replace(/\s+/g, "");
     if (b.closest(".kk-alt,.kk-ui,svg,.dh-net-status,#dhSyncBadge")) return;
+    var tum = (b.textContent || "").replace(/\s+/g, "");
+    /* Ekranda görünen yazı: sayfa düğmenin yazısını (<b>Kontroller</b> gibi) telefonda
+       gizlemiş olabilir; o zaman ekranda yalnız simge kalır, gizli yazı kısa ad olur. */
+    var gor = tum, gizliAd = "";
+    if (tum && b.firstElementChild && !SADECE_SIMGE.test(tum) && b.getClientRects().length) {
+      /* yalnız gerçekten görünen yazı parçaları (gizli ya da 1px'e sıkıştırılmış olanlar sayılmaz) */
+      gor = ""; var gw = doc.createTreeWalker(b, 4), gn;
+      while ((gn = gw.nextNode())) {
+        var pe = gn.parentElement; if (!pe) continue;
+        var pr = pe.getBoundingClientRect();
+        if (pr.width > 3 && pr.height > 3 && getComputedStyle(pe).visibility !== "hidden") gor += gn.nodeValue;
+      }
+      gor = gor.replace(/\s+/g, "");
+      if (gor !== tum && (!gor || SADECE_SIMGE.test(gor))) {
+        /* düğmenin içindeki ilk yazılı parça (başlık); alt satır/sayaç alınmaz */
+        var parca = "", w = doc.createTreeWalker(b, 4), n;
+        while ((n = w.nextNode())) { if (/\p{L}/u.test(n.nodeValue)) { parca = n.nodeValue; break; } }
+        gizliAd = parca.replace(/[^\p{L}\p{N}\s'’]/gu, " ").trim().split(/\s+/).slice(0, 2).join(" ");
+      }
+    }
+    var t = gor;
     if (!t || !SADECE_SIMGE.test(t)) { if (b.hasAttribute("data-kk-etiket")) b.removeAttribute("data-kk-etiket"); return; }
     /* sayfanın kendi CSS'iyle gizlenmiş düğmeyi görünür yapma */
     if (b.hasAttribute("data-kk-etiket")) { var eski = b.getAttribute("data-kk-etiket"); b.removeAttribute("data-kk-etiket"); if (getComputedStyle(b).display === "none") return; b.setAttribute("data-kk-etiket", eski); }
     else if (getComputedStyle(b).display === "none") return;
-    var ad = KIMLIK[b.id] || SIMGE[t] || SIMGE[t.replace(/\uFE0F/g, "")];
+    var ad = KIMLIK[b.id] || gizliAd || SIMGE[t] || SIMGE[t.replace(/\uFE0F/g, "")];
     if (!ad) {
       var uzun = b.getAttribute("aria-label") || b.getAttribute("data-tooltip") || b.getAttribute("data-ipucu") || "";
       ad = uzun.replace(/[^\p{L}\p{N}\s]/gu, "").trim().split(/\s+/).slice(0, 2).join(" ");

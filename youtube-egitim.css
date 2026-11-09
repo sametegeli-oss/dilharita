@@ -654,3 +654,20 @@ html.kk-acik .yt-controls>*{flex-shrink:1}
 
 /* Telefonda kontrol çubuğu sağdan taşıp düğmeler kesiliyordu: alt satıra geçsin */
 @media (max-width:700px){.yt-controls{flex-wrap:wrap!important;row-gap:6px!important;max-width:100%!important;box-sizing:border-box;overflow:visible!important}}
+
+/* Telefon/tablet: adı yazılı düğmeler sığmazsa alt satıra geçer (taşma, üst üste binme yok) */
+html.kk-dokunmatik .yt-video-shell:not(.is-pseudo-fullscreen):not(:fullscreen) .yt-controls,
+html.kk-dokunmatik .yt-controls,
+html.kk-dokunmatik .yt-layout-dock,
+html.kk-dokunmatik .yt-mode-tools,
+html.kk-dokunmatik .yt-modebar{
+  flex-wrap:wrap!important;overflow:visible!important;height:auto!important;max-width:100%!important;
+  row-gap:6px!important;box-sizing:border-box;
+}
+html.kk-dokunmatik .yt-controls{justify-content:center!important}
+html.kk-dokunmatik .yt-dock-left{flex-wrap:wrap!important}
+/* Sağ üstteki büyük "Menü" düğmesi çubuğun son düğmesini örtmesin */
+html.kk-acik.kk-dokunmatik .yt-layout-dock{padding-right:76px!important}
+/* İlerleme çubuğunun küçük yuvarlak tutamacı büyütülmez (Oynat düğmesinin üstüne binmesin) */
+html.kk-acik .yt-timeline>#timelineThumb{min-width:0!important;min-height:0!important;width:15px!important;height:15px!important}
+html.kk-dokunmatik .yt-mode-switch{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:8px!important;width:auto!important;max-width:100%!important;overflow:visible!important}
