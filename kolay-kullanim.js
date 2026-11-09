@@ -451,7 +451,7 @@
     /* alt çubuk: "Aa / Yazı" gibi iki satırlı düğmede üst satır simgedir */
     if (b.closest(".kk-alt") && !a.ikon) { var sat = (b.innerText || "").trim().split(/\n+/); if (sat.length === 2) a = { ikon: sat[0].trim(), yazi: sat[1].trim() }; }
     /* veri gösteren düğmeler (tarih, puan, süre, sözlük çipi) içeriktir: dokunma */
-    var veri = /·|\[|\d{1,2}:\d{2}|\bpuan\b|\bsn\b/i.test(a.yazi);
+    var veri = /·|\[|\d{1,2}:\d{2}|\bpuan\b|\bsn\b|\d+\s*\/\s*\d+|Tamamlandı|kaldı/i.test(a.yazi);
     var uygun = a.yazi && /[\p{L}]/u.test(a.yazi) && !veri && a.yazi.length <= 140;
     if (uygun && (a.ikon || gorsel)) {
       var ipucuYazi = a.yazi;
@@ -469,15 +469,42 @@
       if (b.style.getPropertyValue("font-size") === "0px") b.style.removeProperty("font-size");
     }
   }
+  var DOKUNMATIK = false;
+  try { DOKUNMATIK = matchMedia("(hover: none), (pointer: coarse)").matches; } catch (e) {}
+  /* Dokunmatik ekranda yalnız simgeli düğmeye kısa ad (1-2 kelime) */
+  function kisaAdVer(b){
+    var t = (b.textContent || "").replace(/\s+/g, "");
+    if (b.closest(".kk-alt,.kk-ui,svg,.dh-net-status,#dhSyncBadge")) return;
+    if (!t || !SADECE_SIMGE.test(t)) { if (b.hasAttribute("data-kk-etiket")) b.removeAttribute("data-kk-etiket"); return; }
+    /* sayfanın kendi CSS'iyle gizlenmiş düğmeyi görünür yapma */
+    if (b.hasAttribute("data-kk-etiket")) { var eski = b.getAttribute("data-kk-etiket"); b.removeAttribute("data-kk-etiket"); if (getComputedStyle(b).display === "none") return; b.setAttribute("data-kk-etiket", eski); }
+    else if (getComputedStyle(b).display === "none") return;
+    var ad = KIMLIK[b.id] || SIMGE[t] || SIMGE[t.replace(/\uFE0F/g, "")];
+    if (!ad) {
+      var uzun = b.getAttribute("aria-label") || b.getAttribute("data-tooltip") || b.getAttribute("data-ipucu") || "";
+      ad = uzun.replace(/[^\p{L}\p{N}\s]/gu, "").trim().split(/\s+/).slice(0, 2).join(" ");
+    }
+    if (ad && b.getAttribute("data-kk-etiket") !== ad) b.setAttribute("data-kk-etiket", ad);
+  }
   function simgeEtiketleri(kok){
     var l = (kok || doc).querySelectorAll("button,a[href],[role=button],summary,input[type=button],input[type=submit]");
     for (var i = 0; i < l.length; i++){
       var b = l[i];
       if (b.closest(".kk-ui") && !b.closest(".kk-alt")) continue;
-      if (b.hasAttribute("data-kk-etiket")) b.removeAttribute("data-kk-etiket");
       /* tarayıcının kendi küçük "title" balonu ile bizimki üst üste çıkmasın */
       if (b.hasAttribute("title")) { if (!b.getAttribute("data-tooltip")) b.setAttribute("data-ipucu", b.getAttribute("title")); if (!b.getAttribute("aria-label") && !(b.textContent||"").trim()) b.setAttribute("aria-label", b.getAttribute("title")); b.removeAttribute("title"); }
-      try { dugmeSadelestir(b); } catch (e) {}
+      if (DOKUNMATIK) {
+        /* Telefonda/tablette "üzerine gelme" yok: simgeli düğmeler yazısıyla kalır,
+           yalnız simgesi olan düğmelerin altına kısa ad yazılır (hepsi aynı düzende). */
+        if (b.hasAttribute("data-kk-ikon") || b.hasAttribute("data-kk-gorsel")) {
+          b.removeAttribute("data-kk-ikon"); b.removeAttribute("data-kk-gorsel"); b.removeAttribute("data-kk-sade-ipucu");
+          if (b.style.getPropertyValue("font-size") === "0px") b.style.removeProperty("font-size");
+        }
+        try { kisaAdVer(b); } catch (e) {}
+      } else {
+        if (b.hasAttribute("data-kk-etiket")) b.removeAttribute("data-kk-etiket");
+        try { dugmeSadelestir(b); } catch (e) {}
+      }
     }
   }
 
@@ -496,7 +523,7 @@
       /* yalnız simge; ne işe yaradığı üzerine gelince ipucu olarak çıkar */
       var s = doc.createElement("span");
       s.className = "kk-ikon-yazi"; s.setAttribute("data-kk-atla", ""); s.setAttribute("aria-hidden", "true");
-      s.innerHTML = '<i>' + (sec ? sec[1] : (kendiYazi || "•")) + '</i>';
+      s.innerHTML = '<i>' + (sec ? sec[1] : (kendiYazi || "•")) + '</i>' + (DOKUNMATIK ? (sec ? sec[2] : ad.split(/\s+/).slice(0, 2).join(" ")) : "");
       b.appendChild(s);
     }
   }

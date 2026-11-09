@@ -447,13 +447,13 @@ html.kk-acik.kk-acik.kk-acik.kk-acik .card .dh-tools-toggle::after{content:"Ara�
 html.kk-acik body.kk-perde-acik .kk-alt{display:none!important}
 
 /* Yalnız simgeli düğmelere yazı: simgenin altında kısa açıklama */
-html.kk-acik [data-kk-etiket]{
+[data-kk-etiket]{
   display:inline-flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
   gap:2px!important;min-width:60px!important;min-height:60px!important;height:auto!important;
   width:auto!important;max-width:none!important;flex-shrink:0!important;
   padding:4px 6px!important;line-height:1!important;white-space:nowrap!important;
 }
-html.kk-acik [data-kk-etiket]::after{
+[data-kk-etiket]::after{
   content:attr(data-kk-etiket);
   display:block;font:700 14px/1.1 system-ui,-apple-system,"Segoe UI",sans-serif;
   letter-spacing:0;color:#fff;white-space:nowrap;text-transform:none;
