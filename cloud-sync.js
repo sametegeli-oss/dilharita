@@ -622,6 +622,7 @@
           localStorage.setItem("dh-youtube-deleted-v1", JSON.stringify(delMap));
         }
       }catch(_e){}
+      try{ await vaultSync(); }catch(e){ console.warn("[cloud-sync] anahtar kasası",e); }
       var data=await collectAll();
       var g=shrinkToLimit(data.ls);
 
@@ -748,6 +749,7 @@
       tick(3,"AI açıklamaları okunuyor…");
       var remoteAI=await withTimeout(fb.loadAIExplanations(user.uid),15000,"AI açıklamaları okunamadı").catch(function(){return [];});
       try{ await fb.purgeSecrets(user.uid); }catch(e){}
+      try{ await vaultSync(mainSettings&&mainSettings.__keyVault||null); }catch(e){ console.warn("[cloud-sync] anahtar kasası",e); }
       var rd=parseRemote(remote);
       /* SİLİNEN VİDEOLAR: iki cihazın "silindi" listesini birleştir (union,
          üzerine yazma değil), sonra bu listedeki videoları buluttan gelen
@@ -957,6 +959,17 @@
           }
           try{ jobs.push(fsMod.updateDoc.apply(null,[ref].concat(args)).catch(function(){})); }catch(e){}
           return Promise.all(jobs);
+        },
+        /* Şifreli API anahtar kasası: settings/{uid}.__keyVault
+           Yalnız AES-GCM ile şifrelenmiş kutu gider; parola cihazdan çıkmaz. */
+        loadKeyVault:function(uid){
+          return fsMod.getDoc(fsMod.doc(db,"settings",uid)).then(function(s){ var d=s.exists()?s.data():null; return (d&&d.__keyVault)||null; });
+        },
+        saveKeyVault:function(uid,v){
+          return fsMod.setDoc(fsMod.doc(db,"settings",uid),{__keyVault:v},{merge:true});
+        },
+        deleteKeyVault:function(uid){
+          return fsMod.setDoc(fsMod.doc(db,"settings",uid),{__keyVault:fsMod.deleteField()},{merge:true});
         },
         loadMainSettings:function(uid){
           // Sadece iki küçük belge (ayarlar + ilerleme); video kayıtları AYRI
@@ -1175,6 +1188,144 @@
     }).catch(function(e){ console.warn("cloud-sync: firebase yüklenemedi", e); });
   }
 
+  /* ── 10b) ŞİFRELİ API ANAHTAR KASASI ─────────────────────────
+     Anahtarlar düz metin olarak ASLA buluta gitmez. Kullanıcı bir parola
+     belirlerse anahtarlar bu parolayla (PBKDF2 → AES-256-GCM) cihazda
+     şifrelenir ve yalnız şifreli kutu settings/{uid}.__keyVault alanına
+     yazılır. Parolanın kendisi saklanmaz; cihazda yalnız dışarı
+     aktarılamayan PBKDF2 anahtarı (menüdeki şifreli yedekle ORTAK) durur. */
+  var VAULT_NAMES=["nvidiaApiKeys","groqApiKeys","cerebrasApiKeys","geminiApiKeys","apiKeys"];
+  var VAULT_SIG="dh-keyvault-sig", VAULT_AT="dh-keyvault-at", VAULT_ON="dh-keyvault-on";
+  function vaultOn(){try{return localStorage.getItem(VAULT_ON)==="1";}catch(e){return false;}}
+  function vB64(b){var s="";for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s);}
+  function vBytes(s){var b=atob(s),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;}
+  function vaultDB(){return new Promise(function(res,rej){var r=indexedDB.open("DilHaritaSecureVault",1);r.onupgradeneeded=function(){if(!r.result.objectStoreNames.contains("keys"))r.result.createObjectStore("keys");};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});}
+  async function vaultKeyLoad(){try{var db=await vaultDB();return await new Promise(function(res){var q=db.transaction("keys","readonly").objectStore("keys").get("backup-pbkdf2");q.onsuccess=function(){res(q.result||null);};q.onerror=function(){res(null);};});}catch(e){return null;}}
+  async function vaultKeySave(k){var db=await vaultDB();return new Promise(function(res,rej){var tx=db.transaction("keys","readwrite");tx.objectStore("keys").put(k,"backup-pbkdf2");tx.oncomplete=function(){res(true);};tx.onerror=function(){rej(tx.error);};});}
+  async function vaultKeyForget(){try{var db=await vaultDB();return await new Promise(function(res){var tx=db.transaction("keys","readwrite");tx.objectStore("keys").delete("backup-pbkdf2");tx.oncomplete=function(){res(true);};tx.onerror=function(){res(false);};});}catch(e){return false;}}
+  function vaultBase(pw){return crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveKey"]);}
+  function vaultDerive(base,salt,iter){return crypto.subtle.deriveKey({name:"PBKDF2",salt:salt,iterations:iter,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);}
+  async function vaultEncrypt(obj,base){
+    var salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=250000;
+    var k=await vaultDerive(base,salt,iter);
+    var c=await crypto.subtle.encrypt({name:"AES-GCM",iv:iv},k,new TextEncoder().encode(JSON.stringify(obj)));
+    return {version:1,algorithm:"AES-256-GCM",kdf:"PBKDF2-SHA256",iterations:iter,salt:vB64(salt),iv:vB64(iv),data:vB64(new Uint8Array(c))};
+  }
+  async function vaultDecrypt(box,base){
+    var k=await vaultDerive(base,vBytes(box.salt),Number(box.iterations)||250000);
+    var p=await crypto.subtle.decrypt({name:"AES-GCM",iv:vBytes(box.iv)},k,vBytes(box.data));
+    return JSON.parse(new TextDecoder().decode(p));
+  }
+  function vaultRead(){var o={};VAULT_NAMES.forEach(function(n){try{var v=localStorage.getItem(n);if(v!=null&&v!==""&&v!=="[]")o[n]=v;}catch(e){}});return o;}
+  function vaultSigOf(o){var a=[];VAULT_NAMES.forEach(function(n){a.push(n+"="+(o[n]==null?"":o[n]));});return sigOf(a.join("\n"));}
+  function vaultApply(o){VAULT_NAMES.forEach(function(n){try{if(o[n]!=null)localStorage.setItem(n,String(o[n]));else localStorage.removeItem(n);}catch(e){}});
+    try{window.dispatchEvent(new CustomEvent("dh-api-keys-changed"));}catch(e){}}
+  function vaultMerge(local,remote){
+    var out={};
+    VAULT_NAMES.forEach(function(n){
+      var a=local[n],b=remote[n];
+      if(a==null){ if(b!=null) out[n]=b; return; }
+      if(b==null||a===b){ out[n]=a; return; }
+      try{
+        var x=JSON.parse(a),y=JSON.parse(b);
+        if(Array.isArray(x)&&Array.isArray(y)){
+          var seen={},list=[];
+          x.concat(y).forEach(function(it){var id=typeof it==="string"?it:JSON.stringify(it);if(!seen[id]){seen[id]=1;list.push(it);}});
+          out[n]=JSON.stringify(list); return;
+        }
+      }catch(e){}
+      out[n]=a;
+    });
+    return out;
+  }
+  function vaultCount(o){var n=0;VAULT_NAMES.forEach(function(k){if(o[k]==null)return;try{var v=JSON.parse(o[k]);n+=Array.isArray(v)?v.length:1;}catch(e){n+=1;}});return n;}
+  var vaultState={problem:""};
+  function vaultEvent(){try{window.dispatchEvent(new CustomEvent("dh-keyvault-state",{detail:{problem:vaultState.problem}}));}catch(e){}}
+  /* remoteVault: fullSync'in zaten okuduğu değer (undefined → gerekirse kendisi okur). */
+  async function vaultSync(remoteVault){
+    if(!ready||!user||!fb||!(window.crypto&&crypto.subtle)) return;
+    var base=vaultOn()?await vaultKeyLoad():null;
+    if(!base){
+      var lc=vaultCount(vaultRead());
+      vaultState.problem=(remoteVault&&!lc)?"parola-gerek":"";
+      if(remoteVault!==undefined) vaultEvent();
+      return;
+    }
+    var local=vaultRead(), sig=vaultSigOf(local), lastSig="", lastAt=0;
+    try{lastSig=localStorage.getItem(VAULT_SIG)||"";lastAt=+localStorage.getItem(VAULT_AT)||0;}catch(e){}
+    var localChanged=(sig!==lastSig);
+    if(remoteVault===undefined){
+      if(!localChanged) return;
+      remoteVault=await fb.loadKeyVault(user.uid);
+    }
+    if(remoteVault&&remoteVault.box&&(+remoteVault.at||0)>lastAt){
+      var rem;
+      try{ rem=await vaultDecrypt(remoteVault.box,base); }
+      catch(e){ vaultState.problem="parola-farkli"; vaultEvent(); return; }
+      var next=localChanged?vaultMerge(local,rem):rem;
+      vaultApply(next);
+      var nsig=vaultSigOf(next);
+      try{localStorage.setItem(VAULT_AT,String(+remoteVault.at||0));}catch(e){}
+      if(nsig===vaultSigOf(rem)){
+        try{localStorage.setItem(VAULT_SIG,nsig);}catch(e){}
+        vaultState.problem=""; vaultEvent(); return;
+      }
+      local=next; sig=nsig; localChanged=true;
+    }
+    if(!localChanged&&remoteVault){ vaultState.problem=""; return; }
+    var at=Date.now();
+    await fb.saveKeyVault(user.uid,{at:at,box:await vaultEncrypt(local,base)});
+    try{localStorage.setItem(VAULT_AT,String(at));localStorage.setItem(VAULT_SIG,sig);}catch(e){}
+    vaultState.problem=""; vaultEvent();
+  }
+  var keyVault={
+    status:async function(){
+      await waitForAuth(4000);
+      var base=vaultOn()?await vaultKeyLoad():null, remote=null, err="";
+      if(ready&&user&&fb){ try{ remote=await withTimeout(fb.loadKeyVault(user.uid),15000,"okunamadı"); }catch(e){ err=(e&&e.message)||"okunamadı"; } }
+      return {signedIn:!!user, enabled:!!base, remote:!!(remote&&remote.box), remoteAt:remote&&remote.at||0,
+              localCount:vaultCount(vaultRead()), problem:vaultState.problem, error:err};
+    },
+    enable:async function(password){
+      if(!(window.crypto&&crypto.subtle)) return {ok:false,message:"Bu tarayıcı şifrelemeyi desteklemiyor."};
+      await waitForAuth(4000);
+      if(!ready||!user||!fb) return {ok:false,message:"Önce buluta giriş yapmalısın."};
+      password=String(password||"");
+      if(password.length<8) return {ok:false,message:"Parola en az 8 karakter olmalı."};
+      var base=await vaultBase(password), remote=await withTimeout(fb.loadKeyVault(user.uid),15000,"Bulut okunamadı");
+      var local=vaultRead(), rem=null;
+      if(remote&&remote.box){
+        try{ rem=await vaultDecrypt(remote.box,base); }
+        catch(e){ return {ok:false,message:"Parola yanlış. Bulutta bu hesap için başka bir parolayla kaydedilmiş anahtarlar var; o parolayı yaz."}; }
+      }else if(!vaultCount(local)){
+        return {ok:false,message:"Bu cihazda kayıtlı API anahtarı yok. Önce anahtarlarının olduğu cihazda bu ayarı aç."};
+      }
+      var merged=rem?vaultMerge(local,rem):local;
+      if(rem) vaultApply(merged);
+      await vaultKeySave(base);
+      try{localStorage.setItem(VAULT_ON,"1");}catch(e){}
+      var sig=vaultSigOf(merged);
+      if(rem&&sig===vaultSigOf(rem)){
+        try{localStorage.setItem(VAULT_AT,String(+remote.at||0));localStorage.setItem(VAULT_SIG,sig);}catch(e){}
+      }else{
+        var at=Date.now();
+        await fb.saveKeyVault(user.uid,{at:at,box:await vaultEncrypt(merged,base)});
+        try{localStorage.setItem(VAULT_AT,String(at));localStorage.setItem(VAULT_SIG,sig);}catch(e){}
+      }
+      vaultState.problem=""; vaultEvent();
+      return {ok:true,count:vaultCount(merged),fromCloud:!!rem};
+    },
+    disable:async function(removeFromCloud){
+      try{localStorage.removeItem(VAULT_ON);localStorage.removeItem(VAULT_SIG);localStorage.removeItem(VAULT_AT);}catch(e){}
+      if(removeFromCloud){
+        await waitForAuth(4000);
+        if(ready&&user&&fb) await fb.deleteKeyVault(user.uid);
+      }
+      vaultState.problem=""; vaultEvent();
+      return {ok:true};
+    }
+  };
+
   /* ── 11) TETİKLEYİCİLER ──────────────────────────────────── */
   function initialSync(){
     waitForAuth(5000).then(function(){
@@ -1208,7 +1359,7 @@
       proto.setItem=function(k,v){
         origSet(k,v);
         var key=String(k);
-        var match=(LS_KEYS.indexOf(key)>=0);
+        var match=(LS_KEYS.indexOf(key)>=0)||(VAULT_NAMES.indexOf(key)>=0);
         if(!match){ for(var p=0;p<LS_PREFIXES.length;p++){ if(key.indexOf(LS_PREFIXES[p])===0){ match=true; break; } } }
         if(match) pushSoon();
       };
@@ -1440,6 +1591,7 @@
        (Eskiden index sayfası listeyi elle kopyalıyordu ve yeni anahtarlar
         eklendiğinde yedeğe girmiyordu.) */
     keys: function(){ return { list: LS_KEYS.slice(), prefixes: LS_PREFIXES.slice() }; },
+    keyVault: keyVault,
     _mergeProfile: mergeProfile,
     get ready(){ return ready; }, get user(){ return user; }
   };

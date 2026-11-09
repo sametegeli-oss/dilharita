@@ -164,6 +164,19 @@
       </div>
       <div class="dh-ipucu" id="dhCloudSyncMsg" style="min-height:16px" aria-live="polite"></div>
 
+      <div class="dh-kart dh-kart--sessiz" id="dhKeyVault" style="padding:12px;margin:10px 0;display:none">
+        <div style="font-weight:700;margin-bottom:4px">🔑 API anahtarlarını bulutla eşitle</div>
+        <div class="dh-ipucu" id="dhKeyVaultText" style="margin-bottom:8px">Durum kontrol ediliyor…</div>
+        <div id="dhKeyVaultForm" style="display:none">
+          <input type="password" id="dhKeyVaultPass" autocomplete="new-password" placeholder="Parola (en az 8 karakter)" aria-label="Anahtar parolası" style="width:100%;max-width:100%;box-sizing:border-box;font-size:18px;padding:10px;border-radius:10px;margin-bottom:6px">
+          <input type="password" id="dhKeyVaultPass2" autocomplete="new-password" placeholder="Parolayı tekrar yaz" aria-label="Parolayı tekrar yaz" style="width:100%;max-width:100%;box-sizing:border-box;font-size:18px;padding:10px;border-radius:10px;margin-bottom:6px">
+          <label class="dh-ipucu" style="display:flex;gap:6px;align-items:center;margin-bottom:8px;cursor:pointer"><input type="checkbox" id="dhKeyVaultShow"> Parolayı göster</label>
+          <button class="dh-btn dh-btn--ikincil dh-btn--tam" id="dhKeyVaultGo" type="button">Anahtarları eşitle</button>
+        </div>
+        <button class="dh-btn dh-btn--sade dh-btn--tam" id="dhKeyVaultOff" type="button" style="display:none;margin-top:6px">Anahtar eşitlemesini kapat</button>
+        <div class="dh-ipucu" id="dhKeyVaultMsg" style="min-height:16px;margin-top:6px" aria-live="polite"></div>
+      </div>
+
       <div class="satir">
         <button class="dh-btn dh-btn--ikincil" id="dhBackupBtn">Yedeği indir</button>
         <label class="dh-btn dh-btn--ikincil" style="cursor:pointer">
@@ -216,7 +229,7 @@
      hata defterinin ham deposu ve Gemini kelime analizleri yedeğe hiç
      girmiyordu. -->
 <script src="./dh-yedek.js?v=2"></script>
-<script src="./cloud-sync.js?v=30"></script>
+<script src="./cloud-sync.js?v=40"></script>
 <script src="./notifications.js?v=1"></script>
 <script>
 /* ---- Bulutla senkronize et + Çıkış yap ---- */
@@ -725,5 +738,65 @@ try{ navigator.serviceWorker.register("./sw.js?v=22", {scope:"./"}); }catch(e){}
 <script src="./atlas-effects.js?v=1"></script>
   <script src="product-improvements.js" defer></script>
 <script src="./dh-button-guard.js?v=1" defer></script>
+
+<script>
+/* Şifreli API anahtar eşitlemesi (cloud-sync.js → DHCloudSync.keyVault) */
+(function(){
+  var box=document.getElementById("dhKeyVault"); if(!box) return;
+  var text=document.getElementById("dhKeyVaultText"), form=document.getElementById("dhKeyVaultForm"),
+      p1=document.getElementById("dhKeyVaultPass"), p2=document.getElementById("dhKeyVaultPass2"),
+      show=document.getElementById("dhKeyVaultShow"), go=document.getElementById("dhKeyVaultGo"),
+      off=document.getElementById("dhKeyVaultOff"), msg=document.getElementById("dhKeyVaultMsg");
+  var mode="";
+  function say(t,ok){ msg.style.color=ok===true?"var(--dh-ok)":ok===false?"var(--dh-err)":""; msg.textContent=t||""; }
+  show.onchange=function(){ p1.type=p2.type=show.checked?"text":"password"; };
+  async function refresh(){
+    var kv=window.DHCloudSync&&DHCloudSync.keyVault;
+    if(!kv){ return setTimeout(refresh,800); }
+    var st; try{ st=await kv.status(); }catch(e){ return; }
+    if(!st.signedIn){ box.style.display="none"; return; }
+    box.style.display="";
+    form.style.display="none"; off.style.display="none"; p2.style.display="";
+    if(st.enabled && st.problem!=="parola-farkli"){
+      mode="";
+      text.textContent="✓ Açık. Anahtarların bu parolayla şifrelenip bulutla eşitleniyor. Bu cihazda "+st.localCount+" anahtar var.";
+      off.style.display="";
+    }else if(st.remote){
+      mode="al"; form.style.display=""; p2.style.display="none";
+      text.textContent=st.problem==="parola-farkli"
+        ? "Buluttaki anahtarlar başka bir parolayla şifrelenmiş. O parolayı yaz:"
+        : "Bulutta şifreli API anahtarların var. Bu cihaza almak için parolanı yaz:";
+      go.textContent="Anahtarları bu cihaza al";
+    }else{
+      mode="kur"; form.style.display="";
+      text.textContent=st.localCount
+        ? "Kapalı. Bir parola belirlersen "+st.localCount+" anahtarın şifrelenip buluta kaydedilir. Diğer cihazda aynı parolayı yazınca gelir. Parolayı unutma; kimse geri getiremez."
+        : "Bu cihazda API anahtarı yok. Anahtarların hangi cihazdaysa bu ayarı orada aç.";
+      if(!st.localCount) form.style.display="none";
+      go.textContent="Parolayı belirle ve eşitle";
+    }
+  }
+  go.onclick=async function(){
+    var a=p1.value;
+    if(a.length<8){ say("Parola en az 8 karakter olmalı.",false); p1.focus(); return; }
+    if(mode==="kur" && a!==p2.value){ say("İki parola aynı değil.",false); p2.focus(); return; }
+    go.disabled=true; say("Bekle…");
+    try{
+      var r=await DHCloudSync.keyVault.enable(a);
+      if(r.ok){ p1.value=p2.value=""; say(r.fromCloud?"✓ "+r.count+" anahtar bu cihaza geldi.":"✓ "+r.count+" anahtar şifrelenip buluta kaydedildi.",true); }
+      else say(r.message,false);
+    }catch(e){ say("Olmadı: "+((e&&e.message)||e),false); }
+    go.disabled=false; refresh();
+  };
+  off.onclick=async function(){
+    if(!confirm("Anahtar eşitlemesi kapatılsın ve buluttaki şifreli anahtarlar silinsin mi? Bu cihazdaki anahtarlar silinmez.")) return;
+    try{ await DHCloudSync.keyVault.disable(true); say("Kapatıldı. Buluttaki şifreli anahtarlar silindi.",true); }
+    catch(e){ say("Olmadı: "+((e&&e.message)||e),false); }
+    refresh();
+  };
+  window.addEventListener("dh-keyvault-state",function(){ refresh(); });
+  refresh();
+})();
+</script>
 </body>
 </html>
