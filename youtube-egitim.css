@@ -712,3 +712,5 @@ html.kk-dokunmatik .yt-youglish-stage>footer button{height:auto!important;min-he
 /* Pencerelerdeki yazı kutuları pencere dışına taşmasın */
 html.kk-acik .yt-modal input,html.kk-acik .yt-modal select,html.kk-acik .yt-modal textarea{max-width:100%!important;box-sizing:border-box!important;min-width:0!important}
 html.kk-acik .yt-modal label{min-width:0;max-width:100%}
+/* Telefonda transkript kutusu daha fazla cümle göstersin */
+html.kk-dokunmatik .yt-transcript-panel{height:62dvh!important;max-height:62dvh!important}
