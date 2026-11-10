@@ -274,6 +274,9 @@
       sustur();
 
       var cizgi = zamanCizgisi(metin);
+      /* Metin boşsa ya da yalnız simge/noktalama ise çizgi boş gelir;
+         cizgi[-1].v hatası vermemesi için tek kareli çizgi kullan. */
+      if (!cizgi || !cizgi.length) cizgi = [{ v: "kucuk", ci: 0 }];
       var sesMetni = String(metin || "").replace(
         /[\u{1F000}-\u{1FFFF}☀-➿]/gu, ""
       );
