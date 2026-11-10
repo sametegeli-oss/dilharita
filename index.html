@@ -18,7 +18,7 @@
 <link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-open.webp">
 
 <!-- KOC ZINCIRININ BAGIMLILIKLARI — koc.js en sonda yuklenir -->
-<script src="./auth-guard.js?v=3"></script>
+<script src="./auth-guard.js?v=4"></script>
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./sentences-loader.js?v=1"></script>
 <!-- Karma gün sonu pratiği: o gün çalışılan cümle + kalıp + kelimeleri
@@ -33,7 +33,7 @@
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=10">
-<script src="./kolay-kullanim.js?v=17"></script>
+<script src="./kolay-kullanim.js?v=18"></script>
 <style>
 .dh-dahafazla{margin:22px 0 8px;border:1px solid rgba(148,163,184,.28);border-radius:16px;padding:0 14px;background:rgba(15,23,42,.55)}
 .dh-dahafazla>summary{cursor:pointer;list-style:none;padding:16px 4px;font-weight:800;font-size:18px;color:#e2e8f0;min-height:48px}
@@ -858,6 +858,9 @@
   function sesBoya(){
     $("sesBtn").textContent = sesAcik() ? "◍" : "◌";
     $("sesBtn").setAttribute("aria-pressed", sesAcik() ? "true" : "false");
+    /* Durum yazıyla da görünsün: telefonda yalnız simge soluklaşıyordu. */
+    $("sesBtn").setAttribute("aria-label", sesAcik() ? "Koç sesi açık — kapatmak için dokun" : "Koç sesi kapalı — açmak için dokun");
+    $("sesBtn").title = sesAcik() ? "Koç sesi açık" : "Koç sesi kapalı";
   }
   $("sesBtn").onclick = function(){
     try{ localStorage.setItem("dh-koc-sesli", sesAcik() ? "0" : "1"); }catch(e){}

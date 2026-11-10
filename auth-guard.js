@@ -94,13 +94,15 @@
       if (user){
         decided = true;
         if (nullTimer){ clearTimeout(nullTimer); nullTimer=null; }
+        /* Yavaş telefonda oturum geç gelirse "çıkış yapılmış" notu yanlış kalmasın. */
+        try{ var eskiNot=document.getElementById("dhOturumNotu"); if(eskiNot) eskiNot.remove(); }catch(e){}
         try{
           localStorage.setItem("dh_logged_in","1");
           localStorage.setItem("dh_logged_uid", user.uid || "");
           if(user.email) localStorage.setItem("dh_logged_email", user.email);
         }catch(e){}
       } else {
-        if (decided) return;
+        if (decided && hasLocalLogin()) return;
         // İlk null GEÇİCİ olabilir (mobilde persistence gecikmesi). Kısa bekle;
         // 1.5 sn içinde gerçek oturum gelmezse, oturum gerçekten yok → login'e at.
         if (nullTimer) return;
@@ -112,7 +114,7 @@
              Misafir olarak devam etsin; üstte nazik bir not çıksın. */
           try{ localStorage.setItem("dh_guest_mode", "1"); }catch(e){}
           oturumNotu();
-        }, 2500);
+        }, 6000);
       }
     });
   }).catch(function(){

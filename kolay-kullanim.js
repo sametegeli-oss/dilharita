@@ -555,6 +555,9 @@
       if (!ad) continue;
       var sec = null;
       for (var k = 0; k < KISA.length; k++) if (KISA[k][0].test(ad)) { sec = KISA[k]; break; }
+      /* Aç/kapa ses düğmesi: durumu yazıyla göster (yalnız simge soluklaşınca anlaşılmıyordu). */
+      if (sec && sec[2] === "Ses" && b.hasAttribute("aria-pressed"))
+        sec = b.getAttribute("aria-pressed") === "true" ? [sec[0], "🔊", "Ses açık"] : [sec[0], "🔇", "Ses kapalı"];
       /* yalnız simge; ne işe yaradığı üzerine gelince ipucu olarak çıkar */
       var s = doc.createElement("span");
       s.className = "kk-ikon-yazi"; s.setAttribute("data-kk-atla", ""); s.setAttribute("aria-hidden", "true");
