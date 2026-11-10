@@ -1432,7 +1432,13 @@ async function suggestReply(){
       try{ input.setSelectionRange(reply.length, reply.length); }catch(e){}
     }
   }catch(e){
-    // sessiz: öneri alınamazsa kutuyu boş bırak
+    /* Eskiden sessizdi: düğme hiçbir şey yapmıyor sanılıyordu. */
+    try{
+      const ph=input.getAttribute("placeholder")||"";
+      input.setAttribute("placeholder","💡 Öneri şu an alınamadı — biraz sonra tekrar dene");
+      setTimeout(function(){ try{ input.setAttribute("placeholder",ph); }catch(_){} },6000);
+      if(window.dhCoachSay) dhCoachSay("Öneri şu an alınamadı: yapay zekâ cevap vermedi. Biraz sonra 💡 Öneri'ye tekrar bas.","tip");
+    }catch(_){}
   }finally{
     if(sBtn){ sBtn.disabled=false; sBtn.textContent=prev||"💡"; }
   }
