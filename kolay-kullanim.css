@@ -208,6 +208,12 @@ html.kk-acik body:has(.dh-avatar) .kk-bosluk{
   box-shadow:0 -10px 30px rgba(0,0,0,.45);
 }
 .kk-alt.kk-ev{grid-template-columns:repeat(3,minmax(0,1fr))}
+.kk-alt.kk-ogretmenli{grid-template-columns:repeat(5,minmax(0,1fr))}
+.kk-alt.kk-ev.kk-ogretmenli{grid-template-columns:repeat(4,minmax(0,1fr))}
+html.kk-acik body.kk-ogretmen-cubukta .dh-tb-fab{display:none!important}
+.kk-alt.kk-ogretmenli{gap:6px}
+.kk-alt.kk-ogretmenli button{white-space:normal;text-align:center;padding:6px 2px;font-size:15px}
+@media (max-width:420px){.kk-alt.kk-ogretmenli{gap:4px;padding-left:4px;padding-right:4px}.kk-alt.kk-ogretmenli button{font-size:13.5px}}
 .kk-alt button{
   min-height:72px;margin:0;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;

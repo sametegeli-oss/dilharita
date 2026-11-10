@@ -7,7 +7,7 @@
 - Depo: `sametegeli-oss/dilharita`. Statik site, GitHub Pages'te yayında: https://sametegeli-oss.github.io/dilharita/
 - Yayın: `main`'e push edince "pages build and deployment" çalışır (~1 dk).
   - "Quality" iş akışı eski bir sebepten (Windows kısa adları) hep başarısız olur; görmezden gel.
-- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v386`.
+- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v387`.
 - Commit: `git -c user.email=noreply@anthropic.com -c user.name=Claude commit`, sonra `git pull --rebase origin main && git push origin HEAD:main`.
 
 ## Kesin kurallar (kullanıcının istekleri)
@@ -70,6 +70,8 @@
 - İlerleme raporu: hata oranı açıklaması sade Türkçe, ondalık virgül; çalışma ritmi kartına açıklama.
 - Hata Defteri: telefonda 6 px yatay taşma giderildi.
 - Seviye testi: mikrofon izni/mikrofon yoksa okuma sorusu yanlış sayılmıyor; "Şimdi sesli okuyamıyorum, geç" düğmesi.
+- Öğretmen seçimi: kullanıcı otomatik değişimi seçti (Türkçe → teacher1, İngilizce → teacher2). chatteacher.html metni buna göre yazıldı.
+- "Öğretmene sor" yüzen düğmesi: kolay görünümde alt çubuğa 5. düğme ("🎓 Öğretmen") olarak alındı, yüzen düğme gizli. Tam ekran sayfalarda (sohbet) eskisi gibi. Kullanıcı bu soruyu cevaplamadı, önerilen yol uygulandı.
 - Denetlendi, sorun yok: Konuşma Pratiği "Bugünün konuşması → Başla", Cümle Yazma, İlerlemem, Tüm Bölümler, seviye testi akışı (bitirmeden), öbek fiil Çoktan Seçmeli.
 
 ## Kalanlar / yapılacaklar
@@ -77,8 +79,6 @@
    - LDPlayer'daki uygulamada buluta yeniden giriş yapmak (orada çıkış yapılmış görünüyordu).
    - OpenRouter anahtarının gerçekten cevap verdiğini bir sohbette denemek. Kayıtlı olduğu görüldü, çalışması denenmedi.
 2. **Kullanıcı kararı bekleyenler** (izinsiz değiştirme):
-   - Öğretmen seçimi etkisiz: chat-core.js `ogretmeniSec` Türkçede hep teacher1, İngilizcede teacher2 gösteriyor; chatteacher.html'deki seçim ezilir. Hangisi geçerli olsun?
-   - "Öğretmene sor" yüzen düğmesi seçenekleri/açıklamayı kapatıyor (pv-practice'te açık). Öneri: alt çubuğa 5. düğme olarak alınsın.
    - Koç balonu (coach-bubble.js) üstte sabit, otomatik kapanmıyor (kullanıcı isteği) ve soru alanını örtüyor.
    - "Bunu tekrar sorma" düğmesi onay sormadan siliyor: onay eklensin mi?
    - Ders ayarları ham JSON olarak görünüyor: kullanıcı dostu forma çevrilsin mi?

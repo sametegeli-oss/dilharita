@@ -865,6 +865,23 @@
       + '<button type="button" data-kk-yazi-ac aria-haspopup="dialog" aria-expanded="false"><span class="kk-i" aria-hidden="true">Aa</span>Yazı</button>';
     doc.body.appendChild(nav);
     doc.body.classList.add("kk-alt-var");
+    /* Sağ altta yüzen "Öğretmene sor" düğmesi seçenekleri ve açıklamaları
+       örtüyordu: alt çubuk varken onu çubuğa beşinci düğme olarak al. Düğme
+       teacher-bubble.js ile sonradan geldiği için gelene kadar bekle. */
+    function ogretmeniCubugaAl(){
+      var fab = doc.querySelector(".dh-tb-fab");
+      if (!fab || nav.querySelector("[data-kk-ogretmen]")) return !!fab;
+      var ob = el("button", "", '<span class="kk-i" aria-hidden="true">🎓</span>Öğretmen');
+      ob.type = "button"; ob.setAttribute("data-kk-ogretmen", ""); ob.title = "Öğretmene sor";
+      ob.addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); var f = doc.querySelector(".dh-tb-fab"); if (f) f.click(); });
+      nav.appendChild(ob);
+      nav.classList.add("kk-ogretmenli");
+      doc.body.classList.add("kk-ogretmen-cubukta");
+      return true;
+    }
+    if (!ogretmeniCubugaAl()){
+      var ogDeneme = 0, ogT = setInterval(function(){ if (ogretmeniCubugaAl() || ++ogDeneme > 30) clearInterval(ogT); }, 500);
+    }
     /* Sayfanın en sonuna, alt çubuk kadar boşluk: son düğme çubuğun altında
        kalmasın. (Gövdesi sabit yükseklikli sayfalarda iç boşluk işe yaramıyor.) */
     var bosluk = el("div", "kk-ui kk-bosluk");
