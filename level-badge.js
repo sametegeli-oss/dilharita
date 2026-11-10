@@ -120,7 +120,14 @@
     if(ust && ust.parentNode && !ust.closest("[hidden]")){
       b.classList.add("dh-lvbadge--akista");
       ust.insertAdjacentElement("afterend", b);
-    } else document.body.appendChild(b);
+    } else {
+      /* Telefonda başlık bulunamazsa sağ üste SABİT konunca sayfanın kendi
+         düğmelerinin (ör. Cümle Yazma'daki "Buluta bağlan") üstüne biniyordu:
+         içeriğin başına akışta yerleştir. */
+      var kap=dar && document.querySelector("main, .wrap, .app, .container, #app");
+      if(kap && kap.parentNode){ b.classList.add("dh-lvbadge--akista"); b.style.marginLeft="12px"; kap.parentNode.insertBefore(b, kap); }
+      else document.body.appendChild(b);
+    }
     document.addEventListener("click", function(e){
       if(popEl && !popEl.contains(e.target) && !b.contains(e.target)) closePop();
     });

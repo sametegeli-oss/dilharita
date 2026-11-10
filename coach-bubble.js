@@ -1133,6 +1133,8 @@
       if(!mod || state.seenTypesToday[mod]) return;
       state.seenTypesToday[mod]=1;
       var note=stripAnswer(commonMistake, target);
+      /* Veri "-" gibi boş yer tutucu olunca "nokta: -." çıkıyordu. */
+      if(note && !/[a-zA-ZçğıöşüÇĞİÖŞÜ0-9]/.test(note)) note="";
       if(note) dhCoachSay("YENİ KONU: Bu yapıyı ilk kez çalışıyorsun. Dikkat etmen gereken nokta: "+note+".","tip");
       else     dhCoachSay("YENİ KONU: Bu yapıyı ilk kez çalışıyorsun. Acele etme, cümleyi kurmadan önce yapıyı bir düşün.","tip");
     }catch(e){}

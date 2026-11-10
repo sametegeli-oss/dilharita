@@ -145,7 +145,8 @@ function addStyle(){
     }
     /* geri-ok + Liste: en üstte KENDİ şeridinde, kart içeriğiyle çakışmasın */
     .index-app-top-actions{
-      position:fixed !important;
+      /* sabit (fixed) iken modül başlığının üstüne biniyordu: akışta, yapışkan */
+      position:sticky !important;
       top:0 !important; left:0 !important; right:0 !important;
       margin:0 !important;
       display:flex !important;
@@ -163,7 +164,7 @@ function addStyle(){
        boşluk veriliyordu; şerit 73px olduğu için modül adı, "← Modüller" ve
        "1 / 25" sayacı şeridin altında kalıyordu. */
     #root, body > div{ padding-top:2px; }
-    body{ padding-top:78px !important; }
+    body{ padding-top:0 !important; }
   }
   /* Telefonda sıra: fotoğraf → cümle → düğmeler → "nasıl geldi?" puanı.
      Eskiden cümle yedi düğmenin altında kalıyordu. */
@@ -191,7 +192,7 @@ function ensureTopActions(){
     <a class="home dh-back-arrow" href="./index.html" title="Ana menü">←</a>
     <button type="button" class="dh-list-btn" id="dhModuleListBtn" title="Modül cümleleri">📋 Liste</button>
   `;
-  document.body.appendChild(row);
+  document.body.insertBefore(row, document.body.firstChild);
   const lb = row.querySelector("#dhModuleListBtn");
   if (lb) lb.onclick = openModuleList;
 }
