@@ -377,7 +377,7 @@
   /* "Puan" ile "Puanla" yan yana neyin ne olduğu anlaşılmıyordu. */
   var KIMLIK = { errSaveBtn: "Hatalarım", autoBtn: "Eller serbest", finishBtn: "Özetle", gemBtn: "Gemini'de sürdür",
                  suggestBtn: "Öneri", micBtn: "Konuş", sendBtn: "Gönder", levelBtn: "Seviye",
-                 dhPuanBtn: "Değerlendir", dhGemRaporBtn: "Gemini raporu", dhGeminiLessonBtn: "Gemini ders", bMic: "Sesle cevapla", bStudio: "Telaffuz", dhDahaBtn: "Daha fazla", finishBtn2: "Bitir",
+                 dhPuanBtn: "Değerlendir", dhGemRaporBtn: "Gemini raporu", dhGeminiLessonBtn: "Gemini ders", bMic: "Sesle cevapla", bStudio: "Telaffuz", yeniBtn: "Yeni", dhDahaBtn: "Daha fazla", finishBtn2: "Bitir",
                  playToggle: "Oynat", fullscreenToggle: "Tam ekran", fsActionExit: "Küçült", practiceActionsToggle: "Cümle düğmeleri",
                  controlMoreToggle: "Diğer", soundToggle: "Ses",
                  headToggle: "Bilgiler", toggleTranscriptPanel: "Transkript", translateTranscript: "Çevir",
@@ -567,7 +567,7 @@
       /* yalnız simge; ne işe yaradığı üzerine gelince ipucu olarak çıkar */
       var s = doc.createElement("span");
       s.className = "kk-ikon-yazi"; s.setAttribute("data-kk-atla", ""); s.setAttribute("aria-hidden", "true");
-      s.innerHTML = '<i>' + (sec ? sec[1] : (kendiYazi || "•")) + '</i>' + (DOKUNMATIK ? (sec ? sec[2] : ad.split(/\s+/).slice(0, 2).join(" ")) : "");
+      s.innerHTML = '<i>' + (sec ? sec[1] : (kendiYazi || "•")) + '</i>' + (DOKUNMATIK ? (KIMLIK[b.id] || (sec ? sec[2] : ad.split(/\s+/).slice(0, 2).join(" "))) : "");
       b.appendChild(s);
     }
   }

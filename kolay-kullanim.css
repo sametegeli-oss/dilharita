@@ -540,3 +540,6 @@ html.kk-acik body.kk-alt-var .dh-coach.dh-coach{
   bottom:calc(var(--kk-alt-h, 88px) + 12px + env(safe-area-inset-bottom))!important;
   max-height:45vh;overflow-y:auto;padding-right:58px!important;
 }
+
+/* Cümle Çalış: sağ üstteki ayar düğmesi ortalanmış başlığın üstüne biniyordu. */
+html.kk-acik .home-header:has(.settings-btn){padding-left:72px;padding-right:72px}
