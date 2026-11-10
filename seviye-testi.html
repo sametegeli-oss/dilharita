@@ -375,10 +375,21 @@
       +'<div class="q-tr">'+esc(q.showEn)+'</div>'
       +'<div class="q-hint">Mikrofona bas ve cümleyi sesli oku.</div>'
       +'<button class="btn btn-primary" id="micBtn" style="margin-top:6px">🎤 Bas ve oku</button>'
+      +'<button class="btn btn-ghost" id="micSkip" style="margin-top:10px">Şimdi sesli okuyamıyorum, geç</button>'
       +'<div id="spkFb"></div>'
       +'</div>';
-    var micBtn=$("micBtn");
+    var micBtn=$("micBtn"), micSkip=$("micSkip"), skipped=false;
+    /* Mikrofon izni yoksa ya da mikrofon bulunamazsa bu, okuma hatası değildir:
+       destek olmayan cihazdaki gibi soruyu atla, seviyeyi düşürme. */
+    function skipSpeak(msg){
+      if(skipped) return; skipped=true;
+      micBtn.disabled=true; if(micSkip) micSkip.disabled=true;
+      $("spkFb").innerHTML='<div class="q-hint">'+esc(msg||"Bu soru atlandı.")+'</div>';
+      setTimeout(function(){ var r=test.answer({correct:true}); advance(r); }, 1200);
+    }
+    if(micSkip) micSkip.onclick=function(){ skipSpeak("Bu soru atlandı, teste devam ediyoruz."); };
     function finalize(correct, heard){
+      if(skipped) return; skipped=true; if(micSkip) micSkip.disabled=true;
       var r=test.answer({text:heard||"", correct:correct});
       $("spkFb").innerHTML='<div class="fb '+(correct?"ok":"bad")+'">'
         +(correct?"✓ Güzel okudun!":"Duyulan: <b>"+esc(heard||"(anlaşılmadı)")+"</b><br>Hedef: "+esc(q.showEn))+'</div>';
@@ -396,7 +407,12 @@
         var ok = alts.some(function(a){ return similarSpeech(normSp(a), target); });
         finalize(ok, alts[0]);
       };
-      rec.onerror=function(){ if(!done) finalize(false, ""); };
+      rec.onerror=function(ev){
+        if(done) return;
+        var er=ev&&ev.error;
+        if(er==="not-allowed"||er==="service-not-allowed"||er==="audio-capture"){ done=true; skipSpeak("Mikrofona ulaşılamadı, bu soru atlanıyor…"); return; }
+        finalize(false, "");
+      };
       rec.onend=function(){ if(!done) finalize(false, ""); };
       try{ rec.start(); }catch(e){ finalize(false, ""); }
     };
