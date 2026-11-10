@@ -9,7 +9,7 @@
  <link rel="manifest" href="./manifest.webmanifest">
  <link rel="stylesheet" href="./youtube-pratik.css?v=4">
  <link rel="stylesheet" href="./youtube-pratik-youglish.css?v=1">
- <link rel="stylesheet" href="./youtube-pratik-player-fix.css?v=1">
+ <link rel="stylesheet" href="./youtube-pratik-player-fix.css?v=2">
  <style>[hidden]{display:none!important}</style>
 <link rel="stylesheet" href="./kolay-kullanim.css?v=11">
 <script src="./kolay-kullanim.js?v=23"></script>
@@ -49,6 +49,7 @@
      <button id="showVideo" class="is-active" type="button">▶ Video</button>
      <button id="showYouglish" type="button">◎ YouGlish</button>
     </nav>
+    <div class="yp-player-sticky">
     <div class="yp-player-card">
      <div class="yp-media-view" id="videoView">
       <div id="ytPracticePlayer" class="yp-player" aria-label="YouTube video oynatıcı"></div>
@@ -77,6 +78,7 @@
      <button id="youglishScenes" type="button" hidden aria-expanded="false">YouGlish</button>
      <span id="clipTime">00:00–00:00</span>
     </div>
+    </div>
     <details class="yp-transcript-picker" id="transcriptPicker">
      <summary id="transcriptToggle">☷ Transkript <small>Cümle seç</small></summary>
      <div id="transcriptList"></div>
@@ -99,7 +101,7 @@
  <script src="https://www.youtube.com/iframe_api"></script>
  <script src="./immersive-youtube-study.js?v=16"></script>
  <script src="./learning-error-system.js?v=11"></script>
- <script src="./youtube-pratik.js?v=t33"></script>
+ <script src="./youtube-pratik.js?v=t34"></script>
 <script src="./dh-button-guard.js?v=1" defer></script>
 </body>
 </html>
