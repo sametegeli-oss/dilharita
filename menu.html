@@ -173,6 +173,7 @@
           <label class="dh-ipucu" style="display:flex;gap:6px;align-items:center;margin-bottom:8px;cursor:pointer"><input type="checkbox" id="dhKeyVaultShow"> Parolayı göster</label>
           <button class="dh-btn dh-btn--ikincil dh-btn--tam" id="dhKeyVaultGo" type="button">Anahtarları eşitle</button>
         </div>
+        <button class="dh-btn dh-btn--ikincil dh-btn--tam" id="dhKeyVaultUseApi" type="button" style="display:none;margin-top:6px">Yapay zekâ anahtarlarımla çalışsın</button>
         <button class="dh-btn dh-btn--sade dh-btn--tam" id="dhKeyVaultOff" type="button" style="display:none;margin-top:6px">Anahtar eşitlemesini kapat</button>
         <div class="dh-ipucu" id="dhKeyVaultMsg" style="min-height:16px;margin-top:6px" aria-live="polite"></div>
       </div>
@@ -229,7 +230,7 @@
      hata defterinin ham deposu ve Gemini kelime analizleri yedeğe hiç
      girmiyordu. -->
 <script src="./dh-yedek.js?v=2"></script>
-<script src="./cloud-sync.js?v=40"></script>
+<script src="./cloud-sync.js?v=41"></script>
 <script src="./notifications.js?v=1"></script>
 <script>
 /* ---- Bulutla senkronize et + Çıkış yap ---- */
@@ -746,7 +747,7 @@ try{ navigator.serviceWorker.register("./sw.js?v=22", {scope:"./"}); }catch(e){}
   var text=document.getElementById("dhKeyVaultText"), form=document.getElementById("dhKeyVaultForm"),
       p1=document.getElementById("dhKeyVaultPass"), p2=document.getElementById("dhKeyVaultPass2"),
       show=document.getElementById("dhKeyVaultShow"), go=document.getElementById("dhKeyVaultGo"),
-      off=document.getElementById("dhKeyVaultOff"), msg=document.getElementById("dhKeyVaultMsg");
+      off=document.getElementById("dhKeyVaultOff"), useApi=document.getElementById("dhKeyVaultUseApi"), msg=document.getElementById("dhKeyVaultMsg");
   var mode="";
   function say(t,ok){ msg.style.color=ok===true?"var(--dh-ok)":ok===false?"var(--dh-err)":""; msg.textContent=t||""; }
   show.onchange=function(){ p1.type=p2.type=show.checked?"text":"password"; };
@@ -756,11 +757,15 @@ try{ navigator.serviceWorker.register("./sw.js?v=22", {scope:"./"}); }catch(e){}
     var st; try{ st=await kv.status(); }catch(e){ return; }
     if(!st.signedIn){ box.style.display="none"; return; }
     box.style.display="";
-    form.style.display="none"; off.style.display="none"; p2.style.display="";
+    form.style.display="none"; off.style.display="none"; useApi.style.display="none"; p2.style.display="";
     if(st.enabled && st.problem!=="parola-farkli"){
       mode="";
       text.textContent="✓ Açık. Anahtarların bu parolayla şifrelenip bulutla eşitleniyor. Bu cihazda "+st.localCount+" anahtar var.";
       off.style.display="";
+      if(st.localCount && st.aiMode==="gemini"){
+        useApi.style.display="";
+        text.textContent+=" Ama yapay zekâ şu an anahtarları kullanmıyor, soruları Gemini sitesine gönderiyor. Aşağıdaki düğmeyle anahtarlara geçebilirsin.";
+      }
     }else if(st.remote){
       mode="al"; form.style.display=""; p2.style.display="none";
       text.textContent=st.problem==="parola-farkli"
@@ -788,6 +793,7 @@ try{ navigator.serviceWorker.register("./sw.js?v=22", {scope:"./"}); }catch(e){}
     }catch(e){ say("Olmadı: "+((e&&e.message)||e),false); }
     go.disabled=false; refresh();
   };
+  useApi.onclick=function(){ DHCloudSync.keyVault.useApi(); say("✓ Tamam. Yapay zekâ artık doğrudan program içinde cevap verecek.",true); refresh(); };
   off.onclick=async function(){
     if(!confirm("Anahtar eşitlemesi kapatılsın ve buluttaki şifreli anahtarlar silinsin mi? Bu cihazdaki anahtarlar silinmez.")) return;
     try{ await DHCloudSync.keyVault.disable(true); say("Kapatıldı. Buluttaki şifreli anahtarlar silindi.",true); }

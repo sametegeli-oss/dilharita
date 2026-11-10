@@ -1239,6 +1239,8 @@
     return out;
   }
   function vaultCount(o){var n=0;VAULT_NAMES.forEach(function(k){if(o[k]==null)return;try{var v=JSON.parse(o[k]);n+=Array.isArray(v)?v.length:1;}catch(e){n+=1;}});return n;}
+  function vaultAiMode(){try{return (JSON.parse(localStorage.getItem("dh-profile-v1")||"{}")||{}).aiYontemi||"";}catch(e){return "";}}
+  function vaultUseApi(){try{var p=JSON.parse(localStorage.getItem("dh-profile-v1")||"{}")||{};p.aiYontemi="api";p.aiYontemiTarih=Date.now();localStorage.setItem("dh-profile-v1",JSON.stringify(p));window.dispatchEvent(new CustomEvent("dh-profile-changed",{detail:{aiYontemi:"api"}}));}catch(e){}}
   var vaultState={problem:""};
   function vaultEvent(){try{window.dispatchEvent(new CustomEvent("dh-keyvault-state",{detail:{problem:vaultState.problem}}));}catch(e){}}
   /* remoteVault: fullSync'in zaten okuduğu değer (undefined → gerekirse kendisi okur). */
@@ -1284,7 +1286,7 @@
       var base=vaultOn()?await vaultKeyLoad():null, remote=null, err="";
       if(ready&&user&&fb){ try{ remote=await withTimeout(fb.loadKeyVault(user.uid),15000,"okunamadı"); }catch(e){ err=(e&&e.message)||"okunamadı"; } }
       return {signedIn:!!user, enabled:!!base, remote:!!(remote&&remote.box), remoteAt:remote&&remote.at||0,
-              localCount:vaultCount(vaultRead()), problem:vaultState.problem, error:err};
+              localCount:vaultCount(vaultRead()), problem:vaultState.problem, error:err, aiMode:vaultAiMode()};
     },
     enable:async function(password){
       if(!(window.crypto&&crypto.subtle)) return {ok:false,message:"Bu tarayıcı şifrelemeyi desteklemiyor."};
@@ -1312,9 +1314,13 @@
         await fb.saveKeyVault(user.uid,{at:at,box:await vaultEncrypt(merged,base)});
         try{localStorage.setItem(VAULT_AT,String(at));localStorage.setItem(VAULT_SIG,sig);}catch(e){}
       }
+      /* Anahtarlar buluttan geldiyse yapay zekâ tercihini "anahtarla" yap:
+         anahtarsızken seçilen "Gemini sitesi" tercihi yoksa yönlendirmeye devam eder. */
+      if(rem&&vaultCount(merged)) vaultUseApi();
       vaultState.problem=""; vaultEvent();
       return {ok:true,count:vaultCount(merged),fromCloud:!!rem};
     },
+    useApi:function(){ vaultUseApi(); return {ok:true}; },
     disable:async function(removeFromCloud){
       try{localStorage.removeItem(VAULT_ON);localStorage.removeItem(VAULT_SIG);localStorage.removeItem(VAULT_AT);}catch(e){}
       if(removeFromCloud){
