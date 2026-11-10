@@ -511,7 +511,7 @@ try{
       html+='<div class="askrow"><b style="color:#f87171">🧲 İnatçı öğe</b> — kök kelimeleri oturumun önüne eklendi. '
           +'<button class="b-say" style="padding:7px 12px;font-size:12px" id="bAsk">🎓 Öğretmene sor</button></div>';
     }
-    if(!html){ $("exp").style.display="none"; return; }
+    if(!html){ $("exp").innerHTML=""; $("exp").style.display="none"; return; }
     $("exp").innerHTML=html; $("exp").style.display="block";
     var ba=$("bAsk");
     if(ba) ba.onclick=function(){
@@ -814,7 +814,7 @@ try{
       waitEl.style.cssText = "margin-top:8px;font-size:12.5px;font-weight:700;line-height:1.45";
       $("score").appendChild(waitEl);
     }
-    DHGemini.ask({
+    var __hakemOpt = {
       title: "💎 Gemini hakem kararı",
       hint: "Gemini'nin cevabını buraya yapıştır ve Enter'a bas…",
       prompt: prompt,
@@ -862,7 +862,20 @@ try{
           showExplain(curT,false);
         }
       }
-    });
+    };
+    /* API anahtarı varsa elle kopyala-yapıştır gerekmesin: cevabı doğrudan al.
+       Olmazsa (anahtar yok/hepsi hata) eski Gemini sitesi yoluna düş. */
+    var __api = false;
+    try{ __api = !!(window.DHProviders && DHProviders.mode && DHProviders.mode()==="api" && DHProviders.realHasAnyKey && DHProviders.realHasAnyKey()); }catch(e){}
+    if(__api){
+      waitEl.style.color = "#93c5fd";
+      waitEl.textContent = "💎 Yapay zekâ hakem cümleni değerlendiriyor…";
+      DHProviders.chat([{role:"user",content:prompt}],{temperature:0.2,max_tokens:1500,title:"💎 Gemini hakem kararı"})
+        .then(function(text){ __hakemOpt.onResult(DHGemini.parsers.yesNoTypo(text), text); })
+        .catch(function(err){ if(err && err.code==="abort") return; waitEl.textContent=""; DHGemini.ask(__hakemOpt); });
+      return;
+    }
+    DHGemini.ask(__hakemOpt);
   };
 
   /* Cümledeki TÜM tek-harf yazım sürçmelerini düzeltir (birden fazla olsa bile).
@@ -903,6 +916,12 @@ try{
     return { fixed: out.join(" "), typoCount:typoCount, onlyTypos: (typoCount>0 && !otherDiff) };
   }
 
+  /* Boş uyarısından sonra kullanıcı yazmaya başlayınca düğme yeniden "Kontrol et" olsun
+     (telefonda "Bilmiyorum, cevabı göster" yazısı kalıyor, cevap kontrol ediliyordu). */
+  document.addEventListener("input",function(e){
+    if(!e.target||e.target.id!=="inp"||!reveal._bosUyarildi||revealed) return;
+    try{ $("bChk").textContent=e.target.value.trim()?"Kontrol et":"Bilmiyorum, cevabı göster"; }catch(_){}
+  });
   function reveal(auto){
     if(revealed) return;
     /* Boş cevapla "Kontrol et": %0 ve "farklı yapı kurmuşsun" demek yanlış. Önce yazmasını iste. */
@@ -1295,7 +1314,11 @@ try{
       }catch(e){}
       showExplain(curT, leech); if(!leech && it.tries<2){ it.tries++; session.push(it); }
       $("grade").style.display="none"; var go=document.createElement("button"); go.className="b-chk"; go.style.marginTop="10px"; go.textContent="Devam →";
-      go.onclick=function(){ go.remove(); doneOrNext(); }; $("exp").appendChild(go);
+      go.onclick=function(){ go.remove(); doneOrNext(); };
+      /* Açıklaması olmayan cümlede (ör. hata defterinden gelen) showExplain kutuyu
+         gizliyordu; "Devam →" gizli kutuya eklenip görünmüyor, kullanıcı takılıyordu. */
+      $("exp").style.display="block"; $("exp").appendChild(go);
+      try{ go.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){}
       function doneOrNext(){ i++; render(); } return;
     }
     doneCount++;
