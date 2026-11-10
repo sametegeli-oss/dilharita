@@ -79,6 +79,20 @@ function css(){
   +".dh-exp-reader{z-index:2147483000!important;isolation:isolate!important;background:#07111f!important}.dh-exp-reader-panel{display:block!important;position:fixed!important;inset:0!important;z-index:1!important;background:#07111f!important}.dh-exp-reader-head{position:fixed!important;z-index:2147483001!important;top:0!important;left:0!important;right:0!important;height:68px!important;box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:16px!important;padding:max(10px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left))!important;border-bottom:1px solid rgba(123,157,197,.28)!important;background:#0b1a2e!important;box-shadow:0 8px 24px rgba(0,0,0,.35)!important;backdrop-filter:none!important}.dh-exp-reader-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:10px!important;min-width:0!important}.dh-exp-reader-size{display:flex!important;align-items:center!important;gap:5px!important;white-space:nowrap!important}.dh-exp-reader-close{position:static!important;z-index:auto!important;flex:0 0 auto!important;margin:0!important;top:auto!important;right:auto!important}.dh-exp-reader-body{position:fixed!important;z-index:1!important;inset:68px 0 0!important;width:auto!important;height:auto!important;box-sizing:border-box!important;overflow-y:auto!important;padding:22px max(20px,calc((100vw - 900px)/2)) max(48px,env(safe-area-inset-bottom))!important;background:#07111f!important}.dh-exp-reader-title{min-width:150px!important;flex:1 1 auto!important}.dh-exp-reader-title strong,.dh-exp-reader-title span{white-space:nowrap!important}@media(max-width:700px){.dh-exp-reader-head{height:62px!important;padding-left:max(10px,env(safe-area-inset-left))!important;padding-right:max(10px,env(safe-area-inset-right))!important}.dh-exp-reader-body{inset:62px 0 0!important}.dh-exp-reader-title{display:none!important}.dh-exp-reader-actions{width:100%!important;justify-content:space-between!important}.dh-exp-reader-size{flex:1 1 auto!important;overflow-x:auto!important;scrollbar-width:none!important}.dh-exp-reader-size::-webkit-scrollbar{display:none!important}.dh-exp-reader-size .dh-exp-tool{flex:1 0 34px!important;max-width:54px!important}.dh-exp-reader-close{min-width:112px!important;height:40px!important}}@media(max-width:390px){.dh-exp-reader-close{min-width:44px!important;width:44px!important;padding:0!important}.dh-exp-reader-close span{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important}.dh-exp-reader-size .dh-exp-tool{padding:0 5px!important}}"
   +"@media(max-width:700px){.dh-exp-reader-close{position:fixed!important;z-index:2147483640!important;top:auto!important;right:max(12px,env(safe-area-inset-right))!important;bottom:max(14px,env(safe-area-inset-bottom))!important;display:inline-flex!important;width:auto!important;min-width:108px!important;height:46px!important;padding:0 14px!important;border-radius:14px!important;box-shadow:0 10px 34px rgba(0,0,0,.65),0 0 0 2px rgba(255,255,255,.16)!important}.dh-exp-reader-close span{position:static!important;width:auto!important;height:auto!important;overflow:visible!important;clip:auto!important;white-space:nowrap!important}.dh-exp-reader-body{padding-bottom:max(88px,calc(env(safe-area-inset-bottom) + 78px))!important}}"
   +".dhgb-paste.dhgb-ready{outline:3px solid #fbbf24;animation:dhgbPulse 1s infinite alternate}@keyframes dhgbPulse{to{outline-color:transparent}}"
+  /* Büyük, numaralı adımlar (50–80 yaş): sıradaki adım çerçeveli */
+  +".dhgb-card h3{font-size:20px!important;margin-bottom:12px!important}"
+  +".dhgb-adim{display:flex;gap:12px;align-items:flex-start;padding:12px;margin:0 0 10px;border:2px solid #1e3a5f;border-radius:14px;opacity:.72}"
+  +".dhgb-adim.etkin{border-color:#fbbf24;background:#13294d;opacity:1}"
+  +".dhgb-no{flex:0 0 36px;height:36px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900}"
+  +".dhgb-adim-ic{flex:1;min-width:0}.dhgb-adim-ic p{margin:4px 0 10px;font-size:17px;line-height:1.5;color:#e8eef7}"
+  +".dhgb-adim .dhgb-go,.dhgb-adim .dhgb-paste,.dhgb-card>.dhgb-send,.dhgb-send2,.dhgb-card>.dhgb-close{display:block;width:100%;min-height:56px;border:0;border-radius:12px;font-size:17px;font-weight:900;cursor:pointer;padding:10px 12px;margin:0 0 8px}"
+  +".dhgb-send2{background:linear-gradient(180deg,#059669,#047857);color:#fff}"
+  +".dhgb-msg{font-size:16px!important}"
+  +".dhgb-elle{margin:4px 0 10px;border:1px solid #1e3a5f;border-radius:12px;padding:10px}"
+  +".dhgb-elle>summary{cursor:pointer;font-size:16px;font-weight:800;color:#93c5fd;min-height:44px;display:flex;align-items:center}"
+  +".dhgb-elle .dhgb-ta{font-size:16px;margin:6px 0 8px}"
+  /* Panel açıkken koç yüzü ve koç balonu panelin düğmelerini örtmesin */
+  +"body:has(.dhgb-ov) .dh-avatar,body:has(.dhgb-ov) .dh-coach,body:has(.dhgb-ov) .dh-mobile-menu-button,body:has(.dhgb-ov) .kk-ust-menu{display:none!important}"
   +".dhgb-tog{background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.5);border-radius:9px;color:#93c5fd;font-size:12px;font-weight:800;cursor:pointer;padding:7px 12px;margin:0 0 10px;text-decoration:none}.dhgb-tog:hover{background:rgba(96,165,250,.16);color:#dbeafe}";
   document.head.appendChild(s);
 }
@@ -126,24 +140,30 @@ function ask(opt){
   var ov=document.createElement("div"); ov.className="dhgb-ov";
   activeOverlay=ov;
   ov.innerHTML =
-    '<div class="dhgb-card">'
+    '<div class="dhgb-card" role="dialog" aria-modal="true">'
    +'<h3>'+esc(opt.title||"Gemini'ye sor")+'</h3>'
    +(opt.note?'<p class="dhgb-step" style="color:#fbbf24;font-weight:700">⚠ '+esc(opt.note)+'</p>':'')
    +'<div class="dhgb-job" hidden>Bekleyen görev: '+esc(id)+'</div>'
-   +'<p class="dhgb-step"><b>1.</b> Mor düğmeye bas: sorun kopyalanır ve '+esc(providerName)+' açılır.<br><b>2.</b> '+esc(providerName)+'’de yazı kutusuna parmağını basılı tut, <b>Yapıştır</b>’a dokun ve gönder.<br><b>3.</b> Gelen cevabı kopyala, buraya dön ve <b>📋 Cevabı yapıştır</b> düğmesine bas.</p>'
-   +'<button class="dhgb-tog" type="button">Gönderilecek soruyu göster / gizle</button>'
-   +'<div class="dhgb-prompt" style="display:none"></div>'
-   +'<div class="dhgb-row">'
-     +'<button class="dhgb-go" type="button">✦ Soruyu kopyala ve '+esc(providerName)+'’yi aç</button>'
-   +'</div>'
-   +'<textarea class="dhgb-ta" placeholder="'+esc(opt.hint||"Gemini'nin cevabını buraya yapıştır ve Enter'a bas…")+'"></textarea>'
-   +'<div class="dhgb-msg"></div>'
+   /* Üç büyük adım; sıradaki adım çerçeveyle gösterilir. */
+   +'<div class="dhgb-adim etkin" data-adim="1"><b class="dhgb-no">1</b><div class="dhgb-adim-ic">'
+     +'<p>Soruyu kopyala, '+esc(providerName)+' açılsın.</p>'
+     +'<button class="dhgb-go" type="button">💎 Soruyu kopyala ve '+esc(providerName)+'’yi aç</button></div></div>'
+   +'<div class="dhgb-adim" data-adim="2"><b class="dhgb-no">2</b><div class="dhgb-adim-ic">'
+     +'<p>'+esc(providerName)+'’de yazı kutusuna <b>parmağını basılı tut → Yapıştır</b>, sonra <b>➤ Gönder</b>. Cevap gelince altındaki <b>⧉ Kopyala</b> simgesine dokun ve buraya dön.</p></div></div>'
+   +'<div class="dhgb-adim" data-adim="3"><b class="dhgb-no">3</b><div class="dhgb-adim-ic">'
+     +'<p>Cevabı programa getir.</p>'
+     +'<button class="dhgb-paste" type="button">📋 '+esc(providerName)+'’nin cevabını getir</button></div></div>'
+   +'<div class="dhgb-msg" role="status"></div>'
    +'<div class="dhgb-preview"></div>'
-   +'<div class="dhgb-row">'
-     +'<button class="dhgb-paste" type="button">📋 Cevabı yapıştır</button>'
-     +'<button class="dhgb-send" type="button">✅ Bu cevabı kullan</button>'
-     +'<button class="dhgb-close" type="button">Kapat</button>'
-   +'</div>'
+   +'<button class="dhgb-send" type="button" hidden>✅ Bu cevabı kullan</button>'
+   +'<details class="dhgb-elle"><summary>Cevap gelmedi mi? Kendim yapıştıracağım</summary>'
+     +'<p class="dhgb-step">Kutuya parmağını basılı tut, <b>Yapıştır</b>’a dokun, sonra <b>✅ Bu cevabı kullan</b>.</p>'
+     +'<textarea class="dhgb-ta" placeholder="'+esc(opt.hint||"Gemini'nin cevabını buraya yapıştır…")+'"></textarea>'
+     +'<button class="dhgb-send2" type="button">✅ Bu cevabı kullan</button>'
+     +'<button class="dhgb-tog" type="button">Gönderilecek soruyu göster / gizle</button>'
+     +'<div class="dhgb-prompt" style="display:none"></div>'
+   +'</details>'
+   +'<button class="dhgb-close" type="button">Kapat</button>'
    +'</div>';
   var fullscreenHost=document.fullscreenElement||document.webkitFullscreenElement||document.querySelector(".yt-video-shell.is-pseudo-fullscreen");
   (fullscreenHost||document.body).appendChild(ov);
@@ -154,7 +174,12 @@ function ask(opt){
       pv=ov.querySelector(".dhgb-prompt"),
       preview=ov.querySelector(".dhgb-preview"),
       sendBtn=ov.querySelector(".dhgb-send"),
-      pasteBtn=ov.querySelector(".dhgb-paste");
+      pasteBtn=ov.querySelector(".dhgb-paste"),
+      elle=ov.querySelector(".dhgb-elle");
+  function adim(n){
+    [].forEach.call(ov.querySelectorAll(".dhgb-adim"),function(d){ d.classList.toggle("etkin", +d.getAttribute("data-adim")===n || (n===3&&d.getAttribute("data-adim")==="2")); });
+    pasteBtn.classList.toggle("dhgb-ready", n===3);
+  }
   if(opt.promptEditor){
     var edit=document.createElement("button");edit.type="button";edit.className="dhgb-tog";edit.textContent="Talimatı düzenle";
     pv.parentNode.insertBefore(edit,pv);
@@ -175,8 +200,9 @@ function ask(opt){
     if(ov.parentNode) ov.parentNode.removeChild(ov);
     if(activeOverlay===ov) activeOverlay=null;
     global.removeEventListener("pagehide",backgrounded);
+    document.removeEventListener("visibilitychange",geriDondu);
   }
-  function rememberDraft(){ job.draft=ta.value||""; job.state="answer-ready"; savePending(job); }
+  function rememberDraft(){ job.draft=ta.value||""; if(job.draft) job.state="answer-ready"; savePending(job); }
   ta.addEventListener("input",rememberDraft);
 
   ov.querySelector(".dhgb-tog").onclick=function(){
@@ -187,20 +213,26 @@ function ask(opt){
     try{ global.open(providerUrl,"_blank","noopener"); }
     catch(e){ openFailed=true; }
     copy(prompt).then(function(ok){
-      b.textContent=ok?"✅ Soru kopyalandı · "+providerName+" açıldı":"⚠️ Soruyu elle kopyala";
-      say(ok?("Soru kopyalandı. "+providerName+"’de yapıştırıp gönder; cevabı kopyalayıp buraya dön ve 📋 Cevabı yapıştır düğmesine bas.")
-             :"Soru kendiliğinden kopyalanamadı. ‘Gönderilecek soruyu göster’ ile açıp elle kopyala.",ok?"#4ade80":"#f59e0b");
+      b.textContent=ok?"✅ Soru kopyalandı":"⚠️ Soruyu elle kopyala";
+      job.state="sent"; savePending(job); adim(3);
+      say(ok?("Soru kopyalandı. "+providerName+"’de yapıştırıp gönder; cevabı kopyalayıp dön ve 3. adımdaki düğmeye bas.")
+             :"Soru kendiliğinden kopyalanamadı. Aşağıdaki ‘Kendim yapıştıracağım’ bölümünden soruyu görüp elle kopyala.",ok?"#4ade80":"#f59e0b");
+      if(!ok){ elle.open=true; pv.style.display="block"; }
       if(openFailed)say("Soru "+(ok?"kopyalandı; ":"")+providerName+" yeni sekmede açılamadı. "+providerName+"’yi kendin aç.","#f59e0b");
-      setTimeout(function(){b.textContent="✦ Soruyu kopyala ve "+providerName+"’yi aç";},2600);
+      setTimeout(function(){b.textContent="💎 Soruyu kopyala ve "+providerName+"’yi aç";},2600);
     });
   };
   ov.querySelector(".dhgb-paste").onclick=function(){
     readClip().then(function(t){
-      if(t && t.trim()){ ta.value=t; rememberDraft(); say("Cevap yapıştırıldı.","#4ade80"); submit(false); }
-      else say("Kopyalanmış bir cevap bulunamadı. Önce Gemini’de cevabı kopyala.","#f59e0b");
+      t=String(t||"").trim();
+      if(!t){ say("Kopyalanmış bir cevap bulunamadı. "+providerName+"’de cevabın altındaki ⧉ Kopyala simgesine dokun, sonra yine bu düğmeye bas.","#f59e0b"); return; }
+      /* Panoda hâlâ bizim sorumuz duruyorsa cevap henüz kopyalanmamıştır */
+      if(t===prompt.trim() || t.indexOf("GÖREV KİMLİĞİ: "+id)>=0){ say("Panoda hâlâ soru duruyor. "+providerName+"’de gelen cevabın altındaki ⧉ Kopyala simgesine dokun, sonra yine bu düğmeye bas.","#f59e0b"); return; }
+      ta.value=t; rememberDraft(); say("Cevap alındı.","#4ade80"); submit(false);
     }).catch(function(){
-      say("Tarayıcı panoyu okumaya izin vermedi — kutuya uzun basıp Yapıştır de.","#f59e0b");
-      ta.focus();
+      elle.open=true;
+      say("Telefon panoyu okumaya izin vermedi. Aşağıdaki kutuya parmağını basılı tutup Yapıştır de.","#f59e0b");
+      setTimeout(function(){ try{ ta.focus(); ta.scrollIntoView({block:"center"}); }catch(e){} },60);
     });
   };
   ov.querySelector(".dhgb-close").onclick=function(){
@@ -208,10 +240,11 @@ function ask(opt){
   };
   ov.addEventListener("click",function(e){ if(e.target===ov) ov.querySelector(".dhgb-close").click(); });
 
-  var parsedResult, parsedRaw, awaitingConfirm=false;
+  var parsedResult, parsedRaw, awaitingConfirm=false, idEslesti=false;
   function normalizeAnswer(raw){
-    var m=raw.match(/^\s*DH-ID:\s*([^\s]+)\s*\r?\n/i);
-    if(m && m[1]!==id) throw new Error("Bu cevap başka göreve ait ("+m[1]+"). Doğru Gemini cevabını yapıştır.");
+    var m=raw.match(/^\s*\**\s*DH-ID:\s*([^\s*]+)\**\s*\r?\n/i);
+    if(m && m[1]!==id) throw new Error("Bu cevap başka bir soruya ait. "+providerName+"’de bu sorunun cevabını kopyala.");
+    idEslesti=!!m;
     return m?raw.slice(m[0].length).trim():raw;
   }
   function applyResult(){
@@ -235,23 +268,30 @@ function ask(opt){
       }
     }
     parsedResult=result; parsedRaw=raw;
-    if(opt.autoApply&&!opt.confirmResult){say("Cevap doğrulandı ve doğru göreve aktarılıyor…","#4ade80");applyResult();return;}
-    awaitingConfirm=true;
+    /* Cevap bu soruya ait olduğunu kimlik satırıyla kanıtladıysa ek onay sorma */
+    if((opt.autoApply||idEslesti)&&!opt.confirmResult){say("Cevap doğrulandı, uygulanıyor…","#4ade80");applyResult();return;}
+    awaitingConfirm=true; sendBtn.hidden=false;
     preview.style.display="block";
     preview.style.whiteSpace="normal";
     preview.innerHTML='<b style="color:#4ade80">Uygulanacak Gemini yanıtı</b>'+formatExplanation(raw.length>5000?raw.slice(0,5000)+"…":raw);
     sendBtn.textContent="✅ Onayla ve uygula";
-    say("Yanıt anlaşıldı. Uygulamaya aktarmadan önce önizlemeyi kontrol et.","#4ade80");
+    say("Cevap alındı. Aşağıdaki önizlemeye bak ve ✅ Onayla ve uygula düğmesine bas.","#4ade80");
+    setTimeout(function(){ try{ sendBtn.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} },60);
   }
   ov.querySelector(".dhgb-send").onclick=function(){submit(false)};
+  ov.querySelector(".dhgb-send2").onclick=function(){submit(false)};
   ta.addEventListener("keydown",function(e){
     if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); submit(false); }
   });
-  setTimeout(function(){ ta.focus(); },80);
+  /* Açılışta klavye açılmasın diye kutuya odaklanılmaz. Daha önce soru
+     gönderildiyse (sayfa yeniden yüklendi) doğrudan 3. adımdan başlanır. */
+  if(sameOld && old.state && old.state!=="waiting") adim(3);
+  function geriDondu(){ if(document.visibilityState==="visible" && job.state==="sent" && !awaitingConfirm){ adim(3); say("Hoş geldin. Cevabı "+providerName+"’de kopyaladıysan 📋 düğmesine bas.","#4ade80"); } }
+  document.addEventListener("visibilitychange",geriDondu);
   /* Gemini yalnız kullanıcının ana mor düğmeye dokunmasıyla açılır. Böylece
      tarayıcının açılır pencere koruması aşılmaz ve istemsiz sekme oluşmaz. */
   var privacy=wasRedacted?" Kişisel/API bilgileri maskelendi.":"";
-  say("Hazır. Mor düğmeye basınca "+providerName+" açılır; dönünce cevabı yapıştır."+privacy,"#9fb3d9");
+  if(privacy) say(privacy.trim(),"#9fb3d9");
 
   /* Mobil tarayıcı Gemini sekmesine geçerken pagehide üretebilir veya bu
      sayfayı bellekten atabilir. Görevi burada silmek dönüş ekranını yok

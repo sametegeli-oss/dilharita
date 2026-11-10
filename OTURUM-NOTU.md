@@ -37,7 +37,7 @@ Kalan: veriye bağlı akışları LDPlayer'da doğrulamak (bu oturumda bilgisaya
 6. Ana sayfa "Bugünün planı" ne kaldığını sayıyla gösteriyor (4/8 · 4 kaldı).
 
 **Zayıf yönler (önem sırasıyla)**
-1. **Gemini kopyala-yapıştır akışı çok adımlı**: anahtarı olmayan kullanıcıda Öğretmen/teacher sayfası açılır açılmaz 3 adımlı panel çıkıyor (kopyala → Gemini'ye geç → basılı tutup yapıştır → cevabı kopyala → geri dön → yapıştır). Sohbet, hata defteri, tekrar, modüllerim aynı yolu kullanıyor. Bu yaş grubu için en büyük engel.
+1. **Gemini kopyala-yapıştır akışı çok adımlı** → 10 Kasım gecesi kullanıcı "2. katman"ı seçti ve yapıldı: `gemini-bridge.js` paneli 3 büyük numaralı adım (sıradaki çerçeveli); "📋 Gemini’nin cevabını getir" panoyu kendisi okur, cevap DH-ID ile bu soruya aitse ek onay sormadan uygular; panoda hâlâ soru varsa uyarır; izin yoksa "Kendim yapıştıracağım" kutusu kendiliğinden açılır; açılışta klavye açılmaz; geri dönünce 3. adım vurgulanır; panel açıkken koç yüzü/balonu ve yüzen Menü gizli. Önerilen ama YAPILMAYANLAR (kullanıcı seçmedi): 1. katman — cümlelerdeki hazır `aiExplain` (9138’in 5063’ünde var) Öğretmen sayfasında önce gösterilsin; 3. katman — A) sahibinin anahtarıyla Cloudflare Worker aracı, B) rehberli ücretsiz anahtar kurulumu. Eski metin:: anahtarı olmayan kullanıcıda Öğretmen/teacher sayfası açılır açılmaz 3 adımlı panel çıkıyor (kopyala → Gemini'ye geç → basılı tutup yapıştır → cevabı kopyala → geri dön → yapıştır). Sohbet, hata defteri, tekrar, modüllerim aynı yolu kullanıyor. Bu yaş grubu için en büyük engel.
 2. ~~**Koç övgü/ipucu balonu düğmeleri örtüyor**~~ → **10 Kasım gecesi çözüldü** (kullanıcı "A" seçti: balon altta kalır, sayfa yer açar; `coach-bubble.js` `balonYerlestir/yuzYerlestir`). Balona dokunmak artık kapatmıyor, yalnız ✕ (48 px, "Kapat"); en fazla ekranın 3'te 1'i; "YENİ KONU" metni kısaldı. Tarama: koç örtmesi 13+ → 0. Eski metin:: yalnız ✕ ile kapanıyor ve balona dokunmak da onu kapatıyor; kullanıcı "Kontrol et / Atla / Dinle / Sıradaki" düğmesine basmak isterken dokunuşu balon yiyor (hata defteri alıştırması, kelime öğren, videopractice, cümle yazma "YENİ KONU" balonu her adımda). Sağ alttaki küçük koç yüzü de bazı düğmelerin köşesine biniyor (Hata Defteri "Kontrol et").
 3. **Sayfa kendiliğinden yenileniyor**: yeni sürüm yayınlanınca (`ux-boost.js` controllerchange → `location.reload()`, sw.js `skipWaiting`) açık sayfa sormadan yenileniyor; yazılan cevap/kayıt yarıda kalabilir.
 4. **Çok uzun modül listeleri**: Cümle Çalış / Görselle Öğren / Videoyla Okuma'da 500+ modül tek liste; arama veya "kaldığın yer" öne çıkmıyor.
@@ -57,7 +57,7 @@ Bilinen ipuçları:
 - Depo: `sametegeli-oss/dilharita`. Statik site, GitHub Pages'te yayında: https://sametegeli-oss.github.io/dilharita/
 - Yayın: `main`'e push edince "pages build and deployment" çalışır (~1 dk).
   - "Quality" iş akışı eski bir sebepten (Windows kısa adları) hep başarısız olur; görmezden gel.
-- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v402`.
+- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v404`.
 - Commit: `git -c user.email=noreply@anthropic.com -c user.name=Claude commit` (mesaj sonuna oturumun verdiği Co-Authored-By satırı), sonra `git pull --rebase origin main && git push origin HEAD:main`.
 
 ## Kesin kurallar (kullanıcının istekleri)
