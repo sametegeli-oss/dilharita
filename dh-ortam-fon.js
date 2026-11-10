@@ -412,7 +412,8 @@
     "Restoran": ["restaurant waiter dinner", "restaurant table food"],
     "Otel": ["hotel reception lobby", "hotel check in"],
     "Havaalanı": ["airport terminal travelers", "airport check in counter"],
-    "Doktor": ["doctor patient clinic", "doctor office consultation"]
+    /* Konuşan avatar kadın doktor: arka plan da kadın doktor olsun. */
+    "Doktor": ["female doctor patient clinic", "woman doctor consultation"]
   };
   function sahneSorgulari() {
     try { var sc = global.CHAT_SCENARIO; return (sc && SAHNE[sc.title]) || null; } catch (e) { return null; }
