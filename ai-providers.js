@@ -427,8 +427,12 @@
       if(networkErr && networkErr.name==="AbortError") throw {code:"abort",provider:p.id};
       throw {code:"network",provider:p.id};
     }).then(function(d){
-      var txt = d && d.candidates && d.candidates[0] && d.candidates[0].content
-        && d.candidates[0].content.parts && d.candidates[0].content.parts[0] && d.candidates[0].content.parts[0].text;
+      /* Düşünen Gemini modelleri birden çok parça döndürebilir; ilk parça modelin
+         kendi notu ("Check constraints: … JSON? Yes.") olabiliyordu. Düşünce
+         parçalarını at, kalan metin parçalarını birleştir. */
+      var __parts = d && d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts;
+      var txt = Array.isArray(__parts) ? __parts.filter(function(x){ return x && typeof x.text==="string" && !x.thought; }).map(function(x){ return x.text; }).join("") : null;
+      if(!txt) txt = null;
       if(txt==null) throw {code:"empty", provider:p.id};
       return String(txt);
     });
