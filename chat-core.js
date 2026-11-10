@@ -1367,6 +1367,7 @@ async function analyzeChatErrors(){
       try{ window.dispatchEvent(new Event("learning-errors-cleared")); }catch(e){}
     }
     b.textContent="✓"+arr.length;
+    dhNot(arr.length?("Yazdıklarında "+Math.min(arr.length,5)+" hata buldum; Hata Defteri'ne kaydettim."):"Yazdıklarında hata bulamadım. Aferin!");
     if(arr.length===0 && userMsgs.length>=6 && !window.__dhLevelTipShown){
       window.__dhLevelTipShown=true;
       var order=["A1","A2","B1","B2","C1"], nx=order[order.indexOf(State.level)+1];
