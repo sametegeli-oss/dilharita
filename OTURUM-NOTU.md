@@ -24,8 +24,8 @@ Kalan: veriye bağlı akışları LDPlayer'da doğrulamak (bu oturumda bilgisaya
 - 88 modül adı "-Decision" gibi tireli görünüyordu (`B2-M12-Decision` adları): 12 dosyada önek regex'i `[\s-]*`.
 - teacher1 başlığı Talimat/Menü ile çakışıyordu; sesdalga başlığı kolay görünümde sütunlara bölünüyordu; videopractice/ogren "Video ayarı" penceresi Önceki/Sıradaki altında kalıyordu (z-index); menü günlük hatırlatma anahtarı 64×38 ve satırın yazısı da dokunulabilir.
 
-### Bulunan, kullanıcı kararı bekleyenler (dokunulmadı)
-- `pdfoku.html` her açılışta `pdfjsLib is not defined`. `pdfoku`, `koc-modu`, `ses-esleme`, `pwa-reset` sayfalarına hiçbir yerden bağlantı yok (silme ancak kullanıcı onayıyla).
+### Silinenler (kullanıcı onayıyla, 10 Kasım akşamı)
+- Hiçbir yerden bağlantı verilmeyen `pdfoku.html` (her açılışta `pdfjsLib` hatası), `koc-modu.html` (eski adresi index.html'e yönlendiren sayfaydı), `ses-esleme.html`, `pwa-reset.html` (yerine `pwa-hard-reset.html`). `test-mobile-layout.mjs` içinden bu sayfalara ait iki kontrol çıkarıldı.
 
 ### Kullanıcı gözüyle değerlendirme (50–80 yaş)
 **Güçlü yönler**
@@ -41,8 +41,8 @@ Kalan: veriye bağlı akışları LDPlayer'da doğrulamak (bu oturumda bilgisaya
 2. **Koç övgü/ipucu balonu düğmeleri örtüyor**: yalnız ✕ ile kapanıyor ve balona dokunmak da onu kapatıyor; kullanıcı "Kontrol et / Atla / Dinle / Sıradaki" düğmesine basmak isterken dokunuşu balon yiyor (hata defteri alıştırması, kelime öğren, videopractice, cümle yazma "YENİ KONU" balonu her adımda). Sağ alttaki küçük koç yüzü de bazı düğmelerin köşesine biniyor (Hata Defteri "Kontrol et").
 3. **Sayfa kendiliğinden yenileniyor**: yeni sürüm yayınlanınca (`ux-boost.js` controllerchange → `location.reload()`, sw.js `skipWaiting`) açık sayfa sormadan yenileniyor; yazılan cevap/kayıt yarıda kalabilir.
 4. **Çok uzun modül listeleri**: Cümle Çalış / Görselle Öğren / Videoyla Okuma'da 500+ modül tek liste; arama veya "kaldığın yer" öne çıkmıyor.
-5. **Teknik dil görünür yerlerde**: "Cloudflare Worker adresi", "JSON", "Pexels anahtarı", "SW + Cache temizle", "LocalStorage", "Groq AI Anahtarları", "COMPILE PROMPT" (pdfoku), "Trainer modülü hazır" (sesdalga).
-6. **Tutarsız görünüm**: bazı sayfalar başka tasarımda (veri-gizlilik, pwa-reset, pdfoku, kıblenamaz açık tema), sağ üstteki yüzen "Menü" ile alt çubuktaki "Menü" aynı sayfada iki kez; başlıklar yüzen Menü'nün altında kalmaya yatkın.
+5. **Teknik dil görünür yerlerde**: "Cloudflare Worker adresi", "JSON", "Pexels anahtarı", "SW + Cache temizle", "LocalStorage", "Groq AI Anahtarları", "Trainer modülü hazır" (sesdalga).
+6. **Tutarsız görünüm**: bazı sayfalar başka tasarımda (veri-gizlilik, pwa-hard-reset, kıblenamaz açık tema), sağ üstteki yüzen "Menü" ile alt çubuktaki "Menü" aynı sayfada iki kez; başlıklar yüzen Menü'nün altında kalmaya yatkın.
 7. **Aynı işi yapan çok sayfa/düğme**: Öğretmen için teacher, teacher1, teacher-chat, chatteacher, chatteacher1/2; sohbet alt çubuğunda 10'a yakın düğme (Öneri, Daha fazla, Hatalarım, Eller serbest, Özetle, Gemini'de sürdür, Gemini raporu, Değerlendir, Konuş, Gönder). Ne zaman hangisi kullanılır belirsiz.
 8. **İçerik teması**: C1/B2 cümleleri yazılım/SQL temalı ("nested WHILE loop"); kelime dizme alıştırmasında büyük harfli kelime cümlenin başını ele veriyor.
 9. **Küçük boş durum kusurları**: Tekrar sayfası hiç çalışılmamışken "🎉 Oturum bitti! 0/0"; "Bu cümle için resim/video bulunamadı" kutusu ekranın ortasını kaplıyor.
@@ -57,7 +57,7 @@ Bilinen ipuçları:
 - Depo: `sametegeli-oss/dilharita`. Statik site, GitHub Pages'te yayında: https://sametegeli-oss.github.io/dilharita/
 - Yayın: `main`'e push edince "pages build and deployment" çalışır (~1 dk).
   - "Quality" iş akışı eski bir sebepten (Windows kısa adları) hep başarısız olur; görmezden gel.
-- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v398`.
+- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v399`.
 - Commit: `git -c user.email=noreply@anthropic.com -c user.name=Claude commit` (mesaj sonuna oturumun verdiği Co-Authored-By satırı), sonra `git pull --rebase origin main && git push origin HEAD:main`.
 
 ## Kesin kurallar (kullanıcının istekleri)

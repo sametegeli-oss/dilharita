@@ -14,7 +14,7 @@ const OUT = arg.cikti || `/home/claude/tools/out-${MOD}`;
 const BASE = 'http://127.0.0.1:8767/';
 fs.mkdirSync(path.join(OUT, 'ekran'), { recursive: true });
 
-const SAYFALAR = ['akilli-tekrar','aktivite','basla','bugun','chat','chatairport','chatdoctor','chathotel','chatrestaurant','chatteacher','chatteacher1','chatteacher2','ders','foto-ekle','gemini-rapor-arsivi','gunluk-takip','harita','hata-defteri','ilerleme','immersive','index-app','index','kelime-ogren','kilavuz','koc-modu','kıblenamaz','library','login','menu','modul-testi','modullerim','ocr-sentence','ogren','ogrenme-yolu','pdfoku','phrasal-verbs','practice','profil','pv-practice','pwa-hard-reset','pwa-reset','rapor','ses-esleme','ses-secim','ses-teshis','sesdalga','seviye-testi','teacher-chat','teacher','teacher1','tekrar','veri-gizlilik','videopractice','youtube-egitim','youtube-pratik'];
+const SAYFALAR = ['akilli-tekrar','aktivite','basla','bugun','chat','chatairport','chatdoctor','chathotel','chatrestaurant','chatteacher','chatteacher1','chatteacher2','ders','foto-ekle','gemini-rapor-arsivi','gunluk-takip','harita','hata-defteri','ilerleme','immersive','index-app','index','kelime-ogren','kilavuz','kıblenamaz','library','login','menu','modul-testi','modullerim','ocr-sentence','ogren','ogrenme-yolu','phrasal-verbs','practice','profil','pv-practice','pwa-hard-reset','rapor','ses-secim','ses-teshis','sesdalga','seviye-testi','teacher-chat','teacher','teacher1','tekrar','veri-gizlilik','videopractice','youtube-egitim','youtube-pratik'];
 const ALT_CUBUK_SAYFASI = 'menu'; // .kk-alt düğmeleri yalnız burada test edilir
 const SECICI = 'button, a[href], [role=button], summary, [onclick], input[type=checkbox], input[type=radio]';
 

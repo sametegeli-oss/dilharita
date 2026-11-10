@@ -92,7 +92,7 @@ git push
 
 Eski service worker tarayıcıda takılı kalabilir. İlk kez şunu yapın:
 
-1. `https://sametegeli-oss.github.io/dilharita/pwa-reset.html` sayfasını açın (repoda mevcut)
+1. `https://sametegeli-oss.github.io/dilharita/pwa-hard-reset.html` sayfasını açın (repoda mevcut; eski `pwa-reset.html` 10 Kasım 2026'da silindi)
 2. Sonra ana sayfayı açıp **sert yenileme** yapın (mobilde: uygulamayı kapat/aç)
 3. Kontrol listesi:
    - Avatar görünüyor mu, ağzı konuşurken oynuyor mu?
