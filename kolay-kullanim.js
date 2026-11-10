@@ -377,7 +377,7 @@
   /* "Puan" ile "Puanla" yan yana neyin ne olduğu anlaşılmıyordu. */
   var KIMLIK = { errSaveBtn: "Hatalarım", autoBtn: "Eller serbest", finishBtn: "Özetle", gemBtn: "Gemini'de sürdür",
                  suggestBtn: "Öneri", micBtn: "Konuş", sendBtn: "Gönder", levelBtn: "Seviye",
-                 dhPuanBtn: "Değerlendir", dhGemRaporBtn: "Gemini raporu", dhDahaBtn: "Daha fazla", finishBtn2: "Bitir",
+                 dhPuanBtn: "Değerlendir", dhGemRaporBtn: "Gemini raporu", dhGeminiLessonBtn: "Gemini ders", dhDahaBtn: "Daha fazla", finishBtn2: "Bitir",
                  playToggle: "Oynat", fullscreenToggle: "Tam ekran", fsActionExit: "Küçült", practiceActionsToggle: "Cümle düğmeleri",
                  controlMoreToggle: "Diğer", soundToggle: "Ses",
                  headToggle: "Bilgiler", toggleTranscriptPanel: "Transkript", translateTranscript: "Çevir",

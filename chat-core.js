@@ -1688,7 +1688,7 @@ function dhSadeAltCubuk(){
   try{
     if(!document.getElementById("dh-sade-cubuk-css")){
       const st=document.createElement("style"); st.id="dh-sade-cubuk-css";
-      const ek=["errSaveBtn","autoBtn","finishBtn","gemBtn","dhGemRaporBtn","dhPuanBtn"];
+      const ek=["errSaveBtn","autoBtn","finishBtn","gemBtn","dhGemRaporBtn","dhPuanBtn","dhGeminiLessonBtn"];
       st.textContent=ek.map(function(id){ return ".input-row:not(.dh-ek-acik)>#"+id; }).join(",")+"{display:none!important}"
         +"#dhDahaBtn{background:#334155}.input-row.dh-ek-acik #dhDahaBtn{background:#475569}";
       document.head.appendChild(st);
