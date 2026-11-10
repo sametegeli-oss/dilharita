@@ -404,7 +404,9 @@
       contents: contents.length?contents:[{role:"user",parts:[{text:sys||"Merhaba"}]}],
       generationConfig: {
         temperature: (opts.temperature!=null?opts.temperature:0.3),
-        maxOutputTokens: (opts.max_tokens||800)
+        /* Düşünen Gemini modellerinde düşünce de bu sınırdan yer; 450 token'lık
+           sohbet cevapları "No problem at all, I" diye yarıda kesiliyordu. */
+        maxOutputTokens: (opts.max_tokens||800) + 3000
       }
     };
     /* JSON isteyen ekranlarda Gemini'nin Markdown çiti veya yarım biçimli
@@ -433,6 +435,8 @@
       var __parts = d && d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts;
       var txt = Array.isArray(__parts) ? __parts.filter(function(x){ return x && typeof x.text==="string" && !x.thought; }).map(function(x){ return x.text; }).join("") : null;
       if(!txt) txt = null;
+      /* Sınıra takılıp yarım kalan cevabı kullanma: sıradaki sağlayıcıya geç. */
+      if(txt && d.candidates[0].finishReason==="MAX_TOKENS") throw {code:"empty", provider:p.id};
       if(txt==null) throw {code:"empty", provider:p.id};
       return String(txt);
     });
