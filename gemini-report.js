@@ -158,6 +158,8 @@ function render(data, options){
   if(isDaily&&roots.length){ rootOffset=dailyRootIndex(roots); roots=[roots[rootOffset]]; }
   var html=''
    +'<div class="dhgr-card">'
+   /* Kapat yalnız uzun karnenin en altındaydı: üstte de olsun */
+   +'<button class="dhgr-close dhgr-close-ust" type="button" style="float:right;min-height:44px;padding:0 14px;border:0;border-radius:10px;margin:0 0 6px 8px">✕ Kapat</button>'
    +'<h3>'+(isDaily?'🎯 Karnenden bugünün 3 sorusu':'💎 Gemini Hata Karnen')+'</h3>'
    +'<p class="dhgr-sub">'+(isDaily?'Bugün tek bir kök nedene odaklan. Üç doğru cevap günlük planındaki bu adımı tamamlar.':'Kök nedenler ve sana özel alıştırmalar — cevabını yazıp "Kontrol et" diyebilirsin.')+'</p>';
 
