@@ -7,7 +7,7 @@
 - Depo: `sametegeli-oss/dilharita`. Statik site, GitHub Pages'te yayında: https://sametegeli-oss.github.io/dilharita/
 - Yayın: `main`'e push edince "pages build and deployment" çalışır (~1 dk).
   - "Quality" iş akışı eski bir sebepten (Windows kısa adları) hep başarısız olur; görmezden gel.
-- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v387`.
+- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v393`.
 - Commit: `git -c user.email=noreply@anthropic.com -c user.name=Claude commit`, sonra `git pull --rebase origin main && git push origin HEAD:main`.
 
 ## Kesin kurallar (kullanıcının istekleri)
@@ -72,6 +72,10 @@
 - Seviye testi: mikrofon izni/mikrofon yoksa okuma sorusu yanlış sayılmıyor; "Şimdi sesli okuyamıyorum, geç" düğmesi.
 - Öğretmen seçimi: kullanıcı otomatik değişimi seçti (Türkçe → teacher1, İngilizce → teacher2). chatteacher.html metni buna göre yazıldı.
 - "Öğretmene sor" yüzen düğmesi: kolay görünümde alt çubuğa 5. düğme ("🎓 Öğretmen") olarak alındı, yüzen düğme gizli. Tam ekran sayfalarda (sohbet) eskisi gibi. Kullanıcı bu soruyu cevaplamadı, önerilen yol uygulandı.
+- Koç balonu tekrar sayısı Cümle Yazma ile aynı (yalnız öğrenilmiş cümleler, "öğe" yerine "cümle").
+- Hata Defteri `?odak=...&baslat=1`: alıştırma açılınca `baslat` adresten siliniyor, yenileyince yeniden açılmıyor.
+- YouTube'dan Çalış (youtube-pratik): oynatıcı + kontrol satırı tek yapışkan kutuda, telefonda tek satır. `seekQuiet`: kesit başına atlamak videoyu kendiliğinden oynatmıyor (eskiden oturum başlayınca video sonuna kadar akıyordu). "Soldan filtreleri" → "Filtreleri".
+- Doktor sohbeti arka planı "female doctor" aramasıyla.
 - Denetlendi, sorun yok: Konuşma Pratiği "Bugünün konuşması → Başla", Cümle Yazma, İlerlemem, Tüm Bölümler, seviye testi akışı (bitirmeden), öbek fiil Çoktan Seçmeli.
 
 ## Kalanlar / yapılacaklar
@@ -86,9 +90,6 @@
    - "Toplu AI ders paketi" düğmesi biçimsiz.
 3. **Henüz denetlenmeyenler:** Tüm Bölümler'deki sayfalar yalnız otomatik tarandı (360 px); tek tek elle bakılmadı.
 4. **Gözlenen küçük sorunlar:**
-   - Doktor sohbetinin arka plan fotoğrafında erkek doktor var; konuşan avatar kadın.
-   - Doktor portresinde görüntü bozulmaları var.
-   - Kayan YouTube oynatıcısı, kaydırınca kontrol satırını örtüyor.
-   - `hata-defteri.html?odak=...` yenilenince alıştırmayı yeniden açıyor.
-   - Cümle Yazma: koç balonu "128 öğe", sayfadaki düğme "123 cümle" diyor.
+   - Doktor portresinde görüntü bozulmaları var (görsel dosyalarında; yeni çizim gerekir).
+   - YouTube Eğitim Stüdyosu'nda kayan oynatıcı görülmedi; oynatıcı sayfayla birlikte kayıyor.
    - Ders örnekleri yazılım/SQL temalı; bunlar kullanıcının kendi hata geçmişinden geliyor.
