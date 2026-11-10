@@ -67,6 +67,9 @@ function addStyle(){
     min-height: 36px !important;
   }
 
+  /* Araçlar paneli açıkken Geri/Liste şeridi ve koç resmi panelin başlığını ve
+     kapatma çarpısını örtmesin. */
+  html.dh-tools-open .index-app-top-actions, html.dh-tools-open .dh-avatar{display:none !important}
   /* Üst menü sabit */
   .index-app-top-actions{
     position:fixed;
@@ -113,6 +116,8 @@ function addStyle(){
   .dh-list-e{color:#34d399;font-weight:700;font-size:14px}
   .dh-list-t{color:#9fb3d9;font-size:13px;margin-top:2px}
 
+  /* Üstte "← Çalışılan cümleye dön" çubuğu varken pencerenin Kapat düğmesi altında kalmasın */
+  body:has(#dhWorkReturn) .weak-modal, body:has(#dhWorkReturn) .dh-list-modal{padding-top:76px !important}
   /* Zayıf analiz modalı */
   .weak-modal{
     position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
