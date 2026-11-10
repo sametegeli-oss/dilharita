@@ -1421,6 +1421,7 @@ async function suggestReply(){
     // Sohbet bağlamına göre, kullanıcının SÖYLEYEBİLECEĞİ uygun bir İngilizce cevap öner.
     const sys = systemPrompt()
       + "\n\nNOW: The USER is stuck and wants a suggested reply. Based on the conversation so far and the partner's last message, write ONE natural English sentence that the USER (the learner) could say next. "
+      + "IMPORTANT: if the partner's last message asks the learner to say, repeat, translate or build a specific English sentence or pattern (for example 'Sen söylesen nasıl söylersin?', 'Bunu İngilizce söyle', 'Say: ...'), suggest EXACTLY that target sentence in its correct form, using the same grammar pattern being taught — do NOT answer or react to it with a different sentence. "
       + "Match the learner's level ("+State.level+"): keep it simple and appropriate. "
       + "Reply with ONLY that single English sentence — no quotes, no Turkish, no explanation.";
     const messages=[{role:"system",content:sys},{role:"assistant",content:__dhOpener()},...State.history.slice(-6),
