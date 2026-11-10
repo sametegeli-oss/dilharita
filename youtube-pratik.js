@@ -30,7 +30,7 @@ function isPlaying(){try{return playerReady&&global.YT&&player.getPlayerState()=
 /* YouTube oynatıcısı başlamamış videoda seekTo ile kendiliğinden oynamaya
    başlıyor; kesit takibi olmadığından video sonuna kadar akıyordu. Yalnız
    konum değiştiren çağrılar bunu kullanır: oynamıyorsa duraklatır. */
-function seekQuiet(t){var was=isPlaying();playerCall("seekTo",t,true);if(!was&&!loopTimer)playerCall("pauseVideo")}
+function seekQuiet(t){var was=isPlaying();playerCall("seekTo",t,true);if(was||loopTimer)return;playerCall("pauseVideo");/* YouTube duraklatmayı atlama bitmeden yok sayabiliyor: kısa süre sonra tekrar bak. */[300,800,1500,2500].forEach(function(ms){setTimeout(function(){if(!loopTimer&&isPlaying())playerCall("pauseVideo")},ms)})}
 function playerCall(name){if(!playerReady||!player||typeof player[name]!=="function")return;try{return player[name].apply(player,Array.prototype.slice.call(arguments,1))}catch(e){}}
 function stopLoop(pause){clearInterval(loopTimer);loopTimer=null;loopOn=false;$("loopClip").classList.remove("is-active");$("loopClip").setAttribute("aria-pressed","false");if(pause)playerCall("pauseVideo")}
 function playClip(forceLoop){var x=current();if(!x||!playerReady)return;toggleTranscript(false);setMedia("video");loopOn=forceLoop==null?loopOn:!!forceLoop;playerCall("seekTo",+x.startSeconds||0,true);playerCall("playVideo");clearInterval(loopTimer);loopTimer=setInterval(function(){if(!playerReady||!current())return;var y=current(),now=+playerCall("getCurrentTime")||0;if(now>=+y.endSeconds-.06||now<+y.startSeconds-.8){if(loopOn){playerCall("seekTo",+y.startSeconds||0,true);playerCall("playVideo")}else{playerCall("pauseVideo");clearInterval(loopTimer);loopTimer=null}}},120)}
