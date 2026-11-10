@@ -911,7 +911,13 @@
         if (!ayar.acik) modDegistir(true); else { yaz(ayar); olcegiYenile(); yaziBoya(); }
         return;
       }
-      if (t.closest("[data-kk-mod]")){ e.preventDefault(); modDegistir(!ayar.acik); return; }
+      if (t.closest("[data-kk-mod]")){
+        e.preventDefault();
+        /* Yanlışlıkla tek dokunuşla kapanıyordu; kapanınca alt çubuk ve "Yazı"
+           düğmesi de kaybolduğu için geri açmak zordu. Kapatmadan önce sor. */
+        if (ayar.acik && !confirm("Kolay görünüm kapatılsın mı?\n\nBüyük düğmeler ve alttaki Geri / Ana Sayfa / Menü / Yazı çubuğu kaybolur. Geri açmak için sağ üstteki Menü → \"Kolay görünümü aç\" kullanılır.")) return;
+        modDegistir(!ayar.acik); return;
+      }
       if (t.closest("[data-kk-geri-ac]")){ e.preventDefault(); ayar.acik = true; yaz(ayar); location.reload(); return; }
       /* Perdenin boş yerine dokununca kapat */
       if (t.classList && t.classList.contains("kk-perde")){ pencereKapat(t); }
