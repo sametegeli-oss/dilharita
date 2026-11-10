@@ -193,6 +193,8 @@
       el.title="Kapatmak için dokun";el.onclick=function(){el.remove();};document.body.appendChild(el);
     }
     el.textContent="🤖 AI kaynağı: "+(info.label||info.provider)+" · "+(info.model||"Model belirtilmedi")+(info.cached?" · önbellekten":"");
+    /* Telefonda sağ üstteki Menü/Ses düğmelerini kapatmasın: 4 sn sonra kaybolur. */
+    clearTimeout(el.__t); el.__t=setTimeout(function(){ try{ el.remove(); }catch(e){} },4000);
     return info;
   }
 

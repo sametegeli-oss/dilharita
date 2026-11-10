@@ -352,7 +352,9 @@
     +"@keyframes dhShake{0%,100%{transform:translateX(-50%) translateY(0) scale(1)}20%{transform:translate(calc(-50% - 10px),0) scale(1)}40%{transform:translate(calc(-50% + 10px),0) scale(1)}60%{transform:translate(calc(-50% - 6px),0) scale(1)}80%{transform:translate(calc(-50% + 6px),0) scale(1)}}"
     +".dh-coach .face{animation:dhFaceBob .5s ease 3}"
     +"@keyframes dhFaceBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}"
-    +".dh-coach .x{position:absolute;top:8px;right:11px;font-size:15px;color:#94a3b8;cursor:pointer;font-weight:400}"
+    +".dh-coach .x{position:absolute;top:6px;right:6px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#1e293b;border:1px solid #475569;font-size:18px;color:#e2e8f0;cursor:pointer;font-weight:700;line-height:1}"
+    /* ✕ büyüdü: metin ✕'nin altına girmesin */
+    +".dh-coach{padding-right:48px!important}"
     +".dh-coach.praise{border-color:#22c55e;background:linear-gradient(135deg,#111827,#0d2818)}"
     +".dh-coach.warn{border-color:#f59e0b;background:linear-gradient(135deg,#111827,#2d1a06)}"
     +".dh-coach.tip{border-color:#38bdf8;background:linear-gradient(135deg,#111827,#0a2233)}"
