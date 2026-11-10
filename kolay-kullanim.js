@@ -515,6 +515,9 @@
     if (b.hasAttribute("data-kk-etiket")) { var eski = b.getAttribute("data-kk-etiket"); b.removeAttribute("data-kk-etiket"); if (getComputedStyle(b).display === "none") return; b.setAttribute("data-kk-etiket", eski); }
     else if (getComputedStyle(b).display === "none") return;
     var ad = KIMLIK[b.id] || gizliAd || SIMGE[t] || SIMGE[t.replace(/\uFE0F/g, "")];
+    /* ✕ simgesi "Kapat" sayılıyordu; ama aria-label "… sil" diyorsa düğme SİLER
+       (ör. kayıtlı video listesi). Yaşlı kullanıcı "kapat" sanıp kaydını silmesin. */
+    if (ad === "Kapat" && /\bsil\b|\bsilin|delete|remove|kaldır/i.test(b.getAttribute("aria-label") || b.title || "")) ad = "Sil";
     if (!ad) {
       var uzun = b.getAttribute("aria-label") || b.getAttribute("data-tooltip") || b.getAttribute("data-ipucu") || "";
       ad = uzun.replace(/[^\p{L}\p{N}\s]/gu, "").trim().split(/\s+/).slice(0, 2).join(" ");
