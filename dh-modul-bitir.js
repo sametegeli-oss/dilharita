@@ -305,7 +305,7 @@
       });
     }).catch(function () {});
   }
-  function kisa(mod) { return String(mod || "").replace(/^[A-C][12]-M\d+\s*/, ""); }
+  function kisa(mod) { return String(mod || "").replace(/^[A-C][12]-M\d+[\s-]*/, ""); }
 
   /* ────────────── 2) ATLANAN CUMLE VAR AKISI ───────────────── */
   var eksikGosterildi = false;

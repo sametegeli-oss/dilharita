@@ -36,7 +36,7 @@
   .oge__alt{ font-size:var(--dh-fs-ipucu); color:var(--dh-text-2); margin-top:2px; }
   .satir{ display:flex; gap:var(--dh-b-2); flex-wrap:wrap; }
   .satir > *{ flex:1 1 140px; }
-  .anahtar{ position:relative; width:52px; height:30px; border-radius:var(--dh-r-cip);
+  .anahtar{ position:relative; display:inline-block; width:64px; height:38px; border-radius:var(--dh-r-cip);
             background:var(--dh-bos); flex:0 0 auto; transition:background var(--dh-sure-gecis) var(--dh-egri); }
   .gizliGiris{ position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; }
   input[type=time]{ background:var(--dh-yuzey-2); border:var(--dh-bd); color:var(--dh-text);
@@ -135,15 +135,16 @@
       <a class="oge" href="./profil.html"><div class="oge__ad">Kişisel öğrenme profili</div><div class="oge__alt">Yaş, eğitim, amaç, ilgi alanı ve anlatım tercihi</div></a>
 
       <div class="dh-kart dh-kart--sessiz" id="dhNotifCard">
-        <div style="display:flex;align-items:center;gap:var(--dh-b-3)">
+        <!-- Satırın tamamı dokunulabilir: yazıya basmak da anahtarı açıp kapatır -->
+        <label style="display:flex;align-items:center;gap:var(--dh-b-3);cursor:pointer;min-height:48px">
           <div style="flex:1">
             <div class="oge__ad">Günlük hatırlatma</div>
             <div class="oge__alt">Her gün seçtiğin saatte çalışma hatırlatması</div>
           </div>
-          <label class="anahtar" id="dhNotifSlider">
+          <span class="anahtar" id="dhNotifSlider">
             <input type="checkbox" id="dhNotifToggle" class="gizliGiris" aria-label="Günlük hatırlatmayı aç veya kapat">
-          </label>
-        </div>
+          </span>
+        </label>
         <div id="dhNotifBody" style="display:none;margin-top:var(--dh-b-3)">
           <div style="display:flex;align-items:center;gap:var(--dh-b-3)">
             <label class="dh-etiket" for="dhNotifTime">Saat</label>
@@ -703,12 +704,12 @@
   var s=document.getElementById("dhNotifSlider");
   if(!s) return;
   var topuz=document.createElement("span");
-  topuz.style.cssText="position:absolute;top:3px;left:3px;width:24px;height:24px;"+
+  topuz.style.cssText="position:absolute;top:4px;left:4px;width:30px;height:30px;pointer-events:none;"+
     "background:var(--dh-yuzey);border-radius:50%;transition:left var(--dh-sure-gecis) var(--dh-egri)";
   s.appendChild(topuz);
   window.__dhAnahtarBoya=function(on){
     s.style.background = on ? "var(--dh-marka)" : "var(--dh-bos)";
-    topuz.style.left = on ? "25px" : "3px";
+    topuz.style.left = on ? "30px" : "4px";
   };
 })();
 

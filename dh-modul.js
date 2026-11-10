@@ -75,7 +75,7 @@
     var gramer   = String(s.grammar || "").trim();
     var tense    = String(s.tense || "Present Simple").trim();
     var adet     = Math.max(5, Math.min(30, parseInt(s.adet, 10) || 25));
-    var modulAd  = String(s.modulAd || (kaynak.replace(/^[A-C][12]-M\d+\s*/, "") + " · " + alan)).trim();
+    var modulAd  = String(s.modulAd || (kaynak.replace(/^[A-C][12]-M\d+[\s-]*/, "") + " · " + alan)).trim();
     var kimlikOn = String(s.kimlikOnek || "USR-XXX").trim();
     var ornekler = Array.isArray(s.ornekler) ? s.ornekler.slice(0, 2) : [];
 

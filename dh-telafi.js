@@ -83,7 +83,7 @@
 
   /* Modul adindan kisa etiket: "A2-M03 Past Simple · P1" -> "Past Simple · P1" */
   function kisaAd(mod) {
-    return String(mod || "").replace(/^[A-C][12]-M\d+\s*/, "").trim() || String(mod || "");
+    return String(mod || "").replace(/^[A-C][12]-M\d+[\s-]*/, "").trim() || String(mod || "");
   }
 
   function hatalar() {

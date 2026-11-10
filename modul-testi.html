@@ -70,7 +70,7 @@
 <script src="./module-test.js?v=2"></script>
 <script src="./module-score.js?v=1"></script>
 <script src="./ai-providers.js?v=t34"></script>
-<script src="./module-story.js?v=2"></script>
+<script src="./module-story.js?v=3"></script>
 <script src="./ai-status.js?v=t22"></script>
 <script>
 (function(){
@@ -96,7 +96,7 @@
     var items = sentences.filter(function(s){ return s.module===moduleId; });
     if(!items.length){ screen.innerHTML='<div class="card"><div class="q-hint">Bu modülde cümle bulunamadı.</div></div>'; return; }
     moduleLevel = items[0].level || "";
-    $("modTitle").textContent = moduleId.replace(/^[A-C][12]-M\d+\s*/,"") || "Modül Sınavı";
+    $("modTitle").textContent = moduleId.replace(/^[A-C][12]-M\d+[\s-]*/,"") || "Modül Sınavı";
     test = window.DHModuleTest.create(items, {count:8});
     renderQuestion();
   }

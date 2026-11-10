@@ -29,7 +29,7 @@
     var items=(sentences||[]).filter(function(s){ return s.module===moduleId; });
     var level = items[0] ? (items[0].level||"") : "";
     // konu adı modül adından (örn "B1-M01 Present Perfect" → "Present Perfect")
-    var topic = String(moduleId).replace(/^[A-C][12]-M\d+\s*/,"") || moduleId;
+    var topic = String(moduleId).replace(/^[A-C][12]-M\d+[\s-]*/,"") || moduleId;
     // birkaç örnek cümle (hikayede kullanılsın diye)
     var samples = [];
     for(var i=0;i<items.length && samples.length<8;i+=Math.max(1,Math.floor(items.length/8))){

@@ -412,7 +412,7 @@
        yoksa 25+ cümlelik gerçek günün sayısı yeni planda "Yeni cümleler"i gizler */
     try{ var __ep=dayEpoch(); if(__ep) todayCount=Math.max(0, todayCount-(__ep.sentences||0)); }catch(e){}
     if(todayCount<25){
-      spine.push({label: __nextModule ? ("Yeni cümleler: "+__nextModule.replace(/^[A-C]\d-M\d+\s*/,"")) : "Yeni cümleler öğren",
+      spine.push({label: __nextModule ? ("Yeni cümleler: "+__nextModule.replace(/^[A-C]\d-M\d+[\s-]*/,"")) : "Yeni cümleler öğren",
                   href: __nextModule ? ("index-app.html?mod="+encodeURIComponent(__nextModule)) : "index-app.html"});
       spine.push({label:"Öğrendiklerini üret · 3 cümle",href:"practice.html?auto=today&limit=3",uretim:true});
     }
@@ -595,7 +595,7 @@
               try{ var __vd=JSON.parse(localStorage.getItem("dh-mod-visited-v1")||"{}")||{}; __todayVisited=(__curMod&&__vd[__curMod]===DAY); }catch(e){}
               if(__nm && (__curMod===null || __curMod!==__nm)){
                 __step.href="index-app.html?mod="+encodeURIComponent(__nm);
-                __step.label="Yeni cümleler: "+__nm.replace(/^[A-C]\d-M\d+\s*/,"");
+                __step.label="Yeni cümleler: "+__nm.replace(/^[A-C]\d-M\d+[\s-]*/,"");
               }
             }
             /* kart ile depo AYNI kalsın: valid() adımları kanonikleştirir ama

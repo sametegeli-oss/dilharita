@@ -9,7 +9,7 @@
 <script src="./progress-engine.js?v=2"></script>
 <script src="./dh-plan.js?v=3"></script>
 <script src="./dh-session-summary.js?v=1"></script>
-<script src="./coach-bubble.js?v=t33"></script>
+<script src="./coach-bubble.js?v=t34"></script>
 <!-- Karma gün sonu pratiği: o gün çalışılan cümle + kalıp + kelimeleri
      harmanlayıp öğretmen sohbetine devreder (Günü Kapat paneline eklenir). -->
 <script src="./dh-gun-sonu.js?v=1"></script>
@@ -1248,7 +1248,7 @@ async function renderPicker(){
     for (const mod of mods){
       const { learned, total } = moduleProgress(mod);
       const pct = total ? Math.round(learned/total*100) : 0;
-      const name = mod.replace(/^[A-C]\d-M\d+\s*/, "");
+      const name = mod.replace(/^[A-C]\d-M\d+[\s-]*/, "");
       const pos = loadPos(mod);
       const resumeBadge = pos ? `<span class="resume-badge">↻ ${pos.idx}. cümlede kaldın</span>` : "";
       html += `<button class="mod-tile${pos ? " has-resume" : ""}" data-mod="${esc(mod)}">
@@ -1390,7 +1390,7 @@ function openAuthSheet(){
 
 /* ---------- "kaldığın yerden devam" seçim sheet'i ---------- */
 function openResumeSheet(mod, pos){
-  const name = mod.replace(/^[A-C]\d-M\d+\s*/, "");
+  const name = mod.replace(/^[A-C]\d-M\d+[\s-]*/, "");
   const sheet = document.createElement("div");
   sheet.className = "sheet-overlay";
   sheet.innerHTML = `
@@ -1613,7 +1613,7 @@ async function startModuleSession(mod, resumeIdx){
   // kaldığın yerden devam: kuyruk yeniden kurulduğu için idx'i sınırla
   State.idx = resumeIdx ? Math.min(Math.max(0, resumeIdx), arr.length - 1) : 0;
   State.activeModule = mod;            // pozisyon kaydı için
-  State.sessionTitle = mod.replace(/^[A-C]\d-M\d+\s*/, "");
+  State.sessionTitle = mod.replace(/^[A-C]\d-M\d+[\s-]*/, "");
   renderCard();
 }
 async function startDueSession(){
@@ -1776,7 +1776,7 @@ async function restoreTeacherReturnIfNeeded(){
   State.srs = await mAll();
   State.idx = Math.max(0, Number(saved.idx) || 0);
   State.activeModule = saved.activeModule || null;
-  State.sessionTitle = saved.sessionTitle || (State.activeModule ? State.activeModule.replace(/^[A-C]\d-M\d+\s*/, "") : "Tekrar oturumu");
+  State.sessionTitle = saved.sessionTitle || (State.activeModule ? State.activeModule.replace(/^[A-C]\d-M\d+[\s-]*/, "") : "Tekrar oturumu");
 
   const ids = Array.isArray(saved.queueIds) ? saved.queueIds : [];
   const restoredQueue = await sentencesByIds(ids);
@@ -1921,7 +1921,7 @@ function renderCard(){
 
   const listen = State.mode === "listen";
   const pct = Math.round(State.idx / State.queue.length * 100);
-  const name = (s.module || "").replace(/^[A-C]\d-M\d+\s*/, "");
+  const name = (s.module || "").replace(/^[A-C]\d-M\d+[\s-]*/, "");
   const modeChip = listen ? "Duyduğunu yaz/söyle" : LAYER_LABEL[layer];
 
   root.innerHTML = `

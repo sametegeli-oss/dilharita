@@ -655,7 +655,7 @@
     if((rec.lessons||0)>0) wins.push("🎓 "+rec.lessons+" ders");
     var modsToday=[];
     try{ var vd=JSON.parse(localStorage.getItem("dh-mod-visited-v1")||"{}")||{};
-      for(var mk in vd){ if(vd[mk]===dhToday()) modsToday.push(mk.replace(/^[A-C]\d-M\d+\s*/,"")); } }catch(e){}
+      for(var mk in vd){ if(vd[mk]===dhToday()) modsToday.push(mk.replace(/^[A-C]\d-M\d+[\s-]*/,"")); } }catch(e){}
     modsToday.slice(0,3).forEach(function(m){ wins.push("🗺️ "+m); });
     var strug=[];
     hardRev.slice(0,3).forEach(function(h){

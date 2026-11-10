@@ -79,7 +79,7 @@
           }, [
             e('div', 'no', bitti ? '✓' : (m.mod.match(/M(\d+)/) ? 'M' + m.mod.match(/M(\d+)/)[1] : String(i + 1))),
             e('div', 'gvd', [
-              e('b', null, m.mod.replace(/^[A-C]\d-M\d+\s*/, '')),
+              e('b', null, m.mod.replace(/^[A-C]\d-M\d+[\s-]*/, '')),
               UI.cubuk(p.oran)
             ]),
             e('div', 'yuzde', p.oran + '%')

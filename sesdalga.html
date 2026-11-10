@@ -359,6 +359,14 @@
     html.dh-embedded .btn-back,html.dh-embedded .dh-primary-nav,html.dh-embedded .dh-mobile-menu-button,html.dh-embedded .dh-mobile-menu,html.dh-embedded .dh-net-status,html.dh-embedded .atlas-controls,html.dh-embedded .dh-coach,html.dh-embedded .dh-avatar,html.dh-embedded .dh-connection,html.dh-embedded #dhSyncBadge,html.dh-embedded #dhux-note,html.dh-embedded #dhux-bar{display:none!important}
   /* Kolay görünümde sağ üstteki Menü + koç resmi açıklama yazısını örtüyordu */
   html.kk-acik .header-panel{padding-right:96px !important}
+  /* Telefonda büyük yazıyla başlık, Geri ve açıklama yan yana sıkışıp sütunlara
+     bölünüyordu: başlık satırı tek satır, açıklama altında tam genişlik. */
+  @media (max-width:700px){
+    html.kk-acik .header-panel{flex-wrap:wrap;gap:6px;align-items:flex-start}
+    html.kk-acik .header-panel>div:first-child{flex:1 1 100%;flex-wrap:wrap;gap:8px !important}
+    html.kk-acik .header-panel .btn-back{white-space:nowrap}
+    html.kk-acik .header-panel .quick-tip{flex:1 1 100%}
+  }
   </style>
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
@@ -2030,7 +2038,7 @@ function hocaTalkAlign(charIndex){
 <script src="./ai-providers.js?v=t34"></script>
 <script src="./word-popup.js?v=tm3"></script>
 <script src="./viseme-lang.js?v=2"></script>
-  <script src="./coach-bubble.js?v=t33" defer></script>
+  <script src="./coach-bubble.js?v=t34" defer></script>
 <script src="./ux-boost.js?v=1"></script>
 <script src="./atlas-effects.js?v=2"></script>
   <script src="product-improvements.js" defer></script>

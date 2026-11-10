@@ -49,7 +49,7 @@
     "Cohesion":"metin bütünlüğü","Participle":"ortaç yapıları (-ing / -ed)","Cleft":"vurgulu cümle","Ellipsis":"eksiltme"
   };
   function ad(metin) {
-    var b = String(metin || "").replace(/^[A-C][12]-M\d+\s*/, "").replace(/\s*·\s*P\d+\s*$/, "").trim();
+    var b = String(metin || "").replace(/^[A-C][12]-M\d+[\s-]*/, "").replace(/\s*·\s*P\d+\s*$/, "").trim();
     return TR[b] || "";
   }
   var st = document.createElement("style");
