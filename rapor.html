@@ -59,7 +59,7 @@ h1{font-size:17px;margin:0}
 </div>
 
 <script src="./learning-error-system.js?v=11"></script>
-<script src="./dh-insights.js?v=2"></script>
+<script src="./dh-insights.js?v=3"></script>
 <script>
 (async function(){
   var fallback=document.getElementById("reportInsightFallback");
@@ -135,7 +135,7 @@ h1{font-size:17px;margin:0}
       var icon=improving?"↓ iyileşiyor":(worsening?"↑ dikkat":"= sabit");
       var pct=Math.round(100*x.pr/max);
       var col=improving?"#4ade80":(worsening?"#f87171":"#64748b");
-      return '<div class="trend-item"><span>'+x.t+'</span><div class="bar"><div style="width:'+pct+'%;background:'+col+'"></div></div>'
+      return '<div class="trend-item"><span>'+((window.DHInsights&&DHInsights.label)?DHInsights.label(x.t):x.t)+'</span><div class="bar"><div style="width:'+pct+'%;background:'+col+'"></div></div>'
         +'<span class="'+cls+'" title="'+x.o+' → '+x.r+' kez">%'+x.po+' → %'+x.pr+' <small>('+icon+')</small></span></div>';
     }).join("");
   }catch(e){ out.innerHTML='<div class="empty">Rapor oluşturulamadı.</div>'; }

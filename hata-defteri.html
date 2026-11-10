@@ -8,6 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hata Defteri · Dil Haritası</title>
 <script src="./learning-error-system.js?v=11"></script>
+<script src="./dh-insights.js?v=3"></script>
 <script src="./sentence-analyzer.js?v=2"></script>
 <script src="./ai-providers.js?v=t29"></script>
 <script src="./gemini-bridge.js?v=t20"></script>
@@ -145,12 +146,13 @@ const PARAMS=new URLSearchParams(location.search);
 const ODAK=PARAMS.get("odak")||"";
 let ODAK_BASLADI=false;
 function fmt(d){try{return new Date(d).toLocaleString("tr-TR")}catch{return d||""}}
-function renderTags(el,arr){el.innerHTML=arr.length?arr.map(([k,v])=>`<div class="tag"><span>${LearningErrorDB.esc(k)}</span><b>${v}</b></div>`).join(""):`<div class="empty">Kayıt yok</div>`}
+function tipAdi(t){try{return (window.DHInsights&&DHInsights.label)?DHInsights.label(t):t}catch(e){return t}}
+function renderTags(el,arr,tip){el.innerHTML=arr.length?arr.map(([k,v])=>`<div class="tag"><span>${LearningErrorDB.esc(tip?tipAdi(k):k)}</span><b>${v}</b></div>`).join(""):`<div class="empty">Kayıt yok</div>`}
 async function load(){
   RECORDS=await LearningErrorDB.all();
   renderRecords();
   if(ODAK && !ODAK_BASLADI){
-    const ad=ODAK.replace(/[_-]/g," ");
+    const ad=tipAdi(ODAK);
     document.querySelector(".title p").textContent="Kişisel telafi odağın: "+ad+". Yalnızca bu konudaki kayıtların gösteriliyor.";
     /* Odaklı çalışma da SRS vadesine uyar. Eski kod tüm konu kayıtlarını
        koşulsuz aldığı için doğru cevaplanıp 3 gün ertelenen aynı kayıt sayfa
@@ -183,7 +185,7 @@ function renderRecords(){
   $("total").textContent=summary.total; $("high").textContent=summary.high;
   $("typeCount").textContent=summary.byType.length; $("repeatCount").textContent=summary.repeated.length;
   $("totalLabel").textContent=(ODAK||q||source||pri)?"Gösterilen kayıt":"Toplam kayıt";
-  renderTags($("types"),summary.byType); renderTags($("modules"),summary.byModule);
+  renderTags($("types"),summary.byType,true); renderTags($("modules"),summary.byModule);
   $("records").innerHTML=arr.length?arr.map(r=>`
     <div class="record ${r.reviewPriority||""}">
       <div class="meta">
@@ -198,7 +200,7 @@ function renderRecords(){
       <div>Senin cevap: <span class="ans">${LearningErrorDB.esc(r.answer||"")}</span></div>
       <div>Doğrusu: <span class="target">${LearningErrorDB.esc(r.target||"")}</span></div>
       <div class="meta" style="margin-top:8px"><span>Skor: <b>${Math.round(r.score||0)}%</b></span><span>Not: <b>${LearningErrorDB.esc(r.grade||"")}</b></span><span>Gramer: ${LearningErrorDB.esc(r.grammar||"")}</span></div>
-      <div class="types">${(r.types||[]).map(t=>`<span class="type">${LearningErrorDB.esc(t)}</span>`).join("")}</div>
+      <div class="types">${(r.types||[]).map(t=>`<span class="type">${LearningErrorDB.esc(tipAdi(t))}</span>`).join("")}</div>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
         <button class="btn" data-drill="${LearningErrorDB.esc(r.id)}" style="background:#b45309;border-color:#f59e0b;padding:6px 12px;font-size:12px">🎯 Bunu çöz</button>
         <button class="btn red" data-del="${LearningErrorDB.esc(r.id)}" style="padding:6px 12px;font-size:12px">🗑 Bu kaydı sil</button>
