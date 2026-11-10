@@ -7,7 +7,7 @@
 - Depo: `sametegeli-oss/dilharita`. Statik site, GitHub Pages'te yayında: https://sametegeli-oss.github.io/dilharita/
 - Yayın: `main`'e push edince "pages build and deployment" çalışır (~1 dk).
   - "Quality" iş akışı eski bir sebepten (Windows kısa adları) hep başarısız olur; görmezden gel.
-- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v394`.
+- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v395`.
 - Commit: `git -c user.email=noreply@anthropic.com -c user.name=Claude commit`, sonra `git pull --rebase origin main && git push origin HEAD:main`.
 
 ## Kesin kurallar (kullanıcının istekleri)
@@ -87,7 +87,7 @@
    - LDPlayer'daki uygulamada buluta yeniden giriş yapmak (orada çıkış yapılmış görünüyordu).
    - OpenRouter anahtarının gerçekten cevap verdiğini bir sohbette denemek. Kayıtlı olduğu görüldü, çalışması denenmedi.
 2. **Kullanıcı kararı bekleyenler** (izinsiz değiştirme):
-   - Ders ayarları ham JSON olarak görünüyor: kullanıcı dostu forma çevrilsin mi?
+   - (Ders ayarları JSON olarak kalacak — kullanıcı kararı. Kıvrık tırnaklar kaydederken düz tırnağa çevriliyor.)
 3. **Henüz denetlenmeyenler:** Tüm Bölümler'deki sayfalar yalnız otomatik tarandı (360 px); tek tek elle bakılmadı.
 4. **Gözlenen küçük sorunlar:**
    - Doktor portresinde görüntü bozulmaları var (görsel dosyalarında; yeni çizim gerekir).

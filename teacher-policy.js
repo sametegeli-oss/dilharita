@@ -172,6 +172,9 @@
     return JSON.stringify(load(), null, 2);
   }
   function fromText(text){
+    /* Bazı telefon klavyeleri düz tırnağı kıvrık tırnağa çeviriyor; kullanıcı
+       hata yapmadığı hâlde metin okunamıyordu. */
+    text = String(text||"").replace(/[\u201C\u201D\u201E\u201F\u2033]/g,'"').replace(/[\u2018\u2019\u201A\u201B]/g,"'");
     var parsed = JSON.parse(text); // hata fırlatırsa çağıran yakalar
     // güvenlik: sadece bilinen alanları al, varsayılanla birleştir
     var merged = deepMerge(DEFAULT_POLICY, parsed);
