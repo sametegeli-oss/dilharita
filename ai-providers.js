@@ -189,15 +189,35 @@
     }catch(e){ return []; }
   }
   // pasif (devre dışı) anahtarlar — silinmez, sadece kullanılmaz
+  /* PASİF ANAHTARLAR GEÇİCİDİR: bir anda reddedilen anahtar (ağ/geçici
+     sunucu sorunu, yeni cihaz) eskiden kalıcı olarak kapanıyor ve yapay
+     zekâ sessizce elle NVIDIA yoluna düşüyordu. Artık 6 saat sonra yeniden
+     denenir; zamanı bilinmeyen eski kayıtlar bir kez temizlenir. */
+  var PASIF_SURE = 6*60*60*1000;
   function disabledSet(){
     try{
       var arr = JSON.parse(localStorage.getItem("dh-disabled-keys")||"[]")||[];
-      var m={}; arr.forEach(function(k){ m[k]=1; }); return m;
+      var at = JSON.parse(localStorage.getItem("dh-disabled-keys-at")||"{}")||{};
+      var now=Date.now(), keep=[], m={};
+      arr.forEach(function(k){ if(at[k] && now-at[k] < PASIF_SURE){ keep.push(k); m[k]=1; } });
+      if(keep.length!==arr.length){
+        var at2={}; keep.forEach(function(k){ at2[k]=at[k]; });
+        localStorage.setItem("dh-disabled-keys",JSON.stringify(keep));
+        localStorage.setItem("dh-disabled-keys-at",JSON.stringify(at2));
+      }
+      return m;
     }catch(e){ return {}; }
   }
   function disableBrokenKey(key){
     if(!key)return;
-    try{var arr=JSON.parse(localStorage.getItem("dh-disabled-keys")||"[]")||[];if(arr.indexOf(key)<0){arr.push(key);localStorage.setItem("dh-disabled-keys",JSON.stringify(arr));}}catch(e){}
+    try{
+      var arr=JSON.parse(localStorage.getItem("dh-disabled-keys")||"[]")||[];
+      var at=JSON.parse(localStorage.getItem("dh-disabled-keys-at")||"{}")||{};
+      if(arr.indexOf(key)<0) arr.push(key);
+      at[key]=Date.now();
+      localStorage.setItem("dh-disabled-keys",JSON.stringify(arr));
+      localStorage.setItem("dh-disabled-keys-at",JSON.stringify(at));
+    }catch(e){}
   }
   function realHasAnyKey(){
     return PROVIDERS.some(function(p){ return keysOf(p.keyStore).length>0; });
