@@ -7,7 +7,7 @@
 - Depo: `sametegeli-oss/dilharita`. Statik site, GitHub Pages'te yayında: https://sametegeli-oss.github.io/dilharita/
 - Yayın: `main`'e push edince "pages build and deployment" çalışır (~1 dk).
   - "Quality" iş akışı eski bir sebepten (Windows kısa adları) hep başarısız olur; görmezden gel.
-- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v393`.
+- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v394`.
 - Commit: `git -c user.email=noreply@anthropic.com -c user.name=Claude commit`, sonra `git pull --rebase origin main && git push origin HEAD:main`.
 
 ## Kesin kurallar (kullanıcının istekleri)
@@ -76,6 +76,10 @@
 - Hata Defteri `?odak=...&baslat=1`: alıştırma açılınca `baslat` adresten siliniyor, yenileyince yeniden açılmıyor.
 - YouTube'dan Çalış (youtube-pratik): oynatıcı + kontrol satırı tek yapışkan kutuda, telefonda tek satır. `seekQuiet`: kesit başına atlamak videoyu kendiliğinden oynatmıyor (eskiden oturum başlayınca video sonuna kadar akıyordu). "Soldan filtreleri" → "Filtreleri".
 - Doktor sohbeti arka planı "female doctor" aramasıyla.
+- Tekrar sayfası: iki düğme farklı işler (bMic = sesle cevap, bStudio = Telaffuz Stüdyosu); kolay görünüm ikisine de "Konuş" yazıyordu. Etiketler "Sesle cevapla" / "Telaffuz". Hiçbiri kaldırılmadı.
+- "Toplu AI ders paketi" düğmesi yanındaki mor düğmelerle aynı görünümde.
+- Koç balonu: alt çubuk varken çubuğun hemen üstünde çıkıyor (eskiden üstte soruyu örtüyordu); yine yalnız ✕ ile kapanır.
+- "Bunu tekrar sorma": kullanıcı "olduğu gibi kalsın" dedi.
 - Denetlendi, sorun yok: Konuşma Pratiği "Bugünün konuşması → Başla", Cümle Yazma, İlerlemem, Tüm Bölümler, seviye testi akışı (bitirmeden), öbek fiil Çoktan Seçmeli.
 
 ## Kalanlar / yapılacaklar
@@ -83,11 +87,7 @@
    - LDPlayer'daki uygulamada buluta yeniden giriş yapmak (orada çıkış yapılmış görünüyordu).
    - OpenRouter anahtarının gerçekten cevap verdiğini bir sohbette denemek. Kayıtlı olduğu görüldü, çalışması denenmedi.
 2. **Kullanıcı kararı bekleyenler** (izinsiz değiştirme):
-   - Koç balonu (coach-bubble.js) üstte sabit, otomatik kapanmıyor (kullanıcı isteği) ve soru alanını örtüyor.
-   - "Bunu tekrar sorma" düğmesi onay sormadan siliyor: onay eklensin mi?
    - Ders ayarları ham JSON olarak görünüyor: kullanıcı dostu forma çevrilsin mi?
-   - Tekrar sayfasında iki "Konuş" düğmesi var.
-   - "Toplu AI ders paketi" düğmesi biçimsiz.
 3. **Henüz denetlenmeyenler:** Tüm Bölümler'deki sayfalar yalnız otomatik tarandı (360 px); tek tek elle bakılmadı.
 4. **Gözlenen küçük sorunlar:**
    - Doktor portresinde görüntü bozulmaları var (görsel dosyalarında; yeni çizim gerekir).

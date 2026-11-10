@@ -532,3 +532,11 @@ html.kk-acik input:disabled,html.kk-acik textarea:disabled,html.kk-acik select:d
 :root:root:root:root:root:root:root:root.kk-dokunmatik #playToggle[data-kk-etiket]:not(#kk-y1):not(#kk-y2)::after{color:#0b1324!important}
 /* Açılan pencere varken sağ üstteki büyük Menü düğmesi pencereyi örtmesin */
 html.kk-acik body.kk-perde-acik .kk-ust-menu{display:none!important}
+
+/* Koç balonu üstte sabitken sorunun ve başlığın üstünü örtüyordu. Alt çubuk
+   varken balon çubuğun hemen üstünde çıksın; yine yalnız ✕ ile kapanır. */
+html.kk-acik body.kk-alt-var .dh-coach.dh-coach{
+  top:auto!important;
+  bottom:calc(var(--kk-alt-h, 88px) + 12px + env(safe-area-inset-bottom))!important;
+  max-height:45vh;overflow-y:auto;padding-right:58px!important;
+}
