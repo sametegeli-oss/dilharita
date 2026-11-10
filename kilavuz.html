@@ -27,6 +27,8 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 var(--body);
 
 /* ---------- Yan patika (meşale rotası) ---------- */
 .side{position:sticky;top:0;height:100vh;padding:28px 14px 28px 24px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+/* Telefonda gizleme kuralı yukarıdaydı ve bu satır onu eziyordu: yan liste içeriğin üstüne biniyordu */
+@media (max-width:900px){.side{display:none!important}}
 .brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;padding:0 6px}
 .brand .torch{font-size:26px;filter:drop-shadow(0 0 10px #f9731688)}
 .brand b{font:900 15px var(--display);letter-spacing:.2px}
