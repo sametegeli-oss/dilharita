@@ -277,7 +277,7 @@
 
   // ---------- seslendirme ----------
   /* 📝 BAĞLAM CÜMLESİ: kelimeyi gerçek cümle içinde göster.
-     data/sentences.json (1.3MB) İLK istekte bir kez yüklenir, sonra bellekte. */
+     data/sentences/examples.json (1.2MB) İLK istekte bir kez yüklenir, sonra bellekte. */
   var __sentCache=null, __sentLoading=null;
   function loadSentences(){
     if(__sentCache) return Promise.resolve(__sentCache);
@@ -286,7 +286,7 @@
        id/en/tr yetiyor: gzip ~294 KB yerine 1716 KB indirmiyoruz, kapsam aynı. */
     __sentLoading=fetch("./data/sentences/examples.json")
       .then(function(r){ if(!r.ok) throw 0; return r.json(); })
-      .catch(function(){ return fetch("./data/sentences.json").then(function(r){ return r.json(); }); })
+      /* 8.5 MB'lık sentences.json yedeği telefonda sekmeyi çökertiyordu; kaldırıldı. */
       .then(function(d){ __sentCache=Array.isArray(d)?d:[]; return __sentCache; })
       .catch(function(){ __sentCache=[]; return __sentCache; });
     return __sentLoading;
