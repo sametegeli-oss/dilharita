@@ -329,7 +329,7 @@ async function groqChat(messages, requestOpts){
   if(!P||!P.chat){ console.error("[Dil Harita] ai-providers.js yüklenmemiş; yapay zeka çağrısı yapılamadı."); throw {code:"no-key"}; }
   const controller=new AbortController();
   let timedOut=false;
-  const timer=setTimeout(function(){timedOut=true;controller.abort();},requestOpts.timeoutMs||25000);
+  const timer=setTimeout(function(){timedOut=true;controller.abort();},requestOpts.timeoutMs||45000);
   const external=requestOpts.signal;
   const abortFromOutside=function(){controller.abort();};
   if(external){if(external.aborted)controller.abort();else external.addEventListener("abort",abortFromOutside,{once:true});}
@@ -1494,7 +1494,7 @@ async function sendUser(){
       }
     }catch(e){}
     const messages=[{role:"system",content:systemPrompt()},{role:"assistant",content:State.firstMsg},...State.history.slice(-6)];
-    const reply=await groqChat(messages,{signal:State.abortController.signal,timeoutMs:25000});
+    const reply=await groqChat(messages,{signal:State.abortController.signal,timeoutMs:45000});
     removeTyping();
     State.currentPartner=dhStripTasks(reply) || "Could you please say that again?";
     try{
@@ -1524,7 +1524,7 @@ async function sendUser(){
     if(e.code==="rate") msg="Tüm AI sağlayıcıların limiti doldu. 💎 ile Gemini'de devam edebilir ya da Ayarlar'dan Cerebras/Gemini anahtarı ekleyebilirsin.";
     else if(e.code==="bad-key") msg="API anahtarı geçersiz görünüyor.";
     else if(e.code==="network") msg="İnternet bağlantısı kontrol edilmeli.";
-    else if(e.code==="timeout") msg="AI yanıtı 25 saniyede gelmedi. Mesajın kutuya geri kondu; tekrar deneyebilirsin.";
+    else if(e.code==="timeout") msg="AI yanıtı 45 saniyede gelmedi. Mesajın kutuya geri kondu; tekrar deneyebilirsin.";
     else if(e.code==="cancelled") msg="İstek iptal edildi. Mesajın kutuya geri kondu.";
     if((e.code==="timeout"||e.code==="cancelled")&&!input.value){input.value=text;input.dispatchEvent(new Event("input"));}
     State.currentPartner=msg;

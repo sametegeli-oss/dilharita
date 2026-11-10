@@ -988,7 +988,7 @@
       out.innerHTML='<div class="dh-wp-ai-out">AI bağlantısı hazırlanıyor…</div>';
       var old=document.querySelector('script[data-dh-word-ai-provider]');
       if(old){old.addEventListener("load",function(){aiExplain(word,anlamlar);},{once:true});return;}
-      var ps=document.createElement("script");ps.src="./ai-providers.js?v=t23";ps.dataset.dhWordAiProvider="1";
+      var ps=document.createElement("script");ps.src="./ai-providers.js?v=t24";ps.dataset.dhWordAiProvider="1";
       ps.onload=function(){aiExplain(word,anlamlar);};
       ps.onerror=function(){out.innerHTML='<div class="dh-wp-ai-out">AI bağlantısı yüklenemedi. İnternet bağlantını kontrol et.</div>';};
       document.head.appendChild(ps);

@@ -546,7 +546,7 @@
     var fails=[];
     function failNote(){
       var names={gemini:"Gemini",groq:"Groq",cerebras:"Cerebras",mistral:"Mistral",openrouter:"OpenRouter",nvidia:"NVIDIA"};
-      var why={rate:"limit doldu","bad-key":"anahtar reddedildi",network:"bağlantı kurulamadı",http:"sunucu hatası",empty:"boş cevap","all-keys-failed":"anahtarların hepsi reddedildi"};
+      var why={slow:"çok yavaş kaldı",rate:"limit doldu","bad-key":"anahtar reddedildi",network:"bağlantı kurulamadı",http:"sunucu hatası",empty:"boş cevap","all-keys-failed":"anahtarların hepsi reddedildi"};
       var parts=fails.map(function(f){return (names[f.p]||f.p)+": "+(why[f.code]||f.code||"hata")+(f.status?" ("+f.status+")":"");});
       var pasif=0; try{ var off=disabledSet(); PROVIDERS.forEach(function(p){ try{ (JSON.parse(localStorage.getItem(p.keyStore)||"[]")||[]).forEach(function(k){ if(off[k]) pasif++; }); }catch(e){} }); }catch(e){}
       if(pasif) parts.push(pasif+" anahtar pasif");
@@ -566,7 +566,10 @@
     function tryProvider(){
       if(idx>=avail.length){ if(hasNvidia) return viaNvidia(); failNote(); return Promise.reject({code:"all-failed"}); }
       var p = avail[idx++];
-      return callProvider(p, messages, opts).then(function(result){
+      /* Tek sağlayıcı takılırsa (yavaş ağ, düşünen model) bütün süreyi o yemesin:
+         18 sn'de cevap yoksa sıradakine geç. */
+      var yavas = new Promise(function(_,rej){ setTimeout(function(){ rej({code:"slow",provider:p.id}); }, (idx<avail.length||hasNvidia)?18000:600000); });
+      return Promise.race([callProvider(p, messages, opts), yavas]).then(function(result){
         showSource(sourceInfo(p.id,result.model));
         try{ if(global.DHAI && DHAI.noteSuccess) DHAI.noteSuccess(); }catch(e){}
         try{ localStorage.removeItem("dh-ai-son-hata"); }catch(e){}

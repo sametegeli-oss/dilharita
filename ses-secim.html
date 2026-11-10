@@ -107,7 +107,7 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
     /* GLOBAL AYAR: tek merkezi ses seçimi. Karakter-özel seçim yapılmadıysa
        tüm karakterler (chatdoctor dahil) bu sesi kullanır. Tek doğru kaynak burasıdır. */
     var g=loadGlobal();
-    var gWrap=document.createElement("div"); gWrap.className="row"; gWrap.style.borderBottom="2px solid #2563eb";
+    var gWrap=document.createElement("div"); gWrap.className="row"; gWrap.style.borderBottom="2px solid #2563eb"; gWrap.style.gridTemplateColumns="minmax(0,1fr)"; /* resimsiz kart: metin 52px resim sütununa sıkışıyordu */
     var gRight=document.createElement("div"); gRight.style.flex="1";
     gRight.innerHTML='<div class="name">🌐 Tüm karakterler için ses<span class="saved" style="display:'+(g.name?"inline":"none")+'">✓ kayıtlı</span></div><div class="sub">Bu, uygulamadaki tüm sohbet karakterlerinin varsayılan sesidir. Aşağıda tek tek değiştirmezsen hepsi bunu kullanır.</div>';
     var gSel=document.createElement("select"); gSel.style.cssText="width:100%;margin-top:6px;padding:8px;border-radius:8px";
@@ -139,6 +139,9 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
       var sel=document.createElement("select");
       var femRe=/(female|kadın|samantha|victoria|susan|karen|zira|hazel|moira|tessa|fiona|veena|kate|serena|allison|ava|emma|joanna|salli|kimberly|ivy|aria|jenny|libby|sonia|natasha|olivia|amy|nicole|kendra)/i;
       var malRe=/(male|erkek|david|mark|george|daniel|james|john|alex|fred|thomas|guy|brian|ryan|matthew|arthur|oliver)/i;
+      /* Kayıt yoksa listedeki İLK ses (çoğu telefonda Bulgarca) seçili görünüyor ve
+         "Dene ve Kaydet" onu kaydediyordu. Varsayılan: üstteki genel ses. */
+      var o0=document.createElement("option"); o0.value=""; o0.textContent="— Genel ses (üstteki seçim) —"; if(!pref.name) o0.selected=true; sel.appendChild(o0);
       voices.forEach(function(v){
         var g=femRe.test(v.name||"")?"👩 ":(malRe.test(v.name||"")?"👨 ":"");
         var o=document.createElement("option"); o.value=v.name; o.textContent=etiket(v, g);
@@ -154,7 +157,7 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
         try{
           speechSynthesis.cancel();
           var u=new SpeechSynthesisUtterance(ch.sample);
-          var v=voices.find(function(x){return x.name===sel.value;}); if(v){ u.voice=v; u.lang=v.lang; } else u.lang="en-US";
+          var v=voices.find(function(x){return x.name===(sel.value||(loadGlobal().name||""));}); if(v){ u.voice=v; u.lang=v.lang; } else u.lang="en-US";
           u.rate=parseFloat(rateInput.value)||0.96; u.pitch=parseFloat(pitchInput.value)||1.0;
           izle(u,v,uyari);
           speechSynthesis.speak(u);
@@ -204,7 +207,7 @@ button{border:0;border-radius:10px;padding:8px 12px;font:800 12.5px system-ui;cu
         try{
           speechSynthesis.cancel();
           var u=new SpeechSynthesisUtterance(ch.sample);
-          var v=voices.find(function(x){return x.name===name;}); if(v){ u.voice=v; u.lang=v.lang; } else u.lang="en-US";
+          var v=voices.find(function(x){return x.name===(name||(loadGlobal().name||""));}); if(v){ u.voice=v; u.lang=v.lang; } else u.lang="en-US";
           u.rate=rate; u.pitch=pitch;
           izle(u,v,uyari);
           speechSynthesis.speak(u);
