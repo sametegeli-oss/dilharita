@@ -233,7 +233,7 @@
     return new Promise(function(resolve,reject){
       var old=document.querySelector('script[data-dh-gemini-bridge]');
       if(old){old.addEventListener("load",function(){resolve(global.DHGemini);},{once:true});old.addEventListener("error",reject,{once:true});return;}
-      var s=document.createElement("script");s.src="./gemini-bridge.js?v=tm1";s.dataset.dhGeminiBridge="1";
+      var s=document.createElement("script");s.src="./gemini-bridge.js?v=t20";s.dataset.dhGeminiBridge="1";
       s.onload=function(){global.DHGemini?resolve(global.DHGemini):reject({code:"bridge"});};s.onerror=function(){reject({code:"bridge"});};document.head.appendChild(s);
     });
   }
@@ -295,7 +295,7 @@
       return new Promise(function(resolve,reject){
         var settled=false;
         var handle=g.ask({providerName:"NVIDIA Build",openUrl:"https://build.nvidia.com/nvidia/nemotron-3-super-120b-a12b/playground",
-          title:(opts&&opts.title)||"🟢 NVIDIA ile devam et",hint:"NVIDIA yanıtının tamamını buraya yapıştır…",
+          title:(opts&&opts.title)||"🟢 NVIDIA ile devam et",hint:"NVIDIA yanıtının tamamını buraya yapıştır…",note:opts&&opts.note,
           prompt:promptOf(messages,opts),parse:g.parsers.text,
           onResult:function(value){settled=true;showSource(sourceInfo("nvidia","nvidia/nemotron-3-super-120b-a12b",{manual:true}));resolve(String(value||""));},
           onCancel:function(){if(!settled)reject({code:"abort"});}});
@@ -491,18 +491,40 @@
     if(aiMode()==="gemini") return chatViaGemini(messages,opts);
     var avail = PROVIDERS.filter(function(p){ return !p.manualOnly && keysOf(p.keyStore).length>0; });
     var hasNvidia = PROVIDERS.some(function(p){ return p.id==="nvidia" && keysOf(p.keyStore).length>0; });
-    if(!avail.length) return hasNvidia ? chatViaNvidia(messages,opts) : Promise.reject({code:"no-key"});
+    /* TEŞHİS: anahtarlı denemeler neden olmadı? Elle NVIDIA yoluna
+       düşmeden önce kullanıcıya ve anahtar listesine kısa bir neden yaz. */
+    var fails=[];
+    function failNote(){
+      var names={gemini:"Gemini",groq:"Groq",cerebras:"Cerebras",nvidia:"NVIDIA"};
+      var why={rate:"limit doldu","bad-key":"anahtar reddedildi",network:"bağlantı kurulamadı",http:"sunucu hatası",empty:"boş cevap","all-keys-failed":"anahtarların hepsi reddedildi"};
+      var parts=fails.map(function(f){return (names[f.p]||f.p)+": "+(why[f.code]||f.code||"hata")+(f.status?" ("+f.status+")":"");});
+      var pasif=0; try{ var off=disabledSet(); PROVIDERS.forEach(function(p){ try{ (JSON.parse(localStorage.getItem(p.keyStore)||"[]")||[]).forEach(function(k){ if(off[k]) pasif++; }); }catch(e){} }); }catch(e){}
+      if(pasif) parts.push(pasif+" anahtar pasif");
+      if(!parts.length) parts.push("kullanılabilir anahtar yok");
+      var text=parts.join(" · ");
+      try{ localStorage.setItem("dh-ai-son-hata",JSON.stringify({at:Date.now(),text:text})); }catch(e){}
+      return text;
+    }
+    function viaNvidia(){
+      var o={}; Object.keys(opts).forEach(function(k){o[k]=opts[k];});
+      o.note="Anahtarlı yapay zekâ cevap vermedi — "+failNote();
+      return chatViaNvidia(messages,o);
+    }
+    if(!avail.length){ if(hasNvidia) return viaNvidia(); failNote(); return Promise.reject({code:"no-key"}); }
 
     var idx = 0;
     function tryProvider(){
-      if(idx>=avail.length) return hasNvidia ? chatViaNvidia(messages,opts) : Promise.reject({code:"all-failed"});
+      if(idx>=avail.length){ if(hasNvidia) return viaNvidia(); failNote(); return Promise.reject({code:"all-failed"}); }
       var p = avail[idx++];
       return callProvider(p, messages, opts).then(function(result){
         showSource(sourceInfo(p.id,result.model));
         try{ if(global.DHAI && DHAI.noteSuccess) DHAI.noteSuccess(); }catch(e){}
+        try{ localStorage.removeItem("dh-ai-son-hata"); }catch(e){}
         return result.text;
       }).catch(function(err){
         if(err && err.code==="abort") throw err;
+        fails.push({p:p.id,code:err&&err.code,status:err&&err.status});
+        try{ console.warn("[ai] "+p.id+" başarısız",err); }catch(e){}
         // bu sağlayıcı tükendi → sıradakine geç
         if(err && err.code==="rate"){ try{ if(global.DHAI && DHAI.noteRateLimit) DHAI.noteRateLimit(); }catch(e){} }
         if(idx<avail.length || hasNvidia) return tryProvider();

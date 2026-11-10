@@ -128,6 +128,7 @@ function ask(opt){
   ov.innerHTML =
     '<div class="dhgb-card">'
    +'<h3>'+esc(opt.title||"Gemini'ye sor")+'</h3>'
+   +(opt.note?'<p class="dhgb-step" style="color:#fbbf24;font-weight:700">⚠ '+esc(opt.note)+'</p>':'')
    +'<div class="dhgb-job" hidden>Bekleyen görev: '+esc(id)+'</div>'
    +'<p class="dhgb-step"><b>1.</b> Mor düğmeye bas: sorun kopyalanır ve '+esc(providerName)+' açılır.<br><b>2.</b> '+esc(providerName)+'’de yazı kutusuna parmağını basılı tut, <b>Yapıştır</b>’a dokun ve gönder.<br><b>3.</b> Gelen cevabı kopyala, buraya dön ve <b>📋 Cevabı yapıştır</b> düğmesine bas.</p>'
    +'<button class="dhgb-tog" type="button">Gönderilecek soruyu göster / gizle</button>'
