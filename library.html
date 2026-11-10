@@ -752,5 +752,22 @@ init();
 <script src="./atlas-effects.js?v=1"></script>
   <script src="product-improvements.js" defer></script>
 <script src="./dh-button-guard.js?v=1" defer></script>
+<script>
+/* Telefonda okuma çubuğu (Önceki/Sonraki/Oku) sabit alt menünün (Geri/Ana Sayfa/Menü/Yazı)
+   arkasında kalıyordu; Öğretmen yuvarlak düğmesi de "Sonraki"nin üstüne biniyordu.
+   Çubuğu alt menünün üstüne, Öğretmen düğmesini de çubuğun üstüne taşı. */
+(function(){
+  function yerlestir(){
+    var nav=document.querySelector(".kk-alt"), h=0;
+    if(nav){ var r=nav.getBoundingClientRect(); if(r.height>0 && getComputedStyle(nav).display!=="none") h=Math.max(0,innerHeight-r.top); }
+    var tb=document.querySelector(".toolbar"), fab=document.querySelector(".dh-tb-fab");
+    if(tb) tb.style.setProperty("bottom",h+"px","important");
+    if(fab){ if(tb && tb.offsetParent) fab.style.setProperty("bottom",(h+tb.offsetHeight+10)+"px","important"); else fab.style.removeProperty("bottom"); }
+  }
+  addEventListener("resize",yerlestir);
+  new MutationObserver(function(){ clearTimeout(yerlestir.t); yerlestir.t=setTimeout(yerlestir,60); }).observe(document.body,{childList:true,subtree:true});
+  setTimeout(yerlestir,300); setTimeout(yerlestir,1500);
+})();
+</script>
 </body>
 </html>
