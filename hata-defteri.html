@@ -165,6 +165,9 @@ async function load(){
     });
     if(PARAMS.get("baslat")==="1" && pool.length){
       ODAK_BASLADI=true;
+      /* Sayfa yenilenince alıştırma yeniden açılmasın: baslat=1'i adresten sil,
+         konu süzgeci (odak) kalsın. */
+      try{ const u=new URL(location.href); u.searchParams.delete("baslat"); history.replaceState(history.state,"",u.pathname+(u.search||"")+u.hash); }catch(e){}
       setTimeout(()=>Drill.start(pool.slice(0,10)),120);
     }
   }
