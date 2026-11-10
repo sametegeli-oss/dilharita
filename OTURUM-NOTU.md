@@ -3,15 +3,40 @@
 > Yeni oturumdaki Claude için: Önce bu dosyayı oku. Kullanıcıyla **Türkçe** konuş.
 > Uygulamanın kullanıcıları 50–80 yaş arası; arayüz büyük, sade ve açık yazılı olmalı.
 
+## ▶ YARIM KALAN İŞ — buradan başla
+Kullanıcının isteği (aynen): **"ekranlardaki düğmelere basınca açılan iç akışlara da teker teker bak. atlama yapma"**
+
+Plan (adım 1'in başındayken oturum bitti, henüz betik yazılmadı):
+1. **Düğme tarayıcısı yaz** (`/home/claude/tools/mobiltara.mjs`, Playwright, yerel sunucu 8767). Her sayfa için:
+   - 360×740, `isMobile`, `hasTouch`, `locale: tr-TR`. Dış ağı engelle (googleapis, gstatic, firebase, youtube, ytimg, wikimedia, wikipedia, pexels, openverse, AI sağlayıcıları).
+   - Görünür tıklanabilirleri listele: `button`, `a[href]`, `[role=button]`, `summary`, `[onclick]`, checkbox/radio. Alt çubuk (`.kk-alt`) düğmelerini yalnız bir kez ayrı test et.
+   - **Her düğme için taze bağlam** (depolama sızmasın), sayfayı yükle, düğmeye bas, ~1,2 sn bekle. Kaydet: JS hataları, açılan `alert/confirm` metni (iptal ile kapat), gidilen adres ve 404, yatay taşma, yeni açılan sabit pencere (ekrana sığıyor mu, kapatma düğmesi var mı), 12 px altı yazı, 40 px altı hedef, **hiçbir görünür etkisi olmayan düğme** (metin/DOM değişmedi, gezinme yok, diyalog yok) ve ekran görüntüsü.
+   - **2. seviye:** tıklama yeni pencere/bölüm açtıysa, orada yeni çıkan her düğme için: taze bağlam → 1. düğme → 2. düğme.
+   - Birkaç işçiyle paralel çalıştır (55 sayfa × ~30 düğme).
+   - Yerel test tarayıcısı boş ve gerçek kullanıcı verisi yok; burada "Sil/Bildim" gibi düğmelere basmak serbest. Kesin kurallar yalnız LDPlayer'daki gerçek uygulama için geçerli.
+2. **Taramayı iki kez yap:** boş durum + örnek veri (LearningErrorDB'ye gerçek bir hata ekle — dikkat: `answer` eşdeğer yazım olursa `add()` kaydetmez, ör. "Is my friend." kullan; `dh-study-tracker-v1` günleri; IndexedDB `sentence-mode`/`kv` içinde `srs:` kayıtları `rep>0`).
+   - İlk açılışta çıkan "Yapay zekâ öğretmen nasıl çalışsın?" penceresi `ai-choice.js`'te, anahtar `localStorage["dh-profile-v1"]`. Bir kez kendi akışıyla test et, sonra diğer taramalarda bu anahtarı doldurarak atla.
+3. **Sonuçları ve ekran görüntülerini tek tek incele** (atlama yok). Ekran görüntülerini 6'lık ızgaralarda Read ile bak.
+4. Bulunan sorunları düzelt → yeniden tara → `?v=` + `SW_VERSION` artır → push.
+5. Veriye bağlı önemli akışları LDPlayer'da kesin kurallara uyarak doğrula.
+
+Sayfalar (55): akilli-tekrar aktivite basla bugun chat chatairport chatdoctor chathotel chatrestaurant chatteacher chatteacher1 chatteacher2 ders foto-ekle gemini-rapor-arsivi gunluk-takip harita hata-defteri ilerleme immersive index-app index kelime-ogren kilavuz koc-modu kıblenamaz library login menu modul-testi modullerim ocr-sentence ogren ogrenme-yolu pdfoku phrasal-verbs practice profil pv-practice pwa-hard-reset pwa-reset rapor ses-esleme ses-secim ses-teshis sesdalga seviye-testi teacher-chat teacher teacher1 tekrar veri-gizlilik videopractice youtube-egitim youtube-pratik (hepsi `.html`).
+
+Bilinen ipuçları:
+- Bu bulut ortamı yayındaki siteye (github.io) erişemiyor; her şey yerel sunucuda test edilir.
+- Kolay görünüm (`kolay-kullanim.js`) düğmelere kendisi etiket koyuyor: `KIMLIK` (kimliğe göre), `SIMGE` (simgeye göre); `ikonYazilari` artık önce `KIMLIK`'e bakıyor. Etiket sorunları oradan düzeltilir.
+- Koç balonu `coach-bubble.js` (`dhCoachSay`), öğretmen paneli `teacher-bubble.js`.
+- Yeni oturumda depo yok: `add_repo` (push) → `git clone --depth 1 https://github.com/sametegeli-oss/dilharita /home/claude/dilharita`.
+
 ## Proje
 - Depo: `sametegeli-oss/dilharita`. Statik site, GitHub Pages'te yayında: https://sametegeli-oss.github.io/dilharita/
 - Yayın: `main`'e push edince "pages build and deployment" çalışır (~1 dk).
   - "Quality" iş akışı eski bir sebepten (Windows kısa adları) hep başarısız olur; görmezden gel.
 - Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v396`.
-- Commit: `git -c user.email=noreply@anthropic.com -c user.name=Claude commit`, sonra `git pull --rebase origin main && git push origin HEAD:main`.
+- Commit: `git -c user.email=noreply@anthropic.com -c user.name=Claude commit` (mesaj sonuna oturumun verdiği Co-Authored-By satırı), sonra `git pull --rebase origin main && git push origin HEAD:main`.
 
 ## Kesin kurallar (kullanıcının istekleri)
-- **Bağlantısız sayfaları, eski kopyaları ve yinelenen avatarları SİLME**; önce kullanıcıya sor. Karar hâlâ bekliyor.
+- Dosya silme: kullanıcı onayıyla 114 dosya silindi (bkz. aşağı). Yeni silme gerekirse yine önce sor.
 - Kullanıcı verisini silen ya da değiştiren düğmelere basma: "Bunu tekrar sorma", "Bildim", "Modülü sil", seviye testini bitirme, PDF indirme.
 - Sistem veya site izni verme (mikrofon, dosya). Reddetmek gerekirse reddet.
 - API anahtarlarının değerlerini okuma, kopyalama ya da yazma; kullanıcı kendisi yapıştırır.
@@ -90,7 +115,7 @@
    - OpenRouter anahtarının gerçekten cevap verdiğini bir sohbette denemek. Kayıtlı olduğu görüldü, çalışması denenmedi.
 2. **Kullanıcı kararı bekleyenler** (izinsiz değiştirme):
    - (Ders ayarları JSON olarak kalacak — kullanıcı kararı. Kıvrık tırnaklar kaydederken düz tırnağa çevriliyor.)
-3. **Henüz denetlenmeyenler:** Tüm Bölümler sayfaları yalnız ilk ekranlarıyla incelendi; sayfa içi akışlar (düğmelere basınca açılanlar) elle denenmedi.
+3. **Henüz denetlenmeyenler:** sayfa içi akışlar — yukarıdaki "YARIM KALAN İŞ".
 4. **Gözlenen küçük sorunlar:**
    - Doktor portresinde görüntü bozulmaları var (görsel dosyalarında; yeni çizim gerekir).
    - YouTube Eğitim Stüdyosu'nda kayan oynatıcı görülmedi; oynatıcı sayfayla birlikte kayıyor.
