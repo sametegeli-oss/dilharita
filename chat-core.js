@@ -334,7 +334,9 @@ async function groqChat(messages, requestOpts){
   const abortFromOutside=function(){controller.abort();};
   if(external){if(external.aborted)controller.abort();else external.addEventListener("abort",abortFromOutside,{once:true});}
   try{
-    return await P.chat(messages, { temperature:0.7, max_tokens:1100, signal:controller.signal });
+    /* fast: sohbet cevabı kısa ve beklenen; önce hızlı sağlayıcılar (Groq/Cerebras) denenir.
+       Gemini sırada ilkken açılış cümlesi telefonda ~50 sn sürüyordu. */
+    return await P.chat(messages, { temperature:0.7, max_tokens:1100, signal:controller.signal, fast:true });
   }catch(e){
     /* Merkezin hata kodları ("rate","all-failed","no-key") çağıranın beklediği biçime çevrilir. */
     if(e && (e.code==="rate" || e.code==="all-failed")) throw {code:"rate"};

@@ -548,6 +548,8 @@
     }
     if(aiMode()==="gemini") return chatViaGemini(messages,opts);
     var avail = PROVIDERS.filter(function(p){ return !p.manualOnly && keysOf(p.keyStore).length>0; });
+    /* Hızlı mod (sohbet): düşünen Gemini yavaş; hızlı sağlayıcıları öne al. */
+    if(opts.fast){ var HIZ={groq:0,cerebras:1,openrouter:2,mistral:3,gemini:4}; avail=avail.slice().sort(function(a,b){ return (HIZ[a.id]!=null?HIZ[a.id]:9)-(HIZ[b.id]!=null?HIZ[b.id]:9); }); }
     var hasNvidia = PROVIDERS.some(function(p){ return p.id==="nvidia" && keysOf(p.keyStore).length>0; });
     /* TEŞHİS: anahtarlı denemeler neden olmadı? Elle NVIDIA yoluna
        düşmeden önce kullanıcıya ve anahtar listesine kısa bir neden yaz. */
