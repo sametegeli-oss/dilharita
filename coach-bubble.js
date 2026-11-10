@@ -337,8 +337,8 @@
 
   /* ---------- CSS + KUTU ---------- */
   var css=document.createElement("style");
-  css.textContent=".dh-coach{position:fixed !important;left:50% !important;top:22px !important;bottom:auto !important;width:min(92vw,400px);"
-    +"transform:translateX(-50%) translateY(-40px) scale(.85);opacity:0;"
+  css.textContent=".dh-coach{position:fixed !important;left:50% !important;top:auto !important;bottom:16px !important;width:min(92vw,400px);"
+    +"transform:translateX(-50%) translateY(40px) scale(.85);opacity:0;max-height:33vh !important;overflow-y:auto !important;overscroll-behavior:contain;"
     +"max-width:min(95vw,640px);background:#111827;border-left:8px solid #38bdf8;border-radius:16px;"
     +"padding:12px 16px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:2147483000;font:800 17px/1.45 system-ui,sans-serif;color:#f8fafc;"
     +"display:flex;gap:12px;align-items:center;transition:opacity .3s,transform .3s;pointer-events:none}"
@@ -354,9 +354,9 @@
     +"@keyframes dhShake{0%,100%{transform:translateX(-50%) translateY(0) scale(1)}20%{transform:translate(calc(-50% - 10px),0) scale(1)}40%{transform:translate(calc(-50% + 10px),0) scale(1)}60%{transform:translate(calc(-50% - 6px),0) scale(1)}80%{transform:translate(calc(-50% + 6px),0) scale(1)}}"
     +".dh-coach .face{animation:dhFaceBob .5s ease 3}"
     +"@keyframes dhFaceBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}"
-    +".dh-coach .x{position:absolute;top:6px;right:6px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#1e293b;border:1px solid #475569;font-size:18px;color:#e2e8f0;cursor:pointer;font-weight:700;line-height:1}"
+    +".dh-coach .x{position:absolute;top:6px;right:6px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#1e293b;border:1px solid #475569;font-size:18px;color:#e2e8f0;cursor:pointer;font-weight:700;line-height:1}"
     /* ✕ büyüdü: metin ✕'nin altına girmesin */
-    +".dh-coach{padding-right:48px!important}"
+    +".dh-coach{padding-right:60px!important}"
     +".dh-coach.praise{border-color:#22c55e;background:linear-gradient(135deg,#111827,#0d2818)}"
     +".dh-coach.warn{border-color:#f59e0b;background:linear-gradient(135deg,#111827,#2d1a06)}"
     +".dh-coach.tip{border-color:#38bdf8;background:linear-gradient(135deg,#111827,#0a2233)}"
@@ -715,6 +715,164 @@
   avatar.innerHTML='<div class="ring"></div>'+coachFace("tip", true);
   function mount(){ document.body.appendChild(box); document.body.appendChild(avatar); }
   if(document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
+
+  /* ---------- BALON VE KOÇ YÜZÜ DÜĞMELERİ ÖRTMESİN (kullanıcı kararı: "A") ----------
+     Balon hep ALTTA durur (alt çubuk varsa çubuğun hemen üstünde) ve yalnız ✕ ile
+     kapanır. Örtmemek için:
+       1) Altta sabit duran düğmeler (sohbet yazı satırı gibi) varsa balon onların
+          ÜSTÜNE oturur.
+       2) Kayan içerikteki bir düğme balonun altında kalıyorsa sayfanın sonuna
+          balon boyu kadar boşluk eklenir ve içerik o düğme balonun üstüne
+          gelecek kadar kaydırılır.
+       3) Sağ alttaki küçük koç yüzü bir düğmenin üstündeyse boş bir yere çıkar. */
+  var ETKILESIM="button,a[href],input:not([type=hidden]),textarea,select,summary,[role=button],[onclick]";
+  var yerBosluk=null, yerPadEl=null, yerT=null, yerMo=null;
+  function kutu(e){ return e.getBoundingClientRect(); }
+  function kesisir(a,b){ return a.left<b.right-1 && b.left<a.right-1 && a.top<b.bottom-1 && b.top<a.bottom-1; }
+  /* Sabit (fixed/sticky) bir atanın içinde ama araya kaydırılabilen bir kutu
+     girmiyorsa "yerinde sabit"tir. Kaydırılabilen pencere içindeki düğme sabit değil. */
+  function sabitMi(e){
+    for(var a=e; a && a!==document.body; a=a.parentElement){
+      var st=getComputedStyle(a);
+      if(a!==e && /(auto|scroll)/.test(st.overflowY) && a.scrollHeight>a.clientHeight+4) return false;
+      if(st.position==="fixed"||st.position==="sticky") return true;
+    }
+    return false;
+  }
+  function gorunur(e){
+    var r=kutu(e); if(r.width<4||r.height<4) return false;
+    var s=getComputedStyle(e); return s.visibility!=="hidden" && s.display!=="none" && +s.opacity>0.05;
+  }
+  /* Bütün pencereyi kaplayan tıklanabilir kap (arka plan, kart) düğme sayılmaz */
+  function buyukKap(e){ var r=kutu(e); return r.width*r.height > innerWidth*innerHeight*0.25; }
+  function bizim(e){ if(buyukKap(e)) return true; return box.contains(e)||avatar.contains(e)||!!(e.closest&&e.closest(".dh-coach,.dh-avatar,.kk-alt,.dh-mobile-menu-button,.kk-ust-menu,[aria-hidden=true]")); }
+  function altCubukUst(){
+    var c=document.querySelector(".kk-alt");
+    if(c && gorunur(c)) return kutu(c).top;
+    return innerHeight;
+  }
+  function kayanAta(e){
+    for(var a=e.parentElement; a && a!==document.body && a!==document.documentElement; a=a.parentElement){
+      var s=getComputedStyle(a);
+      if(/(auto|scroll)/.test(s.overflowY) && a.scrollHeight>a.clientHeight+4) return a;
+    }
+    return null;
+  }
+  function yerTemizle(){
+    if(yerBosluk){ yerBosluk.remove(); yerBosluk=null; }
+    if(yerPadEl){ yerPadEl.style.paddingBottom=yerPadEl.dataset.dhKocPad||""; delete yerPadEl.dataset.dhKocPad; yerPadEl=null; }
+    box.style.removeProperty("top"); box.style.removeProperty("bottom");
+  }
+  function boslukVer(sp, h){
+    if(!sp){
+      if(!yerBosluk){ yerBosluk=document.createElement("div"); yerBosluk.className="dh-koc-yer"; yerBosluk.setAttribute("aria-hidden","true"); }
+      yerBosluk.style.cssText="height:"+h+"px;width:1px;pointer-events:none";
+      if(yerBosluk.parentNode!==document.body || document.body.lastElementChild!==yerBosluk) document.body.appendChild(yerBosluk);
+    } else if(yerPadEl!==sp){
+      if(yerPadEl){ yerPadEl.style.paddingBottom=yerPadEl.dataset.dhKocPad||""; delete yerPadEl.dataset.dhKocPad; }
+      yerPadEl=sp; sp.dataset.dhKocPad=sp.style.paddingBottom||"";
+      sp.style.paddingBottom=(parseFloat(getComputedStyle(sp).paddingBottom)||0)+h+"px";
+    }
+  }
+  function balonYerlestir(){
+    if(!box.classList.contains("show")){ yerTemizle(); return; }
+    /* 1) Altta sabit duran etkileşimli öğelerin en üstü */
+    var taban=altCubukUst();
+    var hepsi=[].slice.call(document.querySelectorAll(ETKILESIM)).filter(function(e){ return !bizim(e) && gorunur(e); });
+    var bH=box.offsetHeight||0;
+    var se=document.scrollingElement||document.documentElement;
+    var sayfaKayar=se.scrollHeight>innerHeight+4;
+    /* Kaydırılamayan yerdeki düğme (sabit yükseklikli sahne/sohbet ekranı) de
+       yerinden oynatılamaz: sabit sayılır, balon onun üstüne oturur. */
+    function yerindeSabit(e){ return sabitMi(e) || (!kayanAta(e) && !sayfaKayar); }
+    hepsi.forEach(function(e){
+      if(!yerindeSabit(e)) return;
+      var r=kutu(e);
+      /* Ekranın alt yarısında sabit duran düğme: balon onun üstünde dursun */
+      if(r.top>innerHeight*0.5 && r.top<taban) taban=r.top;
+    });
+    var alt=Math.max(8, Math.round(innerHeight-taban+10));
+    /* Ekranın üst kısmına taşmasın: sığmıyorsa en fazla ekranın 3'te 2'sine kadar */
+    if(innerHeight-alt-bH<70) alt=Math.max(8, innerHeight-bH-70);
+    box.style.setProperty("top","auto","important");
+    box.style.setProperty("bottom",alt+"px","important");
+    /* 2) Kayan içerikte balonun altında kalan düğme varsa yer aç */
+    var b=kutu(box), ortulen=null, en=-1;
+    hepsi.forEach(function(e){
+      if(yerindeSabit(e)) return;
+      var r=kutu(e); if(!kesisir(r,b)) return;
+      if(r.bottom>en){ en=r.bottom; ortulen=e; }
+    });
+    if(!ortulen) return;
+    var sp=kayanAta(ortulen);
+    boslukVer(sp, Math.round(b.height+24));
+    var fark=Math.ceil(kutu(ortulen).bottom-(b.top-10));
+    if(fark>0){
+      /* düğme ekranın üstünden çıkmasın (başlık/soru da görünür kalsın) */
+      var ust=kutu(ortulen).top-fark;
+      if(ust<60) fark-=Math.ceil(60-ust);
+      if(fark>0){ if(sp) sp.scrollBy({top:fark,behavior:"smooth"}); else scrollBy({top:fark,behavior:"smooth"}); }
+    }
+    clearTimeout(sonT); sonT=setTimeout(sonKontrol, 520);
+  }
+  /* Kaydırma yetmediyse (düğme sabit yükseklikli bir kutunun içinde): balon
+     örtülen düğmelerin hemen üstüne; orada yer yoksa altlarına oturur. */
+  var sonT=null;
+  function sonKontrol(){
+    if(!box.classList.contains("show")) return;
+    var b=kutu(box), bH=b.height;
+    var ortulen=[].slice.call(document.querySelectorAll(ETKILESIM)).filter(function(e){ return !bizim(e) && gorunur(e) && kesisir(kutu(e),b); });
+    if(!ortulen.length) return;
+    var ust=Math.min.apply(null, ortulen.map(function(e){ return kutu(e).top; }));
+    var alt=Math.max.apply(null, ortulen.map(function(e){ return kutu(e).bottom; }));
+    var taban=altCubukUst();
+    if(ust-10-bH>=60) box.style.setProperty("bottom", Math.round(innerHeight-ust+10)+"px","important");
+    else if(taban-alt-10>=bH) box.style.setProperty("bottom", Math.round(innerHeight-taban+8)+"px","important");
+  }
+  /* 3) Koç yüzü: altında düğme varsa yukarıda boş yer bul */
+  function yuzYerlestir(){
+    if(!avatar.isConnected || !gorunur(avatar)) return;
+    var onceki=avatar.style.getPropertyValue("bottom");
+    avatar.style.removeProperty("bottom");
+    var hepsi=[].slice.call(document.querySelectorAll(ETKILESIM)).filter(function(e){ return !bizim(e) && gorunur(e); });
+    var temel=parseFloat(getComputedStyle(avatar).bottom)||88, h=avatar.offsetHeight||54, sag=avatar.getBoundingClientRect();
+    var b=box.classList.contains("show")?kutu(box):null;
+    for(var y=temel; y<innerHeight*0.6; y+=16){
+      var r={left:sag.left-4, right:sag.right+4, top:innerHeight-y-h-4, bottom:innerHeight-y+4};
+      var dolu=hepsi.some(function(e){ return kesisir(r,kutu(e)); }) || (b && kesisir(r,b));
+      if(!dolu){ if(y!==temel) avatar.style.setProperty("bottom",y+"px","important"); return; }
+    }
+    if(onceki) avatar.style.setProperty("bottom",onceki,"important");
+  }
+  function yerlestirSonra(ms){
+    clearTimeout(yerT);
+    yerT=setTimeout(function(){ try{ balonYerlestir(); yuzYerlestir(); }catch(e){} }, ms||120);
+  }
+  window.dhCoachYerlestir=function(){ yerlestirSonra(0); };
+  try{
+    new MutationObserver(function(){
+      yerlestirSonra(140);
+      /* balon açıkken ekrana yeni düğmeler gelirse (sıradaki soru) yeniden bak */
+      if(box.classList.contains("show")){
+        if(!yerMo){ yerMo=new MutationObserver(function(l){
+          for(var i=0;i<l.length;i++){ var t=l[i].target; if(t!==box && !box.contains(t) && !avatar.contains(t) && t!==yerBosluk){ yerlestirSonra(260); return; } }
+        }); yerMo.observe(document.body,{childList:true,subtree:true}); }
+      } else if(yerMo){ yerMo.disconnect(); yerMo=null; }
+    }).observe(box,{attributes:true,attributeFilter:["class"]});
+  }catch(e){}
+  addEventListener("resize", function(){ yerlestirSonra(200); });
+  var kaydirT=null;
+  addEventListener("scroll", function(){ clearTimeout(kaydirT); kaydirT=setTimeout(function(){ try{ yuzYerlestir(); }catch(e){} }, 300); }, true);
+  setTimeout(function(){ yerlestirSonra(0); }, 1500);
+  /* Sonradan açılan pencereler (Hatanı Düzelt gibi) için koç yüzünü yeniden yerleştir */
+  var yuzT=null;
+  try{
+    new MutationObserver(function(l){
+      for(var i=0;i<l.length;i++){ var t=l[i].target; if(box.contains(t)||avatar.contains(t)||t===box||t===avatar) continue;
+        clearTimeout(yuzT); yuzT=setTimeout(function(){ try{ yuzYerlestir(); }catch(e){} }, 450); return; }
+    }).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["class","hidden","style"]});
+  }catch(e){}
+
   var avatarResetT=null;
   function clearFace(){
     try{
@@ -777,15 +935,15 @@
     void box.offsetWidth;
     box.className="dh-coach "+(kind||"tip");
     var _visual = (opts && opts.wordDiff) ? coachVisualDiff(opts.wordDiff, (opts.refText||lastRefText||"")) : "";
-    box.innerHTML='<span class="face">'+(faceOverride||coachFace(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+_visual+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
+    box.innerHTML='<span class="face">'+(faceOverride||coachFace(kind))+'</span><span style="flex:1">'+String(msg).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+_visual+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" role="button" aria-label="Kapat" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>';
     requestAnimationFrame(function(){ box.classList.add("show"); });
     clearTimeout(hideT);
     // otomatik kapanma KALDIRILDI — kullanıcı isteği: balon yalnız ✕ ile veya elle kapatılır
   };
-  box.onclick=function(){ box.classList.remove("show"); };
+  /* Balona dokunmak onu KAPATMAZ (dokunuş boşa gitmesin); yalnız ✕ kapatır. */
   avatar.onclick=function(){
     if(lastDayClose && dhDayClosed()){ lastMsg=""; lastDayClose=false; }
-    if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
+    if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" role="button" aria-label="Kapat" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
     else { try{ window.__dhCoachManualStatus && window.__dhCoachManualStatus(); }catch(e){} }
   };
 
@@ -1137,8 +1295,8 @@
       var note=stripAnswer(commonMistake, target);
       /* Veri "-" gibi boş yer tutucu olunca "nokta: -." çıkıyordu. */
       if(note && !/[a-zA-ZçğıöşüÇĞİÖŞÜ0-9]/.test(note)) note="";
-      if(note) dhCoachSay("YENİ KONU: Bu yapıyı ilk kez çalışıyorsun. Dikkat etmen gereken nokta: "+note+".","tip");
-      else     dhCoachSay("YENİ KONU: Bu yapıyı ilk kez çalışıyorsun. Acele etme, cümleyi kurmadan önce yapıyı bir düşün.","tip");
+      if(note) dhCoachSay("Yeni konu. Dikkat: "+note+".","tip");
+      else     dhCoachSay("Yeni konu: acele etme, önce yapıyı düşün.","tip");
     }catch(e){}
   };
 

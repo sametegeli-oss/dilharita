@@ -293,8 +293,10 @@
 
       function adim(now) {
         var gecen = now - t0 - hizalamaKaymasi;
-        var oran = Math.min(1, gecen / toplam);
-        var i = Math.min(cizgi.length - 1, Math.floor(oran * cizgi.length));
+        /* rAF zamanı t0'dan önce olabilir (kare, konus() çağrısından önce başlamış):
+           oran eksiye düşüp i=-1 olmasın. */
+        var oran = Math.max(0, Math.min(1, gecen / toplam));
+        var i = Math.max(0, Math.min(cizgi.length - 1, Math.floor(oran * cizgi.length)));
 
         if (i !== sonIndeks) {
           sonIndeks = i;
