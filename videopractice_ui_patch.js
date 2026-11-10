@@ -98,6 +98,15 @@
         .controls{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important;bottom:10px!important;align-items:stretch!important}
         .controls > *{min-width:0!important}
         .controls .ctrl{min-height:64px!important;padding:6px 2px!important;font-size:12px!important;justify-content:center!important}
+        /* Mikrofon sayfanın ASIL düğmesi ama 48px'lik yazısız beyaz kareye
+           dönüyordu: diğer düğmelerle aynı boyda, mavi ve "Sesli oku" yazılı. */
+        .controls > div{display:flex!important;min-width:0!important}
+        html .controls > div > .mic-main{width:100%!important;height:auto!important;min-height:64px!important;border-radius:14px!important;
+          border:0!important;background:linear-gradient(135deg,#2563eb,#1d4ed8)!important;color:#fff!important;
+          font-size:22px!important;display:flex!important;flex-direction:column!important;align-items:center!important;
+          justify-content:center!important;gap:2px!important;padding:6px 2px!important}
+        html .controls > div > .mic-caption{display:none!important}
+        html .controls > div > .mic-main::after{content:"Sesli oku";display:block;font:900 12px/1.1 Nunito,system-ui,sans-serif;color:#fff}
         .controls .mic-main{margin:0 auto!important}
         .teach-overlay{bottom:100px!important}
         .next-float{bottom:auto!important;top:164px!important;right:10px!important}

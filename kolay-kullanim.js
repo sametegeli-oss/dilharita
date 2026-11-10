@@ -486,6 +486,9 @@
   if (DOKUNMATIK) root.classList.add("kk-dokunmatik");
   /* Dokunmatik ekranda yalnız simgeli düğmeye kısa ad (1-2 kelime) */
   function kisaAdVer(b){
+    /* Kendi açıklama yazısı olan büyük yuvarlak mikrofon (Video sayfası):
+       etiketlenince 54px kareye dönüp açıklaması kayboluyordu. */
+    if (b.classList && b.classList.contains("mic-main")) { if (b.hasAttribute("data-kk-etiket")) b.removeAttribute("data-kk-etiket"); return; }
     if (b.closest(".kk-alt,.kk-ui,svg,.dh-net-status,#dhSyncBadge")) return;
     var tum = (b.textContent || "").replace(/\s+/g, "");
     /* Ekranda görünen yazı: sayfa düğmenin yazısını (<b>Kontroller</b> gibi) telefonda
