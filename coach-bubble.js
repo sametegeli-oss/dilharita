@@ -1186,7 +1186,7 @@
     try{
       var r=await new Promise(function(res){ var rq=indexedDB.open("sentence-mode",1); rq.onsuccess=function(){res(rq.result);}; rq.onerror=function(){res(null);}; });
       if(r){ await new Promise(function(res){ var now=Date.now(), q=r.transaction("kv","readonly").objectStore("kv").openCursor();
-        q.onsuccess=function(e){ var c=e.target.result; if(c){ var k=String(c.key); if(k.indexOf("srs:")===0 && c.value && (c.value.due||0)<=now) due++; c.continue(); } else { r.close(); res(); } };
+        q.onsuccess=function(e){ var c=e.target.result; if(c){ var k=String(c.key); if(k.indexOf("srs:")===0 && c.value && (c.value.due||0)<=now && (c.value.rep||0)>0) due++; c.continue(); } else { r.close(); res(); } };
         q.onerror=function(){ res(); }; }); }
     }catch(e){}
     try{ var m=JSON.parse(localStorage.getItem("dh-progress-mirror-v1")||"{}")||{}; for(var k in m){ if(m[k]&&m[k][0]===2) learned++; } }catch(e){}
@@ -1195,7 +1195,7 @@
     if(streak===0 && due>10){ msg="Bugün henüz çalışmadın ama "+due+" tekrar bekliyor — hemen 10 dakikanı ayır, seriye başla!"; kind="warn"; git=TEKRAR; }
     else if(streak>=7){ msg="🔥 "+streak+" günlük serin devam ediyor, harikasın! Bugünü de kaçırma, meşale sönmesin."; kind="praise"; }
     else if(streak>=3){ msg=streak+" günlük serin devam ediyor, iyi gidiyorsun — bugünü de kaçırma!"; kind="praise"; }
-    else if(due>30){ msg="Tekrar bekleyen "+due+" öğe birikmiş — bugün önce tekrarları bitir, sonra yeni cümlelere geç."; kind="warn"; git=TEKRAR; }
+    else if(due>30){ msg="Tekrar bekleyen "+due+" cümle birikmiş — bugün önce tekrarları bitir, sonra yeni cümlelere geç."; kind="warn"; git=TEKRAR; }
     /* Eskiden: "Genel durumun: 0 öğrenilmiş kayıt, 0 tekrar bekliyor. İstersen
        'Tekrar' ya da 'Yeni Cümleler'den devam et." — yeni kullanıcıya bilgi
        vermiyor, adı geçen düğmeler de çoğu sayfada yok. Artık hiç
