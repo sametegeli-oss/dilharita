@@ -3,24 +3,49 @@
 > Yeni oturumdaki Claude için: Önce bu dosyayı oku. Kullanıcıyla **Türkçe** konuş.
 > Uygulamanın kullanıcıları 50–80 yaş arası; arayüz büyük, sade ve açık yazılı olmalı.
 
-## ▶ YARIM KALAN İŞ — buradan başla
-Kullanıcının isteği (aynen): **"ekranlardaki düğmelere basınca açılan iç akışlara da teker teker bak. atlama yapma"**
+## ▶ SIRADAKİ İŞ — buradan başla
+Düğme taraması (kullanıcının isteği: "ekranlardaki düğmelere basınca açılan iç akışlara da teker teker bak. atlama yapma") **10 Kasım akşamı bitti ve yayında** (commit `cf65418`, `47bfec8`, SW `dh-sw-v398`).
+Kullanıcı ek olarak şunu istedi: **"programı bir kullanıcı gözüyle de analiz et; zayıf ve kuvvetli yönleri keşfet, daha sonra zayıf yönleri iyileştiririz."**
+→ Aşağıdaki "Kullanıcı gözüyle değerlendirme" listesi kullanıcıya sunuldu. **Hangi zayıf yönün iyileştirileceğini kullanıcı seçecek; izinsiz değiştirme.**
+Kalan: veriye bağlı akışları LDPlayer'da doğrulamak (bu oturumda bilgisayar bağlantısı koptu, yapılamadı).
 
-Plan (adım 1'in başındayken oturum bitti, henüz betik yazılmadı):
-1. **Düğme tarayıcısı yaz** (`/home/claude/tools/mobiltara.mjs`, Playwright, yerel sunucu 8767). Her sayfa için:
-   - 360×740, `isMobile`, `hasTouch`, `locale: tr-TR`. Dış ağı engelle (googleapis, gstatic, firebase, youtube, ytimg, wikimedia, wikipedia, pexels, openverse, AI sağlayıcıları).
-   - Görünür tıklanabilirleri listele: `button`, `a[href]`, `[role=button]`, `summary`, `[onclick]`, checkbox/radio. Alt çubuk (`.kk-alt`) düğmelerini yalnız bir kez ayrı test et.
-   - **Her düğme için taze bağlam** (depolama sızmasın), sayfayı yükle, düğmeye bas, ~1,2 sn bekle. Kaydet: JS hataları, açılan `alert/confirm` metni (iptal ile kapat), gidilen adres ve 404, yatay taşma, yeni açılan sabit pencere (ekrana sığıyor mu, kapatma düğmesi var mı), 12 px altı yazı, 40 px altı hedef, **hiçbir görünür etkisi olmayan düğme** (metin/DOM değişmedi, gezinme yok, diyalog yok) ve ekran görüntüsü.
-   - **2. seviye:** tıklama yeni pencere/bölüm açtıysa, orada yeni çıkan her düğme için: taze bağlam → 1. düğme → 2. düğme.
-   - Birkaç işçiyle paralel çalıştır (55 sayfa × ~30 düğme).
-   - Yerel test tarayıcısı boş ve gerçek kullanıcı verisi yok; burada "Sil/Bildim" gibi düğmelere basmak serbest. Kesin kurallar yalnız LDPlayer'daki gerçek uygulama için geçerli.
-2. **Taramayı iki kez yap:** boş durum + örnek veri (LearningErrorDB'ye gerçek bir hata ekle — dikkat: `answer` eşdeğer yazım olursa `add()` kaydetmez, ör. "Is my friend." kullan; `dh-study-tracker-v1` günleri; IndexedDB `sentence-mode`/`kv` içinde `srs:` kayıtları `rep>0`).
-   - İlk açılışta çıkan "Yapay zekâ öğretmen nasıl çalışsın?" penceresi `ai-choice.js`'te, anahtar `localStorage["dh-profile-v1"]`. Bir kez kendi akışıyla test et, sonra diğer taramalarda bu anahtarı doldurarak atla.
-3. **Sonuçları ve ekran görüntülerini tek tek incele** (atlama yok). Ekran görüntülerini 6'lık ızgaralarda Read ile bak.
-4. Bulunan sorunları düzelt → yeniden tara → `?v=` + `SW_VERSION` artır → push.
-5. Veriye bağlı önemli akışları LDPlayer'da kesin kurallara uyarak doğrula.
+### Tarama nasıl yapıldı (tekrar gerekirse)
+- Araçlar depoda: `tools/mobil-tarama/` → `/home/claude/tools/` altına kopyala.
+  - `node mobiltara.mjs --isci=6 --mod=bos|veri|ilk [--cikti=klasor] [sayfa ...]` (boşsa 55 sayfa). Çıktı: `ozet.json`, `sonuc.json`, `ekran/*.png`.
+  - `--mod=veri` için önce `node ornek-veri.mjs` (4 hata kaydı, 6 günlük takip, 30 `srs:` kaydı → `ornek-durum.json`, storageState + IndexedDB).
+  - `python3 rapor.py out-bos [sayfa]` özet; `python3 izgara.py izg/ad 740 dosyalar...` 6'lık ızgara.
+- **Servis çalışanı mutlaka kapalı** (`serviceWorkers:'block'`): ilk açılışta SW `skipWaiting+clients.claim` → `controllerchange` → sayfa ~4 sn sonra kendini yeniliyor, tıklamalar bozuluyor.
+- 500+ aynı yapıdaki modül düğmesi (index-app, ogren, videopractice) örneklenir: ilk 3, her 100'üncü, son. Diğer her düğme tek tek.
+- Sonuç: boş durum 826 tıklama (485'i 2. seviye), örnek veri 975 tıklama (560'ı 2. seviye). 318 farklı ekran görüntüsü elle incelendi.
+- Yanlış alarm olanlar: alt çubuk "◀ Geri" → about:blank (yalnız test tarayıcısında, gerçekte index.html'e gider); `sentence-mode` v1/v2 (idb-uyum.js zaten çözüyor); index→basla yönlendirmesi (kurulum yapılmamışsa doğru).
 
-Sayfalar (55): akilli-tekrar aktivite basla bugun chat chatairport chatdoctor chathotel chatrestaurant chatteacher chatteacher1 chatteacher2 ders foto-ekle gemini-rapor-arsivi gunluk-takip harita hata-defteri ilerleme immersive index-app index kelime-ogren kilavuz koc-modu kıblenamaz library login menu modul-testi modullerim ocr-sentence ogren ogrenme-yolu pdfoku phrasal-verbs practice profil pv-practice pwa-hard-reset pwa-reset rapor ses-esleme ses-secim ses-teshis sesdalga seviye-testi teacher-chat teacher teacher1 tekrar veri-gizlilik videopractice youtube-egitim youtube-pratik (hepsi `.html`).
+### Taramada bulunup düzeltilenler (yayında)
+- `dh-avatar.js`: boş/yalnız emoji metinde `cizgi[-1].v` hatası (ana sayfa → Gemini ile değerlendir).
+- 88 modül adı "-Decision" gibi tireli görünüyordu (`B2-M12-Decision` adları): 12 dosyada önek regex'i `[\s-]*`.
+- teacher1 başlığı Talimat/Menü ile çakışıyordu; sesdalga başlığı kolay görünümde sütunlara bölünüyordu; videopractice/ogren "Video ayarı" penceresi Önceki/Sıradaki altında kalıyordu (z-index); menü günlük hatırlatma anahtarı 64×38 ve satırın yazısı da dokunulabilir.
+
+### Bulunan, kullanıcı kararı bekleyenler (dokunulmadı)
+- `pdfoku.html` her açılışta `pdfjsLib is not defined`. `pdfoku`, `koc-modu`, `ses-esleme`, `pwa-reset` sayfalarına hiçbir yerden bağlantı yok (silme ancak kullanıcı onayıyla).
+
+### Kullanıcı gözüyle değerlendirme (50–80 yaş)
+**Güçlü yönler**
+1. İlk açılış kısa ve başarı hissi veriyor: 3 soru, ilk cümleyi doğru yaptırıyor, yanlışta Türkçe neden ("the park" çünkü belli bir park).
+2. Alt çubuk (Geri · Ana Sayfa · Menü · Yazı) neredeyse her sayfada aynı yerde; yazı boyutu paneli çok anlaşılır.
+3. Tehlikeli işlemler (veri silme, çıkış, defteri silme, eski verileri temizle) önce açık Türkçe onay soruyor.
+4. Boş durumlar çoğunlukla yol gösteriyor ("Henüz fotoğraftan eklenmiş cümle yok" + düğme, "Önce kutuya bir şey yaz").
+5. Öbek fiil alıştırması örnek nitelikte: büyük seçenekler, doğru/yanlışta anlamıyla açıklama, "Sonraki" ve "Dinle".
+6. Ana sayfa "Bugünün planı" ne kaldığını sayıyla gösteriyor (4/8 · 4 kaldı).
+
+**Zayıf yönler (önem sırasıyla)**
+1. **Gemini kopyala-yapıştır akışı çok adımlı**: anahtarı olmayan kullanıcıda Öğretmen/teacher sayfası açılır açılmaz 3 adımlı panel çıkıyor (kopyala → Gemini'ye geç → basılı tutup yapıştır → cevabı kopyala → geri dön → yapıştır). Sohbet, hata defteri, tekrar, modüllerim aynı yolu kullanıyor. Bu yaş grubu için en büyük engel.
+2. **Koç övgü/ipucu balonu düğmeleri örtüyor**: yalnız ✕ ile kapanıyor ve balona dokunmak da onu kapatıyor; kullanıcı "Kontrol et / Atla / Dinle / Sıradaki" düğmesine basmak isterken dokunuşu balon yiyor (hata defteri alıştırması, kelime öğren, videopractice, cümle yazma "YENİ KONU" balonu her adımda). Sağ alttaki küçük koç yüzü de bazı düğmelerin köşesine biniyor (Hata Defteri "Kontrol et").
+3. **Sayfa kendiliğinden yenileniyor**: yeni sürüm yayınlanınca (`ux-boost.js` controllerchange → `location.reload()`, sw.js `skipWaiting`) açık sayfa sormadan yenileniyor; yazılan cevap/kayıt yarıda kalabilir.
+4. **Çok uzun modül listeleri**: Cümle Çalış / Görselle Öğren / Videoyla Okuma'da 500+ modül tek liste; arama veya "kaldığın yer" öne çıkmıyor.
+5. **Teknik dil görünür yerlerde**: "Cloudflare Worker adresi", "JSON", "Pexels anahtarı", "SW + Cache temizle", "LocalStorage", "Groq AI Anahtarları", "COMPILE PROMPT" (pdfoku), "Trainer modülü hazır" (sesdalga).
+6. **Tutarsız görünüm**: bazı sayfalar başka tasarımda (veri-gizlilik, pwa-reset, pdfoku, kıblenamaz açık tema), sağ üstteki yüzen "Menü" ile alt çubuktaki "Menü" aynı sayfada iki kez; başlıklar yüzen Menü'nün altında kalmaya yatkın.
+7. **Aynı işi yapan çok sayfa/düğme**: Öğretmen için teacher, teacher1, teacher-chat, chatteacher, chatteacher1/2; sohbet alt çubuğunda 10'a yakın düğme (Öneri, Daha fazla, Hatalarım, Eller serbest, Özetle, Gemini'de sürdür, Gemini raporu, Değerlendir, Konuş, Gönder). Ne zaman hangisi kullanılır belirsiz.
+8. **İçerik teması**: C1/B2 cümleleri yazılım/SQL temalı ("nested WHILE loop"); kelime dizme alıştırmasında büyük harfli kelime cümlenin başını ele veriyor.
+9. **Küçük boş durum kusurları**: Tekrar sayfası hiç çalışılmamışken "🎉 Oturum bitti! 0/0"; "Bu cümle için resim/video bulunamadı" kutusu ekranın ortasını kaplıyor.
 
 Bilinen ipuçları:
 - Bu bulut ortamı yayındaki siteye (github.io) erişemiyor; her şey yerel sunucuda test edilir.
@@ -32,7 +57,7 @@ Bilinen ipuçları:
 - Depo: `sametegeli-oss/dilharita`. Statik site, GitHub Pages'te yayında: https://sametegeli-oss.github.io/dilharita/
 - Yayın: `main`'e push edince "pages build and deployment" çalışır (~1 dk).
   - "Quality" iş akışı eski bir sebepten (Windows kısa adları) hep başarısız olur; görmezden gel.
-- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v396`.
+- Önbellek kırma: değişen betiğin `?v=` değerini artır ve `sw.js` içindeki `SW_VERSION`'u bir artır. Şu an `dh-sw-v398`.
 - Commit: `git -c user.email=noreply@anthropic.com -c user.name=Claude commit` (mesaj sonuna oturumun verdiği Co-Authored-By satırı), sonra `git pull --rebase origin main && git push origin HEAD:main`.
 
 ## Kesin kurallar (kullanıcının istekleri)
@@ -44,8 +69,7 @@ Bilinen ipuçları:
 ## Test araçları
 - Yerel sunucu: depo klasöründe `python3 -m http.server 8767 --bind 127.0.0.1`.
 - Playwright: `/opt/npm-tools/node_modules/playwright/index.mjs`.
-- Mobil düğme tarayıcısı: `/home/claude/tools/mobiltara.mjs`.
-  - Yeni oturumda bu dosya yok; gerekirse yeniden yaz.
+- Mobil düğme tarayıcısı: depoda `tools/mobil-tarama/mobiltara.mjs` (yukarıdaki "Tarama nasıl yapıldı").
   - Yaptığı iş: 360 px genişlikte her düğmeye taze sayfada tıklar; taşma, çakışma, küçük hedef ve JS hatalarını raporlar.
 - **LDPlayer (Android öykünücü), bilgisayar kullanımı ile:**
   - Erişim: önce `computer_resolve_access`, sonra `computer_request_access` ile LDPlayer9.
@@ -115,7 +139,7 @@ Bilinen ipuçları:
    - OpenRouter anahtarının gerçekten cevap verdiğini bir sohbette denemek. Kayıtlı olduğu görüldü, çalışması denenmedi.
 2. **Kullanıcı kararı bekleyenler** (izinsiz değiştirme):
    - (Ders ayarları JSON olarak kalacak — kullanıcı kararı. Kıvrık tırnaklar kaydederken düz tırnağa çevriliyor.)
-3. **Henüz denetlenmeyenler:** sayfa içi akışlar — yukarıdaki "YARIM KALAN İŞ".
+3. **Sayfa içi akışlar denetlendi** (10 Kasım akşamı); LDPlayer doğrulaması ve zayıf yönlerin iyileştirilmesi kaldı.
 4. **Gözlenen küçük sorunlar:**
    - Doktor portresinde görüntü bozulmaları var (görsel dosyalarında; yeni çizim gerekir).
    - YouTube Eğitim Stüdyosu'nda kayan oynatıcı görülmedi; oynatıcı sayfayla birlikte kayıyor.
