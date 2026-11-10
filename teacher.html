@@ -6,7 +6,7 @@
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./coach-bubble.js?v=16"></script>
 <script src="./progress-engine.js?v=2"></script>
-<script src="./ai-providers.js?v=t21"></script>
+<script src="./ai-providers.js?v=t22"></script>
 <script src="./gemini-bridge.js?v=t20"></script>
 
 
@@ -139,7 +139,9 @@ const PROVIDER_META = {
   nvidia:   { store:"nvidiaApiKeys",   label:"NVIDIA NIM",prefix:"nvapi-",url:"https://build.nvidia.com/models", note:"GitHub Pages'te güvenli kopyala-yapıştır köprüsüyle kullanılır." },
   groq:     { store:"groqApiKeys",     label:"Groq",     prefix:"gsk_", url:"https://console.groq.com/keys",        note:"En hızlısı, ücretsiz." },
   cerebras: { store:"cerebrasApiKeys", label:"Cerebras", prefix:"csk-", url:"https://cloud.cerebras.ai",            note:"Yüksek hacim, ücretsiz." },
-  gemini:   { store:"geminiApiKeys",   label:"Gemini",   prefix:"AIza", url:"https://aistudio.google.com/apikey",  note:"En cömert (Google), ücretsiz." }
+  gemini:   { store:"geminiApiKeys",   label:"Gemini",   prefix:"AIza", url:"https://aistudio.google.com/apikey",  note:"En cömert (Google), ücretsiz." },
+  mistral:  { store:"mistralApiKeys",  label:"Mistral",  prefix:"",     url:"https://console.mistral.ai/api-keys", note:"Ücretsiz Experiment planı, yüksek kota." },
+  openrouter:{ store:"openrouterApiKeys",label:"OpenRouter",prefix:"sk-or-",url:"https://openrouter.ai/keys",     note:"Ücretsiz modeller, günde ~50 istek." }
 };
 function getKeysFor(store){ try{ return (JSON.parse(localStorage.getItem(store)||"[]")||[]).filter(Boolean); }catch{ return []; } }
 function saveKeyFor(store,k){ const ks=getKeysFor(store); if(!ks.includes(k)) ks.push(k); try{ localStorage.setItem(store, JSON.stringify(ks)); }catch{} }
@@ -236,7 +238,7 @@ function openKeySheet(invalid){
   sheet.innerHTML = `
     <div class="sheet">
       <h3>API anahtarları</h3>
-      <p>Anahtarlar yalnızca bu cihazda saklanır. Bir sağlayıcı seç, anahtarı yapıştır. Birden çok anahtar eklenebilir; biri limite girerse diğerine geçilir.</p>
+      <p>Anahtarlar bu cihazda saklanır (Menü’de anahtar eşitlemesi açıksa şifreli olarak diğer cihazlarına da gider). Bir sağlayıcı seç, anahtarı yapıştır. Birden çok anahtar eklenebilir; biri limite girerse diğerine geçilir.</p>
       <select id="keyProv" style="width:100%;background:var(--bg-soft);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px;font:700 14px Nunito,sans-serif;margin-bottom:10px">
         ${ids.map(id=>`<option value="${id}">${esc(PROVIDER_META[id].label)} — ${esc(PROVIDER_META[id].note)}</option>`).join("")}
       </select>
@@ -280,7 +282,7 @@ function openKeySheet(invalid){
 
   $$("keyProv").onchange = function(){
     const p = PROVIDER_META[this.value];
-    $$("keyInput").placeholder = p.prefix + "...";
+    $$("keyInput").placeholder = p.prefix ? p.prefix + "..." : "Anahtarı buraya yapıştır";
     $$("keyGetLink").href = p.url;
     $$("keyModel").style.display = this.value==="nvidia" ? "block" : "none";
   };
@@ -298,7 +300,8 @@ function openKeySheet(invalid){
     const id = $$("keyProv").value, p = PROVIDER_META[id];
     const k = ($$("keyInput").value||"").trim();
     if(!k){ note("Anahtar boş.","bad"); return; }
-    if(!k.startsWith(p.prefix)){ note(p.label+" anahtarı '"+p.prefix+"' ile başlamalı.","bad"); return; }
+    if(p.prefix && !k.startsWith(p.prefix)){ note(p.label+" anahtarı '"+p.prefix+"' ile başlamalı.","bad"); return; }
+    if(id==="mistral" && !/^[A-Za-z0-9]{20,}$/.test(k)){ note("Mistral anahtarı harf ve rakamlardan oluşmalı (boşluksuz).","bad"); return; }
     saveKeyFor(p.store, k);
     try{ if(window.DHProviders&&DHProviders.setMode) DHProviders.setMode("api"); }catch(e){}
     try{ if(id==="nvidia"&&window.DHProviders&&DHProviders.setModel) DHProviders.setModel("nvidia",$$("keyModel").value); }catch(e){}
@@ -1400,7 +1403,7 @@ if (!State.en) {
 <script src="./tts-avatar-long-sync-fix.js?v=5"></script>
 <script src="./avatar-blink-sync.js?v=2"></script>
 <script src="./study-tracker.js?v=2"></script>
-<script src="./cloud-sync.js?v=41"></script>
+<script src="./cloud-sync.js?v=42"></script>
 <script src="./word-popup.js?v=tm3"></script>
 <script src="./ux-boost.js?v=1"></script>
 <script src="./atlas-effects.js?v=1"></script>

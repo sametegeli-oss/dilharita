@@ -988,7 +988,7 @@
       out.innerHTML='<div class="dh-wp-ai-out">AI bağlantısı hazırlanıyor…</div>';
       var old=document.querySelector('script[data-dh-word-ai-provider]');
       if(old){old.addEventListener("load",function(){aiExplain(word,anlamlar);},{once:true});return;}
-      var ps=document.createElement("script");ps.src="./ai-providers.js?v=t21";ps.dataset.dhWordAiProvider="1";
+      var ps=document.createElement("script");ps.src="./ai-providers.js?v=t22";ps.dataset.dhWordAiProvider="1";
       ps.onload=function(){aiExplain(word,anlamlar);};
       ps.onerror=function(){out.innerHTML='<div class="dh-wp-ai-out">AI bağlantısı yüklenemedi. İnternet bağlantını kontrol et.</div>';};
       document.head.appendChild(ps);
@@ -1524,5 +1524,5 @@
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",baglaTiklama,{once:true});
   else baglaTiklama();
   /* Klasik ve React word-popup için ortak çalışma listesi. */
-  (function(){if(document.querySelector('script[data-dh-word-study-list]'))return;var s=document.createElement("script");s.src="./word-learning-list.js?v=tm1";s.dataset.dhWordStudyList="1";document.head.appendChild(s);})();
+  (function(){if(document.querySelector('script[data-dh-word-study-list]'))return;var s=document.createElement("script");s.src="./word-learning-list.js?v=t22";s.dataset.dhWordStudyList="1";document.head.appendChild(s);})();
 })(window);

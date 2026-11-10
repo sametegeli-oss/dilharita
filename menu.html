@@ -230,7 +230,7 @@
      hata defterinin ham deposu ve Gemini kelime analizleri yedeğe hiç
      girmiyordu. -->
 <script src="./dh-yedek.js?v=2"></script>
-<script src="./cloud-sync.js?v=41"></script>
+<script src="./cloud-sync.js?v=42"></script>
 <script src="./notifications.js?v=1"></script>
 <script>
 /* ---- Bulutla senkronize et + Çıkış yap ---- */
@@ -334,7 +334,7 @@
   var forgetPasswordBtn=document.getElementById("dhForgetBackupPassword");
   if(!backupBtn) return;
 
-  var SECRET_NAMES=["nvidiaApiKeys","groqApiKeys","cerebrasApiKeys","geminiApiKeys","dh-disabled-keys","apiKeys"];
+  var SECRET_NAMES=["nvidiaApiKeys","groqApiKeys","cerebrasApiKeys","geminiApiKeys","mistralApiKeys","openrouterApiKeys","dh-disabled-keys","apiKeys"];
   function bytesToB64(bytes){var s="";for(var i=0;i<bytes.length;i++)s+=String.fromCharCode(bytes[i]);return btoa(s);}
   function b64ToBytes(s){var b=atob(s),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;}
   function vaultDB(){return new Promise(function(res,rej){var r=indexedDB.open("DilHaritaSecureVault",1);r.onupgradeneeded=function(){if(!r.result.objectStoreNames.contains("keys"))r.result.createObjectStore("keys");};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});}
@@ -734,7 +734,7 @@ try{ navigator.serviceWorker.register("./sw.js?v=22", {scope:"./"}); }catch(e){}
 <!-- word-popup.js'in AI özellikleri (kelime açıklama, eş anlamlı yedeği)
      DHProviders'a bağlı; bu sayfada yüklü değildi, o yüzden anahtar
      kayıtlı olduğu halde "API anahtarı ekle" uyarısı çıkıyordu. -->
-<script src="./ai-providers.js?v=t21"></script>
+<script src="./ai-providers.js?v=t22"></script>
 <script src="./word-popup.js?v=tm3"></script>
 <script src="./atlas-effects.js?v=1"></script>
   <script src="product-improvements.js" defer></script>

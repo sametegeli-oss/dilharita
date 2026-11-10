@@ -9,10 +9,10 @@
   function usableMeaning(s){s=clean(s);return s&&!/(sözlükte yok|anlam aranıyor|anlam bulunamadı|⏳)/i.test(s)?s:"";}
   function escapeHtml(s){return clean(s).replace(/[&<>\"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function mode(){try{return (JSON.parse(localStorage.getItem("dh-profile-v1")||"{}")||{}).aiYontemi||"";}catch(e){return "";}}
-  function hasApiKey(){try{return["nvidiaApiKeys","groqApiKeys","cerebrasApiKeys","geminiApiKeys"].some(function(k){return(JSON.parse(localStorage.getItem(k)||"[]")||[]).filter(Boolean).length;});}catch(e){return false;}}
+  function hasApiKey(){try{return["nvidiaApiKeys","groqApiKeys","cerebrasApiKeys","geminiApiKeys","mistralApiKeys","openrouterApiKeys"].some(function(k){return(JSON.parse(localStorage.getItem(k)||"[]")||[]).filter(Boolean).length;});}catch(e){return false;}}
   function provider(){
     if(global.DHProviders)return Promise.resolve(global.DHProviders);
-    return new Promise(function(resolve,reject){var old=document.querySelector('script[data-dh-word-ai-provider]');if(old){old.addEventListener("load",function(){resolve(global.DHProviders);},{once:true});old.addEventListener("error",reject,{once:true});return;}var s=document.createElement("script");s.src="./ai-providers.js?v=t21";s.dataset.dhWordAiProvider="1";s.onload=function(){resolve(global.DHProviders);};s.onerror=reject;document.head.appendChild(s);});
+    return new Promise(function(resolve,reject){var old=document.querySelector('script[data-dh-word-ai-provider]');if(old){old.addEventListener("load",function(){resolve(global.DHProviders);},{once:true});old.addEventListener("error",reject,{once:true});return;}var s=document.createElement("script");s.src="./ai-providers.js?v=t22";s.dataset.dhWordAiProvider="1";s.onload=function(){resolve(global.DHProviders);};s.onerror=reject;document.head.appendChild(s);});
   }
   function popupInfo(box){
     var react=box.classList.contains("wp-box"),w=box.querySelector(react?".wp-word":".dh-wp-word");

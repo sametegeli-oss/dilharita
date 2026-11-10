@@ -47,7 +47,7 @@
   var ACTLOG  = "dh-activity-log-v1";
   /* API anahtarlari cihaz sirridir. Yerelde kalir; Firestore'a asla
      gonderilmez ve eski surumlerin yukledigi kopyalar ilk senkronda silinir. */
-  var SECRET_KEYS = ["nvidiaApiKeys", "groqApiKeys", "cerebrasApiKeys", "geminiApiKeys", "dh-disabled-keys", "apiKeys"];
+  var SECRET_KEYS = ["nvidiaApiKeys", "groqApiKeys", "cerebrasApiKeys", "geminiApiKeys", "mistralApiKeys", "openrouterApiKeys", "dh-disabled-keys", "apiKeys"];
   function isSecretKey(key){ return SECRET_KEYS.indexOf(key)>=0; }
 
   var firebaseConfig = {
@@ -1194,7 +1194,7 @@
      şifrelenir ve yalnız şifreli kutu settings/{uid}.__keyVault alanına
      yazılır. Parolanın kendisi saklanmaz; cihazda yalnız dışarı
      aktarılamayan PBKDF2 anahtarı (menüdeki şifreli yedekle ORTAK) durur. */
-  var VAULT_NAMES=["nvidiaApiKeys","groqApiKeys","cerebrasApiKeys","geminiApiKeys","apiKeys"];
+  var VAULT_NAMES=["nvidiaApiKeys","groqApiKeys","cerebrasApiKeys","geminiApiKeys","mistralApiKeys","openrouterApiKeys","apiKeys"];
   var VAULT_SIG="dh-keyvault-sig", VAULT_AT="dh-keyvault-at", VAULT_ON="dh-keyvault-on";
   function vaultOn(){try{return localStorage.getItem(VAULT_ON)==="1";}catch(e){return false;}}
   function vB64(b){var s="";for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s);}

@@ -8,6 +8,8 @@
      groqApiKeys      — Groq (console.groq.com)
      cerebrasApiKeys  — Cerebras (cloud.cerebras.ai)
      geminiApiKeys    — Google Gemini (aistudio.google.com)
+     mistralApiKeys   — Mistral (console.mistral.ai)
+     openrouterApiKeys— OpenRouter (openrouter.ai, ücretsiz modeller)
 
    Mantık: Bir sağlayıcı anahtarı varsa onunla dene; başarısız/limit olursa
    sıradaki sağlayıcıya geç. Hepsi tükenirse hata döner (çağıran kurallı moda düşer).
@@ -66,10 +68,36 @@
       modelsUrl:"https://api.cerebras.ai/public/v1/models",  // anahtarsız, public
       modelsAuth:false,
       kind:"openai"
+    },
+    {
+      /* Mistral: ücretsiz "Experiment" katmanı; tarayıcıdan CORS izni var. */
+      id:"mistral",
+      keyStore:"mistralApiKeys",
+      url:"https://api.mistral.ai/v1/chat/completions",
+      model:"mistral-small-latest",
+      fallbackModels:["mistral-medium-latest"],
+      models:["mistral-small-latest","mistral-medium-latest","mistral-large-latest"],
+      modelsUrl:"https://api.mistral.ai/v1/models",
+      modelsAuth:true,
+      kind:"openai"
+    },
+    {
+      /* OpenRouter: yalnız ücretsiz (":free") modeller. "openrouter/free"
+         o an çalışan ücretsiz modele kendisi yönlendirir. */
+      id:"openrouter",
+      keyStore:"openrouterApiKeys",
+      url:"https://openrouter.ai/api/v1/chat/completions",
+      model:"openrouter/free",
+      fallbackModels:["google/gemma-4-31b-it:free","nvidia/nemotron-3-ultra-550b-a55b:free"],
+      models:["openrouter/free","google/gemma-4-31b-it:free","nvidia/nemotron-3-ultra-550b-a55b:free","google/gemma-4-26b-a4b-it:free"],
+      modelsUrl:"https://openrouter.ai/api/v1/models",
+      modelsAuth:false,
+      kind:"openai",
+      headers:{"HTTP-Referer":"https://sametegeli-oss.github.io/dilharita/","X-Title":"Dil Harita"}
     }
   ];
 
-  var PROVIDER_LABELS={gemini:"Gemini",groq:"Groq",cerebras:"Cerebras",nvidia:"NVIDIA NIM","gemini-web":"Gemini Web"};
+  var PROVIDER_LABELS={gemini:"Gemini",groq:"Groq",cerebras:"Cerebras",mistral:"Mistral",openrouter:"OpenRouter",nvidia:"NVIDIA NIM","gemini-web":"Gemini Web"};
   /* ── WEB YAPAY ZEKA SİTELERİ (anahtarsız kopyala-yapıştır yolu) ──────────
      Uygulamanın açtığı bütün yapay zeka siteleri yalnız burada tanımlı.
      Sayfalar adres yazmaz; DHProviders.openWeb({site, prompt}) çağırır:
@@ -334,7 +362,7 @@
     };
     return fetch(p.url, {
       method:"POST",
-      headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+key },
+      headers:Object.assign({ "Content-Type":"application/json", "Authorization":"Bearer "+key }, p.headers||{}),
       signal:opts.signal,
       body: JSON.stringify(body)
     }).then(function(res){
@@ -515,7 +543,7 @@
        düşmeden önce kullanıcıya ve anahtar listesine kısa bir neden yaz. */
     var fails=[];
     function failNote(){
-      var names={gemini:"Gemini",groq:"Groq",cerebras:"Cerebras",nvidia:"NVIDIA"};
+      var names={gemini:"Gemini",groq:"Groq",cerebras:"Cerebras",mistral:"Mistral",openrouter:"OpenRouter",nvidia:"NVIDIA"};
       var why={rate:"limit doldu","bad-key":"anahtar reddedildi",network:"bağlantı kurulamadı",http:"sunucu hatası",empty:"boş cevap","all-keys-failed":"anahtarların hepsi reddedildi"};
       var parts=fails.map(function(f){return (names[f.p]||f.p)+": "+(why[f.code]||f.code||"hata")+(f.status?" ("+f.status+")":"");});
       var pasif=0; try{ var off=disabledSet(); PROVIDERS.forEach(function(p){ try{ (JSON.parse(localStorage.getItem(p.keyStore)||"[]")||[]).forEach(function(k){ if(off[k]) pasif++; }); }catch(e){} }); }catch(e){}
@@ -583,6 +611,7 @@
       // Gemini'de sadece üretim (generateContent) + ÜCRETSİZ olanlar: flash'lar.
       // Pro modelleri ücretli olduğundan listeden çıkarılır.
       if(providerId==="gemini") ids = ids.filter(function(x){ return /flash/i.test(x) && !/pro/i.test(x); });
+      if(providerId==="openrouter") ids = ["openrouter/free"].concat(ids.filter(function(x){ return /:free$/.test(x); }));
       return ids.length ? ids : fallback;
     }).catch(function(){ return fallback; });  // CORS/hata → gömülü liste
   }
