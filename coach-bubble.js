@@ -301,7 +301,9 @@
   var PAGE_LABEL={"index.html":"Ana Menü","practice.html":"Pratik","tekrar.html":"Tekrar","index-app.html":"Cümle Öğrenimi",
     "chat.html":"Sohbet Seçimi","chathotel.html":"Sohbet: Otel","chatrestaurant.html":"Sohbet: Restoran","chatdoctor.html":"Sohbet: Doktor",
     "chatairport.html":"Sohbet: Havaalanı","chatteacher.html":"Sohbet: Öğretmen","teacher.html":"Öğretmen","kelime-ogren.html":"Kelime Öğren",
-    "videopractice.html":"Video Pratik","hata-defteri.html":"Hata Defteri","rapor.html":"İlerleme Raporu"};
+    "videopractice.html":"Video Pratik","hata-defteri.html":"Hata Defteri","rapor.html":"İlerleme Raporu",
+    /* eksik sayfalar dosya adıyla ("sesdalga.html sayfasını açtı") görünüyordu */
+    "sesdalga.html":"Telaffuz Stüdyosu","ders.html":"Bugünkü Ders","menu.html":"Menü","immersive.html":"İngilizceyi Yaşa","youtube-egitim.html":"YouTube Eğitim Stüdyosu","youtube-pratik.html":"YouTube'dan Çalış","library.html":"Kütüphane","phrasal-verbs.html":"Öbek Fiiller","pv-practice.html":"Öbek Fiil Alıştırması","modullerim.html":"Modüllerim","foto-ekle.html":"Fotoğraftan Ekle","ocr-sentence.html":"Taranan Cümleler","harita.html":"İlerleme Haritası","ilerleme.html":"İlerleme","aktivite.html":"Bugünkü Aktivite","seviye-testi.html":"Seviye Belirleme","profil.html":"Profil","teacher-chat.html":"Öğretmenle Sohbet","gemini-rapor-arsivi.html":"Gemini Rapor Arşivi","kilavuz.html":"Kullanım Kılavuzu","ses-secim.html":"Ses Seçimi","veri-gizlilik.html":"Gizlilik"};
   window.dhLogActivity=function(detail, kind){
     try{
       var K="dh-activity-log-v1";
