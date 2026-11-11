@@ -29,7 +29,7 @@
 <script src="./onboarding-guard.js?v=1"></script>
 <script src="./study-tracker.js?v=1"></script>
 <script src="./learning-error-system.js?v=11"></script>
-<script src="./ai-providers.js?v=t34"></script>
+<script src="./ai-providers.js?v=t35"></script>
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=13">
@@ -87,6 +87,12 @@
       <a class="kk-kutu" href="./chat.html">
         <span class="kk-i" aria-hidden="true">🎙️</span><b>Konuşma Pratiği</b><small>Sesli sohbet et</small>
       </a>
+      <a class="kk-kutu" href="./ozel-ders.html" id="kkOzelDers">
+        <span class="kk-i" aria-hidden="true">✨</span><b>Bana Özel Ders</b><small id="kkOzelDersAlt">Amacına göre cümleler</small>
+      </a>
+      <a class="kk-kutu" href="./sesli-calis.html">
+        <span class="kk-i" aria-hidden="true">🎧</span><b>Sesli Çalış</b><small>Ekrana bakmadan, sesle</small>
+      </a>
     </div>
   </section>
   <script>
@@ -143,6 +149,14 @@
     <div class="dh-cip dh-cip--marka" style="margin-bottom:8px">Seviye</div>
     <div style="font-size:var(--dh-fs-kontrol);font-weight:var(--dh-fw-orta)">Seviye yükseltme zamanı olabilir</div>
     <div class="dh-etiket" id="seviyeNeden" style="margin-top:4px"></div>
+  </a>
+
+  <!-- BANA ÖZEL DERS: arka planda hazırlanan ders burada haber verilir -->
+  <a class="dh-kart dh-kart--vurgu" id="ozelDersKart" href="./ozel-ders.html" hidden
+     style="margin-bottom:12px;text-decoration:none;color:inherit">
+    <div class="dh-cip dh-cip--ok" id="ozelDersCip" style="margin-bottom:8px">Size özel</div>
+    <div style="font-size:var(--dh-fs-kontrol);font-weight:var(--dh-fw-orta)" id="ozelDersBaslik">✨ Bana özel ders hazırla</div>
+    <div class="dh-etiket" id="ozelDersAlt" style="margin-top:4px">Çalıştığınız konu, amacınıza uygun cümlelerle</div>
   </a>
 
   <div class="dh-kart dh-kart--sessiz" id="hedefKart" style="display:none;margin-bottom:12px">
@@ -1132,6 +1146,36 @@
 
 <!-- koc.js EN SONDA: kanca (window.DHKocRender) tanimli olmali -->
 <script src="./koc.js?v=5"></script>
+<script src="./dh-amac.js?v=1"></script>
+<script src="./dh-ozel-ders.js?v=1"></script>
+<script>
+/* Bana özel ders: kart + arka planda sıradaki dersi hazırlama (Aşama 4).
+   Kullanıcının dokunmasını gerektirmeyen yollarda (kendi anahtarı / araç)
+   ana sayfa açıldıktan 6 sn sonra, hazırda bekleyen ders yoksa yenisi
+   sessizce hazırlanır. Kopyala-yapıştır yolunda hiçbir şey açılmaz. */
+(function(){
+  var O = window.DHOzelDers; if (!O) return;
+  function ciz(){
+    var k = document.getElementById("ozelDersKart"); if (!k) return;
+    var b = O.bekleyen ? O.bekleyen() : null;
+    var amacVar = window.DHAmac && DHAmac.secili().length;
+    if (b){
+      var amac = DHAmac.bul(b.amac);
+      document.getElementById("ozelDersBaslik").textContent = "✨ Size özel yeni ders hazır";
+      document.getElementById("ozelDersAlt").textContent = (amac ? amac.ikon + " " + amac.ad + " · " : "") + b.n + " cümle";
+      document.getElementById("ozelDersCip").textContent = "Hazır";
+      var alt = document.getElementById("kkOzelDersAlt"); if (alt) alt.textContent = "Yeni dersin hazır";
+    } else if (!amacVar) {
+      document.getElementById("ozelDersAlt").textContent = "Önce İngilizceyi ne için öğrendiğinizi seçin";
+    }
+    k.hidden = false;
+  }
+  O.hazirla().then(function(){
+    ciz();
+    setTimeout(function(){ O.onceden().then(function(r){ if (r) ciz(); }); }, 6000);
+  }).catch(function(){});
+})();
+</script>
 <script src="./ux-boost.js?v=1"></script>
 <script src="./word-popup.js?v=tm3"></script>
 <script src="./atlas-effects.js?v=2"></script>

@@ -13,6 +13,8 @@
   /* Bu ekrana ozgu tek kural: adimlar yatay kaymaz, ust uste gelir. */
   .adim{ display:none; }
   .adim--acik{ display:block; }
+  .dh-secenek.amac--secili{ border-color:var(--dh-ok, #18a058); box-shadow:0 0 0 2px var(--dh-ok, #18a058) inset; }
+  .dh-secenek.amac--secili::after{ content:"✓"; margin-left:auto; font-size:26px; font-weight:800; color:var(--dh-ok, #18a058); }
 </style>
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
@@ -33,7 +35,7 @@
   <!-- ADIM 1 — amac -->
   <section class="adim adim--acik dh-gir" id="adim1" aria-labelledby="b1">
     <h1 id="b1">İngilizceyi ne için öğreniyorsun?</h1>
-    <p class="dh-etiket" style="margin:8px 0 24px">Buna göre hangi cümlelerden başlayacağımı seçeceğim.</p>
+    <p class="dh-etiket" style="margin:8px 0 24px">Birden fazlasını seçebilirsin. Sana özel dersleri buna göre hazırlayacağım.</p>
     <div class="dh-plan" id="amacListe"></div>
   </section>
 
@@ -77,6 +79,7 @@
 
 </main>
 
+<script src="./dh-amac.js?v=1"></script>
 <script src="./dh-plan.js"></script>
 <script src="./dh-avatar.js?v=4"></script>
 <script src="./ai-choice.js?v=t22"></script>
@@ -106,28 +109,42 @@
 
   /* Amaca gore ilk cumle — kullanici sectigi baglamdan bir cumleyle
      karsilasir, jenerik "Hello, how are you?" ile degil. */
-  var AMACLAR = [
-    { id:"is",       ad:"İş",         alt:"Toplantı, e-posta, iş görüşmesi",
-      cumle:{ en:"I work from home", tr:"Evden çalışıyorum",
-              yanlis:["I working from home","I work at home the"],
-              neden:{"I working from home":"Burada fiil eksik kalıyor: “I work” denir.",
-                     "I work at home the":"Sondaki “the” fazla; cümle “from home” ile biter."} } },
-    { id:"seyahat",  ad:"Seyahat",    alt:"Havalimanı, otel, restoran",
-      cumle:{ en:"I have a reservation", tr:"Rezervasyonum var",
-              yanlis:["I have reservation","I am reservation"],
-              neden:{"I have reservation":"Bir tane rezervasyon olduğu için önüne “a” gelir: “a reservation”.",
-                     "I am reservation":"“Sahip olmak” anlamında “am” değil “have” kullanılır."} } },
-    { id:"gunluk",   ad:"Günlük hayat", alt:"Sohbet, alışveriş, arkadaşlık",
-      cumle:{ en:"I live near the park", tr:"Parkın yanında oturuyorum",
-              yanlis:["I live near park","I am live near the park"],
-              neden:{"I live near park":"Belli bir park kastedildiği için önüne “the” gelir: “the park”.",
-                     "I am live near the park":"“live” zaten fiil; yanına “am” gelmez."} } },
-    { id:"akademik", ad:"Sınav / akademik", alt:"IELTS, TOEFL, YDS",
-      cumle:{ en:"The results were significant", tr:"Sonuçlar anlamlıydı",
-              yanlis:["The results was significant","The result were significant"],
-              neden:{"The results was significant":"“results” çoğul olduğu için “was” değil “were” gelir.",
-                     "The result were significant":"Burada çoğul “results” gerekir; tekil “result” ile “were” uyuşmaz."} } }
-  ];
+  /* Amaç listesi dh-amac.js'ten gelir (ozel-ders.html ile ortak).
+     Burada yalnız her amacın İLK CÜMLESİ tutulur. */
+  var CUMLELER = {
+    is:       { en:"I work from home", tr:"Evden çalışıyorum",
+                yanlis:["I working from home","I work at home the"],
+                neden:{"I working from home":"Burada fiil eksik kalıyor: “I work” denir.",
+                       "I work at home the":"Sondaki “the” fazla; cümle “from home” ile biter."} },
+    seyahat:  { en:"I have a reservation", tr:"Rezervasyonum var",
+                yanlis:["I have reservation","I am reservation"],
+                neden:{"I have reservation":"Bir tane rezervasyon olduğu için önüne “a” gelir: “a reservation”.",
+                       "I am reservation":"“Sahip olmak” anlamında “am” değil “have” kullanılır."} },
+    gunluk:   { en:"I live near the park", tr:"Parkın yanında oturuyorum",
+                yanlis:["I live near park","I am live near the park"],
+                neden:{"I live near park":"Belli bir park kastedildiği için önüne “the” gelir: “the park”.",
+                       "I am live near the park":"“live” zaten fiil; yanına “am” gelmez."} },
+    akademik: { en:"The results were significant", tr:"Sonuçlar anlamlıydı",
+                yanlis:["The results was significant","The result were significant"],
+                neden:{"The results was significant":"“results” çoğul olduğu için “was” değil “were” gelir.",
+                       "The result were significant":"Burada çoğul “results” gerekir; tekil “result” ile “were” uyuşmaz."} },
+    aile:     { en:"My grandson lives in London", tr:"Torunum Londra'da yaşıyor",
+                yanlis:["My grandson live in London","My grandson is live in London"],
+                neden:{"My grandson live in London":"Tek bir kişiden (o) söz ederken fiile -s gelir: “lives”.",
+                       "My grandson is live in London":"“live” zaten fiil; yanına “is” gelmez."} },
+    saglik:   { en:"I have a headache", tr:"Başım ağrıyor",
+                yanlis:["I have headache","My head is ache"],
+                neden:{"I have headache":"Bir baş ağrısından söz edildiği için önüne “a” gelir: “a headache”.",
+                       "My head is ache":"İngilizcede baş ağrısı “sahip olunan” bir şeydir: “I have a headache”."} },
+    zihin:    { en:"I like reading books", tr:"Kitap okumayı severim",
+                yanlis:["I like read books","I am like reading books"],
+                neden:{"I like read books":"“like”tan sonra fiil -ing alır: “reading”.",
+                       "I am like reading books":"“like” zaten fiil; yanına “am” gelmez."} }
+  };
+  var AMACLAR = (window.DHAmac ? DHAmac.LISTE : [{id:"gunluk",ad:"Günlük hayat",alt:"Sohbet, alışveriş"}])
+    .filter(function(a){ return CUMLELER[a.id]; })
+    .map(function(a){ return { id:a.id, ikon:a.ikon||"", ad:a.ad, alt:a.alt, cumle:CUMLELER[a.id] }; });
+  var seciliAmaclar = [];
 
   var HEDEFLER = [
     { id:5,  ad:"5 dakika",  alt:"Günde 5 cümle" },
@@ -163,6 +180,8 @@
       noktalar[j].classList.toggle("dh-noktalar__bir--dolu", j < n);
     }
     $("noktalar").setAttribute("aria-valuenow", String(n));
+    if (n === 1){ $("devam").textContent = "Devam et"; $("devam").hidden = !seciliAmaclar.length; }
+    if (n === 2) $("devam").hidden = true;
     /* Yanlış seçimi düzeltebilmek için: 2. ve 3. adımda bir önceki soruya dönüş */
     $("geriAdim").hidden = !(n === 2 || n === 3);
     $("adim"+n).classList.remove("dh-gir");
@@ -176,15 +195,30 @@
   };
 
   /* ---------- ADIM 1 ---------- */
+  /* Birden fazla amaç seçilebilir: dokununca işaretlenir, tekrar
+     dokununca kalkar. En az bir seçim olunca "Devam et" görünür. */
   (function kurAmac(){
     var kap = $("amacListe");
     AMACLAR.forEach(function(a){
-      kap.appendChild(secenekBtn(a.ad, a.alt, function(){
-        durum.amac = a;
-        adimGoster(2);
-      }));
+      var b = secenekBtn((a.ikon ? a.ikon + "  " : "") + a.ad, a.alt, function(){
+        var i = seciliAmaclar.indexOf(a.id);
+        if (i >= 0) seciliAmaclar.splice(i, 1); else seciliAmaclar.push(a.id);
+        var on = seciliAmaclar.indexOf(a.id) >= 0;
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+        b.classList.toggle("amac--secili", on);
+        durum.amac = seciliAmaclar.length ? amacBul(seciliAmaclar[0]) : null;
+        $("devam").textContent = "Devam et";
+        $("devam").hidden = !seciliAmaclar.length;
+      });
+      b.setAttribute("aria-pressed", "false");
+      b.setAttribute("data-amac", a.id);
+      kap.appendChild(b);
     });
   })();
+  function amacBul(id){
+    for (var i=0;i<AMACLAR.length;i++) if (AMACLAR[i].id===id) return AMACLAR[i];
+    return AMACLAR[0];
+  }
 
   /* ---------- ADIM 2 ---------- */
   (function kurHedef(){
@@ -257,7 +291,9 @@
   /* ---------- ADIM 4: kurulum bitisi + ilk plan ---------- */
   function kurBitis(){
     var hedef = durum.hedef || 10;
-    var amacAd = (durum.amac || AMACLAR[0]).ad;
+    var amacAd = seciliAmaclar.length
+      ? seciliAmaclar.map(function(id){ return amacBul(id).ad; }).join(", ")
+      : (durum.amac || AMACLAR[0]).ad;
 
     $("bitisOzet").textContent =
       amacAd + " · günde " + hedef + " cümle. İstediğin zaman değiştirebilirsin.";
@@ -329,6 +365,11 @@
 
   /* ---------- devam butonu ---------- */
   $("devam").onclick = function(){
+    if (adimNo === 1){
+      if (!seciliAmaclar.length) return;
+      adimGoster(2);
+      return;
+    }
     if (adimNo === 3){
       kurBitis();
       adimGoster(4);
@@ -338,6 +379,7 @@
       try{
         var p = JSON.parse(localStorage.getItem("dh-profile-v1") || "{}") || {};
         p.amac = (durum.amac||AMACLAR[0]).id;
+        p.amaclar = seciliAmaclar.length ? seciliAmaclar.slice() : [p.amac];
         p.gunlukHedef = durum.hedef || 10;
         p.gunlukDakika = durum.hedef || 10;
         p.kurulumBitti = true;

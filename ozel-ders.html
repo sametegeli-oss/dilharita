@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<script src="./idb-uyum.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F7A5A">
+<title>Bana Özel Ders · Dil Harita</title>
+<link rel="stylesheet" href="./dh-tokens.css">
+<link rel="stylesheet" href="./dh-ui.css">
+<style>
+  .od-buyuk{ font-size:22px; font-weight:800; line-height:1.3; margin:0 0 6px; }
+  .od-amaclar{ display:grid; gap:10px; margin:12px 0 4px; }
+  .od-amaclar .dh-secenek{ min-height:64px; font-size:19px; }
+  .od-amaclar .dh-secenek[aria-pressed="true"]::after{ content:"✓"; margin-left:auto; font-size:26px; font-weight:800; color:var(--dh-ok); }
+  .od-durum{ display:flex; align-items:center; gap:14px; font-size:20px; font-weight:700; padding:18px 4px; }
+  .od-donen{ width:34px; height:34px; flex:0 0 34px; border-radius:50%;
+             border:4px solid var(--dh-marka-zemin); border-top-color:var(--dh-marka); animation:od-don 1s linear infinite; }
+  @keyframes od-don{ to{ transform:rotate(360deg); } }
+  @media (prefers-reduced-motion:reduce){ .od-donen{ animation:none; } }
+  .od-cumle{ padding:14px 0; border-bottom:var(--dh-bd); }
+  .od-cumle:last-child{ border-bottom:0; }
+  .od-cumle__en{ font-size:20px; font-weight:700; line-height:1.35; }
+  .od-cumle__tr{ font-size:17px; color:var(--dh-text-2); margin-top:4px; }
+  .od-cumle__alt{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .od-kucuk-btn{ min-height:48px; padding:8px 14px; border-radius:12px; border:var(--dh-bd);
+                 background:var(--dh-yuzey-2); color:var(--dh-text); font-size:16px; font-weight:700; cursor:pointer; }
+  .od-not{ font-size:17px; color:var(--dh-text-2); line-height:1.45; margin:10px 0 0; }
+  .od-ozet{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:18px; }
+  .od-ozet b{ font-size:19px; }
+  .od-gecmis a{ text-decoration:none; color:inherit; }
+</style>
+<link rel="stylesheet" href="./atlas-theme.css?v=1">
+  <link rel="stylesheet" href="product-improvements.css">
+<link rel="stylesheet" href="./kolay-kullanim.css?v=13">
+<script src="./kolay-kullanim.js?v=25"></script>
+<script src="./ai-providers.js?v=t35"></script>
+</head>
+<body>
+
+<main class="dh-sayfa">
+
+  <header class="dh-ust">
+    <div class="dh-ust__sol">
+      <a class="dh-ikon-btn" href="./index.html" aria-label="Geri">←</a>
+      <h1>✨ Bana Özel Ders</h1>
+    </div>
+  </header>
+
+  <p class="od-not" style="margin:0 0 18px">Şu an çalıştığınız konuyu, İngilizceyi öğrenme amacınıza uygun yeni cümlelerle hazırlarım.</p>
+
+  <!-- AMAÇ -->
+  <section class="dh-kart" id="amacKart" style="margin-bottom:16px" aria-labelledby="amacBaslik">
+    <div id="amacOzet" class="od-ozet" hidden>
+      <span>Amacım:</span> <b id="amacOzetYazi"></b>
+      <button class="od-kucuk-btn" id="amacDegistir" type="button" style="margin-left:auto">Değiştir</button>
+    </div>
+    <div id="amacSecim" hidden>
+      <h2 class="od-buyuk" id="amacBaslik">İngilizceyi ne için öğreniyorsunuz?</h2>
+      <p class="od-not" style="margin-top:0">Birden fazlasını seçebilirsiniz.</p>
+      <div class="od-amaclar" id="amacListe"></div>
+      <button class="dh-btn dh-btn--birincil dh-btn--tam" id="amacKaydet" type="button" style="margin-top:12px" disabled>Kaydet</button>
+    </div>
+  </section>
+
+  <!-- HAZIRLA / HAZIR -->
+  <section class="dh-kart" id="anaKart" style="margin-bottom:16px" aria-live="polite">
+    <div id="hazirAlan" hidden>
+      <div class="dh-cip dh-cip--ok" style="margin-bottom:8px">Hazır</div>
+      <p class="od-buyuk" id="hazirAd"></p>
+      <p class="od-not" id="hazirAlt" style="margin-top:0"></p>
+      <a class="dh-btn dh-btn--birincil dh-btn--tam" id="basla" href="#" style="margin-top:12px">▶ Derse başla</a>
+      <button class="dh-btn dh-btn--sade dh-btn--tam" id="cumleleriGoster" type="button" style="margin-top:8px">Cümlelere göz at</button>
+    </div>
+
+    <div id="hazirlaAlan" hidden>
+      <button class="dh-btn dh-btn--birincil dh-btn--tam" id="hazirla" type="button" style="min-height:72px;font-size:21px">✨ Bana özel ders hazırla</button>
+      <p class="od-not" id="yolNot"></p>
+    </div>
+
+    <div class="od-durum" id="durum" hidden>
+      <span class="od-donen" aria-hidden="true"></span>
+      <span id="durumYazi">Hazırlanıyor…</span>
+    </div>
+
+    <div id="hata" hidden style="margin-top:8px"></div>
+  </section>
+
+  <!-- CÜMLELER -->
+  <section class="dh-kart" id="cumleKart" hidden style="margin-bottom:16px">
+    <div class="dh-bolum-basligi">Bu dersteki cümleler</div>
+    <p class="od-not" style="margin-top:0">Yapay zekâ yazdı ve kontrol edildi. Yine de hatalı bir cümle görürseniz “🚩 Hatalı” deyin, dersten çıkarırım.</p>
+    <div id="cumleListe"></div>
+  </section>
+
+  <!-- ÖNCEKİLER -->
+  <section id="gecmisKart" hidden style="margin-bottom:16px">
+    <div class="dh-bolum-basligi">Daha önce hazırlananlar</div>
+    <div class="dh-plan od-gecmis" id="gecmisListe"></div>
+  </section>
+
+</main>
+
+<script src="./auth-guard.js?v=4"></script>
+<script src="./sentences-loader.js?v=20"></script>
+<script src="./profile.js?v=2"></script>
+<script src="./dh-amac.js?v=1"></script>
+<script src="./dh-modul.js?v=10"></script>
+<script src="./dh-ozel-ders.js?v=1"></script>
+<script>
+/* ozel-ders.html — BANA ÖZEL DERS
+   Tek düğme: amaç + şu anki gramer + seviye -> 12 cümlelik modül.
+   Üretim ve denetim dh-ozel-ders.js'te; bu sayfa yalnız gösterir. */
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var O = window.DHOzelDers, A = window.DHAmac;
+  var secim = [];
+  var acikId = null;
+
+  function kacir(s){
+    return String(s==null?"":s).replace(/[&<>"]/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c];
+    });
+  }
+  function gorunenAd(u){
+    var amac = A.bul(u.amac);
+    var konu = String(u.ad||"").replace(/^[A-C][12]-M\d+[\s-]*/, "").split(" · ")[0];
+    return (amac ? amac.ikon + " " + amac.ad : "Özel ders") + " · " + konu;
+  }
+
+  /* ---------- amaç ---------- */
+  function amacCiz(){
+    var ids = A.secili();
+    $("amacOzet").hidden = !ids.length;
+    $("amacSecim").hidden = !!ids.length;
+    $("amacOzetYazi").textContent = ids.map(function(id){ var a=A.bul(id); return a.ikon+" "+a.ad; }).join(", ");
+    secim = ids.slice();
+    var kap = $("amacListe"); kap.innerHTML = "";
+    A.LISTE.forEach(function(a){
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "dh-secenek";
+      b.setAttribute("aria-pressed", secim.indexOf(a.id)>=0 ? "true" : "false");
+      b.innerHTML = '<span>' + kacir(a.ikon + "  " + a.ad) + '<span class="dh-secenek__alt">' + kacir(a.alt) + '</span></span>';
+      b.onclick = function(){
+        var i = secim.indexOf(a.id);
+        if (i>=0) secim.splice(i,1); else secim.push(a.id);
+        b.setAttribute("aria-pressed", secim.indexOf(a.id)>=0 ? "true" : "false");
+        $("amacKaydet").disabled = !secim.length;
+      };
+      kap.appendChild(b);
+    });
+    $("amacKaydet").disabled = !secim.length;
+    anaCiz();
+  }
+  $("amacDegistir").onclick = function(){ $("amacOzet").hidden = true; $("amacSecim").hidden = false; };
+  $("amacKaydet").onclick = function(){ if (A.kaydet(secim)) amacCiz(); };
+
+  /* ---------- ana kart ---------- */
+  function anaCiz(){
+    var ids = A.secili();
+    var b = O.bekleyen();
+    $("durum").hidden = true;
+    $("hazirAlan").hidden = !b;
+    $("hazirlaAlan").hidden = !!b;
+    if (b){
+      $("hazirAd").textContent = gorunenAd(b);
+      $("hazirAlt").textContent = b.n + " cümle · " + b.seviye + " seviyesi";
+      $("basla").href = "./index-app.html?mod=" + encodeURIComponent(b.ad);
+      $("basla").onclick = function(){ O.acildi(b.id); };
+      $("cumleleriGoster").onclick = function(){ cumleCiz(b.id); };
+    }
+    var hak = O.kalanHak();
+    $("hazirla").disabled = !ids.length || hak <= 0;
+    var y = O.yol(), not;
+    if (!ids.length) not = "Önce yukarıdan amacınızı seçin.";
+    else if (hak <= 0) not = "Bugün " + O.GUNLUK_SINIR + " özel ders hazırlandı. Yarın yenileri hazırlanır.";
+    else if (y === "elle") not = "Gemini penceresi açılacak. Oradaki 3 adımı izleyin; ders kendiliğinden kaydedilir.";
+    else not = "Yarım dakika kadar sürer. Bugün " + hak + " ders daha hazırlanabilir.";
+    $("yolNot").textContent = not;
+    gecmisCiz();
+  }
+
+  function cumleCiz(id){
+    acikId = id;
+    var kayitlar = (DHModul.getir(id) || []);
+    var kap = $("cumleListe"); kap.innerHTML = "";
+    kayitlar.forEach(function(k){
+      var d = document.createElement("div");
+      d.className = "od-cumle";
+      d.innerHTML = '<div class="od-cumle__en">' + kacir(k.en) + '</div>' +
+                    '<div class="od-cumle__tr">' + kacir(k.tr) + '</div>' +
+                    '<div class="od-cumle__alt">' +
+                      '<button class="od-kucuk-btn" type="button" data-dinle>🔊 Dinle</button>' +
+                      '<button class="od-kucuk-btn" type="button" data-bayrak>🚩 Hatalı</button>' +
+                    '</div>';
+      d.querySelector("[data-dinle]").onclick = function(){
+        try{ speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(k.en); u.lang = "en-US"; speechSynthesis.speak(u); }catch(e){}
+      };
+      d.querySelector("[data-bayrak]").onclick = function(){
+        if (!confirm("Bu cümle hatalı olarak işaretlensin ve dersten çıkarılsın mı?\n\n" + k.en)) return;
+        if (O.bayrakla(id, k.en)) { d.remove(); anaCiz(); }
+        else alert("Bu, dersteki son cümle; çıkarılamadı.");
+      };
+      kap.appendChild(d);
+    });
+    $("cumleKart").hidden = !kayitlar.length;
+    try{ $("cumleKart").scrollIntoView({block:"start", behavior:"smooth"}); }catch(e){}
+  }
+
+  function gecmisCiz(){
+    var l = O.liste();
+    var b = O.bekleyen();
+    l = l.filter(function(u){ return !b || u.id !== b.id; }).slice(0, 10);
+    $("gecmisKart").hidden = !l.length;
+    var kap = $("gecmisListe"); kap.innerHTML = "";
+    l.forEach(function(u){
+      var a = document.createElement("a");
+      a.className = "dh-plan-satir";
+      a.href = "./index-app.html?mod=" + encodeURIComponent(u.ad);
+      a.onclick = function(){ O.acildi(u.id); };
+      a.innerHTML = '<div class="dh-plan-satir__ust"><span class="dh-plan-satir__ikon" aria-hidden="true">▸</span>' +
+                    '<span class="dh-plan-satir__ad">' + kacir(gorunenAd(u)) + '</span>' +
+                    '<span class="dh-cip">' + kacir(u.seviye||"") + '</span></div>' +
+                    '<div class="dh-tugla__yazi" style="margin-top:6px">' + (u.n||0) + ' cümle · ' +
+                    new Date(u.tarih).toLocaleDateString("tr-TR") + '</div>';
+      kap.appendChild(a);
+    });
+  }
+
+  /* ---------- hazırla ---------- */
+  $("hazirla").onclick = function(){
+    $("hata").hidden = true;
+    $("hazirlaAlan").hidden = true;
+    $("durum").hidden = false;
+    $("durumYazi").textContent = "Hazırlanıyor…";
+    O.uret({ durum: function(t){ $("durumYazi").textContent = t; } }).then(function(r){
+      anaCiz();
+      cumleCiz(r.id);
+    }).catch(function(err){
+      $("durum").hidden = true;
+      $("hazirlaAlan").hidden = false;
+      if (err && err.code === "abort") { anaCiz(); return; }
+      var m = (err && (err.mesaj || err.message)) || "Bir sorun çıktı.";
+      if (err && (err.code === "no-key" || err.code === "all-failed")) m = "Yapay zekâ şu an cevap vermedi. Biraz sonra tekrar deneyin.";
+      $("hata").innerHTML = '<div class="dh-geri dh-geri--err"><div class="dh-geri__baslik">Ders hazırlanamadı</div>' +
+        '<div class="dh-geri__aciklama">' + kacir(m) + '</div></div>';
+      $("hata").hidden = false;
+      anaCiz();
+    });
+  };
+
+  O.hazirla().then(function(){
+    amacCiz();
+    /* Gemini'den dönünce sayfa yeniden yüklendiyse yarım kalan iş sürer */
+    if (O.yol() === "elle" && O.elleBekliyor && O.elleBekliyor() && !O.bekleyen()) $("hazirla").click();
+  }).catch(function(){
+    $("hata").innerHTML = '<div class="dh-geri dh-geri--err"><div class="dh-geri__baslik">Sayfa yüklenemedi</div><div class="dh-geri__aciklama">İnternet bağlantınızı kontrol edip sayfayı yenileyin.</div></div>';
+    $("hata").hidden = false;
+  });
+})();
+</script>
+<script src="./ux-boost.js?v=1"></script>
+<script src="./atlas-effects.js?v=2"></script>
+  <script src="product-improvements.js" defer></script>
+<script src="./dh-button-guard.js?v=1" defer></script>
+</body>
+</html>

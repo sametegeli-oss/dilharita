@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<script src="./idb-uyum.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F7A5A">
+<title>Sesli Çalış · Dil Harita</title>
+<link rel="stylesheet" href="./dh-tokens.css">
+<link rel="stylesheet" href="./dh-ui.css">
+<style>
+  .sc-not{ font-size:18px; line-height:1.5; color:var(--dh-text-2); margin:0 0 14px; }
+  .sc-secim{ display:grid; gap:12px; margin:8px 0 6px; }
+  .sc-secim .dh-secenek{ min-height:76px; font-size:20px; font-weight:700; }
+  .sc-buyuk-btn{ min-height:76px !important; font-size:22px !important; }
+  .sc-sahne{ text-align:center; padding:8px 0 4px; }
+  .sc-sayac{ font-size:17px; color:var(--dh-text-2); font-weight:700; }
+  .sc-durum{ display:inline-flex; align-items:center; gap:10px; margin:14px 0 4px; padding:10px 18px;
+             border-radius:999px; font-size:20px; font-weight:800; background:var(--dh-yuzey-2); border:var(--dh-bd); }
+  .sc-durum[data-d="dinliyor"]{ background:#7f1d1d; border-color:#f87171; color:#fff; }
+  .sc-durum[data-d="konusuyor"]{ background:#1e3a8a; border-color:#93c5fd; color:#fff; }
+  .sc-nokta{ width:14px; height:14px; border-radius:50%; background:currentColor; }
+  .sc-durum[data-d="dinliyor"] .sc-nokta{ animation:sc-nabiz 1s ease-in-out infinite; }
+  @keyframes sc-nabiz{ 50%{ opacity:.25; } }
+  @media (prefers-reduced-motion:reduce){ .sc-durum .sc-nokta{ animation:none !important; } }
+  .sc-tr{ font-size:30px; font-weight:800; line-height:1.3; margin:18px 0 8px; }
+  .sc-en{ font-size:26px; font-weight:700; line-height:1.3; color:#93c5fd; min-height:34px; }
+  .sc-duydum{ font-size:18px; color:var(--dh-text-2); margin-top:12px; min-height:24px; }
+  .sc-sonuc{ font-size:24px; font-weight:800; margin-top:10px; min-height:32px; }
+  .sc-sonuc[data-s="iyi"]{ color:var(--dh-ok); }
+  .sc-sonuc[data-s="kotu"]{ color:#fbbf24; }
+  .sc-dugmeler{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:22px; }
+  .sc-dugmeler .dh-btn{ min-height:64px; font-size:20px; }
+  .sc-dugmeler .sc-genis{ grid-column:1/-1; }
+</style>
+<link rel="stylesheet" href="./atlas-theme.css?v=1">
+  <link rel="stylesheet" href="product-improvements.css">
+<link rel="stylesheet" href="./kolay-kullanim.css?v=13">
+<script src="./kolay-kullanim.js?v=25"></script>
+</head>
+<body>
+
+<main class="dh-sayfa">
+
+  <header class="dh-ust">
+    <div class="dh-ust__sol">
+      <a class="dh-ikon-btn" href="./index.html" aria-label="Geri">←</a>
+      <h1>🎧 Sesli Çalış</h1>
+    </div>
+  </header>
+
+  <!-- BAŞLANGIÇ -->
+  <section id="giris">
+    <p class="sc-not">Ekrana bakmanıza gerek yok. Size bir cümlenin <b>Türkçesini</b> söyleyeceğim, siz <b>İngilizcesini</b> yüksek sesle söyleyeceksiniz. Sonra doğrusunu duyacaksınız.</p>
+    <p class="sc-not" id="icerikNot">Cümleler hazırlanıyor…</p>
+    <div class="sc-secim">
+      <button class="dh-secenek" type="button" id="modSesle" aria-pressed="true">
+        <span>Sesle cevaplayacağım<span class="dh-secenek__alt">Bip sesinden sonra İngilizcesini söyleyin</span></span>
+      </button>
+      <button class="dh-secenek" type="button" id="modDinle" aria-pressed="false">
+        <span>Sadece dinleyeceğim<span class="dh-secenek__alt">Mikrofon kullanılmaz; Türkçesi, kısa bir ara, sonra İngilizcesi</span></span>
+      </button>
+    </div>
+    <p class="sc-not" id="mikNot" hidden style="margin-top:10px"></p>
+    <button class="dh-btn dh-btn--birincil dh-btn--tam sc-buyuk-btn" id="basla" type="button" disabled style="margin-top:14px">Başla</button>
+    <p class="sc-not" style="margin-top:16px;font-size:16px">Konuşurken durdurmak için İngilizce <b>“stop”</b>, geçmek için <b>“skip”</b>, tekrar duymak için <b>“repeat”</b> diyebilirsiniz.</p>
+  </section>
+
+  <!-- ÇALIŞMA -->
+  <section id="sahne" class="sc-sahne" hidden aria-live="polite">
+    <div class="sc-sayac" id="sayac"></div>
+    <div class="sc-durum" id="durum" data-d=""><span class="sc-nokta" aria-hidden="true"></span><span id="durumYazi">Hazır</span></div>
+    <div class="sc-tr" id="tr"></div>
+    <div class="sc-en" id="en"></div>
+    <div class="sc-duydum" id="duydum"></div>
+    <div class="sc-sonuc" id="sonuc" data-s=""></div>
+    <div class="sc-dugmeler">
+      <button class="dh-btn dh-btn--birincil" type="button" id="durdur">Durdur</button>
+      <button class="dh-btn dh-btn--sade" type="button" id="gec">Geç</button>
+      <button class="dh-btn dh-btn--sade sc-genis" type="button" id="tekrarSoyle">Tekrar söyle</button>
+      <button class="dh-btn dh-btn--sade sc-genis" type="button" id="bitir">Bitir</button>
+    </div>
+  </section>
+
+  <!-- BİTTİ -->
+  <section id="bitti" hidden class="sc-sahne">
+    <div class="sc-tr" id="bittiBaslik">Bugünlük bu kadar</div>
+    <p class="sc-not" id="bittiOzet" style="text-align:center"></p>
+    <a class="dh-btn dh-btn--birincil dh-btn--tam sc-buyuk-btn" href="./index.html" style="margin-top:12px">Ana sayfaya dön</a>
+    <button class="dh-btn dh-btn--sade dh-btn--tam" id="yeniden" type="button" style="margin-top:10px">Bir tur daha</button>
+  </section>
+
+</main>
+
+<script src="./auth-guard.js?v=4"></script>
+<script src="./sentences-loader.js?v=20"></script>
+<script src="./profile.js?v=2"></script>
+<script src="./dh-modul.js?v=10"></script>
+<script src="./progress-engine.js?v=2"></script>
+<script>
+/* sesli-calis.html — TAM SESLİ MOD
+   ==================================================================
+   Ekrana bakmadan çalışma: Türkçesi sesli okunur -> bip -> kullanıcı
+   İngilizcesini söyler -> uygulama sonucu ve doğrusunu sesle söyler ->
+   sıradaki. Tamamı sesle yürür; ekrandaki büyük yazılar yalnız destek.
+
+   İÇERİK
+     1. Vadesi gelen tekrar cümleleri (srs:, tekrar.html ile aynı depo).
+        Notlama tekrar.html'in SM-2 adımıyla yapılır; tekrar sayacı ve
+        günün planı da aynı anahtarlarla ilerler.
+     2. Tekrar yoksa: sıradaki modülün cümleleri "dinle ve tekrar et"
+        biçiminde (notlanmaz, ilerleme yazılmaz).
+
+   SADECE DİNLE modu mikrofon kullanmaz; mikrofon izni yoksa ya da
+   tarayıcı ses tanımayı desteklemiyorsa (iPhone) kendiliğinden seçilir.
+*/
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var DAY = 86400000, OTURUM = 15;
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var mod = SR ? "sesle" : "dinle";
+  var liste = [], tur = "tekrar", sira = 0;
+  var calisiyor = false, duraklat = false, gecIstek = false, tekrarIstek = false, bitirIstek = false;
+  var sayilar = { toplam:0, dogru:0 };
+  var aktifRec = null, uyanik = null;
+
+  /* ---------- yardımcılar: metin karşılaştırma (tekrar.html ile aynı ölçüt) ---------- */
+  var KISALT = { "i'm":"i am","you're":"you are","he's":"he is","she's":"she is","it's":"it is","we're":"we are","they're":"they are",
+    "don't":"do not","doesn't":"does not","didn't":"did not","isn't":"is not","aren't":"are not","wasn't":"was not","weren't":"were not",
+    "can't":"can not","cannot":"can not","won't":"will not","i'll":"i will","you'll":"you will","i've":"i have","that's":"that is","there's":"there is","let's":"let us" };
+  function norm(t){
+    return String(t||"").toLowerCase().replace(/[’‘]/g,"'")
+      .replace(/\b[a-z]+'[a-z]+\b/g, function(m){ return KISALT[m] || m; })
+      .replace(/['-]/g," ").replace(/[^a-z0-9 ]+/g," ")
+      .replace(/\b(he|she|it|him|her|his|hers|its)\b/g,"o3")
+      .replace(/\s+/g," ").trim();
+  }
+  function benzerlik(a,b){
+    a = norm(a); b = norm(b);
+    if (!a || !b) return 0;
+    if (a === b) return 100;
+    var A = a.split(" "), B = b.split(" "), say = {}, hit = 0;
+    B.forEach(function(w){ say[w] = (say[w]||0)+1; });
+    A.forEach(function(w){ if (say[w]) { hit++; say[w]--; } });
+    return Math.round(100*2*hit/(A.length+B.length));
+  }
+
+  /* ---------- IndexedDB (tekrar.html ile aynı depo) ---------- */
+  function kvAc(){ return new Promise(function(res){ try{ var r=indexedDB.open("sentence-mode",1); r.onupgradeneeded=function(){ try{ if(!r.result.objectStoreNames.contains("kv")) r.result.createObjectStore("kv"); }catch(e){} }; r.onsuccess=function(){res(r.result)}; r.onerror=function(){res(null)}; }catch(e){res(null)} }); }
+  function kvOnek(on){
+    return kvAc().then(function(db){
+      if (!db) return {};
+      return new Promise(function(res){
+        try{ var out={}, q=db.transaction("kv","readonly").objectStore("kv").openCursor();
+          q.onsuccess=function(e){ var c=e.target.result; if(c){ var k=String(c.key); if(k.indexOf(on)===0) out[k.slice(on.length)]=c.value; c.continue(); } else { db.close(); res(out); } };
+          q.onerror=function(){ db.close(); res({}); };
+        }catch(e){ try{db.close()}catch(_){ } res({}); }
+      });
+    });
+  }
+  function kvYaz(k,v){
+    return kvAc().then(function(db){
+      if (!db) return;
+      return new Promise(function(res){
+        try{ var tx=db.transaction("kv","readwrite"); tx.objectStore("kv").put(v,k); tx.oncomplete=function(){db.close();res()}; tx.onerror=function(){db.close();res()}; }
+        catch(e){ try{db.close()}catch(_){ } res(); }
+      });
+    });
+  }
+  /* tekrar.html srsStep + qualityOf ile aynı */
+  function kalite(sc){ if (sc>=90) return 5; if (sc>=70) return 4; return 3; }
+  function srsAdim(n, zor, q){
+    n = n && typeof n === "object" ? n : {rep:0,ef:2.5,interval:0,due:0,last:0};
+    var r = Date.now();
+    if (zor){ n.rep=0; n.interval=0; n.ef=Math.max(1.3,(n.ef||2.5)-0.2); n.lapses=(n.lapses||0)+1; }
+    else { n.rep=(n.rep||0)+1;
+      n.ef=Math.max(1.3,Math.min(3.0,(n.ef||2.5)+(0.1-(5-q)*(0.08+(5-q)*0.02))));
+      if(n.rep===1) n.interval=1; else if(n.rep===2) n.interval=4; else n.interval=Math.round((n.interval||4)*n.ef);
+    }
+    n.last=r; n.due=r+n.interval*DAY;
+    return n;
+  }
+  /* tekrar.html'deki günlük tekrar sayacı ve günün planı */
+  function gunSayaciArtir(){
+    try{
+      var iso = new Date().toISOString().slice(0,10), k = "dh-tekrar-gun-"+iso;
+      var g = JSON.parse(localStorage.getItem(k)||"null");
+      if (g){ g.yapilan=(g.yapilan|0)+1; localStorage.setItem(k, JSON.stringify(g)); }
+      var pk = "dh-gun-plan-"+iso, p = JSON.parse(localStorage.getItem(pk)||"null");
+      if (p && p.adimlar && g){
+        for (var a=0;a<p.adimlar.length;a++) if (String(p.adimlar[a].tip||p.adimlar[a].id)==="tekrar"){
+          p.adimlar[a].yapilan=Math.min(p.adimlar[a].hedef|0, g.yapilan|0); break;
+        }
+        localStorage.setItem(pk, JSON.stringify(p));
+      }
+    }catch(e){}
+    try{ window.dhBumpDailyTracker && window.dhBumpDailyTracker("review"); }catch(e){}
+  }
+
+  /* ---------- içerik ---------- */
+  function icerikHazirla(){
+    var simdi = Date.now();
+    return Promise.resolve(window.DHModul && DHModul.hazir ? DHModul.hazir() : null).then(function(){
+      return kvOnek("srs:");
+    }).then(function(srs){
+      var vade = Object.keys(srs).filter(function(id){ var r=srs[id]||{}; return (r.due||0) <= simdi; })
+        .sort(function(a,b){ return (srs[a].due||0)-(srs[b].due||0); }).slice(0, OTURUM*2);
+      if (!vade.length) return null;
+      return DHSent.byIds(vade).then(function(m){
+        var out = [];
+        vade.forEach(function(id){ var k=m[id]; if (k && k.en && k.tr && benzerlik(k.tr,k.en) < 70) out.push({id:id, en:k.en, tr:k.tr, srs:srs[id]}); });
+        return out.length ? { tur:"tekrar", liste: out.slice(0, OTURUM) } : null;
+      });
+    }).then(function(r){
+      if (r) return r;
+      return DHProfile.nextModule().then(function(mod){
+        if (!mod) return { tur:"yeni", liste:[] };
+        return DHSent.module(mod).then(function(kayitlar){
+          var out = (kayitlar||[]).filter(function(k){ return k && k.en && k.tr; }).slice(0, 10)
+            .map(function(k){ return { id:k.id, en:k.en, tr:k.tr }; });
+          return { tur:"yeni", liste: out, mod: mod };
+        });
+      });
+    });
+  }
+
+  /* ---------- ses: konuşma ---------- */
+  function sesSec(dil){
+    try{
+      var vs = speechSynthesis.getVoices() || [];
+      if (dil === "en"){
+        var g = JSON.parse(localStorage.getItem("dh-voice:__global__")||"null") || {};
+        var ad = g.name || "";
+        var t = vs.filter(function(v){ return v.name === ad; })[0];
+        if (t) return t;
+      }
+      var uy = vs.filter(function(v){ return String(v.lang||"").toLowerCase().indexOf(dil) === 0; });
+      return uy.filter(function(v){ return /Google|Natural|Neural|Enhanced|Premium|Siri/i.test(v.name); })[0] || uy[0] || null;
+    }catch(e){ return null; }
+  }
+  function soyle(metin, dil, hiz){
+    return new Promise(function(res){
+      if (!metin || !window.speechSynthesis) return res();
+      durumGoster("konusuyor");
+      var bitti = false, son = function(){ if (bitti) return; bitti = true; clearTimeout(zt); res(); };
+      var zt = setTimeout(son, 2500 + String(metin).length * 110);
+      try{
+        var u = new SpeechSynthesisUtterance(metin);
+        u.lang = dil === "en" ? "en-US" : "tr-TR";
+        var v = sesSec(dil); if (v){ u.voice = v; u.lang = v.lang; }
+        u.rate = hiz || (dil === "en" ? 0.9 : 1);
+        u.onend = son; u.onerror = son;
+        speechSynthesis.speak(u);
+      }catch(e){ son(); }
+    });
+  }
+  function bekle(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+  var _ses = null;
+  function bip(){
+    try{
+      _ses = _ses || new (window.AudioContext || window.webkitAudioContext)();
+      var o = _ses.createOscillator(), g = _ses.createGain();
+      o.frequency.value = 880; g.gain.value = 0.15;
+      o.connect(g); g.connect(_ses.destination);
+      o.start(); o.stop(_ses.currentTime + 0.18);
+    }catch(e){}
+    return bekle(250);
+  }
+
+  /* ---------- ses: dinleme ---------- */
+  var KOMUT = { dur:/^(stop|pause)\b/, gec:/^(skip|next)\b/, tekrar:/^(repeat|again)\b/ };
+  function dinle(hedef){
+    return new Promise(function(res){
+      if (!SR) return res({ hata:"yok" });
+      var rec, sonuc = null, bitti = false;
+      var son = function(x){ if (bitti) return; bitti = true; clearTimeout(zt); aktifRec = null; try{ rec && rec.abort(); }catch(e){} durumGoster(""); res(x); };
+      var zt = setTimeout(function(){ son(sonuc || { metin:"" }); }, 9000);
+      try{
+        rec = new SR();
+        rec.lang = "en-US"; rec.interimResults = false; rec.maxAlternatives = 4; rec.continuous = false;
+        rec.onresult = function(e){
+          var r = e.results[e.results.length-1], en = "", enIyi = -1;
+          for (var i=0;i<r.length;i++){ var s = benzerlik(r[i].transcript, hedef); if (s > enIyi){ enIyi = s; en = r[i].transcript; } }
+          sonuc = { metin: en };
+        };
+        rec.onerror = function(e){
+          var h = e && e.error;
+          if (h === "not-allowed" || h === "service-not-allowed" || h === "audio-capture") son({ hata:"izin" });
+          else son(sonuc || { metin:"" });
+        };
+        rec.onend = function(){ son(sonuc || { metin:"" }); };
+        aktifRec = rec;
+        durumGoster("dinliyor");
+        rec.start();
+      }catch(e){ son({ hata:"yok" }); }
+    });
+  }
+
+  /* ---------- ekran ---------- */
+  function durumGoster(d){
+    $("durum").setAttribute("data-d", d);
+    $("durumYazi").textContent = d === "dinliyor" ? "Dinliyorum — söyleyin" : d === "konusuyor" ? "Konuşuyorum" : (duraklat ? "Durduruldu" : "Bekliyor");
+  }
+  function ekranTemizle(k){
+    $("sayac").textContent = (sira+1) + " / " + liste.length;
+    $("tr").textContent = k.tr;
+    $("en").textContent = "";
+    $("duydum").textContent = "";
+    $("sonuc").textContent = ""; $("sonuc").setAttribute("data-s","");
+  }
+  function sonucYaz(metin, iyi){ $("sonuc").textContent = metin; $("sonuc").setAttribute("data-s", iyi ? "iyi" : "kotu"); }
+
+  /* ---------- akış ---------- */
+  function engel(){
+    /* Durdur'a basıldıysa devam edilene kadar bekle */
+    if (bitirIstek) return Promise.reject({ bitir:true });
+    if (gecIstek && !duraklat) return Promise.reject({ gec:true });
+    if (!duraklat) return Promise.resolve();
+    return bekle(300).then(engel);
+  }
+  function komutMu(metin){
+    var t = String(metin||"").toLowerCase().trim();
+    if (KOMUT.dur.test(t)) return "dur";
+    if (KOMUT.gec.test(t)) return "gec";
+    if (KOMUT.tekrar.test(t)) return "tekrar";
+    return "";
+  }
+
+  function birCumle(k, ilk){
+    gecIstek = false; tekrarIstek = false;
+    ekranTemizle(k);
+    var adimlar = Promise.resolve();
+    var once = ilk ? (mod === "dinle" ? "Türkçesini söyleyeceğim, biraz düşünün, sonra İngilizcesini duyacaksınız." :
+                      tur === "tekrar" ? "Türkçesini söyleyeceğim. Bip sesinden sonra İngilizcesini söyleyin." :
+                                         "Önce Türkçesini, sonra İngilizcesini duyacaksınız. Bip sesinden sonra siz de söyleyin.") : "";
+    if (once) adimlar = adimlar.then(function(){ return soyle(once, "tr"); });
+    adimlar = adimlar.then(engel).then(function(){ return soyle(k.tr, "tr"); });
+
+    if (mod === "dinle"){
+      return adimlar.then(function(){ return bekle(3500); }).then(engel).then(function(){
+        $("en").textContent = k.en;
+        return soyle(k.en, "en");
+      }).then(function(){ return bekle(600); }).then(function(){ return soyle(k.en, "en", 0.75); })
+        .then(function(){ sayilar.toplam++; return bekle(900); });
+    }
+
+    if (tur === "yeni"){
+      adimlar = adimlar.then(function(){ $("en").textContent = k.en; return soyle(k.en, "en"); })
+        .then(function(){ return soyle(k.en, "en", 0.75); });
+    }
+
+    function cevapAl(deneme){
+      if (tekrarIstek){ tekrarIstek = false; return engel().then(function(){ return soyle(k.tr, "tr"); }).then(function(){ return cevapAl(deneme); }); }
+      return engel().then(bip).then(function(){ return dinle(k.en); }).then(function(c){
+        if (c.hata === "izin" || c.hata === "yok"){
+          mod = "dinle";
+          return soyle("Mikrofonu kullanamıyorum. Sadece dinleme biçimine geçiyorum.", "tr").then(function(){ return { atla:true }; });
+        }
+        if (duraklat) return engel().then(function(){ return cevapAl(deneme); });
+        if (tekrarIstek){ tekrarIstek = false; return soyle(k.tr, "tr").then(function(){ return cevapAl(deneme); }); }
+        if (gecIstek) return { gec:true };
+        var ko = komutMu(c.metin);
+        if (ko === "dur"){ duraklat = true; dugmeGuncelle(); return soyle("Durdurdum. Devam etmek için ekrandaki Devam et düğmesine basın.", "tr").then(engel).then(function(){ return cevapAl(deneme); }); }
+        if (ko === "gec") return { gec:true };
+        if (ko === "tekrar") return soyle(k.tr, "tr").then(function(){ return cevapAl(deneme); });
+        if (gecIstek) return { gec:true };
+        if (!c.metin && deneme < 2) return soyle("Duyamadım. Bir daha söyleyin.", "tr").then(function(){ return cevapAl(deneme+1); });
+        return { metin: c.metin || "" };
+      });
+    }
+
+    return adimlar.then(function(){ return cevapAl(1); }).then(function(c){
+      if (c.atla) return birCumle(k, false);
+      if (c.gec){ gecIstek = false; $("en").textContent = k.en; return soyle("Geçiyoruz. Doğrusu:", "tr").then(function(){ return soyle(k.en, "en"); }); }
+      var sc = benzerlik(c.metin, k.en);
+      $("duydum").textContent = c.metin ? "Duyduğum: “" + c.metin + "”" : "Bir şey duyamadım.";
+      $("en").textContent = k.en;
+      sayilar.toplam++;
+      var iyi = sc >= 70;
+      if (iyi) sayilar.dogru++;
+      var not = (tur === "tekrar") ? notla(k, sc) : Promise.resolve();
+      var ses;
+      if (sc >= 85){ sonucYaz("✓ Doğru!", true); ses = soyle(rastgele(["Doğru!", "Çok güzel!", "Harika!", "Aferin!"]), "tr").then(function(){ return soyle(k.en, "en"); }); }
+      else if (iyi){ sonucYaz("✓ Çok yakın", true); ses = soyle("Çok yakın. Doğrusu:", "tr").then(function(){ return soyle(k.en, "en"); }); }
+      else {
+        sonucYaz("Doğrusu yukarıda", false);
+        ses = soyle("Doğrusu şöyle:", "tr").then(function(){ return soyle(k.en, "en", 0.8); })
+          .then(function(){ return soyle("Siz de söyleyin.", "tr"); })
+          .then(engel).then(bip).then(function(){ return dinle(k.en); })
+          .then(function(c2){
+            if (!c2 || c2.hata) return;
+            var s2 = benzerlik(c2.metin, k.en);
+            $("duydum").textContent = c2.metin ? "Duyduğum: “" + c2.metin + "”" : "";
+            return soyle(s2 >= 70 ? "Güzel, şimdi oldu." : "Olsun, bir dahaki sefere. Devam edelim.", "tr");
+          });
+      }
+      return Promise.all([not, ses]);
+    }).then(function(){ return bekle(700); });
+  }
+  function rastgele(a){ return a[Math.floor(Math.random()*a.length)]; }
+
+  function notla(k, sc){
+    var zor = sc < 70;
+    var rec = srsAdim(k.srs, zor, kalite(sc));
+    try{ if (window.DHProgress && DHProgress.recordResult) DHProgress.recordResult("sentence:"+k.id, !zor); }catch(e){}
+    if (!zor) gunSayaciArtir();
+    return kvYaz("srs:"+k.id, rec);
+  }
+
+  function dongu(){
+    if (bitirIstek || sira >= liste.length) return bitis();
+    return birCumle(liste[sira], sira === 0).then(function(){
+      if (tekrarIstek){ tekrarIstek = false; return dongu(); }
+      sira++;
+      return dongu();
+    }).catch(function(e){
+      if (e && e.bitir) return bitis();
+      sira++;
+      return dongu();
+    });
+  }
+
+  function bitis(){
+    calisiyor = false;
+    try{ speechSynthesis.cancel(); }catch(e){}
+    try{ aktifRec && aktifRec.abort(); }catch(e){}
+    try{ uyanik && uyanik.release(); }catch(e){}
+    $("sahne").hidden = true; $("bitti").hidden = false;
+    var ozet = sayilar.toplam + " cümle çalıştınız.";
+    if (mod !== "dinle" && sayilar.toplam) ozet += " " + sayilar.dogru + " tanesini doğru söylediniz.";
+    $("bittiOzet").textContent = ozet;
+    bitirIstek = false;
+    return soyle("Bugünlük bu kadar. " + ozet + " Aferin!", "tr");
+  }
+
+  function dugmeGuncelle(){ $("durdur").textContent = duraklat ? "Devam et" : "Durdur"; durumGoster($("durum").getAttribute("data-d")); }
+
+  /* ---------- düğmeler ---------- */
+  function modSec(m){
+    mod = m;
+    $("modSesle").setAttribute("aria-pressed", m === "sesle" ? "true" : "false");
+    $("modDinle").setAttribute("aria-pressed", m === "dinle" ? "true" : "false");
+  }
+  $("modSesle").onclick = function(){ if (SR) modSec("sesle"); };
+  $("modDinle").onclick = function(){ modSec("dinle"); };
+  $("durdur").onclick = function(){
+    duraklat = !duraklat;
+    if (duraklat){ try{ speechSynthesis.cancel(); }catch(e){} try{ aktifRec && aktifRec.abort(); }catch(e){} }
+    dugmeGuncelle();
+  };
+  $("gec").onclick = function(){ gecIstek = true; try{ speechSynthesis.cancel(); }catch(e){} try{ aktifRec && aktifRec.abort(); }catch(e){} };
+  $("tekrarSoyle").onclick = function(){ tekrarIstek = true; try{ speechSynthesis.cancel(); }catch(e){} try{ aktifRec && aktifRec.abort(); }catch(e){} };
+  $("bitir").onclick = function(){ bitirIstek = true; duraklat = false; try{ speechSynthesis.cancel(); }catch(e){} try{ aktifRec && aktifRec.abort(); }catch(e){} };
+
+  function basla(){
+    if (calisiyor || !liste.length) return;
+    calisiyor = true; sira = 0; sayilar = { toplam:0, dogru:0 }; duraklat = false; bitirIstek = false;
+    $("giris").hidden = true; $("bitti").hidden = true; $("sahne").hidden = false;
+    dugmeGuncelle();
+    /* ekran kararmasın: ellerin serbest olduğu çalışma */
+    try{ if (navigator.wakeLock) navigator.wakeLock.request("screen").then(function(w){ uyanik = w; }).catch(function(){}); }catch(e){}
+    try{ speechSynthesis.cancel(); }catch(e){}
+    dongu();
+  }
+  $("basla").onclick = basla;
+  $("yeniden").onclick = function(){ yukle().then(function(){ $("bitti").hidden = true; $("giris").hidden = false; }); };
+
+  function yukle(){
+    $("basla").disabled = true;
+    return icerikHazirla().then(function(r){
+      tur = r.tur; liste = r.liste || [];
+      if (!liste.length){
+        $("icerikNot").textContent = "Şu an çalışılacak cümle bulunamadı. Önce birkaç cümle öğrenin, sonra buraya dönün.";
+        return;
+      }
+      $("icerikNot").textContent = tur === "tekrar"
+        ? "Bugün tekrar zamanı gelen " + liste.length + " cümleniz var."
+        : "Bugün tekrar bekleyen cümleniz yok. Sıradaki konunuzdan " + liste.length + " yeni cümleyi dinleyip tekrar edeceğiz.";
+      $("basla").disabled = false;
+    }).catch(function(){
+      $("icerikNot").textContent = "Cümleler yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.";
+    });
+  }
+
+  if (!SR){
+    modSec("dinle");
+    $("modSesle").disabled = true;
+    $("mikNot").textContent = "Bu tarayıcı sesle cevabı desteklemiyor (iPhone'da böyle). Sadece dinleme biçimi kullanılacak.";
+    $("mikNot").hidden = false;
+  } else modSec("sesle");
+  try{ speechSynthesis.getVoices(); }catch(e){}
+  yukle();
+})();
+</script>
+<script src="./ux-boost.js?v=1"></script>
+<script src="./atlas-effects.js?v=2"></script>
+  <script src="product-improvements.js" defer></script>
+<script src="./dh-button-guard.js?v=1" defer></script>
+</body>
+</html>

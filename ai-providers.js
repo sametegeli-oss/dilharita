@@ -578,7 +578,7 @@
       var p = avail[idx++];
       /* Tek sağlayıcı takılırsa (yavaş ağ, düşünen model) bütün süreyi o yemesin:
          18 sn'de cevap yoksa sıradakine geç. */
-      var yavas = new Promise(function(_,rej){ setTimeout(function(){ rej({code:"slow",provider:p.id}); }, (idx<avail.length||hasNvidia)?18000:600000); });
+      var yavas = new Promise(function(_,rej){ setTimeout(function(){ rej({code:"slow",provider:p.id}); }, (idx<avail.length||hasNvidia)?(opts.slowMs||18000):600000); });
       return Promise.race([callProvider(p, messages, opts), yavas]).then(function(result){
         showSource(sourceInfo(p.id,result.model));
         try{ if(global.DHAI && DHAI.noteSuccess) DHAI.noteSuccess(); }catch(e){}
