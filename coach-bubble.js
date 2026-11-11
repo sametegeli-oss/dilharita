@@ -232,7 +232,10 @@
       +'<div style="text-align:center;margin-top:9px;font-size:11.5px;color:#64748b">✓ ne yaptım · ○ ne kaldı · ▸ şu an buradayım</div>'
       +kapatBtn;
     document.body.appendChild(box);
-    try{ var ph=document.getElementById("dhPlanPill"); if(ph){ var pr2=ph.getBoundingClientRect(); box.style.bottom=Math.round(innerHeight-pr2.top+8)+"px"; } }catch(e){}
+    try{ var ph=document.getElementById("dhPlanPill");
+      if(ph){ var pr2=ph.getBoundingClientRect(); box.style.bottom=Math.round(innerHeight-pr2.top+8)+"px"; }
+      else box.style.bottom=Math.round(innerHeight-altCubukUst()+10)+"px";   /* menüden açıldı */
+    }catch(e){}
     document.getElementById("dhPlanPanelX").onclick=function(){ box.remove(); };
     var kb=document.getElementById("dhPlanClose"); if(kb) kb.onclick=function(){ box.remove(); try{ if(window.dhCoachDayClose) window.dhCoachDayClose(); }catch(e){} };
   }
@@ -244,9 +247,16 @@
   function dhTamEkran(){
     return DH_TAM_EKRAN.test(location.pathname) || !!document.querySelector(".chat-shell,.video-page");
   }
+  /* MENÜYE TAŞINDI (kullanıcı isteği, 11 Kasım): kolay görünümün Menü'sü
+     varsa plan kutusu ve koç yüzü ekranda kaymaz; Menü açılınca "Bugün"
+     bölümünde görünür (kolay-kullanim.js bugunCiz). Menü yoksa eski davranış. */
+  function dhKolayMenu(){
+    try{ return !!(window.DHKolay && DHKolay.ayar && DHKolay.ayar().acik) && !!document.querySelector("[data-kk-menu]"); }catch(e){ return false; }
+  }
   function dhMountPlanPill(){
     if(/seviye-testi\.html|modul-testi\.html|module-test/.test(location.pathname)) return;
     var old=document.getElementById("dhPlanPill"); if(old) old.remove();
+    if(dhKolayMenu()) return;
     if(dhTamEkran()) return;
     var pr=dhPlanProgress(); if(!pr) return;
     var pill=document.createElement("button"); pill.id="dhPlanPill";
@@ -755,7 +765,10 @@
 
   var avatar=document.createElement("div"); avatar.className="dh-avatar"; avatar.title="Koçun — tıkla, son yorumunu tekrar göster";
   avatar.innerHTML='<div class="ring"></div>'+coachFace("tip", true);
-  function mount(){ document.body.appendChild(box); document.body.appendChild(avatar); }
+  function mount(){ document.body.appendChild(box); document.body.appendChild(avatar); yuzGorunurluk(); }
+  /* Koç yüzü: kolay görünümün Menü'sü varsa ekranda durmaz (Menü → Koçum) */
+  function yuzGorunurluk(){ try{ avatar.style.display = dhKolayMenu() ? "none" : ""; }catch(e){} }
+  setTimeout(yuzGorunurluk, 300); setTimeout(yuzGorunurluk, 1500);
   if(document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
 
   /* ---------- BALON VE KOÇ YÜZÜ DÜĞMELERİ ÖRTMESİN (kullanıcı kararı: "A") ----------
@@ -908,7 +921,7 @@
   setTimeout(function(){ yerlestirSonra(0); }, 1500);
   /* Ekran sonradan değişebilir (sohbet açılış penceresi kapanınca yazı satırı
      görünür olur): plan kutusunun yeri ara ara yeniden hesaplanır. */
-  setInterval(function(){ try{ if(!document.hidden) pillYerlestir(document.getElementById("dhPlanPill")); }catch(e){} }, 2000);
+  setInterval(function(){ try{ if(!document.hidden){ yuzGorunurluk(); pillYerlestir(document.getElementById("dhPlanPill")); } }catch(e){} }, 2000);
   /* Sonradan açılan pencereler (Hatanı Düzelt gibi) için koç yüzünü yeniden yerleştir */
   var yuzT=null;
   try{
@@ -990,6 +1003,23 @@
     if(lastDayClose && dhDayClosed()){ lastMsg=""; lastDayClose=false; }
     if(lastMsg && Date.now()-lastAt<600000){ box.className="dh-coach "+lastKind; box.innerHTML='<span class="face">'+coachFace(lastKind)+'</span><span style="flex:1">'+lastMsg.replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];})+'</span>'+focusBtnHtml(lastFocus)+actionBtnHtml(lastAction)+dayCloseBtnHtml(lastDayClose)+reopenBtnHtml(lastReopen)+'<span class="x" role="button" aria-label="Kapat" onclick="event.stopPropagation();this.parentElement.classList.remove(\'show\')">✕</span>'; box.classList.add("show"); clearTimeout(hideT); hideT=setTimeout(function(){ box.classList.remove("show"); },7500); }
     else { try{ window.__dhCoachManualStatus && window.__dhCoachManualStatus(); }catch(e){} }
+  };
+
+  /* Menü için (kolay-kullanim.js "Bugün" bölümü) */
+  window.dhCoachMenuBilgi=function(){
+    var pr=null; try{ pr=dhPlanProgress(); }catch(e){}
+    return { plan: pr ? { yapilan:pr.doneCount, toplam:pr.total, sirada:(pr.current&&pr.current.label)||"" } : null };
+  };
+  window.dhCoachPlanAc=function(){
+    var pr=null; try{ pr=dhPlanProgress(); }catch(e){}
+    if(!pr) return false;
+    var ex=document.getElementById("dhPlanPanel"); if(ex) ex.remove();
+    dhTogglePlanPanel(pr); return true;
+  };
+  window.dhCoachGoster=function(){
+    try{ avatar.onclick(); }catch(e){}
+    /* Durum hesabı bazı sayfalarda birkaç saniye sürebiliyor: boş beklemesin */
+    setTimeout(function(){ if(!box.classList.contains("show")) dhCoachSay("Durumunuza bakıyorum…","tip"); }, 1200);
   };
 
   /* ---------- ORTAK TÜR ETİKETİ + SOMUT TAVSİYE ---------- */
@@ -1412,7 +1442,11 @@
     return {msg:msg, kind:kind, actionHref:git&&git.actionHref, actionLabel:git&&git.actionLabel};
   }
   window.__dhCoachManualStatus=async function(){
-    try{ var s=await buildStatusMessage(true); if(s.msg) dhCoachSay(s.msg, s.kind, null, {dayClose:!!s.dayClose, reopen:!!s.reopen, actionHref:s.actionHref, actionLabel:s.actionLabel}); }catch(e){}
+    try{ var s=await buildStatusMessage(true);
+      if(s.msg) dhCoachSay(s.msg, s.kind, null, {dayClose:!!s.dayClose, reopen:!!s.reopen, actionHref:s.actionHref, actionLabel:s.actionLabel});
+      /* Menüden "Koçum" denince hiçbir şey olmaması kafa karıştırıyordu */
+      else dhCoachSay("Şu an yeni bir yorumum yok. Çalışmaya devam edin; bir şey fark edersem burada söylerim.","tip");
+    }catch(e){}
   };
   function allPlanStepsDone(){
     /* koç kartındaki (koc.js) "tamamlandı" kurallarının BİREBİR kopyası —

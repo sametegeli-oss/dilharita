@@ -742,6 +742,9 @@
       ["🃏", "Kelime Öğren", "En sık kullanılan kelimeler", "kelime-ogren.html"],
       ["✍️", "Cümle Yazma", "Türkçesini gör, İngilizcesini yaz", "practice.html"],
       ["🎙️", "Konuşma Pratiği", "Sesli sohbet et", "chat.html"],
+      ["✨", "Bana Özel Ders", "Amacına göre hazırlanan cümleler", "ozel-ders.html"],
+      ["🎧", "Sesli Çalış", "Ekrana bakmadan, dinleyip söyleyerek", "sesli-calis.html"],
+      ["💬", "Nasıl Derim?", "Türkçesini söyle, İngilizcesini öğren", "nasil-derim.html"],
       ["🧑‍🏫", "Öğretmene Sor", "Türkçe anlatımlı öğretmen", "teacher.html"]
     ]],
     ["Takip", [
@@ -783,7 +786,7 @@
   function menuKur(){
     var html = '<div class="kk-pencere" role="dialog" aria-modal="true" aria-labelledby="kkMenuBaslik">'
       + '<header><h2 id="kkMenuBaslik">Menü</h2><button type="button" class="kk-kapat" data-kk-kapat>✕ Kapat</button></header>'
-      + '<div class="kk-kaydir">';
+      + '<div class="kk-kaydir"><div id="kkBugun"></div>';
     MENU.forEach(function(g){
       html += '<h3 class="kk-grup">' + g[0] + '</h3><ul class="kk-liste">';
       g[1].forEach(function(x){
@@ -804,6 +807,29 @@
     menuPerde = el("div", "kk-ui kk-perde", html);
     menuPerde.hidden = true;
     doc.body.appendChild(menuPerde);
+  }
+
+  /* "Bugün" bölümü: plan ve koç, ekranda kayan düğme yerine burada (coach-bubble.js
+     dhCoachMenuBilgi / dhCoachPlanAc / dhCoachGoster). Menü her açılışta tazelenir. */
+  function bugunCiz(){
+    var kap = doc.getElementById("kkBugun"); if (!kap) return;
+    if (!g.dhCoachMenuBilgi){ kap.innerHTML = ""; return; }
+    var b = {}; try{ b = g.dhCoachMenuBilgi() || {}; }catch(e){}
+    var p = b.plan, html = '<h3 class="kk-grup">Bugün</h3><ul class="kk-liste">';
+    if (p){
+      var bitti = p.toplam > 0 && p.yapilan >= p.toplam;
+      var alt = bitti ? "Hepsi tamam — gün bitti 🎉" : (p.yapilan + "/" + p.toplam + " yapıldı" + (p.sirada ? " · Sıradaki: " + p.sirada : ""));
+      html += '<li><button type="button" class="kk-oge kk-oge-btn" data-kk-plan>'
+        + '<span class="kk-i" aria-hidden="true">📋</span>'
+        + '<span><b>Bugünkü planım</b><small></small></span>'
+        + '<span class="kk-ok" aria-hidden="true">›</span></button></li>';
+    }
+    html += '<li><button type="button" class="kk-oge kk-oge-btn" data-kk-koc>'
+      + '<span class="kk-i" aria-hidden="true">🧑‍🏫</span>'
+      + '<span><b>Koçum</b><small>Son yorumunu ve ipucunu göster</small></span>'
+      + '<span class="kk-ok" aria-hidden="true">›</span></button></li></ul>';
+    kap.innerHTML = html;
+    if (p){ var sm = kap.querySelector("[data-kk-plan] small"); if (sm) sm.textContent = alt; }
   }
 
   function yaziKur(){
@@ -920,7 +946,9 @@
       var t = e.target && e.target.closest ? e.target : null;
       if (!t) return;
       var x;
-      if ((x = t.closest("[data-kk-menu]"))){ e.preventDefault(); pencereKapat(yaziPerde); pencereAc(menuPerde, x); return; }
+      if ((x = t.closest("[data-kk-menu]"))){ e.preventDefault(); pencereKapat(yaziPerde); bugunCiz(); pencereAc(menuPerde, x); return; }
+      if (t.closest("[data-kk-plan]")){ e.preventDefault(); pencereKapat(menuPerde); setTimeout(function(){ try{ g.dhCoachPlanAc && g.dhCoachPlanAc(); }catch(err){} }, 60); return; }
+      if (t.closest("[data-kk-koc]")){ e.preventDefault(); pencereKapat(menuPerde); setTimeout(function(){ try{ g.dhCoachGoster && g.dhCoachGoster(); }catch(err){} }, 60); return; }
       if ((x = t.closest("[data-kk-yazi-ac]"))){
         e.preventDefault(); pencereKapat(menuPerde);
         pencereAc(yaziPerde, doc.querySelector(".kk-alt [data-kk-yazi-ac]") || x); return;
@@ -1031,7 +1059,7 @@
     boyut: function(k){ if (BOYUTLAR[k]){ ayar.boyut = k; yaz(ayar); olcegiYenile(); yaziBoya(); } },
     ac: function(){ modDegistir(true); },
     kapat: function(){ modDegistir(false); },
-    menu: function(){ pencereAc(menuPerde); },
+    menu: function(){ bugunCiz(); pencereAc(menuPerde); },
     yazi: function(){ pencereAc(yaziPerde); },
     /* Tanılama: bir öğe için kontrast kararını ve zemini döndürür */
     _tani: function(e){ var z = zemin(e); return { zemin: z && z.renk, sahip: z && z.sahip && z.sahip.tagName, karar: kontrastKarar(e, getComputedStyle(e), 18) }; }
