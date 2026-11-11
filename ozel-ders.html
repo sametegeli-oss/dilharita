@@ -35,6 +35,10 @@
              border:2px solid var(--dh-cizgi-kuvvet, #45557d); background:var(--dh-yuzey-2); color:var(--dh-text); }
   .od-seviyeler{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:8px 0; }
   .od-seviyeler .dh-secenek{ min-height:64px; font-size:19px; font-weight:700; }
+  .od-seviyeler .dh-secenek[aria-pressed="true"],
+  .od-amaclar .dh-secenek[aria-pressed="true"]{ border:3px solid var(--dh-ok) !important; background:rgba(24,160,88,.18) !important; }
+  .od-seviyeler .dh-secenek[aria-pressed="true"]::after{ content:"✓"; margin-left:auto; font-size:24px; font-weight:800; color:var(--dh-ok); }
+  .od-ayrac{ border:0; border-top:var(--dh-bd); margin:18px 0 14px; }
   select.od-giris{ font-size:18px; }
   .od-koc{ display:flex; gap:14px; align-items:flex-start; }
   .od-koc .dh-avatar{ flex:0 0 auto; }
@@ -70,9 +74,10 @@
     </div>
     <div id="amacSecim" hidden>
       <h2 class="od-buyuk" id="amacBaslik">İngilizceyi ne için öğreniyorsunuz?</h2>
-      <p class="od-not" style="margin-top:0">Birden fazlasını seçebilirsiniz.</p>
+      <p class="od-not" style="margin-top:0">Birden fazlasını seçebilirsiniz. Seçiminiz hemen kaydedilir.</p>
       <div class="od-amaclar" id="amacListe"></div>
-      <button class="dh-btn dh-btn--birincil dh-btn--tam" id="amacKaydet" type="button" style="margin-top:12px" disabled>Kaydet</button>
+      <button class="dh-btn dh-btn--birincil dh-btn--tam" id="amacKaydet" type="button" style="margin-top:12px" disabled>Tamam</button>
+      <p class="od-not" id="amacNot" hidden>En az bir amaç seçin.</p>
     </div>
   </section>
 
@@ -97,6 +102,7 @@
       <button class="dh-btn dh-btn--sade dh-btn--tam" id="cumleleriGoster" type="button" style="margin-top:8px">Cümlelere göz at</button>
     </div>
 
+    <hr class="od-ayrac" id="hazirAyrac" hidden>
     <div id="hazirlaAlan" hidden>
       <button class="dh-btn dh-btn--birincil dh-btn--tam" id="hazirla" type="button" style="min-height:72px;font-size:21px">✨ Bana özel ders hazırla</button>
       <p class="od-not" id="yolNot"></p>
@@ -194,6 +200,12 @@
         if (i>=0) secim.splice(i,1); else secim.push(a.id);
         b.setAttribute("aria-pressed", secim.indexOf(a.id)>=0 ? "true" : "false");
         $("amacKaydet").disabled = !secim.length;
+        /* Kaydet'e basmayı unutmak dersi engelliyordu: seçim anında kaydedilir */
+        if (secim.length && A.kaydet(secim)){
+          $("amacOzetYazi").textContent = A.secili().map(function(id){ var x=A.bul(id); return x.ikon+" "+x.ad; }).join(", ");
+          anaCiz();
+        }
+        $("amacNot").hidden = !!secim.length;
       };
       if (a.ozel){
         var sat = document.createElement("div"); sat.className = "od-satir";
@@ -216,8 +228,11 @@
     var ids = A.secili();
     var b = O.bekleyen();
     $("durum").hidden = true;
+    /* Hazırda bekleyen ders olsa da yeni ders hazırlanabilir */
     $("hazirAlan").hidden = !b;
-    $("hazirlaAlan").hidden = !!b;
+    $("hazirlaAlan").hidden = false;
+    $("hazirAyrac").hidden = !b;
+    $("hazirla").textContent = b ? "Yeni bir özel ders hazırla" : "✨ Bana özel ders hazırla";
     if (b){
       $("hazirAd").textContent = gorunenAd(b);
       $("hazirAlt").textContent = b.n + " cümle · " + b.seviye + " seviyesi";
@@ -371,6 +386,7 @@
     $("hata").hidden = true;
     $("hazirlaAlan").hidden = true;
     $("hazirAlan").hidden = true;
+    $("hazirAyrac").hidden = true;
     $("onayAlan").hidden = false;
     $("kocSoz").innerHTML = '<p>' + kocMetni(amac, null).join('</p><p>') + '</p>';
     try{ $("anaKart").scrollIntoView({block:"start", behavior:"smooth"}); }catch(e){}
@@ -392,6 +408,7 @@
     $("hata").hidden = true;
     $("hazirlaAlan").hidden = true;
     $("hazirAlan").hidden = true;
+    $("hazirAyrac").hidden = true;
     $("konuHazirla").disabled = true;
     $("durum").hidden = false;
     $("durumYazi").textContent = "Hazırlanıyor…";
