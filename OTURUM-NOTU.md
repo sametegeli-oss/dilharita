@@ -5,7 +5,7 @@
 > Kullanıcı kısa yazar (",2", "A", "devam et"). Kısa cevabı son sorulan sorunun cevabı say; yorumunu bir cümleyle söyle ve devam et.
 
 ## ▶ ŞU AN NEREDEYİZ — buradan başla
-Son yayın: SW **`dh-sw-v407`** (11 Kasım öğlen). Çalışma ağacı temiz, her şey yayında.
+Son yayın: SW **`dh-sw-v409`** (11 Kasım). Çalışma ağacı temiz, her şey yayında.
 
 **11 Kasım sabahı yapılanlar (kullanıcı "planı uygula, tam sesli modu da ekle" dedi):**
 1. **Amaç sorusu yenilendi** — `dh-amac.js` (tek kaynak): Seyahat · Aile ve torunlar · Sağlık · Günlük hayat · Zihnimi canlı tutmak · İş · Sınav. `basla.html`'de çoklu seçim (dokun → ✓, "Devam et"); profilde `amac` (ilk) + `amaclar` (hepsi). Yeni 3 amaç için ilk cümleler eklendi.
@@ -16,6 +16,7 @@ Son yayın: SW **`dh-sw-v407`** (11 Kasım öğlen). Çalışma ağacı temiz, h
 5b. **Kendi konusu** (kullanıcı isteği): Bana Özel Ders'te "Konuyu kendiniz yazın" kutusu. Yazılan konu `DHAmac.ozelEkle` ile profile (`ozelKonular`, en çok 12) eklenir, kimliği `ozel:<metin>`; seçilir ve hemen o konuda ders hazırlanır. Amaç listesinde ✏️ ile görünür, "Kaldır" ile silinir; sırayla kullanılır ve arka planda da hazırlanır. Kendi konusunda jargon süzgeci kapalı.
    - Not: kolay görünümde simge+yazılı düğmeler yalnız DOKUNMATİK OLMAYAN ekranda simgeye iner; telefonda yazı görünür (test için `hasTouch:true, isMobile:true`).
 5c. **Seviye/modül seçimi + koç onayı** (kullanıcı isteği): ozel-ders.html'de "Seviye ve konu" kartı (A1–C1 düğmeleri, seviyedeki modüller açılır listede; varsayılan = sıradaki konu). "Hazırla"ya basınca koç (dh-avatar, sesli) seviyeyi, konuyu, veriden bir örnek cümleyi ve amacı anlatır; "Evet, hazırla" denince üretilir (`uret({kaynakMod})`). Türkçe modül/seviye adları `dh-modul-tanim.js` (121 modül türünün hepsi). **Arka planda onaysız üretim KAPATILDI** (`onceden()` yalnız `window.__dhOzelDersOtomatik` varsa çalışır). Gemini yolunda yarım iş yeniden yüklemede onaylı ayarla sürer.
+5d. **LDPlayer'da düzeltildi (v408–409):** hazırda bekleyen ders varken "hazırla" düğmesi gizleniyordu ("ders hazırlamıyor" şikâyeti) → ikisi birlikte görünür ("Yeni bir özel ders hazırla"). Amaç seçimi dokununca kaydedilir. Seçili seviye/amaç yeşil çerçeve + ✓. LDPlayer'da kullanıcının anahtarıyla GERÇEK üretim denendi: C1 Koşul (ileri) · Aile ve torunlar, ~1,5 dk sürdü, başarılı. Bekleme yazısı "1–2 dakika" yapıldı. LDPlayer'da sürüklemeden hemen sonraki dokunuş kaydırmayı durdurup tıklamayı yutuyor — testte dokunmadan önce 2 sn bekle.
 6. Denemeler: sahte Groq ve sahte Worker (worker kodunun kendisi) ile uçtan uca üretim, bayrak, ana sayfa kartı; sahte ses tanıma ile sesli çalış (SRS yazımı doğrulandı); `mobiltara` yeni/değişen 7 sayfa: JS hatası/404/taşma 0. `tools/mobil-tarama/mobiltara.mjs` listesine 2 yeni sayfa eklendi.
 
 **Kullanıcıdan beklenenler:** araç kurulsun mu (OZEL-DERS-ARACI.md); LDPlayer'da Bana özel ders + Sesli çalış denemesi (mikrofon izni kullanıcının işi).
