@@ -1,13 +1,32 @@
-# Oturum notu — yeni oturum için hatırlatma (10 Kasım 2026)
+# Oturum notu — yeni oturum için hatırlatma (son güncelleme: 11 Kasım 2026 sabahı)
 
 > Yeni oturumdaki Claude için: Önce bu dosyayı oku. Kullanıcıyla **Türkçe** konuş.
 > Uygulamanın kullanıcıları 50–80 yaş arası; arayüz büyük, sade ve açık yazılı olmalı.
+> Kullanıcı kısa yazar (",2", "A", "devam et"). Kısa cevabı son sorulan sorunun cevabı say; yorumunu bir cümleyle söyle ve devam et.
 
-## ▶ SIRADAKİ İŞ — buradan başla
-Düğme taraması (kullanıcının isteği: "ekranlardaki düğmelere basınca açılan iç akışlara da teker teker bak. atlama yapma") **10 Kasım akşamı bitti ve yayında** (commit `cf65418`, `47bfec8`, SW `dh-sw-v398`).
-Kullanıcı ek olarak şunu istedi: **"programı bir kullanıcı gözüyle de analiz et; zayıf ve kuvvetli yönleri keşfet, daha sonra zayıf yönleri iyileştiririz."**
-→ Aşağıdaki "Kullanıcı gözüyle değerlendirme" listesi kullanıcıya sunuldu. **Hangi zayıf yönün iyileştirileceğini kullanıcı seçecek; izinsiz değiştirme.**
-Kalan: veriye bağlı akışları LDPlayer'da doğrulamak (bu oturumda bilgisayar bağlantısı koptu, yapılamadı).
+## ▶ ŞU AN NEREDEYİZ — buradan başla
+Son yayın: commit `beb80a6`, SW **`dh-sw-v404`**. Çalışma ağacı temiz, her şey yayında.
+
+**10 Kasım akşamı–gecesi bitenler (hepsi yayında):**
+1. Düğme taraması (55 sayfa, 2 seviye, boş + örnek veri; 1.800+ tıklama, 318 farklı ekran elle incelendi) ve bulunan hataların düzeltmesi. Ayrıntı aşağıda.
+2. Bağlantısız 4 sayfa silindi (kullanıcı onayıyla).
+3. Zayıf yön 2 (koç balonu düğmeleri örtüyor) çözüldü — kullanıcı "A" seçti.
+4. Zayıf yön 1 (Gemini kopyala-yapıştır) için yalnız "2. katman" yapıldı — kullanıcı ",2" yazdı.
+
+**Sıradaki iş (11 Kasım sabahı kullanıcıya önerildi, cevap bekleniyor):**
+- **a) LDPlayer doğrulaması** (önerilen ilk iş): dünkü değişiklikler gerçek uygulamada HİÇ denenmedi. Bakılacaklar:
+  - Gemini paneli: 3 adım, "📋 Gemini’nin cevabını getir" → Android pano izni sorusu (izin verilirse tek dokunuş, verilmezse "Kendim yapıştıracağım" açılmalı). Gemini'ye gerçek soru gönderme kullanıcının işi; sadece paneli ve izin davranışını gör.
+  - Koç balonu: Hata Defteri "🎯 Bunu çöz" alıştırması, Cümle Yazma, Kelime Öğren, İngilizceyi Yaşa sahnesi — balon hiçbir düğmeyi örtmemeli, yalnız ✕ kapatmalı.
+  - Görselle Öğren'de "Daily Problems · P2" gibi alt sıradaki modüle dokunma: yerelde bazen ilk dokunuş etkisiz kaldı, sebebi bulunamadı — telefonda tekrar dene.
+  - Kesin kurallar (aşağıda) geçerli: veri silen/değiştiren düğmelere basma, izin verme.
+- **b) Zayıf yön 3:** sayfanın kendiliğinden yenilenmesi (önerilen sonraki iyileştirme). Öneri: `ux-boost.js` controllerchange'te sormadan `location.reload()` yerine, yazılmış cevap/açık panel yokken yenile, varsa "🔄 Güncelleme hazır · Yenile" bildirimi göster. Önce kullanıcıya planı anlat, onay al.
+- **c) Gemini akışının seçilmeyen katmanları** (kullanıcı seçerse): 1. katman — Öğretmen sayfasında cümlenin hazır `aiExplain` açıklaması (9138 cümlenin 5063'ünde var; teacher/teacher1 hiç kullanmıyor) önce gösterilsin, Gemini "Daha fazla" ile; 3. katman — A) sahibin Gemini anahtarıyla Cloudflare Worker aracı (kullanıcıya anahtar gerekmez; kota paylaşılır), B) rehberli ücretsiz anahtar kurulumu.
+- **d) Kalan zayıf yönler** 4–9 (aşağıdaki listede). Kural: her biri için önce "nasıl çözeceğim" anlat, kullanıcı seçsin; izinsiz değiştirme.
+
+**Çalışma yöntemi (kullanıcı bunu bekliyor):**
+- Her değişiklikten sonra ilgili sayfaları `mobiltara.mjs` ile yeniden tara (JS hatası/404/örtme sıfır olmalı), ekran görüntülerine bak, sonra `?v=` + `SW_VERSION` artır, commit + push.
+- Yerel sunucu: `python3 -m http.server 8767 --bind 127.0.0.1` — arka plan işleri 2 saatte öldürülüyor; uzun beklemede testten önce açıp sonra `pkill -f "http.server 8767"` ile kapatmak daha güvenli.
+- Değişen dosyalar: `coach-bubble.js?v=t37` (15 sayfa), `gemini-bridge.js?v=t22` (12 sayfa), `dh-avatar.js?v=4`.
 
 ### Tarama nasıl yapıldı (tekrar gerekirse)
 - Araçlar depoda: `tools/mobil-tarama/` → `/home/claude/tools/` altına kopyala.
@@ -139,8 +158,10 @@ Bilinen ipuçları:
    - OpenRouter anahtarının gerçekten cevap verdiğini bir sohbette denemek. Kayıtlı olduğu görüldü, çalışması denenmedi.
 2. **Kullanıcı kararı bekleyenler** (izinsiz değiştirme):
    - (Ders ayarları JSON olarak kalacak — kullanıcı kararı. Kıvrık tırnaklar kaydederken düz tırnağa çevriliyor.)
-3. **Sayfa içi akışlar denetlendi** (10 Kasım akşamı); LDPlayer doğrulaması ve zayıf yönlerin iyileştirilmesi kaldı.
+3. **Sayfa içi akışlar denetlendi** (10 Kasım akşamı); zayıf yön 1 (kısmen) ve 2 iyileştirildi. LDPlayer doğrulaması ve zayıf yön 3–9 kaldı — en üstteki "ŞU AN NEREDEYİZ" bölümüne bak.
 4. **Gözlenen küçük sorunlar:**
    - Doktor portresinde görüntü bozulmaları var (görsel dosyalarında; yeni çizim gerekir).
    - YouTube Eğitim Stüdyosu'nda kayan oynatıcı görülmedi; oynatıcı sayfayla birlikte kayıyor.
    - Ders örnekleri yazılım/SQL temalı; bunlar kullanıcının kendi hata geçmişinden geliyor.
+   - Görselle Öğren: alt sıradaki modül kutucuğuna ilk dokunuş bazen etkisiz (yerelde 1,5 sn içinde dokununca); sebebi bulunamadı, LDPlayer'da denenecek.
+   - `test-gemini-navigation-cloud-ai-v106.mjs` eski `.dhgb-open` sınıfını arıyor; bu test zaten eskiydi (Gemini paneli değişmeden önce de geçmiyordu).
