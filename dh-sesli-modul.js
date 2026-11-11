@@ -64,7 +64,8 @@
       "min-height:52px;margin:8px 0 10px;padding:10px 16px;border-radius:14px;" +
       "background:#0f766e;border:2px solid #5eead4;color:#fff!important;text-decoration:none!important;" +
       "font:800 18px/1.2 system-ui,-apple-system,'Segoe UI',sans-serif;box-sizing:border-box;width:100%;max-width:520px}" +
-      ".dh-sesli-modul-satir{display:flex;gap:8px;margin:8px 0 10px;max-width:520px}" +
+      ".dh-sesli-modul-satir{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 10px;max-width:520px}" +
+      ".dh-sesli-modul-satir .dh-sesli-modul-btn--sohbet{flex:1 1 100%;background:#b45309;border-color:#fcd34d}" +
       ".dh-sesli-modul-satir .dh-sesli-modul-btn{flex:1 1 0;margin:0;min-width:0;padding:10px 8px;font-size:17px}" +
       ".dh-sesli-modul-satir:has(> a[style*='display: none']){margin:0}" +
       ".dh-sesli-modul-btn--ogretmen{background:#6d28d9;border-color:#c4b5fd}" +
@@ -136,7 +137,11 @@
     s2.className = "dh-sesli-modul-btn dh-sesli-modul-btn--ogretmen"; s2.href = url + "&yuz=1";
     s2.textContent = "🧑‍🏫 Öğretmenle çalış";
     s2.setAttribute("aria-label", "Bu modülü öğretmenle çalış: konuşan öğretmen yüzüyle, dinleyip söyleyerek");
-    b.appendChild(s1); b.appendChild(s2);
+    var s3 = document.createElement("a");
+    s3.className = "dh-sesli-modul-btn dh-sesli-modul-btn--sohbet"; s3.href = "./chatmodul.html?mod=" + encodeURIComponent(a.ad);
+    s3.textContent = "💬 Bu konuda sohbet et";
+    s3.setAttribute("aria-label", "Bu modülün konusunda konuşan avatarla İngilizce sohbet et");
+    b.appendChild(s1); b.appendChild(s2); b.appendChild(s3);
     a.yer.insertAdjacentElement("afterend", b);
   }
   function planla() { if (!bekliyor) { bekliyor = true; requestAnimationFrame(ciz); } }

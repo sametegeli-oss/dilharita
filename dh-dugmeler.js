@@ -44,7 +44,8 @@
       ]], ["Bu modül", [
         ["#dhModuleListBtn", "📋 Modüldeki cümleler", "Listeden istediğiniz cümleye gidin"],
         ["#dhSesliModulBtn a:not(.dh-sesli-modul-btn--ogretmen)", "🎧 Bu modülü sesli çalış", "Ekrana bakmadan, dinleyip söyleyerek"],
-        ["#dhSesliModulBtn .dh-sesli-modul-btn--ogretmen", "🧑‍🏫 Bu modülü öğretmenle çalış", "Konuşan öğretmen söyler, siz tekrar edersiniz"]
+        ["#dhSesliModulBtn .dh-sesli-modul-btn--ogretmen", "🧑‍🏫 Bu modülü öğretmenle çalış", "Konuşan öğretmen söyler, siz tekrar edersiniz"],
+        ["#dhSesliModulBtn .dh-sesli-modul-btn--sohbet", "💬 Bu konuda sohbet et", "Konuşan avatarla bu modülün konusunda İngilizce sohbet"]
       ]]]
     },
     "tekrar": {

@@ -201,3 +201,9 @@ Bilinen ipuçları:
 ### 5s. Öğretmenle Çalış (v426)
 - sesli-calis.html?yuz=1 (isteğe bağlı &mod=…): aynı sesli akış, üstte büyük konuşan öğretmen yüzü (dh-avatar.js, selectedTeacherAvatar; varsayılan teacher2). soyle() avatarın ağzını ses:false ile oynatır, bitince sustur; dinlerken "listen" karesi (dh-avatar.js'e listen eklendi, v=5). Doğru → yeşil çerçeve + 👍, yanlış → sarı + 🔁. Bu modda arka plan medya ve "Sesimi kaydet ve dinle" gizli.
 - Girişler: index-app modül ekranında "🎧 Sesli çalış · 🧑‍🏫 Öğretmenle çalış" yan yana (dh-sesli-modul.js v3; kolay görünümde Düğmeler penceresinde iki ayrı öğe, dh-dugmeler v12), modullerim "Bu modülü öğretmenle çalış", menu.html ve kolay Menü (kolay-kullanim.js v28).
+
+### 5t. Modül sohbeti — chatmodul.html (v427)
+- Restoran sohbet ekranının aynısı (chat-core.js), konu ?mod=<tam modül adı>. Senaryo: başlık "Sohbet: <Türkçe modül adı>", seviye modülden, avatar seçili öğretmen yüzü (rol/başlıkta "teacher/öğretmen" geçmez → öğretmen modu açılmaz, karakter baştan sona İngilizce konuşur). Görevler: Selamlaş · yapıyla 3 cümle · yapıyla bir soru.
+- Cümleler eşzamansız: sayfa window.__dhSohbetHazir verir ({systemExtra, opener, role}); chat-core (t39) açılıştan önce en çok 5 sn bekler. systemExtra = modül adı + Türkçe açıklama + 12 örnek cümle + "konudan sapma, yapıyı kullandıracak sorular sor". Anahtarsız (Gemini) açılış modülün ilk cümlesiyle; anahtarla taze açılış rol içinden.
+- chat-core: Scenario.tasks artık gerçekten okunuyor (eskiden window.Scenario yoktu, hep varsayılan).
+- Girişler: modül ekranı satırı (dh-sesli-modul.js v4) "💬 Bu konuda sohbet et", Düğmeler penceresi (dh-dugmeler v13), modullerim.

@@ -718,7 +718,7 @@ async function dhBuildProfile(){
 }
 
 var __dhProfile=""; dhBuildProfile().then(function(t){ __dhProfile=t; });
-var __dhTasks=(window.Scenario&&Scenario.tasks)||["Selamlaş ve kendini kısaca tanıt","Senaryonun ana amacını gerçekleştir","Karşındakine en az bir soru sor"];
+var __dhTasks=(Scenario&&Scenario.tasks&&Scenario.tasks.length?Scenario.tasks.slice():null)||["Selamlaş ve kendini kısaca tanıt","Senaryonun ana amacını gerçekleştir","Karşındakine en az bir soru sor"];
 var __dhTaskDone=__dhTasks.map(function(){return false;});
 function dhRenderTasks(){
   var el=document.getElementById("taskBar"); if(!el) return;
@@ -1787,7 +1787,23 @@ function bootAcilis(){
    malzemesi henuz yoksa DHKonusma IndexedDB'den hesaplayana kadar bekle;
    aksi halde ilk acilista eski/generic prompt, ikinci acilista yeni prompt
    gorunuyordu. Hesap tamamlaninca State acilisini yeni malzemeyle kur. */
-document.addEventListener("DOMContentLoaded", function(){
+/* MODÜL SOHBETİ (chatmodul.html): sayfa modülün cümlelerini yükleyip
+   window.__dhSohbetHazir sözünü verir -> { systemExtra, opener, taze }.
+   Senaryoya uygulanır, sonra normal açılış. Yoksa hiçbir şey değişmez. */
+function __dhSohbetHazirBekle(){
+  var h = window.__dhSohbetHazir;
+  if(!h || !h.then) return Promise.resolve();
+  return Promise.race([h, new Promise(function(r){ setTimeout(r, 5000); })]).then(function(x){
+    if(!x) return;
+    if(x.systemExtra) Scenario.systemExtra = x.systemExtra;
+    if(x.role) Scenario.role = x.role;
+    if(x.opener && !(__dhTeach&&__dhTeach.target) && !__dhFocus && !__dhMalzeme){
+      Scenario.opener = x.opener; State.currentPartner = x.opener; State.firstMsg = x.opener;
+    }
+  }).catch(function(){});
+}
+document.addEventListener("DOMContentLoaded", function(){ __dhSohbetHazirBekle().then(__dhIlkAcilis); });
+function __dhIlkAcilis(){
   if(__dhDersModu && window.DHKonusma && DHKonusma.bugun){
     DHKonusma.bugun().then(function(m){
       if(m && m.cumleler && m.cumleler.length){
@@ -1799,5 +1815,5 @@ document.addEventListener("DOMContentLoaded", function(){
       boot();
     }).catch(boot);
   }else boot();
-});
+}
 })();

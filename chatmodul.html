@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<script src="./idb-uyum.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#071226">
+<title>Modül Sohbeti · Dil Harita</title>
+<link rel="stylesheet" href="./chat-style.css?v=19">
+<link rel="stylesheet" href="./atlas-theme.css?v=1">
+  <link rel="stylesheet" href="product-improvements.css">
+<link rel="stylesheet" href="./kolay-kullanim.css?v=13">
+<script src="./kolay-kullanim.js?v=28"></script>
+</head>
+<body>
+<div id="chatApp"></div>
+<script src="./sentences-loader.js?v=20"></script>
+<script src="./dh-modul.js?v=10"></script>
+<script src="./dh-modul-tanim.js?v=3"></script>
+<script>
+/* chatmodul.html — MODÜL SOHBETİ
+   Restoran sohbet ekranının aynısı (chat-core.js); konuşmanın konusu
+   ?mod=<TAM MODÜL ADI> ile gelen modüldür. Senaryo modülün adı, seviyesi
+   ve cümlelerinden kurulur. Cümleler eşzamansız yüklendiği için sohbet
+   motoru window.__dhSohbetHazir sözünü bekler (en çok 5 sn). */
+(function(){
+  var MOD = ""; try{ MOD = new URLSearchParams(location.search).get("mod") || ""; }catch(e){}
+  var tn = (window.DHModulTanim && MOD) ? DHModulTanim.modul(MOD) : null;
+  var ad = tn && tn.ad ? tn.ad : (MOD || "Serbest konu");
+  var lvl = (tn && tn.seviye) || ((MOD.match(/^(A1|A2|B1|B2|C1)\b/) || [])[1]) || "A2";
+  var konuEn = tn && tn.ingilizce ? tn.ingilizce : MOD;
+  var ek = MOD.split(" · ").slice(2).join(" · ");   /* kullanıcı modülü: sondaki konu */
+  var ogr = "teacher2";
+  try{ var v = localStorage.getItem("selectedTeacherAvatar"); if (v === "teacher" || v === "teacher1" || v === "teacher2") ogr = v; }catch(e){}
+  var rol = "a friendly English conversation partner chatting with a Turkish learner; the whole chat practices the lesson topic \"" + konuEn + "\"" + (ek ? (" (theme: " + ek + ")") : "");
+  window.CHAT_SCENARIO = {
+    title: "Sohbet: " + ad, subtitle: "Modül konusunda İngilizce konuşma", level: lvl,
+    role: rol, voiceGender: "male",
+    opener: "Hello! Let's talk in English. Tell me something about yourself today.",
+    systemExtra: "You are " + rol + ".",
+    avatarDir: "assets/avatars_v3/" + ogr + "/",
+    frames: {"idle": "idle.webp", "blink": "blink.webp", "listen": "listen.webp", "mouthA": "mouth-a.webp", "mouthE": "mouth-e.webp", "mouthI": "mouth-i.webp", "mouthO": "mouth-o.webp", "mouthU": "mouth-u.webp", "mouthMBP": "mouth-mbp.webp", "mouthFV": "mouth-fv.webp", "mouthL": "mouth-l.webp", "mouthTH": "mouth-th.webp", "mouthSmall": "mouth-i.webp", "mouthMedium": "mouth-e.webp", "mouthOpen": "mouth-a.webp"},
+    tasks: ["Selamlaş", "Bu modülün yapısıyla en az 3 cümle kur", "Aynı yapıyla karşındakine bir soru sor"],
+    backHref: "chat.html",
+    noKeyReply: "I can continue when you add an API key. Can you make a sentence like the ones in your lesson?"
+  };
+  document.title = "Sohbet: " + ad + " · Dil Harita";
+
+  function cumleler(){
+    if (!MOD) return Promise.resolve([]);
+    return Promise.resolve(window.DHModul && DHModul.hazir ? DHModul.hazir() : null).then(function(){
+      var kul = null;
+      try{ (DHModul.liste() || []).forEach(function(x){ if (!kul && x.ad === MOD) kul = x; }); }catch(e){}
+      if (kul) return DHModul.getir(kul.id) || [];
+      return window.DHSent ? DHSent.module(MOD).catch(function(){ return []; }) : [];
+    }).catch(function(){ return []; }).then(function(k){
+      return (k || []).filter(function(x){ return x && x.en; }).slice(0, 25);
+    });
+  }
+  window.__dhSohbetHazir = cumleler().then(function(l){
+    var ornek = l.slice(0, 12).map(function(x){ return "- " + x.en + (x.tr ? " (TR: " + x.tr + ")" : ""); }).join("\n");
+    var sys = "You are " + rol + ".\n"
+      + "[LESSON] Module: " + MOD + (tn && tn.aciklama ? ("\nWhat it teaches (Turkish): " + tn.aciklama) : "") + "\n"
+      + (ornek ? ("Example sentences the learner studied in this module:\n" + ornek + "\n") : "")
+      + "Keep the WHOLE conversation on this lesson's topic and structure. Ask natural, personal questions whose answers REQUIRE the learner to use this structure (or these words/situation). "
+      + "Reuse words and patterns from the example sentences. If the learner answers without the structure or makes a mistake with it, briefly model the correct sentence, then ask another question. "
+      + "Do not switch to unrelated topics.";
+    var ilk = l[0];
+    var opener = ilk
+      ? ("Hello! Today we will talk about this lesson. Here is a sentence from it: \"" + ilk.en + "\" Now, can you tell me a similar sentence about yourself?")
+      : null;
+    return { systemExtra: sys, opener: opener, role: rol };
+  });
+  /* Geri: geldiği sayfaya dön (modül ekranı) */
+  document.addEventListener("click", function(e){
+    var a = e.target && e.target.closest && e.target.closest(".back-btn");
+    if (a && history.length > 1){ e.preventDefault(); history.back(); }
+  }, true);
+})();
+</script>
+<script src="./viseme-lang.js?v=2"></script>
+<script src="./ai-providers.js?v=t36"></script>
+<!-- Günün konuşma malzemesi + ilerleme defteri. chat-core.js malzemeyi
+     SENKRON olarak localStorage'dan okur; DHKonusma burada yüklü olmadığı
+     için "bitirdim" bilgisi hiçbir yere yazılamıyordu ve her girişte aynı
+     konu baştan başlıyordu. chat-core'dan ÖNCE yüklenmeli. -->
+<script src="./dh-konusma.js?v=2"></script>
+<script src="./profile.js?v=2"></script>
+<script src="./chat-core.js?v=t39"></script>
+<script src="./dh-ortam-fon.js?v=6"></script>
+<script src="./dh-plan.js?v=3"></script>
+<script src="./dh-sohbet-puan.js?v=tm1"></script>
+<script src="./gemini-bridge.js?v=t22"></script>
+<script src="./gemini-sohbet-rapor.js?v=3"></script>
+<script src="./coach-bubble.js?v=t40"></script>
+<script src="./ai-teacher-prompt-tts.js?v=3"></script>
+<script src="./tts-avatar-long-sync-fix.js?v=4"></script>
+<script src="./avatar-blink-sync.js?v=1"></script>
+<script src="./ux-boost.js?v=1"></script>
+<script src="./word-popup.js?v=tm3"></script>
+<script src="./atlas-effects.js?v=2"></script>
+  <script src="product-improvements.js" defer></script>
+<script src="./dh-button-guard.js?v=1" defer></script>
+</body>
+</html>
