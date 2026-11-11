@@ -880,6 +880,14 @@
       b.type = "button"; b.setAttribute("data-kk-menu", ""); b.setAttribute("aria-expanded", "false");
       b.setAttribute("aria-haspopup", "dialog");
       doc.body.appendChild(b);
+      /* Araç düğmeleri tanımlı tam ekran sayfalarda Menü'nün altında "🧰" */
+      if (/^(ogren|videopractice)\.html?$/.test(sayfa)){
+        var b2 = el("button", "kk-ui kk-ust-menu kk-ust-dugme", '<span class="kk-i" aria-hidden="true">🧰</span><span>Düğme</span>');
+        b2.type = "button"; b2.setAttribute("data-kk-dugmeler", ""); b2.setAttribute("aria-haspopup", "dialog");
+        b2.setAttribute("aria-label", "Düğmeler");
+        b2.style.setProperty("top", "calc(max(8px, env(safe-area-inset-top)) + 68px)", "important");
+        doc.body.appendChild(b2);
+      }
       return;
     }
     var nav = el("nav", "kk-ui kk-alt" + (EV ? " kk-ev" : ""));
@@ -888,7 +896,8 @@
         (EV ? "" : '<button type="button" data-kk-geri><span class="kk-i" aria-hidden="true">◀</span>Geri</button>')
       + '<button type="button" class="kk-ana-btn" data-kk-ev' + (EV ? ' aria-current="page"' : "") + '><span class="kk-i" aria-hidden="true">🏠</span>Ana Sayfa</button>'
       + '<button type="button" data-kk-menu aria-haspopup="dialog" aria-expanded="false"><span class="kk-i" aria-hidden="true">☰</span>Menü</button>'
-      + '<button type="button" data-kk-yazi-ac aria-haspopup="dialog" aria-expanded="false"><span class="kk-i" aria-hidden="true">Aa</span>Yazı</button>';
+      /* "Aa" Menü'ye alındı; yerinde ekranın araç düğmeleri (dh-dugmeler.js) */
+      + '<button type="button" data-kk-dugmeler aria-haspopup="dialog" aria-expanded="false"><span class="kk-i" aria-hidden="true">🧰</span>Düğmeler</button>';
     doc.body.appendChild(nav);
     doc.body.classList.add("kk-alt-var");
     /* Sağ altta yüzen "Öğretmene sor" düğmesi seçenekleri ve açıklamaları
@@ -946,6 +955,11 @@
       var t = e.target && e.target.closest ? e.target : null;
       if (!t) return;
       var x;
+      if ((x = t.closest("[data-kk-dugmeler]"))){
+        e.preventDefault(); pencereKapat(menuPerde); pencereKapat(yaziPerde);
+        if (g.DHDugmeler) g.DHDugmeler.ac(x); else pencereAc(yaziPerde, x);
+        return;
+      }
       if ((x = t.closest("[data-kk-menu]"))){ e.preventDefault(); pencereKapat(yaziPerde); bugunCiz(); pencereAc(menuPerde, x); return; }
       if (t.closest("[data-kk-plan]")){ e.preventDefault(); pencereKapat(menuPerde); setTimeout(function(){ try{ g.dhCoachPlanAc && g.dhCoachPlanAc(); }catch(err){} }, 60); return; }
       if (t.closest("[data-kk-koc]")){ e.preventDefault(); pencereKapat(menuPerde); setTimeout(function(){ try{ g.dhCoachGoster && g.dhCoachGoster(); }catch(err){} }, 60); return; }
@@ -1028,6 +1042,10 @@
     if (!doc.body || doc.querySelector(".kk-alt,.kk-ust-menu")) return;
     gozlemciKur();
     cubukKur(); menuKur(); yaziKur(); olaylar();
+    /* "🧰 Düğmeler" altyapısı */
+    if (!g.DHDugmeler && !doc.querySelector('script[src*="dh-dugmeler.js"]')){
+      var sc = doc.createElement("script"); sc.src = "./dh-dugmeler.js?v=7"; doc.head.appendChild(sc);
+    }
     ipucuKur(); simgeEtiketleri();
     if (ayar.acik){ tumunuOlcekle(); ikonYazilari(); }
     klasikMenuyeEkle();
