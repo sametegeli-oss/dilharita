@@ -197,3 +197,7 @@ Bilinen ipuçları:
 
 ### 5r. Ana sayfada çift "özel ders" kartı kaldırıldı (v425)
 - Kolay görünümde (html.kk-acik) #ozelDersKart gizli; üstteki "✨ Bana Özel Ders" kutusu tek giriş ve "Yeni dersin hazır" notunu gösteriyor. Kolay görünüm kapalıyken kart tek giriş olduğu için kalır.
+
+### 5s. Öğretmenle Çalış (v426)
+- sesli-calis.html?yuz=1 (isteğe bağlı &mod=…): aynı sesli akış, üstte büyük konuşan öğretmen yüzü (dh-avatar.js, selectedTeacherAvatar; varsayılan teacher2). soyle() avatarın ağzını ses:false ile oynatır, bitince sustur; dinlerken "listen" karesi (dh-avatar.js'e listen eklendi, v=5). Doğru → yeşil çerçeve + 👍, yanlış → sarı + 🔁. Bu modda arka plan medya ve "Sesimi kaydet ve dinle" gizli.
+- Girişler: index-app modül ekranında "🎧 Sesli çalış · 🧑‍🏫 Öğretmenle çalış" yan yana (dh-sesli-modul.js v3; kolay görünümde Düğmeler penceresinde iki ayrı öğe, dh-dugmeler v12), modullerim "Bu modülü öğretmenle çalış", menu.html ve kolay Menü (kolay-kullanim.js v28).

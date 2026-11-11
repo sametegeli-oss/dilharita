@@ -59,7 +59,8 @@
     mbp: "mouth-mbp.webp",
     fv: "mouth-fv.webp",
     l: "mouth-l.webp",
-    th: "mouth-th.webp"
+    th: "mouth-th.webp",
+    listen: "listen.webp"   /* dinlerken (öğretmenle çalış ekranı) */
   };
 
   /* Kare yoksa nereye dusulecek. 8 cekirdek kare yeterlidir. */
@@ -69,7 +70,7 @@
     mbp: ["idle", "kucuk"], fv: ["kucuk", "orta"],
     l: ["orta", "kucuk"], th: ["kucuk", "orta"],
     kucuk: ["orta"], orta: ["kucuk", "acik"], acik: ["orta"],
-    blink: ["idle"]
+    blink: ["idle"], listen: ["idle"]
   };
 
   /* Turkce + Ingilizce harf -> viseme. Koc Turkce anlatir, Ingilizce

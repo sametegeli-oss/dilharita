@@ -64,6 +64,10 @@
       "min-height:52px;margin:8px 0 10px;padding:10px 16px;border-radius:14px;" +
       "background:#0f766e;border:2px solid #5eead4;color:#fff!important;text-decoration:none!important;" +
       "font:800 18px/1.2 system-ui,-apple-system,'Segoe UI',sans-serif;box-sizing:border-box;width:100%;max-width:520px}" +
+      ".dh-sesli-modul-satir{display:flex;gap:8px;margin:8px 0 10px;max-width:520px}" +
+      ".dh-sesli-modul-satir .dh-sesli-modul-btn{flex:1 1 0;margin:0;min-width:0;padding:10px 8px;font-size:17px}" +
+      ".dh-sesli-modul-satir:has(> a[style*='display: none']){margin:0}" +
+      ".dh-sesli-modul-btn--ogretmen{background:#6d28d9;border-color:#c4b5fd}" +
       ".dh-sesli-modul-btn:focus-visible{outline:3px solid #fff;outline-offset:2px}" +
       ".dh-sesli-modul-btn--yuzen{position:fixed;left:16px;z-index:6;width:auto;max-width:60%;min-height:48px;margin:0;font-size:17px;box-shadow:0 6px 18px rgba(0,0,0,.45)}";
     document.head.appendChild(s);
@@ -104,22 +108,36 @@
     if (b && b.getAttribute("data-mod") === a.ad && yerinde){ if (a.yuzen) konumla(b); return; }
     if (b) b.remove();
     stil();
-    b = document.createElement("a");
-    b.id = "dhSesliModulBtn";
-    b.className = "dh-sesli-modul-btn";
-    b.setAttribute("data-mod", a.ad);
-    b.href = "./sesli-calis.html?mod=" + encodeURIComponent(a.ad);
-    b.textContent = "🎧 Bu modülü sesli çalış";
-    b.setAttribute("aria-label", "Bu modülü sesli çalış: ekrana bakmadan, dinleyip söyleyerek");
+    var url = "./sesli-calis.html?mod=" + encodeURIComponent(a.ad);
     if (a.yuzen){
       /* Görselle Öğren / Videoyla Okuma: ekran tam yükseklikte ve sıkışık;
          düğme videonun üstünde, başlığın hemen altında küçük bir hap olarak durur */
-      b.classList.add("dh-sesli-modul-btn--yuzen");
+      b = document.createElement("a");
+      b.id = "dhSesliModulBtn";
+      b.className = "dh-sesli-modul-btn dh-sesli-modul-btn--yuzen";
+      b.setAttribute("data-mod", a.ad);
+      b.href = url;
       b.textContent = "🎧 Sesli çalış";
+      b.setAttribute("aria-label", "Bu modülü sesli çalış: ekrana bakmadan, dinleyip söyleyerek");
       a.yuzen.appendChild(b);
       konumla(b);
+      return;
     }
-    else a.yer.insertAdjacentElement("afterend", b);
+    /* Modül ekranı: yan yana iki düğme — Sesli çalış · Öğretmenle çalış */
+    b = document.createElement("div");
+    b.id = "dhSesliModulBtn";
+    b.className = "dh-sesli-modul-satir";
+    b.setAttribute("data-mod", a.ad);
+    var s1 = document.createElement("a");
+    s1.className = "dh-sesli-modul-btn"; s1.href = url;
+    s1.textContent = "🎧 Sesli çalış";
+    s1.setAttribute("aria-label", "Bu modülü sesli çalış: ekrana bakmadan, dinleyip söyleyerek");
+    var s2 = document.createElement("a");
+    s2.className = "dh-sesli-modul-btn dh-sesli-modul-btn--ogretmen"; s2.href = url + "&yuz=1";
+    s2.textContent = "🧑‍🏫 Öğretmenle çalış";
+    s2.setAttribute("aria-label", "Bu modülü öğretmenle çalış: konuşan öğretmen yüzüyle, dinleyip söyleyerek");
+    b.appendChild(s1); b.appendChild(s2);
+    a.yer.insertAdjacentElement("afterend", b);
   }
   function planla() { if (!bekliyor) { bekliyor = true; requestAnimationFrame(ciz); } }
 

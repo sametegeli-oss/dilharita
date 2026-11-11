@@ -744,6 +744,7 @@
       ["🎙️", "Konuşma Pratiği", "Sesli sohbet et", "chat.html"],
       ["✨", "Bana Özel Ders", "Amacına göre hazırlanan cümleler", "ozel-ders.html"],
       ["🎧", "Sesli Çalış", "Ekrana bakmadan, dinleyip söyleyerek", "sesli-calis.html"],
+      ["🧑‍🏫", "Öğretmenle Çalış", "Konuşan öğretmenle dinle ve söyle", "sesli-calis.html?yuz=1"],
       ["💬", "Nasıl Derim?", "Türkçesini söyle, İngilizcesini öğren", "nasil-derim.html"],
       ["🧑‍🏫", "Öğretmene Sor", "Türkçe anlatımlı öğretmen", "teacher.html"]
     ]],
@@ -1044,7 +1045,7 @@
     cubukKur(); menuKur(); yaziKur(); olaylar();
     /* "🧰 Düğmeler" altyapısı */
     if (!g.DHDugmeler && !doc.querySelector('script[src*="dh-dugmeler.js"]')){
-      var sc = doc.createElement("script"); sc.src = "./dh-dugmeler.js?v=11"; doc.head.appendChild(sc);
+      var sc = doc.createElement("script"); sc.src = "./dh-dugmeler.js?v=12"; doc.head.appendChild(sc);
     }
     ipucuKur(); simgeEtiketleri();
     if (ayar.acik){ tumunuOlcekle(); ikonYazilari(); }

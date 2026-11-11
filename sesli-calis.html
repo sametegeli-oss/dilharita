@@ -51,11 +51,27 @@
   .sc-satir__dugmeler .dh-btn{ min-height:52px; font-size:17px; flex:1 1 140px; }
   #otoSes[aria-pressed="true"]{ border:3px solid var(--dh-ok); }
   #otoSes[aria-pressed="true"]::after{ content:"✓"; margin-left:auto; font-size:26px; font-weight:800; color:var(--dh-ok); }
+  /* ÖĞRETMENLE ÇALIŞ (?yuz=1): büyük, konuşan öğretmen yüzü */
+  .sc-yuz-kap{ position:relative; width:min(52vw,210px); margin:4px auto 6px; }
+  .sc-yuz-kap .dh-avatar.sc-yuz{ width:100%; height:auto; aspect-ratio:1/1; border:5px solid #334155; box-shadow:0 8px 28px rgba(0,0,0,.45); transition:border-color .2s, box-shadow .2s; }
+  .sc-yuz-kap[data-d="konusuyor"] .sc-yuz{ border-color:#60a5fa; }
+  .sc-yuz-kap[data-d="dinliyor"] .sc-yuz{ border-color:#f87171; box-shadow:0 0 0 8px rgba(248,113,113,.28); }
+  .sc-yuz-kap[data-s="iyi"] .sc-yuz{ border-color:#22c55e; box-shadow:0 0 0 10px rgba(34,197,94,.3); }
+  .sc-yuz-kap[data-s="kotu"] .sc-yuz{ border-color:#fbbf24; box-shadow:0 0 0 10px rgba(251,191,36,.25); }
+  .sc-yuz-his{ position:absolute; right:-6px; bottom:-4px; width:62px; height:62px; border-radius:50%; display:none;
+               align-items:center; justify-content:center; font-size:36px; background:#0f172a; border:3px solid currentColor; }
+  .sc-yuz-kap[data-s="iyi"] .sc-yuz-his{ display:flex; color:#22c55e; animation:sc-zipla .5s ease-out; }
+  .sc-yuz-kap[data-s="kotu"] .sc-yuz-his{ display:flex; color:#fbbf24; animation:sc-zipla .5s ease-out; }
+  @keyframes sc-zipla{ 0%{ transform:scale(.3); } 70%{ transform:scale(1.15); } 100%{ transform:scale(1); } }
+  @media (prefers-reduced-motion:reduce){ .sc-yuz-his{ animation:none !important; } }
+  html.sc-yuz-modu .sc-tr{ font-size:26px; margin-top:10px; }
+  html.sc-yuz-modu .sc-durum{ margin-top:6px; }
+  html.sc-yuz-modu #sesimiDinle, html.sc-yuz-modu #medyaSec{ display:none !important; }
 </style>
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=13">
-<script src="./kolay-kullanim.js?v=27"></script>
+<script src="./kolay-kullanim.js?v=28"></script>
 </head>
 <body>
 
@@ -111,6 +127,10 @@
 
   <!-- ÇALIŞMA -->
   <section id="sahne" class="sc-sahne" hidden aria-live="polite">
+    <div class="sc-yuz-kap" id="yuzKap" hidden data-d="" data-s="">
+      <div class="dh-avatar sc-yuz" id="yuz"></div>
+      <div class="sc-yuz-his" id="yuzHis" aria-hidden="true"></div>
+    </div>
     <div class="sc-sayac" id="sayac"></div>
     <div class="sc-durum" id="durum" data-d=""><span class="sc-nokta" aria-hidden="true"></span><span id="durumYazi">Hazır</span></div>
     <div class="sc-ses" id="sesOlcer" hidden aria-hidden="true"><span id="sesCubuk"></span></div>
@@ -146,6 +166,7 @@
 <script src="./dh-modul.js?v=10"></script>
 <script src="./progress-engine.js?v=2"></script>
 <script src="./dh-modul-tanim.js?v=3"></script>
+<script src="./dh-avatar.js?v=5"></script>
 <script>
 /* sesli-calis.html — TAM SESLİ MOD
    ==================================================================
@@ -173,6 +194,8 @@
   var calisiyor = false, duraklat = false, gecIstek = false, tekrarIstek = false, bitirIstek = false;
   var sayilar = { toplam:0, dogru:0 };
   var aktifRec = null, uyanik = null;
+  /* ÖĞRETMENLE ÇALIŞ: ?yuz=1 -> aynı akış, ekranda konuşan öğretmen yüzü */
+  var YUZ = /[?&]yuz=1(&|$)/.test(location.search), av = null, avKonusuyor = false;
 
   /* ---------- yardımcılar: metin karşılaştırma (tekrar.html ile aynı ölçüt) ---------- */
   var KISALT = { "i'm":"i am","you're":"you are","he's":"he is","she's":"she is","it's":"it is","we're":"we are","they're":"they are",
@@ -474,7 +497,13 @@
       /* elle kayıt sürerken akışın sözleri kayda karışmasın */
       if (kayitMesgul && !zorla) return res();
       durumGoster("konusuyor");
-      var bitti = false, son = function(){ if (bitti) return; bitti = true; clearTimeout(zt); res(); };
+      if (av){
+        avKonusuyor = true;
+        try{ av.konus(metin, { ses:false, sure: Math.round(String(metin).length * (dil === "en" ? 80 : 68) / (hiz || (dil === "en" ? 0.9 : 1))) }); }catch(e){}
+      }
+      var bitti = false, son = function(){ if (bitti) return; bitti = true; clearTimeout(zt);
+        if (av){ avKonusuyor = false; try{ av.sustur(); }catch(e){} }
+        res(); };
       var zt = setTimeout(son, 2500 + String(metin).length * 110);
       try{
         var u = new SpeechSynthesisUtterance(metin);
@@ -638,6 +667,11 @@
   /* ---------- ekran ---------- */
   function durumGoster(d){
     $("durum").setAttribute("data-d", d);
+    if (YUZ){
+      $("yuzKap").setAttribute("data-d", d);
+      if (av && d === "dinliyor") try{ av.kareGoster("listen"); }catch(e){}
+      else if (av && !d && !avKonusuyor) try{ av.kareGoster("idle"); }catch(e){}
+    }
     $("durumYazi").textContent = d === "dinliyor" ? "Dinliyorum — söyleyin" : d === "konusuyor" ? "Konuşuyorum" : (duraklat ? "Durduruldu" : "Bekliyor");
   }
   function ekranTemizle(k){
@@ -647,9 +681,13 @@
     $("duydum").textContent = "";
     $("sonuc").textContent = ""; $("sonuc").setAttribute("data-s","");
     $("farkNot").textContent = "";
+    if (YUZ){ $("yuzKap").setAttribute("data-s", ""); $("yuzHis").textContent = ""; }
     mevcut = k; mevcutSatir = null;
   }
-  function sonucYaz(metin, iyi){ $("sonuc").textContent = metin; $("sonuc").setAttribute("data-s", iyi ? "iyi" : "kotu"); }
+  function sonucYaz(metin, iyi){
+    $("sonuc").textContent = metin; $("sonuc").setAttribute("data-s", iyi ? "iyi" : "kotu");
+    if (YUZ){ $("yuzKap").setAttribute("data-s", iyi ? "iyi" : "kotu"); $("yuzHis").textContent = iyi ? "👍" : "🔁"; }
+  }
 
   /* ---------- akış ---------- */
   function engel(){
@@ -909,6 +947,22 @@
     $("mikNot").textContent = "Bu tarayıcı sesle cevabı desteklemiyor (iPhone'da böyle). Sadece dinleme biçimi kullanılacak.";
     $("mikNot").hidden = false;
   } else modSec("sesle");
+  if (YUZ){
+    document.documentElement.classList.add("sc-yuz-modu");
+    document.title = "Öğretmenle Çalış · Dil Harita";
+    var h1 = document.querySelector(".dh-ust h1"); if (h1) h1.textContent = "🧑‍🏫 Öğretmenle Çalış";
+    var giris1 = document.querySelector("#giris > .sc-not");
+    if (giris1) giris1.innerHTML = "Öğretmeniniz size cümleyi önce <b>Türkçe</b> söyleyecek, sonra <b>İngilizcesini</b> yavaşça okuyacak. Siz de yüksek sesle tekrar edeceksiniz; doğru mu söylediğinizi size söyleyecek.";
+    medyaAcik = false; medyaGizle();
+    $("yuzKap").hidden = false;
+    var ogr = "teacher2";
+    try{ var v = localStorage.getItem("selectedTeacherAvatar"); if (v === "teacher" || v === "teacher1" || v === "teacher2") ogr = v; }catch(e){}
+    try{ av = DHAvatar.olustur($("yuz"), { yol:"./assets/avatars_v3/" + ogr + "/", alt:"Öğretmen" }); }catch(e){ av = null; }
+    /* dinlerken "dinliyor" yüzünde kalsın (göz kırpma / yumuşak kapanış idle'a çekebiliyor) */
+    setInterval(function(){
+      if (av && !avKonusuyor && $("yuzKap").getAttribute("data-d") === "dinliyor") try{ av.kareGoster("listen"); }catch(e){}
+    }, 250);
+  }
   try{ speechSynthesis.getVoices(); }catch(e){}
   yukle();
 })();
