@@ -358,7 +358,7 @@
         return (function () {
 
           function dene(sayi, ekNot) {
-            bildir(y === "elle" ? "Gemini penceresi açılıyor…" : "Cümleler yazılıyor… (yarım dakika kadar sürebilir)");
+            bildir(y === "elle" ? "Gemini penceresi açılıyor…" : "Cümleler yazılıyor ve kontrol ediliyor… (1–2 dakika sürebilir, sayfayı kapatmayın)");
             return gonder(y, ekNot ? istem + "\n\n" + ekNot : istem, true).then(function (metin) {
               bildir("Cümleler kontrol ediliyor…");
               var a = global.DHModul.ayristir(metin);
@@ -461,7 +461,9 @@
   }
   function ornek(mod) {
     return hazirla().then(function () { return global.DHSent.module(mod); }).then(function (k) {
-      var l = (k || []).slice(0, 8).filter(function (x) { return x && x.en && x.tr && x.en.split(" ").length <= 12; });
+      var l = (k || []).slice(0, 12).filter(function (x) {
+        return x && x.en && x.tr && x.en.split(" ").length <= 12 && !/❌|\(/.test(x.tr + x.en);
+      });
       l.sort(function (a, b) { return a.en.length - b.en.length; });
       return l[0] ? { en: l[0].en, tr: l[0].tr } : null;
     }).catch(function () { return null; });
