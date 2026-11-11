@@ -232,6 +232,7 @@
       +'<div style="text-align:center;margin-top:9px;font-size:11.5px;color:#64748b">✓ ne yaptım · ○ ne kaldı · ▸ şu an buradayım</div>'
       +kapatBtn;
     document.body.appendChild(box);
+    try{ var ph=document.getElementById("dhPlanPill"); if(ph){ var pr2=ph.getBoundingClientRect(); box.style.bottom=Math.round(innerHeight-pr2.top+8)+"px"; } }catch(e){}
     document.getElementById("dhPlanPanelX").onclick=function(){ box.remove(); };
     var kb=document.getElementById("dhPlanClose"); if(kb) kb.onclick=function(){ box.remove(); try{ if(window.dhCoachDayClose) window.dhCoachDayClose(); }catch(e){} };
   }
@@ -245,7 +246,31 @@
     if(bitti){ pill.style.cssText=base+"#34d399;background:linear-gradient(135deg,#059669,#0d9488)"; pill.textContent="🎉 Gün bitti — planın tamam!"; }
     else { pill.style.cssText=base+"#24487a;background:linear-gradient(135deg,#0f2540,#13294d);color:#e8eef7"; pill.textContent="📋 Plan "+pr.doneCount+"/"+pr.total+(c?(" · ▸ "+dhShortLabel(c.label)+(c.need?(" "+c.got+"/"+c.need):"")):""); }
     pill.onclick=function(){ dhTogglePlanPanel(pr); };
+    /* Kolay görünüm yazıyı büyütüp kutuyu 3 satıra çıkarıyordu: tek satır kalsın */
+    pill.setAttribute("data-kk-atla","");
+    pill.style.fontSize="15px";
     document.body.appendChild(pill);
+    pillYerlestir(pill);
+  }
+  /* PLAN KUTUSU YERLEŞİMİ (11 Kasım): kutu altta sabit duruyordu ve altındaki
+     düğmelere bakmıyordu; sohbetteki yazı satırını ve alt çubuğu örtüyordu.
+     Koç balonuyla aynı kural: alt çubuğun ve ekranın alt yarısında YERİNDE
+     SABİT duran düğmelerin (sohbet yazı satırı gibi) hemen üstüne oturur. */
+  function pillYerlestir(pill){
+    if(!pill || !pill.isConnected) return;
+    var taban=altCubukUst();
+    var se=document.scrollingElement||document.documentElement;
+    var sayfaKayar=se.scrollHeight>innerHeight+4;
+    /* sohbetteki görev satırı ("🎯 Selamlaş…") düğme değil ama okunmalı: o da engel */
+    [].slice.call(document.querySelectorAll(ETKILESIM+",#taskBar")).forEach(function(e){
+      if(e===pill || pill.contains(e) || (e.closest && e.closest("#dhPlanPanel"))) return;
+      if(bizim(e) || !gorunur(e)) return;
+      if(!(sabitMi(e) || (!kayanAta(e) && !sayfaKayar))) return;
+      var r=kutu(e);
+      if(r.top>innerHeight*0.5 && r.top<taban) taban=r.top;
+    });
+    var yeni=Math.max(8, Math.round(innerHeight-taban+8))+"px";
+    if(pill.style.bottom!==yeni) pill.style.bottom=yeni;
   }
   document.addEventListener("visibilitychange", function(){ if(!document.hidden){ try{ var pn=document.getElementById("dhPlanPanel"); if(pn) pn.remove(); dhMountPlanPill(); }catch(e){} } });
   var __chainN=0;
@@ -846,7 +871,7 @@
   }
   function yerlestirSonra(ms){
     clearTimeout(yerT);
-    yerT=setTimeout(function(){ try{ balonYerlestir(); yuzYerlestir(); }catch(e){} }, ms||120);
+    yerT=setTimeout(function(){ try{ pillYerlestir(document.getElementById("dhPlanPill")); balonYerlestir(); yuzYerlestir(); }catch(e){} }, ms||120);
   }
   window.dhCoachYerlestir=function(){ yerlestirSonra(0); };
   try{
@@ -864,6 +889,9 @@
   var kaydirT=null;
   addEventListener("scroll", function(){ clearTimeout(kaydirT); kaydirT=setTimeout(function(){ try{ yuzYerlestir(); }catch(e){} }, 300); }, true);
   setTimeout(function(){ yerlestirSonra(0); }, 1500);
+  /* Ekran sonradan değişebilir (sohbet açılış penceresi kapanınca yazı satırı
+     görünür olur): plan kutusunun yeri ara ara yeniden hesaplanır. */
+  setInterval(function(){ try{ if(!document.hidden) pillYerlestir(document.getElementById("dhPlanPill")); }catch(e){} }, 2000);
   /* Sonradan açılan pencereler (Hatanı Düzelt gibi) için koç yüzünü yeniden yerleştir */
   var yuzT=null;
   try{
