@@ -253,13 +253,17 @@
     return PROVIDERS.some(function(p){ return keysOf(p.keyStore).length>0; });
   }
   function aiMode(){
+    /* KAYITLI ANAHTAR HER ZAMAN ÖNCE (11 Kasım): profildeki "Anahtarım yok"
+       (aiYontemi:"gemini") seçimi anahtar varken de kopyala-yapıştıra
+       gönderiyordu. Profil bulutla cihazlar arasında taşındığı için başka bir
+       cihazdaki seçim, anahtarı olan cihazı da Gemini paneline düşürüyordu.
+       Kopyala-yapıştır artık yalnız BU cihazda kullanılabilir anahtar yokken. */
+    if(realHasAnyKey()) return "api";
     try{
       var p=JSON.parse(localStorage.getItem("dh-profile-v1")||"{}")||{};
-      if(p.aiYontemi==="api"||p.aiYontemi==="gemini") return p.aiYontemi;
+      if(p.aiYontemi==="api") return "api";   /* anahtar bekleniyor: anahtar penceresi açılır */
     }catch(e){}
-    /* Eski kullaniciyi bozma: kayitli anahtari varsa API, yoksa anahtarsiz
-       Gemini web koprusu. Profil secimi yapilinca bu yedek devreden cikar. */
-    return realHasAnyKey()?"api":"gemini";
+    return "gemini";
   }
   function hasAnyKey(){
     return aiMode()==="gemini" || realHasAnyKey();
