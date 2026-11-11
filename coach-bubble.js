@@ -236,9 +236,18 @@
     document.getElementById("dhPlanPanelX").onclick=function(){ box.remove(); };
     var kb=document.getElementById("dhPlanClose"); if(kb) kb.onclick=function(){ box.remove(); try{ if(window.dhCoachDayClose) window.dhCoachDayClose(); }catch(e){} };
   }
+  /* TAM EKRAN SAYFALAR (kullanıcı kararı "B", 11 Kasım): alt kenarı kendi
+     mikrofon/gönder/kontrol çubuğuyla kullanan sayfalarda plan kutusu HİÇ
+     gösterilmez (sohbette düğmeleri örtüyordu). Liste kolay-kullanim.js'teki
+     TAM_EKRAN ile aynı; ayrıca sohbet kabuğu / video sayfası olan her sayfa. */
+  var DH_TAM_EKRAN=/(^|\/)(chat|chatteacher1|chatteacher2|chatdoctor|chathotel|chatairport|chatrestaurant|teacher-chat|teacher|teacher1|teacher3|ogren|videopractice|sesdalga|immersive|youtube-egitim|youtube-pratik|sesli-calis)\.html?$/;
+  function dhTamEkran(){
+    return DH_TAM_EKRAN.test(location.pathname) || !!document.querySelector(".chat-shell,.video-page");
+  }
   function dhMountPlanPill(){
     if(/seviye-testi\.html|modul-testi\.html|module-test/.test(location.pathname)) return;
     var old=document.getElementById("dhPlanPill"); if(old) old.remove();
+    if(dhTamEkran()) return;
     var pr=dhPlanProgress(); if(!pr) return;
     var pill=document.createElement("button"); pill.id="dhPlanPill";
     var bitti = pr.doneCount>=pr.total, c=pr.current;
@@ -250,6 +259,13 @@
     pill.setAttribute("data-kk-atla","");
     pill.style.fontSize="15px";
     document.body.appendChild(pill);
+    /* Kayan sayfada son düğmeler kutunun altında kalmasın: sayfa sonuna
+       kutu boyu kadar boşluk; kullanıcı kaydırınca hepsi kutunun üstüne çıkar */
+    if(!document.getElementById("dhPlanBosluk")){
+      var bs=document.createElement("div"); bs.id="dhPlanBosluk"; bs.setAttribute("aria-hidden","true");
+      bs.style.cssText="height:76px;width:1px;pointer-events:none";
+      document.body.appendChild(bs);
+    }
     pillYerlestir(pill);
   }
   /* PLAN KUTUSU YERLEŞİMİ (11 Kasım): kutu altta sabit duruyordu ve altındaki
@@ -258,6 +274,7 @@
      SABİT duran düğmelerin (sohbet yazı satırı gibi) hemen üstüne oturur. */
   function pillYerlestir(pill){
     if(!pill || !pill.isConnected) return;
+    if(dhTamEkran()){ pill.remove(); var pn=document.getElementById("dhPlanPanel"); if(pn) pn.remove(); return; }
     var taban=altCubukUst();
     var se=document.scrollingElement||document.documentElement;
     var sayfaKayar=se.scrollHeight>innerHeight+4;

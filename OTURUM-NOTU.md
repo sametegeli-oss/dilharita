@@ -5,7 +5,7 @@
 > Kullanıcı kısa yazar (",2", "A", "devam et"). Kısa cevabı son sorulan sorunun cevabı say; yorumunu bir cümleyle söyle ve devam et.
 
 ## ▶ ŞU AN NEREDEYİZ — buradan başla
-Son yayın: SW **`dh-sw-v420`** (11 Kasım). Çalışma ağacı temiz, her şey yayında.
+Son yayın: SW **`dh-sw-v421`** (11 Kasım). Çalışma ağacı temiz, her şey yayında.
 
 **11 Kasım sabahı yapılanlar (kullanıcı "planı uygula, tam sesli modu da ekle" dedi):**
 1. **Amaç sorusu yenilendi** — `dh-amac.js` (tek kaynak): Seyahat · Aile ve torunlar · Sağlık · Günlük hayat · Zihnimi canlı tutmak · İş · Sınav. `basla.html`'de çoklu seçim (dokun → ✓, "Devam et"); profilde `amac` (ilk) + `amaclar` (hepsi). Yeni 3 amaç için ilk cümleler eklendi.
@@ -26,6 +26,7 @@ Son yayın: SW **`dh-sw-v420`** (11 Kasım). Çalışma ağacı temiz, her şey 
 5k. **v418 — "anahtarım var ama sohbet Gemini kopyala-yapıştıra gidiyor":** sebep profildeki `aiYontemi:"gemini"` ("💬 Anahtarım yok" seçimi, ai-choice.js) kayıtlı anahtardan önce geliyordu; profil bulutla cihazlar arası taşınıyor. `ai-providers.js` `aiMode()`: bu cihazda kullanılabilir anahtar varsa HER ZAMAN "api"; yoksa aiYontemi "api" ise api (anahtar penceresi), değilse gemini. ai-providers `?v=t36` (36 dosya).
 5l. **v419 — sohbet açılışında soru (kullanıcı isteği):** chat-core.js `aiTercihSor` → "Öğretmen nasıl cevap versin? 🔑 Anahtarımla / 💬 Gemini ile (kopyala-yapıştır)" + "Bu cihazda hep bunu kullan" (`dh-sohbet-ai-tercih`, buluta GİTMEZ) + "Sohbete girmeden geri dön". Seçim `DHProviders.setSessionMode` ile YALNIZ o sayfada geçerli (aiMode önce ona bakar). Gemini seçilince açılış cümlesi yapay zekâya sorulmaz. Anahtarsız "Anahtarımla" → anahtar penceresi. Menü → Ayarlar: "Sohbette yapay zekâ seçimini yeniden sor". chat-core `?v=t38`, ai-providers t36.
 5m. **v420 — "📋 Plan" kutusu düğmeleri örtüyordu** (coach-bubble.js `dhMountPlanPill`, bottom:12px sabit, en üst katman; kolay görünüm yazıyı 3 satıra büyütüyordu). `pillYerlestir`: koç balonuyla aynı kural — alt çubuğun ve ekranın alt yarısında yerinde sabit duran düğmelerin (+ sohbetteki #taskBar) üstüne oturur; `data-kk-atla` + 15px tek satır; panel kutunun hemen üstünde açılır; 2 sn'de bir yeniden hesaplanır. coach-bubble `?v=t38` (15 sayfa).
+5n. **v421 — plan kutusu, kullanıcı "B" seçti:** v420'deki yer bulma telefonda çalışmadı (adres çubuğu yüzünden sohbet sayfası "kaydırılabilir" sayıldı, düğmeler "sabit" sayılmadı; test ortamında adres çubuğu yok — dikkat!). Artık TAM EKRAN sayfalarda (`DH_TAM_EKRAN`: chat*, teacher*, ogren, videopractice, sesdalga, immersive, youtube-*, sesli-calis + .chat-shell/.video-page olan her sayfa) plan kutusu HİÇ gösterilmez. Diğer sayfalarda alt çubuğun üstünde; sayfa sonuna 76 px boşluk (#dhPlanBosluk) eklenir ki son düğmeler kaydırılınca kutunun altında kalmasın. coach-bubble `?v=t39`.
 6. Denemeler: sahte Groq ve sahte Worker (worker kodunun kendisi) ile uçtan uca üretim, bayrak, ana sayfa kartı; sahte ses tanıma ile sesli çalış (SRS yazımı doğrulandı); `mobiltara` yeni/değişen 7 sayfa: JS hatası/404/taşma 0. `tools/mobil-tarama/mobiltara.mjs` listesine 2 yeni sayfa eklendi.
 
 **Kullanıcıdan beklenenler:** araç kurulsun mu (OZEL-DERS-ARACI.md); LDPlayer'da Bana özel ders + Sesli çalış denemesi (mikrofon izni kullanıcının işi).
