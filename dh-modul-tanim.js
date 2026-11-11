@@ -146,7 +146,8 @@
     "Cohesion": ["Akıcı bağlantı", "Cümleleri birbirine bağlamak."],
     "Participle": ["Ortaç yapıları (-en, -ip)", "“Feeling tired, I went to bed.” gibi kısaltılmış yapılar."],
     "Cleft": ["Vurgulu cümleler", "Bir bilgiyi öne çıkarmak."],
-    "Ellipsis": ["Kısaltma (eksiltili anlatım)", "Tekrar etmeden kısa cevap vermek: “So do I.”"]
+    "Ellipsis": ["Kısaltma (eksiltili anlatım)", "Tekrar etmeden kısa cevap vermek: “So do I.”"],
+    "Kendi cümlelerim": ["Kendi cümlelerim", "“Nasıl derim?” ile sorup derslerinize eklediğiniz cümleler."]
   };
 
   /* DURUM / TEMA modülleri: belli bir dil bilgisi öğretmez, bir sahnenin

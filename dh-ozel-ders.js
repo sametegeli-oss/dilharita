@@ -98,7 +98,7 @@
     _hazir = betik("./sentences-loader.js?v=20", function () { return !!global.DHSent; })
       .then(function () { return betik("./profile.js?v=2", function () { return !!global.DHProfile; }); })
       .then(function () { return betik("./dh-amac.js?v=2", function () { return !!global.DHAmac; }); })
-      .then(function () { return betik("./dh-modul-tanim.js?v=2", function () { return !!global.DHModulTanim; }); })
+      .then(function () { return betik("./dh-modul-tanim.js?v=3", function () { return !!global.DHModulTanim; }); })
       .then(function () { return betik("./ai-providers.js?v=t35", function () { return !!global.DHProviders; }); })
       .then(function () { return betik("./dh-modul.js?v=10", function () { return !!global.DHModul; }); })
       .then(function () { return global.DHModul.hazir ? global.DHModul.hazir() : null; })

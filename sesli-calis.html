@@ -38,6 +38,8 @@
   .sc-arka video, .sc-arka img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   .sc-arka__perde{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(2,6,23,.55) 0%, rgba(2,6,23,.35) 35%, rgba(2,6,23,.75) 70%, rgba(2,6,23,.92) 100%); }
   .sc-ana{ position:relative; z-index:1; }
+  .sc-yanlis{ color:#fca5a5; text-decoration:underline wavy #f87171; text-underline-offset:6px; }
+  .sc-fark{ font-size:19px; font-weight:700; color:#fde68a; margin-top:8px; min-height:0; line-height:1.4; text-shadow:0 2px 8px rgba(0,0,0,.9); }
   .sc-dugmeler .dh-btn--sade{ background:rgba(15,23,42,.82) !important; }
   .sc-tr, .sc-en, .sc-duydum, .sc-sonuc, .sc-sayac{ text-shadow:0 2px 8px rgba(0,0,0,.9); }
   #medyaSec[aria-pressed="true"]{ border:3px solid var(--dh-ok); }
@@ -116,6 +118,7 @@
     <div class="sc-en" id="en"></div>
     <div class="sc-duydum" id="duydum"></div>
     <div class="sc-sonuc" id="sonuc" data-s=""></div>
+    <div class="sc-fark" id="farkNot" aria-live="polite"></div>
     <div class="sc-dugmeler">
       <button class="dh-btn dh-btn--birincil" type="button" id="durdur">Durdur</button>
       <button class="dh-btn dh-btn--sade" type="button" id="gec">Geç</button>
@@ -142,7 +145,7 @@
 <script src="./profile.js?v=2"></script>
 <script src="./dh-modul.js?v=10"></script>
 <script src="./progress-engine.js?v=2"></script>
-<script src="./dh-modul-tanim.js?v=2"></script>
+<script src="./dh-modul-tanim.js?v=3"></script>
 <script>
 /* sesli-calis.html — TAM SESLİ MOD
    ==================================================================
@@ -190,6 +193,60 @@
     B.forEach(function(w){ say[w] = (say[w]||0)+1; });
     A.forEach(function(w){ if (say[w]) { hit++; say[w]--; } });
     return Math.round(100*2*hit/(A.length+B.length));
+  }
+
+  /* ---------- kelime farkı: neyi yanlış / eksik söyledi ----------
+     Hedef cümle kelimelere ayrılır (I'm -> "i am" gibi açılır, ekranda tek
+     kelime kalır). Duyulanla en uzun ortak dizi (LCS) bulunur; aradaki
+     boşluklar: hem eksik hem fazla varsa "X yerine Y", yalnız eksikse
+     "Y'yi atladınız", yalnız fazlaysa "X fazla". */
+  function farkBul(duyulan, hedef){
+    var gor = String(hedef || "").split(/\s+/).filter(Boolean);
+    var B = [];                              /* hedef birimleri: {k, d} */
+    gor.forEach(function(w, d){ norm(w).split(" ").filter(Boolean).forEach(function(k){ B.push({ k:k, d:d }); }); });
+    var H = norm(duyulan).split(" ").filter(Boolean);
+    var n = B.length, m = H.length, L = [];
+    for (var i = 0; i <= n; i++){ L.push(new Array(m + 1).fill(0)); }
+    for (i = n - 1; i >= 0; i--) for (var j = m - 1; j >= 0; j--)
+      L[i][j] = B[i].k === H[j] ? L[i+1][j+1] + 1 : Math.max(L[i+1][j], L[i][j+1]);
+    var eslesen = {}, sorunlar = [], ek = [], fz = [];
+    function bosalt(){
+      if (!ek.length && !fz.length) return;
+      var hedefSoz = ek.map(function(b){ return gor[b.d].replace(/[.,!?;:]+$/, ""); })
+        .filter(function(w, x, a){ return a.indexOf(w) === x; }).join(" ");
+      var duySoz = fz.join(" ");
+      if (ek.length && fz.length) sorunlar.push({ tur:"yerine", hedef:hedefSoz, duy:duySoz });
+      else if (ek.length) sorunlar.push({ tur:"eksik", hedef:hedefSoz });
+      else sorunlar.push({ tur:"fazla", duy:duySoz });
+      ek = []; fz = [];
+    }
+    i = 0; j = 0;
+    while (i < n && j < m){
+      if (B[i].k === H[j]){ bosalt(); eslesen[i] = 1; i++; j++; }
+      else if (L[i+1][j] >= L[i][j+1]){ ek.push(B[i]); i++; }
+      else { fz.push(H[j]); j++; }
+    }
+    while (i < n){ ek.push(B[i]); i++; }
+    while (j < m){ fz.push(H[j]); j++; }
+    bosalt();
+    var yanlisGor = {};
+    B.forEach(function(b, x){ if (!eslesen[x]) yanlisGor[b.d] = 1; });
+    return { sorunlar: sorunlar, yanlisGor: yanlisGor, gor: gor, oran: n ? Object.keys(eslesen).length / n : 0 };
+  }
+  function farkHtml(f){
+    return f.gor.map(function(w, d){
+      var e = w.replace(/[&<>"]/g, function(c){ return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]; });
+      return f.yanlisGor[d] ? '<span class="sc-yanlis">' + e + '</span>' : e;
+    }).join(" ");
+  }
+  function farkSozu(f){
+    /* çok fark varsa ayrıntı vermek kafa karıştırır: yalnız ilk 2 sorun */
+    if (!f.sorunlar.length || f.sorunlar.length > 3 || f.oran < 0.5) return "";
+    return f.sorunlar.slice(0, 2).map(function(x){
+      if (x.tur === "yerine") return "“" + x.duy + "” değil, “" + x.hedef + "” denir.";
+      if (x.tur === "eksik") return "“" + x.hedef + "” kelimesini atladınız.";
+      return "“" + x.duy + "” fazla oldu.";
+    }).join(" ");
   }
 
   /* ---------- IndexedDB (tekrar.html ile aynı depo) ---------- */
@@ -589,6 +646,7 @@
     $("en").textContent = "";
     $("duydum").textContent = "";
     $("sonuc").textContent = ""; $("sonuc").setAttribute("data-s","");
+    $("farkNot").textContent = "";
     mevcut = k; mevcutSatir = null;
   }
   function sonucYaz(metin, iyi){ $("sonuc").textContent = metin; $("sonuc").setAttribute("data-s", iyi ? "iyi" : "kotu"); }
@@ -675,10 +733,20 @@
       if (MODUL && c.metin){ try{ if (window.DHProgress && DHProgress.recordResult) DHProgress.recordResult("sentence:" + k.id, sc >= 70); }catch(e){} }
       var ses;
       if (sc >= 85){ sonucYaz("✓ Doğru!", true); ses = soyle(rastgele(["Doğru!", "Çok güzel!", "Harika!", "Aferin!"]), "tr").then(function(){ return soyle(k.en, "en"); }); }
-      else if (iyi){ sonucYaz("✓ Çok yakın", true); ses = soyle("Çok yakın. Doğrusu:", "tr").then(function(){ return soyle(k.en, "en"); }); }
+      else {
+        /* yanlış/eksik kelimeleri işaretle ve koç kısaca söylesin */
+        var fark = c.metin ? farkBul(c.metin, k.en) : null;
+        var acik = fark ? farkSozu(fark) : "";
+        if (fark && fark.sorunlar.length){
+          $("en").innerHTML = farkHtml(fark);
+          if (acik) $("farkNot").textContent = acik;
+        }
+      }
+      if (sc >= 85){}
+      else if (iyi){ sonucYaz("✓ Çok yakın", true); ses = soyle("Çok yakın. " + acik + " Doğrusu:", "tr").then(function(){ return soyle(k.en, "en"); }); }
       else {
         sonucYaz("Doğrusu yukarıda", false);
-        ses = soyle("Doğrusu şöyle:", "tr").then(function(){ return soyle(k.en, "en", 0.8); })
+        ses = soyle((acik ? acik + " " : "") + "Doğrusu şöyle:", "tr").then(function(){ return soyle(k.en, "en", 0.8); })
           .then(function(){ return soyle("Siz de söyleyin.", "tr"); })
           .then(engel).then(bip).then(function(){ return dinle(k.en); })
           .then(function(c2){

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<script src="./idb-uyum.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0F7A5A">
+<title>Bunu İngilizce Nasıl Derim? · Dil Harita</title>
+<link rel="stylesheet" href="./dh-tokens.css">
+<link rel="stylesheet" href="./dh-ui.css">
+<style>
+  .nd-not{ font-size:18px; line-height:1.5; color:var(--dh-text-2); margin:0 0 14px; }
+  .nd-kutu{ width:100%; min-height:110px; padding:14px; font-size:21px; line-height:1.4; border-radius:var(--dh-r-kontrol);
+            border:2px solid var(--dh-cizgi-kuvvet, #45557d); background:var(--dh-yuzey-2); color:var(--dh-text); resize:vertical; box-sizing:border-box; }
+  .nd-kutu:focus{ outline:3px solid var(--dh-marka); outline-offset:1px; }
+  .nd-satir{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  .nd-satir .dh-btn{ min-height:60px; font-size:19px; }
+  .nd-tam{ grid-column:1/-1; }
+  .nd-en{ font-size:28px; font-weight:800; line-height:1.3; color:#93c5fd; margin:4px 0 6px; }
+  .nd-okunus{ font-size:19px; color:#fde68a; margin:0 0 10px; }
+  .nd-aciklama{ font-size:18px; line-height:1.5; margin:8px 0 0; }
+  .nd-alt{ font-size:17px; color:var(--dh-text-2); margin-top:8px; }
+  .nd-durum{ display:flex; align-items:center; gap:12px; font-size:19px; font-weight:700; padding:14px 2px; }
+  .nd-donen{ width:30px; height:30px; flex:0 0 30px; border-radius:50%; border:4px solid var(--dh-marka-zemin); border-top-color:var(--dh-marka); animation:nd-don 1s linear infinite; }
+  @keyframes nd-don{ to{ transform:rotate(360deg); } }
+  @media (prefers-reduced-motion:reduce){ .nd-donen{ animation:none; } }
+  .nd-dinliyor{ background:#7f1d1d !important; border-color:#f87171 !important; color:#fff !important; }
+  .nd-gecmis a{ text-decoration:none; color:inherit; }
+  .nd-yanlis{ color:#fca5a5; text-decoration:underline wavy #f87171; text-underline-offset:5px; }
+</style>
+<link rel="stylesheet" href="./atlas-theme.css?v=1">
+  <link rel="stylesheet" href="product-improvements.css">
+<link rel="stylesheet" href="./kolay-kullanim.css?v=13">
+<script src="./kolay-kullanim.js?v=25"></script>
+<script src="./ai-providers.js?v=t35"></script>
+</head>
+<body>
+
+<main class="dh-sayfa">
+
+  <header class="dh-ust">
+    <div class="dh-ust__sol">
+      <a class="dh-ikon-btn" href="./index.html" aria-label="Geri">←</a>
+      <h1>💬 Nasıl Derim?</h1>
+    </div>
+  </header>
+
+  <p class="nd-not">Söylemek istediğinizi Türkçe yazın ya da söyleyin. İngilizcesini, okunuşunu ve kısa bir açıklamasını vereyim.</p>
+
+  <section class="dh-kart" style="margin-bottom:16px">
+    <label for="tr" class="dh-gizli">Türkçe cümle</label>
+    <textarea class="nd-kutu" id="tr" maxlength="300" placeholder="Örneğin: Torunuma doğum günün kutlu olsun demek istiyorum"></textarea>
+    <div class="nd-satir">
+      <button class="dh-btn dh-btn--sade" type="button" id="soyleyerek">Söyleyerek yaz</button>
+      <button class="dh-btn dh-btn--sade" type="button" id="temizle">Temizle</button>
+      <button class="dh-btn dh-btn--birincil nd-tam" type="button" id="cevir" style="min-height:68px;font-size:21px">İngilizcesini göster</button>
+    </div>
+    <p class="nd-not" id="girisNot" hidden style="margin:10px 0 0"></p>
+  </section>
+
+  <section class="dh-kart" id="durumKart" hidden style="margin-bottom:16px" aria-live="polite">
+    <div class="nd-durum"><span class="nd-donen" aria-hidden="true"></span><span id="durumYazi">Hazırlanıyor…</span></div>
+  </section>
+
+  <section class="dh-kart" id="sonuc" hidden style="margin-bottom:16px" aria-live="polite">
+    <div class="dh-bolum-basligi">İngilizcesi</div>
+    <div class="nd-en" id="en"></div>
+    <div class="nd-okunus" id="okunus"></div>
+    <div class="nd-alt" id="kaynak"></div>
+    <p class="nd-aciklama" id="aciklama"></p>
+    <p class="nd-alt" id="alternatif"></p>
+    <div class="nd-satir">
+      <button class="dh-btn dh-btn--birincil" type="button" id="dinle">Dinle</button>
+      <button class="dh-btn dh-btn--sade" type="button" id="yavas">Yavaş dinle</button>
+      <button class="dh-btn dh-btn--sade nd-tam" type="button" id="bendeSoyle">Ben de söyleyeyim</button>
+      <button class="dh-btn dh-btn--sade nd-tam" type="button" id="ekle">Derslerime ekle</button>
+    </div>
+    <p class="nd-aciklama" id="denemeSonuc" aria-live="polite"></p>
+    <a class="dh-btn dh-btn--ikincil dh-btn--tam" id="sesliGit" href="#" hidden style="margin-top:10px">Kendi cümlelerimi sesli çalış</a>
+  </section>
+
+  <section id="gecmisKart" hidden style="margin-bottom:16px">
+    <div class="dh-bolum-basligi">Son sorduklarınız</div>
+    <div class="dh-plan nd-gecmis" id="gecmis"></div>
+  </section>
+
+</main>
+
+<script src="./auth-guard.js?v=4"></script>
+<script src="./profile.js?v=2"></script>
+<script src="./dh-modul.js?v=10"></script>
+<script>
+/* nasil-derim.html — "BUNU İNGİLİZCE NASIL DERİM?"
+   ================================================================
+   Kullanıcı Türkçe bir cümle yazar ya da söyler (tr-TR ses tanıma);
+   yapay zekâ İngilizcesini + Türkçe okunuşunu + kısa açıklamasını verir.
+   Aynı cevapta modül kaydı için gereken alanlar da gelir: "Derslerime ekle"
+   cümleyi "Kendi cümlelerim" modülüne (DHModul, id USR-KENDI) ekler; o
+   modül Cümle Çalış, Tekrar ve Sesli Çalış'ta normal modül gibi çalışılır.
+
+   Yapay zekâ yolu: kendi anahtarı (DHProviders.chat) yoksa Gemini
+   kopyala-yapıştır paneli (DHProviders.manualChat). Son 20 soru
+   bu cihazda saklanır (dh-nasil-derim-v1).
+*/
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var K_GECMIS = "dh-nasil-derim-v1";
+  var MODUL_ID = "USR-KENDI";
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var simdiki = null;
+
+  function kacir(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]; }); }
+  function gecmisOku(){ try{ return JSON.parse(localStorage.getItem(K_GECMIS) || "[]") || []; }catch(e){ return []; } }
+  function gecmisYaz(l){ try{ localStorage.setItem(K_GECMIS, JSON.stringify(l.slice(0, 20))); }catch(e){} }
+
+  /* ---------- sesli okuma ---------- */
+  function oku(metin, dil, hiz){
+    try{
+      speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(metin);
+      u.lang = dil === "tr" ? "tr-TR" : "en-US";
+      u.rate = hiz || (dil === "tr" ? 1 : 0.9);
+      speechSynthesis.speak(u);
+    }catch(e){}
+  }
+
+  /* ---------- Türkçe söyleyerek yazma ---------- */
+  var aktif = null;
+  function dinle(dil, dugme, bitince){
+    if (!SR){ alert("Bu tarayıcıda sesle yazma yok. Lütfen yazarak girin."); return; }
+    if (aktif){ try{ aktif.stop(); }catch(e){} return; }
+    var rec = new SR(), sonuc = "", eski = dugme.textContent;
+    rec.lang = dil === "tr" ? "tr-TR" : "en-US"; rec.interimResults = false; rec.maxAlternatives = 3; rec.continuous = false;
+    rec.onresult = function(e){ var r = e.results[e.results.length-1]; sonuc = r && r[0] ? r[0].transcript : ""; };
+    rec.onerror = function(e){ if (e && (e.error === "not-allowed" || e.error === "service-not-allowed")) alert("Mikrofon izni verilmedi."); };
+    rec.onend = function(){ aktif = null; dugme.textContent = eski; dugme.classList.remove("nd-dinliyor"); bitince(sonuc, rec); };
+    aktif = rec;
+    dugme.textContent = "Dinliyorum… (bitirmek için dokunun)";
+    dugme.classList.add("nd-dinliyor");
+    try{ rec.start(); }catch(e){ aktif = null; dugme.textContent = eski; dugme.classList.remove("nd-dinliyor"); }
+  }
+  $("soyleyerek").onclick = function(){
+    dinle("tr", this, function(metin){
+      if (!metin) return;
+      var t = $("tr");
+      t.value = (t.value.trim() ? t.value.trim() + " " : "") + metin;
+    });
+  };
+  $("temizle").onclick = function(){ $("tr").value = ""; $("girisNot").hidden = true; try{ $("tr").focus(); }catch(e){} };
+
+  /* ---------- yapay zekâ ---------- */
+  function seviye(){ try{ return (window.DHProfile && DHProfile.level && DHProfile.level()) || "A2"; }catch(e){ return "A2"; } }
+  function istem(tr){
+    var L = [];
+    L.push("Sen Türkçe konuşan yaşlı bir öğrenciye (50–80 yaş) yardım eden, sabırlı bir İngilizce öğretmenisin.");
+    L.push("Öğrenci şunu İngilizce söylemek istiyor (Türkçe): \"" + tr.replace(/"/g, "'") + "\"");
+    L.push("Öğrencinin seviyesi: " + seviye() + ". Gündelik, doğal ve mümkünse KISA bir İngilizce cümle ver.");
+    L.push("Öğrenci bir istek anlatıyorsa (\"…demek istiyorum\"), anlatılan şeyi söyleyecek cümleyi ver (\"Happy birthday, my dear!\").");
+    L.push("");
+    L.push("SADECE şu JSON nesnesini döndür, başka hiçbir şey yazma:");
+    L.push("{");
+    L.push('  "en": "İngilizce cümle (nokta ya da soru işaretiyle biter)",');
+    L.push('  "tr": "bu İngilizce cümlenin doğal Türkçe karşılığı",');
+    L.push('  "trPron": "Türk harfleriyle okunuşu, IPA DEĞİL (örn. Hepi börtdey, may dir!)",');
+    L.push('  "ipa": "/IPA yazımı/",');
+    L.push('  "aciklama": "1-2 cümle sade Türkçe: cümle nasıl kuruldu, nelere dikkat edilmeli",');
+    L.push('  "alternatif": "aynı şeyi söylemenin başka doğal bir yolu (İngilizce) ya da boş",');
+    L.push('  "highlights": "Türkçe tek cümle: dikkat edilecek nokta",');
+    L.push('  "grammar": "yapının formülü, İngilizce",');
+    L.push('  "tense": "Present Simple gibi",');
+    L.push('  "commonMistake": "Türk öğrencinin bu cümlede yaptığı tipik hata ❌",');
+    L.push('  "topic": "2-3 kelimelik İngilizce konu", "scenario": "kısa İngilizce durum",');
+    L.push('  "collocations": "2-3 eşdizim", "synonyms": "1-3 eşanlamlı", "antonyms": "1-3 zıt anlamlı ya da none",');
+    L.push('  "grammarTags": "2-4 etiket", "imgQuery": "2-4 kelime, fotoğraflanabilir somut sahne"');
+    L.push("}");
+    return L.join("\n");
+  }
+  function ayikla(metin){
+    var t = String(metin || ""), b = t.indexOf("{"), e = t.lastIndexOf("}");
+    if (b < 0 || e <= b) throw new Error("Cevap okunamadı.");
+    var j = JSON.parse(t.slice(b, e + 1));
+    if (!j || !j.en) throw new Error("Cevapta İngilizce cümle yok.");
+    return j;
+  }
+  function sor(tr){
+    var P = window.DHProviders, m = [{ role:"system", content:"Yalnız istenen JSON nesnesini döndür." }, { role:"user", content:istem(tr) }];
+    var api = false;
+    try{ api = P.mode && P.mode() === "api" && P.realHasAnyKey && P.realHasAnyKey(); }catch(e){}
+    if (api) return P.chat(m, { temperature:0.3, max_tokens:1500, fast:true, title:"💬 Nasıl derim?" }).then(ayikla);
+    return P.manualChat(m, {
+      directPrompt: istem(tr), title: "💬 Nasıl derim?",
+      validateReply: function(v){ ayikla(v); }
+    }).then(ayikla);
+  }
+
+  /* ---------- sonuç ---------- */
+  function goster(kayit){
+    simdiki = kayit;
+    $("sonuc").hidden = false;
+    $("en").textContent = kayit.en;
+    $("okunus").textContent = kayit.trPron ? "Okunuşu: " + kayit.trPron : "";
+    $("kaynak").textContent = "Sorduğunuz: " + kayit.soru;
+    $("aciklama").textContent = kayit.aciklama || "";
+    $("alternatif").textContent = kayit.alternatif ? "Şöyle de denebilir: " + kayit.alternatif : "";
+    $("denemeSonuc").textContent = "";
+    ekleCiz();
+    try{ $("sonuc").scrollIntoView({ block:"start", behavior:"smooth" }); }catch(e){}
+    setTimeout(function(){ oku(kayit.en, "en"); }, 400);
+  }
+  $("dinle").onclick = function(){ if (simdiki) oku(simdiki.en, "en"); };
+  $("yavas").onclick = function(){ if (simdiki) oku(simdiki.en, "en", 0.65); };
+
+  function normEn(t){ return String(t || "").toLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim(); }
+  $("bendeSoyle").onclick = function(){
+    if (!simdiki) return;
+    var hedef = simdiki.en;
+    dinle("en", this, function(duyulan){
+      if (!duyulan){ $("denemeSonuc").textContent = "Bir şey duyamadım. Bir daha deneyin."; return; }
+      var H = normEn(duyulan).split(" "), T = normEn(hedef).split(" "), say = {}, hit = 0;
+      T.forEach(function(w){ say[w] = (say[w] || 0) + 1; });
+      H.forEach(function(w){ if (say[w]){ hit++; say[w]--; } });
+      var oran = Math.round(100 * 2 * hit / (H.length + T.length));
+      var eksik = normEn(hedef).split(" ").filter(function(w){ return H.indexOf(w) < 0; });
+      var html = "Duyduğum: “" + kacir(duyulan) + "”<br>";
+      if (oran >= 85){ html += "✓ Çok güzel söylediniz!"; oku("Çok güzel!", "tr"); }
+      else {
+        html += (eksik.length && eksik.length <= 3 ? "Şu kelimelere dikkat: <span class=\"nd-yanlis\">" + kacir(eksik.join(", ")) + "</span>. " : "") + "Bir daha dinleyip deneyin.";
+        oku("Bir daha deneyelim.", "tr");
+      }
+      $("denemeSonuc").innerHTML = html;
+    });
+  };
+
+  /* ---------- derslerime ekle: "Kendi cümlelerim" modülü ---------- */
+  function modulMeta(){ return (DHModul.liste() || []).filter(function(x){ return x.id === MODUL_ID; })[0] || null; }
+  function ekliMi(en){
+    return (DHModul.getir(MODUL_ID) || []).some(function(k){ return normEn(k.en) === normEn(en); });
+  }
+  function ekleCiz(){
+    var var_ = simdiki && ekliMi(simdiki.en);
+    $("ekle").textContent = var_ ? "✓ Derslerinizde var" : "Derslerime ekle";
+    $("ekle").disabled = !!var_;
+    var meta = modulMeta();
+    $("sesliGit").hidden = !meta;
+    if (meta) $("sesliGit").href = "./sesli-calis.html?mod=" + encodeURIComponent(meta.ad);
+  }
+  $("ekle").onclick = function(){
+    if (!simdiki || ekliMi(simdiki.en)) return;
+    var meta = modulMeta();
+    var sv = meta ? meta.level : seviye();
+    var ad = meta ? meta.ad : sv + "-M90 Kendi cümlelerim";
+    var eski = DHModul.getir(MODUL_ID) || [];
+    var no = eski.length + 1;
+    var k = simdiki;
+    var yeni = {
+      id: MODUL_ID + "-" + ("00" + no).slice(-3), module: ad, part: "P1 Foundation", stage: "Foundation", order: no, level: sv,
+      topic: k.topic || "My sentences", scenario: k.scenario || k.soru, grammar: k.grammar || "—", highlights: k.highlights || k.aciklama || "—",
+      pattern: "", en: k.en, tr: k.tr || k.soru, ipa: k.ipa || "", trPron: k.trPron || "", tense: k.tense || "—",
+      collocations: k.collocations || "—", synonyms: k.synonyms || "—", antonyms: k.antonyms || "none",
+      commonMistake: k.commonMistake || "—", aiExplain: k.aciklama || "", grammarTags: k.grammarTags || "", imgQuery: k.imgQuery || k.topic || ""
+    };
+    var r = DHModul.kaydet(eski.concat([yeni]), { id: MODUL_ID, modulAd: ad, alan: "Kendi cümlelerim", seviye: sv });
+    if (!r || !r.ok){ alert((r && r.hata) || "Eklenemedi."); return; }
+    oku("Derslerinize ekledim.", "tr");
+    ekleCiz();
+  };
+
+  /* ---------- çevir ---------- */
+  function cevir(){
+    var tr = $("tr").value.replace(/\s+/g, " ").trim();
+    if (tr.length < 2){ $("girisNot").textContent = "Önce Türkçe bir cümle yazın ya da söyleyin."; $("girisNot").hidden = false; return; }
+    $("girisNot").hidden = true;
+    /* aynı soru daha önce sorulduysa yapay zekâya gitmeden göster */
+    var once = gecmisOku().filter(function(x){ return x.soru.toLocaleLowerCase("tr") === tr.toLocaleLowerCase("tr"); })[0];
+    if (once){ goster(once); return; }
+    $("cevir").disabled = true;
+    $("durumKart").hidden = false;
+    $("durumYazi").textContent = "İngilizcesi hazırlanıyor…";
+    sor(tr).then(function(j){
+      j.soru = tr; j.t = Date.now();
+      var l = gecmisOku().filter(function(x){ return x.soru !== tr; });
+      l.unshift(j); gecmisYaz(l);
+      goster(j); gecmisCiz();
+    }).catch(function(err){
+      if (err && err.code === "abort") return;
+      $("girisNot").textContent = "İngilizcesi alınamadı. Biraz sonra tekrar deneyin." + (err && err.message ? " (" + err.message + ")" : "");
+      $("girisNot").hidden = false;
+    }).then(function(){ $("cevir").disabled = false; $("durumKart").hidden = true; });
+  }
+  $("cevir").onclick = cevir;
+
+  function gecmisCiz(){
+    var l = gecmisOku();
+    $("gecmisKart").hidden = !l.length;
+    var kap = $("gecmis"); kap.innerHTML = "";
+    l.slice(0, 20).forEach(function(x){
+      var a = document.createElement("a");
+      a.href = "#"; a.className = "dh-plan-satir";
+      a.innerHTML = '<div class="dh-plan-satir__ust"><span class="dh-plan-satir__ad">' + kacir(x.en) + '</span></div>' +
+                    '<div class="dh-tugla__yazi" style="margin-top:4px">' + kacir(x.soru) + '</div>';
+      a.onclick = function(e){ e.preventDefault(); $("tr").value = x.soru; goster(x); };
+      kap.appendChild(a);
+    });
+  }
+
+  if (!SR) $("soyleyerek").hidden = true;
+  Promise.resolve(DHModul.hazir ? DHModul.hazir() : null).then(function(){ gecmisCiz(); });
+  /* adresle gelen soru: nasil-derim.html?tr=... */
+  try{ var q = new URLSearchParams(location.search).get("tr"); if (q){ $("tr").value = q; } }catch(e){}
+})();
+</script>
+<script src="./ux-boost.js?v=1"></script>
+<script src="./atlas-effects.js?v=2"></script>
+  <script src="product-improvements.js" defer></script>
+<script src="./dh-button-guard.js?v=1" defer></script>
+</body>
+</html>
