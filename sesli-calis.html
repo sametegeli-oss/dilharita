@@ -71,7 +71,7 @@
       </button>
     </div>
     <button class="dh-secenek" type="button" id="otoSes" aria-pressed="false" style="margin-top:12px">
-      <span>Her cevaptan sonra kendi sesimi çal<span class="dh-secenek__alt">Söylediğinizi kayıttan dinlersiniz. İsterseniz her cümlede “Sesimi dinle” düğmesi de var.</span></span>
+      <span>Her cevaptan sonra sesimi kaydedip dinlet<span class="dh-secenek__alt">Cümleyi bir daha söylersiniz; kayıttan kendi sesinizi, ardından doğrusunu dinlersiniz. Her cümlede “Sesimi kaydet ve dinle” düğmesi de var.</span></span>
     </button>
     <p class="sc-not" id="mikNot" hidden style="margin-top:10px"></p>
     <button class="dh-btn dh-btn--birincil dh-btn--tam sc-buyuk-btn" id="basla" type="button" disabled style="margin-top:14px">Başla</button>
@@ -90,7 +90,7 @@
     <div class="sc-dugmeler">
       <button class="dh-btn dh-btn--birincil" type="button" id="durdur">Durdur</button>
       <button class="dh-btn dh-btn--sade" type="button" id="gec">Geç</button>
-      <button class="dh-btn dh-btn--birincil sc-genis" type="button" id="sesimiDinle" hidden>Sesimi dinle</button>
+      <button class="dh-btn dh-btn--birincil sc-genis" type="button" id="sesimiDinle">Sesimi kaydet ve dinle</button>
       <button class="dh-btn dh-btn--sade sc-genis" type="button" id="tekrarSoyle">Tekrar söyle</button>
       <button class="dh-btn dh-btn--sade sc-genis" type="button" id="bitir">Bitir</button>
     </div>
@@ -255,9 +255,11 @@
       return uy.filter(function(v){ return /Google|Natural|Neural|Enhanced|Premium|Siri/i.test(v.name); })[0] || uy[0] || null;
     }catch(e){ return null; }
   }
-  function soyle(metin, dil, hiz){
+  function soyle(metin, dil, hiz, zorla){
     return new Promise(function(res){
       if (!metin || !window.speechSynthesis) return res();
+      /* elle kayıt sürerken akışın sözleri kayda karışmasın */
+      if (kayitMesgul && !zorla) return res();
       durumGoster("konusuyor");
       var bitti = false, son = function(){ if (bitti) return; bitti = true; clearTimeout(zt); res(); };
       var zt = setTimeout(son, 2500 + String(metin).length * 110);
@@ -288,77 +290,29 @@
   /* ---------- ses: dinleme ---------- */
   var KOMUT = { dur:/^(stop|pause)\b/, gec:/^(skip|next)\b/, tekrar:/^(repeat|again)\b/ };
   /* Dinleme: Android'de ses tanıma birkaç saniyelik sessizlikte kendini
-     kapatır (onend / "no-speech"). Kullanıcı daha konuşmaya başlamadan
-     bitiyordu. Artık SURE dolana kadar kendini yeniden başlatır (tekrar.html
-     ile aynı yöntem). Aynı anda ses KAYDA alınır ki kullanıcı kendi sesini
-     dinleyebilsin; kayıt mikrofonu kilitlerse kayıt bu oturum için kapatılır. */
-  var kayit = { stream:null, kapali:false };
+     kapatır; SURE dolana kadar yeniden başlatılır (tekrar.html yöntemi).
+     YALNIZ ses tanıma: aynı anda getUserMedia ile kayıt yapmak Android'de
+     ses tanımanın mikrofonu duymasını engelliyordu. Kayıt ayrı adımdır. */
   var aktifIptal = null;
   function dinlemeyiKes(){ try{ aktifIptal && aktifIptal(); }catch(e){} }
-  function kayitAc(){
-    if (kayit.kapali || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) return Promise.resolve(null);
-    if (kayit.stream && kayit.stream.active) return Promise.resolve(kayit.stream);
-    return navigator.mediaDevices.getUserMedia({ audio:true }).then(function(st){ kayit.stream = st; return st; })
-      .catch(function(){ kayit.kapali = true; return null; });
-  }
-  function kayitKapat(){
-    try{ if (kayit.stream) kayit.stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
-    kayit.stream = null;
-  }
   var SURE = 8000;
   function dinle(hedef){
     if (!SR) return Promise.resolve({ hata:"yok" });
-    return kayitAc().then(function(stream){ return new Promise(function(res){
-      var t0 = Date.now(), sonuc = null, bitti = false, kod = "", rec = null, mr = null, parcalar = [];
-      /* ses seviyesi: hem kullanıcıya "sesiniz geliyor" göstergesi hem teşhis.
-         Hiç ses gelmiyorsa mikrofon çalışmıyor demektir (emülatör, kapalı izin). */
-      var enYuksek = 0, olc = null, analiz = null;
-      if (stream){
-        try{
-          _ses = _ses || new (window.AudioContext || window.webkitAudioContext)();
-          if (_ses.state === "suspended") _ses.resume();
-          var kaynak = _ses.createMediaStreamSource(stream);
-          analiz = _ses.createAnalyser(); analiz.fftSize = 512;
-          kaynak.connect(analiz);
-          var buf = new Float32Array(analiz.fftSize);
-          $("sesOlcer").hidden = false;
-          olc = setInterval(function(){
-            analiz.getFloatTimeDomainData(buf);
-            var t = 0; for (var i=0;i<buf.length;i++) t += buf[i]*buf[i];
-            var rms = Math.sqrt(t/buf.length);
-            if (rms > enYuksek) enYuksek = rms;
-            $("sesCubuk").style.width = Math.min(100, Math.round(rms * 400)) + "%";
-          }, 80);
-        }catch(e){ olc = null; }
-      }
-      if (stream){
-        try{
-          mr = new MediaRecorder(stream);
-          mr.ondataavailable = function(e){ if (e.data && e.data.size) parcalar.push(e.data); };
-          mr.start();
-        }catch(e){ mr = null; }
-      }
-      function kayitBitir(){
-        return new Promise(function(r){
-          if (!mr || mr.state === "inactive") return r(parcalar.length ? URL.createObjectURL(new Blob(parcalar, { type:(mr && mr.mimeType) || "audio/webm" })) : null);
-          mr.onstop = function(){ r(parcalar.length ? URL.createObjectURL(new Blob(parcalar, { type: mr.mimeType || "audio/webm" })) : null); };
-          try{ mr.stop(); }catch(e){ r(null); }
-        });
-      }
+    return new Promise(function(res){
+      var t0 = Date.now(), sonuc = null, bitti = false, kod = "", sesVar = false, rec = null;
       function son(x){
         if (bitti) return; bitti = true; clearTimeout(zt); aktifRec = null; aktifIptal = null;
-        if (olc){ clearInterval(olc); $("sesOlcer").hidden = true; $("sesCubuk").style.width = "0%"; }
-        if (olc && !x.metin && !x.hata && !x.iptal && x.kod !== "network" && x.kod !== "audio-capture")
-          x.kod = enYuksek < 0.01 ? "sessiz" : "anlasilmadi";
         try{ rec && rec.abort(); }catch(e){}
+        if (!x.metin && !x.hata && !x.iptal && sesVar && (!x.kod || x.kod === "no-speech")) x.kod = "anlasilmadi";
         durumGoster("");
-        kayitBitir().then(function(url){ x.kayit = url; res(x); });
+        res(x);
       }
       var zt = setTimeout(function(){ son(sonuc || { metin:"", kod: kod || "no-speech" }); }, SURE + 2000);
       aktifIptal = function(){ son(sonuc || { metin:"", iptal:true }); };
       function baslat(){
         try{ rec = new SR(); }catch(e){ return son({ hata:"yok" }); }
         rec.lang = "en-US"; rec.interimResults = false; rec.maxAlternatives = 4; rec.continuous = false;
+        rec.onspeechstart = function(){ sesVar = true; };
         rec.onresult = function(e){
           var r = e.results[e.results.length-1], en = "", enIyi = -1;
           for (var i=0;i<r.length;i++){ var s = benzerlik(r[i].transcript, hedef); if (s > enIyi){ enIyi = s; en = r[i].transcript; } }
@@ -368,13 +322,11 @@
           var h = (e && e.error) || "";
           if (h && h !== "aborted") kod = h;
           if (h === "not-allowed" || h === "service-not-allowed") return son({ hata:"izin" });
-          /* Kayıt mikrofonu tutuyor olabilir: kaydı bırak, tanıma sürsün */
-          if (h === "audio-capture" && mr){ kayit.kapali = true; try{ mr.stop(); }catch(x){} mr = null; kayitKapat(); }
         };
         rec.onend = function(){
           if (bitti) return;
           if (sonuc) return son(sonuc);
-          if (Date.now() - t0 < SURE && kod !== "network"){ setTimeout(function(){ if (!bitti) baslat(); }, 150); }
+          if (Date.now() - t0 < SURE && kod !== "network" && kod !== "audio-capture"){ setTimeout(function(){ if (!bitti) baslat(); }, 150); }
           else son({ metin:"", kod: kod || "no-speech" });
         };
         aktifRec = rec;
@@ -382,11 +334,50 @@
       }
       durumGoster("dinliyor");
       baslat();
-    }); });
+    });
+  }
+
+  /* KAYDET: bip -> SURE_KAYIT ms kayıt (ses seviyesi çubuğuyla) ->
+     mikrofon bırakılır. Ses tanımayla aynı anda çalışmaz. url döndürür. */
+  var SURE_KAYIT = 5000;
+  function kaydet(){
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) return Promise.resolve(null);
+    return navigator.mediaDevices.getUserMedia({ audio:true }).then(function(stream){
+      return new Promise(function(res){
+        var parcalar = [], mr, olc = null, bitti = false;
+        try{ mr = new MediaRecorder(stream); }catch(e){ stream.getTracks().forEach(function(t){ t.stop(); }); return res(null); }
+        mr.ondataavailable = function(e){ if (e.data && e.data.size) parcalar.push(e.data); };
+        mr.onstop = function(){
+          try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+          if (olc) clearInterval(olc);
+          $("sesOlcer").hidden = true; $("sesCubuk").style.width = "0%";
+          aktifIptal = null;
+          durumGoster("");
+          res(parcalar.length ? URL.createObjectURL(new Blob(parcalar, { type: mr.mimeType || "audio/webm" })) : null);
+        };
+        try{
+          _ses = _ses || new (window.AudioContext || window.webkitAudioContext)();
+          if (_ses.state === "suspended") _ses.resume();
+          var an = _ses.createAnalyser(); an.fftSize = 512;
+          _ses.createMediaStreamSource(stream).connect(an);
+          var buf = new Float32Array(an.fftSize);
+          $("sesOlcer").hidden = false;
+          olc = setInterval(function(){
+            an.getFloatTimeDomainData(buf);
+            var t = 0; for (var i=0;i<buf.length;i++) t += buf[i]*buf[i];
+            $("sesCubuk").style.width = Math.min(100, Math.round(Math.sqrt(t/buf.length) * 400)) + "%";
+          }, 80);
+        }catch(e){}
+        var bitir = function(){ if (bitti) return; bitti = true; try{ mr.stop(); }catch(e){ res(null); } };
+        aktifIptal = bitir;
+        $("durum").setAttribute("data-d", "dinliyor"); $("durumYazi").textContent = "Kaydediyorum — söyleyin";
+        mr.start();
+        setTimeout(bitir, SURE_KAYIT);
+      });
+    }).catch(function(){ return null; });
   }
   function nedenYazi(kod){
     return kod === "audio-capture" ? "Mikrofon bulunamadı."
-         : kod === "sessiz" ? "Mikrofondan hiç ses gelmiyor. Mikrofonun açık olduğundan emin olun."
          : kod === "anlasilmadi" ? "Sesinizi duydum ama anlayamadım. Biraz daha yavaş ve net söyleyin."
          : kod === "network" ? "Ses tanıma için internet gerekiyor."
          : "Bir şey duyamadım.";
@@ -405,17 +396,30 @@
       }catch(e){ r(); }
     });
   }
-  var sonKayit = null;   /* ekrandaki cümlenin en son kaydı */
-  function sesimiDinle(url, en){
-    /* akışı durdur, önce kullanıcının sesi, sonra doğrusu; sonra devam */
-    var oncekiDuraklat = duraklat;
+  /* Söylet -> kaydet -> kaydı çal -> doğrusunu oku. satir verilirse kayıt
+     bitiş listesinde saklanır. */
+  function kaydetDinlet(k, satir){
+    return soyle("Şimdi bir daha söyleyin, sesinizi kaydediyorum.", "tr", 0, true).then(bip).then(kaydet).then(function(url){
+      if (!url) return soyle("Kayıt alınamadı.", "tr", 0, true);
+      if (satir){ try{ satir.kayit && URL.revokeObjectURL(satir.kayit); }catch(e){} satir.kayit = url; }
+      return soyle("Sizin sesiniz:", "tr", 0, true).then(function(){ return sesCal(url); })
+        .then(function(){ return soyle("Doğrusu:", "tr", 0, true); }).then(function(){ return soyle(k.en, "en", 0, true); });
+    }).then(function(){ durumGoster(""); });
+  }
+  /* Ekrandaki "Sesimi kaydet ve dinle": akışı durdurur, kaydeder, dinletir, sürdürür */
+  var mevcut = null, mevcutSatir = null, kayitMesgul = false;
+  function elleKaydet(){
+    if (!mevcut || kayitMesgul) return;
+    kayitMesgul = true;
+    var onceki = duraklat;
     duraklat = true; dugmeGuncelle();
     try{ speechSynthesis.cancel(); }catch(e){}
     dinlemeyiKes();
-    return bekle(300).then(function(){ return soyle("Sizin sesiniz:", "tr"); })
-      .then(function(){ return sesCal(url); })
-      .then(function(){ return en ? soyle("Doğrusu:", "tr").then(function(){ return soyle(en, "en"); }) : null; })
-      .then(function(){ if (!oncekiDuraklat){ duraklat = false; dugmeGuncelle(); } });
+    var k = mevcut, satir = mevcutSatir;
+    bekle(400).then(function(){ return kaydetDinlet(k, satir); }).then(function(){
+      kayitMesgul = false;
+      if (!onceki){ duraklat = false; dugmeGuncelle(); }
+    });
   }
 
   /* ---------- ekran ---------- */
@@ -429,7 +433,7 @@
     $("en").textContent = "";
     $("duydum").textContent = "";
     $("sonuc").textContent = ""; $("sonuc").setAttribute("data-s","");
-    $("sesimiDinle").hidden = true; sonKayit = null;
+    mevcut = k; mevcutSatir = null;
   }
   function sonucYaz(metin, iyi){ $("sonuc").textContent = metin; $("sonuc").setAttribute("data-s", iyi ? "iyi" : "kotu"); }
 
@@ -475,7 +479,6 @@
     function cevapAl(deneme){
       if (tekrarIstek){ tekrarIstek = false; return engel().then(function(){ return soyle(k.tr, "tr"); }).then(function(){ return cevapAl(deneme); }); }
       return engel().then(bip).then(function(){ return dinle(k.en); }).then(function(c){
-        if (c.kayit){ sonKayit = { url:c.kayit, en:k.en }; $("sesimiDinle").hidden = false; }
         if (!c.metin && (c.kod === "audio-capture" || c.kod === "network") && !c.iptal){
           mod = "dinle";
           $("duydum").textContent = nedenYazi(c.kod);
@@ -493,8 +496,8 @@
         if (ko === "gec") return { gec:true };
         if (ko === "tekrar") return soyle(k.tr, "tr").then(function(){ return cevapAl(deneme); });
         if (gecIstek) return { gec:true };
-        if (!c.metin && deneme < 2){ $("duydum").textContent = nedenYazi(c.kod); return soyle(c.kod === "sessiz" ? "Mikrofondan ses gelmiyor. Bir daha deneyelim." : c.kod === "anlasilmadi" ? "Sesinizi duydum ama anlayamadım. Bir daha, yavaşça söyleyin." : "Duyamadım. Bip sesinden sonra biraz daha yüksek sesle söyleyin.", "tr").then(function(){ return cevapAl(deneme+1); }); }
-        return { metin: c.metin || "", kod: c.kod, kayit: c.kayit };
+        if (!c.metin && deneme < 2){ $("duydum").textContent = nedenYazi(c.kod); return soyle(c.kod === "anlasilmadi" ? "Sesinizi duydum ama anlayamadım. Bir daha, yavaşça söyleyin." : "Duyamadım. Bip sesinden sonra biraz daha yüksek sesle söyleyin.", "tr").then(function(){ return cevapAl(deneme+1); }); }
+        return { metin: c.metin || "", kod: c.kod };
       });
     }
 
@@ -503,7 +506,8 @@
       if (c.gec){ gecIstek = false; $("en").textContent = k.en; return soyle("Geçiyoruz. Doğrusu:", "tr").then(function(){ return soyle(k.en, "en"); }); }
       var sc = benzerlik(c.metin, k.en);
       $("duydum").textContent = c.metin ? "Duyduğum: “" + c.metin + "”" : nedenYazi(c.kod);
-      calisilan.push({ tr:k.tr, en:k.en, kayit:(sonKayit && sonKayit.en === k.en) ? sonKayit.url : null, sc: benzerlik(c.metin, k.en) });
+      var kayitSatiri = { tr:k.tr, en:k.en, kayit:null, sc: benzerlik(c.metin, k.en) };
+      calisilan.push(kayitSatiri); mevcutSatir = kayitSatiri;
       $("en").textContent = k.en;
       sayilar.toplam++;
       var iyi = sc >= 70;
@@ -520,16 +524,13 @@
           .then(engel).then(bip).then(function(){ return dinle(k.en); })
           .then(function(c2){
             if (!c2 || c2.hata) return;
-            if (c2.kayit){ sonKayit = { url:c2.kayit, en:k.en }; $("sesimiDinle").hidden = false; }
             var s2 = benzerlik(c2.metin, k.en);
             $("duydum").textContent = c2.metin ? "Duyduğum: “" + c2.metin + "”" : "";
             return soyle(s2 >= 70 ? "Güzel, şimdi oldu." : "Olsun, bir dahaki sefere. Devam edelim.", "tr");
           });
       }
-      if (otoSes && sonKayit && sonKayit.en === k.en){
-        var kurl = sonKayit.url;
-        ses = ses.then(function(){ return soyle("Sizin sesiniz:", "tr"); }).then(function(){ return sesCal(kurl); });
-      }
+      /* Seçenek açıksa: bir daha söylet, kaydet, kaydı ve doğrusunu dinlet */
+      if (otoSes) ses = ses.then(engel).then(function(){ return kaydetDinlet(k, kayitSatiri); });
       return Promise.all([not, ses]);
     }).then(function(){ return bekle(700); });
   }
@@ -565,7 +566,6 @@
     var ozet = sayilar.toplam + " cümle çalıştınız.";
     if (mod !== "dinle" && sayilar.toplam) ozet += " " + sayilar.dogru + " tanesini doğru söylediniz.";
     $("bittiOzet").textContent = ozet;
-    kayitKapat();
     bittiListeCiz();
     bitirIstek = false;
     return soyle("Bugünlük bu kadar. " + ozet + " Aferin!", "tr");
@@ -629,7 +629,7 @@
   function otoSesCiz(){ $("otoSes").setAttribute("aria-pressed", otoSes ? "true" : "false"); }
   $("otoSes").onclick = function(){ otoSes = !otoSes; try{ localStorage.setItem("dh-sesli-otoses", otoSes ? "1" : "0"); }catch(e){} otoSesCiz(); };
   otoSesCiz();
-  $("sesimiDinle").onclick = function(){ if (sonKayit) sesimiDinle(sonKayit.url, sonKayit.en); };
+  $("sesimiDinle").onclick = elleKaydet;
   $("yeniden").onclick = function(){ yukle().then(function(){ $("bitti").hidden = true; $("giris").hidden = false; }); };
 
   function yukle(){
