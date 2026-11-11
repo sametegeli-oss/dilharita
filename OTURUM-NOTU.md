@@ -191,3 +191,6 @@ Bilinen ipuçları:
    - Ders örnekleri yazılım/SQL temalı; bunlar kullanıcının kendi hata geçmişinden geliyor.
    - Görselle Öğren: alt sıradaki modül kutucuğuna ilk dokunuş bazen etkisiz (yerelde 1,5 sn içinde dokununca); sebebi bulunamadı, LDPlayer'da denenecek.
    - `test-gemini-navigation-cloud-ai-v106.mjs` eski `.dhgb-open` sınıfını arıyor; bu test zaten eskiydi (Gemini paneli değişmeden önce de geçmiyordu).
+
+### 5q. Modül ekranında Önceki · Dinle · Sonraki üst çubukta (v424)
+- dh-dugmeler.js `ust` tanımı: index-app'te üç vekil düğme `.index-app-top-actions` içine, Geri'nin yanına; karttaki #dhNavTrio ve .dh-card-actions-primary gizlenir. Simge üstte, yazı altta (dar ekrana sığsın). Asılların kapalı/yok durumu yansıtılır; liste ekranında çubuk gizli. Zor/Normal/Kolay kartta kalır.

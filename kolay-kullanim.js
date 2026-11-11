@@ -1044,7 +1044,7 @@
     cubukKur(); menuKur(); yaziKur(); olaylar();
     /* "🧰 Düğmeler" altyapısı */
     if (!g.DHDugmeler && !doc.querySelector('script[src*="dh-dugmeler.js"]')){
-      var sc = doc.createElement("script"); sc.src = "./dh-dugmeler.js?v=7"; doc.head.appendChild(sc);
+      var sc = doc.createElement("script"); sc.src = "./dh-dugmeler.js?v=11"; doc.head.appendChild(sc);
     }
     ipucuKur(); simgeEtiketleri();
     if (ayar.acik){ tumunuOlcekle(); ikonYazilari(); }

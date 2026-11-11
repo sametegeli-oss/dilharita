@@ -26,6 +26,16 @@
   var EKRANLAR = {
     "index-app": {
       gizle: [".dh-source-media-row"],          /* Resim/Video/YouTube satırı boş kalmasın */
+      /* ÜST ÇUBUK (kullanıcı isteği, 11 Kasım): Önceki · Dinle · Sonraki en üstte,
+         Geri'nin yanında; kart içindeki asılları gizlenir. Üst çubuk yapışkan
+         olduğu için kaydırınca da elde kalır. */
+      ust: { kap: ".index-app-top-actions", sonra: ".home",
+             gizle: ["#dhNavTrio", ".dh-card-actions-primary"],
+             dugmeler: [
+               [".dh-nav-trio .dh-nav-prev", "←|Önceki", ""],
+               [".dh-listen-after-sentence", "▶|Dinle", "birincil"],
+               [".dh-nav-trio .dh-nav-next", "→|Sonraki", "ileri"]
+             ] },
       gruplar: [["Bu cümle", [
         [".dh-gtr-btn", "✦ Gemini ile açıkla", "Cümleyi yapay zekâya açıklatın"],
         [".dh-mode-btn", "", ""],
@@ -94,13 +104,25 @@
     s.id = "dhDugmelerCss";
     s.textContent =
       ".dh-dg-secili{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;background:#14532d;color:#bbf7d0;font-size:14px;font-weight:800}" +
-      ".kk-ust-dugme{top:auto}";
+      ".kk-ust-dugme{top:auto}" +
+      "#dhUstVekil{display:flex;flex:1 1 0;gap:6px;margin-left:6px;min-width:0}" +
+      "#dhUstVekil[hidden]{display:none}" +
+      ".index-app-top-actions:has(#dhUstVekil:not([hidden])){flex-wrap:nowrap !important}" +
+      ".dh-ust-vekil{flex:1 1 0;min-width:0;min-height:52px;padding:6px 4px;border-radius:14px;border:2px solid #3b5b88;" +
+      "background:#13233f;color:#fff;font:800 15px/1.15 system-ui,-apple-system,'Segoe UI',sans-serif;cursor:pointer;white-space:nowrap;overflow:hidden;" +
+      "display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}" +
+      ".dh-uv-i{font-size:20px;line-height:1}.dh-uv-y{line-height:1.1}" +
+      ".dh-ust-vekil--birincil{background:#6d28d9;border-color:#c4b5fd}" +
+      ".dh-ust-vekil--ileri{background:#2563eb;border-color:#93c5fd}" +
+      ".dh-ust-vekil:disabled{opacity:.4;cursor:default}" +
+      ".dh-ust-vekil:focus-visible{outline:3px solid #fff;outline-offset:2px}";
     (doc.head || doc.documentElement).appendChild(s);
   }
   function seciciler() {
     var l = [];
     if (!tanim) return l;
     (tanim.gizle || []).forEach(function (x) { l.push(x); });
+    if (tanim.ust) (tanim.ust.gizle || []).forEach(function (x) { l.push(x); });
     tanim.gruplar.forEach(function (gr) { gr[1].forEach(function (x) { l.push(x[0]); }); });
     return l;
   }
@@ -137,6 +159,62 @@
       }
     });
   }
+  /* ---------- üst çubuk vekilleri ---------- */
+  var ustKap = null;
+  function ustKur() {
+    var u = tanim && tanim.ust;
+    if (!u || !kolayAcik()) return;
+    var kap = doc.querySelector(u.kap);
+    if (!kap) return;
+    var hazir = doc.getElementById("dhUstVekil");
+    if (!hazir || hazir.parentElement !== kap) {
+      if (hazir) hazir.remove();
+      hazir = doc.createElement("div");
+      hazir.id = "dhUstVekil";
+      hazir.setAttribute("data-kk-atla", "");
+      u.dugmeler.forEach(function (d, i) {
+        var b = doc.createElement("button");
+        b.type = "button";
+        b.className = "dh-ust-vekil" + (d[2] ? " dh-ust-vekil--" + d[2] : "");
+        b.setAttribute("data-kk-atla", "");
+        b.setAttribute("data-uv", String(i));
+        /* simge üstte, yazı altta: dar ekranda Geri'nin yanına sığsın */
+        var p = d[1].split("|");
+        var si = doc.createElement("span"); si.className = "dh-uv-i"; si.textContent = p[0];
+        var ya = doc.createElement("span"); ya.className = "dh-uv-y"; ya.textContent = p[1] || "";
+        b.appendChild(si); b.appendChild(ya);
+        b.setAttribute("aria-label", p[1] || p[0]);
+        /* sayfanın kendi button kuralları yazıyı küçültüyordu */
+        b.style.setProperty("font-size", "15px", "important");
+        b.style.setProperty("font-weight", "800", "important");
+        b.style.setProperty("color", "#fff", "important");
+        b.onclick = function () {
+          var asil = doc.querySelector(d[0]);
+          if (asil && !asil.disabled) asil.click();
+        };
+        hazir.appendChild(b);
+      });
+      var once = u.sonra ? kap.querySelector(u.sonra) : null;
+      if (once && once.nextSibling) kap.insertBefore(hazir, once.nextSibling); else kap.appendChild(hazir);
+    }
+    ustKap = hazir;
+    ustEsitle();
+  }
+  /* asılların durumunu yansıt: yoksa gizle, kapalıysa kapalı */
+  function ustEsitle() {
+    var u = tanim && tanim.ust;
+    if (!u || !ustKap) return;
+    var varMi = false;
+    Array.prototype.forEach.call(ustKap.children, function (b) {
+      var d = u.dugmeler[+b.getAttribute("data-uv")];
+      var asil = doc.querySelector(d[0]);
+      b.hidden = !asil;
+      if (asil){ varMi = true; b.disabled = !!asil.disabled; }
+    });
+    ustKap.hidden = !varMi;
+  }
+  setInterval(function () { if (!doc.hidden) { try { ustKur(); } catch (e) {} } }, 400);
+
   var bekliyor = false;
   function planla() { if (!bekliyor) { bekliyor = true; requestAnimationFrame(function () { bekliyor = false; isaretle(); }); } }
 
