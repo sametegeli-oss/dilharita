@@ -207,3 +207,6 @@ Bilinen ipuçları:
 - Cümleler eşzamansız: sayfa window.__dhSohbetHazir verir ({systemExtra, opener, role}); chat-core (t39) açılıştan önce en çok 5 sn bekler. systemExtra = modül adı + Türkçe açıklama + 12 örnek cümle + "konudan sapma, yapıyı kullandıracak sorular sor". Anahtarsız (Gemini) açılış modülün ilk cümlesiyle; anahtarla taze açılış rol içinden.
 - chat-core: Scenario.tasks artık gerçekten okunuyor (eskiden window.Scenario yoktu, hep varsayılan).
 - Girişler: modül ekranı satırı (dh-sesli-modul.js v4) "💬 Bu konuda sohbet et", Düğmeler penceresi (dh-dugmeler v13), modullerim.
+
+### 5u. Modül sohbeti: yorum Türkçe, sohbet İngilizce (v428)
+- Scenario.yorumTr (yalnız chatmodul.html) -> dhLanguageRule() dhYorumTrKurali() döner: önce öğrencinin son mesajı hakkında 1-2 cümle TÜRKÇE yorum/açıklama (düzeltilmiş cümle [[ ]] içinde), sonra 1-2 cümle İngilizce sohbet + soru [[ ]] içinde. Uzunluk kuralı buna göre (chat-core t40). Seslendirme mevcut splitMixedSpeech ile: [[ ]] içi en-US, Türkçe cümleler tr-TR (testte doğrulandı). Gemini açılışı da Türkçe çerçeve + [[İngilizce]].

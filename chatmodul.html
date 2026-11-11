@@ -40,6 +40,7 @@
     systemExtra: "You are " + rol + ".",
     avatarDir: "assets/avatars_v3/" + ogr + "/",
     frames: {"idle": "idle.webp", "blink": "blink.webp", "listen": "listen.webp", "mouthA": "mouth-a.webp", "mouthE": "mouth-e.webp", "mouthI": "mouth-i.webp", "mouthO": "mouth-o.webp", "mouthU": "mouth-u.webp", "mouthMBP": "mouth-mbp.webp", "mouthFV": "mouth-fv.webp", "mouthL": "mouth-l.webp", "mouthTH": "mouth-th.webp", "mouthSmall": "mouth-i.webp", "mouthMedium": "mouth-e.webp", "mouthOpen": "mouth-a.webp"},
+    yorumTr: true,
     tasks: ["Selamlaş", "Bu modülün yapısıyla en az 3 cümle kur", "Aynı yapıyla karşındakine bir soru sor"],
     backHref: "chat.html",
     noKeyReply: "I can continue when you add an API key. Can you make a sentence like the ones in your lesson?"
@@ -67,7 +68,7 @@
       + "Do not switch to unrelated topics.";
     var ilk = l[0];
     var opener = ilk
-      ? ("Hello! Today we will talk about this lesson. Here is a sentence from it: \"" + ilk.en + "\" Now, can you tell me a similar sentence about yourself?")
+      ? ("Bugün bu modülün konusunda sohbet edeceğiz. Modülden bir cümle: [[" + ilk.en + "]] Şimdi siz de kendinizle ilgili benzer bir cümle söyleyin. [[What about you?]]")
       : null;
     return { systemExtra: sys, opener: opener, role: rol };
   });
@@ -86,7 +87,7 @@
      konu baştan başlıyordu. chat-core'dan ÖNCE yüklenmeli. -->
 <script src="./dh-konusma.js?v=2"></script>
 <script src="./profile.js?v=2"></script>
-<script src="./chat-core.js?v=t39"></script>
+<script src="./chat-core.js?v=t40"></script>
 <script src="./dh-ortam-fon.js?v=6"></script>
 <script src="./dh-plan.js?v=3"></script>
 <script src="./dh-sohbet-puan.js?v=tm1"></script>

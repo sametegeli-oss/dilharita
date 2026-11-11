@@ -794,6 +794,10 @@ function dhLanguageRule(){
     return dhOgretmenKurali() + "\n" + dhRolOyunuKatmani();
   }
 
+  /* MODÜL SOHBETİ (Scenario.yorumTr): yorum ve açıklama TÜRKÇE, sohbet
+     İngilizce. İngilizce her şey [[ ]] içinde -> seslendirme Türkçeyi
+     Türkçe, İngilizceyi İngilizce sesle okur (splitMixedSpeech). */
+  if(Scenario.yorumTr) return dhYorumTrKurali();
   var rolPref="";
   try{ rolPref=localStorage.getItem("dh-rol-dili")||""; }catch(e){}
   if(rolPref==="en") return "Always reply in English unless the user explicitly asks for Turkish.";
@@ -803,6 +807,17 @@ function dhLanguageRule(){
      yapar, sonra ogretmene doner. Rol, asistanin kimligi DEGILDIR. */
   /* Senaryo sayfalari artik ders yapmaz — eski davranis. */
   return "Always reply in English unless the user explicitly asks for Turkish.";
+}
+function dhYorumTrKurali(){
+  return "LANGUAGE AND FORMAT (very important):\n"
+    + "1) FIRST, comment on the student's LAST message in TURKISH (1-2 short sentences). "
+    + "If it has a mistake, say in Turkish what was wrong and why, and give the corrected English sentence inside [[ ]] "
+    + "(example: Küçük bir hata var: \"I working\" değil, yardımcı fiil gerekir: [[I am working.]]). "
+    + "If it was correct, praise it briefly in Turkish and, if useful, say which structure they used correctly (example: Çok güzel, şimdiki zamanı doğru kullandınız.). "
+    + "All grammar explanations are ALWAYS in Turkish, never in English.\n"
+    + "2) THEN continue the conversation in ENGLISH: 1-2 short level-appropriate sentences ending with a question. Put this English part inside [[ ]].\n"
+    + "3) EVERY English word, phrase or sentence must be inside [[ ]]; Turkish text is never inside [[ ]]. Never translate your English line into Turkish. No emojis.\n"
+    + "If there is no student message yet (opening), skip step 1.";
 }
 /* ── ROL OYUNU KATMANI (ogretmen ekraninda, ortam varsa) ─────────────
    Her tur gonderildigi icin kisa tutuldu; kurallarin hicbiri atilmadi,
@@ -857,8 +872,9 @@ function systemPrompt(){
        ogretme kapaliyken gecerli. */
     (dhOgretmeModu()
       ? "Length: your English line is 1-2 sentences; the Turkish teaching part is 2-4 sentences. Never longer."
+      : Scenario.yorumTr ? "Length: Turkish comment 1-2 sentences, then English 1-2 sentences. Never longer."
       : "Keep replies short: 1 to 3 sentences."),
-    (dhOgretmeModu() ? "" : "If the user makes a clear mistake, gently model the correct version without lecturing."),
+    (dhOgretmeModu() || Scenario.yorumTr ? "" : "If the user makes a clear mistake, gently model the correct version without lecturing."),
     "Ask a follow-up question to keep the conversation going.", "No emojis.",
     (__dhProfile?("\n[STUDENT PROFILE — use this to personalize, in Turkish data]\n"+__dhProfile+"\nWhen the student repeats one of their known error patterns, gently correct it and briefly note it is a frequent mistake of theirs. Naturally create situations that make the student use the patterns they struggle with."):""),
     (__dhIsTeacher?"\n[COACH ROLE] You are not only a conversation partner but also the student's personal coach. The profile above includes their daily coach plan (BUGÜNÜN KOÇ PLANI) and weekly goal (HAFTALIK HEDEF). In your FIRST reply, acknowledge their streak, plan or goal in ONE short friendly sentence, then continue teaching. Steer the practice toward the weekly goal and the unfinished (⬜) plan steps. If they completed steps (✅), congratulate briefly.":""),
