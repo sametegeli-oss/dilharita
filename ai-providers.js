@@ -252,7 +252,13 @@
   function realHasAnyKey(){
     return PROVIDERS.some(function(p){ return keysOf(p.keyStore).length>0; });
   }
+  /* SAYFAYA ÖZEL TERCİH: sohbet açılışta kullanıcıya sorar ("Anahtarımla" /
+     "Gemini ile") ve setSessionMode ile bildirir. Yalnız bu sayfa açık
+     kaldığı sürece geçerlidir; başka sayfaları etkilemez. */
+  var _oturumModu = "";
   function aiMode(){
+    if(_oturumModu==="gemini") return "gemini";
+    if(_oturumModu==="api" && realHasAnyKey()) return "api";
     /* KAYITLI ANAHTAR HER ZAMAN ÖNCE (11 Kasım): profildeki "Anahtarım yok"
        (aiYontemi:"gemini") seçimi anahtar varken de kopyala-yapıştıra
        gönderiyordu. Profil bulutla cihazlar arasında taşındığı için başka bir
@@ -667,6 +673,8 @@
       try{var p=JSON.parse(localStorage.getItem("dh-profile-v1")||"{}")||{};p.aiYontemi=mode;p.aiYontemiTarih=Date.now();localStorage.setItem("dh-profile-v1",JSON.stringify(p));return true;}catch(e){return false;}
     },
     activeProviders: activeProviders,
+    setSessionMode: function(m){ _oturumModu=(m==="api"||m==="gemini")?m:""; },
+    sessionMode: function(){ return _oturumModu; },
     listModels: listModels,
     setModel: setModel,
     getModel: getModel,

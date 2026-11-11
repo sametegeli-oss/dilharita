@@ -135,6 +135,18 @@
     <summary>Ayarlar ve veri <span class="grup__alt">hatırlatma · yedek · hesap</span></summary>
     <div class="grup__ic">
 
+      <button class="oge" type="button" id="aiTercihSifirla" style="width:100%;text-align:left;cursor:pointer;font:inherit;color:inherit"><div class="oge__ad">Sohbette yapay zekâ seçimini yeniden sor</div><div class="oge__alt" id="aiTercihDurum">Sohbet açılınca “Anahtarımla / Gemini ile” sorusu</div></button>
+      <script>
+      (function(){
+        var K="dh-sohbet-ai-tercih", b=document.getElementById("aiTercihSifirla"), d=document.getElementById("aiTercihDurum");
+        function ciz(){ var v=""; try{ v=localStorage.getItem(K)||""; }catch(e){}
+          d.textContent = v==="api" ? "Şu an: hep anahtarla. Dokunun, sohbet açılınca yeniden sorsun."
+                        : v==="gemini" ? "Şu an: hep Gemini ile. Dokunun, sohbet açılınca yeniden sorsun."
+                        : "Sohbet her açılışta soruyor."; }
+        b.onclick=function(){ try{ localStorage.removeItem(K); }catch(e){} ciz(); };
+        ciz();
+      })();
+      </script>
       <a class="oge" href="./profil.html"><div class="oge__ad">Kişisel öğrenme profili</div><div class="oge__alt">Yaş, eğitim, amaç, ilgi alanı ve anlatım tercihi</div></a>
 
       <div class="dh-kart dh-kart--sessiz" id="dhNotifCard">

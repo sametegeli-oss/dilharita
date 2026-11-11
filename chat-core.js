@@ -1705,18 +1705,71 @@ function dhSadeAltCubuk(){
     sg.insertAdjacentElement("afterend", b);
   }catch(e){}
 }
+/* SOHBET AÇILIŞI: "Öğretmen nasıl cevap versin?" (kullanıcı isteği, 11 Kasım)
+   Anahtarımla (hızlı, otomatik) / Gemini ile (kopyala-yapıştır). Seçim bu
+   sohbet için geçerlidir (DHProviders.setSessionMode). "Bu cihazda hep bunu
+   kullan" seçilirse dh-sohbet-ai-tercih'e yazılır (buluta GİTMEZ) ve bir daha
+   sorulmaz; Menü → Ayarlar'dan yeniden sorulması sağlanabilir. */
+var AI_TERCIH_K="dh-sohbet-ai-tercih";
+function aiTercihSor(devam){
+  var P=window.DHProviders;
+  if(!P||!P.setSessionMode){ devam(); return; }
+  var anahtar=!!((P.realHasAnyKey&&P.realHasAnyKey())||getKeys().length);
+  var kayitli=""; try{ kayitli=localStorage.getItem(AI_TERCIH_K)||""; }catch(e){}
+  if(kayitli==="gemini"||(kayitli==="api"&&anahtar)){ P.setSessionMode(kayitli); devam(); return; }
+  if(!document.getElementById("dhAiTercihCss")){
+    var st=document.createElement("style"); st.id="dhAiTercihCss";
+    st.textContent=".dhat-ov{position:fixed;inset:0;z-index:2147483000;background:rgba(2,6,23,.88);display:flex;align-items:center;justify-content:center;padding:16px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif}"+
+      ".dhat-kart{width:min(460px,100%);max-height:94vh;overflow:auto;background:#0b1730;border:1px solid #2f4a72;border-radius:20px;padding:20px;color:#eaf2ff;box-shadow:0 24px 70px #000c}"+
+      ".dhat-kart h2{margin:0 0 6px;font-size:24px;line-height:1.25}.dhat-kart p{margin:0 0 14px;font-size:17px;color:#b9c8e0;line-height:1.45}"+
+      ".dhat-sec{display:block;width:100%;text-align:left;margin:0 0 12px;padding:16px;border-radius:16px;border:2px solid #3b5b88;background:#13233f;color:#fff;cursor:pointer;font:inherit}"+
+      ".dhat-sec b{display:block;font-size:21px;margin-bottom:4px}.dhat-sec span{display:block;font-size:16px;color:#cfdbef;line-height:1.4}"+
+      ".dhat-sec.oneri{border-color:#34d399;background:#0e3b31}.dhat-sec:focus-visible{outline:3px solid #fff;outline-offset:2px}"+
+      ".dhat-hatirla{display:flex;align-items:center;gap:12px;min-height:52px;margin-top:4px;font-size:17px;cursor:pointer}"+
+      ".dhat-hatirla input{width:26px;height:26px;flex:0 0 26px}"+
+      ".dhat-geri{display:block;width:100%;min-height:52px;margin-top:10px;border-radius:14px;border:1px solid #3b5b88;background:transparent;color:#cfdbef;font:600 17px system-ui;cursor:pointer}";
+    document.head.appendChild(st);
+  }
+  var ov=document.createElement("div"); ov.className="dhat-ov"; ov.setAttribute("role","dialog"); ov.setAttribute("aria-modal","true"); ov.setAttribute("aria-labelledby","dhatBaslik");
+  ov.innerHTML='<div class="dhat-kart"><h2 id="dhatBaslik">Öğretmen nasıl cevap versin?</h2>'+
+    '<p>Sohbete başlamadan önce seçin. Seçiminiz bu sohbet için geçerlidir.</p>'+
+    '<button type="button" class="dhat-sec'+(anahtar?' oneri':'')+'" data-m="api"><b>🔑 Anahtarımla'+(anahtar?' (önerilen)':'')+'</b><span>'+
+      (anahtar?'Hızlı: cevaplar kendiliğinden gelir, başka uygulamaya geçmezsiniz.':'Bu cihazda anahtar yok; seçerseniz anahtar ekleme penceresi açılır.')+'</span></button>'+
+    '<button type="button" class="dhat-sec'+(anahtar?'':' oneri')+'" data-m="gemini"><b>💬 Gemini ile (kopyala-yapıştır)</b><span>Anahtar gerekmez. Her cevap için Gemini\'ye geçip cevabı kopyalayıp dönersiniz.</span></button>'+
+    '<label class="dhat-hatirla"><input type="checkbox" id="dhatHatirla"> Bu cihazda hep bunu kullan, bir daha sorma</label>'+
+    '<button type="button" class="dhat-geri" id="dhatGeri">← Sohbete girmeden geri dön</button></div>';
+  document.body.appendChild(ov);
+  Array.prototype.forEach.call(ov.querySelectorAll(".dhat-sec"),function(b){
+    b.onclick=function(){
+      var m=b.getAttribute("data-m");
+      var hatirla=!!(ov.querySelector("#dhatHatirla")||{}).checked;
+      if(hatirla){ try{ localStorage.setItem(AI_TERCIH_K,m); }catch(e){} }
+      P.setSessionMode(m);
+      ov.remove();
+      if(m==="api"&&!anahtar){ try{ $("keySheet").classList.add("open"); }catch(e){} }
+      devam();
+    };
+  });
+  ov.querySelector("#dhatGeri").onclick=function(){ if(history.length>1) history.back(); else location.href="./index.html"; };
+  try{ ov.querySelector(".dhat-sec.oneri").focus(); }catch(e){}
+}
 function boot(){
   buildUI();
   dhSadeAltCubuk();
   avatar=new PhotoAvatar($("avatarImg"));
   avatar.init();
   setupEvents();
+  aiTercihSor(bootAcilis);
+}
+function bootAcilis(){
   /* Malzeme varsa genFreshOpener CAGRILMAZ: rastgele "taze konu" uretimi
      malzeme acilisini ezer ve sikayet aynen geri gelir. */
   var generic = !(__dhTeach&&__dhTeach.target) && !__dhFocus && !__dhMalzeme;
   /* Acilis metni arka planda kendiliginden Gemini penceresi acmasin. Web
      koprusu yalniz kullanicinin sohbet/dugme eylemiyle baslar. */
-  var directAI=(window.DHProviders&&DHProviders.realHasAnyKey&&DHProviders.realHasAnyKey())||getKeys().length;
+  /* Kullanıcı "Gemini ile" seçtiyse açılış cümlesi yapay zekâya sorulmaz
+     (yoksa açılır açılmaz Gemini penceresi gelirdi). */
+  var directAI=(window.DHProviders&&DHProviders.mode&&DHProviders.mode()==="api")&&((DHProviders.realHasAnyKey&&DHProviders.realHasAnyKey())||getKeys().length);
   if(generic && directAI){
     addBubble("assistant", "", {typing:true});
     genFreshOpener(function(op){
