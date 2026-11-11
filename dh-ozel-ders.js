@@ -98,6 +98,7 @@
     _hazir = betik("./sentences-loader.js?v=20", function () { return !!global.DHSent; })
       .then(function () { return betik("./profile.js?v=2", function () { return !!global.DHProfile; }); })
       .then(function () { return betik("./dh-amac.js?v=2", function () { return !!global.DHAmac; }); })
+      .then(function () { return betik("./dh-modul-tanim.js?v=2", function () { return !!global.DHModulTanim; }); })
       .then(function () { return betik("./ai-providers.js?v=t35", function () { return !!global.DHProviders; }); })
       .then(function () { return betik("./dh-modul.js?v=10", function () { return !!global.DHModul; }); })
       .then(function () { return global.DHModul.hazir ? global.DHModul.hazir() : null; })
@@ -133,13 +134,22 @@
       var i = 0;
       for (var j = 0; j < mods.length; j++) if (mods[j].mod === sonraki) { i = j; break; }
       var lvl = mods[i].lvl;
-      for (var k = 0; k < 10 && i + k < mods.length; k++) {
+      var G = global.DHModulTanim;
+      var gramer = function (m) { return !G || G.gramerMi(m.mod); };
+      /* Sıradaki modülden başlayarak aynı seviyedeki ilk DİL BİLGİSİ modülü;
+         durum modülleri (Havalimanı, Aile…) atlanır */
+      var yedek = null;
+      for (var k = 0; i + k < mods.length; k++) {
         var m = mods[i + k];
         if (m.lvl !== lvl) break;
+        if (!gramer(m)) continue;
+        if (!yedek) yedek = m;
         var var_ = v.uretilen.some(function (u) { return u.kaynak === m.mod && u.amac === amacId; });
         if (!var_) return m;
       }
-      return mods[i];
+      if (yedek) return yedek;
+      var ilkG = mods.filter(function (m) { return m.lvl === lvl && gramer(m); })[0];
+      return ilkG || mods[i];
     });
   }
 
@@ -458,7 +468,8 @@
   }
   function moduller(lvl) {
     return hazirla().then(function () { return global.DHSent.index(); }).then(function (ix) {
-      return ((ix && ix.modules) || []).filter(function (m) { return m.lvl === lvl; })
+      var G = global.DHModulTanim;
+      return ((ix && ix.modules) || []).filter(function (m) { return m.lvl === lvl && (!G || G.gramerMi(m.mod)); })
         .map(function (m) { return { mod: m.mod, lvl: m.lvl, n: (m.ids || []).length }; });
     });
   }

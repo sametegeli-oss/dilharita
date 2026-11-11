@@ -83,11 +83,11 @@
 
   <!-- SEVİYE VE MODÜL -->
   <section class="dh-kart" id="ayarKart" style="margin-bottom:16px" aria-labelledby="ayarBaslik">
-    <h2 class="od-buyuk" id="ayarBaslik">Seviye ve konu</h2>
+    <h2 class="od-buyuk" id="ayarBaslik">Seviye ve dil bilgisi</h2>
     <div class="dh-bolum-basligi" style="margin-top:8px">Seviye</div>
     <div class="od-seviyeler" id="seviyeListe" role="group" aria-label="Seviye"></div>
     <p class="od-not" id="seviyeAciklama" style="margin-top:4px"></p>
-    <label class="dh-bolum-basligi" for="modulSec" style="display:block;margin-top:14px">Dil bilgisi konusu (modül)</label>
+    <label class="dh-bolum-basligi" for="modulSec" style="display:block;margin-top:14px">Dil bilgisi (modül)</label>
     <select class="od-giris" id="modulSec"></select>
     <p class="od-not" id="modulAciklama"></p>
   </section>
@@ -157,9 +157,9 @@
 <script src="./profile.js?v=2"></script>
 <script src="./dh-amac.js?v=2"></script>
 <script src="./dh-modul.js?v=10"></script>
-<script src="./dh-modul-tanim.js?v=1"></script>
+<script src="./dh-modul-tanim.js?v=2"></script>
 <script src="./dh-avatar.js?v=4"></script>
-<script src="./dh-ozel-ders.js?v=5"></script>
+<script src="./dh-ozel-ders.js?v=6"></script>
 <script>
 /* ozel-ders.html — BANA ÖZEL DERS
    Tek düğme: amaç + şu anki gramer + seviye -> 12 cümlelik modül.
@@ -303,9 +303,33 @@
   var T = window.DHModulTanim;
   var ayar = { lvl: null, mod: null, varsayilanMod: null };
 
+  /* Aynı dil bilgisinin birden çok modülü olabilir (A2-M01, M02, M03 hepsi
+     Past Simple). Ayırt etmek için seviyedeki sırasıyla "1. modül" denir. */
+  var modulSira = {};
+  function siraKur(liste){
+    modulSira = {};
+    var say = {};
+    liste.forEach(function(m){
+      var t = T.modul(m.mod), no = (m.mod.match(/-M(\d+)/) || [])[1] || "";
+      var k = t.ingilizce;
+      say[k] = say[k] || [];
+      if (say[k].indexOf(no) < 0) say[k].push(no);
+    });
+    liste.forEach(function(m){
+      var t = T.modul(m.mod), no = (m.mod.match(/-M(\d+)/) || [])[1] || "";
+      var l = say[t.ingilizce];
+      modulSira[m.mod] = l.length > 1 ? (l.indexOf(no) + 1) : 0;
+    });
+  }
+  function parcaYazi(mod, uzun){
+    var t = T.modul(mod), n = modulSira[mod] || 0, p = [];
+    if (n) p.push(uzun ? n + ". modül" : "Modül " + n);
+    if (t.bolum) p.push(uzun ? t.bolum + ". bölüm" : "Bölüm " + t.bolum);
+    return p.join(uzun ? ", " : " · ");
+  }
   function modulEtiket(mod){
-    var t = T.modul(mod);
-    return t.ad + (t.bolum ? " · Bölüm " + t.bolum : "");
+    var t = T.modul(mod), e = parcaYazi(mod, false);
+    return t.ad + (e ? " · " + e : "");
   }
   function seviyeCiz(){
     var kap = $("seviyeListe"); kap.innerHTML = "";
@@ -326,6 +350,7 @@
     sel.innerHTML = '<option>Yükleniyor…</option>';
     return O.moduller(ayar.lvl).then(function(l){
       sel.innerHTML = "";
+      siraKur(l);
       l.forEach(function(m){
         var o = document.createElement("option");
         o.value = m.mod;
@@ -340,7 +365,7 @@
   }
   function modulAciklamaYaz(){
     var t = ayar.mod ? T.modul(ayar.mod) : null;
-    $("modulAciklama").innerHTML = t ? "<b>" + kacir(t.ad) + (t.bolum ? " · Bölüm " + kacir(t.bolum) : "") + "</b>" + (t.aciklama ? "<br>" + kacir(t.aciklama) : "") : "";
+    $("modulAciklama").innerHTML = t ? "<b>" + kacir(modulEtiket(ayar.mod)) + "</b>" + (t.aciklama ? "<br>" + kacir(t.aciklama) : "") : "";
   }
   $("modulSec").onchange = function(){ ayar.mod = this.value; modulAciklamaYaz(); };
 
@@ -362,9 +387,10 @@
     var P = [];
     P.push("Size şöyle bir ders hazırlayacağım.");
     P.push("<b>Seviye: " + kacir(ayar.lvl) + "</b>, yani " + kacir(sv.ad.toLocaleLowerCase("tr")) + ". " + kacir(sv.aciklama));
-    P.push("<b>Konu: " + kacir(t.ad) + "</b>" + (t.bolum ? ", " + t.bolum + ". bölüm" : "") + ". " + kacir(t.aciklama));
-    if (ornek) P.push("Bu konudan bir örnek: “" + kacir(ornek.en) + "” — " + kacir(ornek.tr));
-    if (amac) P.push("Cümleler <b>" + kacir(amac.ad) + "</b> konusundan olacak.");
+    var pz = parcaYazi(ayar.mod, true);
+    P.push("<b>Dil bilgisi: " + kacir(t.ad) + "</b>" + (pz ? ", " + pz : "") + ". " + kacir(t.aciklama));
+    if (ornek) P.push("Bu kalıba bir örnek: “" + kacir(ornek.en) + "” — " + kacir(ornek.tr));
+    if (amac) P.push("<b>Cümlelerin konusu: " + kacir(amac.ad) + "</b>. Yukarıdaki kalıbı, bu konudan yeni cümlelerle çalışacaksınız.");
     P.push("12 cümlelik dersi bu ayarlarla hazırlayayım mı?");
     return P;
   }

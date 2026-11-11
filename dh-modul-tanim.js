@@ -8,7 +8,8 @@
      DHModulTanim.seviye("A2")          -> {kod, ad, aciklama}
      DHModulTanim.SEVIYELER             -> ["A1",...]
      DHModulTanim.modul("A2-M01 Past Simple · P1")
-                                        -> {ad, aciklama, bolum, ingilizce}
+                                        -> {ad, aciklama, bolum, ingilizce, gramer}
+                                           gramer=false: durum/tema modülü (Havalimanı…)
 */
 (function (global) {
   "use strict";
@@ -148,6 +149,17 @@
     "Ellipsis": ["Kısaltma (eksiltili anlatım)", "Tekrar etmeden kısa cevap vermek: “So do I.”"]
   };
 
+  /* DURUM / TEMA modülleri: belli bir dil bilgisi öğretmez, bir sahnenin
+     (havalimanı, otel, aile…) kalıplarını toplar. "Bana özel ders"te
+     dil bilgisi kaynağı olarak kullanılmaz; konu zaten kullanıcının amacıdır. */
+  var DURUM = ["Family", "Food & Drinks", "Shopping", "Weather", "Directions", "Travel", "Hotel", "Airport",
+    "Restaurant", "Doctor", "Telephone English", "Work Basics", "Hobbies", "Daily Problems",
+    "Common Turkish Learner Errors", "Meetings", "Review", "Decision", "Responsibility", "Economy",
+    "Achievement", "Habits", "Social", "Work", "Business", "Communication", "Personal", "Health", "Life",
+    "Problem", "Attention", "Chance", "Friendship", "General", "Tech", "Nature", "Daily", "Education",
+    "Academic", "Meeting", "Email", "Telephone", "Problems", "Errors", "Academic Writing",
+    "Critical Thinking", "Argumentation", "Debate Skills", "Leadership", "Strategy", "Innovation"];
+
   function cozumle(mod) {
     var s = String(mod || "");
     var seviye = (s.match(/^([A-C][12])/) || [])[1] || "";
@@ -164,7 +176,8 @@
       aciklama: t ? t[1] : "",
       bolum: c.bolum,
       ingilizce: c.temel,
-      seviye: c.seviye
+      seviye: c.seviye,
+      gramer: DURUM.indexOf(c.temel) < 0
     };
   }
   function seviye(kod) {
@@ -172,5 +185,6 @@
     return { kod: kod, ad: s.ad, aciklama: s.aciklama };
   }
 
-  global.DHModulTanim = { modul: modul, seviye: seviye, SEVIYELER: ["A1", "A2", "B1", "B2", "C1"] };
+  function gramerMi(mod) { return DURUM.indexOf(cozumle(mod).temel) < 0; }
+  global.DHModulTanim = { modul: modul, seviye: seviye, gramerMi: gramerMi, SEVIYELER: ["A1", "A2", "B1", "B2", "C1"] };
 })(window);
