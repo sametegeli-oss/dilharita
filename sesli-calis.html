@@ -32,6 +32,8 @@
   .sc-dugmeler{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:22px; }
   .sc-dugmeler .dh-btn{ min-height:64px; font-size:20px; }
   .sc-dugmeler .sc-genis{ grid-column:1/-1; }
+  .sc-ses{ width:70%; max-width:260px; height:14px; margin:12px auto 0; border-radius:8px; background:var(--dh-yuzey-2); border:var(--dh-bd); overflow:hidden; }
+  .sc-ses span{ display:block; height:100%; width:0%; background:#22c55e; transition:width .08s linear; }
   .sc-satir{ padding:12px 0; border-bottom:var(--dh-bd); }
   .sc-satir__en{ font-size:20px; font-weight:700; }
   .sc-satir__tr{ font-size:17px; color:var(--dh-text-2); margin-top:2px; }
@@ -80,6 +82,7 @@
   <section id="sahne" class="sc-sahne" hidden aria-live="polite">
     <div class="sc-sayac" id="sayac"></div>
     <div class="sc-durum" id="durum" data-d=""><span class="sc-nokta" aria-hidden="true"></span><span id="durumYazi">Hazır</span></div>
+    <div class="sc-ses" id="sesOlcer" hidden aria-hidden="true"><span id="sesCubuk"></span></div>
     <div class="sc-tr" id="tr"></div>
     <div class="sc-en" id="en"></div>
     <div class="sc-duydum" id="duydum"></div>
@@ -307,6 +310,27 @@
     if (!SR) return Promise.resolve({ hata:"yok" });
     return kayitAc().then(function(stream){ return new Promise(function(res){
       var t0 = Date.now(), sonuc = null, bitti = false, kod = "", rec = null, mr = null, parcalar = [];
+      /* ses seviyesi: hem kullanıcıya "sesiniz geliyor" göstergesi hem teşhis.
+         Hiç ses gelmiyorsa mikrofon çalışmıyor demektir (emülatör, kapalı izin). */
+      var enYuksek = 0, olc = null, analiz = null;
+      if (stream){
+        try{
+          _ses = _ses || new (window.AudioContext || window.webkitAudioContext)();
+          if (_ses.state === "suspended") _ses.resume();
+          var kaynak = _ses.createMediaStreamSource(stream);
+          analiz = _ses.createAnalyser(); analiz.fftSize = 512;
+          kaynak.connect(analiz);
+          var buf = new Float32Array(analiz.fftSize);
+          $("sesOlcer").hidden = false;
+          olc = setInterval(function(){
+            analiz.getFloatTimeDomainData(buf);
+            var t = 0; for (var i=0;i<buf.length;i++) t += buf[i]*buf[i];
+            var rms = Math.sqrt(t/buf.length);
+            if (rms > enYuksek) enYuksek = rms;
+            $("sesCubuk").style.width = Math.min(100, Math.round(rms * 400)) + "%";
+          }, 80);
+        }catch(e){ olc = null; }
+      }
       if (stream){
         try{
           mr = new MediaRecorder(stream);
@@ -323,6 +347,9 @@
       }
       function son(x){
         if (bitti) return; bitti = true; clearTimeout(zt); aktifRec = null; aktifIptal = null;
+        if (olc){ clearInterval(olc); $("sesOlcer").hidden = true; $("sesCubuk").style.width = "0%"; }
+        if (olc && !x.metin && !x.hata && !x.iptal && x.kod !== "network" && x.kod !== "audio-capture")
+          x.kod = enYuksek < 0.01 ? "sessiz" : "anlasilmadi";
         try{ rec && rec.abort(); }catch(e){}
         durumGoster("");
         kayitBitir().then(function(url){ x.kayit = url; res(x); });
@@ -358,7 +385,9 @@
     }); });
   }
   function nedenYazi(kod){
-    return kod === "audio-capture" ? "Mikrofondan ses gelmiyor."
+    return kod === "audio-capture" ? "Mikrofon bulunamadı."
+         : kod === "sessiz" ? "Mikrofondan hiç ses gelmiyor. Mikrofonun açık olduğundan emin olun."
+         : kod === "anlasilmadi" ? "Sesinizi duydum ama anlayamadım. Biraz daha yavaş ve net söyleyin."
          : kod === "network" ? "Ses tanıma için internet gerekiyor."
          : "Bir şey duyamadım.";
   }
@@ -464,7 +493,7 @@
         if (ko === "gec") return { gec:true };
         if (ko === "tekrar") return soyle(k.tr, "tr").then(function(){ return cevapAl(deneme); });
         if (gecIstek) return { gec:true };
-        if (!c.metin && deneme < 2){ $("duydum").textContent = nedenYazi(c.kod); return soyle("Duyamadım. Bip sesinden sonra biraz daha yüksek sesle söyleyin.", "tr").then(function(){ return cevapAl(deneme+1); }); }
+        if (!c.metin && deneme < 2){ $("duydum").textContent = nedenYazi(c.kod); return soyle(c.kod === "sessiz" ? "Mikrofondan ses gelmiyor. Bir daha deneyelim." : c.kod === "anlasilmadi" ? "Sesinizi duydum ama anlayamadım. Bir daha, yavaşça söyleyin." : "Duyamadım. Bip sesinden sonra biraz daha yüksek sesle söyleyin.", "tr").then(function(){ return cevapAl(deneme+1); }); }
         return { metin: c.metin || "", kod: c.kod, kayit: c.kayit };
       });
     }
@@ -479,7 +508,8 @@
       sayilar.toplam++;
       var iyi = sc >= 70;
       if (iyi) sayilar.dogru++;
-      var not = (tur === "tekrar") ? notla(k, sc) : Promise.resolve();
+      /* Hiçbir şey duyulmadıysa (mikrofon sorunu olabilir) tekrar kaydı DEĞİŞMEZ */
+      var not = (tur === "tekrar" && c.metin) ? notla(k, sc) : Promise.resolve();
       var ses;
       if (sc >= 85){ sonucYaz("✓ Doğru!", true); ses = soyle(rastgele(["Doğru!", "Çok güzel!", "Harika!", "Aferin!"]), "tr").then(function(){ return soyle(k.en, "en"); }); }
       else if (iyi){ sonucYaz("✓ Çok yakın", true); ses = soyle("Çok yakın. Doğrusu:", "tr").then(function(){ return soyle(k.en, "en"); }); }
