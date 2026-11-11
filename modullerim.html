@@ -204,6 +204,7 @@
 
     <div class="dh-alt">
       <a class="dh-btn dh-btn--birincil dh-btn--tam" id="calisBtn" href="#">Bu modülü çalış</a>
+      <a class="dh-btn dh-btn--ikincil dh-btn--tam" id="sesliBtn" href="#" style="margin-top:8px">Bu modülü sesli çalış</a>
       <button class="dh-btn dh-btn--sade dh-btn--tam" id="silBtn" style="margin-top:8px;color:var(--dh-err)">
         Modülü sil
       </button>
@@ -539,6 +540,7 @@
        normal bir modul gibi gorunur — gorsel, kelime araclari, ogretmen
        hepsi calisir. mod-autopen.js modulu adiyla acar. */
     $("calisBtn").href = "./index-app.html?mod=" + encodeURIComponent(meta.ad || "");
+    $("sesliBtn").href = "./sesli-calis.html?mod=" + encodeURIComponent(meta.ad || "");
     goster("adimDetay");
   }
 

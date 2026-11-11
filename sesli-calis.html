@@ -61,6 +61,19 @@
   <!-- BAŞLANGIÇ -->
   <section id="giris">
     <p class="sc-not">Ekrana bakmanıza gerek yok. Size bir cümlenin <b>Türkçesini</b> söyleyeceğim, siz <b>İngilizcesini</b> yüksek sesle söyleyeceksiniz. Sonra doğrusunu duyacaksınız.</p>
+    <div class="dh-kart" id="modulKart" hidden style="margin-bottom:14px">
+      <div class="dh-bolum-basligi" style="margin-bottom:4px">Modül</div>
+      <div style="font-size:21px;font-weight:800;line-height:1.3" id="modulAd"></div>
+      <div class="sc-not" id="modulAlt" style="margin:4px 0 0;font-size:16px"></div>
+      <div class="sc-secim" id="modulBicim" style="margin-top:12px">
+        <button class="dh-secenek" type="button" id="bicimYeni" aria-pressed="true">
+          <span>Önce dinleyip sonra söyleyeyim<span class="dh-secenek__alt">Türkçesi ve İngilizcesi okunur, siz tekrar edersiniz. Yeni cümleler için.</span></span>
+        </button>
+        <button class="dh-secenek" type="button" id="bicimSina" aria-pressed="false">
+          <span>Türkçesini duyunca kendim söyleyeyim<span class="dh-secenek__alt">Bildiğiniz cümleler için: İngilizcesini siz hatırlarsınız.</span></span>
+        </button>
+      </div>
+    </div>
     <p class="sc-not" id="icerikNot">Cümleler hazırlanıyor…</p>
     <div class="sc-secim">
       <button class="dh-secenek" type="button" id="modSesle" aria-pressed="true">
@@ -113,6 +126,7 @@
 <script src="./profile.js?v=2"></script>
 <script src="./dh-modul.js?v=10"></script>
 <script src="./progress-engine.js?v=2"></script>
+<script src="./dh-modul-tanim.js?v=2"></script>
 <script>
 /* sesli-calis.html — TAM SESLİ MOD
    ==================================================================
@@ -215,7 +229,23 @@
   }
 
   /* ---------- içerik ---------- */
+  /* ?mod=<MODÜL ADI>: o modülün cümleleri (resmî ya da kullanıcı modülü) */
+  var MODUL = "";
+  try{ MODUL = new URLSearchParams(location.search).get("mod") || ""; }catch(e){}
+  var modulBicim = "yeni";
+  function modulCumleleri(ad){
+    return Promise.resolve(window.DHModul && DHModul.hazir ? DHModul.hazir() : null).then(function(){
+      var kul = null;
+      try{ (DHModul.liste() || []).forEach(function(x){ if (!kul && x.ad === ad) kul = x; }); }catch(e){}
+      if (kul) return DHModul.getir(kul.id) || [];
+      return DHSent.module(ad).catch(function(){ return []; });
+    }).then(function(k){
+      return (k || []).filter(function(x){ return x && x.en && x.tr && benzerlik(x.tr, x.en) < 70; })
+        .slice(0, 30).map(function(x){ return { id:x.id, en:x.en, tr:x.tr }; });
+    });
+  }
   function icerikHazirla(){
+    if (MODUL) return modulCumleleri(MODUL).then(function(l){ return { tur: modulBicim, liste: l, mod: MODUL }; });
     var simdi = Date.now();
     return Promise.resolve(window.DHModul && DHModul.hazir ? DHModul.hazir() : null).then(function(){
       return kvOnek("srs:");
@@ -458,7 +488,7 @@
     ekranTemizle(k);
     var adimlar = Promise.resolve();
     var once = ilk ? (mod === "dinle" ? "Türkçesini söyleyeceğim, biraz düşünün, sonra İngilizcesini duyacaksınız." :
-                      tur === "tekrar" ? "Türkçesini söyleyeceğim. Bip sesinden sonra İngilizcesini söyleyin." :
+                      tur !== "yeni" ? "Türkçesini söyleyeceğim. Bip sesinden sonra İngilizcesini söyleyin." :
                                          "Önce Türkçesini, sonra İngilizcesini duyacaksınız. Bip sesinden sonra siz de söyleyin.") : "";
     if (once) adimlar = adimlar.then(function(){ return soyle(once, "tr"); });
     adimlar = adimlar.then(engel).then(function(){ return soyle(k.tr, "tr"); });
@@ -514,6 +544,7 @@
       if (iyi) sayilar.dogru++;
       /* Hiçbir şey duyulmadıysa (mikrofon sorunu olabilir) tekrar kaydı DEĞİŞMEZ */
       var not = (tur === "tekrar" && c.metin) ? notla(k, sc) : Promise.resolve();
+      if (MODUL && c.metin){ try{ if (window.DHProgress && DHProgress.recordResult) DHProgress.recordResult("sentence:" + k.id, sc >= 70); }catch(e){} }
       var ses;
       if (sc >= 85){ sonucYaz("✓ Doğru!", true); ses = soyle(rastgele(["Doğru!", "Çok güzel!", "Harika!", "Aferin!"]), "tr").then(function(){ return soyle(k.en, "en"); }); }
       else if (iyi){ sonucYaz("✓ Çok yakın", true); ses = soyle("Çok yakın. Doğrusu:", "tr").then(function(){ return soyle(k.en, "en"); }); }
@@ -640,6 +671,11 @@
         $("icerikNot").textContent = "Şu an çalışılacak cümle bulunamadı. Önce birkaç cümle öğrenin, sonra buraya dönün.";
         return;
       }
+      if (MODUL){
+        $("icerikNot").textContent = "Bu modülde " + liste.length + " cümle var.";
+        $("basla").disabled = false;
+        return;
+      }
       $("icerikNot").textContent = tur === "tekrar"
         ? "Bugün tekrar zamanı gelen " + liste.length + " cümleniz var."
         : "Bugün tekrar bekleyen cümleniz yok. Sıradaki konunuzdan " + liste.length + " yeni cümleyi dinleyip tekrar edeceğiz.";
@@ -649,6 +685,23 @@
     });
   }
 
+  if (MODUL){
+    $("modulKart").hidden = false;
+    var tn = window.DHModulTanim ? DHModulTanim.modul(MODUL) : null;
+    /* kullanıcı modülü: "A2-M01 Past Simple · P1 · Seyahat" -> sondaki konu da yazılır */
+    var ek = MODUL.split(" · ").slice(2).join(" · ");
+    $("modulAd").textContent = tn && tn.aciklama ? tn.ad + (tn.bolum ? " · Bölüm " + tn.bolum : "") + (ek ? " · " + ek : "") : MODUL;
+    $("modulAlt").textContent = (tn && tn.seviye ? tn.seviye + " · " : "") + (tn && tn.aciklama ? tn.aciklama : "");
+    var geri = document.querySelector(".dh-ust__sol a");
+    if (geri && history.length > 1){ geri.addEventListener("click", function(e){ e.preventDefault(); history.back(); }); }
+    var bicimSec = function(b){
+      modulBicim = b; tur = b;
+      $("bicimYeni").setAttribute("aria-pressed", b === "yeni" ? "true" : "false");
+      $("bicimSina").setAttribute("aria-pressed", b === "sina" ? "true" : "false");
+    };
+    $("bicimYeni").onclick = function(){ bicimSec("yeni"); };
+    $("bicimSina").onclick = function(){ bicimSec("sina"); };
+  }
   if (!SR){
     modSec("dinle");
     $("modSesle").disabled = true;

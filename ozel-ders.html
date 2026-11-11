@@ -99,6 +99,7 @@
       <p class="od-buyuk" id="hazirAd"></p>
       <p class="od-not" id="hazirAlt" style="margin-top:0"></p>
       <a class="dh-btn dh-btn--birincil dh-btn--tam" id="basla" href="#" style="margin-top:12px">▶ Derse başla</a>
+      <a class="dh-btn dh-btn--ikincil dh-btn--tam" id="sesliCalis" href="#" style="margin-top:8px">Sesli çalış</a>
       <button class="dh-btn dh-btn--sade dh-btn--tam" id="cumleleriGoster" type="button" style="margin-top:8px">Cümlelere göz at</button>
     </div>
 
@@ -238,6 +239,8 @@
       $("hazirAlt").textContent = b.n + " cümle · " + b.seviye + " seviyesi";
       $("basla").href = "./index-app.html?mod=" + encodeURIComponent(b.ad);
       $("basla").onclick = function(){ O.acildi(b.id); };
+      $("sesliCalis").href = "./sesli-calis.html?mod=" + encodeURIComponent(b.ad);
+      $("sesliCalis").onclick = function(){ O.acildi(b.id); };
       $("cumleleriGoster").onclick = function(){ cumleCiz(b.id); };
     }
     var hak = O.kalanHak();
@@ -296,6 +299,11 @@
                     '<div class="dh-tugla__yazi" style="margin-top:6px">' + (u.n||0) + ' cümle · ' +
                     new Date(u.tarih).toLocaleDateString("tr-TR") + '</div>';
       kap.appendChild(a);
+      var sl = document.createElement("a");
+      sl.className = "od-kucuk-btn"; sl.style.cssText = "display:inline-flex;align-items:center;margin:-4px 0 10px;text-decoration:none";
+      sl.href = "./sesli-calis.html?mod=" + encodeURIComponent(u.ad);
+      sl.textContent = "Bu dersi sesli çalış";
+      kap.appendChild(sl);
     });
   }
 
