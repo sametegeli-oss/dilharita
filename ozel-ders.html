@@ -33,6 +33,14 @@
   .od-satir .dh-secenek{ flex:1 1 auto; }
   .od-giris{ width:100%; min-height:60px; padding:12px 14px; font-size:20px; border-radius:var(--dh-r-kontrol);
              border:2px solid var(--dh-cizgi-kuvvet, #45557d); background:var(--dh-yuzey-2); color:var(--dh-text); }
+  .od-seviyeler{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:8px 0; }
+  .od-seviyeler .dh-secenek{ min-height:64px; font-size:19px; font-weight:700; }
+  select.od-giris{ font-size:18px; }
+  .od-koc{ display:flex; gap:14px; align-items:flex-start; }
+  .od-koc .dh-avatar{ flex:0 0 auto; }
+  .od-koc-soz{ font-size:19px; line-height:1.5; }
+  .od-koc-soz p{ margin:0 0 10px; }
+  .od-koc-soz b{ font-weight:800; }
   .od-giris:focus{ outline:3px solid var(--dh-marka); outline-offset:1px; }
 </style>
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
@@ -52,7 +60,7 @@
     </div>
   </header>
 
-  <p class="od-not" style="margin:0 0 18px">Şu an çalıştığınız konuyu, İngilizceyi öğrenme amacınıza uygun yeni cümlelerle hazırlarım.</p>
+  <p class="od-not" style="margin:0 0 18px">Seçtiğiniz seviye ve konuyu, İngilizceyi öğrenme amacınıza uygun yeni cümlelerle hazırlarım. Hazırlamadan önce koçunuz ne çalışacağınızı anlatır ve onayınızı alır.</p>
 
   <!-- AMAÇ -->
   <section class="dh-kart" id="amacKart" style="margin-bottom:16px" aria-labelledby="amacBaslik">
@@ -68,6 +76,17 @@
     </div>
   </section>
 
+  <!-- SEVİYE VE MODÜL -->
+  <section class="dh-kart" id="ayarKart" style="margin-bottom:16px" aria-labelledby="ayarBaslik">
+    <h2 class="od-buyuk" id="ayarBaslik">Seviye ve konu</h2>
+    <div class="dh-bolum-basligi" style="margin-top:8px">Seviye</div>
+    <div class="od-seviyeler" id="seviyeListe" role="group" aria-label="Seviye"></div>
+    <p class="od-not" id="seviyeAciklama" style="margin-top:4px"></p>
+    <label class="dh-bolum-basligi" for="modulSec" style="display:block;margin-top:14px">Dil bilgisi konusu (modül)</label>
+    <select class="od-giris" id="modulSec"></select>
+    <p class="od-not" id="modulAciklama"></p>
+  </section>
+
   <!-- HAZIRLA / HAZIR -->
   <section class="dh-kart" id="anaKart" style="margin-bottom:16px" aria-live="polite">
     <div id="hazirAlan" hidden>
@@ -81,6 +100,16 @@
     <div id="hazirlaAlan" hidden>
       <button class="dh-btn dh-btn--birincil dh-btn--tam" id="hazirla" type="button" style="min-height:72px;font-size:21px">✨ Bana özel ders hazırla</button>
       <p class="od-not" id="yolNot"></p>
+    </div>
+
+    <div id="onayAlan" hidden>
+      <div class="od-koc">
+        <div class="dh-avatar" id="kocAvatar" aria-hidden="true"></div>
+        <div class="od-koc-soz" id="kocSoz"></div>
+      </div>
+      <button class="dh-btn dh-btn--birincil dh-btn--tam" id="onayEvet" type="button" style="margin-top:14px;min-height:68px;font-size:21px">Evet, hazırla</button>
+      <button class="dh-btn dh-btn--sade dh-btn--tam" id="onayDegistir" type="button" style="margin-top:8px">Hayır, değiştireceğim</button>
+      <button class="dh-btn dh-btn--sade dh-btn--tam" id="onayDinle" type="button" style="margin-top:4px">Tekrar dinle</button>
     </div>
 
     <div class="od-durum" id="durum" hidden>
@@ -122,7 +151,9 @@
 <script src="./profile.js?v=2"></script>
 <script src="./dh-amac.js?v=2"></script>
 <script src="./dh-modul.js?v=10"></script>
-<script src="./dh-ozel-ders.js?v=2"></script>
+<script src="./dh-modul-tanim.js?v=1"></script>
+<script src="./dh-avatar.js?v=4"></script>
+<script src="./dh-ozel-ders.js?v=3"></script>
 <script>
 /* ozel-ders.html — BANA ÖZEL DERS
    Tek düğme: amaç + şu anki gramer + seviye -> 12 cümlelik modül.
@@ -181,6 +212,7 @@
 
   /* ---------- ana kart ---------- */
   function anaCiz(){
+    if (!$("onayAlan").hidden) return;
     var ids = A.secili();
     var b = O.bekleyen();
     $("durum").hidden = true;
@@ -252,8 +284,111 @@
     });
   }
 
+  /* ---------- seviye ve modül ---------- */
+  var T = window.DHModulTanim;
+  var ayar = { lvl: null, mod: null, varsayilanMod: null };
+
+  function modulEtiket(mod){
+    var t = T.modul(mod);
+    return t.ad + (t.bolum ? " · Bölüm " + t.bolum : "");
+  }
+  function seviyeCiz(){
+    var kap = $("seviyeListe"); kap.innerHTML = "";
+    T.SEVIYELER.forEach(function(k){
+      var sv = T.seviye(k);
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "dh-secenek";
+      b.setAttribute("aria-pressed", ayar.lvl === k ? "true" : "false");
+      b.innerHTML = '<span>' + kacir(k) + '<span class="dh-secenek__alt">' + kacir(sv.ad) + '</span></span>';
+      b.onclick = function(){ if (ayar.lvl !== k){ ayar.lvl = k; ayar.mod = null; seviyeCiz(); modulDoldur(); } };
+      kap.appendChild(b);
+    });
+    var sv = T.seviye(ayar.lvl);
+    $("seviyeAciklama").textContent = ayar.lvl ? (ayar.lvl + " · " + sv.ad + ": " + sv.aciklama) : "";
+  }
+  function modulDoldur(){
+    var sel = $("modulSec");
+    sel.innerHTML = '<option>Yükleniyor…</option>';
+    return O.moduller(ayar.lvl).then(function(l){
+      sel.innerHTML = "";
+      l.forEach(function(m){
+        var o = document.createElement("option");
+        o.value = m.mod;
+        o.textContent = modulEtiket(m.mod) + (m.mod === ayar.varsayilanMod ? "  (sıradaki konunuz)" : "");
+        sel.appendChild(o);
+      });
+      if (!ayar.mod || !l.some(function(m){ return m.mod === ayar.mod; }))
+        ayar.mod = (l.some(function(m){ return m.mod === ayar.varsayilanMod; }) ? ayar.varsayilanMod : (l[0] && l[0].mod)) || null;
+      sel.value = ayar.mod || "";
+      modulAciklamaYaz();
+    });
+  }
+  function modulAciklamaYaz(){
+    var t = ayar.mod ? T.modul(ayar.mod) : null;
+    $("modulAciklama").innerHTML = t ? "<b>" + kacir(t.ad) + (t.bolum ? " · Bölüm " + kacir(t.bolum) : "") + "</b>" + (t.aciklama ? "<br>" + kacir(t.aciklama) : "") : "";
+  }
+  $("modulSec").onchange = function(){ ayar.mod = this.value; modulAciklamaYaz(); };
+
+  function ayarlariKur(){
+    return O.varsayilan().then(function(v){
+      ayar.varsayilanMod = v.mod; ayar.lvl = v.lvl; ayar.mod = v.mod;
+      seviyeCiz();
+      return modulDoldur();
+    }).catch(function(){
+      ayar.lvl = (window.DHProfile && DHProfile.level && DHProfile.level()) || "A1";
+      seviyeCiz(); return modulDoldur();
+    });
+  }
+
+  /* ---------- koç: anlat ve onay al ---------- */
+  var koc = null, onayAmac = null;
+  function kocMetni(amac, ornek){
+    var sv = T.seviye(ayar.lvl), t = T.modul(ayar.mod);
+    var P = [];
+    P.push("Size şöyle bir ders hazırlayacağım.");
+    P.push("<b>Seviye: " + kacir(ayar.lvl) + "</b>, yani " + kacir(sv.ad.toLocaleLowerCase("tr")) + ". " + kacir(sv.aciklama));
+    P.push("<b>Konu: " + kacir(t.ad) + "</b>" + (t.bolum ? ", " + t.bolum + ". bölüm" : "") + ". " + kacir(t.aciklama));
+    if (ornek) P.push("Bu konudan bir örnek: “" + kacir(ornek.en) + "” — " + kacir(ornek.tr));
+    if (amac) P.push("Cümleler <b>" + kacir(amac.ad) + "</b> konusundan olacak.");
+    P.push("12 cümlelik dersi bu ayarlarla hazırlayayım mı?");
+    return P;
+  }
+  function kocKonus(){
+    var metin = ($("kocSoz").innerText || "").replace(/\s+/g, " ").trim();
+    try{
+      if (!koc && window.DHAvatar) koc = DHAvatar.olustur($("kocAvatar"), { yol:"./assets/avatars_v3/teacher/" });
+      if (koc) koc.hazir.then(function(){ koc.konus(metin, { dil:"tr-TR" }); });
+      else { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(metin); u.lang = "tr-TR"; speechSynthesis.speak(u); }
+    }catch(e){}
+  }
+  function kocSustur(){ try{ koc && koc.sustur && koc.sustur(); }catch(e){} try{ speechSynthesis.cancel(); }catch(e){} }
+
+  function onayAc(amacId){
+    if (!ayar.mod){ alert("Önce bir konu (modül) seçin."); return; }
+    var amac = amacId ? A.bul(amacId) : O.siradakiAmac();
+    if (!amac){ $("hata").innerHTML = '<div class="dh-geri dh-geri--err"><div class="dh-geri__aciklama">Önce amacınızı seçin ya da kendi konunuzu yazın.</div></div>'; $("hata").hidden = false; return; }
+    onayAmac = amac.id;
+    $("hata").hidden = true;
+    $("hazirlaAlan").hidden = true;
+    $("hazirAlan").hidden = true;
+    $("onayAlan").hidden = false;
+    $("kocSoz").innerHTML = '<p>' + kocMetni(amac, null).join('</p><p>') + '</p>';
+    try{ $("anaKart").scrollIntoView({block:"start", behavior:"smooth"}); }catch(e){}
+    O.ornek(ayar.mod).then(function(orn){
+      if ($("onayAlan").hidden) return;
+      $("kocSoz").innerHTML = '<p>' + kocMetni(amac, orn).join('</p><p>') + '</p>';
+      kocKonus();
+    });
+  }
+  $("onayEvet").onclick = function(){ kocSustur(); $("onayAlan").hidden = true; baslat(onayAmac, ayar.mod); };
+  $("onayDegistir").onclick = function(){
+    kocSustur(); $("onayAlan").hidden = true; anaCiz();
+    try{ $("ayarKart").scrollIntoView({block:"start", behavior:"smooth"}); }catch(e){}
+  };
+  $("onayDinle").onclick = kocKonus;
+
   /* ---------- hazırla ---------- */
-  function baslat(amacId){
+  function baslat(amacId, kaynakMod){
     $("hata").hidden = true;
     $("hazirlaAlan").hidden = true;
     $("hazirAlan").hidden = true;
@@ -261,7 +396,7 @@
     $("durum").hidden = false;
     $("durumYazi").textContent = "Hazırlanıyor…";
     try{ $("anaKart").scrollIntoView({block:"start", behavior:"smooth"}); }catch(e){}
-    O.uret({ amacId: amacId, durum: function(t){ $("durumYazi").textContent = t; } }).then(function(r){
+    O.uret({ amacId: amacId, kaynakMod: kaynakMod, durum: function(t){ $("durumYazi").textContent = t; } }).then(function(r){
       anaCiz();
       cumleCiz(r.id);
     }).catch(function(err){
@@ -276,7 +411,7 @@
       anaCiz();
     }).then(function(){ $("konuHazirla").disabled = O.kalanHak() <= 0; });
   }
-  $("hazirla").onclick = function(){ baslat(null); };
+  $("hazirla").onclick = function(){ onayAc(null); };
 
   /* Kullanıcının kendi yazdığı konu: listeye eklenir, seçilir ve hemen o konuda ders hazırlanır */
   function konuHazirla(){
@@ -295,15 +430,18 @@
     $("konuGiris").value = "";
     try{ $("konuGiris").blur(); }catch(e){}
     amacCiz();
-    baslat(id);
+    onayAc(id);
   }
   $("konuHazirla").onclick = konuHazirla;
   $("konuGiris").addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); konuHazirla(); } });
 
   O.hazirla().then(function(){
     amacCiz();
-    /* Gemini'den dönünce sayfa yeniden yüklendiyse yarım kalan iş sürer */
-    if (O.yol() === "elle" && O.elleBekliyor && O.elleBekliyor() && !O.bekleyen()) $("hazirla").click();
+    return ayarlariKur();
+  }).then(function(){
+    /* Gemini'den dönünce sayfa yeniden yüklendiyse yarım kalan (onaylanmış) iş sürer */
+    var y = O.yol() === "elle" && O.elleBilgi ? O.elleBilgi() : null;
+    if (y && !O.bekleyen()) baslat(y.amac, y.mod);
   }).catch(function(){
     $("hata").innerHTML = '<div class="dh-geri dh-geri--err"><div class="dh-geri__baslik">Sayfa yüklenemedi</div><div class="dh-geri__aciklama">İnternet bağlantınızı kontrol edip sayfayı yenileyin.</div></div>';
     $("hata").hidden = false;

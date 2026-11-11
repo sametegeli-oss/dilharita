@@ -328,9 +328,17 @@
          kurulur ki Gemini köprüsü aynı görev kimliğini kullansın. */
       var yarim = y === "elle" ? elleYarim() : null;
       if (yarim && yarim.amac !== amac.id) { elleTemizle(); yarim = null; }
+      var kaynakP = opt.kaynakMod
+        ? global.DHSent.index().then(function (ix) {
+            var m = ((ix && ix.modules) || []).filter(function (x) { return x.mod === opt.kaynakMod; })[0];
+            if (!m) throw { code: "modul", mesaj: "Seçilen modül bulunamadı." };
+            return m;
+          })
+        : null;
+      if (yarim && opt.kaynakMod && yarim.m && yarim.m.mod !== opt.kaynakMod) { elleTemizle(); yarim = null; }
       var hazirlik = yarim
         ? Promise.resolve(yarim)
-        : kaynakSec(amac.id, v).then(function (m) {
+        : (kaynakP || kaynakSec(amac.id, v)).then(function (m) {
             return ornekAl(m).then(function (ornekler) {
               var ilk = ornekler[0] || {};
               var seviye = String(m.lvl || "A1").toUpperCase();
@@ -440,10 +448,33 @@
     return !!(r && r.ok);
   }
 
+  /* Koçun onay ekranı için: varsayılan modül, seviyedeki modüller, örnek cümle */
+  function varsayilan(amacId) {
+    return hazirla().then(function () { return kaynakSec(amacId || "", oku()); })
+      .then(function (m) { return { mod: m.mod, lvl: m.lvl }; });
+  }
+  function moduller(lvl) {
+    return hazirla().then(function () { return global.DHSent.index(); }).then(function (ix) {
+      return ((ix && ix.modules) || []).filter(function (m) { return m.lvl === lvl; })
+        .map(function (m) { return { mod: m.mod, lvl: m.lvl, n: (m.ids || []).length }; });
+    });
+  }
+  function ornek(mod) {
+    return hazirla().then(function () { return global.DHSent.module(mod); }).then(function (k) {
+      var l = (k || []).slice(0, 8).filter(function (x) { return x && x.en && x.tr && x.en.split(" ").length <= 12; });
+      l.sort(function (a, b) { return a.en.length - b.en.length; });
+      return l[0] ? { en: l[0].en, tr: l[0].tr } : null;
+    }).catch(function () { return null; });
+  }
+
   /* Arka planda sıradakini hazırla. Yalnız kullanıcının dokunması
      gerekmeyen yollarda (api/araci); günde bir başarısız denemeden sonra
      6 saat bekler; hazırda bekleyen ders varsa yenisini yapmaz. */
   function onceden() {
+    /* KAPALI (11 Kasım, kullanıcı isteği): ders, koç seviyeyi ve modülü
+       anlatıp kullanıcı onay verdikten SONRA oluşturulur. Arka planda
+       onaysız üretim yapılmaz. Kod ileride "onaylı ayarla otomatik" için duruyor. */
+    if (!global.__dhOzelDersOtomatik) return Promise.resolve(null);
     return hazirla().then(function () {
       if (yol() === "elle") return null;
       if (!global.DHAmac.secili().length) return null;
@@ -460,6 +491,9 @@
     bekleyen: bekleyen, liste: liste, acildi: acildi, bayrakla: bayrakla,
     kalanHak: kalanHak, GUNLUK_SINIR: GUNLUK_SINIR,
     elleBekliyor: function () { return !!elleYarim(); },
+    elleBilgi: function () { var y = elleYarim(); return y ? { amac: y.amac, mod: y.m && y.m.mod } : null; },
+    varsayilan: varsayilan, moduller: moduller, ornek: ornek,
+    siradakiAmac: function () { return global.DHAmac ? amacSec(oku()) : null; },
     _yerelDenetim: yerelDenetim, _istemKur: istemKur
   };
 })(window);
