@@ -113,7 +113,10 @@
     return "elle";
   }
 
-  function kalanHak() { return Math.max(0, GUNLUK_SINIR - oku().gun.n); }
+  /* Günlük sınır YALNIZ ara sunucu (sahibin ortak anahtarı) için.
+     Kendi anahtarı ya da Gemini kopyala-yapıştır yolunda sınır yok. */
+  function sinirli() { return yol() === "araci"; }
+  function kalanHak() { return sinirli() ? Math.max(0, GUNLUK_SINIR - oku().gun.n) : Infinity; }
 
   /* ---------- konu ve kaynak seçimi ---------- */
   function amacSec(v) {
@@ -316,7 +319,7 @@
     var bildir = typeof opt.durum === "function" ? opt.durum : function () {};
     _calisiyor = hazirla().then(function () {
       var v = oku();
-      if (v.gun.n >= GUNLUK_SINIR) throw { code: "sinir", mesaj: "Bugün " + GUNLUK_SINIR + " özel ders hazırlandı. Yarın yenileri hazırlanır." };
+      if (sinirli() && v.gun.n >= GUNLUK_SINIR) throw { code: "sinir", mesaj: "Bugün " + GUNLUK_SINIR + " özel ders hazırlandı. Yarın yenileri hazırlanır." };
       var amac = opt.amacId ? global.DHAmac.bul(opt.amacId) : amacSec(v);
       if (!amac) throw { code: "amac", mesaj: "Önce İngilizceyi ne için öğrendiğinizi seçin." };
       var y = opt.yol || yol();

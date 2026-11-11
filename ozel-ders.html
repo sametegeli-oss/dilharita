@@ -159,7 +159,7 @@
 <script src="./dh-modul.js?v=10"></script>
 <script src="./dh-modul-tanim.js?v=1"></script>
 <script src="./dh-avatar.js?v=4"></script>
-<script src="./dh-ozel-ders.js?v=4"></script>
+<script src="./dh-ozel-ders.js?v=5"></script>
 <script>
 /* ozel-ders.html — BANA ÖZEL DERS
    Tek düğme: amaç + şu anki gramer + seviye -> 12 cümlelik modül.
@@ -247,7 +247,7 @@
     if (!ids.length) not = "Önce yukarıdan amacınızı seçin ya da aşağıya kendi konunuzu yazın.";
     else if (hak <= 0) not = "Bugün " + O.GUNLUK_SINIR + " özel ders hazırlandı. Yarın yenileri hazırlanır.";
     else if (y === "elle") not = "Gemini penceresi açılacak. Oradaki 3 adımı izleyin; ders kendiliğinden kaydedilir.";
-    else not = "1–2 dakika kadar sürer. Bugün " + hak + " ders daha hazırlanabilir.";
+    else not = "1–2 dakika kadar sürer." + (isFinite(hak) ? " Bugün " + hak + " ders daha hazırlanabilir." : "");
     $("yolNot").textContent = not;
     gecmisCiz();
   }
