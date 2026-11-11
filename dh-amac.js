@@ -15,6 +15,9 @@
      DHAmac.bul(id)         tek amaç | null
      DHAmac.secili()        ["seyahat", ...]  (boşsa [])
      DHAmac.kaydet(ids)     profile yazar
+     DHAmac.tumu()          hazır amaçlar + kullanıcının yazdığı konular
+     DHAmac.ozelEkle(metin) kullanıcının yazdığı konuyu ekler -> "ozel:<metin>"
+     DHAmac.ozelSil(id)
 */
 (function (global) {
   "use strict";
@@ -44,9 +47,49 @@
   function profil() {
     try { return JSON.parse(localStorage.getItem(K) || "{}") || {}; } catch (e) { return {}; }
   }
+  /* KULLANICININ YAZDIĞI KONULAR: profilde ozelKonular ["bahçecilik", ...]
+     Kimlikleri "ozel:<metin>". Hazır amaçlarla aynı şekilde seçilir,
+     sırayla kullanılır ve arka planda hazırlanır. */
+  var OZEL_ON = "ozel:";
+  function temizKonu(t) {
+    return String(t || "").replace(/[<>{}\[\]`]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+  }
+  function ozeller() {
+    var p = profil();
+    return (Array.isArray(p.ozelKonular) ? p.ozelKonular : []).map(temizKonu).filter(Boolean);
+  }
+  function ozelNesne(metin) {
+    return { id: OZEL_ON + metin, ikon: "✏️", ad: metin, alt: "Kendi yazdığınız konu",
+             alan: metin, konu: metin, ozel: true };
+  }
   function bul(id) {
     for (var i = 0; i < LISTE.length; i++) if (LISTE[i].id === id) return LISTE[i];
+    if (String(id || "").indexOf(OZEL_ON) === 0) {
+      var m = temizKonu(String(id).slice(OZEL_ON.length));
+      if (m && ozeller().some(function (x) { return x.toLocaleLowerCase("tr") === m.toLocaleLowerCase("tr"); })) return ozelNesne(m);
+    }
     return null;
+  }
+  function tumu() { return LISTE.concat(ozeller().map(ozelNesne)); }
+  /* Yeni konu ekler (en çok 12; en eskisi düşer). Kimliğini döndürür. */
+  function ozelEkle(metin) {
+    var m = temizKonu(metin);
+    if (!m || !/[\p{L}]{2,}/u.test(m)) return null;
+    var p = profil(), l = ozeller();
+    var var_ = l.filter(function (x) { return x.toLocaleLowerCase("tr") === m.toLocaleLowerCase("tr"); })[0];
+    if (var_) return OZEL_ON + var_;
+    l.push(m);
+    p.ozelKonular = l.slice(-12);
+    try { localStorage.setItem(K, JSON.stringify(p)); } catch (e) { return null; }
+    return OZEL_ON + m;
+  }
+  function ozelSil(id) {
+    var m = String(id || "").slice(OZEL_ON.length).toLocaleLowerCase("tr");
+    var p = profil();
+    p.ozelKonular = ozeller().filter(function (x) { return x.toLocaleLowerCase("tr") !== m; });
+    if (Array.isArray(p.amaclar)) p.amaclar = p.amaclar.filter(function (x) { return x !== id; });
+    if (p.amac === id) p.amac = (p.amaclar && p.amaclar[0]) || "";
+    try { localStorage.setItem(K, JSON.stringify(p)); } catch (e) {}
   }
   function secili() {
     var p = profil(), out = [];
@@ -67,5 +110,6 @@
     return true;
   }
 
-  global.DHAmac = { LISTE: LISTE, bul: bul, secili: secili, kaydet: kaydet };
+  global.DHAmac = { LISTE: LISTE, bul: bul, secili: secili, kaydet: kaydet,
+                    tumu: tumu, ozelEkle: ozelEkle, ozelSil: ozelSil };
 })(window);

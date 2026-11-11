@@ -97,7 +97,7 @@
     if (_hazir) return _hazir;
     _hazir = betik("./sentences-loader.js?v=20", function () { return !!global.DHSent; })
       .then(function () { return betik("./profile.js?v=2", function () { return !!global.DHProfile; }); })
-      .then(function () { return betik("./dh-amac.js?v=1", function () { return !!global.DHAmac; }); })
+      .then(function () { return betik("./dh-amac.js?v=2", function () { return !!global.DHAmac; }); })
       .then(function () { return betik("./ai-providers.js?v=t35", function () { return !!global.DHProviders; }); })
       .then(function () { return betik("./dh-modul.js?v=10", function () { return !!global.DHModul; }); })
       .then(function () { return global.DHModul.hazir ? global.DHModul.hazir() : null; })
@@ -170,7 +170,10 @@
     L.push("════════ ÖĞRENCİYİ TANI (en önemli kural) ════════");
     L.push("Öğrenci 50–80 yaşında, Türkçe konuşan bir yetişkin. İngilizceyi \"" + amac.ad + "\" için öğreniyor.");
     L.push("Cümleler onun GERÇEK hayatından olsun. Sahneler: " + amac.konu + ".");
-    if (amac.id !== "is" && amac.id !== "akademik") {
+    if (amac.ozel) {
+      L.push("Konuyu öğrenci KENDİSİ yazdı: \"" + amac.konu + "\". Bütün cümleler bu konunun içinden olsun;");
+      L.push("konu belirsizse en doğal, gündelik yorumunu seç. Konu uygunsuzsa genel gündelik cümleler yaz.");
+    } else if (amac.id !== "is" && amac.id !== "akademik") {
       L.push("Bilgisayar, yazılım, veritabanı, şirket, toplantı ve sınav dili KULLANMA.");
     }
     L.push("Her İngilizce cümle en fazla " + (KELIME_SINIRI[seviye] || 16) + " kelime olsun.");
@@ -335,7 +338,7 @@
                 seviye: seviye, alan: amac.alan, grammar: ilk.grammar || "", tense: ilk.tense || "",
                 onek: global.DHModul.kimlikUret(amac.alan),
                 ad: benzersizAd(global.DHModul.adUret(m.mod, amac.alan)),
-                jargonYasak: amac.id !== "is" && amac.id !== "akademik"
+                jargonYasak: !amac.ozel && amac.id !== "is" && amac.id !== "akademik"
               };
               var is = { amac: amac.id, m: { mod: m.mod, lvl: m.lvl }, ctx: ctx, istem: istemKur(amac, m, ornekler, ctx.onek, ctx.ad), t: Date.now() };
               if (y === "elle") { try { localStorage.setItem(K_YARIM, JSON.stringify(is)); } catch (e) {} }

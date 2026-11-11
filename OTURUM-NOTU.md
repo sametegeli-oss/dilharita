@@ -5,7 +5,7 @@
 > Kullanıcı kısa yazar (",2", "A", "devam et"). Kısa cevabı son sorulan sorunun cevabı say; yorumunu bir cümleyle söyle ve devam et.
 
 ## ▶ ŞU AN NEREDEYİZ — buradan başla
-Son yayın: SW **`dh-sw-v405`** (11 Kasım öğlen). Çalışma ağacı temiz, her şey yayında.
+Son yayın: SW **`dh-sw-v406`** (11 Kasım öğlen). Çalışma ağacı temiz, her şey yayında.
 
 **11 Kasım sabahı yapılanlar (kullanıcı "planı uygula, tam sesli modu da ekle" dedi):**
 1. **Amaç sorusu yenilendi** — `dh-amac.js` (tek kaynak): Seyahat · Aile ve torunlar · Sağlık · Günlük hayat · Zihnimi canlı tutmak · İş · Sınav. `basla.html`'de çoklu seçim (dokun → ✓, "Devam et"); profilde `amac` (ilk) + `amaclar` (hepsi). Yeni 3 amaç için ilk cümleler eklendi.
@@ -13,6 +13,8 @@ Son yayın: SW **`dh-sw-v405`** (11 Kasım öğlen). Çalışma ağacı temiz, h
 3. **Arka planda hazırlık** — ana sayfa açılınca 6 sn sonra `DHOzelDers.onceden()`: bekleyen ders yoksa (yalnız anahtar/araç yolunda) sıradakini sessizce hazırlar; kart "Size özel yeni ders hazır" der.
 4. **Araç (Aşama 3)** — `worker-ozel-ders.js` yazıldı, KURULMADI. Kurulum adımları `OZEL-DERS-ARACI.md`. Kullanıcı Worker adresini verince `dh-ozel-ders.js` → `ARACI_ADRES` doldurulacak. (Deneme için localStorage `dh-ozel-ders-araci` da kabul edilir; yalnız *.workers.dev.)
 5. **Tam sesli mod** — `sesli-calis.html`: Türkçesi okunur → bip → kullanıcı İngilizcesini söyler → sonuç + doğrusu sesle; "stop/skip/repeat" sesli komutları, Durdur/Geç/Tekrar söyle/Bitir düğmeleri, ekran kararmaz (wakeLock). Vadesi gelen tekrarlar (srs:, tekrar.html'in SM-2 adımı, günlük tekrar sayacı) yoksa sıradaki modülden "dinle-tekrar et". Mikrofon yoksa/izin yoksa "Sadece dinle". Menü, ana sayfa ve Tekrar sayfasında ("🎧 Tam sesli mod") bağlantı.
+5b. **Kendi konusu** (kullanıcı isteği): Bana Özel Ders'te "Konuyu kendiniz yazın" kutusu. Yazılan konu `DHAmac.ozelEkle` ile profile (`ozelKonular`, en çok 12) eklenir, kimliği `ozel:<metin>`; seçilir ve hemen o konuda ders hazırlanır. Amaç listesinde ✏️ ile görünür, "Kaldır" ile silinir; sırayla kullanılır ve arka planda da hazırlanır. Kendi konusunda jargon süzgeci kapalı.
+   - Not: kolay görünümde simge+yazılı düğmeler yalnız DOKUNMATİK OLMAYAN ekranda simgeye iner; telefonda yazı görünür (test için `hasTouch:true, isMobile:true`).
 6. Denemeler: sahte Groq ve sahte Worker (worker kodunun kendisi) ile uçtan uca üretim, bayrak, ana sayfa kartı; sahte ses tanıma ile sesli çalış (SRS yazımı doğrulandı); `mobiltara` yeni/değişen 7 sayfa: JS hatası/404/taşma 0. `tools/mobil-tarama/mobiltara.mjs` listesine 2 yeni sayfa eklendi.
 
 **Kullanıcıdan beklenenler:** araç kurulsun mu (OZEL-DERS-ARACI.md); LDPlayer'da Bana özel ders + Sesli çalış denemesi (mikrofon izni kullanıcının işi).
