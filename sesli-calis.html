@@ -34,6 +34,14 @@
   .sc-dugmeler .sc-genis{ grid-column:1/-1; }
   .sc-ses{ width:70%; max-width:260px; height:14px; margin:12px auto 0; border-radius:8px; background:var(--dh-yuzey-2); border:var(--dh-bd); overflow:hidden; }
   .sc-ses span{ display:block; height:100%; width:0%; background:#22c55e; transition:width .08s linear; }
+  .sc-arka{ position:fixed; inset:0; z-index:0; overflow:hidden; background:#000; }
+  .sc-arka video, .sc-arka img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .sc-arka__perde{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(2,6,23,.55) 0%, rgba(2,6,23,.35) 35%, rgba(2,6,23,.75) 70%, rgba(2,6,23,.92) 100%); }
+  .sc-ana{ position:relative; z-index:1; }
+  .sc-dugmeler .dh-btn--sade{ background:rgba(15,23,42,.82) !important; }
+  .sc-tr, .sc-en, .sc-duydum, .sc-sonuc, .sc-sayac{ text-shadow:0 2px 8px rgba(0,0,0,.9); }
+  #medyaSec[aria-pressed="true"]{ border:3px solid var(--dh-ok); }
+  #medyaSec[aria-pressed="true"]::after{ content:"✓"; margin-left:auto; font-size:26px; font-weight:800; color:var(--dh-ok); }
   .sc-satir{ padding:12px 0; border-bottom:var(--dh-bd); }
   .sc-satir__en{ font-size:20px; font-weight:700; }
   .sc-satir__tr{ font-size:17px; color:var(--dh-text-2); margin-top:2px; }
@@ -49,7 +57,12 @@
 </head>
 <body>
 
-<main class="dh-sayfa">
+<div class="sc-arka" id="arka" hidden aria-hidden="true">
+  <video id="arkaVideo" muted loop playsinline hidden></video>
+  <img id="arkaResim" alt="" hidden>
+  <div class="sc-arka__perde"></div>
+</div>
+<main class="dh-sayfa sc-ana">
 
   <header class="dh-ust">
     <div class="dh-ust__sol">
@@ -83,6 +96,9 @@
         <span>Sadece dinleyeceğim<span class="dh-secenek__alt">Mikrofon kullanılmaz; Türkçesi, kısa bir ara, sonra İngilizcesi</span></span>
       </button>
     </div>
+    <button class="dh-secenek" type="button" id="medyaSec" aria-pressed="true" style="margin-top:12px">
+      <span>Arkada video ya da resim göster<span class="dh-secenek__alt">Cümleyle ilgili video; video yoksa resim. İnternet kullanır.</span></span>
+    </button>
     <button class="dh-secenek" type="button" id="otoSes" aria-pressed="false" style="margin-top:12px">
       <span>Her cevaptan sonra sesimi kaydedip dinlet<span class="dh-secenek__alt">Cümleyi bir daha söylersiniz; kayıttan kendi sesinizi, ardından doğrusunu dinlersiniz. Her cümlede “Sesimi kaydet ve dinle” düğmesi de var.</span></span>
     </button>
@@ -241,7 +257,7 @@
       return DHSent.module(ad).catch(function(){ return []; });
     }).then(function(k){
       return (k || []).filter(function(x){ return x && x.en && x.tr && benzerlik(x.tr, x.en) < 70; })
-        .slice(0, 30).map(function(x){ return { id:x.id, en:x.en, tr:x.tr }; });
+        .slice(0, 30).map(function(x){ return { id:x.id, en:x.en, tr:x.tr, imgQuery:x.imgQuery||"" }; });
     });
   }
   function icerikHazirla(){
@@ -255,7 +271,7 @@
       if (!vade.length) return null;
       return DHSent.byIds(vade).then(function(m){
         var out = [];
-        vade.forEach(function(id){ var k=m[id]; if (k && k.en && k.tr && benzerlik(k.tr,k.en) < 70) out.push({id:id, en:k.en, tr:k.tr, srs:srs[id]}); });
+        vade.forEach(function(id){ var k=m[id]; if (k && k.en && k.tr && benzerlik(k.tr,k.en) < 70) out.push({id:id, en:k.en, tr:k.tr, imgQuery:k.imgQuery||"", srs:srs[id]}); });
         return out.length ? { tur:"tekrar", liste: out.slice(0, OTURUM) } : null;
       });
     }).then(function(r){
@@ -264,11 +280,121 @@
         if (!mod) return { tur:"yeni", liste:[] };
         return DHSent.module(mod).then(function(kayitlar){
           var out = (kayitlar||[]).filter(function(k){ return k && k.en && k.tr; }).slice(0, 10)
-            .map(function(k){ return { id:k.id, en:k.en, tr:k.tr }; });
+            .map(function(k){ return { id:k.id, en:k.en, tr:k.tr, imgQuery:k.imgQuery||"" }; });
           return { tur:"yeni", liste: out, mod: mod };
         });
       });
     });
+  }
+
+  /* ---------- arka plan: video, yoksa resim ----------
+     Görselle Öğren / Videoyla Okuma ile AYNI depolar kullanılır:
+       video-practice-video:<id>  daha önce bulunmuş video (JSON, videoUrl)
+       pexels-api-key             varsa Pexels'te video aranır
+       img:<normalize en>         Cümle Çalış'ın resim önbelleği (url | "NONE")
+     Resim: Openverse -> Wikimedia Commons -> Wikipedia (anahtar gerekmez). */
+  var medyaAcik = true;
+  try{ medyaAcik = localStorage.getItem("dh-sesli-medya") !== "0"; }catch(e){}
+  var _medya = {};
+  function kvOku(k){
+    return kvAc().then(function(db){
+      if (!db) return "";
+      return new Promise(function(res){
+        try{ var q = db.transaction("kv","readonly").objectStore("kv").get(k);
+          q.onsuccess = function(){ db.close(); res(q.result || ""); }; q.onerror = function(){ db.close(); res(""); };
+        }catch(e){ try{db.close()}catch(_){ } res(""); }
+      });
+    });
+  }
+  function normEn(t){ return String(t||"").toLowerCase().replace(/\s+/g," ").replace(/[^a-z0-9' ]/g,"").trim(); }
+  function zamanli(p, ms){ return Promise.race([p, new Promise(function(r){ setTimeout(function(){ r(null); }, ms); })]); }
+  function jsonAl(url, ops){ return zamanli(fetch(url, ops).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }), 8000); }
+  function resimAra(q){
+    return jsonAl("https://api.openverse.org/v1/images/?q=" + encodeURIComponent(q) + "&page_size=1&mature=false").then(function(j){
+      var f = j && (j.results || [])[0];
+      if (f) return f.thumbnail || f.url;
+      return jsonAl("https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=" + encodeURIComponent("filetype:bitmap " + q) + "&gsrlimit=1&prop=imageinfo&iiprop=url&iiurlwidth=800").then(function(j2){
+        var pg = (j2 && j2.query && j2.query.pages) || {};
+        for (var x in pg){ var ii = pg[x].imageinfo && pg[x].imageinfo[0]; if (ii && ii.thumburl) return ii.thumburl; }
+        return null;
+      });
+    });
+  }
+  function pexelsAra(q, key){
+    var u = "https://api.pexels.com/videos/search?per_page=5&orientation=portrait&query=" + encodeURIComponent(q);
+    return jsonAl(u, { headers:{ Authorization:key } }).then(function(d){
+      var v = d && (d.videos || [])[0];
+      if (!v) return null;
+      /* mobil veri için küçük dosya: genişliği 480–960 arası mp4 */
+      var fs = (v.video_files || []).filter(function(f){ return f.link && f.file_type === "video/mp4"; })
+        .sort(function(a,b){ return Math.abs(720-(a.width||0)) - Math.abs(720-(b.width||0)); });
+      return fs[0] ? { videoUrl: fs[0].link, posterUrl: v.image || "" } : null;
+    });
+  }
+  function medyaBul(k){
+    if (!k) return Promise.resolve(null);
+    var anahtar = k.id || normEn(k.en);
+    if (_medya[anahtar]) return _medya[anahtar];
+    var q = String(k.imgQuery || k.en || "").trim();
+    var vk = "video-practice-video:" + k.id;
+    _medya[anahtar] = (k.id ? kvOku(vk) : Promise.resolve("")).then(function(kayit){
+      try{ var p = kayit && JSON.parse(kayit); if (p && p.videoUrl) return { tur:"video", url:p.videoUrl, poster:p.posterUrl || "" }; }catch(e){}
+      return kvOku("pexels-api-key").then(function(key){
+        if (!key || !k.id) return null;
+        return pexelsAra(q, key).then(function(v){
+          if (!v) return null;
+          kvYaz(vk, JSON.stringify({ videoUrl:v.videoUrl, posterUrl:v.posterUrl, sentence:k.en, query:q }));
+          return { tur:"video", url:v.videoUrl, poster:v.posterUrl };
+        });
+      });
+    }).then(function(m){
+      return m || resimBul(k);
+    }).catch(function(){ return null; });
+    return _medya[anahtar];
+  }
+  function resimBul(k){
+    var q = String(k.imgQuery || k.en || "").trim(), ik = "img:" + normEn(k.en);
+    return kvOku(ik).then(function(url){
+      if (url === "NONE") return null;
+      if (url) return { tur:"resim", url:url };
+      return resimAra(q).then(function(u){ kvYaz(ik, u || "NONE"); return u ? { tur:"resim", url:u } : null; });
+    }).catch(function(){ return null; });
+  }
+  function resimKoy(k, m){
+    var v = $("arkaVideo"), im = $("arkaResim");
+    if (_gosterilen !== k) return;
+    if (!m){ medyaGizle(); return; }
+    try{ v.pause(); }catch(e){} v.hidden = true; v.removeAttribute("src");
+    im.hidden = false; im.src = m.url;
+    im.onerror = function(){ if (_gosterilen === k) medyaGizle(); };
+    $("arka").hidden = false;
+  }
+  var _gosterilen = null;
+  function medyaGoster(k){
+    var kutu = $("arka"), v = $("arkaVideo"), im = $("arkaResim");
+    if (!medyaAcik || !k){ medyaGizle(); return; }
+    _gosterilen = k;
+    medyaBul(k).then(function(m){
+      if (_gosterilen !== k) return;
+      if (!m){ medyaGizle(); return; }
+      if (m.tur === "video"){
+        im.hidden = true; im.removeAttribute("src");
+        v.hidden = false;
+        if (v.getAttribute("src") !== m.url){ v.src = m.url; if (m.poster) v.poster = m.poster; }
+        v.muted = true; v.loop = true; v.playsInline = true;
+        try{ v.play().catch(function(){}); }catch(e){}
+        /* video açılmazsa (silinmiş bağlantı) resme düş */
+        v.onerror = function(){ if (_gosterilen === k) resimBul(k).then(function(r){ resimKoy(k, r); }); };
+        kutu.hidden = false;
+      } else resimKoy(k, m);
+    });
+  }
+  function medyaGizle(){
+    _gosterilen = null;
+    var v = $("arkaVideo");
+    try{ v.pause(); }catch(e){} v.removeAttribute("src"); v.hidden = true;
+    $("arkaResim").hidden = true; $("arkaResim").removeAttribute("src");
+    $("arka").hidden = true;
   }
 
   /* ---------- ses: konuşma ---------- */
@@ -486,6 +612,8 @@
   function birCumle(k, ilk){
     gecIstek = false; tekrarIstek = false;
     ekranTemizle(k);
+    medyaGoster(k);
+    if (medyaAcik && liste[sira+1]) medyaBul(liste[sira+1]);
     var adimlar = Promise.resolve();
     var once = ilk ? (mod === "dinle" ? "Türkçesini söyleyeceğim, biraz düşünün, sonra İngilizcesini duyacaksınız." :
                       tur !== "yeni" ? "Türkçesini söyleyeceğim. Bip sesinden sonra İngilizcesini söyleyin." :
@@ -594,6 +722,7 @@
     dinlemeyiKes();
     try{ uyanik && uyanik.release(); }catch(e){}
     $("sahne").hidden = true; $("bitti").hidden = false;
+    medyaGizle();
     var ozet = sayilar.toplam + " cümle çalıştınız.";
     if (mod !== "dinle" && sayilar.toplam) ozet += " " + sayilar.dogru + " tanesini doğru söylediniz.";
     $("bittiOzet").textContent = ozet;
@@ -648,6 +777,7 @@
     calisilan.forEach(function(x){ try{ x.kayit && URL.revokeObjectURL(x.kayit); }catch(e){} });
     calisilan = [];
     $("giris").hidden = true; $("bitti").hidden = true; $("sahne").hidden = false;
+    try{ window.scrollTo(0, 0); }catch(e){}
     dugmeGuncelle();
     /* ekran kararmasın: ellerin serbest olduğu çalışma */
     try{ if (navigator.wakeLock) navigator.wakeLock.request("screen").then(function(w){ uyanik = w; }).catch(function(){}); }catch(e){}
@@ -655,6 +785,9 @@
     dongu();
   }
   $("basla").onclick = basla;
+  function medyaCiz(){ $("medyaSec").setAttribute("aria-pressed", medyaAcik ? "true" : "false"); }
+  $("medyaSec").onclick = function(){ medyaAcik = !medyaAcik; try{ localStorage.setItem("dh-sesli-medya", medyaAcik ? "1" : "0"); }catch(e){} medyaCiz(); if (!medyaAcik) medyaGizle(); };
+  medyaCiz();
   var otoSes = false;
   try{ otoSes = localStorage.getItem("dh-sesli-otoses") === "1"; }catch(e){}
   function otoSesCiz(){ $("otoSes").setAttribute("aria-pressed", otoSes ? "true" : "false"); }
