@@ -194,3 +194,6 @@ Bilinen ipuçları:
 
 ### 5q. Modül ekranında Önceki · Dinle · Sonraki üst çubukta (v424)
 - dh-dugmeler.js `ust` tanımı: index-app'te üç vekil düğme `.index-app-top-actions` içine, Geri'nin yanına; karttaki #dhNavTrio ve .dh-card-actions-primary gizlenir. Simge üstte, yazı altta (dar ekrana sığsın). Asılların kapalı/yok durumu yansıtılır; liste ekranında çubuk gizli. Zor/Normal/Kolay kartta kalır.
+
+### 5r. Ana sayfada çift "özel ders" kartı kaldırıldı (v425)
+- Kolay görünümde (html.kk-acik) #ozelDersKart gizli; üstteki "✨ Bana Özel Ders" kutusu tek giriş ve "Yeni dersin hazır" notunu gösteriyor. Kolay görünüm kapalıyken kart tek giriş olduğu için kalır.
