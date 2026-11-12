@@ -210,3 +210,8 @@ Bilinen ipuçları:
 
 ### 5u. Modül sohbeti: yorum Türkçe, sohbet İngilizce (v428)
 - Scenario.yorumTr (yalnız chatmodul.html) -> dhLanguageRule() dhYorumTrKurali() döner: önce öğrencinin son mesajı hakkında 1-2 cümle TÜRKÇE yorum/açıklama (düzeltilmiş cümle [[ ]] içinde), sonra 1-2 cümle İngilizce sohbet + soru [[ ]] içinde. Uzunluk kuralı buna göre (chat-core t40). Seslendirme mevcut splitMixedSpeech ile: [[ ]] içi en-US, Türkçe cümleler tr-TR (testte doğrulandı). Gemini açılışı da Türkçe çerçeve + [[İngilizce]].
+
+### 5v. YouTube: İngilizce sesli + Türkçe transkriptli videoyu Türkçe seslendirme (v429)
+- Sorun: "Otomatik algıla" önce EN altyazı arar, yoksa TR altyazıyı alıp videoyu "Türkçe video" (reverse) sayar; bu modda "TR Oku" "EN Oku"ya dönüp İngilizce okuyordu.
+- youtube-egitim.js v125: TR Oku her modda translationTR'yi tr-TR sesle okur (Google/Natural Türkçe ses tercih), video sessiz, okuma bitmeden sonraki cümleye geçmez (mevcut bekletme). Reverse + kesin zamanlama varken sarı ipucu (#trSesIpucu). Tam ekran "⋯" menüsüne "🇹🇷 Türkçe seslendir / Orijinal sese dön" (#controlTurkish).
+- Not: test-youtube-egitim.mjs bu değişiklikten önce de başarısızdı (startShadowing kimliği yok).
