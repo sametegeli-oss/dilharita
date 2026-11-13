@@ -83,11 +83,11 @@
     <div class="yt-mode-tools">
      <div class="yt-audio-source" role="group" aria-label="Video ses kaynağı">
       <button class="is-active" id="originalAudioMode" type="button" aria-pressed="true">🔊 <span>Orijinal ses</span></button>
-      <button id="guideAudioMode" type="button" aria-pressed="false" hidden>🗣 <span>İngilizce rehber</span></button>
+      <button id="guideAudioMode" type="button" aria-pressed="false" hidden>🇬🇧 <span>İngilizce seslendir</span></button>
       <button id="ownAudioMode" type="button" aria-pressed="false" disabled>🎤 <span>Kendi sesim</span> <b id="ownAudioCount">0</b></button>
       <button id="turkishAudioMode" type="button" aria-pressed="false" data-tooltip="Videoyu Türkçe TTS ile seslendir">TR <span>Türkçe TTS</span></button>
      </div>
-     <p id="trSesIpucu" class="yt-tr-ipucu" hidden>Bu videonun metni Türkçe. Video İngilizce konuşuyorsa <b>“TR Oku”</b>ya basın: videonun sesi kısılır, Türkçe metin Türkçe sesle okunur.</p>
+     <p id="trSesIpucu" class="yt-tr-ipucu" hidden>Bu videonun metni Türkçe.<br>• Videoyu <b>İngilizce</b> izlemek için <b>“🇬🇧 İngilizce seslendir”</b>e basın: Türkçe konuşmalar İngilizceye çevrilip İngilizce sesle okunur.<br>• Video aslında İngilizce konuşuyor ama metni Türkçeyse <b>“TR Oku”</b>ya basın.</p>
      <button id="autoPauseToggle" type="button" aria-pressed="false" title="Her cümlenin sonunda otomatik duraklat">⏸ <span>Otomatik dur</span></button>
      <button id="karaokeToggle" class="is-active" type="button" aria-pressed="true" title="Konuşulan kelimeyi takip et">✦ <span>Kelime takibi</span></button>
      <button id="translateTranscript" type="button" title="Sabit transkript cümlelerinin yalnız çevirilerini Gemini'den al">✦ <span>Gemini ile çevir</span></button>
@@ -146,6 +146,7 @@
       <button class="yt-control" id="soundToggle" type="button" aria-label="Sesi aç veya kapat">🔊</button>
       <button class="yt-control yt-more-toggle" id="controlMoreToggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="controlMoreMenu" aria-label="Diğer çalışma araçları" data-tooltip="Diğer çalışma araçları">⋯</button>
       <div class="yt-more-menu" id="controlMoreMenu" hidden>
+       <button class="yt-control yt-study-action" id="controlEnglish" type="button" aria-pressed="false" hidden data-tooltip="Türkçe videoyu İngilizce sesle izle"><span aria-hidden="true">🇬🇧</span><span>İngilizce seslendir</span></button>
        <button class="yt-control yt-study-action" id="controlTurkish" type="button" aria-pressed="false" data-tooltip="Videonun sesini kıs, Türkçe metni Türkçe sesle oku"><span aria-hidden="true">🇹🇷</span><span>Türkçe seslendir</span></button>
        <button class="yt-control yt-study-action" id="controlModule" type="button" data-tooltip="Aktif cümlenin çalışma modülünü aç; yoksa videodan modülleri oluştur"><span aria-hidden="true">◈</span><span>Modüle git</span></button>
        <button class="yt-control yt-study-action" id="controlYouglish" type="button" data-tooltip="Aktif kalıbı farklı gerçek videolarda dinle"><span aria-hidden="true">Y</span><span>YouGlish</span></button>
@@ -408,7 +409,7 @@
  <script src="./immersive-youtube-study.js?v=18"></script>
  <script src="./youtube-session-lock.js?v=3"></script>
  <script src="./dh-modul.js?v=10"></script>
- <script src="./youtube-egitim.js?v=125"></script>
+ <script src="./youtube-egitim.js?v=126"></script>
  <script src="./youtube-swipe-navigation.js?v=1"></script>
 
 <div class="yt-modal-overlay" id="existingModuleModal" hidden><section class="yt-modal"><h2>Bu videonun modülü mevcut</h2><p>Mevcut modülü çalışabilir veya yeniden oluşturabilirsiniz.</p><button id="existingModuleStudy" type="button">Mevcut modülü çalış</button><button id="existingModuleNew" type="button">Yeniden oluştur</button><button id="existingModuleCancel" type="button">Vazgeç</button></section></div>

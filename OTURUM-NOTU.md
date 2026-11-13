@@ -215,3 +215,9 @@ Bilinen ipuçları:
 - Sorun: "Otomatik algıla" önce EN altyazı arar, yoksa TR altyazıyı alıp videoyu "Türkçe video" (reverse) sayar; bu modda "TR Oku" "EN Oku"ya dönüp İngilizce okuyordu.
 - youtube-egitim.js v125: TR Oku her modda translationTR'yi tr-TR sesle okur (Google/Natural Türkçe ses tercih), video sessiz, okuma bitmeden sonraki cümleye geçmez (mevcut bekletme). Reverse + kesin zamanlama varken sarı ipucu (#trSesIpucu). Tam ekran "⋯" menüsüne "🇹🇷 Türkçe seslendir / Orijinal sese dön" (#controlTurkish).
 - Not: test-youtube-egitim.mjs bu değişiklikten önce de başarısızdı (startShadowing kimliği yok).
+
+### 5w. YouTube: Türkçe videoyu İngilizce seslendirerek izleme (v430)
+- "İngilizce rehber" -> "🇬🇧 İngilizce seslendir" (yalnız Türkçe/ters videoda). transcriptEN seçili İngilizce sesle (dh-voice:__global__, yoksa Google/Natural en) okunur, video sessiz. Okuma cümleden uzun sürerse video bekler (guideHoldIndex; ticker + yeni cümleye geçişte bekletme).
+- İngilizce karşılığı eksik cümle varsa düğme önce mevcut çeviri akışını (runTranslationWorkflow -> dil seçimi -> Gemini) açar, bitince seslendirmeyi başlatır.
+- Tam ekran ⋯ menüsü: "🇬🇧 İngilizce seslendir / Orijinal sese dön" (#controlEnglish). Sarı ipucu iki seçeneği anlatır.
+- TR Oku'ya da aynı geçiş bekletmesi eklendi (eskiden yeni cümle önceki okumayı kesebiliyordu). youtube-egitim.js v126.
