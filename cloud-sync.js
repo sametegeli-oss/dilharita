@@ -996,13 +996,10 @@
       }catch(e){
         db=fsMod.getFirestore(app); // zaten başlatılmışsa (örn. sayfa yeniden çalıştı) düşer
       }
-      /* Kalıcılık "Bu cihazda hatırla" tercihine uyar (auth-guard ile aynı):
-         hatırlanmayan oturum uygulama kapanınca biter. */
-      try{
-        var __hatirla=false; try{ __hatirla=localStorage.getItem("dh_remember")==="1"; }catch(e){}
-        if(__hatirla){ if(authMod.setPersistence&&authMod.browserLocalPersistence) authMod.setPersistence(auth, authMod.browserLocalPersistence); }
-        else if(authMod.setPersistence&&authMod.browserSessionPersistence) authMod.setPersistence(auth, authMod.browserSessionPersistence);
-      }catch(e){}
+      /* KALICILIĞA DOKUNULMAZ (bkz. auth-guard.js): oturumun saklandığı yeri
+         yalnız login.html seçer. Burada setPersistence(localStorage) çağrılması
+         IndexedDB'deki oturumu görünmez yapıyor ve senkronu sessizce
+         durduruyordu (kullanıcı hep "giriş yapılmamış" görünüyordu). */
       fb={
         auth:auth, db:db,
         onAuth:function(cb){ return authMod.onAuthStateChanged(auth,cb); },

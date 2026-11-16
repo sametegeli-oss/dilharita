@@ -45,8 +45,29 @@
     try{ sessionStorage.removeItem("dh_session_ok"); }catch(e){}
   }
   var gidiyor = false;
+  /* DÖNGÜ SİGORTASI: bir hata yüzünden giriş ↔ sayfa arasında gidip
+     gelinirse (16 Kasım'da oldu) 30 sn içinde 3. yönlendirmede durur,
+     sayfayı açık bırakır ve kullanıcıya not gösterir. */
+  function donguVar(){
+    try{
+      var now=Date.now(), arr=JSON.parse(sessionStorage.getItem("dh_guard_hops")||"[]").filter(function(t){ return now-t<30000; });
+      arr.push(now); sessionStorage.setItem("dh_guard_hops", JSON.stringify(arr));
+      return arr.length>=3;
+    }catch(e){ return false; }
+  }
+  function donguNotu(){
+    try{
+      var d=document.createElement("div"); d.setAttribute("role","alert");
+      d.style.cssText="position:fixed;left:8px;right:8px;top:8px;z-index:2147483647;background:#1e293b;color:#f8fafc;border:2px solid #f59e0b;border-radius:14px;padding:12px 14px;font:600 16px/1.45 system-ui";
+      d.textContent="Oturum doğrulanamadı. Çalışmaya devam edebilirsin; sorun sürerse Kitaplık menüsünden çıkış yapıp yeniden giriş yap.";
+      (document.body||document.documentElement).appendChild(d);
+      setTimeout(function(){ try{ d.remove(); }catch(e){} }, 9000);
+    }catch(e){}
+  }
   function goLogin(){
-    if (gidiyor) return; gidiyor = true;
+    if (gidiyor) return;
+    if (donguVar()){ try{ document.documentElement.style.visibility=""; }catch(e){} if(document.body) donguNotu(); else document.addEventListener("DOMContentLoaded", donguNotu); return; }
+    gidiyor = true;
     /* Yönlendirme sürerken sayfa içeriği bir an görünmesin. */
     try{ document.documentElement.style.visibility = "hidden"; }catch(e){}
     var son = location.pathname.split("/").pop() || "index.html";
@@ -84,41 +105,31 @@
       app = (existing && existing.length) ? existing[0] : appMod.initializeApp(firebaseConfig);
     }catch(e){ app = appMod.initializeApp(firebaseConfig); }
     var auth = authMod.getAuth(app);
-    /* Kalıcılık "Bu cihazda hatırla" tercihine uyar: hatırlanmayan oturum
-       sekme/uygulama kapanınca biter. (Eskiden her sayfa kalıcıya çeviriyordu.) */
-    try{
-      if(remembered()){
-        if(authMod.setPersistence && authMod.browserLocalPersistence) authMod.setPersistence(auth, authMod.browserLocalPersistence);
-      } else if(authMod.setPersistence && authMod.browserSessionPersistence){
-        authMod.setPersistence(auth, authMod.browserSessionPersistence);
-      }
-    }catch(e){}
-
-    var decided = false;
-    var nullTimer = null;
-    authMod.onAuthStateChanged(auth, function(user){
+    /* KALICILIĞA DOKUNULMAZ. Oturumun nerede saklanacağını yalnız
+       login.html seçer ("Bu cihazda hatırla": IndexedDB, değilse oturumluk).
+       Eskiden burada setPersistence(localStorage) çağrılıyordu: oturum
+       IndexedDB'deyken Firebase onu göremiyor, "çıkış yapılmış" sanıyordu.
+       Sonuç: giriş ↔ ana sayfa döngüsü ve haftalarca buluta yazılmayan veri.
+       getAuth varsayılan olarak IndexedDB, localStorage ve sessionStorage'ın
+       hepsine bakar. authStateReady, kayıtlı oturum okunana kadar bekler. */
+    var hazir = auth.authStateReady ? auth.authStateReady()
+      : new Promise(function(r){ var u=authMod.onAuthStateChanged(auth,function(){ try{u();}catch(e){} r(); }); });
+    hazir.then(function(){
+      var user = auth.currentUser;
       if (user){
-        decided = true;
-        if (nullTimer){ clearTimeout(nullTimer); nullTimer=null; }
         try{
           localStorage.setItem("dh_logged_in","1");
           localStorage.setItem("dh_logged_uid", user.uid || "");
           if(user.email) localStorage.setItem("dh_logged_email", user.email);
           localStorage.removeItem("dh_guest_mode");
+          sessionStorage.removeItem("dh_guard_hops");
         }catch(e){}
       } else {
-        if (decided) return;
-        // İlk null GEÇİCİ olabilir (mobilde kalıcılık gecikmesi). 6 sn içinde
-        // gerçek oturum gelmezse oturum gerçekten yok → giriş ekranı.
-        if (nullTimer) return;
-        nullTimer = setTimeout(function(){
-          if (decided) return;
-          decided = true;
-          clearLocalLogin();
-          goLogin();
-        }, 6000);
+        if (navigator.onLine === false) return;   /* çevrimdışı: yerel işarete güven */
+        clearLocalLogin();
+        goLogin();
       }
-    });
+    }).catch(function(){});
   }).catch(function(){
     // İnternet yok / Firebase yüklenemedi: yerel işarete güvenip offline devam.
   });
