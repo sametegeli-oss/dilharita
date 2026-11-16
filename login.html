@@ -130,6 +130,7 @@
   async function applyPersistence(){
     const rem = document.getElementById("remember");
     const on = !rem || rem.checked;
+    cerez("dh_rem", on ? "1" : "0", true);
     try{ localStorage.setItem("dh_remember", on ? "1" : "0"); }catch(e){}
     if(on){
       try{ await setPersistence(auth, indexedDBLocalPersistence); }
@@ -139,6 +140,15 @@
     }
   }
   let justSignedIn = false;
+  /* GİRİŞ İŞARETİ ÇEREZDE DE TUTULUR: localStorage dolduğunda (bu sitede
+     ~10 MB, QuotaExceededError) "dh_logged_in" yazılamıyor ve bekçi
+     kullanıcıyı giriş ↔ ana sayfa döngüsüne sokuyordu. Çerezin ayrı kotası var. */
+  function cerez(ad, deger, kalici){
+    const yol = location.pathname.replace(/[^/]*$/, "");
+    document.cookie = ad + "=" + deger + "; path=" + yol + "; SameSite=Lax" + (location.protocol==="https:"?"; Secure":"") + (kalici ? "; max-age=31536000" : "");
+  }
+  function cerezSil(ad){ const yol = location.pathname.replace(/[^/]*$/, ""); document.cookie = ad + "=; path=" + yol + "; max-age=0"; }
+  function cerezOku(ad){ const m = document.cookie.match(new RegExp("(?:^|; )" + ad + "=([^;]*)")); return m ? m[1] : null; }
 
   const boot = document.getElementById("boot");
   const card = document.getElementById("card");
@@ -163,20 +173,25 @@
        yeni açılışta şifresiz geçmesin. */
     if (user && !justSignedIn){
       let ok = false;
-      try{ ok = localStorage.getItem("dh_remember")==="1" || sessionStorage.getItem("dh_session_ok")==="1"; }catch(e){}
+      try{ ok = localStorage.getItem("dh_remember")==="1" || cerezOku("dh_rem")==="1" || sessionStorage.getItem("dh_session_ok")==="1"; }catch(e){}
       if(!ok){ try{ await signOut(auth); }catch(e){} return; }
     }
     if (user && !redirected){
       redirected = true;
       try{ sessionStorage.setItem("dh_session_ok","1"); }catch(e){}
       // Yerel işaret bırak: internet olmasa bile auth-guard bu kişiyi içeri alsın.
+      // Önce çerez (kotadan bağımsız), sonra her yazma AYRI denenir: biri
+      // kotaya takılırsa diğerleri yine yazılsın.
+      let hatirla = true;
+      try{ hatirla = localStorage.getItem("dh_remember")!=="0" && cerezOku("dh_rem")!=="0"; }catch(e){}
+      cerez("dh_auth", "1", hatirla);
+      try{ localStorage.setItem("dh_logged_in", "1"); }catch(e){}
+      try{ localStorage.setItem("dh_logged_uid", user.uid || ""); }catch(e){}
+      try{ if(user.email) localStorage.setItem("dh_logged_email", user.email); }catch(e){}
       try{
         if(localStorage.getItem("dh_guest_mode")==="1"){
           localStorage.setItem("dh-account-migration-pending",JSON.stringify({at:Date.now(),uid:user.uid||""}));
         }
-        localStorage.setItem("dh_logged_in", "1");
-        localStorage.setItem("dh_logged_uid", user.uid || "");
-        if(user.email) localStorage.setItem("dh_logged_email", user.email);
       }catch(e){}
       location.replace(destination());
     } else if (!user){
@@ -191,6 +206,7 @@
         localStorage.removeItem("dh_logged_email");
         sessionStorage.removeItem("dh_session_ok");
       }catch(e){}
+      cerezSil("dh_auth");
       boot.classList.add("hidden");
       card.classList.remove("hidden");
     }

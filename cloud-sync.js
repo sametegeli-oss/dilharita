@@ -1414,6 +1414,7 @@
       localStorage.removeItem("dh_logged_uid");
       localStorage.removeItem("dh_logged_email");
     }catch(e){}
+    try{ sessionStorage.removeItem("dh_session_ok"); document.cookie="dh_auth=; path="+location.pathname.replace(/[^/]*$/,"")+"; max-age=0"; }catch(e){}
     return { ok:true };
   }
   function hookLocalStorage(){

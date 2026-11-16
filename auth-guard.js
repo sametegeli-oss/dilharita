@@ -34,8 +34,12 @@
 
   function ls(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
   function ss(k){ try{ return sessionStorage.getItem(k); }catch(e){ return null; } }
-  function hasLocalLogin(){ return ls("dh_logged_in") === "1"; }
-  function remembered(){ return ls("dh_remember") === "1"; }
+  /* Giriş işareti çerezde de tutulur (login.html): localStorage dolunca
+     (QuotaExceededError) "dh_logged_in" yazılamıyordu → giriş döngüsü. */
+  function cerez(ad){ var m=document.cookie.match(new RegExp("(?:^|; )"+ad+"=([^;]*)")); return m?m[1]:null; }
+  function cerezSil(ad){ var yol=location.pathname.replace(/[^/]*$/,""); document.cookie=ad+"=; path="+yol+"; max-age=0"; }
+  function hasLocalLogin(){ return ls("dh_logged_in") === "1" || cerez("dh_auth") === "1"; }
+  function remembered(){ return ls("dh_remember") === "1" || cerez("dh_rem") === "1"; }
   function clearLocalLogin(){
     try{
       localStorage.removeItem("dh_logged_in");
@@ -43,6 +47,7 @@
       localStorage.removeItem("dh_logged_email");
     }catch(e){}
     try{ sessionStorage.removeItem("dh_session_ok"); }catch(e){}
+    try{ cerezSil("dh_auth"); }catch(e){}
   }
   var gidiyor = false;
   /* DÖNGÜ SİGORTASI: bir hata yüzünden giriş ↔ sayfa arasında gidip
@@ -117,13 +122,11 @@
     hazir.then(function(){
       var user = auth.currentUser;
       if (user){
-        try{
-          localStorage.setItem("dh_logged_in","1");
-          localStorage.setItem("dh_logged_uid", user.uid || "");
-          if(user.email) localStorage.setItem("dh_logged_email", user.email);
-          localStorage.removeItem("dh_guest_mode");
-          sessionStorage.removeItem("dh_guard_hops");
-        }catch(e){}
+        try{ localStorage.removeItem("dh_guest_mode"); }catch(e){}
+        try{ sessionStorage.removeItem("dh_guard_hops"); }catch(e){}
+        try{ localStorage.setItem("dh_logged_in","1"); }catch(e){}
+        try{ localStorage.setItem("dh_logged_uid", user.uid || ""); }catch(e){}
+        try{ if(user.email) localStorage.setItem("dh_logged_email", user.email); }catch(e){}
       } else {
         if (navigator.onLine === false) return;   /* çevrimdışı: yerel işarete güven */
         clearLocalLogin();
