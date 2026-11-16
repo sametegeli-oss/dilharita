@@ -194,7 +194,7 @@ function renderRecords(){
     <div class="record ${r.reviewPriority||""}">
       <div class="meta">
         <span class="pill ${r.reviewPriority||""}">${r.reviewPriority==="high"?"Yüksek":r.reviewPriority==="medium"?"Orta":"Düşük"}</span>
-        <span class="pill">${r.source==="youtube"?"▶ YouTube":r.source==="practice"?"Cümle çalışma":r.source==="video"?"Video":LearningErrorDB.esc(r.source||"")}</span>
+        <span class="pill">${r.source==="youtube"?"▶ YouTube":r.source==="practice"?"Cümle çalışma":r.source==="video"?"Video":r.source==="konuskan"?"🗣️ Konuşkan":LearningErrorDB.esc(r.source||"")}</span>
         <span class="pill">${LearningErrorDB.esc(r.level||"")}</span>
         <span class="pill">${LearningErrorDB.esc(r.module||"")}</span>
         <span>${fmt(r.createdAt)}</span>

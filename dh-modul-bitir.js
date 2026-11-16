@@ -251,7 +251,17 @@
     kal.textContent = "Burada kal";
     kal.onclick = paneliKapat;
 
-    sira.appendChild(git); sira.appendChild(kal);
+    sira.appendChild(git);
+    /* KONUŞKAN KÖPRÜSÜ: modülün kalıplarıyla yapay zekâ ile konuşma.
+       Dil Harita'da öğren → Konuşkan'da kullan. */
+    if (o.konus) {
+      var kon = document.createElement("button");
+      kon.className = "dh-mb__btn dh-mb__btn--sade"; kon.type = "button";
+      kon.textContent = "🗣️ Konuşkan'da konuş";
+      kon.onclick = function () { paneliKapat(); gitHref("konuskan.html?konus=" + encodeURIComponent(o.konus)); };
+      sira.appendChild(kon);
+    }
+    sira.appendChild(kal);
     k.appendChild(bas); k.appendChild(alt); k.appendChild(sira);
     document.body.appendChild(k);
     acikPanel = k;
@@ -291,7 +301,7 @@
         panelAc({
           baslik: "Modül bitti 🎉",
           alt: "Bugünün planında başka adım kalmadı.",
-          btn: "Ana ekrana dön", otomatik: GERI_SAYIM,
+          btn: "Ana ekrana dön", otomatik: GERI_SAYIM * 2, konus: mod,
           git: function () { gitHref("index.html"); }
         });
         return;
@@ -300,7 +310,7 @@
         baslik: "Modül bitti 🎉  " + kisa(mod),
         alt: "Sırada: " + h.etiket,
         btn: h.modul ? "Sıradaki modüle geç" : "Devam et",
-        otomatik: GERI_SAYIM,
+        otomatik: GERI_SAYIM * 2, konus: mod,
         git: function () { gitHref(h.href); }
       });
     }).catch(function () {});

@@ -192,8 +192,21 @@ function addXP(n){ S.xp+=n; checkAch(); save(); }
 function checkAch(){ for(const a of ACH){ if(!S.ach[a.id]&&a.f(S)){ S.ach[a.id]=today(); toast('Rozet kazandın: '+a.t); } } }
 function markDone(kind){ S.stats.done[kind]=(S.stats.done[kind]||0)+1; checkAch(); save(); }
 function errId(e){ return (e.d||'')+'|'+(e.wrong||'')+'|'+(e.right||''); }
-function addError(e){ S.errors.push(e); save(); return e; }
-function removeError(e){ if(!e) return; const k=S.errors.indexOf(e); if(k>=0) S.errors.splice(k,1); S.delErr[errId(e)]=Date.now(); save(); }
+/* Konuşkan hataları Dil Harita'nın ortak hata defterine de yazılır
+   (LearningErrorDB): koç ve hata defteri konuşurken yapılan hataları görür.
+   Aynı hedef cümle orada başka kaynaktan varsa kayıt birleşir; o zaman
+   "Bu düzeltme yanlış" Dil Harita'daki kaydı SİLMEZ (dhOwn yalnız bizimse). */
+const MODE_TR={chat:'Sohbet',roleplay:'Rol yapma',characters:'Karakterler',debate:'Münazara',call:'Arama',sentence:'Cümle modu',dialogue:'Diyalog',photo:'Fotoğraf',exam:'Seviye sınavı'};
+function toDHNotebook(e){
+  try{
+    if(!window.LearningErrorDB||!LearningErrorDB.add||!e||!e.right||!e.wrong||e.wrong==='—') return;
+    LearningErrorDB.add({source:'konuskan',mode:e.mode||'',target:e.right,answer:e.wrong,sentenceTR:e.tr||'',level:S.level,module:'Konuşkan · '+(MODE_TR[e.mode]||e.mode||''),grammar:e.tag||'',aiExplain:e.why||'',grade:'hard',score:0})
+      .then(rec=>{ if(rec&&rec.id){ e.dhId=rec.id; e.dhOwn=rec.source==='konuskan'&&!(rec.count>1); save(); } }).catch(()=>{});
+  }catch(x){}
+}
+function addError(e){ S.errors.push(e); save(); toDHNotebook(e); return e; }
+function removeError(e){ if(!e) return; const k=S.errors.indexOf(e); if(k>=0) S.errors.splice(k,1); S.delErr[errId(e)]=Date.now(); save();
+  try{ if(e.dhId&&e.dhOwn&&window.LearningErrorDB&&LearningErrorDB.deleteMany) LearningErrorDB.deleteMany([e.dhId]); }catch(x){} }
 
 /* ================= Ses: konuşma (speechSynthesis) ve mikrofon ================= */
 let micTarget=null, micLive=false;
@@ -896,7 +909,7 @@ function runSentences(list,title,onDone){
     const drawT=()=>{ ans.innerHTML=''; bk.innerHTML=''; chosen.forEach((o,k)=>{ const t=document.createElement('button'); t.className='tile'; t.textContent=o.t; t.onclick=()=>{ if(answered) return; chosen.splice(k,1); bank.push(o); drawT(); }; ans.appendChild(t); }); bank.forEach((o,k)=>{ const t=document.createElement('button'); t.className='tile'; t.textContent=o.t; t.onclick=()=>{ if(answered) return; bank.splice(k,1); chosen.push(o); drawT(); }; bk.appendChild(t); }); };
     drawT();
     const reveal=(ok,heardTxt,score)=>{
-      answered=true; S.stats.sentAll++; if(ok){ okN++; S.stats.sentOk++; } else addError({wrong:heardTxt||chosen.map(o=>o.t).join(' ')||'—',right:s.en,why:s.x||'',tag:s.g||'',mode:'sentence',d:today()});
+      answered=true; S.stats.sentAll++; if(ok){ okN++; S.stats.sentOk++; } else addError({wrong:heardTxt||chosen.map(o=>o.t).join(' ')||'—',right:s.en,why:s.x||'',tr:s.tr||'',tag:s.g||'',mode:'sentence',d:today()});
       save();
       $('#res',b).innerHTML=`<div class="answer ${ok?'ok':'bad'} stack" style="gap:6px"><div class="row between"><b>${ok?'Doğru!':'Doğru cevap:'}</b><span id="scSlot"></span></div><div style="font-size:1.1rem">${esc(s.en)} <span class="muted small">${esc(s.ipa)}</span></div>${s.m?`<div class="small"><b>Sık yapılan hata:</b> ${esc(s.m)}</div>`:''}${s.x?`<div class="small">${esc(s.x)}</div>`:''}<div class="row"><button class="btn sm" id="sp2">${ic('speaker','width="15" height="15"')} Dinle</button><button class="btn primary sm" id="nx">Sonraki</button></div></div>`;
       if(score!=null){ const sb=scoreButton(heardTxt,s.en,score,'Turkish: '+s.tr); sb.style.alignItems='flex-end'; $('#scSlot',b).replaceWith(sb); }
@@ -1222,7 +1235,7 @@ function finishExam(L,Q,ans){
   const total=secs.length?Math.round(secs.reduce((x,s)=>x+s[1],0)/secs.length):0;
   const pass=total>=PASS;
   const ex=S.exams[L]||{tries:0,best:0}; ex.tries=(ex.tries||0)+1; ex.best=Math.max(ex.best||0,total); ex.last=total; ex.lastDate=today(); ex.at=Date.now(); S.exams[L]=ex;
-  Q.forEach((q,k)=>{ const a=ans[k]; if(a&&!a.ok&&(q.sec==='grammar'||q.sec==='trans')&&a.v) addError({wrong:a.v,right:q.a,why:q.why||'',tag:'level exam',mode:'exam',d:today()}); });
+  Q.forEach((q,k)=>{ const a=ans[k]; if(a&&!a.ok&&(q.sec==='grammar'||q.sec==='trans')&&a.v) addError({wrong:a.v,right:q.a,why:q.why||'',tr:q.hint||'',tag:'level exam',mode:'exam',d:today()}); });
   let first=false;
   if(pass){ const old=S.certs[L]; if(!old){ first=true; S.certs[L]={score:total,date:today(),id:'KNK-'+L+'-'+Date.now().toString(36).toUpperCase().slice(-6),name:certName()||'Konuşkan öğrencisi',at:Date.now()}; addXP(150); }
     else if(total>old.score){ old.score=total; old.date=today(); old.name=certName()||old.name; old.at=Date.now(); } }
@@ -1314,6 +1327,31 @@ async function levelSentencePicker(L,unit,done){
   });
 }
 
+/* ================= Dil Harita'dan gelen "Konuşkan'da konuş" =================
+   konuskan.html?konus=<modül adı> : Dil Harita'da bitirilen modülün (yerleşik
+   ya da Modüllerim) cümleleriyle rol yapma. */
+async function moduleByName(name){
+  try{ if(window.DHModul){ const m=(DHModul.liste()||[]).find(x=>x.ad===name||x.id===name); if(m){ const s=moduleSentences(m.id); if(s.length) return {t:m.ad, level:LEVELS.includes(String(m.level).toUpperCase())?String(m.level).toUpperCase():S.level, sents:s}; } } }catch(e){}
+  try{ if(!MOD_INDEX){ const r=await fetch('./data/sentences/index.json?v=1'); if(r.ok) MOD_INDEX=(await r.json()).modules||[]; }
+    const e=(MOD_INDEX||[]).find(x=>x.mod===name); if(e){ const s=await levelPartSentences(e.f); if(s.length) return {t:name, level:e.lvl==='C2'?'C1':e.lvl, sents:s}; } }catch(e){}
+  return null;
+}
+async function startModuleTalk(name){
+  const b=openPanel('Modülle konuş');
+  b.innerHTML=`<div class="inner"><p class="muted">"${esc(name)}" modülü yükleniyor…</p><span class="typing"><i></i><i></i><i></i></span></div>`;
+  const m=await moduleByName(name);
+  if(!m){ b.innerHTML=`<div class="inner"><div class="notice">"${esc(name)}" modülünün cümleleri bu cihazda bulunamadı.</div><button class="btn" id="mtBack" style="align-self:flex-start">Konuşkan'a geç</button></div>`; $('#mtBack',b).onclick=()=>closePanel(); return; }
+  const pick=shuffle(m.sents).slice(0,6), sc=(pick.find(s=>s.sc)||{}).sc||m.t;
+  const title=String(m.t).replace(/^[A-C][12]-M\d+\s*/,'');
+  b.innerHTML=`<div class="inner"><div><span class="eyebrow">Dil Harita'dan · ${m.level}</span><h2>${esc(title)}</h2><p class="muted" style="margin:4px 0 0">Bu modülde çalıştığın kalıpları şimdi bir konuşmanın içinde kendin kullan. Yapay zekâ bu modülün konusuna uygun gerçek bir durum kurar, sen bu kalıplarla cevap verirsin; her mesajın düzeltilir ve hatalar Dil Harita'nın hata defterine de yazılır.</p></div>
+    <div class="card stack" style="gap:8px"><b>Bu konuşmada kullanacağın kalıplar</b>${pick.map(s=>`<div class="small"><b>${esc(s.en)}</b><br><span class="muted">${esc(s.tr)}${s.g?' · '+esc(s.g):''}</span></div>`).join('')}</div>
+    <div class="row"><button class="btn primary" id="mtGo">Konuşmaya başla</button><button class="btn" id="mtSent">Önce cümleleri tekrar et</button><a class="btn ghost" href="./index.html">Dil Harita'ya dön</a></div></div>`;
+  const go=()=>startChat({kind:'roleplay',title:'Modülle konuş · '+title,name:'Deniz',color:'#c4733a',level:m.level,persona:`Deniz, an English teacher who sets up a short real-life roleplay ("${sc}") and plays the other person in it`,scene:sc,
+    tasks:['Use two of the module\'s sentence patterns','Ask a question about the situation','Give a longer answer (2+ sentences)'],material:pick.map((s,i)=>`${i+1}) "${s.en}"${s.g?' pattern: '+s.g:''}`).join('\n')});
+  $('#mtGo',b).onclick=go;
+  $('#mtSent',b).onclick=()=>runSentences(pick,title);
+}
+
 /* ================= Kurs alıştırmaları ================= */
 async function openExercise(c,u,ex){
   const key=exKey(c.id,u.i,ex); const done=()=>{ if(!S.done[key]) addXP(30); S.done[key]=today(); save(); };
@@ -1359,4 +1397,11 @@ async function openExercise(c,u,ex){
 /* ================= Başlat ================= */
 const modHazir=(window.DHModul&&DHModul.hazir?Promise.race([Promise.resolve(DHModul.hazir()).catch(()=>{}),new Promise(r=>setTimeout(r,4000))]):Promise.resolve()).then(loadUserModules);
 Promise.all([fetch('./konuskan/data.json?v=1').then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(d=>{ DATA=d; }).catch(()=>{ toast('Kurs verisi yüklenemedi; internet bağlantını kontrol et.'); }), modHazir])
-  .then(()=>{ if(String(S.course).startsWith('M:')&&!MOD_SERIES.some(s=>'M:'+s.key===S.course)) S.course='L:'+S.level; render(); });
+  .then(()=>{ if(String(S.course).startsWith('M:')&&!MOD_SERIES.some(s=>'M:'+s.key===S.course)) S.course='L:'+S.level; render();
+    /* Uygulama güncellemesi (service worker) ilk açılışta sayfayı yeniden
+       yükleyebiliyor: modül adı, ekran gerçekten açılana kadar oturum
+       hafızasında tutulur, yoksa yeniden yüklemede kayboluyordu. */
+    let konus=new URLSearchParams(location.search).get('konus');
+    try{ if(konus) sessionStorage.setItem('kk-konus',konus); else konus=sessionStorage.getItem('kk-konus'); }catch(e){}
+    if(konus){ try{ history.replaceState(null,'',location.pathname+location.hash); }catch(e){}
+      startModuleTalk(konus).then(()=>setTimeout(()=>{ try{ sessionStorage.removeItem('kk-konus'); }catch(e){} },2500)); } });
