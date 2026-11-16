@@ -189,7 +189,7 @@ main{overflow:auto;padding:28px clamp(16px,4vw,48px) 90px}
   h1{font-size:1.5rem}
 }
 /* Dil Harita bulut senkron rozeti menünün üstüne binmesin */
-.side{padding-bottom:70px}
+.side{padding-bottom:120px}
 /* Dil Harita ortak katmanı (product-improvements): sağ üstteki Menü düğmesi ve ağ göstergesi */
 .ph{padding-right:150px}
 @media (max-width:720px){
