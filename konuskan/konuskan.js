@@ -419,7 +419,7 @@ function pCourses(m){
   <div class="stack"><div class="row between"><h2>Kendi kurslarım</h2><button class="btn primary sm" id="newCourse">+ Yeni kurs oluştur</button></div>
     ${mine.length?`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${mine.map(c=>`<div class="stack" style="gap:4px">${card(c)}<button class="btn sm ghost" data-del="${c.id.slice(2)}" style="align-self:flex-end;color:var(--muted)">Sil</button></div>`).join('')}</div>`
       :`<div class="empty">İstediğin konuda ve seviyede kendi kursunu oluştur: yapay zekâ üniteleri planlar, her ünitede kelime, cümle ve rol yapma alıştırması olur.</div>`}</div>
-  ${MOD_SERIES.length?`<div class="stack"><div><h2>Dil Harita modüllerim</h2><p class="small muted" style="margin:2px 0 0">Modüllerim'deki modüllerin seriye göre gruplandı: her parça bir ünite. Yeni oluşturduğun modüller burada kendiliğinden görünür.</p></div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${MOD_SERIES.map(s=>card({id:'M:'+s.key,t:s.t,d:`${s.level} · ${s.parts.length} parça · ${s.parts.reduce((a,p)=>a+p.n,0)} cümle${s.alan?' · '+s.alan:''}`})).join('')}</div></div>`:''}
+  ${MOD_SERIES.length?`<div class="stack"><div><h2>Dil Harita modüllerim</h2><p class="small muted" style="margin:2px 0 0">Modüllerim'deki modüllerin seriye göre gruplandı: her parça bir ünite. Yeni oluşturduğun modüller burada kendiliğinden görünür.${MOD_SERIES.some(s=>s.eksik)?' Cümleleri bu cihaza henüz gelmemiş parçalar gösterilmiyor.':''}</p></div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${MOD_SERIES.map(s=>card({id:'M:'+s.key,t:s.t,d:`${s.level} · ${s.parts.length} parça · ${s.parts.reduce((a,p)=>a+p.n,0)} cümle${s.alan?' · '+s.alan:''}${s.eksik?` · ${s.eksik} parça bu cihazda yok`:''}`})).join('')}</div></div>`:''}
   <div class="stack"><h2>Seviye kursları</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${lvl.map(card).join('')}</div></div>
   <div class="stack"><h2>Günlük hayat</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${life.map(card).join('')}</div></div>
   <div class="stack"><h2>Meslek kursları</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${pro.map(card).join('')}</div></div></div>`;
@@ -1047,8 +1047,11 @@ function loadUserModules(){
     const g={};
     (DHModul.liste()||[]).forEach(m=>{ const name=seriesName(m.ad); const key=strHash(name);
       const pm=String(m.ad||'').match(/·\s*P(\d+)\s*$/); const part=pm?+pm[1]:0;
-      (g[key]=g[key]||{key,t:name,level:String(m.level||'A2').toUpperCase(),alan:m.alan||'',parts:[],tarih:0}).parts.push({id:m.id,ad:m.ad,n:+m.n||0,part,tarih:+m.tarih||0}); });
-    MOD_SERIES=Object.values(g).map(s=>{ s.parts.sort((a,b)=>(a.part-b.part)||(a.tarih-b.tarih)); s.tarih=Math.max(...s.parts.map(p=>p.tarih||0)); if(!LEVELS.includes(s.level)) s.level=s.level==='C2'?'C1':'A2'; return s; }).sort((a,b)=>b.tarih-a.tarih);
+      const s=(g[key]=g[key]||{key,t:name,level:String(m.level||'A2').toUpperCase(),alan:m.alan||'',parts:[],eksik:0,tarih:0});
+      /* Dizinde olup cümleleri bu cihaza gelmemiş parça ünite yapılmaz. */
+      let var_=false; try{ const r=DHModul.getir(m.id); var_=Array.isArray(r)&&r.length>0; }catch(e){}
+      if(var_) s.parts.push({id:m.id,ad:m.ad,n:+m.n||0,part,tarih:+m.tarih||0}); else s.eksik++; });
+    MOD_SERIES=Object.values(g).filter(s=>s.parts.length).map(s=>{ s.parts.sort((a,b)=>(a.part-b.part)||(a.tarih-b.tarih)); s.tarih=Math.max(...s.parts.map(p=>p.tarih||0)); if(!LEVELS.includes(s.level)) s.level=s.level==='C2'?'C1':'A2'; return s; }).sort((a,b)=>b.tarih-a.tarih);
   }catch(e){ MOD_SERIES=[]; }
 }
 function moduleSentences(id){ try{ const arr=window.DHModul&&DHModul.getir(id); return Array.isArray(arr)?arr.filter(r=>r&&r.en&&r.tr).map(toSent):[]; }catch(e){ return []; } }
