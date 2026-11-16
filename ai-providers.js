@@ -297,13 +297,15 @@
       s.onload=function(){global.DHGemini?resolve(global.DHGemini):reject({code:"bridge"});};s.onerror=function(){reject({code:"bridge"});};document.head.appendChild(s);
     });
   }
+  /* Hafıza artık IndexedDB'de: kayıtlar belleğe okununca (ready) kullan. */
+  function cacheHazir(c){ return c&&c.ready ? Promise.resolve(c.ready).then(function(){return c;},function(){return c;}) : Promise.resolve(c); }
   function ensureResponseCache(){
-    if(global.DHAIResponseCache) return Promise.resolve(global.DHAIResponseCache);
+    if(global.DHAIResponseCache) return cacheHazir(global.DHAIResponseCache);
     return new Promise(function(resolve,reject){
       var old=document.querySelector('script[data-dh-ai-cache]');
-      if(old){old.addEventListener("load",function(){resolve(global.DHAIResponseCache);},{once:true});old.addEventListener("error",reject,{once:true});return;}
-      var s=document.createElement("script");s.src="./ai-response-cache.js?v=2";s.dataset.dhAiCache="1";
-      s.onload=function(){resolve(global.DHAIResponseCache);};s.onerror=reject;document.head.appendChild(s);
+      if(old){old.addEventListener("load",function(){resolve(cacheHazir(global.DHAIResponseCache));},{once:true});old.addEventListener("error",reject,{once:true});return;}
+      var s=document.createElement("script");s.src="./ai-response-cache.js?v=3";s.dataset.dhAiCache="1";
+      s.onload=function(){resolve(cacheHazir(global.DHAIResponseCache));};s.onerror=reject;document.head.appendChild(s);
     });
   }
   function chatViaGemini(messages,opts){
