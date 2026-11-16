@@ -140,7 +140,7 @@ const TIERS=[['fast','Hızlı','Groq/Cerebras önce · en hızlı cevap'],['qual
 /* ================= Durum (kalıcı, cloud-sync ile birleşir) ================= */
 const DEFAULT = () => ({v:1, level:'', rate:0.9, voiceName:'', showTr:true, theme:'system', course:'', goal:'',
   tierChat:'fast', tierDeep:'quality', setAt:0, resetAt:0,
-  xp:0, days:{}, done:{}, srs:{}, errors:[], delErr:{}, fb:{}, certs:{}, exams:{}, certName:'', stats:{msgs:0,ok:0,run:0,bestRun:0,sentOk:0,sentAll:0,pron:[],done:{}}, ach:{}});
+  xp:0, days:{}, done:{}, srs:{}, errors:[], delErr:{}, fb:{}, certs:{}, exams:{}, certName:'', custom:{}, customDel:{}, stats:{msgs:0,ok:0,run:0,bestRun:0,sentOk:0,sentAll:0,pron:[],done:{}}, ach:{}});
 let S = DEFAULT();
 let dict=null;
 function normalizeState(){
@@ -149,7 +149,8 @@ function normalizeState(){
   if(!TIERS.some(t=>t[0]===S.tierDeep)) S.tierDeep='quality';
   if(!S.level) S.level=dhLevel();
   if(!S.course) S.course='L:'+S.level;
-  S.certs=S.certs||{}; S.exams=S.exams||{};
+  S.certs=S.certs||{}; S.exams=S.exams||{}; S.custom=S.custom||{}; S.customDel=S.customDel||{};
+  if(String(S.course).startsWith('C:')&&!S.custom[S.course.slice(2)]) S.course='L:'+S.level;
 }
 /* Dil Harita profilindeki seviye ilk açılışta varsayılan olur. */
 function dhLevel(){
@@ -366,8 +367,10 @@ function pHome(m){
 function courseById(id){
   const [k,v]=String(id||'L:A2').split(':');
   if(k==='L'){ const lv=LEVELS.includes(v)?v:'A2'; const units=DATA.course[lv]||[]; return {id:'L:'+lv, t:`${lv} · ${LEVEL_NAMES[lv]}`, level:lv, units:units.map((u,i)=>({t:u.t, i, ex:['word','sentence','roleplay']}))}; }
+  if(k==='C'&&S.custom[v]){ const cc=S.custom[v]; return {id:'C:'+v, t:cc.t, en:cc.en, custom:cc, clevel:cc.level, topic:{t:cc.t,en:cc.en}, units:(cc.units||[]).map((u,i)=>({t:u.tr?`${u.tr} · ${u.t}`:u.t, en:u.t, focus:u.focus||'', i, ex:['word','sentence','roleplay']}))}; }
+  if(k==='C') return courseById('L:'+S.level);
   const tc=TOPIC_COURSES.find(c=>c.id===v)||TOPIC_COURSES[0];
-  return {id:'T:'+tc.id, t:tc.t, en:tc.en, topic:tc, units:tc.u.map((t,i)=>({t, i, ex:['word','dialogue','roleplay']}))};
+  return {id:'T:'+tc.id, t:tc.t, en:tc.en, topic:tc, units:tc.u.map((t,i)=>({t, en:t, i, ex:['word','dialogue','roleplay']}))};
 }
 function exKey(cid,ui,ex){ return cid+'|'+ui+'|'+ex; }
 function courseProgress(c){ const tot=c.units.length*3; let n=0; c.units.forEach(u=>u.ex.forEach(ex=>{ if(S.done[exKey(c.id,u.i,ex)]) n++; })); return tot?Math.round(n/tot*100):0; }
@@ -375,7 +378,7 @@ const EX_NAMES={word:'Kelime modu',sentence:'Cümle modu',roleplay:'Rol yapma',d
 const EX_ICON={word:'word',sentence:'sentence',roleplay:'role',dialogue:'dialogue'};
 function pLearn(m){
   const c=courseById(S.course), p=courseProgress(c);
-  m.innerHTML=`<div class="wrap"><div class="row between"><div><span class="eyebrow">Öğrenme yolu</span><h1>${esc(c.t)}</h1><p class="muted" style="margin:4px 0 0">${c.units.length} ünite · her ünitede 3 alıştırma</p></div><div style="min-width:200px"><div class="bar"><i style="width:${p}%"></i></div><div class="small muted" style="margin-top:4px">%${p} tamamlandı</div></div></div>
+  m.innerHTML=`<div class="wrap"><div class="row between"><div><span class="eyebrow">Öğrenme yolu</span><h1>${esc(c.t)}</h1><p class="muted" style="margin:4px 0 0">${c.custom?`Kendi kursun · ${c.clevel} seviyesi · `:''}${c.units.length} ünite · her ünitede 3 alıştırma</p></div><div style="min-width:200px"><div class="bar"><i style="width:${p}%"></i></div><div class="small muted" style="margin-top:4px">%${p} tamamlandı</div></div></div>
   <div style="max-width:720px;width:100%" id="path"></div></div>`;
   const path=$('#path',m);
   let firstOpen=c.units.findIndex(u=>u.ex.some(ex=>!S.done[exKey(c.id,u.i,ex)])); if(firstOpen<0) firstOpen=0;
@@ -410,11 +413,19 @@ function pCourses(m){
   const card=(c)=>{ const cc=courseById(c.id), p=courseProgress(cc), on=S.course===c.id; return `<button class="item" data-c="${c.id}" style="${on?'border-color:var(--accent);background:var(--accent-soft)':''}"><span class="dot">${ic(c.id.startsWith('L')?'courses':'book')}</span><div class="grow"><b>${esc(c.t)}</b><div class="small muted">${esc(c.d)}</div></div>${c.id.startsWith('L:')&&S.certs[c.id.slice(2)]?`<span class="pill warn">${ic('star','width="12" height="12"')} Sertifika</span>`:''}${p?`<span class="pill ${p===100?'ok':'acc'}">%${p}</span>`:''}${on?'<span class="pill acc">Seçili</span>':''}</button>`; };
   const life=TOPIC_COURSES.filter(c=>c.g==='life').map(c=>({id:'T:'+c.id,t:c.t,d:c.u.length+' ünite · '+c.en}));
   const pro=TOPIC_COURSES.filter(c=>c.g==='pro').map(c=>({id:'T:'+c.id,t:c.t,d:c.u.length+' ünite · '+c.en}));
+  const mine=Object.values(S.custom).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).map(c=>({id:'C:'+c.id,t:c.t,d:`${c.level} · ${(c.units||[]).length} ünite · ${c.topic}`}));
   m.innerHTML=`<div class="wrap"><div><h1>Kurslar</h1><p class="muted" style="margin:4px 0 0">Bir kurs seç; Öğren sayfası o kursun yolunu gösterir. Seviye kursları Dil Harita müfredatından gelir.</p></div>
+  <div class="stack"><div class="row between"><h2>Kendi kurslarım</h2><button class="btn primary sm" id="newCourse">+ Yeni kurs oluştur</button></div>
+    ${mine.length?`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${mine.map(c=>`<div class="stack" style="gap:4px">${card(c)}<button class="btn sm ghost" data-del="${c.id.slice(2)}" style="align-self:flex-end;color:var(--muted)">Sil</button></div>`).join('')}</div>`
+      :`<div class="empty">İstediğin konuda ve seviyede kendi kursunu oluştur: yapay zekâ üniteleri planlar, her ünitede kelime, cümle ve rol yapma alıştırması olur.</div>`}</div>
   <div class="stack"><h2>Seviye kursları</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${lvl.map(card).join('')}</div></div>
   <div class="stack"><h2>Günlük hayat</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${life.map(card).join('')}</div></div>
   <div class="stack"><h2>Meslek kursları</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${pro.map(card).join('')}</div></div></div>`;
   m.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{ S.course=b.dataset.c; if(S.course.startsWith('L:')) S.level=S.course.slice(2); touchSettings(); location.hash='#learn'; });
+  $('#newCourse',m).onclick=()=>startCourseBuilder();
+  m.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ const id=b.dataset.del, c=S.custom[id]; if(!c) return;
+    if(b.dataset.sure!=='1'){ b.dataset.sure='1'; b.textContent='Emin misin? "'+c.t+'" silinecek'; b.style.color='var(--bad)'; setTimeout(()=>{ if(b.isConnected){ b.dataset.sure=''; b.textContent='Sil'; b.style.color='var(--muted)'; } },4000); return; }
+    delete S.custom[id]; S.customDel[id]=Date.now(); if(S.course==='C:'+id) S.course='L:'+S.level; touchSettings(); saveNow(); render(); toast('Kurs silindi'); });
 }
 function pExplore(m){
   const rp=pickDaily(ROLEPLAYS,2,'r'), ch=pickDaily(CHARACTERS,4,'c'), db1=pickDaily(DEBATES,2,'d'), st=pickDaily(STORY_TOPICS,2,'s'), dl=pickDaily(DIALOGUE_TOPICS,2,'g');
@@ -623,7 +634,7 @@ function startChat(cfg){
   b.style.padding='12px';
   b.innerHTML=`<div class="chat" style="height:100%">
     <div class="chat-main">
-      <div class="chat-top"><div class="ava" style="background:${cfg.color}">${esc(cfg.name[0])}</div><div class="grow" style="flex:1;min-width:140px"><b>${esc(cfg.name)}</b><div class="small muted">${cfg.kind==='debate'?`Sen: ${cfg.side==='for'?'lehinde':'aleyhinde'} · ${esc(cfg.topic)}`:S.level+' seviyesine göre konuşuyor'}</div></div>
+      <div class="chat-top"><div class="ava" style="background:${cfg.color}">${esc(cfg.name[0])}</div><div class="grow" style="flex:1;min-width:140px"><b>${esc(cfg.name)}</b><div class="small muted">${cfg.kind==='debate'?`Sen: ${cfg.side==='for'?'lehinde':'aleyhinde'} · ${esc(cfg.topic)}`:(cfg.level||S.level)+' seviyesine göre konuşuyor'}</div></div>
         <select id="tierQ" class="small" aria-label="Model" title="Yapay zekâ modeli" style="border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:4px 8px">${TIERS.map(([v,t])=>`<option value="${v}" ${S.tierChat===v?'selected':''}>${t}</option>`).join('')}</select>
         <label class="small row" style="gap:6px"><input type="checkbox" id="autoSpeak" ${cfg.voiceFirst?'checked':''}> Sesli oku</label></div>
       <div class="msgs" id="msgs" aria-live="polite"></div>
@@ -679,7 +690,8 @@ function startChat(cfg){
   }
   function transcript(n=14){ return st.hist.slice(-n).map(h=>(h.role==='user'?'Learner: ':'You: ')+h.text).join('\n'); }
   function sysPrompt(){
-    let s=`You are ${cfg.persona}. You are talking with a Turkish native speaker who is learning English at CEFR level ${S.level}. ${LEVEL_GUIDE[S.level]}
+    const LV=cfg.level||S.level;
+    let s=`You are ${cfg.persona}. You are talking with a Turkish native speaker who is learning English at CEFR level ${LV}. ${LEVEL_GUIDE[LV]}
 Rules: answer in English only, 1-3 short sentences, natural and friendly, end with one follow-up question that keeps the conversation going. No emojis. Never break role. Do not correct the learner inside your reply (corrections are shown separately).`;
     if(cfg.tasks) s+=`\nScene: ${cfg.scene}. Over the whole conversation the learner should complete these tasks: ${cfg.tasks.map((t,i)=>(i+1)+') '+t).join(' ')}. Create natural chances for them; never list them.`;
     if(cfg.material) s+=`\nToday's material (make the learner PRODUCE these patterns in a natural situation, never ask them to repeat):\n${cfg.material}`;
@@ -1019,6 +1031,55 @@ async function startFeedback(){
   catch(e){ b.innerHTML=`<div class="inner"><div class="notice">${esc(aiErr(e))}</div></div>`; }
 }
 
+/* ================= Kendi kursunu oluştur ================= */
+const COURSE_IDEAS=['Restoran işletmeciliği','Futbol ve spor yorumculuğu','Yazılım mülakatları','Hemşirelik','Emlak ve kiralama','Online satış ve e-ticaret','Seyahat acenteliği','Yurt dışında üniversite','Fotoğrafçılık','Kişisel finans'];
+function startCourseBuilder(prefill){
+  const b=openPanel('Yeni kurs oluştur');
+  const f=Object.assign({topic:'',level:S.level,units:8,goal:''},prefill||{});
+  b.innerHTML=`<div class="inner">
+    <p class="muted" style="margin:0">Konunu ve seviyeni seç; yapay zekâ kursu ünite ünite planlar. Kaydetmeden önce üniteleri görüp düzenleyebilirsin.</p>
+    <form class="card stack" id="cbF">
+      <div class="field"><label for="cbT">Konu</label><input id="cbT" maxlength="80" required value="${esc(f.topic)}" placeholder="Örn: Restoran işletmeciliği, futbol, yazılım mülakatları"><div class="row" style="gap:6px">${COURSE_IDEAS.map(x=>`<button type="button" class="btn sm ghost" data-idea="${esc(x)}" style="border:1px dashed var(--line)">${esc(x)}</button>`).join('')}</div></div>
+      <div class="field"><label>Seviye</label><div class="tabs" id="cbL">${LEVELS.map(L=>`<button type="button" class="${L===f.level?'on':''}" data-l="${L}">${L} · ${LEVEL_NAMES[L]}</button>`).join('')}</div></div>
+      <div class="field"><label for="cbN">Ünite sayısı</label><select id="cbN">${[6,8,10,12].map(n=>`<option ${n===f.units?'selected':''}>${n}</option>`).join('')}</select></div>
+      <div class="field"><label for="cbG">Amacın (isteğe bağlı)</label><input id="cbG" maxlength="140" value="${esc(f.goal)}" placeholder="Örn: Almanya'da garson olarak iş bulmak"></div>
+      <div class="row"><button class="btn primary" id="cbGo">Kursu planla</button><span class="small muted">${aiOff()?aiErr({code:'no_ai'}):'Yapay zekâ yaklaşık 10-20 saniyede planlar.'}</span></div>
+    </form><div id="cbOut"></div></div>`;
+  let level=f.level;
+  b.querySelectorAll('[data-idea]').forEach(x=>x.onclick=()=>{ $('#cbT',b).value=x.dataset.idea; $('#cbT',b).focus(); });
+  b.querySelectorAll('#cbL [data-l]').forEach(x=>x.onclick=()=>{ level=x.dataset.l; b.querySelectorAll('#cbL [data-l]').forEach(y=>y.classList.toggle('on',y===x)); });
+  $('#cbF',b).onsubmit=async e=>{
+    e.preventDefault(); if(aiOff()) return;
+    const topic=$('#cbT',b).value.trim(), n=+$('#cbN',b).value, goal=$('#cbG',b).value.trim(); if(!topic) return;
+    const btn=$('#cbGo',b); btn.disabled=true; const out=$('#cbOut',b); out.innerHTML='<div class="card"><span class="typing"><i></i><i></i><i></i></span> Kurs planlanıyor…</div>';
+    try{
+      const r=await ai(`Design an English course for a Turkish learner. Topic: "${topic}". CEFR level: ${level} (${LEVEL_GUIDE[level]}).${goal?` Learner's goal: ${goal}.`:''} Plan exactly ${n} units that build on each other, from basic situations to more demanding ones within this topic, all suitable for ${level}. Each unit needs a short English title, its Turkish title, and a focus: the key grammar point or phrase pattern plus the vocabulary area to practise (one short line, English). Return ONLY JSON: {"title_tr":"short Turkish course title","title_en":"short English course title","desc_tr":"one Turkish sentence describing the course","units":[{"t":"English unit title","tr":"Türkçe ünite başlığı","focus":"..."}]}`,{deep:true});
+      const units=(r.units||[]).filter(u=>u&&u.t).slice(0,12).map(u=>({t:String(u.t).slice(0,80),tr:String(u.tr||'').slice(0,80),focus:String(u.focus||'').slice(0,160)}));
+      if(units.length<3) throw {code:'bad_json'};
+      preview({topic,level,goal,t:String(r.title_tr||topic).slice(0,60),en:String(r.title_en||topic).slice(0,60),desc:String(r.desc_tr||''),units});
+    }catch(err){ out.innerHTML=`<div class="notice">${esc(aiErr(err))}</div>`; btn.disabled=false; }
+  };
+  function preview(c){
+    const out=$('#cbOut',b);
+    const draw=()=>{
+      out.innerHTML=`<div class="card stack"><div><span class="eyebrow">${c.level} · ${c.units.length} ünite</span><div class="field" style="margin-top:6px"><label for="cbName">Kurs adı</label><input id="cbName" value="${esc(c.t)}" maxlength="60"></div><p class="small muted" style="margin:6px 0 0">${esc(c.desc)}</p></div>
+        <div class="list" id="cbU">${c.units.map((u,i)=>`<div class="item" style="gap:8px"><span class="dot" style="font-weight:700">${i+1}</span><div class="grow stack" style="gap:4px"><input data-ut="${i}" value="${esc(u.tr||u.t)}" maxlength="80" aria-label="Ünite ${i+1} başlığı" style="border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;font-weight:600"><span class="small muted">${esc(u.t)} · ${esc(u.focus)}</span></div><button type="button" class="icon-btn" data-rm="${i}" aria-label="Üniteyi çıkar" ${c.units.length<=3?'disabled':''}>${ic('close')}</button></div>`).join('')}</div>
+        <div class="row"><button class="btn primary" id="cbSave">Kursu kaydet ve başla</button><button class="btn" id="cbAgain">Yeniden planla</button></div></div>`;
+      out.querySelectorAll('[data-ut]').forEach(x=>x.oninput=()=>{ c.units[+x.dataset.ut].tr=x.value; });
+      $('#cbName',out).oninput=e=>{ c.t=e.target.value; };
+      out.querySelectorAll('[data-rm]').forEach(x=>x.onclick=()=>{ c.units.splice(+x.dataset.rm,1); draw(); });
+      $('#cbAgain',out).onclick=()=>{ $('#cbGo',b).disabled=false; $('#cbF',b).requestSubmit(); };
+      $('#cbSave',out).onclick=()=>{
+        const id='u'+Date.now().toString(36); const now=Date.now();
+        S.custom[id]={id,t:(c.t||c.topic).trim(),en:c.en,topic:c.topic,goal:c.goal,level:c.level,desc:c.desc,units:c.units,createdAt:now,at:now};
+        S.course='C:'+id; touchSettings(); saveNow(); closePanel(true); location.hash='#learn'; render(); toast('Kurs oluşturuldu: '+S.custom[id].t);
+      };
+      out.scrollIntoView({block:'start',behavior:'smooth'});
+    };
+    draw();
+  }
+}
+
 /* ================= Seviye sonu sınavı ================= */
 const PASS=70;
 function certName(){ if(S.certName) return S.certName; try{ const p=JSON.parse(localStorage.getItem('dh-profile-v1')||'{}')||{}; if(p.ad) return String(p.ad).trim(); }catch(e){} return ''; }
@@ -1184,17 +1245,26 @@ async function openExercise(c,u,ex){
     if(ex==='word'){ const all=DATA.words[c.level]; const start=(u.i*12)%all.length; const ws=all.slice(start,start+12).map(w=>({w:w[0],o:w[1],tr:w[2]})); return runWords(ws,`${c.level} · ${unit.t}`,c.level,done); }
     if(ex==='roleplay'){ const sc=unit.sc[0]||unit.t; return startChat({kind:'roleplay',title:'Ünite '+(u.i+1)+' · '+unit.t,name:'Deniz',color:'#c4733a',persona:`Deniz, an English teacher who sets up a short real-life roleplay ("${sc}") and plays the other person in it`,scene:sc,tasks:['Use the grammar of this unit ('+unit.t+') at least twice','Ask a question','Give a longer answer (2+ sentences)'],material:unit.s.slice(0,6).map((s,i)=>`${i+1}) "${s.en}" pattern: ${s.g}`).join('\n'),onDone:done}); }
   } else {
-    const tc=c.topic, unitT=u.t;
+    const tc=c.topic, unitT=u.en||u.t, L=c.clevel||S.level, focus=u.focus?` Focus of this unit: ${u.focus}.`:'', goal=c.custom&&c.custom.goal?` The learner's goal: ${c.custom.goal}.`:'';
     if(ex==='dialogue') return startDialogue(`${tc.en}: ${unitT}`,done);
-    if(ex==='roleplay') return startChat({kind:'roleplay',title:tc.t+' · '+unitT,name:'Deniz',color:'#c4733a',persona:`the other person in a realistic "${tc.en}" situation about "${unitT}". Choose a fitting role (colleague, customer, client, receptionist…) and say who you are in your first line`,scene:`${tc.en}: ${unitT}`,tasks:['Use 3 topic words naturally','Ask for clarification once','Summarise the outcome at the end'],onDone:done});
+    if(ex==='roleplay') return startChat({kind:'roleplay',title:tc.t+' · '+unitT,name:'Deniz',color:'#c4733a',level:L,persona:`the other person in a realistic "${tc.en}" situation about "${unitT}". Choose a fitting role (colleague, customer, client, receptionist…) and say who you are in your first line.${focus}${goal}`,scene:`${tc.en}: ${unitT}`,tasks:u.focus?['Use the focus of this unit ('+u.focus+') naturally','Ask for clarification once','Summarise the outcome at the end']:['Use 3 topic words naturally','Ask for clarification once','Summarise the outcome at the end'],onDone:done});
+    if(ex==='sentence'){
+      const gk='konuskan-gen-s-'+c.id+'-'+u.i+'-'+L; let ss=null; try{ ss=JSON.parse(localStorage.getItem(gk)); }catch(e){}
+      if(!ss){ const b=openPanel('Cümle modu · '+u.t); if(aiOff()){ b.innerHTML=`<div class="inner"><div class="notice">${aiErr({code:'no_ai'})}</div></div>`; return; }
+        b.innerHTML=`<div class="inner"><p class="muted">"${esc(u.t)}" için cümleler hazırlanıyor…</p><span class="typing"><i></i><i></i><i></i></span></div>`;
+        try{ const r=await ai(`Create 8 useful English sentences for the course "${tc.en}", unit "${unitT}", for a Turkish learner at CEFR ${L}. ${LEVEL_GUIDE[L]}${focus}${goal} Sentences must be natural, 5-14 words, realistic for this topic. For each give: the Turkish translation, a short grammar/pattern label in Turkish, a typical mistake a Turkish learner makes with it (an incorrect English version), and a 1-2 sentence explanation in informal Turkish (sen). Return ONLY JSON: {"sentences":[{"en":"...","tr":"...","g":"...","m":"incorrect version","x":"..."}]}`);
+          ss=(r.sentences||[]).filter(s=>s&&s.en&&s.tr).slice(0,10).map(s=>({en:String(s.en),tr:String(s.tr),g:String(s.g||''),m:s.m?String(s.m)+' ❌':'',x:String(s.x||''),ipa:''})); if(!ss.length) throw {code:'bad_json'}; try{ localStorage.setItem(gk,JSON.stringify(ss)); }catch(e){} }
+        catch(e){ b.innerHTML=`<div class="inner"><div class="notice">${esc(aiErr(e))}</div></div>`; return; } }
+      return runSentences(ss,u.t,done);
+    }
     if(ex==='word'){
-      const gk='konuskan-gen-'+c.id+'-'+u.i+'-'+S.level; let ws=null; try{ ws=JSON.parse(localStorage.getItem(gk)); }catch(e){}
+      const gk='konuskan-gen-'+c.id+'-'+u.i+'-'+L; let ws=null; try{ ws=JSON.parse(localStorage.getItem(gk)); }catch(e){}
       if(!ws){ const b=openPanel('Kelime modu · '+unitT); if(aiOff()){ b.innerHTML=`<div class="inner"><div class="notice">${aiErr({code:'no_ai'})}</div></div>`; return; }
         b.innerHTML=`<div class="inner"><p class="muted">"${esc(unitT)}" için kelime destesi hazırlanıyor…</p><span class="typing"><i></i><i></i><i></i></span></div>`;
-        try{ const r=await ai(`Create a vocabulary deck of 10 useful English words or short phrases for the topic "${tc.en}: ${unitT}" for a Turkish learner at CEFR ${S.level}. For each give the Turkish meaning, a simple Turkish-letter pronunciation guide (e.g. "kontrakt" for contract), and a short English example sentence. Return ONLY JSON: {"words":[{"w":"...","tr":"...","o":"...","ex":"..."}]}`);
+        try{ const r=await ai(`Create a vocabulary deck of 10 useful English words or short phrases for the topic "${tc.en}: ${unitT}" for a Turkish learner at CEFR ${L}.${focus}${goal} For each give the Turkish meaning, a simple Turkish-letter pronunciation guide (e.g. "kontrakt" for contract), and a short English example sentence. Return ONLY JSON: {"words":[{"w":"...","tr":"...","o":"...","ex":"..."}]}`);
           ws=(r.words||[]).filter(w=>w&&w.w&&w.tr).slice(0,10); try{ localStorage.setItem(gk,JSON.stringify(ws)); }catch(e){} }
         catch(e){ b.innerHTML=`<div class="inner"><div class="notice">${esc(aiErr(e))}</div></div>`; return; } }
-      return runWords(ws,unitT,S.level,done);
+      return runWords(ws,u.t,L,done);
     }
   }
 }

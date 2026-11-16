@@ -144,6 +144,15 @@
     for(k in le) if(le.hasOwnProperty(k)) exams[k]=le[k];
     for(k in re) if(re.hasOwnProperty(k)){ var el=exams[k], er=re[k]; if(!el){ exams[k]=er; continue; } var newerE=(+er.at||0)>(+el.at||0)?er:el; exams[k]={tries:Math.max(+el.tries||0,+er.tries||0),best:Math.max(+el.best||0,+er.best||0),last:newerE.last,lastDate:newerE.lastDate,at:Math.max(+el.at||0,+er.at||0)}; }
     out.exams=exams;
+    /* Kendi kurslarım: kimlik bazında birleşim, çakışmada yeni (at) olan;
+       silinen kurs (customDel mezar taşı) geri gelmez. */
+    out.customDel=maxMap(L.customDel,R.customDel);
+    var lcu=L.custom||{}, rcu=R.custom||{}, cu={};
+    for(k in lcu) if(lcu.hasOwnProperty(k)) cu[k]=lcu[k];
+    for(k in rcu) if(rcu.hasOwnProperty(k)&&(!cu[k]||(+rcu[k].at||0)>(+cu[k].at||0))) cu[k]=rcu[k];
+    for(k in cu) if(cu.hasOwnProperty(k)&&out.customDel[k]&&(+out.customDel[k]>=(+cu[k].at||0))) delete cu[k];
+    out.custom=cu;
+    if(String(out.course||"").indexOf("C:")===0&&!cu[String(out.course).slice(2)]) out.course="L:"+(out.level||"A2");
     return JSON.stringify(out);
   }
   function mergeModulMezar(localStr, remoteStr){
