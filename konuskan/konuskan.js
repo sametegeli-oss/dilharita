@@ -369,6 +369,7 @@ function courseById(id){
   if(k==='L'){ const lv=LEVELS.includes(v)?v:'A2'; const units=DATA.course[lv]||[]; return {id:'L:'+lv, t:`${lv} · ${LEVEL_NAMES[lv]}`, level:lv, units:units.map((u,i)=>({t:u.t, i, ex:['word','sentence','roleplay']}))}; }
   if(k==='C'&&S.custom[v]){ const cc=S.custom[v]; return {id:'C:'+v, t:cc.t, en:cc.en, custom:cc, clevel:cc.level, topic:{t:cc.t,en:cc.en}, units:(cc.units||[]).map((u,i)=>({t:u.tr?`${u.tr} · ${u.t}`:u.t, en:u.t, focus:u.focus||'', i, ex:['word','sentence','roleplay']}))}; }
   if(k==='C') return courseById('L:'+S.level);
+  if(k==='M'){ const s=MOD_SERIES.find(x=>x.key===v); if(!s) return courseById('L:'+S.level); return {id:'M:'+v, t:s.t, en:s.t, mod:s, clevel:s.level, topic:{t:s.t,en:s.t}, units:s.parts.map((p,i)=>({t:p.part?`Parça ${p.part}`:String(p.ad||'').slice(0,60), en:s.t+(p.part?` (part ${p.part})`:''), modId:p.id, n:p.n, i, ex:['sentence','word','roleplay']}))}; }
   const tc=TOPIC_COURSES.find(c=>c.id===v)||TOPIC_COURSES[0];
   return {id:'T:'+tc.id, t:tc.t, en:tc.en, topic:tc, units:tc.u.map((t,i)=>({t, en:t, i, ex:['word','dialogue','roleplay']}))};
 }
@@ -378,7 +379,7 @@ const EX_NAMES={word:'Kelime modu',sentence:'Cümle modu',roleplay:'Rol yapma',d
 const EX_ICON={word:'word',sentence:'sentence',roleplay:'role',dialogue:'dialogue'};
 function pLearn(m){
   const c=courseById(S.course), p=courseProgress(c);
-  m.innerHTML=`<div class="wrap"><div class="row between"><div><span class="eyebrow">Öğrenme yolu</span><h1>${esc(c.t)}</h1><p class="muted" style="margin:4px 0 0">${c.custom?`Kendi kursun · ${c.clevel} seviyesi · `:''}${c.units.length} ünite · her ünitede 3 alıştırma</p></div><div style="min-width:200px"><div class="bar"><i style="width:${p}%"></i></div><div class="small muted" style="margin-top:4px">%${p} tamamlandı</div></div></div>
+  m.innerHTML=`<div class="wrap"><div class="row between"><div><span class="eyebrow">Öğrenme yolu</span><h1>${esc(c.t)}</h1><p class="muted" style="margin:4px 0 0">${c.custom?`Kendi kursun · ${c.clevel} seviyesi · `:c.mod?`Dil Harita modülü · ${c.clevel} · `:''}${c.units.length} ünite · her ünitede 3 alıştırma</p></div><div style="min-width:200px"><div class="bar"><i style="width:${p}%"></i></div><div class="small muted" style="margin-top:4px">%${p} tamamlandı</div></div></div>
   <div style="max-width:720px;width:100%" id="path"></div></div>`;
   const path=$('#path',m);
   let firstOpen=c.units.findIndex(u=>u.ex.some(ex=>!S.done[exKey(c.id,u.i,ex)])); if(firstOpen<0) firstOpen=0;
@@ -409,8 +410,8 @@ function pLearn(m){
   setTimeout(()=>{ const el=$('#u'+firstOpen,m); if(el&&firstOpen>1) el.scrollIntoView({block:'start'}); },30);
 }
 function pCourses(m){
-  const lvl=LEVELS.map(L=>({id:'L:'+L,t:`${L} · ${LEVEL_NAMES[L]}`,d:`${(DATA.course[L]||[]).length} ünite, ${(DATA.course[L]||[]).reduce((a,u)=>a+u.s.length,0)} cümle`}));
-  const card=(c)=>{ const cc=courseById(c.id), p=courseProgress(cc), on=S.course===c.id; return `<button class="item" data-c="${c.id}" style="${on?'border-color:var(--accent);background:var(--accent-soft)':''}"><span class="dot">${ic(c.id.startsWith('L')?'courses':'book')}</span><div class="grow"><b>${esc(c.t)}</b><div class="small muted">${esc(c.d)}</div></div>${c.id.startsWith('L:')&&S.certs[c.id.slice(2)]?`<span class="pill warn">${ic('star','width="12" height="12"')} Sertifika</span>`:''}${p?`<span class="pill ${p===100?'ok':'acc'}">%${p}</span>`:''}${on?'<span class="pill acc">Seçili</span>':''}</button>`; };
+  const lvl=LEVELS.map(L=>({id:'L:'+L,t:`${L} · ${LEVEL_NAMES[L]}`,d:`${(DATA.course[L]||[]).length} ünite · Dil Harita müfredatının tamamı`}));
+  const card=(c)=>{ const cc=courseById(c.id), p=courseProgress(cc), on=S.course===c.id; return `<button class="item" data-c="${c.id}" style="${on?'border-color:var(--accent);background:var(--accent-soft)':''}"><span class="dot">${ic(c.id.startsWith('L')?'courses':c.id.startsWith('M')?'note':'book')}</span><div class="grow"><b>${esc(c.t)}</b><div class="small muted">${esc(c.d)}</div></div>${c.id.startsWith('L:')&&S.certs[c.id.slice(2)]?`<span class="pill warn">${ic('star','width="12" height="12"')} Sertifika</span>`:''}${p?`<span class="pill ${p===100?'ok':'acc'}">%${p}</span>`:''}${on?'<span class="pill acc">Seçili</span>':''}</button>`; };
   const life=TOPIC_COURSES.filter(c=>c.g==='life').map(c=>({id:'T:'+c.id,t:c.t,d:c.u.length+' ünite · '+c.en}));
   const pro=TOPIC_COURSES.filter(c=>c.g==='pro').map(c=>({id:'T:'+c.id,t:c.t,d:c.u.length+' ünite · '+c.en}));
   const mine=Object.values(S.custom).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).map(c=>({id:'C:'+c.id,t:c.t,d:`${c.level} · ${(c.units||[]).length} ünite · ${c.topic}`}));
@@ -418,6 +419,7 @@ function pCourses(m){
   <div class="stack"><div class="row between"><h2>Kendi kurslarım</h2><button class="btn primary sm" id="newCourse">+ Yeni kurs oluştur</button></div>
     ${mine.length?`<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${mine.map(c=>`<div class="stack" style="gap:4px">${card(c)}<button class="btn sm ghost" data-del="${c.id.slice(2)}" style="align-self:flex-end;color:var(--muted)">Sil</button></div>`).join('')}</div>`
       :`<div class="empty">İstediğin konuda ve seviyede kendi kursunu oluştur: yapay zekâ üniteleri planlar, her ünitede kelime, cümle ve rol yapma alıştırması olur.</div>`}</div>
+  ${MOD_SERIES.length?`<div class="stack"><div><h2>Dil Harita modüllerim</h2><p class="small muted" style="margin:2px 0 0">Modüllerim'deki modüllerin seriye göre gruplandı: her parça bir ünite. Yeni oluşturduğun modüller burada kendiliğinden görünür.</p></div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${MOD_SERIES.map(s=>card({id:'M:'+s.key,t:s.t,d:`${s.level} · ${s.parts.length} parça · ${s.parts.reduce((a,p)=>a+p.n,0)} cümle${s.alan?' · '+s.alan:''}`})).join('')}</div></div>`:''}
   <div class="stack"><h2>Seviye kursları</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${lvl.map(card).join('')}</div></div>
   <div class="stack"><h2>Günlük hayat</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${life.map(card).join('')}</div></div>
   <div class="stack"><h2>Meslek kursları</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${pro.map(card).join('')}</div></div></div>`;
@@ -1031,6 +1033,48 @@ async function startFeedback(){
   catch(e){ b.innerHTML=`<div class="inner"><div class="notice">${esc(aiErr(e))}</div></div>`; }
 }
 
+/* ================= Dil Harita modülleri (salt okunur köprü) =================
+   Kullanıcı modülleri (Modüllerim, DHModul) ve Dil Harita'nın hazır modül
+   dosyaları (data/sentences/mod/*.json) aynı 23 alanlı cümle biçimini kullanır;
+   Konuşkan onları KOPYALAMADAN okur ve hiçbir şeyi değiştirmez. */
+function strHash(s){ let h=5381; for(const c of String(s)) h=((h<<5)+h+c.charCodeAt(0))|0; return (h>>>0).toString(36); }
+function toSent(r){ return {en:String(r.en||''),tr:String(r.tr||''),ipa:String(r.ipa||''),g:String(r.grammar||r.pattern||''),m:String(r.commonMistake||''),x:String(r.aiExplain||''),sc:String(r.scenario||r.topic||'')}; }
+let MOD_SERIES=[];   /* [{key,t,level,alan,parts:[{id,ad,n,part}]}] */
+function seriesName(ad){ return String(ad||'Modül').replace(/\s*·\s*P\d+\s*$/,'').replace(/^【FULL】\|?/,'').replace(/[《》]/g,'').trim()||'Modül'; }
+function loadUserModules(){
+  try{
+    if(!window.DHModul) { MOD_SERIES=[]; return; }
+    const g={};
+    (DHModul.liste()||[]).forEach(m=>{ const name=seriesName(m.ad); const key=strHash(name);
+      const pm=String(m.ad||'').match(/·\s*P(\d+)\s*$/); const part=pm?+pm[1]:0;
+      (g[key]=g[key]||{key,t:name,level:String(m.level||'A2').toUpperCase(),alan:m.alan||'',parts:[],tarih:0}).parts.push({id:m.id,ad:m.ad,n:+m.n||0,part,tarih:+m.tarih||0}); });
+    MOD_SERIES=Object.values(g).map(s=>{ s.parts.sort((a,b)=>(a.part-b.part)||(a.tarih-b.tarih)); s.tarih=Math.max(...s.parts.map(p=>p.tarih||0)); if(!LEVELS.includes(s.level)) s.level=s.level==='C2'?'C1':'A2'; return s; }).sort((a,b)=>b.tarih-a.tarih);
+  }catch(e){ MOD_SERIES=[]; }
+}
+function moduleSentences(id){ try{ const arr=window.DHModul&&DHModul.getir(id); return Array.isArray(arr)?arr.filter(r=>r&&r.en&&r.tr).map(toSent):[]; }catch(e){ return []; } }
+/* Hazır modül dosyaları: seviye kursundaki ünite adı → parça dosyaları */
+let MOD_INDEX=null;
+function unitNameOf(mod){ let n=String(mod).split(' · ')[0].replace(/^[A-C]\d-M\d+\s*/,'').trim(); if(n.startsWith('-')) n='Real life: '+n.slice(1); return n; }
+async function levelUnitParts(L,unitT){
+  if(!MOD_INDEX){ const r=await fetch('./data/sentences/index.json?v=1'); if(!r.ok) throw {code:'http',message:'Modül listesi yüklenemedi'}; MOD_INDEX=(await r.json()).modules||[]; }
+  return MOD_INDEX.filter(m=>m.lvl===L&&unitNameOf(m.mod)===unitT).map(m=>({f:m.f,n:+m.n||0,label:(String(m.mod).split(' · ')[1]||'Parça').replace(/^P(\d+)$/,'Parça $1')}));
+}
+async function levelPartSentences(f){ const r=await fetch('./data/sentences/mod/'+f+'.json'); if(!r.ok) throw {code:'http',message:'Modül dosyası yüklenemedi'}; const d=await r.json(); return (Array.isArray(d)?d:(d.rows||d.sentences||[])).filter(x=>x&&x.en&&x.tr).map(toSent); }
+/* Sözlük (data/dictionary.json) — modül kelimelerinin anlamı için, yapay zekâsız */
+let DICT=null;
+async function loadDict(){ if(DICT) return DICT; const r=await fetch('./data/dictionary.json?v=1'); if(!r.ok) throw {code:'http',message:'Sözlük yüklenemedi'}; DICT=await r.json(); return DICT; }
+const STOP=new Set('the a an and or but if of to in on at for with from by as is am are was were be been being have has had do does did will would can could should shall may might must i you he she it we they me him her us them my your his its our their this that these those there here what who whom which when where why how not no yes so than then too very just also only about into over after before up down out off again all any some each few more most other such own same both'.split(' '));
+const LEVEL_RANK={A1:1,A2:2,B1:3,B2:4,C1:5,C2:6};
+function dictLookup(D,w){ const tries=[w]; if(w.endsWith('ies')) tries.push(w.slice(0,-3)+'y'); if(w.endsWith('es')) tries.push(w.slice(0,-2)); if(w.endsWith('s')) tries.push(w.slice(0,-1)); if(w.endsWith('ed')) tries.push(w.slice(0,-2),w.slice(0,-1)); if(w.endsWith('ing')) tries.push(w.slice(0,-3),w.slice(0,-3)+'e'); for(const t of tries){ if(D[t]) return [t,D[t]]; } return null; }
+async function wordsFromSentences(sents,L,max=12){
+  const D=await loadDict(); const seen=new Set(), out=[]; const lr=LEVEL_RANK[L]||2;
+  const cand=[];
+  sents.forEach(s=>String(s.en).toLowerCase().replace(/[’']/g,"'").split(/[^a-z']+/).forEach(w=>{ w=w.replace(/^'+|'+$/g,''); if(w.length<3||STOP.has(w)||seen.has(w)) return; seen.add(w); const hit=dictLookup(D,w); if(!hit) return; const [base,e]=hit; if(seen.has('#'+base)) return; seen.add('#'+base);
+    const ms=[]; (e.anlamlar||[]).forEach(a=>{ a=String(a).replace(/\s*\[.*?\]/g,'').trim(); if(a&&!ms.includes(a)) ms.push(a); }); if(!ms.length) return;
+    const wr=LEVEL_RANK[e.seviye]||0; cand.push({w:base,o:e.oku||'',tr:ms.slice(0,2).join(', '),ex:s.en,score:(wr>=lr?3:wr===lr-1?2:!wr?1:0)}); }));
+  cand.sort((a,b)=>(b.score-a.score)||(b.w.length-a.w.length)); return cand.slice(0,max);
+}
+
 /* ================= Kendi kursunu oluştur ================= */
 const COURSE_IDEAS=['Restoran işletmeciliği','Futbol ve spor yorumculuğu','Yazılım mülakatları','Hemşirelik','Emlak ve kiralama','Online satış ve e-ticaret','Seyahat acenteliği','Yurt dışında üniversite','Fotoğrafçılık','Kişisel finans'];
 function startCourseBuilder(prefill){
@@ -1236,14 +1280,43 @@ async function openCert(L){
   $('#cnS',b).onclick=()=>{ const n=$('#cn',b).value.trim(); if(!n) return; c.name=n; c.at=Date.now(); S.certName=n; touchSettings(); saveNow(); openCert(L); };
 }
 
+/* Seviye kursu cümle alıştırması: ünitenin TÜM cümleleri (hazır modül dosyalarından) */
+async function levelSentencePicker(L,unit,done){
+  const b=openPanel('Cümle modu · '+unit.t);
+  b.innerHTML=`<div class="inner"><p class="muted">Ünitenin cümleleri yükleniyor…</p><span class="typing"><i></i><i></i><i></i></span></div>`;
+  let parts=[];
+  try{ parts=await levelUnitParts(L,unit.t); }catch(e){}
+  if(!parts.length) return runSentences(unit.s,unit.t,done);   /* çevrimdışı ya da eşleşme yok: gömülü 10 cümle */
+  const total=parts.reduce((a,p)=>a+p.n,0);
+  b.innerHTML=`<div class="inner"><div><span class="eyebrow">${L} · ${esc(unit.t)}</span><h2>Hangi cümlelerle çalışalım?</h2><p class="muted" style="margin:4px 0 0">Bu ünitede Dil Harita müfredatından ${total} cümle var.</p></div>
+    <div class="list"><button class="item" data-p="mix"><span class="dot">${ic('sentence')}</span><div class="grow"><b>Karışık 10 cümle</b><div class="small muted">Tüm parçalardan rastgele</div></div>${ic('arrow','width="18" height="18" style="color:var(--muted)"')}</button>
+    ${parts.map((p,i)=>`<button class="item" data-p="${i}"><span class="dot">${i+1}</span><div class="grow"><b>${esc(p.label)}</b><div class="small muted">${p.n} cümle</div></div>${ic('arrow','width="18" height="18" style="color:var(--muted)"')}</button>`).join('')}</div></div>`;
+  b.querySelectorAll('[data-p]').forEach(x=>x.onclick=async()=>{
+    x.disabled=true;
+    try{
+      if(x.dataset.p==='mix'){ const all=(await Promise.all(parts.map(p=>levelPartSentences(p.f).catch(()=>[])))).flat(); runSentences(shuffle(all).slice(0,10),unit.t+' · karışık',done); }
+      else { const p=parts[+x.dataset.p]; runSentences(await levelPartSentences(p.f),unit.t+' · '+p.label,done); }
+    }catch(e){ x.disabled=false; toast(aiErr(e)); }
+  });
+}
+
 /* ================= Kurs alıştırmaları ================= */
 async function openExercise(c,u,ex){
   const key=exKey(c.id,u.i,ex); const done=()=>{ if(!S.done[key]) addXP(30); S.done[key]=today(); save(); };
   if(c.level){
     const unit=DATA.course[c.level][u.i];
-    if(ex==='sentence') return runSentences(unit.s,unit.t,done);
+    if(ex==='sentence') return levelSentencePicker(c.level,unit,done);
     if(ex==='word'){ const all=DATA.words[c.level]; const start=(u.i*12)%all.length; const ws=all.slice(start,start+12).map(w=>({w:w[0],o:w[1],tr:w[2]})); return runWords(ws,`${c.level} · ${unit.t}`,c.level,done); }
     if(ex==='roleplay'){ const sc=unit.sc[0]||unit.t; return startChat({kind:'roleplay',title:'Ünite '+(u.i+1)+' · '+unit.t,name:'Deniz',color:'#c4733a',persona:`Deniz, an English teacher who sets up a short real-life roleplay ("${sc}") and plays the other person in it`,scene:sc,tasks:['Use the grammar of this unit ('+unit.t+') at least twice','Ask a question','Give a longer answer (2+ sentences)'],material:unit.s.slice(0,6).map((s,i)=>`${i+1}) "${s.en}" pattern: ${s.g}`).join('\n'),onDone:done}); }
+  } else if(c.mod){
+    const sents=moduleSentences(u.modId), L=c.clevel;
+    if(!sents.length){ const b=openPanel(c.t); b.innerHTML=`<div class="inner"><div class="notice">Bu modülün cümleleri bu cihazda bulunamadı. Dil Harita'da Modüllerim sayfasını bir kez açıp tekrar dene.</div></div>`; return; }
+    if(ex==='sentence') return runSentences(shuffle(sents).slice(0,25),c.t+' · '+u.t,done);
+    if(ex==='word'){ const b=openPanel('Kelime modu · '+u.t); b.innerHTML=`<div class="inner"><p class="muted">Modülün kelimeleri Dil Harita sözlüğünden hazırlanıyor…</p><span class="typing"><i></i><i></i><i></i></span></div>`;
+      try{ const ws=await wordsFromSentences(sents,L,12); if(ws.length<4){ b.innerHTML=`<div class="inner"><div class="notice">Bu modülde sözlükte bulunan yeterli kelime yok.</div></div>`; return; } return runWords(ws,c.t+' · '+u.t,L,done); }
+      catch(e){ b.innerHTML=`<div class="inner"><div class="notice">${esc(aiErr(e))}</div></div>`; return; } }
+    if(ex==='roleplay'){ const pick=shuffle(sents).slice(0,6); const sc=(pick.find(s=>s.sc)||{}).sc||c.t;
+      return startChat({kind:'roleplay',title:c.t+' · '+u.t,name:'Deniz',color:'#c4733a',level:L,persona:`Deniz, an English teacher who sets up a short real-life roleplay based on the story/topic "${c.t}" ("${sc}") and plays the other person in it`,scene:sc,tasks:['Use two of today\'s sentence patterns','Ask a question about the situation','Give a longer answer (2+ sentences)'],material:pick.map((s,i)=>`${i+1}) "${s.en}"${s.g?' pattern: '+s.g:''}`).join('\n'),onDone:done}); }
   } else {
     const tc=c.topic, unitT=u.en||u.t, L=c.clevel||S.level, focus=u.focus?` Focus of this unit: ${u.focus}.`:'', goal=c.custom&&c.custom.goal?` The learner's goal: ${c.custom.goal}.`:'';
     if(ex==='dialogue') return startDialogue(`${tc.en}: ${unitT}`,done);
@@ -1270,5 +1343,6 @@ async function openExercise(c,u,ex){
 }
 
 /* ================= Başlat ================= */
-fetch('./konuskan/data.json?v=1').then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(d=>{ DATA=d; render(); })
-  .catch(()=>{ render(); toast('Kurs verisi yüklenemedi; internet bağlantını kontrol et.'); });
+const modHazir=(window.DHModul&&DHModul.hazir?Promise.race([Promise.resolve(DHModul.hazir()).catch(()=>{}),new Promise(r=>setTimeout(r,4000))]):Promise.resolve()).then(loadUserModules);
+Promise.all([fetch('./konuskan/data.json?v=1').then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(d=>{ DATA=d; }).catch(()=>{ toast('Kurs verisi yüklenemedi; internet bağlantını kontrol et.'); }), modHazir])
+  .then(()=>{ if(String(S.course).startsWith('M:')&&!MOD_SERIES.some(s=>'M:'+s.key===S.course)) S.course='L:'+S.level; render(); });

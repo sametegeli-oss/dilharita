@@ -13,7 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v437";  /* ➕ Konuşkan: kendi kursunu oluştur */
+var SW_VERSION = "dh-sw-v438";  /* 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
+/* onceki v437: ➕ Konuşkan: kendi kursunu oluştur */
 /* onceki v436: 🗄️ YouTube kopyaları ve AI hafızası localStorage dışına */
 /* onceki v435: 🍪 Giriş işareti çerezde (dolu localStorage) */
 /* onceki v434: 🔁 Giriş döngüsü düzeltmesi */
