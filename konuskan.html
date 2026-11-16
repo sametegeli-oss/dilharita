@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<script src="./idb-uyum.js?v=1"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f7b6c">
+<title>Konuşkan · Dil Harita</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./konuskan/konuskan.css?v=1">
+<!-- Konuşkan: Dil Harita'nın yapay zekâ anahtarlarıyla (ai-providers.js)
+     çalışır; ilerleme "dh-konuskan-v1" anahtarında tutulur ve cloud-sync.js
+     ile cihazlar arasında birleştirilir. -->
+<script src="./storage-bridge.js?v=3"></script>
+<script src="./ai-providers.js?v=t36"></script>
+<script src="./cloud-sync.js?v=43"></script>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--accent)"/><path d="M8 11.5c0-2 1.6-3.5 3.5-3.5h9c2 0 3.5 1.6 3.5 3.5v5c0 2-1.6 3.5-3.5 3.5H15l-4.5 4v-4h0c-1.4-.3-2.5-1.6-2.5-3.1z" fill="var(--accent-ink)"/><circle cx="13" cy="14" r="1.4" fill="var(--accent)"/><circle cx="16.5" cy="14" r="1.4" fill="var(--accent)"/><circle cx="20" cy="14" r="1.4" fill="var(--sun)"/></svg>
+      Konuşkan
+    </div>
+    <nav class="nav" id="nav"></nav>
+  </aside>
+  <main id="main"><div class="wrap"><p class="muted">Yükleniyor…</p></div></main>
+</div>
+<section class="panel" id="panel" hidden>
+  <header class="ph">
+    <button class="icon-btn" id="pClose" aria-label="Kapat"></button>
+    <h2 id="pTitle"></h2>
+    <div id="pExtra" class="row"></div>
+  </header>
+  <div class="pb" id="pBody"></div>
+</section>
+<div id="toast" class="toast hide" role="status"></div>
+<script src="./konuskan/konuskan.js?v=1"></script>
+</body>
+</html>

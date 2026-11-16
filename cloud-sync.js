@@ -33,7 +33,7 @@
     "dh-model-nvidia", "dh-model-groq", "dh-model-cerebras", "dh-model-gemini",
     "selectedTeacherAvatar", "dh-teacher-mem", "dh-activity-log-v1",
     "dh-gemini-report-v1", "dh-gemini-daily-archive-v1", "dh-word-study-list-v1",
-    "dh-error-tombstones-v1"
+    "dh-error-tombstones-v1", "dh-konuskan-v1"
   ];
   /* "dh-koc-" → günlük koç planı, tamamlanan adımlar, gün epoch'u ve hedef.
      Bunlar cihaza özeldi; telefonda yapılan çalışma bilgisayarda görünmüyordu.
@@ -89,6 +89,52 @@
      Cozum: dizin kimlik bazinda birlesir, catismada `tarih` yeni
      olan kazanir. Silme icin mezar tasi kullanilir; yoksa birlesim
      silinen modulu geri diriltirdi. */
+  /* ── KONUŞKAN ("dh-konuskan-v1") ───────────────────────────
+     Tek bir JSON durum; "son yazan kazanır" bir cihazdaki çalışmayı
+     silerdi. Kurallar:
+       • resetAt büyük olan taraf sıfırlamayı yaptıysa, diğerinin
+         sıfırlamadan ÖNCEKİ verisi atılır (o taraf aynen alınır)
+       • ayarlar (seviye, ses, model…) → setAt yeni olan kazanır
+       • days → gün başına BÜYÜK süre; xp ve sayaçlar → büyük olan
+       • done, ach, srs, fb → birleşim (srs'te kutusu/tarihi ileri olan)
+       • errors → birleşim; delErr mezar taşındakiler geri gelmez     */
+  function mergeKonuskan(localStr, remoteStr){
+    var L=null,R=null;
+    try{ L=JSON.parse(localStr||"null"); }catch(e){}
+    try{ R=JSON.parse(remoteStr||"null"); }catch(e){}
+    if(!L||typeof L!=="object") return remoteStr;
+    if(!R||typeof R!=="object") return localStr;
+    var lr=+L.resetAt||0, rr=+R.resetAt||0;
+    if(rr>lr && (+L.updatedAt||0)<rr) return remoteStr;
+    if(lr>rr && (+R.updatedAt||0)<lr) return localStr;
+    var newer=(+R.setAt||0)>(+L.setAt||0)?R:L, out={}, k;
+    for(k in L) if(L.hasOwnProperty(k)) out[k]=L[k];
+    ["level","rate","voiceName","showTr","theme","course","goal","tierChat","tierDeep","setAt"].forEach(function(f){ if(newer[f]!==undefined) out[f]=newer[f]; });
+    out.resetAt=Math.max(lr,rr);
+    out.updatedAt=Math.max(+L.updatedAt||0,+R.updatedAt||0);
+    out.xp=Math.max(+L.xp||0,+R.xp||0);
+    function maxMap(a,b){ var o={},x; a=a||{}; b=b||{}; for(x in a) if(a.hasOwnProperty(x)) o[x]=a[x]; for(x in b) if(b.hasOwnProperty(x)&&(o[x]==null||+b[x]>+o[x])) o[x]=b[x]; return o; }
+    function unionMap2(a,b){ var o={},x; a=a||{}; b=b||{}; for(x in a) if(a.hasOwnProperty(x)) o[x]=a[x]; for(x in b) if(b.hasOwnProperty(x)&&o[x]==null) o[x]=b[x]; return o; }
+    out.days=maxMap(L.days,R.days);
+    out.done=unionMap2(L.done,R.done);
+    out.ach=unionMap2(L.ach,R.ach);
+    out.fb=unionMap2(L.fb,R.fb);
+    out.delErr=maxMap(L.delErr,R.delErr);
+    var srs={}, a=L.srs||{}, b=R.srs||{};
+    for(k in a) if(a.hasOwnProperty(k)) srs[k]=a[k];
+    for(k in b) if(b.hasOwnProperty(k)){ var x=srs[k], y=b[k]; if(!x || (+y.at||0)>(+x.at||0) || (!(+x.at)&&!(+y.at)&&String(y.due||"")>String(x.due||""))) srs[k]=y; }
+    out.srs=srs;
+    var seen={}, errs=[];
+    (L.errors||[]).concat(R.errors||[]).forEach(function(e){ if(!e) return; var id=(e.d||"")+"|"+(e.wrong||"")+"|"+(e.right||""); if(seen[id]||out.delErr[id]) return; seen[id]=1; errs.push(e); });
+    errs.sort(function(p,q){ return String(p.d||"")<String(q.d||"")?-1:String(p.d||"")>String(q.d||"")?1:0; });
+    out.errors=errs.slice(-150);
+    var ls=L.stats||{}, rs=R.stats||{}, st={};
+    ["msgs","ok","run","bestRun","sentOk","sentAll"].forEach(function(f){ st[f]=Math.max(+ls[f]||0,+rs[f]||0); });
+    st.pron=((ls.pron||[]).length>=(rs.pron||[]).length?ls.pron:rs.pron)||[];
+    st.done=maxMap(ls.done,rs.done);
+    out.stats=st;
+    return JSON.stringify(out);
+  }
   function mergeModulMezar(localStr, remoteStr){
     var L={},R={},out={},k;
     try{ L=JSON.parse(localStr||"{}")||{}; }catch(e){}
@@ -790,6 +836,7 @@
           else if(rk===TRACKER){ localStorage.setItem(rk, mergeTracker(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk==="dh-gemini-report-v1"){ localStorage.setItem(rk, mergeGeminiReport(localStorage.getItem(rk),rv)); pulled++; }
           else if(rk==="dh-gemini-daily-archive-v1"){ localStorage.setItem(rk, mergeGeminiArchive(localStorage.getItem(rk),rv)); pulled++; }
+          else if(rk==="dh-konuskan-v1"){ localStorage.setItem(rk, mergeKonuskan(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk==="dh-error-tombstones-v1"){ localStorage.setItem(rk,mergeErrorTombstones(localStorage.getItem(rk),rv)); pulled++; }
           else if(rk.indexOf("dh-gemini-gunluk-")===0){ localStorage.setItem(rk, mergeGeminiDaily(localStorage.getItem(rk),rv)); pulled++; }
           else if(rk===MIRROR){ localStorage.setItem(rk, mergeMirror(localStorage.getItem(rk), rv)); pulled++; }
@@ -1599,6 +1646,7 @@
     keys: function(){ return { list: LS_KEYS.slice(), prefixes: LS_PREFIXES.slice() }; },
     keyVault: keyVault,
     _mergeProfile: mergeProfile,
+    _mergeKonuskan: mergeKonuskan,
     get ready(){ return ready; }, get user(){ return user; }
   };
 })();
