@@ -374,6 +374,10 @@
       temperature: (opts.temperature!=null?opts.temperature:0.3),
       max_tokens: (opts.max_tokens||800)
     };
+    /* gpt-oss düşünen modeldir: düşünce de max_tokens'tan yer. Yüksek
+       düşünmede 900 token'ın hepsi düşünceye gidip cevap BOŞ dönüyordu
+       (16 Kasım, Konuşkan cümle üretimi). Düşünmeyi kısa tut. */
+    if(/gpt-oss/i.test(body.model)) body.reasoning_effort = "low";
     return fetch(p.url, {
       method:"POST",
       headers:Object.assign({ "Content-Type":"application/json", "Authorization":"Bearer "+key }, p.headers||{}),
@@ -397,7 +401,9 @@
       throw {code:"network", provider:p.id};
     }).then(function(d){
       var txt = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-      if(txt==null) throw {code:"empty", provider:p.id};
+      /* Boş metin de başarısızlıktır: sıradaki model/sağlayıcı denensin
+         (eskiden "" başarılı sayılıp ekrana boş cevap gidiyordu). */
+      if(txt==null || !String(txt).trim()) throw {code:"empty", provider:p.id};
       return String(txt);
     });
   }

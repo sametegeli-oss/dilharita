@@ -276,8 +276,19 @@ async function ai(input,{json=true,deep=false,images=null}={}){
   if(images&&images.length) return geminiVision(input,images[0],json);
   const tier=(deep?S.tierDeep:S.tierChat)||'fast';
   const sys='You help a Turkish learner practise English inside the Konuşkan app.'+(json?' Reply with valid JSON only, no markdown fences.':' Reply in plain text, no markdown headings.');
-  const txt=await DHProviders.chat([{role:'system',content:sys},{role:'user',content:input}],{json,fast:tier==='fast',max_tokens:json?900:700,temperature:0.4,title:'Konuşkan'});
-  return json?parseJSON(txt):String(txt||'').trim();
+  const msgs=[{role:'system',content:sys},{role:'user',content:input}];
+  const txt=await DHProviders.chat(msgs,{json,fast:tier==='fast',max_tokens:json?2500:1200,temperature:0.4,title:'Konuşkan'});
+  if(json){
+    try{ return parseJSON(txt); }
+    catch(e){
+      /* Boş ya da yarım cevap: bir kez, kaliteli sırayla (Gemini önce) ve
+         daha geniş sınırla yeniden dene. */
+      const txt2=await DHProviders.chat(msgs,{json,fast:false,max_tokens:4000,temperature:0.3,title:'Konuşkan'});
+      return parseJSON(txt2);
+    }
+  }
+  if(!String(txt||'').trim()) return String(await DHProviders.chat(msgs,{json:false,fast:false,max_tokens:2000,temperature:0.4,title:'Konuşkan'})||'').trim();
+  return String(txt||'').trim();
 }
 function blobToB64(blob){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(blob); }); }
 async function geminiVision(prompt,blob,json){
