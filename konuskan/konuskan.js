@@ -130,7 +130,9 @@ const ACH = [
   {id:'streak3',t:'Üç gün',d:'3 günlük seri yap',f:s=>longestStreak()>=3},
   {id:'streak7',t:'Bir hafta',d:'7 günlük seri yap',f:s=>longestStreak()>=7},
   {id:'hour1',t:'Bir saat',d:'Toplam 1 saat çalış',f:s=>totalSecs()>=3600},
-  {id:'hour10',t:'On saat',d:'Toplam 10 saat çalış',f:s=>totalSecs()>=36000}
+  {id:'hour10',t:'On saat',d:'Toplam 10 saat çalış',f:s=>totalSecs()>=36000},
+  {id:'cert1',t:'İlk sertifika',d:'Bir seviye sınavını geç',f:s=>Object.keys(s.certs||{}).length>=1},
+  {id:'certAll',t:'Yolun sonu',d:'Beş seviyenin sertifikasını al',f:s=>LEVELS.every(L=>(s.certs||{})[L])}
 ];
 /* Model tercihi: Dil Harita'nın sağlayıcı sırasını belirler. */
 const TIERS=[['fast','Hızlı','Groq/Cerebras önce · en hızlı cevap'],['quality','Kaliteli','Gemini önce · daha dikkatli düzeltme']];
@@ -138,7 +140,7 @@ const TIERS=[['fast','Hızlı','Groq/Cerebras önce · en hızlı cevap'],['qual
 /* ================= Durum (kalıcı, cloud-sync ile birleşir) ================= */
 const DEFAULT = () => ({v:1, level:'', rate:0.9, voiceName:'', showTr:true, theme:'system', course:'', goal:'',
   tierChat:'fast', tierDeep:'quality', setAt:0, resetAt:0,
-  xp:0, days:{}, done:{}, srs:{}, errors:[], delErr:{}, fb:{}, stats:{msgs:0,ok:0,run:0,bestRun:0,sentOk:0,sentAll:0,pron:[],done:{}}, ach:{}});
+  xp:0, days:{}, done:{}, srs:{}, errors:[], delErr:{}, fb:{}, certs:{}, exams:{}, certName:'', stats:{msgs:0,ok:0,run:0,bestRun:0,sentOk:0,sentAll:0,pron:[],done:{}}, ach:{}});
 let S = DEFAULT();
 let dict=null;
 function normalizeState(){
@@ -147,6 +149,7 @@ function normalizeState(){
   if(!TIERS.some(t=>t[0]===S.tierDeep)) S.tierDeep='quality';
   if(!S.level) S.level=dhLevel();
   if(!S.course) S.course='L:'+S.level;
+  S.certs=S.certs||{}; S.exams=S.exams||{};
 }
 /* Dil Harita profilindeki seviye ilk açılışta varsayılan olur. */
 function dhLevel(){
@@ -306,6 +309,19 @@ function aiErr(e){
 }
 function learnerContext(){ const errs=S.errors.slice(-12).map(e=>`"${e.wrong}" -> "${e.right}"`).join('; '); return errs?`\nThe learner's recent mistakes (use them to personalise gently, never list them): ${errs}`:''; }
 
+/* ================= Seviye seçimi ================= */
+function setLevel(L){
+  if(!LEVELS.includes(L)||L===S.level&&S.course==='L:'+L) { if(L===S.level) location.hash=location.hash||'#home'; return; }
+  S.level=L; if(String(S.course).startsWith('L:')) S.course='L:'+L; touchSettings();
+  toast('Seviye '+L+' · '+LEVEL_NAMES[L]+' seçildi'); render();
+}
+function levelProgress(L){ return courseProgress(courseById('L:'+L)); }
+function levelChips(compact){
+  return `<div class="lvls ${compact?'lvls--side':''}" role="group" aria-label="Seviye seç">${LEVELS.map(L=>{ const c=S.certs[L], p=levelProgress(L);
+    return `<button type="button" class="lvl ${S.level===L?'on':''}" data-lv="${L}" aria-pressed="${S.level===L}" title="${L} · ${LEVEL_NAMES[L]}${c?' · sertifika alındı':''}"><b>${L}</b><small>${LEVEL_NAMES[L]}</small>${c?`<span class="lvl-cert" aria-label="Sertifika">${ic('star','width="12" height="12"')}</span>`:''}<i style="width:${p}%"></i></button>`; }).join('')}</div>`;
+}
+function bindLevels(el){ el.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>setLevel(b.dataset.lv)); }
+
 /* ================= Yönlendirme ================= */
 const PAGES = [['home','Ana sayfa','home'],['learn','Öğren','learn'],['courses','Kurslar','courses'],['explore','Keşfet','explore'],['progress','İlerleme','progress'],['account','Ayarlar','account']];
 function route(){ const h=(location.hash||'#home').slice(1); return PAGES.some(p=>p[0]===h)?h:'home'; }
@@ -314,6 +330,8 @@ function render(){
   const r=route();
   $('#nav').innerHTML=PAGES.map(([id,t,icn],i)=>(i===5?'<span class="sp"></span>':'')+`<a href="#${id}" class="${r===id?'on':''}">${ic(icn,'width="20" height="20"')}<span>${t}</span></a>`).join('')
     +`<a href="./index.html" title="Dil Harita ana sayfası">${ic('dh','width="20" height="20"')}<span>Dil Harita</span></a>`;
+  let sl=$('#sideLv'); if(!sl){ sl=document.createElement('div'); sl.id='sideLv'; $('.brand').after(sl); }
+  sl.innerHTML='<div class="eyebrow" style="padding:0 10px 6px">Seviye</div>'+levelChips(true); bindLevels(sl);
   const m=$('#main'); m.innerHTML=''; m.scrollTop=0;
   ({home:pHome,learn:pLearn,courses:pCourses,explore:pExplore,progress:pProgress,account:pAccount})[r](m);
 }
@@ -340,9 +358,10 @@ function sideSummary(){
 function bindSide(el){ const g=$('#goCourse',el); if(g) g.onclick=()=>location.hash='#learn'; const f=$('#goFb',el); if(f) f.onclick=()=>openMode('feedback'); }
 function pHome(m){
   const hi = new Date().getHours()<12?'Günaydın':'Merhaba';
-  m.innerHTML=`<div class="wrap"><div><span class="eyebrow">${S.level} · ${LEVEL_NAMES[S.level]}</span><h1>${hi}, bugün ne çalışalım?</h1></div>${capNotice()}
+  m.innerHTML=`<div class="wrap"><div class="stack" style="gap:10px"><h1>${hi}, bugün ne çalışalım?</h1><div class="row between"><span class="small muted">Seviyeni seç: yapay zekâ, kelimeler ve kurs bu seviyeye göre ayarlanır.</span><button class="btn sm ghost" id="goExam">${S.certs[S.level]?ic('star','width="15" height="15"')+' '+S.level+' sertifikan var':S.level+' seviye sınavı'}</button></div>${levelChips(false)}</div>${capNotice()}
   <div class="cols"><div class="stack"><h2>Öğrenme modları</h2><div class="grid">${MODES.map(modeCard).join('')}</div></div>${sideSummary()}</div></div>`;
-  bindModes(m); bindSide(m);
+  bindModes(m); bindSide(m); bindLevels(m);
+  $('#goExam',m).onclick=()=>S.certs[S.level]?openCert(S.level):examIntro(S.level);
 }
 function courseById(id){
   const [k,v]=String(id||'L:A2').split(':');
@@ -374,18 +393,28 @@ function pLearn(m){
     });
     path.appendChild(l);
   });
+  if(c.level){
+    const L=c.level, cert=S.certs[L], ex=S.exams[L];
+    const h=document.createElement('div'); h.className='unit-h'; h.innerHTML=`<div><span class="eyebrow">Seviye sonu</span><h3>${L} seviye sınavı ve sertifika</h3></div>`; path.appendChild(h);
+    const card=document.createElement('div'); card.className='card stack exam-card'; card.style.gap='10px';
+    card.innerHTML=`<div class="row"><span class="dot item" style="all:unset;width:44px;height:44px;border-radius:99px;display:flex;align-items:center;justify-content:center;background:${cert?'var(--sun)':'var(--accent-soft)'};color:${cert?'#2a1a00':'var(--accent)'}">${ic(cert?'star':'courses','width="22" height="22"')}</span><div style="flex:1;min-width:0"><b>${cert?`Sertifika alındı · %${cert.score}`:'Seviye sonu sınavı'}</b><div class="small muted">${cert?`${esc(cert.date)} · No: ${esc(cert.id)}`:'Kelime, dilbilgisi, çeviri, dinleme, konuşma ve yazma. Geçme notu %70.'}${ex&&!cert?` · son deneme %${ex.last}`:''}</div></div></div>
+      ${!cert&&p<80?`<div class="small muted">Önerilen: önce yolun en az %80'ini bitir (şu an %${p}). Seviyeyi biliyorsan doğrudan sınava girebilirsin.</div>`:''}
+      <div class="row">${cert?`<button class="btn primary sm" data-x="cert">Sertifikayı gör</button><button class="btn sm" data-x="exam">Sınavı yeniden yap</button>${L!=='C1'?`<button class="btn sm" data-x="next">${LEVELS[LEVELS.indexOf(L)+1]} seviyesine geç</button>`:''}`:`<button class="btn primary sm" data-x="exam">Sınava başla</button>`}</div>`;
+    card.querySelectorAll('[data-x]').forEach(x=>x.onclick=()=>{ const a=x.dataset.x; if(a==='cert') openCert(L); else if(a==='exam') examIntro(L); else setLevel(LEVELS[LEVELS.indexOf(L)+1]); });
+    path.appendChild(card);
+  }
   setTimeout(()=>{ const el=$('#u'+firstOpen,m); if(el&&firstOpen>1) el.scrollIntoView({block:'start'}); },30);
 }
 function pCourses(m){
   const lvl=LEVELS.map(L=>({id:'L:'+L,t:`${L} · ${LEVEL_NAMES[L]}`,d:`${(DATA.course[L]||[]).length} ünite, ${(DATA.course[L]||[]).reduce((a,u)=>a+u.s.length,0)} cümle`}));
-  const card=(c)=>{ const cc=courseById(c.id), p=courseProgress(cc), on=S.course===c.id; return `<button class="item" data-c="${c.id}" style="${on?'border-color:var(--accent);background:var(--accent-soft)':''}"><span class="dot">${ic(c.id.startsWith('L')?'courses':'book')}</span><div class="grow"><b>${esc(c.t)}</b><div class="small muted">${esc(c.d)}</div></div>${p?`<span class="pill ${p===100?'ok':'acc'}">%${p}</span>`:''}${on?'<span class="pill acc">Seçili</span>':''}</button>`; };
+  const card=(c)=>{ const cc=courseById(c.id), p=courseProgress(cc), on=S.course===c.id; return `<button class="item" data-c="${c.id}" style="${on?'border-color:var(--accent);background:var(--accent-soft)':''}"><span class="dot">${ic(c.id.startsWith('L')?'courses':'book')}</span><div class="grow"><b>${esc(c.t)}</b><div class="small muted">${esc(c.d)}</div></div>${c.id.startsWith('L:')&&S.certs[c.id.slice(2)]?`<span class="pill warn">${ic('star','width="12" height="12"')} Sertifika</span>`:''}${p?`<span class="pill ${p===100?'ok':'acc'}">%${p}</span>`:''}${on?'<span class="pill acc">Seçili</span>':''}</button>`; };
   const life=TOPIC_COURSES.filter(c=>c.g==='life').map(c=>({id:'T:'+c.id,t:c.t,d:c.u.length+' ünite · '+c.en}));
   const pro=TOPIC_COURSES.filter(c=>c.g==='pro').map(c=>({id:'T:'+c.id,t:c.t,d:c.u.length+' ünite · '+c.en}));
   m.innerHTML=`<div class="wrap"><div><h1>Kurslar</h1><p class="muted" style="margin:4px 0 0">Bir kurs seç; Öğren sayfası o kursun yolunu gösterir. Seviye kursları Dil Harita müfredatından gelir.</p></div>
   <div class="stack"><h2>Seviye kursları</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${lvl.map(card).join('')}</div></div>
   <div class="stack"><h2>Günlük hayat</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${life.map(card).join('')}</div></div>
   <div class="stack"><h2>Meslek kursları</h2><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${pro.map(card).join('')}</div></div></div>`;
-  m.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{ S.course=b.dataset.c; touchSettings(); location.hash='#learn'; });
+  m.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{ S.course=b.dataset.c; if(S.course.startsWith('L:')) S.level=S.course.slice(2); touchSettings(); location.hash='#learn'; });
 }
 function pExplore(m){
   const rp=pickDaily(ROLEPLAYS,2,'r'), ch=pickDaily(CHARACTERS,4,'c'), db1=pickDaily(DEBATES,2,'d'), st=pickDaily(STORY_TOPICS,2,'s'), dl=pickDaily(DIALOGUE_TOPICS,2,'g');
@@ -441,10 +470,12 @@ function pProgress(m){
   </div><div class="stack">
     <div class="card stack"><span class="pill acc" style="align-self:flex-start">Seviye ${L.lv}</span><h2>${L.rank}</h2><div class="bar"><i style="width:${L.pct}%"></i></div><div class="small muted">${L.xp} XP${L.nextRank?` · ${L.nextRank[1]} rütbesi seviye ${L.nextRank[0]}'de açılır`:''}</div>
       <div class="small">${RANKS.map(([l,n])=>`<div class="row between"><span>${n}</span><span class="muted">Seviye ${l}</span></div>`).join('')}</div></div>
+    <div class="card stack"><h2>Sertifikalar</h2><div class="list">${LEVELS.map(Lv=>{ const c=S.certs[Lv], e=S.exams[Lv]; return `<div class="row between"><span class="row" style="gap:8px"><span class="pill ${c?'warn':''}">${c?ic('star','width="12" height="12"'):''} ${Lv}</span><span class="small">${c?`%${c.score} · ${esc(c.date)}`:e?`Son deneme %${e.last}`:'Henüz yok'}</span></span><button class="btn sm" data-cert="${Lv}" data-has="${c?1:0}">${c?'Gör':'Sınava gir'}</button></div>`; }).join('')}</div></div>
     <div class="card stack"><h2>Günlük geri bildirim</h2><p class="small muted" style="margin:0">Bugün ${errsToday} hata kaydedildi.</p><button class="btn primary sm" data-mode="feedback">Bugünün değerlendirmesi</button></div>
     <div class="card stack"><h2>Hata defteri</h2><p class="small muted" style="margin:0">${S.errors.length} kayıtlı hata. Dil Harita'nın genel hata defteri için <a href="./hata-defteri.html">buraya</a>.</p><button class="btn sm" data-mode="errors">Konuşkan hata defteri</button></div>
   </div></div></div>`;
   bindModes(m);
+  m.querySelectorAll('[data-cert]').forEach(b=>b.onclick=()=>b.dataset.has==='1'?openCert(b.dataset.cert):examIntro(b.dataset.cert));
 }
 function pAccount(m){
   const vs=enVoices();
@@ -453,7 +484,8 @@ function pAccount(m){
   const prov=(()=>{ try{ return (DHProviders.activeProviders()||[]).join(', '); }catch(e){ return ''; } })();
   m.innerHTML=`<div class="wrap" style="max-width:680px"><div><h1>Ayarlar</h1><p class="muted" style="margin:4px 0 0">Hedef dil: İngilizce · Çeviri dili: Türkçe</p></div>
   <div class="card stack">
-    <div class="field"><label for="sLevel">Seviyem</label><select id="sLevel">${LEVELS.map(L=>`<option value="${L}" ${S.level===L?'selected':''}>${L} · ${LEVEL_NAMES[L]}</option>`).join('')}</select><span class="small muted">Yapay zekâ cevaplarını ve kelime destelerini bu seviyeye göre ayarlar.</span></div>
+    <div class="field"><label>Seviyem</label>${levelChips(false)}<span class="small muted">Yapay zekâ cevaplarını, kelime destelerini ve seçili seviye kursunu bu seviyeye göre ayarlar.</span></div>
+    <div class="field"><label for="sName">Sertifikada yazacak ad</label><input id="sName" value="${esc(certName())}" maxlength="60" autocomplete="name"></div>
     <div class="field"><label for="sGoal">Öğrenme amacım</label><select id="sGoal">${['','İş ve kariyer','Seyahat','Sınav','Günlük konuşma','Yurt dışına taşınma'].map(g=>`<option ${S.goal===g?'selected':''} value="${g}">${g||'Seçilmedi'}</option>`).join('')}</select></div>
     <h2>Yapay zekâ</h2><p class="small muted" style="margin:-6px 0 0">Dil Harita'nın API anahtarları kullanılır${prov?` (bu cihazda: ${esc(prov)})`:''}. Seçim, sağlayıcıların hangi sırayla deneneceğini belirler.</p>
     <div class="field"><label for="sTierChat">Sohbet ve alıştırmalar</label>${tierSel('sTierChat','tierChat')}<span class="small muted">Sohbet, rol yapma, karakter, münazara, arama, diyalog, hikâye ve kelime destesi üretimi.</span></div>
@@ -467,7 +499,8 @@ function pAccount(m){
   <div class="card stack"><h2>Verilerim</h2><p class="small muted" style="margin:0">İlerlemen Dil Harita hesabınla buluta kaydedilir ve cihazlar arasında birleştirilir.</p>
     <div class="row"><button class="btn sm" id="resetData" style="color:var(--bad)">Konuşkan ilerlemesini sil</button></div><div id="resetBox"></div></div>
   </div>`;
-  $('#sLevel',m).onchange=e=>{ S.level=e.target.value; touchSettings(); toast('Seviye '+S.level+' olarak ayarlandı'); };
+  bindLevels(m);
+  $('#sName',m).onchange=e=>{ S.certName=e.target.value.trim(); touchSettings(); };
   $('#sGoal',m).onchange=e=>{ S.goal=e.target.value; touchSettings(); };
   $('#sTierChat',m).onchange=e=>{ S.tierChat=e.target.value; touchSettings(); toast('Sohbet modeli: '+TIERS.find(t=>t[0]===S.tierChat)[1]); };
   $('#sTierDeep',m).onchange=e=>{ S.tierDeep=e.target.value; touchSettings(); toast('Açıklama modeli: '+TIERS.find(t=>t[0]===S.tierDeep)[1]); };
@@ -984,6 +1017,162 @@ async function startFeedback(){
   try{ const txt=await ai(`You are a kind English coach for a Turkish learner (CEFR ${S.level}). Today they practised ${Math.round(secs/60)} minutes and made these corrections:\n${errs.slice(-25).map(e=>`- "${e.wrong}" -> "${e.right}" (${e.tag||''})`).join('\n')}\nWrite feedback in informal Turkish (sen), plain text, no markdown headings: 1) one encouraging sentence, 2) the 2-3 main error patterns with a short rule each and one correct English example, 3) one concrete task for tomorrow. Max 160 words.`,{json:false,deep:true});
     S.fb={[t]:{n:errs.length,txt}}; save(); show(txt); }
   catch(e){ b.innerHTML=`<div class="inner"><div class="notice">${esc(aiErr(e))}</div></div>`; }
+}
+
+/* ================= Seviye sonu sınavı ================= */
+const PASS=70;
+function certName(){ if(S.certName) return S.certName; try{ const p=JSON.parse(localStorage.getItem('dh-profile-v1')||'{}')||{}; if(p.ad) return String(p.ad).trim(); }catch(e){} return ''; }
+function cleanMistake(m){
+  let t=String(m||'').split(' / ')[0].replace(/❌/g,'').trim();
+  if(!t||t==='-'||/\.\.\.|…/.test(t)||t.split(/\s+/).length<3) return '';
+  return t;
+}
+function examSentences(L){ return (DATA.course[L]||[]).flatMap(u=>u.s.map(s=>Object.assign({unit:u.t},s))).filter(s=>s.en&&s.tr); }
+function buildExam(L){
+  const sents=shuffle(examSentences(L)), words=shuffle(DATA.words[L]||[]), Q=[];
+  const others=(not,n)=>shuffle(sents.filter(x=>x.en!==not)).slice(0,n).map(x=>x.en);
+  // 1) Kelime
+  const meanings=(DATA.words[L]||[]).map(w=>w[2]);
+  words.slice(0,8).forEach(w=>Q.push({sec:'vocab',q:`"${w[0]}" ne demek?`,say:w[0],opts:shuffle([w[2],...shuffle([...new Set(meanings.filter(x=>x!==w[2]))]).slice(0,3)]),a:w[2]}));
+  // 2) Dilbilgisi: doğru cümleyi seç (Dil Harita'daki "sık yapılan hata" ile)
+  const withM=sents.filter(s=>{ const m=cleanMistake(s.m); return m&&norm(m)!==norm(s.en); });
+  withM.slice(0,6).forEach((s,i)=>{ const m=cleanMistake(s.m); const extra=withM[(i+7)%withM.length]; const opts=[s.en,m]; const em=extra&&cleanMistake(extra.m); if(em&&norm(em)!==norm(s.en)&&opts.indexOf(em)<0) opts.push(em);
+    Q.push({sec:'grammar',q:'Hangisi doğru?',hint:s.tr,opts:shuffle(opts),a:s.en,why:s.x}); });
+  // 3) Çeviri
+  sents.slice(6,11).forEach(s=>Q.push({sec:'trans',q:'Bu cümlenin İngilizcesi hangisi?',hint:s.tr,opts:shuffle([s.en,...others(s.en,3)]),a:s.en,why:s.x}));
+  // 4) Dinleme
+  sents.slice(11,15).forEach(s=>Q.push({sec:'listen',q:'Dinle: hangi cümleyi duydun?',say:s.en,opts:shuffle([s.en,...others(s.en,3)]),a:s.en}));
+  // 5) Konuşma (mikrofon varsa)
+  if(dict) sents.slice(15,17).forEach(s=>Q.push({sec:'speak',q:'Bu cümleyi sesli oku',target:s.en,hint:s.tr}));
+  // 6) Yazma (yapay zekâ varsa)
+  if(!aiOff()){ const units=(DATA.course[L]||[]); const u=units[Math.floor(Math.random()*units.length)]||{t:'daily life',sc:[]}; Q.push({sec:'write',q:'Kısa bir metin yaz',topic:(u.sc&&u.sc[0])||u.t,grammar:u.t}); }
+  return Q;
+}
+const SEC_NAMES={vocab:'Kelime',grammar:'Dilbilgisi',trans:'Çeviri',listen:'Dinleme',speak:'Konuşma',write:'Yazma'};
+function examIntro(L){
+  const b=openPanel(L+' seviye sınavı');
+  const ex=S.exams[L], cert=S.certs[L];
+  const secs=['Kelime: 8 soru','Dilbilgisi: doğru cümleyi seç','Çeviri: 5 soru','Dinleme: 4 soru',dict?'Konuşma: 2 cümleyi sesli oku':'Konuşma: bu tarayıcıda mikrofon yok, bölüm atlanır',aiOff()?'Yazma: yapay zekâ yok, bölüm atlanır':'Yazma: kısa bir metin, yapay zekâ puanlar'];
+  b.innerHTML=`<div class="inner"><div><span class="eyebrow">${L} · ${LEVEL_NAMES[L]}</span><h2>Seviye sonu sınavı</h2></div>
+    <div class="card stack"><p style="margin:0">Sınav bu seviyenin kurs cümlelerinden ve kelimelerinden hazırlanır. Her bölüm eşit ağırlıktadır; toplamda <b>%${PASS}</b> alırsan <b>${L} sertifikası</b> kazanırsın.</p>
+    <ul style="margin:0;padding-left:20px">${secs.map(s=>`<li>${s}</li>`).join('')}</ul>
+    <p class="small muted" style="margin:0">Yaklaşık 10 dakika sürer. Cevaplar sınav sonunda gösterilir.${ex?` Daha önce ${ex.tries} kez girdin, en iyi sonucun %${ex.best}.`:''}${cert?' Bu seviyenin sertifikası zaten var; daha yüksek puan alırsan sertifikadaki puan güncellenir.':''}</p></div>
+    <div class="field"><label for="exName">Sertifikada yazacak adın</label><input id="exName" value="${esc(certName())}" maxlength="60" placeholder="Adın ve soyadın" autocomplete="name"></div>
+    <div class="row"><button class="btn primary" id="exGo">Sınava başla</button><button class="btn ghost" id="exNo">Vazgeç</button></div></div>`;
+  $('#exNo',b).onclick=()=>closePanel();
+  $('#exGo',b).onclick=()=>{ const n=$('#exName',b).value.trim(); if(n&&n!==S.certName){ S.certName=n; touchSettings(); } runExam(L); };
+}
+function runExam(L){
+  const Q=buildExam(L); const ans=[]; let i=0;
+  const b=openPanel(L+' seviye sınavı');
+  panelCleanup=null;
+  const draw=()=>{
+    if(i>=Q.length) return finishExam(L,Q,ans);
+    const q=Q[i];
+    const head=`<div class="row between"><span class="eyebrow">${SEC_NAMES[q.sec]} · Soru ${i+1}/${Q.length}</span><div class="bar" style="width:160px"><i style="width:${i/Q.length*100}%"></i></div></div>`;
+    if(q.opts){
+      b.innerHTML=`<div class="inner">${head}<div class="card stack" style="gap:8px"><b style="font-size:1.15rem">${esc(q.q)}</b>${q.hint?`<span class="muted">${esc(q.hint)}</span>`:''}${q.say&&q.sec==='listen'?`<button class="btn sm" id="play" style="align-self:flex-start">${ic('speaker','width="16" height="16"')} Tekrar dinle</button>`:''}</div>
+        <div class="opts">${q.opts.map((o,k)=>`<button class="opt" data-k="${k}">${esc(o)}</button>`).join('')}</div></div>`;
+      if(q.sec==='listen'){ speak(q.say); $('#play',b).onclick=()=>speak(q.say); } else if(q.sec==='vocab') speak(q.say);
+      b.querySelectorAll('.opt').forEach(o=>o.onclick=()=>{ const v=q.opts[+o.dataset.k]; ans[i]={v,ok:v===q.a,score:v===q.a?100:0}; o.classList.add('on'); o.style.borderColor='var(--accent)'; b.querySelectorAll('.opt').forEach(x=>x.disabled=true); setTimeout(()=>{ i++; draw(); },250); });
+    } else if(q.sec==='speak'){
+      let heard='';
+      b.innerHTML=`<div class="inner">${head}<div class="card stack" style="gap:8px"><b style="font-size:1.15rem">${esc(q.q)}</b><span class="big" style="font-size:1.4rem">${esc(q.target)}</span><span class="muted">${esc(q.hint)}</span></div>
+        <div class="row"><span id="mk"></span><span class="small muted">Mikrofona bas, cümleyi oku, bitince tekrar bas.</span></div><p id="hd" class="muted"></p><div class="row"><button class="btn ghost" id="skp">Bu soruyu geç</button></div></div>`;
+      const mic=micButton({partial:t=>{ $('#hd',b).textContent=heard+t; }, final:t=>{ heard+=t+' '; $('#hd',b).textContent=heard; }, idle:()=>{ if(!heard.trim()) return; const sc=similarity(heard,q.target); S.stats.pron.push(sc); ans[i]={v:heard.trim(),score:sc,ok:sc>=80}; i++; draw(); }});
+      mic.style.width='64px'; mic.style.height='64px'; $('#mk',b).replaceWith(mic);
+      $('#skp',b).onclick=()=>{ if(micLive&&dict) dict.stop().catch(()=>{}); micTarget=null; ans[i]={v:'',score:0,ok:false}; i++; draw(); };
+    } else if(q.sec==='write'){
+      b.innerHTML=`<div class="inner">${head}<div class="card stack" style="gap:8px"><b style="font-size:1.15rem">${esc(q.q)}</b><span>Konu: <b>${esc(q.topic)}</b>. ${L==='A1'||L==='A2'?'3-5 kısa cümle':'5-8 cümle'} yaz. Mümkünse "${esc(q.grammar)}" yapısını kullan.</span></div>
+        <textarea id="wt" rows="7" style="border:1px solid var(--line);background:var(--surface);border-radius:var(--r-sm);padding:12px;width:100%" placeholder="İngilizce yaz…" aria-label="Metnin"></textarea>
+        <div class="row between"><span class="small muted" id="wc">0 kelime</span><button class="btn primary" id="ws">Gönder ve sınavı bitir</button></div><div id="wr"></div></div>`;
+      const wt=$('#wt',b); wt.oninput=()=>$('#wc',b).textContent=wt.value.trim().split(/\s+/).filter(Boolean).length+' kelime'; wt.focus();
+      $('#ws',b).onclick=async()=>{ const txt=wt.value.trim(); if(txt.split(/\s+/).length<5){ toast('Biraz daha yaz: en az birkaç cümle.'); return; }
+        $('#ws',b).disabled=true; $('#wr',b).innerHTML='<span class="typing"><i></i><i></i><i></i></span> Puanlanıyor…';
+        try{ const r=await ai(`Grade this short text written by a Turkish learner in an end-of-level ${L} English exam. Task: write about "${q.topic}". Judge only against CEFR ${L} expectations: task achievement, grammar, vocabulary range, coherence. Ignore punctuation and capitalisation slips. Return ONLY JSON: {"score":0-100,"feedback_tr":"2 short Turkish sentences, informal","corrected":"their text with errors fixed"}\nText: """${txt}"""`,{deep:true});
+          ans[i]={v:txt,score:Math.max(0,Math.min(100,Math.round(+r.score||0))),ok:(+r.score||0)>=PASS,fb:r.feedback_tr,fix:r.corrected}; }
+        catch(e){ ans[i]={v:txt,score:null,skip:true,err:aiErr(e)}; }
+        i++; draw(); };
+    }
+  };
+  draw();
+}
+function finishExam(L,Q,ans){
+  const by={}; Q.forEach((q,k)=>{ const a=ans[k]; if(!a||a.skip) return; (by[q.sec]=by[q.sec]||[]).push(a.score||0); });
+  const secs=Object.keys(by).map(s=>[s,Math.round(by[s].reduce((x,y)=>x+y,0)/by[s].length)]);
+  const total=secs.length?Math.round(secs.reduce((x,s)=>x+s[1],0)/secs.length):0;
+  const pass=total>=PASS;
+  const ex=S.exams[L]||{tries:0,best:0}; ex.tries=(ex.tries||0)+1; ex.best=Math.max(ex.best||0,total); ex.last=total; ex.lastDate=today(); ex.at=Date.now(); S.exams[L]=ex;
+  Q.forEach((q,k)=>{ const a=ans[k]; if(a&&!a.ok&&(q.sec==='grammar'||q.sec==='trans')&&a.v) addError({wrong:a.v,right:q.a,why:q.why||'',tag:'level exam',mode:'exam',d:today()}); });
+  let first=false;
+  if(pass){ const old=S.certs[L]; if(!old){ first=true; S.certs[L]={score:total,date:today(),id:'KNK-'+L+'-'+Date.now().toString(36).toUpperCase().slice(-6),name:certName()||'Konuşkan öğrencisi',at:Date.now()}; addXP(150); }
+    else if(total>old.score){ old.score=total; old.date=today(); old.name=certName()||old.name; old.at=Date.now(); } }
+  checkAch(); saveNow();
+  const b=openPanel(L+' sınav sonucu');
+  const wrong=Q.map((q,k)=>[q,ans[k]]).filter(([q,a])=>a&&!a.ok&&q.opts);
+  const nextL=LEVELS[LEVELS.indexOf(L)+1];
+  b.innerHTML=`<div class="inner">
+    <div class="card stack" style="align-items:center;text-align:center;gap:8px;${pass?'background:var(--ok-soft);border-color:var(--ok)':''}"><span class="eyebrow">${L} · ${LEVEL_NAMES[L]}</span><span class="big" style="font-size:3rem">%${total}</span><b>${pass?(first?'Tebrikler, sınavı geçtin ve sertifikanı kazandın!':'Tebrikler, sınavı yine geçtin.'):`Geçme notu %${PASS}. Bu sefer olmadı; eksik bölümlere çalışıp tekrar dene.`}</b>
+      <div class="row" style="justify-content:center">${pass?`<button class="btn primary" id="seeCert">${ic('star','width="16" height="16"')} Sertifikayı gör</button>${nextL?`<button class="btn" id="goNext">${nextL} seviyesine geç</button>`:''}`:`<button class="btn primary" id="again">Tekrar dene</button><button class="btn" id="toLearn">Öğrenme yoluna dön</button>`}</div></div>
+    <div class="card stack"><h3>Bölümler</h3>${secs.map(([s,v])=>`<div class="stack" style="gap:4px"><div class="row between"><span>${SEC_NAMES[s]}</span><b>%${v}</b></div><div class="bar"><i style="width:${v}%;${v<PASS?'background:var(--warn)':''}"></i></div></div>`).join('')}
+      ${Q.some((q,k)=>ans[k]&&ans[k].skip)?`<p class="small muted" style="margin:0">Yazma bölümü puanlanamadı ve hesaba katılmadı.</p>`:''}</div>
+    ${(()=>{ const w=Q.findIndex(q=>q.sec==='write'); const a=ans[w]; return a&&!a.skip?`<div class="card stack"><h3>Yazma geri bildirimi · %${a.score}</h3><p style="margin:0">${esc(a.fb||'')}</p>${a.fix?`<div class="fb-fix" style="white-space:pre-wrap">${esc(a.fix)}</div>`:''}</div>`:''; })()}
+    ${wrong.length?`<div class="card stack"><h3>Yanlış cevaplar</h3>${wrong.map(([q,a])=>`<div class="small stack" style="gap:4px"><b>${esc(q.hint||q.q)}</b><div class="fb-orig">${esc(a.v)}</div><div class="fb-fix">${esc(q.a)}</div>${q.why?`<span class="muted">${esc(q.why)}</span>`:''}</div>`).join('')}</div>`:''}
+  </div>`;
+  const g=id=>$(id,b);
+  if(g('#seeCert')) g('#seeCert').onclick=()=>openCert(L);
+  if(g('#goNext')) g('#goNext').onclick=()=>{ closePanel(true); setLevel(nextL); location.hash='#learn'; };
+  if(g('#again')) g('#again').onclick=()=>examIntro(L);
+  if(g('#toLearn')) g('#toLearn').onclick=()=>{ S.course='L:'+L; save(); closePanel(true); location.hash='#learn'; render(); };
+}
+
+/* ================= Sertifika ================= */
+async function drawCert(L){
+  const c=S.certs[L]; const W=2000,H=1414; const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
+  try{ await document.fonts.ready; }catch(e){}
+  const D='"Bricolage Grotesque", "Segoe UI", sans-serif', B='Figtree, "Segoe UI", sans-serif';
+  x.fillStyle='#fbfaf5'; x.fillRect(0,0,W,H);
+  x.strokeStyle='#0f7b6c'; x.lineWidth=18; x.strokeRect(50,50,W-100,H-100);
+  x.strokeStyle='#e8a33d'; x.lineWidth=4; x.strokeRect(92,92,W-184,H-184);
+  // köşe süsleri
+  x.fillStyle='#0f7b6c'; [[92,92],[W-92,92],[92,H-92],[W-92,H-92]].forEach(([a,bb])=>{ x.beginPath(); x.arc(a,bb,16,0,Math.PI*2); x.fill(); });
+  // logo
+  x.save(); x.translate(W/2-40,150); x.fillStyle='#0f7b6c'; x.beginPath(); x.roundRect?x.roundRect(0,0,80,80,22):x.rect(0,0,80,80); x.fill();
+  x.fillStyle='#fff'; x.beginPath(); x.moveTo(20,29); x.lineTo(60,29); x.quadraticCurveTo(68,29,68,37); x.lineTo(68,48); x.quadraticCurveTo(68,56,60,56); x.lineTo(39,56); x.lineTo(27,66); x.lineTo(27,56); x.quadraticCurveTo(12,55,12,46); x.lineTo(12,37); x.quadraticCurveTo(12,29,20,29); x.fill(); x.restore();
+  x.textAlign='center'; x.fillStyle='#16201c';
+  x.font=`600 34px ${B}`; x.fillStyle='#5f6b65'; x.fillText('KONUŞKAN · DİL HARİTA',W/2,290);
+  x.font=`800 112px ${D}`; x.fillStyle='#16201c'; x.fillText('Başarı Sertifikası',W/2,430);
+  x.font=`500 38px ${B}`; x.fillStyle='#5f6b65'; x.fillText('Bu belge',W/2,530);
+  const name=(c.name||certName()||'Konuşkan öğrencisi');
+  let fs=96; x.font=`800 ${fs}px ${D}`; while(x.measureText(name).width>W-400&&fs>48){ fs-=4; x.font=`800 ${fs}px ${D}`; }
+  x.fillStyle='#0f7b6c'; x.fillText(name,W/2,650);
+  x.strokeStyle='#e8a33d'; x.lineWidth=3; x.beginPath(); x.moveTo(W/2-420,690); x.lineTo(W/2+420,690); x.stroke();
+  x.font=`500 40px ${B}`; x.fillStyle='#16201c';
+  x.fillText(`adlı öğrencinin İngilizce ${L} · ${LEVEL_NAMES[L]} seviye sınavını`,W/2,780);
+  x.fillText(`%${c.score} başarıyla geçtiğini gösterir.`,W/2,840);
+  // seviye mührü
+  x.save(); x.translate(W/2,1010); x.fillStyle='#e8a33d'; x.beginPath(); for(let k=0;k<24;k++){ const r=k%2?92:108, t=k/24*Math.PI*2; x.lineTo(Math.cos(t)*r,Math.sin(t)*r); } x.closePath(); x.fill();
+  x.fillStyle='#fbfaf5'; x.beginPath(); x.arc(0,0,76,0,Math.PI*2); x.fill(); x.fillStyle='#0f7b6c'; x.font=`800 64px ${D}`; x.textBaseline='middle'; x.fillText(L,0,4); x.restore(); x.textBaseline='alphabetic';
+  x.font=`600 30px ${B}`; x.fillStyle='#16201c';
+  const dt=new Date(c.date+'T12:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'});
+  x.textAlign='left'; x.fillText('Tarih',220,1060); x.font=`500 32px ${B}`; x.fillText(dt,220,1105);
+  x.textAlign='right'; x.font=`600 30px ${B}`; x.fillText('Sertifika no',W-220,1060); x.font=`500 32px ${B}`; x.fillText(c.id,W-220,1105);
+  x.textAlign='center'; x.font=`400 24px ${B}`; x.fillStyle='#8a948f';
+  x.fillText('Bu belge Konuşkan uygulama içi seviye sınavının sonucudur; resmî bir CEFR sertifikası değildir.',W/2,1240);
+  return cv;
+}
+async function openCert(L){
+  const c=S.certs[L]; if(!c) return examIntro(L);
+  const b=openPanel(L+' sertifikası');
+  b.innerHTML=`<div class="inner" style="max-width:980px"><p class="muted" style="margin:0">Hazırlanıyor…</p></div>`;
+  const cv=await drawCert(L); const url=cv.toDataURL('image/png');
+  b.innerHTML=`<div class="inner" style="max-width:980px"><img src="${url}" alt="${L} sertifikası" style="width:100%;border-radius:var(--r);box-shadow:var(--shadow)">
+    <div class="row"><button class="btn primary" id="dl">PNG olarak indir</button><button class="btn" id="pr">Yazdır / PDF kaydet</button></div>
+    <div class="field" style="max-width:420px"><label for="cn">Sertifikadaki ad</label><div class="row"><input id="cn" value="${esc(c.name||'')}" maxlength="60" style="flex:1"><button class="btn sm" id="cnS">Güncelle</button></div></div>
+    <p class="small muted" style="margin:0">Puan: %${c.score} · ${esc(c.date)} · No: ${esc(c.id)}</p></div>`;
+  $('#dl',b).onclick=()=>{ const a=document.createElement('a'); a.href=url; a.download=`Konuskan-${L}-sertifika.png`; document.body.appendChild(a); a.click(); a.remove(); };
+  $('#pr',b).onclick=()=>{ let pa=$('#printArea'); if(!pa){ pa=document.createElement('div'); pa.id='printArea'; document.body.appendChild(pa); } pa.innerHTML=`<img src="${url}" alt="">`; window.print(); };
+  $('#cnS',b).onclick=()=>{ const n=$('#cn',b).value.trim(); if(!n) return; c.name=n; c.at=Date.now(); S.certName=n; touchSettings(); saveNow(); openCert(L); };
 }
 
 /* ================= Kurs alıştırmaları ================= */

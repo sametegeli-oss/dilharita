@@ -109,7 +109,7 @@
     if(lr>rr && (+R.updatedAt||0)<lr) return localStr;
     var newer=(+R.setAt||0)>(+L.setAt||0)?R:L, out={}, k;
     for(k in L) if(L.hasOwnProperty(k)) out[k]=L[k];
-    ["level","rate","voiceName","showTr","theme","course","goal","tierChat","tierDeep","setAt"].forEach(function(f){ if(newer[f]!==undefined) out[f]=newer[f]; });
+    ["level","rate","voiceName","showTr","theme","course","goal","tierChat","tierDeep","certName","setAt"].forEach(function(f){ if(newer[f]!==undefined) out[f]=newer[f]; });
     out.resetAt=Math.max(lr,rr);
     out.updatedAt=Math.max(+L.updatedAt||0,+R.updatedAt||0);
     out.xp=Math.max(+L.xp||0,+R.xp||0);
@@ -133,6 +133,17 @@
     st.pron=((ls.pron||[]).length>=(rs.pron||[]).length?ls.pron:rs.pron)||[];
     st.done=maxMap(ls.done,rs.done);
     out.stats=st;
+    /* Sertifikalar kaybolmaz: seviye başına yüksek puanlı kayıt kalır
+       (ilk alınan sertifika numarası korunur). Sınav denemeleri: en çok
+       deneme ve en iyi puan; son sonuç daha yeni olan cihazdan. */
+    var lc=L.certs||{}, rc=R.certs||{}, certs={};
+    for(k in lc) if(lc.hasOwnProperty(k)) certs[k]=lc[k];
+    for(k in rc) if(rc.hasOwnProperty(k)){ var cl=certs[k], cr=rc[k]; if(!cl) certs[k]=cr; else { var best=(+cr.score||0)>(+cl.score||0)?cr:cl, keepId=String(cl.date||"")<=String(cr.date||"")?cl.id:cr.id; var m={}; for(var q in best) if(best.hasOwnProperty(q)) m[q]=best[q]; m.id=keepId||best.id; if((+cr.at||0)>(+cl.at||0)&&cr.name) m.name=cr.name; else if(cl.name) m.name=cl.name; certs[k]=m; } }
+    out.certs=certs;
+    var le=L.exams||{}, re=R.exams||{}, exams={};
+    for(k in le) if(le.hasOwnProperty(k)) exams[k]=le[k];
+    for(k in re) if(re.hasOwnProperty(k)){ var el=exams[k], er=re[k]; if(!el){ exams[k]=er; continue; } var newerE=(+er.at||0)>(+el.at||0)?er:el; exams[k]={tries:Math.max(+el.tries||0,+er.tries||0),best:Math.max(+el.best||0,+er.best||0),last:newerE.last,lastDate:newerE.lastDate,at:Math.max(+el.at||0,+er.at||0)}; }
+    out.exams=exams;
     return JSON.stringify(out);
   }
   function mergeModulMezar(localStr, remoteStr){
