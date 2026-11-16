@@ -996,9 +996,12 @@
       }catch(e){
         db=fsMod.getFirestore(app); // zaten başlatılmışsa (örn. sayfa yeniden çalıştı) düşer
       }
+      /* Kalıcılık "Bu cihazda hatırla" tercihine uyar (auth-guard ile aynı):
+         hatırlanmayan oturum uygulama kapanınca biter. */
       try{
-        if(authMod.setPersistence&&authMod.browserLocalPersistence)
-          authMod.setPersistence(auth, authMod.browserLocalPersistence);
+        var __hatirla=false; try{ __hatirla=localStorage.getItem("dh_remember")==="1"; }catch(e){}
+        if(__hatirla){ if(authMod.setPersistence&&authMod.browserLocalPersistence) authMod.setPersistence(auth, authMod.browserLocalPersistence); }
+        else if(authMod.setPersistence&&authMod.browserSessionPersistence) authMod.setPersistence(auth, authMod.browserSessionPersistence);
       }catch(e){}
       fb={
         auth:auth, db:db,

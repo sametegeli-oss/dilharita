@@ -1,15 +1,24 @@
-/* auth-guard.js
-   Her sayfada oturum bekçisi — OFFLINE DESTEKLİ.
+/* auth-guard.js — Her sayfada oturum bekçisi (ZORUNLU GİRİŞ, 16 Kasım)
+   ====================================================================
+   Karar (kullanıcı isteği): Dil Harita açılışta şifre ister; misafir
+   kullanım yoktur. Böylece her cihaz hesaba bağlı olur ve veriler
+   Firebase'e gider (misafir modda haftalarca buluta hiçbir şey
+   gitmediği fark edilmemişti).
 
    Mantık:
-   1) Önce yerel işarete bak (localStorage "dh_logged_in"). Varsa sayfayı HEMEN aç
-      (internet beklemeden). Bu, çevrimdışı kullanımı ve hızlı açılışı sağlar.
-   2) Yerel işaret YOKSA misafir kullanımına izin verir. Veriler cihazda tutulur.
-   3) Hesap varsa ve internet açıksa Firebase oturumu arka planda yine de doğrular. Oturum gerçekten
-      geçersizse (örn. başka cihazda çıkış yapılmış) yerel işareti temizleyip login'e atar.
+   1) Yerel işaret yoksa ("dh_logged_in") → login.html.
+   2) "Bu cihazda hatırla" KAPALIYSA (dh_remember !== "1") giriş yalnız bu
+      oturum için geçerlidir: sessionStorage "dh_session_ok" yoksa
+      (uygulama/tarayıcı kapatılıp açılmış) → login.html.
+   3) "Bu cihazda hatırla" AÇIKSA sayfa HEMEN açılır (internet beklemeden,
+      çevrimdışı da çalışır).
+   4) İnternet varsa Firebase oturumu arka planda doğrulanır; oturum
+      gerçekten yoksa (başka cihazdan çıkış, depolama temizlenmiş) yerel
+      işaret temizlenir ve login.html açılır.
 
-   login.html'in kendisinde çalışmaz (sonsuz döngü olmasın).
-*/
+   Herkese açık kalan sayfalar: login.html, veri-gizlilik.html (gizlilik
+   metni girişten önce okunabilmeli), pwa-hard-reset.html (kurtarma aracı).
+   ==================================================================== */
 (function(){
   "use strict";
 
@@ -19,47 +28,40 @@
     var ux=document.createElement("script"); ux.src="./ux-boost.js?v=2"; document.head.appendChild(ux);
   }
 
-  var path = (location.pathname || "").toLowerCase();
-  if (path.indexOf("login.html") !== -1) return;
+  var page = decodeURIComponent((location.pathname.split("/").pop() || "index.html")).toLowerCase();
+  var PUBLIC = ["login.html", "veri-gizlilik.html", "pwa-hard-reset.html"];
+  if (PUBLIC.indexOf(page) !== -1) return;
 
-  function hasLocalLogin(){
-    try{ return localStorage.getItem("dh_logged_in") === "1"; }catch(e){ return false; }
-  }
+  function ls(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function ss(k){ try{ return sessionStorage.getItem(k); }catch(e){ return null; } }
+  function hasLocalLogin(){ return ls("dh_logged_in") === "1"; }
+  function remembered(){ return ls("dh_remember") === "1"; }
   function clearLocalLogin(){
     try{
       localStorage.removeItem("dh_logged_in");
       localStorage.removeItem("dh_logged_uid");
       localStorage.removeItem("dh_logged_email");
     }catch(e){}
+    try{ sessionStorage.removeItem("dh_session_ok"); }catch(e){}
   }
+  var gidiyor = false;
   function goLogin(){
-    var here = (location.pathname.split("/").pop() || "index.html") + (location.search || "");
+    if (gidiyor) return; gidiyor = true;
+    /* Yönlendirme sürerken sayfa içeriği bir an görünmesin. */
+    try{ document.documentElement.style.visibility = "hidden"; }catch(e){}
+    var son = location.pathname.split("/").pop() || "index.html";
+    try{ son = decodeURIComponent(son); }catch(e){}
+    var here = son + (location.search || "") + (location.hash || "");
     location.replace("./login.html?next=" + encodeURIComponent(here));
   }
 
-  function oturumNotu(){
-    try{
-      if(document.getElementById("dhOturumNotu")) return;
-      var d=document.createElement("div");
-      d.id="dhOturumNotu"; d.setAttribute("role","status");
-      d.style.cssText="position:fixed;left:8px;right:8px;top:8px;z-index:99999;background:#1e293b;color:#f8fafc;border:2px solid #f59e0b;border-radius:14px;padding:12px 14px;font:600 17px/1.45 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.4);display:flex;flex-wrap:wrap;gap:8px;align-items:center";
-      d.innerHTML='<span style="flex:1 1 220px">Hesabından çıkış yapılmış. Çalışmaya devam edebilirsin; ilerlemen bu cihazda saklanıyor.</span>'
-        +'<button type="button" id="dhOturumGir" style="min-height:44px;padding:8px 14px;border-radius:10px;border:0;background:#6366f1;color:#fff;font:700 16px system-ui">Tekrar giriş yap</button>'
-        +'<button type="button" id="dhOturumKapat" style="min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #64748b;background:transparent;color:#f8fafc;font:700 16px system-ui">Kapat</button>';
-      (document.body||document.documentElement).appendChild(d);
-      document.getElementById("dhOturumGir").onclick=goLogin;
-      document.getElementById("dhOturumKapat").onclick=function(){ d.remove(); };
-    }catch(e){ goLogin(); }
-  }
-
-  // --- 1) Yerel işaret yoksa: ürünü misafir olarak aç. Hesap, yalnızca
-  // bulut eşitleme istendiğinde gerekir; ilk değeri görmeden giriş duvarı yoktur. ---
-  if (!hasLocalLogin()){
-    try{ localStorage.setItem("dh_guest_mode", "1"); }catch(e){}
+  // --- 1) ve 2): giriş yoksa ya da hatırlanmayan oturum kapanmışsa ---
+  if (!hasLocalLogin() || (!remembered() && ss("dh_session_ok") !== "1")) {
+    goLogin();
     return;
   }
 
-  // --- Yerel işaret VAR: sayfa açılır. İnternet varsa arka planda doğrula. ---
+  // --- 3) Giriş var: sayfa açılır. İnternet varsa arka planda doğrula. ---
   var firebaseConfig = {
     apiKey: "AIzaSyBZTHvP8xX94UMtKRt7hIYN7qpbO2gz0Zg",
     authDomain: "sentencemode.firebaseapp.com",
@@ -82,9 +84,13 @@
       app = (existing && existing.length) ? existing[0] : appMod.initializeApp(firebaseConfig);
     }catch(e){ app = appMod.initializeApp(firebaseConfig); }
     var auth = authMod.getAuth(app);
+    /* Kalıcılık "Bu cihazda hatırla" tercihine uyar: hatırlanmayan oturum
+       sekme/uygulama kapanınca biter. (Eskiden her sayfa kalıcıya çeviriyordu.) */
     try{
-      if(authMod.setPersistence && authMod.browserLocalPersistence){
-        authMod.setPersistence(auth, authMod.browserLocalPersistence);
+      if(remembered()){
+        if(authMod.setPersistence && authMod.browserLocalPersistence) authMod.setPersistence(auth, authMod.browserLocalPersistence);
+      } else if(authMod.setPersistence && authMod.browserSessionPersistence){
+        authMod.setPersistence(auth, authMod.browserSessionPersistence);
       }
     }catch(e){}
 
@@ -94,26 +100,22 @@
       if (user){
         decided = true;
         if (nullTimer){ clearTimeout(nullTimer); nullTimer=null; }
-        /* Yavaş telefonda oturum geç gelirse "çıkış yapılmış" notu yanlış kalmasın. */
-        try{ var eskiNot=document.getElementById("dhOturumNotu"); if(eskiNot) eskiNot.remove(); }catch(e){}
         try{
           localStorage.setItem("dh_logged_in","1");
           localStorage.setItem("dh_logged_uid", user.uid || "");
           if(user.email) localStorage.setItem("dh_logged_email", user.email);
+          localStorage.removeItem("dh_guest_mode");
         }catch(e){}
       } else {
-        if (decided && hasLocalLogin()) return;
-        // İlk null GEÇİCİ olabilir (mobilde persistence gecikmesi). Kısa bekle;
-        // 1.5 sn içinde gerçek oturum gelmezse, oturum gerçekten yok → login'e at.
+        if (decided) return;
+        // İlk null GEÇİCİ olabilir (mobilde kalıcılık gecikmesi). 6 sn içinde
+        // gerçek oturum gelmezse oturum gerçekten yok → giriş ekranı.
         if (nullTimer) return;
         nullTimer = setTimeout(function(){
           if (decided) return;
           decided = true;
           clearLocalLogin();
-          /* 50-80 yaş: kullanıcıyı çalışırken giriş ekranına FIRLATMA.
-             Misafir olarak devam etsin; üstte nazik bir not çıksın. */
-          try{ localStorage.setItem("dh_guest_mode", "1"); }catch(e){}
-          oturumNotu();
+          goLogin();
         }, 6000);
       }
     });

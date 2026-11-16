@@ -68,7 +68,7 @@
 
   <div class="card hidden" id="card">
     <div class="brand"><span class="logo">🗺️</span><h1>Dil Haritası</h1></div>
-    <p class="sub">Hesap açarsan ilerlemen tüm cihazlarında eşitlenir. İstersen önce uygulamayı deneyebilirsin.</p>
+    <p class="sub">Devam etmek için giriş yap. İlerlemen hesabına kaydedilir ve tüm cihazlarında eşitlenir.</p>
 
     <label for="email">E-posta</label>
     <input id="email" type="email" placeholder="ornek@eposta.com" autocomplete="email" />
@@ -78,25 +78,18 @@
 
     <label style="display:flex;align-items:center;gap:8px;margin:10px 0 2px;cursor:pointer;font-size:14px;color:#cbd5e1;font-weight:600">
       <input id="remember" type="checkbox" checked style="width:26px;height:26px;cursor:pointer;accent-color:#2563eb">
-      Beni hatırla (bu cihazda oturumu açık tut)
+      Bu cihazda hatırla
     </label>
+    <p style="margin:0 0 4px 34px;font-size:13px;color:#94a3b8;line-height:1.4">İşaretliyse bu cihazda bir daha şifre sorulmaz. Ortak kullanılan cihazda işareti kaldır: uygulama kapanınca şifre yeniden sorulur.</p>
 
     <div class="msg" id="msg"></div>
 
     <button class="btn-primary" id="loginBtn">Giriş yap</button>
     <button class="btn-ghost" id="signupBtn">Yeni hesap oluştur</button>
-    <button class="btn-ghost" id="guestBtn">Hesap açmadan devam et</button>
     <button class="link" id="resetBtn">Şifremi unuttum</button>
   </div>
 
 <script>
-  /* Firebase/CDN yüklenemese bile misafir girişi çalışır. */
-  document.getElementById("guestBtn").addEventListener("click", function(){
-    try{ localStorage.setItem("dh_guest_mode","1"); }catch(e){}
-    var next="./index.html";
-    try{ var n=new URLSearchParams(location.search).get("next"); if(n&&/^[a-zA-Z0-9._\-]+\.html/.test(n)) next=n; }catch(e){}
-    location.replace(next);
-  });
   /* Giriş servisi hiç yüklenemezse (internet yok) "Oturum kontrol ediliyor…"da sonsuza kadar bekletme */
   setTimeout(function(){
     try{
@@ -105,7 +98,7 @@
         b.classList.add("hidden"); c.classList.remove("hidden");
         var n=document.createElement("p");
         n.style.cssText="margin:0 0 12px;padding:10px 12px;border-radius:10px;background:#422006;color:#fde68a;font-size:16px;line-height:1.45";
-        n.textContent="İnternete bağlanılamadı. Giriş için bağlantı gerekir; istersen hesapsız devam edebilirsin.";
+        n.textContent="İnternete bağlanılamadı. Giriş için bağlantı gerekir; bağlantı gelince sayfayı yenile. (Bu cihazda hatırlanmış girişin varsa uygulama internetsiz de açılır.)";
         c.insertBefore(n, c.children[1]||null);
       }
     }catch(e){}
@@ -114,9 +107,9 @@
 
 <script type="module">
   import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-  import { getAuth, setPersistence, browserLocalPersistence, indexedDBLocalPersistence,
+  import { getAuth, setPersistence, browserLocalPersistence, indexedDBLocalPersistence, browserSessionPersistence,
            signInWithEmailAndPassword, createUserWithEmailAndPassword,
-           sendPasswordResetEmail, onAuthStateChanged }
+           sendPasswordResetEmail, onAuthStateChanged, signOut }
     from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
   const firebaseConfig = {
@@ -130,11 +123,22 @@
 
   const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  // Oturumu kalıcı tut: bir kez giriş yapınca tarayıcı kapansa bile hatırlansın.
-  // Önce IndexedDB: localStorage uygulama verileriyle dolabiliyor (≈5 MB sınırı) ve
-  // dolunca giriş "QuotaExceededError" ile çöküyordu. IndexedDB'nin alanı çok daha geniş.
-  try{ await setPersistence(auth, indexedDBLocalPersistence); }
-  catch(e){ try{ await setPersistence(auth, browserLocalPersistence); }catch(e2){} }
+  /* Kalıcılık "Bu cihazda hatırla" kutusuna göre GİRİŞ ANINDA seçilir:
+     işaretliyse kalıcı (önce IndexedDB: localStorage uygulama verileriyle
+     dolabiliyor ve giriş "QuotaExceededError" ile çöküyordu), değilse
+     yalnız bu oturum — uygulama kapanınca şifre yeniden sorulur. */
+  async function applyPersistence(){
+    const rem = document.getElementById("remember");
+    const on = !rem || rem.checked;
+    try{ localStorage.setItem("dh_remember", on ? "1" : "0"); }catch(e){}
+    if(on){
+      try{ await setPersistence(auth, indexedDBLocalPersistence); }
+      catch(e){ try{ await setPersistence(auth, browserLocalPersistence); }catch(e2){} }
+    } else {
+      try{ await setPersistence(auth, browserSessionPersistence); }catch(e){}
+    }
+  }
+  let justSignedIn = false;
 
   const boot = document.getElementById("boot");
   const card = document.getElementById("card");
@@ -147,16 +151,24 @@
     try{
       const p = new URLSearchParams(location.search);
       const n = p.get("next");
-      if (n && /^[a-zA-Z0-9._\-]+\.html/.test(n)) return n;
+      if (n && /^[\p{L}\p{N}._\-]+\.html/u.test(n)) return n;
     }catch(e){}
     return "./index.html";
   }
 
   // Oturum durumu: girişliyse hedefe yönlendir, değilse formu göster.
   let redirected = false;
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
+    /* Hatırlanmayan eski bir oturum (önceki sürümde her giriş kalıcıydı)
+       yeni açılışta şifresiz geçmesin. */
+    if (user && !justSignedIn){
+      let ok = false;
+      try{ ok = localStorage.getItem("dh_remember")==="1" || sessionStorage.getItem("dh_session_ok")==="1"; }catch(e){}
+      if(!ok){ try{ await signOut(auth); }catch(e){} return; }
+    }
     if (user && !redirected){
       redirected = true;
+      try{ sessionStorage.setItem("dh_session_ok","1"); }catch(e){}
       // Yerel işaret bırak: internet olmasa bile auth-guard bu kişiyi içeri alsın.
       try{
         if(localStorage.getItem("dh_guest_mode")==="1"){
@@ -171,15 +183,14 @@
       // Oturum yok. "Beni hatırla" AÇIKSA ve daha önce giriş yapılmışsa yerel işareti
       // SİLME — mobilde Firebase persistence gecikmesi/temizliği yüzünden gelen geçici
       // null, kullanıcıyı atmasın. Sadece remember kapalıysa temizle.
-      let remembered = false;
-      try{ remembered = localStorage.getItem("dh_remember")==="1" && localStorage.getItem("dh_logged_in")==="1"; }catch(e){}
-      if(!remembered){
-        try{
-          localStorage.removeItem("dh_logged_in");
-          localStorage.removeItem("dh_logged_uid");
-          localStorage.removeItem("dh_logged_email");
-        }catch(e){}
-      }
+      /* Giriş ekranına gelindiyse oturum yok demektir (bekçi ya da çıkış
+         gönderdi): yerel işaret temizlenir, şifre istenir. */
+      try{
+        localStorage.removeItem("dh_logged_in");
+        localStorage.removeItem("dh_logged_uid");
+        localStorage.removeItem("dh_logged_email");
+        sessionStorage.removeItem("dh_session_ok");
+      }catch(e){}
       boot.classList.add("hidden");
       card.classList.remove("hidden");
     }
@@ -206,22 +217,15 @@
 
   document.getElementById("loginBtn").onclick = async () => {
     if(!email()||!pass()){ setMsg("E-posta ve şifre gir.","bad"); return; }
-    // beni hatırla tercihini kaydet
-    try{
-      var rem = document.getElementById("remember");
-      localStorage.setItem("dh_remember", (rem && rem.checked) ? "1" : "0");
-    }catch(e){}
     busy(true); setMsg("Giriş yapılıyor…");
+    justSignedIn = true; await applyPersistence();
     try{ await signInWithEmailAndPassword(auth, email(), pass()); /* yönlendirme onAuth ile */ }
-    catch(e){ busy(false); setMsg(errText(e),"bad"); }
+    catch(e){ justSignedIn = false; busy(false); setMsg(errText(e),"bad"); }
   };
   document.getElementById("signupBtn").onclick = async () => {
     if(!email()||!pass()){ setMsg("E-posta ve şifre gir.","bad"); return; }
-    try{
-      var rem2 = document.getElementById("remember");
-      localStorage.setItem("dh_remember", (rem2 && rem2.checked) ? "1" : "0");
-    }catch(e){}
     busy(true); setMsg("Hesap oluşturuluyor…");
+    justSignedIn = true; await applyPersistence();
     try{ await createUserWithEmailAndPassword(auth, email(), pass()); }
     catch(e){ busy(false); setMsg(errText(e),"bad"); }
   };

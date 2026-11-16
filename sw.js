@@ -13,7 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v432";  /* 🎓 Konuşkan seviye sınavı ve sertifika */
+var SW_VERSION = "dh-sw-v433";  /* 🔐 Zorunlu giriş + bu cihazda hatırla */
+/* onceki v432: 🎓 Konuşkan seviye sınavı ve sertifika */
 /* onceki v431: 🗣️ Konuşkan */
 /* onceki v430: 🧰 Düğmeler */
 /* onceki v310: Kolay Kullanım v2: tüm ekran denetimi */
