@@ -406,7 +406,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         const yanit = liste.map(c => c.metin).join(' ');
         if (!yanit) throw { code: 'bad_json' };
         const m = { role: 'assistant', text: yanit, tr: r.reply_tr || '', liste };
-        st.hist.push(m); st.son = m; ogretmenMesaji(m); rozet(); cevirileriTamamla(m);
+        st.hist.push(m); st.son = m; ogretmenMesaji(m); rozet();
+        await cevirileriTamamla(m);   /* örneklerin çevirisi okunmadan önce hazır olsun */
         st.busy = false;
         await soyle(m);
       } catch (e) {
@@ -424,14 +425,20 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       q('.vd-tr').textContent = m.tr;
       const liste = m.liste;
       const ac = aciklamaMi(m), trKut = q('.vd-tr');
-      await yuz.konus(liste, { hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: (c, i) => {
-        if (ac) { if (c.dil === 'en' && c.cev) { trKut.textContent = c.cev; trKut.hidden = false; trKut.classList.add('ornek'); } else { trKut.textContent = ''; trKut.classList.remove('ornek'); } }
+      /* Türkçe anlatımda her İngilizce örnekten sonra Türkçe çevirisi de Türkçe sesle okunur */
+      const okunacak = [];
+      liste.forEach((c, k) => { okunacak.push(Object.assign({}, c, { _k: k })); if (ac && c.dil === 'en' && c.cev) okunacak.push({ metin: c.cev, dil: 'tr', duygu: c.duygu, guc: c.guc, jest: null, _k: k, _cev: c.cev }); });
+      await yuz.konus(okunacak, { hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: (c) => {
+        const i = c._k, asil = liste[i];
+        if (ac) { if (asil.dil === 'en' && asil.cev) { trKut.textContent = asil.cev; trKut.hidden = false; trKut.classList.add('ornek'); trKut.classList.toggle('okunuyor', !!c._cev); } else { trKut.textContent = ''; trKut.classList.remove('ornek', 'okunuyor'); } }
         /* kısa cevapta tüm cümleler, uzun açıklamada yalnız söylenen cümle */
-        const goster = liste.length > 2 ? [[c, i]] : liste.map((x, k) => [x, k]);
-        q('.vd-cumle').innerHTML = goster.map(([x, k]) => `<span class="${k === i ? 'su' : k < i ? 'gecti' : ''}${x.dil === 'tr' ? ' trp' : ''}">${esc(x.metin)}</span>`).join(' ');
+        const goster = liste.length > 2 ? [[asil, i]] : liste.map((x, k) => [x, k]);
+        q('.vd-cumle').innerHTML = goster.map(([x, k]) => `<span class="${k === i && !c._cev ? 'su' : k <= i ? 'gecti' : ''}${x.dil === 'tr' ? ' trp' : ''}">${esc(x.metin)}</span>`).join(' ');
+        if (m._el) m._el.querySelectorAll('.vd-p-cev').forEach(el => el.classList.toggle('okunuyor', !!c._cev && +el.dataset.i === i));
       } });
+      if (m._el) m._el.querySelectorAll('.vd-p-cev.okunuyor').forEach(el => el.classList.remove('okunuyor'));
       if (m._el) m._el.classList.remove('konusan');
-      if (ac) { trKut.classList.remove('ornek'); trKut.hidden = !ayar.altyaziTR; }
+      if (ac) { trKut.classList.remove('ornek', 'okunuyor'); trKut.hidden = !ayar.altyaziTR; }
       if (st.bitti || kok.dataset.d !== 'konusuyor') return;
       q('.vd-cumle').querySelectorAll('span').forEach(s => s.className = 'gecti');
       if (st.konu.tasks && st.done.size >= st.konu.tasks.length && !st.gorevMsg) { st.gorevMsg = true; toast('Tüm görevleri tamamladın! İstersen dersi bitirebilirsin.'); }
