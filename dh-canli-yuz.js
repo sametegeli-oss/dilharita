@@ -108,11 +108,11 @@
   function olustur(canvas, sec) {
     sec = sec || {};
     var yol = sec.yol || "./assets/avatars_v4/teacher/";
-    var gl = canvas.getContext("webgl", { premultipliedAlpha: false, antialias: true, preserveDrawingBuffer: !!sec.ekranGoruntusu });
+    var gl = canvas.getContext("webgl", { alpha: true, premultipliedAlpha: true, antialias: true, preserveDrawingBuffer: !!sec.ekranGoruntusu });
     var durum = { hazir: false, yikildi: false };
     var face, W, H, taban, parcalar = {};
     var cmp = document.createElement("canvas"), cx;
-    var N = 56, verts, uvs, idx, temel, headW, faceW, kollar = [];
+    var N = 96, verts, uvs, idx, temel, headW, faceW, gozW, kollar = [], maskeImg = null;
     var prog, posBuf, uvBuf, idxBuf, tex, uLoc;
 
     /* parametre durumu */
@@ -145,6 +145,8 @@
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.uniform2f(uLoc.size, W, H);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     }
 
     /* ---------------- Yüz kolları (deformasyon tutamakları) ---------------- */
@@ -154,30 +156,41 @@
       var yanakL = [(P[31][0] + P[2][0]) / 2 + 6, (P[31][1] + P[2][1]) / 2 + 18], yanakR = [(P[35][0] + P[14][0]) / 2 - 6, (P[35][1] + P[14][1]) / 2 + 18];
       var iod = gozR[0] - gozL[0];            /* gözler arası: ölçek */
       var s = iod / 165;                      /* öğretmen fotoğrafında ~165 px */
-      function kol(ad, nokta, sx, sy) { kollar.push({ ad: ad, x: nokta[0], y: nokta[1], sx: sx * s, sy: sy * s, dx: 0, dy: 0 }); }
-      kol("kasIcL", P[21], 22, 12); kol("kasIcR", P[22], 22, 12);
-      kol("kasOrtaL", P[19], 24, 12); kol("kasOrtaR", P[24], 24, 12);
-      kol("kasDisL", P[17], 22, 12); kol("kasDisR", P[26], 22, 12);
+      function kol(ad, nokta, sx, sy, syAlt, koru) { kollar.push({ ad: ad, x: nokta[0], y: nokta[1], sx: sx * s, sy: sy * s, syAlt: (syAlt || sy) * s, koru: !!koru, dx: 0, dy: 0 }); }
+      /* kaşlar: yukarıya (alına) geniş, aşağıya (gözlüğe) çok dar etki eder */
+      kol("kasIcL", P[21], 22, 14, 3.5, true); kol("kasIcR", P[22], 22, 14, 3.5, true);
+      kol("kasOrtaL", P[19], 24, 14, 3.5, true); kol("kasOrtaR", P[24], 24, 14, 3.5, true);
+      kol("kasDisL", P[17], 22, 14, 3.5, true); kol("kasDisR", P[26], 22, 14, 3.5, true);
       kol("ustKapakL", ort(P, [37, 38]), 16, 6); kol("ustKapakR", ort(P, [43, 44]), 16, 6);
       kol("altKapakL", ort(P, [40, 41]), 16, 6); kol("altKapakR", ort(P, [46, 47]), 16, 6);
       kol("irisL", gozL, 7, 6); kol("irisR", gozR, 7, 6);
-      kol("koseL", P[48], 15, 13); kol("koseR", P[54], 15, 13);
-      kol("yanakL", yanakL, 26, 22); kol("yanakR", yanakR, 26, 22);
-      kol("ustDudak", P[51], 18, 8); kol("altDudak", P[57], 18, 9);
-      /* baş maskesi: başta 1, boyun/omuz ve arka planda 0'a iner */
+      kol("koseL", P[48], 15, 13, 13, true); kol("koseR", P[54], 15, 13, 13, true);
+      kol("yanakL", yanakL, 26, 22, 22, true); kol("yanakR", yanakR, 26, 22, 22, true);
+      kol("ustDudak", P[51], 18, 8, 8, true); kol("altDudak", P[57], 18, 9, 9, true);
+      /* baş maskesi: fotoğraftan çıkarılmış (baş + saç = 1, boyun yumuşak, omuz = 0).
+         Saç ve baş birlikte, bozulmadan döner; fon saydam olduğu için arkada bükülme olmaz. */
       var merkez = [ (P[0][0] + P[16][0]) / 2, (P[19][1] + P[8][1]) / 2 - 20 * s ];
       var rx = (P[16][0] - P[0][0]) * 0.72, ry = (P[8][1] - P[19][1]) * 1.1;
       var pivot = [merkez[0], P[8][1] + 40 * s];
-      var n1 = N + 1; headW = new Float32Array(n1 * n1); faceW = new Float32Array(n1 * n1);
-      var burun = P[30];
+      var n1 = N + 1; headW = new Float32Array(n1 * n1); faceW = new Float32Array(n1 * n1); gozW = new Float32Array(n1 * n1);
+      var burun = P[30], md = null, mw = 0, mh = 0;
+      if (maskeImg) { var mc = document.createElement("canvas"); mw = mc.width = maskeImg.naturalWidth; mh = mc.height = maskeImg.naturalHeight; var mx = mc.getContext("2d"); mx.drawImage(maskeImg, 0, 0); md = mx.getImageData(0, 0, mw, mh).data; }
+      function maske(x, y) {
+        var u = Math.max(0, Math.min(mw - 1.001, x / W * mw - 0.5)), v = Math.max(0, Math.min(mh - 1.001, y / H * mh - 0.5));
+        var i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j;
+        function g(a, b) { return md[((b * mw) + a) * 4] / 255; }
+        return (g(i, j) * (1 - fu) + g(i + 1, j) * fu) * (1 - fv) + (g(i, j + 1) * (1 - fu) + g(i + 1, j + 1) * fu) * fv;
+      }
+      var gz = face.gozluk, ss = function (e0, e1, x) { var t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
       for (var v = 0; v < n1 * n1; v++) {
-        var x = temel[v * 2], y = temel[v * 2 + 1];
-        var dx = (x - merkez[0]) / rx, dy = (y - merkez[1]) / ry, r = Math.sqrt(dx * dx + dy * dy);
-        var w = r < 0.8 ? 1 : r > 1.2 ? 0 : 1 - (r - 0.8) / 0.4; w = w * w * (3 - 2 * w);
-        if (y > pivot[1]) w *= Math.max(0, 1 - (y - pivot[1]) / (60 * s));
+        var x = temel[v * 2], y = temel[v * 2 + 1], w;
+        if (md) w = maske(x, y);
+        else { var dx = (x - merkez[0]) / rx, dy = (y - merkez[1]) / ry, r = Math.sqrt(dx * dx + dy * dy); w = r < 0.8 ? 1 : r > 1.2 ? 0 : 1 - (r - 0.8) / 0.4; w = w * w * (3 - 2 * w); }
         headW[v] = w;
         var fx = (x - burun[0]) / (rx * 0.55), fy = (y - burun[1]) / (ry * 0.5);
         faceW[v] = Math.exp(-(fx * fx + fy * fy));
+        /* gözlük bölgesi: kaş / yanak / ağız hareketleri gözlüğü esnetmesin */
+        gozW[v] = gz ? ss(gz[0] - 6, gz[0] + 6, x) * (1 - ss(gz[2] - 6, gz[2] + 6, x)) * ss(gz[1] - 4, gz[1] + 6, y) * (1 - ss(gz[3] - 6, gz[3] + 6, y)) : 0;
       }
       durum.pivot = pivot; durum.s = s; durum.merkez = merkez;
     }
@@ -211,12 +224,12 @@
       var rollR = p.roll * Math.PI / 180, cs = Math.cos(rollR), sn = Math.sin(rollR);
       var pitchY = p.pitch * 14 * s, pitchS = p.pitch * 0.035, yawX = p.yaw * 16 * s;
       for (var v = 0; v < n; v++) {
-        var x = temel[v * 2], y = temel[v * 2 + 1], ox = 0, oy = 0;
+        var x0 = temel[v * 2], y0 = temel[v * 2 + 1], x = x0, y = y0, ox = 0, oy = 0;
         for (var k = 0; k < kollar.length; k++) {
           var h = kollar[k]; if (!h.dx && !h.dy) continue;
-          var ddx = (x - h.x) / h.sx, ddy = (y - h.y) / h.sy, d2 = ddx * ddx + ddy * ddy;
+          var ddx = (x - h.x) / h.sx, ddy = (y - h.y) / (y > h.y ? h.syAlt : h.sy), d2 = ddx * ddx + ddy * ddy;
           if (d2 > 9) continue;
-          var w = Math.exp(-0.5 * d2); ox += h.dx * w; oy += h.dy * w;
+          var w = Math.exp(-0.5 * d2); if (h.koru) w *= 1 - gozW[v]; ox += h.dx * w; oy += h.dy * w;
         }
         x += ox; y += oy;
         var hw = headW[v];
@@ -240,11 +253,12 @@
       var anahtar = agiz.a + "|" + agiz.b + "|" + agiz.t.toFixed(2) + "|" + gozKirp.toFixed(2);
       if (anahtar === sonDoku) return;
       sonDoku = anahtar;
-      cx.globalAlpha = 1; cx.drawImage(taban, 0, 0);
+      cx.globalCompositeOperation = "source-over"; cx.globalAlpha = 1; cx.clearRect(0, 0, W, H); cx.drawImage(taban, 0, 0);
+      cx.globalCompositeOperation = "source-atop";   /* parçalar kişinin dışına taşmasın */
       function parca(ad, a) { var pr = parcalar[ad]; if (!pr || a <= 0.01) return; cx.globalAlpha = Math.min(1, a); cx.drawImage(pr.img, pr.x, pr.y); }
       parca(agiz.a, 1 - agiz.t); parca(agiz.b, agiz.t);
       parca("blink", gozKirp);
-      cx.globalAlpha = 1;
+      cx.globalAlpha = 1; cx.globalCompositeOperation = "source-over";
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cmp);
     }
@@ -286,7 +300,7 @@
       var nefes = hareketAz ? 0 : Math.sin(t * 1.6) * 0.0025;
       var zoom = 1 + Math.max(-0.3, p.lean) * 0.06 + nefes;
       gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       gl.uniform3f(uLoc.cam, durum.merkez[0], durum.merkez[1] + 40 * durum.s, zoom);
       gl.bindBuffer(gl.ARRAY_BUFFER, posBuf); gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
       var aPos = gl.getAttribLocation(prog, "aPos"); gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
@@ -390,6 +404,7 @@
       canvas.width = W; canvas.height = H;
       cmp.width = W; cmp.height = H; cx = cmp.getContext("2d");
       var isler = [yukle(yol + f.taban).then(function (im) { taban = im; })];
+      if (f.basMaske) isler.push(yukle(yol + f.basMaske).then(function (im) { maskeImg = im; }, function () {}));
       Object.keys(f.parcalar).forEach(function (k) { var pr = f.parcalar[k]; isler.push(yukle(yol + pr.dosya).then(function (im) { parcalar[k] = { img: im, x: pr.x, y: pr.y }; })); });
       return Promise.all(isler);
     }).then(function () {

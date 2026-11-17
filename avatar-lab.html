@@ -18,7 +18,10 @@
   main { display:grid; grid-template-columns:minmax(280px,520px) 1fr; gap:18px; padding:16px; max-width:1200px; margin:0 auto; }
   @media (max-width:820px){ main { grid-template-columns:1fr; } .sahne { position:static !important; } }
   .sahne { position:sticky; top:64px; align-self:start; }
-  .cerceve { position:relative; border-radius:20px; overflow:hidden; background:#000; aspect-ratio:1; box-shadow:0 10px 40px #0008; }
+  .cerceve { position:relative; border-radius:20px; overflow:hidden; background:var(--fon,#dfe6ee); aspect-ratio:1; box-shadow:0 10px 40px #0008; transition:background .3s; }
+  .fonlar { display:flex; gap:8px; align-items:center; margin-top:10px; font-size:13px; color:var(--soluk); }
+  .fonlar button { width:26px; height:26px; padding:0; border-radius:50%; border:2px solid var(--kenar); }
+  .fonlar button.secili { border-color:var(--vurgu); }
   canvas#yuz { width:100%; height:100%; display:block; }
   .durum { position:absolute; left:10px; bottom:10px; display:flex; gap:6px; flex-wrap:wrap; }
   .durum span { background:#000a; backdrop-filter:blur(4px); padding:3px 9px; border-radius:99px; font-size:12px; }
@@ -60,6 +63,7 @@
       <div class="yukleniyor" id="yukleniyor">Yüz hazırlanıyor…</div>
       <div class="durum"><span id="dDuygu">Nötr</span><span id="dJest" hidden></span></div>
     </div>
+    <div class="fonlar" id="fonlar">Fon:</div>
     <div class="altyazi" id="altyazi">Bir duygu seç ya da aşağıdan bir cümle okut.</div>
   </div>
 
@@ -124,7 +128,7 @@
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./ai-providers.js?v=t37"></script>
 <script src="./viseme-lang.js"></script>
-<script src="./dh-canli-yuz.js?v=1"></script>
+<script src="./dh-canli-yuz.js?v=2"></script>
 <script>
 (function () {
   "use strict";
@@ -135,6 +139,12 @@
   var KAYIT = "dh-avatar-lab-v1";
   var ayar = {}; try { ayar = JSON.parse(localStorage.getItem(KAYIT) || "{}"); } catch (e) {}
   function kaydet() { try { localStorage.setItem(KAYIT, JSON.stringify(ayar)); } catch (e) {} }
+
+  /* Fon rengi */
+  var FONLAR = ["#dfe6ee", "#f3ece2", "#d9ebe3", "#2b3242", "transparent"];
+  function fonUygula(c) { document.querySelector(".cerceve").style.setProperty("--fon", c === "transparent" ? "repeating-conic-gradient(#cfd4dc 0 25%, #eef1f5 0 50%) 0 0/24px 24px" : c); document.querySelectorAll("#fonlar button").forEach(function (b) { b.classList.toggle("secili", b.dataset.c === c); }); ayar.fon = c; kaydet(); }
+  FONLAR.forEach(function (c) { var b = document.createElement("button"); b.dataset.c = c; b.title = c === "transparent" ? "Saydam" : c; b.style.background = c === "transparent" ? "repeating-conic-gradient(#cfd4dc 0 25%, #eef1f5 0 50%) 0 0/10px 10px" : c; b.onclick = function () { fonUygula(c); }; $("#fonlar").appendChild(b); });
+  fonUygula(ayar.fon || FONLAR[0]);
 
   yuz.hazir.then(function () { $("#yukleniyor").remove(); }, function (e) { $("#yukleniyor").textContent = "Avatar açılamadı: " + (e && e.message || e); });
 
