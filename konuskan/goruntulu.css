@@ -350,3 +350,20 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 
 .vd-p-cev.okunuyor { color: #fff; }
 .vd-tr.ornek.okunuyor { color: #fff; }
+
+/* ---------- telefon (dikey) v2: yüz üstte, altyazı ve kontrollerin üstünde kalsın ---------- */
+@media (max-aspect-ratio: 1/1) and (max-width: 760px) {
+  .vd-yuz { top: calc(env(safe-area-inset-top, 0px) + 92px); bottom: auto; height: min(58vh, 58dvh, 125vw); transform: translateX(-50%); }
+  .vd-derste .vd-yuz { transform: translateX(-50%); }
+  .vd-yuz { -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent 99%); mask-image: linear-gradient(to bottom, #000 80%, transparent 99%); }
+  .vd-cumle { font-size: 1rem; line-height: 1.4; padding: 3px 9px; }
+  .vd-tr { font-size: .84rem; margin-top: 5px; }
+  .vd-altyazi { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+  .vd-mod { padding: 3px; }
+  .vd-mod span { padding: 6px 9px; font-size: .76rem; }
+}
+@media (max-width: 420px) {
+  .vd-kim > div { display: none; }
+  .vd-ust-sag { gap: 5px; }
+  .vd-ib { width: 34px; height: 34px; }
+}
