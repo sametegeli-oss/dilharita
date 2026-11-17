@@ -99,6 +99,7 @@
     return basitDizi(metin);
   }
 
+  var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   function yukle(src) { return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
@@ -327,11 +328,24 @@
       if (c.duzeltHedef != null) { c.duzelt = (c.duzelt || 0) + (c.duzeltHedef - (c.duzelt || 0)) * Math.min(1, dt * 4); }
       var gecen = simdi - c.bas + (c.duzelt || 0);
       var i = Math.min(c.dizi.length - 1, Math.max(0, Math.floor(gecen / c.kareMs)));
-      var sekil = c.konusuyor ? c.dizi[i] : "idle";
+      var sekil = c.konusuyor && !c.bekle ? c.dizi[i] : "idle";
       if (sekil === "th" && !parcalar.th) sekil = "e";
       if (sekil !== "idle" && !agizParca(sekil)) sekil = "idle";
       if (sekil !== agiz.b) { agiz.a = agiz.t > 0.5 ? agiz.b : agiz.a; agiz.b = sekil; agiz.t = 0; }
       agiz.t = Math.min(1, agiz.t + dt / 0.1);
+    }
+    /* Ses listesi ilk açılışta boş gelebilir: o an seçilen ses yerine varsayılan (çoğu zaman
+       internetten gelen, gecikmeli) ses kullanılır ve ağız sesten önce başlardı. */
+    var sesListesi = null;
+    function seslerHazir() {
+      if (sesListesi) return sesListesi;
+      sesListesi = new Promise(function (res) {
+        try { if ((speechSynthesis.getVoices() || []).length) return res(); } catch (e) { return res(); }
+        var bitti = false; function tamam() { if (!bitti) { bitti = true; res(); } }
+        try { speechSynthesis.addEventListener("voiceschanged", tamam, { once: true }); } catch (e) {}
+        setTimeout(tamam, 1200);
+      });
+      return sesListesi;
     }
     function sesSec(dil) {
       var vs = []; try { vs = speechSynthesis.getVoices() || []; } catch (e) {}
@@ -369,29 +383,42 @@
         if (c.duygu) api.duygu(c.duygu, c.guc == null ? 0.8 : c.guc);
         if (c.jest && JESTLER[c.jest]) setTimeout(function () { if (konusma) api.jest(c.jest); }, c.jestZaman === "son" ? Math.max(300, c.metin.length * msHarf * 0.75) : 150);
         var bitti = false; function son() { if (bitti) return; bitti = true; c.konusuyor = false; setTimeout(res, 140); }
+        seslerHazir().then(function () { if (!bitti && konusma && konusma.cumle === c) baslat(); else son(); });
+        function baslat() {
         var u; try { u = new SpeechSynthesisUtterance(c.metin); } catch (e) { u = null; }
         if (!u || !global.speechSynthesis) { c.konusuyor = true; c.bas = performance.now(); setTimeout(son, c.metin.length * msHarf); return; }
         var v = sesSec(dil); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = dil === "tr" ? "tr-TR" : "en-US";
         u.rate = hizOrani || 1;
         u.onboundary = function (ev) {
           if (!ev || typeof ev.charIndex !== "number" || !c.metin.length) return;
+          sinirVar = true;
           /* kelime sınırında ağzı metindeki konuma hizala */
           var kareNo = ev.charIndex / c.metin.length * c.dizi.length;
           if (c.dizi.ci) { kareNo = 0; while (kareNo < c.dizi.ci.length && c.dizi.ci[kareNo] < ev.charIndex) kareNo++; }
-          var beklenen = kareNo * c.kareMs, gecen = performance.now() - c.bas;
+          var beklenen = kareNo * c.kareMs;
+          /* ilk kelime gerçekten okunmaya başladı: ağzı tam bu ana bağla */
+          if (c.bekle) { c.bekle = false; clearTimeout(c.bekleZ); c.bas = performance.now() - beklenen; c.duzelt = 0; c.duzeltHedef = null; return; }
+          var gecen = performance.now() - c.bas;
           var fark = beklenen - gecen - (c.duzelt || 0);
           if (Math.abs(fark) > 180) c.duzeltHedef = beklenen - gecen;   /* küçük sapmalar yok sayılır */
         };
         /* ses yoksa / hata verirse: sessiz okuma (ağız yine metin süresince oynar) */
-        var basladi = false, sessiz = false;
-        function sessizOku() { if (sessiz || bitti) return; sessiz = true; c.konusuyor = true; c.bas = performance.now(); c.duzelt = 0; c.duzeltHedef = null; setTimeout(son, c.metin.length * msHarf); }
-        u.onstart = function () { basladi = true; c.bas = performance.now(); c.konusuyor = true; };
+        var basladi = false, sessiz = false, sessizZ = null;
+        function sessizOku() { if (sessiz || bitti) return; sessiz = true; c.konusuyor = true; c.bekle = false; c.bas = performance.now(); c.duzelt = 0; c.duzeltHedef = null; sessizZ = setTimeout(son, c.metin.length * msHarf); }
+        u.onstart = function () {
+          /* ses geç geldiyse sessiz okumayı bırak, sese yeniden hizalan */
+          if (sessiz) { clearTimeout(sessizZ); sessiz = false; }
+          basladi = true; c.bas = performance.now(); c.konusuyor = true; c.duzelt = 0; c.duzeltHedef = null;
+          /* bu tarayıcı kelime sınırı bildiriyorsa ağız ilk kelimenin gerçekten duyulduğu anda başlar */
+          if (sinirVar) { c.bekle = true; c.bekleZ = setTimeout(function () { if (c.bekle) { c.bekle = false; c.bas = performance.now(); } }, 800); }
+        };
         u.onend = function () { if (!basladi) sessizOku(); else son(); };
         u.onerror = function (ev) { if (ev && (ev.error === "interrupted" || ev.error === "canceled")) son(); else sessizOku(); };
         /* güvenlik: ses hiç başlamazsa ya da bitiş gelmezse */
-        setTimeout(function () { if (!basladi && !bitti) sessizOku(); }, 900);
+        setTimeout(function () { if (!basladi && !bitti) sessizOku(); }, 2500);
         setTimeout(son, Math.max(4000, c.metin.length * msHarf * 2.2 + 2000));
         try { speechSynthesis.speak(u); } catch (e) { son(); }
+        }
       });
     }
 
@@ -426,6 +453,16 @@
           return cumleSoyle(c, o.hiz || 1).then(sonraki);
         }
         return sonraki();
+      },
+      /* sesleri sessizce ısıt: ilk gerçek cümle soğuk ses motoru yüzünden geç başlamasın (kullanıcı dokunuşunda çağır) */
+      isit: function () {
+        if (!global.speechSynthesis) return;
+        seslerHazir().then(function () {
+          ["en", "tr"].forEach(function (d) {
+            try { var u = new SpeechSynthesisUtterance(d === "tr" ? "merhaba" : "hello"); var v = sesSec(d); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = d === "tr" ? "tr-TR" : "en-US";
+              u.volume = 0; u.rate = 1.6; u.onboundary = function () { sinirVar = true; }; speechSynthesis.speak(u); } catch (e) {}
+          });
+        });
       },
       sustur: function () { if (konusma) konusma.iptal = true; konusma = null; try { speechSynthesis.cancel(); } catch (e) {} },
       yikil: function () { durum.yikildi = true; api.sustur(); }

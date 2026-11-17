@@ -375,7 +375,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       const kendi = q('.vd-kendi input').value.trim();
       if (kendi) st.konu = { id: 'custom', t: kendi, s: '', persona: PERSONA, custom: kendi };
       if (aiOff()) { toast(aiErr({ code: 'no_ai' })); return; }
-      try { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance('')); } catch (e) {}
+      try { speechSynthesis.cancel(); yuz.isit(); } catch (e) {}   /* sesleri ısıt: ilk cümlede ağız sesin önüne geçmesin */
       st.faz = 'ders'; st.bas = Date.now(); kok.classList.add('vd-derste');
       if (genis() && ayar.sohbet !== false) sohbetAc(true, true);
       q('.vd-lobi').remove(); q('.vd-alt-bar').hidden = false; q('.vd-sure').hidden = false;
