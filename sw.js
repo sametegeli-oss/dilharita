@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v442";  /* 🧑‍🏫 Canlı avatar: saydam fon, gözlük koruması, saç maskesi */ //  /* 🔗 Dil Harita ↔ Konuşkan: modül sonu konuşma, ortak hata defteri */
+var SW_VERSION = "dh-sw-v443";  /* 🧑‍🏫 Canlı avatar: 8 duygu fotoğrafı, gülümserken konuşma */ //  /* 🔗 Dil Harita ↔ Konuşkan: modül sonu konuşma, ortak hata defteri */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */
 /* onceki v438: 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
 /* onceki v437: ➕ Konuşkan: kendi kursunu oluştur */

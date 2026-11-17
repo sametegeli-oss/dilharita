@@ -84,6 +84,7 @@
     <section>
       <h2>2 · Duygular</h2>
       <p class="aciklama">Bir duyguya dokun; güç kaydırıcısı ifadenin ne kadar belirgin olacağını belirler.</p>
+      <label class="onay" style="margin-bottom:8px"><input type="checkbox" id="fotoAc" checked> Duygu fotoğraflarını kullan (kapalıyken yalnız esnetme)</label>
       <div class="dugmeler" id="duygular"></div>
       <div class="satir" style="margin-top:10px"><span>Güç</span><input type="range" id="guc" min="0" max="1.3" step="0.05" value="0.9"><output id="gucO">0.90</output></div>
     </section>
@@ -128,7 +129,7 @@
 <script src="./storage-bridge.js?v=3"></script>
 <script src="./ai-providers.js?v=t37"></script>
 <script src="./viseme-lang.js"></script>
-<script src="./dh-canli-yuz.js?v=2"></script>
+<script src="./dh-canli-yuz.js?v=3"></script>
 <script>
 (function () {
   "use strict";
@@ -160,6 +161,8 @@
     $("#duygular").appendChild(b);
   });
   duyguGoster("notr");
+  $("#fotoAc").checked = ayar.foto !== false; yuz.fotoKullan($("#fotoAc").checked);
+  $("#fotoAc").onchange = function () { ayar.foto = this.checked; kaydet(); yuz.fotoKullan(this.checked); };
   $("#guc").oninput = function () { $("#gucO").textContent = (+this.value).toFixed(2); yuz.duygu(secDuygu, +this.value); };
 
   /* Jestler */
