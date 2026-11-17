@@ -315,4 +315,10 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-m.ogr .vd-m-bub:has(.vd-p-tr) .vd-p-en { color: #ffe2ad; font-weight: 600; }
 .vd-cumle span.trp { font-style: italic; }
 .vd-trsoru { display: inline-flex; align-items: center; gap: 4px; color: var(--vd-soluk); font-weight: 700; font-size: .74rem; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--vd-cizgi); }
-.vd-dil-s small { font-size: .72rem; color: var(--vd-soluk); }
+
+/* konuşma dili düğmesi */
+.vd-mic-k { position: relative; display: inline-flex; }
+.vd-dil { position: absolute; right: -2px; bottom: -4px; min-width: 30px; height: 20px; padding: 0 6px; border-radius: 10px; border: 2px solid #1a2029; background: #2e3745;
+  color: #e9edf2; font: 800 10px/16px var(--font-body, system-ui) !important; letter-spacing: .04em; z-index: 1; }
+.vd-dil[data-v=tr] { background: #e5484d; color: #fff; }
+.vd-dil[data-v=en] { background: #3b6fd8; color: #fff; }

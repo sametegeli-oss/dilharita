@@ -79,14 +79,23 @@
     for (let i = 0; i < d.length; i++) { const v = Math.max(-1, Math.min(1, d[i])); out.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7fff, true); }
     return new Blob([out], { type: 'audio/wav' });
   }
-  async function geminiYaziya(blob, ipucu) {
+  const KOTA_KEY = 'dh-gemini-kota-v1';
+  function kotaOku() { try { const k = JSON.parse(localStorage.getItem(KOTA_KEY) || '{}'); return k.gun === today() ? (k.m || {}) : {}; } catch (e) { return {}; } }
+  function kotaDoldu(m) { const k = kotaOku(); k[m] = 1; try { localStorage.setItem(KOTA_KEY, JSON.stringify({ gun: today(), m: k })); } catch (e) {} }
+  async function geminiYaziya(blob, ipucu, dilIpucu) {
     const keys = geminiKeys(); if (!keys.length) throw { code: 'no_gemini' };
     const wav = await wav16k(blob); const b64 = await blobToB64(wav);
-    const model = (DHProviders.getModel && DHProviders.getModel('gemini')) || 'gemini-3.6-flash';
+    /* Yazıya dökme basit bir iş: önce kotası geniş "lite" model; o gün kotası dolan model atlanır. */
+    const secili = (DHProviders.getModel && DHProviders.getModel('gemini')) || 'gemini-3.6-flash';
+    const kota = kotaOku(); const modeller = ['gemini-3.5-flash-lite', secili, 'gemini-3.5-flash', 'gemini-3.6-flash'].filter((m, i, A) => A.indexOf(m) === i && !kota[m]);
+    if (!modeller.length) throw { code: 'rate' };
     const prompt = `Transcribe this audio of a Turkish learner (English level CEFR ${S.level}) in an English lesson. They may speak English, Turkish, or a mix of both.
 Write EXACTLY what they said, word for word, each part in the language it was spoken (Turkish with correct Turkish letters ç ğ ı ö ş ü). Do NOT correct the English: grammar, tense, article and word-choice mistakes must stay as spoken. Do not translate. Do not add words they did not say. Remove only fillers like "uh", "um", "eee", "şey".
+${dilIpucu === 'tr' ? 'The learner says they are speaking TURKISH now: write it in Turkish.\n' : ''}NEVER translate: if they spoke Turkish, the transcript must be in Turkish (Türkçe konuştuysa Türkçe yaz, çevirme).
 ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY the transcript text, no quotes, no comments. If there is no intelligible speech, return an empty string.`;
     let son = null;
+    for (const model of modeller) {
+    let hepsiDolu = true;
     for (const key of keys) {
       try {
         const ctl = new AbortController(); const z = setTimeout(() => ctl.abort(), 12000);
@@ -95,11 +104,14 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
           body: JSON.stringify({ contents: [{ role: 'user', parts: [{ inline_data: { mime_type: 'audio/wav', data: b64 } }, { text: prompt }] }], generationConfig: { temperature: 0, maxOutputTokens: 400 } })
         });
         clearTimeout(z);
-        if (res.status === 429) { son = { code: 'rate' }; continue; }
+        if (res.status === 429) { son = { code: 'rate' }; let gunluk = false; try { gunluk = /PerDay/i.test(await res.text()); } catch (e) {} if (!gunluk) hepsiDolu = false; continue; }
+        hepsiDolu = false;
         if (!res.ok) { son = { code: 'http', message: 'Gemini ' + res.status }; continue; }
         const d = await res.json(); const parts = (d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || [];
         return parts.filter(p => typeof p.text === 'string' && !p.thought).map(p => p.text).join('').replace(/^["“]|["”]$/g, '').trim();
-      } catch (e) { son = e && e.code ? e : { code: 'network' }; }
+      } catch (e) { hepsiDolu = false; son = e && e.code ? e : { code: 'network' }; }
+    }
+    if (hepsiDolu) kotaDoldu(model);
     }
     throw son || { code: 'all-failed' };
   }
@@ -148,7 +160,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       <footer class="vd-alt-bar" hidden>
         <button class="vd-b" data-a="kb" title="Yazarak cevap ver">${vi('kb')}<span>Yaz</span></button>
         <button class="vd-b" data-a="ipucu" title="Ne diyebilirim?">${vi('hint')}<span>İpucu</span></button>
-        <button class="vd-mic" data-a="mic" aria-label="Mikrofon">${vi('mic')}</button>
+        <span class="vd-mic-k"><button class="vd-mic" data-a="mic" aria-label="Mikrofon">${vi('mic')}</button><button class="vd-dil" data-a="dil" type="button" title="Konuşma dili"></button></span>
         <button class="vd-b" data-a="tekrar" title="Son cevabı tekrar et">${vi('again')}<span>Tekrar</span></button>
         <button class="vd-b vd-bitir" data-a="bitir" title="Dersi bitir">${vi('end')}<span>Bitir</span></button>
       </footer>
@@ -163,7 +175,6 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-anahtar"><input type="checkbox" data-a="eller2"><span></span> Eller serbest</label>
         <label class="vd-anahtar"><input type="checkbox" data-a="hassas"><span></span> Hassas ses tanıma <small class="vd-hassas-not">Konuşman Gemini ile yazıya dökülür; aksanı ve hızlı konuşmayı çok daha iyi anlar.</small></label>
         <label class="vd-satir">Sustuktan sonra bekleme: <b class="vd-sessiz-d"></b><input type="range" min="1.2" max="4" step="0.2" data-a="sessizlik"></label>
-        <label class="vd-satir vd-dil-s">Tarayıcı tanıma dili <select data-a="tdil"><option value="en-US">İngilizce</option><option value="tr-TR">Türkçe</option></select><small>Yalnız hassas ses tanıma kapalıyken geçerli. Gemini açıkken iki dili de kendisi anlar.</small></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
         <label class="vd-satir">Konuşma hızı <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
         <label class="vd-satir">Yapay zekâ <select data-a="tier">${TIERS.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label>
@@ -272,11 +283,16 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     q('[data-a=eller2]').onchange = e => { ayar.ellerSerbest = e.target.checked; ayarKaydet(); eller.checked = ayar.ellerSerbest; };
     q('[data-a=hassas]').checked = ayar.hassas && gemVar; q('[data-a=hassas]').disabled = !gemVar;
     if (!gemVar) q('.vd-hassas-not').textContent = 'Bunun için Dil Harita\'da bir Gemini anahtarı kayıtlı olmalı. Şu an tarayıcının kendi tanıması kullanılıyor.';
-    q('[data-a=hassas]').onchange = e => { ayar.hassas = e.target.checked; ayarKaydet(); window.KK_DICT_LANG = ayar.hassas ? 'en-US' : (ayar.tdil || 'en-US'); };
+    q('[data-a=hassas]').onchange = e => { ayar.hassas = e.target.checked; ayarKaydet(); };
     const sz = q('[data-a=sessizlik]'); sz.value = ayar.sessizlik; q('.vd-sessiz-d').textContent = (+ayar.sessizlik).toFixed(1) + ' sn';
     sz.oninput = () => { ayar.sessizlik = +sz.value; ayarKaydet(); q('.vd-sessiz-d').textContent = (+sz.value).toFixed(1) + ' sn'; };
-    q('[data-a=tdil]').value = ayar.tdil || 'en-US'; q('[data-a=tdil]').onchange = e => { ayar.tdil = e.target.value; ayarKaydet(); window.KK_DICT_LANG = (ayar.hassas && gemVar) ? 'en-US' : ayar.tdil; };
-    window.KK_DICT_LANG = (ayar.hassas && gemVar) ? 'en-US' : (ayar.tdil || 'en-US');
+    /* konuşma dili: OTO (Gemini karar verir) · TR · EN — tarayıcının yedek tanıması bu dili dinler */
+    const DIL = { oto: ['OTO', 'Otomatik: Gemini Türkçeyi ve İngilizceyi kendisi ayırır'], tr: ['TR', 'Türkçe konuşuyorum'], en: ['EN', 'İngilizce konuşuyorum'] };
+    if (!DIL[ayar.dil]) ayar.dil = 'oto';
+    function dilGoster() { const b = q('[data-a=dil]'); b.textContent = DIL[ayar.dil][0]; b.title = 'Konuşma dili: ' + DIL[ayar.dil][1] + ' (değiştirmek için dokun)'; b.dataset.v = ayar.dil; window.KK_DICT_LANG = ayar.dil === 'tr' ? 'tr-TR' : 'en-US'; }
+    dilGoster();
+    q('[data-a=dil]').onclick = () => { ayar.dil = ayar.dil === 'oto' ? 'tr' : ayar.dil === 'tr' ? 'en' : 'oto'; ayarKaydet(); dilGoster(); bilgi('Konuşma dili: ' + DIL[ayar.dil][1]);
+      if (D.aktif && !D.bitiyor && micLive) { dict.stop().catch(() => {}); } };
     q('[data-a=trAc]').checked = ayar.altyaziTR;
     q('[data-a=trAc]').onchange = e => { ayar.altyaziTR = e.target.checked; ayarKaydet(); q('.vd-tr').hidden = !ayar.altyaziTR; };
     q('.vd-tr').hidden = !ayar.altyaziTR;
@@ -476,7 +492,11 @@ LANGUAGE: Your default is English practice. BUT if the learner speaks Turkish, a
       const konustu = D.konustu > 200 || !!metin;
       if (konustu && blob && ayar.hassas && geminiKeys().length) {
         durum('anliyor'); q('.vd-sen-y').textContent = metin || 'Söylediklerin yazıya dökülüyor…'; q('.vd-sen').classList.add('anliyor');
-        try { const g = await geminiYaziya(blob, st.son && st.son.text); if (g) metin = g; } catch (e) { /* tarayıcının metniyle devam */ }
+        try { const g = await geminiYaziya(blob, st.son && st.son.text, ayar.dil); if (g) metin = g; }
+        catch (e) {
+          /* tarayıcının metniyle devam; ama kullanıcıyı bir kez uyar */
+          if (!st.gemUyari) { st.gemUyari = true; toast(e && e.code === 'rate' ? 'Hassas ses tanıma bugünlük Gemini kotasını doldurdu; tarayıcının tanıması kullanılıyor.' : 'Hassas ses tanıma şu an çalışmadı; tarayıcının tanıması kullanılıyor.'); if (ayar.dil === 'oto') setTimeout(() => bilgi('Türkçe konuşacaksan mikrofonun yanındaki dil düğmesini TR yap.'), 600); }
+        }
         q('.vd-sen').classList.remove('anliyor');
       }
       D.aktif = false;
