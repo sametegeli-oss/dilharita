@@ -53,11 +53,13 @@ const I = { /* ikonlar */
   play:'<path d="M7 4l13 8-13 8z"/>', stop:'<rect x="6" y="6" width="12" height="12" rx="2"/>',
   arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>', note:'<path d="M5 3h10l4 4v14H5z"/><path d="M9 11h6M9 15h6"/>',
   lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
-  dh:'<path d="M3 12h18M3 12l6-6M3 12l6 6"/>'
+  dh:'<path d="M3 12h18M3 12l6-6M3 12l6 6"/>',
+  video:'<rect x="2" y="6" width="13" height="12" rx="2.5"/><path d="M15 10.5l6-3.5v10l-6-3.5z"/>'
 };
 const ic = (n,extra='') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${I[n]}</svg>`;
 
 const MODES = [
+  {id:'video', t:'Görüntülü ders', d:'Canlı öğretmenle yüz yüze, tam ekran konuş; duygularıyla tepki verir.', icon:'video', c:'#e8a33d', tag:'Yeni'},
   {id:'chat', t:'Sohbet', d:'Yapay zekâ öğretmenle serbest konuş, her mesajın düzeltilsin.', icon:'chat', c:'#f2c14e', tag:'Tüm seviyeler'},
   {id:'sentence', t:'Cümle modu', d:'Kurs cümlelerini parçalardan kur, sesli söyle.', icon:'sentence', c:'#9fb4f2', tag:'Başlangıç'},
   {id:'word', t:'Kelime modu', d:'Kelime destelerini öğren ve test et.', icon:'word', c:'#8fd6a0', tag:'Başlangıç'},
@@ -384,7 +386,8 @@ function bindSide(el){ const g=$('#goCourse',el); if(g) g.onclick=()=>location.h
 function pHome(m){
   const hi = new Date().getHours()<12?'Günaydın':'Merhaba';
   m.innerHTML=`<div class="wrap"><div class="stack" style="gap:10px"><h1>${hi}, bugün ne çalışalım?</h1><div class="row between"><span class="small muted">Seviyeni seç: yapay zekâ, kelimeler ve kurs bu seviyeye göre ayarlanır.</span><button class="btn sm ghost" id="goExam">${S.certs[S.level]?ic('star','width="15" height="15"')+' '+S.level+' sertifikan var':S.level+' seviye sınavı'}</button></div>${levelChips(false)}</div>${capNotice()}
-  <div class="cols"><div class="stack"><h2>Öğrenme modları</h2><div class="grid">${MODES.map(modeCard).join('')}</div></div>${sideSummary()}</div></div>`;
+  ${window.startVideo?`<button class="vd-hero" data-mode="video" type="button"><span class="vd-hero-yuz" aria-hidden="true"></span><span class="vd-hero-y"><span class="vd-hero-e"><i></i> Canlı · Yeni</span><b>Görüntülü ders</b><span>Deniz öğretmenle yüz yüze konuş. Cümlelerine duygularıyla tepki verir, hatalarını sohbeti bölmeden gösterir.</span><span class="vd-hero-b">${ic('video','width="18" height="18"')} Derse başla</span></span></button>`:''}
+  <div class="cols"><div class="stack"><h2>Öğrenme modları</h2><div class="grid">${MODES.filter(x=>x.id!=='video'||!window.startVideo).map(modeCard).join('')}</div></div>${sideSummary()}</div></div>`;
   bindModes(m); bindSide(m); bindLevels(m);
   $('#goExam',m).onclick=()=>S.certs[S.level]?openCert(S.level):examIntro(S.level);
 }
@@ -563,6 +566,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('#panel').hidde
 
 function openMode(id){
   switch(id){
+    case 'video': return window.startVideo ? window.startVideo() : toast('Görüntülü ders yüklenemedi, sayfayı yenile.');
     case 'chat': return startChat({kind:'chat',title:'Sohbet',name:'Deniz',color:'#0f7b6c',persona:'Deniz, a warm and encouraging English teacher who chats about the learner\'s daily life'+(S.goal?` and their goal (${S.goal})`:'')});
     case 'roleplay': return pickList('Rol yapma','Bir senaryo seç. Her senaryoda tamamlanacak görevler var.',ROLEPLAYS.map(r=>({t:r.t,s:r.tasks.join(' · '),icon:'role',go:()=>startRoleplay(r)})));
     case 'characters': return pickList('Karakterler','Klasik romanların kahramanlarından biriyle konuş.',CHARACTERS.map(c=>({t:c.t,s:c.sub,icon:'mask',go:()=>startCharacter(c)})));
