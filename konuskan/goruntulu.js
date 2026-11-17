@@ -83,8 +83,8 @@
     const keys = geminiKeys(); if (!keys.length) throw { code: 'no_gemini' };
     const wav = await wav16k(blob); const b64 = await blobToB64(wav);
     const model = (DHProviders.getModel && DHProviders.getModel('gemini')) || 'gemini-3.6-flash';
-    const prompt = `Transcribe this audio of a Turkish learner speaking English (CEFR ${S.level}) in an English lesson.
-Write EXACTLY what they said, word for word. Do NOT correct grammar, tense, articles or word choice: their mistakes must stay as spoken. Do not add words they did not say. Remove only fillers like "uh", "um", "eee". If they said some Turkish words, write them as they are.
+    const prompt = `Transcribe this audio of a Turkish learner (English level CEFR ${S.level}) in an English lesson. They may speak English, Turkish, or a mix of both.
+Write EXACTLY what they said, word for word, each part in the language it was spoken (Turkish with correct Turkish letters ç ğ ı ö ş ü). Do NOT correct the English: grammar, tense, article and word-choice mistakes must stay as spoken. Do not translate. Do not add words they did not say. Remove only fillers like "uh", "um", "eee", "şey".
 ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY the transcript text, no quotes, no comments. If there is no intelligible speech, return an empty string.`;
     let son = null;
     for (const key of keys) {
@@ -133,7 +133,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <div class="vd-kart">
           <span class="vd-etiket">Görüntülü ders</span>
           <h2>${OGRETMEN} ile yüz yüze konuş</h2>
-          <p>Seviyene (${esc(S.level)}) göre konuşur, duygularıyla tepki verir. Konuşma yanda yazılı olarak akar; hatalarını sohbeti bölmeden gösterir.</p>
+          <p>Seviyene (${esc(S.level)}) göre İngilizce konuşur, duygularıyla tepki verir. Takıldığın yerde Türkçe sor: Türkçe açıklar, örnekleri İngilizce okur.</p>
           <div class="vd-konular"></div>
           <form class="vd-kendi"><input placeholder="Ya da kendi konunu yaz (Türkçe ya da İngilizce)" aria-label="Kendi konun"></form>
           <label class="vd-anahtar"><input type="checkbox" data-a="eller"><span></span> Eller serbest <small>Öğretmen susunca mikrofon kendiliğinden açılır</small></label>
@@ -152,9 +152,9 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <button class="vd-b" data-a="tekrar" title="Son cevabı tekrar et">${vi('again')}<span>Tekrar</span></button>
         <button class="vd-b vd-bitir" data-a="bitir" title="Dersi bitir">${vi('end')}<span>Bitir</span></button>
       </footer>
-      <form class="vd-yaz" hidden><input placeholder="İngilizce yaz ve Enter'a bas" aria-label="Mesaj"><button aria-label="Gönder">${vi('send')}</button></form>
+      <form class="vd-yaz" hidden><input placeholder="İngilizce (ya da Türkçe) yaz ve Enter'a bas" aria-label="Mesaj"><button aria-label="Gönder">${vi('send')}</button></form>
       <aside class="vd-panel" aria-label="Sohbet">
-        <div class="vd-panel-ust"><div><b>Sohbet</b><span class="vd-panel-not">Mesaja dokun: tekrar dinle · Kelimeye dokun: anlamı</span></div><button class="vd-ib" data-a="sohbetkapat" aria-label="Kapat">${vi('x')}</button></div>
+        <div class="vd-panel-ust"><div><b>Sohbet</b><span class="vd-panel-not">Mesaja dokun: tekrar dinle · Kelimeye dokun: anlamı · Türkçe de sorabilirsin</span></div><button class="vd-ib" data-a="sohbetkapat" aria-label="Kapat">${vi('x')}</button></div>
         <div class="vd-liste"><p class="vd-bos">Ders başlayınca konuşma burada yazılı olarak akar.</p></div>
       </aside>
       <div class="vd-kelime" hidden></div>
@@ -163,6 +163,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-anahtar"><input type="checkbox" data-a="eller2"><span></span> Eller serbest</label>
         <label class="vd-anahtar"><input type="checkbox" data-a="hassas"><span></span> Hassas ses tanıma <small class="vd-hassas-not">Konuşman Gemini ile yazıya dökülür; aksanı ve hızlı konuşmayı çok daha iyi anlar.</small></label>
         <label class="vd-satir">Sustuktan sonra bekleme: <b class="vd-sessiz-d"></b><input type="range" min="1.2" max="4" step="0.2" data-a="sessizlik"></label>
+        <label class="vd-satir vd-dil-s">Tarayıcı tanıma dili <select data-a="tdil"><option value="en-US">İngilizce</option><option value="tr-TR">Türkçe</option></select><small>Yalnız hassas ses tanıma kapalıyken geçerli. Gemini açıkken iki dili de kendisi anlar.</small></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
         <label class="vd-satir">Konuşma hızı <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
         <label class="vd-satir">Yapay zekâ <select data-a="tier">${TIERS.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label>
@@ -190,17 +191,20 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     function rozet() { if (kok.classList.contains('vd-sohbet-acik')) return; const r = q('.vd-rozet'); r.hidden = false; r.textContent = String(+r.textContent + 1); }
     function listeyeEkle(el) { const l = q('.vd-liste'); const b = l.querySelector('.vd-bos'); if (b) b.remove(); l.appendChild(el); l.scrollTop = l.scrollHeight; }
     function kelimeler(metin) { return esc(metin).replace(/[A-Za-z][A-Za-z'’-]*/g, w => `<span class="vd-k" data-k="${w}">${w}</span>`); }
+    /* Türkçe parçalar düz, İngilizce parçalar dokunulabilir kelimelerle */
+    function parcaHTML(m) { return m.liste.map(c => c.dil === 'tr' ? `<span class="vd-p-tr">${esc(c.metin)}</span>` : `<span class="vd-p-en">${kelimeler(c.metin)}</span>`).join(' '); }
     function ogretmenMesaji(m) {
       const d = document.createElement('div'); d.className = 'vd-m ogr';
-      d.innerHTML = `<span class="vd-m-ava" aria-hidden="true">D</span><div class="vd-m-ic"><div class="vd-m-bub" role="button" tabindex="0" title="Tekrar dinle">${kelimeler(m.text)}</div>
+      d.innerHTML = `<span class="vd-m-ava" aria-hidden="true">D</span><div class="vd-m-ic"><div class="vd-m-bub" role="button" tabindex="0" title="Tekrar dinle">${parcaHTML(m)}</div>
         <div class="vd-m-tr" hidden>${esc(m.tr || 'Çeviri yok.')}</div>
-        <div class="vd-m-a"><button type="button" data-k="dinle">${vi('spk')} Tekrar söyle</button><button type="button" data-k="tr">TR</button></div></div>`;
+        <div class="vd-m-a"><button type="button" data-k="dinle">${vi('spk')} Tekrar söyle</button>${m.tr ? '<button type="button" data-k="tr">TR</button>' : ''}</div></div>`;
       const bub = d.querySelector('.vd-m-bub');
       bub.onclick = e => { const k = e.target.closest('.vd-k'); if (k) { e.stopPropagation(); kelimeGoster(k); return; } tekrarSoyle(m); };
       bub.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tekrarSoyle(m); } };
       d.querySelector('[data-k=dinle]').onclick = () => tekrarSoyle(m);
-      d.querySelector('[data-k=tr]').onclick = e => { const t = d.querySelector('.vd-m-tr'); t.hidden = !t.hidden; e.currentTarget.classList.toggle('sec', !t.hidden); };
-      if (ayar.altyaziTR) { d.querySelector('.vd-m-tr').hidden = false; d.querySelector('[data-k=tr]').classList.add('sec'); }
+      const trB = d.querySelector('[data-k=tr]');
+      if (trB) { trB.onclick = e => { const t = d.querySelector('.vd-m-tr'); t.hidden = !t.hidden; e.currentTarget.classList.toggle('sec', !t.hidden); };
+        if (ayar.altyaziTR) { d.querySelector('.vd-m-tr').hidden = false; trB.classList.add('sec'); } }
       m._el = d; listeyeEkle(d);
     }
     function ogrenciMesaji(um) {
@@ -222,6 +226,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     function ogrenciDurum(um) {
       const c = um.check, kut = um._el && um._el.querySelector('.vd-m-durum'); if (!kut) return;
       um._el.classList.toggle('duz', !c.ok);
+      if (c.tr) { kut.innerHTML = '<span class="vd-trsoru">Türkçe</span>'; return; }
       if (c.ok) { kut.innerHTML = `<span class="vd-iyi">${vi('ok')} Hatasız</span>`; return; }
       kut.innerHTML = `<div class="vd-duz-k"><div class="vd-fb-b">${vi('pen')} Düzeltme${c.tag ? ` · <em>${esc(c.tag)}</em>` : ''}</div><div class="vd-fark">${diffHTML(um.text, c.corrected)}</div><div class="vd-dogru">${esc(c.corrected)}</div><p>${esc(c.why_tr)}</p><div class="vd-fb-a"><button type="button" data-k="dd">${vi('spk')} Doğrusunu dinle</button><button type="button" data-k="yanlis">Bu düzeltme yanlış</button></div></div>`;
       kut.querySelector('[data-k=dd]').onclick = () => speak(c.corrected);
@@ -267,9 +272,11 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     q('[data-a=eller2]').onchange = e => { ayar.ellerSerbest = e.target.checked; ayarKaydet(); eller.checked = ayar.ellerSerbest; };
     q('[data-a=hassas]').checked = ayar.hassas && gemVar; q('[data-a=hassas]').disabled = !gemVar;
     if (!gemVar) q('.vd-hassas-not').textContent = 'Bunun için Dil Harita\'da bir Gemini anahtarı kayıtlı olmalı. Şu an tarayıcının kendi tanıması kullanılıyor.';
-    q('[data-a=hassas]').onchange = e => { ayar.hassas = e.target.checked; ayarKaydet(); };
+    q('[data-a=hassas]').onchange = e => { ayar.hassas = e.target.checked; ayarKaydet(); window.KK_DICT_LANG = ayar.hassas ? 'en-US' : (ayar.tdil || 'en-US'); };
     const sz = q('[data-a=sessizlik]'); sz.value = ayar.sessizlik; q('.vd-sessiz-d').textContent = (+ayar.sessizlik).toFixed(1) + ' sn';
     sz.oninput = () => { ayar.sessizlik = +sz.value; ayarKaydet(); q('.vd-sessiz-d').textContent = (+sz.value).toFixed(1) + ' sn'; };
+    q('[data-a=tdil]').value = ayar.tdil || 'en-US'; q('[data-a=tdil]').onchange = e => { ayar.tdil = e.target.value; ayarKaydet(); window.KK_DICT_LANG = (ayar.hassas && gemVar) ? 'en-US' : ayar.tdil; };
+    window.KK_DICT_LANG = (ayar.hassas && gemVar) ? 'en-US' : (ayar.tdil || 'en-US');
     q('[data-a=trAc]').checked = ayar.altyaziTR;
     q('[data-a=trAc]').onchange = e => { ayar.altyaziTR = e.target.checked; ayarKaydet(); q('.vd-tr').hidden = !ayar.altyaziTR; };
     q('.vd-tr').hidden = !ayar.altyaziTR;
@@ -284,17 +291,19 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     function sistem() {
       const LV = S.level, k = st.konu;
       let s = `You are ${k.persona}. You are on a live one-to-one VIDEO lesson with a Turkish native speaker who is learning English at CEFR level ${LV}. ${LEVEL_GUIDE[LV]}
-Speak like a real person on a video call: warm, natural, encouraging; 1-3 short sentences; usually end with ONE follow-up question. No emojis, no lists, no stage directions. Never break role. Do not correct the learner in your reply (corrections are shown on screen separately), but you may naturally reuse the correct form. The learner's messages come from speech recognition: if a message looks garbled, kindly ask them to say it again.`;
+Speak like a real person on a video call: warm, natural, encouraging; 1-3 short sentences; usually end with ONE follow-up question. No emojis, no lists, no stage directions. Never break role. Do not correct the learner in your reply (corrections are shown on screen separately), but you may naturally reuse the correct form. The learner's messages come from speech recognition: if a message looks garbled, kindly ask them to say it again.
+LANGUAGE: Your default is English practice. BUT if the learner speaks Turkish, asks you something in Turkish, or asks you to explain something (a grammar point, a word, a difference, how to say something), answer in TURKISH (informal "sen", like a kind teacher), clear and short (at most 5-6 sentences). Put every English example in its own English segment so it is read with an English voice. After the explanation, gently bring them back to English with one short, easy English question.`;
       if (k.tasks) s += `\nScene: ${k.scene}. Over the conversation the learner should complete these tasks: ${k.tasks.map((t, i) => (i + 1) + ') ' + t).join(' ')}. Create natural chances for them; never list them.`;
       if (k.custom) s += `\nTopic chosen by the learner: ${k.custom}`;
       return s + learnerContext();
     }
-    const ETIKET = `Split your reply into its sentences. For EACH sentence choose the face the teacher should show: "emo" one of ${DUYGU.join('|')} and "gest" one of ${JEST.join('|')} or null. Choose by meaning: praise→mutlu or gururlu with iki_onay; gentle correction or "almost"→anlayisli with egil; encouragement→cesaret; a question→merak (often egil or kas); thinking aloud→dusunceli with dusun; real surprise→saskin with kas; an important warning→ciddi. Use null gesture often.`;
+    const ETIKET = `Split your reply into SEGMENTS: normally one sentence each, but whenever the language changes inside a sentence, split there (e.g. Turkish "Mesela şöyle dersin:" and English "I went home yesterday." are two segments). Give each segment "lang": "tr" or "en". For EACH segment choose the face the teacher should show: "emo" one of ${DUYGU.join('|')} and "gest" one of ${JEST.join('|')} or null. Keep the same emo for segments that continue one sentence. Choose by meaning: praise→mutlu or gururlu with iki_onay; gentle correction or "almost"→anlayisli with egil; encouragement→cesaret; a question→merak (often egil or kas); thinking aloud→dusunceli with dusun; real surprise→saskin with kas; an important warning→ciddi. Use null gesture often.`;
     function gecmis(n = 14) { return st.hist.slice(-n).map(h => (h.role === 'user' ? 'Learner: ' : 'You: ') + h.text).join('\n'); }
     function cumleler(r) {
       const arr = Array.isArray(r.reply) ? r.reply : null;
       if (!arr) return DHCanliYuz.etiketle(String(r.reply || '')).map(c => Object.assign(c, { dil: 'en' }));
-      return arr.map(x => ({ metin: String(x.s || x.text || '').trim(), duygu: DUYGU.includes(x.emo) ? x.emo : 'cesaret', jest: JEST.includes(x.gest) ? x.gest : null, guc: 0.85, dil: 'en' })).filter(x => x.metin);
+      return arr.map(x => { const metin = String(x.s || x.text || '').trim(); const dil = x.lang === 'tr' || x.lang === 'en' ? x.lang : (/[çğışöüÇĞİŞÖÜ]/.test(metin) ? 'tr' : 'en');
+        return { metin, duygu: DUYGU.includes(x.emo) ? x.emo : 'cesaret', jest: JEST.includes(x.gest) ? x.gest : null, guc: 0.85, dil }; }).filter(x => x.metin);
     }
 
     /* ---- akış ---- */
@@ -318,9 +327,9 @@ Speak like a real person on a video call: warm, natural, encouraging; 1-3 short 
       durum('dusunuyor'); yuz.dinle(false);
       const dusunZ = setTimeout(() => { if (kok.dataset.d === 'dusunuyor') { yuz.duygu('dusunceli', 0.45); yuz.jest('dusun', 0.6); } }, 900);
       try {
-        const j = `{"check":{"ok":true,"corrected":"","why_tr":"","tag":""},"reply":[{"s":"sentence","emo":"mutlu","gest":"onay"}],"reply_tr":"Turkish translation of the whole reply"${st.konu.tasks ? ',"tasks_done":[]' : ''}}`;
+        const j = `{"check":{"ok":true,"lang":"en","corrected":"","why_tr":"","tag":""},"reply":[{"s":"segment","lang":"en","emo":"mutlu","gest":"onay"}],"reply_tr":"Turkish translation of the English parts of your reply (empty if the reply is all Turkish)"${st.konu.tasks ? ',"tasks_done":[]' : ''}}`;
         const istem = sistem() + `\n\n${st.hist.length ? 'Conversation so far:\n' + gecmis() + '\n\n' : ''}` +
-          (metin ? `Do two things.\n1) Check the learner's LAST message. Flag ONLY real English errors: grammar (tense, articles, prepositions, word order, agreement), wrong word choice, clearly unnatural phrasing. NEVER flag punctuation, capitalisation, spelling of names, contractions, filler words${um.spoken ? ', or anything caused by speech recognition (stray periods, stutters, repeated or misheard words)' : ''}. If only such things differ, ok=true and corrected empty. Keep the learner's wording in "corrected"; change only what is wrong. why_tr: informal Turkish (sen), 1-2 short sentences naming the exact rule.\n2) Write your next reply.${ekTalimat ? ' ' + ekTalimat : ''}${st.konu.tasks ? ' List the numbers of tasks the learner has GENUINELY completed so far in "tasks_done".' : ''}`
+          (metin ? `Do two things.\n1) Check the learner's LAST message. If it is (mostly) in Turkish — a question, a request for explanation, or just Turkish talk — set check.lang="tr", ok=true and do not check it. Otherwise check.lang="en" and flag ONLY real English errors in the English parts: grammar (tense, articles, prepositions, word order, agreement), wrong word choice, clearly unnatural phrasing. NEVER flag punctuation, capitalisation, spelling of names, contractions, filler words${um.spoken ? ', or anything caused by speech recognition (stray periods, stutters, repeated or misheard words)' : ''}. If only such things differ, ok=true and corrected empty. Keep the learner's wording in "corrected"; change only what is wrong. why_tr: informal Turkish (sen), 1-2 short sentences naming the exact rule.\n2) Write your next reply.${ekTalimat ? ' ' + ekTalimat : ''}${st.konu.tasks ? ' List the numbers of tasks the learner has GENUINELY completed so far in "tasks_done".' : ''}`
             : `Start the lesson now: greet the learner warmly by video, say one short friendly thing, and ask an opening question about the topic.${ekTalimat ? ' ' + ekTalimat : ''}`) +
           `\n${ETIKET}\nReturn ONLY JSON: ${j}`;
         const r = await ai(istem);
@@ -349,7 +358,9 @@ Speak like a real person on a video call: warm, natural, encouraging; 1-3 short 
       q('.vd-tr').textContent = m.tr;
       const liste = m.liste;
       await yuz.konus(liste, { hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: (c, i) => {
-        q('.vd-cumle').innerHTML = liste.map((x, k) => `<span class="${k === i ? 'su' : k < i ? 'gecti' : ''}">${esc(x.metin)}</span>`).join(' ');
+        /* kısa cevapta tüm cümleler, uzun açıklamada yalnız söylenen cümle */
+        const goster = liste.length > 2 ? [[c, i]] : liste.map((x, k) => [x, k]);
+        q('.vd-cumle').innerHTML = goster.map(([x, k]) => `<span class="${k === i ? 'su' : k < i ? 'gecti' : ''}${x.dil === 'tr' ? ' trp' : ''}">${esc(x.metin)}</span>`).join(' ');
       } });
       if (m._el) m._el.classList.remove('konusan');
       if (st.bitti || kok.dataset.d !== 'konusuyor') return;
@@ -364,6 +375,7 @@ Speak like a real person on a video call: warm, natural, encouraging; 1-3 short 
       yuz.sustur(); setTimeout(() => soyle(m, true), 60);
     }
     function kontrol(um, c) {
+      if (c.lang === 'tr') { um.check = { ok: true, tr: true }; ogrenciDurum(um); return; }
       if (!c.ok && (!c.corrected || trivialDiff(um.text, c.corrected))) c = { ok: true };
       um.check = c; S.stats.msgs++;
       if (c.ok) { S.stats.ok++; st.okN++; st.xp += 10; addXP(10); }
@@ -494,7 +506,7 @@ Speak like a real person on a video call: warm, natural, encouraging; 1-3 short 
       st.sabir = 0; dinle();
     };
     q('.vd-sen-gonder').onclick = () => dinlemeBitir();
-    function yazAc(zorla) { const f = q('.vd-yaz'); f.hidden = zorla ? false : !f.hidden; if (!f.hidden) { if (D.aktif) { dinlemeIptal(); durum('bekliyor'); } f.querySelector('input').focus(); } }
+    function yazAc(zorla) { const f = q('.vd-yaz'); f.hidden = zorla ? false : !f.hidden; kok.classList.toggle('vd-yaz-acik', !f.hidden); if (!f.hidden) { if (D.aktif) { dinlemeIptal(); durum('bekliyor'); } f.querySelector('input').focus(); } }
     q('[data-a=kb]').onclick = () => yazAc();
     q('.vd-yaz').onsubmit = e => { e.preventDefault(); const i = q('.vd-yaz input'); const t = i.value.trim(); if (!t || st.busy) return; i.value = ''; if (kok.dataset.d === 'konusuyor') yuz.sustur(); st.sesli = false; altyaziSen(t); sor(t); };
     q('[data-a=tekrar]').onclick = () => { if (st.son) tekrarSoyle(st.son); };
@@ -520,7 +532,7 @@ Speak like a real person on a video call: warm, natural, encouraging; 1-3 short 
       const sure = Math.max(1, Math.round((Date.now() - st.bas) / 60000));
       if (st.turns) markDone('video');
       kok.classList.remove('vd-derste', 'vd-sohbet-acik');
-      q('.vd-alt-bar').hidden = true; q('.vd-yaz').hidden = true; q('.vd-sen').hidden = true; q('.vd-duzeltme').hidden = true; bilgiGizle();
+      q('.vd-alt-bar').hidden = true; q('.vd-yaz').hidden = true; kok.classList.remove('vd-yaz-acik'); q('.vd-sen').hidden = true; q('.vd-duzeltme').hidden = true; bilgiGizle();
       durum('hazir'); yuz.duygu(st.turns && st.okN >= st.turns / 2 ? 'gururlu' : 'cesaret', 0.8); yuz.jest('onay');
       const o = q('.vd-ozet'); o.hidden = false;
       o.innerHTML = `<div class="vd-kart">
@@ -550,7 +562,7 @@ Speak like a real person on a video call: warm, natural, encouraging; 1-3 short 
       try { if (mk.kayit && mk.kayit.state !== 'inactive') mk.kayit.stop(); } catch (e) {}
       try { mk.akis && mk.akis.getTracks().forEach(t => t.stop()); } catch (e) {}
       try { mk.ac && mk.ac.close(); } catch (e) {}
-      micTarget = null;
+      micTarget = null; window.KK_DICT_LANG = 'en-US';
       try { yuz.yikil(); } catch (e) {}
       kok.remove(); document.documentElement.classList.remove('vd-acik');
     };

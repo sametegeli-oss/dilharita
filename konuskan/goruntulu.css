@@ -152,7 +152,7 @@ html.vd-acik, html.vd-acik body { overflow: hidden; }
 .vd-yaz { position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%); width: min(620px, calc(100vw - 32px)); z-index: 5; display: flex; gap: 8px;
   padding: 8px; border-radius: 16px; background: rgba(16, 21, 28, .9); border: 1px solid var(--vd-cizgi); backdrop-filter: blur(18px); }
 .vd-yaz button { width: 46px; border-radius: 12px; border: 0; background: var(--vd-vurgu); color: #1d1406; display: grid; place-items: center; flex: none; }
-.vd-yaz:not([hidden]) ~ .vd-altyazi { bottom: 196px; }
+.vd-yaz-acik .vd-altyazi, .vd-yaz-acik .vd-sen { bottom: 196px; }
 
 /* ---------- ayarlar ---------- */
 .vd-ayarlar { position: absolute; top: 66px; right: 18px; z-index: 6; width: 290px; display: flex; flex-direction: column; gap: 14px; padding: 18px;
@@ -283,7 +283,7 @@ html.vd-acik, html.vd-acik body { overflow: hidden; }
   .vd-mic { width: 60px; height: 60px; }
   .vd-altyazi, .vd-sen { bottom: 108px; }
   .vd-yaz { bottom: 104px; }
-  .vd-yaz:not([hidden]) ~ .vd-altyazi { bottom: 172px; }
+  .vd-yaz-acik .vd-altyazi, .vd-yaz-acik .vd-sen { bottom: 172px; }
   .vd-panel { top: auto; width: 100vw; height: 72vh; border-left: 0; border-top: 1px solid var(--vd-cizgi); border-radius: 20px 20px 0 0; transform: translateY(105%); box-shadow: 0 -20px 60px rgba(0,0,0,.5); }
   .vd-panel-not { display: none; }
   .vd-ayarlar { right: 10px; left: 10px; width: auto; }
@@ -309,3 +309,10 @@ html.vd-acik, html.vd-acik body { overflow: hidden; }
 html.vd-acik .dh-mobile-menu-button, html.vd-acik .dh-net-status, html.vd-acik #dhSyncBadge,
 html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="floating"] { display: none !important; }
 @media (min-width: 1000px) { .vd-sohbet-acik .vd-ayarlar { right: calc(var(--sag) + 18px); } }
+
+/* Türkçe açıklamalar */
+.vd-p-tr { color: #e9edf2; }
+.vd-m.ogr .vd-m-bub:has(.vd-p-tr) .vd-p-en { color: #ffe2ad; font-weight: 600; }
+.vd-cumle span.trp { font-style: italic; }
+.vd-trsoru { display: inline-flex; align-items: center; gap: 4px; color: var(--vd-soluk); font-weight: 700; font-size: .74rem; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--vd-cizgi); }
+.vd-dil-s small { font-size: .72rem; color: var(--vd-soluk); }

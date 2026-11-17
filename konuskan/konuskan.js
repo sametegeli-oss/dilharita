@@ -239,7 +239,7 @@ function makeDictation(){
     onPartial(fn){h.p.push(fn);}, onFinal(fn){h.f.push(fn);}, onState(fn){h.s.push(fn);},
     start(){ return new Promise((res,rej)=>{
       try{
-        rec=new SR(); rec.lang='en-US'; rec.interimResults=true; rec.continuous=true; rec.maxAlternatives=1;
+        rec=new SR(); rec.lang=window.KK_DICT_LANG||'en-US'; rec.interimResults=true; rec.continuous=true; rec.maxAlternatives=1;
         rec.onstart=()=>{ h.s.forEach(f=>f({state:'listening'})); res(); };
         rec.onresult=e=>{ let interim=''; for(let i=e.resultIndex;i<e.results.length;i++){ const r=e.results[i]; if(r.isFinal){ const t=r[0].transcript.trim(); if(t) h.f.forEach(f=>f({text:t})); } else interim+=r[0].transcript; } h.p.forEach(f=>f({text:interim})); };
         rec.onerror=e=>{ if(e.error==='not-allowed'||e.error==='service-not-allowed') rej({code:'not_granted'}); };
