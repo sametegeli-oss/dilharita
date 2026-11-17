@@ -209,7 +209,17 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     function listeyeEkle(el) { const l = q('.vd-liste'); const b = l.querySelector('.vd-bos'); if (b) b.remove(); l.appendChild(el); l.scrollTop = l.scrollHeight; }
     function kelimeler(metin) { return esc(metin).replace(/[A-Za-z][A-Za-z'’-]*/g, w => `<span class="vd-k" data-k="${w}">${w}</span>`); }
     /* Türkçe parçalar düz, İngilizce parçalar dokunulabilir kelimelerle */
-    function parcaHTML(m) { return m.liste.map(c => c.dil === 'tr' ? `<span class="vd-p-tr">${esc(c.metin)}</span>` : `<span class="vd-p-en">${kelimeler(c.metin)}</span>`).join(' '); }
+    const aciklamaMi = m => m.liste && m.liste.some(c => c.dil === 'tr') && m.liste.some(c => c.dil === 'en');
+    function parcaHTML(m) { const ac = aciklamaMi(m); return m.liste.map((c, i) => c.dil === 'tr' ? `<span class="vd-p-tr">${esc(c.metin)}</span>` : (ac ? `<span class="vd-ornek"><span class="vd-p-en">${kelimeler(c.metin)}</span><span class="vd-p-cev" data-i="${i}">${c.cev ? esc(c.cev) : '<span class="vd-spin kucuk"></span>'}</span></span>` : `<span class="vd-p-en">${kelimeler(c.metin)}</span>`)).join(' '); }
+    /* örnek cümlenin çevirisi gelmediyse sonradan tamamla */
+    async function cevirileriTamamla(m) {
+      if (!aciklamaMi(m)) return;
+      const eksik = m.liste.map((c, i) => [c, i]).filter(([c]) => c.dil === 'en' && !c.cev);
+      if (eksik.length) {
+        try { const r = await ai(`Translate these English example sentences into natural Turkish. Return ONLY JSON: {"tr":["..."]} in the same order.\n${eksik.map(([c], k) => (k + 1) + ') ' + c.metin).join('\n')}`); (r.tr || []).forEach((t, k) => { if (eksik[k] && t) eksik[k][0].cev = String(t).trim(); }); } catch (e) {}
+      }
+      if (m._el) m.liste.forEach((c, i) => { const el = m._el.querySelector(`.vd-p-cev[data-i="${i}"]`); if (el) { if (c.cev) el.textContent = c.cev; else el.remove(); } });
+    }
     function ogretmenMesaji(m) {
       const d = document.createElement('div'); d.className = 'vd-m ogr';
       d.innerHTML = `<span class="vd-m-ava" aria-hidden="true">D</span><div class="vd-m-ic"><div class="vd-m-bub" role="button" tabindex="0" title="Tekrar dinle">${parcaHTML(m)}</div>
@@ -343,7 +353,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       else if (ayar.mod === 'tr') s += `\nLesson theme: ${k.t}${k.tasks ? ' (useful phrases for this situation)' : ''}.`;
       return s + learnerContext();
     }
-    const ETIKET = `Split your reply into SEGMENTS: normally one sentence each, but whenever the language changes inside a sentence, split there (e.g. Turkish "Mesela şöyle dersin:" and English "I went home yesterday." are two segments). Give each segment "lang": "tr" or "en". For EACH segment choose the face the teacher should show: "emo" one of ${DUYGU.join('|')} and "gest" one of ${JEST.join('|')} or null. Keep the same emo for segments that continue one sentence. Choose by meaning: praise→mutlu or gururlu with iki_onay; gentle correction or "almost"→anlayisli with egil; encouragement→cesaret; a question→merak (often egil or kas); thinking aloud→dusunceli with dusun; real surprise→saskin with kas; an important warning→ciddi. Use null gesture often.`;
+    const ETIKET = `Split your reply into SEGMENTS: normally one sentence each, but whenever the language changes inside a sentence, split there (e.g. Turkish "Mesela şöyle dersin:" and English "I went home yesterday." are two segments). Give each segment "lang": "tr" or "en". If your reply contains any Turkish explanation, give every "en" segment also "tr": its natural Turkish translation (for the learner to read under the example). For EACH segment choose the face the teacher should show: "emo" one of ${DUYGU.join('|')} and "gest" one of ${JEST.join('|')} or null. Keep the same emo for segments that continue one sentence. Choose by meaning: praise→mutlu or gururlu with iki_onay; gentle correction or "almost"→anlayisli with egil; encouragement→cesaret; a question→merak (often egil or kas); thinking aloud→dusunceli with dusun; real surprise→saskin with kas; an important warning→ciddi. Use null gesture often.`;
     function gecmis(n = 14) { return st.hist.slice(-n).map(h => (h.role === 'user' ? 'Learner: ' : 'You: ') + h.text).join('\n'); }
     /* parçanın dilini metinden de tahmin et: yanlış etiketli cümle yanlış sesle okunmasın */
     function dilTahmin(t) {
@@ -356,7 +366,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       const arr = Array.isArray(r.reply) ? r.reply : null;
       if (!arr) return DHCanliYuz.etiketle(String(r.reply || '')).map(c => Object.assign(c, { dil: 'en' }));
       return arr.map(x => { const metin = String(x.s || x.text || '').trim(); const etiket = x.lang === 'tr' || x.lang === 'en' ? x.lang : null, tahmin = dilTahmin(metin); const dil = tahmin || etiket || (/[çğışöüÇĞİŞÖÜ]/.test(metin) ? 'tr' : 'en');
-        return { metin, duygu: DUYGU.includes(x.emo) ? x.emo : 'cesaret', jest: JEST.includes(x.gest) ? x.gest : null, guc: 0.85, dil }; }).filter(x => x.metin);
+        const cev = dil === 'en' && typeof x.tr === 'string' && x.tr.trim() && x.tr.trim() !== metin ? x.tr.trim() : '';
+        return { metin, duygu: DUYGU.includes(x.emo) ? x.emo : 'cesaret', jest: JEST.includes(x.gest) ? x.gest : null, guc: 0.85, dil, cev }; }).filter(x => x.metin);
     }
 
     /* ---- akış ---- */
@@ -380,7 +391,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       durum('dusunuyor'); yuz.dinle(false);
       const dusunZ = setTimeout(() => { if (kok.dataset.d === 'dusunuyor') { yuz.duygu('dusunceli', 0.45); yuz.jest('dusun', 0.6); } }, 900);
       try {
-        const j = `{"check":{"ok":true,"lang":"en","corrected":"","why_tr":"","tag":""},"reply":[{"s":"segment","lang":"en","emo":"mutlu","gest":"onay"}],"reply_tr":"Turkish translation of the English parts of your reply (empty if the reply is all Turkish)"${st.konu.tasks ? ',"tasks_done":[]' : ''}}`;
+        const j = `{"check":{"ok":true,"lang":"en","corrected":"","why_tr":"","tag":""},"reply":[{"s":"segment","lang":"en","tr":"Turkish translation (only for en segments in a Turkish explanation)","emo":"mutlu","gest":"onay"}],"reply_tr":"Turkish translation of the English parts of your reply (empty if the reply is all Turkish)"${st.konu.tasks ? ',"tasks_done":[]' : ''}}`;
         const istem = sistem() + `\n\n${st.hist.length ? 'Conversation so far:\n' + gecmis() + '\n\n' : ''}` +
           (metin ? `Do two things.\n1) Check the learner's LAST message. If it is (mostly) in Turkish — a question, a request for explanation, or just Turkish talk — set check.lang="tr", ok=true and do not check it. Otherwise check.lang="en" and flag ONLY real English errors in the English parts: grammar (tense, articles, prepositions, word order, agreement), wrong word choice, clearly unnatural phrasing. NEVER flag punctuation, capitalisation, spelling of names, contractions, filler words${um.spoken ? ', or anything caused by speech recognition (stray periods, stutters, repeated or misheard words)' : ''}. If only such things differ, ok=true and corrected empty. Keep the learner's wording in "corrected"; change only what is wrong. why_tr: informal Turkish (sen), 1-2 short sentences naming the exact rule.\n2) Write your next reply.${ekTalimat ? ' ' + ekTalimat : ''}${st.konu.tasks ? ' List the numbers of tasks the learner has GENUINELY completed so far in "tasks_done".' : ''}`
             : (ekTalimat ? ekTalimat : ayar.mod === 'tr' ? `Start the lesson now IN TURKISH: greet the learner warmly, say in one sentence what you will study together (the topic above), and begin with the first small step and an English example.` : `Start the lesson now: greet the learner warmly by video, say one short friendly thing, and ask an opening question about the topic.`)) +
@@ -395,7 +406,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         const yanit = liste.map(c => c.metin).join(' ');
         if (!yanit) throw { code: 'bad_json' };
         const m = { role: 'assistant', text: yanit, tr: r.reply_tr || '', liste };
-        st.hist.push(m); st.son = m; ogretmenMesaji(m); rozet();
+        st.hist.push(m); st.son = m; ogretmenMesaji(m); rozet(); cevirileriTamamla(m);
         st.busy = false;
         await soyle(m);
       } catch (e) {
@@ -412,12 +423,15 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       durum('konusuyor'); yuz.dinle(false);
       q('.vd-tr').textContent = m.tr;
       const liste = m.liste;
+      const ac = aciklamaMi(m), trKut = q('.vd-tr');
       await yuz.konus(liste, { hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: (c, i) => {
+        if (ac) { if (c.dil === 'en' && c.cev) { trKut.textContent = c.cev; trKut.hidden = false; trKut.classList.add('ornek'); } else { trKut.textContent = ''; trKut.classList.remove('ornek'); } }
         /* kısa cevapta tüm cümleler, uzun açıklamada yalnız söylenen cümle */
         const goster = liste.length > 2 ? [[c, i]] : liste.map((x, k) => [x, k]);
         q('.vd-cumle').innerHTML = goster.map(([x, k]) => `<span class="${k === i ? 'su' : k < i ? 'gecti' : ''}${x.dil === 'tr' ? ' trp' : ''}">${esc(x.metin)}</span>`).join(' ');
       } });
       if (m._el) m._el.classList.remove('konusan');
+      if (ac) { trKut.classList.remove('ornek'); trKut.hidden = !ayar.altyaziTR; }
       if (st.bitti || kok.dataset.d !== 'konusuyor') return;
       q('.vd-cumle').querySelectorAll('span').forEach(s => s.className = 'gecti');
       if (st.konu.tasks && st.done.size >= st.konu.tasks.length && !st.gorevMsg) { st.gorevMsg = true; toast('Tüm görevleri tamamladın! İstersen dersi bitirebilirsin.'); }

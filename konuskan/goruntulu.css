@@ -341,3 +341,9 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
   .vd-mod span { padding: 7px 10px; font-size: .78rem; gap: 6px; }
   .vd-ipucu, .vd-duzeltme { top: 106px; }
 }
+
+/* örnek cümle + Türkçe çevirisi */
+.vd-ornek { display: block; margin: 6px 0; padding: 6px 10px; border-left: 3px solid var(--vd-vurgu); border-radius: 0 8px 8px 0; background: rgba(240, 179, 84, .07); }
+.vd-ornek .vd-p-en { display: block; }
+.vd-p-cev { display: block; margin-top: 2px; font-size: .86rem; font-weight: 500; font-style: italic; color: #b9c3cf; }
+.vd-tr.ornek { color: #ffe2ad; font-style: italic; font-size: 1rem; }
