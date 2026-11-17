@@ -302,7 +302,7 @@
       if (simdi > sonrakiKirp) { sonKirp = simdi; sonrakiKirp = simdi + 2600 + Math.random() * 3800; }
       var kb = simdi - sonKirp; gozKirp = kb < 70 ? kb / 70 : kb < 130 ? 1 : kb < 230 ? 1 - (kb - 130) / 100 : 0;
       /* konuşma: ağız dizisi */
-      if (konusma) konusmaKare(simdi);
+      if (konusma) konusmaKare(simdi, dt);
       else if (agiz.b !== "idle" || agiz.t < 1) { if (agiz.b !== "idle") { agiz.a = agiz.b; agiz.b = "idle"; agiz.t = 0; } agiz.t = Math.min(1, agiz.t + dt / 0.12); }
       if (foto.t < 1) foto.t = Math.min(1, foto.t + dt / 0.35);
       deforme(p, t);
@@ -321,15 +321,17 @@
     }
 
     /* ---------------- Konuşma ---------------- */
-    function konusmaKare(simdi) {
+    function konusmaKare(simdi, dt) {
       var k = konusma, c = k.cumle; if (!c || !c.dizi) return;
+      /* kelime sınırı düzeltmesi yavaşça uygulanır: ağız ileri geri sıçramasın */
+      if (c.duzeltHedef != null) { c.duzelt = (c.duzelt || 0) + (c.duzeltHedef - (c.duzelt || 0)) * Math.min(1, dt * 4); }
       var gecen = simdi - c.bas + (c.duzelt || 0);
       var i = Math.min(c.dizi.length - 1, Math.max(0, Math.floor(gecen / c.kareMs)));
       var sekil = c.konusuyor ? c.dizi[i] : "idle";
       if (sekil === "th" && !parcalar.th) sekil = "e";
       if (sekil !== "idle" && !agizParca(sekil)) sekil = "idle";
       if (sekil !== agiz.b) { agiz.a = agiz.t > 0.5 ? agiz.b : agiz.a; agiz.b = sekil; agiz.t = 0; }
-      agiz.t = Math.min(1, agiz.t + (1 / 60) / 0.07);
+      agiz.t = Math.min(1, agiz.t + dt / 0.1);
     }
     function sesSec(dil) {
       var vs = []; try { vs = speechSynthesis.getVoices() || []; } catch (e) {}
@@ -346,6 +348,21 @@
         c.dizi = visemeDizi(c.metin, dil);
         var msHarf = (dil === "tr" ? 62 : 58) / (hizOrani || 1);
         c.kareMs = Math.max(45, (c.metin.length * msHarf) / Math.max(1, c.dizi.length));
+        /* Harf başına bir şekil saniyede 15-20 değişim demek: göz bunu titreme olarak görür.
+           Kareleri ~120 ms'lik gruplara topla, her grupta en belirgin şekli göster. */
+        var EN_AZ = 100;
+        if (c.kareMs < EN_AZ && c.dizi.length > 1) {
+          var g = Math.ceil(EN_AZ / c.kareMs), yeni = [], ci = [], ONCELIK = { a: 9, o: 8, e: 7, u: 6, i: 5, mbp: 6, fv: 5, l: 4, th: 4, idle: 0 };
+          for (var q = 0; q < c.dizi.length; q += g) {
+            var parca = c.dizi.slice(q, q + g), bos = parca.filter(function (x) { return x === "idle"; }).length;
+            var sec = "idle";
+            if (bos * 2 <= parca.length) parca.forEach(function (x) { if ((ONCELIK[x] || 3) > (ONCELIK[sec] || 0)) sec = x; });
+            /* aynı şekil arka arkaya gelirse bir öncekiyle birleşir (ağız boşuna kapanıp açılmaz) */
+            yeni.push(sec); ci.push(c.dizi.ci ? c.dizi.ci[q] : 0);
+          }
+          var eski = c.dizi; c.dizi = yeni; if (eski.ci) c.dizi.ci = ci;
+          c.kareMs = c.kareMs * g;
+        }
         c.bas = performance.now(); c.konusuyor = false;
         konusma.cumle = c;
         /* duygu biraz ÖNCE başlar, jest cümleyle birlikte */
@@ -362,11 +379,12 @@
           var kareNo = ev.charIndex / c.metin.length * c.dizi.length;
           if (c.dizi.ci) { kareNo = 0; while (kareNo < c.dizi.ci.length && c.dizi.ci[kareNo] < ev.charIndex) kareNo++; }
           var beklenen = kareNo * c.kareMs, gecen = performance.now() - c.bas;
-          c.duzelt = beklenen - gecen;
+          var fark = beklenen - gecen - (c.duzelt || 0);
+          if (Math.abs(fark) > 180) c.duzeltHedef = beklenen - gecen;   /* küçük sapmalar yok sayılır */
         };
         /* ses yoksa / hata verirse: sessiz okuma (ağız yine metin süresince oynar) */
         var basladi = false, sessiz = false;
-        function sessizOku() { if (sessiz || bitti) return; sessiz = true; c.konusuyor = true; c.bas = performance.now(); c.duzelt = 0; setTimeout(son, c.metin.length * msHarf); }
+        function sessizOku() { if (sessiz || bitti) return; sessiz = true; c.konusuyor = true; c.bas = performance.now(); c.duzelt = 0; c.duzeltHedef = null; setTimeout(son, c.metin.length * msHarf); }
         u.onstart = function () { basladi = true; c.bas = performance.now(); c.konusuyor = true; };
         u.onend = function () { if (!basladi) sessizOku(); else son(); };
         u.onerror = function (ev) { if (ev && (ev.error === "interrupted" || ev.error === "canceled")) son(); else sessizOku(); };
@@ -392,7 +410,7 @@
       profil: function (p) { for (var k in p) if (k in profil) profil[k] = Math.max(0, Math.min(1, +p[k])); },
       dinle: function (acik) { dinleme = !!acik; },
       fotoKullan: function (acik) { fotoAcik = !!acik; if (durum.duygu) api.duygu(durum.duygu, durum.guc); },
-      durum: function () { return { duygu: durum.duygu, p: durum.p, profil: profil }; },
+      durum: function () { return { duygu: durum.duygu, p: durum.p, profil: profil, agiz: agiz.b }; },
       konus: function (cumleler, o) {
         o = o || {}; api.sustur();
         var liste = Array.isArray(cumleler) ? cumleler : [{ metin: String(cumleler) }];
