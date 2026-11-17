@@ -276,7 +276,7 @@ html.vd-acik, html.vd-acik body { overflow: hidden; }
   .vd-alt { display: none; }
   .vd-durum { padding: 5px 9px 5px 8px; font-size: .72rem; }
   .vd-ust-sag { gap: 6px; }
-  .vd-ipucu, .vd-duzeltme { top: 62px; }
+  .vd-ipucu, .vd-duzeltme { top: 106px; }
   .vd-ib { width: 36px; height: 36px; border-radius: 11px; }
   .vd-alt-bar { gap: 2px; padding: 8px 10px; bottom: max(14px, env(safe-area-inset-bottom)); }
   .vd-b { min-width: 52px; }
@@ -322,3 +322,22 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
   color: #e9edf2; font: 800 10px/16px var(--font-body, system-ui) !important; letter-spacing: .04em; z-index: 1; }
 .vd-dil[data-v=tr] { background: #e5484d; color: #fff; }
 .vd-dil[data-v=en] { background: #3b6fd8; color: #fff; }
+
+/* ders modu: Türkçe konu çalışma / İngilizce sohbet */
+.vd-mod { position: absolute; top: 68px; left: 0; right: var(--sag); margin: 0 auto; width: fit-content; z-index: 5; display: flex; gap: 4px; padding: 4px;
+  border-radius: 14px; background: var(--vd-cam); border: 1px solid var(--vd-cizgi); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+.vd-mod label { position: relative; cursor: pointer; }
+.vd-mod input { position: absolute; opacity: 0; pointer-events: none; }
+.vd-mod span { display: flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 10px; font-size: .86rem; font-weight: 700; color: var(--vd-soluk); transition: background .15s, color .15s; white-space: nowrap; }
+.vd-mod span::before { content: ""; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; box-sizing: border-box; flex: none; transition: .15s; }
+.vd-mod label:hover span { color: var(--vd-yazi); }
+.vd-mod input:checked + span { background: rgba(240, 179, 84, .16); color: #ffd58a; }
+.vd-mod input:checked + span::before { border-color: var(--vd-vurgu); background: radial-gradient(circle, var(--vd-vurgu) 0 3px, transparent 3.5px); }
+.vd-mod input:focus-visible + span { outline: 2px solid var(--vd-vurgu); outline-offset: 1px; }
+.vd-ipucu, .vd-duzeltme { top: 124px; }
+.vd-ozet:not([hidden]) ~ .vd-mod, .vd:has(.vd-ozet:not([hidden])) .vd-mod { display: none; }
+@media (max-width: 760px) {
+  .vd-mod { top: 56px; }
+  .vd-mod span { padding: 7px 10px; font-size: .78rem; gap: 6px; }
+  .vd-ipucu, .vd-duzeltme { top: 106px; }
+}

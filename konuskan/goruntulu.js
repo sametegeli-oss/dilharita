@@ -91,7 +91,7 @@
     if (!modeller.length) throw { code: 'rate' };
     const prompt = `Transcribe this audio of a Turkish learner (English level CEFR ${S.level}) in an English lesson. They may speak English, Turkish, or a mix of both.
 Write EXACTLY what they said, word for word, each part in the language it was spoken (Turkish with correct Turkish letters ç ğ ı ö ş ü). Do NOT correct the English: grammar, tense, article and word-choice mistakes must stay as spoken. Do not translate. Do not add words they did not say. Remove only fillers like "uh", "um", "eee", "şey".
-${dilIpucu === 'tr' ? 'The learner says they are speaking TURKISH now: write it in Turkish.\n' : ''}NEVER translate: if they spoke Turkish, the transcript must be in Turkish (Türkçe konuştuysa Türkçe yaz, çevirme).
+${dilIpucu === 'tr' ? 'The learner is in TURKISH study mode: they mostly speak Turkish, sometimes an English practice sentence. Write the Turkish parts in Turkish and the English parts in English.\n' : ''}NEVER translate: if they spoke Turkish, the transcript must be in Turkish (Türkçe konuştuysa Türkçe yaz, çevirme).
 ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY the transcript text, no quotes, no comments. If there is no intelligible speech, return an empty string.`;
     let son = null;
     for (const model of modeller) {
@@ -141,6 +141,10 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
           <button class="vd-ib" data-a="kapat" title="Kapat" aria-label="Kapat">${vi('x')}</button>
         </div>
       </header>
+      <div class="vd-mod" role="radiogroup" aria-label="Ders modu">
+        <label><input type="radio" name="vdmod" value="tr"><span>Türkçe konu çalışma</span></label>
+        <label><input type="radio" name="vdmod" value="en"><span>İngilizce sohbet</span></label>
+      </div>
       <section class="vd-lobi">
         <div class="vd-kart">
           <span class="vd-etiket">Görüntülü ders</span>
@@ -160,7 +164,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       <footer class="vd-alt-bar" hidden>
         <button class="vd-b" data-a="kb" title="Yazarak cevap ver">${vi('kb')}<span>Yaz</span></button>
         <button class="vd-b" data-a="ipucu" title="Ne diyebilirim?">${vi('hint')}<span>İpucu</span></button>
-        <span class="vd-mic-k"><button class="vd-mic" data-a="mic" aria-label="Mikrofon">${vi('mic')}</button><button class="vd-dil" data-a="dil" type="button" title="Konuşma dili"></button></span>
+        <button class="vd-mic" data-a="mic" aria-label="Mikrofon">${vi('mic')}</button>
         <button class="vd-b" data-a="tekrar" title="Son cevabı tekrar et">${vi('again')}<span>Tekrar</span></button>
         <button class="vd-b vd-bitir" data-a="bitir" title="Dersi bitir">${vi('end')}<span>Bitir</span></button>
       </footer>
@@ -288,14 +292,27 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     q('[data-a=hassas]').onchange = e => { ayar.hassas = e.target.checked; ayarKaydet(); };
     const sz = q('[data-a=sessizlik]'); sz.value = ayar.sessizlik; q('.vd-sessiz-d').textContent = (+ayar.sessizlik).toFixed(1) + ' sn';
     sz.oninput = () => { ayar.sessizlik = +sz.value; ayarKaydet(); q('.vd-sessiz-d').textContent = (+sz.value).toFixed(1) + ' sn'; };
-    /* konuşma dili: OTO (Gemini karar verir) · TR · EN — tarayıcının yedek tanıması bu dili dinler */
-    const DIL = { oto: ['OTO', 'Otomatik: Gemini Türkçeyi ve İngilizceyi kendisi ayırır'], tr: ['TR', 'Türkçe konuşuyorum'], en: ['EN', 'İngilizce konuşuyorum'] };
-    if (!DIL[ayar.dil]) ayar.dil = 'oto';
-    function dilGoster() { const b = q('[data-a=dil]'); b.textContent = DIL[ayar.dil][0]; b.title = 'Konuşma dili: ' + DIL[ayar.dil][1] + ' (değiştirmek için dokun)'; b.dataset.v = ayar.dil; window.KK_DICT_LANG = ayar.dil === 'tr' ? 'tr-TR' : 'en-US'; }
-    dilGoster();
-    q('[data-a=dil]').onclick = () => { ayar.dil = ayar.dil === 'oto' ? 'tr' : ayar.dil === 'tr' ? 'en' : 'oto'; ayarKaydet(); dilGoster(); bilgi('Konuşma dili: ' + DIL[ayar.dil][1]);
-      if (D.aktif && !D.bitiyor && micLive) { dict.stop().catch(() => {}); } };
+    /* DERS MODU — "Türkçe konu çalışma": öğretmen Türkçe anlatır, İngilizce örnekleri İngilizce okur; mikrofon Türkçe dinler.
+                   "İngilizce sohbet": öğretmen İngilizce konuşur; mikrofon İngilizce dinler. */
+    if (ayar.mod !== 'tr' && ayar.mod !== 'en') ayar.mod = 'en';
+    function modUygula(bildir) {
+      qa('[name=vdmod]').forEach(r => { r.checked = r.value === ayar.mod; });
+      kok.dataset.mod = ayar.mod;
+      window.KK_DICT_LANG = ayar.mod === 'tr' ? 'tr-TR' : 'en-US';
+      const lb = q('.vd-lobi p'); if (lb) lb.textContent = ayar.mod === 'tr'
+        ? `${OGRETMEN} istediğin konuyu Türkçe anlatır; İngilizce örnekleri İngilizce okur, küçük alıştırmalar yaptırır. Aşağıdan bir konu seç ya da kendin yaz.`
+        : `Seviyene (${S.level}) göre İngilizce konuşur, duygularıyla tepki verir. Takıldığın yerde Türkçe sorabilirsin.`;
+      const inp = q('.vd-kendi input'); if (inp) inp.placeholder = ayar.mod === 'tr' ? 'Çalışmak istediğin konu (ör. Present perfect, sıfatlar, "make" ile "do" farkı)' : 'Ya da kendi konunu yaz (Türkçe ya da İngilizce)';
+      q('.vd-yaz input').placeholder = ayar.mod === 'tr' ? 'Türkçe soru sor ya da İngilizce cümle yaz…' : "İngilizce (ya da Türkçe) yaz ve Enter'a bas";
+      if (bildir) {
+        bilgi(ayar.mod === 'tr' ? 'Türkçe konu çalışma: öğretmen Türkçe anlatacak, mikrofon Türkçe dinleyecek.' : 'İngilizce sohbet: öğretmen İngilizce konuşacak, mikrofon İngilizce dinleyecek.');
+        if (D.aktif && !D.bitiyor && micLive) dict.stop().catch(() => {});   /* dinleme sürüyorsa yeni dille yeniden açılır */
+      }
+    }
+    qa('[name=vdmod]').forEach(r => r.onchange = () => { if (!r.checked) return; ayar.mod = r.value; ayarKaydet(); modUygula(true);
+      if (st.faz === 'ders' && !st.busy && kok.dataset.d === 'bekliyor' && st.son) sor(null, ayar.mod === 'tr' ? 'The learner just switched to TURKISH topic study mode. In Turkish, briefly say you will now explain in Turkish and ask which topic they want to study (or offer to continue with the current one).' : 'The learner just switched back to ENGLISH conversation mode. In English, say one short friendly line and ask an easy question to continue the conversation.'); });
     q('[data-a=trAc]').checked = ayar.altyaziTR;
+    modUygula(false);
     q('[data-a=trAc]').onchange = e => { ayar.altyaziTR = e.target.checked; ayarKaydet(); q('.vd-tr').hidden = !ayar.altyaziTR; };
     q('.vd-tr').hidden = !ayar.altyaziTR;
     q('[data-a=hiz]').value = S.rate; q('[data-a=hiz]').oninput = e => { S.rate = +e.target.value; touchSettings(); };
@@ -309,18 +326,36 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     function sistem() {
       const LV = S.level, k = st.konu;
       let s = `You are ${k.persona}. You are on a live one-to-one VIDEO lesson with a Turkish native speaker who is learning English at CEFR level ${LV}. ${LEVEL_GUIDE[LV]}
-Speak like a real person on a video call: warm, natural, encouraging; 1-3 short sentences; usually end with ONE follow-up question. No emojis, no lists, no stage directions. Never break role. Do not correct the learner in your reply (corrections are shown on screen separately), but you may naturally reuse the correct form. The learner's messages come from speech recognition: if a message looks garbled, kindly ask them to say it again.
-LANGUAGE: Your default is English practice. BUT if the learner speaks Turkish, asks you something in Turkish, or asks you to explain something (a grammar point, a word, a difference, how to say something), answer in TURKISH (informal "sen", like a kind teacher), clear and short (at most 5-6 sentences). Put every English example in its own English segment so it is read with an English voice. After the explanation, gently bring them back to English with one short, easy English question.`;
+Be warm, natural and encouraging, like a real person on a video call. No emojis, no lists, no stage directions. Never break role. Do not correct the learner in your reply (corrections are shown on screen separately), but you may naturally reuse the correct form. The learner's messages come from speech recognition: if a message looks garbled, kindly ask them to say it again.\n`;
+      if (ayar.mod === 'tr') {
+        s += `MODE: TURKISH TOPIC STUDY (chosen by the learner). You speak TURKISH (informal "sen", like a kind, clear teacher) and teach the English topic the learner wants: grammar, vocabulary, usage, differences.
+- ALL explanation sentences MUST be in Turkish. English is allowed ONLY in example sentences and in the short English terms being taught (e.g. "present perfect", "have + V3"). Never write an explanatory sentence in English, even if the learner writes in English.
+- Each turn: 3-6 short sentences. Explain one small step, give 1-2 English example sentences, then a tiny practice (e.g. ask them to make an English sentence, or to choose between two forms) — the practice instruction itself is in Turkish.
+- When the learner answers with an English sentence, react to it in Turkish (praise or gently fix) before continuing.
+- Every English example must be its own "en" segment so it is read with an English voice.`;
+      } else {
+        s += `MODE: ENGLISH CONVERSATION. Speak English: 1-3 short sentences, usually ending with ONE follow-up question.
+- EXCEPTION: whenever you EXPLAIN anything (a grammar point, the meaning of a word, a rule, a difference, why something is wrong, how to say something) — whether the learner asked in Turkish or in English — the explanation must be in TURKISH (informal "sen", at most 5-6 sentences); only the example sentences are in English, each as its own "en" segment. After the explanation, bring them back to English with one short, easy English question.
+- If the learner simply speaks Turkish, answer in Turkish briefly, then invite them back to English.`;
+      }
       if (k.tasks) s += `\nScene: ${k.scene}. Over the conversation the learner should complete these tasks: ${k.tasks.map((t, i) => (i + 1) + ') ' + t).join(' ')}. Create natural chances for them; never list them.`;
       if (k.custom) s += `\nTopic chosen by the learner: ${k.custom}`;
+      else if (ayar.mod === 'tr') s += `\nLesson theme: ${k.t}${k.tasks ? ' (useful phrases for this situation)' : ''}.`;
       return s + learnerContext();
     }
     const ETIKET = `Split your reply into SEGMENTS: normally one sentence each, but whenever the language changes inside a sentence, split there (e.g. Turkish "Mesela şöyle dersin:" and English "I went home yesterday." are two segments). Give each segment "lang": "tr" or "en". For EACH segment choose the face the teacher should show: "emo" one of ${DUYGU.join('|')} and "gest" one of ${JEST.join('|')} or null. Keep the same emo for segments that continue one sentence. Choose by meaning: praise→mutlu or gururlu with iki_onay; gentle correction or "almost"→anlayisli with egil; encouragement→cesaret; a question→merak (often egil or kas); thinking aloud→dusunceli with dusun; real surprise→saskin with kas; an important warning→ciddi. Use null gesture often.`;
     function gecmis(n = 14) { return st.hist.slice(-n).map(h => (h.role === 'user' ? 'Learner: ' : 'You: ') + h.text).join('\n'); }
+    /* parçanın dilini metinden de tahmin et: yanlış etiketli cümle yanlış sesle okunmasın */
+    function dilTahmin(t) {
+      const k = ' ' + t.toLowerCase().replace(/[^a-zçğıöşüâî' ]+/g, ' ') + ' ';
+      const tr = (/[çğışöüâ]/.test(k) ? 2 : 0) + (k.match(/ (ve|bir|bu|şu|için|ile|gibi|olarak|yani|mesela|örneğin|ne|nasıl|değil|ama|çünkü|da|de|mi|mı|mu|mü|var|yok|olur|ise|kullanılır|kullanırız|dersin|demek) /g) || []).length;
+      const en = (k.match(/ (the|a|an|is|are|was|were|i|you|he|she|we|they|it|to|and|of|in|on|at|do|does|did|have|has|what|how|can|will|my|your|this|that) /g) || []).length;
+      if (tr >= 2 && tr > en) return 'tr'; if (en >= 2 && tr === 0) return 'en'; return null;
+    }
     function cumleler(r) {
       const arr = Array.isArray(r.reply) ? r.reply : null;
       if (!arr) return DHCanliYuz.etiketle(String(r.reply || '')).map(c => Object.assign(c, { dil: 'en' }));
-      return arr.map(x => { const metin = String(x.s || x.text || '').trim(); const dil = x.lang === 'tr' || x.lang === 'en' ? x.lang : (/[çğışöüÇĞİŞÖÜ]/.test(metin) ? 'tr' : 'en');
+      return arr.map(x => { const metin = String(x.s || x.text || '').trim(); const etiket = x.lang === 'tr' || x.lang === 'en' ? x.lang : null, tahmin = dilTahmin(metin); const dil = tahmin || etiket || (/[çğışöüÇĞİŞÖÜ]/.test(metin) ? 'tr' : 'en');
         return { metin, duygu: DUYGU.includes(x.emo) ? x.emo : 'cesaret', jest: JEST.includes(x.gest) ? x.gest : null, guc: 0.85, dil }; }).filter(x => x.metin);
     }
 
@@ -348,9 +383,11 @@ LANGUAGE: Your default is English practice. BUT if the learner speaks Turkish, a
         const j = `{"check":{"ok":true,"lang":"en","corrected":"","why_tr":"","tag":""},"reply":[{"s":"segment","lang":"en","emo":"mutlu","gest":"onay"}],"reply_tr":"Turkish translation of the English parts of your reply (empty if the reply is all Turkish)"${st.konu.tasks ? ',"tasks_done":[]' : ''}}`;
         const istem = sistem() + `\n\n${st.hist.length ? 'Conversation so far:\n' + gecmis() + '\n\n' : ''}` +
           (metin ? `Do two things.\n1) Check the learner's LAST message. If it is (mostly) in Turkish — a question, a request for explanation, or just Turkish talk — set check.lang="tr", ok=true and do not check it. Otherwise check.lang="en" and flag ONLY real English errors in the English parts: grammar (tense, articles, prepositions, word order, agreement), wrong word choice, clearly unnatural phrasing. NEVER flag punctuation, capitalisation, spelling of names, contractions, filler words${um.spoken ? ', or anything caused by speech recognition (stray periods, stutters, repeated or misheard words)' : ''}. If only such things differ, ok=true and corrected empty. Keep the learner's wording in "corrected"; change only what is wrong. why_tr: informal Turkish (sen), 1-2 short sentences naming the exact rule.\n2) Write your next reply.${ekTalimat ? ' ' + ekTalimat : ''}${st.konu.tasks ? ' List the numbers of tasks the learner has GENUINELY completed so far in "tasks_done".' : ''}`
-            : `Start the lesson now: greet the learner warmly by video, say one short friendly thing, and ask an opening question about the topic.${ekTalimat ? ' ' + ekTalimat : ''}`) +
+            : (ekTalimat ? ekTalimat : ayar.mod === 'tr' ? `Start the lesson now IN TURKISH: greet the learner warmly, say in one sentence what you will study together (the topic above), and begin with the first small step and an English example.` : `Start the lesson now: greet the learner warmly by video, say one short friendly thing, and ask an opening question about the topic.`)) +
           `\n${ETIKET}\nReturn ONLY JSON: ${j}`;
-        const r = await ai(istem);
+        let r = await ai(istem);
+        /* Türkçe konu çalışmada cevap Türkçe açıklama içermiyorsa bir kez Türkçe olarak yeniden iste */
+        if (ayar.mod === 'tr') { const l0 = cumleler(r); if (l0.length && !l0.some(c => c.dil === 'tr')) { try { const r2 = await ai(istem + '\n\nIMPORTANT: Your answer must be in TURKISH. Explain in Turkish (sen); only the example sentences may be in English, each as its own "en" segment.'); if (cumleler(r2).some(c => c.dil === 'tr')) r = Object.assign({}, r2, { check: r.check || r2.check }); } catch (e2) {} } }
         clearTimeout(dusunZ);
         if (um) kontrol(um, r.check || { ok: true });
         (r.tasks_done || []).forEach(n => st.done.add(+n));
@@ -494,10 +531,10 @@ LANGUAGE: Your default is English practice. BUT if the learner speaks Turkish, a
       const konustu = D.konustu > 200 || !!metin;
       if (konustu && blob && ayar.hassas && geminiKeys().length) {
         durum('anliyor'); q('.vd-sen-y').textContent = metin || 'Söylediklerin yazıya dökülüyor…'; q('.vd-sen').classList.add('anliyor');
-        try { const g = await geminiYaziya(blob, st.son && st.son.text, ayar.dil); if (g) metin = g; }
+        try { const g = await geminiYaziya(blob, st.son && st.son.text, ayar.mod); if (g) metin = g; }
         catch (e) {
           /* tarayıcının metniyle devam; ama kullanıcıyı bir kez uyar */
-          if (!st.gemUyari) { st.gemUyari = true; toast(e && e.code === 'rate' ? 'Hassas ses tanıma bugünlük Gemini kotasını doldurdu; tarayıcının tanıması kullanılıyor.' : 'Hassas ses tanıma şu an çalışmadı; tarayıcının tanıması kullanılıyor.'); if (ayar.dil === 'oto') setTimeout(() => bilgi('Türkçe konuşacaksan mikrofonun yanındaki dil düğmesini TR yap.'), 600); }
+          if (!st.gemUyari) { st.gemUyari = true; toast(e && e.code === 'rate' ? 'Hassas ses tanıma bugünlük Gemini kotasını doldurdu; tarayıcının tanıması kullanılıyor.' : 'Hassas ses tanıma şu an çalışmadı; tarayıcının tanıması kullanılıyor.'); }
         }
         q('.vd-sen').classList.remove('anliyor');
       }
