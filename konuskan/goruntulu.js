@@ -181,6 +181,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       </div>
       <section class="vd-ozet" hidden></section>`;
     document.body.appendChild(kok);
+    /* ekran dışındaki panel yüzünden tarayıcı katmanı yana kaydırmasın (yazı kutusuna odaklanınca oluyordu) */
+    kok.addEventListener('scroll', () => { if (kok.scrollLeft || kok.scrollTop) { kok.scrollLeft = 0; kok.scrollTop = 0; } });
     document.documentElement.classList.add('vd-acik');
     const q = s => kok.querySelector(s), qa = s => kok.querySelectorAll(s);
     const st = { faz: 'lobi', konu: null, hist: [], errs: [], turns: 0, okN: 0, xp: 0, busy: false, bas: 0, son: null, done: new Set(), bitti: false, sabir: 0 };

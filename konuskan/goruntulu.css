@@ -4,7 +4,7 @@ html.vd-acik, html.vd-acik body { overflow: hidden; }
   --vd-bg: #0b0f14; --vd-cam: rgba(18, 24, 32, .62); --vd-cam2: rgba(30, 38, 50, .78); --vd-cizgi: rgba(255, 255, 255, .09);
   --vd-yazi: #f2f4f7; --vd-soluk: #a6b0bf; --vd-vurgu: #f0b354; --vd-yesil: #3cc2ad; --vd-kirmizi: #e5484d;
   position: fixed; inset: 0; z-index: 9000; background: var(--vd-bg); color: var(--vd-yazi);
-  font: 15px/1.45 var(--font-body, system-ui, sans-serif); overflow: hidden; -webkit-font-smoothing: antialiased;
+  font: 15px/1.45 var(--font-body, system-ui, sans-serif); overflow: hidden; overflow: clip; -webkit-font-smoothing: antialiased;
 }
 .vd button { font: inherit; color: inherit; cursor: pointer; }
 .vd svg { width: 20px; height: 20px; flex: none; }
@@ -165,8 +165,8 @@ html.vd-acik, html.vd-acik body { overflow: hidden; }
 .vd { --sag: 0px; }
 .vd-panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(400px, 100vw); z-index: 7; display: flex; flex-direction: column;
   background: rgba(13, 17, 23, .96); border-left: 1px solid var(--vd-cizgi); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-  transform: translateX(105%); transition: transform .35s cubic-bezier(.2, .8, .2, 1); }
-.vd-sohbet-acik .vd-panel { transform: none; }
+  transform: translateX(105%); visibility: hidden; transition: transform .35s cubic-bezier(.2, .8, .2, 1), visibility 0s .35s; }
+.vd-sohbet-acik .vd-panel { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.2, .8, .2, 1), visibility 0s; }
 @media (min-width: 1000px) {
   .vd-sohbet-acik { --sag: 400px; }
   .vd-sahne { right: var(--sag); transition: right .35s cubic-bezier(.2, .8, .2, 1); }
