@@ -394,7 +394,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     }
 
     /* ================= Ses: Gemini doğal ses (ağız sesin kendisiyle oynar) ya da tarayıcı sesi ================= */
-    const TTS_MODELLER = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-2.5-flash-preview-tts'];
+    /* ücretsiz kullanımda her modelin günlük hakkı ayrı (ölçüldü: 10'ar istek) */
+    const TTS_MODELLER = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
     const DOLGU = { en: ['Hmm.', 'Let me see.', 'Okay.'], tr: ['Hmm.', 'Bir bakalım.', 'Peki.'] };
     const ttsHafiza = new Map();
     function geminiSesAcik() { return ayar.ses !== 'tarayici' && geminiKeys().length > 0 && !st.ttsKapali; }
@@ -515,9 +516,10 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         ekle(c) {
           bekleyen.push({ c, i: m.liste.indexOf(c) });
           if (!gemini || st.ttsKapali) { blokGonder(bekleyen); bekleyen = []; return; }
-          /* ilk cümle hemen (beklemeyi kısaltır), sonrakiler ~110 harflik bloklar halinde */
+          /* ilk cümle hemen (beklemeyi kısaltır); gerisi tek parça — kota az (her ses isteği günlük haktan düşer).
+             Çok uzun açıklamalarda ~320 harfte bir yeni parça (sessiz boşluk uzamasın). */
           const uz = bekleyen.reduce((a, b) => a + b.c.metin.length + (b.c.cev ? b.c.cev.length : 0), 0);
-          if (ilk || uz >= 110) { blokGonder(bekleyen); bekleyen = []; ilk = false; }
+          if (ilk || uz >= 320) { blokGonder(bekleyen); bekleyen = []; ilk = false; }
         },
         /* uzun beklemede düşünür gibi kısa bir dolgu ("Hmm.", "Let me see.") */
         dolgu() {

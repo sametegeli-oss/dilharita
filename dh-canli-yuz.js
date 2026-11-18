@@ -479,7 +479,7 @@
 
     /* ---------- Doğal ses (Gemini TTS) — Dil Harita'daki Gemini anahtarıyla ----------
        Kota bilgisi Konuşkan ile ortak tutulur (dh-gemini-kota-v1): o gün dolan model atlanır. */
-    var TTS_MODELLER = ["gemini-3.8-flash-lite-tts", "gemini-3.8-flash-tts", "gemini-2.5-flash-preview-tts"], dogalKapali = false, ttsBellek = {};
+    var TTS_MODELLER = ["gemini-3.8-flash-lite-tts", "gemini-3.8-flash-tts", "gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts"], dogalKapali = false, ttsBellek = {};
     function bugun() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
     function kotaOku() { try { var k = JSON.parse(localStorage.getItem("dh-gemini-kota-v1") || "{}"); return k.gun === bugun() ? (k.m || {}) : {}; } catch (e) { return {}; } }
     function kotaDoldu(m) { var k = kotaOku(); k[m] = 1; try { localStorage.setItem("dh-gemini-kota-v1", JSON.stringify({ gun: bugun(), m: k })); } catch (e) {} }
