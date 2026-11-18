@@ -191,7 +191,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-anahtar"><input type="checkbox" data-a="hassas"><span></span> Hassas ses tanıma <small class="vd-hassas-not">Konuşman Gemini ile yazıya dökülür; aksanı ve hızlı konuşmayı çok daha iyi anlar.</small></label>
         <label class="vd-satir">Sustuktan sonra bekleme: <b class="vd-sessiz-d"></b><input type="range" min="1.2" max="4" step="0.2" data-a="sessizlik"></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
-        <label class="vd-satir">Konuşma hızı <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
+        <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
+        <label class="vd-satir">Konuşma hızı (tarayıcı sesi) <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
         <label class="vd-satir">Yapay zekâ <select data-a="tier">${TIERS.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label>
       </div>
       <section class="vd-ozet" hidden></section>`;
@@ -338,6 +339,10 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     modUygula(false);
     q('[data-a=trAc]').onchange = e => { ayar.altyaziTR = e.target.checked; ayarKaydet(); q('.vd-tr').hidden = !ayar.altyaziTR; };
     q('.vd-tr').hidden = !ayar.altyaziTR;
+    const sesSec = q('[data-a=ses]');
+    sesSec.value = ayar.ses === 'tarayici' ? 'tarayici' : (ayar.sesAdi || 'Charon');
+    if (!gemVar) { sesSec.value = 'tarayici'; [...sesSec.options].forEach(o => { if (o.value !== 'tarayici') o.disabled = true; }); q('.vd-ses-not').textContent = 'Doğal ses için Dil Harita\'da bir Gemini anahtarı kayıtlı olmalı.'; }
+    sesSec.onchange = () => { if (sesSec.value === 'tarayici') ayar.ses = 'tarayici'; else { ayar.ses = 'gemini'; ayar.sesAdi = sesSec.value; st.ttsKapali = false; st.ttsHataN = 0; dolgulariHazirla(); } ayarKaydet(); };
     q('[data-a=hiz]').value = S.rate; q('[data-a=hiz]').oninput = e => { S.rate = +e.target.value; touchSettings(); };
     q('[data-a=tier]').value = S.tierChat; q('[data-a=tier]').onchange = e => { S.tierChat = e.target.value; touchSettings(); };
     q('[data-a=ayar]').onclick = () => { q('.vd-ayarlar').hidden = !q('.vd-ayarlar').hidden; };
@@ -378,9 +383,218 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     function cumleler(r) {
       const arr = Array.isArray(r.reply) ? r.reply : null;
       if (!arr) return DHCanliYuz.etiketle(String(r.reply || '')).map(c => Object.assign(c, { dil: 'en' }));
-      return arr.map(x => { const metin = String(x.s || x.text || '').trim(); const etiket = x.lang === 'tr' || x.lang === 'en' ? x.lang : null, tahmin = dilTahmin(metin); const dil = tahmin || etiket || (/[çğışöüÇĞİŞÖÜ]/.test(metin) ? 'tr' : 'en');
+      return arr.map(segmentCevir).filter(Boolean);
+    }
+    function segmentCevir(x) {
+      if (!x || typeof x !== 'object') return null;
+      { const metin = String(x.s || x.text || '').trim(); const etiket = x.lang === 'tr' || x.lang === 'en' ? x.lang : null, tahmin = dilTahmin(metin); const dil = tahmin || etiket || (/[çğışöüÇĞİŞÖÜ]/.test(metin) ? 'tr' : 'en');
         const cev = dil === 'en' && typeof x.tr === 'string' && x.tr.trim() && x.tr.trim() !== metin ? x.tr.trim() : '';
-        return { metin, duygu: DUYGU.includes(x.emo) ? x.emo : 'cesaret', jest: JEST.includes(x.gest) ? x.gest : null, guc: 0.85, dil, cev }; }).filter(x => x.metin);
+        if (!metin) return null;
+        return { metin, duygu: DUYGU.includes(x.emo) ? x.emo : 'cesaret', jest: JEST.includes(x.gest) ? x.gest : null, guc: 0.85, dil, cev }; }
+    }
+
+    /* ================= Ses: Gemini doğal ses (ağız sesin kendisiyle oynar) ya da tarayıcı sesi ================= */
+    const TTS_MODELLER = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-2.5-flash-preview-tts'];
+    const DOLGU = { en: ['Hmm.', 'Let me see.', 'Okay.'], tr: ['Hmm.', 'Bir bakalım.', 'Peki.'] };
+    const ttsHafiza = new Map();
+    function geminiSesAcik() { return ayar.ses !== 'tarayici' && geminiKeys().length > 0 && !st.ttsKapali; }
+    async function ttsOnbellek(anahtar, ab) {
+      /* kısa ve sık kullanılan sesler (dolgu, "acele etme") bir kez üretilir, tarayıcıda saklanır */
+      try { const c = await caches.open('dh-tts-v1'); const u = 'https://tts.dilharita.local/' + encodeURIComponent(anahtar);
+        if (ab) { await c.put(u, new Response(ab, { headers: { 'Content-Type': 'audio/wav' } })); return null; }
+        const r = await c.match(u); return r ? await r.arrayBuffer() : null; } catch (e) { return null; }
+    }
+    function pcmWav(bytes, hz) {
+      const v = new DataView(new ArrayBuffer(44 + bytes.length)); const y = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+      y(0, 'RIFF'); v.setUint32(4, 36 + bytes.length, true); y(8, 'WAVE'); y(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+      v.setUint32(24, hz, true); v.setUint32(28, hz * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); y(36, 'data'); v.setUint32(40, bytes.length, true);
+      new Uint8Array(v.buffer, 44).set(bytes); return v.buffer;
+    }
+    async function ttsIstek(metin, ses) {
+      const keys = geminiKeys(); if (!keys.length) throw { code: 'no_gemini' };
+      const kota = kotaOku(); const modeller = TTS_MODELLER.filter(m => !kota[m]); if (!modeller.length) throw { code: 'rate' };
+      let son = null;
+      for (const model of modeller) {
+        let hepsiDolu = true;
+        for (const key of keys) {
+          try {
+            const ctl = new AbortController(); const z = setTimeout(() => ctl.abort(), 15000);
+            const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key), {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
+              body: JSON.stringify({ contents: [{ parts: [{ text: metin }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: ses } } } } }) });
+            clearTimeout(z);
+            if (res.status === 429) { son = { code: 'rate' }; let g = false; try { g = /PerDay/i.test(await res.text()); } catch (e) {} if (!g) hepsiDolu = false; continue; }
+            hepsiDolu = false;
+            if (!res.ok) { son = { code: 'http', message: 'Gemini ses ' + res.status }; continue; }
+            const d = await res.json(); const p = (((d.candidates || [])[0] || {}).content || {}).parts || [];
+            const ses0 = p.find(x => x.inlineData && x.inlineData.data); if (!ses0) { son = { code: 'empty' }; continue; }
+            const bytes = Uint8Array.from(atob(ses0.inlineData.data), ch => ch.charCodeAt(0)); const mime = ses0.inlineData.mimeType || '';
+            if (/wav/i.test(mime)) return bytes.buffer;
+            const hz = +((mime.match(/rate=(\d+)/) || [])[1] || 24000); return pcmWav(bytes, hz);   /* ham PCM gelirse wav'a sar */
+          } catch (e) { hepsiDolu = false; son = e && e.code ? e : { code: 'network' }; }
+        }
+        if (hepsiDolu) kotaDoldu(model);
+      }
+      throw son || { code: 'all-failed' };
+    }
+    function ttsUret(metin) {
+      const ses = ayar.sesAdi || 'Charon', anahtar = ses + '|' + metin;
+      if (ttsHafiza.has(anahtar)) return ttsHafiza.get(anahtar);
+      const is = (async () => {
+        const kisa = metin.length < 40;
+        let ab = kisa ? await ttsOnbellek(anahtar) : null;
+        if (!ab) { ab = await ttsIstek(metin, ses); if (kisa) ttsOnbellek(anahtar, ab.slice(0)); }
+        return yuz.sesCoz(ab.slice(0));
+      })();
+      ttsHafiza.set(anahtar, is); is.catch(() => ttsHafiza.delete(anahtar));
+      return is;
+    }
+    function ttsHata(e) {
+      st.ttsHataN = (st.ttsHataN || 0) + 1;
+      if ((e && e.code === 'rate') || st.ttsHataN >= 2) {
+        st.ttsKapali = true;
+        if (!st.ttsUyari) { st.ttsUyari = true; toast(e && e.code === 'rate' ? 'Doğal ses (Gemini) bugünlük kotasını doldurdu; tarayıcı sesiyle devam ediliyor.' : 'Doğal ses şu an üretilemiyor; tarayıcı sesiyle devam ediliyor.'); }
+      }
+    }
+    function dolgulariHazirla() { if (!geminiSesAcik()) return; DOLGU[ayar.mod === 'tr' ? 'tr' : 'en'].slice(0, 2).forEach(t => ttsUret(t).catch(() => {})); }
+
+    /* ---- altyazı: söylenen parça (ve örnekse çevirisi) ---- */
+    function altyaziGoster(m, i, cevMi) {
+      const liste = m.liste, asil = liste[i]; if (!asil) return;
+      const ac = aciklamaMi(m), trKut = q('.vd-tr');
+      if (ac && asil.dil === 'en' && asil.cev) { trKut.textContent = asil.cev; trKut.hidden = false; trKut.classList.add('ornek'); trKut.classList.toggle('okunuyor', !!cevMi); }
+      else if (ac) { trKut.textContent = ''; trKut.classList.remove('ornek', 'okunuyor'); }
+      else { trKut.textContent = m.tr || ''; trKut.hidden = !ayar.altyaziTR; }
+      const goster = liste.length > 2 ? [[asil, i]] : liste.map((x, k) => [x, k]);
+      q('.vd-cumle').innerHTML = goster.map(([x, k]) => `<span class="${k === i && !cevMi ? 'su' : k <= i ? 'gecti' : ''}${x.dil === 'tr' ? ' trp' : ''}">${esc(x.metin)}</span>`).join(' ');
+      if (m._el) m._el.querySelectorAll('.vd-p-cev').forEach(el => el.classList.toggle('okunuyor', !!cevMi && +el.dataset.i === i));
+    }
+
+    /* ---- konuşmacı: cümleler geldikçe seslendirir (Gemini: bloklar halinde, tarayıcı: cümle cümle) ---- */
+    function yeniKonusucu(m) {
+      const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: c => { if (c.goster) c.goster(); } });
+      const gemini = geminiSesAcik();
+      let zincir = Promise.resolve(), bekleyen = [], ilk = true, iptal = false, sesBasladi = false;
+      m.okunan = [];
+      const acMi = () => aciklamaMi(m) || ayar.mod === 'tr';
+      function gosterFn(i, cevMi) {
+        return () => {
+          sesBasladi = true;
+          if (kok.dataset.d !== 'konusuyor') { durum('konusuyor'); yuz.dinle(false); }
+          qa('.vd-m.konusan').forEach(x => { if (x !== m._el) x.classList.remove('konusan'); }); if (m._el) m._el.classList.add('konusan');
+          altyaziGoster(m, i, cevMi);
+        };
+      }
+      function tarayiciParcalari(c, i) {
+        const a = [Object.assign({}, c, { goster: gosterFn(i, false) })];
+        if (acMi() && c.dil === 'en' && c.cev) a.push({ metin: c.cev, dil: 'tr', duygu: c.duygu, guc: c.guc, jest: null, goster: gosterFn(i, true) });
+        return a;
+      }
+      function siraylaEkle(p) { zincir = zincir.then(() => p).then(items => { if (iptal) return; items.forEach(it => { k.ekle(it); m.okunan.push(it); }); }); }
+      /* Türkçe anlatımdaki bir örneğin çevirisi gelmediyse önce onu tamamla (okunabilsin) */
+      function eksikCeviri(parcalar) {
+        const eksik = parcalar.filter(({ c }) => acMi() && c.dil === 'en' && !c.cev);
+        if (!eksik.length) return Promise.resolve();
+        return ai(`Translate these English example sentences into natural Turkish. Return ONLY JSON: {"tr":["..."]} in the same order.\n${eksik.map(({ c }, k) => (k + 1) + ') ' + c.metin).join('\n')}`)
+          .then(r => { (r.tr || []).forEach((t, k) => { if (eksik[k] && t) eksik[k].c.cev = String(t).trim(); }); baloncukGuncelle(m); }).catch(() => {});
+      }
+      function blokGonder(parcalar) {
+        siraylaEkle(eksikCeviri(parcalar).then(() => blokHazirla(parcalar)));
+      }
+      function blokHazirla(parcalar) {
+        const tarayici = () => parcalar.flatMap(({ c, i }) => tarayiciParcalari(c, i));
+        if (!gemini || st.ttsKapali) return tarayici();
+        let metin = ''; const altlar = [];
+        const ekle = (t, cfg) => { if (metin) metin += ' '; altlar.push(Object.assign({ poz: metin.length }, cfg)); metin += t; };
+        parcalar.forEach(({ c, i }) => { ekle(c.metin, { duygu: c.duygu, guc: c.guc, jest: c.jest, oncesi: gosterFn(i, false) }); if (acMi() && c.dil === 'en' && c.cev) ekle(c.cev, { oncesi: gosterFn(i, true) }); });
+        altlar.forEach(a => { a.oran = a.poz / Math.max(1, metin.length); });
+        return ttsUret(metin).then(buf => [{ metin, dil: parcalar[0].c.dil, sesTampon: buf, duygu: altlar[0].duygu, guc: altlar[0].guc, jest: null, altlar }])
+          .catch(e => { ttsHata(e); return tarayici(); });
+      }
+      return {
+        ekle(c) {
+          bekleyen.push({ c, i: m.liste.indexOf(c) });
+          if (!gemini || st.ttsKapali) { blokGonder(bekleyen); bekleyen = []; return; }
+          /* ilk cümle hemen (beklemeyi kısaltır), sonrakiler ~110 harflik bloklar halinde */
+          const uz = bekleyen.reduce((a, b) => a + b.c.metin.length + (b.c.cev ? b.c.cev.length : 0), 0);
+          if (ilk || uz >= 110) { blokGonder(bekleyen); bekleyen = []; ilk = false; }
+        },
+        /* uzun beklemede düşünür gibi kısa bir dolgu ("Hmm.", "Let me see.") */
+        dolgu() {
+          if (sesBasladi || m.liste.length || iptal) return;
+          const liste = DOLGU[ayar.mod === 'tr' ? 'tr' : 'en']; const t = liste[(st.dolguN = (st.dolguN || 0) + 1) % 2];
+          const dil = ayar.mod === 'tr' && t !== 'Hmm.' ? 'tr' : 'en';
+          if (gemini && !st.ttsKapali) {
+            /* yalnız hazır (saklanmış) ses varsa çal; yoksa bir dahaki sefere hazırla */
+            Promise.race([ttsUret(t), new Promise((_, r) => setTimeout(() => r('gec'), 250))])
+              .then(buf => { if (!sesBasladi && !m.liste.length && !iptal) k.ekle({ metin: t, dil, sesTampon: buf, duygu: 'dusunceli', guc: 0.5, jest: 'dusun' }); }).catch(() => {});
+          } else k.ekle({ metin: t, dil, duygu: 'dusunceli', guc: 0.5, jest: 'dusun' });
+        },
+        bitir() { if (bekleyen.length) { blokGonder(bekleyen); bekleyen = []; } zincir = zincir.then(() => k.bitir()); },
+        iptal() { iptal = true; yuz.sustur(); },
+        bitti() { return zincir.then(() => k.bitti); }
+      };
+    }
+
+    /* ---- akış halinde cevap: Groq / Cerebras / OpenRouter / Mistral; cümleler tamamlandıkça yakalanır ---- */
+    async function akisliCevap(istem, onSeg) {
+      const SIRA = ['groq', 'cerebras', 'openrouter', 'mistral'];
+      const P = (DHProviders.PROVIDERS || []);
+      let son = null;
+      for (const id of SIRA) {
+        const p = P.find(x => x.id === id); if (!p) continue;
+        let keys = []; try { keys = (JSON.parse(localStorage.getItem(p.keyStore) || '[]') || []).filter(Boolean); } catch (e) {}
+        for (const key of keys) {
+          try { return await akisDene(p, key, istem, onSeg); }
+          catch (e) { son = e; if (e && e.basladi) throw e; }   /* yarıda kaldıysa başka sağlayıcıyla tekrar söyletme */
+        }
+      }
+      throw son || { code: 'no-key' };
+    }
+    async function akisDene(p, key, istem, onSeg) {
+      const model = (DHProviders.getModel && DHProviders.getModel(p.id)) || p.model;
+      const body = { model, stream: true, temperature: 0.4, max_tokens: 2500, messages: [
+        { role: 'system', content: 'You help a Turkish learner practise English inside the Konuşkan app. Reply with valid JSON only, no markdown fences.' },
+        { role: 'user', content: istem }] };
+      if (/gpt-oss/i.test(model)) body.reasoning_effort = 'low';
+      const ctl = new AbortController(); let z = setTimeout(() => ctl.abort(), 15000);
+      const res = await fetch(p.url, { method: 'POST', signal: ctl.signal, headers: Object.assign({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, p.headers || {}), body: JSON.stringify(body) });
+      if (res.status === 429) { clearTimeout(z); throw { code: 'rate' }; }
+      if (!res.ok || !res.body) { clearTimeout(z); throw { code: 'http', status: res.status }; }
+      const rd = res.body.getReader(), dec = new TextDecoder();
+      let tampon = '', metin = '', dizi = false, poz = 0, kapandi = false, adet = 0;
+      const tara = () => {
+        if (kapandi) return;
+        if (!dizi) { const k = metin.indexOf('"reply"'); if (k < 0) return; const a = metin.indexOf('[', k); if (a < 0) return; dizi = true; poz = a + 1; }
+        for (;;) {
+          while (poz < metin.length && /[\s,]/.test(metin[poz])) poz++;
+          if (poz >= metin.length) return;
+          if (metin[poz] === ']') { kapandi = true; return; }
+          if (metin[poz] !== '{') { poz++; continue; }
+          let d = 0, ic = false, ka = false, j = poz;
+          for (; j < metin.length; j++) { const ch = metin[j]; if (ic) { if (ka) ka = false; else if (ch === '\\') ka = true; else if (ch === '"') ic = false; } else if (ch === '"') ic = true; else if (ch === '{') d++; else if (ch === '}') { d--; if (d === 0) break; } }
+          if (j >= metin.length) return;   /* nesne henüz tamamlanmadı */
+          try { const o = JSON.parse(metin.slice(poz, j + 1)); const c = segmentCevir(o); if (c) { adet++; onSeg(c); } } catch (e) {}
+          poz = j + 1;
+        }
+      };
+      try {
+        for (;;) {
+          const { value, done } = await rd.read(); if (done) break;
+          clearTimeout(z); z = setTimeout(() => ctl.abort(), 15000);
+          tampon += dec.decode(value, { stream: true });
+          let n; while ((n = tampon.indexOf('\n')) >= 0) {
+            const satir = tampon.slice(0, n).trim(); tampon = tampon.slice(n + 1);
+            if (!satir.startsWith('data:')) continue; const v = satir.slice(5).trim(); if (v === '[DONE]') continue;
+            try { const o = JSON.parse(v); const t = o.choices && o.choices[0] && o.choices[0].delta && o.choices[0].delta.content; if (t) { metin += t; tara(); } } catch (e) {}
+          }
+        }
+      } catch (e) { clearTimeout(z); throw Object.assign({ code: 'network' }, adet ? { basladi: true } : {}); }
+      clearTimeout(z);
+      let r = null; try { r = parseJSON(metin); } catch (e) {}
+      if (!r) { if (!adet) throw { code: 'bad_json' }; r = {}; }
+      if (!adet) { (Array.isArray(r.reply) ? r.reply : []).forEach(o => { const c = segmentCevir(o); if (c) { adet++; onSeg(c); } }); if (!adet) throw { code: 'bad_json' }; }
+      return r;
     }
 
     /* ---- akış ---- */
@@ -394,6 +608,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       q('.vd-lobi').remove(); q('.vd-alt-bar').hidden = false; q('.vd-sure').hidden = false;
       st.saat = setInterval(() => { const s = Math.floor((Date.now() - st.bas) / 1000); q('.vd-sure').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); lastAct = Date.now(); }, 1000);
       mikrofonHazirla();   /* izni ders başında iste; ilk cevapta beklemesin */
+      dolgulariHazirla();
       await sor(null);
     }
     async function sor(metin, ekTalimat) {
@@ -403,65 +618,88 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (metin) { um = { role: 'user', text: metin, spoken: !!st.sesli }; st.hist.push(um); st.turns++; ogrenciMesaji(um); }
       durum('dusunuyor'); yuz.dinle(false);
       const dusunZ = setTimeout(() => { if (kok.dataset.d === 'dusunuyor') { yuz.duygu('dusunceli', 0.45); yuz.jest('dusun', 0.6); } }, 900);
+      const m = { role: 'assistant', text: '', tr: '', liste: [] };
+      const ks = yeniKonusucu(m);
+      st.konusucu = ks;
+      const dolguZ = setTimeout(() => ks.dolgu(), 1400);
+      const onSeg = c => {
+        m.liste.push(c); m.text = m.liste.map(x => x.metin).join(' ');
+        if (m.liste.length === 1) { clearTimeout(dusunZ); st.hist.push(m); st.son = m; ogretmenMesaji(m); rozet(); }
+        else baloncukGuncelle(m);
+        ks.ekle(c);
+      };
       try {
-        const j = `{"check":{"ok":true,"lang":"en","corrected":"","why_tr":"","tag":""},"reply":[{"s":"segment","lang":"en","tr":"Turkish translation (only for en segments in a Turkish explanation)","emo":"mutlu","gest":"onay"}],"reply_tr":"Turkish translation of the English parts of your reply (empty if the reply is all Turkish)"${st.konu.tasks ? ',"tasks_done":[]' : ''}}`;
+        const j = `{"reply":[{"s":"segment","lang":"en","tr":"Turkish translation (only for en segments in a Turkish explanation)","emo":"mutlu","gest":"onay"}],"check":{"ok":true,"lang":"en","corrected":"","why_tr":"","tag":""},"reply_tr":"Turkish translation of the English parts of your reply (empty if the reply is all Turkish)"${st.konu.tasks ? ',"tasks_done":[]' : ''}}`;
         const istem = sistem() + `\n\n${st.hist.length ? 'Conversation so far:\n' + gecmis() + '\n\n' : ''}` +
-          (metin ? `Do two things.\n1) Check the learner's LAST message. If it is (mostly) in Turkish — a question, a request for explanation, or just Turkish talk — set check.lang="tr", ok=true and do not check it. Otherwise check.lang="en" and flag ONLY real English errors in the English parts: grammar (tense, articles, prepositions, word order, agreement), wrong word choice, clearly unnatural phrasing. NEVER flag punctuation, capitalisation, spelling of names, contractions, filler words${um.spoken ? ', or anything caused by speech recognition (stray periods, stutters, repeated or misheard words)' : ''}. If only such things differ, ok=true and corrected empty. Keep the learner's wording in "corrected"; change only what is wrong. why_tr: informal Turkish (sen), 1-2 short sentences naming the exact rule.\n2) Write your next reply.${ekTalimat ? ' ' + ekTalimat : ''}${st.konu.tasks ? ' List the numbers of tasks the learner has GENUINELY completed so far in "tasks_done".' : ''}`
+          (metin ? `Do two things.\n1) Write your next reply.${ekTalimat ? ' ' + ekTalimat : ''}\n2) Check the learner's LAST message. If it is (mostly) in Turkish — a question, a request for explanation, or just Turkish talk — set check.lang="tr", ok=true and do not check it. Otherwise check.lang="en" and flag ONLY real English errors in the English parts: grammar (tense, articles, prepositions, word order, agreement), wrong word choice, clearly unnatural phrasing. NEVER flag punctuation, capitalisation, spelling of names, contractions, filler words${um.spoken ? ', or anything caused by speech recognition (stray periods, stutters, repeated or misheard words)' : ''}. If only such things differ, ok=true and corrected empty. Keep the learner's wording in "corrected"; change only what is wrong. why_tr: informal Turkish (sen), 1-2 short sentences naming the exact rule.${st.konu.tasks ? ' List the numbers of tasks the learner has GENUINELY completed so far in "tasks_done".' : ''}`
             : (ekTalimat ? ekTalimat : ayar.mod === 'tr' ? `Start the lesson now IN TURKISH: greet the learner warmly, say in one sentence what you will study together (the topic above), and begin with the first small step and an English example.` : `Start the lesson now: greet the learner warmly by video, say one short friendly thing, and ask an opening question about the topic.`)) +
-          `\n${ETIKET}\nReturn ONLY JSON: ${j}`;
-        let r = await ai(istem);
-        /* Türkçe konu çalışmada cevap Türkçe açıklama içermiyorsa bir kez Türkçe olarak yeniden iste */
-        if (ayar.mod === 'tr') { const l0 = cumleler(r); if (l0.length && !l0.some(c => c.dil === 'tr')) { try { const r2 = await ai(istem + '\n\nIMPORTANT: Your answer must be in TURKISH. Explain in Turkish (sen); only the example sentences may be in English, each as its own "en" segment.'); if (cumleler(r2).some(c => c.dil === 'tr')) r = Object.assign({}, r2, { check: r.check || r2.check }); } catch (e2) {} } }
-        clearTimeout(dusunZ);
+          `\n${ETIKET}\nWrite the "reply" array FIRST in the JSON (it is spoken while you write the rest).\nReturn ONLY JSON: ${j}`;
+        let r;
+        try { r = await akisliCevap(istem, onSeg); }
+        catch (e) {
+          if (m.liste.length) throw e;
+          /* akış olmadıysa normal yoldan (Gemini dahil) bir kerede */
+          r = await ai(istem); cumleler(r).forEach(onSeg);
+        }
+        clearTimeout(dusunZ); clearTimeout(dolguZ);
+        if (!m.liste.length) throw { code: 'bad_json' };
+        m.tr = r.reply_tr || ''; baloncukGuncelle(m, true);
         if (um) kontrol(um, r.check || { ok: true });
         (r.tasks_done || []).forEach(n => st.done.add(+n));
-        const liste = cumleler(r);
-        const yanit = liste.map(c => c.metin).join(' ');
-        if (!yanit) throw { code: 'bad_json' };
-        const m = { role: 'assistant', text: yanit, tr: r.reply_tr || '', liste };
-        st.hist.push(m); st.son = m; ogretmenMesaji(m); rozet();
-        await cevirileriTamamla(m);   /* örneklerin çevirisi okunmadan önce hazır olsun */
+        cevirileriTamamla(m);
+        ks.bitir();
         st.busy = false;
-        await soyle(m);
+        await ks.bitti();
+        sonra(m, false);
       } catch (e) {
-        clearTimeout(dusunZ); st.busy = false;
-        if (um) { const k = um._el && um._el.querySelector('.vd-m-durum'); if (k) k.innerHTML = '<span class="vd-hata">Gönderilemedi</span>'; st.hist.pop(); st.turns--; }
+        clearTimeout(dusunZ); clearTimeout(dolguZ); st.busy = false; ks.iptal();
+        if (m.liste.length) { m.text = m.liste.map(x => x.metin).join(' '); }
+        if (um) { const k = um._el && um._el.querySelector('.vd-m-durum'); if (k) k.innerHTML = '<span class="vd-hata">Gönderilemedi</span>'; if (!m.liste.length) { st.hist.pop(); st.turns--; } }
         yuz.duygu('anlayisli', 0.5);
         altyazi('', ''); bilgi(aiErr(e) + ' Tekrar dene.');
         durum('bekliyor');
       }
     }
-    async function soyle(m, tekrar) {
-      if (st.bitti) return;
-      qa('.vd-m.konusan').forEach(x => x.classList.remove('konusan')); if (m._el) m._el.classList.add('konusan');
-      durum('konusuyor'); yuz.dinle(false);
-      q('.vd-tr').textContent = m.tr;
-      const liste = m.liste;
-      const ac = aciklamaMi(m), trKut = q('.vd-tr');
-      /* Türkçe anlatımda her İngilizce örnekten sonra Türkçe çevirisi de Türkçe sesle okunur */
-      const okunacak = [];
-      liste.forEach((c, k) => { okunacak.push(Object.assign({}, c, { _k: k })); if (ac && c.dil === 'en' && c.cev) okunacak.push({ metin: c.cev, dil: 'tr', duygu: c.duygu, guc: c.guc, jest: null, _k: k, _cev: c.cev }); });
-      await yuz.konus(okunacak, { hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: (c) => {
-        const i = c._k, asil = liste[i];
-        if (ac) { if (asil.dil === 'en' && asil.cev) { trKut.textContent = asil.cev; trKut.hidden = false; trKut.classList.add('ornek'); trKut.classList.toggle('okunuyor', !!c._cev); } else { trKut.textContent = ''; trKut.classList.remove('ornek', 'okunuyor'); } }
-        /* kısa cevapta tüm cümleler, uzun açıklamada yalnız söylenen cümle */
-        const goster = liste.length > 2 ? [[asil, i]] : liste.map((x, k) => [x, k]);
-        q('.vd-cumle').innerHTML = goster.map(([x, k]) => `<span class="${k === i && !c._cev ? 'su' : k <= i ? 'gecti' : ''}${x.dil === 'tr' ? ' trp' : ''}">${esc(x.metin)}</span>`).join(' ');
-        if (m._el) m._el.querySelectorAll('.vd-p-cev').forEach(el => el.classList.toggle('okunuyor', !!c._cev && +el.dataset.i === i));
-      } });
-      if (m._el) m._el.querySelectorAll('.vd-p-cev.okunuyor').forEach(el => el.classList.remove('okunuyor'));
-      if (m._el) m._el.classList.remove('konusan');
-      if (ac) { trKut.classList.remove('ornek', 'okunuyor'); trKut.hidden = !ayar.altyaziTR; }
-      if (st.bitti || kok.dataset.d !== 'konusuyor') return;
+    function baloncukGuncelle(m, son) {
+      if (!m._el) return;
+      m._el.querySelector('.vd-m-bub').innerHTML = parcaHTML(m);
+      if (son) {
+        m._el.querySelector('.vd-m-tr').textContent = m.tr || 'Çeviri yok.';
+        if (m.tr && !m._el.querySelector('[data-k=tr]')) {
+          const b = document.createElement('button'); b.type = 'button'; b.dataset.k = 'tr'; b.textContent = 'TR';
+          b.onclick = e => { const t = m._el.querySelector('.vd-m-tr'); t.hidden = !t.hidden; e.currentTarget.classList.toggle('sec', !t.hidden); };
+          m._el.querySelector('.vd-m-a').appendChild(b);
+          if (ayar.altyaziTR) { m._el.querySelector('.vd-m-tr').hidden = false; b.classList.add('sec'); }
+        }
+      }
+      const l = q('.vd-liste'); l.scrollTop = l.scrollHeight;
+    }
+    /* konuşma bittiğinde: altyazıyı söndür, sırayı öğrenciye ver */
+    function sonra(m, tekrar) {
+      if (m._el) { m._el.querySelectorAll('.vd-p-cev.okunuyor').forEach(el => el.classList.remove('okunuyor')); m._el.classList.remove('konusan'); }
+      const trKut = q('.vd-tr'); trKut.classList.remove('ornek', 'okunuyor'); trKut.hidden = !ayar.altyaziTR;
+      if (st.bitti || (kok.dataset.d !== 'konusuyor' && kok.dataset.d !== 'dusunuyor')) return;
       q('.vd-cumle').querySelectorAll('span').forEach(s => s.className = 'gecti');
       if (st.konu.tasks && st.done.size >= st.konu.tasks.length && !st.gorevMsg) { st.gorevMsg = true; toast('Tüm görevleri tamamladın! İstersen dersi bitirebilirsin.'); }
       durum('bekliyor');
       if (ayar.ellerSerbest && !tekrar) setTimeout(() => { if (kok.dataset.d === 'bekliyor' && !st.bitti) dinle(); }, 300);
     }
-    function tekrarSoyle(m) {
+    /* bütün bir mesajı baştan söylet (ör. "Take your time") */
+    async function soyle(m, tekrar) {
+      if (st.bitti) return;
+      const ks = yeniKonusucu(m); m.liste.forEach(c => ks.ekle(c)); ks.bitir();
+      await ks.bitti(); sonra(m, tekrar);
+    }
+    /* tekrar dinle: daha önce üretilmiş sesler yeniden kullanılır (yeni istek yok) */
+    async function tekrarSoyle(m) {
       if (st.busy || st.bitti || !m.liste) return;
       if (D.aktif) dinlemeIptal();
-      yuz.sustur(); setTimeout(() => soyle(m, true), 60);
+      yuz.sustur();
+      await new Promise(r => setTimeout(r, 60));
+      if (m.okunan && m.okunan.length) {
+        const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: c => { if (c.goster) c.goster(); } });
+        m.okunan.forEach(it => k.ekle(Object.assign({}, it))); k.bitir(); await k.bitti; sonra(m, true);
+      } else await soyle(m, true);
     }
     function kontrol(um, c) {
       if (c.lang === 'tr') { um.check = { ok: true, tr: true }; ogrenciDurum(um); return; }

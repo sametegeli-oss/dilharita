@@ -68,9 +68,11 @@
     egil:     { sure: 1400, f: function (t) { return { roll: egri(t, [[0,0],[0.25,6],[0.75,6],[1,0]]) }; } },
     one_egil: { sure: 1600, f: function (t) { return { lean: egri(t, [[0,0],[0.25,0.8],[0.75,0.8],[1,0]]) }; } },
     dusun:    { sure: 1500, f: function (t) { var v = egri(t, [[0,0],[0.2,1],[0.8,1],[1,0]]); return { gazeX: -0.6 * v, gazeY: -0.6 * v, browAsym: 0.4 * v, roll: -2 * v }; } },
-    kas:      { sure: 500,  f: function (t) { var v = egri(t, [[0,0],[0.3,1],[0.6,1],[1,0]]); return { browInnerUp: 0.7 * v, browOuterUp: 0.7 * v }; } }
+    kas:      { sure: 500,  f: function (t) { var v = egri(t, [[0,0],[0.3,1],[0.6,1],[1,0]]); return { browInnerUp: 0.7 * v, browOuterUp: 0.7 * v }; } },
+    /* vurgu: vurgulu kelimede küçük baş inişi + kaş kalkması (konuşurken kendiliğinden) */
+    vurgu:    { sure: 420,  f: function (t) { var v = egri(t, [[0,0],[0.3,1],[1,0]]); return { pitch: 0.2 * v, browInnerUp: 0.35 * v, browOuterUp: 0.3 * v }; } }
   };
-  var JEST_ADI = { onay: "Baş sallama", iki_onay: "İki kez onay", hayir: "Hayır (baş çevirme)", egil: "Başı yana eğme",
+  var JEST_ADI = { vurgu: "Vurgu", onay: "Baş sallama", iki_onay: "İki kez onay", hayir: "Hayır (baş çevirme)", egil: "Başı yana eğme",
     one_egil: "Öne eğilme", dusun: "Düşünme (yukarı bakış)", kas: "Kaş kaldırma" };
 
   /* ---------- Viseme → parça ---------- */
@@ -130,7 +132,16 @@
     function kirpParca() { var d = baskin(); return (face.duyguKirpma && kirpSetleri[face.duyguKirpma[d]]) || parcalar.blink; }
     function fotoHedef(ad) { if (!fotolar[ad]) ad = "notr"; if (ad === foto.b) return; foto.a = foto.t >= 0.5 ? foto.b : foto.a; foto.b = ad; foto.t = 0; }
     var konusma = null, dinleme = false;
-    var t0 = performance.now(), sonKirp = t0, sonrakiKirp = t0 + 2500, sakkad = { x: 0, y: 0, t: t0 + 1500 };
+    var t0 = performance.now(), sonKirp = t0, sonrakiKirp = t0 + 2500, sakkad = { x: 0, y: 0, t: t0 + 1500 }, bakisKac = t0 + 5000, sonVurgu = 0;
+    /* Gerçek ses (Gemini) çalmak için ses bağlamı + çözümleyici: ağız sesin şiddetiyle oynar */
+    var sesAc = null, sesAnaliz = null, sesVeri = null;
+    function sesBagi() {
+      if (!sesAc) { var AC = global.AudioContext || global.webkitAudioContext; if (!AC) return null; sesAc = new AC(); sesAnaliz = sesAc.createAnalyser(); sesAnaliz.fftSize = 1024; sesAnaliz.connect(sesAc.destination); sesVeri = new Float32Array(sesAnaliz.fftSize); }
+      if (sesAc.state === "suspended") { try { sesAc.resume(); } catch (e) {} }
+      return sesAc;
+    }
+    function sesSeviye() { if (!sesAnaliz) return 0; sesAnaliz.getFloatTimeDomainData(sesVeri); var t = 0; for (var i = 0; i < sesVeri.length; i++) t += sesVeri[i] * sesVeri[i]; return Math.sqrt(t / sesVeri.length); }
+    function vurgula(simdi) { if (simdi - sonVurgu < 1100) return; sonVurgu = simdi; api.jest("vurgu", 0.6 + profil.ifade * 0.5); }
 
     /* ---------------- WebGL kurulum ---------------- */
     function shader(tip, kaynak) { var s = gl.createShader(tip); gl.shaderSource(s, kaynak); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
@@ -295,12 +306,16 @@
         p.roll += gurultu(t, 0.55, 1.3) * 0.7 * canli;
         p.yaw += gurultu(t, 0.4, 4.1) * 0.05 * canli;
         p.pitch += gurultu(t, 0.5, 2.2) * 0.04 * canli + (konusma ? Math.sin(t * 7.5) * 0.015 : 0);
-        if (simdi > sakkad.t) { sakkad.x = (Math.random() - 0.5) * 0.35; sakkad.y = (Math.random() - 0.5) * 0.2; sakkad.t = simdi + 900 + Math.random() * 2200; }
+        if (konusma && simdi > bakisKac) {
+          /* uzun konuşmada arada kısa bakış kaçırma (düşünür gibi), sonra tekrar kameraya */
+          bakisKac = simdi + 3800 + Math.random() * 4200;
+          sakkad.x = (Math.random() < 0.5 ? -1 : 1) * (0.35 + Math.random() * 0.2); sakkad.y = -0.12 - Math.random() * 0.15; sakkad.t = simdi + 450 + Math.random() * 300;
+        } else if (simdi > sakkad.t) { sakkad.x = (Math.random() - 0.5) * (konusma ? 0.2 : 0.35); sakkad.y = (Math.random() - 0.5) * 0.2; sakkad.t = simdi + 900 + Math.random() * 2200; }
         p.gazeX += sakkad.x; p.gazeY += sakkad.y;
         if (dinleme) { p.lean += 0.35; p.roll += 2.5; p.browInnerUp += 0.15; }
       }
       /* göz kırpma: düzensiz, yarım-kapalı-yarım */
-      if (simdi > sonrakiKirp) { sonKirp = simdi; sonrakiKirp = simdi + 2600 + Math.random() * 3800; }
+      if (simdi > sonrakiKirp) { sonKirp = simdi; sonrakiKirp = simdi + (konusma ? 1700 + Math.random() * 2600 : 2600 + Math.random() * 3800); }
       var kb = simdi - sonKirp; gozKirp = kb < 70 ? kb / 70 : kb < 130 ? 1 : kb < 230 ? 1 - (kb - 130) / 100 : 0;
       /* konuşma: ağız dizisi */
       if (konusma) konusmaKare(simdi, dt);
@@ -329,6 +344,12 @@
       var gecen = simdi - c.bas + (c.duzelt || 0);
       var i = Math.min(c.dizi.length - 1, Math.max(0, Math.floor(gecen / c.kareMs)));
       var sekil = c.konusuyor && !c.bekle ? c.dizi[i] : "idle";
+      if (c.sesli && c.konusuyor) {
+        /* gerçek ses: sessiz anlarda ağız kapanır; ani şiddet artışı = vurgu */
+        var sv = sesSeviye(); c.ort = c.ort == null ? sv : c.ort * 0.96 + sv * 0.04;
+        if (sv < 0.01) sekil = "idle";
+        if (sv > 0.05 && sv > c.ort * 1.9 && Math.random() < 0.45) vurgula(simdi);
+      }
       if (sekil === "th" && !parcalar.th) sekil = "e";
       if (sekil !== "idle" && !agizParca(sekil)) sekil = "idle";
       if (sekil !== agiz.b) { agiz.a = agiz.t > 0.5 ? agiz.b : agiz.a; agiz.b = sekil; agiz.t = 0; }
@@ -361,7 +382,9 @@
         var dil = c.dil || dilBul(c.metin);
         c.dizi = visemeDizi(c.metin, dil);
         var msHarf = (dil === "tr" ? 62 : 58) / (hizOrani || 1);
-        c.kareMs = Math.max(45, (c.metin.length * msHarf) / Math.max(1, c.dizi.length));
+        /* gerçek ses varsa zamanlama sesin kendi süresinden, yoksa tahmini konuşma hızından */
+        var toplamMs = c.sesTampon ? c.sesTampon.duration * 1000 : c.metin.length * msHarf;
+        c.kareMs = Math.max(30, toplamMs / Math.max(1, c.dizi.length));
         /* Harf başına bir şekil saniyede 15-20 değişim demek: göz bunu titreme olarak görür.
            Kareleri ~120 ms'lik gruplara topla, her grupta en belirgin şekli göster. */
         var EN_AZ = 100;
@@ -383,7 +406,20 @@
         if (c.duygu) api.duygu(c.duygu, c.guc == null ? 0.8 : c.guc);
         if (c.jest && JESTLER[c.jest]) setTimeout(function () { if (konusma) api.jest(c.jest); }, c.jestZaman === "son" ? Math.max(300, c.metin.length * msHarf * 0.75) : 150);
         var bitti = false; function son() { if (bitti) return; bitti = true; c.konusuyor = false; setTimeout(res, 140); }
+        if (c.sesTampon) { sesleOku(); return; }
         seslerHazir().then(function () { if (!bitti && konusma && konusma.cumle === c) baslat(); else son(); });
+        function sesleOku() {
+          var ac = sesBagi(); if (!ac) { c.sesTampon = null; seslerHazir().then(baslat); return; }
+          var sure = c.sesTampon.duration;
+          var src = ac.createBufferSource(); src.buffer = c.sesTampon; src.connect(sesAnaliz);
+          c.sesKaynak = src; c.sesli = true; c.duzelt = 0; c.duzeltHedef = null;
+          src.onended = son;
+          src.start();
+          c.bas = performance.now() + ((ac.outputLatency || ac.baseLatency || 0) * 1000); c.konusuyor = true;
+          /* blok içindeki cümlelerin duygu ve jestleri, metindeki yerlerine göre zamanlanır */
+          (c.altlar || []).forEach(function (a) { setTimeout(function () { if (konusma && konusma.cumle === c) { if (a.duygu) api.duygu(a.duygu, a.guc == null ? 0.8 : a.guc); if (a.jest && JESTLER[a.jest]) api.jest(a.jest); if (a.oncesi) try { a.oncesi(); } catch (e) {} } }, Math.max(0, a.oran * sure * 1000 - 120)); });
+          setTimeout(son, sure * 1000 + 1500);
+        }
         function baslat() {
         var u; try { u = new SpeechSynthesisUtterance(c.metin); } catch (e) { u = null; }
         if (!u || !global.speechSynthesis) { c.konusuyor = true; c.bas = performance.now(); setTimeout(son, c.metin.length * msHarf); return; }
@@ -392,6 +428,9 @@
         u.onboundary = function (ev) {
           if (!ev || typeof ev.charIndex !== "number" || !c.metin.length) return;
           sinirVar = true;
+          /* uzun kelimelerde ara ara vurgu jesti */
+          var kel = (c.metin.slice(ev.charIndex).match(/^[\p{L}'’-]+/u) || [""])[0];
+          if (kel.length >= 6 && Math.random() < 0.35) vurgula(performance.now());
           /* kelime sınırında ağzı metindeki konuma hizala */
           var kareNo = ev.charIndex / c.metin.length * c.dizi.length;
           if (c.dizi.ci) { kareNo = 0; while (kareNo < c.dizi.ci.length && c.dizi.ci[kareNo] < ev.charIndex) kareNo++; }
@@ -438,24 +477,41 @@
       dinle: function (acik) { dinleme = !!acik; },
       fotoKullan: function (acik) { fotoAcik = !!acik; if (durum.duygu) api.duygu(durum.duygu, durum.guc); },
       durum: function () { return { duygu: durum.duygu, p: durum.p, profil: profil, agiz: agiz.b }; },
-      konus: function (cumleler, o) {
+      /* akış halinde konuşma: cümleler geldikçe eklenir (ekle), bitince bitir() çağrılır */
+      konusAkis: function (o) {
         o = o || {}; api.sustur();
-        var liste = Array.isArray(cumleler) ? cumleler : [{ metin: String(cumleler) }];
-        var benim = konusma = { liste: liste, cumle: null, iptal: false };
+        var liste = [], bekleyen = null, kapandi = false;
+        var benim = konusma = { liste: liste, cumle: null, iptal: false, cozucu: function () { if (bekleyen) { var r = bekleyen; bekleyen = null; r(); } } };
         var i = 0;
         function sonraki() {
           if (benim.iptal || konusma !== benim) return Promise.resolve();
-          if (i >= liste.length) { konusma = null; setTimeout(function () { if (!konusma) api.duygu(o.sonDuygu || "notr", 0.6); }, 600); return Promise.resolve(); }
+          if (i >= liste.length) {
+            if (!kapandi) return new Promise(function (r) { bekleyen = r; }).then(sonraki);
+            konusma = null; setTimeout(function () { if (!konusma) api.duygu(o.sonDuygu || "notr", 0.6); }, 600); return Promise.resolve();
+          }
           var c = Object.assign({}, liste[i++]);
           if (o.oncesi) try { o.oncesi(c, i - 1); } catch (e) {}
           /* jest sıklığına göre kendiliğinden küçük baş sallamaları */
-          if (!c.jest && Math.random() < profil.jest * 0.45 && !/\?\s*$/.test(c.metin)) { c.jest = "onay"; c.jestZaman = "son"; }
+          if (!c.jest && !c.sesTampon && Math.random() < profil.jest * 0.45 && !/\?\s*$/.test(c.metin)) { c.jest = "onay"; c.jestZaman = "son"; }
           return cumleSoyle(c, o.hiz || 1).then(sonraki);
         }
-        return sonraki();
+        var bitis = sonraki();
+        return {
+          ekle: function (c) { if (benim.iptal) return; liste.push(c); benim.cozucu(); },
+          bitir: function () { kapandi = true; benim.cozucu(); },
+          bekleyen: function () { return liste.length - i; },
+          aktif: function () { return konusma === benim && !benim.iptal; },
+          bitti: bitis
+        };
+      },
+      konus: function (cumleler, o) {
+        var k = api.konusAkis(o);
+        (Array.isArray(cumleler) ? cumleler : [{ metin: String(cumleler) }]).forEach(function (c) { k.ekle(c); });
+        k.bitir(); return k.bitti;
       },
       /* sesleri sessizce ısıt: ilk gerçek cümle soğuk ses motoru yüzünden geç başlamasın (kullanıcı dokunuşunda çağır) */
       isit: function () {
+        try { sesBagi(); } catch (e) {}
         if (!global.speechSynthesis) return;
         seslerHazir().then(function () {
           ["en", "tr"].forEach(function (d) {
@@ -464,7 +520,9 @@
           });
         });
       },
-      sustur: function () { if (konusma) konusma.iptal = true; konusma = null; try { speechSynthesis.cancel(); } catch (e) {} },
+      sustur: function () { if (konusma) { konusma.iptal = true; try { if (konusma.cumle && konusma.cumle.sesKaynak) konusma.cumle.sesKaynak.stop(); } catch (e) {} if (konusma.cozucu) konusma.cozucu(); } konusma = null; try { speechSynthesis.cancel(); } catch (e) {} },
+      /* gerçek ses verisini (wav vb.) motorun ses bağlamında çöz */
+      sesCoz: function (ab) { var ac = sesBagi(); if (!ac) return Promise.reject(new Error("ses yok")); return new Promise(function (res, rej) { var p = ac.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); }); },
       yikil: function () { durum.yikildi = true; api.sustur(); }
     };
 
