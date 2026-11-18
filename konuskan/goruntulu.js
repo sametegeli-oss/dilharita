@@ -155,6 +155,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
           <div class="vd-konular"></div>
           <div class="vd-google" hidden></div>
           <form class="vd-kendi"><input placeholder="Ya da kendi konunu yaz (Türkçe ya da İngilizce)" aria-label="Kendi konun"></form>
+          <label class="vd-satir vd-kalite-l">Sohbet kalitesi <select data-a="kalite"><option value="oto">Otomatik (önerilen)</option><option value="hizli">Hızlı · anında cevap</option><option value="dengeli">Dengeli · biraz düşünür</option><option value="derin">Derin · en dikkatli, daha yavaş</option></select><small class="vd-kalite-not"></small></label>
           <label class="vd-anahtar"><input type="checkbox" data-a="eller"><span></span> Eller serbest <small>Öğretmen susunca mikrofon kendiliğinden açılır</small></label>
           <button class="vd-basla" type="button">${vi('video')} Dersi başlat</button>
           <p class="vd-not"></p>
@@ -198,7 +199,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
         <label class="vd-satir">Konuşma hızı (tarayıcı sesi) <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
         <div class="vd-satir vd-google-ayar"><span>Google hesabı <small>(genel asistan: takvim, Gmail, görevler, kişiler, Drive)</small></span><div class="vd-google"></div></div>
-        <label class="vd-satir">Yapay zekâ <select data-a="tier">${TIERS.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></label>
+        <label class="vd-satir">Sohbet kalitesi <select data-a="kalite"><option value="oto">Otomatik (önerilen)</option><option value="hizli">Hızlı · anında cevap</option><option value="dengeli">Dengeli · biraz düşünür</option><option value="derin">Derin · en dikkatli, daha yavaş</option></select><small class="vd-kalite-not"></small></label>
       </div>
       <div class="vd-gonay" hidden role="dialog" aria-modal="true"></div>
       <section class="vd-ozet" hidden></section>`;
@@ -359,7 +360,13 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     if (!gemVar) { sesSec.value = 'tarayici'; [...sesSec.options].forEach(o => { if (o.value !== 'tarayici') o.disabled = true; }); q('.vd-ses-not').textContent = 'Doğal ses için Dil Harita\'da bir Gemini anahtarı kayıtlı olmalı.'; }
     sesSec.onchange = () => { if (sesSec.value === 'tarayici') ayar.ses = 'tarayici'; else { ayar.ses = 'gemini'; ayar.sesAdi = sesSec.value; st.ttsKapali = false; st.ttsHataN = 0; dolgulariHazirla(); } ayarKaydet(); };
     q('[data-a=hiz]').value = S.rate; q('[data-a=hiz]').oninput = e => { S.rate = +e.target.value; touchSettings(); };
-    q('[data-a=tier]').value = S.tierChat; q('[data-a=tier]').onchange = e => { S.tierChat = e.target.value; touchSettings(); };
+    /* SOHBET KALİTESİ — modelin cevap vermeden önce ne kadar düşüneceği.
+       oto: derslerde hızlı, genel sohbette dengeli. Derin: en doğru ama ilk kelime birkaç saniye gecikir. */
+    if (!['oto', 'hizli', 'dengeli', 'derin'].includes(ayar.kalite)) ayar.kalite = 'oto';
+    const KALITE_NOT = { oto: 'Derslerde hızlı, genel sohbette dengeli çalışır.', hizli: 'Cevaplar hemen başlar; karmaşık sorularda daha kısa düşünür.', dengeli: 'Cevaptan önce biraz düşünür; bekleme neredeyse fark edilmez.', derin: 'En dikkatli cevap; ilk kelime 2-5 sn gecikebilir. Zor sorular ve önemli konular için.' };
+    function kaliteCiz() { qa('[data-a=kalite]').forEach(x => { x.value = ayar.kalite; }); qa('.vd-kalite-not').forEach(x => { x.textContent = KALITE_NOT[ayar.kalite]; }); }
+    qa('[data-a=kalite]').forEach(x => x.onchange = () => { ayar.kalite = x.value; ayarKaydet(); kaliteCiz(); if (st.faz === 'ders') bilgi('Sohbet kalitesi: ' + x.options[x.selectedIndex].text.split(' · ')[0] + '. Bir sonraki cevaptan itibaren geçerli.'); });
+    kaliteCiz();
     q('[data-a=ayar]').onclick = () => { q('.vd-ayarlar').hidden = !q('.vd-ayarlar').hidden; };
     q('[data-a=cc]').onclick = () => { ayar.altyazi = !ayar.altyazi; ayarKaydet(); kok.classList.toggle('vd-cc-yok', !ayar.altyazi); };
     kok.classList.toggle('vd-cc-yok', !ayar.altyazi);
@@ -639,7 +646,9 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       const genel = genelMi();
       /* genel sohbette doğruluk önemli: küçük/hızlı modeller (ör. llama-3.1-8b) yerine sağlayıcının en güçlü modeli */
       const GUCLU = { groq: 'openai/gpt-oss-120b', cerebras: 'gpt-oss-120b' };
-      const model = (genel && GUCLU[p.id]) || (DHProviders.getModel && DHProviders.getModel(p.id)) || p.model;
+      const kalite = ayar.kalite === 'oto' || !ayar.kalite ? (genel ? 'dengeli' : 'hizli') : ayar.kalite;
+      /* dengeli/derin ya da genel sohbet: sağlayıcının en güçlü modeli; hızlıda kullanıcının seçtiği model */
+      const model = ((genel || kalite !== 'hizli') && GUCLU[p.id]) || (DHProviders.getModel && DHProviders.getModel(p.id)) || p.model;
       const msgs = [
         { role: 'system', content: genel ? 'You are a careful, factual general assistant for a Turkish user inside the Konuşkan app. Accuracy matters more than sounding confident. Your final answer is valid JSON only, no markdown fences.' : 'You help a Turkish learner practise English inside the Konuşkan app. Reply with valid JSON only, no markdown fences.' },
         { role: 'user', content: istem }];
@@ -648,11 +657,12 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       /* Google hesabı bağlıysa: takvim / gmail / görevler / kişiler / drive araçları */
       const gAraclar = genel && /gpt-oss/i.test(model) && (p.id === 'groq' || p.id === 'cerebras') && window.DHGoogle && DHGoogle.durum().bagli ? DHGoogle.araclar() : [];
       const tools = [...(ara ? [{ type: 'browser_search' }] : []), ...gAraclar];
-      const SURE = tools.length ? 30000 : 15000;
+      const SURE = tools.length || kalite === 'derin' ? 30000 : 15000;
       let adet = 0, aradi = false;
+      if (kalite === 'derin') setTimeout(() => { if (!adet && !aradi && kok.dataset.d === 'dusunuyor') bilgi('Derin düşünüyor…'); }, 2500);
       for (let tur = 0; tur < 6; tur++) {
-        const body = { model, stream: true, temperature: genel ? 0.2 : 0.4, max_tokens: genel ? 4000 : 2500, messages: msgs };
-        if (/gpt-oss/i.test(model)) body.reasoning_effort = genel ? 'medium' : 'low';
+        const body = { model, stream: true, temperature: genel ? 0.2 : 0.4, max_tokens: kalite === 'derin' ? 6000 : genel ? 4000 : 2500, messages: msgs };
+        if (/gpt-oss/i.test(model)) body.reasoning_effort = { hizli: 'low', dengeli: 'medium', derin: 'high' }[kalite];
         if (tools.length) { body.tools = tools; body.tool_choice = tur < 5 ? 'auto' : 'none'; }
         const ctl = new AbortController(); let z = setTimeout(() => ctl.abort(), SURE);
         let res;

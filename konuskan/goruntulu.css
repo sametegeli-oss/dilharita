@@ -447,3 +447,6 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 /* Dur düğmesi (konuşurken / düşünürken) */
 .vd-dur { color: #ffb0b0; }
 .vd-dur svg { width: 18px; height: 18px; }
+/* Sohbet kalitesi seçimi */
+.vd-lobi .vd-kalite-l { margin: 10px 0 6px; text-align: left; }
+.vd-kalite-not { font-size: .76rem; color: var(--vd-soluk); line-height: 1.35; }
