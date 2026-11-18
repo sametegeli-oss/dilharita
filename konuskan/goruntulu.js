@@ -131,7 +131,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       <header class="vd-ust">
         <div class="vd-kim">
           <span class="vd-durum" data-d="hazir"><i></i><span class="vd-durum-y">Hazır</span></span>
-          <div><b>${OGRETMEN}</b><span class="vd-alt">İngilizce öğretmeni · <span class="vd-lv">${esc(S.level)}</span></span></div>
+          <div><b>${OGRETMEN}</b><span class="vd-alt"><span class="vd-rol">İngilizce öğretmeni</span> · <span class="vd-lv">${esc(S.level)}</span></span></div>
         </div>
         <div class="vd-sure" hidden>00:00</div>
         <div class="vd-ust-sag">
@@ -144,6 +144,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       <div class="vd-mod" role="radiogroup" aria-label="Ders modu">
         <label><input type="radio" name="vdmod" value="tr"><span>Türkçe konu çalışma</span></label>
         <label><input type="radio" name="vdmod" value="en"><span>İngilizce sohbet</span></label>
+        <label><input type="radio" name="vdmod" value="genel"><span>Türkçe genel sohbet</span></label>
       </div>
       <section class="vd-lobi">
         <div class="vd-kart">
@@ -318,23 +319,30 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     sz.oninput = () => { ayar.sessizlik = +sz.value; ayarKaydet(); q('.vd-sessiz-d').textContent = (+sz.value).toFixed(1) + ' sn'; };
     /* DERS MODU — "Türkçe konu çalışma": öğretmen Türkçe anlatır, İngilizce örnekleri İngilizce okur; mikrofon Türkçe dinler.
                    "İngilizce sohbet": öğretmen İngilizce konuşur; mikrofon İngilizce dinler. */
-    if (ayar.mod !== 'tr' && ayar.mod !== 'en') ayar.mod = 'en';
+    if (ayar.mod !== 'tr' && ayar.mod !== 'en' && ayar.mod !== 'genel') ayar.mod = 'en';
+    const genelMi = () => ayar.mod === 'genel', turkceMi = () => ayar.mod !== 'en';
     function modUygula(bildir) {
       qa('[name=vdmod]').forEach(r => { r.checked = r.value === ayar.mod; });
       kok.dataset.mod = ayar.mod;
-      window.KK_DICT_LANG = ayar.mod === 'tr' ? 'tr-TR' : 'en-US';
-      const lb = q('.vd-lobi p'); if (lb) lb.textContent = ayar.mod === 'tr'
+      window.KK_DICT_LANG = turkceMi() ? 'tr-TR' : 'en-US';
+      const rol = q('.vd-rol'); if (rol) rol.textContent = genelMi() ? 'Genel asistan' : 'İngilizce öğretmeni';
+      const lb = q('.vd-lobi p'); if (lb) lb.textContent = genelMi()
+        ? `${OGRETMEN} her konuda Türkçe yardımcı olan genel asistanın: soru sor, fikir al, bir şey yazdır, plan yap. Konuşurken cihazının kendi sesini kullanır, Gemini ses kotası harcanmaz.`
+        : ayar.mod === 'tr'
         ? `${OGRETMEN} istediğin konuyu Türkçe anlatır; İngilizce örnekleri İngilizce okur, küçük alıştırmalar yaptırır. Aşağıdan bir konu seç ya da kendin yaz.`
         : `Seviyene (${S.level}) göre İngilizce konuşur, duygularıyla tepki verir. Takıldığın yerde Türkçe sorabilirsin.`;
-      const inp = q('.vd-kendi input'); if (inp) inp.placeholder = ayar.mod === 'tr' ? 'Çalışmak istediğin konu (ör. Present perfect, sıfatlar, "make" ile "do" farkı)' : 'Ya da kendi konunu yaz (Türkçe ya da İngilizce)';
-      q('.vd-yaz input').placeholder = ayar.mod === 'tr' ? 'Türkçe soru sor ya da İngilizce cümle yaz…' : "İngilizce (ya da Türkçe) yaz ve Enter'a bas";
+      const kn = q('.vd-konular'); if (kn) kn.hidden = genelMi();
+      const ip = q('[data-a=ipucu]'); if (ip) ip.hidden = genelMi();
+      const bb = q('.vd-basla'); if (bb) bb.innerHTML = vi('video') + (genelMi() ? ' Sohbeti başlat' : ' Dersi başlat');
+      const inp = q('.vd-kendi input'); if (inp) inp.placeholder = genelMi() ? 'Ne konuşmak istersin? (isteğe bağlı, ör. hafta sonu planı, bir e-posta taslağı)' : ayar.mod === 'tr' ? 'Çalışmak istediğin konu (ör. Present perfect, sıfatlar, "make" ile "do" farkı)' : 'Ya da kendi konunu yaz (Türkçe ya da İngilizce)';
+      q('.vd-yaz input').placeholder = genelMi() ? 'Bir şey sor ya da yaz…' : ayar.mod === 'tr' ? 'Türkçe soru sor ya da İngilizce cümle yaz…' : "İngilizce (ya da Türkçe) yaz ve Enter'a bas";
       if (bildir) {
-        bilgi(ayar.mod === 'tr' ? 'Türkçe konu çalışma: öğretmen Türkçe anlatacak, mikrofon Türkçe dinleyecek.' : 'İngilizce sohbet: öğretmen İngilizce konuşacak, mikrofon İngilizce dinleyecek.');
+        bilgi(genelMi() ? 'Türkçe genel sohbet: genel asistan Türkçe konuşacak, cihaz sesini kullanacak (kota harcamaz).' : ayar.mod === 'tr' ? 'Türkçe konu çalışma: öğretmen Türkçe anlatacak, mikrofon Türkçe dinleyecek.' : 'İngilizce sohbet: öğretmen İngilizce konuşacak, mikrofon İngilizce dinleyecek.');
         if (D.aktif && !D.bitiyor && micLive) dict.stop().catch(() => {});   /* dinleme sürüyorsa yeni dille yeniden açılır */
       }
     }
     qa('[name=vdmod]').forEach(r => r.onchange = () => { if (!r.checked) return; ayar.mod = r.value; ayarKaydet(); modUygula(true);
-      if (st.faz === 'ders' && !st.busy && kok.dataset.d === 'bekliyor' && st.son) sor(null, ayar.mod === 'tr' ? 'The learner just switched to TURKISH topic study mode. In Turkish, briefly say you will now explain in Turkish and ask which topic they want to study (or offer to continue with the current one).' : 'The learner just switched back to ENGLISH conversation mode. In English, say one short friendly line and ask an easy question to continue the conversation.'); });
+      if (st.faz === 'ders' && !st.busy && kok.dataset.d === 'bekliyor' && st.son) sor(null, genelMi() ? 'The user just switched to TURKISH GENERAL CHAT mode. In Turkish, say one short friendly line that you are now their general assistant and ask how you can help.' : ayar.mod === 'tr' ? 'The learner just switched to TURKISH topic study mode. In Turkish, briefly say you will now explain in Turkish and ask which topic they want to study (or offer to continue with the current one).' : 'The learner just switched back to ENGLISH conversation mode. In English, say one short friendly line and ask an easy question to continue the conversation.'); });
     q('[data-a=trAc]').checked = ayar.altyaziTR;
     modUygula(false);
     q('[data-a=trAc]').onchange = e => { ayar.altyaziTR = e.target.checked; ayarKaydet(); q('.vd-tr').hidden = !ayar.altyaziTR; };
@@ -353,6 +361,17 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     /* ---- yapay zekâ ---- */
     function sistem() {
       const LV = S.level, k = st.konu;
+      if (genelMi()) {
+        let g = `You are ${OGRETMEN}, a friendly, knowledgeable personal assistant talking with the user on a live VIDEO call. The user is Turkish.
+MODE: TURKISH GENERAL CHAT. Speak natural TURKISH (informal "sen") about ANY subject the user brings: everyday questions, advice, explanations, ideas, planning, writing help, health/money/legal basics (with a short note to consult a professional when it really matters), general knowledge, or just chatting.
+- Your words are spoken aloud: answer in 1-5 short, clear spoken sentences. No emojis, no lists, no markdown, no stage directions. If a longer answer is needed, give the essence first and offer to continue.
+- Be honest: if you are not sure, or it depends on recent/current information you may not know, say so briefly.
+- Ask a short follow-up question only when it really helps.
+- The user's messages come from speech recognition: if a message looks garbled, kindly ask them to repeat.
+- If the user wants English help, you can help, but keep explaining in Turkish.`;
+        if (k && k.custom) g += `\nThe user wants to start with: ${k.custom}`;
+        return g;
+      }
       let s = `You are ${k.persona}. You are on a live one-to-one VIDEO lesson with a Turkish native speaker who is learning English at CEFR level ${LV}. ${LEVEL_GUIDE[LV]}
 Be warm, natural and encouraging, like a real person on a video call. No emojis, no lists, no stage directions. Never break role. Do not correct the learner in your reply (corrections are shown on screen separately), but you may naturally reuse the correct form. The learner's messages come from speech recognition: if a message looks garbled, kindly ask them to say it again.\n`;
       if (ayar.mod === 'tr') {
@@ -398,7 +417,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     const TTS_MODELLER = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
     const DOLGU = { en: ['Hmm.', 'Let me see.', 'Okay.'], tr: ['Hmm.', 'Bir bakalım.', 'Peki.'] };
     const ttsHafiza = new Map();
-    function geminiSesAcik() { return ayar.ses !== 'tarayici' && geminiKeys().length > 0 && !st.ttsKapali; }
+    function geminiSesAcik() { return !genelMi() && ayar.ses !== 'tarayici' && geminiKeys().length > 0 && !st.ttsKapali; }
     async function ttsOnbellek(anahtar, ab) {
       /* kısa ve sık kullanılan sesler (dolgu, "acele etme") bir kez üretilir, tarayıcıda saklanır */
       try { const c = await caches.open('dh-tts-v1'); const u = 'https://tts.dilharita.local/' + encodeURIComponent(anahtar);
@@ -457,7 +476,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         if (!st.ttsUyari) { st.ttsUyari = true; toast(e && e.code === 'rate' ? 'Doğal ses (Gemini) bugünlük kotasını doldurdu; tarayıcı sesiyle devam ediliyor.' : 'Doğal ses şu an üretilemiyor; tarayıcı sesiyle devam ediliyor.'); }
       }
     }
-    function dolgulariHazirla() { if (!geminiSesAcik()) return; DOLGU[ayar.mod === 'tr' ? 'tr' : 'en'].slice(0, 2).forEach(t => ttsUret(t).catch(() => {})); }
+    function dolgulariHazirla() { if (!geminiSesAcik()) return; DOLGU[turkceMi() ? 'tr' : 'en'].slice(0, 2).forEach(t => ttsUret(t).catch(() => {})); }
 
     /* ---- altyazı: söylenen parça (ve örnekse çevirisi) ---- */
     function altyaziGoster(m, i, cevMi) {
@@ -524,8 +543,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         /* uzun beklemede düşünür gibi kısa bir dolgu ("Hmm.", "Let me see.") */
         dolgu() {
           if (sesBasladi || m.liste.length || iptal) return;
-          const liste = DOLGU[ayar.mod === 'tr' ? 'tr' : 'en']; const t = liste[(st.dolguN = (st.dolguN || 0) + 1) % 2];
-          const dil = ayar.mod === 'tr' && t !== 'Hmm.' ? 'tr' : 'en';
+          const liste = DOLGU[turkceMi() ? 'tr' : 'en']; const t = liste[(st.dolguN = (st.dolguN || 0) + 1) % 2];
+          const dil = turkceMi() && t !== 'Hmm.' ? 'tr' : 'en';
           if (gemini && !st.ttsKapali) {
             /* yalnız hazır (saklanmış) ses varsa çal; yoksa bir dahaki sefere hazırla */
             Promise.race([ttsUret(t), new Promise((_, r) => setTimeout(() => r('gec'), 250))])
@@ -633,7 +652,9 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       try {
         const j = `{"reply":[{"s":"segment","lang":"en","tr":"Turkish translation (only for en segments in a Turkish explanation)","emo":"mutlu","gest":"onay"}],"check":{"ok":true,"lang":"en","corrected":"","why_tr":"","tag":""},"reply_tr":"Turkish translation of the English parts of your reply (empty if the reply is all Turkish)"${st.konu.tasks ? ',"tasks_done":[]' : ''}}`;
         const istem = sistem() + `\n\n${st.hist.length ? 'Conversation so far:\n' + gecmis() + '\n\n' : ''}` +
-          (metin ? `Do two things.\n1) Write your next reply.${ekTalimat ? ' ' + ekTalimat : ''}\n2) Check the learner's LAST message. If it is (mostly) in Turkish — a question, a request for explanation, or just Turkish talk — set check.lang="tr", ok=true and do not check it. Otherwise check.lang="en" and flag ONLY real English errors in the English parts: grammar (tense, articles, prepositions, word order, agreement), wrong word choice, clearly unnatural phrasing. NEVER flag punctuation, capitalisation, spelling of names, contractions, filler words${um.spoken ? ', or anything caused by speech recognition (stray periods, stutters, repeated or misheard words)' : ''}. If only such things differ, ok=true and corrected empty. Keep the learner's wording in "corrected"; change only what is wrong. why_tr: informal Turkish (sen), 1-2 short sentences naming the exact rule.${st.konu.tasks ? ' List the numbers of tasks the learner has GENUINELY completed so far in "tasks_done".' : ''}`
+          (metin && genelMi() ? `Write your next reply to the user's last message.${ekTalimat ? ' ' + ekTalimat : ''} Set check to {"ok":true,"lang":"tr"} (no language checking in this mode).`
+            : !metin && genelMi() ? (ekTalimat || `Start now IN TURKISH: greet the user warmly in one short sentence${st.konu && st.konu.custom ? ' and start helping with what they want to talk about' : ' and ask how you can help today'}.`)
+            : metin ? `Do two things.\n1) Write your next reply.${ekTalimat ? ' ' + ekTalimat : ''}\n2) Check the learner's LAST message. If it is (mostly) in Turkish — a question, a request for explanation, or just Turkish talk — set check.lang="tr", ok=true and do not check it. Otherwise check.lang="en" and flag ONLY real English errors in the English parts: grammar (tense, articles, prepositions, word order, agreement), wrong word choice, clearly unnatural phrasing. NEVER flag punctuation, capitalisation, spelling of names, contractions, filler words${um.spoken ? ', or anything caused by speech recognition (stray periods, stutters, repeated or misheard words)' : ''}. If only such things differ, ok=true and corrected empty. Keep the learner's wording in "corrected"; change only what is wrong. why_tr: informal Turkish (sen), 1-2 short sentences naming the exact rule.${st.konu.tasks ? ' List the numbers of tasks the learner has GENUINELY completed so far in "tasks_done".' : ''}`
             : (ekTalimat ? ekTalimat : ayar.mod === 'tr' ? `Start the lesson now IN TURKISH: greet the learner warmly, say in one sentence what you will study together (the topic above), and begin with the first small step and an English example.` : `Start the lesson now: greet the learner warmly by video, say one short friendly thing, and ask an opening question about the topic.`)) +
           `\n${ETIKET}\nWrite the "reply" array FIRST in the JSON (it is spoken while you write the rest).\nReturn ONLY JSON: ${j}`;
         let r;
@@ -805,7 +826,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       const konustu = D.konustu > 200 || !!metin;
       if (konustu && blob && ayar.hassas && geminiKeys().length) {
         durum('anliyor'); q('.vd-sen-y').textContent = metin || 'Söylediklerin yazıya dökülüyor…'; q('.vd-sen').classList.add('anliyor');
-        try { const g = await geminiYaziya(blob, st.son && st.son.text, ayar.mod); if (g) metin = g; }
+        try { const g = await geminiYaziya(blob, st.son && st.son.text, turkceMi() ? 'tr' : 'en'); if (g) metin = g; }
         catch (e) {
           /* tarayıcının metniyle devam; ama kullanıcıyı bir kez uyar */
           if (!st.gemUyari) { st.gemUyari = true; toast(e && e.code === 'rate' ? 'Hassas ses tanıma bugünlük Gemini kotasını doldurdu; tarayıcının tanıması kullanılıyor.' : 'Hassas ses tanıma şu an çalışmadı; tarayıcının tanıması kullanılıyor.'); }
@@ -820,7 +841,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (!ayar.ellerSerbest) { bilgi('Seni duyamadım. Mikrofona basıp tekrar konuş.'); return; }
       /* hiç konuşmadıysa: bir kez nazikçe hatırlat, sonra beklemeye geç */
       if (st.sabir++ < 1 && st.son) {
-        const m = { role: 'assistant', text: "Take your time. I'm listening.", tr: 'Acele etme, dinliyorum.', liste: [{ metin: 'Take your time.', duygu: 'anlayisli', jest: 'egil', guc: 0.7, dil: 'en' }, { metin: "I'm listening.", duygu: 'cesaret', jest: null, guc: 0.6, dil: 'en' }] };
+        const m = genelMi() ? { role: 'assistant', text: 'Acele etme, dinliyorum.', tr: '', liste: [{ metin: 'Acele etme, dinliyorum.', duygu: 'anlayisli', jest: 'egil', guc: 0.7, dil: 'tr' }] } : { role: 'assistant', text: "Take your time. I'm listening.", tr: 'Acele etme, dinliyorum.', liste: [{ metin: 'Take your time.', duygu: 'anlayisli', jest: 'egil', guc: 0.7, dil: 'en' }, { metin: "I'm listening.", duygu: 'cesaret', jest: null, guc: 0.6, dil: 'en' }] };
         await soyle(m, true); if (!st.bitti && kok.dataset.d === 'bekliyor') dinle();
       } else bilgi('Hazır olunca mikrofona bas (masaüstünde boşluk tuşu).');
     }
@@ -900,22 +921,22 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (st.bitti) return; st.bitti = true; st.ozetVar = true;
       clearInterval(st.saat); yuz.sustur(); if (D.aktif) dinlemeIptal(); onayKapat();
       const sure = Math.max(1, Math.round((Date.now() - st.bas) / 60000));
-      if (st.turns) markDone('video');
+      if (st.turns && !genelMi()) markDone('video');
       kok.classList.remove('vd-derste', 'vd-sohbet-acik');
       q('.vd-alt-bar').hidden = true; q('.vd-yaz').hidden = true; kok.classList.remove('vd-yaz-acik'); q('.vd-sen').hidden = true; q('.vd-duzeltme').hidden = true; bilgiGizle();
       durum('hazir'); yuz.duygu(st.turns && st.okN >= st.turns / 2 ? 'gururlu' : 'cesaret', 0.8); yuz.jest('onay');
       const o = q('.vd-ozet'); o.hidden = false;
       o.innerHTML = `<div class="vd-kart">
-        <span class="vd-etiket">Ders bitti</span><h2>${st.turns ? 'Güzel bir dersti!' : 'Ders kısa sürdü'}</h2>
-        <div class="vd-sayilar"><div><b>${sure}</b><span>dakika</span></div><div><b>${st.turns}</b><span>cevap</span></div><div><b>${st.okN}</b><span>hatasız</span></div><div><b>+${st.xp}</b><span>XP</span></div></div>
+        <span class="vd-etiket">${genelMi() ? 'Sohbet bitti' : 'Ders bitti'}</span><h2>${genelMi() ? (st.turns ? 'Keyifli bir sohbetti!' : 'Sohbet kısa sürdü') : st.turns ? 'Güzel bir dersti!' : 'Ders kısa sürdü'}</h2>
+        ${genelMi() ? `<div class="vd-sayilar"><div><b>${sure}</b><span>dakika</span></div><div><b>${st.turns}</b><span>mesaj</span></div></div>` : `<div class="vd-sayilar"><div><b>${sure}</b><span>dakika</span></div><div><b>${st.turns}</b><span>cevap</span></div><div><b>${st.okN}</b><span>hatasız</span></div><div><b>+${st.xp}</b><span>XP</span></div></div>`}
         ${st.konu && st.konu.tasks ? `<p class="vd-gorev">Görevler: ${st.done.size} / ${st.konu.tasks.length}</p>` : ''}
         <div class="vd-yorum"></div>
-        ${st.errs.length ? `<h3>Bu dersteki düzeltmeler</h3><div class="vd-oz-liste">${st.errs.map(e => `<div class="vd-duz-k"><div class="vd-fark">${diffHTML(e.wrong, e.right)}</div><div class="vd-dogru">${esc(e.right)}</div><p>${esc(e.why || '')}</p></div>`).join('')}</div><p class="vd-not">Hepsi hata defterine ve Dil Harita'nın ortak hata defterine eklendi.</p>` : (st.turns ? '<p>Bu derste düzeltilecek bir hata çıkmadı. 👏</p>' : '')}
-        <div class="vd-oz-b"><button type="button" class="vd-basla" data-k="yeni">${vi('video')} Yeni ders</button><button type="button" class="vd-ikincil" data-k="kapat">Kapat</button></div></div>`;
+        ${st.errs.length ? `<h3>Bu dersteki düzeltmeler</h3><div class="vd-oz-liste">${st.errs.map(e => `<div class="vd-duz-k"><div class="vd-fark">${diffHTML(e.wrong, e.right)}</div><div class="vd-dogru">${esc(e.right)}</div><p>${esc(e.why || '')}</p></div>`).join('')}</div><p class="vd-not">Hepsi hata defterine ve Dil Harita'nın ortak hata defterine eklendi.</p>` : (st.turns && !genelMi() ? '<p>Bu derste düzeltilecek bir hata çıkmadı. 👏</p>' : '')}
+        <div class="vd-oz-b"><button type="button" class="vd-basla" data-k="yeni">${vi('video')} ${genelMi() ? 'Yeni sohbet' : 'Yeni ders'}</button><button type="button" class="vd-ikincil" data-k="kapat">Kapat</button></div></div>`;
       o.querySelector('[data-k=kapat]').onclick = () => closePanel();
       o.querySelector('[data-k=yeni]').onclick = () => { closePanel(true); startVideo(); };
       saveNow();
-      if (st.turns >= 2 && !aiOff()) {
+      if (st.turns >= 2 && !aiOff() && !genelMi()) {
         const y = o.querySelector('.vd-yorum'); y.innerHTML = '<span class="vd-spin kucuk"></span>';
         try {
           const r = await ai(`You were ${OGRETMEN}, an English teacher, in a short video lesson with a Turkish learner (level ${S.level}).\nTranscript:\n${gecmis(30)}\nGive brief feedback in informal Turkish (sen). Return ONLY JSON: {"guclu":"1 sentence: what went well","gelistir":"1 sentence: the one thing to work on next","ifadeler":["3 useful English phrases from or for this conversation"]}`, { deep: true });
@@ -927,7 +948,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
 
     panelCleanup = () => {
       st.bitti = true; clearInterval(st.saat); clearTimeout(D.sz); cancelAnimationFrame(D.raf);
-      if (st.turns && !st.ozetVar) { try { markDone('video'); } catch (e) {} }
+      if (st.turns && !st.ozetVar && !genelMi()) { try { markDone('video'); } catch (e) {} }
       document.removeEventListener('keydown', klavye);
       try { if (mk.kayit && mk.kayit.state !== 'inactive') mk.kayit.stop(); } catch (e) {}
       try { mk.akis && mk.akis.getTracks().forEach(t => t.stop()); } catch (e) {}

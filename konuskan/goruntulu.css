@@ -402,3 +402,12 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 }
 
 .vd-ses-not { font-size: .72rem; color: var(--vd-soluk); }
+
+/* 3 mod (Türkçe konu · İngilizce sohbet · Türkçe genel sohbet) */
+.vd-b[hidden], .vd-konular[hidden] { display: none !important; }
+.vd-mod { flex-wrap: wrap; justify-content: center; max-width: calc(100% - 16px); }
+@media (max-width: 560px) {
+  .vd-mod { gap: 2px; }
+  .vd-mod span { padding: 6px 8px; font-size: .72rem; gap: 5px; }
+  .vd-mod span::before { width: 12px; height: 12px; }
+}
