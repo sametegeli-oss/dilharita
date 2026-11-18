@@ -473,3 +473,5 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-kul-m small { font-size: .72rem; color: var(--vd-soluk); }
 .vd-kul-not { font-size: .72rem; color: var(--vd-soluk); }
 .vd-kul-not a { color: var(--vd-vurgu); }
+
+.vd-m-model { margin-left: auto; align-self: center; font-size: .68rem; font-weight: 600; color: var(--vd-soluk); padding: 2px 8px; border-radius: 99px; border: 1px solid var(--vd-cizgi); white-space: nowrap; opacity: .85; }

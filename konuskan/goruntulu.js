@@ -246,11 +246,13 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       }
       if (m._el) m.liste.forEach((c, i) => { const el = m._el.querySelector(`.vd-p-cev[data-i="${i}"]`); if (el) { if (c.cev) el.textContent = c.cev; else el.remove(); } });
     }
+    const SAG_AD = { groq: 'Groq', gemini: 'Gemini', cerebras: 'Cerebras', openrouter: 'OpenRouter', mistral: 'Mistral', nvidia: 'NVIDIA' };
+    const modelAdi = x => (SAG_AD[x.s] || x.s) + ' · ' + String(x.model || '').replace(/^openai\//, '').replace(/^qwen\//, '').replace(/^gemini-/, '').replace(/-/g, ' ');
     function ogretmenMesaji(m) {
       const d = document.createElement('div'); d.className = 'vd-m ogr';
       d.innerHTML = `<span class="vd-m-ava" aria-hidden="true">D</span><div class="vd-m-ic"><div class="vd-m-bub" role="button" tabindex="0" title="Tekrar dinle">${parcaHTML(m)}</div>
         <div class="vd-m-tr" hidden>${esc(m.tr || 'Çeviri yok.')}</div>
-        <div class="vd-m-a"><button type="button" data-k="dinle">${vi('spk')} Tekrar söyle</button>${m.tr ? '<button type="button" data-k="tr">TR</button>' : ''}</div></div>`;
+        <div class="vd-m-a"><button type="button" data-k="dinle">${vi('spk')} Tekrar söyle</button>${m.tr ? '<button type="button" data-k="tr">TR</button>' : ''}${m.model ? `<span class="vd-m-model" title="Bu cevabı veren yapay zekâ modeli">${esc(modelAdi(m.model))}</span>` : ''}</div></div>`;
       const bub = d.querySelector('.vd-m-bub');
       bub.onclick = e => { const k = e.target.closest('.vd-k'); if (k) { e.stopPropagation(); kelimeGoster(k); return; } tekrarSoyle(m); };
       bub.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tekrarSoyle(m); } };
@@ -772,6 +774,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       const genel = genelMi();
       const kalite = kaliteSec();
       model = model || modelSec(p);
+      st.aktifModel = { s: p.id, model };   /* cevabın altındaki model etiketi için */
       const msgs = [
         { role: 'system', content: genel ? 'You are a careful, factual general assistant for a Turkish user inside the Konuşkan app. Accuracy matters more than sounding confident. Your final answer is valid JSON only, no markdown fences.' : 'You help a Turkish learner practise English inside the Konuşkan app. Reply with valid JSON only, no markdown fences.' },
         { role: 'user', content: istem }];
@@ -904,7 +907,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       const dolguZ = setTimeout(() => ks.dolgu(), 1400);
       const onSeg = c => {
         m.liste.push(c); m.text = m.liste.map(x => x.metin).join(' ');
-        if (m.liste.length === 1) { clearTimeout(dusunZ); st.hist.push(m); st.son = m; ogretmenMesaji(m); rozet(); }
+        if (m.liste.length === 1) { clearTimeout(dusunZ); m.model = st.aktifModel; st.hist.push(m); st.son = m; ogretmenMesaji(m); rozet(); }
         else baloncukGuncelle(m);
         ks.ekle(c);
       };
