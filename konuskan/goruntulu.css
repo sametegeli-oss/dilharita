@@ -411,3 +411,34 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
   .vd-mod span { padding: 6px 8px; font-size: .72rem; gap: 5px; }
   .vd-mod span::before { width: 12px; height: 12px; }
 }
+
+/* Google hesabı (genel asistan) */
+.vd-google { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 10px; }
+.vd-google small { flex-basis: 100%; color: var(--vd-soluk); font-size: .76rem; line-height: 1.35; }
+.vd-google-ayar { display: flex; flex-direction: column; gap: 6px; }
+.vd-google-ayar .vd-google { margin: 0; }
+.vd-g-b { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--vd-cizgi); background: rgba(255, 255, 255, .92); color: #1f2937; border-radius: 10px; padding: 8px 14px; font-weight: 700; font-size: .86rem; cursor: pointer; }
+.vd-g-b:hover { background: #fff; }
+.vd-g-b.ikincil { background: transparent; color: var(--vd-yazi); }
+.vd-g-b.ana { background: var(--vd-vurgu); color: #1b1407; border-color: transparent; }
+.vd-g-b svg { width: 16px; height: 16px; flex: none; }
+.vd-g-durum { display: inline-flex; align-items: center; gap: 6px; font-size: .84rem; font-weight: 700; color: #9be3b0; word-break: break-all; }
+.vd-g-durum svg { width: 16px; height: 16px; }
+.vd-g-cid { display: flex; flex-wrap: wrap; gap: 6px; flex-basis: 100%; }
+.vd-g-cid[hidden] { display: none; }
+.vd-g-cid input { flex: 1 1 220px; border: 1px solid var(--vd-cizgi); background: rgba(255, 255, 255, .05); color: var(--vd-yazi); border-radius: 10px; padding: 8px 10px; font: inherit; font-size: .82rem; }
+.vd-ipucu .vd-g-b { margin-left: 8px; padding: 6px 10px; }
+.vd-gonay { position: absolute; inset: 0; right: var(--sag, 0); z-index: 40; display: flex; align-items: flex-end; justify-content: center; padding: 16px 16px calc(110px + env(safe-area-inset-bottom)); background: rgba(5, 8, 15, .35); }
+.vd-gonay[hidden] { display: none; }
+.vd-gonay-k { width: min(440px, 100%); background: rgba(18, 22, 32, .97); border: 1px solid var(--vd-cizgi); border-radius: 16px; padding: 16px 18px; box-shadow: 0 18px 50px rgba(0, 0, 0, .45); color: var(--vd-yazi); }
+.vd-gonay-k > b { display: flex; align-items: center; gap: 8px; font-size: 1rem; margin-bottom: 8px; }
+.vd-gonay-k p { margin: 4px 0; font-size: .9rem; color: var(--vd-soluk); white-space: pre-wrap; }
+.vd-gonay-k p.ana { color: var(--vd-yazi); font-weight: 700; font-size: .98rem; }
+.vd-gonay-k small { display: block; margin-top: 6px; color: var(--vd-soluk); font-size: .78rem; }
+.vd-gonay-b { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+/* genel modda İngilizce dersine özgü işaretler gizli */
+.vd[data-mod="genel"] .vd-seviye,
+.vd[data-mod="genel"] .vd-m-durum,
+.vd[data-mod="genel"] .vd-m.ogr [data-k="tr"],
+.vd[data-mod="genel"] .vd-m.ogr .vd-m-tr { display: none !important; }
+.vd-gonay-k { background: #121620; }
