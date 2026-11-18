@@ -464,12 +464,12 @@ class CanliFace{
     this.yuz.hazir.then(function(){ self.yuz.profil({ ifade:.7, enerji:.5, jest:.5 }); self.yuz.duygu("cesaret",.4); })
       .catch(function(){ self.yedek=true; try{ self.kap.remove(); }catch(e){} self.img.style.display=""; self.eski=new AvatarFace([imgId], EN_DIR, EN_FRAMES, enViseme, true); });
   }
-  speak(text,duration){
+  speak(text,duration,dil){
     if(this.eski) return this.eski.speak(text,duration);
     var t=String(text||"").replace(/\s+/g," ").trim(); if(!t||!this.yuz) return;
     var parcalar=DHCanliYuz.etiketle(t), n=t.length||1, sure=duration||1800, self=this;
     this.speaking=true;
-    this.yuz.konus(parcalar.map(function(c){ return { metin:c.metin, dil:"en", duygu:c.duygu, guc:Math.min(.7,c.guc||.5), jest:c.jest, sessiz:true, sureMs:Math.round(sure*c.metin.length/n) }; }), { sesiKesme:false, sonDuygu:"cesaret" })
+    this.yuz.konus(parcalar.map(function(c){ return { metin:c.metin, dil:(dil||"en"), duygu:c.duygu, guc:Math.min(.7,c.guc||.5), jest:c.jest, sessiz:true, sureMs:Math.round(sure*c.metin.length/n) }; }), { sesiKesme:false, sonDuygu:"cesaret" })
       .then(function(){ self.speaking=false; });
   }
   rest(){ if(this.eski) return this.eski.rest(); if(this.yuz){ this.yuz.sustur({ sesKesme:false }); this.yuz.dinle(false); } this.speaking=false; }
@@ -479,23 +479,35 @@ class CanliFace{
 /* Iki yuzu yoneten cephe: dile gore dogru avatari oynatir, digerini dinlendirir+gizler. */
 class DualTeacherAvatar{
   constructor(){
-    this.tr = new AvatarFace(["teacherAvaImg","teacherHeroImgTr"], TR_DIR, TR_FRAMES, trViseme, false);
-    try{ this.en = new CanliFace("teacherHeroImgEn"); }
-    catch(e){ this.en = new AvatarFace(["teacherHeroImgEn"], EN_DIR, EN_FRAMES, enViseme, true); }
     var trImg=document.getElementById("teacherHeroImgTr"), enImg=document.getElementById("teacherHeroImgEn");
     this.trFig = trImg ? (trImg.closest("figure")||trImg) : null;
     this.enFig = enImg ? (enImg.closest("figure")||enImg) : null;
+    /* TEK OGRETMEN (18 Kasim): canli yuz hem Turkceyi hem Ingilizceyi kendi agiz hareketleriyle soyler.
+       Acilamazsa eski iki yuzlu duzen (teacher1 Turkce, teacher2 Ingilizce) aynen calisir. */
+    try{ this.canli = new CanliFace("teacherHeroImgEn"); }catch(e){ this.canli = null; }
+    if(this.canli){
+      this.tek = true;
+      this.vis(this.trFig, false);
+      this.cap = this.enFig && this.enFig.querySelector("figcaption");
+      var ava=document.getElementById("teacherAvaImg"); if(ava){ ava.src="./assets/avatars_v4/teacher/duygu-mutlu.webp"; ava.style.objectFit="cover"; ava.style.background="#e9edf2"; }
+      this.dilYaz(null);
+    } else {
+      this.tr = new AvatarFace(["teacherAvaImg","teacherHeroImgTr"], TR_DIR, TR_FRAMES, trViseme, false);
+      this.en = new AvatarFace(["teacherHeroImgEn"], EN_DIR, EN_FRAMES, enViseme, true);
+    }
   }
   vis(el,on){ if(el) el.style.display = on ? "" : "none"; }
-  showOnly(isTr){ this.vis(this.trFig, !!isTr); this.vis(this.enFig, !isTr); }
-  showBoth(){ this.vis(this.trFig, true); this.vis(this.enFig, true); }
+  dilYaz(isTr){ if(this.cap) this.cap.textContent = isTr===null ? "🇹🇷 Türkçe · 🇬🇧 English" : (isTr ? "🇹🇷 Türkçe" : "🇬🇧 English"); }
+  showOnly(isTr){ if(this.tek) return this.dilYaz(!!isTr); this.vis(this.trFig, !!isTr); this.vis(this.enFig, !isTr); }
+  showBoth(){ if(this.tek) return this.dilYaz(null); this.vis(this.trFig, true); this.vis(this.enFig, true); }
   speakText(text,duration,isTr){
+    if(this.tek){ this.canli.speak(text,duration,isTr?"tr":"en"); this.dilYaz(!!isTr); return; }
     const active = isTr ? this.tr : this.en;
     const other  = isTr ? this.en : this.tr;
     other.rest(); active.speak(text,duration);
     this.showOnly(!!isTr);
   }
-  stop(){ this.tr.stop(); this.en.stop(); this.showBoth(); }
+  stop(){ if(this.tek){ this.canli.stop(); this.dilYaz(null); return; } this.tr.stop(); this.en.stop(); this.showBoth(); }
 }
 function mountTeacherAvatar(){ TeacherAvatar = new DualTeacherAvatar(); try{ window.__dhOgretmenAvatar = TeacherAvatar; }catch(e){} }
 function estimateSpeechDuration(text){ return Math.max(900, Math.min(18000, Array.from(String(text||"")).length * 92)); }
