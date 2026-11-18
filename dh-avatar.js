@@ -124,10 +124,118 @@
     return kareler;
   }
 
+  /* ===================================================================
+     CANLI YÜZ KÖPRÜSÜ (18 Kasım)
+     "teacher" avatarı artık Konuşkan'daki canlı yüz motoruyla (dh-canli-yuz.js)
+     çiziliyor: duygular, jestler, yumuşak ağız. Sayfalar aynı API'yi kullanır
+     (hazir, konus, sustur, bosaCik, kareGoster, yikil). WebGL yoksa ya da
+     motor açılamazsa sessizce eski kare kare avatara döner.
+     Doğal (Gemini) ses yalnız { dogalSes:true } verilen yerde kullanılır
+     (Özel Ders); çok cümle okuyan sayfalar tarayıcı sesiyle kalır (kota).
+     =================================================================== */
+  function webglVar() {
+    try { var c = document.createElement("canvas"); return !!(c.getContext("webgl") || c.getContext("experimental-webgl")); } catch (e) { return false; }
+  }
+  var betikler = {};
+  function betikYukle(src) {
+    if (betikler[src]) return betikler[src];
+    betikler[src] = new Promise(function (res, rej) { var s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+    return betikler[src];
+  }
+  function canliHazirla() {
+    var adimlar = [];
+    if (!global.DHViseme) adimlar.push(betikYukle("./viseme-lang.js"));
+    return Promise.all(adimlar).then(function () { return global.DHCanliYuz ? null : betikYukle("./dh-canli-yuz.js?v=7"); });
+  }
+  var stilVar = false;
+  function stilEkle() {
+    if (stilVar) return; stilVar = true;
+    var st = document.createElement("style");
+    st.textContent = ".dh-avatar__canli{position:absolute;inset:0;overflow:hidden;border-radius:inherit}" +
+      ".dh-avatar__canli canvas{position:absolute;width:122%;height:122%;left:-11%;top:-3%;display:block}";
+    document.head.appendChild(st);
+  }
+  function canliOlustur(el, s) {
+    stilEkle();
+    var kap = document.createElement("div"); kap.className = "dh-avatar__canli"; kap.setAttribute("aria-hidden", "true");
+    var cv = document.createElement("canvas"); kap.appendChild(cv); el.appendChild(kap);
+    var yuz = null, eski = null, gozcu = null;
+    function gorunurluk() {
+      if (!yuz) return;
+      var gizli = document.hidden || !el.isConnected;
+      yuz.duraklat(gizli || el.__dhGorunmez === true);
+    }
+    var hazir = canliHazirla().then(function () {
+      yuz = global.DHCanliYuz.olustur(cv, { yol: "./assets/avatars_v4/teacher/" });
+      return yuz.hazir;
+    }).then(function () {
+      var w = el.getBoundingClientRect().width || 96;
+      yuz.cizimHizi(w < 150 ? 30 : 0);
+      yuz.profil({ ifade: 0.7, enerji: 0.5, jest: 0.5 });
+      yuz.duygu("cesaret", 0.4);
+      try {
+        gozcu = new IntersectionObserver(function (g) { el.__dhGorunmez = !g[0].isIntersecting; gorunurluk(); });
+        gozcu.observe(el);
+      } catch (e) {}
+      document.addEventListener("visibilitychange", gorunurluk);
+      return true;
+    }).catch(function () {
+      /* yeni yüz açılamadı: eski avatara dön */
+      try { kap.remove(); } catch (e) {}
+      try { if (yuz) yuz.yikil(); } catch (e) {}
+      yuz = null;
+      var o = {}; Object.keys(s).forEach(function (k) { o[k] = s[k]; }); o.klasik = true;
+      eski = olustur(el, o);
+      return eski.hazir;
+    });
+    function dil(a) { var d = String((a && a.dil) || "").toLowerCase(); return d.indexOf("en") === 0 ? "en" : d.indexOf("tr") === 0 ? "tr" : null; }
+    function konus(metin, ayar) {
+      var a = ayar || {};
+      if (eski) return eski.konus(metin, a);
+      if (!yuz) { hazir.then(function () { konus(metin, a); }); return; }
+      var temiz = String(metin || "").replace(/[\u{1F000}-\u{1FFFF}☀-➿]/gu, "").trim();
+      if (!temiz) { if (a.bitti) a.bitti(); return; }
+      /* metni cümlelere böl, her cümleye duygu ve jest seç (kurallı etiketleyici) */
+      var d = dil(a), parcalar = global.DHCanliYuz.etiketle(temiz);
+      var sessiz = a.ses === false, toplamSure = a.sure || 0, harf = temiz.length || 1;
+      var liste = parcalar.map(function (c) {
+        var o = { metin: c.metin, duygu: c.duygu, guc: Math.min(0.7, c.guc || 0.5), jest: c.jest };
+        if (d) o.dil = d;
+        if (sessiz) { o.sessiz = true; o.sureMs = toplamSure ? Math.round(toplamSure * c.metin.length / harf) : c.metin.length * 62; }
+        return o;
+      });
+      var p = yuz.konus(liste, { hiz: a.hiz || 1, sonDuygu: "cesaret", dogal: !!s.dogalSes && !sessiz });
+      p.then(function () { if (a.bitti) a.bitti(); });
+      return p;
+    }
+    return {
+      hazir: hazir,
+      konus: konus,
+      sustur: function () { if (eski) return eski.sustur(); if (yuz) yuz.sustur(); },
+      bosaCik: function () { if (eski) return eski.bosaCik(); if (yuz) { yuz.dinle(false); } },
+      kareGoster: function (ad) {
+        if (eski) return eski.kareGoster(ad);
+        if (!yuz) return;
+        if (ad === "listen") { yuz.dinle(true); yuz.duygu("merak", 0.4); }
+        else if (ad === "idle") { yuz.dinle(false); }
+      },
+      yikil: function () {
+        if (eski) return eski.yikil();
+        try { if (gozcu) gozcu.disconnect(); } catch (e) {}
+        document.removeEventListener("visibilitychange", gorunurluk);
+        try { if (yuz) yuz.yikil(); } catch (e) {}
+        try { kap.remove(); } catch (e) {}
+      },
+      canli: true
+    };
+  }
+
   function olustur(el, secenek) {
     if (!el) throw new Error("DHAvatar: kap eleman gerekli");
     var s = secenek || {};
     var yol = s.yol || "./assets/avatars_v3/teacher/";
+    /* öğretmen avatarı: yeni canlı yüz (WebGL varsa) */
+    if (!s.klasik && /avatars_v3\/teacher\/?$/.test(yol) && webglVar()) return canliOlustur(el, s);
     var nefesAcik = s.nefes !== false;
 
     /* ---- DOM: nefes sarmalayici + iki capraz gecis katmani ---- */

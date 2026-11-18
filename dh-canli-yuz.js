@@ -288,6 +288,9 @@
     function gurultu(t, f, faz) { return Math.sin(t * f + faz) * 0.6 + Math.sin(t * f * 2.13 + faz * 1.7) * 0.3 + Math.sin(t * f * 0.47 + faz * 0.3) * 0.1; }
     function kare(simdi) {
       if (durum.yikildi) return;
+      /* görünmüyorsa çizme; küçük avatarda konuşmuyorken saniyede ~30 kare yeter (pil) */
+      if (!konusma && (durum.duraklat || (durum.fps && simdi - (durum.sonCizim || 0) < 1000 / durum.fps))) { if (durum.duraklat) durum.son = simdi; requestAnimationFrame(kare); return; }
+      durum.sonCizim = simdi;
       var dt = Math.min(0.05, (simdi - (durum.son || simdi)) / 1000); durum.son = simdi;
       var t = (simdi - t0) / 1000;
       /* hedefe yumuşak yaklaşma: enerji yüksekse daha hızlı */
@@ -383,7 +386,7 @@
         c.dizi = visemeDizi(c.metin, dil);
         var msHarf = (dil === "tr" ? 62 : 58) / (hizOrani || 1);
         /* gerçek ses varsa zamanlama sesin kendi süresinden, yoksa tahmini konuşma hızından */
-        var toplamMs = c.sesTampon ? c.sesTampon.duration * 1000 : c.metin.length * msHarf;
+        var toplamMs = c.sesTampon ? c.sesTampon.duration * 1000 : (c.sessiz && c.sureMs ? c.sureMs : c.metin.length * msHarf);
         c.kareMs = Math.max(30, toplamMs / Math.max(1, c.dizi.length));
         /* Harf başına bir şekil saniyede 15-20 değişim demek: göz bunu titreme olarak görür.
            Kareleri ~120 ms'lik gruplara topla, her grupta en belirgin şekli göster. */
@@ -407,9 +410,22 @@
         if (c.jest && JESTLER[c.jest]) setTimeout(function () { if (konusma) api.jest(c.jest); }, c.jestZaman === "son" ? Math.max(300, c.metin.length * msHarf * 0.75) : 150);
         var bitti = false; function son() { if (bitti) return; bitti = true; c.konusuyor = false; setTimeout(res, 140); }
         if (c.sesTampon) { sesleOku(); return; }
+        /* sessiz konuşma: ses başka yerden çalıyor ya da kapalı; ağız verilen süre boyunca oynar */
+        if (c.sessiz) { c.konusuyor = true; c.bas = performance.now(); setTimeout(son, c.sureMs || c.metin.length * msHarf); return; }
         seslerHazir().then(function () { if (!bitti && konusma && konusma.cumle === c) baslat(); else son(); });
         function sesleOku() {
           var ac = sesBagi(); if (!ac) { c.sesTampon = null; seslerHazir().then(baslat); return; }
+          /* tarayıcı sesi kullanıcı dokunmadan açmadıysa (otomatik oynatma engeli) tarayıcı sesine dön */
+          if (ac.state !== "running") {
+            Promise.race([ac.resume().catch(function () {}), new Promise(function (r) { setTimeout(r, 300); })]).then(function () {
+              if (ac.state === "running") oynat(); else { c.sesTampon = null; seslerHazir().then(baslat); }
+            });
+            return;
+          }
+          oynat();
+        }
+        function oynat() {
+          var ac = sesAc;
           var sure = c.sesTampon.duration;
           var src = ac.createBufferSource(); src.buffer = c.sesTampon; src.connect(sesAnaliz);
           c.sesKaynak = src; c.sesli = true; c.duzelt = 0; c.duzeltHedef = null;
@@ -461,6 +477,49 @@
       });
     }
 
+    /* ---------- Doğal ses (Gemini TTS) — Dil Harita'daki Gemini anahtarıyla ----------
+       Kota bilgisi Konuşkan ile ortak tutulur (dh-gemini-kota-v1): o gün dolan model atlanır. */
+    var TTS_MODELLER = ["gemini-3.8-flash-lite-tts", "gemini-3.8-flash-tts", "gemini-2.5-flash-preview-tts"], dogalKapali = false, ttsBellek = {};
+    function bugun() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+    function kotaOku() { try { var k = JSON.parse(localStorage.getItem("dh-gemini-kota-v1") || "{}"); return k.gun === bugun() ? (k.m || {}) : {}; } catch (e) { return {}; } }
+    function kotaDoldu(m) { var k = kotaOku(); k[m] = 1; try { localStorage.setItem("dh-gemini-kota-v1", JSON.stringify({ gun: bugun(), m: k })); } catch (e) {} }
+    function anahtarlar() { try { return (JSON.parse(localStorage.getItem("geminiApiKeys") || "[]") || []).filter(Boolean); } catch (e) { return []; } }
+    function dogalSesKullanilir() {
+      if (dogalKapali || !anahtarlar().length) return false;
+      try { var a = JSON.parse(localStorage.getItem("dh-konuskan-video-v1") || "{}"); if (a.ses === "tarayici") return false; } catch (e) {}
+      return true;
+    }
+    function dogalSes(metin, sesAdi) {
+      if (!sesAdi) { try { sesAdi = (JSON.parse(localStorage.getItem("dh-konuskan-video-v1") || "{}").sesAdi) || "Charon"; } catch (e) { sesAdi = "Charon"; } }
+      var anahtar = sesAdi + "|" + metin; if (ttsBellek[anahtar]) return ttsBellek[anahtar];
+      var keys = anahtarlar(), kota = kotaOku(), modeller = TTS_MODELLER.filter(function (m) { return !kota[m]; });
+      var p = (function dene(mi, ki, hepsiDolu) {
+        if (mi >= modeller.length) { dogalKapali = true; return Promise.reject({ code: "rate" }); }
+        if (ki >= keys.length) { if (hepsiDolu) kotaDoldu(modeller[mi]); return dene(mi + 1, 0, true); }
+        return fetch("https://generativelanguage.googleapis.com/v1beta/models/" + modeller[mi] + ":generateContent?key=" + encodeURIComponent(keys[ki]), {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: metin }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: sesAdi } } } } })
+        }).then(function (res) {
+          if (res.status === 429) return res.text().then(function (t) { return dene(mi, ki + 1, hepsiDolu && /PerDay/i.test(t)); });
+          if (!res.ok) return dene(mi, ki + 1, false);
+          return res.json().then(function (d) {
+            var parts = (((d.candidates || [])[0] || {}).content || {}).parts || [], p0 = parts.filter(function (x) { return x.inlineData && x.inlineData.data; })[0];
+            if (!p0) return dene(mi, ki + 1, false);
+            var b = atob(p0.inlineData.data), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+            var buf = u.buffer;
+            if (!/wav/i.test(p0.inlineData.mimeType || "")) {
+              var hz = +(((p0.inlineData.mimeType || "").match(/rate=(\d+)/) || [])[1] || 24000), v = new DataView(new ArrayBuffer(44 + u.length)), y = function (o, s) { for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+              y(0, "RIFF"); v.setUint32(4, 36 + u.length, true); y(8, "WAVE"); y(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, hz, true); v.setUint32(28, hz * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); y(36, "data"); v.setUint32(40, u.length, true);
+              new Uint8Array(v.buffer, 44).set(u); buf = v.buffer;
+            }
+            return api.sesCoz(buf);
+          });
+        }, function () { return dene(mi, ki + 1, false); });
+      })(0, 0, true);
+      ttsBellek[anahtar] = p; p.catch(function () { delete ttsBellek[anahtar]; });
+      return p;
+    }
+
     var api = {
       DUYGULAR: DUYGULAR, DUYGU_ADI: DUYGU_ADI, JESTLER: JESTLER, JEST_ADI: JEST_ADI, PARAMS: PARAMS,
       duygu: function (ad, guc) {
@@ -475,6 +534,8 @@
       ayar: function (p) { for (var k in p) if (k in ham) ham[k] = +p[k] || 0; },
       profil: function (p) { for (var k in p) if (k in profil) profil[k] = Math.max(0, Math.min(1, +p[k])); },
       dinle: function (acik) { dinleme = !!acik; },
+      duraklat: function (d) { durum.duraklat = !!d; },
+      cizimHizi: function (fps) { durum.fps = fps || 0; },
       fotoKullan: function (acik) { fotoAcik = !!acik; if (durum.duygu) api.duygu(durum.duygu, durum.guc); },
       durum: function () { return { duygu: durum.duygu, p: durum.p, profil: profil, agiz: agiz.b }; },
       /* akış halinde konuşma: cümleler geldikçe eklenir (ekle), bitince bitir() çağrılır */
@@ -493,6 +554,12 @@
           if (o.oncesi) try { o.oncesi(c, i - 1); } catch (e) {}
           /* jest sıklığına göre kendiliğinden küçük baş sallamaları */
           if (!c.jest && !c.sesTampon && Math.random() < profil.jest * 0.45 && !/\?\s*$/.test(c.metin)) { c.jest = "onay"; c.jestZaman = "son"; }
+          if (c._sesP && !c.sesTampon) {
+            /* doğal ses (önceden istenmiş) hazır olunca; olmazsa tarayıcı sesiyle */
+            return Promise.race([c._sesP, new Promise(function (_, r) { setTimeout(function () { r({ code: "gec" }); }, 9000); })])
+              .then(function (buf) { c.sesTampon = buf; }, function () {})
+              .then(function () { if (benim.iptal || konusma !== benim) return; return cumleSoyle(c, o.hiz || 1).then(sonraki); });
+          }
           return cumleSoyle(c, o.hiz || 1).then(sonraki);
         }
         var bitis = sonraki();
@@ -505,8 +572,12 @@
         };
       },
       konus: function (cumleler, o) {
+        o = o || {};
+        var liste = (Array.isArray(cumleler) ? cumleler : [{ metin: String(cumleler) }]).map(function (c) { return Object.assign({}, c); });
+        /* doğal ses: tüm cümlelerin sesi baştan, aynı anda istenir (konuşurken arada boşluk olmasın) */
+        if (o.dogal && dogalSesKullanilir()) liste.forEach(function (c) { if (!c.sesTampon && !c.sessiz) { c._sesP = dogalSes(c.metin, o.sesAdi); c._sesP.catch(function () {}); } });
         var k = api.konusAkis(o);
-        (Array.isArray(cumleler) ? cumleler : [{ metin: String(cumleler) }]).forEach(function (c) { k.ekle(c); });
+        liste.forEach(function (c) { k.ekle(c); });
         k.bitir(); return k.bitti;
       },
       /* sesleri sessizce ısıt: ilk gerçek cümle soğuk ses motoru yüzünden geç başlamasın (kullanıcı dokunuşunda çağır) */

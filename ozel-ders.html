@@ -159,7 +159,7 @@
 <script src="./dh-amac.js?v=2"></script>
 <script src="./dh-modul.js?v=10"></script>
 <script src="./dh-modul-tanim.js?v=3"></script>
-<script src="./dh-avatar.js?v=4"></script>
+<script src="./dh-avatar.js?v=6"></script>
 <script src="./dh-ozel-ders.js?v=6"></script>
 <script>
 /* ozel-ders.html — BANA ÖZEL DERS
@@ -405,7 +405,7 @@
   function kocKonus(){
     var metin = ($("kocSoz").innerText || "").replace(/\s+/g, " ").trim();
     try{
-      if (!koc && window.DHAvatar) koc = DHAvatar.olustur($("kocAvatar"), { yol:"./assets/avatars_v3/teacher/" });
+      if (!koc && window.DHAvatar) koc = DHAvatar.olustur($("kocAvatar"), { yol:"./assets/avatars_v3/teacher/", dogalSes:true });
       if (koc) koc.hazir.then(function(){ koc.konus(metin, { dil:"tr-TR" }); });
       else { speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(metin); u.lang = "tr-TR"; speechSynthesis.speak(u); }
     }catch(e){}
