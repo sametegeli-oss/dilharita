@@ -375,15 +375,19 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     function uzunlukCiz() { qa('[data-a=uzunluk]').forEach(x => { x.value = ayar.uzunluk; }); qa('.vd-uzunluk-not').forEach(x => { x.textContent = UZUNLUK_NOT[ayar.uzunluk]; }); }
     qa('[data-a=uzunluk]').forEach(x => x.onchange = () => { ayar.uzunluk = x.value; ayarKaydet(); uzunlukCiz(); if (st.faz === 'ders') bilgi('Cevap uzunluğu: ' + x.options[x.selectedIndex].text.split(' · ')[0] + '. Bir sonraki cevaptan itibaren geçerli.'); });
     uzunlukCiz();
-    function uzunlukTalimati() {
-      const u = ayar.uzunluk;
-      if (u === 'kisa') return `\nLENGTH SETTING = SHORT (overrides the sentence counts above): keep every reply very short — at most 2-4 sentences even for complex questions; give only the essence${genelMi() ? '' : ' and at most one English example'}.`;
-      if (u !== 'ayrintili') return '';
-      const ortak = ` Match the length to the question: greetings, thanks, "ok", yes/no answers, small talk and short replies to your practice get 1-3 sentences as usual. NEVER pad, repeat yourself or add filler to make a reply longer.`;
-      if (genelMi()) return `\nLENGTH SETTING = DETAILED (overrides the sentence counts above): when the question genuinely needs it (how/why questions, comparisons, explanations, planning, advice), answer thoroughly: up to 10-14 spoken sentences, step by step, with concrete examples; do not cut it short or ask "devam edeyim mi?".` + ortak;
-      if (ayar.mod === 'tr') return `\nLENGTH SETTING = DETAILED (overrides the sentence counts above): when you teach or answer a real question, explain in more depth: up to 10-12 sentences, step by step, 2-4 English examples (each its own "en" segment), mention the most common mistake Turkish learners make, then one small practice.` + ortak;
-      return `\nLENGTH SETTING = DETAILED: conversation replies stay 1-3 sentences (this is speaking practice), but whenever you EXPLAIN something (in Turkish), explain in depth: up to 10-12 sentences, step by step, 2-4 English examples and the most common mistake Turkish learners make.` + ortak;
-    }
+    /* uzunluk kuralları, talimattaki cümle sayılarının YERİNE konur (sona eklenince model ilk kurala uyuyordu) */
+    const UZ = {
+      genel: { kisa: 'answer in 1-3 short spoken sentences: only the essence.',
+        normal: 'answer in 1-5 short, clear spoken sentences. If a longer answer is needed, give the essence first and offer to continue.',
+        ayrintili: 'match the length to the question. Greetings, thanks, "tamam", yes/no and small talk: 1-2 sentences. Questions that need explaining (how/why, comparisons, advice, planning): a thorough spoken answer of 8-14 sentences, step by step, with concrete examples; do not cut it short or ask "devam edeyim mi?". Never pad.' },
+      tr: { kisa: 'Each turn: 2-4 short sentences: the essence of one small step and one English example, then a one-line practice.',
+        normal: 'Each turn: 3-6 short sentences. Explain one small step, give 1-2 English example sentences, then a tiny practice (e.g. ask them to make an English sentence, or to choose between two forms).',
+        ayrintili: 'Match the length to what the learner said. When they ask a real question, or a new step of the topic begins, teach IN DEPTH: 8-12 sentences, step by step, 3-4 English examples, the most common mistake Turkish learners make, then one practice. When they only thank you, say ok, or answer your practice, reply briefly (1-3 sentences: react, then one next small step or question) — no new long explanation unless they ask. Never pad.' },
+      enAcik: { kisa: 'at most 3 sentences', normal: 'at most 5-6 sentences', ayrintili: 'in depth: 8-12 sentences, step by step, 3-4 English examples and the most common mistake Turkish learners make' },
+      hatir: { kisa: 'SHORT — keep it brief.', normal: '', ayrintili: 'DETAILED — explain in depth if the message asks something real; stay brief if it is just thanks/ok/an answer to your practice.' }
+    };
+    const uzK = () => ['kisa', 'normal', 'ayrintili'].includes(ayar.uzunluk) ? ayar.uzunluk : 'normal';
+    const uzHatir = () => UZ.hatir[uzK()] ? ' Reply length setting: ' + UZ.hatir[uzK()] : '';
     q('[data-a=ayar]').onclick = () => { q('.vd-ayarlar').hidden = !q('.vd-ayarlar').hidden; };
     q('[data-a=cc]').onclick = () => { ayar.altyazi = !ayar.altyazi; ayarKaydet(); kok.classList.toggle('vd-cc-yok', !ayar.altyazi); };
     kok.classList.toggle('vd-cc-yok', !ayar.altyazi);
@@ -439,7 +443,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       if (genelMi()) {
         let g = `You are ${OGRETMEN}, a friendly, knowledgeable personal assistant talking with the user on a live VIDEO call. The user is Turkish.
 MODE: TURKISH GENERAL CHAT. Speak natural TURKISH (informal "sen") about ANY subject the user brings: everyday questions, advice, explanations, ideas, planning, writing help, health/money/legal basics (with a short note to consult a professional when it really matters), general knowledge, or just chatting.
-- Your words are spoken aloud: answer in 1-5 short, clear spoken sentences. No emojis, no lists, no markdown, no stage directions. If a longer answer is needed, give the essence first and offer to continue.
+- Your words are spoken aloud: ${UZ.genel[uzK()]} No emojis, no lists, no markdown, no stage directions.
 - ACCURACY FIRST. Only state facts you are confident about. Never invent names, numbers, dates, prices, addresses, laws, quotes or sources. If you are not sure, say "Bundan emin değilim" and give only what you reliably know.
 - Today's date is ${new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })}.
 - If you have a browser_search tool: for anything that can change (news, prices, exchange rates, who currently holds a position, opening hours, schedules, laws, weather, sports results, recent events) SEARCH FIRST and answer from what you found; name the source briefly in words (e.g. "Habertürk'e göre"), never output citation marks or URLs. Do not search for timeless knowledge.
@@ -457,25 +461,25 @@ MODE: TURKISH GENERAL CHAT. Speak natural TURKISH (informal "sen") about ANY sub
         else g += `
 - You have NO access to the user's Google account (calendar, Gmail, tasks, Drive). If they ask about these, say they can connect it with "Google hesabını bağla" (in the settings, the gear icon).`;
         if (k && k.custom) g += `\nThe user wants to start with: ${k.custom}`;
-        return g + uzunlukTalimati();
+        return g;
       }
       let s = `You are ${k.persona}. You are on a live one-to-one VIDEO lesson with a Turkish native speaker who is learning English at CEFR level ${LV}. ${LEVEL_GUIDE[LV]}
 Be warm, natural and encouraging, like a real person on a video call. No emojis, no lists, no stage directions. Never break role. Do not correct the learner in your reply (corrections are shown on screen separately), but you may naturally reuse the correct form. The learner's messages come from speech recognition: if a message looks garbled, kindly ask them to say it again.\n`;
       if (ayar.mod === 'tr') {
         s += `MODE: TURKISH TOPIC STUDY (chosen by the learner). You speak TURKISH (informal "sen", like a kind, clear teacher) and teach the English topic the learner wants: grammar, vocabulary, usage, differences.
 - ALL explanation sentences MUST be in Turkish. English is allowed ONLY in example sentences and in the short English terms being taught (e.g. "present perfect", "have + V3"). Never write an explanatory sentence in English, even if the learner writes in English.
-- Each turn: 3-6 short sentences. Explain one small step, give 1-2 English example sentences, then a tiny practice (e.g. ask them to make an English sentence, or to choose between two forms) — the practice instruction itself is in Turkish.
+- ${UZ.tr[uzK()]} The practice instruction itself is in Turkish.
 - When the learner answers with an English sentence, react to it in Turkish (praise or gently fix) before continuing.
 - Every English example must be its own "en" segment so it is read with an English voice.`;
       } else {
         s += `MODE: ENGLISH CONVERSATION. Speak English: 1-3 short sentences, usually ending with ONE follow-up question.
-- EXCEPTION: whenever you EXPLAIN anything (a grammar point, the meaning of a word, a rule, a difference, why something is wrong, how to say something) — whether the learner asked in Turkish or in English — the explanation must be in TURKISH (informal "sen", at most 5-6 sentences); only the example sentences are in English, each as its own "en" segment. After the explanation, bring them back to English with one short, easy English question.
+- EXCEPTION: whenever you EXPLAIN anything (a grammar point, the meaning of a word, a rule, a difference, why something is wrong, how to say something) — whether the learner asked in Turkish or in English — the explanation must be in TURKISH (informal "sen", ${UZ.enAcik[uzK()]}); only the example sentences are in English, each as its own "en" segment. After the explanation, bring them back to English with one short, easy English question.
 - If the learner simply speaks Turkish, answer in Turkish briefly, then invite them back to English.`;
       }
       if (k.tasks) s += `\nScene: ${k.scene}. Over the conversation the learner should complete these tasks: ${k.tasks.map((t, i) => (i + 1) + ') ' + t).join(' ')}. Create natural chances for them; never list them.`;
       if (k.custom) s += `\nTopic chosen by the learner: ${k.custom}`;
       else if (ayar.mod === 'tr') s += `\nLesson theme: ${k.t}${k.tasks ? ' (useful phrases for this situation)' : ''}.`;
-      return s + uzunlukTalimati() + learnerContext();
+      return s + learnerContext();
     }
     const ETIKET = `Split your reply into SEGMENTS: normally one sentence each, but whenever the language changes inside a sentence, split there (e.g. Turkish "Mesela şöyle dersin:" and English "I went home yesterday." are two segments). Give each segment "lang": "tr" or "en". If your reply contains any Turkish explanation, give every "en" segment also "tr": its natural Turkish translation (for the learner to read under the example). For EACH segment choose the face the teacher should show: "emo" one of ${DUYGU.join('|')} and "gest" one of ${JEST.join('|')} or null. Keep the same emo for segments that continue one sentence. Choose by meaning: praise→mutlu or gururlu with iki_onay; gentle correction or "almost"→anlayisli with egil; encouragement→cesaret; a question→merak (often egil or kas); thinking aloud→dusunceli with dusun; real surprise→saskin with kas; an important warning→ciddi. Use null gesture often.`;
     function gecmis(n = 14) { return st.hist.slice(-n).map(h => (h.role === 'user' ? 'Learner: ' : 'You: ') + h.text).join('\n'); }
@@ -784,9 +788,9 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       try {
         const j = `{"reply":[{"s":"segment","lang":"en","tr":"Turkish translation (only for en segments in a Turkish explanation)","emo":"mutlu","gest":"onay"}],"check":{"ok":true,"lang":"en","corrected":"","why_tr":"","tag":""},"reply_tr":"Turkish translation of the English parts of your reply (empty if the reply is all Turkish)"${st.konu.tasks ? ',"tasks_done":[]' : ''}}`;
         const istem = sistem() + `\n\n${st.hist.length ? 'Conversation so far:\n' + gecmis() + '\n\n' : ''}` +
-          (metin && genelMi() ? `Write your next reply to the user's last message.${ekTalimat ? ' ' + ekTalimat : ''} Set check to {"ok":true,"lang":"tr"} (no language checking in this mode).`
+          (metin && genelMi() ? `Write your next reply to the user's last message.${uzHatir()}${ekTalimat ? ' ' + ekTalimat : ''} Set check to {"ok":true,"lang":"tr"} (no language checking in this mode).`
             : !metin && genelMi() ? (ekTalimat || `Start now IN TURKISH: greet the user warmly in one short sentence${st.konu && st.konu.custom ? ' and start helping with what they want to talk about' : ' and ask how you can help today'}.`)
-            : metin ? `Do two things.\n1) Write your next reply.${ekTalimat ? ' ' + ekTalimat : ''}\n2) Check the learner's LAST message. If it is (mostly) in Turkish — a question, a request for explanation, or just Turkish talk — set check.lang="tr", ok=true and do not check it. Otherwise check.lang="en" and flag ONLY real English errors in the English parts: grammar (tense, articles, prepositions, word order, agreement), wrong word choice, clearly unnatural phrasing. NEVER flag punctuation, capitalisation, spelling of names, contractions, filler words${um.spoken ? ', or anything caused by speech recognition (stray periods, stutters, repeated or misheard words)' : ''}. If only such things differ, ok=true and corrected empty. Keep the learner's wording in "corrected"; change only what is wrong. why_tr: informal Turkish (sen), 1-2 short sentences naming the exact rule.${st.konu.tasks ? ' List the numbers of tasks the learner has GENUINELY completed so far in "tasks_done".' : ''}`
+            : metin ? `Do two things.\n1) Write your next reply.${uzHatir()}${ekTalimat ? ' ' + ekTalimat : ''}\n2) Check the learner's LAST message. If it is (mostly) in Turkish — a question, a request for explanation, or just Turkish talk — set check.lang="tr", ok=true and do not check it. Otherwise check.lang="en" and flag ONLY real English errors in the English parts: grammar (tense, articles, prepositions, word order, agreement), wrong word choice, clearly unnatural phrasing. NEVER flag punctuation, capitalisation, spelling of names, contractions, filler words${um.spoken ? ', or anything caused by speech recognition (stray periods, stutters, repeated or misheard words)' : ''}. If only such things differ, ok=true and corrected empty. Keep the learner's wording in "corrected"; change only what is wrong. why_tr: informal Turkish (sen), 1-2 short sentences naming the exact rule.${st.konu.tasks ? ' List the numbers of tasks the learner has GENUINELY completed so far in "tasks_done".' : ''}`
             : (ekTalimat ? ekTalimat : ayar.mod === 'tr' ? `Start the lesson now IN TURKISH: greet the learner warmly, say in one sentence what you will study together (the topic above), and begin with the first small step and an English example.` : `Start the lesson now: greet the learner warmly by video, say one short friendly thing, and ask an opening question about the topic.`)) +
           `\n${ETIKET}\nWrite the "reply" array FIRST in the JSON (it is spoken while you write the rest).\nReturn ONLY JSON: ${j}`;
         let r;
