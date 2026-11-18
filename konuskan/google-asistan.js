@@ -20,9 +20,19 @@
   const LS = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} } };
 
   const istemci = () => (LS.get(CID_KEY) || window.DH_GOOGLE_CLIENT_ID || '').trim();
-  function token() { try { const t = JSON.parse(LS.get(TOK_KEY) || 'null'); return t && t.exp > Date.now() + 60000 ? t : null; } catch (e) { return null; } }
+  /* Bağlantı, onu kuran Dil Harita kullanıcısına aittir: aynı tarayıcıda başka biri girerse görünmez ve silinir. */
+  const kullanici = () => LS.get('dh_logged_uid') || '';
+  const girisEposta = () => (LS.get('dh_logged_email') || '').trim().toLowerCase();
+  function token() {
+    try {
+      const t = JSON.parse(LS.get(TOK_KEY) || 'null'); if (!t) return null;
+      if ((t.uid || '') !== kullanici()) { LS.set(TOK_KEY, null); LS.set(ONAY_KEY, null); return null; }
+      return t.exp > Date.now() + 60000 ? t : null;
+    } catch (e) { return null; }
+  }
   const dinleyiciler = new Set(); const bildir = () => dinleyiciler.forEach(f => { try { f(durum()); } catch (e) {} });
-  function durum() { const t = token(); return { istemci: !!istemci(), bagli: !!t, eposta: t && t.eposta || '', dahaOnce: LS.get(ONAY_KEY) === '1' }; }
+  function durum() { const t = token(); const ge = girisEposta(); const e = t && t.eposta || '';
+    return { istemci: !!istemci(), bagli: !!t, eposta: e, girisEposta: ge, farkli: !!(t && e && ge && e.toLowerCase() !== ge), dahaOnce: LS.get(ONAY_KEY) === '1' && LS.get(ONAY_KEY + ':uid') === kullanici() }; }
 
   let gisYuk = null;
   function gisYukle() {
@@ -38,20 +48,22 @@
     return new Promise((ok, red) => {
       const tc = google.accounts.oauth2.initTokenClient({
         client_id: cid, scope: SCOPES, include_granted_scopes: true,
+        /* Google penceresinde Dil Harita'ya giriş yapılan e-posta önerilir (Gmail/Workspace ise) */
+        login_hint: girisEposta() || undefined,
         callback: async r => {
           if (!r || r.error || !r.access_token) { red({ code: 'google_red', detay: r && r.error }); return; }
-          const t = { erisim: r.access_token, exp: Date.now() + (+r.expires_in || 3600) * 1000, eposta: '' };
-          LS.set(TOK_KEY, JSON.stringify(t)); LS.set(ONAY_KEY, '1');
+          const t = { erisim: r.access_token, exp: Date.now() + (+r.expires_in || 3600) * 1000, eposta: '', uid: kullanici() };
+          LS.set(TOK_KEY, JSON.stringify(t)); LS.set(ONAY_KEY, '1'); LS.set(ONAY_KEY + ':uid', kullanici());
           try { const u = await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + t.erisim } })).json(); t.eposta = u.email || ''; LS.set(TOK_KEY, JSON.stringify(t)); } catch (e) {}
           bildir(); ok(durum());
         },
         error_callback: e => red({ code: 'google_red', detay: e && e.type })
       });
-      tc.requestAccessToken({ prompt: (!zorla && LS.get(ONAY_KEY) === '1') ? '' : 'consent' });
+      tc.requestAccessToken({ prompt: (!zorla && durum().dahaOnce) ? '' : 'consent', login_hint: girisEposta() || undefined });
     });
   }
   function kes() {
-    const t = token(); LS.set(TOK_KEY, null); LS.set(ONAY_KEY, null);
+    const t = token(); LS.set(TOK_KEY, null); LS.set(ONAY_KEY, null); LS.set(ONAY_KEY + ':uid', null);
     try { if (t && window.google && google.accounts) google.accounts.oauth2.revoke(t.erisim, () => {}); } catch (e) {}
     bildir();
   }

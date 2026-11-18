@@ -367,7 +367,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       if (!window.DHGoogle) { qa('.vd-google-ayar').forEach(x => x.hidden = true); return; }
       const d = DHGoogle.durum();
       qa('.vd-google').forEach(el => {
-        if (d.bagli) el.innerHTML = `<span class="vd-g-durum ok">${vi('ok')} Google bağlı${d.eposta ? ' · ' + esc(d.eposta) : ''}</span><button type="button" class="vd-g-b ikincil" data-g="kes">Bağlantıyı kes</button>`;
+        if (d.bagli) el.innerHTML = `<span class="vd-g-durum ok">${vi('ok')} Google bağlı${d.eposta ? ' · ' + esc(d.eposta) : ''}</span><button type="button" class="vd-g-b ikincil" data-g="kes">Bağlantıyı kes</button>${d.farkli ? `<small class="vd-g-uyari">Dikkat: Dil Harita'ya ${esc(d.girisEposta)} ile girdin ama bağlı Google hesabı farklı. Asistan ${esc(d.eposta)} hesabının takvimini ve e-postalarını görüyor.</small>` : ''}`;
         else if (d.istemci) el.innerHTML = `<button type="button" class="vd-g-b" data-g="bagla">${GICON} ${d.dahaOnce ? 'Google\'a yeniden bağlan' : 'Google hesabını bağla'}</button><small>Takvim, Gmail, görevler, kişiler ve Drive'ına bakarak yardım eder. E-posta göndermez, yalnız taslak hazırlar; eklemeden önce onayını ister.</small>`;
         else el.innerHTML = `<button type="button" class="vd-g-b" data-g="kurulum">${GICON} Google hesabını bağla</button><form class="vd-g-cid" hidden><small>Bir kerelik kurulum: Google Cloud'daki OAuth istemci kimliğini (…apps.googleusercontent.com) yapıştır.</small><input placeholder="123…-abc.apps.googleusercontent.com" aria-label="OAuth istemci kimliği"><button type="submit" class="vd-g-b">Kaydet</button></form>`;
         el.querySelectorAll('[data-g]').forEach(b => b.onclick = async () => {
