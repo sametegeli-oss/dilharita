@@ -450,3 +450,4 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 /* Sohbet kalitesi seçimi */
 .vd-lobi .vd-kalite-l { margin: 10px 0 6px; text-align: left; }
 .vd-kalite-not { font-size: .76rem; color: var(--vd-soluk); line-height: 1.35; }
+.vd-uzunluk-not { font-size: .76rem; color: var(--vd-soluk); line-height: 1.35; }

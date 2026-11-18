@@ -156,6 +156,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
           <div class="vd-google" hidden></div>
           <form class="vd-kendi"><input placeholder="Ya da kendi konunu yaz (Türkçe ya da İngilizce)" aria-label="Kendi konun"></form>
           <label class="vd-satir vd-kalite-l">Sohbet kalitesi <select data-a="kalite"><option value="oto">Otomatik (önerilen)</option><option value="hizli">Hızlı · anında cevap</option><option value="dengeli">Dengeli · biraz düşünür</option><option value="derin">Derin · en dikkatli, daha yavaş</option></select><small class="vd-kalite-not"></small></label>
+          <label class="vd-satir vd-kalite-l">Cevap uzunluğu <select data-a="uzunluk"><option value="kisa">Kısa · hep özet</option><option value="normal">Normal</option><option value="ayrintili">Ayrıntılı · gerektiğinde uzun</option></select><small class="vd-uzunluk-not"></small></label>
           <label class="vd-anahtar"><input type="checkbox" data-a="eller"><span></span> Eller serbest <small>Öğretmen susunca mikrofon kendiliğinden açılır</small></label>
           <button class="vd-basla" type="button">${vi('video')} Dersi başlat</button>
           <p class="vd-not"></p>
@@ -199,6 +200,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
         <label class="vd-satir">Konuşma hızı (tarayıcı sesi) <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
         <div class="vd-satir vd-google-ayar"><span>Google hesabı <small>(genel asistan: takvim, Gmail, görevler, kişiler, Drive)</small></span><div class="vd-google"></div></div>
+        <label class="vd-satir">Cevap uzunluğu <select data-a="uzunluk"><option value="kisa">Kısa · hep özet</option><option value="normal">Normal</option><option value="ayrintili">Ayrıntılı · gerektiğinde uzun</option></select><small class="vd-uzunluk-not"></small></label>
         <label class="vd-satir">Sohbet kalitesi <select data-a="kalite"><option value="oto">Otomatik (önerilen)</option><option value="hizli">Hızlı · anında cevap</option><option value="dengeli">Dengeli · biraz düşünür</option><option value="derin">Derin · en dikkatli, daha yavaş</option></select><small class="vd-kalite-not"></small></label>
       </div>
       <div class="vd-gonay" hidden role="dialog" aria-modal="true"></div>
@@ -367,6 +369,21 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     function kaliteCiz() { qa('[data-a=kalite]').forEach(x => { x.value = ayar.kalite; }); qa('.vd-kalite-not').forEach(x => { x.textContent = KALITE_NOT[ayar.kalite]; }); }
     qa('[data-a=kalite]').forEach(x => x.onchange = () => { ayar.kalite = x.value; ayarKaydet(); kaliteCiz(); if (st.faz === 'ders') bilgi('Sohbet kalitesi: ' + x.options[x.selectedIndex].text.split(' · ')[0] + '. Bir sonraki cevaptan itibaren geçerli.'); });
     kaliteCiz();
+    /* CEVAP UZUNLUĞU — üst sınır ve derinlik izni; alt sınır değil (basit sorular kısa kalır) */
+    if (!['kisa', 'normal', 'ayrintili'].includes(ayar.uzunluk)) ayar.uzunluk = 'normal';
+    const UZUNLUK_NOT = { kisa: 'Zor sorularda bile özünü 2-4 cümlede söyler.', normal: 'Konuşma akıcı kalsın diye kısa ve öz anlatır.', ayrintili: 'Zor sorularda adım adım, daha çok örnekle anlatır; basit sorulara yine kısa cevap verir.' };
+    function uzunlukCiz() { qa('[data-a=uzunluk]').forEach(x => { x.value = ayar.uzunluk; }); qa('.vd-uzunluk-not').forEach(x => { x.textContent = UZUNLUK_NOT[ayar.uzunluk]; }); }
+    qa('[data-a=uzunluk]').forEach(x => x.onchange = () => { ayar.uzunluk = x.value; ayarKaydet(); uzunlukCiz(); if (st.faz === 'ders') bilgi('Cevap uzunluğu: ' + x.options[x.selectedIndex].text.split(' · ')[0] + '. Bir sonraki cevaptan itibaren geçerli.'); });
+    uzunlukCiz();
+    function uzunlukTalimati() {
+      const u = ayar.uzunluk;
+      if (u === 'kisa') return `\nLENGTH SETTING = SHORT (overrides the sentence counts above): keep every reply very short — at most 2-4 sentences even for complex questions; give only the essence${genelMi() ? '' : ' and at most one English example'}.`;
+      if (u !== 'ayrintili') return '';
+      const ortak = ` Match the length to the question: greetings, thanks, "ok", yes/no answers, small talk and short replies to your practice get 1-3 sentences as usual. NEVER pad, repeat yourself or add filler to make a reply longer.`;
+      if (genelMi()) return `\nLENGTH SETTING = DETAILED (overrides the sentence counts above): when the question genuinely needs it (how/why questions, comparisons, explanations, planning, advice), answer thoroughly: up to 10-14 spoken sentences, step by step, with concrete examples; do not cut it short or ask "devam edeyim mi?".` + ortak;
+      if (ayar.mod === 'tr') return `\nLENGTH SETTING = DETAILED (overrides the sentence counts above): when you teach or answer a real question, explain in more depth: up to 10-12 sentences, step by step, 2-4 English examples (each its own "en" segment), mention the most common mistake Turkish learners make, then one small practice.` + ortak;
+      return `\nLENGTH SETTING = DETAILED: conversation replies stay 1-3 sentences (this is speaking practice), but whenever you EXPLAIN something (in Turkish), explain in depth: up to 10-12 sentences, step by step, 2-4 English examples and the most common mistake Turkish learners make.` + ortak;
+    }
     q('[data-a=ayar]').onclick = () => { q('.vd-ayarlar').hidden = !q('.vd-ayarlar').hidden; };
     q('[data-a=cc]').onclick = () => { ayar.altyazi = !ayar.altyazi; ayarKaydet(); kok.classList.toggle('vd-cc-yok', !ayar.altyazi); };
     kok.classList.toggle('vd-cc-yok', !ayar.altyazi);
@@ -440,7 +457,7 @@ MODE: TURKISH GENERAL CHAT. Speak natural TURKISH (informal "sen") about ANY sub
         else g += `
 - You have NO access to the user's Google account (calendar, Gmail, tasks, Drive). If they ask about these, say they can connect it with "Google hesabını bağla" (in the settings, the gear icon).`;
         if (k && k.custom) g += `\nThe user wants to start with: ${k.custom}`;
-        return g;
+        return g + uzunlukTalimati();
       }
       let s = `You are ${k.persona}. You are on a live one-to-one VIDEO lesson with a Turkish native speaker who is learning English at CEFR level ${LV}. ${LEVEL_GUIDE[LV]}
 Be warm, natural and encouraging, like a real person on a video call. No emojis, no lists, no stage directions. Never break role. Do not correct the learner in your reply (corrections are shown on screen separately), but you may naturally reuse the correct form. The learner's messages come from speech recognition: if a message looks garbled, kindly ask them to say it again.\n`;
@@ -458,7 +475,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (k.tasks) s += `\nScene: ${k.scene}. Over the conversation the learner should complete these tasks: ${k.tasks.map((t, i) => (i + 1) + ') ' + t).join(' ')}. Create natural chances for them; never list them.`;
       if (k.custom) s += `\nTopic chosen by the learner: ${k.custom}`;
       else if (ayar.mod === 'tr') s += `\nLesson theme: ${k.t}${k.tasks ? ' (useful phrases for this situation)' : ''}.`;
-      return s + learnerContext();
+      return s + uzunlukTalimati() + learnerContext();
     }
     const ETIKET = `Split your reply into SEGMENTS: normally one sentence each, but whenever the language changes inside a sentence, split there (e.g. Turkish "Mesela şöyle dersin:" and English "I went home yesterday." are two segments). Give each segment "lang": "tr" or "en". If your reply contains any Turkish explanation, give every "en" segment also "tr": its natural Turkish translation (for the learner to read under the example). For EACH segment choose the face the teacher should show: "emo" one of ${DUYGU.join('|')} and "gest" one of ${JEST.join('|')} or null. Keep the same emo for segments that continue one sentence. Choose by meaning: praise→mutlu or gururlu with iki_onay; gentle correction or "almost"→anlayisli with egil; encouragement→cesaret; a question→merak (often egil or kas); thinking aloud→dusunceli with dusun; real surprise→saskin with kas; an important warning→ciddi. Use null gesture often.`;
     function gecmis(n = 14) { return st.hist.slice(-n).map(h => (h.role === 'user' ? 'Learner: ' : 'You: ') + h.text).join('\n'); }
@@ -661,7 +678,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       let adet = 0, aradi = false;
       if (kalite === 'derin') setTimeout(() => { if (!adet && !aradi && kok.dataset.d === 'dusunuyor') bilgi('Derin düşünüyor…'); }, 2500);
       for (let tur = 0; tur < 6; tur++) {
-        const body = { model, stream: true, temperature: genel ? 0.2 : 0.4, max_tokens: kalite === 'derin' ? 6000 : genel ? 4000 : 2500, messages: msgs };
+        const body = { model, stream: true, temperature: genel ? 0.2 : 0.4, max_tokens: kalite === 'derin' ? 6000 : (genel || ayar.uzunluk === 'ayrintili') ? 4000 : 2500, messages: msgs };
         if (/gpt-oss/i.test(model)) body.reasoning_effort = { hizli: 'low', dengeli: 'medium', derin: 'high' }[kalite];
         if (tools.length) { body.tools = tools; body.tool_choice = tur < 5 ? 'auto' : 'none'; }
         const ctl = new AbortController(); let z = setTimeout(() => ctl.abort(), SURE);
