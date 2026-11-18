@@ -955,8 +955,7 @@
     if (giris1) giris1.innerHTML = "Öğretmeniniz size cümleyi önce <b>Türkçe</b> söyleyecek, sonra <b>İngilizcesini</b> yavaşça okuyacak. Siz de yüksek sesle tekrar edeceksiniz; doğru mu söylediğinizi size söyleyecek.";
     medyaAcik = false; medyaGizle();
     $("yuzKap").hidden = false;
-    var ogr = "teacher2";
-    try{ var v = localStorage.getItem("selectedTeacherAvatar"); if (v === "teacher" || v === "teacher1" || v === "teacher2") ogr = v; }catch(e){}
+    var ogr = "teacher";   /* tek öğretmen */
     try{ av = DHAvatar.olustur($("yuz"), { yol:"./assets/avatars_v3/" + ogr + "/", alt:"Öğretmen" }); }catch(e){ av = null; }
     /* dinlerken "dinliyor" yüzünde kalsın (göz kırpma / yumuşak kapanış idle'a çekebiliyor) */
     setInterval(function(){

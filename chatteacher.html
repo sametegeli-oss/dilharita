@@ -1,41 +1,8 @@
 <!doctype html>
-<html lang="tr">
-<head>
-<script src="./auth-guard.js?v=7"></script>
-<script src="./idb-uyum.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#071226">
-<title>AI Öğretmen Seç</title>
-<link rel="stylesheet" href="./chat-style.css?v=19">
-<link rel="stylesheet" href="./atlas-theme.css?v=1">
-  <link rel="stylesheet" href="product-improvements.css">
-<link rel="stylesheet" href="./kolay-kullanim.css?v=13">
-<script src="./kolay-kullanim.js?v=28"></script>
-</head>
-<body>
-<div class="menu">
-<div class="menu-actions"><a class="menu-btn" href="chat.html">← Senaryo menüsü</a><a class="menu-btn" href="index.html">🏠 Ana menü</a></div>
-<h1>AI öğretmen seç</h1>
-<p>İki öğretmen birlikte çalışır: <b>Türkçe açıklamaları 1. öğretmen</b>, <b>İngilizce cümleleri 2. öğretmen</b> söyler. Hangisine basarsan bas, ikisi de derse katılır.</p>
-<div class="grid">
-<a class="card teacherPick" data-teacher="teacher1" href="chatteacher1.html"><img src="assets/avatars_v3/teacher1/idle.webp"><b>1. Öğretmen</b><span>Türkçe anlatır</span></a>
-<a class="card teacherPick" data-teacher="teacher2" href="chatteacher2.html"><img src="assets/avatars_v3/teacher2/idle.webp"><b>2. Öğretmen</b><span>İngilizce konuşur</span></a>
-</div>
-<div class="note-block">Öğretmenin konuşurken dudakları sesle birlikte oynar. Ses ayarını menüden değiştirebilirsin.</div>
-</div>
-<script>
-document.querySelectorAll('.teacherPick').forEach(a=>{
-  a.addEventListener('click',()=>localStorage.setItem('selectedTeacherAvatar', a.dataset.teacher));
-});
-</script>
-<script src="./coach-bubble.js?v=t40"></script>
-<script src="./ai-teacher-prompt-tts.js?v=3"></script>
-<script src="./tts-avatar-long-sync-fix.js?v=4"></script>
-<script src="./avatar-blink-sync.js?v=1"></script>
-<script src="./ux-boost.js?v=2"></script>
-<script src="./atlas-effects.js?v=2"></script>
-  <script src="product-improvements.js" defer></script>
-<script src="./dh-button-guard.js?v=1" defer></script>
-</body>
-</html>
+<html lang="tr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Öğretmen</title>
+<!-- Tek öğretmen (18 Kasım): öğretmen seçimi kaldırıldı; eski bağlantılar tek öğretmen sayfasına gider. -->
+<script>try{ localStorage.setItem("selectedTeacherAvatar","teacher"); }catch(e){} location.replace("./chatteacher1.html" + location.search + location.hash);</script>
+<meta http-equiv="refresh" content="0; url=./chatteacher1.html">
+</head><body><a href="./chatteacher1.html">AI öğretmene git</a></body></html>

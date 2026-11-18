@@ -31,8 +31,8 @@
   "use strict";
 
   var STORAGE_KEY = "DilAvatar.frame.v19.settings";
-  var __AV_BASE=(function(){try{var sc=document.currentScript&&document.currentScript.src;if(sc)return sc.replace(/[^\/]*$/,'')+'assets/avatars_v3/teacher1/';}catch(e){}return 'assets/avatars_v3/teacher1/';})();
-/* "default" klasörü depoda hiç yoktu: her karede 404 ve kırık resim. Türkçe öğretmenin (teacher1) karelerini kullan. */
+  var __AV_BASE=(function(){try{var sc=document.currentScript&&document.currentScript.src;if(sc)return sc.replace(/[^\/]*$/,'')+'assets/avatars_v3/teacher/';}catch(e){}return 'assets/avatars_v3/teacher/';})();
+/* Tek öğretmen: "teacher" klasörünün kareleri. */
 var FR = {"rest":__AV_BASE+"idle.webp","slight":__AV_BASE+"mouth-small.webp","half":__AV_BASE+"mouth-medium.webp","mid":__AV_BASE+"mouth-e.webp","open":__AV_BASE+"mouth-open.webp","round":__AV_BASE+"mouth-o.webp","wide":__AV_BASE+"mouth-a.webp","blinkHalf":__AV_BASE+"eyes_closed.webp","blink":__AV_BASE+"blink.webp","hair1":__AV_BASE+"idle.webp","hair2":__AV_BASE+"idle.webp","hair3":__AV_BASE+"idle.webp","hair4":__AV_BASE+"idle.webp"};
 
   var state = {

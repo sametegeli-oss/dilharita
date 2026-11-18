@@ -1,3 +1,7 @@
+/* TEK ÖĞRETMEN göçü (18 Kasım): teacher1/teacher2 kaldırıldı. Seçim "teacher" olur;
+   Öğretmen 1 ya da 2 için daha önce seçilmiş İngilizce ses tek öğretmene taşınır. */
+(function(){ try{ var ls=localStorage; if(ls.getItem("selectedTeacherAvatar")!=="teacher") ls.setItem("selectedTeacherAvatar","teacher");
+  var yeni="dh-voice:assets-avatars-v3-teacher-"; if(!ls.getItem(yeni)){ var e=ls.getItem("dh-voice:assets-avatars-v3-teacher1-")||ls.getItem("dh-voice:assets-avatars-v3-teacher2-"); if(e) ls.setItem(yeni,e); } }catch(e){} })();
 // storage-bridge.js - Düzeltilmiş versiyon
 
 class StorageBridge {

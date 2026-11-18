@@ -3,8 +3,8 @@
 <head>
 <script src="./idb-uyum.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
 <script src="./auth-guard.js?v=7"></script>
-<script src="./storage-bridge.js?v=3"></script>
-<script src="./coach-bubble.js?v=t40"></script>
+<script src="./storage-bridge.js?v=4"></script>
+<script src="./coach-bubble.js?v=t41"></script>
 <script src="./progress-engine.js?v=2"></script>
 <script src="./ai-providers.js?v=t37"></script>
 <script src="./gemini-bridge.js?v=t22"></script>
@@ -329,56 +329,15 @@ const DEFAULT_PROMPT = `Sen, Türk öğrencilere İngilizce öğreten, çok dene
 const PROMPT_LS = "dh_ai_prompt_teacher";
 function getPrompt(){ try{ return localStorage.getItem(PROMPT_LS) || DEFAULT_PROMPT; }catch{ return DEFAULT_PROMPT; } }
 
-/* EN avatari (teacher2): eski webp seti (degismedi). */
+/* Tek ogretmen ("teacher") kare seti: canli yuz acilamazsa yedek olarak kullanilir. */
 const EN_FRAMES = {
   idle:"idle.webp", blink:"blink.webp", listen:"listen.webp",
   a:"mouth-a.webp", e:"mouth-e.webp", i:"mouth-i.webp",
   o:"mouth-o.webp", u:"mouth-u.webp", mbp:"mouth-mbp.webp",
   fv:"mouth-fv.webp", l:"mouth-l.webp", th:"mouth-th.webp"
 };
-/* TR avatari (teacher1): kullanicinin verdigi Turkce agiz seti (mouth_<harf>.webp).
-   Bekleme karesi mouth_idle; ayri blink karesi yok -> blink=idle. */
-const TR_FRAMES = {
-  idle:"mouth_idle.webp", listen:"mouth_idle.webp", blink:"eyes_closed.webp",
-  a:"mouth_a.webp", e:"mouth_e.webp", ii:"mouth_ı.webp", i:"mouth_i.webp",
-  o:"mouth_o.webp", oo:"mouth_ö.webp", u:"mouth_u.webp", uu:"mouth_ü.webp",
-  bmp:"mouth_bmp.webp", fv:"mouth_fv.webp", dtlnsz:"mouth_dtlnsz.webp",
-  ccj:"mouth_cçj.webp", kgg:"mouth_kgğ.webp", r:"mouth_r.webp",
-  sh:"mouth_ş.webp", y:"mouth_y.webp", h:"mouth_h.webp"
-};
-const TR_DIR = "./assets/avatars_v3/teacher1/";
-const EN_DIR = "./assets/avatars_v3/teacher2/";
 
-/* --- Viseme haritalari: F = tam yol sozlugu (this.frames) --- */
-/* TURKCE: harf ~ ses. Ekrandaki etiketli sete gore ince eslesme.
-   Etiketsiz harfler icin secim: s,z -> narrow ; t,d -> small (deger degistirebilir). */
-function trViseme(F, ch, next){
-  ch=(ch||"").toLocaleLowerCase("tr-TR");
-  switch(ch){
-    case "a": case "â": return F.a;
-    case "e":           return F.e;
-    case "ı":           return F.ii;
-    case "i": case "î": return F.i;
-    case "o":           return F.o;
-    case "ö":           return F.oo;
-    case "u": case "û": return F.u;
-    case "ü":           return F.uu;
-    case "b": case "m": case "p": return F.bmp;
-    case "f": case "v": return F.fv;
-    case "d": case "t": case "l": case "n": case "s": case "z": return F.dtlnsz;
-    case "c": case "ç": case "j": return F.ccj;
-    case "k": case "g": case "ğ": return F.kgg;
-    case "r":           return F.r;
-    case "ş":           return F.sh;
-    case "y":           return F.y;
-    case "h":           return F.h;
-    case "w":           return F.u;
-    case "x": case "q": return F.kgg;
-  }
-  if(/[.,!?;:\s]/.test(ch)) return F.idle;
-  return F.idle;
-}
-/* INGILIZCE (teacher2): eski davranis birebir korunur. */
+/* Yedek kare seti icin harf -> agiz karesi. */
 function enViseme(F, ch, next){
   ch=(ch||"").toLowerCase(); next=(next||"").toLowerCase();
   if(ch==="t" && next==="h") return F.th;
@@ -462,7 +421,7 @@ class CanliFace{
     this.yuz=DHCanliYuz.olustur(cv,{ yol:"./assets/avatars_v4/teacher/" });
     var self=this;
     this.yuz.hazir.then(function(){ self.yuz.profil({ ifade:.7, enerji:.5, jest:.5 }); self.yuz.duygu("cesaret",.4); })
-      .catch(function(){ self.yedek=true; try{ self.kap.remove(); }catch(e){} self.img.style.display=""; self.eski=new AvatarFace([imgId], EN_DIR, EN_FRAMES, enViseme, true); });
+      .catch(function(){ self.yedek=true; try{ self.kap.remove(); }catch(e){} self.img.style.display=""; self.eski=new AvatarFace([imgId], "./assets/avatars_v3/teacher/", EN_FRAMES, enViseme, true); });
   }
   speak(text,duration,dil){
     if(this.eski) return this.eski.speak(text,duration);
@@ -483,17 +442,15 @@ class DualTeacherAvatar{
     this.trFig = trImg ? (trImg.closest("figure")||trImg) : null;
     this.enFig = enImg ? (enImg.closest("figure")||enImg) : null;
     /* TEK OGRETMEN (18 Kasim): canli yuz hem Turkceyi hem Ingilizceyi kendi agiz hareketleriyle soyler.
-       Acilamazsa eski iki yuzlu duzen (teacher1 Turkce, teacher2 Ingilizce) aynen calisir. */
-    try{ this.canli = new CanliFace("teacherHeroImgEn"); }catch(e){ this.canli = null; }
+       teacher1/teacher2 kaldirildi; tek ogretmen. */
+    /* Canli yuz acilamazsa yine TEK ogretmen: "teacher" klasorunun kareleri (teacher1/teacher2 yok). */
+    try{ this.canli = new CanliFace("teacherHeroImgEn"); }catch(e){ this.canli = new AvatarFace(["teacherHeroImgEn"], "./assets/avatars_v3/teacher/", EN_FRAMES, enViseme, true); }
     if(this.canli){
       this.tek = true;
       this.vis(this.trFig, false);
       this.cap = this.enFig && this.enFig.querySelector("figcaption");
       var ava=document.getElementById("teacherAvaImg"); if(ava){ ava.src="./assets/avatars_v4/teacher/duygu-mutlu.webp"; ava.style.objectFit="cover"; ava.style.background="#e9edf2"; }
       this.dilYaz(null);
-    } else {
-      this.tr = new AvatarFace(["teacherAvaImg","teacherHeroImgTr"], TR_DIR, TR_FRAMES, trViseme, false);
-      this.en = new AvatarFace(["teacherHeroImgEn"], EN_DIR, EN_FRAMES, enViseme, true);
     }
   }
   vis(el,on){ if(el) el.style.display = on ? "" : "none"; }
@@ -1043,8 +1000,7 @@ function render(){
   </div>
   <div class="body">
     <div class="teacher-hero teacher-hero--dual">
-      <figure class="thero"><img class="teacher-photo" id="teacherHeroImgTr" alt="Türkçe konuşan öğretmen (teacher1)"><figcaption>🇹🇷 Türkçe</figcaption></figure>
-      <figure class="thero"><img class="teacher-photo" id="teacherHeroImgEn" alt="İngilizce konuşan öğretmen (teacher2)"><figcaption>🇬🇧 English</figcaption></figure>
+      <figure class="thero"><img class="teacher-photo" id="teacherHeroImgEn" alt="Öğretmen"><figcaption>🇬🇧 English</figcaption></figure>
     </div>
     <div class="subject">
       <div class="subject-en" id="subEn">${renderRich('[['+esc(State.en)+']]')}</div>

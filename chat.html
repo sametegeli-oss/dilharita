@@ -144,7 +144,7 @@
     </div>
     <div class="card">
         <a href="#" onclick="navigateToInternalChat(event, 'chatteacher.html', 4)">
-            <img src="assets/avatars_v3/teacher1/idle.webp"><b>Öğretmenle konuş</b><span>Seviyene ve bugünkü çalışmana göre</span>
+            <img src="assets/avatars_v4/teacher/duygu-mutlu.webp" style="background:#e9edf2"><b>Öğretmenle konuş</b><span>Seviyene ve bugünkü çalışmana göre</span>
         </a>
         <button class="external-ai-btn" onclick="handleExternalAIClick(event, 'İngilizce Öğretmeni')">Başka sitede aç</button>
     </div>
@@ -213,9 +213,7 @@
     /* Ders ÖĞRETMEN ekranında yapılır; senaryo yalnızca ortamı belirler
        (dh-konusma.js -> ortam/senaryoAd). Aşağıdaki senaryo kartları
        serbest sohbet olarak ESKİ hallerinde kalır. */
-    var sec = "teacher1";
-    try{ sec = localStorage.getItem("selectedTeacherAvatar") || "teacher1"; }catch(e){}
-    btn.href = "./" + (sec === "teacher2" ? "chatteacher2.html" : "chatteacher1.html");
+    btn.href = "./chatteacher1.html";   /* tek öğretmen */
     kart.hidden=false; kart.classList.add("dh-acik");
 
     /* onerilen senaryo kartini isaretle */

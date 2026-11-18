@@ -426,15 +426,13 @@
   document.head.appendChild(css);
   var box=document.createElement("div"); box.className="dh-coach";
   /* ---------- ÖĞRETMEN YÜZÜ: koç, seçili öğretmenin fotoğrafıyla konuşur ----------
-     selectedTeacherAvatar (chatteacher.html'de seçiliyor) yoksa teacher1 varsayılır.
+     Tek öğretmen (18 Kasım): her zaman canlı yüzlü öğretmenin fotoğrafı.
      Fotoğraf yüklenemezse img kendini siler ve SVG yüz devreye girer. */
   function coachFace(kind, big){
-    var sel="teacher1";
-    try{ sel=localStorage.getItem("selectedTeacherAvatar")||"teacher1"; }catch(e){}
-    var px=big?48:34;
+    var px=big?48:34;   /* tek öğretmen (canlı yüzün fotoğrafı) */
     /* Fotoğraf yüklenemezse img kendini siler ve gizli SVG yüz görünür olur */
-    return '<img class="dh-tface" src="./assets/avatars_v3/'+sel+'/idle.webp" alt="" '
-      +'style="width:'+px+'px;height:'+px+'px;border-radius:50%;object-fit:cover;object-position:top;display:block;box-shadow:0 0 0 2px #ffffff26" '
+    return '<img class="dh-tface" src="./assets/avatars_v4/teacher/duygu-mutlu.webp" alt="" '
+      +'style="width:'+px+'px;height:'+px+'px;border-radius:50%;object-fit:cover;object-position:center 20%;background:#e9edf2;display:block;box-shadow:0 0 0 2px #ffffff26" '
       +'onerror="this.nextElementSibling&&(this.nextElementSibling.style.display=\'\');this.remove();">'
       +'<span class="dh-svg-fb" style="display:none">'+faceSvg(kind)+'</span>';
   }

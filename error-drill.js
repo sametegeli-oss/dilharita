@@ -26,8 +26,7 @@
   function rawWords(t){ return String(t||"").replace(/[.!?,;]+/g,"").split(/\s+/).filter(Boolean); }
   function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var x=a[i]; a[i]=a[j]; a[j]=x; } return a; }
   function teacherHref(focus){
-    var sel="teacher1"; try{ sel=localStorage.getItem("selectedTeacherAvatar")||"teacher1"; }catch(e){}
-    return "./"+(sel==="teacher2"?"chatteacher2.html":"chatteacher1.html")+(focus?("?focus="+encodeURIComponent(focus)):"");
+    return "./chatteacher1.html"+(focus?("?focus="+encodeURIComponent(focus)):"");   /* tek öğretmen */
   }
   function speakEn(t){
     try{

@@ -15,7 +15,9 @@ ok(/Ders günlük ilerlemene kaydedildi/.test(lesson),"kullanıcı ders kayıt t
 ok(/dinlenme.*hidden = !!d\.calisti/.test(home),"çalışmaya başlayan kullanıcıya dinlenme seçeneği gösterilmiyor");
 ok(/dh-plan-satir--bitti[\s\S]{0,250}background:linear-gradient/.test(css),"tamamlanan görev kartı yeşil zemine dönüyor");
 ok(/body\.dh-chat-focus \.dh-primary-nav\{display:none/.test(pcss),"öğretmen girişleri ortak alt panelin arkasında kalmıyor");
-for(const f of ["chatteacher1.html","chatteacher2.html","chatairport.html","chatdoctor.html","chathotel.html","chatrestaurant.html"]){
+for(const f of ["chatteacher1.html","chatairport.html","chatdoctor.html","chathotel.html","chatrestaurant.html"]){
   ok(fs.readFileSync(f,"utf8").includes("dh-plan.js"),`${f}: merkezi plan kaydı yüklü`);
 }
+/* Tek öğretmen: chatteacher2 artık yalnız yönlendirme (plan kaydı chatteacher1'de) */
+ok(/location\.replace\("\.\/chatteacher1\.html"/.test(fs.readFileSync("chatteacher2.html","utf8")),"chatteacher2.html: tek öğretmen sayfasına yönlendiriyor");
 process.exit(fail?1:0);

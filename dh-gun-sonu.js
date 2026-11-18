@@ -144,9 +144,7 @@
   /* Öğretmen sohbetine devret */
   function ogretmeneGonder(harman) {
     try { localStorage.setItem(anahtar(), JSON.stringify(harman)); } catch (e) {}
-    var sec = "teacher1";
-    try { sec = localStorage.getItem("selectedTeacherAvatar") || "teacher1"; } catch (e) {}
-    var sayfa = (sec === "teacher2") ? "chatteacher2.html" : "chatteacher1.html";
+    var sayfa = "chatteacher1.html";   /* tek öğretmen */
     try { location.href = "./" + sayfa + "?gunsonu=1"; } catch (e) {}
   }
   function harmanOku() {

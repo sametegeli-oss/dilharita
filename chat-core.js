@@ -1,3 +1,7 @@
+/* TEK ÖĞRETMEN göçü (18 Kasım): teacher1/teacher2 kaldırıldı. Seçim "teacher" olur;
+   Öğretmen 1 ya da 2 için daha önce seçilmiş İngilizce ses tek öğretmene taşınır. */
+(function(){ try{ var ls=localStorage; if(ls.getItem("selectedTeacherAvatar")!=="teacher") ls.setItem("selectedTeacherAvatar","teacher");
+  var yeni="dh-voice:assets-avatars-v3-teacher-"; if(!ls.getItem(yeni)){ var e=ls.getItem("dh-voice:assets-avatars-v3-teacher1-")||ls.getItem("dh-voice:assets-avatars-v3-teacher2-"); if(e) ls.setItem(yeni,e); } }catch(e){} })();
 (function(){
 "use strict";
 const KEYS_LS = "groqApiKeys";
@@ -297,9 +301,9 @@ function safeId(s){ return String(s||"scenario").toLowerCase().replace(/[^a-z0-9
 function $(id){ return document.getElementById(id); }
 function activeAvatarDir(){
   const isTeacher = /teacher|öğretmen|ogretmen/i.test((Scenario.title||"") + " " + (Scenario.role||""));
-  const selected = localStorage.getItem("selectedTeacherAvatar") || "teacher1";
-  if(isTeacher && /^assets\/avatars_v3\/teacher/i.test(Scenario.avatarDir || "assets/avatars_v3/teacher1/")){
-    return "assets/avatars_v3/" + selected + "/";
+  /* TEK ÖĞRETMEN (18 Kasım): teacher1/teacher2 seçimi kaldırıldı; öğretmen her zaman "teacher". */
+  if(isTeacher && /^assets\/avatars_v3\/teacher/i.test(Scenario.avatarDir || "assets/avatars_v3/teacher/")){
+    return "assets/avatars_v3/teacher/";
   }
   return (Scenario.avatarDir || "");
 }
@@ -373,8 +377,7 @@ class PhotoAvatar{
     this.talkSeq=[];
     this.talkIndex=0;
   }
-  /* Kare setini başka bir avatar klasörüne çevirir (ör. Türkçe → teacher1,
-     İngilizce → teacher2). Dosya adları iki öğretmende de aynı. */
+  /* Kare setini başka bir avatar klasörüne çevirir (tek öğretmende kullanılmıyor). */
   setDir(dir){
     if(!dir || dir===this.dir) return;
     this.dir=dir;
@@ -930,12 +933,9 @@ function sesHizOgren(u, ms){
   sesHizlari[key]= eski ? Math.round(eski*.6+olcu*.4) : Math.round(olcu);
   try{ localStorage.setItem(SES_HIZ_LS, JSON.stringify(sesHizlari)); }catch(e){}
 }
-/* ÖĞRETMEN EKRANI: Türkçe konuşurken Türk öğretmen (teacher1),
-   İngilizce konuşurken İngiliz öğretmen (teacher2) görünür. */
-const OGRETMEN_TR="assets/avatars_v3/teacher1/", OGRETMEN_EN="assets/avatars_v3/teacher2/";
-function ogretmenDegisir(){
-  return (typeof __dhIsTeacher!=="undefined" && __dhIsTeacher) && /^assets\/avatars_v3\/teacher/i.test(activeAvatarDir());
-}
+/* ÖĞRETMEN EKRANI: tek öğretmen (canlı yüz) hem Türkçe hem İngilizce konuşur; yüz değişmez. */
+const OGRETMEN_TR="assets/avatars_v3/teacher/", OGRETMEN_EN="assets/avatars_v3/teacher/";
+function ogretmenDegisir(){ return false; }
 function ogretmeniSec(lang){
   if(!ogretmenDegisir()) return;
   try{ avatar.setDir(/^tr/i.test(lang||"") ? OGRETMEN_TR : OGRETMEN_EN); }catch(e){}
@@ -1769,10 +1769,54 @@ function aiTercihSor(devam){
   ov.querySelector("#dhatGeri").onclick=function(){ if(history.length>1) history.back(); else location.href="./index.html"; };
   try{ ov.querySelector(".dhat-sec.oneri").focus(); }catch(e){}
 }
+/* CANLI YÜZ (öğretmen ekranı): Konuşkan'daki canlı yüz motoru (dh-canli-yuz.js).
+   Sohbet sesi yine bu sayfa çalar; yüz aynı süre boyunca konuşur, cümleye göre
+   duygu ve jest gösterir, sesi kesmez. Motor gelene kadar / açılamazsa fotoğraflı
+   avatar (PhotoAvatar) devam eder. */
+function canliYukle(){
+  return new Promise(function(res, rej){
+    if(window.DHCanliYuz) return res();
+    var s=document.createElement("script"); s.src="./dh-canli-yuz.js?v=8"; s.onload=res; s.onerror=rej; document.head.appendChild(s);
+  });
+}
+class CanliSohbetAvatar{
+  constructor(img){ this.img=img; this.foto=new PhotoAvatar(img); this.yuz=null; this.hazir=false; }
+  init(){
+    this.foto.init();
+    const self=this, cv=document.createElement("canvas");
+    try{ if(!(cv.getContext("webgl")||cv.getContext("experimental-webgl"))) return; }catch(e){ return; }
+    if(!document.getElementById("dhCanliSohbetStil")){
+      const st=document.createElement("style"); st.id="dhCanliSohbetStil";
+      st.textContent=".avatar-stage > canvas.avatar-canli{position:relative;z-index:2;height:100%;width:auto;aspect-ratio:1/1;max-width:100%;display:block;margin:auto;pointer-events:none;transform:translateY(9%)}";
+      document.head.appendChild(st);
+    }
+    canliYukle().then(function(){
+      cv.className="avatar-canli"; cv.setAttribute("aria-label","Öğretmen");
+      self.img.insertAdjacentElement("afterend", cv);
+      self.yuz=window.DHCanliYuz.olustur(cv,{ yol:"./assets/avatars_v4/teacher/" });
+      return self.yuz.hazir;
+    }).then(function(){
+      self.hazir=true; self.img.style.setProperty("display","none","important");
+      self.yuz.profil({ ifade:.7, enerji:.5, jest:.5 }); self.yuz.duygu("cesaret",.4);
+    }).catch(function(){ try{ cv.remove(); }catch(e){} self.hazir=false; });
+  }
+  speakText(text, duration, lang){
+    if(!this.hazir) return this.foto.speakText(text, duration, lang);
+    const t=String(text||"").replace(/\s+/g," ").trim(); if(!t) return;
+    const dil=/^en/i.test(lang||"")?"en":(/^tr/i.test(lang||"")?"tr":((typeof __dhIsTeacher!=="undefined"&&__dhIsTeacher)?"tr":"en"));
+    const parcalar=window.DHCanliYuz.etiketle(t), n=t.length||1, sure=duration||1800;
+    this.yuz.konus(parcalar.map(function(c){ return { metin:c.metin, dil:dil, duygu:c.duygu, guc:Math.min(.7,c.guc||.5), jest:c.jest, sessiz:true, sureMs:Math.round(sure*c.metin.length/n) }; }), { sesiKesme:false, sonDuygu:"cesaret" });
+  }
+  alignToChar(){ if(!this.hazir) return this.foto.alignToChar.apply(this.foto, arguments); }
+  rest(){ if(!this.hazir) return this.foto.rest(); this.yuz.sustur({ sesKesme:false }); }
+  stop(){ if(!this.hazir) return this.foto.stop(); this.yuz.sustur({ sesKesme:false }); this.yuz.dinle(false); }
+  setDir(){ }
+}
 function boot(){
   buildUI();
   dhSadeAltCubuk();
-  avatar=new PhotoAvatar($("avatarImg"));
+  const ogretmenEkrani = (typeof __dhIsTeacher!=="undefined" && __dhIsTeacher) && /avatars_v3\/teacher\/$/i.test(activeAvatarDir());
+  avatar = ogretmenEkrani ? new CanliSohbetAvatar($("avatarImg")) : new PhotoAvatar($("avatarImg"));
   avatar.init();
   setupEvents();
   aiTercihSor(bootAcilis);
