@@ -447,7 +447,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
 MODE: TURKISH GENERAL CHAT. Speak natural TURKISH (informal "sen") about ANY subject the user brings: everyday questions, advice, explanations, ideas, planning, writing help, health/money/legal basics (with a short note to consult a professional when it really matters), general knowledge, or just chatting.
 - Your words are spoken aloud: ${UZ.genel[uzK()]} No emojis, no lists, no markdown, no stage directions.
 - ACCURACY FIRST. Only state facts you are confident about. Never invent names, numbers, dates, prices, addresses, laws, quotes or sources. If you are not sure, say "Bundan emin değilim" and give only what you reliably know.
-- Today's date is ${new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })}.
+- RIGHT NOW it is ${new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })}, saat ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} (user's time zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}). Use this for "saat kaç", "bugün ne", "kaç gün kaldı" etc.; never say you cannot know the time.
+- For prayer times (namaz / ezan vakti, imsak, iftar, sahur) ALWAYS call the namaz_vakitleri tool (Diyanet method); never guess or search. If the user named a city pass it, otherwise call it without a city (it uses the device location). If it returns an error about location, ask which city they are in.
 - If you have a browser_search tool: for anything that can change (news, prices, exchange rates, who currently holds a position, opening hours, schedules, laws, weather, sports results, recent events) SEARCH FIRST and answer from what you found; name the source briefly in words (e.g. "Habertürk'e göre"), never output citation marks or URLs. Do not search for timeless knowledge.
 - If you have NO search tool: your knowledge has a cutoff; for such changing things say clearly that you cannot know the current state and suggest checking a reliable source.
 - Prefer a short correct answer to a long uncertain one.
@@ -691,6 +692,42 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       const GUCLU = { groq: 'openai/gpt-oss-120b', cerebras: 'gpt-oss-120b' };
       return ((genelMi() || kaliteSec() !== 'hizli') && GUCLU[p.id]) || (DHProviders.getModel && DHProviders.getModel(p.id)) || p.model;
     }
+    /* ---- yerel araçlar (her genel sohbette): namaz vakitleri ---- */
+    const YEREL_ARACLAR = [{ type: 'function', function: { name: 'namaz_vakitleri', description: 'Official Diyanet prayer times (İmsak, Güneş, Öğle, İkindi, Akşam, Yatsı) for a city or the device location, for today or a given date. Also returns the next prayer and the Hijri date.',
+      parameters: { type: 'object', properties: { sehir: { type: 'string', description: 'City name, e.g. "İstanbul", "Ankara", "Berlin". Omit to use the device location.' }, ulke: { type: 'string', description: 'Country in English, default Turkey' }, tarih: { type: 'string', description: 'YYYY-MM-DD, default today' } } } } }];
+    const yerelMi = ad => YEREL_ARACLAR.some(a => a.function.name === ad);
+    function konumAl() {
+      return new Promise(ok => {
+        try { const k = JSON.parse(localStorage.getItem('dh_konum') || 'null'); if (k && Date.now() - k.t < 7 * 864e5) return ok(k); } catch (e) {}
+        if (!navigator.geolocation) return ok(null);
+        navigator.geolocation.getCurrentPosition(p => { const k = { lat: +p.coords.latitude.toFixed(3), lon: +p.coords.longitude.toFixed(3), t: Date.now() }; try { localStorage.setItem('dh_konum', JSON.stringify(k)); } catch (e) {} ok(k); }, () => ok(null), { timeout: 9000, maximumAge: 36e5 });
+      });
+    }
+    async function yerelCalistir(ad, argMetin) {
+      let a = {}; try { a = JSON.parse(argMetin || '{}') || {}; } catch (e) {}
+      try {
+        if (ad === 'namaz_vakitleri') {
+          const g = a.tarih && /^\d{4}-\d{2}-\d{2}$/.test(a.tarih) ? new Date(a.tarih + 'T12:00:00') : new Date();
+          const gun = String(g.getDate()).padStart(2, '0') + '-' + String(g.getMonth() + 1).padStart(2, '0') + '-' + g.getFullYear();
+          let url, yer;
+          if (a.sehir) { yer = a.sehir; url = `https://api.aladhan.com/v1/timingsByCity/${gun}?city=${encodeURIComponent(a.sehir)}&country=${encodeURIComponent(a.ulke || 'Turkey')}&method=13`; }
+          else { const k = await konumAl(); if (!k) return JSON.stringify({ hata: 'Konum alınamadı (izin yok). Kullanıcıya hangi şehirde olduğunu sor.' }); yer = 'cihaz konumu'; url = `https://api.aladhan.com/v1/timings/${gun}?latitude=${k.lat}&longitude=${k.lon}&method=13`; }
+          const r = await fetch(url).then(x => x.json());
+          if (!r || r.code !== 200 || !r.data) return JSON.stringify({ hata: 'Vakitler alınamadı: ' + (r && r.data || 'bilinmeyen hata') });
+          const T = r.data.timings, sade = v => String(v).slice(0, 5);
+          const v = { 'İmsak': sade(T.Fajr), 'Güneş': sade(T.Sunrise), 'Öğle': sade(T.Dhuhr), 'İkindi': sade(T.Asr), 'Akşam': sade(T.Maghrib), 'Yatsı': sade(T.Isha) };
+          const sonuc = { yer, tarih: r.data.date && r.data.date.readable, hicri: r.data.date && r.data.date.hijri ? `${r.data.date.hijri.day} ${r.data.date.hijri.month.en} ${r.data.date.hijri.year}` : undefined, saat_dilimi: r.data.meta && r.data.meta.timezone, vakitler: v, kaynak: 'Diyanet hesaplama yöntemi (Aladhan)' };
+          if (!a.tarih) {   /* sıradaki vakit (yerel saate göre) */
+            const simdi = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: sonuc.saat_dilimi || undefined });
+            const sira = Object.entries(v).find(([, t]) => t > simdi);
+            sonuc.simdi = simdi; sonuc.siradaki = sira ? { vakit: sira[0], saat: sira[1] } : { vakit: 'İmsak (yarın)' };
+          }
+          return JSON.stringify(sonuc);
+        }
+      } catch (e) { return JSON.stringify({ hata: 'Bağlantı hatası, vakitler alınamadı.' }); }
+      return JSON.stringify({ hata: 'bilinmeyen araç' });
+    }
+
     async function akisDene(p, key, istem, onSeg, model) {
       const genel = genelMi();
       const kalite = kaliteSec();
@@ -702,7 +739,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       const ara = genel && p.id === 'groq' && /gpt-oss/i.test(model);
       /* Google hesabı bağlıysa: takvim / gmail / görevler / kişiler / drive araçları */
       const gAraclar = genel && /gpt-oss/i.test(model) && (p.id === 'groq' || p.id === 'cerebras') && window.DHGoogle && DHGoogle.durum().bagli ? DHGoogle.araclar() : [];
-      const tools = [...(ara ? [{ type: 'browser_search' }] : []), ...gAraclar];
+      const yerel = genel && (p.id === 'groq' || p.id === 'cerebras') ? YEREL_ARACLAR : [];
+      const tools = [...(ara ? [{ type: 'browser_search' }] : []), ...yerel, ...gAraclar];
       const SURE = tools.length || kalite === 'derin' ? 30000 : 15000;
       let adet = 0, aradi = false;
       if (kalite === 'derin') setTimeout(() => { if (!adet && !aradi && kok.dataset.d === 'dusunuyor') bilgi('Derin düşünüyor…'); }, 2500);
@@ -764,8 +802,9 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
           /* araçları çalıştır, sonuçlarıyla devam et */
           msgs.push({ role: 'assistant', content: metin || '', tool_calls: gecerli });
           for (const c of gecerli) {
-            bilgi(DHGoogle.aciklama(c.function.name)); yuz.duygu('dusunceli', 0.5); yuz.jest('dusun', 0.5);
-            const sonuc = await DHGoogle.calistir(c.function.name, c.function.arguments, { onay: googleOnay, onbellek: st.aracOnb || (st.aracOnb = new Map()) });
+            const yr = yerelMi(c.function.name);
+            bilgi(yr ? 'Namaz vakitlerine bakıyor…' : DHGoogle.aciklama(c.function.name)); yuz.duygu('dusunceli', 0.5); yuz.jest('dusun', 0.5);
+            const sonuc = yr ? await yerelCalistir(c.function.name, c.function.arguments) : await DHGoogle.calistir(c.function.name, c.function.arguments, { onay: googleOnay, onbellek: st.aracOnb || (st.aracOnb = new Map()) });
             if (/google_auth|süresi doldu/.test(sonuc)) googleCizgi();
             msgs.push({ role: 'tool', tool_call_id: c.id || c.function.name, name: c.function.name, content: sonuc });
           }
