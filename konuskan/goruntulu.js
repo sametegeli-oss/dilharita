@@ -366,7 +366,9 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
 MODE: TURKISH GENERAL CHAT. Speak natural TURKISH (informal "sen") about ANY subject the user brings: everyday questions, advice, explanations, ideas, planning, writing help, health/money/legal basics (with a short note to consult a professional when it really matters), general knowledge, or just chatting.
 - Your words are spoken aloud: answer in 1-5 short, clear spoken sentences. No emojis, no lists, no markdown, no stage directions. If a longer answer is needed, give the essence first and offer to continue.
 - ACCURACY FIRST. Only state facts you are confident about. Never invent names, numbers, dates, prices, addresses, laws, quotes or sources. If you are not sure, say "Bundan emin değilim" and give only what you reliably know.
-- You have NO internet access and your knowledge has a cutoff. For anything that can change (news, prices, exchange rates, who currently holds a position, opening hours, schedules, laws, weather, sports results) say clearly that you cannot know the current state and suggest checking a reliable source.
+- Today's date is ${new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })}.
+- If you have a browser_search tool: for anything that can change (news, prices, exchange rates, who currently holds a position, opening hours, schedules, laws, weather, sports results, recent events) SEARCH FIRST and answer from what you found; name the source briefly in words (e.g. "Habertürk'e göre"), never output citation marks or URLs. Do not search for timeless knowledge.
+- If you have NO search tool: your knowledge has a cutoff; for such changing things say clearly that you cannot know the current state and suggest checking a reliable source.
 - Prefer a short correct answer to a long uncertain one.
 - Ask a short follow-up question only when it really helps.
 - The user's messages come from speech recognition: if a message looks garbled, kindly ask them to repeat.
@@ -408,7 +410,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     }
     function segmentCevir(x) {
       if (!x || typeof x !== 'object') return null;
-      { const metin = String(x.s || x.text || '').trim(); const etiket = x.lang === 'tr' || x.lang === 'en' ? x.lang : null, tahmin = dilTahmin(metin); const dil = tahmin || etiket || (/[çğışöüÇĞİŞÖÜ]/.test(metin) ? 'tr' : 'en');
+      { const metin = String(x.s || x.text || '').replace(/【[^】]*】/g, '').replace(/\s+([.,!?])/g, '$1').trim(); const etiket = x.lang === 'tr' || x.lang === 'en' ? x.lang : null, tahmin = dilTahmin(metin); const dil = tahmin || etiket || (/[çğışöüÇĞİŞÖÜ]/.test(metin) ? 'tr' : 'en');
         const cev = dil === 'en' && typeof x.tr === 'string' && x.tr.trim() && x.tr.trim() !== metin ? x.tr.trim() : '';
         if (!metin) return null;
         return { metin, duygu: DUYGU.includes(x.emo) ? x.emo : 'cesaret', jest: JEST.includes(x.gest) ? x.gest : null, guc: 0.85, dil, cev }; }
@@ -583,7 +585,12 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         { role: 'system', content: genel ? 'You are a careful, factual general assistant for a Turkish user inside the Konuşkan app. Accuracy matters more than sounding confident. Reply with valid JSON only, no markdown fences.' : 'You help a Turkish learner practise English inside the Konuşkan app. Reply with valid JSON only, no markdown fences.' },
         { role: 'user', content: istem }] };
       if (/gpt-oss/i.test(model)) body.reasoning_effort = genel ? 'medium' : 'low';
-      const ctl = new AbortController(); let z = setTimeout(() => ctl.abort(), 15000);
+      /* genel sohbet + Groq gpt-oss: yerleşik tarayıcı araması (güncel bilgi gerekirse model kendisi arar) */
+      const ara = genel && p.id === 'groq' && /gpt-oss/i.test(model);
+      if (ara) { body.tools = [{ type: 'browser_search' }]; body.tool_choice = 'auto'; }
+      let aradi = false;
+      const SURE = ara ? 30000 : 15000;
+      const ctl = new AbortController(); let z = setTimeout(() => ctl.abort(), SURE);
       const res = await fetch(p.url, { method: 'POST', signal: ctl.signal, headers: Object.assign({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, p.headers || {}), body: JSON.stringify(body) });
       if (res.status === 429) { clearTimeout(z); throw { code: 'rate' }; }
       if (!res.ok || !res.body) { clearTimeout(z); throw { code: 'http', status: res.status }; }
@@ -607,12 +614,14 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       try {
         for (;;) {
           const { value, done } = await rd.read(); if (done) break;
-          clearTimeout(z); z = setTimeout(() => ctl.abort(), 15000);
+          clearTimeout(z); z = setTimeout(() => ctl.abort(), SURE);
           tampon += dec.decode(value, { stream: true });
           let n; while ((n = tampon.indexOf('\n')) >= 0) {
             const satir = tampon.slice(0, n).trim(); tampon = tampon.slice(n + 1);
             if (!satir.startsWith('data:')) continue; const v = satir.slice(5).trim(); if (v === '[DONE]') continue;
-            try { const o = JSON.parse(v); const t = o.choices && o.choices[0] && o.choices[0].delta && o.choices[0].delta.content; if (t) { metin += t; tara(); } } catch (e) {}
+            try { const o = JSON.parse(v); const dl = (o.choices && o.choices[0] && o.choices[0].delta) || {};
+              if (ara && !aradi && (dl.executed_tools || /browser\.(search|open)/.test(dl.reasoning || ''))) { aradi = true; st.aramaVar = true; if (!adet) { bilgi('İnternette arıyor…'); yuz.duygu('dusunceli', 0.5); } }
+              const t = dl.content; if (t) { metin += t; tara(); } } catch (e) {}
           }
         }
       } catch (e) { clearTimeout(z); throw Object.assign({ code: 'network' }, adet ? { basladi: true } : {}); }
