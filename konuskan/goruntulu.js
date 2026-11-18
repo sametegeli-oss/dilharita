@@ -649,27 +649,50 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     }
 
     /* ---- akış halinde cevap: Groq / Cerebras / OpenRouter / Mistral; cümleler tamamlandıkça yakalanır ---- */
+    /* Kotası dolan / ödeme isteyen anahtarlar bir süre atlanır: her mesajda boşuna denenip beklетmesin.
+       { "<sağlayıcı>:<anahtarın son 6 hanesi>": bitişZamanı } */
+    const MOLA_KEY = 'dh-saglayici-mola-v1';
+    const molaOku = () => { try { return JSON.parse(localStorage.getItem(MOLA_KEY) || '{}'); } catch (e) { return {}; } };
+    const molaAd = (p, key, model) => p.id + ':' + String(key).slice(-6) + ':' + (model || '');
+    function molaVer(p, key, ms, model) { const m = molaOku(); const t = Date.now(); Object.keys(m).forEach(k => { if (m[k] < t) delete m[k]; }); m[molaAd(p, key, model)] = t + ms; try { localStorage.setItem(MOLA_KEY, JSON.stringify(m)); } catch (e) {} }
     async function akisliCevap(istem, onSeg) {
       const SIRA = ['groq', 'cerebras', 'openrouter', 'mistral'];
       const P = (DHProviders.PROVIDERS || []);
-      let son = null;
+      let son = null; const mola = molaOku(), simdi = Date.now(); let enYakin = Infinity, molada = 0;
       for (const id of SIRA) {
         const p = P.find(x => x.id === id); if (!p) continue;
         let keys = []; try { keys = (JSON.parse(localStorage.getItem(p.keyStore) || '[]') || []).filter(Boolean); } catch (e) {}
-        for (const key of keys) {
-          try { return await akisDene(p, key, istem, onSeg); }
-          catch (e) { son = e; if (e && e.basladi) throw e; }   /* yarıda kaldıysa başka sağlayıcıyla tekrar söyletme */
+        /* Groq'ta sınırlar model başına: ana model dolunca aynı anahtarla diğer modellere geç */
+        const ana = modelSec(p);
+        const modeller = p.id === 'groq' ? [ana, 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile'].filter((x, i, A) => A.indexOf(x) === i) : [ana];
+        for (const model of modeller) for (const key of keys) {
+          const bit = Math.max(mola[molaAd(p, key, model)] || 0, mola[molaAd(p, key, '*')] || 0);
+          if (bit > simdi) { molada++; if (p.id === 'groq') enYakin = Math.min(enYakin, bit); continue; }
+          try { const r = await akisDene(p, key, istem, onSeg, model); if (model !== ana) st.yedekModel = model; return r; }
+          catch (e) {
+            son = e; if (e && e.basladi) throw e;   /* yarıda kaldıysa başka sağlayıcıyla tekrar söyletme */
+            if (e && e.mola) { molaVer(p, key, e.mola, e.code === 'odeme' ? '*' : model); if (p.id === 'groq') enYakin = Math.min(enYakin, Date.now() + e.mola); }
+          }
         }
+      }
+      if (enYakin < Infinity && (!son || son.code === 'rate' || son.code === 'timeout' || son.code === 'odeme' || molada)) {
+        const dk = Math.max(1, Math.ceil((enYakin - Date.now()) / 60000));
+        throw { code: 'rate', mesaj: `Groq'un ücretsiz günlük kullanım sınırı doldu (${dk < 90 ? 'yaklaşık ' + dk + ' dk' : 'yaklaşık ' + Math.round(dk / 60) + ' saat'} sonra yeniden açılır).` };
       }
       throw son || { code: 'no-key' };
     }
-    async function akisDene(p, key, istem, onSeg) {
-      const genel = genelMi();
-      /* genel sohbette doğruluk önemli: küçük/hızlı modeller (ör. llama-3.1-8b) yerine sağlayıcının en güçlü modeli */
-      const GUCLU = { groq: 'openai/gpt-oss-120b', cerebras: 'gpt-oss-120b' };
-      const kalite = ayar.kalite === 'oto' || !ayar.kalite ? (genel ? 'dengeli' : 'hizli') : ayar.kalite;
+    /* "Please try again in 3m22.1s" → ms */
+    function tekrarSuresi(t) { const m = /try again in\s+(?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)?/i.exec(t || ''); if (!m) return 0; return (((+m[1] || 0) * 60 + (+m[2] || 0)) * 60 + (+m[3] || 0)) * 1000; }
+    const kaliteSec = () => ayar.kalite === 'oto' || !ayar.kalite ? (genelMi() ? 'dengeli' : 'hizli') : ayar.kalite;
+    function modelSec(p) {
       /* dengeli/derin ya da genel sohbet: sağlayıcının en güçlü modeli; hızlıda kullanıcının seçtiği model */
-      const model = ((genel || kalite !== 'hizli') && GUCLU[p.id]) || (DHProviders.getModel && DHProviders.getModel(p.id)) || p.model;
+      const GUCLU = { groq: 'openai/gpt-oss-120b', cerebras: 'gpt-oss-120b' };
+      return ((genelMi() || kaliteSec() !== 'hizli') && GUCLU[p.id]) || (DHProviders.getModel && DHProviders.getModel(p.id)) || p.model;
+    }
+    async function akisDene(p, key, istem, onSeg, model) {
+      const genel = genelMi();
+      const kalite = kaliteSec();
+      model = model || modelSec(p);
       const msgs = [
         { role: 'system', content: genel ? 'You are a careful, factual general assistant for a Turkish user inside the Konuşkan app. Accuracy matters more than sounding confident. Your final answer is valid JSON only, no markdown fences.' : 'You help a Turkish learner practise English inside the Konuşkan app. Reply with valid JSON only, no markdown fences.' },
         { role: 'user', content: istem }];
@@ -689,8 +712,16 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         let res;
         try { res = await fetch(p.url, { method: 'POST', signal: ctl.signal, headers: Object.assign({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, p.headers || {}), body: JSON.stringify(body) }); }
         catch (e) { clearTimeout(z); throw { code: 'network' }; }
-        if (res.status === 429) { clearTimeout(z); throw { code: 'rate' }; }
+        if (res.status === 429) {
+          clearTimeout(z); let t = ''; try { t = await res.text(); } catch (e) {}
+          const gunluk = /per day|TPD|RPD|daily/i.test(t), sure = tekrarSuresi(t);
+          throw { code: 'rate', mola: gunluk ? Math.max(sure, 60000) + 30000 : Math.max(sure, 20000) };
+        }
+        if (res.status === 402 || res.status === 401 || res.status === 403) { clearTimeout(z); throw { code: 'odeme', mola: 6 * 3600000 }; }
         if (!res.ok || !res.body) { clearTimeout(z); throw { code: 'http', status: res.status }; }
+        /* ilk cümle için üst süre: sağlayıcı "işleniyor" sinyalleriyle bağlantıyı açık tutup hiç cevap vermezse bekletmesin */
+        const ILK = tools.length || kalite === 'derin' ? 45000 : 22000;
+        const ilkZ = setTimeout(() => { if (!adet && !metin) { ctl.__zaman = true; ctl.abort(); } }, ILK);
         const rd = res.body.getReader(), dec = new TextDecoder();
         let tampon = '', metin = '', dizi = false, poz = 0, kapandi = false;
         const cagrilar = [];
@@ -724,8 +755,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
                 const t = dl.content; if (t) { metin += t; tara(); } } catch (e) {}
             }
           }
-        } catch (e) { clearTimeout(z); throw Object.assign({ code: 'network' }, adet ? { basladi: true } : {}); }
-        clearTimeout(z);
+        } catch (e) { clearTimeout(z); clearTimeout(ilkZ); if (ctl.__zaman && !adet) throw { code: 'timeout', mola: 3 * 60000 }; throw Object.assign({ code: 'network' }, adet ? { basladi: true } : {}); }
+        clearTimeout(z); clearTimeout(ilkZ);
         const gecerli = cagrilar.filter(c => c && c.function.name);
         if (gecerli.length && !adet) {
           /* araçları çalıştır, sonuçlarıyla devam et */
@@ -798,7 +829,9 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         catch (e) {
           if (m.liste.length) throw e;
           /* akış olmadıysa normal yoldan (Gemini dahil) bir kerede */
-          r = await ai(istem); cumleler(r).forEach(onSeg);
+          bilgi((e && e.mesaj ? e.mesaj + ' ' : '') + 'Yedek yapay zekâ deneniyor…');
+          try { r = await ai(istem); } catch (e2) { throw (e && e.mesaj) ? e : e2; }
+          bilgiGizle(); cumleler(r).forEach(onSeg);
         }
         clearTimeout(dusunZ); clearTimeout(dolguZ);
         if (!m.liste.length) throw { code: 'bad_json' };
@@ -815,7 +848,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         if (m.liste.length) { m.text = m.liste.map(x => x.metin).join(' '); }
         if (um) { const k = um._el && um._el.querySelector('.vd-m-durum'); if (k) k.innerHTML = '<span class="vd-hata">Gönderilemedi</span>'; if (!m.liste.length) { st.hist.pop(); st.turns--; } }
         yuz.duygu('anlayisli', 0.5);
-        altyazi('', ''); bilgi(aiErr(e) + ' Tekrar dene.');
+        altyazi('', ''); bilgi(e && e.mesaj ? e.mesaj + ' Biraz sonra tekrar dene.' : aiErr(e) + ' Tekrar dene.');
         durum('bekliyor');
       }
     }
