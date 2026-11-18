@@ -19,7 +19,9 @@
   const TZ = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'Europe/Istanbul';
   const LS = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} } };
 
-  const istemci = () => (LS.get(CID_KEY) || window.DH_GOOGLE_CLIENT_ID || '').trim();
+  /* Dil Harita'nın Google OAuth istemci kimliği (gizli değildir; yalnız https://sametegeli-oss.github.io kaynağında çalışır) */
+  const VARSAYILAN_ISTEMCI = '562124015557-k34l1lm68pqgijogq2b28ddi5n93uukd.apps.googleusercontent.com';
+  const istemci = () => (LS.get(CID_KEY) || window.DH_GOOGLE_CLIENT_ID || VARSAYILAN_ISTEMCI || '').trim();
   /* Bağlantı, onu kuran Dil Harita kullanıcısına aittir: aynı tarayıcıda başka biri girerse görünmez ve silinir. */
   const kullanici = () => LS.get('dh_logged_uid') || '';
   const girisEposta = () => (LS.get('dh_logged_email') || '').trim().toLowerCase();
