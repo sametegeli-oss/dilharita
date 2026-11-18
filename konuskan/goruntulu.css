@@ -386,7 +386,7 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-onay-sayac { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .06); overflow: hidden; visibility: hidden; }
 .vd-onay.sayiyor .vd-onay-sayac { visibility: visible; }
 .vd-onay-sayac i { display: block; height: 100%; width: 100%; background: var(--vd-vurgu); transform-origin: left; }
-.vd-onay.sayiyor .vd-onay-sayac i { animation: vdSay 4s linear forwards; }
+.vd-onay.sayiyor .vd-onay-sayac i { animation: vdSay 3s linear forwards; }
 @keyframes vdSay { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 .vd-onay-b { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 .vd-onay-b button { display: inline-flex; align-items: center; gap: 6px; padding: 9px 13px; border-radius: 11px; border: 1px solid var(--vd-cizgi); background: rgba(255, 255, 255, .06); font-weight: 700; font-size: .86rem !important; }
@@ -443,3 +443,7 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd[data-mod="genel"] .vd-m.ogr .vd-m-tr { display: none !important; }
 .vd-gonay-k { background: #121620; }
 .vd-google small.vd-g-uyari { color: #ffd58a; }
+
+/* Dur düğmesi (konuşurken / düşünürken) */
+.vd-dur { color: #ffb0b0; }
+.vd-dur svg { width: 18px; height: 18px; }

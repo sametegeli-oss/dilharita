@@ -25,6 +25,7 @@
   if (!window.DHCanliYuz) return;
   MODE_TR.video = 'Görüntülü ders';
   const VI = {
+    stop: '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>',
     mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
     kb: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
     hint: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/>',
@@ -178,6 +179,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <button class="vd-b" data-a="ipucu" title="Ne diyebilirim?">${vi('hint')}<span>İpucu</span></button>
         <button class="vd-mic" data-a="mic" aria-label="Mikrofon">${vi('mic')}</button>
         <button class="vd-b" data-a="tekrar" title="Son cevabı tekrar et">${vi('again')}<span>Tekrar</span></button>
+        <button class="vd-b vd-dur" data-a="dur" title="Sustur (Esc)" hidden>${vi('stop')}<span>Dur</span></button>
         <button class="vd-b vd-bitir" data-a="bitir" title="Dersi bitir">${vi('end')}<span>Bitir</span></button>
       </footer>
       <form class="vd-yaz" hidden><input placeholder="İngilizce (ya da Türkçe) yaz ve Enter'a bas" aria-label="Mesaj"><button aria-label="Gönder">${vi('send')}</button></form>
@@ -189,7 +191,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       <div class="vd-ayarlar" hidden>
         <b>Ayarlar</b>
         <label class="vd-anahtar"><input type="checkbox" data-a="eller2"><span></span> Eller serbest</label>
-        <label class="vd-anahtar"><input type="checkbox" data-a="onay"><span></span> Göndermeden önce metni göster <small>Mikrofonun anladığını düzeltebilir ya da yeniden kaydedebilirsin. Eller serbestte dokunmazsan 4 sn sonra gönderilir.</small></label>
+        <label class="vd-anahtar"><input type="checkbox" data-a="onay"><span></span> Göndermeden önce metni göster <small>Mikrofonun anladığını düzeltebilir ya da yeniden kaydedebilirsin. Eller serbestte dokunmazsan 3 sn sonra gönderilir.</small></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="hassas"><span></span> Hassas ses tanıma <small class="vd-hassas-not">Konuşman Gemini ile yazıya dökülür; aksanı ve hızlı konuşmayı çok daha iyi anlar.</small></label>
         <label class="vd-satir">Sustuktan sonra bekleme: <b class="vd-sessiz-d"></b><input type="range" min="1.2" max="4" step="0.2" data-a="sessizlik"></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
@@ -215,7 +217,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       () => { q('.vd-yukleniyor').innerHTML = '<p>Avatar bu cihazda açılamadı (WebGL yok). Ders yine de sesli devam edebilir.</p>'; });
 
     const DURUM = { hazir: 'Hazır', dinliyor: 'Seni dinliyor', anliyor: 'Anlıyor…', dusunuyor: 'Düşünüyor', konusuyor: 'Konuşuyor', bekliyor: 'Senin sıran', onay: 'Metni kontrol et' };
-    function durum(d) { q('.vd-durum').dataset.d = d; q('.vd-durum-y').textContent = DURUM[d] || d; kok.dataset.d = d; q('.vd-mic').classList.toggle('canli', d === 'dinliyor'); }
+    function durum(d) { q('.vd-durum').dataset.d = d; q('.vd-durum-y').textContent = DURUM[d] || d; kok.dataset.d = d; q('.vd-mic').classList.toggle('canli', d === 'dinliyor');
+      const konusma = d === 'konusuyor' || d === 'dusunuyor'; q('[data-a=dur]').hidden = !konusma; q('[data-a=tekrar]').hidden = konusma; }
 
     /* ---- sohbet paneli ---- */
     function sohbetAc(ac, kaydetme) { kok.classList.toggle('vd-sohbet-acik', ac); if (ac) { q('.vd-rozet').hidden = true; q('.vd-rozet').textContent = '0'; } if (genis() && !kaydetme && st.faz === 'ders') { ayar.sohbet = ac; ayarKaydet(); } }
@@ -982,9 +985,9 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       onayT.value = metin; onay.hidden = false; kok.classList.add('vd-onay-acik'); onayBoy();
       sayacDur();
       if (ayar.ellerSerbest) {
-        /* eller serbest: dokunmazsan 4 sn sonra gönder */
+        /* eller serbest: dokunmazsan 3 sn sonra gönder */
         void onay.offsetWidth; onay.classList.add('sayiyor');
-        st.onayZ = setTimeout(() => { if (!onay.hidden) onayGonder(); }, 4000);
+        st.onayZ = setTimeout(() => { if (!onay.hidden) onayGonder(); }, 3000);
       } else if (window.matchMedia('(pointer: fine)').matches) { onayT.focus(); onayT.setSelectionRange(onayT.value.length, onayT.value.length); }
     }
     function onayKapat() { sayacDur(); onay.hidden = true; kok.classList.remove('vd-onay-acik'); if (kok.dataset.d === 'onay') durum('bekliyor'); }
@@ -1003,6 +1006,15 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     q('[data-a=kb]').onclick = () => yazAc();
     q('.vd-yaz').onsubmit = e => { e.preventDefault(); const i = q('.vd-yaz input'); const t = i.value.trim(); if (!t || st.busy) return; i.value = ''; if (kok.dataset.d === 'konusuyor') yuz.sustur(); st.sesli = false; altyaziSen(t); sor(t); };
     q('[data-a=tekrar]').onclick = () => { if (st.son) tekrarSoyle(st.son); };
+    /* Dur: avatar o an konuşuyorsa (ya da düşünüyorsa) hemen sussun; cevabın yazısı sohbet panelinde kalır */
+    function durdur() {
+      const d = kok.dataset.d; if (st.bitti || (d !== 'konusuyor' && d !== 'dusunuyor')) return;
+      if (st.konusucu) st.konusucu.iptal();
+      yuz.sustur(); try { speechSynthesis.cancel(); } catch (e) {}
+      durum('bekliyor'); altyazi('', ''); yuz.duygu('anlayisli', 0.4);
+      bilgi('Durduruldu. Mikrofona basıp konuşabilir ya da yazabilirsin.');
+    }
+    q('[data-a=dur]').onclick = durdur;
     q('[data-a=ipucu]').onclick = async () => {
       if (st.busy || aiOff()) return;
       q('.vd-duzeltme').hidden = true;
@@ -1015,7 +1027,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       } catch (e) { z.innerHTML = `<span>${esc(aiErr(e))}</span>`; }
     };
     q('[data-a=bitir]').onclick = () => bitir();
-    function klavye(e) { if (st.faz !== 'ders' || st.bitti || e.target.closest('input,textarea,select,button,[role=button]')) return; if (e.code === 'Space') { e.preventDefault(); q('[data-a=mic]').click(); } }
+    function klavye(e) { if (st.faz !== 'ders' || st.bitti || e.target.closest('input,textarea,select,button,[role=button]')) return; if (e.code === 'Space') { e.preventDefault(); q('[data-a=mic]').click(); } if (e.key === 'Escape') durdur(); }
     document.addEventListener('keydown', klavye);
 
     /* ---- özet ---- */
