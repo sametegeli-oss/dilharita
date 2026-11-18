@@ -194,6 +194,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       <div class="vd-kelime" hidden></div>
       <div class="vd-ayarlar" hidden>
         <b>Ayarlar</b>
+        <label class="vd-satir vd-mod-ayar">Sohbet modu <select data-a="mod"><option value="tr">Türkçe konu çalışma</option><option value="en">İngilizce sohbet</option><option value="genel">Türkçe genel sohbet</option></select></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="eller2"><span></span> Eller serbest</label>
         <label class="vd-anahtar"><input type="checkbox" data-a="onay"><span></span> Göndermeden önce metni göster <small>Mikrofonun anladığını düzeltebilir ya da yeniden kaydedebilirsin. Eller serbestte dokunmazsan 3 sn sonra gönderilir.</small></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="hassas"><span></span> Hassas ses tanıma <small class="vd-hassas-not">Konuşman Gemini ile yazıya dökülür; aksanı ve hızlı konuşmayı çok daha iyi anlar.</small></label>
@@ -335,6 +336,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     function modUygula(bildir) {
       qa('[name=vdmod]').forEach(r => { r.checked = r.value === ayar.mod; });
       kok.dataset.mod = ayar.mod;
+      const ms = q('[data-a=mod]'); if (ms) ms.value = ayar.mod;
       window.KK_DICT_LANG = turkceMi() ? 'tr-TR' : 'en-US';
       const rol = q('.vd-rol'); if (rol) rol.textContent = genelMi() ? 'Genel asistan' : 'İngilizce öğretmeni';
       const lb = q('.vd-lobi p'); if (lb) lb.textContent = genelMi()
@@ -355,6 +357,9 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     }
     qa('[name=vdmod]').forEach(r => r.onchange = () => { if (!r.checked) return; ayar.mod = r.value; ayarKaydet(); modUygula(true);
       if (st.faz === 'ders' && !st.busy && kok.dataset.d === 'bekliyor' && st.son) sor(null, genelMi() ? 'The user just switched to TURKISH GENERAL CHAT mode. In Turkish, say one short friendly line that you are now their general assistant and ask how you can help.' : ayar.mod === 'tr' ? 'The learner just switched to TURKISH topic study mode. In Turkish, briefly say you will now explain in Turkish and ask which topic they want to study (or offer to continue with the current one).' : 'The learner just switched back to ENGLISH conversation mode. In English, say one short friendly line and ask an easy question to continue the conversation.'); });
+    /* derste mod seçimi ayarlar panelinde (üstteki şerit yüzü kapatmasın) */
+    const modSecim = q('[data-a=mod]');
+    modSecim.onchange = () => { const r = q(`[name=vdmod][value="${modSecim.value}"]`); if (r && !r.checked) { r.checked = true; r.onchange(); } };
     q('[data-a=trAc]').checked = ayar.altyaziTR;
     modUygula(false);
     q('[data-a=trAc]').onchange = e => { ayar.altyaziTR = e.target.checked; ayarKaydet(); q('.vd-tr').hidden = !ayar.altyaziTR; };

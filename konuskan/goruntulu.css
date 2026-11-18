@@ -79,8 +79,8 @@ html.vd-acik, html.vd-acik body { overflow: hidden; }
 .vd-kendi input, .vd-yaz input { width: 100%; border: 1px solid var(--vd-cizgi); background: rgba(255, 255, 255, .05); color: var(--vd-yazi);
   border-radius: 12px; padding: 11px 14px; font: inherit; outline: none; }
 .vd-kendi input:focus, .vd-yaz input:focus { border-color: var(--vd-vurgu); }
-.vd-anahtar { display: flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; flex-wrap: wrap; }
-.vd-anahtar small { flex-basis: 100%; padding-left: 50px; margin-top: -6px; font-weight: 400; color: var(--vd-soluk); font-size: .76rem; }
+.vd-anahtar { display: grid; grid-template-columns: 40px 1fr; align-items: center; column-gap: 10px; row-gap: 4px; font-weight: 600; cursor: pointer; }
+.vd-anahtar small { grid-column: 2; font-weight: 400; color: var(--vd-soluk); font-size: .76rem; }
 .vd-anahtar input { position: absolute; opacity: 0; pointer-events: none; }
 .vd-anahtar > span { width: 40px; height: 23px; border-radius: 99px; background: rgba(255, 255, 255, .16); position: relative; transition: .2s; flex: none; }
 .vd-anahtar > span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 17px; height: 17px; border-radius: 50%; background: #fff; transition: .2s; }
@@ -451,3 +451,11 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-lobi .vd-kalite-l { margin: 10px 0 6px; text-align: left; }
 .vd-kalite-not { font-size: .76rem; color: var(--vd-soluk); line-height: 1.35; }
 .vd-uzunluk-not { font-size: .76rem; color: var(--vd-soluk); line-height: 1.35; }
+
+/* ayarlar: ekrana sığmazsa kaydır; derste mod şeridi yerine ayarlar panelindeki seçim */
+.vd-ayarlar { max-height: calc(100% - 84px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent; }
+.vd-ayarlar > b { flex: none; }
+.vd-ayarlar > * { flex-shrink: 0; }
+.vd-derste .vd-mod { display: none; }
+.vd-mod-ayar { display: none; }
+.vd-derste .vd-mod-ayar { display: flex; }
