@@ -131,7 +131,8 @@
      Eski eşleme dilden bağımsızdı: ö/ü'yü "wide" sayıyordu (oysa yuvarlak),
      ş/ç/c/j'yi hiç tanımıyordu, İngilizce th/sh/sessiz-e ayrımı yoktu. */
   var SHAPE2LOCAL={a:'open',e:'open',o:'round',u:'round',i:'wide',
-                   mbp:'closed',fv:'teeth',l:'wide',th:'teeth',idle:'rest'};
+                   mbp:'closed',fv:'teeth',l:'wide',th:'teeth',idle:'rest',
+                   sz:'teeth',sc:'round',tdn:'wide',kg:'open'};
   function visemeSeq(text, def){
     if(!window.DHViseme) return null;
     return window.DHViseme.shapes(text, def||'en').map(function(x){

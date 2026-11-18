@@ -104,7 +104,7 @@
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
-  var GORSEL_SURUM = "20261118c";
+  var GORSEL_SURUM = "20261118d";
   function yukle(src) { if (src.indexOf("?") < 0 && !/^(data|blob):/.test(src)) src += "?v=" + GORSEL_SURUM; return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -130,7 +130,15 @@
     var fotolar = {}, agizSetleri = {}, kirpSetleri = {}, foto = { a: "notr", b: "notr", t: 1 }, fotoAcik = sec.fotolar !== false;
     var YUZ_P = ["smile", "frown", "browInnerUp", "browOuterUp", "browDown", "browAsym", "squint"];
     function baskin() { return foto.t >= 0.5 ? foto.b : foto.a; }
-    function agizParca(sekil) { var d = baskin(), set = (face.duyguAgiz && agizSetleri[face.duyguAgiz[d]]) || parcalar; return set[sekil] || parcalar[sekil]; }
+    /* eksik ağız şekli: önce aynı duygu setinde en yakın şekle, sonra nötr sete düş (ör. setinde "sz" yoksa "i") */
+    var YEDEK = { sz: ["i", "e"], sc: ["u", "o"], tdn: ["i", "e"], kg: ["e", "a"], th: ["i"], fv: ["mbp"], l: ["e"], u: ["o"], o: ["u"], a: ["e"], e: ["a"], i: ["e"] };
+    function agizParca(sekil) {
+      var d = baskin(), set = (face.duyguAgiz && agizSetleri[face.duyguAgiz[d]]) || parcalar;
+      var zincir = [sekil].concat(YEDEK[sekil] || []);
+      for (var i = 0; i < zincir.length; i++) if (set[zincir[i]]) return set[zincir[i]];
+      for (i = 0; i < zincir.length; i++) if (parcalar[zincir[i]]) return parcalar[zincir[i]];
+      return null;
+    }
     function kirpParca() { var d = baskin(); return (face.duyguKirpma && kirpSetleri[face.duyguKirpma[d]]) || parcalar.blink; }
     function fotoHedef(ad) { if (!fotolar[ad]) ad = "notr"; if (ad === foto.b) return; foto.a = foto.t >= 0.5 ? foto.b : foto.a; foto.b = ad; foto.t = 0; }
     var konusma = null, dinleme = false;

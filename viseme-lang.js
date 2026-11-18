@@ -70,12 +70,18 @@
     if (/[mbp]/.test(ch)) return "mbp";
     if (/[fv]/.test(ch)) return "fv";
     if (ch === "l") return "l";
-    /* ş ç c j — dudaklar ileri ve yuvarlak; en yakın kare "u" */
-    if (/[şçcj]/.test(ch)) return "u";
+    /* ş ç c j — dudaklar öne itik, dişler görünür (kendi şekli; yoksa "u"ya düşer) */
+    if (/[şçcj]/.test(ch)) return "sc";
+    /* s z — dişler kapalı ve görünür */
+    if (/[sz]/.test(ch)) return "sz";
+    /* t d n — dil ucu üst dişlerin arkasında */
+    if (/[tdn]/.test(ch)) return "tdn";
+    /* k g — ağız orta açık, dil geride */
+    if (/[kg]/.test(ch)) return "kg";
     /* ğ sesi yoktur, önceki ünlüyü uzatır → ağız değişmesin */
     if (ch === "ğ") return null;
     if (/[.,!?;:…\s]/.test(ch)) return "idle";
-    /* t d n r k g h s z y — küçük açıklık */
+    /* r h y — küçük açıklık */
     return "i";
   }
 
@@ -83,7 +89,8 @@
   function enShape(ch, next, prev, isLast) {
     var two = ch + next;
     if (two === "th") return { shape: "th", skip: 1 };
-    if (two === "sh" || two === "ch") return { shape: "u", skip: 1 };
+    if (two === "sh" || two === "ch") return { shape: "sc", skip: 1 };
+    if (two === "ng" || two === "ck") return { shape: "kg", skip: 1 };
     if (two === "ph") return { shape: "fv", skip: 1 };
     if (two === "wh") return { shape: "u", skip: 1 };
     if (two === "qu") return { shape: "u", skip: 1 };
@@ -102,6 +109,11 @@
     if (/[mbp]/.test(ch)) return { shape: "mbp", skip: 0 };
     if (/[fv]/.test(ch)) return { shape: "fv", skip: 0 };
     if (ch === "l") return { shape: "l", skip: 0 };
+    if (ch === "j") return { shape: "sc", skip: 0 };
+    if (ch === "c") return { shape: /[eiy]/.test(next || "") ? "sz" : "kg", skip: 0 };
+    if (/[sz]/.test(ch)) return { shape: "sz", skip: 0 };
+    if (/[tdn]/.test(ch)) return { shape: "tdn", skip: 0 };
+    if (/[kgqx]/.test(ch)) return { shape: "kg", skip: 0 };
     if (/[.,!?;:…\s]/.test(ch)) return { shape: "idle", skip: 0 };
     return { shape: "i", skip: 0 };
   }
@@ -173,7 +185,9 @@
      map: {a,e,i,o,u,mbp,fv,l,th,idle} — eksik anahtar varsa en yakınına düşer */
   var FB = { th: ["th", "i"], fv: ["fv", "mbp"], l: ["l", "e"], u: ["u", "o"],
              o: ["o", "u"], mbp: ["mbp", "idle"], a: ["a", "e"], e: ["e", "a"],
-             i: ["i", "e"], idle: ["idle"] };
+             i: ["i", "e"], idle: ["idle"],
+             /* ek şekiller (18 Kasım): ayrı resmi olmayan sette en yakınına düşer */
+             sz: ["sz", "i", "e"], sc: ["sc", "u", "o"], tdn: ["tdn", "i", "e"], kg: ["kg", "e", "a"] };
   function fallback(shape) { return FB[shape] || [shape]; }
 
   function sequence(text, map, def) {
@@ -203,5 +217,5 @@
   }
 
   window.DHViseme = { langOf: langOf, segment: segment, shapes: shapes,
-                      sequence: sequence, timeline: timeline, indexForChar: indexForChar };
+                      sequence: sequence, timeline: timeline, indexForChar: indexForChar, fallback: fallback };
 })();
