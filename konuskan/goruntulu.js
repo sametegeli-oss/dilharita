@@ -405,7 +405,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       const mola = molaOku(), simdi = Date.now();
       const moladaMi = (sid, model) => Object.keys(mola).filter(k => k.startsWith(sid + ':') && (k.endsWith(':' + model) || k.endsWith(':*')) && mola[k] > simdi).map(k => mola[k]);
       const zincir = [];
-      if (anah('groqApiKeys')) { const gp = { id: 'groq' }; [modelSec(Object.assign({}, (DHProviders.PROVIDERS || []).find(x => x.id === 'groq') || {}, gp)), 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile'].filter((x, i, A) => x && A.indexOf(x) === i).forEach(m => zincir.push(['groq', m])); }
+      if (anah('groqApiKeys')) { const gp = { id: 'groq' }; [modelSec(Object.assign({}, (DHProviders.PROVIDERS || []).find(x => x.id === 'groq') || {}, gp)), 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'].filter((x, i, A) => x && A.indexOf(x) === i).forEach(m => zincir.push(['groq', m])); }
       if (anah('geminiApiKeys')) { [modelSec({ id: 'gemini', model: 'gemini-3.6-flash' }), 'gemini-3.5-flash', 'gemini-3.5-flash-lite'].filter((x, i, A) => A.indexOf(x) === i).forEach(m => zincir.push(['gemini', m])); }
       const satir = {}; K.satirlar().forEach(r => { satir[r.s + '|' + r.model] = r; });
       const ad = { groq: 'Groq', gemini: 'Gemini', 'gemini-ses': 'Gemini ses', cerebras: 'Cerebras', openrouter: 'OpenRouter', mistral: 'Mistral' };
@@ -415,8 +415,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         r = r || { istek: 0, toplam: 0, giris: 0, cikis: 0, hata: 0, kullanilan: 0, limit: 0, oran: null };
         const molaBit = Math.max(r.dolu || 0, ...moladaMi(sid, model), 0);
         const lim = r.limit, kul = r.kullanilan || r.toplam;
-        const durum = molaBit > simdi ? `<b class="vd-kul-dolu">dolu · ${saat(molaBit)} civarı açılır</b>` : r.istek ? '<b class="vd-kul-ok">çalışıyor</b>' : '<b class="vd-kul-bos">kullanılmadı</b>';
-        const ust = `<div class="vd-kul-ust"><span>${sira ? `<i>${sira}</i>` : ''}${esc(ad[sid] || sid)} · ${esc(model.replace(/^openai\//, '').replace(/^gemini-/, '').replace(/-versatile$/, '').replace(/-/g, ' '))}</span>${durum}</div>`;
+        const durum = molaBit > simdi ? `<b class="vd-kul-dolu">dolu · ${saat(molaBit)} civarı açılır</b>` : r.istek ? '<b class="vd-kul-ok">çalışıyor</b>' : r.hata ? '<b class="vd-kul-dolu">hata verdi</b>' : '<b class="vd-kul-bos">kullanılmadı</b>';
+        const ust = `<div class="vd-kul-ust"><span>${sira ? `<i>${sira}</i>` : ''}${esc(ad[sid] || sid)} · ${esc(model.replace(/^openai\//, '').replace(/^gemini-/, '').replace(/-/g, ' '))}</span>${durum}</div>`;
         const bar = lim ? `<div class="vd-kul-bar"><span style="width:${Math.round((r.oran || 0) * 100)}%" class="${(r.oran || 0) > .85 ? 'cok' : ''}"></span></div>` : '';
         const bilgi = sid === 'gemini-ses' ? `${r.istek} ses isteği${r.hata ? ' · ' + r.hata + ' hata' : ''}`
           : `${bin(kul)} token${lim ? ' / ' + bin(lim) + ' günlük' : ''} · ${r.istek} istek${r.kalanIstek != null ? ' · kalan istek ' + r.kalanIstek.toLocaleString('tr-TR') + '/' + (r.limitIstek || 0).toLocaleString('tr-TR') : ''}${r.hata ? ' · ' + r.hata + ' hata' : ''}`;
@@ -706,7 +706,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         let keys = []; try { keys = (JSON.parse(localStorage.getItem(p.keyStore) || '[]') || []).filter(Boolean); } catch (e) {}
         /* Groq'ta sınırlar model başına: ana model dolunca aynı anahtarla diğer modellere geç */
         const ana = modelSec(p);
-        const modeller = (p.id === 'groq' ? [ana, 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile'] : p.id === 'gemini' ? [ana, 'gemini-3.5-flash', 'gemini-3.5-flash-lite'] : [ana]).filter((x, i, A) => A.indexOf(x) === i);
+        const modeller = (p.id === 'groq' ? [ana, 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'] : p.id === 'gemini' ? [ana, 'gemini-3.5-flash', 'gemini-3.5-flash-lite'] : [ana]).filter((x, i, A) => A.indexOf(x) === i);
         for (const model of modeller) for (const key of keys) {
           const bit = Math.max(mola[molaAd(p, key, model)] || 0, mola[molaAd(p, key, '*')] || 0);
           if (bit > simdi) { molada++; if (p.id === 'groq') enYakin = Math.min(enYakin, bit); continue; }
@@ -786,6 +786,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (kalite === 'derin') setTimeout(() => { if (!adet && !aradi && kok.dataset.d === 'dusunuyor') bilgi('Derin düşünüyor…'); }, 2500);
       for (let tur = 0; tur < 6; tur++) {
         const body = { model, stream: true, temperature: genel ? 0.2 : 0.4, max_tokens: kalite === 'derin' ? 6000 : (genel || ayar.uzunluk === 'ayrintili') ? 4000 : 2500, messages: msgs };
+        if (/qwen3/i.test(model)) { body.reasoning_format = 'hidden'; if (kalite === 'hizli') body.reasoning_effort = 'none'; }
         if (/gpt-oss/i.test(model) || p.id === 'gemini') body.reasoning_effort = { hizli: 'low', dengeli: 'medium', derin: 'high' }[kalite];
         if (tools.length) { body.tools = tools; body.tool_choice = tur < 5 ? 'auto' : 'none'; }
         if (/^(groq|gemini|cerebras|openrouter)$/.test(p.id)) body.stream_options = { include_usage: true };   /* kullanım ekranı için token sayısı */

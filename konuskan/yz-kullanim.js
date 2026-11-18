@@ -39,7 +39,7 @@
     kaydet(saglayici, model, Object.assign({ hata: 1 }, m && /per day|TPD/i.test(t) ? { tokenLimit: m[1], tokenKullanilan: m[2] } : {}, bitis ? { dolu: bitis } : {}));
   }
   /* Ücretsiz plan günlük token sınırları (Groq, yaklaşık; yalnız gösterim için) */
-  const GUNLUK_TOKEN = { 'groq|openai/gpt-oss-120b': 200000, 'groq|openai/gpt-oss-20b': 200000, 'groq|llama-3.3-70b-versatile': 100000 };
+  const GUNLUK_TOKEN = { 'groq|openai/gpt-oss-120b': 200000, 'groq|openai/gpt-oss-20b': 200000 };
   const AD = { groq: 'Groq', gemini: 'Gemini', 'gemini-ses': 'Gemini ses', cerebras: 'Cerebras', openrouter: 'OpenRouter', mistral: 'Mistral' };
   function satirlar() {
     const d = oku(), simdi = Date.now();

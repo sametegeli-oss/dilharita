@@ -53,8 +53,8 @@
       keyStore:"groqApiKeys",
       url:"https://api.groq.com/openai/v1/chat/completions",
       model:"openai/gpt-oss-120b",
-      fallbackModels:["openai/gpt-oss-20b","llama-3.1-8b-instant"],
-      models:["openai/gpt-oss-120b","openai/gpt-oss-20b","llama-3.1-8b-instant","llama-3.3-70b-versatile"],
+      fallbackModels:["openai/gpt-oss-20b","qwen/qwen3.8-27b"],
+      models:["openai/gpt-oss-120b","openai/gpt-oss-20b","qwen/qwen3.8-27b"],
       modelsUrl:"https://api.groq.com/openai/v1/models",   // anahtar gerekli
       modelsAuth:true,
       kind:"openai"
@@ -204,7 +204,7 @@
       var m = localStorage.getItem("dh-model-"+p.id);
       /* Eski cihaz ayarlarında kalmış erişilemeyen model adlarını kendiliğinden taşı. */
       if(p.id==="nvidia" && (m==="meta/llama-3.3-70b-instruct" || /^nvidia\/llama-3\.3-nemotron-super-49b/.test(m||""))) m=p.model;
-      if(p.id==="groq" && m==="llama-3.3-70b-versatile") m="openai/gpt-oss-120b";
+      if(p.id==="groq" && /^llama-3\.[13]-/.test(m||"")) m="openai/gpt-oss-120b";   /* Groq bu modelleri kaldırdı */
       if(p.id==="gemini" && (m==="gemini-2.5-flash" || m==="gemini-2.5-flash-lite")) m=p.model;
       if(m && m.trim()) return m.trim();
     }catch(e){}
