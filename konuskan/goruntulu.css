@@ -367,3 +367,36 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
   .vd-ust-sag { gap: 5px; }
   .vd-ib { width: 34px; height: 34px; }
 }
+
+/* dinlerken yeniden kaydet */
+.vd-sen-yeniden { width: 34px; height: 34px; border-radius: 10px; border: 0; background: rgba(255, 255, 255, .1); display: grid; place-items: center; flex: none; }
+.vd-sen-yeniden svg { width: 16px; height: 16px; }
+.vd-sen.bos .vd-sen-yeniden, .vd-sen.anliyor .vd-sen-yeniden, .vd-sen.anliyor .vd-sen-gonder { display: none; }
+
+/* mikrofonun anladığı metin: düzenle / yeniden kaydet / gönder */
+.vd-onay { position: absolute; left: 0; right: var(--sag); margin: 0 auto; bottom: 128px; z-index: 6; width: min(680px, calc(100vw - var(--sag) - 24px));
+  display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 18px; background: rgba(16, 21, 28, .94); border: 1px solid rgba(240, 179, 84, .45);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 14px 50px rgba(0, 0, 0, .5); animation: vdGel2 .25s; }
+.vd-onay-ust { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 0 2px; }
+.vd-onay-ust b { font-size: .8rem; color: var(--vd-vurgu); text-transform: uppercase; letter-spacing: .05em; }
+.vd-onay-ust span { font-size: .78rem; color: var(--vd-soluk); }
+.vd-onay textarea { width: 100%; resize: none; border: 1px solid var(--vd-cizgi); background: rgba(255, 255, 255, .05); color: var(--vd-yazi); border-radius: 12px;
+  padding: 10px 12px; font: 600 1.05rem/1.45 var(--font-body, system-ui); outline: none; }
+.vd-onay textarea:focus { border-color: var(--vd-vurgu); }
+.vd-onay-sayac { height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .06); overflow: hidden; visibility: hidden; }
+.vd-onay.sayiyor .vd-onay-sayac { visibility: visible; }
+.vd-onay-sayac i { display: block; height: 100%; width: 100%; background: var(--vd-vurgu); transform-origin: left; }
+.vd-onay.sayiyor .vd-onay-sayac i { animation: vdSay 4s linear forwards; }
+@keyframes vdSay { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.vd-onay-b { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.vd-onay-b button { display: inline-flex; align-items: center; gap: 6px; padding: 9px 13px; border-radius: 11px; border: 1px solid var(--vd-cizgi); background: rgba(255, 255, 255, .06); font-weight: 700; font-size: .86rem !important; }
+.vd-onay-b button svg { width: 16px; height: 16px; }
+.vd-onay-b button.ana { background: var(--vd-vurgu); color: #1d1406 !important; border-color: var(--vd-vurgu); }
+.vd-onay-acik .vd-altyazi { opacity: 0 !important; }
+.vd[data-d=onay] .vd-mic { background: #2e3745; color: #fff !important; }
+.vd-durum[data-d=onay] i { background: var(--vd-vurgu); }
+@media (max-width: 760px) {
+  .vd-onay { bottom: 104px; width: calc(100vw - 20px); padding: 10px; }
+  .vd-onay-b button { flex: 1; justify-content: center; padding: 10px 8px; }
+  .vd-onay-b button.ana { flex: 1.3; }
+}
