@@ -203,6 +203,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
         <label class="vd-satir">Konuşma hızı (tarayıcı sesi) <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
         <div class="vd-satir vd-google-ayar"><span>Google hesabı <small>(genel asistan: takvim, Gmail, görevler, kişiler, Drive)</small></span><div class="vd-google"></div></div>
+        <div class="vd-satir vd-yt-ayar"><span>YouTube anahtarı <small>(video önerileri)</small></span><form class="vd-yt-anahtar"><input type="password" autocomplete="off" spellcheck="false" placeholder="AIza…" aria-label="YouTube API anahtarı"><button type="submit" class="vd-g-b">Kaydet</button></form><small class="vd-yt-durum"></small></div>
         <div class="vd-satir vd-kullanim"><span>Yapay zekâ kullanımı <small>(bugün · bu cihaz)</small></span><div class="vd-kul-liste"></div></div>
         <label class="vd-satir">Cevap uzunluğu <select data-a="uzunluk"><option value="kisa">Kısa · hep özet</option><option value="normal">Normal</option><option value="ayrintili">Ayrıntılı · gerektiğinde uzun</option></select><small class="vd-uzunluk-not"></small></label>
         <label class="vd-satir">Sohbet kalitesi <select data-a="kalite"><option value="oto">Otomatik (önerilen)</option><option value="hizli">Hızlı · anında cevap</option><option value="dengeli">Dengeli · biraz düşünür</option><option value="derin">Derin · en dikkatli, daha yavaş</option></select><small class="vd-kalite-not"></small></label>
@@ -246,6 +247,50 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       }
       if (m._el) m.liste.forEach((c, i) => { const el = m._el.querySelector(`.vd-p-cev[data-i="${i}"]`); if (el) { if (c.cev) el.textContent = c.cev; else el.remove(); } });
     }
+    /* ---- YouTube: video kartları + uygulama içi oynatıcı ---- */
+    const binK = n => n >= 1e6 ? (n / 1e6).toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + ' Mn' : n >= 1e3 ? Math.round(n / 1e3).toLocaleString('tr-TR') + ' B' : String(n);
+    function videoKartlari(vs) {
+      const d = document.createElement('div'); d.className = 'vd-m ogr vd-yt-m';
+      d.innerHTML = `<span class="vd-m-ava vd-yt-ava" aria-hidden="true"></span><div class="vd-m-ic vd-yt-liste">${vs.map((v, i) => `
+        <button type="button" class="vd-yt" data-i="${i}" title="Uygulamada izle">
+          <span class="vd-yt-resim" style="background-image:url('https://i.ytimg.com/vi/${encodeURIComponent(v.id)}/mqdefault.jpg')"><i>${i + 1}</i>${v.sure ? `<b>${esc(v.sure)}</b>` : ''}</span>
+          <span class="vd-yt-yazi"><strong>${esc(v.baslik)}</strong><small>${esc(v.kanal)}${v.izlenme ? ' · ' + binK(v.izlenme) + ' izlenme' : ''}${v.altyazi ? ' · <em>CC</em>' : ''}</small></span>
+        </button>`).join('')}</div>`;
+      d.querySelectorAll('.vd-yt').forEach(b => b.onclick = () => videoAc(vs[+b.dataset.i]));
+      listeyeEkle(d);
+      if (!kok.classList.contains('vd-sohbet-acik')) { if (genis()) sohbetAc(true, true); else toast('Videolar sohbet panelinde: alttaki sohbet düğmesine dokun.'); }
+    }
+    function videoAc(v) {
+      videoKapat(true);
+      if (kok.dataset.d === 'konusuyor' || kok.dataset.d === 'dusunuyor') durdur();
+      if (D.aktif) dinlemeIptal();
+      st.video = v;
+      const o = document.createElement('div'); o.className = 'vd-yt-oynat'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-label', 'Video');
+      const ingilizce = !genelMi();
+      const src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.id)}?autoplay=1&playsinline=1&rel=0&modestbranding=1&hl=tr${ingilizce ? '&cc_load_policy=1&cc_lang_pref=en' : ''}`;
+      o.innerHTML = `<div class="vd-yt-kutu"><div class="vd-yt-ust"><span>${esc(v.baslik)}</span><button type="button" class="vd-yt-x" aria-label="Kapat">✕</button></div>
+        <div class="vd-yt-cerceve"><iframe src="${src}" title="${esc(v.baslik)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+        <div class="vd-yt-alt"><small>${esc(v.kanal)}${v.sure ? ' · ' + esc(v.sure) : ''}</small><button type="button" class="vd-yt-konus">İzledim, konuşalım</button></div></div>`;
+      o.querySelector('.vd-yt-x').onclick = () => videoKapat();
+      o.querySelector('.vd-yt-konus').onclick = () => { const vv = st.video; videoKapat(true); videoHakkindaKonus(vv); };
+      o.onclick = e => { if (e.target === o) videoKapat(); };
+      kok.appendChild(o);
+    }
+    function videoKapat(sessiz) {
+      const o = q('.vd-yt-oynat'); if (o) o.remove();
+      const vardi = !!st.video; st.video = null;
+      if (vardi && !sessiz && ayar.ellerSerbest && kok.dataset.d === 'bekliyor' && !st.bitti && st.faz === 'ders') setTimeout(() => dinle(), 300);
+    }
+    function videoHakkindaKonus(v) {
+      if (!v || st.faz !== 'ders') return;
+      const bilgi_ = `"${v.baslik}" by ${v.kanal}${v.sure ? ' (' + v.sure + ')' : ''}. Description: ${v.aciklama || '-'} (Do NOT call youtube_ara now.)`;
+      sor(null, genelMi()
+        ? `The user just watched this YouTube video in the app: ${bilgi_}. You have NOT seen the video itself, only its title and description. In Turkish, ask in one or two short sentences what they thought or what they learned, and offer to help with anything related.`
+        : ayar.mod === 'tr'
+          ? `The learner just watched this English YouTube video in the app: ${bilgi_}. You only know its title and description. In Turkish, briefly ask what they understood, then suggest 2-3 useful English words or phrases that likely appear in such a video (with Turkish meaning), and ask them to try one in a sentence.`
+          : `The learner just watched this English YouTube video in the app: ${bilgi_}. You have only seen the title and description, not the video. In simple English at their level, ask what the video was about and what they found interesting; keep it to one or two short questions.`);
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && q('.vd-yt-oynat')) { e.stopPropagation(); videoKapat(); } }, true);
     const SAG_AD = { groq: 'Groq', gemini: 'Gemini', cerebras: 'Cerebras', openrouter: 'OpenRouter', mistral: 'Mistral', nvidia: 'NVIDIA' };
     const modelAdi = x => (SAG_AD[x.s] || x.s) + ' · ' + String(x.model || '').replace(/^openai\//, '').replace(/^qwen\//, '').replace(/^gemini-/, '').replace(/-/g, ' ');
     function ogretmenMesaji(m) {
@@ -410,7 +455,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       if (anah('groqApiKeys')) { const gp = { id: 'groq' }; [modelSec(Object.assign({}, (DHProviders.PROVIDERS || []).find(x => x.id === 'groq') || {}, gp)), 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'].filter((x, i, A) => x && A.indexOf(x) === i).forEach(m => zincir.push(['groq', m])); }
       if (anah('geminiApiKeys')) { [modelSec({ id: 'gemini', model: 'gemini-3.6-flash' }), 'gemini-3.5-flash', 'gemini-3.5-flash-lite'].filter((x, i, A) => A.indexOf(x) === i).forEach(m => zincir.push(['gemini', m])); }
       const satir = {}; K.satirlar().forEach(r => { satir[r.s + '|' + r.model] = r; });
-      const ad = { groq: 'Groq', gemini: 'Gemini', 'gemini-ses': 'Gemini ses', cerebras: 'Cerebras', openrouter: 'OpenRouter', mistral: 'Mistral' };
+      const ad = { youtube: 'YouTube', groq: 'Groq', gemini: 'Gemini', 'gemini-ses': 'Gemini ses', cerebras: 'Cerebras', openrouter: 'OpenRouter', mistral: 'Mistral' };
       const bin = n => n >= 1000 ? (n / 1000).toLocaleString('tr-TR', { maximumFractionDigits: n >= 100000 ? 0 : 1 }) + ' bin' : String(n);
       const saat = t => new Date(t).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
       const ciz = (sid, model, r, sira) => {
@@ -420,7 +465,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         const durum = molaBit > simdi ? `<b class="vd-kul-dolu">dolu · ${saat(molaBit)} civarı açılır</b>` : r.istek ? '<b class="vd-kul-ok">çalışıyor</b>' : r.hata ? '<b class="vd-kul-dolu">hata verdi</b>' : '<b class="vd-kul-bos">kullanılmadı</b>';
         const ust = `<div class="vd-kul-ust"><span>${sira ? `<i>${sira}</i>` : ''}${esc(ad[sid] || sid)} · ${esc(model.replace(/^openai\//, '').replace(/^gemini-/, '').replace(/-/g, ' '))}</span>${durum}</div>`;
         const bar = lim ? `<div class="vd-kul-bar"><span style="width:${Math.round((r.oran || 0) * 100)}%" class="${(r.oran || 0) > .85 ? 'cok' : ''}"></span></div>` : '';
-        const bilgi = sid === 'gemini-ses' ? `${r.istek} ses isteği${r.hata ? ' · ' + r.hata + ' hata' : ''}`
+        const bilgi = sid === 'youtube' ? `${r.istek} arama (günde ~100 hak)${r.hata ? ' · ' + r.hata + ' hata' : ''}` : sid === 'gemini-ses' ? `${r.istek} ses isteği${r.hata ? ' · ' + r.hata + ' hata' : ''}`
           : `${bin(kul)} token${lim ? ' / ' + bin(lim) + ' günlük' : ''} · ${r.istek} istek${r.kalanIstek != null ? ' · kalan istek ' + r.kalanIstek.toLocaleString('tr-TR') + '/' + (r.limitIstek || 0).toLocaleString('tr-TR') : ''}${r.hata ? ' · ' + r.hata + ' hata' : ''}`;
         return `<div class="vd-kul-m">${ust}${bar}<small>${bilgi}</small></div>`;
       };
@@ -429,6 +474,22 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       if (!h) h = '<small>Henüz kullanım yok. Ayarlardan bir yapay zekâ anahtarı ekleyince burada görünür.</small>';
       el.innerHTML = h + `<small class="vd-kul-not">Numara, cevap için denenme sırası: üstteki dolunca sıradakine geçilir. Token sayıları bu cihazda tutulur; diğer cihazlardaki kullanım ve kesin sınırlar için <a href="https://console.groq.com/dashboard/usage" target="_blank" rel="noopener">Groq kullanım sayfası</a>.</small>`;
     }
+    function ytAyarCiz() {
+      const f = q('.vd-yt-anahtar'); if (!f) return;
+      if (!window.DHYouTube) { q('.vd-yt-ayar').hidden = true; return; }
+      const var_ = DHYouTube.hazir();
+      f.querySelector('input').placeholder = var_ ? '•••••••• (kayıtlı · değiştirmek için yapıştır)' : 'AIza… (Google Cloud → API anahtarı)';
+      q('.vd-yt-durum').textContent = var_ ? 'Kayıtlı. "Bana … hakkında kısa bir video bul" diyebilirsin; derste dinleme pratiği için de önerir.' : 'Google Cloud\'da oluşturduğun YouTube anahtarını yapıştır.';
+    }
+    q('.vd-yt-anahtar').onsubmit = async e => {
+      e.preventDefault(); const i = e.target.querySelector('input'); const k = i.value.trim();
+      if (!k) return;
+      if (!/^AIza[0-9A-Za-z_\-]{30,}$/.test(k)) { toast('Bu bir Google API anahtarına benzemiyor (AIza ile başlar).'); return; }
+      DHYouTube.anahtarKaydet(k); i.value = ''; ytAyarCiz();
+      try { await DHYouTube.ara({ sorgu: 'english listening practice', adet: 1 }); toast('YouTube anahtarı çalışıyor.'); }
+      catch (er) { toast(er.code === 'yt_anahtar' ? 'Anahtar kaydedildi ama YouTube kabul etmedi (kısıtlama yeni ise birkaç dakika bekleyip dene).' : er.code === 'yt_kota' ? 'Anahtar kaydedildi; bugünkü arama kotası dolmuş.' : 'Anahtar kaydedildi; deneme araması yapılamadı.'); }
+    };
+    ytAyarCiz();
     if (window.DHKullanim) DHKullanim.dinle(() => { if (!q('.vd-ayarlar').hidden) kullanimCiz(); });
     q('[data-a=cc]').onclick = () => { ayar.altyazi = !ayar.altyazi; ayarKaydet(); kok.classList.toggle('vd-cc-yok', !ayar.altyazi); };
     kok.classList.toggle('vd-cc-yok', !ayar.altyazi);
@@ -783,7 +844,12 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       /* Google hesabı bağlıysa: takvim / gmail / görevler / kişiler / drive araçları */
       const gAraclar = genel && (/gpt-oss/i.test(model) && (p.id === 'groq' || p.id === 'cerebras') || p.id === 'gemini') && window.DHGoogle && DHGoogle.durum().bagli ? DHGoogle.araclar() : [];
       const yerel = genel && (p.id === 'groq' || p.id === 'cerebras' || p.id === 'gemini') ? YEREL_ARACLAR : [];
-      const tools = [...(ara ? [{ type: 'browser_search' }] : []), ...yerel, ...gAraclar];
+      /* YouTube video araması: anahtar eklenmişse her modda */
+      const ytAr = window.DHYouTube && DHYouTube.hazir() && (p.id === 'groq' || p.id === 'cerebras' || p.id === 'gemini') ? [DHYouTube.ARAC] : [];
+      const tools = [...(ara ? [{ type: 'browser_search' }] : []), ...yerel, ...gAraclar, ...ytAr];
+      if (ytAr.length) msgs[1].content += genel
+        ? '\n\nYOUTUBE: you have a youtube_ara tool. When the user asks for a video (tarif, nasıl yapılır, müzik değil eğitim videosu, haber özeti vb.) call it once, then briefly mention 1-3 results by number; the app shows them as cards. Never invent video titles.'
+        : '\n\nYOUTUBE: you have a youtube_ara tool. If the learner asks for a video, or wants listening practice, call it ONCE with an English query suited to their level (dil "en", altyazili true, usually sure "kisa"), then briefly recommend 1-2 results by number in your reply (keep the reply JSON format). The app shows the results as cards; after watching, you will discuss the video together. Never invent video titles.';
       const SURE = tools.length || kalite === 'derin' ? 30000 : 15000;
       let adet = 0, aradi = false;
       if (kalite === 'derin') setTimeout(() => { if (!adet && !aradi && kok.dataset.d === 'dusunuyor') bilgi('Derin düşünüyor…'); }, 2500);
@@ -856,9 +922,11 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
           /* araçları çalıştır, sonuçlarıyla devam et */
           msgs.push({ role: 'assistant', content: metin || '', tool_calls: gecerli });
           for (const c of gecerli) {
-            const yr = yerelMi(c.function.name);
-            bilgi(yr ? 'Namaz vakitlerine bakıyor…' : DHGoogle.aciklama(c.function.name)); yuz.duygu('dusunceli', 0.5); yuz.jest('dusun', 0.5);
-            const sonuc = yr ? await yerelCalistir(c.function.name, c.function.arguments) : await DHGoogle.calistir(c.function.name, c.function.arguments, { onay: googleOnay, onbellek: st.aracOnb || (st.aracOnb = new Map()) });
+            const yr = yerelMi(c.function.name), yt = c.function.name === 'youtube_ara';
+            bilgi(yt ? 'YouTube\'da video arıyor…' : yr ? 'Namaz vakitlerine bakıyor…' : DHGoogle.aciklama(c.function.name)); yuz.duygu('dusunceli', 0.5); yuz.jest('dusun', 0.5);
+            let sonuc;
+            if (yt) { const y = await DHYouTube.aracCalistir(c.function.arguments); if (y.videolar.length) videoKartlari(y.videolar); else if (y.hata) toast(y.hata); sonuc = y.model; }
+            else sonuc = yr ? await yerelCalistir(c.function.name, c.function.arguments) : await DHGoogle.calistir(c.function.name, c.function.arguments, { onay: googleOnay, onbellek: st.aracOnb || (st.aracOnb = new Map()) });
             if (/google_auth|süresi doldu/.test(sonuc)) googleCizgi();
             msgs.push({ role: 'tool', tool_call_id: c.id || c.function.name, name: c.function.name, content: sonuc });
           }
@@ -1023,7 +1091,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     function seviye() { if (!mk.analiz) return 0; mk.analiz.getFloatTimeDomainData(mk.veri); let t = 0; for (let i = 0; i < mk.veri.length; i++) t += mk.veri[i] * mk.veri[i]; return Math.sqrt(t / mk.veri.length); }
     const D = { aktif: false, metin: '', gecici: '', konustu: 0, sessizBas: 0, taban: 0, ornek: 0, bas: 0, son: 0, raf: 0, bitiyor: false, kayitVar: false };
     async function dinle() {
-      if (st.bitti || st.busy || D.aktif) return;
+      if (st.bitti || st.busy || D.aktif || st.video) return;   /* video açıkken mikrofon dinlemesin */
       D.aktif = true; D.bitiyor = false;
       const kayitVar = await mikrofonHazirla();
       if (st.bitti || st.busy || kok.dataset.d === 'konusuyor') { D.aktif = false; return; }

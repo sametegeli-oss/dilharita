@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v486";  /* 🏷️ Cevap altında model etiketi */ //  /* 🔗 Dil Harita ↔ Konuşkan: modül sonu konuşma, ortak hata defteri */
+var SW_VERSION = "dh-sw-v487";  /* ▶️ YouTube video önerileri */ //  /* 🔗 Dil Harita ↔ Konuşkan: modül sonu konuşma, ortak hata defteri */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */
 /* onceki v438: 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
 /* onceki v437: ➕ Konuşkan: kendi kursunu oluştur */
@@ -39,6 +39,7 @@ var SHELL = [
   "./konuskan/goruntulu.js",
   "./konuskan/google-asistan.js",
   "./konuskan/yz-kullanim.js",
+  "./konuskan/youtube.js",
   "./konuskan/goruntulu.css",
   "./dh-canli-yuz.js",
   "./konuskan/konuskan.css",

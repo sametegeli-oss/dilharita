@@ -475,3 +475,28 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-kul-not a { color: var(--vd-vurgu); }
 
 .vd-m-model { margin-left: auto; align-self: center; font-size: .68rem; font-weight: 600; color: var(--vd-soluk); padding: 2px 8px; border-radius: 99px; border: 1px solid var(--vd-cizgi); white-space: nowrap; opacity: .85; }
+
+/* YouTube kartları + oynatıcı */
+.vd-yt-ava { background: #ff3d3d url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='white' d='M9 7.5v9l7.5-4.5z'/%3E%3C/svg%3E") center / 60% no-repeat !important; }
+.vd-yt-liste { gap: 8px !important; width: 100%; }
+.vd-yt { display: flex; gap: 10px; align-items: stretch; width: 100%; padding: 6px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid var(--vd-cizgi); color: var(--vd-yazi); text-align: left; cursor: pointer; font: inherit; transition: background .15s, border-color .15s; }
+.vd-yt:hover, .vd-yt:focus-visible { background: rgba(255,255,255,.09); border-color: rgba(240,179,84,.45); outline: none; }
+.vd-yt-resim { position: relative; flex: none; width: 112px; aspect-ratio: 16 / 9; border-radius: 8px; background: #000 center / cover no-repeat; }
+.vd-yt-resim i { position: absolute; top: 4px; left: 4px; font-style: normal; font-size: .66rem; font-weight: 800; background: rgba(0,0,0,.7); color: #fff; border-radius: 5px; padding: 1px 5px; }
+.vd-yt-resim b { position: absolute; right: 4px; bottom: 4px; font-size: .66rem; background: rgba(0,0,0,.78); color: #fff; border-radius: 4px; padding: 1px 4px; }
+.vd-yt-yazi { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vd-yt-yazi strong { font-size: .8rem; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.vd-yt-yazi small { font-size: .7rem; color: var(--vd-soluk); }
+.vd-yt-yazi em { font-style: normal; font-weight: 800; border: 1px solid currentColor; border-radius: 3px; padding: 0 3px; font-size: .62rem; }
+.vd-yt-oynat { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgba(5, 8, 12, .82); backdrop-filter: blur(6px); }
+.vd-yt-kutu { width: min(960px, 100%); display: flex; flex-direction: column; gap: 10px; }
+.vd-yt-ust, .vd-yt-alt { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--vd-yazi); }
+.vd-yt-ust span { font-weight: 700; font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vd-yt-x { flex: none; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--vd-cizgi); background: rgba(255,255,255,.08); color: #fff; font-size: 1rem; cursor: pointer; }
+.vd-yt-cerceve { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: calc(100vh - 150px); border-radius: 14px; overflow: hidden; background: #000; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.vd-yt-cerceve iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.vd-yt-alt small { color: var(--vd-soluk); }
+.vd-yt-konus { flex: none; padding: 10px 18px; border-radius: 12px; border: 0; background: var(--vd-vurgu); color: #1d1406; font-weight: 800; cursor: pointer; font: inherit; font-weight: 800; }
+.vd-yt-anahtar { display: flex; gap: 6px; }
+.vd-yt-anahtar input { flex: 1; min-width: 0; background: rgba(255,255,255,.06); color: var(--vd-yazi); border: 1px solid var(--vd-cizgi); border-radius: 10px; padding: 8px; font: inherit; font-size: .8rem; }
+.vd-yt-durum { font-size: .72rem; }
