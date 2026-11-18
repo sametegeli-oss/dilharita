@@ -119,6 +119,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
 
   /* ================= Kurulum ================= */
   function startVideo() {
+    /* ayarları her açılışta yeniden oku (başka sekmede / sayfa yenilenmeden değişmiş olabilir) */
+    try { Object.assign(ayar, JSON.parse(localStorage.getItem(AYAR_KEY) || '{}')); } catch (e) {}
     const host = openPanel('Görüntülü ders');
     host.innerHTML = '';
     const kok = document.createElement('div');
@@ -497,7 +499,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     }
     function segmentCevir(x) {
       if (!x || typeof x !== 'object') return null;
-      { const metin = String(x.s || x.text || '').replace(/【[^】]*】/g, '').replace(/\s+([.,!?])/g, '$1').trim(); const etiket = x.lang === 'tr' || x.lang === 'en' ? x.lang : null, tahmin = dilTahmin(metin); const dil = tahmin || etiket || (/[çğışöüÇĞİŞÖÜ]/.test(metin) ? 'tr' : 'en');
+      { const metin = String(x.s || x.text || '').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&amp;/g, '&').replace(/【[^】]*】/g, '').replace(/\s+([.,!?])/g, '$1').trim(); const etiket = x.lang === 'tr' || x.lang === 'en' ? x.lang : null, tahmin = dilTahmin(metin); const dil = tahmin || etiket || (/[çğışöüÇĞİŞÖÜ]/.test(metin) ? 'tr' : 'en');
         const cev = dil === 'en' && typeof x.tr === 'string' && x.tr.trim() && x.tr.trim() !== metin ? x.tr.trim() : '';
         if (!metin) return null;
         return { metin, duygu: DUYGU.includes(x.emo) ? x.emo : 'cesaret', jest: JEST.includes(x.gest) ? x.gest : null, guc: 0.85, dil, cev }; }

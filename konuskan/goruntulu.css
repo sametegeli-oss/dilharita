@@ -439,8 +439,8 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 /* genel modda İngilizce dersine özgü işaretler gizli */
 .vd[data-mod="genel"] .vd-seviye,
 .vd[data-mod="genel"] .vd-m-durum,
-.vd[data-mod="genel"] .vd-m.ogr [data-k="tr"],
-.vd[data-mod="genel"] .vd-m.ogr .vd-m-tr { display: none !important; }
+.vd[data-mod="genel"] .vd-m.sen [data-k="tr"],
+.vd[data-mod="genel"] .vd-m.sen .vd-m-tr { display: none !important; }
 .vd-gonay-k { background: #121620; }
 .vd-google small.vd-g-uyari { color: #ffd58a; }
 
