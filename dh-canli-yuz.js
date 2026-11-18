@@ -103,7 +103,9 @@
 
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
-  function yukle(src) { return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
+  /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
+  var GORSEL_SURUM = "20261118c";
+  function yukle(src) { if (src.indexOf("?") < 0 && !/^(data|blob):/.test(src)) src += "?v=" + GORSEL_SURUM; return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
   function lerp(a, b, t) { return a + (b - a) * t; }
   var hareketAz = global.matchMedia && global.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -598,7 +600,7 @@
       yikil: function () { durum.yikildi = true; api.sustur(); }
     };
 
-    api.hazir = fetch(yol + "face.json").then(function (r) { return r.json(); }).then(function (f) {
+    api.hazir = fetch(yol + "face.json?v=" + GORSEL_SURUM).then(function (r) { return r.json(); }).then(function (f) {
       face = f; W = f.boyut[0]; H = f.boyut[1];
       canvas.width = W; canvas.height = H;
       cmp.width = W; cmp.height = H; cx = cmp.getContext("2d");

@@ -1776,7 +1776,7 @@ function aiTercihSor(devam){
 function canliYukle(){
   return new Promise(function(res, rej){
     if(window.DHCanliYuz) return res();
-    var s=document.createElement("script"); s.src="./dh-canli-yuz.js?v=9"; s.onload=res; s.onerror=rej; document.head.appendChild(s);
+    var s=document.createElement("script"); s.src="./dh-canli-yuz.js?v=10"; s.onload=res; s.onerror=rej; document.head.appendChild(s);
   });
 }
 class CanliSohbetAvatar{
