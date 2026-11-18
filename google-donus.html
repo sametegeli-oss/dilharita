@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Google bağlantısı · Dil Harita</title>
+<meta name="robots" content="noindex">
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#10151c;color:#e8edf3;font:16px/1.5 system-ui,sans-serif;text-align:center;padding:20px}b{color:#ffd58a}</style></head>
+<body><div id="m">Google bağlantısı tamamlanıyor…</div>
+<script>
+/* Google OAuth dönüş sayfası: erişim anahtarını bu tarayıcıya kaydeder, Konuşkan sekmesi "storage" olayıyla görür. */
+(function () {
+  var TOK_KEY = 'dh-google-token-v1', ONAY_KEY = 'dh-google-izin-verildi', DURUM_KEY = 'dh-google-donus';
+  var m = document.getElementById('m');
+  function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
+  function bitir(ok, mesaj) {
+    m.innerHTML = mesaj + '<br><br><small>Bu pencere kapanmazsa kapatıp Konuşkan\'a dönebilirsin.</small>';
+    setTimeout(function () { try { window.close(); } catch (e) {} }, ok ? 600 : 4000);
+    setTimeout(function () { if (!window.closed && !window.opener) location.replace('./konuskan.html'); }, ok ? 1800 : 6000);
+  }
+  var p = new URLSearchParams((location.hash || '').replace(/^#/, '') || location.search.replace(/^\?/, ''));
+  var bekl = ls('dh-google-state');
+  if (/interaction_required|consent_required|login_required/.test(p.get('error') || '')) { ls(DURUM_KEY, JSON.stringify({ hata: p.get('error'), t: Date.now() })); try { window.close(); } catch (e) {} return; }
+  if (p.get('error')) { ls(DURUM_KEY, JSON.stringify({ hata: p.get('error'), t: Date.now() })); bitir(false, 'Google bağlantısı tamamlanmadı (<b>' + p.get('error') + '</b>).'); return; }
+  var tok = p.get('access_token');
+  if (!tok || !bekl || p.get('state') !== bekl) { ls(DURUM_KEY, JSON.stringify({ hata: 'state', t: Date.now() })); bitir(false, 'Geçersiz ya da süresi geçmiş istek. Konuşkan\'dan yeniden dene.'); return; }
+  ls('dh-google-state', null);
+  history.replaceState(null, '', location.pathname);   /* anahtar adres çubuğunda kalmasın */
+  var uid = ls('dh_logged_uid') || '';
+  var t = { erisim: tok, exp: Date.now() + (+p.get('expires_in') || 3600) * 1000, eposta: '', uid: uid };
+  function kaydet() { ls(TOK_KEY, JSON.stringify(t)); ls(ONAY_KEY, '1'); ls(ONAY_KEY + ':uid', uid); ls(DURUM_KEY, JSON.stringify({ ok: true, t: Date.now() })); }
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + tok } }).then(function (r) { return r.json(); })
+    .then(function (u) { t.eposta = (u && u.email) || ''; }).catch(function () {})
+    .then(function () { kaydet(); bitir(true, '<b>Google hesabın bağlandı' + (t.eposta ? ': ' + t.eposta : '') + '.</b>'); });
+})();
+</script>
+</body></html>

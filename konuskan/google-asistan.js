@@ -1,5 +1,5 @@
 /* DHGoogle — Konuşkan genel asistanı için Google hesabı bağlantısı (tamamen tarayıcıda).
-   - Giriş: Google Identity Services "token" akışı. Erişim anahtarı yalnız bu tarayıcıda, ~1 saat geçerli.
+   - Giriş: OAuth "token" akışı (açılır pencere + google-donus.html). Erişim anahtarı yalnız bu tarayıcıda, ~1 saat geçerli.
    - Yetki: Takvim (oku + etkinlik ekle), Gmail (oku + TASLAK oluştur; göndermez), Görevler (oku + ekle),
             Kişiler (oku), Drive (oku).
    - Yazan her işlem (etkinlik / taslak / görev) kullanıcı onayından geçer (onay geri çağrısı).
@@ -43,30 +43,45 @@
     gisYuk = new Promise((ok, red) => { const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = () => ok(); s.onerror = () => { gisYuk = null; red({ code: 'google_yuklenemedi' }); }; document.head.appendChild(s); });
     return gisYuk;
   }
-  /* Kullanıcı hareketi (tıklama) içinde çağrılmalı: Google küçük bir pencere açar. */
-  async function baglan(zorla) {
-    const cid = istemci(); if (!cid) throw { code: 'google_istemci_yok' };
-    await gisYukle();
+  /* Kullanıcı hareketi (tıklama) içinde çağrılmalı: Google küçük bir pencere açar.
+     Kendi açılır pencere akışımız: Google, onaydan sonra aynı sitedeki google-donus.html'e döner; o sayfa anahtarı
+     localStorage'a yazar, bu sekme "storage" olayıyla görür. (GIS penceresi Chrome'da bazen bağlantıyı koparıp
+     "popup_closed" diyordu; bu yol pencere ile sekme arasında doğrudan bağlantıya ihtiyaç duymaz.) */
+  const DONUS = new URL('../google-donus.html', document.currentScript ? document.currentScript.src : location.href).href.split('?')[0];
+  let bekleyen = null;
+  function baglan(zorla) {
+    const cid = istemci(); if (!cid) return Promise.reject({ code: 'google_istemci_yok' });
+    const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    LS.set('dh-google-state', state); LS.set('dh-google-donus', null);
+    const sessiz = !zorla && durum().dahaOnce;
+    const q = new URLSearchParams({ client_id: cid, redirect_uri: DONUS, response_type: 'token', scope: SCOPES, include_granted_scopes: 'true', state, prompt: sessiz ? 'none' : 'consent' });
+    if (girisEposta()) q.set('login_hint', girisEposta());
+    const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + q;
+    const w = window.open(url, 'dh-google-giris', 'width=520,height=680,left=' + Math.max(0, (screen.width - 520) / 2) + ',top=' + Math.max(0, (screen.height - 680) / 2));
+    if (!w) return Promise.reject({ code: 'google_red', detay: 'popup_blocked' });
+    if (bekleyen) bekleyen.iptal();
     return new Promise((ok, red) => {
-      const tc = google.accounts.oauth2.initTokenClient({
-        client_id: cid, scope: SCOPES, include_granted_scopes: true,
-        /* Google penceresinde Dil Harita'ya giriş yapılan e-posta önerilir (Gmail/Workspace ise) */
-        login_hint: girisEposta() || undefined,
-        callback: async r => {
-          if (!r || r.error || !r.access_token) { red({ code: 'google_red', detay: r && r.error }); return; }
-          const t = { erisim: r.access_token, exp: Date.now() + (+r.expires_in || 3600) * 1000, eposta: '', uid: kullanici() };
-          LS.set(TOK_KEY, JSON.stringify(t)); LS.set(ONAY_KEY, '1'); LS.set(ONAY_KEY + ':uid', kullanici());
-          try { const u = await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + t.erisim } })).json(); t.eposta = u.email || ''; LS.set(TOK_KEY, JSON.stringify(t)); } catch (e) {}
-          bildir(); ok(durum());
-        },
-        error_callback: e => red({ code: 'google_red', detay: e && e.type })
-      });
-      tc.requestAccessToken({ prompt: (!zorla && durum().dahaOnce) ? '' : 'consent', login_hint: girisEposta() || undefined });
+      let bitti = false;
+      const son = (f, v) => { if (bitti) return; bitti = true; clearInterval(z); window.removeEventListener('storage', bak); bekleyen = null; f(v); };
+      const bak = () => {
+        let d = null; try { d = JSON.parse(LS.get('dh-google-donus') || 'null'); } catch (e) {}
+        if (!d) return;
+        if (d.ok && token()) { bildir(); son(ok, durum()); }
+        else if (d.hata) {
+          /* sessiz yenileme izin isterse: bir kez onay ekranıyla dene */
+          if (sessiz && /interaction_required|consent_required|login_required/.test(d.hata)) { son(red, { code: 'google_red', detay: d.hata }); return; }
+          son(red, { code: 'google_red', detay: d.hata });
+        }
+      };
+      const bas = Date.now();
+      const z = setInterval(() => { bak(); if (Date.now() - bas > 10 * 60000) son(red, { code: 'google_red', detay: 'zaman_asimi' }); }, 700);
+      window.addEventListener('storage', bak);
+      bekleyen = { iptal: () => son(red, { code: 'google_red', detay: 'yeni_deneme' }) };
     });
   }
   function kes() {
     const t = token(); LS.set(TOK_KEY, null); LS.set(ONAY_KEY, null); LS.set(ONAY_KEY + ':uid', null);
-    try { if (t && window.google && google.accounts) google.accounts.oauth2.revoke(t.erisim, () => {}); } catch (e) {}
+    try { if (t) fetch('https://oauth2.googleapis.com/revoke?token=' + encodeURIComponent(t.erisim), { method: 'POST', mode: 'no-cors' }).catch(() => {}); } catch (e) {}
     bildir();
   }
 
