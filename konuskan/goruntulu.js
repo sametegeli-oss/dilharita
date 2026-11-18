@@ -200,6 +200,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-anahtar"><input type="checkbox" data-a="hassas"><span></span> Hassas ses tanıma <small class="vd-hassas-not">Konuşman Gemini ile yazıya dökülür; aksanı ve hızlı konuşmayı çok daha iyi anlar.</small></label>
         <label class="vd-satir">Sustuktan sonra bekleme: <b class="vd-sessiz-d"></b><input type="range" min="1.2" max="4" step="0.2" data-a="sessizlik"></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
+        <label class="vd-satir">Arka plan <select data-a="fon"><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select></label>
         <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
         <label class="vd-satir">Konuşma hızı (tarayıcı sesi) <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
         <div class="vd-satir vd-google-ayar"><span>Google hesabı <small>(genel asistan: takvim, Gmail, görevler, kişiler, Drive)</small></span><div class="vd-google"></div></div>
@@ -409,6 +410,11 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     const modSecim = q('[data-a=mod]');
     modSecim.onchange = () => { const r = q(`[name=vdmod][value="${modSecim.value}"]`); if (r && !r.checked) { r.checked = true; r.onchange(); } };
     q('[data-a=trAc]').checked = ayar.altyaziTR;
+    /* arka plan (görüntülü görüşmedeki bulanık oda gibi) */
+    const FONLAR = ['koyu', 'sinif', 'kafe', 'ofis', 'kutuphane', 'doga'];
+    const fonUygula = () => { kok.dataset.fon = FONLAR.includes(ayar.fon) ? ayar.fon : 'koyu'; q('[data-a=fon]').value = kok.dataset.fon; };
+    q('[data-a=fon]').onchange = e => { ayar.fon = e.target.value; ayarKaydet(); fonUygula(); };
+    fonUygula();
     modUygula(false);
     q('[data-a=trAc]').onchange = e => { ayar.altyaziTR = e.target.checked; ayarKaydet(); q('.vd-tr').hidden = !ayar.altyaziTR; };
     q('.vd-tr').hidden = !ayar.altyaziTR;

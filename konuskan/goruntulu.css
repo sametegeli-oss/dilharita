@@ -500,3 +500,67 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-yt-anahtar { display: flex; gap: 6px; }
 .vd-yt-anahtar input { flex: 1; min-width: 0; background: rgba(255,255,255,.06); color: var(--vd-yazi); border: 1px solid var(--vd-cizgi); border-radius: 10px; padding: 8px; font: inherit; font-size: .8rem; }
 .vd-yt-durum { font-size: .72rem; }
+
+/* Google düğmesi: genel ".vd button {color:inherit}" kuralı yazıyı beyaz yapıyordu */
+.vd .vd-g-b { color: #1f2937; }
+.vd .vd-g-b.ikincil { color: var(--vd-yazi); }
+.vd .vd-g-b.ana { color: #1b1407; }
+
+/* ---------- arka planlar: bulanık oda (görüntülü görüşmedeki arka plan bulanıklığı gibi) ---------- */
+.vd-sahne, .vd-isik { transition: background .6s; }
+.vd[data-fon=sinif] .vd-sahne { background:
+  radial-gradient(38% 16% at 30% 34%, rgba(38, 74, 58, .95), rgba(38, 74, 58, .55) 60%, transparent 75%),
+  radial-gradient(10% 22% at 82% 40%, rgba(255, 236, 200, .55), transparent 70%),
+  linear-gradient(to bottom, #cbbca2 0%, #b9a98e 58%, #8a6b4a 60%, #6e5236 100%); }
+.vd[data-fon=sinif] .vd-isik { background:
+  radial-gradient(30% 40% at 85% 30%, rgba(255, 244, 214, .35), transparent 70%),
+  radial-gradient(80% 40% at 50% 110%, rgba(30, 20, 10, .55), transparent 70%); }
+.vd[data-fon=kafe] .vd-sahne { background:
+  radial-gradient(5% 7% at 14% 22%, rgba(255, 196, 110, .75), transparent 70%),
+  radial-gradient(4% 6% at 27% 14%, rgba(255, 214, 140, .6), transparent 70%),
+  radial-gradient(6% 8% at 78% 18%, rgba(255, 186, 96, .7), transparent 70%),
+  radial-gradient(4% 6% at 90% 34%, rgba(255, 220, 160, .55), transparent 70%),
+  radial-gradient(5% 7% at 66% 9%, rgba(255, 200, 120, .5), transparent 70%),
+  radial-gradient(70% 60% at 50% 45%, #5a3d28 0%, #3a2618 55%, #1f140d 100%); }
+.vd[data-fon=kafe] .vd-isik { background:
+  radial-gradient(40% 30% at 20% 25%, rgba(255, 170, 80, .14), transparent 70%),
+  radial-gradient(80% 35% at 50% 110%, rgba(0, 0, 0, .6), transparent 70%); }
+.vd[data-fon=ofis] .vd-sahne { background:
+  repeating-linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, .03) 4%, rgba(255, 255, 255, .16) 7.2%, rgba(255, 255, 255, .03) 9%, rgba(255, 255, 255, 0) 12%),
+  radial-gradient(45% 50% at 78% 30%, rgba(225, 238, 250, .95), rgba(190, 210, 228, .6) 50%, transparent 75%),
+  linear-gradient(to bottom, #a9b8c6 0%, #8e9eae 62%, #5d6875 100%); }
+.vd[data-fon=ofis] .vd-isik { background:
+  radial-gradient(35% 45% at 80% 28%, rgba(255, 255, 255, .25), transparent 70%),
+  radial-gradient(80% 35% at 50% 110%, rgba(10, 16, 24, .55), transparent 70%); }
+.vd[data-fon=kutuphane] .vd-sahne { background:
+  repeating-linear-gradient(90deg, rgba(120, 40, 30, .4) 0%, rgba(40, 70, 60, .35) 2.4%, rgba(150, 110, 50, .35) 4.6%, rgba(60, 40, 30, .45) 6.6%, rgba(120, 40, 30, .4) 8.4%),
+  repeating-linear-gradient(to bottom, transparent 0%, transparent 17%, rgba(30, 18, 10, .7) 22%, transparent 26%),
+  linear-gradient(#4b3220, #2b1c12); filter: blur(0); }
+.vd[data-fon=kutuphane] .vd-isik { background:
+  radial-gradient(60% 60% at 50% 40%, rgba(40, 26, 16, .35), rgba(15, 10, 6, .75) 80%),
+  radial-gradient(25% 30% at 20% 20%, rgba(255, 200, 120, .18), transparent 70%); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.vd[data-fon=doga] .vd-sahne { background:
+  radial-gradient(30% 25% at 75% 18%, rgba(255, 250, 220, .8), transparent 70%),
+  radial-gradient(45% 40% at 20% 35%, rgba(110, 160, 90, .9), transparent 70%),
+  radial-gradient(50% 45% at 85% 55%, rgba(70, 120, 70, .9), transparent 70%),
+  linear-gradient(to bottom, #a8c8d8 0%, #7ea889 45%, #3f6a45 100%); }
+.vd[data-fon=doga] .vd-isik { background:
+  radial-gradient(35% 35% at 75% 15%, rgba(255, 245, 210, .3), transparent 70%),
+  radial-gradient(80% 35% at 50% 110%, rgba(10, 20, 10, .55), transparent 70%); }
+
+/* ---------- telefon (dikey) v3 ---------- */
+@media (max-aspect-ratio: 1/1) and (max-width: 760px) {
+  /* lobide yüz kartın üstünde görünsün */
+  .vd:not(.vd-derste) .vd-yuz { height: min(36vh, 36dvh, 90vw); top: calc(env(safe-area-inset-top, 0px) + 118px); }
+  .vd-lobi .vd-kart { max-height: min(50vh, 50dvh); }
+  .vd-lobi { background: linear-gradient(to top, rgba(8, 11, 15, .95) 0%, rgba(8, 11, 15, .6) 48%, transparent 62%); }
+  /* sohbet paneli açıkken: alt yarı sohbet, üstte küçülmüş yüz (görüntülü görüşmedeki gibi) */
+  .vd-panel { height: 58vh; height: 58dvh; }
+  .vd-sohbet-acik .vd-yuz { top: calc(env(safe-area-inset-top, 0px) + 54px); height: calc(42vh - 60px); height: calc(42dvh - 60px); transition: height .35s cubic-bezier(.2, .8, .2, 1), top .35s; }
+  .vd-sohbet-acik .vd-altyazi, .vd-sohbet-acik .vd-sen { display: none; }
+  .vd-yuz { transition: height .35s cubic-bezier(.2, .8, .2, 1), top .35s; }
+}
+
+/* açık arka planlarda üst yazılar okunur kalsın */
+.vd[data-fon=sinif] .vd-kim, .vd[data-fon=ofis] .vd-kim, .vd[data-fon=doga] .vd-kim { text-shadow: 0 1px 6px rgba(0, 0, 0, .65); }
+.vd[data-fon=sinif] .vd-kim small, .vd[data-fon=ofis] .vd-kim small, .vd[data-fon=doga] .vd-kim small, .vd[data-fon=sinif] .vd-rol, .vd[data-fon=ofis] .vd-rol, .vd[data-fon=doga] .vd-rol { color: #eef2f6; }
