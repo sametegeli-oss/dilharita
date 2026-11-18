@@ -492,7 +492,7 @@
     var TTS_MODELLER = ["gemini-3.8-flash-lite-tts", "gemini-3.8-flash-tts", "gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts"], dogalKapali = false, ttsBellek = {};
     function bugun() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
     function kotaOku() { try { var k = JSON.parse(localStorage.getItem("dh-gemini-kota-v1") || "{}"); return k.gun === bugun() ? (k.m || {}) : {}; } catch (e) { return {}; } }
-    function kotaDoldu(m) { var k = kotaOku(); k[m] = 1; try { localStorage.setItem("dh-gemini-kota-v1", JSON.stringify({ gun: bugun(), m: k })); } catch (e) {} }
+    function kotaDoldu(m) { var k = kotaOku(); k[m] = 1; if (global.DHKullanim) { var gy = new Date(); gy.setHours(24, 0, 0, 0); global.DHKullanim.kaydet("gemini-ses", m, { dolu: +gy }); } try { localStorage.setItem("dh-gemini-kota-v1", JSON.stringify({ gun: bugun(), m: k })); } catch (e) {} }
     function anahtarlar() { try { return (JSON.parse(localStorage.getItem("geminiApiKeys") || "[]") || []).filter(Boolean); } catch (e) { return []; } }
     function dogalSesKullanilir() {
       if (dogalKapali || !anahtarlar().length) return false;
@@ -510,8 +510,10 @@
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contents: [{ parts: [{ text: metin }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: sesAdi } } } } })
         }).then(function (res) {
-          if (res.status === 429) return res.text().then(function (t) { return dene(mi, ki + 1, hepsiDolu && /PerDay/i.test(t)); });
-          if (!res.ok) return dene(mi, ki + 1, false);
+          var KUL = global.DHKullanim;
+          if (res.status === 429) return res.text().then(function (t) { if (KUL) KUL.kaydet("gemini-ses", modeller[mi], { hata: 1 }); return dene(mi, ki + 1, hepsiDolu && /PerDay/i.test(t)); });
+          if (!res.ok) { if (KUL) KUL.kaydet("gemini-ses", modeller[mi], { hata: 1 }); return dene(mi, ki + 1, false); }
+          if (KUL) KUL.kaydet("gemini-ses", modeller[mi], { istek: 1, ok: true });
           return res.json().then(function (d) {
             var parts = (((d.candidates || [])[0] || {}).content || {}).parts || [], p0 = parts.filter(function (x) { return x.inlineData && x.inlineData.data; })[0];
             if (!p0) return dene(mi, ki + 1, false);

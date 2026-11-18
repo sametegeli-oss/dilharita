@@ -459,3 +459,17 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-derste .vd-mod { display: none; }
 .vd-mod-ayar { display: none; }
 .vd-derste .vd-mod-ayar { display: flex; }
+
+/* yapay zekâ kullanımı */
+.vd-kul-liste { display: flex; flex-direction: column; gap: 8px; }
+.vd-kul-m { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.04); border: 1px solid var(--vd-cizgi); }
+.vd-kul-ust { display: flex; justify-content: space-between; gap: 8px; font-size: .8rem; color: var(--vd-yazi); font-weight: 600; }
+.vd-kul-ust i { font-style: normal; display: inline-grid; place-items: center; width: 17px; height: 17px; margin-right: 6px; border-radius: 50%; background: rgba(255,255,255,.1); font-size: .68rem; color: var(--vd-soluk); }
+.vd-kul-ust b { font-size: .72rem; font-weight: 700; white-space: nowrap; }
+.vd-kul-ok { color: #6fd3a8; } .vd-kul-dolu { color: #ff8f7a; } .vd-kul-bos { color: var(--vd-soluk); font-weight: 500 !important; }
+.vd-kul-bar { height: 5px; border-radius: 9px; background: rgba(255,255,255,.1); overflow: hidden; }
+.vd-kul-bar span { display: block; height: 100%; background: var(--vd-vurgu); border-radius: 9px; }
+.vd-kul-bar span.cok { background: #ff8f7a; }
+.vd-kul-m small { font-size: .72rem; color: var(--vd-soluk); }
+.vd-kul-not { font-size: .72rem; color: var(--vd-soluk); }
+.vd-kul-not a { color: var(--vd-vurgu); }

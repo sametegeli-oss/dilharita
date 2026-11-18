@@ -203,6 +203,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
         <label class="vd-satir">Konuşma hızı (tarayıcı sesi) <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
         <div class="vd-satir vd-google-ayar"><span>Google hesabı <small>(genel asistan: takvim, Gmail, görevler, kişiler, Drive)</small></span><div class="vd-google"></div></div>
+        <div class="vd-satir vd-kullanim"><span>Yapay zekâ kullanımı <small>(bugün · bu cihaz)</small></span><div class="vd-kul-liste"></div></div>
         <label class="vd-satir">Cevap uzunluğu <select data-a="uzunluk"><option value="kisa">Kısa · hep özet</option><option value="normal">Normal</option><option value="ayrintili">Ayrıntılı · gerektiğinde uzun</option></select><small class="vd-uzunluk-not"></small></label>
         <label class="vd-satir">Sohbet kalitesi <select data-a="kalite"><option value="oto">Otomatik (önerilen)</option><option value="hizli">Hızlı · anında cevap</option><option value="dengeli">Dengeli · biraz düşünür</option><option value="derin">Derin · en dikkatli, daha yavaş</option></select><small class="vd-kalite-not"></small></label>
       </div>
@@ -395,7 +396,38 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     };
     const uzK = () => ['kisa', 'normal', 'ayrintili'].includes(ayar.uzunluk) ? ayar.uzunluk : 'normal';
     const uzHatir = () => UZ.hatir[uzK()] ? ' Reply length setting: ' + UZ.hatir[uzK()] : '';
-    q('[data-a=ayar]').onclick = () => { q('.vd-ayarlar').hidden = !q('.vd-ayarlar').hidden; };
+    q('[data-a=ayar]').onclick = () => { q('.vd-ayarlar').hidden = !q('.vd-ayarlar').hidden; if (!q('.vd-ayarlar').hidden) kullanimCiz(); };
+    /* ---- yapay zekâ kullanımı: sıradaki modeller + bugünkü token/istek ---- */
+    function kullanimCiz() {
+      const el = q('.vd-kul-liste'); if (!el) return;
+      const K = window.DHKullanim; if (!K) { el.closest('.vd-kullanim').hidden = true; return; }
+      const anah = ks => { try { return (JSON.parse(localStorage.getItem(ks) || '[]') || []).filter(Boolean).length; } catch (e) { return 0; } };
+      const mola = molaOku(), simdi = Date.now();
+      const moladaMi = (sid, model) => Object.keys(mola).filter(k => k.startsWith(sid + ':') && (k.endsWith(':' + model) || k.endsWith(':*')) && mola[k] > simdi).map(k => mola[k]);
+      const zincir = [];
+      if (anah('groqApiKeys')) { const gp = { id: 'groq' }; [modelSec(Object.assign({}, (DHProviders.PROVIDERS || []).find(x => x.id === 'groq') || {}, gp)), 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile'].filter((x, i, A) => x && A.indexOf(x) === i).forEach(m => zincir.push(['groq', m])); }
+      if (anah('geminiApiKeys')) { [modelSec({ id: 'gemini', model: 'gemini-3.6-flash' }), 'gemini-3.5-flash', 'gemini-3.5-flash-lite'].filter((x, i, A) => A.indexOf(x) === i).forEach(m => zincir.push(['gemini', m])); }
+      const satir = {}; K.satirlar().forEach(r => { satir[r.s + '|' + r.model] = r; });
+      const ad = { groq: 'Groq', gemini: 'Gemini', 'gemini-ses': 'Gemini ses', cerebras: 'Cerebras', openrouter: 'OpenRouter', mistral: 'Mistral' };
+      const bin = n => n >= 1000 ? (n / 1000).toLocaleString('tr-TR', { maximumFractionDigits: n >= 100000 ? 0 : 1 }) + ' bin' : String(n);
+      const saat = t => new Date(t).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+      const ciz = (sid, model, r, sira) => {
+        r = r || { istek: 0, toplam: 0, giris: 0, cikis: 0, hata: 0, kullanilan: 0, limit: 0, oran: null };
+        const molaBit = Math.max(r.dolu || 0, ...moladaMi(sid, model), 0);
+        const lim = r.limit, kul = r.kullanilan || r.toplam;
+        const durum = molaBit > simdi ? `<b class="vd-kul-dolu">dolu · ${saat(molaBit)} civarı açılır</b>` : r.istek ? '<b class="vd-kul-ok">çalışıyor</b>' : '<b class="vd-kul-bos">kullanılmadı</b>';
+        const ust = `<div class="vd-kul-ust"><span>${sira ? `<i>${sira}</i>` : ''}${esc(ad[sid] || sid)} · ${esc(model.replace(/^openai\//, '').replace(/^gemini-/, '').replace(/-versatile$/, '').replace(/-/g, ' '))}</span>${durum}</div>`;
+        const bar = lim ? `<div class="vd-kul-bar"><span style="width:${Math.round((r.oran || 0) * 100)}%" class="${(r.oran || 0) > .85 ? 'cok' : ''}"></span></div>` : '';
+        const bilgi = sid === 'gemini-ses' ? `${r.istek} ses isteği${r.hata ? ' · ' + r.hata + ' hata' : ''}`
+          : `${bin(kul)} token${lim ? ' / ' + bin(lim) + ' günlük' : ''} · ${r.istek} istek${r.kalanIstek != null ? ' · kalan istek ' + r.kalanIstek.toLocaleString('tr-TR') + '/' + (r.limitIstek || 0).toLocaleString('tr-TR') : ''}${r.hata ? ' · ' + r.hata + ' hata' : ''}`;
+        return `<div class="vd-kul-m">${ust}${bar}<small>${bilgi}</small></div>`;
+      };
+      let h = zincir.map(([sid, m], i) => { const r = satir[sid + '|' + m]; delete satir[sid + '|' + m]; return ciz(sid, m, r, i + 1); }).join('');
+      Object.keys(satir).forEach(k => { const r = satir[k]; h += ciz(r.s, r.model, r, 0); });
+      if (!h) h = '<small>Henüz kullanım yok. Ayarlardan bir yapay zekâ anahtarı ekleyince burada görünür.</small>';
+      el.innerHTML = h + `<small class="vd-kul-not">Numara, cevap için denenme sırası: üstteki dolunca sıradakine geçilir. Token sayıları bu cihazda tutulur; diğer cihazlardaki kullanım ve kesin sınırlar için <a href="https://console.groq.com/dashboard/usage" target="_blank" rel="noopener">Groq kullanım sayfası</a>.</small>`;
+    }
+    if (window.DHKullanim) DHKullanim.dinle(() => { if (!q('.vd-ayarlar').hidden) kullanimCiz(); });
     q('[data-a=cc]').onclick = () => { ayar.altyazi = !ayar.altyazi; ayarKaydet(); kok.classList.toggle('vd-cc-yok', !ayar.altyazi); };
     kok.classList.toggle('vd-cc-yok', !ayar.altyazi);
     q('[data-a=kapat]').onclick = () => { if (st.faz === 'ders' && st.turns) bitir(); else closePanel(); };
@@ -756,6 +788,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         const body = { model, stream: true, temperature: genel ? 0.2 : 0.4, max_tokens: kalite === 'derin' ? 6000 : (genel || ayar.uzunluk === 'ayrintili') ? 4000 : 2500, messages: msgs };
         if (/gpt-oss/i.test(model) || p.id === 'gemini') body.reasoning_effort = { hizli: 'low', dengeli: 'medium', derin: 'high' }[kalite];
         if (tools.length) { body.tools = tools; body.tool_choice = tur < 5 ? 'auto' : 'none'; }
+        if (/^(groq|gemini|cerebras|openrouter)$/.test(p.id)) body.stream_options = { include_usage: true };   /* kullanım ekranı için token sayısı */
+        const KUL = window.DHKullanim;
         const ctl = new AbortController(); let z = setTimeout(() => ctl.abort(), SURE);
         let res;
         try { res = await fetch(p.url, { method: 'POST', signal: ctl.signal, headers: Object.assign({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, p.headers || {}), body: JSON.stringify(body) }); }
@@ -763,8 +797,12 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         if (res.status === 429) {
           clearTimeout(z); let t = ''; try { t = await res.text(); } catch (e) {}
           const gunluk = /per ?day|TPD|RPD|daily/i.test(t), sure = tekrarSuresi(t);
-          throw { code: 'rate', mola: gunluk ? Math.max(sure, 60000) + 30000 : Math.max(sure, 20000) };
+          const mola = gunluk ? Math.max(sure, 60000) + 30000 : Math.max(sure, 20000);
+          if (KUL) KUL.sinirMetni(p.id, model, t, Date.now() + mola);
+          throw { code: 'rate', mola };
         }
+        if (!res.ok && KUL) KUL.kaydet(p.id, model, { hata: 1 });
+        if (res.ok && KUL) KUL.basliklar(p.id, model, res.headers);
         if (res.status === 402 || res.status === 401 || res.status === 403) { clearTimeout(z); throw { code: 'odeme', mola: 6 * 3600000 }; }
         if (!res.ok || !res.body) { clearTimeout(z); throw { code: 'http', status: res.status }; }
         /* ilk cümle için üst süre: sağlayıcı "işleniyor" sinyalleriyle bağlantıyı açık tutup hiç cevap vermezse bekletmesin */
@@ -772,7 +810,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         const ilkZ = setTimeout(() => { if (!adet && !metin) { ctl.__zaman = true; ctl.abort(); } }, ILK);
         const rd = res.body.getReader(), dec = new TextDecoder();
         let tampon = '', metin = '', dizi = false, poz = 0, kapandi = false;
-        const cagrilar = [];
+        const cagrilar = []; let kul = null;
         const tara = () => {
           if (kapandi) return;
           if (!dizi) { const k = metin.indexOf('"reply"'); if (k < 0) return; const a = metin.indexOf('[', k); if (a < 0) return; dizi = true; poz = a + 1; }
@@ -797,6 +835,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
               const satir = tampon.slice(0, n).trim(); tampon = tampon.slice(n + 1);
               if (!satir.startsWith('data:')) continue; const v = satir.slice(5).trim(); if (v === '[DONE]') continue;
               try { const o = JSON.parse(v); const dl = (o.choices && o.choices[0] && o.choices[0].delta) || {};
+                const u = o.usage || (o.x_groq && o.x_groq.usage); if (u && (u.prompt_tokens || u.completion_tokens)) kul = u;
                 if (ara && !aradi && (dl.executed_tools || /browser\.(search|open)/.test(dl.reasoning || ''))) { aradi = true; st.aramaVar = true; if (!adet) { bilgi('İnternette arıyor…'); yuz.duygu('dusunceli', 0.5); } }
                 (dl.tool_calls || []).forEach(tc => { const i = tc.index || 0; const c = cagrilar[i] || (cagrilar[i] = { id: '', type: 'function', function: { name: '', arguments: '' } });
                   if (tc.id) c.id = tc.id; if (tc.extra_content) c.extra_content = tc.extra_content;   /* Gemini 3: düşünce imzası geri gönderilmeli */
@@ -806,6 +845,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
           }
         } catch (e) { clearTimeout(z); clearTimeout(ilkZ); if (ctl.__zaman && !adet) throw { code: 'timeout', mola: 3 * 60000 }; throw Object.assign({ code: 'network' }, adet ? { basladi: true } : {}); }
         clearTimeout(z); clearTimeout(ilkZ);
+        if (KUL) KUL.kaydet(p.id, model, kul ? { istek: 1, giris: kul.prompt_tokens || 0, cikis: kul.completion_tokens || 0, ok: true }
+          : { istek: 1, giris: Math.round(JSON.stringify(msgs).length / 3.5), cikis: Math.round(metin.length / 3.5), ok: true });   /* sağlayıcı sayı vermezse kaba tahmin */
         const gecerli = cagrilar.filter(c => c && c.function.name);
         if (gecerli.length && !adet) {
           /* araçları çalıştır, sonuçlarıyla devam et */
