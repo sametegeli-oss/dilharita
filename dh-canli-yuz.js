@@ -540,7 +540,7 @@
       durum: function () { return { duygu: durum.duygu, p: durum.p, profil: profil, agiz: agiz.b }; },
       /* akış halinde konuşma: cümleler geldikçe eklenir (ekle), bitince bitir() çağrılır */
       konusAkis: function (o) {
-        o = o || {}; api.sustur();
+        o = o || {}; api.sustur(o.sesiKesme === false ? { sesKesme: false } : null);
         var liste = [], bekleyen = null, kapandi = false;
         var benim = konusma = { liste: liste, cumle: null, iptal: false, cozucu: function () { if (bekleyen) { var r = bekleyen; bekleyen = null; r(); } } };
         var i = 0;
@@ -591,7 +591,8 @@
           });
         });
       },
-      sustur: function () { if (konusma) { konusma.iptal = true; try { if (konusma.cumle && konusma.cumle.sesKaynak) konusma.cumle.sesKaynak.stop(); } catch (e) {} if (konusma.cozucu) konusma.cozucu(); } konusma = null; try { speechSynthesis.cancel(); } catch (e) {} },
+      /* sustur({ sesKesme:false }): yalnız avatarı durdur, sayfanın kendi çaldığı tarayıcı sesine dokunma */
+      sustur: function (so) { if (konusma) { konusma.iptal = true; try { if (konusma.cumle && konusma.cumle.sesKaynak) konusma.cumle.sesKaynak.stop(); } catch (e) {} if (konusma.cozucu) konusma.cozucu(); } konusma = null; if (!(so && so.sesKesme === false)) { try { speechSynthesis.cancel(); } catch (e) {} } },
       /* gerçek ses verisini (wav vb.) motorun ses bağlamında çöz */
       sesCoz: function (ab) { var ac = sesBagi(); if (!ac) return Promise.reject(new Error("ses yok")); return new Promise(function (res, rej) { var p = ac.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); }); },
       yikil: function () { durum.yikildi = true; api.sustur(); }
