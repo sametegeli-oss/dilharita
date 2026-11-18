@@ -664,15 +664,17 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     const molaAd = (p, key, model) => p.id + ':' + String(key).slice(-6) + ':' + (model || '');
     function molaVer(p, key, ms, model) { const m = molaOku(); const t = Date.now(); Object.keys(m).forEach(k => { if (m[k] < t) delete m[k]; }); m[molaAd(p, key, model)] = t + ms; try { localStorage.setItem(MOLA_KEY, JSON.stringify(m)); } catch (e) {} }
     async function akisliCevap(istem, onSeg) {
-      const SIRA = ['groq', 'cerebras', 'openrouter', 'mistral'];
-      const P = (DHProviders.PROVIDERS || []);
+      const SIRA = ['groq', 'gemini', 'cerebras', 'openrouter', 'mistral'];
+      /* Gemini: OpenAI uyumlu uç (akış + araç çağrısı aynı kodla çalışır) — Groq dolunca devreye girer */
+      const GEM = { id: 'gemini', keyStore: 'geminiApiKeys', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', model: 'gemini-3.6-flash' };
+      const P = (DHProviders.PROVIDERS || []).filter(x => x.id !== 'gemini').concat([GEM]);
       let son = null; const mola = molaOku(), simdi = Date.now(); let enYakin = Infinity, molada = 0;
       for (const id of SIRA) {
         const p = P.find(x => x.id === id); if (!p) continue;
         let keys = []; try { keys = (JSON.parse(localStorage.getItem(p.keyStore) || '[]') || []).filter(Boolean); } catch (e) {}
         /* Groq'ta sınırlar model başına: ana model dolunca aynı anahtarla diğer modellere geç */
         const ana = modelSec(p);
-        const modeller = p.id === 'groq' ? [ana, 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile'].filter((x, i, A) => A.indexOf(x) === i) : [ana];
+        const modeller = (p.id === 'groq' ? [ana, 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile'] : p.id === 'gemini' ? [ana, 'gemini-3.5-flash', 'gemini-3.5-flash-lite'] : [ana]).filter((x, i, A) => A.indexOf(x) === i);
         for (const model of modeller) for (const key of keys) {
           const bit = Math.max(mola[molaAd(p, key, model)] || 0, mola[molaAd(p, key, '*')] || 0);
           if (bit > simdi) { molada++; if (p.id === 'groq') enYakin = Math.min(enYakin, bit); continue; }
@@ -690,11 +692,12 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       throw son || { code: 'no-key' };
     }
     /* "Please try again in 3m22.1s" → ms */
-    function tekrarSuresi(t) { const m = /try again in\s+(?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)?/i.exec(t || ''); if (!m) return 0; return (((+m[1] || 0) * 60 + (+m[2] || 0)) * 60 + (+m[3] || 0)) * 1000; }
+    function tekrarSuresi(t) { const m = /(?:try again|retry) in\s+(?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)?/i.exec(t || ''); if (!m) return 0; return (((+m[1] || 0) * 60 + (+m[2] || 0)) * 60 + (+m[3] || 0)) * 1000; }
     const kaliteSec = () => ayar.kalite === 'oto' || !ayar.kalite ? (genelMi() ? 'dengeli' : 'hizli') : ayar.kalite;
     function modelSec(p) {
       /* dengeli/derin ya da genel sohbet: sağlayıcının en güçlü modeli; hızlıda kullanıcının seçtiği model */
       const GUCLU = { groq: 'openai/gpt-oss-120b', cerebras: 'gpt-oss-120b' };
+      if (p.id === 'gemini') { const m = DHProviders.getModel && DHProviders.getModel('gemini'); return m && /^gemini/.test(m) && !/tts|image|live/i.test(m) ? m : p.model; }
       return ((genelMi() || kaliteSec() !== 'hizli') && GUCLU[p.id]) || (DHProviders.getModel && DHProviders.getModel(p.id)) || p.model;
     }
     /* ---- yerel araçlar (her genel sohbette): namaz vakitleri ---- */
@@ -743,15 +746,15 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       /* genel sohbet + Groq gpt-oss: yerleşik tarayıcı araması (güncel bilgi gerekirse model kendisi arar) */
       const ara = genel && p.id === 'groq' && /gpt-oss/i.test(model);
       /* Google hesabı bağlıysa: takvim / gmail / görevler / kişiler / drive araçları */
-      const gAraclar = genel && /gpt-oss/i.test(model) && (p.id === 'groq' || p.id === 'cerebras') && window.DHGoogle && DHGoogle.durum().bagli ? DHGoogle.araclar() : [];
-      const yerel = genel && (p.id === 'groq' || p.id === 'cerebras') ? YEREL_ARACLAR : [];
+      const gAraclar = genel && (/gpt-oss/i.test(model) && (p.id === 'groq' || p.id === 'cerebras') || p.id === 'gemini') && window.DHGoogle && DHGoogle.durum().bagli ? DHGoogle.araclar() : [];
+      const yerel = genel && (p.id === 'groq' || p.id === 'cerebras' || p.id === 'gemini') ? YEREL_ARACLAR : [];
       const tools = [...(ara ? [{ type: 'browser_search' }] : []), ...yerel, ...gAraclar];
       const SURE = tools.length || kalite === 'derin' ? 30000 : 15000;
       let adet = 0, aradi = false;
       if (kalite === 'derin') setTimeout(() => { if (!adet && !aradi && kok.dataset.d === 'dusunuyor') bilgi('Derin düşünüyor…'); }, 2500);
       for (let tur = 0; tur < 6; tur++) {
         const body = { model, stream: true, temperature: genel ? 0.2 : 0.4, max_tokens: kalite === 'derin' ? 6000 : (genel || ayar.uzunluk === 'ayrintili') ? 4000 : 2500, messages: msgs };
-        if (/gpt-oss/i.test(model)) body.reasoning_effort = { hizli: 'low', dengeli: 'medium', derin: 'high' }[kalite];
+        if (/gpt-oss/i.test(model) || p.id === 'gemini') body.reasoning_effort = { hizli: 'low', dengeli: 'medium', derin: 'high' }[kalite];
         if (tools.length) { body.tools = tools; body.tool_choice = tur < 5 ? 'auto' : 'none'; }
         const ctl = new AbortController(); let z = setTimeout(() => ctl.abort(), SURE);
         let res;
@@ -759,7 +762,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         catch (e) { clearTimeout(z); throw { code: 'network' }; }
         if (res.status === 429) {
           clearTimeout(z); let t = ''; try { t = await res.text(); } catch (e) {}
-          const gunluk = /per day|TPD|RPD|daily/i.test(t), sure = tekrarSuresi(t);
+          const gunluk = /per ?day|TPD|RPD|daily/i.test(t), sure = tekrarSuresi(t);
           throw { code: 'rate', mola: gunluk ? Math.max(sure, 60000) + 30000 : Math.max(sure, 20000) };
         }
         if (res.status === 402 || res.status === 401 || res.status === 403) { clearTimeout(z); throw { code: 'odeme', mola: 6 * 3600000 }; }
@@ -796,7 +799,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
               try { const o = JSON.parse(v); const dl = (o.choices && o.choices[0] && o.choices[0].delta) || {};
                 if (ara && !aradi && (dl.executed_tools || /browser\.(search|open)/.test(dl.reasoning || ''))) { aradi = true; st.aramaVar = true; if (!adet) { bilgi('İnternette arıyor…'); yuz.duygu('dusunceli', 0.5); } }
                 (dl.tool_calls || []).forEach(tc => { const i = tc.index || 0; const c = cagrilar[i] || (cagrilar[i] = { id: '', type: 'function', function: { name: '', arguments: '' } });
-                  if (tc.id) c.id = tc.id; if (tc.function) { if (tc.function.name) c.function.name += tc.function.name; if (tc.function.arguments) c.function.arguments += tc.function.arguments; } });
+                  if (tc.id) c.id = tc.id; if (tc.extra_content) c.extra_content = tc.extra_content;   /* Gemini 3: düşünce imzası geri gönderilmeli */
+                  if (tc.function) { if (tc.function.name) c.function.name += tc.function.name; if (tc.function.arguments) c.function.arguments += tc.function.arguments; } });
                 const t = dl.content; if (t) { metin += t; tara(); } } catch (e) {}
             }
           }
