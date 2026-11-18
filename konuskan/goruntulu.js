@@ -365,7 +365,9 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         let g = `You are ${OGRETMEN}, a friendly, knowledgeable personal assistant talking with the user on a live VIDEO call. The user is Turkish.
 MODE: TURKISH GENERAL CHAT. Speak natural TURKISH (informal "sen") about ANY subject the user brings: everyday questions, advice, explanations, ideas, planning, writing help, health/money/legal basics (with a short note to consult a professional when it really matters), general knowledge, or just chatting.
 - Your words are spoken aloud: answer in 1-5 short, clear spoken sentences. No emojis, no lists, no markdown, no stage directions. If a longer answer is needed, give the essence first and offer to continue.
-- Be honest: if you are not sure, or it depends on recent/current information you may not know, say so briefly.
+- ACCURACY FIRST. Only state facts you are confident about. Never invent names, numbers, dates, prices, addresses, laws, quotes or sources. If you are not sure, say "Bundan emin değilim" and give only what you reliably know.
+- You have NO internet access and your knowledge has a cutoff. For anything that can change (news, prices, exchange rates, who currently holds a position, opening hours, schedules, laws, weather, sports results) say clearly that you cannot know the current state and suggest checking a reliable source.
+- Prefer a short correct answer to a long uncertain one.
 - Ask a short follow-up question only when it really helps.
 - The user's messages come from speech recognition: if a message looks garbled, kindly ask them to repeat.
 - If the user wants English help, you can help, but keep explaining in Turkish.`;
@@ -573,11 +575,14 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       throw son || { code: 'no-key' };
     }
     async function akisDene(p, key, istem, onSeg) {
-      const model = (DHProviders.getModel && DHProviders.getModel(p.id)) || p.model;
-      const body = { model, stream: true, temperature: 0.4, max_tokens: 2500, messages: [
-        { role: 'system', content: 'You help a Turkish learner practise English inside the Konuşkan app. Reply with valid JSON only, no markdown fences.' },
+      const genel = genelMi();
+      /* genel sohbette doğruluk önemli: küçük/hızlı modeller (ör. llama-3.1-8b) yerine sağlayıcının en güçlü modeli */
+      const GUCLU = { groq: 'openai/gpt-oss-120b', cerebras: 'gpt-oss-120b' };
+      const model = (genel && GUCLU[p.id]) || (DHProviders.getModel && DHProviders.getModel(p.id)) || p.model;
+      const body = { model, stream: true, temperature: genel ? 0.2 : 0.4, max_tokens: genel ? 4000 : 2500, messages: [
+        { role: 'system', content: genel ? 'You are a careful, factual general assistant for a Turkish user inside the Konuşkan app. Accuracy matters more than sounding confident. Reply with valid JSON only, no markdown fences.' : 'You help a Turkish learner practise English inside the Konuşkan app. Reply with valid JSON only, no markdown fences.' },
         { role: 'user', content: istem }] };
-      if (/gpt-oss/i.test(model)) body.reasoning_effort = 'low';
+      if (/gpt-oss/i.test(model)) body.reasoning_effort = genel ? 'medium' : 'low';
       const ctl = new AbortController(); let z = setTimeout(() => ctl.abort(), 15000);
       const res = await fetch(p.url, { method: 'POST', signal: ctl.signal, headers: Object.assign({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, p.headers || {}), body: JSON.stringify(body) });
       if (res.status === 429) { clearTimeout(z); throw { code: 'rate' }; }
