@@ -21,7 +21,7 @@
    API
      var y = DHCanliYuz.olustur(canvas, { yol: "./assets/avatars_v4/teacher/" });
      y.hazir.then(...)
-     y.duygu(ad, guc, sureMs)      // "notr","mutlu","cesaret","merak","dusunceli",
+     y.duygu(ad, guc, sureMs)      // "notr","mutlu","cesaret","merak","dusunceli","dinleyen","sefkatli","karisik","heyecanli","uzgun","ofkeli",
                                    // "anlayisli","saskin","ciddi","gururlu"
      y.jest(ad)                    // "onay","hayir","egil","one_egil","dusun","kas","iki_onay"
      y.ayar(parametreler)          // ham parametreler (kaydırıcılar için)
@@ -43,10 +43,17 @@
     anlayisli: { browInnerUp: 0.75, smile: 0.25, roll: 4.5, squint: 0.15, pitch: 0.1 },
     saskin:    { browInnerUp: 1.0, browOuterUp: 1.0, squint: -0.6, pitch: -0.15, lean: -0.2 },
     ciddi:     { browDown: 0.55, frown: 0.25, squint: 0.25, pitch: 0.12 },
-    gururlu:   { smile: 0.75, pitch: -0.25, browOuterUp: 0.25, roll: -1.5 }
+    gururlu:   { smile: 0.75, pitch: -0.25, browOuterUp: 0.25, roll: -1.5 },
+    dinleyen:  { smile: 0.2, browInnerUp: 0.2, lean: 0.3, roll: 2.5 },
+    sefkatli:  { smile: 0.35, browInnerUp: 0.5, roll: 3.5, squint: 0.1, pitch: 0.05 },
+    karisik:   { browAsym: 0.6, browDown: 0.15, frown: 0.15, roll: -4.0, gazeX: 0.1 },
+    heyecanli: { smile: 1.0, browOuterUp: 0.4, browInnerUp: 0.3, lean: 0.35, pitch: -0.1 },
+    uzgun:     { browInnerUp: 0.8, frown: 0.3, pitch: 0.15, gazeY: 0.15 },
+    ofkeli:    { browDown: 0.8, frown: 0.4, squint: 0.35, pitch: 0.1 }
   };
   var DUYGU_ADI = { notr: "Nötr", mutlu: "Mutlu", cesaret: "Cesaretlendirici", merak: "Merak", dusunceli: "Düşünceli",
-    anlayisli: "Anlayışlı", saskin: "Şaşkın", ciddi: "Ciddi", gururlu: "Gururlu" };
+    anlayisli: "Anlayışlı", saskin: "Şaşkın", ciddi: "Ciddi", gururlu: "Gururlu",
+    dinleyen: "Dinleyen", sefkatli: "Şefkatli", karisik: "Kafası karışık", heyecanli: "Heyecanlı", uzgun: "Üzgün", ofkeli: "Öfkeli" };
   var PARAMS = ["smile","frown","browInnerUp","browOuterUp","browDown","browAsym","squint","gazeX","gazeY","roll","pitch","yaw","lean"];
 
   /* ---------- Jestler: zamana bağlı eklemeler ---------- */
@@ -104,7 +111,7 @@
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
-  var GORSEL_SURUM = "20261118d";
+  var GORSEL_SURUM = "20261119a";
   function yukle(src) { if (src.indexOf("?") < 0 && !/^(data|blob):/.test(src)) src += "?v=" + GORSEL_SURUM; return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
   function lerp(a, b, t) { return a + (b - a) * t; }

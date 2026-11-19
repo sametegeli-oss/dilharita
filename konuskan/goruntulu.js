@@ -45,7 +45,7 @@
   const vi = (n, c = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${c}>${VI[n]}</svg>`;
   const OGRETMEN = 'Deniz';
   const PERSONA = `${OGRETMEN}, a warm, patient and genuinely interested English teacher on a one-to-one video lesson`;
-  const DUYGU = ['notr', 'mutlu', 'cesaret', 'merak', 'dusunceli', 'anlayisli', 'saskin', 'ciddi', 'gururlu'];
+  const DUYGU = ['notr', 'mutlu', 'cesaret', 'merak', 'dusunceli', 'anlayisli', 'saskin', 'ciddi', 'gururlu', 'dinleyen', 'sefkatli', 'karisik', 'heyecanli', 'uzgun', 'ofkeli'];
   const JEST = ['onay', 'iki_onay', 'hayir', 'egil', 'one_egil', 'dusun', 'kas'];
   const AYAR_KEY = 'dh-konuskan-video-v1';
   const genis = () => window.matchMedia('(min-width: 1000px)').matches;
@@ -590,7 +590,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       else if (ayar.mod === 'tr') s += `\nLesson theme: ${k.t}${k.tasks ? ' (useful phrases for this situation)' : ''}.`;
       return s + learnerContext();
     }
-    const ETIKET = `Split your reply into SEGMENTS: normally one sentence each, but whenever the language changes inside a sentence, split there (e.g. Turkish "Mesela şöyle dersin:" and English "I went home yesterday." are two segments). Give each segment "lang": "tr" or "en". If your reply contains any Turkish explanation, give every "en" segment also "tr": its natural Turkish translation (for the learner to read under the example). For EACH segment choose the face the teacher should show: "emo" one of ${DUYGU.join('|')} and "gest" one of ${JEST.join('|')} or null. Keep the same emo for segments that continue one sentence. Choose by meaning: praise→mutlu or gururlu with iki_onay; gentle correction or "almost"→anlayisli with egil; encouragement→cesaret; a question→merak (often egil or kas); thinking aloud→dusunceli with dusun; real surprise→saskin with kas; an important warning→ciddi. Use null gesture often.`;
+    const ETIKET = `Split your reply into SEGMENTS: normally one sentence each, but whenever the language changes inside a sentence, split there (e.g. Turkish "Mesela şöyle dersin:" and English "I went home yesterday." are two segments). Give each segment "lang": "tr" or "en". If your reply contains any Turkish explanation, give every "en" segment also "tr": its natural Turkish translation (for the learner to read under the example). For EACH segment choose the face the teacher should show: "emo" one of ${DUYGU.join('|')} and "gest" one of ${JEST.join('|')} or null. Keep the same emo for segments that continue one sentence. Choose by meaning: praise→mutlu or gururlu with iki_onay; gentle correction or "almost"→anlayisli with egil; encouragement→cesaret; a question→merak (often egil or kas); thinking aloud→dusunceli with dusun; real surprise→saskin with kas; an important warning→ciddi; calmly acknowledging what the user just said→dinleyen; warm reassurance or comfort→sefkatli; real excitement about good news or a big success→heyecanli; gentle empathy when the user shares something sad or feels discouraged→uzgun; when something the user said is unclear or confusing→karisik (often with kas). ofkeli ONLY when acting an angry character in a role-play or story, or demonstrating the word "angry" — NEVER directed at the user. Use null gesture often.`;
     function gecmis(n = 14) { return st.hist.slice(-n).map(h => (h.role === 'user' ? 'Learner: ' : 'You: ') + h.text).join('\n'); }
     /* parçanın dilini metinden de tahmin et: yanlış etiketli cümle yanlış sesle okunmasın */
     function dilTahmin(t) {
@@ -1103,7 +1103,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (st.bitti || st.busy || kok.dataset.d === 'konusuyor') { D.aktif = false; return; }
       if (!kayitVar && !dict) { D.aktif = false; durum('bekliyor'); yazAc(true); return; }
       Object.assign(D, { metin: '', gecici: '', konustu: 0, sessizBas: 0, taban: 0, ornek: 0, bas: performance.now(), son: 0, kayitVar });
-      durum('dinliyor'); yuz.dinle(true); yuz.duygu('merak', 0.35);
+      durum('dinliyor'); yuz.dinle(true); yuz.duygu('dinleyen', 0.6);
       q('.vd-sen').hidden = false; senGoster();
       const parcalar = mk.parcalar = [];   /* her kaydın sesi ayrı: yeniden kaydette eski parça karışmasın */
       if (kayitVar) {
