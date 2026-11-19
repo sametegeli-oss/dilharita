@@ -140,6 +140,15 @@
     return { dizi: o, kareMs: alt };
   }
 
+  /* Kullanıcının avatar ayarları (avatar-ayarlari.html): tüm avatarlar okur, değişince anında uygulanır.
+     Değerler: ifade/enerji/jest 0..1 · basHareket, bakis, nefes, dinlemeOnay, kirpma, sesDuygu 0..2 (1 = varsayılan) · sesPerde 0.8..1.2 */
+  var KA_ANAHTAR = "dh-avatar-ayar-v1", KA = {};
+  function kaOku() { try { KA = JSON.parse(localStorage.getItem(KA_ANAHTAR) || "{}") || {}; } catch (e) { KA = {}; } }
+  kaOku();
+  try { global.addEventListener("storage", function (e) { if (e.key === KA_ANAHTAR) { kaOku(); kaDinleyiciler.forEach(function (f) { try { f(); } catch (er) {} }); } }); } catch (e) {}
+  var kaDinleyiciler = [];
+  function ka(ad, vars) { var v = KA[ad]; return typeof v === "number" && isFinite(v) ? v : vars; }
+
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
@@ -162,7 +171,10 @@
     /* parametre durumu */
     var cur = {}, hedef = {}, ham = {};
     PARAMS.forEach(function (p) { cur[p] = 0; hedef[p] = 0; ham[p] = 0; });
-    var profil = { ifade: 0.7, enerji: 0.55, jest: 0.6 };
+    var profil = { ifade: 0.7, enerji: 0.55, jest: 0.6 }, profilVars = { ifade: 0.7, enerji: 0.55, jest: 0.6 };
+    function profilUygula(sessiz) { ["ifade", "enerji", "jest"].forEach(function (k) { profil[k] = Math.max(0, Math.min(1, +ka(k, profilVars[k]))); }); if (!sessiz && typeof api !== "undefined" && api && durum && durum.duygu) try { api.duygu(durum.duygu, durum.guc); } catch (e) {} }
+    profilUygula(true);
+    kaDinleyiciler.push(function () { profilUygula(); });
     var aktifJestler = [];
     var agiz = { a: "idle", b: "idle", t: 1 }, gozKirp = 0;
     /* duygu fotoğrafları: her duygu için ayrı, tabana hizalı fotoğraf (varsa) */
@@ -358,6 +370,7 @@
       /* boşta canlılık: küçük baş hareketleri, nefes, bakış kaymaları */
       if (!hareketAz) {
         var canli = 0.6 + profil.enerji * 0.8 + (konusma ? 0.6 : 0);
+        canli *= ka("basHareket", 1);
         p.roll += gurultu(t, 0.55, 1.3) * 0.7 * canli;
         p.yaw += gurultu(t, 0.4, 4.1) * 0.05 * canli;
         p.pitch += gurultu(t, 0.5, 2.2) * 0.04 * canli + (konusma ? Math.sin(t * 7.5) * 0.015 : 0);
@@ -382,7 +395,7 @@
         if (simdi > hp.pozT) { hp.pozT = simdi + (konusma ? 1400 + Math.random() * 1600 : 3000 + Math.random() * 3000); hp.tr = Math.max(-15, Math.min(15, hp.yan + (Math.random() - 0.5) * 13)); }
         if (simdi > hp.bakT) {
           if (hp.bakBit && simdi < hp.bakBit) { /* süren bakış */ }
-          else if (hp.bakBit) { hp.bakBit = 0; hp.tgx = 0; hp.tgy = 0; hp.bakT = simdi + (konusma ? 700 + Math.random() * 1500 : 2500 + Math.random() * 4000); }
+          else if (hp.bakBit) { hp.bakBit = 0; hp.tgx = 0; hp.tgy = 0; hp.bakT = simdi + (konusma ? 700 + Math.random() * 1500 : 2500 + Math.random() * 4000) / Math.max(0.25, ka("bakis", 1)); }
           else {
             var r2 = Math.random();
             if (konusma && r2 < 0.45) { hp.tgx = (Math.random() - 0.5) * 0.35; hp.tgy = 0.5 + Math.random() * 0.4; hp.bakBit = simdi + 400 + Math.random() * 700; }   /* aşağı bakış */
@@ -395,19 +408,22 @@
         var yk = 1 - Math.exp(-dt / 0.33), rk = 1 - Math.exp(-dt / 0.7), gk = 1 - Math.exp(-dt / 0.08);   /* baş yavaş, eğiklik daha yavaş, göz hızlı */
         hp.yaw += ((hp.ty + hp.gx * 0.3) * mod * en - hp.yaw) * yk; hp.roll += (hp.tr * mod * en - hp.roll) * rk; hp.pitch += ((hp.tp + hp.gy * 0.12) * mod - hp.pitch) * yk;
         hp.gx += (hp.tgx * (konusma || dinleme ? 1 : 0.6) - hp.gx) * gk; hp.gy += (hp.tgy * (konusma || dinleme ? 1 : 0.6) - hp.gy) * gk;
-        p.yaw += hp.yaw; p.roll += hp.roll; p.pitch += hp.pitch;
-        if (konusma) { p.gazeX += hp.gx; p.gazeY += hp.gy; }
-        else { p.gazeX += sakkad.x + hp.gx * 0.5; p.gazeY += sakkad.y + hp.gy * 0.5; }
+        var kBas = ka("basHareket", 1), kBak = ka("bakis", 1);
+        p.yaw += hp.yaw * kBas; p.roll += hp.roll * kBas; p.pitch += hp.pitch * kBas;
+        p.yaw = Math.max(-1.1, Math.min(1.1, p.yaw)); p.roll = Math.max(-16, Math.min(16, p.roll));   /* güvenli sınır: görüntü kenarı açılmasın */
+        if (konusma) { p.gazeX += hp.gx * kBak; p.gazeY += hp.gy * kBak; }
+        else { p.gazeX += (sakkad.x + hp.gx * 0.5) * kBak; p.gazeY += (sakkad.y + hp.gy * 0.5) * kBak; }
         if (dinleme) {
           p.lean += 0.35; p.roll += 2.5; p.browInnerUp += 0.15;
           /* dinlerken ara ara küçük baş onayı ("hı hı"), bazen hafif gülümseme */
-          if (simdi > dinleNod) { dinleNod = simdi + 2600 + Math.random() * 3200; api.jest("onay", 0.22 + Math.random() * 0.18); if (Math.random() < 0.35) api.jest("kas", 0.25); }
+          var kOn = ka("dinlemeOnay", 1);
+          if (kOn > 0.05 && simdi > dinleNod) { dinleNod = simdi + (2600 + Math.random() * 3200) / kOn; api.jest("onay", (0.22 + Math.random() * 0.18) * Math.min(1.6, 0.6 + kOn * 0.4)); if (Math.random() < 0.35) api.jest("kas", 0.25); }
         } else dinleNod = Math.max(dinleNod, simdi + 1200);
         /* boşta (ne konuşuyor ne dinliyor): uzun aralıklarla küçük doğal hareket */
         if (!konusma && !dinleme && simdi > bostaJest) { bostaJest = simdi + 7000 + Math.random() * 7000; var r = Math.random(); api.jest(r < 0.4 ? "egil" : r < 0.7 ? "kas" : "onay", 0.25); }
       }
       /* göz kırpma: düzensiz, yarım-kapalı-yarım */
-      if (simdi > sonrakiKirp) { sonKirp = simdi; sonrakiKirp = simdi + (konusma ? 1700 + Math.random() * 2600 : 2600 + Math.random() * 3800); }
+      if (simdi > sonrakiKirp) { sonKirp = simdi; sonrakiKirp = simdi + (konusma ? 1700 + Math.random() * 2600 : 2600 + Math.random() * 3800) / Math.max(0.3, ka("kirpma", 1)); }
       var kb = simdi - sonKirp; gozKirp = kb < 70 ? kb / 70 : kb < 130 ? 1 : kb < 230 ? 1 - (kb - 130) / 100 : 0;
       /* konuşma: ağız dizisi */
       if (konusma) konusmaKare(simdi, dt);
@@ -416,8 +432,8 @@
       deforme(p, t);
       dokuCiz();
       /* nefes: ~4,5 sn'de bir; konuşurken biraz daha sık ve sığ. Hafif büyüme + omuzlarla birlikte yukarı kalkma */
-      var nefesF = Math.sin(t * (konusma ? 1.75 : 1.4)), nefes = hareketAz ? 0 : nefesF * (konusma ? 0.0028 : 0.0042);
-      var nefesY = hareketAz ? 0 : -nefesF * (konusma ? 1.2 : 2.0) * durum.s;
+      var kNef = ka("nefes", 1), nefesF = Math.sin(t * (konusma ? 1.75 : 1.4)), nefes = hareketAz ? 0 : nefesF * (konusma ? 0.0028 : 0.0042) * kNef;
+      var nefesY = hareketAz ? 0 : -nefesF * (konusma ? 1.2 : 2.0) * durum.s * kNef;
       var zoom = 1 + Math.max(-0.3, p.lean) * 0.06 + nefes;
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
@@ -530,13 +546,15 @@
         /* [ses yüksekliği, hız] — belirgin ama doğal sınırlar içinde; bazı tarayıcı sesleri yüksekliği yok sayar, hız her zaman işler */
         var SD = { heyecanli: [1.45, 1.3], mutlu: [1.27, 1.15], saskin: [1.45, 1.09], merak: [1.18, 1], cesaret: [1.21, 1.12], gururlu: [1.12, 0.97],
           uzgun: [0.7, 0.7], sefkatli: [0.91, 0.8], anlayisli: [0.94, 0.88], dusunceli: [0.85, 0.76], ciddi: [0.78, 0.82], ofkeli: [0.73, 1.12], karisik: [1.12, 0.82], dinleyen: [1, 0.92] };
-        var sdAcik = true; try { sdAcik = localStorage.getItem("dh-ses-duygu") !== "0"; } catch (e) {}
+        var sdAcik = ka("sesDuygu", 1) > 0.02; try { if (localStorage.getItem("dh-ses-duygu") === "0") sdAcik = false; } catch (e) {}
+        if (!sdAcik && ka("sesPerde", 1) !== 1) u.pitch = Math.max(0.5, Math.min(1.8, ka("sesPerde", 1)));
         if (sdAcik) {
-          var sd = (c.duygu && SD[c.duygu]) || [1, 1], ty = sd[0], hz = sd[1];
+          var kSes = ka("sesDuygu", 1), sd = (c.duygu && SD[c.duygu]) || [1, 1], ty = 1 + (sd[0] - 1) * kSes, hz = 1 + (sd[1] - 1) * kSes;
           if (/\?\s*$/.test(c.metin)) ty *= 1.1;                       /* soru: ses yükselir */
           if (/!\s*$/.test(c.metin)) { ty *= 1.08; hz *= 1.08; }         /* ünlem: canlı */
           if (/(\.\.\.|…)\s*$/.test(c.metin)) hz *= 0.92;               /* üç nokta: yavaşlar */
           hz *= 0.96 + Math.random() * 0.08;                             /* her cümle aynı tempoda olmasın */
+          ty *= ka("sesPerde", 1);
           u.pitch = Math.max(0.5, Math.min(1.8, ty)); u.rate = Math.max(0.55, Math.min(1.8, (hizOrani || 1) * hz));
         }
         u.onboundary = function (ev) {
@@ -632,7 +650,7 @@
       },
       jest: function (ad, guc) { var j = JESTLER[ad]; if (!j) return; aktifJestler.push({ bas: performance.now(), sure: j.sure / (0.7 + profil.enerji * 0.6), f: j.f, guc: guc == null ? 1 : guc }); },
       ayar: function (p) { for (var k in p) if (k in ham) ham[k] = +p[k] || 0; },
-      profil: function (p) { for (var k in p) if (k in profil) profil[k] = Math.max(0, Math.min(1, +p[k])); },
+      profil: function (p) { profilVars = Object.assign({}, profilVars, p); profilUygula(); },
       dinle: function (acik) { dinleme = !!acik; },
       duraklat: function (d) { durum.duraklat = !!d; },
       cizimHizi: function (fps) { durum.fps = fps || 0; },
@@ -762,5 +780,8 @@
       }).catch(function () { return etiketle(metin); });
   }
 
+  global.DHAvatarAyar = { anahtar: KA_ANAHTAR, oku: function () { kaOku(); return Object.assign({}, KA); },
+    yaz: function (o) { KA = Object.assign({}, o || {}); try { localStorage.setItem(KA_ANAHTAR, JSON.stringify(KA)); } catch (e) {} kaDinleyiciler.forEach(function (f) { try { f(); } catch (er) {} }); },
+    deger: ka };
   global.DHCanliYuz = { olustur: olustur, etiketle: etiketle, yapayZekaEtiketle: yapayZekaEtiketle, cumlelereBol: cumlelereBol, DUYGULAR: DUYGULAR, DUYGU_ADI: DUYGU_ADI, JESTLER: JESTLER, JEST_ADI: JEST_ADI };
 })(window);

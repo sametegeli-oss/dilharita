@@ -602,3 +602,6 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-kel-s button { flex: none; width: 32px; height: 32px; border-radius: 9px; border: 0; background: rgba(255,255,255,.08); display: grid; place-items: center; }
 .vd-kel-s button svg { width: 16px; height: 16px; }
 .vd-kel-ekle-hepsi { align-self: flex-start; }
+
+.vd-av-ayar-l { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(240,179,84,.1); border: 1px solid rgba(240,179,84,.35); color: #ffd58a; font-weight: 700; font-size: .84rem; text-decoration: none; }
+.vd-av-ayar-l svg { width: 16px; height: 16px; }

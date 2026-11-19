@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<script src="./auth-guard.js?v=7"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Avatar ayarları · Dil Harita</title>
+<meta name="theme-color" content="#11151c">
+<style>
+  :root { --bg:#11151c; --kart:#1a1f29; --kenar:#2a3140; --yazi:#eef1f6; --soluk:#9ea7b7; --vurgu:#f0b354; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--yazi); font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  header { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--kenar); position:sticky; top:0; background:var(--bg); z-index:5; }
+  header a { color:var(--soluk); text-decoration:none; font-size:22px; line-height:1; }
+  header h1 { font-size:17px; margin:0; font-weight:700; }
+  header span { margin-left:auto; font-size:12px; color:var(--soluk); }
+  main { display:grid; grid-template-columns:minmax(280px,480px) 1fr; gap:20px; padding:18px; max-width:1180px; margin:0 auto; }
+  @media (max-width:860px) { main { grid-template-columns:1fr; padding:12px; } .sahne { position:static !important; } }
+  .sahne { position:sticky; top:66px; align-self:start; }
+  .cerceve { position:relative; border-radius:22px; overflow:hidden; aspect-ratio:1; background:radial-gradient(60% 55% at 50% 38%, #3a4658 0%, #232b38 45%, #121821 80%); box-shadow:0 14px 50px #000a; }
+  .cerceve canvas { width:100%; height:100%; display:block; }
+  .durum { position:absolute; left:12px; top:12px; background:#000a; padding:4px 10px; border-radius:99px; font-size:12px; }
+  .yuk { position:absolute; inset:0; display:grid; place-items:center; color:var(--soluk); }
+  .altyazi { min-height:46px; margin-top:10px; padding:10px 12px; background:var(--kart); border:1px solid var(--kenar); border-radius:12px; font-size:15px; }
+  .dene { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .duygular { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  button { font:inherit; color:var(--yazi); background:#252b37; border:1px solid var(--kenar); border-radius:11px; padding:8px 12px; cursor:pointer; }
+  button:hover { border-color:#46506a; }
+  button.ana { background:var(--vurgu); color:#1b1408; border-color:var(--vurgu); font-weight:700; }
+  button.kucuk { padding:5px 10px; font-size:13px; }
+  button.secili { border-color:var(--vurgu); color:var(--vurgu); background:#2e2614; }
+  section { background:var(--kart); border:1px solid var(--kenar); border-radius:16px; padding:16px; margin-bottom:14px; }
+  section h2 { font-size:16px; margin:0 0 4px; }
+  section p { margin:0 0 12px; color:var(--soluk); font-size:13px; }
+  .hazir { display:flex; gap:8px; flex-wrap:wrap; }
+  .satir { display:grid; grid-template-columns:minmax(150px,200px) 1fr 58px; align-items:center; gap:10px; margin:10px 0; }
+  .satir label { font-size:14px; font-weight:600; }
+  .satir label small { display:block; font-weight:400; color:var(--soluk); font-size:12px; }
+  .satir input { width:100%; accent-color:var(--vurgu); }
+  .satir output { text-align:right; font-variant-numeric:tabular-nums; color:var(--vurgu); font-weight:700; font-size:13px; }
+  @media (max-width:520px) { .satir { grid-template-columns:1fr 54px; } .satir label { grid-column:1 / -1; } }
+  .not { font-size:12px; color:var(--soluk); }
+  .kaydedildi { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:#1f3a2f; color:#9ff0c8; border:1px solid #2e6b52; padding:8px 14px; border-radius:99px; font-size:13px; opacity:0; transition:opacity .25s; pointer-events:none; }
+  .kaydedildi.on { opacity:1; }
+  /* sitenin genel teması (açık renk) bu sayfayı ezmesin */
+  html, html body { background:var(--bg) !important; color:var(--yazi) !important; }
+  header, header h1, section h2, .satir label, .altyazi, .durum, button:not(.ana) { color:var(--yazi) !important; }
+  header h1 { color:var(--yazi) !important; }
+  section, .altyazi { background:var(--kart) !important; }
+  button.ana { color:#1b1408 !important; }
+  button.secili { color:var(--vurgu) !important; }
+  section p, .satir label small, .not, header span { color:var(--soluk) !important; }
+  main { padding-bottom:110px !important; }
+</style>
+</head>
+<body>
+<header><a href="./konuskan.html" aria-label="Konuşkan'a dön">‹</a><h1>Avatar ayarları</h1><span>Değişiklikler hemen kaydedilir ve açık görüntülü sohbete de uygulanır</span></header>
+<main>
+  <div class="sahne">
+    <div class="cerceve"><canvas id="yuz" width="768" height="768"></canvas><div class="durum" id="durum">Hazırlanıyor…</div><div class="yuk" id="yuk">Avatar yükleniyor…</div></div>
+    <div class="altyazi" id="altyazi">Ayarları değiştirip "Konuşturarak dene"ye bas.</div>
+    <div class="dene">
+      <button class="ana" id="konus">▶ Konuşturarak dene</button>
+      <button id="dinle">🎙️ Dinlerken nasıl?</button>
+      <button id="sus">■ Durdur</button>
+    </div>
+    <div class="duygular" id="duygular"></div>
+    <p class="not" style="margin-top:10px">Deneme tarayıcı sesiyle yapılır. Görüntülü derslerdeki doğal seste (Gemini) "Sesteki duygu" ayarı da geçerlidir.</p>
+  </div>
+
+  <div>
+    <section>
+      <h2>Hazır ayarlar</h2>
+      <p>Bir başlangıç seç, sonra aşağıdan ince ayar yap.</p>
+      <div class="hazir">
+        <button data-hazir="sakin">😌 Sakin</button>
+        <button data-hazir="dogal">🙂 Doğal (varsayılan)</button>
+        <button data-hazir="canli">😄 Canlı ve hareketli</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Yüz ve jestler</h2>
+      <p>Yüzdeki duyguların ne kadar belirgin olacağı ve baş sallama gibi jestlerin sıklığı.</p>
+      <div id="g-yuz"></div>
+    </section>
+
+    <section>
+      <h2>Baş ve göz hareketleri</h2>
+      <p>Konuşurken başın sağa-sola dönmesi ve eğilmesi, gözlerin aşağı ya da yana kayması, nefes ve göz kırpma.</p>
+      <div id="g-hareket"></div>
+    </section>
+
+    <section>
+      <h2>Ses</h2>
+      <p>Sesteki duygu: heyecanlıyken daha hızlı ve ince, üzgünken yavaş ve pes. 0'a çekersen ses hep düz okunur.</p>
+      <div id="g-ses"></div>
+    </section>
+
+    <section>
+      <button id="sifirla">↺ Hepsini varsayılana döndür</button>
+    </section>
+  </div>
+</main>
+<div class="kaydedildi" id="kayit">Kaydedildi ✓</div>
+
+<script src="./viseme-lang.js?v=3"></script>
+<script src="./dh-canli-yuz.js?v=25"></script>
+<script>
+(function () {
+  "use strict";
+  var VARS = { ifade: 0.75, enerji: 0.55, jest: 0.55, basHareket: 1, bakis: 1, nefes: 1, dinlemeOnay: 1, kirpma: 1, sesDuygu: 1, sesPerde: 1 };
+  var HAZIR = {
+    sakin: { ifade: 0.55, enerji: 0.3, jest: 0.35, basHareket: 0.5, bakis: 0.6, nefes: 0.7, dinlemeOnay: 0.6, kirpma: 0.9, sesDuygu: 0.6, sesPerde: 1 },
+    dogal: Object.assign({}, VARS),
+    canli: { ifade: 0.95, enerji: 0.85, jest: 0.8, basHareket: 1.5, bakis: 1.3, nefes: 1.2, dinlemeOnay: 1.4, kirpma: 1.1, sesDuygu: 1.5, sesPerde: 1 }
+  };
+  var ALAN = {
+    "g-yuz": [
+      ["ifade", "Yüz ifadesi gücü", "Duygular yüzde ne kadar belirgin", 0, 1, 0.05, "yuzde"],
+      ["enerji", "Enerji", "Hareketlerin hızı ve canlılığı", 0, 1, 0.05, "yuzde"],
+      ["jest", "Jest sıklığı", "Konuşurken kendiliğinden baş sallama", 0, 1, 0.05, "yuzde"]
+    ],
+    "g-hareket": [
+      ["basHareket", "Baş hareketi", "Sağa-sola dönme ve yana eğilme", 0, 2, 0.05, "kat"],
+      ["bakis", "Bakış kaymaları", "Ara ara aşağı ya da yana bakma", 0, 2, 0.05, "kat"],
+      ["dinlemeOnay", "Dinlerken baş sallama", "Sen konuşurken \"hı hı\" onayları", 0, 2, 0.05, "kat"],
+      ["nefes", "Nefes", "Omuzların ve göğsün hafif inip kalkması", 0, 2, 0.05, "kat"],
+      ["kirpma", "Göz kırpma sıklığı", "", 0.3, 2, 0.05, "kat"]
+    ],
+    "g-ses": [
+      ["sesDuygu", "Sesteki duygu", "0 = kapalı · 1 = varsayılan · 2 = çok belirgin", 0, 2, 0.05, "kat"],
+      ["sesPerde", "Ses perdesi", "Tarayıcı sesinde genel incelik/kalınlık", 0.8, 1.2, 0.02, "kat"]
+    ]
+  };
+  var ayar = Object.assign({}, VARS, DHAvatarAyar.oku());
+  function goster(tip, v) { return tip === "yuzde" ? Math.round(v * 100) + "%" : (v === 0 ? "kapalı" : v.toFixed(2).replace(/0$/, "") + "×"); }
+  var kayitZ;
+  function kaydet() { DHAvatarAyar.yaz(ayar); var k = document.getElementById("kayit"); k.classList.add("on"); clearTimeout(kayitZ); kayitZ = setTimeout(function () { k.classList.remove("on"); }, 900); }
+  function ciz() {
+    Object.keys(ALAN).forEach(function (g) {
+      var kut = document.getElementById(g); kut.innerHTML = "";
+      ALAN[g].forEach(function (a) {
+        var d = document.createElement("div"); d.className = "satir";
+        d.innerHTML = '<label for="r-' + a[0] + '">' + a[1] + (a[2] ? '<small>' + a[2] + '</small>' : '') + '</label><input type="range" id="r-' + a[0] + '" min="' + a[3] + '" max="' + a[4] + '" step="' + a[5] + '"><output></output>';
+        var r = d.querySelector("input"), o = d.querySelector("output");
+        r.value = ayar[a[0]]; o.textContent = goster(a[6], +r.value);
+        r.oninput = function () { ayar[a[0]] = +r.value; o.textContent = goster(a[6], +r.value); kaydet(); };
+        kut.appendChild(d);
+      });
+    });
+  }
+  ciz();
+  document.querySelectorAll("[data-hazir]").forEach(function (b) { b.onclick = function () { ayar = Object.assign({}, HAZIR[b.dataset.hazir]); kaydet(); ciz(); }; });
+  document.getElementById("sifirla").onclick = function () { ayar = Object.assign({}, VARS); kaydet(); ciz(); };
+
+  /* canlı önizleme */
+  var yuz = DHCanliYuz.olustur(document.getElementById("yuz"), { yol: "./assets/avatars_v4/teacher/" });
+  var dur = document.getElementById("durum"), alt = document.getElementById("altyazi");
+  yuz.hazir.then(function () { document.getElementById("yuk").remove(); dur.textContent = "Hazır"; yuz.profil({ ifade: 0.75, enerji: 0.55, jest: 0.55 }); yuz.duygu("cesaret", 0.5); })
+    .catch(function (e) { document.getElementById("yuk").textContent = "Avatar açılamadı: " + (e && e.message || e); });
+  var DUY = [["mutlu", "😊 Mutlu"], ["heyecanli", "🤩 Heyecanlı"], ["merak", "🤔 Meraklı"], ["dinleyen", "👂 Dinleyen"], ["sefkatli", "🤗 Şefkatli"], ["dusunceli", "💭 Düşünceli"], ["saskin", "😮 Şaşkın"], ["karisik", "😕 Kafası karışık"], ["uzgun", "😔 Üzgün"], ["ciddi", "😐 Ciddi"], ["ofkeli", "😠 Öfkeli"]];
+  var dk = document.getElementById("duygular");
+  DUY.forEach(function (d) { var b = document.createElement("button"); b.className = "kucuk"; b.textContent = d[1]; b.onclick = function () { dk.querySelectorAll("button").forEach(function (x) { x.classList.remove("secili"); }); b.classList.add("secili"); yuz.duygu(d[0], 0.9); dur.textContent = d[1]; }; dk.appendChild(b); });
+  var ORNEK = [
+    { metin: "Merhaba! Seni gördüğüme çok sevindim.", duygu: "mutlu" },
+    { metin: "Vay, bu gerçekten harika bir haber!", duygu: "heyecanli" },
+    { metin: "Peki sen bu konuda ne düşünüyorsun?", duygu: "merak" },
+    { metin: "Şimdi dikkat etmemiz gereken önemli bir kural var.", duygu: "ciddi" },
+    { metin: "Bunu duyduğuma gerçekten üzüldüm.", duygu: "uzgun" },
+    { metin: "Merak etme, birlikte adım adım çözeceğiz.", duygu: "sefkatli" }
+  ];
+  document.getElementById("konus").onclick = function () {
+    yuz.isit(); yuz.dinle(false); dur.textContent = "Konuşuyor";
+    var liste = ORNEK.map(function (c) { return Object.assign({ dil: "tr", guc: 0.85 }, c); });
+    yuz.konus(liste, { oncesi: function (c) { alt.textContent = c.metin; dur.textContent = (DHCanliYuz.DUYGU_ADI[c.duygu] || "") + " · konuşuyor"; } })
+      .then(function () { dur.textContent = "Hazır"; });
+  };
+  var dinZ;
+  document.getElementById("dinle").onclick = function () {
+    yuz.sustur(); clearTimeout(dinZ); yuz.dinle(true); yuz.duygu("dinleyen", 0.6); dur.textContent = "Seni dinliyor…"; alt.textContent = "(8 saniye boyunca sen konuşuyormuşsun gibi dinler)";
+    dinZ = setTimeout(function () { yuz.dinle(false); yuz.duygu("cesaret", 0.5); dur.textContent = "Hazır"; }, 8000);
+  };
+  document.getElementById("sus").onclick = function () { yuz.sustur(); clearTimeout(dinZ); yuz.dinle(false); dur.textContent = "Hazır"; };
+})();
+</script>
+</body>
+</html>

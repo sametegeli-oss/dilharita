@@ -210,6 +210,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
         <label class="vd-satir">Arka plan <select data-a="fon"><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select></label>
         <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
+        <a class="vd-av-ayar-l" href="./avatar-ayarlari.html" target="_blank" rel="noopener">${vi('gear')} Avatar ayarları: hareketler, ifade, sesteki duygu →</a>
         <label class="vd-anahtar"><input type="checkbox" data-a="sesDuygu"><span></span> Seste duygu <small>Deniz'in sesi yüzündeki duyguya göre değişir: sevinçte neşeli, teselli ederken yumuşak, ciddi konuda ağır.</small></label>
         <label class="vd-satir">Konuşma hızı (tarayıcı sesi) <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
         <div class="vd-satir vd-google-ayar"><span>Google hesabı <small>(genel asistan: takvim, Gmail, görevler, kişiler, Drive)</small></span><div class="vd-google"></div></div>
@@ -673,7 +674,10 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     const SES_ETIKET = { mutlu: 'cheerful, smiling, upbeat', heyecanli: 'very excited, energetic, faster', merak: 'curious, rising intonation', saskin: 'surprised, astonished',
       dusunceli: 'thoughtful, slower, with small pauses', anlayisli: 'gentle, understanding, softer', sefkatli: 'warm, caring, soft and slow', uzgun: 'sad, empathetic, quiet and slow',
       ciddi: 'serious, firm, slower', ofkeli: 'annoyed, stern, sharp', cesaret: 'encouraging, upbeat, energetic', gururlu: 'proud, warm, beaming', karisik: 'puzzled, hesitant', dinleyen: 'calm, relaxed' };
-    const sesDuyguAcik = () => ayar.sesDuygu !== false;
+    const avAyar = (ad, v) => (window.DHAvatarAyar ? DHAvatarAyar.deger(ad, v) : v);
+    const sesDuyguAcik = () => ayar.sesDuygu !== false && avAyar('sesDuygu', 1) > 0.02;
+    /* duygu şiddeti (avatar ayarları): düşükse yalnız ilk kelime, yüksekse "very" */
+    const sesEtiket = d => { const e = SES_ETIKET[d]; if (!e) return ''; const k = avAyar('sesDuygu', 1); return k < 0.6 ? e.split(',')[0] : k > 1.35 ? 'very ' + e : e; };
     function ttsUret(metin, ttsMetin) {
       ttsMetin = ttsMetin || metin;
       const ses = ayar.sesAdi || 'Charon', anahtar = ses + '|' + ttsMetin;
@@ -747,7 +751,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
           if (metin) { metin += ' '; ttsMetin += ' '; }
           altlar.push(Object.assign({ poz: metin.length }, cfg)); metin += t;
           /* duygu değişince etiket (aynı duygu art arda tekrar edilmez) */
-          const et = sesDuyguAcik() && cfg.duygu && SES_ETIKET[cfg.duygu];
+          const et = sesDuyguAcik() && cfg.duygu && sesEtiket(cfg.duygu);
           if (et && et !== sonEtiket) { ttsMetin += '[' + et + '] '; sonEtiket = et; }
           ttsMetin += t;
         };
