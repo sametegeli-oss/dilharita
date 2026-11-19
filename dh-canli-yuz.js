@@ -183,7 +183,7 @@
     var konusma = null, dinleme = false;
     var t0 = performance.now(), sonKirp = t0, sonrakiKirp = t0 + 2500, sakkad = { x: 0, y: 0, t: t0 + 1500 }, bakisKac = t0 + 5000, sonVurgu = 0, dinleNod = t0 + 2500, bostaJest = t0 + 9000;
     /* konuşma hareket planlayıcısı: baş duruşu ve bakış, ifade öbekleri gibi 1-3 sn'de bir yeni hedefe yumuşakça geçer */
-    var hp = { yaw: 0, roll: 0, pitch: 0, gx: 0, gy: 0, ty: 0, tr: 0, tp: 0, tgx: 0, tgy: 0, pozT: t0 + 800, bakT: t0 + 1500, bakBit: 0 };
+    var hp = { yaw: 0, roll: 0, pitch: 0, gx: 0, gy: 0, ty: 0, tr: 0, tp: 0, tgx: 0, tgy: 0, yan: 0, pozT: t0 + 800, yawT: t0 + 600, yanT: t0 + 3000, bakT: t0 + 1500, bakBit: 0 };
     /* Gerçek ses (Gemini) çalmak için ses bağlamı + çözümleyici: ağız sesin şiddetiyle oynar */
     var sesAc = null, sesAnaliz = null, sesVeri = null;
     function sesBagi() {
@@ -368,27 +368,32 @@
         } else if (simdi > sakkad.t) { sakkad.x = (Math.random() - 0.5) * (konusma ? 0.2 : 0.35); sakkad.y = (Math.random() - 0.5) * 0.2; sakkad.t = simdi + 900 + Math.random() * 2200; }
         /* konuşurken: baş sağa-sola döner, eğilir; gözler çoğunlukla kameradadır ama ara ara aşağı (düşünürken)
            ya da yana kayar, baş da bakışı biraz izler. Dinlerken aynı şey çok daha sakin. */
-        var mod = konusma ? 1 : dinleme ? 0.35 : 0.2, en = 0.75 + profil.enerji * 0.5;
-        if (simdi > hp.pozT) {
-          hp.pozT = simdi + (konusma ? 1100 + Math.random() * 1900 : 2500 + Math.random() * 3500);
-          var merkez = Math.random() < (konusma ? 0.35 : 0.55);   /* sık sık kameraya / merkeze döner */
-          hp.ty = merkez ? (Math.random() - 0.5) * 0.12 : (Math.random() < 0.5 ? -1 : 1) * (0.18 + Math.random() * 0.32);
-          hp.tr = (Math.random() - 0.5) * (merkez ? 3 : 8);
+        /* Değerler gerçek bir konuşma videosundan ölçüldü (yüz noktaları, 5 kare/sn):
+           baş yana eğikliği ±15°'ye kadar ve çoğu zaman bir yana yatık, 2-4 sn'de bir yön değiştirir;
+           sağa-sola dönüş saniyede ~1 kez yön değiştirir; göz konuşurken sık sık aşağı kayar. */
+        var mod = konusma ? 1 : dinleme ? 0.35 : 0.2, en = 0.8 + profil.enerji * 0.4;
+        if (simdi > hp.yawT) {   /* sağa-sola dönüş: sık ve küçük-orta */
+          hp.yawT = simdi + (konusma ? 600 + Math.random() * 800 : 2000 + Math.random() * 3000);
+          var gs = (Math.random() + Math.random() + Math.random() - 1.5) * 1.15;   /* ~normal dağılım, σ≈0.55 */
+          hp.ty = Math.random() < 0.25 ? gs * 0.3 : Math.max(-1.3, Math.min(1.3, gs * 1.3));
           hp.tp = (Math.random() - 0.4) * 0.22;
         }
+        if (simdi > hp.yanT) { hp.yanT = simdi + 6000 + Math.random() * 6000; hp.yan = (Math.random() < 0.5 ? -1 : 1) * (3 + Math.random() * 8); }   /* cümle öbeklerinde kalıcı yana yatıklık */
+        if (simdi > hp.pozT) { hp.pozT = simdi + (konusma ? 1400 + Math.random() * 1600 : 3000 + Math.random() * 3000); hp.tr = Math.max(-15, Math.min(15, hp.yan + (Math.random() - 0.5) * 13)); }
         if (simdi > hp.bakT) {
           if (hp.bakBit && simdi < hp.bakBit) { /* süren bakış */ }
-          else if (hp.bakBit) { hp.bakBit = 0; hp.tgx = 0; hp.tgy = 0; hp.bakT = simdi + (konusma ? 900 + Math.random() * 2200 : 2500 + Math.random() * 4000); }
+          else if (hp.bakBit) { hp.bakBit = 0; hp.tgx = 0; hp.tgy = 0; hp.bakT = simdi + (konusma ? 700 + Math.random() * 1500 : 2500 + Math.random() * 4000); }
           else {
             var r2 = Math.random();
-            if (konusma && r2 < 0.38) { hp.tgx = (Math.random() - 0.5) * 0.4; hp.tgy = 0.55 + Math.random() * 0.3; hp.bakBit = simdi + 500 + Math.random() * 800; }        /* aşağı bakış: düşünür gibi */
-            else if (r2 < (konusma ? 0.72 : 0.3)) { hp.tgx = (Math.random() < 0.5 ? -1 : 1) * (0.45 + Math.random() * 0.35); hp.tgy = (Math.random() - 0.6) * 0.3; hp.bakBit = simdi + 350 + Math.random() * 650; }  /* yana kısa bakış */
-            else { hp.tgx = 0; hp.tgy = 0; hp.bakBit = simdi + 800; }
+            if (konusma && r2 < 0.45) { hp.tgx = (Math.random() - 0.5) * 0.35; hp.tgy = 0.5 + Math.random() * 0.4; hp.bakBit = simdi + 400 + Math.random() * 700; }   /* aşağı bakış */
+            else if (r2 < (konusma ? 0.7 : 0.3)) { hp.tgx = (Math.random() < 0.5 ? -1 : 1) * (0.45 + Math.random() * 0.35); hp.tgy = (Math.random() - 0.6) * 0.3; hp.bakBit = simdi + 300 + Math.random() * 600; }   /* yana kısa bakış */
+            else { hp.tgx = 0; hp.tgy = 0; hp.bakBit = simdi + 700; }
             hp.bakT = simdi;
+            if (hp.tgy > 0.4 && Math.random() < 0.5) sonrakiKirp = simdi + 120;   /* aşağı bakarken göz kapağı da iner */
           }
         }
-        var yk = 1 - Math.exp(-dt / 0.45), gk = 1 - Math.exp(-dt / 0.09);   /* baş yavaş, göz hızlı (sakkad) */
-        hp.yaw += ((hp.ty + hp.gx * 0.25) * mod * en - hp.yaw) * yk; hp.roll += (hp.tr * mod * en - hp.roll) * yk; hp.pitch += ((hp.tp + hp.gy * 0.12) * mod - hp.pitch) * yk;
+        var yk = 1 - Math.exp(-dt / 0.33), rk = 1 - Math.exp(-dt / 0.7), gk = 1 - Math.exp(-dt / 0.08);   /* baş yavaş, eğiklik daha yavaş, göz hızlı */
+        hp.yaw += ((hp.ty + hp.gx * 0.3) * mod * en - hp.yaw) * yk; hp.roll += (hp.tr * mod * en - hp.roll) * rk; hp.pitch += ((hp.tp + hp.gy * 0.12) * mod - hp.pitch) * yk;
         hp.gx += (hp.tgx * (konusma || dinleme ? 1 : 0.6) - hp.gx) * gk; hp.gy += (hp.tgy * (konusma || dinleme ? 1 : 0.6) - hp.gy) * gk;
         p.yaw += hp.yaw; p.roll += hp.roll; p.pitch += hp.pitch;
         if (konusma) { p.gazeX += hp.gx; p.gazeY += hp.gy; }
