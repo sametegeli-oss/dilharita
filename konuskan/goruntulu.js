@@ -670,8 +670,9 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       throw son || { code: 'all-failed' };
     }
     /* Seste duygu: Gemini ses modelleri köşeli parantezli İngilizce etiketleri okumaz, tonu değiştirir ("[happy] Harika!") */
-    const SES_ETIKET = { mutlu: 'happy', heyecanli: 'excited', merak: 'curious', saskin: 'surprised', dusunceli: 'thoughtful', anlayisli: 'gentle, understanding',
-      sefkatli: 'warm, caring', uzgun: 'sad, empathetic', ciddi: 'serious', ofkeli: 'annoyed, stern', cesaret: 'encouraging', gururlu: 'proud', karisik: 'puzzled', dinleyen: 'calm' };
+    const SES_ETIKET = { mutlu: 'cheerful, smiling, upbeat', heyecanli: 'very excited, energetic, faster', merak: 'curious, rising intonation', saskin: 'surprised, astonished',
+      dusunceli: 'thoughtful, slower, with small pauses', anlayisli: 'gentle, understanding, softer', sefkatli: 'warm, caring, soft and slow', uzgun: 'sad, empathetic, quiet and slow',
+      ciddi: 'serious, firm, slower', ofkeli: 'annoyed, stern, sharp', cesaret: 'encouraging, upbeat, energetic', gururlu: 'proud, warm, beaming', karisik: 'puzzled, hesitant', dinleyen: 'calm, relaxed' };
     const sesDuyguAcik = () => ayar.sesDuygu !== false;
     function ttsUret(metin, ttsMetin) {
       ttsMetin = ttsMetin || metin;

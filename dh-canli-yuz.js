@@ -527,11 +527,18 @@
         var v = sesSec(dil); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = dil === "tr" ? "tr-TR" : "en-US";
         u.rate = hizOrani || 1;
         /* tarayıcı sesinde duygu: ses yüksekliği ve hız hafifçe değişir (ayarlardan kapatılabilir) */
-        var SD = { heyecanli: [1.14, 1.08], mutlu: [1.08, 1.03], saskin: [1.12, 1.02], merak: [1.06, 1], cesaret: [1.06, 1.03], gururlu: [1.04, 0.98],
-          uzgun: [0.9, 0.9], sefkatli: [0.98, 0.94], anlayisli: [0.98, 0.96], dusunceli: [0.96, 0.93], ciddi: [0.93, 0.96], ofkeli: [0.9, 1.04], karisik: [1.04, 0.95] };
+        /* [ses yüksekliği, hız] — belirgin ama doğal sınırlar içinde; bazı tarayıcı sesleri yüksekliği yok sayar, hız her zaman işler */
+        var SD = { heyecanli: [1.3, 1.2], mutlu: [1.18, 1.1], saskin: [1.3, 1.06], merak: [1.12, 1], cesaret: [1.14, 1.08], gururlu: [1.08, 0.98],
+          uzgun: [0.8, 0.8], sefkatli: [0.94, 0.87], anlayisli: [0.96, 0.92], dusunceli: [0.9, 0.84], ciddi: [0.85, 0.88], ofkeli: [0.82, 1.08], karisik: [1.08, 0.88], dinleyen: [1, 0.95] };
         var sdAcik = true; try { sdAcik = localStorage.getItem("dh-ses-duygu") !== "0"; } catch (e) {}
-        var sd = sdAcik && c.duygu && SD[c.duygu];
-        if (sd) { u.pitch = sd[0]; u.rate = (hizOrani || 1) * sd[1]; }
+        if (sdAcik) {
+          var sd = (c.duygu && SD[c.duygu]) || [1, 1], ty = sd[0], hz = sd[1];
+          if (/\?\s*$/.test(c.metin)) ty *= 1.07;                       /* soru: ses yükselir */
+          if (/!\s*$/.test(c.metin)) { ty *= 1.05; hz *= 1.05; }         /* ünlem: canlı */
+          if (/(\.\.\.|…)\s*$/.test(c.metin)) hz *= 0.92;               /* üç nokta: yavaşlar */
+          hz *= 0.96 + Math.random() * 0.08;                             /* her cümle aynı tempoda olmasın */
+          u.pitch = Math.max(0.6, Math.min(1.6, ty)); u.rate = Math.max(0.6, Math.min(1.7, (hizOrani || 1) * hz));
+        }
         u.onboundary = function (ev) {
           if (!ev || typeof ev.charIndex !== "number" || !c.metin.length) return;
           sinirVar = true;
