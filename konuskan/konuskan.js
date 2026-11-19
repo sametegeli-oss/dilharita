@@ -62,18 +62,18 @@ const I = { /* ikonlar */
 const ic = (n,extra='') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${I[n]}</svg>`;
 
 const MODES = [
-  {id:'video', t:'Görüntülü ders', d:'Canlı öğretmenle yüz yüze, tam ekran konuş; duygularıyla tepki verir.', icon:'video', c:'#e8a33d', tag:'Yeni'},
-  {id:'chat', t:'Sohbet', d:'Yapay zekâ öğretmenle serbest konuş, her mesajın düzeltilsin.', icon:'chat', c:'#f2c14e', tag:'LV'},
-  {id:'sentence', t:'Cümle modu', d:'Kurs cümlelerini parçalardan kur, sesli söyle.', icon:'sentence', c:'#9fb4f2', tag:'LV'},
-  {id:'word', t:'Kelime modu', d:'Kelime destelerini öğren ve test et.', icon:'word', c:'#8fd6a0', tag:'LV'},
-  {id:'dialogue', t:'Diyalog modu', d:'Hazır diyaloglarda B rolünü sen oyna.', icon:'dialogue', c:'#ef8f7f', tag:'LV'},
+  {id:'video', t:'Görüntülü ders', d:'Canlı öğretmenle yüz yüze, tam ekran konuş; duygularıyla tepki verir.', icon:'video', c:'#e8a33d', tag:'Yeni', lv:1},
+  {id:'chat', t:'Sohbet', d:'Yapay zekâ öğretmenle serbest konuş, her mesajın düzeltilsin.', icon:'chat', c:'#f2c14e', lv:1},
+  {id:'sentence', t:'Cümle modu', d:'Kurs cümlelerini parçalardan kur, sesli söyle.', icon:'sentence', c:'#9fb4f2', lv:1},
+  {id:'word', t:'Kelime modu', d:'Kelime destelerini öğren ve test et.', icon:'word', c:'#8fd6a0', lv:1},
+  {id:'dialogue', t:'Diyalog modu', d:'Hazır diyaloglarda B rolünü sen oyna.', icon:'dialogue', c:'#ef8f7f', lv:1},
   {id:'flash', t:'Kartlar', d:'Aralıklı tekrar ile kelimeleri kalıcı hale getir.', icon:'flash', c:'#f2c14e'},
-  {id:'podcast', t:'Hikâyeler', d:'Seviyene göre yazılmış hikâyeleri dinle ve oku.', icon:'pod', c:'#9fb4f2'},
-  {id:'call', t:'Arama modu', d:'Sadece sesle konuş, ekrana bakmadan pratik yap.', icon:'phone', c:'#8fd6a0'},
-  {id:'roleplay', t:'Rol yapma', d:'Gerçek hayattan senaryolarda görevleri tamamla.', icon:'role', c:'#ef8f7f'},
-  {id:'characters', t:'Karakterler', d:'Klasik romanların kahramanlarıyla sohbet et.', icon:'mask', c:'#f2c14e'},
-  {id:'debate', t:'Münazara', d:'Bir konunun lehinde ya da aleyhinde tartış.', icon:'debate', c:'#9fb4f2'},
-  {id:'photo', t:'Fotoğraf modu', d:'Bir fotoğrafı anlat, anında geri bildirim al.', icon:'photo', c:'#8fd6a0', tag:'Yeni'},
+  {id:'podcast', t:'Hikâyeler', d:'Seviyene göre yazılmış hikâyeleri dinle ve oku.', icon:'pod', c:'#9fb4f2', lv:1},
+  {id:'call', t:'Arama modu', d:'Sadece sesle konuş, ekrana bakmadan pratik yap.', icon:'phone', c:'#8fd6a0', lv:1},
+  {id:'roleplay', t:'Rol yapma', d:'Gerçek hayattan senaryolarda görevleri tamamla.', icon:'role', c:'#ef8f7f', lv:1},
+  {id:'characters', t:'Karakterler', d:'Klasik romanların kahramanlarıyla sohbet et.', icon:'mask', c:'#f2c14e', lv:1},
+  {id:'debate', t:'Münazara', d:'Bir konunun lehinde ya da aleyhinde tartış.', icon:'debate', c:'#9fb4f2', lv:1},
+  {id:'photo', t:'Fotoğraf modu', d:'Bir fotoğrafı anlat, anında geri bildirim al.', icon:'photo', c:'#8fd6a0', tag:'Yeni', lv:1},
   {id:'errors', t:'Hata defteri', d:'Konuşkan\'da yaptığın hataları gör ve üzerine çalış.', icon:'note', c:'#ef8f7f'}
 ];
 
@@ -380,7 +380,7 @@ function capNotice(){
   return `<div class="notice small">Bu cihazda Dil Harita yapay zekâ anahtarı yok. Sohbet ve düzeltmeler Gemini kopyala-yapıştır yöntemiyle çalışır. Anahtar eklemek için Dil Harita'nın Kitaplık menüsündeki yapay zekâ ayarlarını kullan. Kelime, cümle ve kart modları anahtarsız çalışır.</div>`;
 }
 function modeCard(m){
-  return `<button class="mode" data-mode="${m.id}"><div class="art" style="background:${m.c}">${m.tag?`<span class="tag">${m.tag==='LV'?S.level+' · '+LEVEL_NAMES[S.level]:m.tag}</span>`:''}<span style="color:#1d2621">${ic(m.icon)}</span></div><div class="body"><h3>${m.t}</h3><span class="muted small">${m.d}</span></div></button>`;
+  return `<button class="mode" data-mode="${m.id}"><div class="art" style="background:${m.c}">${(m.tag||m.lv)?`<span class="tag" ${m.lv?'title="Bu mod seçili seviyenle çalışır"':''}>${[m.tag,m.lv?S.level+' · '+LEVEL_NAMES[S.level]:''].filter(Boolean).join(' · ')}</span>`:''}<span style="color:#1d2621">${ic(m.icon)}</span></div><div class="body"><h3>${m.t}</h3><span class="muted small">${m.d}</span></div></button>`;
 }
 function bindModes(el){ el.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>openMode(b.dataset.mode)); }
 function sideSummary(){
@@ -396,7 +396,7 @@ function bindSide(el){ const g=$('#goCourse',el); if(g) g.onclick=()=>location.h
 function pHome(m){
   const hi = new Date().getHours()<12?'Günaydın':'Merhaba';
   m.innerHTML=`<div class="wrap"><div class="stack" style="gap:10px"><h1>${hi}, bugün ne çalışalım?</h1><div class="row between"><span class="small muted">Seviyeni seç: yapay zekâ, kelimeler ve kurs bu seviyeye göre ayarlanır.</span><button class="btn sm ghost" id="goExam">${S.certs[S.level]?ic('star','width="15" height="15"')+' '+S.level+' sertifikan var':S.level+' seviye sınavı'}</button></div>${levelChips(false)}</div>${capNotice()}
-  ${window.startVideo?`<button class="vd-hero" data-mode="video" type="button"><span class="vd-hero-yuz" aria-hidden="true"></span><span class="vd-hero-y"><span class="vd-hero-e"><i></i> Canlı · Yeni</span><b>Görüntülü ders</b><span>Deniz öğretmenle yüz yüze konuş. Cümlelerine duygularıyla tepki verir, hatalarını sohbeti bölmeden gösterir.</span><span class="vd-hero-b">${ic('video','width="18" height="18"')} Derse başla</span></span></button>`:''}
+  ${window.startVideo?`<button class="vd-hero" data-mode="video" type="button"><span class="vd-hero-yuz" aria-hidden="true"></span><span class="vd-hero-y"><span class="vd-hero-e"><i></i> Canlı · Yeni · ${S.level}</span><b>Görüntülü ders</b><span>Deniz öğretmenle yüz yüze konuş. Cümlelerine duygularıyla tepki verir, hatalarını sohbeti bölmeden gösterir.</span><span class="vd-hero-b">${ic('video','width="18" height="18"')} Derse başla</span></span></button>`:''}
   <div class="cols"><div class="stack"><h2>Öğrenme modları</h2><div class="grid">${MODES.filter(x=>x.id!=='video'||!window.startVideo).map(modeCard).join('')}</div></div>${sideSummary()}</div></div>`;
   bindModes(m); bindSide(m); bindLevels(m);
   $('#goExam',m).onclick=()=>S.certs[S.level]?openCert(S.level):examIntro(S.level);
