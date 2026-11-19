@@ -212,7 +212,7 @@
     var konusma = null, dinleme = false;
     var t0 = performance.now(), sonKirp = t0, sonrakiKirp = t0 + 2500, sakkad = { x: 0, y: 0, t: t0 + 1500 }, bakisKac = t0 + 5000, sonVurgu = 0, dinleNod = t0 + 2500, bostaJest = t0 + 9000;
     /* konuşma hareket planlayıcısı: baş duruşu ve bakış, ifade öbekleri gibi 1-3 sn'de bir yeni hedefe yumuşakça geçer */
-    var hp = { yaw: 0, roll: 0, pitch: 0, gx: 0, gy: 0, ty: 0, tr: 0, tp: 0, tgx: 0, tgy: 0, yan: 0, pozT: t0 + 800, yawT: t0 + 600, yanT: t0 + 3000, bakT: t0 + 1500, bakBit: 0 };
+    var hp = { yatik: 0, yaw: 0, roll: 0, pitch: 0, gx: 0, gy: 0, ty: 0, tr: 0, tp: 0, tgx: 0, tgy: 0, yan: 0, pozT: t0 + 800, yawT: t0 + 600, yanT: t0 + 3000, bakT: t0 + 1500, bakBit: 0 };
     /* Gerçek ses (Gemini) çalmak için ses bağlamı + çözümleyici: ağız sesin şiddetiyle oynar */
     var sesAc = null, sesAnaliz = null, sesVeri = null;
     function sesBagi() {
@@ -426,8 +426,10 @@
         hp.yaw += ((hp.ty + hp.gx * 0.3) * mod * en - hp.yaw) * yk; hp.roll += (hp.tr * mod * en - hp.roll) * rk; hp.pitch += ((hp.tp + hp.gy * 0.12) * mod - hp.pitch) * yk;
         hp.gx += (hp.tgx * (konusma || dinleme ? 1 : 0.6) - hp.gx) * gk; hp.gy += (hp.tgy * (konusma || dinleme ? 1 : 0.6) - hp.gy) * gk;
         var kBas = ka("basHareket", 1) * kd(durum.duygu || "notr", "bas", 1), kBak = ka("bakis", 1);
-        p.yaw += hp.yaw * kBas; p.roll += hp.roll * kBas; p.pitch += hp.pitch * kBas;
-        p.yaw = Math.max(-1.1, Math.min(1.1, p.yaw)); p.roll = Math.max(-16, Math.min(16, p.roll));   /* güvenli sınır: görüntü kenarı açılmasın */
+        /* baş yatıklığı: genel yana eğilme miktarı (çarpan) + seçili duygunun sabit eğimi (derece, - sola / + sağa) */
+        hp.yatik += (kd(durum.duygu || "notr", "yatik", 0) - hp.yatik) * (1 - Math.exp(-dt / 0.5));
+        p.yaw += hp.yaw * kBas; p.roll += hp.roll * kBas * ka("basYatik", 1) + hp.yatik; p.pitch += hp.pitch * kBas;
+        p.yaw = Math.max(-1.1, Math.min(1.1, p.yaw)); p.roll = Math.max(-20, Math.min(20, p.roll));   /* güvenli sınır: görüntü kenarı açılmasın */
         if (konusma) { p.gazeX += hp.gx * kBak; p.gazeY += hp.gy * kBak; }
         else { p.gazeX += (sakkad.x + hp.gx * 0.5) * kBak; p.gazeY += (sakkad.y + hp.gy * 0.5) * kBak; }
         if (dinleme) {
@@ -562,7 +564,7 @@
         /* tarayıcı sesinde duygu: ses yüksekliği ve hız hafifçe değişir (ayarlardan kapatılabilir) */
         /* [ses yüksekliği, hız] — belirgin ama doğal sınırlar içinde; bazı tarayıcı sesleri yüksekliği yok sayar, hız her zaman işler */
         var sdAcik = ka("sesDuygu", 1) > 0.02; try { if (localStorage.getItem("dh-ses-duygu") === "0") sdAcik = false; } catch (e) {}
-        if (!sdAcik && ka("sesPerde", 1) !== 1) u.pitch = Math.max(0.5, Math.min(1.8, ka("sesPerde", 1)));
+        if (!sdAcik && ka("sesPerde", 1) !== 1) u.pitch = Math.max(0, Math.min(2, ka("sesPerde", 1)));
         if (sdAcik) {
           var sd = c.duygu ? duyguSesi(c.duygu) : [1, 1], ty = sd[0], hz = sd[1];
           if (/\?\s*$/.test(c.metin)) ty *= 1.1;                       /* soru: ses yükselir */
@@ -570,7 +572,7 @@
           if (/(\.\.\.|…)\s*$/.test(c.metin)) hz *= 0.92;               /* üç nokta: yavaşlar */
           hz *= 0.96 + Math.random() * 0.08;                             /* her cümle aynı tempoda olmasın */
           ty *= ka("sesPerde", 1);
-          u.pitch = Math.max(0.5, Math.min(1.8, ty)); u.rate = Math.max(0.55, Math.min(1.8, (hizOrani || 1) * hz));
+          u.pitch = Math.max(0, Math.min(2, ty)); u.rate = Math.max(0.55, Math.min(1.8, (hizOrani || 1) * hz));
         }
         u.onboundary = function (ev) {
           if (!ev || typeof ev.charIndex !== "number" || !c.metin.length) return;

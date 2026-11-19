@@ -54,6 +54,16 @@
   button.secili { color:var(--vurgu) !important; }
   section p, .satir label small, .not, header span { color:var(--soluk) !important; }
   main { padding-bottom:110px !important; }
+  /* duygu ayarları: sıcak (amber) zemin · genel ayarlar: serin (mavi) zemin */
+  section.duygu-b { background:#2a2115 !important; border-color:#6b4f22 !important; }
+  section.duygu-b h2 { color:#ffd58a !important; }
+  section.duygu-b .satir-metin input { background:#1d170e !important; border-color:#6b4f22 !important; }
+  section.genel-b { background:#16202d !important; border-color:#2b3f58 !important; }
+  section.genel-b h2 { color:#9cc8ff !important; }
+  section.genel-b .satir input[type=range] { accent-color:#6aa8ff; }
+  section.genel-b .satir output { color:#9cc8ff !important; }
+  .ayrac { margin:18px 0 10px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; }
+  .ayrac.d { color:#f0b354; } .ayrac.g { color:#6aa8ff; }
 </style>
 </head>
 <body>
@@ -72,13 +82,14 @@
   </div>
 
   <div>
-    <section>
+    <div class="ayrac d">Duyguya özel ayarlar</div>
+    <section class="duygu-b">
       <h2>Duygu seç</h2>
       <p>Bir duygu seç: Deniz o yüze geçer, aşağıda o duygunun kendi ayarları açılır. "Konuştur" bu duyguyla konuşur.</p>
       <div class="duygular" id="duygular"></div>
     </section>
 
-    <section id="duyguBolum">
+    <section id="duyguBolum" class="duygu-b">
       <h2 id="duyguBaslik">Duygu ayarları</h2>
       <p>Bu ayarlar yalnız seçili duygu için geçerlidir.</p>
       <div id="g-duygu"></div>
@@ -86,7 +97,8 @@
       <div class="dene" style="margin-top:12px"><button class="ana" id="konus2">▶ Bu duyguyla konuştur</button><button id="duyguSifirla">↺ Bu duyguyu varsayılana döndür</button></div>
     </section>
 
-    <section>
+    <div class="ayrac g">Genel ayarlar · bütün duygular</div>
+    <section class="genel-b">
       <h2>Hazır ayarlar</h2>
       <p>Bir başlangıç seç, sonra aşağıdan ince ayar yap.</p>
       <div class="hazir">
@@ -96,25 +108,25 @@
       </div>
     </section>
 
-    <section>
+    <section class="genel-b">
       <h2>Genel · Yüz ve jestler</h2>
       <p>Bütün duygular için: yüzdeki ifadelerin genel gücü ve baş sallama gibi jestlerin sıklığı.</p>
       <div id="g-yuz"></div>
     </section>
 
-    <section>
+    <section class="genel-b">
       <h2>Genel · Baş ve göz hareketleri</h2>
       <p>Konuşurken başın sağa-sola dönmesi ve eğilmesi, gözlerin aşağı ya da yana kayması, nefes ve göz kırpma.</p>
       <div id="g-hareket"></div>
     </section>
 
-    <section>
+    <section class="genel-b">
       <h2>Genel · Ses</h2>
       <p>Bütün duygular için sesteki duygunun şiddeti (kendi ayarladığın duygular hariç). 0'a çekersen ses hep düz okunur.</p>
       <div id="g-ses"></div>
     </section>
 
-    <section>
+    <section class="genel-b">
       <button id="sifirla">↺ Hepsini varsayılana döndür</button>
     </section>
   </div>
@@ -122,15 +134,15 @@
 <div class="kaydedildi" id="kayit">Kaydedildi ✓</div>
 
 <script src="./viseme-lang.js?v=3"></script>
-<script src="./dh-canli-yuz.js?v=26"></script>
+<script src="./dh-canli-yuz.js?v=27"></script>
 <script>
 (function () {
   "use strict";
-  var VARS = { ifade: 0.75, enerji: 0.55, jest: 0.55, basHareket: 1, bakis: 1, nefes: 1, dinlemeOnay: 1, kirpma: 1, sesDuygu: 1, sesPerde: 1 };
+  var VARS = { ifade: 0.75, enerji: 0.55, jest: 0.55, basHareket: 1, basYatik: 1, bakis: 1, nefes: 1, dinlemeOnay: 1, kirpma: 1, sesDuygu: 1, sesPerde: 1 };
   var HAZIR = {
-    sakin: { ifade: 0.55, enerji: 0.3, jest: 0.35, basHareket: 0.5, bakis: 0.6, nefes: 0.7, dinlemeOnay: 0.6, kirpma: 0.9, sesDuygu: 0.6, sesPerde: 1 },
+    sakin: { ifade: 0.55, enerji: 0.3, jest: 0.35, basHareket: 0.5, basYatik: 0.5, bakis: 0.6, nefes: 0.7, dinlemeOnay: 0.6, kirpma: 0.9, sesDuygu: 0.6, sesPerde: 1 },
     dogal: Object.assign({}, VARS),
-    canli: { ifade: 0.95, enerji: 0.85, jest: 0.8, basHareket: 1.5, bakis: 1.3, nefes: 1.2, dinlemeOnay: 1.4, kirpma: 1.1, sesDuygu: 1.5, sesPerde: 1 }
+    canli: { ifade: 0.95, enerji: 0.85, jest: 0.8, basHareket: 1.5, basYatik: 1.4, bakis: 1.3, nefes: 1.2, dinlemeOnay: 1.4, kirpma: 1.1, sesDuygu: 1.5, sesPerde: 1 }
   };
   var ALAN = {
     "g-yuz": [
@@ -139,7 +151,8 @@
       ["jest", "Jest sıklığı", "Konuşurken kendiliğinden baş sallama", 0, 1, 0.05, "yuzde"]
     ],
     "g-hareket": [
-      ["basHareket", "Baş hareketi", "Sağa-sola dönme ve yana eğilme", 0, 2, 0.05, "kat"],
+      ["basHareket", "Baş hareketi", "Konuşurken sağa-sola dönme miktarı", 0, 2, 0.05, "kat"],
+      ["basYatik", "Baş yatıklığı (yana eğilme)", "Konuşurken başın yana yatıp doğrulması", 0, 2, 0.05, "kat"],
       ["bakis", "Bakış kaymaları", "Ara ara aşağı ya da yana bakma", 0, 2, 0.05, "kat"],
       ["dinlemeOnay", "Dinlerken baş sallama", "Sen konuşurken \"hı hı\" onayları", 0, 2, 0.05, "kat"],
       ["nefes", "Nefes", "Omuzların ve göğsün hafif inip kalkması", 0, 2, 0.05, "kat"],
@@ -147,11 +160,11 @@
     ],
     "g-ses": [
       ["sesDuygu", "Sesteki duygu", "0 = kapalı · 1 = varsayılan · 2 = çok belirgin", 0, 2, 0.05, "kat"],
-      ["sesPerde", "Ses perdesi", "Tarayıcı sesinde genel incelik/kalınlık", 0.8, 1.2, 0.02, "kat"]
+      ["sesPerde", "Ses perdesi (genel)", "Bütün duygularda sesin genel inceliği/kalınlığı · 1 = normal", 0.5, 1.5, 0.02, "kat"]
     ]
   };
   var ayar = Object.assign({}, VARS, DHAvatarAyar.oku()); ayar.duygular = Object.assign({}, ayar.duygular || {});
-  function goster(tip, v) { return tip === "yuzde" ? Math.round(v * 100) + "%" : tip === "deger" ? v.toFixed(2) : (v === 0 ? "kapalı" : v.toFixed(2).replace(/0$/, "") + "×"); }
+  function goster(tip, v) { return tip === "derece" ? (v > 0 ? "+" : "") + v.toFixed(1).replace(/\.0$/, "") + "°" : tip === "yuzde" ? Math.round(v * 100) + "%" : tip === "deger" ? v.toFixed(2) : (v === 0 ? "kapalı" : v.toFixed(2).replace(/0$/, "") + "×"); }
   var kayitZ;
   function kaydet() { DHAvatarAyar.yaz(ayar); var k = document.getElementById("kayit"); k.classList.add("on"); clearTimeout(kayitZ); kayitZ = setTimeout(function () { k.classList.remove("on"); }, 900); }
   function satir(kut, id, ad, acik, min, max, adim, tip, deger, degis) {
@@ -199,7 +212,8 @@
     var ses = DHAvatarAyar.duyguSesi(secili);
     satir(kut, "d-yuz", "Yüz ifadesi gücü", "Bu duygu yüzde ne kadar belirgin", 0, 2, 0.05, "kat", DHAvatarAyar.duygu(secili, "yuz", 1), function (v) { dAyar().yuz = v; yuz.duygu(secili, 0.9); });
     satir(kut, "d-bas", "Baş hareketi", "Bu duygudayken başın hareket miktarı", 0, 2, 0.05, "kat", DHAvatarAyar.duygu(secili, "bas", 1), function (v) { dAyar().bas = v; });
-    satir(kut, "d-perde", "Ses perdesi", "1 = normal · büyük = ince · küçük = kalın", 0.5, 1.8, 0.01, "deger", ses[0], function (v) { dAyar().perde = v; });
+    satir(kut, "d-yatik", "Baş yatıklığı", "Bu duygudayken baş sabit olarak ne kadar yana yatık · − sola · + sağa (derece)", -15, 15, 0.5, "derece", DHAvatarAyar.duygu(secili, "yatik", 0), function (v) { dAyar().yatik = v; });
+    satir(kut, "d-perde", "Ses perdesi", "0 = en kalın · 1 = normal · 2 = en ince", 0, 2, 0.01, "deger", ses[0], function (v) { dAyar().perde = v; });
     satir(kut, "d-hiz", "Konuşma hızı", "1 = normal · büyük = hızlı · küçük = yavaş", 0.55, 1.8, 0.01, "deger", ses[1], function (v) { dAyar().hiz = v; });
     var et = document.getElementById("etiket"); et.placeholder = DHAvatarAyar.ETIKET_VARS[secili] || ""; et.value = (ayar.duygular[secili] && ayar.duygular[secili].etiket) || "";
     et.oninput = function () { var v = et.value.replace(/[\[\]]/g, "").trim(); if (v) dAyar().etiket = v; else delete dAyar().etiket; kaydet(); };
