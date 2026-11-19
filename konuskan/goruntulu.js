@@ -676,8 +676,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       ciddi: 'serious, firm, slower', ofkeli: 'annoyed, stern, sharp', cesaret: 'encouraging, upbeat, energetic', gururlu: 'proud, warm, beaming', karisik: 'puzzled, hesitant', dinleyen: 'calm, relaxed' };
     const avAyar = (ad, v) => (window.DHAvatarAyar ? DHAvatarAyar.deger(ad, v) : v);
     const sesDuyguAcik = () => ayar.sesDuygu !== false && avAyar('sesDuygu', 1) > 0.02;
-    /* duygu şiddeti (avatar ayarları): düşükse yalnız ilk kelime, yüksekse "very" */
-    const sesEtiket = d => { const e = SES_ETIKET[d]; if (!e) return ''; const k = avAyar('sesDuygu', 1); return k < 0.6 ? e.split(',')[0] : k > 1.35 ? 'very ' + e : e; };
+    /* her duygunun doğal ses tarifi: avatar ayarlarından (duygu bazlı), yoksa varsayılan */
+    const sesEtiket = d => window.DHAvatarAyar && DHAvatarAyar.duyguEtiketi ? DHAvatarAyar.duyguEtiketi(d) : (SES_ETIKET[d] || '');
     function ttsUret(metin, ttsMetin) {
       ttsMetin = ttsMetin || metin;
       const ses = ayar.sesAdi || 'Charon', anahtar = ses + '|' + ttsMetin;

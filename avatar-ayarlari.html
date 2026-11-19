@@ -29,6 +29,7 @@
   button.ana { background:var(--vurgu); color:#1b1408; border-color:var(--vurgu); font-weight:700; }
   button.kucuk { padding:5px 10px; font-size:13px; }
   button.secili { border-color:var(--vurgu); color:var(--vurgu); background:#2e2614; }
+  button.ozel::after { content:" •"; color:#6fd3a8; }
   section { background:var(--kart); border:1px solid var(--kenar); border-radius:16px; padding:16px; margin-bottom:14px; }
   section h2 { font-size:16px; margin:0 0 4px; }
   section p { margin:0 0 12px; color:var(--soluk); font-size:13px; }
@@ -37,6 +38,8 @@
   .satir label { font-size:14px; font-weight:600; }
   .satir label small { display:block; font-weight:400; color:var(--soluk); font-size:12px; }
   .satir input { width:100%; accent-color:var(--vurgu); }
+  .satir-metin { grid-template-columns:minmax(150px,200px) 1fr; }
+  .satir-metin input { background:#11151c; color:var(--yazi); border:1px solid var(--kenar); border-radius:10px; padding:8px 10px; font:inherit; font-size:13px; }
   .satir output { text-align:right; font-variant-numeric:tabular-nums; color:var(--vurgu); font-weight:700; font-size:13px; }
   @media (max-width:520px) { .satir { grid-template-columns:1fr 54px; } .satir label { grid-column:1 / -1; } }
   .not { font-size:12px; color:var(--soluk); }
@@ -60,15 +63,29 @@
     <div class="cerceve"><canvas id="yuz" width="768" height="768"></canvas><div class="durum" id="durum">Hazırlanıyor…</div><div class="yuk" id="yuk">Avatar yükleniyor…</div></div>
     <div class="altyazi" id="altyazi">Ayarları değiştirip "Konuşturarak dene"ye bas.</div>
     <div class="dene">
-      <button class="ana" id="konus">▶ Konuşturarak dene</button>
+      <button class="ana" id="konus">▶ <span id="konusAd">Seçili duyguyla</span> konuştur</button>
+      <button id="hepsi">▶ Tüm duygularla dene</button>
       <button id="dinle">🎙️ Dinlerken nasıl?</button>
       <button id="sus">■ Durdur</button>
     </div>
-    <div class="duygular" id="duygular"></div>
-    <p class="not" style="margin-top:10px">Deneme tarayıcı sesiyle yapılır. Görüntülü derslerdeki doğal seste (Gemini) "Sesteki duygu" ayarı da geçerlidir.</p>
+    <p class="not" style="margin-top:10px">Deneme tarayıcı sesiyle yapılır. Derslerdeki doğal seste (Gemini) her duygunun "doğal ses tarifi" kullanılır.</p>
   </div>
 
   <div>
+    <section>
+      <h2>Duygu seç</h2>
+      <p>Bir duygu seç: Deniz o yüze geçer, aşağıda o duygunun kendi ayarları açılır. "Konuştur" bu duyguyla konuşur.</p>
+      <div class="duygular" id="duygular"></div>
+    </section>
+
+    <section id="duyguBolum">
+      <h2 id="duyguBaslik">Duygu ayarları</h2>
+      <p>Bu ayarlar yalnız seçili duygu için geçerlidir.</p>
+      <div id="g-duygu"></div>
+      <div class="satir satir-metin"><label for="etiket">Doğal ses tarifi<small>Derslerdeki doğal seste (Gemini) bu duygunun nasıl söyleneceği · İngilizce, virgülle</small></label><input type="text" id="etiket" spellcheck="false"></div>
+      <div class="dene" style="margin-top:12px"><button class="ana" id="konus2">▶ Bu duyguyla konuştur</button><button id="duyguSifirla">↺ Bu duyguyu varsayılana döndür</button></div>
+    </section>
+
     <section>
       <h2>Hazır ayarlar</h2>
       <p>Bir başlangıç seç, sonra aşağıdan ince ayar yap.</p>
@@ -80,20 +97,20 @@
     </section>
 
     <section>
-      <h2>Yüz ve jestler</h2>
-      <p>Yüzdeki duyguların ne kadar belirgin olacağı ve baş sallama gibi jestlerin sıklığı.</p>
+      <h2>Genel · Yüz ve jestler</h2>
+      <p>Bütün duygular için: yüzdeki ifadelerin genel gücü ve baş sallama gibi jestlerin sıklığı.</p>
       <div id="g-yuz"></div>
     </section>
 
     <section>
-      <h2>Baş ve göz hareketleri</h2>
+      <h2>Genel · Baş ve göz hareketleri</h2>
       <p>Konuşurken başın sağa-sola dönmesi ve eğilmesi, gözlerin aşağı ya da yana kayması, nefes ve göz kırpma.</p>
       <div id="g-hareket"></div>
     </section>
 
     <section>
-      <h2>Ses</h2>
-      <p>Sesteki duygu: heyecanlıyken daha hızlı ve ince, üzgünken yavaş ve pes. 0'a çekersen ses hep düz okunur.</p>
+      <h2>Genel · Ses</h2>
+      <p>Bütün duygular için sesteki duygunun şiddeti (kendi ayarladığın duygular hariç). 0'a çekersen ses hep düz okunur.</p>
       <div id="g-ses"></div>
     </section>
 
@@ -105,7 +122,7 @@
 <div class="kaydedildi" id="kayit">Kaydedildi ✓</div>
 
 <script src="./viseme-lang.js?v=3"></script>
-<script src="./dh-canli-yuz.js?v=25"></script>
+<script src="./dh-canli-yuz.js?v=26"></script>
 <script>
 (function () {
   "use strict";
@@ -133,53 +150,87 @@
       ["sesPerde", "Ses perdesi", "Tarayıcı sesinde genel incelik/kalınlık", 0.8, 1.2, 0.02, "kat"]
     ]
   };
-  var ayar = Object.assign({}, VARS, DHAvatarAyar.oku());
-  function goster(tip, v) { return tip === "yuzde" ? Math.round(v * 100) + "%" : (v === 0 ? "kapalı" : v.toFixed(2).replace(/0$/, "") + "×"); }
+  var ayar = Object.assign({}, VARS, DHAvatarAyar.oku()); ayar.duygular = Object.assign({}, ayar.duygular || {});
+  function goster(tip, v) { return tip === "yuzde" ? Math.round(v * 100) + "%" : tip === "deger" ? v.toFixed(2) : (v === 0 ? "kapalı" : v.toFixed(2).replace(/0$/, "") + "×"); }
   var kayitZ;
   function kaydet() { DHAvatarAyar.yaz(ayar); var k = document.getElementById("kayit"); k.classList.add("on"); clearTimeout(kayitZ); kayitZ = setTimeout(function () { k.classList.remove("on"); }, 900); }
+  function satir(kut, id, ad, acik, min, max, adim, tip, deger, degis) {
+    var d = document.createElement("div"); d.className = "satir";
+    d.innerHTML = '<label for="r-' + id + '">' + ad + (acik ? '<small>' + acik + '</small>' : '') + '</label><input type="range" id="r-' + id + '" min="' + min + '" max="' + max + '" step="' + adim + '"><output></output>';
+    var r = d.querySelector("input"), o = d.querySelector("output");
+    r.value = deger; o.textContent = goster(tip, +r.value);
+    r.oninput = function () { o.textContent = goster(tip, +r.value); degis(+r.value); kaydet(); };
+    kut.appendChild(d);
+  }
   function ciz() {
     Object.keys(ALAN).forEach(function (g) {
       var kut = document.getElementById(g); kut.innerHTML = "";
-      ALAN[g].forEach(function (a) {
-        var d = document.createElement("div"); d.className = "satir";
-        d.innerHTML = '<label for="r-' + a[0] + '">' + a[1] + (a[2] ? '<small>' + a[2] + '</small>' : '') + '</label><input type="range" id="r-' + a[0] + '" min="' + a[3] + '" max="' + a[4] + '" step="' + a[5] + '"><output></output>';
-        var r = d.querySelector("input"), o = d.querySelector("output");
-        r.value = ayar[a[0]]; o.textContent = goster(a[6], +r.value);
-        r.oninput = function () { ayar[a[0]] = +r.value; o.textContent = goster(a[6], +r.value); kaydet(); };
-        kut.appendChild(d);
-      });
+      ALAN[g].forEach(function (a) { satir(kut, a[0], a[1], a[2], a[3], a[4], a[5], a[6], ayar[a[0]], function (v) { ayar[a[0]] = v; if (a[0] === "sesDuygu") duyguCiz(); }); });
     });
+    duyguCiz();
+  }
+
+  /* ---- duygu bazlı ayarlar ---- */
+  var DUY = [["mutlu", "😊", "Mutlu"], ["heyecanli", "🤩", "Heyecanlı"], ["cesaret", "💪", "Cesaretlendirici"], ["gururlu", "🏆", "Gururlu"], ["merak", "🤔", "Meraklı"], ["dinleyen", "👂", "Dinleyen"],
+    ["sefkatli", "🤗", "Şefkatli"], ["anlayisli", "🙂", "Anlayışlı"], ["dusunceli", "💭", "Düşünceli"], ["saskin", "😮", "Şaşkın"], ["karisik", "😕", "Kafası karışık"], ["uzgun", "😔", "Üzgün"], ["ciddi", "😐", "Ciddi"], ["ofkeli", "😠", "Öfkeli"]];
+  var ORNEK = {
+    mutlu: ["Merhaba! Seni gördüğüme çok sevindim.", "Bugün gerçekten güzel bir gün."],
+    heyecanli: ["Vay, bu gerçekten harika bir haber!", "Hemen başlayalım, çok heyecanlıyım!"],
+    cesaret: ["Harika gidiyorsun, devam et!", "Sen bunu kesinlikle yapabilirsin."],
+    gururlu: ["Seninle gurur duyuyorum.", "Bu gerçekten büyük bir başarı."],
+    merak: ["Peki sen bu konuda ne düşünüyorsun?", "Bana biraz daha anlatır mısın?"],
+    dinleyen: ["Evet, anlıyorum.", "Devam et, seni dinliyorum."],
+    sefkatli: ["Merak etme, birlikte adım adım çözeceğiz.", "Acele etmene hiç gerek yok."],
+    anlayisli: ["Çok yaklaştın, küçük bir şey kaldı.", "Bu hatayı herkes yapar, sorun değil."],
+    dusunceli: ["Hmm, bir düşüneyim...", "Aslında bunun birkaç farklı yolu var."],
+    saskin: ["Gerçekten mi?", "Bunu hiç beklemiyordum!"],
+    karisik: ["Hmm, tam anlayamadım.", "Biraz daha açıklar mısın?"],
+    uzgun: ["Bunu duyduğuma gerçekten üzüldüm.", "Kendini nasıl hissediyorsun?"],
+    ciddi: ["Şimdi önemli bir kurala geçiyoruz.", "Lütfen burayı dikkatle dinle."],
+    ofkeli: ["Bu kabul edilemez!", "Bunu bir daha yapmamalısın."]
+  };
+  var secili = "mutlu";
+  function dAyar() { return ayar.duygular[secili] || (ayar.duygular[secili] = {}); }
+  function duyguCiz() {
+    var ad = DUY.filter(function (d) { return d[0] === secili; })[0];
+    document.getElementById("duyguBaslik").textContent = ad[1] + " " + ad[2] + " · duygu ayarları";
+    document.getElementById("konusAd").textContent = ad[2];
+    var kut = document.getElementById("g-duygu"); kut.innerHTML = "";
+    var ses = DHAvatarAyar.duyguSesi(secili);
+    satir(kut, "d-yuz", "Yüz ifadesi gücü", "Bu duygu yüzde ne kadar belirgin", 0, 2, 0.05, "kat", DHAvatarAyar.duygu(secili, "yuz", 1), function (v) { dAyar().yuz = v; yuz.duygu(secili, 0.9); });
+    satir(kut, "d-bas", "Baş hareketi", "Bu duygudayken başın hareket miktarı", 0, 2, 0.05, "kat", DHAvatarAyar.duygu(secili, "bas", 1), function (v) { dAyar().bas = v; });
+    satir(kut, "d-perde", "Ses perdesi", "1 = normal · büyük = ince · küçük = kalın", 0.5, 1.8, 0.01, "deger", ses[0], function (v) { dAyar().perde = v; });
+    satir(kut, "d-hiz", "Konuşma hızı", "1 = normal · büyük = hızlı · küçük = yavaş", 0.55, 1.8, 0.01, "deger", ses[1], function (v) { dAyar().hiz = v; });
+    var et = document.getElementById("etiket"); et.placeholder = DHAvatarAyar.ETIKET_VARS[secili] || ""; et.value = (ayar.duygular[secili] && ayar.duygular[secili].etiket) || "";
+    et.oninput = function () { var v = et.value.replace(/[\[\]]/g, "").trim(); if (v) dAyar().etiket = v; else delete dAyar().etiket; kaydet(); };
+    document.querySelectorAll("#duygular button").forEach(function (b) { b.classList.toggle("secili", b.dataset.d === secili); b.classList.toggle("ozel", !!(ayar.duygular[b.dataset.d] && Object.keys(ayar.duygular[b.dataset.d]).length)); });
   }
   ciz();
-  document.querySelectorAll("[data-hazir]").forEach(function (b) { b.onclick = function () { ayar = Object.assign({}, HAZIR[b.dataset.hazir]); kaydet(); ciz(); }; });
-  document.getElementById("sifirla").onclick = function () { ayar = Object.assign({}, VARS); kaydet(); ciz(); };
+  document.querySelectorAll("[data-hazir]").forEach(function (b) { b.onclick = function () { var dg = ayar.duygular; ayar = Object.assign({}, HAZIR[b.dataset.hazir], { duygular: dg }); kaydet(); ciz(); }; });
+  document.getElementById("sifirla").onclick = function () { if (!confirm("Bütün genel ve duygu ayarları varsayılana dönsün mü?")) return; ayar = Object.assign({}, VARS, { duygular: {} }); kaydet(); ciz(); };
+  document.getElementById("duyguSifirla").onclick = function () { delete ayar.duygular[secili]; kaydet(); duyguCiz(); };
 
   /* canlı önizleme */
   var yuz = DHCanliYuz.olustur(document.getElementById("yuz"), { yol: "./assets/avatars_v4/teacher/" });
   var dur = document.getElementById("durum"), alt = document.getElementById("altyazi");
-  yuz.hazir.then(function () { document.getElementById("yuk").remove(); dur.textContent = "Hazır"; yuz.profil({ ifade: 0.75, enerji: 0.55, jest: 0.55 }); yuz.duygu("cesaret", 0.5); })
+  yuz.hazir.then(function () { document.getElementById("yuk").remove(); dur.textContent = "Hazır"; yuz.profil({ ifade: 0.75, enerji: 0.55, jest: 0.55 }); yuz.duygu(secili, 0.9); })
     .catch(function (e) { document.getElementById("yuk").textContent = "Avatar açılamadı: " + (e && e.message || e); });
-  var DUY = [["mutlu", "😊 Mutlu"], ["heyecanli", "🤩 Heyecanlı"], ["merak", "🤔 Meraklı"], ["dinleyen", "👂 Dinleyen"], ["sefkatli", "🤗 Şefkatli"], ["dusunceli", "💭 Düşünceli"], ["saskin", "😮 Şaşkın"], ["karisik", "😕 Kafası karışık"], ["uzgun", "😔 Üzgün"], ["ciddi", "😐 Ciddi"], ["ofkeli", "😠 Öfkeli"]];
   var dk = document.getElementById("duygular");
-  DUY.forEach(function (d) { var b = document.createElement("button"); b.className = "kucuk"; b.textContent = d[1]; b.onclick = function () { dk.querySelectorAll("button").forEach(function (x) { x.classList.remove("secili"); }); b.classList.add("secili"); yuz.duygu(d[0], 0.9); dur.textContent = d[1]; }; dk.appendChild(b); });
-  var ORNEK = [
-    { metin: "Merhaba! Seni gördüğüme çok sevindim.", duygu: "mutlu" },
-    { metin: "Vay, bu gerçekten harika bir haber!", duygu: "heyecanli" },
-    { metin: "Peki sen bu konuda ne düşünüyorsun?", duygu: "merak" },
-    { metin: "Şimdi dikkat etmemiz gereken önemli bir kural var.", duygu: "ciddi" },
-    { metin: "Bunu duyduğuma gerçekten üzüldüm.", duygu: "uzgun" },
-    { metin: "Merak etme, birlikte adım adım çözeceğiz.", duygu: "sefkatli" }
-  ];
-  document.getElementById("konus").onclick = function () {
+  DUY.forEach(function (d) { var b = document.createElement("button"); b.className = "kucuk"; b.dataset.d = d[0]; b.textContent = d[1] + " " + d[2];
+    b.onclick = function () { secili = d[0]; yuz.sustur(); yuz.dinle(false); yuz.duygu(secili, 0.9); dur.textContent = d[2]; duyguCiz(); };
+    dk.appendChild(b); });
+  duyguCiz();
+  function konustur(liste) {
     yuz.isit(); yuz.dinle(false); dur.textContent = "Konuşuyor";
-    var liste = ORNEK.map(function (c) { return Object.assign({ dil: "tr", guc: 0.85 }, c); });
-    yuz.konus(liste, { oncesi: function (c) { alt.textContent = c.metin; dur.textContent = (DHCanliYuz.DUYGU_ADI[c.duygu] || "") + " · konuşuyor"; } })
+    yuz.konus(liste.map(function (c) { return Object.assign({ dil: "tr", guc: 0.9 }, c); }), { sonDuygu: secili, oncesi: function (c) { alt.textContent = c.metin; dur.textContent = (DHCanliYuz.DUYGU_ADI[c.duygu] || "") + " · konuşuyor"; } })
       .then(function () { dur.textContent = "Hazır"; });
-  };
+  }
+  document.getElementById("konus").onclick = document.getElementById("konus2").onclick = function () { konustur(ORNEK[secili].map(function (m) { return { metin: m, duygu: secili }; })); };
+  document.getElementById("hepsi").onclick = function () { konustur(["mutlu", "heyecanli", "merak", "ciddi", "uzgun", "sefkatli"].map(function (d) { return { metin: ORNEK[d][0], duygu: d }; })); };
   var dinZ;
   document.getElementById("dinle").onclick = function () {
     yuz.sustur(); clearTimeout(dinZ); yuz.dinle(true); yuz.duygu("dinleyen", 0.6); dur.textContent = "Seni dinliyor…"; alt.textContent = "(8 saniye boyunca sen konuşuyormuşsun gibi dinler)";
-    dinZ = setTimeout(function () { yuz.dinle(false); yuz.duygu("cesaret", 0.5); dur.textContent = "Hazır"; }, 8000);
+    dinZ = setTimeout(function () { yuz.dinle(false); yuz.duygu(secili, 0.9); dur.textContent = "Hazır"; }, 8000);
   };
   document.getElementById("sus").onclick = function () { yuz.sustur(); clearTimeout(dinZ); yuz.dinle(false); dur.textContent = "Hazır"; };
 })();

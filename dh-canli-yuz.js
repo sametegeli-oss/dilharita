@@ -148,6 +148,23 @@
   try { global.addEventListener("storage", function (e) { if (e.key === KA_ANAHTAR) { kaOku(); kaDinleyiciler.forEach(function (f) { try { f(); } catch (er) {} }); } }); } catch (e) {}
   var kaDinleyiciler = [];
   function ka(ad, vars) { var v = KA[ad]; return typeof v === "number" && isFinite(v) ? v : vars; }
+  /* her duygunun varsayılan sesi: [ses perdesi, hız] (tarayıcı sesi) ve doğal ses (Gemini) etiketi */
+  var SES_VARS = { heyecanli: [1.45, 1.3], mutlu: [1.27, 1.15], saskin: [1.45, 1.09], merak: [1.18, 1], cesaret: [1.21, 1.12], gururlu: [1.12, 0.97],
+    uzgun: [0.7, 0.7], sefkatli: [0.91, 0.8], anlayisli: [0.94, 0.88], dusunceli: [0.85, 0.76], ciddi: [0.78, 0.82], ofkeli: [0.73, 1.12], karisik: [1.12, 0.82], dinleyen: [1, 0.92], notr: [1, 1] };
+  var ETIKET_VARS = { mutlu: "cheerful, smiling, upbeat", heyecanli: "very excited, energetic, faster", merak: "curious, rising intonation", saskin: "surprised, astonished",
+    dusunceli: "thoughtful, slower, with small pauses", anlayisli: "gentle, understanding, softer", sefkatli: "warm, caring, soft and slow", uzgun: "sad, empathetic, quiet and slow",
+    ciddi: "serious, firm, slower", ofkeli: "annoyed, stern, sharp", cesaret: "encouraging, upbeat, energetic", gururlu: "proud, warm, beaming", karisik: "puzzled, hesitant", dinleyen: "calm, relaxed" };
+  /* duygu bazlı kullanıcı ayarı: KA.duygular[ad] = { yuz, bas, perde, hiz, etiket } */
+  function kd(duygu, ad, vars) { var o = KA.duygular && KA.duygular[duygu], v = o && o[ad]; return typeof v === "number" && isFinite(v) ? v : (typeof v === "string" && v ? v : vars); }
+  function duyguSesi(duygu) {   /* [perde, hız]: kullanıcı ayarladıysa o, yoksa varsayılan × genel şiddet */
+    var vv = SES_VARS[duygu] || [1, 1], k = ka("sesDuygu", 1);
+    return [kd(duygu, "perde", 1 + (vv[0] - 1) * k), kd(duygu, "hiz", 1 + (vv[1] - 1) * k)];
+  }
+  function duyguEtiketi(duygu) {
+    var e = kd(duygu, "etiket", ETIKET_VARS[duygu] || ""); if (!e) return "";
+    if (KA.duygular && KA.duygular[duygu] && KA.duygular[duygu].etiket) return e;   /* kullanıcının yazdığı tarif olduğu gibi */
+    var k = ka("sesDuygu", 1); return k < 0.6 ? e.split(",")[0] : k > 1.35 && !/^very /.test(e) ? "very " + e : e;
+  }
 
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
@@ -408,7 +425,7 @@
         var yk = 1 - Math.exp(-dt / 0.33), rk = 1 - Math.exp(-dt / 0.7), gk = 1 - Math.exp(-dt / 0.08);   /* baş yavaş, eğiklik daha yavaş, göz hızlı */
         hp.yaw += ((hp.ty + hp.gx * 0.3) * mod * en - hp.yaw) * yk; hp.roll += (hp.tr * mod * en - hp.roll) * rk; hp.pitch += ((hp.tp + hp.gy * 0.12) * mod - hp.pitch) * yk;
         hp.gx += (hp.tgx * (konusma || dinleme ? 1 : 0.6) - hp.gx) * gk; hp.gy += (hp.tgy * (konusma || dinleme ? 1 : 0.6) - hp.gy) * gk;
-        var kBas = ka("basHareket", 1), kBak = ka("bakis", 1);
+        var kBas = ka("basHareket", 1) * kd(durum.duygu || "notr", "bas", 1), kBak = ka("bakis", 1);
         p.yaw += hp.yaw * kBas; p.roll += hp.roll * kBas; p.pitch += hp.pitch * kBas;
         p.yaw = Math.max(-1.1, Math.min(1.1, p.yaw)); p.roll = Math.max(-16, Math.min(16, p.roll));   /* güvenli sınır: görüntü kenarı açılmasın */
         if (konusma) { p.gazeX += hp.gx * kBak; p.gazeY += hp.gy * kBak; }
@@ -544,12 +561,10 @@
         u.rate = hizOrani || 1;
         /* tarayıcı sesinde duygu: ses yüksekliği ve hız hafifçe değişir (ayarlardan kapatılabilir) */
         /* [ses yüksekliği, hız] — belirgin ama doğal sınırlar içinde; bazı tarayıcı sesleri yüksekliği yok sayar, hız her zaman işler */
-        var SD = { heyecanli: [1.45, 1.3], mutlu: [1.27, 1.15], saskin: [1.45, 1.09], merak: [1.18, 1], cesaret: [1.21, 1.12], gururlu: [1.12, 0.97],
-          uzgun: [0.7, 0.7], sefkatli: [0.91, 0.8], anlayisli: [0.94, 0.88], dusunceli: [0.85, 0.76], ciddi: [0.78, 0.82], ofkeli: [0.73, 1.12], karisik: [1.12, 0.82], dinleyen: [1, 0.92] };
         var sdAcik = ka("sesDuygu", 1) > 0.02; try { if (localStorage.getItem("dh-ses-duygu") === "0") sdAcik = false; } catch (e) {}
         if (!sdAcik && ka("sesPerde", 1) !== 1) u.pitch = Math.max(0.5, Math.min(1.8, ka("sesPerde", 1)));
         if (sdAcik) {
-          var kSes = ka("sesDuygu", 1), sd = (c.duygu && SD[c.duygu]) || [1, 1], ty = 1 + (sd[0] - 1) * kSes, hz = 1 + (sd[1] - 1) * kSes;
+          var sd = c.duygu ? duyguSesi(c.duygu) : [1, 1], ty = sd[0], hz = sd[1];
           if (/\?\s*$/.test(c.metin)) ty *= 1.1;                       /* soru: ses yükselir */
           if (/!\s*$/.test(c.metin)) { ty *= 1.08; hz *= 1.08; }         /* ünlem: canlı */
           if (/(\.\.\.|…)\s*$/.test(c.metin)) hz *= 0.92;               /* üç nokta: yavaşlar */
@@ -641,7 +656,7 @@
     var api = {
       DUYGULAR: DUYGULAR, DUYGU_ADI: DUYGU_ADI, JESTLER: JESTLER, JEST_ADI: JEST_ADI, PARAMS: PARAMS,
       duygu: function (ad, guc) {
-        var d = DUYGULAR[ad] || {}, ham0 = guc == null ? 0.8 : guc; guc = ham0 * (0.45 + profil.ifade * 0.95);
+        var d = DUYGULAR[ad] || {}, ham0 = guc == null ? 0.8 : guc; guc = ham0 * (0.45 + profil.ifade * 0.95) * kd(ad, "yuz", 1);
         /* duygunun fotoğrafı varsa yüz ifadesini fotoğraf verir; esnetme yalnız baş duruşu ve bakış için kalır */
         var fotoVar = fotoAcik && fotolar[ad] && ham0 >= 0.45;
         fotoHedef(fotoVar ? ad : "notr");
@@ -782,6 +797,6 @@
 
   global.DHAvatarAyar = { anahtar: KA_ANAHTAR, oku: function () { kaOku(); return Object.assign({}, KA); },
     yaz: function (o) { KA = Object.assign({}, o || {}); try { localStorage.setItem(KA_ANAHTAR, JSON.stringify(KA)); } catch (e) {} kaDinleyiciler.forEach(function (f) { try { f(); } catch (er) {} }); },
-    deger: ka };
+    deger: ka, duygu: kd, duyguSesi: duyguSesi, duyguEtiketi: duyguEtiketi, SES_VARS: SES_VARS, ETIKET_VARS: ETIKET_VARS };
   global.DHCanliYuz = { olustur: olustur, etiketle: etiketle, yapayZekaEtiketle: yapayZekaEtiketle, cumlelereBol: cumlelereBol, DUYGULAR: DUYGULAR, DUYGU_ADI: DUYGU_ADI, JESTLER: JESTLER, JEST_ADI: JEST_ADI };
 })(window);
