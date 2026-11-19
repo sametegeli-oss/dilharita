@@ -528,16 +528,16 @@
         u.rate = hizOrani || 1;
         /* tarayıcı sesinde duygu: ses yüksekliği ve hız hafifçe değişir (ayarlardan kapatılabilir) */
         /* [ses yüksekliği, hız] — belirgin ama doğal sınırlar içinde; bazı tarayıcı sesleri yüksekliği yok sayar, hız her zaman işler */
-        var SD = { heyecanli: [1.3, 1.2], mutlu: [1.18, 1.1], saskin: [1.3, 1.06], merak: [1.12, 1], cesaret: [1.14, 1.08], gururlu: [1.08, 0.98],
-          uzgun: [0.8, 0.8], sefkatli: [0.94, 0.87], anlayisli: [0.96, 0.92], dusunceli: [0.9, 0.84], ciddi: [0.85, 0.88], ofkeli: [0.82, 1.08], karisik: [1.08, 0.88], dinleyen: [1, 0.95] };
+        var SD = { heyecanli: [1.45, 1.3], mutlu: [1.27, 1.15], saskin: [1.45, 1.09], merak: [1.18, 1], cesaret: [1.21, 1.12], gururlu: [1.12, 0.97],
+          uzgun: [0.7, 0.7], sefkatli: [0.91, 0.8], anlayisli: [0.94, 0.88], dusunceli: [0.85, 0.76], ciddi: [0.78, 0.82], ofkeli: [0.73, 1.12], karisik: [1.12, 0.82], dinleyen: [1, 0.92] };
         var sdAcik = true; try { sdAcik = localStorage.getItem("dh-ses-duygu") !== "0"; } catch (e) {}
         if (sdAcik) {
           var sd = (c.duygu && SD[c.duygu]) || [1, 1], ty = sd[0], hz = sd[1];
-          if (/\?\s*$/.test(c.metin)) ty *= 1.07;                       /* soru: ses yükselir */
-          if (/!\s*$/.test(c.metin)) { ty *= 1.05; hz *= 1.05; }         /* ünlem: canlı */
+          if (/\?\s*$/.test(c.metin)) ty *= 1.1;                       /* soru: ses yükselir */
+          if (/!\s*$/.test(c.metin)) { ty *= 1.08; hz *= 1.08; }         /* ünlem: canlı */
           if (/(\.\.\.|…)\s*$/.test(c.metin)) hz *= 0.92;               /* üç nokta: yavaşlar */
           hz *= 0.96 + Math.random() * 0.08;                             /* her cümle aynı tempoda olmasın */
-          u.pitch = Math.max(0.6, Math.min(1.6, ty)); u.rate = Math.max(0.6, Math.min(1.7, (hizOrani || 1) * hz));
+          u.pitch = Math.max(0.5, Math.min(1.8, ty)); u.rate = Math.max(0.55, Math.min(1.8, (hizOrani || 1) * hz));
         }
         u.onboundary = function (ev) {
           if (!ev || typeof ev.charIndex !== "number" || !c.metin.length) return;
