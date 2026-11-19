@@ -112,7 +112,7 @@
      - Ünlüler en önemli: kısa bir ünlü komşu ünsüze yutulmaz, gerekirse komşudan süre alır (harf atlanmaz).
      - Dudak kapanışı (m-b-p, f-v) kısa da olsa görünür kalır (en az ~65 ms).
      - Diğer kısa şekiller (r, n, t, k…) önemli komşuya katılır: saniyede ~6 değişim, titreme yok.
-     - Kısa "a" yarı açık (e) gösterilir: ağız yalnız uzun/vurgulu "a"da sonuna kadar açılır. */
+     - "a" resimleri konuşma ölçüsünde (orta açık) çizildi; ayrıca kısaltılmaz. */
   var ONEM = { a: 3, o: 3, u: 2.9, e: 2.7, i: 2.6, mbp: 2.8, fv: 2.6, sc: 2.2, idle: 1 }, EN_AZ_MS = { mbp: 65, fv: 65 };
   function agizDuzen(d, km) {
     var ALT = 2, alt = km / ALT, i, j, k;
@@ -133,7 +133,7 @@
       for (i = R.length - 1; i > 0; i--) if (R[i].s === R[i - 1].s) { R[i - 1].n += R[i].n; R.splice(i, 1); }
     }
     var o = [];
-    R.forEach(function (x) { var s = x.s === "a" && x.n * alt < 125 ? "e" : x.s; for (k = 0; k < x.n; k++) o.push(s); });
+    R.forEach(function (x) { for (k = 0; k < x.n; k++) o.push(x.s); });
     if (d.ci) { o.ci = []; for (k = 0; k < o.length; k++) o.ci.push(d.ci[Math.min(d.ci.length - 1, Math.floor(k / ALT))]); }
     return { dizi: o, kareMs: alt };
   }
@@ -141,7 +141,7 @@
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
-  var GORSEL_SURUM = "20261119a";
+  var GORSEL_SURUM = "20261119b";
   function yukle(src) { if (src.indexOf("?") < 0 && !/^(data|blob):/.test(src)) src += "?v=" + GORSEL_SURUM; return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -400,7 +400,7 @@
         var sv = sesSeviye(); c.ort = c.ort == null ? sv : c.ort * 0.96 + sv * 0.04;
         if (sv < 0.01) c.sessizMs = (c.sessizMs || 0) + dt * 1000; else if (sv > 0.016) c.sessizMs = 0;
         if (c.sessizMs > 90) sekil = "idle";
-        else if (c.ort && sv < c.ort * 0.75 && (sekil === "a" || sekil === "o")) sekil = sekil === "a" ? "e" : "u";   /* kısık hecede ağız yarı açık */
+        else if (c.ort && sv < c.ort * 0.6 && sekil === "o") sekil = "u";   /* kısık hecede ağız yarı açık */
         if (sv > 0.05 && sv > c.ort * 1.9 && Math.random() < 0.45) vurgula(simdi);
       }
       if (sekil === "th" && !parcalar.th) sekil = "e";
