@@ -108,6 +108,36 @@
     return basitDizi(metin);
   }
 
+  /* Ağız düzeni: harf başına şekil dizisi, en kısa süre kuralıyla yeniden zamanlanır.
+     - Ünlüler en önemli: kısa bir ünlü komşu ünsüze yutulmaz, gerekirse komşudan süre alır (harf atlanmaz).
+     - Dudak kapanışı (m-b-p, f-v) kısa da olsa görünür kalır (en az ~65 ms).
+     - Diğer kısa şekiller (r, n, t, k…) önemli komşuya katılır: saniyede ~6 değişim, titreme yok.
+     - Kısa "a" yarı açık (e) gösterilir: ağız yalnız uzun/vurgulu "a"da sonuna kadar açılır. */
+  var ONEM = { a: 3, o: 3, u: 2.9, e: 2.7, i: 2.6, mbp: 2.8, fv: 2.6, sc: 2.2, idle: 1 }, EN_AZ_MS = { mbp: 65, fv: 65 };
+  function agizDuzen(d, km) {
+    var ALT = 2, alt = km / ALT, i, j, k;
+    var enAz = function (x) { return Math.max(1, Math.round((EN_AZ_MS[x] || 88) / alt)); }, on = function (x) { return ONEM[x] || 1.2; };
+    var R = [];
+    for (i = 0; i < d.length; i++) { if (R.length && R[R.length - 1].s === d[i]) R[R.length - 1].n += ALT; else R.push({ s: d[i], n: ALT }); }
+    for (var tur = 0; tur < 800; tur++) {
+      j = -1;
+      for (i = 0; i < R.length; i++) if (R[i].n < enAz(R[i].s) && (j < 0 || on(R[i].s) < on(R[j].s))) j = i;
+      if (j < 0) break;
+      var r = R[j], kom = [R[j - 1], R[j + 1]].filter(Boolean); if (!kom.length) break;
+      var iyi = kom[0]; if (kom[1] && on(kom[1].s) > on(iyi.s)) iyi = kom[1];
+      if (on(r.s) > on(iyi.s) || (on(r.s) >= 2.6 && on(iyi.s) < 3)) {
+        var gerek = enAz(r.s) - r.n, veren = kom.filter(function (x) { return x.n - gerek >= enAz(x.s); }).sort(function (a, b) { return b.n - a.n; })[0];
+        if (veren) { veren.n -= gerek; r.n += gerek; continue; }
+      }
+      iyi.n += r.n; R.splice(j, 1);
+      for (i = R.length - 1; i > 0; i--) if (R[i].s === R[i - 1].s) { R[i - 1].n += R[i].n; R.splice(i, 1); }
+    }
+    var o = [];
+    R.forEach(function (x) { var s = x.s === "a" && x.n * alt < 125 ? "e" : x.s; for (k = 0; k < x.n; k++) o.push(s); });
+    if (d.ci) { o.ci = []; for (k = 0; k < o.length; k++) o.ci.push(d.ci[Math.min(d.ci.length - 1, Math.floor(k / ALT))]); }
+    return { dizi: o, kareMs: alt };
+  }
+
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
@@ -370,12 +400,13 @@
         var sv = sesSeviye(); c.ort = c.ort == null ? sv : c.ort * 0.96 + sv * 0.04;
         if (sv < 0.01) c.sessizMs = (c.sessizMs || 0) + dt * 1000; else if (sv > 0.016) c.sessizMs = 0;
         if (c.sessizMs > 90) sekil = "idle";
+        else if (c.ort && sv < c.ort * 0.75 && (sekil === "a" || sekil === "o")) sekil = sekil === "a" ? "e" : "u";   /* kısık hecede ağız yarı açık */
         if (sv > 0.05 && sv > c.ort * 1.9 && Math.random() < 0.45) vurgula(simdi);
       }
       if (sekil === "th" && !parcalar.th) sekil = "e";
       if (sekil !== "idle" && !agizParca(sekil)) sekil = "idle";
-      if (sekil !== agiz.b && agiz.t >= 0.75) { agiz.a = agiz.b; agiz.b = sekil; agiz.t = 0; }
-      agiz.t = Math.min(1, agiz.t + dt / 0.075);
+      if (sekil !== agiz.b && agiz.t >= 0.5) { agiz.a = agiz.b; agiz.b = sekil; agiz.t = 0; }
+      agiz.t = Math.min(1, agiz.t + dt / 0.065);
     }
     /* Ses listesi ilk açılışta boş gelebilir: o an seçilen ses yerine varsayılan (çoğu zaman
        internetten gelen, gecikmeli) ses kullanılır ve ağız sesten önce başlardı. */
@@ -409,19 +440,8 @@
         c.kareMs = Math.max(30, toplamMs / Math.max(1, c.dizi.length));
         /* Harf başına bir şekil saniyede 15-20 değişim demek: göz bunu titreme olarak görür.
            Kareleri ~120 ms'lik gruplara topla, her grupta en belirgin şekli göster. */
-        var EN_AZ = 125;
-        if (c.kareMs < EN_AZ && c.dizi.length > 1) {
-          var g = Math.ceil(EN_AZ / c.kareMs), yeni = [], ci = [], ONCELIK = { a: 9, o: 8, e: 7, u: 6, i: 5, mbp: 6, fv: 5, l: 4, th: 4, idle: 0 };
-          for (var q = 0; q < c.dizi.length; q += g) {
-            var parca = c.dizi.slice(q, q + g), bos = parca.filter(function (x) { return x === "idle"; }).length;
-            var sec = "idle";
-            if (bos * 2 <= parca.length) parca.forEach(function (x) { if ((ONCELIK[x] || 3) > (ONCELIK[sec] || 0)) sec = x; });
-            /* aynı şekil arka arkaya gelirse bir öncekiyle birleşir (ağız boşuna kapanıp açılmaz) */
-            yeni.push(sec); ci.push(c.dizi.ci ? c.dizi.ci[q] : 0);
-          }
-          var eski = c.dizi; c.dizi = yeni; if (eski.ci) c.dizi.ci = ci;
-          c.kareMs = c.kareMs * g;
-        }
+        /* ağız şekilleri en kısa süre kuralıyla yeniden zamanlanır (titreme yok, harf atlanmaz, ağız hep açık kalmaz) */
+        if (c.dizi.length > 1) { var dz = agizDuzen(c.dizi, c.kareMs); c.dizi = dz.dizi; c.kareMs = dz.kareMs; }
         c.bas = performance.now(); c.konusuyor = false;
         konusma.cumle = c;
         /* duygu biraz ÖNCE başlar, jest cümleyle birlikte */
