@@ -211,6 +211,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
         <label class="vd-satir">Arka plan <select data-a="fon"><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select></label>
         <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
+        <div class="vd-ses-durum"><p class="vd-ses-durum-y"></p><button type="button" class="vd-ikincil vd-ses-dene" data-a="sesDene">${vi('spk')} Doğal sesi dene</button></div>
         <a class="vd-av-ayar-l" href="./avatar-ayarlari.html" target="_blank" rel="noopener">${vi('gear')} Avatar ayarları: hareketler, ifade, sesteki duygu →</a>
         <label class="vd-anahtar"><input type="checkbox" data-a="sesDuygu"><span></span> Seste duygu <small>Deniz'in sesi yüzündeki duyguya göre değişir: sevinçte neşeli, teselli ederken yumuşak, ciddi konuda ağır.</small></label>
         <label class="vd-satir">Konuşma hızı (tarayıcı sesi) <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
@@ -435,6 +436,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       const lg = q('.vd-lobi .vd-google'); if (lg) lg.hidden = !genelMi() || !window.DHGoogle;
       const ip = q('[data-a=ipucu]'); if (ip) ip.hidden = genelMi();
       const bb = q('.vd-basla'); if (bb) bb.innerHTML = vi('video') + (genelMi() ? ' Sohbeti başlat' : ' Dersi başlat');
+      try { sesDurumCiz(); } catch (e) {}
       const inp = q('.vd-kendi input'); if (inp) inp.placeholder = genelMi() ? 'Ne konuşmak istersin? (isteğe bağlı, ör. hafta sonu planı, bir e-posta taslağı)' : ayar.mod === 'tr' ? 'Çalışmak istediğin konu (ör. Present perfect, sıfatlar, "make" ile "do" farkı)' : 'Ya da kendi konunu yaz (Türkçe ya da İngilizce)';
       q('.vd-yaz input').placeholder = genelMi() ? 'Bir şey sor ya da yaz…' : ayar.mod === 'tr' ? 'Türkçe soru sor ya da İngilizce cümle yaz…' : "İngilizce (ya da Türkçe) yaz ve Enter'a bas";
       if (bildir) {
@@ -470,7 +472,39 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     const sesSec = q('[data-a=ses]');
     sesSec.value = ayar.ses === 'tarayici' ? 'tarayici' : (ayar.sesAdi || 'Charon');
     if (!gemVar) { sesSec.value = 'tarayici'; [...sesSec.options].forEach(o => { if (o.value !== 'tarayici') o.disabled = true; }); q('.vd-ses-not').textContent = 'Doğal ses için Dil Harita\'da bir Gemini anahtarı kayıtlı olmalı.'; }
-    sesSec.onchange = () => { if (sesSec.value === 'tarayici') ayar.ses = 'tarayici'; else { ayar.ses = 'gemini'; ayar.sesAdi = sesSec.value; st.ttsKapali = false; st.ttsHataN = 0; dolgulariHazirla(); } ayarKaydet(); };
+    sesSec.onchange = () => { if (sesSec.value === 'tarayici') ayar.ses = 'tarayici'; else { ayar.ses = 'gemini'; ayar.sesAdi = sesSec.value; st.ttsKapali = false; st.ttsHataN = 0; st.ttsMola = 0; dolgulariHazirla(); } ayarKaydet(); sesDurumCiz(); };
+    /* Doğal ses neden devrede değil? Ayarlarda açıkça yaz. */
+    function sesDurumCiz() {
+      const y = q('.vd-ses-durum-y'); if (!y) return;
+      const d = ttsDurumOku(), kota = kotaOku(), dolu = TTS_MODELLER.filter(m => kota[m]);
+      const saat = t => t ? new Date(t).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '';
+      let t, renk = '';
+      if (genelMi()) t = 'Türkçe genel sohbette hep tarayıcı sesi kullanılır (Gemini ses kotası harcanmaz).';
+      else if (!geminiKeys().length) { t = 'Gemini anahtarı yok; tarayıcı sesi kullanılıyor.'; renk = 'uyari'; }
+      else if (ayar.ses === 'tarayici') t = 'Tarayıcı sesi seçili. Doğal ses için yukarıdan bir "Doğal" ses seç.';
+      else if (dolu.length === TTS_MODELLER.length) { t = 'Bugün bütün doğal ses modellerinin günlük kotası doldu; yarın kendiliğinden açılır. Şimdilik tarayıcı sesi.'; renk = 'uyari'; }
+      else if (st.ttsKapali) { t = 'Bu derste doğal ses kapandı' + (d && d.sonuc === 'hata' ? ': ' + (d.mesaj || d.kod) : '.') + ' "Doğal sesi dene" ile yeniden açabilirsin.'; renk = 'uyari'; }
+      else if ((st.ttsMola || 0) > Date.now()) { t = 'Dakikalık sınır: ' + Math.ceil((st.ttsMola - Date.now()) / 1000) + ' sn tarayıcı sesi, sonra yeniden doğal ses.'; renk = 'uyari'; }
+      else if (d && d.sonuc === 'ok') { t = 'Doğal ses çalışıyor (' + String(d.model || '').replace(/^gemini-/, '') + ', ' + saat(d.at) + ').'; renk = 'iyi'; }
+      else if (d && d.sonuc === 'hata') { t = 'Son deneme (' + saat(d.at) + ') başarısız: ' + (d.mesaj || d.kod) + (d.model ? ' [' + d.model + ']' : ''); renk = 'uyari'; }
+      else t = 'Doğal ses açık; ilk cümlede denenecek.';
+      if (dolu.length && dolu.length < TTS_MODELLER.length) t += ' Bugün kotası dolan: ' + dolu.map(m => m.replace(/^gemini-/, '')).join(', ') + '.';
+      y.textContent = t; y.dataset.r = renk;
+      const b = q('[data-a=sesDene]'); if (b) b.hidden = genelMi() || !geminiKeys().length;
+    }
+    q('[data-a=sesDene]').onclick = async e => {
+      const b = e.currentTarget; b.disabled = true; const y = q('.vd-ses-durum-y'); y.textContent = 'Deneniyor…'; y.dataset.r = '';
+      /* elle denemede bugünkü "dolu" işaretlerini ve ders içi kapatmayı sıfırla: Google gerçekten ne diyor görelim */
+      try { localStorage.removeItem(KOTA_KEY); } catch (er) {}
+      st.ttsKapali = false; st.ttsHataN = 0; st.ttsMola = 0; st.ttsUyari = false; st.ttsMolaUyari = false;
+      if (ayar.ses === 'tarayici') { ayar.ses = 'gemini'; ayar.sesAdi = ayar.sesAdi || 'Charon'; sesSec.value = ayar.sesAdi; ayarKaydet(); }
+      try {
+        const buf = await ttsIstek(turkceMi() ? 'Merhaba! Bu benim doğal sesim.' : 'Hello! This is my natural voice.', ayar.sesAdi || 'Charon');
+        const u = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })); const a = new Audio(u); a.onended = () => URL.revokeObjectURL(u); a.play().catch(() => {});
+      } catch (er) {}
+      b.disabled = false; sesDurumCiz();
+    };
+    setTimeout(sesDurumCiz, 0);   /* TTS_MODELLER aşağıda tanımlı: hemen çağırma */
     q('[data-a=hiz]').value = S.rate; q('[data-a=hiz]').oninput = e => { S.rate = +e.target.value; touchSettings(); };
     /* SOHBET KALİTESİ — modelin cevap vermeden önce ne kadar düşüneceği.
        oto: derslerde hızlı, genel sohbette dengeli. Derin: en doğru ama ilk kelime birkaç saniye gecikir. */
@@ -498,7 +532,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     };
     const uzK = () => ['kisa', 'normal', 'ayrintili'].includes(ayar.uzunluk) ? ayar.uzunluk : 'normal';
     const uzHatir = () => UZ.hatir[uzK()] ? ' Reply length setting: ' + UZ.hatir[uzK()] : '';
-    q('[data-a=ayar]').onclick = () => { q('.vd-ayarlar').hidden = !q('.vd-ayarlar').hidden; if (!q('.vd-ayarlar').hidden) kullanimCiz(); };
+    q('[data-a=ayar]').onclick = () => { q('.vd-ayarlar').hidden = !q('.vd-ayarlar').hidden; if (!q('.vd-ayarlar').hidden) { kullanimCiz(); sesDurumCiz(); } };
     /* ---- yapay zekâ kullanımı: sıradaki modeller + bugünkü token/istek ---- */
     function kullanimCiz() {
       const el = q('.vd-kul-liste'); if (!el) return;
@@ -666,7 +700,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     const TTS_MODELLER = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
     const DOLGU = { en: ['Hmm.', 'Let me see.', 'Okay.'], tr: ['Hmm.', 'Bir bakalım.', 'Peki.'] };
     const ttsHafiza = new Map();
-    function geminiSesAcik() { return !genelMi() && ayar.ses !== 'tarayici' && geminiKeys().length > 0 && !st.ttsKapali; }
+    const ttsKapaliMi = () => st.ttsKapali || (st.ttsMola || 0) > Date.now();   /* dakikalık sınır: kısa mola; günlük kota ya da tekrarlayan hata: ders boyunca kapalı */
+    function geminiSesAcik() { return !genelMi() && ayar.ses !== 'tarayici' && geminiKeys().length > 0 && !ttsKapaliMi(); }
     async function ttsOnbellek(anahtar, ab) {
       /* kısa ve sık kullanılan sesler (dolgu, "acele etme") bir kez üretilir, tarayıcıda saklanır */
       try { const c = await caches.open('dh-tts-v1'); const u = 'https://tts.dilharita.local/' + encodeURIComponent(anahtar);
@@ -679,9 +714,13 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       v.setUint32(24, hz, true); v.setUint32(28, hz * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); y(36, 'data'); v.setUint32(40, bytes.length, true);
       new Uint8Array(v.buffer, 44).set(bytes); return v.buffer;
     }
+    /* doğal ses durumu: ayarlarda gösterilir (neden devreye girmediği) */
+    const TTS_DURUM_KEY = 'dh-tts-durum-v1';
+    function ttsDurumYaz(d) { d.at = Date.now(); try { localStorage.setItem(TTS_DURUM_KEY, JSON.stringify(d)); } catch (e) {} try { sesDurumCiz(); } catch (e) {} }
+    function ttsDurumOku() { try { return JSON.parse(localStorage.getItem(TTS_DURUM_KEY) || 'null'); } catch (e) { return null; } }
     async function ttsIstek(metin, ses) {
       const keys = geminiKeys(); if (!keys.length) throw { code: 'no_gemini' };
-      const kota = kotaOku(); const modeller = TTS_MODELLER.filter(m => !kota[m]); if (!modeller.length) throw { code: 'rate' };
+      const kota = kotaOku(); const modeller = TTS_MODELLER.filter(m => !kota[m]); if (!modeller.length) throw { code: 'rate', gunluk: true };
       let son = null;
       for (const model of modeller) {
         let hepsiDolu = true;
@@ -692,20 +731,26 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
               method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
               body: JSON.stringify({ contents: [{ parts: [{ text: metin }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: ses } } } } }) });
             clearTimeout(z);
-            if (res.status === 429) { son = { code: 'rate' }; let g = false; try { g = /PerDay/i.test(await res.text()); } catch (e) {} if (!g) hepsiDolu = false; continue; }
+            if (res.status === 429) { let g = false, gov = '', bek = 0; try { gov = await res.text(); g = /PerDay/i.test(gov); const rd = gov.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/); if (rd) bek = Math.ceil(+rd[1] * 1000); } catch (e) {}
+              son = { code: 'rate', gunluk: g, bekle: bek, model, status: 429, message: hataMesaji(gov) }; if (!g) hepsiDolu = false; continue; }
             hepsiDolu = false;
-            if (!res.ok) { son = { code: 'http', message: 'Gemini ses ' + res.status }; continue; }
+            if (!res.ok) { let gov = ''; try { gov = await res.text(); } catch (e) {} son = { code: 'http', status: res.status, model, message: 'Gemini ses ' + res.status + (hataMesaji(gov) ? ': ' + hataMesaji(gov) : '') }; continue; }
             const d = await res.json(); const p = (((d.candidates || [])[0] || {}).content || {}).parts || [];
             const ses0 = p.find(x => x.inlineData && x.inlineData.data); if (!ses0) { son = { code: 'empty' }; continue; }
             const bytes = Uint8Array.from(atob(ses0.inlineData.data), ch => ch.charCodeAt(0)); const mime = ses0.inlineData.mimeType || '';
+            ttsDurumYaz({ sonuc: 'ok', model });
             if (/wav/i.test(mime)) return bytes.buffer;
             const hz = +((mime.match(/rate=(\d+)/) || [])[1] || 24000); return pcmWav(bytes, hz);   /* ham PCM gelirse wav'a sar */
-          } catch (e) { hepsiDolu = false; son = e && e.code ? e : { code: 'network' }; }
+          } catch (e) { hepsiDolu = false; son = e && e.code ? e : { code: e && e.name === 'AbortError' ? 'timeout' : 'network', model, message: e && e.name === 'AbortError' ? 'Gemini ses 15 sn içinde cevap vermedi' : 'Bağlantı kurulamadı' }; }
         }
         if (hepsiDolu) kotaDoldu(model);
       }
-      throw son || { code: 'all-failed' };
+      son = son || { code: 'all-failed' };
+      if (son.code === 'rate') { const k2 = kotaOku(); son.gunluk = TTS_MODELLER.every(m => k2[m]); }
+      ttsDurumYaz({ sonuc: 'hata', kod: son.code, gunluk: !!son.gunluk, model: son.model || '', status: son.status || 0, mesaj: son.message || '' });
+      throw son;
     }
+    function hataMesaji(g) { try { const j = JSON.parse(g); return String((j.error && j.error.message) || '').slice(0, 220); } catch (e) { return String(g || '').slice(0, 160); } }
     /* Seste duygu: Gemini ses modelleri köşeli parantezli İngilizce etiketleri okumaz, tonu değiştirir ("[happy] Harika!") */
     const SES_ETIKET = { mutlu: 'cheerful, smiling, upbeat', heyecanli: 'very excited, energetic, faster', merak: 'curious, rising intonation', saskin: 'surprised, astonished',
       dusunceli: 'thoughtful, slower, with small pauses', anlayisli: 'gentle, understanding, softer', sefkatli: 'warm, caring, soft and slow', uzgun: 'sad, empathetic, quiet and slow',
@@ -728,11 +773,16 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       return is;
     }
     function ttsHata(e) {
-      st.ttsHataN = (st.ttsHataN || 0) + 1;
-      if ((e && e.code === 'rate') || st.ttsHataN >= 2) {
-        st.ttsKapali = true;
-        if (!st.ttsUyari) { st.ttsUyari = true; toast(e && e.code === 'rate' ? 'Doğal ses (Gemini) bugünlük kotasını doldurdu; tarayıcı sesiyle devam ediliyor.' : 'Doğal ses şu an üretilemiyor; tarayıcı sesiyle devam ediliyor.'); }
+      if (e && e.code === 'rate' && !e.gunluk) {   /* dakikalık sınır: bir süre tarayıcı sesi, sonra Gemini yeniden denenir */
+        const ms = Math.min(90000, Math.max(20000, e.bekle || 60000)); st.ttsMola = Date.now() + ms;
+        if (!st.ttsMolaUyari) { st.ttsMolaUyari = true; toast(`Doğal ses dakikalık sınıra takıldı; ${Math.round(ms / 1000)} sn tarayıcı sesi, sonra yeniden Gemini.`); }
+        return;
       }
+      st.ttsHataN = (st.ttsHataN || 0) + 1;
+      if ((e && e.code === 'rate') || st.ttsHataN >= 3) {
+        st.ttsKapali = true;
+        if (!st.ttsUyari) { st.ttsUyari = true; toast(e && e.code === 'rate' ? 'Doğal ses (Gemini) bugünlük kotasını doldurdu; tarayıcı sesiyle devam ediliyor.' : 'Doğal ses şu an üretilemiyor (' + ((e && e.message) || (e && e.code) || 'hata') + '); tarayıcı sesiyle devam ediliyor. Ayrıntı: Ayarlar → Öğretmen sesi.'); }
+      } else st.ttsMola = Date.now() + 15000;
     }
     function dolgulariHazirla() { if (!geminiSesAcik()) return; DOLGU[turkceMi() ? 'tr' : 'en'].slice(0, 2).forEach(t => ttsUret(t).catch(() => {})); }
 
@@ -781,7 +831,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       }
       function blokHazirla(parcalar) {
         const tarayici = () => parcalar.flatMap(({ c, i }) => tarayiciParcalari(c, i));
-        if (!gemini || st.ttsKapali) return tarayici();
+        if (!gemini || ttsKapaliMi()) return tarayici();
         let metin = '', ttsMetin = '', sonEtiket = blokSonEtiket; const altlar = [];
         const ekle = (t, cfg) => {
           if (metin) { metin += ' '; ttsMetin += ' '; }
@@ -800,7 +850,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       return {
         ekle(c) {
           bekleyen.push({ c, i: m.liste.indexOf(c) });
-          if (!gemini || st.ttsKapali) { blokGonder(bekleyen); bekleyen = []; return; }
+          if (!gemini || ttsKapaliMi()) { blokGonder(bekleyen); bekleyen = []; return; }
           /* ilk cümle hemen (beklemeyi kısaltır); gerisi tek parça — kota az (her ses isteği günlük haktan düşer).
              Çok uzun açıklamalarda ~320 harfte bir yeni parça (sessiz boşluk uzamasın). */
           const uz = bekleyen.reduce((a, b) => a + b.c.metin.length + (b.c.cev ? b.c.cev.length : 0), 0);
@@ -811,7 +861,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
           if (sesBasladi || m.liste.length || iptal) return;
           const liste = DOLGU[turkceMi() ? 'tr' : 'en']; const t = liste[(st.dolguN = (st.dolguN || 0) + 1) % 2];
           const dil = turkceMi() && t !== 'Hmm.' ? 'tr' : 'en';
-          if (gemini && !st.ttsKapali) {
+          if (gemini && !ttsKapaliMi()) {
             /* yalnız hazır (saklanmış) ses varsa çal; yoksa bir dahaki sefere hazırla */
             Promise.race([ttsUret(t), new Promise((_, r) => setTimeout(() => r('gec'), 250))])
               .then(buf => { if (!sesBasladi && !m.liste.length && !iptal) k.ekle({ metin: t, dil, sesTampon: buf, duygu: 'dusunceli', guc: 0.5, jest: 'dusun' }); }).catch(() => {});

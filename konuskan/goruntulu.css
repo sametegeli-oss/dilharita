@@ -607,3 +607,8 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-av-ayar-l svg { width: 16px; height: 16px; }
 .vd-kaynak { opacity: .9; }
 .vd-devam-not { align-self: center; font-size: .75rem; color: var(--vd-soluk); padding: 4px 12px; border-radius: 99px; border: 1px dashed currentColor; margin: 6px auto; }
+.vd-ses-durum { display: grid; gap: 6px; margin: -2px 0 6px; }
+.vd-ses-durum-y { margin: 0; font-size: .78rem; line-height: 1.4; color: var(--vd-soluk); }
+.vd-ses-durum-y[data-r=iyi] { color: #7fd6a0; }
+.vd-ses-durum-y[data-r=uyari] { color: #f2c14e; }
+.vd-ses-dene { justify-self: start; padding: 6px 12px; font-size: .8rem; }
