@@ -181,7 +181,7 @@
     function kirpParca() { var d = baskin(); return (face.duyguKirpma && kirpSetleri[face.duyguKirpma[d]]) || parcalar.blink; }
     function fotoHedef(ad) { if (!fotolar[ad]) ad = "notr"; if (ad === foto.b) return; foto.a = foto.t >= 0.5 ? foto.b : foto.a; foto.b = ad; foto.t = 0; }
     var konusma = null, dinleme = false;
-    var t0 = performance.now(), sonKirp = t0, sonrakiKirp = t0 + 2500, sakkad = { x: 0, y: 0, t: t0 + 1500 }, bakisKac = t0 + 5000, sonVurgu = 0;
+    var t0 = performance.now(), sonKirp = t0, sonrakiKirp = t0 + 2500, sakkad = { x: 0, y: 0, t: t0 + 1500 }, bakisKac = t0 + 5000, sonVurgu = 0, dinleNod = t0 + 2500, bostaJest = t0 + 9000;
     /* Gerçek ses (Gemini) çalmak için ses bağlamı + çözümleyici: ağız sesin şiddetiyle oynar */
     var sesAc = null, sesAnaliz = null, sesVeri = null;
     function sesBagi() {
@@ -365,7 +365,13 @@
           sakkad.x = (Math.random() < 0.5 ? -1 : 1) * (0.35 + Math.random() * 0.2); sakkad.y = -0.12 - Math.random() * 0.15; sakkad.t = simdi + 450 + Math.random() * 300;
         } else if (simdi > sakkad.t) { sakkad.x = (Math.random() - 0.5) * (konusma ? 0.2 : 0.35); sakkad.y = (Math.random() - 0.5) * 0.2; sakkad.t = simdi + 900 + Math.random() * 2200; }
         p.gazeX += sakkad.x; p.gazeY += sakkad.y;
-        if (dinleme) { p.lean += 0.35; p.roll += 2.5; p.browInnerUp += 0.15; }
+        if (dinleme) {
+          p.lean += 0.35; p.roll += 2.5; p.browInnerUp += 0.15;
+          /* dinlerken ara ara küçük baş onayı ("hı hı"), bazen hafif gülümseme */
+          if (simdi > dinleNod) { dinleNod = simdi + 2600 + Math.random() * 3200; api.jest("onay", 0.22 + Math.random() * 0.18); if (Math.random() < 0.35) api.jest("kas", 0.25); }
+        } else dinleNod = Math.max(dinleNod, simdi + 1200);
+        /* boşta (ne konuşuyor ne dinliyor): uzun aralıklarla küçük doğal hareket */
+        if (!konusma && !dinleme && simdi > bostaJest) { bostaJest = simdi + 7000 + Math.random() * 7000; var r = Math.random(); api.jest(r < 0.4 ? "egil" : r < 0.7 ? "kas" : "onay", 0.25); }
       }
       /* göz kırpma: düzensiz, yarım-kapalı-yarım */
       if (simdi > sonrakiKirp) { sonKirp = simdi; sonrakiKirp = simdi + (konusma ? 1700 + Math.random() * 2600 : 2600 + Math.random() * 3800); }
@@ -376,11 +382,13 @@
       if (foto.t < 1) foto.t = Math.min(1, foto.t + dt / 0.35);
       deforme(p, t);
       dokuCiz();
-      var nefes = hareketAz ? 0 : Math.sin(t * 1.6) * 0.0025;
+      /* nefes: ~4,5 sn'de bir; konuşurken biraz daha sık ve sığ. Hafif büyüme + omuzlarla birlikte yukarı kalkma */
+      var nefesF = Math.sin(t * (konusma ? 1.75 : 1.4)), nefes = hareketAz ? 0 : nefesF * (konusma ? 0.0028 : 0.0042);
+      var nefesY = hareketAz ? 0 : -nefesF * (konusma ? 1.2 : 2.0) * durum.s;
       var zoom = 1 + Math.max(-0.3, p.lean) * 0.06 + nefes;
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.uniform3f(uLoc.cam, durum.merkez[0], durum.merkez[1] + 40 * durum.s, zoom);
+      gl.uniform3f(uLoc.cam, durum.merkez[0], durum.merkez[1] + 40 * durum.s + nefesY, zoom);
       gl.bindBuffer(gl.ARRAY_BUFFER, posBuf); gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
       var aPos = gl.getAttribLocation(prog, "aPos"); gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
@@ -445,6 +453,9 @@
         /* ağız şekilleri en kısa süre kuralıyla yeniden zamanlanır (titreme yok, harf atlanmaz, ağız hep açık kalmaz) */
         if (c.dizi.length > 1) { var dz = agizDuzen(c.dizi, c.kareMs); c.dizi = dz.dizi; c.kareMs = dz.kareMs; }
         c.bas = performance.now(); c.konusuyor = false;
+        /* insanlar cümle başında sık göz kırpar; soru cümlesinin sonunda kaşlar hafif kalkar */
+        if (Math.random() < 0.55) sonrakiKirp = performance.now() + 60 + Math.random() * 120;
+        if (/\?\s*$/.test(c.metin) && !c.jest) setTimeout(function () { if (konusma && konusma.cumle === c) api.jest("kas", 0.45); }, Math.max(250, c.metin.length * (msHarf || 60) * 0.7));
         konusma.cumle = c;
         /* duygu biraz ÖNCE başlar, jest cümleyle birlikte */
         if (c.duygu) api.duygu(c.duygu, c.guc == null ? 0.8 : c.guc);

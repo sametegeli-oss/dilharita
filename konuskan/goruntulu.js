@@ -40,7 +40,10 @@
     spk: '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9a4 4 0 0 1 0 6"/>',
     send: '<path d="M4 12l16-8-6 16-2-6z"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
-    video: '<rect x="2" y="6" width="13" height="12" rx="2.5"/><path d="M15 10.5l6-3.5v10l-6-3.5z"/>'
+    video: '<rect x="2" y="6" width="13" height="12" rx="2.5"/><path d="M15 10.5l6-3.5v10l-6-3.5z"/>',
+    cam: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    flip: '<path d="M4 7h11l-3-3M20 17H9l3 3"/>'
   };
   const vi = (n, c = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${c}>${VI[n]}</svg>`;
   const OGRETMEN = 'Deniz';
@@ -178,10 +181,15 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       </form>
       <div class="vd-ipucu" hidden></div>
       <div class="vd-duzeltme" hidden></div>
+      <div class="vd-kam" hidden><video playsinline muted autoplay></video><div class="vd-kam-flas"></div>
+        <button type="button" class="vd-kam-goster" title="Kameradaki görüntüyü Deniz'e göster">${vi('eye')}<span>Deniz'e göster</span></button>
+        <button type="button" class="vd-kam-cevir" title="Ön / arka kamera" aria-label="Kamerayı çevir">${vi('flip')}</button>
+        <button type="button" class="vd-kam-x" title="Kamerayı kapat" aria-label="Kamerayı kapat">${vi('x')}</button></div>
       <footer class="vd-alt-bar" hidden>
         <button class="vd-b" data-a="kb" title="Yazarak cevap ver">${vi('kb')}<span>Yaz</span></button>
         <button class="vd-b" data-a="ipucu" title="Ne diyebilirim?">${vi('hint')}<span>İpucu</span></button>
         <button class="vd-mic" data-a="mic" aria-label="Mikrofon">${vi('mic')}</button>
+        <button class="vd-b" data-a="kam" title="Kameranı aç / kapat">${vi('cam')}<span>Kamera</span></button>
         <button class="vd-b" data-a="tekrar" title="Son cevabı tekrar et">${vi('again')}<span>Tekrar</span></button>
         <button class="vd-b vd-dur" data-a="dur" title="Sustur (Esc)" hidden>${vi('stop')}<span>Dur</span></button>
         <button class="vd-b vd-bitir" data-a="bitir" title="Dersi bitir">${vi('end')}<span>Bitir</span></button>
@@ -765,7 +773,9 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     const molaAd = (p, key, model) => p.id + ':' + String(key).slice(-6) + ':' + (model || '');
     function molaVer(p, key, ms, model) { const m = molaOku(); const t = Date.now(); Object.keys(m).forEach(k => { if (m[k] < t) delete m[k]; }); m[molaAd(p, key, model)] = t + ms; try { localStorage.setItem(MOLA_KEY, JSON.stringify(m)); } catch (e) {} }
     async function akisliCevap(istem, onSeg) {
-      const SIRA = ['groq', 'gemini', 'cerebras', 'openrouter', 'mistral'];
+      const gorsel = st.gorsel; st.gorsel = null;
+      const SIRA = gorsel ? ['gemini'] : ['groq', 'gemini', 'cerebras', 'openrouter', 'mistral'];
+      st.gorselAktif = gorsel;
       /* Gemini: OpenAI uyumlu uç (akış + araç çağrısı aynı kodla çalışır) — Groq dolunca devreye girer */
       const GEM = { id: 'gemini', keyStore: 'geminiApiKeys', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', model: 'gemini-3.6-flash' };
       const P = (DHProviders.PROVIDERS || []).filter(x => x.id !== 'gemini').concat([GEM]);
@@ -844,7 +854,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       st.aktifModel = { s: p.id, model };   /* cevabın altındaki model etiketi için */
       const msgs = [
         { role: 'system', content: genel ? 'You are a careful, factual general assistant for a Turkish user inside the Konuşkan app. Accuracy matters more than sounding confident. Your final answer is valid JSON only, no markdown fences.' : 'You help a Turkish learner practise English inside the Konuşkan app. Reply with valid JSON only, no markdown fences.' },
-        { role: 'user', content: istem }];
+        { role: 'user', content: st.gorselAktif && p.id === 'gemini' ? [{ type: 'text', text: istem }, { type: 'image_url', image_url: { url: st.gorselAktif } }] : istem }];
       /* genel sohbet + Groq gpt-oss: yerleşik tarayıcı araması (güncel bilgi gerekirse model kendisi arar) */
       const ara = genel && p.id === 'groq' && /gpt-oss/i.test(model);
       /* Google hesabı bağlıysa: takvim / gmail / görevler / kişiler / drive araçları */
@@ -853,9 +863,10 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       /* YouTube video araması: anahtar eklenmişse her modda */
       const ytAr = window.DHYouTube && DHYouTube.hazir() && (p.id === 'groq' || p.id === 'cerebras' || p.id === 'gemini') ? [DHYouTube.ARAC] : [];
       const tools = [...(ara ? [{ type: 'browser_search' }] : []), ...yerel, ...gAraclar, ...ytAr];
-      if (ytAr.length) msgs[1].content += genel
+      const ekle = t => { const c = msgs[1].content; if (Array.isArray(c)) c[0].text += t; else msgs[1].content += t; };
+      if (ytAr.length) ekle(genel
         ? '\n\nYOUTUBE: you have a youtube_ara tool. When the user asks for a video (tarif, nasıl yapılır, müzik değil eğitim videosu, haber özeti vb.) call it once, then briefly mention 1-3 results by number; the app shows them as cards. Never invent video titles.'
-        : '\n\nYOUTUBE: you have a youtube_ara tool. If the learner asks for a video, or wants listening practice, call it ONCE with an English query suited to their level (dil "en", altyazili true, usually sure "kisa"), then briefly recommend 1-2 results by number in your reply (keep the reply JSON format). The app shows the results as cards; after watching, you will discuss the video together. Never invent video titles.';
+        : '\n\nYOUTUBE: you have a youtube_ara tool. If the learner asks for a video, or wants listening practice, call it ONCE with an English query suited to their level (dil "en", altyazili true, usually sure "kisa"), then briefly recommend 1-2 results by number in your reply (keep the reply JSON format). The app shows the results as cards; after watching, you will discuss the video together. Never invent video titles.');
       const SURE = tools.length || kalite === 'derin' ? 30000 : 15000;
       let adet = 0, aradi = false;
       if (kalite === 'derin') setTimeout(() => { if (!adet && !aradi && kok.dataset.d === 'dusunuyor') bilgi('Derin düşünüyor…'); }, 2500);
@@ -1266,7 +1277,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     /* ---- özet ---- */
     async function bitir() {
       if (st.bitti) return; st.bitti = true; st.ozetVar = true;
-      clearInterval(st.saat); yuz.sustur(); if (D.aktif) dinlemeIptal(); onayKapat();
+      clearInterval(st.saat); yuz.sustur(); if (D.aktif) dinlemeIptal(); onayKapat(); kamKapat(true);
       const sure = Math.max(1, Math.round((Date.now() - st.bas) / 60000));
       if (st.turns && !genelMi()) markDone('video');
       kok.classList.remove('vd-derste', 'vd-sohbet-acik');
@@ -1286,14 +1297,80 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (st.turns >= 2 && !aiOff() && !genelMi()) {
         const y = o.querySelector('.vd-yorum'); y.innerHTML = '<span class="vd-spin kucuk"></span>';
         try {
-          const r = await ai(`You were ${OGRETMEN}, an English teacher, in a short video lesson with a Turkish learner (level ${S.level}).\nTranscript:\n${gecmis(30)}\nGive brief feedback in informal Turkish (sen). Return ONLY JSON: {"guclu":"1 sentence: what went well","gelistir":"1 sentence: the one thing to work on next","ifadeler":["3 useful English phrases from or for this conversation"]}`, { deep: true });
+          const r = await ai(`You were ${OGRETMEN}, an English teacher, in a short video lesson with a Turkish learner (level ${S.level}).\nTranscript:\n${gecmis(30)}\nGive brief feedback in informal Turkish (sen). Also pick 5-8 English words or short phrases that came up in this lesson (said by the teacher or the learner, or corrected) and are worth learning at level ${S.level} — skip very basic words (the, is, I, you, good, yes…). Return ONLY JSON: {"guclu":"1 sentence: what went well","gelistir":"1 sentence: the one thing to work on next","ifadeler":["3 useful English phrases from or for this conversation"],"kelimeler":[{"en":"word or phrase (lowercase unless a name)","tr":"short natural Turkish meaning","ornek":"one short English example sentence from or like the lesson"}]}`, { deep: true });
           y.innerHTML = `<div class="vd-geri"><p><b>İyi giden:</b> ${esc(r.guclu)}</p><p><b>Sıradaki adım:</b> ${esc(r.gelistir)}</p>${(r.ifadeler || []).length ? `<div class="vd-ifadeler">${r.ifadeler.map(p => `<button type="button">${vi('spk')} ${esc(p)}</button>`).join('')}</div>` : ''}</div>`;
           y.querySelectorAll('.vd-ifadeler button').forEach((b, i) => b.onclick = () => speak(r.ifadeler[i]));
+          /* dersteki yeni kelimeler → tek tıkla kelime kartlarına (aralıklı tekrar) */
+          const kel = (Array.isArray(r.kelimeler) ? r.kelimeler : []).map(k => ({ en: String(k.en || '').trim().replace(/[.!?]+$/, ''), tr: String(k.tr || '').trim(), ornek: String(k.ornek || '').trim() }))
+            .filter((k, i, A) => k.en && k.tr && k.en.length <= 40 && A.findIndex(x => x.en.toLowerCase() === k.en.toLowerCase()) === i).slice(0, 8);
+          if (kel.length) {
+            const anahtar = k => (/^[A-Z][a-z]/.test(k.en) && !/\s/.test(k.en) ? k.en : k.en.toLowerCase());
+            const kb = document.createElement('div'); kb.className = 'vd-yeni-kel';
+            const ciz = () => {
+              const yeni = kel.filter(k => !S.srs[anahtar(k)]);
+              kb.innerHTML = `<h3>Bu dersin kelimeleri</h3><div class="vd-kel-liste">${kel.map((k, i) => { const var_ = !!S.srs[anahtar(k)];
+                return `<label class="vd-kel-s ${var_ ? 'var' : ''}"><input type="checkbox" data-i="${i}" ${var_ ? 'checked disabled' : 'checked'}><span><b>${esc(k.en)}</b> <em>${esc(k.tr)}</em>${k.ornek ? `<small>${esc(k.ornek)}</small>` : ''}</span><button type="button" data-s="${i}" aria-label="Dinle">${vi('spk')}</button></label>`; }).join('')}</div>
+                ${yeni.length ? `<button type="button" class="vd-basla vd-kel-ekle-hepsi">${vi('plus')} Seçilenleri kartlara ekle</button>` : `<p class="vd-not">${vi('ok')} Hepsi kelime kartlarında; tekrar zamanı gelince sorulacak.</p>`}`;
+              kb.querySelectorAll('[data-s]').forEach(b => b.onclick = e => { e.preventDefault(); speak(kel[+b.dataset.s].en); });
+              const h = kb.querySelector('.vd-kel-ekle-hepsi');
+              if (h) h.onclick = () => {
+                let n = 0;
+                kb.querySelectorAll('input[data-i]:checked:not(:disabled)').forEach(c => { const k = kel[+c.dataset.i], a = anahtar(k); if (!S.srs[a]) { S.srs[a] = { tr: k.tr, o: '', box: 1, due: today(), ex: k.ornek || undefined }; n++; } });
+                if (n) { save(); toast(n + ' kelime kartlarına eklendi.'); }
+                ciz();
+              };
+            };
+            ciz(); y.appendChild(kb);
+          }
         } catch (e) { y.innerHTML = ''; }
       }
     }
 
+    /* ---- kendi kameran: köşede görüntü + "Deniz'e göster" (görüntü yalnız düğmeye basınca gönderilir) ---- */
+    const kam = { akis: null, yon: 'user' };
+    async function kamAc() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('Bu tarayıcı kamerayı desteklemiyor.'); return; }
+      try {
+        kamKapat(true);
+        kam.akis = await navigator.mediaDevices.getUserMedia({ video: { facingMode: kam.yon, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+        const v = q('.vd-kam video'); v.srcObject = kam.akis; v.classList.toggle('ayna', kam.yon === 'user');
+        try { await v.play(); } catch (e) {}
+        q('.vd-kam').hidden = false; q('[data-a=kam]').classList.add('sec');
+        if (!ayar.kamIpucu) { ayar.kamIpucu = true; ayarKaydet(); bilgi('Kameran açık. Deniz yalnız "Deniz\'e göster"e bastığında o anki görüntüyü görür.'); }
+      } catch (e) { toast(e && e.name === 'NotAllowedError' ? 'Kamera izni verilmedi. Adres çubuğundaki simgeden izin verebilirsin.' : 'Kamera açılamadı.'); }
+    }
+    function kamKapat(sessiz) {
+      try { kam.akis && kam.akis.getTracks().forEach(t => t.stop()); } catch (e) {}
+      kam.akis = null; const k = q('.vd-kam'); if (k) k.hidden = true; const b = q('[data-a=kam]'); if (b) b.classList.remove('sec');
+    }
+    q('[data-a=kam]').onclick = () => { if (kam.akis) kamKapat(); else kamAc(); };
+    q('.vd-kam-x').onclick = () => kamKapat();
+    q('.vd-kam-cevir').onclick = () => { kam.yon = kam.yon === 'user' ? 'environment' : 'user'; kamAc(); };
+    q('.vd-kam-goster').onclick = () => {
+      const v = q('.vd-kam video'); if (!kam.akis || !v.videoWidth) return;
+      if (st.busy || st.faz !== 'ders') { toast('Deniz şu an konuşuyor; bitince tekrar dene.'); return; }
+      if (!(JSON.parse(localStorage.getItem('geminiApiKeys') || '[]') || []).filter(Boolean).length) { toast('Görüntüyü görebilmesi için Dil Harita\'da bir Gemini anahtarı kayıtlı olmalı.'); return; }
+      const W = Math.min(1024, v.videoWidth), H = Math.round(W * v.videoHeight / v.videoWidth);
+      const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+      if (kam.yon === 'user') { x.translate(W, 0); x.scale(-1, 1); }   /* önizlemedeki gibi (ayna) */
+      x.drawImage(v, 0, 0, W, H);
+      const veri = c.toDataURL('image/jpeg', 0.82);
+      const f = q('.vd-kam-flas'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+      /* sohbet paneline küçük resim */
+      const d = document.createElement('div'); d.className = 'vd-m sen vd-m-foto'; d.innerHTML = `<div class="vd-m-ic"><img src="${veri}" alt="Deniz'e gösterilen görüntü"></div>`; listeyeEkle(d);
+      st.hist.push({ role: 'user', text: '(kameradan bir görüntü gösterdi)' });
+      st.gorsel = veri;
+      if (D.aktif) dinlemeIptal();
+      if (kok.dataset.d === 'konusuyor') yuz.sustur();
+      sor(null, genelMi()
+        ? 'The user just showed you a photo from their camera (attached image). Look at it carefully. In Turkish, briefly say what you see and help with what they most likely want (read any text, identify the object, explain or advise). If it is unclear what they want, ask in one short question. Do not invent details you cannot see.'
+        : ayar.mod === 'tr'
+          ? 'The learner just showed you a photo from their camera (attached image). In Turkish, say briefly what you see, then teach the English words for 2-3 things in the photo (each as an English example segment with Turkish translation) and ask them to make a sentence with one of them.'
+          : 'The learner just showed you a photo from their camera (attached image). In simple English at their level, say what you see in one or two sentences, mention one useful English word for something in it, and ask them a question about it. Do not invent details you cannot see.');
+    };
+
     panelCleanup = () => {
+      kamKapat(true);
       st.bitti = true; clearInterval(st.saat); clearTimeout(D.sz); cancelAnimationFrame(D.raf);
       if (st.turns && !st.ozetVar && !genelMi()) { try { markDone('video'); } catch (e) {} }
       document.removeEventListener('keydown', klavye);
