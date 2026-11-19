@@ -121,7 +121,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
   }
 
   /* ================= Kurulum ================= */
-  function startVideo() {
+  function startVideo(kayit) {
+    if (kayit && !(kayit.hist && kayit.hist.length)) kayit = null;
     /* ayarları her açılışta yeniden oku (başka sekmede / sayfa yenilenmeden değişmiş olabilir) */
     try { Object.assign(ayar, JSON.parse(localStorage.getItem(AYAR_KEY) || '{}')); } catch (e) {}
     const host = openPanel('Görüntülü ders');
@@ -227,6 +228,33 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     document.documentElement.classList.add('vd-acik');
     const q = s => kok.querySelector(s), qa = s => kok.querySelectorAll(s);
     const st = { faz: 'lobi', konu: null, hist: [], errs: [], turns: 0, okN: 0, xp: 0, busy: false, bas: 0, son: null, done: new Set(), bitti: false, sabir: 0 };
+    /* ---- Sohbetlerim kaydı (konuskan.js: skKaydet). İlk kullanıcı mesajından sonra kaydedilir. ---- */
+    const rec = kayit ? Object.assign({}, kayit) : { id: (window.skYeniId ? skYeniId() : String(Date.now())), v: 1, tur: 'video', created: Date.now() };
+    function kaynakYazi() { return 'Görüntülü ders · ' + (genelMi() ? 'Genel sohbet' : ayar.mod === 'tr' ? 'Türkçe konu: ' + ((st.konu && st.konu.t) || '') : 'İngilizce sohbet' + (st.konu && st.konu.t ? ': ' + st.konu.t : '')); }
+    function vdKaydet(bitti) {
+      if (typeof skKaydet !== 'function' || !st.hist.some(h => h.role === 'user')) return;
+      const k = st.konu ? { id: st.konu.id, t: st.konu.t, s: st.konu.s, persona: st.konu.persona, tasks: st.konu.tasks, scene: st.konu.scene, custom: st.konu.custom } : null;
+      Object.assign(rec, { src: kaynakYazi(), title: 'Görüntülü ders', name: OGRETMEN, level: S.level, mod: ayar.mod, konu: k, cfg: { kind: 'video', tasks: k && k.tasks },
+        hist: st.hist.map(h => h.role === 'user' ? { r: 'u', t: h.text, c: h.check || undefined, sp: h.spoken || undefined }
+          : { r: 'a', t: h.text, tr: h.tr || undefined, m: h.model || undefined, l: (h.liste || []).map(c => ({ metin: c.metin, dil: c.dil, cev: c.cev || undefined })) }),
+        done: [...st.done], turns: st.turns });
+      if (bitti) rec.bitti = true;
+      try { skKaydet(rec); } catch (e) {}
+    }
+    function gecmisiYukle(k) {
+      (k.hist || []).forEach(h => {
+        if (h.r === 'u') {
+          const um = { role: 'user', text: String(h.t || ''), spoken: !!h.sp, check: h.c || null }; st.hist.push(um); ogrenciMesaji(um);
+          if (um.check) { if (!um.check.ok && !um.check.tr) um._err = S.errors.find(e => e.wrong === um.text && e.right === um.check.corrected) || null; ogrenciDurum(um); }
+          else { const kd = um._el && um._el.querySelector('.vd-m-durum'); if (kd) kd.innerHTML = ''; }
+        } else {
+          const l = (h.l && h.l.length ? h.l : [{ metin: String(h.t || ''), dil: k.mod === 'en' ? 'en' : 'tr' }]).map(c => ({ metin: String(c.metin || ''), dil: c.dil || 'en', cev: c.cev || '' }));
+          const m = { role: 'assistant', text: String(h.t || ''), tr: h.tr || '', model: h.m || null, liste: l }; st.hist.push(m); st.son = m; ogretmenMesaji(m);
+        }
+      });
+      st.turns = +k.turns || 0; st.done = new Set(k.done || []);
+      const n = document.createElement('div'); n.className = 'vd-devam-not'; n.textContent = 'Kaldığınız yerden devam' + (window.skZamanYaz ? ' · önceki ders: ' + skZamanYaz(k.at) : ''); listeyeEkle(n);
+    }
 
     /* avatar */
     const v = pickVoice && pickVoice();
@@ -429,6 +457,14 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     q('[data-a=fon]').onchange = e => { ayar.fon = e.target.value; ayarKaydet(); fonUygula(); };
     fonUygula();
     modUygula(false);
+    if (kayit) {   /* kaldığın yerden: aynı mod ve konu, lobide konu seçimi yok */
+      if (kayit.mod) { ayar.mod = kayit.mod; modUygula(false); }
+      if (kayit.konu) st.konu = Object.assign({}, kayit.konu);
+      const md = q('.vd-mod'); if (md) md.hidden = true;
+      const kn = q('.vd-konular'); if (kn) kn.hidden = true; const kf = q('.vd-kendi'); if (kf) kf.hidden = true;
+      const lp = q('.vd-lobi p'); if (lp) lp.textContent = `${kaynakYazi()} · ${window.skZamanYaz ? skZamanYaz(kayit.at) : ''}. ${OGRETMEN} önceki konuşmanızı biliyor; kaldığınız yerden devam eder.`;
+      const bb = q('.vd-basla'); if (bb) bb.innerHTML = vi('video') + (genelMi() ? ' Sohbete devam et' : ' Derse devam et');
+    }
     q('[data-a=trAc]').onchange = e => { ayar.altyaziTR = e.target.checked; ayarKaydet(); q('.vd-tr').hidden = !ayar.altyaziTR; };
     q('.vd-tr').hidden = !ayar.altyaziTR;
     const sesSec = q('[data-a=ses]');
@@ -1000,7 +1036,10 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       st.saat = setInterval(() => { const s = Math.floor((Date.now() - st.bas) / 1000); q('.vd-sure').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); lastAct = Date.now(); }, 1000);
       mikrofonHazirla();   /* izni ders başında iste; ilk cevapta beklemesin */
       dolgulariHazirla();
-      await sor(null);
+      if (kayit && !st.hist.length) {
+        gecmisiYukle(kayit);
+        await sor(null, `The ${genelMi() ? 'conversation' : 'lesson'} was interrupted earlier; the conversation so far is above. Welcome the ${genelMi() ? 'user' : 'learner'} back in ONE short sentence ${ayar.mod === 'en' ? 'in English' : 'IN TURKISH'} and continue exactly where you left off (answer an open question, or take the next small step and ask a question). Do not start a new topic.`);
+      } else await sor(null);
     }
     async function sor(metin, ekTalimat) {
       if (st.busy || st.bitti) return; st.busy = true;
@@ -1045,6 +1084,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         ks.bitir();
         st.busy = false;
         await ks.bitti();
+        vdKaydet();
         sonra(m, false);
       } catch (e) {
         clearTimeout(dusunZ); clearTimeout(dolguZ); st.busy = false; ks.iptal();
@@ -1316,7 +1356,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         <div class="vd-oz-b"><button type="button" class="vd-basla" data-k="yeni">${vi('video')} ${genelMi() ? 'Yeni sohbet' : 'Yeni ders'}</button><button type="button" class="vd-ikincil" data-k="kapat">Kapat</button></div></div>`;
       o.querySelector('[data-k=kapat]').onclick = () => closePanel();
       o.querySelector('[data-k=yeni]').onclick = () => { closePanel(true); startVideo(); };
-      saveNow();
+      saveNow(); vdKaydet(true);
       if (st.turns >= 2 && !aiOff() && !genelMi()) {
         const y = o.querySelector('.vd-yorum'); y.innerHTML = '<span class="vd-spin kucuk"></span>';
         try {
@@ -1393,6 +1433,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     };
 
     panelCleanup = () => {
+      vdKaydet();
       kamKapat(true);
       st.bitti = true; clearInterval(st.saat); clearTimeout(D.sz); cancelAnimationFrame(D.raf);
       if (st.turns && !st.ozetVar && !genelMi()) { try { markDone('video'); } catch (e) {} }

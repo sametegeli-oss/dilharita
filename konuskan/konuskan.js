@@ -747,6 +747,7 @@ function skDoneFn(key){ return ()=>{ if(!S.done[key]) addXP(30); S.done[key]=tod
 function skDevam(id){
   const r=skOku(id); if(!r){ toast('Bu sohbet bulunamadı'); return; }
   if(r.tur==='call') return startCall(r);
+  if(r.tur==='video') return window.startVideo?startVideo(r):toast('Görüntülü ders yüklenemedi, sayfayı yenile.');
   const cfg=Object.assign({},r.cfg||{}); if(cfg.doneKey) cfg.onDone=skDoneFn(cfg.doneKey);
   return startChat(cfg,r);
 }
