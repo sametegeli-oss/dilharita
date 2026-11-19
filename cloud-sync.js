@@ -1249,6 +1249,18 @@
       ready=true;
       fb.onAuth(function(u){
         user=u?{uid:u.uid}:null;
+        /* Bu tarayıcıdaki yerel verinin sahibi (hesap-yedek.js). Sahip yoksa giren kişi sahiplenir.
+           Sahip başka biriyse HİÇBİR ŞEY eşitlenmez: veri karışmasın diye giriş sayfasına gidilir,
+           orada önceki hesabın verisi kenara kaldırılır. */
+        if(user){
+          var sahip=""; try{ sahip=localStorage.getItem("dh-yerel-sahip")||""; }catch(e){}
+          if(!sahip){ try{ localStorage.setItem("dh-yerel-sahip",user.uid); if(u.email) localStorage.setItem("dh-yerel-sahip-eposta",u.email); }catch(e){} }
+          else if(sahip!==user.uid){
+            user=null; authResolved=true; updateBadge();
+            if(!/login\.html$/i.test(location.pathname)){ try{ location.replace("./login.html?next="+encodeURIComponent((location.pathname.split("/").pop()||"index.html")+location.hash)); }catch(e){} }
+            return;
+          }
+        }
         authResolved=true;
         updateBadge();
         if(user){
@@ -1651,6 +1663,14 @@
   setTimeout(function(){ takeSnapshot(); }, 4000);
   if(document.readyState!=="loading") updateBadge(); else document.addEventListener("DOMContentLoaded",function(){ updateBadge(); });
 
+  /* hesap değişiminden sonra bir kez bilgi ver (login.html → hesap-yedek.js) */
+  (function(){ try{ var h=JSON.parse(sessionStorage.getItem("dh-hesap-degisti")||"null"); if(!h) return; sessionStorage.removeItem("dh-hesap-degisti");
+    var goster=function(){ var d=document.createElement("div"); d.setAttribute("role","status");
+      d.style.cssText="position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:2147483000;max-width:min(92vw,520px);padding:12px 16px;border-radius:12px;background:#10233a;color:#e5f3ff;border:1px solid #38bdf8;box-shadow:0 8px 28px #0008;font:600 13px/1.4 system-ui,sans-serif;cursor:pointer";
+      d.textContent=h.geriYuklendi?"Hesap değişti: önceki kullanıcının verileri bu cihazda kenara kaldırıldı, senin verilerin geri yüklendi.":"Hesap değişti: önceki kullanıcının verileri bu cihazda kenara kaldırıldı; verilerin buluttan yükleniyor.";
+      d.onclick=function(){d.remove();}; document.body.appendChild(d); setTimeout(function(){ try{d.remove();}catch(e){} },9000); };
+    if(document.body) goster(); else document.addEventListener("DOMContentLoaded",goster);
+  }catch(e){} })();
   window.DHCloudSync = {
     push: pushNow, sync: initialSync, pull: fullSync, fullSync: fullSync,
     /* Otomatik tetikleyiciler. false yapılırsa yalnızca elle çağrılan

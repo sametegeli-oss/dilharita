@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="tr">
 <head>
-<script src="./idb-uyum.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
+<script src="./idb-uyum.js?v=1"></script><script src="./hesap-yedek.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0b1120">
@@ -178,6 +178,18 @@
     }
     if (user && !redirected){
       redirected = true;
+      /* Bu tarayıcıdaki veri başka bir hesaba aitse önce kenara kaldır (hesap-yedek.js);
+         başarısız olursa hiçbir şey silinmez ve içeri alınmaz (veriler karışmasın). */
+      if (window.DHHesapYedek){
+        try{ const hy = await DHHesapYedek.hazirla(user.uid, user.email || "");
+          if (hy && hy.degisti) setMsg(hy.geriYuklendi ? "Hesap değişti: önceki kullanıcının verileri bu cihazda kenara kaldırıldı, senin verilerin geri yüklendi." : "Hesap değişti: önceki kullanıcının verileri bu cihazda kenara kaldırıldı.", "ok");
+          else DHHesapYedek.epostaYaz(user.email || "");
+        }catch(e){
+          redirected = false; try{ await signOut(auth); }catch(_){}
+          setMsg("Bu cihazdaki önceki hesabın verileri kenara kaldırılamadı; karışmasın diye giriş durduruldu. " + ((e && e.message) || ""), "bad");
+          return;
+        }
+      }
       try{ sessionStorage.setItem("dh_session_ok","1"); }catch(e){}
       // Yerel işaret bırak: internet olmasa bile auth-guard bu kişiyi içeri alsın.
       // Önce çerez (kotadan bağımsız), sonra her yazma AYRI denenir: biri
