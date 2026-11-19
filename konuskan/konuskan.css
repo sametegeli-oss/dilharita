@@ -229,3 +229,9 @@ main{overflow:auto;padding:28px clamp(16px,4vw,48px) 90px}
   #printArea{display:block!important}
   #printArea img{width:100%;height:auto;display:block}
 }
+/* Seviye rozeti, sohbet kaynağı ve yapay zekâ modeli etiketleri */
+.lv-badge{white-space:nowrap}
+.kk-src{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.kk-top-model{font-weight:600;white-space:nowrap}
+.kk-model{display:block;font-size:.7rem;opacity:.75;margin-top:6px}
+.bub .kk-model{color:inherit}

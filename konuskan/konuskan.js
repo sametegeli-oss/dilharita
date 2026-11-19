@@ -16,6 +16,9 @@ let DATA = {course:{A1:[],A2:[],B1:[],B2:[],C1:[]}, words:{A1:[],A2:[],B1:[],B2:
 const STORE_KEY = 'dh-konuskan-v1';
 const LEVELS = ['A1','A2','B1','B2','C1'];
 const LEVEL_NAMES = {A1:'Başlangıç',A2:'Temel',B1:'Orta',B2:'Orta üstü',C1:'İleri'};
+/* Seçili seviye (S.level) bütün modlarda dil seviyesidir; rozetle her yerde görünür */
+const lvText = () => S.level+' · '+(LEVEL_NAMES[S.level]||'');
+const lvBadge = (extra='') => `<span class="pill acc lv-badge" title="Seçili seviye: ana sayfadan değiştirebilirsin" ${extra}>${lvText()}</span>`;
 const $ = (s,el=document)=>el.querySelector(s);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const dayKey = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -60,10 +63,10 @@ const ic = (n,extra='') => `<svg viewBox="0 0 24 24" fill="none" stroke="current
 
 const MODES = [
   {id:'video', t:'Görüntülü ders', d:'Canlı öğretmenle yüz yüze, tam ekran konuş; duygularıyla tepki verir.', icon:'video', c:'#e8a33d', tag:'Yeni'},
-  {id:'chat', t:'Sohbet', d:'Yapay zekâ öğretmenle serbest konuş, her mesajın düzeltilsin.', icon:'chat', c:'#f2c14e', tag:'Tüm seviyeler'},
-  {id:'sentence', t:'Cümle modu', d:'Kurs cümlelerini parçalardan kur, sesli söyle.', icon:'sentence', c:'#9fb4f2', tag:'Başlangıç'},
-  {id:'word', t:'Kelime modu', d:'Kelime destelerini öğren ve test et.', icon:'word', c:'#8fd6a0', tag:'Başlangıç'},
-  {id:'dialogue', t:'Diyalog modu', d:'Hazır diyaloglarda B rolünü sen oyna.', icon:'dialogue', c:'#ef8f7f', tag:'Başlangıç'},
+  {id:'chat', t:'Sohbet', d:'Yapay zekâ öğretmenle serbest konuş, her mesajın düzeltilsin.', icon:'chat', c:'#f2c14e', tag:'LV'},
+  {id:'sentence', t:'Cümle modu', d:'Kurs cümlelerini parçalardan kur, sesli söyle.', icon:'sentence', c:'#9fb4f2', tag:'LV'},
+  {id:'word', t:'Kelime modu', d:'Kelime destelerini öğren ve test et.', icon:'word', c:'#8fd6a0', tag:'LV'},
+  {id:'dialogue', t:'Diyalog modu', d:'Hazır diyaloglarda B rolünü sen oyna.', icon:'dialogue', c:'#ef8f7f', tag:'LV'},
   {id:'flash', t:'Kartlar', d:'Aralıklı tekrar ile kelimeleri kalıcı hale getir.', icon:'flash', c:'#f2c14e'},
   {id:'podcast', t:'Hikâyeler', d:'Seviyene göre yazılmış hikâyeleri dinle ve oku.', icon:'pod', c:'#9fb4f2'},
   {id:'call', t:'Arama modu', d:'Sadece sesle konuş, ekrana bakmadan pratik yap.', icon:'phone', c:'#8fd6a0'},
@@ -286,6 +289,12 @@ function parseJSON(t){
   if(a>=0&&b>a){ try{ return JSON.parse(t.slice(a,b+1)); }catch(e){} }
   throw {code:'bad_json',message:'Yapay zekâ cevabı okunamadı'};
 }
+/* Son cevabı veren yapay zekâ modeli (sohbetlerde etiket olarak gösterilir) */
+let AI_SON=null;
+const SAG_AD={groq:'Groq',gemini:'Gemini',cerebras:'Cerebras',openrouter:'OpenRouter',mistral:'Mistral',nvidia:'NVIDIA'};
+function modelAdi(i){ if(!i) return ''; const m=String(i.model||'').replace(/^(openai|qwen|meta-llama|google)\//,'').replace(/^gemini-/,''); return (SAG_AD[i.provider]||i.label||i.provider||'YZ')+(m?' · '+m:'')+(i.cached?' · önbellek':''); }
+function sonModel(){ try{ const i=window.DHProviders&&DHProviders.lastResponseInfo; if(i) AI_SON=i; }catch(e){} return modelAdi(AI_SON); }
+const modelEtiket = t => t?`<span class="small muted kk-model" title="Bu cevabı veren yapay zekâ modeli">🤖 ${esc(t)}</span>`:'';
 async function ai(input,{json=true,deep=false,images=null}={}){
   if(aiOff()) throw {code:'no_ai'};
   if(images&&images.length) return geminiVision(input,images[0],json);
@@ -319,6 +328,7 @@ async function geminiVision(prompt,blob,json){
       const d=await res.json(); const parts=(d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[];
       const txt=parts.filter(p=>typeof p.text==='string'&&!p.thought).map(p=>p.text).join('');
       if(!txt){ last={code:'empty'}; continue; }
+      AI_SON={provider:'gemini',model}; try{ DHProviders.lastResponseInfo=AI_SON; }catch(e){}
       return json?parseJSON(txt):txt.trim();
     }catch(e){ last=e&&e.code?e:{code:'network'}; }
   }
@@ -370,7 +380,7 @@ function capNotice(){
   return `<div class="notice small">Bu cihazda Dil Harita yapay zekâ anahtarı yok. Sohbet ve düzeltmeler Gemini kopyala-yapıştır yöntemiyle çalışır. Anahtar eklemek için Dil Harita'nın Kitaplık menüsündeki yapay zekâ ayarlarını kullan. Kelime, cümle ve kart modları anahtarsız çalışır.</div>`;
 }
 function modeCard(m){
-  return `<button class="mode" data-mode="${m.id}"><div class="art" style="background:${m.c}">${m.tag?`<span class="tag">${m.tag}</span>`:''}<span style="color:#1d2621">${ic(m.icon)}</span></div><div class="body"><h3>${m.t}</h3><span class="muted small">${m.d}</span></div></button>`;
+  return `<button class="mode" data-mode="${m.id}"><div class="art" style="background:${m.c}">${m.tag?`<span class="tag">${m.tag==='LV'?S.level+' · '+LEVEL_NAMES[S.level]:m.tag}</span>`:''}<span style="color:#1d2621">${ic(m.icon)}</span></div><div class="body"><h3>${m.t}</h3><span class="muted small">${m.d}</span></div></button>`;
 }
 function bindModes(el){ el.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>openMode(b.dataset.mode)); }
 function sideSummary(){
@@ -567,7 +577,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('#panel').hidde
 function openMode(id){
   switch(id){
     case 'video': return window.startVideo ? window.startVideo() : toast('Görüntülü ders yüklenemedi, sayfayı yenile.');
-    case 'chat': return startChat({kind:'chat',title:'Sohbet',name:'Deniz',color:'#0f7b6c',persona:'Deniz, a warm and encouraging English teacher who chats about the learner\'s daily life'+(S.goal?` and their goal (${S.goal})`:'')});
+    case 'chat': return startChat({kind:'chat',title:'Sohbet',src:'Sohbet modu',name:'Deniz',color:'#0f7b6c',persona:'Deniz, a warm and encouraging English teacher who chats about the learner\'s daily life'+(S.goal?` and their goal (${S.goal})`:'')});
     case 'roleplay': return pickList('Rol yapma','Bir senaryo seç. Her senaryoda tamamlanacak görevler var.',ROLEPLAYS.map(r=>({t:r.t,s:r.tasks.join(' · '),icon:'role',go:()=>startRoleplay(r)})));
     case 'characters': return pickList('Karakterler','Klasik romanların kahramanlarından biriyle konuş.',CHARACTERS.map(c=>({t:c.t,s:c.sub,icon:'mask',go:()=>startCharacter(c)})));
     case 'debate': return pickList('Münazara','Bir konu seç, sonra tarafını belirle. Yapay zekâ karşı tarafı savunur.',DEBATES.map(d=>({t:d,s:'',icon:'debate',go:()=>startDebatePick(d)})),startDebatePick);
@@ -648,12 +658,12 @@ function scoreButton(user,target,score,extra){
 }
 
 /* ================= Sohbet motoru ================= */
-function startRoleplay(r,extra){ startChat({kind:'roleplay',title:'Rol yapma · '+r.t,name:r.t,color:'#c4733a',persona:r.r,tasks:r.tasks,scene:r.t,...(extra||{})}); }
-function startCharacter(c){ startChat({kind:'characters',title:'Karakter · '+c.t,name:c.t,color:c.c,persona:c.r+' Stay in character, but keep your English at the learner\'s level.'}); }
+function startRoleplay(r,extra){ startChat({kind:'roleplay',title:'Rol yapma · '+r.t,src:'Rol yapma · '+r.t,name:r.t,color:'#c4733a',persona:r.r,tasks:r.tasks,scene:r.t,...(extra||{})}); }
+function startCharacter(c){ startChat({kind:'characters',title:'Karakter · '+c.t,src:'Karakterler · '+c.t,name:c.t,color:c.c,persona:c.r+' Stay in character, but keep your English at the learner\'s level.'}); }
 function startDebatePick(topic){
   const b=openPanel('Münazara');
   b.innerHTML=`<div class="inner"><span class="eyebrow">Konu</span><h2>${esc(topic)}</h2><p class="muted">Hangi tarafı savunacaksın? Yapay zekâ karşı tarafı savunur. 6 tur sonra puanını alırsın.</p><div class="row"><button class="btn primary" id="dFor">Lehinde (for)</button><button class="btn" id="dAg">Aleyhinde (against)</button></div></div>`;
-  const go=side=>startChat({kind:'debate',title:'Münazara',name:'Rakip',color:'#3b5b88',topic,side,maxTurns:6,
+  const go=side=>startChat({kind:'debate',title:'Münazara',src:'Münazara',name:'Rakip',color:'#3b5b88',topic,side,maxTurns:6,
     persona:`a skilled but friendly debate opponent. The motion is: "${topic}". The learner argues ${side.toUpperCase()} the motion; you argue ${side==='for'?'AGAINST':'FOR'} it. Give one clear counter-argument per turn and challenge the learner's last point with a question`});
   $('#dFor',b).onclick=()=>go('for'); $('#dAg',b).onclick=()=>go('against');
 }
@@ -664,7 +674,7 @@ function startChat(cfg){
   b.style.padding='12px';
   b.innerHTML=`<div class="chat" style="height:100%">
     <div class="chat-main">
-      <div class="chat-top"><div class="ava" style="background:${cfg.color}">${esc(cfg.name[0])}</div><div class="grow" style="flex:1;min-width:140px"><b>${esc(cfg.name)}</b><div class="small muted">${cfg.kind==='debate'?`Sen: ${cfg.side==='for'?'lehinde':'aleyhinde'} · ${esc(cfg.topic)}`:(cfg.level||S.level)+' seviyesine göre konuşuyor'}</div></div>
+      <div class="chat-top"><div class="ava" style="background:${cfg.color}">${esc(cfg.name[0])}</div><div class="grow" style="flex:1;min-width:140px"><b>${esc(cfg.name)}</b><div class="row" style="gap:6px;flex-wrap:wrap;margin:3px 0">${lvBadge()}<span class="pill kk-src" title="Bu sohbetin açıldığı yer">${esc(cfg.src||MODE_TR[cfg.kind]||'Sohbet')}</span><span class="pill kk-top-model hide" id="topModel" title="Cevapları veren yapay zekâ modeli"></span></div><div class="small muted">${cfg.kind==='debate'?`Sen: ${cfg.side==='for'?'lehinde':'aleyhinde'} · ${esc(cfg.topic)}`:'seviyene göre konuşuyor'}</div></div>
         <select id="tierQ" class="small" aria-label="Model" title="Yapay zekâ modeli" style="border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:4px 8px">${TIERS.map(([v,t])=>`<option value="${v}" ${S.tierChat===v?'selected':''}>${t}</option>`).join('')}</select>
         <label class="small row" style="gap:6px"><input type="checkbox" id="autoSpeak" ${cfg.voiceFirst?'checked':''}> Sesli oku</label></div>
       <div class="msgs" id="msgs" aria-live="polite"></div>
@@ -697,7 +707,7 @@ function startChat(cfg){
       row.innerHTML=`<div class="bub">${esc(m.text)}</div>`; row.prepend(chk); m._chk=chk;
       chk.onclick=()=>showFb(m);
     } else {
-      row.innerHTML=`<div class="bub">${esc(m.text)}${m.tr?`<span class="tr ${S.showTr?'':'hide'}">${esc(m.tr)}</span>`:''}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Dinle">${ic('speaker')}</button>${m.tr?`<button class="icon-btn" data-a="tr" aria-label="Çeviri">${ic('translate')}</button>`:''}</div>`;
+      row.innerHTML=`<div class="bub">${esc(m.text)}${m.tr?`<span class="tr ${S.showTr?'':'hide'}">${esc(m.tr)}</span>`:''}${modelEtiket(m.model)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Dinle">${ic('speaker')}</button>${m.tr?`<button class="icon-btn" data-a="tr" aria-label="Çeviri">${ic('translate')}</button>`:''}</div>`;
       $('[data-a=sp]',row).onclick=()=>speak(m.text);
       const tb=$('[data-a=tr]',row); if(tb) tb.onclick=()=>$('.tr',row).classList.toggle('hide');
     }
@@ -720,7 +730,7 @@ function startChat(cfg){
   }
   function transcript(n=14){ return st.hist.slice(-n).map(h=>(h.role==='user'?'Learner: ':'You: ')+h.text).join('\n'); }
   function sysPrompt(){
-    const LV=cfg.level||S.level;
+    const LV=S.level;
     let s=`You are ${cfg.persona}. You are talking with a Turkish native speaker who is learning English at CEFR level ${LV}. ${LEVEL_GUIDE[LV]}
 Rules: answer in English only, 1-3 short sentences, natural and friendly, end with one follow-up question that keeps the conversation going. No emojis. Never break role. Do not correct the learner inside your reply (corrections are shown separately).`;
     if(cfg.tasks) s+=`\nScene: ${cfg.scene}. Over the whole conversation the learner should complete these tasks: ${cfg.tasks.map((t,i)=>(i+1)+') '+t).join(' ')}. Create natural chances for them; never list them.`;
@@ -737,7 +747,7 @@ Rules: answer in English only, 1-3 short sentences, natural and friendly, end wi
     }catch(e){ typing.remove(); msgs.insertAdjacentHTML('beforeend',`<div class="notice small">${esc(aiErr(e))}</div>`); }
   }
   function bubbleTyping(){ const r=document.createElement('div'); r.className='msg ai'; r.innerHTML='<div class="bub"><span class="typing"><i></i><i></i><i></i></span></div>'; msgs.appendChild(r); msgs.scrollTop=msgs.scrollHeight; return r; }
-  function addAI(text,tr){ if(!text) return; const m={role:'assistant',text,tr}; st.hist.push(m); bubble(m); if($('#autoSpeak',b).checked) speak(text); }
+  function addAI(text,tr){ if(!text) return; const m={role:'assistant',text,tr,model:sonModel()}; const tm=$('#topModel',b); if(tm&&m.model){ tm.textContent='🤖 '+m.model; tm.classList.remove('hide'); } st.hist.push(m); bubble(m); if($('#autoSpeak',b).checked) speak(text); }
   async function send(extraInstr){
     const text=inp.value.trim(); if((!text&&!extraInstr)||st.busy) return;
     if(aiOff()){ toast(aiErr({code:'no_ai'})); return; }
@@ -807,7 +817,7 @@ function startCall(){
   const c={persona:'Deniz, a friendly English tutor on a phone call. Keep every reply to 1-2 short spoken sentences and end with a question.'};
   const st={hist:[],busy:false,errs:[],heard:''};
   const b=openPanel('Arama modu');
-  b.innerHTML=`<div class="inner call"><div class="ring" id="ring">D</div><div><h2>Deniz</h2><p class="muted" id="cst" style="margin:4px 0 0">Aramayı başlatmak için düğmeye bas.</p></div>
+  b.innerHTML=`<div class="inner call"><div class="ring" id="ring">D</div><div><h2>Deniz</h2><div class="row" style="gap:6px;justify-content:center;flex-wrap:wrap;margin:4px 0">${lvBadge()}<span class="pill kk-src">Arama modu</span><span class="pill hide" id="cmodel"></span></div><p class="muted" id="cst" style="margin:4px 0 0">Aramayı başlatmak için düğmeye bas.</p></div>
     <div class="row" id="ctl"></div><p class="small muted" id="heard" style="min-height:1.5em"></p>
     <details style="width:100%;text-align:left"><summary class="small muted">Metni göster</summary><div class="list small" id="tx" style="margin-top:10px"></div></details>
     <div id="cerrs" style="width:100%;text-align:left"></div></div>`;
@@ -827,7 +837,7 @@ function startCall(){
       const tr=st.hist.slice(-12).map(h=>(h.role==='user'?'Learner: ':'You: ')+h.text).join('\n');
       const r=await ai(`You are ${c.persona} The learner is a Turkish speaker at CEFR ${S.level}. ${LEVEL_GUIDE[S.level]} No emojis.${learnerContext()}\n\n${tr?'Call so far:\n'+tr+'\n\n':''}${text?'Check the learner\'s last line (it came from speech recognition: flag ONLY real grammar or word-choice errors; never flag punctuation, capitalisation, stutters, repeated words or misheard names). Then reply.':'Greet the learner and ask how their day is going.'} Return ONLY JSON: {"check":{"ok":true,"corrected":"","why_tr":"Turkish, informal"},"reply":"..."}`);
       if(text&&r.check){ S.stats.msgs++; if(r.check.ok||!r.check.corrected||trivialDiff(text,r.check.corrected)){ S.stats.ok++; addXP(10);} else { addXP(5); st.errs.push(addError({wrong:text,right:r.check.corrected,why:r.check.why_tr,tag:'',mode:'call',d:today()})); } }
-      st.hist.push({role:'assistant',text:r.reply}); log('Deniz',r.reply);
+      st.hist.push({role:'assistant',text:r.reply}); const md=sonModel(); log('Deniz',r.reply+(md?'  [🤖 '+md+']':'')); { const cm=$('#cmodel',b); if(cm&&md){ cm.textContent='🤖 '+md; cm.classList.remove('hide'); } }
       cst.textContent='Deniz konuşuyor…'; ring.classList.add('speaking');
       await speak(r.reply);
       ring.classList.remove('speaking'); cst.textContent=dict?'Senin sıran: mikrofona bas, konuş, bitince tekrar bas.':'Mikrofon yok.';
@@ -844,7 +854,7 @@ function startWordPicker(){
   const b=openPanel('Kelime modu');
   const draw=L=>{
     const decks=levelDecks(L);
-    b.innerHTML=`<div class="inner"><p class="muted" style="margin:0">Her destede 12 kelime var: önce öğren, sonra anlamını seç, en son yaz. Kelimeler Dil Harita sözlüğünden.</p><div class="tabs" id="lt">${LEVELS.map(x=>`<button class="${x===L?'on':''}" data-l="${x}">${x}</button>`).join('')}</div><div class="grid" id="dk"></div></div>`;
+    b.innerHTML=`<div class="inner"><p class="muted" style="margin:0">Her destede 12 kelime var: önce öğren, sonra anlamını seç, en son yaz. Kelimeler Dil Harita sözlüğünden.</p><div class="tabs" id="lt">${LEVELS.map(x=>`<button class="${x===L?'on':''}" data-l="${x}"${x===S.level?' title="Seçili seviyen"':''}>${x}${x===S.level?' · seviyen':''}</button>`).join('')}</div><div class="grid" id="dk"></div></div>`;
     $('#lt',b).querySelectorAll('button').forEach(x=>x.onclick=()=>draw(x.dataset.l));
     const dk=$('#dk',b);
     decks.forEach((d,i)=>{ const learned=d.filter(w=>S.srs[w[0]]).length; const x=document.createElement('button'); x.className='item'; x.style.flexDirection='column'; x.style.alignItems='flex-start';
@@ -891,7 +901,7 @@ function runWords(words,title,L,onDone){
 function startSentencePicker(){
   const b=openPanel('Cümle modu');
   const draw=L=>{
-    b.innerHTML=`<div class="inner"><p class="muted" style="margin:0">Türkçesi verilen cümleyi kelime parçalarından kur ya da sesli söyle. Cümleler Dil Harita müfredatından.</p><div class="tabs" id="lt">${LEVELS.map(x=>`<button class="${x===L?'on':''}" data-l="${x}">${x}</button>`).join('')}</div><div class="list" id="ul"></div></div>`;
+    b.innerHTML=`<div class="inner"><p class="muted" style="margin:0">Türkçesi verilen cümleyi kelime parçalarından kur ya da sesli söyle. Cümleler Dil Harita müfredatından.</p><div class="tabs" id="lt">${LEVELS.map(x=>`<button class="${x===L?'on':''}" data-l="${x}"${x===S.level?' title="Seçili seviyen"':''}>${x}${x===S.level?' · seviyen':''}</button>`).join('')}</div><div class="list" id="ul"></div></div>`;
     $('#lt',b).querySelectorAll('button').forEach(x=>x.onclick=()=>draw(x.dataset.l));
     (DATA.course[L]||[]).forEach((u,i)=>{ const x=document.createElement('button'); x.className='item'; x.innerHTML=`<span class="dot">${ic('sentence')}</span><div class="grow"><b>${esc(u.t)}</b><div class="small muted">${u.s.length} cümle</div></div>${ic('arrow','width="18" height="18" style="color:var(--muted)"')}`; x.onclick=()=>runSentences(u.s,u.t); $('#ul',b).appendChild(x); });
   };
@@ -933,14 +943,14 @@ function runSentences(list,title,onDone){
 async function startDialogue(topic,onDone){
   const b=openPanel('Diyalog · '+topic);
   if(aiOff()){ b.innerHTML=`<div class="inner"><div class="notice">${aiErr({code:'no_ai'})}</div></div>`; return; }
-  b.innerHTML=`<div class="inner"><p class="muted">Diyalog hazırlanıyor…</p><span class="typing"><i></i><i></i><i></i></span></div>`;
+  b.innerHTML=`<div class="inner"><p class="muted">Diyalog ${S.level} seviyesine göre hazırlanıyor…</p><span class="typing"><i></i><i></i><i></i></span></div>`;
   let d;
   try{ d=await ai(`Write a short, natural everyday English dialogue between A and B about: "${topic}". CEFR level ${S.level}. ${LEVEL_GUIDE[S.level]} 8 lines total, alternating A then B, starting with A. Return ONLY JSON: {"title":"...","lines":[{"who":"A","en":"...","tr":"Turkish translation"}]}`); }
   catch(e){ b.innerHTML=`<div class="inner"><div class="notice">${esc(aiErr(e))}</div></div>`; return; }
   const lines=(d.lines||[]).filter(l=>l&&l.en); let i=0; const scores=[];
   const box=document.createElement('div'); box.className='inner';
   b.innerHTML=''; b.appendChild(box);
-  box.innerHTML=`<div><span class="eyebrow">Sen B rolündesin</span><h2>${esc(d.title||topic)}</h2></div><div class="list" id="dl"></div><div id="turn"></div>`;
+  box.innerHTML=`<div><span class="eyebrow">Sen B rolündesin · ${S.level}</span><div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0"><span class="pill kk-src">${esc(onDone?'Kurs ünitesi · '+topic:'Diyalog modu')}</span>${sonModel()?`<span class="pill">🤖 ${esc(sonModel())}</span>`:''}</div><h2>${esc(d.title||topic)}</h2></div><div class="list" id="dl"></div><div id="turn"></div>`;
   const dl=$('#dl',box), turnEl=$('#turn',box);
   const step=async()=>{
     if(i>=lines.length){ const avg=scores.length?Math.round(scores.reduce((a,c)=>a+c,0)/scores.length):0; addXP(20); markDone('dialogue'); if(onDone) onDone();
@@ -1013,7 +1023,7 @@ async function startStory(topic){
 function startPhoto(){
   const b=openPanel('Fotoğraf modu');
   const hasG=geminiKeys().length>0;
-  b.innerHTML=`<div class="inner"><p class="muted" style="margin:0">Bir fotoğraf seç ve İngilizce anlat. Gemini anlatımını puanlar, düzeltir ve fotoğrafta atladığın şeyleri söyler.</p>
+  b.innerHTML=`<div class="inner"><div class="row" style="gap:6px;flex-wrap:wrap">${lvBadge()}<span class="pill kk-src">Fotoğraf modu</span></div><p class="muted" style="margin:0">Bir fotoğraf seç ve İngilizce anlat. Gemini anlatımını puanlar, düzeltir ve fotoğrafta atladığın şeyleri söyler.</p>
     ${hasG?'':`<div class="notice">${aiErr({code:'no_gemini'})}</div>`}
     <label class="btn" style="align-self:flex-start">${ic('photo','width="18" height="18"')} Fotoğraf seç<input type="file" id="pf" accept="image/*" class="hide"></label>
     <img id="pv" class="photo-prev hide" alt="Seçtiğin fotoğraf">
@@ -1026,7 +1036,7 @@ function startPhoto(){
     try{ const r=await ai(`Look at the attached photo. A Turkish learner of English (CEFR ${S.level}) described it like this: "${txt}". Evaluate the description: accuracy against the photo and English quality. Ignore punctuation and capitalisation. Return ONLY JSON: {"score":7,"corrected":"their description with grammar fixed, keeping their ideas","feedback_tr":"2-3 Turkish sentences, informal (sen)","missed":["up to 4 English words/phrases for visible things they did not mention"],"model":"a model description of the photo at level ${S.level}, 3-4 sentences"}`,{images:[blob],deep:true});
       S.stats.msgs++; if(!r.corrected||trivialDiff(txt,r.corrected)){ S.stats.ok++; } else addError({wrong:txt,right:r.corrected,why:r.feedback_tr,tag:'photo',mode:'photo',d:today()});
       addXP(10+(+r.score||0)); markDone('photo');
-      out.innerHTML=`<div class="card stack"><div class="row between"><h3>Puan</h3><span class="big" style="font-size:1.6rem">${esc(r.score)}/10</span></div><p style="margin:0">${esc(r.feedback_tr)}</p>${r.corrected&&!trivialDiff(txt,r.corrected)?`<div style="line-height:2">${diffHTML(txt,r.corrected)}</div>`:''}<div class="fb-fix">${esc(r.corrected||txt)}</div>${(r.missed||[]).length?`<div class="small"><b>Atladıkların:</b> ${r.missed.map(esc).join(', ')}</div>`:''}<details><summary><b>Örnek anlatım</b></summary><p>${esc(r.model)}</p><button class="btn sm" id="pms" type="button">${ic('speaker','width="15" height="15"')} Dinle</button></details></div>`;
+      out.innerHTML=`<div class="card stack"><div class="row between"><div><h3 style="margin:0">Puan</h3>${modelEtiket(sonModel())}</div><span class="big" style="font-size:1.6rem">${esc(r.score)}/10</span></div><p style="margin:0">${esc(r.feedback_tr)}</p>${r.corrected&&!trivialDiff(txt,r.corrected)?`<div style="line-height:2">${diffHTML(txt,r.corrected)}</div>`:''}<div class="fb-fix">${esc(r.corrected||txt)}</div>${(r.missed||[]).length?`<div class="small"><b>Atladıkların:</b> ${r.missed.map(esc).join(', ')}</div>`:''}<details><summary><b>Örnek anlatım</b></summary><p>${esc(r.model)}</p><button class="btn sm" id="pms" type="button">${ic('speaker','width="15" height="15"')} Dinle</button></details></div>`;
       $('#pms',out).onclick=()=>speak(r.model);
     }catch(err){ out.innerHTML=`<div class="notice">${esc(aiErr(err))}</div>`; } };
 }
@@ -1046,7 +1056,7 @@ function startErrors(){
     c.innerHTML=`<div class="row between small muted"><span>${esc(e.d)} · ${esc(e.mode)}</span><span class="row">${e.tag?`<span class="pill">${esc(e.tag)}</span>`:''}<button class="btn sm ghost" data-del>Sil</button></span></div><div style="line-height:2">${diffHTML(e.wrong,e.right)}</div><div class="fb-fix">${esc(e.right)}</div>${e.why?`<div class="small">${esc(e.why)}</div>`:''}`;
     $('[data-del]',c).onclick=()=>{ removeError(e); c.remove(); toast('Hata defterinden silindi'); };
     el.appendChild(c); });
-  const d=$('#drill',b); if(d) d.onclick=()=>{ const focus=S.errors.slice(-6).map((e,i)=>`${i+1}) wrong="${e.wrong}" correct="${e.right}"`).join(' '); startChat({kind:'chat',title:'Hatalarım üzerine çalışma',name:'Deniz',color:'#0f7b6c',persona:'Deniz, a patient English teacher running a short focused practice session',focus}); };
+  const d=$('#drill',b); if(d) d.onclick=()=>{ const focus=S.errors.slice(-6).map((e,i)=>`${i+1}) wrong="${e.wrong}" correct="${e.right}"`).join(' '); startChat({kind:'chat',title:'Hatalarım üzerine çalışma',src:'Hata defteri · hatalarım üzerine çalışma',name:'Deniz',color:'#0f7b6c',persona:'Deniz, a patient English teacher running a short focused practice session',focus}); };
 }
 async function startFeedback(){
   const b=openPanel('Günlük geri bildirim');
@@ -1350,7 +1360,7 @@ async function startModuleTalk(name){
   b.innerHTML=`<div class="inner"><div><span class="eyebrow">Dil Harita'dan · ${m.level}</span><h2>${esc(title)}</h2><p class="muted" style="margin:4px 0 0">Bu modülde çalıştığın kalıpları şimdi bir konuşmanın içinde kendin kullan. Yapay zekâ bu modülün konusuna uygun gerçek bir durum kurar, sen bu kalıplarla cevap verirsin; her mesajın düzeltilir ve hatalar Dil Harita'nın hata defterine de yazılır.</p></div>
     <div class="card stack" style="gap:8px"><b>Bu konuşmada kullanacağın kalıplar</b>${pick.map(s=>`<div class="small"><b>${esc(s.en)}</b><br><span class="muted">${esc(s.tr)}${s.g?' · '+esc(s.g):''}</span></div>`).join('')}</div>
     <div class="row"><button class="btn primary" id="mtGo">Konuşmaya başla</button><button class="btn" id="mtSent">Önce cümleleri tekrar et</button><a class="btn ghost" href="./index.html">Dil Harita'ya dön</a></div></div>`;
-  const go=()=>startChat({kind:'roleplay',title:'Modülle konuş · '+title,name:'Deniz',color:'#c4733a',level:m.level,persona:`Deniz, an English teacher who sets up a short real-life roleplay ("${sc}") and plays the other person in it`,scene:sc,
+  const go=()=>startChat({kind:'roleplay',title:'Modülle konuş · '+title,src:'Dil Harita modülü · '+title+(m.level?' ('+m.level+')':''),name:'Deniz',color:'#c4733a',persona:`Deniz, an English teacher who sets up a short real-life roleplay ("${sc}") and plays the other person in it`,scene:sc,
     tasks:['Use two of the module\'s sentence patterns','Ask a question about the situation','Give a longer answer (2+ sentences)'],material:pick.map((s,i)=>`${i+1}) "${s.en}"${s.g?' pattern: '+s.g:''}`).join('\n')});
   $('#mtGo',b).onclick=go;
   $('#mtSent',b).onclick=()=>runSentences(pick,title);
@@ -1363,7 +1373,7 @@ async function openExercise(c,u,ex){
     const unit=DATA.course[c.level][u.i];
     if(ex==='sentence') return levelSentencePicker(c.level,unit,done);
     if(ex==='word'){ const all=DATA.words[c.level]; const start=(u.i*12)%all.length; const ws=all.slice(start,start+12).map(w=>({w:w[0],o:w[1],tr:w[2]})); return runWords(ws,`${c.level} · ${unit.t}`,c.level,done); }
-    if(ex==='roleplay'){ const sc=unit.sc[0]||unit.t; return startChat({kind:'roleplay',title:'Ünite '+(u.i+1)+' · '+unit.t,name:'Deniz',color:'#c4733a',persona:`Deniz, an English teacher who sets up a short real-life roleplay ("${sc}") and plays the other person in it`,scene:sc,tasks:['Use the grammar of this unit ('+unit.t+') at least twice','Ask a question','Give a longer answer (2+ sentences)'],material:unit.s.slice(0,6).map((s,i)=>`${i+1}) "${s.en}" pattern: ${s.g}`).join('\n'),onDone:done}); }
+    if(ex==='roleplay'){ const sc=unit.sc[0]||unit.t; return startChat({kind:'roleplay',title:'Ünite '+(u.i+1)+' · '+unit.t,src:c.t+' kursu · Ünite '+(u.i+1)+' · '+unit.t,name:'Deniz',color:'#c4733a',persona:`Deniz, an English teacher who sets up a short real-life roleplay ("${sc}") and plays the other person in it`,scene:sc,tasks:['Use the grammar of this unit ('+unit.t+') at least twice','Ask a question','Give a longer answer (2+ sentences)'],material:unit.s.slice(0,6).map((s,i)=>`${i+1}) "${s.en}" pattern: ${s.g}`).join('\n'),onDone:done}); }
   } else if(c.mod){
     const sents=moduleSentences(u.modId), L=c.clevel;
     if(!sents.length){ const b=openPanel(c.t); b.innerHTML=`<div class="inner"><div class="notice">Bu modülün cümleleri bu cihazda bulunamadı. Dil Harita'da Modüllerim sayfasını bir kez açıp tekrar dene.</div></div>`; return; }
@@ -1372,11 +1382,11 @@ async function openExercise(c,u,ex){
       try{ const ws=await wordsFromSentences(sents,L,12); if(ws.length<4){ b.innerHTML=`<div class="inner"><div class="notice">Bu modülde sözlükte bulunan yeterli kelime yok.</div></div>`; return; } return runWords(ws,c.t+' · '+u.t,L,done); }
       catch(e){ b.innerHTML=`<div class="inner"><div class="notice">${esc(aiErr(e))}</div></div>`; return; } }
     if(ex==='roleplay'){ const pick=shuffle(sents).slice(0,6); const sc=(pick.find(s=>s.sc)||{}).sc||c.t;
-      return startChat({kind:'roleplay',title:c.t+' · '+u.t,name:'Deniz',color:'#c4733a',level:L,persona:`Deniz, an English teacher who sets up a short real-life roleplay based on the story/topic "${c.t}" ("${sc}") and plays the other person in it`,scene:sc,tasks:['Use two of today\'s sentence patterns','Ask a question about the situation','Give a longer answer (2+ sentences)'],material:pick.map((s,i)=>`${i+1}) "${s.en}"${s.g?' pattern: '+s.g:''}`).join('\n'),onDone:done}); }
+      return startChat({kind:'roleplay',title:c.t+' · '+u.t,src:'Dil Harita modülü · '+c.t+' · '+u.t+(c.clevel?' ('+c.clevel+')':''),name:'Deniz',color:'#c4733a',persona:`Deniz, an English teacher who sets up a short real-life roleplay based on the story/topic "${c.t}" ("${sc}") and plays the other person in it`,scene:sc,tasks:['Use two of today\'s sentence patterns','Ask a question about the situation','Give a longer answer (2+ sentences)'],material:pick.map((s,i)=>`${i+1}) "${s.en}"${s.g?' pattern: '+s.g:''}`).join('\n'),onDone:done}); }
   } else {
     const tc=c.topic, unitT=u.en||u.t, L=c.clevel||S.level, focus=u.focus?` Focus of this unit: ${u.focus}.`:'', goal=c.custom&&c.custom.goal?` The learner's goal: ${c.custom.goal}.`:'';
     if(ex==='dialogue') return startDialogue(`${tc.en}: ${unitT}`,done);
-    if(ex==='roleplay') return startChat({kind:'roleplay',title:tc.t+' · '+unitT,name:'Deniz',color:'#c4733a',level:L,persona:`the other person in a realistic "${tc.en}" situation about "${unitT}". Choose a fitting role (colleague, customer, client, receptionist…) and say who you are in your first line.${focus}${goal}`,scene:`${tc.en}: ${unitT}`,tasks:u.focus?['Use the focus of this unit ('+u.focus+') naturally','Ask for clarification once','Summarise the outcome at the end']:['Use 3 topic words naturally','Ask for clarification once','Summarise the outcome at the end'],onDone:done});
+    if(ex==='roleplay') return startChat({kind:'roleplay',title:tc.t+' · '+unitT,src:'Kendi kursun · '+c.t+' · Ünite '+(u.i+1)+(c.clevel?' ('+c.clevel+')':''),name:'Deniz',color:'#c4733a',persona:`the other person in a realistic "${tc.en}" situation about "${unitT}". Choose a fitting role (colleague, customer, client, receptionist…) and say who you are in your first line.${focus}${goal}`,scene:`${tc.en}: ${unitT}`,tasks:u.focus?['Use the focus of this unit ('+u.focus+') naturally','Ask for clarification once','Summarise the outcome at the end']:['Use 3 topic words naturally','Ask for clarification once','Summarise the outcome at the end'],onDone:done});
     if(ex==='sentence'){
       const gk='konuskan-gen-s-'+c.id+'-'+u.i+'-'+L; let ss=null; try{ ss=JSON.parse(localStorage.getItem(gk)); }catch(e){}
       if(!ss){ const b=openPanel('Cümle modu · '+u.t); if(aiOff()){ b.innerHTML=`<div class="inner"><div class="notice">${aiErr({code:'no_ai'})}</div></div>`; return; }

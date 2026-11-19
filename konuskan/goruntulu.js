@@ -137,7 +137,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       <header class="vd-ust">
         <div class="vd-kim">
           <span class="vd-durum" data-d="hazir"><i></i><span class="vd-durum-y">Hazır</span></span>
-          <div><b>${OGRETMEN}</b><span class="vd-alt"><span class="vd-rol">İngilizce öğretmeni</span><span class="vd-seviye"> · <span class="vd-lv">${esc(S.level)}</span></span></span></div>
+          <div><b>${OGRETMEN}</b><span class="vd-alt"><span class="vd-rol">İngilizce öğretmeni</span><span class="vd-seviye"> · <span class="vd-lv">${esc(S.level)}</span></span><span class="vd-kaynak" title="Bu sohbetin açıldığı yer"></span></span></div>
         </div>
         <div class="vd-sure" hidden>00:00</div>
         <div class="vd-ust-sag">
@@ -989,6 +989,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     async function basla() {
       const kendi = q('.vd-kendi input').value.trim();
       if (kendi) st.konu = { id: 'custom', t: kendi, s: '', persona: PERSONA, custom: kendi };
+      { const lv = q('.vd-lv'); if (lv) lv.textContent = S.level; const kk = q('.vd-kaynak'); if (kk) kk.textContent = ' · Görüntülü ders · ' + (genelMi() ? 'Genel sohbet' : ayar.mod === 'tr' ? 'Türkçe konu: ' + ((st.konu && st.konu.t) || '') : 'İngilizce sohbet' + (st.konu && st.konu.t ? ': ' + st.konu.t : '')); }
       if (aiOff()) { toast(aiErr({ code: 'no_ai' })); return; }
       /* genel asistan: daha önce Google bağlandıysa ve süresi dolduysa, bu tıklamayla sessizce yenile */
       if (genelMi() && window.DHGoogle) { const gd = DHGoogle.durum(); if (gd.istemci && gd.dahaOnce && !gd.bagli) DHGoogle.baglan().catch(() => {}); }
