@@ -113,21 +113,23 @@
      - Dudak kapanışı (m-b-p, f-v) kısa da olsa görünür kalır (en az ~65 ms).
      - Diğer kısa şekiller (r, n, t, k…) önemli komşuya katılır: saniyede ~6 değişim, titreme yok.
      - "a" resimleri konuşma ölçüsünde (orta açık) çizildi; ayrıca kısaltılmaz. */
-  var ONEM = { a: 3, o: 3, u: 2.9, e: 2.7, i: 2.6, mbp: 2.8, fv: 2.6, sc: 2.2, idle: 1 }, EN_AZ_MS = { mbp: 65, fv: 65 };
+  var ONEM = { a: 3, o: 3, u: 2.9, e: 2.7, i: 2.6, mbp: 2.8, fv: 2.6, sc: 2.2, sz: 2, tdn: 2, l: 2, kg: 1.9, th: 1.9, idle: 1 },
+      EN_AZ_MS = { a: 72, o: 72, u: 72, e: 72, i: 72, mbp: 55, fv: 55, sc: 50, sz: 46, tdn: 46, l: 46, kg: 46, th: 46 };
   function agizDuzen(d, km) {
     var ALT = 2, alt = km / ALT, i, j, k;
-    var enAz = function (x) { return Math.max(1, Math.round((EN_AZ_MS[x] || 88) / alt)); }, on = function (x) { return ONEM[x] || 1.2; };
+    var enAz = function (x) { return Math.max(1, Math.round((EN_AZ_MS[x] || 80) / alt)); }, on = function (x) { return ONEM[x] || 1.2; };
     var R = [];
     for (i = 0; i < d.length; i++) { if (R.length && R[R.length - 1].s === d[i]) R[R.length - 1].n += ALT; else R.push({ s: d[i], n: ALT }); }
     for (var tur = 0; tur < 800; tur++) {
       j = -1;
-      for (i = 0; i < R.length; i++) if (R[i].n < enAz(R[i].s) && (j < 0 || on(R[i].s) < on(R[j].s))) j = i;
+      for (i = 0; i < R.length; i++) if (!R[i].kal && R[i].n < enAz(R[i].s) && (j < 0 || on(R[i].s) < on(R[j].s))) j = i;
       if (j < 0) break;
       var r = R[j], kom = [R[j - 1], R[j + 1]].filter(Boolean); if (!kom.length) break;
       var iyi = kom[0]; if (kom[1] && on(kom[1].s) > on(iyi.s)) iyi = kom[1];
       if (on(r.s) > on(iyi.s) || (on(r.s) >= 2.6 && on(iyi.s) < 3)) {
         var gerek = enAz(r.s) - r.n, veren = kom.filter(function (x) { return x.n - gerek >= enAz(x.s); }).sort(function (a, b) { return b.n - a.n; })[0];
         if (veren) { veren.n -= gerek; r.n += gerek; continue; }
+        if (on(r.s) >= 1.9) { r.kal = true; continue; }   /* harf şekli kısa da olsa kalır (atlanmaz) */
       }
       iyi.n += r.n; R.splice(j, 1);
       for (i = R.length - 1; i > 0; i--) if (R[i].s === R[i - 1].s) { R[i - 1].n += R[i].n; R.splice(i, 1); }
