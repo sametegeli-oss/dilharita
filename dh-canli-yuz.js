@@ -294,7 +294,8 @@
       else { cx.drawImage(fotolar[foto.a] || taban, 0, 0); cx.globalAlpha = foto.t; cx.drawImage(fotolar[foto.b] || taban, 0, 0); cx.globalAlpha = 1; }
       cx.globalCompositeOperation = "source-atop";   /* parçalar kişinin dışına taşmasın */
       function ciz(pr, a) { if (!pr || a <= 0.01) return; cx.globalAlpha = Math.min(1, a); cx.drawImage(pr.img, pr.x, pr.y); }
-      ciz(agiz.a !== "idle" && agizParca(agiz.a), 1 - agiz.t); ciz(agiz.b !== "idle" && agizParca(agiz.b), agiz.t);
+      var pa = agiz.a !== "idle" && agizParca(agiz.a), pb = agiz.b !== "idle" && agizParca(agiz.b);
+      if (pb) { ciz(pa, 1); ciz(pb, agiz.t); } else ciz(pa, 1 - agiz.t);   /* eski şekil altta tam, yenisi üstüne açılır: iki yarı saydam ağız üst üste binmesin */
       ciz(kirpParca(), gozKirp);
       cx.globalAlpha = 1; cx.globalCompositeOperation = "source-over";
       gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -367,13 +368,14 @@
       if (c.sesli && c.konusuyor) {
         /* gerçek ses: sessiz anlarda ağız kapanır; ani şiddet artışı = vurgu */
         var sv = sesSeviye(); c.ort = c.ort == null ? sv : c.ort * 0.96 + sv * 0.04;
-        if (sv < 0.01) sekil = "idle";
+        if (sv < 0.01) c.sessizMs = (c.sessizMs || 0) + dt * 1000; else if (sv > 0.016) c.sessizMs = 0;
+        if (c.sessizMs > 90) sekil = "idle";
         if (sv > 0.05 && sv > c.ort * 1.9 && Math.random() < 0.45) vurgula(simdi);
       }
       if (sekil === "th" && !parcalar.th) sekil = "e";
       if (sekil !== "idle" && !agizParca(sekil)) sekil = "idle";
-      if (sekil !== agiz.b) { agiz.a = agiz.t > 0.5 ? agiz.b : agiz.a; agiz.b = sekil; agiz.t = 0; }
-      agiz.t = Math.min(1, agiz.t + dt / 0.1);
+      if (sekil !== agiz.b && agiz.t >= 0.75) { agiz.a = agiz.b; agiz.b = sekil; agiz.t = 0; }
+      agiz.t = Math.min(1, agiz.t + dt / 0.075);
     }
     /* Ses listesi ilk açılışta boş gelebilir: o an seçilen ses yerine varsayılan (çoğu zaman
        internetten gelen, gecikmeli) ses kullanılır ve ağız sesten önce başlardı. */
@@ -407,7 +409,7 @@
         c.kareMs = Math.max(30, toplamMs / Math.max(1, c.dizi.length));
         /* Harf başına bir şekil saniyede 15-20 değişim demek: göz bunu titreme olarak görür.
            Kareleri ~120 ms'lik gruplara topla, her grupta en belirgin şekli göster. */
-        var EN_AZ = 100;
+        var EN_AZ = 125;
         if (c.kareMs < EN_AZ && c.dizi.length > 1) {
           var g = Math.ceil(EN_AZ / c.kareMs), yeni = [], ci = [], ONCELIK = { a: 9, o: 8, e: 7, u: 6, i: 5, mbp: 6, fv: 5, l: 4, th: 4, idle: 0 };
           for (var q = 0; q < c.dizi.length; q += g) {
