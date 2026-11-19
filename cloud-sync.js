@@ -1164,6 +1164,13 @@
         /* Video silindiğinde buluttaki belgesini (ve varsa bölünmüş
            parçalarını) de kaldırır; aksi halde diğer cihazlar bir
            sonraki senkronda videoyu buluttan geri çeker (diriltir). */
+        /* Konuşkan sohbetleri: her sohbet users/{uid}/konuskan_sohbetler altında
+           AYRI belge (ana ayar belgesinin ~1MB sınırını doldurmasın). */
+        loadKonuskanSohbetler:function(uid){
+          return fsMod.getDocs(fsMod.collection(db,"users",uid,"konuskan_sohbetler")).then(function(snap){var out=[];snap.forEach(function(d){var v=d.data()||{};v.id=d.id;out.push(v);});return out;});
+        },
+        saveKonuskanSohbet:function(uid,id,data){ return fsMod.setDoc(fsMod.doc(db,"users",uid,"konuskan_sohbetler",String(id)),data); },
+        deleteKonuskanSohbet:function(uid,id){ return fsMod.deleteDoc(fsMod.doc(db,"users",uid,"konuskan_sohbetler",String(id))); },
         deleteYoutubeStudy:function(uid,videoId){
           var ref=fsMod.doc(db,"users",uid,"youtube_studies",videoId);
           return fsMod.getDoc(ref).then(function(snap){
@@ -1659,6 +1666,13 @@
     cleanupYoutubeOrphans: function(onProgress){
       if(!ready||!user||!fb||!fb.cleanupOrphanedYoutubeStudyParts) return Promise.resolve({ok:false,error:"hazır değil"});
       return fb.cleanupOrphanedYoutubeStudyParts(user.uid,onProgress).then(function(r){return Object.assign({ok:true},r)}).catch(function(e){return {ok:false,error:(e&&e.message)||"bilinmeyen hata"}});
+    },
+    /* Konuşkan sohbetleri (ayrı belgeler). Oturum yoksa {ok:false} döner; çağıran yerelde tutar. */
+    sohbet: {
+      hazir: function(){ return !!(ready&&user&&fb&&fb.saveKonuskanSohbet); },
+      getir: function(){ if(!(ready&&user&&fb&&fb.loadKonuskanSohbetler)) return Promise.resolve(null); return fb.loadKonuskanSohbetler(user.uid); },
+      kaydet: function(id,data){ if(!(ready&&user&&fb&&fb.saveKonuskanSohbet)) return Promise.resolve(false); return fb.saveKonuskanSohbet(user.uid,id,data).then(function(){return true;}); },
+      sil: function(id){ if(!(ready&&user&&fb&&fb.deleteKonuskanSohbet)) return Promise.resolve(false); return fb.deleteKonuskanSohbet(user.uid,id).then(function(){return true;}); }
     },
     snapList: snapList, restoreSnap: restoreSnap,
     /* Yedekleme ekranı kendi kopya listesini tutmasın diye TEK KAYNAK burada.

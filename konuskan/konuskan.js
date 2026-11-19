@@ -397,8 +397,8 @@ function pHome(m){
   const hi = new Date().getHours()<12?'Günaydın':'Merhaba';
   m.innerHTML=`<div class="wrap"><div class="stack" style="gap:10px"><h1>${hi}, bugün ne çalışalım?</h1><div class="row between"><span class="small muted">Seviyeni seç: yapay zekâ, kelimeler ve kurs bu seviyeye göre ayarlanır.</span><button class="btn sm ghost" id="goExam">${S.certs[S.level]?ic('star','width="15" height="15"')+' '+S.level+' sertifikan var':S.level+' seviye sınavı'}</button></div>${levelChips(false)}</div>${capNotice()}
   ${window.startVideo?`<button class="vd-hero" data-mode="video" type="button"><span class="vd-hero-yuz" aria-hidden="true"></span><span class="vd-hero-y"><span class="vd-hero-e"><i></i> Canlı · Yeni · ${S.level}</span><b>Görüntülü ders</b><span>Deniz öğretmenle yüz yüze konuş. Cümlelerine duygularıyla tepki verir, hatalarını sohbeti bölmeden gösterir.</span><span class="vd-hero-b">${ic('video','width="18" height="18"')} Derse başla</span></span></button>`:''}
-  <div class="cols"><div class="stack"><h2>Öğrenme modları</h2><div class="grid">${MODES.filter(x=>x.id!=='video'||!window.startVideo).map(modeCard).join('')}</div></div>${sideSummary()}</div></div>`;
-  bindModes(m); bindSide(m); bindLevels(m);
+  <div class="cols"><div class="stack"><h2>Öğrenme modları</h2><div class="grid">${MODES.filter(x=>x.id!=='video'||!window.startVideo).map(modeCard).join('')}</div><div id="skHome"></div></div>${sideSummary()}</div></div>`;
+  bindModes(m); bindSide(m); bindLevels(m); skCizHome($('#skHome',m));
   $('#goExam',m).onclick=()=>S.certs[S.level]?openCert(S.level):examIntro(S.level);
 }
 function courseById(id){
@@ -668,8 +668,131 @@ function startDebatePick(topic){
   $('#dFor',b).onclick=()=>go('for'); $('#dAg',b).onclick=()=>go('against');
 }
 
-function startChat(cfg){
+/* ================= Sohbet kayıtları (Sohbetlerim) =================
+   Her sohbet ayrı yerel anahtarda (dh-kk-sohbet:<id>) ve bulutta
+   users/{uid}/konuskan_sohbetler/<id> ayrı belgesinde tutulur; ana
+   Konuşkan kaydını ve ortak ayar belgesini şişirmez.
+   Sınır: en yeni 30 sohbet, sohbet başına son 60 mesaj.
+   Silinen sohbet bir "mezar taşı" ({del:true}) bırakır ki başka cihaz
+   onu buluta geri yüklemesin; 90 gün sonra mezar taşı da silinir. */
+const SK_IDX='dh-kk-sohbetler-v1', SK_PRE='dh-kk-sohbet:', SK_MAX=30, SK_MSG=60, SK_MEZAR_MS=90*864e5;
+let skBulutHata='', skBirlesiyor=false; const skBekleyen=new Set(); let skZaman=null;
+function skIdx(){ try{ const a=JSON.parse(localStorage.getItem(SK_IDX)||'[]'); return Array.isArray(a)?a.filter(x=>x&&x.id):[]; }catch(e){ return []; } }
+function skIdxYaz(a){ try{ localStorage.setItem(SK_IDX,JSON.stringify(a)); }catch(e){} }
+function skOku(id){ try{ return JSON.parse(localStorage.getItem(SK_PRE+id)||'null'); }catch(e){ return null; } }
+function skListe(){ return skIdx().filter(x=>!x.del).map(x=>skOku(x.id)).filter(r=>r&&Array.isArray(r.hist)).sort((a,b)=>(b.at||0)-(a.at||0)); }
+function skYeniId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function skTemiz(o){ return JSON.parse(JSON.stringify(o)); }   /* undefined alanları at (Firestore kabul etmez) */
+function skYerelYaz(rec){
+  try{ localStorage.setItem(SK_PRE+rec.id,JSON.stringify(rec)); }catch(e){ toast('Sohbet kaydedilemedi: cihaz deposu dolu'); return false; }
+  const a=skIdx().filter(x=>x.id!==rec.id); a.push({id:rec.id,at:rec.at}); skIdxYaz(a); return true;
+}
+function skMezar(id,at){ try{ localStorage.removeItem(SK_PRE+id); }catch(e){} const a=skIdx().filter(x=>x.id!==id); a.push({id,at:at||Date.now(),del:true}); skIdxYaz(a); }
+function skSinirla(){
+  const canli=skListe(); canli.slice(SK_MAX).forEach(r=>{ skMezar(r.id); skBulutaYaz(r.id); });
+  const simdi=Date.now(); skIdxYaz(skIdx().filter(x=>!(x.del&&simdi-x.at>SK_MEZAR_MS)));
+}
+function skKaydet(rec){
+  rec.at=Date.now(); if(rec.hist.length>SK_MSG) rec.hist=rec.hist.slice(-SK_MSG);
+  rec=skTemiz(rec); if(!skYerelYaz(rec)) return;
+  skSinirla(); skBulutaYaz(rec.id);
+}
+function skSil(id){ skMezar(id); skBulutaYaz(id); }
+function skHepsiniSil(){ const t=Date.now(); skListe().forEach(r=>{ skMezar(r.id,t); skBulutaYaz(r.id); }); }
+/* buluta yazma: kısa gecikmeyle toplu (her mesajda değil) */
+function skBulutaYaz(id){ skBekleyen.add(id); clearTimeout(skZaman); skZaman=setTimeout(skBulutGonder,1500); }
+async function skBulutGonder(){
+  const C=window.DHCloudSync&&DHCloudSync.sohbet; if(!C||!C.hazir()) return;   /* oturum yok: yerelde bekler, birleştirmede gider */
+  const ids=[...skBekleyen]; skBekleyen.clear();
+  for(const id of ids){
+    const e=skIdx().find(x=>x.id===id); if(!e) continue;
+    const veri=e.del?{id,at:e.at,del:true}:skOku(id); if(!veri) continue;
+    try{ await C.kaydet(id,skTemiz(veri)); skBulutHata=''; }
+    catch(err){ skBulutHata=(err&&err.code)||'hata'; skBekleyen.add(id); try{ console.warn('[konuskan] sohbet buluta yazılamadı',err); }catch(x){} }
+  }
+}
+/* bulutla birleştir: hangisi daha yeniyse o kazanır */
+async function skBirlestir(){
+  const C=window.DHCloudSync&&DHCloudSync.sohbet; if(!C||!C.hazir()||skBirlesiyor) return false;
+  skBirlesiyor=true;
+  try{
+    const uzak=await C.getir(); if(!uzak) return false;
+    const um={}; uzak.forEach(r=>{ if(r&&r.id) um[r.id]=r; });
+    const yerel={}; skIdx().forEach(x=>{ yerel[x.id]=x; });
+    let degisti=false;
+    for(const id in um){ const r=um[id], l=yerel[id];
+      if(!l||(r.at||0)>(l.at||0)){ degisti=true; if(r.del) skMezar(id,r.at); else skYerelYaz(r); } }
+    for(const id in yerel){ const l=yerel[id], r=um[id];
+      if(!r||(l.at||0)>(r.at||0)) skBekleyen.add(id); }
+    /* süresi dolan mezar taşlarını buluttan da kaldır */
+    const simdi=Date.now(); for(const id in um){ const r=um[id]; if(r.del&&simdi-(r.at||0)>SK_MEZAR_MS) C.sil(id).catch(()=>{}); }
+    skSinirla(); await skBulutGonder(); skBulutHata='';
+    if(degisti) skYenile();
+    return true;
+  }catch(err){ skBulutHata=(err&&err.code)||'hata'; try{ console.warn('[konuskan] sohbetler buluttan okunamadı',err); }catch(x){} return false; }
+  finally{ skBirlesiyor=false; }
+}
+function skYenile(){ const h=$('#skHome'); if(h) skCizHome(h); const p=$('#skPanel'); if(p) skCizListe(p); }
+window.addEventListener('dh-cloud-synced',()=>skBirlestir());
+(function skIlk(){ let n=0; const t=setInterval(()=>{ n++; const C=window.DHCloudSync&&DHCloudSync.sohbet; if(C&&C.hazir()){ clearInterval(t); skBirlestir(); } else if(n>40) clearInterval(t); },3000); })();
+window.addEventListener('storage',e=>{ if(e.key===SK_IDX) skYenile(); });
+
+/* sohbetin durumu ⇄ kayıt */
+function skHistYaz(hist){ return hist.map(h=>({r:h.role==='user'?'u':'a',t:h.text,tr:h.tr||undefined,m:h.model||undefined,c:h.check||undefined,sp:h.spoken||undefined})); }
+function skHistOku(hist){ return (hist||[]).map(h=>{ const m={role:h.r==='u'?'user':'assistant',text:String(h.t||''),tr:h.tr||'',model:h.m||'',spoken:!!h.sp};
+  if(h.r==='u'){ m.check=h.c||null; if(m.check&&!m.check.ok) m._err=S.errors.find(e=>e.wrong===m.text&&e.right===m.check.corrected)||null; } return m; }); }
+const SK_CFG=['kind','title','src','name','color','persona','tasks','scene','material','focus','topic','side','maxTurns','voiceFirst','doneKey'];
+function skCfg(cfg){ const o={}; SK_CFG.forEach(k=>{ if(cfg[k]!=null) o[k]=cfg[k]; }); return o; }
+function skDoneFn(key){ return ()=>{ if(!S.done[key]) addXP(30); S.done[key]=today(); save(); }; }
+function skDevam(id){
+  const r=skOku(id); if(!r){ toast('Bu sohbet bulunamadı'); return; }
+  if(r.tur==='call') return startCall(r);
+  const cfg=Object.assign({},r.cfg||{}); if(cfg.doneKey) cfg.onDone=skDoneFn(cfg.doneKey);
+  return startChat(cfg,r);
+}
+
+/* Sohbetlerim arayüzü */
+function skZamanYaz(t){ const d=new Date(t), n=new Date(); const g=Math.round((new Date(n.toDateString())-new Date(d.toDateString()))/864e5);
+  const saat=d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}); return g===0?'Bugün '+saat:g===1?'Dün '+saat:d.toLocaleDateString('tr-TR',{day:'numeric',month:'short'})+' '+saat; }
+function skOge(r){
+  const kul=r.hist.filter(h=>h.r==='u').length, son=r.hist[r.hist.length-1], tasks=(r.cfg&&r.cfg.tasks)||null;
+  return `<div class="card stack sk-oge" data-sk="${esc(r.id)}" style="gap:6px;padding:12px">
+    <div class="row between" style="gap:8px;align-items:flex-start"><div style="min-width:0"><b>${esc(r.src||r.title||'Sohbet')}</b>
+      <div class="row small muted" style="gap:6px;flex-wrap:wrap;margin-top:2px"><span class="pill acc">${esc(r.level||'')}</span><span>${skZamanYaz(r.at)}</span><span>· ${kul} mesajın</span>${tasks?`<span>· görev ${(r.done||[]).length}/${tasks.length}</span>`:''}${r.bitti?'<span class="pill ok">Bitirildi</span>':''}</div></div>
+      <div class="row" style="gap:6px;flex:none"><button class="btn sm primary" data-a="devam">Devam et</button><button class="btn sm ghost" data-a="sil" aria-label="Sohbeti sil">Sil</button></div></div>
+    ${son?`<div class="small muted sk-son">${son.r==='u'?'Sen: ':esc(r.name||'Deniz')+': '}${esc(String(son.t).slice(0,140))}</div>`:''}</div>`;
+}
+function skBagla(el){
+  el.querySelectorAll('[data-sk]').forEach(c=>{ const id=c.dataset.sk;
+    $('[data-a=devam]',c).onclick=()=>skDevam(id);
+    $('[data-a=sil]',c).onclick=e=>{ const s=e.currentTarget.parentNode; s.innerHTML=`<span class="small">Silinsin mi?</span><button class="btn sm" data-a="evet" style="background:var(--bad,#c0392b);color:#fff;border-color:transparent">Evet, sil</button><button class="btn sm ghost" data-a="hayir">Vazgeç</button>`;
+      $('[data-a=evet]',s).onclick=()=>{ skSil(id); toast('Sohbet silindi'); skYenile(); }; $('[data-a=hayir]',s).onclick=()=>skYenile(); };
+  });
+}
+function skNot(){ const C=window.DHCloudSync&&DHCloudSync.sohbet; if(skBulutHata) return 'Bulut kaydı şu an yapılamadı; sohbetlerin bu cihazda duruyor, bağlantı gelince yeniden denenecek.'; if(!C||!C.hazir()) return 'Giriş yapmadığın için sohbetlerin yalnız bu cihazda duruyor.'; return 'Sohbetlerin buluta kaydediliyor; öteki cihazlarında da görünür.'; }
+function skCizHome(el){
+  const l=skListe(); if(!l.length){ el.innerHTML=''; return; }
+  el.innerHTML=`<div class="stack" style="gap:8px"><div class="row between"><h2 style="margin:0">Sohbetlerim</h2><button class="btn sm ghost" id="skTum">Tümünü gör (${l.length})</button></div>${l.slice(0,3).map(skOge).join('')}</div>`;
+  const t=$('#skTum',el); if(t) t.onclick=()=>startSohbetlerim(); skBagla(el);
+}
+function skCizListe(el){
+  const l=skListe();
+  el.innerHTML=`<p class="small muted" style="margin:0">En yeni ${SK_MAX} sohbet saklanır, her sohbette son ${SK_MSG} mesaj. ${esc(skNot())}</p>
+    ${l.length?`<div class="stack" style="gap:8px">${l.map(skOge).join('')}</div><div id="skHepsi"><button class="btn sm ghost" id="skHepsiSil">Bütün sohbetleri sil</button></div>`:'<div class="empty"><h3>Kayıtlı sohbet yok</h3><p>Bir sohbete başladığında burada görünür; kaldığın yerden devam edebilirsin.</p></div>'}`;
+  skBagla(el);
+  const h=$('#skHepsiSil',el); if(h) h.onclick=()=>{ $('#skHepsi',el).innerHTML=`<div class="row" style="gap:6px"><span class="small">${l.length} sohbetin hepsi silinsin mi? Geri alınamaz.</span><button class="btn sm" id="skHE" style="background:var(--bad,#c0392b);color:#fff;border-color:transparent">Evet, hepsini sil</button><button class="btn sm ghost" id="skHH">Vazgeç</button></div>`;
+    $('#skHE',el).onclick=()=>{ skHepsiniSil(); toast('Bütün sohbetler silindi'); skYenile(); }; $('#skHH',el).onclick=()=>skYenile(); };
+}
+function startSohbetlerim(){
+  const b=openPanel('Sohbetlerim'); b.innerHTML='<div class="inner" id="skPanel"></div>'; const p=$('#skPanel',b); skCizListe(p);
+  skBirlestir().then(ok=>{ if(ok&&$('#skPanel')) skCizListe($('#skPanel')); });
+}
+
+function startChat(cfg,kayit){
   const st={cfg,hist:[],done:new Set(),turns:0,busy:false,sel:null,run:0,sessionXP:0,errs:[]};
+  /* kayıt: ilk mesajından sonra her adımda kaydedilir (Sohbetlerim) */
+  const rec=kayit?Object.assign({},kayit):{id:skYeniId(),v:1,tur:'chat',created:Date.now()};
+  function kaydet(bitti){ if(!st.hist.some(h=>h.role==='user')) return; Object.assign(rec,{src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',title:cfg.title,name:cfg.name,color:cfg.color,level:S.level,cfg:skCfg(cfg),hist:skHistYaz(st.hist),done:[...st.done],turns:st.turns}); if(bitti) rec.bitti=true; skKaydet(rec); }
   const b=openPanel(cfg.title,`<button class="btn sm" id="endBtn">Bitir</button>`);
   b.style.padding='12px';
   b.innerHTML=`<div class="chat" style="height:100%">
@@ -764,10 +887,10 @@ Rules: answer in English only, 1-3 short sentences, natural and friendly, end wi
       if(um){ um.check=r.check||{ok:true}; if(!um.check.ok&&(!um.check.corrected||trivialDiff(um.text,um.check.corrected))) um.check={ok:true}; setChk(um); recordCheck(um); }
       (r.tasks_done||[]).forEach(n=>st.done.add(+n));
       drawTasks();
-      addAI(r.reply,r.reply_tr);
+      addAI(r.reply,r.reply_tr); kaydet();
       if(cfg.tasks&&st.done.size>=cfg.tasks.length&&!st.tasksMsg){ st.tasksMsg=true; toast('Tüm görevleri tamamladın!'); }
       if(cfg.kind==='debate'&&st.turns>=cfg.maxTurns){ finish(); }
-    }catch(e){ typing.remove(); if(um){ um.check=null; setChk(um);} msgs.insertAdjacentHTML('beforeend',`<div class="notice small">${esc(aiErr(e))}</div>`); }
+    }catch(e){ typing.remove(); if(um){ um.check=null; setChk(um);} msgs.insertAdjacentHTML('beforeend',`<div class="notice small">${esc(aiErr(e))}</div>`); kaydet(); }
     st.busy=false;
   }
   function recordCheck(m){
@@ -779,7 +902,7 @@ Rules: answer in English only, 1-3 short sentences, natural and friendly, end wi
     if(st.finished) return; st.finished=true;
     const userMsgs=st.hist.filter(h=>h.role==='user');
     if(!userMsgs.length){ closePanel(); return; }
-    markDone(cfg.kind); if(cfg.onDone) cfg.onDone();
+    markDone(cfg.kind); if(cfg.onDone) cfg.onDone(); kaydet(true);
     fb.classList.add('show');
     const okN=userMsgs.filter(m=>m.check&&m.check.ok).length;
     fb.innerHTML=`<h3>Oturum özeti</h3><div class="tiles" style="grid-template-columns:1fr 1fr"><div class="stat"><span class="small muted">Mesaj</span><b>${userMsgs.length}</b></div><div class="stat"><span class="small muted">Hatasız</span><b>${okN}</b></div></div>
@@ -807,24 +930,33 @@ Rules: answer in English only, 1-3 short sentences, natural and friendly, end wi
     }catch(e){ s.textContent=aiErr(e); }
   };
   $('#endBtn').onclick=()=>finish();
-  panelCleanup=()=>{ if(!st.finished&&st.hist.some(h=>h.role==='user')){ markDone(cfg.kind); if(cfg.onDone) cfg.onDone(); } };
-  opener();
+  panelCleanup=()=>{ if(!st.finished&&st.hist.some(h=>h.role==='user')){ markDone(cfg.kind); if(cfg.onDone) cfg.onDone(); kaydet(); } };
+  if(kayit){
+    st.hist=skHistOku(kayit.hist); st.done=new Set(kayit.done||[]); st.turns=+kayit.turns||0;
+    st.hist.forEach(m=>{ bubble(m); if(m.role==='user') setChk(m); });
+    const sm=[...st.hist].reverse().find(m=>m.model); const tm=$('#topModel',b); if(sm&&tm){ tm.textContent='🤖 '+sm.model; tm.classList.remove('hide'); }
+    msgs.insertAdjacentHTML('beforeend',`<div class="notice small sk-devam">Kaldığın yerden devam ediyorsun (${esc(skZamanYaz(kayit.at))}). Bir şey yaz ya da mikrofona bas.</div>`);
+    msgs.scrollTop=msgs.scrollHeight; drawTasks();
+  } else opener();
   return st;
 }
 
 /* ================= Arama modu ================= */
-function startCall(){
+function startCall(kayit){
   const c={persona:'Deniz, a friendly English tutor on a phone call. Keep every reply to 1-2 short spoken sentences and end with a question.'};
   const st={hist:[],busy:false,errs:[],heard:''};
+  const rec=kayit?Object.assign({},kayit):{id:skYeniId(),v:1,tur:'call',created:Date.now()};
+  function kaydet(bitti){ if(!st.hist.some(h=>h.role==='user')) return; Object.assign(rec,{src:'Arama modu',title:'Arama modu',name:'Deniz',level:S.level,cfg:{kind:'call'},hist:skHistYaz(st.hist)}); if(bitti) rec.bitti=true; skKaydet(rec); }
   const b=openPanel('Arama modu');
   b.innerHTML=`<div class="inner call"><div class="ring" id="ring">D</div><div><h2>Deniz</h2><div class="row" style="gap:6px;justify-content:center;flex-wrap:wrap;margin:4px 0">${lvBadge()}<span class="pill kk-src">Arama modu</span><span class="pill hide" id="cmodel"></span></div><p class="muted" id="cst" style="margin:4px 0 0">Aramayı başlatmak için düğmeye bas.</p></div>
     <div class="row" id="ctl"></div><p class="small muted" id="heard" style="min-height:1.5em"></p>
     <details style="width:100%;text-align:left"><summary class="small muted">Metni göster</summary><div class="list small" id="tx" style="margin-top:10px"></div></details>
     <div id="cerrs" style="width:100%;text-align:left"></div></div>`;
   const ring=$('#ring',b), cst=$('#cst',b), heard=$('#heard',b), ctl=$('#ctl',b);
+  if(kayit){ st.hist=skHistOku(kayit.hist); st.hist.forEach(h=>log(h.role==='user'?'Sen':'Deniz',h.text+(h.model?'  [🤖 '+h.model+']':''))); cst.textContent='Kaldığın yerden devam etmek için düğmeye bas ('+skZamanYaz(kayit.at)+').'; }
   if(aiOff()){ cst.textContent=aiErr({code:'no_ai'}); return; }
   if(!dict){ cst.textContent='Arama modu mikrofon ister. Bu tarayıcıda ses tanıma yok; Chrome ya da Edge ile dene.'; }
-  const startBtn=document.createElement('button'); startBtn.className='btn primary'; startBtn.innerHTML=ic('phone','width="18" height="18"')+' Aramayı başlat';
+  const startBtn=document.createElement('button'); startBtn.className='btn primary'; startBtn.innerHTML=ic('phone','width="18" height="18"')+(kayit?' Aramaya devam et':' Aramayı başlat');
   ctl.appendChild(startBtn);
   const mic=micButton({partial:t=>{ heard.textContent=st.heard+t; }, final:t=>{ st.heard+=t+' '; heard.textContent=st.heard; }, idle:()=>{ const t=st.heard.trim(); st.heard=''; if(t) turn(t); }});
   mic.style.width='72px'; mic.style.height='72px';
@@ -832,19 +964,20 @@ function startCall(){
   function log(who,t){ $('#tx',b).insertAdjacentHTML('beforeend',`<div><b>${who}:</b> ${esc(t)}</div>`); }
   async function turn(text){
     if(st.busy) return; st.busy=true; cst.textContent='Deniz düşünüyor…';
-    if(text){ st.hist.push({role:'user',text}); log('Sen',text); }
+    let um=null; if(text){ um={role:'user',text,spoken:true}; st.hist.push(um); log('Sen',text); }
     try{
       const tr=st.hist.slice(-12).map(h=>(h.role==='user'?'Learner: ':'You: ')+h.text).join('\n');
-      const r=await ai(`You are ${c.persona} The learner is a Turkish speaker at CEFR ${S.level}. ${LEVEL_GUIDE[S.level]} No emojis.${learnerContext()}\n\n${tr?'Call so far:\n'+tr+'\n\n':''}${text?'Check the learner\'s last line (it came from speech recognition: flag ONLY real grammar or word-choice errors; never flag punctuation, capitalisation, stutters, repeated words or misheard names). Then reply.':'Greet the learner and ask how their day is going.'} Return ONLY JSON: {"check":{"ok":true,"corrected":"","why_tr":"Turkish, informal"},"reply":"..."}`);
+      const r=await ai(`You are ${c.persona} The learner is a Turkish speaker at CEFR ${S.level}. ${LEVEL_GUIDE[S.level]} No emojis.${learnerContext()}\n\n${tr?'Call so far:\n'+tr+'\n\n':''}${text?'Check the learner\'s last line (it came from speech recognition: flag ONLY real grammar or word-choice errors; never flag punctuation, capitalisation, stutters, repeated words or misheard names). Then reply.':(st.hist.length?'The call was cut off. Welcome the learner back in one short sentence and continue where you left off with a question.':'Greet the learner and ask how their day is going.')} Return ONLY JSON: {"check":{"ok":true,"corrected":"","why_tr":"Turkish, informal"},"reply":"..."}`);
+      if(um&&r.check) um.check=r.check.ok||!r.check.corrected||trivialDiff(text,r.check.corrected)?{ok:true}:r.check;
       if(text&&r.check){ S.stats.msgs++; if(r.check.ok||!r.check.corrected||trivialDiff(text,r.check.corrected)){ S.stats.ok++; addXP(10);} else { addXP(5); st.errs.push(addError({wrong:text,right:r.check.corrected,why:r.check.why_tr,tag:'',mode:'call',d:today()})); } }
-      st.hist.push({role:'assistant',text:r.reply}); const md=sonModel(); log('Deniz',r.reply+(md?'  [🤖 '+md+']':'')); { const cm=$('#cmodel',b); if(cm&&md){ cm.textContent='🤖 '+md; cm.classList.remove('hide'); } }
+      const md=sonModel(); st.hist.push({role:'assistant',text:r.reply,model:md}); kaydet(); log('Deniz',r.reply+(md?'  [🤖 '+md+']':'')); { const cm=$('#cmodel',b); if(cm&&md){ cm.textContent='🤖 '+md; cm.classList.remove('hide'); } }
       cst.textContent='Deniz konuşuyor…'; ring.classList.add('speaking');
       await speak(r.reply);
       ring.classList.remove('speaking'); cst.textContent=dict?'Senin sıran: mikrofona bas, konuş, bitince tekrar bas.':'Mikrofon yok.';
     }catch(e){ cst.textContent=aiErr(e); ring.classList.remove('speaking'); }
     st.busy=false;
   }
-  function endCall(){ stopSpeak(); if(micLive&&dict) dict.stop().catch(()=>{}); ctl.innerHTML=''; cst.textContent='Arama bitti.'; markDone('call');
+  function endCall(){ stopSpeak(); if(micLive&&dict) dict.stop().catch(()=>{}); ctl.innerHTML=''; cst.textContent='Arama bitti.'; markDone('call'); kaydet(true);
     $('#cerrs',b).innerHTML=st.errs.length?`<h3>Aramadaki düzeltmeler</h3>${st.errs.map(e=>`<div class="small" style="margin-top:8px"><div style="line-height:2">${diffHTML(e.wrong,e.right)}</div><div class="fb-fix" style="margin-top:4px">${esc(e.right)}</div><div class="muted">${esc(e.why)}</div></div>`).join('')}`:(st.hist.length>2?'<p>Bu aramada düzeltilecek bir şey çıkmadı.</p>':''); }
 }
 
@@ -1373,7 +1506,7 @@ async function openExercise(c,u,ex){
     const unit=DATA.course[c.level][u.i];
     if(ex==='sentence') return levelSentencePicker(c.level,unit,done);
     if(ex==='word'){ const all=DATA.words[c.level]; const start=(u.i*12)%all.length; const ws=all.slice(start,start+12).map(w=>({w:w[0],o:w[1],tr:w[2]})); return runWords(ws,`${c.level} · ${unit.t}`,c.level,done); }
-    if(ex==='roleplay'){ const sc=unit.sc[0]||unit.t; return startChat({kind:'roleplay',title:'Ünite '+(u.i+1)+' · '+unit.t,src:c.t+' kursu · Ünite '+(u.i+1)+' · '+unit.t,name:'Deniz',color:'#c4733a',persona:`Deniz, an English teacher who sets up a short real-life roleplay ("${sc}") and plays the other person in it`,scene:sc,tasks:['Use the grammar of this unit ('+unit.t+') at least twice','Ask a question','Give a longer answer (2+ sentences)'],material:unit.s.slice(0,6).map((s,i)=>`${i+1}) "${s.en}" pattern: ${s.g}`).join('\n'),onDone:done}); }
+    if(ex==='roleplay'){ const sc=unit.sc[0]||unit.t; return startChat({kind:'roleplay',title:'Ünite '+(u.i+1)+' · '+unit.t,src:c.t+' kursu · Ünite '+(u.i+1)+' · '+unit.t,name:'Deniz',color:'#c4733a',persona:`Deniz, an English teacher who sets up a short real-life roleplay ("${sc}") and plays the other person in it`,scene:sc,tasks:['Use the grammar of this unit ('+unit.t+') at least twice','Ask a question','Give a longer answer (2+ sentences)'],material:unit.s.slice(0,6).map((s,i)=>`${i+1}) "${s.en}" pattern: ${s.g}`).join('\n'),onDone:done,doneKey:key}); }
   } else if(c.mod){
     const sents=moduleSentences(u.modId), L=c.clevel;
     if(!sents.length){ const b=openPanel(c.t); b.innerHTML=`<div class="inner"><div class="notice">Bu modülün cümleleri bu cihazda bulunamadı. Dil Harita'da Modüllerim sayfasını bir kez açıp tekrar dene.</div></div>`; return; }
@@ -1382,11 +1515,11 @@ async function openExercise(c,u,ex){
       try{ const ws=await wordsFromSentences(sents,L,12); if(ws.length<4){ b.innerHTML=`<div class="inner"><div class="notice">Bu modülde sözlükte bulunan yeterli kelime yok.</div></div>`; return; } return runWords(ws,c.t+' · '+u.t,L,done); }
       catch(e){ b.innerHTML=`<div class="inner"><div class="notice">${esc(aiErr(e))}</div></div>`; return; } }
     if(ex==='roleplay'){ const pick=shuffle(sents).slice(0,6); const sc=(pick.find(s=>s.sc)||{}).sc||c.t;
-      return startChat({kind:'roleplay',title:c.t+' · '+u.t,src:'Dil Harita modülü · '+c.t+' · '+u.t+(c.clevel?' ('+c.clevel+')':''),name:'Deniz',color:'#c4733a',persona:`Deniz, an English teacher who sets up a short real-life roleplay based on the story/topic "${c.t}" ("${sc}") and plays the other person in it`,scene:sc,tasks:['Use two of today\'s sentence patterns','Ask a question about the situation','Give a longer answer (2+ sentences)'],material:pick.map((s,i)=>`${i+1}) "${s.en}"${s.g?' pattern: '+s.g:''}`).join('\n'),onDone:done}); }
+      return startChat({kind:'roleplay',title:c.t+' · '+u.t,src:'Dil Harita modülü · '+c.t+' · '+u.t+(c.clevel?' ('+c.clevel+')':''),name:'Deniz',color:'#c4733a',persona:`Deniz, an English teacher who sets up a short real-life roleplay based on the story/topic "${c.t}" ("${sc}") and plays the other person in it`,scene:sc,tasks:['Use two of today\'s sentence patterns','Ask a question about the situation','Give a longer answer (2+ sentences)'],material:pick.map((s,i)=>`${i+1}) "${s.en}"${s.g?' pattern: '+s.g:''}`).join('\n'),onDone:done,doneKey:key}); }
   } else {
     const tc=c.topic, unitT=u.en||u.t, L=c.clevel||S.level, focus=u.focus?` Focus of this unit: ${u.focus}.`:'', goal=c.custom&&c.custom.goal?` The learner's goal: ${c.custom.goal}.`:'';
     if(ex==='dialogue') return startDialogue(`${tc.en}: ${unitT}`,done);
-    if(ex==='roleplay') return startChat({kind:'roleplay',title:tc.t+' · '+unitT,src:'Kendi kursun · '+c.t+' · Ünite '+(u.i+1)+(c.clevel?' ('+c.clevel+')':''),name:'Deniz',color:'#c4733a',persona:`the other person in a realistic "${tc.en}" situation about "${unitT}". Choose a fitting role (colleague, customer, client, receptionist…) and say who you are in your first line.${focus}${goal}`,scene:`${tc.en}: ${unitT}`,tasks:u.focus?['Use the focus of this unit ('+u.focus+') naturally','Ask for clarification once','Summarise the outcome at the end']:['Use 3 topic words naturally','Ask for clarification once','Summarise the outcome at the end'],onDone:done});
+    if(ex==='roleplay') return startChat({kind:'roleplay',title:tc.t+' · '+unitT,src:'Kendi kursun · '+c.t+' · Ünite '+(u.i+1)+(c.clevel?' ('+c.clevel+')':''),name:'Deniz',color:'#c4733a',persona:`the other person in a realistic "${tc.en}" situation about "${unitT}". Choose a fitting role (colleague, customer, client, receptionist…) and say who you are in your first line.${focus}${goal}`,scene:`${tc.en}: ${unitT}`,tasks:u.focus?['Use the focus of this unit ('+u.focus+') naturally','Ask for clarification once','Summarise the outcome at the end']:['Use 3 topic words naturally','Ask for clarification once','Summarise the outcome at the end'],onDone:done,doneKey:key});
     if(ex==='sentence'){
       const gk='konuskan-gen-s-'+c.id+'-'+u.i+'-'+L; let ss=null; try{ ss=JSON.parse(localStorage.getItem(gk)); }catch(e){}
       if(!ss){ const b=openPanel('Cümle modu · '+u.t); if(aiOff()){ b.innerHTML=`<div class="inner"><div class="notice">${aiErr({code:'no_ai'})}</div></div>`; return; }
