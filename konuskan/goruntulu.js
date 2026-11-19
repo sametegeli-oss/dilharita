@@ -210,6 +210,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
         <label class="vd-satir">Arka plan <select data-a="fon"><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select></label>
         <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
+        <label class="vd-anahtar"><input type="checkbox" data-a="sesDuygu"><span></span> Seste duygu <small>Deniz'in sesi yüzündeki duyguya göre değişir: sevinçte neşeli, teselli ederken yumuşak, ciddi konuda ağır.</small></label>
         <label class="vd-satir">Konuşma hızı (tarayıcı sesi) <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
         <div class="vd-satir vd-google-ayar"><span>Google hesabı <small>(genel asistan: takvim, Gmail, görevler, kişiler, Drive)</small></span><div class="vd-google"></div></div>
         <div class="vd-satir vd-yt-ayar"><span>YouTube anahtarı <small>(video önerileri)</small></span><form class="vd-yt-anahtar"><input type="password" autocomplete="off" spellcheck="false" placeholder="AIza…" aria-label="YouTube API anahtarı"><button type="submit" class="vd-g-b">Kaydet</button></form><small class="vd-yt-durum"></small></div>
@@ -417,6 +418,9 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     /* derste mod seçimi ayarlar panelinde (üstteki şerit yüzü kapatmasın) */
     const modSecim = q('[data-a=mod]');
     modSecim.onchange = () => { const r = q(`[name=vdmod][value="${modSecim.value}"]`); if (r && !r.checked) { r.checked = true; r.onchange(); } };
+    q('[data-a=sesDuygu]').checked = ayar.sesDuygu !== false;
+    q('[data-a=sesDuygu]').onchange = e => { ayar.sesDuygu = e.target.checked; ayarKaydet(); try { localStorage.setItem('dh-ses-duygu', ayar.sesDuygu ? '1' : '0'); } catch (er) {} };
+    try { localStorage.setItem('dh-ses-duygu', ayar.sesDuygu !== false ? '1' : '0'); } catch (er) {}
     q('[data-a=trAc]').checked = ayar.altyaziTR;
     /* arka plan (görüntülü görüşmedeki bulanık oda gibi) */
     const FONLAR = ['koyu', 'sinif', 'kafe', 'ofis', 'kutuphane', 'doga'];
@@ -665,13 +669,18 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       }
       throw son || { code: 'all-failed' };
     }
-    function ttsUret(metin) {
-      const ses = ayar.sesAdi || 'Charon', anahtar = ses + '|' + metin;
+    /* Seste duygu: Gemini ses modelleri köşeli parantezli İngilizce etiketleri okumaz, tonu değiştirir ("[happy] Harika!") */
+    const SES_ETIKET = { mutlu: 'happy', heyecanli: 'excited', merak: 'curious', saskin: 'surprised', dusunceli: 'thoughtful', anlayisli: 'gentle, understanding',
+      sefkatli: 'warm, caring', uzgun: 'sad, empathetic', ciddi: 'serious', ofkeli: 'annoyed, stern', cesaret: 'encouraging', gururlu: 'proud', karisik: 'puzzled', dinleyen: 'calm' };
+    const sesDuyguAcik = () => ayar.sesDuygu !== false;
+    function ttsUret(metin, ttsMetin) {
+      ttsMetin = ttsMetin || metin;
+      const ses = ayar.sesAdi || 'Charon', anahtar = ses + '|' + ttsMetin;
       if (ttsHafiza.has(anahtar)) return ttsHafiza.get(anahtar);
       const is = (async () => {
         const kisa = metin.length < 40;
         let ab = kisa ? await ttsOnbellek(anahtar) : null;
-        if (!ab) { ab = await ttsIstek(metin, ses); if (kisa) ttsOnbellek(anahtar, ab.slice(0)); }
+        if (!ab) { ab = await ttsIstek(ttsMetin, ses); if (kisa) ttsOnbellek(anahtar, ab.slice(0)); }
         return yuz.sesCoz(ab.slice(0));
       })();
       ttsHafiza.set(anahtar, is); is.catch(() => ttsHafiza.delete(anahtar));
@@ -702,7 +711,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     function yeniKonusucu(m) {
       const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: c => { if (c.goster) c.goster(); } });
       const gemini = geminiSesAcik();
-      let zincir = Promise.resolve(), bekleyen = [], ilk = true, iptal = false, sesBasladi = false;
+      let zincir = Promise.resolve(), bekleyen = [], ilk = true, iptal = false, sesBasladi = false, blokSonEtiket = null;
       m.okunan = [];
       const acMi = () => aciklamaMi(m) || ayar.mod === 'tr';
       function gosterFn(i, cevMi) {
@@ -732,11 +741,19 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       function blokHazirla(parcalar) {
         const tarayici = () => parcalar.flatMap(({ c, i }) => tarayiciParcalari(c, i));
         if (!gemini || st.ttsKapali) return tarayici();
-        let metin = ''; const altlar = [];
-        const ekle = (t, cfg) => { if (metin) metin += ' '; altlar.push(Object.assign({ poz: metin.length }, cfg)); metin += t; };
+        let metin = '', ttsMetin = '', sonEtiket = blokSonEtiket; const altlar = [];
+        const ekle = (t, cfg) => {
+          if (metin) { metin += ' '; ttsMetin += ' '; }
+          altlar.push(Object.assign({ poz: metin.length }, cfg)); metin += t;
+          /* duygu değişince etiket (aynı duygu art arda tekrar edilmez) */
+          const et = sesDuyguAcik() && cfg.duygu && SES_ETIKET[cfg.duygu];
+          if (et && et !== sonEtiket) { ttsMetin += '[' + et + '] '; sonEtiket = et; }
+          ttsMetin += t;
+        };
         parcalar.forEach(({ c, i }) => { ekle(c.metin, { duygu: c.duygu, guc: c.guc, jest: c.jest, oncesi: gosterFn(i, false) }); if (acMi() && c.dil === 'en' && c.cev) ekle(c.cev, { oncesi: gosterFn(i, true) }); });
         altlar.forEach(a => { a.oran = a.poz / Math.max(1, metin.length); });
-        return ttsUret(metin).then(buf => [{ metin, dil: parcalar[0].c.dil, sesTampon: buf, duygu: altlar[0].duygu, guc: altlar[0].guc, jest: null, altlar }])
+        blokSonEtiket = null;   /* her blok ayrı istek: ilk cümlede etiket yeniden verilir */
+        return ttsUret(metin, ttsMetin).then(buf => [{ metin, dil: parcalar[0].c.dil, sesTampon: buf, duygu: altlar[0].duygu, guc: altlar[0].guc, jest: null, altlar }])
           .catch(e => { ttsHata(e); return tarayici(); });
       }
       return {

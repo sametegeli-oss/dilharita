@@ -526,6 +526,12 @@
         if (!u || !global.speechSynthesis) { c.konusuyor = true; c.bas = performance.now(); setTimeout(son, c.metin.length * msHarf); return; }
         var v = sesSec(dil); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = dil === "tr" ? "tr-TR" : "en-US";
         u.rate = hizOrani || 1;
+        /* tarayıcı sesinde duygu: ses yüksekliği ve hız hafifçe değişir (ayarlardan kapatılabilir) */
+        var SD = { heyecanli: [1.14, 1.08], mutlu: [1.08, 1.03], saskin: [1.12, 1.02], merak: [1.06, 1], cesaret: [1.06, 1.03], gururlu: [1.04, 0.98],
+          uzgun: [0.9, 0.9], sefkatli: [0.98, 0.94], anlayisli: [0.98, 0.96], dusunceli: [0.96, 0.93], ciddi: [0.93, 0.96], ofkeli: [0.9, 1.04], karisik: [1.04, 0.95] };
+        var sdAcik = true; try { sdAcik = localStorage.getItem("dh-ses-duygu") !== "0"; } catch (e) {}
+        var sd = sdAcik && c.duygu && SD[c.duygu];
+        if (sd) { u.pitch = sd[0]; u.rate = (hizOrani || 1) * sd[1]; }
         u.onboundary = function (ev) {
           if (!ev || typeof ev.charIndex !== "number" || !c.metin.length) return;
           sinirVar = true;
