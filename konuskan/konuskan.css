@@ -273,3 +273,10 @@ main{overflow:auto;padding:28px clamp(16px,4vw,48px) 90px}
 
 /* Dil Harita kelime penceresi (word-popup.js) her katmanın üstünde: görüntülü ders, not defteri, analiz */
 .dh-wp-ov{z-index:2147483200!important} .dh-wp-gk{z-index:2147483300!important}
+
+/* Türkçe metin içindeki İngilizce kelime ve cümleler mavi */
+.ing{color:#1d63d8;font-weight:600}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .ing{color:#7db8ff} }
+:root[data-theme="dark"] .ing{color:#7db8ff}
+.vd .ing, .vd .ing .vd-k{color:#9fd2ff}
+.msg.me .bub .ing{color:inherit;text-decoration:underline;text-decoration-color:rgba(255,255,255,.55);text-underline-offset:3px}

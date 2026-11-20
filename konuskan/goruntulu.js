@@ -286,7 +286,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     function kelimeler(metin) { return esc(metin).replace(/[A-Za-z][A-Za-z'’-]*/g, w => `<span class="vd-k" data-k="${w}">${w}</span>`); }
     /* Türkçe parçalar düz, İngilizce parçalar dokunulabilir kelimelerle */
     const aciklamaMi = m => m.liste && m.liste.some(c => c.dil === 'tr') && m.liste.some(c => c.dil === 'en');
-    function parcaHTML(m) { const ac = aciklamaMi(m); return m.liste.map((c, i) => c.dil === 'tr' ? `<span class="vd-p-tr">${esc(c.metin)}</span>` : (ac ? `<span class="vd-ornek"><span class="vd-p-en">${kelimeler(c.metin)}</span><span class="vd-p-cev" data-i="${i}">${c.cev ? esc(c.cev) : '<span class="vd-spin kucuk"></span>'}</span></span>` : `<span class="vd-p-en">${kelimeler(c.metin)}</span>`)).join(' '); }
+    function parcaHTML(m) { const ac = aciklamaMi(m); return m.liste.map((c, i) => c.dil === 'tr' ? `<span class="vd-p-tr">${window.ingVurgula ? ingVurgula(c.metin, kelimeler) : esc(c.metin)}</span>` : (ac ? `<span class="vd-ornek"><span class="vd-p-en">${kelimeler(c.metin)}</span><span class="vd-p-cev" data-i="${i}">${c.cev ? esc(c.cev) : '<span class="vd-spin kucuk"></span>'}</span></span>` : `<span class="vd-p-en">${kelimeler(c.metin)}</span>`)).join(' '); }
     /* örnek cümlenin çevirisi gelmediyse sonradan tamamla */
     async function cevirileriTamamla(m) {
       if (!aciklamaMi(m)) return;
@@ -360,7 +360,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     }
     function ogrenciMesaji(um) {
       const d = document.createElement('div'); d.className = 'vd-m sen';
-      d.innerHTML = `<div class="vd-m-ic"><div class="vd-m-bub" role="button" tabindex="0" title="Dinle">${esc(um.text)}</div><div class="vd-m-tr" hidden></div>
+      d.innerHTML = `<div class="vd-m-ic"><div class="vd-m-bub" role="button" tabindex="0" title="Dinle">${window.ingVurgula ? ingVurgula(um.text) : esc(um.text)}</div><div class="vd-m-tr" hidden></div>
         <div class="vd-m-durum"><span class="vd-bekle"><span class="vd-spin kucuk"></span>kontrol ediliyor</span></div>
         <div class="vd-m-a"><button type="button" data-k="dinle">${vi('spk')} Dinle</button><button type="button" data-k="tr">TR</button><button type="button" data-k="analiz" title="${OGRETMEN} bu cümleyi açıklasın">${vi('eye')} Analiz</button><button type="button" data-k="not" title="Bu cümleyi not defterine kaydet">${vi('pen')} Not</button></div></div>`;
       const dinlet = () => speak(um.check && !um.check.ok ? um.check.corrected : um.text);
@@ -814,7 +814,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
 
     /* ---- konuşmacı: cümleler geldikçe seslendirir (Gemini: bloklar halinde, tarayıcı: cümle cümle) ---- */
     /* Türkçe metni tırnak içindeki İngilizce parçalardan böler: [{metin, dil}] (tarayıcı sesi için) */
-    const TR_KELIME = new Set(['bir','ve','bu','ile','gibi','daha','yok','ama','herhangi','bile','kadar','olan','olarak','hep','sonra','yani','evet','tamam','neden','zaman','kelime','fiil','isim','ornek','anlam','anlami','sey','yine','veya','icin','diye','demek','mesela','orada','burada','biraz','olur','genellikle','yerine','okyanus','derin','herkes']);
+    const TR_KELIME = new Set(['merhaba','selam','evet','hayir','peki','harika','aferin','bravo','haydi','hadi','tesekkurler','sagol','gunaydin','iyi','tabii','elbette','olur','super','mukemmel','dogru','yanlis','ornegin','yani','simdi','birlikte','tekrar','soru','cevap','ders','konu','bir','ve','bu','ile','gibi','daha','yok','ama','herhangi','bile','kadar','olan','olarak','hep','sonra','yani','evet','tamam','neden','zaman','kelime','fiil','isim','ornek','anlam','anlami','sey','yine','veya','icin','diye','demek','mesela','orada','burada','biraz','olur','genellikle','yerine','okyanus','derin','herkes']);
     function ingilizceMi(t) {
       t = t.trim(); if (!t || t.length > 90 || !/[A-Za-z]/.test(t) || /[çğışöüÇĞİŞÖÜâîû]/.test(t) || !/^[A-Za-z0-9 ,.;:'’?!\-]+$/.test(t)) return false;
       return !t.toLowerCase().split(/[^a-z']+/).filter(Boolean).some(w => TR_KELIME.has(w));

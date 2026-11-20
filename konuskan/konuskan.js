@@ -262,7 +262,7 @@ function speakTek(text,dil){
 }
 /* İki dilli seslendirme: metin cümlelere bölünür; Türkçe cümleler Türkçe sesle, İngilizce cümleler ve
    Türkçe cümle içindeki tırnaklı İngilizce ('beckon', 'The promise of adventure…') İngilizce sesle okunur. */
-const TR_KELIME=new Set(['bir','ve','bu','ile','gibi','daha','yok','ama','herhangi','bile','kadar','olan','olarak','hep','sonra','yani','evet','tamam','neden','zaman','kelime','fiil','isim','ornek','anlam','anlami','sey','yine','veya','icin','diye','demek','mesela','orada','burada','biraz','olur','genellikle','yerine','okyanus','derin','herkes']);
+const TR_KELIME=new Set(['merhaba','selam','evet','hayir','peki','harika','aferin','bravo','haydi','hadi','tesekkurler','sagol','gunaydin','iyi','tabii','elbette','olur','super','mukemmel','dogru','yanlis','ornegin','yani','simdi','birlikte','tekrar','soru','cevap','ders','konu','bir','ve','bu','ile','gibi','daha','yok','ama','herhangi','bile','kadar','olan','olarak','hep','sonra','yani','evet','tamam','neden','zaman','kelime','fiil','isim','ornek','anlam','anlami','sey','yine','veya','icin','diye','demek','mesela','orada','burada','biraz','olur','genellikle','yerine','okyanus','derin','herkes']);
 function trMi(t){ if(/[çğışöüÇĞİŞÖÜâîû]/.test(t)) return true; return String(t).toLowerCase().split(/[^a-z']+/).filter(Boolean).some(w=>TR_KELIME.has(w)); }
 function ingilizceParcaMi(t){ t=t.trim(); return !!t && t.length<=140 && /[A-Za-z]/.test(t) && /^[A-Za-z0-9 ,.;:'’?!\-]+$/.test(t) && !trMi(t); }
 function dilParcala(metin){
@@ -275,6 +275,21 @@ function dilParcala(metin){
     ekle(c.slice(son),'tr');
   }
   return out;
+}
+/* Ekranda: Türkçe metnin içindeki İngilizce cümle ve tırnaklı kelimeler mavi (.ing). Metin olduğu gibi kalır.
+   Hiç Türkçe yoksa (tamamen İngilizce mesaj) boyanmaz. ingFn: İngilizce parçayı HTML'e çeviren işlev (varsayılan esc). */
+function ingVurgula(metin, ingFn){
+  metin=String(metin==null?'':metin); ingFn=ingFn||esc;
+  if(!trMi(metin)) return ingFn(metin);
+  const parcalar=metin.split(/((?:(?<=[.!?…])|(?<=[.!?…]['’"”)]))\s+(?=[^a-zçğışöü]))/);
+  return parcalar.map(c=>{
+    if(!c||/^\s+$/.test(c)) return c||'';
+    if(!trMi(c)){ const kel=(c.match(/[A-Za-z][A-Za-z'’-]*/g)||[]); return kel.length>=2||/^(yes|no|okay|ok|hello|hi|thanks|sorry|please|great|right|exactly)\b/i.test(c.trim())?`<span class="ing">${ingFn(c)}</span>`:esc(c); }
+    const re=/(^|[\s(\[,:;—–-])([‘'"“])([^‘’'"“”\n]{1,140}?)([’'"”])(?=$|[^A-Za-z])/g; let out='', son=0, m;
+    while((m=re.exec(c))){ if(!ingilizceParcaMi(m[3])) continue; const bas=m.index+m[1].length;
+      out+=esc(c.slice(son,bas))+`<span class="ing">${esc(m[2])}${ingFn(m[3])}${esc(m[4])}</span>`; son=bas+m[2].length+m[3].length+m[4].length; }
+    return out+esc(c.slice(son));
+  }).join('');
 }
 let seslendirmeNo=0;
 async function speak(text){
@@ -897,7 +912,7 @@ function notDefteriAc(yeni){
   function kaydetSimdi(){ clearTimeout(kayZ); const ta=$('textarea',yaz); if(!secili||!ta) return; if(ta.value!==(secili.metin||'')){ secili.metin=ta.value; secili=ndKaydet(secili); durum.textContent='Kaydedildi ✓'; listeCiz(); } }
   function sec(n){
     secili=n; if(!n){ yaz.innerHTML=`<div class="empty"><h3>Not defteri</h3><p>Soldan bir not seç ya da "+ Yeni not" ile yazmaya başla.</p></div>`; listeCiz(); return; }
-    yaz.innerHTML=`${n.cumle?`<blockquote class="nd-cumle"><div class="row between" style="gap:8px;align-items:flex-start"><span>${esc(n.cumle)}</span><button type="button" class="icon-btn" data-a="dinle" aria-label="Seslendir">${ic('speaker')}</button></div>${n.tr?`<small>${esc(n.tr)}</small>`:''}${n.src||n.kim?`<small class="muted">${esc([n.kim,n.src].filter(Boolean).join(' · '))}</small>`:''}</blockquote>`:''}
+    yaz.innerHTML=`${n.cumle?`<blockquote class="nd-cumle"><div class="row between" style="gap:8px;align-items:flex-start"><span>${ingVurgula(n.cumle)}</span><button type="button" class="icon-btn" data-a="dinle" aria-label="Seslendir">${ic('speaker')}</button></div>${n.tr?`<small>${ingVurgula(n.tr)}</small>`:''}${n.src||n.kim?`<small class="muted">${esc([n.kim,n.src].filter(Boolean).join(' · '))}</small>`:''}</blockquote>`:''}
       <textarea class="nd-metin" placeholder="Buraya istediğini yaz: anlamı, kural, kendi örneklerin, hatırlatmalar…">${esc(n.metin||'')}</textarea>
       <div class="row between small"><span class="muted">Yazdıkça kendiliğinden kaydedilir · ${esc(skZamanYaz(n.created||n.at))}</span><span class="nd-sil-yer"><button type="button" class="btn sm ghost" data-a="sil">Notu sil</button></span></div>`;
     const ta=$('textarea',yaz); ta.oninput=()=>{ durum.textContent='Yazılıyor…'; clearTimeout(kayZ); kayZ=setTimeout(kaydetSimdi,600); };
@@ -945,12 +960,12 @@ Explain everything in informal Turkish (sen), clearly and briefly, at the learne
 Return ONLY JSON: {"anlam":"natural Turkish translation","dogru":${ogrenci?'true or false (is it correct, natural English?)':'true'},"duzeltme":"${ogrenci?'corrected sentence if not correct, else empty':''}","yapi":"2-3 short Turkish sentences: the grammar structure/tense/pattern and the rule behind it","kelimeler":[{"en":"useful word or phrase from the sentence","tr":"Turkish meaning","not":"very short usage note in Turkish"}],"alternatifler":["1-2 other natural English ways to say it"],"ipucu":"one short Turkish tip on how to use this pattern yourself, with one new English example"}`,{deep:true});
     const kel=(Array.isArray(r.kelimeler)?r.kelimeler:[]).filter(k=>k&&k.en).slice(0,6), alt=(Array.isArray(r.alternatifler)?r.alternatifler:[]).filter(Boolean).slice(0,3);
     const md=sonModel();
-    out.innerHTML=`${r.anlam?`<div class="nd-b"><h4>Anlamı</h4><p>${esc(r.anlam)}</p></div>`:''}
+    out.innerHTML=`${r.anlam?`<div class="nd-b"><h4>Anlamı</h4><p>${ingVurgula(r.anlam)}</p></div>`:''}
       ${ogrenci?(r.dogru===false&&r.duzeltme?`<div class="nd-b nd-uyari"><h4>Düzeltme</h4><div style="line-height:2">${diffHTML(cumle,r.duzeltme)}</div><div class="fb-fix">${esc(r.duzeltme)}</div></div>`:`<div class="nd-b nd-iyi"><h4>${ic('check','width="15" height="15"')} Cümlen doğru</h4></div>`):''}
-      ${r.yapi?`<div class="nd-b"><h4>Yapı ve kural</h4><p>${esc(r.yapi)}</p></div>`:''}
-      ${kel.length?`<div class="nd-b"><h4>Kelimeler ve kalıplar</h4><div class="nd-kel">${kel.map((k,i)=>`<div class="nd-kel-s"><button type="button" class="icon-btn" data-k="${i}" aria-label="Seslendir">${ic('speaker')}</button><span><b>${esc(k.en)}</b> — ${esc(k.tr||'')}${k.not?`<small>${esc(k.not)}</small>`:''}</span><button type="button" class="btn sm ghost" data-kart="${i}" ${S.srs[k.en]?'disabled':''}>${S.srs[k.en]?'Kartlarında':'+ Kart'}</button></div>`).join('')}</div></div>`:''}
+      ${r.yapi?`<div class="nd-b"><h4>Yapı ve kural</h4><p>${ingVurgula(r.yapi)}</p></div>`:''}
+      ${kel.length?`<div class="nd-b"><h4>Kelimeler ve kalıplar</h4><div class="nd-kel">${kel.map((k,i)=>`<div class="nd-kel-s"><button type="button" class="icon-btn" data-k="${i}" aria-label="Seslendir">${ic('speaker')}</button><span><b>${esc(k.en)}</b> — ${esc(k.tr||'')}${k.not?`<small>${ingVurgula(k.not)}</small>`:''}</span><button type="button" class="btn sm ghost" data-kart="${i}" ${S.srs[k.en]?'disabled':''}>${S.srs[k.en]?'Kartlarında':'+ Kart'}</button></div>`).join('')}</div></div>`:''}
       ${alt.length?`<div class="nd-b"><h4>Başka nasıl söylenir?</h4>${alt.map((a,i)=>`<div class="row" style="gap:6px"><button type="button" class="icon-btn" data-alt="${i}" aria-label="Seslendir">${ic('speaker')}</button><span>${esc(a)}</span></div>`).join('')}</div>`:''}
-      ${r.ipucu?`<div class="nd-b"><h4>İpucu</h4><p>${esc(r.ipucu)}</p></div>`:''}
+      ${r.ipucu?`<div class="nd-b"><h4>İpucu</h4><p>${ingVurgula(r.ipucu)}</p></div>`:''}
       <div class="row between" style="margin-top:6px;flex-wrap:wrap;gap:8px">${modelEtiket(md)}<span class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-a="nota">${ic('note','width="16" height="16"')} Not defterine kaydet</button>${window.startVideo?`<button type="button" class="btn primary" data-a="canli" title="Görüntülü Deniz bu cümleyi sesli anlatsın, sen de soru sor">${ic('video','width="16" height="16"')} Deniz'le canlı sohbet</button>`:''}</span></div>`;
     out.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>speak(kel[+b.dataset.k].en));
     out.querySelectorAll('[data-alt]').forEach(b=>b.onclick=()=>speak(alt[+b.dataset.alt]));
@@ -1002,13 +1017,13 @@ function startChat(cfg,kayit){
     const row=document.createElement('div'); row.className='msg '+(m.role==='user'?'me':'ai');
     if(m.role==='user'){
       const chk=document.createElement('button'); chk.type='button'; chk.className='chk wait'; chk.innerHTML='<span class="typing" style="transform:scale(.6)"><i></i><i></i><i></i></span>'; chk.setAttribute('aria-label','Geri bildirimi göster');
-      row.innerHTML=`<div class="bub">${esc(m.text)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Seslendir">${ic('speaker')}</button><button class="icon-btn" data-a="an" aria-label="Deniz'le analiz et" title="Deniz'le analiz et">${ic('spark')}</button><button class="icon-btn" data-a="nt" aria-label="Bu cümleyi not defterine kaydet" title="Bu cümleyi not defterine kaydet">${ic('note')}</button></div>`; row.prepend(chk); m._chk=chk;
+      row.innerHTML=`<div class="bub">${ingVurgula(m.text)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Seslendir">${ic('speaker')}</button><button class="icon-btn" data-a="an" aria-label="Deniz'le analiz et" title="Deniz'le analiz et">${ic('spark')}</button><button class="icon-btn" data-a="nt" aria-label="Bu cümleyi not defterine kaydet" title="Bu cümleyi not defterine kaydet">${ic('note')}</button></div>`; row.prepend(chk); m._chk=chk;
       chk.onclick=()=>showFb(m);
       $('[data-a=sp]',row).onclick=()=>speak(m.check&&!m.check.ok&&m.check.corrected?m.check.corrected:m.text);
       $('[data-a=an]',row).onclick=()=>denizleAnaliz({cumle:m.text,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:'Sen'});
       $('[data-a=nt]',row).onclick=()=>notDefteriAc({cumle:m.text,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:'Sen',metin:m.check&&!m.check.ok&&m.check.corrected?'Doğrusu: '+m.check.corrected+'\n\n':''});
     } else {
-      row.innerHTML=`<div class="bub">${esc(m.text)}${m.tr?`<span class="tr ${S.showTr?'':'hide'}">${esc(m.tr)}</span>`:''}${modelEtiket(m.model)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Dinle">${ic('speaker')}</button>${m.tr?`<button class="icon-btn" data-a="tr" aria-label="Çeviri">${ic('translate')}</button>`:''}<button class="icon-btn" data-a="an" aria-label="Deniz'le analiz et" title="Deniz'le analiz et">${ic('spark')}</button><button class="icon-btn" data-a="nt" aria-label="Bu cümleyi not defterine kaydet" title="Bu cümleyi not defterine kaydet">${ic('note')}</button></div>`;
+      row.innerHTML=`<div class="bub">${ingVurgula(m.text)}${m.tr?`<span class="tr ${S.showTr?'':'hide'}">${ingVurgula(m.tr)}</span>`:''}${modelEtiket(m.model)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Dinle">${ic('speaker')}</button>${m.tr?`<button class="icon-btn" data-a="tr" aria-label="Çeviri">${ic('translate')}</button>`:''}<button class="icon-btn" data-a="an" aria-label="Deniz'le analiz et" title="Deniz'le analiz et">${ic('spark')}</button><button class="icon-btn" data-a="nt" aria-label="Bu cümleyi not defterine kaydet" title="Bu cümleyi not defterine kaydet">${ic('note')}</button></div>`;
       $('[data-a=sp]',row).onclick=()=>speak(m.text);
       const tb=$('[data-a=tr]',row); if(tb) tb.onclick=()=>$('.tr',row).classList.toggle('hide');
       $('[data-a=an]',row).onclick=()=>denizleAnaliz({cumle:m.text,tr:m.tr,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:cfg.name||'Deniz'});
