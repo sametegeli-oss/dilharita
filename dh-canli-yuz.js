@@ -39,6 +39,8 @@
      ses bir kez görülünce "bozuk" diye işaretlenir (3 gün), aynı cümle
      hemen çalışan bir sonraki sesle okunur ve o ses bir daha seçilmez.
      İngilizcede doğal Google sesleri, varsa, yerel seslerden önce gelir. */
+  /* DHSes artık dh-ses.js'te (bütün site); o yüklenmediyse yedek tanım */
+  if (!global.DHSes) (function () {
   var SES_SAGLIK = "dh-ses-saglik-v1", SES_BOZUK_MS = 3 * 864e5;
   function sesSaglikOku() { try { return JSON.parse(localStorage.getItem(SES_SAGLIK) || "{}") || {}; } catch (e) { return {}; } }
   function sesBozukMu(ad) { var k = sesSaglikOku()[ad]; return !!(k && k.bozuk && Date.now() - (k.at || 0) < SES_BOZUK_MS); }
@@ -72,6 +74,7 @@
   function sesHacim(v) { return v && (/Google/i.test(v.name) || v.localService === false) ? 1 : 0.72; }
   global.DHSes = { hacim: sesHacim, aday: sesAday, sec: function (dil, ad) { return sesAday(dil, ad)[0] || null; }, bozukMu: sesBozukMu, isaretle: sesIsaretle, sonuc: sesSonuc,
     sifirla: function () { try { localStorage.removeItem(SES_SAGLIK); } catch (e) {} } };
+  })();
 
   /* ---------- Duygu ön ayarları (hedef parametreler) ---------- */
   var DUYGULAR = {
@@ -601,6 +604,7 @@
         var u; try { u = new SpeechSynthesisUtterance(c.metin); } catch (e) { u = null; }
         if (!u || !global.speechSynthesis) { c.konusuyor = true; c.bas = performance.now(); setTimeout(son, c.metin.length * msHarf); return; }
         var v = sesSec(dil); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = dil === "tr" ? "tr-TR" : "en-US";
+        u.__dhSesYonetimli = true;   /* kendi yeniden denemesini yapar: dh-ses.js dokunmasın */
         u.volume = global.DHSes ? DHSes.hacim(v) : 1;
         /* internetten gelen ses: tarayıcı "başladı" der ama ses ~0,35 sn sonra duyulur; kelime sinyalleri de erken gelir.
            Bu seslerde ağız sabit gecikmeyle başlar ve kelime sinyaline göre düzeltilmez. */

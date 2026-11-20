@@ -242,7 +242,7 @@ function speakTek(text,dil){
       const mesgul=ss.speaking||ss.pending; if(mesgul) ss.cancel();
       try{ ss.resume(); }catch(e){}
       const tr=dil==='tr'; const sec=()=>tr?(window.DHSes?DHSes.sec('tr'):null):pickVoice();
-      const u=new SpeechSynthesisUtterance(text); const v=sec(); if(v){ u.voice=v; u.lang=v.lang; } else u.lang=tr?'tr-TR':'en-US';
+      const u=new SpeechSynthesisUtterance(text); const v=sec(); if(v){ u.voice=v; u.lang=v.lang; } else u.lang=tr?'tr-TR':'en-US'; u.__dhSesYonetimli=true;
       const hz=+S.rate; u.rate=isFinite(hz)&&hz>=0.5&&hz<=1.6?hz:0.9; if(window.DHSes) u.volume=DHSes.hacim(v);
       /* olay işleyicileri aşağıda (bozuk ses denetimiyle) */
       sonSoz=u;
