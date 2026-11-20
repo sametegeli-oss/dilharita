@@ -121,12 +121,21 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
   }
 
   /* ================= Kurulum ================= */
-  function startVideo(kayit) {
+  /* sec.ustte: açık paneli (ör. yazılı sohbet) kapatmadan onun üstünde aç; kapanınca altta kalan ekrana dönülür.
+     sec.analiz: {cumle, kim, src, tr} — Deniz derse hemen başlar ve bu cümleyi Türkçe açıklar. */
+  function startVideo(kayit, sec) {
+    sec = sec || {};
     if (kayit && !(kayit.hist && kayit.hist.length)) kayit = null;
+    const ustte = !!sec.ustte, analiz = sec.analiz && sec.analiz.cumle ? sec.analiz : null;
     /* ayarları her açılışta yeniden oku (başka sekmede / sayfa yenilenmeden değişmiş olabilir) */
     try { Object.assign(ayar, JSON.parse(localStorage.getItem(AYAR_KEY) || '{}')); } catch (e) {}
-    const host = openPanel('Görüntülü ders');
-    host.innerHTML = '';
+    const eskiMod = ayar.mod;
+    if (analiz && ayar.mod !== 'genel') ayar.mod = 'tr';   /* analiz Türkçe anlatılır; mikrofon Türkçe soruları da anlar (kalıcı ayara yazılmaz) */
+    if (ustte) { const e = document.querySelector('.vd'); if (e && e.__kapat) e.__kapat(); }
+    const host = ustte ? document.body : openPanel('Görüntülü ders');
+    if (!ustte) host.innerHTML = '';
+    let temizlendi = false, temizle = () => {};
+    const kapatPanel = sessiz => { if (ustte) { temizle(); stopSpeak(); } else closePanel(sessiz); };
     const kok = document.createElement('div');
     kok.className = 'vd';
     kok.innerHTML = `
@@ -586,7 +595,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     if (window.DHKullanim) DHKullanim.dinle(() => { if (!q('.vd-ayarlar').hidden) kullanimCiz(); });
     q('[data-a=cc]').onclick = () => { ayar.altyazi = !ayar.altyazi; ayarKaydet(); kok.classList.toggle('vd-cc-yok', !ayar.altyazi); };
     kok.classList.toggle('vd-cc-yok', !ayar.altyazi);
-    q('[data-a=kapat]').onclick = () => { if (st.faz === 'ders' && st.turns) bitir(); else closePanel(); };
+    q('[data-a=kapat]').onclick = () => { if (st.faz === 'ders' && st.turns) bitir(); else kapatPanel(); };
 
     /* ---- Google hesabı (genel asistan) ---- */
     function googleCiz() {
@@ -1090,7 +1099,11 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       st.saat = setInterval(() => { const s = Math.floor((Date.now() - st.bas) / 1000); q('.vd-sure').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); lastAct = Date.now(); }, 1000);
       mikrofonHazirla();   /* izni ders başında iste; ilk cevapta beklemesin */
       dolgulariHazirla();
-      if (kayit && !st.hist.length) {
+      if (analiz && !st.hist.length) {
+        const n = document.createElement('div'); n.className = 'vd-devam-not'; n.textContent = 'İncelenen cümle: “' + analiz.cumle + '”' + (analiz.src ? ' · ' + analiz.src : ''); listeyeEkle(n);
+        const sen = analiz.kim === 'Sen';
+        await sor(null, `The learner opened you from a text chat${analiz.src ? ' (' + analiz.src + ')' : ''} to have this sentence ${sen ? 'THEY wrote' : 'from that chat'} analysed: "${analiz.cumle}". Greet them in ONE very short Turkish sentence, then explain IN TURKISH (warm, informal "sen"), at their level: what it means, its grammar structure and the rule behind it${sen ? ', whether it is correct (if not, give the correct version as an English segment)' : ''}, and 1-2 useful words or phrases from it. Give ONE new English example as an English segment, then ask if they have a question about it. Keep it to 5-7 short segments. English examples as English segments (lang "en"), the explanation as Turkish segments (lang "tr").`);
+      } else if (kayit && !st.hist.length) {
         gecmisiYukle(kayit);
         await sor(null, `The ${genelMi() ? 'conversation' : 'lesson'} was interrupted earlier; the conversation so far is above. Welcome the ${genelMi() ? 'user' : 'learner'} back in ONE short sentence ${ayar.mod === 'en' ? 'in English' : 'IN TURKISH'} and continue exactly where you left off (answer an open question, or take the next small step and ask a question). Do not start a new topic.`);
       } else await sor(null);
@@ -1420,8 +1433,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         <div class="vd-yorum"></div>
         ${st.errs.length ? `<h3>Bu dersteki düzeltmeler</h3><div class="vd-oz-liste">${st.errs.map(e => `<div class="vd-duz-k"><div class="vd-fark">${diffHTML(e.wrong, e.right)}</div><div class="vd-dogru">${esc(e.right)}</div><p>${esc(e.why || '')}</p></div>`).join('')}</div><p class="vd-not">Hepsi hata defterine ve Dil Harita'nın ortak hata defterine eklendi.</p>` : (st.turns && !genelMi() ? '<p>Bu derste düzeltilecek bir hata çıkmadı. 👏</p>' : '')}
         <div class="vd-oz-b"><button type="button" class="vd-basla" data-k="yeni">${vi('video')} ${genelMi() ? 'Yeni sohbet' : 'Yeni ders'}</button><button type="button" class="vd-ikincil" data-k="kapat">Kapat</button></div></div>`;
-      o.querySelector('[data-k=kapat]').onclick = () => closePanel();
-      o.querySelector('[data-k=yeni]').onclick = () => { closePanel(true); startVideo(); };
+      o.querySelector('[data-k=kapat]').onclick = () => kapatPanel();
+      o.querySelector('[data-k=yeni]').onclick = () => { kapatPanel(true); startVideo(); };
       saveNow(); vdKaydet(true);
       if (st.turns >= 2 && !aiOff() && !genelMi()) {
         const y = o.querySelector('.vd-yorum'); y.innerHTML = '<span class="vd-spin kucuk"></span>';
@@ -1498,7 +1511,9 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
           : 'The learner just showed you a photo from their camera (attached image). In simple English at their level, say what you see in one or two sentences, mention one useful English word for something in it, and ask them a question about it. Do not invent details you cannot see.');
     };
 
-    panelCleanup = () => {
+    temizle = () => {
+      if (temizlendi) return; temizlendi = true;
+      if (analiz && ayar.mod !== eskiMod) ayar.mod = eskiMod;
       vdKaydet();
       kamKapat(true);
       st.bitti = true; clearInterval(st.saat); clearTimeout(D.sz); cancelAnimationFrame(D.raf);
@@ -1510,8 +1525,14 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       micTarget = null; window.KK_DICT_LANG = 'en-US';
       try { if (window.__vdGoogleBirak) { window.__vdGoogleBirak(); window.__vdGoogleBirak = null; } } catch (e) {}
       try { yuz.yikil(); } catch (e) {}
-      kok.remove(); document.documentElement.classList.remove('vd-acik');
+      kok.remove(); if (!document.querySelector('.vd')) document.documentElement.classList.remove('vd-acik');
     };
+    if (ustte) kok.__kapat = temizle; else panelCleanup = temizle;
+    if (analiz) {   /* lobi beklemeden derse başla: Deniz cümleyi açıklar */
+      st.konu = { id: 'analiz', t: 'Cümle analizi', s: '', persona: PERSONA + ' who explains English sentences clearly and patiently' };
+      const kn = q('.vd-lobi p'); if (kn) kn.textContent = `${OGRETMEN} şu cümleyi açıklayacak: “${analiz.cumle}”`;
+      Promise.resolve(yuz.hazir).catch(() => {}).then(() => { if (!st.bitti && st.faz === 'lobi') basla(); });
+    }
   }
   window.startVideo = startVideo;
   window.__vdWav = wav16k;

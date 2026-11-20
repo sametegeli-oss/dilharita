@@ -220,6 +220,7 @@ let micTarget=null, micLive=false;
 function enVoices(){ try{ return (speechSynthesis.getVoices()||[]).filter(v=>/^en[-_]/i.test(v.lang)||/english/i.test(v.name)); }catch(e){ return []; } }
 try{ speechSynthesis.onvoiceschanged=()=>{ if(route()==='account'&&$('#panel').hidden) render(); }; }catch(e){}
 function pickVoice(){
+  if(window.DHSes) return DHSes.sec('en',S.voiceName);   /* bozuk sesleri atlar, Google seslerini öne alır */
   const vs=enVoices(); if(!vs.length) return null;
   let want=S.voiceName;
   if(!want){ try{ const g=JSON.parse(localStorage.getItem('dh-voice:__global__')||'null'); if(g&&g.name) want=g.name; }catch(e){} }
@@ -242,10 +243,17 @@ function speak(text){
       try{ ss.resume(); }catch(e){}
       const u=new SpeechSynthesisUtterance(text); const v=pickVoice(); if(v){ u.voice=v; u.lang=v.lang; } else u.lang='en-US';
       const hz=+S.rate; u.rate=isFinite(hz)&&hz>=0.5&&hz<=1.6?hz:0.9;
-      u.onend=son; u.onerror=e=>{ if(e&&e.error&&!/interrupted|canceled/.test(e.error)) try{ console.warn('[konuskan] seslendirme hatası',e.error); }catch(x){} son(); };
+      /* olay işleyicileri aşağıda (bozuk ses denetimiyle) */
       sonSoz=u;
-      const basla=()=>{ try{ ss.speak(u); }catch(e){ son(); return; }
-        setTimeout(()=>{ if(!bitti&&!ss.speaking&&!ss.pending){ try{ ss.cancel(); ss.resume(); ss.speak(u); }catch(e){ son(); } } },500); };
+      /* bozuk ses: başlamadan hemen biterse işaretle ve sıradaki sesle yeniden oku (en çok 3 kez) */
+      let basladi=false, t0=0, deneme=0; const ad=()=>u.voice?u.voice.name:'';
+      u.onstart=()=>{ basladi=true; if(window.DHSes) DHSes.sonuc(ad(),true); };
+      const bozukMu=(hata)=>!basladi&&window.DHSes&&DHSes.sonuc(ad(),false,performance.now()-t0,hata);
+      const tekrar=()=>{ if(deneme>=3) return false; const v2=pickVoice(); if(!v2) return false; deneme++; u.voice=v2; u.lang=v2.lang; setTimeout(basla,60); return true; };
+      u.onend=()=>{ if(bozukMu()&&tekrar()) return; son(); };
+      u.onerror=e=>{ const h=e&&e.error; if(h&&!/interrupted|canceled/.test(h)){ if(bozukMu(h)&&tekrar()) return; try{ console.warn('[konuskan] seslendirme hatası',h); }catch(x){} } son(); };
+      const basla=()=>{ t0=performance.now(); try{ ss.speak(u); }catch(e){ son(); return; }
+        const d=deneme; setTimeout(()=>{ if(d===deneme&&!bitti&&!ss.speaking&&!ss.pending){ try{ ss.cancel(); ss.resume(); t0=performance.now(); ss.speak(u); }catch(e){ son(); } } },500); };
       if(mesgul) setTimeout(basla,90); else basla();
       setTimeout(son,Math.max(5000,text.length*150));
     }catch(e){ son(); }
@@ -887,6 +895,13 @@ function notDefteriAc(yeni){
   ndBirlestir();
 }
 
+/* Yazılı sohbetlerde "Deniz'le analiz et": görüntülü Deniz sohbetin üstünde açılır ve cümleyi sesli açıklar;
+   kapatınca sohbete dönülür. Görüntülü ders yüklenmediyse yazılı analiz penceresi. */
+function denizIncele(o){
+  if(!o||!o.cumle) return;
+  if(window.startVideo&&!aiOff()){ stopSpeak(); startVideo(null,{ustte:true,analiz:o}); }
+  else denizleAnaliz(o);
+}
 /* "Deniz'le analiz et": cümlenin anlamı, yapısı, kelimeleri ve alternatifleri (Türkçe açıklama) */
 async function denizleAnaliz(o){
   const cumle=String(o&&o.cumle||'').trim(); if(!cumle) return;
@@ -967,13 +982,13 @@ function startChat(cfg,kayit){
       row.innerHTML=`<div class="bub">${esc(m.text)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Seslendir">${ic('speaker')}</button><button class="icon-btn" data-a="an" aria-label="Deniz'le analiz et" title="Deniz'le analiz et">${ic('spark')}</button><button class="icon-btn" data-a="nt" aria-label="Bu cümleyi not defterine kaydet" title="Bu cümleyi not defterine kaydet">${ic('note')}</button></div>`; row.prepend(chk); m._chk=chk;
       chk.onclick=()=>showFb(m);
       $('[data-a=sp]',row).onclick=()=>speak(m.check&&!m.check.ok&&m.check.corrected?m.check.corrected:m.text);
-      $('[data-a=an]',row).onclick=()=>denizleAnaliz({cumle:m.text,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:'Sen'});
+      $('[data-a=an]',row).onclick=()=>denizIncele({cumle:m.text,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:'Sen'});
       $('[data-a=nt]',row).onclick=()=>notDefteriAc({cumle:m.text,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:'Sen',metin:m.check&&!m.check.ok&&m.check.corrected?'Doğrusu: '+m.check.corrected+'\n\n':''});
     } else {
       row.innerHTML=`<div class="bub">${esc(m.text)}${m.tr?`<span class="tr ${S.showTr?'':'hide'}">${esc(m.tr)}</span>`:''}${modelEtiket(m.model)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Dinle">${ic('speaker')}</button>${m.tr?`<button class="icon-btn" data-a="tr" aria-label="Çeviri">${ic('translate')}</button>`:''}<button class="icon-btn" data-a="an" aria-label="Deniz'le analiz et" title="Deniz'le analiz et">${ic('spark')}</button><button class="icon-btn" data-a="nt" aria-label="Bu cümleyi not defterine kaydet" title="Bu cümleyi not defterine kaydet">${ic('note')}</button></div>`;
       $('[data-a=sp]',row).onclick=()=>speak(m.text);
       const tb=$('[data-a=tr]',row); if(tb) tb.onclick=()=>$('.tr',row).classList.toggle('hide');
-      $('[data-a=an]',row).onclick=()=>denizleAnaliz({cumle:m.text,tr:m.tr,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:cfg.name||'Deniz'});
+      $('[data-a=an]',row).onclick=()=>denizIncele({cumle:m.text,tr:m.tr,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:cfg.name||'Deniz'});
       $('[data-a=nt]',row).onclick=()=>notDefteriAc({cumle:m.text,tr:m.tr,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:cfg.name||'Deniz'});
     }
     msgs.appendChild(row); msgs.scrollTop=msgs.scrollHeight; return row;
