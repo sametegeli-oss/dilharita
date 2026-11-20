@@ -221,6 +221,10 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-satir">Arka plan <select data-a="fon"><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select></label>
         <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
         <div class="vd-ses-durum"><p class="vd-ses-durum-y"></p><button type="button" class="vd-ikincil vd-ses-dene" data-a="sesDene">${vi('spk')} Doğal sesi dene</button></div>
+        <div class="vd-uyum"><b>Ağız ve ses uyumu</b><small>Tarayıcı sesi için. Ağız sesten önce gidiyorsa çubuğu sağa, sonra kalıyorsa sola çek; "Dene" ile kontrol et.</small>
+          ${['tr', 'en'].map(dl => `<div class="vd-uyum-s"><div class="vd-uyum-b"><span>${dl === 'tr' ? 'Türkçe ses' : 'İngilizce ses'} <em class="vd-uyum-ad" data-dil="${dl}"></em></span><strong class="vd-uyum-d" data-dil="${dl}"></strong></div>
+            <div class="vd-uyum-c"><input type="range" min="-300" max="1500" step="20" data-uyum="${dl}" aria-label="${dl === 'tr' ? 'Türkçe' : 'İngilizce'} ses gecikmesi"><button type="button" class="vd-ikincil" data-uyumdene="${dl}">${vi('spk')} Dene</button></div></div>`).join('')}
+          <button type="button" class="vd-ikincil vd-uyum-sifir" data-a="uyumSifirla">Varsayılana döndür</button></div>
         <a class="vd-av-ayar-l" href="./avatar-ayarlari.html" target="_blank" rel="noopener">${vi('gear')} Avatar ayarları: hareketler, ifade, sesteki duygu →</a>
         <label class="vd-anahtar"><input type="checkbox" data-a="sesDuygu"><span></span> Seste duygu <small>Deniz'in sesi yüzündeki duyguya göre değişir: sevinçte neşeli, teselli ederken yumuşak, ciddi konuda ağır.</small></label>
         <label class="vd-satir">Konuşma hızı (tarayıcı sesi) <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
@@ -518,6 +522,25 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       b.disabled = false; sesDurumCiz();
     };
     setTimeout(sesDurumCiz, 0);   /* TTS_MODELLER aşağıda tanımlı: hemen çağırma */
+    /* Ağız ve ses uyumu: ses başına gecikme (ms) — dh-ses.js DHSes.gecikme */
+    function uyumSes(dl) { return window.DHSes ? DHSes.sec(dl) : null; }
+    function uyumDeger(v) { if (!v) return 0; const g = window.DHSes && DHSes.gecikme ? DHSes.gecikme(v.name) : null; return g != null ? g : (v.localService === false ? 380 : 0); }
+    function uyumCiz() {
+      ['tr', 'en'].forEach(dl => {
+        const v = uyumSes(dl), r = q(`[data-uyum=${dl}]`), d = q(`.vd-uyum-d[data-dil=${dl}]`), a = q(`.vd-uyum-ad[data-dil=${dl}]`); if (!r) return;
+        r.disabled = !v; r.value = uyumDeger(v); a.textContent = v ? '(' + v.name.replace(/\s*\(.*\)\s*$/, '').slice(0, 28) + ')' : '(bu dilde ses yok)';
+        const ms = +r.value; d.textContent = ms === 0 ? '0 ms' : (ms > 0 ? '+' : '') + ms + ' ms';
+      });
+    }
+    qa('[data-uyum]').forEach(r => r.oninput = () => { const v = uyumSes(r.dataset.uyum); if (v && window.DHSes && DHSes.gecikmeYaz) DHSes.gecikmeYaz(v.name, +r.value); uyumCiz(); });
+    qa('[data-uyumdene]').forEach(b => b.onclick = () => {
+      if (st.busy) { toast(`${OGRETMEN} cevabını hazırlıyor; bitince tekrar dene.`); return; }
+      const dl = b.dataset.uyumdene; if (D.aktif) dinlemeIptal(); yuz.sustur();
+      const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret' });
+      k.ekle({ metin: dl === 'tr' ? 'Merhaba, ben Deniz. Ağzım sesimle birlikte mi hareket ediyor?' : 'Hello, I am Deniz. Does my mouth move together with my voice?', dil: dl, duygu: 'mutlu', guc: 0.5 }); k.bitir();
+    });
+    q('[data-a=uyumSifirla]').onclick = () => { ['tr', 'en'].forEach(dl => { const v = uyumSes(dl); if (v && window.DHSes && DHSes.gecikmeYaz) DHSes.gecikmeYaz(v.name, null); }); uyumCiz(); toast('Ağız ve ses uyumu varsayılana döndü'); };
+    setTimeout(uyumCiz, 0); try { speechSynthesis.addEventListener('voiceschanged', uyumCiz); } catch (e) {}
     q('[data-a=hiz]').value = S.rate; q('[data-a=hiz]').oninput = e => { S.rate = +e.target.value; touchSettings(); };
     /* SOHBET KALİTESİ — modelin cevap vermeden önce ne kadar düşüneceği.
        oto: derslerde hızlı, genel sohbette dengeli. Derin: en doğru ama ilk kelime birkaç saniye gecikir. */
@@ -545,7 +568,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     };
     const uzK = () => ['kisa', 'normal', 'ayrintili'].includes(ayar.uzunluk) ? ayar.uzunluk : 'normal';
     const uzHatir = () => UZ.hatir[uzK()] ? ' Reply length setting: ' + UZ.hatir[uzK()] : '';
-    q('[data-a=ayar]').onclick = () => { q('.vd-ayarlar').hidden = !q('.vd-ayarlar').hidden; if (!q('.vd-ayarlar').hidden) { kullanimCiz(); sesDurumCiz(); } };
+    q('[data-a=ayar]').onclick = () => { q('.vd-ayarlar').hidden = !q('.vd-ayarlar').hidden; if (!q('.vd-ayarlar').hidden) { kullanimCiz(); sesDurumCiz(); uyumCiz(); } };
     /* ---- yapay zekâ kullanımı: sıradaki modeller + bugünkü token/istek ---- */
     function kullanimCiz() {
       const el = q('.vd-kul-liste'); if (!el) return;

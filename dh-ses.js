@@ -55,7 +55,12 @@
   /* ses düzeyi dengesi: internetten gelen Google sesleri yerel/eklenti seslerinden belirgin kısık çıkar */
   function sesHacim(v) { return v && (/Google/i.test(v.name) || v.localService === false) ? 1 : 0.72; }
 
-  global.DHSes = { __dosya: true, hacim: sesHacim, aday: sesAday, sec: function (dil, ad) { return sesAday(dil, ad)[0] || null; }, bozukMu: sesBozukMu, isaretle: sesIsaretle, sonuc: sesSonuc,
+  /* "Ağız ve ses uyumu": sesin ağızdan kaç ms sonra duyulduğu, ses başına (kullanıcı ayarı, bu cihazda) */
+  var SES_GECIKME = "dh-ses-gecikme-v1";
+  function gecikmeOku() { try { return JSON.parse(localStorage.getItem(SES_GECIKME) || "{}") || {}; } catch (e) { return {}; } }
+  function sesGecikme(ad) { var g = gecikmeOku()[ad]; return typeof g === "number" ? g : null; }
+  function sesGecikmeYaz(ad, ms) { if (!ad) return; var g = gecikmeOku(); if (ms == null) delete g[ad]; else g[ad] = Math.max(-500, Math.min(2500, Math.round(+ms) || 0)); try { localStorage.setItem(SES_GECIKME, JSON.stringify(g)); } catch (e) {} }
+  global.DHSes = { __dosya: true, hacim: sesHacim, gecikme: sesGecikme, gecikmeYaz: sesGecikmeYaz, aday: sesAday, sec: function (dil, ad) { return sesAday(dil, ad)[0] || null; }, bozukMu: sesBozukMu, isaretle: sesIsaretle, sonuc: sesSonuc,
     sifirla: function () { try { localStorage.removeItem(SES_SAGLIK); } catch (e) {} } };
 
   /* ── bütün sitede: speechSynthesis.speak koruması ── */

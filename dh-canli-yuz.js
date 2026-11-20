@@ -609,6 +609,10 @@
         /* internetten gelen ses: tarayıcı "başladı" der ama ses ~0,35 sn sonra duyulur; kelime sinyalleri de erken gelir.
            Bu seslerde ağız sabit gecikmeyle başlar ve kelime sinyaline göre düzeltilmez. */
         var agSesi = !!(v && v.localService === false), AG_GECIKME = 380;
+        /* kullanıcının "Ağız ve ses uyumu" ayarı (ses başına, ms): varsa her şeyden önce gelir.
+           > 0: ses ağızdan bu kadar sonra duyulur → ağız bekler, kelime sinyalleri de bu kadar kaydırılır. < 0: ağız öne alınır. */
+        var kGec = global.DHSes && DHSes.gecikme && v ? DHSes.gecikme(v.name) : null, kAyar = kGec != null;
+        var gecikme = kAyar ? kGec : (agSesi ? AG_GECIKME : 0);
         var sesT0 = performance.now(), sesAd = v ? v.name : "", deneme = c._sesDeneme || 0, guncel = function () { return deneme === (c._sesDeneme || 0); };
         u.rate = hizOrani || 1;
         /* tarayıcı sesinde duygu: ses yüksekliği ve hız hafifçe değişir (ayarlardan kapatılabilir) */
@@ -625,7 +629,8 @@
           u.pitch = Math.max(0, Math.min(2, ty)); u.rate = Math.max(0.55, Math.min(1.8, (hizOrani || 1) * hz));
         }
         u.onboundary = function (ev) {
-          if (agSesi || !ev || typeof ev.charIndex !== "number" || !c.metin.length) return;
+          if ((agSesi && !kAyar) || !ev || typeof ev.charIndex !== "number" || !c.metin.length) return;
+          var anSimdi = performance.now() + Math.max(0, gecikme);   /* sinyal, sesin duyulduğu andan bu kadar önce gelir */
           sinirVar = true;
           /* uzun kelimelerde ara ara vurgu jesti */
           var kel = (c.metin.slice(ev.charIndex).match(/^[\p{L}'’-]+/u) || [""])[0];
@@ -635,8 +640,10 @@
           if (c.dizi.ci) { kareNo = 0; while (kareNo < c.dizi.ci.length && c.dizi.ci[kareNo] < ev.charIndex) kareNo++; }
           var beklenen = kareNo * c.kareMs;
           /* ilk kelime gerçekten okunmaya başladı: ağzı tam bu ana bağla */
-          if (c.bekle) { c.bekle = false; clearTimeout(c.bekleZ); c.bas = performance.now() - beklenen; c.duzelt = 0; c.duzeltHedef = null; return; }
-          var gecen = performance.now() - c.bas;
+          if (c.bekle) { c.bas = anSimdi - beklenen; c.duzelt = 0; c.duzeltHedef = null; c._basAyar = true;
+            if (gecikme > 0) return;   /* ağız, ses duyulana dek kapalı kalır (zamanlayıcı açar) */
+            c.bekle = false; clearTimeout(c.bekleZ); return; }
+          var gecen = anSimdi - c.bas;
           var fark = beklenen - gecen - (c.duzelt || 0);
           if (Math.abs(fark) > 180) c.duzeltHedef = beklenen - gecen;   /* küçük sapmalar yok sayılır */
         };
@@ -648,7 +655,8 @@
           if (sessiz) { clearTimeout(sessizZ); sessiz = false; }
           basladi = true; c.bas = performance.now(); c.konusuyor = true; c.duzelt = 0; c.duzeltHedef = null;
           /* bu tarayıcı kelime sınırı bildiriyorsa ağız ilk kelimenin gerçekten duyulduğu anda başlar */
-          if (agSesi) { c.bekle = true; c.bekleZ = setTimeout(function () { if (c.bekle) { c.bekle = false; c.bas = performance.now(); } }, AG_GECIKME); }
+          if (gecikme > 0) { c._basAyar = false; c.bekle = true; c.bekleZ = setTimeout(function () { if (c.bekle) { c.bekle = false; if (!c._basAyar) c.bas = performance.now(); } }, gecikme); }
+          else if (gecikme < 0) { c.bas = performance.now() + gecikme; }
           else if (sinirVar) { c.bekle = true; c.bekleZ = setTimeout(function () { if (c.bekle) { c.bekle = false; c.bas = performance.now(); } }, 800); }
         };
         /* bozuk ses (başlamadan bitti): işaretle ve aynı cümleyi sıradaki sesle bir kez daha dene */
