@@ -337,11 +337,13 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       const d = document.createElement('div'); d.className = 'vd-m ogr';
       d.innerHTML = `<span class="vd-m-ava" aria-hidden="true">D</span><div class="vd-m-ic"><div class="vd-m-bub" role="button" tabindex="0" title="Tekrar dinle">${parcaHTML(m)}</div>
         <div class="vd-m-tr" hidden>${esc(m.tr || 'Çeviri yok.')}</div>
-        <div class="vd-m-a"><button type="button" data-k="dinle">${vi('spk')} Tekrar söyle</button>${m.tr ? '<button type="button" data-k="tr">TR</button>' : ''}${m.model ? `<span class="vd-m-model" title="Bu cevabı veren yapay zekâ modeli">${esc(modelAdi(m.model))}</span>` : ''}</div></div>`;
+        <div class="vd-m-a"><button type="button" data-k="dinle">${vi('spk')} Tekrar söyle</button>${m.tr ? '<button type="button" data-k="tr">TR</button>' : ''}<button type="button" data-k="analiz" title="${OGRETMEN} bu cümleyi Türkçe açıklasın">${vi('eye')} Analiz</button><button type="button" data-k="not" title="Bu cümleyi not defterine kaydet">${vi('pen')} Not</button>${m.model ? `<span class="vd-m-model" title="Bu cevabı veren yapay zekâ modeli">${esc(modelAdi(m.model))}</span>` : ''}</div></div>`;
       const bub = d.querySelector('.vd-m-bub');
       bub.onclick = e => { const k = e.target.closest('.vd-k'); if (k) { e.stopPropagation(); kelimeGoster(k); return; } tekrarSoyle(m); };
       bub.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tekrarSoyle(m); } };
       d.querySelector('[data-k=dinle]').onclick = () => tekrarSoyle(m);
+      d.querySelector('[data-k=analiz]').onclick = () => denizAnaliz(m.text, OGRETMEN, m.tr);
+      d.querySelector('[data-k=not]').onclick = () => notDefteriAc({ cumle: m.text, tr: m.tr, src: kaynakYazi(), kim: OGRETMEN });
       const trB = d.querySelector('[data-k=tr]');
       if (trB) { trB.onclick = e => { const t = d.querySelector('.vd-m-tr'); t.hidden = !t.hidden; e.currentTarget.classList.toggle('sec', !t.hidden); };
         if (ayar.altyaziTR) { d.querySelector('.vd-m-tr').hidden = false; trB.classList.add('sec'); } }
@@ -351,8 +353,10 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       const d = document.createElement('div'); d.className = 'vd-m sen';
       d.innerHTML = `<div class="vd-m-ic"><div class="vd-m-bub" role="button" tabindex="0" title="Dinle">${esc(um.text)}</div><div class="vd-m-tr" hidden></div>
         <div class="vd-m-durum"><span class="vd-bekle"><span class="vd-spin kucuk"></span>kontrol ediliyor</span></div>
-        <div class="vd-m-a"><button type="button" data-k="dinle">${vi('spk')} Dinle</button><button type="button" data-k="tr">TR</button></div></div>`;
+        <div class="vd-m-a"><button type="button" data-k="dinle">${vi('spk')} Dinle</button><button type="button" data-k="tr">TR</button><button type="button" data-k="analiz" title="${OGRETMEN} bu cümleyi açıklasın">${vi('eye')} Analiz</button><button type="button" data-k="not" title="Bu cümleyi not defterine kaydet">${vi('pen')} Not</button></div></div>`;
       const dinlet = () => speak(um.check && !um.check.ok ? um.check.corrected : um.text);
+      d.querySelector('[data-k=analiz]').onclick = () => denizAnaliz(um.text, 'Sen');
+      d.querySelector('[data-k=not]').onclick = () => notDefteriAc({ cumle: um.text, tr: um.tr || '', src: kaynakYazi(), kim: 'Sen', metin: um.check && !um.check.ok && um.check.corrected ? 'Doğrusu: ' + um.check.corrected + '\n\n' : '' });
       d.querySelector('.vd-m-bub').onclick = dinlet; d.querySelector('[data-k=dinle]').onclick = dinlet;
       d.querySelector('[data-k=tr]').onclick = async e => {
         const b = e.currentTarget, t = d.querySelector('.vd-m-tr');
@@ -1177,7 +1181,10 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     }
     /* tekrar dinle: daha önce üretilmiş sesler yeniden kullanılır (yeni istek yok) */
     async function tekrarSoyle(m) {
-      if (st.busy || st.bitti || !m.liste) return;
+      if (!m || !m.text) return;
+      /* ders bittiyse (özet ekranı) ya da cevap parçaları yoksa: düz seslendir */
+      if (st.bitti || st.faz !== 'ders' || !m.liste) { speak(m.text); return; }
+      if (st.busy) { toast(`${OGRETMEN} cevabını hazırlıyor; bitince tekrar bas.`); return; }
       if (D.aktif) dinlemeIptal();
       yuz.sustur();
       await new Promise(r => setTimeout(r, 60));
@@ -1185,6 +1192,15 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: c => { if (c.goster) c.goster(); } });
         m.okunan.forEach(it => k.ekle(Object.assign({}, it))); k.bitir(); await k.bitti; sonra(m, true);
       } else await soyle(m, true);
+    }
+    /* "Analiz": ders sürüyorsa Deniz cümleyi derste, sesli ve Türkçe açıklar; ders bittiyse analiz penceresi açılır */
+    function denizAnaliz(cumle, kim, tr) {
+      if (!cumle) return;
+      if (st.faz !== 'ders' || st.bitti) { denizleAnaliz({ cumle, tr, src: kaynakYazi(), kim }); return; }
+      if (st.busy) { toast(`${OGRETMEN} cevabını hazırlıyor; bitince tekrar bas.`); return; }
+      if (D.aktif) dinlemeIptal(); if (kok.dataset.d === 'konusuyor') yuz.sustur();
+      const sen = kim === 'Sen';
+      sor(null, `The learner pressed "Analyse with ${OGRETMEN}" on this sentence ${sen ? 'THEY wrote/said' : 'from the conversation'}: "${cumle}". Explain it IN TURKISH (warm, informal "sen"), at their level: what it means, its grammar structure and the rule behind it${sen ? ', whether it is correct (if not, give the correct version as an English segment)' : ''}, and 1-2 useful words or phrases from it. Then give ONE new English example sentence as an English segment and briefly ask if it is clear. Keep it to 4-6 short segments. Speak English examples as English segments (lang "en"), the explanation as Turkish segments (lang "tr").`);
     }
     function kontrol(um, c) {
       if (c.lang === 'tr') { um.check = { ok: true, tr: true }; ogrenciDurum(um); return; }

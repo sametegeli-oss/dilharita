@@ -321,7 +321,7 @@
       kollariAyarla(p);
       var n = (N + 1) * (N + 1), piv = durum.pivot, s = durum.s;
       var rollR = p.roll * Math.PI / 180, cs = Math.cos(rollR), sn = Math.sin(rollR);
-      var pitchY = p.pitch * 14 * s, pitchS = p.pitch * 0.035, yawX = p.yaw * 16 * s;
+      var pitchY = p.pitch * 14 * s, pitchS = p.pitch * 0.015, yawX = p.yaw * 16 * s;   /* dikey basılma ve aşağıdaki yatay daralma küçük: büyük değerler yüzü hareket ederken küçülmüş gösteriyordu */
       for (var v = 0; v < n; v++) {
         var x0 = temel[v * 2], y0 = temel[v * 2 + 1], x = x0, y = y0, ox = 0, oy = 0;
         for (var k = 0; k < kollar.length; k++) {
@@ -336,7 +336,7 @@
           /* baş sallama (pitch): yüz aşağı kayar ve dikeyde hafif basılır; burun daha çok (derinlik hissi) */
           var fw = faceW[v];
           var py = y + (pitchY * (0.55 + 0.45 * fw) + (y - piv[1]) * pitchS * -1) * hw;
-          var px = x + yawX * (0.35 + 0.65 * fw) * hw - (x - durum.merkez[0]) * Math.abs(p.yaw) * 0.04 * hw;
+          var px = x + yawX * (0.35 + 0.65 * fw) * hw - (x - durum.merkez[0]) * Math.abs(p.yaw) * 0.012 * hw;
           /* yana eğme (roll): boyun ekseni etrafında */
           var rx = px - piv[0], ry = py - piv[1];
           var nx = piv[0] + rx * cs - ry * sn, ny = piv[1] + rx * sn + ry * cs;
@@ -453,7 +453,7 @@
       /* nefes: ~4,5 sn'de bir; konuşurken biraz daha sık ve sığ. Hafif büyüme + omuzlarla birlikte yukarı kalkma */
       var kNef = ka("nefes", 1), nefesF = Math.sin(t * (konusma ? 1.75 : 1.4)), nefes = hareketAz ? 0 : nefesF * (konusma ? 0.0028 : 0.0042) * kNef;
       var nefesY = hareketAz ? 0 : -nefesF * (konusma ? 1.2 : 2.0) * durum.s * kNef;
-      var zoom = 1 + Math.max(-0.3, p.lean) * 0.06 + nefes;
+      var zoom = 1 + Math.max(-0.3, p.lean) * 0.025 + nefes;   /* öne eğilme hafif yakınlaştırır; büyük olunca konuşmaya geçişte yüz küçülüyor gibi görünüyordu */
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       gl.uniform3f(uLoc.cam, durum.merkez[0], durum.merkez[1] + 40 * durum.s + nefesY, zoom);

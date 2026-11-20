@@ -1171,6 +1171,10 @@
         },
         saveKonuskanSohbet:function(uid,id,data){ return fsMod.setDoc(fsMod.doc(db,"users",uid,"konuskan_sohbetler",String(id)),data); },
         deleteKonuskanSohbet:function(uid,id){ return fsMod.deleteDoc(fsMod.doc(db,"users",uid,"konuskan_sohbetler",String(id))); },
+        /* Konuşkan not defteri: her not users/{uid}/konuskan_notlar altında ayrı belge */
+        loadKoleksiyon:function(uid,ad){ return fsMod.getDocs(fsMod.collection(db,"users",uid,ad)).then(function(snap){var out=[];snap.forEach(function(d){var v=d.data()||{};v.id=d.id;out.push(v);});return out;}); },
+        saveKoleksiyon:function(uid,ad,id,data){ return fsMod.setDoc(fsMod.doc(db,"users",uid,ad,String(id)),data); },
+        deleteKoleksiyon:function(uid,ad,id){ return fsMod.deleteDoc(fsMod.doc(db,"users",uid,ad,String(id))); },
         deleteYoutubeStudy:function(uid,videoId){
           var ref=fsMod.doc(db,"users",uid,"youtube_studies",videoId);
           return fsMod.getDoc(ref).then(function(snap){
@@ -1693,6 +1697,12 @@
       getir: function(){ if(!(ready&&user&&fb&&fb.loadKonuskanSohbetler)) return Promise.resolve(null); return fb.loadKonuskanSohbetler(user.uid); },
       kaydet: function(id,data){ if(!(ready&&user&&fb&&fb.saveKonuskanSohbet)) return Promise.resolve(false); return fb.saveKonuskanSohbet(user.uid,id,data).then(function(){return true;}); },
       sil: function(id){ if(!(ready&&user&&fb&&fb.deleteKonuskanSohbet)) return Promise.resolve(false); return fb.deleteKonuskanSohbet(user.uid,id).then(function(){return true;}); }
+    },
+    notlar: {
+      hazir: function(){ return !!(ready&&user&&fb&&fb.saveKoleksiyon); },
+      getir: function(){ if(!(ready&&user&&fb&&fb.loadKoleksiyon)) return Promise.resolve(null); return fb.loadKoleksiyon(user.uid,"konuskan_notlar"); },
+      kaydet: function(id,data){ if(!(ready&&user&&fb&&fb.saveKoleksiyon)) return Promise.resolve(false); return fb.saveKoleksiyon(user.uid,"konuskan_notlar",id,data).then(function(){return true;}); },
+      sil: function(id){ if(!(ready&&user&&fb&&fb.deleteKoleksiyon)) return Promise.resolve(false); return fb.deleteKoleksiyon(user.uid,"konuskan_notlar",id).then(function(){return true;}); }
     },
     snapList: snapList, restoreSnap: restoreSnap,
     /* Yedekleme ekranı kendi kopya listesini tutmasın diye TEK KAYNAK burada.

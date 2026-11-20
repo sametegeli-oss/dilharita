@@ -57,7 +57,8 @@ const I = { /* ikonlar */
   arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>', note:'<path d="M5 3h10l4 4v14H5z"/><path d="M9 11h6M9 15h6"/>',
   lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   dh:'<path d="M3 12h18M3 12l6-6M3 12l6 6"/>',
-  video:'<rect x="2" y="6" width="13" height="12" rx="2.5"/><path d="M15 10.5l6-3.5v10l-6-3.5z"/>'
+  video:'<rect x="2" y="6" width="13" height="12" rx="2.5"/><path d="M15 10.5l6-3.5v10l-6-3.5z"/>',
+  spark:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/><path d="M10.5 7.5v6M7.5 10.5h6"/>'
 };
 const ic = (n,extra='') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${I[n]}</svg>`;
 
@@ -74,6 +75,7 @@ const MODES = [
   {id:'characters', t:'Karakterler', d:'Klasik romanların kahramanlarıyla sohbet et.', icon:'mask', c:'#f2c14e', lv:1},
   {id:'debate', t:'Münazara', d:'Bir konunun lehinde ya da aleyhinde tartış.', icon:'debate', c:'#9fb4f2', lv:1},
   {id:'photo', t:'Fotoğraf modu', d:'Bir fotoğrafı anlat, anında geri bildirim al.', icon:'photo', c:'#8fd6a0', tag:'Yeni', lv:1},
+  {id:'notes', t:'Not defteri', d:'Sohbetlerden kaydettiğin cümleler ve kendi notların.', icon:'note', c:'#9fb4f2'},
   {id:'errors', t:'Hata defteri', d:'Konuşkan\'da yaptığın hataları gör ve üzerine çalış.', icon:'note', c:'#ef8f7f'}
 ];
 
@@ -223,14 +225,31 @@ function pickVoice(){
   if(!want){ try{ const g=JSON.parse(localStorage.getItem('dh-voice:__global__')||'null'); if(g&&g.name) want=g.name; }catch(e){} }
   return (want&&vs.find(v=>v.name===want)) || vs.find(v=>/en-US/i.test(v.lang)) || vs[0];
 }
+/* Seslendir: Chrome'un bilinen sorunlarına karşı sağlam.
+   - cancel() ardından hemen speak() verilince Chrome yeni cümleyi bazen yutar → kısa bekleyip konuş
+   - motor "duraklatılmış" takılı kalabilir → resume()
+   - cümle nesnesi çöp toplayıcıya giderse onend hiç gelmez → referansı tut
+   - hız bozuk kayıttan (null/NaN) gelirse atama hata verip sessiz kalıyordu → güvenli aralık
+   - başlamadıysa bir kez yeniden dene */
+let sonSoz=null;
 function speak(text){
-  if(!text) return Promise.resolve();
-  try{
-    speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(text); const v=pickVoice(); if(v){ u.voice=v; u.lang=v.lang; } else u.lang='en-US';
-    u.rate=S.rate;
-    return new Promise(r=>{ u.onend=r; u.onerror=r; speechSynthesis.speak(u); setTimeout(r,Math.max(4000,text.length*140)); });
-  }catch(e){ return Promise.resolve(); }
+  text=String(text||'').trim(); if(!text) return Promise.resolve();
+  const ss=window.speechSynthesis; if(!ss||!window.SpeechSynthesisUtterance){ toast('Bu tarayıcı seslendirmeyi desteklemiyor.'); return Promise.resolve(); }
+  return new Promise(r=>{
+    let bitti=false; const son=()=>{ if(!bitti){ bitti=true; r(); } };
+    try{
+      const mesgul=ss.speaking||ss.pending; if(mesgul) ss.cancel();
+      try{ ss.resume(); }catch(e){}
+      const u=new SpeechSynthesisUtterance(text); const v=pickVoice(); if(v){ u.voice=v; u.lang=v.lang; } else u.lang='en-US';
+      const hz=+S.rate; u.rate=isFinite(hz)&&hz>=0.5&&hz<=1.6?hz:0.9;
+      u.onend=son; u.onerror=e=>{ if(e&&e.error&&!/interrupted|canceled/.test(e.error)) try{ console.warn('[konuskan] seslendirme hatası',e.error); }catch(x){} son(); };
+      sonSoz=u;
+      const basla=()=>{ try{ ss.speak(u); }catch(e){ son(); return; }
+        setTimeout(()=>{ if(!bitti&&!ss.speaking&&!ss.pending){ try{ ss.cancel(); ss.resume(); ss.speak(u); }catch(e){ son(); } } },500); };
+      if(mesgul) setTimeout(basla,90); else basla();
+      setTimeout(son,Math.max(5000,text.length*150));
+    }catch(e){ son(); }
+  });
 }
 function stopSpeak(){ try{ speechSynthesis.cancel(); }catch(e){} }
 /* Tarayıcının konuşma tanımasını, sayfanın beklediği basit arayüze sarar:
@@ -589,6 +608,7 @@ function openMode(id){
     case 'podcast': return pickList('Hikâyeler','Bir konu seç ya da kendin yaz. Hikâye seviyene göre yazılır.',STORY_TOPICS.map(d=>({t:d,s:'',icon:'pod',go:()=>startStory(d)})),startStory);
     case 'photo': return startPhoto();
     case 'errors': return startErrors();
+    case 'notes': return notDefteriAc();
     case 'feedback': return startFeedback();
   }
 }
@@ -789,6 +809,122 @@ function startSohbetlerim(){
   skBirlestir().then(ok=>{ if(ok&&$('#skPanel')) skCizListe($('#skPanel')); });
 }
 
+/* ================= Not defteri ve "Deniz'le analiz et" =================
+   Her not ayrı yerel anahtarda (dh-kk-not:<id>) ve bulutta
+   users/{uid}/konuskan_notlar/<id> ayrı belgesinde. Silinen not mezar taşı
+   bırakır (başka cihaz geri yüklemesin). Not: {id, created, at, cumle?, tr?, src?, kim?, metin} */
+const ND_IDX='dh-kk-notlar-v1', ND_PRE='dh-kk-not:', ND_MEZAR_MS=90*864e5;
+let ndBirlesiyor=false; const ndBekleyen=new Set(); let ndZaman=null;
+function ndIdx(){ try{ const a=JSON.parse(localStorage.getItem(ND_IDX)||'[]'); return Array.isArray(a)?a.filter(x=>x&&x.id):[]; }catch(e){ return []; } }
+function ndIdxYaz(a){ try{ localStorage.setItem(ND_IDX,JSON.stringify(a)); }catch(e){} }
+function ndOku(id){ try{ return JSON.parse(localStorage.getItem(ND_PRE+id)||'null'); }catch(e){ return null; } }
+function ndListe(){ return ndIdx().filter(x=>!x.del).map(x=>ndOku(x.id)).filter(Boolean).sort((a,b)=>(b.at||0)-(a.at||0)); }
+function ndYerelYaz(n){ try{ localStorage.setItem(ND_PRE+n.id,JSON.stringify(n)); }catch(e){ toast('Not kaydedilemedi: cihaz deposu dolu'); return false; } const a=ndIdx().filter(x=>x.id!==n.id); a.push({id:n.id,at:n.at}); ndIdxYaz(a); return true; }
+function ndMezar(id,at){ try{ localStorage.removeItem(ND_PRE+id); }catch(e){} const a=ndIdx().filter(x=>x.id!==id); a.push({id,at:at||Date.now(),del:true}); ndIdxYaz(a); }
+function ndKaydet(n){ n.at=Date.now(); n=skTemiz(n); if(ndYerelYaz(n)) ndBulutaYaz(n.id); return n; }
+function ndSil(id){ ndMezar(id); ndBulutaYaz(id); }
+function ndBulutaYaz(id){ ndBekleyen.add(id); clearTimeout(ndZaman); ndZaman=setTimeout(ndBulutGonder,1500); }
+async function ndBulutGonder(){
+  const C=window.DHCloudSync&&DHCloudSync.notlar; if(!C||!C.hazir()) return;
+  const ids=[...ndBekleyen]; ndBekleyen.clear();
+  for(const id of ids){ const e=ndIdx().find(x=>x.id===id); if(!e) continue; const v=e.del?{id,at:e.at,del:true}:ndOku(id); if(!v) continue;
+    try{ await C.kaydet(id,skTemiz(v)); }catch(err){ ndBekleyen.add(id); try{ console.warn('[konuskan] not buluta yazılamadı',err); }catch(x){} } }
+}
+async function ndBirlestir(){
+  const C=window.DHCloudSync&&DHCloudSync.notlar; if(!C||!C.hazir()||ndBirlesiyor) return false; ndBirlesiyor=true;
+  try{
+    const uzak=await C.getir(); if(!uzak) return false;
+    const um={}; uzak.forEach(r=>{ if(r&&r.id) um[r.id]=r; }); const yerel={}; ndIdx().forEach(x=>{ yerel[x.id]=x; }); let degisti=false;
+    for(const id in um){ const r=um[id], l=yerel[id]; if(!l||(r.at||0)>(l.at||0)){ degisti=true; if(r.del) ndMezar(id,r.at); else ndYerelYaz(r); } }
+    for(const id in yerel){ const l=yerel[id], r=um[id]; if(!r||(l.at||0)>(r.at||0)) ndBekleyen.add(id); }
+    const simdi=Date.now(); for(const id in um){ const r=um[id]; if(r.del&&simdi-(r.at||0)>ND_MEZAR_MS) C.sil(id).catch(()=>{}); }
+    ndIdxYaz(ndIdx().filter(x=>!(x.del&&simdi-x.at>ND_MEZAR_MS)));
+    await ndBulutGonder(); if(degisti&&window.__ndYenile) window.__ndYenile();
+    return true;
+  }catch(err){ try{ console.warn('[konuskan] notlar buluttan okunamadı',err); }catch(x){} return false; }
+  finally{ ndBirlesiyor=false; }
+}
+window.addEventListener('dh-cloud-synced',()=>ndBirlestir());
+(function ndIlk(){ let n=0; const t=setInterval(()=>{ n++; const C=window.DHCloudSync&&DHCloudSync.notlar; if(C&&C.hazir()){ clearInterval(t); ndBirlestir(); } else if(n>40) clearInterval(t); },3000); })();
+
+/* Not defteri penceresi (her ekranın üstünde açılır; görüntülü derste de) */
+function ndBaslik(n){ const t=String(n.metin||'').trim().split('\n')[0]; return (n.cumle?n.cumle:t)||'Boş not'; }
+function notDefteriAc(yeni){
+  const eski=document.querySelector('.nd-perde'); if(eski) eski.remove();
+  let secili=null;
+  if(yeni&&(yeni.cumle||yeni.metin)){ secili=ndKaydet({id:skYeniId(),created:Date.now(),cumle:yeni.cumle||'',tr:yeni.tr||'',src:yeni.src||'',kim:yeni.kim||'',metin:yeni.metin||''}); }
+  const p=document.createElement('div'); p.className='nd-perde'; p.setAttribute('role','dialog'); p.setAttribute('aria-modal','true'); p.setAttribute('aria-label','Not defteri');
+  p.innerHTML=`<div class="nd-kutu"><header class="nd-ust"><b>${ic('note','width="18" height="18"')} Not defterim</b><span class="nd-durum small muted" aria-live="polite"></span><button type="button" class="btn sm" data-a="yeni">+ Yeni not</button><button type="button" class="icon-btn" data-a="kapat" aria-label="Kapat">${ic('close')}</button></header>
+    <div class="nd-govde"><aside class="nd-liste"><input type="search" class="nd-ara" placeholder="Notlarda ara…" aria-label="Notlarda ara"><div class="nd-ogeler"></div></aside><section class="nd-yaz"></section></div></div>`;
+  document.body.appendChild(p);
+  const liste=$('.nd-ogeler',p), yaz=$('.nd-yaz',p), ara=$('.nd-ara',p), durum=$('.nd-durum',p);
+  let kayZ=null;
+  function listeCiz(){
+    const q=ara.value.trim().toLowerCase(), l=ndListe().filter(n=>!q||[n.cumle,n.tr,n.metin,n.src].join(' ').toLowerCase().includes(q));
+    liste.innerHTML=l.length?l.map(n=>`<button type="button" class="nd-oge ${secili&&secili.id===n.id?'on':''}" data-id="${esc(n.id)}"><b>${esc(ndBaslik(n).slice(0,70))}</b><small>${esc(skZamanYaz(n.at))}${n.src?' · '+esc(n.src.slice(0,40)):''}</small></button>`).join(''):`<p class="small muted" style="padding:8px">${q?'Eşleşen not yok.':'Henüz not yok. Sohbetlerde bir cümlenin yanındaki not düğmesine bas ya da "+ Yeni not" ile yaz.'}</p>`;
+    liste.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{ kaydetSimdi(); sec(ndOku(b.dataset.id)); });
+  }
+  function kaydetSimdi(){ clearTimeout(kayZ); const ta=$('textarea',yaz); if(!secili||!ta) return; if(ta.value!==(secili.metin||'')){ secili.metin=ta.value; secili=ndKaydet(secili); durum.textContent='Kaydedildi ✓'; listeCiz(); } }
+  function sec(n){
+    secili=n; if(!n){ yaz.innerHTML=`<div class="empty"><h3>Not defteri</h3><p>Soldan bir not seç ya da "+ Yeni not" ile yazmaya başla.</p></div>`; listeCiz(); return; }
+    yaz.innerHTML=`${n.cumle?`<blockquote class="nd-cumle"><div class="row between" style="gap:8px;align-items:flex-start"><span>${esc(n.cumle)}</span><button type="button" class="icon-btn" data-a="dinle" aria-label="Seslendir">${ic('speaker')}</button></div>${n.tr?`<small>${esc(n.tr)}</small>`:''}${n.src||n.kim?`<small class="muted">${esc([n.kim,n.src].filter(Boolean).join(' · '))}</small>`:''}</blockquote>`:''}
+      <textarea class="nd-metin" placeholder="Buraya istediğini yaz: anlamı, kural, kendi örneklerin, hatırlatmalar…">${esc(n.metin||'')}</textarea>
+      <div class="row between small"><span class="muted">Yazdıkça kendiliğinden kaydedilir · ${esc(skZamanYaz(n.created||n.at))}</span><span class="nd-sil-yer"><button type="button" class="btn sm ghost" data-a="sil">Notu sil</button></span></div>`;
+    const ta=$('textarea',yaz); ta.oninput=()=>{ durum.textContent='Yazılıyor…'; clearTimeout(kayZ); kayZ=setTimeout(kaydetSimdi,600); };
+    const d=$('[data-a=dinle]',yaz); if(d) d.onclick=()=>speak(n.cumle);
+    $('[data-a=sil]',yaz).onclick=e=>{ const y=e.currentTarget.parentNode; y.innerHTML=`<span>Silinsin mi?</span> <button type="button" class="btn sm" data-a="evet" style="background:var(--bad,#c0392b);color:#fff;border-color:transparent">Evet, sil</button> <button type="button" class="btn sm ghost" data-a="hayir">Vazgeç</button>`;
+      $('[data-a=evet]',y).onclick=()=>{ clearTimeout(kayZ); ndSil(n.id); secili=null; toast('Not silindi'); sec(ndListe()[0]||null); }; $('[data-a=hayir]',y).onclick=()=>sec(ndOku(n.id)||n); };
+    listeCiz(); setTimeout(()=>{ ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); },30);
+  }
+  function kapat(){ kaydetSimdi(); /* hiç yazılmamış boş not kalmasın */ if(secili&&!secili.cumle&&!String(secili.metin||'').trim()) ndSil(secili.id); p.remove(); window.__ndYenile=null; document.removeEventListener('keydown',esc_); }
+  const esc_=e=>{ if(e.key==='Escape'){ e.stopPropagation(); kapat(); } };
+  document.addEventListener('keydown',esc_,true);
+  $('[data-a=kapat]',p).onclick=kapat; p.addEventListener('pointerdown',e=>{ if(e.target===p) kapat(); });
+  $('[data-a=yeni]',p).onclick=()=>{ kaydetSimdi(); sec(ndKaydet({id:skYeniId(),created:Date.now(),metin:''})); };
+  ara.oninput=listeCiz;
+  window.__ndYenile=()=>{ if(secili) secili=ndOku(secili.id)||secili; listeCiz(); };
+  sec(secili||ndListe()[0]||null);
+  ndBirlestir();
+}
+
+/* "Deniz'le analiz et": cümlenin anlamı, yapısı, kelimeleri ve alternatifleri (Türkçe açıklama) */
+async function denizleAnaliz(o){
+  const cumle=String(o&&o.cumle||'').trim(); if(!cumle) return;
+  if(aiOff()){ toast(aiErr({code:'no_ai'})); return; }
+  const eski=document.querySelector('.nd-perde'); if(eski) eski.remove();
+  const p=document.createElement('div'); p.className='nd-perde'; p.setAttribute('role','dialog'); p.setAttribute('aria-modal','true'); p.setAttribute('aria-label',"Deniz'le analiz");
+  p.innerHTML=`<div class="nd-kutu nd-analiz"><header class="nd-ust"><b>${ic('spark','width="18" height="18"')} Deniz'le analiz</b><span></span><button type="button" class="icon-btn" data-a="kapat" aria-label="Kapat">${ic('close')}</button></header>
+    <div class="nd-icerik"><blockquote class="nd-cumle"><div class="row between" style="gap:8px;align-items:flex-start"><span>${esc(cumle)}</span><button type="button" class="icon-btn" data-a="dinle" aria-label="Seslendir">${ic('speaker')}</button></div>${o.kim?`<small class="muted">${esc([o.kim,o.src].filter(Boolean).join(' · '))}</small>`:''}</blockquote>
+    <div class="nd-sonuc"><p class="muted">Deniz cümleyi inceliyor… <span class="typing"><i></i><i></i><i></i></span></p></div></div></div>`;
+  document.body.appendChild(p);
+  const kapat=()=>{ p.remove(); document.removeEventListener('keydown',esc_,true); }; const esc_=e=>{ if(e.key==='Escape'){ e.stopPropagation(); kapat(); } };
+  document.addEventListener('keydown',esc_,true); $('[data-a=kapat]',p).onclick=kapat; p.addEventListener('pointerdown',e=>{ if(e.target===p) kapat(); });
+  $('[data-a=dinle]',p).onclick=()=>speak(cumle);
+  const out=$('.nd-sonuc',p), ogrenci=o.kim==='Sen';
+  try{
+    const r=await ai(`You are Deniz, a warm English teacher for a Turkish learner (CEFR ${S.level}). ${LEVEL_GUIDE[S.level]||''}
+Analyse this ${ogrenci?'sentence the LEARNER wrote':'English sentence from the conversation'}${o.src?` (context: ${o.src})`:''}: "${cumle}"
+Explain everything in informal Turkish (sen), clearly and briefly, at the learner's level. ${ogrenci?'Judge only real grammar/word-choice errors; ignore punctuation and capitalisation.':''}
+Return ONLY JSON: {"anlam":"natural Turkish translation","dogru":${ogrenci?'true or false (is it correct, natural English?)':'true'},"duzeltme":"${ogrenci?'corrected sentence if not correct, else empty':''}","yapi":"2-3 short Turkish sentences: the grammar structure/tense/pattern and the rule behind it","kelimeler":[{"en":"useful word or phrase from the sentence","tr":"Turkish meaning","not":"very short usage note in Turkish"}],"alternatifler":["1-2 other natural English ways to say it"],"ipucu":"one short Turkish tip on how to use this pattern yourself, with one new English example"}`,{deep:true});
+    const kel=(Array.isArray(r.kelimeler)?r.kelimeler:[]).filter(k=>k&&k.en).slice(0,6), alt=(Array.isArray(r.alternatifler)?r.alternatifler:[]).filter(Boolean).slice(0,3);
+    const md=sonModel();
+    out.innerHTML=`${r.anlam?`<div class="nd-b"><h4>Anlamı</h4><p>${esc(r.anlam)}</p></div>`:''}
+      ${ogrenci?(r.dogru===false&&r.duzeltme?`<div class="nd-b nd-uyari"><h4>Düzeltme</h4><div style="line-height:2">${diffHTML(cumle,r.duzeltme)}</div><div class="fb-fix">${esc(r.duzeltme)}</div></div>`:`<div class="nd-b nd-iyi"><h4>${ic('check','width="15" height="15"')} Cümlen doğru</h4></div>`):''}
+      ${r.yapi?`<div class="nd-b"><h4>Yapı ve kural</h4><p>${esc(r.yapi)}</p></div>`:''}
+      ${kel.length?`<div class="nd-b"><h4>Kelimeler ve kalıplar</h4><div class="nd-kel">${kel.map((k,i)=>`<div class="nd-kel-s"><button type="button" class="icon-btn" data-k="${i}" aria-label="Seslendir">${ic('speaker')}</button><span><b>${esc(k.en)}</b> — ${esc(k.tr||'')}${k.not?`<small>${esc(k.not)}</small>`:''}</span><button type="button" class="btn sm ghost" data-kart="${i}" ${S.srs[k.en]?'disabled':''}>${S.srs[k.en]?'Kartlarında':'+ Kart'}</button></div>`).join('')}</div></div>`:''}
+      ${alt.length?`<div class="nd-b"><h4>Başka nasıl söylenir?</h4>${alt.map((a,i)=>`<div class="row" style="gap:6px"><button type="button" class="icon-btn" data-alt="${i}" aria-label="Seslendir">${ic('speaker')}</button><span>${esc(a)}</span></div>`).join('')}</div>`:''}
+      ${r.ipucu?`<div class="nd-b"><h4>İpucu</h4><p>${esc(r.ipucu)}</p></div>`:''}
+      <div class="row between" style="margin-top:6px;flex-wrap:wrap;gap:8px">${modelEtiket(md)}<button type="button" class="btn primary" data-a="nota">${ic('note','width="16" height="16"')} Not defterine kaydet</button></div>`;
+    out.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>speak(kel[+b.dataset.k].en));
+    out.querySelectorAll('[data-alt]').forEach(b=>b.onclick=()=>speak(alt[+b.dataset.alt]));
+    out.querySelectorAll('[data-kart]').forEach(b=>b.onclick=()=>{ const k=kel[+b.dataset.kart]; if(!S.srs[k.en]){ S.srs[k.en]={tr:k.tr||'',o:'',box:1,due:today()}; save(); toast('Kelime kartlarına eklendi'); } b.disabled=true; b.textContent='Kartlarında'; });
+    $('[data-a=nota]',out).onclick=()=>{
+      const metin=[r.anlam&&('Anlamı: '+r.anlam), ogrenci&&r.dogru===false&&r.duzeltme&&('Doğrusu: '+r.duzeltme), r.yapi&&('Yapı: '+r.yapi),
+        kel.length&&('Kelimeler:\n'+kel.map(k=>'• '+k.en+' — '+(k.tr||'')+(k.not?' ('+k.not+')':'')).join('\n')), alt.length&&('Başka türlü:\n'+alt.map(a=>'• '+a).join('\n')), r.ipucu&&('İpucu: '+r.ipucu)].filter(Boolean).join('\n\n')+'\n\n';
+      kapat(); notDefteriAc({cumle,tr:r.anlam||o.tr||'',src:o.src,kim:o.kim,metin}); };
+  }catch(e){ out.innerHTML=`<div class="notice">${esc(aiErr(e))}</div>`; }
+}
+
 function startChat(cfg,kayit){
   const st={cfg,hist:[],done:new Set(),turns:0,busy:false,sel:null,run:0,sessionXP:0,errs:[]};
   /* kayıt: ilk mesajından sonra her adımda kaydedilir (Sohbetlerim) */
@@ -828,12 +964,17 @@ function startChat(cfg,kayit){
     const row=document.createElement('div'); row.className='msg '+(m.role==='user'?'me':'ai');
     if(m.role==='user'){
       const chk=document.createElement('button'); chk.type='button'; chk.className='chk wait'; chk.innerHTML='<span class="typing" style="transform:scale(.6)"><i></i><i></i><i></i></span>'; chk.setAttribute('aria-label','Geri bildirimi göster');
-      row.innerHTML=`<div class="bub">${esc(m.text)}</div>`; row.prepend(chk); m._chk=chk;
+      row.innerHTML=`<div class="bub">${esc(m.text)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Seslendir">${ic('speaker')}</button><button class="icon-btn" data-a="an" aria-label="Deniz'le analiz et" title="Deniz'le analiz et">${ic('spark')}</button><button class="icon-btn" data-a="nt" aria-label="Bu cümleyi not defterine kaydet" title="Bu cümleyi not defterine kaydet">${ic('note')}</button></div>`; row.prepend(chk); m._chk=chk;
       chk.onclick=()=>showFb(m);
+      $('[data-a=sp]',row).onclick=()=>speak(m.check&&!m.check.ok&&m.check.corrected?m.check.corrected:m.text);
+      $('[data-a=an]',row).onclick=()=>denizleAnaliz({cumle:m.text,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:'Sen'});
+      $('[data-a=nt]',row).onclick=()=>notDefteriAc({cumle:m.text,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:'Sen',metin:m.check&&!m.check.ok&&m.check.corrected?'Doğrusu: '+m.check.corrected+'\n\n':''});
     } else {
-      row.innerHTML=`<div class="bub">${esc(m.text)}${m.tr?`<span class="tr ${S.showTr?'':'hide'}">${esc(m.tr)}</span>`:''}${modelEtiket(m.model)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Dinle">${ic('speaker')}</button>${m.tr?`<button class="icon-btn" data-a="tr" aria-label="Çeviri">${ic('translate')}</button>`:''}</div>`;
+      row.innerHTML=`<div class="bub">${esc(m.text)}${m.tr?`<span class="tr ${S.showTr?'':'hide'}">${esc(m.tr)}</span>`:''}${modelEtiket(m.model)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Dinle">${ic('speaker')}</button>${m.tr?`<button class="icon-btn" data-a="tr" aria-label="Çeviri">${ic('translate')}</button>`:''}<button class="icon-btn" data-a="an" aria-label="Deniz'le analiz et" title="Deniz'le analiz et">${ic('spark')}</button><button class="icon-btn" data-a="nt" aria-label="Bu cümleyi not defterine kaydet" title="Bu cümleyi not defterine kaydet">${ic('note')}</button></div>`;
       $('[data-a=sp]',row).onclick=()=>speak(m.text);
       const tb=$('[data-a=tr]',row); if(tb) tb.onclick=()=>$('.tr',row).classList.toggle('hide');
+      $('[data-a=an]',row).onclick=()=>denizleAnaliz({cumle:m.text,tr:m.tr,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:cfg.name||'Deniz'});
+      $('[data-a=nt]',row).onclick=()=>notDefteriAc({cumle:m.text,tr:m.tr,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:cfg.name||'Deniz'});
     }
     msgs.appendChild(row); msgs.scrollTop=msgs.scrollHeight; return row;
   }
@@ -871,7 +1012,7 @@ Rules: answer in English only, 1-3 short sentences, natural and friendly, end wi
     }catch(e){ typing.remove(); msgs.insertAdjacentHTML('beforeend',`<div class="notice small">${esc(aiErr(e))}</div>`); }
   }
   function bubbleTyping(){ const r=document.createElement('div'); r.className='msg ai'; r.innerHTML='<div class="bub"><span class="typing"><i></i><i></i><i></i></span></div>'; msgs.appendChild(r); msgs.scrollTop=msgs.scrollHeight; return r; }
-  function addAI(text,tr){ if(!text) return; const m={role:'assistant',text,tr,model:sonModel()}; const tm=$('#topModel',b); if(tm&&m.model){ tm.textContent='🤖 '+m.model; tm.classList.remove('hide'); } st.hist.push(m); bubble(m); if($('#autoSpeak',b).checked) speak(text); }
+  function addAI(text,tr){ if(Array.isArray(text)) text=text.map(x=>x&&typeof x==='object'?(x.s||x.text||''):String(x||'')).join(' ').trim(); else if(text&&typeof text==='object') text=text.s||text.text||''; if(!text) return; const m={role:'assistant',text,tr,model:sonModel()}; const tm=$('#topModel',b); if(tm&&m.model){ tm.textContent='🤖 '+m.model; tm.classList.remove('hide'); } st.hist.push(m); bubble(m); if($('#autoSpeak',b).checked) speak(text); }
   async function send(extraInstr){
     const text=inp.value.trim(); if((!text&&!extraInstr)||st.busy) return;
     if(aiOff()){ toast(aiErr({code:'no_ai'})); return; }
