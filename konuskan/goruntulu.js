@@ -348,7 +348,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <div class="vd-m-tr" hidden>${esc(m.tr || 'Çeviri yok.')}</div>
         <div class="vd-m-a"><button type="button" data-k="dinle">${vi('spk')} Tekrar söyle</button>${m.tr ? '<button type="button" data-k="tr">TR</button>' : ''}<button type="button" data-k="analiz" title="${OGRETMEN} bu cümleyi Türkçe açıklasın">${vi('eye')} Analiz</button><button type="button" data-k="not" title="Bu cümleyi not defterine kaydet">${vi('pen')} Not</button>${m.model ? `<span class="vd-m-model" title="Bu cevabı veren yapay zekâ modeli">${esc(modelAdi(m.model))}</span>` : ''}</div></div>`;
       const bub = d.querySelector('.vd-m-bub');
-      bub.onclick = e => { const k = e.target.closest('.vd-k'); if (k) { e.stopPropagation(); kelimeGoster(k); return; } tekrarSoyle(m); };
+      bub.onclick = e => { const k = e.target.closest('.vd-k'); if (k) { e.stopPropagation(); if (window.DHWordPop && DHWordPop.lookup) { q('.vd-kelime').hidden = true; DHWordPop.lookup(k.dataset.k); } else kelimeGoster(k); return; } tekrarSoyle(m); };
       bub.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tekrarSoyle(m); } };
       d.querySelector('[data-k=dinle]').onclick = () => tekrarSoyle(m);
       d.querySelector('[data-k=analiz]').onclick = () => denizAnaliz(m.text, OGRETMEN, m.tr);

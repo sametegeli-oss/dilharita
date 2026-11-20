@@ -270,3 +270,6 @@ main{overflow:auto;padding:28px clamp(16px,4vw,48px) 90px}
   .nd-govde{grid-template-columns:1fr;grid-template-rows:auto 1fr}
   .nd-liste{border-right:0;border-bottom:1px solid var(--line);max-height:28dvh}
 }
+
+/* Dil Harita kelime penceresi (word-popup.js) her katmanın üstünde: görüntülü ders, not defteri, analiz */
+.dh-wp-ov{z-index:2147483200!important} .dh-wp-gk{z-index:2147483300!important}
