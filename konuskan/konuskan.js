@@ -932,6 +932,11 @@ function notDefteriAc(yeni){
   ndBirlestir();
 }
 
+/* Yapay zekâ açıklamaları önbelleği: aynı cümle/düzeltme için tekrar istek gitmez (en çok 300 kayıt, bu cihazda) */
+const AC_KEY='dh-kk-aciklama-v1', AC_MAX=300;
+function acAnahtar(tur,...p){ return tur+'|'+p.map(x=>String(x==null?'':x).trim().replace(/\s+/g,' ').toLowerCase()).join('|'); }
+function acOku(k){ try{ const m=JSON.parse(localStorage.getItem(AC_KEY)||'{}'); return m[k]||null; }catch(e){ return null; } }
+function acYaz(k,v){ try{ const m=JSON.parse(localStorage.getItem(AC_KEY)||'{}'); m[k]={v,at:Date.now()}; const ks=Object.keys(m); if(ks.length>AC_MAX) ks.sort((a,b)=>m[a].at-m[b].at).slice(0,ks.length-AC_MAX).forEach(x=>delete m[x]); localStorage.setItem(AC_KEY,JSON.stringify(m)); }catch(e){} }
 /* Yazılı sohbetlerde "Deniz'le analiz et": görüntülü Deniz sohbetin üstünde açılır ve cümleyi sesli açıklar;
    kapatınca sohbete dönülür. Görüntülü ders yüklenmediyse yazılı analiz penceresi. */
 function denizIncele(o){
@@ -953,29 +958,35 @@ async function denizleAnaliz(o){
   document.addEventListener('keydown',esc_,true); $('[data-a=kapat]',p).onclick=kapat; p.addEventListener('pointerdown',e=>{ if(e.target===p) kapat(); });
   $('[data-a=dinle]',p).onclick=()=>speak(cumle);
   const out=$('.nd-sonuc',p), ogrenci=o.kim==='Sen';
+  const acK=acAnahtar('analiz',S.level,ogrenci?'sen':'o',cumle), yukleniyor=out.innerHTML;
+  async function cal(zorla){ out.innerHTML=yukleniyor;
   try{
-    const r=await ai(`You are Deniz, a warm English teacher for a Turkish learner (CEFR ${S.level}). ${LEVEL_GUIDE[S.level]||''}
+    let r, md, kayitli=false; const onb=!zorla&&acOku(acK);
+    if(onb&&onb.v&&onb.v.r){ r=onb.v.r; md=onb.v.md||''; kayitli=true; }
+    else { r=await ai(`You are Deniz, a warm English teacher for a Turkish learner (CEFR ${S.level}). ${LEVEL_GUIDE[S.level]||''}
 Analyse this ${ogrenci?'sentence the LEARNER wrote':'English sentence from the conversation'}${o.src?` (context: ${o.src})`:''}: "${cumle}"
 Explain everything in informal Turkish (sen), clearly and briefly, at the learner's level. ${ogrenci?'Judge only real grammar/word-choice errors; ignore punctuation and capitalisation.':''}
-Return ONLY JSON: {"anlam":"natural Turkish translation","dogru":${ogrenci?'true or false (is it correct, natural English?)':'true'},"duzeltme":"${ogrenci?'corrected sentence if not correct, else empty':''}","yapi":"2-3 short Turkish sentences: the grammar structure/tense/pattern and the rule behind it","kelimeler":[{"en":"useful word or phrase from the sentence","tr":"Turkish meaning","not":"very short usage note in Turkish"}],"alternatifler":["1-2 other natural English ways to say it"],"ipucu":"one short Turkish tip on how to use this pattern yourself, with one new English example"}`,{deep:true});
+Return ONLY JSON: {"anlam":"natural Turkish translation","dogru":${ogrenci?'true or false (is it correct, natural English?)':'true'},"duzeltme":"${ogrenci?'corrected sentence if not correct, else empty':''}","yapi":"2-3 short Turkish sentences: the grammar structure/tense/pattern and the rule behind it","kelimeler":[{"en":"useful word or phrase from the sentence","tr":"Turkish meaning","not":"very short usage note in Turkish"}],"alternatifler":["1-2 other natural English ways to say it"],"ipucu":"one short Turkish tip on how to use this pattern yourself, with one new English example"}`,{deep:true}); md=sonModel(); acYaz(acK,{r,md}); }
     const kel=(Array.isArray(r.kelimeler)?r.kelimeler:[]).filter(k=>k&&k.en).slice(0,6), alt=(Array.isArray(r.alternatifler)?r.alternatifler:[]).filter(Boolean).slice(0,3);
-    const md=sonModel();
     out.innerHTML=`${r.anlam?`<div class="nd-b"><h4>Anlamı</h4><p>${ingVurgula(r.anlam)}</p></div>`:''}
       ${ogrenci?(r.dogru===false&&r.duzeltme?`<div class="nd-b nd-uyari"><h4>Düzeltme</h4><div style="line-height:2">${diffHTML(cumle,r.duzeltme)}</div><div class="fb-fix">${esc(r.duzeltme)}</div></div>`:`<div class="nd-b nd-iyi"><h4>${ic('check','width="15" height="15"')} Cümlen doğru</h4></div>`):''}
       ${r.yapi?`<div class="nd-b"><h4>Yapı ve kural</h4><p>${ingVurgula(r.yapi)}</p></div>`:''}
       ${kel.length?`<div class="nd-b"><h4>Kelimeler ve kalıplar</h4><div class="nd-kel">${kel.map((k,i)=>`<div class="nd-kel-s"><button type="button" class="icon-btn" data-k="${i}" aria-label="Seslendir">${ic('speaker')}</button><span><b>${esc(k.en)}</b> — ${esc(k.tr||'')}${k.not?`<small>${ingVurgula(k.not)}</small>`:''}</span><button type="button" class="btn sm ghost" data-kart="${i}" ${S.srs[k.en]?'disabled':''}>${S.srs[k.en]?'Kartlarında':'+ Kart'}</button></div>`).join('')}</div></div>`:''}
       ${alt.length?`<div class="nd-b"><h4>Başka nasıl söylenir?</h4>${alt.map((a,i)=>`<div class="row" style="gap:6px"><button type="button" class="icon-btn" data-alt="${i}" aria-label="Seslendir">${ic('speaker')}</button><span>${esc(a)}</span></div>`).join('')}</div>`:''}
       ${r.ipucu?`<div class="nd-b"><h4>İpucu</h4><p>${ingVurgula(r.ipucu)}</p></div>`:''}
-      <div class="row between" style="margin-top:6px;flex-wrap:wrap;gap:8px">${modelEtiket(md)}<span class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-a="nota">${ic('note','width="16" height="16"')} Not defterine kaydet</button>${window.startVideo?`<button type="button" class="btn primary" data-a="canli" title="Görüntülü Deniz bu cümleyi sesli anlatsın, sen de soru sor">${ic('video','width="16" height="16"')} Deniz'le canlı sohbet</button>`:''}</span></div>`;
+      <div class="row between" style="margin-top:6px;flex-wrap:wrap;gap:8px"><span class="row small muted" style="gap:6px;flex-wrap:wrap">${kayitli?`<span title="Bu açıklama daha önce alındı; yapay zekâya yeniden sorulmadı">💾 Kayıtlı açıklama</span><button type="button" class="btn sm ghost" data-a="yeniden">↻ Yeniden açıkla</button>`:''}${modelEtiket(md)}</span><span class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-a="nota">${ic('note','width="16" height="16"')} Not defterine kaydet</button>${window.startVideo?`<button type="button" class="btn primary" data-a="canli" title="Görüntülü Deniz bu cümleyi sesli anlatsın, sen de soru sor">${ic('video','width="16" height="16"')} Deniz'le canlı sohbet</button>`:''}</span></div>`;
     out.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>speak(kel[+b.dataset.k].en));
     out.querySelectorAll('[data-alt]').forEach(b=>b.onclick=()=>speak(alt[+b.dataset.alt]));
     out.querySelectorAll('[data-kart]').forEach(b=>b.onclick=()=>{ const k=kel[+b.dataset.kart]; if(!S.srs[k.en]){ S.srs[k.en]={tr:k.tr||'',o:'',box:1,due:today()}; save(); toast('Kelime kartlarına eklendi'); } b.disabled=true; b.textContent='Kartlarında'; });
+    const yb=$('[data-a=yeniden]',out); if(yb) yb.onclick=()=>cal(true);
     const cb=$('[data-a=canli]',out); if(cb) cb.onclick=()=>{ kapat(); stopSpeak(); startVideo(null,{ustte:true,analiz:{cumle,tr:r.anlam||o.tr||'',src:o.src,kim:o.kim,ozet:[r.anlam&&('Anlamı: '+r.anlam), r.yapi&&('Yapı: '+r.yapi), ogrenci&&r.dogru===false&&r.duzeltme&&('Doğrusu: '+r.duzeltme)].filter(Boolean).join(' ')}}); };
     $('[data-a=nota]',out).onclick=()=>{
       const metin=[r.anlam&&('Anlamı: '+r.anlam), ogrenci&&r.dogru===false&&r.duzeltme&&('Doğrusu: '+r.duzeltme), r.yapi&&('Yapı: '+r.yapi),
         kel.length&&('Kelimeler:\n'+kel.map(k=>'• '+k.en+' — '+(k.tr||'')+(k.not?' ('+k.not+')':'')).join('\n')), alt.length&&('Başka türlü:\n'+alt.map(a=>'• '+a).join('\n')), r.ipucu&&('İpucu: '+r.ipucu)].filter(Boolean).join('\n\n')+'\n\n';
       kapat(); notDefteriAc({cumle,tr:r.anlam||o.tr||'',src:o.src,kim:o.kim,metin}); };
   }catch(e){ out.innerHTML=`<div class="notice">${esc(aiErr(e))}</div>`; }
+  }
+  cal(false);
 }
 
 function startChat(cfg,kayit){
@@ -1042,9 +1053,11 @@ function startChat(cfg,kayit){
     $('#fbX',fb).onclick=()=>{ fb.classList.remove('show'); renderFbIntro(); };
     const no=$('#fbNo',fb); if(no) no.onclick=()=>{ removeError(m._err); const k2=st.errs.indexOf(m._err); if(k2>=0) st.errs.splice(k2,1); m.check={ok:true}; m._err=null; S.stats.ok++; addXP(5); setChk(m); toast('Düzeltme kaldırıldı, hata defterinden de silindi'); showFb(m); };
     $('#fbSay',fb).onclick=()=>speak(m.check.ok?m.text:m.check.corrected);
-    const adv=$('#fbAdv',fb); if(adv) adv.onclick=async()=>{ adv.disabled=true; $('#fbAdvOut',fb).innerHTML='<span class="typing"><i></i><i></i><i></i></span>';
+    const adv=$('#fbAdv',fb); if(adv) adv.onclick=async function advCal(e,zorla){ adv.disabled=true; $('#fbAdvOut',fb).innerHTML='<span class="typing"><i></i><i></i><i></i></span>';
+      const acK=acAnahtar('kural',S.level,m.text,m.check.corrected), onb=!zorla&&acOku(acK);
+      if(onb&&onb.v&&onb.v.metin){ $('#fbAdvOut',fb).innerHTML=`<div class="card" style="white-space:pre-wrap">${ingVurgula(onb.v.metin)}</div><div class="row small muted" style="gap:6px;margin-top:6px"><span>💾 Kayıtlı açıklama</span><button type="button" class="btn sm ghost" id="fbAdvYeni">↻ Yeniden açıkla</button></div>`; $('#fbAdvYeni',fb).onclick=()=>advCal(null,true); return; }
       try{ const out=await ai(`A Turkish learner of English (level ${S.level}) wrote: "${m.text}". Correct version: "${m.check.corrected}". Explain in informal Turkish (sen), clearly and briefly (max 6 short sentences): what the rule is, why their version is wrong, and give 2 new English example sentences with Turkish translations. Ignore punctuation and capitalisation. Plain text, no markdown headings.`,{json:false,deep:true});
-        $('#fbAdvOut',fb).innerHTML=`<div class="card" style="white-space:pre-wrap">${esc(out)}</div>`; }catch(e){ $('#fbAdvOut',fb).textContent=aiErr(e); adv.disabled=false; } };
+        acYaz(acK,{metin:out}); $('#fbAdvOut',fb).innerHTML=`<div class="card" style="white-space:pre-wrap">${ingVurgula(out)}</div>`; }catch(e){ $('#fbAdvOut',fb).textContent=aiErr(e); adv.disabled=false; } };
   }
   function transcript(n=14){ return st.hist.slice(-n).map(h=>(h.role==='user'?'Learner: ':'You: ')+h.text).join('\n'); }
   function sysPrompt(){
