@@ -26,8 +26,14 @@
   /* yedeklenmeyen ve silinmeyen anahtarlar: oturum işaretleri */
   var KORU = ["dh_logged_in", "dh_logged_uid", "dh_logged_email", "dh_remember", SAHIP];
   var KORU_ON = ["firebase:"];
-  /* kullanıcı verisi tutan IndexedDB'ler (indexedDB.databases() ile bulunanlar da eklenir) */
-  var BILINEN_DB = ["sentence-mode", "sentence-learning-system", "DilHaritaAI_DB", "DilHaritaYouTube_DB", "DilharitaDB", "DilHaritaSecureVault"];
+  /* YALNIZ Dil Harita'nın verisi taşınır. sametegeli-oss.github.io adresindeki öteki uygulamalar
+     (aynı tarayıcı deposunu paylaşırlar) etkilenmesin diye anahtarlar ve veritabanları tek tek bellidir. */
+  var BILINEN_DB = ["sentence-mode", "sentence-learning-system", "DilHaritaAI_DB", "DilHaritaYouTube_DB", "DilharitaDB", "DilHaritaSecureVault",
+    "DilHaritaAICache", "dh-kelime-analiz", "dh-snap", "dh-storage", "AzarGrammarStorage"];
+  var DH_ONEK = /^(dh[-_:]|sm:|mas:|ev:|modscore:|gramprof:|story:|chat:level:|konuskan-|__ts_)/;
+  var DH_ADLAR = ["external_ai_target", "forced_voice_index", "learning-errors-v1", "pexels-api-key", "selectedTeacherAvatar", "study_tracker_data", "study_tracker_last_reset", "teacherReturnURL",
+    "apiKeys", "nvidiaApiKeys", "groqApiKeys", "cerebrasApiKeys", "geminiApiKeys", "mistralApiKeys", "openrouterApiKeys", "youtubeApiKeys"];
+  function dilHaritaninMi(k){ return DH_ONEK.test(k) || DH_ADLAR.indexOf(k) >= 0; }
   function dbHaricMi(ad){ return !ad || ad === YEDEK_DB || /^firebase/i.test(ad) || /^firestore/i.test(ad) || /^workbox/i.test(ad); }
 
   function sahip(){ try{ return localStorage.getItem(SAHIP) || ""; }catch(e){ return ""; } }
@@ -39,7 +45,8 @@
 
   async function dbListesi(){
     var adlar = BILINEN_DB.slice();
-    try{ if (indexedDB.databases){ (await indexedDB.databases()).forEach(function(d){ if (d && d.name && adlar.indexOf(d.name) < 0) adlar.push(d.name); }); } }catch(e){}
+    /* bu tarayıcıda gerçekten var olanlar (yoksa açmaya bile çalışma) */
+    try{ if (indexedDB.databases){ var var_ = (await indexedDB.databases()).map(function(d){ return d && d.name; }); adlar = adlar.filter(function(a){ return var_.indexOf(a) >= 0; }); } }catch(e){}
     return adlar.filter(function(a){ return !dbHaricMi(a); });
   }
   /* var olan DB'yi aç; yoksa OLUŞTURMA (null döndür) */
@@ -111,7 +118,7 @@
   async function yedekSil(uid){ var db = await yedekDb(); try{ var tx = db.transaction(YEDEK_STORE, "readwrite"); tx.objectStore(YEDEK_STORE).delete(uid); await bitti(tx); } finally { db.close(); } }
   async function yedekListe(){ var db = await yedekDb(); try{ return ((await istek(db.transaction(YEDEK_STORE, "readonly").objectStore(YEDEK_STORE).getAll())) || []).map(function(y){ return { uid: y.uid, email: y.email || "", at: y.at, anahtar: Object.keys(y.ls || {}).length }; }); } finally { db.close(); } }
 
-  function yerelAnahtarlar(){ var out = []; try{ for (var i = 0; i < localStorage.length; i++){ var k = localStorage.key(i); if (k != null && !korunurMu(k)) out.push(k); } }catch(e){} return out; }
+  function yerelAnahtarlar(){ var out = []; try{ for (var i = 0; i < localStorage.length; i++){ var k = localStorage.key(i); if (k != null && !korunurMu(k) && dilHaritaninMi(k)) out.push(k); } }catch(e){} return out; }
 
   /* Ana iş: giriş yapan uid bu tarayıcının sahibi değilse kenara kaldır / geri yükle. */
   var calisiyor = null;
