@@ -51,6 +51,10 @@
     if (tercihAd) ekle(uygun.find(function (v) { return v.name === tercihAd; }));
     if (dil !== "tr") { try { var g = JSON.parse(localStorage.getItem("dh-voice:__global__") || "null"); if (g && g.name) ekle(uygun.find(function (v) { return v.name === g.name; })); } catch (e) {} }
     var ana = dil === "tr" ? /tr-TR/i : /en-US/i;
+    /* Deniz erkek: iki dil arasında konuşmacı değişmiş gibi olmasın diye erkek sesler önce */
+    var erkek = /\bmale\b|david|mark|george|guy|ryan|james|daniel|tolga|ahmet|piper/i, kadin = /female|zira|hazel|susan|samantha|karen|libby|aria|jenny|emel|filiz/i;
+    uygun.filter(function (v) { return /Google/i.test(v.name) && erkek.test(v.name) && !kadin.test(v.name); }).forEach(ekle);
+    uygun.filter(function (v) { return erkek.test(v.name) && !kadin.test(v.name); }).forEach(ekle);
     uygun.filter(function (v) { return /Google/i.test(v.name) && ana.test(v.lang); }).forEach(ekle);
     uygun.filter(function (v) { return /Google/i.test(v.name); }).forEach(ekle);
     uygun.filter(function (v) { return ana.test(v.lang); }).forEach(ekle);
@@ -64,7 +68,9 @@
     if ((hata && /synthesis|voice|audio-hardware|language-unavailable/.test(hata)) || (!hata && gecenMs < 400)) { sesIsaretle(ad, true); try { console.warn("[DHSes] bozuk ses atlandı:", ad); } catch (e) {} return true; }
     return false;
   }
-  global.DHSes = { aday: sesAday, sec: function (dil, ad) { return sesAday(dil, ad)[0] || null; }, bozukMu: sesBozukMu, isaretle: sesIsaretle, sonuc: sesSonuc,
+  /* ses düzeyi dengesi: internetten gelen Google sesleri yerel/eklenti seslerinden belirgin kısık çıkar */
+  function sesHacim(v) { return v && (/Google/i.test(v.name) || v.localService === false) ? 1 : 0.72; }
+  global.DHSes = { hacim: sesHacim, aday: sesAday, sec: function (dil, ad) { return sesAday(dil, ad)[0] || null; }, bozukMu: sesBozukMu, isaretle: sesIsaretle, sonuc: sesSonuc,
     sifirla: function () { try { localStorage.removeItem(SES_SAGLIK); } catch (e) {} } };
 
   /* ---------- Duygu ön ayarları (hedef parametreler) ---------- */
@@ -595,6 +601,10 @@
         var u; try { u = new SpeechSynthesisUtterance(c.metin); } catch (e) { u = null; }
         if (!u || !global.speechSynthesis) { c.konusuyor = true; c.bas = performance.now(); setTimeout(son, c.metin.length * msHarf); return; }
         var v = sesSec(dil); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = dil === "tr" ? "tr-TR" : "en-US";
+        u.volume = global.DHSes ? DHSes.hacim(v) : 1;
+        /* internetten gelen ses: tarayıcı "başladı" der ama ses ~0,35 sn sonra duyulur; kelime sinyalleri de erken gelir.
+           Bu seslerde ağız sabit gecikmeyle başlar ve kelime sinyaline göre düzeltilmez. */
+        var agSesi = !!(v && v.localService === false), AG_GECIKME = 380;
         var sesT0 = performance.now(), sesAd = v ? v.name : "", deneme = c._sesDeneme || 0, guncel = function () { return deneme === (c._sesDeneme || 0); };
         u.rate = hizOrani || 1;
         /* tarayıcı sesinde duygu: ses yüksekliği ve hız hafifçe değişir (ayarlardan kapatılabilir) */
@@ -611,7 +621,7 @@
           u.pitch = Math.max(0, Math.min(2, ty)); u.rate = Math.max(0.55, Math.min(1.8, (hizOrani || 1) * hz));
         }
         u.onboundary = function (ev) {
-          if (!ev || typeof ev.charIndex !== "number" || !c.metin.length) return;
+          if (agSesi || !ev || typeof ev.charIndex !== "number" || !c.metin.length) return;
           sinirVar = true;
           /* uzun kelimelerde ara ara vurgu jesti */
           var kel = (c.metin.slice(ev.charIndex).match(/^[\p{L}'’-]+/u) || [""])[0];
@@ -634,7 +644,8 @@
           if (sessiz) { clearTimeout(sessizZ); sessiz = false; }
           basladi = true; c.bas = performance.now(); c.konusuyor = true; c.duzelt = 0; c.duzeltHedef = null;
           /* bu tarayıcı kelime sınırı bildiriyorsa ağız ilk kelimenin gerçekten duyulduğu anda başlar */
-          if (sinirVar) { c.bekle = true; c.bekleZ = setTimeout(function () { if (c.bekle) { c.bekle = false; c.bas = performance.now(); } }, 800); }
+          if (agSesi) { c.bekle = true; c.bekleZ = setTimeout(function () { if (c.bekle) { c.bekle = false; c.bas = performance.now(); } }, AG_GECIKME); }
+          else if (sinirVar) { c.bekle = true; c.bekleZ = setTimeout(function () { if (c.bekle) { c.bekle = false; c.bas = performance.now(); } }, 800); }
         };
         /* bozuk ses (başlamadan bitti): işaretle ve aynı cümleyi sıradaki sesle bir kez daha dene */
         function yenidenDene() { c._sesDeneme = (c._sesDeneme || 0) + 1; if (c._sesDeneme <= 3 && !bitti && konusma && konusma.cumle === c && sesSec(dil)) { baslat(); return true; } return false; }

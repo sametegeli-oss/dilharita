@@ -242,14 +242,14 @@ function speak(text){
       const mesgul=ss.speaking||ss.pending; if(mesgul) ss.cancel();
       try{ ss.resume(); }catch(e){}
       const u=new SpeechSynthesisUtterance(text); const v=pickVoice(); if(v){ u.voice=v; u.lang=v.lang; } else u.lang='en-US';
-      const hz=+S.rate; u.rate=isFinite(hz)&&hz>=0.5&&hz<=1.6?hz:0.9;
+      const hz=+S.rate; u.rate=isFinite(hz)&&hz>=0.5&&hz<=1.6?hz:0.9; if(window.DHSes) u.volume=DHSes.hacim(v);
       /* olay işleyicileri aşağıda (bozuk ses denetimiyle) */
       sonSoz=u;
       /* bozuk ses: başlamadan hemen biterse işaretle ve sıradaki sesle yeniden oku (en çok 3 kez) */
       let basladi=false, t0=0, deneme=0; const ad=()=>u.voice?u.voice.name:'';
       u.onstart=()=>{ basladi=true; if(window.DHSes) DHSes.sonuc(ad(),true); };
       const bozukMu=(hata)=>!basladi&&window.DHSes&&DHSes.sonuc(ad(),false,performance.now()-t0,hata);
-      const tekrar=()=>{ if(deneme>=3) return false; const v2=pickVoice(); if(!v2) return false; deneme++; u.voice=v2; u.lang=v2.lang; setTimeout(basla,60); return true; };
+      const tekrar=()=>{ if(deneme>=3) return false; const v2=pickVoice(); if(!v2) return false; deneme++; u.voice=v2; u.lang=v2.lang; if(window.DHSes) u.volume=DHSes.hacim(v2); setTimeout(basla,60); return true; };
       u.onend=()=>{ if(bozukMu()&&tekrar()) return; son(); };
       u.onerror=e=>{ const h=e&&e.error; if(h&&!/interrupted|canceled/.test(h)){ if(bozukMu(h)&&tekrar()) return; try{ console.warn('[konuskan] seslendirme hatası',h); }catch(x){} } son(); };
       const basla=()=>{ t0=performance.now(); try{ ss.speak(u); }catch(e){ son(); return; }

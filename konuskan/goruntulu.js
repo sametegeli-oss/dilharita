@@ -812,6 +812,24 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     }
 
     /* ---- konuşmacı: cümleler geldikçe seslendirir (Gemini: bloklar halinde, tarayıcı: cümle cümle) ---- */
+    /* Türkçe metni tırnak içindeki İngilizce parçalardan böler: [{metin, dil}] (tarayıcı sesi için) */
+    const TR_KELIME = new Set(['bir','ve','bu','en','ile','gibi','daha','var','yok','ne','ama','de','da','mi','mu','herhangi','bile','kadar','olan','olarak','her','hep','sonra','yani','evet','tamam','neden','zaman','kelime','fiil','isim','ornek','anlam','anlami','sey','yine','ya','veya','hem','ise','icin','diye','demek','mesela','orada','burada','okyanus','derin','herkes','biraz']);
+    function ingilizceMi(t) {
+      t = t.trim(); if (!t || t.length > 90 || !/[A-Za-z]/.test(t) || /[çğışöüÇĞİŞÖÜâîû]/.test(t) || !/^[A-Za-z0-9 ,.;:'’?!\-]+$/.test(t)) return false;
+      return !t.toLowerCase().split(/[^a-z']+/).filter(Boolean).some(w => TR_KELIME.has(w));
+    }
+    function trIngBol(metin) {
+      const re = /(^|[\s(\[,:;—–-])([‘'"“])([^‘’'"“”\n]{1,90}?)([’'"”])(?=$|[^A-Za-z])/g;
+      const out = []; let son = 0, m;
+      const ekle = (t, dil) => { t = t.replace(/\s+/g, ' ').trim(); if (!t || !/[\p{L}\d]/u.test(t)) { if (t && out.length) out[out.length - 1].metin += ' ' + t; return; }
+        const o = out[out.length - 1]; if (o && o.dil === dil) o.metin += ' ' + t; else out.push({ metin: t, dil }); };
+      while ((m = re.exec(metin))) {
+        if (!ingilizceMi(m[3])) continue;
+        const bas = m.index + m[1].length; ekle(metin.slice(son, bas), 'tr'); ekle(m[3], 'en'); son = bas + m[2].length + m[3].length + m[4].length;
+      }
+      ekle(metin.slice(son), 'tr');
+      return out.length ? out : [{ metin, dil: 'tr' }];
+    }
     function yeniKonusucu(m) {
       const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: c => { if (c.goster) c.goster(); } });
       const gemini = geminiSesAcik();
@@ -827,6 +845,11 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         };
       }
       function tarayiciParcalari(c, i) {
+        /* Türkçe anlatımın içindeki tırnaklı İngilizce ('can', 'deepest trenches') İngilizce sesle okunsun */
+        if (c.dil === 'tr') {
+          const bol = trIngBol(c.metin);
+          if (bol.length > 1) return bol.map((b, k) => ({ metin: b.metin, dil: b.dil, duygu: k ? null : c.duygu, guc: c.guc, jest: k ? null : c.jest, goster: k ? null : gosterFn(i, false) }));
+        }
         const a = [Object.assign({}, c, { goster: gosterFn(i, false) })];
         if (acMi() && c.dil === 'en' && c.cev) a.push({ metin: c.cev, dil: 'tr', duygu: c.duygu, guc: c.guc, jest: null, goster: gosterFn(i, true) });
         return a;
