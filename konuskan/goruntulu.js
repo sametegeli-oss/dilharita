@@ -130,7 +130,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     /* ayarları her açılışta yeniden oku (başka sekmede / sayfa yenilenmeden değişmiş olabilir) */
     try { Object.assign(ayar, JSON.parse(localStorage.getItem(AYAR_KEY) || '{}')); } catch (e) {}
     const eskiMod = ayar.mod;
-    if (analiz && ayar.mod !== 'genel') ayar.mod = 'tr';   /* analiz Türkçe anlatılır; mikrofon Türkçe soruları da anlar (kalıcı ayara yazılmaz) */
+    if (analiz) ayar.mod = 'tr';   /* cümle açıklaması her zaman "Türkçe konu çalışma" modunda; mikrofon Türkçe soruları da anlar (kalıcı ayara yazılmaz) */
     if (ustte) { const e = document.querySelector('.vd'); if (e && e.__kapat) e.__kapat(); }
     const host = ustte ? document.body : openPanel('Görüntülü ders');
     if (!ustte) host.innerHTML = '';
@@ -714,7 +714,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     const DOLGU = { en: ['Hmm.', 'Let me see.', 'Okay.'], tr: ['Hmm.', 'Bir bakalım.', 'Peki.'] };
     const ttsHafiza = new Map();
     const ttsKapaliMi = () => st.ttsKapali || (st.ttsMola || 0) > Date.now();   /* dakikalık sınır: kısa mola; günlük kota ya da tekrarlayan hata: ders boyunca kapalı */
-    function geminiSesAcik() { return !genelMi() && ayar.ses !== 'tarayici' && geminiKeys().length > 0 && !ttsKapaliMi(); }
+    /* cümle açıklamasında Gemini sesi yok: Türkçeyi hep aynı Türkçe tarayıcı sesi, İngilizceyi hep aynı İngilizce ses okur (ses ortada değişmesin) */
+    function geminiSesAcik() { return !analiz && !genelMi() && ayar.ses !== 'tarayici' && geminiKeys().length > 0 && !ttsKapaliMi(); }
     async function ttsOnbellek(anahtar, ab) {
       /* kısa ve sık kullanılan sesler (dolgu, "acele etme") bir kez üretilir, tarayıcıda saklanır */
       try { const c = await caches.open('dh-tts-v1'); const u = 'https://tts.dilharita.local/' + encodeURIComponent(anahtar);
