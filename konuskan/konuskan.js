@@ -264,7 +264,7 @@ function speakTek(text,dil){
    Türkçe cümle içindeki tırnaklı İngilizce ('beckon', 'The promise of adventure…') İngilizce sesle okunur. */
 const TR_KELIME=new Set(['merhaba','selam','evet','hayir','peki','harika','aferin','bravo','haydi','hadi','tesekkurler','sagol','gunaydin','iyi','tabii','elbette','olur','super','mukemmel','dogru','yanlis','ornegin','yani','simdi','birlikte','tekrar','soru','cevap','ders','konu','bir','ve','bu','ile','gibi','daha','yok','ama','herhangi','bile','kadar','olan','olarak','hep','sonra','yani','evet','tamam','neden','zaman','kelime','fiil','isim','ornek','anlam','anlami','sey','yine','veya','icin','diye','demek','mesela','orada','burada','biraz','olur','genellikle','yerine','okyanus','derin','herkes']);
 function trMi(t){ if(/[çğışöüÇĞİŞÖÜâîû]/.test(t)) return true; return String(t).toLowerCase().split(/[^a-z']+/).filter(Boolean).some(w=>TR_KELIME.has(w)); }
-function ingilizceParcaMi(t){ t=t.trim(); return !!t && t.length<=140 && /[A-Za-z]/.test(t) && /^[A-Za-z0-9 ,.;:'’?!\-]+$/.test(t) && !trMi(t); }
+function ingilizceParcaMi(t){ t=t.trim(); return !!t && t.length<=140 && /[A-Za-z]/.test(t) && /^[A-Za-z0-9 ,.;:'’?!…\-]+$/.test(t) && !trMi(t); }
 function dilParcala(metin){
   const out=[]; const ekle=(t,dil)=>{ t=String(t).replace(/\s+/g,' ').trim(); if(!t) return; if(!/[\p{L}\d]/u.test(t)){ if(out.length) out[out.length-1].metin+=' '+t; return; } const o=out[out.length-1]; if(o&&o.dil===dil) o.metin+=' '+t; else out.push({metin:t,dil}); };
   const cumleler=String(metin||'').replace(/\s+/g,' ').trim().split(/(?:(?<=[.!?…])|(?<=[.!?…]['’"”)]))\s+(?=[^a-zçğışöü])/);

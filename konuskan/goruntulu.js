@@ -839,7 +839,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     /* Türkçe metni tırnak içindeki İngilizce parçalardan böler: [{metin, dil}] (tarayıcı sesi için) */
     const TR_KELIME = new Set(['merhaba','selam','evet','hayir','peki','harika','aferin','bravo','haydi','hadi','tesekkurler','sagol','gunaydin','iyi','tabii','elbette','olur','super','mukemmel','dogru','yanlis','ornegin','yani','simdi','birlikte','tekrar','soru','cevap','ders','konu','bir','ve','bu','ile','gibi','daha','yok','ama','herhangi','bile','kadar','olan','olarak','hep','sonra','yani','evet','tamam','neden','zaman','kelime','fiil','isim','ornek','anlam','anlami','sey','yine','veya','icin','diye','demek','mesela','orada','burada','biraz','olur','genellikle','yerine','okyanus','derin','herkes']);
     function ingilizceMi(t) {
-      t = t.trim(); if (!t || t.length > 90 || !/[A-Za-z]/.test(t) || /[çğışöüÇĞİŞÖÜâîû]/.test(t) || !/^[A-Za-z0-9 ,.;:'’?!\-]+$/.test(t)) return false;
+      t = t.trim(); if (!t || t.length > 90 || !/[A-Za-z]/.test(t) || /[çğışöüÇĞİŞÖÜâîû]/.test(t) || !/^[A-Za-z0-9 ,.;:'’?!…\-]+$/.test(t)) return false;
       return !t.toLowerCase().split(/[^a-z']+/).filter(Boolean).some(w => TR_KELIME.has(w));
     }
     function trIngBol(metin) {
@@ -874,8 +874,11 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
           const bol = trIngBol(c.metin);
           if (bol.length > 1) return bol.map((b, k) => ({ metin: b.metin, dil: b.dil, duygu: k ? null : c.duygu, guc: c.guc, jest: k ? null : c.jest, goster: k ? null : gosterFn(i, false) }));
         }
-        const a = [Object.assign({}, c, { goster: gosterFn(i, false) })];
-        if (acMi() && c.dil === 'en' && c.cev) a.push({ metin: c.cev, dil: 'tr', duygu: c.duygu, guc: c.guc, jest: null, goster: gosterFn(i, true) });
+        /* açıklamadaki İngilizce örnek (sarı kutu) ve çevirisi duygu tonuyla değil, metnin içindeki İngilizceyle aynı
+           incelik ve hızda okunur: aynı ses başka biri gibi, kalın ve kısık duyulmasın. Yüz ifadesi yine duygudan gelir. */
+        const ornek = acMi() && c.dil === 'en';
+        const a = [Object.assign({}, c, { goster: gosterFn(i, false) }, ornek ? { sesNotr: true } : {})];
+        if (ornek && c.cev) a.push({ metin: c.cev, dil: 'tr', duygu: c.duygu, guc: c.guc, jest: null, sesNotr: true, goster: gosterFn(i, true) });
         return a;
       }
       function siraylaEkle(p) { zincir = zincir.then(() => p).then(items => { if (iptal) return; items.forEach(it => { k.ekle(it); m.okunan.push(it); }); }); }

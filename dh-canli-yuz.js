@@ -620,7 +620,7 @@
         var sdAcik = ka("sesDuygu", 1) > 0.02; try { if (localStorage.getItem("dh-ses-duygu") === "0") sdAcik = false; } catch (e) {}
         if (!sdAcik && ka("sesPerde", 1) !== 1) u.pitch = Math.max(0, Math.min(2, ka("sesPerde", 1)));
         if (sdAcik) {
-          var sd = c.duygu ? duyguSesi(c.duygu) : [1, 1], ty = sd[0], hz = sd[1];
+          var sd = c.duygu && !c.sesNotr ? duyguSesi(c.duygu) : [1, 1], ty = sd[0], hz = sd[1];   /* sesNotr: örnek cümle — duygu tonu yok */
           if (/\?\s*$/.test(c.metin)) ty *= 1.1;                       /* soru: ses yükselir */
           if (/!\s*$/.test(c.metin)) { ty *= 1.08; hz *= 1.08; }         /* ünlem: canlı */
           if (/(\.\.\.|…)\s*$/.test(c.metin)) hz *= 0.92;               /* üç nokta: yavaşlar */
