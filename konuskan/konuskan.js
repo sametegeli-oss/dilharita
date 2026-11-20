@@ -233,7 +233,7 @@ function pickVoice(){
    - hız bozuk kayıttan (null/NaN) gelirse atama hata verip sessiz kalıyordu → güvenli aralık
    - başlamadıysa bir kez yeniden dene */
 let sonSoz=null;
-function speak(text){
+function speakTek(text,dil){
   text=String(text||'').trim(); if(!text) return Promise.resolve();
   const ss=window.speechSynthesis; if(!ss||!window.SpeechSynthesisUtterance){ toast('Bu tarayıcı seslendirmeyi desteklemiyor.'); return Promise.resolve(); }
   return new Promise(r=>{
@@ -241,7 +241,8 @@ function speak(text){
     try{
       const mesgul=ss.speaking||ss.pending; if(mesgul) ss.cancel();
       try{ ss.resume(); }catch(e){}
-      const u=new SpeechSynthesisUtterance(text); const v=pickVoice(); if(v){ u.voice=v; u.lang=v.lang; } else u.lang='en-US';
+      const tr=dil==='tr'; const sec=()=>tr?(window.DHSes?DHSes.sec('tr'):null):pickVoice();
+      const u=new SpeechSynthesisUtterance(text); const v=sec(); if(v){ u.voice=v; u.lang=v.lang; } else u.lang=tr?'tr-TR':'en-US';
       const hz=+S.rate; u.rate=isFinite(hz)&&hz>=0.5&&hz<=1.6?hz:0.9; if(window.DHSes) u.volume=DHSes.hacim(v);
       /* olay işleyicileri aşağıda (bozuk ses denetimiyle) */
       sonSoz=u;
@@ -249,7 +250,7 @@ function speak(text){
       let basladi=false, t0=0, deneme=0; const ad=()=>u.voice?u.voice.name:'';
       u.onstart=()=>{ basladi=true; if(window.DHSes) DHSes.sonuc(ad(),true); };
       const bozukMu=(hata)=>!basladi&&window.DHSes&&DHSes.sonuc(ad(),false,performance.now()-t0,hata);
-      const tekrar=()=>{ if(deneme>=3) return false; const v2=pickVoice(); if(!v2) return false; deneme++; u.voice=v2; u.lang=v2.lang; if(window.DHSes) u.volume=DHSes.hacim(v2); setTimeout(basla,60); return true; };
+      const tekrar=()=>{ if(deneme>=3) return false; const v2=sec(); if(!v2) return false; deneme++; u.voice=v2; u.lang=v2.lang; if(window.DHSes) u.volume=DHSes.hacim(v2); setTimeout(basla,60); return true; };
       u.onend=()=>{ if(bozukMu()&&tekrar()) return; son(); };
       u.onerror=e=>{ const h=e&&e.error; if(h&&!/interrupted|canceled/.test(h)){ if(bozukMu(h)&&tekrar()) return; try{ console.warn('[konuskan] seslendirme hatası',h); }catch(x){} } son(); };
       const basla=()=>{ t0=performance.now(); try{ ss.speak(u); }catch(e){ son(); return; }
@@ -259,7 +260,28 @@ function speak(text){
     }catch(e){ son(); }
   });
 }
-function stopSpeak(){ try{ speechSynthesis.cancel(); }catch(e){} }
+/* İki dilli seslendirme: metin cümlelere bölünür; Türkçe cümleler Türkçe sesle, İngilizce cümleler ve
+   Türkçe cümle içindeki tırnaklı İngilizce ('beckon', 'The promise of adventure…') İngilizce sesle okunur. */
+const TR_KELIME=new Set(['bir','ve','bu','ile','gibi','daha','yok','ama','herhangi','bile','kadar','olan','olarak','hep','sonra','yani','evet','tamam','neden','zaman','kelime','fiil','isim','ornek','anlam','anlami','sey','yine','veya','icin','diye','demek','mesela','orada','burada','biraz','olur','genellikle','yerine','okyanus','derin','herkes']);
+function trMi(t){ if(/[çğışöüÇĞİŞÖÜâîû]/.test(t)) return true; return String(t).toLowerCase().split(/[^a-z']+/).filter(Boolean).some(w=>TR_KELIME.has(w)); }
+function ingilizceParcaMi(t){ t=t.trim(); return !!t && t.length<=140 && /[A-Za-z]/.test(t) && /^[A-Za-z0-9 ,.;:'’?!\-]+$/.test(t) && !trMi(t); }
+function dilParcala(metin){
+  const out=[]; const ekle=(t,dil)=>{ t=String(t).replace(/\s+/g,' ').trim(); if(!t) return; if(!/[\p{L}\d]/u.test(t)){ if(out.length) out[out.length-1].metin+=' '+t; return; } const o=out[out.length-1]; if(o&&o.dil===dil) o.metin+=' '+t; else out.push({metin:t,dil}); };
+  const cumleler=String(metin||'').replace(/\s+/g,' ').trim().split(/(?:(?<=[.!?…])|(?<=[.!?…]['’"”)]))\s+(?=[^a-zçğışöü])/);
+  for(const c of cumleler){
+    if(!trMi(c)){ ekle(c,'en'); continue; }
+    const re=/(^|[\s(\[,:;—–-])([‘'"“])([^‘’'"“”\n]{1,140}?)([’'"”])(?=$|[^A-Za-z])/g; let son=0, m;
+    while((m=re.exec(c))){ if(!ingilizceParcaMi(m[3])) continue; const bas=m.index+m[1].length; ekle(c.slice(son,bas),'tr'); ekle(m[3],'en'); son=bas+m[2].length+m[3].length+m[4].length; }
+    ekle(c.slice(son),'tr');
+  }
+  return out;
+}
+let seslendirmeNo=0;
+async function speak(text){
+  const no=++seslendirmeNo, parcalar=dilParcala(text);
+  for(const p of parcalar){ if(no!==seslendirmeNo) return; await speakTek(p.metin,p.dil); }
+}
+function stopSpeak(){ seslendirmeNo++; try{ speechSynthesis.cancel(); }catch(e){} }
 /* Tarayıcının konuşma tanımasını, sayfanın beklediği basit arayüze sarar:
    start()/stop(), onPartial (canlı tahmin), onFinal (kesinleşen parça), onState. */
 function makeDictation(){
@@ -929,10 +951,11 @@ Return ONLY JSON: {"anlam":"natural Turkish translation","dogru":${ogrenci?'true
       ${kel.length?`<div class="nd-b"><h4>Kelimeler ve kalıplar</h4><div class="nd-kel">${kel.map((k,i)=>`<div class="nd-kel-s"><button type="button" class="icon-btn" data-k="${i}" aria-label="Seslendir">${ic('speaker')}</button><span><b>${esc(k.en)}</b> — ${esc(k.tr||'')}${k.not?`<small>${esc(k.not)}</small>`:''}</span><button type="button" class="btn sm ghost" data-kart="${i}" ${S.srs[k.en]?'disabled':''}>${S.srs[k.en]?'Kartlarında':'+ Kart'}</button></div>`).join('')}</div></div>`:''}
       ${alt.length?`<div class="nd-b"><h4>Başka nasıl söylenir?</h4>${alt.map((a,i)=>`<div class="row" style="gap:6px"><button type="button" class="icon-btn" data-alt="${i}" aria-label="Seslendir">${ic('speaker')}</button><span>${esc(a)}</span></div>`).join('')}</div>`:''}
       ${r.ipucu?`<div class="nd-b"><h4>İpucu</h4><p>${esc(r.ipucu)}</p></div>`:''}
-      <div class="row between" style="margin-top:6px;flex-wrap:wrap;gap:8px">${modelEtiket(md)}<button type="button" class="btn primary" data-a="nota">${ic('note','width="16" height="16"')} Not defterine kaydet</button></div>`;
+      <div class="row between" style="margin-top:6px;flex-wrap:wrap;gap:8px">${modelEtiket(md)}<span class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-a="nota">${ic('note','width="16" height="16"')} Not defterine kaydet</button>${window.startVideo?`<button type="button" class="btn primary" data-a="canli" title="Görüntülü Deniz bu cümleyi sesli anlatsın, sen de soru sor">${ic('video','width="16" height="16"')} Deniz'le canlı sohbet</button>`:''}</span></div>`;
     out.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>speak(kel[+b.dataset.k].en));
     out.querySelectorAll('[data-alt]').forEach(b=>b.onclick=()=>speak(alt[+b.dataset.alt]));
     out.querySelectorAll('[data-kart]').forEach(b=>b.onclick=()=>{ const k=kel[+b.dataset.kart]; if(!S.srs[k.en]){ S.srs[k.en]={tr:k.tr||'',o:'',box:1,due:today()}; save(); toast('Kelime kartlarına eklendi'); } b.disabled=true; b.textContent='Kartlarında'; });
+    const cb=$('[data-a=canli]',out); if(cb) cb.onclick=()=>{ kapat(); stopSpeak(); startVideo(null,{ustte:true,analiz:{cumle,tr:r.anlam||o.tr||'',src:o.src,kim:o.kim,ozet:[r.anlam&&('Anlamı: '+r.anlam), r.yapi&&('Yapı: '+r.yapi), ogrenci&&r.dogru===false&&r.duzeltme&&('Doğrusu: '+r.duzeltme)].filter(Boolean).join(' ')}}); };
     $('[data-a=nota]',out).onclick=()=>{
       const metin=[r.anlam&&('Anlamı: '+r.anlam), ogrenci&&r.dogru===false&&r.duzeltme&&('Doğrusu: '+r.duzeltme), r.yapi&&('Yapı: '+r.yapi),
         kel.length&&('Kelimeler:\n'+kel.map(k=>'• '+k.en+' — '+(k.tr||'')+(k.not?' ('+k.not+')':'')).join('\n')), alt.length&&('Başka türlü:\n'+alt.map(a=>'• '+a).join('\n')), r.ipucu&&('İpucu: '+r.ipucu)].filter(Boolean).join('\n\n')+'\n\n';
@@ -982,13 +1005,13 @@ function startChat(cfg,kayit){
       row.innerHTML=`<div class="bub">${esc(m.text)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Seslendir">${ic('speaker')}</button><button class="icon-btn" data-a="an" aria-label="Deniz'le analiz et" title="Deniz'le analiz et">${ic('spark')}</button><button class="icon-btn" data-a="nt" aria-label="Bu cümleyi not defterine kaydet" title="Bu cümleyi not defterine kaydet">${ic('note')}</button></div>`; row.prepend(chk); m._chk=chk;
       chk.onclick=()=>showFb(m);
       $('[data-a=sp]',row).onclick=()=>speak(m.check&&!m.check.ok&&m.check.corrected?m.check.corrected:m.text);
-      $('[data-a=an]',row).onclick=()=>denizIncele({cumle:m.text,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:'Sen'});
+      $('[data-a=an]',row).onclick=()=>denizleAnaliz({cumle:m.text,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:'Sen'});
       $('[data-a=nt]',row).onclick=()=>notDefteriAc({cumle:m.text,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:'Sen',metin:m.check&&!m.check.ok&&m.check.corrected?'Doğrusu: '+m.check.corrected+'\n\n':''});
     } else {
       row.innerHTML=`<div class="bub">${esc(m.text)}${m.tr?`<span class="tr ${S.showTr?'':'hide'}">${esc(m.tr)}</span>`:''}${modelEtiket(m.model)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Dinle">${ic('speaker')}</button>${m.tr?`<button class="icon-btn" data-a="tr" aria-label="Çeviri">${ic('translate')}</button>`:''}<button class="icon-btn" data-a="an" aria-label="Deniz'le analiz et" title="Deniz'le analiz et">${ic('spark')}</button><button class="icon-btn" data-a="nt" aria-label="Bu cümleyi not defterine kaydet" title="Bu cümleyi not defterine kaydet">${ic('note')}</button></div>`;
       $('[data-a=sp]',row).onclick=()=>speak(m.text);
       const tb=$('[data-a=tr]',row); if(tb) tb.onclick=()=>$('.tr',row).classList.toggle('hide');
-      $('[data-a=an]',row).onclick=()=>denizIncele({cumle:m.text,tr:m.tr,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:cfg.name||'Deniz'});
+      $('[data-a=an]',row).onclick=()=>denizleAnaliz({cumle:m.text,tr:m.tr,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:cfg.name||'Deniz'});
       $('[data-a=nt]',row).onclick=()=>notDefteriAc({cumle:m.text,tr:m.tr,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:cfg.name||'Deniz'});
     }
     msgs.appendChild(row); msgs.scrollTop=msgs.scrollHeight; return row;
