@@ -1028,7 +1028,7 @@ function startChat(cfg,kayit){
     const row=document.createElement('div'); row.className='msg '+(m.role==='user'?'me':'ai');
     if(m.role==='user'){
       const chk=document.createElement('button'); chk.type='button'; chk.className='chk wait'; chk.innerHTML='<span class="typing" style="transform:scale(.6)"><i></i><i></i><i></i></span>'; chk.setAttribute('aria-label','Geri bildirimi göster');
-      row.innerHTML=`<div class="bub">${ingVurgula(m.text)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Seslendir">${ic('speaker')}</button><button class="icon-btn" data-a="an" aria-label="Deniz'le analiz et" title="Deniz'le analiz et">${ic('spark')}</button><button class="icon-btn" data-a="nt" aria-label="Bu cümleyi not defterine kaydet" title="Bu cümleyi not defterine kaydet">${ic('note')}</button></div>`; row.prepend(chk); m._chk=chk;
+      row.innerHTML=`<div class="bub">${ingVurgula(m.text)}</div><div class="tools"><button class="icon-btn" data-a="sp" aria-label="Seslendir">${ic('speaker')}</button><button class="icon-btn" data-a="an" aria-label="Deniz'le analiz et" title="Deniz'le analiz et">${ic('spark')}</button><button class="icon-btn" data-a="nt" aria-label="Bu cümleyi not defterine kaydet" title="Bu cümleyi not defterine kaydet">${ic('note')}</button></div>`; $('.tools',row).appendChild(chk); m._chk=chk;
       chk.onclick=()=>showFb(m);
       $('[data-a=sp]',row).onclick=()=>speak(m.check&&!m.check.ok&&m.check.corrected?m.check.corrected:m.text);
       $('[data-a=an]',row).onclick=()=>denizleAnaliz({cumle:m.text,src:cfg.src||MODE_TR[cfg.kind]||'Sohbet',kim:'Sen'});
