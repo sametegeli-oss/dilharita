@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v522";  /* 🔘 Bütün düğmeler tek kompakt boyutta (dh-dugme) */ //  /* 🔗 Dil Harita ↔ Konuşkan: modül sonu konuşma, ortak hata defteri */
+var SW_VERSION = "dh-sw-v520";  /* 🟡 Örnek cümle mavi İngilizceyle aynı tonda; ‘Shall we …?’ İngilizce */ //  /* 🔗 Dil Harita ↔ Konuşkan: modül sonu konuşma, ortak hata defteri */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */
 /* onceki v438: 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
 /* onceki v437: ➕ Konuşkan: kendi kursunu oluştur */
@@ -69,8 +69,6 @@ var SHELL = [
   "./viseme-lang.js",
   "./word-popup.js",
   "./dh-ses.js",
-  "./dh-dugme.js",
-  "./dh-dugme.css",
   "./word-learning-list.js",
   "./dh-yedek.js",
   "./dh-app-shell.js",
