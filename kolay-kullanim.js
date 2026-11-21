@@ -231,7 +231,10 @@
     if (base >= 30) return Math.round(base * Math.min(b.f, 1.08));
     return Math.round(Math.max(base * b.f, b.min) * 10) / 10;
   }
+  var DUGME_SEC = "button, .btn, input[type=button], input[type=submit], input[type=reset]";
   function uygula(el, base){
+    /* Kullanıcı isteği: bütün düğmeler aynı boyutta (dh-dugme.js/.css) — düğmelerin ve içlerinin yazısı burada büyütülmez */
+    if (el.closest && el.closest(DUGME_SEC)) { if (el.style.getPropertyValue("font-size")) { el.style.removeProperty("font-size"); el.style.removeProperty("line-height"); } return; }
     var t = hedef(base);
     /* yalnız simgeli düğmenin gizli yazısı büyütülmesin (yazı görünür hâle geliyordu) */
     if (el.hasAttribute && (el.hasAttribute("data-kk-ikon") || el.hasAttribute("data-kk-gorsel"))) { el.style.setProperty("font-size", "0px", "important"); return; }
@@ -596,19 +599,20 @@
     doc.addEventListener("pointerover", function(e){
       if (e.pointerType === "touch") return;
       var b = hedefDugme(e.target); if (!b || b === ipucuEl) return;
+      if (b.matches(DUGME_SEC)) return;   /* düğme açıklaması yalnız uzun basınca (dh-dugme.js) */
       if (b.hasAttribute("data-tooltip") && sayfaninki()) return;
       ipucuGoster(b);
     }, true);
     doc.addEventListener("pointerout", function(e){
       var b = hedefDugme(e.target); if (b && b === ipucuEl && !b.contains(e.relatedTarget)) ipucuGizle();
     }, true);
-    doc.addEventListener("focusin", function(e){ var b = hedefDugme(e.target); if (b && b.matches(":focus-visible") && !(b.hasAttribute("data-tooltip") && sayfaninki())) ipucuGoster(b); }, true);
+    doc.addEventListener("focusin", function(e){ var b = hedefDugme(e.target); if (b && !b.matches(DUGME_SEC) && b.matches(":focus-visible") && !(b.hasAttribute("data-tooltip") && sayfaninki())) ipucuGoster(b); }, true);
     doc.addEventListener("focusout", ipucuGizle, true);
     /* dokunmatik: basılı tutunca ipucu, kısa dokunuş normal tıklama */
     doc.addEventListener("pointerdown", function(e){
       ipucuGizle();
       if (e.pointerType !== "touch") return;
-      var b = hedefDugme(e.target); if (!b) return;
+      var b = hedefDugme(e.target); if (!b || b.matches(DUGME_SEC)) return;
       clearTimeout(basiliT);
       basiliT = setTimeout(function(){ ipucuGoster(b); setTimeout(ipucuGizle, 2600); }, 550);
     }, true);
