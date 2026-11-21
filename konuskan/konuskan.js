@@ -1760,3 +1760,34 @@ Promise.all([fetch('./konuskan/data.json?v=1').then(r=>{ if(!r.ok) throw 0; retu
     try{ if(konus) sessionStorage.setItem('kk-konus',konus); else konus=sessionStorage.getItem('kk-konus'); }catch(e){}
     if(konus){ try{ history.replaceState(null,'',location.pathname+location.hash); }catch(e){}
       startModuleTalk(konus).then(()=>setTimeout(()=>{ try{ sessionStorage.removeItem('kk-konus'); }catch(e){} },2500)); } });
+
+/* ⛶ Balon tam ekran: her sohbet balonunun sağ üst köşesinde bir düğme. Basınca balondaki metin
+   tam ekran görünür, tekrar basınca (ya da Esc) eski haline döner. Yazılı sohbetler (.msg > .bub)
+   ve görüntülü Deniz sohbeti (.vd-m-bub). Balon yerinden taşınmaz; yalnız görünüşü değişir,
+   böylece kelime penceresi, seslendirme ve canlı güncellemeler çalışmaya devam eder. */
+(function(){
+  const SEC='.msg > .bub, .vd-m-bub';
+  const IC_AC='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
+  const IC_KAPA='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>';
+  let acik=null;
+  function ataIsaretle(b,on){ for(let e=b.parentElement;e&&e!==document.documentElement;e=e.parentElement){ if(on) e.setAttribute('data-tam-ata',''); else e.removeAttribute('data-tam-ata'); } }
+  function kapat(){ if(!acik) return; const b=acik; acik=null; b.classList.remove('dh-tam'); ataIsaretle(b,false); document.documentElement.classList.remove('dh-tam-acik');
+    const d=b.querySelector(':scope > .bub-tam-btn'); if(d){ d.innerHTML=IC_AC; d.setAttribute('aria-label','Tam ekran'); d.setAttribute('aria-pressed','false'); }
+    try{ b.scrollIntoView({block:'nearest'}); }catch(e){} }
+  function ac(b){ if(acik) kapat(); acik=b; b.classList.add('dh-tam'); ataIsaretle(b,true); document.documentElement.classList.add('dh-tam-acik'); b.scrollTop=0;
+    const d=b.querySelector(':scope > .bub-tam-btn'); if(d){ d.innerHTML=IC_KAPA; d.setAttribute('aria-label','Tam ekranı kapat'); d.setAttribute('aria-pressed','true'); d.focus({preventScroll:true}); } }
+  function ekle(b){
+    if(b.querySelector(':scope > .bub-tam-btn')) return;
+    if(!b.textContent.trim()) return;           /* "yazıyor…" balonuna düğme yok */
+    const d=document.createElement('button'); d.type='button'; d.className='bub-tam-btn';
+    const on=b===acik; d.innerHTML=on?IC_KAPA:IC_AC; d.setAttribute('aria-label',on?'Tam ekranı kapat':'Tam ekran'); d.setAttribute('aria-pressed',String(on));
+    d.addEventListener('click',e=>{ e.stopPropagation(); e.preventDefault(); if(acik===b) kapat(); else ac(b); });
+    d.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' ') e.stopPropagation(); });
+    b.prepend(d);
+  }
+  let bekliyor=false;
+  function tara(){ bekliyor=false; document.querySelectorAll(SEC).forEach(ekle); if(acik&&!acik.isConnected){ const b=acik; acik=null; ataIsaretle(b,false); document.documentElement.classList.remove('dh-tam-acik'); } }
+  new MutationObserver(()=>{ if(!bekliyor){ bekliyor=true; requestAnimationFrame(tara); } }).observe(document.documentElement,{childList:true,subtree:true});
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&acik){ e.stopPropagation(); e.preventDefault(); kapat(); } },true);
+  tara();
+})();

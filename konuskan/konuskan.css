@@ -280,3 +280,24 @@ main{overflow:auto;padding:28px clamp(16px,4vw,48px) 90px}
 :root[data-theme="dark"] .ing{color:#7db8ff}
 .vd .ing, .vd .ing .vd-k{color:#9fd2ff}
 .msg.me .bub .ing{color:inherit;text-decoration:underline;text-decoration-color:rgba(255,255,255,.55);text-underline-offset:3px}
+
+/* ⛶ Balon tam ekran düğmesi (sağ üst köşe) */
+.msg > .bub, .vd-m-bub{position:relative;padding-right:40px}
+.bub-tam-btn{position:absolute;top:5px;right:5px;width:28px;height:28px;min-width:0;min-height:0;padding:0;border-radius:99px;border:1px solid var(--line,rgba(127,127,127,.3));background:var(--surface,rgba(0,0,0,.25));color:inherit;opacity:.75;display:flex;align-items:center;justify-content:center;cursor:pointer;line-height:0;z-index:1}
+.bub-tam-btn:hover,.bub-tam-btn:focus-visible{opacity:1}
+.msg.me .bub-tam-btn{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.35)}
+.msg > .bub.dh-tam, .vd-m-bub.dh-tam{position:fixed!important;inset:0!important;z-index:2147483000!important;margin:0!important;max-width:none!important;width:auto!important;height:auto!important;border-radius:0!important;border:0!important;box-shadow:none!important;overflow:auto;overscroll-behavior:contain;
+  padding:72px max(22px,calc((100vw - 760px)/2)) 40px!important;font-size:1.35rem!important;line-height:1.7!important;animation:none!important;cursor:auto}
+.msg > .bub.dh-tam{background:var(--bg,#fff)!important;color:var(--ink,inherit)!important}
+.msg.me > .bub.dh-tam{background:var(--accent)!important;color:var(--accent-ink)!important}
+.vd-m-bub.dh-tam{background:#14171e!important;color:#f3f1ec!important}
+.dh-tam > .bub-tam-btn{position:fixed;top:14px;right:14px;width:44px;height:44px;opacity:1;z-index:2}
+.dh-tam .tr{font-size:1.1rem}
+/* tam ekran açıkken üst kapların görünümü onu sınırlamasın */
+[data-tam-ata]{transform:none!important;transition:none!important;translate:none!important;scale:none!important;rotate:none!important;filter:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;contain:none!important;will-change:auto!important;clip-path:none!important;mask:none!important;z-index:2147483000!important;opacity:1!important;animation:none!important}
+html.dh-tam-acik, html.dh-tam-acik body{overflow:hidden!important}
+/* tam ekran açıkken sayfanın yüzen öğeleri (menü düğmesi, bulut rozeti…) gizlenir; kelime penceresi en üstte kalır */
+html.dh-tam-acik body > :not([data-tam-ata]):not(.dh-tam):not(.dh-wp-ov):not(.dh-wp-gk):not(script):not(style){visibility:hidden!important}
+html.dh-tam-acik .dh-wp-ov, html.dh-tam-acik .dh-wp-gk{z-index:2147483600!important}
+.vd-m-bub .bub-tam-btn{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.28);color:#f3f1ec}
+.vd-m-bub.dh-tam > .bub-tam-btn{background:#2a303c}
