@@ -190,6 +190,8 @@
     for (var i = 0; i < liste.length; i++){
       var el = liste[i];
       if (el.hasAttribute("data-kk-h") || el.closest(".kk-ui,svg,.yt-timeline")) continue;   /* ilerleme çubuğunun tutamacı büyütülmez */
+      /* Kullanıcı isteği: bütün düğmeler tek kompakt boyutta (dh-dugme.js/.css) — düğmeler 48 px'e büyütülmez */
+      if (el.matches && el.matches("button, .btn, input[type=button], input[type=submit], input[type=reset]")) continue;
       var r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
       if (r.height >= 48 && r.width >= 48) continue;

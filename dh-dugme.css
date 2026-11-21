@@ -1,0 +1,41 @@
+/* dh-dugme.css — Dil Harita ve Konuşkan: bütün düğmeler tek, kompakt boyutta
+   (sohbetteki küçük yuvarlak düğmeler örnek alındı). Sınıfları dh-dugme.js verir:
+     .dh-ikon-dugme  → yalnız simge: 28 px yuvarlak
+     .dh-kucuk-dugme → yazılı düğme: 28 px yükseklik, kompakt, yuvarlak
+   İçinde başlık/açıklama/resim taşıyan büyük kartlar sınıf almaz.
+   Seçiciler bilerek güçlü: "Okuma kolaylığı" modunun büyük düğme kurallarını da geçer (kullanıcı isteği: istisnasız). */
+:root body .dh-kucuk-dugme.dh-kucuk-dugme {
+  min-height: 28px !important; height: auto !important; max-height: max-content !important;   /* yan yana dizide komşusunun boyuna esneyip uzamasın */
+  min-width: 0 !important; padding: 3px 11px !important;
+  font-size: 13px !important; line-height: 1.25 !important; border-radius: 999px !important;
+  gap: 5px !important; box-sizing: border-box !important;
+}
+:root body .dh-kucuk-dugme.dh-kucuk-dugme svg { width: 14px !important; height: 14px !important; flex: none; }
+:root body .dh-kucuk-dugme.dh-kucuk-dugme img { max-height: 16px !important; width: auto !important; }
+:root body .dh-ikon-dugme.dh-ikon-dugme {
+  width: 28px !important; height: 28px !important; min-width: 28px !important; min-height: 28px !important; max-height: 28px !important;
+  padding: 0 !important; border-radius: 50% !important; font-size: 14px !important; line-height: 1 !important;
+  display: inline-flex !important; align-items: center !important; justify-content: center !important; box-sizing: border-box !important; flex: none;
+}
+:root body .dh-ikon-dugme.dh-ikon-dugme svg { width: 14px !important; height: 14px !important; }
+:root body .dh-ikon-dugme.dh-ikon-dugme img { max-width: 16px !important; max-height: 16px !important; }
+
+/* parçaları yan yana: alt alta dizilen düğmeler de tek satır olsun */
+:root body .dh-kucuk-dugme.dh-kucuk-dugme { flex-direction: row !important; align-items: center !important; }
+:root body .dh-kucuk-dugme.dh-kucuk-dugme[data-dh-satir] { flex-wrap: nowrap !important; }
+:root body .dh-kucuk-dugme.dh-kucuk-dugme[data-dh-satir] > * { margin-top: 0 !important; margin-bottom: 0 !important; }
+/* "Okuma kolaylığı" modunun simgeye çevirdiği düğmeler ([data-kk-ikon] / [data-kk-gorsel]): onun çok güçlü
+   kurallarını (:root×8) geçmek için :root×9 — bunlar da 28 px, simge küçük */
+:root:root:root:root:root:root:root:root:root body [data-kk-ikon].dh-kucuk-dugme,
+:root:root:root:root:root:root:root:root:root body [data-kk-gorsel].dh-kucuk-dugme,
+:root:root:root:root:root:root:root:root:root body [data-kk-ikon].dh-ikon-dugme,
+:root:root:root:root:root:root:root:root:root body [data-kk-gorsel].dh-ikon-dugme { min-height: 28px !important; height: 28px !important; min-width: 28px !important; padding: 0 10px !important; }
+:root:root:root:root:root:root:root:root:root body [data-kk-ikon].dh-ikon-dugme,
+:root:root:root:root:root:root:root:root:root body [data-kk-gorsel].dh-ikon-dugme { width: 28px !important; padding: 0 !important; }
+:root:root:root:root:root:root:root:root:root body [data-kk-ikon][data-kk-ikon].dh-kucuk-dugme::before,
+:root:root:root:root:root:root:root:root:root body [data-kk-ikon][data-kk-ikon].dh-ikon-dugme::before { font-size: 15px !important; }
+:root:root:root:root:root:root:root:root:root body [data-kk-gorsel].dh-kucuk-dugme svg, :root:root:root:root:root:root:root:root:root body [data-kk-gorsel].dh-kucuk-dugme img,
+:root:root:root:root:root:root:root:root:root body [data-kk-gorsel].dh-ikon-dugme svg, :root:root:root:root:root:root:root:root:root body [data-kk-gorsel].dh-ikon-dugme img { width: 14px !important; height: 14px !important; }
+/* düğmenin içindeki parçalar kendi büyük yazı boyutunu taşımasın (ör. büyük emoji/simge yazısı) */
+:root body .dh-kucuk-dugme.dh-kucuk-dugme > *:not(svg):not(img),
+:root body .dh-ikon-dugme.dh-ikon-dugme > *:not(svg):not(img) { font-size: inherit !important; line-height: inherit !important; min-height: 0 !important; }
