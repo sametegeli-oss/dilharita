@@ -553,7 +553,7 @@
     }
     function dilBul(metin) { return /[çğışöüÇĞİŞÖÜ]/.test(metin) || /\b(ve|bir|bu|çok|için|değil|ama|şimdi|harika|aferin|doğru|yanlış)\b/i.test(metin) ? "tr" : "en"; }
     /* ses ölçümü: son 60 parça bu cihazda (dh-ses-olcum-v1). Ayarlar → Deniz'in sesi → "Ses ölçümü" gösterir. */
-    var olcSon = 0;
+    var olcSon = 0, ANDROID_YZ = /Android/i.test((global.navigator && navigator.userAgent) || "");
     function sesOlcumBasla(c, dil, v, gecikme) {
       try {
         var t = performance.now(), mik = null; try { mik = !!global.__dhMikAkis || (typeof micLive !== "undefined" && !!micLive); } catch (e) {}
@@ -682,7 +682,10 @@
         };
         /* bozuk ses (başlamadan bitti): işaretle ve aynı cümleyi sıradaki sesle bir kez daha dene */
         function yenidenDene() { c._sesDeneme = (c._sesDeneme || 0) + 1; if (c._sesDeneme <= 3 && !bitti && konusma && konusma.cumle === c && sesSec(dil)) { baslat(); return true; } return false; }
-        u.onend = function () { sesOlcumBitir(olc, basladi ? 'tamam' : 'başlamadı'); if (basladi) { if (global.DHSes) DHSes.sonuc(sesAd, true); son(); return; }
+        u.onend = function () { sesOlcumBitir(olc, basladi ? 'tamam' : 'başlamadı');
+          /* telefonda (Android) ses motoru bazen "başladı" demeden okuyup bitiriyor: ses çaldı, ağız şimdi oynamamalı */
+          if (!basladi && !sessiz && ANDROID_YZ) { son(); return; }
+          if (basladi) { if (global.DHSes) DHSes.sonuc(sesAd, true); son(); return; }
           if (global.DHSes && DHSes.sonuc(sesAd, false, performance.now() - sesT0) && yenidenDene()) return; sessizOku(); };
         u.onerror = function (ev) { sesOlcumBitir(olc, "hata: " + (ev && ev.error || "?")); if (ev && (ev.error === "interrupted" || ev.error === "canceled")) { son(); return; }
           if (!basladi && global.DHSes && DHSes.sonuc(sesAd, false, performance.now() - sesT0, ev && ev.error) && yenidenDene()) return; sessizOku(); };
