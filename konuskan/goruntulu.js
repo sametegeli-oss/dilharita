@@ -224,7 +224,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <div class="vd-ses-durum"><p class="vd-ses-durum-y"></p><button type="button" class="vd-ikincil vd-ses-dene" data-a="sesDene">${vi('spk')} Doğal sesi dene</button></div>
         ${['en', 'tr'].map(dl => `<div class="vd-satir vd-ses-sec"><span>${dl === 'en' ? 'İngilizce konuşurken' : 'Türkçe konuşurken'} <small>(tarayıcı sesi)</small></span>
           <div class="vd-uyum-c"><select data-sesdil="${dl}" aria-label="${dl === 'en' ? 'İngilizce' : 'Türkçe'} ses"></select><button type="button" class="vd-ikincil" data-uyumdene="${dl}">${vi('spk')} Dene</button></div></div>`).join('')}
-        <div class="vd-olcum-k"><div class="vd-uyum-c"><button type="button" class="vd-ikincil" data-a="olcumGoster">Ses ölçümü</button><button type="button" class="vd-ikincil" data-a="olcumSil">Ölçümü sıfırla</button></div>
+        <div class="vd-olcum-k"><div class="vd-uyum-c"><button type="button" class="vd-ikincil" data-a="olcumGoster">Ses ölçümü</button><button type="button" class="vd-ikincil" data-a="olcumSil">Ölçümü sıfırla</button><button type="button" class="vd-ikincil" data-a="hizTest">Ses hız testi</button></div>
           <div class="vd-olcum" hidden></div></div>
         <small class="vd-ses-ipucu">Telefonda ses adları erkek/kadın yazmayabilir: "Dene" ile dinleyip seç. Listedeki bütün İngilizce sesler kadınsa telefonun Ayarlar → Metin okuma (Google) → Ses verilerini yükle → English bölümünden erkek bir ses seçebilirsin.</small>
         <label class="vd-anahtar"><input type="checkbox" data-a="sesDuygu"><span></span> Seste duygu <small>Deniz'in sesi yüzündeki duyguya göre değişir: sevinçte neşeli, teselli ederken yumuşak, ciddi konuda ağır.</small></label>
@@ -594,6 +594,36 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       k.innerHTML = `<p>Son ${a.length} parça. Bu ekranın görüntüsünü gönderirsen ağız-ses uyumunu buna göre düzeltirim. Tablo yana kayar. 🎙 = Deniz konuşurken mikrofon açıktı · ✂ = sırada eski konuşma vardı, temizlendi · 🔇 = ses gelmedi, ağız sessiz oynadı.</p><table><tr><th>saat</th><th>tür</th><th>dil</th><th>ses</th><th>önce sessiz</th><th>başladı</th><th>ilk kelime</th><th>bitti</th><th>metin</th></tr>` +
         a.slice(-30).reverse().map(o => `<tr><td>${esc(o.z || '')}</td><td>${esc(o.etk || '')}${o.mik ? ' 🎙' : ''}${o.tem ? ' ✂' : ''}${o.sessiz ? ' 🔇' : ''}</td><td>${esc(o.d || '')}</td><td>${esc(String(o.s || '').slice(0, 16))}${o.yerel === false ? ' ☁' : ''}${o.g ? ' +' + o.g : ''}</td><td>${f(o.ara)}</td><td>${f(o.b)}</td><td>${f(o.k)}</td><td>${f(o.e)}${o.du && o.du !== 'tamam' ? ' ' + esc(o.du) : ''}</td><td>${esc(o.m || '')}</td></tr>`).join('') + '</table>';
     }
+    /* Ses hız testi: aynı kısa cümleleri farklı ayarlarla okutup her birinin kaç ms'de başladığını ölçer
+       (perde değişikliği mi, dil/ses değişimi mi, ses seçimi mi gecikmeye yol açıyor?) */
+    q('[data-a=hizTest]').onclick = async () => {
+      const k = q('.vd-olcum'); k.hidden = false; const b = q('[data-a=hizTest]'); b.disabled = true;
+      if (D.aktif) { await dinlemeIptal(); } yuz.sustur(); try { speechSynthesis.cancel(); } catch (e) {}
+      await new Promise(r => setTimeout(r, 300));
+      const tr = uyumSes('tr'), en = uyumSes('en');
+      const DENE = [
+        ['Türkçe, düz', 'Bir.', tr, 1, 1], ['Türkçe, düz (tekrar)', 'İki.', tr, 1, 1], ['Türkçe, perde 1,4', 'Üç.', tr, 1.4, 1],
+        ['Türkçe, hız 1,15', 'Dört.', tr, 1, 1.15], ['İngilizceye geçiş', 'Five.', en, 1, 1], ['İngilizce, düz (tekrar)', 'Six.', en, 1, 1],
+        ['Türkçeye geçiş', 'Yedi.', tr, 1, 1], ['Ses seçmeden (yalnız dil)', 'Sekiz.', null, 1, 1], ['Türkçe, uzun cümle', 'Bu cümle biraz daha uzun, motorun hazırlanma süresini görmek için.', tr, 1, 1]
+      ];
+      const sonuc = [];
+      const ciz = () => { k.innerHTML = `<p>Ses hız testi (telefon: ${esc(navigator.userAgent.match(/Android[^;)]*/) ? navigator.userAgent.match(/Android[^;)]*/)[0] : 'bilgisayar')}). Ekran görüntüsünü gönder.</p><table><tr><th>deneme</th><th>ses</th><th>başladı</th><th>bitti</th></tr>` +
+        sonuc.map(o => `<tr><td>${esc(o.ad)}</td><td>${esc(o.ses)}</td><td>${o.b == null ? '–' : o.b}</td><td>${o.e == null ? '…' : o.e}${o.h ? ' ' + esc(o.h) : ''}</td></tr>`).join('') + '</table>'; };
+      for (const [ad, metin, v, perde, hiz] of DENE) {
+        const o = { ad, ses: v ? v.name.slice(0, 18) : '(yok)' }; sonuc.push(o); ciz();
+        await new Promise(res => {
+          let u; try { u = new SpeechSynthesisUtterance(metin); } catch (e) { o.h = 'yok'; return res(); }
+          if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'tr-TR';
+          u.pitch = perde; u.rate = hiz; u.__dhSesYonetimli = true;
+          const t0 = performance.now(); let bitti = false; const son = h => { if (bitti) return; bitti = true; o.e = Math.round(performance.now() - t0); if (h) o.h = h; ciz(); setTimeout(res, 250); };
+          u.onstart = () => { o.b = Math.round(performance.now() - t0); ciz(); };
+          u.onend = () => son(); u.onerror = ev => son('hata: ' + (ev && ev.error));
+          setTimeout(() => son('zaman aşımı'), 25000);
+          try { speechSynthesis.speak(u); } catch (e) { son('hata'); }
+        });
+      }
+      b.disabled = false; toast('Ses hız testi bitti');
+    };
     q('[data-a=olcumGoster]').onclick = () => { const k = q('.vd-olcum'); k.hidden = !k.hidden; if (!k.hidden) olcumCiz(); };
     q('[data-a=olcumSil]').onclick = () => { try { localStorage.removeItem('dh-ses-olcum-v1'); } catch (e) {} olcumCiz(); q('.vd-olcum').hidden = false; toast('Ses ölçümü sıfırlandı'); };
     q('[data-a=duyguGuc]').oninput = e => { kaYazG('sesDuygu', +e.target.value); sesKaydiricilarCiz(); };
