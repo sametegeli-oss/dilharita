@@ -976,7 +976,9 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       return {
         ekle(c) {
           bekleyen.push({ c, i: m.liste.indexOf(c) });
-          if (!gemini || ttsKapaliMi()) { blokGonder(bekleyen); bekleyen = []; return; }
+          /* tarayıcı sesi: cevap parça parça gelirken konuşmaya başlamaz; hepsi (ve çevirileri) gelince
+             "Tekrar söyle"deki gibi tek seferde, aralıksız okunur — Türkçe ↔ İngilizce geçişinde bekleme ve ağız kayması olmasın */
+          if (!gemini || ttsKapaliMi()) return;
           /* ilk cümle hemen (beklemeyi kısaltır); gerisi tek parça — kota az (her ses isteği günlük haktan düşer).
              Çok uzun açıklamalarda ~320 harfte bir yeni parça (sessiz boşluk uzamasın). */
           const uz = bekleyen.reduce((a, b) => a + b.c.metin.length + (b.c.cev ? b.c.cev.length : 0), 0);
