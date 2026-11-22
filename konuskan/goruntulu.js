@@ -591,7 +591,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       const k = q('.vd-olcum'); let a = []; try { a = JSON.parse(localStorage.getItem('dh-ses-olcum-v1') || '[]'); } catch (e) {}
       if (!a.length) { k.innerHTML = '<p>Henüz ölçüm yok. Deniz biraz konuşsun (bir de "Tekrar söyle"ye bas), sonra buraya dön.</p>'; return; }
       const f = x => x == null ? '–' : x;
-      k.innerHTML = `<p>Son ${a.length} parça. Bu ekranın görüntüsünü gönderirsen ağız-ses uyumunu buna göre düzeltirim. Tablo yana kayar. ✂ = sırada eski konuşma vardı, temizlendi · 🔇 = ses gelmedi, ağız sessiz oynadı.</p><table><tr><th>saat</th><th>tür</th><th>dil</th><th>ses</th><th>önce sessiz</th><th>başladı</th><th>ilk kelime</th><th>bitti</th><th>metin</th></tr>` +
+      k.innerHTML = `<p>Son ${a.length} parça. Bu ekranın görüntüsünü gönderirsen ağız-ses uyumunu buna göre düzeltirim. Tablo yana kayar. 🎙 = Deniz konuşurken mikrofon açıktı · ✂ = sırada eski konuşma vardı, temizlendi · 🔇 = ses gelmedi, ağız sessiz oynadı.</p><table><tr><th>saat</th><th>tür</th><th>dil</th><th>ses</th><th>önce sessiz</th><th>başladı</th><th>ilk kelime</th><th>bitti</th><th>metin</th></tr>` +
         a.slice(-30).reverse().map(o => `<tr><td>${esc(o.z || '')}</td><td>${esc(o.etk || '')}${o.mik ? ' 🎙' : ''}${o.tem ? ' ✂' : ''}${o.sessiz ? ' 🔇' : ''}</td><td>${esc(o.d || '')}</td><td>${esc(String(o.s || '').slice(0, 16))}${o.yerel === false ? ' ☁' : ''}${o.g ? ' +' + o.g : ''}</td><td>${f(o.ara)}</td><td>${f(o.b)}</td><td>${f(o.k)}</td><td>${f(o.e)}${o.du && o.du !== 'tamam' ? ' ' + esc(o.du) : ''}</td><td>${esc(o.m || '')}</td></tr>`).join('') + '</table>';
     }
     q('[data-a=olcumGoster]').onclick = () => { const k = q('.vd-olcum'); k.hidden = !k.hidden; if (!k.hidden) olcumCiz(); };
@@ -1223,7 +1223,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (genis() && ayar.sohbet !== false) sohbetAc(true, true);
       q('.vd-lobi').remove(); q('.vd-alt-bar').hidden = false; q('.vd-sure').hidden = false;
       st.saat = setInterval(() => { const s = Math.floor((Date.now() - st.bas) / 1000); q('.vd-sure').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); lastAct = Date.now(); }, 1000);
-      mikrofonHazirla();   /* izni ders başında iste; ilk cevapta beklemesin */
+      mikrofonHazirla().then(ok => { if (ok && !D.aktif) mikBirak(); });   /* izni ders başında iste, hattı hemen kapat (Deniz konuşurken açık kalmasın) */
       dolgulariHazirla();
       if (analiz && !st.hist.length) {
         const n = document.createElement('div'); n.className = 'vd-devam-not'; n.textContent = 'İncelenen cümle: “' + analiz.cumle + '”' + (analiz.src ? ' · ' + analiz.src : ''); listeyeEkle(n);
@@ -1372,9 +1372,17 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         mk.akis = akis;
         const AC = window.AudioContext || window.webkitAudioContext; mk.ac = new AC();
         const src = mk.ac.createMediaStreamSource(akis); mk.analiz = mk.ac.createAnalyser(); mk.analiz.fftSize = 1024; src.connect(mk.analiz);
-        mk.veri = new Float32Array(mk.analiz.fftSize); mk.izin = true; return true;
+        mk.veri = new Float32Array(mk.analiz.fftSize); mk.izin = true; window.__dhMikAkis = true; return true;
       }).catch(e => { mk.izin = false; if (e && e.name === 'NotAllowedError') bilgi('Mikrofon izni verilmedi. Adres çubuğundaki simgeden izin verebilir ya da yazarak konuşabilirsin.'); return false; });
       return mk.soz;
+    }
+    /* Mikrofon hattını tamamen kapat. Android, mikrofon açıkken sesi "telefon görüşmesi" moduna alır ve metin okuma sesini
+       saniyelerce geciktirir (ölçümde her parça 5-8 sn geç başlıyordu). Hat yalnız öğrenci konuşurken açık kalır;
+       sonraki dinlemede yeniden açılır (izin bir kez verildiği için sorulmaz). */
+    function mikBirak() {
+      try { mk.akis && mk.akis.getTracks().forEach(t => t.stop()); } catch (e) {}
+      try { mk.ac && mk.ac.close(); } catch (e) {}
+      mk.akis = null; mk.soz = null; mk.ac = null; mk.analiz = null; window.__dhMikAkis = false;
     }
     function seviye() { if (!mk.analiz) return 0; mk.analiz.getFloatTimeDomainData(mk.veri); let t = 0; for (let i = 0; i < mk.veri.length; i++) t += mk.veri[i] * mk.veri[i]; return Math.sqrt(t / mk.veri.length); }
     const D = { aktif: false, metin: '', gecici: '', konustu: 0, sessizBas: 0, taban: 0, ornek: 0, bas: 0, son: 0, raf: 0, bitiyor: false, kayitVar: false };
@@ -1437,12 +1445,13 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       });
     }
     /* mikrofonu kapatır; dönen söz, tarayıcı mikrofonu gerçekten bırakınca (en çok 1,5 sn) çözülür */
-    function dinlemeIptal() { D.aktif = false; D.bitiyor = true; clearTimeout(D.sz); micTarget = null; let p = Promise.resolve(); if (micLive) p = dict.stop().catch(() => {}); const k = kaydiDurdur(); yuz.dinle(false); q('.vd-sen').hidden = true;
+    function dinlemeIptal() { D.aktif = false; D.bitiyor = true; clearTimeout(D.sz); micTarget = null; let p = Promise.resolve(); if (micLive) p = dict.stop().catch(() => {}); const k = kaydiDurdur().then(b => { mikBirak(); return b; }); yuz.dinle(false); q('.vd-sen').hidden = true;
       return Promise.race([Promise.all([p, k]), new Promise(r => setTimeout(r, 1500))]); }
     async function dinlemeBitir() {
       if (!D.aktif || D.bitiyor) return; D.bitiyor = true; clearTimeout(D.sz);
       micTarget = null; if (micLive) dict.stop().catch(() => {});
       const blob = await kaydiDurdur();
+      mikBirak();
       yuz.dinle(false);
       let metin = (D.metin + ' ' + D.gecici).trim();
       const konustu = D.konustu > 200 || !!metin;

@@ -556,7 +556,7 @@
     var olcSon = 0;
     function sesOlcumBasla(c, dil, v, gecikme) {
       try {
-        var t = performance.now(), mik = null; try { mik = typeof micLive !== "undefined" ? !!micLive : null; } catch (e) {}
+        var t = performance.now(), mik = null; try { mik = !!global.__dhMikAkis || (typeof micLive !== "undefined" && !!micLive); } catch (e) {}
         var o = { _t: t, z: new Date().toISOString().slice(11, 19), ara: olcSon ? Math.round(t - olcSon) : null, d: dil, s: v ? v.name : "-", yerel: v ? v.localService !== false : null,
           g: gecikme, n: c.metin.length, m: c.metin.slice(0, 24), etk: global.__dhSesEtiket || "", mik: mik };
         return o;
