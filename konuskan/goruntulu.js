@@ -532,7 +532,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     /* Ağız ve ses uyumu: ses başına gecikme (ms) — dh-ses.js DHSes.gecikme */
     /* Deniz'in tarayıcı sesi, dil başına: ayarlardan seçilen; yoksa (İngilizcede) Konuşkan'ın ses ayarı; yoksa otomatik */
     const sesTercihi = dl => dl === 'en' ? (ayar.tarayiciEn || S.voiceName || '') : (ayar.tarayiciTr || '');
-    function sesTercihUygula() { try { yuz.sesTercih({ en: sesTercihi('en'), tr: sesTercihi('tr') }); } catch (e) {} }
+    /* motor ve Konuşkan'ın düz seslendirmesi (speak: ders bitince "Tekrar söyle", "Dinle", öneriler…) aynı sesi kullanır */
+    function sesTercihUygula() { try { yuz.sesTercih({ en: sesTercihi('en'), tr: sesTercihi('tr') }); } catch (e) {} window.__denizSes = { en: sesTercihi('en'), tr: sesTercihi('tr') }; }
     function uyumSes(dl) { return window.DHSes ? DHSes.sec(dl, sesTercihi(dl) || undefined) : null; }
     function sesListeCiz() {
       let vs = []; try { vs = speechSynthesis.getVoices() || []; } catch (e) {}
@@ -1619,7 +1620,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       micTarget = null; window.KK_DICT_LANG = 'en-US';
       try { if (window.__vdGoogleBirak) { window.__vdGoogleBirak(); window.__vdGoogleBirak = null; } } catch (e) {}
       try { yuz.yikil(); } catch (e) {}
-      kok.remove(); if (!document.querySelector('.vd')) document.documentElement.classList.remove('vd-acik');
+      kok.remove(); if (!document.querySelector('.vd')) { document.documentElement.classList.remove('vd-acik'); window.__denizSes = null; }
     };
     if (ustte) kok.__kapat = temizle; else panelCleanup = temizle;
     if (analiz) {   /* lobi beklemeden derse başla: Deniz cümleyi açıklar */
