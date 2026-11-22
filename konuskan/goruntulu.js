@@ -224,6 +224,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <div class="vd-ses-durum"><p class="vd-ses-durum-y"></p><button type="button" class="vd-ikincil vd-ses-dene" data-a="sesDene">${vi('spk')} Doğal sesi dene</button></div>
         ${['en', 'tr'].map(dl => `<div class="vd-satir vd-ses-sec"><span>${dl === 'en' ? 'İngilizce konuşurken' : 'Türkçe konuşurken'} <small>(tarayıcı sesi)</small></span>
           <div class="vd-uyum-c"><select data-sesdil="${dl}" aria-label="${dl === 'en' ? 'İngilizce' : 'Türkçe'} ses"></select><button type="button" class="vd-ikincil" data-uyumdene="${dl}">${vi('spk')} Dene</button></div></div>`).join('')}
+        <div class="vd-olcum-k"><div class="vd-uyum-c"><button type="button" class="vd-ikincil" data-a="olcumGoster">Ses ölçümü</button><button type="button" class="vd-ikincil" data-a="olcumSil">Ölçümü sıfırla</button></div>
+          <div class="vd-olcum" hidden></div></div>
         <small class="vd-ses-ipucu">Telefonda ses adları erkek/kadın yazmayabilir: "Dene" ile dinleyip seç. Listedeki bütün İngilizce sesler kadınsa telefonun Ayarlar → Metin okuma (Google) → Ses verilerini yükle → English bölümünden erkek bir ses seçebilirsin.</small>
         <label class="vd-anahtar"><input type="checkbox" data-a="sesDuygu"><span></span> Seste duygu <small>Deniz'in sesi yüzündeki duyguya göre değişir: sevinçte neşeli, teselli ederken yumuşak, ciddi konuda ağır.</small></label>
         <label class="vd-satir">Sesteki duygu gücü: <b class="vd-duygu-d"></b><input type="range" min="0" max="2" step="0.05" data-a="duyguGuc" aria-label="Sesteki duygu gücü"></label>
@@ -584,6 +586,16 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       q('[data-a=perde]').value = pr; q('.vd-perde-d').textContent = Math.abs(pr - 1) < 0.005 ? 'normal' : (pr < 1 ? 'kalın ' : 'ince ') + '×' + pr.toFixed(2);
       q('.vd-hiz-d').textContent = '×' + (+S.rate || 1).toFixed(2);
     }
+    /* ses ölçümü: her parçada sessizlik (önceki parçanın bitişinden), "başladı" sinyali, ilk kelime sinyali ve bitiş (ms) */
+    function olcumCiz() {
+      const k = q('.vd-olcum'); let a = []; try { a = JSON.parse(localStorage.getItem('dh-ses-olcum-v1') || '[]'); } catch (e) {}
+      if (!a.length) { k.innerHTML = '<p>Henüz ölçüm yok. Deniz biraz konuşsun (bir de "Tekrar söyle"ye bas), sonra buraya dön.</p>'; return; }
+      const f = x => x == null ? '–' : x;
+      k.innerHTML = `<p>Son ${a.length} parça. Bu ekranın görüntüsünü gönderirsen ağız-ses uyumunu buna göre düzeltirim.</p><table><tr><th>saat</th><th>tür</th><th>dil</th><th>ses</th><th>önce sessiz</th><th>başladı</th><th>ilk kelime</th><th>bitti</th><th>metin</th></tr>` +
+        a.slice(-30).reverse().map(o => `<tr><td>${esc(o.z || '')}</td><td>${esc(o.etk || '')}${o.mik ? ' 🎙' : ''}</td><td>${esc(o.d || '')}</td><td>${esc(String(o.s || '').slice(0, 16))}${o.yerel === false ? ' ☁' : ''}${o.g ? ' +' + o.g : ''}</td><td>${f(o.ara)}</td><td>${f(o.b)}</td><td>${f(o.k)}</td><td>${f(o.e)}${o.du && o.du !== 'tamam' ? ' ' + esc(o.du) : ''}</td><td>${esc(o.m || '')}</td></tr>`).join('') + '</table>';
+    }
+    q('[data-a=olcumGoster]').onclick = () => { const k = q('.vd-olcum'); k.hidden = !k.hidden; if (!k.hidden) olcumCiz(); };
+    q('[data-a=olcumSil]').onclick = () => { try { localStorage.removeItem('dh-ses-olcum-v1'); } catch (e) {} olcumCiz(); q('.vd-olcum').hidden = false; toast('Ses ölçümü sıfırlandı'); };
     q('[data-a=duyguGuc]').oninput = e => { kaYazG('sesDuygu', +e.target.value); sesKaydiricilarCiz(); };
     q('[data-a=perde]').oninput = e => { kaYazG('sesPerde', +e.target.value); sesKaydiricilarCiz(); };
     function uyumDeger(v) { if (!v) return 0; const g = window.DHSes && DHSes.gecikme ? DHSes.gecikme(v.name) : null; return g != null ? g : (v.localService === false ? 380 : 0); }
@@ -598,7 +610,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     qa('[data-uyumdene]').forEach(b => b.onclick = async () => {
       if (st.busy) { toast(`${OGRETMEN} cevabını hazırlıyor; bitince tekrar dene.`); return; }
       /* dinlerken denenirse mikrofonun kapanması beklenir; yoksa ayar yanlış ölçülür */
-      const dl = b.dataset.uyumdene; if (D.aktif) { durum('hazir'); await dinlemeIptal(); await new Promise(r => setTimeout(r, 450)); } yuz.sustur();
+      window.__dhSesEtiket = 'dene'; const dl = b.dataset.uyumdene; if (D.aktif) { durum('hazir'); await dinlemeIptal(); await new Promise(r => setTimeout(r, 450)); } yuz.sustur();
       const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret' });
       k.ekle({ metin: dl === 'tr' ? 'Merhaba, ben Deniz. Ağzım sesimle birlikte mi hareket ediyor?' : 'Hello, I am Deniz. Does my mouth move together with my voice?', dil: dl, duygu: 'mutlu', guc: 0.5 }); k.bitir();
     });
@@ -918,6 +930,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       return out.length ? out : [{ metin, dil: 'tr' }];
     }
     function yeniKonusucu(m) {
+      window.__dhSesEtiket = 'ilk';
       const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: c => { if (c.goster) c.goster(); } });
       const gemini = geminiSesAcik();
       let zincir = Promise.resolve(), bekleyen = [], ilk = true, iptal = false, sesBasladi = false, blokSonEtiket = null;
@@ -1302,12 +1315,13 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     /* bütün bir mesajı baştan söylet (ör. "Take your time") */
     async function soyle(m, tekrar) {
       if (st.bitti) return;
-      const ks = yeniKonusucu(m); m.liste.forEach(c => ks.ekle(c)); ks.bitir();
+      const ks = yeniKonusucu(m); if (tekrar) window.__dhSesEtiket = 'tekrar'; m.liste.forEach(c => ks.ekle(c)); ks.bitir();
       await ks.bitti(); sonra(m, tekrar);
     }
     /* tekrar dinle: daha önce üretilmiş sesler yeniden kullanılır (yeni istek yok) */
     async function tekrarSoyle(m) {
       if (!m || !m.text) return;
+      window.__dhSesEtiket = 'tekrar';
       /* ders bittiyse (özet ekranı) ya da cevap parçaları yoksa: düz seslendir */
       if (st.bitti || st.faz !== 'ders' || !m.liste) { speak(m.text); return; }
       if (st.busy) { toast(`${OGRETMEN} cevabını hazırlıyor; bitince tekrar bas.`); return; }
@@ -1319,7 +1333,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (m.okunan && m.okunan.length) {
         const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: c => { if (c.goster) c.goster(); } });
         m.okunan.forEach(it => k.ekle(Object.assign({}, it))); k.bitir(); await k.bitti; sonra(m, true);
-      } else await soyle(m, true);
+      } else { await soyle(m, true); }
     }
     /* "Analiz": ders sürüyorsa Deniz cümleyi derste, sesli ve Türkçe açıklar; ders bittiyse analiz penceresi açılır */
     function denizAnaliz(cumle, kim, tr) {

@@ -552,6 +552,23 @@
       return tercih || uygun.find(function (v) { return dil === "tr" ? /tr-TR/i.test(v.lang) : /en-US/i.test(v.lang); }) || uygun[0] || null;
     }
     function dilBul(metin) { return /[çğışöüÇĞİŞÖÜ]/.test(metin) || /\b(ve|bir|bu|çok|için|değil|ama|şimdi|harika|aferin|doğru|yanlış)\b/i.test(metin) ? "tr" : "en"; }
+    /* ses ölçümü: son 60 parça bu cihazda (dh-ses-olcum-v1). Ayarlar → Deniz'in sesi → "Ses ölçümü" gösterir. */
+    var olcSon = 0;
+    function sesOlcumBasla(c, dil, v, gecikme) {
+      try {
+        var t = performance.now(), mik = null; try { mik = typeof micLive !== "undefined" ? !!micLive : null; } catch (e) {}
+        var o = { _t: t, z: new Date().toISOString().slice(11, 19), ara: olcSon ? Math.round(t - olcSon) : null, d: dil, s: v ? v.name : "-", yerel: v ? v.localService !== false : null,
+          g: gecikme, n: c.metin.length, m: c.metin.slice(0, 24), etk: global.__dhSesEtiket || "", mik: mik };
+        return o;
+      } catch (e) { return null; }
+    }
+    function sesOlcumBitir(o, durum) {
+      if (!o || o._bitti) return; o._bitti = true;
+      try {
+        var t = performance.now(); o.e = Math.round(t - o._t); o.du = durum; olcSon = t; delete o._t; delete o._bitti;
+        var a = JSON.parse(localStorage.getItem("dh-ses-olcum-v1") || "[]"); a.push(o); localStorage.setItem("dh-ses-olcum-v1", JSON.stringify(a.slice(-60)));
+      } catch (e) {}
+    }
     function cumleSoyle(c, hizOrani) {
       return new Promise(function (res) {
         var dil = c.dil || dilBul(c.metin);
@@ -613,6 +630,8 @@
            > 0: ses ağızdan bu kadar sonra duyulur → ağız bekler, kelime sinyalleri de bu kadar kaydırılır. < 0: ağız öne alınır. */
         var kGec = global.DHSes && DHSes.gecikme && v ? DHSes.gecikme(v.name) : null, kAyar = kGec != null;
         var gecikme = kAyar ? kGec : (agSesi ? AG_GECIKME : 0);
+        /* SES ÖLÇÜMÜ (yalnız kayıt, davranışı değiştirmez): her parçada "başladı", ilk kelime ve bitiş zamanı */
+        var olc = sesOlcumBasla(c, dil, v, gecikme);
         var sesT0 = performance.now(), sesAd = v ? v.name : "", deneme = c._sesDeneme || 0, guncel = function () { return deneme === (c._sesDeneme || 0); };
         u.rate = hizOrani || 1;
         /* tarayıcı sesinde duygu: ses yüksekliği ve hız hafifçe değişir (ayarlardan kapatılabilir) */
@@ -629,6 +648,7 @@
           u.pitch = Math.max(0, Math.min(2, ty)); u.rate = Math.max(0.55, Math.min(1.8, (hizOrani || 1) * hz));
         }
         u.onboundary = function (ev) {
+          if (olc && olc.k == null) olc.k = Math.round(performance.now() - olc._t);
           if ((agSesi && !kAyar) || !ev || typeof ev.charIndex !== "number" || !c.metin.length) return;
           var anSimdi = performance.now() + Math.max(0, gecikme);   /* sinyal, sesin duyulduğu andan bu kadar önce gelir */
           sinirVar = true;
@@ -651,6 +671,7 @@
         var basladi = false, sessiz = false, sessizZ = null;
         function sessizOku() { if (sessiz || bitti || !guncel()) return; sessiz = true; c.konusuyor = true; c.bekle = false; c.bas = performance.now(); c.duzelt = 0; c.duzeltHedef = null; sessizZ = setTimeout(son, c.metin.length * msHarf); }
         u.onstart = function () {
+          if (olc && olc.b == null) olc.b = Math.round(performance.now() - olc._t);
           /* ses geç geldiyse sessiz okumayı bırak, sese yeniden hizalan */
           if (sessiz) { clearTimeout(sessizZ); sessiz = false; }
           basladi = true; c.bas = performance.now(); c.konusuyor = true; c.duzelt = 0; c.duzeltHedef = null;
@@ -661,9 +682,9 @@
         };
         /* bozuk ses (başlamadan bitti): işaretle ve aynı cümleyi sıradaki sesle bir kez daha dene */
         function yenidenDene() { c._sesDeneme = (c._sesDeneme || 0) + 1; if (c._sesDeneme <= 3 && !bitti && konusma && konusma.cumle === c && sesSec(dil)) { baslat(); return true; } return false; }
-        u.onend = function () { if (basladi) { if (global.DHSes) DHSes.sonuc(sesAd, true); son(); return; }
+        u.onend = function () { sesOlcumBitir(olc, basladi ? 'tamam' : 'başlamadı'); if (basladi) { if (global.DHSes) DHSes.sonuc(sesAd, true); son(); return; }
           if (global.DHSes && DHSes.sonuc(sesAd, false, performance.now() - sesT0) && yenidenDene()) return; sessizOku(); };
-        u.onerror = function (ev) { if (ev && (ev.error === "interrupted" || ev.error === "canceled")) { son(); return; }
+        u.onerror = function (ev) { sesOlcumBitir(olc, "hata: " + (ev && ev.error || "?")); if (ev && (ev.error === "interrupted" || ev.error === "canceled")) { son(); return; }
           if (!basladi && global.DHSes && DHSes.sonuc(sesAd, false, performance.now() - sesT0, ev && ev.error) && yenidenDene()) return; sessizOku(); };
         /* güvenlik: ses hiç başlamazsa ya da bitiş gelmezse */
         setTimeout(function () { if (!basladi && !bitti && guncel()) sessizOku(); }, 2500);

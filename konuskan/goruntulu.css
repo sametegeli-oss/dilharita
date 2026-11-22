@@ -633,3 +633,9 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 /* ders kendiliğinden başlarken lobi kartı görünmez (yalnız avatar yüklenirken bir an) */
 .vd-lobi.vd-lobi-oto { display: none !important; }
 .vd:has(.vd-lobi-oto) .vd-mod { display: none !important; }
+/* ses ölçümü tablosu */
+.vd-olcum { margin-top: 8px; max-height: 50vh; overflow: auto; font-size: .68rem; color: var(--vd-soluk); }
+.vd-olcum p { margin: 0 0 6px; font-size: .76rem; }
+.vd-olcum table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.vd-olcum th, .vd-olcum td { border-bottom: 1px solid rgba(255,255,255,.08); padding: 3px 4px; text-align: left; white-space: nowrap; }
+.vd-olcum th { color: var(--vd-yazi); position: sticky; top: 0; background: #1b1f27; }
