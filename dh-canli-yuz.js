@@ -601,15 +601,11 @@
           setTimeout(son, sure * 1000 + 1500);
         }
         function baslat() {
-        /* Önceki parça konuşurken bu parça ses motorunun sırasına önceden konduysa (dil geçişi beklemesin) onu kullan;
-           o arada gelmiş olaylar (başladı, kelime, bitti) kayıtlı zamanlarıyla yeniden işlenir. */
-        var on = (!c._sesDeneme && c._onU && !c._onU.kullanildi && c._onU.konusma === konusma && global.speechSynthesis) ? c._onU : null;
-        if (on) on.kullanildi = true;
-        var tRep = null, simdi = function () { return tRep != null ? tRep : performance.now(); };
-        var u, v;
-        if (on) { u = on.u; v = on.v; }
-        else { var kr = utKur(c, dil, hizOrani); u = kr && kr.u; v = kr && kr.v; }
+        var u; try { u = new SpeechSynthesisUtterance(c.metin); } catch (e) { u = null; }
         if (!u || !global.speechSynthesis) { c.konusuyor = true; c.bas = performance.now(); setTimeout(son, c.metin.length * msHarf); return; }
+        var v = sesSec(dil); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = dil === "tr" ? "tr-TR" : "en-US";
+        u.__dhSesYonetimli = true;   /* kendi yeniden denemesini yapar: dh-ses.js dokunmasın */
+        u.volume = global.DHSes ? DHSes.hacim(v) : 1;
         /* internetten gelen ses: tarayıcı "başladı" der ama ses ~0,35 sn sonra duyulur; kelime sinyalleri de erken gelir.
            Bu seslerde ağız sabit gecikmeyle başlar ve kelime sinyaline göre düzeltilmez. */
         var agSesi = !!(v && v.localService === false), AG_GECIKME = 380;
@@ -617,10 +613,24 @@
            > 0: ses ağızdan bu kadar sonra duyulur → ağız bekler, kelime sinyalleri de bu kadar kaydırılır. < 0: ağız öne alınır. */
         var kGec = global.DHSes && DHSes.gecikme && v ? DHSes.gecikme(v.name) : null, kAyar = kGec != null;
         var gecikme = kAyar ? kGec : (agSesi ? AG_GECIKME : 0);
-        var sesT0 = on ? on.t0 : performance.now(), sesAd = v ? v.name : "", deneme = c._sesDeneme || 0, guncel = function () { return deneme === (c._sesDeneme || 0); };
+        var sesT0 = performance.now(), sesAd = v ? v.name : "", deneme = c._sesDeneme || 0, guncel = function () { return deneme === (c._sesDeneme || 0); };
+        u.rate = hizOrani || 1;
+        /* tarayıcı sesinde duygu: ses yüksekliği ve hız hafifçe değişir (ayarlardan kapatılabilir) */
+        /* [ses yüksekliği, hız] — belirgin ama doğal sınırlar içinde; bazı tarayıcı sesleri yüksekliği yok sayar, hız her zaman işler */
+        var sdAcik = ka("sesDuygu", 1) > 0.02; try { if (localStorage.getItem("dh-ses-duygu") === "0") sdAcik = false; } catch (e) {}
+        if (!sdAcik && ka("sesPerde", 1) !== 1) u.pitch = Math.max(0, Math.min(2, ka("sesPerde", 1)));
+        if (sdAcik) {
+          var sd = c.duygu && !c.sesNotr ? duyguSesi(c.duygu) : [1, 1], ty = sd[0], hz = sd[1];   /* sesNotr: örnek cümle — duygu tonu yok */
+          if (/\?\s*$/.test(c.metin)) ty *= 1.1;                       /* soru: ses yükselir */
+          if (/!\s*$/.test(c.metin)) { ty *= 1.08; hz *= 1.08; }         /* ünlem: canlı */
+          if (/(\.\.\.|…)\s*$/.test(c.metin)) hz *= 0.92;               /* üç nokta: yavaşlar */
+          hz *= 0.96 + Math.random() * 0.08;                             /* her cümle aynı tempoda olmasın */
+          ty *= ka("sesPerde", 1);
+          u.pitch = Math.max(0, Math.min(2, ty)); u.rate = Math.max(0.55, Math.min(1.8, (hizOrani || 1) * hz));
+        }
         u.onboundary = function (ev) {
           if ((agSesi && !kAyar) || !ev || typeof ev.charIndex !== "number" || !c.metin.length) return;
-          var anSimdi = simdi() + Math.max(0, gecikme);   /* sinyal, sesin duyulduğu andan bu kadar önce gelir */
+          var anSimdi = performance.now() + Math.max(0, gecikme);   /* sinyal, sesin duyulduğu andan bu kadar önce gelir */
           sinirVar = true;
           /* uzun kelimelerde ara ara vurgu jesti */
           var kel = (c.metin.slice(ev.charIndex).match(/^[\p{L}'’-]+/u) || [""])[0];
@@ -643,67 +653,24 @@
         u.onstart = function () {
           /* ses geç geldiyse sessiz okumayı bırak, sese yeniden hizalan */
           if (sessiz) { clearTimeout(sessizZ); sessiz = false; }
-          var t = simdi(), gecen = performance.now() - t;   /* önceden sıraya konan seste "başladı" biraz önce gelmiş olabilir */
-          basladi = true; c.bas = t; c.konusuyor = true; c.duzelt = 0; c.duzeltHedef = null;
+          basladi = true; c.bas = performance.now(); c.konusuyor = true; c.duzelt = 0; c.duzeltHedef = null;
           /* bu tarayıcı kelime sınırı bildiriyorsa ağız ilk kelimenin gerçekten duyulduğu anda başlar */
-          if (gecikme > 0) { c._basAyar = false; c.bekle = true; c.bekleZ = setTimeout(function () { if (c.bekle) { c.bekle = false; if (!c._basAyar) c.bas = t + gecikme; } }, Math.max(0, gecikme - gecen)); }
-          else if (gecikme < 0) { c.bas = t + gecikme; }
-          else if (sinirVar) { c.bekle = true; c.bekleZ = setTimeout(function () { if (c.bekle) { c.bekle = false; c.bas = performance.now(); } }, Math.max(0, 800 - gecen)); }
-          /* sıradaki parçayı şimdiden ses motoruna ver: Türkçe ↔ İngilizce geçişinde motor beklemesin */
-          if (c._sonraki) { try { var n = c._sonraki(); if (n) onYukle(n, hizOrani); } catch (e) {} }
+          if (gecikme > 0) { c._basAyar = false; c.bekle = true; c.bekleZ = setTimeout(function () { if (c.bekle) { c.bekle = false; if (!c._basAyar) c.bas = performance.now(); } }, gecikme); }
+          else if (gecikme < 0) { c.bas = performance.now() + gecikme; }
+          else if (sinirVar) { c.bekle = true; c.bekleZ = setTimeout(function () { if (c.bekle) { c.bekle = false; c.bas = performance.now(); } }, 800); }
         };
         /* bozuk ses (başlamadan bitti): işaretle ve aynı cümleyi sıradaki sesle bir kez daha dene */
         function yenidenDene() { c._sesDeneme = (c._sesDeneme || 0) + 1; if (c._sesDeneme <= 3 && !bitti && konusma && konusma.cumle === c && sesSec(dil)) { baslat(); return true; } return false; }
         u.onend = function () { if (basladi) { if (global.DHSes) DHSes.sonuc(sesAd, true); son(); return; }
-          if (global.DHSes && DHSes.sonuc(sesAd, false, simdi() - sesT0) && yenidenDene()) return; sessizOku(); };
+          if (global.DHSes && DHSes.sonuc(sesAd, false, performance.now() - sesT0) && yenidenDene()) return; sessizOku(); };
         u.onerror = function (ev) { if (ev && (ev.error === "interrupted" || ev.error === "canceled")) { son(); return; }
-          if (!basladi && global.DHSes && DHSes.sonuc(sesAd, false, simdi() - sesT0, ev && ev.error) && yenidenDene()) return; sessizOku(); };
+          if (!basladi && global.DHSes && DHSes.sonuc(sesAd, false, performance.now() - sesT0, ev && ev.error) && yenidenDene()) return; sessizOku(); };
         /* güvenlik: ses hiç başlamazsa ya da bitiş gelmezse */
         setTimeout(function () { if (!basladi && !bitti && guncel()) sessizOku(); }, 2500);
         setTimeout(function () { if (guncel()) son(); }, Math.max(4000, c.metin.length * msHarf * 2.2 + 2000));
-        if (on) {
-          /* önceden sıraya konmuştu: o arada gelen olayları kendi zamanlarıyla işle (sıra: başladı, kelimeler, bitti) */
-          var ol = on.olay; on.olay = null; on.canli = true;
-          (ol || []).forEach(function (o) { tRep = o[1]; try { if (o[0] === "start") u.onstart(o[2]); else if (o[0] === "boundary") u.onboundary(o[2]); else if (o[0] === "end") u.onend(o[2]); else if (o[0] === "error") u.onerror(o[2]); } catch (e) {} tRep = null; });
-          return;
-        }
         try { speechSynthesis.speak(u); } catch (e) { son(); }
         }
       });
-    }
-    /* tarayıcı sesi için konuşma nesnesi: ses, ses düzeyi, duyguya göre perde ve hız */
-    function utKur(c, dil, hizOrani) {
-      var u; try { u = new SpeechSynthesisUtterance(c.metin); } catch (e) { return null; }
-      var v = sesSec(dil); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = dil === "tr" ? "tr-TR" : "en-US";
-      u.__dhSesYonetimli = true;   /* kendi yeniden denemesini yapar: dh-ses.js dokunmasın */
-      u.volume = global.DHSes ? DHSes.hacim(v) : 1;
-      u.rate = hizOrani || 1;
-      /* tarayıcı sesinde duygu: ses yüksekliği ve hız hafifçe değişir (ayarlardan kapatılabilir) */
-      /* [ses yüksekliği, hız] — belirgin ama doğal sınırlar içinde; bazı tarayıcı sesleri yüksekliği yok sayar, hız her zaman işler */
-      var sdAcik = ka("sesDuygu", 1) > 0.02; try { if (localStorage.getItem("dh-ses-duygu") === "0") sdAcik = false; } catch (e) {}
-      if (!sdAcik && ka("sesPerde", 1) !== 1) u.pitch = Math.max(0, Math.min(2, ka("sesPerde", 1)));
-      if (sdAcik) {
-        var sd = c.duygu && !c.sesNotr ? duyguSesi(c.duygu) : [1, 1], ty = sd[0], hz = sd[1];   /* sesNotr: örnek cümle — duygu tonu yok */
-        if (/\?\s*$/.test(c.metin)) ty *= 1.1;                       /* soru: ses yükselir */
-        if (/!\s*$/.test(c.metin)) { ty *= 1.08; hz *= 1.08; }         /* ünlem: canlı */
-        if (/(\.\.\.|…)\s*$/.test(c.metin)) hz *= 0.92;               /* üç nokta: yavaşlar */
-        hz *= 0.96 + Math.random() * 0.08;                             /* her cümle aynı tempoda olmasın */
-        ty *= ka("sesPerde", 1);
-        u.pitch = Math.max(0, Math.min(2, ty)); u.rate = Math.max(0.55, Math.min(1.8, (hizOrani || 1) * hz));
-      }
-      return { u: u, v: v };
-    }
-    /* sıradaki parçayı önceden ses motoruna ver: motor şu anki parçadan hemen sonra, beklemeden okur.
-       Olaylar parça sırası gelene dek saklanır (baslat onları işler). */
-    function onYukle(n, hizOrani) {
-      if (!n || (n._onU && !n._onU.kullanildi && n._onU.konusma === konusma) || n.sesTampon || n._sesP || n.sessiz || !n.metin || !global.speechSynthesis || !konusma) return;
-      var kr = utKur(n, n.dil || dilBul(n.metin), hizOrani); if (!kr) return;
-      var ol = { u: kr.u, v: kr.v, t0: performance.now(), olay: [], kullanildi: false, konusma: konusma };
-      ["start", "boundary", "end", "error"].forEach(function (tip) {
-        kr.u["on" + tip] = function (ev) { if (ol.olay) ol.olay.push([tip, performance.now(), ev]); };
-      });
-      n._onU = ol;
-      try { speechSynthesis.speak(kr.u); } catch (e) { n._onU = null; }
     }
 
     /* ---------- Doğal ses (Gemini TTS) — Dil Harita'daki Gemini anahtarıyla ----------
@@ -784,7 +751,6 @@
             konusma = null; setTimeout(function () { if (!konusma) api.duygu(o.sonDuygu || "notr", 0.6); }, 600); return Promise.resolve();
           }
           var c = Object.assign({}, liste[i++]);
-          c._sonraki = function () { return liste[i]; };   /* konuşurken sıradaki parça (önceden ses motoruna verilir) */
           if (o.oncesi) try { o.oncesi(c, i - 1); } catch (e) {}
           /* jest sıklığına göre kendiliğinden küçük baş sallamaları */
           if (!c.jest && !c.sesTampon && Math.random() < profil.jest * 0.45 && !/\?\s*$/.test(c.metin)) { c.jest = "onay"; c.jestZaman = "son"; }

@@ -598,7 +598,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     qa('[data-uyumdene]').forEach(b => b.onclick = async () => {
       if (st.busy) { toast(`${OGRETMEN} cevabını hazırlıyor; bitince tekrar dene.`); return; }
       /* dinlerken denenirse mikrofonun kapanması beklenir; yoksa ayar yanlış ölçülür */
-      const dl = b.dataset.uyumdene; if (D.aktif) { durum('hazir'); await dinlemeIptal(); } if (D.kapanis) await D.kapanis; yuz.sustur();
+      const dl = b.dataset.uyumdene; if (D.aktif) { durum('hazir'); await dinlemeIptal(); await new Promise(r => setTimeout(r, 450)); } yuz.sustur();
       const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret' });
       k.ekle({ metin: dl === 'tr' ? 'Merhaba, ben Deniz. Ağzım sesimle birlikte mi hareket ediyor?' : 'Hello, I am Deniz. Does my mouth move together with my voice?', dil: dl, duygu: 'mutlu', guc: 0.5 }); k.bitir();
     });
@@ -944,7 +944,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         if (ornek && c.cev) a.push({ metin: c.cev, dil: 'tr', duygu: c.duygu, guc: c.guc, jest: null, sesNotr: true, goster: gosterFn(i, true) });
         return a;
       }
-      function siraylaEkle(p) { zincir = zincir.then(() => D.kapanis).then(() => p).then(items => { if (iptal) return; items.forEach(it => { k.ekle(it); m.okunan.push(it); }); }); }
+      function siraylaEkle(p) { zincir = zincir.then(() => p).then(items => { if (iptal) return; items.forEach(it => { k.ekle(it); m.okunan.push(it); }); }); }
       /* Türkçe anlatımdaki bir örneğin çevirisi gelmediyse önce onu tamamla (okunabilsin) */
       function eksikCeviri(parcalar) {
         const eksik = parcalar.filter(({ c }) => acMi() && c.dil === 'en' && !c.cev);
@@ -976,9 +976,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       return {
         ekle(c) {
           bekleyen.push({ c, i: m.liste.indexOf(c) });
-          /* tarayıcı sesi: cevap parça parça gelirken konuşmaya başlamaz; hepsi (ve çevirileri) gelince
-             "Tekrar söyle"deki gibi tek seferde, aralıksız okunur — Türkçe ↔ İngilizce geçişinde bekleme ve ağız kayması olmasın */
-          if (!gemini || ttsKapaliMi()) return;
+          if (!gemini || ttsKapaliMi()) { blokGonder(bekleyen); bekleyen = []; return; }
           /* ilk cümle hemen (beklemeyi kısaltır); gerisi tek parça — kota az (her ses isteği günlük haktan düşer).
              Çok uzun açıklamalarda ~320 harfte bir yeni parça (sessiz boşluk uzamasın). */
           const uz = bekleyen.reduce((a, b) => a + b.c.metin.length + (b.c.cev ? b.c.cev.length : 0), 0);
@@ -1315,8 +1313,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (st.busy) { toast(`${OGRETMEN} cevabını hazırlıyor; bitince tekrar bas.`); return; }
       /* Dinlerken basıldıysa: telefonda tarayıcı mikrofonu bırakana dek sesi geciktirir, ama "başladı" bilgisini
          hemen verir; ağız erken, ses geç kalırdı. Mikrofon gerçekten kapanınca, ses yolu da toparlansın diye biraz daha beklenir. */
-      if (D.aktif) { durum('hazir'); await dinlemeIptal(); }
-      if (D.kapanis) await D.kapanis;
+      if (D.aktif) { durum('hazir'); await dinlemeIptal(); await new Promise(r => setTimeout(r, 450)); }
       yuz.sustur();
       await new Promise(r => setTimeout(r, 120));
       if (m.okunan && m.okunan.length) {
@@ -1427,19 +1424,11 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     }
     /* mikrofonu kapatır; dönen söz, tarayıcı mikrofonu gerçekten bırakınca (en çok 1,5 sn) çözülür */
     function dinlemeIptal() { D.aktif = false; D.bitiyor = true; clearTimeout(D.sz); micTarget = null; let p = Promise.resolve(); if (micLive) p = dict.stop().catch(() => {}); const k = kaydiDurdur(); yuz.dinle(false); q('.vd-sen').hidden = true;
-      return mikKapanisBekle(Promise.all([p, k])); }
-    /* Telefonda tarayıcı mikrofonu bırakana dek sesi geciktirir ama "başladı" bilgisini hemen verir: ağız erken, ses geç kalır.
-       Deniz'in sesi her zaman mikrofon gerçekten kapandıktan (+ses yolu toparlanana dek 450 ms) sonra başlar —
-       "Tekrar söyle"nin düzgün çalışmasının sebebi buydu; ilk konuşma da aynı yoldan geçer. */
-    function mikKapanisBekle(p) {
-      D.kapanis = Promise.race([Promise.resolve(p).catch(() => {}), new Promise(r => setTimeout(r, 1500))]).then(() => new Promise(r => setTimeout(r, 450)));
-      return D.kapanis;
-    }
+      return Promise.race([Promise.all([p, k]), new Promise(r => setTimeout(r, 1500))]); }
     async function dinlemeBitir() {
       if (!D.aktif || D.bitiyor) return; D.bitiyor = true; clearTimeout(D.sz);
-      micTarget = null; const durP = micLive ? dict.stop().catch(() => {}) : Promise.resolve();
+      micTarget = null; if (micLive) dict.stop().catch(() => {});
       const blob = await kaydiDurdur();
-      mikKapanisBekle(durP);
       yuz.dinle(false);
       let metin = (D.metin + ' ' + D.gecici).trim();
       const konustu = D.konustu > 200 || !!metin;
