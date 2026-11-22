@@ -533,9 +533,10 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       });
     }
     qa('[data-uyum]').forEach(r => r.oninput = () => { const v = uyumSes(r.dataset.uyum); if (v && window.DHSes && DHSes.gecikmeYaz) DHSes.gecikmeYaz(v.name, +r.value); uyumCiz(); });
-    qa('[data-uyumdene]').forEach(b => b.onclick = () => {
+    qa('[data-uyumdene]').forEach(b => b.onclick = async () => {
       if (st.busy) { toast(`${OGRETMEN} cevabını hazırlıyor; bitince tekrar dene.`); return; }
-      const dl = b.dataset.uyumdene; if (D.aktif) dinlemeIptal(); yuz.sustur();
+      /* dinlerken denenirse mikrofonun kapanması beklenir; yoksa ayar yanlış ölçülür */
+      const dl = b.dataset.uyumdene; if (D.aktif) { durum('hazir'); await dinlemeIptal(); await new Promise(r => setTimeout(r, 450)); } yuz.sustur();
       const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret' });
       k.ekle({ metin: dl === 'tr' ? 'Merhaba, ben Deniz. Ağzım sesimle birlikte mi hareket ediyor?' : 'Hello, I am Deniz. Does my mouth move together with my voice?', dil: dl, duygu: 'mutlu', guc: 0.5 }); k.bitir();
     });
@@ -1248,9 +1249,11 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       /* ders bittiyse (özet ekranı) ya da cevap parçaları yoksa: düz seslendir */
       if (st.bitti || st.faz !== 'ders' || !m.liste) { speak(m.text); return; }
       if (st.busy) { toast(`${OGRETMEN} cevabını hazırlıyor; bitince tekrar bas.`); return; }
-      if (D.aktif) dinlemeIptal();
+      /* Dinlerken basıldıysa: telefonda tarayıcı mikrofonu bırakana dek sesi geciktirir, ama "başladı" bilgisini
+         hemen verir; ağız erken, ses geç kalırdı. Mikrofon gerçekten kapanınca, ses yolu da toparlansın diye biraz daha beklenir. */
+      if (D.aktif) { durum('hazir'); await dinlemeIptal(); await new Promise(r => setTimeout(r, 450)); }
       yuz.sustur();
-      await new Promise(r => setTimeout(r, 60));
+      await new Promise(r => setTimeout(r, 120));
       if (m.okunan && m.okunan.length) {
         const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: c => { if (c.goster) c.goster(); } });
         m.okunan.forEach(it => k.ekle(Object.assign({}, it))); k.bitir(); await k.bitti; sonra(m, true);
@@ -1357,7 +1360,9 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         try { r.stop(); } catch (e) { res(null); }
       });
     }
-    function dinlemeIptal() { D.aktif = false; D.bitiyor = true; clearTimeout(D.sz); micTarget = null; if (micLive) dict.stop().catch(() => {}); kaydiDurdur(); yuz.dinle(false); q('.vd-sen').hidden = true; }
+    /* mikrofonu kapatır; dönen söz, tarayıcı mikrofonu gerçekten bırakınca (en çok 1,5 sn) çözülür */
+    function dinlemeIptal() { D.aktif = false; D.bitiyor = true; clearTimeout(D.sz); micTarget = null; let p = Promise.resolve(); if (micLive) p = dict.stop().catch(() => {}); const k = kaydiDurdur(); yuz.dinle(false); q('.vd-sen').hidden = true;
+      return Promise.race([Promise.all([p, k]), new Promise(r => setTimeout(r, 1500))]); }
     async function dinlemeBitir() {
       if (!D.aktif || D.bitiyor) return; D.bitiyor = true; clearTimeout(D.sz);
       micTarget = null; if (micLive) dict.stop().catch(() => {});
