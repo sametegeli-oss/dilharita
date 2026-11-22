@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v532";  /* 🔐 Hatırlanan giriş korunur; ▶️ Deniz dersi ayar onayı beklemeden başlar */
+var SW_VERSION = "dh-sw-v533";  /* 🔀 Türkçe↔İngilizce geçişinde bekleme yok: sıradaki parça önceden ses motorunda */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */
 /* onceki v438: 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
 /* onceki v437: ➕ Konuşkan: kendi kursunu oluştur */
