@@ -39,7 +39,23 @@
   function cerez(ad){ var m=document.cookie.match(new RegExp("(?:^|; )"+ad+"=([^;]*)")); return m?m[1]:null; }
   function cerezSil(ad){ var yol=location.pathname.replace(/[^/]*$/,""); document.cookie=ad+"=; path="+yol+"; max-age=0"; }
   function hasLocalLogin(){ return ls("dh_logged_in") === "1" || cerez("dh_auth") === "1"; }
-  function remembered(){ return ls("dh_remember") === "1" || cerez("dh_rem") === "1"; }
+  /* "Bu cihazda hatırla" varsayılan olarak işaretli: işaret hiç okunamıyorsa (silinmiş, yazılamamış)
+     hatırlanmış sayılır; yalnız açıkça "0" ise oturumluk girişe dönülür. */
+  function remembered(){
+    var l = ls("dh_remember"), c = cerez("dh_rem");
+    if (l === "1" || c === "1") return true;
+    return l !== "0" && c !== "0";
+  }
+  /* giriş günlüğü: şifre neden yeniden soruldu? (son 25 olay, bu cihazda; Ayarlar'dan ya da konsoldan okunur) */
+  function gunluk(olay){
+    try{ var a = JSON.parse(localStorage.getItem("dh_giris_gunluk") || "[]");
+      /* aynı not 24 saat içinde tekrar yazılmaz */
+      for (var i = a.length - 1; i >= 0; i--){ if (a[i].o === olay){ if (Date.now() - Date.parse(a[i].t) < 864e5) return; break; } }
+      a.push({ t: new Date().toISOString(), s: page, o: olay });
+      localStorage.setItem("dh_giris_gunluk", JSON.stringify(a.slice(-25))); }catch(e){}
+  }
+  /* Telefon yer açmak için site verisini (giriş dahil) silmesin: kalıcı depolama iste (Chrome çoğu zaman sessizce verir) */
+  try{ if (navigator.storage && navigator.storage.persist && navigator.storage.persisted) navigator.storage.persisted().then(function(p){ if (!p) navigator.storage.persist().then(function(ok){ if (!ok) gunluk("kalıcı depolama verilmedi"); }); }); }catch(e){}
   function clearLocalLogin(){
     try{
       localStorage.removeItem("dh_logged_in");
@@ -83,6 +99,7 @@
 
   // --- 1) ve 2): giriş yoksa ya da hatırlanmayan oturum kapanmışsa ---
   if (!hasLocalLogin() || (!remembered() && ss("dh_session_ok") !== "1")) {
+    gunluk(!hasLocalLogin() ? "yerel giriş işareti yok" : "hatırla kapalı, oturum kapanmış");
     goLogin();
     return;
   }
@@ -129,8 +146,18 @@
         try{ if(user.email) localStorage.setItem("dh_logged_email", user.email); }catch(e){}
       } else {
         if (navigator.onLine === false) return;   /* çevrimdışı: yerel işarete güven */
-        clearLocalLogin();
-        goLogin();
+        /* Telefonda Firebase oturumu uygulama açılırken bir an "yok" görünebiliyor (depo geç açılıyor).
+           Hatırlanan girişte hemen şifre istenmez: 2 kez daha (toplam ~6 sn) bakılır. */
+        var deneme = 0;
+        (function tekrarBak(){
+          if (auth.currentUser) return;
+          if (remembered() && deneme < 2){ deneme++; setTimeout(function(){
+              var u = authMod.onAuthStateChanged(auth, function(us){ try{ u(); }catch(e){} if (us){ gunluk("oturum geç geldi (" + deneme + ". bakış)"); return; } tekrarBak(); });
+            }, 3000); return; }
+          gunluk("Firebase oturumu yok" + (remembered() ? " (hatırlanan girişte de)" : ""));
+          clearLocalLogin();
+          goLogin();
+        })();
       }
     }).catch(function(){});
   }).catch(function(){

@@ -630,3 +630,6 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-ses-ipucu { color: var(--vd-soluk); font-size: .76rem; line-height: 1.45; margin-top: -4px; }
 .vd-satir b.vd-duygu-d, .vd-satir b.vd-perde-d, .vd-satir b.vd-hiz-d { color: var(--vd-vurgu); font-weight: 700; }
 .vd-ses-bolum .vd-uyum { margin: 0; }
+/* ders kendiliğinden başlarken lobi kartı görünmez (yalnız avatar yüklenirken bir an) */
+.vd-lobi.vd-lobi-oto { display: none !important; }
+.vd:has(.vd-lobi-oto) .vd-mod { display: none !important; }

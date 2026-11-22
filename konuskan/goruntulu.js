@@ -1244,7 +1244,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
           (metin && genelMi() ? `Write your next reply to the user's last message.${uzHatir()}${ekTalimat ? ' ' + ekTalimat : ''} Set check to {"ok":true,"lang":"tr"} (no language checking in this mode).`
             : !metin && genelMi() ? (ekTalimat || `Start now IN TURKISH: greet the user warmly in one short sentence${st.konu && st.konu.custom ? ' and start helping with what they want to talk about' : ' and ask how you can help today'}.`)
             : metin ? `Do two things.\n1) Write your next reply.${uzHatir()}${ekTalimat ? ' ' + ekTalimat : ''}\n2) Check the learner's LAST message. If it is (mostly) in Turkish — a question, a request for explanation, or just Turkish talk — set check.lang="tr", ok=true and do not check it. Otherwise check.lang="en" and flag ONLY real English errors in the English parts: grammar (tense, articles, prepositions, word order, agreement), wrong word choice, clearly unnatural phrasing. NEVER flag punctuation, capitalisation, spelling of names, contractions, filler words${um.spoken ? ', or anything caused by speech recognition (stray periods, stutters, repeated or misheard words)' : ''}. If only such things differ, ok=true and corrected empty. Keep the learner's wording in "corrected"; change only what is wrong. why_tr: informal Turkish (sen), 1-2 short sentences naming the exact rule.${st.konu.tasks ? ' List the numbers of tasks the learner has GENUINELY completed so far in "tasks_done".' : ''}`
-            : (ekTalimat ? ekTalimat : ayar.mod === 'tr' ? `Start the lesson now IN TURKISH: greet the learner warmly, say in one sentence what you will study together (the topic above), and begin with the first small step and an English example.` : `Start the lesson now: greet the learner warmly by video, say one short friendly thing, and ask an opening question about the topic.`)) +
+            : (ekTalimat ? ekTalimat : ayar.mod === 'tr' ? (st.konu && st.konu.id === 'free' ? `Start the lesson now IN TURKISH: greet the learner warmly and ask which English topic they would like to study today; offer 2-3 short topic ideas suited to their level (e.g. a tense, a structure, everyday phrases). Keep it short.` : `Start the lesson now IN TURKISH: greet the learner warmly, say in one sentence what you will study together (the topic above), and begin with the first small step and an English example.`) : `Start the lesson now: greet the learner warmly by video, say one short friendly thing, and ask an opening question about the topic.`)) +
           `\n${ETIKET}\nWrite the "reply" array FIRST in the JSON (it is spoken while you write the rest).\nReturn ONLY JSON: ${j}`;
         let r;
         try { r = await akisliCevap(istem, onSeg); }
@@ -1648,6 +1648,11 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     if (analiz) {   /* lobi beklemeden derse başla: Deniz cümleyi açıklar */
       st.konu = { id: 'analiz', t: 'Cümle analizi', s: '', persona: PERSONA + ' who explains English sentences clearly and patiently' };
       const kn = q('.vd-lobi p'); if (kn) kn.textContent = `${OGRETMEN} şu cümleyi açıklayacak: “${analiz.cumle}”`;
+    }
+    /* Ayarlar onay beklemez: ders, Ayarlar'da kayıtlı mod / kalite / uzunluk / eller serbest ile hemen başlar
+       (lobi yalnız yapay zekâ anahtarı yoksa, uyarıyı göstermek için kalır). Konu, derste sesle ya da yazıyla söylenir. */
+    if (!aiOff()) {
+      const lb = q('.vd-lobi'); if (lb) lb.classList.add('vd-lobi-oto');
       Promise.resolve(yuz.hazir).catch(() => {}).then(() => { if (!st.bitti && st.faz === 'lobi') basla(); });
     }
   }

@@ -141,6 +141,10 @@
     }
   }
   let justSignedIn = false;
+  function girisGunluk(olay){
+    try{ const a = JSON.parse(localStorage.getItem("dh_giris_gunluk") || "[]"); a.push({ t: new Date().toISOString(), s: "login.html", o: olay });
+      localStorage.setItem("dh_giris_gunluk", JSON.stringify(a.slice(-25))); }catch(e){}
+  }
   /* GİRİŞ İŞARETİ ÇEREZDE DE TUTULUR: localStorage dolduğunda (bu sitede
      ~10 MB, QuotaExceededError) "dh_logged_in" yazılamıyor ve bekçi
      kullanıcıyı giriş ↔ ana sayfa döngüsüne sokuyordu. Çerezin ayrı kotası var. */
@@ -174,8 +178,11 @@
        yeni açılışta şifresiz geçmesin. */
     if (user && !justSignedIn){
       let ok = false;
-      try{ ok = localStorage.getItem("dh_remember")==="1" || cerezOku("dh_rem")==="1" || sessionStorage.getItem("dh_session_ok")==="1"; }catch(e){}
-      if(!ok){ try{ await signOut(auth); }catch(e){} return; }
+      /* yalnız "hatırla" AÇIKÇA kapatıldıysa (değer "0") eski oturum kapatılır; işaret okunamıyorsa
+         (silinmiş/yazılamamış) hatırlanmış sayılır — yoksa her açılışta şifre soruluyordu */
+      try{ const l = localStorage.getItem("dh_remember"), c = cerezOku("dh_rem");
+        ok = l==="1" || c==="1" || sessionStorage.getItem("dh_session_ok")==="1" || (l!=="0" && c!=="0"); }catch(e){ ok = true; }
+      if(!ok){ girisGunluk("hatırla kapalı: eski oturum kapatıldı"); try{ await signOut(auth); }catch(e){} return; }
     }
     if (user && !redirected){
       redirected = true;
@@ -206,6 +213,8 @@
           localStorage.setItem("dh-account-migration-pending",JSON.stringify({at:Date.now(),uid:user.uid||""}));
         }
       }catch(e){}
+      /* telefon yer açmak için site verisini (giriş dahil) silmesin */
+      try{ if (navigator.storage && navigator.storage.persist) await Promise.race([navigator.storage.persist(), new Promise(r => setTimeout(r, 800))]); }catch(e){}
       location.replace(destination());
     } else if (!user){
       // Oturum yok. "Beni hatırla" AÇIKSA ve daha önce giriş yapılmışsa yerel işareti
@@ -220,6 +229,7 @@
         sessionStorage.removeItem("dh_session_ok");
       }catch(e){}
       cerezSil("dh_auth");
+      girisGunluk("şifre soruldu: Firebase oturumu yok");
       boot.classList.add("hidden");
       card.classList.remove("hidden");
     }
