@@ -694,6 +694,8 @@
         (function basBekle(n) { setTimeout(function () {
           if (basladi || bitti || !guncel()) return;
           var mesgul = false; try { mesgul = !!(speechSynthesis.speaking || speechSynthesis.pending); } catch (e) {}
+          /* telefonda (Android) ağız yalnız "başladı" sinyaliyle oynar: motor okurken bekler, motor boşaldıysa sıradaki parçaya geçer */
+          if (ANDROID_YZ) { if (mesgul) { basBekle(n + 1); return; } if (olc) olc.du = 'düştü'; son(); return; }
           if (mesgul && n < 16) { basBekle(n + 1); return; }
           if (olc) olc.sessiz = 1; sessizOku();
         }, n ? 500 : 2500); })(0);
