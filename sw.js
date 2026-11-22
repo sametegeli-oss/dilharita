@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v530";  /* 🎙️ Görüntülü derste bütün seslendirmeler Deniz'in seçili sesiyle */
+var SW_VERSION = "dh-sw-v531";  /* 🇹🇷 Görüntülü ders: Türkçe çeviriler açıkken eksik çeviri kendiliğinden gelir */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */
 /* onceki v438: 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
 /* onceki v437: ➕ Konuşkan: kendi kursunu oluştur */

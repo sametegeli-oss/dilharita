@@ -299,8 +299,17 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     const aciklamaMi = m => m.liste && m.liste.some(c => c.dil === 'tr') && m.liste.some(c => c.dil === 'en');
     function parcaHTML(m) { const ac = aciklamaMi(m); return m.liste.map((c, i) => c.dil === 'tr' ? `<span class="vd-p-tr">${window.ingVurgula ? ingVurgula(c.metin, kelimeler) : esc(c.metin)}</span>` : (ac ? `<span class="vd-ornek"><span class="vd-p-en">${kelimeler(c.metin)}</span><span class="vd-p-cev" data-i="${i}">${c.cev ? esc(c.cev) : '<span class="vd-spin kucuk"></span>'}</span></span>` : `<span class="vd-p-en">${kelimeler(c.metin)}</span>`)).join(' '); }
     /* örnek cümlenin çevirisi gelmediyse sonradan tamamla */
+    /* tamamen İngilizce (ya da açıklama olmayan) mesajın Türkçesi gelmediyse ve "Türkçe çeviriler açık"sa: ayrıca iste */
+    async function mesajCevir(m) {
+      if (m.tr || m._trIstek || !m.liste || !m.liste.some(c => c.dil === 'en')) return;
+      m._trIstek = true;
+      const metin = m.liste.map(c => c.metin).join(' ');
+      try { const r = await ai(`Translate this English text spoken by a teacher into natural Turkish. Keep Turkish parts as they are. Return ONLY JSON: {"tr":"..."}\n"${metin.replace(/"/g, "'")}"`); m.tr = String(r.tr || '').trim(); }
+      catch (e) { m._trIstek = false; return; }
+      if (m.tr) { baloncukGuncelle(m, true); try { vdKaydet(); } catch (e) {} }
+    }
     async function cevirileriTamamla(m) {
-      if (!aciklamaMi(m)) return;
+      if (!aciklamaMi(m)) { if (ayar.altyaziTR) mesajCevir(m); return; }
       const eksik = m.liste.map((c, i) => [c, i]).filter(([c]) => c.dil === 'en' && !c.cev);
       if (eksik.length) {
         try { const r = await ai(`Translate these English example sentences into natural Turkish. Return ONLY JSON: {"tr":["..."]} in the same order.\n${eksik.map(([c], k) => (k + 1) + ') ' + c.metin).join('\n')}`); (r.tr || []).forEach((t, k) => { if (eksik[k] && t) eksik[k][0].cev = String(t).trim(); }); } catch (e) {}
@@ -367,7 +376,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       const trB = d.querySelector('[data-k=tr]');
       if (trB) { trB.onclick = e => { const t = d.querySelector('.vd-m-tr'); t.hidden = !t.hidden; e.currentTarget.classList.toggle('sec', !t.hidden); };
         if (ayar.altyaziTR) { d.querySelector('.vd-m-tr').hidden = false; trB.classList.add('sec'); } }
-      m._el = d; listeyeEkle(d);
+      m._el = d; d._m = m; listeyeEkle(d);
+      if (ayar.altyaziTR && !m.tr && !st.busy && m.liste && !aciklamaMi(m)) mesajCevir(m);   /* geçmişten gelen mesaj */
     }
     function ogrenciMesaji(um) {
       const d = document.createElement('div'); d.className = 'vd-m sen';
@@ -378,14 +388,18 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       d.querySelector('[data-k=analiz]').onclick = () => denizAnaliz(um.text, 'Sen');
       d.querySelector('[data-k=not]').onclick = () => notDefteriAc({ cumle: um.text, tr: um.tr || '', src: kaynakYazi(), kim: 'Sen', metin: um.check && !um.check.ok && um.check.corrected ? 'Doğrusu: ' + um.check.corrected + '\n\n' : '' });
       d.querySelector('.vd-m-bub').onclick = dinlet; d.querySelector('[data-k=dinle]').onclick = dinlet;
-      d.querySelector('[data-k=tr]').onclick = async e => {
-        const b = e.currentTarget, t = d.querySelector('.vd-m-tr');
-        if (!t.hidden) { t.hidden = true; b.classList.remove('sec'); return; }
+      const trGoster = async (ac) => {
+        const b = d.querySelector('[data-k=tr]'), t = d.querySelector('.vd-m-tr');
+        if (!ac) { t.hidden = true; b.classList.remove('sec'); return; }
         t.hidden = false; b.classList.add('sec');
         if (!um.tr) { t.innerHTML = '<span class="vd-spin kucuk"></span>'; try { const r = await ai(`Translate this English sentence written by a learner into natural Turkish. If it has mistakes, translate what they meant. Return ONLY JSON: {"tr":"..."}\n"${um.text}"`); um.tr = r.tr || ''; } catch (x) { t.textContent = aiErr(x); return; } }
         t.textContent = um.tr;
       };
+      d.querySelector('[data-k=tr]').onclick = () => trGoster(d.querySelector('.vd-m-tr').hidden);
+      d._trGoster = trGoster;
       um._el = d; listeyeEkle(d);
+      /* "Türkçe çeviriler açık": İngilizce yazdıysan çevirisi kendiliğinden gelir (Türkçe yazdıysan gerek yok) */
+      if (ayar.altyaziTR && ingilizceMi(um.text)) trGoster(true);
     }
     function ogrenciDurum(um) {
       const c = um.check, kut = um._el && um._el.querySelector('.vd-m-durum'); if (!kut) return;
@@ -491,7 +505,15 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       const lp = q('.vd-lobi p'); if (lp) lp.textContent = `${kaynakYazi()} · ${window.skZamanYaz ? skZamanYaz(kayit.at) : ''}. ${OGRETMEN} önceki konuşmanızı biliyor; kaldığınız yerden devam eder.`;
       const bb = q('.vd-basla'); if (bb) bb.innerHTML = vi('video') + (genelMi() ? ' Sohbete devam et' : ' Derse devam et');
     }
-    q('[data-a=trAc]').onchange = e => { ayar.altyaziTR = e.target.checked; ayarKaydet(); q('.vd-tr').hidden = !ayar.altyaziTR; };
+    q('[data-a=trAc]').onchange = e => { ayar.altyaziTR = e.target.checked; ayarKaydet(); q('.vd-tr').hidden = !ayar.altyaziTR; trHepsi(ayar.altyaziTR); };
+    /* ayar değişince sohbetteki mesajlar da: çevirisi olanlar açılır/kapanır, eksik olanlar (son birkaç mesaj) istenir */
+    function trHepsi(ac) {
+      const ogr = qa('.vd-m.ogr'), sen = qa('.vd-m.sen');
+      ogr.forEach((d, k) => { const m = d._m, t = d.querySelector('.vd-m-tr'), b = d.querySelector('[data-k=tr]'); if (!t) return;
+        if (m && m.tr) { t.hidden = !ac; if (b) b.classList.toggle('sec', ac); }
+        else if (ac && m && !aciklamaMi(m) && k >= ogr.length - 4) mesajCevir(m); });
+      sen.forEach((d, k) => { if (!d._trGoster) return; const y = d.querySelector('.vd-m-bub'); if (!ac) d._trGoster(false); else if (k >= sen.length - 4 && y && ingilizceMi(y.textContent)) d._trGoster(true); });
+    }
     q('.vd-tr').hidden = !ayar.altyaziTR;
     const sesSec = q('[data-a=ses]');
     sesSec.value = ayar.ses === 'tarayici' ? 'tarayici' : (ayar.sesAdi || 'Charon');
