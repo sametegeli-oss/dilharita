@@ -315,3 +315,21 @@ html.dh-tam-acik .dh-wp-ov, html.dh-tam-acik .dh-wp-gk{z-index:2147483600!import
 .vd-m-bub .bub-tam-btn{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.28);color:#f3f1ec}
 .vd-m-bub.dh-tam > .bub-tam-btn{background:#2a303c}
 .vd-m-bub.dh-tam:hover{background:transparent!important}
+
+/* 📱 Telefonda ekrana tam sığ: alt menünün yedi düğmesi sayfayı genişletmesin (360 px'te sayfa 399 px'e taşıyordu) */
+@media (max-width:720px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .app > *{min-width:0}
+  .side{padding:4px 2px calc(4px + env(safe-area-inset-bottom))!important;gap:0}
+  .nav{gap:0;justify-content:stretch;min-width:0}
+  .nav a{flex:1 1 0;min-width:0;padding:6px 1px;gap:2px;font-size:.66rem;letter-spacing:-.01em}
+  .nav a span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+  .nav a svg{flex:none}
+}
+@media (max-width:900px){
+  .chat{grid-template-columns:minmax(0,1fr)}
+  .chat > *, .chat-main, .chat-top > *, .msgs{min-width:0}
+}
+@media (max-width:720px){
+  .nav a{font-size:.62rem;letter-spacing:-.02em}
+}
