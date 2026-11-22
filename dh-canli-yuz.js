@@ -687,9 +687,22 @@
         u.onerror = function (ev) { sesOlcumBitir(olc, "hata: " + (ev && ev.error || "?")); if (ev && (ev.error === "interrupted" || ev.error === "canceled")) { son(); return; }
           if (!basladi && global.DHSes && DHSes.sonuc(sesAd, false, performance.now() - sesT0, ev && ev.error) && yenidenDene()) return; sessizOku(); };
         /* güvenlik: ses hiç başlamazsa ya da bitiş gelmezse */
-        setTimeout(function () { if (!basladi && !bitti && guncel()) sessizOku(); }, 2500);
-        setTimeout(function () { if (guncel()) son(); }, Math.max(4000, c.metin.length * msHarf * 2.2 + 2000));
-        try { speechSynthesis.speak(u); } catch (e) { son(); }
+        /* ses motoru hâlâ hazırlanıyorsa (telefonda olabiliyor) ağız kapalı bekler; motor boşsa ya da 10 sn geçtiyse sessiz okumaya geçer */
+        (function basBekle(n) { setTimeout(function () {
+          if (basladi || bitti || !guncel()) return;
+          var mesgul = false; try { mesgul = !!(speechSynthesis.speaking || speechSynthesis.pending); } catch (e) {}
+          if (mesgul && n < 16) { basBekle(n + 1); return; }
+          if (olc) olc.sessiz = 1; sessizOku();
+        }, n ? 500 : 2500); })(0);
+        (function sonBekle() { setTimeout(function () { if (!guncel() || bitti) return; if (!basladi && !sessiz) { sonBekle(); return; } son(); }, Math.max(4000, c.metin.length * msHarf * 2.2 + 2000)); })();
+        /* Ses motorunun sırasında eski, bitmemiş konuşma kaldıysa (telefonda birikiyordu: yeni parça 8-20 sn sonra başlıyordu)
+           önce sırayı temizle, kısa bir aradan sonra konuş — "Tekrar söyle"nin düzgün çalışmasının sebebi buydu. */
+        var temizle = false; try { temizle = !!(speechSynthesis.speaking || speechSynthesis.pending); } catch (e) {}
+        if (temizle) { if (olc) olc.tem = 1; try { speechSynthesis.cancel(); } catch (e) {} }
+        setTimeout(function () {
+          if (bitti || !guncel() || !konusma || konusma.cumle !== c) return;
+          try { speechSynthesis.speak(u); } catch (e) { son(); }
+        }, temizle ? 150 : 0);
         }
       });
     }

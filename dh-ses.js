@@ -19,6 +19,11 @@
   "use strict";
   if (global.DHSes && global.DHSes.__dosya) return;
   var SES_SAGLIK = "dh-ses-saglik-v1", SES_BOZUK_MS = 3 * 864e5;
+  /* Bozuk ses işareti yalnız bilgisayar içindir (Windows'taki Microsoft sesleri başlamadan bitiyordu).
+     Telefonda sıra birikince sağlam sesler de "bozuk" sanılıyordu: hepsi atlanınca hiç ses seçilmiyordu.
+     Android'de işaret konmaz ve eski işaretler bir kez silinir. */
+  var ANDROID = /Android/i.test((global.navigator && navigator.userAgent) || "");
+  if (ANDROID) { try { if (localStorage.getItem("dh-ses-saglik-temiz") !== "1") { localStorage.removeItem(SES_SAGLIK); localStorage.setItem("dh-ses-saglik-temiz", "1"); } } catch (e) {} }
   function ss() { return global.speechSynthesis; }
   function sesSaglikOku() { try { return JSON.parse(localStorage.getItem(SES_SAGLIK) || "{}") || {}; } catch (e) { return {}; } }
   function sesBozukMu(ad) { var k = sesSaglikOku()[ad]; return !!(k && k.bozuk && Date.now() - (k.at || 0) < SES_BOZUK_MS); }
@@ -47,7 +52,7 @@
   }
   /* bir cümlenin sonucu: başladıysa ses sağlam; başlamadan hemen bittiyse ya da sentez hatasıysa bozuk */
   function sesSonuc(ad, basladi, gecenMs, hata) {
-    if (!ad) return false;
+    if (!ad || ANDROID) return false;
     if (basladi) { sesIsaretle(ad, false); return false; }
     if ((hata && /synthesis|voice|audio-hardware|language-unavailable/.test(hata)) || (!hata && gecenMs < 400)) { sesIsaretle(ad, true); try { console.warn("[DHSes] bozuk ses atlandı:", ad); } catch (e) {} return true; }
     return false;
