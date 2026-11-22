@@ -622,3 +622,11 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-uyum-c input { flex: 1; accent-color: var(--vd-vurgu); }
 .vd-uyum-c button, .vd-uyum-sifir { padding: 5px 10px; font-size: .78rem; }
 .vd-uyum-sifir { justify-self: start; }
+/* Deniz'in sesi bölümü (ayarlar) */
+.vd-ses-bolum { display: grid; gap: 12px; padding: 12px; border: 1px solid rgba(240, 179, 84, .28); border-radius: 14px; background: rgba(240, 179, 84, .04); }
+.vd-bolum-b { font-size: 1rem; color: var(--vd-yazi); }
+.vd-ses-sec .vd-uyum-c select { flex: 1; min-width: 0; background: rgba(255, 255, 255, .06); color: var(--vd-yazi); border: 1px solid var(--vd-cizgi); border-radius: 10px; padding: 8px; font: inherit; }
+.vd-ses-sec .vd-uyum-c select option { background: #1b1f27; color: #f3f1ec; }
+.vd-ses-ipucu { color: var(--vd-soluk); font-size: .76rem; line-height: 1.45; margin-top: -4px; }
+.vd-satir b.vd-duygu-d, .vd-satir b.vd-perde-d, .vd-satir b.vd-hiz-d { color: var(--vd-vurgu); font-weight: 700; }
+.vd-ses-bolum .vd-uyum { margin: 0; }

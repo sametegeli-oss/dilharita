@@ -543,7 +543,7 @@
       return sesListesi;
     }
     function sesSec(dil) {
-      if (global.DHSes) return global.DHSes.sec(dil === "tr" ? "tr" : "en", sec.sesAdi);
+      if (global.DHSes) return global.DHSes.sec(dil === "tr" ? "tr" : "en", dil === "tr" ? sec.sesAdiTr : sec.sesAdi);
       var vs = []; try { vs = speechSynthesis.getVoices() || []; } catch (e) {}
       var hedefDil = dil === "tr" ? /^tr/i : /^en/i;
       var uygun = vs.filter(function (v) { return hedefDil.test(v.lang); });
@@ -734,6 +734,8 @@
       dinle: function (acik) { dinleme = !!acik; },
       duraklat: function (d) { durum.duraklat = !!d; },
       cizimHizi: function (fps) { durum.fps = fps || 0; },
+      /* tarayıcı sesi tercihi, dil başına: { en: "ses adı", tr: "ses adı" } (boş = otomatik) */
+      sesTercih: function (o) { o = o || {}; if ("en" in o) sec.sesAdi = o.en || undefined; if ("tr" in o) sec.sesAdiTr = o.tr || undefined; },
       fotoKullan: function (acik) { fotoAcik = !!acik; if (durum.duygu) api.duygu(durum.duygu, durum.guc); },
       durum: function () { return { duygu: durum.duygu, p: durum.p, profil: profil, agiz: agiz.b }; },
       /* akış halinde konuşma: cümleler geldikçe eklenir (ekle), bitince bitir() çağrılır */

@@ -219,15 +219,22 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-satir">Sustuktan sonra bekleme: <b class="vd-sessiz-d"></b><input type="range" min="1.2" max="4" step="0.2" data-a="sessizlik"></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
         <label class="vd-satir">Arka plan <select data-a="fon"><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select></label>
+        <div class="vd-ses-bolum"><b class="vd-bolum-b">Deniz'in sesi</b>
         <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
         <div class="vd-ses-durum"><p class="vd-ses-durum-y"></p><button type="button" class="vd-ikincil vd-ses-dene" data-a="sesDene">${vi('spk')} Doğal sesi dene</button></div>
+        ${['en', 'tr'].map(dl => `<div class="vd-satir vd-ses-sec"><span>${dl === 'en' ? 'İngilizce konuşurken' : 'Türkçe konuşurken'} <small>(tarayıcı sesi)</small></span>
+          <div class="vd-uyum-c"><select data-sesdil="${dl}" aria-label="${dl === 'en' ? 'İngilizce' : 'Türkçe'} ses"></select><button type="button" class="vd-ikincil" data-uyumdene="${dl}">${vi('spk')} Dene</button></div></div>`).join('')}
+        <small class="vd-ses-ipucu">Telefonda ses adları erkek/kadın yazmayabilir: "Dene" ile dinleyip seç. Listedeki bütün İngilizce sesler kadınsa telefonun Ayarlar → Metin okuma (Google) → Ses verilerini yükle → English bölümünden erkek bir ses seçebilirsin.</small>
+        <label class="vd-anahtar"><input type="checkbox" data-a="sesDuygu"><span></span> Seste duygu <small>Deniz'in sesi yüzündeki duyguya göre değişir: sevinçte neşeli, teselli ederken yumuşak, ciddi konuda ağır.</small></label>
+        <label class="vd-satir">Sesteki duygu gücü: <b class="vd-duygu-d"></b><input type="range" min="0" max="2" step="0.05" data-a="duyguGuc" aria-label="Sesteki duygu gücü"></label>
+        <label class="vd-satir">Ses perdesi (kalın ↔ ince): <b class="vd-perde-d"></b><input type="range" min="0.5" max="1.5" step="0.02" data-a="perde" aria-label="Ses perdesi"></label>
+        <label class="vd-satir">Konuşma hızı (tarayıcı sesi): <b class="vd-hiz-d"></b> <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
         <div class="vd-uyum"><b>Ağız ve ses uyumu</b><small>Tarayıcı sesi için. Ağız sesten önce gidiyorsa çubuğu sağa, sonra kalıyorsa sola çek; "Dene" ile kontrol et.</small>
           ${['tr', 'en'].map(dl => `<div class="vd-uyum-s"><div class="vd-uyum-b"><span>${dl === 'tr' ? 'Türkçe ses' : 'İngilizce ses'} <em class="vd-uyum-ad" data-dil="${dl}"></em></span><strong class="vd-uyum-d" data-dil="${dl}"></strong></div>
             <div class="vd-uyum-c"><input type="range" min="-300" max="1500" step="20" data-uyum="${dl}" aria-label="${dl === 'tr' ? 'Türkçe' : 'İngilizce'} ses gecikmesi"><button type="button" class="vd-ikincil" data-uyumdene="${dl}">${vi('spk')} Dene</button></div></div>`).join('')}
           <button type="button" class="vd-ikincil vd-uyum-sifir" data-a="uyumSifirla">Varsayılana döndür</button></div>
-        <a class="vd-av-ayar-l" href="./avatar-ayarlari.html" target="_blank" rel="noopener">${vi('gear')} Avatar ayarları: hareketler, ifade, sesteki duygu →</a>
-        <label class="vd-anahtar"><input type="checkbox" data-a="sesDuygu"><span></span> Seste duygu <small>Deniz'in sesi yüzündeki duyguya göre değişir: sevinçte neşeli, teselli ederken yumuşak, ciddi konuda ağır.</small></label>
-        <label class="vd-satir">Konuşma hızı (tarayıcı sesi) <input type="range" min="0.7" max="1.2" step="0.05" data-a="hiz"></label>
+        <a class="vd-av-ayar-l" href="./avatar-ayarlari.html" target="_blank" rel="noopener">${vi('gear')} Avatar ayarları: hareketler, ifade, duyguların sesi →</a>
+        </div>
         <div class="vd-satir vd-google-ayar"><span>Google hesabı <small>(genel asistan: takvim, Gmail, görevler, kişiler, Drive)</small></span><div class="vd-google"></div></div>
         <div class="vd-satir vd-yt-ayar"><span>YouTube anahtarı <small>(video önerileri)</small></span><form class="vd-yt-anahtar"><input type="password" autocomplete="off" spellcheck="false" placeholder="AIza…" aria-label="YouTube API anahtarı"><button type="submit" class="vd-g-b">Kaydet</button></form><small class="vd-yt-durum"></small></div>
         <div class="vd-satir vd-kullanim"><span>Yapay zekâ kullanımı <small>(bugün · bu cihaz)</small></span><div class="vd-kul-liste"></div></div>
@@ -523,7 +530,39 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     };
     setTimeout(sesDurumCiz, 0);   /* TTS_MODELLER aşağıda tanımlı: hemen çağırma */
     /* Ağız ve ses uyumu: ses başına gecikme (ms) — dh-ses.js DHSes.gecikme */
-    function uyumSes(dl) { return window.DHSes ? DHSes.sec(dl) : null; }
+    /* Deniz'in tarayıcı sesi, dil başına: ayarlardan seçilen; yoksa (İngilizcede) Konuşkan'ın ses ayarı; yoksa otomatik */
+    const sesTercihi = dl => dl === 'en' ? (ayar.tarayiciEn || S.voiceName || '') : (ayar.tarayiciTr || '');
+    function sesTercihUygula() { try { yuz.sesTercih({ en: sesTercihi('en'), tr: sesTercihi('tr') }); } catch (e) {} }
+    function uyumSes(dl) { return window.DHSes ? DHSes.sec(dl, sesTercihi(dl) || undefined) : null; }
+    function sesListeCiz() {
+      let vs = []; try { vs = speechSynthesis.getVoices() || []; } catch (e) {}
+      ['en', 'tr'].forEach(dl => {
+        const sel = q(`[data-sesdil=${dl}]`); if (!sel) return;
+        const re = dl === 'tr' ? /^tr/i : /^en/i, uygun = vs.filter(v => re.test(v.lang)), oto = uyumSes(dl);
+        const ad = v => v.name.trim() + (v.lang ? ' · ' + v.lang : '') + (v.localService === false ? ' · internet' : '');
+        sel.innerHTML = `<option value="">Otomatik${oto ? ' (' + esc(oto.name.slice(0, 30)) + ')' : ''}</option>` +
+          uygun.map(v => `<option value="${esc(v.name)}">${esc(ad(v))}${window.DHSes && DHSes.bozukMu && DHSes.bozukMu(v.name) ? ' · çalışmıyor' : ''}</option>`).join('');
+        const t = dl === 'en' ? (ayar.tarayiciEn || '') : (ayar.tarayiciTr || '');
+        sel.value = uygun.some(v => v.name === t) ? t : '';
+        sel.disabled = !uygun.length;
+      });
+    }
+    qa('[data-sesdil]').forEach(sel => sel.onchange = () => {
+      const dl = sel.dataset.sesdil; if (dl === 'en') ayar.tarayiciEn = sel.value; else ayar.tarayiciTr = sel.value;
+      ayarKaydet(); sesTercihUygula(); sesListeCiz(); uyumCiz();
+      const d = q(`[data-uyumdene=${dl}]`); if (d) d.click();   /* seçilen ses hemen duyulsun */
+    });
+    /* sesteki duygu gücü ve ses perdesi: avatar ayarlarıyla aynı yerde saklanır (iki sayfa aynı değeri gösterir) */
+    function kaOkuG() { try { return window.DHAvatarAyar ? DHAvatarAyar.oku() : {}; } catch (e) { return {}; } }
+    function kaYazG(ad, v) { if (!window.DHAvatarAyar) return; const o = kaOkuG(); o[ad] = v; DHAvatarAyar.yaz(o); }
+    function sesKaydiricilarCiz() {
+      const o = kaOkuG(), dg = typeof o.sesDuygu === 'number' ? o.sesDuygu : 1, pr = typeof o.sesPerde === 'number' ? o.sesPerde : 1;
+      q('[data-a=duyguGuc]').value = dg; q('.vd-duygu-d').textContent = dg < 0.03 ? 'kapalı' : '×' + dg.toFixed(2);
+      q('[data-a=perde]').value = pr; q('.vd-perde-d').textContent = Math.abs(pr - 1) < 0.005 ? 'normal' : (pr < 1 ? 'kalın ' : 'ince ') + '×' + pr.toFixed(2);
+      q('.vd-hiz-d').textContent = '×' + (+S.rate || 1).toFixed(2);
+    }
+    q('[data-a=duyguGuc]').oninput = e => { kaYazG('sesDuygu', +e.target.value); sesKaydiricilarCiz(); };
+    q('[data-a=perde]').oninput = e => { kaYazG('sesPerde', +e.target.value); sesKaydiricilarCiz(); };
     function uyumDeger(v) { if (!v) return 0; const g = window.DHSes && DHSes.gecikme ? DHSes.gecikme(v.name) : null; return g != null ? g : (v.localService === false ? 380 : 0); }
     function uyumCiz() {
       ['tr', 'en'].forEach(dl => {
@@ -541,8 +580,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       k.ekle({ metin: dl === 'tr' ? 'Merhaba, ben Deniz. Ağzım sesimle birlikte mi hareket ediyor?' : 'Hello, I am Deniz. Does my mouth move together with my voice?', dil: dl, duygu: 'mutlu', guc: 0.5 }); k.bitir();
     });
     q('[data-a=uyumSifirla]').onclick = () => { ['tr', 'en'].forEach(dl => { const v = uyumSes(dl); if (v && window.DHSes && DHSes.gecikmeYaz) DHSes.gecikmeYaz(v.name, null); }); uyumCiz(); toast('Ağız ve ses uyumu varsayılana döndü'); };
-    setTimeout(uyumCiz, 0); try { speechSynthesis.addEventListener('voiceschanged', uyumCiz); } catch (e) {}
-    q('[data-a=hiz]').value = S.rate; q('[data-a=hiz]').oninput = e => { S.rate = +e.target.value; touchSettings(); };
+    sesTercihUygula(); setTimeout(() => { sesListeCiz(); uyumCiz(); sesKaydiricilarCiz(); }, 0); try { speechSynthesis.addEventListener('voiceschanged', () => { sesListeCiz(); uyumCiz(); }); } catch (e) {}
+    q('[data-a=hiz]').value = S.rate; q('[data-a=hiz]').oninput = e => { S.rate = +e.target.value; touchSettings(); sesKaydiricilarCiz(); };
     /* SOHBET KALİTESİ — modelin cevap vermeden önce ne kadar düşüneceği.
        oto: derslerde hızlı, genel sohbette dengeli. Derin: en doğru ama ilk kelime birkaç saniye gecikir. */
     if (!['oto', 'hizli', 'dengeli', 'derin'].includes(ayar.kalite)) ayar.kalite = 'oto';
@@ -569,7 +608,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     };
     const uzK = () => ['kisa', 'normal', 'ayrintili'].includes(ayar.uzunluk) ? ayar.uzunluk : 'normal';
     const uzHatir = () => UZ.hatir[uzK()] ? ' Reply length setting: ' + UZ.hatir[uzK()] : '';
-    q('[data-a=ayar]').onclick = () => { q('.vd-ayarlar').hidden = !q('.vd-ayarlar').hidden; if (!q('.vd-ayarlar').hidden) { kullanimCiz(); sesDurumCiz(); uyumCiz(); } };
+    q('[data-a=ayar]').onclick = () => { q('.vd-ayarlar').hidden = !q('.vd-ayarlar').hidden; if (!q('.vd-ayarlar').hidden) { kullanimCiz(); sesDurumCiz(); sesListeCiz(); uyumCiz(); sesKaydiricilarCiz(); } };
     /* ---- yapay zekâ kullanımı: sıradaki modeller + bugünkü token/istek ---- */
     function kullanimCiz() {
       const el = q('.vd-kul-liste'); if (!el) return;
