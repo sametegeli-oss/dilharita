@@ -648,6 +648,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
        (perde değişikliği mi, dil/ses değişimi mi, ses seçimi mi gecikmeye yol açıyor?) */
     q('[data-a=hizTest]').onclick = async () => {
       const k = q('.vd-olcum'); k.hidden = false; const b = q('[data-a=hizTest]'); b.disabled = true;
+      st.testte = true;
       if (D.aktif) { await dinlemeIptal(); } yuz.sustur(); try { speechSynthesis.cancel(); } catch (e) {}
       await new Promise(r => setTimeout(r, 300));
       const tr = uyumSes('tr'), en = uyumSes('en');
@@ -672,13 +673,14 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
           try { speechSynthesis.speak(u); } catch (e) { son('hata'); }
         });
       }
-      b.disabled = false; toast('Ses hız testi bitti');
+      st.testte = false; b.disabled = false; toast('Ses hız testi bitti');
     };
     /* Dil geçişi testi (yalnız ölçer, dersin davranışını değiştirmez): "Ses hız testi"nde Türkçe↔İngilizce geçişi ~0,4 sn,
        derste 4-7 sn ölçüldü. Dersteki koşullar birer birer eklenerek gerçek cümlelerle ölçülür; bekleme hangi adımda
        ortaya çıkarsa sebep odur. Her adım: Türkçe → İngilizce → Türkçe. */
     q('[data-a=gecisTest]').onclick = async () => {
       const k = q('.vd-olcum'); k.hidden = false; const b = q('[data-a=gecisTest]'); b.disabled = true;
+      st.testte = true;   /* test boyunca ders kendiliğinden dinlemez, konuşmaz */
       if (D.aktif) { await dinlemeIptal(); } yuz.sustur(); try { speechSynthesis.cancel(); } catch (e) {}
       const bekle = ms => new Promise(r => setTimeout(r, ms));
       await bekle(400);
@@ -706,7 +708,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
           const x = satir[j];
           u.onstart = () => { x.b = Math.round(performance.now() - x._t0); ciz(); if (o.onceden && us[j + 1]) { satir[j + 1]._kuyruk = true; try { speechSynthesis.speak(us[j + 1]); } catch (e) {} } };
           u.onend = () => { x.e = Math.round(performance.now() - x._t0); if (satir[j + 1]) satir[j + 1]._t0 = performance.now(); ciz(); if (j === us.length - 1) son(); else if (!o.onceden) setTimeout(() => { satir[j + 1]._t0 = performance.now(); try { speechSynthesis.speak(us[j + 1]); } catch (e) {} }, 250); };
-          u.onerror = ev => { x.h = 'hata: ' + (ev && ev.error); ciz(); son(); };
+          u.onerror = ev => { x.h = 'hata: ' + (ev && ev.error) + (ev && ev.error === 'interrupted' ? ' (başka bir ses kesti)' : ''); ciz(); son(); };
         });
         satir[0]._t0 = performance.now(); try { speechSynthesis.speak(us[0]); } catch (e) { satir[0].h = 'konuşma yok'; son(); }
       });
@@ -731,7 +733,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         await adim('7 = 5 + ses adı yok, yalnız dil', GERCEK, { adla: false, ders: true });
       } catch (e) { sonuc.push({ adim: 'hata', dil: '', h: String(e && e.message || e) }); }
       if (yuz.sesBaglami && ilkBag === 'suspended') await yuz.sesBaglami(false);
-      adimAd = ''; ciz(); b.disabled = false; toast('Dil geçişi testi bitti');
+      st.testte = false; adimAd = ''; ciz(); b.disabled = false; toast('Dil geçişi testi bitti');
     };
     function piperGunlukHTML() {
       const g = window.DHPiper && DHPiper.gunluk ? DHPiper.gunluk() : []; if (!g.length) return '';
@@ -1571,7 +1573,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     }
     /* bütün bir mesajı baştan söylet (ör. "Take your time") */
     async function soyle(m, tekrar) {
-      if (st.bitti) return;
+      if (st.bitti || st.testte) return;
       const ks = yeniKonusucu(m); if (tekrar) window.__dhSesEtiket = 'tekrar'; m.liste.forEach(c => ks.ekle(c)); ks.bitir();
       await ks.bitti(); sonra(m, tekrar);
     }
@@ -1644,7 +1646,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     function seviye() { if (!mk.analiz) return 0; mk.analiz.getFloatTimeDomainData(mk.veri); let t = 0; for (let i = 0; i < mk.veri.length; i++) t += mk.veri[i] * mk.veri[i]; return Math.sqrt(t / mk.veri.length); }
     const D = { aktif: false, metin: '', gecici: '', konustu: 0, sessizBas: 0, taban: 0, ornek: 0, bas: 0, son: 0, raf: 0, bitiyor: false, kayitVar: false };
     async function dinle() {
-      if (st.bitti || st.busy || D.aktif || st.video) return;   /* video açıkken mikrofon dinlemesin */
+      if (st.bitti || st.busy || D.aktif || st.video || st.testte) return;   /* video açıkken / ses testi sürerken mikrofon dinlemesin */
       D.aktif = true; D.bitiyor = false;
       const kayitVar = await mikrofonHazirla();
       if (st.bitti || st.busy || kok.dataset.d === 'konusuyor') { D.aktif = false; mikBirak(); return; }   /* vazgeçildi: hat açık kalmasın (Deniz konuşurken 🎙) */
@@ -1729,6 +1731,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       durum('bekliyor');
       if (!ayar.ellerSerbest) { bilgi('Seni duyamadım. Mikrofona basıp tekrar konuş.'); return; }
       /* hiç konuşmadıysa: bir kez nazikçe hatırlat, sonra beklemeye geç */
+      if (st.testte) return;   /* ses testi sürüyor: "Acele etme" araya girip testi kesiyordu */
       if (st.sabir++ < 1 && st.son) {
         const m = genelMi() ? { role: 'assistant', text: 'Acele etme, dinliyorum.', tr: '', liste: [{ metin: 'Acele etme, dinliyorum.', duygu: 'anlayisli', jest: 'egil', guc: 0.7, dil: 'tr' }] } : { role: 'assistant', text: "Take your time. I'm listening.", tr: 'Acele etme, dinliyorum.', liste: [{ metin: 'Take your time.', duygu: 'anlayisli', jest: 'egil', guc: 0.7, dil: 'en' }, { metin: "I'm listening.", duygu: 'cesaret', jest: null, guc: 0.6, dil: 'en' }] };
         await soyle(m, true); if (!st.bitti && kok.dataset.d === 'bekliyor') dinle();
