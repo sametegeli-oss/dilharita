@@ -220,10 +220,13 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
         <label class="vd-satir">Arka plan <select data-a="fon"><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select></label>
         <div class="vd-ses-bolum"><b class="vd-bolum-b">Deniz'in sesi</b>
-        <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
+        <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="piper">Cihaz sesi · Piper (bir kez indirilir, internetsiz)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
         <div class="vd-ses-durum"><p class="vd-ses-durum-y"></p><button type="button" class="vd-ikincil vd-ses-dene" data-a="sesDene">${vi('spk')} Doğal sesi dene</button></div>
         ${['en', 'tr'].map(dl => `<div class="vd-satir vd-ses-sec"><span>${dl === 'en' ? 'İngilizce konuşurken' : 'Türkçe konuşurken'} <small>(tarayıcı sesi)</small></span>
           <div class="vd-uyum-c"><select data-sesdil="${dl}" aria-label="${dl === 'en' ? 'İngilizce' : 'Türkçe'} ses"></select><button type="button" class="vd-ikincil" data-uyumdene="${dl}">${vi('spk')} Dene</button></div></div>`).join('')}
+        <div class="vd-piper" hidden>${['tr', 'en'].map(dl => `<div class="vd-satir vd-ses-sec"><span>Cihaz sesi · ${dl === 'tr' ? 'Türkçe' : 'İngilizce'}</span>
+          <div class="vd-uyum-c"><select data-piper="${dl}" aria-label="Piper ${dl === 'tr' ? 'Türkçe' : 'İngilizce'} ses"></select><button type="button" class="vd-ikincil" data-piperdene="${dl}">${vi('spk')} Dene</button></div></div>`).join('')}
+          <button type="button" class="vd-ikincil" data-a="piperSil">İndirilen cihaz seslerini sil</button></div>
         <div class="vd-olcum-k"><div class="vd-uyum-c"><button type="button" class="vd-ikincil" data-a="olcumGoster">Ses ölçümü</button><button type="button" class="vd-ikincil" data-a="olcumSil">Ölçümü sıfırla</button><button type="button" class="vd-ikincil" data-a="hizTest">Ses hız testi</button></div>
           <div class="vd-olcum" hidden></div></div>
         <small class="vd-ses-ipucu">Telefonda ses adları erkek/kadın yazmayabilir: "Dene" ile dinleyip seç. Listedeki bütün İngilizce sesler kadınsa telefonun Ayarlar → Metin okuma (Google) → Ses verilerini yükle → English bölümünden erkek bir ses seçebilirsin.</small>
@@ -519,15 +522,60 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     }
     q('.vd-tr').hidden = !ayar.altyaziTR;
     const sesSec = q('[data-a=ses]');
-    sesSec.value = ayar.ses === 'tarayici' ? 'tarayici' : (ayar.sesAdi || 'Charon');
-    if (!gemVar) { sesSec.value = 'tarayici'; [...sesSec.options].forEach(o => { if (o.value !== 'tarayici') o.disabled = true; }); q('.vd-ses-not').textContent = 'Doğal ses için Dil Harita\'da bir Gemini anahtarı kayıtlı olmalı.'; }
-    sesSec.onchange = () => { if (sesSec.value === 'tarayici') ayar.ses = 'tarayici'; else { ayar.ses = 'gemini'; ayar.sesAdi = sesSec.value; st.ttsKapali = false; st.ttsHataN = 0; st.ttsMola = 0; dolgulariHazirla(); } ayarKaydet(); sesDurumCiz(); };
+    sesSec.value = ayar.ses === 'tarayici' ? 'tarayici' : ayar.ses === 'piper' ? 'piper' : (ayar.sesAdi || 'Charon');
+    if (!gemVar) { sesSec.value = 'tarayici'; [...sesSec.options].forEach(o => { if (o.value !== 'tarayici' && o.value !== 'piper') o.disabled = true; }); if (ayar.ses === 'piper') sesSec.value = 'piper'; q('.vd-ses-not').textContent = 'Doğal ses için Dil Harita\'da bir Gemini anahtarı kayıtlı olmalı.'; }
+    sesSec.onchange = () => { if (sesSec.value === 'piper') { ayar.ses = 'piper'; st.piperHata = null; ayarKaydet(); piperHazirla(true); return; } if (sesSec.value === 'tarayici') ayar.ses = 'tarayici'; else { ayar.ses = 'gemini'; ayar.sesAdi = sesSec.value; st.ttsKapali = false; st.ttsHataN = 0; st.ttsMola = 0; dolgulariHazirla(); } ayarKaydet(); sesDurumCiz(); };
+    /* ---- cihaz sesi (Piper): indir, yükle, dene ---- */
+    async function piperHazirla(dene) {
+      if (!window.DHPiper) { st.piperHata = 'Cihaz sesi dosyası yüklenemedi'; st.piperDurum = 'Cihaz sesi yüklenemedi; tarayıcı sesi kullanılıyor.'; sesDurumCiz(); return false; }
+      if (st.piperSoz) return st.piperSoz;
+      st.piperSoz = (async () => {
+        try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
+        for (const dl of ['tr', 'en']) {
+          const ad = dl === 'tr' ? 'Türkçe' : 'İngilizce';
+          const once = await DHPiper.indirildiMi(dl);
+          st.piperDurum = (once ? 'Cihaz sesi hazırlanıyor: ' : 'Cihaz sesi indiriliyor: ') + ad + '…'; sesDurumCiz();
+          await DHPiper.hazirla(dl, x => {
+            st.piperDurum = x.asama === 'yukle' ? 'Cihaz sesi hazırlanıyor: ' + ad + '…'
+              : 'Cihaz sesi indiriliyor (' + ad + '): ' + (x.yuzde != null ? '%' + x.yuzde + ' · ' : '') + x.mb + (x.toplamMb ? ' / ' + x.toplamMb : '') + ' MB';
+            sesDurumCiz();
+          });
+        }
+        st.piperHazir = true; st.piperHata = null;
+        st.piperDurum = 'Cihaz sesi (Piper) hazır: Türkçe ve İngilizce bu cihazda; internetsiz çalışır, dil geçişinde bekleme yok.'; sesDurumCiz();
+        if (dene) piperDene('tr');
+        return true;
+      })().catch(e => {
+        st.piperHata = (e && e.message) || String(e);
+        st.piperDurum = 'Cihaz sesi hazırlanamadı (' + st.piperHata + '); şimdilik tarayıcı sesi. İnternet bağlantısını kontrol edip sesi yeniden seç.';
+        sesDurumCiz(); toast('Cihaz sesi hazırlanamadı; tarayıcı sesiyle devam'); return false;
+      }).finally(() => { st.piperSoz = null; });
+      return st.piperSoz;
+    }
+    function piperListeCiz() {
+      if (!window.DHPiper) return;
+      ['tr', 'en'].forEach(dl => { const sel = q(`[data-piper=${dl}]`); if (!sel) return;
+        sel.innerHTML = Object.keys(DHPiper.SESLER).filter(id => DHPiper.SESLER[id].dil === dl).map(id => `<option value="${id}">${esc(DHPiper.SESLER[id].ad)}</option>`).join('');
+        sel.value = DHPiper.secili(dl); });
+    }
+    function piperDene(dl) {
+      if (D.aktif) dinlemeIptal(); yuz.sustur();
+      const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret' });
+      k.ekle(piperEkle({ metin: dl === 'tr' ? 'Merhaba, ben Deniz. Bu benim cihazdaki sesim.' : 'Hello, I am Deniz. This is my on-device voice.', dil: dl, duygu: 'mutlu', guc: 0.5 })); k.bitir();
+    }
+    qa('[data-piper]').forEach(sel => sel.onchange = () => { DHPiper.sec(sel.dataset.piper, sel.value); st.piperHazir = false; piperHazirla(false).then(ok => { if (ok) piperDene(sel.dataset.piper); }); });
+    qa('[data-piperdene]').forEach(b => b.onclick = () => { if (ayar.ses !== 'piper') return; piperDene(b.dataset.piperdene); });
+    q('[data-a=piperSil]').onclick = async () => { if (!window.DHPiper) return; await DHPiper.sil(); st.piperHazir = false; ayar.ses = 'tarayici'; ayarKaydet(); sesSec.value = 'tarayici'; st.piperDurum = ''; sesDurumCiz(); toast('İndirilen cihaz sesleri silindi; tarayıcı sesine dönüldü'); };
+    piperListeCiz();
+    if (ayar.ses === 'piper') piperHazirla(false);   /* ders açılırken modelleri belleğe al (indirildiyse internetsiz) */
     /* Doğal ses neden devrede değil? Ayarlarda açıkça yaz. */
     function sesDurumCiz() {
       const y = q('.vd-ses-durum-y'); if (!y) return;
       const d = ttsDurumOku(), kota = kotaOku(), dolu = TTS_MODELLER.filter(m => kota[m]);
       const saat = t => t ? new Date(t).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '';
       let t, renk = '';
+      const pp = q('.vd-piper'); if (pp) pp.hidden = ayar.ses !== 'piper';
+      if (ayar.ses === 'piper') { y.textContent = st.piperDurum || 'Cihaz sesi (Piper) seçili.'; y.dataset.r = st.piperHata ? 'uyari' : st.piperHazir ? 'iyi' : ''; const b0 = q('[data-a=sesDene]'); if (b0) b0.hidden = true; return; }
       if (genelMi()) t = 'Türkçe genel sohbette hep tarayıcı sesi kullanılır (Gemini ses kotası harcanmaz).';
       else if (!geminiKeys().length) { t = 'Gemini anahtarı yok; tarayıcı sesi kullanılıyor.'; renk = 'uyari'; }
       else if (ayar.ses === 'tarayici') t = 'Tarayıcı sesi seçili. Doğal ses için yukarıdan bir "Doğal" ses seç.';
@@ -844,7 +892,17 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     const ttsHafiza = new Map();
     const ttsKapaliMi = () => st.ttsKapali || (st.ttsMola || 0) > Date.now();   /* dakikalık sınır: kısa mola; günlük kota ya da tekrarlayan hata: ders boyunca kapalı */
     /* cümle açıklamasında Gemini sesi yok: Türkçeyi hep aynı Türkçe tarayıcı sesi, İngilizceyi hep aynı İngilizce ses okur (ses ortada değişmesin) */
-    function geminiSesAcik() { return !analiz && !genelMi() && ayar.ses !== 'tarayici' && geminiKeys().length > 0 && !ttsKapaliMi(); }
+    function geminiSesAcik() { return !analiz && !genelMi() && ayar.ses !== 'tarayici' && ayar.ses !== 'piper' && geminiKeys().length > 0 && !ttsKapaliMi(); }
+    /* cihaz sesi (Piper): her parça sayfanın içinde sese çevrilir, Web Audio ile çalınır (dil geçişinde bekleme yok) */
+    function piperAcik() { return ayar.ses === 'piper' && !!window.DHPiper && !st.piperHata && !!st.piperHazir; }   /* hazır değilse (indiriliyor) o parça tarayıcı sesiyle */
+    function piperEkle(it) {
+      if (!it || it.sesTampon || it._sesP || it.sessiz || !it.metin || ayar.ses !== 'piper' || !window.DHPiper || st.piperHata) return it;
+      const dl = it.dil === 'tr' ? 'tr' : 'en';
+      if (st.piperHazir) it._sesP = DHPiper.sentezle(it.metin, dl, S.rate);
+      else if (st.piperSoz) it._sesP = st.piperSoz.then(ok => ok ? DHPiper.sentezle(it.metin, dl, S.rate) : Promise.reject({ code: 'piper' }));   /* yükleniyor: bekle (motor en çok 9 sn bekler, sonra tarayıcı sesi) */
+      else return it;
+      it._sesP.catch(() => {}); return it;
+    }
     async function ttsOnbellek(anahtar, ab) {
       /* kısa ve sık kullanılan sesler (dolgu, "acele etme") bir kez üretilir, tarayıcıda saklanır */
       try { const c = await caches.open('dh-tts-v1'); const u = 'https://tts.dilharita.local/' + encodeURIComponent(anahtar);
@@ -988,7 +1046,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         if (ornek && c.cev) a.push({ metin: c.cev, dil: 'tr', duygu: c.duygu, guc: c.guc, jest: null, sesNotr: true, goster: gosterFn(i, true) });
         return a;
       }
-      function siraylaEkle(p) { zincir = zincir.then(() => p).then(items => { if (iptal) return; items.forEach(it => { k.ekle(it); m.okunan.push(it); }); }); }
+      function siraylaEkle(p) { zincir = zincir.then(() => p).then(items => { if (iptal) return; items.forEach(it => { piperEkle(it); k.ekle(it); m.okunan.push(it); }); }); }
       /* Türkçe anlatımdaki bir örneğin çevirisi gelmediyse önce onu tamamla (okunabilsin) */
       function eksikCeviri(parcalar) {
         const eksik = parcalar.filter(({ c }) => acMi() && c.dil === 'en' && !c.cev);
@@ -1035,7 +1093,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
             /* yalnız hazır (saklanmış) ses varsa çal; yoksa bir dahaki sefere hazırla */
             Promise.race([ttsUret(t), new Promise((_, r) => setTimeout(() => r('gec'), 250))])
               .then(buf => { if (!sesBasladi && !m.liste.length && !iptal) k.ekle({ metin: t, dil, sesTampon: buf, duygu: 'dusunceli', guc: 0.5, jest: 'dusun' }); }).catch(() => {});
-          } else k.ekle({ metin: t, dil, duygu: 'dusunceli', guc: 0.5, jest: 'dusun' });
+          } else k.ekle(piperEkle({ metin: t, dil, duygu: 'dusunceli', guc: 0.5, jest: 'dusun' }));
         },
         bitir() { if (bekleyen.length) { blokGonder(bekleyen); bekleyen = []; } zincir = zincir.then(() => k.bitir()); },
         iptal() { iptal = true; yuz.sustur(); },
@@ -1363,7 +1421,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       await new Promise(r => setTimeout(r, 120));
       if (m.okunan && m.okunan.length) {
         const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: c => { if (c.goster) c.goster(); } });
-        m.okunan.forEach(it => k.ekle(Object.assign({}, it))); k.bitir(); await k.bitti; sonra(m, true);
+        m.okunan.forEach(it => k.ekle(piperEkle(Object.assign({}, it)))); k.bitir(); await k.bitti; sonra(m, true);
       } else { await soyle(m, true); }
     }
     /* "Analiz": ders sürüyorsa Deniz cümleyi derste, sesli ve Türkçe açıklar; ders bittiyse analiz penceresi açılır */

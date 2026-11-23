@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v548";  /* ↩️ Android yalnız-dil denemesi geri alındı (fayda yok) */
+var SW_VERSION = "dh-sw-v549";  /* 🗣️ Cihaz sesi (Piper) */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */
 /* onceki v438: 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
 /* onceki v437: ➕ Konuşkan: kendi kursunu oluştur */
@@ -196,7 +196,7 @@ self.addEventListener("activate", function(event){
   event.waitUntil((async function(){
     try{
       var keys = await caches.keys();
-      await Promise.all(keys.map(function(k){ return k===CACHE ? null : caches.delete(k); }));
+      await Promise.all(keys.map(function(k){ return (k===CACHE || !/^dh-sw-/.test(k)) ? null : caches.delete(k);   /* yalnız eski uygulama önbellekleri; cihazda ses (dh-kalici-*) ve ses önbelleği (dh-tts-*) kalır */ }));
     }catch(e){}
     try{ await self.clients.claim(); }catch(e){}
   })());

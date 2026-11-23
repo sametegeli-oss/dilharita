@@ -806,8 +806,10 @@
           if (!c.jest && !c.sesTampon && Math.random() < profil.jest * 0.45 && !/\?\s*$/.test(c.metin)) { c.jest = "onay"; c.jestZaman = "son"; }
           if (c._sesP && !c.sesTampon) {
             /* doğal ses (önceden istenmiş) hazır olunca; olmazsa tarayıcı sesiyle */
+            var tB = performance.now(), olc = sesOlcumBasla(c, c.dil || dilBul(c.metin), null, 0);
             return Promise.race([c._sesP, new Promise(function (_, r) { setTimeout(function () { r({ code: "gec" }); }, 9000); })])
-              .then(function (buf) { c.sesTampon = buf; }, function () {})
+              .then(function (buf) { c.sesTampon = buf; if (olc) { olc.s = "cihaz sesi"; olc.b = Math.round(performance.now() - tB); olc._t = tB - (buf ? buf.duration * 1000 : 0); sesOlcumBitir(olc, "tamam"); } },
+                function (e) { if (olc) { olc.s = "cihaz sesi"; sesOlcumBitir(olc, e && e.code === "gec" ? "9 sn'de hazır değil → tarayıcı" : "hata → tarayıcı"); } })
               .then(function () { if (benim.iptal || konusma !== benim) return; return cumleSoyle(c, o.hiz || 1).then(sonraki); });
           }
           return cumleSoyle(c, o.hiz || 1).then(sonraki);
