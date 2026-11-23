@@ -895,6 +895,17 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     function geminiSesAcik() { return !analiz && !genelMi() && ayar.ses !== 'tarayici' && ayar.ses !== 'piper' && geminiKeys().length > 0 && !ttsKapaliMi(); }
     /* cihaz sesi (Piper): her parça sayfanın içinde sese çevrilir, Web Audio ile çalınır (dil geçişinde bekleme yok) */
     function piperAcik() { return ayar.ses === 'piper' && !!window.DHPiper && !st.piperHata && !!st.piperHazir; }   /* hazır değilse (indiriliyor) o parça tarayıcı sesiyle */
+    /* Cihaz sesi bir parçayı tamamen hazırlamadan çalamaz; uzun cümleler noktalama yerlerinden kısa parçalara bölünür:
+       ilk parça çabuk hazır olur ve okunmaya başlar, gerisi o okunurken hazırlanır (ilk parça daha da kısa tutulur). */
+    function piperBol(it) {
+      const t = String(it.metin || ''); if (t.length <= 70 || it.sesTampon || it._sesP) return [it];
+      const par = t.split(/(?<=[.!?…;:])\s+|(?<=,)\s+(?=\S{2,})/).filter(Boolean);
+      const out = []; let cur = '';
+      par.forEach(p => { const sinir = out.length ? 80 : 45; if (cur && (cur + ' ' + p).length > sinir) { out.push(cur); cur = p; } else cur = cur ? cur + ' ' + p : p; });
+      if (cur) out.push(cur);
+      if (out.length < 2) return [it];
+      return out.map((x, i) => i === 0 ? Object.assign({}, it, { metin: x }) : { metin: x, dil: it.dil, duygu: null, guc: it.guc, jest: null, sesNotr: it.sesNotr });
+    }
     function piperEkle(it) {
       if (!it || it.sesTampon || it._sesP || it.sessiz || !it.metin || ayar.ses !== 'piper' || !window.DHPiper || st.piperHata) return it;
       const dl = it.dil === 'tr' ? 'tr' : 'en';
@@ -1018,6 +1029,15 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       ekle(metin.slice(son), 'tr');
       return out.length ? out : [{ metin, dil: 'tr' }];
     }
+    /* cevap zaman dökümü (ölçüm tablosuna): sustuktan sonra gönderilene dek · yapay zekânın ilk cümlesi · sesin hazırlanması */
+    function zamanDokumu(m) {
+      const t = m && m._t; if (!t || t.yazildi) return; t.yazildi = true;
+      const n = performance.now(), r = x => Math.round(x);
+      const o = { z: new Date().toISOString().slice(11, 19), etk: 'cevap', d: '', s: ayar.ses === 'piper' ? 'cihaz sesi' : 'tarayıcı', ara: null,
+        b: r(n - (t.bitti || t.gonder)), k: null, e: null,
+        m: (t.bitti ? 'dinleme bitti→gönderildi ' + r(t.gonder - t.bitti) + ' · ' : '') + 'yapay zekâ ilk cümle ' + (t.ilk ? r(t.ilk - t.gonder) : '?') + ' · ses hazırlığı ' + (t.ilk ? r(n - t.ilk) : '?') + ' ms' };
+      try { const a = JSON.parse(localStorage.getItem('dh-ses-olcum-v1') || '[]'); a.push(o); localStorage.setItem('dh-ses-olcum-v1', JSON.stringify(a.slice(-60))); } catch (e) {}
+    }
     function yeniKonusucu(m) {
       window.__dhSesEtiket = 'ilk';
       const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: c => { if (c.goster) c.goster(); } });
@@ -1027,6 +1047,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       const acMi = () => aciklamaMi(m) || ayar.mod === 'tr';
       function gosterFn(i, cevMi) {
         return () => {
+          if (!sesBasladi) { const i0 = m.okunan && m.okunan[0]; if (i0 && i0._sesP) i0._sesP.then(() => zamanDokumu(m), () => zamanDokumu(m)); else zamanDokumu(m); }   /* cihaz seste: ses gerçekten hazır olunca */
           sesBasladi = true;
           if (kok.dataset.d !== 'konusuyor') { durum('konusuyor'); yuz.dinle(false); }
           qa('.vd-m.konusan').forEach(x => { if (x !== m._el) x.classList.remove('konusan'); }); if (m._el) m._el.classList.add('konusan');
@@ -1046,7 +1067,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         if (ornek && c.cev) a.push({ metin: c.cev, dil: 'tr', duygu: c.duygu, guc: c.guc, jest: null, sesNotr: true, goster: gosterFn(i, true) });
         return a;
       }
-      function siraylaEkle(p) { zincir = zincir.then(() => p).then(items => { if (iptal) return; items.forEach(it => { piperEkle(it); k.ekle(it); m.okunan.push(it); }); }); }
+      function siraylaEkle(p) { zincir = zincir.then(() => p).then(items => { if (iptal) return; (ayar.ses === 'piper' ? items.flatMap(piperBol) : items).forEach(it => { piperEkle(it); k.ekle(it); m.okunan.push(it); }); }); }
       /* Türkçe anlatımdaki bir örneğin çevirisi gelmediyse önce onu tamamla (okunabilsin) */
       function eksikCeviri(parcalar) {
         const eksik = parcalar.filter(({ c }) => acMi() && c.dil === 'en' && !c.cev);
@@ -1331,12 +1352,13 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       durum('dusunuyor'); yuz.dinle(false);
       const dusunZ = setTimeout(() => { if (kok.dataset.d === 'dusunuyor') { yuz.duygu('dusunceli', 0.45); yuz.jest('dusun', 0.6); } }, 900);
       const m = { role: 'assistant', text: '', tr: '', liste: [] };
+      m._t = { bitti: metin && st.dinlemeBittiT && performance.now() - st.dinlemeBittiT < 30000 ? st.dinlemeBittiT : null, gonder: performance.now() }; st.dinlemeBittiT = null;
       const ks = yeniKonusucu(m);
       st.konusucu = ks;
       const dolguZ = setTimeout(() => ks.dolgu(), 1400);
       const onSeg = c => {
         m.liste.push(c); m.text = m.liste.map(x => x.metin).join(' ');
-        if (m.liste.length === 1) { clearTimeout(dusunZ); m.model = st.aktifModel; st.hist.push(m); st.son = m; ogretmenMesaji(m); rozet(); }
+        if (m.liste.length === 1) { if (m._t) m._t.ilk = performance.now(); clearTimeout(dusunZ); m.model = st.aktifModel; st.hist.push(m); st.son = m; ogretmenMesaji(m); rozet(); }
         else baloncukGuncelle(m);
         ks.ekle(c);
       };
@@ -1537,7 +1559,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     function dinlemeIptal() { D.aktif = false; D.bitiyor = true; clearTimeout(D.sz); micTarget = null; let p = Promise.resolve(); if (micLive) p = dict.stop().catch(() => {}); const k = kaydiDurdur().then(b => { mikBirak(); return b; }); yuz.dinle(false); q('.vd-sen').hidden = true;
       return Promise.race([Promise.all([p, k]), new Promise(r => setTimeout(r, 1500))]); }
     async function dinlemeBitir() {
-      if (!D.aktif || D.bitiyor) return; D.bitiyor = true; clearTimeout(D.sz);
+      if (!D.aktif || D.bitiyor) return; D.bitiyor = true; clearTimeout(D.sz); st.dinlemeBittiT = performance.now();
       micTarget = null; if (micLive) dict.stop().catch(() => {});
       const blob = await kaydiDurdur();
       mikBirak();
