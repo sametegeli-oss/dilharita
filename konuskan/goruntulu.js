@@ -1033,9 +1033,9 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     function zamanDokumu(m) {
       const t = m && m._t; if (!t || t.yazildi) return; t.yazildi = true;
       const n = performance.now(), r = x => Math.round(x);
-      const o = { z: new Date().toISOString().slice(11, 19), etk: 'cevap', d: '', s: ayar.ses === 'piper' ? 'cihaz sesi' : 'tarayıcı', ara: null,
+      const o = { z: new Date().toISOString().slice(11, 19), etk: 'cevap' + (t.arka || document.hidden ? ' (arka plan)' : ''), d: '', s: ayar.ses === 'piper' ? 'cihaz sesi' : 'tarayıcı', ara: null,
         b: r(n - (t.bitti || t.gonder)), k: null, e: null,
-        m: (t.bitti ? 'dinleme bitti→gönderildi ' + r(t.gonder - t.bitti) + ' · ' : '') + 'yapay zekâ ilk cümle ' + (t.ilk ? r(t.ilk - t.gonder) : '?') + ' · ses hazırlığı ' + (t.ilk ? r(n - t.ilk) : '?') + ' ms' };
+        m: (t.bitti ? 'dinleme bitti→gönderildi ' + r(t.gonder - t.bitti) + (t.hassas != null || t.onay != null ? ' (' + [t.hassas != null ? 'hassas tanıma ' + t.hassas : '', t.onay != null ? 'onay ekranı ' + t.onay : ''].filter(Boolean).join(', ') + ')' : '') + ' · ' : '') + 'yapay zekâ ilk cümle ' + (t.ilk ? r(t.ilk - t.gonder) : '?') + ' · ses hazırlığı ' + (t.ilk ? r(n - t.ilk) : '?') + ' ms' };
       try { const a = JSON.parse(localStorage.getItem('dh-ses-olcum-v1') || '[]'); a.push(o); localStorage.setItem('dh-ses-olcum-v1', JSON.stringify(a.slice(-60))); } catch (e) {}
     }
     function yeniKonusucu(m) {
@@ -1352,7 +1352,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       durum('dusunuyor'); yuz.dinle(false);
       const dusunZ = setTimeout(() => { if (kok.dataset.d === 'dusunuyor') { yuz.duygu('dusunceli', 0.45); yuz.jest('dusun', 0.6); } }, 900);
       const m = { role: 'assistant', text: '', tr: '', liste: [] };
-      m._t = { bitti: metin && st.dinlemeBittiT && performance.now() - st.dinlemeBittiT < 30000 ? st.dinlemeBittiT : null, gonder: performance.now() }; st.dinlemeBittiT = null;
+      m._t = { bitti: metin && st.dinlemeBittiT && performance.now() - st.dinlemeBittiT < 60000 ? st.dinlemeBittiT : null, gonder: performance.now(), hassas: st.hassasMs, onay: st.onayT ? Math.round(performance.now() - st.onayT) : null }; st.dinlemeBittiT = null; st.hassasMs = null; st.onayT = null;
+      if (document.hidden) m._t.arka = true;
       const ks = yeniKonusucu(m);
       st.konusucu = ks;
       const dolguZ = setTimeout(() => ks.dolgu(), 1400);
@@ -1566,14 +1567,15 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       yuz.dinle(false);
       let metin = (D.metin + ' ' + D.gecici).trim();
       const konustu = D.konustu > 200 || !!metin;
-      if (konustu && blob && ayar.hassas && geminiKeys().length) {
+      st.hassasMs = null; st.onayT = null;
+      if (konustu && blob && ayar.hassas && geminiKeys().length) { const hT = performance.now(); st.hassasBas = hT;
         durum('anliyor'); q('.vd-sen-y').textContent = metin || 'Söylediklerin yazıya dökülüyor…'; q('.vd-sen').classList.add('anliyor');
         try { const g = await geminiYaziya(blob, st.son && st.son.text, turkceMi() ? 'tr' : 'en'); if (g) metin = g; }
         catch (e) {
           /* tarayıcının metniyle devam; ama kullanıcıyı bir kez uyar */
           if (!st.gemUyari) { st.gemUyari = true; toast(e && e.code === 'rate' ? 'Hassas ses tanıma bugünlük Gemini kotasını doldurdu; tarayıcının tanıması kullanılıyor.' : 'Hassas ses tanıma şu an çalışmadı; tarayıcının tanıması kullanılıyor.'); }
         }
-        q('.vd-sen').classList.remove('anliyor');
+        q('.vd-sen').classList.remove('anliyor'); st.hassasMs = Math.round(performance.now() - st.hassasBas);
       }
       D.aktif = false;
       if (st.bitti) return;
@@ -1618,6 +1620,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     function onayBoy() { onayT.style.height = 'auto'; onayT.style.height = Math.min(160, onayT.scrollHeight) + 'px'; }
     function sayacDur() { clearTimeout(st.onayZ); onay.classList.remove('sayiyor'); }
     function onayGoster(metin) {
+      st.onayT = performance.now();
       durum('onay'); yuz.duygu('merak', 0.3);
       onayT.value = metin; onay.hidden = false; kok.classList.add('vd-onay-acik'); onayBoy();
       sayacDur();

@@ -808,9 +808,9 @@
             /* doğal ses (önceden istenmiş) hazır olunca; olmazsa tarayıcı sesiyle */
             var tB = performance.now(), olc = sesOlcumBasla(c, c.dil || dilBul(c.metin), null, 0);
             return Promise.race([c._sesP, new Promise(function (_, r) { setTimeout(function () { r({ code: "gec" }); }, 9000); })])
-              .then(function (buf) { c.sesTampon = buf; if (olc) { olc.s = "cihaz sesi"; olc.b = Math.round(performance.now() - tB); olc._t = tB - (buf ? buf.duration * 1000 : 0); sesOlcumBitir(olc, "tamam"); } },
-                function (e) { if (olc) { olc.s = "cihaz sesi"; sesOlcumBitir(olc, e && e.code === "gec" ? "9 sn'de hazır değil → tarayıcı" : "hata → tarayıcı"); } })
-              .then(function () { if (benim.iptal || konusma !== benim) return; return cumleSoyle(c, o.hiz || 1).then(sonraki); });
+              .then(function (buf) { c.sesTampon = buf; if (olc) { olc.s = "cihaz sesi"; olc.b = Math.round(performance.now() - tB); } },
+                function (e) { if (olc) { olc.s = "cihaz sesi"; olc.du = e && e.code === "gec" ? "9 sn'de hazır değil → tarayıcı" : "hata → tarayıcı"; } })
+              .then(function () { if (benim.iptal || konusma !== benim) return; return cumleSoyle(c, o.hiz || 1).then(function () { if (olc) sesOlcumBitir(olc, olc.du || "tamam"); }).then(sonraki); });
           }
           return cumleSoyle(c, o.hiz || 1).then(sonraki);
         }
