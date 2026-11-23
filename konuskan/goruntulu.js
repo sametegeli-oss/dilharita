@@ -604,16 +604,16 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       const DENE = [
         ['Türkçe, düz', 'Bir.', tr, 1, 1], ['Türkçe, düz (tekrar)', 'İki.', tr, 1, 1], ['Türkçe, perde 1,4', 'Üç.', tr, 1.4, 1],
         ['Türkçe, hız 1,15', 'Dört.', tr, 1, 1.15], ['İngilizceye geçiş', 'Five.', en, 1, 1], ['İngilizce, düz (tekrar)', 'Six.', en, 1, 1],
-        ['Türkçeye geçiş', 'Yedi.', tr, 1, 1], ['Ses seçmeden (yalnız dil)', 'Sekiz.', null, 1, 1], ['Türkçe, uzun cümle', 'Bu cümle biraz daha uzun, motorun hazırlanma süresini görmek için.', tr, 1, 1]
+        ['Türkçeye geçiş', 'Yedi.', tr, 1, 1], ['Ses seçmeden (yalnız dil)', 'Sekiz.', null, 1, 1], ['İngilizceye geçiş, yalnız dil', 'Nine.', 'en', 1, 1], ['Türkçeye geçiş, yalnız dil', 'On.', 'tr', 1, 1], ['Türkçe, uzun cümle', 'Bu cümle biraz daha uzun, motorun hazırlanma süresini görmek için.', tr, 1, 1]
       ];
       const sonuc = [];
       const ciz = () => { k.innerHTML = `<p>Ses hız testi (telefon: ${esc(navigator.userAgent.match(/Android[^;)]*/) ? navigator.userAgent.match(/Android[^;)]*/)[0] : 'bilgisayar')}). Ekran görüntüsünü gönder.</p><table><tr><th>deneme</th><th>ses</th><th>başladı</th><th>bitti</th></tr>` +
         sonuc.map(o => `<tr><td>${esc(o.ad)}</td><td>${esc(o.ses)}</td><td>${o.b == null ? '–' : o.b}</td><td>${o.e == null ? '…' : o.e}${o.h ? ' ' + esc(o.h) : ''}</td></tr>`).join('') + '</table>'; };
       for (const [ad, metin, v, perde, hiz] of DENE) {
-        const o = { ad, ses: v ? v.name.slice(0, 18) : '(yok)' }; sonuc.push(o); ciz();
+        const o = { ad, ses: typeof v === 'string' ? '(dil: ' + v + ')' : v ? v.name.slice(0, 18) : '(yok)' }; sonuc.push(o); ciz();
         await new Promise(res => {
           let u; try { u = new SpeechSynthesisUtterance(metin); } catch (e) { o.h = 'yok'; return res(); }
-          if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'tr-TR';
+          if (v === 'en') u.lang = 'en-GB'; else if (v === 'tr') u.lang = 'tr-TR'; else if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'tr-TR';
           u.pitch = perde; u.rate = hiz; u.__dhSesYonetimli = true;
           const t0 = performance.now(); let bitti = false; const son = h => { if (bitti) return; bitti = true; o.e = Math.round(performance.now() - t0); if (h) o.h = h; ciz(); setTimeout(res, 250); };
           u.onstart = () => { o.b = Math.round(performance.now() - t0); ciz(); };

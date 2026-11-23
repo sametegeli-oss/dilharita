@@ -672,6 +672,7 @@
         function sessizOku() { if (sessiz || bitti || !guncel()) return; sessiz = true; c.konusuyor = true; c.bekle = false; c.bas = performance.now(); c.duzelt = 0; c.duzeltHedef = null; sessizZ = setTimeout(son, c.metin.length * msHarf); }
         u.onstart = function () {
           if (olc && olc.b == null) olc.b = Math.round(performance.now() - olc._t);
+          c._sonT = performance.now() + Math.max(4000, c.metin.length * msHarf * 2.2 + 2000);
           /* ses geç geldiyse sessiz okumayı bırak, sese yeniden hizalan */
           if (sessiz) { clearTimeout(sessizZ); sessiz = false; }
           basladi = true; c.bas = performance.now(); c.konusuyor = true; c.duzelt = 0; c.duzeltHedef = null;
@@ -699,7 +700,13 @@
           if (mesgul && n < 16) { basBekle(n + 1); return; }
           if (olc) olc.sessiz = 1; sessizOku();
         }, n ? 500 : 2500); })(0);
-        (function sonBekle() { setTimeout(function () { if (!guncel() || bitti) return; if (!basladi && !sessiz) { sonBekle(); return; } son(); }, Math.max(4000, c.metin.length * msHarf * 2.2 + 2000)); })();
+        /* güvenlik bitişi: süre sesin BAŞLADIĞI andan sayılır (telefonda ses 5 sn geç başlayınca cümle yarıda kesiliyordu) */
+        var SURE = Math.max(4000, c.metin.length * msHarf * 2.2 + 2000);
+        (function sonBekle(ms) { setTimeout(function () {
+          if (!guncel() || bitti) return;
+          if (!basladi && !sessiz) { sonBekle(SURE); return; }
+          if (c._sonT && performance.now() < c._sonT - 50) { sonBekle(c._sonT - performance.now()); return; }
+          son(); }, ms); })(SURE);
         /* Ses motorunun sırasında eski, bitmemiş konuşma kaldıysa (telefonda birikiyordu: yeni parça 8-20 sn sonra başlıyordu)
            önce sırayı temizle, kısa bir aradan sonra konuş — "Tekrar söyle"nin düzgün çalışmasının sebebi buydu. */
         var temizle = false; try { temizle = !!(speechSynthesis.speaking || speechSynthesis.pending); } catch (e) {}
