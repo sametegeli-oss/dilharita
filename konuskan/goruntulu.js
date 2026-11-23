@@ -307,7 +307,9 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     q('[data-a=sohbetkapat]').onclick = () => sohbetAc(false);
     function rozet() { if (kok.classList.contains('vd-sohbet-acik')) return; const r = q('.vd-rozet'); r.hidden = false; r.textContent = String(+r.textContent + 1); }
     function listeyeEkle(el) { const l = q('.vd-liste'); const b = l.querySelector('.vd-bos'); if (b) b.remove(); l.appendChild(el); l.scrollTop = l.scrollHeight; }
-    function kelimeler(metin) { return esc(metin).replace(/[A-Za-z][A-Za-z'’-]*/g, w => `<span class="vd-k" data-k="${w}">${w}</span>`); }
+    /* kelimeler ham metinden ayrılır, her parça ayrı kaçırılır: önce kaçırınca &quot; &amp; gibi işaretlerin içindeki
+       harfler de kelime sanılıp bölünüyordu ve ekranda "&quot;am&quot;" görünüyordu */
+    function kelimeler(metin) { return String(metin == null ? '' : metin).split(/([A-Za-z][A-Za-z'’-]*)/).map((p, i) => i % 2 ? `<span class="vd-k" data-k="${esc(p)}">${esc(p)}</span>` : esc(p)).join(''); }
     /* Türkçe parçalar düz, İngilizce parçalar dokunulabilir kelimelerle */
     const aciklamaMi = m => m.liste && m.liste.some(c => c.dil === 'tr') && m.liste.some(c => c.dil === 'en');
     function parcaHTML(m) { const ac = aciklamaMi(m); return m.liste.map((c, i) => c.dil === 'tr' ? `<span class="vd-p-tr">${window.ingVurgula ? ingVurgula(c.metin, kelimeler) : esc(c.metin)}</span>` : (ac ? `<span class="vd-ornek"><span class="vd-p-en">${kelimeler(c.metin)}</span><span class="vd-p-cev" data-i="${i}">${c.cev ? esc(c.cev) : '<span class="vd-spin kucuk"></span>'}</span></span>` : `<span class="vd-p-en">${kelimeler(c.metin)}</span>`)).join(' '); }
