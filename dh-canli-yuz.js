@@ -557,7 +557,7 @@
     function sesOlcumBasla(c, dil, v, gecikme) {
       try {
         var t = performance.now(), mik = null; try { mik = !!global.__dhMikAkis || (typeof micLive !== "undefined" && !!micLive); } catch (e) {}
-        var o = { _t: t, z: new Date().toISOString().slice(11, 19), ara: olcSon ? Math.round(t - olcSon) : null, d: dil, s: v ? v.name : "-", yerel: v ? v.localService !== false : null,
+        var o = { _t: t, z: new Date().toISOString().slice(11, 19), ara: olcSon ? Math.round(t - olcSon) : null, d: dil, s: ANDROID_YZ ? "(dil) " + (v ? String(v.lang).replace("_", "-") : dil) : v ? v.name : "-", yerel: v ? v.localService !== false : null,
           g: gecikme, n: c.metin.length, m: c.metin.slice(0, 24), etk: global.__dhSesEtiket || "", mik: mik };
         return o;
       } catch (e) { return null; }
@@ -620,7 +620,11 @@
         function baslat() {
         var u; try { u = new SpeechSynthesisUtterance(c.metin); } catch (e) { u = null; }
         if (!u || !global.speechSynthesis) { c.konusuyor = true; c.bas = performance.now(); setTimeout(son, c.metin.length * msHarf); return; }
-        var v = sesSec(dil); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = dil === "tr" ? "tr-TR" : "en-US";
+        var v = sesSec(dil);
+        /* Telefonda (Android) ses ADIYLA seçilince dil her değiştiğinde motor sesi baştan yüklüyor (ölçüm: 4-7 sn);
+           yalnız dil verilince telefon o dil için kendi seçili sesini kullanıyor ve geçiş hızlı (hız testi: ~0,4 sn). */
+        if (ANDROID_YZ) { u.lang = String((v && v.lang) || (dil === "tr" ? "tr-TR" : "en-GB")).replace("_", "-"); }
+        else if (v) { u.voice = v; u.lang = v.lang; } else u.lang = dil === "tr" ? "tr-TR" : "en-US";
         u.__dhSesYonetimli = true;   /* kendi yeniden denemesini yapar: dh-ses.js dokunmasın */
         u.volume = global.DHSes ? DHSes.hacim(v) : 1;
         /* internetten gelen ses: tarayıcı "başladı" der ama ses ~0,35 sn sonra duyulur; kelime sinyalleri de erken gelir.
@@ -836,7 +840,7 @@
         if (!global.speechSynthesis) return;
         seslerHazir().then(function () {
           ["en", "tr"].forEach(function (d) {
-            try { var u = new SpeechSynthesisUtterance(d === "tr" ? "merhaba" : "hello"); var v = sesSec(d); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = d === "tr" ? "tr-TR" : "en-US";
+            try { var u = new SpeechSynthesisUtterance(d === "tr" ? "merhaba" : "hello"); var v = sesSec(d); if (ANDROID_YZ) u.lang = String((v && v.lang) || (d === "tr" ? "tr-TR" : "en-GB")).replace("_", "-"); else if (v) { u.voice = v; u.lang = v.lang; } else u.lang = d === "tr" ? "tr-TR" : "en-US";
               u.volume = 0; u.rate = 1.6; u.onboundary = function () { sinirVar = true; };
               /* telefonda ısıtma Deniz'in kendi hız ve perdesiyle: farklı ayar, ilk cümleden önce motoru yeniden hazırlatır */
               if (ANDROID_YZ) { var hz = 1; try { hz = +(typeof S !== "undefined" && S.rate) || 1; } catch (er) {} u.rate = hz; u.pitch = Math.max(0, Math.min(2, ka("sesPerde", 1))); }
