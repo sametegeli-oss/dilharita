@@ -151,8 +151,12 @@
       };
       if (c.speaker_id_map && Object.keys(c.speaker_id_map).length) f.sid = new T('int64', [0]);
       var cikti = await m.oturum.run(f), pcm = cikti.output.data;
+      /* ses düzeyi eşitleme: Türkçe model İngilizceden ~5 kat kısık çıkıyor (tepe 0,15 / 0,8); her parça tepe 0,9'a getirilir */
+      pcm = pcm instanceof Float32Array ? pcm : Float32Array.from(pcm);
+      var tepe = 0; for (var i = 0; i < pcm.length; i++) { var a = pcm[i] < 0 ? -pcm[i] : pcm[i]; if (a > tepe) tepe = a; }
+      if (tepe > 0.01) { var kat = Math.min(8, 0.9 / tepe); if (Math.abs(kat - 1) > 0.05) for (var j = 0; j < pcm.length; j++) pcm[j] *= kat; }
       var hz = c.audio.sample_rate, buf = new AudioBuffer({ length: pcm.length, numberOfChannels: 1, sampleRate: hz });
-      buf.copyToChannel(pcm instanceof Float32Array ? pcm : Float32Array.from(pcm), 0);
+      buf.copyToChannel(pcm, 0);
       DHPiper.son = { ms: Math.round(performance.now() - t0), sn: +(pcm.length / hz).toFixed(2), n: metin.length, dil: dil };
       return buf;
     });
