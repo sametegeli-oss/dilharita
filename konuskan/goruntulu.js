@@ -904,9 +904,11 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
        ilk parça çabuk hazır olur ve okunmaya başlar, gerisi o okunurken hazırlanır (ilk parça daha da kısa tutulur). */
     function piperBol(it) {
       const t = String(it.metin || ''); if (t.length <= 70 || it.sesTampon || it._sesP) return [it];
-      const par = t.split(/(?<=[.!?…;:])\s+|(?<=,)\s+(?=\S{2,})/).filter(Boolean);
+      let par = t.split(/(?<=[.!?…;:])\s+|(?<=,)\s+(?=\S{2,})/).filter(Boolean);
+      /* virgülsüz uzun cümle: kelime aralarından ~40 harflik parçalara (telefonda her parça çabuk hazırlansın) */
+      par = par.flatMap(p => { if (p.length <= 50) return [p]; const k = p.split(/\s+/), o = []; let c = ''; k.forEach(w => { if (c && (c + ' ' + w).length > 40) { o.push(c); c = w; } else c = c ? c + ' ' + w : w; }); if (c) o.push(c); return o; });
       const out = []; let cur = '';
-      par.forEach(p => { const sinir = out.length ? 80 : 45; if (cur && (cur + ' ' + p).length > sinir) { out.push(cur); cur = p; } else cur = cur ? cur + ' ' + p : p; });
+      par.forEach(p => { const sinir = out.length ? 55 : 45;   /* telefonda sesin her saniyesi ~4,5 sn hazırlanıyor: kısa parçalar = kısa sessizlikler */ if (cur && (cur + ' ' + p).length > sinir) { out.push(cur); cur = p; } else cur = cur ? cur + ' ' + p : p; });
       if (cur) out.push(cur);
       if (out.length < 2) return [it];
       return out.map((x, i) => i === 0 ? Object.assign({}, it, { metin: x }) : { metin: x, dil: it.dil, duygu: null, guc: it.guc, jest: null, sesNotr: it.sesNotr });
