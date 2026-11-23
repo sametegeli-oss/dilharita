@@ -1420,7 +1420,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (st.bitti || st.busy || D.aktif || st.video) return;   /* video açıkken mikrofon dinlemesin */
       D.aktif = true; D.bitiyor = false;
       const kayitVar = await mikrofonHazirla();
-      if (st.bitti || st.busy || kok.dataset.d === 'konusuyor') { D.aktif = false; return; }
+      if (st.bitti || st.busy || kok.dataset.d === 'konusuyor') { D.aktif = false; mikBirak(); return; }   /* vazgeçildi: hat açık kalmasın (Deniz konuşurken 🎙) */
       if (!kayitVar && !dict) { D.aktif = false; durum('bekliyor'); yazAc(true); return; }
       Object.assign(D, { metin: '', gecici: '', konustu: 0, sessizBas: 0, taban: 0, ornek: 0, bas: performance.now(), son: 0, kayitVar });
       durum('dinliyor'); yuz.dinle(true); yuz.duygu('dinleyen', 0.6);
