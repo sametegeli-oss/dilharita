@@ -716,13 +716,13 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-tahta.okunuyor-en .vd-tahta-en { color: #fff; text-shadow: 0 0 14px rgba(255, 213, 138, .35); }
 .vd-tahta.okunuyor-tr .vd-tahta-tr { color: #ffe2ad; }
 .vd-tahta.gecti { opacity: .72; }
-.vd-sohbet-acik .vd-tahta { display: none; }
-.vd-tahta-acik:not(.vd-sohbet-acik) .vd-altyazi { opacity: 0 !important; }   /* örnek tahtadayken altyazıda ikinci kez yazmasın */
+.vd-tahta-acik .vd-altyazi { opacity: 0 !important; }   /* örnek tahtadayken altyazıda ikinci kez yazmasın */
 @media (max-aspect-ratio: 1/1) and (max-width: 760px) {
   .vd-tahta { left: 12px; right: 12px; width: auto; top: auto; bottom: 108px; transform: none; padding: 10px 13px 12px; }
   .vd-tahta-en { font-size: 1.08rem; }
   .vd-tahta-acik .vd-altyazi { opacity: 0 !important; }
   .vd-yaz-acik .vd-tahta { bottom: 172px; }
+  .vd-sohbet-acik .vd-tahta { display: none; }   /* telefonda sohbet paneli alttan açılıp tahtanın üstüne gelir */
 }
 
 /* ---------- düzeltme: yanlış kelimenin üstü çizili, doğrusu yeşil ---------- */
