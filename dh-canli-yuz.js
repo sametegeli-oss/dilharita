@@ -853,6 +853,13 @@
       /* sustur({ sesKesme:false }): yalnız avatarı durdur, sayfanın kendi çaldığı tarayıcı sesine dokunma */
       sustur: function (so) { if (konusma) { konusma.iptal = true; try { if (konusma.cumle && konusma.cumle.sesKaynak) konusma.cumle.sesKaynak.stop(); } catch (e) {} if (konusma.cozucu) konusma.cozucu(); } konusma = null; if (!(so && so.sesKesme === false)) { try { speechSynthesis.cancel(); } catch (e) {} } },
       /* gerçek ses verisini (wav vb.) motorun ses bağlamında çöz */
+      /* ölçüm için (Ses hız testi → dil geçişi): avatarın ses bağlantısını (Web Audio) askıya al / aç; durumunu döndürür */
+      sesBaglami: function (ac) {
+        if (ac === true) sesBagi();
+        if (!sesAc) return Promise.resolve("yok");
+        var p = ac === false ? sesAc.suspend() : ac === true ? sesAc.resume() : null;
+        return Promise.resolve(p).catch(function () {}).then(function () { return sesAc.state; });
+      },
       sesCoz: function (ab) { var ac = sesBagi(); if (!ac) return Promise.reject(new Error("ses yok")); return new Promise(function (res, rej) { var p = ac.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); }); },
       yikil: function () { durum.yikildi = true; api.sustur(); }
     };

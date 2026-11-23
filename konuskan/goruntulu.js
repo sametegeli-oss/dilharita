@@ -228,7 +228,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <div class="vd-piper" hidden>${['tr', 'en'].map(dl => `<div class="vd-satir vd-ses-sec"><span>Cihaz sesi · ${dl === 'tr' ? 'Türkçe' : 'İngilizce'}</span>
           <div class="vd-uyum-c"><select data-piper="${dl}" aria-label="Piper ${dl === 'tr' ? 'Türkçe' : 'İngilizce'} ses"></select><button type="button" class="vd-ikincil" data-piperdene="${dl}">${vi('spk')} Dene</button></div></div>`).join('')}
           <button type="button" class="vd-ikincil" data-a="piperSil">İndirilen cihaz seslerini sil</button></div>
-        <div class="vd-olcum-k"><div class="vd-uyum-c"><button type="button" class="vd-ikincil" data-a="olcumGoster">Ses ölçümü</button><button type="button" class="vd-ikincil" data-a="olcumSil">Ölçümü sıfırla</button><button type="button" class="vd-ikincil" data-a="hizTest">Ses hız testi</button></div>
+        <div class="vd-olcum-k"><div class="vd-uyum-c"><button type="button" class="vd-ikincil" data-a="olcumGoster">Ses ölçümü</button><button type="button" class="vd-ikincil" data-a="olcumSil">Ölçümü sıfırla</button><button type="button" class="vd-ikincil" data-a="hizTest">Ses hız testi</button><button type="button" class="vd-ikincil" data-a="gecisTest">Dil geçişi testi</button></div>
           <div class="vd-olcum" hidden></div></div>
         <small class="vd-ses-ipucu">Telefonda ses adları erkek/kadın yazmayabilir: "Dene" ile dinleyip seç. Listedeki bütün İngilizce sesler kadınsa telefonun Ayarlar → Metin okuma (Google) → Ses verilerini yükle → English bölümünden erkek bir ses seçebilirsin.</small>
         <label class="vd-anahtar"><input type="checkbox" data-a="sesDuygu"><span></span> Seste duygu <small>Deniz'in sesi yüzündeki duyguya göre değişir: sevinçte neşeli, teselli ederken yumuşak, ciddi konuda ağır.</small></label>
@@ -673,6 +673,65 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         });
       }
       b.disabled = false; toast('Ses hız testi bitti');
+    };
+    /* Dil geçişi testi (yalnız ölçer, dersin davranışını değiştirmez): "Ses hız testi"nde Türkçe↔İngilizce geçişi ~0,4 sn,
+       derste 4-7 sn ölçüldü. Dersteki koşullar birer birer eklenerek gerçek cümlelerle ölçülür; bekleme hangi adımda
+       ortaya çıkarsa sebep odur. Her adım: Türkçe → İngilizce → Türkçe. */
+    q('[data-a=gecisTest]').onclick = async () => {
+      const k = q('.vd-olcum'); k.hidden = false; const b = q('[data-a=gecisTest]'); b.disabled = true;
+      if (D.aktif) { await dinlemeIptal(); } yuz.sustur(); try { speechSynthesis.cancel(); } catch (e) {}
+      const bekle = ms => new Promise(r => setTimeout(r, ms));
+      await bekle(400);
+      const ilkBag = await (yuz.sesBaglami ? yuz.sesBaglami() : Promise.resolve('?'));
+      const KISA = [['Bir.', 'tr'], ['Two.', 'en'], ['Üç.', 'tr']];
+      const GERCEK = [['Dün toplantıya katılamadım çünkü hastaydım.', 'tr'], ["I couldn't attend the meeting yesterday.", 'en'], ['Şimdi sen de bir cümle kur.', 'tr']];
+      const sonuc = []; let adimAd = '';
+      const ciz = () => {
+        k.innerHTML = `<p>Dil geçişi testi (telefon: ${esc((navigator.userAgent.match(/Android[^;)]*/) || ['bilgisayar'])[0])}; ders başında ses bağlantısı: ${esc(ilkBag)}). Bitince ekran görüntüsünü ya da tabloyu gönder. "başladı" = sesin başlaması için beklenen ms; 2. ve 3. satırlar dil geçişi.</p><table><tr><th>adım</th><th>dil</th><th>başladı</th><th>bitti</th><th>not</th></tr>` +
+          sonuc.map(o => `<tr><td>${esc(o.adim)}</td><td>${esc(o.dil)}</td><td>${o.b == null ? '–' : o.b}</td><td>${o.e == null ? '…' : o.e}</td><td>${esc(o.h || '')}</td></tr>`).join('') + '</table>' + (adimAd ? `<p>Şimdi: ${esc(adimAd)}…</p>` : '');
+      };
+      const sozce = (metin, dl, o) => {
+        const u = new SpeechSynthesisUtterance(metin), v = uyumSes(dl);
+        if (o.adla && v) { u.voice = v; u.lang = v.lang; } else u.lang = String((v && v.lang) || (dl === 'tr' ? 'tr-TR' : 'en-GB')).replace('_', '-');
+        if (o.ders) { u.volume = window.DHSes ? DHSes.hacim(v) : 1; const ka = kaOkuG(); u.pitch = Math.max(0, Math.min(2, typeof ka.sesPerde === 'number' ? ka.sesPerde : 1)); u.rate = S.rate || 1; }
+        u.__dhSesYonetimli = true; return u;
+      };
+      /* bir adım: üç cümle sırayla; onceden=true ise her parça bir öncekinin başlamasıyla motorun sırasına konur */
+      const adim = (ad, cumleler, o) => new Promise(res => {
+        adimAd = ad; const satir = cumleler.map(([, dl]) => ({ adim: ad, dil: dl })); sonuc.push(...satir); ciz();
+        const us = cumleler.map(([m, dl]) => sozce(m, dl, o));
+        let i = 0, bitti = false; const sure = setTimeout(() => { satir.forEach(x => { if (x.e == null) x.h = 'zaman aşımı'; }); son(); }, 60000);
+        function son() { if (bitti) return; bitti = true; clearTimeout(sure); try { speechSynthesis.cancel(); } catch (e) {} setTimeout(res, 600); }
+        us.forEach((u, j) => {
+          const x = satir[j];
+          u.onstart = () => { x.b = Math.round(performance.now() - x._t0); ciz(); if (o.onceden && us[j + 1]) { satir[j + 1]._kuyruk = true; try { speechSynthesis.speak(us[j + 1]); } catch (e) {} } };
+          u.onend = () => { x.e = Math.round(performance.now() - x._t0); if (satir[j + 1]) satir[j + 1]._t0 = performance.now(); ciz(); if (j === us.length - 1) son(); else if (!o.onceden) setTimeout(() => { satir[j + 1]._t0 = performance.now(); try { speechSynthesis.speak(us[j + 1]); } catch (e) {} }, 250); };
+          u.onerror = ev => { x.h = 'hata: ' + (ev && ev.error); ciz(); son(); };
+        });
+        satir[0]._t0 = performance.now(); try { speechSynthesis.speak(us[0]); } catch (e) { satir[0].h = 'konuşma yok'; son(); }
+      });
+      const mikAcKapa = async () => {
+        const ok = await mikrofonHazirla(); if (!ok) return false;
+        let kay = null; try { kay = new MediaRecorder(mk.akis); kay.start(250); } catch (e) {}
+        await bekle(1500); try { kay && kay.stop(); } catch (e) {}
+        mikBirak(); await bekle(450); return true;
+      };
+      try {
+        if (yuz.sesBaglami) await yuz.sesBaglami(false);
+        await adim('1 kısa kelimeler (eski test gibi)', KISA, { adla: true });
+        await adim('2 gerçek cümleler', GERCEK, { adla: true });
+        await adim('3 + dersteki ses düzeyi, perde, hız', GERCEK, { adla: true, ders: true });
+        if (yuz.sesBaglami) await yuz.sesBaglami(true);
+        await adim('4 + açık ses bağlantısı (Web Audio)', GERCEK, { adla: true, ders: true });
+        const mik = await mikAcKapa();
+        await adim('5 + mikrofon açılıp kapandı' + (mik ? '' : ' (mikrofon izni yok)'), GERCEK, { adla: true, ders: true });
+        if (mik) await mikAcKapa();
+        await adim('6 = 5 + sıradaki parça önceden sırada', GERCEK, { adla: true, ders: true, onceden: true });
+        if (mik) await mikAcKapa();
+        await adim('7 = 5 + ses adı yok, yalnız dil', GERCEK, { adla: false, ders: true });
+      } catch (e) { sonuc.push({ adim: 'hata', dil: '', h: String(e && e.message || e) }); }
+      if (yuz.sesBaglami && ilkBag === 'suspended') await yuz.sesBaglami(false);
+      adimAd = ''; ciz(); b.disabled = false; toast('Dil geçişi testi bitti');
     };
     function piperGunlukHTML() {
       const g = window.DHPiper && DHPiper.gunluk ? DHPiper.gunluk() : []; if (!g.length) return '';
