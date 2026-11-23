@@ -641,7 +641,9 @@
         /* Telefonda (Android) ses motoru perde ya da hız her değiştiğinde kendini baştan hazırlıyor: parça başına ~3 sn gecikme
            (Ses hız testi: aynı ayarla 0,3-0,6 sn, perde 1,4 → 2,75 sn, hız 1,15 → 2,9 sn). Telefonda bütün parçalar aynı perde
            ve hızla okunur (ayarlardaki ses perdesi ve konuşma hızı); duygu yalnız yüzde görünür. */
-        if (ANDROID_YZ) { u.pitch = Math.max(0, Math.min(2, ka("sesPerde", 1))); u.rate = hizOrani || 1; sdAcik = false; }
+        /* Telefonda (Android) perde ve hız hep 1: "Dil geçişi testi" (Android 10) — perde 0,94 iken her Türkçe↔İngilizce
+           geçişte motor sesi baştan hazırlıyor (2-6 sn); perde ve hız 1 iken geçiş 0,2-0,6 sn. */
+        if (ANDROID_YZ) { u.pitch = 1; u.rate = 1; sdAcik = false; }
         else if (!sdAcik && ka("sesPerde", 1) !== 1) u.pitch = Math.max(0, Math.min(2, ka("sesPerde", 1)));
         if (sdAcik) {
           var sd = c.duygu && !c.sesNotr ? duyguSesi(c.duygu) : [1, 1], ty = sd[0], hz = sd[1];   /* sesNotr: örnek cümle — duygu tonu yok */
@@ -845,7 +847,7 @@
             try { var u = new SpeechSynthesisUtterance(d === "tr" ? "merhaba" : "hello"); var v = sesSec(d); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = d === "tr" ? "tr-TR" : "en-US";
               u.volume = 0; u.rate = 1.6; u.onboundary = function () { sinirVar = true; };
               /* telefonda ısıtma Deniz'in kendi hız ve perdesiyle: farklı ayar, ilk cümleden önce motoru yeniden hazırlatır */
-              if (ANDROID_YZ) { var hz = 1; try { hz = +(typeof S !== "undefined" && S.rate) || 1; } catch (er) {} u.rate = hz; u.pitch = Math.max(0, Math.min(2, ka("sesPerde", 1))); }
+              if (ANDROID_YZ) { u.rate = 1; u.pitch = 1; }   /* derste de perde ve hız 1 (dil geçişi hızlı kalsın) */
               speechSynthesis.speak(u); } catch (e) {}
           });
         });
