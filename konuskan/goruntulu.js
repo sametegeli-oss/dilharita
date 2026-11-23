@@ -689,13 +689,21 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       const GERCEK = [['Dün toplantıya katılamadım çünkü hastaydım.', 'tr'], ["I couldn't attend the meeting yesterday.", 'en'], ['Şimdi sen de bir cümle kur.', 'tr']];
       const sonuc = []; let adimAd = '';
       const ciz = () => {
-        k.innerHTML = `<p>Dil geçişi testi (telefon: ${esc((navigator.userAgent.match(/Android[^;)]*/) || ['bilgisayar'])[0])}; ders başında ses bağlantısı: ${esc(ilkBag)}). Bitince ekran görüntüsünü ya da tabloyu gönder. "başladı" = sesin başlaması için beklenen ms; 2. ve 3. satırlar dil geçişi.</p><table><tr><th>adım</th><th>dil</th><th>başladı</th><th>bitti</th><th>not</th></tr>` +
+        k.innerHTML = `<p>Dil geçişi testi (telefon: ${esc((navigator.userAgent.match(/Android[^;)]*/) || ['bilgisayar'])[0])}; ders başında ses bağlantısı: ${esc(ilkBag)}; dersteki ayarlar: ${esc(ayarYazi)}). Bitince ekran görüntüsünü ya da tabloyu gönder. "başladı" = sesin başlaması için beklenen ms; her adımda ilk satır dışındakiler dil geçişi.</p><table><tr><th>adım</th><th>dil</th><th>başladı</th><th>bitti</th><th>not</th></tr>` +
           sonuc.map(o => `<tr><td>${esc(o.adim)}</td><td>${esc(o.dil)}</td><td>${o.b == null ? '–' : o.b}</td><td>${o.e == null ? '…' : o.e}</td><td>${esc(o.h || '')}</td></tr>`).join('') + '</table>' + (adimAd ? `<p>Şimdi: ${esc(adimAd)}…</p>` : '');
       };
+      const dersHacim = v => window.DHSes ? DHSes.hacim(v) : 1;
+      const dersPerde = () => { const ka = kaOkuG(); return Math.max(0, Math.min(2, typeof ka.sesPerde === 'number' ? ka.sesPerde : 1)); };
+      const sTr = uyumSes('tr'), sEn = uyumSes('en');
+      const sesBilgi = (v, ad) => ad + ': ' + (v ? v.name + (v.localService === false ? ' (internet)' : '') : 'yok') + ', ses düzeyi ' + dersHacim(v);
+      const ayarYazi = sesBilgi(sTr, 'Türkçe') + ' · ' + sesBilgi(sEn, 'İngilizce') + ' · perde ' + dersPerde() + ' · hız ' + (S.rate || 1);
       const sozce = (metin, dl, o) => {
         const u = new SpeechSynthesisUtterance(metin), v = uyumSes(dl);
         if (o.adla && v) { u.voice = v; u.lang = v.lang; } else u.lang = String((v && v.lang) || (dl === 'tr' ? 'tr-TR' : 'en-GB')).replace('_', '-');
-        if (o.ders) { u.volume = window.DHSes ? DHSes.hacim(v) : 1; const ka = kaOkuG(); u.pitch = Math.max(0, Math.min(2, typeof ka.sesPerde === 'number' ? ka.sesPerde : 1)); u.rate = S.rate || 1; }
+        if (o.ders) o = Object.assign({ hacim: true, perde: true, hiz: true }, o);
+        if (o.hacim === true) u.volume = dersHacim(v); else if (typeof o.hacim === 'number') u.volume = o.hacim;
+        if (o.perde) u.pitch = dersPerde();
+        if (o.hiz) u.rate = S.rate || 1;
         u.__dhSesYonetimli = true; return u;
       };
       /* bir adım: üç cümle sırayla; onceden=true ise her parça bir öncekinin başlamasıyla motorun sırasına konur */
@@ -719,18 +727,16 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         mikBirak(); await bekle(450); return true;
       };
       try {
-        if (yuz.sesBaglami) await yuz.sesBaglami(false);
-        await adim('1 kısa kelimeler (eski test gibi)', KISA, { adla: true });
-        await adim('2 gerçek cümleler', GERCEK, { adla: true });
-        await adim('3 + dersteki ses düzeyi, perde, hız', GERCEK, { adla: true, ders: true });
-        if (yuz.sesBaglami) await yuz.sesBaglami(true);
-        await adim('4 + açık ses bağlantısı (Web Audio)', GERCEK, { adla: true, ders: true });
-        const mik = await mikAcKapa();
-        await adim('5 + mikrofon açılıp kapandı' + (mik ? '' : ' (mikrofon izni yok)'), GERCEK, { adla: true, ders: true });
-        if (mik) await mikAcKapa();
-        await adim('6 = 5 + sıradaki parça önceden sırada', GERCEK, { adla: true, ders: true, onceden: true });
-        if (mik) await mikAcKapa();
-        await adim('7 = 5 + ses adı yok, yalnız dil', GERCEK, { adla: false, ders: true });
+        /* 1. ölçüm: dersteki ayarlarla (ses düzeyi, perde, hız) geçiş 2-4 sn, ayarsız 0,5-0,7 sn çıktı.
+           Hangisi olduğunu ayırmak için her biri tek başına; her adım 5 cümle (4 dil geçişi). */
+        const BES = [['Dün toplantıya katılamadım çünkü hastaydım.', 'tr'], ["I couldn't attend the meeting yesterday.", 'en'], ['Şimdi sen de bir cümle kur.', 'tr'], ['She could not find her keys this morning.', 'en'], ['Bu sabah anahtarlarını bulamadı.', 'tr']];
+        await adim('A ayarsız (1 · 1 · 1)', BES, { adla: true });
+        await adim('B yalnız ses düzeyi (dersteki gibi)', BES, { adla: true, hacim: true });
+        await adim('C yalnız perde', BES, { adla: true, perde: true });
+        await adim('D yalnız hız', BES, { adla: true, hiz: true });
+        await adim('E üçü birden (ders gibi)', BES, { adla: true, ders: true });
+        await adim('F perde + hız, ses düzeyi iki dilde aynı', BES, { adla: true, perde: true, hiz: true, hacim: 1 });
+        await adim('G ayarsız (tekrar)', BES, { adla: true });
       } catch (e) { sonuc.push({ adim: 'hata', dil: '', h: String(e && e.message || e) }); }
       if (yuz.sesBaglami && ilkBag === 'suspended') await yuz.sesBaglami(false);
       st.testte = false; adimAd = ''; ciz(); b.disabled = false; toast('Dil geçişi testi bitti');
