@@ -610,7 +610,8 @@
           var sure = c.sesTampon.duration;
           var src = ac.createBufferSource(); src.buffer = c.sesTampon; src.connect(sesAnaliz);
           c.sesKaynak = src; c.sesli = true; c.duzelt = 0; c.duzeltHedef = null;
-          src.onended = son;
+          src.onended = function () { if (c._olc) c._olc.son = Math.round(performance.now() - c._olc._t); son(); };
+          if (c._olc) c._olc.k = Math.round(performance.now() - c._olc._t);   /* çalma başladı (ölçüm) */
           src.start();
           c.bas = performance.now() + ((ac.outputLatency || ac.baseLatency || 0) * 1000); c.konusuyor = true;
           /* blok içindeki cümlelerin duygu ve jestleri, metindeki yerlerine göre zamanlanır */
@@ -807,6 +808,7 @@
           if (c._sesP && !c.sesTampon) {
             /* doğal ses (önceden istenmiş) hazır olunca; olmazsa tarayıcı sesiyle */
             var tB = performance.now(), olc = sesOlcumBasla(c, c.dil || dilBul(c.metin), null, 0);
+            c._olc = olc;
             return Promise.race([c._sesP, new Promise(function (_, r) { setTimeout(function () { r({ code: "gec" }); }, 9000); })])
               .then(function (buf) { c.sesTampon = buf; if (olc) { olc.s = "cihaz sesi"; olc.b = Math.round(performance.now() - tB); } },
                 function (e) { if (olc) { olc.s = "cihaz sesi"; olc.du = e && e.code === "gec" ? "9 sn'de hazır değil → tarayıcı" : "hata → tarayıcı"; } })

@@ -640,8 +640,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       const k = q('.vd-olcum'); let a = []; try { a = JSON.parse(localStorage.getItem('dh-ses-olcum-v1') || '[]'); } catch (e) {}
       if (!a.length) { k.innerHTML = '<p>Henüz ölçüm yok. Deniz biraz konuşsun (bir de "Tekrar söyle"ye bas), sonra buraya dön.</p>'; return; }
       const f = x => x == null ? '–' : x;
-      k.innerHTML = `<p>Son ${a.length} parça. Bu ekranın görüntüsünü gönderirsen ağız-ses uyumunu buna göre düzeltirim. Tablo yana kayar. 🎙 = Deniz konuşurken mikrofon açıktı · ✂ = sırada eski konuşma vardı, temizlendi · 🔇 = ses gelmedi, ağız sessiz oynadı.</p><table><tr><th>saat</th><th>tür</th><th>dil</th><th>ses</th><th>önce sessiz</th><th>başladı</th><th>ilk kelime</th><th>bitti</th><th>metin</th></tr>` +
-        a.slice(-30).reverse().map(o => `<tr><td>${esc(o.z || '')}</td><td>${esc(o.etk || '')}${o.mik ? ' 🎙' : ''}${o.tem ? ' ✂' : ''}${o.sessiz ? ' 🔇' : ''}</td><td>${esc(o.d || '')}</td><td>${esc(String(o.s || '').slice(0, 16))}${o.yerel === false ? ' ☁' : ''}${o.g ? ' +' + o.g : ''}</td><td>${f(o.ara)}</td><td>${f(o.b)}</td><td>${f(o.k)}</td><td>${f(o.e)}${o.du && o.du !== 'tamam' ? ' ' + esc(o.du) : ''}</td><td>${esc(o.m || '')}</td></tr>`).join('') + '</table>';
+      k.innerHTML = `<p>Son ${a.length} parça. Bu ekranın görüntüsünü gönderirsen ağız-ses uyumunu buna göre düzeltirim. Tablo yana kayar. 🎙 = Deniz konuşurken mikrofon açıktı · ✂ = sırada eski konuşma vardı, temizlendi · 🔇 = ses gelmedi, ağız sessiz oynadı. Cihaz seste: başladı = sesin hazır olması beklenen süre, ilk kelime = çalmanın başladığı an, (ses …) = sesin bittiği an.</p><table><tr><th>saat</th><th>tür</th><th>dil</th><th>ses</th><th>önce sessiz</th><th>başladı</th><th>ilk kelime</th><th>bitti</th><th>metin</th></tr>` +
+        a.slice(-30).reverse().map(o => `<tr><td>${esc(o.z || '')}</td><td>${esc(o.etk || '')}${o.mik ? ' 🎙' : ''}${o.tem ? ' ✂' : ''}${o.sessiz ? ' 🔇' : ''}</td><td>${esc(o.d || '')}</td><td>${esc(String(o.s || '').slice(0, 16))}${o.yerel === false ? ' ☁' : ''}${o.g ? ' +' + o.g : ''}</td><td>${f(o.ara)}</td><td>${f(o.b)}</td><td>${f(o.k)}</td><td>${f(o.e)}${o.son != null ? ' (ses ' + o.son + ')' : ''}${o.du && o.du !== 'tamam' ? ' ' + esc(o.du) : ''}</td><td>${esc(o.m || '')}</td></tr>`).join('') + '</table>';
     }
     /* Ses hız testi: aynı kısa cümleleri farklı ayarlarla okutup her birinin kaç ms'de başladığını ölçer
        (perde değişikliği mi, dil/ses değişimi mi, ses seçimi mi gecikmeye yol açıyor?) */
@@ -1072,8 +1072,9 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       function eksikCeviri(parcalar) {
         const eksik = parcalar.filter(({ c }) => acMi() && c.dil === 'en' && !c.cev);
         if (!eksik.length) return Promise.resolve();
-        return ai(`Translate these English example sentences into natural Turkish. Return ONLY JSON: {"tr":["..."]} in the same order.\n${eksik.map(({ c }, k) => (k + 1) + ') ' + c.metin).join('\n')}`)
-          .then(r => { (r.tr || []).forEach((t, k) => { if (eksik[k] && t) eksik[k].c.cev = String(t).trim(); }); baloncukGuncelle(m); }).catch(() => {});
+        /* çeviri en çok 2,5 sn beklenir: sağlayıcı yavaşsa konuşma durmasın (geç gelen çeviri alt yazıya yine eklenir) */
+        return Promise.race([new Promise(r => setTimeout(r, 2500)), ai(`Translate these English example sentences into natural Turkish. Return ONLY JSON: {"tr":["..."]} in the same order.\n${eksik.map(({ c }, k) => (k + 1) + ') ' + c.metin).join('\n')}`)
+          .then(r => { (r.tr || []).forEach((t, k) => { if (eksik[k] && t) eksik[k].c.cev = String(t).trim(); }); baloncukGuncelle(m); }).catch(() => {})]);
       }
       function blokGonder(parcalar) {
         siraylaEkle(eksikCeviri(parcalar).then(() => blokHazirla(parcalar)));
