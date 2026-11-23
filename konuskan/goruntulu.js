@@ -140,6 +140,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     kok.className = 'vd';
     kok.innerHTML = `
       <div class="vd-sahne">
+        <div class="vd-fon-hareket" aria-hidden="true"></div>
         <div class="vd-isik" aria-hidden="true"></div>
         <canvas class="vd-yuz" aria-label="Öğretmen ${OGRETMEN}"></canvas>
         <div class="vd-yukleniyor"><span class="vd-spin"></span></div>
@@ -178,6 +179,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         </div>
       </section>
       <div class="vd-altyazi" aria-live="polite"><div class="vd-cumle"></div><div class="vd-tr"></div></div>
+      <div class="vd-tahta" hidden><div class="vd-tahta-ust"></div><div class="vd-tahta-en"></div><div class="vd-tahta-tr"></div></div>
       <div class="vd-kum" hidden aria-live="polite"><div class="vd-kum-ust"><span class="vd-kum-saat" aria-hidden="true">⏳</span><b>Ses hazırlanıyor</b><span class="vd-kum-sure"></span></div><div class="vd-kum-cubuk"><i></i></div><div class="vd-kum-metin"></div></div>
       <div class="vd-sen" hidden><span class="vd-dalga"><i></i><i></i><i></i><i></i><i></i></span><span class="vd-sen-y"></span><button type="button" class="vd-sen-yeniden" title="Sil ve baştan kaydet" aria-label="Baştan kaydet">${vi('again')}</button><button type="button" class="vd-sen-gonder" title="Bitirdim, gönder" aria-label="Gönder">${vi('send')}</button></div>
       <form class="vd-onay" hidden>
@@ -214,12 +216,18 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       <div class="vd-ayarlar" hidden>
         <b>Ayarlar</b>
         <label class="vd-satir vd-mod-ayar">Sohbet modu <select data-a="mod"><option value="tr">Türkçe konu çalışma</option><option value="en">İngilizce sohbet</option><option value="genel">Türkçe genel sohbet</option></select></label>
+        <label class="vd-satir">Cevap uzunluğu <select data-a="uzunluk"><option value="kisa">Kısa · hep özet</option><option value="normal">Normal</option><option value="ayrintili">Ayrıntılı · gerektiğinde uzun</option></select><small class="vd-uzunluk-not"></small></label>
+
+        <label class="vd-satir">Yapay zekâ modeli <select data-a="kalite"><option value="oto">Otomatik (önerilen)</option><option value="hizli">Hızlı · hafif model, anında cevap</option><option value="dengeli">Dengeli · güçlü model, biraz düşünür</option><option value="derin">Derin · güçlü model, en dikkatli</option></select><small class="vd-kalite-not"></small></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="eller2"><span></span> Eller serbest</label>
         <label class="vd-anahtar"><input type="checkbox" data-a="onay"><span></span> Göndermeden önce metni göster <small>Mikrofonun anladığını düzeltebilir ya da yeniden kaydedebilirsin. Eller serbestte dokunmazsan 3 sn sonra gönderilir.</small></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="hassas"><span></span> Hassas ses tanıma <small class="vd-hassas-not">Konuşman Gemini ile yazıya dökülür; aksanı ve hızlı konuşmayı çok daha iyi anlar.</small></label>
         <label class="vd-satir">Sustuktan sonra bekleme: <b class="vd-sessiz-d"></b><input type="range" min="1.2" max="4" step="0.2" data-a="sessizlik"></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
         <label class="vd-satir">Arka plan <select data-a="fon"><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select></label>
+        <label class="vd-anahtar"><input type="checkbox" data-a="canli"><span></span> Canlı görüntü <small>Görüntü, görüntülü görüşmedeki gibi hafifçe kayar; fonda küçük hareketler olur (buhar, yapraklar, ışık). Telefon yavaşlarsa kapat.</small></label>
+        <label class="vd-anahtar"><input type="checkbox" data-a="tahta"><span></span> Örnekleri tahtada göster <small>İngilizce örnek okunurken cümle ve Türkçesi bir tahtada görünür.</small></label>
+        <label class="vd-anahtar"><input type="checkbox" data-a="kendim"><span></span> Kendi görüntüm köşede <small>Ders başlayınca kameran küçük pencerede açılır. Deniz yalnız "Deniz'e göster"e basınca görür. Pil ve işlemci harcar.</small></label>
         <div class="vd-ses-bolum"><b class="vd-bolum-b">Deniz'in sesi</b>
         <label class="vd-satir">Öğretmen sesi <select data-a="ses"><option value="Charon">Doğal · Charon (sakin)</option><option value="Iapetus">Doğal · Iapetus (berrak)</option><option value="Orus">Doğal · Orus (tok)</option><option value="Fenrir">Doğal · Fenrir (enerjik)</option><option value="piper">Cihaz sesi · Piper (bir kez indirilir, internetsiz)</option><option value="tarayici">Tarayıcı sesi</option></select><small class="vd-ses-not">Doğal ses Gemini ile üretilir; ağız sesin kendisiyle oynar. Kota dolarsa kendiliğinden tarayıcı sesine geçer.</small></label>
         <div class="vd-ses-durum"><p class="vd-ses-durum-y"></p><button type="button" class="vd-ikincil vd-ses-dene" data-a="sesDene">${vi('spk')} Doğal sesi dene</button></div>
@@ -245,8 +253,6 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <div class="vd-satir vd-google-ayar"><span>Google hesabı <small>(genel asistan: takvim, Gmail, görevler, kişiler, Drive)</small></span><div class="vd-google"></div></div>
         <div class="vd-satir vd-yt-ayar"><span>YouTube anahtarı <small>(video önerileri)</small></span><form class="vd-yt-anahtar"><input type="password" autocomplete="off" spellcheck="false" placeholder="AIza…" aria-label="YouTube API anahtarı"><button type="submit" class="vd-g-b">Kaydet</button></form><small class="vd-yt-durum"></small></div>
         <div class="vd-satir vd-kullanim"><span>Yapay zekâ kullanımı <small>(bugün · bu cihaz)</small></span><div class="vd-kul-liste"></div></div>
-        <label class="vd-satir">Cevap uzunluğu <select data-a="uzunluk"><option value="kisa">Kısa · hep özet</option><option value="normal">Normal</option><option value="ayrintili">Ayrıntılı · gerektiğinde uzun</option></select><small class="vd-uzunluk-not"></small></label>
-        <label class="vd-satir">Sohbet kalitesi <select data-a="kalite"><option value="oto">Otomatik (önerilen)</option><option value="hizli">Hızlı · anında cevap</option><option value="dengeli">Dengeli · biraz düşünür</option><option value="derin">Derin · en dikkatli, daha yavaş</option></select><small class="vd-kalite-not"></small></label>
       </div>
       <div class="vd-gonay" hidden role="dialog" aria-modal="true"></div>
       <section class="vd-ozet" hidden></section>`;
@@ -292,7 +298,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       () => { q('.vd-yukleniyor').innerHTML = '<p>Avatar bu cihazda açılamadı (WebGL yok). Ders yine de sesli devam edebilir.</p>'; });
 
     const DURUM = { hazir: 'Hazır', dinliyor: 'Seni dinliyor', anliyor: 'Anlıyor…', dusunuyor: 'Düşünüyor', konusuyor: 'Konuşuyor', bekliyor: 'Senin sıran', onay: 'Metni kontrol et' };
-    function durum(d) { q('.vd-durum').dataset.d = d; q('.vd-durum-y').textContent = DURUM[d] || d; kok.dataset.d = d; q('.vd-mic').classList.toggle('canli', d === 'dinliyor');
+    function durum(d) { if (d === 'dinliyor' || d === 'dusunuyor') { try { tahtaSoldur(); } catch (e) {} } q('.vd-durum').dataset.d = d; q('.vd-durum-y').textContent = DURUM[d] || d; kok.dataset.d = d; q('.vd-mic').classList.toggle('canli', d === 'dinliyor');
       const konusma = d === 'konusuyor' || d === 'dusunuyor'; q('[data-a=dur]').hidden = !konusma; q('[data-a=tekrar]').hidden = konusma; }
 
     /* ---- sohbet paneli ---- */
@@ -500,9 +506,29 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     q('[data-a=trAc]').checked = ayar.altyaziTR;
     /* arka plan (görüntülü görüşmedeki bulanık oda gibi) */
     const FONLAR = ['koyu', 'sinif', 'kafe', 'ofis', 'kutuphane', 'doga'];
-    const fonUygula = () => { kok.dataset.fon = FONLAR.includes(ayar.fon) ? ayar.fon : 'koyu'; q('[data-a=fon]').value = kok.dataset.fon; };
+    let fonUygula = () => { kok.dataset.fon = FONLAR.includes(ayar.fon) ? ayar.fon : 'koyu'; q('[data-a=fon]').value = kok.dataset.fon; };
     q('[data-a=fon]').onchange = e => { ayar.fon = e.target.value; ayarKaydet(); fonUygula(); };
+    /* fondaki küçük hareketler (yalnız CSS: transform/opacity, telefonu yormaz) */
+    const tek = (cls, n) => Array.from({ length: n }, (_, k) => `<i class="${cls} ${cls}${k + 1}"></i>`).join('');
+    const FON_HAREKET = {
+      koyu: tek('fh-kure', 2),
+      sinif: '<i class="fh-huzme"></i>' + tek('fh-toz', 6),
+      kafe: tek('fh-bokeh', 5) + tek('fh-buhar', 3),
+      ofis: '<i class="fh-gecen"></i><i class="fh-pencere"></i>',
+      kutuphane: '<i class="fh-lamba"></i>' + tek('fh-toz', 6),
+      doga: tek('fh-yaprak', 3) + tek('fh-gunes', 2)
+    };
+    const fonHareket = () => { const el = q('.vd-fon-hareket'); const f = kok.dataset.fon; if (el.dataset.f !== f) { el.dataset.f = f; el.innerHTML = FON_HAREKET[f] || ''; } };
+    const fonUygula0 = fonUygula;
+    fonUygula = () => { fonUygula0(); fonHareket(); };
     fonUygula();
+    const canliUygula = () => { kok.classList.toggle('vd-canli', ayar.canli !== false); q('[data-a=canli]').checked = ayar.canli !== false; };
+    q('[data-a=canli]').onchange = e => { ayar.canli = e.target.checked; ayarKaydet(); canliUygula(); };
+    canliUygula();
+    q('[data-a=tahta]').checked = ayar.tahta !== false;
+    q('[data-a=tahta]').onchange = e => { ayar.tahta = e.target.checked; ayarKaydet(); if (!ayar.tahta) tahtaGizle(); };
+    q('[data-a=kendim]').checked = !!ayar.kendim;
+    q('[data-a=kendim]').onchange = e => { ayar.kendim = e.target.checked; ayarKaydet(); if (st.faz === 'ders') { if (ayar.kendim) kamAc(true); else kamKapat(); } };
     modUygula(false);
     if (kayit) {   /* kaldığın yerden: aynı mod ve konu, lobide konu seçimi yok */
       if (kayit.mod) { ayar.mod = kayit.mod; modUygula(false); }
@@ -773,8 +799,15 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
        oto: derslerde hızlı, genel sohbette dengeli. Derin: en doğru ama ilk kelime birkaç saniye gecikir. */
     if (!['oto', 'hizli', 'dengeli', 'derin'].includes(ayar.kalite)) ayar.kalite = 'oto';
     const KALITE_NOT = { oto: 'Derslerde hızlı, genel sohbette dengeli çalışır.', hizli: 'Cevaplar hemen başlar; karmaşık sorularda daha kısa düşünür.', dengeli: 'Cevaptan önce biraz düşünür; bekleme neredeyse fark edilmez.', derin: 'En dikkatli cevap; ilk kelime 2-5 sn gecikebilir. Zor sorular ve önemli konular için.' };
-    function kaliteCiz() { qa('[data-a=kalite]').forEach(x => { x.value = ayar.kalite; }); qa('.vd-kalite-not').forEach(x => { x.textContent = KALITE_NOT[ayar.kalite]; }); }
-    qa('[data-a=kalite]').forEach(x => x.onchange = () => { ayar.kalite = x.value; ayarKaydet(); kaliteCiz(); if (st.faz === 'ders') bilgi('Sohbet kalitesi: ' + x.options[x.selectedIndex].text.split(' · ')[0] + '. Bir sonraki cevaptan itibaren geçerli.'); });
+    function modelYazi() {
+      let groq = false; try { groq = (JSON.parse(localStorage.getItem('groqApiKeys') || '[]') || []).filter(Boolean).length > 0; } catch (e) {}
+      if (!groq) return 'Model: Gemini (Groq anahtarı yok).';
+      const hafif = (window.DHProviders && DHProviders.getModel && DHProviders.getModel('groq')) || 'Groq varsayılanı', guclu = 'openai/gpt-oss-120b';
+      const k = ayar.kalite || 'oto';
+      return k === 'hizli' ? 'Model: ' + hafif + '.' : k === 'oto' ? 'Model: derste ' + hafif + ', genel sohbette ' + guclu + '.' : 'Model: ' + guclu + '.';
+    }
+    function kaliteCiz() { qa('[data-a=kalite]').forEach(x => { x.value = ayar.kalite; }); qa('.vd-kalite-not').forEach(x => { x.textContent = (KALITE_NOT[ayar.kalite] || '') + ' ' + modelYazi(); }); }
+    qa('[data-a=kalite]').forEach(x => x.onchange = () => { ayar.kalite = x.value; ayarKaydet(); kaliteCiz(); if (st.faz === 'ders') bilgi('Yapay zekâ modeli: ' + x.options[x.selectedIndex].text.split(' · ')[0] + '. Bir sonraki cevaptan itibaren geçerli.'); });
     kaliteCiz();
     /* CEVAP UZUNLUĞU — üst sınır ve derinlik izni; alt sınır değil (basit sorular kısa kalır) */
     if (!['kisa', 'normal', 'ayrintili'].includes(ayar.uzunluk)) ayar.uzunluk = 'normal';
@@ -1120,9 +1153,24 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     function dolgulariHazirla() { if (!geminiSesAcik()) return; DOLGU[turkceMi() ? 'tr' : 'en'].slice(0, 2).forEach(t => ttsUret(t).catch(() => {})); }
 
     /* ---- altyazı: söylenen parça (ve örnekse çevirisi) ---- */
+    /* ---- tahta: açıklamadaki İngilizce örnek okunurken cümle ve Türkçesi tahtada (telefonda altyazının yerinde) ---- */
+    const telDikey = () => window.matchMedia && matchMedia('(max-aspect-ratio: 1/1) and (max-width: 760px)').matches;
+    function tahtaGoster(ust, enHTML, trYazi, okunan, tur) {
+      const t = q('.vd-tahta'); const yeni = t.hidden || t.dataset.en !== enHTML;
+      t.dataset.en = enHTML; t.dataset.tur = tur || 'ornek';
+      q('.vd-tahta-ust').textContent = ust; q('.vd-tahta-en').innerHTML = enHTML;
+      const tr = q('.vd-tahta-tr'); tr.textContent = trYazi || ''; tr.hidden = !trYazi;
+      t.classList.toggle('okunuyor-en', okunan === 'en'); t.classList.toggle('okunuyor-tr', okunan === 'tr'); t.classList.remove('gecti');
+      if (yeni) { t.hidden = true; void t.offsetWidth; t.hidden = false; }   /* her yeni örnekte kayarak gelsin */
+      kok.classList.add('vd-tahta-acik');
+    }
+    function tahtaGizle() { const t = q('.vd-tahta'); t.hidden = true; t.dataset.en = ''; kok.classList.remove('vd-tahta-acik'); }
+    function tahtaSoldur() { const t = q('.vd-tahta'); if (t.hidden) return; if (telDikey()) { tahtaGizle(); return; } t.classList.remove('okunuyor-en', 'okunuyor-tr'); t.classList.add('gecti'); kok.classList.remove('vd-tahta-acik'); }
     function altyaziGoster(m, i, cevMi) {
       const liste = m.liste, asil = liste[i]; if (!asil) return;
       const ac = aciklamaMi(m), trKut = q('.vd-tr');
+      if (ayar.tahta !== false && ac && asil.dil === 'en') tahtaGoster('Örnek', kelimeler(asil.metin), asil.cev || '', cevMi ? 'tr' : 'en', 'ornek');
+      else if (q('.vd-tahta').dataset.tur === 'ornek') tahtaSoldur();
       if (ac && asil.dil === 'en' && asil.cev) { trKut.textContent = asil.cev; trKut.hidden = false; trKut.classList.add('ornek'); trKut.classList.toggle('okunuyor', !!cevMi); }
       else if (ac) { trKut.textContent = ''; trKut.classList.remove('ornek', 'okunuyor'); }
       else { trKut.textContent = m.tr || ''; trKut.hidden = !ayar.altyaziTR; }
@@ -1482,6 +1530,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (genelMi() && window.DHGoogle) { const gd = DHGoogle.durum(); if (gd.istemci && gd.dahaOnce && !gd.bagli) DHGoogle.baglan().catch(() => {}); }
       try { speechSynthesis.cancel(); yuz.isit(); } catch (e) {}   /* sesleri ısıt: ilk cümlede ağız sesin önüne geçmesin */
       st.faz = 'ders'; st.bas = Date.now(); kok.classList.add('vd-derste');
+      if (ayar.kendim) setTimeout(() => { if (!st.bitti && !kam.akis) kamAc(true); }, 1200);   /* kendi görüntüm köşede */
       if (genis() && ayar.sohbet !== false) sohbetAc(true, true);
       q('.vd-lobi').remove(); q('.vd-alt-bar').hidden = false; q('.vd-sure').hidden = false;
       st.saat = setInterval(() => { const s = Math.floor((Date.now() - st.bas) / 1000); q('.vd-sure').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); lastAct = Date.now(); }, 1000);
@@ -1609,6 +1658,22 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       const sen = kim === 'Sen';
       sor(null, `The learner pressed "Analyse with ${OGRETMEN}" on this sentence ${sen ? 'THEY wrote/said' : 'from the conversation'}: "${cumle}". Explain it IN TURKISH (warm, informal "sen"), at their level: what it means, its grammar structure and the rule behind it${sen ? ', whether it is correct (if not, give the correct version as an English segment)' : ''}, and 1-2 useful words or phrases from it. Then give ONE new English example sentence as an English segment and briefly ask if it is clear. Keep it to 4-6 short segments. Speak English examples as English segments (lang "en"), the explanation as Turkish segments (lang "tr").`);
     }
+    /* öğrencinin cümlesi ile düzeltilmiş hali: fazla kelimenin üstü çizili, eklenecek kelime yeşil */
+    function farkHTML(yanlis, dogru) {
+      /* kelime kelime karşılaştırma (büyük/küçük harf ve noktalama farkı sayılmaz); yazım düzeltilmiş halinden gösterilir */
+      const A = String(yanlis || '').trim().split(/\s+/).filter(Boolean), B = String(dogru || '').trim().split(/\s+/).filter(Boolean);
+      const n = w => w.toLowerCase().replace(/[^\p{L}\p{N}']/gu, '').replace(/’/g, "'");
+      if (!A.length || A.length * B.length > 40000) return esc(dogru);
+      const L = Array.from({ length: A.length + 1 }, () => new Array(B.length + 1).fill(0));
+      for (let i = A.length - 1; i >= 0; i--) for (let j = B.length - 1; j >= 0; j--) L[i][j] = n(A[i]) === n(B[j]) ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+      const o = []; let i = 0, j = 0;
+      while (i < A.length || j < B.length) {
+        if (i < A.length && j < B.length && n(A[i]) === n(B[j])) { o.push(esc(B[j])); i++; j++; }
+        else if (j < B.length && (i >= A.length || L[i][j + 1] > L[i + 1][j])) { o.push(`<b class="vd-ekle">${esc(B[j])}</b>`); j++; }
+        else { o.push(`<s class="vd-sil">${esc(A[i])}</s>`); i++; }
+      }
+      return o.join(' ');
+    }
     function kontrol(um, c) {
       if (c.lang === 'tr') { um.check = { ok: true, tr: true }; ogrenciDurum(um); return; }
       if (!c.ok && (!c.corrected || trivialDiff(um.text, c.corrected))) c = { ok: true };
@@ -1618,8 +1683,10 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         st.xp += 5; addXP(5); const e = addError({ wrong: um.text, right: c.corrected, why: c.why_tr, tag: c.tag || '', mode: 'video', d: today() }); st.errs.push(e); um._err = e;
         if (!kok.classList.contains('vd-sohbet-acik')) {
           bilgiGizle();
-          const z = q('.vd-duzeltme'); z.innerHTML = `${vi('pen')}<span><b>Küçük düzeltme:</b> ${esc(c.corrected)}</span>`; z.hidden = false; z.onclick = () => { sohbetAc(true); z.hidden = true; };
-          clearTimeout(st.duzZ); st.duzZ = setTimeout(() => { z.hidden = true; }, 7000);
+          const z = q('.vd-duzeltme');
+          z.innerHTML = `${vi('pen')}<span class="vd-duz-ic"><b>Küçük düzeltme</b><span class="vd-duz-fark">${farkHTML(um.text, c.corrected)}</span>${c.why_tr ? `<small>${esc(c.why_tr)}</small>` : ''}</span>`;
+          z.hidden = false; z.onclick = () => { sohbetAc(true); z.hidden = true; };
+          clearTimeout(st.duzZ); st.duzZ = setTimeout(() => { z.hidden = true; }, 11000);
         }
       }
       ogrenciDurum(um);
@@ -1878,11 +1945,12 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
 
     /* ---- kendi kameran: köşede görüntü + "Deniz'e göster" (görüntü yalnız düğmeye basınca gönderilir) ---- */
     const kam = { akis: null, yon: 'user' };
-    async function kamAc() {
+    async function kamAc(kucuk) {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('Bu tarayıcı kamerayı desteklemiyor.'); return; }
       try {
         kamKapat(true);
-        kam.akis = await navigator.mediaDevices.getUserMedia({ video: { facingMode: kam.yon, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+        /* köşedeki kendi görüntün için düşük çözünürlük (telefonu yormasın); "Deniz'e göster" için düğmeyle açılınca yüksek */
+        kam.akis = await navigator.mediaDevices.getUserMedia({ video: { facingMode: kam.yon, width: { ideal: kucuk ? 480 : 1280 }, height: { ideal: kucuk ? 360 : 720 } }, audio: false });
         const v = q('.vd-kam video'); v.srcObject = kam.akis; v.classList.toggle('ayna', kam.yon === 'user');
         try { await v.play(); } catch (e) {}
         q('.vd-kam').hidden = false; q('[data-a=kam]').classList.add('sec');
