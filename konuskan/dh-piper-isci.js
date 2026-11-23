@@ -8,7 +8,6 @@
    Hata: ← { no, hata: 'mesaj' } */
 'use strict';
 var Y = null, KASA = 'dh-kalici-piper-v1';
-var sira = Promise.resolve();   /* işler tek tek: iki sentez aynı anda koşmasın */
 
 async function kasa() { try { return await caches.open(KASA); } catch (e) { return null; } }
 async function indir(url, ilerle) {
@@ -97,17 +96,27 @@ async function sentezle(d) {
   return { pcm: pcm, hz: c.audio.sample_rate, fonemMs: Math.round(t1 - t0), modelMs: Math.round(t2 - t1), phYenilendi: phYenilendi };
 }
 
+/* iş sırası: ses üretimi (sentezle) model hazırlığının (hazirla) önüne geçer; kendi aralarında geliş sırası.
+   Açılışta Türkçe model yüklenince ilk cümle, İngilizce modelin yüklenmesini beklemeden üretilir. */
+var isler = [], calisiyor = false;
+function isYap(d) {
+  if (d.tip === 'hazirla') return oturum(d.id, d.yol, function (x) { self.postMessage(Object.assign({ no: d.no, tip: 'ilerle' }, x)); }).then(function () { return { tamam: true }; });
+  if (d.tip === 'sentezle') { if ((d.nesil || 0) < gecerliNesil) return Promise.reject(new Error('iptal')); return sentezle(d); }
+  return Promise.reject(new Error('bilinmeyen iş: ' + d.tip));
+}
+function siradaki() {
+  if (calisiyor || !isler.length) return;
+  var k = -1; for (var i = 0; i < isler.length; i++) if (isler[i].d.tip === 'sentezle') { k = i; break; }
+  var j = isler.splice(k < 0 ? 0 : k, 1)[0]; calisiyor = true;
+  var p; try { p = isYap(j.d); } catch (e) { p = Promise.reject(e); }
+  p.then(j.ok, j.hata).then(function () { calisiyor = false; siradaki(); });
+}
 var gecerliNesil = 0;   /* yeni cevap başlayınca eski cevabın sıradaki parçaları atlanır */
 self.onmessage = function (e) {
   var d = e.data || {}, no = d.no;
   if (d.tip === 'kur') { Y = d.yol; self.postMessage({ no: no, tamam: true }); return; }
   if (d.tip === 'nesil') { gecerliNesil = Math.max(gecerliNesil, d.nesil || 0); return; }
-  var is = sira.then(async function () {
-    if (d.tip === 'hazirla') { await oturum(d.id, d.yol, function (x) { self.postMessage(Object.assign({ no: no, tip: 'ilerle' }, x)); }); return { tamam: true }; }
-    if (d.tip === 'sentezle') { if ((d.nesil || 0) < gecerliNesil) throw new Error('iptal'); return await sentezle(d); }
-    throw new Error('bilinmeyen iş: ' + d.tip);
-  });
-  sira = is.catch(function () {});
+  var is = new Promise(function (ok, hata) { isler.push({ d: d, ok: ok, hata: hata }); siradaki(); });
   is.then(function (r) {
     if (r && r.pcm) self.postMessage(Object.assign({ no: no }, r), [r.pcm.buffer]);
     else self.postMessage(Object.assign({ no: no }, r));

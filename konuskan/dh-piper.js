@@ -133,7 +133,7 @@
   function isciAl() {
     if (isci === false) return null; if (isci) return isci;
     try {
-      isci = new Worker(new URL('./dh-piper-isci.js?v=2', BU).href);
+      isci = new Worker(new URL('./dh-piper-isci.js?v=3', BU).href);
       isci.onmessage = function (e) {
         var d = e.data || {}, b = bekleyen[d.no]; if (!b) return;
         if (d.tip === 'ilerle') { if (b.ilerle) b.ilerle(d); return; }
@@ -184,6 +184,7 @@
         yuklu[id] = true;
         var buf = new AudioBuffer({ length: r.pcm.length, numberOfChannels: 1, sampleRate: r.hz }); buf.copyToChannel(r.pcm, 0);
         gunlukYaz({ z: new Date().toISOString().slice(11, 19), m: metin.slice(0, 30), dil: dil, fonemMs: r.fonemMs, modelMs: r.modelMs, sn: +(r.pcm.length / r.hz).toFixed(2), toplamMs: Math.round(performance.now() - t0), isci: true, phYenilendi: r.phYenilendi });
+        buf._uretimMs = (r.fonemMs || 0) + (r.modelMs || 0);   /* tamponlu okuma: telefonun hızını ölçmek için */
         return buf;
       }, function (e) { if (e && e.message === 'iptal') throw e; isciBirak(e); return sentezle(metin, dil, hiz); });   /* sayfada yeniden dene */
     }
@@ -206,6 +207,7 @@
       var hz = c.audio.sample_rate, buf = new AudioBuffer({ length: pcm.length, numberOfChannels: 1, sampleRate: hz });
       buf.copyToChannel(pcm, 0);
       gunlukYaz({ z: new Date().toISOString().slice(11, 19), m: metin.slice(0, 30), dil: dil, sn: +(pcm.length / hz).toFixed(2), toplamMs: Math.round(performance.now() - t0), isci: false });
+      buf._uretimMs = Math.round(performance.now() - t0);
       return buf;
     });
     sira = is.catch(function () {});

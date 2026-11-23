@@ -178,6 +178,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         </div>
       </section>
       <div class="vd-altyazi" aria-live="polite"><div class="vd-cumle"></div><div class="vd-tr"></div></div>
+      <div class="vd-kum" hidden aria-live="polite"><div class="vd-kum-ust"><span class="vd-kum-saat" aria-hidden="true">⏳</span><b>Ses hazırlanıyor</b><span class="vd-kum-sure"></span></div><div class="vd-kum-cubuk"><i></i></div><div class="vd-kum-metin"></div></div>
       <div class="vd-sen" hidden><span class="vd-dalga"><i></i><i></i><i></i><i></i><i></i></span><span class="vd-sen-y"></span><button type="button" class="vd-sen-yeniden" title="Sil ve baştan kaydet" aria-label="Baştan kaydet">${vi('again')}</button><button type="button" class="vd-sen-gonder" title="Bitirdim, gönder" aria-label="Gönder">${vi('send')}</button></div>
       <form class="vd-onay" hidden>
         <div class="vd-onay-ust"><b>Mikrofonun anladığı</b><span>Yanlışsa düzelt ya da yeniden kaydet</span></div>
@@ -916,12 +917,57 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     function piperEkle(it) {
       if (!it || it.sesTampon || it._sesP || it.sessiz || !it.metin || ayar.ses !== 'piper' || !window.DHPiper || st.piperHata) return it;
       const dl = it.dil === 'tr' ? 'tr' : 'en';
-      if (st.piperHazir) it._sesP = DHPiper.sentezle(it.metin, dl, S.rate);
-      else if (st.piperSoz) it._sesP = st.piperSoz.then(ok => ok ? DHPiper.sentezle(it.metin, dl, S.rate) : Promise.reject({ code: 'piper' }));   /* yükleniyor: bekle (motor en çok 9 sn bekler, sonra tarayıcı sesi) */
+      /* modeller yükleniyorsa da iş hemen gönderilir: iş parçacığı o dilin modeli hazır olur olmaz üretir
+         (önceden iki dilin de yüklenmesi beklenirdi: açılışta "Hoş geldin" ~27 sn fazladan bekliyordu) */
+      if (st.piperHazir || st.piperSoz) it._sesP = DHPiper.sentezle(it.metin, dl, S.rate);
       else return it;
+      it._kT0 = performance.now();
       it._sesP.catch(() => { it._sesHata = true; }); it._sesBekleMs = 240000;   /* yalnız Piper: hazır olmayan parçada telefon sesine geçilmez, beklenir (sesler tek olsun) */
       return it;
     }
+    /* telefonun cihaz sesi hızı (dil başına), her üretilen parçayla güncellenir:
+       sc = sesin harf başına süresi (sn), or = üretim süresi / ses süresi. Başlangıç değerleri Android 10 ölçümünden. */
+    const PIPER_HIZ_KEY = 'dh-piper-hiz-v1';
+    const piperHiz = (() => { const v = { tr: { sc: 0.075, or: 4.5 }, en: { sc: 0.07, or: 3.4 } }; try { const k = JSON.parse(localStorage.getItem(PIPER_HIZ_KEY) || 'null'); if (k) ['tr', 'en'].forEach(d => { if (k[d] && k[d].sc > 0 && k[d].or > 0) v[d] = k[d]; }); } catch (e) {} return v; })();
+    const piperDil = it => it.dil === 'tr' ? 'tr' : 'en';
+    function piperTahminSn(it) { return Math.max(0.6, String(it.metin || '').length * piperHiz[piperDil(it)].sc); }
+    function piperKalibre(it, buf) {
+      const sn = buf && buf.duration, n = String(it.metin || '').length; if (!sn || sn < 0.4 || !n) return;
+      const h = piperHiz[piperDil(it)], a = 0.3;
+      h.sc = h.sc * (1 - a) + (sn / n) * a;
+      if (buf._uretimMs > 0) h.or = h.or * (1 - a) + (buf._uretimMs / 1000 / sn) * a;
+      try { localStorage.setItem(PIPER_HIZ_KEY, JSON.stringify(piperHiz)); } catch (e) {}
+    }
+    /* okumaya şimdi başlansa hiçbir parçada beklenmesin diye daha kaç ms beklemek gerekir (iş parçacığı parçaları sırayla üretir) */
+    function piperBekleme(liste) {
+      const simdi = performance.now(); let bitis = simdi, once = 0, gerek = -Infinity, kalanTop = 0, oncekiHazir = null, ilkBekleyen = true;
+      const modelYuk = {};
+      liste.forEach(it => {
+        const sn = it._hazirT ? it._sn : piperTahminSn(it);
+        if (!it._hazirT) {
+          const dl = piperDil(it);
+          let uretim = sn * 1000 * piperHiz[dl].or + 150;
+          if (window.DHPiper && !DHPiper.hazirMi(dl) && !modelYuk[dl]) { modelYuk[dl] = true; uretim += 13000; }   /* model henüz belleğe yüklenmedi (telefonda ~13 sn) */
+          if (ilkBekleyen) { const bas = Math.max(it._kT0 || simdi, oncekiHazir || 0); uretim = Math.max(uretim * 0.1, uretim - (simdi - bas)); ilkBekleyen = false; }
+          bitis += uretim; kalanTop += uretim;
+          gerek = Math.max(gerek, bitis - once);
+        } else oncekiHazir = it._hazirT;
+        once += sn * 1000 + 250;
+      });
+      if (gerek === -Infinity) return { bekle: 0 };
+      return { bekle: gerek - simdi + kalanTop * 0.12 + 800 };   /* pay: telefon tahminden yavaş kalırsa ses yine kesilmesin */
+    }
+    function kumGoster(m, bekleMs, kesin, t0) {
+      const kut = q('.vd-kum'); if (!kut) return;
+      if (kut.hidden) { kut.hidden = false; kok.classList.add('vd-kum-acik'); }
+      const sn = Math.max(1, Math.ceil(bekleMs / 1000));
+      kut.querySelector('.vd-kum-sure').textContent = kesin ? '~' + sn + ' sn' : 'hesaplanıyor…';
+      const gecen = performance.now() - (t0 || performance.now());
+      kut.querySelector('.vd-kum-cubuk i').style.width = (kesin ? Math.min(100, Math.round(gecen / (gecen + Math.max(0, bekleMs)) * 100)) : 4) + '%';
+      const mt = kut.querySelector('.vd-kum-metin'), h = parcaHTML(m);
+      if (mt._h !== h) { mt._h = h; mt.innerHTML = h; }
+    }
+    function kumGizle() { const kut = q('.vd-kum'); if (kut) { kut.hidden = true; const mt = kut.querySelector('.vd-kum-metin'); mt.innerHTML = ''; mt._h = ''; } kok.classList.remove('vd-kum-acik'); }
     async function ttsOnbellek(anahtar, ab) {
       /* kısa ve sık kullanılan sesler (dolgu, "acele etme") bir kez üretilir, tarayıcıda saklanır */
       try { const c = await caches.open('dh-tts-v1'); const u = 'https://tts.dilharita.local/' + encodeURIComponent(anahtar);
@@ -1043,7 +1089,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       const n = performance.now(), r = x => Math.round(x);
       const o = { z: new Date().toISOString().slice(11, 19), etk: 'cevap' + (t.arka || document.hidden ? ' (arka plan)' : ''), d: '', s: ayar.ses === 'piper' ? 'cihaz sesi' : 'tarayıcı', ara: null,
         b: r(n - (t.bitti || t.gonder)), k: null, e: null,
-        m: (t.bitti ? 'dinleme bitti→gönderildi ' + r(t.gonder - t.bitti) + (t.hassas != null || t.onay != null ? ' (' + [t.hassas != null ? 'hassas tanıma ' + t.hassas : '', t.onay != null ? 'onay ekranı ' + t.onay : ''].filter(Boolean).join(', ') + ')' : '') + ' · ' : '') + 'yapay zekâ ilk cümle ' + (t.ilk ? r(t.ilk - t.gonder) : '?') + ' · ses hazırlığı ' + (t.ilk ? r(n - t.ilk) : '?') + ' ms' };
+        m: (t.bitti ? 'dinleme bitti→gönderildi ' + r(t.gonder - t.bitti) + (t.hassas != null || t.onay != null ? ' (' + [t.hassas != null ? 'hassas tanıma ' + t.hassas : '', t.onay != null ? 'onay ekranı ' + t.onay : ''].filter(Boolean).join(', ') + ')' : '') + ' · ' : '') + 'yapay zekâ ilk cümle ' + (t.ilk ? r(t.ilk - t.gonder) : '?') + ' · ses hazırlığı ' + (t.ilk ? r(n - t.ilk) : '?') + ' ms' + (t.tampon != null ? ' (tampon ' + t.tampon + (t.tamponTahmin != null ? ', ilk tahmin ' + t.tamponTahmin : '') + ')' : '') };
       try { const a = JSON.parse(localStorage.getItem('dh-ses-olcum-v1') || '[]'); a.push(o); localStorage.setItem('dh-ses-olcum-v1', JSON.stringify(a.slice(-60))); } catch (e) {}
     }
     function yeniKonusucu(m) {
@@ -1075,7 +1121,36 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         if (ornek && c.cev) a.push({ metin: c.cev, dil: 'tr', duygu: c.duygu, guc: c.guc, jest: null, sesNotr: true, goster: gosterFn(i, true) });
         return a;
       }
-      function siraylaEkle(p) { zincir = zincir.then(() => p).then(items => { if (iptal) return; (ayar.ses === 'piper' ? items.flatMap(piperBol) : items).forEach(it => { piperEkle(it); k.ekle(it); m.okunan.push(it); }); }); }
+      /* ---- cihaz sesi (Piper) tamponu: telefon sesi, süresinin birkaç katında üretiyor. Parçalar geldikçe okunursa
+         araya uzun sessizlikler giriyordu. Burada cevabın yazısı hemen gösterilir, kum saati döner; okuma, kalan parçaların
+         okunurken yetişeceği anda başlar ve kesilmez (video sitelerindeki tamponlama gibi). ---- */
+      const tamponlu = ayar.ses === 'piper' && !!window.DHPiper && !st.piperHata;
+      let kapi = !tamponlu, kapandiK = false, kumZ = null, tamponT0 = null;
+      const tut = [];
+      function kEkle(it) {
+        if (kapi) { k.ekle(it); return; }
+        if (tamponT0 == null) tamponT0 = performance.now();
+        if (!it._kT0) it._kT0 = performance.now();
+        tut.push(it);
+        if (it._sesP && !it.sesTampon) it._sesP.then(buf => { it._hazirT = performance.now(); it._sn = buf && buf.duration || 0; piperKalibre(it, buf); kapiBak(); }, () => { it._hazirT = performance.now(); it._sn = 0; kapiBak(); });
+        else { it._hazirT = performance.now(); it._sn = it.sesTampon && it.sesTampon.duration || (it.sessiz || !it.metin ? 0 : piperTahminSn(it)); }
+        if (!kumZ) kumZ = setInterval(kapiBak, 500);
+        kapiBak();
+      }
+      function kapiAc() {
+        if (kapi) return; kapi = true; clearInterval(kumZ); kumZ = null; kumGizle();
+        if (m._t && tamponT0 != null) { m._t.tampon = Math.round(performance.now() - tamponT0); }
+        tut.splice(0).forEach(x => k.ekle(x));
+        if (kapandiK) k.bitir();
+      }
+      function kapiBak() {
+        if (kapi || iptal) return;
+        const b = piperBekleme(tut);
+        if (m._t && m._t.tamponTahmin == null && kapandiK && b.bekle > 0) m._t.tamponTahmin = Math.round(performance.now() - tamponT0 + b.bekle);
+        if (kapandiK && b.bekle <= 0) { kapiAc(); return; }
+        kumGoster(m, b.bekle, kapandiK, tamponT0);
+      }
+      function siraylaEkle(p) { zincir = zincir.then(() => p).then(items => { if (iptal) return; (ayar.ses === 'piper' ? items.flatMap(piperBol) : items).forEach(it => { piperEkle(it); kEkle(it); m.okunan.push(it); }); }); }
       /* Türkçe anlatımdaki bir örneğin çevirisi gelmediyse önce onu tamamla (okunabilsin) */
       function eksikCeviri(parcalar) {
         const eksik = parcalar.filter(({ c }) => acMi() && c.dil === 'en' && !c.cev);
@@ -1126,8 +1201,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
               .then(buf => { if (!sesBasladi && !m.liste.length && !iptal) k.ekle({ metin: t, dil, sesTampon: buf, duygu: 'dusunceli', guc: 0.5, jest: 'dusun' }); }).catch(() => {});
           } else k.ekle(piperEkle({ metin: t, dil, duygu: 'dusunceli', guc: 0.5, jest: 'dusun' }));
         },
-        bitir() { if (bekleyen.length) { blokGonder(bekleyen); bekleyen = []; } zincir = zincir.then(() => k.bitir()); },
-        iptal() { iptal = true; yuz.sustur(); },
+        bitir() { if (bekleyen.length) { blokGonder(bekleyen); bekleyen = []; } zincir = zincir.then(() => { kapandiK = true; if (kapi) k.bitir(); else kapiBak(); }); },
+        iptal() { iptal = true; clearInterval(kumZ); kumZ = null; if (!kapi) kumGizle(); yuz.sustur(); },
         bitti() { return zincir.then(() => k.bitti); }
       };
     }
