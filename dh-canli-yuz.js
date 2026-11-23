@@ -637,7 +637,11 @@
         /* tarayıcı sesinde duygu: ses yüksekliği ve hız hafifçe değişir (ayarlardan kapatılabilir) */
         /* [ses yüksekliği, hız] — belirgin ama doğal sınırlar içinde; bazı tarayıcı sesleri yüksekliği yok sayar, hız her zaman işler */
         var sdAcik = ka("sesDuygu", 1) > 0.02; try { if (localStorage.getItem("dh-ses-duygu") === "0") sdAcik = false; } catch (e) {}
-        if (!sdAcik && ka("sesPerde", 1) !== 1) u.pitch = Math.max(0, Math.min(2, ka("sesPerde", 1)));
+        /* Telefonda (Android) ses motoru perde ya da hız her değiştiğinde kendini baştan hazırlıyor: parça başına ~3 sn gecikme
+           (Ses hız testi: aynı ayarla 0,3-0,6 sn, perde 1,4 → 2,75 sn, hız 1,15 → 2,9 sn). Telefonda bütün parçalar aynı perde
+           ve hızla okunur (ayarlardaki ses perdesi ve konuşma hızı); duygu yalnız yüzde görünür. */
+        if (ANDROID_YZ) { u.pitch = Math.max(0, Math.min(2, ka("sesPerde", 1))); u.rate = hizOrani || 1; sdAcik = false; }
+        else if (!sdAcik && ka("sesPerde", 1) !== 1) u.pitch = Math.max(0, Math.min(2, ka("sesPerde", 1)));
         if (sdAcik) {
           var sd = c.duygu && !c.sesNotr ? duyguSesi(c.duygu) : [1, 1], ty = sd[0], hz = sd[1];   /* sesNotr: örnek cümle — duygu tonu yok */
           if (/\?\s*$/.test(c.metin)) ty *= 1.1;                       /* soru: ses yükselir */
@@ -833,7 +837,10 @@
         seslerHazir().then(function () {
           ["en", "tr"].forEach(function (d) {
             try { var u = new SpeechSynthesisUtterance(d === "tr" ? "merhaba" : "hello"); var v = sesSec(d); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = d === "tr" ? "tr-TR" : "en-US";
-              u.volume = 0; u.rate = 1.6; u.onboundary = function () { sinirVar = true; }; speechSynthesis.speak(u); } catch (e) {}
+              u.volume = 0; u.rate = 1.6; u.onboundary = function () { sinirVar = true; };
+              /* telefonda ısıtma Deniz'in kendi hız ve perdesiyle: farklı ayar, ilk cümleden önce motoru yeniden hazırlatır */
+              if (ANDROID_YZ) { var hz = 1; try { hz = +(typeof S !== "undefined" && S.rate) || 1; } catch (er) {} u.rate = hz; u.pitch = Math.max(0, Math.min(2, ka("sesPerde", 1))); }
+              speechSynthesis.speak(u); } catch (e) {}
           });
         });
       },
