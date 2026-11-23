@@ -841,7 +841,7 @@
         seslerHazir().then(function () {
           ["en", "tr"].forEach(function (d) {
             try { var u = new SpeechSynthesisUtterance(d === "tr" ? "merhaba" : "hello"); var v = sesSec(d); if (ANDROID_YZ) u.lang = String((v && v.lang) || (d === "tr" ? "tr-TR" : "en-GB")).replace("_", "-"); else if (v) { u.voice = v; u.lang = v.lang; } else u.lang = d === "tr" ? "tr-TR" : "en-US";
-              u.volume = 0; u.rate = 1.6; u.onboundary = function () { sinirVar = true; };
+              u.volume = 0; u.rate = 1.6; u.onboundary = function () { sinirVar = true; }; u.__dhSesYonetimli = true;   /* dh-ses.js ses atamasın */
               /* telefonda ısıtma Deniz'in kendi hız ve perdesiyle: farklı ayar, ilk cümleden önce motoru yeniden hazırlatır */
               if (ANDROID_YZ) { var hz = 1; try { hz = +(typeof S !== "undefined" && S.rate) || 1; } catch (er) {} u.rate = hz; u.pitch = Math.max(0, Math.min(2, ka("sesPerde", 1))); }
               speechSynthesis.speak(u); } catch (e) {}
