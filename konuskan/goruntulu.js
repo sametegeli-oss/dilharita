@@ -917,7 +917,8 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (st.piperHazir) it._sesP = DHPiper.sentezle(it.metin, dl, S.rate);
       else if (st.piperSoz) it._sesP = st.piperSoz.then(ok => ok ? DHPiper.sentezle(it.metin, dl, S.rate) : Promise.reject({ code: 'piper' }));   /* yükleniyor: bekle (motor en çok 9 sn bekler, sonra tarayıcı sesi) */
       else return it;
-      it._sesP.catch(() => {}); return it;
+      it._sesP.catch(() => { it._sesHata = true; }); it._sesBekleMs = 240000;   /* yalnız Piper: hazır olmayan parçada telefon sesine geçilmez, beklenir (sesler tek olsun) */
+      return it;
     }
     async function ttsOnbellek(anahtar, ab) {
       /* kısa ve sık kullanılan sesler (dolgu, "acele etme") bir kez üretilir, tarayıcıda saklanır */
@@ -1114,6 +1115,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         /* uzun beklemede düşünür gibi kısa bir dolgu ("Hmm.", "Let me see.") */
         dolgu() {
           if (sesBasladi || m.liste.length || iptal) return;
+          if (ayar.ses === 'piper') return;   /* cihaz seste dolgu yok: telefonda hazırlanması asıl cevabı geciktiriyordu */
           const liste = DOLGU[turkceMi() ? 'tr' : 'en']; const t = liste[(st.dolguN = (st.dolguN || 0) + 1) % 2];
           const dil = turkceMi() && t !== 'Hmm.' ? 'tr' : 'en';
           if (gemini && !ttsKapaliMi()) {
@@ -1360,6 +1362,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       const m = { role: 'assistant', text: '', tr: '', liste: [] };
       m._t = { bitti: metin && st.dinlemeBittiT && performance.now() - st.dinlemeBittiT < 60000 ? st.dinlemeBittiT : null, gonder: performance.now(), hassas: st.hassasMs, onay: st.onayT ? Math.round(performance.now() - st.onayT) : null }; st.dinlemeBittiT = null; st.hassasMs = null; st.onayT = null;
       if (document.hidden) m._t.arka = true;
+      if (ayar.ses === 'piper' && window.DHPiper && DHPiper.iptal) DHPiper.iptal();   /* önceki cevabın hazırlanmamış parçaları atlanır */
       const ks = yeniKonusucu(m);
       st.konusucu = ks;
       const dolguZ = setTimeout(() => ks.dolgu(), 1400);
@@ -1450,7 +1453,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       await new Promise(r => setTimeout(r, 120));
       if (m.okunan && m.okunan.length) {
         const k = yuz.konusAkis({ hiz: S.rate || 1, sonDuygu: 'cesaret', oncesi: c => { if (c.goster) c.goster(); } });
-        m.okunan.forEach(it => k.ekle(piperEkle(Object.assign({}, it)))); k.bitir(); await k.bitti; sonra(m, true);
+        m.okunan.forEach(it => { const c = Object.assign({}, it); if (c._sesHata) { delete c._sesP; delete c._sesHata; } k.ekle(piperEkle(c)); }); k.bitir();   /* iptal edilmiş/başarısız sesler yeniden hazırlanır */ await k.bitti; sonra(m, true);
       } else { await soyle(m, true); }
     }
     /* "Analiz": ders sürüyorsa Deniz cümleyi derste, sesli ve Türkçe açıklar; ders bittiyse analiz penceresi açılır */

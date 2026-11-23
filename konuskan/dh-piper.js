@@ -133,7 +133,7 @@
   function isciAl() {
     if (isci === false) return null; if (isci) return isci;
     try {
-      isci = new Worker(new URL('./dh-piper-isci.js?v=1', BU).href);
+      isci = new Worker(new URL('./dh-piper-isci.js?v=2', BU).href);
       isci.onmessage = function (e) {
         var d = e.data || {}, b = bekleyen[d.no]; if (!b) return;
         if (d.tip === 'ilerle') { if (b.ilerle) b.ilerle(d); return; }
@@ -163,6 +163,9 @@
       .catch(function (e) { isciBirak(e); return oturum(id, ilerle).then(function () { return true; }); });
     return oturum(id, ilerle).then(function () { return true; });
   }
+  /* yeni cevap: eski cevabın henüz başlamamış parçalarını atla (telefon boşuna uğraşmasın) */
+  var nesil = 0;
+  function iptal() { nesil++; if (isci) try { isci.postMessage({ tip: 'nesil', nesil: nesil }); } catch (e) {} }
   var gunluk = [];
   function gunlukYaz(o) { gunluk.push(o); if (gunluk.length > 30) gunluk.shift(); DHPiper.son = o; }
   var yuklu = {};
@@ -177,12 +180,12 @@
     var id = secili(dil === 'tr' ? 'tr' : 'en');
     if (metin && isciAl()) {
       var t0 = performance.now();
-      return isciIsSureli({ tip: 'sentezle', id: id, yol: SESLER[id].yol, metin: metin, hiz: hiz }, null, 120000).then(function (r) {
+      return isciIsSureli({ tip: 'sentezle', id: id, yol: SESLER[id].yol, metin: metin, hiz: hiz, nesil: nesil }, null, 900000).then(function (r) {
         yuklu[id] = true;
         var buf = new AudioBuffer({ length: r.pcm.length, numberOfChannels: 1, sampleRate: r.hz }); buf.copyToChannel(r.pcm, 0);
         gunlukYaz({ z: new Date().toISOString().slice(11, 19), m: metin.slice(0, 30), dil: dil, fonemMs: r.fonemMs, modelMs: r.modelMs, sn: +(r.pcm.length / r.hz).toFixed(2), toplamMs: Math.round(performance.now() - t0), isci: true, phYenilendi: r.phYenilendi });
         return buf;
-      }, function (e) { isciBirak(e); return sentezle(metin, dil, hiz); });   /* sayfada yeniden dene */
+      }, function (e) { if (e && e.message === 'iptal') throw e; isciBirak(e); return sentezle(metin, dil, hiz); });   /* sayfada yeniden dene */
     }
     var is = sira.then(async function () {
       if (!metin) throw new Error('boş metin');
@@ -211,5 +214,5 @@
 
   async function sil() { oturumlar = {}; yuklu = {}; try { if (isci) isci.terminate(); } catch (e) {} isci = null; bekleyen = {}; try { await caches.delete(KASA); } catch (e) {} }
 
-  var DHPiper = global.DHPiper = { isciHata: null, gunluk: function () { return gunluk.slice(); }, SESLER: SESLER, VARSAYILAN: VARSAYILAN, secili: secili, sec: sec, hazirMi: hazirMi, indirildiMi: indirildiMi, hazirla: hazirla, sentezle: sentezle, sil: sil, son: null };
+  var DHPiper = global.DHPiper = { iptal: iptal, isciHata: null, gunluk: function () { return gunluk.slice(); }, SESLER: SESLER, VARSAYILAN: VARSAYILAN, secili: secili, sec: sec, hazirMi: hazirMi, indirildiMi: indirildiMi, hazirla: hazirla, sentezle: sentezle, sil: sil, son: null };
 })(window);

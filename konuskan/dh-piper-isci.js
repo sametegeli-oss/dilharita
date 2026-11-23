@@ -97,12 +97,14 @@ async function sentezle(d) {
   return { pcm: pcm, hz: c.audio.sample_rate, fonemMs: Math.round(t1 - t0), modelMs: Math.round(t2 - t1), phYenilendi: phYenilendi };
 }
 
+var gecerliNesil = 0;   /* yeni cevap başlayınca eski cevabın sıradaki parçaları atlanır */
 self.onmessage = function (e) {
   var d = e.data || {}, no = d.no;
   if (d.tip === 'kur') { Y = d.yol; self.postMessage({ no: no, tamam: true }); return; }
+  if (d.tip === 'nesil') { gecerliNesil = Math.max(gecerliNesil, d.nesil || 0); return; }
   var is = sira.then(async function () {
     if (d.tip === 'hazirla') { await oturum(d.id, d.yol, function (x) { self.postMessage(Object.assign({ no: no, tip: 'ilerle' }, x)); }); return { tamam: true }; }
-    if (d.tip === 'sentezle') return await sentezle(d);
+    if (d.tip === 'sentezle') { if ((d.nesil || 0) < gecerliNesil) throw new Error('iptal'); return await sentezle(d); }
     throw new Error('bilinmeyen iş: ' + d.tip);
   });
   sira = is.catch(function () {});
