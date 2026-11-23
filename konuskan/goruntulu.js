@@ -542,7 +542,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
           });
         }
         st.piperHazir = true; st.piperHata = null;
-        st.piperDurum = 'Cihaz sesi (Piper) hazır: Türkçe ve İngilizce bu cihazda; internetsiz çalışır, dil geçişinde bekleme yok.'; sesDurumCiz();
+        st.piperDurum = 'Cihaz sesi (Piper) hazır: Türkçe ve İngilizce bu cihazda; internetsiz çalışır, dil geçişinde bekleme yok.' + (DHPiper.isciHata ? ' (Ayrı iş parçacığı bu tarayıcıda çalışmadı: ' + DHPiper.isciHata + '; ses sayfada üretiliyor, uzun cümlelerde sayfa kısa süre takılabilir.)' : ''); sesDurumCiz();
         if (dene) piperDene('tr');
         return true;
       })().catch(e => {
@@ -675,7 +675,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     };
     function piperGunlukHTML() {
       const g = window.DHPiper && DHPiper.gunluk ? DHPiper.gunluk() : []; if (!g.length) return '';
-      return `<p style="margin-top:10px">Cihaz sesi hazırlığı (son ${g.length}; ${g[g.length - 1].isci ? 'ayrı iş parçacığında' : 'sayfada'}): fonem = metnin ses birimlerine çevrilmesi, model = sesin üretilmesi (ms) · ses = sesin süresi (sn)</p><table><tr><th>saat</th><th>dil</th><th>fonem</th><th>model</th><th>toplam</th><th>ses</th><th>metin</th></tr>` +
+      return `<p style="margin-top:10px">Cihaz sesi hazırlığı (son ${g.length}; ${g[g.length - 1].isci ? 'ayrı iş parçacığında' : 'sayfada' + (DHPiper.isciHata ? ' — iş parçacığı hatası: ' + esc(DHPiper.isciHata) : '')}): fonem = metnin ses birimlerine çevrilmesi, model = sesin üretilmesi (ms) · ses = sesin süresi (sn)</p><table><tr><th>saat</th><th>dil</th><th>fonem</th><th>model</th><th>toplam</th><th>ses</th><th>metin</th></tr>` +
         g.slice().reverse().map(o => `<tr><td>${esc(o.z)}</td><td>${esc(o.dil)}</td><td>${o.fonemMs ?? '–'}</td><td>${o.modelMs ?? '–'}</td><td>${o.toplamMs}</td><td>${o.sn}</td><td>${esc(o.m)}</td></tr>`).join('') + '</table>';
     }
     q('[data-a=olcumGoster]').onclick = () => { const k = q('.vd-olcum'); k.hidden = !k.hidden; if (!k.hidden) olcumCiz(); };

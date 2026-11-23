@@ -147,10 +147,20 @@
   function isciIs(msg, ilerle) {
     return new Promise(function (ok, hata) { var no = ++isciNo; bekleyen[no] = { ok: ok, hata: hata, ilerle: ilerle }; msg.no = no; isci.postMessage(msg); });
   }
+  /* iş parçacığında herhangi bir hata: bir daha deneme, sesi sayfanın kendisinde üret (cihaz sesi kapanmasın) */
+  function isciBirak(e) {
+    DHPiper.isciHata = (e && e.message) || String(e);
+    try { if (isci) isci.terminate(); } catch (er) {}
+    isci = false; Object.keys(bekleyen).forEach(function (k) { bekleyen[k].hata(e); }); bekleyen = {};
+    try { console.warn('[DHPiper] iş parçacığı kapatıldı, sayfada devam:', DHPiper.isciHata); } catch (er) {}
+  }
+  function isciIsSureli(msg, ilerle, ms) {
+    return Promise.race([isciIs(msg, ilerle), new Promise(function (_, h) { setTimeout(function () { h(new Error('iş parçacığı ' + Math.round(ms / 1000) + ' sn yanıt vermedi')); }, ms); })]);
+  }
   function hazirla(dil, ilerle) {
     var id = secili(dil);
-    if (isciAl()) return isciIs({ tip: 'hazirla', id: id, yol: SESLER[id].yol }, ilerle).then(function () { yuklu[id] = true; return true; })
-      .catch(function (e) { if (isci !== false) throw e; return oturum(id, ilerle).then(function () { return true; }); });   /* iş parçacığı yoksa sayfada */
+    if (isciAl()) return isciIsSureli({ tip: 'hazirla', id: id, yol: SESLER[id].yol }, ilerle, 600000).then(function () { yuklu[id] = true; return true; })
+      .catch(function (e) { isciBirak(e); return oturum(id, ilerle).then(function () { return true; }); });
     return oturum(id, ilerle).then(function () { return true; });
   }
   var gunluk = [];
@@ -167,12 +177,12 @@
     var id = secili(dil === 'tr' ? 'tr' : 'en');
     if (metin && isciAl()) {
       var t0 = performance.now();
-      return isciIs({ tip: 'sentezle', id: id, yol: SESLER[id].yol, metin: metin, hiz: hiz }).then(function (r) {
+      return isciIsSureli({ tip: 'sentezle', id: id, yol: SESLER[id].yol, metin: metin, hiz: hiz }, null, 120000).then(function (r) {
         yuklu[id] = true;
         var buf = new AudioBuffer({ length: r.pcm.length, numberOfChannels: 1, sampleRate: r.hz }); buf.copyToChannel(r.pcm, 0);
         gunlukYaz({ z: new Date().toISOString().slice(11, 19), m: metin.slice(0, 30), dil: dil, fonemMs: r.fonemMs, modelMs: r.modelMs, sn: +(r.pcm.length / r.hz).toFixed(2), toplamMs: Math.round(performance.now() - t0), isci: true, phYenilendi: r.phYenilendi });
         return buf;
-      });
+      }, function (e) { isciBirak(e); return sentezle(metin, dil, hiz); });   /* sayfada yeniden dene */
     }
     var is = sira.then(async function () {
       if (!metin) throw new Error('boş metin');
@@ -201,5 +211,5 @@
 
   async function sil() { oturumlar = {}; yuklu = {}; try { if (isci) isci.terminate(); } catch (e) {} isci = null; bekleyen = {}; try { await caches.delete(KASA); } catch (e) {} }
 
-  var DHPiper = global.DHPiper = { gunluk: function () { return gunluk.slice(); }, SESLER: SESLER, VARSAYILAN: VARSAYILAN, secili: secili, sec: sec, hazirMi: hazirMi, indirildiMi: indirildiMi, hazirla: hazirla, sentezle: sentezle, sil: sil, son: null };
+  var DHPiper = global.DHPiper = { isciHata: null, gunluk: function () { return gunluk.slice(); }, SESLER: SESLER, VARSAYILAN: VARSAYILAN, secili: secili, sec: sec, hazirMi: hazirMi, indirildiMi: indirildiMi, hazirla: hazirla, sentezle: sentezle, sil: sil, son: null };
 })(window);
