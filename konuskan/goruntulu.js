@@ -641,7 +641,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       if (!a.length) { k.innerHTML = '<p>Henüz ölçüm yok. Deniz biraz konuşsun (bir de "Tekrar söyle"ye bas), sonra buraya dön.</p>'; return; }
       const f = x => x == null ? '–' : x;
       k.innerHTML = `<p>Son ${a.length} parça. Bu ekranın görüntüsünü gönderirsen ağız-ses uyumunu buna göre düzeltirim. Tablo yana kayar. 🎙 = Deniz konuşurken mikrofon açıktı · ✂ = sırada eski konuşma vardı, temizlendi · 🔇 = ses gelmedi, ağız sessiz oynadı. Cihaz seste: başladı = sesin hazır olması beklenen süre, ilk kelime = çalmanın başladığı an, (ses …) = sesin bittiği an.</p><table><tr><th>saat</th><th>tür</th><th>dil</th><th>ses</th><th>önce sessiz</th><th>başladı</th><th>ilk kelime</th><th>bitti</th><th>metin</th></tr>` +
-        a.slice(-30).reverse().map(o => `<tr><td>${esc(o.z || '')}</td><td>${esc(o.etk || '')}${o.mik ? ' 🎙' : ''}${o.tem ? ' ✂' : ''}${o.sessiz ? ' 🔇' : ''}</td><td>${esc(o.d || '')}</td><td>${esc(String(o.s || '').slice(0, 16))}${o.yerel === false ? ' ☁' : ''}${o.g ? ' +' + o.g : ''}</td><td>${f(o.ara)}</td><td>${f(o.b)}</td><td>${f(o.k)}</td><td>${f(o.e)}${o.son != null ? ' (ses ' + o.son + ')' : ''}${o.du && o.du !== 'tamam' ? ' ' + esc(o.du) : ''}</td><td>${esc(o.m || '')}</td></tr>`).join('') + '</table>';
+        a.slice(-30).reverse().map(o => `<tr><td>${esc(o.z || '')}</td><td>${esc(o.etk || '')}${o.mik ? ' 🎙' : ''}${o.tem ? ' ✂' : ''}${o.sessiz ? ' 🔇' : ''}</td><td>${esc(o.d || '')}</td><td>${esc(String(o.s || '').slice(0, 16))}${o.yerel === false ? ' ☁' : ''}${o.g ? ' +' + o.g : ''}</td><td>${f(o.ara)}</td><td>${f(o.b)}</td><td>${f(o.k)}</td><td>${f(o.e)}${o.son != null ? ' (ses ' + o.son + ')' : ''}${o.du && o.du !== 'tamam' ? ' ' + esc(o.du) : ''}</td><td>${esc(o.m || '')}</td></tr>`).join('') + '</table>' + piperGunlukHTML();
     }
     /* Ses hız testi: aynı kısa cümleleri farklı ayarlarla okutup her birinin kaç ms'de başladığını ölçer
        (perde değişikliği mi, dil/ses değişimi mi, ses seçimi mi gecikmeye yol açıyor?) */
@@ -673,6 +673,11 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       }
       b.disabled = false; toast('Ses hız testi bitti');
     };
+    function piperGunlukHTML() {
+      const g = window.DHPiper && DHPiper.gunluk ? DHPiper.gunluk() : []; if (!g.length) return '';
+      return `<p style="margin-top:10px">Cihaz sesi hazırlığı (son ${g.length}; ${g[g.length - 1].isci ? 'ayrı iş parçacığında' : 'sayfada'}): fonem = metnin ses birimlerine çevrilmesi, model = sesin üretilmesi (ms) · ses = sesin süresi (sn)</p><table><tr><th>saat</th><th>dil</th><th>fonem</th><th>model</th><th>toplam</th><th>ses</th><th>metin</th></tr>` +
+        g.slice().reverse().map(o => `<tr><td>${esc(o.z)}</td><td>${esc(o.dil)}</td><td>${o.fonemMs ?? '–'}</td><td>${o.modelMs ?? '–'}</td><td>${o.toplamMs}</td><td>${o.sn}</td><td>${esc(o.m)}</td></tr>`).join('') + '</table>';
+    }
     q('[data-a=olcumGoster]').onclick = () => { const k = q('.vd-olcum'); k.hidden = !k.hidden; if (!k.hidden) olcumCiz(); };
     q('[data-a=olcumSil]').onclick = () => { try { localStorage.removeItem('dh-ses-olcum-v1'); } catch (e) {} olcumCiz(); q('.vd-olcum').hidden = false; toast('Ses ölçümü sıfırlandı'); };
     q('[data-a=duyguGuc]').oninput = e => { kaYazG('sesDuygu', +e.target.value); sesKaydiricilarCiz(); };

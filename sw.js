@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v553";  /* ⏱️ Eksik çeviri en çok 2,5 sn beklenir; cihaz sesi iç zamanları */
+var SW_VERSION = "dh-sw-v554";  /* 🧵 Cihaz sesi ayrı iş parçacığında (sayfa donmaz) */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */
 /* onceki v438: 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
 /* onceki v437: ➕ Konuşkan: kendi kursunu oluştur */

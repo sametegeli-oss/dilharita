@@ -128,7 +128,33 @@
     })().catch(function (e) { delete oturumlar[id]; throw e; });
     return oturumlar[id];
   }
-  function hazirla(dil, ilerle) { return oturum(secili(dil), ilerle).then(function () { return true; }); }
+  /* ---------- ayrı iş parçacığı (Web Worker): ses üretimi sayfayı dondurmasın ---------- */
+  var isci = null, isciNo = 0, bekleyen = {};
+  function isciAl() {
+    if (isci === false) return null; if (isci) return isci;
+    try {
+      isci = new Worker(new URL('./dh-piper-isci.js?v=1', BU).href);
+      isci.onmessage = function (e) {
+        var d = e.data || {}, b = bekleyen[d.no]; if (!b) return;
+        if (d.tip === 'ilerle') { if (b.ilerle) b.ilerle(d); return; }
+        delete bekleyen[d.no]; if (d.hata) b.hata(new Error(d.hata)); else b.ok(d);
+      };
+      isci.onerror = function (ev) { var hata = new Error('ses iş parçacığı: ' + ((ev && ev.message) || 'hata')); isci = false; Object.keys(bekleyen).forEach(function (k) { bekleyen[k].hata(hata); }); bekleyen = {}; };
+      isci.postMessage({ no: 0, tip: 'kur', yol: { ort: ORT_DIR, ph: PH_DIR, hf: HF, phJs: new URL('./piper-phonemize.js', BU).href } });
+    } catch (e) { isci = false; return null; }
+    return isci;
+  }
+  function isciIs(msg, ilerle) {
+    return new Promise(function (ok, hata) { var no = ++isciNo; bekleyen[no] = { ok: ok, hata: hata, ilerle: ilerle }; msg.no = no; isci.postMessage(msg); });
+  }
+  function hazirla(dil, ilerle) {
+    var id = secili(dil);
+    if (isciAl()) return isciIs({ tip: 'hazirla', id: id, yol: SESLER[id].yol }, ilerle).then(function () { yuklu[id] = true; return true; })
+      .catch(function (e) { if (isci !== false) throw e; return oturum(id, ilerle).then(function () { return true; }); });   /* iş parçacığı yoksa sayfada */
+    return oturum(id, ilerle).then(function () { return true; });
+  }
+  var gunluk = [];
+  function gunlukYaz(o) { gunluk.push(o); if (gunluk.length > 30) gunluk.shift(); DHPiper.son = o; }
   var yuklu = {};
   function hazirMi(dil) { return !!yuklu[secili(dil)]; }
   function indirildiMi(dil) { var s = SESLER[secili(dil)]; return kasadaMi(HF + s.yol); }
@@ -139,6 +165,15 @@
     hiz = +hiz > 0.4 && +hiz < 2.5 ? +hiz : 1;
     metin = String(metin || '').replace(/\s+/g, ' ').trim();
     var id = secili(dil === 'tr' ? 'tr' : 'en');
+    if (metin && isciAl()) {
+      var t0 = performance.now();
+      return isciIs({ tip: 'sentezle', id: id, yol: SESLER[id].yol, metin: metin, hiz: hiz }).then(function (r) {
+        yuklu[id] = true;
+        var buf = new AudioBuffer({ length: r.pcm.length, numberOfChannels: 1, sampleRate: r.hz }); buf.copyToChannel(r.pcm, 0);
+        gunlukYaz({ z: new Date().toISOString().slice(11, 19), m: metin.slice(0, 30), dil: dil, fonemMs: r.fonemMs, modelMs: r.modelMs, sn: +(r.pcm.length / r.hz).toFixed(2), toplamMs: Math.round(performance.now() - t0), isci: true, phYenilendi: r.phYenilendi });
+        return buf;
+      });
+    }
     var is = sira.then(async function () {
       if (!metin) throw new Error('boş metin');
       var t0 = performance.now();
@@ -157,14 +192,14 @@
       if (tepe > 0.01) { var kat = Math.min(8, 0.9 / tepe); if (Math.abs(kat - 1) > 0.05) for (var j = 0; j < pcm.length; j++) pcm[j] *= kat; }
       var hz = c.audio.sample_rate, buf = new AudioBuffer({ length: pcm.length, numberOfChannels: 1, sampleRate: hz });
       buf.copyToChannel(pcm, 0);
-      DHPiper.son = { ms: Math.round(performance.now() - t0), sn: +(pcm.length / hz).toFixed(2), n: metin.length, dil: dil };
+      gunlukYaz({ z: new Date().toISOString().slice(11, 19), m: metin.slice(0, 30), dil: dil, sn: +(pcm.length / hz).toFixed(2), toplamMs: Math.round(performance.now() - t0), isci: false });
       return buf;
     });
     sira = is.catch(function () {});
     return is;
   }
 
-  async function sil() { oturumlar = {}; yuklu = {}; try { await caches.delete(KASA); } catch (e) {} }
+  async function sil() { oturumlar = {}; yuklu = {}; try { if (isci) isci.terminate(); } catch (e) {} isci = null; bekleyen = {}; try { await caches.delete(KASA); } catch (e) {} }
 
-  var DHPiper = global.DHPiper = { SESLER: SESLER, VARSAYILAN: VARSAYILAN, secili: secili, sec: sec, hazirMi: hazirMi, indirildiMi: indirildiMi, hazirla: hazirla, sentezle: sentezle, sil: sil, son: null };
+  var DHPiper = global.DHPiper = { gunluk: function () { return gunluk.slice(); }, SESLER: SESLER, VARSAYILAN: VARSAYILAN, secili: secili, sec: sec, hazirMi: hazirMi, indirildiMi: indirildiMi, hazirla: hazirla, sentezle: sentezle, sil: sil, son: null };
 })(window);
