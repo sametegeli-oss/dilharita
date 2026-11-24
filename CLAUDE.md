@@ -66,4 +66,4 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
 - Android'de tarayıcı sesi perde/hız 1 değilse dil geçişlerinde 2–6 sn bekliyor; perde ve hız 1'de sabit.
 
 ## Şu anki sürümler (24 Kasım 2026)
-sw `dh-sw-v579` · cloud-sync.js v53 · ai-providers.js t40 · auth-guard.js v10 · dh-olay.js v1 · coach-bubble.js t42 · koc-paneli/konuskan.html: dh-koc-kilavuz v2 · dh-koc-beyin v5 · dh-koc-deniz v6 · konuskan.js v29 · dh-koc-modu v1 · goruntulu.js v87 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3
+sw `dh-sw-v580` · cloud-sync.js v53 · ai-providers.js t40 · auth-guard.js v10 · dh-olay.js v1 · coach-bubble.js t42 · koc-paneli/konuskan.html: dh-koc-kilavuz v2 · dh-koc-beyin v6 · dh-koc-deniz v6 · konuskan.js v29 · dh-koc-modu v1 · goruntulu.js v87 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3

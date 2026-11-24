@@ -308,7 +308,13 @@
   async function kisiselKapat(id) { await degistir(function (b) { var x = b.kisisel[id]; if (x) { x.durum = "kapandi"; x.u = Date.now(); } }); return true; }
   /* Bugüne özel istek: {dk?, odak?, metin?} — yalnız bugün geçerli; plan yeniden hazırlanır. */
   async function bugunYaz(o) {
-    await degistir(function (b) { b.bugun = { gun: gunAnahtari(), dk: o.dk ? Math.max(5, Math.min(180, Math.round(+o.dk))) : null, odak: o.odak || null, metin: o.metin ? String(o.metin).slice(0, 120) : null, u: Date.now() }; });
+    await degistir(function (b) {
+      var eski = (b.bugun && b.bugun.gun === gunAnahtari()) ? b.bugun : {};
+      b.bugun = { gun: gunAnahtari(), u: Date.now(),
+        dk: "dk" in o ? (o.dk ? Math.max(5, Math.min(180, Math.round(+o.dk))) : null) : (eski.dk || null),
+        odak: "odak" in o ? (o.odak || null) : (eski.odak || null),
+        metin: "metin" in o ? (o.metin ? String(o.metin).slice(0, 120) : null) : (eski.metin || null) };
+    });
     try { localStorage.removeItem("dh-koc-gun-" + gunAnahtari()); } catch (e) {}
     return true;
   }
@@ -399,6 +405,8 @@
       }
       var notlar = Object.keys(b.notlar).map(function (id) { return b.notlar[id]; }).sort(function (a, c) { return c.u - a.u; }).slice(0, 8)
         .map(function (n) { return "[" + (n.k === "kullanici" ? "learner said" : n.k === "veri" ? "from data" : "coach's guess") + "] " + n.m; });
+      var kh = kisiselHedefler(); if (kh.length) satirlar.push("Learner's own goals (they asked for these; weave them in): " + kh.map(function (x) { return x.ad + " (" + x.konu + ")"; }).join("; ") + ".");
+      var bg = bugun(); if (bg && bg.metin) satirlar.push("Today the learner wants to talk about / practise: \"" + bg.metin + "\". Prefer this topic today.");
       if (notlar.length) satirlar.push("Coach notes about this learner (Turkish; use, do not recite): " + notlar.join(" | "));
       return "\nCOACH BRAIN (Dil Harita; never invent numbers about the learner):\n- " + satirlar.join("\n- ");
     } catch (e) { return ""; }
