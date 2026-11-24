@@ -585,6 +585,7 @@
   }
 
   /* ── 7) PUSH: yereli buluta yaz ──────────────────────────── */
+  var YT_PULL_KEY = "dh-yt-pull-v1";   // artımlı video okuma işareti (uid, en yeni updated_at, son tam tarama)
   var DOC_LIMIT = 950000;   // Firestore belge limiti ~1MB; güvenli tavan
   function mainCloudPayloadSize(ls){
     /* Her YouTube videosu users/{uid}/youtube_studies altında ayrı belgeye
@@ -801,13 +802,23 @@
       function tick(step,label){ try{ window.dispatchEvent(new CustomEvent("dh-cloud-sync-state",{detail:{state:"syncing",migration:migration,step:step,total:__syncTotal,label:label}})); }catch(e){} }
       tick(1,"Ayarlar okunuyor…");
       var mainSettings=await withTimeout(fb.loadMainSettings(user.uid),15000,"Ayarlar okunamadı");
-      tick(2,"Video kayıtları okunuyor (kütüphane büyükse uzun sürebilir)…");
+      /* Artımlı video okuma: son başarılı senkronda görülen en yeni
+         updated_at'ten 24 saat öncesine kadar olanlar okunur (cihaz saatleri
+         farklı olabilir; birleştirme tekrar okumaya dayanıklı). İlk senkronda,
+         hesap değişince ve haftada bir tam tarama (yalnız ana kayıtlar). */
+      var ytIz={}; try{ ytIz=JSON.parse(localStorage.getItem(YT_PULL_KEY)||"{}")||{}; }catch(e){}
+      var ytTam = migration || ytIz.uid!==user.uid || !(+ytIz.max>0) || (Date.now()-(+ytIz.fullAt||0)) > 7*864e5;
+      var ytSince = ytTam ? 0 : Math.max(1, +ytIz.max - 864e5);
+      tick(2,ytTam?"Video kayıtları okunuyor (tam tarama)…":"Değişen video kayıtları okunuyor…");
       var videoRows;
+      function kotaNotu(e){ var m=(e&&e.message)||String(e||""); return /zaman aşımı|resource.exhausted|quota/i.test(m) ? new Error(m+" — Firestore'un günlük okuma kotası dolmuş olabilir; kota her gün Türkiye saatiyle 10:00–11:00 arasında yenilenir.") : e; }
       try{
-        videoRows=await withTimeout(fb.loadYoutubeStudiesRaw(user.uid,function(n){tick(2,n+" video kaydı okundu…");}),60000,"Video kayıtları okunamadı");
+        videoRows=await withTimeout(fb.loadYoutubeStudiesRaw(user.uid,function(n){tick(2,n+" video kaydı okundu…");},ytSince),60000,"Video kayıtları okunamadı");
       }catch(firstErr){
         tick(2,"Video kayıtları tekrar deneniyor…");
-        videoRows=await withTimeout(fb.loadYoutubeStudiesRaw(user.uid,function(n){tick(2,"(2. deneme) "+n+" video kaydı okundu…");}),60000,"Video kayıtları okunamadı (2. deneme)");
+        try{
+          videoRows=await withTimeout(fb.loadYoutubeStudiesRaw(user.uid,function(n){tick(2,"(2. deneme) "+n+" video kaydı okundu…");},ytSince),60000,"Video kayıtları okunamadı (2. deneme)");
+        }catch(secondErr){ throw kotaNotu(secondErr); }
       }
       var remote=Object.assign({},mainSettings);
       videoRows.forEach(function(v){ remote[v.key]=v.payload; });
@@ -941,6 +952,7 @@
         return {ok:false,message:"Cihazdaki verilerin korundu; "+pmsg+". Daha sonra yeniden deneyebilirsin."};
       }
       try{ localStorage.setItem("dh-last-sync-ts", String(Date.now())); }catch(e){}
+      try{ localStorage.setItem(YT_PULL_KEY, JSON.stringify({ uid:user.uid, max:Math.max(ytTam?0:(+ytIz.max||0), +videoRows.__maxUpdated||0) || (ytTam?Date.now():(+ytIz.max||Date.now())), fullAt: ytTam?Date.now():(+ytIz.fullAt||Date.now()) })); }catch(e){}
       if(migration && pres && pres.ok){
         try{
           localStorage.removeItem("dh-account-migration-pending");
@@ -1054,47 +1066,80 @@
             return out;
           });
         },
-        loadYoutubeStudiesRaw:function(uid,onProgress){
-          /* TEK BÜYÜK SORGU YERİNE SAYFA SAYFA: 60+ video tek getDocs()
-             içinde istenince Firestore "datastore operation timed out"
-             ile sunucu tarafında pes edebiliyordu (mobilde gözlendi).
-             Küçük sayfalar hâlinde çekmek her isteği hafifletir; bir
-             sayfa başarısız olursa yalnızca o sayfa yeniden denenir. */
+        loadYoutubeStudiesRaw:function(uid,onProgress,since){
+          /* OKUMA KOTASI (24 Kasım): eskiden koleksiyonun TAMAMI belge
+             kimliği sırasıyla okunuyordu. Bulutta binlerce öksüz parça
+             birikince her senkron 3000+ belge okudu, Firestore'un günlük
+             50.000 okuma kotası birkaç senkronda bitti ve okumalar askıda
+             kalıp "zaman aşımı" verdi. Şimdi:
+             - since > 0: yalnız updated_at > since olan belgeler (değişen
+               videolar ve onların parçaları) okunur;
+             - since = 0 (ilk senkron / haftalık tam tarama): yalnız ANA
+               kayıtlar ("key" alanı olanlar; öksüz parçaların key'i yok)
+               okunur, parçaları kimlikleriyle tek tek alınır.
+             Sayfalar küçük: bir sayfa başarısız olursa yalnız o yeniden denenir. */
           var colRef=fsMod.collection(db,"users",uid,"youtube_studies");
-          var PAGE=12, parts={}, fetched=0;
-          function fetchPageWithRetry(cursor,attempt){
-            var q=cursor
-              ? fsMod.query(colRef,fsMod.orderBy(fsMod.documentId()),fsMod.startAfter(cursor),fsMod.limit(PAGE))
-              : fsMod.query(colRef,fsMod.orderBy(fsMod.documentId()),fsMod.limit(PAGE));
-            return fsMod.getDocs(q).catch(function(err){
+          var PAGE=12, parts={}, fetched=0, maxUpd=0;
+          since=+since||0;
+          function pageQuery(cursor){
+            var base=since>0
+              ? [fsMod.where("updated_at",">",since),fsMod.orderBy("updated_at")]
+              : [fsMod.orderBy("key")];
+            if(cursor) base.push(fsMod.startAfter(cursor));
+            base.push(fsMod.limit(PAGE));
+            return fsMod.query.apply(null,[colRef].concat(base));
+          }
+          function retry(fn,attempt){
+            return fn().catch(function(err){
               if(attempt>=2) throw err;
-              return new Promise(function(res){setTimeout(res,1200);}).then(function(){return fetchPageWithRetry(cursor,attempt+1);});
+              return new Promise(function(res){setTimeout(res,1200);}).then(function(){return retry(fn,attempt+1);});
+            });
+          }
+          function finish(){
+            var need=[];
+            Object.keys(parts).forEach(function(id){
+              var v=parts[id]; if(!v.key) return;
+              if(+v.updated_at>maxUpd) maxUpd=+v.updated_at;
+              if(Array.isArray(v.parts)) v.parts.forEach(function(p){ if(!parts[p]) need.push(p); });
+            });
+            /* Eksik parçalar (tam taramada hepsi; artımlıda normalde hiçbiri) kimlikle alınır. */
+            var i=0;
+            function next(){
+              if(i>=need.length) return Promise.resolve();
+              var chunk=need.slice(i,i+8); i+=8;
+              return Promise.all(chunk.map(function(pid){
+                return retry(function(){ return fsMod.getDoc(fsMod.doc(db,"users",uid,"youtube_studies",pid)); },0)
+                  .then(function(sn){ if(sn.exists()) parts[pid]=sn.data()||{}; fetched++; });
+              })).then(function(){ if(onProgress) try{ onProgress(fetched); }catch(e){} return next(); });
+            }
+            return next().then(function(){
+              var rows=[], skipped=[];
+              Object.keys(parts).forEach(function(id){
+                var v=parts[id]; if(!v.key) return;
+                if(Array.isArray(v.parts)){
+                  var ok=true, joined="";
+                  for(var j=0;j<v.parts.length;j++){
+                    var p=v.parts[j];
+                    if(!parts[p]||typeof parts[p].payload!=="string"){ ok=false; break; }
+                    joined+=parts[p].payload;
+                  }
+                  if(!ok){ skipped.push(id); console.warn("[cloud-sync] bozuk YouTube kaydı atlandı (parça eksik): "+id); return; }
+                  v.payload=joined;
+                }
+                if(typeof v.payload==="string") rows.push(v);
+              });
+              if(skipped.length) rows.__skipped=skipped;
+              rows.__maxUpdated=maxUpd;
+              rows.__read=fetched;
+              return rows;
             });
           }
           function loop(cursor){
-            return fetchPageWithRetry(cursor,0).then(function(snap){
+            return retry(function(){ return fsMod.getDocs(pageQuery(cursor)); },0).then(function(snap){
               snap.forEach(function(d){ parts[d.id]=d.data()||{}; });
               fetched+=snap.size;
               if(onProgress) try{ onProgress(fetched); }catch(e){}
-              if(snap.size<PAGE || snap.empty){
-                var rows=[], skipped=[];
-                Object.keys(parts).forEach(function(id){
-                  var v=parts[id]; if(!v.key) return;
-                  if(Array.isArray(v.parts)){
-                    var ok=true, joined="";
-                    for(var i=0;i<v.parts.length;i++){
-                      var p=v.parts[i];
-                      if(!parts[p]||typeof parts[p].payload!=="string"){ ok=false; break; }
-                      joined+=parts[p].payload;
-                    }
-                    if(!ok){ skipped.push(id); console.warn("[cloud-sync] bozuk YouTube kaydı atlandı (parça eksik): "+id); return; }
-                    v.payload=joined;
-                  }
-                  if(typeof v.payload==="string") rows.push(v);
-                });
-                if(skipped.length) rows.__skipped=skipped;
-                return rows;
-              }
+              if(snap.size<PAGE || snap.empty) return finish();
               return loop(snap.docs[snap.docs.length-1]);
             });
           }
@@ -1238,13 +1283,16 @@
               try{ var oldSnap=await fsMod.getDoc(ref); if(oldSnap.exists()){ var od=oldSnap.data()||{}; if(Array.isArray(od.parts)) oldParts=od.parts; } }catch(e){}
               if(v.payload.length<=150000){
                 await fsMod.setDoc(ref,{key:v.key,payload:v.payload,updated_at:now2});
-                if(oldParts) oldParts.forEach(function(pid){ isler.push(fsMod.deleteDoc(fsMod.doc(db,"users",uid,"youtube_studies",pid)).catch(function(){})); });
+                /* Eski parçaların silinmesi BEKLENİR: eskiden Promise.all başladıktan
+                   sonra kuyruğa ekleniyordu; sayfa kapanınca silme gitmiyor, bulutta
+                   binlerce öksüz parça birikiyordu. */
+                if(oldParts) await Promise.all(oldParts.map(function(pid){ return fsMod.deleteDoc(fsMod.doc(db,"users",uid,"youtube_studies",pid)).catch(function(){}); }));
                 return;
               }
               var ids=[],revision=now2.toString(36)+Math.random().toString(36).slice(2,9);
               for(var offset=0;offset<v.payload.length;){var end=Math.min(offset+150000,v.payload.length);if(end<v.payload.length&&/[\uD800-\uDBFF]/.test(v.payload.charAt(end-1)))end--;var partId=v.id+"_"+revision+"_"+ids.length;ids.push(partId);await fsMod.setDoc(fsMod.doc(db,"users",uid,"youtube_studies",partId),{payload:v.payload.slice(offset,end),updated_at:now2});offset=end}
               await fsMod.setDoc(ref,{key:v.key,parts:ids,updated_at:now2});
-              if(oldParts) oldParts.filter(function(pid){return ids.indexOf(pid)<0}).forEach(function(pid){ isler.push(fsMod.deleteDoc(fsMod.doc(db,"users",uid,"youtube_studies",pid)).catch(function(){})); });
+              if(oldParts) await Promise.all(oldParts.filter(function(pid){return ids.indexOf(pid)<0}).map(function(pid){ return fsMod.deleteDoc(fsMod.doc(db,"users",uid,"youtube_studies",pid)).catch(function(){}); }));
             })());
           });
           return Promise.all(isler);
