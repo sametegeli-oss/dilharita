@@ -61,7 +61,7 @@
       ["📘","Öğren","ders.html",["ders.html","practice.html","index-app.html","ogren.html","kelime-ogren.html","phrasal-verbs.html"]],
       ["🔁","Tekrar","tekrar.html",["tekrar.html","akilli-tekrar.html","hata-defteri.html"]],
       ["🎙️","Konuş","chat.html",["chat.html","teacher.html","sesdalga.html","chatairport.html","chatdoctor.html","chathotel.html","chatrestaurant.html"]],
-      ["📈","İlerleme","rapor.html",["rapor.html","aktivite.html","harita.html","ilerleme.html","gunluk-takip.html","ogrenme-yolu.html"]]
+      ["📈","İlerleme","koc-paneli.html",["koc-paneli.html","rapor.html","aktivite.html","harita.html","ilerleme.html","gunluk-takip.html","ogrenme-yolu.html"]]
     ];
     const nav = document.createElement("nav"); nav.className = "dh-primary-nav"; nav.setAttribute("aria-label", "Ana bölümler");
     nav.innerHTML = items.map(([ic,tx,href,routes]) => `<a href="${href}"${routes.includes(route) ? ' aria-current="page"' : ""}><span aria-hidden="true">${ic}</span>${tx}</a>`).join("");

@@ -749,6 +749,7 @@
       ["🧑‍🏫", "Öğretmene Sor", "Türkçe anlatımlı öğretmen", "teacher.html"]
     ]],
     ["Takip", [
+      ["🧭", "Koçluk Paneli", "Deniz'in planı, nerede olduğun, nereye gittiğin", "koc-paneli.html"],
       ["📈", "İlerlemem", "Ne kadar çalıştığını gör", "rapor.html"],
       ["📕", "Hata Defterim", "Yanlış yaptığın cümleler", "hata-defteri.html"]
     ]],
