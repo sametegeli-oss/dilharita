@@ -94,7 +94,14 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
   olgu listesi + rakam-kelime eşleşme denetimi eklendi (yerel testte yakalıyor).
 - **Gemini 3.6 Flash:** test sırasında günlük ücretsiz kota dolu (429), ölçülemedi. **Cerebras:** 402 ücretsiz hak bitmiş.
 - **NVIDIA Nemotron 3 Super:** 90 sn'de cevap yok → günlük plan için uygun değil. OpenRouter ücretsiz: ölçülmedi.
-- Sıra: Gemini → Groq → Cerebras → NVIDIA; hiçbiri denetimden geçmezse kural planı. Kota sıfırlanınca Gemini ve Groq yeniden ölçülecek.
+- **Canlı veride (24 Kasım 10:33):** Groq ~1 sn, denetimden geçti. Sıra artık Groq → Gemini → Cerebras → NVIDIA; kotası dolan /
+  cevap vermeyen model 6 sa atlanır; panel model beklerken kural planını hemen gösterir. Haftalık veri 60 dk altındayken beceri
+  oranları modele verilmez ("konuşmayı %100 tamamladın" hatası). Kota sıfırlanınca Gemini yeniden ölçülecek.
+
+### 2. aşamada kalanlar
+- Konuşkan'daki Deniz'in koç beynini okuması ve sabah özeti; derslerde gözlem notu yazması.
+- Haftalık değerlendirme notu. Eski 6 ilerleme/plan sayfasının panele yönlendirilmesi (kaldırmadan önce kullanıcıya sor).
+- Gemini kotası açılınca 10 senaryo testinin tekrarı.
 
 ## Yapıldı
 - 24 Kasım: 2. aşama çekirdeği — koç beyni, kılavuz, Deniz günlük plan + olgu denetimi, Koçluk Paneli (menüde), sw v569.

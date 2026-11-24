@@ -61,7 +61,9 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
 - **Firestore belge sınırı 1 MB:** Ayar/ilerleme belgeleri büyümesin; büyük veri ayrı alt koleksiyona.
 - **API anahtarı kısıtı:** Browser key'de Token Service API izinli olmalı; yoksa oturum 1 saat sonra düşer
   ve her açılışta şifre sorulur (24 Kasım'da eklendi).
+- **ai-providers.js:** son sağlayıcıda zaman sınırı eskiden 10 dk'ydı (tek modelli çağrı takılıyordu); `opts.only/prefer` ile artık `slowMs`.
+- Gemini ücretsiz kotası sık doluyor (429), Cerebras ücretsiz hakkı bitti (402), NVIDIA Nemotron günlük plan için çok yavaş.
 - Android'de tarayıcı sesi perde/hız 1 değilse dil geçişlerinde 2–6 sn bekliyor; perde ve hız 1'de sabit.
 
 ## Şu anki sürümler (24 Kasım 2026)
-sw `dh-sw-v569` · cloud-sync.js v53 · ai-providers.js t39 · auth-guard.js v9 · dh-olay.js v1 · coach-bubble.js t42 · dh-koc-kilavuz/beyin/deniz.js v1 (koc-paneli.html) · konuskan.js v27 · goruntulu.js v86 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3
+sw `dh-sw-v573` · cloud-sync.js v53 · ai-providers.js t40 · auth-guard.js v9 · dh-olay.js v1 · coach-bubble.js t42 · koc-paneli.html: dh-koc-kilavuz v2 · dh-koc-beyin v2 · dh-koc-deniz v4 · konuskan.js v27 · goruntulu.js v86 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3
