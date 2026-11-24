@@ -72,8 +72,10 @@ ekranları kendisi açar, gerektiğinde tekrar ettirir. Kumanda her zaman kullan
 - Düzeltme sıkılığı ayarı: yumuşak / dengeli / sıkı.
 - Karışık (interleaved) ve soru biçimli tekrar.
 - Kendi hayatından dersler (ör. toplantı provası).
-- Ayda bir "öğretmenine götür" özeti.
-- Tekrar sistemini FSRS'e geçirme (büyük iş; önce mevcut algoritmayı incele).
+- Ayda bir "öğretmenine götür" özeti. ✅ `ogretmen-ozeti.html` (sw v582)
+- Bildiğini atlat ✅ (koç modu v2). Kişisel cümle bankası ✅ `cumle-bankam.html` (sw v583; 13.535 çift, kullanıcıya dosya olarak verildi).
+- Tekrar sistemini FSRS'e geçirme (büyük iş; inceleme yapıldı, SM-2 ~8 dosyada kopya; geçiş için kullanıcı onayı bekleniyor).
+- Menülerde 3B görünüm: kullanıcı erteledi ("3 boyut menü kalsın").
 
 ### Telegram (24 Kasım, kullanıcı istedi)
 Deniz'le Telegram'dan yazışma (WhatsApp, Meta'nın 2026 yapay zekâ bot kuralı ve şablon zorunluluğu yüzünden seçilmedi).
@@ -82,8 +84,8 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
 Önce programın kendi bildirimleriyle "Deniz arar", sonra Telegram.
 
 ## Diğer açık konular
-- Kullanıcının Excel dosyası: Oxford kelime listesi ve konu tabloları eklenebilir; kişisel cümle bankası (~13.700 çift)
-  açık depoya değil "dosyadan içe aktar" ile cihaza. Telifli içerik (Headway, çeviri kılavuzu, podcast dökümleri) eklenmez.
+- Kullanıcının Excel dosyası: Oxford kelime listesi ve konu tabloları eklenebilir; kişisel cümle bankası yapıldı
+  (açık depoya değil, "dosyadan içe aktar" ile cihaza ve hesaba). Telifli içerik (Headway, çeviri kılavuzu, podcast dökümleri) eklenmez.
 - Piper sayacı iyileştirmeleri, karma ses (İngilizce tarayıcı sesi / Türkçe Piper), barge-in, kadın avatar,
   hassas tanıma ve onay ekranını kapatma önerisi (cevap bekliyor), "&quot;" çözümleme önerisi.
 
