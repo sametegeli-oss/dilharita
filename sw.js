@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v567";  /* 📊 Tek aktivite kaydı (dh-olay.js) + saklama kuralları */
+var SW_VERSION = "dh-sw-v568";  /* 🧠 Koç beyni, kılavuz, Deniz günlük plan modülleri (henüz sayfalara bağlı değil) */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */
 /* onceki v438: 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
 /* onceki v437: ➕ Konuşkan: kendi kursunu oluştur */
@@ -61,6 +61,9 @@ var SHELL = [
   "./favicon.svg",
   "./auth-guard.js",
   "./dh-olay.js",
+  "./dh-koc-kilavuz.js",
+  "./dh-koc-beyin.js",
+  "./dh-koc-deniz.js",
   "./study-tracker.js",
   "./learning-error-system.js",
   "./ux-boost.js",

@@ -568,7 +568,13 @@
     var avail = PROVIDERS.filter(function(p){ return !p.manualOnly && keysOf(p.keyStore).length>0; });
     /* Hızlı mod (sohbet): düşünen Gemini yavaş; hızlı sağlayıcıları öne al. */
     if(opts.fast){ var HIZ={groq:0,cerebras:1,openrouter:2,mistral:3,gemini:4}; avail=avail.slice().sort(function(a,b){ return (HIZ[a.id]!=null?HIZ[a.id]:9)-(HIZ[b.id]!=null?HIZ[b.id]:9); }); }
-    var hasNvidia = PROVIDERS.some(function(p){ return p.id==="nvidia" && keysOf(p.keyStore).length>0; });
+    /* KOÇ YÖNLENDİRMESİ (24 Kasım): opts.prefer = ["gemini","groq",...] sıralar ve listede
+       olmayanları dışarıda bırakır (koç kararlarında küçük modeller kullanılmasın);
+       opts.only = "groq" yalnız o sağlayıcı (model testi). İkisinde de NVIDIA yedeği
+       yalnız listede "nvidia" varsa devreye girer. */
+    var yalniz = opts.only ? [opts.only] : (Array.isArray(opts.prefer) && opts.prefer.length ? opts.prefer : null);
+    if(yalniz){ avail=avail.filter(function(p){ return yalniz.indexOf(p.id)>=0; }).sort(function(a,b){ return yalniz.indexOf(a.id)-yalniz.indexOf(b.id); }); }
+    var hasNvidia = PROVIDERS.some(function(p){ return p.id==="nvidia" && keysOf(p.keyStore).length>0; }) && (!yalniz || yalniz.indexOf("nvidia")>=0);
     /* TEŞHİS: anahtarlı denemeler neden olmadı? Elle NVIDIA yoluna
        düşmeden önce kullanıcıya ve anahtar listesine kısa bir neden yaz. */
     var fails=[];
