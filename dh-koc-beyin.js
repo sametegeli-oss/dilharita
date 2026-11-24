@@ -21,6 +21,8 @@
      await notSil(id) · await notDuzelt(id, metin)
      await tercihYaz(patch) · await hedefYaz({seviye, tarih})
      await md()                   denizkoç.md metni
+     kisaBaglam()                 Konuşkan sohbet isteğine eklenen kısa bağlam (önbellekten, eşzamanlı)
+     oturumBitti({hatalar, mod})  oturum sonu: aynı hata türü 3+ ise "veri" notu (konu başına tek not)
    ==================================================================== */
 (function (global) {
   "use strict";
@@ -326,9 +328,56 @@
     ]);
   }
 
+  /* ---------- Konuşkan'a kısa bağlam (her sohbet isteğine eklenir; ~120 kelime) ---------- */
+  var DUZELTME_EN = {
+    "yumuşak": "Correction style (learner's choice): gentle — correct only errors that change meaning; let small slips pass.",
+    "dengeli": "Correction style (learner's choice): balanced — correct clear grammar and word-choice errors, skip tiny slips.",
+    "sıkı": "Correction style (learner's choice): strict — correct every error, including small ones."
+  };
+  function kisaBaglam() {
+    try {
+      var h = js(K_HESAP, null), b = beyin(), t = tercihler(), satirlar = [];
+      satirlar.push(DUZELTME_EN[t.duzeltme] || DUZELTME_EN.dengeli);
+      if (h) {
+        var zayif = (h.hataKonulari || []).slice(0, 3).map(function (k) { return k.konu + " (" + k.son14 + " errors in 14 days, " + k.egilim + ")"; });
+        if (zayif.length) satirlar.push("Weak points from the learner's data: " + zayif.join("; ") + ". Steer the conversation so these come up naturally.");
+        if ((h.gerideBeceri || []).length && h.sure && h.sure.haftaDk >= 60) satirlar.push("Behind this week (by goal): " + h.gerideBeceri.map(function (x) { return BECERI_TR[x]; }).join(", ") + ".");
+        if (h.profil && h.profil.amaclar && h.profil.amaclar.length) satirlar.push("Learning goals: " + h.profil.amaclar.join(", ") + ".");
+      }
+      var notlar = Object.keys(b.notlar).map(function (id) { return b.notlar[id]; }).sort(function (a, c) { return c.u - a.u; }).slice(0, 8)
+        .map(function (n) { return "[" + (n.k === "kullanici" ? "learner said" : n.k === "veri" ? "from data" : "coach's guess") + "] " + n.m; });
+      if (notlar.length) satirlar.push("Coach notes about this learner (Turkish; use, do not recite): " + notlar.join(" | "));
+      return "\nCOACH BRAIN (Dil Harita; never invent numbers about the learner):\n- " + satirlar.join("\n- ");
+    } catch (e) { return ""; }
+  }
+
+  /* Oturum sonu gözlemi: aynı konu için tek "veri" notu tutulur, yenisi eskisini günceller. */
+  async function konuNotu(konu, metin) {
+    konu = String(konu || "").slice(0, 40); if (!konu) return notEkle({ metin: metin, kaynak: "veri" });
+    var b0 = beyin(), var0 = null;
+    for (var i in b0.notlar) if (b0.notlar[i].konu === konu && b0.notlar[i].k === "veri") var0 = i;
+    if (!var0) return notEkle({ metin: metin, kaynak: "veri", konu: konu });
+    metin = String(metin || "").replace(/\s+/g, " ").trim().slice(0, KIL().SINIR.notUzunluk);
+    await degistir(function (b) { var n = b.notlar[var0]; if (n) { n.m = metin; n.u = Date.now(); } });
+    return { ok: true, id: var0, guncellendi: true };
+  }
+  /* Konuşkan oturumu bittiğinde: aynı hata türü bir oturumda 3+ kez görüldüyse not düş. */
+  function oturumBitti(o) {
+    try {
+      var hatalar = (o && o.hatalar) || [], say = {};
+      hatalar.forEach(function (e) { var t = String(e.tag || "").trim(); if (t && ["speaking", "photo", "level exam"].indexOf(t) < 0) say[t] = (say[t] || 0) + 1; });
+      var esik = (KIL().SINIR.araTekrarAyniHata || 3);
+      Object.keys(say).forEach(function (t) {
+        if (say[t] < esik) return;
+        var ornek = hatalar.filter(function (e) { return e.tag === t; })[0] || {};
+        konuNotu(t, gunAnahtari() + " " + (o.mod || "Konuşkan") + ": \"" + t + "\" hatası bir oturumda " + say[t] + " kez" + (ornek.wrong ? " (ör. \"" + String(ornek.wrong).slice(0, 50) + "\" → \"" + String(ornek.right || "").slice(0, 50) + "\")" : "") + ".");
+      });
+    } catch (e) {}
+  }
+
   /* açılışta bulutla birleştir (oturum hazır olunca) */
   setTimeout(function bekle(n) { n = n || 0; if (bulut()) yukle(); else if (n < 20) setTimeout(function () { bekle(n + 1); }, 1500); }, 2000);
 
   global.DHKocBeyin = { hesapla: hesapla, beyin: beyin, yukle: yukle, notEkle: notEkle, notSil: notSil, notDuzelt: notDuzelt,
-    tercihYaz: tercihYaz, tercihler: tercihler, hedefYaz: hedefYaz, md: md, _birlestir: birlestir, BECERI_TR: BECERI_TR, SEVIYELER: SEVIYELER };
+    tercihYaz: tercihYaz, tercihler: tercihler, hedefYaz: hedefYaz, md: md, kisaBaglam: kisaBaglam, konuNotu: konuNotu, oturumBitti: oturumBitti, _birlestir: birlestir, BECERI_TR: BECERI_TR, SEVIYELER: SEVIYELER };
 })(window);

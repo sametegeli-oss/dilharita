@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v575";  /* 🧭 Ana sayfa koç kartı: Kolay kullanım modunda yazı gizlenmesin */
+var SW_VERSION = "dh-sw-v576";  /* 🧠 Konuşkan: koç beyni bağlamı, ana sayfada Deniz planı, oturum sonu notu */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */
 /* onceki v438: 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
 /* onceki v437: ➕ Konuşkan: kendi kursunu oluştur */

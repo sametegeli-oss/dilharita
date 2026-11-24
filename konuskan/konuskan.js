@@ -412,7 +412,7 @@ function aiErr(e){
   if(c==='abort') return 'İstek iptal edildi.';
   return 'Yanıt alınamadı: '+((e&&e.message)||c||'bilinmeyen hata');
 }
-function learnerContext(){ const errs=S.errors.slice(-12).map(e=>`"${e.wrong}" -> "${e.right}"`).join('; '); return errs?`\nThe learner's recent mistakes (use them to personalise gently, never list them): ${errs}`:''; }
+function learnerContext(){ const errs=S.errors.slice(-12).map(e=>`"${e.wrong}" -> "${e.right}"`).join('; '); const koc=(window.DHKocBeyin&&DHKocBeyin.kisaBaglam)?DHKocBeyin.kisaBaglam():''; return (errs?`\nThe learner's recent mistakes (use them to personalise gently, never list them): ${errs}`:'')+koc; }
 
 /* ================= Seviye seçimi ================= */
 function setLevel(L){
@@ -461,12 +461,30 @@ function sideSummary(){
   </div>`;
 }
 function bindSide(el){ const g=$('#goCourse',el); if(g) g.onclick=()=>location.hash='#learn'; const f=$('#goFb',el); if(f) f.onclick=()=>openMode('feedback'); }
+/* KOÇ KARTI (koç planı 2. aşama): Deniz'in bugünkü özeti ve sıradaki adım — Koçluk Paneli ile aynı plan */
+function kocKartCiz(m){
+  const D=window.DHKocDeniz; if(!D||!window.DHKocBeyin) return;
+  const w=m.querySelector('.wrap'); if(!w) return;
+  const k=document.createElement('div'); k.className='card stack'; k.id='kocKart'; k.style.cssText='gap:10px;border-color:var(--accent)';
+  k.innerHTML='<div class="row between"><b>Deniz\'in bugünkü planı</b><a class="small" href="./koc-paneli.html">Koçluk Paneli</a></div><p class="small" style="margin:0" id="kocOzet">Verilerine bakıyorum…</p><div class="row" style="gap:8px;flex-wrap:wrap" id="kocDugmeler"></div>';
+  w.insertBefore(k, w.firstChild);
+  const ciz=g=>{
+    const oz=k.querySelector('#kocOzet'); if(!oz) return; oz.textContent=g.ozet;
+    const bugun=window.DHOlay?DHOlay.gunler(1)[0]:{e:{}}, e=bugun.e||{};
+    const sira=(g.plan||[]).find(a=>{ const ek=D.EKRANLAR[a.ekran]; return ek && !((e[ek.url.split('?')[0]]||0)>=a.dk*48); });
+    const dg=k.querySelector('#kocDugmeler'); dg.innerHTML='';
+    if(sira){ const ek=D.EKRANLAR[sira.ekran]; const a=document.createElement('a'); a.className='btn primary sm'; a.href='./'+ek.url; a.textContent='Şimdi: '+ek.ad+' · '+sira.dk+' dk'; dg.appendChild(a); }
+    const b=document.createElement('button'); b.className='btn sm'; b.type='button'; b.textContent='Sesli dinle'; b.onclick=()=>{ try{ speak(g.ozet); }catch(_){} }; dg.appendChild(b);
+  };
+  D.gunluk(false, ciz).then(ciz).catch(()=>{ const oz=k.querySelector('#kocOzet'); if(oz) oz.textContent='Plan şu an hazırlanamadı.'; });
+}
 function pHome(m){
   const hi = new Date().getHours()<12?'Günaydın':'Merhaba';
   m.innerHTML=`<div class="wrap"><div class="stack" style="gap:10px"><h1>${hi}, bugün ne çalışalım?</h1><div class="row between"><span class="small muted">Seviyeni seç: yapay zekâ, kelimeler ve kurs bu seviyeye göre ayarlanır.</span><button class="btn sm ghost" id="goExam">${S.certs[S.level]?ic('star','width="15" height="15"')+' '+S.level+' sertifikan var':S.level+' seviye sınavı'}</button></div>${levelChips(false)}</div>${capNotice()}
   ${window.startVideo?`<button class="vd-hero" data-mode="video" type="button"><span class="vd-hero-yuz" aria-hidden="true"></span><span class="vd-hero-y"><span class="vd-hero-e"><i></i> Canlı · Yeni · ${S.level}</span><b>Görüntülü ders</b><span>Deniz öğretmenle yüz yüze konuş. Cümlelerine duygularıyla tepki verir, hatalarını sohbeti bölmeden gösterir.</span><span class="vd-hero-b">${ic('video','width="18" height="18"')} Derse başla</span></span></button>`:''}
   <div class="cols"><div class="stack"><h2>Öğrenme modları</h2><div class="grid">${MODES.filter(x=>x.id!=='video'||!window.startVideo).map(modeCard).join('')}</div><div id="skHome"></div></div>${sideSummary()}</div></div>`;
   bindModes(m); bindSide(m); bindLevels(m); skCizHome($('#skHome',m));
+  kocKartCiz(m);
   $('#goExam',m).onclick=()=>S.certs[S.level]?openCert(S.level):examIntro(S.level);
 }
 function courseById(id){
@@ -1114,6 +1132,7 @@ Rules: answer in English only, 1-3 short sentences, natural and friendly, end wi
     if(st.finished) return; st.finished=true;
     const userMsgs=st.hist.filter(h=>h.role==='user');
     if(!userMsgs.length){ closePanel(); return; }
+    try{ window.DHKocBeyin && DHKocBeyin.oturumBitti({hatalar:st.errs, mod:'Konuşkan '+(MODE_TR[cfg.kind]||cfg.kind||'sohbet')}); }catch(e){}
     markDone(cfg.kind); if(cfg.onDone) cfg.onDone(); kaydet(true);
     fb.classList.add('show');
     const okN=userMsgs.filter(m=>m.check&&m.check.ok).length;

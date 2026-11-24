@@ -99,11 +99,12 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
   oranları modele verilmez ("konuşmayı %100 tamamladın" hatası). Kota sıfırlanınca Gemini yeniden ölçülecek.
 
 ### 2. aşamada kalanlar
-- Konuşkan'daki Deniz'in koç beynini okuması ve sabah özeti; derslerde gözlem notu yazması.
 - Haftalık değerlendirme notu. Eski 6 ilerleme/plan sayfasının panele yönlendirilmesi (kaldırmadan önce kullanıcıya sor).
 - Gemini kotası açılınca 10 senaryo testinin tekrarı.
 
 ## Yapıldı
+- 24 Kasım: Konuşkan koç beynini okuyor (`kisaBaglam`: düzeltme sıkılığı, zayıf konular, notlar), ana sayfada Deniz'in
+  bugünkü planı, oturum sonunda aynı hata türü 3+ ise konu başına tek "veri" notu (sw v576).
 - 24 Kasım: 2. aşama çekirdeği — koç beyni, kılavuz, Deniz günlük plan + olgu denetimi, Koçluk Paneli (menüde), sw v569.
 - 24 Kasım: 1. aşama — tek aktivite kaydı (`dh-olay.js`), saklama kuralları (sw v567).
 - 24 Kasım: Oturum her sabah düşüyordu → Browser key'e Token Service API eklendi.
