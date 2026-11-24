@@ -613,6 +613,9 @@
          kullanıcı deterministik günlük planı görür ve Gemini'yi ancak açıkça
          ilgili düğmeye bastığında kullanır. */
       if(!(window.DHProviders&&DHProviders.chat&&DHProviders.realHasAnyKey&&DHProviders.realHasAnyKey())) return;
+      /* DENİZ TEK PLAN (24 Kasım): günün planını artık Deniz yapıyor (dh-koc-deniz.js).
+         Eski koç ikinci bir yapay zekâ çağrısı yapmaz. Eski davranış: localStorage "dh-ana-plan" = "eski". */
+      try{ if(localStorage.getItem("dh-ana-plan")!=="eski") return; }catch(e){ return; }
       var prof=await profile(); if(!prof) return;
       var sys='Türk öğrencinin İngilizce koçusun. Profile göre BUGÜN için kısa, SOMUT bir plan yap. '
         +'KESİN KURALLAR: (1) "Hata defteri: BOŞ" yazıyorsa hata-defteri.html adımını KESİNLİKLE ekleme. '

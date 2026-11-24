@@ -340,6 +340,81 @@
   var kocGeldi = false;
   var sonPlan = null, sonCtx = {};
 
+  /* ================= DENİZ TEK PLAN (24 Kasım) =================
+     Ana sayfadaki "Bugünün planı" artık Deniz'in planıdır (Koçluk Paneli ile aynı).
+     Eski koc.js planı yapay zekâyı çağırmaz; sayaçlar ve diğer bölümler aynen çalışır.
+     Eski görünüme dönmek için: localStorage "dh-ana-plan" = "eski". */
+  var DENIZ = (function(){ try{ return localStorage.getItem("dh-ana-plan") !== "eski"; }catch(e){ return true; } })();
+  var denizG = null;
+  function yerelGun(){ var z=new Date(); return z.getFullYear()+"-"+String(z.getMonth()+1).padStart(2,"0")+"-"+String(z.getDate()).padStart(2,"0"); }
+  function denizPlanOku(){ try{ return JSON.parse(localStorage.getItem("dh-koc-gun-"+yerelGun())||"null"); }catch(e){ return null; } }
+  function betik(src, ad){
+    if (window[ad]) return Promise.resolve(true);
+    return new Promise(function(res){ var s=document.createElement("script"); s.src=src; s.onload=function(){ res(!!window[ad]); }; s.onerror=function(){ res(false); }; document.head.appendChild(s); });
+  }
+  var DENIZ_ISARET = { tekrar:"↻", yeni:"+", konusma:"◇", hata:"!", kelime:"▪", telafi:"↧", dinleme:"♪", okuma:"≡", ders:"✎" };
+  function denizCiz(){
+    if (!DENIZ) return;
+    var d = durum();
+    if (d.dinlenme) return;
+    var G = denizG || denizPlanOku(), D = window.DHKocDeniz, kap = $("plan");
+    $("telafiKart").hidden = true;          /* eksik modül artık planın kendi adımı */
+    $("kocNeden").hidden = true;
+    if (!G || !G.plan || !G.plan.length){
+      $("planBaslik").hidden = false; $("planBaslik").textContent = "Bugünün planı";
+      kap.innerHTML = '<div class="dh-kart dh-kart--sessiz"><p class="dh-etiket" style="margin:0">Deniz bugünün planını hazırlıyor…</p></div>';
+      $("planOzet").hidden = true;
+      return;
+    }
+    var dur = D ? D.adimDurumlari(G.plan) : G.plan.map(function(a){ return { a:a, url:"koc-paneli.html", ad:a.ekran, sn:0, tamam:false }; });
+    var biten = 0, ilk = null;
+    kap.innerHTML = "";
+    dur.forEach(function(x){
+      if (x.tamam) biten++;
+      var aktif = !x.tamam && !ilk; if (aktif) ilk = x;
+      var a = document.createElement("a");
+      a.href = "./" + x.url;
+      a.className = "dh-plan-satir" + (aktif ? " dh-plan-satir--aktif" : "") + (x.tamam ? " dh-plan-satir--bitti" : "");
+      var dk = +x.a.dk || 0, yap = Math.min(dk, Math.floor((x.sn || 0) / 60)), n = Math.max(1, Math.min(dk, 24)), t = "";
+      for (var i = 0; i < n; i++) t += '<span class="dh-tugla__bir' + ((i / n) * dk < (x.tamam ? dk : yap) ? " dh-tugla__bir--dolu" : "") + '"></span>';
+      a.innerHTML = '<div class="dh-plan-satir__ust"><span class="dh-plan-satir__ikon" aria-hidden="true">' + (x.tamam ? "✓" : (DENIZ_ISARET[x.a.ekran] || "·")) + '</span>' +
+        '<span class="dh-plan-satir__ad">' + kacir(x.ad) + ' · ' + dk + ' dk' + (x.tamam ? ' <strong class="dh-plan-tamam">✓ Tamamlandı</strong>' : '') + '</span></div>' +
+        '<div class="dh-etiket" style="margin:2px 0 6px 34px">' + kacir(x.a.neden || "") + '</div>' +
+        (x.tamam ? '' : '<div class="dh-tugla" style="margin-bottom:0"><div class="dh-tugla__sira">' + t + '</div><div class="dh-tugla__yazi">' + yap + "/" + dk + ' dk · ' + Math.ceil(dk * 0.8) + ' dk yeterli</div></div>');
+      kap.appendChild(a);
+    });
+    var toplam = dur.length;
+    $("planBaslik").hidden = false;
+    $("planBaslik").textContent = "Bugünün planı · Deniz · " + biten + "/" + toplam + " tamam";
+    /* birincil düğme: ilk bitmemiş adım */
+    var b = $("devam");
+    if (ilk){ b.textContent = d.calisti ? "Kaldığın yerden devam" : "Başla"; b.setAttribute("href", "./" + ilk.url); }
+    else { b.textContent = "Bugünlük tamam · Koçluk Paneli"; b.setAttribute("href", "./koc-paneli.html"); }
+    /* Deniz'in sözü */
+    var soz0 = d.calisti
+      ? ("Bugün " + yapilanlar(d) + " yaptın. " + (ilk ? "Sıradaki: " + ilk.ad + " (" + ilk.a.dk + " dk)." : "Bugünkü planın tamam!"))
+      : String(G.ozet || "Bugüne başlayalım.");
+    $("kocSoz").textContent = soz0;
+    /* plan özeti (Planlanan / Yapılan / Kalan) */
+    $("planlananN").textContent = toplam; $("yapilanN").textContent = biten; $("kalanN").textContent = toplam - biten;
+    $("planOzetCubuk").style.width = Math.round(biten / Math.max(1, toplam) * 100) + "%";
+    $("planOzetMesaj").textContent = toplam - biten ? (biten ? "Program ilerliyor; sıradaki adımdan devam et." : "Programın hazır; ilk adımdan başla.") : "Bugünkü programın tamamlandı.";
+    $("planOzet").classList.toggle("dh-plan-ozet--tamam", biten === toplam);
+    $("planOzet").hidden = false;
+  }
+  function denizYukle(){
+    if (!DENIZ) return;
+    betik("./dh-koc-kilavuz.js?v=3", "DHKocKilavuz")
+      .then(function(){ return betik("./dh-koc-beyin.js?v=8", "DHKocBeyin"); })
+      .then(function(){ return betik("./dh-koc-deniz.js?v=7", "DHKocDeniz"); })
+      .then(function(){
+        denizCiz();
+        if (!window.DHKocDeniz) return;
+        return DHKocDeniz.gunluk(false, function(ara){ if (!denizG){ denizG = ara; denizCiz(); } })
+          .then(function(g){ denizG = g; denizCiz(); konustur($("kocSoz").textContent); });
+      }).catch(function(){});
+  }
+
   function kacir(s){
     return String(s==null?"":s).replace(/[&<>"]/g, function(c){
       return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c];
@@ -1054,6 +1129,7 @@
       $("mCalisiliyor").textContent = (plan.stats.s1||0) + (plan.stats.w1||0);
     }
 
+    denizCiz();
     konustur($("kocSoz").textContent);
   }
 
@@ -1068,6 +1144,9 @@
      koc.js beklenmez. Depodaki gercek durum ANINDA basilir; boylece
      calismis kullanici "Bugunu hazirliyorum..." gormez. */
   ciz(null, {});
+  denizYukle();
+  /* sayfaya dönünce (başka ekranda çalışıp geri gelince) adım durumları tazelensin */
+  document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "visible") denizCiz(); });
   if (window.DHInsights) DHInsights.render("#kisiselIcGoru").then(tamamlananOzetleriBoya);
   if (window.DHLearningCoach) DHLearningCoach.render("#dhLearningCoach").then(tamamlananOzetleriBoya);
   window.addEventListener("dh-cloud-synced",function(){
@@ -1174,7 +1253,7 @@
 </script>
 
 <!-- koc.js EN SONDA: kanca (window.DHKocRender) tanimli olmali -->
-<script src="./koc.js?v=5"></script>
+<script src="./koc.js?v=6"></script>
 <script src="./dh-amac.js?v=2"></script>
 <script src="./dh-ozel-ders.js?v=6"></script>
 <script>
