@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v568";  /* 🧠 Koç beyni, kılavuz, Deniz günlük plan modülleri (henüz sayfalara bağlı değil) */
+var SW_VERSION = "dh-sw-v569";  /* 🧭 Koçluk Paneli + Deniz günlük plan (olgu denetimi) */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */
 /* onceki v438: 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
 /* onceki v437: ➕ Konuşkan: kendi kursunu oluştur */
@@ -34,6 +34,7 @@ var CACHE = SW_VERSION;
 var SHELL = [
   "./index.html",
   "./menu.html",
+  "./koc-paneli.html",
   "./konuskan.html",
   "./konuskan/konuskan.js",
   "./konuskan/goruntulu.js",

@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0C1013">
+<title>Koçluk Paneli · Dil Harita</title>
+<link rel="stylesheet" href="./dh-tokens.css">
+<script src="./idb-uyum.js?v=1"></script>
+<script src="./auth-guard.js?v=9"></script>
+<script src="./cloud-sync.js?v=53"></script>
+<script src="./ai-providers.js?v=t39"></script>
+<script src="./dh-amac.js"></script>
+<script src="./dh-insights.js"></script>
+<script src="./dh-olay.js?v=1"></script>
+<script src="./dh-koc-kilavuz.js?v=1"></script>
+<script src="./dh-koc-beyin.js?v=1"></script>
+<script src="./dh-koc-deniz.js?v=1"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:var(--dh-bg);color:var(--dh-text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.kap{max-width:520px;margin:0 auto;padding:16px 14px 48px;display:flex;flex-direction:column;gap:14px}
+.ust{display:flex;align-items:center;gap:12px}
+.geri{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;background:var(--dh-yuzey);border:1px solid var(--dh-cizgi);color:var(--dh-text);text-decoration:none;font-size:20px;font-weight:800}
+.ust h1{margin:0;font-size:22px}
+.ust small{color:var(--dh-text-2)}
+.k{background:var(--dh-yuzey);border:1px solid var(--dh-cizgi);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.k h2{margin:0;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--dh-text-2)}
+.deniz{background:var(--dh-marka-koyu);border-color:var(--dh-marka-koyu);color:var(--dh-text-ters)}
+.deniz .kim{display:flex;gap:12px;align-items:center}
+.deniz .av{width:44px;height:44px;border-radius:50%;background:var(--dh-marka-zemin);color:var(--dh-marka-metin);display:grid;place-items:center;font-weight:800;font-size:18px;flex:none}
+.deniz p{margin:0;font-size:16px}
+.deniz small{opacity:.85}
+.simdi{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--dh-yuzey);color:var(--dh-text);text-decoration:none;border-radius:12px;padding:12px 14px;min-height:48px;font-weight:700}
+.ikili{display:flex;gap:8px}
+.btn{flex:1;min-height:44px;border-radius:12px;border:1px solid var(--dh-cizgi-kuvvet);background:transparent;color:inherit;font:600 14px system-ui;cursor:pointer;padding:8px 10px}
+.deniz .btn{border-color:rgba(255,255,255,.55)}
+.btn.ana{background:var(--dh-marka);border-color:var(--dh-marka);color:#fff}
+.satir{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:15px}
+.cubuk{height:8px;border-radius:99px;background:var(--dh-yuzey-2);overflow:visible;position:relative}
+.cubuk>i{display:block;height:100%;border-radius:99px;background:var(--dh-marka)}
+.cubuk>b{position:absolute;top:-3px;width:2px;height:14px;background:var(--dh-text)}
+.adim{display:flex;gap:10px;align-items:center;text-decoration:none;color:var(--dh-text);min-height:44px}
+.adim .d{width:22px;height:22px;border-radius:50%;border:2px solid var(--dh-cizgi-kuvvet);flex:none;display:grid;place-items:center;font-size:12px}
+.adim.bitti .d{background:var(--dh-ok);border-color:var(--dh-ok);color:#fff}
+.adim.bitti .ad{color:var(--dh-text-2);text-decoration:line-through}
+.adim .ne{display:block;font-size:13px;color:var(--dh-text-2)}
+.kucuk{font-size:13px;color:var(--dh-text-2)}
+.cip{display:inline-block;background:var(--dh-marka-zemin);color:var(--dh-marka-metin);border-radius:99px;padding:5px 12px;font-size:13px;font-weight:600;margin:0 6px 6px 0}
+.yol{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;text-align:center;font-size:12px;font-weight:700}
+.yol div{display:flex;flex-direction:column;gap:6px}
+.yol i{display:block;height:8px;border-radius:99px;background:var(--dh-yuzey-2)}
+.yol .ok i{background:var(--dh-marka)}
+.yol .hedef i{outline:2px dashed var(--dh-seri);outline-offset:1px}
+.uyari{background:var(--dh-seri-zemin);border-radius:12px;padding:12px;font-size:14px}
+.gunler{display:flex;gap:6px}
+.gunler span{width:30px;height:30px;border-radius:8px;background:var(--dh-yuzey-2);display:grid;place-items:center;font-size:10px;color:var(--dh-text-3)}
+.gunler span.on{background:var(--dh-marka);color:#fff}
+.bec{display:grid;grid-template-columns:84px minmax(0,1fr) 46px;gap:8px;align-items:center;font-size:14px}
+.bec .bos{height:8px;border-radius:99px;border:1px dashed var(--dh-cizgi-kuvvet)}
+.bec.geride span:first-child,.bec.geride strong{color:var(--dh-err)}
+.bec.geride .cubuk>i{background:var(--dh-err)}
+.grafik{display:flex;align-items:flex-end;gap:10px;height:96px;border-bottom:1px solid var(--dh-cizgi)}
+.grafik i{flex:1;background:var(--dh-cizgi-kuvvet);border-radius:6px 6px 0 0;min-height:2px}
+.grafik i:last-child{background:var(--dh-marka)}
+.not{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--dh-cizgi)}
+.not:first-of-type{border-top:0}
+.not .m{flex:1;font-size:14px}
+.not .kay{font-size:11px;font-weight:700;border-radius:99px;padding:2px 8px;background:var(--dh-yuzey-2);color:var(--dh-text-2);white-space:nowrap}
+.not .kay.kullanici{background:var(--dh-marka-zemin);color:var(--dh-marka-metin)}
+.not button{min-width:44px;min-height:36px;border-radius:10px;border:1px solid var(--dh-cizgi);background:transparent;color:var(--dh-text-2);cursor:pointer}
+input,select,textarea{font:inherit;color:var(--dh-text);background:var(--dh-yuzey-2);border:1px solid var(--dh-cizgi-kuvvet);border-radius:10px;padding:9px 10px;min-height:44px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--dh-text-2)}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+details pre{white-space:pre-wrap;font-size:12px;color:var(--dh-text-2);max-height:420px;overflow:auto}
+a{color:var(--dh-marka-metin)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main class="kap">
+  <div class="ust">
+    <a class="geri" href="./menu.html" aria-label="Menüye dön">←</a>
+    <div><h1>Koçluk Paneli</h1><small id="tarih"></small></div>
+  </div>
+
+  <section class="k deniz" aria-labelledby="dz">
+    <div class="kim"><div class="av" aria-hidden="true">D</div><div><strong id="dz">Deniz'in değerlendirmesi</strong><br><small id="dzKaynak">hazırlanıyor…</small></div></div>
+    <p id="ozet">Verilerine bakıyorum…</p>
+    <a class="simdi" id="simdi" href="#" hidden><span id="simdiAd"></span><span aria-hidden="true">→</span></a>
+    <div class="ikili"><button class="btn" id="dinle" type="button">Sesli dinle</button><button class="btn" id="yenile" type="button">Planı yenile</button></div>
+  </section>
+
+  <section class="k" aria-labelledby="h-plan">
+    <h2 id="h-plan">Bugünün planı</h2>
+    <div id="plan"></div>
+    <div class="cubuk" aria-hidden="true"><i id="planCubuk" style="width:0"></i></div>
+    <span class="kucuk" id="planNot"></span>
+  </section>
+
+  <section class="k" aria-labelledby="h-ner">
+    <h2 id="h-ner">Neredeyim</h2>
+    <div class="satir" style="align-items:center"><span style="font-size:40px;font-weight:800;color:var(--dh-marka-metin);line-height:1" id="seviye">–</span><span class="kucuk" id="seviyeNot" style="text-align:right"></span></div>
+    <div id="neredeyim"></div>
+  </section>
+
+  <section class="k" aria-labelledby="h-amac">
+    <h2 id="h-amac">Amacım</h2>
+    <div id="amaclar"></div>
+    <form class="form" id="hedefForm">
+      <label>Hedef seviye<select id="hedefSev"><option value="">Seçilmedi</option><option>A2</option><option>B1</option><option>B2</option><option>C1</option></select></label>
+      <label>Hedef tarih<input type="date" id="hedefTarih"></label>
+      <button class="btn ana" type="submit" style="grid-column:1/-1">Hedefi kaydet</button>
+    </form>
+    <a href="./basla.html" class="kucuk">Amaçlarımı değiştir</a>
+  </section>
+
+  <section class="k" aria-labelledby="h-yol">
+    <h2 id="h-yol">Nereye gidiyorum</h2>
+    <div class="yol" id="yol"></div>
+    <div class="uyari" id="tahmin"></div>
+  </section>
+
+  <section class="k" aria-labelledby="h-hafta">
+    <h2 id="h-hafta">Bu hafta</h2>
+    <div class="satir" style="align-items:center"><div class="gunler" id="gunler"></div><div style="text-align:right" class="kucuk"><strong style="font-size:18px;color:var(--dh-text)" id="haftaDk">0 dk</strong><br><span id="haftaGun"></span></div></div>
+    <span class="kucuk">Beceri dağılımı · çizgi: amacına göre hedef</span>
+    <div id="beceriler" style="display:flex;flex-direction:column;gap:9px"></div>
+    <a class="kucuk" id="gerideLink" href="#" hidden></a>
+  </section>
+
+  <section class="k" aria-labelledby="h-gidis">
+    <h2 id="h-gidis">Gidiş · son 4 hafta</h2>
+    <div class="grafik" id="grafik" aria-hidden="true"></div>
+    <div class="satir kucuk"><span>4 hafta önce</span><span>haftalık dakika</span><span>bu hafta</span></div>
+    <span class="kucuk" id="gidisNot"></span>
+  </section>
+
+  <section class="k" aria-labelledby="h-gz">
+    <h2 id="h-gz">Güçlü ve zayıf yanlar</h2>
+    <div id="konular" style="display:flex;flex-direction:column;gap:10px"></div>
+    <a class="kucuk" href="./hata-defteri.html">Hata defterinde çalış</a>
+  </section>
+
+  <section class="k" aria-labelledby="h-not">
+    <h2 id="h-not">Deniz'in hakkımdaki notları</h2>
+    <span class="kucuk">Deniz bunları ders başında okur. Yanlış olanı düzelt ya da sil.</span>
+    <div id="notlar"></div>
+    <form id="notForm" style="display:flex;gap:8px"><input id="notYeni" maxlength="220" placeholder="Deniz bilsin: ör. iş toplantıları için çalışıyorum" style="flex:1" aria-label="Yeni not"><button class="btn ana" style="flex:none" type="submit">Ekle</button></form>
+  </section>
+
+  <section class="k" aria-labelledby="h-ter">
+    <h2 id="h-ter">Koçluk tercihlerim</h2>
+    <form class="form" id="terForm">
+      <label>Düzeltme sıkılığı<select id="terDuz"><option>yumuşak</option><option>dengeli</option><option>sıkı</option></select></label>
+      <label>Günlük süre (dk)<input type="number" id="terDk" min="5" max="180" step="5"></label>
+      <label style="grid-column:1/-1">Üslup<input id="terUslup" maxlength="80"></label>
+      <button class="btn ana" type="submit" style="grid-column:1/-1">Tercihleri kaydet</button>
+    </form>
+  </section>
+
+  <details class="k"><summary>Deniz'in okuduğu metin (denizkoç.md)</summary><pre id="md"></pre></details>
+  <p class="kucuk">Rakamları uygulama kendi kayıtlarından hesaplar; Deniz yalnız yorumu ve planı yazar. Ayrıntılı kayıtlar 30 gün, günlük özetler süresiz saklanır.</p>
+</main>
+<script>
+(function(){
+  "use strict";
+  var $=function(id){return document.getElementById(id);};
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  var B=window.DHKocBeyin, D=window.DHKocDeniz, SEV=["A1","A2","B1","B2","C1"];
+  var BTR={kelime:"Kelime",dilbilgisi:"Dilbilgisi",dinleme:"Dinleme",konusma:"Konuşma",okuma:"Okuma",yazma:"Yazma"};
+  var BEKRAN={kelime:"kelime-ogren.html",dilbilgisi:"ders.html",dinleme:"youtube-egitim.html",konusma:"konuskan.html",okuma:"library.html",yazma:"tekrar.html?plan=1"};
+  function konuAd(k){ try{ if(window.DHInsights) return DHInsights.label(k); }catch(e){} return String(k).replace(/_/g," "); }
+  $("tarih").textContent=new Date().toLocaleDateString("tr-TR",{day:"numeric",month:"long",weekday:"long"});
+  var H=null, G=null;
+
+  function cizPlan(){
+    if(!G) return;
+    var bugun=(window.DHOlay?DHOlay.gunler(1)[0]:{e:{}}), e=bugun.e||{}, biten=0, html="";
+    G.plan.forEach(function(a){
+      var ek=D.EKRANLAR[a.ekran]||{ad:a.ekran,url:"#"}, sayfa=ek.url.split("?")[0], sn=e[sayfa]||0, tamam=sn>=a.dk*60*0.8;
+      if(tamam) biten++;
+      html+='<a class="adim'+(tamam?' bitti':'')+'" href="./'+esc(ek.url)+'"><span class="d" aria-hidden="true">'+(tamam?'✓':'')+'</span><span><span class="ad">'+esc(ek.ad)+' · '+a.dk+' dk</span><span class="ne">'+esc(a.neden)+(sn&&!tamam?' · '+Math.round(sn/60)+' dk yapıldı':'')+'</span></span></a>';
+    });
+    $("plan").innerHTML=html;
+    $("planCubuk").style.width=(G.plan.length?Math.round(biten/G.plan.length*100):0)+"%";
+    $("planNot").textContent=biten+" / "+G.plan.length+" adım tamam · süre, o ekranda gerçekten çalıştığın dakikalardan ölçülür";
+    var ilk=G.plan.filter(function(a){ var ek=D.EKRANLAR[a.ekran]; return ek && !(e[ek.url.split("?")[0]]>=a.dk*60*0.8); })[0];
+    if(ilk){ var ek=D.EKRANLAR[ilk.ekran]; $("simdi").hidden=false; $("simdi").href="./"+ek.url; $("simdiAd").textContent="Şimdi: "+ek.ad+" · "+ilk.dk+" dk"; } else { $("simdi").hidden=false; $("simdi").href="./konuskan.html"; $("simdiAd").textContent="Bugünün planı tamam! İstersen Deniz'le sohbet et"; }
+  }
+
+  function cizHesap(){
+    var h=H;
+    /* neredeyim */
+    var sv=h.profil.seviye||"–"; $("seviye").textContent=sv;
+    $("seviyeNot").innerHTML=h.sure.seri?("Seri: "+h.sure.seri+" gün"):"Bugün seriyi başlat";
+    var ner="";
+    if(SEV.indexOf(sv)>=0){ var ks=h.kelimeSeviye[sv]; ner+=cubukSatir(sv+" kelimeleri", ks.bilinen+" / "+ks.toplam+" · %"+ks.yuzde, ks.yuzde); }
+    var c=h.tekrar.cumle; ner+=cubukSatir("Öğrenilen cümle kartı", c.ogrenilen+" / "+c.kart, c.kart?Math.round(c.ogrenilen/c.kart*100):0);
+    var dk=h.beceriler.filter(function(x){return x.dogruluk!=null;});
+    if(dk.length){ var d=0,t=0; dk.forEach(function(x){ d+=x.dogruluk*x.cevap; t+=x.cevap; }); var ort=Math.round(d/t); ner+=cubukSatir("Doğruluk (son 7 gün)", "%"+ort, ort); }
+    ner+='<div class="satir kucuk"><span>Bekleyen tekrar</span><span>'+(h.tekrar.cumle.bekleyen+h.tekrar.kelime.bekleyen)+' kart</span></div>';
+    $("neredeyim").innerHTML=ner;
+    /* amaç */
+    var am=(h.profil.amaclar||[]).map(function(a){ var x=window.DHAmac&&DHAmac.bul?DHAmac.bul(a):null; return '<span class="cip">'+esc(x?x.ad:a)+'</span>'; }).join("");
+    $("amaclar").innerHTML=am||'<span class="kucuk">Henüz amaç seçmedin.</span>';
+    $("hedefSev").value=h.hedef.seviye||""; $("hedefTarih").value=h.hedef.tarih||"";
+    /* yol */
+    var ai=SEV.indexOf(h.profil.seviye), hi=SEV.indexOf(h.hedef.seviye);
+    $("yol").innerHTML=SEV.map(function(s,i){ var cls=i<ai?"ok":(i===hi?"hedef":""); var yz=i===ai?(h.kelimeSeviye[s]||{}).yuzde||0:0;
+      return '<div class="'+cls+'"><i'+(i===ai?' style="background:linear-gradient(90deg,var(--dh-marka) '+yz+'%,var(--dh-yuzey-2) '+yz+'%)"':'')+'></i><span>'+s+(i===ai?' · buradasın':'')+(i===hi?' · hedef':'')+'</span></div>'; }).join("");
+    var t=h.tahmin||{}, tx;
+    if(!h.hedef.seviye) tx="Hedef seviye ve tarih seçersen Deniz yolun ne kadar kaldığını hesaplar.";
+    else if(t.durum==="kaba tahmin") tx="<strong>Bu tempoyla "+h.hedef.seviye+" kelime hedefine: "+new Date(t.varis).toLocaleDateString("tr-TR",{month:"long",year:"numeric"})+"</strong><br>Kalan "+t.kalanKelime+" kelime, günde yaklaşık "+t.gunlukHiz+" yeni kelime öğreniyorsun."+(h.hedef.tarih&&t.varis>h.hedef.tarih?" Hedef tarihinin ("+new Date(h.hedef.tarih).toLocaleDateString("tr-TR")+") gerisindesin.":"")+"<br><span class='kucuk'>Kaba tahmin: yalnız kelime ilerlemesine bakar.</span>";
+    else tx=(t.durum==="henüz erken"?"Henüz erken: ":"")+(t.not||t.durum||"");
+    $("tahmin").innerHTML=tx;
+    /* hafta */
+    var gn=["Pz","Pt","Sa","Ça","Pe","Cu","Ct"];
+    $("gunler").innerHTML=h.sure.gunluk.map(function(g){ return '<span class="'+(g.dk>=2?"on":"")+'" title="'+g.tarih+': '+g.dk+' dk">'+gn[new Date(g.tarih).getDay()]+'</span>'; }).join("");
+    $("haftaDk").textContent=sureYaz(h.sure.haftaDk); $("haftaGun").textContent=h.sure.aktifGunHafta+" / 7 gün";
+    $("beceriler").innerHTML=h.beceriler.map(function(x){
+      var geride=h.gerideBeceri.indexOf(x.beceri)>=0;
+      if(!x.dk) return '<div class="bec'+(geride?' geride':'')+'"><span>'+BTR[x.beceri]+'</span><div class="bos" title="Bu hafta kayıt yok"></div><span class="kucuk" style="text-align:right">'+(x.hedefPay?'hedef %'+x.hedefPay:'—')+'</span></div>';
+      return '<div class="bec'+(geride?' geride':'')+'"><span>'+BTR[x.beceri]+'</span><div class="cubuk"><i style="width:'+Math.min(100,x.pay)+'%"></i><b style="left:'+x.hedefPay+'%"></b></div><strong style="text-align:right">%'+x.pay+'</strong></div>';
+    }).join("");
+    if(h.gerideBeceri.length){ var gb=h.gerideBeceri[0]; $("gerideLink").hidden=false; $("gerideLink").href="./"+BEKRAN[gb]; $("gerideLink").textContent=BTR[gb]+" hedefinin altında → 10 dk "+BTR[gb].toLowerCase(); }
+    /* gidiş */
+    var mx=Math.max.apply(null,h.sure.haftalar.concat([1]));
+    $("grafik").innerHTML=h.sure.haftalar.map(function(v){ return '<i style="height:'+Math.round(v/mx*100)+'%" title="'+v+' dk"></i>'; }).join("");
+    var hw=h.sure.haftalar; $("gidisNot").textContent=hw[3]+" dk bu hafta · "+hw[2]+" dk geçen hafta";
+    /* konular */
+    var kh=h.hataKonulari.map(function(k){
+      var renk=k.egilim==="azalıyor"?"var(--dh-ok)":k.egilim==="artıyor"?"var(--dh-err)":"var(--dh-text-2)";
+      var ok=k.egilim==="azalıyor"?"↓ ":k.egilim==="artıyor"?"↑ ":"";
+      return '<div class="satir"><span>'+esc(konuAd(k.konu))+' · '+k.son14+' hata (14 gün)</span><strong style="color:'+renk+'">'+ok+esc(k.egilim)+'</strong></div>';
+    });
+    var guclu=h.beceriler.filter(function(x){return x.dogruluk!=null&&x.cevap>=10;}).sort(function(a,b){return b.dogruluk-a.dogruluk;})[0];
+    if(guclu) kh.push('<div class="satir"><span>En güçlü: '+BTR[guclu.beceri].toLowerCase()+'</span><strong style="color:var(--dh-ok)">%'+guclu.dogruluk+' doğru</strong></div>');
+    $("konular").innerHTML=kh.join("")||'<span class="kucuk">Henüz yeterli cevap kaydı yok.</span>';
+  }
+  function cubukSatir(ad, deger, yz){ return '<div style="display:flex;flex-direction:column;gap:6px"><div class="satir"><span>'+esc(ad)+'</span><strong>'+esc(deger)+'</strong></div><div class="cubuk"><i style="width:'+Math.max(0,Math.min(100,yz))+'%"></i></div></div>'; }
+  function sureYaz(dk){ return dk>=60?Math.floor(dk/60)+" sa "+(dk%60)+" dk":dk+" dk"; }
+
+  function cizNotlar(){
+    var b=B.beyin(), ids=Object.keys(b.notlar).sort(function(x,y){return b.notlar[y].u-b.notlar[x].u;});
+    var ADK={kullanici:"senin sözün",veri:"veriden",tahmin:"Deniz'in tahmini"};
+    $("notlar").innerHTML=ids.length?ids.map(function(id){ var n=b.notlar[id];
+      return '<div class="not"><span class="kay '+n.k+'">'+ADK[n.k]+'</span><span class="m">'+esc(n.m)+'</span><button type="button" data-d="'+id+'" aria-label="Düzelt">✎</button><button type="button" data-s="'+id+'" aria-label="Sil">✕</button></div>'; }).join(""):'<span class="kucuk">Henüz not yok.</span>';
+    var t=B.tercihler(); $("terDuz").value=t.duzeltme; $("terDk").value=t.gunlukDakika; $("terUslup").value=t.uslup;
+  }
+  $("notlar").addEventListener("click",function(ev){
+    var s=ev.target.getAttribute("data-s"), d=ev.target.getAttribute("data-d");
+    if(s){ B.notSil(s).then(function(){ cizNotlar(); mdYenile(); }); }
+    if(d){ var n=B.beyin().notlar[d]; var yeni=prompt("Notu düzelt:", n?n.m:""); if(yeni!=null) B.notDuzelt(d,yeni).then(function(){ cizNotlar(); mdYenile(); }); }
+  });
+  $("notForm").addEventListener("submit",function(ev){ ev.preventDefault(); var v=$("notYeni").value.trim(); if(!v) return; B.notEkle({metin:v,kaynak:"kullanici"}).then(function(r){ if(r.ok){ $("notYeni").value=""; cizNotlar(); mdYenile(); } }); });
+  $("terForm").addEventListener("submit",function(ev){ ev.preventDefault(); B.tercihYaz({duzeltme:$("terDuz").value, gunlukDakika:$("terDk").value, uslup:$("terUslup").value}).then(function(){ cizNotlar(); mdYenile(); tamam("Tercihler kaydedildi; yarınki plan buna göre yapılır."); }); });
+  $("hedefForm").addEventListener("submit",function(ev){ ev.preventDefault(); B.hedefYaz({seviye:$("hedefSev").value, tarih:$("hedefTarih").value}).then(function(){ return B.hesapla(true); }).then(function(h){ H=h; cizHesap(); mdYenile(); tamam("Hedef kaydedildi."); }); });
+  function tamam(m){ var d=document.createElement("div"); d.setAttribute("role","status"); d.textContent=m; d.style.cssText="position:fixed;left:12px;right:12px;bottom:16px;max-width:496px;margin:0 auto;background:var(--dh-marka);color:#fff;border-radius:12px;padding:12px 14px;font-weight:600;z-index:9"; document.body.appendChild(d); setTimeout(function(){ d.remove(); },3200); }
+  function mdYenile(){ B.md().then(function(m){ $("md").textContent=m; }); }
+
+  function cizDeniz(){
+    $("ozet").textContent=G.ozet;
+    $("dzKaynak").textContent="Bugün "+new Date(G.t).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})+" · "+(G.kaynak==="kural"?"kurallarla hazırlandı (yapay zekâya ulaşılamadı)":"verilerine göre · "+G.kaynak.replace("model:",""));
+    cizPlan();
+  }
+  $("dinle").addEventListener("click",function(){
+    try{ var u=new SpeechSynthesisUtterance($("ozet").textContent); u.lang="tr-TR"; u.rate=1; u.pitch=1; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
+  });
+  $("yenile").addEventListener("click",function(){ $("ozet").textContent="Planı yeniden hazırlıyorum…"; D.gunluk(true).then(function(g){ G=g; cizDeniz(); }); });
+
+  B.hesapla(true).then(function(h){ H=h; cizHesap(); });
+  cizNotlar(); mdYenile();
+  D.gunluk(false).then(function(g){ G=g; cizDeniz(); }).catch(function(){ $("ozet").textContent="Plan hazırlanamadı."; });
+  B.yukle().then(function(){ cizNotlar(); });
+  document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible"&&G) cizPlan(); });
+})();
+</script>
+</body>
+</html>

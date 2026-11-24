@@ -6,7 +6,8 @@
      - JSON ve alanlar geçerli mi, ekran izinli listede mi, dk 3–60 arası mı;
      - toplam süre günlük tercihin %40–%140'ı arasında mı;
      - bekleyen tekrar varsa planda bir tekrar adımı var mı;
-     - rakam uydurma: özet ve gerekçelerdeki her sayı koç beyninde ya da planda geçiyor mu.
+     - rakam uydurma: özet ve gerekçelerdeki her sayı koç beyninde ya da planda geçiyor mu;
+     - rakam doğru yerde mi: sayının çevresindeki kelimeler o sayıyı içeren olgu satırıyla eşleşiyor mu.
    Denetimden geçmeyen cevap reddedilir, sıradaki model denenir; hiçbiri olmazsa
    KURAL PLANI (kuralPlani) kullanılır — koç hiçbir zaman durmaz.
    Model sırası: Gemini → Groq → Cerebras → NVIDIA (küçük modeller koç kararına girmez).
@@ -30,6 +31,10 @@
     hata:    { ad: "Hata defteri",        url: "hata-defteri.html",    beceri: "yazma" }
   };
   var SIRA = ["gemini", "groq", "cerebras", "nvidia"];
+  /* Modeller ekran yerine beceri adı yazabiliyor (testte Groq: "dilbilgisi", "yazma"); eş anlamlılar ekrana çevrilir. */
+  var ES = { dilbilgisi: "ders", gramer: "ders", yazma: "tekrar", cumle: "tekrar", "cümle": "tekrar", "konuşma": "konusma", sohbet: "konusma",
+             video: "dinleme", "hata defteri": "hata", hatalar: "hata", kelimeler: "kelime", kitap: "okuma" };
+  function ekranAdi(x) { x = String(x || "").toLowerCase().trim(); return EKRANLAR[x] ? x : (ES[x] || x); }
 
   function gunAnahtari() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
   function js(k, v) { try { var x = JSON.parse(localStorage.getItem(k) || "null"); return x == null ? v : x; } catch (e) { return v; } }
@@ -38,18 +43,62 @@
     "Bugün için öğrenciye sabah özetini ve bugünün planını hazırla.",
     "Yalnız şu JSON'u döndür (başka metin yok):",
     '{"ozet":"2-3 cümle, Türkçe, öğrenciye hitaben; en az bir rakamla gerekçe","plan":[{"ekran":"<' + Object.keys(EKRANLAR).join("|") + '>","dk":<sayı>,"neden":"tek cümle, Türkçe"}],"not":null}',
+    "\"ekran\" alanına YALNIZ şu kimliklerden birini yaz: " + Object.keys(EKRANLAR).map(function (k) { return k + " (" + EKRANLAR[k].ad + ")"; }).join(", ") + ".",
     "Kurallar: 2-5 adım; toplam süre öğrencinin günlük süre tercihine yakın; kılavuzdaki öncelik sırasına uy; yalnız koç beynindeki rakamları kullan.",
     "Koç beyninden yeni ve önemli bir gözlem çıkarırsan \"not\" alanına {\"metin\":\"...\",\"kaynak\":\"veri\"} yaz, yoksa null bırak."
   ].join("\n");
 
+  /* OLGULAR: modelin kullanabileceği rakamlar, her biri kendi kelimeleriyle. Denetimde metindeki
+     her rakamın çevresindeki kelimeler, o rakamı içeren bir olgu satırıyla eşleşmek zorunda
+     (testte model "dinleme 0 dk" yazdı; 0 aslında konuşmanın değeriydi). */
+  var BTR = { kelime: "kelime", dilbilgisi: "dilbilgisi", dinleme: "dinleme", konusma: "konuşma", okuma: "okuma", yazma: "yazma" };
+  function olgular(h, t) {
+    var o = [];
+    o.push("günlük süre tercihi: " + ((t && t.gunlukDakika) || 30) + " dakika");
+    o.push("bekleyen cümle kartı: " + h.tekrar.cumle.bekleyen + " kart");
+    o.push("bekleyen kelime kartı: " + h.tekrar.kelime.bekleyen + " kart");
+    if (h.tekrar.cumle.zor) o.push("zorlanılan cümle kartı: " + h.tekrar.cumle.zor + " kart");
+    if (h.sure) {
+      o.push("bu hafta toplam çalışma: " + h.sure.haftaDk + " dakika, " + h.sure.aktifGunHafta + " gün");
+      o.push("aralıksız çalışma serisi: " + h.sure.seri + " gün");
+    }
+    (h.beceriler || []).forEach(function (x) {
+      o.push(BTR[x.beceri] + " bu hafta: " + x.dk + " dakika (payı yüzde " + x.pay + ", amaca göre hedef payı yüzde " + x.hedefPay + ")" + (x.dogruluk != null ? ", " + BTR[x.beceri] + " doğruluğu yüzde " + x.dogruluk : ""));
+    });
+    (h.hataKonulari || []).forEach(function (k) {
+      var ad = (global.DHInsights && DHInsights.label) ? DHInsights.label(k.konu) : k.konu;
+      o.push(ad + " (" + k.konu + ") hataları: son 14 günde " + k.son14 + " hata, önceki 14 günde " + k.onceki14 + " hata, eğilim " + k.egilim);
+    });
+    if (h.tahmin && h.tahmin.varis) o.push("hedef kelime düzeyine kaba tahmini varış: " + h.tahmin.varis + ", kalan " + h.tahmin.kalanKelime + " kelime");
+    return o;
+  }
+  function kokler(metin) {
+    return String(metin || "").toLocaleLowerCase("tr").replace(/[^a-zçğıöşü0-9 ]/g, " ").split(/\s+/)
+      .filter(function (w) { return w.length >= 4 && !/^\d/.test(w) && ["yüzde", "dakika", "hafta", "bugün", "kart", "kartı", "olan", "için", "gibi", "daha", "sonra", "önce"].indexOf(w) < 0; })
+      .map(function (w) { return w.slice(0, 4); });
+  }
+  function eslesmeyen(metin, olguListesi) {
+    var kotu = [], m, re = /\d+(?:[.,]\d+)?/g, s = String(metin || "");
+    while ((m = re.exec(s))) {
+      var n = m[0].replace(",", "."); if (n === "1" || n === "2") continue;
+      var cevre = kokler(s.slice(Math.max(0, m.index - 45), m.index + m[0].length + 30));
+      var uygun = olguListesi.some(function (ol) {
+        if (sayilar(ol).indexOf(n) < 0) return false;
+        var ok = kokler(ol); return cevre.some(function (w) { return ok.indexOf(w) >= 0; });
+      });
+      if (!uygun) kotu.push(n);
+    }
+    return kotu;
+  }
   function sayilar(metin) { return (String(metin || "").match(/\d+(?:[.,]\d+)?/g) || []).map(function (x) { return x.replace(",", "."); }); }
 
-  function dogrula(c, h, mdMetin, tercih) {
+  function dogrula(c, h, mdMetin, tercih, olguListesi) {
     var hatalar = [];
     if (!c || typeof c !== "object") return { ok: false, hatalar: ["JSON değil"] };
     if (typeof c.ozet !== "string" || c.ozet.trim().length < 20) hatalar.push("özet yok/kısa");
     if (!Array.isArray(c.plan) || c.plan.length < 2 || c.plan.length > 5) hatalar.push("plan 2-5 adım değil");
     var toplam = 0, izinli = true;
+    (c.plan || []).forEach(function (a) { if (a) a.ekran = ekranAdi(a.ekran); });
     (c.plan || []).forEach(function (a) {
       if (!a || !EKRANLAR[a.ekran]) izinli = false;
       var dk = +a.dk; if (!(dk >= 3 && dk <= 60)) hatalar.push("süre aralık dışı: " + a.dk); else toplam += dk;
@@ -69,6 +118,15 @@
     var metin = String(c.ozet || "") + " " + (c.plan || []).map(function (a) { return a && a.neden; }).join(" ");
     var uydurma = sayilar(metin).filter(function (x) { return !izinliSayilar[x] && +x > 2; });
     if (uydurma.length) hatalar.push("koç beyninde olmayan rakam: " + uydurma.slice(0, 4).join(", "));
+    if (olguListesi && !uydurma.length) {
+      /* plan süreleri de geçerli olgudur */
+      var ek = (c.plan || []).map(function (a) { return a && EKRANLAR[a.ekran] ? EKRANLAR[a.ekran].ad + " " + a.ekran + " " + (BTR[EKRANLAR[a.ekran].beceri] || "") + " planı: " + a.dk + " dakika" : ""; });
+      ek.push("bugünkü planımız toplam çalışma süresi: " + toplam + " dakika");
+      ek.push("günlük süre tercihi planımız: " + ((tercih && tercih.gunlukDakika) || 30) + " dakika");
+      var yanlis = eslesmeyen(c.ozet, olguListesi.concat(ek));
+      (c.plan || []).forEach(function (a) { if (a) yanlis = yanlis.concat(eslesmeyen(a.neden, olguListesi.concat(ek))); });
+      if (yanlis.length) hatalar.push("rakam yanlış yerde kullanılmış: " + yanlis.slice(0, 4).join(", "));
+    }
     if (c.not != null && (typeof c.not !== "object" || ["veri", "tahmin"].indexOf(c.not.kaynak) < 0 || !c.not.metin)) hatalar.push("not biçimi");
     return { ok: !hatalar.length, hatalar: hatalar, toplamDk: toplam };
   }
@@ -84,7 +142,8 @@
     geride.slice(0, 2).forEach(function (b) { if (!plan.some(function (a) { return a.ekran === map[b]; })) ekle(map[b], 10, "Bu hafta " + (global.DHKocBeyin ? DHKocBeyin.BECERI_TR[b] : b) + " amacına göre geride kaldı."); });
     if (!plan.some(function (a) { return a.ekran === "konusma"; }) && kalan >= 5) ekle("konusma", 10, "Her gün biraz konuşmak akıcılığı korur.");
     if (kalan >= 5) ekle("kelime", kalan, "Kalan süreyi yeni kelimelerle değerlendirelim.");
-    var ilk = plan[0] ? EKRANLAR[plan[0].ekran].ad.toLowerCase() : "kısa bir pratik";
+    var KISA = { tekrar: "cümle tekrarı", kelime: "kelime çalışması", konusma: "Deniz'le konuşma", dinleme: "video ile dinleme", ders: "dilbilgisi dersi", okuma: "okuma", hata: "hata defteri" };
+    var ilk = plan[0] ? (KISA[plan[0].ekran] || EKRANLAR[plan[0].ekran].ad) : "kısa bir pratik";
     var ozet = "Bugün " + (hedefDk - kalan) + " dakikalık bir planımız var; önce " + ilk + " ile başlayalım." +
       (h.sure && h.sure.haftaDk ? " Bu hafta şimdiye kadar " + h.sure.haftaDk + " dakika çalıştın." : "");
     return { ozet: ozet, plan: plan, not: null };
@@ -98,10 +157,11 @@
     try { return JSON.parse(s.slice(i, j + 1)); } catch (e) { return null; }
   }
 
-  async function sor(saglayici, mdMetin) {
+  async function sor(saglayici, mdMetin, olguListesi) {
     var P = global.DHProviders; if (!P || !P.chat) throw { code: "ai-yok" };
     var t0 = Date.now();
-    var cevap = await P.chat([{ role: "system", content: mdMetin }, { role: "user", content: ISTEK }], { json: true, only: saglayici, slowMs: 40000, title: "Deniz günlük plan" });
+    var istek = ISTEK + (olguListesi ? "\n\nOLGULAR (özet ve gerekçelerdeki her rakam buradan, kendi satırındaki anlamıyla alınmalı):\n- " + olguListesi.join("\n- ") : "");
+    var cevap = await P.chat([{ role: "system", content: mdMetin }, { role: "user", content: istek }], { json: true, only: saglayici, slowMs: 40000, title: "Deniz günlük plan" });
     var bilgi = P.lastResponseInfo || {};
     return { metin: typeof cevap === "string" ? cevap : (cevap && cevap.text) || JSON.stringify(cevap), sure: Date.now() - t0, model: bilgi.model || saglayici };
   }
@@ -111,7 +171,8 @@
     var B = global.DHKocBeyin, h, t, mdMetin;
     if (senaryo && senaryo.md) { h = senaryo.h; t = senaryo.t; mdMetin = senaryo.md; }
     else { h = await B.hesapla(); t = B.tercihler(); mdMetin = await B.md(); }
-    try { var r = await sor(saglayici, mdMetin); var c = cozJSON(r.metin); var d = dogrula(c, h, mdMetin, t); return { saglayici: saglayici, model: r.model, sureMs: r.sure, denetim: d, cevap: c, ham: c ? null : String(r.metin).slice(0, 300) }; }
+    var ol = senaryo && senaryo.olgular ? senaryo.olgular : (h && h.beceriler ? olgular(h, t) : null);
+    try { var r = await sor(saglayici, mdMetin, ol); var c = cozJSON(r.metin); var d = dogrula(c, h, mdMetin, t, ol); return { saglayici: saglayici, model: r.model, sureMs: r.sure, denetim: d, cevap: c, ham: c ? null : String(r.metin).slice(0, 300) }; }
     catch (e) { return { saglayici: saglayici, hata: (e && (e.code || e.message)) || String(e) }; }
   }
 
@@ -119,10 +180,11 @@
     var K = "dh-koc-gun-" + gunAnahtari(), eski = js(K, null);
     if (eski && !zorla) return eski;
     var B = global.DHKocBeyin, h = await B.hesapla(true), t = B.tercihler(), mdMetin = await B.md(), sonuc = null, denemeler = [];
+    var ol = olgular(h, t);
     var P = global.DHProviders, var0 = P && P.realHasAnyKey ? P.realHasAnyKey() : !!P;
     if (var0) for (var i = 0; i < SIRA.length && !sonuc; i++) {
       try {
-        var r = await sor(SIRA[i], mdMetin), c = cozJSON(r.metin), d = dogrula(c, h, mdMetin, t);
+        var r = await sor(SIRA[i], mdMetin, ol), c = cozJSON(r.metin), d = dogrula(c, h, mdMetin, t, ol);
         denemeler.push({ s: SIRA[i], ok: d.ok, h: d.hatalar });
         if (d.ok) sonuc = { ozet: c.ozet.trim(), plan: c.plan.map(function (a) { return { ekran: a.ekran, dk: Math.round(+a.dk), neden: String(a.neden).trim() }; }), kaynak: "model:" + r.model, not: c.not };
       } catch (e) { denemeler.push({ s: SIRA[i], hata: (e && (e.code || e.message)) || "hata" }); }
@@ -136,5 +198,5 @@
     return sonuc;
   }
 
-  global.DHKocDeniz = { gunluk: gunluk, dene: dene, dogrula: dogrula, kuralPlani: kuralPlani, EKRANLAR: EKRANLAR, ISTEK: ISTEK, SIRA: SIRA, _coz: cozJSON };
+  global.DHKocDeniz = { gunluk: gunluk, dene: dene, dogrula: dogrula, kuralPlani: kuralPlani, olgular: olgular, _eslesmeyen: eslesmeyen, EKRANLAR: EKRANLAR, ISTEK: ISTEK, SIRA: SIRA, _coz: cozJSON };
 })(window);

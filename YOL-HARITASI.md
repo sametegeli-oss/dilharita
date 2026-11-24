@@ -88,7 +88,16 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
 - Piper sayacı iyileştirmeleri, karma ses (İngilizce tarayıcı sesi / Türkçe Piper), barge-in, kadın avatar,
   hassas tanıma ve onay ekranını kapatma önerisi (cevap bekliyor), "&quot;" çözümleme önerisi.
 
+## Model testi (24 Kasım, 10 senaryo, kullanıcının anahtarlarıyla)
+- **Groq gpt-oss-120b:** ~1 sn; 10'da 5 ilk denetimden geçti. Hatalar: ekran yerine beceri adı (düzeltildi: eş anlamlı
+  çevirisi + istekte kimlik listesi), bir uydurma sayı, ve **rakamı yanlış beceriye bağlama** ("dinleme 0 dk", 0 konuşmanındı) →
+  olgu listesi + rakam-kelime eşleşme denetimi eklendi (yerel testte yakalıyor).
+- **Gemini 3.6 Flash:** test sırasında günlük ücretsiz kota dolu (429), ölçülemedi. **Cerebras:** 402 ücretsiz hak bitmiş.
+- **NVIDIA Nemotron 3 Super:** 90 sn'de cevap yok → günlük plan için uygun değil. OpenRouter ücretsiz: ölçülmedi.
+- Sıra: Gemini → Groq → Cerebras → NVIDIA; hiçbiri denetimden geçmezse kural planı. Kota sıfırlanınca Gemini ve Groq yeniden ölçülecek.
+
 ## Yapıldı
+- 24 Kasım: 2. aşama çekirdeği — koç beyni, kılavuz, Deniz günlük plan + olgu denetimi, Koçluk Paneli (menüde), sw v569.
 - 24 Kasım: 1. aşama — tek aktivite kaydı (`dh-olay.js`), saklama kuralları (sw v567).
 - 24 Kasım: Oturum her sabah düşüyordu → Browser key'e Token Service API eklendi.
 - 24 Kasım: Senkron okuma kotasını bitiriyordu → video kayıtları artımlı okunuyor, eski parçaların silinmesi bekleniyor (sw v566).

@@ -102,6 +102,8 @@
   async function hesapla(zorla) {
     var onbellek = js(K_HESAP, null);
     if (!zorla && onbellek && onbellek.t && Date.now() - onbellek.t < 10 * 60000 && onbellek.gun === gunAnahtari()) return onbellek;
+    /* dh-olay.js auth-guard tarafından eşzamansız eklenir; en çok 3 sn bekle */
+    for (var bk = 0; bk < 30 && !global.DHOlay; bk++) await new Promise(function (r) { setTimeout(r, 100); });
     var O = global.DHOlay;
     var son28 = O ? O.gunler(28) : [];
     var hepsi = (js("dh-gun-ozet-v1", { gun: {} }) || { gun: {} }).gun || {};
