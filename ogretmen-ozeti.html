@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Öğretmenine götür · aylık özet · Dil Harita</title>
+<script src="./idb-uyum.js?v=1"></script>
+<script src="./auth-guard.js?v=11"></script>
+<script src="./learning-error-system.js?v=11"></script>
+<script src="./dh-insights.js"></script>
+<script src="./dh-amac.js"></script>
+<script src="./dh-olay.js?v=1"></script>
+<script src="./dh-koc-kilavuz.js?v=2"></script>
+<script src="./dh-koc-beyin.js?v=6"></script>
+<style>
+/* Yazdırılabilir A4 özet: açık zemin, 11-12 pt gövde */
+*{box-sizing:border-box}
+body{margin:0;background:#EDF0F2;color:#0F1417;font:12pt/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.sayfa{max-width:820px;margin:16px auto;background:#fff;padding:28px 32px;border-radius:12px}
+h1{font-size:20pt;margin:0}
+h2{font-size:13pt;margin:20px 0 8px;padding-bottom:4px;border-bottom:1px solid #D6DCE1}
+.alt{color:#5A646D;font-size:11pt}
+table{width:100%;border-collapse:collapse;font-size:11pt}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #EDF0F2;vertical-align:top}
+th{color:#5A646D;font-weight:600}
+.ornek{font-size:11pt;margin:2px 0}
+.ornek s{color:#B3392E}.ornek b{color:#0B5C43}
+.ust{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.dugmeler{display:flex;gap:8px;flex-wrap:wrap}
+.dugmeler button,.dugmeler a{min-height:44px;border-radius:10px;border:1px solid #0F7A5A;background:#0F7A5A;color:#fff;font:600 14px system-ui;padding:8px 14px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.dugmeler a{background:#fff;color:#0B5C43}
+.kutu{background:#E4F1EB;border-radius:10px;padding:10px 12px}
+@media print{ body{background:#fff} .sayfa{margin:0;padding:0;border-radius:0;max-width:none} .dugmeler,.dh-primary-nav,.dh-app-nav,.dhk-serit,[class*="kk-"]{display:none!important} @page{size:A4;margin:16mm} }
+</style>
+</head>
+<body>
+<main class="sayfa">
+  <div class="ust">
+    <div><h1>Aylık özet — öğretmenim için</h1><div class="alt" id="donem"></div></div>
+    <div class="dugmeler"><button type="button" onclick="window.print()">Yazdır / PDF</button><a href="./koc-paneli.html">Panele dön</a></div>
+  </div>
+  <p class="alt" style="margin-top:8px">Bu sayfa Dil Harita'nın son 30 günlük kayıtlarından hazırlandı. Uygulamada tekrar eden hatalarımı birlikte çalışmak için getirdim.</p>
+
+  <h2>Kısaca</h2>
+  <table id="kisaca"></table>
+
+  <h2>Becerilere göre çalışma (son 30 gün)</h2>
+  <table id="beceri"><tr><th>Beceri</th><th>Süre</th><th>Doğruluk</th></tr></table>
+
+  <h2>En çok tekrar eden hatalarım</h2>
+  <div id="hatalar"></div>
+
+  <h2>Birlikte çalışmak istediğim 3 konu</h2>
+  <ol id="konular"></ol>
+
+  <h2>Kendi hedeflerim</h2>
+  <div id="hedefler"></div>
+</main>
+<script>
+(function(){
+  "use strict";
+  var $=function(id){return document.getElementById(id);};
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  function ad(k){ try{ return DHInsights.label(k); }catch(e){ return k; } }
+  var BTR={kelime:"Kelime",dilbilgisi:"Dilbilgisi",dinleme:"Dinleme",konusma:"Konuşma",okuma:"Okuma",yazma:"Yazma"};
+  function sure(dk){ return dk>=60?Math.floor(dk/60)+" sa "+(dk%60)+" dk":dk+" dk"; }
+  var bit=new Date(), bas=new Date(Date.now()-29*864e5);
+  $("donem").textContent=bas.toLocaleDateString("tr-TR",{day:"numeric",month:"long"})+" – "+bit.toLocaleDateString("tr-TR",{day:"numeric",month:"long",year:"numeric"});
+
+  async function kur(){
+    for(var i=0;i<30&&!window.DHOlay;i++) await new Promise(function(r){setTimeout(r,100);});
+    var h=await DHKocBeyin.hesapla(true), gun=DHOlay.gunler(30);
+    var s={},d={},y={},aktif=0,top=0;
+    gun.forEach(function(g){ var t=0; for(var b in g.s){ s[b]=(s[b]||0)+g.s[b]; t+=g.s[b]; } for(var b2 in g.d) d[b2]=(d[b2]||0)+g.d[b2]; for(var b3 in g.y) y[b3]=(y[b3]||0)+g.y[b3]; if(t>=120) aktif++; top+=t; });
+    var amaclar=(h.profil.amaclar||[]).map(function(a){ var x=window.DHAmac&&DHAmac.bul?DHAmac.bul(a):null; return x?x.ad:a; }).join(", ")||"belirtilmemiş";
+    $("kisaca").innerHTML=[["Seviye",h.profil.seviye||"bilinmiyor"],["Amacım",amaclar],["Hedef",h.hedef.seviye?(h.hedef.seviye+(h.hedef.tarih?" · "+new Date(h.hedef.tarih).toLocaleDateString("tr-TR"):"")):"belirtilmemiş"],
+      ["Çalıştığım gün","30 günün "+aktif+" günü"],["Toplam süre",sure(Math.round(top/60))],["Bekleyen tekrar",(h.tekrar.cumle.bekleyen+h.tekrar.kelime.bekleyen)+" kart"],["Bildiğim kelime",h.bilinenKelime+" (kelime kartlarında)"]]
+      .map(function(r){ return "<tr><th>"+esc(r[0])+"</th><td>"+esc(r[1])+"</td></tr>"; }).join("");
+    $("beceri").innerHTML+=Object.keys(BTR).map(function(b){ var n=(d[b]||0)+(y[b]||0); return "<tr><td>"+BTR[b]+"</td><td>"+sure(Math.round((s[b]||0)/60))+"</td><td>"+(n>=5?"%"+Math.round((d[b]||0)/n*100)+" ("+n+" cevap)":"—")+"</td></tr>"; }).join("");
+
+    /* hata defteri: son 30 günün kayıtları, türe göre; her türden 2 örnek */
+    var kayit=[]; try{ kayit=(await LearningErrorDB.all())||[]; }catch(e){}
+    var sinir=Date.now()-30*864e5, tur={};
+    kayit.forEach(function(r){ var t=Date.parse(r.updatedAt||r.createdAt||0)||0; if(t<sinir) return; var k=(r.types&&r.types[0])||r.primaryType||"general"; (tur[k]=tur[k]||[]).push(r); });
+    var sirali=Object.keys(tur).sort(function(a,b){ return tur[b].length-tur[a].length; }).slice(0,5);
+    $("hatalar").innerHTML=sirali.length?"<table><tr><th>Hata türü</th><th>Sayı</th><th>Örnekler (benim cevabım → doğrusu)</th></tr>"+sirali.map(function(k){
+      var orn=tur[k].filter(function(r){return r.target&&r.answer;}).slice(0,2).map(function(r){ return '<p class="ornek"><s>'+esc(r.answer)+'</s> → <b>'+esc(r.target)+'</b></p>'; }).join("");
+      return "<tr><td>"+esc(ad(k))+"</td><td>"+tur[k].length+"</td><td>"+(orn||"—")+"</td></tr>"; }).join("")+"</table>":'<p class="alt">Son 30 günde hata defterinde kayıt yok.</p>';
+
+    /* 3 konu: artan hata konuları → kişisel hedefler → en sık hata türü */
+    var oneri=[];
+    h.hataKonulari.filter(function(k){return k.egilim==="artıyor"||k.egilim==="yeni";}).forEach(function(k){ oneri.push(ad(k.konu)+" — son 14 günde "+k.son14+" hata ("+k.egilim+")"); });
+    (h.kisisel||[]).forEach(function(x){ oneri.push(x.ad+" — kendi hedefim ("+x.gun+". gün / "+x.toplamGun+")"); });
+    sirali.forEach(function(k){ oneri.push(ad(k)+" — 30 günde "+tur[k].length+" kayıt"); });
+    var goruldu={}; oneri=oneri.filter(function(x){ var a=x.split(" — ")[0]; if(goruldu[a]) return false; goruldu[a]=1; return true; }).slice(0,3);
+    $("konular").innerHTML=oneri.length?oneri.map(function(x){ return "<li>"+esc(x)+"</li>"; }).join(""):'<li class="alt">Henüz yeterli veri yok.</li>';
+    $("hedefler").innerHTML=(h.kisisel||[]).length?"<table><tr><th>Hedef</th><th>Gün</th><th>Hata (14 gün)</th></tr>"+h.kisisel.map(function(x){ return "<tr><td>"+esc(x.ad)+"</td><td>"+x.gun+" / "+x.toplamGun+"</td><td>başta "+x.basHata+", şimdi "+x.simdiHata+"</td></tr>"; }).join("")+"</table>":'<p class="alt">Açık kişisel hedefim yok.</p>';
+  }
+  kur();
+})();
+</script>
+</body>
+</html>

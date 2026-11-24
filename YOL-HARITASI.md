@@ -103,6 +103,8 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
 - (Gemini 11:02'de ölçüldü: gerçek veride 10 sn'de denetimi geçti, ikinci denemede 15 sn'yi aştı; Groq 1,1 sn ve iki denemede de geçti → Groq önce kalıyor.)
 
 ## Yapıldı
+- 24 Kasım: "Öğretmenine götür" aylık özeti (`ogretmen-ozeti.html`, panelden): son 30 gün, beceriler, en sık 5 hata türü ve
+  örnekleri, birlikte çalışılacak 3 konu, kişisel hedefler; Yazdır / PDF (A4) (sw v582).
 - 24 Kasım: Koç modunda "Bunu biliyorum": adımın konusundan 3 soruluk yoklama (yapay zekâ üretir, kod denetler), 3/3 ise adım atlanır ve not düşülür (sw v581).
 - 24 Kasım 11:02: Firestore'da 3.318 öksüz video parçası silindi (kullanıcı onayıyla; 65 ana kayıt + 85 parça kaldı, eksik yok).
   Not: REST `batchWrite` güvenlik kurallarında reddedildi, `commit` çalıştı; büyük belgelerde grup 50.
