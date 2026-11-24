@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="tr">
 <head>
-<script src="./auth-guard.js?v=12"></script>
+<script src="./auth-guard.js?v=13"></script>
 <script src="./idb-uyum.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
 <script src="./storage-bridge.js?v=4"></script>
 <script src="./progress-engine.js?v=2"></script>
@@ -782,6 +782,7 @@ var Drill=(function(){
   }
 
   function renderDone(box){
+    try{window.dispatchEvent(new CustomEvent("dh-ekran-bitti",{detail:{bos:false}}))}catch(_e){}
     var pct=done?Math.round(100*fixed/done):0;
     box.innerHTML=
       '<div class="drill-done">'

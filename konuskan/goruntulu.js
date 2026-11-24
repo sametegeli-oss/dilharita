@@ -1897,6 +1897,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     /* ---- özet ---- */
     async function bitir() {
       if (st.bitti) return; st.bitti = true; st.ozetVar = true;
+      try{window.dispatchEvent(new CustomEvent("dh-ekran-bitti",{detail:{bos:false}}))}catch(_e){}
       try { window.DHKocBeyin && DHKocBeyin.oturumBitti({ hatalar: st.errs, mod: genelMi() ? 'Görüntülü sohbet' : 'Görüntülü ders' }); } catch (e) {}
       clearInterval(st.saat); yuz.sustur(); if (D.aktif) dinlemeIptal(); onayKapat(); kamKapat(true);
       const sure = Math.max(1, Math.round((Date.now() - st.bas) / 60000));

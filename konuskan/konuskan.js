@@ -1131,6 +1131,7 @@ Rules: answer in English only, 1-3 short sentences, natural and friendly, end wi
   }
   async function finish(){
     if(st.finished) return; st.finished=true;
+    try{window.dispatchEvent(new CustomEvent("dh-ekran-bitti",{detail:{bos:false}}))}catch(_e){}
     const userMsgs=st.hist.filter(h=>h.role==='user');
     if(!userMsgs.length){ closePanel(); return; }
     try{ window.DHKocBeyin && DHKocBeyin.oturumBitti({hatalar:st.errs, mod:'Konuşkan '+(MODE_TR[cfg.kind]||cfg.kind||'sohbet')}); }catch(e){}

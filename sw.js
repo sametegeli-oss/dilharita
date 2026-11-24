@@ -13,7 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v584";  /* 🧠 FSRS: tek tekrar hesabı (dh-fsrs.js), eski kartlar tembel geçiş */
+var SW_VERSION = "dh-sw-v585";  /* 🔀 Karışık tekrar + ekranların "bitti" sinyali koç moduna */
+/* onceki v584: 🧠 FSRS: tek tekrar hesabı (dh-fsrs.js) */
 /* onceki v583: 📒 Cümle bankam */
 /* onceki v582: 🧑‍🏫 Öğretmenine götür: aylık özet (yazdırılabilir) */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */

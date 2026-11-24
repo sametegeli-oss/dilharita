@@ -120,7 +120,7 @@
 
 <script src="./storage-bridge.js?v=4"></script>
 <script src="./coach-bubble.js?v=t42"></script>
-<script src="./auth-guard.js?v=12"></script>
+<script src="./auth-guard.js?v=13"></script>
 <script src="./cloud-sync.js?v=54"></script>
 <script src="./progress-engine.js?v=2"></script>
 <script src="./teacher-policy.js?v=4"></script>
@@ -592,6 +592,7 @@
   }
 
   function renderDone(){
+    try{window.dispatchEvent(new CustomEvent("dh-ekran-bitti",{detail:{bos:false}}))}catch(_e){}
     $("stage").innerHTML='<div class="card"><div class="cbody" style="text-align:center;padding:40px 20px">'
       +'<div style="font-size:48px">🎉</div>'
       +'<h2 style="margin:12px 0 6px">Bu turu bitirdin!</h2>'

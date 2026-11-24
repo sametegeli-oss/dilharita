@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="./dh-tokens.css">
 <script src="./idb-uyum.js?v=1"></script>
 <script src="./dh-fsrs.js?v=1"></script>
-<script src="./auth-guard.js?v=12"></script>
+<script src="./auth-guard.js?v=13"></script>
 <script src="./cloud-sync.js?v=54"></script>
 <style>
 /* CÜMLE BANKAM (koç planı 8. aşama): kullanıcının kendi İngilizce–Türkçe cümleleri.
@@ -198,7 +198,7 @@ input,textarea{font:inherit;color:var(--dh-text);background:var(--dh-yuzey-2);bo
   $("cevapForm").addEventListener("submit",function(e){ e.preventDefault(); if($("cevap").value.trim()) cevapla(false); });
   $("bilmiyorum").addEventListener("click",function(){ cevapla(true); });
   $("dinle").addEventListener("click",function(){ try{ var u=new SpeechSynthesisUtterance(simdiki.en); u.lang="en-US"; u.rate=1; u.pitch=1; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} });
-  $("sonraki").addEventListener("click",function(){ ti++; if(ti<tur.length) goster(); else { $("tur").hidden=true; $("basla").textContent="Tur bitti: "+dogru+" / "+tur.length+" · yeni tur başlat"; } });
+  $("sonraki").addEventListener("click",function(){ ti++; if(ti<tur.length) goster(); else { try{window.dispatchEvent(new CustomEvent("dh-ekran-bitti",{detail:{bos:false}}))}catch(_e){} $("tur").hidden=true; $("basla").textContent="Tur bitti: "+dogru+" / "+tur.length+" · yeni tur başlat"; } });
   $("basla").addEventListener("click",function(){ tur=turSec(); if(!tur.length) return; ti=0; dogru=0; $("tur").hidden=false; goster(); });
 
   /* ---------- açılış ---------- */

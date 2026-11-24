@@ -283,6 +283,14 @@
     setTimeout(tik, 600);
     setInterval(tik, 5000);
     document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") tik(); });
+    /* Ekranların kendi "bitti" sinyali (tekrar bitti, ders tamam, konuşma bitti...).
+       bos: ekranda yapılacak bir şey kalmadı → adım hemen biter; değilse adım süresinin en az %30'u gerekir. */
+    global.addEventListener("dh-ekran-bitti", function (e) {
+      var d = oku(); if (!d || !d.aktif || gecis || d.gun !== gunAnahtari()) return;
+      var a = d.plan[d.i]; if (!a || ekranSayfa(a) !== sayfa()) return;
+      var bos = !!(e && e.detail && e.detail.bos);
+      if (bos || sureSn(a) >= a.dk * 18) setTimeout(function () { var dd = oku(); if (dd && dd.aktif && dd.i === d.i && !gecis) adimBitti(dd, false); }, 1500);
+    });
   }
   kur();
 

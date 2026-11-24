@@ -134,7 +134,7 @@ try{
 }catch(e){}
 </script>
 
-<script src="./auth-guard.js?v=12"></script>
+<script src="./auth-guard.js?v=13"></script>
 <script src="./progress-engine.js?v=2"></script>
 <script src="./coach-bubble.js?v=t42"></script>
 <!-- Karma gün sonu pratiği: o gün çalışılan cümle + kalıp + kelimeleri
@@ -586,7 +586,7 @@ try{
     total=items.length;
     try{ localStorage.setItem("dh-son-bekleyen",String(total)); }catch(e){}
     if(!total){ $("doneTitle").textContent="🎉 Bugünlük tekrar yok!"; $("doneSub").textContent="Vadesi gelen öğe bulunmuyor.";
-      if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; dhTekrarDoneExtras(); return; }
+      if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; dhTekrarDoneExtras(); try{window.dispatchEvent(new CustomEvent("dh-ekran-bitti",{detail:{bos:true}}))}catch(_e){} return; }
     // Günün hedefini İLK girişte dondur; sonraki girişlerde aynı kalır (25'e sıfırlanmaz).
     if(!__gun){ __gun={ hedef: Math.max(1, Math.min(total, SESSION)), yapilan:0 }; saveGun(); }
     var __kalanHedef=Math.max(0, __gun.hedef - __gun.yapilan);
@@ -597,7 +597,7 @@ try{
       $("doneTitle").textContent="🎉 Bugünkü tekrar tamam!";
       $("doneSub").textContent=__gun.yapilan+" tekrar yaptın."+(remaining?(" Bekleyen "+remaining+" yarına porsiyonlandı."):"");
       if(remaining) $("bMore").style.display="inline-block";
-      if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; dhTekrarDoneExtras(); return; }
+      if(PLAN) $("planNext").style.display="block"; $("done").style.display="block"; dhTekrarDoneExtras(); try{window.dispatchEvent(new CustomEvent("dh-ekran-bitti",{detail:{bos:true}}))}catch(_e){} return; }
 
     if(session.some(function(x){return x.kind==="s"})){
       // eskiden 8,5 MB'lık dosyanın tamamı inip tek tek haritaya yazılıyordu.
@@ -619,6 +619,20 @@ try{
     if(session.some(function(x){return x.kind==="w"})){
       try { dict=await (await fetch("./data/dictionary.json")).json()||{}; }catch(e){}
     }
+    /* 🔀 Karışık tekrar (interleaving): aynı modülden/türden öğeler art arda gelmesin.
+       Vadesi en eski olanlar yine oturumda; yalnız sıraları gruplar arasında dönüşümlü.
+       Kapatmak için localStorage "dh-tekrar-karisik" = "0". */
+    try{
+      if(localStorage.getItem("dh-tekrar-karisik")!=="0" && session.length>3){
+        var gruplar={}, sira=[];
+        session.forEach(function(x){
+          var g=x.kind==="w"?"w":((sentMap[x.id]&&(sentMap[x.id].module||sentMap[x.id].mod))||x.tag||"s");
+          if(!gruplar[g]){ gruplar[g]=[]; sira.push(g); } gruplar[g].push(x); });
+        if(sira.length>1){ var yeni=[], kaldi=true;
+          while(kaldi){ kaldi=false; sira.forEach(function(g){ if(gruplar[g].length){ yeni.push(gruplar[g].shift()); kaldi=true; } }); }
+          session=yeni; }
+      }
+    }catch(e){}
     paintMode();
     $("bMore").textContent = "Sonraki "+SESSION+"'i getir →";
     render();
@@ -658,6 +672,7 @@ try{
     stopMicIfActive();
     try{ window.dhCoachHide && window.dhCoachHide(); }catch(e){}
     if(i>=session.length){
+      try{window.dispatchEvent(new CustomEvent("dh-ekran-bitti",{detail:{bos:false}}))}catch(_e){}
       try{ localStorage.setItem("dh-son-bekleyen",String(remaining)); }catch(e){}
       $("card").style.display="none";
       var gunYapilan=__gun?Math.min(__gun.yapilan|0,__gun.hedef|0):doneCount;
