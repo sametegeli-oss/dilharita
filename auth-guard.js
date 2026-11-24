@@ -36,6 +36,10 @@
   if(!document.querySelector('script[src*="dh-olay.js"]')){
     var ol=document.createElement("script"); ol.src="./dh-olay.js?v=1"; document.head.appendChild(ol);
   }
+  /* KOÇ MODU (koç planı 3. aşama): açıkken her sayfada şerit + adım geçişleri; kapalıyken hiçbir şey çizmez. */
+  if(!document.querySelector('script[src*="dh-koc-modu.js"]')){
+    var km=document.createElement("script"); km.src="./dh-koc-modu.js?v=1"; document.head.appendChild(km);
+  }
 
   function ls(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
   function ss(k){ try{ return sessionStorage.getItem(k); }catch(e){ return null; } }

@@ -49,7 +49,7 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
   Konuşkan'ın durumu (`dh-konuskan-v1`) programın geri kalanından ayrı tutuluyor.
 - **Koç (Deniz merkez koç):** `dh-koc-kilavuz.js` (kılavuz + sınırlar), `dh-koc-beyin.js` (hesaplanan + notlar/tercihler/hedef,
   Firestore `users/{uid}/koc/beyin`, `koc/hesap`, `koc_haftalik`), `dh-koc-deniz.js` (günlük plan; model cevabı olgu denetiminden
-  geçmezse sıradaki model, en son kural planı), `koc-paneli.html`. `DHProviders.chat` `opts.prefer/only` ile modele yönlendirilir.
+  geçmezse sıradaki model, en son kural planı), `koc-paneli.html`, `dh-koc-modu.js` (koç modu: auth-guard her sayfaya ekler, durum `dh-koc-modu-v1`). `DHProviders.chat` `opts.prefer/only` ile modele yönlendirilir.
 - Eski plan/koç parçaları (birleştirilecek): `koc.js`, `dh-plan.js`, `dh-learning-coach.js`, `coach-bubble.js`, `daily-dashboard.js`.
 - Kayıtlar: **`dh-olay.js` tek aktivite kaydı** (günlük özet `dh-gun-ozet-v1`, ham olay IndexedDB `dh-olay`); cevaplar
   `dh-cevap` olayıyla gelir (`dhCoachEvaluate`, `dhKonuskanCevap`). Ayrıca `dh-activity-log-v1` (30 gün), `dh-study-tracker-v1`,
@@ -66,4 +66,4 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
 - Android'de tarayıcı sesi perde/hız 1 değilse dil geçişlerinde 2–6 sn bekliyor; perde ve hız 1'de sabit.
 
 ## Şu anki sürümler (24 Kasım 2026)
-sw `dh-sw-v577` · cloud-sync.js v53 · ai-providers.js t40 · auth-guard.js v9 · dh-olay.js v1 · coach-bubble.js t42 · koc-paneli/konuskan.html: dh-koc-kilavuz v2 · dh-koc-beyin v4 · dh-koc-deniz v5 · konuskan.js v28 · goruntulu.js v87 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3
+sw `dh-sw-v578` · cloud-sync.js v53 · ai-providers.js t40 · auth-guard.js v10 · dh-olay.js v1 · coach-bubble.js t42 · koc-paneli/konuskan.html: dh-koc-kilavuz v2 · dh-koc-beyin v4 · dh-koc-deniz v5 · konuskan.js v29 · dh-koc-modu v1 · goruntulu.js v87 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3

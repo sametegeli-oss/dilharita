@@ -104,6 +104,10 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
 - Gemini kotası açılınca 10 senaryo testinin tekrarı.
 
 ## Yapıldı
+- 24 Kasım: 3. aşama çekirdeği — koç modu (`dh-koc-modu.js`): panel/Konuşkan'dan başlar, adım ekranını açar, lacivert şerit +
+  ilerleme çubukları, adım süresi %80 dolunca ya da "Adımı bitirdim" ile 5 sn geri sayımlı geçiş (Bekle/Atla/Şimdi aç, Türkçe
+  sesli), ara tekrar (≥5 cevapta başarı <%70 ya da aynı konuda 3+ yanlış → bir adım sonra hata defteri 5 dk, ekran başına günde 1),
+  plan dışı sayfada "beklemede", Koçtan çık, alt menü lacivert (sw v578). Kalan: ekran bazlı gerçek "bitti" sinyalleri, bildiğini atlat yoklaması.
 - 24 Kasım: Haftalık değerlendirme (kod üretir, haftada tek "veri" notu); eski ilerleme sayfalarına panel bağlantısı (sw v577).
 - 24 Kasım: Konuşkan koç beynini okuyor (`kisaBaglam`: düzeltme sıkılığı, zayıf konular, notlar), ana sayfada Deniz'in
   bugünkü planı, oturum sonunda aynı hata türü 3+ ise konu başına tek "veri" notu (sw v576).

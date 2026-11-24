@@ -475,6 +475,7 @@ function kocKartCiz(m){
     const dg=k.querySelector('#kocDugmeler'); dg.innerHTML='';
     if(sira){ const ek=D.EKRANLAR[sira.ekran]; const a=document.createElement('a'); a.className='btn primary sm'; a.href='./'+ek.url; a.textContent='Şimdi: '+ek.ad+' · '+sira.dk+' dk'; dg.appendChild(a); }
     const b=document.createElement('button'); b.className='btn sm'; b.type='button'; b.textContent='Sesli dinle'; b.onclick=()=>{ try{ speak(g.ozet); }catch(_){} }; dg.appendChild(b);
+    if(window.DHKocModu){ const km=document.createElement('button'); km.className='btn sm'; km.type='button'; km.textContent='Koç moduyla başla'; km.style.cssText='background:#1E2F6B;color:#fff;border-color:#1E2F6B'; km.onclick=()=>{ km.textContent='Başlıyor…'; DHKocModu.baslat(); }; dg.appendChild(km); }
   };
   D.gunluk(false, ciz).then(ciz).catch(()=>{ const oz=k.querySelector('#kocOzet'); if(oz) oz.textContent='Plan şu an hazırlanamadı.'; });
 }

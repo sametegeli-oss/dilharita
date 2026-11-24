@@ -7,7 +7,7 @@
 <title>Koçluk Paneli · Dil Harita</title>
 <link rel="stylesheet" href="./dh-tokens.css">
 <script src="./idb-uyum.js?v=1"></script>
-<script src="./auth-guard.js?v=9"></script>
+<script src="./auth-guard.js?v=10"></script>
 <script src="./cloud-sync.js?v=53"></script>
 <script src="./ai-providers.js?v=t40"></script>
 <script src="./dh-amac.js"></script>
@@ -16,6 +16,7 @@
 <script src="./dh-koc-kilavuz.js?v=2"></script>
 <script src="./dh-koc-beyin.js?v=4"></script>
 <script src="./dh-koc-deniz.js?v=5"></script>
+<script src="./dh-koc-modu.js?v=1"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:var(--dh-bg);color:var(--dh-text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -88,6 +89,7 @@ a{color:var(--dh-marka-metin)}
     <div class="kim"><div class="av" aria-hidden="true">D</div><div><strong id="dz">Deniz'in değerlendirmesi</strong><br><small id="dzKaynak">hazırlanıyor…</small></div></div>
     <p id="ozet">Verilerine bakıyorum…</p>
     <a class="simdi" id="simdi" href="#" hidden><span id="simdiAd"></span><span aria-hidden="true">→</span></a>
+    <button class="btn" id="kocModu" type="button" style="background:#1E2F6B;border-color:#1E2F6B;color:#fff;min-height:48px;font-size:15px">Koç moduyla başla: Deniz ekranları sırayla açsın</button>
     <div class="ikili"><button class="btn" id="dinle" type="button">Sesli dinle</button><button class="btn" id="yenile" type="button">Planı yenile</button></div>
   </section>
 
@@ -272,6 +274,13 @@ a{color:var(--dh-marka-metin)}
   });
   $("yenile").addEventListener("click",function(){ $("ozet").textContent="Planı yeniden hazırlıyorum…"; D.gunluk(true, araGoster).then(function(g){ G=g; cizDeniz(); }); });
 
+  /* KOÇ MODU düğmesi: durum varsa "devam et" */
+  function kocDugme(){ var b=$("kocModu"); if(!b||!window.DHKocModu) return; var d=DHKocModu.durum(), bugun=new Date(); var g=bugun.getFullYear()+"-"+String(bugun.getMonth()+1).padStart(2,"0")+"-"+String(bugun.getDate()).padStart(2,"0");
+    if(d&&d.gun===g&&d.bitti){ b.textContent="Bugünün koç modu tamamlandı"; b.disabled=true; }
+    else if(d&&d.gun===g&&!d.bitti&&d.i>0){ b.textContent="Koç moduna devam et ("+(d.i+1)+". adım)"; b.onclick=function(){ DHKocModu.devam(); }; }
+    else b.onclick=function(){ b.textContent="Başlıyor…"; DHKocModu.baslat().then(function(ok){ if(!ok) b.textContent="Plan hazır değil, biraz sonra tekrar dene"; }); };
+  }
+  setTimeout(kocDugme, 800);
   B.hesapla(true).then(function(h){ H=h; cizHesap(); });
   cizNotlar(); mdYenile();
   function araGoster(g){ G=g; cizDeniz(); $("dzKaynak").textContent="Deniz planı gözden geçiriyor…"; }
