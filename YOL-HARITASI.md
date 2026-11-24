@@ -103,6 +103,7 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
 - (Gemini 11:02'de ölçüldü: gerçek veride 10 sn'de denetimi geçti, ikinci denemede 15 sn'yi aştı; Groq 1,1 sn ve iki denemede de geçti → Groq önce kalıyor.)
 
 ## Yapıldı
+- 24 Kasım: Koç modunda "Bunu biliyorum": adımın konusundan 3 soruluk yoklama (yapay zekâ üretir, kod denetler), 3/3 ise adım atlanır ve not düşülür (sw v581).
 - 24 Kasım 11:02: Firestore'da 3.318 öksüz video parçası silindi (kullanıcı onayıyla; 65 ana kayıt + 85 parça kaldı, eksik yok).
   Not: REST `batchWrite` güvenlik kurallarında reddedildi, `commit` çalıştı; büyük belgelerde grup 50.
 - 24 Kasım: 4. aşama çekirdeği — kişisel hedefler (panelde "Senin isteklerin": istek → Deniz ölçülebilir hedef önerir →
@@ -111,7 +112,7 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
 - 24 Kasım: 3. aşama çekirdeği — koç modu (`dh-koc-modu.js`): panel/Konuşkan'dan başlar, adım ekranını açar, lacivert şerit +
   ilerleme çubukları, adım süresi %80 dolunca ya da "Adımı bitirdim" ile 5 sn geri sayımlı geçiş (Bekle/Atla/Şimdi aç, Türkçe
   sesli), ara tekrar (≥5 cevapta başarı <%70 ya da aynı konuda 3+ yanlış → bir adım sonra hata defteri 5 dk, ekran başına günde 1),
-  plan dışı sayfada "beklemede", Koçtan çık, alt menü lacivert (sw v578). Kalan: ekran bazlı gerçek "bitti" sinyalleri, bildiğini atlat yoklaması.
+  plan dışı sayfada "beklemede", Koçtan çık, alt menü lacivert (sw v578). Kalan: ekran bazlı gerçek "bitti" sinyalleri.
 - 24 Kasım: Haftalık değerlendirme (kod üretir, haftada tek "veri" notu); eski ilerleme sayfalarına panel bağlantısı (sw v577).
 - 24 Kasım: Konuşkan koç beynini okuyor (`kisaBaglam`: düzeltme sıkılığı, zayıf konular, notlar), ana sayfada Deniz'in
   bugünkü planı, oturum sonunda aynı hata türü 3+ ise konu başına tek "veri" notu (sw v576).

@@ -149,7 +149,7 @@
     else if (burada) {
       var dk = Math.floor(sureSn(a) / 60);
       metin = "Adım " + (d.i + 1) + "/" + d.plan.length + " · " + ekran(a).ad + " · " + dk + "/" + a.dk + " dk" + (a.ara ? " · ara tekrar" : "");
-      dugmeler = '<button type="button" data-k="bitti">Adımı bitirdim</button><button type="button" data-k="cik">Koçtan çık</button>';
+      dugmeler = (global.DHProviders && DHProviders.chat && !a.ara ? '<button type="button" data-k="biliyorum">Bunu biliyorum</button>' : '') + '<button type="button" data-k="bitti">Adımı bitirdim</button><button type="button" data-k="cik">Koçtan çık</button>';
     } else {
       metin = "Koç beklemede · sıradaki: " + (a ? ekran(a).ad : "-");
       dugmeler = '<button type="button" data-k="devam">Devam et</button><button type="button" data-k="cik">Koçtan çık</button>';
@@ -160,6 +160,7 @@
       if (k === "cik") cik();
       else if (k === "devam") devam();
       else if (k === "bitti") adimBitti(dd, true);
+      else if (k === "biliyorum") yoklama(dd);
     }; });
     htmlSinif(true);
     try { document.documentElement.style.setProperty("--dhk-ust", (serit.offsetHeight + 4) + "px"); } catch (e) {}
@@ -199,6 +200,73 @@
     if (sonraki) { var n = 5; sayac = setInterval(function () { n--; var s = gecis && gecis.querySelector("[data-s]"); if (s) s.textContent = String(n); if (n <= 0) git(); }, 1000); }
     seritCiz(d);
   }
+
+  /* ---------- "Bunu biliyorum": 3 soruluk hızlı yoklama ----------
+     Sorular adımın konusundan (beceri + varsa kişisel hedef/zayıf konu) yapay zekâyla üretilir; KOD denetler:
+     tam 3 soru, her birinde 3-4 seçenek, doğru cevap geçerli bir seçenek, seçenekler birbirinden farklı.
+     3/3 doğruysa adım "yoklamayı geçti" diye atlanır; değilse adıma devam edilir (kısa not düşülür). */
+  var KONU_ACIKLAMA = { tekrar: "cümle çevirisi ve cümle kurma", kelime: "kelime anlamı", konusma: "günlük konuşma kalıpları",
+    dinleme: "dinlediğini anlama (kısa yazılı diyalog)", ders: "dilbilgisi", okuma: "kısa paragraf anlama", hata: "sık yapılan hatalar" };
+  function soruDenetle(c) {
+    if (!c || !Array.isArray(c.sorular) || c.sorular.length !== 3) return false;
+    return c.sorular.every(function (q) {
+      if (!q || typeof q.soru !== "string" || q.soru.length < 5 || !Array.isArray(q.secenekler)) return false;
+      var sec = q.secenekler.map(function (x) { return String(x).trim(); });
+      if (sec.length < 3 || sec.length > 4 || sec.some(function (x) { return !x; })) return false;
+      if (new Set(sec.map(function (x) { return x.toLowerCase(); })).size !== sec.length) return false;
+      var d = +q.dogru; return d >= 0 && d < sec.length && d === Math.floor(d);
+    });
+  }
+  async function yoklama(d) {
+    var a = d.plan[d.i]; if (!a) return;
+    stilEkle(); if (gecis) gecis.remove();
+    gecis = document.createElement("div"); gecis.className = "dhk-gecis"; gecis.setAttribute("role", "dialog"); gecis.setAttribute("aria-label", "Hızlı yoklama");
+    gecis.innerHTML = '<div class="k"><strong>Hızlı yoklama</strong><p style="margin:8px 0 0">3 soru hazırlıyorum; üçünü de bilirsen bu adımı atlarız.</p></div>';
+    document.body.appendChild(gecis);
+    var seviye = null, konu = KONU_ACIKLAMA[a.ekran] || "genel İngilizce";
+    try { var h = JSON.parse(localStorage.getItem("dh-koc-hesap-v1") || "null"); seviye = h && h.profil && h.profil.seviye; var hk = h && (h.kisisel || [])[0]; var zk = h && (h.hataKonulari || [])[0];
+      if (a.ekran === "ders" || a.ekran === "hata") konu += (hk ? " — özellikle " + hk.konu : zk ? " — özellikle " + zk.konu : ""); } catch (e) {}
+    var c = null;
+    for (var t = 0; t < 2 && !c; t++) {
+      try {
+        var cevap = await Promise.race([DHProviders.chat([{ role: "user", content:
+          "İngilizce öğrenen Türk bir öğrenci için " + (seviye || "B1") + " seviyesinde, konu: " + konu + ". Tam 3 çoktan seçmeli soru yaz. " +
+          "Soru metni Türkçe olabilir, seçenekler İngilizce. Her soruda 4 seçenek, tek doğru. Yalnız JSON: {\"sorular\":[{\"soru\":\"...\",\"secenekler\":[\"...\",\"...\",\"...\",\"...\"],\"dogru\":0,\"aciklama\":\"kısa Türkçe\"}]}" }],
+          { json: true, prefer: ["groq", "gemini"], slowMs: 12000, title: "Koç yoklama" }), new Promise(function (_, r) { setTimeout(function () { r("slow"); }, 14000); })]);
+        var j = typeof cevap === "string" ? JSON.parse(cevap.slice(cevap.indexOf("{"), cevap.lastIndexOf("}") + 1)) : cevap;
+        if (soruDenetle(j)) c = j;
+      } catch (e) {}
+    }
+    if (!gecis) return;
+    if (!c) { gecis.querySelector(".k").innerHTML = '<strong>Yoklama hazırlanamadı</strong><p>Yapay zekâya şu an ulaşılamadı. Adıma devam edebilir ya da "Adımı bitirdim" diyebilirsin.</p><div class="bt"><button type="button" class="ana" data-k="tamam">Tamam</button></div>'; gecis.querySelector("[data-k=tamam]").onclick = function () { gecis.remove(); gecis = null; }; return; }
+    var i = 0, dogru = 0, k = gecis.querySelector(".k");
+    function goster() {
+      var q = c.sorular[i];
+      k.innerHTML = '<strong>Soru ' + (i + 1) + '/3</strong><p style="margin:8px 0">' + esc(q.soru) + '</p><div style="display:flex;flex-direction:column;gap:8px">' +
+        q.secenekler.map(function (x, n) { return '<button type="button" data-n="' + n + '" style="min-height:48px;border-radius:12px;border:1px solid rgba(255,255,255,.55);background:transparent;color:#fff;font:600 15px system-ui;text-align:left;padding:8px 12px;cursor:pointer">' + esc(x) + '</button>'; }).join("") + '</div>';
+      k.querySelectorAll("[data-n]").forEach(function (b) { b.onclick = function () {
+        var n = +b.getAttribute("data-n"), ok = n === +q.dogru; if (ok) dogru++;
+        k.querySelectorAll("[data-n]").forEach(function (x) { x.disabled = true; if (+x.getAttribute("data-n") === +q.dogru) x.style.background = "#2E9E77"; });
+        if (!ok) b.style.background = "#B3392E";
+        var ac = document.createElement("p"); ac.style.cssText = "margin:10px 0 0;font-size:14px;opacity:.9"; ac.textContent = (ok ? "Doğru. " : "Doğrusu işaretli. ") + (q.aciklama || ""); k.appendChild(ac);
+        var bt = document.createElement("div"); bt.className = "bt"; bt.innerHTML = '<button type="button" class="ana">' + (i < 2 ? "Sonraki" : "Sonucu gör") + '</button>'; k.appendChild(bt);
+        bt.querySelector("button").onclick = function () { i++; if (i < 3) goster(); else sonuc(); };
+      }; });
+    }
+    function sonuc() {
+      try { global.DHOlay && DHOlay.kaydet("yoklama", { ekran: a.ekran, dogru: dogru }); } catch (e) {}
+      if (dogru === 3) {
+        k.innerHTML = '<strong>3/3, harika!</strong><p>Bu adımı atlıyoruz.</p>';
+        try { global.DHKocBeyin && DHKocBeyin.notEkle({ metin: (EKRAN[a.ekran] || {}).ad + " adımında hızlı yoklamayı 3/3 geçti, adım atlandı.", kaynak: "veri" }); } catch (e) {}
+        setTimeout(function () { var dd = oku(); if (!dd) return; dd.atlanan.push(dd.i); dd.i++; if (dd.i >= dd.plan.length) { dd.bitti = true; dd.aktif = false; } dd.basSnap = snap(); if (!dd.bitti) dd.basSn = sureSn(dd.plan[dd.i]); yaz(dd); gecis.remove(); gecis = null; gecisGoster(dd, a, null, true); }, 1200);
+      } else {
+        k.innerHTML = '<strong>' + dogru + '/3</strong><p>Bu konuyu biraz daha çalışalım; adıma devam ediyoruz.</p><div class="bt"><button type="button" class="ana">Devam</button></div>';
+        k.querySelector("button").onclick = function () { gecis.remove(); gecis = null; };
+      }
+    }
+    goster();
+  }
+  function esc(x) { return String(x == null ? "" : x).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
 
   /* ---------- döngü ---------- */
   function tik() {

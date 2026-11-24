@@ -13,7 +13,7 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v580";  /* 💬 Bugünün konuşma konusu + hedefler Konuşkan bağlamında */
+var SW_VERSION = "dh-sw-v581";  /* ✅ Koç modu: "Bunu biliyorum" 3 soruluk yoklama */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */
 /* onceki v438: 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
 /* onceki v437: ➕ Konuşkan: kendi kursunu oluştur */
