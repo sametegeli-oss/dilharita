@@ -74,6 +74,8 @@
       var ad = (global.DHInsights && DHInsights.label) ? DHInsights.label(k.konu) : k.konu;
       o.push(ad + " (" + k.konu + ") hataları: son 14 günde " + k.son14 + " hata, önceki 14 günde " + k.onceki14 + " hata, eğilim " + k.egilim);
     });
+    (h.kisisel || []).forEach(function (x) { o.push("kişisel hedef " + x.ad + " (" + x.konu + "): " + x.gun + ". gün / " + x.toplamGun + " gün, günde " + x.gunlukDk + " dakika, hata başlangıçta " + x.basHata + ", şimdi " + x.simdiHata); });
+    if (h.bugun && h.bugun.dk) o.push("bugüne özel istek: bugün " + h.bugun.dk + " dakika");
     if (h.tahmin && h.tahmin.varis) o.push("hedef kelime düzeyine kaba tahmini varış: " + h.tahmin.varis + ", kalan " + h.tahmin.kalanKelime + " kelime");
     return o;
   }
@@ -142,6 +144,7 @@
     var bc = h.tekrar.cumle.bekleyen, bk = h.tekrar.kelime.bekleyen;
     if (bc > 0) ekle("tekrar", Math.min(15, 5 + Math.ceil(bc / 4)), bc + " cümle kartının tekrar zamanı geldi.");
     if (bk > 0) ekle("kelime", Math.min(10, 5 + Math.ceil(bk / 6)), bk + " kelimenin tekrar zamanı geldi.");
+    (h.kisisel || []).slice(0, 2).forEach(function (x) { ekle(KONU_EKRAN[x.konu] || "hata", Math.min(x.gunlukDk || 10, 15), "Kişisel hedefin: " + x.ad + " (" + x.gun + ". gün)."); });
     var geride = (h.gerideBeceri || []).filter(function (b) { return ["konusma", "dinleme", "okuma", "dilbilgisi", "kelime"].indexOf(b) >= 0; });
     var map = { konusma: "konusma", dinleme: "dinleme", okuma: "okuma", dilbilgisi: "ders", kelime: "kelime", yazma: "tekrar" };
     geride.slice(0, 2).forEach(function (b) { if (!plan.some(function (a) { return a.ekran === map[b]; })) ekle(map[b], 10, "Bu hafta " + (global.DHKocBeyin ? DHKocBeyin.BECERI_TR[b] : b) + " amacına göre geride kaldı."); });
@@ -152,6 +155,41 @@
     var ozet = "Bugün " + (hedefDk - kalan) + " dakikalık bir planımız var; önce " + ilk + " ile başlayalım." +
       (h.sure && h.sure.haftaDk ? " Bu hafta şimdiye kadar " + h.sure.haftaDk + " dakika çalıştın." : "");
     return { ozet: ozet, plan: plan, not: null };
+  }
+
+  /* Kişisel hedefin konusu → çalışılacak ekran */
+  var KONU_EKRAN = { pronunciation: "konusma", konusma: "konusma", dinleme: "dinleme", okuma: "okuma", vocabulary: "kelime", kelime: "kelime" };
+  var KONULAR = ["preposition", "tense", "article", "word_order", "verb", "pronoun", "past-simple", "present-continuous", "question-order", "auxiliary-missing", "pronunciation", "vocabulary", "spelling", "konusma", "dinleme", "okuma", "kelime"];
+  var ANAHTAR = [[/edat|preposition|\b(in|on|at|of|to|for)\b/i, "preposition"], [/zaman|tense|geçmiş|past|present|gelecek|future/i, "tense"], [/\ba\/an\b|article|\bthe\b|tanımlık/i, "article"],
+    [/kelime sıra|word order|sıralama/i, "word_order"], [/telaffuz|söyleniş|pronunc|aksan/i, "pronunciation"], [/kelime|vocab|sözcük/i, "kelime"], [/soru/i, "question-order"],
+    [/dinle|anlama|listening/i, "dinleme"], [/konuş|speaking|akıcı/i, "konusma"], [/oku|reading/i, "okuma"], [/yardımcı fiil|am\/is\/are|\bdo\b|\bdoes\b/i, "auxiliary-missing"]];
+  function kuralYorum(metin) {
+    for (var i = 0; i < ANAHTAR.length; i++) if (ANAHTAR[i][0].test(metin)) return ANAHTAR[i][1];
+    return null;
+  }
+  /* Öğrencinin isteğini ölçülebilir hedef ÖNERİSİNE çevirir (eklemez: onayı arayüz alır). */
+  async function hedefYorumla(metin) {
+    var B = global.DHKocBeyin, h = await B.hesapla(), konu = null, ad = null, gun = 14, dk = 10, gerekce = "", kaynak = "kural";
+    var P = global.DHProviders;
+    if (P && P.chat) {
+      try {
+        var verim = (h.hataKonulari || []).map(function (k) { return k.konu + ": son 14 günde " + k.son14 + " hata"; }).join("; ") || "hata kaydı yok";
+        var c = cozJSON(await Promise.race([P.chat([{ role: "user", content:
+          "Bir İngilizce öğrencisi koçuna şunu yazdı: \"" + String(metin).slice(0, 200) + "\"\n" +
+          "Öğrencinin hata verisi: " + verim + "\n" +
+          "Bunu ölçülebilir bir kişisel hedefe çevir. Yalnız JSON döndür: {\"konu\":\"" + KONULAR.join("|") + "\",\"ad\":\"kısa Türkçe ad (ör. in/on/at edatları)\",\"gun\":7-30,\"gunlukDk\":5-20,\"gerekce\":\"tek cümle, Türkçe; veride olan rakamla\"}" }],
+          { json: true, prefer: ["groq", "gemini"], slowMs: 12000, title: "Deniz hedef" }), new Promise(function (_, r) { setTimeout(function () { r("slow"); }, 14000); })]));
+        if (c && KONULAR.indexOf(c.konu) >= 0) { konu = c.konu; ad = String(c.ad || "").slice(0, 60) || null; gun = +c.gun || 14; dk = +c.gunlukDk || 10; gerekce = String(c.gerekce || "").slice(0, 200); kaynak = "model"; }
+      } catch (e) {}
+    }
+    if (!konu) { konu = kuralYorum(metin) || "genel"; }
+    gun = Math.max(7, Math.min(30, Math.round(gun))); dk = Math.max(5, Math.min(20, Math.round(dk)));
+    var sim = 0; (h.hataKonulari || []).forEach(function (k) { if (k.konu === konu) sim = k.son14; });
+    /* gerekçedeki rakamlar veriyle uyuşmuyorsa gerekçeyi koddan kur */
+    var izin = {}; [sim, gun, dk, 14].forEach(function (n) { izin[String(n)] = 1; });
+    if (!gerekce || sayilar(gerekce).some(function (n) { return !izin[n] && +n > 2; })) gerekce = sim ? ("Son 14 günde bu konuda " + sim + " hata var; hedefimiz bunu yarıya indirmek.") : "Bu konuda henüz yeterli hata kaydı yok; ilerlemeyi birlikte ölçeceğiz.";
+    var label = ad || ((global.DHInsights && DHInsights.label) ? DHInsights.label(konu) : konu);
+    return { konu: konu, ad: label, gun: gun, gunlukDk: dk, gerekce: gerekce, istek: String(metin).slice(0, 160), simdiHata: sim, ekran: KONU_EKRAN[konu] || "hata", kaynak: kaynak };
   }
 
   function cozJSON(t) {
@@ -215,5 +253,5 @@
     return sonuc;
   }
 
-  global.DHKocDeniz = { gunluk: gunluk, dene: dene, dogrula: dogrula, kuralPlani: kuralPlani, olgular: olgular, _eslesmeyen: eslesmeyen, EKRANLAR: EKRANLAR, ISTEK: ISTEK, SIRA: SIRA, _coz: cozJSON };
+  global.DHKocDeniz = { gunluk: gunluk, dene: dene, hedefYorumla: hedefYorumla, KONU_EKRAN: KONU_EKRAN, dogrula: dogrula, kuralPlani: kuralPlani, olgular: olgular, _eslesmeyen: eslesmeyen, EKRANLAR: EKRANLAR, ISTEK: ISTEK, SIRA: SIRA, _coz: cozJSON };
 })(window);

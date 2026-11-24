@@ -14,8 +14,8 @@
 <script src="./dh-insights.js"></script>
 <script src="./dh-olay.js?v=1"></script>
 <script src="./dh-koc-kilavuz.js?v=2"></script>
-<script src="./dh-koc-beyin.js?v=4"></script>
-<script src="./dh-koc-deniz.js?v=5"></script>
+<script src="./dh-koc-beyin.js?v=5"></script>
+<script src="./dh-koc-deniz.js?v=6"></script>
 <script src="./dh-koc-modu.js?v=1"></script>
 <style>
 *{box-sizing:border-box}
@@ -98,6 +98,21 @@ a{color:var(--dh-marka-metin)}
     <div id="plan"></div>
     <div class="cubuk" aria-hidden="true"><i id="planCubuk" style="width:0"></i></div>
     <span class="kucuk" id="planNot"></span>
+  </section>
+
+  <section class="k" aria-labelledby="h-istek">
+    <h2 id="h-istek">Senin isteklerin</h2>
+    <span class="kucuk">Bugün için</span>
+    <div class="ikili" style="flex-wrap:wrap" id="bugunCip">
+      <button class="btn" type="button" data-dk="15">Bugün kısa (15 dk)</button>
+      <button class="btn" type="button" data-dk="45">Bugün uzun (45 dk)</button>
+      <button class="btn" type="button" data-dk="0">Normal gün</button>
+    </div>
+    <span class="kucuk" id="bugunDurum"></span>
+    <span class="kucuk" style="margin-top:6px">Kişisel hedeflerin (en çok 3)</span>
+    <div id="kisisel" style="display:flex;flex-direction:column;gap:10px"></div>
+    <form id="hedefIstek" style="display:flex;gap:8px"><input id="hedefMetin" maxlength="200" placeholder="Deniz'e söyle: ör. in/on edatlarında zayıfım, pekiştirelim" style="flex:1" aria-label="Kişisel hedef isteği"><button class="btn ana" style="flex:none" type="submit">Hedefe çevir</button></form>
+    <div id="hedefOneri" hidden class="k" style="background:var(--dh-yuzey-2)"></div>
   </section>
 
   <section class="k" aria-labelledby="h-ner">
@@ -274,6 +289,30 @@ a{color:var(--dh-marka-metin)}
   });
   $("yenile").addEventListener("click",function(){ $("ozet").textContent="Planı yeniden hazırlıyorum…"; D.gunluk(true, araGoster).then(function(g){ G=g; cizDeniz(); }); });
 
+  /* ---------- Senin isteklerin: bugün + kişisel hedefler ---------- */
+  function cizIstekler(){
+    var bg=B.bugun(); $("bugunDurum").textContent=bg&&bg.dk?("Bugün "+bg.dk+" dakikalık plan istedin."):"";
+    var liste=B.kisiselHedefler(), hs=(H&&H.kisisel)||[];
+    $("kisisel").innerHTML=liste.length?liste.map(function(x){
+      var hh=hs.filter(function(y){return y.id===x.id;})[0]||{gun:1,toplamGun:x.gun,simdiHata:0,basHata:x.basHata};
+      var yz=Math.round(hh.gun/hh.toplamGun*100);
+      return '<div style="display:flex;flex-direction:column;gap:6px"><div class="satir"><strong>'+esc(x.ad)+'</strong><span class="kucuk">'+hh.gun+'. gün / '+hh.toplamGun+' · günde '+x.gunlukDk+' dk</span></div>'+
+        '<div class="cubuk"><i style="width:'+yz+'%"></i></div>'+
+        '<div class="satir kucuk"><span>Hata (14 gün): başta '+hh.basHata+', şimdi '+hh.simdiHata+'</span><button class="btn" style="flex:none;min-height:36px" type="button" data-kapat="'+x.id+'">'+(hh.suresiDoldu?'Süresi doldu · kapat':'Kapat')+'</button></div></div>';
+    }).join(""):'<span class="kucuk">Henüz kişisel hedefin yok.</span>';
+  }
+  function planYenile(){ $("ozet").textContent="Planı isteğine göre yeniden hazırlıyorum…"; D.gunluk(true, araGoster).then(function(g){ G=g; cizDeniz(); }); }
+  $("bugunCip").addEventListener("click",function(ev){ var dk=ev.target.getAttribute("data-dk"); if(dk==null) return; B.bugunYaz({dk:+dk||null}).then(function(){ cizIstekler(); planYenile(); }); });
+  $("kisisel").addEventListener("click",function(ev){ var id=ev.target.getAttribute("data-kapat"); if(!id) return; B.kisiselKapat(id).then(function(){ return B.hesapla(true); }).then(function(h){ H=h; cizIstekler(); mdYenile(); tamam("Hedef kapatıldı."); }); });
+  $("hedefIstek").addEventListener("submit",function(ev){ ev.preventDefault(); var m=$("hedefMetin").value.trim(); if(!m) return;
+    var kut=$("hedefOneri"); kut.hidden=false; kut.innerHTML='<span class="kucuk">Deniz verine bakıyor…</span>';
+    D.hedefYorumla(m).then(function(o){
+      kut.innerHTML='<strong>Deniz\'in önerisi: '+esc(o.ad)+'</strong><p style="margin:0">'+esc(o.gerekce)+'</p><div class="satir kucuk"><span>Süre: '+o.gun+' gün · günde '+o.gunlukDk+' dk</span><span>Ekran: '+esc((D.EKRANLAR[o.ekran]||{}).ad||o.ekran)+'</span></div><div class="ikili"><button class="btn" type="button" data-k="vazgec">Vazgeç</button><button class="btn ana" type="button" data-k="onay">Onayla</button></div>';
+      kut.querySelector('[data-k=vazgec]').onclick=function(){ kut.hidden=true; };
+      kut.querySelector('[data-k=onay]').onclick=function(){ B.kisiselEkle(o).then(function(r){ if(!r.ok){ kut.innerHTML='<span class="kucuk">'+esc(r.neden)+'</span>'; return; } kut.hidden=true; $("hedefMetin").value=""; B.hesapla(true).then(function(h){ H=h; cizHesap(); cizIstekler(); cizNotlar(); mdYenile(); planYenile(); }); tamam("Hedef eklendi; bugünden itibaren plana giriyor."); }); };
+    });
+  });
+
   /* KOÇ MODU düğmesi: durum varsa "devam et" */
   function kocDugme(){ var b=$("kocModu"); if(!b||!window.DHKocModu) return; var d=DHKocModu.durum(), bugun=new Date(); var g=bugun.getFullYear()+"-"+String(bugun.getMonth()+1).padStart(2,"0")+"-"+String(bugun.getDate()).padStart(2,"0");
     if(d&&d.gun===g&&d.bitti){ b.textContent="Bugünün koç modu tamamlandı"; b.disabled=true; }
@@ -281,7 +320,7 @@ a{color:var(--dh-marka-metin)}
     else b.onclick=function(){ b.textContent="Başlıyor…"; DHKocModu.baslat().then(function(ok){ if(!ok) b.textContent="Plan hazır değil, biraz sonra tekrar dene"; }); };
   }
   setTimeout(kocDugme, 800);
-  B.hesapla(true).then(function(h){ H=h; cizHesap(); });
+  B.hesapla(true).then(function(h){ H=h; cizHesap(); cizIstekler(); });
   cizNotlar(); mdYenile();
   function araGoster(g){ G=g; cizDeniz(); $("dzKaynak").textContent="Deniz planı gözden geçiriyor…"; }
   D.gunluk(false, araGoster).then(function(g){ G=g; cizDeniz(); }).catch(function(){ $("ozet").textContent="Plan hazırlanamadı."; });

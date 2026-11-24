@@ -189,8 +189,13 @@
       else tahmin = { durum: "hız ölçülemedi", kalanKelime: kalan, not: "Son haftalarda yeni kelime öğrenme hızı ölçülemedi." };
     } else { try { var once2 = js("dh-koc-kelime-sayac-v1", {}) || {}; once2[gunAnahtari()] = Object.keys(bilinen).length; jsYaz("dh-koc-kelime-sayac-v1", once2); } catch (e) {} }
 
+    var kisisel = kisiselHedefler().map(function (x) {
+      var simdiHata = 0; konular.forEach(function (k) { if (k.konu === x.konu) simdiHata = k.son14; });
+      var gecen = Math.max(1, Math.ceil((Date.now() - x.bas) / 864e5));
+      return { id: x.id, ad: x.ad, konu: x.konu, gun: Math.min(gecen, x.gun), toplamGun: x.gun, gunlukDk: x.gunlukDk, basHata: x.basHata, simdiHata: simdiHata, suresiDoldu: Date.now() > x.bitis };
+    });
     var sonuc = {
-      t: Date.now(), gun: gunAnahtari(), surum: 1,
+      t: Date.now(), gun: gunAnahtari(), surum: 1, kisisel: kisisel, bugun: bugun(),
       profil: pr, hedef: hedef,
       sure: { gunluk: gunluk, haftaDk: Math.round(haftaToplamSn / 60), haftalar: haftalar, aylik: aylik, aktifGunHafta: gunluk.filter(function (g) { return g.dk >= 2; }).length, seri: seri, veriGunu: veriGunu, ilkGun: ilkGun },
       beceriler: beceriler, gerideBeceri: geride,
@@ -205,8 +210,8 @@
   }
 
   /* ---------- BEYİN: notlar, tercihler, hedef ---------- */
-  function bos() { return { notlar: {}, silinen: {}, tercihler: { u: 0 }, hedef: { u: 0 } }; }
-  function beyin() { var b = js(K_BEYIN, null); if (!b || typeof b !== "object") b = bos(); b.notlar = b.notlar || {}; b.silinen = b.silinen || {}; b.tercihler = b.tercihler || { u: 0 }; b.hedef = b.hedef || { u: 0 }; return b; }
+  function bos() { return { notlar: {}, silinen: {}, tercihler: { u: 0 }, hedef: { u: 0 }, kisisel: {}, bugun: { u: 0 } }; }
+  function beyin() { var b = js(K_BEYIN, null); if (!b || typeof b !== "object") b = bos(); b.notlar = b.notlar || {}; b.silinen = b.silinen || {}; b.tercihler = b.tercihler || { u: 0 }; b.hedef = b.hedef || { u: 0 }; b.kisisel = b.kisisel || {}; b.bugun = b.bugun || { u: 0 }; return b; }
   function birlestir(a, b) {
     a = a || bos(); b = b || bos();
     var out = bos(), id;
@@ -216,6 +221,9 @@
     for (id in out.notlar) if ((out.silinen[id] || 0) >= (+out.notlar[id].u || 0)) delete out.notlar[id];
     out.tercihler = (+((b.tercihler || {}).u) || 0) > (+((a.tercihler || {}).u) || 0) ? b.tercihler : (a.tercihler || { u: 0 });
     out.hedef = (+((b.hedef || {}).u) || 0) > (+((a.hedef || {}).u) || 0) ? b.hedef : (a.hedef || { u: 0 });
+    /* kişisel hedefler: kimlik bazında, büyük u kazanır (kapatma da bir güncellemedir) */
+    [a.kisisel || {}, b.kisisel || {}].forEach(function (n) { for (var i in n) if (n.hasOwnProperty(i)) { var x = n[i]; if (!x) continue; var v0 = out.kisisel[i]; if (!v0 || (+x.u || 0) > (+v0.u || 0)) out.kisisel[i] = x; } });
+    out.bugun = (+((b.bugun || {}).u) || 0) > (+((a.bugun || {}).u) || 0) ? b.bugun : (a.bugun || { u: 0 });
     /* mezar taşları 180 gün sonra unutulur */
     var sinir = Date.now() - 180 * 864e5; for (id in out.silinen) if (out.silinen[id] < sinir) delete out.silinen[id];
     return out;
@@ -280,7 +288,33 @@
     try { localStorage.removeItem(K_HESAP); } catch (e) {}
     return true;
   }
-  function tercihler() { var t = Object.assign({}, KIL().VARSAYILAN_TERCIH, beyin().tercihler || {}); delete t.u; return t; }
+  /* ---------- KİŞİSEL HEDEFLER (4. aşama) ----------
+     {id:{konu, ad, istek, gun, gunlukDk, bas, bitis, basHata, durum:"acik"|"kapandi", u}}
+     Sınır (kodda): aynı anda en çok SINIR.kisiselHedefMax açık hedef. Onaysız eklenmez: ekleyen her zaman kullanıcı arayüzüdür. */
+  function kisiselHedefler(hepsi) { var k = beyin().kisisel, out = []; for (var i in k) if (k.hasOwnProperty(i) && (hepsi || k[i].durum === "acik")) { var x = Object.assign({ id: i }, k[i]); out.push(x); } return out.sort(function (a, b) { return a.bas - b.bas; }); }
+  async function kisiselEkle(o) {
+    var acik = kisiselHedefler().length, max = (KIL().SINIR.kisiselHedefMax || 3);
+    if (acik >= max) return { ok: false, neden: "En çok " + max + " kişisel hedef açık olabilir; önce birini kapat." };
+    var gun = Math.max(3, Math.min(60, Math.round(+o.gun || 14))), dk = Math.max(5, Math.min(30, Math.round(+o.gunlukDk || 10)));
+    var konu = String(o.konu || "").toLowerCase().replace(/[^a-z0-9_çğıöşü]/g, "_").slice(0, 40) || "genel";
+    var h = js(K_HESAP, null), basHata = 0;
+    if (h) (h.hataKonulari || []).forEach(function (k) { if (k.konu === konu) basHata = k.son14; });
+    var id = "h" + Date.now().toString(36), simdi = Date.now();
+    await degistir(function (b) { b.kisisel[id] = { konu: konu, ad: String(o.ad || konu).slice(0, 60), istek: String(o.istek || "").slice(0, 160), gun: gun, gunlukDk: dk, bas: simdi, bitis: simdi + gun * 864e5, basHata: basHata, durum: "acik", u: simdi }; });
+    try { await notEkle({ metin: "Kişisel hedef: " + String(o.ad || konu).slice(0, 60) + " (" + gun + " gün, günde " + dk + " dk)" + (o.istek ? " — isteği: " + String(o.istek).slice(0, 80) : ""), kaynak: "kullanici" }); } catch (e) {}
+    try { localStorage.removeItem(K_HESAP); } catch (e) {}
+    return { ok: true, id: id };
+  }
+  async function kisiselKapat(id) { await degistir(function (b) { var x = b.kisisel[id]; if (x) { x.durum = "kapandi"; x.u = Date.now(); } }); return true; }
+  /* Bugüne özel istek: {dk?, odak?, metin?} — yalnız bugün geçerli; plan yeniden hazırlanır. */
+  async function bugunYaz(o) {
+    await degistir(function (b) { b.bugun = { gun: gunAnahtari(), dk: o.dk ? Math.max(5, Math.min(180, Math.round(+o.dk))) : null, odak: o.odak || null, metin: o.metin ? String(o.metin).slice(0, 120) : null, u: Date.now() }; });
+    try { localStorage.removeItem("dh-koc-gun-" + gunAnahtari()); } catch (e) {}
+    return true;
+  }
+  function bugun() { var x = beyin().bugun || {}; return x.gun === gunAnahtari() ? x : null; }
+
+  function tercihler() { var t = Object.assign({}, KIL().VARSAYILAN_TERCIH, beyin().tercihler || {}); delete t.u; var bg = bugun(); if (bg && bg.dk) { t.gunlukDakika = bg.dk; t.bugunOzel = true; } return t; }
 
   /* ---------- bulut: günlük hesap kopyası + haftalık anlık kopya ---------- */
   function haftaAnahtari(d) { d = new Date(d || Date.now()); var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); var g = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - g); var y = new Date(Date.UTC(t.getUTCFullYear(), 0, 1)); return t.getUTCFullYear() + "-H" + String(Math.ceil(((t - y) / 864e5 + 1) / 7)).padStart(2, "0"); }
@@ -341,6 +375,8 @@
       "## Hedefe varış", "- " + (tah.durum || "-") + (tah.varis ? ": " + tah.varis + " (kalan " + tah.kalanKelime + " kelime, günde " + tah.gunlukHiz + ")" : "") + (tah.not ? " — " + tah.not : ""),
       "## Konuşkan", "- Mesaj " + h.konuskan.mesaj + ", doğru " + h.konuskan.dogruMesaj + ", kayıtlı hata " + h.konuskan.hata,
       h.plan ? "## Bugünün planı\n- " + h.plan.biten + "/" + h.plan.toplam + " adım bitti" : null,
+      "## Kişisel hedefler (öğrencinin kendi istekleri; öncelik 2)", (h.kisisel || []).length ? satir(h.kisisel.map(function (x) { return "- " + x.ad + " (" + x.konu + "): " + x.gun + ". gün / " + x.toplamGun + ", günde " + x.gunlukDk + " dk; hata başlangıçta " + x.basHata + ", şimdi " + x.simdiHata + (x.suresiDoldu ? " — süresi doldu, kapatmayı öner" : ""); })) : "- yok",
+      h.bugun ? "## Bugüne özel istek\n- " + [h.bugun.dk ? "bugün " + h.bugun.dk + " dk" : "", h.bugun.odak ? "odak: " + h.bugun.odak : "", h.bugun.metin ? "\"" + h.bugun.metin + "\"" : ""].filter(Boolean).join(" · ") : null,
       "## Deniz'in notları", notlar.length ? satir(notlar) : "- henüz not yok"
     ]);
   }
@@ -396,5 +432,5 @@
   setTimeout(function bekle(n) { n = n || 0; if (bulut()) yukle(); else if (n < 20) setTimeout(function () { bekle(n + 1); }, 1500); }, 2000);
 
   global.DHKocBeyin = { hesapla: hesapla, beyin: beyin, yukle: yukle, notEkle: notEkle, notSil: notSil, notDuzelt: notDuzelt,
-    tercihYaz: tercihYaz, tercihler: tercihler, hedefYaz: hedefYaz, md: md, kisaBaglam: kisaBaglam, konuNotu: konuNotu, oturumBitti: oturumBitti, _haftalik: haftalikDegerlendirme, _birlestir: birlestir, BECERI_TR: BECERI_TR, SEVIYELER: SEVIYELER };
+    tercihYaz: tercihYaz, tercihler: tercihler, kisiselHedefler: kisiselHedefler, kisiselEkle: kisiselEkle, kisiselKapat: kisiselKapat, bugunYaz: bugunYaz, bugun: bugun, hedefYaz: hedefYaz, md: md, kisaBaglam: kisaBaglam, konuNotu: konuNotu, oturumBitti: oturumBitti, _haftalik: haftalikDegerlendirme, _birlestir: birlestir, BECERI_TR: BECERI_TR, SEVIYELER: SEVIYELER };
 })(window);

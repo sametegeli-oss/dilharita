@@ -104,6 +104,9 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
 - Gemini kotası açılınca 10 senaryo testinin tekrarı.
 
 ## Yapıldı
+- 24 Kasım: 4. aşama çekirdeği — kişisel hedefler (panelde "Senin isteklerin": istek → Deniz ölçülebilir hedef önerir →
+  kullanıcı onaylar; en çok 3; gerekçedeki rakam veriyle uyuşmazsa koddan kurulur; planda öncelik 2; ilerleme: gün ve hata
+  başta/şimdi), bugüne özel istek (15/45 dk, plan yeniden), düzeltme sıkılığı Konuşkan'da uygulanıyor (sw v579).
 - 24 Kasım: 3. aşama çekirdeği — koç modu (`dh-koc-modu.js`): panel/Konuşkan'dan başlar, adım ekranını açar, lacivert şerit +
   ilerleme çubukları, adım süresi %80 dolunca ya da "Adımı bitirdim" ile 5 sn geri sayımlı geçiş (Bekle/Atla/Şimdi aç, Türkçe
   sesli), ara tekrar (≥5 cevapta başarı <%70 ya da aynı konuda 3+ yanlış → bir adım sonra hata defteri 5 dk, ekran başına günde 1),
