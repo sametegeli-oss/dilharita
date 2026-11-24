@@ -13,7 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v585";  /* 🔀 Karışık tekrar + ekranların "bitti" sinyali koç moduna */
+var SW_VERSION = "dh-sw-v586";  /* 📨 Deniz Telegram: bağlantı paneli, durum özeti, konuşma notları */
+/* onceki v585: 🔀 Karışık tekrar + ekranların "bitti" sinyali */
 /* onceki v584: 🧠 FSRS: tek tekrar hesabı (dh-fsrs.js) */
 /* onceki v583: 📒 Cümle bankam */
 /* onceki v582: 🧑‍🏫 Öğretmenine götür: aylık özet (yazdırılabilir) */
@@ -71,6 +72,7 @@ var SHELL = [
   "./dh-koc-beyin.js",
   "./dh-koc-deniz.js",
   "./dh-koc-modu.js",
+  "./dh-deniz-telegram.js",
   "./study-tracker.js",
   "./learning-error-system.js",
   "./dh-fsrs.js",

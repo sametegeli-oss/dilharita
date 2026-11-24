@@ -40,6 +40,10 @@
   if(!document.querySelector('script[src*="dh-koc-modu.js"]')){
     var km=document.createElement("script"); km.src="./dh-koc-modu.js?v=3"; document.head.appendChild(km);
   }
+  /* DENİZ TELEGRAM: bağlıysa saatte bir kısa durum özeti (bağlı değilse hiçbir şey göndermez). */
+  if(!document.querySelector('script[src*="dh-deniz-telegram.js"]')){
+    var dt=document.createElement("script"); dt.src="./dh-deniz-telegram.js?v=1"; document.head.appendChild(dt);
+  }
 
   function ls(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
   function ss(k){ try{ return sessionStorage.getItem(k); }catch(e){ return null; } }

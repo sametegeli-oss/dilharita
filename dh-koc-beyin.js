@@ -433,6 +433,7 @@
         var ornek = hatalar.filter(function (e) { return e.tag === t; })[0] || {};
         konuNotu(t, gunAnahtari() + " " + (o.mod || "Konuşkan") + ": " + konuTR(t) + " hatası bir oturumda " + say[t] + " kez" + (ornek.wrong ? " (ör. \"" + String(ornek.wrong).slice(0, 50) + "\" → \"" + String(ornek.right || "").slice(0, 50) + "\")" : "") + ".");
       });
+      if (global.DHDenizTelegram) DHDenizTelegram.oturumOzeti(hatalar, o && o.mod);
     } catch (e) {}
   }
 

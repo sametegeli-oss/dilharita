@@ -7,16 +7,17 @@
 <title>Koçluk Paneli · Dil Harita</title>
 <link rel="stylesheet" href="./dh-tokens.css">
 <script src="./idb-uyum.js?v=1"></script>
-<script src="./auth-guard.js?v=13"></script>
+<script src="./auth-guard.js?v=14"></script>
 <script src="./cloud-sync.js?v=54"></script>
 <script src="./ai-providers.js?v=t40"></script>
 <script src="./dh-amac.js"></script>
 <script src="./dh-insights.js"></script>
 <script src="./dh-olay.js?v=2"></script>
 <script src="./dh-koc-kilavuz.js?v=2"></script>
-<script src="./dh-koc-beyin.js?v=6"></script>
+<script src="./dh-koc-beyin.js?v=7"></script>
 <script src="./dh-koc-deniz.js?v=6"></script>
 <script src="./dh-koc-modu.js?v=3"></script>
+<script src="./dh-deniz-telegram.js?v=1"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:var(--dh-bg);color:var(--dh-text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -165,6 +166,24 @@ a{color:var(--dh-marka-metin)}
     <span class="kucuk">Deniz bunları ders başında okur. Yanlış olanı düzelt ya da sil.</span>
     <div id="notlar"></div>
     <form id="notForm" style="display:flex;gap:8px"><input id="notYeni" maxlength="220" placeholder="Deniz bilsin: ör. iş toplantıları için çalışıyorum" style="flex:1" aria-label="Yeni not"><button class="btn ana" style="flex:none" type="submit">Ekle</button></form>
+  </section>
+
+  <section class="k" aria-labelledby="h-tg">
+    <h2 id="h-tg">Deniz Telegram'da</h2>
+    <p class="kucuk" id="tgDurum">Deniz, seçtiğin saatte o gün çalışmadıysan Telegram'dan yazar; ona istediğin zaman yazabilirsin.</p>
+    <form class="form" id="tgKurulum" hidden>
+      <label style="grid-column:1/-1">Deniz sunucusunun adresi (kurulumda verilir)<input id="tgWorker" inputmode="url" placeholder="https://dilharita-deniz.….workers.dev"></label>
+      <button class="btn ana" type="submit" style="grid-column:1/-1">Kaydet</button>
+    </form>
+    <div id="tgBagla" hidden><button class="btn ana" type="button" id="tgBaglaBtn">Telegram'a bağla</button><p class="kucuk" id="tgBaglaNot"></p></div>
+    <form class="form" id="tgAyar" hidden>
+      <label>Hatırlatma saati<select id="tgSaat"></select></label>
+      <label style="align-self:end;flex-direction:row;display:flex;gap:8px;align-items:center"><input type="checkbox" id="tgAcik"> Hatırlatma açık</label>
+      <label style="grid-column:1/-1;flex-direction:row;display:flex;gap:8px;align-items:center"><input type="checkbox" id="tgOzet"> Konuşmadan sonra kısa notları Telegram'a gönder</label>
+      <button class="btn ana" type="submit">Kaydet</button>
+      <button class="btn" type="button" id="tgAyril">Bağlantıyı kaldır</button>
+    </form>
+    <div id="tgGecmis" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
   </section>
 
   <section class="k" aria-labelledby="h-ter">
@@ -326,8 +345,36 @@ a{color:var(--dh-marka-metin)}
   B.hesapla(true).then(function(h){ H=h; cizHesap(); cizIstekler(); });
   cizNotlar(); mdYenile();
   function araGoster(g){ G=g; cizDeniz(); $("dzKaynak").textContent="Deniz planı gözden geçiriyor…"; }
-  D.gunluk(false, araGoster).then(function(g){ G=g; cizDeniz(); }).catch(function(){ $("ozet").textContent="Plan hazırlanamadı."; });
+  D.gunluk(false, araGoster).then(function(g){ G=g; cizDeniz();
+    if(/[?&]kocmodu=1/.test(location.search)&&window.DHKocModu){ try{ history.replaceState(null,"",location.pathname); }catch(e){} var d=DHKocModu.durum(), z=new Date(), bg=z.getFullYear()+"-"+String(z.getMonth()+1).padStart(2,"0")+"-"+String(z.getDate()).padStart(2,"0"); if(d&&d.gun===bg&&d.bitti) return; if(!DHKocModu.devam()) DHKocModu.baslat(); } }).catch(function(){ $("ozet").textContent="Plan hazırlanamadı."; });
   B.yukle().then(function(){ cizNotlar(); });
+
+  /* DENİZ TELEGRAM */
+  function tgCiz(){
+    var T=window.DHDenizTelegram; if(!T) return;
+    var kurulu=T.kurulu(), bagli=T.bagli();
+    $("tgKurulum").hidden=kurulu; $("tgBagla").hidden=!kurulu||bagli; $("tgAyar").hidden=!bagli;
+    $("tgDurum").textContent=!kurulu?"Deniz'in Telegram sunucusu henüz kurulmadı. Kurulumdan sonra adresini buraya yaz."
+      :bagli?"Bağlı. Deniz, seçtiğin saatte o gün çalışmadıysan yazar. Telegram'da /plan, /durum, /saat 21, /sessiz komutlarını kullanabilirsin."
+      :"Deniz, seçtiğin saatte o gün çalışmadıysan Telegram'dan yazar; ona istediğin zaman yazabilirsin.";
+    var a=T.ayar(), s=$("tgSaat"); if(!s.options.length){ for(var h=6;h<=23;h++){ var o=document.createElement("option"); o.value=h; o.textContent=String(h).padStart(2,"0")+":00"; s.appendChild(o);} }
+    s.value=a.saat; $("tgAcik").checked=a.acik!==false; $("tgOzet").checked=a.ozet!==false;
+    var g=T.gecmis().slice(-4);
+    $("tgGecmis").innerHTML=g.length?'<span class="kucuk">Telegram\'daki son yazışmalar</span>'+g.map(function(x){ return '<div class="kucuk" style="border-left:3px solid var(--dh-marka);padding-left:8px"><b>Sen:</b> '+esc(x.sen)+'<br><b>Deniz:</b> '+esc(String(x.deniz||"").slice(0,300))+'</div>'; }).join(""):"";
+  }
+  $("tgKurulum").addEventListener("submit",function(e){ e.preventDefault(); var u=$("tgWorker").value.trim(); if(!/^https:\/\/[\w.-]+(\/|$)/.test(u)){ $("tgDurum").textContent="Adres https:// ile başlamalı."; return; } DHDenizTelegram.worker(u); tgCiz(); });
+  $("tgBaglaBtn").addEventListener("click",function(){ var b=this; b.disabled=true; b.textContent="Bağlantı hazırlanıyor…";
+    DHDenizTelegram.baglantiLinki().then(function(r){ b.disabled=false; b.textContent="Telegram'ı aç ve Başlat'a bas"; b.onclick=function(){ window.open(r.url,"_blank"); };
+      $("tgBaglaNot").innerHTML='Telegram açılınca <b>Başlat</b>\'a bas. Bağlantı 1 saat geçerli. Bot: @'+esc(r.bot)+'. Bağlandıktan sonra bu sayfayı yenile.';
+      window.open(r.url,"_blank");
+      var n=0, bekle=setInterval(function(){ if(++n>40){ clearInterval(bekle); return; } DHDenizTelegram.durumGonder(true).then(function(x){ if(x&&x.bagli){ clearInterval(bekle); tgCiz(); tamam("Deniz Telegram'a bağlandı."); } }); },15000);
+    }).catch(function(e){ b.disabled=false; b.textContent="Telegram'a bağla"; $("tgBaglaNot").textContent="Bağlanamadı: "+(e&&e.message||"sunucu cevap vermedi"); }); });
+  $("tgAyar").addEventListener("submit",function(e){ e.preventDefault(); DHDenizTelegram.ayarYaz({saat:+$("tgSaat").value,acik:$("tgAcik").checked,ozet:$("tgOzet").checked}).then(function(){ tamam("Telegram ayarları kaydedildi."); }); });
+  $("tgAyril").addEventListener("click",function(){ var b=this; if(!b.dataset.emin){ b.dataset.emin="1"; b.textContent="Emin misin? Tekrar bas"; setTimeout(function(){ delete b.dataset.emin; b.textContent="Bağlantıyı kaldır"; },5000); return; }
+    DHDenizTelegram.ayril().then(function(){ tgCiz(); tamam("Telegram bağlantısı kaldırıldı."); }); });
+  window.addEventListener("dh-deniz-telegram",tgCiz);
+  window.addEventListener("dh-koc-istek",function(){ tamam("Telegram'daki isteğin bugünkü plana işlendi."); try{ cizIstekler(); }catch(e){} D.gunluk(false, araGoster).then(function(g){ G=g; cizDeniz(); }); });
+  tgCiz(); if(window.DHDenizTelegram&&DHDenizTelegram.kurulu()) DHDenizTelegram.durumGonder(true).then(tgCiz);
   document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible"&&G) cizPlan(); });
 })();
 </script>
