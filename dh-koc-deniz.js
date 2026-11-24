@@ -161,7 +161,10 @@
     var P = global.DHProviders; if (!P || !P.chat) throw { code: "ai-yok" };
     var t0 = Date.now();
     var istek = ISTEK + (olguListesi ? "\n\nOLGULAR (özet ve gerekçelerdeki her rakam buradan, kendi satırındaki anlamıyla alınmalı):\n- " + olguListesi.join("\n- ") : "");
-    var cevap = await P.chat([{ role: "system", content: mdMetin }, { role: "user", content: istek }], { json: true, only: saglayici, slowMs: 40000, title: "Deniz günlük plan" });
+    var cevap = await Promise.race([
+      P.chat([{ role: "system", content: mdMetin }, { role: "user", content: istek }], { json: true, only: saglayici, slowMs: 15000, title: "Deniz günlük plan" }),
+      new Promise(function (_, rej) { setTimeout(function () { rej({ code: "slow", provider: saglayici }); }, 17000); })
+    ]);
     var bilgi = P.lastResponseInfo || {};
     return { metin: typeof cevap === "string" ? cevap : (cevap && cevap.text) || JSON.stringify(cevap), sure: Date.now() - t0, model: bilgi.model || saglayici };
   }
@@ -182,12 +185,19 @@
     var B = global.DHKocBeyin, h = await B.hesapla(true), t = B.tercihler(), mdMetin = await B.md(), sonuc = null, denemeler = [];
     var ol = olgular(h, t);
     var P = global.DHProviders, var0 = P && P.realHasAnyKey ? P.realHasAnyKey() : !!P;
+    /* Kotası dolan ya da cevap vermeyen model 6 saat atlanır (her açılışta bekletmesin). */
+    var DURUM = "dh-koc-model-durum", durum = js(DURUM, {}) || {};
     if (var0) for (var i = 0; i < SIRA.length && !sonuc; i++) {
+      if (durum[SIRA[i]] && Date.now() - durum[SIRA[i]] < 6 * 3600e3) { denemeler.push({ s: SIRA[i], atlandi: true }); continue; }
       try {
         var r = await sor(SIRA[i], mdMetin, ol), c = cozJSON(r.metin), d = dogrula(c, h, mdMetin, t, ol);
         denemeler.push({ s: SIRA[i], ok: d.ok, h: d.hatalar });
         if (d.ok) sonuc = { ozet: c.ozet.trim(), plan: c.plan.map(function (a) { return { ekran: a.ekran, dk: Math.round(+a.dk), neden: String(a.neden).trim() }; }), kaynak: "model:" + r.model, not: c.not };
-      } catch (e) { denemeler.push({ s: SIRA[i], hata: (e && (e.code || e.message)) || "hata" }); }
+      } catch (e) {
+        var kod = (e && (e.code || e.message)) || "hata";
+        denemeler.push({ s: SIRA[i], hata: kod });
+        if (/all-keys-failed|rate|slow|http|no-key|all-failed/.test(String(kod))) { durum[SIRA[i]] = Date.now(); try { localStorage.setItem(DURUM, JSON.stringify(durum)); } catch (x) {} }
+      }
     }
     if (!sonuc) { var k = kuralPlani(h, t); sonuc = { ozet: k.ozet, plan: k.plan, kaynak: "kural", not: null }; }
     if (sonuc.not && sonuc.not.metin) { try { await B.notEkle({ metin: sonuc.not.metin, kaynak: sonuc.not.kaynak }); } catch (e) {} }
