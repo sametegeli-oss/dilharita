@@ -119,7 +119,7 @@
 
 <script src="./storage-bridge.js?v=4"></script>
 <script src="./progress-engine.js?v=2"></script>
-<script src="./auth-guard.js?v=16"></script>
+<script src="./auth-guard.js?v=17"></script>
 <script src="./cloud-sync.js?v=55"></script>
 <script src="./teacher-policy.js?v=4"></script>
 <script src="./ai-providers.js?v=t40"></script>
@@ -182,6 +182,7 @@
 
   function renderQuestion(){
     var q = test.next();
+    window.__dhSevQ = q;
     if(!q || test.done()){ return renderResult(); }
     var pct = Math.round((test.count-1) / test.maxQuestions * 100);
     var head =
@@ -224,7 +225,11 @@
   }
 
   // ---- ortak: cevap sonrası ilerle ----
+  var __dhAtla=false;
   function advance(r){
+    /* Deniz'e cevap (atlanan konuşma soruları sayılmaz) */
+    if(!__dhAtla){ try{ var t=(r&&r.type)||(window.__dhSevQ&&__dhSevQ.type)||""; window.dhCevapYay && dhCevapYay(!!(r&&r.correct), t==="dinleme"?"dinleme":(t==="gramer"?"dilbilgisi":(t==="konusma"?"konusma":(t==="tanima"?"okuma":"yazma"))), {kaynak:"seviye-testi-"+t}); }catch(e){} }
+    __dhAtla=false;
     setTimeout(function(){ if(r.finished) renderResult(); else renderQuestion(); }, 850);
   }
 
@@ -368,7 +373,7 @@
     if(!SR){
       // cihaz desteklemiyorsa bu soruyu atla (doğru say, akışı bozma)
       screen.innerHTML='<div class="card fade">'+head+'<div class="q-hint">Bu cihaz konuşma tanımayı desteklemiyor, bu soru atlanıyor…</div></div>';
-      setTimeout(function(){ var r=test.answer({correct:true}); advance(r); }, 1200);
+      setTimeout(function(){ var r=test.answer({correct:true}); __dhAtla=true; advance(r); }, 1200);
       return;
     }
     screen.innerHTML='<div class="card fade">'+head
@@ -386,7 +391,7 @@
       if(skipped) return; skipped=true;
       micBtn.disabled=true; if(micSkip) micSkip.disabled=true;
       $("spkFb").innerHTML='<div class="q-hint">'+esc(msg||"Bu soru atlandı.")+'</div>';
-      setTimeout(function(){ var r=test.answer({correct:true}); advance(r); }, 1200);
+      setTimeout(function(){ var r=test.answer({correct:true}); __dhAtla=true; advance(r); }, 1200);
     }
     if(micSkip) micSkip.onclick=function(){ skipSpeak("Bu soru atlandı, teste devam ediyoruz."); };
     function finalize(correct, heard){

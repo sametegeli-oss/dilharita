@@ -64,7 +64,7 @@
 
 <script src="./storage-bridge.js?v=4"></script>
 <script src="./progress-engine.js?v=2"></script>
-<script src="./auth-guard.js?v=16"></script>
+<script src="./auth-guard.js?v=17"></script>
 <script src="./cloud-sync.js?v=55"></script>
 <script src="./teacher-policy.js?v=4"></script>
 <script src="./mastery-engine.js?v=1"></script>
@@ -121,7 +121,9 @@
       }
     }catch(e){}
   }
-  function advance(r){ masteryFor(r.type, r.correct, r.en); setTimeout(function(){ if(r.finished) renderResult(); else renderQuestion(); }, 800); }
+  function advance(r){ masteryFor(r.type, r.correct, r.en);
+    try{ window.dhCevapYay && dhCevapYay(r.correct, r.type==="dinleme"?"dinleme":(r.type==="gramer"?"dilbilgisi":(r.type==="tanima"?"okuma":"yazma")), {kaynak:"modul-sinav-"+r.type}); }catch(e){}
+    setTimeout(function(){ if(r.finished) renderResult(); else renderQuestion(); }, 800); }
 
   function renderChoice(q, head){
     var top="";

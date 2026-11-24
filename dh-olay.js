@@ -148,7 +148,12 @@
     var b = kova();
     if (b.gun !== gunAnahtari()) { bosalt(); b = kova(); }
     ekle(ok ? b.d : b.y, bec, 1);
-    var konular = (o.konular || []).map(konuAdi).filter(Boolean).slice(0, 4);
+    var ham = o.konular || [];
+    /* Konu verilmediyse ve yanlışsa: hedef cümle + öğrencinin cevabından hata türü (yüklü sayfalarda) */
+    if (!ok && !ham.length && o.hedef && o.cevap && global.LearningErrorDB && LearningErrorDB.detectTypes) {
+      try { ham = (LearningErrorDB.detectTypes({ target: o.hedef, answer: o.cevap }) || []).filter(function (t) { return t !== "typo"; }); } catch (e) {}
+    }
+    var konular = ham.map(konuAdi).filter(Boolean).slice(0, 4);
     konular.forEach(function (k) { var v = b.k[k] || (b.k[k] = [0, 0]); v[ok ? 0 : 1]++; });
     kaydet("cevap", { ok: ok, b: bec, k: konular.length ? konular : null, kaynak: o.kaynak || null });
     zamanla();
@@ -203,6 +208,11 @@
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") bosalt(); });
   global.addEventListener("pagehide", bosalt);
 
+  /* Sayfaların kullanacağı kısa yol: dhCevapYay(dogruMu, beceri, {hedef, cevap, konular, kaynak}) */
+  global.dhCevapYay = global.dhCevapYay || function (ok, bec, ek) {
+    ek = ek || {};
+    try { global.dispatchEvent(new CustomEvent("dh-cevap", { detail: { ok: !!ok, beceri: bec, hedef: ek.hedef || "", cevap: ek.cevap || "", konular: ek.konular || [], ekran: SAYFAM, kaynak: ek.kaynak || SAYFAM } })); } catch (e) {}
+  };
   /* Merkezî cevap değerlendirmesi (coach-bubble.js dhCoachEvaluate) bu olayı yayar. */
   global.addEventListener("dh-cevap", function (ev) { try { cevap(ev.detail || {}); } catch (e) {} });
 

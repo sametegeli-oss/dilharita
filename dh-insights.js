@@ -3,7 +3,7 @@
   "use strict";
   var LABELS={tense:"zaman kullanımı",article:"a / an / the",preposition:"edatlar",word_order:"kelime sırası",verb:"fiil kullanımı",spelling:"yazım",vocabulary:"kelime seçimi",general:"cümle kurma",
     /* hata sistemi türleri (İngilizce teknik adlar raporda olduğu gibi görünüyordu) */
-    "missing-word":"kelime atlama","extra-word":"fazladan kelime","auxiliary-missing":"yardımcı fiil eksikliği (am/is/are/do…)","auxiliary-extra":"gereksiz yardımcı fiil",pronoun:"zamir kullanımı","past-simple":"geçmiş zaman","present-continuous":"şimdiki zaman (-ing)","question-order":"soru cümlesi sırası",pronunciation:"telaffuz","sentence-accuracy":"cümle doğruluğu","chat-grammar":"sohbette dilbilgisi","word-order":"kelime sırası",typo:"yazım hatası"};
+    "missing-word":"kelime atlama","extra-word":"fazladan kelime","auxiliary-missing":"yardımcı fiil eksikliği (am/is/are/do…)","auxiliary-extra":"gereksiz yardımcı fiil",pronoun:"zamir kullanımı","past-simple":"geçmiş zaman","present-continuous":"şimdiki zaman (-ing)","question-order":"soru cümlesi sırası",pronunciation:"telaffuz","sentence-accuracy":"cümle doğruluğu","chat-grammar":"sohbette dilbilgisi","word-order":"kelime sırası",typo:"yazım hatası","phrasal-verbs":"öbek fiiller (phrasal verbs)"};
   function esc(s){return String(s||"").replace(/[&<>\"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function label(t){return LABELS[t]||LABELS[String(t||"").replace(/_/g,"-")]||String(t||"cümle kurma").replace(/[_-]/g," ");}
   function recent(records,days){var since=Date.now()-days*86400000;return(records||[]).filter(function(r){return !r.reviewed&&new Date(r.updatedAt||r.createdAt||0).getTime()>=since;});}

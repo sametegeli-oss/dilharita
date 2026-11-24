@@ -62,7 +62,8 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
 - Cümle bankam: `cumle-bankam.html` (IndexedDB `dh-cumle-bankam`; bulut `users/{uid}/cumle_bankasi/p000..` 400'lük parçalar + `meta` + `ilerleme`).
   Kişisel cümle dosyası depoya konmaz; kullanıcı "Dosyadan içe aktar" ile yükler. `ilerleme` belgesi büyürse (1 MB) parçala.
 - Kayıtlar: **`dh-olay.js` tek aktivite kaydı** (günlük özet `dh-gun-ozet-v1`, ham olay IndexedDB `dh-olay`); cevaplar
-  `dh-cevap` olayıyla gelir (`dhCoachEvaluate`, `dhKonuskanCevap`). Ayrıca `dh-activity-log-v1` (30 gün), `dh-study-tracker-v1`,
+  `dh-cevap` olayıyla gelir (`dhCoachEvaluate`, `dhKonuskanCevap`, diğer ekranlar `window.dhCevapYay(ok, beceri, {hedef, cevap, konular, kaynak})`;
+  yanlışta konu verilmezse dh-olay hedef/cevaptan `detectTypes` ile çıkarır). Ayrıca `dh-activity-log-v1` (30 gün), `dh-study-tracker-v1`,
   hata defteri, `srs:`/`wsrs:` tekrar kartları.
 
 ## Bilinen tuzaklar (yaşandı)
@@ -82,4 +83,4 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
 - Android'de tarayıcı sesi perde/hız 1 değilse dil geçişlerinde 2–6 sn bekliyor; perde ve hız 1'de sabit.
 
 ## Şu anki sürümler (24 Kasım 2026)
-sw `dh-sw-v589` · cloud-sync.js v55 · ai-providers.js t40 · auth-guard.js v16 · dh-olay.js v3 · youtube-egitim.js v127 · dh-fsrs.js v1 · learning-error-system.js v12 · assets/app.js tm3 · dh-deniz-telegram.js v2 · coach-bubble.js t42 · koc-paneli/konuskan.html: dh-koc-kilavuz v2 · dh-koc-beyin v7 · dh-koc-deniz v6 · konuskan.js v30 · dh-koc-modu v3 · goruntulu.js v88 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3
+sw `dh-sw-v590` · cloud-sync.js v55 · ai-providers.js t40 · auth-guard.js v17 · dh-olay.js v4 · youtube-egitim.js v128 · youtube-pratik.js t37 · immersive.js t31 · dh-insights.js v4 · dh-fsrs.js v1 · learning-error-system.js v12 · assets/app.js tm3 · dh-deniz-telegram.js v2 · coach-bubble.js t42 · koc-paneli/konuskan.html: dh-koc-kilavuz v2 · dh-koc-beyin v7 · dh-koc-deniz v6 · konuskan.js v30 · dh-koc-modu v3 · goruntulu.js v88 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3

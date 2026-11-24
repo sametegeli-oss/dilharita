@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="tr">
 <head>
-<script src="./auth-guard.js?v=16"></script>
+<script src="./auth-guard.js?v=17"></script>
 <script src="./idb-uyum.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
 <meta charset="UTF-8">
 <script src="./dh-ses.js?v=3"></script>
@@ -166,6 +166,7 @@ function renderStats(){
   $("bar").style.width=QUEUE.length?Math.round(DONE/QUEUE.length*100)+"%":"0%";
 }
 function renderEmpty(){
+  try{ window.dispatchEvent(new CustomEvent("dh-ekran-bitti",{detail:{bos:!DONE}})); }catch(e){}
   $("review").innerHTML=`<div class="empty"><div class="big">✅</div><h2>Bugünkü akıllı tekrar tamam</h2><p>Yeni hatalar oluştuğunda bu ekran otomatik dolacak.</p><p><a class="btn primary" href="./practice.html">Çalışmaya git</a> <a class="btn" href="./videopractice.html">Video Practice</a></p></div>`;
 }
 function current(){return QUEUE[IDX]}
@@ -210,8 +211,12 @@ function renderCard(){
     </div>`;
   $("listenBtn").onclick=()=>speak(r.target);
   $("showBtn").onclick=()=>$("correctBox").classList.remove("hidden");
-  $("doneBtn").onclick=()=>markDone();
+  var __sayildi=false;
+  function __yay(ok,cevap){ if(__sayildi) return; __sayildi=true; try{ window.dhCevapYay&&dhCevapYay(ok,"yazma",{hedef:r.target,cevap:cevap||"",kaynak:"akilli-tekrar"}); }catch(e){} }
+  window.__dhAkilliYay=__yay;
+  $("doneBtn").onclick=()=>{ __yay(true); markDone(); };
   $("againBtn").onclick=()=>{
+    __yay(false);
     // 🔧 DÜZELTİLDİ: eskisi sadece bu OTURUM içinde kuyruğa geri ekliyordu —
     // kalıcı SRS durumu güncellenmediği için sonraki günlerde bu bilgi kayboluyordu.
     // Şimdi "hard" ile SRS sıfırlanıyor (rep=0, hemen tekrar due) — hem şimdi hem
@@ -228,6 +233,7 @@ function renderCard(){
 function checkAnswer(){
   const r=current(); const val=$("answerInput").value;
   const ok=norm(val)===norm(r.target);
+  try{ window.__dhAkilliYay&&window.__dhAkilliYay(ok,val); }catch(e){}
   const fb=$("fb");
   if(ok){
     // 🔧 DÜZELTİLDİ: eskisi 0.5 sn sonra otomatik markDone() çağırıp bir sonraki

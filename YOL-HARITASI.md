@@ -31,9 +31,11 @@ ekranları kendisi açar, gerektiğinde tekrar ettirir. Kumanda her zaman kullan
 - **Cevaplar:** `dhCoachEvaluate` üzerinden → tekrar, pratik, öğren (sesli → konuşma), video pratik (sesli → konuşma),
   kelime öğren, öğretmen, hata defteri. Konuşkan → yazılı/sesli sohbet, telefon görüşmesi, cümle kurma, fotoğraf anlatma,
   görüntülü ders (`dhKonuskanCevap`). Yanlışlarda konu türü `LearningErrorDB.detectTypes` ile (yüklü olduğu sayfalarda).
-- **Cevap kaydı henüz olmayan (yalnız süre):** akıllı tekrar, YouTube eğitim/pratik, İngilizceyi Yaşa, telaffuz stüdyosu,
-  sesli çalış, ders ve modül testleri, seviye testi, phrasal verbs, kitaplık, senaryolu sohbetler. 3. aşamada ("bitti"
-  sinyalleri) bağlanacak.
+- **Cevaplar bağlandı (24 Kasım, sw v590, `dhCevapYay`):** akıllı tekrar (kart başına ilk deneme), YouTube eğitim
+  (dikte → dinleme, gölgeleme → konuşma, video tekrar/öğrendim, Gemini pekiştirme → yazma), YouTube pratik, İngilizceyi Yaşa
+  (her mesaj; düzeltme geldiyse yanlış), sesli çalış, ders (kelime/dilbilgisi/dinleme/konuşma), modül sınavı, seviye testi
+  (atlanan sorular sayılmaz), öbek fiil alıştırması, telaffuz stüdyosu (%70).
+  Hâlâ yalnız süre: kitaplık (soru yok), senaryolu sohbetler (yapılandırılmış düzeltme yok), öbek fiil listesi.
 - **Saklama:** aktivite günlüğü 10 → 30 gün; çalışma sayacında 30 günden eski günlerin olay listesi silinir;
   günlük özette 90 günden eski günler tek kovaya sıkışır (süresiz).
 

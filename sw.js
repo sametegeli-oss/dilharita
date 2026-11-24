@@ -13,7 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v589";  /* 🎬 Video izlerken süre sayılır (YouTube iframe); panel koç modunun bitirdiği adımı tamam sayar */
+var SW_VERSION = "dh-sw-v590";  /* 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */
+/* onceki v589: 🎬 Video izlerken süre sayılır */
 /* onceki v588: 📨 Deniz Telegram sunucusu kuruldu */
 /* onceki v587: ☁ Senkron: video kayıtları yalnız değişince yazılır */
 /* onceki v586: 📨 Deniz Telegram */

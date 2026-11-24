@@ -162,7 +162,7 @@
 
 </main>
 
-<script src="./auth-guard.js?v=16"></script>
+<script src="./auth-guard.js?v=17"></script>
 <script src="./sentences-loader.js?v=20"></script>
 <script src="./profile.js?v=2"></script>
 <script src="./dh-modul.js?v=10"></script>
@@ -769,6 +769,8 @@
       sayilar.toplam++;
       var iyi = sc >= 70;
       if (iyi) sayilar.dogru++;
+      /* Deniz'e: duyulan cevap (sessizlik sayılmaz) */
+      if (c.metin){ try{ window.dhCevapYay && dhCevapYay(iyi, "konusma", { hedef:k.en, cevap:c.metin, kaynak:"sesli-calis" }); }catch(e){} }
       /* Hiçbir şey duyulmadıysa (mikrofon sorunu olabilir) tekrar kaydı DEĞİŞMEZ */
       var not = (tur === "tekrar" && c.metin) ? notla(k, sc) : Promise.resolve();
       if (MODUL && c.metin){ try{ if (window.DHProgress && DHProgress.recordResult) DHProgress.recordResult("sentence:" + k.id, sc >= 70); }catch(e){} }
@@ -831,6 +833,7 @@
     dinlemeyiKes();
     try{ uyanik && uyanik.release(); }catch(e){}
     $("sahne").hidden = true; $("bitti").hidden = false;
+    try{ window.dispatchEvent(new CustomEvent("dh-ekran-bitti",{detail:{bos:false}})); }catch(e){}
     medyaGizle();
     var ozet = sayilar.toplam + " cümle çalıştınız.";
     if (mod !== "dinle" && sayilar.toplam) ozet += " " + sayilar.dogru + " tanesini doğru söylediniz.";

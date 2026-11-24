@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<script src="./auth-guard.js?v=16"></script>
+<script src="./auth-guard.js?v=17"></script>
 <script src="./idb-uyum.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
   <meta charset="UTF-8">
 <script src="./dh-ses.js?v=3"></script>
@@ -1430,6 +1430,8 @@ function hocaTalkAlign(charIndex){
     }
     const result = diffEN(heardText, TARGET_TEXT);
     document.getElementById("mSöz").textContent = result.score + "%";
+    /* Deniz'e: telaffuz stüdyosunda söylenen cümle (%70 ve üstü doğru) */
+    try{ window.dhCevapYay && dhCevapYay(result.score >= 70, "konusma", { konular: result.score >= 70 ? [] : ["pronunciation"], kaynak: "telaffuz-studyosu" }); }catch(e){}
 
     diffLine.innerHTML = "";
     result.parts.forEach(p => {

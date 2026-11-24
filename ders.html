@@ -3,7 +3,7 @@
 <head>
 <script src="./dh-ses.js?v=3"></script>
 <script src="./idb-uyum.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
-<script src="./auth-guard.js?v=16"></script>
+<script src="./auth-guard.js?v=17"></script>
 <script src="./storage-bridge.js?v=4"></script>
 <script src="./progress-engine.js?v=2"></script>
 <script src="./dh-session-summary.js?v=1"></script>
@@ -589,7 +589,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
     if(!SR){
       // ses tanıma yoksa: dinle + "söyledim" ile geç
       if(micCap) micCap.textContent="Bu tarayıcı mikrofonla değerlendirmeyi desteklemiyor. Dinleyip sesli tekrarla, hazırsan devam et.";
-      if(micBtn){ micBtn.textContent="✓"; micBtn.onclick=function(){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId,true); }catch(e){} recordMastery(s.itemId,s.phase,true,false); next(); }; }
+      if(micBtn){ micBtn.textContent="✓"; micBtn.onclick=function(){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId,true); }catch(e){} recordMastery(s.itemId,s.phase,true,false,"konusma"); next(); }; }
       return;
     }
     var rec=null, listening=false;
@@ -610,8 +610,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
               +'<div class="actions"><button class="btn b-green" id="pNext">'+(ok?"Devam et →":"Tekrar dene")+'</button>'
               +'<button class="btn b-ghost" id="pNext2">Sonraki →</button></div>';
             var pn=$("pNext"), pn2=$("pNext2");
-            if(pn) pn.onclick=function(){ if(ok){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId,true); }catch(e){} recordMastery(s.itemId,s.phase,true,false); next(); } else { result.innerHTML=""; if(micCap) micCap.textContent="Tekrar mikrofona bas ve söyle."; } };
-            if(pn2) pn2.onclick=function(){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, ok); }catch(e){} recordMastery(s.itemId,s.phase,ok,false); next(); };
+            if(pn) pn.onclick=function(){ if(ok){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId,true); }catch(e){} recordMastery(s.itemId,s.phase,true,false,"konusma"); next(); } else { result.innerHTML=""; if(micCap) micCap.textContent="Tekrar mikrofona bas ve söyle."; } };
+            if(pn2) pn2.onclick=function(){ try{ if(window.DHProgress) DHProgress.recordResult(s.itemId, ok); }catch(e){} recordMastery(s.itemId,s.phase,ok,false,"konusma"); next(); };
           }
         };
         rec.onerror=function(){ if(micCap) micCap.textContent="Mikrofon hatası. Tekrar dene veya atla."; };
@@ -650,7 +650,10 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
     if(phase==="isinma") return "tanima";
     return "tanima";
   }
-  function recordMastery(itemId, phase, correct, exercise){
+  function recordMastery(itemId, phase, correct, exercise, tur){
+    /* Deniz'e cevap (videopractice dönüşü orada zaten sayıldı → "sayma") */
+    if(tur!=="sayma"){ try{ var id=String(itemId||""), bec=tur==="konusma"?"konusma":(phase==="video"?"dinleme":(/^grammar:/.test(id)||phase==="gramer"?"dilbilgisi":(/^word:/.test(id)?"kelime":"yazma")));
+      window.dhCevapYay && dhCevapYay(correct, bec, {kaynak:"ders-"+(phase||"")}); }catch(e){} }
     try{
       if(window.DHMastery && itemId){
         DHMastery.record(itemId, phaseToSkill(phase, exercise), correct, {kaynak:"ders"});
@@ -796,7 +799,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
             try{ var rr=sessionStorage.getItem("dh-ders-return");
               if(rr!==null){ rIdx=parseInt(rr,10); sessionStorage.removeItem("dh-ders-return"); } }catch(e){}
             if(rIdx!==null && !isNaN(rIdx)){
-              try{ var rs=lesson.steps[rIdx]; if(rs&&rs.itemId) recordMastery(rs.itemId,rs.phase,true,false); }catch(e){}
+              try{ var rs=lesson.steps[rIdx]; if(rs&&rs.itemId) recordMastery(rs.itemId,rs.phase,true,false,"sayma"); }catch(e){}
               idx=Math.min(rIdx+1, lesson.steps.length);
               try{ if(window.DHDers) DHDers.ilerlet(idx); }catch(e){}
             }
@@ -831,7 +834,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
           // videopractice'ten döndük: o adımı tamamlanmış say, mastery kanıtı yaz, sonrakine geç
           try{
             var rs = lesson.steps[returnIdx];
-            if(rs && rs.itemId) recordMastery(rs.itemId, rs.phase, true, false);
+            if(rs && rs.itemId) recordMastery(rs.itemId, rs.phase, true, false, "sayma");
           }catch(e){}
           idx = Math.min(returnIdx+1, lesson.steps.length);
           try{ if(window.DHDers) DHDers.kaydet(lesson, idx); }catch(e){}
