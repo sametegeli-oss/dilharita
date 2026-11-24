@@ -549,6 +549,16 @@
   function errAll(){ try{ if(window.LearningErrorDB&&LearningErrorDB.allFull) return LearningErrorDB.allFull(); if(window.LearningErrorDB&&LearningErrorDB.all) return LearningErrorDB.all(); }catch(e){} return Promise.resolve([]); }
   function errMerge(list){ try{ if(window.LearningErrorDB&&LearningErrorDB.bulkMerge&&Array.isArray(list)) return LearningErrorDB.bulkMerge(list); }catch(e){} return Promise.resolve(0); }
 
+  /* Koç anahtarlarından buluta GİTMEYENLER: cihaza özel model durumu, her açılışta yeniden
+     hesaplanan özet (ayrıca koc/hesap belgesine yazılıyor) ve dünden eski günlük planlar
+     (her gün yeni anahtar; ayar belgesi 1 MB sınırına doğru büyümesin). */
+  function kocHaric(key){
+    if(key.indexOf("dh-koc-")!==0) return false;
+    if(key==="dh-koc-model-durum"||key==="dh-koc-hesap-v1") return true;
+    var m=/^dh-koc-gun-(\d{4}-\d\d-\d\d)$/.exec(key);
+    if(m){ var d=new Date(); d.setDate(d.getDate()-1); var dun=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); return m[1]<dun; }
+    return false;
+  }
   function lsCollect(){
     var out={};
     for(var i=0;i<LS_KEYS.length;i++){
@@ -557,6 +567,7 @@
     try{
       for(var j=0;j<localStorage.length;j++){
         var key=localStorage.key(j); if(!key) continue;
+        if(kocHaric(key)) continue;
         for(var p=0;p<LS_PREFIXES.length;p++){
           if(key.indexOf(LS_PREFIXES[p])===0){
               try{ var vv=localStorage.getItem(key),ytFull=key.indexOf("dh-immersive-youtube-study-")===0; if(vv!=null&&vv.length<=(ytFull?900000:MAX_VAL)) out[key]=vv; }catch(e){}
@@ -623,6 +634,8 @@
   }
 
   /* ── 7) PUSH: yereli buluta yaz ──────────────────────────── */
+  var YT_SIL_KEY = "dh-yt-silinecek-v1";   // silinmesi yarıda kalan eski video parçaları
+  var YT_TEMIZ_KEY = "dh-yt-temizlik-v1";  // haftalık öksüz parça temizliğinin son zamanı
   var YT_PULL_KEY = "dh-yt-pull-v1";   // artımlı video okuma işareti (uid, en yeni updated_at, son tam tarama)
   var DOC_LIMIT = 950000;   // Firestore belge limiti ~1MB; güvenli tavan
   function mainCloudPayloadSize(ls){
@@ -732,13 +745,18 @@
       var g=shrinkToLimit(data.ls);
 
       /* ---- FARK: yalnızca değişen anahtarlar ---- */
-      var eski = tam ? {} : sigOku();
+      var gercekEski = sigOku(), eski = tam ? {} : gercekEski;
       var yeniSig = {}, degisen = {}, degisenSayi = 0;
+      /* VİDEO KAYITLARI (her biri ayrı belge, çoğu yüzlerce KB) tam gönderimde bile
+         yalnız DEĞİŞTİYSE yazılır. Eskiden her açılıştaki tam senkron 65 videonun hepsini
+         (~150 belge) yeniden yazıyordu; sayfa erken kapanınca eski parçalar silinemeyip
+         öksüz kalıyordu (24 Kasım: 15 dakikada 147 öksüz parça). */
       for(var k in data.ls){
         if(!data.ls.hasOwnProperty(k)) continue;
         var sg = sigOf(data.ls[k]);
         yeniSig[k] = sg;
-        if(eski[k] !== sg){ degisen[k] = data.ls[k]; degisenSayi++; }
+        var ytK = k.indexOf("dh-immersive-youtube-study-")===0;
+        if((ytK ? gercekEski[k] : eski[k]) !== sg){ degisen[k] = data.ls[k]; degisenSayi++; }
       }
       var errSig = sigOf(JSON.stringify(data.errors||[]));
       var errDegisti = (eski.__errors !== errSig);
@@ -754,7 +772,10 @@
 
       await fb.saveSettings(user.uid, {
         ls: degisen,
-        errors: errDegisti ? data.errors : null
+        errors: errDegisti ? data.errors : null,
+        /* her video belgesi bitince imzası hemen saklanır: yazma yarıda kesilirse
+           bir sonraki açılışta yalnız kalanlar yazılır */
+        onYt: function(key){ try{ var m=sigOku(); m[key]=yeniSig[key]; sigYaz(m); }catch(e){} }
       });
       var aiCloudError="";
       if(aiDegisti){
@@ -991,6 +1012,13 @@
         return {ok:false,message:"Cihazdaki verilerin korundu; "+pmsg+". Daha sonra yeniden deneyebilirsin."};
       }
       try{ localStorage.setItem("dh-last-sync-ts", String(Date.now())); }catch(e){}
+      /* Haftada bir öksüz video parçası temizliği (~video belge sayısı kadar okuma) */
+      try{
+        if(Date.now()-(+localStorage.getItem(YT_TEMIZ_KEY)||0) > 7*864e5 && fb.cleanupOrphanedYoutubeStudyParts){
+          localStorage.setItem(YT_TEMIZ_KEY, String(Date.now()));
+          fb.cleanupOrphanedYoutubeStudyParts(user.uid).then(function(r){ if(r&&r.deleted) console.info("[cloud-sync] öksüz video parçası silindi:", r.deleted); }).catch(function(){});
+        }
+      }catch(e){}
       try{ localStorage.setItem(YT_PULL_KEY, JSON.stringify({ uid:user.uid, max:Math.max(ytTam?0:(+ytIz.max||0), +videoRows.__maxUpdated||0) || (ytTam?Date.now():(+ytIz.max||Date.now())), fullAt: ytTam?Date.now():(+ytIz.fullAt||Date.now()) })); }catch(e){}
       if(migration && pres && pres.ok){
         try{
@@ -1206,9 +1234,12 @@
                   var v=allDocs[id];
                   if(v.key && Array.isArray(v.parts)) v.parts.forEach(function(p){ live[p]=1; });
                 });
+                var esik=Date.now()-10*60000;
                 var orphans=Object.keys(allDocs).filter(function(id){
                   var v=allDocs[id];
-                  return !v.key && !live[id]; // ana belge değil ve hiçbir güncel kayıt tarafından referans verilmiyor
+                  /* ana belge değil, hiçbir güncel kayıt referans vermiyor ve 10 dakikadan eski
+                     (başka bir cihaz o an yeni parçalarını yazıyor olabilir) */
+                  return !v.key && !live[id] && (+v.updated_at||0) < esik;
                 });
                 var jobs=[];
                 for(var i=0;i<orphans.length;i+=400){
@@ -1314,6 +1345,11 @@
             isler.push(fsMod.setDoc(fsMod.doc(db,"settings",uid), sDoc, { merge:true })); }
           if(pVar){ pDoc.updated_at=now2;
             isler.push(fsMod.setDoc(fsMod.doc(db,"progress",uid), pDoc, { merge:true })); }
+          function silinecekEkle(l){ if(!l||!l.length) return; try{ var s=JSON.parse(localStorage.getItem(YT_SIL_KEY)||"[]")||[]; l.forEach(function(x){ if(s.indexOf(x)<0) s.push(x); }); localStorage.setItem(YT_SIL_KEY, JSON.stringify(s.slice(-2000))); }catch(e){} }
+          function silindi(id){ try{ var s=JSON.parse(localStorage.getItem(YT_SIL_KEY)||"[]")||[], i=s.indexOf(id); if(i>=0){ s.splice(i,1); localStorage.setItem(YT_SIL_KEY, JSON.stringify(s)); } }catch(e){} }
+          function parcaSil(pid){ return fsMod.deleteDoc(fsMod.doc(db,"users",uid,"youtube_studies",pid)).then(function(){ silindi(pid); }).catch(function(){}); }
+          /* önceki açılışta yarım kalan silmeler (okuma gerektirmez) */
+          try{ var bekleyenSil=JSON.parse(localStorage.getItem(YT_SIL_KEY)||"[]")||[]; if(bekleyenSil.length) isler.push(Promise.all(bekleyenSil.slice(0,200).map(parcaSil))); }catch(e){}
           ytDocs.forEach(function(v){
             isler.push((async function(){
               /* Yeni revizyon yazmadan önce eski belgeyi oku; eğer eski
@@ -1328,13 +1364,15 @@
                 /* Eski parçaların silinmesi BEKLENİR: eskiden Promise.all başladıktan
                    sonra kuyruğa ekleniyordu; sayfa kapanınca silme gitmiyor, bulutta
                    binlerce öksüz parça birikiyordu. */
-                if(oldParts) await Promise.all(oldParts.map(function(pid){ return fsMod.deleteDoc(fsMod.doc(db,"users",uid,"youtube_studies",pid)).catch(function(){}); }));
+                if(oldParts){ silinecekEkle(oldParts); await Promise.all(oldParts.map(parcaSil)); }
+                if(data.onYt) data.onYt(v.key);
                 return;
               }
               var ids=[],revision=now2.toString(36)+Math.random().toString(36).slice(2,9);
               for(var offset=0;offset<v.payload.length;){var end=Math.min(offset+150000,v.payload.length);if(end<v.payload.length&&/[\uD800-\uDBFF]/.test(v.payload.charAt(end-1)))end--;var partId=v.id+"_"+revision+"_"+ids.length;ids.push(partId);await fsMod.setDoc(fsMod.doc(db,"users",uid,"youtube_studies",partId),{payload:v.payload.slice(offset,end),updated_at:now2});offset=end}
               await fsMod.setDoc(ref,{key:v.key,parts:ids,updated_at:now2});
-              if(oldParts) await Promise.all(oldParts.filter(function(pid){return ids.indexOf(pid)<0}).map(function(pid){ return fsMod.deleteDoc(fsMod.doc(db,"users",uid,"youtube_studies",pid)).catch(function(){}); }));
+              if(data.onYt) data.onYt(v.key);
+              if(oldParts){ var eskiler=oldParts.filter(function(pid){return ids.indexOf(pid)<0}); silinecekEkle(eskiler); await Promise.all(eskiler.map(parcaSil)); }
             })());
           });
           return Promise.all(isler);
