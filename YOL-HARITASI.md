@@ -99,10 +99,12 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
   oranları modele verilmez ("konuşmayı %100 tamamladın" hatası). Kota sıfırlanınca Gemini yeniden ölçülecek.
 
 ### 2. aşamada kalanlar
-- Haftalık değerlendirme notu. Eski 6 ilerleme/plan sayfasının panele yönlendirilmesi (kaldırmadan önce kullanıcıya sor).
+- Eski 6 ilerleme sayfasının (rapor, ilerleme, aktivite, harita, günlük takip, öğrenme yolu) kaldırılıp kaldırılmayacağı:
+  kullanıcıya sorulacak. Şimdilik üstlerinde panel bağlantısı var.
 - Gemini kotası açılınca 10 senaryo testinin tekrarı.
 
 ## Yapıldı
+- 24 Kasım: Haftalık değerlendirme (kod üretir, haftada tek "veri" notu); eski ilerleme sayfalarına panel bağlantısı (sw v577).
 - 24 Kasım: Konuşkan koç beynini okuyor (`kisaBaglam`: düzeltme sıkılığı, zayıf konular, notlar), ana sayfada Deniz'in
   bugünkü planı, oturum sonunda aynı hata türü 3+ ise konu başına tek "veri" notu (sw v576).
 - 24 Kasım: 2. aşama çekirdeği — koç beyni, kılavuz, Deniz günlük plan + olgu denetimi, Koçluk Paneli (menüde), sw v569.

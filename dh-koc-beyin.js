@@ -289,8 +289,25 @@
     var bugun = gunAnahtari(); try { if (localStorage.getItem(K_BULUT) === bugun) return; } catch (e) { return; }
     try { localStorage.setItem(K_BULUT, bugun); } catch (e) {}
     c.yaz("koc", "hesap", h, false).catch(function () {});
-    var hk = haftaAnahtari(); try { if (localStorage.getItem("dh-koc-haftalik") !== hk) { localStorage.setItem("dh-koc-haftalik", hk); c.yaz("koc_haftalik", hk, { hesap: h, notSayisi: Object.keys(beyin().notlar).length, t: Date.now() }, false).catch(function () {}); } } catch (e) {}
+    var hk = haftaAnahtari(); try { if (localStorage.getItem("dh-koc-haftalik") !== hk) { localStorage.setItem("dh-koc-haftalik", hk); c.yaz("koc_haftalik", hk, { hesap: h, notSayisi: Object.keys(beyin().notlar).length, t: Date.now() }, false).catch(function () {}); haftalikDegerlendirme(h); } } catch (e) {}
     if (localStorage.getItem("dh-koc-beyin-bekliyor")) yukle();
+  }
+
+  /* HAFTALIK DEĞERLENDİRME (kılavuz: "haftada bir, tek not"). Yapay zekâ değil, koç beynindeki
+     rakamlardan kurulur; uydurma rakam riski yok. Konu "haftalik" olduğu için her hafta aynı notu günceller. */
+  function konuTR(k) { try { if (global.DHInsights && DHInsights.label) return DHInsights.label(k); } catch (e) {} return String(k || "").replace(/_/g, " "); }
+  function haftalikDegerlendirme(h) {
+    try {
+      var hw = h.sure.haftalar || [], bu = hw[3] || 0, once = hw[2] || 0, parca = [];
+      parca.push("Geçen hafta " + bu + " dk çalıştın" + (once ? " (bir önceki hafta " + once + " dk" + (bu > once * 1.1 ? ", arttı" : bu < once * 0.9 ? ", azaldı" : ", aynı") + ")" : "") + ".");
+      var azalan = h.hataKonulari.filter(function (k) { return k.egilim === "azalıyor"; }).map(function (k) { return konuTR(k.konu); });
+      var artan = h.hataKonulari.filter(function (k) { return k.egilim === "artıyor" || k.egilim === "yeni"; }).map(function (k) { return konuTR(k.konu); });
+      if (azalan.length) parca.push("İşe yarayan: " + azalan.slice(0, 2).join(", ") + " hataları azalıyor.");
+      if (artan.length) parca.push("Bu hafta ağırlık: " + artan.slice(0, 2).join(", ") + ".");
+      if (h.gerideBeceri.length && h.sure.haftaDk >= 60) parca.push("Amaca göre geride: " + h.gerideBeceri.slice(0, 2).map(function (x) { return BECERI_TR[x]; }).join(", ") + ".");
+      var bek = h.tekrar.cumle.bekleyen + h.tekrar.kelime.bekleyen; if (bek) parca.push("Bekleyen tekrar " + bek + ".");
+      if (bu > 0 || once > 0) konuNotu("haftalik", "Haftalık değerlendirme (" + gunAnahtari() + "): " + parca.join(" "));
+    } catch (e) {}
   }
 
   /* ---------- denizkoç.md ---------- */
@@ -370,7 +387,7 @@
       Object.keys(say).forEach(function (t) {
         if (say[t] < esik) return;
         var ornek = hatalar.filter(function (e) { return e.tag === t; })[0] || {};
-        konuNotu(t, gunAnahtari() + " " + (o.mod || "Konuşkan") + ": \"" + t + "\" hatası bir oturumda " + say[t] + " kez" + (ornek.wrong ? " (ör. \"" + String(ornek.wrong).slice(0, 50) + "\" → \"" + String(ornek.right || "").slice(0, 50) + "\")" : "") + ".");
+        konuNotu(t, gunAnahtari() + " " + (o.mod || "Konuşkan") + ": " + konuTR(t) + " hatası bir oturumda " + say[t] + " kez" + (ornek.wrong ? " (ör. \"" + String(ornek.wrong).slice(0, 50) + "\" → \"" + String(ornek.right || "").slice(0, 50) + "\")" : "") + ".");
       });
     } catch (e) {}
   }
@@ -379,5 +396,5 @@
   setTimeout(function bekle(n) { n = n || 0; if (bulut()) yukle(); else if (n < 20) setTimeout(function () { bekle(n + 1); }, 1500); }, 2000);
 
   global.DHKocBeyin = { hesapla: hesapla, beyin: beyin, yukle: yukle, notEkle: notEkle, notSil: notSil, notDuzelt: notDuzelt,
-    tercihYaz: tercihYaz, tercihler: tercihler, hedefYaz: hedefYaz, md: md, kisaBaglam: kisaBaglam, konuNotu: konuNotu, oturumBitti: oturumBitti, _birlestir: birlestir, BECERI_TR: BECERI_TR, SEVIYELER: SEVIYELER };
+    tercihYaz: tercihYaz, tercihler: tercihler, hedefYaz: hedefYaz, md: md, kisaBaglam: kisaBaglam, konuNotu: konuNotu, oturumBitti: oturumBitti, _haftalik: haftalikDegerlendirme, _birlestir: birlestir, BECERI_TR: BECERI_TR, SEVIYELER: SEVIYELER };
 })(window);
