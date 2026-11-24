@@ -89,7 +89,9 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
 **Durum (24 Kasım, sw v586):** kod hazır ve yerelde test edildi (worker-deniz.js, dh-deniz-telegram.js, panel bölümü, DENIZ-TELEGRAM.md).
 "Deniz arar" Telegram üzerinden yapıldı: FCM/servis hesabı gerekmez. Worker yayında (24 Kasım, kullanıcı "ne gerekiyorsa yap" dedi):
 `https://dilharita-deniz.sametegeli.workers.dev`, KV `dilharita-deniz` (id 8ecd7440…), saatlik tetikleyici.
-Bekleyen: kullanıcı @BotFather'dan bot oluşturup `TELEGRAM_TOKEN` (ve isteğe bağlı `GROQ_KEY`) sırrını Cloudflare'e girecek.
+**Canlı (24 Kasım 15:00):** bot @DenizDilharita_bot. Kullanıcı TELEGRAM_TOKEN ve GROQ_KEY'i girdi, webhook kuruldu,
+bilgisayardaki Telegram'dan bağlandı. İlk sohbette Deniz uygulamanın gönderdiği bugünkü planı doğru aktardı.
+Not: yeni bot Telegram aramasında hemen çıkmıyor; bağlantı linki (t.me/DenizDilharita_bot?start=KOD) kullanılmalı.
 Sesli mesaj henüz yok.
 
 ## Diğer açık konular
