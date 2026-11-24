@@ -62,7 +62,7 @@ ekranları kendisi açar, gerektiğinde tekrar ettirir. Kumanda her zaman kullan
    **Ara tekrar:** başarı < %70 ya da aynı hata türü ≥ 3 → yalnız yanlışlar, biraz sonra, farklı biçimde; adım başına günde en çok 1; eşikler ayarlanabilir.
 4. **Kişisel hedefler:** kullanıcı "in/of'ta zayıfım" der → Deniz veriye bakıp ölçülebilir hedef önerir (süre, günlük dk, ölçü);
    en fazla 3 açık hedef; günlük süre sabit, Deniz neyi azalttığını söyler. Günlük istekler de ("yorgunum, kısa tut").
-5. **Menülerde üç boyutlu canlı görünüm:** katmanlı kartlar, eğimle paralaks, yalnız menülerde; "Canlı görüntü" ayarına bağlı.
+5. **Menülerde üç boyutlu canlı görünüm:** taslak (kullanıcı onayı bekliyor): https://claude.ai/artifact/EAAnb2bp1aFyi3Yfw9ghdc#artboard-Menu3D — katmanlı kartlar, eğimle paralaks, yalnız menülerde; "Canlı görüntü" ayarına bağlı.
 
 ### Araştırmadan eklenenler (24 Kasım, kullanıcı onayladı)
 - Deniz arar: çalışılmayan günde bildirimle "arar", konuşma sonrası "bu konuşmadan 3 ders".
@@ -84,7 +84,6 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
 ## Diğer açık konular
 - Kullanıcının Excel dosyası: Oxford kelime listesi ve konu tabloları eklenebilir; kişisel cümle bankası (~13.700 çift)
   açık depoya değil "dosyadan içe aktar" ile cihaza. Telifli içerik (Headway, çeviri kılavuzu, podcast dökümleri) eklenmez.
-- Firestore'da birikmiş öksüz video parçalarını silme (kullanıcı onayladı; kota sıfırlanınca yapılacak).
 - Piper sayacı iyileştirmeleri, karma ses (İngilizce tarayıcı sesi / Türkçe Piper), barge-in, kadın avatar,
   hassas tanıma ve onay ekranını kapatma önerisi (cevap bekliyor), "&quot;" çözümleme önerisi.
 
@@ -101,9 +100,11 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
 ### 2. aşamada kalanlar
 - Eski 6 ilerleme sayfasının (rapor, ilerleme, aktivite, harita, günlük takip, öğrenme yolu) kaldırılıp kaldırılmayacağı:
   kullanıcıya sorulacak. Şimdilik üstlerinde panel bağlantısı var.
-- Gemini kotası açılınca 10 senaryo testinin tekrarı.
+- (Gemini 11:02'de ölçüldü: gerçek veride 10 sn'de denetimi geçti, ikinci denemede 15 sn'yi aştı; Groq 1,1 sn ve iki denemede de geçti → Groq önce kalıyor.)
 
 ## Yapıldı
+- 24 Kasım 11:02: Firestore'da 3.318 öksüz video parçası silindi (kullanıcı onayıyla; 65 ana kayıt + 85 parça kaldı, eksik yok).
+  Not: REST `batchWrite` güvenlik kurallarında reddedildi, `commit` çalıştı; büyük belgelerde grup 50.
 - 24 Kasım: 4. aşama çekirdeği — kişisel hedefler (panelde "Senin isteklerin": istek → Deniz ölçülebilir hedef önerir →
   kullanıcı onaylar; en çok 3; gerekçedeki rakam veriyle uyuşmazsa koddan kurulur; planda öncelik 2; ilerleme: gün ve hata
   başta/şimdi), bugüne özel istek (15/45 dk, plan yeniden), düzeltme sıkılığı Konuşkan'da uygulanıyor (sw v579).
