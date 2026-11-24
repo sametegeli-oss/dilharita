@@ -28,13 +28,65 @@
     dinleme: { ad: "Video ile dinleme",   url: "youtube-egitim.html",  beceri: "dinleme" },
     ders:    { ad: "Dilbilgisi dersi",    url: "ders.html",            beceri: "dilbilgisi" },
     okuma:   { ad: "Okuma",               url: "library.html",         beceri: "okuma" },
-    hata:    { ad: "Hata defteri",        url: "hata-defteri.html",    beceri: "yazma" }
+    hata:    { ad: "Hata defteri",        url: "hata-defteri.html",    beceri: "yazma" },
+    /* müfredat adımları (eski koc.js planından): modülü kod ekler (a.mod) */
+    yeni:    { ad: "Yeni cümleler",       url: "index-app.html",       beceri: "yazma", modul: true },
+    telafi:  { ad: "Eksik kapat",         url: "index-app.html",       beceri: "yazma", modul: true }
   };
+  /* Adımın açılacağı adres: modül adımlarında ?mod= eklenir */
+  function adimUrl(a) {
+    var e = EKRANLAR[a && a.ekran]; if (!e) return "index.html";
+    return e.modul && a.mod ? e.url + "?mod=" + encodeURIComponent(a.mod) : e.url;
+  }
+  function adimAd(a) {
+    var e = EKRANLAR[a && a.ekran]; if (!e) return String(a && a.ekran || "");
+    return e.modul && a.modKisa ? e.ad + ": " + a.modKisa : e.ad;
+  }
+  /* Plan adımlarının bugünkü süreleri (sn). Aynı sayfayı kullanan adımlar (yeni + telafi ikisi de
+     index-app) sayfanın süresini sırayla paylaşır: öndeki adım dolunca artan sonrakine geçer.
+     Dinleme/konuşma/okuma birkaç sayfada yapılabildiği için becerinin gün toplamına da bakılır. */
+  function adimSureleri(plan, e, s) {
+    e = e || {}; s = s || {}; var kalan = {};
+    return (plan || []).map(function (a) {
+      var ek = EKRANLAR[a.ekran] || { url: "#" }, sayfa = ek.url.split("?")[0];
+      if (!(sayfa in kalan)) kalan[sayfa] = e[sayfa] || 0;
+      var sn = kalan[sayfa], gerek = (+a.dk || 0) * 60 * 0.8;
+      kalan[sayfa] = Math.max(0, sn - gerek);
+      if (/^(dinleme|konusma|okuma)$/.test(a.ekran) && ek.beceri) sn = Math.max(sn, s[ek.beceri] || 0);
+      return sn;
+    });
+  }
+  /* Panel ve ana sayfa için: her adımın adresi, adı, bugünkü süresi ve tamam olup olmadığı.
+     Tamam: süre planın %80'ine ulaştıysa ya da koç modu o adımı bugün bitirdiyse. */
+  function adimDurumlari(plan) {
+    plan = plan || [];
+    var g = { e: {}, s: {} }; try { if (global.DHOlay) g = DHOlay.gunler(1)[0] || g; } catch (x) {}
+    var sn = adimSureleri(plan, g.e, g.s), kmKalan = {};
+    try {
+      var km = global.DHKocModu && DHKocModu.durum();
+      if (km && km.gun === gunAnahtari() && Array.isArray(km.plan)) (km.biten || []).forEach(function (i) { var x = km.plan[i]; if (x && !x.ara) { var k = x.ekran + "|" + (x.mod || ""); kmKalan[k] = (kmKalan[k] || 0) + 1; } });
+    } catch (x) {}
+    return plan.map(function (a, i) {
+      var k = a.ekran + "|" + (a.mod || ""), tamam = false;
+      if (kmKalan[k] > 0) { tamam = true; kmKalan[k]--; } else tamam = sn[i] >= (+a.dk || 0) * 48;
+      return { a: a, url: adimUrl(a), ad: adimAd(a), sn: sn[i], tamam: tamam };
+    });
+  }
+  /* Kodun plana eklediği alanlar: modül adımlarına modül adı */
+  function zenginlestir(plan, h) {
+    var m = (h && h.mufredat) || {};
+    (plan || []).forEach(function (a) {
+      if (a.ekran === "yeni" && m.sonraki) { a.mod = m.sonraki; a.modKisa = m.sonrakiKisa; }
+      if (a.ekran === "telafi" && m.telafi) { a.mod = m.telafi.modul; a.modKisa = m.telafi.seviye + " " + m.telafi.modulKisa; }
+    });
+    return plan;
+  }
   /* Groq önce: ~1 sn ve testte denetimi geçen cevaplar; Gemini kotası sık doluyor (24 Kasım ölçümü). */
   var SIRA = ["groq", "gemini", "cerebras", "nvidia"];
   /* Modeller ekran yerine beceri adı yazabiliyor (testte Groq: "dilbilgisi", "yazma"); eş anlamlılar ekrana çevrilir. */
   var ES = { dilbilgisi: "ders", gramer: "ders", yazma: "tekrar", cumle: "tekrar", "cümle": "tekrar", "konuşma": "konusma", sohbet: "konusma",
-             video: "dinleme", "hata defteri": "hata", hatalar: "hata", kelimeler: "kelime", kitap: "okuma" };
+             video: "dinleme", "hata defteri": "hata", hatalar: "hata", kelimeler: "kelime", kitap: "okuma",
+             "yeni cümleler": "yeni", "yeni cümle": "yeni", "yeni modül": "yeni", modul: "yeni", "modül": "yeni", eksik: "telafi", "eksik kapat": "telafi" };
   function ekranAdi(x) { x = String(x || "").toLowerCase().trim(); return EKRANLAR[x] ? x : (ES[x] || x); }
 
   function gunAnahtari() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
@@ -76,6 +128,10 @@
     });
     (h.kisisel || []).forEach(function (x) { o.push("kişisel hedef " + x.ad + " (" + x.konu + "): " + x.gun + ". gün / " + x.toplamGun + " gün, günde " + x.gunlukDk + " dakika, hata başlangıçta " + x.basHata + ", şimdi " + x.simdiHata); });
     if (h.bugun && h.bugun.dk) o.push("bugüne özel istek: bugün " + h.bugun.dk + " dakika");
+    var mf = h.mufredat || {};
+    if (mf.sonraki) o.push("sıradaki yeni modül (yeni adımı): " + mf.sonrakiKisa);
+    o.push("bugün öğrenilen yeni cümle: " + (mf.bugunCumle || 0) + " cümle, günlük yeni cümle sınırı " + (mf.gunlukSinir || 25) + " cümle");
+    if (mf.telafi) o.push("eksik kalan alt seviye modülü (telafi adımı): " + mf.telafi.seviye + " " + mf.telafi.modulKisa + ", " + mf.telafi.seviye + " seviyesinde son 30 günde " + mf.telafi.hataSayisi + " hata");
     if (h.tahmin && h.tahmin.varis) o.push("hedef kelime düzeyine kaba tahmini varış: " + h.tahmin.varis + ", kalan " + h.tahmin.kalanKelime + " kelime");
     return o;
   }
@@ -112,6 +168,14 @@
       if (!a.neden || String(a.neden).length < 8) hatalar.push("gerekçe yok");
     });
     if (!izinli) hatalar.push("izinsiz ekran");
+    var mf = (h && h.mufredat) || {};
+    (c.plan || []).forEach(function (a) {
+      if (a && a.ekran === "yeni" && !mf.sonraki) hatalar.push("sıradaki modül yokken yeni adımı");
+      if (a && a.ekran === "telafi" && !mf.telafi) hatalar.push("eksik modül yokken telafi adımı");
+    });
+    /* müfredatta ilerleme: sıradaki modül varsa, günlük sınır dolmadıysa ve süre yetiyorsa plan yeni öğrenme içersin */
+    if (mf.sonraki && (mf.bugunCumle || 0) < (mf.gunlukSinir || 25) && ((tercih && tercih.gunlukDakika) || 30) >= 15 &&
+        Array.isArray(c.plan) && !c.plan.some(function (a) { return a && a.ekran === "yeni"; })) hatalar.push("planda yeni öğrenme yok");
     var hedefDk = (tercih && tercih.gunlukDakika) || 30;
     /* alt sınır %40: öğrenci "bugün kısa tut" diyebilir; üst sınır %140 */
     if (toplam && (toplam < hedefDk * 0.4 || toplam > hedefDk * 1.4)) hatalar.push("toplam " + toplam + " dk, hedef " + hedefDk);
@@ -141,16 +205,19 @@
   function kuralPlani(h, tercih) {
     var hedefDk = (tercih && tercih.gunlukDakika) || 30, plan = [], kalan = hedefDk;
     function ekle(ekran, dk, neden) { if (kalan < 5) return; dk = Math.max(5, Math.min(kalan, dk)); if (dk >= 5 && plan.length < 5) { plan.push({ ekran: ekran, dk: dk, neden: neden }); kalan -= dk; } }
-    var bc = h.tekrar.cumle.bekleyen, bk = h.tekrar.kelime.bekleyen;
-    if (bc > 0) ekle("tekrar", Math.min(15, 5 + Math.ceil(bc / 4)), bc + " cümle kartının tekrar zamanı geldi.");
-    if (bk > 0) ekle("kelime", Math.min(10, 5 + Math.ceil(bk / 6)), bk + " kelimenin tekrar zamanı geldi.");
+    var bc = h.tekrar.cumle.bekleyen, bk = h.tekrar.kelime.bekleyen, mf = h.mufredat || {};
+    var yeniVar = !!mf.sonraki && (mf.bugunCumle || 0) < (mf.gunlukSinir || 25) && hedefDk >= 15;
+    if (bc > 0) ekle("tekrar", Math.min(yeniVar ? 10 : 15, 5 + Math.ceil(bc / 4)), bc + " cümle kartının tekrar zamanı geldi.");
+    if (yeniVar) ekle("yeni", 8, "Müfredatta sıradaki konu: " + mf.sonrakiKisa + ".");
+    if (bk > 0) ekle("kelime", Math.min(yeniVar ? 6 : 10, 5 + Math.ceil(bk / 6)), bk + " kelimenin tekrar zamanı geldi.");
+    if (mf.telafi) ekle("telafi", 5, mf.telafi.seviye + " seviyesinde son 30 günde " + mf.telafi.hataSayisi + " hata var; " + mf.telafi.modulKisa + " ile kapatalım.");
     (h.kisisel || []).slice(0, 2).forEach(function (x) { ekle(KONU_EKRAN[x.konu] || "hata", Math.min(x.gunlukDk || 10, 15), "Kişisel hedefin: " + x.ad + " (" + x.gun + ". gün)."); });
     var geride = (h.gerideBeceri || []).filter(function (b) { return ["konusma", "dinleme", "okuma", "dilbilgisi", "kelime"].indexOf(b) >= 0; });
     var map = { konusma: "konusma", dinleme: "dinleme", okuma: "okuma", dilbilgisi: "ders", kelime: "kelime", yazma: "tekrar" };
     geride.slice(0, 2).forEach(function (b) { if (!plan.some(function (a) { return a.ekran === map[b]; })) ekle(map[b], 10, "Bu hafta " + (global.DHKocBeyin ? DHKocBeyin.BECERI_TR[b] : b) + " amacına göre geride kaldı."); });
     if (!plan.some(function (a) { return a.ekran === "konusma"; }) && kalan >= 5) ekle("konusma", 10, "Her gün biraz konuşmak akıcılığı korur.");
     if (kalan >= 5) ekle("kelime", kalan, "Kalan süreyi yeni kelimelerle değerlendirelim.");
-    var KISA = { tekrar: "cümle tekrarı", kelime: "kelime çalışması", konusma: "Deniz'le konuşma", dinleme: "video ile dinleme", ders: "dilbilgisi dersi", okuma: "okuma", hata: "hata defteri" };
+    var KISA = { tekrar: "cümle tekrarı", kelime: "kelime çalışması", konusma: "Deniz'le konuşma", dinleme: "video ile dinleme", ders: "dilbilgisi dersi", okuma: "okuma", hata: "hata defteri", yeni: "yeni cümleler", telafi: "eksik konuyu kapatma" };
     var ilk = plan[0] ? (KISA[plan[0].ekran] || EKRANLAR[plan[0].ekran].ad) : "kısa bir pratik";
     var ozet = "Bugün " + (hedefDk - kalan) + " dakikalık bir planımız var; önce " + ilk + " ile başlayalım." +
       (h.sure && h.sure.haftaDk ? " Bu hafta şimdiye kadar " + h.sure.haftaDk + " dakika çalıştın." : "");
@@ -227,7 +294,7 @@
     var K = "dh-koc-gun-" + gunAnahtari(), eski = js(K, null);
     if (eski && !zorla) return eski;
     var B = global.DHKocBeyin, h = await B.hesapla(true), t = B.tercihler(), mdMetin = await B.md(), sonuc = null, denemeler = [];
-    if (typeof onAra === "function") { try { var ka = kuralPlani(h, t); onAra({ ozet: ka.ozet, plan: ka.plan, kaynak: "kural", ara: true, t: Date.now() }); } catch (e) {} }
+    if (typeof onAra === "function") { try { var ka = kuralPlani(h, t); onAra({ ozet: ka.ozet, plan: zenginlestir(ka.plan, h), kaynak: "kural", ara: true, t: Date.now() }); } catch (e) {} }
     var ol = olgular(h, t);
     var P = global.DHProviders, var0 = P && P.realHasAnyKey ? P.realHasAnyKey() : !!P;
     /* Kotası dolan ya da cevap vermeyen model 6 saat atlanır (her açılışta bekletmesin). */
@@ -237,14 +304,14 @@
       try {
         var r = await sor(SIRA[i], mdMetin, ol), c = cozJSON(r.metin), d = dogrula(c, h, mdMetin, t, ol);
         denemeler.push({ s: SIRA[i], ok: d.ok, h: d.hatalar });
-        if (d.ok) sonuc = { ozet: c.ozet.trim(), plan: c.plan.map(function (a) { return { ekran: a.ekran, dk: Math.round(+a.dk), neden: String(a.neden).trim() }; }), kaynak: "model:" + r.model, not: c.not };
+        if (d.ok) sonuc = { ozet: c.ozet.trim(), plan: zenginlestir(c.plan.map(function (a) { return { ekran: a.ekran, dk: Math.round(+a.dk), neden: String(a.neden).trim() }; }), h), kaynak: "model:" + r.model, not: c.not };
       } catch (e) {
         var kod = (e && (e.code || e.message)) || "hata";
         denemeler.push({ s: SIRA[i], hata: kod });
         if (/all-keys-failed|rate|slow|http|no-key|all-failed/.test(String(kod))) { durum[SIRA[i]] = Date.now(); try { localStorage.setItem(DURUM, JSON.stringify(durum)); } catch (x) {} }
       }
     }
-    if (!sonuc) { var k = kuralPlani(h, t); sonuc = { ozet: k.ozet, plan: k.plan, kaynak: "kural", not: null }; }
+    if (!sonuc) { var k = kuralPlani(h, t); sonuc = { ozet: k.ozet, plan: zenginlestir(k.plan, h), kaynak: "kural", not: null }; }
     if (sonuc.not && sonuc.not.metin) { try { await B.notEkle({ metin: sonuc.not.metin, kaynak: sonuc.not.kaynak }); } catch (e) {} }
     sonuc.t = Date.now(); sonuc.denemeler = denemeler;
     try { localStorage.setItem(K, JSON.stringify(sonuc)); } catch (e) {}
@@ -253,5 +320,5 @@
     return sonuc;
   }
 
-  global.DHKocDeniz = { gunluk: gunluk, dene: dene, hedefYorumla: hedefYorumla, KONU_EKRAN: KONU_EKRAN, dogrula: dogrula, kuralPlani: kuralPlani, olgular: olgular, _eslesmeyen: eslesmeyen, EKRANLAR: EKRANLAR, ISTEK: ISTEK, SIRA: SIRA, _coz: cozJSON };
+  global.DHKocDeniz = { adimDurumlari: adimDurumlari, adimUrl: adimUrl, adimAd: adimAd, adimSureleri: adimSureleri, zenginlestir: zenginlestir, gunluk: gunluk, dene: dene, hedefYorumla: hedefYorumla, KONU_EKRAN: KONU_EKRAN, dogrula: dogrula, kuralPlani: kuralPlani, olgular: olgular, _eslesmeyen: eslesmeyen, EKRANLAR: EKRANLAR, ISTEK: ISTEK, SIRA: SIRA, _coz: cozJSON };
 })(window);

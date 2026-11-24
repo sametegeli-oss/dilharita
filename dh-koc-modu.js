@@ -40,14 +40,28 @@
     dinleme: { ad: "Video ile dinleme", url: "youtube-egitim.html", beceri: "dinleme" },
     ders:    { ad: "Dilbilgisi dersi",  url: "ders.html",           beceri: "dilbilgisi" },
     okuma:   { ad: "Okuma",             url: "library.html",        beceri: "okuma" },
-    hata:    { ad: "Hata defteri",      url: "hata-defteri.html",   beceri: "yazma" }
+    hata:    { ad: "Hata defteri",      url: "hata-defteri.html",   beceri: "yazma" },
+    yeni:    { ad: "Yeni cümleler",     url: "index-app.html",      beceri: "yazma", modul: true },
+    telafi:  { ad: "Eksik kapat",       url: "index-app.html",      beceri: "yazma", modul: true }
   };
-  function ekran(a) { return EKRAN[a && a.ekran] || null; }
+  function ekran(a) {
+    var e = EKRAN[a && a.ekran]; if (!e) return null;
+    if (!e.modul) return e;
+    /* modül adımı: adres ve ad modülle birlikte */
+    return { ad: a.modKisa ? e.ad + ": " + a.modKisa : e.ad, url: a.mod ? e.url + "?mod=" + encodeURIComponent(a.mod) : e.url, beceri: e.beceri, modul: true };
+  }
   function ekranSayfa(a) { var e = ekran(a); return e ? e.url.split("?")[0] : ""; }
 
   function bugunOzet() { try { return global.DHOlay ? DHOlay.gunler(1)[0] : null; } catch (e) { return null; } }
   function snap() { var g = bugunOzet() || {}; return { d: g.d || {}, y: g.y || {}, k: g.k || {}, e: g.e || {} }; }
-  function sureSn(a) { var g = bugunOzet(); return g && g.e ? (g.e[ekranSayfa(a)] || 0) : 0; }
+  /* Adımın bugünkü süresi. Aynı sayfayı kullanan önceki bitmiş adımlar (ör. yeni + telafi: ikisi de
+     index-app) kendi paylarını düşer; yoksa ikinci adım birincinin süresiyle hemen bitmiş sayılırdı. */
+  function sureSn(a, d) {
+    var g = bugunOzet(); if (!g || !g.e) return 0;
+    var sayfa = ekranSayfa(a), t = g.e[sayfa] || 0;
+    if (d && d.plan) { var i = d.plan.indexOf(a); for (var j = 0; j < i; j++) if (ekranSayfa(d.plan[j]) === sayfa && (d.biten || []).indexOf(j) >= 0) t -= d.plan[j].dk * 48; }
+    return Math.max(0, t);
+  }
 
   /* ---------- başlat / çık ---------- */
   function planOku() {
@@ -57,10 +71,10 @@
     var plan = planOku();
     if (!plan && D()) { try { var g = await D().gunluk(false); plan = g && g.plan; } catch (e) {} }
     if (!plan || !plan.length) return false;
-    var d = { gun: gunAnahtari(), plan: plan.map(function (a) { return { ekran: a.ekran, dk: a.dk, neden: a.neden }; }), i: 0, aktif: true, bekliyor: false, biten: [], atlanan: [], araEklendi: {}, bitti: false };
+    var d = { gun: gunAnahtari(), plan: plan.map(function (a) { var x = { ekran: a.ekran, dk: a.dk, neden: a.neden }; if (a.mod) { x.mod = a.mod; x.modKisa = a.modKisa; } return x; }), i: 0, aktif: true, bekliyor: false, biten: [], atlanan: [], araEklendi: {}, bitti: false };
     /* zaten bitmiş adımları atla (o ekranda bugün yeterince çalışıldıysa) */
-    while (d.i < d.plan.length && sureSn(d.plan[d.i]) >= d.plan[d.i].dk * 48) { d.biten.push(d.i); d.i++; }
-    d.basSn = d.i < d.plan.length ? sureSn(d.plan[d.i]) : 0; d.basSnap = snap();
+    while (d.i < d.plan.length && sureSn(d.plan[d.i], d) >= d.plan[d.i].dk * 48) { d.biten.push(d.i); d.i++; }
+    d.basSn = d.i < d.plan.length ? sureSn(d.plan[d.i], d) : 0; d.basSnap = snap();
     yaz(d);
     if (d.i >= d.plan.length) { d.bitti = true; yaz(d); return true; }
     location.href = "./" + ekran(d.plan[d.i]).url;
@@ -99,7 +113,7 @@
     d.bekliyor = false;
     d.basSnap = snap();
     if (d.i >= d.plan.length) { d.bitti = true; d.aktif = false; }
-    else d.basSn = sureSn(d.plan[d.i]);
+    else d.basSn = sureSn(d.plan[d.i], d);
     yaz(d);
     gecisGoster(d, a, ara, elle);
   }
@@ -141,13 +155,13 @@
     if (!serit) { serit = document.createElement("div"); serit.className = "dhk-serit"; serit.setAttribute("role", "region"); serit.setAttribute("aria-label", "Koç modu"); document.body.appendChild(serit); }
     var a = d.plan[d.i], burada = a && ekranSayfa(a) === sayfa();
     var cub = d.plan.map(function (x, j) {
-      var oran = d.biten.indexOf(j) >= 0 ? 100 : j === d.i ? Math.min(100, Math.round(sureSn(x) / (x.dk * 48) * 100)) : 0;
+      var oran = d.biten.indexOf(j) >= 0 ? 100 : j === d.i ? Math.min(100, Math.round(sureSn(x, d) / (x.dk * 48) * 100)) : 0;
       return '<i class="' + (x.ara ? "ara" : "") + '" title="' + (ekran(x) || {}).ad + '"><b style="width:' + oran + '%"></b></i>';
     }).join("");
     var metin, dugmeler;
     if (d.bitti) { metin = "Bugünün planı tamam!"; dugmeler = '<a class="b" href="./koc-paneli.html">Panel</a><button type="button" data-k="cik">Kapat</button>'; }
     else if (burada) {
-      var dk = Math.floor(sureSn(a) / 60);
+      var dk = Math.floor(sureSn(a, d) / 60);
       metin = "Adım " + (d.i + 1) + "/" + d.plan.length + " · " + ekran(a).ad + " · " + dk + "/" + a.dk + " dk" + (a.ara ? " · ara tekrar" : "");
       dugmeler = (global.DHProviders && DHProviders.chat && !a.ara ? '<button type="button" data-k="biliyorum">Bunu biliyorum</button>' : '') + '<button type="button" data-k="bitti">Adımı bitirdim</button><button type="button" data-k="cik">Koçtan çık</button>';
     } else {
@@ -193,7 +207,7 @@
       var k = b.getAttribute("data-k");
       if (k === "bekle") { clearInterval(sayac); var s = gecis.querySelector("[data-s]"); if (s) s.parentNode.textContent = "Hazır olunca \"Şimdi aç\"a dokun."; }
       else if (k === "git") git();
-      else if (k === "atla") { clearInterval(sayac); var dd = oku(); if (dd && dd.plan[dd.i]) { dd.atlanan.push(dd.i); dd.i++; if (dd.i >= dd.plan.length) { dd.bitti = true; dd.aktif = false; } dd.basSnap = snap(); if (!dd.bitti) dd.basSn = sureSn(dd.plan[dd.i]); yaz(dd); gecis.remove(); gecis = null; if (dd.bitti) { seritCiz(dd); gecisGoster(dd, onceki, null, true); } else gecisGoster(dd, dd.plan[dd.i - 1], null, true); } }
+      else if (k === "atla") { clearInterval(sayac); var dd = oku(); if (dd && dd.plan[dd.i]) { dd.atlanan.push(dd.i); dd.i++; if (dd.i >= dd.plan.length) { dd.bitti = true; dd.aktif = false; } dd.basSnap = snap(); if (!dd.bitti) dd.basSn = sureSn(dd.plan[dd.i], dd); yaz(dd); gecis.remove(); gecis = null; if (dd.bitti) { seritCiz(dd); gecisGoster(dd, onceki, null, true); } else gecisGoster(dd, dd.plan[dd.i - 1], null, true); } }
       else if (k === "kapat") { gecis.remove(); gecis = null; cik(); }
       else if (k === "panel") location.href = "./koc-paneli.html";
     }; });
@@ -258,7 +272,7 @@
       if (dogru === 3) {
         k.innerHTML = '<strong>3/3, harika!</strong><p>Bu adımı atlıyoruz.</p>';
         try { global.DHKocBeyin && DHKocBeyin.notEkle({ metin: (EKRAN[a.ekran] || {}).ad + " adımında hızlı yoklamayı 3/3 geçti, adım atlandı.", kaynak: "veri" }); } catch (e) {}
-        setTimeout(function () { var dd = oku(); if (!dd) return; dd.atlanan.push(dd.i); dd.i++; if (dd.i >= dd.plan.length) { dd.bitti = true; dd.aktif = false; } dd.basSnap = snap(); if (!dd.bitti) dd.basSn = sureSn(dd.plan[dd.i]); yaz(dd); gecis.remove(); gecis = null; gecisGoster(dd, a, null, true); }, 1200);
+        setTimeout(function () { var dd = oku(); if (!dd) return; dd.atlanan.push(dd.i); dd.i++; if (dd.i >= dd.plan.length) { dd.bitti = true; dd.aktif = false; } dd.basSnap = snap(); if (!dd.bitti) dd.basSn = sureSn(dd.plan[dd.i], dd); yaz(dd); gecis.remove(); gecis = null; gecisGoster(dd, a, null, true); }, 1200);
       } else {
         k.innerHTML = '<strong>' + dogru + '/3</strong><p>Bu konuyu biraz daha çalışalım; adıma devam ediyoruz.</p><div class="bt"><button type="button" class="ana">Devam</button></div>';
         k.querySelector("button").onclick = function () { gecis.remove(); gecis = null; };
@@ -275,7 +289,7 @@
     if (d.gun !== gunAnahtari()) { d.aktif = false; yaz(d); kaldir(); htmlSinif(false); return; }   /* yeni gün: dünkü mod kapanır */
     if (gecis) return;
     var a = d.plan[d.i];
-    if (a && ekranSayfa(a) === sayfa() && sureSn(a) >= a.dk * 48) { adimBitti(d, false); return; }
+    if (a && ekranSayfa(a) === sayfa() && sureSn(a, d) >= a.dk * 48) { adimBitti(d, false); return; }
     seritCiz(d);
   }
   function kur() {
@@ -289,7 +303,7 @@
       var d = oku(); if (!d || !d.aktif || gecis || d.gun !== gunAnahtari()) return;
       var a = d.plan[d.i]; if (!a || ekranSayfa(a) !== sayfa()) return;
       var bos = !!(e && e.detail && e.detail.bos);
-      if (bos || sureSn(a) >= a.dk * 18) setTimeout(function () { var dd = oku(); if (dd && dd.aktif && dd.i === d.i && !gecis) adimBitti(dd, false); }, 1500);
+      if (bos || sureSn(a, d) >= a.dk * 18) setTimeout(function () { var dd = oku(); if (dd && dd.aktif && dd.i === d.i && !gecis) adimBitti(dd, false); }, 1500);
     });
   }
   kur();

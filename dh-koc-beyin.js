@@ -101,6 +101,42 @@
   }
 
   /* ---------- HESAPLANAN BÖLÜM ---------- */
+  /* ---------- müfredat: sıradaki modül + geride kalan seviye (eski koc.js'ten taşındı) ---------- */
+  function betik(src, ad) {
+    if (global[ad]) return Promise.resolve(true);
+    return new Promise(function (res) {
+      try {
+        var var0 = document.querySelector('script[data-dhk="' + ad + '"]');
+        if (var0) { var0.addEventListener("load", function () { res(!!global[ad]); }); setTimeout(function () { res(!!global[ad]); }, 6000); return; }
+        var s = document.createElement("script"); s.src = src; s.setAttribute("data-dhk", ad);
+        s.onload = function () { res(!!global[ad]); }; s.onerror = function () { res(false); };
+        document.head.appendChild(s);
+      } catch (e) { res(false); }
+    });
+  }
+  function bugunYeniCumle() {
+    try { var tr = js("dh-study-tracker-v1", {}) || {}, k = new Date().toISOString().slice(0, 10); return ((tr.days && tr.days[k] && tr.days[k].sentences) || 0); } catch (e) { return 0; }
+  }
+  function modulKisa(m) { return String(m || "").replace(/^[A-C]\d-M\d+[\s-]*/, ""); }
+  async function mufredat() {
+    var sonuc = { sonraki: null, sonrakiKisa: null, bugunCumle: bugunYeniCumle(), gunlukSinir: 25, telafi: null };
+    try {
+      await betik("./sentences-loader.js?v=1", "DHSent");
+      await betik("./profile.js?v=2", "DHProfile");
+      if (global.DHProfile && DHProfile.nextModule) {
+        var m = await Promise.race([DHProfile.nextModule(), new Promise(function (r) { setTimeout(function () { r(null); }, 6000); })]);
+        if (m) { sonuc.sonraki = m; sonuc.sonrakiKisa = modulKisa(m); }
+      }
+      await betik("./learning-error-system.js?v=12", "LearningErrorDB");
+      await betik("./dh-telafi.js?v=2", "DHTelafi");
+      if (global.DHTelafi && DHTelafi.bul) {
+        var t = await Promise.race([DHTelafi.bul(), new Promise(function (r) { setTimeout(function () { r(null); }, 6000); })]);
+        if (t && t.modul && t.modul !== sonuc.sonraki) sonuc.telafi = { modul: t.modul, modulKisa: t.modulKisa || modulKisa(t.modul), seviye: t.seviye || "", hataSayisi: +t.hataSayisi || 0 };
+      }
+    } catch (e) {}
+    return sonuc;
+  }
+
   async function hesapla(zorla) {
     var onbellek = js(K_HESAP, null);
     if (!zorla && onbellek && onbellek.t && Date.now() - onbellek.t < 10 * 60000 && onbellek.gun === gunAnahtari()) return onbellek;
@@ -202,7 +238,8 @@
       hataKonulari: konular,
       tekrar: { cumle: cumle, kelime: kelime },
       kelimeSeviye: seviyeKelime, bilinenKelime: Object.keys(bilinen).length,
-      konuskan: konuskan, plan: plan, tahmin: tahmin
+      konuskan: konuskan, plan: plan, tahmin: tahmin,
+      mufredat: await mufredat()
     };
     jsYaz(K_HESAP, sonuc);
     gunlukBulut(sonuc);
@@ -378,6 +415,10 @@
       "- Cümle kartı: " + h.tekrar.cumle.kart + ", bekleyen " + h.tekrar.cumle.bekleyen + ", öğrenilen " + h.tekrar.cumle.ogrenilen + ", zor " + h.tekrar.cumle.zor,
       "- Kelime kartı: " + h.tekrar.kelime.kart + ", bekleyen " + h.tekrar.kelime.bekleyen + ", öğrenilen " + h.tekrar.kelime.ogrenilen,
       "- Bilinen kelime (seviyeye göre): " + kel,
+      "## Müfredat",
+      (h.mufredat && h.mufredat.sonraki ? "- Sıradaki yeni modül: " + h.mufredat.sonrakiKisa + " (" + h.mufredat.sonraki + ")" : "- Sıradaki yeni modül: bulunamadı"),
+      "- Bugün öğrenilen yeni cümle: " + ((h.mufredat && h.mufredat.bugunCumle) || 0) + " (günlük sınır " + ((h.mufredat && h.mufredat.gunlukSinir) || 25) + ")",
+      (h.mufredat && h.mufredat.telafi ? "- Eksik kalan alt seviye: " + h.mufredat.telafi.seviye + " " + h.mufredat.telafi.modulKisa + ", bu seviyede son 30 günde " + h.mufredat.telafi.hataSayisi + " hata" : "- Eksik kalan alt seviye: yok"),
       "## Hedefe varış", "- " + (tah.durum || "-") + (tah.varis ? ": " + tah.varis + " (kalan " + tah.kalanKelime + " kelime, günde " + tah.gunlukHiz + ")" : "") + (tah.not ? " — " + tah.not : ""),
       "## Konuşkan", "- Mesaj " + h.konuskan.mesaj + ", doğru " + h.konuskan.dogruMesaj + ", kayıtlı hata " + h.konuskan.hata,
       h.plan ? "## Bugünün planı\n- " + h.plan.biten + "/" + h.plan.toplam + " adım bitti" : null,

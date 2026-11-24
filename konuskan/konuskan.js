@@ -470,10 +470,9 @@ function kocKartCiz(m){
   w.insertBefore(k, w.firstChild);
   const ciz=g=>{
     const oz=k.querySelector('#kocOzet'); if(!oz) return; oz.textContent=g.ozet;
-    const bugun=window.DHOlay?DHOlay.gunler(1)[0]:{e:{}}, e=bugun.e||{};
-    const sira=(g.plan||[]).find(a=>{ const ek=D.EKRANLAR[a.ekran]; return ek && !((e[ek.url.split('?')[0]]||0)>=a.dk*48); });
+    const sira=(D.adimDurumlari(g.plan||[])).find(x=>!x.tamam);
     const dg=k.querySelector('#kocDugmeler'); dg.innerHTML='';
-    if(sira){ const ek=D.EKRANLAR[sira.ekran]; const a=document.createElement('a'); a.className='btn primary sm'; a.href='./'+ek.url; a.textContent='Şimdi: '+ek.ad+' · '+sira.dk+' dk'; dg.appendChild(a); }
+    if(sira){ const a=document.createElement('a'); a.className='btn primary sm'; a.href='./'+sira.url; a.textContent='Şimdi: '+sira.ad+' · '+sira.a.dk+' dk'; dg.appendChild(a); }
     const b=document.createElement('button'); b.className='btn sm'; b.type='button'; b.textContent='Sesli dinle'; b.onclick=()=>{ try{ speak(g.ozet); }catch(_){} }; dg.appendChild(b);
     if(window.DHKocModu){ const km=document.createElement('button'); km.className='btn sm'; km.type='button'; km.textContent='Koç moduyla başla'; km.style.cssText='background:#1E2F6B;color:#fff;border-color:#1E2F6B'; km.onclick=()=>{ km.textContent='Başlıyor…'; DHKocModu.baslat(); }; dg.appendChild(km); }
   };

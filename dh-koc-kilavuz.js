@@ -12,7 +12,7 @@
   "use strict";
   if (global.DHKocKilavuz) return;
 
-  var SURUM = "2026-11-24.2";
+  var SURUM = "2026-11-24.3";
 
   var SINIR = {
     araTekrarBasari: 0.70,      // adım başarısı bunun altındaysa ara tekrar
@@ -40,7 +40,8 @@
     "1. Tekrar zamanı gelmiş kartlar (unutma riski) — bekleyen tekrar varsa önce o.",
     "2. Açık kişisel hedefler (öğrencinin kendi istediği konular).",
     "3. Amaca göre geride kalan beceri (bu haftanın beceri dağılımı amaçla karşılaştırılır).",
-    "4. Yeni içerik (seviyeye uygun yeni kelime, kalıp, konu).",
+    "4. Yeni içerik: her gün müfredatta ilerle. \"Müfredat\" bölümünde sıradaki modül varsa ve öğrenci bugün günlük yeni cümle sınırına ulaşmadıysa planda bir \"yeni\" adımı olsun.",
+    "5. Eksik kalan alt seviye modülü (\"telafi\") varsa kısa bir \"telafi\" adımıyla kapat; günün ana işini bozmasın.",
     "",
     "## Karar kuralları",
     "- Bir adımda başarı %" + Math.round(SINIR.araTekrarBasari * 100) + "'in altındaysa ya da aynı hata türü " + SINIR.araTekrarAyniHata + " kez görüldüyse yalnız yanlışları biraz sonra ve farklı biçimde tekrar ettir; bir adımı günde en çok " + SINIR.araTekrarGunlukAdim + " kez tekrar ettir, yine olmazsa yarına bırak.",

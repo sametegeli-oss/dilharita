@@ -41,9 +41,9 @@
     try { var g = global.DHOlay && DHOlay.gunler(1)[0]; if (!g) return 0; var s = 0; for (var b in g.s) s += +g.s[b] || 0; return Math.round(s / 60); } catch (e) { return 0; }
   }
   function durumTopla() {
-    var EK = (global.DHKocDeniz && DHKocDeniz.EKRANLAR) || { tekrar: { ad: "Cümle tekrarı" }, kelime: { ad: "Kelime" }, konusma: { ad: "Deniz'le konuşma" }, dinleme: { ad: "Video ile dinleme" }, ders: { ad: "Dilbilgisi dersi" }, okuma: { ad: "Okuma" }, hata: { ad: "Hata defteri" } };
+    var EK = (global.DHKocDeniz && DHKocDeniz.EKRANLAR) || { tekrar: { ad: "Cümle tekrarı" }, kelime: { ad: "Kelime" }, konusma: { ad: "Deniz'le konuşma" }, dinleme: { ad: "Video ile dinleme" }, ders: { ad: "Dilbilgisi dersi" }, okuma: { ad: "Okuma" }, hata: { ad: "Hata defteri" }, yeni: { ad: "Yeni cümleler" }, telafi: { ad: "Eksik kapat" } };
     var g = js("dh-koc-gun-" + gunAnahtari(), null);
-    var plan = g && g.plan ? g.plan.map(function (a) { return { ekran: a.ekran, ad: (EK[a.ekran] || {}).ad || a.ekran, dk: a.dk, neden: a.neden }; }) : [];
+    var plan = g && g.plan ? g.plan.map(function (a) { return { ekran: a.ekran, ad: (global.DHKocDeniz && DHKocDeniz.adimAd) ? DHKocDeniz.adimAd(a) : ((EK[a.ekran] || {}).ad || a.ekran) + (a.modKisa ? ": " + a.modKisa : ""), dk: a.dk, neden: a.neden }; }) : [];
     var baglam = ""; try { if (global.DHKocBeyin && DHKocBeyin.kisaBaglam) baglam = DHKocBeyin.kisaBaglam(); } catch (e) {}
     return { gun: gunAnahtari(), dk: bugunDk(), plan: plan, ozet: g && g.ozet || "", baglam: baglam };
   }
