@@ -77,7 +77,9 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
   ve her açılışta şifre sorulur (24 Kasım'da eklendi).
 - **ai-providers.js:** son sağlayıcıda zaman sınırı eskiden 10 dk'ydı (tek modelli çağrı takılıyordu); `opts.only/prefer` ile artık `slowMs`.
 - Gemini ücretsiz kotası sık doluyor (429), Cerebras ücretsiz hakkı bitti (402), NVIDIA Nemotron günlük plan için çok yavaş.
+- **Etkin süre ve iframe videolar:** dh-olay 90 sn dokunulmazsa süreyi durdurur; YouTube iframe'i `<video>` olarak görünmez.
+  Çözüm: IFrame API durum mesajları + `window.dhMedyaCaliyor()` kancası (24 Kasım). Yeni oynatıcı eklersen kancayı tanımla.
 - Android'de tarayıcı sesi perde/hız 1 değilse dil geçişlerinde 2–6 sn bekliyor; perde ve hız 1'de sabit.
 
 ## Şu anki sürümler (24 Kasım 2026)
-sw `dh-sw-v588` · cloud-sync.js v55 · ai-providers.js t40 · auth-guard.js v15 · dh-olay.js v2 · dh-fsrs.js v1 · learning-error-system.js v12 · assets/app.js tm3 · dh-deniz-telegram.js v2 · coach-bubble.js t42 · koc-paneli/konuskan.html: dh-koc-kilavuz v2 · dh-koc-beyin v7 · dh-koc-deniz v6 · konuskan.js v30 · dh-koc-modu v3 · goruntulu.js v88 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3
+sw `dh-sw-v589` · cloud-sync.js v55 · ai-providers.js t40 · auth-guard.js v16 · dh-olay.js v3 · youtube-egitim.js v127 · dh-fsrs.js v1 · learning-error-system.js v12 · assets/app.js tm3 · dh-deniz-telegram.js v2 · coach-bubble.js t42 · koc-paneli/konuskan.html: dh-koc-kilavuz v2 · dh-koc-beyin v7 · dh-koc-deniz v6 · konuskan.js v30 · dh-koc-modu v3 · goruntulu.js v88 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3
