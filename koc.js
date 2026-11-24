@@ -574,6 +574,14 @@
         window.__dhLevelReason = window.__dhLevelSuggest ? ("Son 30 günde "+_act.active+" gün aktif oldun ve "+_imp.length+" hata türünde belirgin iyileşme var — seviye yükseltmeyi hak ediyorsun.") : "";
         window.__dhGoal = checkAndSetGoal(_errT);
       }catch(e){ window.__dhLevelSuggest=false; window.__dhGoal=null; }
+      /* DENİZ TEK PLAN: günün planı Deniz'in (dh-koc-deniz.js "dh-koc-plan-<gün>" kaydını Deniz planından yazar).
+         Eski iskelet (valid) bu kaydı yeniden kurmaz; yalnız canlı sayılar ve kartlar (seviye, hedef) için çizilir. */
+      var __deniz=true; try{ __deniz = localStorage.getItem("dh-ana-plan")!=="eski"; }catch(e){}
+      if(__deniz){
+        var dp=null; try{ dp=JSON.parse(localStorage.getItem(KEY)||"null"); }catch(e){}
+        if(dp && dp.deniz){ dp.stats=await liveStats(); paint(dp); }
+        return;
+      }
       var cached=localStorage.getItem(KEY);
       if(cached){
         var cp=valid(JSON.parse(cached));
@@ -646,4 +654,6 @@
   /* Bulut senkronu bittiğinde kart ilk çizimden ESKİ kalmasın: diğer cihazda
      tamamlanan adımlar ve güncellenen sayaçlar hemen görünsün. */
   window.addEventListener("dh-cloud-synced", function(){ setTimeout(run,150); });
+  /* Deniz'in planı yazılınca (ilk açılışta model cevabı birkaç saniye sonra gelir) kartlar tazelensin */
+  window.addEventListener("dh-deniz-plan", function(){ setTimeout(run,100); });
 })();

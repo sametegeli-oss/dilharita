@@ -60,6 +60,7 @@
      Tamam: süre planın %80'ine ulaştıysa ya da koç modu o adımı bugün bitirdiyse. */
   function adimDurumlari(plan) {
     plan = plan || [];
+    if (global.DHKocModu && DHKocModu.planDurumu) { try { return DHKocModu.planDurumu(plan).map(function (x) { x.url = adimUrl(x.a); x.ad = adimAd(x.a); return x; }); } catch (e) {} }
     var g = { e: {}, s: {} }; try { if (global.DHOlay) g = DHOlay.gunler(1)[0] || g; } catch (x) {}
     var sn = adimSureleri(plan, g.e, g.s), kmKalan = {};
     try {
@@ -159,6 +160,11 @@
     var hatalar = [];
     if (!c || typeof c !== "object") return { ok: false, hatalar: ["JSON değil"] };
     if (typeof c.ozet !== "string" || c.ozet.trim().length < 20) hatalar.push("özet yok/kısa");
+    /* müfredat bilgisi yokken (ör. modül listesi zamanında yüklenemedi) gelen yeni/telafi adımları reddedilmez, çıkarılır */
+    if (Array.isArray(c.plan)) {
+      var mf0 = (h && h.mufredat) || {};
+      c.plan = c.plan.filter(function (a) { var e = a && ekranAdi(a.ekran); return !(e === "yeni" && !mf0.sonraki) && !(e === "telafi" && !mf0.telafi); });
+    }
     if (!Array.isArray(c.plan) || c.plan.length < 2 || c.plan.length > 5) hatalar.push("plan 2-5 adım değil");
     var toplam = 0, izinli = true;
     (c.plan || []).forEach(function (a) { if (a) a.ekran = ekranAdi(a.ekran); });
@@ -169,10 +175,6 @@
     });
     if (!izinli) hatalar.push("izinsiz ekran");
     var mf = (h && h.mufredat) || {};
-    (c.plan || []).forEach(function (a) {
-      if (a && a.ekran === "yeni" && !mf.sonraki) hatalar.push("sıradaki modül yokken yeni adımı");
-      if (a && a.ekran === "telafi" && !mf.telafi) hatalar.push("eksik modül yokken telafi adımı");
-    });
     /* müfredatta ilerleme: sıradaki modül varsa, günlük sınır dolmadıysa ve süre yetiyorsa plan yeni öğrenme içersin */
     if (mf.sonraki && (mf.bugunCumle || 0) < (mf.gunlukSinir || 25) && ((tercih && tercih.gunlukDakika) || 30) >= 15 &&
         Array.isArray(c.plan) && !c.plan.some(function (a) { return a && a.ekran === "yeni"; })) hatalar.push("planda yeni öğrenme yok");
@@ -289,10 +291,29 @@
     catch (e) { return { saglayici: saglayici, hata: (e && (e.code || e.message)) || String(e) }; }
   }
 
+  /* ESKİ PLAN KÖPRÜSÜ (24 Kasım): menü özeti, plan kutusu, tekrar ekranı, sohbet öğretmeni, PDF ve modül
+     bitirme eski "dh-koc-plan-<gün>" kaydını okuyor. Deniz modunda bu kayıt Deniz'in planından yazılır;
+     böylece programın her yerinde tek plan görünür. (Geri dönüş: localStorage dh-ana-plan = "eski") */
+  function eskiPlanaYaz(sonuc, h) {
+    try {
+      if (localStorage.getItem("dh-ana-plan") === "eski" || !sonuc || !sonuc.plan) return;
+      var gun = new Date().toISOString().slice(0, 10), K = "dh-koc-plan-" + gun;
+      var p = { deniz: true, focus: String(sonuc.ozet || "").slice(0, 160), note: "", why: "",
+        dueCount: h && h.tekrar ? h.tekrar.cumle.bekleyen : 0,
+        steps: sonuc.plan.map(function (a) { return { label: adimAd(a) + " · " + a.dk + " dk", href: adimUrl(a), ekran: a.ekran, dk: a.dk, telafi: a.ekran === "telafi" || undefined }; }),
+        telafi: h && h.mufredat && h.mufredat.telafi ? h.mufredat.telafi : null, t: sonuc.t || Date.now() };
+      var eski = js(K, null);
+      if (eski && eski.deniz && JSON.stringify(eski.steps) === JSON.stringify(p.steps) && eski.focus === p.focus) return;
+      localStorage.setItem(K, JSON.stringify(p));
+      for (var i = localStorage.length - 1; i >= 0; i--) { var k = localStorage.key(i); if (k && k.indexOf("dh-koc-plan-") === 0 && k !== K) localStorage.removeItem(k); }
+      try { global.dispatchEvent(new CustomEvent("dh-deniz-plan", { detail: p })); } catch (e) {}
+    } catch (e) {}
+  }
+
   /* onAra(kuralSonucu): model denenirken ekranda hemen gösterilecek kural planı */
   async function gunluk(zorla, onAra) {
     var K = "dh-koc-gun-" + gunAnahtari(), eski = js(K, null);
-    if (eski && !zorla) return eski;
+    if (eski && !zorla) { eskiPlanaYaz(eski, js("dh-koc-hesap-v1", null)); return eski; }
     var B = global.DHKocBeyin, h = await B.hesapla(true), t = B.tercihler(), mdMetin = await B.md(), sonuc = null, denemeler = [];
     if (typeof onAra === "function") { try { var ka = kuralPlani(h, t); onAra({ ozet: ka.ozet, plan: zenginlestir(ka.plan, h), kaynak: "kural", ara: true, t: Date.now() }); } catch (e) {} }
     var ol = olgular(h, t);
@@ -315,6 +336,7 @@
     if (sonuc.not && sonuc.not.metin) { try { await B.notEkle({ metin: sonuc.not.metin, kaynak: sonuc.not.kaynak }); } catch (e) {} }
     sonuc.t = Date.now(); sonuc.denemeler = denemeler;
     try { localStorage.setItem(K, JSON.stringify(sonuc)); } catch (e) {}
+    eskiPlanaYaz(sonuc, h);
     /* eski günlerin kayıtları birikmesin */
     try { for (var a = localStorage.length - 1; a >= 0; a--) { var key = localStorage.key(a); if (key && key.indexOf("dh-koc-gun-") === 0 && key !== K) localStorage.removeItem(key); } } catch (e) {}
     return sonuc;

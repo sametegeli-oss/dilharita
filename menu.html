@@ -239,7 +239,7 @@
 
 </main>
 
-<script src="./auth-guard.js?v=18"></script>
+<script src="./auth-guard.js?v=19"></script>
 <script src="./storage-bridge.js?v=4"></script>
 <script src="./progress-engine.js?v=2"></script>
 <script src="./teacher-policy.js?v=4"></script>
@@ -636,6 +636,22 @@
   var plan=null;
   try{ plan=JSON.parse(localStorage.getItem("dh-koc-plan-"+GUN)||"null"); }catch(e){}
   if(!plan||!plan.steps||!plan.steps.length) return;
+
+  /* DENİZ TEK PLAN: plan Deniz'inse durum koç modunun ortak ölçüsüyle (süre + koç modu) hesaplanır */
+  if(plan.deniz){
+    var dene=0;
+    (function bekle(){
+      if(!(window.DHKocModu&&DHKocModu.planDurumu)){ if(++dene<30) return setTimeout(bekle,100); return; }
+      var dur=DHKocModu.planDurumu(); if(!dur.length) return;
+      var top=dur.length, bit=dur.filter(function(x){return x.tamam;}).length, ilk=dur.filter(function(x){return !x.tamam;})[0];
+      document.getElementById("planOdak").textContent=ilk?("Sıradaki: "+ilk.ad+" · "+ilk.a.dk+" dk"):"Bugünkü planın tamam";
+      var h="", i; for(i=0;i<top;i++) h+='<span class="dh-tugla__bir'+(i<bit?" dh-tugla__bir--dolu":"")+'"></span>';
+      document.getElementById("planTugla").innerHTML=h;
+      document.getElementById("planYazi").textContent=bit+"/"+top+" adım · "+(top-bit)+" kaldı";
+      document.getElementById("planOzet").style.display="block";
+    })();
+    return;
+  }
 
   /* adim tamamlanma: koc.js paint() ile ayni mantik + ayni guvenlik denetimi */
   var set={};

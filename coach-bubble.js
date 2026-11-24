@@ -183,7 +183,19 @@
     try{ var p=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null"); if(p&&typeof p.dueCount==="number") return Math.min(p.dueCount,15); }catch(e){}
     return 0;
   }
+  /* DENİZ TEK PLAN: plan Deniz'inse durum Deniz'in ölçüsüyle (süre + koç modu) hesaplanır — panel ve ana sayfayla aynı */
+  function dhDenizDurum(){
+    try{
+      var p=JSON.parse(localStorage.getItem("dh-koc-plan-"+dhToday())||"null");
+      if(!(p&&p.deniz&&window.DHKocModu&&DHKocModu.planDurumu)) return null;
+      var dur=DHKocModu.planDurumu(); if(!dur.length) return null;
+      var out=dur.map(function(x){ return { label:x.ad, page:x.url.split("?")[0], href:x.url, got:Math.min(+x.a.dk||0,Math.floor((x.sn||0)/60)), need:+x.a.dk||0, ok:!!x.tamam, dk:true }; });
+      var dc=out.filter(function(x){return x.ok;}).length;
+      return { steps:out, doneCount:dc, total:out.length, current:out.filter(function(x){return !x.ok;})[0]||null, deniz:true };
+    }catch(e){ return null; }
+  }
   function dhPlanProgress(){
+    var dz=dhDenizDurum(); if(dz) return dz;
     var steps=dhPlanSteps(); if(!steps.length) return null;
     var frozen=null; try{ frozen=JSON.parse(localStorage.getItem("dh-gun-plan-"+dhToday())||"null"); }catch(e){}
     var frozenSteps=(frozen&&frozen.adimlar)||[];
@@ -215,7 +227,7 @@
     box.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:56px;z-index:2147482801;width:min(92vw,380px);background:#0b172d;border:1px solid #24487a;border-radius:14px;padding:12px;box-shadow:0 18px 50px rgba(0,0,0,.6);color:#e8eef7;font:700 13px system-ui";
     var rows=pr.steps.map(function(s,i){
       var mark=s.ok?'<span style="color:#22c55e">✓</span>':'<span style="color:#64748b">○</span>';
-      var cnt=s.need?('<span style="color:#9fb3d9;font-weight:700">'+s.got+'/'+s.need+'</span>'):'';
+      var cnt=s.need?('<span style="color:#9fb3d9;font-weight:700">'+s.got+'/'+s.need+(s.dk?' dk':'')+'</span>'):'';
       var cur=(!s.ok && pr.current && pr.current.page===s.page)?';border-color:#2563eb;background:#0d1f3a':'';
       var doneStyle=s.ok?';background:linear-gradient(135deg,#14532d,#052e16);border-color:#4ade80;color:#dcfce7;pointer-events:none':'';
       return '<a href="./'+s.href+'" style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin-top:7px;border:1px solid #1e3a5f;border-radius:10px;text-decoration:none;color:#e8eef7'+cur+doneStyle+'">'
@@ -258,12 +270,14 @@
     var old=document.getElementById("dhPlanPill"); if(old) old.remove();
     if(dhKolayMenu()) return;
     if(dhTamEkran()) return;
+    /* koç modu açıkken üstte lacivert şerit zaten adımı gösteriyor: ikinci kutu çıkmasın */
+    try{ var __km=window.DHKocModu&&DHKocModu.durum(); if(__km&&__km.aktif) return; }catch(e){}
     var pr=dhPlanProgress(); if(!pr) return;
     var pill=document.createElement("button"); pill.id="dhPlanPill";
     var bitti = pr.doneCount>=pr.total, c=pr.current;
     var base="position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:2147482800;max-width:min(90vw,380px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:999px;padding:9px 15px;font:800 12.5px system-ui;box-shadow:0 8px 22px rgba(0,0,0,.4);cursor:pointer;color:#fff;border:1px solid ";
     if(bitti){ pill.style.cssText=base+"#34d399;background:linear-gradient(135deg,#059669,#0d9488)"; pill.textContent="🎉 Gün bitti — planın tamam!"; }
-    else { pill.style.cssText=base+"#24487a;background:linear-gradient(135deg,#0f2540,#13294d);color:#e8eef7"; pill.textContent="📋 Plan "+pr.doneCount+"/"+pr.total+(c?(" · ▸ "+dhShortLabel(c.label)+(c.need?(" "+c.got+"/"+c.need):"")):""); }
+    else { pill.style.cssText=base+"#24487a;background:linear-gradient(135deg,#0f2540,#13294d);color:#e8eef7"; pill.textContent="📋 Plan "+pr.doneCount+"/"+pr.total+(c?(" · ▸ "+dhShortLabel(c.label)+(c.need?(" "+c.got+"/"+c.need+(c.dk?" dk":"")):"")):""); }
     pill.onclick=function(){ dhTogglePlanPanel(pr); };
     /* Kolay görünüm yazıyı büyütüp kutuyu 3 satıra çıkarıyordu: tek satır kalsın */
     pill.setAttribute("data-kk-atla","");
@@ -305,6 +319,17 @@
     __chainN++;
     if(__chainN!==10) return;
     try{
+      /* koç modu açıksa adım geçişini o yönetir; ikinci "sıradaki adım" mesajı çıkmasın */
+      try{ var __km=window.DHKocModu&&DHKocModu.durum(); if(__km&&__km.aktif) return; }catch(e){}
+      var dz=dhDenizDurum();
+      if(dz){
+        if(!dz.steps.some(function(x){ return x.page===__dhPage; })) return;
+        var Gd="dh-koc-chain-"+dhToday()+"-"+__dhPage; if(localStorage.getItem(Gd)) return; localStorage.setItem(Gd,"1");
+        var sir=dz.steps.filter(function(x){ return !x.ok && x.page!==__dhPage; })[0];
+        if(sir) window.dhCoachSay("Bu adımı hakkıyla çalıştın ✅ Deniz'in planında sıradaki: "+sir.label+" ("+sir.need+" dk)","praise",null,{actionHref:"./"+sir.href, actionLabel:"▶ Devam et"});
+        else if(dz.doneCount>=dz.total && !dhDayClosed()) window.dhCoachSay("GÜNÜN PLANI TAMAM! 🎉 Günü kapatmadan önce bugünün hatalarından kısa bir ders çıkaralım mı?","praise",null,{dayClose:true});
+        return;
+      }
       var steps=dhPlanSteps(); if(!steps.length) return;
       var isStep=steps.some(function(st){ return String(st.href||"").split("?")[0]===__dhPage; });
       if(!isStep) return;
@@ -1462,6 +1487,7 @@
        1) bugün gerçek aktivite yoksa hiçbir adım tamam sayılmaz,
        2) chat.html adımı HERHANGİ bir sohbet sayfası ziyaretiyle tamamlanır. */
     try{
+      var dz=dhDenizDurum(); if(dz) return dz.total>0 && dz.doneCount>=dz.total;
       var steps=dhPlanSteps(); if(!steps.length) return false;
       var done=dhStepsDone();
       var tr={}; try{ tr=JSON.parse(localStorage.getItem("dh-study-tracker-v1")||"{}")||{}; }catch(e){}

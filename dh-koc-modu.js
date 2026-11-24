@@ -308,5 +308,25 @@
   }
   kur();
 
-  global.DHKocModu = { baslat: baslat, cik: cik, durum: durum, devam: devam, _adimBitti: function () { var d = oku(); if (d) adimBitti(d, true); }, _tik: tik };
+  /* DENİZ PLANININ DURUMU — her sayfada tek ölçü (panel, ana sayfa, plan kutusu, menü özeti aynı sonucu görsün).
+     Adım tamam: bugünkü süre adımın %80'ine ulaştıysa ya da koç modu bitirdiyse. Aynı sayfayı kullanan adımlar
+     süreyi sırayla paylaşır; dinleme/konuşma/okuma becerinin gün toplamına da bakar. */
+  function planDurumu(plan) {
+    plan = plan || planOku() || [];
+    var g = bugunOzet() || {}, e = g.e || {}, s = g.s || {}, kalan = {}, kmKalan = {};
+    var km = oku();
+    if (km && km.gun === gunAnahtari() && Array.isArray(km.plan)) (km.biten || []).forEach(function (i) { var x = km.plan[i]; if (x && !x.ara) { var k = x.ekran + "|" + (x.mod || ""); kmKalan[k] = (kmKalan[k] || 0) + 1; } });
+    return plan.map(function (a) {
+      var ek = ekran(a) || { ad: a.ekran, url: "koc-paneli.html" }, sayfa = ek.url.split("?")[0];
+      if (!(sayfa in kalan)) kalan[sayfa] = e[sayfa] || 0;
+      var sn = kalan[sayfa], gerek = (+a.dk || 0) * 48;
+      kalan[sayfa] = Math.max(0, sn - gerek);
+      if (/^(dinleme|konusma|okuma)$/.test(a.ekran) && ek.beceri) sn = Math.max(sn, s[ek.beceri] || 0);
+      var k = a.ekran + "|" + (a.mod || ""), tamam;
+      if (kmKalan[k] > 0) { tamam = true; kmKalan[k]--; } else tamam = sn >= gerek;
+      return { a: a, url: ek.url, ad: ek.ad, sn: sn, tamam: tamam };
+    });
+  }
+
+  global.DHKocModu = { planDurumu: planDurumu, baslat: baslat, cik: cik, durum: durum, devam: devam, _adimBitti: function () { var d = oku(); if (d) adimBitti(d, true); }, _tik: tik };
 })(window);

@@ -124,13 +124,13 @@
       await betik("./sentences-loader.js?v=1", "DHSent");
       await betik("./profile.js?v=2", "DHProfile");
       if (global.DHProfile && DHProfile.nextModule) {
-        var m = await Promise.race([DHProfile.nextModule(), new Promise(function (r) { setTimeout(function () { r(null); }, 6000); })]);
+        var m = await Promise.race([DHProfile.nextModule(), new Promise(function (r) { setTimeout(function () { r(null); }, 12000); })]);
         if (m) { sonuc.sonraki = m; sonuc.sonrakiKisa = modulKisa(m); }
       }
       await betik("./learning-error-system.js?v=12", "LearningErrorDB");
       await betik("./dh-telafi.js?v=2", "DHTelafi");
       if (global.DHTelafi && DHTelafi.bul) {
-        var t = await Promise.race([DHTelafi.bul(), new Promise(function (r) { setTimeout(function () { r(null); }, 6000); })]);
+        var t = await Promise.race([DHTelafi.bul(), new Promise(function (r) { setTimeout(function () { r(null); }, 12000); })]);
         if (t && t.modul && t.modul !== sonuc.sonraki) sonuc.telafi = { modul: t.modul, modulKisa: t.modulKisa || modulKisa(t.modul), seviye: t.seviye || "", hataSayisi: +t.hataSayisi || 0 };
       }
     } catch (e) {}

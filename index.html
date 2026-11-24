@@ -19,7 +19,7 @@
 <link rel="prefetch" as="image" href="./assets/avatars_v3/teacher/mouth-open.webp">
 
 <!-- KOC ZINCIRININ BAGIMLILIKLARI — koc.js en sonda yuklenir -->
-<script src="./auth-guard.js?v=18"></script>
+<script src="./auth-guard.js?v=19"></script>
 <script src="./storage-bridge.js?v=4"></script>
 <script src="./sentences-loader.js?v=1"></script>
 <!-- Karma gün sonu pratiği: o gün çalışılan cümle + kalıp + kelimeleri
@@ -233,7 +233,6 @@
   </section>
 
   <section class="dh-insight" id="kisiselIcGoru" hidden aria-live="polite"></section>
-  <section class="dh-kart dh-kart--sessiz" id="dhLearningCoach" hidden aria-live="polite" style="margin-bottom:12px"></section>
 
   <!-- Buluttan da gelen son Gemini karnesi girişte görünür. Genel yorum
        burada özetlenir; alıştırmalar Hata Defteri'nde kalır. -->
@@ -293,7 +292,6 @@
 
 <script src="./dh-plan.js?v=1"></script>
 <script src="./dh-insights.js?v=4"></script>
-<script src="./dh-learning-coach.js?v=4"></script>
 <script src="./dh-app-shell.js?v=3"></script>
 <script src="./cloud-sync.js?v=55"></script>
 <script src="./dh-telafi.js?v=2"></script>
@@ -405,8 +403,8 @@
   function denizYukle(){
     if (!DENIZ) return;
     betik("./dh-koc-kilavuz.js?v=3", "DHKocKilavuz")
-      .then(function(){ return betik("./dh-koc-beyin.js?v=8", "DHKocBeyin"); })
-      .then(function(){ return betik("./dh-koc-deniz.js?v=7", "DHKocDeniz"); })
+      .then(function(){ return betik("./dh-koc-beyin.js?v=9", "DHKocBeyin"); })
+      .then(function(){ return betik("./dh-koc-deniz.js?v=8", "DHKocDeniz"); })
       .then(function(){
         denizCiz();
         if (!window.DHKocDeniz) return;
@@ -1148,10 +1146,8 @@
   /* sayfaya dönünce (başka ekranda çalışıp geri gelince) adım durumları tazelensin */
   document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "visible") denizCiz(); });
   if (window.DHInsights) DHInsights.render("#kisiselIcGoru").then(tamamlananOzetleriBoya);
-  if (window.DHLearningCoach) DHLearningCoach.render("#dhLearningCoach").then(tamamlananOzetleriBoya);
   window.addEventListener("dh-cloud-synced",function(){
     if(window.DHInsights)DHInsights.render("#kisiselIcGoru").then(tamamlananOzetleriBoya);
-    if(window.DHLearningCoach)DHLearningCoach.render("#dhLearningCoach").then(tamamlananOzetleriBoya);
   });
 
   /* ================= YEDEK PLAN =================
@@ -1253,7 +1249,7 @@
 </script>
 
 <!-- koc.js EN SONDA: kanca (window.DHKocRender) tanimli olmali -->
-<script src="./koc.js?v=6"></script>
+<script src="./koc.js?v=7"></script>
 <script src="./dh-amac.js?v=2"></script>
 <script src="./dh-ozel-ders.js?v=6"></script>
 <script>
