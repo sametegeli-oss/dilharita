@@ -184,7 +184,7 @@
   }
 
   /* Kullanıcının avatar ayarları (avatar-ayarlari.html): tüm avatarlar okur, değişince anında uygulanır.
-     Değerler: ifade/enerji/jest 0..1 · basHareket, bakis, nefes, dinlemeOnay, kirpma, sesDuygu 0..2 (1 = varsayılan) · sesPerde 0.8..1.2 */
+     Değerler: ifade/enerji/jest 0..1 · basHareket, bakis, nefes, dinlemeOnay, dinlemeHareket, kirpma, sesDuygu 0..2 (1 = varsayılan) · sesPerde 0.8..1.2 */
   var KA_ANAHTAR = "dh-avatar-ayar-v1", KA = {};
   function kaOku() { try { KA = JSON.parse(localStorage.getItem(KA_ANAHTAR) || "{}") || {}; } catch (e) { KA = {}; } }
   kaOku();
@@ -253,6 +253,24 @@
     function kirpParca() { var d = baskin(); return (face.duyguKirpma && kirpSetleri[face.duyguKirpma[d]]) || parcalar.blink; }
     function fotoHedef(ad) { if (!fotolar[ad]) ad = "notr"; if (ad === foto.b) return; foto.a = foto.t >= 0.5 ? foto.b : foto.a; foto.b = ad; foto.t = 0; }
     var konusma = null, dinleme = false;
+    /* DİNLEME DURUŞLARI (24 Kasım): dinlerken tek sabit poz yerine 4-8 sn'de bir yumuşakça değişen duruşlar —
+       öne eğilip dikkatle dinleme, başı sağa/sola yatırma, hafif geri çekilip düşünme. Güç: ayar "dinlemeHareket" (0..2). */
+    var DINLEME_POZ = [
+      { ad: "one",   w: 3, lean: 0.95, roll: 2,  pitch: 0.08, smile: 0.15, browInnerUp: 0.2 },
+      { ad: "sag",   w: 2, lean: 0.5,  roll: 11, pitch: 0.03, smile: 0.2,  browInnerUp: 0.3 },
+      { ad: "sol",   w: 2, lean: 0.5,  roll: -10, pitch: 0.03, smile: 0.2,  browInnerUp: 0.25 },
+      { ad: "geri",  w: 1, lean: -0.15, roll: 3, pitch: -0.06, smile: 0.1, browOuterUp: 0.2 },
+      { ad: "dusun", w: 1, lean: 0.5,  roll: 5,  pitch: 0.04, smile: 0.05, browAsym: 0.3, jest: "dusun" }
+    ];
+    var dp = { hedef: null, an: { lean: 0.35, roll: 2.5, pitch: 0, smile: 0, browInnerUp: 0.15, browOuterUp: 0, browAsym: 0 }, sonraki: 0, onceki: "" };
+    function dinlemePozSec(simdi) {
+      var aday = DINLEME_POZ.filter(function (x) { return x.ad !== dp.onceki; }), top = 0, i;
+      aday.forEach(function (x) { top += x.w; });
+      var r = Math.random() * top, sec = aday[0];
+      for (i = 0; i < aday.length; i++) { r -= aday[i].w; if (r <= 0) { sec = aday[i]; break; } }
+      dp.hedef = sec; dp.onceki = sec.ad; dp.sonraki = simdi + 4000 + Math.random() * 4000;
+      if (sec.jest) setTimeout(function () { if (dinleme) api.jest(sec.jest, 0.45); }, 600);
+    }
     var t0 = performance.now(), sonKirp = t0, sonrakiKirp = t0 + 2500, sakkad = { x: 0, y: 0, t: t0 + 1500 }, bakisKac = t0 + 5000, sonVurgu = 0, dinleNod = t0 + 2500, bostaJest = t0 + 9000;
     /* konuşma hareket planlayıcısı: baş duruşu ve bakış, ifade öbekleri gibi 1-3 sn'de bir yeni hedefe yumuşakça geçer */
     var hp = { yatik: 0, yaw: 0, roll: 0, pitch: 0, gx: 0, gy: 0, ty: 0, tr: 0, tp: 0, tgx: 0, tgy: 0, yan: 0, pozT: t0 + 800, yawT: t0 + 600, yanT: t0 + 3000, bakT: t0 + 1500, bakBit: 0 };
@@ -476,11 +494,20 @@
         if (konusma) { p.gazeX += hp.gx * kBak; p.gazeY += hp.gy * kBak; }
         else { p.gazeX += (sakkad.x + hp.gx * 0.5) * kBak; p.gazeY += (sakkad.y + hp.gy * 0.5) * kBak; }
         if (dinleme) {
-          p.lean += 0.35; p.roll += 2.5; p.browInnerUp += 0.15;
+          if (!dp.hedef || simdi > dp.sonraki) dinlemePozSec(simdi);
+          var kDh = ka("dinlemeHareket", 1), dk2 = 1 - Math.exp(-dt / 0.9);   /* duruşlar arası ~1 sn yumuşak geçiş */
+          ["lean", "roll", "pitch", "smile", "browInnerUp", "browOuterUp", "browAsym"].forEach(function (k) {
+            var h = (dp.hedef[k] || 0) * (k === "smile" || k.indexOf("brow") === 0 ? 1 : kDh);
+            dp.an[k] += (h - dp.an[k]) * dk2; p[k] += dp.an[k];
+          });
           /* dinlerken ara ara küçük baş onayı ("hı hı"), bazen hafif gülümseme */
           var kOn = ka("dinlemeOnay", 1);
           if (kOn > 0.05 && simdi > dinleNod) { dinleNod = simdi + (2600 + Math.random() * 3200) / kOn; api.jest("onay", (0.22 + Math.random() * 0.18) * Math.min(1.6, 0.6 + kOn * 0.4)); if (Math.random() < 0.35) api.jest("kas", 0.25); }
-        } else dinleNod = Math.max(dinleNod, simdi + 1200);
+        } else {
+          dinleNod = Math.max(dinleNod, simdi + 1200);
+          /* dinleme bitince duruş yavaşça nötre döner (bir anda geri sıçramasın) */
+          if (dp.hedef) { var dk3 = 1 - Math.exp(-dt / 0.6), sonda = 0; for (var kk in dp.an) { dp.an[kk] += (0 - dp.an[kk]) * dk3; p[kk] += dp.an[kk]; sonda += Math.abs(dp.an[kk]); } if (sonda < 0.01) dp.hedef = null; }
+        }
         /* boşta (ne konuşuyor ne dinliyor): uzun aralıklarla küçük doğal hareket */
         if (!konusma && !dinleme && simdi > bostaJest) { bostaJest = simdi + 7000 + Math.random() * 7000; var r = Math.random(); api.jest(r < 0.4 ? "egil" : r < 0.7 ? "kas" : "onay", 0.25); }
       }
