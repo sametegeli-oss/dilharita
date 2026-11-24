@@ -51,6 +51,13 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
   Firestore `users/{uid}/koc/beyin`, `koc/hesap`, `koc_haftalik`), `dh-koc-deniz.js` (günlük plan; model cevabı olgu denetiminden
   geçmezse sıradaki model, en son kural planı), `koc-paneli.html`, `dh-koc-modu.js` (koç modu: auth-guard her sayfaya ekler, durum `dh-koc-modu-v1`). `DHProviders.chat` `opts.prefer/only` ile modele yönlendirilir.
 - Eski plan/koç parçaları (birleştirilecek): `koc.js`, `dh-plan.js`, `dh-learning-coach.js`, `coach-bubble.js`, `daily-dashboard.js`.
+- **Tekrar hesabı: `dh-fsrs.js` (FSRS-5) tek kaynak.** SM-2 kopyaları (assets/app.js `E()`, practice, tekrar, ogren, videopractice,
+  sesli-calis, kelime-ogren, learning-error-system) `DHFSRS.notla`'yı çağırır, yoksa eski hesaba düşer. Kayıt alanları aynı
+  (rep/ef/interval/due/last/lapses) + `f:{s,d}`, `alg:"fsrs5"`. Eski kart ilk FSRS notunda dönüşür; ilk aralık SM-2'nin 2 katıyla sınırlı.
+  Yeni bir tekrar ekranı yazarken kendi aralık hesabını yazma, `DHFSRS.notla(kayit, "hard"|"good"|"easy"|1-4)` kullan.
+- Ekran "bitti" sinyali: `window.dispatchEvent(new CustomEvent("dh-ekran-bitti",{detail:{bos}}))` → koç modu adımı bitirir.
+- Deniz Telegram: `worker-deniz.js` + `wrangler-deniz.toml` (Cloudflare, KV `DENIZ`, sırlar yalnız Cloudflare'de), istemci
+  `dh-deniz-telegram.js` (auth-guard ekler; bağlı değilse hiçbir şey göndermez), panelde "Deniz Telegram'da". Kurulum: `DENIZ-TELEGRAM.md`.
 - Cümle bankam: `cumle-bankam.html` (IndexedDB `dh-cumle-bankam`; bulut `users/{uid}/cumle_bankasi/p000..` 400'lük parçalar + `meta` + `ilerleme`).
   Kişisel cümle dosyası depoya konmaz; kullanıcı "Dosyadan içe aktar" ile yükler. `ilerleme` belgesi büyürse (1 MB) parçala.
 - Kayıtlar: **`dh-olay.js` tek aktivite kaydı** (günlük özet `dh-gun-ozet-v1`, ham olay IndexedDB `dh-olay`); cevaplar
@@ -60,6 +67,10 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
 ## Bilinen tuzaklar (yaşandı)
 - **Firestore günlük okuma kotası (50.000):** Senkronun koleksiyonun tamamını okuması kotayı bitiriyordu
   (24 Kasım). Video kayıtları artık artımlı okunuyor (`dh-yt-pull-v1`). Yeni okuma kodu yazarken okuma sayısını hesapla.
+- **Video kayıtlarının her açılışta yeniden yazılması (24 Kasım):** tam senkron `pushNow(true)` 65 videonun hepsini (~150 belge)
+  her açılışta yazıyor, sayfa erken kapanınca eski parçalar öksüz kalıyordu. Artık video belgeleri yalnız imza değişince yazılır,
+  yarım silmeler `dh-yt-silinecek-v1` ile tekrar denenir, haftada bir otomatik öksüz temizliği var (`dh-yt-temizlik-v1`).
+  Koç anahtarlarından model durumu, hesap özeti ve eski günlük planlar buluta gitmez (`kocHaric`).
 - **Firestore belge sınırı 1 MB:** Ayar/ilerleme belgeleri büyümesin; büyük veri ayrı alt koleksiyona.
 - **API anahtarı kısıtı:** Browser key'de Token Service API izinli olmalı; yoksa oturum 1 saat sonra düşer
   ve her açılışta şifre sorulur (24 Kasım'da eklendi).
@@ -68,4 +79,4 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
 - Android'de tarayıcı sesi perde/hız 1 değilse dil geçişlerinde 2–6 sn bekliyor; perde ve hız 1'de sabit.
 
 ## Şu anki sürümler (24 Kasım 2026)
-sw `dh-sw-v583` · cloud-sync.js v54 · ai-providers.js t40 · auth-guard.js v12 · dh-olay.js v2 · coach-bubble.js t42 · koc-paneli/konuskan.html: dh-koc-kilavuz v2 · dh-koc-beyin v6 · dh-koc-deniz v6 · konuskan.js v29 · dh-koc-modu v2 · goruntulu.js v87 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3
+sw `dh-sw-v587` · cloud-sync.js v55 · ai-providers.js t40 · auth-guard.js v14 · dh-olay.js v2 · dh-fsrs.js v1 · learning-error-system.js v12 · assets/app.js tm3 · dh-deniz-telegram.js v1 · coach-bubble.js t42 · koc-paneli/konuskan.html: dh-koc-kilavuz v2 · dh-koc-beyin v7 · dh-koc-deniz v6 · konuskan.js v30 · dh-koc-modu v3 · goruntulu.js v88 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3

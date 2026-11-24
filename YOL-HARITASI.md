@@ -74,7 +74,11 @@ ekranları kendisi açar, gerektiğinde tekrar ettirir. Kumanda her zaman kullan
 - Kendi hayatından dersler (ör. toplantı provası).
 - Ayda bir "öğretmenine götür" özeti. ✅ `ogretmen-ozeti.html` (sw v582)
 - Bildiğini atlat ✅ (koç modu v2). Kişisel cümle bankası ✅ `cumle-bankam.html` (sw v583; 13.535 çift, kullanıcıya dosya olarak verildi).
-- Tekrar sistemini FSRS'e geçirme (büyük iş; inceleme yapıldı, SM-2 ~8 dosyada kopya; geçiş için kullanıcı onayı bekleniyor).
+- Tekrar sistemini FSRS'e geçirme ✅ (sw v584, kullanıcı "yap" dedi). Gerçek 620 vadeli kartla ölçüm (hepsi "İyi" denirse sonraki aralık):
+  SM-2 → <7 gün 100, 7–30 gün 69, 30–90 gün 193, 90–365 gün 257, 1 yıldan uzun 1;
+  FSRS (temkinli) → 12, 113, 111, 374, 10.
+  20 kartın eski aralığı 10 yıldan uzun (eski "kolay" çarpanı); dokunulmadı.
+- Karışık tekrar ✅ (tekrar.html oturum sırası modül/tür arasında dönüşümlü). Ekran "bitti" sinyalleri ✅ (sw v585).
 - Menülerde 3B görünüm: kullanıcı erteledi ("3 boyut menü kalsın").
 
 ### Telegram (24 Kasım, kullanıcı istedi)
@@ -82,6 +86,9 @@ Deniz'le Telegram'dan yazışma (WhatsApp, Meta'nın 2026 yapay zekâ bot kural�
 Telegram Bot API ücretsiz. Sunucu: projedeki Cloudflare Worker. Kullanıcı @BotFather'dan bot oluşturup anahtarı verecek.
 Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine ve Sohbetlerim'e işlenir.
 Önce programın kendi bildirimleriyle "Deniz arar", sonra Telegram.
+**Durum (24 Kasım, sw v586):** kod hazır ve yerelde test edildi (worker-deniz.js, dh-deniz-telegram.js, panel bölümü, DENIZ-TELEGRAM.md).
+"Deniz arar" Telegram üzerinden yapıldı: FCM/servis hesabı gerekmez. Bekleyen: kullanıcının @BotFather anahtarı ve Cloudflare'de
+Worker yayını (hesap işlemi; kullanıcı onayı gerekir). Sesli mesaj henüz yok.
 
 ## Diğer açık konular
 - Kullanıcının Excel dosyası: Oxford kelime listesi ve konu tabloları eklenebilir; kişisel cümle bankası yapıldı
