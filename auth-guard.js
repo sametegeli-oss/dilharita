@@ -32,6 +32,11 @@
   var PUBLIC = ["login.html", "veri-gizlilik.html", "pwa-hard-reset.html"];
   if (PUBLIC.indexOf(page) !== -1) return;
 
+  /* TEK AKTİVİTE KAYDI (koç planı): her korumalı sayfada etkin süre ve cevaplar dh-olay.js ile kaydedilir. */
+  if(!document.querySelector('script[src*="dh-olay.js"]')){
+    var ol=document.createElement("script"); ol.src="./dh-olay.js?v=1"; document.head.appendChild(ol);
+  }
+
   function ls(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
   function ss(k){ try{ return sessionStorage.getItem(k); }catch(e){ return null; } }
   /* Giriş işareti çerezde de tutulur (login.html): localStorage dolunca

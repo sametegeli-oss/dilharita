@@ -1680,6 +1680,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       if (c.lang === 'tr') { um.check = { ok: true, tr: true }; ogrenciDurum(um); return; }
       if (!c.ok && (!c.corrected || trivialDiff(um.text, c.corrected))) c = { ok: true };
       um.check = c; S.stats.msgs++;
+      try { window.dhKonuskanCevap && window.dhKonuskanCevap(!!c.ok, 'konusma', c.ok ? '' : (c.tag || '')); } catch (e) {}
       if (c.ok) { S.stats.ok++; st.okN++; st.xp += 10; addXP(10); }
       else {
         st.xp += 5; addXP(5); const e = addError({ wrong: um.text, right: c.corrected, why: c.why_tr, tag: c.tag || '', mode: 'video', d: today() }); st.errs.push(e); um._err = e;

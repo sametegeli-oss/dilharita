@@ -23,6 +23,20 @@ ekranları kendisi açar, gerektiğinde tekrar ettirir. Kumanda her zaman kullan
 | Hatalar | çözülene kadar tam; sonra yalnız sayı |
 `dh-activity-log-v1` 10 günden 30 güne çıkarılacak; `dh-study-tracker-v1`'de 30 günden eski günlerin olay listesi silinecek.
 
+### 1. aşama envanteri (24 Kasım) — `dh-olay.js`
+- **Ortak kayıt:** `dh-olay.js` (auth-guard her korumalı sayfaya ekler). Günlük özet `dh-gun-ozet-v1` (cihaz kovalı, buluta
+  senkron, progress belgesinde; birleştirme `cloud-sync.js` → `mergeGunOzet`), ham olaylar IndexedDB `dh-olay` (30 gün, yalnız cihaz).
+- **Etkin süre** (görünür + son 90 sn'de dokunma ya da ses/video çalıyor): 35 sayfa beceriye eşli
+  (kelime, yazma, dinleme, konuşma, okuma, dilbilgisi). Menü/ilerleme/ayar sayfaları süre saymaz.
+- **Cevaplar:** `dhCoachEvaluate` üzerinden → tekrar, pratik, öğren (sesli → konuşma), video pratik (sesli → konuşma),
+  kelime öğren, öğretmen, hata defteri. Konuşkan → yazılı/sesli sohbet, telefon görüşmesi, cümle kurma, fotoğraf anlatma,
+  görüntülü ders (`dhKonuskanCevap`). Yanlışlarda konu türü `LearningErrorDB.detectTypes` ile (yüklü olduğu sayfalarda).
+- **Cevap kaydı henüz olmayan (yalnız süre):** akıllı tekrar, YouTube eğitim/pratik, İngilizceyi Yaşa, telaffuz stüdyosu,
+  sesli çalış, ders ve modül testleri, seviye testi, phrasal verbs, kitaplık, senaryolu sohbetler. 3. aşamada ("bitti"
+  sinyalleri) bağlanacak.
+- **Saklama:** aktivite günlüğü 10 → 30 gün; çalışma sayacında 30 günden eski günlerin olay listesi silinir;
+  günlük özette 90 günden eski günler tek kovaya sıkışır (süresiz).
+
 ### Aşamalar (sırayla; her aşamadan sonra kullanıcı telefonda dener)
 1. **Envanter + saklama kuralları:** hangi ekran neyi kaydediyor, eksikler; tek aktivite kaydı.
 2. **Koç beyni + Koçluk Paneli + Deniz'in sabah özeti.**
@@ -75,6 +89,7 @@ Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine 
   hassas tanıma ve onay ekranını kapatma önerisi (cevap bekliyor), "&quot;" çözümleme önerisi.
 
 ## Yapıldı
+- 24 Kasım: 1. aşama — tek aktivite kaydı (`dh-olay.js`), saklama kuralları (sw v567).
 - 24 Kasım: Oturum her sabah düşüyordu → Browser key'e Token Service API eklendi.
 - 24 Kasım: Senkron okuma kotasını bitiriyordu → video kayıtları artımlı okunuyor, eski parçaların silinmesi bekleniyor (sw v566).
 - 23 Kasım: Piper tamponlu okuma, Android tarayıcı sesi perde/hız 1, görüntülü ders tahtası, düzeltme gösterimi, canlı görüntü.

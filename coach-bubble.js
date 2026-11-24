@@ -361,10 +361,10 @@
       var K="dh-activity-log-v1";
       var log=JSON.parse(localStorage.getItem(K)||"[]")||[];
       var today=new Date().toISOString().slice(0,10);
-      // KALICI GEÇMİŞ: son 10 gün / en fazla 600 kayıt saklanır. Bu sınır bilinçli seçildi:
+      // KALICI GEÇMİŞ: son 30 gün (koç planı, 24 Kasım; eskiden 10) / en fazla 600 kayıt saklanır. Bu sınır bilinçli seçildi:
       // Firestore'un tek-alan 1MB sınırına (bu projede daha önce ciddi soruna yol açmıştı)
       // asla yaklaşmasın diye — buluta senkronlanacağı için boyutu kesinlikle güvenli tutuyoruz.
-      var cutoff=Date.now()-10*86400000;
+      var cutoff=Date.now()-30*86400000;
       log=log.filter(function(e){ return (e.ts||0)>=cutoff; });
       log.push({ts:Date.now(), d:today, page:(location.pathname.split("/").pop()||"index.html"), detail:String(detail||"").slice(0,140), kind:kind||"info"});
       log.sort(function(a,b){ return a.ts-b.ts; });
@@ -1140,6 +1140,16 @@
         if(opts.ok) __dhSession.correct++; else __dhSession.wrong++;
         try{ window.dhLogActivity((opts.ok?"✅ Doğru: ":"❌ Yanlış: ")+(opts.en||opts.sentenceId||""), opts.ok?"correct":"wrong"); }catch(e){}
         logSessionRate(false);
+        /* TEK AKTİVİTE KAYDI (dh-olay.js): beceri + konu ile doğru/yanlış. */
+        if(opts.trackKind!=="skip") try{
+          var kon=[]; if(opts.grammar) kon.push(opts.grammar);
+          if(!opts.ok && window.LearningErrorDB && LearningErrorDB.detectTypes){
+            try{ kon=kon.concat(LearningErrorDB.detectTypes({target:opts.en, answer:opts.answer, grammar:opts.grammar||"", module:opts.module||"", topic:opts.topic||""})||[]); }catch(_e){}
+          }
+          var bec=(opts.module==="vocabulary"||opts.topic==="kelime")?"kelime"
+                 :(__dhPage==="ogren.html"||__dhPage==="videopractice.html")?"konusma":null;
+          window.dispatchEvent(new CustomEvent("dh-cevap",{detail:{ok:!!opts.ok, beceri:bec, konular:kon, ekran:__dhPage, kaynak:opts.trackKind||"sentence"}}));
+        }catch(_e){}
       }
       /* Eşdeğer yazım (didn't=did not, he=she=it): aslında DOĞRU cevap */
       if(!opts.ok && opts.en && opts.answer && window.LearningErrorDB && LearningErrorDB.eqNorm

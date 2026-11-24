@@ -31,7 +31,7 @@
     "dh_ai_prompt_teacher", "dh-study-tracker-v1", "dh-ocr-sentences-v1", "dh-profile-v1",
     "dh-teacher-policy-v1", "dh-notif-settings-v1", "dh-progress-mirror-v1",
     "dh-model-nvidia", "dh-model-groq", "dh-model-cerebras", "dh-model-gemini",
-    "selectedTeacherAvatar", "dh-teacher-mem", "dh-activity-log-v1",
+    "selectedTeacherAvatar", "dh-teacher-mem", "dh-activity-log-v1", "dh-gun-ozet-v1",
     "dh-gemini-report-v1", "dh-gemini-daily-archive-v1", "dh-word-study-list-v1",
     "dh-error-tombstones-v1", "dh-konuskan-v1"
   ];
@@ -45,6 +45,7 @@
   var TRACKER = "dh-study-tracker-v1";
   var MIRROR  = "dh-progress-mirror-v1";
   var ACTLOG  = "dh-activity-log-v1";
+  var GUNOZET = "dh-gun-ozet-v1";   // tek aktivite kaydının günlük özeti (dh-olay.js)
   /* API anahtarlari cihaz sirridir. Yerelde kalir; Firestore'a asla
      gonderilmez ve eski surumlerin yukledigi kopyalar ilk senkronda silinir. */
   var SECRET_KEYS = ["nvidiaApiKeys", "groqApiKeys", "cerebrasApiKeys", "geminiApiKeys", "mistralApiKeys", "openrouterApiKeys", "youtubeApiKeys", "dh-disabled-keys", "apiKeys"];
@@ -398,6 +399,43 @@
   // Aktivite logu: iki cihazın kayıtlarını BİRLEŞTİRİR (basit üzerine yazma değil —
   // aksi halde bir cihazın günü diğerininkini silerdi). Zaman damgasına göre tekilleştirilir,
   // en yeni 600 kayıt / 150KB sınırında tutulur (Firestore güvenliği).
+  /* GÜNLÜK ÖZET (dh-olay.js): gün birleşimi; her gün cihaz kovalı.
+     Aynı cihazın iki kopyasında alan bazında BÜYÜK olan alınır (idempotent).
+     90 günden eski sıkıştırılmış gün tek "_" kovası taşır: bir taraf sıkışmışsa
+     iki taraf da toplanıp büyük olan "_" olarak tutulur (çift sayım olmaz). */
+  function mergeGunOzet(localStr, remoteStr){
+    var L={},R={};
+    try{ L=JSON.parse(localStr||"{}")||{}; }catch(e){}
+    try{ R=JSON.parse(remoteStr||"{}")||{}; }catch(e){}
+    var lg=L.gun||{}, rg=R.gun||{}, out={v:1,gun:{}};
+    function maxObj(a,b){ var o={},k; a=a||{}; b=b||{};
+      for(k in a) if(a.hasOwnProperty(k)) o[k]=+a[k]||0;
+      for(k in b) if(b.hasOwnProperty(k)) o[k]=Math.max(o[k]||0,+b[k]||0); return o; }
+    function maxKonu(a,b){ var o={},k; a=a||{}; b=b||{};
+      for(k in a) if(a.hasOwnProperty(k)) o[k]=[+a[k][0]||0,+a[k][1]||0];
+      for(k in b) if(b.hasOwnProperty(k)){ var x=o[k]||[0,0]; o[k]=[Math.max(x[0],+b[k][0]||0),Math.max(x[1],+b[k][1]||0)]; } return o; }
+    function maxKova(a,b){ var o={}; ["s","d","y","e"].forEach(function(f){ var m=maxObj(a&&a[f],b&&b[f]); if(Object.keys(m).length) o[f]=m; });
+      var kk=maxKonu(a&&a.k,b&&b.k); if(Object.keys(kk).length) o.k=kk; return o; }
+    function topla(g){ var t={s:{},d:{},y:{},k:{}}, by=(g&&g.by)||{};
+      for(var dv in by){ if(!by.hasOwnProperty(dv)) continue; var c=by[dv]||{};
+        ["s","d","y"].forEach(function(f){ var x=c[f]||{}; for(var n in x) if(x.hasOwnProperty(n)) t[f][n]=(t[f][n]||0)+(+x[n]||0); });
+        var k=c.k||{}; for(var q in k) if(k.hasOwnProperty(q)){ var v=t.k[q]||(t.k[q]=[0,0]); v[0]+=+k[q][0]||0; v[1]+=+k[q][1]||0; } }
+      return t; }
+    function sikismis(g){ var by=(g&&g.by)||{}; return !!by._; }
+    var gunler={}, d;
+    for(d in lg) if(lg.hasOwnProperty(d)) gunler[d]=1;
+    for(d in rg) if(rg.hasOwnProperty(d)) gunler[d]=1;
+    for(d in gunler){
+      var a=lg[d], b=rg[d];
+      if(!a||!b){ out.gun[d]=a||b; continue; }
+      if(sikismis(a)||sikismis(b)){ out.gun[d]={by:{_:maxKova(topla(a),topla(b))}}; continue; }
+      var by={}, ab=a.by||{}, bb=b.by||{}, dv2;
+      for(dv2 in ab) if(ab.hasOwnProperty(dv2)) by[dv2]=maxKova(ab[dv2], bb[dv2]);
+      for(dv2 in bb) if(bb.hasOwnProperty(dv2) && !by[dv2]) by[dv2]=maxKova(null, bb[dv2]);
+      out.gun[d]={by:by};
+    }
+    return JSON.stringify(out);
+  }
   function mergeActivityLog(localStr, remoteStr){
     var L=[],R=[];
     try{ L=JSON.parse(localStr||"[]")||[]; }catch(e){}
@@ -872,6 +910,7 @@
           else if(rk.indexOf("dh-gemini-gunluk-")===0){ localStorage.setItem(rk, mergeGeminiDaily(localStorage.getItem(rk),rv)); pulled++; }
           else if(rk===MIRROR){ localStorage.setItem(rk, mergeMirror(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk===ACTLOG){ localStorage.setItem(rk, mergeActivityLog(localStorage.getItem(rk), rv)); pulled++; }
+          else if(rk===GUNOZET){ localStorage.setItem(rk, mergeGunOzet(localStorage.getItem(rk), rv)); pulled++; }
           else if(rk.indexOf("dh-koc-")===0){ localStorage.setItem(rk, mergeKoc(rk, localStorage.getItem(rk), rv)); pulled++; }
           else if(rk==="dh-immersive-state-v1"){ localStorage.setItem(rk, mergeImmersive(localStorage.getItem(rk),rv)); pulled++; }
           else if(rk.indexOf("dh-modul-")===0){ localStorage.setItem(rk, mergeModul(rk, localStorage.getItem(rk), rv, rd.ls["dh-modul-silinen"])); pulled++; }
@@ -1250,7 +1289,7 @@
               else doc2[k]=data.ls[k];
             }
           }
-          var isProg=function(k){ return k.indexOf("smv:")===0 || k==="dh-progress-mirror-v1" || k==="dh-study-tracker-v1"; };
+          var isProg=function(k){ return k.indexOf("smv:")===0 || k==="dh-progress-mirror-v1" || k==="dh-study-tracker-v1" || k==="dh-gun-ozet-v1"; };
           var pDoc={}, sDoc={}, pBulk={}, sBulk={};
           for(var dk in doc2){ if(doc2.hasOwnProperty(dk)) (isProg(dk)?pDoc:sDoc)[dk]=doc2[dk]; }
           for(var bk2 in bulk){ if(bulk.hasOwnProperty(bk2)) (isProg(bk2)?pBulk:sBulk)[bk2]=bulk[bk2]; }

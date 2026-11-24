@@ -48,7 +48,9 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
 - Konuşkan (Deniz): `konuskan.html` + `konuskan/` (görüntülü ders `goruntulu.js`, Piper sesi `dh-piper*.js`).
   Konuşkan'ın durumu (`dh-konuskan-v1`) programın geri kalanından ayrı tutuluyor.
 - Plan/koç parçaları (birleştirilecek): `koc.js`, `dh-plan.js`, `dh-learning-coach.js`, `coach-bubble.js`, `daily-dashboard.js`.
-- Kayıtlar: `dh-activity-log-v1` (10 gün), `dh-study-tracker-v1` (günlük; kırpılmıyor), hata defteri, `srs:`/`wsrs:` tekrar kartları.
+- Kayıtlar: **`dh-olay.js` tek aktivite kaydı** (günlük özet `dh-gun-ozet-v1`, ham olay IndexedDB `dh-olay`); cevaplar
+  `dh-cevap` olayıyla gelir (`dhCoachEvaluate`, `dhKonuskanCevap`). Ayrıca `dh-activity-log-v1` (30 gün), `dh-study-tracker-v1`,
+  hata defteri, `srs:`/`wsrs:` tekrar kartları.
 
 ## Bilinen tuzaklar (yaşandı)
 - **Firestore günlük okuma kotası (50.000):** Senkronun koleksiyonun tamamını okuması kotayı bitiriyordu
@@ -59,4 +61,4 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
 - Android'de tarayıcı sesi perde/hız 1 değilse dil geçişlerinde 2–6 sn bekliyor; perde ve hız 1'de sabit.
 
 ## Şu anki sürümler (24 Kasım 2026)
-sw `dh-sw-v566` · cloud-sync.js v51 · goruntulu.js v85 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3
+sw `dh-sw-v567` · cloud-sync.js v52 · auth-guard.js v9 · dh-olay.js v1 · coach-bubble.js t42 · konuskan.js v27 · goruntulu.js v86 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3

@@ -212,6 +212,9 @@ function toDHNotebook(e){
   }catch(x){}
 }
 function addError(e){ S.errors.push(e); save(); toDHNotebook(e); return e; }
+/* TEK AKTİVİTE KAYDI (dh-olay.js): Konuşkan'daki her değerlendirilen cevap programın ortak kaydına da düşer. */
+function dhCevap(ok,beceri,tag){ try{ window.dispatchEvent(new CustomEvent('dh-cevap',{detail:{ok:!!ok,beceri:beceri,konular:tag?[tag]:[],ekran:'konuskan.html',kaynak:'konuskan'}})); }catch(e){} }
+window.dhKonuskanCevap=dhCevap;
 function removeError(e){ if(!e) return; const k=S.errors.indexOf(e); if(k>=0) S.errors.splice(k,1); S.delErr[errId(e)]=Date.now(); save();
   try{ if(e.dhId&&e.dhOwn&&window.LearningErrorDB&&LearningErrorDB.deleteMany) LearningErrorDB.deleteMany([e.dhId]); }catch(x){} }
 
@@ -1103,7 +1106,7 @@ Rules: answer in English only, 1-3 short sentences, natural and friendly, end wi
     st.busy=false;
   }
   function recordCheck(m){
-    S.stats.msgs++;
+    S.stats.msgs++; dhCevap(m.check.ok, m.spoken?'konusma':'yazma', m.check.tag||'');
     if(m.check.ok){ S.stats.ok++; st.run++; S.stats.run=st.run; S.stats.bestRun=Math.max(S.stats.bestRun,st.run); st.sessionXP+=10; addXP(10); }
     else { st.run=0; st.sessionXP+=5; addXP(5); const e=addError({wrong:m.text,right:m.check.corrected,why:m.check.why_tr,tag:m.check.tag||'',mode:cfg.kind,d:today()}); m._err=e; st.errs.push(e); }
   }
@@ -1178,7 +1181,7 @@ function startCall(kayit){
       const tr=st.hist.slice(-12).map(h=>(h.role==='user'?'Learner: ':'You: ')+h.text).join('\n');
       const r=await ai(`You are ${c.persona} The learner is a Turkish speaker at CEFR ${S.level}. ${LEVEL_GUIDE[S.level]} No emojis.${learnerContext()}\n\n${tr?'Call so far:\n'+tr+'\n\n':''}${text?'Check the learner\'s last line (it came from speech recognition: flag ONLY real grammar or word-choice errors; never flag punctuation, capitalisation, stutters, repeated words or misheard names). Then reply.':(st.hist.length?'The call was cut off. Welcome the learner back in one short sentence and continue where you left off with a question.':'Greet the learner and ask how their day is going.')} Return ONLY JSON: {"check":{"ok":true,"corrected":"","why_tr":"Turkish, informal"},"reply":"..."}`);
       if(um&&r.check) um.check=r.check.ok||!r.check.corrected||trivialDiff(text,r.check.corrected)?{ok:true}:r.check;
-      if(text&&r.check){ S.stats.msgs++; if(r.check.ok||!r.check.corrected||trivialDiff(text,r.check.corrected)){ S.stats.ok++; addXP(10);} else { addXP(5); st.errs.push(addError({wrong:text,right:r.check.corrected,why:r.check.why_tr,tag:'',mode:'call',d:today()})); } }
+      if(text&&r.check){ S.stats.msgs++; const okC=!!(r.check.ok||!r.check.corrected||trivialDiff(text,r.check.corrected)); dhCevap(okC,'konusma',okC?'':(r.check.tag||'')); if(okC){ S.stats.ok++; addXP(10);} else { addXP(5); st.errs.push(addError({wrong:text,right:r.check.corrected,why:r.check.why_tr,tag:'',mode:'call',d:today()})); } }
       const md=sonModel(); st.hist.push({role:'assistant',text:r.reply,model:md}); kaydet(); log('Deniz',r.reply+(md?'  [🤖 '+md+']':'')); { const cm=$('#cmodel',b); if(cm&&md){ cm.textContent='🤖 '+md; cm.classList.remove('hide'); } }
       cst.textContent='Deniz konuşuyor…'; ring.classList.add('speaking');
       await speak(r.reply);
@@ -1265,7 +1268,7 @@ function runSentences(list,title,onDone){
     const drawT=()=>{ ans.innerHTML=''; bk.innerHTML=''; chosen.forEach((o,k)=>{ const t=document.createElement('button'); t.className='tile'; t.textContent=o.t; t.onclick=()=>{ if(answered) return; chosen.splice(k,1); bank.push(o); drawT(); }; ans.appendChild(t); }); bank.forEach((o,k)=>{ const t=document.createElement('button'); t.className='tile'; t.textContent=o.t; t.onclick=()=>{ if(answered) return; bank.splice(k,1); chosen.push(o); drawT(); }; bk.appendChild(t); }); };
     drawT();
     const reveal=(ok,heardTxt,score)=>{
-      answered=true; S.stats.sentAll++; if(ok){ okN++; S.stats.sentOk++; } else addError({wrong:heardTxt||chosen.map(o=>o.t).join(' ')||'—',right:s.en,why:s.x||'',tr:s.tr||'',tag:s.g||'',mode:'sentence',d:today()});
+      answered=true; S.stats.sentAll++; dhCevap(ok, heardTxt?'konusma':'dilbilgisi', s.g||''); if(ok){ okN++; S.stats.sentOk++; } else addError({wrong:heardTxt||chosen.map(o=>o.t).join(' ')||'—',right:s.en,why:s.x||'',tr:s.tr||'',tag:s.g||'',mode:'sentence',d:today()});
       save();
       $('#res',b).innerHTML=`<div class="answer ${ok?'ok':'bad'} stack" style="gap:6px"><div class="row between"><b>${ok?'Doğru!':'Doğru cevap:'}</b><span id="scSlot"></span></div><div style="font-size:1.1rem">${esc(s.en)} <span class="muted small">${esc(s.ipa)}</span></div>${s.m?`<div class="small"><b>Sık yapılan hata:</b> ${esc(s.m)}</div>`:''}${s.x?`<div class="small">${esc(s.x)}</div>`:''}<div class="row"><button class="btn sm" id="sp2">${ic('speaker','width="15" height="15"')} Dinle</button><button class="btn primary sm" id="nx">Sonraki</button></div></div>`;
       if(score!=null){ const sb=scoreButton(heardTxt,s.en,score,'Turkish: '+s.tr); sb.style.alignItems='flex-end'; $('#scSlot',b).replaceWith(sb); }
@@ -1376,7 +1379,7 @@ function startPhoto(){
   pt.oninput=()=>pt._b=pt.value;
   $('#pform',b).onsubmit=async e=>{ e.preventDefault(); const txt=pt.value.trim(); if(!txt||!blob) return; const out=$('#pres',b); out.innerHTML='<span class="typing"><i></i><i></i><i></i></span>';
     try{ const r=await ai(`Look at the attached photo. A Turkish learner of English (CEFR ${S.level}) described it like this: "${txt}". Evaluate the description: accuracy against the photo and English quality. Ignore punctuation and capitalisation. Return ONLY JSON: {"score":7,"corrected":"their description with grammar fixed, keeping their ideas","feedback_tr":"2-3 Turkish sentences, informal (sen)","missed":["up to 4 English words/phrases for visible things they did not mention"],"model":"a model description of the photo at level ${S.level}, 3-4 sentences"}`,{images:[blob],deep:true});
-      S.stats.msgs++; if(!r.corrected||trivialDiff(txt,r.corrected)){ S.stats.ok++; } else addError({wrong:txt,right:r.corrected,why:r.feedback_tr,tag:'photo',mode:'photo',d:today()});
+      S.stats.msgs++; dhCevap(!r.corrected||trivialDiff(txt,r.corrected),'yazma',''); if(!r.corrected||trivialDiff(txt,r.corrected)){ S.stats.ok++; } else addError({wrong:txt,right:r.corrected,why:r.feedback_tr,tag:'photo',mode:'photo',d:today()});
       addXP(10+(+r.score||0)); markDone('photo');
       out.innerHTML=`<div class="card stack"><div class="row between"><div><h3 style="margin:0">Puan</h3>${modelEtiket(sonModel())}</div><span class="big" style="font-size:1.6rem">${esc(r.score)}/10</span></div><p style="margin:0">${esc(r.feedback_tr)}</p>${r.corrected&&!trivialDiff(txt,r.corrected)?`<div style="line-height:2">${diffHTML(txt,r.corrected)}</div>`:''}<div class="fb-fix">${esc(r.corrected||txt)}</div>${(r.missed||[]).length?`<div class="small"><b>Atladıkların:</b> ${r.missed.map(esc).join(', ')}</div>`:''}<details><summary><b>Örnek anlatım</b></summary><p>${esc(r.model)}</p><button class="btn sm" id="pms" type="button">${ic('speaker','width="15" height="15"')} Dinle</button></details></div>`;
       $('#pms',out).onclick=()=>speak(r.model);
