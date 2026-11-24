@@ -33,6 +33,14 @@ ekranları kendisi açar, gerektiğinde tekrar ettirir. Kumanda her zaman kullan
    kaynak (kullanıcı söyledi / veri / Deniz'in tahmini), boyut sınırı, eski notlar gözden geçirilir.
    `denizkoç.md` bunun Deniz'e verilen kısa okunur hâli; uygulama ve Telegram botu aynı belgeyi okur.
    Panelde "Deniz'in hakkımdaki notları": kullanıcı görür, düzeltir, siler. Haftada bir anlık kopya.
+   **Koçluk kılavuzu (herkese aynı, kodda sürümlü):** Deniz'in veriyi nasıl kullanacağı —
+   öncelik sırası (unutma riski olan tekrar → kişisel hedefler → amaca göre geride kalan beceri → yeni içerik),
+   karar kuralları (ara tekrar, atlama, ara sonrası hafif gün, eğilim için en az 2–4 hafta veri),
+   üslup (kısa, rakamla gerekçe, açıklama Türkçe / pratik İngilizce, oran seviyeye göre),
+   not yazma kuralları (kaynak etiketi, sınır, hassas konu yazılmaz), yasaklar (rakam uydurmak, hesaplanan bölüme yazmak,
+   onaysız hedef, tahmini kullanıcının sözü gibi yazmak), son söz kullanıcıda, haftalık değerlendirme.
+   Kullanıcının **koçluk tercihleri** (koç beyninde) kılavuzun varsayılanlarını ezer.
+   `denizkoç.md` = kılavuz + koç beyni. Kritik sınırlar (eşikler, sayılar, yazma yasakları, onay) **kodda da** uygulanır.
    Taslak: https://claude.ai/artifact/EAAnb2bp1aFyi3Yfw9ghdc (Neredeyim, Amacım, Nereye gidiyorum, Bu hafta, Gidiş, Güçlü/zayıf).
    Seviye ölçüsü için Oxford kelime listesi (kullanıcının Excel'inden, A1–C1) kullanılabilir.
 3. **Koç modu:** Deniz plan adımlarını kendisi açar; her ekran gerçek "bitti" sinyali verir; 5 sn geri sayımlı geçiş
