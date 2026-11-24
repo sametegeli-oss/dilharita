@@ -295,7 +295,9 @@
   function satir(arr) { return arr.filter(Boolean).join("\n"); }
   async function md() {
     var h = await hesapla(), b = beyin(), t = tercihler();
-    var bec = h.beceriler.map(function (x) { return "- " + BECERI_TR[x.beceri] + ": " + x.dk + " dk (%" + x.pay + ", amaca göre hedef %" + x.hedefPay + ")" + (x.dogruluk != null ? ", doğruluk %" + x.dogruluk : ""); });
+    var azVeri = h.sure.haftaDk < 60;
+    var bec = h.beceriler.map(function (x) { return "- " + BECERI_TR[x.beceri] + ": " + x.dk + " dk" + (azVeri ? "" : " (%" + x.pay + ", amaca göre hedef %" + x.hedefPay + ")") + (x.dogruluk != null ? ", doğruluk %" + x.dogruluk : ""); });
+    if (azVeri) bec.unshift("- (bu haftanın verisi henüz az; oranlar yorumlanmamalı)");
     var kon = h.hataKonulari.map(function (k) { return "- " + k.konu + ": son 14 gün " + k.son14 + " hata (önceki 14 gün " + k.onceki14 + ") → " + k.egilim; });
     var kel = SEVIYELER.map(function (s) { var x = h.kelimeSeviye[s]; return s + " " + x.bilinen + "/" + x.toplam + " (%" + x.yuzde + ")"; }).join(" · ");
     var notlar = Object.keys(b.notlar).map(function (id) { return b.notlar[id]; }).sort(function (a, c) { return c.u - a.u; })

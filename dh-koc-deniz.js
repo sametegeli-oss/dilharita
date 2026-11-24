@@ -45,7 +45,7 @@
     "Yalnız şu JSON'u döndür (başka metin yok):",
     '{"ozet":"2-3 cümle, Türkçe, öğrenciye hitaben; en az bir rakamla gerekçe","plan":[{"ekran":"<' + Object.keys(EKRANLAR).join("|") + '>","dk":<sayı>,"neden":"tek cümle, Türkçe"}],"not":null}',
     "\"ekran\" alanına YALNIZ şu kimliklerden birini yaz: " + Object.keys(EKRANLAR).map(function (k) { return k + " (" + EKRANLAR[k].ad + ")"; }).join(", ") + ".",
-    "Kurallar: 2-5 adım; toplam süre öğrencinin günlük süre tercihine yakın; kılavuzdaki öncelik sırasına uy; yalnız koç beynindeki rakamları kullan.",
+    "Kurallar: 2-5 adım; toplam süre öğrencinin günlük süre tercihine yakın; kılavuzdaki öncelik sırasına uy; yalnız OLGULAR'daki rakamları kullan; öğrenciye \"sen\" diye hitap et.",
     "Koç beyninden yeni ve önemli bir gözlem çıkarırsan \"not\" alanına {\"metin\":\"...\",\"kaynak\":\"veri\"} yaz, yoksa null bırak."
   ].join("\n");
 
@@ -63,7 +63,11 @@
       o.push("bu hafta toplam çalışma: " + h.sure.haftaDk + " dakika, " + h.sure.aktifGunHafta + " gün");
       o.push("aralıksız çalışma serisi: " + h.sure.seri + " gün");
     }
+    /* Haftalık veri azken (60 dk altı) oranlar yanıltır ("konuşmayı %100 tamamladın"); yalnız dakika verilir. */
+    var azVeri = !h.sure || h.sure.haftaDk < 60;
+    if (azVeri) o.push("bu haftanın verisi henüz az (60 dakikadan az): beceri dağılımı ve oranları yorumlanmamalı");
     (h.beceriler || []).forEach(function (x) {
+      if (azVeri) { if (x.dk) o.push(BTR[x.beceri] + " bu hafta: " + x.dk + " dakika"); return; }
       o.push(BTR[x.beceri] + " bu hafta: " + x.dk + " dakika (payı yüzde " + x.pay + ", amaca göre hedef payı yüzde " + x.hedefPay + ")" + (x.dogruluk != null ? ", " + BTR[x.beceri] + " doğruluğu yüzde " + x.dogruluk : ""));
     });
     (h.hataKonulari || []).forEach(function (k) {

@@ -12,7 +12,7 @@
   "use strict";
   if (global.DHKocKilavuz) return;
 
-  var SURUM = "2026-11-24.1";
+  var SURUM = "2026-11-24.2";
 
   var SINIR = {
     araTekrarBasari: 0.70,      // adım başarısı bunun altındaysa ara tekrar
@@ -50,6 +50,7 @@
     "- Öğrenci bir konuyu bildiğini söylerse kısa bir yoklama öner; geçerse o kısmı atla.",
     "",
     "## Üslup",
+    "- Öğrenciye \"sen\" diye hitap et; samimi ama saygılı ol.",
     "- Kısa konuş. Her öneriyi koç beynindeki bir rakamla gerekçelendir (\"12 kartı kaçırdık\").",
     "- Açıklamalar Türkçe, pratik İngilizce. Seviye yükseldikçe İngilizce oranını artır.",
     "- Öğrencinin koçluk tercihlerine uy (düzeltme sıkılığı, günlük süre, üslup).",
