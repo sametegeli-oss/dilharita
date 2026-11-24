@@ -96,6 +96,14 @@ bilgisayardaki Telegram'dan bağlandı. İlk sohbette Deniz uygulamanın gönder
 Not: yeni bot Telegram aramasında hemen çıkmıyor; bağlantı linki (t.me/DenizDilharita_bot?start=KOD) kullanılmalı.
 Sesli mesaj henüz yok.
 
+### Tek plan (24 Kasım, kullanıcı "1 2 3" dedi) ✅ sw v591–v593
+1. Deniz eski koçun müfredat hesabını öğrendi: "Yeni cümleler: <modül>" ve "Eksik kapat: <alt seviye modülü>" adımları.
+   Kılavuzun öncelik sırasında yeni içerik ve telafi var. Denetim: sıradaki modül varsa ve günlük 25 cümle dolmadıysa
+   planda yeni öğrenme olmalı. Gerçek veride: Advanced Conditionals P4 ve A1 Possessives P1 (34 hata).
+2. Ana sayfa Deniz'in planını gösteriyor; eski koç ikinci yapay zekâ planını yapmıyor (günde 1 çağrı az).
+3. Plan kutusu, menü özeti, tekrar/sohbet/PDF/modül bitirme Deniz planını görüyor (köprü kaydı).
+   Ölü dosyalar kaldırıldı.
+
 ## Diğer açık konular
 - Kullanıcının Excel dosyası: Oxford kelime listesi ve konu tabloları eklenebilir; kişisel cümle bankası yapıldı
   (açık depoya değil, "dosyadan içe aktar" ile cihaza ve hesaba). Telifli içerik (Headway, çeviri kılavuzu, podcast dökümleri) eklenmez.

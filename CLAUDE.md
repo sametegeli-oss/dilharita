@@ -50,7 +50,13 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
 - **Koç (Deniz merkez koç):** `dh-koc-kilavuz.js` (kılavuz + sınırlar), `dh-koc-beyin.js` (hesaplanan + notlar/tercihler/hedef,
   Firestore `users/{uid}/koc/beyin`, `koc/hesap`, `koc_haftalik`), `dh-koc-deniz.js` (günlük plan; model cevabı olgu denetiminden
   geçmezse sıradaki model, en son kural planı), `koc-paneli.html`, `dh-koc-modu.js` (koç modu: auth-guard her sayfaya ekler, durum `dh-koc-modu-v1`). `DHProviders.chat` `opts.prefer/only` ile modele yönlendirilir.
-- Eski plan/koç parçaları (birleştirilecek): `koc.js`, `dh-plan.js`, `dh-learning-coach.js`, `coach-bubble.js`, `daily-dashboard.js`.
+- **Tek plan (24 Kasım):** günün planı yalnız Deniz'in (`dh-koc-deniz.js`). Müfredat adımları `yeni` (sıradaki modül,
+  `DHProfile.nextModule`) ve `telafi` (`DHTelafi.bul`) koddan `a.mod` alır. Adım durumu her yerde `DHKocModu.planDurumu()`
+  (süre %80 + koç modu; aynı sayfayı paylaşan adımlar süreyi sırayla böler). Eski okuyucular için Deniz planından
+  `dh-koc-plan-<UTC gün>` köprü kaydı yazılır (`deniz:true`). Ana sayfa (`index.html` denizCiz) ve koç balonu plan kutusu
+  Deniz'i gösterir; `koc.js` artık AI çağırmaz, yalnız sayı/kart çizer. Geri dönüş: localStorage `dh-ana-plan`=`eski`.
+  `dh-plan.js` (DHPlan defteri) zararsız biçimde duruyor; Deniz modunda ölçü olarak kullanılmıyor.
+  Kaldırıldı: `daily-dashboard.js`, `dh-learning-coach.js`.
 - **Tekrar hesabı: `dh-fsrs.js` (FSRS-5) tek kaynak.** SM-2 kopyaları (assets/app.js `E()`, practice, tekrar, ogren, videopractice,
   sesli-calis, kelime-ogren, learning-error-system) `DHFSRS.notla`'yı çağırır, yoksa eski hesaba düşer. Kayıt alanları aynı
   (rep/ef/interval/due/last/lapses) + `f:{s,d}`, `alg:"fsrs5"`. Eski kart ilk FSRS notunda dönüşür; ilk aralık SM-2'nin 2 katıyla sınırlı.
@@ -80,7 +86,9 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
 - Gemini ücretsiz kotası sık doluyor (429), Cerebras ücretsiz hakkı bitti (402), NVIDIA Nemotron günlük plan için çok yavaş.
 - **Etkin süre ve iframe videolar:** dh-olay 90 sn dokunulmazsa süreyi durdurur; YouTube iframe'i `<video>` olarak görünmez.
   Çözüm: IFrame API durum mesajları + `window.dhMedyaCaliyor()` kancası (24 Kasım). Yeni oynatıcı eklersen kancayı tanımla.
+- **Taze tarayıcıda `sentence-mode` açılışı takılabiliyor** (yerel testte `indexedDB.open` 20 sn+ bekledi): müfredat hesabı
+  12 sn zaman sınırlı; modül bulunamazsa plan `yeni` adımı olmadan kurulur.
 - Android'de tarayıcı sesi perde/hız 1 değilse dil geçişlerinde 2–6 sn bekliyor; perde ve hız 1'de sabit.
 
 ## Şu anki sürümler (24 Kasım 2026)
-sw `dh-sw-v590` · cloud-sync.js v55 · ai-providers.js t40 · auth-guard.js v17 · dh-olay.js v4 · youtube-egitim.js v128 · youtube-pratik.js t37 · immersive.js t31 · dh-insights.js v4 · dh-fsrs.js v1 · learning-error-system.js v12 · assets/app.js tm3 · dh-deniz-telegram.js v2 · coach-bubble.js t42 · koc-paneli/konuskan.html: dh-koc-kilavuz v2 · dh-koc-beyin v7 · dh-koc-deniz v6 · konuskan.js v30 · dh-koc-modu v3 · goruntulu.js v88 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3
+sw `dh-sw-v593` · cloud-sync.js v55 · ai-providers.js t40 · auth-guard.js v19 · koc.js v7 · dh-olay.js v4 · youtube-egitim.js v128 · youtube-pratik.js t37 · immersive.js t31 · dh-insights.js v4 · dh-fsrs.js v1 · learning-error-system.js v12 · assets/app.js tm3 · dh-deniz-telegram.js v3 · coach-bubble.js t43 · koc-paneli/konuskan.html: dh-koc-kilavuz v3 · dh-koc-beyin v9 · dh-koc-deniz v8 · konuskan.js v31 · dh-koc-modu v5 · goruntulu.js v88 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3
