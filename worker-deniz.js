@@ -9,7 +9,7 @@
 
    Gizli değerler (Cloudflare panelinden ya da `wrangler secret put` ile; depoya YAZILMAZ):
      TELEGRAM_TOKEN   @BotFather'ın verdiği bot anahtarı
-     TG_SECRET        webhook doğrulaması için rastgele bir metin (setWebhook'ta secret_token)
+     (TG_SECRET       isteğe bağlı; yoksa webhook sırrı bot anahtarından türetilir)
      GROQ_KEY         (isteğe bağlı) Deniz'in sohbet cevapları için Groq anahtarı
    KV bağlantısı: DENIZ  (wrangler-deniz.toml'da)
 
@@ -35,6 +35,23 @@ function cors(origin) {
     "Vary": "Origin",
     "Cache-Control": "no-store"
   };
+}
+/* Webhook sırrı: TG_SECRET verilmediyse bot anahtarının SHA-256 özetinden türetilir
+   (kullanıcı yalnız bot anahtarını girer; özet anahtarı açığa çıkarmaz). */
+async function webhookSirri(env) {
+  if (env.TG_SECRET) return env.TG_SECRET;
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("dh-deniz-tg:" + env.TELEGRAM_TOKEN));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("").slice(0, 48);
+}
+/* Telegram'a webhook adresini bildirir; yalnız bu Worker'ın kendi /tg adresine kurar (başkası çağırsa da zararsız). */
+async function webhookKur(env, origin) {
+  const sir = await webhookSirri(env);
+  const r = await tg(env, "setWebhook", { url: origin + "/tg", secret_token: sir, allowed_updates: ["message", "edited_message"], drop_pending_updates: false });
+  await tg(env, "setMyCommands", { commands: [
+    { command: "plan", description: "Bugünkü plan" }, { command: "durum", description: "Bugün ne yaptım" },
+    { command: "saat", description: "Hatırlatma saati (ör. /saat 21)" }, { command: "sessiz", description: "Hatırlatmayı aç/kapat" } ] });
+  if (r && r.ok) await env.DENIZ.put("ayar:webhook", origin);
+  return r;
 }
 function json(data, status, origin) {
   return new Response(JSON.stringify(data), { status: status || 200, headers: { ...cors(origin), "Content-Type": "application/json; charset=utf-8" } });
@@ -163,7 +180,10 @@ async function uygulama(request, env, yol, origin) {
   if (yol === "/baglan") {
     const kod = String(g.kod || "");
     if (!/^[A-Za-z0-9]{6,12}$/.test(kod)) return json({ hata: "kod" }, 400, origin);
+    if (!env.TELEGRAM_TOKEN) return json({ hata: "bot_anahtari_yok" }, 200, origin);
     await env.DENIZ.put("bekle:" + kod, anahtar, { expirationTtl: 3600 });
+    const self = new URL(request.url).origin;
+    if ((await env.DENIZ.get("ayar:webhook")) !== self) await webhookKur(env, self);
     const ben = await tg(env, "getMe", {});
     return json({ ok: true, bot: ben && ben.result && ben.result.username }, 200, origin);
   }
@@ -228,18 +248,15 @@ export default {
     const origin = request.headers.get("Origin") || "";
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
     const url = new URL(request.url);
-    if (url.pathname === "/saglik") return json({ ok: true, hizmet: "dilharita-deniz", tg: !!env.TELEGRAM_TOKEN, groq: !!env.GROQ_KEY, kv: !!env.DENIZ }, 200, origin);
-    /* Kurulumda bir kez açılır: Telegram'a webhook adresini bildirir (sır doğrulamalı). */
+    if (url.pathname === "/saglik") return json({ ok: true, hizmet: "dilharita-deniz", tg: !!env.TELEGRAM_TOKEN, groq: !!env.GROQ_KEY, kv: !!env.DENIZ, webhook: env.DENIZ ? !!(await env.DENIZ.get("ayar:webhook")) : false }, 200, origin);
+    /* Telegram'a webhook adresini bildirir (ilk bağlanmada kendiliğinden de çalışır). */
     if (url.pathname === "/kur") {
-      if (!env.TG_SECRET || url.searchParams.get("sir") !== env.TG_SECRET) return new Response("yetkisiz", { status: 401 });
-      const r = await tg(env, "setWebhook", { url: url.origin + "/tg", secret_token: env.TG_SECRET, allowed_updates: ["message", "edited_message"], drop_pending_updates: true });
-      await tg(env, "setMyCommands", { commands: [
-        { command: "plan", description: "Bugünkü plan" }, { command: "durum", description: "Bugün ne yaptım" },
-        { command: "saat", description: "Hatırlatma saati (ör. /saat 21)" }, { command: "sessiz", description: "Hatırlatmayı aç/kapat" } ] });
+      if (!env.TELEGRAM_TOKEN) return new Response("Önce TELEGRAM_TOKEN gizli değerini gir.", { status: 500, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+      const r = await webhookKur(env, url.origin);
       return new Response(r && r.ok ? "Tamam: Telegram bu sunucuya bağlandı. Bu sayfayı kapatabilirsin." : "Olmadı: " + JSON.stringify(r), { headers: { "Content-Type": "text/plain; charset=utf-8" } });
     }
     if (url.pathname === "/tg" && request.method === "POST") {
-      if (!env.TG_SECRET || request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== env.TG_SECRET) return new Response("yetkisiz", { status: 401 });
+      if (!env.TELEGRAM_TOKEN || request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== await webhookSirri(env)) return new Response("yetkisiz", { status: 401 });
       let u = null; try { u = await request.json(); } catch (e) {}
       try { await telegramGuncelleme(env, u); } catch (e) {}
       return new Response("ok");

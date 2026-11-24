@@ -58,6 +58,7 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
 - Ekran "bitti" sinyali: `window.dispatchEvent(new CustomEvent("dh-ekran-bitti",{detail:{bos}}))` → koç modu adımı bitirir.
 - Deniz Telegram: `worker-deniz.js` + `wrangler-deniz.toml` (Cloudflare, KV `DENIZ`, sırlar yalnız Cloudflare'de), istemci
   `dh-deniz-telegram.js` (auth-guard ekler; bağlı değilse hiçbir şey göndermez), panelde "Deniz Telegram'da". Kurulum: `DENIZ-TELEGRAM.md`.
+  Yayında: `https://dilharita-deniz.sametegeli.workers.dev` (Cloudflare hesabı sametegeli@gmail.com; panelden Edit code ile güncellenir).
 - Cümle bankam: `cumle-bankam.html` (IndexedDB `dh-cumle-bankam`; bulut `users/{uid}/cumle_bankasi/p000..` 400'lük parçalar + `meta` + `ilerleme`).
   Kişisel cümle dosyası depoya konmaz; kullanıcı "Dosyadan içe aktar" ile yükler. `ilerleme` belgesi büyürse (1 MB) parçala.
 - Kayıtlar: **`dh-olay.js` tek aktivite kaydı** (günlük özet `dh-gun-ozet-v1`, ham olay IndexedDB `dh-olay`); cevaplar
@@ -79,4 +80,4 @@ Her oturumun sonunda bu iki dosyayı güncel tut (sürüm numaraları, yapılanl
 - Android'de tarayıcı sesi perde/hız 1 değilse dil geçişlerinde 2–6 sn bekliyor; perde ve hız 1'de sabit.
 
 ## Şu anki sürümler (24 Kasım 2026)
-sw `dh-sw-v587` · cloud-sync.js v55 · ai-providers.js t40 · auth-guard.js v14 · dh-olay.js v2 · dh-fsrs.js v1 · learning-error-system.js v12 · assets/app.js tm3 · dh-deniz-telegram.js v1 · coach-bubble.js t42 · koc-paneli/konuskan.html: dh-koc-kilavuz v2 · dh-koc-beyin v7 · dh-koc-deniz v6 · konuskan.js v30 · dh-koc-modu v3 · goruntulu.js v88 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3
+sw `dh-sw-v588` · cloud-sync.js v55 · ai-providers.js t40 · auth-guard.js v15 · dh-olay.js v2 · dh-fsrs.js v1 · learning-error-system.js v12 · assets/app.js tm3 · dh-deniz-telegram.js v2 · coach-bubble.js t42 · koc-paneli/konuskan.html: dh-koc-kilavuz v2 · dh-koc-beyin v7 · dh-koc-deniz v6 · konuskan.js v30 · dh-koc-modu v3 · goruntulu.js v88 · goruntulu.css v37 · dh-canli-yuz.js v54 · dh-piper.js v6 · dh-piper-isci.js v3

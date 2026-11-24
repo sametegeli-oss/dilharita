@@ -1,37 +1,30 @@
 # Deniz Telegram'da — kurulum
 
-Deniz'in Telegram'dan yazması ("Deniz arar") ve onunla Telegram'dan yazışmak için küçük bir Cloudflare Worker gerekir.
-Hepsi ücretsiz plan içinde kalır (saatte 1 kontrol, günde birkaç mesaj).
+Sunucu kuruldu (24 Kasım): `https://dilharita-deniz.sametegeli.workers.dev`
+(Cloudflare Worker `dilharita-deniz`, KV `dilharita-deniz` → `DENIZ`, saatlik tetikleyici `0 * * * *`).
+Program bu adresi kendisi kullanır.
 
-Gizli değerler (bot anahtarı, Groq anahtarı) yalnız Cloudflare'de durur; depoya ve uygulamaya yazılmaz.
+Bot anahtarı ve Groq anahtarı yalnız Cloudflare'de durur; depoya ve uygulamaya yazılmaz.
 
-## 1. Bot oluştur (telefonda, 2 dk)
-1. Telegram'da **@BotFather**'a yaz: `/newbot`
-2. Ad: `Deniz · Dil Harita` (istediğin ad olabilir). Kullanıcı adı `_bot` ile bitmeli, ör. `DenizDilHaritaBot`.
-3. BotFather bir **anahtar** verir (`123456:ABC...`). Bunu kimseyle paylaşma; 3. adımda Cloudflare'e sen gireceksin.
+## Kullanıcının yapacağı 2 adım
+1. **Bot oluştur.**
+   - Telegram'da @BotFather'a yaz: `/newbot`.
+   - Ad olarak örneğin `Deniz · Dil Harita` ver. Kullanıcı adı `_bot` ile bitmeli.
+   - BotFather'ın verdiği anahtarı kopyala.
+2. **Anahtarları gir.**
+   - Cloudflare → Workers & Pages → `dilharita-deniz` → Settings → Variables and Secrets → **Add**.
+   - Type: **Secret**, Name: `TELEGRAM_TOKEN`, Value: bot anahtarı → **Deploy**.
+   - İsteğe bağlı, Deniz'in sohbet cevapları için: aynı yerde `GROQ_KEY` = Groq anahtarı.
 
-## 2. Worker'ı yayınla
-Bilgisayarda, depo klasöründe:
-```
-npx wrangler login
-npx wrangler kv namespace create DENIZ          # çıkan id'yi wrangler-deniz.toml'daki BURAYA_KV_KIMLIGI yerine yaz
-npx wrangler deploy -c wrangler-deniz.toml
-```
-Çıkan adres: `https://dilharita-deniz.<hesabın>.workers.dev`
+Sonra Koçluk Paneli → **Deniz Telegram'da** → **Telegram'a bağla** → Telegram'da **Başlat**.
+Webhook ilk bağlanmada kendiliğinden kurulur; sırrı bot anahtarından türetilir.
 
-## 3. Gizli değerleri gir (sen yazarsın)
-```
-npx wrangler secret put TELEGRAM_TOKEN -c wrangler-deniz.toml   # BotFather'ın anahtarı
-npx wrangler secret put TG_SECRET -c wrangler-deniz.toml        # uydurduğun uzun rastgele bir metin (harf+rakam)
-npx wrangler secret put GROQ_KEY -c wrangler-deniz.toml         # isteğe bağlı: Deniz'in sohbet cevapları için
-```
-(Cloudflare panelinden de olur: Workers → dilharita-deniz → Settings → Variables and Secrets.)
+Kontrol: `https://dilharita-deniz.sametegeli.workers.dev/saglik` → `tg:true` (ve Groq girildiyse `groq:true`).
 
-## 4. Telegram'ı sunucuya bağla
-Tarayıcıda bir kez aç: `https://dilharita-deniz.<hesabın>.workers.dev/kur?sir=<TG_SECRET>` → "Tamam" yazmalı.
-
-## 5. Programda bağlan
-Koçluk Paneli → **Deniz Telegram'da** → sunucu adresini yaz → **Telegram'a bağla** → Telegram'da **Başlat**.
+## Kod güncellemesi
+`worker-deniz.js` değişirse:
+- Ya `npx wrangler deploy -c wrangler-deniz.toml` (wrangler girişi gerekir),
+- ya da panelde Edit code → kodu yapıştır → Deploy.
 
 ## Ne olur
 - Seçtiğin saatte (varsayılan 20:00) o gün 5 dakikadan az çalıştıysan Deniz yazar; düğmeye basınca koç modu açılır.

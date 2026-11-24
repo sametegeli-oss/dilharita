@@ -7,7 +7,7 @@
 (function (global) {
   "use strict";
   var K = { anahtar: "dh-deniz-tg-anahtar", worker: "dh-deniz-worker", son: "dh-deniz-tg-son", ayar: "dh-deniz-tg-ayar-v1", gecmis: "dh-deniz-tg-gecmis-v1", bagli: "dh-deniz-tg-bagli" };
-  var VARSAYILAN_WORKER = "";   /* kurulumdan sonra buraya Worker adresi yazılır (ör. https://dilharita-deniz.xxx.workers.dev) */
+  var VARSAYILAN_WORKER = "https://dilharita-deniz.sametegeli.workers.dev";   /* Cloudflare Worker (24 Kasım kuruldu) */
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
   function js(k, d) { try { var v = JSON.parse(ls(k) || "null"); return v == null ? d : v; } catch (e) { return d; } }
   function gunAnahtari(d) { d = d || new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
@@ -96,6 +96,7 @@
   async function baglantiLinki() {
     var a = await anahtar(true), kod = rastgele(8, "ABCDEFGHJKLMNPQRSTUVWXYZ23456789");
     var r = await istek("/baglan", { anahtar: a, kod: kod });
+    if (r && r.hata === "bot_anahtari_yok") throw new Error("Deniz'in sunucusuna Telegram bot anahtarı henüz girilmedi (Cloudflare → dilharita-deniz → Ayarlar → TELEGRAM_TOKEN)");
     if (!r || !r.ok || !r.bot) throw new Error("Bot bulunamadı");
     return { url: "https://t.me/" + r.bot + "?start=" + kod, bot: r.bot, kod: kod };
   }

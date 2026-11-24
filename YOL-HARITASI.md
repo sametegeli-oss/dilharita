@@ -87,8 +87,10 @@ Telegram Bot API ücretsiz. Sunucu: projedeki Cloudflare Worker. Kullanıcı @Bo
 Deniz kendisi yazabilir, sesli mesaj alıp verebilir; konuşmalar koç özetine ve Sohbetlerim'e işlenir.
 Önce programın kendi bildirimleriyle "Deniz arar", sonra Telegram.
 **Durum (24 Kasım, sw v586):** kod hazır ve yerelde test edildi (worker-deniz.js, dh-deniz-telegram.js, panel bölümü, DENIZ-TELEGRAM.md).
-"Deniz arar" Telegram üzerinden yapıldı: FCM/servis hesabı gerekmez. Bekleyen: kullanıcının @BotFather anahtarı ve Cloudflare'de
-Worker yayını (hesap işlemi; kullanıcı onayı gerekir). Sesli mesaj henüz yok.
+"Deniz arar" Telegram üzerinden yapıldı: FCM/servis hesabı gerekmez. Worker yayında (24 Kasım, kullanıcı "ne gerekiyorsa yap" dedi):
+`https://dilharita-deniz.sametegeli.workers.dev`, KV `dilharita-deniz` (id 8ecd7440…), saatlik tetikleyici.
+Bekleyen: kullanıcı @BotFather'dan bot oluşturup `TELEGRAM_TOKEN` (ve isteğe bağlı `GROQ_KEY`) sırrını Cloudflare'e girecek.
+Sesli mesaj henüz yok.
 
 ## Diğer açık konular
 - Kullanıcının Excel dosyası: Oxford kelime listesi ve konu tabloları eklenebilir; kişisel cümle bankası yapıldı

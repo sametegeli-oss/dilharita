@@ -9,4 +9,4 @@ crons = ["0 * * * *"]   # her saat başı: "Deniz arar" kontrolü
 
 [[kv_namespaces]]
 binding = "DENIZ"
-id = "BURAYA_KV_KIMLIGI"   # npx wrangler kv namespace create DENIZ → çıkan id
+id = "8ecd7440f70d4f498380081f56829733"   # KV "dilharita-deniz" (24 Kasım, panelden oluşturuldu)
