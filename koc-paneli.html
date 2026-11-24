@@ -195,7 +195,10 @@ a{color:var(--dh-marka-metin)}
     var sv=h.profil.seviye||"–"; $("seviye").textContent=sv;
     $("seviyeNot").innerHTML=h.sure.seri?("Seri: "+h.sure.seri+" gün"):"Bugün seriyi başlat";
     var ner="";
-    if(SEV.indexOf(sv)>=0){ var ks=h.kelimeSeviye[sv]; ner+=cubukSatir(sv+" kelimeleri", ks.bilinen+" / "+ks.toplam+" · %"+ks.yuzde, ks.yuzde); }
+    /* Bilinen kelime, beş seviyenin hepsinde (yalnız kendi seviyen değil: "C1 0/1276" yanıltıcıydı) */
+    ner+='<div class="kucuk">Öğrendiğin kelimeler (kelime kartlarında en az iki kez doğru) · toplam '+h.bilinenKelime+'</div>';
+    ner+='<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;text-align:center;font-size:12px">'+SEV.map(function(s){ var ks=h.kelimeSeviye[s]||{bilinen:0,toplam:0,yuzde:0};
+      return '<div><div class="cubuk" style="height:46px;display:flex;align-items:flex-end;border-radius:8px"><i style="width:100%;height:'+Math.max(2,ks.yuzde)+'%;border-radius:8px'+(s===sv?'':';opacity:.55')+'"></i></div><strong'+(s===sv?' style="color:var(--dh-marka-metin)"':'')+'>'+s+'</strong><br><span class="kucuk">'+ks.bilinen+'/'+ks.toplam+'</span></div>'; }).join("")+'</div>';
     var c=h.tekrar.cumle; ner+=cubukSatir("Öğrenilen cümle kartı", c.ogrenilen+" / "+c.kart, c.kart?Math.round(c.ogrenilen/c.kart*100):0);
     var dk=h.beceriler.filter(function(x){return x.dogruluk!=null;});
     if(dk.length){ var d=0,t=0; dk.forEach(function(x){ d+=x.dogruluk*x.cevap; t+=x.cevap; }); var ort=Math.round(d/t); ner+=cubukSatir("Doğruluk (son 7 gün)", "%"+ort, ort); }
