@@ -7,12 +7,12 @@
 <title>Koçluk Paneli · Dil Harita</title>
 <link rel="stylesheet" href="./dh-tokens.css">
 <script src="./idb-uyum.js?v=1"></script>
-<script src="./auth-guard.js?v=15"></script>
+<script src="./auth-guard.js?v=16"></script>
 <script src="./cloud-sync.js?v=55"></script>
 <script src="./ai-providers.js?v=t40"></script>
 <script src="./dh-amac.js"></script>
 <script src="./dh-insights.js"></script>
-<script src="./dh-olay.js?v=2"></script>
+<script src="./dh-olay.js?v=3"></script>
 <script src="./dh-koc-kilavuz.js?v=2"></script>
 <script src="./dh-koc-beyin.js?v=7"></script>
 <script src="./dh-koc-deniz.js?v=6"></script>
@@ -214,15 +214,23 @@ a{color:var(--dh-marka-metin)}
   function cizPlan(){
     if(!G) return;
     var bugun=(window.DHOlay?DHOlay.gunler(1)[0]:{e:{}}), e=bugun.e||{}, biten=0, html="";
+    /* Adım tamam mı: (1) o ekranda planın %80'i kadar çalışılmışsa; (2) dinleme/konuşma/okuma birkaç
+       sayfada yapılabildiği için o becerinin bugünkü toplamı; (3) koç modu o adımı bugün bitirmişse. */
+    var km=window.DHKocModu&&DHKocModu.durum(), z=new Date(), bg=z.getFullYear()+"-"+String(z.getMonth()+1).padStart(2,"0")+"-"+String(z.getDate()).padStart(2,"0");
+    var kmBiten={}; if(km&&km.gun===bg&&Array.isArray(km.plan)) (km.biten||[]).forEach(function(i){ var x=km.plan[i]; if(x&&!x.ara) kmBiten[x.ekran]=(kmBiten[x.ekran]||0)+1; });
+    function adimSn(a){ var ek=D.EKRANLAR[a.ekran]||{url:"#"}, sn=e[ek.url.split("?")[0]]||0; if(/^(dinleme|konusma|okuma)$/.test(a.ekran)&&ek.beceri) sn=Math.max(sn,(bugun.s||{})[ek.beceri]||0); return sn; }
+    function adimTamam(a){ if(kmBiten[a.ekran]>0) return true; return adimSn(a)>=a.dk*60*0.8; }
+    var kmKalan=Object.assign({},kmBiten);
     G.plan.forEach(function(a){
-      var ek=D.EKRANLAR[a.ekran]||{ad:a.ekran,url:"#"}, sayfa=ek.url.split("?")[0], sn=e[sayfa]||0, tamam=sn>=a.dk*60*0.8;
+      var ek=D.EKRANLAR[a.ekran]||{ad:a.ekran,url:"#"}, sn=adimSn(a), tamam=false;
+      if(kmKalan[a.ekran]>0){ tamam=true; kmKalan[a.ekran]--; } else tamam=sn>=a.dk*60*0.8;
       if(tamam) biten++;
-      html+='<a class="adim'+(tamam?' bitti':'')+'" href="./'+esc(ek.url)+'"><span class="d" aria-hidden="true">'+(tamam?'✓':'')+'</span><span><span class="ad">'+esc(ek.ad)+' · '+a.dk+' dk</span><span class="ne">'+esc(a.neden)+(sn&&!tamam?' · '+Math.round(sn/60)+' dk yapıldı':'')+'</span></span></a>';
+      html+='<a class="adim'+(tamam?' bitti':'')+'" href="./'+esc(ek.url)+'"><span class="d" aria-hidden="true">'+(tamam?'✓':'')+'</span><span><span class="ad">'+esc(ek.ad)+' · '+a.dk+' dk</span><span class="ne">'+esc(a.neden)+(sn&&!tamam?' · '+Math.floor(sn/60)+' dk yapıldı, '+Math.ceil(a.dk*0.8)+' dk yeterli':'')+'</span></span></a>';
     });
     $("plan").innerHTML=html;
     $("planCubuk").style.width=(G.plan.length?Math.round(biten/G.plan.length*100):0)+"%";
     $("planNot").textContent=biten+" / "+G.plan.length+" adım tamam · süre, o ekranda gerçekten çalıştığın dakikalardan ölçülür";
-    var ilk=G.plan.filter(function(a){ var ek=D.EKRANLAR[a.ekran]; return ek && !(e[ek.url.split("?")[0]]>=a.dk*60*0.8); })[0];
+    var ilk=G.plan.filter(function(a){ var ek=D.EKRANLAR[a.ekran]; return ek && !adimTamam(a); })[0];
     if(ilk){ var ek=D.EKRANLAR[ilk.ekran]; $("simdi").hidden=false; $("simdi").href="./"+ek.url; $("simdiAd").textContent="Şimdi: "+ek.ad+" · "+ilk.dk+" dk"; } else { $("simdi").hidden=false; $("simdi").href="./konuskan.html"; $("simdiAd").textContent="Bugünün planı tamam! İstersen Deniz'le sohbet et"; }
   }
 

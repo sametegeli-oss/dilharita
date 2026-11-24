@@ -159,8 +159,28 @@
   ["pointerdown", "keydown", "touchstart", "wheel", "scroll"].forEach(function (ev) {
     try { global.addEventListener(ev, function () { sonEtkinlik = Date.now(); }, { passive: true, capture: true }); } catch (e) {}
   });
+  /* YouTube oynatıcısı iframe içinde: <video> görünmez. IFrame API'nin üst pencereye
+     gönderdiği durum mesajlarından "oynuyor mu" bilgisi alınır (24 Kasım: video izlerken
+     ekrana dokunulmayınca süre 90 sn sonra sayılmıyordu). */
+  var ytDurum = -1, ytSon = 0;
+  try {
+    global.addEventListener("message", function (ev) {
+      try {
+        if (!/^youtube(-nocookie)?\.com$/.test(String(ev.origin || "").replace(/^https?:\/\/(www\.)?/, ""))) return;
+        var d = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
+        if (!d || !d.event) return;
+        if (d.event === "onStateChange" && typeof d.info === "number") { ytDurum = d.info; ytSon = Date.now(); }
+        else if (d.event === "infoDelivery" && d.info) {
+          if (typeof d.info.playerState === "number") ytDurum = d.info.playerState;
+          if (d.info.currentTime != null || d.info.playerState != null) ytSon = Date.now();
+        }
+      } catch (e) {}
+    });
+  } catch (e) {}
   function medyaCaliyor() {
     try {
+      if (typeof global.dhMedyaCaliyor === "function" && global.dhMedyaCaliyor()) return true;
+      if (ytDurum === 1 && Date.now() - ytSon < 60000) return true;   /* 1 = PLAYING */
       if (global.speechSynthesis && speechSynthesis.speaking) return true;
       var m = document.querySelectorAll("audio,video");
       for (var i = 0; i < m.length; i++) if (!m[i].paused && !m[i].ended && m[i].readyState > 2) return true;

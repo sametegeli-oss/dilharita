@@ -13,7 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v588";  /* 📨 Deniz Telegram sunucusu kuruldu (dilharita-deniz.sametegeli.workers.dev) */
+var SW_VERSION = "dh-sw-v589";  /* 🎬 Video izlerken süre sayılır (YouTube iframe); panel koç modunun bitirdiği adımı tamam sayar */
+/* onceki v588: 📨 Deniz Telegram sunucusu kuruldu */
 /* onceki v587: ☁ Senkron: video kayıtları yalnız değişince yazılır */
 /* onceki v586: 📨 Deniz Telegram */
 /* onceki v585: 🔀 Karışık tekrar + ekranların "bitti" sinyali */
