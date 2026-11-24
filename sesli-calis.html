@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
+<script src="./dh-fsrs.js?v=1"></script>
 <script src="./idb-uyum.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
 <meta charset="utf-8">
 <script src="./dh-ses.js?v=3"></script>
@@ -298,6 +299,7 @@
   /* tekrar.html srsStep + qualityOf ile aynı */
   function kalite(sc){ if (sc>=90) return 5; if (sc>=70) return 4; return 3; }
   function srsAdim(n, zor, q){
+    if (window.DHFSRS) return window.DHFSRS.notla(n, zor?1:(typeof q!=="number"||q>=4?3:2));
     n = n && typeof n === "object" ? n : {rep:0,ef:2.5,interval:0,due:0,last:0};
     var r = Date.now();
     if (zor){ n.rep=0; n.interval=0; n.ef=Math.max(1.3,(n.ef||2.5)-0.2); n.lapses=(n.lapses||0)+1; }

@@ -375,7 +375,7 @@ window.DilAvatar = {
 };
 })();
 </script>
-<script src="./learning-error-system.js?v=11"></script>
+<script src="./dh-fsrs.js?v=1"></script><script src="./learning-error-system.js?v=12"></script>
 <script src="./sentences-loader.js?v=1"></script>
 <script src="./speech-fallback.js?v=1"></script>
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
@@ -405,7 +405,7 @@ async function srsGet(id){const raw=await kvGet(SRS_PREFIX+id);try{return raw?JS
 async function srsSet(id,val){await kvSet(SRS_PREFIX+id,JSON.stringify(val))}
 async function srsAll(){const out={};try{const db=await openDB();return await new Promise((res,rej)=>{const rq=db.transaction(STORE,"readonly").objectStore(STORE).openCursor();rq.onsuccess=()=>{const c=rq.result;if(c){if(typeof c.key==="string"&&c.key.startsWith(SRS_PREFIX)){try{out[c.key.slice(SRS_PREFIX.length)]=typeof c.value==="string"?JSON.parse(c.value):c.value}catch{}}c.continue()}else res(out)};rq.onerror=()=>rej(rq.error)})}catch{return out}}
 function srsDefault(){return{rep:0,ef:2.5,interval:0,due:0,last:0}}
-function srsGrade(prev,grade){const n=Object.assign(srsDefault(),prev||{});const r=Date.now();if(grade==="hard"){n.rep=0;n.interval=0;n.ef=Math.max(1.3,n.ef-.2)}else{const q=grade==="easy"?5:4;n.ef=Math.max(1.3,n.ef+(0.1-(5-q)*(0.08+(5-q)*0.02)));n.rep++;if(n.rep===1)n.interval=grade==="easy"?3:1;else if(n.rep===2)n.interval=grade==="easy"?7:4;else n.interval=Math.round(n.interval*n.ef*(grade==="easy"?1.3:1))}n.last=r;n.due=r+n.interval*DAY;return n}
+function srsGrade(prev,grade){if(window.DHFSRS)return window.DHFSRS.notla(prev,grade);const n=Object.assign(srsDefault(),prev||{});const r=Date.now();if(grade==="hard"){n.rep=0;n.interval=0;n.ef=Math.max(1.3,n.ef-.2)}else{const q=grade==="easy"?5:4;n.ef=Math.max(1.3,n.ef+(0.1-(5-q)*(0.08+(5-q)*0.02)));n.rep++;if(n.rep===1)n.interval=grade==="easy"?3:1;else if(n.rep===2)n.interval=grade==="easy"?7:4;else n.interval=Math.round(n.interval*n.ef*(grade==="easy"?1.3:1))}n.last=r;n.due=r+n.interval*DAY;return n}
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function cleanText(t){return String(t||"").replace(/\s+/g," ").trim()}
 

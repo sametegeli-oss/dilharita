@@ -428,6 +428,7 @@ function srsDefault(){ return { rep:0, interval:0, ef:2.5, last:0, due:0 }; }
 // Bu fonksiyon practice.html/tekrar.html'deki SM-2 zamanlamasının BİREBİR aynısı —
 // tüm site genelinde tutarlı bir aralıklı tekrar (SRS) ritmi sağlamak için.
 function srsGrade(prev, grade){
+  if (typeof window !== "undefined" && window.DHFSRS) return window.DHFSRS.notla(prev, grade);
   const n = Object.assign(srsDefault(), prev||{});
   const now = Date.now();
   if (grade === "hard"){
@@ -455,7 +456,9 @@ async function markReviewed(id, opts){
   const grade = opts.grade || "easy";
   const boostScore = grade === "hard" ? null : Number(opts.score != null ? opts.score : 90);
   function applyPatch(rec){
-    rec.srs = srsGrade(rec.srs, grade);
+    /* Hata defterindeki "Bildim" varsayılan olarak easy gelir; FSRS'te Kolay çok uzun
+       aralık verir (4→37→358 gün). Düzeltilmiş hata için "İyi" sayılır. */
+    rec.srs = srsGrade(rec.srs, grade === "easy" && !opts.gercekKolay ? "good" : grade);
     if (boostScore != null) rec.score = Math.max(Number(rec.score||0), boostScore);
     rec.grade = grade;
     rec.reviewPriority = priority(rec);

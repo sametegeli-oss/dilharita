@@ -13,7 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v583";  /* 📒 Cümle bankam: kişisel cümleleri içe aktar, ara, tekrar et */
+var SW_VERSION = "dh-sw-v584";  /* 🧠 FSRS: tek tekrar hesabı (dh-fsrs.js), eski kartlar tembel geçiş */
+/* onceki v583: 📒 Cümle bankam */
 /* onceki v582: 🧑‍🏫 Öğretmenine götür: aylık özet (yazdırılabilir) */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */
 /* onceki v438: 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
@@ -71,6 +72,7 @@ var SHELL = [
   "./dh-koc-modu.js",
   "./study-tracker.js",
   "./learning-error-system.js",
+  "./dh-fsrs.js",
   "./ux-boost.js",
   "./sentences-loader.js",
   "./profile.js",
