@@ -15,7 +15,7 @@
 <script src="./dh-olay.js?v=1"></script>
 <script src="./dh-koc-kilavuz.js?v=1"></script>
 <script src="./dh-koc-beyin.js?v=1"></script>
-<script src="./dh-koc-deniz.js?v=2"></script>
+<script src="./dh-koc-deniz.js?v=3"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:var(--dh-bg);color:var(--dh-text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -267,11 +267,12 @@ a{color:var(--dh-marka-metin)}
   $("dinle").addEventListener("click",function(){
     try{ var u=new SpeechSynthesisUtterance($("ozet").textContent); u.lang="tr-TR"; u.rate=1; u.pitch=1; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
   });
-  $("yenile").addEventListener("click",function(){ $("ozet").textContent="Planı yeniden hazırlıyorum…"; D.gunluk(true).then(function(g){ G=g; cizDeniz(); }); });
+  $("yenile").addEventListener("click",function(){ $("ozet").textContent="Planı yeniden hazırlıyorum…"; D.gunluk(true, araGoster).then(function(g){ G=g; cizDeniz(); }); });
 
   B.hesapla(true).then(function(h){ H=h; cizHesap(); });
   cizNotlar(); mdYenile();
-  D.gunluk(false).then(function(g){ G=g; cizDeniz(); }).catch(function(){ $("ozet").textContent="Plan hazırlanamadı."; });
+  function araGoster(g){ G=g; cizDeniz(); $("dzKaynak").textContent="Deniz planı gözden geçiriyor…"; }
+  D.gunluk(false, araGoster).then(function(g){ G=g; cizDeniz(); }).catch(function(){ $("ozet").textContent="Plan hazırlanamadı."; });
   B.yukle().then(function(){ cizNotlar(); });
   document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible"&&G) cizPlan(); });
 })();

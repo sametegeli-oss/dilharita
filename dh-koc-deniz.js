@@ -10,7 +10,7 @@
      - rakam doğru yerde mi: sayının çevresindeki kelimeler o sayıyı içeren olgu satırıyla eşleşiyor mu.
    Denetimden geçmeyen cevap reddedilir, sıradaki model denenir; hiçbiri olmazsa
    KURAL PLANI (kuralPlani) kullanılır — koç hiçbir zaman durmaz.
-   Model sırası: Gemini → Groq → Cerebras → NVIDIA (küçük modeller koç kararına girmez).
+   Model sırası: Groq → Gemini → Cerebras → NVIDIA (küçük modeller koç kararına girmez).
 
    API (window.DHKocDeniz)
      await gunluk(zorla?)   {ozet, plan, kaynak:"model:<ad>"|"kural", t}  (gün içinde önbellek)
@@ -30,7 +30,8 @@
     okuma:   { ad: "Okuma",               url: "library.html",         beceri: "okuma" },
     hata:    { ad: "Hata defteri",        url: "hata-defteri.html",    beceri: "yazma" }
   };
-  var SIRA = ["gemini", "groq", "cerebras", "nvidia"];
+  /* Groq önce: ~1 sn ve testte denetimi geçen cevaplar; Gemini kotası sık doluyor (24 Kasım ölçümü). */
+  var SIRA = ["groq", "gemini", "cerebras", "nvidia"];
   /* Modeller ekran yerine beceri adı yazabiliyor (testte Groq: "dilbilgisi", "yazma"); eş anlamlılar ekrana çevrilir. */
   var ES = { dilbilgisi: "ders", gramer: "ders", yazma: "tekrar", cumle: "tekrar", "cümle": "tekrar", "konuşma": "konusma", sohbet: "konusma",
              video: "dinleme", "hata defteri": "hata", hatalar: "hata", kelimeler: "kelime", kitap: "okuma" };
@@ -122,7 +123,7 @@
       /* plan süreleri de geçerli olgudur */
       var ek = (c.plan || []).map(function (a) { return a && EKRANLAR[a.ekran] ? EKRANLAR[a.ekran].ad + " " + a.ekran + " " + (BTR[EKRANLAR[a.ekran].beceri] || "") + " planı: " + a.dk + " dakika" : ""; });
       ek.push("bugünkü planımız toplam çalışma süresi: " + toplam + " dakika");
-      ek.push("günlük süre tercihi planımız: " + ((tercih && tercih.gunlukDakika) || 30) + " dakika");
+      ek.push("günlük süre tercihi hedef toplam planımız bugün: " + ((tercih && tercih.gunlukDakika) || 30) + " dakika");
       var yanlis = eslesmeyen(c.ozet, olguListesi.concat(ek));
       (c.plan || []).forEach(function (a) { if (a) yanlis = yanlis.concat(eslesmeyen(a.neden, olguListesi.concat(ek))); });
       if (yanlis.length) hatalar.push("rakam yanlış yerde kullanılmış: " + yanlis.slice(0, 4).join(", "));
@@ -179,10 +180,12 @@
     catch (e) { return { saglayici: saglayici, hata: (e && (e.code || e.message)) || String(e) }; }
   }
 
-  async function gunluk(zorla) {
+  /* onAra(kuralSonucu): model denenirken ekranda hemen gösterilecek kural planı */
+  async function gunluk(zorla, onAra) {
     var K = "dh-koc-gun-" + gunAnahtari(), eski = js(K, null);
     if (eski && !zorla) return eski;
     var B = global.DHKocBeyin, h = await B.hesapla(true), t = B.tercihler(), mdMetin = await B.md(), sonuc = null, denemeler = [];
+    if (typeof onAra === "function") { try { var ka = kuralPlani(h, t); onAra({ ozet: ka.ozet, plan: ka.plan, kaynak: "kural", ara: true, t: Date.now() }); } catch (e) {} }
     var ol = olgular(h, t);
     var P = global.DHProviders, var0 = P && P.realHasAnyKey ? P.realHasAnyKey() : !!P;
     /* Kotası dolan ya da cevap vermeyen model 6 saat atlanır (her açılışta bekletmesin). */
