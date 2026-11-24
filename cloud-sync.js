@@ -1794,12 +1794,12 @@
       kaydet: function(id,data){ if(!(ready&&user&&fb&&fb.saveKoleksiyon)) return Promise.resolve(false); return fb.saveKoleksiyon(user.uid,"konuskan_notlar",id,data).then(function(){return true;}); },
       sil: function(id){ if(!(ready&&user&&fb&&fb.deleteKoleksiyon)) return Promise.resolve(false); return fb.deleteKoleksiyon(user.uid,"konuskan_notlar",id).then(function(){return true;}); }
     },
-    /* Koç beyni belgeleri. Yalnız bu iki koleksiyon (yanlışlıkla başka yere yazılmasın). */
+    /* Koç beyni ve cümle bankası belgeleri. Yalnız bu koleksiyonlar (yanlışlıkla başka yere yazılmasın). */
     koc: {
       hazir: function(){ return !!(ready&&user&&fb&&fb.saveBelge); },
       uid: function(){ return user?user.uid:null; },
-      oku: function(ad,id){ if(!(ready&&user&&fb&&fb.loadBelge)||["koc","koc_haftalik"].indexOf(ad)<0) return Promise.resolve(undefined); return fb.loadBelge(user.uid,ad,id); },
-      yaz: function(ad,id,data,merge){ if(!(ready&&user&&fb&&fb.saveBelge)||["koc","koc_haftalik"].indexOf(ad)<0) return Promise.resolve(false); return fb.saveBelge(user.uid,ad,id,data,merge).then(function(){return true;}); }
+      oku: function(ad,id){ if(!(ready&&user&&fb&&fb.loadBelge)||["koc","koc_haftalik","cumle_bankasi"].indexOf(ad)<0) return Promise.resolve(undefined); return fb.loadBelge(user.uid,ad,id); },
+      yaz: function(ad,id,data,merge){ if(!(ready&&user&&fb&&fb.saveBelge)||["koc","koc_haftalik","cumle_bankasi"].indexOf(ad)<0) return Promise.resolve(false); return fb.saveBelge(user.uid,ad,id,data,merge).then(function(){return true;}); }
     },
     snapList: snapList, restoreSnap: restoreSnap,
     /* Yedekleme ekranı kendi kopya listesini tutmasın diye TEK KAYNAK burada.

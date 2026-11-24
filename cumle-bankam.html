@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0C1013">
+<title>Cümle bankam · Dil Harita</title>
+<link rel="stylesheet" href="./dh-tokens.css">
+<script src="./idb-uyum.js?v=1"></script>
+<script src="./auth-guard.js?v=12"></script>
+<script src="./cloud-sync.js?v=54"></script>
+<style>
+/* CÜMLE BANKAM (koç planı 8. aşama): kullanıcının kendi İngilizce–Türkçe cümleleri.
+   Cümleler herkese açık depoya GİRMEZ: dosyadan içe aktarılır, IndexedDB'de (bu cihaz) ve
+   Firestore users/{uid}/cumle_bankasi altında (yalnız kullanıcı) tutulur. */
+*{box-sizing:border-box}
+body{margin:0;background:var(--dh-bg);color:var(--dh-text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.kap{max-width:560px;margin:0 auto;padding:16px 14px 48px;display:flex;flex-direction:column;gap:14px}
+.ust{display:flex;align-items:center;gap:12px}
+.geri{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;background:var(--dh-yuzey);border:1px solid var(--dh-cizgi);color:var(--dh-text);text-decoration:none;font-size:20px;font-weight:800}
+h1{margin:0;font-size:22px}
+.k{background:var(--dh-yuzey);border:1px solid var(--dh-cizgi);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.k h2{margin:0;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--dh-text-2)}
+.sayilar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center}
+.sayilar b{display:block;font-size:22px}
+.sayilar span{font-size:13px;color:var(--dh-text-2)}
+.btn{min-height:48px;border-radius:12px;border:1px solid var(--dh-cizgi-kuvvet);background:transparent;color:var(--dh-text);font:600 15px system-ui;padding:8px 14px;cursor:pointer}
+.btn.ana{background:var(--dh-marka);border-color:var(--dh-marka);color:#fff}
+.btn:disabled{opacity:.5}
+input,textarea{font:inherit;color:var(--dh-text);background:var(--dh-yuzey-2);border:1px solid var(--dh-cizgi-kuvvet);border-radius:10px;padding:10px 12px;min-height:48px;width:100%}
+.kucuk{font-size:13px;color:var(--dh-text-2)}
+.tr{font-size:20px;font-weight:600}
+.sonuc{border-radius:12px;padding:12px}
+.sonuc.ok{background:var(--dh-ok-zemin)}
+.sonuc.no{background:var(--dh-err-zemin)}
+.liste div{padding:8px 0;border-top:1px solid var(--dh-cizgi);font-size:15px}
+.liste div:first-child{border-top:0}
+.liste small{display:block;color:var(--dh-text-2)}
+.cubuk{height:6px;border-radius:99px;background:var(--dh-yuzey-2)}
+.cubuk i{display:block;height:100%;border-radius:99px;background:var(--dh-marka)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main class="kap">
+  <div class="ust"><a class="geri" href="./koc-paneli.html" aria-label="Koçluk Paneli'ne dön">←</a><h1>Cümle bankam</h1></div>
+
+  <section class="k" aria-labelledby="h-d">
+    <h2 id="h-d">Durum</h2>
+    <div class="sayilar"><div><b id="nToplam">0</b><span>cümle</span></div><div><b id="nOgrenilen">0</b><span>öğrenilen</span></div><div><b id="nBekleyen">0</b><span>tekrar zamanı</span></div></div>
+    <button class="btn ana" id="basla" type="button" disabled>10 cümlelik tur başlat</button>
+    <span class="kucuk" id="bulutDurum"></span>
+  </section>
+
+  <section class="k" id="tur" hidden aria-live="polite">
+    <div class="cubuk" aria-hidden="true"><i id="turCubuk" style="width:0"></i></div>
+    <span class="kucuk" id="turSira"></span>
+    <div class="tr" id="soru"></div>
+    <form id="cevapForm" style="display:flex;flex-direction:column;gap:10px">
+      <input id="cevap" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="İngilizcesini yaz" aria-label="İngilizce cevabın">
+      <div style="display:flex;gap:8px"><button class="btn" type="button" id="bilmiyorum">Bilmiyorum</button><button class="btn ana" type="submit" style="flex:1">Kontrol et</button></div>
+    </form>
+    <div id="sonuc" class="sonuc" hidden></div>
+    <div style="display:flex;gap:8px" id="sonrakiKut" hidden><button class="btn" type="button" id="dinle">Dinle</button><button class="btn ana" type="button" id="sonraki" style="flex:1">Sonraki</button></div>
+  </section>
+
+  <section class="k" aria-labelledby="h-a">
+    <h2 id="h-a">Ara</h2>
+    <input id="ara" placeholder="İngilizce ya da Türkçe ara" aria-label="Cümle ara">
+    <div class="liste" id="sonuclar"></div>
+  </section>
+
+  <section class="k" aria-labelledby="h-i">
+    <h2 id="h-i">İçe aktar</h2>
+    <span class="kucuk">JSON ([{"en":"…","tr":"…"}]) ya da CSV/TSV dosyası (ilk iki sütun: İngilizce, Türkçe; sıra fark etmez). Aynı cümle iki kez eklenmez. Cümleler yalnız bu cihazda ve senin hesabında tutulur.</span>
+    <input type="file" id="dosya" accept=".json,.csv,.tsv,.txt,application/json,text/csv,text/plain" aria-label="Cümle dosyası seç">
+    <span class="kucuk" id="iceDurum"></span>
+  </section>
+</main>
+<script>
+(function(){
+  "use strict";
+  var $=function(id){return document.getElementById(id);};
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  var DAY=864e5, PARCA=400, TR=/[çğıöşüÇĞİÖŞÜ]/;
+  var C=[], SRS={};   /* C: [{id,en,tr}], SRS: {id:[rep,due,lapses,last]} */
+
+  /* ---------- depo (IndexedDB) ---------- */
+  var dbS=null;
+  function db(){ if(dbS) return dbS; dbS=new Promise(function(res,rej){ var r=indexedDB.open("dh-cumle-bankam",1); r.onupgradeneeded=function(){ var d=r.result; d.createObjectStore("kv"); }; r.onsuccess=function(){res(r.result);}; r.onerror=function(){rej(r.error);}; }); return dbS; }
+  function al(k){ return db().then(function(d){ return new Promise(function(res){ var q=d.transaction("kv").objectStore("kv").get(k); q.onsuccess=function(){res(q.result);}; q.onerror=function(){res(null);}; }); }); }
+  function koy(k,v){ return db().then(function(d){ return new Promise(function(res){ var tx=d.transaction("kv","readwrite"); tx.objectStore("kv").put(v,k); tx.oncomplete=function(){res(true);}; tx.onerror=function(){res(false);}; }); }); }
+
+  function kimlik(en){ var s=String(en).toLowerCase().replace(/[^a-z0-9' ]/g,"").replace(/\s+/g," ").trim(), h=5381; for(var i=0;i<s.length;i++) h=((h*33)^s.charCodeAt(i))>>>0; return "c"+h.toString(36)+s.length.toString(36); }
+  function norm(s){ return String(s||"").toLowerCase().replace(/[’‘`]/g,"'").replace(/[^a-z0-9' ]/g," ").replace(/\s+/g," ").trim(); }
+  function benzerlik(a,b){ a=norm(a); b=norm(b); if(a===b) return 1; var m=a.length,n=b.length; if(!m||!n) return 0; var p=[],c; for(var j=0;j<=n;j++) p[j]=j; for(var i=1;i<=m;i++){ c=[i]; for(var k=1;k<=n;k++) c[k]=Math.min(p[k]+1,c[k-1]+1,p[k-1]+(a[i-1]===b[k-1]?0:1)); p=c; } return 1-p[n]/Math.max(m,n); }
+
+  /* ---------- bulut: parçalar + ilerleme ---------- */
+  function bulut(){ var c=window.DHCloudSync; return c&&c.koc&&c.koc.hazir()?c.koc:null; }
+  async function bulutaYaz(){
+    var b=bulut(); if(!b) return false;
+    $("bulutDurum").textContent="Hesabına yükleniyor…";
+    var n=Math.ceil(C.length/PARCA);
+    for(var i=0;i<n;i++) await b.yaz("cumle_bankasi","p"+String(i).padStart(3,"0"),{c:C.slice(i*PARCA,(i+1)*PARCA).map(function(x){return [x.en,x.tr];}),t:Date.now()},false);
+    await b.yaz("cumle_bankasi","meta",{parca:n,adet:C.length,t:Date.now()},false);
+    $("bulutDurum").textContent="Hesabında saklanıyor ("+C.length+" cümle). Diğer cihazlarında da açılır.";
+    return true;
+  }
+  async function buluttanAl(){
+    var b=bulut(); if(!b) return false;
+    var meta=await b.oku("cumle_bankasi","meta"); if(!meta||!meta.parca) return false;
+    $("bulutDurum").textContent="Hesabından indiriliyor…";
+    var yeni=[];
+    for(var i=0;i<meta.parca;i++){ var p=await b.oku("cumle_bankasi","p"+String(i).padStart(3,"0")); (p&&p.c||[]).forEach(function(x){ yeni.push({id:kimlik(x[0]),en:x[0],tr:x[1]}); }); }
+    if(!yeni.length) return false;
+    C=yeni; await koy("cumleler",C); $("bulutDurum").textContent="Hesabından indirildi ("+C.length+" cümle).";
+    return true;
+  }
+  var srsZaman=null;
+  function srsBulutaSonra(){ clearTimeout(srsZaman); srsZaman=setTimeout(async function(){ var b=bulut(); if(!b) return; try{ var uzak=(await b.oku("cumle_bankasi","ilerleme"))||{}; var m=birlestir(uzak.s||{},SRS); SRS=m; await koy("srs",SRS); await b.yaz("cumle_bankasi","ilerleme",{s:SRS,t:Date.now()},false); }catch(e){} }, 1500); }
+  function birlestir(a,b){ var o={},k; for(k in a) o[k]=a[k]; for(k in b){ if(!o[k]||(+b[k][3]||0)>(+o[k][3]||0)) o[k]=b[k]; } return o; }
+
+  /* ---------- durum ---------- */
+  function say(){
+    var simdi=Date.now(), og=0, bek=0;
+    for(var id in SRS){ var r=SRS[id]; if(r[0]>=2) og++; if(r[1]&&r[1]<=simdi) bek++; }
+    $("nToplam").textContent=C.length; $("nOgrenilen").textContent=og; $("nBekleyen").textContent=bek;
+    $("basla").disabled=!C.length;
+  }
+
+  /* ---------- içe aktarma ---------- */
+  function ayristir(metin, ad){
+    var cift=[];
+    if(/\.json$/i.test(ad)||/^\s*\[/.test(metin)){ try{ (JSON.parse(metin)||[]).forEach(function(x){ if(x&&x.en&&x.tr) cift.push([String(x.en),String(x.tr)]); else if(Array.isArray(x)&&x.length>=2) cift.push([String(x[0]),String(x[1])]); }); }catch(e){} }
+    else metin.split(/\r?\n/).forEach(function(s){ if(!s.trim()) return; var p=s.indexOf("\t")>=0?s.split("\t"):s.indexOf(";")>=0?s.split(";"):s.split(","); if(p.length>=2) cift.push([p[0].replace(/^"|"$/g,""),p[1].replace(/^"|"$/g,"")]); });
+    return cift.map(function(x){ var en=x[0].replace(/\s+/g," ").trim(), tr=x[1].replace(/\s+/g," ").trim(); if(TR.test(en)&&!TR.test(tr)){ var t=en; en=tr; tr=t; } return [en,tr]; })
+      .filter(function(x){ return x[0].length>=3&&x[1].length>=2&&x[0].length<=240&&!TR.test(x[0]); });
+  }
+  $("dosya").addEventListener("change",async function(){
+    var f=this.files&&this.files[0]; if(!f) return;
+    $("iceDurum").textContent="Okunuyor…";
+    var metin=await f.text(), cift=ayristir(metin,f.name), var0={}, eklenen=0;
+    C.forEach(function(x){ var0[x.id]=1; });
+    cift.forEach(function(x){ var id=kimlik(x[0]); if(var0[id]) return; var0[id]=1; C.push({id:id,en:x[0],tr:x[1]}); eklenen++; });
+    await koy("cumleler",C); say();
+    $("iceDurum").textContent=cift.length+" satır okundu, "+eklenen+" yeni cümle eklendi.";
+    this.value="";
+    try{ await bulutaYaz(); }catch(e){ $("bulutDurum").textContent="Hesabına yüklenemedi; cümleler bu cihazda duruyor."; }
+  });
+
+  /* ---------- arama ---------- */
+  var araZ=null;
+  $("ara").addEventListener("input",function(){ clearTimeout(araZ); var q=this.value.trim().toLocaleLowerCase("tr"); araZ=setTimeout(function(){
+    if(q.length<2){ $("sonuclar").innerHTML=""; return; }
+    var s=C.filter(function(x){ return x.en.toLowerCase().indexOf(q)>=0||x.tr.toLocaleLowerCase("tr").indexOf(q)>=0; });
+    $("sonuclar").innerHTML=s.slice(0,40).map(function(x){ return "<div>"+esc(x.en)+"<small>"+esc(x.tr)+"</small></div>"; }).join("")+(s.length>40?'<div class="kucuk">+'+(s.length-40)+' sonuç daha</div>':'')||'<div class="kucuk">Sonuç yok.</div>';
+  },200); });
+
+  /* ---------- pratik turu ---------- */
+  var tur=[], ti=0, dogru=0, simdiki=null;
+  function turSec(){
+    var simdi=Date.now(), bek=[], yeni=[];
+    C.forEach(function(x){ var r=SRS[x.id]; if(!r) yeni.push(x); else if(r[1]<=simdi) bek.push(x); });
+    bek.sort(function(a,b){ return SRS[a.id][1]-SRS[b.id][1]; });
+    for(var i=yeni.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=yeni[i]; yeni[i]=yeni[j]; yeni[j]=t; }
+    /* kısa cümleler önce gelsin (yeni olanlarda) */
+    yeni=yeni.slice(0,200).sort(function(a,b){ return a.en.length-b.en.length; });
+    return bek.slice(0,7).concat(yeni).slice(0,10);
+  }
+  function goster(){
+    simdiki=tur[ti]; $("turSira").textContent=(ti+1)+" / "+tur.length+(SRS[simdiki.id]?" · tekrar":" · yeni");
+    $("turCubuk").style.width=Math.round(ti/tur.length*100)+"%";
+    $("soru").textContent=simdiki.tr; $("cevap").value=""; $("cevap").disabled=false; $("cevapForm").hidden=false;
+    $("sonuc").hidden=true; $("sonrakiKut").hidden=true; $("cevap").focus();
+  }
+  function puanla(ok){
+    var r=SRS[simdiki.id]||[0,0,0,0], simdi=Date.now(), rep=r[0], aralik;
+    if(ok){ rep++; aralik=rep===1?1:rep===2?3:rep===3?7:Math.round(7*Math.pow(2.2,rep-3)); SRS[simdiki.id]=[rep,simdi+aralik*DAY,r[2],simdi]; }
+    else SRS[simdiki.id]=[0,simdi+10*60000,(r[2]||0)+1,simdi];
+    koy("srs",SRS); srsBulutaSonra();
+    try{ window.dispatchEvent(new CustomEvent("dh-cevap",{detail:{ok:ok,beceri:"yazma",konular:[],ekran:"cumle-bankam.html",kaynak:"cumle-bankam"}})); }catch(e){}
+  }
+  function cevapla(bilmiyor){
+    var c=$("cevap").value.trim(), b=bilmiyor?0:benzerlik(c,simdiki.en), ok=b>=0.9;
+    if(ok) dogru++;
+    puanla(ok);
+    $("cevapForm").hidden=true;
+    var s=$("sonuc"); s.hidden=false; s.className="sonuc "+(ok?"ok":"no");
+    s.innerHTML="<strong>"+(ok?(b===1?"Doğru!":"Doğru sayılır"):"Doğrusu:")+"</strong><div style='font-size:18px;margin-top:4px'>"+esc(simdiki.en)+"</div>"+(!ok&&c?"<div class='kucuk' style='margin-top:6px'>Senin cevabın: "+esc(c)+"</div>":"");
+    $("sonrakiKut").hidden=false; $("sonraki").textContent=ti<tur.length-1?"Sonraki":"Turu bitir"; $("sonraki").focus();
+    say();
+  }
+  $("cevapForm").addEventListener("submit",function(e){ e.preventDefault(); if($("cevap").value.trim()) cevapla(false); });
+  $("bilmiyorum").addEventListener("click",function(){ cevapla(true); });
+  $("dinle").addEventListener("click",function(){ try{ var u=new SpeechSynthesisUtterance(simdiki.en); u.lang="en-US"; u.rate=1; u.pitch=1; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} });
+  $("sonraki").addEventListener("click",function(){ ti++; if(ti<tur.length) goster(); else { $("tur").hidden=true; $("basla").textContent="Tur bitti: "+dogru+" / "+tur.length+" · yeni tur başlat"; } });
+  $("basla").addEventListener("click",function(){ tur=turSec(); if(!tur.length) return; ti=0; dogru=0; $("tur").hidden=false; goster(); });
+
+  /* ---------- açılış ---------- */
+  (async function(){
+    C=(await al("cumleler"))||[]; SRS=(await al("srs"))||{}; say();
+    for(var i=0;i<40&&!bulut();i++) await new Promise(function(r){setTimeout(r,250);});
+    if(!bulut()){ $("bulutDurum").textContent=C.length?"Cümleler bu cihazda.":"Henüz cümle yok: aşağıdan dosya içe aktar."; return; }
+    try{
+      if(!C.length){ if(await buluttanAl()) say(); else $("bulutDurum").textContent="Henüz cümle yok: aşağıdan dosya içe aktar."; }
+      else $("bulutDurum").textContent="Cümleler bu cihazda ve hesabında.";
+      var uzak=await bulut().oku("cumle_bankasi","ilerleme"); if(uzak&&uzak.s){ SRS=birlestir(uzak.s,SRS); await koy("srs",SRS); say(); }
+    }catch(e){}
+  })();
+})();
+</script>
+</body>
+</html>

@@ -13,7 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v582";  /* 🧑‍🏫 Öğretmenine götür: aylık özet (yazdırılabilir) */
+var SW_VERSION = "dh-sw-v583";  /* 📒 Cümle bankam: kişisel cümleleri içe aktar, ara, tekrar et */
+/* onceki v582: 🧑‍🏫 Öğretmenine götür: aylık özet (yazdırılabilir) */
 /* onceki v439: 🤖 Boş yapay zekâ cevabı artık hata; gpt-oss kısa düşünür */
 /* onceki v438: 📚 Konuşkan: Dil Harita modülleri ve tam seviye cümleleri */
 /* onceki v437: ➕ Konuşkan: kendi kursunu oluştur */
@@ -36,6 +37,7 @@ var SHELL = [
   "./menu.html",
   "./koc-paneli.html",
   "./ogretmen-ozeti.html",
+  "./cumle-bankam.html",
   "./konuskan.html",
   "./konuskan/konuskan.js",
   "./konuskan/goruntulu.js",

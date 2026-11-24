@@ -44,7 +44,7 @@
   var SAYFA = {
     "kelime-ogren.html": "kelime", "phrasal-verbs.html": "kelime", "pv-practice.html": "kelime",
     "akilli-tekrar.html": "yazma", "tekrar.html": "yazma", "practice.html": "yazma", "index-app.html": "yazma",
-    "ogren.html": "yazma", "hata-defteri.html": "yazma", "ocr-sentence.html": "yazma", "foto-ekle.html": "yazma",
+    "ogren.html": "yazma", "hata-defteri.html": "yazma", "cumle-bankam.html": "yazma", "ocr-sentence.html": "yazma", "foto-ekle.html": "yazma",
     "videopractice.html": "dinleme", "youtube-egitim.html": "dinleme", "youtube-pratik.html": "dinleme",
     "immersive.html": "dinleme", "sesdalga.html": "konusma", "sesli-calis.html": "konusma",
     "konuskan.html": "konusma", "chat.html": "konusma", "chatmodul.html": "konusma", "chatairport.html": "konusma",

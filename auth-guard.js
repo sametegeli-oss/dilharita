@@ -34,7 +34,7 @@
 
   /* TEK AKTİVİTE KAYDI (koç planı): her korumalı sayfada etkin süre ve cevaplar dh-olay.js ile kaydedilir. */
   if(!document.querySelector('script[src*="dh-olay.js"]')){
-    var ol=document.createElement("script"); ol.src="./dh-olay.js?v=1"; document.head.appendChild(ol);
+    var ol=document.createElement("script"); ol.src="./dh-olay.js?v=2"; document.head.appendChild(ol);
   }
   /* KOÇ MODU (koç planı 3. aşama): açıkken her sayfada şerit + adım geçişleri; kapalıyken hiçbir şey çizmez. */
   if(!document.querySelector('script[src*="dh-koc-modu.js"]')){
