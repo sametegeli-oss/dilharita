@@ -745,4 +745,5 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd.vd-fon-vid .vd-isik { opacity: .35; }
 .vd.vd-fon-vid .vd-fon-hareket { display: none; }
 .vd-fon-degis { margin-left: 6px; font: inherit; font-size: .8rem; padding: 3px 9px; border-radius: 8px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: inherit; }
-.vd:not(.vd-canli) .vd-fon-degis, .vd[data-fon=koyu] .vd-fon-degis { display: none; }
+.vd[data-fontur=fon] .vd-fon-degis, .vd[data-fon=koyu] .vd-fon-degis { display: none; }
+.vd-fon-resim { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(.85); pointer-events: none; }
