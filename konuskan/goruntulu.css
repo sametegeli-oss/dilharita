@@ -739,3 +739,10 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-duz-fark .vd-sil { color: #ffb0a8; text-decoration: line-through; text-decoration-color: #ff6b5e; text-decoration-thickness: 2px; }
 .vd-duz-fark .vd-ekle { color: #9ff0b8; border-bottom: 2px solid rgba(159, 240, 184, .6); font-weight: 700; }
 .vd-duz-ic small { font-size: .82rem; color: var(--vd-soluk); }
+
+/* fon videosu: seçili ortama uygun Pexels videosu, görüntülü görüşme arka planı gibi bulanık ve hafif karartılmış */
+.vd-fon-video { position: absolute; inset: -4%; width: 108%; height: 108%; object-fit: cover; filter: blur(14px) brightness(.78) saturate(.9); pointer-events: none; }
+.vd.vd-fon-vid .vd-isik { opacity: .35; }
+.vd.vd-fon-vid .vd-fon-hareket { display: none; }
+.vd-fon-degis { margin-left: 6px; font: inherit; font-size: .8rem; padding: 3px 9px; border-radius: 8px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: inherit; }
+.vd:not(.vd-canli) .vd-fon-degis, .vd[data-fon=koyu] .vd-fon-degis { display: none; }

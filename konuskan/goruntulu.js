@@ -140,6 +140,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     kok.className = 'vd';
     kok.innerHTML = `
       <div class="vd-sahne">
+        <video class="vd-fon-video" aria-hidden="true" muted playsinline loop preload="none" hidden></video>
         <div class="vd-fon-hareket" aria-hidden="true"></div>
         <div class="vd-isik" aria-hidden="true"></div>
         <canvas class="vd-yuz" aria-label="Öğretmen ${OGRETMEN}"></canvas>
@@ -224,7 +225,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-anahtar"><input type="checkbox" data-a="hassas"><span></span> Hassas ses tanıma <small class="vd-hassas-not">Konuşman Gemini ile yazıya dökülür; aksanı ve hızlı konuşmayı çok daha iyi anlar.</small></label>
         <label class="vd-satir">Sustuktan sonra bekleme: <b class="vd-sessiz-d"></b><input type="range" min="1.2" max="4" step="0.2" data-a="sessizlik"></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
-        <label class="vd-satir">Arka plan <select data-a="fon"><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select></label>
+        <label class="vd-satir">Arka plan <select data-a="fon"><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select> <button type="button" class="vd-fon-degis" data-a="fondegis" title="Bu arka plan için başka bir video bul">Başka video</button></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="canli"><span></span> Canlı görüntü <small>Görüntü, görüntülü görüşmedeki gibi hafifçe kayar; fonda küçük hareketler olur (buhar, yapraklar, ışık). Telefon yavaşlarsa kapat.</small></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="tahta"><span></span> Örnekleri tahtada göster <small>İngilizce örnek okunurken cümle ve Türkçesi bir tahtada görünür.</small></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="kendim"><span></span> Kendi görüntüm köşede <small>Ders başlayınca kameran küçük pencerede açılır. Deniz yalnız "Deniz'e göster"e basınca görür. Pil ve işlemci harcar.</small></label>
@@ -522,9 +523,41 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     };
     const fonHareket = () => { const el = q('.vd-fon-hareket'); const f = kok.dataset.fon; if (el.dataset.f !== f) { el.dataset.f = f; el.innerHTML = FON_HAREKET[f] || ''; } };
     const fonUygula0 = fonUygula;
-    fonUygula = () => { fonUygula0(); fonHareket(); };
+    fonUygula = () => { fonUygula0(); fonHareket(); if (window.__vdFonVideo) window.__vdFonVideo(); };
     fonUygula();
-    const canliUygula = () => { kok.classList.toggle('vd-canli', ayar.canli !== false); q('[data-a=canli]').checked = ayar.canli !== false; };
+    /* FON VİDEOSU: seçili arka plan konseptine uygun, Pexels'ten (kullanıcının kendi anahtarı), sessiz döngü; bulanık + karartılmış.
+       Bulunan bağlantı kv'de saklanır (dh-fon-video-<fon>), her açılışta aranmaz. Canlı görüntü kapalıysa ya da yoksa resim kalır. */
+    const FON_SORGU = { sinif: 'empty classroom', kafe: 'cafe interior bokeh', ofis: 'empty office window light', kutuphane: 'library bookshelves', doga: 'leaves wind sunlight' };
+    const kvAl = (k) => new Promise(res => { try { const r = indexedDB.open('sentence-mode'); r.onupgradeneeded = () => { try { r.transaction.abort(); } catch (e) {} }; r.onerror = () => res(null); r.onsuccess = () => { const db = r.result; if (!db.objectStoreNames.contains('kv')) { db.close(); return res(null); } const g = db.transaction('kv').objectStore('kv').get(k); g.onsuccess = () => { db.close(); res(g.result ?? null); }; g.onerror = () => { db.close(); res(null); }; }; } catch (e) { res(null); } });
+    const kvKoy = (k, v) => { try { const r = indexedDB.open('sentence-mode'); r.onupgradeneeded = () => { try { r.transaction.abort(); } catch (e) {} }; r.onsuccess = () => { const db = r.result; if (!db.objectStoreNames.contains('kv')) return db.close(); const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => db.close(); }; } catch (e) {} };
+    async function fonVideoBul(fon) {
+      const kayit = await kvAl('dh-fon-video-' + fon); if (kayit && kayit.url && !kayit.degis) return kayit.url; const sira0 = kayit && kayit.degis ? (kayit.sira || 0) + 1 : 0;
+      let key = await kvAl('pexels-api-key'); if (key && typeof key === 'object') key = key.key || key.value; if (!key) { try { key = localStorage.getItem('pexels-api-key'); } catch (e) {} } if (!key || !FON_SORGU[fon]) return null;
+      try {
+        const d = await (await fetch('https://api.pexels.com/videos/search?per_page=15&orientation=landscape&size=medium&query=' + encodeURIComponent(FON_SORGU[fon]), { headers: { Authorization: key } })).json();
+        const vs0 = (d.videos || []).filter(v => v.duration >= 8), vs = vs0.slice(sira0 % Math.max(1, vs0.length)).concat(vs0.slice(0, sira0 % Math.max(1, vs0.length)));
+        for (const v of vs) {
+          const f = (v.video_files || []).filter(x => x.file_type === 'video/mp4' && x.link && x.width).sort((a, b) => Math.abs(960 - a.width) - Math.abs(960 - b.width))[0];
+          if (f) { kvKoy('dh-fon-video-' + fon, { url: f.link, id: v.id, poster: v.image, t: Date.now(), sira: (sira0 + vs.indexOf(v)) % Math.max(1, vs0.length) }); return f.link; }
+        }
+      } catch (e) {}
+      return null;
+    }
+    let fonVideoSira = 0;
+    async function fonVideo() {
+      const el = q('.vd-fon-video'), fon = kok.dataset.fon, sira = ++fonVideoSira;
+      if (!el) return;
+      if (ayar.canli === false || !FON_SORGU[fon]) { el.hidden = true; try { el.pause(); } catch (e) {} kok.classList.remove('vd-fon-vid'); return; }
+      const url = await fonVideoBul(fon); if (sira !== fonVideoSira) return;
+      if (!url) { el.hidden = true; kok.classList.remove('vd-fon-vid'); return; }
+      if (el.dataset.url !== url) { el.dataset.url = url; el.src = url; }
+      el.onplaying = () => { el.hidden = false; kok.classList.add('vd-fon-vid'); };
+      el.onerror = () => { el.hidden = true; kok.classList.remove('vd-fon-vid'); };
+      try { await el.play(); } catch (e) {}
+    }
+    window.__vdFonVideo = fonVideo;
+    q('[data-a=fondegis]').onclick = async () => { const fon = kok.dataset.fon; const k = await kvAl('dh-fon-video-' + fon); kvKoy('dh-fon-video-' + fon, Object.assign({}, k || {}, { degis: true })); setTimeout(fonVideo, 150); };
+    const canliUygula = () => { kok.classList.toggle('vd-canli', ayar.canli !== false); q('[data-a=canli]').checked = ayar.canli !== false; fonVideo(); };
     q('[data-a=canli]').onchange = e => { ayar.canli = e.target.checked; ayarKaydet(); canliUygula(); };
     canliUygula();
     q('[data-a=tahta]').checked = ayar.tahta !== false;
