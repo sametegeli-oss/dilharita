@@ -92,9 +92,10 @@
     karisik:   { browAsym: 0.6, browDown: 0.15, frown: 0.15, roll: -4.0, gazeX: 0.1 },
     heyecanli: { smile: 1.0, browOuterUp: 0.4, browInnerUp: 0.3, lean: 0.35, pitch: -0.1 },
     uzgun:     { browInnerUp: 0.8, frown: 0.3, pitch: 0.15, gazeY: 0.15 },
+    gulme:     { smile: 1.0, squint: 0.5, browOuterUp: 0.2, roll: 3.0, pitch: -0.12, lean: 0.1 },
     ofkeli:    { browDown: 0.8, frown: 0.4, squint: 0.35, pitch: 0.1 }
   };
-  var DUYGU_ADI = { notr: "Nötr", mutlu: "Mutlu", cesaret: "Cesaretlendirici", merak: "Merak", dusunceli: "Düşünceli",
+  var DUYGU_ADI = { notr: "Nötr", mutlu: "Mutlu", gulme: "Gülme", cesaret: "Cesaretlendirici", merak: "Merak", dusunceli: "Düşünceli",
     anlayisli: "Anlayışlı", saskin: "Şaşkın", ciddi: "Ciddi", gururlu: "Gururlu",
     dinleyen: "Dinleyen", sefkatli: "Şefkatli", karisik: "Kafası karışık", heyecanli: "Heyecanlı", uzgun: "Üzgün", ofkeli: "Öfkeli" };
   var PARAMS = ["smile","frown","browInnerUp","browOuterUp","browDown","browAsym","squint","gazeX","gazeY","roll","pitch","yaw","lean"];
@@ -212,7 +213,7 @@
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
-  var GORSEL_SURUM = "20261119b";
+  var GORSEL_SURUM = "20261125a";
   function yukle(src) { if (src.indexOf("?") < 0 && !/^(data|blob):/.test(src)) src += "?v=" + GORSEL_SURUM; return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -238,7 +239,7 @@
     var aktifJestler = [];
     var agiz = { a: "idle", b: "idle", t: 1 }, gozKirp = 0;
     /* duygu fotoğrafları: her duygu için ayrı, tabana hizalı fotoğraf (varsa) */
-    var fotolar = {}, agizSetleri = {}, kirpSetleri = {}, foto = { a: "notr", b: "notr", t: 1 }, fotoAcik = sec.fotolar !== false;
+    var fotolar = {}, agizSetleri = {}, kirpSetleri = {}, bakisSet = {}, bak = { x: 0, y: 0, w: 0 }, foto = { a: "notr", b: "notr", t: 1 }, fotoAcik = sec.fotolar !== false;
     var YUZ_P = ["smile", "frown", "browInnerUp", "browOuterUp", "browDown", "browAsym", "squint"];
     function baskin() { return foto.t >= 0.5 ? foto.b : foto.a; }
     /* eksik ağız şekli: önce aynı duygu setinde en yakın şekle, sonra nötr sete düş (ör. setinde "sz" yoksa "i") */
@@ -368,7 +369,11 @@
       K.altKapakL.dy -= sq * 4.5 * s; K.altKapakR.dy -= sq * 4.5 * s;
       K.ustKapakL.dy += Math.max(0, sq) * 1.5 * s - Math.max(0, -p.squint) * 2.5 * s - p.browInnerUp * 1 * s;
       K.ustKapakR.dy += Math.max(0, sq) * 1.5 * s - Math.max(0, -p.squint) * 2.5 * s - p.browInnerUp * 1 * s;
-      var gx = p.gazeX * 6 * s, gy = p.gazeY * 4 * s;
+      /* göz yaması (Gemini kareleri) yalnız nötr fotoğrafta; yama ne kadar görünüyorsa iris kaydırması o kadar azalır */
+      var nw = (foto.b === "notr" ? (foto.a === "notr" ? 1 : foto.t) : (foto.a === "notr" ? 1 - foto.t : 0));
+      bak.w = (bakisSet.sol && bakisSet.yukari) ? nw : 0;
+      bak.x = Math.round(Math.max(-1, Math.min(1, p.gazeX / 0.6)) * 20) / 20; bak.y = Math.round(Math.max(-1, Math.min(1, p.gazeY / 0.6)) * 20) / 20;
+      var gx = p.gazeX * 6 * s * (1 - bak.w * Math.min(1, Math.abs(bak.x))), gy = p.gazeY * 4 * s * (1 - bak.w * Math.min(1, Math.abs(bak.y)));
       K.irisL.dx += gx; K.irisR.dx += gx; K.irisL.dy += gy; K.irisR.dy += gy;
       var sm = p.smile, fr = p.frown;
       K.koseL.dx -= (sm * 10 - fr * 2) * s; K.koseR.dx += (sm * 10 - fr * 2) * s;
@@ -410,7 +415,7 @@
     /* ---------------- Doku (taban + ağız + göz) ---------------- */
     var sonDoku = "";
     function dokuCiz() {
-      var anahtar = foto.a + foto.b + foto.t.toFixed(2) + "|" + agiz.a + "|" + agiz.b + "|" + agiz.t.toFixed(2) + "|" + gozKirp.toFixed(2);
+      var anahtar = foto.a + foto.b + foto.t.toFixed(2) + "|" + agiz.a + "|" + agiz.b + "|" + agiz.t.toFixed(2) + "|" + gozKirp.toFixed(2) + "|" + bak.x + "," + bak.y + "," + bak.w.toFixed(2);
       if (anahtar === sonDoku) return;
       sonDoku = anahtar;
       cx.globalCompositeOperation = "source-over"; cx.globalAlpha = 1; cx.clearRect(0, 0, W, H);
@@ -420,6 +425,7 @@
       function ciz(pr, a) { if (!pr || a <= 0.01) return; cx.globalAlpha = Math.min(1, a); cx.drawImage(pr.img, pr.x, pr.y); }
       var pa = agiz.a !== "idle" && agizParca(agiz.a), pb = agiz.b !== "idle" && agizParca(agiz.b);
       if (pb) { ciz(pa, 1); ciz(pb, agiz.t); } else ciz(pa, 1 - agiz.t);   /* eski şekil altta tam, yenisi üstüne açılır: iki yarı saydam ağız üst üste binmesin */
+      if (bak.w > 0.01) { ciz(bak.x > 0 ? bakisSet.sol : bakisSet.sag, Math.abs(bak.x) * bak.w); ciz(bak.y < 0 ? bakisSet.yukari : bakisSet.asagi, Math.abs(bak.y) * bak.w * 0.85); }
       ciz(kirpParca(), gozKirp);
       cx.globalAlpha = 1; cx.globalCompositeOperation = "source-over";
       gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -910,6 +916,7 @@
       var ek = [], f = face;
       Object.keys(f.duygular || {}).forEach(function (k) { ek.push(yukle(yol + f.duygular[k].dosya).then(function (im) { fotolar[k] = im; }, function () {})); });
       Object.keys(f.agizSetleri || {}).forEach(function (s) { var set = agizSetleri[s] = {}; Object.keys(f.agizSetleri[s]).forEach(function (k) { var pr = f.agizSetleri[s][k]; ek.push(yukle(yol + pr.dosya).then(function (im) { set[k] = { img: im, x: pr.x, y: pr.y }; }, function () {})); }); });
+      Object.keys(f.bakis || {}).forEach(function (k) { var pr = f.bakis[k]; ek.push(yukle(yol + pr.dosya).then(function (im) { bakisSet[k] = { img: im, x: pr.x, y: pr.y }; }, function () {})); });
       Object.keys(f.kirpma || {}).forEach(function (k) { var pr = f.kirpma[k]; ek.push(yukle(yol + pr.dosya).then(function (im) { kirpSetleri[k] = { img: im, x: pr.x, y: pr.y }; }, function () {})); });
       api.fotolarHazir = Promise.all(ek).then(function () { if (durum.duygu) api.duygu(durum.duygu, durum.guc); return api; });
       return api;
