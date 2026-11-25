@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v597";  /* 👀 Deniz boştayken ve dinlerken sağa sola bakar, gözlerini gezdirir */
-/* onceki v596: 💇 Deniz dinlerken ara sıra eliyle saçını düzeltir (Gemini video klibi) */
+var SW_VERSION = "dh-sw-v598";  /* 🔄 Bakarken baş da döner, göz dinlerken de çalışır, saç klibi yumuşak girip çıkar */
+/* onceki v597: 👀 Deniz boştayken ve dinlerken sağa sola bakar, gözlerini gezdirir */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */
