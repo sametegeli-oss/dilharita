@@ -119,8 +119,8 @@
     egil:     { sure: 1400, f: function (t) { return { roll: egri(t, [[0,0],[0.25,6],[0.75,6],[1,0]]) }; } },
     one_egil: { sure: 1600, f: function (t) { return { lean: egri(t, [[0,0],[0.25,0.8],[0.75,0.8],[1,0]]) }; } },
     dusun:    { sure: 1500, f: function (t) { var v = egri(t, [[0,0],[0.2,1],[0.8,1],[1,0]]); return { gazeX: -0.6 * v, gazeY: -0.6 * v, browAsym: 0.4 * v, roll: -2 * v }; } },
-    bakSol:   { sure: 1700, f: function (t) { var v = egri(t, [[0,0],[0.15,1],[0.8,1],[1,0]]); return { gazeX: 0.95 * v, yaw: 0.45 * v }; } },
-    bakSag:   { sure: 1700, f: function (t) { var v = egri(t, [[0,0],[0.15,1],[0.8,1],[1,0]]); return { gazeX: -0.95 * v, yaw: -0.45 * v }; } },
+    bakSol:   { sure: 1700, f: function (t) { var v = egri(t, [[0,0],[0.15,1],[0.8,1],[1,0]]); return { gazeX: 0.5 * v, yaw: 0.15 * v }; } },
+    bakSag:   { sure: 1700, f: function (t) { var v = egri(t, [[0,0],[0.15,1],[0.8,1],[1,0]]); return { gazeX: -0.5 * v, yaw: -0.15 * v }; } },
     bakYukari:{ sure: 1400, f: function (t) { var v = egri(t, [[0,0],[0.2,1],[0.75,1],[1,0]]); return { gazeY: -0.8 * v, gazeX: 0.2 * v, browOuterUp: 0.2 * v }; } },
     gez:      { sure: 3000, f: function (t) { var x = egri(t, [[0,0],[0.15,0.85],[0.4,0.85],[0.55,-0.85],[0.8,-0.85],[1,0]]); return { gazeX: 1.1 * x, yaw: 0.35 * x, gazeY: -0.1 * Math.abs(x) }; } },
     kas:      { sure: 500,  f: function (t) { var v = egri(t, [[0,0],[0.3,1],[0.6,1],[1,0]]); return { browInnerUp: 0.7 * v, browOuterUp: 0.7 * v }; } },
@@ -217,7 +217,7 @@
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
-  var GORSEL_SURUM = "20261125b";
+  var GORSEL_SURUM = "20261125c";
   function yukle(src) { if (src.indexOf("?") < 0 && !/^(data|blob):/.test(src)) src += "?v=" + GORSEL_SURUM; return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -255,7 +255,7 @@
       for (i = 0; i < zincir.length; i++) if (parcalar[zincir[i]]) return parcalar[zincir[i]];
       return null;
     }
-    function kirpParca() { var d = baskin(); return (face.duyguKirpma && kirpSetleri[face.duyguKirpma[d]]) || parcalar.blink; }
+    function kirpParca() { if (/^don/.test(foto.b) || /^don/.test(foto.a) && foto.t < 1) return null; var d = baskin(); return (face.duyguKirpma && kirpSetleri[face.duyguKirpma[d]]) || parcalar.blink; }
     function fotoHedef(ad) { if (!fotolar[ad]) ad = "notr"; if (ad === foto.b) return; foto.a = foto.t >= 0.5 ? foto.b : foto.a; foto.b = ad; foto.t = 0; }
     var konusma = null, dinleme = false;
     /* DİNLEME DURUŞLARI (24 Kasım): dinlerken tek sabit poz yerine 4-8 sn'de bir yumuşakça değişen duruşlar —
@@ -430,6 +430,15 @@
       klip.bekle = false; var pr = klip.v.play(); klip.oyn = true;
       if (pr && pr.catch) pr.catch(function () { klip.oyn = false; });
     }
+    /* gerçek baş çevirme: Gemini'nin yan dönük fotoğraflarına geçip geri döner (saç ve kulak yandan görünür) */
+    function basCevir(yonler) {
+      var onceki = /^don/.test(foto.b) ? "notr" : foto.b, i = 0;
+      (function adim() {
+        if (konusma || i >= yonler.length) { if (/^don/.test(foto.b)) fotoHedef(onceki); return; }
+        var y = yonler[i++]; fotoHedef("don" + y); api.jest("bak" + y, 0.8);
+        setTimeout(adim, 1300 + Math.random() * 700);
+      })();
+    }
     function dokuCiz() {
       if (klip.oyn && klip.v.readyState >= 2) {
         cx.globalCompositeOperation = "source-over"; cx.globalAlpha = 1; cx.clearRect(0, 0, W, H); cx.drawImage(klip.v, 0, 0, W, H); sonDoku = "";
@@ -537,7 +546,7 @@
         }
         /* boşta (ne konuşuyor ne dinliyor): uzun aralıklarla küçük doğal hareket */
         /* boştayken ve dinlerken ara ara sağa sola bakar, gözlerini gezdirir */
-        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 7000 + Math.random() * 8000 : 4500 + Math.random() * 5500) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); api.jest(g < 0.3 ? "bakSol" : g < 0.6 ? "bakSag" : g < 0.8 ? "gez" : "bakYukari", dinleme ? 0.7 : 1); }
+        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 7000 + Math.random() * 8000 : 4500 + Math.random() * 5500) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (g < 0.8 && fotolar.donSol && fotolar.donSag) basCevir(g < 0.3 ? ["Sol"] : g < 0.6 ? ["Sag"] : ["Sol", "Sag"]); else api.jest(g < 0.8 ? "gez" : "bakYukari", dinleme ? 0.7 : 1); }
         if (!konusma && !dinleme && simdi > bostaJest) { bostaJest = simdi + 7000 + Math.random() * 7000; var r = Math.random(); api.jest(r < 0.4 ? "egil" : r < 0.7 ? "kas" : "onay", 0.25); }
       }
       /* göz kırpma: düzensiz, yarım-kapalı-yarım */
@@ -546,7 +555,7 @@
       /* konuşma: ağız dizisi */
       if (konusma) konusmaKare(simdi, dt);
       else if (agiz.b !== "idle" || agiz.t < 1) { if (agiz.b !== "idle") { agiz.a = agiz.b; agiz.b = "idle"; agiz.t = 0; } agiz.t = Math.min(1, agiz.t + dt / 0.12); }
-      if (foto.t < 1) foto.t = Math.min(1, foto.t + dt / 0.35);
+      if (foto.t < 1) foto.t = Math.min(1, foto.t + dt / (/^don/.test(foto.a + foto.b) ? 0.16 : 0.35));
       klip.w += ((klip.oyn || klip.bekle ? 1 : 0) - klip.w) * (1 - Math.exp(-dt / 0.18));
       if (klip.bekle && klip.w > 0.97) klipBaslat();
       if (klip.w > 0.001) { var kw = klip.oyn ? 0 : 1 - klip.w; PARAMS.forEach(function (k) { p[k] *= kw; }); }
@@ -831,7 +840,7 @@
     }
 
     var api = {
-      klip: klipOynat,
+      klip: klipOynat, basCevir: basCevir,
       DUYGULAR: DUYGULAR, DUYGU_ADI: DUYGU_ADI, JESTLER: JESTLER, JEST_ADI: JEST_ADI, PARAMS: PARAMS,
       duygu: function (ad, guc) {
         var d = DUYGULAR[ad] || {}, ham0 = guc == null ? 0.8 : guc; guc = ham0 * (0.45 + profil.ifade * 0.95) * kd(ad, "yuz", 1);

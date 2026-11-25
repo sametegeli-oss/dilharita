@@ -369,11 +369,17 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-p-cev.okunuyor { color: #fff; }
 .vd-tr.ornek.okunuyor { color: #fff; }
 
+
+/* omuzlar fotoğrafın kenarında kesik görünmesin: yanlar ve alt yumuşakça solar */
+.vd-yuz { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%), linear-gradient(to bottom, #000 82%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%), linear-gradient(to bottom, #000 82%, transparent 100%);
+  -webkit-mask-composite: source-in; mask-composite: intersect; }
+
 /* ---------- telefon (dikey) v2: yüz üstte, altyazı ve kontrollerin üstünde kalsın ---------- */
 @media (max-aspect-ratio: 1/1) and (max-width: 760px) {
   .vd-yuz { top: calc(env(safe-area-inset-top, 0px) + 92px); bottom: auto; height: min(58vh, 58dvh, 125vw); transform: translateX(-50%); }
   .vd-derste .vd-yuz { transform: translateX(-50%); }
-  .vd-yuz { -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent 99%); mask-image: linear-gradient(to bottom, #000 80%, transparent 99%); }
+  .vd-yuz { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 10%, #000 90%, transparent 100%), linear-gradient(to bottom, #000 80%, transparent 99%); mask-image: linear-gradient(to right, transparent 0, #000 10%, #000 90%, transparent 100%), linear-gradient(to bottom, #000 80%, transparent 99%); -webkit-mask-composite: source-in; mask-composite: intersect; }
   .vd-cumle { font-size: 1rem; line-height: 1.4; padding: 3px 9px; }
   .vd-tr { font-size: .84rem; margin-top: 5px; }
   .vd-altyazi { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
