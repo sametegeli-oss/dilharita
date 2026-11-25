@@ -217,7 +217,7 @@
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
-  var GORSEL_SURUM = "20261125e";
+  var GORSEL_SURUM = "20261125f";
   function yukle(src) { if (src.indexOf("?") < 0 && !/^(data|blob):/.test(src)) src += "?v=" + GORSEL_SURUM; return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -425,8 +425,9 @@
       ad = ad || "sac-duzelt";
       if (klip.oyn || klip.bekle || sec.klip === false) return;
       if (!klipler[ad]) { var v = klipler[ad] = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "auto"; v.crossOrigin = "anonymous"; v.src = yol + ad + ".webm?v=" + GORSEL_SURUM;
-        v.onended = v.onerror = function () { if (klip.v === v) { klip.oyn = false; klip.bekle = false; sonDoku = ""; } }; }
-      klip.v = klipler[ad]; klip.v.currentTime = 0; klip.bekle = true;   /* önce baş nötre döner, sonra video başlar */
+        v.onended = v.onerror = function () { if (klip.v === v) { klip.oyn = false; klip.bekle = false; sonDoku = ""; if (klip.onceki && klip.onceki !== "notr") fotoHedef(klip.onceki); klip.onceki = null; } }; }
+      klip.v = klipler[ad]; klip.v.currentTime = 0; klip.bekle = true;
+      klip.onceki = foto.b; fotoHedef("notr");   /* video tam bu yüzle başlar ve biter: önce düz yüze geç */   /* önce baş nötre döner, sonra video başlar */
     }
     function klipBaslat() {
       klip.bekle = false; var pr = klip.v.play(); klip.oyn = true;
@@ -563,7 +564,7 @@
       else if (agiz.b !== "idle" || agiz.t < 1) { if (agiz.b !== "idle") { agiz.a = agiz.b; agiz.b = "idle"; agiz.t = 0; } agiz.t = Math.min(1, agiz.t + dt / 0.12); }
       if (foto.t < 1) foto.t = Math.min(1, foto.t + dt / (/^don/.test(foto.a + foto.b) ? 0.16 : 0.35));
       klip.w += ((klip.oyn || klip.bekle ? 1 : 0) - klip.w) * (1 - Math.exp(-dt / 0.18));
-      if (klip.bekle && klip.w > 0.97) klipBaslat();
+      if (klip.bekle && klip.w > 0.97 && foto.t >= 1 && klip.v.readyState >= 2) klipBaslat();
       if (klip.w > 0.001) { var kw = klip.oyn ? 0 : 1 - klip.w; PARAMS.forEach(function (k) { p[k] *= kw; }); }
       deforme(p, t);
       dokuCiz();

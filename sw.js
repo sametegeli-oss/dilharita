@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v605";  /* ↩️ Kusurlu sola dönüş klibi kaldırıldı (yarın Gemini videosuyla); şimdilik yalnız sağa dönüş */
-/* onceki v604: 👀 Sola dönüş gerçek Gemini fotoğraflarından (ayna yok); göz bakışı seyrek ve net (bulanıklık giderildi) */
+var SW_VERSION = "dh-sw-v606";  /* 🎬 Video klipleri tabanla aynı kareyle başlayıp biter (ağız dahil); öncesinde düz yüze geçilir */
+/* onceki v605: ↩️ Kusurlu sola dönüş klibi kaldırıldı (yarın Gemini videosuyla); şimdilik yalnız sağa dönüş */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */
