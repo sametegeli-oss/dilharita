@@ -425,9 +425,13 @@
       ad = ad || "sac-duzelt";
       if (klip.oyn || klip.bekle || sec.klip === false) return;
       if (!klipler[ad]) { var v = klipler[ad] = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "auto"; v.crossOrigin = "anonymous"; v.src = yol + ad + ".webm?v=" + GORSEL_SURUM;
-        v.onended = v.onerror = function () { if (klip.v === v) { klip.oyn = false; klip.bekle = false; sonDoku = ""; if (klip.onceki && klip.onceki !== "notr") fotoHedef(klip.onceki); klip.onceki = null; } }; }
+        v.onended = v.onerror = function () { if (klip.v === v) { klip.oyn = false; klip.bekle = false; sonDoku = ""; if (klip.onceki && klip.onceki !== "notr") fotoHedef(klip.onceki); klip.onceki = null; klipSonrasi(); } }; }
       klip.v = klipler[ad]; klip.v.currentTime = 0; klip.bekle = true;
-      klip.onceki = foto.b; fotoHedef("notr");   /* video tam bu yüzle başlar ve biter: önce düz yüze geç */   /* önce baş nötre döner, sonra video başlar */
+      klip.onceki = foto.b; fotoHedef("notr"); aktifJestler = []; sonrakiKirp = Math.max(sonrakiKirp, performance.now() + 8000);   /* video tam bu yüzle başlar ve biter: önce düz yüze geç */   /* önce baş nötre döner, sonra video başlar */
+    }
+    function klipSonrasi() {   /* göz de ağız gibi düz başlangıçta: bakış/sakkad sıfır, 2 sn yeni bakış yok */
+      var sm = performance.now(); sakkad.x = 0; sakkad.y = 0; sakkad.t = sm + 2000; hp.gx = hp.gy = hp.tgx = hp.tgy = 0; cur.gazeX = cur.gazeY = 0;
+      aktifJestler = aktifJestler.filter(function (j) { return false; }); gezJest = Math.max(gezJest, sm + 4000); sonrakiKirp = Math.max(sonrakiKirp, sm + 1500);
     }
     function klipBaslat() {
       klip.bekle = false; var pr = klip.v.play(); klip.oyn = true;
