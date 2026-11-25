@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v613";  /* 🐛 Yarım dönüş kliplerinin sonuna eski kareler eklenmişti (resim-video titremesi) */
-/* onceki v612: 📐 Video kareleri yüzden fotoğrafa sabitlendi (boy/kayma farkı yok); videodan sonra 1 sn hareketsiz */
+var SW_VERSION = "dh-sw-v614";  /* ✂️ Video kliplerinde baş kenarındaki beyaz hale temizlendi */
+/* onceki v613: 🐛 Yarım dönüş kliplerinin sonuna eski kareler eklenmişti (resim-video titremesi) */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */
