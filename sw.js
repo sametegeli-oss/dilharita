@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v601";  /* ⏳ Baş çevirme yalnız 15 sn+ cevap beklerken */
-/* onceki v600: 🔄 Baş çevirme artık akıcı video (ara kareli), ani foto geçişi kaldırıldı */
+var SW_VERSION = "dh-sw-v602";  /* 🐛 Konuşma sonrası "cesaret" yüzü dinleme yüzünü eziyordu: göz/baş hareketleri dinlerken çalışmıyordu */
+/* onceki v601: ⏳ Baş çevirme yalnız 15 sn+ cevap beklerken */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */

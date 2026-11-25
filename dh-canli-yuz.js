@@ -119,8 +119,8 @@
     egil:     { sure: 1400, f: function (t) { return { roll: egri(t, [[0,0],[0.25,6],[0.75,6],[1,0]]) }; } },
     one_egil: { sure: 1600, f: function (t) { return { lean: egri(t, [[0,0],[0.25,0.8],[0.75,0.8],[1,0]]) }; } },
     dusun:    { sure: 1500, f: function (t) { var v = egri(t, [[0,0],[0.2,1],[0.8,1],[1,0]]); return { gazeX: -0.6 * v, gazeY: -0.6 * v, browAsym: 0.4 * v, roll: -2 * v }; } },
-    bakSol:   { sure: 1700, f: function (t) { var v = egri(t, [[0,0],[0.15,1],[0.8,1],[1,0]]); return { gazeX: 0.5 * v, yaw: 0.15 * v }; } },
-    bakSag:   { sure: 1700, f: function (t) { var v = egri(t, [[0,0],[0.15,1],[0.8,1],[1,0]]); return { gazeX: -0.5 * v, yaw: -0.15 * v }; } },
+    bakSol:   { sure: 1700, f: function (t) { var v = egri(t, [[0,0],[0.15,1],[0.8,1],[1,0]]); return { gazeX: 1.0 * v, yaw: 0.15 * v }; } },
+    bakSag:   { sure: 1700, f: function (t) { var v = egri(t, [[0,0],[0.15,1],[0.8,1],[1,0]]); return { gazeX: -1.0 * v, yaw: -0.15 * v }; } },
     bakYukari:{ sure: 1400, f: function (t) { var v = egri(t, [[0,0],[0.2,1],[0.75,1],[1,0]]); return { gazeY: -0.8 * v, gazeX: 0.2 * v, browOuterUp: 0.2 * v }; } },
     gez:      { sure: 3000, f: function (t) { var x = egri(t, [[0,0],[0.15,0.85],[0.4,0.85],[0.55,-0.85],[0.8,-0.85],[1,0]]); return { gazeX: 1.1 * x, yaw: 0.35 * x, gazeY: -0.1 * Math.abs(x) }; } },
     kas:      { sure: 500,  f: function (t) { var v = egri(t, [[0,0],[0.3,1],[0.6,1],[1,0]]); return { browInnerUp: 0.7 * v, browOuterUp: 0.7 * v }; } },
@@ -374,7 +374,7 @@
       K.ustKapakL.dy += Math.max(0, sq) * 1.5 * s - Math.max(0, -p.squint) * 2.5 * s - p.browInnerUp * 1 * s;
       K.ustKapakR.dy += Math.max(0, sq) * 1.5 * s - Math.max(0, -p.squint) * 2.5 * s - p.browInnerUp * 1 * s;
       /* göz yaması (Gemini kareleri) yalnız nötr fotoğrafta; yama ne kadar görünüyorsa iris kaydırması o kadar azalır */
-      var GY = { notr: 1, dinleyen: 1 }, nw = (GY[foto.b] ? (GY[foto.a] ? 1 : foto.t) : (GY[foto.a] ? 1 - foto.t : 0));
+      var GY = { notr: 1, dinleyen: 1, cesaret: 1, sefkatli: 1, anlayisli: 1 }, nw = (GY[foto.b] ? (GY[foto.a] ? 1 : foto.t) : (GY[foto.a] ? 1 - foto.t : 0));
       bak.w = (bakisSet.sol && bakisSet.yukari) ? nw : 0;
       bak.x = Math.round(Math.max(-1, Math.min(1, p.gazeX / 0.6)) * 20) / 20; bak.y = Math.round(Math.max(-1, Math.min(1, p.gazeY / 0.6)) * 20) / 20;
       var gx = p.gazeX * 6 * s * (1 - bak.w * Math.min(1, Math.abs(bak.x))), gy = p.gazeY * 4 * s * (1 - bak.w * Math.min(1, Math.abs(bak.y)));
@@ -549,7 +549,7 @@
         /* boşta (ne konuşuyor ne dinliyor): uzun aralıklarla küçük doğal hareket */
         if (konusma) sessizBas = simdi;   /* Deniz en son ne zaman konuştu: uzun beklemede baş çevirir */
         /* boştayken ve dinlerken ara ara sağa sola bakar, gözlerini gezdirir */
-        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 7000 + Math.random() * 8000 : 4500 + Math.random() * 5500) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (g < 0.6 && simdi - sessizBas > 15000 && (foto.b === "notr" || foto.b === "dinleyen")) klipOynat(g < 0.3 ? "bas-sol" : "bas-sag"); else api.jest(g < 0.8 ? "gez" : "bakYukari", dinleme ? 0.7 : 1); }
+        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 7000 + Math.random() * 8000 : 4500 + Math.random() * 5500) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (g < 0.6 && simdi - sessizBas > 15000 && (foto.b === "notr" || foto.b === "dinleyen")) klipOynat(g < 0.3 ? "bas-sol" : "bas-sag"); else api.jest(g < 0.7 ? "gez" : g < 0.8 ? (g < 0.75 ? "bakSol" : "bakSag") : "bakYukari", 1); }
         if (!konusma && !dinleme && simdi > bostaJest) { bostaJest = simdi + 7000 + Math.random() * 7000; var r = Math.random(); api.jest(r < 0.4 ? "egil" : r < 0.7 ? "kas" : "onay", 0.25); }
       }
       /* göz kırpma: düzensiz, yarım-kapalı-yarım */
@@ -873,7 +873,7 @@
           if (benim.iptal || konusma !== benim) return Promise.resolve();
           if (i >= liste.length) {
             if (!kapandi) return new Promise(function (r) { bekleyen = r; }).then(sonraki);
-            konusma = null; setTimeout(function () { if (!konusma) api.duygu(o.sonDuygu || "notr", 0.6); }, 600); return Promise.resolve();
+            konusma = null; setTimeout(function () { if (!konusma && !dinleme) api.duygu(o.sonDuygu || "notr", 0.6); }, 600); return Promise.resolve();
           }
           var c = Object.assign({}, liste[i++]);
           if (o.oncesi) try { o.oncesi(c, i - 1); } catch (e) {}
