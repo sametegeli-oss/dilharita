@@ -750,3 +750,12 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-fon-dugmeler { display: flex; gap: 8px; flex-wrap: wrap; }
 .vd-fon-dugmeler .vd-fon-degis { margin-left: 0; padding: 6px 12px; }
 .vd-fon-kayit-satir .vd-fon-sil { align-self: flex-start; margin-left: 0; }
+.vd-fon-galeri { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.vd-fon-kart { position: relative; cursor: pointer; border-radius: 10px; overflow: hidden; border: 2px solid transparent; background: rgba(255,255,255,.05); }
+.vd-fon-kart.secili { border-color: var(--vd-vurgu); }
+.vd-fon-on { position: relative; aspect-ratio: 16/9; background: #222; }
+.vd-fon-on img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vd-fon-oynat { position: absolute; left: 6px; bottom: 4px; font-size: .7rem; color: #fff; background: rgba(0,0,0,.55); border-radius: 6px; padding: 1px 5px; }
+.vd-fon-kart small { display: block; padding: 3px 6px; font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vd-fon-x { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 15px; line-height: 20px; padding: 0; }
+.vd-fon-bos { color: var(--vd-soluk); }

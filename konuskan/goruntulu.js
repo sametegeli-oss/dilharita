@@ -228,7 +228,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
         <label class="vd-satir">Arka plan <select data-a="fon"><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select> </label>
         <label class="vd-satir">Arka plan türü <select data-a="fontur"><option value="video">Video</option><option value="resim">Resim</option><option value="fon">Fon</option></select><span class="vd-fon-dugmeler"><button type="button" class="vd-fon-degis" data-a="fondegis" title="Bu ortam için başka bir video ya da resim bul">Başka video</button><button type="button" class="vd-fon-degis" data-a="fonkaydet" title="Şu anki arka planı kaydettiklerime ekle">Kaydet</button></span></label>
-        <label class="vd-satir vd-fon-kayit-satir">Kaydettiklerim <select data-a="fonkayitli"><option value="">— seç —</option></select> <button type="button" class="vd-fon-sil" data-a="fonsil" title="Seçili kaydı sil">Sil</button></label>
+        <div class="vd-satir vd-fon-kayit-satir">Kaydettiklerim <div class="vd-fon-galeri" data-a="fongaleri"></div></div>
         <label class="vd-anahtar"><input type="checkbox" data-a="canli"><span></span> Canlı görüntü <small>Görüntü, görüntülü görüşmedeki gibi hafifçe kayar; fonda küçük hareketler olur (buhar, yapraklar, ışık). Telefon yavaşlarsa kapat.</small></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="tahta"><span></span> Örnekleri tahtada göster <small>İngilizce örnek okunurken cümle ve Türkçesi bir tahtada görünür.</small></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="kendim"><span></span> Kendi görüntüm köşede <small>Ders başlayınca kameran küçük pencerede açılır. Deniz yalnız "Deniz'e göster"e basınca görür. Pil ve işlemci harcar.</small></label>
@@ -541,7 +541,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         if (tur === 'resim') {
           const d = await (await fetch('https://api.pexels.com/v1/search?per_page=15&orientation=landscape&query=' + encodeURIComponent(FON_SORGU[fon]), { headers: { Authorization: key } })).json();
           const ps = d.photos || []; if (!ps.length) return null; const i = sira0 % ps.length, p = ps[i]; const u = (p.src && (p.src.large2x || p.src.large || p.src.original));
-          if (u) { kvKoy(kk, { url: u, id: p.id, t: Date.now(), sira: i }); return u; } return null;
+          if (u) { kvKoy(kk, { url: u, id: p.id, poster: p.src && (p.src.medium || p.src.small), t: Date.now(), sira: i }); return u; } return null;
         }
         const d = await (await fetch('https://api.pexels.com/videos/search?per_page=15&orientation=landscape&size=medium&query=' + encodeURIComponent(FON_SORGU[fon]), { headers: { Authorization: key } })).json();
         const vs0 = (d.videos || []).filter(v => v.duration >= 8), vs = vs0.slice(sira0 % Math.max(1, vs0.length)).concat(vs0.slice(0, sira0 % Math.max(1, vs0.length)));
@@ -576,26 +576,26 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     /* KAYDETTİKLERİM: beğenilen video/resimler kv 'dh-fon-kayitli' listesinde ({tur, fon, url, ad}); seçince o arka plan geri gelir */
     const FON_AD = { sinif: 'Sınıf', kafe: 'Kafe', ofis: 'Ofis', kutuphane: 'Kütüphane', doga: 'Doğa' };
     async function kayitliCiz() {
-      const ls = (await kvAl('dh-fon-kayitli')) || [], sel = q('[data-a=fonkayitli]');
-      sel.innerHTML = '<option value="">' + (ls.length ? '— seç —' : '— henüz yok —') + '</option>' + ls.map((k, i) => `<option value="${i}">${k.ad}</option>`).join('');
-      q('[data-a=fonsil]').hidden = !ls.length;
+      const ls = (await kvAl('dh-fon-kayitli')) || [], g = q('[data-a=fongaleri]');
+      if (!ls.length) { g.innerHTML = '<small class="vd-fon-bos">Henüz kayıt yok. Beğendiğin arka planda "Kaydet"e bas.</small>'; return; }
+      g.innerHTML = ls.map((k, i) => `<div class="vd-fon-kart" data-i="${i}" title="${k.ad}"><div class="vd-fon-on">${k.poster ? `<img src="${k.poster}" alt="" loading="lazy">` : (k.tur === 'resim' ? `<img src="${k.url}" alt="" loading="lazy">` : '')}${k.tur === 'video' ? '<span class="vd-fon-oynat">▶</span>' : ''}</div><small>${k.ad}</small><button type="button" class="vd-fon-x" data-sil="${i}" aria-label="Sil">×</button></div>`).join('');
     }
     q('[data-a=fonkaydet]').onclick = async () => {
       const b0 = q('[data-a=fonkaydet]'), uyar = m => { b0.textContent = m; setTimeout(() => { b0.textContent = 'Kaydet'; }, 2500); };
       const tur = fonTur(), fon = kok.dataset.fon; if (tur === 'fon') return uyar('Önce Video ya da Resim seç'); if (!FON_SORGU[fon]) return uyar('Önce bir ortam seç (Stüdyo hariç)');
       const k = await kvAl((tur === 'resim' ? 'dh-fon-resim-' : 'dh-fon-video-') + fon); if (!k || !k.url) return uyar('Henüz yüklenmedi');
       const ls = (await kvAl('dh-fon-kayitli')) || [];
-      if (!ls.some(x => x.url === k.url)) { const n = ls.filter(x => x.fon === fon && x.tur === tur).length + 1; ls.push({ tur, fon, url: k.url, id: k.id, ad: (FON_AD[fon] || fon) + ' · ' + (tur === 'resim' ? 'resim' : 'video') + ' ' + n }); kvKoy('dh-fon-kayitli', ls); }
+      if (!ls.some(x => x.url === k.url)) { const n = ls.filter(x => x.fon === fon && x.tur === tur).length + 1; ls.push({ tur, fon, url: k.url, id: k.id, poster: k.poster, ad: (FON_AD[fon] || fon) + ' · ' + (tur === 'resim' ? 'resim' : 'video') + ' ' + n }); kvKoy('dh-fon-kayitli', ls); }
       const b = q('[data-a=fonkaydet]'); b.textContent = 'Kaydedildi ✓'; setTimeout(() => { b.textContent = 'Kaydet'; }, 1500); setTimeout(kayitliCiz, 200);
     };
-    q('[data-a=fonkayitli]').onchange = async e => {
-      const ls = (await kvAl('dh-fon-kayitli')) || [], k = ls[+e.target.value]; if (!k) return;
+    q('[data-a=fongaleri]').onclick = async e => {
+      const sil = e.target.closest('[data-sil]'), kart = e.target.closest('.vd-fon-kart');
+      if (sil) { const ls = (await kvAl('dh-fon-kayitli')) || []; ls.splice(+sil.dataset.sil, 1); kvKoy('dh-fon-kayitli', ls); setTimeout(kayitliCiz, 200); return; }
+      if (!kart) return;
+      const ls = (await kvAl('dh-fon-kayitli')) || [], k = ls[+kart.dataset.i]; if (!k) return;
+      q('[data-a=fongaleri]').querySelectorAll('.vd-fon-kart').forEach(x => x.classList.toggle('secili', x === kart));
       kvKoy((k.tur === 'resim' ? 'dh-fon-resim-' : 'dh-fon-video-') + k.fon, { url: k.url, id: k.id, t: Date.now(), sira: 0 });
       ayar.fon = k.fon; ayar.fonTur = k.tur; ayarKaydet(); kok.dataset.fontur = k.tur; setTimeout(() => fonUygula(), 150);
-    };
-    q('[data-a=fonsil]').onclick = async () => {
-      const sel = q('[data-a=fonkayitli]'); if (sel.value === '') return; const ls = (await kvAl('dh-fon-kayitli')) || [];
-      ls.splice(+sel.value, 1); kvKoy('dh-fon-kayitli', ls); setTimeout(kayitliCiz, 200);
     };
     kayitliCiz();
     const canliUygula = () => { kok.classList.toggle('vd-canli', ayar.canli !== false); q('[data-a=canli]').checked = ayar.canli !== false; fonVideo(); };

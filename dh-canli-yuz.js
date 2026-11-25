@@ -298,9 +298,12 @@
     function kur() {
       var vs = "attribute vec2 aPos; attribute vec2 aUV; uniform vec2 uSize; uniform vec3 uCam; varying vec2 vUV;" +
         "void main(){ vec2 p=(aPos-uCam.xy)*uCam.z+uCam.xy; vec2 c=p/uSize*2.0-1.0; gl_Position=vec4(c.x,-c.y,0.0,1.0); vUV=aUV; }";
-      var fs = "precision mediump float; varying vec2 vUV; uniform sampler2D uTex; void main(){ gl_FragColor=texture2D(uTex,vUV); }";
+      /* netlik: hafif keskinleştirme (unsharp mask); kenar saydamlığı korunur */
+      var fs = "precision mediump float; varying vec2 vUV; uniform sampler2D uTex; uniform vec2 uTx; uniform float uK;" +
+        "void main(){ vec4 c=texture2D(uTex,vUV); vec3 b=(texture2D(uTex,vUV+vec2(uTx.x,0.0)).rgb+texture2D(uTex,vUV-vec2(uTx.x,0.0)).rgb+texture2D(uTex,vUV+vec2(0.0,uTx.y)).rgb+texture2D(uTex,vUV-vec2(0.0,uTx.y)).rgb)*0.25;" +
+        " gl_FragColor=vec4(clamp(c.rgb+(c.rgb-b)*uK*c.a,0.0,1.0),c.a); }";
       prog = gl.createProgram(); gl.attachShader(prog, shader(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog); gl.useProgram(prog);
-      uLoc = { size: gl.getUniformLocation(prog, "uSize"), cam: gl.getUniformLocation(prog, "uCam") };
+      uLoc = { size: gl.getUniformLocation(prog, "uSize"), cam: gl.getUniformLocation(prog, "uCam"), tx: gl.getUniformLocation(prog, "uTx"), k: gl.getUniformLocation(prog, "uK") };
       /* ızgara */
       var n1 = N + 1; temel = new Float32Array(n1 * n1 * 2); uvs = new Float32Array(n1 * n1 * 2); verts = new Float32Array(n1 * n1 * 2);
       for (var j = 0; j <= N; j++) for (var i = 0; i <= N; i++) { var k = (j * n1 + i) * 2; temel[k] = i / N * W; temel[k + 1] = j / N * H; uvs[k] = i / N; uvs[k + 1] = j / N; }
@@ -313,7 +316,7 @@
       tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.uniform2f(uLoc.size, W, H);
+      gl.uniform2f(uLoc.size, W, H); gl.uniform2f(uLoc.tx, 1 / W, 1 / H); gl.uniform1f(uLoc.k, sec.keskin != null ? sec.keskin : 0.7);
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     }
@@ -591,6 +594,8 @@
       var kNef = ka("nefes", 1), nefesF = Math.sin(t * (konusma ? 1.75 : 1.4)), nefes = hareketAz ? 0 : nefesF * (konusma ? 0.0028 : 0.0042) * kNef;
       var nefesY = hareketAz ? 0 : -nefesF * (konusma ? 1.2 : 2.0) * durum.s * kNef;
       var zoom = 1 + Math.max(-0.3, p.lean) * 0.025 + nefes;   /* öne eğilme hafif yakınlaştırır; büyük olunca konuşmaya geçişte yüz küçülüyor gibi görünüyordu */
+      /* çizim çözünürlüğü ekrandaki boyuta göre (en çok 2 kat): CSS ile büyütülünce oluşan bulanıklık azalır */
+      if (!durum.boyT || simdi - durum.boyT > 1000) { durum.boyT = simdi; try { var rb = canvas.getBoundingClientRect(), olc = Math.min(2, Math.max(1, rb.width * (window.devicePixelRatio || 1) / W)); olc = Math.round(olc * 4) / 4; if (Math.round(W * olc) !== canvas.width) { canvas.width = Math.round(W * olc); canvas.height = Math.round(H * olc); } } catch (e) {} }
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       gl.uniform3f(uLoc.cam, durum.merkez[0], durum.merkez[1] + 40 * durum.s + nefesY, zoom);
