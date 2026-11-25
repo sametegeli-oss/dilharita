@@ -427,8 +427,12 @@
     var klipler = {}, KLIP_SOL = false;   /* sola dönüş videosu hazır olunca true */
     function klipOynat(ad) {
       ad = ad || "sac-duzelt";
-      if (klip.oyn || klip.bekle || sec.klip === false) return;
-      if (!klipler[ad]) { var v = klipler[ad] = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "auto"; v.crossOrigin = "anonymous"; v.src = yol + ad + ".webm?v=" + GORSEL_SURUM;
+      if (klip.oyn || klip.bekle || sec.klip === false || (klip.hata || 0) >= 2) return;
+      if (!klipler[ad]) { var v = klipler[ad] = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "auto";
+        v.setAttribute("muted", ""); v.setAttribute("playsinline", "");
+        /* Android Chrome görünmeyen videoyu oynatmıyor/bekletiyor: sayfaya küçük ve neredeyse saydam ekle */
+        v.style.cssText = "position:fixed;left:0;bottom:0;width:4px;height:4px;opacity:0.01;pointer-events:none;z-index:-1";
+        try { document.body.appendChild(v); } catch (e) {} v.crossOrigin = "anonymous"; v.src = yol + ad + ".webm?v=" + GORSEL_SURUM;
         v.onended = v.onerror = function () { if (klip.v === v) { klip.oyn = false; klip.bekle = false; sonDoku = ""; klip.onceki = null; klipSonrasi(); } }; }
       klip.v = klipler[ad]; try { klip.v.currentTime = 0; } catch (e) {} klip.bekle = true; klip.t0 = performance.now();
       klip.onceki = foto.b; fotoHedef("notr"); aktifJestler = []; sonrakiKirp = Math.max(sonrakiKirp, performance.now() + 8000);   /* video tam bu yüzle başlar ve biter: önce düz yüze geç */   /* önce baş nötre döner, sonra video başlar */
@@ -439,7 +443,7 @@
       aktifJestler = aktifJestler.filter(function (j) { return false; }); gezJest = Math.max(gezJest, sm + 4000); sonrakiKirp = Math.max(sonrakiKirp, sm + 1800);
     }
     function klipBaslat() {
-      klip.bekle = false; klip.t1 = performance.now(); var pr = klip.v.play(); klip.oyn = true;
+      klip.bekle = false; klip.t1 = performance.now(); klip.ct = -1; klip.ctT = klip.t1; var pr = klip.v.play(); klip.oyn = true;
       if (pr && pr.catch) pr.catch(function () { klip.oyn = false; });
     }
     /* gerçek baş çevirme: Gemini'nin yan dönük fotoğraflarına geçip geri döner (saç ve kulak yandan görünür) */
@@ -577,7 +581,8 @@
       var kDur = klip.oyn || klip.bekle || simdi < (klip.dondur || 0); klip.w += ((kDur ? 1 : 0) - klip.w) * (1 - Math.exp(-dt / (kDur ? 0.18 : 0.6))); if (simdi < (klip.dondur || 0)) klip.w = 1;
       /* telefonda video önceden yüklenmeyebilir: hazır olmasını beklemeden oynat (ilk kare zaten düz yüz); takılırsa vazgeç — donma olmasın */
       if (klip.bekle && klip.w > 0.97 && foto.t >= 1) klipBaslat();
-      if (klip.bekle && simdi - klip.t0 > 3000) { klip.bekle = false; klipSonrasi(); }
+      if (klip.bekle && simdi - klip.t0 > 3000) { klip.bekle = false; klipSonrasi(); klip.dondur = 0; klip.hata = (klip.hata || 0) + 1; }
+      if (klip.oyn) { var ct = klip.v.currentTime; if (ct !== klip.ct) { klip.ct = ct; klip.ctT = simdi; } else if (simdi - klip.ctT > 1000) { try { klip.v.pause(); } catch (e) {} klip.oyn = false; sonDoku = ""; klipSonrasi(); klip.dondur = 0; klip.hata = (klip.hata || 0) + 1; } }   /* video ilerlemiyor: bekleme, devam et */
       if (klip.oyn && simdi - klip.t1 > ((klip.v.duration > 0 && isFinite(klip.v.duration) ? klip.v.duration : 5) * 1000 + 2500)) { try { klip.v.pause(); } catch (e) {} klip.oyn = false; sonDoku = ""; klipSonrasi(); }
       if (klip.w > 0.001) { var kw = klip.oyn || simdi < (klip.dondur || 0) ? 0 : 1 - klip.w; PARAMS.forEach(function (k) { p[k] *= kw; }); }
       deforme(p, t);
