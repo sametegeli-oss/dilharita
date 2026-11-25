@@ -276,7 +276,7 @@
       dp.hedef = sec; dp.onceki = sec.ad; dp.sonraki = simdi + 4000 + Math.random() * 4000;
       if (sec.jest) setTimeout(function () { if (dinleme) api.jest(sec.jest, 0.45); }, 600);
     }
-    var t0 = performance.now(), sonKirp = t0, sonrakiKirp = t0 + 2500, sakkad = { x: 0, y: 0, t: t0 + 1500 }, bakisKac = t0 + 5000, sonVurgu = 0, dinleNod = t0 + 2500, bostaJest = t0 + 9000, gezJest = t0 + 4000;
+    var t0 = performance.now(), sonKirp = t0, sonrakiKirp = t0 + 2500, sakkad = { x: 0, y: 0, t: t0 + 1500 }, bakisKac = t0 + 5000, sonVurgu = 0, dinleNod = t0 + 2500, bostaJest = t0 + 9000, gezJest = t0 + 4000, sessizBas = t0;
     /* konuşma hareket planlayıcısı: baş duruşu ve bakış, ifade öbekleri gibi 1-3 sn'de bir yeni hedefe yumuşakça geçer */
     var hp = { yatik: 0, yaw: 0, roll: 0, pitch: 0, gx: 0, gy: 0, ty: 0, tr: 0, tp: 0, tgx: 0, tgy: 0, yan: 0, pozT: t0 + 800, yawT: t0 + 600, yanT: t0 + 3000, bakT: t0 + 1500, bakBit: 0 };
     /* Gerçek ses (Gemini) çalmak için ses bağlamı + çözümleyici: ağız sesin şiddetiyle oynar */
@@ -547,8 +547,9 @@
           if (dp.hedef) { var dk3 = 1 - Math.exp(-dt / 0.6), sonda = 0; for (var kk in dp.an) { dp.an[kk] += (0 - dp.an[kk]) * dk3; p[kk] += dp.an[kk]; sonda += Math.abs(dp.an[kk]); } if (sonda < 0.01) dp.hedef = null; }
         }
         /* boşta (ne konuşuyor ne dinliyor): uzun aralıklarla küçük doğal hareket */
+        if (konusma) sessizBas = simdi;   /* Deniz en son ne zaman konuştu: uzun beklemede baş çevirir */
         /* boştayken ve dinlerken ara ara sağa sola bakar, gözlerini gezdirir */
-        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 7000 + Math.random() * 8000 : 4500 + Math.random() * 5500) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (g < 0.6 && (foto.b === "notr" || foto.b === "dinleyen")) klipOynat(g < 0.3 ? "bas-sol" : "bas-sag"); else api.jest(g < 0.8 ? "gez" : "bakYukari", dinleme ? 0.7 : 1); }
+        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 7000 + Math.random() * 8000 : 4500 + Math.random() * 5500) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (g < 0.6 && simdi - sessizBas > 15000 && (foto.b === "notr" || foto.b === "dinleyen")) klipOynat(g < 0.3 ? "bas-sol" : "bas-sag"); else api.jest(g < 0.8 ? "gez" : "bakYukari", dinleme ? 0.7 : 1); }
         if (!konusma && !dinleme && simdi > bostaJest) { bostaJest = simdi + 7000 + Math.random() * 7000; var r = Math.random(); api.jest(r < 0.4 ? "egil" : r < 0.7 ? "kas" : "onay", 0.25); }
       }
       /* göz kırpma: düzensiz, yarım-kapalı-yarım */
