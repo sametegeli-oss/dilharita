@@ -227,7 +227,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-satir">Sustuktan sonra bekleme: <b class="vd-sessiz-d"></b><input type="range" min="1.2" max="4" step="0.2" data-a="sessizlik"></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
         <label class="vd-satir">Arka plan <select data-a="fon"><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select> </label>
-        <label class="vd-satir">Arka plan türü <select data-a="fontur"><option value="video">Video</option><option value="resim">Resim</option><option value="fon">Fon</option></select> <button type="button" class="vd-fon-degis" data-a="fondegis" title="Bu ortam için başka bir video ya da resim bul">Başka video</button></label>
+        <label class="vd-satir">Arka plan türü <select data-a="fontur"><option value="video">Video</option><option value="resim">Resim</option><option value="fon">Fon</option></select> <button type="button" class="vd-fon-degis" data-a="fondegis" title="Bu ortam için başka bir video ya da resim bul">Başka video</button> <button type="button" class="vd-fon-degis" data-a="fonkaydet" title="Şu anki arka planı kaydettiklerime ekle">Kaydet</button></label>
+        <label class="vd-satir vd-fon-kayit-satir">Kaydettiklerim <select data-a="fonkayitli"><option value="">— seç —</option></select> <button type="button" class="vd-fon-sil" data-a="fonsil" title="Seçili kaydı sil">Sil</button></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="canli"><span></span> Canlı görüntü <small>Görüntü, görüntülü görüşmedeki gibi hafifçe kayar; fonda küçük hareketler olur (buhar, yapraklar, ışık). Telefon yavaşlarsa kapat.</small></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="tahta"><span></span> Örnekleri tahtada göster <small>İngilizce örnek okunurken cümle ve Türkçesi bir tahtada görünür.</small></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="kendim"><span></span> Kendi görüntüm köşede <small>Ders başlayınca kameran küçük pencerede açılır. Deniz yalnız "Deniz'e göster"e basınca görür. Pil ve işlemci harcar.</small></label>
@@ -572,6 +573,30 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     q('[data-a=fondegis]').onclick = async () => { const fon = kok.dataset.fon, kk = (fonTur() === 'resim' ? 'dh-fon-resim-' : 'dh-fon-video-') + fon; const k = await kvAl(kk); kvKoy(kk, Object.assign({}, k || {}, { degis: true })); setTimeout(fonVideo, 150); };
     q('[data-a=fontur]').onchange = e => { ayar.fonTur = e.target.value; ayarKaydet(); kok.dataset.fontur = fonTur(); fonVideo(); };
     kok.dataset.fontur = fonTur();
+    /* KAYDETTİKLERİM: beğenilen video/resimler kv 'dh-fon-kayitli' listesinde ({tur, fon, url, ad}); seçince o arka plan geri gelir */
+    const FON_AD = { sinif: 'Sınıf', kafe: 'Kafe', ofis: 'Ofis', kutuphane: 'Kütüphane', doga: 'Doğa' };
+    async function kayitliCiz() {
+      const ls = (await kvAl('dh-fon-kayitli')) || [], sel = q('[data-a=fonkayitli]');
+      sel.innerHTML = '<option value="">' + (ls.length ? '— seç —' : '— henüz yok —') + '</option>' + ls.map((k, i) => `<option value="${i}">${k.ad}</option>`).join('');
+      q('[data-a=fonsil]').hidden = !ls.length;
+    }
+    q('[data-a=fonkaydet]').onclick = async () => {
+      const tur = fonTur(), fon = kok.dataset.fon; if (tur === 'fon' || !FON_SORGU[fon]) return;
+      const k = await kvAl((tur === 'resim' ? 'dh-fon-resim-' : 'dh-fon-video-') + fon); if (!k || !k.url) return;
+      const ls = (await kvAl('dh-fon-kayitli')) || [];
+      if (!ls.some(x => x.url === k.url)) { const n = ls.filter(x => x.fon === fon && x.tur === tur).length + 1; ls.push({ tur, fon, url: k.url, id: k.id, ad: (FON_AD[fon] || fon) + ' · ' + (tur === 'resim' ? 'resim' : 'video') + ' ' + n }); kvKoy('dh-fon-kayitli', ls); }
+      const b = q('[data-a=fonkaydet]'); b.textContent = 'Kaydedildi ✓'; setTimeout(() => { b.textContent = 'Kaydet'; }, 1500); setTimeout(kayitliCiz, 200);
+    };
+    q('[data-a=fonkayitli]').onchange = async e => {
+      const ls = (await kvAl('dh-fon-kayitli')) || [], k = ls[+e.target.value]; if (!k) return;
+      kvKoy((k.tur === 'resim' ? 'dh-fon-resim-' : 'dh-fon-video-') + k.fon, { url: k.url, id: k.id, t: Date.now(), sira: 0 });
+      ayar.fon = k.fon; ayar.fonTur = k.tur; ayarKaydet(); kok.dataset.fontur = k.tur; setTimeout(() => fonUygula(), 150);
+    };
+    q('[data-a=fonsil]').onclick = async () => {
+      const sel = q('[data-a=fonkayitli]'); if (sel.value === '') return; const ls = (await kvAl('dh-fon-kayitli')) || [];
+      ls.splice(+sel.value, 1); kvKoy('dh-fon-kayitli', ls); setTimeout(kayitliCiz, 200);
+    };
+    kayitliCiz();
     const canliUygula = () => { kok.classList.toggle('vd-canli', ayar.canli !== false); q('[data-a=canli]').checked = ayar.canli !== false; fonVideo(); };
     q('[data-a=canli]').onchange = e => { ayar.canli = e.target.checked; ayarKaydet(); canliUygula(); };
     canliUygula();
