@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v603";  /* 🔄 10 sn cevap beklenince baş kesin yana döner (12–20 sn arayla sırayla); kaş kaldırma yumuşak */
-/* onceki v602: 🐛 Konuşma sonrası "cesaret" yüzü dinleme yüzünü eziyordu: göz/baş hareketleri dinlerken çalışmıyordu */
+var SW_VERSION = "dh-sw-v604";  /* 👀 Sola dönüş gerçek Gemini fotoğraflarından (ayna yok); göz bakışı seyrek ve net (bulanıklık giderildi) */
+/* onceki v603: 🔄 10 sn cevap beklenince baş kesin yana döner (12–20 sn arayla sırayla); kaş kaldırma yumuşak */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */
