@@ -420,7 +420,7 @@
     var sonDoku = "";
     /* kısa video klip (Gemini/Veo, tabana hizalı, saydam arka plan): dinlerken ara sıra saçını düzeltir */
     var klip = { v: null, oyn: false, bekle: false, w: 0, sonraki: performance.now() + 25000 + Math.random() * 20000 };
-    var klipler = {};
+    var klipler = {}, KLIP_SOL = false;   /* sola dönüş videosu hazır olunca true */
     function klipOynat(ad) {
       ad = ad || "sac-duzelt";
       if (klip.oyn || klip.bekle || sec.klip === false) return;
@@ -552,7 +552,7 @@
         /* boşta (ne konuşuyor ne dinliyor): uzun aralıklarla küçük doğal hareket */
         if (konusma) { sessizBas = simdi; klip.basSay = 0; }   /* Deniz en son ne zaman konuştu: uzun beklemede baş çevirir */
         /* boştayken ve dinlerken ara ara sağa sola bakar, gözlerini gezdirir */
-        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 15000 + Math.random() * 12000 : 10000 + Math.random() * 8000) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (simdi - sessizBas > 10000 && simdi > (klip.basSonra || 0) && (g < 0.75 || !klip.basSay)) { klip.basSay = (klip.basSay || 0) + 1; klip.basSonra = simdi + 12000 + Math.random() * 8000; klipOynat(klip.basSay % 2 ? "bas-sag" : "bas-sol"); } else api.jest(g < 0.7 ? "gez" : g < 0.8 ? (g < 0.75 ? "bakSol" : "bakSag") : "bakYukari", 1); }
+        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 15000 + Math.random() * 12000 : 10000 + Math.random() * 8000) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (simdi - sessizBas > 10000 && simdi > (klip.basSonra || 0) && (g < 0.75 || !klip.basSay)) { klip.basSay = (klip.basSay || 0) + 1; klip.basSonra = simdi + 12000 + Math.random() * 8000; klipOynat(KLIP_SOL && !(klip.basSay % 2) ? "bas-sol" : "bas-sag"); } else api.jest(g < 0.7 ? "gez" : g < 0.8 ? (g < 0.75 ? "bakSol" : "bakSag") : "bakYukari", 1); }
         if (!konusma && !dinleme && simdi > bostaJest) { bostaJest = simdi + 7000 + Math.random() * 7000; var r = Math.random(); api.jest(r < 0.4 ? "egil" : r < 0.7 ? "kas" : "onay", 0.25); }
       }
       /* göz kırpma: düzensiz, yarım-kapalı-yarım */
