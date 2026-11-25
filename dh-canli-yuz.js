@@ -425,7 +425,7 @@
       ad = ad || "sac-duzelt";
       if (klip.oyn || klip.bekle || sec.klip === false) return;
       if (!klipler[ad]) { var v = klipler[ad] = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "auto"; v.crossOrigin = "anonymous"; v.src = yol + ad + ".webm?v=" + GORSEL_SURUM;
-        v.onended = v.onerror = function () { if (klip.v === v) { klip.oyn = false; klip.bekle = false; sonDoku = ""; if (klip.onceki && klip.onceki !== "notr") fotoHedef(klip.onceki); klip.onceki = null; klipSonrasi(); } }; }
+        v.onended = v.onerror = function () { if (klip.v === v) { klip.oyn = false; klip.bekle = false; sonDoku = ""; klip.onceki = null; klipSonrasi(); } }; }
       klip.v = klipler[ad]; klip.v.currentTime = 0; klip.bekle = true;
       klip.onceki = foto.b; fotoHedef("notr"); aktifJestler = []; sonrakiKirp = Math.max(sonrakiKirp, performance.now() + 8000);   /* video tam bu yüzle başlar ve biter: önce düz yüze geç */   /* önce baş nötre döner, sonra video başlar */
     }
@@ -447,7 +447,9 @@
       })();
     }
     function dokuCiz() {
-      if (klip.oyn && klip.v.readyState >= 2) {
+      if (klip.oyn) {
+        /* kare hazır değilse (arama/tampon) fotoğrafa dönme: son video karesi ekranda kalsın — aksi hâlde titreme */
+        if (klip.v.readyState < 2 || klip.v.seeking) return;
         cx.globalCompositeOperation = "source-over"; cx.globalAlpha = 1; cx.clearRect(0, 0, W, H); cx.drawImage(klip.v, 0, 0, W, H); sonDoku = "";
         gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cmp); return;
       }
@@ -567,8 +569,8 @@
       if (konusma) konusmaKare(simdi, dt);
       else if (agiz.b !== "idle" || agiz.t < 1) { if (agiz.b !== "idle") { agiz.a = agiz.b; agiz.b = "idle"; agiz.t = 0; } agiz.t = Math.min(1, agiz.t + dt / 0.12); }
       if (foto.t < 1) foto.t = Math.min(1, foto.t + dt / (/^don/.test(foto.a + foto.b) ? 0.16 : 0.35));
-      klip.w += ((klip.oyn || klip.bekle ? 1 : 0) - klip.w) * (1 - Math.exp(-dt / 0.18));
-      if (klip.bekle && klip.w > 0.97 && foto.t >= 1 && klip.v.readyState >= 2) klipBaslat();
+      klip.w += ((klip.oyn || klip.bekle ? 1 : 0) - klip.w) * (1 - Math.exp(-dt / (klip.oyn || klip.bekle ? 0.18 : 0.6)));
+      if (klip.bekle && klip.w > 0.97 && foto.t >= 1 && klip.v.readyState >= 2 && !klip.v.seeking) klipBaslat();
       if (klip.w > 0.001) { var kw = klip.oyn ? 0 : 1 - klip.w; PARAMS.forEach(function (k) { p[k] *= kw; }); }
       deforme(p, t);
       dokuCiz();

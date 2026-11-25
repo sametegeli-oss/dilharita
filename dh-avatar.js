@@ -145,7 +145,7 @@
   function canliHazirla() {
     var adimlar = [];
     if (!global.DHViseme) adimlar.push(betikYukle("./viseme-lang.js"));
-    return Promise.all(adimlar).then(function () { return global.DHCanliYuz ? null : betikYukle("./dh-canli-yuz.js?v=71"); });
+    return Promise.all(adimlar).then(function () { return global.DHCanliYuz ? null : betikYukle("./dh-canli-yuz.js?v=72"); });
   }
   var stilVar = false;
   function stilEkle() {
