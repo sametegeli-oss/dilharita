@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v599";  /* 🧑 Deniz başını gerçekten yana çevirir (yan dönük fotoğraflar), omuz kenarları yumuşak solar */
-/* onceki v598: 🔄 Bakarken baş da döner, göz dinlerken de çalışır, saç klibi yumuşak girip çıkar */
+var SW_VERSION = "dh-sw-v600";  /* 🔄 Baş çevirme artık akıcı video (ara kareli), ani foto geçişi kaldırıldı */
+/* onceki v599: 🧑 Deniz başını gerçekten yana çevirir (yan dönük fotoğraflar), omuz kenarları yumuşak solar */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */

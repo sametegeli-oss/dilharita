@@ -217,7 +217,7 @@
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
-  var GORSEL_SURUM = "20261125c";
+  var GORSEL_SURUM = "20261125d";
   function yukle(src) { if (src.indexOf("?") < 0 && !/^(data|blob):/.test(src)) src += "?v=" + GORSEL_SURUM; return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -420,11 +420,13 @@
     var sonDoku = "";
     /* kısa video klip (Gemini/Veo, tabana hizalı, saydam arka plan): dinlerken ara sıra saçını düzeltir */
     var klip = { v: null, oyn: false, bekle: false, w: 0, sonraki: performance.now() + 25000 + Math.random() * 20000 };
-    function klipOynat() {
-      if (klip.oyn || sec.klip === false || !fotolar.notr && !taban) return;
-      if (!klip.v) { var v = klip.v = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "auto"; v.crossOrigin = "anonymous"; v.src = yol + "sac-duzelt.webm?v=" + GORSEL_SURUM;
-        v.onended = v.onerror = function () { klip.oyn = false; sonDoku = ""; }; }
-      klip.v.currentTime = 0; klip.bekle = true;   /* önce baş nötre döner, sonra video başlar */
+    var klipler = {};
+    function klipOynat(ad) {
+      ad = ad || "sac-duzelt";
+      if (klip.oyn || klip.bekle || sec.klip === false) return;
+      if (!klipler[ad]) { var v = klipler[ad] = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "auto"; v.crossOrigin = "anonymous"; v.src = yol + ad + ".webm?v=" + GORSEL_SURUM;
+        v.onended = v.onerror = function () { if (klip.v === v) { klip.oyn = false; klip.bekle = false; sonDoku = ""; } }; }
+      klip.v = klipler[ad]; klip.v.currentTime = 0; klip.bekle = true;   /* önce baş nötre döner, sonra video başlar */
     }
     function klipBaslat() {
       klip.bekle = false; var pr = klip.v.play(); klip.oyn = true;
@@ -546,7 +548,7 @@
         }
         /* boşta (ne konuşuyor ne dinliyor): uzun aralıklarla küçük doğal hareket */
         /* boştayken ve dinlerken ara ara sağa sola bakar, gözlerini gezdirir */
-        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 7000 + Math.random() * 8000 : 4500 + Math.random() * 5500) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (g < 0.8 && fotolar.donSol && fotolar.donSag) basCevir(g < 0.3 ? ["Sol"] : g < 0.6 ? ["Sag"] : ["Sol", "Sag"]); else api.jest(g < 0.8 ? "gez" : "bakYukari", dinleme ? 0.7 : 1); }
+        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 7000 + Math.random() * 8000 : 4500 + Math.random() * 5500) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (g < 0.6 && (foto.b === "notr" || foto.b === "dinleyen")) klipOynat(g < 0.3 ? "bas-sol" : "bas-sag"); else api.jest(g < 0.8 ? "gez" : "bakYukari", dinleme ? 0.7 : 1); }
         if (!konusma && !dinleme && simdi > bostaJest) { bostaJest = simdi + 7000 + Math.random() * 7000; var r = Math.random(); api.jest(r < 0.4 ? "egil" : r < 0.7 ? "kas" : "onay", 0.25); }
       }
       /* göz kırpma: düzensiz, yarım-kapalı-yarım */
