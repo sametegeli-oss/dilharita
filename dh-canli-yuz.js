@@ -217,7 +217,7 @@
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
-  var GORSEL_SURUM = "20261125i";
+  var GORSEL_SURUM = "20261125j";
   function yukle(src) { if (src.indexOf("?") < 0 && !/^(data|blob):/.test(src)) src += "?v=" + GORSEL_SURUM; return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -430,8 +430,9 @@
       klip.onceki = foto.b; fotoHedef("notr"); aktifJestler = []; sonrakiKirp = Math.max(sonrakiKirp, performance.now() + 8000);   /* video tam bu yüzle başlar ve biter: önce düz yüze geç */   /* önce baş nötre döner, sonra video başlar */
     }
     function klipSonrasi() {   /* göz de ağız gibi düz başlangıçta: bakış/sakkad sıfır, 2 sn yeni bakış yok */
-      var sm = performance.now(); sakkad.x = 0; sakkad.y = 0; sakkad.t = sm + 2000; hp.gx = hp.gy = hp.tgx = hp.tgy = 0; cur.gazeX = cur.gazeY = 0;
-      aktifJestler = aktifJestler.filter(function (j) { return false; }); gezJest = Math.max(gezJest, sm + 4000); sonrakiKirp = Math.max(sonrakiKirp, sm + 1500);
+      var sm = performance.now(); klip.dondur = sm + 1000; sakkad.x = 0;   /* fotoğrafa dönünce 1 sn hiç kıpırdama */
+      sakkad.x = 0; sakkad.y = 0; sakkad.t = sm + 2000; hp.gx = hp.gy = hp.tgx = hp.tgy = 0; cur.gazeX = cur.gazeY = 0;
+      aktifJestler = aktifJestler.filter(function (j) { return false; }); gezJest = Math.max(gezJest, sm + 4000); sonrakiKirp = Math.max(sonrakiKirp, sm + 1800);
     }
     function klipBaslat() {
       klip.bekle = false; var pr = klip.v.play(); klip.oyn = true;
@@ -569,9 +570,9 @@
       if (konusma) konusmaKare(simdi, dt);
       else if (agiz.b !== "idle" || agiz.t < 1) { if (agiz.b !== "idle") { agiz.a = agiz.b; agiz.b = "idle"; agiz.t = 0; } agiz.t = Math.min(1, agiz.t + dt / 0.12); }
       if (foto.t < 1) foto.t = Math.min(1, foto.t + dt / (/^don/.test(foto.a + foto.b) ? 0.16 : 0.35));
-      klip.w += ((klip.oyn || klip.bekle ? 1 : 0) - klip.w) * (1 - Math.exp(-dt / (klip.oyn || klip.bekle ? 0.18 : 0.6)));
+      var kDur = klip.oyn || klip.bekle || simdi < (klip.dondur || 0); klip.w += ((kDur ? 1 : 0) - klip.w) * (1 - Math.exp(-dt / (kDur ? 0.18 : 0.6))); if (simdi < (klip.dondur || 0)) klip.w = 1;
       if (klip.bekle && klip.w > 0.97 && foto.t >= 1 && klip.v.readyState >= 2 && !klip.v.seeking) klipBaslat();
-      if (klip.w > 0.001) { var kw = klip.oyn ? 0 : 1 - klip.w; PARAMS.forEach(function (k) { p[k] *= kw; }); }
+      if (klip.w > 0.001) { var kw = klip.oyn || simdi < (klip.dondur || 0) ? 0 : 1 - klip.w; PARAMS.forEach(function (k) { p[k] *= kw; }); }
       deforme(p, t);
       dokuCiz();
       /* nefes: ~4,5 sn'de bir; konuşurken biraz daha sık ve sığ. Hafif büyüme + omuzlarla birlikte yukarı kalkma */
