@@ -374,6 +374,11 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-yuz { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 6%, #000 94%, transparent 100%), linear-gradient(to bottom, #000 96%, transparent 100%);
   mask-image: linear-gradient(to right, transparent 0, #000 6%, #000 94%, transparent 100%), linear-gradient(to bottom, #000 96%, transparent 100%);
   -webkit-mask-composite: source-in; mask-composite: intersect; }
+/* geniş ekran: Deniz sağ alta dayalı — sağ omuz ve ceket ekran kenarında biter (kesik belli olmaz), yalnız sol omuz yumuşakça solar */
+@media (min-aspect-ratio: 1/1) {
+  .vd-sahne { place-items: end end; }
+  .vd-yuz { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14%); mask-image: linear-gradient(to right, transparent 0, #000 14%); }
+}
 
 /* ---------- telefon (dikey) v2: yüz üstte, altyazı ve kontrollerin üstünde kalsın ---------- */
 @media (max-aspect-ratio: 1/1) and (max-width: 760px) {
