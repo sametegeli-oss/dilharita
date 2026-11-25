@@ -217,7 +217,7 @@
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
-  var GORSEL_SURUM = "20261125f";
+  var GORSEL_SURUM = "20261125g";
   function yukle(src) { if (src.indexOf("?") < 0 && !/^(data|blob):/.test(src)) src += "?v=" + GORSEL_SURUM; return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -553,7 +553,7 @@
         /* boşta (ne konuşuyor ne dinliyor): uzun aralıklarla küçük doğal hareket */
         if (konusma) { sessizBas = simdi; klip.basSay = 0; }   /* Deniz en son ne zaman konuştu: uzun beklemede baş çevirir */
         /* boştayken ve dinlerken ara ara sağa sola bakar, gözlerini gezdirir */
-        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 15000 + Math.random() * 12000 : 10000 + Math.random() * 8000) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (simdi - sessizBas > 10000 && simdi > (klip.basSonra || 0) && (g < 0.75 || !klip.basSay)) { klip.basSay = (klip.basSay || 0) + 1; klip.basSonra = simdi + 12000 + Math.random() * 8000; klipOynat(KLIP_SOL && !(klip.basSay % 2) ? "bas-sol" : "bas-sag"); } else api.jest(g < 0.7 ? "gez" : g < 0.8 ? (g < 0.75 ? "bakSol" : "bakSag") : "bakYukari", 1); }
+        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 15000 + Math.random() * 12000 : 10000 + Math.random() * 8000) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (simdi - sessizBas > 10000 && simdi > (klip.basSonra || 0) && (g < 0.75 || !klip.basSay)) { klip.basSay = (klip.basSay || 0) + 1; klip.basSonra = simdi + 12000 + Math.random() * 8000; var rs = Math.random(); klipOynat(KLIP_SOL && !(klip.basSay % 2) ? "bas-sol" : rs < 0.35 ? "bas-sag-az" : rs < 0.7 ? "bas-sag-orta" : "bas-sag");   /* bazen az, bazen orta, bazen tam dönüş */ } else api.jest(g < 0.7 ? "gez" : g < 0.8 ? (g < 0.75 ? "bakSol" : "bakSag") : "bakYukari", 1); }
         if (!konusma && !dinleme && simdi > bostaJest) { bostaJest = simdi + 7000 + Math.random() * 7000; var r = Math.random(); api.jest(r < 0.4 ? "egil" : r < 0.7 ? "kas" : "onay", 0.25); }
       }
       /* göz kırpma: düzensiz, yarım-kapalı-yarım */
