@@ -741,7 +741,7 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-duz-ic small { font-size: .82rem; color: var(--vd-soluk); }
 
 /* fon videosu: seçili ortama uygun Pexels videosu, görüntülü görüşme arka planı gibi bulanık ve hafif karartılmış */
-.vd-fon-video { position: absolute; inset: -4%; width: 108%; height: 108%; object-fit: cover; filter: blur(14px) brightness(.78) saturate(.9); pointer-events: none; }
+.vd-fon-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(.85); pointer-events: none; }
 .vd.vd-fon-vid .vd-isik { opacity: .35; }
 .vd.vd-fon-vid .vd-fon-hareket { display: none; }
 .vd-fon-degis { margin-left: 6px; font: inherit; font-size: .8rem; padding: 3px 9px; border-radius: 8px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: inherit; }

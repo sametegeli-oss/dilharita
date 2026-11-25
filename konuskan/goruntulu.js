@@ -537,7 +537,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         const d = await (await fetch('https://api.pexels.com/videos/search?per_page=15&orientation=landscape&size=medium&query=' + encodeURIComponent(FON_SORGU[fon]), { headers: { Authorization: key } })).json();
         const vs0 = (d.videos || []).filter(v => v.duration >= 8), vs = vs0.slice(sira0 % Math.max(1, vs0.length)).concat(vs0.slice(0, sira0 % Math.max(1, vs0.length)));
         for (const v of vs) {
-          const f = (v.video_files || []).filter(x => x.file_type === 'video/mp4' && x.link && x.width).sort((a, b) => Math.abs(960 - a.width) - Math.abs(960 - b.width))[0];
+          const f = (v.video_files || []).filter(x => x.file_type === 'video/mp4' && x.link && x.width).sort((a, b) => Math.abs(1280 - a.width) - Math.abs(1280 - b.width))[0];
           if (f) { kvKoy('dh-fon-video-' + fon, { url: f.link, id: v.id, poster: v.image, t: Date.now(), sira: (sira0 + vs.indexOf(v)) % Math.max(1, vs0.length) }); return f.link; }
         }
       } catch (e) {}
