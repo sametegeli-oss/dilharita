@@ -217,7 +217,7 @@
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
-  var GORSEL_SURUM = "20261125h";
+  var GORSEL_SURUM = "20261125i";
   function yukle(src) { if (src.indexOf("?") < 0 && !/^(data|blob):/.test(src)) src += "?v=" + GORSEL_SURUM; return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -364,7 +364,7 @@
     function kollariAyarla(p) {
       var s = durum.s, K = {};
       kollar.forEach(function (k) { k.dx = 0; k.dy = 0; K[k.ad] = k; });
-      var ic = p.browInnerUp * 17 - p.browDown * 10, dis = p.browOuterUp * 15 - p.browDown * 3, asym = p.browAsym * 12;
+      var ic = p.browInnerUp * 9 - p.browDown * 8, dis = p.browOuterUp * 8 - p.browDown * 3, asym = p.browAsym * 7;   /* kaşlar ölçülü: eskiden 17/15/12 aşırıydı */
       K.kasIcL.dy -= ic * s; K.kasIcR.dy -= ic * s;
       K.kasIcL.dx += p.browDown * 5 * s; K.kasIcR.dx -= p.browDown * 5 * s;
       K.kasOrtaL.dy -= (ic + dis) * 0.5 * s + asym * s; K.kasOrtaR.dy -= (ic + dis) * 0.5 * s - asym * 0.4 * s;
