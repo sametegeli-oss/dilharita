@@ -123,7 +123,7 @@
     bakSag:   { sure: 1700, f: function (t) { var v = egri(t, [[0,0],[0.15,1],[0.8,1],[1,0]]); return { gazeX: -1.0 * v, yaw: -0.15 * v }; } },
     bakYukari:{ sure: 1400, f: function (t) { var v = egri(t, [[0,0],[0.2,1],[0.75,1],[1,0]]); return { gazeY: -0.8 * v, gazeX: 0.2 * v, browOuterUp: 0.2 * v }; } },
     gez:      { sure: 3000, f: function (t) { var x = egri(t, [[0,0],[0.15,0.85],[0.4,0.85],[0.55,-0.85],[0.8,-0.85],[1,0]]); return { gazeX: 1.1 * x, yaw: 0.35 * x, gazeY: -0.1 * Math.abs(x) }; } },
-    kas:      { sure: 500,  f: function (t) { var v = egri(t, [[0,0],[0.3,1],[0.6,1],[1,0]]); return { browInnerUp: 0.7 * v, browOuterUp: 0.7 * v }; } },
+    kas:      { sure: 1200, f: function (t) { var v = egri(t, [[0,0],[0.35,1],[0.6,1],[1,0]]); v = v * v * (3 - 2 * v); return { browInnerUp: 0.4 * v, browOuterUp: 0.4 * v }; } },   /* yumuşak ve ölçülü: ani/aşırı kaş kalkışı olmasın */
     /* vurgu: vurgulu kelimede küçük baş inişi + kaş kalkması (konuşurken kendiliğinden) */
     vurgu:    { sure: 420,  f: function (t) { var v = egri(t, [[0,0],[0.3,1],[1,0]]); return { pitch: 0.2 * v, browInnerUp: 0.35 * v, browOuterUp: 0.3 * v }; } }
   };
@@ -547,9 +547,9 @@
           if (dp.hedef) { var dk3 = 1 - Math.exp(-dt / 0.6), sonda = 0; for (var kk in dp.an) { dp.an[kk] += (0 - dp.an[kk]) * dk3; p[kk] += dp.an[kk]; sonda += Math.abs(dp.an[kk]); } if (sonda < 0.01) dp.hedef = null; }
         }
         /* boşta (ne konuşuyor ne dinliyor): uzun aralıklarla küçük doğal hareket */
-        if (konusma) sessizBas = simdi;   /* Deniz en son ne zaman konuştu: uzun beklemede baş çevirir */
+        if (konusma) { sessizBas = simdi; klip.basSay = 0; }   /* Deniz en son ne zaman konuştu: uzun beklemede baş çevirir */
         /* boştayken ve dinlerken ara ara sağa sola bakar, gözlerini gezdirir */
-        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 7000 + Math.random() * 8000 : 4500 + Math.random() * 5500) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (g < 0.6 && simdi - sessizBas > 15000 && (foto.b === "notr" || foto.b === "dinleyen")) klipOynat(g < 0.3 ? "bas-sol" : "bas-sag"); else api.jest(g < 0.7 ? "gez" : g < 0.8 ? (g < 0.75 ? "bakSol" : "bakSag") : "bakYukari", 1); }
+        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 7000 + Math.random() * 8000 : 4500 + Math.random() * 5500) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (simdi - sessizBas > 10000 && simdi > (klip.basSonra || 0) && (g < 0.75 || !klip.basSay)) { klip.basSay = (klip.basSay || 0) + 1; klip.basSonra = simdi + 12000 + Math.random() * 8000; klipOynat(klip.basSay % 2 ? "bas-sag" : "bas-sol"); } else api.jest(g < 0.7 ? "gez" : g < 0.8 ? (g < 0.75 ? "bakSol" : "bakSag") : "bakYukari", 1); }
         if (!konusma && !dinleme && simdi > bostaJest) { bostaJest = simdi + 7000 + Math.random() * 7000; var r = Math.random(); api.jest(r < 0.4 ? "egil" : r < 0.7 ? "kas" : "onay", 0.25); }
       }
       /* göz kırpma: düzensiz, yarım-kapalı-yarım */
@@ -862,7 +862,7 @@
       /* tarayıcı sesi tercihi, dil başına: { en: "ses adı", tr: "ses adı" } (boş = otomatik) */
       sesTercih: function (o) { o = o || {}; if ("en" in o) sec.sesAdi = o.en || undefined; if ("tr" in o) sec.sesAdiTr = o.tr || undefined; },
       fotoKullan: function (acik) { fotoAcik = !!acik; if (durum.duygu) api.duygu(durum.duygu, durum.guc); },
-      durum: function () { return { duygu: durum.duygu, p: durum.p, profil: profil, agiz: agiz.b }; },
+      durum: function () { return { klip: { oyn: klip.oyn, bekle: klip.bekle, v: klip.v && klip.v.src.split('/').pop(), rs: klip.v && klip.v.readyState }, sessiz: Math.round(performance.now() - sessizBas), duygu: durum.duygu, p: durum.p, profil: profil, agiz: agiz.b }; },
       /* akış halinde konuşma: cümleler geldikçe eklenir (ekle), bitince bitir() çağrılır */
       konusAkis: function (o) {
         o = o || {}; api.sustur(o.sesiKesme === false ? { sesKesme: false } : null);
