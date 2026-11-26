@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v626";  /* Geniş ekranda Deniz sağ alta dayalı (omuz kesiği kenarda gizli), yalnız sol solma */
-/* onceki v625: Deniz alt/yan kenar solması daraltıldı (ceket net) */
+var SW_VERSION = "dh-sw-v627";  /* Sola dönüş videosu (bas-sol az/orta/tam), sağla aynı süre */
+/* onceki v626: Geniş ekranda Deniz sağ alta dayalı (omuz kesiği kenarda gizli), yalnız sol solma */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */
