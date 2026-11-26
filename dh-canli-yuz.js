@@ -261,7 +261,11 @@
     }
     function kirpParca() { if (/^don/.test(foto.b) || /^don/.test(foto.a) && foto.t < 1) return null; var d = baskin(); return (face.duyguKirpma && kirpSetleri[face.duyguKirpma[d]]) || parcalar.blink; }
     function fotoHedef(ad) { if (!fotolar[ad]) ad = "notr"; if (ad === foto.b) return; foto.a = foto.t >= 0.5 ? foto.b : foto.a; foto.b = ad; foto.t = 0; }
-    var konusma = null, dinleme = false, alkisBekle = false;
+    var konusma = null, dinleme = false;
+    /* övgü varsa Deniz ÖNCE alkışlar, video bitince cevabı okur */
+    var OVGU = /harika|aferin|bravo|tebrik|mükemmel|süpersin|çok güzel|well done|excellent|great job|perfect/i;
+    function alkisMi(c) { return !!c && (c.jest === "alkis" || OVGU.test(c.metin || "") || (c.altlar || []).some(function (a) { return a.jest === "alkis" || OVGU.test(a.metin || ""); })); }
+    function alkisBitti(benim) { var t0 = performance.now(); return new Promise(function (r) { (function b() { if (benim.iptal || konusma !== benim || (!klip.oyn && !klip.bekle) || performance.now() - t0 > 12000) return setTimeout(r, 300); setTimeout(b, 100); })(); }); }
     /* DİNLEME DURUŞLARI (24 Kasım): dinlerken tek sabit poz yerine 4-8 sn'de bir yumuşakça değişen duruşlar —
        öne eğilip dikkatle dinleme, başı sağa/sola yatırma, hafif geri çekilip düşünme. Güç: ayar "dinlemeHareket" (0..2). */
     var DINLEME_POZ = [
@@ -705,7 +709,6 @@
         konusma.cumle = c;
         /* duygu biraz ÖNCE başlar, jest cümleyle birlikte */
         if (c.duygu) api.duygu(c.duygu, c.guc == null ? 0.8 : c.guc);
-        if (c.jest === "alkis" || /harika|aferin|bravo|tebrik|mükemmel|süpersin|çok güzel|well done|excellent|great job|perfect/i.test(c.metin || "")) alkisBekle = true;   /* başarı (övgü sözcüğü geçince de): cümleler bitince alkış videosu */
         if (c.jest && JESTLER[c.jest]) setTimeout(function () { if (konusma) api.jest(c.jest); }, c.jestZaman === "son" ? Math.max(300, c.metin.length * msHarf * 0.75) : 150);
         var bitti = false; function son() { if (bitti) return; bitti = true; c.konusuyor = false; setTimeout(res, 140); }
         if (c.sesTampon) { sesleOku(); return; }
@@ -733,7 +736,7 @@
           src.start();
           c.bas = performance.now() + ((ac.outputLatency || ac.baseLatency || 0) * 1000); c.konusuyor = true;
           /* blok içindeki cümlelerin duygu ve jestleri, metindeki yerlerine göre zamanlanır */
-          (c.altlar || []).forEach(function (a) { if (a.jest === "alkis") alkisBekle = true; setTimeout(function () { if (konusma && konusma.cumle === c) { if (a.duygu) api.duygu(a.duygu, a.guc == null ? 0.8 : a.guc); if (a.jest && JESTLER[a.jest]) api.jest(a.jest); if (a.oncesi) try { a.oncesi(); } catch (e) {} } }, Math.max(0, a.oran * sure * 1000 - 120)); });
+          (c.altlar || []).forEach(function (a) { setTimeout(function () { if (konusma && konusma.cumle === c) { if (a.duygu) api.duygu(a.duygu, a.guc == null ? 0.8 : a.guc); if (a.jest && JESTLER[a.jest]) api.jest(a.jest); if (a.oncesi) try { a.oncesi(); } catch (e) {} } }, Math.max(0, a.oran * sure * 1000 - 120)); });
           setTimeout(son, sure * 1000 + 1500);
         }
         function baslat() {
@@ -920,8 +923,9 @@
           if (benim.iptal || konusma !== benim) return Promise.resolve();
           if (i >= liste.length) {
             if (!kapandi) return new Promise(function (r) { bekleyen = r; }).then(sonraki);
-            konusma = null; if (alkisBekle) { alkisBekle = false; setTimeout(function () { if (!konusma && !klip.oyn && !klip.bekle) klipOynat("alkis"); }, 250); } setTimeout(function () { if (!konusma && !dinleme) api.duygu(o.sonDuygu || "notr", 0.6); }, 600); return Promise.resolve();
+            konusma = null; setTimeout(function () { if (!konusma && !dinleme) api.duygu(o.sonDuygu || "notr", 0.6); }, 600); return Promise.resolve();
           }
+          if (!benim.alkisti && alkisMi(liste[i])) { benim.alkisti = true; klipOynat("alkis"); if (klip.oyn || klip.bekle) return alkisBitti(benim).then(sonraki); }
           var c = Object.assign({}, liste[i++]);
           if (o.oncesi) try { o.oncesi(c, i - 1); } catch (e) {}
           /* jest sıklığına göre kendiliğinden küçük baş sallamaları */
@@ -972,7 +976,7 @@
         });
       },
       /* sustur({ sesKesme:false }): yalnız avatarı durdur, sayfanın kendi çaldığı tarayıcı sesine dokunma */
-      sustur: function (so) { alkisBekle = false; if (konusma) { konusma.iptal = true; try { if (konusma.cumle && konusma.cumle.sesKaynak) konusma.cumle.sesKaynak.stop(); } catch (e) {} if (konusma.cozucu) konusma.cozucu(); } konusma = null; if (!(so && so.sesKesme === false)) { try { speechSynthesis.cancel(); } catch (e) {} } },
+      sustur: function (so) { if (konusma) { konusma.iptal = true; try { if (konusma.cumle && konusma.cumle.sesKaynak) konusma.cumle.sesKaynak.stop(); } catch (e) {} if (konusma.cozucu) konusma.cozucu(); } konusma = null; if (!(so && so.sesKesme === false)) { try { speechSynthesis.cancel(); } catch (e) {} } },
       /* gerçek ses verisini (wav vb.) motorun ses bağlamında çöz */
       /* ölçüm için (Ses hız testi → dil geçişi): avatarın ses bağlantısını (Web Audio) askıya al / aç; durumunu döndürür */
       sesBaglami: function (ac) {
