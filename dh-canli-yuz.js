@@ -428,6 +428,24 @@
     /* kısa video klip (Gemini/Veo, tabana hizalı, saydam arka plan): dinlerken ara sıra saçını düzeltir */
     var klip = { v: null, oyn: false, bekle: false, w: 0, sonraki: performance.now() + 25000 + Math.random() * 20000 };
     var klipler = {}, KLIP_SOL = true;   /* sola dönüş: bas-sol(-az/-orta) */
+    /* kliplere eşlik eden ses: videonun saniyesine bağlı (ellerin birleştiği anlar ölçüldü) */
+    var KLIP_SES = { alkis: [2.33, 2.88, 3.43, 4.08, 4.63, 5.13] }, alkisTampon = null;
+    function alkisSesi(n) {   /* dosyasız alkış: kısa, süzülmüş gürültü patlaması (ağzı oynatmasın diye çözümleyiciye değil doğrudan çıkışa) */
+      var ac = sesBagi(); if (!ac || sec.klipSes === false) return;
+      try {
+        if (!alkisTampon) { alkisTampon = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.3), ac.sampleRate); var d = alkisTampon.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+        var t = ac.currentTime + 0.005, hacim = (sec.klipSesGuc == null ? 0.55 : sec.klipSesGuc) * (0.85 + Math.random() * 0.3);
+        [[0, 1], [0.011, 0.45], [0.024, 0.2]].forEach(function (k) {
+          var src = ac.createBufferSource(); src.buffer = alkisTampon;
+          var bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1100 + Math.random() * 900; bp.Q.value = 0.9;
+          var hp = ac.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 350;
+          var g = ac.createGain(), t0 = t + k[0];
+          g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(hacim * k[1], t0 + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09 + Math.random() * 0.03);
+          src.connect(bp); bp.connect(hp); hp.connect(g); g.connect(ac.destination);
+          src.start(t0, Math.random() * 0.15); src.stop(t0 + 0.14);
+        });
+      } catch (e) {}
+    }
     function klipOynat(ad) {
       ad = ad || "sac-duzelt";
       if (klip.oyn || klip.bekle || sec.klip === false || (klip.hata || 0) >= 2) return;
@@ -437,7 +455,7 @@
         v.style.cssText = "position:fixed;left:0;bottom:0;width:4px;height:4px;opacity:0.01;pointer-events:none;z-index:-1";
         try { document.body.appendChild(v); } catch (e) {} v.crossOrigin = "anonymous"; v.src = yol + ad + ".webm?v=" + GORSEL_SURUM;
         v.onended = v.onerror = function () { if (klip.v === v) { klip.oyn = false; klip.bekle = false; sonDoku = ""; klip.onceki = null; klipSonrasi(); } }; }
-      klip.v = klipler[ad]; try { klip.v.currentTime = 0; } catch (e) {} klip.bekle = true; klip.t0 = performance.now();
+      klip.v = klipler[ad]; klip.ad = ad; klip.sesI = 0; try { klip.v.currentTime = 0; } catch (e) {} klip.bekle = true; klip.t0 = performance.now();
       klip.onceki = foto.b; fotoHedef("notr"); aktifJestler = []; sonrakiKirp = Math.max(sonrakiKirp, performance.now() + 8000);   /* video tam bu yüzle başlar ve biter: önce düz yüze geç */   /* önce baş nötre döner, sonra video başlar */
     }
     function klipSonrasi() {   /* göz de ağız gibi düz başlangıçta: bakış/sakkad sıfır, 2 sn yeni bakış yok */
@@ -585,7 +603,7 @@
       /* telefonda video önceden yüklenmeyebilir: hazır olmasını beklemeden oynat (ilk kare zaten düz yüz); takılırsa vazgeç — donma olmasın */
       if (klip.bekle && klip.w > 0.97 && foto.t >= 1) klipBaslat();
       if (klip.bekle && simdi - klip.t0 > 3000) { klip.bekle = false; klipSonrasi(); klip.dondur = 0; klip.hata = (klip.hata || 0) + 1; }
-      if (klip.oyn) { var ct = klip.v.currentTime; if (ct !== klip.ct) { klip.ct = ct; klip.ctT = simdi; } else if (simdi - klip.ctT > 1000) { try { klip.v.pause(); } catch (e) {} klip.oyn = false; sonDoku = ""; klipSonrasi(); klip.dondur = 0; klip.hata = (klip.hata || 0) + 1; } }   /* video ilerlemiyor: bekleme, devam et */
+      if (klip.oyn) { var ct = klip.v.currentTime; var ks = KLIP_SES[klip.ad]; while (ks && klip.sesI < ks.length && ct >= ks[klip.sesI]) { if (ct - ks[klip.sesI] < 0.3) alkisSesi(klip.sesI); klip.sesI++; } if (ct !== klip.ct) { klip.ct = ct; klip.ctT = simdi; } else if (simdi - klip.ctT > 1000) { try { klip.v.pause(); } catch (e) {} klip.oyn = false; sonDoku = ""; klipSonrasi(); klip.dondur = 0; klip.hata = (klip.hata || 0) + 1; } }   /* video ilerlemiyor: bekleme, devam et */
       if (klip.oyn && simdi - klip.t1 > ((klip.v.duration > 0 && isFinite(klip.v.duration) ? klip.v.duration : 5) * 1000 + 2500)) { try { klip.v.pause(); } catch (e) {} klip.oyn = false; sonDoku = ""; klipSonrasi(); }
       if (klip.w > 0.001) { var kw = klip.oyn || simdi < (klip.dondur || 0) ? 0 : 1 - klip.w; PARAMS.forEach(function (k) { p[k] *= kw; }); }
       deforme(p, t);
