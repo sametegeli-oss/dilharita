@@ -687,7 +687,7 @@
         konusma.cumle = c;
         /* duygu biraz ÖNCE başlar, jest cümleyle birlikte */
         if (c.duygu) api.duygu(c.duygu, c.guc == null ? 0.8 : c.guc);
-        if (c.jest === "alkis") alkisBekle = true;   /* başarı: cümleler bitince alkış videosu */
+        if (c.jest === "alkis" || /harika/i.test(c.metin || "")) alkisBekle = true;   /* başarı ("harika" denince de): cümleler bitince alkış videosu */
         if (c.jest && JESTLER[c.jest]) setTimeout(function () { if (konusma) api.jest(c.jest); }, c.jestZaman === "son" ? Math.max(300, c.metin.length * msHarf * 0.75) : 150);
         var bitti = false; function son() { if (bitti) return; bitti = true; c.konusuyor = false; setTimeout(res, 140); }
         if (c.sesTampon) { sesleOku(); return; }
