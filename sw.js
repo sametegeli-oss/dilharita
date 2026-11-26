@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v634";  /* alkis-az: ilk %15, %20 yavaş (16 fps) */
-/* onceki v633: Dinlerken arada alkışın ilk %20si (sessiz) */
+var SW_VERSION = "dh-sw-v635";  /* Beklerken her 3 baş hareketinden biri: alkış/el kaldırma ilk %6-15 rastgele ileri-geri */
+/* onceki v634: alkis-az: ilk %15, %20 yavaş */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */
