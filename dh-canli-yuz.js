@@ -221,7 +221,7 @@
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
-  var GORSEL_SURUM = "20261126a";
+  var GORSEL_SURUM = "20261126b";
   function yukle(src) { if (src.indexOf("?") < 0 && !/^(data|blob):/.test(src)) src += "?v=" + GORSEL_SURUM; return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -261,7 +261,7 @@
     }
     function kirpParca() { if (/^don/.test(foto.b) || /^don/.test(foto.a) && foto.t < 1) return null; var d = baskin(); return (face.duyguKirpma && kirpSetleri[face.duyguKirpma[d]]) || parcalar.blink; }
     function fotoHedef(ad) { if (!fotolar[ad]) ad = "notr"; if (ad === foto.b) return; foto.a = foto.t >= 0.5 ? foto.b : foto.a; foto.b = ad; foto.t = 0; }
-    var konusma = null, dinleme = false;
+    var konusma = null, dinleme = false, alkisBekle = false;
     /* DİNLEME DURUŞLARI (24 Kasım): dinlerken tek sabit poz yerine 4-8 sn'de bir yumuşakça değişen duruşlar —
        öne eğilip dikkatle dinleme, başı sağa/sola yatırma, hafif geri çekilip düşünme. Güç: ayar "dinlemeHareket" (0..2). */
     var DINLEME_POZ = [
@@ -441,7 +441,7 @@
       klip.onceki = foto.b; fotoHedef("notr"); aktifJestler = []; sonrakiKirp = Math.max(sonrakiKirp, performance.now() + 8000);   /* video tam bu yüzle başlar ve biter: önce düz yüze geç */   /* önce baş nötre döner, sonra video başlar */
     }
     function klipSonrasi() {   /* göz de ağız gibi düz başlangıçta: bakış/sakkad sıfır, 2 sn yeni bakış yok */
-      var sm = performance.now(); klip.dondur = sm + 1000; sakkad.x = 0;   /* fotoğrafa dönünce 1 sn hiç kıpırdama */
+      var sm = performance.now(); klip.dondur = sm + 500; sakkad.x = 0;   /* fotoğrafa dönünce 0,5 sn hiç kıpırdama */
       sakkad.x = 0; sakkad.y = 0; sakkad.t = sm + 2000; hp.gx = hp.gy = hp.tgx = hp.tgy = 0; cur.gazeX = cur.gazeY = 0;
       aktifJestler = aktifJestler.filter(function (j) { return false; }); gezJest = Math.max(gezJest, sm + 4000); sonrakiKirp = Math.max(sonrakiKirp, sm + 1800);
     }
@@ -687,6 +687,7 @@
         konusma.cumle = c;
         /* duygu biraz ÖNCE başlar, jest cümleyle birlikte */
         if (c.duygu) api.duygu(c.duygu, c.guc == null ? 0.8 : c.guc);
+        if (c.jest === "alkis") alkisBekle = true;   /* başarı: cümleler bitince alkış videosu */
         if (c.jest && JESTLER[c.jest]) setTimeout(function () { if (konusma) api.jest(c.jest); }, c.jestZaman === "son" ? Math.max(300, c.metin.length * msHarf * 0.75) : 150);
         var bitti = false; function son() { if (bitti) return; bitti = true; c.konusuyor = false; setTimeout(res, 140); }
         if (c.sesTampon) { sesleOku(); return; }
@@ -714,7 +715,7 @@
           src.start();
           c.bas = performance.now() + ((ac.outputLatency || ac.baseLatency || 0) * 1000); c.konusuyor = true;
           /* blok içindeki cümlelerin duygu ve jestleri, metindeki yerlerine göre zamanlanır */
-          (c.altlar || []).forEach(function (a) { setTimeout(function () { if (konusma && konusma.cumle === c) { if (a.duygu) api.duygu(a.duygu, a.guc == null ? 0.8 : a.guc); if (a.jest && JESTLER[a.jest]) api.jest(a.jest); if (a.oncesi) try { a.oncesi(); } catch (e) {} } }, Math.max(0, a.oran * sure * 1000 - 120)); });
+          (c.altlar || []).forEach(function (a) { if (a.jest === "alkis") alkisBekle = true; setTimeout(function () { if (konusma && konusma.cumle === c) { if (a.duygu) api.duygu(a.duygu, a.guc == null ? 0.8 : a.guc); if (a.jest && JESTLER[a.jest]) api.jest(a.jest); if (a.oncesi) try { a.oncesi(); } catch (e) {} } }, Math.max(0, a.oran * sure * 1000 - 120)); });
           setTimeout(son, sure * 1000 + 1500);
         }
         function baslat() {
@@ -901,7 +902,7 @@
           if (benim.iptal || konusma !== benim) return Promise.resolve();
           if (i >= liste.length) {
             if (!kapandi) return new Promise(function (r) { bekleyen = r; }).then(sonraki);
-            konusma = null; setTimeout(function () { if (!konusma && !dinleme) api.duygu(o.sonDuygu || "notr", 0.6); }, 600); return Promise.resolve();
+            konusma = null; if (alkisBekle) { alkisBekle = false; setTimeout(function () { if (!konusma && !klip.oyn && !klip.bekle) klipOynat("alkis"); }, 250); } setTimeout(function () { if (!konusma && !dinleme) api.duygu(o.sonDuygu || "notr", 0.6); }, 600); return Promise.resolve();
           }
           var c = Object.assign({}, liste[i++]);
           if (o.oncesi) try { o.oncesi(c, i - 1); } catch (e) {}
@@ -953,7 +954,7 @@
         });
       },
       /* sustur({ sesKesme:false }): yalnız avatarı durdur, sayfanın kendi çaldığı tarayıcı sesine dokunma */
-      sustur: function (so) { if (konusma) { konusma.iptal = true; try { if (konusma.cumle && konusma.cumle.sesKaynak) konusma.cumle.sesKaynak.stop(); } catch (e) {} if (konusma.cozucu) konusma.cozucu(); } konusma = null; if (!(so && so.sesKesme === false)) { try { speechSynthesis.cancel(); } catch (e) {} } },
+      sustur: function (so) { alkisBekle = false; if (konusma) { konusma.iptal = true; try { if (konusma.cumle && konusma.cumle.sesKaynak) konusma.cumle.sesKaynak.stop(); } catch (e) {} if (konusma.cozucu) konusma.cozucu(); } konusma = null; if (!(so && so.sesKesme === false)) { try { speechSynthesis.cancel(); } catch (e) {} } },
       /* gerçek ses verisini (wav vb.) motorun ses bağlamında çöz */
       /* ölçüm için (Ses hız testi → dil geçişi): avatarın ses bağlantısını (Web Audio) askıya al / aç; durumunu döndürür */
       sesBaglami: function (ac) {
