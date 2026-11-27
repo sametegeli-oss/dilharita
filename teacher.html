@@ -83,6 +83,22 @@ body{
 @keyframes spin{to{transform:rotate(360deg)}}
 .regen{margin-top:10px;width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:11px;font:800 14px Nunito,sans-serif;cursor:pointer}
 .regen:hover{background:#22304f}
+/* Profesyonel düzen: araçlar tek satırda, soru-cevap sohbet gibi, soru kutusu altta sabit */
+.t-tools{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 4px;padding-top:14px;border-top:1px solid var(--border)}
+.t-tool{flex:1 1 auto;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:999px;padding:9px 14px;font:800 13px Nunito,sans-serif;cursor:pointer;white-space:nowrap}
+.t-tool:hover{border-color:var(--teacher);background:#22304f}
+.qa-thread{display:flex;flex-direction:column;gap:14px;margin-top:18px}
+.qa-thread:empty{display:none}
+.qa-item{display:flex;flex-direction:column;gap:8px;scroll-margin-top:72px}
+.qa-item .qa-q{align-self:flex-end;max-width:85%;margin:0;background:var(--teacher,#6366f1);color:#fff;font-weight:700;font-size:14.5px;line-height:1.45;padding:10px 14px;border-radius:16px 16px 4px 16px}
+.qa-item .qa-a{align-self:flex-start;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:16px 16px 16px 4px;padding:12px 14px}
+.qa-item .qa-a .explain{margin:0;background:none;border:0;padding:0;white-space:normal}
+.qa-item .loading{align-self:flex-start}
+.t-composer{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(680px,100%);box-sizing:border-box;z-index:2147482000;margin:0!important;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg,#0b1220) 80%,transparent)}
+#out:has(.t-composer){padding-bottom:96px}
+.t-composer input{border-radius:999px!important;padding:13px 16px!important;font-size:15px!important}
+.t-composer button{border-radius:999px!important;padding:0 18px!important}
+.t-composer button:disabled{opacity:.5;cursor:wait}
 .state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:0 24px;text-align:center;color:var(--muted)}
 .state h2{font-family:Fraunces,serif;color:var(--text);font-weight:600;margin:0;font-size:22px}
 .state p{margin:0;font-size:14px;line-height:1.6;max-width:380px}
@@ -1178,23 +1194,22 @@ function renderExplanation(reply){
       <button class="explain-play" id="explainListenBtn">🔊 Oku</button>
       <button class="explain-play" id="sentenceListenBtn">🔊 Cümleyi dinle</button>
     </div>
-    <div class="followup">
-      <input id="fuInput" type="text" placeholder="Bir sorun mu var? Öğretmene sor…" />
-      <button id="fuSend">Sor</button>
+    <!-- ARAÇLAR: tek satırda derli toplu (eski uzun düğme yığını yerine) -->
+    <div class="t-tools" aria-label="Diğer işlemler">
+      <button class="t-tool" id="dhSimilarBtn" title="Bu cümleye benzer cümle üret" aria-label="Bu cümleye benzer cümle üret">✨ Benzer cümle</button>
+      <button class="t-tool" id="dhExcelBtn" title="Başka bir cümle getir" aria-label="Başka bir cümle getir">🎲 Başka cümle</button>
+      <button class="t-tool" id="regenBtn" title="Yeniden açıkla" aria-label="Yeniden açıkla">↻ Yeniden açıkla</button>
+      <button class="t-tool" id="dhGeminiAskBtn" title="Gemini'ye sor" aria-label="Gemini'ye sor">💎 Gemini'ye sor</button>
+      <button class="t-tool" id="dhGuideAskBtn" title="Türkçe çeviri kılavuzunda ara" aria-label="Türkçe çeviri kılavuzunda ara">📖 Çeviri kılavuzu</button>
     </div>
-    
-    <!-- YENİ DÜĞMELER -->
-    <button class="regen" id="dhSimilarBtn" style="background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;border:0">✨ Bu Cümleye Benzer Cümle Üret</button>
-    <button class="regen" id="dhExcelBtn" style="background:linear-gradient(135deg,#0d9488,#14b8a6);color:#fff;border:0">🎲 Başka bir cümle getir</button>
-
-    <button class="regen" id="regenBtn">↻ Yeniden AI’ye gönder ve açıkla</button>
-    <button class="regen" id="dhGeminiAskBtn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:0">💎 Gemini'ye sor</button>
-    
-    <!-- 📖 ÇEVİRİ KILAVUZU DÜĞMESİ (translation_guide.json) -->
-    <button class="regen" id="dhGuideAskBtn" style="background:linear-gradient(135deg,#059669,#34d399);color:#0f172a;border:0">📖 Türkçe Çeviri Kılavuzunda Ara</button>
-    
-    <!-- 🔍 SONUÇLARIN YAZDIRILACAĞI ORTAK CONTAINER -->
-    <div id="azar-result-container"></div>`);
+    <!-- 🔍 ARAÇ SONUÇLARI -->
+    <div id="azar-result-container"></div>
+    <!-- SORU-CEVAP AKIŞI: sorular ve cevaplar burada, soru kutusunun hemen üstünde -->
+    <div class="qa-thread" id="qaThread"></div>
+    <div class="followup t-composer">
+      <input id="fuInput" type="text" placeholder="Öğretmene soru sor…" enterkeyhint="send" autocomplete="off" />
+      <button id="fuSend" aria-label="Gönder">Sor ➤</button>
+    </div>`);
 
   const fu = document.getElementById("fuInput");
   fu.onkeydown = e => { if (e.key==="Enter") askFollowup(fu.value); };
@@ -1353,20 +1368,29 @@ function bindQuiz(quiz){
 
 async function askFollowup(q){
   q = (q||"").trim(); if (!q) return;
-  const out = document.getElementById("out");
+  const out = document.getElementById("qaThread") || document.getElementById("out");
+  const fuI = document.getElementById("fuInput"), fuB = document.getElementById("fuSend");
+  if (fuI) fuI.value = "";
+  if (fuB) fuB.disabled = true;
   const qa = document.createElement("div");
-  qa.innerHTML = `<div class="qa-q">❓ ${esc(q)}</div><div class="loading"><div class="spinner"></div> Yanıtlanıyor…</div>`;
+  qa.className = "qa-item";
+  qa.innerHTML = `<div class="qa-q">${esc(q)}</div><div class="loading"><div class="spinner"></div> Yanıtlanıyor…</div>`;
   out.appendChild(qa);
+  const gorunur = () => { try { qa.scrollIntoView({ behavior:"smooth", block:"start" }); } catch(e){} };
+  gorunur();
   State.history.push({ role:"user", content:q });
   try{
     const reply = await groqChat(State.history);
     State.history.push({ role:"assistant", content:reply });
-    qa.innerHTML = `<div class="qa-q">❓ ${esc(q)}</div><div class="explain qaExplain">${renderRich(reply)}</div><div class="explain-actions"><button class="explain-play qaListen">🔊 Oku</button></div>`;
+    qa.innerHTML = `<div class="qa-q">${esc(q)}</div><div class="qa-a"><div class="explain qaExplain">${(window.DHGemini&&DHGemini.markdown)?DHGemini.markdown(normalizeTeacherMarkdown(reply)):renderRich(reply)}</div><div class="explain-actions"><button class="explain-play qaListen">🔊 Oku</button></div></div>`;
+    gorunur();
     const btn = qa.querySelector(".qaListen");
     if(btn) btn.onclick = () => speakFromScreen(qa.querySelector(".qaExplain"));
   }catch(e){
     qa.querySelector(".loading").outerHTML = `<div class="note bad">Yanıt alınamadı.</div>`;
     handleError(e, true);
+  } finally {
+    const b2 = document.getElementById("fuSend"); if (b2) b2.disabled = false;
   }
 }
 
