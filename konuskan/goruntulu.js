@@ -1627,7 +1627,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       let um = null;
       if (metin) { um = { role: 'user', text: metin, spoken: !!st.sesli }; st.hist.push(um); st.turns++; ogrenciMesaji(um); }
       durum('dusunuyor'); yuz.dinle(false);
-      const dusunZ = setTimeout(() => { if (kok.dataset.d === 'dusunuyor') { yuz.duygu('dusunceli', 0.45); yuz.jest('dusun', 0.6); } }, 900);
+      const dusunZ = setTimeout(() => { if (kok.dataset.d === 'dusunuyor') { yuz.duygu('dusunceli', 0.45); yuz.jest('dusun', 0.6); try { if (yuz.klip) yuz.klip(Math.random() < 0.7 ? 'dusun-a' : 'dusun-b'); } catch (e) {} } }, 900);   /* cevap hazırlanırken: yukarı bakıp elini çenesine götürür (video) */
       const m = { role: 'assistant', text: '', tr: '', liste: [] };
       m._t = { bitti: metin && st.dinlemeBittiT && performance.now() - st.dinlemeBittiT < 60000 ? st.dinlemeBittiT : null, gonder: performance.now(), hassas: st.hassasMs, onay: st.onayT ? Math.round(performance.now() - st.onayT) : null }; st.dinlemeBittiT = null; st.hassasMs = null; st.onayT = null;
       if (document.hidden) m._t.arka = true;
@@ -1842,7 +1842,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
     }
     function sessizSayac() { clearTimeout(D.sz); if (!ayar.ellerSerbest) return; D.sz = setTimeout(() => { if ((D.metin + D.gecici).trim()) dinlemeBitir(); }, ayar.sessizlik * 1000); }
     function senGoster() { const t = (D.metin + ' ' + D.gecici).trim(); q('.vd-sen-y').textContent = t || 'Dinliyorum… konuşabilirsin'; q('.vd-sen').classList.toggle('bos', !t); }
-    function dinlerkenOnay() { if (st.nodZ) return; st.nodZ = setTimeout(() => { st.nodZ = null; }, 2800); if (Math.random() < 0.5) yuz.jest('onay', 0.35); }
+    function dinlerkenOnay() { if (st.nodZ) return; st.nodZ = setTimeout(() => { st.nodZ = null; }, 2800); const t = Date.now(); if (yuz.klip && t - (st.onayKlipT || 0) > 15000 && Math.random() < 0.35) { st.onayKlipT = t; try { yuz.klip('onay'); } catch (e) {} return; }   /* sen konuşurken bazen gerçek baş sallama + gülümseme videosu */ if (Math.random() < 0.5) yuz.jest('onay', 0.35); }
     function kaydiDurdur() {
       return new Promise(res => {
         cancelAnimationFrame(D.raf);

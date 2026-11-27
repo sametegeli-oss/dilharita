@@ -221,7 +221,7 @@
   var sinirVar = false;   /* tarayıcı kelime sınırı (onboundary) bildiriyor mu — ilk bildirimde öğrenilir */
   /* ---------- Yardımcılar ---------- */
   /* avatar görsellerinin sürümü: görseller yenilenince artır (önbellekte eski kopya kalmasın) */
-  var GORSEL_SURUM = "20261126f";
+  var GORSEL_SURUM = "20261127a";
   function yukle(src) { if (src.indexOf("?") < 0 && !/^(data|blob):/.test(src)) src += "?v=" + GORSEL_SURUM; return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { res(im); }, function () { res(im); }); }; im.onerror = rej; im.src = src; }); }
   function ort(P, ids) { var x = 0, y = 0; ids.forEach(function (i) { x += P[i][0]; y += P[i][1]; }); return [x / ids.length, y / ids.length]; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -450,6 +450,9 @@
         });
       } catch (e) {}
     }
+    /* son oynayan 3 parçayı tekrar seçme (uzun derste "bunu az önce yaptı" hissi olmasın) */
+    var sonKlipler = [];
+    function tekrarsiz(liste) { var uy = liste.filter(function (x) { return sonKlipler.indexOf(x) < 0; }); if (!uy.length) uy = liste; return uy[Math.floor(Math.random() * uy.length)]; }
     function klipOynat(ad) {
       ad = ad || "sac-duzelt";
       if (klip.oyn || klip.bekle || sec.klip === false || (klip.hata || 0) >= 2) return;
@@ -459,6 +462,7 @@
         v.style.cssText = "position:fixed;left:0;bottom:0;width:4px;height:4px;opacity:0.01;pointer-events:none;z-index:-1";
         try { document.body.appendChild(v); } catch (e) {} v.crossOrigin = "anonymous"; v.src = yol + ad + ".webm?v=" + GORSEL_SURUM;
         v.onended = v.onerror = function () { if (klip.v === v) { klip.oyn = false; klip.bekle = false; sonDoku = ""; klip.onceki = null; klipSonrasi(); } }; }
+      sonKlipler.unshift(ad); sonKlipler.length = Math.min(sonKlipler.length, 3);
       klip.v = klipler[ad]; klip.ad = ad; klip.sesI = 0; try { klip.v.currentTime = 0; } catch (e) {} klip.bekle = true; klip.t0 = performance.now();
       klip.onceki = foto.b; fotoHedef("notr"); aktifJestler = []; sonrakiKirp = Math.max(sonrakiKirp, performance.now() + 8000);   /* video tam bu yüzle başlar ve biter: önce düz yüze geç */   /* önce baş nötre döner, sonra video başlar */
     }
@@ -593,7 +597,7 @@
         /* boşta (ne konuşuyor ne dinliyor): uzun aralıklarla küçük doğal hareket */
         if (konusma) { sessizBas = simdi; klip.basSay = 0; }   /* Deniz en son ne zaman konuştu: uzun beklemede baş çevirir */
         /* boştayken ve dinlerken ara ara sağa sola bakar, gözlerini gezdirir */
-        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 15000 + Math.random() * 12000 : 10000 + Math.random() * 8000) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (simdi - sessizBas > 10000 && simdi > (klip.basSonra || 0) && (g < 0.75 || !klip.basSay)) { klip.basSay = (klip.basSay || 0) + 1; klip.basSonra = simdi + 12000 + Math.random() * 8000; var rs = Math.random(); if (klip.basSay % 3 === 0) klipOynat(["sac-az1", "sac-az2", "sac-az3", "sac-az4", "yaklas-az1", "yaklas-az2", "yaklas-az3", "yaklas-az4"][Math.floor(Math.random() * 8)]); /* beklerken her 3 harekette bir (alkış parçaları kullanıcı isteğiyle çıkarıldı): el kaldırma/yaklaşma videosunun ilk %6/9/12/15i rastgele ileri-geri, %20 yavaş, sessiz */ else { var yon = KLIP_SOL && !(klip.basSay % 2) ? "bas-sol" : "bas-sag"; klipOynat(rs < 0.35 ? yon + "-az" : rs < 0.7 ? yon + "-orta" : yon); }   /* bazen az, bazen orta, bazen tam dönüş */ } else { var sec2 = ["bakYukari", "bakYukari", "bakOne", "bakOne", "basYukari", "basAsagi", "bakAsagi", "bakSol", "bakSag", "gez"]; api.jest(sec2[Math.floor(Math.random() * sec2.length)], 1); } }
+        if (!konusma && !klip.oyn && !klip.bekle && simdi > gezJest) { gezJest = simdi + (dinleme ? 15000 + Math.random() * 12000 : 10000 + Math.random() * 8000) / Math.max(0.25, ka("bakis", 1)); var g = Math.random(); if (simdi - sessizBas > 10000 && simdi > (klip.basSonra || 0) && (g < 0.75 || !klip.basSay)) { klip.basSay = (klip.basSay || 0) + 1; klip.basSonra = simdi + 9000 + Math.random() * 17000; var rs = Math.random(); if (klip.basSay % 3 === 0) klipOynat(tekrarsiz(["sac-az1", "sac-az2", "sac-az3", "sac-az4", "yaklas-az1", "yaklas-az2", "yaklas-az3", "yaklas-az4"])); /* beklerken her 3 harekette bir (alkış parçaları kullanıcı isteğiyle çıkarıldı): el kaldırma/yaklaşma videosunun ilk %6/9/12/15i rastgele ileri-geri, %20 yavaş, sessiz */ else { var yon = KLIP_SOL && !(klip.basSay % 2) ? "bas-sol" : "bas-sag"; klipOynat(tekrarsiz([yon + "-az", yon + "-orta", yon])); }   /* bazen az, bazen orta, bazen tam dönüş */ } else { var sec2 = ["bakYukari", "bakYukari", "bakOne", "bakOne", "basYukari", "basAsagi", "bakAsagi", "bakSol", "bakSag", "gez"]; api.jest(sec2[Math.floor(Math.random() * sec2.length)], 1); } }
         if (!konusma && !dinleme && simdi > bostaJest) { bostaJest = simdi + 7000 + Math.random() * 7000; var r = Math.random(); api.jest(r < 0.4 ? "egil" : r < 0.7 ? "kas" : "onay", 0.25); }
       }
       /* göz kırpma: düzensiz, yarım-kapalı-yarım */
@@ -705,7 +709,7 @@
         c.bas = performance.now(); c.konusuyor = false;
         /* insanlar cümle başında sık göz kırpar; soru cümlesinin sonunda kaşlar hafif kalkar */
         if (Math.random() < 0.55) sonrakiKirp = performance.now() + 60 + Math.random() * 120;
-        if (/\?\s*$/.test(c.metin) && !c.jest) setTimeout(function () { if (konusma && konusma.cumle === c) api.jest("kas", 0.45); }, Math.max(250, c.metin.length * (msHarf || 60) * 0.7));
+        if (/\?\s*$/.test(c.metin) && !c.jest) setTimeout(function () { if (konusma && konusma.cumle === c) { api.jest("kas", 0.45); if (Math.random() < 0.6) api.jest("one_egil", 0.5); } }, Math.max(250, c.metin.length * (msHarf || 60) * 0.7));   /* soru sorarken öne eğilir */
         konusma.cumle = c;
         /* duygu biraz ÖNCE başlar, jest cümleyle birlikte */
         if (c.duygu) api.duygu(c.duygu, c.guc == null ? 0.8 : c.guc);
@@ -925,12 +929,13 @@
             if (!kapandi) return new Promise(function (r) { bekleyen = r; }).then(sonraki);
             konusma = null; setTimeout(function () { if (!konusma && !dinleme) api.duygu(o.sonDuygu || "notr", 0.6); }, 600); return Promise.resolve();
           }
+          if (i === 0 && !benim.klipBekledi && (klip.oyn || klip.bekle)) { benim.klipBekledi = true; return alkisBitti(benim).then(sonraki); }   /* oynayan videonun ortasında konuşmaya başlama */
           if (!acilisYapildi && sec.acilisKlip !== false) { acilisYapildi = true; klipOynat("yaklas"); if (klip.oyn || klip.bekle) return alkisBitti(benim).then(sonraki); }   /* sohbetin ilk açılışında Deniz önce kameraya yaklaşır */
           if (!benim.alkisti && alkisMi(liste[i])) { benim.alkisti = true; klipOynat("alkis"); if (klip.oyn || klip.bekle) return alkisBitti(benim).then(sonraki); }
           var c = Object.assign({}, liste[i++]);
           if (o.oncesi) try { o.oncesi(c, i - 1); } catch (e) {}
           /* jest sıklığına göre kendiliğinden küçük baş sallamaları */
-          if (!c.jest && !c.sesTampon && Math.random() < profil.jest * 0.45 && !/\?\s*$/.test(c.metin)) { c.jest = "onay"; c.jestZaman = "son"; }
+          if (!c.jest && !c.sesTampon && Math.random() < profil.jest * (c.metin && c.metin.length > 140 ? 0.25 : 0.45) && !/\?\s*$/.test(c.metin))   /* uzun açıklamada daha sakin */ { c.jest = "onay"; c.jestZaman = "son"; }
           if (c._sesP && !c.sesTampon) {
             /* doğal ses (önceden istenmiş) hazır olunca; olmazsa tarayıcı sesiyle */
             var tB = performance.now(), olc = sesOlcumBasla(c, c.dil || dilBul(c.metin), null, 0);
