@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v638";  /* Düşünme ve onay videoları, tekrar önleme, soruda öne eğilme, video bitmeden konuşmama */
-/* onceki v637: Dinlerken alkış parçaları çıkarıldı */
+var SW_VERSION = "dh-sw-v639";  /* Koç balonu seçenekleri ve sorulan kelimeyi kapatmaz (boş yer arar) */
+/* onceki v638: Düşünme ve onay videoları, tekrar önleme */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */

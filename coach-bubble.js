@@ -907,6 +907,21 @@
     if(ust-10-bH>=60) box.style.setProperty("bottom", Math.round(innerHeight-ust+10)+"px","important");
     else if(taban-alt-10>=bH) box.style.setProperty("bottom", Math.round(innerHeight-taban+8)+"px","important");
   }
+  /* 2b) Son kontrol: balon hâlâ bir düğmenin/seçeneğin üstündeyse ekranda hiçbir
+     düğmeye değmeyen boş bir yer ara (ör. resim alanı); yoksa kısa süre sonra gizle. */
+  function balonBosYer(){
+    if(!box.classList.contains("show")) return;
+    var hepsi=[].slice.call(document.querySelectorAll(ETKILESIM+",h1,h2,h3,.word,.pron,.qprompt")).filter(function(e){ return !bizim(e) && gorunur(e); });   /* sorulan kelime/başlık da kapanmasın */
+    var b=kutu(box);
+    if(!hepsi.some(function(e){ return kesisir(kutu(e),b); })) return;
+    var bH=b.height, rs=hepsi.map(kutu);
+    for(var y=8; y<innerHeight-bH-8; y+=12){
+      var r={left:b.left, right:b.right, top:innerHeight-y-bH, bottom:innerHeight-y};
+      if(!rs.some(function(k){ return kesisir(r,k); })){ box.style.setProperty("top","auto","important"); box.style.setProperty("bottom",y+"px","important"); return; }
+    }
+    /* boş yer yok: seçenekleri kapatmasın, 2,5 sn sonra kapanır */
+    clearTimeout(box._gizleT); box._gizleT=setTimeout(function(){ try{ box.classList.remove("show"); }catch(e){} }, 2500);
+  }
   /* 3) Koç yüzü: altında düğme varsa yukarıda boş yer bul */
   function yuzYerlestir(){
     if(!avatar.isConnected || !gorunur(avatar)) return;
@@ -924,7 +939,7 @@
   }
   function yerlestirSonra(ms){
     clearTimeout(yerT);
-    yerT=setTimeout(function(){ try{ pillYerlestir(document.getElementById("dhPlanPill")); balonYerlestir(); yuzYerlestir(); }catch(e){} }, ms||120);
+    yerT=setTimeout(function(){ try{ pillYerlestir(document.getElementById("dhPlanPill")); balonYerlestir(); balonBosYer(); yuzYerlestir(); }catch(e){} }, ms||120);
   }
   window.dhCoachYerlestir=function(){ yerlestirSonra(0); };
   try{
