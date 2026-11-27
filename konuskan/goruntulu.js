@@ -1833,7 +1833,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       const bars = q('.vd-dalga').children, sev = Math.min(1, s / Math.max(esik * 3, 0.04));
       for (let i = 0; i < bars.length; i++) bars[i].style.height = (4 + sev * 20 * (0.5 + 0.5 * Math.abs(Math.sin(t / 110 + i * 1.7)))) + 'px';
       if (gecen > 400) {
-        if (s > esik) { D.konustu += dt; D.sessizBas = 0; if (D.konustu > 250) dinlerkenOnay(); }
+        if (s > esik) { D.konustu += dt; D.sessizBas = 0; if (D.konustu > 250) dinlerkenOnay(); if (D.konustu > 5000 && !D.notAldi) { D.notAldi = true; if (Math.random() < 0.6) try { yuz.klip('not'); } catch (e) {} } }   /* uzun konuşmada bir kez not alır */
         else if (D.konustu > 200) { if (!D.sessizBas) D.sessizBas = t; else if (ayar.ellerSerbest && t - D.sessizBas > ayar.sessizlik * 1000) { dinlemeBitir(); return; } }
         if (ayar.ellerSerbest && D.konustu < 200 && !(D.metin + D.gecici).trim() && gecen > 10000) { dinlemeBitir(); return; }
         if (gecen > 60000) { dinlemeBitir(); return; }
