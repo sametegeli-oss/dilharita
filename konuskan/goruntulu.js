@@ -581,10 +581,10 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
        Katman kapları canvas'la aynı yerde/boyutta durur ve kamera kıpırtısı (vdKamera) animasyonu canvas'ınkine eşitlenir. */
     const ORTAM = {
       'g-kutuphane': { yol: './assets/ortam/kutuphane/', W: 1536, H: 2752, goz: { x: 787.5, y: 1202, d: 205 },
-        lamba: [[249, 1080, 150], [1296, 1155, 170]], pencere: [0, 120, 470, 1330], video: [2.1, 12.8, 1531.9, 2723.4], buhar: true }
+        lamba: [[249, 1080, 150], [1296, 1155, 170]], pencere: [0, 120, 470, 1330], video: [2.1, 12.8, 1531.9, 2723.4], buhar: { r: [2.1, 12.8, 1021.3, 2085], n: 128, kol: 16, w: 180, h: 368, fps: 15 } }
     };
     const TABAN_GOZ = { x: .535, y: .408, d: .2057 };
-    let ortamT = null;
+    let ortamT = null, ortamBuharT = null;
     function ortamKur(ad) {
       const o = ORTAM[ad], sahne = q('.vd-sahne'), cv = q('.vd-yuz'); if (!o || !sahne || !cv) return;
       let ark = q('.vd-ortam-ark'), on = q('.vd-ortam-on'), dolgu = q('.vd-ortam-dolgu');
@@ -600,7 +600,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         /* buhar (fincandan, Deniz'in önünde; siyah zemin + screen karışımı) ve pencere ışığı (soft-light) ayrı kaplarda:
            karışım modu kabın kendisinde olmalı, yoksa kap içinde yalıtılır */
         const bu = document.createElement('div'); bu.className = 'vd-ortam-buhar'; bu.setAttribute('aria-hidden', 'true');
-        bu.innerHTML = '<div class="vd-ortam-ic"><video class="vd-ortam-buhar-v" muted loop playsinline preload="none" hidden></video></div>';
+        bu.innerHTML = '<div class="vd-ortam-ic"><canvas class="vd-ortam-buhar-v" width="180" height="368" hidden></canvas></div>';
         on.insertAdjacentElement('afterend', bu);
         const is = document.createElement('div'); is.className = 'vd-ortam-isikkap'; is.setAttribute('aria-hidden', 'true');
         is.innerHTML = '<div class="vd-ortam-ic"><i class="vd-ortam-isik"></i></div>';
@@ -618,12 +618,22 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
           vd.onplaying = () => { vd.hidden = false; ark.firstChild.classList.add('vid'); }; vd.onerror = () => { vd.hidden = true; ark.firstChild.classList.remove('vid'); };
           vd.src = o.yol + 'plaka.mp4'; vd.play().catch(() => {});
         } else { vd.hidden = true; vd.removeAttribute('src'); }
-        const bv = q('.vd-ortam-buhar-v');
+        /* buhar: video DEĞİL, kare tabakası (128 kare, 16x8, 15 fps) tuvale çizilir. Telefonda ikinci bir video
+           kod çözücüsü (yüz klipleriyle birlikte) takılıp buharı donduruyordu. */
+        const bv = q('.vd-ortam-buhar-v'); clearInterval(ortamBuharT);
         if (o.buhar && ayar.canli !== false) {
-          const v = o.video; Object.assign(bv.style, { left: yuzde(v[0], o.W), top: yuzde(v[1], o.H), width: yuzde(v[2], o.W), height: yuzde(v[3], o.H) });
-          bv.onplaying = () => { bv.hidden = false; }; bv.onerror = () => { bv.hidden = true; };
-          bv.src = o.yol + 'buhar.mp4'; bv.play().catch(() => {});
-        } else { bv.hidden = true; bv.removeAttribute('src'); }
+          const b = o.buhar; Object.assign(bv.style, { left: yuzde(b.r[0], o.W), top: yuzde(b.r[1], o.H), width: yuzde(b.r[2], o.W), height: yuzde(b.r[3], o.H) });
+          const img = new Image(), ctx = bv.getContext('2d'); let k = 0;
+          img.onload = () => {
+            bv.hidden = false;
+            ortamBuharT = setInterval(() => {
+              if (!kok.isConnected) return clearInterval(ortamBuharT);
+              if (document.hidden) return;
+              const c = k % b.kol, r = Math.floor(k / b.kol); ctx.drawImage(img, c * b.w, r * b.h, b.w, b.h, 0, 0, b.w, b.h); k = (k + 1) % b.n;
+            }, 1000 / b.fps);
+          };
+          img.src = o.yol + 'buhar.jpg';
+        } else bv.hidden = true;
         ark.querySelector('.vd-ortam-govde').src = o.yol + 'govde.webp';
         on.querySelector('.vd-ortam-onplan').src = o.yol + 'onplan.webp';
         const p = o.pencere, pe = ark.querySelector('.vd-ortam-pencere');
