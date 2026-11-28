@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v656";  /* Ortam buharı video yerine kare tabakası (tuvale 15 fps): telefonda ikinci video kod çözücüsü takılıp buharı donduruyordu */
-/* onceki v655: ortam v2 */
+var SW_VERSION = "dh-sw-v657";  /* Ortam ön planı: dizüstü bilgisayar + çiçek + kitaplar (birleşme çizgisini örter) */
+/* onceki v656: buhar kare tabakası */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */
