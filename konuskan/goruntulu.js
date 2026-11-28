@@ -580,8 +580,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
        (Deniz taban fotoğrafında göz ortası kutunun %53,5/%40,8'inde, göz arası genişliğin %20,57'si).
        Katman kapları canvas'la aynı yerde/boyutta durur ve kamera kıpırtısı (vdKamera) animasyonu canvas'ınkine eşitlenir. */
     const ORTAM = {
-      'g-kutuphane': { yol: './assets/ortam/kutuphane/', v: 5, W: 1536, H: 2752, goz: { x: 787.5, y: 1202, d: 205 },
-        lamba: [[249, 1080, 150], [1296, 1155, 170]], pencere: [0, 120, 470, 1330], video: [2.1, 12.8, 1531.9, 2723.4], buhar: { r: [2.1, 12.8, 1021.3, 2085], n: 128, kol: 16, w: 180, h: 368, fps: 15 } }
+      'g-kutuphane': { yol: './assets/ortam/kutuphane/', v: 6, W: 1536, H: 2752, goz: { x: 787.5, y: 1202, d: 205 },
+        lamba: [[249, 1080, 150], [1296, 1155, 170]], pencere: [0, 120, 470, 1330], video: [2.1, 12.8, 1531.9, 2723.4], buhar: { r: [-5.9, 167.8, 1021.3, 2085], n: 128, kol: 16, w: 180, h: 368, fps: 15 } }
     };
     const TABAN_GOZ = { x: .535, y: .408, d: .2057 };
     let ortamT = null, ortamBuharT = null;
@@ -609,14 +609,14 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       if (ark.dataset.ad !== ad) {
         ark.dataset.ad = ad;
         const yuzde = (v, t) => (v / t * 100).toFixed(3) + '%';
-        dolgu.src = o.yol + 'dolgu.jpg';
-        ark.querySelector('.vd-ortam-plaka').src = o.yol + 'plaka.jpg';
+        dolgu.src = o.yol + 'dolgu.jpg' + '?v=' + (o.v || 1);
+        ark.querySelector('.vd-ortam-plaka').src = o.yol + 'plaka.jpg' + '?v=' + (o.v || 1);
         /* hareketli plaka (Veo): videonun plaka içindeki yeri o.video = [x, y, g, y] (plaka pikseli); oynayınca resmin üstüne biner */
         const vd = ark.querySelector('.vd-ortam-video');
         if (o.video && ayar.canli !== false) {
           const v = o.video; Object.assign(vd.style, { left: yuzde(v[0], o.W), top: yuzde(v[1], o.H), width: yuzde(v[2], o.W), height: yuzde(v[3], o.H) });
           vd.onplaying = () => { vd.hidden = false; ark.firstChild.classList.add('vid'); }; vd.onerror = () => { vd.hidden = true; ark.firstChild.classList.remove('vid'); };
-          vd.src = o.yol + 'plaka.mp4'; vd.play().catch(() => {});
+          vd.src = o.yol + 'plaka.mp4' + '?v=' + (o.v || 1); vd.play().catch(() => {});
         } else { vd.hidden = true; vd.removeAttribute('src'); }
         /* buhar: video DEĞİL, kare tabakası (128 kare, 16x8, 15 fps) tuvale çizilir. Telefonda ikinci bir video
            kod çözücüsü (yüz klipleriyle birlikte) takılıp buharı donduruyordu. */
@@ -632,7 +632,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
               const c = k % b.kol, r = Math.floor(k / b.kol); ctx.drawImage(img, c * b.w, r * b.h, b.w, b.h, 0, 0, b.w, b.h); k = (k + 1) % b.n;
             }, 1000 / b.fps);
           };
-          img.src = o.yol + 'buhar.jpg';
+          img.src = o.yol + 'buhar.jpg' + '?v=' + (o.v || 1);
         } else bv.hidden = true;
         ark.querySelector('.vd-ortam-govde').src = o.yol + 'govde.webp?v=' + (o.v || 1);
         on.querySelector('.vd-ortam-onplan').src = o.yol + 'onplan.webp?v=' + (o.v || 1);

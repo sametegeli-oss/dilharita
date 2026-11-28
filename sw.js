@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v659";  /* Ortam: geniş dizüstü (fincanın ortasından çiçeklere, üst kenarı birleşme çizgisinde) */
-/* onceki v658: sahne aşağı */
+var SW_VERSION = "dh-sw-v660";  /* Ortam: fincan yerine buhurdan (dumanı tüter), çiçek önde, kâğıtlar dizüstünün önünde, masa parlaması giderildi */
+/* onceki v659: geniş dizüstü */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */
