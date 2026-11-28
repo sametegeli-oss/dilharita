@@ -99,7 +99,9 @@ body{
   .subject{padding:12px 14px!important;margin-bottom:12px!important}
 }
 /* TAM EKRAN (öğretmen sayfasının kendisi; okuma mantığı aynı): üst/alt çubuklar gizlenir, yüz üstte sabit, altta Söyle/Bekle/Dur */
-html.t-tam-acik .top,html.t-tam-acik .kk-ust-menu,html.t-tam-acik .t-composer,html.t-tam-acik #dhTtsPauseBtn,html.t-tam-acik .t-tools{display:none!important}
+html.t-tam-acik .top,html.t-tam-acik .kk-ust-menu,html.t-tam-acik .t-composer,html.t-tam-acik #dhTtsPauseBtn,html.t-tam-acik .t-tools,html.t-tam-acik .explain-actions,html.t-tam-acik .subject-play,html.t-tam-acik .t-deniz{display:none!important}
+/* tam ekran düğmeleri yalnız tam ekranda: başka bir betik taşısa ya da kopyalasa bile dışarıda görünmez */
+html:not(.t-tam-acik) .t-tam-alt,html:not(.t-tam-acik) .t-tam-cik{display:none!important}
 html.t-tam-acik .teacher-hero{position:fixed;top:0;left:0;right:0;z-index:2147482550;background:var(--bg,#0b1220);padding:10px 0 8px!important;margin:0!important;border-bottom:1px solid var(--border,#1e293b);display:flex;justify-content:center}
 html.t-tam-acik .body{padding-top:calc(min(32vh,240px) + 26px)!important}
 html.t-tam-acik .teacher-hero--dual .teacher-photo{width:min(32vh,240px)!important;height:min(32vh,240px)!important;border-radius:20px!important}
@@ -1242,8 +1244,12 @@ function tamEkranAc(){
   if(document.getElementById("tTamAlt")) return;
   document.documentElement.classList.add("t-tam-acik");
   try{ if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){}); }catch(e){}
-  var c=document.createElement("button"); c.type="button"; c.id="tTamCik"; c.className="t-tam-cik"; c.textContent="✕"; c.title="Tam ekrandan çık"; c.setAttribute("aria-label","Tam ekrandan çık"); c.onclick=tamEkranKapat;
-  var a=document.createElement("div"); a.id="tTamAlt"; a.className="t-tam-alt";
+  if(!window.__tTamFs){ window.__tTamFs=true;
+    /* telefonda geri hareketiyle tarayıcı tam ekranından çıkılırsa bizim tam ekran da kapansın */
+    document.addEventListener("fullscreenchange", function(){ if(!document.fullscreenElement && document.documentElement.classList.contains("t-tam-acik")) tamEkranKapat(); });
+  }
+  var c=document.createElement("button"); c.type="button"; c.id="tTamCik"; c.className="t-tam-cik"; c.setAttribute("data-kk-atla",""); c.textContent="✕"; c.title="Tam ekrandan çık"; c.setAttribute("aria-label","Tam ekrandan çık"); c.onclick=tamEkranKapat;
+  var a=document.createElement("div"); a.id="tTamAlt"; a.className="t-tam-alt"; a.setAttribute("data-kk-atla","");
   a.innerHTML='<button type="button" class="soyle">🔊 Söyle</button><button type="button" class="bekle">⏸ Bekle</button><button type="button" class="dur">⏹ Dur</button>';
   document.body.appendChild(c); document.body.appendChild(a);
   a.querySelector(".soyle").onclick=function(){
@@ -1270,8 +1276,14 @@ function tamDurum(){
   var r=document.querySelector(".dh-reading"); if(r && r!==a._son){ a._son=r; try{ r.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }
 }
 function tamEkranKapat(){
-  var a=document.getElementById("tTamAlt"); if(a){ clearInterval(a._t); a.remove(); }
-  var c=document.getElementById("tTamCik"); if(c) c.remove();
+  document.querySelectorAll(".t-tam-alt").forEach(function(a){ try{ clearInterval(a._t); }catch(e){} a.remove(); });
+  document.querySelectorAll(".t-tam-cik").forEach(function(c){ c.remove(); });
+  /* çıkarken okuma da durur; yoksa sağ altta Duraklat düğmesi kalıyordu */
+  _selfSpeakSession++; window.__dhUserPaused=false; _okumaKontrol=null;
+  try{ speechSynthesis.cancel(); }catch(e){}
+  try{ if(TeacherAvatar) TeacherAvatar.stop(); }catch(e){}
+  try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
+  try{ var pb=document.getElementById("dhTtsPauseBtn"); if(pb) pb.style.display="none"; }catch(e){}
   document.documentElement.classList.remove("t-tam-acik");
   try{ if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){}); }catch(e){}
 }
