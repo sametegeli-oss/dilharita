@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v648";  /* Öğretmen tam ekranı sadeleşti: sayfanın kendisi tam ekran, okuma mantığı eskisi gibi; Söyle/Bekle/Dur, ✕ çıkış */
-/* onceki v647: tam ekran (kendi okuyucusuyla; geri alındı) */
+var SW_VERSION = "dh-sw-v649";  /* Sayfalar (HTML) tarayıcı önbelleğini atlayıp sunucuya sorar: teacher.html?defter=1 eski sürümde kalıp Tam ekran düğmesi görünmüyordu */
+/* onceki v648: öğretmen tam ekranı (okuma mantığı aynen) */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */
@@ -248,7 +248,11 @@ async function swr(event, req){
 /* ağ-öncelikli + önbellek yedeği (HTML sayfaları için) */
 async function networkFirst(req){
   try{
-    var res = await fetch(req);
+    /* GitHub Pages HTML'i 10 dk önbelleğe aldırıyor; ?defter=1 gibi ayrı adresler eski sürümde kalıyordu.
+       no-cache: her açılışta sunucuya sorar (değişmemişse 304, hızlı). */
+    var res;
+    try{ res = await fetch(req.url, { cache:"no-cache", credentials:"same-origin" }); if(res.redirected) res = await fetch(req); }
+    catch(e1){ res = await fetch(req); }
     try{
       if(res && res.ok && new URL(req.url).origin === self.location.origin){
         (await caches.open(CACHE)).put(req, res.clone());
