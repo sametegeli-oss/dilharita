@@ -228,7 +228,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <label class="vd-anahtar"><input type="checkbox" data-a="hassas"><span></span> Hassas ses tanıma <small class="vd-hassas-not">Konuşman Gemini ile yazıya dökülür; aksanı ve hızlı konuşmayı çok daha iyi anlar.</small></label>
         <label class="vd-satir">Sustuktan sonra bekleme: <b class="vd-sessiz-d"></b><input type="range" min="1.2" max="4" step="0.2" data-a="sessizlik"></label>
         <label class="vd-anahtar"><input type="checkbox" data-a="trAc"><span></span> Türkçe çeviriler açık</label>
-        <label class="vd-satir">Arka plan <select data-a="fon"><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select> </label>
+        <label class="vd-satir">Arka plan <select data-a="fon"><option value="g-kutuphane">✨ Kütüphane (gerçek ortam)</option><option value="koyu">Stüdyo (koyu)</option><option value="sinif">Sınıf</option><option value="kafe">Kafe</option><option value="ofis">Ofis</option><option value="kutuphane">Kütüphane</option><option value="doga">Doğa</option></select> </label>
         <label class="vd-satir">Arka plan türü <select data-a="fontur"><option value="video">Video</option><option value="resim">Resim</option><option value="fon">Fon</option></select><span class="vd-fon-dugmeler"><button type="button" class="vd-fon-degis" data-a="fondegis" title="Bu ortam için başka bir video ya da resim bul">Başka video</button><button type="button" class="vd-fon-degis" data-a="fonkaydet" title="Şu anki arka planı kaydettiklerime ekle">Kaydet</button></span></label>
         <div class="vd-satir vd-fon-kayit-satir">Kaydettiklerim <div class="vd-fon-galeri" data-a="fongaleri"></div></div>
         <label class="vd-anahtar"><input type="checkbox" data-a="canli"><span></span> Canlı görüntü <small>Görüntü, görüntülü görüşmedeki gibi hafifçe kayar; fonda küçük hareketler olur (buhar, yapraklar, ışık). Telefon yavaşlarsa kapat.</small></label>
@@ -513,7 +513,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     try { localStorage.setItem('dh-ses-duygu', ayar.sesDuygu !== false ? '1' : '0'); } catch (er) {}
     q('[data-a=trAc]').checked = ayar.altyaziTR;
     /* arka plan (görüntülü görüşmedeki bulanık oda gibi) */
-    const FONLAR = ['koyu', 'sinif', 'kafe', 'ofis', 'kutuphane', 'doga'];
+    const FONLAR = ['g-kutuphane', 'koyu', 'sinif', 'kafe', 'ofis', 'kutuphane', 'doga'];
     let fonUygula = () => { kok.dataset.fon = FONLAR.includes(ayar.fon) ? ayar.fon : 'koyu'; q('[data-a=fon]').value = kok.dataset.fon; };
     q('[data-a=fon]').onchange = e => { ayar.fon = e.target.value; ayarKaydet(); fonUygula(); };
     /* fondaki küçük hareketler (yalnız CSS: transform/opacity, telefonu yormaz) */
@@ -561,6 +561,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       if (!el) return;
       const kapat = () => { el.hidden = true; try { el.pause(); } catch (e) {} im.hidden = true; kok.classList.remove('vd-fon-vid'); };
       q('[data-a=fontur]').value = tur; q('[data-a=fondegis]').textContent = tur === 'resim' ? 'Başka resim' : 'Başka video';
+      if (ORTAM[fon]) { kapat(); return ortamKur(fon); }
+      ortamKaldir();
       if (tur === 'fon' || !FON_SORGU[fon]) return kapat();
       const url = await fonVideoBul(fon); if (sira !== fonVideoSira) return;
       if (!url) return kapat();
@@ -572,6 +574,68 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       try { await el.play(); } catch (e) {}
     }
     window.__vdFonVideo = fonVideo;
+    /* GERÇEK ORTAM (28 Kasım): Deniz'in kendi fotoğrafından Gemini ile aynı kamera/ışıkta üretilmiş sahne.
+       Katmanlar (alttan üste): bulanık dolgu → plaka (boş sahne) + toz/lamba → gövde (aynı sahnedeki Deniz'in omuz/gövdesi)
+       → CANLI YÜZ (canvas) → ön plan (masa, fincan, kâğıtlar) + pencere ışığı. Plaka, yüzün göz noktalarına hizalanır
+       (Deniz taban fotoğrafında göz ortası kutunun %53,5/%40,8'inde, göz arası genişliğin %20,57'si).
+       Katman kapları canvas'la aynı yerde/boyutta durur ve kamera kıpırtısı (vdKamera) animasyonu canvas'ınkine eşitlenir. */
+    const ORTAM = {
+      'g-kutuphane': { yol: './assets/ortam/kutuphane/', W: 1536, H: 2752, goz: { x: 787.5, y: 1202, d: 205 },
+        lamba: [[249, 1080, 150], [1296, 1155, 170]], pencere: [0, 120, 470, 1330], video: [2.1, 12.8, 1531.9, 2723.4] }
+    };
+    const TABAN_GOZ = { x: .535, y: .408, d: .2057 };
+    let ortamT = null;
+    function ortamKur(ad) {
+      const o = ORTAM[ad], sahne = q('.vd-sahne'), cv = q('.vd-yuz'); if (!o || !sahne || !cv) return;
+      let ark = q('.vd-ortam-ark'), on = q('.vd-ortam-on'), dolgu = q('.vd-ortam-dolgu');
+      if (!ark) {
+        dolgu = document.createElement('img'); dolgu.className = 'vd-ortam-dolgu'; dolgu.alt = ''; dolgu.setAttribute('aria-hidden', 'true');
+        sahne.insertBefore(dolgu, sahne.firstChild);
+        ark = document.createElement('div'); ark.className = 'vd-ortam-ark'; ark.setAttribute('aria-hidden', 'true');
+        ark.innerHTML = '<div class="vd-ortam-ic"><img class="vd-ortam-plaka" alt=""><video class="vd-ortam-video" muted loop playsinline preload="none" hidden></video><i class="vd-ortam-pencere"></i><span class="vd-ortam-tozlar"></span><span class="vd-ortam-lambalar"></span><img class="vd-ortam-govde" alt=""></div>';
+        sahne.insertBefore(ark, cv);
+        on = document.createElement('div'); on.className = 'vd-ortam-on'; on.setAttribute('aria-hidden', 'true');
+        on.innerHTML = '<div class="vd-ortam-ic"><img class="vd-ortam-onplan" alt=""><i class="vd-ortam-isik"></i></div>';
+        cv.insertAdjacentElement('afterend', on);
+      }
+      if (ark.dataset.ad !== ad) {
+        ark.dataset.ad = ad;
+        const yuzde = (v, t) => (v / t * 100).toFixed(3) + '%';
+        dolgu.src = o.yol + 'dolgu.jpg';
+        ark.querySelector('.vd-ortam-plaka').src = o.yol + 'plaka.jpg';
+        /* hareketli plaka (Veo): videonun plaka içindeki yeri o.video = [x, y, g, y] (plaka pikseli); oynayınca resmin üstüne biner */
+        const vd = ark.querySelector('.vd-ortam-video');
+        if (o.video && ayar.canli !== false) {
+          const v = o.video; Object.assign(vd.style, { left: yuzde(v[0], o.W), top: yuzde(v[1], o.H), width: yuzde(v[2], o.W), height: yuzde(v[3], o.H) });
+          vd.onplaying = () => { vd.hidden = false; ark.firstChild.classList.add('vid'); }; vd.onerror = () => { vd.hidden = true; ark.firstChild.classList.remove('vid'); };
+          vd.src = o.yol + 'plaka.mp4'; vd.play().catch(() => {});
+        } else { vd.hidden = true; vd.removeAttribute('src'); }
+        ark.querySelector('.vd-ortam-govde').src = o.yol + 'govde.webp';
+        on.querySelector('.vd-ortam-onplan').src = o.yol + 'onplan.webp';
+        const p = o.pencere, pe = ark.querySelector('.vd-ortam-pencere');
+        Object.assign(pe.style, { left: yuzde(p[0], o.W), top: yuzde(p[1], o.H), width: yuzde(p[2] - p[0], o.W), height: yuzde(p[3] - p[1], o.H) });
+        ark.querySelector('.vd-ortam-tozlar').innerHTML = Array.from({ length: 9 }, (_, i) =>
+          `<i style="left:${yuzde(p[0] + (p[2] - p[0]) * ((i * 37) % 100) / 100, o.W)};top:${yuzde(p[1] + (p[3] - p[1]) * ((i * 61) % 100) / 100, o.H)};animation-delay:${-i * 2.3}s;animation-duration:${14 + (i % 4) * 3}s"></i>`).join('');
+        ark.querySelector('.vd-ortam-lambalar').innerHTML = o.lamba.map((l, i) =>
+          `<i style="left:${yuzde(l[0], o.W)};top:${yuzde(l[1], o.H)};width:${yuzde(l[2] * 2, o.W)};animation-delay:${-i * 3.1}s"></i>`).join('');
+      }
+      kok.classList.add('vd-ortam-acik');
+      const yerlestir = () => {
+        const bw = cv.offsetWidth; if (!bw) return;
+        const tr = getComputedStyle(cv).transform, s = TABAN_GOZ.d * bw / o.goz.d;
+        for (const k of [ark, on]) {
+          Object.assign(k.style, { left: cv.offsetLeft + 'px', top: cv.offsetTop + 'px', width: bw + 'px', height: cv.offsetHeight + 'px', transform: tr === 'none' ? '' : tr });
+          Object.assign(k.firstChild.style, { width: o.W * s + 'px', height: o.H * s + 'px', left: (TABAN_GOZ.x * bw - o.goz.x * s) + 'px', top: (TABAN_GOZ.y * bw - o.goz.y * s) + 'px' });
+        }
+        /* kamera kıpırtısı yüzle aynı anda: canvas animasyonunun zamanı katmanlara kopyalanır */
+        try {
+          const a = cv.getAnimations ? cv.getAnimations()[0] : null;
+          for (const k of [ark, on]) { const b = k.getAnimations ? k.getAnimations()[0] : null; if (a && b && Math.abs((b.currentTime || 0) - (a.currentTime || 0)) > 40) b.currentTime = a.currentTime; }
+        } catch (e) {}
+      };
+      yerlestir(); clearInterval(ortamT); ortamT = setInterval(() => { if (!kok.isConnected) return clearInterval(ortamT); yerlestir(); }, 250);
+    }
+    function ortamKaldir() { clearInterval(ortamT); ortamT = null; kok.classList.remove('vd-ortam-acik'); }
     q('[data-a=fondegis]').onclick = async () => { const fon = kok.dataset.fon, kk = (fonTur() === 'resim' ? 'dh-fon-resim-' : 'dh-fon-video-') + fon; const k = await kvAl(kk); kvKoy(kk, Object.assign({}, k || {}, { degis: true })); setTimeout(fonVideo, 150); };
     q('[data-a=fontur]').onchange = e => { ayar.fonTur = e.target.value; ayarKaydet(); kok.dataset.fontur = fonTur(); fonVideo(); };
     kok.dataset.fontur = fonTur();

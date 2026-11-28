@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v653";  /* ODAK MODU (dh-odak.js, bütün sayfalar) + manifest her sayfada */
-/* onceki v652: ders defteri bulutta */
+var SW_VERSION = "dh-sw-v654";  /* Deniz arka planı: gerçek ortam (kütüphane) — Deniz fotoğrafından üretilmiş sahne, gövde + ön plan katmanı, Veo hareketi */
+/* onceki v653: odak modu */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */

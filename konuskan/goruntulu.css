@@ -764,3 +764,30 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-fon-kart small { display: block; padding: 3px 6px; font-size: .72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vd-fon-x { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 15px; line-height: 20px; padding: 0; }
 .vd-fon-bos { color: var(--vd-soluk); }
+
+/* ---------- GERÇEK ORTAM (28 Kasım): Deniz sahnenin içinde ---------- */
+.vd-ortam-dolgu, .vd-ortam-ark, .vd-ortam-on { display: none; }
+.vd-ortam-acik .vd-ortam-dolgu { display: block; position: absolute; inset: -40px; width: calc(100% + 80px); height: calc(100% + 80px); object-fit: cover; filter: blur(22px) brightness(.8); pointer-events: none; }
+.vd-ortam-acik .vd-ortam-ark, .vd-ortam-acik .vd-ortam-on { display: block; position: absolute; pointer-events: none; overflow: visible; grid-area: auto; }
+.vd-ortam-acik .vd-ortam-on { z-index: 1; }
+.vd-ortam-ic { position: absolute; }
+.vd-ortam-ic > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.vd-ortam-plaka { filter: blur(.6px) saturate(1.02); }
+.vd-ortam-acik .vd-isik, .vd-ortam-acik .vd-fon-hareket, .vd-ortam-acik .vd-fon-video, .vd-ortam-acik .vd-fon-resim { display: none !important; }
+.vd-ortam-acik .vd-sahne { background: #1a140f; }
+/* yüzün kenar yumuşatması gövde katmanıyla birleşsin diye ortamda daha dar */
+.vd-ortam-acik .vd-yuz { -webkit-mask-image: linear-gradient(to bottom, #000 93%, transparent 100%); mask-image: linear-gradient(to bottom, #000 93%, transparent 100%); }
+/* pencereden gelen ışık yavaşça nefes alır */
+.vd-ortam-pencere { position: absolute; background: radial-gradient(70% 60% at 40% 45%, rgba(255, 236, 200, .55), rgba(255, 220, 170, .15) 60%, transparent 80%); mix-blend-mode: screen; animation: vdOrtamPencere 11s ease-in-out infinite alternate; }
+@keyframes vdOrtamPencere { 0% { opacity: .35; } 50% { opacity: .7; } 100% { opacity: .45; } }
+.vd-ortam-tozlar i { position: absolute; width: .45%; aspect-ratio: 1; border-radius: 50%; background: rgba(255, 244, 220, .85); filter: blur(.6px); box-shadow: 0 0 4px rgba(255, 240, 210, .8); animation: vdOrtamToz 16s linear infinite; opacity: 0; }
+@keyframes vdOrtamToz { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: .8; } 50% { transform: translate(140%, -380%); opacity: .55; } 85% { opacity: .75; } 100% { transform: translate(60%, -820%); opacity: 0; } }
+.vd-ortam-lambalar i { position: absolute; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 205, 130, .38), rgba(255, 190, 110, .12) 55%, transparent 100%); mix-blend-mode: screen; animation: vdOrtamLamba 7s ease-in-out infinite alternate; }
+@keyframes vdOrtamLamba { 0% { opacity: .75; } 40% { opacity: 1; } 70% { opacity: .85; } 100% { opacity: .95; } }
+/* pencere ışığı yüze ve sahneye birlikte düşer (ışık uyumu) */
+.vd-ortam-isik { position: absolute; inset: 0; background: radial-gradient(55% 38% at 6% 26%, rgba(255, 214, 160, .55), transparent 72%), linear-gradient(to right, rgba(255, 220, 170, .10), transparent 45%); mix-blend-mode: soft-light; animation: vdOrtamPencere 11s ease-in-out infinite alternate; }
+.vd-canli.vd-derste.vd-ortam-acik .vd-ortam-ark, .vd-canli.vd-derste.vd-ortam-acik .vd-ortam-on { animation: vdKamera 26s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { .vd-ortam-tozlar, .vd-ortam-pencere, .vd-ortam-lambalar i, .vd-ortam-isik { animation: none !important; } }
+.vd-ortam-video { position: absolute; display: block; object-fit: fill; filter: blur(.6px) saturate(1.02); }
+/* video oynarken pencere ışığı ve toz videonun kendisinden gelir */
+.vd-ortam-ic.vid .vd-ortam-pencere, .vd-ortam-ic.vid .vd-ortam-tozlar { display: none; }
