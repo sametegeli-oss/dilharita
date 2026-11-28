@@ -1,9 +1,10 @@
 <!doctype html>
 <html lang="tr">
 <head>
+<link rel="manifest" href="./manifest.webmanifest">
 <script src="./dh-ses.js?v=3"></script>
 <script src="./idb-uyum.js?v=1"></script><script src="./ai-metin.js?v=4"></script>
-<script src="./auth-guard.js?v=19"></script>
+<script src="./auth-guard.js?v=20"></script>
 <script src="./storage-bridge.js?v=4"></script>
 <script src="./coach-bubble.js?v=t44"></script>
 <script src="./progress-engine.js?v=2"></script>
@@ -186,7 +187,7 @@ body:has(.sheet-overlay) .t-composer{display:none!important}
 <link rel="stylesheet" href="./atlas-theme.css?v=1">
   <link rel="stylesheet" href="product-improvements.css">
 <link rel="stylesheet" href="./kolay-kullanim.css?v=13">
-<script src="./kolay-kullanim.js?v=29"></script>
+<script src="./kolay-kullanim.js?v=30"></script>
 </head>
 <body>
 <div class="wrap" id="root"></div>
@@ -1243,7 +1244,7 @@ function defterMesajlariCiz(d){
 function tamEkranAc(){
   if(document.getElementById("tTamAlt")) return;
   document.documentElement.classList.add("t-tam-acik");
-  try{ if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){}); }catch(e){}
+  window.__tTamFsBiz=false; try{ if(!document.fullscreenElement && document.documentElement.requestFullscreen){ window.__tTamFsBiz=true; document.documentElement.requestFullscreen().catch(function(){ window.__tTamFsBiz=false; }); } }catch(e){}
   if(!window.__tTamFs){ window.__tTamFs=true;
     /* telefonda geri hareketiyle tarayıcı tam ekranından çıkılırsa bizim tam ekran da kapansın */
     document.addEventListener("fullscreenchange", function(){ if(!document.fullscreenElement && document.documentElement.classList.contains("t-tam-acik")) tamEkranKapat(); });
@@ -1285,7 +1286,7 @@ function tamEkranKapat(){
   try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
   try{ var pb=document.getElementById("dhTtsPauseBtn"); if(pb) pb.style.display="none"; }catch(e){}
   document.documentElement.classList.remove("t-tam-acik");
-  try{ if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){}); }catch(e){}
+  try{ if(window.__tTamFsBiz && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){}); window.__tTamFsBiz=false; }catch(e){}
 }
 function denizeTasi(odak){
   try{

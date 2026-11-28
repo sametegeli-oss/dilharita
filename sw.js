@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v652";  /* Ders defteri bulutta (users/{uid}/ders_defteri), silinebilir; Deniz'de 📒; Deniz sohbeti deftere yazılır */
-/* onceki v651: öğretmen tam ekran düğme temizliği */
+var SW_VERSION = "dh-sw-v653";  /* ODAK MODU (dh-odak.js, bütün sayfalar) + manifest her sayfada */
+/* onceki v652: ders defteri bulutta */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */
@@ -75,6 +75,7 @@ var SHELL = [
   "./kolay-kullanim.js",
   "./favicon.svg",
   "./auth-guard.js",
+  "./dh-odak.js",
   "./dh-olay.js",
   "./dh-koc-kilavuz.js",
   "./dh-koc-beyin.js",

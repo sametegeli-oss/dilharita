@@ -36,6 +36,18 @@
   if(!document.querySelector('script[src*="dh-olay.js"]')){
     var ol=document.createElement("script"); ol.src="./dh-olay.js?v=4"; document.head.appendChild(ol);
   }
+  /* ODAK MODU (tam ekran mantığı): açıksa çubuklar ilk çizimden itibaren gizli (titreme olmasın); ayrıntı dh-odak.js */
+  try{
+    if(localStorage.getItem("dh-odak-v1")==="1" && !/^(basla|pwa-reset|google-donus)\.html?$/.test(page)){
+      document.documentElement.classList.add("dh-odak");
+      var os=document.createElement("style");
+      os.textContent="html.dh-odak .kk-alt,html.dh-odak .kk-ust-menu,html.dh-odak .kk-bosluk,html.dh-odak .dh-primary-nav,html.dh-odak .dh-app-nav,html.dh-odak .dh-mobile-menu-button,html.dh-odak .dh-mobile-menu{display:none!important}";
+      document.head.appendChild(os);
+    }
+  }catch(e){}
+  if(!document.querySelector('script[src*="dh-odak.js"]')){
+    var od=document.createElement("script"); od.src="./dh-odak.js?v=1"; document.head.appendChild(od);
+  }
   /* KOÇ MODU (koç planı 3. aşama): açıkken her sayfada şerit + adım geçişleri; kapalıyken hiçbir şey çizmez. */
   if(!document.querySelector('script[src*="dh-koc-modu.js"]')){
     var km=document.createElement("script"); km.src="./dh-koc-modu.js?v=5"; document.head.appendChild(km);

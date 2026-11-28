@@ -50,6 +50,8 @@
 
   /* Giriş, ilk kurulum ve bakım ekranları: gezinme düğmesi gösterilmez
      (kullanıcı adımları bitirmeden yolunu kaybetmesin). Yazı yine büyür. */
+  /* ODAK MODU (dh-odak.js): alt çubuk gizli, öğeler çubuğun üstüne kaydırılmaz */
+  var ODAK = (function(){ try { return localStorage.getItem("dh-odak-v1") === "1"; } catch (e) { return false; } })();
   var NAVSIZ = /^(login|basla|pwa-reset|pwa-hard-reset)\.html?$/.test(sayfa);
 
   /* ================================================================
@@ -623,7 +625,7 @@
      ================================================================ */
   function cubukYuksekligi(){
     var c = doc.querySelector(".kk-alt");
-    if (!c || !ayar.acik || TAM_EKRAN || NAVSIZ) return 0;
+    if (!c || !ayar.acik || TAM_EKRAN || NAVSIZ || ODAK) return 0;
     var r = c.getBoundingClientRect();
     /* Çubuk gizliyken (perde açık) r.top=0 olur ve bütün ekran yüksekliği kadar
        kaydırıyordu: Öğretmen paneli ekranın dışına (yukarı) kaçıyordu. */
@@ -801,6 +803,10 @@
       html += '</ul>';
     });
     html += '<h3 class="kk-grup">Görünüm</h3><ul class="kk-liste">'
+      + '<li><button type="button" class="kk-oge kk-oge-btn" data-kk-odak>'
+      + '<span class="kk-i" aria-hidden="true">⛶</span>'
+      + (ODAK ? '<span><b>Odak modundan çık</b><small>Alt çubuk ve menüler geri gelir</small></span>' : '<span><b>Odak modu (tam ekran)</b><small>Alt çubuk ve menüler gizlenir, çalışma ekranı büyür</small></span>')
+      + '<span class="kk-ok" aria-hidden="true">›</span></button></li>'
       + '<li><button type="button" class="kk-oge kk-oge-btn" data-kk-yazi-ac>'
       + '<span class="kk-i" aria-hidden="true">🔠</span>'
       + '<span><b>Yazı Boyutu</b><small>Yazıları büyüt veya küçült</small></span>'
@@ -965,6 +971,7 @@
       if ((x = t.closest("[data-kk-menu]"))){ e.preventDefault(); pencereKapat(yaziPerde); bugunCiz(); pencereAc(menuPerde, x); return; }
       if (t.closest("[data-kk-plan]")){ e.preventDefault(); pencereKapat(menuPerde); setTimeout(function(){ try{ g.dhCoachPlanAc && g.dhCoachPlanAc(); }catch(err){} }, 60); return; }
       if (t.closest("[data-kk-koc]")){ e.preventDefault(); pencereKapat(menuPerde); setTimeout(function(){ try{ g.dhCoachGoster && g.dhCoachGoster(); }catch(err){} }, 60); return; }
+      if ((x = t.closest("[data-kk-odak]"))){ if (g.DHOdak) g.DHOdak.degistir(); else { try { localStorage.setItem("dh-odak-v1", "1"); } catch (e2) {} location.reload(); } return; }
       if ((x = t.closest("[data-kk-yazi-ac]"))){
         e.preventDefault(); pencereKapat(menuPerde);
         pencereAc(yaziPerde, doc.querySelector(".kk-alt [data-kk-yazi-ac]") || x); return;
