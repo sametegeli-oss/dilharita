@@ -580,7 +580,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
        (Deniz taban fotoğrafında göz ortası kutunun %53,5/%40,8'inde, göz arası genişliğin %20,57'si).
        Katman kapları canvas'la aynı yerde/boyutta durur ve kamera kıpırtısı (vdKamera) animasyonu canvas'ınkine eşitlenir. */
     const ORTAM = {
-      'g-kutuphane': { yol: './assets/ortam/kutuphane/', v: 4, W: 1536, H: 2752, goz: { x: 787.5, y: 1202, d: 205 },
+      'g-kutuphane': { yol: './assets/ortam/kutuphane/', v: 5, W: 1536, H: 2752, goz: { x: 787.5, y: 1202, d: 205 },
         lamba: [[249, 1080, 150], [1296, 1155, 170]], pencere: [0, 120, 470, 1330], video: [2.1, 12.8, 1531.9, 2723.4], buhar: { r: [2.1, 12.8, 1021.3, 2085], n: 128, kol: 16, w: 180, h: 368, fps: 15 } }
     };
     const TABAN_GOZ = { x: .535, y: .408, d: .2057 };
