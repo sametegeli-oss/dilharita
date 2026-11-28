@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v646";  /* Kalıcı defter arşivi (IndexedDB, silinmez) + ders-defteri.html; Deniz'de hep 📘; öğretmen ayar pencereleri kapanır */
-/* onceki v645: ortak ders defteri, Deniz metni aynen okur */
+var SW_VERSION = "dh-sw-v647";  /* Öğretmen tam ekran: yüz + tüm metin, Baştan oku, Bekle/Devam (aynı parçadan), okunan zemin sarı */
+/* onceki v646: kalıcı defter arşivi + ders-defteri.html */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */
