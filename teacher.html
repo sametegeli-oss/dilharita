@@ -9,6 +9,7 @@
 <script src="./progress-engine.js?v=2"></script>
 <script src="./ai-providers.js?v=t41"></script>
 <script src="./gemini-bridge.js?v=t23"></script>
+<script src="./dh-ders-defteri.js?v=2"></script>
 <script src="./viseme-lang.js?v=3"></script>
 <script src="./dh-canli-yuz.js?v=92"></script>
 
@@ -100,6 +101,7 @@ body{
 .t-deniz{display:block;width:100%;margin:16px 0 0;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;border:0;border-radius:14px;padding:13px 16px;font:800 15px Nunito,sans-serif;cursor:pointer;box-shadow:0 6px 18px rgba(99,102,241,.3)}
 .t-tools{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 4px;padding-top:14px;border-top:1px solid var(--border)}
 .t-tool{flex:1 1 auto;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:999px;padding:9px 14px;font:800 13px Nunito,sans-serif;cursor:pointer;white-space:nowrap}
+.t-tools .t-tool{flex:1 1 calc(50% - 8px)!important;width:auto!important;min-width:0!important;max-width:none!important;margin:0!important;min-height:0!important;height:auto!important;padding:9px 10px!important;font-size:13px!important;border-radius:12px!important;white-space:normal!important}
 .t-tool:hover{border-color:var(--teacher);background:#22304f}
 .qa-thread{display:flex;flex-direction:column;gap:14px;margin-top:18px}
 .qa-thread:empty{display:none}
@@ -108,6 +110,8 @@ body{
 .qa-item .qa-a{align-self:flex-start;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:16px 16px 16px 4px;padding:12px 14px}
 .qa-item .qa-a .explain{margin:0;background:none;border:0;padding:0;white-space:normal}
 .qa-item .loading{align-self:flex-start}
+.qa-kim{font:800 12px Nunito,sans-serif;color:var(--muted);margin-bottom:6px;letter-spacing:.3px}
+.qa-yer{font-weight:600;opacity:.8;font-size:12px}
 .t-composer{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(680px,100%);box-sizing:border-box;z-index:2147482000;margin:0!important;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg,#0b1220) 80%,transparent)}
 #out:has(.t-composer){padding-bottom:96px}
 .t-composer input{border-radius:999px!important;padding:13px 16px!important;font-size:15px!important}
@@ -785,6 +789,12 @@ function parseParams(){
   const p = new URLSearchParams(location.search);
   State.en = (p.get("s")||"").trim();
   State.tr = (p.get("t")||"").trim();
+  /* Deniz'den "Öğretmene dön": ortak defterdeki cümle, açıklama ve konuşmalar geri gelir */
+  if(p.get("defter")==="1" && window.DHDefter){
+    const d = DHDefter.al();
+    if(d && d.cumle){ State.en = d.cumle; State.tr = d.tr||""; State.defterden = true; }
+    try{ history.replaceState(null,"",location.pathname); }catch(e){}
+  }
   /* Koç/antrenman "dh-teach-focus" ile somut malzeme bırakıyor (coach-bubble.js,
      error-drill.js). URL'de cümle yoksa oradan al — yoksa excelveri'ye düşülüyor. */
   if(!State.en){
@@ -1069,7 +1079,7 @@ function render(){
     <div class="teacher-hero teacher-hero--dual">
       <figure class="thero"><img class="teacher-photo" id="teacherHeroImgEn" alt="Öğretmen"><figcaption>🇬🇧 English</figcaption></figure>
     </div>
-    <div class="subject">
+    <div class="subject"${State.en ? "" : " hidden"}>
       <div class="subject-en" id="subEn">${renderRich('[['+esc(State.en)+']]')}</div>
       ${State.tr ? `<div class="subject-tr">${esc(State.tr)}</div>` : ""}
       <button class="subject-play" id="playBtn">🔊 Cümleyi dinle</button>
@@ -1155,6 +1165,28 @@ function normalizeTeacherMarkdown(text){
 }
 
 function setOut(html){ document.getElementById("out").innerHTML = html; }
+/* Ortak defterdeki açıklama + konuşmaları yeniden çiz (Deniz'le konuşulanlar dahil); geçmişi yapay zekâya da ver */
+function defterGoster(d){
+  renderExplanation(d.aciklama, true);
+  State.history = [{ role:"system", content:sistemPrompt()+(window.__dhProfileBlock||"") },
+    { role:"user", content:`İngilizce cümle: "${State.en}"` + (State.tr ? `\nTürkçe çevirisi: ${State.tr}` : "") },
+    { role:"assistant", content:d.aciklama }];
+  const thr = document.getElementById("qaThread"); if (!thr) return;
+  let item = null;
+  (d.mesajlar||[]).forEach(function(m){
+    if (m.kim === "Sen"){
+      item = document.createElement("div"); item.className = "qa-item"; thr.appendChild(item);
+      item.innerHTML = `<div class="qa-q">${esc(m.metin)}${m.yer==="Deniz" ? ' <span class="qa-yer">· Deniz\'e</span>' : ""}</div>`;
+      State.history.push({ role:"user", content:m.metin });
+    } else {
+      if (!item){ item = document.createElement("div"); item.className = "qa-item"; thr.appendChild(item); }
+      const a = document.createElement("div"); a.className = "qa-a";
+      a.innerHTML = `<div class="qa-kim">${m.kim==="Deniz" ? "🎥 Deniz" : "📘 Öğretmen"}</div><div class="explain qaExplain">${(window.DHGemini&&DHGemini.markdown)?DHGemini.markdown(normalizeTeacherMarkdown(m.metin)):renderRich(m.metin)}</div>`;
+      item.appendChild(a); item = null;
+      State.history.push({ role:"assistant", content:(m.kim==="Deniz" ? "(Deniz derste dedi ki:) " : "") + m.metin });
+    }
+  });
+}
 /* Öğretmen sayfasındaki cümle + açıklama + soru-cevapları Deniz'in görüntülü dersine taşır:
    konuskan.html?deniz=analiz açılır, Deniz konuyu sesli anlatıp sohbete devam eder. */
 function denizeTasi(odak){
@@ -1168,13 +1200,20 @@ function denizeTasi(odak){
     if(qa && !(odak && odak.soru)) parca.push("Ardından sorulanlar: "+qa.slice(0,900));
     localStorage.setItem("dh-deniz-analiz", JSON.stringify({
       cumle: State.en || (odak && odak.soru) || "", tr: State.tr||"", src:"Öğretmen sayfası", kim:"",
-      ozet: parca.join(" ").slice(0,2600), kurallar: getPrompt(), t: Date.now()
+      ozet: parca.join(" ").slice(0,2600), kurallar: getPrompt(), t: Date.now(),
+      defter: true, odak: odak && odak.soru ? { soru: String(odak.soru), cevap: String(odak.cevap||"") } : null
     }));
+    if (window.DHDefter && State.en){ DHDefter.baslat(State.en, State.tr); if (State.explanation) DHDefter.aciklama(State.explanation); }
   }catch(e){}
   location.href="./konuskan.html?deniz=analiz";
 }
 
 async function explain(forceRefresh){
+  if (State.en && State.defterden && !forceRefresh && window.DHDefter){
+    State.defterden = false;
+    const d = DHDefter.al();
+    if (d && d.cumle === State.en && d.aciklama){ defterGoster(d); return; }
+  }
   if (!State.en){
     setOut(`<div class="state">
       <h2>Bir cümle yaz veya Veritabanından Seç</h2>
@@ -1239,8 +1278,9 @@ async function explain(forceRefresh){
   }catch(e){ handleError(e); }
 }
 
-function renderExplanation(reply){
+function renderExplanation(reply, defterden){
   State.explanation = reply || "";
+  if (!defterden && window.DHDefter && State.en && reply){ try{ DHDefter.baslat(State.en, State.tr); DHDefter.aciklama(reply); }catch(e){} }
   reply = normalizeTeacherMarkdown(reply);
   const quiz = parseQuiz(reply);
   const mainText = normalizeTeacherMarkdown(quiz ? quiz.before : reply);
@@ -1454,6 +1494,7 @@ async function askFollowup(q){
   try{
     const reply = await groqChat(State.history);
     State.history.push({ role:"assistant", content:reply });
+    try{ if (window.DHDefter && State.en){ DHDefter.baslat(State.en, State.tr); DHDefter.ekle("Sen", q, "Öğretmen"); DHDefter.ekle("Öğretmen", reply, "Öğretmen"); } }catch(e){}
     qa.innerHTML = `<div class="qa-q">${esc(q)}</div><div class="qa-a"><div class="explain qaExplain">${(window.DHGemini&&DHGemini.markdown)?DHGemini.markdown(normalizeTeacherMarkdown(reply)):renderRich(reply)}</div><div class="explain-actions"><button class="explain-play qaListen">🔊 Oku</button><button class="explain-play qaDeniz" type="button">🎥 Deniz'le çalış</button></div></div>`;
     const dzb = qa.querySelector(".qaDeniz"); if (dzb) dzb.onclick = () => denizeTasi({ soru:q, cevap:reply });
     gorunur();
@@ -1487,14 +1528,10 @@ function handleError(e, silent){
   if (!silent) setOut(`<div class="state"><h2>Olmadı</h2><p>${msg}</p><button class="btn btn-primary" onclick="location.reload()">Tekrar dene</button></div>`);
 }
 
-// BAŞLATMA MANTIĞI: URL'den parametre gelmişse onu al, gelmemişse data/excelveri.json'ın 0. elemanını otomatik aç
+// BAŞLATMA MANTIĞI: URL'den parametre (ya da ortak defter) gelmişse onu al, gelmemişse boş açılır
 parseParams();
 startPauseWatch();
-if (!State.en) {
-  loadExcelVeri(0);
-} else {
-  render();
-}
+render();   /* cümle verilmediyse BOŞ açılır (eskiden data/excelveri.json'ın ilk cümlesi geliyordu) */
 
 })();
 </script>

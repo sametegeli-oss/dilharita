@@ -154,6 +154,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         </div>
         <div class="vd-sure" hidden>00:00</div>
         <div class="vd-ust-sag">
+          ${analiz && analiz.defter ? '<button class="vd-ib vd-ogr-don" data-a="ogretmen" title="Öğretmene dön" aria-label="Öğretmene dön">📘</button>' : ''}
           <button class="vd-ib" data-a="cc" title="Altyazı" aria-label="Altyazı">${vi('cc')}</button>
           <button class="vd-ib" data-a="sohbet" title="Sohbet" aria-label="Sohbet">${vi('chat')}<em class="vd-rozet" hidden>0</em></button>
           <button class="vd-ib" data-a="ayar" title="Ayarlar" aria-label="Ayarlar">${vi('gear')}</button>
@@ -955,6 +956,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     q('[data-a=cc]').onclick = () => { ayar.altyazi = !ayar.altyazi; ayarKaydet(); kok.classList.toggle('vd-cc-yok', !ayar.altyazi); };
     kok.classList.toggle('vd-cc-yok', !ayar.altyazi);
     q('[data-a=kapat]').onclick = () => { if (st.faz === 'ders' && st.turns) bitir(); else kapatPanel(); };
+    /* ortak defterle gelindiyse: aynı cümle, açıklama ve konuşmalarla öğretmen sayfasına dön */
+    { const ob = q('[data-a=ogretmen]'); if (ob) ob.onclick = () => { try { yuz.sustur(); vdKaydet(); } catch (e) {} location.href = './teacher.html?defter=1'; }; }
 
     /* ---- Google hesabı (genel asistan) ---- */
     function googleCiz() {
@@ -1615,12 +1618,46 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       dolgulariHazirla();
       if (analiz && !st.hist.length) {
         const n = document.createElement('div'); n.className = 'vd-devam-not'; n.textContent = 'İncelenen cümle: “' + analiz.cumle + '”' + (analiz.src ? ' · ' + analiz.src : ''); listeyeEkle(n);
+        const defter = analiz.defter && window.DHDefter ? DHDefter.al() : null;
+        if (defter && defter.cumle === analiz.cumle) {
+          /* öğretmen sayfasındaki soru-cevaplar: sohbet listesinde ve Deniz'in bağlamında */
+          (defter.mesajlar || []).forEach(mm => {
+            const n2 = document.createElement('div'); n2.className = 'vd-devam-not';
+            n2.textContent = (mm.kim === 'Sen' ? 'Sen' : mm.kim) + (mm.yer && mm.yer !== mm.kim && mm.kim === 'Sen' ? ' → ' + mm.yer : '') + ': ' + String(mm.metin).slice(0, 500);
+            listeyeEkle(n2); st.hist.push({ role: mm.kim === 'Sen' ? 'user' : 'assistant', text: (mm.kim === 'Öğretmen' ? '(Written teacher said:) ' : '') + mm.metin });
+          });
+          const kaynak = analiz.odak && analiz.odak.cevap ? analiz.odak.cevap : (defter.aciklama || '');
+          const satirlar = DHDefter.konusulabilir(kaynak);
+          if (satirlar.length) { await metniOku(satirlar, analiz.odak ? 'Öğretmenin cevabını okuyorum.' : 'Öğretmenin açıklamasını okuyorum.'); return; }
+        }
         const sen = analiz.kim === 'Sen';
         await sor(null, `The learner opened you from a text chat${analiz.src ? ' (' + analiz.src + ')' : ''} to have this sentence ${sen ? 'THEY wrote' : 'from that chat'} analysed: "${analiz.cumle}". Greet them in ONE very short Turkish sentence, then explain IN TURKISH (warm, informal "sen"), at their level: what it means, its grammar structure and the rule behind it${sen ? ', whether it is correct (if not, give the correct version as an English segment)' : ''}, and 1-2 useful words or phrases from it. Give ONE new English example as an English segment, then ask if they have a question about it. Keep it to 5-7 short segments. English examples as English segments (lang "en"), the explanation as Turkish segments (lang "tr").${analiz.ozet ? ` The learner has just read this written analysis, so do not just repeat it; explain it in your own words more simply and add something new (another example, a common mistake to avoid): ${analiz.ozet}` : ''}`);
       } else if (kayit && !st.hist.length) {
         gecmisiYukle(kayit);
         await sor(null, `The ${genelMi() ? 'conversation' : 'lesson'} was interrupted earlier; the conversation so far is above. Welcome the ${genelMi() ? 'user' : 'learner'} back in ONE short sentence ${ayar.mod === 'en' ? 'in English' : 'IN TURKISH'} and continue exactly where you left off (answer an open question, or take the next small step and ask a question). Do not start a new topic.`);
       } else await sor(null);
+    }
+    /* Öğretmen sayfasındaki yazılı metni KELİMESİ KELİMESİNE okur (yapay zekâ çağrısı yok).
+       "Başlık: değer — Başlık: değer" satırları parçalara ayrılır, her parçanın dili ayrı tahmin edilir. */
+    async function metniOku(satirlar, giris) {
+      if (st.bitti) return;
+      const parcalar = [];
+      const ekle = (t, dil) => { t = String(t || '').trim(); if (t) parcalar.push({ metin: t, dil: dil || dilTahmin(t) || (/[çğışöüİ]/i.test(t) ? 'tr' : 'en'), duygu: 'cesaret', jest: null, guc: 0.6, cev: '' }); };
+      if (giris) ekle(giris, 'tr');
+      satirlar.forEach(l => String(l).split(/\s+—\s+/).forEach(p => {
+        const mm = p.match(/^([^:]{1,28}):\s+(.+)$/);
+        if (mm) { ekle(mm[1] + ':', 'tr'); ekle(mm[2]); } else ekle(p);
+      }));
+      ekle('Anlamadığın bir yer varsa sor, birlikte üzerinden geçelim.', 'tr');
+      const m = { role: 'assistant', text: '', tr: '', liste: [], okundu: true };
+      const ks = yeniKonusucu(m); st.konusucu = ks;
+      parcalar.forEach((c, i) => {
+        m.liste.push(c); m.text = m.liste.map(x => x.metin).join(' ');
+        if (i === 0) { st.hist.push(m); st.son = m; ogretmenMesaji(m); } else baloncukGuncelle(m);
+        ks.ekle(c);
+      });
+      baloncukGuncelle(m, true); ks.bitir();
+      await ks.bitti(); sonra(m);
     }
     async function sor(metin, ekTalimat) {
       if (st.busy || st.bitti) return; st.busy = true;
@@ -1663,6 +1700,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         if (!m.liste.length) throw { code: 'bad_json' };
         m.tr = r.reply_tr || ''; baloncukGuncelle(m, true);
         if (um) kontrol(um, r.check || { ok: true });
+        if (analiz && analiz.defter && window.DHDefter) { try { if (um) DHDefter.ekle('Sen', um.text, 'Deniz'); DHDefter.ekle('Deniz', m.text, 'Deniz'); } catch (e) {} }   /* öğretmen sayfası da görsün */
         (r.tasks_done || []).forEach(n => st.done.add(+n));
         cevirileriTamamla(m);
         ks.bitir();
