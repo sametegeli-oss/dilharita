@@ -766,10 +766,12 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-fon-bos { color: var(--vd-soluk); }
 
 /* ---------- GERÇEK ORTAM (28 Kasım): Deniz sahnenin içinde ---------- */
-.vd-ortam-dolgu, .vd-ortam-ark, .vd-ortam-on { display: none; }
+.vd-ortam-dolgu, .vd-ortam-ark, .vd-ortam-on, .vd-ortam-buhar, .vd-ortam-isikkap { display: none; }
 .vd-ortam-acik .vd-ortam-dolgu { display: block; position: absolute; inset: -40px; width: calc(100% + 80px); height: calc(100% + 80px); object-fit: cover; filter: blur(22px) brightness(.8); pointer-events: none; }
-.vd-ortam-acik .vd-ortam-ark, .vd-ortam-acik .vd-ortam-on { display: block; position: absolute; pointer-events: none; overflow: visible; grid-area: auto; }
-.vd-ortam-acik .vd-ortam-on { z-index: 1; }
+.vd-ortam-acik .vd-ortam-ark, .vd-ortam-acik .vd-ortam-on, .vd-ortam-acik .vd-ortam-buhar, .vd-ortam-acik .vd-ortam-isikkap { display: block; position: absolute; pointer-events: none; overflow: visible; grid-area: auto; }
+.vd-ortam-acik .vd-ortam-buhar { mix-blend-mode: screen; }
+.vd-ortam-acik .vd-ortam-isikkap { mix-blend-mode: soft-light; }
+.vd-ortam-buhar-v { position: absolute; display: block; object-fit: fill; filter: blur(1px); opacity: .9; }
 .vd-ortam-ic { position: absolute; }
 .vd-ortam-ic > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .vd-ortam-plaka { filter: blur(.6px) saturate(1.02); }
@@ -785,9 +787,16 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
 .vd-ortam-lambalar i { position: absolute; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 205, 130, .38), rgba(255, 190, 110, .12) 55%, transparent 100%); mix-blend-mode: screen; animation: vdOrtamLamba 7s ease-in-out infinite alternate; }
 @keyframes vdOrtamLamba { 0% { opacity: .75; } 40% { opacity: 1; } 70% { opacity: .85; } 100% { opacity: .95; } }
 /* pencere ışığı yüze ve sahneye birlikte düşer (ışık uyumu) */
-.vd-ortam-isik { position: absolute; inset: 0; background: radial-gradient(55% 38% at 6% 26%, rgba(255, 214, 160, .55), transparent 72%), linear-gradient(to right, rgba(255, 220, 170, .10), transparent 45%); mix-blend-mode: soft-light; animation: vdOrtamPencere 11s ease-in-out infinite alternate; }
-.vd-canli.vd-derste.vd-ortam-acik .vd-ortam-ark, .vd-canli.vd-derste.vd-ortam-acik .vd-ortam-on { animation: vdKamera 26s ease-in-out infinite alternate; }
+.vd-ortam-isik { position: absolute; inset: 0; background: radial-gradient(55% 38% at 6% 26%, rgba(255, 214, 160, .55), transparent 72%), linear-gradient(to right, rgba(255, 220, 170, .10), transparent 45%); animation: vdOrtamPencere 11s ease-in-out infinite alternate; }
+.vd-canli.vd-derste.vd-ortam-acik .vd-ortam-ark, .vd-canli.vd-derste.vd-ortam-acik .vd-ortam-on, .vd-canli.vd-derste.vd-ortam-acik .vd-ortam-buhar, .vd-canli.vd-derste.vd-ortam-acik .vd-ortam-isikkap { animation: vdKamera 26s ease-in-out infinite alternate; }
 @media (prefers-reduced-motion: reduce) { .vd-ortam-tozlar, .vd-ortam-pencere, .vd-ortam-lambalar i, .vd-ortam-isik { animation: none !important; } }
 .vd-ortam-video { position: absolute; display: block; object-fit: fill; filter: blur(.6px) saturate(1.02); }
 /* video oynarken pencere ışığı ve toz videonun kendisinden gelir */
 .vd-ortam-ic.vid .vd-ortam-pencere, .vd-ortam-ic.vid .vd-ortam-tozlar { display: none; }
+
+/* telefonda (dikey) kamera geride: sahnenin tamamı ekran genişliğinde, Deniz masada; fincan ve masa denetim çubuğunun üstünde görünür.
+   Plaka 1536x2752; Deniz kutusu plakada x 254, y 795, genişlik 997 → ekran genişliğinin %16,56 / %51,78 / %64,88'i. */
+@media (max-aspect-ratio: 4/5) {
+  .vd.vd-ortam-acik:not(.vd-sohbet-acik) .vd-yuz { position: absolute !important; left: 16.56vw !important; right: auto !important; bottom: auto !important;
+    top: calc(min(0px, 100dvh - 170px - 179.17vw) + 51.78vw) !important; width: 64.88vw !important; height: 64.88vw !important; max-width: none !important; transform: none !important; }
+}

@@ -581,7 +581,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
        Katman kapları canvas'la aynı yerde/boyutta durur ve kamera kıpırtısı (vdKamera) animasyonu canvas'ınkine eşitlenir. */
     const ORTAM = {
       'g-kutuphane': { yol: './assets/ortam/kutuphane/', W: 1536, H: 2752, goz: { x: 787.5, y: 1202, d: 205 },
-        lamba: [[249, 1080, 150], [1296, 1155, 170]], pencere: [0, 120, 470, 1330], video: [2.1, 12.8, 1531.9, 2723.4] }
+        lamba: [[249, 1080, 150], [1296, 1155, 170]], pencere: [0, 120, 470, 1330], video: [2.1, 12.8, 1531.9, 2723.4], buhar: true }
     };
     const TABAN_GOZ = { x: .535, y: .408, d: .2057 };
     let ortamT = null;
@@ -595,8 +595,16 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         ark.innerHTML = '<div class="vd-ortam-ic"><img class="vd-ortam-plaka" alt=""><video class="vd-ortam-video" muted loop playsinline preload="none" hidden></video><i class="vd-ortam-pencere"></i><span class="vd-ortam-tozlar"></span><span class="vd-ortam-lambalar"></span><img class="vd-ortam-govde" alt=""></div>';
         sahne.insertBefore(ark, cv);
         on = document.createElement('div'); on.className = 'vd-ortam-on'; on.setAttribute('aria-hidden', 'true');
-        on.innerHTML = '<div class="vd-ortam-ic"><img class="vd-ortam-onplan" alt=""><i class="vd-ortam-isik"></i></div>';
+        on.innerHTML = '<div class="vd-ortam-ic"><img class="vd-ortam-onplan" alt=""></div>';
         cv.insertAdjacentElement('afterend', on);
+        /* buhar (fincandan, Deniz'in önünde; siyah zemin + screen karışımı) ve pencere ışığı (soft-light) ayrı kaplarda:
+           karışım modu kabın kendisinde olmalı, yoksa kap içinde yalıtılır */
+        const bu = document.createElement('div'); bu.className = 'vd-ortam-buhar'; bu.setAttribute('aria-hidden', 'true');
+        bu.innerHTML = '<div class="vd-ortam-ic"><video class="vd-ortam-buhar-v" muted loop playsinline preload="none" hidden></video></div>';
+        on.insertAdjacentElement('afterend', bu);
+        const is = document.createElement('div'); is.className = 'vd-ortam-isikkap'; is.setAttribute('aria-hidden', 'true');
+        is.innerHTML = '<div class="vd-ortam-ic"><i class="vd-ortam-isik"></i></div>';
+        bu.insertAdjacentElement('afterend', is);
       }
       if (ark.dataset.ad !== ad) {
         ark.dataset.ad = ad;
@@ -610,6 +618,12 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
           vd.onplaying = () => { vd.hidden = false; ark.firstChild.classList.add('vid'); }; vd.onerror = () => { vd.hidden = true; ark.firstChild.classList.remove('vid'); };
           vd.src = o.yol + 'plaka.mp4'; vd.play().catch(() => {});
         } else { vd.hidden = true; vd.removeAttribute('src'); }
+        const bv = q('.vd-ortam-buhar-v');
+        if (o.buhar && ayar.canli !== false) {
+          const v = o.video; Object.assign(bv.style, { left: yuzde(v[0], o.W), top: yuzde(v[1], o.H), width: yuzde(v[2], o.W), height: yuzde(v[3], o.H) });
+          bv.onplaying = () => { bv.hidden = false; }; bv.onerror = () => { bv.hidden = true; };
+          bv.src = o.yol + 'buhar.mp4'; bv.play().catch(() => {});
+        } else { bv.hidden = true; bv.removeAttribute('src'); }
         ark.querySelector('.vd-ortam-govde').src = o.yol + 'govde.webp';
         on.querySelector('.vd-ortam-onplan').src = o.yol + 'onplan.webp';
         const p = o.pencere, pe = ark.querySelector('.vd-ortam-pencere');
@@ -623,14 +637,15 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       const yerlestir = () => {
         const bw = cv.offsetWidth; if (!bw) return;
         const tr = getComputedStyle(cv).transform, s = TABAN_GOZ.d * bw / o.goz.d;
-        for (const k of [ark, on]) {
+        const kaplar = [ark, on, q('.vd-ortam-buhar'), q('.vd-ortam-isikkap')].filter(Boolean);
+        for (const k of kaplar) {
           Object.assign(k.style, { left: cv.offsetLeft + 'px', top: cv.offsetTop + 'px', width: bw + 'px', height: cv.offsetHeight + 'px', transform: tr === 'none' ? '' : tr });
           Object.assign(k.firstChild.style, { width: o.W * s + 'px', height: o.H * s + 'px', left: (TABAN_GOZ.x * bw - o.goz.x * s) + 'px', top: (TABAN_GOZ.y * bw - o.goz.y * s) + 'px' });
         }
         /* kamera kıpırtısı yüzle aynı anda: canvas animasyonunun zamanı katmanlara kopyalanır */
         try {
           const a = cv.getAnimations ? cv.getAnimations()[0] : null;
-          for (const k of [ark, on]) { const b = k.getAnimations ? k.getAnimations()[0] : null; if (a && b && Math.abs((b.currentTime || 0) - (a.currentTime || 0)) > 40) b.currentTime = a.currentTime; }
+          for (const k of kaplar) { const b = k.getAnimations ? k.getAnimations()[0] : null; if (a && b && Math.abs((b.currentTime || 0) - (a.currentTime || 0)) > 40) b.currentTime = a.currentTime; }
         } catch (e) {}
       };
       yerlestir(); clearInterval(ortamT); ortamT = setInterval(() => { if (!kok.isConnected) return clearInterval(ortamT); yerlestir(); }, 250);
