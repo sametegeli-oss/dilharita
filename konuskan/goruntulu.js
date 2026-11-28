@@ -580,8 +580,8 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
        (Deniz taban fotoğrafında göz ortası kutunun %53,5/%40,8'inde, göz arası genişliğin %20,57'si).
        Katman kapları canvas'la aynı yerde/boyutta durur ve kamera kıpırtısı (vdKamera) animasyonu canvas'ınkine eşitlenir. */
     const ORTAM = {
-      'g-kutuphane': { yol: './assets/ortam/kutuphane/', v: 6, W: 1536, H: 2752, goz: { x: 787.5, y: 1202, d: 205 },
-        lamba: [[249, 1080, 150], [1296, 1155, 170]], pencere: [0, 120, 470, 1330], video: [2.1, 12.8, 1531.9, 2723.4], buhar: { r: [-5.9, 167.8, 1021.3, 2085], n: 128, kol: 16, w: 180, h: 368, fps: 15 } }
+      'g-kutuphane': { yol: './assets/ortam/kutuphane/', v: 7, W: 1536, H: 2752, goz: { x: 787.5, y: 1202, d: 205 },
+        lamba: [[249, 1080, 150], [1296, 1155, 170]], pencere: [0, 120, 470, 1330], dis: [0, 150, 280, 1260], video: [2.1, 12.8, 1531.9, 2723.4], buhar: { r: [-5.9, 167.8, 1021.3, 2085], n: 128, kol: 16, w: 180, h: 368, fps: 15 } }
     };
     const TABAN_GOZ = { x: .535, y: .408, d: .2057 };
     let ortamT = null, ortamBuharT = null;
@@ -592,7 +592,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         dolgu = document.createElement('img'); dolgu.className = 'vd-ortam-dolgu'; dolgu.alt = ''; dolgu.setAttribute('aria-hidden', 'true');
         sahne.insertBefore(dolgu, sahne.firstChild);
         ark = document.createElement('div'); ark.className = 'vd-ortam-ark'; ark.setAttribute('aria-hidden', 'true');
-        ark.innerHTML = '<div class="vd-ortam-ic"><img class="vd-ortam-plaka" alt=""><video class="vd-ortam-video" muted loop playsinline preload="none" hidden></video><i class="vd-ortam-pencere"></i><span class="vd-ortam-tozlar"></span><span class="vd-ortam-lambalar"></span><img class="vd-ortam-govde" alt=""></div>';
+        ark.innerHTML = '<div class="vd-ortam-ic"><img class="vd-ortam-plaka" alt=""><video class="vd-ortam-video" muted loop playsinline preload="none" hidden></video><i class="vd-ortam-pencere"></i><span class="vd-ortam-tozlar"></span><span class="vd-ortam-lambalar"></span><div class="vd-ortam-dis"></div><img class="vd-ortam-govde" alt=""></div>';
         sahne.insertBefore(ark, cv);
         on = document.createElement('div'); on.className = 'vd-ortam-on'; on.setAttribute('aria-hidden', 'true');
         on.innerHTML = '<div class="vd-ortam-ic"><img class="vd-ortam-onplan" alt=""></div>';
@@ -638,6 +638,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         on.querySelector('.vd-ortam-onplan').src = o.yol + 'onplan.webp?v=' + (o.v || 1);
         const p = o.pencere, pe = ark.querySelector('.vd-ortam-pencere');
         Object.assign(pe.style, { left: yuzde(p[0], o.W), top: yuzde(p[1], o.H), width: yuzde(p[2] - p[0], o.W), height: yuzde(p[3] - p[1], o.H) });
+        ortamDis(ark.querySelector('.vd-ortam-dis'), o, yuzde);
         ark.querySelector('.vd-ortam-tozlar').innerHTML = Array.from({ length: 9 }, (_, i) =>
           `<i style="left:${yuzde(p[0] + (p[2] - p[0]) * ((i * 37) % 100) / 100, o.W)};top:${yuzde(p[1] + (p[3] - p[1]) * ((i * 61) % 100) / 100, o.H)};animation-delay:${-i * 2.3}s;animation-duration:${14 + (i % 4) * 3}s"></i>`).join('');
         ark.querySelector('.vd-ortam-lambalar').innerHTML = o.lamba.map((l, i) =>
@@ -660,7 +661,32 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
       };
       yerlestir(); clearInterval(ortamT); ortamT = setInterval(() => { if (!kok.isConnected) return clearInterval(ortamT); yerlestir(); }, 250);
     }
-    function ortamKaldir() { clearInterval(ortamT); ortamT = null; kok.classList.remove('vd-ortam-acik'); }
+    /* PENCERENİN DIŞI: camın ardında kuş sürüsü, yürüyüp geçen silik bir insan, sallanan dal ve düşen yapraklar.
+       Hepsi camın arkasında (pencere çerçevesi/lamba pencere-on.webp ile üstte), bulanık ve çarpım karışımlı. */
+    let disT = [];
+    const KUS = '<svg viewBox="0 0 40 14"><path d="M0 7 Q10 0 20 7 Q30 0 40 7 Q30 4 20 10 Q10 4 0 7Z"/></svg>';
+    const INSAN = '<svg viewBox="0 0 40 120"><circle cx="20" cy="11" r="9"/><path d="M8 24 Q20 19 32 24 L35 66 L28 67 L27 118 L21 118 L20 76 L19 118 L13 118 L12 67 L5 66Z"/></svg>';
+    const DAL = '<svg viewBox="0 0 200 260"><path d="M200 0 C150 30 120 60 95 110 C80 140 70 180 60 255" stroke="#3a3324" stroke-width="5" fill="none"/>' +
+      Array.from({ length: 16 }, (_, i) => { const t = i / 15, x = 200 - 140 * t + (i % 2 ? 18 : -14), y = 10 + 235 * t, a = (i % 2 ? 35 : -40) + i * 3;
+        return `<ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" rx="16" ry="7" transform="rotate(${a} ${x.toFixed(0)} ${y.toFixed(0)})"/>`; }).join('') + '</svg>';
+    function ortamDis(el, o, yuzde) {
+      disT.forEach(clearTimeout); disT = [];
+      const p = o.dis; if (!el || !p) return;
+      Object.assign(el.style, { left: yuzde(p[0], o.W), top: yuzde(p[1], o.H), width: yuzde(p[2] - p[0], o.W), height: yuzde(p[3] - p[1], o.H) });
+      el.innerHTML = `<i class="dis-dal">${DAL}</i><img class="dis-on" alt="" src="${o.yol}pencere-on.webp?v=${o.v || 1}">`;
+      const rastgele = (a, b) => a + Math.random() * (b - a);
+      const zamanla = (ad, a, b, f) => { const t = setTimeout(() => { if (!kok.isConnected || !kok.classList.contains('vd-ortam-acik')) return; if (!document.hidden) f(); zamanla(ad, a, b, f); }, rastgele(a, b) * 1000); disT.push(t); };
+      const ekle = (cls, html, sure, stil) => { const i = document.createElement('i'); i.className = cls; i.innerHTML = html; Object.assign(i.style, stil || {}); el.insertBefore(i, el.querySelector('.dis-on')); setTimeout(() => i.remove(), sure * 1000 + 200); };
+      const olaylar = {};
+      el.__olay = olaylar;   /* test: el.__olay.kus() vb. */
+      zamanla('kus', 18, 40, olaylar.kus = () => {
+        const y = rastgele(22, 50), sag = Math.random() < .5, n = 3 + Math.floor(Math.random() * 3);
+        ekle('dis-suru' + (sag ? ' ters' : ''), Array.from({ length: n }, (_, k) => `<b style="left:${k * 9 + Math.random() * 6}%;top:${(k % 2) * 3 + Math.random() * 4}%;animation-delay:${-Math.random()}s">${KUS}</b>`).join(''), 7, { top: y + '%', animationDuration: rastgele(5.5, 8) + 's' });
+      });
+      zamanla('insan', 35, 75, olaylar.insan = () => { const sag = Math.random() < .5; ekle('dis-insan' + (sag ? ' ters' : ''), INSAN, 17, { animationDuration: rastgele(13, 17) + 's' }); });
+      zamanla('yaprak', 10, 22, olaylar.yaprak = () => { ekle('dis-yaprak', '<svg viewBox="0 0 20 10"><ellipse cx="10" cy="5" rx="9" ry="4"/></svg>', 9, { left: rastgele(30, 85) + '%', animationDuration: rastgele(6, 9) + 's' }); });
+    }
+    function ortamKaldir() { disT.forEach(clearTimeout); disT = []; clearInterval(ortamT); ortamT = null; kok.classList.remove('vd-ortam-acik'); }
     q('[data-a=fondegis]').onclick = async () => { const fon = kok.dataset.fon, kk = (fonTur() === 'resim' ? 'dh-fon-resim-' : 'dh-fon-video-') + fon; const k = await kvAl(kk); kvKoy(kk, Object.assign({}, k || {}, { degis: true })); setTimeout(fonVideo, 150); };
     q('[data-a=fontur]').onchange = e => { ayar.fonTur = e.target.value; ayarKaydet(); kok.dataset.fontur = fonTur(); fonVideo(); };
     kok.dataset.fontur = fonTur();

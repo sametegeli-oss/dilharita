@@ -800,3 +800,25 @@ html.vd-acik .dh-mobile-menu-panel, html.vd-acik .pi-fab, html.vd-acik [class*="
   .vd.vd-ortam-acik:not(.vd-sohbet-acik) .vd-yuz { position: absolute !important; left: 16.56vw !important; right: auto !important; bottom: auto !important;
     top: calc(min(0px, 100dvh - 40px - 179.17vw) + 51.78vw) !important; width: 64.88vw !important; height: 64.88vw !important; max-width: none !important; transform: none !important; }
 }
+/* pencerenin dışı (camın ardı): kuşlar, yürüyen biri, dal, yapraklar; çerçeve ve lamba .dis-on ile üstte */
+.vd-ortam-dis { position: absolute; overflow: hidden; pointer-events: none; }
+.vd-ortam-dis > i { position: absolute; display: block; mix-blend-mode: multiply; }
+.vd-ortam-dis svg { display: block; width: 100%; height: 100%; }
+.vd-ortam-dis .dis-on { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.dis-dal { right: -12%; top: -2%; width: 70%; height: 34%; fill: #3c4a2a; opacity: .55; filter: blur(1.6px); transform-origin: 100% 0; animation: vdDisDal 7s ease-in-out infinite alternate; }
+@keyframes vdDisDal { 0% { transform: rotate(-3deg); } 50% { transform: rotate(1.5deg); } 100% { transform: rotate(-1deg); } }
+.dis-suru { left: 0; width: 50%; height: 8%; animation: vdDisSuru 7s linear forwards; opacity: 0; filter: blur(.5px); }
+.dis-suru b { position: absolute; width: 22%; height: 60%; fill: #2e2a26; opacity: .8; animation: vdDisKanat .38s ease-in-out infinite alternate; }
+.dis-suru.ters { transform: scaleX(-1); }
+@keyframes vdDisSuru { 0% { translate: -40% 0; opacity: 0; } 8% { opacity: 1; } 50% { translate: 150% -30%; } 92% { opacity: 1; } 100% { translate: 330% 10%; opacity: 0; } }
+.dis-suru.ters { animation-name: vdDisSuruT; }
+@keyframes vdDisSuruT { 0% { translate: 330% 0; opacity: 0; } 8% { opacity: 1; } 50% { translate: 150% -30%; } 92% { opacity: 1; } 100% { translate: -40% 10%; opacity: 0; } }
+@keyframes vdDisKanat { from { transform: scaleY(1); } to { transform: scaleY(.35); } }
+.dis-insan { bottom: 6%; left: 0; width: 15%; height: 30%; fill: #2b2826; opacity: 0; filter: blur(1.8px); animation: vdDisInsan 15s linear forwards; }
+.dis-insan svg { animation: vdDisAdim .55s ease-in-out infinite alternate; }
+@keyframes vdDisInsan { 0% { translate: -120% 0; opacity: 0; } 10% { opacity: .5; } 90% { opacity: .5; } 100% { translate: 820% 0; opacity: 0; } }
+.dis-insan.ters { animation-name: vdDisInsanT; }
+@keyframes vdDisInsanT { 0% { translate: 820% 0; opacity: 0; } 10% { opacity: .5; } 90% { opacity: .5; } 100% { translate: -120% 0; opacity: 0; } }
+@keyframes vdDisAdim { from { transform: translateY(0); } to { transform: translateY(-2%); } }
+.dis-yaprak { top: -3%; width: 8%; height: 1.8%; fill: #6b5a2a; opacity: .55; filter: blur(.8px); animation: vdDisYaprak 8s ease-in forwards; }
+@keyframes vdDisYaprak { 0% { translate: 0 0; rotate: 0deg; } 25% { translate: 60% 1200%; rotate: 120deg; } 50% { translate: -40% 2600%; rotate: 260deg; } 75% { translate: 80% 4200%; rotate: 380deg; } 100% { translate: 0 6000%; rotate: 520deg; } }
