@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v641";  /* Deniz: uzun konuşmada not alma videosu */
-/* onceki v640: Öğretmen sayfası sohbet düzeni */
+var SW_VERSION = "dh-sw-v642";  /* Konuşurken her seferinde not alma; öğretmen açıklaması tablolu; öğretmenden Deniz görüntülü derse taşıma */
+/* onceki v641: Deniz uzun konuşmada not alma videosu */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */

@@ -1783,7 +1783,16 @@ Promise.all([fetch('./konuskan/data.json?v=1').then(r=>{ if(!r.ok) throw 0; retu
     let konus=new URLSearchParams(location.search).get('konus');
     try{ if(konus) sessionStorage.setItem('kk-konus',konus); else konus=sessionStorage.getItem('kk-konus'); }catch(e){}
     if(konus){ try{ history.replaceState(null,'',location.pathname+location.hash); }catch(e){}
-      startModuleTalk(konus).then(()=>setTimeout(()=>{ try{ sessionStorage.removeItem('kk-konus'); }catch(e){} },2500)); } });
+      startModuleTalk(konus).then(()=>setTimeout(()=>{ try{ sessionStorage.removeItem('kk-konus'); }catch(e){} },2500)); }
+    /* Öğretmen sayfasından taşınan cümle + açıklama: Deniz görüntülü derste sesli anlatır */
+    if(new URLSearchParams(location.search).get('deniz')==='analiz'){
+      try{ history.replaceState(null,'',location.pathname+location.hash); }catch(e){}
+      let a=null; try{ a=JSON.parse(localStorage.getItem('dh-deniz-analiz')||'null'); localStorage.removeItem('dh-deniz-analiz'); }catch(e){}
+      if(a&&a.cumle&&Date.now()-(a.t||0)<30*60*1000){
+        if(window.startVideo&&!aiOff()){ stopSpeak(); startVideo(null,{ustte:true,analiz:a}); }
+        else toast('Görüntülü ders için yapay zekâ anahtarı gerekiyor.');
+      }
+    } });
 
 /* ⛶ Balon tam ekran: her sohbet balonunun sağ üst köşesinde bir düğme. Basınca balondaki metin
    tam ekran görünür, tekrar basınca (ya da Esc) eski haline döner. Yazılı sohbetler (.msg > .bub)

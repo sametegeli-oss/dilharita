@@ -320,7 +320,22 @@ function markdown(input){
     return s;
   }
   function closeList(){if(list){out.push("</"+list+">");list="";}}
+  /* Markdown tablosu: | a | b | satırları, ikinci satır |---|---| */
+  var tbl=[];
+  function cells(l){ return l.trim().replace(/^\|/,"").replace(/\|$/,"").split("|").map(function(c){return c.trim();}); }
+  function flushTable(){
+    if(!tbl.length) return;
+    var rows=tbl; tbl=[];
+    var sep=rows.length>1 && /^\s*\|?\s*:?-{2,}/.test(rows[1]);
+    if(!sep){ rows.forEach(function(r){ out.push("<p>"+inline(r.trim())+"</p>"); }); return; }
+    var h=cells(rows[0]), body=rows.slice(2);
+    var html='<div class="dh-tablo"><table><thead><tr>'+h.map(function(c){return "<th>"+inline(c)+"</th>";}).join("")+"</tr></thead><tbody>";
+    body.forEach(function(r){ var c=cells(r); while(c.length<h.length) c.push(""); html+="<tr>"+c.slice(0,h.length).map(function(x){return "<td>"+inline(x)+"</td>";}).join("")+"</tr>"; });
+    out.push(html+"</tbody></table></div>");
+  }
   src.forEach(function(line){
+    if(!code && /^\s*\|.*\|\s*$/.test(line)){ closeList(); tbl.push(line); return; }
+    flushTable();
     if(/^\s*```/.test(line)){if(code){out.push("<pre><code>"+esc(codeLines.join("\n"))+"</code></pre>");code=false;codeLines=[];}else{closeList();code=true;}return;}
     if(code){codeLines.push(line);return;}
     var m=line.match(/^\s*(#{1,4})\s+(.+)$/);if(m){closeList();out.push("<h"+m[1].length+">"+inline(m[2])+"</h"+m[1].length+">");return;}
@@ -331,6 +346,7 @@ function markdown(input){
     if(!line.trim()){closeList();return;}
     closeList();out.push("<p>"+inline(line.trim())+"</p>");
   });
+  flushTable();
   if(code)out.push("<pre><code>"+esc(codeLines.join("\n"))+"</code></pre>");closeList();return out.join("");
 }
 
