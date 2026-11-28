@@ -9,7 +9,7 @@
 <script src="./progress-engine.js?v=2"></script>
 <script src="./ai-providers.js?v=t41"></script>
 <script src="./gemini-bridge.js?v=t23"></script>
-<script src="./dh-ders-defteri.js?v=2"></script>
+<script src="./dh-ders-defteri.js?v=3"></script>
 <script src="./viseme-lang.js?v=3"></script>
 <script src="./dh-canli-yuz.js?v=92"></script>
 
@@ -87,7 +87,7 @@ body{
 /* Profesyonel düzen: araçlar tek satırda, soru-cevap sohbet gibi, soru kutusu altta sabit */
 .top .t-ustbar{display:flex;gap:6px;align-items:center;margin-left:auto;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
 .top .t-ustbar::-webkit-scrollbar{display:none}
-.t-ub{flex:0 0 auto;height:34px;padding:0 12px;border-radius:999px;background:var(--surface,#0f1f3a);border:1px solid var(--border);color:var(--text);font:800 13px Nunito,sans-serif;white-space:nowrap;cursor:pointer}
+.t-ub{display:inline-flex;align-items:center;text-decoration:none;flex:0 0 auto;height:34px;padding:0 12px;border-radius:999px;background:var(--surface,#0f1f3a);border:1px solid var(--border);color:var(--text);font:800 13px Nunito,sans-serif;white-space:nowrap;cursor:pointer}
 .t-ub-deniz{background:linear-gradient(135deg,#0ea5e9,#6366f1);border:0;color:#fff}
 @media(max-width:600px){
   .top{padding:8px 12px!important;gap:8px!important;row-gap:6px!important}
@@ -110,9 +110,10 @@ body{
 .qa-item .qa-a{align-self:flex-start;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:16px 16px 16px 4px;padding:12px 14px}
 .qa-item .qa-a .explain{margin:0;background:none;border:0;padding:0;white-space:normal}
 .qa-item .loading{align-self:flex-start}
+.qa-gecmis{font:800 12px Nunito,sans-serif;color:var(--muted);text-align:center;margin:4px 0}
 .qa-kim{font:800 12px Nunito,sans-serif;color:var(--muted);margin-bottom:6px;letter-spacing:.3px}
 .qa-yer{font-weight:600;opacity:.8;font-size:12px}
-.t-composer{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(680px,100%);box-sizing:border-box;z-index:2147482000;margin:0!important;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg,#0b1220) 80%,transparent)}
+.t-composer{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(680px,100%);box-sizing:border-box;z-index:900;margin:0!important;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg,#0b1220) 80%,transparent)}
 #out:has(.t-composer){padding-bottom:96px}
 .t-composer input{border-radius:999px!important;padding:13px 16px!important;font-size:15px!important}
 .t-composer button{border-radius:999px!important;padding:0 18px!important}
@@ -134,7 +135,8 @@ body{
 .state p{margin:0;font-size:14px;line-height:1.6;max-width:380px}
 .btn{border:1px solid var(--border);background:var(--surface-2);color:var(--text);border-radius:12px;padding:13px 22px;font:800 15px Nunito,sans-serif;cursor:pointer;text-decoration:none}
 .btn-primary{background:var(--green-strong);color:#fff;border-color:transparent}
-.sheet-overlay{position:fixed;inset:0;z-index:1000;background:#000000a6;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center}
+body:has(.sheet-overlay) .t-composer{display:none!important}
+.sheet-overlay{position:fixed;inset:0;z-index:2147483000;background:#000000a6;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--surface);border:1px solid var(--border);border-radius:20px 20px 0 0;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:22px 20px calc(22px + env(safe-area-inset-bottom))}
 @media(min-width:560px){.sheet-overlay{align-items:center}.sheet{border-radius:20px}}
 .sheet h3{font-family:Fraunces,serif;font-weight:600;font-size:20px;margin:0 0 6px}
@@ -1070,6 +1072,7 @@ function render(){
     <div class="tinfo"><h1>İngilizce Öğretmeni</h1><p>Türkçe anlatımlı İngilizce öğretmeni</p></div>
     <div class="t-ustbar">
       <button class="t-ub t-ub-deniz" id="teacherDenizBtn" type="button" title="Bu konuyu Deniz'le sesli ve görüntülü çalış">🎥 Deniz'le çalış</button>
+      <a class="t-ub" id="teacherDefterBtn" href="./ders-defteri.html" title="Bütün çalışmaların (öğretmen + Deniz)">📒 Defter</a>
       <button class="t-ub" id="teacherVoiceBtn" type="button" title="Okuma sesleri">🔊 Ses</button>
       <button class="t-ub" id="teacherPromptBtn" type="button" title="AI Prompt ayarı">⚙️ Ayar</button>
       <button class="t-ub" id="teacherKeyBtn" type="button" title="API anahtarları">🔑 Anahtar</button>
@@ -1165,12 +1168,25 @@ function normalizeTeacherMarkdown(text){
 }
 
 function setOut(html){ document.getElementById("out").innerHTML = html; }
+/* Aynı cümle daha önce çalışıldıysa: arşivdeki eski soru-cevaplar gelince akışa eklenir */
+window.addEventListener("dh-defter-birlesti", function(e){
+  const d = e.detail, thr = document.getElementById("qaThread");
+  if (!d || !thr || d.cumle !== State.en || thr.children.length || !(d.mesajlar||[]).length) return;
+  const n = document.createElement("div"); n.className = "qa-gecmis"; n.textContent = "📒 Bu cümleyle önceki çalışmaların"; thr.appendChild(n);
+  defterMesajlariCiz(d);
+});
+/* Ayar pencereleri: koyu alana dokununca ya da Esc ile kapanır (düğmesi görünmese bile çıkılabilsin) */
+document.addEventListener("click", function(e){ var o=e.target; if (o && o.classList && o.classList.contains("sheet-overlay")) o.remove(); });
+document.addEventListener("keydown", function(e){ if (e.key==="Escape"){ var o=document.querySelectorAll(".sheet-overlay"); if (o.length) o[o.length-1].remove(); } });
 /* Ortak defterdeki açıklama + konuşmaları yeniden çiz (Deniz'le konuşulanlar dahil); geçmişi yapay zekâya da ver */
 function defterGoster(d){
   renderExplanation(d.aciklama, true);
   State.history = [{ role:"system", content:sistemPrompt()+(window.__dhProfileBlock||"") },
     { role:"user", content:`İngilizce cümle: "${State.en}"` + (State.tr ? `\nTürkçe çevirisi: ${State.tr}` : "") },
     { role:"assistant", content:d.aciklama }];
+  defterMesajlariCiz(d);
+}
+function defterMesajlariCiz(d){
   const thr = document.getElementById("qaThread"); if (!thr) return;
   let item = null;
   (d.mesajlar||[]).forEach(function(m){

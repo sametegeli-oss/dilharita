@@ -154,7 +154,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         </div>
         <div class="vd-sure" hidden>00:00</div>
         <div class="vd-ust-sag">
-          ${analiz && analiz.defter ? '<button class="vd-ib vd-ogr-don" data-a="ogretmen" title="Öğretmene dön" aria-label="Öğretmene dön">📘</button>' : ''}
+          <button class="vd-ib vd-ogr-don" data-a="ogretmen" title="Öğretmene geç" aria-label="Öğretmene geç">📘</button>
           <button class="vd-ib" data-a="cc" title="Altyazı" aria-label="Altyazı">${vi('cc')}</button>
           <button class="vd-ib" data-a="sohbet" title="Sohbet" aria-label="Sohbet">${vi('chat')}<em class="vd-rozet" hidden>0</em></button>
           <button class="vd-ib" data-a="ayar" title="Ayarlar" aria-label="Ayarlar">${vi('gear')}</button>
@@ -957,7 +957,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     kok.classList.toggle('vd-cc-yok', !ayar.altyazi);
     q('[data-a=kapat]').onclick = () => { if (st.faz === 'ders' && st.turns) bitir(); else kapatPanel(); };
     /* ortak defterle gelindiyse: aynı cümle, açıklama ve konuşmalarla öğretmen sayfasına dön */
-    { const ob = q('[data-a=ogretmen]'); if (ob) ob.onclick = () => { try { yuz.sustur(); vdKaydet(); } catch (e) {} location.href = './teacher.html?defter=1'; }; }
+    { const ob = q('[data-a=ogretmen]'); if (ob) ob.onclick = () => { try { yuz.sustur(); vdKaydet(); } catch (e) {} location.href = window.DHDefter && DHDefter.al() && DHDefter.al().cumle ? './teacher.html?defter=1' : './teacher.html'; }; }
 
     /* ---- Google hesabı (genel asistan) ---- */
     function googleCiz() {

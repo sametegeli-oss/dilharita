@@ -1788,8 +1788,9 @@ Promise.all([fetch('./konuskan/data.json?v=1').then(r=>{ if(!r.ok) throw 0; retu
     if(new URLSearchParams(location.search).get('deniz')==='analiz'){
       try{ history.replaceState(null,'',location.pathname+location.hash); }catch(e){}
       let a=null; try{ a=JSON.parse(localStorage.getItem('dh-deniz-analiz')||'null'); localStorage.removeItem('dh-deniz-analiz'); }catch(e){}
-      if(a&&a.cumle&&Date.now()-(a.t||0)<30*60*1000){
-        if(window.startVideo&&!aiOff()){ stopSpeak(); startVideo(null,{ustte:true,analiz:a}); }
+      if(a&&Date.now()-(a.t||0)<30*60*1000){
+        /* öğretmende cümle yoksa da Deniz'in görüntülü dersi açılır (konuyu derste söylersin) */
+        if(window.startVideo&&!aiOff()){ stopSpeak(); a.cumle ? startVideo(null,{ustte:true,analiz:a}) : startVideo(null,{ustte:true}); }
         else toast('Görüntülü ders için yapay zekâ anahtarı gerekiyor.');
       }
     } });
