@@ -639,11 +639,21 @@ function speakSegmentsSelf(segs){
   if(!pieces.length) return false;
   var session=++_selfSpeakSession;
   try{ speechSynthesis.cancel(); }catch(e){}
-  var i=0;
+  var i=0, cur=0;
+  /* BEKLET / DEVAM (Android): tarayıcının pause()/resume()'u Android Chrome'da güvenilmez; duraklatınca motor
+     takılıyor ve devamda ses gelmiyordu. Beklet = o anki parçayı hatırla + sesi kes; Devam = aynı parçadan yeniden oku. */
+  var kontrol={ bekliyor:false, bitti:false,
+    aktif:function(){ return !kontrol.bitti && (kontrol.bekliyor || session===_selfSpeakSession); },
+    beklet:function(){ if(kontrol.bekliyor || !kontrol.aktif()) return; kontrol.bekliyor=true; window.__dhUserPaused=true; i=cur; _selfSpeakSession++;
+      try{ speechSynthesis.cancel(); }catch(e){} try{ if(TeacherAvatar) TeacherAvatar.stop(); }catch(e){} },
+    devam:function(){ if(!kontrol.bekliyor) return; kontrol.bekliyor=false; window.__dhUserPaused=false; session=++_selfSpeakSession;
+      try{ speechSynthesis.cancel(); }catch(e){} try{ speechSynthesis.resume(); }catch(e){} step(); }
+  };
+  _okumaKontrol=kontrol;
   function step(){
     if(session!==_selfSpeakSession) return;
-    if(i>=pieces.length){ if(TeacherAvatar) TeacherAvatar.stop(); try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){} return; }
-    var pc=pieces[i++];
+    if(i>=pieces.length){ kontrol.bitti=true; if(TeacherAvatar) TeacherAvatar.stop(); try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){} return; }
+    cur=i; var pc=pieces[i++];
     var u=new SpeechSynthesisUtterance(pc.text);
     var voice=pickVoiceForLang(pc.lang);
     if(voice){ u.voice=voice; u.lang=voice.lang; } else { u.lang=pc.lang; }
@@ -667,8 +677,13 @@ function speakSegmentsSelf(segs){
   return true;
 }
 
+var _okumaKontrol=null;
+function okumaAktif(){ return !!(_okumaKontrol && _okumaKontrol.aktif()); }
+function okumaBekliyor(){ return !!(_okumaKontrol && _okumaKontrol.aktif() && _okumaKontrol.bekliyor); }
+function okumaCevir(){ if(!okumaAktif()) return false; if(_okumaKontrol.bekliyor) _okumaKontrol.devam(); else _okumaKontrol.beklet(); return true; }
 function speakFromScreen(boxEl){
   if(!boxEl) return false;
+  if(okumaCevir()) return false;
   try{
     if(window.speechSynthesis){
       if(speechSynthesis.paused && speechSynthesis.speaking){
@@ -719,6 +734,7 @@ function ensurePauseBtn(){
     +"background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:999px;"
     +"padding:11px 16px;font:800 14px Nunito,sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.45)";
   b.onclick=function(){
+    if(okumaCevir()){ syncPauseBtn(); return; }
     const st=ttsState();
     try{
       if(st.paused || window.__dhUserPaused){ window.__dhUserPaused=false; speechSynthesis.resume(); }
@@ -730,6 +746,7 @@ function ensurePauseBtn(){
 }
 function syncPauseBtn(){
   const b=ensurePauseBtn(), st=ttsState();
+  if(okumaBekliyor()){ _idlePolls=0; b.style.display=document.documentElement.classList.contains("t-tam-acik")?"none":"block"; b.textContent="▶ Devam"; return; }
   /* Sıradaki cümleye geçerken motor kısa süre "konuşmuyor" görünüyor;
      tek ölçümle gizlersek düğme yanıp söner. İki ölçüm bekle. */
   if(!st.active){
@@ -1235,9 +1252,9 @@ function tamEkranAc(){
     if(b){ b.click(); return; }
     var q=document.querySelectorAll(".qaListen"); if(q.length) q[q.length-1].click();
   };
-  a.querySelector(".bekle").onclick=function(){ var p=ensurePauseBtn(); if(ttsState().active) p.onclick(); tamDurum(); };
+  a.querySelector(".bekle").onclick=function(){ if(!okumaCevir()){ var p=ensurePauseBtn(); if(ttsState().active) p.onclick(); } tamDurum(); };
   a.querySelector(".dur").onclick=function(){
-    _selfSpeakSession++; window.__dhUserPaused=false;
+    _selfSpeakSession++; window.__dhUserPaused=false; _okumaKontrol=null;
     try{ speechSynthesis.cancel(); }catch(e){}
     try{ if(TeacherAvatar) TeacherAvatar.stop(); }catch(e){}
     try{ if(window.__dhHighlight) window.__dhHighlight(null); }catch(e){}
@@ -1248,7 +1265,7 @@ function tamEkranAc(){
 }
 function tamDurum(){
   var a=document.getElementById("tTamAlt"); if(!a) return;
-  var st=ttsState(), bk=a.querySelector(".bekle"), dur=(st.paused||window.__dhUserPaused);
+  var st=ttsState(), bk=a.querySelector(".bekle"), dur=(okumaBekliyor()||st.paused||window.__dhUserPaused);
   bk.textContent = dur ? "▶ Devam" : "⏸ Bekle"; bk.classList.toggle("devam", !!dur);
   var r=document.querySelector(".dh-reading"); if(r && r!==a._son){ a._son=r; try{ r.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }
 }
