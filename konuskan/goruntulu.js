@@ -155,6 +155,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
         <div class="vd-sure" hidden>00:00</div>
         <div class="vd-ust-sag">
           <button class="vd-ib vd-ogr-don" data-a="ogretmen" title="Öğretmene geç" aria-label="Öğretmene geç">📘</button>
+          <button class="vd-ib vd-ogr-don" data-a="defter" title="Ders defterim" aria-label="Ders defterim">📒</button>
           <button class="vd-ib" data-a="cc" title="Altyazı" aria-label="Altyazı">${vi('cc')}</button>
           <button class="vd-ib" data-a="sohbet" title="Sohbet" aria-label="Sohbet">${vi('chat')}<em class="vd-rozet" hidden>0</em></button>
           <button class="vd-ib" data-a="ayar" title="Ayarlar" aria-label="Ayarlar">${vi('gear')}</button>
@@ -957,6 +958,7 @@ ${ipucu ? `Context — the teacher had just said: "${ipucu}"\n` : ''}Return ONLY
     kok.classList.toggle('vd-cc-yok', !ayar.altyazi);
     q('[data-a=kapat]').onclick = () => { if (st.faz === 'ders' && st.turns) bitir(); else kapatPanel(); };
     /* ortak defterle gelindiyse: aynı cümle, açıklama ve konuşmalarla öğretmen sayfasına dön */
+    { const db = q('[data-a=defter]'); if (db) db.onclick = () => { try { yuz.sustur(); vdKaydet(); } catch (e) {} location.href = './ders-defteri.html'; }; }
     { const ob = q('[data-a=ogretmen]'); if (ob) ob.onclick = () => { try { yuz.sustur(); vdKaydet(); } catch (e) {} location.href = window.DHDefter && DHDefter.al() && DHDefter.al().cumle ? './teacher.html?defter=1' : './teacher.html'; }; }
 
     /* ---- Google hesabı (genel asistan) ---- */
@@ -1701,6 +1703,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
         m.tr = r.reply_tr || ''; baloncukGuncelle(m, true);
         if (um) kontrol(um, r.check || { ok: true });
         if (analiz && analiz.defter && window.DHDefter) { try { if (um) DHDefter.ekle('Sen', um.text, 'Deniz'); DHDefter.ekle('Deniz', m.text, 'Deniz'); } catch (e) {} }   /* öğretmen sayfası da görsün */
+        else if (window.DHDefter && DHDefter.sohbet) { try { (um ? DHDefter.sohbet('Sen', um.text) : Promise.resolve()).then(() => DHDefter.sohbet('Deniz', m.text)).catch(() => {}); } catch (e) {} }   /* serbest sohbet: günün "Deniz sohbeti" defteri */
         (r.tasks_done || []).forEach(n => st.done.add(+n));
         cevirileriTamamla(m);
         ks.bitir();

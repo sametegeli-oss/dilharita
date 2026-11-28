@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v651";  /* Öğretmen tam ekran: Oku/Cümleyi dinle/Deniz düğmeleri gizli; çıkınca tam ekran düğmeleri kalmaz (CSS ile de gizli), okuma durur */
-/* onceki v650: Beklet/Devam kes + aynı parçadan */
+var SW_VERSION = "dh-sw-v652";  /* Ders defteri bulutta (users/{uid}/ders_defteri), silinebilir; Deniz'de 📒; Deniz sohbeti deftere yazılır */
+/* onceki v651: öğretmen tam ekran düğme temizliği */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */

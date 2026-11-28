@@ -6,7 +6,8 @@
 <title>Ders Defterim · Dil Harita</title>
 <script src="./auth-guard.js?v=19"></script>
 <script src="./gemini-bridge.js?v=t23"></script>
-<script src="./dh-ders-defteri.js?v=3"></script>
+<script src="./dh-ders-defteri.js?v=4"></script>
+<script src="./cloud-sync.js?v=56"></script>
 <link rel="stylesheet" href="./kolay-kullanim.css?v=13">
 <script src="./kolay-kullanim.js?v=29"></script>
 <style>
@@ -28,7 +29,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:500 15px/1.55 Nunito,s
 .kart.acik .kart-ic{display:block}
 .dugmeler{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .dugmeler button{border:0;border-radius:12px;padding:10px 14px;font:800 14px Nunito,sans-serif;color:#fff;cursor:pointer}
-.d-ogr{background:#16a34a}.d-dz{background:linear-gradient(135deg,#0ea5e9,#6366f1)}
+.d-ogr{background:#16a34a}.d-sil{background:#7f1d1d;margin-left:auto}.d-dz{background:linear-gradient(135deg,#0ea5e9,#6366f1)}
 .aciklama{background:#0d1628;border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:10px}
 .aciklama h1,.aciklama h2,.aciklama h3{font-size:15px;color:var(--accent);margin:10px 0 6px}
 .dh-tablo{overflow-x:auto;margin:6px 0 10px;border:1px solid var(--border);border-radius:10px}
@@ -47,7 +48,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:500 15px/1.55 Nunito,s
 <div class="ust"><a class="geri" href="./teacher.html">← Öğretmen</a><h1>📒 Ders Defterim</h1></div>
 <div class="ic">
   <input class="ara" id="ara" type="search" placeholder="Cümle ya da konuşmalarda ara…" autocomplete="off">
-  <p class="not">Öğretmenle ve Deniz'le yaptığın bütün çalışmalar burada. Hiçbir kayıt silinmez; aynı cümleye dönünce kaldığın yerden devam edersin.</p>
+  <p class="not">Öğretmenle ve Deniz'le yaptığın bütün çalışmalar burada ve bulutta yedekli; her cihazında görünür. Aynı cümleye dönünce kaldığın yerden devam edersin. Bir kaydı yalnız sen 🗑 Sil dersen silinir.</p>
   <div id="liste"><div class="bos">Yükleniyor…</div></div>
 </div>
 <script>
@@ -69,12 +70,19 @@ body{margin:0;background:var(--bg);color:var(--text);font:500 15px/1.55 Nunito,s
         return '<div class="m '+c+'"><small>'+esc(ad)+' · '+esc(tarih(m.t))+'</small>'+(c==="sen"?esc(m.metin):md(m.metin))+'</div>';
       }).join("");
       return '<div class="kart" data-i="'+i+'"><div class="kart-bas"><div><b>'+esc(d.cumle)+'</b><small>'+esc(d.tr||"")+(d.tr?" · ":"")+esc(tarih(d.guncel))+'</small></div><span class="say">'+(d.mesajlar||[]).length+' mesaj</span></div>'
-        +'<div class="kart-ic"><div class="dugmeler"><button class="d-ogr" data-ac="ogr" data-id="'+esc(d.id)+'">📘 Öğretmende aç</button><button class="d-dz" data-ac="dz" data-id="'+esc(d.id)+'">🎥 Deniz\'le çalış</button></div>'
+        +'<div class="kart-ic"><div class="dugmeler">'+(d.tur==="sohbet"?'<button class="d-dz" data-ac="dzs" data-id="'+esc(d.id)+'">🎥 Deniz\'le sohbet et</button>':'<button class="d-ogr" data-ac="ogr" data-id="'+esc(d.id)+'">📘 Öğretmende aç</button><button class="d-dz" data-ac="dz" data-id="'+esc(d.id)+'">🎥 Deniz\'le çalış</button>')+'<button class="d-sil" data-ac="sil" data-id="'+esc(d.id)+'">🗑 Sil</button></div>'
         +(d.aciklama?'<div class="aciklama">'+md(d.aciklama)+'</div>':'')+ms+'</div></div>';
     }).join("");
   }
   document.getElementById("liste").addEventListener("click",function(e){
     var b=e.target.closest("button[data-ac]");
+    if(b && b.dataset.ac==="sil"){
+      var d0=tum.filter(function(x){return x.id===b.dataset.id;})[0];
+      if(!confirm("Bu kayıt silinsin mi?\n\n"+(d0?d0.cumle:"")+"\n\nBütün konuşmalarıyla birlikte bu cihazdan ve buluttan silinir; geri alınamaz.")) return;
+      DHDefter.sil(b.dataset.id).then(function(){ tum=tum.filter(function(x){return x.id!==b.dataset.id;}); ciz(); });
+      return;
+    }
+    if(b && b.dataset.ac==="dzs"){ location.href="./konuskan.html"; return; }
     if(b){
       DHDefter.ac(b.dataset.id).then(function(d){
         if(!d) return;
@@ -86,7 +94,9 @@ body{margin:0;background:var(--bg);color:var(--text);font:500 15px/1.55 Nunito,s
     var k=e.target.closest(".kart-bas"); if(k) k.parentNode.classList.toggle("acik");
   });
   document.getElementById("ara").addEventListener("input",ciz);
-  DHDefter.listele().then(function(a){ tum=a.filter(function(d){return d&&d.cumle;}); ciz(); });
+  function yukle(){ DHDefter.listele().then(function(a){ tum=a.filter(function(d){return d&&d.cumle;}); ciz(); }); }
+  yukle();
+  window.addEventListener("dh-defter-bulut", yukle);   /* başka cihazdan gelenler */
 })();
 </script>
 </body>

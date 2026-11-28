@@ -1290,6 +1290,9 @@
         loadKoleksiyon:function(uid,ad){ return fsMod.getDocs(fsMod.collection(db,"users",uid,ad)).then(function(snap){var out=[];snap.forEach(function(d){var v=d.data()||{};v.id=d.id;out.push(v);});return out;}); },
         saveKoleksiyon:function(uid,ad,id,data){ return fsMod.setDoc(fsMod.doc(db,"users",uid,ad,String(id)),data); },
         deleteKoleksiyon:function(uid,ad,id){ return fsMod.deleteDoc(fsMod.doc(db,"users",uid,ad,String(id))); },
+        /* yalnız "guncel" alanı verilen zamandan yeni belgeler (artımlı okuma: her açılışta bütün koleksiyon okunmaz) */
+        loadKoleksiyonSonra:function(uid,ad,sonra){ var c=fsMod.collection(db,"users",uid,ad); var q=fsMod.query(c,fsMod.where("guncel",">",+sonra||0),fsMod.orderBy("guncel"));
+          return fsMod.getDocs(q).then(function(snap){var out=[];snap.forEach(function(d){var v=d.data()||{};v.id=d.id;out.push(v);});return out;}); },
         /* Koç beyni (dh-koc-beyin.js): users/{uid}/koc/{belge} ve users/{uid}/koc_haftalik/{hafta} */
         loadBelge:function(uid,ad,id){ return fsMod.getDoc(fsMod.doc(db,"users",uid,ad,String(id))).then(function(sn){ return sn.exists()?(sn.data()||{}):null; }); },
         saveBelge:function(uid,ad,id,data,merge){ return fsMod.setDoc(fsMod.doc(db,"users",uid,ad,String(id)),data,merge?{merge:true}:undefined); },
@@ -1831,6 +1834,13 @@
       getir: function(){ if(!(ready&&user&&fb&&fb.loadKoleksiyon)) return Promise.resolve(null); return fb.loadKoleksiyon(user.uid,"konuskan_notlar"); },
       kaydet: function(id,data){ if(!(ready&&user&&fb&&fb.saveKoleksiyon)) return Promise.resolve(false); return fb.saveKoleksiyon(user.uid,"konuskan_notlar",id,data).then(function(){return true;}); },
       sil: function(id){ if(!(ready&&user&&fb&&fb.deleteKoleksiyon)) return Promise.resolve(false); return fb.deleteKoleksiyon(user.uid,"konuskan_notlar",id).then(function(){return true;}); }
+    },
+    /* Ders defteri (öğretmen + Deniz ortak defter): users/{uid}/ders_defteri/{id}. cek(sonra) artımlı okur. */
+    defter: {
+      hazir: function(){ return !!(ready&&user&&fb&&fb.saveKoleksiyon&&fb.loadKoleksiyonSonra); },
+      uid: function(){ return user?user.uid:null; },
+      cek: function(sonra){ if(!(ready&&user&&fb&&fb.loadKoleksiyonSonra)) return Promise.resolve(null); return fb.loadKoleksiyonSonra(user.uid,"ders_defteri",sonra); },
+      yaz: function(id,data){ if(!(ready&&user&&fb&&fb.saveKoleksiyon)) return Promise.resolve(false); return fb.saveKoleksiyon(user.uid,"ders_defteri",id,data).then(function(){return true;}); }
     },
     /* Koç beyni ve cümle bankası belgeleri. Yalnız bu koleksiyonlar (yanlışlıkla başka yere yazılmasın). */
     koc: {
