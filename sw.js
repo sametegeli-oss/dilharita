@@ -13,8 +13,8 @@
       indirilip bir sonraki açılışta devreye girer.
    4) Bildirim tıklama / push davranışı v3 ile aynı.
 */
-var SW_VERSION = "dh-sw-v643";  /* ai-providers: Gemini köprüsü t23 */
-/* onceki v642: not alma her seferinde; öğretmen tablolu; Deniz e taşıma */
+var SW_VERSION = "dh-sw-v644";  /* Öğretmen: kompakt başlık, Deniz düğmesi menüde ve her cevapta, Deniz öğretmen kurallarıyla */
+/* onceki v643: ai-providers Gemini köprüsü t23 */
 /* onceki v592: 🏠 Ana sayfa Deniz'in planını gösterir; eski koç ikinci AI planı yapmaz (geri dönüş: dh-ana-plan=eski) */
 /* onceki v591: 🧭 Deniz müfredatta ilerletir */
 /* onceki v590: 🧩 Kalan ekranların cevapları Deniz'e: akıllı tekrar, YouTube, İngilizceyi Yaşa, sesli çalış, ders, sınavlar, öbek fiil, telaffuz */

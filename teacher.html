@@ -84,6 +84,19 @@ body{
 .regen{margin-top:10px;width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:11px;font:800 14px Nunito,sans-serif;cursor:pointer}
 .regen:hover{background:#22304f}
 /* Profesyonel düzen: araçlar tek satırda, soru-cevap sohbet gibi, soru kutusu altta sabit */
+.top .t-ustbar{display:flex;gap:6px;align-items:center;margin-left:auto;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.top .t-ustbar::-webkit-scrollbar{display:none}
+.t-ub{flex:0 0 auto;height:34px;padding:0 12px;border-radius:999px;background:var(--surface,#0f1f3a);border:1px solid var(--border);color:var(--text);font:800 13px Nunito,sans-serif;white-space:nowrap;cursor:pointer}
+.t-ub-deniz{background:linear-gradient(135deg,#0ea5e9,#6366f1);border:0;color:#fff}
+@media(max-width:600px){
+  .top{padding:8px 12px!important;gap:8px!important;row-gap:6px!important}
+  .top .tinfo h1{font-size:15px}
+  .top .t-ustbar{flex:1 1 100%;margin-left:0;order:5}
+  .teacher-hero{padding:6px 0 4px!important}
+  .teacher-hero--dual .teacher-photo{width:92px!important;height:92px!important;border-radius:16px!important}
+  .teacher-hero--dual figcaption{display:none}
+  .subject{padding:12px 14px!important;margin-bottom:12px!important}
+}
 .t-deniz{display:block;width:100%;margin:16px 0 0;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;border:0;border-radius:14px;padding:13px 16px;font:800 15px Nunito,sans-serif;cursor:pointer;box-shadow:0 6px 18px rgba(99,102,241,.3)}
 .t-tools{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 4px;padding-top:14px;border-top:1px solid var(--border)}
 .t-tool{flex:1 1 auto;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:999px;padding:9px 14px;font:800 13px Nunito,sans-serif;cursor:pointer;white-space:nowrap}
@@ -1045,9 +1058,12 @@ function render(){
     <a href="./index.html" class="back" id="teacherBack" title="Geri">←</a>
     <div class="ava" title="Fotoğraflı öğretmen"><img id="teacherAvaImg" alt="Öğretmen avatarı"></div>
     <div class="tinfo"><h1>İngilizce Öğretmeni</h1><p>Türkçe anlatımlı İngilizce öğretmeni</p></div>
-    <button class="keybtn" id="teacherVoiceBtn" title="Okuma sesleri" style="margin-right:6px">🔊</button>
-    <button class="keybtn" id="teacherPromptBtn" title="AI Prompt ayarı" style="margin-right:6px">⚙️</button>
-    <button class="keybtn" id="teacherKeyBtn" title="API anahtarları">🔑</button>
+    <div class="t-ustbar">
+      <button class="t-ub t-ub-deniz" id="teacherDenizBtn" type="button" title="Bu konuyu Deniz'le sesli ve görüntülü çalış">🎥 Deniz'le çalış</button>
+      <button class="t-ub" id="teacherVoiceBtn" type="button" title="Okuma sesleri">🔊 Ses</button>
+      <button class="t-ub" id="teacherPromptBtn" type="button" title="AI Prompt ayarı">⚙️ Ayar</button>
+      <button class="t-ub" id="teacherKeyBtn" type="button" title="API anahtarları">🔑 Anahtar</button>
+    </div>
   </div>
   <div class="body">
     <div class="teacher-hero teacher-hero--dual">
@@ -1061,6 +1077,7 @@ function render(){
     <div id="out"></div>
   </div>`;
   mountTeacherAvatar();
+  var tdz = document.getElementById("teacherDenizBtn"); if (tdz) tdz.onclick = function(){ denizeTasi(); };
   
   var keyBtn = document.getElementById("teacherKeyBtn");
   if (keyBtn) keyBtn.onclick = () => openKeySheet();
@@ -1140,13 +1157,19 @@ function normalizeTeacherMarkdown(text){
 function setOut(html){ document.getElementById("out").innerHTML = html; }
 /* Öğretmen sayfasındaki cümle + açıklama + soru-cevapları Deniz'in görüntülü dersine taşır:
    konuskan.html?deniz=analiz açılır, Deniz konuyu sesli anlatıp sohbete devam eder. */
-function denizeTasi(){
+function denizeTasi(odak){
   try{
     var duz=function(x){ return String(x||"").replace(/\[\[|\]\]/g,"").replace(/[#*`>|]/g," ").replace(/-{3,}/g," ").replace(/\s+/g," ").trim(); };
+    var parca=[];
+    if(odak && odak.soru) parca.push("Öğrencinin öğretmene sorduğu soru: "+duz(odak.soru).slice(0,400)+" — Öğretmenin cevabı: "+duz(odak.cevap).slice(0,1200)+" (Derste özellikle bu soru üzerinde dur.)");
+    if(State.explanation) parca.push("Öğretmen sayfasındaki yazılı açıklama: "+duz(State.explanation).slice(0,1400));
     var qa=(State.history||[]).filter(function(m){ return m.role!=="system"; }).slice(2).slice(-4)
-      .map(function(m){ return (m.role==="user"?"Öğrencinin sorusu: ":"Öğretmenin cevabı: ")+duz(m.content).slice(0,350); }).join(" ");
-    var ozet=("Öğretmen sayfasındaki yazılı açıklama: "+duz(State.explanation)).slice(0,1600)+(qa?(" Ardından sorulanlar: "+qa).slice(0,900):"");
-    localStorage.setItem("dh-deniz-analiz", JSON.stringify({ cumle:State.en, tr:State.tr||"", src:"Öğretmen sayfası", kim:"", ozet:ozet, t:Date.now() }));
+      .map(function(m){ return (m.role==="user"?"Soru: ":"Cevap: ")+duz(m.content).slice(0,300); }).join(" ");
+    if(qa && !(odak && odak.soru)) parca.push("Ardından sorulanlar: "+qa.slice(0,900));
+    localStorage.setItem("dh-deniz-analiz", JSON.stringify({
+      cumle: State.en || (odak && odak.soru) || "", tr: State.tr||"", src:"Öğretmen sayfası", kim:"",
+      ozet: parca.join(" ").slice(0,2600), kurallar: getPrompt(), t: Date.now()
+    }));
   }catch(e){}
   location.href="./konuskan.html?deniz=analiz";
 }
@@ -1431,7 +1454,8 @@ async function askFollowup(q){
   try{
     const reply = await groqChat(State.history);
     State.history.push({ role:"assistant", content:reply });
-    qa.innerHTML = `<div class="qa-q">${esc(q)}</div><div class="qa-a"><div class="explain qaExplain">${(window.DHGemini&&DHGemini.markdown)?DHGemini.markdown(normalizeTeacherMarkdown(reply)):renderRich(reply)}</div><div class="explain-actions"><button class="explain-play qaListen">🔊 Oku</button></div></div>`;
+    qa.innerHTML = `<div class="qa-q">${esc(q)}</div><div class="qa-a"><div class="explain qaExplain">${(window.DHGemini&&DHGemini.markdown)?DHGemini.markdown(normalizeTeacherMarkdown(reply)):renderRich(reply)}</div><div class="explain-actions"><button class="explain-play qaListen">🔊 Oku</button><button class="explain-play qaDeniz" type="button">🎥 Deniz'le çalış</button></div></div>`;
+    const dzb = qa.querySelector(".qaDeniz"); if (dzb) dzb.onclick = () => denizeTasi({ soru:q, cevap:reply });
     gorunur();
     const btn = qa.querySelector(".qaListen");
     if(btn) btn.onclick = () => speakFromScreen(qa.querySelector(".qaExplain"));

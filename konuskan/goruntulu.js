@@ -1042,6 +1042,7 @@ Be warm, natural and encouraging, like a real person on a video call. No emojis,
       }
       if (k.tasks) s += `\nScene: ${k.scene}. Over the conversation the learner should complete these tasks: ${k.tasks.map((t, i) => (i + 1) + ') ' + t).join(' ')}. Create natural chances for them; never list them.`;
       if (k.custom) s += `\nTopic chosen by the learner: ${k.custom}`;
+      if (analiz && analiz.kurallar) s += `\nTEACHER RULES — the learner's own instructions for their English teacher; follow them exactly in this lesson (but you are speaking, so no tables, lists or markdown):\n${String(analiz.kurallar).slice(0, 3000)}`;
       else if (ayar.mod === 'tr') s += `\nLesson theme: ${k.t}${k.tasks ? ' (useful phrases for this situation)' : ''}.`;
       return s + learnerContext();
     }
